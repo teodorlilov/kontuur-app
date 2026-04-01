@@ -1,0 +1,23 @@
+'use client'
+
+import { Button } from '@/components/ui/button'
+import { Topbar } from '@/components/layout/topbar'
+
+export default function ClientsError({ reset }: { error: Error; reset: () => void }) {
+  return (
+    <>
+      <Topbar title="Clients" />
+      <div className="p-6">
+        <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
+          <p className="text-gray-900 font-medium">Failed to load clients</p>
+          <p className="text-sm text-gray-500 mt-1 mb-6">
+            Something went wrong while fetching your clients. Please try again.
+          </p>
+          <Button onClick={reset} size="sm">
+            Retry
+          </Button>
+        </div>
+      </div>
+    </>
+  )
+}

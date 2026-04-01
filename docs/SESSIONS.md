@@ -18,7 +18,7 @@ you have already read and confirmed.
 
 Strict rules for every session:
 - Follow the folder structure from ARCHITECTURE.md exactly
-- TypeScript strict mode, no 'any' types
+- TypeScript straict mode, no 'any' types
 - Named exports only, no default exports for components
 - All AI prompts in lib/anthropic/prompts/ as separate files
 - All API routes authenticate the user and verify agency ownership
@@ -498,6 +498,45 @@ Per post: small coloured chip with client name. Assign consistent colours per cl
 | `app/api/posts/route.ts` | GET (list with filters), POST |
 | `app/api/posts/[id]/route.ts` | GET, PUT (status/schedule/caption), DELETE |
 
+ADDITION 1 — Add crawl page limits
+
+In brand_profiles add:
+- crawl_pages_used integer DEFAULT 0
+- crawl_pages_limit integer DEFAULT 50
+
+In /api/clients/[id]/crawl-website:
+- Check crawl_pages_used against plan limit
+  (derive from agencies.plan)
+- If at limit: return 402 with message
+  'Crawl credit limit reached — upgrade your plan
+   or wait for next month'
+- After crawl: increment crawl_pages_used by 
+  pages fetched
+
+Reset crawl_pages_used to 0 on the 1st of each 
+month via cron job.
+
+Plan limits:
+free: 50 pages/month
+starter: 500 pages/month  
+agency: 2000 pages/month
+agency_pro: 10000 pages/month
+
+ADDITION 2 — Make the scraper provider configurable
+
+In .env.local add:
+SCRAPER_PROVIDER=firecrawl  
+# future values: jina, brightdata, scrapingbee
+
+In lib/sources/fetch-website.ts:
+Read SCRAPER_PROVIDER and route to the appropriate
+implementation. All implementations return the same
+interface: { markdown: string, error?: string }
+
+This means swapping scraper providers in the future
+requires only adding a new implementation function
+and changing one env var — zero application changes.
+
 ### ✓ Verify Before Stopping
 
 - [ ] Review queue shows all pending/approved posts
@@ -886,6 +925,7 @@ Document everything needed to activate Meta analytics:
 | Three-layer quality validation on every post | ✓ |
 | Language authenticity system (Bulgarian + English) | ✓ |
 | AI slop detection with authenticity scoring | ✓ |
+| Source-grounded fact-checking with attribution | ✓ |
 | Autonomous posting with configurable schedules | ✓ |
 | Client approval portal via magic link | ✓ |
 | Weekly social intelligence briefing | ✓ |
