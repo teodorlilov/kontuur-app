@@ -81,12 +81,38 @@ export default async function CalendarPage() {
 
     const clientNameMap = new Map(clientList.map((c) => [c.id, c.name]))
 
-    posts = ((postRows as PostRow[] | null) ?? []).map((p) => ({
-      ...p,
-      slides_json: p.slides_json as CalendarPost['slides_json'],
-      carousel_quality_json: p.carousel_quality_json as CalendarPost['carousel_quality_json'],
-      client_name: clientNameMap.get(p.client_id) ?? 'Unknown',
-    }))
+    // Fetch approval statuses for these posts
+    const postIds = ((postRows as PostRow[] | null) ?? []).map((p) => p.id)
+    const approvalMap = new Map<string, { status: string; client_note: string | null }>()
+
+    if (postIds.length > 0) {
+      const { data: tokenRows } = await supabase
+        .from('post_approval_tokens')
+        .select('post_id, status, client_note')
+        .in('post_id', postIds)
+        .order('created_at', { ascending: false })
+
+      if (tokenRows) {
+        // Use the latest token per post
+        for (const row of tokenRows) {
+          if (!approvalMap.has(row.post_id)) {
+            approvalMap.set(row.post_id, { status: row.status, client_note: row.client_note })
+          }
+        }
+      }
+    }
+
+    posts = ((postRows as PostRow[] | null) ?? []).map((p) => {
+      const approval = approvalMap.get(p.id)
+      return {
+        ...p,
+        slides_json: p.slides_json as CalendarPost['slides_json'],
+        carousel_quality_json: p.carousel_quality_json as CalendarPost['carousel_quality_json'],
+        client_name: clientNameMap.get(p.client_id) ?? 'Unknown',
+        approval_status: approval?.status ?? null,
+        approval_client_note: approval?.client_note ?? null,
+      }
+    })
   }
 
   return (

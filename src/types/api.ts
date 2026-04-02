@@ -157,13 +157,32 @@ export interface BestTimeResponse {
 // ---- Approval ----
 
 export interface SendApprovalRequest {
-  postId: string
-  clientEmail: string
+  clientId: string
+  weekStart: string // ISO date string (Monday of the week)
 }
 
 export interface ApprovalResponse {
   status: 'approved' | 'changes_requested'
-  clientNote?: string
+  postNotes?: Array<{ postId: string; note: string }>
+}
+
+export interface ApprovalPostData {
+  id: string
+  caption: string | null
+  platform: string | null
+  post_type: string
+  slides_json: unknown
+  scheduled_at: string | null
+  pillar: string | null
+  client_note: string | null
+}
+
+export interface ApprovalBatchData {
+  posts: ApprovalPostData[]
+  clientName: string
+  agencyName: string
+  status: string
+  expiresAt: string
 }
 
 // ---- Calendar ----
@@ -187,6 +206,8 @@ export interface CalendarPost {
   pillar: string | null
   source_excerpt: string | null
   created_at: string
+  approval_status: string | null
+  approval_client_note: string | null
 }
 
 // ---- API error ----

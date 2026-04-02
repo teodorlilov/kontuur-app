@@ -81,7 +81,29 @@ export function PostSidePanel({ post, onClose, onSave, onUnschedule, bestTimeDat
             )}>
               {post.status === 'scheduled' ? 'Scheduled' : 'Approved'}
             </span>
+            {post.approval_status && (
+              <span className={cn(
+                'text-xs px-2 py-0.5 rounded-full',
+                post.approval_status === 'pending' && 'bg-amber-50 text-amber-700',
+                post.approval_status === 'approved' && 'bg-green-50 text-green-700',
+                post.approval_status === 'changes_requested' && 'bg-red-50 text-red-700'
+              )}>
+                {post.approval_status === 'pending'
+                  ? 'Awaiting client approval'
+                  : post.approval_status === 'approved'
+                    ? 'Client approved'
+                    : 'Changes requested'}
+              </span>
+            )}
           </div>
+
+          {/* Client feedback note */}
+          {post.approval_status === 'changes_requested' && post.approval_client_note && (
+            <div className="bg-red-50 border border-red-100 rounded-lg p-3">
+              <p className="text-xs font-medium text-red-700 mb-1">Client feedback</p>
+              <p className="text-sm text-red-900">{post.approval_client_note}</p>
+            </div>
+          )}
 
           {/* Post content (shared with generation flow) */}
           <PostContentDisplay

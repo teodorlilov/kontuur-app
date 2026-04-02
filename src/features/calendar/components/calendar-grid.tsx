@@ -100,7 +100,24 @@ export function CalendarGrid({ year, month, posts, colorMap, onPostClick, onDrop
                       style={{ backgroundColor: color }}
                       title={`${post.client_name}${post.pillar ? ` · ${post.pillar}` : ''}: ${post.caption?.slice(0, 60) ?? 'No caption'}`}
                     >
-                      {post.pillar && (
+                      {post.approval_status && (
+                        <span
+                          className={cn(
+                            'inline-block w-1.5 h-1.5 rounded-full shrink-0',
+                            post.approval_status === 'pending' && 'bg-amber-300',
+                            post.approval_status === 'approved' && 'bg-green-300',
+                            post.approval_status === 'changes_requested' && 'bg-red-300'
+                          )}
+                          title={
+                            post.approval_status === 'pending'
+                              ? 'Awaiting client approval'
+                              : post.approval_status === 'approved'
+                                ? 'Client approved'
+                                : 'Changes requested'
+                          }
+                        />
+                      )}
+                      {!post.approval_status && post.pillar && (
                         <span
                           className="inline-block w-1.5 h-1.5 rounded-full shrink-0"
                           style={{ backgroundColor: getPillarColor(post.pillar).hex }}

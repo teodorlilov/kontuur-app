@@ -346,6 +346,7 @@ export interface Database {
           post_id: string
           token: string
           client_email: string | null
+          batch_id: string | null
           status: string
           client_note: string | null
           expires_at: string
@@ -356,6 +357,7 @@ export interface Database {
           post_id: string
           token?: string
           client_email?: string | null
+          batch_id?: string | null
           status?: string
           client_note?: string | null
           expires_at?: string
@@ -366,6 +368,7 @@ export interface Database {
           post_id?: string
           token?: string
           client_email?: string | null
+          batch_id?: string | null
           status?: string
           client_note?: string | null
           expires_at?: string
