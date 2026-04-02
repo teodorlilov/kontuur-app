@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
+import { createUserRecord } from '@/lib/auth/create-user-record'
 import { AuthProvider } from '@/components/providers/auth-provider'
 import { Sidebar } from '@/components/layout/sidebar'
 import { ToastProvider } from '@/components/ui/toast'
@@ -29,46 +30,19 @@ export default async function DashboardLayout({
   // If no users record exists, auto-create from signup metadata (handles cases where
   // the /auth/callback was not reached after email confirmation)
   if (!rawUserData) {
-    const meta = (user.user_metadata ?? {}) as { businessName?: string; mode?: 'agency' | 'solo' }
-    const businessName = meta.businessName ?? 'My Business'
-    const mode = meta.mode ?? 'agency'
     const admin = createAdminSupabaseClient()
+    await createUserRecord(admin, {
+      id: user.id,
+      email: user.email ?? '',
+      user_metadata: (user.user_metadata ?? {}) as Record<string, unknown>,
+    })
 
-    const { data: agencyData } = await admin
-      .from('agencies')
-      .insert({ name: businessName, mode })
-      .select('id')
+    const { data: freshUserData } = await supabase
+      .from('users')
+      .select('agency_id, role')
+      .eq('id', user.id)
       .single()
-
-    if (agencyData) {
-      const agencyId = (agencyData as { id: string }).id
-      await admin.from('users').insert({
-        id: user.id,
-        agency_id: agencyId,
-        email: user.email ?? '',
-        role: 'admin',
-      })
-
-      if (mode === 'solo') {
-        const { data: clientData } = await admin
-          .from('clients')
-          .insert({ agency_id: agencyId, name: businessName })
-          .select('id')
-          .single()
-        if (clientData) {
-          const clientId = (clientData as { id: string }).id
-          await admin.from('brand_profiles').insert({ client_id: clientId })
-          await admin.from('posting_schedules').insert({ client_id: clientId })
-        }
-      }
-
-      const { data: freshUserData } = await supabase
-        .from('users')
-        .select('agency_id, role')
-        .eq('id', user.id)
-        .single()
-      rawUserData = freshUserData
-    }
+    rawUserData = freshUserData
   }
 
   const userData = rawUserData as { agency_id: string; role: string } | null

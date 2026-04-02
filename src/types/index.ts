@@ -44,5 +44,8 @@ export type {
   SendApprovalRequest,
   ApprovalResponse,
   CalendarPost,
+  TeamMember,
+  InviteTeamMemberRequest,
+  UpdateAgencyRequest,
   ApiError,
 } from './api'

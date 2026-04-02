@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createBrowserSupabaseClient } from '@/lib/supabase/client'
+import { validateEmail, validatePassword } from '@/lib/validation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { toast } from '@/components/ui/toast'
@@ -28,11 +29,10 @@ export function SignupForm() {
 
   function validate() {
     const next: FormErrors = {}
-    if (!email) next.email = 'Email is required'
-    else if (!/\S+@\S+\.\S+/.test(email)) next.email = 'Enter a valid email'
-    if (!password) next.password = 'Password is required'
-    else if (password.length < 10) next.password = 'Password must be at least 10 characters'
-    else if (!/[a-zA-Z]/.test(password) || !/\d/.test(password)) next.password = 'Password must contain both letters and numbers'
+    const emailError = validateEmail(email)
+    if (emailError) next.email = emailError
+    const passwordError = validatePassword(password)
+    if (passwordError) next.password = passwordError
     if (!businessName) next.businessName = 'Business name is required'
     return next
   }
@@ -125,7 +125,7 @@ export function SignupForm() {
           <Input
             label="Password"
             type="password"
-            placeholder="Min. 8 characters"
+            placeholder="Min. 10 characters"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             error={errors.password}

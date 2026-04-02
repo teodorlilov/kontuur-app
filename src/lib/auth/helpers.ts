@@ -99,3 +99,18 @@ export async function verifySourceOwnership(
     .single()
   return !!data
 }
+
+/**
+ * Verify a user has admin role within their agency.
+ */
+export async function verifyAdminRole(
+  supabase: SupabaseServerClient,
+  userId: string
+): Promise<boolean> {
+  const { data } = await supabase
+    .from('users')
+    .select('role')
+    .eq('id', userId)
+    .single()
+  return data?.role === 'admin'
+}

@@ -1,0 +1,46 @@
+import { redirect } from 'next/navigation'
+import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { AccountView } from '@/features/settings/components/account-view'
+
+export default async function AccountPage() {
+  const supabase = await createServerSupabaseClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) redirect('/login')
+
+  const { data: rawUserData } = await supabase
+    .from('users')
+    .select('agency_id, role')
+    .eq('id', user.id)
+    .single()
+
+  const userData = rawUserData as { agency_id: string; role: string } | null
+  if (!userData) redirect('/login')
+
+  const { data: rawAgency } = await supabase
+    .from('agencies')
+    .select('id, name, plan, mode, subscription_status, trial_ends_at, plan_client_limit')
+    .eq('id', userData.agency_id)
+    .single()
+
+  const agency = rawAgency as {
+    id: string
+    name: string
+    plan: string
+    mode: string
+    subscription_status: string
+    trial_ends_at: string
+    plan_client_limit: number
+  } | null
+
+  if (!agency) redirect('/login')
+
+  return (
+    <AccountView
+      agency={agency}
+      currentUserRole={userData.role}
+    />
+  )
+}

@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createBrowserSupabaseClient } from '@/lib/supabase/client'
+import { validateEmail } from '@/lib/validation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { toast } from '@/components/ui/toast'
@@ -13,12 +14,13 @@ export function LoginForm() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
+  const [resetLoading, setResetLoading] = useState(false)
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({})
 
   function validate() {
     const next: typeof errors = {}
-    if (!email) next.email = 'Email is required'
-    else if (!/\S+@\S+\.\S+/.test(email)) next.email = 'Enter a valid email'
+    const emailError = validateEmail(email)
+    if (emailError) next.email = emailError
     if (!password) next.password = 'Password is required'
     return next
   }
@@ -44,6 +46,25 @@ export function LoginForm() {
 
     router.push('/dashboard')
     router.refresh()
+  }
+
+  async function handleForgotPassword() {
+    const emailErr = validateEmail(email)
+    if (emailErr) {
+      setErrors({ email: emailErr })
+      return
+    }
+    setResetLoading(true)
+    const supabase = createBrowserSupabaseClient()
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/auth/callback`,
+    })
+    if (error) {
+      toast.error(error.message)
+    } else {
+      toast.success('Check your email for a password reset link')
+    }
+    setResetLoading(false)
   }
 
   return (
@@ -82,6 +103,14 @@ export function LoginForm() {
           <Button type="submit" loading={loading} className="w-full mt-1">
             Sign in
           </Button>
+          <button
+            type="button"
+            onClick={handleForgotPassword}
+            disabled={resetLoading}
+            className="text-sm text-brand-purple hover:underline w-full text-center mt-1"
+          >
+            {resetLoading ? 'Sending...' : 'Forgot password?'}
+          </button>
         </form>
 
         <p className="text-center text-sm text-gray-500 mt-4">

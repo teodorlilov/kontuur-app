@@ -210,6 +210,23 @@ export interface CalendarPost {
   approval_client_note: string | null
 }
 
+// ---- Settings / Team ----
+
+export interface TeamMember {
+  id: string
+  email: string
+  role: string
+  created_at: string
+}
+
+export interface InviteTeamMemberRequest {
+  email: string
+}
+
+export interface UpdateAgencyRequest {
+  name: string
+}
+
 // ---- API error ----
 
 export interface ApiError {
