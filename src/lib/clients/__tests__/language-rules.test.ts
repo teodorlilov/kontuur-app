@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { toStringArray, toCTAPhrases, toCarouselSwipeCues } from '../language-rules'
+import { toStringArray, toCTAPhrases, toCarouselSwipeCues, toFormalityRulesData, toOpenerExamples } from '../language-rules'
 
 describe('toStringArray', () => {
   it('returns empty array for null', () => {
@@ -83,5 +83,63 @@ describe('toCarouselSwipeCues', () => {
 
   it('returns empty string for arrays', () => {
     expect(toCarouselSwipeCues(['a', 'b'])).toBe('')
+  })
+})
+
+describe('toFormalityRulesData', () => {
+  it('returns null for null/undefined', () => {
+    expect(toFormalityRulesData(null)).toBeNull()
+    expect(toFormalityRulesData(undefined)).toBeNull()
+  })
+
+  it('returns null for non-object', () => {
+    expect(toFormalityRulesData('string')).toBeNull()
+    expect(toFormalityRulesData(42)).toBeNull()
+  })
+
+  it('returns null for arrays', () => {
+    expect(toFormalityRulesData([1, 2])).toBeNull()
+  })
+
+  it('returns null when registers key is missing', () => {
+    expect(toFormalityRulesData({ other: 'data' })).toBeNull()
+  })
+
+  it('returns data when registers key is present', () => {
+    const data = { registers: { formal: { rules: ['Be polite'], examples: {} } } }
+    const result = toFormalityRulesData(data)
+    expect(result).toEqual(data)
+    expect(result!.registers.formal!.rules).toEqual(['Be polite'])
+  })
+})
+
+describe('toOpenerExamples', () => {
+  it('returns empty array for null/undefined', () => {
+    expect(toOpenerExamples(null)).toEqual([])
+    expect(toOpenerExamples(undefined)).toEqual([])
+  })
+
+  it('returns empty array for non-array', () => {
+    expect(toOpenerExamples('string')).toEqual([])
+    expect(toOpenerExamples({ key: 'value' })).toEqual([])
+  })
+
+  it('filters valid opener examples', () => {
+    const input = [
+      { formality: 'formal', id: 'professional_observation', description: 'Open with a specific observation.', content: 'Patients who...' },
+      { formality: 'casual', id: 'unexpected_fact', description: 'State an unexpected fact.', content: 'Did you know...' },
+      { formality: 'formal', id: 'no_description', content: 'Missing description field' },
+      { missing: 'fields' },
+      42,
+      null,
+    ]
+    const result = toOpenerExamples(input)
+    expect(result).toHaveLength(2)
+    expect(result[0]!.formality).toBe('formal')
+    expect(result[1]!.id).toBe('unexpected_fact')
+  })
+
+  it('returns empty array for empty array', () => {
+    expect(toOpenerExamples([])).toEqual([])
   })
 })

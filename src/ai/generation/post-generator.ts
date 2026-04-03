@@ -6,13 +6,11 @@ import {
   buildAngleDifferentiationSection,
 } from '@/ai/generation/prompts/prompt-sections'
 import { PROMPT_HISTORY_LIMIT } from '@/utils/constants'
-import { WritingContext } from './writing-context'
 import { ContentGenerator } from './base-generator'
 import type { GeneratePostInput } from './types'
 
 export class PostGenerator extends ContentGenerator<GeneratePostInput, string[]> {
   protected buildUserMessage(input: GeneratePostInput): string {
-    const ctx = WritingContext.from(input)
     const sourceSection = buildSourceGroundingSection({
       sourceExcerpt: input.sourceExcerpt,
       sourceUrl: input.sourceUrl,
@@ -20,16 +18,12 @@ export class PostGenerator extends ContentGenerator<GeneratePostInput, string[]>
     })
 
     return `${buildClientProfile({
-      ctx,
+      client: input.client,
       platform: input.platform,
-      clientName: input.clientName,
-      contentPillars: input.contentPillars,
       targetPillar: input.targetPillar,
-      avoidTopics: input.avoidTopics,
-      isHealthClient: input.isHealthClient,
     })}
 
-Recent topics already covered — do not repeat: ${input.postHistory.slice(0, PROMPT_HISTORY_LIMIT).join(' | ')}
+Recent topics already covered — do not repeat: ${input.client.postHistory.slice(0, PROMPT_HISTORY_LIMIT).join(' | ')}
 ${sourceSection}
 ${buildAngleDifferentiationSection(input.similarPastThemes ?? [])}
 Today's date: ${new Date().toISOString().split('T')[0]}

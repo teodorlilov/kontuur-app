@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
-import { fetchClientData } from '@/lib/clients/fetch-client-data'
+import { fetchClientData, toClientContext } from '@/lib/clients/fetch-client-data'
 import { checkRateLimit, AI_RATE_LIMIT } from '@/lib/auth/rate-limit'
 import { performRewrite } from '@/ai/rewrite/rewrite-post'
 
@@ -42,7 +42,8 @@ export async function POST(request: Request) {
 
     const clientResult = await fetchClientData(supabase, body.clientId, agencyId)
     if ('error' in clientResult) return NextResponse.json({ error: clientResult.error }, { status: 404 })
-    const { client, profile, languageRules, postHistory } = clientResult.data
+
+    const client = toClientContext(clientResult.data)
 
     const result = await performRewrite({
       caption: body.caption,
@@ -54,19 +55,7 @@ export async function POST(request: Request) {
       sourceExcerpt: body.sourceExcerpt,
       sourceUrl: body.sourceUrl,
       rewriteReason: body.rewriteReason ?? 'manual',
-      clientName: client.name,
-      clientLanguage: client.language,
-      niche: client.niche,
-      tone: profile.tone,
-      formality: profile.formality,
-      targetAudience: profile.targetAudience,
-      clientTestimonialVoice: profile.clientTestimonialVoice,
-      avoidTopics: profile.avoidTopics,
-      bannedAnglicisms: languageRules.bannedAnglicisms,
-      bannedCalques: languageRules.bannedCalques,
-      contentPillars: profile.contentPillars,
-      postHistory,
-      isHealthNiche: profile.isHealthNiche,
+      client,
     })
 
     return NextResponse.json(result)

@@ -3,10 +3,8 @@ import { parseJsonResponse } from '@/ai/utils'
 import { buildSourceGroundingSection } from '@/ai/generation/prompts/source-grounding'
 import {
   buildClientProfile,
-  buildBannedPhrasesSection,
   buildAngleDifferentiationSection,
 } from '@/ai/generation/prompts/prompt-sections'
-import { WritingContext } from './writing-context'
 import { ContentGenerator } from './base-generator'
 import type { GenerateReelsInput, ReelsResult } from './types'
 
@@ -16,7 +14,7 @@ export class ReelsGenerator extends ContentGenerator<GenerateReelsInput, ReelsRe
    * Override buildSystemPrompt() while still inheriting callApi() and generate().
    */
   protected buildSystemPrompt(input: GenerateReelsInput): string {
-    const formality = input.languageFormality ?? 'neutral'
+    const formality = input.client.languageConfig.formality
     return `Write an Instagram Reels script (15-60 seconds when spoken aloud).
 
 SCRIPT STRUCTURE:
@@ -30,13 +28,10 @@ A formal hook can still be punchy and specific without being casual.
 ALSO PROVIDE:
 - On-screen text suggestions per section
 - Visual direction per section (simple talking head directions)
-- Estimated speaking time in seconds
-
-${buildBannedPhrasesSection()}`
+- Estimated speaking time in seconds`
   }
 
   protected buildUserMessage(input: GenerateReelsInput): string {
-    const ctx = WritingContext.from(input)
     const sourceSection = buildSourceGroundingSection({
       sourceExcerpt: input.sourceExcerpt,
       sourceUrl: input.sourceUrl,
@@ -44,21 +39,16 @@ ${buildBannedPhrasesSection()}`
     })
 
     return `${buildClientProfile({
-      ctx,
+      client: input.client,
       platform: 'Instagram',
-      clientName: input.clientName,
-      contentPillars: input.contentPillars,
       targetPillar: input.targetPillar,
-      avoidTopics: input.avoidTopics,
-      isHealthClient: input.isHealthClient,
     })}
 
 ${sourceSection}
 ${buildAngleDifferentiationSection(input.similarPastThemes ?? [])}
 Today's date: ${new Date().toISOString().split('T')[0]}
 
-CLIENT BRIEF:
-Client: ${input.clientName} | Niche: ${input.niche} | Theme: ${input.theme}
+Theme: ${input.theme}
 
 Return JSON only:
 {

@@ -1,8 +1,23 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { toStringArray, toCTAPhrases, toCarouselSwipeCues } from '@/lib/clients/language-rules'
+import { toCTAPhrases, toCarouselSwipeCues, toFormalityRulesData, toOpenerExamples } from '@/lib/clients/language-rules'
+import type { LanguageConfig } from '@/lib/clients/language-rules'
 import { parsePillars, type WeightedPillar } from '@/lib/clients/content-pillars'
 import { MAX_POST_HISTORY_COUNT } from '@/utils/constants'
 import type { Json } from '@/types/database'
+
+export interface ClientContext {
+  id: string
+  name: string 
+  niche: string
+  tone: string
+  targetAudience: string
+  clientTestimonialVoice: string
+  avoidTopics: string
+  contentPillars: WeightedPillar[]
+  isHealthNiche: boolean | null
+  postHistory: string[]
+  languageConfig: LanguageConfig
+}
 
 export interface ClientData {
   client: {
@@ -21,14 +36,53 @@ export interface ClientData {
     defaultCarouselSlides: number
     requireSourceGrounding: boolean
     isHealthNiche: boolean | null
+    languageNotes: string
   }
   languageRules: {
-    bannedAnglicisms: string[]
-    bannedCalques: string[]
     nativeCTAPhrases: string
     carouselSwipeCues: string
+    formalityRules: ReturnType<typeof toFormalityRulesData>
+    languageInstructions: string
+    openerExamples: ReturnType<typeof toOpenerExamples>
   }
   postHistory: string[]
+}
+
+/** Extract brand fields from ClientContext for QualityContext. */
+export function toBrandQualityFields(client: ClientContext) {
+  return {
+    tone: client.tone || undefined,
+    targetAudience: client.targetAudience || undefined,
+    niche: client.niche || undefined,
+    clientTestimonialVoice: client.clientTestimonialVoice || undefined,
+    isHealthClient: client.isHealthNiche ?? undefined,
+  }
+}
+
+/** Build a ClientContext from fetched ClientData — used by API routes. */
+export function toClientContext(data: ClientData): ClientContext {
+  return {
+    id: data.client.id,
+    name: data.client.name,
+    niche: data.client.niche,
+    tone: data.profile.tone,
+    targetAudience: data.profile.targetAudience,
+    clientTestimonialVoice: data.profile.clientTestimonialVoice,
+    avoidTopics: data.profile.avoidTopics,
+    contentPillars: data.profile.contentPillars,
+    isHealthNiche: data.profile.isHealthNiche,
+    postHistory: data.postHistory,
+    languageConfig: {
+      language: data.client.language,
+      formality: data.profile.formality,
+      nativeCTAPhrases: data.languageRules.nativeCTAPhrases,
+      carouselSwipeCues: data.languageRules.carouselSwipeCues,
+      formalityRules: data.languageRules.formalityRules,
+      languageInstructions: data.languageRules.languageInstructions,
+      openerExamples: data.languageRules.openerExamples,
+      languageNotes: data.profile.languageNotes,
+    },
+  }
 }
 
 /**
@@ -53,12 +107,12 @@ export async function fetchClientData(
   const [profileResult, langRulesResult, historyResult] = await Promise.all([
     supabase
       .from('brand_profiles')
-      .select('tone, target_audience, content_pillars, avoid_topics, client_testimonial_voice, language_formality, default_carousel_slides, source_strategy, is_health_niche')
+      .select('tone, target_audience, content_pillars, avoid_topics, client_testimonial_voice, language_formality, default_carousel_slides, source_strategy, is_health_niche, language_notes')
       .eq('client_id', clientId)
       .single(),
     supabase
       .from('language_rules')
-      .select('banned_anglicisms, banned_calques, native_cta_phrases')
+      .select('native_cta_phrases, formality_rules, language_instructions, opener_examples')
       .eq('language', client.language)
       .single(),
     supabase
@@ -79,12 +133,14 @@ export async function fetchClientData(
     default_carousel_slides: number
     source_strategy: { require_source_grounding?: boolean } | null
     is_health_niche: boolean | null
+    language_notes: string | null
   } | null
 
   const langRules = langRulesResult.data as {
-    banned_anglicisms: Json | null
-    banned_calques: Json | null
     native_cta_phrases: Json | null
+    formality_rules: Json | null
+    language_instructions: string | null
+    opener_examples: Json | null
   } | null
 
   const postHistory = (historyResult.data as Array<{ topic_summary: string | null }> | null)
@@ -109,12 +165,14 @@ export async function fetchClientData(
         defaultCarouselSlides: profile?.default_carousel_slides ?? 7,
         requireSourceGrounding: profile?.source_strategy?.require_source_grounding ?? false,
         isHealthNiche: profile?.is_health_niche ?? null,
+        languageNotes: profile?.language_notes ?? '',
       },
       languageRules: {
-        bannedAnglicisms: toStringArray(langRules?.banned_anglicisms),
-        bannedCalques: toStringArray(langRules?.banned_calques),
         nativeCTAPhrases: toCTAPhrases(langRules?.native_cta_phrases),
         carouselSwipeCues: toCarouselSwipeCues(langRules?.native_cta_phrases),
+        formalityRules: toFormalityRulesData(langRules?.formality_rules),
+        languageInstructions: langRules?.language_instructions ?? '',
+        openerExamples: toOpenerExamples(langRules?.opener_examples),
       },
       postHistory,
     },

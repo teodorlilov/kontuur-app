@@ -35,6 +35,7 @@ interface CreateClientBody {
     language_formality?: string
     secondary_language?: string
     is_health_niche?: boolean
+    language_notes?: string
   }
   posting_schedule?: {
     frequency_type?: string
@@ -95,6 +96,7 @@ export async function POST(request: Request) {
     language_formality: bp?.language_formality,
     secondary_language: bp?.secondary_language,
     is_health_niche: bp?.is_health_niche,
+    language_notes: bp?.language_notes,
   })
 
   if (profileError) {

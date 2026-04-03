@@ -1,6 +1,7 @@
 import { redirect, notFound } from 'next/navigation'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { ClientEditForm } from '@/features/clients/components/client-edit-form'
+import type { ClientRow, BrandProfileRow, PostingScheduleRow } from '@/types/database'
 
 export default async function EditClientPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -39,7 +40,7 @@ export default async function EditClientPage({ params }: { params: Promise<{ id:
   const { data: rawProfile } = await supabase
     .from('brand_profiles')
     .select(
-      'id, tone, target_audience, content_pillars, avoid_topics, client_testimonial_voice, default_post_type, default_carousel_slides, weekly_mix_json, language_formality, secondary_language, is_health_niche, best_time_json, best_time_updated_at, source_strategy'
+      'id, tone, target_audience, content_pillars, avoid_topics, client_testimonial_voice, default_post_type, default_carousel_slides, weekly_mix_json, language_formality, secondary_language, is_health_niche, best_time_json, best_time_updated_at, source_strategy, language_notes'
     )
     .eq('client_id', id)
     .single()
@@ -56,42 +57,9 @@ export default async function EditClientPage({ params }: { params: Promise<{ id:
     .eq('client_id', id)
     .eq('is_active', true)
 
-  const client = rawClient as {
-    id: string
-    name: string
-    niche: string | null
-    posts_per_week: number
-    language: string
-    website_url: string | null
-    created_at: string
-  } | null
-
-  const profile = rawProfile as {
-    id: string
-    tone: string | null
-    target_audience: string | null
-    content_pillars: string | null
-    avoid_topics: string | null
-    client_testimonial_voice: string | null
-    default_post_type: string
-    default_carousel_slides: number
-    weekly_mix_json: unknown
-    language_formality: string
-    secondary_language: string | null
-    is_health_niche: boolean
-    best_time_json: unknown
-    best_time_updated_at: string | null
-    source_strategy: unknown
-  } | null
-
-  const schedule = rawSchedule as {
-    id: string
-    is_active: boolean
-    frequency_type: string
-    frequency_value: number
-    auto_generate_day: string
-    auto_generate_time: string
-  } | null
+  const client = rawClient as Omit<ClientRow, 'agency_id'> | null
+  const profile = rawProfile as Omit<BrandProfileRow, 'client_id'> | null
+  const schedule = rawSchedule as Omit<PostingScheduleRow, 'client_id' | 'created_at'> | null
 
   if (!client) notFound()
 

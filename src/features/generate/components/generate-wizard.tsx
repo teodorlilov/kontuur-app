@@ -14,21 +14,11 @@ import { ResearchProgress } from '@/features/generate/components/research-progre
 import { PostCard, type PostData, type ValidationData } from '@/components/posts/post-card'
 import { shouldShowResearchButton } from '@/features/generate/helpers/should-show-research-button'
 import { PLATFORMS } from '@/utils/constants'
-import type { SourceGroundingResult } from '@/types/api'
+import type { ClientRow, BrandProfileRow } from '@/types/database'
 
-interface Client {
-  id: string
-  name: string
-  niche: string | null
-  language: string
-}
+type Client = Pick<ClientRow, 'id' | 'name' | 'niche' | 'language'>
 
-interface BrandProfile {
-  tone: string | null
-  target_audience: string | null
-  content_pillars: string | null
-  default_post_type: string
-  default_carousel_slides: number
+type BrandProfile = Pick<BrandProfileRow, 'tone' | 'target_audience' | 'content_pillars' | 'default_post_type' | 'default_carousel_slides'> & {
   source_strategy: { rss: boolean; website: boolean; file: boolean; trend_fallback: boolean; require_source_grounding?: boolean } | null
 }
 
@@ -52,13 +42,7 @@ interface ThemeWithSource extends ThemeInput {
   sourceFullText?: string
 }
 
-interface GeneratedPost {
-  post: PostData
-  quality: ValidationData['quality']
-  language: ValidationData['language']
-  slop: ValidationData['slop']
-  sourceGrounding?: SourceGroundingResult
-}
+type GeneratedPost = { post: PostData } & ValidationData
 
 const STEP_LABELS = [
   'Client & Platform',
@@ -262,20 +246,12 @@ export function GenerateWizard() {
 
   function handlePostRegenerated(postId: string, updatedPost: PostData, updatedValidation: ValidationData) {
     setGeneratedPosts((prev) =>
-      prev.map((p) => p.post.id === postId ? {
-        post: updatedPost,
-        quality: updatedValidation.quality,
-        language: updatedValidation.language,
-        slop: updatedValidation.slop,
-        sourceGrounding: updatedValidation.sourceGrounding,
-      } : p)
+      prev.map((p) => p.post.id === postId ? { post: updatedPost, ...updatedValidation } : p)
     )
   }
 
   const selectedThemes = themes.filter((t) => t.selected && t.description.trim())
   const totalPosts = selectedThemes.length + priorityPosts.length
-
-
 
   const canNext = (() => {
     if (currentStep === 1) return !!clientId

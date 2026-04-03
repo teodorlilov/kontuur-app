@@ -6,13 +6,11 @@ import {
   buildAngleDifferentiationSection,
 } from '@/ai/generation/prompts/prompt-sections'
 import { PROMPT_HISTORY_LIMIT } from '@/utils/constants'
-import { WritingContext } from './writing-context'
 import { ContentGenerator } from './base-generator'
 import type { GenerateCarouselInput, CarouselResult } from './types'
 
 export class CarouselGenerator extends ContentGenerator<GenerateCarouselInput, CarouselResult> {
   protected buildUserMessage(input: GenerateCarouselInput): string {
-    const ctx = WritingContext.from(input)
     const sourceSection = buildSourceGroundingSection({
       sourceExcerpt: input.sourceExcerpt,
       sourceUrl: input.sourceUrl,
@@ -23,18 +21,14 @@ export class CarouselGenerator extends ContentGenerator<GenerateCarouselInput, C
     const carouselRules = this.buildCarouselRules(input)
 
     return `${buildClientProfile({
-      ctx,
+      client: input.client,
       platform: 'Instagram',
-      clientName: input.clientName,
-      contentPillars: input.contentPillars,
       targetPillar: input.targetPillar,
-      avoidTopics: input.avoidTopics,
-      isHealthClient: input.isHealthClient,
     })}
 
 ${carouselRules}
 
-Recent topics already covered — do not repeat: ${input.postHistory.slice(0, PROMPT_HISTORY_LIMIT).join(' | ')}
+Recent topics already covered — do not repeat: ${input.client.postHistory.slice(0, PROMPT_HISTORY_LIMIT).join(' | ')}
 ${sourceSection}
 ${buildAngleDifferentiationSection(input.similarPastThemes ?? [])}
 Today's date: ${new Date().toISOString().split('T')[0]}
@@ -70,6 +64,8 @@ Return JSON only:
    * Private — only used when building the carousel user message.
    */
   private buildCarouselRules(input: GenerateCarouselInput): string {
+    const swipeCues = input.client.languageConfig.carouselSwipeCues
+
     return `CAROUSEL-SPECIFIC RULES:
 SLIDE STRUCTURE:
 - Slide 1 (Cover): Bold hook headline only. Opens a loop the reader must swipe to resolve. Add approved swipe cue. No body text.
@@ -80,7 +76,7 @@ SLIDE STRUCTURE:
 SLIDE HEADLINE RULES:
 Every headline must contain a specific number, named tension, or counterintuitive claim.
 NEVER use topic labels or generic positives.
-WRONG: "Хидратация" | RIGHT: "Кожата ви задържа вода 40% по-малко след зимата"
+WRONG: "Hydration" | RIGHT: "Your skin retains 40% less water after winter"
 
 SLIDE BODY RULES:
 Body text must add NEW information beyond the headline. Never explain the headline — extend it.
@@ -88,11 +84,13 @@ Minimum 2 sentences per content slide.
 Each slide covers a DISTINCT idea — check all prior slides before writing the next.
 
 SWIPE CUES — use ONLY these approved phrases, never invent new ones:
-${input.carouselSwipeCues}
+${swipeCues}
 
 REGISTER PER SLIDE:
 Apply the same register rules to every slide individually.
-Banned anglicisms and calques apply per-slide — check each slide separately.
+Anglicism and calques apply per - slide - check each slide separately
+
+
 
 MAIN CAPTION: max 3 lines, teases carousel, ends with an approved swipe cue, 1-3 niche hashtags at end.`
   }

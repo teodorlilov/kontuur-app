@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { analyzeSentenceVariety, countWords, countHashtags, detectBannedPhrases } from '../text-analysis'
+import { analyzeSentenceVariety, countWords, countHashtags } from '../text-analysis'
 
 describe('analyzeSentenceVariety', () => {
   it('detects short and long sentences', () => {
@@ -79,27 +79,3 @@ describe('countHashtags', () => {
   })
 })
 
-describe('detectBannedPhrases', () => {
-  it('detects exact matches case-insensitively', () => {
-    const result = detectBannedPhrases('discover the journey', ['Discover', 'Journey'])
-    expect(result).toEqual(['Discover', 'Journey'])
-  })
-
-  it('returns empty array when no matches', () => {
-    const result = detectBannedPhrases('a clean post', ['Discover', 'Unlock'])
-    expect(result).toEqual([])
-  })
-
-  it('detects multiple matches', () => {
-    const result = detectBannedPhrases(
-      'Unlock your potential and transform your life',
-      ['Unlock', 'Transform', 'Elevate']
-    )
-    expect(result).toEqual(['Unlock', 'Transform'])
-  })
-
-  it('is case insensitive', () => {
-    const result = detectBannedPhrases('DISCOVER something', ['Discover'])
-    expect(result).toEqual(['Discover'])
-  })
-})

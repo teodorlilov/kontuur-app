@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
-import { fetchClientData } from '@/lib/clients/fetch-client-data'
+import { fetchClientData, toClientContext } from '@/lib/clients/fetch-client-data'
 import { DEFAULT_CAROUSEL_SLIDES } from '@/utils/constants'
 import { checkRateLimit, AI_RATE_LIMIT } from '@/lib/auth/rate-limit'
 import { generatePosts } from '@/ai/generation/generate-posts'
@@ -45,7 +45,8 @@ export async function POST(request: Request) {
 
   const result = await fetchClientData(supabase, body.clientId, agencyId)
   if ('error' in result) return NextResponse.json({ error: result.error }, { status: 404 })
-  const { client, profile, languageRules, postHistory } = result.data
+
+  const client = toClientContext(result.data)
 
   // Track generation run
   const { data: runData } = await supabase
@@ -57,26 +58,11 @@ export async function POST(request: Request) {
   const runId = (runData as { id: string } | null)?.id
 
   const posts = await generatePosts({
-    clientId: body.clientId,
-    clientName: client.name,
-    clientNiche: client.niche,
-    clientLanguage: client.language,
+    client,
     platform: body.platform,
     postType: body.postType,
-    slideCount: body.slideCount || profile.defaultCarouselSlides || DEFAULT_CAROUSEL_SLIDES,
-    tone: profile.tone,
-    targetAudience: profile.targetAudience,
-    formality: profile.formality,
-    avoidTopics: profile.avoidTopics,
-    clientTestimonialVoice: profile.clientTestimonialVoice,
-    contentPillars: profile.contentPillars,
-    postHistory,
-    bannedAnglicisms: languageRules.bannedAnglicisms,
-    bannedCalques: languageRules.bannedCalques,
-    nativeCTAPhrases: languageRules.nativeCTAPhrases,
-    carouselSwipeCues: languageRules.carouselSwipeCues,
-    requireSourceGrounding: profile.requireSourceGrounding,
-    isHealthNiche: profile.isHealthNiche,
+    slideCount: body.slideCount || result.data.profile.defaultCarouselSlides || DEFAULT_CAROUSEL_SLIDES,
+    requireSourceGrounding: result.data.profile.requireSourceGrounding,
     themes: body.themes,
     priorityPosts: body.priorityPosts,
     trackTheme: async (theme, postCount) => {

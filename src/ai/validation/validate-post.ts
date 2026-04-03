@@ -4,12 +4,12 @@ import { validateSourceGrounding } from '@/ai/validation/prompts/validate-source
 import { deriveSlopFromQuality, computeCriteriaScore } from '@/ai/validation/content-rules/compute-scores'
 import type { CriteriaDetections } from '@/ai/validation/content-rules/compute-scores'
 import { DEFAULT_QUALITY_SCORE } from '@/lib/content-rules/constants'
-import { getBannedPhrasesForLanguage } from '@/ai/generation/generation-criteria'
-import { analyzeSentenceVariety, countWords, countHashtags, detectBannedPhrases } from '@/ai/validation/content-rules/text-analysis'
+import { analyzeSentenceVariety, countWords, countHashtags } from '@/ai/validation/content-rules/text-analysis'
 import type { QualityResult, QualityContext } from '@/ai/validation/prompts/validate-quality'
 import type { LanguageValidationResult } from '@/ai/validation/prompts/validate-language'
 import type { SourceGroundingResult } from '@/ai/validation/prompts/validate-source-grounding'
 import type { SlopDetection } from '@/types/api'
+import type { LanguageConfig } from '@/lib/clients/language-rules'
 
 export interface SourceContext {
   excerpt: string
@@ -19,13 +19,10 @@ export interface SourceContext {
 export interface ValidatePostInput {
   caption: string
   slides?: Array<{ headline: string; body: string }>
-  language: string
-  formality: string
+  languageConfig: LanguageConfig
   label: string
   platform?: string
   sourceContext?: SourceContext
-  bannedAnglicisms?: string[]
-  bannedCalques?: string[]
   qualityContext?: QualityContext
 }
 
@@ -80,9 +77,8 @@ export async function validatePost(input: ValidatePostInput): Promise<PostValida
   const isCarousel = !!input.slides && input.slides.length > 0
 
   const ctx: QualityContext = {
-    language: input.language,
-    formality: input.formality,
     platform: input.platform,
+    languageConfig: input.languageConfig,
     ...input.qualityContext,
   }
 
@@ -98,10 +94,7 @@ export async function validatePost(input: ValidatePostInput): Promise<PostValida
     }),
     validateLanguage(
       isCarousel ? { text: input.caption, slides: input.slides } : { text: input.caption },
-      input.language,
-      input.formality,
-      input.bannedAnglicisms,
-      input.bannedCalques,
+      input.languageConfig,
     ).catch((err) => {
       console.error(`[generate] ${input.label} language validation failed:`, err)
       validationWarnings.push('language')
@@ -120,7 +113,6 @@ export async function validatePost(input: ValidatePostInput): Promise<PostValida
   const sentenceVariety = analyzeSentenceVariety(input.caption)
   const wordCount = countWords(input.caption)
   const hashtagCount = countHashtags(input.caption)
-  const bannedPhrasesFound = detectBannedPhrases(input.caption, getBannedPhrasesForLanguage(input.language))
 
   // Compute criteria score from LLM detections + deterministic analysis
   const criteriaDetections: CriteriaDetections = {
@@ -133,7 +125,6 @@ export async function validatePost(input: ValidatePostInput): Promise<PostValida
     wordCount,
     platform: input.platform ?? '',
     hashtagCount,
-    bannedPhrasesFound,
   }
   const criteriaScore = computeCriteriaScore(criteriaDetections)
 

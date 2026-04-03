@@ -7,7 +7,6 @@ import {
   PLATFORM_HASHTAG_LIMITS,
   formatAllowedOpeners,
   formatBannedOpeners,
-  formatBannedPhrases,
   formatStructures,
   formatWordCount,
   formatHashtagRules,
@@ -15,6 +14,8 @@ import {
   type PlatformWordCount,
   type PlatformHashtagLimit,
 } from '@/ai/generation/generation-criteria'
+import { formatFormalityRules } from '@/ai/generation/prompts/formality-guidance'
+import type { LanguageConfig } from '@/lib/clients/language-rules'
 
 export { CTA_EXEMPT_STRUCTURES, PLATFORM_WORD_COUNTS, PLATFORM_HASHTAG_LIMITS }
 export type { PlatformWordCount, PlatformHashtagLimit }
@@ -45,62 +46,8 @@ export const ISSUE_TYPE_DEFINITIONS: Record<string, string> = {
 }
 
 // ---- Formality Evaluation Criteria ----
-// Cross-ref: allowed openers/structures by formality (generation-criteria.ts),
-// register rules (prompt-sections.ts FORMALITY_GUIDANCE).
-export interface FormalityEvaluationCriteria {
-  readonly mode: 'formal' | 'casual' | 'neutral'
-  readonly mustHave: readonly string[]
-  readonly mustNotHave: readonly string[]
-  readonly description: string
-}
-
-export const FORMALITY_EVALUATION_CRITERIA: Record<string, FormalityEvaluationCriteria> = {
-  formal: {
-    mode: 'formal',
-    description: 'Professional, polished, expert-to-client. Warm but not chatty.',
-    mustHave: [
-      'Formal/polite address forms used consistently (Bulgarian: Вие/Вас/Ви)',
-      'Professional vocabulary throughout',
-      'Expert-sharing-knowledge tone, not friend-giving-advice',
-    ],
-    mustNotHave: [
-      'Informal address forms (Bulgarian: ти/теб/те)',
-      'Slang, colloquialisms, or casual interjections',
-      'First-person storytelling anecdotes ("Yesterday a client asked me...")',
-      'Rhetorical intimacy tricks (pretending reader is a friend)',
-      'Chatty or buddy tone',
-    ],
-  },
-  casual: {
-    mode: 'casual',
-    description: 'Conversational, friendly, like texting a trusted colleague. Still grammatically correct.',
-    mustHave: [
-      'Informal address forms used consistently (Bulgarian: ти/теб/те)',
-      'Conversational vocabulary and natural phrasing',
-      'Personal voice — feels like a real person, not a brand',
-    ],
-    mustNotHave: [
-      'Formal address forms (Bulgarian: Вие/Вас)',
-      'Corporate or institutional phrasing',
-      'Stiff vocabulary that sounds like a press release',
-      'Overly polished language that removes personality',
-    ],
-  },
-  neutral: {
-    mode: 'neutral',
-    description: 'Balanced, professional but approachable. Like a knowledgeable colleague explaining something.',
-    mustHave: [
-      'Balanced tone — neither corporate stiffness nor chatty slang',
-      'Professional but approachable vocabulary',
-      'Measured personality — present but not extreme',
-    ],
-    mustNotHave: [
-      'Bureaucratic or institutional language',
-      'Heavy slang or buddy tone',
-      'Extremes in either direction — too formal or too casual',
-    ],
-  },
-} as const
+// Now DB-driven via LanguageConfig.formalityRules — shared with generation.
+// The validator receives the SAME rules generation was told to follow.
 
 // ---- Hook & CTA Verdict Definitions ----
 export interface VerdictDefinition {
@@ -173,44 +120,32 @@ export function formatCtaVerdicts(): string {
   return CTA_VERDICTS.map((v) => `- "${v.id}": ${v.description}`).join('\n')
 }
 
-export function formatFormalityEvaluationCriteria(formality: string): string {
-  const criteria = FORMALITY_EVALUATION_CRITERIA[formality]
-  if (!criteria) return `Register: ${formality} — maintain consistently`
-  const mustHave = criteria.mustHave.map((r) => `  ✓ ${r}`).join('\n')
-  const mustNotHave = criteria.mustNotHave.map((r) => `  ✗ ${r}`).join('\n')
-  return `REGISTER TARGET: ${formality.toUpperCase()} — ${criteria.description}
-Must have:
-${mustHave}
-Must NOT have:
-${mustNotHave}`
-}
-
 export function buildCriteriaChecklist(ctx: {
-  formality: string
   platform?: string
   hasSource?: boolean
   isHealthClient?: boolean
+  languageConfig?: LanguageConfig
 }): string {
   const sections: string[] = []
+  const lc = ctx.languageConfig
+  const formality = lc?.formality ?? 'neutral'
 
   sections.push(`GENERATION CRITERIA — evaluate compliance:
 
 [] OPENER: Must be one of:
-${formatAllowedOpeners(ctx.formality)}
+${formatAllowedOpeners(lc)}
    BANNED openers:
 ${formatBannedOpeners()}
 
 [] STRUCTURE: Must NOT be predictable problem→solution→CTA.
-   Allowed structures: ${formatStructures(ctx.formality)}
+   Allowed structures: ${formatStructures(formality)}
 
 [] SENTENCES: At least one sentence under ${MIN_SHORT_SENTENCE_WORDS} words
    and one over ${MIN_LONG_SENTENCE_WORDS} words. Never ${MAX_CONSECUTIVE_SIMILAR_LENGTH + 1}
    consecutive sentences of similar length.
 
-[] BANNED PHRASES: Must not contain: ${formatBannedPhrases()}
-
 [] REGISTER:
-${formatFormalityEvaluationCriteria(ctx.formality)}`)
+${formatFormalityRules(lc ?? null)}`)
 
   if (ctx.platform) {
     sections.push(`[] WORD COUNT: ${formatWordCount(ctx.platform)}

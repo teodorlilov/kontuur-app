@@ -1,37 +1,11 @@
 import { describe, it, expect } from 'vitest'
 import {
-  getAllowedOpenerTypes,
   getAllowedStructures,
   formatAllowedOpeners,
   formatStructures,
   formatWordCount,
   formatHashtagRules,
 } from '../generation-criteria'
-
-describe('getAllowedOpenerTypes', () => {
-  it('returns 4 types for formal (no mid_thought)', () => {
-    const types = getAllowedOpenerTypes('formal')
-    expect(types).toHaveLength(4)
-    expect(types.every((t) => t.id !== 'mid_thought')).toBe(true)
-  })
-
-  it('returns all 6 types for casual (includes mid_thought)', () => {
-    const types = getAllowedOpenerTypes('casual')
-    expect(types).toHaveLength(6)
-    expect(types.some((t) => t.id === 'mid_thought')).toBe(true)
-  })
-
-  it('returns 5 types for neutral (no mid_thought)', () => {
-    const types = getAllowedOpenerTypes('neutral')
-    expect(types).toHaveLength(5)
-    expect(types.every((t) => t.id !== 'mid_thought')).toBe(true)
-  })
-
-  it('falls back to neutral types for unknown formality', () => {
-    const types = getAllowedOpenerTypes('unknown')
-    expect(types).toHaveLength(5)
-  })
-})
 
 describe('getAllowedStructures', () => {
   it('excludes CONFESSION and STORY-FIRST for formal', () => {
@@ -54,16 +28,50 @@ describe('getAllowedStructures', () => {
   })
 })
 
+const OPENER_EXAMPLES = [
+  { formality: 'formal', id: 'professional_observation', description: 'Open with a specific observation from professional practice.', content: 'Patients who...' },
+  { formality: 'formal', id: 'reframe', description: 'Reframe a concept from a professional perspective.', content: 'What is commonly...' },
+  { formality: 'casual', id: 'specific_feeling_now', description: 'Name a very specific feeling the reader is experiencing.', content: 'That exact moment...' },
+  { formality: 'casual', id: 'mid_thought', description: 'Drop the reader into the middle of a thought or scene.', content: '...and that is the moment...' },
+  { formality: 'neutral', id: 'specific_detail', description: 'Open with one concrete, specific detail.', content: 'Over 65% of...' },
+]
+
+function makeLanguageConfig(formality: string) {
+  return {
+    language: 'English',
+    formality,
+    nativeCTAPhrases: '',
+    carouselSwipeCues: '',
+    formalityRules: null,
+    languageInstructions: '',
+    openerExamples: OPENER_EXAMPLES,
+    languageNotes: '',
+  }
+}
+
 describe('formatAllowedOpeners', () => {
-  it('omits mid-thought for formal', () => {
-    const output = formatAllowedOpeners('formal')
-    expect(output).not.toContain('middle of a thought')
+  it('shows only formal openers for formal register', () => {
+    const output = formatAllowedOpeners(makeLanguageConfig('formal'))
     expect(output).toContain('professional practice')
+    expect(output).toContain('Reframe a concept')
+    expect(output).not.toContain('middle of a thought')
   })
 
-  it('includes mid-thought for casual', () => {
-    const output = formatAllowedOpeners('casual')
+  it('shows only casual openers for casual register', () => {
+    const output = formatAllowedOpeners(makeLanguageConfig('casual'))
     expect(output).toContain('middle of a thought')
+    expect(output).toContain('specific feeling')
+    expect(output).not.toContain('professional practice')
+  })
+
+  it('includes example content for each opener', () => {
+    const output = formatAllowedOpeners(makeLanguageConfig('formal'))
+    expect(output).toContain('Example: Patients who...')
+  })
+
+  it('returns fallback message when no openers match', () => {
+    const output = formatAllowedOpeners(makeLanguageConfig('unknown'))
+    expect(output).toContain('no opener types defined')
   })
 })
 

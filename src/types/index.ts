@@ -1,4 +1,4 @@
-export type { Database, Json } from './database'
+export type { Database, Json, ClientRow, BrandProfileRow, PostingScheduleRow, LanguageRuleRow } from './database'
 
 export type {
   HookVerdict,

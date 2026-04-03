@@ -86,7 +86,7 @@ describe('validateQuality — single post', () => {
 
   it('includes brand context when QualityContext provided', async () => {
     mockClaudeResponse(llmResponse())
-    await validateQuality({ caption: 'Test' }, { tone: 'casual', niche: 'fitness', targetAudience: 'gym-goers' })
+    await validateQuality({ caption: 'Test' }, { tone: 'casual', niche: 'fitness', targetAudience: 'gym-goers', languageConfig: { language: 'Bulgarian', formality: 'neutral', nativeCTAPhrases: '', carouselSwipeCues: '', formalityRules: null, languageInstructions: '', openerExamples: [], languageNotes: '' } })
 
     const callArgs = anthropic.messages.create.mock.calls[0]![0]
     const systemText = (callArgs.system as Array<{ text: string }>)[0]!.text
@@ -97,14 +97,14 @@ describe('validateQuality — single post', () => {
 
   it('includes criteria checklist in system prompt', async () => {
     mockClaudeResponse(llmResponse())
-    await validateQuality({ caption: 'Test' }, { formality: 'formal', platform: 'Instagram' })
+    await validateQuality({ caption: 'Test' }, { platform: 'Instagram', languageConfig: { language: 'Bulgarian', formality: 'formal', nativeCTAPhrases: '', carouselSwipeCues: '', formalityRules: null, languageInstructions: '', openerExamples: [], languageNotes: '' } })
 
     const callArgs = anthropic.messages.create.mock.calls[0]![0]
     const systemText = (callArgs.system as Array<{ text: string }>)[0]!.text
     expect(systemText).toContain('GENERATION CRITERIA')
     expect(systemText).toContain('OPENER')
     expect(systemText).toContain('WORD COUNT')
-    expect(systemText).toContain('REGISTER TARGET: FORMAL')
+    expect(systemText).toContain('LANGUAGE REGISTER: Use formal register consistently.')
   })
 
   it('includes new detection fields in return format', async () => {
@@ -119,9 +119,9 @@ describe('validateQuality — single post', () => {
     expect(result.formality_consistent).toBe(true)
   })
 
-  it('includes Bulgarian-specific AI tells when language is Bulgarian', async () => {
+  it('includes language-specific AI tells when languageConfig provided', async () => {
     mockClaudeResponse(llmResponse())
-    await validateQuality({ caption: 'Тест пост' }, { language: 'Bulgarian' })
+    await validateQuality({ caption: 'Тест пост' }, { languageConfig: { language: 'Bulgarian', formality: 'neutral', nativeCTAPhrases: '', carouselSwipeCues: '', formalityRules: null, languageInstructions: 'Avoid в днешния свят and other calques', openerExamples: [], languageNotes: '' } })
 
     const callArgs = anthropic.messages.create.mock.calls[0]![0]
     const systemText = (callArgs.system as Array<{ text: string }>)[0]!.text

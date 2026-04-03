@@ -132,7 +132,6 @@ export interface CriteriaDetections {
   wordCount: number
   platform: string
   hashtagCount: number
-  bannedPhrasesFound: string[]
 }
 
 export function computeCriteriaScore(d: CriteriaDetections): number {
@@ -145,7 +144,6 @@ export function computeCriteriaScore(d: CriteriaDetections): number {
   if (d.health_compliant === false) penalty += CRITERIA_PENALTIES.HEALTH_CONTENT_VIOLATION
   penalty += computeWordCountPenalty(d.wordCount, d.platform)
   penalty += computeHashtagPenalty(d.hashtagCount, d.platform)
-  penalty += computeBannedPhrasePenalty(d.bannedPhrasesFound.length)
   return Math.max(1, Math.round(10 - penalty))
 }
 
@@ -161,14 +159,6 @@ function computeHashtagPenalty(hashtagCount: number, platform: string): number {
   if (!limits) return 0
   if (hashtagCount > limits.max) return CRITERIA_PENALTIES.HASHTAG_VIOLATION
   return 0
-}
-
-function computeBannedPhrasePenalty(count: number): number {
-  if (count === 0) return 0
-  return Math.min(
-    count * CRITERIA_PENALTIES.BANNED_PHRASE_FOUND,
-    CRITERIA_PENALTIES.BANNED_PHRASE_CAP
-  )
 }
 
 export function computeQualityScores(

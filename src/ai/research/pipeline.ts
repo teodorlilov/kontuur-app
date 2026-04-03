@@ -1,4 +1,6 @@
 import { parsePillars, type WeightedPillar } from '@/lib/clients/content-pillars'
+import { toCTAPhrases, toCarouselSwipeCues, toFormalityRulesData, toOpenerExamples, type LanguageConfig } from '@/lib/clients/language-rules'
+import type { Json } from '@/types/database'
 import { SourceFactory } from './sources/source-factory'
 import { RssResearchSource } from './sources/rss-source'
 import { WebsiteResearchSource } from './sources/website-source'
@@ -29,6 +31,7 @@ interface ClientData {
   history: string[]
   sources: ClientSourceRow[]
   strategy: SourceStrategy
+  languageConfig: LanguageConfig
 }
 
 /**
@@ -66,7 +69,7 @@ export class ResearchPipeline {
     // 7. Generate topics via prompt builder (exact count, no multiplier)
     const builder = new ResearchPromptBuilder({
       niche: this.ctx.niche,
-      language: this.ctx.language || 'English',
+      languageConfig: clientData.languageConfig,
       contentPillars: clientData.contentPillars,
       postHistory: clientData.history,
     })
@@ -109,13 +112,24 @@ export class ResearchPipeline {
    * Validates client ownership via agency_id.
    */
   private async loadClientData(): Promise<ClientData> {
+    const language = this.ctx.language || 'English'
+    const defaultLanguageConfig: LanguageConfig = {
+      language,
+      formality: 'neutral',
+      nativeCTAPhrases: '',
+      carouselSwipeCues: '',
+      formalityRules: null,
+      languageInstructions: '',
+      openerExamples: [],
+      languageNotes: '',
+    }
     let contentPillars: WeightedPillar[] = []
     let history: string[] = []
     let sources: ClientSourceRow[] = []
     let strategy: SourceStrategy = DEFAULT_STRATEGY
 
     if (!this.ctx.clientId) {
-      return { contentPillars, history, sources, strategy }
+      return { contentPillars, history, sources, strategy, languageConfig: defaultLanguageConfig }
     }
 
     const { data: rawClient } = await this.ctx.supabase
@@ -126,14 +140,19 @@ export class ResearchPipeline {
       .single()
 
     if (!rawClient) {
-      return { contentPillars, history, sources, strategy }
+      return { contentPillars, history, sources, strategy, languageConfig: defaultLanguageConfig }
     }
 
-    const [profileResult, historyResult, themesResult, sourcesResult] = await Promise.all([
+    const [profileResult, langRulesResult, historyResult, themesResult, sourcesResult] = await Promise.all([
       this.ctx.supabase
         .from('brand_profiles')
-        .select('content_pillars, source_strategy')
+        .select('content_pillars, source_strategy, language_formality, language_notes')
         .eq('client_id', this.ctx.clientId)
+        .single(),
+      this.ctx.supabase
+        .from('language_rules')
+        .select('native_cta_phrases, formality_rules, language_instructions, opener_examples')
+        .eq('language', language)
         .single(),
       this.ctx.supabase
         .from('post_history')
@@ -154,12 +173,35 @@ export class ResearchPipeline {
         .eq('is_active', true),
     ])
 
-    const profile = profileResult.data as { content_pillars: string | null; source_strategy: SourceStrategy | null } | null
+    const profile = profileResult.data as {
+      content_pillars: string | null
+      source_strategy: SourceStrategy | null
+      language_formality: string | null
+      language_notes: string | null
+    } | null
     if (profile?.content_pillars) {
       contentPillars = parsePillars(profile.content_pillars)
     }
     if (profile?.source_strategy) {
       strategy = { ...DEFAULT_STRATEGY, ...profile.source_strategy }
+    }
+
+    const langRules = langRulesResult.data as {
+      native_cta_phrases: Json | null
+      formality_rules: Json | null
+      language_instructions: string | null
+      opener_examples: Json | null
+    } | null
+
+    const languageConfig: LanguageConfig = {
+      language,
+      formality: profile?.language_formality ?? 'neutral',
+      nativeCTAPhrases: toCTAPhrases(langRules?.native_cta_phrases),
+      carouselSwipeCues: toCarouselSwipeCues(langRules?.native_cta_phrases),
+      formalityRules: toFormalityRulesData(langRules?.formality_rules),
+      languageInstructions: langRules?.language_instructions ?? '',
+      openerExamples: toOpenerExamples(langRules?.opener_examples),
+      languageNotes: profile?.language_notes ?? '',
     }
 
     const postHistoryTopics =
@@ -189,7 +231,7 @@ export class ResearchPipeline {
       return true
     })
 
-    return { contentPillars, history, sources, strategy }
+    return { contentPillars, history, sources, strategy, languageConfig }
   }
 
   /** Fetch all sources in parallel. Reports status to DB for fetchable sources. */

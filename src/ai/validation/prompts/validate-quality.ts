@@ -17,21 +17,20 @@ import {
   formatBannedOpeners,
 } from '@/ai/generation/generation-criteria'
 import type { HookVerdict, CtaVerdict } from '@/types/api'
+import type { LanguageConfig } from '@/lib/clients/language-rules'
 
 // ---- Types ----
 
 export interface QualityContext {
-  language?: string
   tone?: string
-  formality?: string
   targetAudience?: string
   niche?: string
-  // Generation criteria alignment
   platform?: string
   clientTestimonialVoice?: string
   sourceExcerpt?: string
   targetPillar?: string
   isHealthClient?: boolean
+  languageConfig?: LanguageConfig
 }
 
 export interface QualityIssue {
@@ -107,15 +106,16 @@ interface LlmQualityResponse {
 
 function buildBrandContext(ctx?: QualityContext): string {
   if (!ctx?.tone && !ctx?.targetAudience && !ctx?.niche) return ''
+  const formality = ctx.languageConfig?.formality ?? 'neutral'
   return `
 BRAND CONTEXT: This post is for a ${ctx.niche ?? 'general'} business.
-Tone: ${ctx.tone ?? 'professional'}. Register: ${ctx.formality ?? 'neutral'}. Target audience: ${ctx.targetAudience ?? 'general audience'}.`
+Tone: ${ctx.tone ?? 'professional'}. Register: ${formality}. Target audience: ${ctx.targetAudience ?? 'general audience'}.`
 }
 
 function buildBrandVoiceCheck(ctx?: QualityContext): string {
   const tone = ctx?.tone ?? 'professional'
   const testimonial = ctx?.clientTestimonialVoice
-  const formality = ctx?.formality ?? 'neutral'
+  const formality = ctx?.languageConfig?.formality ?? 'neutral'
 
   let check = `BRAND CHECKS:
 - brand_voice_match: Does the post feel right for this brand?
@@ -133,45 +133,46 @@ function buildBrandVoiceCheck(ctx?: QualityContext): string {
 }
 
 function buildLanguageTells(ctx?: QualityContext): string {
-  if (!ctx?.language) return ''
+  const lc = ctx?.languageConfig
+  if (!lc) return ''
+
+  const { language, formality } = lc
 
   let tells = `
-${ctx.language}-specific AI patterns to also check:
+${language}-specific AI patterns to also check:
 - Literal calques from English that no native speaker would write
 - Unnatural word order following English syntax
 - Generic filler phrases that sound translated`
 
-  if (ctx.formality === 'formal') {
+  if (formality === 'formal') {
     tells += `\n- Register violation: using informal address or casual phrasing when formal register is required`
-  } else if (ctx.formality === 'casual') {
+  } else if (formality === 'casual') {
     tells += `\n- Register violation: using formal address or corporate phrasing when casual register is required`
-  } else if (ctx.formality === 'neutral') {
+  } else if (formality === 'neutral') {
     tells += `\n- Register violation: drifting into overly formal or overly casual register when neutral is required`
   }
 
-  if (ctx.language === 'Bulgarian') {
-    tells += `
-- "в днешния свят", "ние сме развълнувани да", "от изключително значение"
-- Mixing formal (Вие) and informal (ти) address`
-    if (ctx.formality === 'formal') {
-      tells += ` — text must use Вие/Вас consistently`
-    } else if (ctx.formality === 'casual') {
-      tells += ` — text must use ти/теб consistently`
-    }
-    tells += `\n- Overly literary/bookish language inappropriate for social media`
+  // Language-specific AI patterns from DB
+  if (lc.languageInstructions) {
+    tells += `\n${lc.languageInstructions}`
+  }
+
+  // Per-client language notes
+  if (lc.languageNotes) {
+    tells += `\n${lc.languageNotes}`
   }
 
   return tells
 }
 
 function buildBasePrompt(brandCtx: string, langTells: string, ctx?: QualityContext): string {
-  const formality = ctx?.formality ?? 'neutral'
+  const lc = ctx?.languageConfig
 
   const criteriaChecklist = buildCriteriaChecklist({
-    formality,
     platform: ctx?.platform,
     hasSource: !!ctx?.sourceExcerpt,
     isHealthClient: ctx?.isHealthClient,
+    languageConfig: lc,
   })
 
   return `You are a social media content quality assessor and AI-content detector.
@@ -184,7 +185,7 @@ ${langTells}
 
 HOOK VERDICT — Evaluate the opening against these rules:
 ALLOWED opener types:
-${formatAllowedOpeners(formality)}
+${formatAllowedOpeners(lc)}
 
 BANNED opener types:
 ${formatBannedOpeners()}

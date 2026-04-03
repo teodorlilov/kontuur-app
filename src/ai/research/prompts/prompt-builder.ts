@@ -1,6 +1,7 @@
 import { anthropic, DEFAULT_MODEL, DEFAULT_MAX_TOKENS } from '@/ai/client'
 import { parseJsonResponse } from '@/ai/utils'
 import { allocateByWeight, type WeightedPillar } from '@/lib/clients/content-pillars'
+import type { LanguageConfig } from '@/lib/clients/language-rules'
 import { buildResearchSystemPrompt } from './system-prompt'
 import type { ResearchTopic, SourceContext } from '../types'
 
@@ -11,17 +12,19 @@ import type { ResearchTopic, SourceContext } from '../types'
 export class ResearchPromptBuilder {
   private niche: string
   private language: string
+  private languageConfig: LanguageConfig
   private contentPillars: WeightedPillar[]
   private postHistory: string[]
 
   constructor(opts: {
     niche: string
-    language: string
+    languageConfig: LanguageConfig
     contentPillars: WeightedPillar[]
     postHistory: string[]
   }) {
     this.niche = opts.niche
-    this.language = opts.language
+    this.language = opts.languageConfig.language
+    this.languageConfig = opts.languageConfig
     this.contentPillars = opts.contentPillars
     this.postHistory = opts.postHistory
   }
@@ -36,7 +39,7 @@ export class ResearchPromptBuilder {
    */
   async generateTopics(count: number, sourceContext?: SourceContext): Promise<ResearchTopic[]> {
     const prompt = this.buildUserPrompt(count, sourceContext)
-    const systemText = buildResearchSystemPrompt(this.language)
+    const systemText = buildResearchSystemPrompt(this.languageConfig)
 
     const message = await anthropic.messages.create({
       model: DEFAULT_MODEL,

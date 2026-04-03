@@ -58,7 +58,3 @@ export function countHashtags(text: string): number {
   return matches?.length ?? 0
 }
 
-export function detectBannedPhrases(text: string, bannedPhrases: readonly string[]): string[] {
-  const lower = text.toLowerCase()
-  return bannedPhrases.filter((phrase) => lower.includes(phrase.toLowerCase()))
-}

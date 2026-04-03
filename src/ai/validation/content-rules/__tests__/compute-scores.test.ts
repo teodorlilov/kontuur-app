@@ -312,7 +312,6 @@ function baseCriteriaDetections(overrides?: Partial<CriteriaDetections>): Criter
     wordCount: 180,
     platform: 'Instagram',
     hashtagCount: 2,
-    bannedPhrasesFound: [],
     ...overrides,
   }
 }
@@ -372,15 +371,6 @@ describe('computeCriteriaScore', () => {
     expect(computeCriteriaScore(baseCriteriaDetections({ hashtagCount: 5 }))).toBe(10) // round(10 - 0.5) = 10
   })
 
-  it('penalizes banned phrases (-1.0 each, capped at 3.0)', () => {
-    expect(computeCriteriaScore(baseCriteriaDetections({ bannedPhrasesFound: ['Discover'] }))).toBe(9)
-    expect(computeCriteriaScore(baseCriteriaDetections({ bannedPhrasesFound: ['Discover', 'Unlock'] }))).toBe(8)
-    // Cap at 3.0
-    expect(computeCriteriaScore(baseCriteriaDetections({
-      bannedPhrasesFound: ['Discover', 'Unlock', 'Transform', 'Elevate'],
-    }))).toBe(7) // 10 - 3.0 (capped) = 7
-  })
-
   it('accumulates multiple penalties', () => {
     expect(computeCriteriaScore(baseCriteriaDetections({
       opener_follows_rules: false,     // -2.0
@@ -396,7 +386,7 @@ describe('computeCriteriaScore', () => {
       formality_consistent: false,     // -1.5
       health_compliant: false,         // -2.0
       source_fidelity_ok: false,       // -1.5
-      bannedPhrasesFound: ['a', 'b', 'c'], // -3.0
+      wordCount: 50,                   // -0.75 (under min)
     }))).toBe(1)
   })
 })

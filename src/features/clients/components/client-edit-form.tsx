@@ -12,44 +12,14 @@ import { Select } from '@/components/ui/select'
 import { Topbar } from '@/components/layout/topbar'
 import { toast } from '@/components/ui/toast'
 import { PLATFORMS, WEEKDAY_OPTIONS, CAROUSEL_SLIDE_OPTIONS } from '@/utils/constants'
+import type { ClientRow, BrandProfileRow, PostingScheduleRow } from '@/types/database'
 
 interface ClientEditFormProps {
   clientId: string
   sourceCount: number
-  client: {
-    id: string
-    name: string
-    niche: string | null
-    posts_per_week: number
-    language: string
-    website_url: string | null
-    created_at: string
-  }
-  profile: {
-    id: string
-    tone: string | null
-    target_audience: string | null
-    content_pillars: string | null
-    avoid_topics: string | null
-    client_testimonial_voice: string | null
-    default_post_type: string
-    default_carousel_slides: number
-    weekly_mix_json: unknown
-    language_formality: string
-    secondary_language: string | null
-    is_health_niche: boolean
-    best_time_json: unknown
-    best_time_updated_at: string | null
-    source_strategy: unknown
-  } | null
-  schedule: {
-    id: string
-    is_active: boolean
-    frequency_type: string
-    frequency_value: number
-    auto_generate_day: string
-    auto_generate_time: string
-  } | null
+  client: Omit<ClientRow, 'agency_id'>
+  profile: Omit<BrandProfileRow, 'client_id'> | null
+  schedule: Omit<PostingScheduleRow, 'client_id' | 'created_at'> | null
 }
 
 export function ClientEditForm({ clientId, sourceCount, client, profile, schedule }: ClientEditFormProps) {
@@ -74,6 +44,7 @@ export function ClientEditForm({ clientId, sourceCount, client, profile, schedul
   const [languageFormality, setLanguageFormality] = useState(profile?.language_formality ?? 'neutral')
   const [secondaryLanguage, setSecondaryLanguage] = useState(profile?.secondary_language ?? '')
   const [isHealthNiche, setIsHealthNiche] = useState(profile?.is_health_niche ?? false)
+  const [languageNotes, setLanguageNotes] = useState(profile?.language_notes ?? '')
   const [defaultPostType, setDefaultPostType] = useState(profile?.default_post_type ?? 'single')
   const [defaultCarouselSlides, setDefaultCarouselSlides] = useState(
     String(profile?.default_carousel_slides ?? 6)
@@ -119,6 +90,7 @@ export function ClientEditForm({ clientId, sourceCount, client, profile, schedul
             language_formality: languageFormality,
             secondary_language: secondaryLanguage || null,
             is_health_niche: isHealthNiche,
+            language_notes: languageNotes || null,
             default_post_type: defaultPostType,
             default_carousel_slides: parseInt(defaultCarouselSlides, 10),
             weekly_mix_json: { [activePlatform]: 1 },
@@ -228,6 +200,13 @@ export function ClientEditForm({ clientId, sourceCount, client, profile, schedul
               { value: 'neutral', label: 'Neutral' },
               { value: 'casual', label: 'Casual' },
             ]}
+          />
+          <Textarea
+            label="Language requirements"
+            value={languageNotes}
+            onChange={(e) => setLanguageNotes(e.target.value)}
+            placeholder="Any specific language rules for this client, e.g. always use 'програма' not 'план', avoid English loan words..."
+            rows={3}
           />
           <div className="flex items-center gap-3">
             <button

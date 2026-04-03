@@ -1,4 +1,4 @@
-import type { WeightedPillar } from '@/lib/clients/content-pillars'
+import type { ClientContext } from '@/lib/clients/fetch-client-data'
 import type { PriorityPost, SlopDetection } from '@/types/api'
 import type { QualityResult } from '@/ai/validation/prompts/validate-quality'
 import type { LanguageValidationResult } from '@/ai/validation/prompts/validate-language'
@@ -6,32 +6,18 @@ import type { SourceGroundingResult } from '@/ai/validation/prompts/validate-sou
 
 // ---- Shared base input — fields common to all content types ----
 export interface BaseGenerateInput {
-  clientName: string
-  niche: string
+  client: ClientContext
   theme: string
-  tone: string
-  targetAudience: string
-  language: string
-  languageFormality: string
-  avoidTopics: string
-  clientTestimonialVoice: string
-  contentPillars: WeightedPillar[]
   targetPillar?: string
-  bannedAnglicisms: string[]
-  bannedCalques: string[]
-  nativeCTAPhrases?: string
   sourceExcerpt?: string
   sourceUrl?: string | null
   requireSourceGrounding?: boolean
   similarPastThemes?: string[]
-  isHealthClient?: boolean
 }
 
 // ---- Single post ----
 export interface GeneratePostInput extends BaseGenerateInput {
   platform: string
-  nativeCTAPhrases: string
-  postHistory: string[]
   count: number
 }
 
@@ -52,8 +38,6 @@ export interface CarouselResult {
 
 export interface GenerateCarouselInput extends BaseGenerateInput {
   slideCount: number
-  postHistory: string[]
-  carouselSwipeCues: string
 }
 
 // ---- Reels ----
@@ -66,9 +50,7 @@ export interface ReelsResult {
   estimated_seconds: number
 }
 
-export interface GenerateReelsInput extends BaseGenerateInput {
-  nativeCTAPhrases: string
-}
+export interface GenerateReelsInput extends BaseGenerateInput {}
 
 // ---- Generation orchestration ----
 export interface GeneratedPostEntry {
@@ -98,26 +80,11 @@ export interface ThemeWithMeta extends Theme {
 }
 
 export interface GeneratePostsContext {
-  clientId: string
-  clientName: string
-  clientNiche: string
-  clientLanguage: string
+  client: ClientContext
   platform: string
   postType: 'single' | 'carousel' | 'reels'
   slideCount: number
-  tone: string
-  targetAudience: string
-  formality: string
-  avoidTopics: string
-  clientTestimonialVoice: string
-  contentPillars: WeightedPillar[]
-  postHistory: string[]
-  bannedAnglicisms: string[]
-  bannedCalques: string[]
-  nativeCTAPhrases: string
-  carouselSwipeCues: string
   requireSourceGrounding: boolean
-  isHealthNiche: boolean | null
   themes: Theme[]
   priorityPosts: PriorityPost[]
   trackTheme: (theme: ThemeWithMeta, postCount: number) => Promise<void>

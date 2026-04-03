@@ -18,10 +18,25 @@ const VALID_RESPONSE = JSON.stringify([
   { finding: 'New supplement study', suggested_theme: 'Science-backed supplements' },
 ])
 
-function createBuilder(overrides?: Partial<{ niche: string; language: string; contentPillars: { pillar: string; weight: number }[]; postHistory: string[] }>) {
+import type { LanguageConfig } from '@/lib/clients/language-rules'
+
+function makeLanguageConfig(language = 'English'): LanguageConfig {
+  return {
+    language,
+    formality: 'neutral',
+    nativeCTAPhrases: '',
+    carouselSwipeCues: '',
+    formalityRules: null,
+    languageInstructions: '',
+    openerExamples: [],
+    languageNotes: '',
+  }
+}
+
+function createBuilder(overrides?: Partial<{ niche: string; languageConfig: LanguageConfig; contentPillars: { pillar: string; weight: number }[]; postHistory: string[] }>) {
   return new ResearchPromptBuilder({
     niche: 'fitness',
-    language: 'English',
+    languageConfig: makeLanguageConfig(),
     contentPillars: [],
     postHistory: [],
     ...overrides,
@@ -129,7 +144,7 @@ describe('ResearchPromptBuilder', () => {
 
   it('includes language in prompt', async () => {
     mockClaudeResponse(VALID_RESPONSE)
-    const builder = createBuilder({ language: 'Bulgarian' })
+    const builder = createBuilder({ languageConfig: makeLanguageConfig('Bulgarian') })
     await builder.generateTopics(5)
 
     const callArgs = anthropic.messages.create.mock.calls[0]![0]

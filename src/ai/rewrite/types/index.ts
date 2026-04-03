@@ -1,4 +1,4 @@
-import type { WeightedPillar } from '@/lib/clients/content-pillars'
+import type { ClientContext } from '@/lib/clients/fetch-client-data'
 
 export interface RewriteContext {
   caption: string
@@ -10,39 +10,15 @@ export interface RewriteContext {
   sourceExcerpt?: string | null
   sourceUrl?: string | null
   rewriteReason: 'quality' | 'language' | 'source_grounding' | 'manual'
-  clientName: string
-  clientLanguage: string
-  niche: string
-  tone: string
-  formality: string
-  targetAudience: string
-  clientTestimonialVoice: string
-  avoidTopics: string
-  bannedAnglicisms: string[]
-  bannedCalques: string[]
-  contentPillars: WeightedPillar[]
-  postHistory: string[]
-  isHealthNiche: boolean | null
+  client: ClientContext
 }
 
 export interface RewriteCaptionInput {
   caption: string
   aiTells: string[]
   qualityIssues?: string[]
-  clientName: string
-  language: string
-  formality: string
-  tone: string
+  client: ClientContext
   platform: string
-  bannedAnglicisms: string[]
-  bannedCalques: string[]
-  niche: string
-  targetAudience: string
-  clientTestimonialVoice: string
-  contentPillars: WeightedPillar[]
-  avoidTopics: string
-  postHistory: string[]
-  isHealthClient: boolean | null
 }
 
 export interface RewriteCarouselInput {
@@ -50,20 +26,8 @@ export interface RewriteCarouselInput {
   slides: Array<{ headline: string; body: string }>
   aiTells: string[]
   qualityIssues?: string[]
-  clientName: string
-  language: string
-  formality: string
-  tone: string
+  client: ClientContext
   platform: string
-  bannedAnglicisms: string[]
-  bannedCalques: string[]
-  niche: string
-  targetAudience: string
-  clientTestimonialVoice: string
-  contentPillars: WeightedPillar[]
-  avoidTopics: string
-  postHistory: string[]
-  isHealthClient: boolean | null
 }
 
 export interface RewriteCarouselResult {

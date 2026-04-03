@@ -1,6 +1,7 @@
 import { rewriteCaption, rewriteCarousel } from '@/ai/rewrite/prompts/rewrite-prompts'
 import { validatePost } from '@/ai/validation/validate-post'
 import { applyTextCorrections, applySlideCorrections } from '@/ai/validation/correction-utils'
+import { toBrandQualityFields } from '@/lib/clients/fetch-client-data'
 import type { RewriteContext } from './types'
 
 export type { RewriteContext }
@@ -16,20 +17,8 @@ export async function performRewrite(ctx: RewriteContext) {
       slides: ctx.slidesJson,
       aiTells: ctx.aiTells,
       qualityIssues: ctx.qualityIssues,
-      clientName: ctx.clientName,
-      language: ctx.clientLanguage,
-      formality: ctx.formality,
-      tone: ctx.tone,
+      client: ctx.client,
       platform: ctx.platform,
-      bannedAnglicisms: ctx.bannedAnglicisms,
-      bannedCalques: ctx.bannedCalques,
-      niche: ctx.niche,
-      targetAudience: ctx.targetAudience,
-      clientTestimonialVoice: ctx.clientTestimonialVoice,
-      contentPillars: ctx.contentPillars,
-      avoidTopics: ctx.avoidTopics,
-      postHistory: ctx.postHistory,
-      isHealthClient: ctx.isHealthNiche,
     })
     newCaption = result.main_caption
     newSlidesJson = result.slides
@@ -38,20 +27,8 @@ export async function performRewrite(ctx: RewriteContext) {
       caption: ctx.caption,
       aiTells: ctx.aiTells,
       qualityIssues: ctx.qualityIssues,
-      clientName: ctx.clientName,
-      language: ctx.clientLanguage,
-      formality: ctx.formality,
-      tone: ctx.tone,
+      client: ctx.client,
       platform: ctx.platform,
-      bannedAnglicisms: ctx.bannedAnglicisms,
-      bannedCalques: ctx.bannedCalques,
-      niche: ctx.niche,
-      targetAudience: ctx.targetAudience,
-      clientTestimonialVoice: ctx.clientTestimonialVoice,
-      contentPillars: ctx.contentPillars,
-      avoidTopics: ctx.avoidTopics,
-      postHistory: ctx.postHistory,
-      isHealthClient: ctx.isHealthNiche,
     })
   }
 
@@ -60,22 +37,13 @@ export async function performRewrite(ctx: RewriteContext) {
   const validation = await validatePost({
     caption: newCaption,
     slides: isCarousel ? (newSlidesJson as Array<{ headline: string; body: string }>) : undefined,
-    language: ctx.clientLanguage,
-    formality: ctx.formality,
+    languageConfig: ctx.client.languageConfig,
     label: `rewrite-${ctx.postType}`,
     platform: ctx.platform,
     sourceContext: ctx.sourceExcerpt
       ? { excerpt: ctx.sourceExcerpt, url: ctx.sourceUrl }
       : undefined,
-    bannedAnglicisms: ctx.bannedAnglicisms,
-    bannedCalques: ctx.bannedCalques,
-    qualityContext: {
-      tone: ctx.tone || undefined,
-      targetAudience: ctx.targetAudience || undefined,
-      niche: ctx.niche || undefined,
-      clientTestimonialVoice: ctx.clientTestimonialVoice || undefined,
-      isHealthClient: ctx.isHealthNiche ?? undefined,
-    },
+    qualityContext: toBrandQualityFields(ctx.client),
   })
 
   const finalCaption = applyTextCorrections(newCaption, validation)

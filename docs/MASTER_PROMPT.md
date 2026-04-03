@@ -82,7 +82,8 @@ create table brand_profiles (
   weekly_mix_json jsonb default '{"carousel": 2, "single": 1}',
   language_formality text default 'neutral',
   secondary_language text,
-  is_health_niche boolean default false
+  is_health_niche boolean default false,
+  language_notes text default ''
 );
 
 -- POSTING SCHEDULES
@@ -181,62 +182,24 @@ create table language_rules (
   banned_anglicisms jsonb,
   banned_calques jsonb,
   native_cta_phrases jsonb,
-  formality_default text default 'neutral'
+  formality_default text default 'neutral',
+  formality_rules jsonb default '{}',
+  language_instructions text default '',
+  opener_examples jsonb default '[]'
 );
 
--- Seed Bulgarian language rules
-insert into language_rules (language, banned_anglicisms, banned_calques, native_cta_phrases, formality_default)
-values (
-  'Bulgarian',
-  '[
-    {"wrong": "свайпни", "correct": "плъзни / виж следващото"},
-    {"wrong": "лайкни", "correct": "хареса ли ти?"},
-    {"wrong": "шеърни", "correct": "сподели"},
-    {"wrong": "сейвни", "correct": "запази публикацията"},
-    {"wrong": "фолоуни", "correct": "последвай ни"},
-    {"wrong": "тагни", "correct": "отбележи"},
-    {"wrong": "букни", "correct": "запази час"},
-    {"wrong": "постни", "correct": "публикувай"},
-    {"wrong": "стори", "correct": "история"},
-    {"wrong": "риийлс", "correct": "видео"}
-  ]',
-  '[
-    "Открийте силата на",
-    "Трансформирайте вашия",
-    "Отключете потенциала",
-    "Издигнете своя",
-    "В днешния свят"
-  ]',
-  '{
-    "carousel_swipe": ["Плъзни надясно →", "Виж следващото →", "Продължи →", "Разлисти →"],
-    "book_appointment": ["Запази час", "Запиши се за консултация", "Свържи се с нас", "Пиши ни"],
-    "engagement": ["Разпознаваш ли се?", "Случвало ли ти се е?", "Какво мислиш?", "Сподели в коментар"]
-  }',
-  'neutral'
-);
-
--- Seed English language rules
-insert into language_rules (language, banned_anglicisms, banned_calques, native_cta_phrases, formality_default)
-values (
-  'English',
-  '[]',
-  '[
-    "Discover the power of",
-    "Unlock your potential",
-    "Transform your",
-    "Elevate your",
-    "In today''s world",
-    "We are proud to announce",
-    "We are excited to share",
-    "Take your X to the next level"
-  ]',
-  '{
-    "carousel_swipe": ["Swipe to see more →", "Keep reading →", "See what''s inside →", "Swipe through →"],
-    "book_appointment": ["Book a consultation", "Get in touch", "Reserve your spot", "Schedule a call"],
-    "engagement": ["Can you relate?", "Has this happened to you?", "What do you think?", "Share in the comments"]
-  }',
-  'neutral'
-);
+-- Seed language rules (Bulgarian + English)
+-- Full seed data including formality_rules JSONB, language_instructions TEXT,
+-- and opener_examples JSONB is in supabase/migrations/20260402_centralize_language_rules.sql
+-- The banned_anglicisms and banned_calques columns are no longer used in code
+-- but remain in the schema for backwards compatibility.
+--
+-- New columns:
+--   formality_rules: JSONB { registers: { formal: { rules: [...], examples: { bulgarian: [...] } }, ... } }
+--   language_instructions: TEXT — language-specific writing rules and common errors
+--   opener_examples: JSONB [{ formality, id, content }] — per-language opener type examples
+--
+-- See the migration file for the complete INSERT statements with all data.
 
 ================================================================
 SECTION 3 — ENVIRONMENT VARIABLES

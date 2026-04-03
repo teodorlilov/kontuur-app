@@ -4,30 +4,17 @@ import {
   buildStaticSystemPrompt,
   buildClientProfile,
 } from '@/ai/generation/prompts/prompt-sections'
-import { WritingContext } from '@/ai/generation/writing-context'
 import type { RewriteCaptionInput, RewriteCarouselInput, RewriteCarouselResult } from '../types'
 
 export async function rewriteCaption(input: RewriteCaptionInput): Promise<string> {
-  const ctx = new WritingContext({
-    niche: input.niche,
-    targetAudience: input.targetAudience,
-    formality: input.formality,
-    tone: input.tone,
-    clientTestimonialVoice: input.clientTestimonialVoice,
-    language: input.language,
-    bannedAnglicisms: input.bannedAnglicisms,
-    bannedCalques: input.bannedCalques,
-  })
+  const { client } = input
+  const lc = client.languageConfig
 
   const systemText = buildStaticSystemPrompt()
 
   const clientProfile = buildClientProfile({
-    ctx,
+    client,
     platform: input.platform,
-    clientName: input.clientName,
-    contentPillars: input.contentPillars,
-    avoidTopics: input.avoidTopics,
-    isHealthClient: input.isHealthClient ?? undefined,
   })
 
   const message = await anthropic.messages.create({
@@ -39,7 +26,7 @@ export async function rewriteCaption(input: RewriteCaptionInput): Promise<string
         role: 'user',
         content: `${clientProfile}
 
-Recent topics already covered — do not drift into: ${input.postHistory.slice(0, 15).join(' | ')}
+Recent topics already covered — do not drift into: ${client.postHistory.slice(0, 15).join(' | ')}
 
 ORIGINAL POST:
 <post_to_rewrite>
@@ -52,8 +39,8 @@ ${input.qualityIssues?.length ? `\nQUALITY ISSUES TO ADDRESS:\n${input.qualityIs
 
 YOUR TASK:
 Rewrite this post so it reads as written by a real person who knows this business deeply. Keep the same topic, facts, key message, and hashtags. Completely change the writing structure.
-- Keep the same language (${ctx.language}) and formality level (${ctx.formality})
-- Keep the same tone: ${ctx.tone}
+- Keep the same language (${lc.language}) and formality level (${lc.formality})
+- Keep the same tone: ${client.tone}
 - Fix every AI tell listed above${input.qualityIssues?.length ? '\n- Address every quality issue listed above' : ''}
 - If one of the AI tells is about formulaic structure, you MUST use a different post structure from the alternatives above
 
@@ -69,26 +56,14 @@ Return ONLY the rewritten post text. No explanations, no commentary.`,
 export async function rewriteCarousel(input: RewriteCarouselInput): Promise<RewriteCarouselResult> {
   const slidesText = input.slides.map((s, i) => `Slide ${i + 1}:\nHeadline: ${s.headline}\nBody: ${s.body}`).join('\n\n')
 
-  const ctx = new WritingContext({
-    niche: input.niche,
-    targetAudience: input.targetAudience,
-    formality: input.formality,
-    tone: input.tone,
-    clientTestimonialVoice: input.clientTestimonialVoice,
-    language: input.language,
-    bannedAnglicisms: input.bannedAnglicisms,
-    bannedCalques: input.bannedCalques,
-  })
+  const { client } = input
+  const lc = client.languageConfig
 
   const systemText = buildStaticSystemPrompt()
 
   const clientProfile = buildClientProfile({
-    ctx,
+    client,
     platform: input.platform,
-    clientName: input.clientName,
-    contentPillars: input.contentPillars,
-    avoidTopics: input.avoidTopics,
-    isHealthClient: input.isHealthClient ?? undefined,
   })
 
   const message = await anthropic.messages.create({
@@ -104,7 +79,7 @@ CAROUSEL RULES:
 - Make headlines punchy and specific, not generic — each must contain a number, tension, or named observation
 - Mix sentence lengths in body text
 
-Recent topics already covered — do not drift into: ${input.postHistory.slice(0, 15).join(' | ')}
+Recent topics already covered — do not drift into: ${client.postHistory.slice(0, 15).join(' | ')}
 
 MAIN CAPTION:
 <caption_to_rewrite>
@@ -122,8 +97,8 @@ ${input.qualityIssues?.length ? `\nQUALITY ISSUES TO ADDRESS:\n${input.qualityIs
 
 YOUR TASK:
 Rewrite the caption and all slides so they read as written by a real person who knows this business deeply. Keep the same topic, facts, and structure (same number of slides).
-- Keep the same language (${ctx.language}) and formality level (${ctx.formality})
-- Keep the same tone: ${ctx.tone}
+- Keep the same language (${lc.language}) and formality level (${lc.formality})
+- Keep the same tone: ${client.tone}
 - Fix every AI tell listed above${input.qualityIssues?.length ? '\n- Address every quality issue listed above' : ''}
 - If one of the AI tells is about formulaic structure, you MUST restructure the main caption using one of the alternatives above
 

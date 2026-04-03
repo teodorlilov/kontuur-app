@@ -25,7 +25,7 @@ export async function GET(
   const { data: profileData } = await supabase
     .from('brand_profiles')
     .select(
-      'id, tone, target_audience, content_pillars, avoid_topics, client_testimonial_voice, default_post_type, default_carousel_slides, weekly_mix_json, language_formality, secondary_language, is_health_niche, best_time_json, best_time_updated_at, source_strategy'
+      'id, tone, target_audience, content_pillars, avoid_topics, client_testimonial_voice, default_post_type, default_carousel_slides, weekly_mix_json, language_formality, secondary_language, is_health_niche, best_time_json, best_time_updated_at, source_strategy, language_notes'
     )
     .eq('client_id', id)
     .single()
@@ -58,6 +58,7 @@ interface UpdateClientBody {
     secondary_language?: string
     is_health_niche?: boolean
     source_strategy?: Record<string, boolean>
+    language_notes?: string
   }
   posting_schedule?: {
     is_active?: boolean
@@ -116,6 +117,7 @@ export async function PUT(
     if (bp.secondary_language !== undefined) profileUpdates.secondary_language = bp.secondary_language
     if (bp.is_health_niche !== undefined) profileUpdates.is_health_niche = bp.is_health_niche
     if (bp.source_strategy !== undefined) profileUpdates.source_strategy = bp.source_strategy
+    if (bp.language_notes !== undefined) profileUpdates.language_notes = bp.language_notes
 
     if (Object.keys(profileUpdates).length > 0) {
       const { error } = await supabase.from('brand_profiles').update(profileUpdates).eq('client_id', id)

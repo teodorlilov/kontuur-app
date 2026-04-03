@@ -124,6 +124,7 @@ export interface Database {
           best_time_json: Json | null
           best_time_updated_at: string | null
           source_strategy: Json
+          language_notes: string | null
         }
         Insert: {
           id?: string
@@ -142,6 +143,7 @@ export interface Database {
           best_time_json?: Json | null
           best_time_updated_at?: string | null
           source_strategy?: Json
+          language_notes?: string | null
         }
         Update: {
           id?: string
@@ -160,6 +162,7 @@ export interface Database {
           best_time_json?: Json | null
           best_time_updated_at?: string | null
           source_strategy?: Json
+          language_notes?: string | null
         }
         Relationships: []
       }
@@ -477,6 +480,9 @@ export interface Database {
           banned_calques: Json | null
           native_cta_phrases: Json | null
           formality_default: string
+          formality_rules: Json | null
+          language_instructions: string | null
+          opener_examples: Json | null
         }
         Insert: {
           id?: string
@@ -485,6 +491,9 @@ export interface Database {
           banned_calques?: Json | null
           native_cta_phrases?: Json | null
           formality_default?: string
+          formality_rules?: Json | null
+          language_instructions?: string | null
+          opener_examples?: Json | null
         }
         Update: {
           id?: string
@@ -493,6 +502,9 @@ export interface Database {
           banned_calques?: Json | null
           native_cta_phrases?: Json | null
           formality_default?: string
+          formality_rules?: Json | null
+          language_instructions?: string | null
+          opener_examples?: Json | null
         }
         Relationships: []
       }
@@ -586,3 +598,9 @@ export interface Database {
     }
   }
 }
+
+// ---- Row type aliases ----
+export type ClientRow = Database['public']['Tables']['clients']['Row']
+export type BrandProfileRow = Database['public']['Tables']['brand_profiles']['Row']
+export type PostingScheduleRow = Database['public']['Tables']['posting_schedules']['Row']
+export type LanguageRuleRow = Database['public']['Tables']['language_rules']['Row']

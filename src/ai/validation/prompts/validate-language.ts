@@ -2,6 +2,7 @@ import { anthropic, DEFAULT_MODEL } from '@/ai/client'
 import { parseJsonResponse } from '@/ai/utils'
 import { buildLanguageValidationRules } from '@/ai/validation/prompts/language-validation-rules'
 import { computeLanguageScore } from '@/ai/validation/content-rules/compute-scores'
+import type { LanguageConfig } from '@/lib/clients/language-rules'
 
 export interface LanguageIssue {
   type: 'anglicism' | 'calque' | 'grammar' | 'formality' | 'register' | 'mixed_script' | 'vocabulary'
@@ -30,12 +31,10 @@ export async function validateLanguage(
     text: string
     slides?: Array<{ headline: string; body: string }>
   },
-  language: string,
-  languageFormality: string,
-  bannedAnglicisms?: string[],
-  bannedCalques?: string[]
+  languageConfig: LanguageConfig,
 ): Promise<LanguageValidationResult> {
-  const rules = buildLanguageValidationRules(language, bannedAnglicisms, bannedCalques, languageFormality)
+  const { language, formality } = languageConfig
+  const rules = buildLanguageValidationRules(languageConfig)
   const isCarousel = input.slides && input.slides.length > 0
 
   const persona = `You are a native ${language} language editor and proofreader. Be ruthless about naturalness — flag text that sounds translated from English even if it is technically grammatically correct. Your standard is: would a native ${language} speaker write this exact phrase on social media?`
@@ -120,7 +119,7 @@ ${instructions}`
         content: `${contentSection}
 
 Language: ${language}
-Formality: ${languageFormality}
+Formality: ${formality}
 
 Return JSON only:
 ${returnFormat}`,

@@ -4,26 +4,36 @@ vi.mock('@/ai/client')
 
 import { anthropic, mockClaudeResponse } from '@/ai/__mocks__/client'
 import { rewriteCaption, rewriteCarousel } from '../rewrite-prompts'
+import type { ClientContext } from '@/lib/clients/fetch-client-data'
 
 beforeEach(() => {
   vi.clearAllMocks()
 })
 
-const BASE_INPUT = {
-  clientName: 'Test Client',
-  language: 'Bulgarian',
-  formality: 'neutral',
-  tone: 'professional',
-  platform: 'instagram',
-  bannedAnglicisms: ['тренд'],
-  bannedCalques: ['направи разлика'],
-  niche: 'Skincare',
-  targetAudience: 'Women 25-45',
-  clientTestimonialVoice: 'They really care about my skin.',
-  contentPillars: [{ pillar: 'Skincare tips', weight: 50 }, { pillar: 'Product reviews', weight: 50 }],
-  avoidTopics: 'politics',
-  postHistory: ['hydration tips', 'sunscreen myths'],
-  isHealthClient: null,
+function makeClient(overrides: Partial<ClientContext> = {}): ClientContext {
+  return {
+    id: 'test-client-id',
+    name: 'Test Client',
+    niche: 'Skincare',
+    tone: 'professional',
+    targetAudience: 'Women 25-45',
+    clientTestimonialVoice: 'They really care about my skin.',
+    avoidTopics: 'politics',
+    contentPillars: [{ pillar: 'Skincare tips', weight: 50 }, { pillar: 'Product reviews', weight: 50 }],
+    isHealthNiche: null,
+    postHistory: ['hydration tips', 'sunscreen myths'],
+    languageConfig: {
+      language: 'Bulgarian',
+      formality: 'neutral',
+      nativeCTAPhrases: '',
+      carouselSwipeCues: '',
+      formalityRules: null,
+      languageInstructions: '',
+      openerExamples: [],
+      languageNotes: '',
+    },
+    ...overrides,
+  }
 }
 
 describe('rewriteCaption', () => {
@@ -32,7 +42,8 @@ describe('rewriteCaption', () => {
     const result = await rewriteCaption({
       caption: 'Открийте силата на разходката за контрол на кръвната захар.',
       aiTells: ['Generic enthusiasm', 'Formulaic structure'],
-      ...BASE_INPUT,
+      client: makeClient(),
+      platform: 'instagram',
     })
     expect(result).toBe('Ето как 30 минути разходка след хранене променят кръвната ви захар.')
   })
@@ -45,7 +56,8 @@ describe('rewriteCaption', () => {
     const result = await rewriteCaption({
       caption: original,
       aiTells: ['Generic opener'],
-      ...BASE_INPUT,
+      client: makeClient(),
+      platform: 'instagram',
     })
     expect(result).toBe(original)
   })
@@ -55,7 +67,8 @@ describe('rewriteCaption', () => {
     await rewriteCaption({
       caption: 'Test post',
       aiTells: ['Triple adjective stacking', 'Formulaic CTA'],
-      ...BASE_INPUT,
+      client: makeClient(),
+      platform: 'instagram',
     })
 
     const callArgs = anthropic.messages.create.mock.calls[0]![0]
@@ -67,14 +80,22 @@ describe('rewriteCaption', () => {
   it('includes language and formality in the prompt', async () => {
     mockClaudeResponse('Rewritten text')
     await rewriteCaption({
-      ...BASE_INPUT,
       caption: 'Test post',
       aiTells: [],
-      language: 'Spanish',
-      formality: 'formal',
-      tone: 'casual',
-      bannedAnglicisms: [],
-      bannedCalques: [],
+      client: makeClient({
+        tone: 'casual',
+        languageConfig: {
+          language: 'Spanish',
+          formality: 'formal',
+          nativeCTAPhrases: '',
+          carouselSwipeCues: '',
+          formalityRules: null,
+          languageInstructions: '',
+          openerExamples: [],
+          languageNotes: '',
+        },
+      }),
+      platform: 'instagram',
     })
 
     const callArgs = anthropic.messages.create.mock.calls[0]![0]
@@ -84,26 +105,13 @@ describe('rewriteCaption', () => {
     expect(prompt).toContain('casual')
   })
 
-  it('includes banned anglicisms and calques in the prompt', async () => {
-    mockClaudeResponse('Rewritten text')
-    await rewriteCaption({
-      caption: 'Test post',
-      aiTells: [],
-      ...BASE_INPUT,
-    })
-
-    const callArgs = anthropic.messages.create.mock.calls[0]![0]
-    const prompt = callArgs.messages[0]!.content as string
-    expect(prompt).toContain('тренд')
-    expect(prompt).toContain('направи разлика')
-  })
-
   it('trims whitespace from Claude response', async () => {
     mockClaudeResponse('  Rewritten text with spaces  \n\n')
     const result = await rewriteCaption({
       caption: 'Original',
       aiTells: [],
-      ...BASE_INPUT,
+      client: makeClient(),
+      platform: 'instagram',
     })
     expect(result).toBe('Rewritten text with spaces')
   })
@@ -122,7 +130,8 @@ describe('rewriteCarousel', () => {
         { headline: 'H2', body: 'B2' },
       ],
       aiTells: ['Generic headlines'],
-      ...BASE_INPUT,
+      client: makeClient(),
+      platform: 'instagram',
     })
     expect(result.main_caption).toBe('Rewritten carousel caption')
     expect(result.slides).toHaveLength(2)
@@ -136,7 +145,8 @@ describe('rewriteCarousel', () => {
       mainCaption: 'Caption',
       slides: [{ headline: 'H1', body: 'B1' }],
       aiTells: [],
-      ...BASE_INPUT,
+      client: makeClient(),
+      platform: 'instagram',
     })
     expect(result.main_caption).toBe('Rewritten carousel caption')
   })
@@ -150,7 +160,8 @@ describe('rewriteCarousel', () => {
         { headline: 'Slide Two Title', body: 'Slide two body text' },
       ],
       aiTells: [],
-      ...BASE_INPUT,
+      client: makeClient(),
+      platform: 'instagram',
     })
 
     const callArgs = anthropic.messages.create.mock.calls[0]![0]
@@ -167,7 +178,8 @@ describe('rewriteCarousel', () => {
       mainCaption: 'Caption',
       slides: [{ headline: 'H', body: 'B' }],
       aiTells: ['Perfectly balanced structure', 'Abstract benefits'],
-      ...BASE_INPUT,
+      client: makeClient(),
+      platform: 'instagram',
     })
 
     const callArgs = anthropic.messages.create.mock.calls[0]![0]

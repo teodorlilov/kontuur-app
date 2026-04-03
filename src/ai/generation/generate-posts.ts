@@ -10,6 +10,7 @@ import type { PostValidationResult } from '@/ai/validation/validate-post'
 import { applyTextCorrections, applySlideCorrections } from '@/ai/validation/correction-utils'
 import { Deduplicator } from '@/ai/research/deduplicator'
 import { ANGLE_SIMILARITY_THRESHOLD } from '@/lib/content-rules/constants'
+import { toBrandQualityFields } from '@/lib/clients/fetch-client-data'
 
 const MAX_CONCURRENT_AI_CALLS = 3
 
@@ -30,8 +31,8 @@ export async function generatePosts(ctx: GeneratePostsContext): Promise<Generate
 
   // Attach similar past themes for angle differentiation
   for (const theme of allThemes) {
-    const similar = ctx.postHistory.filter(
-      (topic) => Deduplicator.ngramSimilarity(theme.description, topic, ctx.clientLanguage) > ANGLE_SIMILARITY_THRESHOLD
+    const similar = ctx.client.postHistory.filter(
+      (topic) => Deduplicator.ngramSimilarity(theme.description, topic, ctx.client.languageConfig.language) > ANGLE_SIMILARITY_THRESHOLD
     )
     if (similar.length > 0) {
       theme.similarPastThemes = similar.slice(0, 3)
@@ -40,13 +41,7 @@ export async function generatePosts(ctx: GeneratePostsContext): Promise<Generate
 
   const getGroundingText = (theme: ThemeWithMeta) => theme.sourceFullText || theme.sourceExcerpt
 
-  const sharedQualityContext = {
-    tone: ctx.tone || undefined,
-    targetAudience: ctx.targetAudience || undefined,
-    niche: ctx.clientNiche || undefined,
-    clientTestimonialVoice: ctx.clientTestimonialVoice || undefined,
-    isHealthClient: ctx.isHealthNiche ?? undefined,
-  }
+  const sharedQualityContext = toBrandQualityFields(ctx.client)
 
   const generator = GeneratorFactory.create(ctx.postType)
 
@@ -96,33 +91,22 @@ export async function generatePosts(ctx: GeneratePostsContext): Promise<Generate
   ): GeneratePostInput | GenerateCarouselInput | GenerateReelsInput {
     const groundingText = getGroundingText(theme)
     const base = {
-      clientName: c.clientName,
-      niche: c.clientNiche,
+      client: c.client,
       theme: theme.description,
-      tone: c.tone,
-      targetAudience: c.targetAudience,
-      language: c.clientLanguage,
-      languageFormality: c.formality,
-      avoidTopics: c.avoidTopics,
-      clientTestimonialVoice: c.clientTestimonialVoice,
-      contentPillars: c.contentPillars,
       targetPillar: theme.pillar,
-      bannedAnglicisms: c.bannedAnglicisms,
-      bannedCalques: c.bannedCalques,
       sourceExcerpt: groundingText,
       sourceUrl: theme.sourceUrl,
       requireSourceGrounding: c.requireSourceGrounding || !!groundingText,
       similarPastThemes: theme.similarPastThemes,
-      isHealthClient: c.isHealthNiche ?? false,
     }
 
     if (c.postType === 'carousel') {
-      return { ...base, slideCount: c.slideCount, postHistory: c.postHistory, carouselSwipeCues: c.carouselSwipeCues }
+      return { ...base, slideCount: c.slideCount }
     }
     if (c.postType === 'reels') {
-      return { ...base, nativeCTAPhrases: c.nativeCTAPhrases }
+      return { ...base }
     }
-    return { ...base, platform: c.platform, nativeCTAPhrases: c.nativeCTAPhrases, postHistory: c.postHistory, count: theme.count || 1 }
+    return { ...base, platform: c.platform, count: theme.count || 1 }
   }
 
   function buildSourceContext(theme: ThemeWithMeta) {
@@ -144,7 +128,7 @@ export async function generatePosts(ctx: GeneratePostsContext): Promise<Generate
   ): Record<string, unknown> {
     return {
       id: randomUUID(),
-      client_id: ctx.clientId,
+      client_id: ctx.client.id,
       platform: ctx.platform,
       status: 'draft',
       priority: theme.isPriority ?? false,
@@ -181,13 +165,10 @@ export async function generatePosts(ctx: GeneratePostsContext): Promise<Generate
     const carouselValidation = await validatePost({
       caption: carouselResult.main_caption,
       slides: carouselResult.slides,
-      language: ctx.clientLanguage,
-      formality: ctx.formality,
+      languageConfig: ctx.client.languageConfig,
       label: 'carousel',
       platform: ctx.platform,
       sourceContext: buildSourceContext(theme),
-      bannedAnglicisms: ctx.bannedAnglicisms,
-      bannedCalques: ctx.bannedCalques,
       qualityContext: sharedQualityContext,
     })
 
@@ -212,13 +193,10 @@ export async function generatePosts(ctx: GeneratePostsContext): Promise<Generate
     const scriptText = `${reelsResult.hook}\n${reelsResult.main_points.join('\n')}\n${reelsResult.cta}`
     const validation = await validatePost({
       caption: scriptText,
-      language: ctx.clientLanguage,
-      formality: ctx.formality,
+      languageConfig: ctx.client.languageConfig,
       label: 'reels',
       platform: ctx.platform,
       sourceContext: buildSourceContext(theme),
-      bannedAnglicisms: ctx.bannedAnglicisms,
-      bannedCalques: ctx.bannedCalques,
       qualityContext: sharedQualityContext,
     })
 
@@ -242,13 +220,10 @@ export async function generatePosts(ctx: GeneratePostsContext): Promise<Generate
     for (const caption of captions) {
       const validation = await validatePost({
         caption,
-        language: ctx.clientLanguage,
-        formality: ctx.formality,
+        languageConfig: ctx.client.languageConfig,
         label: 'single',
         platform: ctx.platform,
         sourceContext,
-        bannedAnglicisms: ctx.bannedAnglicisms,
-        bannedCalques: ctx.bannedCalques,
         qualityContext: sharedQualityContext,
       })
 
