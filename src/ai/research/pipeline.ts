@@ -1,30 +1,43 @@
 import { parsePillars, type WeightedPillar } from '@/lib/clients/content-pillars'
 import { toCTAPhrases, toCarouselSwipeCues, toFormalityRulesData, toOpenerExamples, type LanguageConfig } from '@/lib/clients/language-rules'
 import type { Json } from '@/types/database'
-import { SourceFactory } from './sources/source-factory'
+import { createAllSources } from './sources/source-factory'
 import { RssResearchSource } from './sources/rss-source'
 import { WebsiteResearchSource } from './sources/website-source'
 import { FileResearchSource } from './sources/file-source'
 import { ResearchSource } from './sources/research-source'
 import { Deduplicator } from './deduplicator'
 import { ResearchPromptBuilder } from './prompts/prompt-builder'
-import { computeFetchLimits } from './fetch-limits'
+import { computeFetchLimits, SOURCE_FULL_TEXT_CAP } from './fetch-limits'
 import type {
-  ResearchContext,
+  ResearchRunContext,
   ResearchTopic,
   SourceContext,
   ClientSourceRow,
   FetchLimits,
-  FullTextMaps,
+  SourceFullTextIndex,
   SourceStrategy,
   FileExcerpt,
 } from './types'
 
 const DEFAULT_STRATEGY: SourceStrategy = { rss: true, website: true, file: true, trend_fallback: true }
 
-const SOURCE_FULL_TEXT_CAP = 4000
-
 const MAX_RESEARCH_RETRIES = 1
+
+interface RawClientProfile {
+  profile: {
+    content_pillars: string | null
+    source_strategy: SourceStrategy | null
+    language_formality: string | null
+    language_notes: string | null
+  } | null
+  langRules: {
+    native_cta_phrases: Json | null
+    formality_rules: Json | null
+    language_instructions: string | null
+    opener_examples: Json | null
+  } | null
+}
 
 interface ClientData {
   contentPillars: WeightedPillar[]
@@ -39,9 +52,9 @@ interface ClientData {
  * Uses polymorphic source classes (RSS, Website, File) via the SourceFactory.
  */
 export class ResearchPipeline {
-  private readonly ctx: ResearchContext
+  private readonly ctx: ResearchRunContext
 
-  constructor(ctx: ResearchContext) {
+  constructor(ctx: ResearchRunContext) {
     this.ctx = ctx
   } 
 
@@ -55,7 +68,7 @@ export class ResearchPipeline {
     console.log('[research] fetch limits:', limits)
 
     // 3. Create source objects via factory (polymorphic creation)
-    const sourceObjects = SourceFactory.createAll(clientData.sources)
+    const sourceObjects = createAllSources(clientData.sources)
 
     // 4. Fetch all sources in parallel (limits control how much each source fetches)
     await this.fetchAllSources(sourceObjects, limits)
@@ -64,7 +77,7 @@ export class ResearchPipeline {
     const sourceContext = this.buildSourceContext(sourceObjects, clientData.strategy, limits)
 
     // 6. Build full-text maps for source grounding
-    const fullTextMaps = this.buildFullTextMaps(sourceObjects)
+    const fullTextIndex = this.buildSourceFullTextIndex(sourceObjects)
 
     // 7. Generate topics via prompt builder (exact count, no multiplier)
     const builder = new ResearchPromptBuilder({
@@ -75,27 +88,26 @@ export class ResearchPipeline {
     })
 
     const requestedCount = this.ctx.count
-    const topics = await builder.generateTopics(requestedCount, sourceContext)
-
-    // 8. Attach source full text for downstream grounding
-    this.attachSourceFullText(topics, fullTextMaps)
-
-    // 9. Dedup (algorithmic + optional LLM)
     const dedup = new Deduplicator(this.ctx.language)
-    let filteredTopics = dedup.filterConflicts(topics, clientData.history)
+
+    // Initial generation
+    let filteredTopics = await this.generateAndFilter(
+      requestedCount, builder, sourceContext, clientData.history, fullTextIndex, dedup
+    )
+
+    // Optional LLM dedup pass (expensive — only runs once, not on retries)
     filteredTopics = await dedup.filterWithLLM(filteredTopics, clientData.history, this.ctx.language || 'English')
 
-    // 10. Retry loop — request exact deficit, no multiplier
+    // Retry loop — request deficit only
     for (let retry = 0; retry < MAX_RESEARCH_RETRIES && filteredTopics.length < requestedCount; retry++) {
       const extendedHistory = [...clientData.history, ...filteredTopics.map((t) => t.suggested_theme)]
       const deficit = requestedCount - filteredTopics.length
 
       builder.updateHistory(extendedHistory)
-      const retryTopics = await builder.generateTopics(deficit, sourceContext)
-      this.attachSourceFullText(retryTopics, fullTextMaps)
-
-      const retryFiltered = dedup.filterConflicts(retryTopics, extendedHistory)
-      filteredTopics.push(...retryFiltered)
+      const retryTopics = await this.generateAndFilter(
+        deficit, builder, sourceContext, extendedHistory, fullTextIndex, dedup
+      )
+      filteredTopics.push(...retryTopics)
     }
 
     if (filteredTopics.length < requestedCount) {
@@ -107,14 +119,39 @@ export class ResearchPipeline {
 
   // ---- Private methods ----
 
-  /**
-   * Load brand profile, post history, generation themes, and client sources.
-   * Validates client ownership via agency_id.
-   */
+  /** Load brand profile, post history, generation themes, and client sources. */
   private async loadClientData(): Promise<ClientData> {
-    const language = this.ctx.language || 'English'
-    const defaultLanguageConfig: LanguageConfig = {
-      language,
+    const defaultLanguageConfig = this.buildDefaultLanguageConfig()
+
+    if (!this.ctx.clientId) {
+      return { contentPillars: [], history: [], sources: [], strategy: DEFAULT_STRATEGY, languageConfig: defaultLanguageConfig }
+    }
+
+    const owns = await this.verifyClientOwnership()
+    if (!owns) {
+      return { contentPillars: [], history: [], sources: [], strategy: DEFAULT_STRATEGY, languageConfig: defaultLanguageConfig }
+    }
+
+    const [profile, history, sources] = await Promise.all([
+      this.fetchClientProfile(),
+      this.fetchClientHistory(),
+      this.fetchClientSources(),
+    ])
+
+    const languageConfig = this.buildLanguageConfig(profile, defaultLanguageConfig)
+    const contentPillars = profile.profile?.content_pillars ? parsePillars(profile.profile.content_pillars) : []
+    const strategy = profile.profile?.source_strategy
+      ? { ...DEFAULT_STRATEGY, ...profile.profile.source_strategy }
+      : DEFAULT_STRATEGY
+    const filteredSources = this.filterSourcesByStrategy(sources, strategy)
+
+    return { contentPillars, history, sources: filteredSources, strategy, languageConfig }
+  }
+
+  /** Returns the fallback LanguageConfig when no DB data is available. */
+  private buildDefaultLanguageConfig(): LanguageConfig {
+    return {
+      language: this.ctx.language || 'English',
       formality: 'neutral',
       nativeCTAPhrases: '',
       carouselSwipeCues: '',
@@ -123,78 +160,100 @@ export class ResearchPipeline {
       openerExamples: [],
       languageNotes: '',
     }
-    let contentPillars: WeightedPillar[] = []
-    let history: string[] = []
-    let sources: ClientSourceRow[] = []
-    let strategy: SourceStrategy = DEFAULT_STRATEGY
+  }
 
-    if (!this.ctx.clientId) {
-      return { contentPillars, history, sources, strategy, languageConfig: defaultLanguageConfig }
-    }
-
-    const { data: rawClient } = await this.ctx.supabase
+  /** Verify the client belongs to this agency. */
+  private async verifyClientOwnership(): Promise<boolean> {
+    const { data } = await this.ctx.supabase
       .from('clients')
       .select('id')
-      .eq('id', this.ctx.clientId)
+      .eq('id', this.ctx.clientId!)
       .eq('agency_id', this.ctx.agencyId)
       .single()
+    return !!data
+  }
 
-    if (!rawClient) {
-      return { contentPillars, history, sources, strategy, languageConfig: defaultLanguageConfig }
-    }
-
-    const [profileResult, langRulesResult, historyResult, themesResult, sourcesResult] = await Promise.all([
+  /** Fetch brand profile and language rules. */
+  private async fetchClientProfile(): Promise<RawClientProfile> {
+    const language = this.ctx.language || 'English'
+    const [profileResult, langRulesResult] = await Promise.all([
       this.ctx.supabase
         .from('brand_profiles')
         .select('content_pillars, source_strategy, language_formality, language_notes')
-        .eq('client_id', this.ctx.clientId)
+        .eq('client_id', this.ctx.clientId!)
         .single(),
       this.ctx.supabase
         .from('language_rules')
         .select('native_cta_phrases, formality_rules, language_instructions, opener_examples')
         .eq('language', language)
         .single(),
+    ])
+    return {
+      profile: profileResult.data as RawClientProfile['profile'],
+      langRules: langRulesResult.data as RawClientProfile['langRules'],
+    }
+  }
+
+  /** Fetch post history + recently generated theme descriptions. */
+  private async fetchClientHistory(): Promise<string[]> {
+    const [historyResult, themesResult] = await Promise.all([
       this.ctx.supabase
         .from('post_history')
         .select('topic_summary')
-        .eq('client_id', this.ctx.clientId)
+        .eq('client_id', this.ctx.clientId!)
         .order('created_at', { ascending: false })
         .limit(30),
       this.ctx.supabase
         .from('generation_runs')
         .select('generation_themes(theme_description)')
-        .eq('client_id', this.ctx.clientId)
+        .eq('client_id', this.ctx.clientId!)
         .order('created_at', { ascending: false })
         .limit(10),
-      this.ctx.supabase
-        .from('client_sources')
-        .select('id, type, label, url, config, extracted_text')
-        .eq('client_id', this.ctx.clientId)
-        .eq('is_active', true),
     ])
 
-    const profile = profileResult.data as {
-      content_pillars: string | null
-      source_strategy: SourceStrategy | null
-      language_formality: string | null
-      language_notes: string | null
-    } | null
-    if (profile?.content_pillars) {
-      contentPillars = parsePillars(profile.content_pillars)
-    }
-    if (profile?.source_strategy) {
-      strategy = { ...DEFAULT_STRATEGY, ...profile.source_strategy }
+    const postTopics =
+      (historyResult.data as Array<{ topic_summary: string | null }> | null)
+        ?.map((h) => h.topic_summary)
+        .filter((s): s is string => s !== null) ?? []
+
+    const themeDescriptions: string[] = []
+    const runsData = themesResult.data as Array<{ generation_themes: Array<{ theme_description: string | null }> }> | null
+    if (runsData) {
+      for (const run of runsData) {
+        for (const theme of run.generation_themes) {
+          if (theme.theme_description) themeDescriptions.push(theme.theme_description)
+        }
+      }
     }
 
-    const langRules = langRulesResult.data as {
-      native_cta_phrases: Json | null
-      formality_rules: Json | null
-      language_instructions: string | null
-      opener_examples: Json | null
-    } | null
+    return [...postTopics, ...themeDescriptions]
+  }
 
-    const languageConfig: LanguageConfig = {
-      language,
+  /** Fetch active client sources. */
+  private async fetchClientSources(): Promise<ClientSourceRow[]> {
+    const { data } = await this.ctx.supabase
+      .from('client_sources')
+      .select('id, type, label, url, config, extracted_text')
+      .eq('client_id', this.ctx.clientId!)
+      .eq('is_active', true)
+    return (data as ClientSourceRow[] | null) ?? []
+  }
+
+  /** Filter sources by the client's source strategy. */
+  private filterSourcesByStrategy(sources: ClientSourceRow[], strategy: SourceStrategy): ClientSourceRow[] {
+    return sources.filter((s) => {
+      if (s.type === 'rss' && !strategy.rss) return false
+      if (s.type === 'website' && !strategy.website) return false
+      if (s.type === 'file' && !strategy.file) return false
+      return true
+    })
+  }
+
+  /** Build LanguageConfig from raw DB data. */
+  private buildLanguageConfig(raw: RawClientProfile, defaults: LanguageConfig): LanguageConfig {
+    const { profile, langRules } = raw
+    return {
+      language: defaults.language,
       formality: profile?.language_formality ?? 'neutral',
       nativeCTAPhrases: toCTAPhrases(langRules?.native_cta_phrases),
       carouselSwipeCues: toCarouselSwipeCues(langRules?.native_cta_phrases),
@@ -203,35 +262,6 @@ export class ResearchPipeline {
       openerExamples: toOpenerExamples(langRules?.opener_examples),
       languageNotes: profile?.language_notes ?? '',
     }
-
-    const postHistoryTopics =
-      (historyResult.data as Array<{ topic_summary: string | null }> | null)
-        ?.map((h) => h.topic_summary)
-        .filter((s): s is string => s !== null) ?? []
-
-    const generatedThemeDescriptions: string[] = []
-    const runsData = themesResult.data as Array<{ generation_themes: Array<{ theme_description: string | null }> }> | null
-    if (runsData) {
-      for (const run of runsData) {
-        for (const theme of run.generation_themes) {
-          if (theme.theme_description) {
-            generatedThemeDescriptions.push(theme.theme_description)
-          }
-        }
-      }
-    }
-
-    history = [...postHistoryTopics, ...generatedThemeDescriptions]
-
-    const allSources = (sourcesResult.data as ClientSourceRow[] | null) ?? []
-    sources = allSources.filter((s) => {
-      if (s.type === 'rss' && !strategy.rss) return false
-      if (s.type === 'website' && !strategy.website) return false
-      if (s.type === 'file' && !strategy.file) return false
-      return true
-    })
-
-    return { contentPillars, history, sources, strategy, languageConfig }
   }
 
   /** Fetch all sources in parallel. Reports status to DB for fetchable sources. */
@@ -242,7 +272,7 @@ export class ResearchPipeline {
     // Fetch network sources in parallel (limits control items/pages per source)
     await Promise.allSettled(
       fetchable.map(async (source) => {
-        const result = await source.fetch({ limits })
+        const result = await source.fetch(limits)
         source.reportStatus(this.ctx.supabase, result)
       })
     )
@@ -300,29 +330,46 @@ export class ResearchPipeline {
     return { rssItems: cappedRssItems, websiteExcerpts: cappedWebExcerpts, fileExcerpts: cappedFileExcerpts }
   }
 
-  /** Build full-text maps from source objects for source grounding. */
-  private buildFullTextMaps(sources: ResearchSource[]): FullTextMaps {
-    const sourceFullTextMap = new Map<string, string>()
-    const fileFullTextMap = new Map<string, string>()
+  /** Build full-text index from source objects for source grounding. */
+  private buildSourceFullTextIndex(sources: ResearchSource[]): SourceFullTextIndex {
+    const byUrl = new Map<string, string>()
+    const byLabel = new Map<string, string>()
 
     for (const source of sources) {
       const entries = source.getFullTextEntries(SOURCE_FULL_TEXT_CAP)
-      const targetMap = source instanceof FileResearchSource ? fileFullTextMap : sourceFullTextMap
+      const targetMap = source instanceof FileResearchSource ? byLabel : byUrl
       for (const [key, value] of entries) {
         targetMap.set(key, value)
       }
     }
 
-    return { sourceFullTextMap, fileFullTextMap }
+    return { byUrl, byLabel }
+  }
+
+  /**
+   * Generate topics, attach source full text, then run algorithmic dedup.
+   * Used by both the initial run and the retry loop.
+   */
+  private async generateAndFilter(
+    count: number,
+    builder: ResearchPromptBuilder,
+    sourceContext: SourceContext | undefined,
+    history: string[],
+    fullTextIndex: SourceFullTextIndex,
+    dedup: Deduplicator,
+  ): Promise<ResearchTopic[]> {
+    const topics = await builder.generateTopics(count, sourceContext)
+    this.attachSourceFullText(topics, fullTextIndex)
+    return dedup.filterConflicts(topics, history)
   }
 
   /** Attach full source text to topics based on their source metadata. */
-  private attachSourceFullText(topics: ResearchTopic[], maps: FullTextMaps): void {
+  private attachSourceFullText(topics: ResearchTopic[], index: SourceFullTextIndex): void {
     for (const topic of topics) {
-      if (topic.source_url && maps.sourceFullTextMap.has(topic.source_url)) {
-        topic.source_full_text = maps.sourceFullTextMap.get(topic.source_url)
+      if (topic.source_url && index.byUrl.has(topic.source_url)) {
+        topic.source_full_text = index.byUrl.get(topic.source_url)
       } else if (topic.source_type === 'file' && topic.source_title) {
-        topic.source_full_text = maps.fileFullTextMap.get(topic.source_title)
+        topic.source_full_text = index.byLabel.get(topic.source_title)
       }
     }
   }
@@ -332,7 +379,7 @@ export class ResearchPipeline {
  * Convenience function preserving the old API shape.
  * Route handlers can import this directly.
  */
-export async function performResearch(ctx: ResearchContext): Promise<ResearchTopic[]> {
+export async function performResearch(ctx: ResearchRunContext): Promise<ResearchTopic[]> {
   const pipeline = new ResearchPipeline(ctx)
   return pipeline.execute()
 }

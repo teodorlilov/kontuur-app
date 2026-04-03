@@ -42,7 +42,7 @@ export interface ClientSourceRow {
   extracted_text: string | null
 }
 
-export interface ResearchContext {
+export interface ResearchRunContext {
   supabase: SupabaseClient
   agencyId: string
   clientId?: string
@@ -56,9 +56,9 @@ export interface SourceFetchResult {
   error: string | null
 }
 
-export interface FullTextMaps {
-  sourceFullTextMap: Map<string, string>
-  fileFullTextMap: Map<string, string>
+export interface SourceFullTextIndex {
+  byUrl: Map<string, string>
+  byLabel: Map<string, string>
 }
 
 export interface FetchLimits {
@@ -70,6 +70,3 @@ export interface FetchLimits {
   fileBudget: number
 }
 
-export interface FetchOptions {
-  limits?: FetchLimits
-}

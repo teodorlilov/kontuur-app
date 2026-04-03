@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { ClientSourceRow, FetchOptions, SourceFetchResult } from '../types'
+import type { ClientSourceRow, FetchLimits, SourceFetchResult } from '../types'
 
 /**
  * Abstract base class for all research content sources.
@@ -24,7 +24,7 @@ export abstract class ResearchSource {
   }
 
   /** Fetch content from this source. File sources are no-ops. */
-  abstract fetch(options?: FetchOptions): Promise<SourceFetchResult>
+  abstract fetch(limits?: FetchLimits): Promise<SourceFetchResult>
 
   /** Return capped text content within the given character budget. */
   abstract getCappedContent(budget: number): string

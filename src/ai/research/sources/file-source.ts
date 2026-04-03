@@ -1,10 +1,9 @@
+import { SOURCE_FULL_TEXT_CAP } from '../fetch-limits'
 import { ResearchSource } from './research-source'
-import type { FetchOptions, SourceFetchResult, FileExcerpt } from '../types'
-
-const SOURCE_FULL_TEXT_CAP = 4000
+import type { FetchLimits, SourceFetchResult, FileExcerpt } from '../types'
 
 export class FileResearchSource extends ResearchSource {
-  async fetch(_options?: FetchOptions): Promise<SourceFetchResult> {
+  async fetch(_limits?: FetchLimits): Promise<SourceFetchResult> {
     // File sources read from extracted_text (already in DB row). No network call.
     return { status: this.extractedText ? 'ok' : 'error', error: null }
   }

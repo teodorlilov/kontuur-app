@@ -1,16 +1,15 @@
 import { fetchWebsiteWithSubpages } from '@/lib/sources/fetch-website'
+import { SOURCE_FULL_TEXT_CAP } from '../fetch-limits'
 import { ResearchSource } from './research-source'
-import type { FetchOptions, SourceFetchResult, WebsiteExcerpt } from '../types'
-
-const SOURCE_FULL_TEXT_CAP = 4000
+import type { FetchLimits, SourceFetchResult, WebsiteExcerpt } from '../types'
 
 export class WebsiteResearchSource extends ResearchSource {
   private excerpts: WebsiteExcerpt[] = []
   private fetchError: string | null = null
 
   // maxPages applies per source — a client with 2 website sources fetches maxPages from each
-  async fetch(options?: FetchOptions): Promise<SourceFetchResult> {
-    const maxPages = options?.limits?.websiteMaxPages
+  async fetch(limits?: FetchLimits): Promise<SourceFetchResult> {
+    const maxPages = limits?.websiteMaxPages
     const result = await fetchWebsiteWithSubpages(this.url, this.config, maxPages)
     const focusInstructions = (this.config?.focus_instructions as string) ?? undefined
 

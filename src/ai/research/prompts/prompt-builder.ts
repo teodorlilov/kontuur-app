@@ -2,8 +2,51 @@ import { callAnthropic } from '@/utils/ai-client'
 import { parseJsonResponse } from '@/utils/ai'
 import { allocateByWeight, type WeightedPillar } from '@/lib/clients/content-pillars'
 import type { LanguageConfig } from '@/lib/clients/language-rules'
-import { buildResearchSystemPrompt } from './system-prompt'
 import type { ResearchTopic, SourceContext } from '../types'
+
+/**
+ * Builds the static system prompt for research topic generation.
+ * Language-aware but client-agnostic — safe to cache.
+ */
+function buildResearchSystemPrompt(config: LanguageConfig): string {
+  const { language } = config
+
+  const sections: string[] = [
+    `You are a social media strategist identifying specific, high-quality post themes.
+
+SUGGESTED_THEME QUALITY RULES (critical — the theme becomes the post brief):
+- Maximum 8-10 words. Short and punchy, NOT a headline or article title.
+- Write in ${language} as a native speaker would naturally say it.
+- Must name a SPECIFIC detail: a property, a price, a location, a service, a number — not a category.
+- NEVER use clickbait patterns: "Complete guide to...", "Discover...", "Your chance for...", "Everything you need to know about..."
+- NEVER use dashes to join two clauses ("X - Y"). Just state the topic simply.`,
+  ]
+
+  // Non-Latin script rule (Cyrillic, Greek, Arabic, etc.)
+  if (/[\u0400-\u04FF\u0370-\u03FF\u0600-\u06FF\u4E00-\u9FFF\u3040-\u309F\u30A0-\u30FF\uAC00-\uD7AF]/.test(language)) {
+    sections.push(`- NEVER mix scripts. If writing in ${language}, every word must use the native script consistently. Source URLs use Latin, but themes must use the native script only.`)
+  }
+
+  if (config.languageInstructions) {
+    sections.push(config.languageInstructions)
+  }
+
+  return sections.join('\n')
+}
+
+/** Returns today's date as YYYY-MM-DD for use in prompts. */
+function todayDate(): string {
+  return new Date().toISOString().split('T')[0]!
+}
+
+/**
+ * Wraps content in a labelled XML-style section for prompt clarity.
+ * Returns empty string when content is absent — sections with no content are omitted.
+ */
+function buildSourceSection(title: string, tag: string, content: string): string {
+  if (!content.trim()) return ''
+  return `${title}:\n<${tag}>\n${content}\n</${tag}>`
+}
 
 /**
  * Encapsulates research prompt construction and LLM execution.
@@ -11,7 +54,6 @@ import type { ResearchTopic, SourceContext } from '../types'
  */
 export class ResearchPromptBuilder {
   private niche: string
-  private language: string
   private languageConfig: LanguageConfig
   private contentPillars: WeightedPillar[]
   private postHistory: string[]
@@ -23,7 +65,6 @@ export class ResearchPromptBuilder {
     postHistory: string[]
   }) {
     this.niche = opts.niche
-    this.language = opts.languageConfig.language
     this.languageConfig = opts.languageConfig
     this.contentPillars = opts.contentPillars
     this.postHistory = opts.postHistory
@@ -85,26 +126,33 @@ export class ResearchPromptBuilder {
     pillarsContext: string,
     historyContext: string
   ): string {
-    const rssSection =
-      sourceContext.rssItems.length > 0
-        ? `RSS FEED CONTENT (recent articles and items):\n<rss_content>\n${sourceContext.rssItems
-            .map((item) => `- ${item.title}: ${item.description}${item.link ? ` (${item.link})` : ''}`)
-            .join('\n')}\n</rss_content>`
-        : ''
+    const rssSection = buildSourceSection(
+      'RSS FEED CONTENT (recent articles and items)',
+      'rss_content',
+      sourceContext.rssItems
+        .map((item) => `- ${item.title}: ${item.description}${item.link ? ` (${item.link})` : ''}`)
+        .join('\n')
+    )
 
-    const webSection =
-      sourceContext.websiteExcerpts.length > 0
-        ? `WEBSITE CONTENT:\n<website_content>\n${sourceContext.websiteExcerpts.map((w) => `[Source URL: ${w.url}]${w.focusInstructions ? `\n[AI FOCUS: ${w.focusInstructions}]` : ''}\n${w.text}`).join('\n\n---\n\n')}\n</website_content>`
-        : ''
+    const webSection = buildSourceSection(
+      'WEBSITE CONTENT',
+      'website_content',
+      sourceContext.websiteExcerpts
+        .map((w) => `[Source URL: ${w.url}]${w.focusInstructions ? `\n[AI FOCUS: ${w.focusInstructions}]` : ''}\n${w.text}`)
+        .join('\n\n---\n\n')
+    )
 
-    const fileSection =
-      sourceContext.fileExcerpts.length > 0
-        ? `UPLOADED DOCUMENTS (client reference material):\n<document_content>\n${sourceContext.fileExcerpts.map((f) => `[Document: "${f.label}"]\n${f.text}`).join('\n\n---\n\n')}\n</document_content>`
-        : ''
+    const fileSection = buildSourceSection(
+      'UPLOADED DOCUMENTS (client reference material)',
+      'document_content',
+      sourceContext.fileExcerpts
+        .map((f) => `[Document: "${f.label}"]\n${f.text}`)
+        .join('\n\n---\n\n')
+    )
 
-    return `Today's date: ${new Date().toISOString().split('T')[0]}
+    return `Today's date: ${todayDate()}
 
-You are a social media strategist. Based on the following real content from the client's feeds, website, and documents, identify ${count} specific post themes for a ${this.niche} business targeting ${this.language}-language social media.
+You are a social media strategist. Based on the following real content from the client's feeds, website, and documents, identify ${count} specific post themes for a ${this.niche} business targeting ${this.languageConfig.language}-language social media.
 
 ${rssSection}
 
@@ -136,10 +184,10 @@ For trend-based topics (no source available), set source_url, source_title, and 
     pillarsContext: string,
     historyContext: string
   ): string {
-    return `Today's date: ${new Date().toISOString().split('T')[0]}
+    return `Today's date: ${todayDate()}
 
 Search for what is trending right now in ${this.niche} on social media
-in ${this.language}-speaking markets. Focus on: popular content formats,
+in ${this.languageConfig.language}-speaking markets. Focus on: popular content formats,
 seasonal topics, viral post angles, relevant news. ${pillarsContext}
 ${historyContext}
 The "source_excerpt" field should briefly describe the trend angle or observation that inspired this theme.

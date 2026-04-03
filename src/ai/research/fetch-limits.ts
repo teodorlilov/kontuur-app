@@ -1,6 +1,12 @@
 import { MAX_RSS_ITEMS } from '@/utils/constants'
 import type { FetchLimits } from './types'
 
+/**
+ * Maximum characters of source full text attached to a topic for downstream grounding.
+ * Shared by all source types — change here to affect all.
+ */
+export const SOURCE_FULL_TEXT_CAP = 4000
+
 const BASE_COUNT = 5
 const RSS_ITEMS_PER_SOURCE_MAX = 4
 const RSS_BUDGET_MAX = 4000

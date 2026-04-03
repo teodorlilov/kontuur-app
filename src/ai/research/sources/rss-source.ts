@@ -1,16 +1,15 @@
 import { fetchRssSource, type RssItem } from '@/lib/sources/fetch-rss'
+import { SOURCE_FULL_TEXT_CAP } from '../fetch-limits'
 import { ResearchSource } from './research-source'
-import type { FetchOptions, SourceFetchResult } from '../types'
-
-const SOURCE_FULL_TEXT_CAP = 4000
+import type { FetchLimits, SourceFetchResult } from '../types'
 
 export class RssResearchSource extends ResearchSource {
   private items: RssItem[] = []
   private fetchError: string | null = null
 
-  async fetch(options?: FetchOptions): Promise<SourceFetchResult> {
+  async fetch(limits?: FetchLimits): Promise<SourceFetchResult> {
     const configMax = (this.config?.max_items as number | undefined) ?? 4
-    const maxItems = Math.min(configMax, options?.limits?.rssItemsPerSource ?? configMax)
+    const maxItems = Math.min(configMax, limits?.rssItemsPerSource ?? configMax)
     const result = await fetchRssSource(this.url, maxItems)
     this.items = result.items
     this.fetchError = result.error ?? null
