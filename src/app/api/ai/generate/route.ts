@@ -3,7 +3,7 @@ import { resolveAuth } from '@/lib/auth/resolve-auth'
 import { fetchClientData, toClientContext } from '@/lib/clients/fetch-client-data'
 import { DEFAULT_CAROUSEL_SLIDES } from '@/utils/constants'
 import { checkRateLimit, AI_RATE_LIMIT } from '@/lib/auth/rate-limit'
-import { generatePosts } from '@/ai/generation/generate-posts'
+import { runGenerationBatch } from '@/ai/generation/generation-run'
 import type { PriorityPost } from '@/types/api'
 import type { Theme } from '@/ai/generation/types'
 
@@ -57,7 +57,7 @@ export async function POST(request: Request) {
 
   const runId = (runData as { id: string } | null)?.id
 
-  const posts = await generatePosts({
+  const posts = await runGenerationBatch({
     client,
     platform: body.platform,
     postType: body.postType,

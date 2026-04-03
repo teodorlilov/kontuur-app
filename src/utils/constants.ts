@@ -1,4 +1,18 @@
 export const PROMPT_HISTORY_LIMIT = 20
+
+/**
+ * Generate this many extra posts per requested count.
+ * 1.5 = request 50% more than needed, keep the best ones.
+ * Only applies to single posts — carousel and reels generate exactly one result.
+ */
+export const OVER_REQUEST_MULTIPLIER = 1.5
+
+/**
+ * Minimum quality_score_avg for a post to enter the review queue.
+ * Posts below this score are discarded before the agency sees them.
+ * Set to 0 to disable filtering.
+ */
+export const QUALITY_FLOOR = 5
 export const MAX_POST_HISTORY_COUNT = 30
 export const MAX_CAROUSEL_SLIDES = 10
 export const MIN_CAROUSEL_SLIDES = 3

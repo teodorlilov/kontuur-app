@@ -4,7 +4,7 @@ import { decodeUrl } from '@/utils/decode-url'
  * Shared source grounding section builder for AI prompts.
  * Used by generate-post.ts and generate-carousel.ts.
  */
-export function buildSourceGroundingSection(opts: {
+export function buildGroundingPrompt(opts: {
   sourceExcerpt?: string
   sourceUrl?: string | null
   requireSourceGrounding?: boolean

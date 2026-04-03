@@ -1,11 +1,11 @@
 import type { ClientContext } from '@/lib/clients/fetch-client-data'
-import type { PriorityPost, SlopDetection } from '@/types/api'
+import type { PriorityPost, PostType, SlopDetection } from '@/types/api'
 import type { QualityResult } from '@/ai/validation/prompts/validate-quality'
 import type { LanguageValidationResult } from '@/ai/validation/prompts/validate-language'
 import type { SourceGroundingResult } from '@/ai/validation/prompts/validate-source-grounding'
 
 // ---- Shared base input — fields common to all content types ----
-export interface BaseGenerateInput {
+export interface GenerationInput {
   client: ClientContext
   theme: string
   targetPillar?: string
@@ -16,7 +16,7 @@ export interface BaseGenerateInput {
 }
 
 // ---- Single post ----
-export interface GeneratePostInput extends BaseGenerateInput {
+export interface SinglePostInput extends GenerationInput {
   platform: string
   count: number
 }
@@ -36,7 +36,7 @@ export interface CarouselResult {
   slides: CarouselSlide[]
 }
 
-export interface GenerateCarouselInput extends BaseGenerateInput {
+export interface CarouselInput extends GenerationInput {
   slideCount: number
 }
 
@@ -50,11 +50,30 @@ export interface ReelsResult {
   estimated_seconds: number
 }
 
-export interface GenerateReelsInput extends BaseGenerateInput {}
+// ---- Draft post record (typed replacement for Record<string, unknown>) ----
+export interface DraftPost {
+  id: string
+  client_id: string
+  platform: string
+  post_type: PostType
+  caption: string
+  status: 'draft'
+  priority: boolean
+  topic_summary: string
+  slides_json: unknown
+  carousel_quality_json: unknown
+  quality_score_avg: number
+  source_url: string | null
+  source_title: string | null
+  source_type: 'rss' | 'website' | 'file' | null
+  source_excerpt: string | null
+  pillar: string | null
+  created_at: string
+}
 
 // ---- Generation orchestration ----
-export interface GeneratedPostEntry {
-  post: Record<string, unknown>
+export interface GenerationResult {
+  post: DraftPost
   quality: QualityResult
   language: LanguageValidationResult
   slop: SlopDetection
@@ -72,20 +91,20 @@ export interface Theme {
   sourceFullText?: string
 }
 
-export interface ThemeWithMeta extends Theme {
+export interface EnrichedTheme extends Theme {
   isPriority?: boolean
   brief?: string
   targetDate?: string
   similarPastThemes?: string[]
 }
 
-export interface GeneratePostsContext {
+export interface GenerationRunContext {
   client: ClientContext
   platform: string
-  postType: 'single' | 'carousel' | 'reels'
-  slideCount: number
+  postType: PostType
+  slideCount?: number
   requireSourceGrounding: boolean
   themes: Theme[]
   priorityPosts: PriorityPost[]
-  trackTheme: (theme: ThemeWithMeta, postCount: number) => Promise<void>
+  trackTheme: (theme: EnrichedTheme, postCount: number) => Promise<void>
 }

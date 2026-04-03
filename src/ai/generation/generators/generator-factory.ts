@@ -1,20 +1,20 @@
 import { PostGenerator } from './post-generator'
 import { CarouselGenerator } from './carousel-generator'
 import { ReelsGenerator } from './reels-generator'
-import type { ContentGenerator } from './base-generator'
-import type { BaseGenerateInput } from './types'
+import type { ContentGenerator } from './content-generator'
+import type { GenerationInput } from '../types'
 import type { PostType } from '@/types/api'
 
 export class GeneratorFactory {
   /**
    * Returns the correct ContentGenerator for the requested post type.
-   *
+   * 
    * To add a new content type:
    * 1. Create a new subclass of ContentGenerator
    * 2. Add a case here
    * Zero changes needed in the service or route handler.
    */
-  static create(postType: PostType): ContentGenerator<BaseGenerateInput, unknown> {
+  static create(postType: PostType): ContentGenerator<GenerationInput, unknown> {
     switch (postType) {
       case 'single':
         return new PostGenerator()

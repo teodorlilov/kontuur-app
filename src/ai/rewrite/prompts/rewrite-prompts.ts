@@ -3,19 +3,19 @@ import { extractTextFromMessage, sanitizeAndParseJson } from '@/utils/ai'
 import {
   buildStaticSystemPrompt,
   buildClientProfile,
-} from '@/ai/generation/prompts/prompt-sections'
+} from '@/ai/generation/prompts/client-profile'
 import type { RewriteCaptionInput, RewriteCarouselInput, RewriteCarouselResult } from '../types'
+
+const systemText = buildStaticSystemPrompt()
 
 export async function rewriteCaption(input: RewriteCaptionInput): Promise<string> {
   const { client } = input
   const lc = client.languageConfig
 
-  const systemText = buildStaticSystemPrompt()
-
   const clientProfile = buildClientProfile({
     client,
     platform: input.platform,
-  })
+  }) 
 
   const message = await anthropic.messages.create({
     model: DEFAULT_MODEL,
@@ -58,8 +58,6 @@ export async function rewriteCarousel(input: RewriteCarouselInput): Promise<Rewr
 
   const { client } = input
   const lc = client.languageConfig
-
-  const systemText = buildStaticSystemPrompt()
 
   const clientProfile = buildClientProfile({
     client,

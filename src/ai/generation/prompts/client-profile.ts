@@ -17,7 +17,15 @@ import type { ClientContext } from '@/lib/clients/fetch-client-data'
 import type { LanguageConfig } from '@/lib/clients/language-rules'
 import { formatFormalityRules } from './formality-guidance'
 
-export function buildBrandVoiceSection(client: ClientContext): string {
+export interface ClientProfileInput {
+  client: ClientContext
+  platform: string
+  targetPillar?: string
+}
+
+let _cachedStaticPrompt: string | null = null
+
+export function buildBrandVoicePrompt(client: ClientContext): string {
   let section = `BRAND VOICE:
 This brand sounds: ${client.tone}.`
 
@@ -35,8 +43,6 @@ If the post could be written about any business, it has failed this test.`
 // ---------------------------------------------------------------------------
 // Static system prompt — identical for ALL clients, globally cacheable
 // ---------------------------------------------------------------------------
-
-let _cachedStaticPrompt: string | null = null
 
 /**
  * Returns a static system prompt with zero parameters.
@@ -81,12 +87,6 @@ SELF-CHECK (before returning your response):
 // Client profile — all client-specific context for the user message
 // ---------------------------------------------------------------------------
 
-export interface ClientProfileInput {
-  client: ClientContext
-  platform: string
-  targetPillar?: string
-}
-
 /**
  * Assembles all client-specific context for the user message.
  */
@@ -119,10 +119,10 @@ The post must contain at least one detail that could only come from ${client.nam
 Generic niche observations any competitor could post will score poorly.`)
 
   // 4. REGISTER RULES + LANGUAGE INSTRUCTIONS
-  sections.push(buildLanguageRulesSection(lc))
+  sections.push(buildLanguagePrompt(lc))
 
   // 5. BRAND VOICE
-  sections.push(buildBrandVoiceSection(client))
+  sections.push(buildBrandVoicePrompt(client))
 
   // 6. PLATFORM LIMITS
   sections.push(`PLATFORM LIMITS:
@@ -147,7 +147,7 @@ When using source material: the source may contain medical claims. Filter them o
  * Builds the language rules section for generation / rewrite prompts.
  * Content is driven by LanguageConfig from the DB — no hardcoded language blocks.
  */
-export function buildLanguageRulesSection(config: LanguageConfig): string {
+export function buildLanguagePrompt(config: LanguageConfig): string {
   const sections: string[] = []
 
   // Register rules from DB (formality_rules column)
@@ -175,7 +175,7 @@ export function buildLanguageRulesSection(config: LanguageConfig): string {
  * Builds an angle differentiation instruction when the current theme
  * overlaps with previously covered topics. Forces a fresh creative angle.
  */
-export function buildAngleDifferentiationSection(similarThemes: string[]): string {
+export function buildAngleVariationPrompt(similarThemes: string[]): string {
   if (similarThemes.length === 0) return ''
 
   const themeList = similarThemes.map((t) => `- "${t}"`).join('\n')
