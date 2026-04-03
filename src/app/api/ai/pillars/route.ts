@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
-import { generatePillars } from '@/ai/generate-pillars/generate-pillars'
+import { generatePillars } from '@/utils/ai'
 
 interface PillarsRequestBody {
   niche: string

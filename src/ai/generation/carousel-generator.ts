@@ -1,5 +1,5 @@
 import type { Message } from '@anthropic-ai/sdk/resources'
-import { parseJsonResponse } from '@/ai/utils'
+import { parseJsonResponse } from '@/utils/ai'
 import { buildSourceGroundingSection } from '@/ai/generation/prompts/source-grounding'
 import {
   buildClientProfile,

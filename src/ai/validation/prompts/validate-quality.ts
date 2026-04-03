@@ -1,5 +1,5 @@
-import { anthropic, DEFAULT_MODEL } from '@/ai/client'
-import { parseJsonResponse } from '@/ai/utils'
+import { anthropic, DEFAULT_MODEL } from '@/utils/ai-client'
+import { parseJsonResponse } from '@/utils/ai'
 import {
   computeQualityScores,
   safeParseHookVerdict,

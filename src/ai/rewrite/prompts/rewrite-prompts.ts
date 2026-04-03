@@ -1,5 +1,5 @@
-import { anthropic, DEFAULT_MODEL, DEFAULT_MAX_TOKENS } from '@/ai/client'
-import { extractTextFromMessage, sanitizeAndParseJson } from '@/ai/utils'
+import { anthropic, DEFAULT_MODEL, DEFAULT_MAX_TOKENS } from '@/utils/ai-client'
+import { extractTextFromMessage, sanitizeAndParseJson } from '@/utils/ai'
 import {
   buildStaticSystemPrompt,
   buildClientProfile,

@@ -1,5 +1,5 @@
-import { anthropic, DEFAULT_MODEL, DEFAULT_MAX_TOKENS } from '@/ai/client'
-import { parseJsonResponse } from '@/ai/utils'
+import { anthropic, DEFAULT_MODEL, DEFAULT_MAX_TOKENS } from '@/utils/ai-client'
+import { parseJsonResponse } from '@/utils/ai'
 import { allocateByWeight, type WeightedPillar } from '@/lib/clients/content-pillars'
 import type { LanguageConfig } from '@/lib/clients/language-rules'
 import { buildResearchSystemPrompt } from './system-prompt'

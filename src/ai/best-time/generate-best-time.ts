@@ -1,5 +1,5 @@
-import { anthropic, LIGHT_MODEL } from '@/ai/client'
-import { parseJsonResponse } from '@/ai/utils'
+import { anthropic, LIGHT_MODEL } from '@/utils/ai-client'
+import { parseJsonResponse } from '@/utils/ai'
 import type { BestTimePlatform } from '@/types/api'
 
 export interface BestTimeInput {

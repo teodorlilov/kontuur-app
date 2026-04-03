@@ -1,13 +1,9 @@
-import { anthropic, LIGHT_MODEL } from '@/ai/client'
-import { parseJsonResponse } from '@/ai/utils'
-import type { UrlAnalysisResponse } from '@/types/api'
-
 export interface AnalyzeUrlInput {
   websiteContent?: string
   instagramContent?: string
 }
 
-function buildPrompt(input: AnalyzeUrlInput): string {
+export function buildAnalyzeUrlPrompt(input: AnalyzeUrlInput): string {
   const contentSections: string[] = []
   if (input.websiteContent) {
     contentSections.push(`WEBSITE CONTENT:\n<website_content>\n${input.websiteContent}\n</website_content>`)
@@ -40,14 +36,3 @@ For content pillars, identify the main themes/topics this business should post a
 
 Return JSON only, no markdown wrapper.`
 }
-
-export async function analyzeUrl(input: AnalyzeUrlInput): Promise<UrlAnalysisResponse> {
-  const message = await anthropic.messages.create({
-    model: LIGHT_MODEL,
-    max_tokens: 2048,
-    messages: [{ role: 'user', content: buildPrompt(input) }],
-  })
-
-  return parseJsonResponse<UrlAnalysisResponse>(message)
-}
- 

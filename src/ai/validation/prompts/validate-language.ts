@@ -1,5 +1,5 @@
-import { anthropic, DEFAULT_MODEL } from '@/ai/client'
-import { parseJsonResponse } from '@/ai/utils'
+import { anthropic, DEFAULT_MODEL } from '@/utils/ai-client'
+import { parseJsonResponse } from '@/utils/ai'
 import { buildLanguageValidationRules } from '@/ai/validation/prompts/language-validation-rules'
 import { computeLanguageScore } from '@/ai/validation/content-rules/compute-scores'
 import type { LanguageConfig } from '@/lib/clients/language-rules'

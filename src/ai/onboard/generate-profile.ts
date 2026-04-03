@@ -1,5 +1,5 @@
-import { anthropic, DEFAULT_MODEL, DEFAULT_MAX_TOKENS } from '@/ai/client'
-import { parseJsonResponse } from '@/ai/utils'
+import { anthropic, DEFAULT_MODEL, DEFAULT_MAX_TOKENS } from '@/utils/ai-client'
+import { parseJsonResponse } from '@/utils/ai'
 import type { OnboardResponse, UrlAnalysisResponse } from '@/types/api'
 
 export interface GenerateProfileInput {

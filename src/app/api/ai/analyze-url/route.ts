@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
 import { fetchWebsiteSource } from '@/lib/sources/fetch-website'
-import { analyzeUrl } from '@/ai/analyze-url/analyze-url'
+import { analyzeUrl } from '@/utils/ai'
 
 interface AnalyzeUrlBody {
   websiteUrl?: string

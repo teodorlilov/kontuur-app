@@ -1,5 +1,5 @@
 import type { Message } from '@anthropic-ai/sdk/resources'
-import { anthropic, DEFAULT_MODEL, DEFAULT_MAX_TOKENS } from '@/ai/client'
+import { anthropic, DEFAULT_MODEL, DEFAULT_MAX_TOKENS } from '@/utils/ai-client'
 import { buildStaticSystemPrompt } from '@/ai/generation/prompts/prompt-sections'
 import type { BaseGenerateInput } from './types'
 

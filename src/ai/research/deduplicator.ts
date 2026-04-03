@@ -1,6 +1,6 @@
 import { NGRAM_SIZE, NGRAM_SIMILARITY_THRESHOLD, ENABLE_LLM_DEDUP } from '@/lib/content-rules/constants'
-import { anthropic, DEFAULT_MODEL, DEFAULT_MAX_TOKENS } from '@/ai/client'
-import { parseJsonResponse } from '@/ai/utils'
+import { anthropic, DEFAULT_MODEL, DEFAULT_MAX_TOKENS } from '@/utils/ai-client'
+import { parseJsonResponse } from '@/utils/ai'
 
 // ---------------------------------------------------------------------------
 // Language config registry — add new languages here, no code changes needed

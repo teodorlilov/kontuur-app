@@ -1,17 +1,14 @@
 import type Anthropic from '@anthropic-ai/sdk'
+import type { UrlAnalysisResponse } from '@/types/api'
+import { anthropic, LIGHT_MODEL } from '@/utils/ai-client'
+import { buildAnalyzeUrlPrompt, type AnalyzeUrlInput } from '@/ai/analyze-url/analyze-url'
+import { buildPillarsPrompt, type GeneratePillarsInput, type GeneratePillarsResult } from '@/ai/generate-pillars/generate-pillars'
 
-/**
- * Extract text content from an Anthropic message response.
- */
 export function extractTextFromMessage(message: Anthropic.Message): string {
   const block = message.content[0]
   return block?.type === 'text' ? block.text : ''
 }
 
-/**
- * Parse a JSON object or array from an Anthropic message response.
- * Handles responses that may contain markdown wrappers or extra text.
- */
 export function parseJsonResponse<T>(message: Anthropic.Message, mode: 'object' | 'array' = 'object'): T {
   const text = extractTextFromMessage(message)
   const pattern = mode === 'array' ? /\[[\s\S]*\]/ : /\{[\s\S]*\}/
@@ -25,24 +22,13 @@ export function parseJsonResponse<T>(message: Anthropic.Message, mode: 'object' 
   }
 }
 
-/**
- * Sanitize raw LLM text and parse as JSON with fallback.
- * Handles markdown code fences and trailing commas.
- * Use when you need to parse from raw text (e.g., with prefilled assistant responses).
- */
-/**
- * Strips the planning declaration [STRUCTURE: X | OPENER: Y] from the start
- * of a generated post. Handles common formatting variations from the LLM.
- */
 export function stripPlanningPrefix(text: string): string {
-  // Primary pattern: [STRUCTURE: ... | OPENER: ...] or [STRUCTURE: ..., OPENER: ...]
   const primaryPattern = /^\[STRUCTURE:\s*[^\]]+(?:\||,)\s*OPENER:\s*[^\]]+\]\s*/i
   const primaryMatch = text.match(primaryPattern)
   if (primaryMatch) {
     return text.slice(primaryMatch[0].length)
   }
 
-  // Fallback: first line is a bracket declaration containing both keywords
   const lines = text.split('\n')
   const firstLine = lines[0]?.trim() ?? ''
   if (
@@ -54,7 +40,6 @@ export function stripPlanningPrefix(text: string): string {
     return lines.slice(1).join('\n').trim()
   }
 
-  // No declaration found — return text unchanged
   return text
 }
 
@@ -69,4 +54,24 @@ export function sanitizeAndParseJson<T>(raw: string, fallback: T): T {
     console.warn('[sanitizeAndParseJson] Failed to parse LLM JSON:', err)
     return fallback
   }
+}
+
+export async function analyzeUrl(input: AnalyzeUrlInput): Promise<UrlAnalysisResponse> {
+  const message = await anthropic.messages.create({
+    model: LIGHT_MODEL,
+    max_tokens: 2048,
+    messages: [{ role: 'user', content: buildAnalyzeUrlPrompt(input) }],
+  })
+
+  return parseJsonResponse<UrlAnalysisResponse>(message)
+}
+
+export async function generatePillars(input: GeneratePillarsInput): Promise<GeneratePillarsResult> {
+  const message = await anthropic.messages.create({
+    model: LIGHT_MODEL,
+    max_tokens: 1024,
+    messages: [{ role: 'user', content: buildPillarsPrompt(input) }],
+  })
+
+  return parseJsonResponse<GeneratePillarsResult>(message)
 }
