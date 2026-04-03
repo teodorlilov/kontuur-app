@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-vi.mock('@/ai/client')
+vi.mock('@/utils/ai-client')
 
-import { mockClaudeResponse } from '@/ai/__mocks__/client'
+import { mockClaudeResponse } from '@/utils/__mocks__/ai-client'
 import { validateLanguage } from '../validate-language'
 import type { LanguageConfig } from '@/lib/clients/language-rules'
 
@@ -72,7 +72,7 @@ describe('validateLanguage', () => {
   })
 
   it('includes language and formality in the prompt', async () => {
-    const { anthropic } = await import('@/ai/__mocks__/client')
+    const { callAnthropic } = await import('@/utils/__mocks__/ai-client')
     mockClaudeResponse(JSON.stringify({
       issues: [],
       corrected_text: null,
@@ -82,8 +82,8 @@ describe('validateLanguage', () => {
       makeLanguageConfig({ language: 'Spanish', formality: 'formal' }),
     )
 
-    const callArgs = anthropic.messages.create.mock.calls[0]![0]
-    const prompt = callArgs.messages[0]!.content as string
+    const callArgs = callAnthropic.mock.calls[0]![0]
+    const prompt = callArgs.userMessage as string
     expect(prompt).toContain('Spanish')
     expect(prompt).toContain('formal')
   })
@@ -99,7 +99,7 @@ describe('validateLanguage', () => {
   })
 
   it('includes language instructions in the system prompt when provided', async () => {
-    const { anthropic } = await import('@/ai/__mocks__/client')
+    const { callAnthropic } = await import('@/utils/__mocks__/ai-client')
     mockClaudeResponse(JSON.stringify({
       issues: [],
       corrected_text: null,
@@ -111,14 +111,14 @@ describe('validateLanguage', () => {
       }),
     )
 
-    const callArgs = anthropic.messages.create.mock.calls[0]![0]
-    const systemText = (callArgs.system as Array<{ text: string }>)[0]!.text
+    const callArgs = callAnthropic.mock.calls[0]![0]
+    const systemText = callArgs.systemPrompt as string
     expect(systemText).toContain('Avoid English loanwords')
     expect(systemText).toContain('native Bulgarian equivalents')
   })
 
   it('includes language-specific checks when languageInstructions provided', async () => {
-    const { anthropic } = await import('@/ai/__mocks__/client')
+    const { callAnthropic } = await import('@/utils/__mocks__/ai-client')
     mockClaudeResponse(JSON.stringify({
       issues: [],
       corrected_text: null,
@@ -130,14 +130,14 @@ describe('validateLanguage', () => {
       }),
     )
 
-    const callArgs = anthropic.messages.create.mock.calls[0]![0]
-    const systemText = (callArgs.system as Array<{ text: string }>)[0]!.text
+    const callArgs = callAnthropic.mock.calls[0]![0]
+    const systemText = callArgs.systemPrompt as string
     expect(systemText).toContain('Bulgarian-SPECIFIC CHECKS')
     expect(systemText).toContain('sounds translated from English')
   })
 
   it('includes client language notes in the system prompt', async () => {
-    const { anthropic } = await import('@/ai/__mocks__/client')
+    const { callAnthropic } = await import('@/utils/__mocks__/ai-client')
     mockClaudeResponse(JSON.stringify({
       issues: [],
       corrected_text: null,
@@ -149,13 +149,13 @@ describe('validateLanguage', () => {
       }),
     )
 
-    const callArgs = anthropic.messages.create.mock.calls[0]![0]
-    const systemText = (callArgs.system as Array<{ text: string }>)[0]!.text
+    const callArgs = callAnthropic.mock.calls[0]![0]
+    const systemText = callArgs.systemPrompt as string
     expect(systemText).toContain('Always use програма not план')
   })
 
   it('does not include language instructions when empty', async () => {
-    const { anthropic } = await import('@/ai/__mocks__/client')
+    const { callAnthropic } = await import('@/utils/__mocks__/ai-client')
     mockClaudeResponse(JSON.stringify({
       issues: [],
       corrected_text: null,
@@ -165,8 +165,8 @@ describe('validateLanguage', () => {
       makeLanguageConfig({ language: 'English', languageInstructions: '' }),
     )
 
-    const callArgs = anthropic.messages.create.mock.calls[0]![0]
-    const systemText = (callArgs.system as Array<{ text: string }>)[0]!.text
+    const callArgs = callAnthropic.mock.calls[0]![0]
+    const systemText = callArgs.systemPrompt as string
     expect(systemText).not.toContain('SPECIFIC CHECKS')
   })
 })

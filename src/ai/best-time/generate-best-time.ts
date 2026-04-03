@@ -1,4 +1,4 @@
-import { anthropic, LIGHT_MODEL } from '@/utils/ai-client'
+import { callAnthropic, LIGHT_MODEL } from '@/utils/ai-client'
 import { parseJsonResponse } from '@/utils/ai'
 import type { BestTimePlatform } from '@/types/api'
 
@@ -47,10 +47,10 @@ Return JSON only:
 }
 
 export async function generateBestTime(input: BestTimeInput): Promise<BestTimeResult> {
-  const message = await anthropic.messages.create({
+  const message = await callAnthropic({
     model: LIGHT_MODEL,
-    max_tokens: 2048,
-    messages: [{ role: 'user', content: buildPrompt(input) }],
+    maxTokens: 2048,
+    userMessage: buildPrompt(input),
   })
 
   return parseJsonResponse<BestTimeResult>(message)

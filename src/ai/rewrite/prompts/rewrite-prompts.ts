@@ -1,4 +1,4 @@
-import { anthropic, DEFAULT_MODEL, DEFAULT_MAX_TOKENS } from '@/utils/ai-client'
+import { callAnthropic } from '@/utils/ai-client'
 import { extractTextFromMessage, sanitizeAndParseJson } from '@/utils/ai'
 import {
   buildStaticSystemPrompt,
@@ -17,14 +17,9 @@ export async function rewriteCaption(input: RewriteCaptionInput): Promise<string
     platform: input.platform,
   }) 
 
-  const message = await anthropic.messages.create({
-    model: DEFAULT_MODEL,
-    max_tokens: DEFAULT_MAX_TOKENS,
-    system: [{ type: 'text', text: systemText, cache_control: { type: 'ephemeral' } }],
-    messages: [
-      {
-        role: 'user',
-        content: `${clientProfile}
+  const message = await callAnthropic({
+    systemPrompt: systemText,
+    userMessage: `${clientProfile}
 
 Recent topics already covered — do not drift into: ${client.postHistory.slice(0, 15).join(' | ')}
 
@@ -45,8 +40,6 @@ Rewrite this post so it reads as written by a real person who knows this busines
 - If one of the AI tells is about formulaic structure, you MUST use a different post structure from the alternatives above
 
 Return ONLY the rewritten post text. No explanations, no commentary.`,
-      },
-    ],
   })
 
   const text = extractTextFromMessage(message)
@@ -64,14 +57,9 @@ export async function rewriteCarousel(input: RewriteCarouselInput): Promise<Rewr
     platform: input.platform,
   })
 
-  const message = await anthropic.messages.create({
-    model: DEFAULT_MODEL,
-    max_tokens: DEFAULT_MAX_TOKENS,
-    system: [{ type: 'text', text: systemText, cache_control: { type: 'ephemeral' } }],
-    messages: [
-      {
-        role: 'user',
-        content: `${clientProfile}
+  const message = await callAnthropic({
+    systemPrompt: systemText,
+    userMessage: `${clientProfile}
 
 CAROUSEL RULES:
 - Make headlines punchy and specific, not generic — each must contain a number, tension, or named observation
@@ -105,9 +93,7 @@ Return JSON only, no markdown wrapper:
   "main_caption": "...",
   "slides": [{"headline": "...", "body": "..."}, ...]
 }`,
-      },
-      { role: 'assistant', content: '{' },
-    ],
+    assistantPrefill: '{',
   })
 
   const rawText = '{' + extractTextFromMessage(message)

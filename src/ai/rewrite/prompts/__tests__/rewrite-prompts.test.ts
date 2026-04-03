@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-vi.mock('@/ai/client')
+vi.mock('@/utils/ai-client')
 
-import { anthropic, mockClaudeResponse } from '@/ai/__mocks__/client'
+import { callAnthropic, mockClaudeResponse } from '@/utils/__mocks__/ai-client'
 import { rewriteCaption, rewriteCarousel } from '../rewrite-prompts'
 import type { ClientContext } from '@/lib/clients/fetch-client-data'
 
@@ -49,7 +49,7 @@ describe('rewriteCaption', () => {
   })
 
   it('returns original caption when Claude returns non-text response', async () => {
-    anthropic.messages.create.mockResolvedValue({
+    callAnthropic.mockResolvedValue({
       content: [{ type: 'tool_use', id: 'x', name: 'y', input: {} }],
     })
     const original = 'Original caption text.'
@@ -71,8 +71,8 @@ describe('rewriteCaption', () => {
       platform: 'instagram',
     })
 
-    const callArgs = anthropic.messages.create.mock.calls[0]![0]
-    const prompt = callArgs.messages[0]!.content as string
+    const callArgs = callAnthropic.mock.calls[0]![0]
+    const prompt = callArgs.userMessage as string
     expect(prompt).toContain('Triple adjective stacking')
     expect(prompt).toContain('Formulaic CTA')
   })
@@ -98,8 +98,8 @@ describe('rewriteCaption', () => {
       platform: 'instagram',
     })
 
-    const callArgs = anthropic.messages.create.mock.calls[0]![0]
-    const prompt = callArgs.messages[0]!.content as string
+    const callArgs = callAnthropic.mock.calls[0]![0]
+    const prompt = callArgs.userMessage as string
     expect(prompt).toContain('Spanish')
     expect(prompt).toContain('formal')
     expect(prompt).toContain('casual')
@@ -164,8 +164,8 @@ describe('rewriteCarousel', () => {
       platform: 'instagram',
     })
 
-    const callArgs = anthropic.messages.create.mock.calls[0]![0]
-    const prompt = callArgs.messages[0]!.content as string
+    const callArgs = callAnthropic.mock.calls[0]![0]
+    const prompt = callArgs.userMessage as string
     expect(prompt).toContain('Slide One Title')
     expect(prompt).toContain('Slide two body text')
     expect(prompt).toContain('Slide 1:')
@@ -182,8 +182,8 @@ describe('rewriteCarousel', () => {
       platform: 'instagram',
     })
 
-    const callArgs = anthropic.messages.create.mock.calls[0]![0]
-    const prompt = callArgs.messages[0]!.content as string
+    const callArgs = callAnthropic.mock.calls[0]![0]
+    const prompt = callArgs.userMessage as string
     expect(prompt).toContain('Perfectly balanced structure')
     expect(prompt).toContain('Abstract benefits')
   })

@@ -1,4 +1,4 @@
-import { anthropic, DEFAULT_MODEL, DEFAULT_MAX_TOKENS } from '@/utils/ai-client'
+import { callAnthropic } from '@/utils/ai-client'
 import { parseJsonResponse } from '@/utils/ai'
 import type { OnboardResponse, UrlAnalysisResponse } from '@/types/api'
 
@@ -72,11 +72,10 @@ Q6 (testimonial voice): ${answers.q6 ?? ''}
 }
 
 export async function generateProfile(input: GenerateProfileInput): Promise<OnboardResponse> {
-  const message = await anthropic.messages.create({
-    model: DEFAULT_MODEL,
-    max_tokens: DEFAULT_MAX_TOKENS,
-    system: 'You are a social media strategist.',
-    messages: [{ role: 'user', content: buildPrompt(input) }],
+  const message = await callAnthropic({
+    systemPrompt: 'You are a social media strategist.',
+    userMessage: buildPrompt(input),
+    cacheSystemPrompt: false,
   })
 
   return parseJsonResponse<OnboardResponse>(message)

@@ -1,4 +1,4 @@
-import { anthropic, DEFAULT_MODEL } from '@/utils/ai-client'
+import { callAnthropic } from '@/utils/ai-client'
 import { parseJsonResponse } from '@/utils/ai'
 import { buildLanguageValidationRules } from '@/ai/validation/prompts/language-validation-rules'
 import { computeLanguageScore } from '@/ai/validation/content-rules/compute-scores'
@@ -109,22 +109,16 @@ ${input.text}
 ${rules}
 ${instructions}`
 
-  const message = await anthropic.messages.create({
-    model: DEFAULT_MODEL,
-    max_tokens: 2048,
-    system: [{ type: 'text', text: systemText, cache_control: { type: 'ephemeral' } }],
-    messages: [
-      {
-        role: 'user',
-        content: `${contentSection}
+  const message = await callAnthropic({
+    systemPrompt: systemText,
+    userMessage: `${contentSection}
 
 Language: ${language}
 Formality: ${formality}
 
 Return JSON only:
 ${returnFormat}`,
-      },
-    ],
+    maxTokens: 2048,
   })
 
   const parsed = parseJsonResponse<LlmLanguageResponse>(message)

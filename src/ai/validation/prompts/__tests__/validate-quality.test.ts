@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-vi.mock('@/ai/client')
+vi.mock('@/utils/ai-client')
 
-import { mockClaudeResponse, anthropic } from '@/ai/__mocks__/client'
+import { mockClaudeResponse, callAnthropic } from '@/utils/__mocks__/ai-client'
 import { validateQuality } from '../validate-quality'
 
 beforeEach(() => {
@@ -76,8 +76,8 @@ describe('validateQuality — single post', () => {
     mockClaudeResponse(llmResponse())
     await validateQuality({ caption: 'Test' })
 
-    const callArgs = anthropic.messages.create.mock.calls[0]![0]
-    const systemText = (callArgs.system as Array<{ text: string }>)[0]!.text
+    const callArgs = callAnthropic.mock.calls[0]![0]
+    const systemText = callArgs.systemPrompt as string
     expect(systemText).toContain('HOOK VERDICT')
     expect(systemText).toContain('CTA VERDICT')
     expect(systemText).toContain('BRAND CHECKS')
@@ -88,8 +88,8 @@ describe('validateQuality — single post', () => {
     mockClaudeResponse(llmResponse())
     await validateQuality({ caption: 'Test' }, { tone: 'casual', niche: 'fitness', targetAudience: 'gym-goers', languageConfig: { language: 'Bulgarian', formality: 'neutral', nativeCTAPhrases: '', carouselSwipeCues: '', formalityRules: null, languageInstructions: '', openerExamples: [], languageNotes: '' } })
 
-    const callArgs = anthropic.messages.create.mock.calls[0]![0]
-    const systemText = (callArgs.system as Array<{ text: string }>)[0]!.text
+    const callArgs = callAnthropic.mock.calls[0]![0]
+    const systemText = callArgs.systemPrompt as string
     expect(systemText).toContain('BRAND CONTEXT')
     expect(systemText).toContain('fitness')
     expect(systemText).toContain('gym-goers')
@@ -99,8 +99,8 @@ describe('validateQuality — single post', () => {
     mockClaudeResponse(llmResponse())
     await validateQuality({ caption: 'Test' }, { platform: 'Instagram', languageConfig: { language: 'Bulgarian', formality: 'formal', nativeCTAPhrases: '', carouselSwipeCues: '', formalityRules: null, languageInstructions: '', openerExamples: [], languageNotes: '' } })
 
-    const callArgs = anthropic.messages.create.mock.calls[0]![0]
-    const systemText = (callArgs.system as Array<{ text: string }>)[0]!.text
+    const callArgs = callAnthropic.mock.calls[0]![0]
+    const systemText = callArgs.systemPrompt as string
     expect(systemText).toContain('GENERATION CRITERIA')
     expect(systemText).toContain('OPENER')
     expect(systemText).toContain('WORD COUNT')
@@ -123,8 +123,8 @@ describe('validateQuality — single post', () => {
     mockClaudeResponse(llmResponse())
     await validateQuality({ caption: 'Тест пост' }, { languageConfig: { language: 'Bulgarian', formality: 'neutral', nativeCTAPhrases: '', carouselSwipeCues: '', formalityRules: null, languageInstructions: 'Avoid в днешния свят and other calques', openerExamples: [], languageNotes: '' } })
 
-    const callArgs = anthropic.messages.create.mock.calls[0]![0]
-    const systemText = (callArgs.system as Array<{ text: string }>)[0]!.text
+    const callArgs = callAnthropic.mock.calls[0]![0]
+    const systemText = callArgs.systemPrompt as string
     expect(systemText).toContain('Bulgarian')
     expect(systemText).toContain('в днешния свят')
   })
@@ -156,8 +156,8 @@ describe('validateQuality — carousel', () => {
     mockClaudeResponse(llmResponse())
     await validateQuality({ caption: 'Caption', slides: [{ headline: 'H', body: 'B' }] })
 
-    const callArgs = anthropic.messages.create.mock.calls[0]![0]
-    const prompt = callArgs.messages[0]!.content as string
+    const callArgs = callAnthropic.mock.calls[0]![0]
+    const prompt = callArgs.userMessage as string
     expect(prompt).toContain('slides_to_rate')
     expect(prompt).toContain('Headline: H')
     expect(prompt).toContain('Body: B')

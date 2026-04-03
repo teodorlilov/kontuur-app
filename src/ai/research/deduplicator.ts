@@ -1,5 +1,5 @@
 import { NGRAM_SIZE, NGRAM_SIMILARITY_THRESHOLD, ENABLE_LLM_DEDUP } from '@/lib/content-rules/constants'
-import { anthropic, DEFAULT_MODEL, DEFAULT_MAX_TOKENS } from '@/utils/ai-client'
+import { callAnthropic } from '@/utils/ai-client'
 import { parseJsonResponse } from '@/utils/ai'
 
 // ---------------------------------------------------------------------------
@@ -194,11 +194,7 @@ Return JSON only:
 
 The "duplicates" array should contain the index numbers (as strings) of CANDIDATE themes that duplicate an existing theme. Return an empty array if no duplicates found.`
 
-    const message = await anthropic.messages.create({
-      model: DEFAULT_MODEL,
-      max_tokens: DEFAULT_MAX_TOKENS,
-      messages: [{ role: 'user', content: prompt }],
-    })
+    const message = await callAnthropic({ userMessage: prompt })
 
     const result = parseJsonResponse<DedupResult>(message)
     const duplicateIndices = new Set<number>()

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
 
-vi.mock('@/ai/client')
+vi.mock('@/utils/ai-client')
 
 import { Deduplicator } from '../deduplicator'
 

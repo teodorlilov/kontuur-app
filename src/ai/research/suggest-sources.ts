@@ -1,4 +1,4 @@
-import { anthropic, LIGHT_MODEL } from '@/utils/ai-client'
+import { callAnthropic, LIGHT_MODEL } from '@/utils/ai-client'
 import { parseJsonResponse } from '@/utils/ai'
 
 export interface SuggestSourcesInput {
@@ -23,10 +23,10 @@ Return JSON only, no markdown wrapper:
 }
 
 export async function suggestSources(input: SuggestSourcesInput): Promise<SuggestedSource[]> {
-  const message = await anthropic.messages.create({
+  const message = await callAnthropic({
     model: LIGHT_MODEL,
-    max_tokens: 1024,
-    messages: [{ role: 'user', content: buildPrompt(input) }],
+    maxTokens: 1024,
+    userMessage: buildPrompt(input),
   })
 
   return parseJsonResponse<SuggestedSource[]>(message, 'array')

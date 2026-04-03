@@ -1,4 +1,4 @@
-import { anthropic, DEFAULT_MODEL, DEFAULT_MAX_TOKENS } from '@/utils/ai-client'
+import { callAnthropic } from '@/utils/ai-client'
 import { parseJsonResponse } from '@/utils/ai'
 import { allocateByWeight, type WeightedPillar } from '@/lib/clients/content-pillars'
 import type { LanguageConfig } from '@/lib/clients/language-rules'
@@ -41,12 +41,7 @@ export class ResearchPromptBuilder {
     const prompt = this.buildUserPrompt(count, sourceContext)
     const systemText = buildResearchSystemPrompt(this.languageConfig)
 
-    const message = await anthropic.messages.create({
-      model: DEFAULT_MODEL,
-      max_tokens: DEFAULT_MAX_TOKENS,
-      system: [{ type: 'text', text: systemText, cache_control: { type: 'ephemeral' } }],
-      messages: [{ role: 'user', content: prompt }],
-    })
+    const message = await callAnthropic({ systemPrompt: systemText, userMessage: prompt })
 
     return parseJsonResponse<ResearchTopic[]>(message, 'array')
   }

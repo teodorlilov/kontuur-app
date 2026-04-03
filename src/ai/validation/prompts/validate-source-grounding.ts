@@ -1,4 +1,4 @@
-import { anthropic, DEFAULT_MODEL } from '@/utils/ai-client'
+import { callAnthropic } from '@/utils/ai-client'
 import { parseJsonResponse } from '@/utils/ai'
 import { computeGroundingScore } from '@/ai/validation/content-rules/compute-scores'
 
@@ -95,14 +95,9 @@ Rules:
 - If the post makes a claim more specific than the source supports, mark "partially_grounded"
 - An empty flagged_claims array means no specific factual claims were made (acceptable)`
 
-  const message = await anthropic.messages.create({
-    model: DEFAULT_MODEL,
-    max_tokens: 2048,
-    system: [{ type: 'text', text: systemText, cache_control: { type: 'ephemeral' } }],
-    messages: [
-      {
-        role: 'user',
-        content: `SOURCE MATERIAL:
+  const message = await callAnthropic({
+    systemPrompt: systemText,
+    userMessage: `SOURCE MATERIAL:
 <source_excerpt>
 ${sourceExcerpt}
 </source_excerpt>
@@ -113,8 +108,7 @@ ${correctionRules}
 
 Return JSON only:
 ${returnFormat}`,
-      },
-    ],
+    maxTokens: 2048,
   })
 
   const parsed = parseJsonResponse<LlmGroundingResponse>(message)

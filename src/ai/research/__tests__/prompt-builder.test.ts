@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-vi.mock('@/ai/client')
+vi.mock('@/utils/ai-client')
 
-import { anthropic, mockClaudeResponse } from '@/ai/__mocks__/client'
+import { callAnthropic, mockClaudeResponse } from '@/utils/__mocks__/ai-client'
 import { ResearchPromptBuilder } from '../prompts/prompt-builder'
 import type { SourceContext } from '../types'
 
@@ -65,8 +65,8 @@ describe('ResearchPromptBuilder', () => {
     const builder = createBuilder()
     await builder.generateTopics(5, sourceContext)
 
-    const callArgs = anthropic.messages.create.mock.calls[0]![0]
-    const prompt = callArgs.messages[0]!.content as string
+    const callArgs = callAnthropic.mock.calls[0]![0]
+    const prompt = callArgs.userMessage as string
     expect(prompt).toContain('HIIT Benefits')
     expect(prompt).toContain('https://x.com/1')
     expect(prompt).toContain('Ground each theme')
@@ -83,8 +83,8 @@ describe('ResearchPromptBuilder', () => {
     const builder = createBuilder()
     await builder.generateTopics(5, sourceContext)
 
-    const callArgs = anthropic.messages.create.mock.calls[0]![0]
-    const prompt = callArgs.messages[0]!.content as string
+    const callArgs = callAnthropic.mock.calls[0]![0]
+    const prompt = callArgs.userMessage as string
     expect(prompt).toContain('Our Services')
     expect(prompt).toContain('WEBSITE CONTENT')
   })
@@ -99,8 +99,8 @@ describe('ResearchPromptBuilder', () => {
     const builder = createBuilder()
     await builder.generateTopics(5, sourceContext)
 
-    const callArgs = anthropic.messages.create.mock.calls[0]![0]
-    const prompt = callArgs.messages[0]!.content as string
+    const callArgs = callAnthropic.mock.calls[0]![0]
+    const prompt = callArgs.userMessage as string
     expect(prompt).toContain('Botox')
     expect(prompt).toContain('UPLOADED DOCUMENTS')
     expect(prompt).toContain('Ground each theme')
@@ -112,8 +112,8 @@ describe('ResearchPromptBuilder', () => {
     const builder = createBuilder()
     await builder.generateTopics(5)
 
-    const callArgs = anthropic.messages.create.mock.calls[0]![0]
-    const prompt = callArgs.messages[0]!.content as string
+    const callArgs = callAnthropic.mock.calls[0]![0]
+    const prompt = callArgs.userMessage as string
     expect(prompt).toContain('Search for what is trending')
     expect(prompt).not.toContain('Ground each theme')
   })
@@ -123,8 +123,8 @@ describe('ResearchPromptBuilder', () => {
     const builder = createBuilder()
     await builder.generateTopics(5, { rssItems: [], websiteExcerpts: [], fileExcerpts: [] })
 
-    const callArgs = anthropic.messages.create.mock.calls[0]![0]
-    const prompt = callArgs.messages[0]!.content as string
+    const callArgs = callAnthropic.mock.calls[0]![0]
+    const prompt = callArgs.userMessage as string
     expect(prompt).toContain('Search for what is trending')
   })
 
@@ -135,8 +135,8 @@ describe('ResearchPromptBuilder', () => {
     })
     await builder.generateTopics(5)
 
-    const callArgs = anthropic.messages.create.mock.calls[0]![0]
-    const prompt = callArgs.messages[0]!.content as string
+    const callArgs = callAnthropic.mock.calls[0]![0]
+    const prompt = callArgs.userMessage as string
     expect(prompt).toContain('Nutrition')
     expect(prompt).toContain('Workouts')
     expect(prompt).toContain('Recovery')
@@ -147,8 +147,8 @@ describe('ResearchPromptBuilder', () => {
     const builder = createBuilder({ languageConfig: makeLanguageConfig('Bulgarian') })
     await builder.generateTopics(5)
 
-    const callArgs = anthropic.messages.create.mock.calls[0]![0]
-    const prompt = callArgs.messages[0]!.content as string
+    const callArgs = callAnthropic.mock.calls[0]![0]
+    const prompt = callArgs.userMessage as string
     expect(prompt).toContain('Bulgarian')
   })
 
@@ -171,8 +171,8 @@ describe('ResearchPromptBuilder', () => {
     const builder = createBuilder()
     await builder.generateTopics(3)
 
-    const callArgs = anthropic.messages.create.mock.calls[0]![0]
-    const prompt = callArgs.messages[0]!.content as string
+    const callArgs = callAnthropic.mock.calls[0]![0]
+    const prompt = callArgs.userMessage as string
     expect(prompt).toContain('Return exactly 3 findings')
     expect(prompt).not.toContain('Return exactly 5')
   })
@@ -189,8 +189,8 @@ describe('ResearchPromptBuilder', () => {
     const builder = createBuilder()
     await builder.generateTopics(7, sourceContext)
 
-    const callArgs = anthropic.messages.create.mock.calls[0]![0]
-    const prompt = callArgs.messages[0]!.content as string
+    const callArgs = callAnthropic.mock.calls[0]![0]
+    const prompt = callArgs.userMessage as string
     expect(prompt).toContain('identify 7 specific post themes for a')
     expect(prompt).toContain('Return exactly 7 findings')
   })
@@ -200,8 +200,8 @@ describe('ResearchPromptBuilder', () => {
     const builder = createBuilder()
     await builder.generateTopics(5)
 
-    const callArgs = anthropic.messages.create.mock.calls[0]![0]
-    const prompt = callArgs.messages[0]!.content as string
+    const callArgs = callAnthropic.mock.calls[0]![0]
+    const prompt = callArgs.userMessage as string
     expect(prompt).toContain('Return exactly 5 findings')
   })
 
@@ -210,8 +210,8 @@ describe('ResearchPromptBuilder', () => {
     const builder = createBuilder({ postHistory: ['HIIT benefits', 'Protein myths'] })
     await builder.generateTopics(5)
 
-    const callArgs = anthropic.messages.create.mock.calls[0]![0]
-    const prompt = callArgs.messages[0]!.content as string
+    const callArgs = callAnthropic.mock.calls[0]![0]
+    const prompt = callArgs.userMessage as string
     expect(prompt).toContain('RECENTLY COVERED TOPICS')
     expect(prompt).toContain('HIIT benefits')
     expect(prompt).toContain('Protein myths')
@@ -234,8 +234,8 @@ describe('ResearchPromptBuilder', () => {
     })
     await builder.generateTopics(5, sourceContext)
 
-    const callArgs = anthropic.messages.create.mock.calls[0]![0]
-    const prompt = callArgs.messages[0]!.content as string
+    const callArgs = callAnthropic.mock.calls[0]![0]
+    const prompt = callArgs.userMessage as string
     expect(prompt).toContain('HYBRID SOURCING')
     expect(prompt).toContain('source_url, source_title, and source_type to null')
     expect(prompt).toContain('fitness')
@@ -246,8 +246,8 @@ describe('ResearchPromptBuilder', () => {
     const builder = createBuilder()
     await builder.generateTopics(5)
 
-    const callArgs = anthropic.messages.create.mock.calls[0]![0]
-    const prompt = callArgs.messages[0]!.content as string
+    const callArgs = callAnthropic.mock.calls[0]![0]
+    const prompt = callArgs.userMessage as string
     expect(prompt).not.toContain('HYBRID SOURCING')
     expect(prompt).toContain('Search for what is trending')
   })

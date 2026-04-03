@@ -1,4 +1,4 @@
-import { anthropic, DEFAULT_MODEL } from '@/utils/ai-client'
+import { callAnthropic } from '@/utils/ai-client'
 import { parseJsonResponse } from '@/utils/ai'
 import {
   computeQualityScores,
@@ -268,19 +268,13 @@ ${input.caption}
   "health_compliant": boolean | null
 }`
 
-  const message = await anthropic.messages.create({
-    model: DEFAULT_MODEL,
-    max_tokens: 1024,
-    system: [{ type: 'text', text: base, cache_control: { type: 'ephemeral' } }],
-    messages: [
-      {
-        role: 'user',
-        content: `${contentSection}
+  const message = await callAnthropic({
+    systemPrompt: base,
+    userMessage: `${contentSection}
 
 Return JSON only:
 ${returnFormat}`,
-      },
-    ],
+    maxTokens: 1024,
   })
 
   const parsed = parseJsonResponse<LlmQualityResponse>(message)

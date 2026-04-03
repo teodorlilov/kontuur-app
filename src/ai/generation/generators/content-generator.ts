@@ -1,5 +1,5 @@
 import type { Message } from '@anthropic-ai/sdk/resources'
-import { anthropic, DEFAULT_MODEL, DEFAULT_MAX_TOKENS } from '@/utils/ai-client'
+import { callAnthropic } from '@/utils/ai-client'
 import {
   buildStaticSystemPrompt,
   buildClientProfile,
@@ -113,11 +113,6 @@ export abstract class ContentGenerator<
    * Private — subclasses never call this directly.
    */
   private async callAnthropic(systemPrompt: string, userMessage: string): Promise<Message> {
-    return anthropic.messages.create({
-      model: DEFAULT_MODEL,
-      max_tokens: DEFAULT_MAX_TOKENS,
-      system: [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } }],
-      messages: [{ role: 'user', content: userMessage }],
-    })
+    return callAnthropic({ systemPrompt, userMessage })
   }
 }

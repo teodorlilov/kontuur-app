@@ -1,6 +1,6 @@
 import type Anthropic from '@anthropic-ai/sdk'
 import type { UrlAnalysisResponse } from '@/types/api'
-import { anthropic, LIGHT_MODEL } from '@/utils/ai-client'
+import { callAnthropic, LIGHT_MODEL } from '@/utils/ai-client'
 import { buildAnalyzeUrlPrompt, type AnalyzeUrlInput } from '@/ai/analyze-url/analyze-url'
 import { buildPillarsPrompt, type GeneratePillarsInput, type GeneratePillarsResult } from '@/ai/generate-pillars/generate-pillars'
 
@@ -57,20 +57,20 @@ export function sanitizeAndParseJson<T>(raw: string, fallback: T): T {
 }
 
 export async function analyzeUrl(input: AnalyzeUrlInput): Promise<UrlAnalysisResponse> {
-  const message = await anthropic.messages.create({
+  const message = await callAnthropic({
     model: LIGHT_MODEL,
-    max_tokens: 2048,
-    messages: [{ role: 'user', content: buildAnalyzeUrlPrompt(input) }],
+    maxTokens: 2048,
+    userMessage: buildAnalyzeUrlPrompt(input),
   })
 
   return parseJsonResponse<UrlAnalysisResponse>(message)
 }
 
 export async function generatePillars(input: GeneratePillarsInput): Promise<GeneratePillarsResult> {
-  const message = await anthropic.messages.create({
+  const message = await callAnthropic({
     model: LIGHT_MODEL,
-    max_tokens: 1024,
-    messages: [{ role: 'user', content: buildPillarsPrompt(input) }],
+    maxTokens: 1024,
+    userMessage: buildPillarsPrompt(input),
   })
 
   return parseJsonResponse<GeneratePillarsResult>(message)
