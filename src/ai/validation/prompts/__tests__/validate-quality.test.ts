@@ -86,7 +86,7 @@ describe('validateQuality — single post', () => {
 
   it('includes brand context when QualityContext provided', async () => {
     mockClaudeResponse(llmResponse())
-    await validateQuality({ caption: 'Test' }, { tone: 'casual', niche: 'fitness', targetAudience: 'gym-goers', languageConfig: { language: 'Bulgarian', formality: 'neutral', nativeCTAPhrases: '', carouselSwipeCues: '', formalityRules: null, languageInstructions: '', openerExamples: [], languageNotes: '' } })
+    await validateQuality({ caption: 'Test' }, { tone: 'casual', niche: 'fitness', targetAudience: 'gym-goers', languageConfig: { language: 'Bulgarian', formality: 'neutral', carouselSwipeCues: '', formalityRules: null, languageInstructions: '', languageNotes: '' } })
 
     const callArgs = callAnthropic.mock.calls[0]![0]
     const systemText = callArgs.systemPrompt as string
@@ -97,7 +97,7 @@ describe('validateQuality — single post', () => {
 
   it('includes criteria checklist in system prompt', async () => {
     mockClaudeResponse(llmResponse())
-    await validateQuality({ caption: 'Test' }, { platform: 'Instagram', languageConfig: { language: 'Bulgarian', formality: 'formal', nativeCTAPhrases: '', carouselSwipeCues: '', formalityRules: null, languageInstructions: '', openerExamples: [], languageNotes: '' } })
+    await validateQuality({ caption: 'Test' }, { platform: 'Instagram', languageConfig: { language: 'Bulgarian', formality: 'formal', carouselSwipeCues: '', formalityRules: null, languageInstructions: '', languageNotes: '' } })
 
     const callArgs = callAnthropic.mock.calls[0]![0]
     const systemText = callArgs.systemPrompt as string
@@ -121,7 +121,7 @@ describe('validateQuality — single post', () => {
 
   it('includes language-specific AI tells when languageConfig provided', async () => {
     mockClaudeResponse(llmResponse())
-    await validateQuality({ caption: 'Тест пост' }, { languageConfig: { language: 'Bulgarian', formality: 'neutral', nativeCTAPhrases: '', carouselSwipeCues: '', formalityRules: null, languageInstructions: 'Avoid в днешния свят and other calques', openerExamples: [], languageNotes: '' } })
+    await validateQuality({ caption: 'Тест пост' }, { languageConfig: { language: 'Bulgarian', formality: 'neutral', carouselSwipeCues: '', formalityRules: null, languageInstructions: 'Avoid в днешния свят and other calques', languageNotes: '' } })
 
     const callArgs = callAnthropic.mock.calls[0]![0]
     const systemText = callArgs.systemPrompt as string

@@ -5,8 +5,6 @@
  */
 
 import {
-  formatBannedOpeners,
-  formatAllowedOpeners,
   formatWordCount,
   formatHashtagRules,
   formatHealthRules,
@@ -55,12 +53,10 @@ export function buildStaticSystemPrompt(): string {
   if (_cachedStaticPrompt) return _cachedStaticPrompt
   _cachedStaticPrompt = `You are a senior social media copywriter. You write for humans, not algorithms.
 
-POST STRUCTURE — pick ONE from the ALLOWED STRUCTURES in the client brief.
+POST STRUCTURE — pick ONE from the POST STRUCTURES in the client brief.
 NEVER use 'problem → solution → CTA'. The reader should NOT predict the structure after the first line.
 
-OPENER — the most important line. Must be one of the ALLOWED OPENERS in the client brief.
-NEVER start with:
-${formatBannedOpeners()}
+OPENER — the most important line. Choose whatever stops scrolling for this specific theme and register.
 NEVER bury the lead — start with the payoff, not the context.
 
 WRITING RULES:
@@ -76,10 +72,10 @@ AI-generated text does these things — never do them:
 ${formatAiTellPatterns()}
 
 SELF-CHECK (before returning your response):
-- Does the opener make someone stop scrolling, or does it confirm what they already know? If the latter — rewrite the opener.
-- If source material was provided: every specific detail MUST come from that source. Pick ONE angle — do not summarize the whole source.
-- If no source: include at least one detail that only this specific business could produce.
-- Can the reader predict the post's structure after the first line? If yes — restructure.`
+- Does the opener make someone stop scrolling? If not — rewrite it.
+- Can the reader predict the post's structure after the first line? If yes — restructure.
+- Could this post be written about any business in the niche? If yes — add specificity.
+- If source was provided: does the post focus on ONE angle or summarize?`
   return _cachedStaticPrompt
 }
 
@@ -95,18 +91,7 @@ export function buildClientProfile(input: ClientProfileInput): string {
   const lc = client.languageConfig
   const sections: string[] = []
 
-  // 1. ALLOWED OPENERS — model reads these before committing
-  sections.push(`ALLOWED OPENERS for ${lc.formality} register:
-${formatAllowedOpeners(lc)}`)
-
-  // 2. ALLOWED STRUCTURES — model reads these before committing
-  sections.push(`ALLOWED STRUCTURES for ${lc.formality} register:
-${formatStructureDescriptions(lc.formality)}
-
-CRITICAL: The reader must NOT predict the structure after the first line.
-Pick the structure that creates the most unexpected opening for this theme.`)
-
-  // 3. CLIENT BRIEF
+  // 1. CLIENT PROFILE
   sections.push(`CLIENT PROFILE:
 Client: ${client.name} | Niche: ${client.niche} | Platform: ${input.platform}
 Language: ${lc.language} | Formality: ${lc.formality}
@@ -118,19 +103,26 @@ SPECIFICITY REQUIREMENT:
 The post must contain at least one detail that could only come from ${client.name} — not any similar business in the same field.
 Generic niche observations any competitor could post will score poorly.`)
 
-  // 4. REGISTER RULES + LANGUAGE INSTRUCTIONS
+  // 2. REGISTER RULES + LANGUAGE INSTRUCTIONS
   sections.push(buildLanguagePrompt(lc))
 
-  // 5. BRAND VOICE
+  // 3. BRAND VOICE
   sections.push(buildBrandVoicePrompt(client))
 
-  // 6. PLATFORM LIMITS
+  // 4. POST STRUCTURES
+  sections.push(`POST STRUCTURES:
+${formatStructureDescriptions()}
+
+CRITICAL: The reader must NOT predict the structure after the first line.
+Pick the structure that creates the most unexpected opening for this theme.`)
+
+  // 5. PLATFORM LIMITS
   sections.push(`PLATFORM LIMITS:
 Word count: ${formatWordCount(input.platform)} | Hashtags: ${formatHashtagRules(input.platform)}`)
 
-  // 7. HEALTH RULES — conditional, never shown for non-health clients
+  // 6. HEALTH RULES — conditional, never shown for non-health clients
   if (client.isHealthNiche) {
-    sections.push(`HEALTH CONTENT RULES (NON-NEGOTIABLE — override other instructions when they conflict):
+    sections.push(`HEALTH CONTENT RULES (NON-NEGOTIABLE — override ALL other instructions, including source fidelity):
 ${formatHealthRules()}
 If unsure whether a detail is a medical claim or dosage — omit it.
 When using source material: the source may contain medical claims. Filter them out — do not reproduce them because they appear in the source.`)
@@ -156,11 +148,6 @@ export function buildLanguagePrompt(config: LanguageConfig): string {
   // Language instructions from DB (language_instructions column)
   if (config.languageInstructions) {
     sections.push(config.languageInstructions)
-  }
-
-  // CTA phrases from DB (native_cta_phrases column)
-  if (config.nativeCTAPhrases) {
-    sections.push(`Use only these approved CTAs: ${config.nativeCTAPhrases}`)
   }
 
   // Per-client language notes from brand_profiles

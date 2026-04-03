@@ -30,13 +30,11 @@ ${urlLine}
 CRITICAL SOURCE FIDELITY RULES:
 - Every statistic, number, price, feature, or specific claim MUST come from the source material above.
 - Do NOT invent facts, numbers, or statistics that are not in the source.
-- If the source does not mention a detail (floor number, view, neighborhood character, building type, specific amenity), you MUST NOT mention it. Absence of information is not creative license — it is a boundary.
-- Do NOT extrapolate, infer, or "fill in" details that seem plausible based on the listing type, location, or niche. If the source says "apartment in кв. Беломорски" and nothing about the view — do not mention any view.
+- If the source does not mention a specific detail, you MUST NOT mention it. Absence of information is not creative license — it is a boundary.
+- Do NOT extrapolate or "fill in" details that seem plausible but are not stated in the source.
 - Prefer being less specific over being fabricated-specific. A post with fewer details that are all true is better than a vivid post with invented facts.
 - Write ONLY about what the source explicitly states.
-- CRITICAL: This is a social media post, NOT an article summary. Pick ONE specific angle, detail, or insight from the source — the one that would make someone stop scrolling. Do NOT try to cover every point the source mentions.
-- Structure your post using the post structures listed above, NOT the structure of the source article. If the source is organized as "intro → explanation → protocol → indications," your post must NOT follow that same flow.
-- If you find yourself covering more than 2-3 distinct facts from the source, you are summarizing. Stop. Cut to ONE angle and develop it with voice, personality, and the chosen post structure.
+- CRITICAL: Pick ONE specific angle from the source — do not summarize. Structure the post using the post structures above, NOT the source's structure. If covering more than 2-3 facts, stop and refocus.
 ${linkInstruction}
 `
 }

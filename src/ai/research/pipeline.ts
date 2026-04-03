@@ -1,5 +1,5 @@
 import { parsePillars, type WeightedPillar } from '@/lib/clients/content-pillars'
-import { toCTAPhrases, toCarouselSwipeCues, toFormalityRulesData, toOpenerExamples, type LanguageConfig } from '@/lib/clients/language-rules'
+import { toCarouselSwipeCues, toFormalityRulesData, type LanguageConfig } from '@/lib/clients/language-rules'
 import type { Json } from '@/types/database'
 import { createAllSources } from './sources/source-factory'
 import { RssResearchSource } from './sources/rss-source'
@@ -145,6 +145,12 @@ export class ResearchPipeline {
       : DEFAULT_STRATEGY
     const filteredSources = this.filterSourcesByStrategy(sources, strategy)
 
+    console.log(`Client Data is 
+    languageConfig ${{languageConfig}}
+    contentPillars ${{contentPillars}}
+    strategy ${{strategy}}
+    filteredSources ${{filteredSources}}
+    `, )
     return { contentPillars, history, sources: filteredSources, strategy, languageConfig }
   }
 
@@ -153,11 +159,9 @@ export class ResearchPipeline {
     return {
       language: this.ctx.language || 'English',
       formality: 'neutral',
-      nativeCTAPhrases: '',
       carouselSwipeCues: '',
       formalityRules: null,
       languageInstructions: '',
-      openerExamples: [],
       languageNotes: '',
     }
   }
@@ -226,6 +230,9 @@ export class ResearchPipeline {
       }
     }
 
+    console.log(`History is 
+      postTopics ${[...postTopics]}
+      themeDescr ${[...themeDescriptions]}`)
     return [...postTopics, ...themeDescriptions]
   }
 
@@ -255,11 +262,9 @@ export class ResearchPipeline {
     return {
       language: defaults.language,
       formality: profile?.language_formality ?? 'neutral',
-      nativeCTAPhrases: toCTAPhrases(langRules?.native_cta_phrases),
       carouselSwipeCues: toCarouselSwipeCues(langRules?.native_cta_phrases),
       formalityRules: toFormalityRulesData(langRules?.formality_rules),
       languageInstructions: langRules?.language_instructions ?? '',
-      openerExamples: toOpenerExamples(langRules?.opener_examples),
       languageNotes: profile?.language_notes ?? '',
     }
   }

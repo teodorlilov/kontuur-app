@@ -208,7 +208,7 @@ export async function runGenerationBatch(ctx: GenerationRunContext): Promise<Gen
       label: opts.label,
       platform: ctx.platform,
       sourceContext: buildGroundingContext(theme),
-      qualityContext: sharedQualityContext,
+      qualityContext: { ...sharedQualityContext, theme: theme.description },
     })
   }
 

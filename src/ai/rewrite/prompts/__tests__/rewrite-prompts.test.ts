@@ -25,11 +25,9 @@ function makeClient(overrides: Partial<ClientContext> = {}): ClientContext {
     languageConfig: {
       language: 'Bulgarian',
       formality: 'neutral',
-      nativeCTAPhrases: '',
       carouselSwipeCues: '',
       formalityRules: null,
       languageInstructions: '',
-      openerExamples: [],
       languageNotes: '',
     },
     ...overrides,
@@ -87,11 +85,9 @@ describe('rewriteCaption', () => {
         languageConfig: {
           language: 'Spanish',
           formality: 'formal',
-          nativeCTAPhrases: '',
           carouselSwipeCues: '',
           formalityRules: null,
           languageInstructions: '',
-          openerExamples: [],
           languageNotes: '',
         },
       }),

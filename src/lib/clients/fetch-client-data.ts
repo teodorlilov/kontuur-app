@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { toCTAPhrases, toCarouselSwipeCues, toFormalityRulesData, toOpenerExamples } from '@/lib/clients/language-rules'
+import { toCarouselSwipeCues, toFormalityRulesData } from '@/lib/clients/language-rules'
 import type { LanguageConfig } from '@/lib/clients/language-rules'
 import { parsePillars, type WeightedPillar } from '@/lib/clients/content-pillars'
 import { MAX_POST_HISTORY_COUNT } from '@/utils/constants'
@@ -39,11 +39,9 @@ export interface ClientData {
     languageNotes: string
   }
   languageRules: {
-    nativeCTAPhrases: string
     carouselSwipeCues: string
     formalityRules: ReturnType<typeof toFormalityRulesData>
     languageInstructions: string
-    openerExamples: ReturnType<typeof toOpenerExamples>
   }
   postHistory: string[]
 }
@@ -75,11 +73,9 @@ export function toClientContext(data: ClientData): ClientContext {
     languageConfig: {
       language: data.client.language,
       formality: data.profile.formality,
-      nativeCTAPhrases: data.languageRules.nativeCTAPhrases,
       carouselSwipeCues: data.languageRules.carouselSwipeCues,
       formalityRules: data.languageRules.formalityRules,
       languageInstructions: data.languageRules.languageInstructions,
-      openerExamples: data.languageRules.openerExamples,
       languageNotes: data.profile.languageNotes,
     },
   }
@@ -168,11 +164,9 @@ export async function fetchClientData(
         languageNotes: profile?.language_notes ?? '',
       },
       languageRules: {
-        nativeCTAPhrases: toCTAPhrases(langRules?.native_cta_phrases),
         carouselSwipeCues: toCarouselSwipeCues(langRules?.native_cta_phrases),
         formalityRules: toFormalityRulesData(langRules?.formality_rules),
         languageInstructions: langRules?.language_instructions ?? '',
-        openerExamples: toOpenerExamples(langRules?.opener_examples),
       },
       postHistory,
     },

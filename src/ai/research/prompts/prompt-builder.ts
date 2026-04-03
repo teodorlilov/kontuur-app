@@ -84,6 +84,10 @@ export class ResearchPromptBuilder {
 
     const message = await callAnthropic({ systemPrompt: systemText, userMessage: prompt })
 
+    console.log("Research Prompt", prompt)
+    console.log("Research System Prompt", systemText)
+    console.log("Anthropic message", message)
+
     return parseJsonResponse<ResearchTopic[]>(message, 'array')
   }
 

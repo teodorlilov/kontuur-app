@@ -24,11 +24,9 @@ function makeLanguageConfig(language = 'English'): LanguageConfig {
   return {
     language,
     formality: 'neutral',
-    nativeCTAPhrases: '',
     carouselSwipeCues: '',
     formalityRules: null,
     languageInstructions: '',
-    openerExamples: [],
     languageNotes: '',
   }
 }

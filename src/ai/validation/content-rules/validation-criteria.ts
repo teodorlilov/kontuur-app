@@ -4,8 +4,6 @@ import {
   MAX_CONSECUTIVE_SIMILAR_LENGTH,
   CTA_EXEMPT_STRUCTURES,
   PLATFORM_LIMITS,
-  formatAllowedOpeners,
-  formatBannedOpeners,
   formatStructures,
   formatWordCount,
   formatHashtagRules,
@@ -55,11 +53,11 @@ export interface VerdictDefinition {
 }
 
 export const HOOK_VERDICTS: readonly VerdictDefinition[] = [
-  { id: 'stops_scroll', score: 10, description: 'Uses one of the allowed opener types brilliantly with specific detail — reader MUST keep reading' },
-  { id: 'clear_value', score: 8, description: 'Uses one of the allowed opener types but could be sharper or more specific' },
-  { id: 'generic', score: 5, description: "Doesn't clearly match any allowed opener type, or is too vague to stop scrolling" },
-  { id: 'buries_lead', score: 3, description: 'Uses a banned opener type before eventually getting to value' },
-  { id: 'no_hook', score: 1, description: 'Uses a banned opener type with no value at all, or opens with filler' },
+  { id: 'stops_scroll', score: 10, description: 'Opener is brilliant, specific, and perfectly matched to theme and register — reader MUST keep reading' },
+  { id: 'clear_value', score: 8, description: 'Opener is effective but could be sharper or more specific to the theme' },
+  { id: 'generic', score: 5, description: 'Opener is too vague or generic to stop scrolling for this specific theme' },
+  { id: 'buries_lead', score: 3, description: 'Opens with filler or context before eventually getting to value' },
+  { id: 'no_hook', score: 1, description: 'Opens with filler, a general truth, or has no value at all' },
 ] as const
 
 export const CTA_VERDICTS: readonly VerdictDefinition[] = [
@@ -123,6 +121,7 @@ export function buildCriteriaChecklist(ctx: {
   hasSource?: boolean
   isHealthClient?: boolean
   languageConfig?: LanguageConfig
+  theme?: string
 }): string {
   const sections: string[] = []
   const lc = ctx.languageConfig
@@ -130,13 +129,10 @@ export function buildCriteriaChecklist(ctx: {
 
   sections.push(`GENERATION CRITERIA — evaluate compliance:
 
-[] OPENER: Must be one of:
-${formatAllowedOpeners(lc)}
-   BANNED openers:
-${formatBannedOpeners()}
+[] OPENER: Must stop scrolling and match the ${formality} register. Effective and specific to the theme${ctx.theme ? ` "${ctx.theme}"` : ''}.
 
 [] STRUCTURE: Must NOT be predictable problem→solution→CTA.
-   Allowed structures: ${formatStructures(formality)}
+   Allowed structures: ${formatStructures()}
 
 [] SENTENCES: At least one sentence under ${MIN_SHORT_SENTENCE_WORDS} words
    and one over ${MIN_LONG_SENTENCE_WORDS} words. Never ${MAX_CONSECUTIVE_SIMILAR_LENGTH + 1}

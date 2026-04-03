@@ -14,11 +14,9 @@ function makeLanguageConfig(overrides: Partial<LanguageConfig> = {}): LanguageCo
   return {
     language: 'Bulgarian',
     formality: 'neutral',
-    nativeCTAPhrases: '',
     carouselSwipeCues: '',
     formalityRules: null,
     languageInstructions: '',
-    openerExamples: [],
     languageNotes: '',
     ...overrides,
   }

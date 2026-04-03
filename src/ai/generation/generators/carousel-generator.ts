@@ -42,7 +42,7 @@ MAIN CAPTION: max 3 lines, teases carousel, ends with an approved swipe cue, 1-3
 Theme: ${input.theme}
 You MUST return exactly ${input.slideCount} slides in the JSON array.
 
-First choose your structure and opener for the main caption, then write.
+First choose your structure for the main caption, then write.
 FOR EACH SLIDE: provide a design note (1-2 sentences) for Canva.
 
 Return JSON only:

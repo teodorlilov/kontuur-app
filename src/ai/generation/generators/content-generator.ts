@@ -91,7 +91,7 @@ export abstract class ContentGenerator<
     const today = `Today's date: ${new Date().toISOString().split('T')[0]}`
     const directive = this.buildDirective(input)
 
-    return [profile, history, source, angleDiff, today, directive]
+    return [profile, source, history, angleDiff, today, directive]
       .filter(Boolean)
       .join('\n\n')
   }
@@ -113,6 +113,10 @@ export abstract class ContentGenerator<
    * Private — subclasses never call this directly.
    */
   private async callAnthropic(systemPrompt: string, userMessage: string): Promise<Message> {
+
+    console.log('Antrhopic System Prompt',systemPrompt)
+    console.log('Antrhopic User Prompt',userMessage)
+
     return callAnthropic({ systemPrompt, userMessage })
   }
 }

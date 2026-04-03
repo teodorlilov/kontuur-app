@@ -12,10 +12,6 @@ import {
   formatCtaVerdicts,
   buildCriteriaChecklist,
 } from '@/ai/validation/content-rules/validation-criteria'
-import {
-  formatAllowedOpeners,
-  formatBannedOpeners,
-} from '@/ai/generation/generation-criteria'
 import type { HookVerdict, CtaVerdict } from '@/types/api'
 import type { LanguageConfig } from '@/lib/clients/language-rules'
 
@@ -31,6 +27,7 @@ export interface QualityContext {
   targetPillar?: string
   isHealthClient?: boolean
   languageConfig?: LanguageConfig
+  theme?: string
 }
 
 export interface QualityIssue {
@@ -167,11 +164,15 @@ ${language}-specific AI patterns to also check:
 function buildBasePrompt(brandCtx: string, langTells: string, ctx?: QualityContext): string {
   const lc = ctx?.languageConfig
 
+  const formality = lc?.formality ?? 'neutral'
+  const themeLabel = ctx?.theme ? ` for the theme "${ctx.theme}"` : ''
+
   const criteriaChecklist = buildCriteriaChecklist({
     platform: ctx?.platform,
     hasSource: !!ctx?.sourceExcerpt,
     isHealthClient: ctx?.isHealthClient,
     languageConfig: lc,
+    theme: ctx?.theme,
   })
 
   return `You are a social media content quality assessor and AI-content detector.
@@ -182,13 +183,7 @@ ${formatAiTellPatterns()}
 Only flag a pattern when it is clearly present and harms readability or authenticity. Do not flag marginal or borderline cases — when in doubt, do not flag.
 ${langTells}
 
-HOOK VERDICT — Evaluate the opening against these rules:
-ALLOWED opener types:
-${formatAllowedOpeners(lc)}
-
-BANNED opener types:
-${formatBannedOpeners()}
-
+HOOK VERDICT — Does the opener stop scrolling${themeLabel} in ${formality} register?
 ${formatHookVerdicts()}
 
 CTA VERDICT — The post was allowed ONE CTA maximum, specific and low-pressure:
