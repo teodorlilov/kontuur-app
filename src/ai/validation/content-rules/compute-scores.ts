@@ -12,8 +12,7 @@ import {
   HUMAN_SCORE_PENALTIES,
   CRITERIA_PENALTIES,
   CTA_EXEMPT_STRUCTURES,
-  PLATFORM_WORD_COUNTS,
-  PLATFORM_HASHTAG_LIMITS,
+  PLATFORM_LIMITS,
 } from '@/ai/validation/content-rules/validation-criteria'
 import type { SentenceVarietyResult } from '@/ai/validation/content-rules/text-analysis'
 import type { HookVerdict, CtaVerdict, SlopDetection } from '@/types/api'
@@ -148,16 +147,16 @@ export function computeCriteriaScore(d: CriteriaDetections): number {
 }
 
 function computeWordCountPenalty(wordCount: number, platform: string): number {
-  const limits = PLATFORM_WORD_COUNTS[platform]
+  const limits = PLATFORM_LIMITS[platform]
   if (!limits) return 0
-  if (wordCount < limits.min || wordCount > limits.max) return CRITERIA_PENALTIES.WORD_COUNT_VIOLATION
+  if (wordCount < limits.wordCount.min || wordCount > limits.wordCount.max) return CRITERIA_PENALTIES.WORD_COUNT_VIOLATION
   return 0
 }
 
 function computeHashtagPenalty(hashtagCount: number, platform: string): number {
-  const limits = PLATFORM_HASHTAG_LIMITS[platform]
+  const limits = PLATFORM_LIMITS[platform]
   if (!limits) return 0
-  if (hashtagCount > limits.max) return CRITERIA_PENALTIES.HASHTAG_VIOLATION
+  if (hashtagCount > limits.hashtags.max) return CRITERIA_PENALTIES.HASHTAG_VIOLATION
   return 0
 }
 

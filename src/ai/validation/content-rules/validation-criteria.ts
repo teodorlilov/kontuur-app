@@ -3,22 +3,20 @@ import {
   MIN_LONG_SENTENCE_WORDS,
   MAX_CONSECUTIVE_SIMILAR_LENGTH,
   CTA_EXEMPT_STRUCTURES,
-  PLATFORM_WORD_COUNTS,
-  PLATFORM_HASHTAG_LIMITS,
+  PLATFORM_LIMITS,
   formatAllowedOpeners,
   formatBannedOpeners,
   formatStructures,
   formatWordCount,
   formatHashtagRules,
   formatHealthRules,
-  type PlatformWordCount,
-  type PlatformHashtagLimit,
+  type PlatformLimits,
 } from '@/ai/generation/generation-criteria'
 import { formatFormalityRules } from '@/ai/generation/prompts/formality-guidance'
 import type { LanguageConfig } from '@/lib/clients/language-rules'
 
-export { CTA_EXEMPT_STRUCTURES, PLATFORM_WORD_COUNTS, PLATFORM_HASHTAG_LIMITS }
-export type { PlatformWordCount, PlatformHashtagLimit }
+export { CTA_EXEMPT_STRUCTURES, PLATFORM_LIMITS }
+export type { PlatformLimits }
 
 // ---- AI Tell Patterns ----
 // 6 concrete structural patterns — each fires on a distinct signal.

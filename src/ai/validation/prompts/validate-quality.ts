@@ -55,7 +55,6 @@ interface QualityBase {
   ai_tells: string[]
   worst_offending_phrase: string | null
   issues: QualityIssue[]
-  // New detection fields
   opener_follows_rules: boolean
   opener_violation: string | null
   structure_is_predictable: boolean

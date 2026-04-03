@@ -1,42 +1,13 @@
 import type { LanguageConfig } from '@/lib/clients/language-rules'
 
-// ---- Opener Rules ----
-
-/** Banned opener types — hardcoded because these are universal anti-patterns, not language-specific. */
-export const BANNED_OPENER_TYPES: readonly { id: string; description: string }[] = [
-  { id: 'general_truth', description: 'A general truth about the topic' },
-  { id: 'if_generic', description: '"If" followed by a generic condition' },
-  { id: 'business_name', description: 'The business name or "We"' },
-  { id: 'seasonal', description: 'A seasonal observation ("Spring is here", "It is that time of year")' },
-  { id: 'did_you_know', description: 'A question starting with "Did you know"' },
-] as const
-
-// ---- Post Structures ----
-export const ALL_POST_STRUCTURES: readonly string[] = [
-  'STORY-FIRST', 'MYTH-BREAKER', 'CLIENT-WORLD SNAPSHOT',
-  'OBSERVATION', 'CONFESSION', 'SINGLE VIVID IMAGE',
-] as const
-
-export const CTA_EXEMPT_STRUCTURES: readonly string[] = [
-  'MYTH-BREAKER', 'CONFESSION',
-] as const
-
-// Formal: exclude CONFESSION (too personal) and STORY-FIRST (casual anecdote)
-// Casual and neutral: all six structures available
-export const POST_STRUCTURES_BY_FORMALITY: Record<string, readonly string[]> = {
-  formal: ['MYTH-BREAKER', 'CLIENT-WORLD SNAPSHOT', 'OBSERVATION', 'SINGLE VIVID IMAGE'],
-  casual: ALL_POST_STRUCTURES,
-  neutral: ALL_POST_STRUCTURES,
-} as const
-
-export function getAllowedStructures(formality: string): readonly string[] {
-  return POST_STRUCTURES_BY_FORMALITY[formality] ?? ALL_POST_STRUCTURES
+export interface PlatformLimits {
+  readonly wordCount: { readonly min: number; readonly max: number }
+  readonly hashtags: { readonly max: number; readonly rule: string }
 }
 
-// ---- Structure Descriptions ----
-// Moved here from prompt-sections.ts — single source of truth for both generator and evaluator.
-// Cross-ref: openers by formality (above), evaluation criteria (evaluation-criteria.ts),
-export const STRUCTURE_DESCRIPTIONS: Record<string, string> = {
+// Structure descriptions — single source of truth for both generator and evaluator.
+// Cross-ref: openers by formality (below), evaluation criteria (evaluation-criteria.ts).
+const STRUCTURE_DESCRIPTIONS: Record<string, string> = {
   'STORY-FIRST': `STORY-FIRST: Start with a specific moment or scene from the client's world — something observed, a pattern noticed, a before/after. Let the reader draw their own conclusion. Close with a question or soft invitation — no hard sell.
    FORMAL: Frame as a professional observation or third-person account, not a personal anecdote. CASUAL: First-person encouraged.`,
   'MYTH-BREAKER': `MYTH-BREAKER: Name a common belief in the niche that most people hold. Explain why it is wrong using one specific, concrete detail — a number, a case, an observation. Leave the reader with a new mental model. No CTA needed.
@@ -51,55 +22,46 @@ export const STRUCTURE_DESCRIPTIONS: Record<string, string> = {
    Works at any register.`,
 } as const
 
-export function formatStructureDescriptions(formality?: string): string {
-  const allowed = getAllowedStructures(formality ?? 'neutral')
-  return allowed
-    .map((s, i) => `${i + 1}. ${STRUCTURE_DESCRIPTIONS[s] ?? s}`)
-    .join('\n\n')
-}
+const ALL_POST_STRUCTURES: readonly string[] = Object.keys(STRUCTURE_DESCRIPTIONS)
+
+export const CTA_EXEMPT_STRUCTURES: readonly string[] = [
+  'MYTH-BREAKER', 'CONFESSION',
+] as const
+
+// Formal: exclude CONFESSION (too personal) and STORY-FIRST (casual anecdote)
+// Casual and neutral: all six structures available
+const POST_STRUCTURES_BY_FORMALITY: Record<string, readonly string[]> = {
+  formal: ['MYTH-BREAKER', 'CLIENT-WORLD SNAPSHOT', 'OBSERVATION', 'SINGLE VIVID IMAGE'],
+  casual: ALL_POST_STRUCTURES,
+  neutral: ALL_POST_STRUCTURES,
+} as const
 
 // ---- Sentence Variety ----
 export const MIN_SHORT_SENTENCE_WORDS = 6
 export const MIN_LONG_SENTENCE_WORDS = 20
 export const MAX_CONSECUTIVE_SIMILAR_LENGTH = 2
 
-// ---- Word Count by Platform ----
-export interface PlatformWordCount {
-  readonly min: number
-  readonly max: number
-}
-
-export const PLATFORM_WORD_COUNTS: Record<string, PlatformWordCount> = {
-  'Instagram': { min: 150, max: 220 },
-  'Facebook': { min: 150, max: 300 },
-  'LinkedIn': { min: 200, max: 350 },
-  'X / Twitter': { min: 1, max: 50 },
-  'TikTok': { min: 50, max: 150 },
+// ---- Platform Limits ----
+export const PLATFORM_LIMITS: Record<string, PlatformLimits> = {
+  'Instagram': { wordCount: { min: 150, max: 220 }, hashtags: { max: 3, rule: 'niche/location specific at end' } },
+  'Facebook': { wordCount: { min: 150, max: 300 }, hashtags: { max: 2, rule: 'only if tied to event, default none' } },
+  'LinkedIn': { wordCount: { min: 200, max: 350 }, hashtags: { max: 5, rule: 'professional niche hashtags' } },
+  'X / Twitter': { wordCount: { min: 1, max: 50 }, hashtags: { max: 2, rule: 'for trending topics only' } },
+  'TikTok': { wordCount: { min: 50, max: 150 }, hashtags: { max: 5, rule: 'niche/trending hashtags' } },
 } as const
 
-// ---- Hashtag Limits by Platform ----
-export interface PlatformHashtagLimit {
-  readonly max: number
-  readonly rule: string
+// ---- Functions ----
+
+export function getAllowedStructures(formality: string): readonly string[] {
+  return POST_STRUCTURES_BY_FORMALITY[formality] ?? ALL_POST_STRUCTURES
 }
 
-export const PLATFORM_HASHTAG_LIMITS: Record<string, PlatformHashtagLimit> = {
-  'Instagram': { max: 3, rule: 'niche/location specific at end' },
-  'Facebook': { max: 2, rule: 'only if tied to event, default none' },
-  'LinkedIn': { max: 5, rule: 'professional niche hashtags' },
-  'X / Twitter': { max: 2, rule: 'for trending topics only' },
-  'TikTok': { max: 5, rule: 'niche/trending hashtags' },
-} as const
-
-// ---- Health Client Rules ----
-export const HEALTH_CLIENT_RULES: readonly string[] = [
-  'Educational content only',
-  'No promised outcomes or medical claims',
-  'No specific dosages or treatment protocols',
-  'Always recommend consulting a professional',
-] as const
-
-// ---- Format helpers for generation prompts ----
+export function formatStructureDescriptions(formality?: string): string {
+  const allowed = getAllowedStructures(formality ?? 'neutral')
+  return allowed
+    .map((s, i) => `${i + 1}. ${STRUCTURE_DESCRIPTIONS[s] ?? s}`)
+    .join('\n\n')
+}
 
 export function formatAllowedOpeners(config?: LanguageConfig | null): string {
   const formality = config?.formality ?? 'neutral'
@@ -115,7 +77,13 @@ export function formatAllowedOpeners(config?: LanguageConfig | null): string {
 }
 
 export function formatBannedOpeners(): string {
-  return BANNED_OPENER_TYPES.map((r) => `   - ${r.description}`).join('\n')
+  return [
+    { id: 'general_truth', description: 'A general truth about the topic' },
+    { id: 'if_generic', description: '"If" followed by a generic condition' },
+    { id: 'business_name', description: 'The business name or "We"' },
+    { id: 'seasonal', description: 'A seasonal observation ("Spring is here", "It is that time of year")' },
+    { id: 'did_you_know', description: 'A question starting with "Did you know"' },
+  ].map((r) => `   - ${r.description}`).join('\n')
 }
 
 export function formatStructures(formality?: string): string {
@@ -124,17 +92,22 @@ export function formatStructures(formality?: string): string {
 }
 
 export function formatWordCount(platform: string): string {
-  const wc = PLATFORM_WORD_COUNTS[platform]
-  if (!wc) return 'Follow platform conventions'
-  return `${wc.min}-${wc.max} words`
+  const limits = PLATFORM_LIMITS[platform]
+  if (!limits) return 'Follow platform conventions'
+  return `${limits.wordCount.min}-${limits.wordCount.max} words`
 }
 
 export function formatHashtagRules(platform: string): string {
-  const hl = PLATFORM_HASHTAG_LIMITS[platform]
-  if (!hl) return 'Follow platform conventions'
-  return `Max ${hl.max} hashtags — ${hl.rule}`
+  const limits = PLATFORM_LIMITS[platform]
+  if (!limits) return 'Follow platform conventions'
+  return `Max ${limits.hashtags.max} hashtags — ${limits.hashtags.rule}`
 }
 
 export function formatHealthRules(): string {
-  return HEALTH_CLIENT_RULES.join('. ') + '.'
+  return [
+    'Educational content only',
+    'No promised outcomes or medical claims',
+    'No specific dosages or treatment protocols',
+    'Always recommend consulting a professional',
+  ].join('. ') + '.'
 }
