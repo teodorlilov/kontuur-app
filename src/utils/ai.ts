@@ -11,15 +11,8 @@ export function extractTextFromMessage(message: Anthropic.Message): string {
 
 export function parseJsonResponse<T>(message: Anthropic.Message, mode: 'object' | 'array' = 'object'): T {
   const text = extractTextFromMessage(message)
-  const pattern = mode === 'array' ? /\[[\s\S]*\]/ : /\{[\s\S]*\}/
-  const match = text.match(pattern)
-  const fallback = mode === 'array' ? '[]' : '{}'
-  try {
-    return JSON.parse(match?.[0] ?? fallback) as T
-  } catch (err) {
-    console.warn('[parseJsonResponse] Failed to parse LLM JSON, returning fallback:', err)
-    return JSON.parse(fallback) as T
-  }
+  const fallback = (mode === 'array' ? [] : {}) as T
+  return sanitizeAndParseJson<T>(text, fallback, mode)
 }
 
 export function stripPlanningPrefix(text: string): string {
@@ -43,11 +36,36 @@ export function stripPlanningPrefix(text: string): string {
   return text
 }
 
-export function sanitizeAndParseJson<T>(raw: string, fallback: T): T {
+export function sanitizeAndParseJson<T>(raw: string, fallback: T, mode?: 'object' | 'array'): T {
   const stripped = raw.replace(/```(?:json)?\s*/g, '').replace(/```\s*/g, '')
-  const match = stripped.match(/\{[\s\S]*\}/) ?? stripped.match(/\[[\s\S]*\]/)
+
+  let match: RegExpMatchArray | null
+  if (mode === 'array') {
+    match = stripped.match(/\[[\s\S]*\]/)
+  } else if (mode === 'object') {
+    match = stripped.match(/\{[\s\S]*\}/)
+  } else {
+    match = stripped.match(/\{[\s\S]*\}/) ?? stripped.match(/\[[\s\S]*\]/)
+  }
   if (!match) return fallback
-  const json = match[0].replace(/,\s*([}\]])/g, '$1')
+
+  const json = match[0]
+    .replace(/,\s*([}\]])/g, '$1')
+    .replace(
+      /"(?:[^"\\]|\\[\s\S])*"/g,
+      (s) =>
+        s
+          .replace(/\\(?!["\\\/bfnrtu])/g, '\\\\')
+          .replace(/[\x00-\x1f]/g, (c) => {
+            switch (c) {
+              case '\t': return '\\t'
+              case '\n': return '\\n'
+              case '\r': return '\\r'
+              default: return '\\u' + c.charCodeAt(0).toString(16).padStart(4, '0')
+            }
+          }),
+    )
+
   try {
     return JSON.parse(json) as T
   } catch (err) {
