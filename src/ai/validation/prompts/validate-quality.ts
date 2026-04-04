@@ -6,72 +6,25 @@ import {
   safeParseCtaVerdict,
 } from '@/ai/validation/content-rules/compute-scores'
 import {
-  formatAiTellPatterns,
   formatIssueTypes,
   formatHookVerdicts,
   formatCtaVerdicts,
   buildCriteriaChecklist,
 } from '@/ai/validation/content-rules/validation-criteria'
-import type { HookVerdict, CtaVerdict } from '@/types/api'
-import type { LanguageConfig } from '@/lib/clients/language-rules'
+import { formatAiTells } from '@/ai/generation/generation-criteria'
+import { buildContentSection } from '@/ai/validation/prompts/shared/content-section'
+import { buildBrandVoiceDescription } from '@/ai/generation/prompts/client-profile'
+import type {
+  QualityContext,
+  QualityIssue,
+  QualityScores,
+  QualityResult,
+  SingleQualityResult,
+  CarouselQualityResult,
+} from '@/ai/validation/types/scoring'
 
-// ---- Types ----
-
-export interface QualityContext {
-  tone?: string
-  targetAudience?: string
-  niche?: string
-  platform?: string
-  clientTestimonialVoice?: string
-  sourceExcerpt?: string
-  targetPillar?: string
-  isHealthClient?: boolean
-  languageConfig?: LanguageConfig
-  theme?: string
-}
-
-export interface QualityIssue {
-  type: string
-  description: string
-}
-
-interface QualityBase {
-  human_score: number
-  hook_score: number
-  cta_score: number
-  criteria_score: number
-  quality_score_avg: number
-  hook_verdict: HookVerdict
-  cta_verdict: CtaVerdict
-  brand_voice_match: boolean
-  brand_voice_deviation: string | null
-  audience_targeting: boolean
-  audience_gap: string | null
-  niche_specificity: boolean
-  niche_gap: string | null
-  ai_tells: string[]
-  worst_offending_phrase: string | null
-  issues: QualityIssue[]
-  opener_follows_rules: boolean
-  opener_violation: string | null
-  structure_is_predictable: boolean
-  structure_used: string | null
-  formality_consistent: boolean
-  formality_violation: string | null
-  source_fidelity_ok: boolean | null
-  health_compliant: boolean | null
-}
-
-export interface SingleQualityResult extends QualityBase {
-  kind: 'single'
-}
-
-export interface CarouselQualityResult extends QualityBase {
-  kind: 'carousel'
-}
-
-/** Discriminated union — narrow with `quality.kind` */
-export type QualityResult = SingleQualityResult | CarouselQualityResult
+// Re-export types for existing consumers
+export type { QualityContext, QualityIssue, QualityResult, SingleQualityResult, CarouselQualityResult }
 
 // ---- Raw LLM response (internal) ----
 
@@ -88,8 +41,6 @@ interface LlmQualityResponse {
   niche_specificity: boolean
   niche_gap: string | null
   // New detection fields
-  opener_follows_rules: boolean
-  opener_violation: string | null
   structure_is_predictable: boolean
   structure_used: string | null
   formality_consistent: boolean
@@ -109,23 +60,16 @@ Tone: ${ctx.tone ?? 'professional'}. Register: ${formality}. Target audience: ${
 }
 
 function buildBrandVoiceCheck(ctx?: QualityContext): string {
-  const tone = ctx?.tone ?? 'professional'
-  const testimonial = ctx?.clientTestimonialVoice
-  const formality = ctx?.languageConfig?.formality ?? 'neutral'
-
-  let check = `BRAND CHECKS:
+  return `BRAND CHECKS:
 - brand_voice_match: Does the post feel right for this brand?
-  This brand sounds: ${tone}`
-  if (testimonial) {
-    check += `\n  Clients describe it as: '${testimonial}'
-  These two descriptions define one emotional identity.`
-  }
-  check += `\n  Evaluate within the ${formality} register. Flag only when the post clearly drifts from the brand's voice.`
-  check += `
+  ${buildBrandVoiceDescription({
+    tone: ctx?.tone ?? 'professional',
+    testimonialVoice: ctx?.clientTestimonialVoice,
+    formality: ctx?.languageConfig?.formality,
+  })}
+  Flag only when the post clearly drifts from the brand's voice.
 - audience_targeting: Does the post speak specifically to the target audience? Or could ANY audience relate equally?
 - niche_specificity: Does the post contain at least one specific detail, example, or insight that could ONLY come from this business/niche? Generic industry platitudes fail this check.`
-
-  return check
 }
 
 function buildLanguageTells(ctx?: QualityContext): string {
@@ -134,37 +78,30 @@ function buildLanguageTells(ctx?: QualityContext): string {
 
   const { language, formality } = lc
 
-  let tells = `
+  // Universal translation/register base
+  const base = `
 ${language}-specific AI patterns to also check:
-- Literal calques from English that no native speaker would write
+- Literal calques from English that no native ${language} speaker would write
 - Unnatural word order following English syntax
-- Generic filler phrases that sound translated`
+- Register violation: ${
+    formality === 'formal' ? 'informal address in a formal-register post' :
+    formality === 'casual' ? 'formal address in a casual-register post' :
+    'extreme formality or casualness when neutral register is required'
+  }`
 
-  if (formality === 'formal') {
-    tells += `\n- Register violation: using informal address or casual phrasing when formal register is required`
-  } else if (formality === 'casual') {
-    tells += `\n- Register violation: using formal address or corporate phrasing when casual register is required`
-  } else if (formality === 'neutral') {
-    tells += `\n- Register violation: drifting into overly formal or overly casual register when neutral is required`
-  }
+  // Per-client language notes from DB
+  const clientNotes = lc.languageNotes
+    ? `\n${lc.languageNotes}`
+    : ''
 
-  // Language-specific AI patterns from DB
-  if (lc.languageInstructions) {
-    tells += `\n${lc.languageInstructions}`
-  }
-
-  // Per-client language notes
-  if (lc.languageNotes) {
-    tells += `\n${lc.languageNotes}`
-  }
-
-  return tells
+  return `${base}${clientNotes}`
 }
 
 function buildBasePrompt(brandCtx: string, langTells: string, ctx?: QualityContext): string {
   const lc = ctx?.languageConfig
 
   const formality = lc?.formality ?? 'neutral'
+  const language = lc?.language ?? 'English'
   const themeLabel = ctx?.theme ? ` for the theme "${ctx.theme}"` : ''
 
   const criteriaChecklist = buildCriteriaChecklist({
@@ -173,13 +110,14 @@ function buildBasePrompt(brandCtx: string, langTells: string, ctx?: QualityConte
     isHealthClient: ctx?.isHealthClient,
     languageConfig: lc,
     theme: ctx?.theme,
+    declaredStructure: ctx?.declaredStructure,
   })
 
   return `You are a social media content quality assessor and AI-content detector.
 ${brandCtx}
 
 AI PATTERNS — list every one found in ai_tells:
-${formatAiTellPatterns()}
+${formatAiTells(language)}
 Only flag a pattern when it is clearly present and harms readability or authenticity. Do not flag marginal or borderline cases — when in doubt, do not flag.
 ${langTells}
 
@@ -212,33 +150,13 @@ export async function validateQuality(
   const base = buildBasePrompt(brandCtx, langTells, ctx)
   const isCarousel = input.slides && input.slides.length > 0
 
-  let contentSection: string
-
-  if (isCarousel) {
-    const slidesText = input.slides!
-      .map((s, i) => `[SLIDE ${i + 1}]\nHeadline: ${s.headline}\nBody: ${s.body}`)
-      .join('\n\n')
-
-    contentSection = `
-
-Evaluate the carousel as a whole (caption + all slides together).
-
-[CAPTION]
-<caption_to_rate>
-${input.caption}
-</caption_to_rate>
-
-<slides_to_rate>
-${slidesText}
-</slides_to_rate>`
-  } else {
-    contentSection = `
-
-Post:
-<post_to_rate>
-${input.caption}
-</post_to_rate>`
-  }
+  const contentSection = buildContentSection(input.caption, input.slides, {
+    singleTag: 'post_to_rate',
+    singleIntro: '\nPost:',
+    captionTag: 'caption_to_rate',
+    slidesTag: 'slides_to_rate',
+    carouselIntro: '\nEvaluate the carousel as a whole (caption + all slides together).',
+  })
 
   const returnFormat = `{
   "ai_tells": string[],
@@ -252,8 +170,6 @@ ${input.caption}
   "audience_gap": string | null,
   "niche_specificity": boolean,
   "niche_gap": string | null,
-  "opener_follows_rules": boolean,
-  "opener_violation": string | null,
   "structure_is_predictable": boolean,
   "structure_used": string | null,
   "formality_consistent": boolean,
@@ -270,6 +186,10 @@ Return JSON only:
 ${returnFormat}`,
     maxTokens: 1024,
   })
+
+  console.log("VALIDATE QUALITY SYSTEM PROMPT", base)
+  console.log("VALIDATE QUALITY USER PROMPT", contentSection)
+
 
   const parsed = parseJsonResponse<LlmQualityResponse>(message)
 
@@ -295,7 +215,7 @@ ${returnFormat}`,
     structure_used,
   })
 
-  const result: QualityBase = {
+  const result: QualityScores = {
     ...scores,
     hook_verdict,
     cta_verdict,
@@ -308,8 +228,6 @@ ${returnFormat}`,
     ai_tells,
     worst_offending_phrase: parsed.worst_offending_phrase ?? null,
     issues,
-    opener_follows_rules: parsed.opener_follows_rules ?? true,
-    opener_violation: parsed.opener_violation ?? null,
     structure_is_predictable: parsed.structure_is_predictable ?? false,
     structure_used,
     formality_consistent: parsed.formality_consistent ?? true,

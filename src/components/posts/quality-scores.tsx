@@ -9,8 +9,6 @@ interface BrandCheck {
 }
 
 interface CriteriaDetails {
-  openerFollowsRules?: boolean
-  openerViolation?: string | null
   structureIsPredictable?: boolean
   formalityConsistent?: boolean
   formalityViolation?: string | null
@@ -90,9 +88,6 @@ export function QualityScores({
   // Build criteria failure list when score is low
   const criteriaFailures: Array<{ label: string; detail: string | null }> = []
   if (criteriaDetails && criteriaScore !== undefined && criteriaScore < 7) {
-    if (criteriaDetails.openerFollowsRules === false) {
-      criteriaFailures.push({ label: 'Opener', detail: criteriaDetails.openerViolation ?? 'Does not follow rules' })
-    }
     if (criteriaDetails.structureIsPredictable === true) {
       criteriaFailures.push({ label: 'Structure', detail: 'Predictable/formulaic structure' })
     }

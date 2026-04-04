@@ -57,6 +57,43 @@ export function formatHashtagRules(platform: string): string {
   return `Max ${limits.hashtags.max} hashtags — ${limits.hashtags.rule}`
 }
 
+// ---- AI Tell Patterns (per language) ----
+// Each language has its own set of AI tell patterns — structural signals that
+// betray machine-generated text. Single source for both generation and validation.
+
+export const EN_SPECIFIC_AI_TELLS: readonly string[] = [
+  'Syntactic Monotony: 3+ sentences in a row with similar word counts (missing "punchy" vs "detailed" contrast).',
+  'Adjective Stacking: Using 3+ descriptors for a single noun (e.g., "innovative, powerful, expert care").',
+  'Corporate Prefacing: Using unearned authority triggers like "At [Company Name], we..." or "As experts...".',
+  'Low Information Density: Intro sentences that contain zero niche-specific nouns or data points.',
+  'Academic Transitions: Using "Furthermore," "Moreover," or "Additionally" to link social media ideas.',
+  'Passive Translation: Over-reliance on "is/are/was" and "of/for" structures instead of active, idiomatic verbs.',
+] as const
+
+export const BG_SPECIFIC_AI_TELLS: readonly string[] = [
+  'Passive Voice Overload: Frequent use of "беше [причастие]" (direct translation of English passive).',
+  'Filler Goal Phrasing: Using "има за цел да" or "цели да" instead of active verbs.',
+  'Noun Chains: 3+ nouns linked by "на" (e.g., "анализ на процеса на работа на...").',
+  'Conditional Politeness: Excessive use of "Бихме желали/искали" which creates a robotic "template" feel.',
+  'Shortened Form Avoidance: AI never uses natural Bulgarian shortened verbs or particles (e.g., "ще се справя" vs the AI\'s "ще успея да се справя").',
+  'Cliché Superlatives: Use of empty words like "уникален", "ексклузивен", or "невероятен" without factual backing.',
+] as const
+
+const AI_TELLS_BY_LANGUAGE: Record<string, readonly string[]> = {
+  English: EN_SPECIFIC_AI_TELLS,
+  Bulgarian: BG_SPECIFIC_AI_TELLS,
+}
+
+/** Returns AI tell patterns for a given language. Falls back to English. */
+export function getAiTellsForLanguage(language: string): readonly string[] {
+  return AI_TELLS_BY_LANGUAGE[language] ?? EN_SPECIFIC_AI_TELLS
+}
+
+/** Formats AI tell patterns for prompt injection — single function for all consumers. */
+export function formatAiTells(language: string): string {
+  return getAiTellsForLanguage(language).map(p => `- ${p}`).join('\n')
+}
+
 export function formatHealthRules(): string {
   return [
     'Educational content only',

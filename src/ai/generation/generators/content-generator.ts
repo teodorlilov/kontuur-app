@@ -6,22 +6,9 @@ import {
   buildAngleVariationPrompt,
 } from '@/ai/generation/prompts/client-profile'
 import { buildGroundingPrompt } from '@/ai/generation/prompts/source-grounding'
-import { PROMPT_HISTORY_LIMIT } from '@/utils/constants'
+import { todayDateString, formatHistory } from '@/ai/utils/prompt-helpers'
 import type { GenerationInput } from '../types'
 
-/**
- * Abstract base for all content generators.
- *
- * Subclasses implement:
- *   buildDirective(input) — content-type-specific directive
- *   parseResponse(msg, input)       — extract typed result from API response
- *
- * Subclasses may override:
- *   buildSystemPrompt()  — when a content type needs a different system prompt
- *                          (e.g. Reels uses a script-writing system prompt)
- *   getPlatform()        — platform passed to buildClientProfile
- *   getContentLabel()    — label passed to buildGroundingPrompt
- */
 export abstract class ContentGenerator<
   TInput extends GenerationInput,
   TOutput
@@ -74,10 +61,9 @@ export abstract class ContentGenerator<
       targetPillar: input.targetPillar,
     })
 
-    const history = input.client.postHistory.length > 0
-      ? `Recent topics already covered — do not repeat: ${
-          input.client.postHistory.slice(0, PROMPT_HISTORY_LIMIT).join(' | ')
-        }`
+    const historyText = formatHistory(input.client.postHistory)
+    const history = historyText
+      ? `Recent topics already covered — do not repeat: ${historyText}`
       : ''
 
     const source = buildGroundingPrompt({
@@ -88,7 +74,7 @@ export abstract class ContentGenerator<
     })
 
     const angleDiff = buildAngleVariationPrompt(input.similarPastThemes ?? [])
-    const today = `Today's date: ${new Date().toISOString().split('T')[0]}`
+    const today = `Today's date: ${todayDateString()}`
     const directive = this.buildDirective(input)
 
     return [profile, source, history, angleDiff, today, directive]

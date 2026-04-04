@@ -7,10 +7,10 @@ import {
   deriveSlopFromQuality,
   safeParseHookVerdict,
   safeParseCtaVerdict,
-  type LanguageIssueType,
   type QualityDetections,
   type CriteriaDetections,
 } from '../compute-scores'
+import type { LanguageIssueType } from '@/ai/validation/types/scoring'
 
 // ---------------------------------------------------------------------------
 // Language scoring
@@ -303,7 +303,6 @@ describe('CTA exemption for no-CTA structures', () => {
 
 function baseCriteriaDetections(overrides?: Partial<CriteriaDetections>): CriteriaDetections {
   return {
-    opener_follows_rules: true,
     structure_is_predictable: false,
     formality_consistent: true,
     source_fidelity_ok: null,
@@ -319,10 +318,6 @@ function baseCriteriaDetections(overrides?: Partial<CriteriaDetections>): Criter
 describe('computeCriteriaScore', () => {
   it('returns 10 with all passing', () => {
     expect(computeCriteriaScore(baseCriteriaDetections())).toBe(10)
-  })
-
-  it('penalizes opener violation (-2.0)', () => {
-    expect(computeCriteriaScore(baseCriteriaDetections({ opener_follows_rules: false }))).toBe(8)
   })
 
   it('penalizes predictable structure (-1.5)', () => {
@@ -373,20 +368,20 @@ describe('computeCriteriaScore', () => {
 
   it('accumulates multiple penalties', () => {
     expect(computeCriteriaScore(baseCriteriaDetections({
-      opener_follows_rules: false,     // -2.0
       structure_is_predictable: true,  // -1.5
       formality_consistent: false,     // -1.5
-    }))).toBe(5) // 10 - 5.0 = 5
+    }))).toBe(7) // 10 - 3.0 = 7
   })
 
   it('clamps to minimum 1', () => {
     expect(computeCriteriaScore(baseCriteriaDetections({
-      opener_follows_rules: false,     // -2.0
       structure_is_predictable: true,  // -1.5
       formality_consistent: false,     // -1.5
       health_compliant: false,         // -2.0
       source_fidelity_ok: false,       // -1.5
       wordCount: 50,                   // -0.75 (under min)
+      sentenceVariety: { hasShortSentence: false, hasLongSentence: false, maxConsecutiveSimilar: 4, passes: false }, // -1.0
+      hashtagCount: 10,               // -0.5
     }))).toBe(1)
   })
 })

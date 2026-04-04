@@ -35,8 +35,6 @@ export interface PostContentDisplayProps {
     audience_gap?: string | null
     niche_specificity?: boolean
     niche_gap?: string | null
-    opener_follows_rules?: boolean
-    opener_violation?: string | null
     structure_is_predictable?: boolean
     formality_consistent?: boolean
     formality_violation?: string | null
@@ -207,8 +205,6 @@ export function PostContentDisplay({
           nicheSpecificity={qualityScores.niche_specificity}
           nicheGap={qualityScores.niche_gap}
           criteriaDetails={{
-            openerFollowsRules: qualityScores.opener_follows_rules,
-            openerViolation: qualityScores.opener_violation,
             structureIsPredictable: qualityScores.structure_is_predictable,
             formalityConsistent: qualityScores.formality_consistent,
             formalityViolation: qualityScores.formality_violation,

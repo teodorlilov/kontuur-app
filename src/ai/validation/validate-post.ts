@@ -55,8 +55,6 @@ function defaultQualityFallback(isCarousel: boolean): QualityResult {
     ai_tells: [] as string[],
     worst_offending_phrase: null,
     issues: [] as Array<{ type: string; description: string }>,
-    opener_follows_rules: true,
-    opener_violation: null,
     structure_is_predictable: false,
     structure_used: null,
     formality_consistent: true,
@@ -116,7 +114,6 @@ export async function validatePost(input: ValidatePostInput): Promise<PostValida
 
   // Compute criteria score from LLM detections + deterministic analysis
   const criteriaDetections: CriteriaDetections = {
-    opener_follows_rules: quality.opener_follows_rules,
     structure_is_predictable: quality.structure_is_predictable,
     formality_consistent: quality.formality_consistent,
     source_fidelity_ok: quality.source_fidelity_ok,

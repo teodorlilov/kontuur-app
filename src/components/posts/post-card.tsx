@@ -144,8 +144,6 @@ export function PostCard({ post, validationData, theme, onApprove, onDiscard, on
     audience_gap: quality.audience_gap,
     niche_specificity: quality.niche_specificity,
     niche_gap: quality.niche_gap,
-    opener_follows_rules: quality.opener_follows_rules,
-    opener_violation: quality.opener_violation,
     structure_is_predictable: quality.structure_is_predictable,
     formality_consistent: quality.formality_consistent,
     formality_violation: quality.formality_violation,

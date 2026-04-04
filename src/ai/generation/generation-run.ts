@@ -1,5 +1,6 @@
 import { randomUUID } from 'crypto'
 import { GeneratorFactory } from '@/ai/generation/generators/generator-factory'
+import type { ParsedPost } from '@/ai/generation/generators/post-generator'
 import type {
   SinglePostInput, CarouselInput,
   CarouselResult, ReelsResult, DraftPost,
@@ -41,8 +42,6 @@ const DEFAULT_REELS_QUALITY: QualityResult = {
   ai_tells: [],
   worst_offending_phrase: null,
   issues: [],
-  opener_follows_rules: true,
-  opener_violation: null,
   structure_is_predictable: false,
   structure_used: null,
   formality_consistent: true,
@@ -90,6 +89,10 @@ export async function runGenerationBatch(ctx: GenerationRunContext): Promise<Gen
     return typeof r === 'object' && r !== null && 'hook' in r && 'main_points' in r
   }
 
+  function isParsedPostArray(r: unknown): r is ParsedPost[] {
+    return Array.isArray(r) && r.length > 0 && typeof r[0] === 'object' && r[0] !== null && 'caption' in r[0]
+  }
+
   async function generateForTheme(theme: EnrichedTheme): Promise<void> {
     const input = buildThemeInput(ctx, theme)
     const result = await generator.generate(input)
@@ -98,7 +101,7 @@ export async function runGenerationBatch(ctx: GenerationRunContext): Promise<Gen
       await collectCarousel(theme, result)
     } else if (ctx.postType === 'reels' && isReelsResult(result)) {
       await collectReels(theme, result)
-    } else if (Array.isArray(result)) {
+    } else if (isParsedPostArray(result)) {
       await collectSinglePosts(theme, result)
     } else {
       console.error(`[generate] unexpected result shape for theme "${theme.description}"`)
@@ -187,10 +190,16 @@ export async function runGenerationBatch(ctx: GenerationRunContext): Promise<Gen
   }
 
   function collectResult(validation: PostValidationResult, post: DraftPost) {
+    // If language corrections were auto-applied, update the score to reflect corrected text
+    const langCorrected = !!(validation.language.corrected_text || validation.language.corrected_slides)
+    const language = langCorrected
+      ? { ...validation.language, language_score: 10, passes: true }
+      : validation.language
+
     generatedPosts.push({
       post,
       quality: validation.quality,
-      language: validation.language,
+      language,
       slop: validation.slop,
       ...(validation.sourceGrounding ? { sourceGrounding: validation.sourceGrounding } : {}),
     })
@@ -199,7 +208,7 @@ export async function runGenerationBatch(ctx: GenerationRunContext): Promise<Gen
   async function validateContent(
     caption: string,
     theme: EnrichedTheme,
-    opts: { slides?: CarouselResult['slides']; label: string },
+    opts: { slides?: CarouselResult['slides']; label: string; declaredStructure?: string },
   ): Promise<PostValidationResult> {
     return validatePost({
       caption,
@@ -208,7 +217,11 @@ export async function runGenerationBatch(ctx: GenerationRunContext): Promise<Gen
       label: opts.label,
       platform: ctx.platform,
       sourceContext: buildGroundingContext(theme),
-      qualityContext: { ...sharedQualityContext, theme: theme.description },
+      qualityContext: {
+        ...sharedQualityContext,
+        theme: theme.description,
+        declaredStructure: opts.declaredStructure,
+      },
     })
   }
 
@@ -269,14 +282,17 @@ export async function runGenerationBatch(ctx: GenerationRunContext): Promise<Gen
   }
 
   // Step 14: Parallel validation + Step 16: Over-request with quality floor
-  async function collectSinglePosts(theme: EnrichedTheme, captions: string[]) {
-    void ctx.trackTheme(theme, captions.length)
+  async function collectSinglePosts(theme: EnrichedTheme, posts: ParsedPost[]) {
+    void ctx.trackTheme(theme, posts.length)
 
     const requested = theme.count || 1
 
     const results = await Promise.all(
-      captions.map(async (caption) => {
-        const validation = await validateContent(caption, theme, { label: 'single' })
+      posts.map(async ({ caption, declaredStructure }) => {
+        const validation = await validateContent(caption, theme, {
+          label: 'single',
+          declaredStructure: declaredStructure ?? undefined,
+        })
         return {
           validation,
           caption: applyTextCorrections(caption, validation),

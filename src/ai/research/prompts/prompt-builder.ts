@@ -3,6 +3,7 @@ import { parseJsonResponse } from '@/utils/ai'
 import { allocateByWeight, type WeightedPillar } from '@/lib/clients/content-pillars'
 import type { LanguageConfig } from '@/lib/clients/language-rules'
 import type { ResearchTopic, SourceContext } from '../types'
+import { todayDateString } from '@/ai/utils/prompt-helpers'
 
 /**
  * Builds the static system prompt for research topic generation.
@@ -34,10 +35,6 @@ SUGGESTED_THEME QUALITY RULES (critical — the theme becomes the post brief):
   return sections.join('\n')
 }
 
-/** Returns today's date as YYYY-MM-DD for use in prompts. */
-function todayDate(): string {
-  return new Date().toISOString().split('T')[0]!
-}
 
 /**
  * Wraps content in a labelled XML-style section for prompt clarity.
@@ -154,7 +151,7 @@ export class ResearchPromptBuilder {
         .join('\n\n---\n\n')
     )
 
-    return `Today's date: ${todayDate()}
+    return `Today's date: ${todayDateString()}
 
 You are a social media strategist. Based on the following real content from the client's feeds, website, and documents, identify ${count} specific post themes for a ${this.niche} business targeting ${this.languageConfig.language}-language social media.
 
@@ -188,7 +185,7 @@ For trend-based topics (no source available), set source_url, source_title, and 
     pillarsContext: string,
     historyContext: string
   ): string {
-    return `Today's date: ${todayDate()}
+    return `Today's date: ${todayDateString()}
 
 Search for what is trending right now in ${this.niche} on social media
 in ${this.languageConfig.language}-speaking markets. Focus on: popular content formats,

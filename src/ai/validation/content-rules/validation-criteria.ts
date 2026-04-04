@@ -3,29 +3,15 @@ import {
   MIN_LONG_SENTENCE_WORDS,
   MAX_CONSECUTIVE_SIMILAR_LENGTH,
   CTA_EXEMPT_STRUCTURES,
-  PLATFORM_LIMITS,
-  formatStructures,
+  formatStructureDescriptions,
   formatWordCount,
   formatHashtagRules,
   formatHealthRules,
-  type PlatformLimits,
 } from '@/ai/generation/generation-criteria'
 import { formatFormalityRules } from '@/ai/generation/prompts/formality-guidance'
+import { SOURCE_GROUNDING_RULES } from '@/ai/generation/prompts/source-grounding'
 import type { LanguageConfig } from '@/lib/clients/language-rules'
 
-export { CTA_EXEMPT_STRUCTURES, PLATFORM_LIMITS }
-export type { PlatformLimits }
-
-// ---- AI Tell Patterns ----
-// 6 concrete structural patterns — each fires on a distinct signal.
-export const AI_TELL_PATTERNS: readonly string[] = [
-  'Perfectly balanced sentence structure — every sentence has similar length and rhythm, no variety',
-  'Triple adjective stacking ("comprehensive, innovative, cutting-edge") — three or more adjectives in a row',
-  'Unearned authority phrases ("As a leading...", "We pride ourselves on...", "With years of experience...")',
-  'Hollow setup sentences that delay the point — the first 1-2 sentences could be deleted without losing meaning',
-  'Essay transition phrases ("Furthermore", "Additionally", "Moreover", "In conclusion")',
-  'Sentence structure or phrasing that reads as translated from another language rather than written natively',
-] as const
 
 // ---- Issue Type Definitions ----
 // Used by validate-quality.ts to give the LLM precise definitions for each issue type.
@@ -84,7 +70,6 @@ export const HUMAN_SCORE_PENALTIES = {
 } as const
 
 export const CRITERIA_PENALTIES = {
-  OPENER_VIOLATION: 2.0,
   STRUCTURE_PREDICTABLE: 1.5,
   SENTENCE_VARIETY_FAIL: 1.0,
   WORD_COUNT_VIOLATION: 0.75,
@@ -97,10 +82,6 @@ export const CRITERIA_PENALTIES = {
 } as const
 
 // ---- Format helpers for validator prompts ----
-
-export function formatAiTellPatterns(): string {
-  return AI_TELL_PATTERNS.map((p) => `- ${p}`).join('\n')
-}
 
 export function formatIssueTypes(): string {
   return Object.entries(ISSUE_TYPE_DEFINITIONS)
@@ -122,17 +103,31 @@ export function buildCriteriaChecklist(ctx: {
   isHealthClient?: boolean
   languageConfig?: LanguageConfig
   theme?: string
+  declaredStructure?: string
 }): string {
   const sections: string[] = []
   const lc = ctx.languageConfig
   const formality = lc?.formality ?? 'neutral'
 
+  // Structure section — full descriptions so validator knows each structure's rules
+  let structureSection = `[] STRUCTURE: Must NOT be predictable problem→solution→CTA.
+   Each structure has specific rules the post must follow:
+${formatStructureDescriptions()}`
+
+  // If we know the declared structure, add a specific compliance check
+  if (ctx.declaredStructure) {
+    const isCtaExempt = CTA_EXEMPT_STRUCTURES.includes(ctx.declaredStructure)
+    structureSection += `\n\n[] DECLARED STRUCTURE: The generator declared "${ctx.declaredStructure}".
+   Verify the post actually follows this structure's definition above.${
+     isCtaExempt ? '\n   This structure explicitly forbids CTAs — a CTA present is a violation.' : ''
+   }`
+  }
+
   sections.push(`GENERATION CRITERIA — evaluate compliance:
 
 [] OPENER: Must stop scrolling and match the ${formality} register. Effective and specific to the theme${ctx.theme ? ` "${ctx.theme}"` : ''}.
 
-[] STRUCTURE: Must NOT be predictable problem→solution→CTA.
-   Allowed structures: ${formatStructures()}
+${structureSection}
 
 [] SENTENCES: At least one sentence under ${MIN_SHORT_SENTENCE_WORDS} words
    and one over ${MIN_LONG_SENTENCE_WORDS} words. Never ${MAX_CONSECUTIVE_SIMILAR_LENGTH + 1}
@@ -147,8 +142,8 @@ ${formatFormalityRules(lc ?? null)}`)
   }
 
   if (ctx.hasSource) {
-    sections.push(`[] SOURCE FIDELITY: Every specific claim must be grounded in the provided source material. No invented details.
-[] NOT A SUMMARY: Post focuses on 1-2 angles from the source, not a condensed overview of the entire article.`)
+    sections.push(`[] SOURCE FIDELITY — the generator was told to follow these rules:
+${SOURCE_GROUNDING_RULES}`)
   }
 
   if (ctx.isHealthClient) {

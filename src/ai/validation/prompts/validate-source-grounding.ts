@@ -1,20 +1,11 @@
 import { callAnthropic } from '@/utils/ai-client'
 import { parseJsonResponse } from '@/utils/ai'
 import { computeGroundingScore } from '@/ai/validation/content-rules/compute-scores'
+import { buildContentSection } from '@/ai/validation/prompts/shared/content-section'
+import type { SourceGroundingIssue, SourceGroundingResult } from '@/ai/validation/types/scoring'
 
-export interface SourceGroundingIssue {
-  claim: string
-  status: 'grounded' | 'ungrounded' | 'partially_grounded'
-  source_evidence: string | null
-}
-
-export interface SourceGroundingResult {
-  grounded: boolean
-  grounding_score: number
-  flagged_claims: SourceGroundingIssue[]
-  corrected_text: string | null
-  corrected_slides?: Array<{ headline: string; body: string }> | null
-}
+// Re-export types for existing consumers
+export type { SourceGroundingIssue, SourceGroundingResult }
 
 /** Raw LLM response shape — internal to this module. */
 interface LlmGroundingResponse {
@@ -30,26 +21,16 @@ export async function validateSourceGrounding(
 ): Promise<SourceGroundingResult> {
   const isCarousel = slides && slides.length > 0
 
-  let postSection: string
+  const postSection = `GENERATED POST:${buildContentSection(generatedText, slides, {
+    singleTag: 'post_to_check',
+    captionTag: 'caption_to_check',
+    slidesTag: 'slides_to_check',
+  })}`
+
   let returnFormat: string
   let correctionRules: string
 
   if (isCarousel) {
-    const slidesText = slides
-      .map((s, i) => `[SLIDE ${i + 1}]\nHeadline: ${s.headline}\nBody: ${s.body}`)
-      .join('\n\n')
-
-    postSection = `GENERATED POST:
-
-[CAPTION]
-<caption_to_check>
-${generatedText}
-</caption_to_check>
-
-<slides_to_check>
-${slidesText}
-</slides_to_check>`
-
     returnFormat = `{
   "flagged_claims": [
     {
@@ -65,11 +46,6 @@ ${slidesText}
     correctionRules = `- "corrected_text": If ANY caption claims are ungrounded, provide a corrected CAPTION only. If caption is grounded, set to null.
 - "corrected_slides": If ANY slide claims are ungrounded, provide ALL slides in order with corrected headline and body. If all slides are grounded, set to null.`
   } else {
-    postSection = `GENERATED POST:
-<post_to_check>
-${generatedText}
-</post_to_check>`
-
     returnFormat = `{
   "flagged_claims": [
     {
@@ -110,6 +86,8 @@ Return JSON only:
 ${returnFormat}`,
     maxTokens: 2048,
   })
+
+  console.log("VALIDATE SOURCE SYSTEM PROMPT", systemText)
 
   const parsed = parseJsonResponse<LlmGroundingResponse>(message)
   const flagged_claims = Array.isArray(parsed.flagged_claims) ? parsed.flagged_claims : []

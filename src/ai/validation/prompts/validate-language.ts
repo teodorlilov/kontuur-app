@@ -3,21 +3,11 @@ import { parseJsonResponse } from '@/utils/ai'
 import { buildLanguageValidationRules } from '@/ai/validation/prompts/language-validation-rules'
 import { computeLanguageScore } from '@/ai/validation/content-rules/compute-scores'
 import type { LanguageConfig } from '@/lib/clients/language-rules'
+import type { LanguageIssue, LanguageValidationResult } from '@/ai/validation/types/scoring'
+import { buildContentSection } from '@/ai/validation/prompts/shared/content-section'
 
-export interface LanguageIssue {
-  type: 'anglicism' | 'calque' | 'grammar' | 'formality' | 'register' | 'mixed_script' | 'vocabulary'
-  original_text: string
-  issue_description: string
-  suggested_fix: string
-}
-
-export interface LanguageValidationResult {
-  passes: boolean
-  language_score: number
-  issues: LanguageIssue[]
-  corrected_text: string | null
-  corrected_slides?: Array<{ headline: string; body: string }> | null
-}
+// Re-export types for existing consumers
+export type { LanguageIssue, LanguageValidationResult }
 
 /** Raw LLM response shape — internal to this module. */
 interface LlmLanguageResponse {
@@ -50,26 +40,17 @@ For every issue found, provide:
 
 If ANY issues are found, provide a corrected version of the full text with all fixes applied.`
 
-  let contentSection: string
+  const contentSection = buildContentSection(input.text, input.slides, {
+    singleTag: 'text_to_validate',
+    singleIntro: '\nText:',
+    captionTag: 'caption_to_validate',
+    slidesTag: 'slides_to_validate',
+    carouselIntro: '\nThe text below is a carousel post with a CAPTION and multiple SLIDES.',
+  })
+
   let returnFormat: string
 
   if (isCarousel) {
-    const slidesText = input.slides!
-      .map((s, i) => `[SLIDE ${i + 1}]\nHeadline: ${s.headline}\nBody: ${s.body}`)
-      .join('\n\n')
-
-    contentSection = `
-The text below is a carousel post with a CAPTION and multiple SLIDES.
-
-[CAPTION]
-<caption_to_validate>
-${input.text}
-</caption_to_validate>
-
-<slides_to_validate>
-${slidesText}
-</slides_to_validate>`
-
     returnFormat = `{
   "issues": [{
     "type": "anglicism" | "calque" | "grammar" | "formality" | "register" | "mixed_script" | "vocabulary",
@@ -86,12 +67,6 @@ ${slidesText}
 
 IMPORTANT: "corrected_text" must contain ONLY the corrected caption, NOT the slide text. "corrected_slides" must contain ALL slides in order, each with corrected headline and body.`
   } else {
-    contentSection = `
-Text:
-<text_to_validate>
-${input.text}
-</text_to_validate>`
-
     returnFormat = `{
   "issues": [{
     "type": "anglicism" | "calque" | "grammar" | "formality" | "register" | "mixed_script" | "vocabulary",
@@ -120,6 +95,10 @@ Return JSON only:
 ${returnFormat}`,
     maxTokens: 2048,
   })
+
+  console.log("VALIDATE LANGUAGE SYSTEM PROMPT", systemText)
+  console.log("VALIDATE LANGUAGE USER PROMPT", contentSection)
+
 
   const parsed = parseJsonResponse<LlmLanguageResponse>(message)
   const issues = Array.isArray(parsed.issues) ? parsed.issues : []

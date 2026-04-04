@@ -9,8 +9,8 @@ import {
   formatHashtagRules,
   formatHealthRules,
   formatStructureDescriptions,
+  formatAiTells,
 } from '@/ai/generation/generation-criteria'
-import { formatAiTellPatterns } from '@/ai/validation/content-rules/validation-criteria'
 import type { ClientContext } from '@/lib/clients/fetch-client-data'
 import type { LanguageConfig } from '@/lib/clients/language-rules'
 import { formatFormalityRules } from './formality-guidance'
@@ -23,19 +23,34 @@ export interface ClientProfileInput {
 
 let _cachedStaticPrompt: string | null = null
 
-export function buildBrandVoicePrompt(client: ClientContext): string {
-  let section = `BRAND VOICE:
-This brand sounds: ${client.tone}.`
-
-  if (client.clientTestimonialVoice) {
-    section += `\nClients describe it as: '${client.clientTestimonialVoice}'.`
+/**
+ * Formats brand voice for use in both generation and validation prompts.
+ * Single function: both prompts show the model the same brand description.
+ */
+export function buildBrandVoiceDescription(opts: {
+  tone: string
+  testimonialVoice?: string
+  formality?: string
+}): string {
+  const lines = [`This brand sounds: ${opts.tone}.`]
+  if (opts.testimonialVoice) {
+    lines.push(`Clients describe it as: '${opts.testimonialVoice}'.`)
+    lines.push(`These two descriptions define one emotional identity.`)
   }
+  if (opts.formality) {
+    lines.push(`Evaluate within the ${opts.formality} register. Emotion can be warm even when register is formal.`)
+  }
+  return lines.join('\n')
+}
 
-  section += `\nMatch this emotional quality within the register above.
-The EMOTION can be warm even when the REGISTER is formal.
+export function buildBrandVoicePrompt(client: ClientContext): string {
+  return `BRAND VOICE:
+${buildBrandVoiceDescription({
+  tone: client.tone,
+  testimonialVoice: client.clientTestimonialVoice,
+  formality: client.languageConfig.formality,
+})}
 If the post could be written about any business, it has failed this test.`
-
-  return section
 }
 
 // ---------------------------------------------------------------------------
@@ -67,9 +82,6 @@ WRITING RULES:
 3. Follow hashtag and word count limits from the client brief.
 4. The language register rules are in the client brief. Follow them exactly — they are non-negotiable.
 5. Every claim must be grounded in what this specific business does — not abstract promises.
-
-AI-generated text does these things — never do them:
-${formatAiTellPatterns()}
 
 SELF-CHECK (before returning your response):
 - Does the opener make someone stop scrolling? If not — rewrite it.
@@ -105,6 +117,9 @@ Generic niche observations any competitor could post will score poorly.`)
 
   // 2. REGISTER RULES + LANGUAGE INSTRUCTIONS
   sections.push(buildLanguagePrompt(lc))
+
+  // 2b. AI TELLS (language-specific)
+  sections.push(`AI-generated text does these things — never do them:\n${formatAiTells(lc.language)}`)
 
   // 3. BRAND VOICE
   sections.push(buildBrandVoicePrompt(client))

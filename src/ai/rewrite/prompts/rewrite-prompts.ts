@@ -4,6 +4,7 @@ import {
   buildStaticSystemPrompt,
   buildClientProfile,
 } from '@/ai/generation/prompts/client-profile'
+import { formatHistory } from '@/ai/utils/prompt-helpers'
 import type { RewriteCaptionInput, RewriteCarouselInput, RewriteCarouselResult } from '../types'
 
 const systemText = buildStaticSystemPrompt()
@@ -21,7 +22,7 @@ export async function rewriteCaption(input: RewriteCaptionInput): Promise<string
     systemPrompt: systemText,
     userMessage: `${clientProfile}
 
-Recent topics already covered — do not drift into: ${client.postHistory.slice(0, 15).join(' | ')}
+Recent topics already covered — do not drift into: ${formatHistory(client.postHistory, { limit: 15 })}
 
 ORIGINAL POST:
 <post_to_rewrite>
@@ -65,7 +66,7 @@ CAROUSEL RULES:
 - Make headlines punchy and specific, not generic — each must contain a number, tension, or named observation
 - Mix sentence lengths in body text
 
-Recent topics already covered — do not drift into: ${client.postHistory.slice(0, 15).join(' | ')}
+Recent topics already covered — do not drift into: ${formatHistory(client.postHistory, { limit: 15 })}
 
 MAIN CAPTION:
 <caption_to_rewrite>

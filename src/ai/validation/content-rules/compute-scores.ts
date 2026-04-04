@@ -11,17 +11,14 @@ import {
   CTA_VERDICTS,
   HUMAN_SCORE_PENALTIES,
   CRITERIA_PENALTIES,
-  CTA_EXEMPT_STRUCTURES,
-  PLATFORM_LIMITS,
 } from '@/ai/validation/content-rules/validation-criteria'
+import { CTA_EXEMPT_STRUCTURES, PLATFORM_LIMITS } from '@/ai/generation/generation-criteria'
 import type { SentenceVarietyResult } from '@/ai/validation/content-rules/text-analysis'
-import type { HookVerdict, CtaVerdict, SlopDetection } from '@/types/api'
+import type { HookVerdict, CtaVerdict, SlopDetection, LanguageIssueType } from '@/ai/validation/types/scoring'
 
 // ---------------------------------------------------------------------------
 // Language scoring
 // ---------------------------------------------------------------------------
-
-export type LanguageIssueType = 'anglicism' | 'calque' | 'grammar' | 'formality' | 'register' | 'mixed_script' | 'vocabulary'
 
 /** Penalty per language issue type (deducted from 10). */
 const LANGUAGE_ISSUE_WEIGHTS: Record<LanguageIssueType, number> = {
@@ -121,7 +118,6 @@ export interface ComputedQualityScores {
 
 export interface CriteriaDetections {
   // From LLM (semantic understanding required)
-  opener_follows_rules: boolean
   structure_is_predictable: boolean
   formality_consistent: boolean
   source_fidelity_ok: boolean | null
@@ -135,7 +131,6 @@ export interface CriteriaDetections {
 
 export function computeCriteriaScore(d: CriteriaDetections): number {
   let penalty = 0
-  if (!d.opener_follows_rules) penalty += CRITERIA_PENALTIES.OPENER_VIOLATION
   if (d.structure_is_predictable) penalty += CRITERIA_PENALTIES.STRUCTURE_PREDICTABLE
   if (!d.sentenceVariety.passes) penalty += CRITERIA_PENALTIES.SENTENCE_VARIETY_FAIL
   if (!d.formality_consistent) penalty += CRITERIA_PENALTIES.FORMALITY_VIOLATION

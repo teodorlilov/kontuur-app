@@ -1,9 +1,32 @@
+import type { LanguageConfig } from '@/lib/clients/language-rules'
+
 // ---- Scoring verdicts ----
 
 export type HookVerdict = 'stops_scroll' | 'clear_value' | 'generic' | 'buries_lead' | 'no_hook'
 export type CtaVerdict = 'natural_specific' | 'clear_relevant' | 'generic' | 'weak_mismatched' | 'missing'
 
-// ---- Quality ----
+// ---- Quality Context ----
+
+export interface QualityContext {
+  tone?: string
+  targetAudience?: string
+  niche?: string
+  platform?: string
+  clientTestimonialVoice?: string
+  sourceExcerpt?: string
+  targetPillar?: string
+  isHealthClient?: boolean
+  languageConfig?: LanguageConfig
+  theme?: string
+  declaredStructure?: string
+}
+
+export interface QualityIssue {
+  type: string
+  description: string
+}
+
+// ---- Quality Scores ----
 
 export interface QualityScores {
   human_score: number
@@ -21,9 +44,7 @@ export interface QualityScores {
   niche_gap: string | null
   ai_tells: string[]
   worst_offending_phrase: string | null
-  issues: Array<{ type: string; description: string }>
-  opener_follows_rules: boolean
-  opener_violation: string | null
+  issues: QualityIssue[]
   structure_is_predictable: boolean
   structure_used: string | null
   formality_consistent: boolean
@@ -35,22 +56,40 @@ export interface QualityScores {
 /** @deprecated Use QualityScores — identical shape */
 export type CarouselQuality = QualityScores
 
+// ---- Quality Result (discriminated union) ----
+
+export interface SingleQualityResult extends QualityScores {
+  kind: 'single'
+}
+
+export interface CarouselQualityResult extends QualityScores {
+  kind: 'carousel'
+}
+
+/** Discriminated union — narrow with `quality.kind` */
+export type QualityResult = SingleQualityResult | CarouselQualityResult
+
 // ---- Language ----
 
 export type LanguageIssueType = 'anglicism' | 'calque' | 'grammar' | 'formality' | 'register' | 'mixed_script' | 'vocabulary'
 
+export interface LanguageIssue {
+  type: LanguageIssueType
+  original_text: string
+  issue_description: string
+  suggested_fix: string
+}
+
 export interface LanguageValidation {
   passes: boolean
   language_score: number
-  issues: Array<{
-    type: LanguageIssueType
-    original_text: string
-    issue_description: string
-    suggested_fix: string
-  }>
+  issues: LanguageIssue[]
   corrected_text: string | null
   corrected_slides?: Array<{ headline: string; body: string }> | null
 }
+
+/** Alias for consistency with validator return type */
+export type LanguageValidationResult = LanguageValidation
 
 // ---- Slop ----
 
@@ -63,14 +102,16 @@ export interface SlopDetection {
 
 // ---- Source Grounding ----
 
+export interface SourceGroundingIssue {
+  claim: string
+  status: 'grounded' | 'ungrounded' | 'partially_grounded'
+  source_evidence: string | null
+}
+
 export interface SourceGroundingResult {
   grounded: boolean
   grounding_score: number
-  flagged_claims: Array<{
-    claim: string
-    status: 'grounded' | 'ungrounded' | 'partially_grounded'
-    source_evidence: string | null
-  }>
+  flagged_claims: SourceGroundingIssue[]
   corrected_text: string | null
   corrected_slides?: Array<{ headline: string; body: string }> | null
 }

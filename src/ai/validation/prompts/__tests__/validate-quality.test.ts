@@ -109,24 +109,23 @@ describe('validateQuality — single post', () => {
 
   it('includes new detection fields in return format', async () => {
     mockClaudeResponse(llmResponse({
-      opener_follows_rules: true,
       structure_used: 'OBSERVATION',
       formality_consistent: true,
     }))
     const result = await validateQuality({ caption: 'Test' })
-    expect(result.opener_follows_rules).toBe(true)
     expect(result.structure_used).toBe('OBSERVATION')
     expect(result.formality_consistent).toBe(true)
   })
 
   it('includes language-specific AI tells when languageConfig provided', async () => {
     mockClaudeResponse(llmResponse())
-    await validateQuality({ caption: 'Тест пост' }, { languageConfig: { language: 'Bulgarian', formality: 'neutral', carouselSwipeCues: '', formalityRules: null, languageInstructions: 'Avoid в днешния свят and other calques', languageNotes: '' } })
+    await validateQuality({ caption: 'Тест пост' }, { languageConfig: { language: 'Bulgarian', formality: 'neutral', carouselSwipeCues: '', formalityRules: null, languageInstructions: '', languageNotes: '' } })
 
     const callArgs = callAnthropic.mock.calls[0]![0]
     const systemText = callArgs.systemPrompt as string
     expect(systemText).toContain('Bulgarian')
-    expect(systemText).toContain('в днешния свят')
+    // Bulgarian-specific AI tell from hardcoded BG_SPECIFIC_AI_TELLS
+    expect(systemText).toContain('има за цел да')
   })
 })
 
