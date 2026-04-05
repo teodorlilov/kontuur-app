@@ -1,3 +1,4 @@
+import { jsonrepair } from 'jsonrepair'
 import type Anthropic from '@anthropic-ai/sdk'
 import type { UrlAnalysisResponse } from '@/types/api'
 import { callAnthropic, LIGHT_MODEL } from '@/utils/ai-client'
@@ -68,9 +69,13 @@ export function sanitizeAndParseJson<T>(raw: string, fallback: T, mode?: 'object
 
   try {
     return JSON.parse(json) as T
-  } catch (err) {
-    console.warn('[sanitizeAndParseJson] Failed to parse LLM JSON:', err)
-    return fallback
+  } catch {
+    try {
+      return JSON.parse(jsonrepair(json)) as T
+    } catch (err) {
+      console.warn('[sanitizeAndParseJson] Failed to parse LLM JSON:', err)
+      return fallback
+    }
   }
 }
 

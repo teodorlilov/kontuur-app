@@ -174,7 +174,7 @@ For each source-grounded topic:
 - "source_url": the article link or website URL if available in the source content, otherwise null
 - "source_title": the article or document title
 - "source_type": which source type it came from ("rss", "website", or "file")
-- "source_excerpt": a verbatim excerpt of 5-8 sentences from the source covering the key facts for this theme (features, numbers, prices, location details, materials, amenities — whatever is most relevant)
+- "source_excerpt": a 5-8 sentence excerpt from the source covering the key facts for this theme (features, numbers, prices, location details, materials, amenities — whatever is most relevant). Do not include double-quote characters within this value — replace any quotation marks with single quotes.
 
 For trend-based topics (no source available), set source_url, source_title, and source_type to null. Use source_excerpt for a brief trend description.`
   }
