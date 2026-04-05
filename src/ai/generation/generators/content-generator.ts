@@ -100,8 +100,8 @@ export abstract class ContentGenerator<
    */
   private async callAnthropic(systemPrompt: string, userMessage: string): Promise<Message> {
 
-    console.log('Antrhopic System Prompt',systemPrompt)
-    console.log('Antrhopic User Prompt',userMessage)
+    console.log('GENERATION SYSTEM PROMPT',systemPrompt)
+    console.log('GENERATION USER PROMPT',userMessage)
 
     return callAnthropic({ systemPrompt, userMessage })
   }

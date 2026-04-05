@@ -13,6 +13,7 @@ import {
   CRITERIA_PENALTIES,
 } from '@/ai/validation/content-rules/validation-criteria'
 import { CTA_EXEMPT_STRUCTURES, PLATFORM_LIMITS } from '@/ai/generation/generation-criteria'
+import { analyzeSentenceVariety, countWords, countHashtags } from '@/ai/validation/content-rules/text-analysis'
 import type { SentenceVarietyResult } from '@/ai/validation/content-rules/text-analysis'
 import type { HookVerdict, CtaVerdict, SlopDetection, LanguageIssueType } from '@/ai/validation/types/scoring'
 
@@ -153,6 +154,23 @@ function computeHashtagPenalty(hashtagCount: number, platform: string): number {
   if (!limits) return 0
   if (hashtagCount > limits.hashtags.max) return CRITERIA_PENALTIES.HASHTAG_VIOLATION
   return 0
+}
+
+/**
+ * Deterministic pre-score for caption ranking before LLM validation.
+ * Uses only zero-cost text analysis — no API calls.
+ * Used to pre-select the best candidates from over-requested posts so
+ * expensive LLM validators (validateQuality etc.) only run on kept posts.
+ */
+export function computeDeterministicPreScore(caption: string, platform: string): number {
+  const wordCount = countWords(caption)
+  const hashtagCount = countHashtags(caption)
+  const sentenceVariety = analyzeSentenceVariety(caption)
+  let penalty = 0
+  penalty += computeWordCountPenalty(wordCount, platform)
+  penalty += computeHashtagPenalty(hashtagCount, platform)
+  if (!sentenceVariety.passes) penalty += CRITERIA_PENALTIES.SENTENCE_VARIETY_FAIL
+  return Math.max(1, Math.round(10 - penalty))
 }
 
 export function computeQualityScores(

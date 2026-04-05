@@ -10,7 +10,7 @@ import type {
 import { validatePost } from '@/ai/validation/validate-post'
 import type { PostValidationResult } from '@/ai/validation/validate-post'
 import { validateLanguage } from '@/ai/validation/prompts/validate-language'
-import { deriveSlopFromQuality } from '@/ai/validation/content-rules/compute-scores'
+import { deriveSlopFromQuality, computeDeterministicPreScore } from '@/ai/validation/content-rules/compute-scores'
 import { applyTextCorrections, applySlideCorrections } from '@/ai/validation/correction-utils'
 import { Deduplicator } from '@/ai/research/deduplicator'
 import { ANGLE_SIMILARITY_THRESHOLD } from '@/lib/content-rules/constants'
@@ -281,14 +281,21 @@ export async function runGenerationBatch(ctx: GenerationRunContext): Promise<Gen
     })
   }
 
-  // Step 14: Parallel validation + Step 16: Over-request with quality floor
+  // Step 14: Pre-select with deterministic score, then validate only kept posts
   async function collectSinglePosts(theme: EnrichedTheme, posts: ParsedPost[]) {
     void ctx.trackTheme(theme, posts.length)
 
     const requested = theme.count || 1
 
+    // Pre-select top `requested` posts using zero-cost text analysis — no LLM calls yet
+    const candidates = posts
+      .map(post => ({ ...post, preScore: computeDeterministicPreScore(post.caption, ctx.platform ?? '') }))
+      .sort((a, b) => b.preScore - a.preScore)
+      .slice(0, requested)
+
+    // Full LLM validation only on selected candidates
     const results = await Promise.all(
-      posts.map(async ({ caption, declaredStructure }) => {
+      candidates.map(async ({ caption, declaredStructure }) => {
         const validation = await validateContent(caption, theme, {
           label: 'single',
           declaredStructure: declaredStructure ?? undefined,

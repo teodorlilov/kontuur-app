@@ -65,7 +65,6 @@ export class ResearchPipeline {
 
     // 2. Compute fetch limits scaled to requested post count
     const limits = computeFetchLimits(this.ctx.count)
-    console.log('[research] fetch limits:', limits)
 
     // 3. Create source objects via factory (polymorphic creation)
     const sourceObjects = createAllSources(clientData.sources)
@@ -145,12 +144,6 @@ export class ResearchPipeline {
       : DEFAULT_STRATEGY
     const filteredSources = this.filterSourcesByStrategy(sources, strategy)
 
-    console.log(`Client Data is 
-    languageConfig ${{languageConfig}}
-    contentPillars ${{contentPillars}}
-    strategy ${{strategy}}
-    filteredSources ${{filteredSources}}
-    `, )
     return { contentPillars, history, sources: filteredSources, strategy, languageConfig }
   }
 
@@ -230,9 +223,6 @@ export class ResearchPipeline {
       }
     }
 
-    console.log(`History is 
-      postTopics ${[...postTopics]}
-      themeDescr ${[...themeDescriptions]}`)
     return [...postTopics, ...themeDescriptions]
   }
 
