@@ -104,26 +104,48 @@ export function buildCriteriaChecklist(ctx: {
   languageConfig?: LanguageConfig
   theme?: string
   declaredStructure?: string
+  isCarousel?: boolean
 }): string {
   const sections: string[] = []
   const lc = ctx.languageConfig
   const formality = lc?.formality ?? 'neutral'
 
-  // Structure section — full descriptions so validator knows each structure's rules
-  let structureSection = `[] STRUCTURE: Must NOT be predictable problem→solution→CTA.
+  if (ctx.isCarousel) {
+    sections.push(`GENERATION CRITERIA — evaluate compliance:
+
+[] COVER SLIDE: Headline must open an unresolved loop that demands swiping to resolve.
+   Must be specific — not a topic label or empty positive. Cover slide has no body text by design.
+
+[] CAROUSEL STRUCTURE: Verify cover→content→value→CTA layout. Each slide covers a DISTINCT idea.
+   Structure is intentionally fixed — predictability is correct here, do NOT penalize it.
+[] SLIDE CONTENT: Each body adds NEW information beyond its headline. Never explains — extends.
+   Minimum 2 sentences per content slide body.
+
+[] SENTENCES: At least one sentence under ${MIN_SHORT_SENTENCE_WORDS} words and one over ${MIN_LONG_SENTENCE_WORDS} words.
+   Never ${MAX_CONSECUTIVE_SIMILAR_LENGTH + 1} consecutive sentences of similar length.
+   Applies to slide body text only — not headlines.
+
+[] REGISTER:
+${formatFormalityRules(lc ?? null)}`)
+
+    sections.push(`[] WORD COUNT: Caption: 40–60 words. Body text per content slide: 25–50 words.
+[] HASHTAGS: ${formatHashtagRules(ctx.platform ?? 'Instagram')}`)
+  } else {
+    // Structure section — full descriptions so validator knows each structure's rules
+    let structureSection = `[] STRUCTURE: Must NOT be predictable problem→solution→CTA.
    Each structure has specific rules the post must follow:
 ${formatStructureDescriptions()}`
 
-  // If we know the declared structure, add a specific compliance check
-  if (ctx.declaredStructure) {
-    const isCtaExempt = CTA_EXEMPT_STRUCTURES.includes(ctx.declaredStructure)
-    structureSection += `\n\n[] DECLARED STRUCTURE: The generator declared "${ctx.declaredStructure}".
+    // If we know the declared structure, add a specific compliance check
+    if (ctx.declaredStructure) {
+      const isCtaExempt = CTA_EXEMPT_STRUCTURES.includes(ctx.declaredStructure)
+      structureSection += `\n\n[] DECLARED STRUCTURE: The generator declared "${ctx.declaredStructure}".
    Verify the post actually follows this structure's definition above.${
      isCtaExempt ? '\n   This structure explicitly forbids CTAs — a CTA present is a violation.' : ''
    }`
-  }
+    }
 
-  sections.push(`GENERATION CRITERIA — evaluate compliance:
+    sections.push(`GENERATION CRITERIA — evaluate compliance:
 
 [] OPENER: Must stop scrolling and match the ${formality} register. Effective and specific to the theme${ctx.theme ? ` "${ctx.theme}"` : ''}.
 
@@ -136,9 +158,10 @@ ${structureSection}
 [] REGISTER:
 ${formatFormalityRules(lc ?? null)}`)
 
-  if (ctx.platform) {
-    sections.push(`[] WORD COUNT: ${formatWordCount(ctx.platform)}
+    if (ctx.platform) {
+      sections.push(`[] WORD COUNT: ${formatWordCount(ctx.platform)}
 [] HASHTAGS: ${formatHashtagRules(ctx.platform)}`)
+    }
   }
 
   if (ctx.hasSource) {

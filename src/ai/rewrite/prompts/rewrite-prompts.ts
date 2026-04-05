@@ -63,7 +63,7 @@ export async function rewriteCarousel(input: RewriteCarouselInput): Promise<Rewr
     userMessage: `${clientProfile}
 
 CAROUSEL RULES:
-- Make headlines punchy and specific, not generic — each must contain a number, tension, or named observation
+- Make headlines punchy and specific, not generic — each must name a specific mechanism, condition, technology, or result
 - Mix sentence lengths in body text
 
 Recent topics already covered — do not drift into: ${formatHistory(client.postHistory, { limit: 15 })}

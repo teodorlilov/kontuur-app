@@ -47,7 +47,11 @@ export class PostGenerator extends ContentGenerator<SinglePostInput, ParsedPost[
 For each post, pick a structure from the POST STRUCTURES above and declare it: [STRUCTURE: name]
 Then write the post immediately after.
 Each must feel distinct — use different structures and opener styles.
-Separate multiple posts with ---.`
+Separate multiple posts with ---.
+
+NEVER use 'problem → solution → CTA'. The reader must NOT predict the structure after the first line.
+Exception: MYTH-BREAKER and CONFESSION structures may omit the CTA entirely.
+SELF-CHECK: Can the reader predict the post's structure after the first line? If yes — restructure.`
   }
 
   protected parseResponse(message: Message): ParsedPost[] {

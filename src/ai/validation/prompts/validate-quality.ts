@@ -60,6 +60,10 @@ Tone: ${ctx.tone ?? 'professional'}. Register: ${formality}. Target audience: ${
 }
 
 function buildBrandVoiceCheck(ctx?: QualityContext): string {
+  const healthNote = ctx?.isHealthClient
+    ? '\n  Note: cautious language required by health content regulations (hedging claims, avoiding absolutes) is expected — do NOT flag it as brand voice deviation.'
+    : ''
+
   return `BRAND CHECKS:
 - brand_voice_match: Does the post feel right for this brand?
   ${buildBrandVoiceDescription({
@@ -67,7 +71,7 @@ function buildBrandVoiceCheck(ctx?: QualityContext): string {
     testimonialVoice: ctx?.clientTestimonialVoice,
     formality: ctx?.languageConfig?.formality,
   })}
-  Flag only when the post clearly drifts from the brand's voice.
+  Flag only when the post clearly drifts from the brand's voice.${healthNote}
 - audience_targeting: Does the post speak specifically to the target audience? Or could ANY audience relate equally?
 - niche_specificity: Does the post contain at least one specific detail, example, or insight that could ONLY come from this business/niche? Generic industry platitudes fail this check.`
 }
@@ -97,12 +101,20 @@ ${language}-specific AI patterns to also check:
   return `${base}${clientNotes}`
 }
 
-function buildBasePrompt(brandCtx: string, langTells: string, ctx?: QualityContext): string {
+function buildBasePrompt(brandCtx: string, langTells: string, ctx?: QualityContext, isCarousel?: boolean): string {
   const lc = ctx?.languageConfig
 
   const formality = lc?.formality ?? 'neutral'
   const language = lc?.language ?? 'English'
   const themeLabel = ctx?.theme ? ` for the theme "${ctx.theme}"` : ''
+
+  const hookLabel = isCarousel
+    ? `Does the COVER SLIDE HEADLINE open a loop that requires swiping to resolve${themeLabel} in ${formality} register?`
+    : `Does the opener stop scrolling${themeLabel} in ${formality} register?`
+
+  const ctaNote = isCarousel
+    ? 'Note: "missing" is never acceptable for carousels — the CTA slide is required.'
+    : 'Note: "missing" is acceptable when the post uses MYTH-BREAKER or CONFESSION structure.'
 
   const criteriaChecklist = buildCriteriaChecklist({
     platform: ctx?.platform,
@@ -111,6 +123,7 @@ function buildBasePrompt(brandCtx: string, langTells: string, ctx?: QualityConte
     languageConfig: lc,
     theme: ctx?.theme,
     declaredStructure: ctx?.declaredStructure,
+    isCarousel,
   })
 
   return `You are a social media content quality assessor and AI-content detector.
@@ -121,12 +134,12 @@ ${formatAiTells(language)}
 Only flag a pattern when it is clearly present and harms readability or authenticity. Do not flag marginal or borderline cases — when in doubt, do not flag.
 ${langTells}
 
-HOOK VERDICT — Does the opener stop scrolling${themeLabel} in ${formality} register?
+HOOK VERDICT — ${hookLabel}
 ${formatHookVerdicts()}
 
 CTA VERDICT — The post was allowed ONE CTA maximum, specific and low-pressure:
 ${formatCtaVerdicts()}
-Note: "missing" is acceptable when the post uses MYTH-BREAKER or CONFESSION structure.
+${ctaNote}
 
 ${buildBrandVoiceCheck(ctx)}
 
@@ -147,8 +160,8 @@ export async function validateQuality(
 ): Promise<QualityResult> {
   const brandCtx = buildBrandContext(ctx)
   const langTells = buildLanguageTells(ctx)
-  const base = buildBasePrompt(brandCtx, langTells, ctx)
-  const isCarousel = input.slides && input.slides.length > 0
+  const isCarousel = !!(input.slides && input.slides.length > 0)
+  const base = buildBasePrompt(brandCtx, langTells, ctx, isCarousel)
 
   const contentSection = buildContentSection(input.caption, input.slides, {
     singleTag: 'post_to_rate',
@@ -172,7 +185,7 @@ export async function validateQuality(
   "niche_gap": string | null,
   "structure_is_predictable": boolean,
   "structure_used": string | null,
-  "formality_consistent": boolean,
+  "formality_consistent": boolean,    // address register ONLY (pronoun choice, formal constructions) — vocabulary anglicisms go in ai_tells
   "formality_violation": string | null,
   "source_fidelity_ok": boolean | null,
   "health_compliant": boolean | null

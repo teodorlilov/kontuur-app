@@ -114,7 +114,7 @@ export async function validatePost(input: ValidatePostInput): Promise<PostValida
 
   // Compute criteria score from LLM detections + deterministic analysis
   const criteriaDetections: CriteriaDetections = {
-    structure_is_predictable: quality.structure_is_predictable,
+    structure_is_predictable: isCarousel ? false : quality.structure_is_predictable,
     formality_consistent: quality.formality_consistent,
     source_fidelity_ok: quality.source_fidelity_ok,
     health_compliant: quality.health_compliant,
