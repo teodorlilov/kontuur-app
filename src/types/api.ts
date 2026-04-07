@@ -227,6 +227,158 @@ export interface UpdateAgencyRequest {
   name: string
 }
 
+// ---- Meta Connections ----
+
+export interface MetaConnection {
+  id: string
+  platform: 'instagram' | 'facebook'
+  account_id: string
+  account_name: string
+  token_expires_at: string | null
+  created_at: string
+}
+
+// ---- Analytics ----
+
+export interface AnalyticsReportRequest {
+  client_id: string
+  platform: 'instagram' | 'facebook'
+  period_start: string // ISO date YYYY-MM-DD
+  period_end: string   // ISO date YYYY-MM-DD
+}
+
+export interface AudienceDemographics {
+  gender_age: Record<string, number>
+  top_cities: Array<{ name: string; value: number }>
+  top_countries: Array<{ name: string; value: number }>
+}
+
+export interface IGDailyInsight {
+  date: string
+  reach?: number
+  impressions?: number
+  profile_views?: number
+  follower_count?: number
+}
+
+export interface IGPost {
+  id: string
+  caption: string | null
+  timestamp: string
+  media_type: string
+  like_count: number
+  comments_count: number
+  saved?: number
+  reach?: number
+  impressions?: number
+  permalink?: string
+  shares?: number | null
+  thumbnail_url?: string | null
+}
+
+export interface MediaTypeBreakdownItem {
+  type: string
+  avg_engagement_rate: number
+  count: number
+}
+
+export interface InstagramMetrics {
+  platform: 'instagram'
+  account: {
+    followers_count: number
+    follows_count: number
+    media_count: number
+  }
+  summary: {
+    total_reach: number
+    total_impressions: number
+    total_profile_views: number
+    avg_engagement_rate: number
+    posts_published: number
+    new_followers: number
+    unfollowers: number
+    organic_reach_pct: null
+    paid_reach_pct: null
+    reach_delta_pct: number | null
+    views_delta_pct: number | null
+    profile_views_delta_pct: number | null
+    followers_delta_pct: number | null
+    avg_save_rate: number
+    total_saved: number
+    total_shares: number
+  }
+  daily_insights: IGDailyInsight[]
+  posts: IGPost[]
+  audience: AudienceDemographics | null
+  media_type_breakdown: MediaTypeBreakdownItem[]
+}
+
+export interface FBDailyInsight {
+  date: string
+  impressions?: number
+  reach?: number
+  engaged_users?: number
+  page_views?: number
+  fan_adds?: number
+  fan_removes?: number
+  organic_reach?: number
+  paid_reach?: number
+}
+
+export interface FBPost {
+  id: string
+  message: string | null
+  created_time: string
+  reactions: number
+  comments: number
+  shares: number
+  reach?: number
+  impressions?: number
+}
+
+export interface FacebookMetrics {
+  platform: 'facebook'
+  account: {
+    fan_count: number
+    followers_count: number
+  }
+  summary: {
+    total_reach: number
+    total_impressions: number
+    total_engaged_users: number
+    avg_engagement_rate: number
+    posts_published: number
+    new_followers: number
+    unfollowers: number
+    organic_reach_pct: number | null
+    paid_reach_pct: number | null
+    reach_delta_pct: number | null
+    views_delta_pct: number | null
+    profile_views_delta_pct: number | null
+    followers_delta_pct: number | null
+    avg_save_rate: number
+    total_saved: number
+    total_shares: number
+  }
+  daily_insights: FBDailyInsight[]
+  posts: FBPost[]
+  audience: AudienceDemographics | null
+  media_type_breakdown: MediaTypeBreakdownItem[]
+}
+
+export type AnalyticsMetrics = InstagramMetrics | FacebookMetrics
+
+export interface AnalyticsReport {
+  id: string
+  client_id: string
+  platform: string
+  period_start: string
+  period_end: string
+  metrics_json: AnalyticsMetrics
+  ai_summary: string
+  created_at: string
+}
+
 // ---- API error ----
 
 export interface ApiError {

@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { cn } from '@/utils/cn'
 import { parsePillars, serializePillars, type WeightedPillar } from '@/lib/clients/content-pillars'
 import { PillarEditor } from '@/features/generate/components/pillar-editor'
@@ -14,6 +14,14 @@ import { toast } from '@/components/ui/toast'
 import { PLATFORMS, WEEKDAY_OPTIONS, CAROUSEL_SLIDE_OPTIONS } from '@/utils/constants'
 import type { ClientRow, BrandProfileRow, PostingScheduleRow } from '@/types/database'
 
+interface MetaConnection {
+  id: string
+  platform: string
+  account_id: string
+  account_name: string
+  token_expires_at: string | null
+}
+
 interface ClientEditFormProps {
   clientId: string
   sourceCount: number
@@ -24,7 +32,48 @@ interface ClientEditFormProps {
 
 export function ClientEditForm({ clientId, sourceCount, client, profile, schedule }: ClientEditFormProps) {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [saving, setSaving] = useState(false)
+
+  // Meta connections state
+  const [connections, setConnections] = useState<MetaConnection[]>([])
+  const [disconnecting, setDisconnecting] = useState<string | null>(null)
+
+  useEffect(() => {
+    // Show toast based on OAuth result params
+    const connected = searchParams.get('meta_connected')
+    const error = searchParams.get('meta_error')
+    if (connected) {
+      toast.success(`${connected === 'instagram' ? 'Instagram' : 'Facebook'} account connected successfully`)
+    } else if (error) {
+      toast.error('Failed to connect account. Please try again.')
+    }
+  }, [searchParams])
+
+  useEffect(() => {
+    fetch(`/api/meta/connections?client_id=${clientId}`)
+      .then((r) => r.json())
+      .then((data: { connections?: MetaConnection[] }) => {
+        if (data.connections) setConnections(data.connections)
+      })
+      .catch(() => { /* silently ignore */ })
+  }, [clientId])
+
+  async function handleDisconnect(connectionId: string) {
+    setDisconnecting(connectionId)
+    try {
+      const res = await fetch(`/api/meta/connections/${connectionId}`, { method: 'DELETE' })
+      if (!res.ok) throw new Error('Failed to disconnect')
+      setConnections((prev) => prev.filter((c) => c.id !== connectionId))
+      toast.success('Account disconnected')
+    } catch {
+      toast.error('Failed to disconnect account')
+    } finally {
+      setDisconnecting(null)
+    }
+  }
+
+  const connectedPlatforms = new Set(connections.map((c) => c.platform))
 
   // Client fields
   const [name, setName] = useState(client.name)
@@ -311,15 +360,70 @@ export function ClientEditForm({ clientId, sourceCount, client, profile, schedul
           </div>
         </section>
 
-        {/* Connected accounts — Phase 2 placeholder */}
-        <section className="bg-white rounded-xl border border-gray-200 p-5">
-          <p className="text-sm font-medium text-gray-700 mb-2">Connected accounts</p>
-          <div className="bg-gray-50 rounded-lg px-4 py-4 text-center">
-            <p className="text-sm text-gray-500">Social media connections coming in Phase 2.</p>
-            <p className="text-xs text-gray-400 mt-1">
-              Connect Instagram, Facebook, and more to enable direct publishing and real analytics.
-            </p>
+        {/* Connected accounts */}
+        <section className="bg-white rounded-xl border border-gray-200 p-5 space-y-3">
+          <p className="text-sm font-medium text-gray-700">Connected accounts</p>
+
+          {connections.length > 0 && (
+            <div className="space-y-2">
+              {connections.map((conn) => {
+                const isExpired = conn.token_expires_at ? new Date(conn.token_expires_at) < new Date() : false
+                return (
+                  <div key={conn.id} className="flex items-center justify-between rounded-lg border border-gray-200 px-3 py-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-base">{conn.platform === 'instagram' ? '📸' : '👤'}</span>
+                      <div>
+                        <p className="text-sm font-medium text-gray-800">
+                          {conn.platform === 'instagram' ? 'Instagram' : 'Facebook'}
+                          {' · '}
+                          <span className="font-normal text-gray-600">{conn.account_name}</span>
+                        </p>
+                        {isExpired && (
+                          <p className="text-xs text-red-500">Token expired — reconnect to refresh</p>
+                        )}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleDisconnect(conn.id)}
+                      disabled={disconnecting === conn.id}
+                      className="text-xs text-gray-400 hover:text-red-500 transition-colors disabled:opacity-50"
+                    >
+                      {disconnecting === conn.id ? 'Disconnecting…' : 'Disconnect'}
+                    </button>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+
+          <div className="flex flex-wrap gap-2">
+            <a
+              href={`/api/meta/connect?platform=instagram&client_id=${clientId}`}
+              className={cn(
+                'inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border text-sm font-medium transition-colors',
+                connectedPlatforms.has('instagram')
+                  ? 'border-[#534AB7] text-[#534AB7] hover:bg-[#534AB7]/5'
+                  : 'border-gray-200 text-gray-700 hover:border-gray-300'
+              )}
+            >
+              📸 {connectedPlatforms.has('instagram') ? 'Reconnect Instagram' : 'Connect Instagram'}
+            </a>
+            <a
+              href={`/api/meta/connect?platform=facebook&client_id=${clientId}`}
+              className={cn(
+                'inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border text-sm font-medium transition-colors',
+                connectedPlatforms.has('facebook')
+                  ? 'border-[#534AB7] text-[#534AB7] hover:bg-[#534AB7]/5'
+                  : 'border-gray-200 text-gray-700 hover:border-gray-300'
+              )}
+            >
+              👤 {connectedPlatforms.has('facebook') ? 'Reconnect Facebook Page' : 'Connect Facebook Page'}
+            </a>
           </div>
+          <p className="text-xs text-gray-400">
+            Connected accounts enable real analytics reports on the Analytics page.
+          </p>
         </section>
 
         {/* Research sources */}

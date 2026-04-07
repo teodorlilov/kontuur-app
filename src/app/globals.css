@@ -29,3 +29,21 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+@media print {
+  /* Hide everything except the analytics report content */
+  body > * { display: none !important; }
+  #analytics-print-area { display: block !important; }
+
+  #analytics-print-area {
+    position: fixed;
+    inset: 0;
+    padding: 32px;
+    background: white;
+    color: black;
+    font-size: 12pt;
+  }
+
+  /* Hide controls inside the print area */
+  .print-hide { display: none !important; }
+}
