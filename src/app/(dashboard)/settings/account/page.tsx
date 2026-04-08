@@ -1,3 +1,4 @@
+import { redirect } from 'next/navigation'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { requireSessionUser } from '@/lib/auth/session'
 import { AccountView } from '@/features/settings/components/account-view'
