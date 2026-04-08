@@ -1,6 +1,7 @@
 import type { Message } from '@anthropic-ai/sdk/resources'
 import { ContentGenerator } from './content-generator'
 import type { SinglePostInput } from '../types'
+import { sanitizePromptField } from '@/ai/utils/sanitize'
 
 export interface ParsedPost {
   caption: string
@@ -43,7 +44,7 @@ function parsePostDeclaration(text: string): ParsedPost {
 export class PostGenerator extends ContentGenerator<SinglePostInput, ParsedPost[]> {
 
   protected buildDirective(input: SinglePostInput): string {
-    return `Write ${input.count} post(s) for theme '${input.theme}'.
+    return `Write ${input.count} post(s) for theme '${sanitizePromptField(input.theme)}'.
 For each post, pick a structure from the POST STRUCTURES above and declare it: [STRUCTURE: name]
 Then write the post immediately after.
 Each must feel distinct — use different structures and opener styles.

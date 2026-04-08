@@ -1,6 +1,7 @@
 import { callAnthropic, LIGHT_MODEL } from '@/utils/ai-client'
 import { parseJsonResponse } from '@/utils/ai'
 import type { BestTimePlatform } from '@/types/api'
+import { sanitizePromptField, PROMPT_FIELD_LIMITS, DEFENSIVE_DATA_CLAUSE } from '@/ai/utils/sanitize'
 
 export interface BestTimeInput {
   niche: string
@@ -15,12 +16,14 @@ export interface BestTimeResult {
 }
 
 function buildPrompt(input: BestTimeInput): string {
-  return `You are a social media strategist. Based on this client's profile, determine the best times to post on each of their active platforms.
+  return `You are a social media strategist. ${DEFENSIVE_DATA_CLAUSE}
+
+Based on this client's profile, determine the best times to post on each of their active platforms.
 
 Client profile:
-Niche: ${input.niche} | Audience: ${input.targetAudience}
-Language: ${input.language}
-Active platforms: ${input.platforms}
+Niche: ${sanitizePromptField(input.niche)} | Audience: ${sanitizePromptField(input.targetAudience)}
+Language: ${sanitizePromptField(input.language, PROMPT_FIELD_LIMITS.short)}
+Active platforms: ${sanitizePromptField(input.platforms, PROMPT_FIELD_LIMITS.short)}
 
 For each platform, reason from first principles about:
 - When this specific target audience is most likely online based on their lifestyle and daily patterns

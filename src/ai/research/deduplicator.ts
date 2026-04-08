@@ -1,6 +1,7 @@
 import { NGRAM_SIZE, NGRAM_SIMILARITY_THRESHOLD, ENABLE_LLM_DEDUP } from '@/lib/content-rules/constants'
 import { callAnthropic } from '@/utils/ai-client'
 import { parseJsonResponse } from '@/utils/ai'
+import { sanitizePromptField, PROMPT_FIELD_LIMITS, DEFENSIVE_DATA_CLAUSE } from '@/ai/utils/sanitize'
 
 // ---------------------------------------------------------------------------
 // Language config registry — add new languages here, no code changes needed
@@ -174,10 +175,11 @@ export class Deduplicator {
   ): Promise<Set<number>> {
     if (candidates.length === 0 || existing.length === 0) return new Set()
 
-    const candidateList = candidates.map((c, i) => `${i}. ${c}`).join('\n')
-    const existingList = existing.map((e, i) => `${i + 1}. ${e}`).join('\n')
+    // Sanitize per-item without filtering so indices stay aligned with the original arrays
+    const candidateList = candidates.map((c, i) => `${i}. ${sanitizePromptField(c)}`).join('\n')
+    const existingList = existing.map((e, i) => `${i + 1}. ${sanitizePromptField(e)}`).join('\n')
 
-    const prompt = `You are a deduplication filter for social media post themes in ${language}.
+    const prompt = `You are a deduplication filter for social media post themes in ${sanitizePromptField(language, PROMPT_FIELD_LIMITS.short)}. ${DEFENSIVE_DATA_CLAUSE}
 
 EXISTING themes (already used — do NOT repeat these):
 ${existingList}

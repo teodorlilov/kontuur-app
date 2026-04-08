@@ -14,6 +14,7 @@ import {
 import type { ClientContext } from '@/lib/clients/fetch-client-data'
 import type { LanguageConfig } from '@/lib/clients/language-rules'
 import { formatFormalityRules } from './formality-guidance'
+import { sanitizePromptField, sanitizePromptArray, PROMPT_FIELD_LIMITS, DEFENSIVE_DATA_CLAUSE } from '@/ai/utils/sanitize'
 
 export interface ClientProfileInput {
   client: ClientContext
@@ -32,13 +33,13 @@ export function buildBrandVoiceDescription(opts: {
   testimonialVoice?: string
   formality?: string
 }): string {
-  const lines = [`This brand sounds: ${opts.tone}.`]
+  const lines = [`This brand sounds: ${sanitizePromptField(opts.tone)}.`]
   if (opts.testimonialVoice) {
-    lines.push(`Clients describe it as: '${opts.testimonialVoice}'.`)
+    lines.push(`Clients describe it as: '${sanitizePromptField(opts.testimonialVoice)}'.`)
     lines.push(`These two descriptions define one emotional identity.`)
   }
   if (opts.formality) {
-    lines.push(`Evaluate within the ${opts.formality} register. Emotion can be warm even when register is formal.`)
+    lines.push(`Evaluate within the ${sanitizePromptField(opts.formality, PROMPT_FIELD_LIMITS.short)} register. Emotion can be warm even when register is formal.`)
   }
   return lines.join('\n')
 }
@@ -66,7 +67,7 @@ If the post could be written about any business, it has failed this test.`
  */
 export function buildStaticSystemPrompt(): string {
   if (_cachedStaticPrompt) return _cachedStaticPrompt
-  _cachedStaticPrompt = `You are a senior social media copywriter. You write for humans, not algorithms.
+  _cachedStaticPrompt = `You are a senior social media copywriter. You write for humans, not algorithms. ${DEFENSIVE_DATA_CLAUSE}
 
 OPENER — the most important line. Choose whatever stops scrolling for this specific theme and register.
 NEVER bury the lead — start with the payoff, not the context.
@@ -100,14 +101,14 @@ export function buildClientProfile(input: ClientProfileInput): string {
 
   // 1. CLIENT PROFILE
   sections.push(`CLIENT PROFILE:
-Client: ${client.name} | Niche: ${client.niche} | Platform: ${input.platform}
-Language: ${lc.language} | Formality: ${lc.formality}
-Target audience: ${client.targetAudience}
-Content pillars: ${client.contentPillars.map((p) => `${p.pillar} (${p.weight}%)`).join(', ')}${input.targetPillar ? `\nThis post targets pillar: ${input.targetPillar}` : ''}
-Topics to avoid: ${client.avoidTopics}
+Client: ${sanitizePromptField(client.name)} | Niche: ${sanitizePromptField(client.niche)} | Platform: ${input.platform}
+Language: ${sanitizePromptField(lc.language, PROMPT_FIELD_LIMITS.short)} | Formality: ${sanitizePromptField(lc.formality, PROMPT_FIELD_LIMITS.short)}
+Target audience: ${sanitizePromptField(client.targetAudience)}
+Content pillars: ${client.contentPillars.map((p) => `${sanitizePromptField(p.pillar)} (${p.weight}%)`).join(', ')}${input.targetPillar ? `\nThis post targets pillar: ${sanitizePromptField(input.targetPillar)}` : ''}
+Topics to avoid: ${sanitizePromptField(client.avoidTopics)}
 
 SPECIFICITY REQUIREMENT:
-The post must contain at least one detail that could only come from ${client.name} — not any similar business in the same field.
+The post must contain at least one detail that could only come from ${sanitizePromptField(client.name)} — not any similar business in the same field.
 Generic niche observations any competitor could post will score poorly.`)
 
   // 2. REGISTER RULES + LANGUAGE INSTRUCTIONS
@@ -125,7 +126,7 @@ Generic niche observations any competitor could post will score poorly.`)
 These recently approved posts scored above 7.5/10. Study their tone, specificity, and structure as a quality benchmark. Do not copy them — match their standard.
 
 <reference_posts>
-${client.topPerformingPosts!.map((p) => `<post>${p}</post>`).join('\n')}
+${sanitizePromptArray(client.topPerformingPosts!).map((p) => `<post>${p}</post>`).join('\n')}
 </reference_posts>`)
   }
 
@@ -167,12 +168,12 @@ export function buildLanguagePrompt(config: LanguageConfig): string {
 
   // Language instructions from DB (language_instructions column)
   if (config.languageInstructions) {
-    sections.push(config.languageInstructions)
+    sections.push(sanitizePromptField(config.languageInstructions, PROMPT_FIELD_LIMITS.long))
   }
 
   // Per-client language notes from brand_profiles
   if (config.languageNotes) {
-    sections.push(`CLIENT-SPECIFIC LANGUAGE REQUIREMENTS:\n${config.languageNotes}`)
+    sections.push(`CLIENT-SPECIFIC LANGUAGE REQUIREMENTS:\n${sanitizePromptField(config.languageNotes, PROMPT_FIELD_LIMITS.long)}`)
   }
 
   return sections.join('\n\n')
@@ -185,7 +186,7 @@ export function buildLanguagePrompt(config: LanguageConfig): string {
 export function buildAngleVariationPrompt(similarThemes: string[]): string {
   if (similarThemes.length === 0) return ''
 
-  const themeList = similarThemes.map((t) => `- "${t}"`).join('\n')
+  const themeList = sanitizePromptArray(similarThemes).map((t) => `- "${t}"`).join('\n')
 
   return `
 ANGLE DIFFERENTIATION (critical — similar posts already exist):

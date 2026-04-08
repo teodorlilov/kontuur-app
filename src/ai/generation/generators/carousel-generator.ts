@@ -2,6 +2,7 @@ import type { Message } from '@anthropic-ai/sdk/resources'
 import { parseJsonResponse } from '@/utils/ai'
 import { ContentGenerator } from './content-generator'
 import type { CarouselInput, CarouselResult } from '../types'
+import { sanitizePromptField } from '@/ai/utils/sanitize'
 
 export class CarouselGenerator extends ContentGenerator<CarouselInput, CarouselResult> {
 
@@ -34,7 +35,7 @@ Each slide covers a DISTINCT idea — check all prior slides before writing the 
 
 MAIN CAPTION: 40–60 words. One sharp hook sentence + one bridging sentence + hashtags. Tease the core insight without revealing all slides.
 
-Theme: ${input.theme}
+Theme: ${sanitizePromptField(input.theme)}
 You MUST return exactly ${input.slideCount} slides in the JSON array.
 
 FOR EACH SLIDE: provide a design note (1-2 sentences) for Canva. For the cover slide, suggest a swipe cue overlay text from: ${swipeCues}

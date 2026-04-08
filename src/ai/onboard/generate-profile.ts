@@ -1,6 +1,7 @@
 import { callAnthropic } from '@/utils/ai-client'
 import { parseJsonResponse } from '@/utils/ai'
 import type { OnboardResponse, UrlAnalysisResponse } from '@/types/api'
+import { sanitizePromptField, PROMPT_FIELD_LIMITS, DEFENSIVE_DATA_CLAUSE } from '@/ai/utils/sanitize'
 
 export interface GenerateProfileInput {
   answers: {
@@ -19,15 +20,15 @@ export interface GenerateProfileInput {
 function buildAnalysisContext(data: UrlAnalysisResponse): string {
   return `
 WEBSITE/SOCIAL MEDIA ANALYSIS DATA (use this to improve accuracy):
-Detected niche: ${data.detected_niche} (confidence: ${data.detected_niche_confidence})
-Detected services: ${data.detected_services_products?.join(', ') ?? 'none'}
-Detected target audience: ${data.detected_target_audience?.join(', ') ?? 'none'}
-Detected tone: ${data.detected_tone ?? 'none'}
-Detected content pillars: ${data.detected_content_pillars?.map((p) => `${p.pillar} (${p.weight}%)`).join(', ') ?? 'none'}
-Detected language: ${data.detected_language ?? 'none'} (${data.detected_language_formality ?? 'none'})
+Detected niche: ${sanitizePromptField(data.detected_niche)} (confidence: ${data.detected_niche_confidence})
+Detected services: ${data.detected_services_products?.map((s) => sanitizePromptField(s)).join(', ') ?? 'none'}
+Detected target audience: ${data.detected_target_audience?.map((a) => sanitizePromptField(a)).join(', ') ?? 'none'}
+Detected tone: ${sanitizePromptField(data.detected_tone) || 'none'}
+Detected content pillars: ${data.detected_content_pillars?.map((p) => `${sanitizePromptField(p.pillar)} (${p.weight}%)`).join(', ') ?? 'none'}
+Detected language: ${sanitizePromptField(data.detected_language, PROMPT_FIELD_LIMITS.short) || 'none'} (${sanitizePromptField(data.detected_language_formality, PROMPT_FIELD_LIMITS.short) || 'none'})
 Detected health niche: ${data.detected_is_health_niche ?? false}
-Detected testimonial voice: ${data.detected_testimonial_voice ?? 'none'}
-Detected avoid topics: ${data.detected_avoid_topics ?? 'none'}
+Detected testimonial voice: ${sanitizePromptField(data.detected_testimonial_voice) || 'none'}
+Detected avoid topics: ${sanitizePromptField(data.detected_avoid_topics) || 'none'}
 The user confirmed or corrected these detections in the answers below.
 `
 }
@@ -58,22 +59,23 @@ Return JSON only, no other text:
 }
 
 For content_pillars: suggest 3-6 pillars with weights that sum to 100. Each pillar should be a specific content theme relevant to this business.
-${answers.q7 ? `The user selected these content pillar preferences: ${answers.q7}. Use these as a starting point but refine and expand based on the business.` : ''}
+${answers.q7 ? `The user selected these content pillar preferences: ${sanitizePromptField(answers.q7)}. Use these as a starting point but refine and expand based on the business.` : ''}
 
+${DEFENSIVE_DATA_CLAUSE}
 <user_answers>
-Q1 (business description): ${answers.q1}
-Q2 (target audience): ${answers.q2}
-Q3 (post goal): ${answers.q3}
-Q4 (tone): ${answers.q4 ?? ''}
-Q4b (language/formality): ${answers.q4b ?? ''}
-Q5 (avoid topics): ${answers.q5 ?? ''}
-Q6 (testimonial voice): ${answers.q6 ?? ''}
+Q1 (business description): ${sanitizePromptField(answers.q1, PROMPT_FIELD_LIMITS.long)}
+Q2 (target audience): ${sanitizePromptField(answers.q2, PROMPT_FIELD_LIMITS.long)}
+Q3 (post goal): ${sanitizePromptField(answers.q3)}
+Q4 (tone): ${sanitizePromptField(answers.q4)}
+Q4b (language/formality): ${sanitizePromptField(answers.q4b)}
+Q5 (avoid topics): ${sanitizePromptField(answers.q5)}
+Q6 (testimonial voice): ${sanitizePromptField(answers.q6)}
 </user_answers>`
 }
 
 export async function generateProfile(input: GenerateProfileInput): Promise<OnboardResponse> {
   const message = await callAnthropic({
-    systemPrompt: 'You are a social media strategist.',
+    systemPrompt: `You are a social media strategist. ${DEFENSIVE_DATA_CLAUSE}`,
     userMessage: buildPrompt(input),
     cacheSystemPrompt: false,
   })
