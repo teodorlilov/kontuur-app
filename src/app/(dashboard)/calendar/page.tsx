@@ -1,27 +1,12 @@
-import { redirect } from 'next/navigation'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { requireSessionUser } from '@/lib/auth/session'
 import { Topbar } from '@/components/layout/topbar'
 import { CalendarView } from '@/features/calendar/components/calendar-view'
 import type { CalendarPost, BestTimePlatform } from '@/types/api'
 
 export default async function CalendarPage() {
+  const { agencyId } = await requireSessionUser()
   const supabase = await createServerSupabaseClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  if (!user) redirect('/login')
-
-  const { data: rawUserData } = await supabase
-    .from('users')
-    .select('agency_id')
-    .eq('id', user.id)
-    .single()
-
-  const userData = rawUserData as { agency_id: string } | null
-  if (!userData) redirect('/login')
-
-  const agencyId = userData.agency_id
 
   // Fetch clients with brand profile best_time_json
   const { data: clientRows } = await supabase

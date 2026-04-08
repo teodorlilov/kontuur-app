@@ -1,5 +1,5 @@
-import { redirect } from 'next/navigation'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { requireSessionUser } from '@/lib/auth/session'
 import { Topbar } from '@/components/layout/topbar'
 import { SettingsTabs } from '@/features/settings/components/settings-tabs'
 
@@ -8,26 +8,13 @@ export default async function SettingsLayout({
 }: {
   children: React.ReactNode
 }) {
+  const { agencyId } = await requireSessionUser()
   const supabase = await createServerSupabaseClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  if (!user) redirect('/login')
-
-  const { data: rawUserData } = await supabase
-    .from('users')
-    .select('agency_id')
-    .eq('id', user.id)
-    .single()
-
-  const userData = rawUserData as { agency_id: string } | null
-  if (!userData) redirect('/login')
 
   const { data: rawAgencyData } = await supabase
     .from('agencies')
     .select('mode')
-    .eq('id', userData.agency_id)
+    .eq('id', agencyId)
     .single()
 
   const agencyMode: 'agency' | 'solo' =

@@ -1,32 +1,20 @@
-import { redirect, notFound } from 'next/navigation'
+import { notFound } from 'next/navigation'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { requireSessionUser } from '@/lib/auth/session'
 import { ClientEditForm } from '@/features/clients/components/client-edit-form'
 import type { ClientRow, BrandProfileRow, PostingScheduleRow } from '@/types/database'
 
 export default async function EditClientPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
+  const { agencyId } = await requireSessionUser()
   const supabase = await createServerSupabaseClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  if (!user) redirect('/login')
-
-  const { data: rawUserData } = await supabase
-    .from('users')
-    .select('agency_id')
-    .eq('id', user.id)
-    .single()
-
-  const userData = rawUserData as { agency_id: string } | null
-  if (!userData) redirect('/login')
 
   // Verify ownership
   const { data: rawClientCheck } = await supabase
     .from('clients')
     .select('id')
     .eq('id', id)
-    .eq('agency_id', userData.agency_id)
+    .eq('agency_id', agencyId)
     .single()
 
   if (!rawClientCheck) notFound()

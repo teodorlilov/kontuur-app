@@ -2,29 +2,26 @@ import { redirect } from 'next/navigation'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { createUserRecord } from '@/lib/auth/create-user-record'
+import { getAuthUser, getCachedUserRecord } from '@/lib/auth/session'
 import { AuthProvider } from '@/components/providers/auth-provider'
 import { Sidebar } from '@/components/layout/sidebar'
+import { NotificationsBell } from '@/components/layout/notifications-bell'
 
 export default async function DashboardLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
-  const supabase = await createServerSupabaseClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const user = await getAuthUser()
 
   if (!user) {
     redirect('/login')
   }
 
+  const supabase = await createServerSupabaseClient()
+
   // Fetch agency mode for sidebar
-  let { data: rawUserData } = await supabase
-    .from('users')
-    .select('agency_id, role')
-    .eq('id', user.id)
-    .single()
+  let rawUserData = await getCachedUserRecord(user.id)
 
   // If no users record exists, auto-create from signup metadata (handles cases where
   // the /auth/callback was not reached after email confirmation)
@@ -50,20 +47,15 @@ export default async function DashboardLayout({
   let pendingCount = 0
 
   if (userData) {
-    const { data: rawAgencyData } = await supabase
-      .from('agencies')
-      .select('mode')
-      .eq('id', userData.agency_id)
-      .single()
+    const [{ data: rawAgencyData }, { data: clientRows }] = await Promise.all([
+      supabase.from('agencies').select('mode').eq('id', userData.agency_id).single(),
+      supabase.from('clients').select('id').eq('agency_id', userData.agency_id),
+    ])
 
     const agencyData = rawAgencyData as { mode: string } | null
     if (agencyData?.mode === 'solo') agencyMode = 'solo'
 
     // Pending review count for badge
-    const { data: clientRows } = await supabase
-      .from('clients')
-      .select('id')
-      .eq('agency_id', userData.agency_id)
 
     const clientIds = (clientRows as Array<{ id: string }> | null)?.map((c) => c.id) ?? []
 
@@ -83,6 +75,9 @@ export default async function DashboardLayout({
       <div className="flex h-screen overflow-hidden" style={{ background: 'var(--color-page)' }}>
         <Sidebar agencyMode={agencyMode} pendingCount={pendingCount} />
         <main className="flex-1 overflow-y-auto">{children}</main>
+        <div style={{ position: 'fixed', top: 12, right: 40, zIndex: 50 }}>
+          <NotificationsBell />
+        </div>
       </div>
     </AuthProvider>
   )

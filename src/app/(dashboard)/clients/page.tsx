@@ -1,28 +1,13 @@
 import Link from 'next/link'
-import { redirect } from 'next/navigation'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { requireSessionUser } from '@/lib/auth/session'
 import { Topbar } from '@/components/layout/topbar'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 
 export default async function ClientsPage() {
+  const { agencyId } = await requireSessionUser()
   const supabase = await createServerSupabaseClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  if (!user) redirect('/login')
-
-  const { data: rawUserData } = await supabase
-    .from('users')
-    .select('agency_id')
-    .eq('id', user.id)
-    .single()
-
-  const userData = rawUserData as { agency_id: string } | null
-  if (!userData) redirect('/login')
-
-  const agencyId = userData.agency_id
 
   const { data: clientRows } = await supabase
     .from('clients')

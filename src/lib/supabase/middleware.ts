@@ -26,13 +26,8 @@ export async function updateSession(request: NextRequest) {
     }
   )
 
-  let user = null
-  try {
-    const { data } = await supabase.auth.getUser()
-    user = data.user
-  } catch {
-    // Supabase unavailable — treat as unauthenticated
-  }
+  const { data: { session } } = await supabase.auth.getSession()
+  const user = session?.user ?? null
 
   const { pathname } = request.nextUrl
 

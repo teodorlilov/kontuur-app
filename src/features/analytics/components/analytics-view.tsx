@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { Select } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
@@ -18,6 +18,7 @@ import type { AnalyticsReport, AnalyticsMetrics, MetaConnection, IGPost, FBPost 
 
 interface AnalyticsViewProps {
   clients: Array<{ id: string; name: string }>
+  initialConnections: MetaConnection[]
 }
 
 type Preset = '7d' | '30d' | '90d'
@@ -33,18 +34,28 @@ function getDateRange(preset: Preset): { start: string; end: string } {
   }
 }
 
-export function AnalyticsView({ clients }: AnalyticsViewProps) {
+export function AnalyticsView({ clients, initialConnections }: AnalyticsViewProps) {
   const [selectedClientId, setSelectedClientId] = useState(clients[0]?.id ?? '')
-  const [platform, setPlatform] = useState<'instagram' | 'facebook'>('instagram')
+  const [platform, setPlatform] = useState<'instagram' | 'facebook'>(
+    (initialConnections[0]?.platform as 'instagram' | 'facebook') ?? 'instagram'
+  )
   const [preset, setPreset] = useState<Preset>('30d')
   const [activeTab, setActiveTab] = useState<Tab>('overview')
 
-  const [connections, setConnections] = useState<MetaConnection[]>([])
+  const [connections, setConnections] = useState<MetaConnection[]>(initialConnections)
   const [generating, setGenerating] = useState(false)
   const [report, setReport] = useState<AnalyticsReport | null>(null)
 
-  // Fetch connections for selected client
+  const isInitialMount = useRef(true)
+
+  // Fetch connections when the selected client changes.
+  // Skip initial mount — connections for the first client are passed as props
+  // from the server component, so no client-side fetch is needed on load.
   useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false
+      return
+    }
     if (!selectedClientId) return
     setReport(null)
     fetch(`/api/meta/connections?client_id=${selectedClientId}`)

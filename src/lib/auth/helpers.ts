@@ -41,6 +41,18 @@ export async function getAgencyId(supabase: SupabaseServerClient, userId: string
   return data?.agency_id ?? null
 }
 
+export async function getUserRecord(
+  supabase: SupabaseServerClient,
+  userId: string
+): Promise<{ agency_id: string; role: string } | null> {
+  const { data } = await supabase
+    .from('users')
+    .select('agency_id, role')
+    .eq('id', userId)
+    .single()
+  return data as { agency_id: string; role: string } | null
+}
+
 export async function verifyClientOwnership(
   supabase: SupabaseServerClient,
   clientId: string,

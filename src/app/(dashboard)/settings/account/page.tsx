@@ -1,28 +1,15 @@
-import { redirect } from 'next/navigation'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { requireSessionUser } from '@/lib/auth/session'
 import { AccountView } from '@/features/settings/components/account-view'
 
 export default async function AccountPage() {
+  const { agencyId, role } = await requireSessionUser()
   const supabase = await createServerSupabaseClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  if (!user) redirect('/login')
-
-  const { data: rawUserData } = await supabase
-    .from('users')
-    .select('agency_id, role')
-    .eq('id', user.id)
-    .single()
-
-  const userData = rawUserData as { agency_id: string; role: string } | null
-  if (!userData) redirect('/login')
 
   const { data: rawAgency } = await supabase
     .from('agencies')
     .select('id, name, plan, mode, subscription_status, trial_ends_at, plan_client_limit, timezone')
-    .eq('id', userData.agency_id)
+    .eq('id', agencyId)
     .single()
 
   const agency = rawAgency as {
@@ -41,7 +28,7 @@ export default async function AccountPage() {
   return (
     <AccountView
       agency={{ ...agency, timezone: agency.timezone ?? 'UTC' }}
-      currentUserRole={userData.role}
+      currentUserRole={role}
     />
   )
 }

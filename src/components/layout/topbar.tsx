@@ -1,5 +1,3 @@
-import { NotificationsBell } from './notifications-bell'
-
 interface TopbarProps {
   title: string
 }
@@ -11,7 +9,6 @@ export function Topbar({ title }: TopbarProps) {
         height: 56,
         display: 'flex',
         alignItems: 'center',
-        justifyContent: 'space-between',
         padding: '0 40px',
         borderBottom: '0.5px solid var(--color-border-1)',
         background: 'var(--color-page)',
@@ -30,7 +27,6 @@ export function Topbar({ title }: TopbarProps) {
       >
         {title}
       </h1>
-      <NotificationsBell />
     </header>
   )
 }
