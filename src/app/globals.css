@@ -70,6 +70,11 @@
   --font-display: var(--font-playfair);
 }
 
+/* ─── Scroll behaviour ─── */
+html {
+  scroll-behavior: smooth;
+}
+
 /* ─── Base styles ─── */
 body {
   font-family: var(--font-sans), Arial, Helvetica, sans-serif;
