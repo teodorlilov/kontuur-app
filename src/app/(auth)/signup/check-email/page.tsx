@@ -3,6 +3,7 @@
 import { Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
+import { KontuurLogo } from '@/components/ui/kontuur-logo'
 
 function CheckEmailContent() {
   const searchParams = useSearchParams()
@@ -11,11 +12,8 @@ function CheckEmailContent() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4 py-10">
       <div className="w-full max-w-sm text-center">
-        <div className="inline-flex items-center gap-2 mb-8">
-          <div className="h-8 w-8 rounded-lg bg-brand-purple flex items-center justify-center">
-            <span className="text-white text-sm font-bold">P</span>
-          </div>
-          <span className="text-xl font-semibold text-gray-900">PostFlow</span>
+        <div className="inline-flex mb-8">
+          <KontuurLogo />
         </div>
 
         <div className="bg-white rounded-xl border border-gray-200 p-8">

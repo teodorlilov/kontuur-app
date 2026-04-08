@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
+import { KontuurLogo } from '@/components/ui/kontuur-logo'
 import {
   LayoutDashboard,
   Users,
@@ -109,11 +110,8 @@ export function Sidebar({ agencyMode, pendingCount = 0 }: SidebarProps) {
       {/* Desktop sidebar */}
       <aside className="hidden md:flex flex-col w-56 shrink-0 h-screen sticky top-0 border-r border-gray-200 bg-white px-3 py-4">
         {/* Logo */}
-        <div className="flex items-center gap-2 px-2 mb-6">
-          <div className="h-7 w-7 rounded-lg bg-brand-purple flex items-center justify-center shrink-0">
-            <span className="text-white text-xs font-bold">P</span>
-          </div>
-          <span className="text-base font-semibold text-gray-900">PostFlow</span>
+        <div className="px-2 mb-6">
+          <KontuurLogo height={60} />
         </div>
 
         <NavLinks />
@@ -161,12 +159,7 @@ export function Sidebar({ agencyMode, pendingCount = 0 }: SidebarProps) {
           />
           <aside className="relative flex flex-col w-64 h-full bg-white px-3 py-4 shadow-xl">
             <div className="flex items-center justify-between px-2 mb-6">
-              <div className="flex items-center gap-2">
-                <div className="h-7 w-7 rounded-lg bg-brand-purple flex items-center justify-center">
-                  <span className="text-white text-xs font-bold">P</span>
-                </div>
-                <span className="text-base font-semibold text-gray-900">PostFlow</span>
-              </div>
+              <KontuurLogo height={60} />
               <button
                 onClick={() => setMobileOpen(false)}
                 className="p-1 rounded-lg text-gray-400 hover:text-gray-600"

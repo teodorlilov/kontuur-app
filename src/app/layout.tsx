@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 })
 
 export const metadata: Metadata = {
-  title: 'PostFlow',
+  title: 'kontuur',
   description: 'AI-powered social media management for agencies',
 }
 

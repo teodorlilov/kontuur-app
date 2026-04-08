@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { toast } from '@/components/ui/toast'
 import { cn } from '@/utils/cn'
+import { KontuurLogo } from '@/components/ui/kontuur-logo'
 
 type Mode = 'agency' | 'solo'
 
@@ -93,11 +94,8 @@ export function SignupForm() {
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4 py-10">
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
-          <div className="inline-flex items-center gap-2 mb-6">
-            <div className="h-8 w-8 rounded-lg bg-brand-purple flex items-center justify-center">
-              <span className="text-white text-sm font-bold">P</span>
-            </div>
-            <span className="text-xl font-semibold text-gray-900">PostFlow</span>
+          <div className="inline-flex mb-6">
+            <KontuurLogo />
           </div>
           <h1 className="text-xl font-semibold text-gray-900">Create your account</h1>
           <p className="text-sm text-gray-500 mt-1">14-day free trial, no card required</p>
@@ -133,7 +131,7 @@ export function SignupForm() {
           />
 
           <div className="flex flex-col gap-2">
-            <p className="text-sm font-medium text-gray-700">How will you use PostFlow?</p>
+            <p className="text-sm font-medium text-gray-700">How will you use kontuur?</p>
             <div className="flex flex-col gap-2">
               {([
                 {
