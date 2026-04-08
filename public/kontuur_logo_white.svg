@@ -1,0 +1,13 @@
+<svg width="100%" viewBox="0 0 680 340" xmlns="http://www.w3.org/2000/svg">
+
+<g transform="translate(340, 170)">
+  <g transform="translate(-295, -24)">
+    <rect x="-54" y="-54" width="54" height="54" rx="7" fill="rgba(255,255,255,0.95)"/>
+    <rect x="-54" y="8" width="34" height="34" rx="6" fill="rgba(255,255,255,0.35)"/>
+    <rect x="-12" y="8" width="12" height="34" rx="5" fill="rgba(255,255,255,0.72)"/>
+  </g>
+  <text x="4" y="12" font-family="Georgia,'Times New Roman',serif" font-size="86" font-weight="400" letter-spacing="12" fill="rgba(255,255,255,0.95)" text-anchor="middle">kontuur</text>
+  <text x="4" y="54" font-family="Georgia,'Times New Roman',serif" font-size="13" font-weight="400" letter-spacing="7" fill="rgba(255,255,255,0.45)" text-anchor="middle">social intelligence</text>
+</g>
+
+</svg>

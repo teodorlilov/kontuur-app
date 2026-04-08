@@ -17,8 +17,7 @@ import {
   LogOut,
 } from 'lucide-react'
 import { createBrowserSupabaseClient } from '@/lib/supabase/client'
-import { cn } from '@/utils/cn'
-import { toast } from '@/components/ui/toast'
+import { toast } from 'sonner'
 
 interface NavItem {
   label: string
@@ -32,36 +31,106 @@ interface SidebarProps {
   pendingCount?: number
 }
 
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <div
+      style={{
+        padding: '20px 22px 6px',
+        fontSize: 10,
+        fontWeight: 500,
+        textTransform: 'uppercase',
+        letterSpacing: '0.10em',
+        color: 'rgba(255,255,255,0.25)',
+        fontFamily: 'var(--font-sans)',
+      }}
+    >
+      {children}
+    </div>
+  )
+}
+
+function NavLink({ item, pathname, onClose }: { item: NavItem; pathname: string; onClose?: () => void }) {
+  const active = pathname === item.href || pathname.startsWith(item.href + '/')
+  return (
+    <Link
+      href={item.href}
+      onClick={onClose}
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 9,
+        padding: '8px 22px',
+        fontSize: 13.5,
+        color: active ? 'var(--sidebar-text-active)' : 'var(--sidebar-text)',
+        background: active ? 'var(--sidebar-item-bg-active)' : 'transparent',
+        cursor: 'pointer',
+        transition: 'color 120ms ease, background 120ms ease',
+        textDecoration: 'none',
+        minHeight: 36,
+      }}
+      onMouseEnter={(e) => {
+        if (!active) {
+          e.currentTarget.style.color = 'var(--sidebar-text-hover)'
+          e.currentTarget.style.background = 'var(--sidebar-item-bg-hover)'
+        }
+      }}
+      onMouseLeave={(e) => {
+        if (!active) {
+          e.currentTarget.style.color = 'var(--sidebar-text)'
+          e.currentTarget.style.background = 'transparent'
+        }
+      }}
+    >
+      {item.icon}
+      <span style={{ flex: 1 }}>{item.label}</span>
+      {item.badge && item.badge > 0 ? (
+        <span
+          style={{
+            background: 'var(--sidebar-badge-bg)',
+            color: 'var(--sidebar-badge-text)',
+            fontSize: 10,
+            padding: '1px 6px',
+            borderRadius: 'var(--radius-full)',
+          }}
+        >
+          {item.badge}
+        </span>
+      ) : null}
+    </Link>
+  )
+}
+
+function NavLinks({ items, pathname, onClose }: { items: NavItem[]; pathname: string; onClose?: () => void }) {
+  return (
+    <nav style={{ flex: 1 }}>
+      <SectionLabel>Workspace</SectionLabel>
+      {items.map((item) => (
+        <NavLink key={item.href} item={item} pathname={pathname} onClose={onClose} />
+      ))}
+    </nav>
+  )
+}
+
 export function Sidebar({ agencyMode, pendingCount = 0 }: SidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
   const [mobileOpen, setMobileOpen] = useState(false)
 
   const agencyNav: NavItem[] = [
-    { label: 'Dashboard', href: '/dashboard', icon: <LayoutDashboard className="h-5 w-5" /> },
-    { label: 'Clients', href: '/clients', icon: <Users className="h-5 w-5" /> },
-    { label: 'Generate posts', href: '/generate', icon: <Sparkles className="h-5 w-5" /> },
-    {
-      label: 'Review queue',
-      href: '/review',
-      icon: <ClipboardList className="h-5 w-5" />,
-      badge: pendingCount,
-    },
-    { label: 'Calendar', href: '/calendar', icon: <Calendar className="h-5 w-5" /> },
-    { label: 'Analytics', href: '/analytics', icon: <BarChart2 className="h-5 w-5" /> },
+    { label: 'Dashboard', href: '/dashboard', icon: <LayoutDashboard size={16} /> },
+    { label: 'Clients', href: '/clients', icon: <Users size={16} /> },
+    { label: 'Generate posts', href: '/generate', icon: <Sparkles size={16} /> },
+    { label: 'Review queue', href: '/review', icon: <ClipboardList size={16} />, badge: pendingCount },
+    { label: 'Calendar', href: '/calendar', icon: <Calendar size={16} /> },
+    { label: 'Analytics', href: '/analytics', icon: <BarChart2 size={16} /> },
   ]
 
   const soloNav: NavItem[] = [
-    { label: 'Dashboard', href: '/dashboard', icon: <LayoutDashboard className="h-5 w-5" /> },
-    { label: 'Create content', href: '/generate', icon: <Sparkles className="h-5 w-5" /> },
-    {
-      label: 'My drafts',
-      href: '/review',
-      icon: <ClipboardList className="h-5 w-5" />,
-      badge: pendingCount,
-    },
-    { label: 'My calendar', href: '/calendar', icon: <Calendar className="h-5 w-5" /> },
-    { label: 'My results', href: '/analytics', icon: <BarChart2 className="h-5 w-5" /> },
+    { label: 'Dashboard', href: '/dashboard', icon: <LayoutDashboard size={16} /> },
+    { label: 'Create content', href: '/generate', icon: <Sparkles size={16} /> },
+    { label: 'My drafts', href: '/review', icon: <ClipboardList size={16} />, badge: pendingCount },
+    { label: 'My calendar', href: '/calendar', icon: <Calendar size={16} /> },
+    { label: 'My results', href: '/analytics', icon: <BarChart2 size={16} /> },
   ]
 
   const navItems = agencyMode === 'solo' ? soloNav : agencyNav
@@ -69,125 +138,108 @@ export function Sidebar({ agencyMode, pendingCount = 0 }: SidebarProps) {
   async function handleSignOut() {
     const supabase = createBrowserSupabaseClient()
     await supabase.auth.signOut()
-    toast.info('Signed out')
+    toast('Signed out')
     router.push('/login')
     router.refresh()
   }
 
-  function NavLinks({ onClose }: { onClose?: () => void }) {
-    return (
-      <nav className="flex flex-col gap-1 flex-1">
-        {navItems.map((item) => {
-          const active = pathname === item.href || pathname.startsWith(item.href + '/')
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              onClick={onClose}
-              className={cn(
-                'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors min-h-[44px]',
-                active
-                  ? 'bg-brand-purple-light text-brand-purple'
-                  : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-              )}
-            >
-              {item.icon}
-              <span className="flex-1">{item.label}</span>
-              {item.badge && item.badge > 0 ? (
-                <span className="bg-brand-purple text-white text-xs font-semibold px-1.5 py-0.5 rounded-full">
-                  {item.badge}
-                </span>
-              ) : null}
-            </Link>
-          )
-        })}
-      </nav>
-    )
-  }
+  const sidebarContent = (onClose?: () => void) => (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      {/* Logo area */}
+      <div
+        style={{
+          padding: '26px 22px 18px',
+          borderBottom: '0.5px solid var(--sidebar-border)',
+        }}
+      >
+        <KontuurLogo height={100} />
+      </div>
+
+      <NavLinks items={navItems} pathname={pathname} onClose={onClose} />
+
+      {/* Footer */}
+      <div style={{ padding: '16px 0', borderTop: '0.5px solid var(--sidebar-border)' }}>
+        <NavLink
+          item={{ label: 'Settings', href: '/settings', icon: <Settings size={16} /> }}
+          pathname={pathname}
+          onClose={onClose}
+        />
+        <button
+          onClick={handleSignOut}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 9,
+            padding: '8px 22px',
+            fontSize: 13.5,
+            color: 'var(--sidebar-text)',
+            background: 'transparent',
+            cursor: 'pointer',
+            transition: 'color 120ms ease, background 120ms ease',
+            border: 'none',
+            width: '100%',
+            textAlign: 'left',
+            fontFamily: 'var(--font-sans)',
+            minHeight: 36,
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.color = 'var(--sidebar-text-hover)'
+            e.currentTarget.style.background = 'var(--sidebar-item-bg-hover)'
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.color = 'var(--sidebar-text)'
+            e.currentTarget.style.background = 'transparent'
+          }}
+        >
+          <LogOut size={16} />
+          Sign out
+        </button>
+      </div>
+    </div>
+  )
 
   return (
     <>
       {/* Desktop sidebar */}
-      <aside className="hidden md:flex flex-col w-56 shrink-0 h-screen sticky top-0 border-r border-gray-200 bg-white px-3 py-4">
-        {/* Logo */}
-        <div className="px-2 mb-6">
-          <KontuurLogo height={60} />
-        </div>
-
-        <NavLinks />
-
-        {/* Bottom actions */}
-        <div className="flex flex-col gap-1 mt-4 pt-4 border-t border-gray-100">
-          <Link
-            href="/settings"
-            className={cn(
-              'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors min-h-[44px]',
-              pathname.startsWith('/settings')
-                ? 'bg-brand-purple-light text-brand-purple'
-                : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-            )}
-          >
-            <Settings className="h-5 w-5" />
-            Settings
-          </Link>
-          <button
-            onClick={handleSignOut}
-            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-colors min-h-[44px] w-full text-left"
-          >
-            <LogOut className="h-5 w-5" />
-            Sign out
-          </button>
-        </div>
+      <aside
+        className="hidden md:block shrink-0 h-screen sticky top-0"
+        style={{ width: 224, background: 'var(--sidebar-bg)' }}
+      >
+        {sidebarContent()}
       </aside>
 
-      {/* Mobile hamburger button */}
+      {/* Mobile hamburger */}
       <button
-        className="md:hidden fixed top-3 left-3 z-40 p-2 rounded-lg bg-white border border-gray-200 shadow-sm"
+        className="md:hidden fixed top-3 left-3 z-40 p-2 rounded-lg border shadow-sm"
+        style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border-1)' }}
         onClick={() => setMobileOpen(true)}
         aria-label="Open menu"
       >
-        <Menu className="h-5 w-5 text-gray-600" />
+        <Menu size={16} style={{ color: 'var(--color-text-2)' }} />
       </button>
 
       {/* Mobile drawer */}
       {mobileOpen && (
         <div className="md:hidden fixed inset-0 z-50 flex">
           <div
-            className="absolute inset-0 bg-black/40"
+            className="absolute inset-0"
+            style={{ background: 'rgba(26,25,24,0.45)' }}
             onClick={() => setMobileOpen(false)}
             aria-hidden="true"
           />
-          <aside className="relative flex flex-col w-64 h-full bg-white px-3 py-4 shadow-xl">
-            <div className="flex items-center justify-between px-2 mb-6">
-              <KontuurLogo height={60} />
-              <button
-                onClick={() => setMobileOpen(false)}
-                className="p-1 rounded-lg text-gray-400 hover:text-gray-600"
-                aria-label="Close menu"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            <NavLinks onClose={() => setMobileOpen(false)} />
-
-            <div className="flex flex-col gap-1 mt-4 pt-4 border-t border-gray-100">
-              <Link
-                href="/settings"
-                onClick={() => setMobileOpen(false)}
-                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100 min-h-[44px]"
-              >
-                <Settings className="h-5 w-5" />
-                Settings
-              </Link>
-              <button
-                onClick={handleSignOut}
-                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100 min-h-[44px] w-full text-left"
-              >
-                <LogOut className="h-5 w-5" />
-                Sign out
-              </button>
-            </div>
+          <aside
+            className="relative h-full shadow-xl"
+            style={{ width: 224, background: 'var(--sidebar-bg)' }}
+          >
+            <button
+              onClick={() => setMobileOpen(false)}
+              className="absolute top-4 right-4"
+              style={{ color: 'var(--sidebar-text)', background: 'none', border: 'none', cursor: 'pointer' }}
+              aria-label="Close menu"
+            >
+              <X size={16} />
+            </button>
+            {sidebarContent(() => setMobileOpen(false))}
           </aside>
         </div>
       )}

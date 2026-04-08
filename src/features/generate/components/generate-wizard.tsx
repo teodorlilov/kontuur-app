@@ -293,7 +293,7 @@ export function GenerateWizard() {
       {!(hasGenerated && generatedPosts.length === 0) && (
         <>
           <div className="mb-10">
-            <h1 className="text-2xl font-semibold text-gray-900">Generate posts</h1>
+            <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 400, color: 'var(--color-text-1)', letterSpacing: '-0.02em', margin: 0 }}>Generate posts</h1>
             <p className="text-base text-gray-500 mt-1">
               Step {currentStep} of {STEP_LABELS.length} — {STEP_LABELS[currentStep - 1]}
             </p>

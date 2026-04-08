@@ -1,37 +1,139 @@
 @import "tailwindcss";
 
+/* ─── Kontuur Design System — CSS Custom Properties ─── */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Backgrounds */
+  --color-page:          #F9F7F4;
+  --color-surface:       #FFFFFF;
+  --color-sunken:        #F2F0EC;
+  --color-overlay:       rgba(26,25,24,0.04);
+
+  /* Brand */
+  --color-brand:         #2C3E50;
+  --color-brand-hover:   #3D5166;
+  --color-brand-accent:  #4A6FA5;
+  --color-brand-light:   rgba(74,111,165,0.12);
+
+  /* Text */
+  --color-text-1:        #1A1918;
+  --color-text-2:        #6B6862;
+  --color-text-3:        #9C9890;
+  --color-text-inv:      #FFFFFF;
+
+  /* Borders */
+  --color-border-1:      #EAE8E3;
+  --color-border-2:      #D4D1CA;
+  --color-border-3:      #B8B5AE;
+
+  /* Status — intentionally muted */
+  --color-published-bg:  #EAF3DE;
+  --color-published-fg:  #27500A;
+  --color-scheduled-bg:  #EEF2FF;
+  --color-scheduled-fg:  #3C3489;
+  --color-pending-bg:    #FAEEDA;
+  --color-pending-fg:    #633806;
+  --color-draft-bg:      #F2F0EC;
+  --color-draft-fg:      #6B6862;
+  --color-error-bg:      #FCEBEB;
+  --color-error-fg:      #791F1F;
+
+  /* Charts */
+  --color-chart-1:       #4A6FA5;
+  --color-chart-2:       #1D9E75;
+  --color-chart-3:       #BA7517;
+  --color-chart-grid:    #EAE8E3;
+  --color-chart-label:   #9C9890;
+
+  /* Radius */
+  --radius-xs:   4px;
+  --radius-sm:   6px;
+  --radius-md:   8px;
+  --radius-lg:   12px;
+  --radius-xl:   16px;
+  --radius-full: 9999px;
+
+  /* Sidebar (always dark) */
+  --sidebar-bg:              #2C3E50;
+  --sidebar-text:            rgba(255,255,255,0.55);
+  --sidebar-text-hover:      rgba(255,255,255,0.85);
+  --sidebar-text-active:     rgba(255,255,255,1);
+  --sidebar-item-bg-hover:   rgba(255,255,255,0.07);
+  --sidebar-item-bg-active:  rgba(255,255,255,0.12);
+  --sidebar-border:          rgba(255,255,255,0.08);
+  --sidebar-badge-bg:        rgba(255,255,255,0.15);
+  --sidebar-badge-text:      rgba(255,255,255,0.8);
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-
-  /* PostFlow brand colours */
-  --color-brand-purple: #534AB7;
-  --color-brand-purple-light: #EEEDFE;
-  --color-brand-purple-mid: #7F77DD;
+  --font-display: var(--font-playfair);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
+/* ─── Base styles ─── */
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--color-text-1);
+  background: var(--color-page);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
+/* ─── Keyframes ─── */
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes scale-in {
+  from { opacity: 0; transform: scale(0.96) translateY(4px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+@keyframes slide-in-right {
+  from { opacity: 0; transform: translateX(16px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes shimmer {
+  from { background-position: -200% 0; }
+  to   { background-position:  200% 0; }
+}
+
+@keyframes dropdown-in {
+  from { opacity: 0; transform: translateY(-6px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* ─── Stagger utilities ─── */
+.stagger > *:nth-child(1) { animation-delay:   0ms; }
+.stagger > *:nth-child(2) { animation-delay:  40ms; }
+.stagger > *:nth-child(3) { animation-delay:  80ms; }
+.stagger > *:nth-child(4) { animation-delay: 120ms; }
+.stagger > *:nth-child(5) { animation-delay: 160ms; }
+
+/* ─── Skeleton ─── */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--color-sunken) 25%,
+    var(--color-border-1) 50%,
+    var(--color-sunken) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+  border-radius: var(--radius-sm);
+}
+
+/* ─── Print styles ─── */
 @media print {
-  /* Hide everything except the analytics report content */
   body > * { display: none !important; }
   #analytics-print-area { display: block !important; }
 
@@ -44,6 +146,5 @@ body {
     font-size: 12pt;
   }
 
-  /* Hide controls inside the print area */
   .print-hide { display: none !important; }
 }

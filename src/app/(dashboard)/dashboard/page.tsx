@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { Topbar } from '@/components/layout/topbar'
 import { DashboardView } from '@/features/dashboard/components/dashboard-view'
+import { PageTransition } from '@/components/providers/page-transition'
 
 export default async function DashboardPage() {
   const supabase = await createServerSupabaseClient()
@@ -107,7 +108,7 @@ export default async function DashboardPage() {
   return (
     <>
       <Topbar title="Dashboard" />
-      <div className="p-6 space-y-6">
+      <PageTransition className="p-10 flex flex-col gap-6">
         <DashboardView
           isSolo={isSolo}
           clientCount={clients.length}
@@ -118,7 +119,7 @@ export default async function DashboardPage() {
           clientPendingMap={clientPendingMap}
           briefing={briefing}
         />
-      </div>
+      </PageTransition>
     </>
   )
 }

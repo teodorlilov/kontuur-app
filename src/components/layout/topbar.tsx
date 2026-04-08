@@ -6,8 +6,30 @@ interface TopbarProps {
 
 export function Topbar({ title }: TopbarProps) {
   return (
-    <header className="h-14 flex items-center justify-between px-4 md:px-6 border-b border-gray-200 bg-white shrink-0">
-      <h1 className="text-xl font-medium text-gray-900 pl-10 md:pl-0">{title}</h1>
+    <header
+      style={{
+        height: 56,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: '0 40px',
+        borderBottom: '0.5px solid var(--color-border-1)',
+        background: 'var(--color-page)',
+        flexShrink: 0,
+      }}
+    >
+      <h1
+        style={{
+          fontFamily: 'var(--font-display)',
+          fontSize: 28,
+          fontWeight: 400,
+          color: 'var(--color-text-1)',
+          letterSpacing: '-0.02em',
+          margin: 0,
+        }}
+      >
+        {title}
+      </h1>
       <NotificationsBell />
     </header>
   )

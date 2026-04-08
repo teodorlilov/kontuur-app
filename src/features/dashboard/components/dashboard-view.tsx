@@ -1,6 +1,13 @@
+'use client'
+
 import Link from 'next/link'
 import { Badge } from '@/components/ui/badge'
+import { StatCard } from '@/components/ui/stat-card'
 import { BriefingActions } from './briefing-actions'
+
+function stripCiteTags(text: string): string {
+  return text.replace(/<cite[^>]*>([\s\S]*?)<\/cite>/g, '$1')
+}
 
 interface Briefing {
   briefing_text: string | null
@@ -56,28 +63,47 @@ export function DashboardView({
   )
 }
 
-function StatCard({ label, value }: { label: string; value: number }) {
-  return (
-    <div className="bg-white rounded-xl border border-gray-200 p-5">
-      <p className="text-sm text-gray-500">{label}</p>
-      <p className="text-3xl font-semibold text-gray-900 mt-1">{value}</p>
-    </div>
-  )
-}
 
 function BriefingCard({ briefing }: { briefing: Briefing | null }) {
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-5">
-      <p className="text-sm font-medium text-gray-700 mb-3">Weekly Intelligence Briefing</p>
+    <div
+      style={{
+        background: 'var(--color-surface)',
+        border: '0.5px solid var(--color-border-1)',
+        borderRadius: 'var(--radius-lg)',
+        padding: '20px 24px',
+      }}
+    >
+      <p
+        style={{
+          fontSize: 15,
+          fontWeight: 500,
+          color: 'var(--color-text-1)',
+          marginBottom: 12,
+        }}
+      >
+        Weekly Intelligence Briefing
+      </p>
       {briefing ? (
-        <div className="space-y-3">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           {briefing.platform_updates && briefing.platform_updates.length > 0 && (
             <div>
-              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">What changed this week</p>
-              <ul className="space-y-1">
+              <p
+                style={{
+                  fontSize: 10,
+                  fontWeight: 500,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.07em',
+                  color: 'var(--color-text-3)',
+                  marginBottom: 6,
+                }}
+              >
+                What changed this week
+              </p>
+              <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
                 {briefing.platform_updates.map((update, i) => (
-                  <li key={i} className="text-sm text-gray-700">
-                    • {update}
+                  <li key={i} style={{ fontSize: 13.5, color: 'var(--color-text-1)' }}>
+                    • {stripCiteTags(update)}
                   </li>
                 ))}
               </ul>
@@ -85,22 +111,52 @@ function BriefingCard({ briefing }: { briefing: Briefing | null }) {
           )}
           {briefing.weekly_tip && (
             <div>
-              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">This week&apos;s tip</p>
-              <p className="text-sm text-gray-700">{briefing.weekly_tip}</p>
+              <p
+                style={{
+                  fontSize: 10,
+                  fontWeight: 500,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.07em',
+                  color: 'var(--color-text-3)',
+                  marginBottom: 6,
+                }}
+              >
+                This week&apos;s tip
+              </p>
+              <p style={{ fontSize: 13.5, color: 'var(--color-text-1)', margin: 0 }}>{stripCiteTags(briefing.weekly_tip)}</p>
             </div>
           )}
           {briefing.action_nudge && (
-            <div className="bg-brand-purple-light rounded-lg px-4 py-3">
-              <p className="text-xs font-medium text-brand-purple uppercase tracking-wide mb-1">Your action for today</p>
-              <p className="text-sm text-brand-purple font-medium">{briefing.action_nudge}</p>
+            <div
+              style={{
+                background: 'var(--color-scheduled-bg)',
+                borderRadius: 'var(--radius-md)',
+                padding: '12px 16px',
+              }}
+            >
+              <p
+                style={{
+                  fontSize: 10,
+                  fontWeight: 500,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.07em',
+                  color: 'var(--color-scheduled-fg)',
+                  marginBottom: 4,
+                }}
+              >
+                Your action for today
+              </p>
+              <p style={{ fontSize: 13.5, fontWeight: 500, color: 'var(--color-scheduled-fg)', margin: 0 }}>
+                {stripCiteTags(briefing.action_nudge)}
+              </p>
             </div>
           )}
         </div>
       ) : (
-        <div className="text-sm text-gray-400 italic">
+        <p style={{ fontSize: 13.5, color: 'var(--color-text-3)', fontStyle: 'italic' }}>
           Your weekly briefing will appear here once generated. It includes platform algorithm updates, trending
           topics, and a personalized action nudge — generated every Monday.
-        </div>
+        </p>
       )}
       <BriefingActions />
     </div>
@@ -135,49 +191,86 @@ function AgencyDashboard({
 
       <BriefingCard briefing={briefing} />
 
-      <div className="bg-white rounded-xl border border-gray-200">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-          <p className="text-sm font-medium text-gray-700">Clients</p>
+      <div
+        style={{
+          background: 'var(--color-surface)',
+          border: '0.5px solid var(--color-border-1)',
+          borderRadius: 'var(--radius-lg)',
+        }}
+      >
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '14px 24px',
+            borderBottom: '0.5px solid var(--color-border-1)',
+          }}
+        >
+          <p style={{ fontSize: 15, fontWeight: 500, color: 'var(--color-text-1)', margin: 0 }}>Clients</p>
           <Link
             href="/clients"
-            className="text-xs text-brand-purple font-medium hover:underline"
+            style={{ fontSize: 12, color: 'var(--color-brand-accent)', textDecoration: 'none', fontWeight: 500 }}
           >
             View all
           </Link>
         </div>
         {clients.length === 0 ? (
-          <div className="px-5 py-8 text-center">
-            <p className="text-sm text-gray-400">No clients yet.</p>
+          <div style={{ padding: '32px 24px', textAlign: 'center' }}>
+            <p style={{ fontSize: 13.5, color: 'var(--color-text-3)', margin: '0 0 8px' }}>No clients yet.</p>
             <Link
               href="/clients/new"
-              className="mt-2 inline-block text-sm text-brand-purple font-medium hover:underline"
+              style={{ fontSize: 13.5, color: 'var(--color-brand-accent)', textDecoration: 'none', fontWeight: 500 }}
             >
               Add your first client
             </Link>
           </div>
         ) : (
-          <ul className="divide-y divide-gray-100">
+          <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
             {clients.map((client) => {
               const pending = clientPendingMap[client.id] ?? 0
               return (
-                <li key={client.id} className="flex items-center justify-between px-5 py-3">
+                <li
+                  key={client.id}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '10px 24px',
+                    borderBottom: '0.5px solid var(--color-border-1)',
+                  }}
+                >
                   <div>
-                    <p className="text-sm font-medium text-gray-900">{client.name}</p>
-                    {client.niche && <p className="text-xs text-gray-400 mt-0.5">{client.niche}</p>}
+                    <p style={{ fontSize: 13.5, fontWeight: 500, color: 'var(--color-text-1)', margin: 0 }}>
+                      {client.name}
+                    </p>
+                    {client.niche && (
+                      <p style={{ fontSize: 12, color: 'var(--color-text-3)', margin: '2px 0 0' }}>
+                        {client.niche}
+                      </p>
+                    )}
                   </div>
-                  {pending > 0 && (
-                    <Badge variant="warning">{pending} pending</Badge>
-                  )}
+                  {pending > 0 && <Badge variant="pending" dot>{pending} pending</Badge>}
                 </li>
               )
             })}
           </ul>
         )}
         {pendingCount > 0 && (
-          <div className="px-5 py-4 border-t border-gray-100">
+          <div style={{ padding: '12px 24px', borderTop: '0.5px solid var(--color-border-1)' }}>
             <Link
               href="/review"
-              className="block w-full text-center bg-brand-purple text-white text-sm font-medium rounded-lg py-2.5 hover:bg-[#4640a0] transition-colors"
+              style={{
+                display: 'block',
+                textAlign: 'center',
+                background: 'var(--color-brand)',
+                color: 'var(--color-text-inv)',
+                fontSize: 13.5,
+                fontWeight: 500,
+                borderRadius: 'var(--radius-md)',
+                padding: '9px 0',
+                textDecoration: 'none',
+              }}
             >
               Review {pendingCount} pending {pendingCount === 1 ? 'post' : 'posts'}
             </Link>
@@ -204,13 +297,28 @@ function SoloDashboard({
   return (
     <>
       {coachingPoints && coachingPoints.length > 0 && (
-        <div className="bg-brand-purple-light rounded-xl p-5 space-y-2">
-          <p className="text-xs font-medium text-brand-purple uppercase tracking-wide">
+        <div
+          style={{
+            background: 'var(--color-scheduled-bg)',
+            borderRadius: 'var(--radius-lg)',
+            padding: '20px 24px',
+          }}
+        >
+          <p
+            style={{
+              fontSize: 10,
+              fontWeight: 500,
+              textTransform: 'uppercase',
+              letterSpacing: '0.07em',
+              color: 'var(--color-scheduled-fg)',
+              marginBottom: 8,
+            }}
+          >
             Your coaching for this week
           </p>
-          <ul className="space-y-1.5">
+          <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
             {coachingPoints.map((point, i) => (
-              <li key={i} className="text-sm text-brand-purple">
+              <li key={i} style={{ fontSize: 13.5, color: 'var(--color-scheduled-fg)' }}>
                 • {point}
               </li>
             ))}
@@ -228,7 +336,17 @@ function SoloDashboard({
       {pendingCount > 0 && (
         <Link
           href="/review"
-          className="block w-full text-center bg-brand-purple text-white text-sm font-medium rounded-lg py-2.5 hover:bg-[#4640a0] transition-colors"
+          style={{
+            display: 'block',
+            textAlign: 'center',
+            background: 'var(--color-brand)',
+            color: 'var(--color-text-inv)',
+            fontSize: 13.5,
+            fontWeight: 500,
+            borderRadius: 'var(--radius-md)',
+            padding: '9px 0',
+            textDecoration: 'none',
+          }}
         >
           Review {pendingCount} ready {pendingCount === 1 ? 'post' : 'posts'}
         </Link>

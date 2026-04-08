@@ -1,6 +1,6 @@
 'use client'
 
-import { cn } from '@/utils/cn'
+import { fieldBaseStyle, fieldErrorStyle, fieldLabelStyle, makeFieldHandlers } from './field-styles'
 
 interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
   label?: string
@@ -9,32 +9,25 @@ interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
   placeholder?: string
 }
 
-export function Select({
-  label,
-  error,
-  options,
-  placeholder,
-  className,
-  id,
-  ...props
-}: SelectProps) {
+export function Select({ label, error, options, placeholder, style, id, ...props }: SelectProps) {
   const inputId = id ?? label?.toLowerCase().replace(/\s+/g, '-')
 
   return (
-    <div className="flex flex-col gap-1">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
       {label && (
-        <label htmlFor={inputId} className="text-sm font-medium text-gray-700">
+        <label htmlFor={inputId} style={fieldLabelStyle}>
           {label}
         </label>
       )}
       <select
         id={inputId}
-        className={cn(
-          'w-full rounded-lg border px-3 py-2 text-sm text-gray-900 bg-white transition-colors',
-          'focus:outline-none focus:ring-2 focus:ring-brand-purple focus:border-transparent',
-          error ? 'border-red-500' : 'border-gray-300',
-          className
-        )}
+        style={{
+          ...fieldBaseStyle,
+          height: 36,
+          ...(error ? fieldErrorStyle : {}),
+          ...style,
+        }}
+        {...makeFieldHandlers<HTMLSelectElement>(error, props)}
         {...props}
       >
         {placeholder && (
@@ -49,7 +42,7 @@ export function Select({
         ))}
       </select>
       {error && (
-        <p className="text-xs text-red-600" aria-live="polite">
+        <p style={{ fontSize: 12, color: 'var(--color-error-fg)' }} aria-live="polite">
           {error}
         </p>
       )}

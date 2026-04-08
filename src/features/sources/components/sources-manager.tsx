@@ -182,7 +182,7 @@ export function SourcesManager({
         <a href={`/clients/${clientId}/edit`} className="text-sm text-gray-500 hover:text-gray-700">
           ← Back to {clientName}
         </a>
-        <h1 className="text-xl font-semibold text-gray-900 mt-3">Research Sources</h1>
+        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 400, color: 'var(--color-text-1)', letterSpacing: '-0.02em', margin: '12px 0 0' }}>Research Sources</h1>
         <p className="text-sm text-gray-500 mt-1">
           Sources are fetched during the research step to suggest post themes grounded in real content.
         </p>

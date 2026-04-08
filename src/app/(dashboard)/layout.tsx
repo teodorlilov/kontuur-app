@@ -4,7 +4,6 @@ import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { createUserRecord } from '@/lib/auth/create-user-record'
 import { AuthProvider } from '@/components/providers/auth-provider'
 import { Sidebar } from '@/components/layout/sidebar'
-import { ToastProvider } from '@/components/ui/toast'
 
 export default async function DashboardLayout({
   children,
@@ -81,13 +80,10 @@ export default async function DashboardLayout({
 
   return (
     <AuthProvider>
-      <div className="flex h-screen bg-gray-50 overflow-hidden">
+      <div className="flex h-screen overflow-hidden" style={{ background: 'var(--color-page)' }}>
         <Sidebar agencyMode={agencyMode} pendingCount={pendingCount} />
-        <div className="flex flex-col flex-1 overflow-hidden">
-          <main className="flex-1 overflow-y-auto">{children}</main>
-        </div>
+        <main className="flex-1 overflow-y-auto">{children}</main>
       </div>
-      <ToastProvider />
     </AuthProvider>
   )
 }

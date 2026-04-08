@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
+import * as Dialog from '@radix-ui/react-dialog'
 import { X } from 'lucide-react'
 import { cn } from '@/utils/cn'
 
@@ -13,43 +13,95 @@ interface ModalProps {
 }
 
 export function Modal({ open, onClose, title, children, className }: ModalProps) {
-  useEffect(() => {
-    function handleKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') onClose()
-    }
-    if (open) document.addEventListener('keydown', handleKey)
-    return () => document.removeEventListener('keydown', handleKey)
-  }, [open, onClose])
-
-  if (!open) return null
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div
-        className="absolute inset-0 bg-black/40"
-        onClick={onClose}
-        aria-hidden="true"
-      />
-      <div
-        className={cn(
-          'relative bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto',
-          className
-        )}
-        role="dialog"
-        aria-modal="true"
-      >
-        <div className="flex items-center justify-between p-5 border-b border-gray-100">
-          {title && <h2 className="text-base font-semibold text-gray-900">{title}</h2>}
-          <button
-            onClick={onClose}
-            className="ml-auto p-1 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
-            aria-label="Close"
+    <Dialog.Root open={open} onOpenChange={(o) => !o && onClose()}>
+      <Dialog.Portal>
+        <Dialog.Overlay
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(26,25,24,0.45)',
+            zIndex: 200,
+            animation: 'fade-in 200ms ease',
+          }}
+        />
+        <Dialog.Content
+          aria-describedby={undefined}
+          className={cn('overflow-y-auto', className)}
+          style={{
+            position: 'fixed',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            background: 'var(--color-surface)',
+            borderRadius: 'var(--radius-xl)',
+            width: '90vw',
+            maxWidth: 520,
+            maxHeight: '90vh',
+            border: '0.5px solid var(--color-border-1)',
+            zIndex: 201,
+            animation: 'scale-in 200ms cubic-bezier(0.16,1,0.3,1)',
+            outline: 'none',
+          }}
+        >
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '20px 28px 16px',
+              borderBottom: '0.5px solid var(--color-border-1)',
+            }}
           >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-        <div className="p-5">{children}</div>
-      </div>
-    </div>
+            {title && (
+              <Dialog.Title
+                style={{
+                  fontFamily: 'var(--font-display)',
+                  fontSize: 20,
+                  fontWeight: 400,
+                  color: 'var(--color-text-1)',
+                  letterSpacing: '-0.02em',
+                  margin: 0,
+                }}
+              >
+                {title}
+              </Dialog.Title>
+            )}
+            <Dialog.Close
+              asChild
+              style={{ marginLeft: 'auto' }}
+            >
+              <button
+                aria-label="Close"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: 28,
+                  height: 28,
+                  borderRadius: 'var(--radius-sm)',
+                  border: 'none',
+                  background: 'transparent',
+                  color: 'var(--color-text-3)',
+                  cursor: 'pointer',
+                  transition: 'background 120ms ease, color 120ms ease',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'var(--color-overlay)'
+                  e.currentTarget.style.color = 'var(--color-text-1)'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'transparent'
+                  e.currentTarget.style.color = 'var(--color-text-3)'
+                }}
+              >
+                <X size={16} />
+              </button>
+            </Dialog.Close>
+          </div>
+          <div style={{ padding: '20px 28px 28px' }}>{children}</div>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
   )
 }

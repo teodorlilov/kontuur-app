@@ -1,0 +1,474 @@
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Georgia,serif;background:#F9F7F4;color:#1A1918}
+.sg{padding:48px 40px;max-width:900px;margin:0 auto}
+.section{margin-bottom:56px}
+.section-label{font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:.12em;color:#9C9890;margin-bottom:20px;font-family:system-ui,sans-serif}
+.section-title{font-size:28px;font-weight:400;color:#1A1918;margin-bottom:32px;letter-spacing:-.02em}
+
+/* COLOURS */
+.swatch-row{display:flex;gap:8px;flex-wrap:wrap}
+.swatch{border-radius:8px;overflow:hidden;flex:1;min-width:100px}
+.swatch-color{height:64px;width:100%}
+.swatch-info{padding:8px 10px;background:#fff;border:0.5px solid #EAE8E3;border-top:none;border-radius:0 0 8px 8px}
+.swatch-name{font-size:11px;font-weight:500;color:#1A1918;font-family:system-ui,sans-serif}
+.swatch-hex{font-size:10px;color:#9C9890;font-family:system-ui,sans-serif;margin-top:1px}
+
+/* STATUS BADGES */
+.badge-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:500;letter-spacing:.02em;padding:3px 9px;border-radius:5px;font-family:system-ui,sans-serif}
+.badge-dot{width:5px;height:5px;border-radius:50%;background:currentColor}
+.b-published{background:#EAF3DE;color:#27500A}
+.b-scheduled{background:#EEF2FF;color:#3C3489}
+.b-pending{background:#FAEEDA;color:#633806}
+.b-draft{background:#F2F0EC;color:#6B6862}
+.b-error{background:#FCEBEB;color:#791F1F}
+
+/* TYPOGRAPHY SCALE */
+.type-row{display:flex;align-items:baseline;gap:16px;padding:14px 0;border-bottom:.5px solid #EAE8E3}
+.type-row:last-child{border-bottom:none}
+.type-meta{width:180px;flex-shrink:0}
+.type-name{font-size:11px;font-weight:500;color:#9C9890;font-family:system-ui,sans-serif}
+.type-spec{font-size:10px;color:#B8B5AE;font-family:system-ui,sans-serif;margin-top:2px}
+.type-sample{color:#1A1918}
+
+/* BUTTONS */
+.btn-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:8px;font-size:13.5px;font-weight:500;cursor:pointer;font-family:system-ui,sans-serif;border:none;transition:all .15s}
+.btn-primary{background:#2C3E50;color:#fff}
+.btn-secondary{background:transparent;color:#1A1918;border:.5px solid #D4D1CA}
+.btn-ghost{background:transparent;color:#6B6862;border:none}
+.btn-danger{background:transparent;color:#791F1F;border:.5px solid #FCEBEB}
+.btn-sm{padding:5px 12px;font-size:12px;border-radius:6px}
+.btn-lg{padding:11px 22px;font-size:15px}
+
+/* INPUTS */
+.input-row{display:flex;flex-direction:column;gap:14px}
+.field{display:flex;flex-direction:column;gap:6px}
+.label{font-size:12px;font-weight:500;color:#6B6862;font-family:system-ui,sans-serif}
+.inp{background:#fff;border:1px solid #D4D1CA;border-radius:8px;padding:8px 12px;font-size:13.5px;color:#1A1918;font-family:system-ui,sans-serif;outline:none;width:100%}
+.inp-focus{border-color:#4A6FA5;box-shadow:0 0 0 3px rgba(74,111,165,.12)}
+.inp-error{border-color:#E24B4A;box-shadow:0 0 0 3px rgba(226,75,74,.10)}
+.hint{font-size:12px;color:#9C9890;font-family:system-ui,sans-serif}
+.hint-error{font-size:12px;color:#791F1F;font-family:system-ui,sans-serif}
+
+/* CARDS */
+.cards-row{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.card{background:#fff;border:.5px solid #EAE8E3;border-radius:12px;padding:20px 22px}
+.metric-label{font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:.07em;color:#9C9890;margin-bottom:10px;font-family:system-ui,sans-serif}
+.metric-value{font-size:32px;font-weight:400;color:#1A1918;letter-spacing:-.02em;line-height:1;font-family:system-ui,sans-serif}
+.metric-delta{font-size:12px;margin-top:6px;font-family:system-ui,sans-serif}
+.delta-up{color:#27500A}
+.delta-down{color:#791F1F}
+.delta-neutral{color:#9C9890}
+
+/* POST CARD */
+.post-card{background:#fff;border:.5px solid #EAE8E3;border-radius:12px;padding:18px 20px}
+.post-card-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.post-client{font-size:11px;color:#9C9890;font-family:system-ui,sans-serif}
+.post-body{font-size:13.5px;color:#1A1918;line-height:1.6;font-family:system-ui,sans-serif;margin-bottom:14px}
+.post-footer{display:flex;align-items:center;justify-content:space-between}
+.post-meta{font-size:11px;color:#9C9890;font-family:system-ui,sans-serif}
+.post-actions{display:flex;gap:6px}
+
+/* DROPDOWN */
+.dropdown-preview{background:#fff;border:.5px solid #EAE8E3;border-radius:12px;padding:6px;width:200px;box-shadow:0 4px 24px rgba(26,25,24,.10),0 1px 4px rgba(26,25,24,.06)}
+.dd-item{padding:7px 10px;border-radius:6px;font-size:13.5px;color:#1A1918;font-family:system-ui,sans-serif;cursor:pointer;display:flex;align-items:center;gap:8px}
+.dd-item:hover{background:#F2F0EC}
+.dd-item.dd-danger{color:#791F1F}
+.dd-item.dd-danger:hover{background:#FCEBEB}
+.dd-item.active{background:#F2F0EC}
+.dd-sep{height:.5px;background:#EAE8E3;margin:4px 0}
+.dd-icon{width:14px;height:14px;border-radius:3px;background:#EAE8E3;flex-shrink:0}
+
+/* PROGRESS BARS */
+.progress-group{display:flex;flex-direction:column;gap:14px}
+.progress-row{display:flex;align-items:center;gap:12px}
+.progress-name{font-size:12px;color:#6B6862;font-family:system-ui,sans-serif;width:80px;flex-shrink:0;text-align:right}
+.progress-track{flex:1;height:5px;background:#F2F0EC;border-radius:99px;overflow:hidden}
+.progress-fill{height:100%;border-radius:99px}
+.pf-brand{background:#4A6FA5}
+.pf-green{background:#1D9E75}
+.pf-amber{background:#BA7517}
+.progress-val{font-size:12px;font-weight:500;color:#1A1918;font-family:system-ui,sans-serif;width:36px}
+
+/* SPACING */
+.space-row{display:flex;align-items:flex-end;gap:16px;flex-wrap:wrap}
+.space-block{display:flex;flex-direction:column;align-items:center;gap:6px}
+.space-box{background:#4A6FA5;border-radius:3px;opacity:.7}
+.space-label{font-size:10px;color:#9C9890;font-family:system-ui,sans-serif}
+
+/* AVATAR */
+.avatar-row{display:flex;gap:12px;align-items:center}
+.avatar{border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:500;font-family:system-ui,sans-serif;flex-shrink:0}
+.av-blue{background:#E6F1FB;color:#0C447C}
+.av-green{background:#EAF3DE;color:#27500A}
+.av-purple{background:#EEEDFE;color:#3C3489}
+.av-brand{background:#2C3E50;color:#fff}
+
+/* SIDEBAR PREVIEW */
+.sidebar-preview{background:#2C3E50;border-radius:12px;padding:0;width:220px;overflow:hidden}
+.sp-logo{padding:20px 20px 16px;border-bottom:.5px solid rgba(255,255,255,.08)}
+.sp-logo-text{font-size:18px;color:#fff;letter-spacing:2px;font-weight:400}
+.sp-section{padding:16px 20px 6px;font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,.25);font-family:system-ui,sans-serif}
+.sp-item{display:flex;align-items:center;gap:9px;padding:8px 20px;font-size:13.5px;color:rgba(255,255,255,.55);font-family:system-ui,sans-serif}
+.sp-item.sp-active{color:#fff;background:rgba(255,255,255,.12)}
+.sp-dot{width:5px;height:5px;border-radius:50%;background:currentColor;opacity:.6;flex-shrink:0}
+.sp-item.sp-active .sp-dot{opacity:1}
+.sp-badge{margin-left:auto;background:rgba(255,255,255,.15);color:rgba(255,255,255,.8);font-size:10px;padding:1px 6px;border-radius:99px;font-family:system-ui,sans-serif}
+
+/* DIVIDER */
+.divider{height:.5px;background:#EAE8E3;margin:12px 0}
+
+/* CHART PREVIEW */
+.chart-preview{background:#fff;border:.5px solid #EAE8E3;border-radius:12px;padding:20px 24px}
+.chart-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.chart-title{font-size:14px;font-weight:500;color:#1A1918;font-family:system-ui,sans-serif}
+.chart-legend{display:flex;gap:14px}
+.legend-item{display:flex;align-items:center;gap:5px;font-size:11px;color:#9C9890;font-family:system-ui,sans-serif}
+.legend-dot{width:7px;height:7px;border-radius:50%}
+.chart-area{position:relative;height:100px}
+</style>
+
+<div class="sg">
+
+<div style="margin-bottom:48px">
+  <div style="font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:.12em;color:#9C9890;margin-bottom:8px;font-family:system-ui,sans-serif">Kontuur</div>
+  <div style="font-size:40px;font-weight:400;color:#1A1918;letter-spacing:-.02em;margin-bottom:8px">Design system</div>
+  <div style="font-size:14px;color:#9C9890;font-family:system-ui,sans-serif">Warm precision · Later warmth × Linear density × Playfair editorial</div>
+</div>
+
+<div class="section">
+  <div class="section-label">Colours — base</div>
+  <div class="swatch-row">
+    <div class="swatch"><div class="swatch-color" style="background:#F9F7F4;border:.5px solid #EAE8E3"></div><div class="swatch-info"><div class="swatch-name">Page</div><div class="swatch-hex">#F9F7F4</div></div></div>
+    <div class="swatch"><div class="swatch-color" style="background:#FFFFFF;border:.5px solid #EAE8E3"></div><div class="swatch-info"><div class="swatch-name">Surface</div><div class="swatch-hex">#FFFFFF</div></div></div>
+    <div class="swatch"><div class="swatch-color" style="background:#F2F0EC"></div><div class="swatch-info"><div class="swatch-name">Sunken</div><div class="swatch-hex">#F2F0EC</div></div></div>
+    <div class="swatch"><div class="swatch-color" style="background:#EAE8E3"></div><div class="swatch-info"><div class="swatch-name">Border</div><div class="swatch-hex">#EAE8E3</div></div></div>
+    <div class="swatch"><div class="swatch-color" style="background:#D4D1CA"></div><div class="swatch-info"><div class="swatch-name">Border 2</div><div class="swatch-hex">#D4D1CA</div></div></div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-label">Colours — brand</div>
+  <div class="swatch-row">
+    <div class="swatch"><div class="swatch-color" style="background:#2C3E50"></div><div class="swatch-info"><div class="swatch-name">Brand</div><div class="swatch-hex">#2C3E50</div></div></div>
+    <div class="swatch"><div class="swatch-color" style="background:#3D5166"></div><div class="swatch-info"><div class="swatch-name">Brand hover</div><div class="swatch-hex">#3D5166</div></div></div>
+    <div class="swatch"><div class="swatch-color" style="background:#4A6FA5"></div><div class="swatch-info"><div class="swatch-name">Brand accent</div><div class="swatch-hex">#4A6FA5</div></div></div>
+    <div class="swatch"><div class="swatch-color" style="background:#1A1918"></div><div class="swatch-info"><div class="swatch-name">Text primary</div><div class="swatch-hex">#1A1918</div></div></div>
+    <div class="swatch"><div class="swatch-color" style="background:#6B6862"></div><div class="swatch-info"><div class="swatch-name">Text secondary</div><div class="swatch-hex">#6B6862</div></div></div>
+    <div class="swatch"><div class="swatch-color" style="background:#9C9890"></div><div class="swatch-info"><div class="swatch-name">Text muted</div><div class="swatch-hex">#9C9890</div></div></div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-label">Colours — status</div>
+  <div class="swatch-row">
+    <div class="swatch"><div class="swatch-color" style="background:#EAF3DE"></div><div class="swatch-info"><div class="swatch-name">Published</div><div class="swatch-hex">#EAF3DE · #27500A</div></div></div>
+    <div class="swatch"><div class="swatch-color" style="background:#EEF2FF"></div><div class="swatch-info"><div class="swatch-name">Scheduled</div><div class="swatch-hex">#EEF2FF · #3C3489</div></div></div>
+    <div class="swatch"><div class="swatch-color" style="background:#FAEEDA"></div><div class="swatch-info"><div class="swatch-name">Pending</div><div class="swatch-hex">#FAEEDA · #633806</div></div></div>
+    <div class="swatch"><div class="swatch-color" style="background:#F2F0EC"></div><div class="swatch-info"><div class="swatch-name">Draft</div><div class="swatch-hex">#F2F0EC · #6B6862</div></div></div>
+    <div class="swatch"><div class="swatch-color" style="background:#FCEBEB"></div><div class="swatch-info"><div class="swatch-name">Error</div><div class="swatch-hex">#FCEBEB · #791F1F</div></div></div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-label">Typography</div>
+  <div>
+    <div class="type-row">
+      <div class="type-meta"><div class="type-name">Hero</div><div class="type-spec">Playfair · 56px · 400 · -0.03em</div></div>
+      <div class="type-sample" style="font-size:42px;font-weight:400;letter-spacing:-.03em;line-height:1">Kontuur</div>
+    </div>
+    <div class="type-row">
+      <div class="type-meta"><div class="type-name">Page title</div><div class="type-spec">Playfair · 28px · 400 · -0.02em</div></div>
+      <div class="type-sample" style="font-size:28px;font-weight:400;letter-spacing:-.02em">Good morning</div>
+    </div>
+    <div class="type-row">
+      <div class="type-meta"><div class="type-name">Card title</div><div class="type-spec">Geist · 15px · 500</div></div>
+      <div class="type-sample" style="font-size:15px;font-weight:500;font-family:system-ui,sans-serif">Weekly intelligence briefing</div>
+    </div>
+    <div class="type-row">
+      <div class="type-meta"><div class="type-name">Body</div><div class="type-spec">Geist · 13.5px · 400</div></div>
+      <div class="type-sample" style="font-size:13.5px;font-family:system-ui,sans-serif;color:#1A1918">Your weekly briefing will appear here once generated.</div>
+    </div>
+    <div class="type-row">
+      <div class="type-meta"><div class="type-name">Small / hint</div><div class="type-spec">Geist · 12px · 400</div></div>
+      <div class="type-sample" style="font-size:12px;font-family:system-ui,sans-serif;color:#9C9890">Last updated 2 hours ago</div>
+    </div>
+    <div class="type-row">
+      <div class="type-meta"><div class="type-name">Label / caps</div><div class="type-spec">Geist · 10px · 500 · uppercase · +0.07em</div></div>
+      <div class="type-sample" style="font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:.07em;font-family:system-ui,sans-serif;color:#9C9890">Active clients</div>
+    </div>
+    <div class="type-row">
+      <div class="type-meta"><div class="type-name">Stat number</div><div class="type-spec">Geist · 32px · 400 · -0.02em</div></div>
+      <div class="type-sample" style="font-size:32px;font-weight:400;letter-spacing:-.02em;font-family:system-ui,sans-serif">2,841</div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-label">Badges</div>
+  <div class="badge-row">
+    <span class="badge b-published"><span class="badge-dot"></span>Published</span>
+    <span class="badge b-scheduled"><span class="badge-dot"></span>Scheduled</span>
+    <span class="badge b-pending"><span class="badge-dot"></span>Pending review</span>
+    <span class="badge b-draft"><span class="badge-dot"></span>Draft</span>
+    <span class="badge b-error"><span class="badge-dot"></span>Failed</span>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-label">Buttons</div>
+  <div style="display:flex;flex-direction:column;gap:16px">
+    <div>
+      <div style="font-size:10px;color:#9C9890;font-family:system-ui,sans-serif;margin-bottom:8px;text-transform:uppercase;letter-spacing:.07em;font-weight:500">Variants</div>
+      <div class="btn-row">
+        <button class="btn btn-primary">Generate posts</button>
+        <button class="btn btn-secondary">Export</button>
+        <button class="btn btn-ghost">Cancel</button>
+        <button class="btn btn-danger">Delete client</button>
+      </div>
+    </div>
+    <div>
+      <div style="font-size:10px;color:#9C9890;font-family:system-ui,sans-serif;margin-bottom:8px;text-transform:uppercase;letter-spacing:.07em;font-weight:500">Sizes</div>
+      <div class="btn-row" style="align-items:center">
+        <button class="btn btn-primary btn-lg">Get started</button>
+        <button class="btn btn-primary">Generate posts</button>
+        <button class="btn btn-primary btn-sm">Add client</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-label">Forms & inputs</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+    <div class="field">
+      <div class="label">Client name</div>
+      <input class="inp" placeholder="e.g. Физиомед" value="Физиомед Пловдив"/>
+      <div class="hint">The client's display name in Kontuur.</div>
+    </div>
+    <div class="field">
+      <div class="label">Focus — active state</div>
+      <input class="inp inp-focus" placeholder="e.g. Физиомед" value="Focused input"/>
+    </div>
+    <div class="field">
+      <div class="label">Error state</div>
+      <input class="inp inp-error" value="Invalid value"/>
+      <div class="hint-error">This field is required.</div>
+    </div>
+    <div class="field">
+      <div class="label">Disabled</div>
+      <input class="inp" placeholder="Disabled input" disabled style="opacity:.45;cursor:not-allowed"/>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-label">Dropdown</div>
+  <div style="display:flex;gap:24px;align-items:flex-start">
+    <div class="dropdown-preview">
+      <div class="dd-item active"><div class="dd-icon"></div>Edit post</div>
+      <div class="dd-item"><div class="dd-icon"></div>Duplicate</div>
+      <div class="dd-item"><div class="dd-icon"></div>Schedule</div>
+      <div class="dd-sep"></div>
+      <div class="dd-item dd-danger"><div class="dd-icon" style="background:#FCEBEB"></div>Delete</div>
+    </div>
+    <div style="font-size:12px;color:#9C9890;font-family:system-ui,sans-serif;padding-top:8px;line-height:1.8">
+      Radix DropdownMenu<br>
+      radius: 12px<br>
+      item radius: 6px<br>
+      shadow: 0 4px 24px rgba(26,25,24,.10)<br>
+      animation: scale-in 150ms spring
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-label">Metric cards</div>
+  <div class="cards-row">
+    <div class="card">
+      <div class="metric-label">Reach</div>
+      <div class="metric-value">18,420</div>
+      <div class="metric-delta delta-up">↑ 12% vs last period</div>
+    </div>
+    <div class="card">
+      <div class="metric-label">Avg engagement rate</div>
+      <div class="metric-value">3.8%</div>
+      <div class="metric-delta delta-neutral">across 14 posts</div>
+    </div>
+    <div class="card">
+      <div class="metric-label">New followers</div>
+      <div class="metric-value">+127</div>
+      <div class="metric-delta delta-down">↓ 4% vs last period</div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-label">Post card</div>
+  <div class="post-card" style="max-width:520px">
+    <div class="post-card-head">
+      <div>
+        <div style="font-size:13.5px;font-weight:500;color:#1A1918;font-family:system-ui,sans-serif">Физиомед Пловдив</div>
+        <div class="post-client">Instagram · Carousel · 4 Apr 2026</div>
+      </div>
+      <span class="badge b-pending"><span class="badge-dot"></span>Pending review</span>
+    </div>
+    <div class="post-body">Линейната фокусираща вълна покрива тъканта по-хомогенно от точковите уреди — ето защо BTL Medical...</div>
+    <div class="post-footer">
+      <div class="post-meta">Generated by AI · 4 slides</div>
+      <div class="post-actions">
+        <button class="btn btn-secondary btn-sm">Reject</button>
+        <button class="btn btn-primary btn-sm">Approve</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-label">Progress bars</div>
+  <div class="progress-group">
+    <div class="progress-row">
+      <div class="progress-name">Carousel</div>
+      <div class="progress-track"><div class="progress-fill pf-brand" style="width:82%"></div></div>
+      <div class="progress-val">5.1%</div>
+    </div>
+    <div class="progress-row">
+      <div class="progress-name">Reels</div>
+      <div class="progress-track"><div class="progress-fill pf-green" style="width:68%"></div></div>
+      <div class="progress-val">4.2%</div>
+    </div>
+    <div class="progress-row">
+      <div class="progress-name">Image</div>
+      <div class="progress-track"><div class="progress-fill pf-amber" style="width:44%"></div></div>
+      <div class="progress-val">2.7%</div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-label">Chart style</div>
+  <div class="chart-preview">
+    <div class="chart-header">
+      <span class="chart-title">Daily reach & views</span>
+      <div class="chart-legend">
+        <div class="legend-item"><div class="legend-dot" style="background:#4A6FA5"></div>Reach</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#1D9E75"></div>Views</div>
+      </div>
+    </div>
+    <div class="chart-area">
+      <svg width="100%" height="100%" viewBox="0 0 600 100" preserveAspectRatio="none">
+        <polyline fill="none" stroke="#4A6FA5" stroke-width="2"
+          points="0,70 40,60 80,55 120,65 160,42 200,38 240,48 280,32 320,28 360,40 400,22 440,18 480,30 520,24 560,16 600,20"/>
+        <polyline fill="none" stroke="#1D9E75" stroke-width="2"
+          points="0,85 40,80 80,75 120,82 160,62 200,58 240,68 280,50 320,46 360,60 400,38 440,34 480,48 520,40 560,30 600,34"/>
+        <line x1="0" y1="99" x2="600" y2="99" stroke="#EAE8E3" stroke-width="0.5"/>
+      </svg>
+    </div>
+    <div style="display:flex;justify-content:space-between;margin-top:6px">
+      <span style="font-size:10px;color:#9C9890;font-family:system-ui,sans-serif">Mar 7</span>
+      <span style="font-size:10px;color:#9C9890;font-family:system-ui,sans-serif">Mar 15</span>
+      <span style="font-size:10px;color:#9C9890;font-family:system-ui,sans-serif">Mar 23</span>
+      <span style="font-size:10px;color:#9C9890;font-family:system-ui,sans-serif">Apr 5</span>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-label">Avatars</div>
+  <div class="avatar-row">
+    <div class="avatar av-blue" style="width:44px;height:44px;font-size:14px">EI</div>
+    <div class="avatar av-green" style="width:44px;height:44px;font-size:14px">ФМ</div>
+    <div class="avatar av-purple" style="width:44px;height:44px;font-size:14px">AS</div>
+    <div class="avatar av-brand" style="width:44px;height:44px;font-size:14px">KO</div>
+    <div class="avatar av-blue" style="width:32px;height:32px;font-size:12px">EI</div>
+    <div class="avatar av-green" style="width:32px;height:32px;font-size:12px">ФМ</div>
+    <div class="avatar av-brand" style="width:24px;height:24px;font-size:10px">N</div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-label">Sidebar</div>
+  <div class="sidebar-preview">
+    <div class="sp-logo"><span class="sp-logo-text">kontuur</span></div>
+    <div class="sp-section">Workspace</div>
+    <div class="sp-item sp-active"><span class="sp-dot"></span>Dashboard</div>
+    <div class="sp-item"><span class="sp-dot"></span>Clients</div>
+    <div class="sp-item"><span class="sp-dot"></span>Generate posts</div>
+    <div class="sp-item"><span class="sp-dot"></span>Review queue<span class="sp-badge">3</span></div>
+    <div class="sp-section">Insights</div>
+    <div class="sp-item"><span class="sp-dot"></span>Calendar</div>
+    <div class="sp-item"><span class="sp-dot"></span>Analytics</div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-label">Spacing scale</div>
+  <div class="space-row">
+    <div class="space-block"><div class="space-box" style="width:4px;height:4px"></div><div class="space-label">4px</div></div>
+    <div class="space-block"><div class="space-box" style="width:8px;height:8px"></div><div class="space-label">8px</div></div>
+    <div class="space-block"><div class="space-box" style="width:12px;height:12px"></div><div class="space-label">12px</div></div>
+    <div class="space-block"><div class="space-box" style="width:16px;height:16px"></div><div class="space-label">16px</div></div>
+    <div class="space-block"><div class="space-box" style="width:20px;height:20px"></div><div class="space-label">20px</div></div>
+    <div class="space-block"><div class="space-box" style="width:24px;height:24px"></div><div class="space-label">24px</div></div>
+    <div class="space-block"><div class="space-box" style="width:32px;height:32px"></div><div class="space-label">32px</div></div>
+    <div class="space-block"><div class="space-box" style="width:40px;height:40px"></div><div class="space-label">40px</div></div>
+    <div class="space-block"><div class="space-box" style="width:48px;height:48px"></div><div class="space-label">48px</div></div>
+    <div class="space-block"><div class="space-box" style="width:64px;height:64px"></div><div class="space-label">64px</div></div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-label">Border radius</div>
+  <div style="display:flex;gap:16px;align-items:flex-end;flex-wrap:wrap">
+    <div style="display:flex;flex-direction:column;align-items:center;gap:8px">
+      <div style="width:48px;height:48px;background:#4A6FA5;opacity:.7;border-radius:4px"></div>
+      <div style="font-size:10px;color:#9C9890;font-family:system-ui,sans-serif">4px<br>badge</div>
+    </div>
+    <div style="display:flex;flex-direction:column;align-items:center;gap:8px">
+      <div style="width:48px;height:48px;background:#4A6FA5;opacity:.7;border-radius:6px"></div>
+      <div style="font-size:10px;color:#9C9890;font-family:system-ui,sans-serif">6px<br>sm</div>
+    </div>
+    <div style="display:flex;flex-direction:column;align-items:center;gap:8px">
+      <div style="width:48px;height:48px;background:#4A6FA5;opacity:.7;border-radius:8px"></div>
+      <div style="font-size:10px;color:#9C9890;font-family:system-ui,sans-serif">8px<br>button</div>
+    </div>
+    <div style="display:flex;flex-direction:column;align-items:center;gap:8px">
+      <div style="width:48px;height:48px;background:#4A6FA5;opacity:.7;border-radius:12px"></div>
+      <div style="font-size:10px;color:#9C9890;font-family:system-ui,sans-serif">12px<br>card</div>
+    </div>
+    <div style="display:flex;flex-direction:column;align-items:center;gap:8px">
+      <div style="width:48px;height:48px;background:#4A6FA5;opacity:.7;border-radius:16px"></div>
+      <div style="font-size:10px;color:#9C9890;font-family:system-ui,sans-serif">16px<br>modal</div>
+    </div>
+    <div style="display:flex;flex-direction:column;align-items:center;gap:8px">
+      <div style="width:48px;height:48px;background:#4A6FA5;opacity:.7;border-radius:9999px"></div>
+      <div style="font-size:10px;color:#9C9890;font-family:system-ui,sans-serif">full<br>pill</div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-label">Animation timing</div>
+  <div style="display:flex;flex-direction:column;gap:10px">
+    <div style="display:flex;align-items:center;gap:16px">
+      <div style="width:100px;font-size:12px;color:#6B6862;font-family:system-ui,sans-serif">Fast · 120ms</div>
+      <div style="font-size:12px;color:#9C9890;font-family:system-ui,sans-serif">Hover states, colour transitions, button feedback</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:16px">
+      <div style="width:100px;font-size:12px;color:#6B6862;font-family:system-ui,sans-serif">Base · 200ms</div>
+      <div style="font-size:12px;color:#9C9890;font-family:system-ui,sans-serif">Dropdowns, modals, page elements entering</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:16px">
+      <div style="width:100px;font-size:12px;color:#6B6862;font-family:system-ui,sans-serif">Slow · 350ms</div>
+      <div style="font-size:12px;color:#9C9890;font-family:system-ui,sans-serif">Page transitions, skeleton → content reveals</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:16px;margin-top:4px">
+      <div style="width:100px;font-size:12px;color:#6B6862;font-family:system-ui,sans-serif">Easing</div>
+      <div style="font-size:12px;color:#9C9890;font-family:system-ui,sans-serif;font-family:monospace">cubic-bezier(0.16, 1, 0.3, 1) — spring, no bounce</div>
+    </div>
+  </div>
+</div>
+
+</div>
