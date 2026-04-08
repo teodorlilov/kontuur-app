@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createBrowserSupabaseClient } from '@/lib/supabase/client'
 import { validateEmail } from '@/lib/validation'
@@ -11,7 +10,6 @@ import { toast } from '@/components/ui/toast'
 import { KontuurLogo } from '@/components/ui/kontuur-logo'
 
 export function LoginForm() {
-  const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
@@ -45,8 +43,7 @@ export function LoginForm() {
       return
     }
 
-    router.push('/dashboard')
-    router.refresh()
+    window.location.href = '/dashboard'
   }
 
   async function handleForgotPassword() {
