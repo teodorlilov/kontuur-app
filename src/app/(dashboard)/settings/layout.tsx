@@ -1,5 +1,5 @@
-import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { requireSessionUser } from '@/lib/auth/session'
+import { getCachedAgency } from '@/lib/queries/cache'
 import { Topbar } from '@/components/layout/topbar'
 import { SettingsTabs } from '@/features/settings/components/settings-tabs'
 
@@ -9,16 +9,9 @@ export default async function SettingsLayout({
   children: React.ReactNode
 }) {
   const { agencyId } = await requireSessionUser()
-  const supabase = await createServerSupabaseClient()
 
-  const { data: rawAgencyData } = await supabase
-    .from('agencies')
-    .select('mode')
-    .eq('id', agencyId)
-    .single()
-
-  const agencyMode: 'agency' | 'solo' =
-    (rawAgencyData as { mode: string } | null)?.mode === 'solo' ? 'solo' : 'agency'
+  const agencyData = await getCachedAgency(agencyId)
+  const agencyMode: 'agency' | 'solo' = agencyData?.mode === 'solo' ? 'solo' : 'agency'
 
   return (
     <>

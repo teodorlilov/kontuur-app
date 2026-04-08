@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
-import { verifyClientOwnership } from '@/lib/auth/helpers'
+import { fetchClientWithOwnership } from '@/lib/auth/helpers'
 import { createApprovalBatch } from '@/lib/approval/batch'
 import type { SendApprovalRequest } from '@/types/api'
 
@@ -21,8 +21,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'clientId and weekStart are required' }, { status: 400 })
   }
 
-  const owns = await verifyClientOwnership(supabase, clientId, agencyId)
-  if (!owns) {
+  const client = await fetchClientWithOwnership(supabase, clientId, agencyId)
+  if (!client) {
     return NextResponse.json({ error: 'Client not found' }, { status: 404 })
   }
 
@@ -34,15 +34,9 @@ export async function POST(request: Request) {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
   const approvalUrl = `${appUrl}/approve/${result.batchId}`
 
-  const { data: client } = await supabase
-    .from('clients')
-    .select('name')
-    .eq('id', clientId)
-    .single()
-
   await supabase.from('notifications').insert({
     agency_id: agencyId,
-    message: `Approval link generated for ${client?.name ?? 'client'} — ${result.postCount} post${result.postCount === 1 ? '' : 's'}`,
+    message: `Approval link generated for ${client.name} — ${result.postCount} post${result.postCount === 1 ? '' : 's'}`,
   })
 
   return NextResponse.json({

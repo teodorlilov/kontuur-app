@@ -1,18 +1,13 @@
 import { redirect } from 'next/navigation'
-import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { requireSessionUser } from '@/lib/auth/session'
+import { getCachedAgency } from '@/lib/queries/cache'
 
 export default async function SettingsPage() {
   const { agencyId } = await requireSessionUser()
-  const supabase = await createServerSupabaseClient()
 
-  const { data: rawAgencyData } = await supabase
-    .from('agencies')
-    .select('mode')
-    .eq('id', agencyId)
-    .single()
+  const agencyData = await getCachedAgency(agencyId)
 
-  if ((rawAgencyData as { mode: string } | null)?.mode === 'solo') {
+  if (agencyData?.mode === 'solo') {
     redirect('/settings/account')
   }
 

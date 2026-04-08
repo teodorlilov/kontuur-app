@@ -115,6 +115,25 @@ export async function verifySourceOwnership(
 /**
  * Verify a user has admin role within their agency.
  */
+/**
+ * Like verifyClientOwnership, but returns the client row on success.
+ * Use when you need client data immediately after ownership verification
+ * to avoid a second round-trip to the database.
+ */
+export async function fetchClientWithOwnership(
+  supabase: SupabaseServerClient,
+  clientId: string,
+  agencyId: string
+): Promise<{ id: string; name: string } | null> {
+  const { data } = await supabase
+    .from('clients')
+    .select('id, name')
+    .eq('id', clientId)
+    .eq('agency_id', agencyId)
+    .single()
+  return (data as { id: string; name: string } | null)
+}
+
 export async function verifyAdminRole(
   supabase: SupabaseServerClient,
   userId: string

@@ -1,5 +1,6 @@
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { requireSessionUser } from '@/lib/auth/session'
+import { getCachedAgency, getCachedAgencyClients } from '@/lib/queries/cache'
 import { Topbar } from '@/components/layout/topbar'
 import { DashboardView } from '@/features/dashboard/components/dashboard-view'
 import { PageTransition } from '@/components/providers/page-transition'
@@ -8,22 +9,13 @@ export default async function DashboardPage() {
   const { agencyId } = await requireSessionUser()
   const supabase = await createServerSupabaseClient()
 
-  const { data: rawAgencyData } = await supabase
-    .from('agencies')
-    .select('mode')
-    .eq('id', agencyId)
-    .single()
+  // Both calls hit React cache() populated by the dashboard layout — zero extra DB queries
+  const [agencyData, clients] = await Promise.all([
+    getCachedAgency(agencyId),
+    getCachedAgencyClients(agencyId),
+  ])
 
-  const agencyData = rawAgencyData as { mode: string } | null
   const isSolo = agencyData?.mode === 'solo'
-
-  // Fetch all clients for this agency
-  const { data: clientRows } = await supabase
-    .from('clients')
-    .select('id, name, niche')
-    .eq('agency_id', agencyId)
-
-  const clients = (clientRows as Array<{ id: string; name: string; niche: string | null }> | null) ?? []
   const clientIds = clients.map((c) => c.id)
 
   // Stats

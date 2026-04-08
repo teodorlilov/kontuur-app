@@ -3,6 +3,7 @@ import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { createUserRecord } from '@/lib/auth/create-user-record'
 import { getAuthUser, getCachedUserRecord } from '@/lib/auth/session'
+import { getCachedAgency, getCachedAgencyClients } from '@/lib/queries/cache'
 import { AuthProvider } from '@/components/providers/auth-provider'
 import { Sidebar } from '@/components/layout/sidebar'
 import { NotificationsBell } from '@/components/layout/notifications-bell'
@@ -47,17 +48,15 @@ export default async function DashboardLayout({
   let pendingCount = 0
 
   if (userData) {
-    const [{ data: rawAgencyData }, { data: clientRows }] = await Promise.all([
-      supabase.from('agencies').select('mode').eq('id', userData.agency_id).single(),
-      supabase.from('clients').select('id').eq('agency_id', userData.agency_id),
+    const [agencyData, clients] = await Promise.all([
+      getCachedAgency(userData.agency_id),
+      getCachedAgencyClients(userData.agency_id),
     ])
 
-    const agencyData = rawAgencyData as { mode: string } | null
     if (agencyData?.mode === 'solo') agencyMode = 'solo'
 
     // Pending review count for badge
-
-    const clientIds = (clientRows as Array<{ id: string }> | null)?.map((c) => c.id) ?? []
+    const clientIds = clients.map((c) => c.id)
 
     if (clientIds.length > 0) {
       const { count } = await supabase
