@@ -1,5 +1,6 @@
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { requireSessionUser } from '@/lib/auth/session'
+import { getCachedAgencyClients } from '@/lib/queries/cache'
 import { Topbar } from '@/components/layout/topbar'
 import { AnalyticsView } from '@/features/analytics/components/analytics-view'
 import type { MetaConnection } from '@/types/api'
@@ -8,13 +9,10 @@ export default async function AnalyticsPage() {
   const { agencyId } = await requireSessionUser()
   const supabase = await createServerSupabaseClient()
 
-  const { data: clientRows } = await supabase
-    .from('clients')
-    .select('id, name')
-    .eq('agency_id', agencyId)
-    .order('name', { ascending: true })
-
-  const clients = (clientRows as Array<{ id: string; name: string }> | null) ?? []
+  // Cache hit — layout already populated this for the current request
+  const cachedClients = await getCachedAgencyClients(agencyId)
+  // Analytics sorts by name for the dropdown — sort in-memory (no extra query)
+  const clients = [...cachedClients].sort((a, b) => a.name.localeCompare(b.name))
 
   const firstClientId = clients[0]?.id ?? null
 

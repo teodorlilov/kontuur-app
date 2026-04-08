@@ -9,37 +9,28 @@ export default async function EditClientPage({ params }: { params: Promise<{ id:
   const { agencyId } = await requireSessionUser()
   const supabase = await createServerSupabaseClient()
 
-  // Verify ownership
-  const { data: rawClientCheck } = await supabase
-    .from('clients')
-    .select('id')
-    .eq('id', id)
-    .eq('agency_id', agencyId)
-    .single()
-
-  if (!rawClientCheck) notFound()
-
+  // Ownership check folded into data query — single round-trip, agency_id filter implicitly verifies access
   const { data: rawClient } = await supabase
     .from('clients')
     .select('id, name, niche, posts_per_week, language, website_url, contact_email, created_at')
     .eq('id', id)
+    .eq('agency_id', agencyId)
     .single()
 
-  const { data: rawProfile } = await supabase
-    .from('brand_profiles')
-    .select(
-      'id, tone, target_audience, content_pillars, avoid_topics, client_testimonial_voice, default_post_type, default_carousel_slides, weekly_mix_json, language_formality, secondary_language, is_health_niche, best_time_json, best_time_updated_at, source_strategy, language_notes'
-    )
-    .eq('client_id', id)
-    .single()
+  if (!rawClient) notFound()
 
-  const { data: rawSchedule } = await supabase
-    .from('posting_schedules')
-    .select('id, is_active, frequency_type, frequency_value, auto_generate_day, auto_generate_time')
-    .eq('client_id', id)
-    .single()
-
-  const [{ count: sourceCount }, recentPostsRes, allPostsRes] = await Promise.all([
+  // All independent queries in parallel — brand_profiles, schedule, and analytics run concurrently
+  const [profileRes, scheduleRes, { count: sourceCount }, recentPostsRes, allPostsRes] = await Promise.all([
+    supabase
+      .from('brand_profiles')
+      .select('id, tone, target_audience, content_pillars, avoid_topics, client_testimonial_voice, default_post_type, default_carousel_slides, weekly_mix_json, language_formality, secondary_language, is_health_niche, best_time_json, best_time_updated_at, source_strategy, language_notes')
+      .eq('client_id', id)
+      .single(),
+    supabase
+      .from('posting_schedules')
+      .select('id, is_active, frequency_type, frequency_value, auto_generate_day, auto_generate_time')
+      .eq('client_id', id)
+      .single(),
     supabase
       .from('client_sources')
       .select('*', { count: 'exact', head: true })
@@ -59,11 +50,9 @@ export default async function EditClientPage({ params }: { params: Promise<{ id:
       .not('pillar', 'is', null),
   ])
 
-  const client = rawClient as Omit<ClientRow, 'agency_id'> | null
-  const profile = rawProfile as Omit<BrandProfileRow, 'client_id'> | null
-  const schedule = rawSchedule as Omit<PostingScheduleRow, 'client_id' | 'created_at'> | null
-
-  if (!client) notFound()
+  const client = rawClient as Omit<ClientRow, 'agency_id'>
+  const profile = profileRes.data as Omit<BrandProfileRow, 'client_id'> | null
+  const schedule = scheduleRes.data as Omit<PostingScheduleRow, 'client_id' | 'created_at'> | null
 
   // Compute content insights server-side
   type ContentInsights = {

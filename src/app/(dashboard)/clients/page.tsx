@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { requireSessionUser } from '@/lib/auth/session'
+import { getCachedAgencyClients } from '@/lib/queries/cache'
 import { Topbar } from '@/components/layout/topbar'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -9,22 +10,8 @@ export default async function ClientsPage() {
   const { agencyId } = await requireSessionUser()
   const supabase = await createServerSupabaseClient()
 
-  const { data: clientRows } = await supabase
-    .from('clients')
-    .select('id, name, niche, posts_per_week, language, created_at')
-    .eq('agency_id', agencyId)
-    .order('created_at', { ascending: true })
-
-  const clients =
-    (clientRows as Array<{
-      id: string
-      name: string
-      niche: string | null
-      posts_per_week: number
-      language: string
-      created_at: string
-    }> | null) ?? []
-
+  // Cache hit — layout already populated this for the current request
+  const clients = await getCachedAgencyClients(agencyId)
   const clientIds = clients.map((c) => c.id)
 
   // Pending counts per client

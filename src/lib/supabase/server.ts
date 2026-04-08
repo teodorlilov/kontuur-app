@@ -1,3 +1,4 @@
+import { cache } from 'react'
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import type { Database } from '@/types/database'
@@ -9,7 +10,12 @@ if (!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
   throw new Error('NEXT_PUBLIC_SUPABASE_ANON_KEY is not set')
 }
 
-export async function createServerSupabaseClient() {
+/**
+ * Returns the Supabase server client for the current SSR request.
+ * Memoized via React cache() — `await cookies()` runs once per request
+ * regardless of how many call sites invoke this function.
+ */
+export const createServerSupabaseClient = cache(async () => {
   const cookieStore = await cookies()
   return createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -31,4 +37,4 @@ export async function createServerSupabaseClient() {
       },
     }
   )
-}
+})
