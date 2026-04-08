@@ -119,6 +119,16 @@ Generic niche observations any competitor could post will score poorly.`)
   // 3. BRAND VOICE
   sections.push(buildBrandVoicePrompt(client))
 
+  // 3b. PERFORMANCE REFERENCE — only when high-scoring past posts exist
+  if ((client.topPerformingPosts?.length ?? 0) > 0) {
+    sections.push(`PERFORMANCE REFERENCE
+These recently approved posts scored above 7.5/10. Study their tone, specificity, and structure as a quality benchmark. Do not copy them — match their standard.
+
+<reference_posts>
+${client.topPerformingPosts!.map((p) => `<post>${p}</post>`).join('\n')}
+</reference_posts>`)
+  }
+
   // 4. POST STRUCTURES
   sections.push(`POST STRUCTURES:
 ${formatStructureDescriptions()}

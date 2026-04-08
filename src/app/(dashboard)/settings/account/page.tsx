@@ -21,7 +21,7 @@ export default async function AccountPage() {
 
   const { data: rawAgency } = await supabase
     .from('agencies')
-    .select('id, name, plan, mode, subscription_status, trial_ends_at, plan_client_limit')
+    .select('id, name, plan, mode, subscription_status, trial_ends_at, plan_client_limit, timezone')
     .eq('id', userData.agency_id)
     .single()
 
@@ -33,13 +33,14 @@ export default async function AccountPage() {
     subscription_status: string
     trial_ends_at: string
     plan_client_limit: number
+    timezone: string | null
   } | null
 
   if (!agency) redirect('/login')
 
   return (
     <AccountView
-      agency={agency}
+      agency={{ ...agency, timezone: agency.timezone ?? 'UTC' }}
       currentUserRole={userData.role}
     />
   )

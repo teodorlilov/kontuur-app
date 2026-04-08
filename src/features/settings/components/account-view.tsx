@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { toast } from '@/components/ui/toast'
+import { GROUPED_TIMEZONES } from '@/lib/timezones'
 
 interface AgencyInfo {
   id: string
@@ -14,6 +15,7 @@ interface AgencyInfo {
   subscription_status: string
   trial_ends_at: string
   plan_client_limit: number
+  timezone: string
 }
 
 interface AccountViewProps {
@@ -23,9 +25,10 @@ interface AccountViewProps {
 
 export function AccountView({ agency, currentUserRole }: AccountViewProps) {
   const [name, setName] = useState(agency.name)
+  const [timezone, setTimezone] = useState(agency.timezone)
   const [saving, setSaving] = useState(false)
   const isAdmin = currentUserRole === 'admin'
-  const hasChanged = name.trim() !== agency.name
+  const hasChanged = name.trim() !== agency.name || timezone !== agency.timezone
 
   async function handleSave() {
     if (!name.trim()) {
@@ -38,13 +41,13 @@ export function AccountView({ agency, currentUserRole }: AccountViewProps) {
       const res = await fetch('/api/settings/account', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: name.trim() }),
+        body: JSON.stringify({ name: name.trim(), timezone }),
       })
       const data = await res.json() as { error?: string; success?: boolean }
       if (!res.ok) {
         throw new Error(data.error ?? 'Failed to update')
       }
-      toast.success('Agency name updated')
+      toast.success('Settings saved')
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to update')
     } finally {
@@ -66,34 +69,51 @@ export function AccountView({ agency, currentUserRole }: AccountViewProps) {
 
   return (
     <div className="mt-6 space-y-8">
-      {/* Agency name */}
-      <div className="bg-white rounded-xl border border-gray-200 p-6">
-        <h2 className="text-base font-semibold text-gray-900 mb-4">Agency name</h2>
-        <div className="flex gap-3 items-start">
-          <div className="flex-1">
-            <Input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              disabled={!isAdmin}
-              placeholder="Your agency name"
-            />
-          </div>
-          {isAdmin && (
-            <Button
-              onClick={handleSave}
-              loading={saving}
-              disabled={!hasChanged || !name.trim()}
-              className="shrink-0"
-            >
-              Save
-            </Button>
-          )}
+      {/* Agency name + timezone */}
+      <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
+        <h2 className="text-base font-semibold text-gray-900">Agency settings</h2>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Agency name</label>
+          <Input
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            disabled={!isAdmin}
+            placeholder="Your agency name"
+          />
         </div>
-        {!isAdmin && (
-          <p className="text-xs text-gray-400 mt-2">
-            Only admins can change the agency name.
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Timezone</label>
+          <select
+            value={timezone}
+            onChange={(e) => setTimezone(e.target.value)}
+            disabled={!isAdmin}
+            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-purple/30 focus:border-brand-purple disabled:opacity-50 disabled:bg-gray-50"
+          >
+            {GROUPED_TIMEZONES.map((group) => (
+              <optgroup key={group.region} label={group.region}>
+                {group.options.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </optgroup>
+            ))}
+          </select>
+          <p className="text-xs text-gray-400 mt-1">
+            Used to determine the correct day for autonomous content generation.
           </p>
+        </div>
+        {isAdmin ? (
+          <Button
+            onClick={handleSave}
+            loading={saving}
+            disabled={!hasChanged}
+          >
+            Save
+          </Button>
+        ) : (
+          <p className="text-xs text-gray-400">Only admins can change agency settings.</p>
         )}
       </div>
 

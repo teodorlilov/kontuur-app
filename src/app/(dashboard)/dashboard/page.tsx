@@ -89,7 +89,7 @@ export default async function DashboardPage() {
   // Latest intelligence briefing
   const { data: rawBriefing } = await supabase
     .from('intelligence_briefings')
-    .select('briefing_text, action_nudge, weekly_tip, platform_updates, week_start')
+    .select('briefing_text, action_nudge, weekly_tip, platform_updates, week_start, coaching_points')
     .eq('agency_id', agencyId)
     .order('created_at', { ascending: false })
     .limit(1)
@@ -101,6 +101,7 @@ export default async function DashboardPage() {
     weekly_tip: string | null
     platform_updates: string[] | null
     week_start: string | null
+    coaching_points: string[] | null
   } | null
 
   return (

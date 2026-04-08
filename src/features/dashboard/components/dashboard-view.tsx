@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { Badge } from '@/components/ui/badge'
+import { BriefingActions } from './briefing-actions'
 
 interface Briefing {
   briefing_text: string | null
@@ -7,6 +8,7 @@ interface Briefing {
   weekly_tip: string | null
   platform_updates: string[] | null
   week_start: string | null
+  coaching_points: string[] | null
 }
 
 export interface DashboardViewProps {
@@ -100,6 +102,7 @@ function BriefingCard({ briefing }: { briefing: Briefing | null }) {
           topics, and a personalized action nudge — generated every Monday.
         </div>
       )}
+      <BriefingActions />
     </div>
   )
 }
@@ -196,8 +199,24 @@ function SoloDashboard({
   pendingCount: number
   briefing: Briefing | null
 }) {
+  const coachingPoints = briefing?.coaching_points as string[] | null | undefined
+
   return (
     <>
+      {coachingPoints && coachingPoints.length > 0 && (
+        <div className="bg-brand-purple-light rounded-xl p-5 space-y-2">
+          <p className="text-xs font-medium text-brand-purple uppercase tracking-wide">
+            Your coaching for this week
+          </p>
+          <ul className="space-y-1.5">
+            {coachingPoints.map((point, i) => (
+              <li key={i} className="text-sm text-brand-purple">
+                • {point}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       <BriefingCard briefing={briefing} />
 
       <div className="grid grid-cols-3 gap-4">

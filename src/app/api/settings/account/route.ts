@@ -9,7 +9,7 @@ export async function GET() {
 
   const { data: agency, error } = await supabase
     .from('agencies')
-    .select('id, name, plan, mode, subscription_status, trial_ends_at, plan_client_limit')
+    .select('id, name, plan, mode, subscription_status, trial_ends_at, plan_client_limit, timezone')
     .eq('id', agencyId)
     .single()
 
@@ -30,20 +30,28 @@ export async function PUT(request: Request) {
     return NextResponse.json({ error: 'Only admins can update account settings' }, { status: 403 })
   }
 
-  let body: { name?: string }
+  let body: { name?: string; timezone?: string }
   try {
     body = await request.json()
   } catch {
     return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
   }
 
-  if (!body.name || typeof body.name !== 'string' || body.name.trim().length === 0) {
-    return NextResponse.json({ error: 'Agency name is required' }, { status: 400 })
+  if (body.name !== undefined && (typeof body.name !== 'string' || body.name.trim().length === 0)) {
+    return NextResponse.json({ error: 'Agency name cannot be empty' }, { status: 400 })
+  }
+
+  const updates: { name?: string; timezone?: string } = {}
+  if (body.name !== undefined) updates.name = body.name.trim()
+  if (body.timezone !== undefined) updates.timezone = body.timezone
+
+  if (Object.keys(updates).length === 0) {
+    return NextResponse.json({ error: 'Nothing to update' }, { status: 400 })
   }
 
   const { error } = await supabase
     .from('agencies')
-    .update({ name: body.name.trim() })
+    .update(updates)
     .eq('id', agencyId)
 
   if (error) {

@@ -1,3 +1,20 @@
+/** Returns today's weekday as lowercase string: 'monday', 'tuesday', etc.
+ *  Accepts an optional IANA timezone (e.g. 'America/New_York'). Defaults to UTC. */
+export function getTodayWeekday(timezone = 'UTC'): string {
+  return new Intl.DateTimeFormat('en-US', { weekday: 'long', timeZone: timezone })
+    .format(new Date())
+    .toLowerCase()
+}
+
+/** Returns the ISO date string (YYYY-MM-DD) of the Monday of the current week. */
+export function getMondayISO(): string {
+  const d = new Date()
+  const day = d.getDay()
+  const diff = day === 0 ? -6 : 1 - day
+  d.setDate(d.getDate() + diff)
+  return d.toISOString().split('T')[0]!
+}
+
 /** Combine a date string (YYYY-MM-DD) and time string (HH:MM) into an ISO timestamp. */
 export function formatScheduledAt(date: string, time: string): string {
   return new Date(`${date}T${time || '12:00'}:00`).toISOString()

@@ -19,6 +19,7 @@ export interface Database {
           subscription_status: string
           trial_ends_at: string
           plan_client_limit: number
+          timezone: string | null
           created_at: string
         }
         Insert: {
@@ -32,6 +33,7 @@ export interface Database {
           subscription_status?: string
           trial_ends_at?: string
           plan_client_limit?: number
+          timezone?: string | null
           created_at?: string
         }
         Update: {
@@ -45,6 +47,7 @@ export interface Database {
           subscription_status?: string
           trial_ends_at?: string
           plan_client_limit?: number
+          timezone?: string | null
           created_at?: string
         }
         Relationships: []
@@ -570,6 +573,7 @@ export interface Database {
           weekly_tip: string | null
           sources: string[] | null
           week_start: string | null
+          coaching_points: Json | null
           created_at: string
         }
         Insert: {
@@ -582,6 +586,7 @@ export interface Database {
           weekly_tip?: string | null
           sources?: string[] | null
           week_start?: string | null
+          coaching_points?: Json | null
           created_at?: string
         }
         Update: {
@@ -594,6 +599,7 @@ export interface Database {
           weekly_tip?: string | null
           sources?: string[] | null
           week_start?: string | null
+          coaching_points?: Json | null
           created_at?: string
         }
         Relationships: []

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
 import { generateBestTime } from '@/ai/best-time/generate-best-time'
+import { extractPlatformFromMix } from '@/lib/clients/fetch-client-data'
 import type { Json } from '@/types/database'
 import { checkRateLimit, AI_RATE_LIMIT } from '@/lib/auth/rate-limit'
 
@@ -46,14 +47,9 @@ export async function POST(request: Request) {
 
   const profile = rawProfile as { target_audience: string | null; weekly_mix_json: unknown } | null
 
-  // Extract platforms from weekly_mix_json
-  const platforms = profile?.weekly_mix_json
-    ? Object.keys(profile.weekly_mix_json as Record<string, unknown>).filter(
-        (k) => !['carousel', 'single', 'reels'].includes(k)
-      )
-    : ['Instagram']
-
-  const platformsStr = platforms.length > 0 ? platforms.join(', ') : 'Instagram'
+  const platformsStr = profile?.weekly_mix_json
+    ? extractPlatformFromMix(profile.weekly_mix_json as Record<string, unknown>)
+    : 'Instagram'
 
   try {
     const bestTime = await generateBestTime({

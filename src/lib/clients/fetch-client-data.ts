@@ -7,7 +7,7 @@ import type { Json } from '@/types/database'
 
 export interface ClientContext {
   id: string
-  name: string 
+  name: string
   niche: string
   tone: string
   targetAudience: string
@@ -17,6 +17,7 @@ export interface ClientContext {
   isHealthNiche: boolean | null
   postHistory: string[]
   languageConfig: LanguageConfig
+  topPerformingPosts?: string[]
 }
 
 export interface ClientData {
@@ -37,6 +38,7 @@ export interface ClientData {
     requireSourceGrounding: boolean
     isHealthNiche: boolean | null
     languageNotes: string
+    topPerformingPosts: string[]
   }
   languageRules: {
     carouselSwipeCues: string
@@ -70,6 +72,7 @@ export function toClientContext(data: ClientData): ClientContext {
     contentPillars: data.profile.contentPillars,
     isHealthNiche: data.profile.isHealthNiche,
     postHistory: data.postHistory,
+    topPerformingPosts: data.profile.topPerformingPosts,
     languageConfig: {
       language: data.client.language,
       formality: data.profile.formality,
@@ -100,7 +103,7 @@ export async function fetchClientData(
   const client = rawClient as { id: string; name: string; niche: string | null; language: string } | null
   if (!client) return { error: 'Client not found' }
 
-  const [profileResult, langRulesResult, historyResult] = await Promise.all([
+  const [profileResult, langRulesResult, historyResult, topPostsResult] = await Promise.all([
     supabase
       .from('brand_profiles')
       .select('tone, target_audience, content_pillars, avoid_topics, client_testimonial_voice, language_formality, default_carousel_slides, source_strategy, is_health_niche, language_notes')
@@ -117,6 +120,14 @@ export async function fetchClientData(
       .eq('client_id', clientId)
       .order('created_at', { ascending: false })
       .limit(MAX_POST_HISTORY_COUNT),
+    supabase
+      .from('posts')
+      .select('caption')
+      .eq('client_id', clientId)
+      .eq('status', 'approved')
+      .gte('quality_score_avg', 7.5)
+      .order('quality_score_avg', { ascending: false })
+      .limit(20),
   ])
 
   const profile = profileResult.data as {
@@ -143,6 +154,10 @@ export async function fetchClientData(
     ?.map((h) => h.topic_summary)
     .filter((s): s is string => s !== null) ?? []
 
+  const topPerformingPosts = (topPostsResult.data as Array<{ caption: string | null }> | null)
+    ?.map((p) => (p.caption ?? '').slice(0, 120))
+    .filter(Boolean) ?? []
+
   return {
     data: {
       client: {
@@ -162,6 +177,7 @@ export async function fetchClientData(
         requireSourceGrounding: profile?.source_strategy?.require_source_grounding ?? false,
         isHealthNiche: profile?.is_health_niche ?? null,
         languageNotes: profile?.language_notes ?? '',
+        topPerformingPosts,
       },
       languageRules: {
         carouselSwipeCues: toCarouselSwipeCues(langRules?.native_cta_phrases),
@@ -171,4 +187,25 @@ export async function fetchClientData(
       postHistory,
     },
   }
+}
+
+/** Returns the most common niche across an agency's clients, or undefined. */
+export async function getAgencyNiche(
+  supabase: SupabaseClient,
+  agencyId: string,
+): Promise<string | undefined> {
+  const { data } = await supabase.from('clients').select('niche').eq('agency_id', agencyId)
+  const rows = (data as Array<{ niche: string | null }> | null) ?? []
+  const freq = new Map<string, number>()
+  for (const { niche } of rows) {
+    if (niche) freq.set(niche, (freq.get(niche) ?? 0) + 1)
+  }
+  return freq.size === 0
+    ? undefined
+    : [...freq.entries()].sort((a, b) => b[1] - a[1])[0]?.[0]
+}
+
+/** Extracts the platform name from weekly_mix_json (e.g. { "Instagram": 1 } → "Instagram"). */
+export function extractPlatformFromMix(mix: Record<string, unknown>): string {
+  return Object.keys(mix).find((k) => !['carousel', 'single', 'reels'].includes(k)) ?? 'Instagram'
 }

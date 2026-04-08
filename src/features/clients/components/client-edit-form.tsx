@@ -22,15 +22,23 @@ interface MetaConnection {
   token_expires_at: string | null
 }
 
+interface ContentInsights {
+  avgScore: number | null
+  trend: 'improving' | 'stable' | 'declining' | 'insufficient_data'
+  topApprovedPillars: string[]
+  topRewritePillars: string[]
+}
+
 interface ClientEditFormProps {
   clientId: string
   sourceCount: number
   client: Omit<ClientRow, 'agency_id'>
   profile: Omit<BrandProfileRow, 'client_id'> | null
   schedule: Omit<PostingScheduleRow, 'client_id' | 'created_at'> | null
+  insights: ContentInsights | null
 }
 
-export function ClientEditForm({ clientId, sourceCount, client, profile, schedule }: ClientEditFormProps) {
+export function ClientEditForm({ clientId, sourceCount, client, profile, schedule, insights }: ClientEditFormProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [saving, setSaving] = useState(false)
@@ -108,10 +116,8 @@ export function ClientEditForm({ clientId, sourceCount, client, profile, schedul
   const [activePlatform, setActivePlatform] = useState<string>(firstPlatform)
 
   // Schedule
-  const [freqType, setFreqType] = useState(schedule?.frequency_type ?? 'per_week')
   const [freqValue, setFreqValue] = useState(String(schedule?.frequency_value ?? 3))
   const [autoDay, setAutoDay] = useState(schedule?.auto_generate_day ?? 'monday')
-  const [autoTime, setAutoTime] = useState(schedule?.auto_generate_time ?? '09:00')
 
   async function handleSave() {
     if (!name.trim()) {
@@ -147,10 +153,8 @@ export function ClientEditForm({ clientId, sourceCount, client, profile, schedul
             weekly_mix_json: { [activePlatform]: 1 },
           },
           posting_schedule: {
-            frequency_type: freqType,
             frequency_value: parseInt(freqValue, 10),
             auto_generate_day: autoDay,
-            auto_generate_time: autoTime,
           },
         }),
       })
@@ -330,36 +334,17 @@ export function ClientEditForm({ clientId, sourceCount, client, profile, schedul
           <p className="text-sm font-medium text-gray-700">Autonomous schedule</p>
           <div className="grid grid-cols-2 gap-3">
             <Select
-              label="Frequency type"
-              value={freqType}
-              onChange={(e) => setFreqType(e.target.value)}
-              options={[
-                { value: 'per_week', label: 'Per week' },
-                { value: 'per_day', label: 'Per day' },
-                { value: 'per_month', label: 'Per month' },
-              ]}
-            />
-            <Select
-              label="How many"
+              label="How many posts"
               value={freqValue}
               onChange={(e) => setFreqValue(e.target.value)}
               options={[1, 2, 3, 4, 5, 6, 7].map((n) => ({ value: String(n), label: String(n) }))}
             />
             <Select
-              label="Auto-generate day"
+              label="Generate on"
               value={autoDay}
               onChange={(e) => setAutoDay(e.target.value)}
               options={[...WEEKDAY_OPTIONS]}
             />
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Auto-generate time</label>
-              <input
-                type="time"
-                value={autoTime}
-                onChange={(e) => setAutoTime(e.target.value)}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 outline-none focus:border-[#534AB7] focus:ring-2 focus:ring-[#534AB7]/20"
-              />
-            </div>
           </div>
         </section>
 
@@ -428,6 +413,34 @@ export function ClientEditForm({ clientId, sourceCount, client, profile, schedul
             Connected accounts enable real analytics reports on the Analytics page.
           </p>
         </section>
+
+        {/* Content insights */}
+        {insights && (insights.avgScore !== null || insights.topApprovedPillars.length > 0) && (
+          <section className="bg-white rounded-xl border border-gray-200 p-5 space-y-3">
+            <p className="text-sm font-medium text-gray-700">Content insights</p>
+            {insights.avgScore !== null && (
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-600">Avg quality score:</span>
+                <span className="text-sm font-semibold text-gray-900">{insights.avgScore}/10</span>
+                {insights.trend === 'improving' && <span className="text-green-500 text-sm">↑ improving</span>}
+                {insights.trend === 'declining' && <span className="text-red-500 text-sm">↓ declining</span>}
+                {insights.trend === 'stable' && <span className="text-gray-400 text-sm">→ stable</span>}
+              </div>
+            )}
+            {insights.topApprovedPillars.length > 0 && (
+              <div>
+                <span className="text-xs text-gray-500 uppercase tracking-wide">Top approved pillars: </span>
+                <span className="text-sm text-gray-700">{insights.topApprovedPillars.join(', ')}</span>
+              </div>
+            )}
+            {insights.topRewritePillars.length > 0 && (
+              <div>
+                <span className="text-xs text-gray-500 uppercase tracking-wide">Most rewritten pillars: </span>
+                <span className="text-sm text-gray-700">{insights.topRewritePillars.join(', ')}</span>
+              </div>
+            )}
+          </section>
+        )}
 
         {/* Research sources */}
         <section className="bg-white rounded-xl border border-gray-200 p-5">
