@@ -26,18 +26,19 @@ export default async function CalendarPage() {
   // Fetch clients with brand profile best_time_json
   const { data: clientRows } = await supabase
     .from('clients')
-    .select('id, name, brand_profiles(best_time_json)')
+    .select('id, name, contact_email, brand_profiles(best_time_json)')
     .eq('agency_id', agencyId)
 
   type ClientRow = {
     id: string
     name: string
+    contact_email: string | null
     brand_profiles: { best_time_json: unknown } | null
   }
 
   const clientList = (clientRows as ClientRow[] | null) ?? []
   const clientIds = clientList.map((c) => c.id)
-  const clients = clientList.map((c) => ({ id: c.id, name: c.name }))
+  const clients = clientList.map((c) => ({ id: c.id, name: c.name, contact_email: c.contact_email ?? null }))
 
   // Build best-time lookup
   const bestTimeMap: Record<string, BestTimePlatform[]> = {}

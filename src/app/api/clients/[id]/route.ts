@@ -16,7 +16,7 @@ export async function GET(
 
   const { data: clientData, error: clientError } = await supabase
     .from('clients')
-    .select('id, name, niche, posts_per_week, language, website_url, created_at')
+    .select('id, name, niche, posts_per_week, language, website_url, contact_email, created_at')
     .eq('id', id)
     .single()
 
@@ -45,6 +45,7 @@ interface UpdateClientBody {
   posts_per_week?: number
   language?: string
   website_url?: string
+  contact_email?: string | null
   brand_profile?: {
     tone?: string
     target_audience?: string
@@ -95,6 +96,7 @@ export async function PUT(
   if (body.posts_per_week !== undefined) clientUpdates.posts_per_week = body.posts_per_week
   if (body.language !== undefined) clientUpdates.language = body.language
   if (body.website_url !== undefined) clientUpdates.website_url = body.website_url
+  if (body.contact_email !== undefined) clientUpdates.contact_email = body.contact_email
 
   if (Object.keys(clientUpdates).length > 0) {
     const { error } = await supabase.from('clients').update(clientUpdates).eq('id', id)

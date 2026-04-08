@@ -80,6 +80,7 @@ export function ClientEditForm({ clientId, sourceCount, client, profile, schedul
   const [niche, setNiche] = useState(client.niche ?? '')
   const [language, setLanguage] = useState(client.language)
   const [websiteUrl, setWebsiteUrl] = useState(client.website_url ?? '')
+  const [contactEmail, setContactEmail] = useState(client.contact_email ?? '')
   const [postsPerWeek, setPostsPerWeek] = useState(String(client.posts_per_week))
 
   // Brand profile fields
@@ -129,6 +130,7 @@ export function ClientEditForm({ clientId, sourceCount, client, profile, schedul
           niche: niche || null,
           language,
           website_url: websiteUrl || null,
+          contact_email: contactEmail || null,
           posts_per_week: parseInt(postsPerWeek, 10),
           brand_profile: {
             tone: tone || null,
@@ -173,6 +175,7 @@ export function ClientEditForm({ clientId, sourceCount, client, profile, schedul
           <Input label="Client name" value={name} onChange={(e) => setName(e.target.value)} />
           <Input label="Niche" value={niche} onChange={(e) => setNiche(e.target.value)} placeholder="e.g. Fitness coaching" />
           <Input label="Website URL" value={websiteUrl} onChange={(e) => setWebsiteUrl(e.target.value)} placeholder="e.g. https://example.com" />
+          <Input label="Client contact email" type="email" value={contactEmail} onChange={(e) => setContactEmail(e.target.value)} placeholder="client@example.com" />
           <Select
             label="Primary language"
             value={language}

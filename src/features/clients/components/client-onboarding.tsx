@@ -50,6 +50,7 @@ interface OnboardProfile {
   suggested_post_frequency: string
   language: string
   language_formality: string
+  contact_email: string
 }
 
 // --- Questions ---
@@ -318,8 +319,8 @@ export function ClientOnboarding() {
 
       if (!res.ok) throw new Error('Failed to generate profile')
 
-      const data = (await res.json()) as { profile: OnboardProfile }
-      setProfile(data.profile)
+      const data = (await res.json()) as { profile: Omit<OnboardProfile, 'contact_email'> }
+      setProfile({ ...data.profile, contact_email: '' })
       if (answersMap.q0) setClientName(answersMap.q0)
       setStage('review')
     } catch {
@@ -346,6 +347,7 @@ export function ClientOnboarding() {
           niche: profile.niche,
           language: profile.language,
           website_url: websiteUrl.trim() || null,
+          contact_email: profile.contact_email.trim() || null,
           brand_profile: {
             tone: profile.tone,
             target_audience: profile.target_audience.join(', '),
@@ -883,14 +885,21 @@ function ReviewStage({
 
       <div className="flex-1 overflow-y-auto px-4 py-6">
         <div className="max-w-2xl mx-auto space-y-4">
-          {/* Client name */}
-          <div className="bg-white rounded-xl border border-gray-200 p-5">
+          {/* Client name + contact email */}
+          <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-4">
             <Input
               label="Client name"
               type="text"
               placeholder="Acme Coffee Co."
               value={clientName}
               onChange={(e) => setClientName(e.target.value)}
+            />
+            <Input
+              label="Client contact email"
+              type="email"
+              placeholder="client@example.com (optional — for sending approval links)"
+              value={profile.contact_email}
+              onChange={(e) => setProfile({ ...profile, contact_email: e.target.value })}
             />
           </div>
 

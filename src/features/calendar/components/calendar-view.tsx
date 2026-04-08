@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { ChevronLeft, ChevronRight, Send } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Link, Mail } from 'lucide-react'
 import { useCalendar } from '@/features/calendar/hooks/use-calendar'
 import { getClientColorMap } from '@/components/ui/colors/client-colors'
 import { toast } from '@/components/ui/toast'
@@ -15,10 +15,74 @@ const MONTH_NAMES = [
   'July', 'August', 'September', 'October', 'November', 'December',
 ]
 
+interface ClientEntry {
+  id: string
+  name: string
+  contact_email: string | null
+}
+
 interface CalendarViewProps {
   initialPosts: CalendarPost[]
-  clients: Array<{ id: string; name: string }>
+  clients: ClientEntry[]
   bestTimeMap: Record<string, BestTimePlatform[]>
+}
+
+interface ApprovalButtonProps {
+  icon: React.ElementType
+  label: string
+  loadingLabel: string
+  loading: boolean
+  clients: ClientEntry[]
+  pickerOpen: boolean
+  onTogglePicker: () => void
+  onSelectClient: (id: string) => void
+}
+
+function ApprovalButton({
+  icon: Icon,
+  label,
+  loadingLabel,
+  loading,
+  clients,
+  pickerOpen,
+  onTogglePicker,
+  onSelectClient,
+}: ApprovalButtonProps) {
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => {
+          if (clients.length === 1) {
+            onSelectClient(clients[0]!.id)
+          } else {
+            onTogglePicker()
+          }
+        }}
+        disabled={loading}
+        className="flex items-center gap-1.5 text-xs font-medium text-brand-purple border border-brand-purple-light bg-brand-purple-light rounded-lg px-3 py-2 hover:bg-brand-purple hover:text-white transition-colors disabled:opacity-50"
+      >
+        <Icon className="h-3.5 w-3.5" />
+        {loading ? loadingLabel : label}
+      </button>
+
+      {pickerOpen && clients.length > 1 && (
+        <div className="absolute right-0 top-10 bg-white rounded-lg border border-gray-200 shadow-lg z-30 py-1 min-w-[180px]">
+          <p className="px-3 py-1.5 text-xs text-gray-400 font-medium">Select client</p>
+          {clients.map((c) => (
+            <button
+              key={c.id}
+              type="button"
+              onClick={() => { onSelectClient(c.id) }}
+              className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+            >
+              {c.name}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
 }
 
 export function CalendarView({ initialPosts, clients, bestTimeMap }: CalendarViewProps) {
@@ -26,8 +90,10 @@ export function CalendarView({ initialPosts, clients, bestTimeMap }: CalendarVie
   const [year, setYear] = useState(now.getFullYear())
   const [month, setMonth] = useState(now.getMonth())
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null)
-  const [approvalSending, setApprovalSending] = useState(false)
-  const [approvalClientPicker, setApprovalClientPicker] = useState(false)
+  const [copyLinkSending, setCopyLinkSending] = useState(false)
+  const [copyLinkPicker, setCopyLinkPicker] = useState(false)
+  const [emailSending, setEmailSending] = useState(false)
+  const [emailPicker, setEmailPicker] = useState(false)
 
   const {
     unscheduledPosts,
@@ -88,11 +154,17 @@ export function CalendarView({ initialPosts, clients, bestTimeMap }: CalendarVie
     ? bestTimeMap[selectedPost.client_id] ?? null
     : null
 
-  // Clients that have scheduled posts in the visible month (for approval picker)
+  // Clients that have scheduled posts in the visible month
   const clientsWithScheduledPosts = useMemo(() => {
     const ids = new Set(filteredScheduled.map((p) => p.client_id))
     return clients.filter((c) => ids.has(c.id))
   }, [filteredScheduled, clients])
+
+  // Subset of above that also have a contact_email (email button)
+  const clientsWithEmail = useMemo(
+    () => clientsWithScheduledPosts.filter((c) => c.contact_email !== null),
+    [clientsWithScheduledPosts]
+  )
 
   // Get the Monday of the current week for approval
   function getCurrentWeekStart(): string {
@@ -103,9 +175,9 @@ export function CalendarView({ initialPosts, clients, bestTimeMap }: CalendarVie
     return monday.toISOString().slice(0, 10)
   }
 
-  async function handleSendApproval(clientId: string) {
-    setApprovalSending(true)
-    setApprovalClientPicker(false)
+  async function handleCopyLink(clientId: string) {
+    setCopyLinkSending(true)
+    setCopyLinkPicker(false)
     try {
       const weekStart = getCurrentWeekStart()
       const res = await fetch('/api/approval/send', {
@@ -126,7 +198,33 @@ export function CalendarView({ initialPosts, clients, bestTimeMap }: CalendarVie
     } catch {
       toast.error('Failed to generate approval link')
     } finally {
-      setApprovalSending(false)
+      setCopyLinkSending(false)
+    }
+  }
+
+  async function handleEmailClient(clientId: string) {
+    setEmailSending(true)
+    setEmailPicker(false)
+    try {
+      const weekStart = getCurrentWeekStart()
+      const res = await fetch('/api/approval/email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clientId, weekStart }),
+      })
+
+      if (!res.ok) {
+        const err = (await res.json()) as { error: string }
+        toast.error(err.error || 'Failed to send approval email')
+        return
+      }
+
+      const data = (await res.json()) as { postCount: number }
+      toast.success(`Approval email sent! (${data.postCount} post${data.postCount === 1 ? '' : 's'})`)
+    } catch {
+      toast.error('Failed to send approval email')
+    } finally {
+      setEmailSending(false)
     }
   }
 
@@ -170,42 +268,32 @@ export function CalendarView({ initialPosts, clients, bestTimeMap }: CalendarVie
             </select>
           )}
 
-          {/* Send for approval */}
+          {/* Copy approval link */}
           {clientsWithScheduledPosts.length > 0 && (
-            <div className="relative">
-              <button
-                type="button"
-                onClick={() => {
-                  if (clientsWithScheduledPosts.length === 1) {
-                    void handleSendApproval(clientsWithScheduledPosts[0]!.id)
-                  } else {
-                    setApprovalClientPicker((v) => !v)
-                  }
-                }}
-                disabled={approvalSending}
-                className="flex items-center gap-1.5 text-xs font-medium text-brand-purple border border-brand-purple-light bg-brand-purple-light rounded-lg px-3 py-2 hover:bg-brand-purple hover:text-white transition-colors disabled:opacity-50"
-              >
-                <Send className="h-3.5 w-3.5" />
-                {approvalSending ? 'Generating...' : 'Send for approval'}
-              </button>
+            <ApprovalButton
+              icon={Link}
+              label="Copy link"
+              loadingLabel="Generating..."
+              loading={copyLinkSending}
+              clients={clientsWithScheduledPosts}
+              pickerOpen={copyLinkPicker}
+              onTogglePicker={() => setCopyLinkPicker((v) => !v)}
+              onSelectClient={(id) => { void handleCopyLink(id) }}
+            />
+          )}
 
-              {/* Client picker dropdown */}
-              {approvalClientPicker && clientsWithScheduledPosts.length > 1 && (
-                <div className="absolute right-0 top-10 bg-white rounded-lg border border-gray-200 shadow-lg z-30 py-1 min-w-[180px]">
-                  <p className="px-3 py-1.5 text-xs text-gray-400 font-medium">Select client</p>
-                  {clientsWithScheduledPosts.map((c) => (
-                    <button
-                      key={c.id}
-                      type="button"
-                      onClick={() => { void handleSendApproval(c.id) }}
-                      className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-                    >
-                      {c.name}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
+          {/* Email client — only shown when ≥1 scheduled client has a contact_email */}
+          {clientsWithEmail.length > 0 && (
+            <ApprovalButton
+              icon={Mail}
+              label="Email client"
+              loadingLabel="Sending..."
+              loading={emailSending}
+              clients={clientsWithEmail}
+              pickerOpen={emailPicker}
+              onTogglePicker={() => setEmailPicker((v) => !v)}
+              onSelectClient={(id) => { void handleEmailClient(id) }}
+            />
           )}
         </div>
       </div>

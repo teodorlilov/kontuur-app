@@ -23,6 +23,7 @@ interface CreateClientBody {
   posts_per_week?: number
   language?: string
   website_url?: string
+  contact_email?: string | null
   brand_profile?: {
     tone?: string
     target_audience?: string
@@ -71,6 +72,7 @@ export async function POST(request: Request) {
       posts_per_week: body.posts_per_week,
       language: body.language,
       website_url: body.website_url,
+      contact_email: body.contact_email ?? null,
     })
     .select('id')
     .single()

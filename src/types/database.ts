@@ -82,6 +82,7 @@ export interface Database {
           posts_per_week: number
           language: string
           website_url: string | null
+          contact_email: string | null
           created_at: string
         }
         Insert: {
@@ -92,6 +93,7 @@ export interface Database {
           posts_per_week?: number
           language?: string
           website_url?: string | null
+          contact_email?: string | null
           created_at?: string
         }
         Update: {
@@ -102,6 +104,7 @@ export interface Database {
           posts_per_week?: number
           language?: string
           website_url?: string | null
+          contact_email?: string | null
           created_at?: string
         }
         Relationships: []
