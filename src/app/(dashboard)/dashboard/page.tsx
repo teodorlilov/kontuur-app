@@ -2,6 +2,7 @@ import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { requireSessionUser } from '@/lib/auth/session'
 import { getCachedAgency, getCachedAgencyClients } from '@/lib/queries/cache'
 import { BRIEFING_COLUMNS } from '@/lib/queries/select-columns'
+import { countPendingPostsByClients } from '@/lib/queries/db'
 import { Topbar } from '@/components/layout/topbar'
 import { DashboardView } from '@/features/dashboard/components/dashboard-view'
 import { PageTransition } from '@/components/providers/page-transition'
@@ -40,11 +41,7 @@ export default async function DashboardPage() {
 
   if (clientIds.length > 0) {
     const [pendingRes, scheduledRes, publishedRes, clientPendingRes] = await Promise.all([
-      supabase
-        .from('posts')
-        .select('id', { count: 'exact', head: true })
-        .eq('status', 'pending_review')
-        .in('client_id', clientIds),
+      countPendingPostsByClients(supabase, clientIds),
       supabase
         .from('posts')
         .select('id', { count: 'exact', head: true })
@@ -63,7 +60,7 @@ export default async function DashboardPage() {
         .in('client_id', clientIds),
     ])
 
-    pendingCount = pendingRes.count ?? 0
+    pendingCount = pendingRes
     scheduledCount = scheduledRes.count ?? 0
     publishedCount = publishedRes.count ?? 0
 

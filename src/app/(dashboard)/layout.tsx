@@ -6,6 +6,7 @@ import { createUserRecord } from '@/lib/auth/create-user-record'
 import { getAuthUser, getCachedUserRecord } from '@/lib/auth/session'
 import { getCachedAgency, getCachedAgencyClients } from '@/lib/queries/cache'
 import { USER_AUTH_COLUMNS } from '@/lib/queries/select-columns'
+import { countPendingPostsByClients } from '@/lib/queries/db'
 import { AuthProvider } from '@/components/providers/auth-provider'
 import { Sidebar } from '@/components/layout/sidebar'
 import { NotificationsBell } from '@/components/layout/notifications-bell'
@@ -59,16 +60,7 @@ export default async function DashboardLayout({
 
     // Pending review count for badge
     const clientIds = clients.map((c) => c.id)
-
-    if (clientIds.length > 0) {
-      const { count } = await supabase
-        .from('posts')
-        .select('id', { count: 'exact', head: true })
-        .eq('status', 'pending_review')
-        .in('client_id', clientIds)
-
-      pendingCount = count ?? 0
-    }
+    pendingCount = await countPendingPostsByClients(supabase, clientIds)
   }
 
   return (

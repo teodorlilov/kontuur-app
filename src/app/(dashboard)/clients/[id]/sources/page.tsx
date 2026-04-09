@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { requireSessionUser } from '@/lib/auth/session'
 import { SourcesManager } from '@/features/sources/components/sources-manager'
+import { fetchClientById } from '@/lib/queries/db'
 import { CLIENT_SOURCE_FULL_COLUMNS } from '@/lib/queries/select-columns'
 import type { ClientSource } from '@/types/api'
 
@@ -20,14 +21,7 @@ export default async function ClientSourcesPage({
   const supabase = await createServerSupabaseClient()
 
   // Verify client belongs to agency
-  const { data: rawClient } = await supabase
-    .from('clients')
-    .select('id, name, niche')
-    .eq('id', id)
-    .eq('agency_id', agencyId)
-    .single()
-
-  const client = rawClient as { id: string; name: string; niche: string | null } | null
+  const client = await fetchClientById(supabase, id, agencyId)
   if (!client) notFound()
 
   // Load existing sources and source strategy in parallel

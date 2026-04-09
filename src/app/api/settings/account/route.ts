@@ -2,21 +2,17 @@ import { NextResponse } from 'next/server'
 import { revalidateTag } from 'next/cache'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
 import { verifyAdminRole } from '@/lib/auth/helpers'
-import { AGENCY_SETTINGS_COLUMNS } from '@/lib/queries/select-columns'
+import { fetchAgencyById } from '@/lib/queries/db'
 
 export async function GET() {
   const auth = await resolveAuth()
   if (!auth.ok) return auth.response
   const { supabase, agencyId } = auth
 
-  const { data: agency, error } = await supabase
-    .from('agencies')
-    .select(AGENCY_SETTINGS_COLUMNS)
-    .eq('id', agencyId)
-    .single()
+  const agency = await fetchAgencyById(supabase, agencyId)
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
+  if (!agency) {
+    return NextResponse.json({ error: 'Agency not found' }, { status: 500 })
   }
 
   return NextResponse.json({ agency })

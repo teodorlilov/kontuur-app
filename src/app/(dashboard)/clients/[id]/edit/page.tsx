@@ -2,8 +2,7 @@ import { notFound } from 'next/navigation'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { requireSessionUser } from '@/lib/auth/session'
 import { ClientEditForm } from '@/features/clients/components/client-edit-form'
-import { CLIENT_COLUMNS, BRAND_PROFILE_COLUMNS, POSTING_SCHEDULE_COLUMNS } from '@/lib/queries/select-columns'
-import type { ClientRow, BrandProfileRow, PostingScheduleRow } from '@/types/database'
+import { fetchClientById, fetchBrandProfileByClient, fetchPostingScheduleByClient } from '@/lib/queries/db'
 
 export default async function EditClientPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -11,27 +10,14 @@ export default async function EditClientPage({ params }: { params: Promise<{ id:
   const supabase = await createServerSupabaseClient()
 
   // Ownership check folded into data query — single round-trip, agency_id filter implicitly verifies access
-  const { data: rawClient } = await supabase
-    .from('clients')
-    .select(CLIENT_COLUMNS)
-    .eq('id', id)
-    .eq('agency_id', agencyId)
-    .single()
+  const client = await fetchClientById(supabase, id, agencyId)
 
-  if (!rawClient) notFound()
+  if (!client) notFound()
 
   // All independent queries in parallel — brand_profiles, schedule, and analytics run concurrently
-  const [profileRes, scheduleRes, { count: sourceCount }, recentPostsRes, allPostsRes] = await Promise.all([
-    supabase
-      .from('brand_profiles')
-      .select(BRAND_PROFILE_COLUMNS)
-      .eq('client_id', id)
-      .single(),
-    supabase
-      .from('posting_schedules')
-      .select(POSTING_SCHEDULE_COLUMNS)
-      .eq('client_id', id)
-      .single(),
+  const [profile, schedule, { count: sourceCount }, recentPostsRes, allPostsRes] = await Promise.all([
+    fetchBrandProfileByClient(supabase, id),
+    fetchPostingScheduleByClient(supabase, id),
     supabase
       .from('client_sources')
       .select('*', { count: 'exact', head: true })
@@ -50,10 +36,6 @@ export default async function EditClientPage({ params }: { params: Promise<{ id:
       .eq('client_id', id)
       .not('pillar', 'is', null),
   ])
-
-  const client = rawClient as Omit<ClientRow, 'agency_id'>
-  const profile = profileRes.data as Omit<BrandProfileRow, 'client_id'> | null
-  const schedule = scheduleRes.data as Omit<PostingScheduleRow, 'client_id' | 'created_at'> | null
 
   // Compute content insights server-side
   type ContentInsights = {

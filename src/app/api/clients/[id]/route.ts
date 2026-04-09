@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { revalidateTag } from 'next/cache'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
 import { verifyClientOwnership } from '@/lib/auth/helpers'
-import { CLIENT_COLUMNS, BRAND_PROFILE_COLUMNS, POSTING_SCHEDULE_COLUMNS } from '@/lib/queries/select-columns'
+import { fetchClientById, fetchBrandProfileByClient, fetchPostingScheduleByClient } from '@/lib/queries/db'
 
 export async function GET(
   _request: Request,
@@ -14,27 +14,14 @@ export async function GET(
   const { supabase, agencyId } = auth
 
   // Single query: agency_id filter enforces ownership at DB level
-  const { data: clientData } = await supabase
-    .from('clients')
-    .select(CLIENT_COLUMNS)
-    .eq('id', id)
-    .eq('agency_id', agencyId)
-    .single()
+  const clientData = await fetchClientById(supabase, id, agencyId)
 
   if (!clientData) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
   // Fetch brand_profiles and posting_schedules in parallel — independent queries
-  const [{ data: profileData }, { data: scheduleData }] = await Promise.all([
-    supabase
-      .from('brand_profiles')
-      .select(BRAND_PROFILE_COLUMNS)
-      .eq('client_id', id)
-      .single(),
-    supabase
-      .from('posting_schedules')
-      .select(POSTING_SCHEDULE_COLUMNS)
-      .eq('client_id', id)
-      .single(),
+  const [profileData, scheduleData] = await Promise.all([
+    fetchBrandProfileByClient(supabase, id),
+    fetchPostingScheduleByClient(supabase, id),
   ])
 
   return NextResponse.json({ client: clientData, brand_profile: profileData, posting_schedule: scheduleData })
