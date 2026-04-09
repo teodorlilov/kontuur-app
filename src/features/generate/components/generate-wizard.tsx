@@ -275,11 +275,13 @@ export function GenerateWizard() {
 
   function handlePostRemoved(postId: string) {
     setGeneratedPosts((prev) => prev.filter((p) => p.post.id !== postId))
+    setStreamTotal((t) => t - 1)
   }
 
   function handlePostApproved(postId: string) {
     setGeneratedPosts((prev) => prev.filter((p) => p.post.id !== postId))
     setApprovedCount((c) => c + 1)
+    setStreamTotal((t) => t - 1)
   }
 
   function handlePostRegenerated(postId: string, updatedPost: PostData, updatedValidation: ValidationData) {
@@ -562,7 +564,7 @@ export function GenerateWizard() {
                     Generate more
                   </Button>
                   {approvedCount > 0 && (
-                    <a href="/posts" className="text-sm text-gray-500 hover:text-gray-700">
+                    <a href="/calendar" className="text-sm text-gray-500 hover:text-gray-700">
                       View approved posts
                     </a>
                   )}
