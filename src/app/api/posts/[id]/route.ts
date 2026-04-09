@@ -10,12 +10,27 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   if (!auth.ok) return auth.response
   const { supabase, agencyId } = auth
 
-  const post = await verifyPostOwnership(supabase, id, agencyId)
-  if (!post) return NextResponse.json({ error: 'Post not found' }, { status: 404 })
+  // Single query: fetch full post + client's agency_id for ownership check.
+  // Cast via unknown because Supabase cannot infer types from template-literal select strings.
+  const { data: rawPost } = await supabase
+    .from('posts')
+    .select(`${POST_COLUMNS}, clients(agency_id)`)
+    .eq('id', id)
+    .single()
 
-  const { data: fullPost } = await supabase.from('posts').select(POST_COLUMNS).eq('id', id).single()
+  if (!rawPost) return NextResponse.json({ error: 'Post not found' }, { status: 404 })
 
-  return NextResponse.json({ post: fullPost })
+  type RawPost = Record<string, unknown> & { clients: { agency_id: string } | null }
+  const typed = rawPost as unknown as RawPost
+
+  // Verify ownership in memory — no extra round-trip
+  if (!typed.clients || typed.clients.agency_id !== agencyId) {
+    return NextResponse.json({ error: 'Post not found' }, { status: 404 })
+  }
+
+  // Strip the joined clients field before returning
+  const { clients: _clients, ...post } = typed
+  return NextResponse.json({ post })
 }
 
 export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {

@@ -12,30 +12,29 @@ export async function GET(
   if (!auth.ok) return auth.response
   const { supabase, agencyId } = auth
 
-  const owned = await verifyClientOwnership(supabase, id, agencyId)
-  if (!owned) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-
-  const { data: clientData, error: clientError } = await supabase
+  // Single query: agency_id filter enforces ownership at DB level
+  const { data: clientData } = await supabase
     .from('clients')
     .select('id, name, niche, posts_per_week, language, website_url, contact_email, created_at')
     .eq('id', id)
+    .eq('agency_id', agencyId)
     .single()
 
-  if (clientError) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  if (!clientData) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  const { data: profileData } = await supabase
-    .from('brand_profiles')
-    .select(
-      'id, tone, target_audience, content_pillars, avoid_topics, client_testimonial_voice, default_post_type, default_carousel_slides, weekly_mix_json, language_formality, secondary_language, is_health_niche, best_time_json, best_time_updated_at, source_strategy, language_notes'
-    )
-    .eq('client_id', id)
-    .single()
-
-  const { data: scheduleData } = await supabase
-    .from('posting_schedules')
-    .select('id, is_active, frequency_type, frequency_value, auto_generate_day, auto_generate_time')
-    .eq('client_id', id)
-    .single()
+  // Fetch brand_profiles and posting_schedules in parallel — independent queries
+  const [{ data: profileData }, { data: scheduleData }] = await Promise.all([
+    supabase
+      .from('brand_profiles')
+      .select('id, tone, target_audience, content_pillars, avoid_topics, client_testimonial_voice, default_post_type, default_carousel_slides, weekly_mix_json, language_formality, secondary_language, is_health_niche, best_time_json, best_time_updated_at, source_strategy, language_notes')
+      .eq('client_id', id)
+      .single(),
+    supabase
+      .from('posting_schedules')
+      .select('id, is_active, frequency_type, frequency_value, auto_generate_day, auto_generate_time')
+      .eq('client_id', id)
+      .single(),
+  ])
 
   return NextResponse.json({ client: clientData, brand_profile: profileData, posting_schedule: scheduleData })
 }
