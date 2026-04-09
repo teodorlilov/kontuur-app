@@ -57,27 +57,41 @@ export async function POST(request: Request) {
 
   const runId = (runData as { id: string } | null)?.id
 
-  const posts = await runGenerationBatch({
-    client,
-    platform: body.platform,
-    postType: body.postType,
-    slideCount: body.slideCount || result.data.profile.defaultCarouselSlides || DEFAULT_CAROUSEL_SLIDES,
-    requireSourceGrounding: result.data.profile.requireSourceGrounding,
-    themes: body.themes,
-    priorityPosts: body.priorityPosts,
-    trackTheme: async (theme, postCount) => {
-      if (!runId) return
-      await supabase.from('generation_themes').insert({
-        run_id: runId,
-        theme_description: theme.description,
-        post_count: postCount,
-        is_priority: theme.isPriority ?? false,
-        priority_brief: theme.brief ?? null,
-        target_date: theme.targetDate ?? null,
-        research_used: !!theme.sourceExcerpt,
-      })
+  const encoder = new TextEncoder()
+  const stream = new ReadableStream<Uint8Array>({
+    async start(controller) {
+      try {
+        await runGenerationBatch({
+          client,
+          platform: body.platform,
+          postType: body.postType,
+          slideCount: body.slideCount || result.data.profile.defaultCarouselSlides || DEFAULT_CAROUSEL_SLIDES,
+          requireSourceGrounding: result.data.profile.requireSourceGrounding,
+          themes: body.themes,
+          priorityPosts: body.priorityPosts,
+          trackTheme: async (theme, postCount) => {
+            if (!runId) return
+            await supabase.from('generation_themes').insert({
+              run_id: runId,
+              theme_description: theme.description,
+              post_count: postCount,
+              is_priority: theme.isPriority ?? false,
+              priority_brief: theme.brief ?? null,
+              target_date: theme.targetDate ?? null,
+              research_used: !!theme.sourceExcerpt,
+            })
+          },
+          onResult: (generationResult) => {
+            controller.enqueue(encoder.encode(JSON.stringify(generationResult) + '\n'))
+          },
+        })
+      } finally {
+        controller.close()
+      }
     },
   })
 
-  return NextResponse.json({ posts })
+  return new Response(stream, {
+    headers: { 'Content-Type': 'application/x-ndjson' },
+  })
 }

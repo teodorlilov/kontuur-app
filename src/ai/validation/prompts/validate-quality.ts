@@ -200,10 +200,6 @@ ${returnFormat}`,
     maxTokens: 1024,
   })
 
-  console.log("VALIDATE QUALITY SYSTEM PROMPT", base)
-  console.log("VALIDATE QUALITY USER PROMPT", contentSection)
-
-
   const parsed = parseJsonResponse<LlmQualityResponse>(message)
 
   // Safe-parse verdicts (LLM may return unexpected strings)

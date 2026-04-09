@@ -6,14 +6,6 @@ import { sanitizePromptField } from '@/ai/utils/sanitize'
 
 export class CarouselGenerator extends ContentGenerator<CarouselInput, CarouselResult> {
 
-  protected getPlatform(): string {
-    return 'Instagram'
-  }
-
-  protected getContentLabel(): string {
-    return 'main caption'
-  }
-
   protected buildDirective(input: CarouselInput): string {
     const swipeCues = input.client.languageConfig.carouselSwipeCues
 

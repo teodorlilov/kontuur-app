@@ -107,4 +107,6 @@ export interface GenerationRunContext {
   themes: Theme[]
   priorityPosts: PriorityPost[]
   trackTheme: (theme: EnrichedTheme, postCount: number) => Promise<void>
+  /** Called immediately when each theme's result is ready. Used for streaming responses. */
+  onResult?: (result: GenerationResult) => void
 }

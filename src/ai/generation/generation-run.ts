@@ -18,7 +18,7 @@ import { toBrandQualityFields } from '@/lib/clients/fetch-client-data'
 import { OVER_REQUEST_MULTIPLIER, QUALITY_FLOOR, DEFAULT_CAROUSEL_SLIDES } from '@/utils/constants'
 import type { QualityResult } from '@/ai/validation/prompts/validate-quality'
 
-const MAX_CONCURRENT_AI_CALLS = 3
+const MAX_CONCURRENT_AI_CALLS = 5
 
 /** Default quality scores for content types where quality validation is not meaningful (e.g. reels scripts). */
 const DEFAULT_QUALITY_SCORE = 5
@@ -196,13 +196,15 @@ export async function runGenerationBatch(ctx: GenerationRunContext): Promise<Gen
       ? { ...validation.language, language_score: 10, passes: true }
       : validation.language
 
-    generatedPosts.push({
+    const item: GenerationResult = {
       post,
       quality: validation.quality,
       language,
       slop: validation.slop,
       ...(validation.sourceGrounding ? { sourceGrounding: validation.sourceGrounding } : {}),
-    })
+    }
+    generatedPosts.push(item)
+    ctx.onResult?.(item)
   }
 
   async function validateContent(

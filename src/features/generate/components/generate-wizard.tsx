@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
 import { cn } from '@/utils/cn'
@@ -9,10 +9,11 @@ import { PriorityPostForm } from '@/features/generate/components/priority-post-f
 import { ThemeRow, type ThemeInput } from '@/features/generate/components/theme-row'
 import { PostTypeSelector } from '@/features/generate/components/post-type-selector'
 import type { PriorityPost, PostType } from '@/types/api'
-import { GenerationProgress } from '@/features/generate/components/generation-progress'
 import { ResearchProgress } from '@/features/generate/components/research-progress'
 import { PostCard, type PostData, type ValidationData } from '@/components/posts/post-card'
+import { PostCardSkeleton } from '@/components/posts/post-card-skeleton'
 import { shouldShowResearchButton } from '@/features/generate/helpers/should-show-research-button'
+import { readNDJSONStream } from '@/utils/stream'
 import { PLATFORMS } from '@/utils/constants'
 import type { ClientRow, BrandProfileRow } from '@/types/database'
 
@@ -79,8 +80,10 @@ export function GenerateWizard() {
   // Step 5
   const [isGenerating, setIsGenerating] = useState(false)
   const [generatedPosts, setGeneratedPosts] = useState<GeneratedPost[]>([])
+  const [streamTotal, setStreamTotal] = useState(0)
   const [hasGenerated, setHasGenerated] = useState(false)
   const [approvedCount, setApprovedCount] = useState(0)
+  const abortControllerRef = useRef<AbortController | null>(null)
 
   // Load clients on mount
   useEffect(() => {
@@ -137,19 +140,33 @@ export function GenerateWizard() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentStep])
 
-  async function startGeneration() {
-    setIsGenerating(true)
-    try {
-      const validThemes = themes.filter((t) => t.selected && t.description.trim())
-      if (validThemes.length === 0 && priorityPosts.length === 0) {
-        toast.error('Add at least one theme to generate posts')
-        setCurrentStep(3)
-        return
-      }
+  // Abort any in-flight generation stream when leaving step 5
+  useEffect(() => {
+    return () => { abortControllerRef.current?.abort() }
+  }, [currentStep])
 
+  async function startGeneration() {
+    abortControllerRef.current?.abort()
+    const controller = new AbortController()
+    abortControllerRef.current = controller
+
+    const validThemes = themes.filter((t) => t.selected && t.description.trim())
+    if (validThemes.length === 0 && priorityPosts.length === 0) {
+      toast.error('Add at least one theme to generate posts')
+      setCurrentStep(3)
+      return
+    }
+
+    const total = validThemes.length + priorityPosts.length
+    setStreamTotal(total)
+    setGeneratedPosts([])
+    setIsGenerating(true)
+
+    try {
       const res = await fetch('/api/ai/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        signal: controller.signal,
         body: JSON.stringify({
           clientId,
           platform,
@@ -176,11 +193,13 @@ export function GenerateWizard() {
         return
       }
 
-      const data = await res.json() as { posts: GeneratedPost[] }
-      setGeneratedPosts(data.posts)
-      setHasGenerated(data.posts.length > 0)
-      toast.success(`Generated ${data.posts.length} post${data.posts.length !== 1 ? 's' : ''}`)
-    } catch {
+      await readNDJSONStream<GeneratedPost>(res, (post) => {
+        setGeneratedPosts((prev) => [...prev, post])
+      })
+
+      setHasGenerated(true)
+    } catch (err) {
+      if (err instanceof Error && err.name === 'AbortError') return
       toast.error('Generation failed — please retry')
       setCurrentStep(3)
     } finally {
@@ -251,7 +270,6 @@ export function GenerateWizard() {
   }
 
   const selectedThemes = themes.filter((t) => t.selected && t.description.trim())
-  const totalPosts = selectedThemes.length + priorityPosts.length
 
   const canNext = (() => {
     if (currentStep === 1) return !!clientId
@@ -451,9 +469,45 @@ export function GenerateWizard() {
         {/* Step 5 — Generated Posts */}
         {currentStep === 5 && (
           <div className="flex flex-col gap-4">
-            {isGenerating ? (
-              <GenerationProgress total={totalPosts} postType={postType} />
-            ) : generatedPosts.length === 0 && hasGenerated ? (
+
+            {/* Real-time progress counter — driven by stream events, not a fake timer */}
+            {isGenerating && streamTotal > 0 && (
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between text-sm text-gray-500">
+                  <span>Generating posts...</span>
+                  <span>{generatedPosts.length} of {streamTotal} complete</span>
+                </div>
+                <div className="h-1.5 w-full rounded-full bg-gray-100 overflow-hidden">
+                  <div
+                    className="h-full rounded-full bg-[#534AB7] transition-all duration-700 ease-out"
+                    style={{ width: `${Math.round((generatedPosts.length / streamTotal) * 100)}%` }}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Skeleton + real post slots — N slots rendered immediately, swapped as posts arrive */}
+            {(isGenerating || generatedPosts.length > 0) && streamTotal > 0 && (
+              Array.from({ length: streamTotal }, (_, i) => {
+                const item = generatedPosts[i]
+                return item ? (
+                  <div key={item.post.id} className="animate-[fadein_0.4s_ease-out_forwards] opacity-0">
+                    <PostCard
+                      post={item.post}
+                      validationData={{ quality: item.quality, language: item.language, slop: item.slop, sourceGrounding: item.sourceGrounding }}
+                      onApprove={handlePostApproved}
+                      onDiscard={handlePostRemoved}
+                      onRegenerate={handlePostRegenerated}
+                    />
+                  </div>
+                ) : (
+                  <PostCardSkeleton key={`skeleton-${i}`} />
+                )
+              })
+            )}
+
+            {/* All posts reviewed */}
+            {!isGenerating && generatedPosts.length === 0 && hasGenerated && (
               <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 text-center">
                 <div className="h-16 w-16 rounded-full bg-green-50 flex items-center justify-center">
                   <svg className="h-8 w-8 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -488,7 +542,10 @@ export function GenerateWizard() {
                   )}
                 </div>
               </div>
-            ) : generatedPosts.length === 0 ? (
+            )}
+
+            {/* Error / no posts generated */}
+            {!isGenerating && generatedPosts.length === 0 && !hasGenerated && streamTotal === 0 && (
               <div className="flex flex-col items-center justify-center py-16 gap-4 text-center">
                 <div className="h-12 w-12 rounded-full bg-gray-100 flex items-center justify-center">
                   <svg className="h-6 w-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -506,18 +563,8 @@ export function GenerateWizard() {
                   Retry generation
                 </button>
               </div>
-            ) : (
-              generatedPosts.map((item) => (
-                <PostCard
-                  key={item.post.id}
-                  post={item.post}
-                  validationData={{ quality: item.quality, language: item.language, slop: item.slop, sourceGrounding: item.sourceGrounding }}
-                  onApprove={handlePostApproved}
-                  onDiscard={handlePostRemoved}
-                  onRegenerate={handlePostRegenerated}
-                />
-              ))
             )}
+
           </div>
         )}
       </div>

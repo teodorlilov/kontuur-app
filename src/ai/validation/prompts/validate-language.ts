@@ -1,4 +1,4 @@
-import { callAnthropic } from '@/utils/ai-client'
+import { callAnthropic, LIGHT_MODEL } from '@/utils/ai-client'
 import { parseJsonResponse } from '@/utils/ai'
 import { buildLanguageValidationRules } from '@/ai/validation/prompts/language-validation-rules'
 import { computeLanguageScore } from '@/ai/validation/content-rules/compute-scores'
@@ -94,10 +94,8 @@ Formality: ${formality}
 Return JSON only:
 ${returnFormat}`,
     maxTokens: 2048,
+    model: LIGHT_MODEL,
   })
-
-  console.log("VALIDATE LANGUAGE SYSTEM PROMPT", systemText)
-  console.log("VALIDATE LANGUAGE USER PROMPT", contentSection)
 
 
   const parsed = parseJsonResponse<LlmLanguageResponse>(message)
