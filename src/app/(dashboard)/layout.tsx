@@ -5,6 +5,7 @@ import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { createUserRecord } from '@/lib/auth/create-user-record'
 import { getAuthUser, getCachedUserRecord } from '@/lib/auth/session'
 import { getCachedAgency, getCachedAgencyClients } from '@/lib/queries/cache'
+import { USER_AUTH_COLUMNS } from '@/lib/queries/select-columns'
 import { AuthProvider } from '@/components/providers/auth-provider'
 import { Sidebar } from '@/components/layout/sidebar'
 import { NotificationsBell } from '@/components/layout/notifications-bell'
@@ -37,7 +38,7 @@ export default async function DashboardLayout({
 
     const { data: freshUserData } = await supabase
       .from('users')
-      .select('agency_id, role')
+      .select(USER_AUTH_COLUMNS)
       .eq('id', user.id)
       .single()
     rawUserData = freshUserData

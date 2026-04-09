@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { requireSessionUser } from '@/lib/auth/session'
 import { AccountView } from '@/features/settings/components/account-view'
+import { AGENCY_SETTINGS_COLUMNS } from '@/lib/queries/select-columns'
 
 export default async function AccountPage() {
   const { agencyId, role } = await requireSessionUser()
@@ -9,7 +10,7 @@ export default async function AccountPage() {
 
   const { data: rawAgency } = await supabase
     .from('agencies')
-    .select('id, name, plan, mode, subscription_status, trial_ends_at, plan_client_limit, timezone')
+    .select(AGENCY_SETTINGS_COLUMNS)
     .eq('id', agencyId)
     .single()
 

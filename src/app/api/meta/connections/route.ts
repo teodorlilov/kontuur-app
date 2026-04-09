@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
 import { verifyClientOwnership } from '@/lib/auth/helpers'
+import { SOCIAL_CONNECTION_COLUMNS } from '@/lib/queries/select-columns'
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
@@ -19,7 +20,7 @@ export async function GET(request: NextRequest) {
 
   const { data: connections, error } = await supabase
     .from('social_connections')
-    .select('id, platform, account_id, account_name, token_expires_at, created_at')
+    .select(SOCIAL_CONNECTION_COLUMNS)
     .eq('client_id', clientId)
     .order('created_at', { ascending: true })
 

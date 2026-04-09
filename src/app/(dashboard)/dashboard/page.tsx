@@ -1,6 +1,7 @@
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { requireSessionUser } from '@/lib/auth/session'
 import { getCachedAgency, getCachedAgencyClients } from '@/lib/queries/cache'
+import { BRIEFING_COLUMNS } from '@/lib/queries/select-columns'
 import { Topbar } from '@/components/layout/topbar'
 import { DashboardView } from '@/features/dashboard/components/dashboard-view'
 import { PageTransition } from '@/components/providers/page-transition'
@@ -31,7 +32,7 @@ export default async function DashboardPage() {
   // Start briefing query immediately — independent of clientIds, runs in parallel with stats
   const briefingQuery = supabase
     .from('intelligence_briefings')
-    .select('briefing_text, action_nudge, weekly_tip, platform_updates, week_start, coaching_points')
+    .select(BRIEFING_COLUMNS)
     .eq('agency_id', agencyId)
     .order('created_at', { ascending: false })
     .limit(1)

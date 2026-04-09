@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { requireSessionUser } from '@/lib/auth/session'
 import { ClientEditForm } from '@/features/clients/components/client-edit-form'
+import { CLIENT_COLUMNS, BRAND_PROFILE_COLUMNS, POSTING_SCHEDULE_COLUMNS } from '@/lib/queries/select-columns'
 import type { ClientRow, BrandProfileRow, PostingScheduleRow } from '@/types/database'
 
 export default async function EditClientPage({ params }: { params: Promise<{ id: string }> }) {
@@ -12,7 +13,7 @@ export default async function EditClientPage({ params }: { params: Promise<{ id:
   // Ownership check folded into data query — single round-trip, agency_id filter implicitly verifies access
   const { data: rawClient } = await supabase
     .from('clients')
-    .select('id, name, niche, posts_per_week, language, website_url, contact_email, created_at')
+    .select(CLIENT_COLUMNS)
     .eq('id', id)
     .eq('agency_id', agencyId)
     .single()
@@ -23,12 +24,12 @@ export default async function EditClientPage({ params }: { params: Promise<{ id:
   const [profileRes, scheduleRes, { count: sourceCount }, recentPostsRes, allPostsRes] = await Promise.all([
     supabase
       .from('brand_profiles')
-      .select('id, tone, target_audience, content_pillars, avoid_topics, client_testimonial_voice, default_post_type, default_carousel_slides, weekly_mix_json, language_formality, secondary_language, is_health_niche, best_time_json, best_time_updated_at, source_strategy, language_notes')
+      .select(BRAND_PROFILE_COLUMNS)
       .eq('client_id', id)
       .single(),
     supabase
       .from('posting_schedules')
-      .select('id, is_active, frequency_type, frequency_value, auto_generate_day, auto_generate_time')
+      .select(POSTING_SCHEDULE_COLUMNS)
       .eq('client_id', id)
       .single(),
     supabase

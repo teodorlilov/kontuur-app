@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
 import { verifyPostOwnership } from '@/lib/auth/helpers'
-
-const POST_COLUMNS = 'id, client_id, caption, platform, post_type, slides_json, carousel_quality_json, status, priority, scheduled_at, published_at, quality_score_avg, was_rewritten, rewrite_count, source_url, source_title, source_type, created_at'
+import { POST_COLUMNS } from '@/lib/queries/select-columns'
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params

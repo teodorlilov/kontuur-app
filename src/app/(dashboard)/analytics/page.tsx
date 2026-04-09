@@ -1,6 +1,7 @@
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { requireSessionUser } from '@/lib/auth/session'
 import { getCachedAgencyClients } from '@/lib/queries/cache'
+import { SOCIAL_CONNECTION_COLUMNS } from '@/lib/queries/select-columns'
 import { Topbar } from '@/components/layout/topbar'
 import { AnalyticsView } from '@/features/analytics/components/analytics-view'
 import type { MetaConnection } from '@/types/api'
@@ -19,7 +20,7 @@ export default async function AnalyticsPage() {
   const { data: initialConnectionRows } = firstClientId
     ? await supabase
         .from('social_connections')
-        .select('id, platform, account_id, account_name, token_expires_at, created_at')
+        .select(SOCIAL_CONNECTION_COLUMNS)
         .eq('client_id', firstClientId)
         .order('created_at', { ascending: true })
     : { data: [] }

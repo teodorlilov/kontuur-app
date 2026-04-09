@@ -1,4 +1,5 @@
 import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { USER_AUTH_COLUMNS } from '@/lib/queries/select-columns'
 
 export type SupabaseServerClient = Awaited<ReturnType<typeof createServerSupabaseClient>>
 
@@ -47,7 +48,7 @@ export async function getUserRecord(
 ): Promise<{ agency_id: string; role: string } | null> {
   const { data } = await supabase
     .from('users')
-    .select('agency_id, role')
+    .select(USER_AUTH_COLUMNS)
     .eq('id', userId)
     .single()
   return data as { agency_id: string; role: string } | null

@@ -1,6 +1,7 @@
 import { cache } from 'react'
 import { unstable_cache } from 'next/cache'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { AGENCY_COLUMNS, CLIENT_LIST_COLUMNS } from '@/lib/queries/select-columns'
 import type { Database } from '@/types/database'
 
 type Agency = Database['public']['Tables']['agencies']['Row']
@@ -17,7 +18,7 @@ const _fetchAgency = unstable_cache(
     const supabase = await createServerSupabaseClient()
     const { data } = await supabase
       .from('agencies')
-      .select('id, name, plan, mode, agency_logo, stripe_customer_id, stripe_subscription_id, subscription_status, trial_ends_at, plan_client_limit, timezone, created_at')
+      .select(AGENCY_COLUMNS)
       .eq('id', agencyId)
       .single()
     return (data as Agency | null)
@@ -42,7 +43,7 @@ const _fetchAgencyClients = unstable_cache(
     const supabase = await createServerSupabaseClient()
     const { data } = await supabase
       .from('clients')
-      .select('id, name, niche, posts_per_week, language, created_at')
+      .select(CLIENT_LIST_COLUMNS)
       .eq('agency_id', agencyId)
       .order('created_at', { ascending: true })
     return (data ?? []) as Pick<Client, 'id' | 'name' | 'niche' | 'posts_per_week' | 'language' | 'created_at'>[]

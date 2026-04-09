@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { requireSessionUser } from '@/lib/auth/session'
 import { SourcesManager } from '@/features/sources/components/sources-manager'
+import { CLIENT_SOURCE_FULL_COLUMNS } from '@/lib/queries/select-columns'
 import type { ClientSource } from '@/types/api'
 
 export default async function ClientSourcesPage({
@@ -33,7 +34,7 @@ export default async function ClientSourcesPage({
   const [sourcesResult, profileResult] = await Promise.all([
     supabase
       .from('client_sources')
-      .select('id, client_id, type, label, url, is_active, last_fetched_at, last_fetch_status, last_fetch_error, config, file_path, extracted_text, created_at')
+      .select(CLIENT_SOURCE_FULL_COLUMNS)
       .eq('client_id', id)
       .order('created_at', { ascending: false }),
     supabase

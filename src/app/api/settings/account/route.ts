@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { revalidateTag } from 'next/cache'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
 import { verifyAdminRole } from '@/lib/auth/helpers'
+import { AGENCY_SETTINGS_COLUMNS } from '@/lib/queries/select-columns'
 
 export async function GET() {
   const auth = await resolveAuth()
@@ -10,7 +11,7 @@ export async function GET() {
 
   const { data: agency, error } = await supabase
     .from('agencies')
-    .select('id, name, plan, mode, subscription_status, trial_ends_at, plan_client_limit, timezone')
+    .select(AGENCY_SETTINGS_COLUMNS)
     .eq('id', agencyId)
     .single()
 

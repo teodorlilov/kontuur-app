@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
 import { verifyClientOwnership } from '@/lib/auth/helpers'
+import { CLIENT_SOURCE_COLUMNS } from '@/lib/queries/select-columns'
 import { validateSourceUrl } from '@/lib/sources/validate-url'
 import { isValidRssUrl } from '@/lib/sources/fetch-rss'
 import { fetchWebsiteSource } from '@/lib/sources/fetch-website'
@@ -30,7 +31,7 @@ export async function GET(
 
   const { data, error } = await supabase
     .from('client_sources')
-    .select('id, client_id, type, label, url, is_active, last_fetched_at, last_fetch_status, last_fetch_error, config, created_at')
+    .select(CLIENT_SOURCE_COLUMNS)
     .eq('client_id', clientId)
     .order('created_at', { ascending: false })
 
@@ -110,7 +111,7 @@ export async function POST(
       last_fetch_status: fetchStatus,
       last_fetch_error: fetchError ?? null,
     })
-    .select('id, client_id, type, label, url, is_active, last_fetched_at, last_fetch_status, last_fetch_error, config, created_at')
+    .select(CLIENT_SOURCE_COLUMNS)
     .single()
 
   if (insertError) return NextResponse.json({ error: insertError.message }, { status: 500 })

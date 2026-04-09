@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { revalidateTag } from 'next/cache'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
+import { CLIENT_LIST_COLUMNS } from '@/lib/queries/select-columns'
 
 export async function GET() {
   const auth = await resolveAuth()
@@ -9,7 +10,7 @@ export async function GET() {
 
   const { data: clients, error } = await supabase
     .from('clients')
-    .select('id, name, niche, posts_per_week, language, created_at')
+    .select(CLIENT_LIST_COLUMNS)
     .eq('agency_id', agencyId)
     .order('created_at', { ascending: true })
 

@@ -1,6 +1,7 @@
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { requireSessionUser } from '@/lib/auth/session'
 import { getCachedAgencyClients } from '@/lib/queries/cache'
+import { POST_COLUMNS } from '@/lib/queries/select-columns'
 import { Topbar } from '@/components/layout/topbar'
 import { CalendarView } from '@/features/calendar/components/calendar-view'
 import type { CalendarPost, BestTimePlatform } from '@/types/api'
@@ -29,7 +30,7 @@ export default async function CalendarPage() {
     clientIds.length > 0
       ? supabase
           .from('posts')
-          .select('id, client_id, caption, platform, post_type, slides_json, carousel_quality_json, status, scheduled_at, priority, quality_score_avg, source_url, source_title, source_type, pillar, source_excerpt, created_at')
+          .select(POST_COLUMNS)
           .in('client_id', clientIds)
           .in('status', ['approved', 'scheduled'])
           .order('created_at', { ascending: false })

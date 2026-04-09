@@ -3,6 +3,7 @@ import { randomUUID } from 'crypto'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
 import { verifyClientOwnership } from '@/lib/auth/helpers'
+import { CLIENT_SOURCE_FULL_COLUMNS } from '@/lib/queries/select-columns'
 import { extractText } from '@/lib/sources/extract-text'
 import { validateUpload, getFileExtension } from '@/lib/sources/validate-upload'
 
@@ -80,7 +81,7 @@ export async function POST(
       last_fetch_error: extractionError ?? null,
       config: {},
     })
-    .select('id, client_id, type, label, url, is_active, last_fetched_at, last_fetch_status, last_fetch_error, config, file_path, extracted_text, created_at')
+    .select(CLIENT_SOURCE_FULL_COLUMNS)
     .single()
 
   if (insertError || !sourceData) {
