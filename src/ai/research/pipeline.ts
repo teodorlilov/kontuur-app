@@ -61,15 +61,15 @@ export class ResearchPipeline {
   /** Execute the full research pipeline. Main entry point. */
   async execute(): Promise<ResearchTopic[]> {
     // 1. Load client data (pillars, history, sources, strategy)
+    this.ctx.onPhase?.('Loading brand profile...')
     const clientData = await this.loadClientData()
 
     // 2. Compute fetch limits scaled to requested post count
-    const limits = computeFetchLimits(this.ctx.count)
-
     // 3. Create source objects via factory (polymorphic creation)
-    const sourceObjects = createAllSources(clientData.sources)
-
     // 4. Fetch all sources in parallel (limits control how much each source fetches)
+    this.ctx.onPhase?.('Fetching sources...')
+    const limits = computeFetchLimits(this.ctx.count)
+    const sourceObjects = createAllSources(clientData.sources)
     await this.fetchAllSources(sourceObjects, limits)
 
     // 5. Build source context from fetched sources (limits control token budgets)
@@ -79,6 +79,7 @@ export class ResearchPipeline {
     const fullTextIndex = this.buildSourceFullTextIndex(sourceObjects)
 
     // 7. Generate topics via prompt builder (exact count, no multiplier)
+    this.ctx.onPhase?.('Generating theme ideas...')
     const builder = new ResearchPromptBuilder({
       niche: this.ctx.niche,
       languageConfig: clientData.languageConfig,
@@ -95,6 +96,7 @@ export class ResearchPipeline {
     )
 
     // Optional LLM dedup pass (expensive — only runs once, not on retries)
+    this.ctx.onPhase?.('Filtering for originality...')
     filteredTopics = await dedup.filterWithLLM(filteredTopics, clientData.history, this.ctx.language || 'English')
 
     // Retry loop — request deficit only
@@ -113,7 +115,14 @@ export class ResearchPipeline {
       console.warn(`[research] Only ${filteredTopics.length}/${requestedCount} themes survived dedup after retry`)
     }
 
-    return filteredTopics.slice(0, requestedCount)
+    const finalTopics = filteredTopics.slice(0, requestedCount)
+
+    // Emit each final topic for streaming consumers (after all dedup/retry is done)
+    for (const topic of finalTopics) {
+      this.ctx.onTopic?.(topic)
+    }
+
+    return finalTopics
   }
 
   // ---- Private methods ----

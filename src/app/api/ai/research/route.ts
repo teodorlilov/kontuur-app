@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
 import { checkRateLimit, AI_RATE_LIMIT } from '@/lib/auth/rate-limit'
 import { performResearch } from '@/ai/research/pipeline'
+import type { ResearchStreamEvent } from '@/ai/research/types'
 
 interface ResearchRequestBody {
   clientId: string
@@ -29,14 +30,29 @@ export async function POST(request: Request) {
 
   if (!body.niche) return NextResponse.json({ error: 'niche is required' }, { status: 400 })
 
-  const topics = await performResearch({
-    supabase,
-    agencyId,
-    clientId: body.clientId,
-    niche: body.niche,
-    language: body.language || 'English',
-    count: body.count ?? 5,
+  const encoder = new TextEncoder()
+  const stream = new ReadableStream<Uint8Array>({
+    async start(controller) {
+      const send = (event: ResearchStreamEvent) =>
+        controller.enqueue(encoder.encode(JSON.stringify(event) + '\n'))
+      try {
+        await performResearch({
+          supabase,
+          agencyId,
+          clientId: body.clientId,
+          niche: body.niche,
+          language: body.language || 'English',
+          count: body.count ?? 5,
+          onPhase: (message) => send({ type: 'phase', message }),
+          onTopic: (topic) => send({ type: 'topic', data: topic }),
+        })
+      } finally {
+        controller.close()
+      }
+    },
   })
 
-  return NextResponse.json({ topics })
+  return new Response(stream, {
+    headers: { 'Content-Type': 'application/x-ndjson' },
+  })
 }

@@ -9,29 +9,19 @@ import { PriorityPostForm } from '@/features/generate/components/priority-post-f
 import { ThemeRow, type ThemeInput } from '@/features/generate/components/theme-row'
 import { PostTypeSelector } from '@/features/generate/components/post-type-selector'
 import type { PriorityPost, PostType } from '@/types/api'
-import { ResearchProgress } from '@/features/generate/components/research-progress'
 import { PostCard, type PostData, type ValidationData } from '@/components/posts/post-card'
 import { PostCardSkeleton } from '@/components/posts/post-card-skeleton'
+import { ThemeRowSkeleton } from '@/features/generate/components/theme-row-skeleton'
 import { shouldShowResearchButton } from '@/features/generate/helpers/should-show-research-button'
 import { readNDJSONStream } from '@/utils/stream'
 import { PLATFORMS } from '@/utils/constants'
 import type { ClientRow, BrandProfileRow } from '@/types/database'
+import type { ResearchStreamEvent } from '@/ai/research/types'
 
 type Client = Pick<ClientRow, 'id' | 'name' | 'niche' | 'language'>
 
 type BrandProfile = Pick<BrandProfileRow, 'tone' | 'target_audience' | 'content_pillars' | 'default_post_type' | 'default_carousel_slides'> & {
   source_strategy: { rss: boolean; website: boolean; file: boolean; trend_fallback: boolean; require_source_grounding?: boolean } | null
-}
-
-interface ResearchTopic {
-  finding: string
-  suggested_theme: string
-  pillar?: string
-  source_url?: string | null
-  source_title?: string | null
-  source_type?: 'rss' | 'website' | 'file'
-  source_excerpt?: string
-  source_full_text?: string
 }
 
 interface ThemeWithSource extends ThemeInput {
@@ -72,6 +62,8 @@ export function GenerateWizard() {
   const [themes, setThemes] = useState<ThemeWithSource[]>([])
   const [isResearching, setIsResearching] = useState(false)
   const [hasAutoResearched, setHasAutoResearched] = useState(false)
+  const [researchPhase, setResearchPhase] = useState('')
+  const researchAbortRef = useRef<AbortController | null>(null)
 
   // Step 4
   const [postType, setPostType] = useState<PostType>('single')
@@ -140,9 +132,12 @@ export function GenerateWizard() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentStep])
 
-  // Abort any in-flight generation stream when leaving step 5
+  // Abort any in-flight streams when navigating between steps
   useEffect(() => {
-    return () => { abortControllerRef.current?.abort() }
+    return () => {
+      abortControllerRef.current?.abort()
+      researchAbortRef.current?.abort()
+    }
   }, [currentStep])
 
   async function startGeneration() {
@@ -210,31 +205,55 @@ export function GenerateWizard() {
   async function handleResearch() {
     const client = clients.find((c) => c.id === clientId)
     if (!client) return
+
+    researchAbortRef.current?.abort()
+    const controller = new AbortController()
+    researchAbortRef.current = controller
+
+    setThemes([])
+    setResearchPhase('')
     setIsResearching(true)
+
     try {
       const res = await fetch('/api/ai/research', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        signal: controller.signal,
         body: JSON.stringify({ clientId, niche: client.niche ?? 'general', language: client.language, count: targetPostCount }),
       })
-      const data = await res.json() as { topics?: ResearchTopic[] }
-      if (data.topics) {
-        setThemes(data.topics.map((t, i) => ({
-          description: t.suggested_theme,
-          count: 1,
-          selected: i < targetPostCount,
-          pillar: t.pillar,
-          sourceUrl: t.source_url,
-          sourceTitle: t.source_title,
-          sourceType: t.source_type,
-          sourceExcerpt: t.source_excerpt,
-          sourceFullText: t.source_full_text,
-        })))
+
+      if (!res.ok) {
+        const err = await res.json() as { error?: string }
+        toast.error(err.error ?? 'Research failed')
+        return
       }
-    } catch {
+
+      await readNDJSONStream<ResearchStreamEvent>(res, (event) => {
+        if (event.type === 'phase') {
+          setResearchPhase(event.message)
+        } else if (event.type === 'topic') {
+          setThemes((prev) => [
+            ...prev,
+            {
+              description: event.data.suggested_theme,
+              count: 1,
+              selected: prev.length < targetPostCount,
+              pillar: event.data.pillar,
+              sourceUrl: event.data.source_url,
+              sourceTitle: event.data.source_title,
+              sourceType: event.data.source_type ?? undefined,
+              sourceExcerpt: event.data.source_excerpt,
+              sourceFullText: event.data.source_full_text,
+            },
+          ])
+        }
+      })
+    } catch (err) {
+      if (err instanceof Error && err.name === 'AbortError') return
       toast.error('Research failed')
     } finally {
       setIsResearching(false)
+      setResearchPhase('')
     }
   }
 
@@ -407,24 +426,31 @@ export function GenerateWizard() {
         {/* Step 3 — Weekly Themes */}
         {currentStep === 3 && (
           <div className="flex flex-col gap-5">
-            {isResearching && themes.length === 0 ? (
-              <ResearchProgress
-                clientName={clients.find((c) => c.id === clientId)?.name ?? 'client'}
-              />
-            ) : (
-              <>
-                <div className="flex flex-col gap-3">
-                  {themes.map((theme, i) => (
-                    <ThemeRow
-                      key={i}
-                      theme={theme}
-                      index={i}
-                      onChange={handleThemeChange}
-                      onRemove={handleThemeRemove}
-                    />
-                  ))}
-                </div>
 
+            {/* Real-time phase message — replaces ResearchProgress fake timer */}
+            {isResearching && researchPhase && (
+              <p className="text-sm text-gray-500 animate-pulse">{researchPhase}</p>
+            )}
+
+            {/* Theme rows: real rows + skeleton slots while researching */}
+            {(themes.length > 0 || isResearching) && (
+              <div className="flex flex-col gap-3">
+                {themes.map((theme, i) => (
+                  <div key={i} className="animate-[fadein_0.4s_ease-out_forwards] opacity-0">
+                    <ThemeRow theme={theme} index={i} onChange={handleThemeChange} onRemove={handleThemeRemove} />
+                  </div>
+                ))}
+                {isResearching && Array.from(
+                  { length: Math.max(0, targetPostCount - themes.length) },
+                  (_, i) => <ThemeRowSkeleton key={`skeleton-${i}`} />
+                )}
+              </div>
+            )}
+
+            {/* Add theme + counter + research button — always shown when not mid-stream.
+                Covers: normal state (themes exist), empty state (research failed), initial state. */}
+            {!isResearching && (
+              <>
                 <div className="flex items-center justify-between">
                   {selectedThemes.length < targetPostCount && (
                     <button
@@ -444,7 +470,6 @@ export function GenerateWizard() {
                   <Button
                     variant="secondary"
                     size="sm"
-                    loading={isResearching}
                     onClick={() => { void handleResearch() }}
                   >
                     Research more topics
@@ -452,6 +477,7 @@ export function GenerateWizard() {
                 )}
               </>
             )}
+
           </div>
         )}
 

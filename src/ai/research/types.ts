@@ -49,7 +49,15 @@ export interface ResearchRunContext {
   niche: string
   language: string
   count: number
+  /** Called as each pipeline phase starts. Used for real-time progress in streaming responses. */
+  onPhase?: (message: string) => void
+  /** Called for each final topic after dedup/retry. Used for streaming responses. */
+  onTopic?: (topic: ResearchTopic) => void
 }
+
+export type ResearchStreamEvent =
+  | { type: 'phase'; message: string }
+  | { type: 'topic'; data: ResearchTopic }
 
 export interface SourceFetchResult {
   status: 'ok' | 'error'
