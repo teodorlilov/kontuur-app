@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { revalidateTag } from 'next/cache'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
 
 export async function GET() {
@@ -119,5 +120,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Failed to create posting schedule' }, { status: 500 })
   }
 
+  revalidateTag('agency-clients', 'max')
   return NextResponse.json({ client_id: clientId }, { status: 201 })
 }

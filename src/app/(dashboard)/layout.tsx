@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation'
+import NextTopLoader from 'nextjs-toploader'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { createUserRecord } from '@/lib/auth/create-user-record'
@@ -70,6 +71,8 @@ export default async function DashboardLayout({
   }
 
   return (
+    <>
+    <NextTopLoader color="var(--brand-purple, #7c3aed)" height={2} showSpinner={false} />
     <AuthProvider>
       <div className="flex h-screen overflow-hidden" style={{ background: 'var(--color-page)' }}>
         <Sidebar agencyMode={agencyMode} pendingCount={pendingCount} />
@@ -79,5 +82,6 @@ export default async function DashboardLayout({
         </div>
       </div>
     </AuthProvider>
+    </>
   )
 }

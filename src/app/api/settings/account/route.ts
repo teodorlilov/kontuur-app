@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { revalidateTag } from 'next/cache'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
 import { verifyAdminRole } from '@/lib/auth/helpers'
 
@@ -58,5 +59,6 @@ export async function PUT(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
+  revalidateTag('agencies', 'max')
   return NextResponse.json({ success: true })
 }

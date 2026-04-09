@@ -3,9 +3,9 @@
 import { motion } from 'framer-motion'
 
 const pageVariants = {
-  initial: { opacity: 0, y: 8 },
+  initial: { opacity: 1, y: 4 },
   animate: { opacity: 1, y: 0 },
-  exit:    { opacity: 0, y: -4 },
+  exit:    { opacity: 1, y: -4 },
 }
 
 const pageTransition = {

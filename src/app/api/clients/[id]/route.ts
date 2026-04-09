@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { revalidateTag } from 'next/cache'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
 import { verifyClientOwnership } from '@/lib/auth/helpers'
 
@@ -143,6 +144,7 @@ export async function PUT(
     }
   }
 
+  revalidateTag('agency-clients', 'max')
   return NextResponse.json({ success: true })
 }
 
@@ -161,5 +163,6 @@ export async function DELETE(
   const { error } = await supabase.from('clients').delete().eq('id', id)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
+  revalidateTag('agency-clients', 'max')
   return NextResponse.json({ success: true })
 }
