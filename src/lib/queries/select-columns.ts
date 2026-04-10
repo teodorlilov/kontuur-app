@@ -55,3 +55,13 @@ export const SOCIAL_CONNECTION_COLUMNS =
 // intelligence_briefings
 export const BRIEFING_COLUMNS =
   'briefing_text, action_nudge, weekly_tip, platform_updates, week_start, coaching_points'
+
+// language_rules
+export const LANGUAGE_RULES_COLUMNS =
+  'native_cta_phrases, formality_rules, language_instructions'
+
+// post_history
+export const POST_HISTORY_COLUMNS = 'topic_summary'
+
+// posts (top performing)
+export const TOP_POSTS_COLUMNS = 'caption'

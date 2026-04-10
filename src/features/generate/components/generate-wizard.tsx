@@ -17,10 +17,13 @@ import { readNDJSONStream } from '@/utils/stream'
 import { PLATFORMS } from '@/utils/constants'
 import type { ClientRow, BrandProfileRow } from '@/types/database'
 import type { ResearchStreamEvent } from '@/ai/research/types'
+import type { ClientData } from '@/lib/clients/fetch-client-data'
+import { serializePillars } from '@/lib/clients/content-pillars'
 
-type Client = Pick<ClientRow, 'id' | 'name' | 'niche' | 'language'>
+type Client = Pick<ClientRow, 'id' | 'name' | 'niche' | 'language' | 'posts_per_week'>
 
-type BrandProfile = Pick<BrandProfileRow, 'tone' | 'target_audience' | 'content_pillars' | 'default_post_type' | 'default_carousel_slides'> & {
+type BrandProfile = Pick<BrandProfileRow, 'tone' | 'target_audience' | 'content_pillars' | 'default_carousel_slides'> & {
+  default_post_type: BrandProfileRow['default_post_type'] | null
   source_strategy: { rss: boolean; website: boolean; file: boolean; trend_fallback: boolean; require_source_grounding?: boolean } | null
 }
 
@@ -43,17 +46,26 @@ const STEP_LABELS = [
   'Generated Posts',
 ]
 
-export function GenerateWizard() {
+interface GenerateWizardProps {
+  initialClients: Client[]
+  initialClientData: ClientData | null
+  initialTargetPostCount: number
+}
+
+export function GenerateWizard({ initialClients, initialClientData, initialTargetPostCount }: GenerateWizardProps) {
   const [currentStep, setCurrentStep] = useState(1)
 
   // Step 1
-  const [clients, setClients] = useState<Client[]>([])
-  const [clientsLoading, setClientsLoading] = useState(true)
-  const [clientId, setClientId] = useState('')
+  const [clients] = useState<Client[]>(initialClients)
+  const [clientId, setClientId] = useState(initialClients[0]?.id ?? '')
   const [platform, setPlatform] = useState('Instagram')
-  const [brandProfile, setBrandProfile] = useState<BrandProfile | null>(null)
+  const [brandProfile, setBrandProfile] = useState<BrandProfile | null>(
+    initialClientData ? extractBrandProfile(initialClientData) : null
+  )
   const [brandProfileLoading, setBrandProfileLoading] = useState(false)
-  const [targetPostCount, setTargetPostCount] = useState(3)
+  const [targetPostCount, setTargetPostCount] = useState(initialTargetPostCount)
+  // Holds full ClientData for passthrough to research + generate APIs. Cleared on client change.
+  const [preloadedClientData, setPreloadedClientData] = useState<ClientData | null>(initialClientData)
 
   // Step 2
   const [priorityPosts, setPriorityPosts] = useState<PriorityPost[]>([])
@@ -67,7 +79,7 @@ export function GenerateWizard() {
 
   // Step 4
   const [postType, setPostType] = useState<PostType>('single')
-  const [slideCount, setSlideCount] = useState(6)
+  const [slideCount, setSlideCount] = useState(initialClientData?.profile.defaultCarouselSlides ?? 6)
 
   // Step 5
   const [isGenerating, setIsGenerating] = useState(false)
@@ -76,26 +88,14 @@ export function GenerateWizard() {
   const [hasGenerated, setHasGenerated] = useState(false)
   const [approvedCount, setApprovedCount] = useState(0)
   const abortControllerRef = useRef<AbortController | null>(null)
+  const isInitialMount = useRef(true)
 
-  // Load clients on mount
+  // Load brand profile when client changes (skips first render — initial data comes from props)
   useEffect(() => {
-    void fetch('/api/clients')
-      .then((r) => r.json())
-      .then((data: { clients?: Client[] }) => {
-        if (data.clients) {
-          setClients(data.clients)
-          if (data.clients.length > 0 && !clientId) {
-            setClientId(data.clients[0]?.id ?? '')
-          }
-        }
-      })
-      .finally(() => setClientsLoading(false))
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
-  // Load brand profile when client changes
-  useEffect(() => {
+    if (isInitialMount.current) { isInitialMount.current = false; return }
     if (!clientId) return
+    // Client changed — clear preloaded data and fetch fresh
+    setPreloadedClientData(null)
     setBrandProfileLoading(true)
     void fetch(`/api/clients/${clientId}`)
       .then((r) => r.json())
@@ -113,16 +113,17 @@ export function GenerateWizard() {
         }
       })
       .finally(() => setBrandProfileLoading(false))
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clientId])
 
-  // Auto-research when entering step 3
+  // Auto-research when entering step 3 — gated on brandProfileLoading to fix race condition
   useEffect(() => {
-    if (currentStep === 3 && !hasAutoResearched && clientId) {
+    if (currentStep === 3 && !hasAutoResearched && clientId && !brandProfileLoading) {
       setHasAutoResearched(true)
       void handleResearch()
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentStep])
+  }, [currentStep, brandProfileLoading])
 
   // Start generation when entering step 5
   useEffect(() => {
@@ -178,6 +179,7 @@ export function GenerateWizard() {
           postType,
           slideCount,
           priorityPosts,
+          preloadedClientData: preloadedClientData ? toGenerateWireData(preloadedClientData) : undefined,
         }),
       })
 
@@ -219,7 +221,15 @@ export function GenerateWizard() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         signal: controller.signal,
-        body: JSON.stringify({ clientId, niche: client.niche ?? 'general', language: client.language, count: targetPostCount }),
+        body: JSON.stringify({
+          clientId,
+          niche: client.niche ?? 'general',
+          language: client.language,
+          count: targetPostCount,
+          brandProfile: preloadedClientData
+            ? toResearchBrandProfile(preloadedClientData)
+            : (brandProfile ?? undefined),
+        }),
       })
 
       if (!res.ok) {
@@ -298,16 +308,7 @@ export function GenerateWizard() {
     return true
   })()
 
-  if (currentStep === 1 && clientsLoading) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[calc(100vh-4rem)] gap-4">
-        <Spinner size="lg" />
-        <p className="text-sm text-gray-500">Loading clients...</p>
-      </div>
-    )
-  }
-
-  if (currentStep === 1 && clients.length === 0) {
+  if (clients.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[calc(100vh-4rem)] gap-4 text-center">
         <div className="h-12 w-12 rounded-full bg-gray-100 flex items-center justify-center">
@@ -429,7 +430,7 @@ export function GenerateWizard() {
         {currentStep === 3 && (
           <div className="flex flex-col gap-5">
 
-            {/* Real-time phase message — replaces ResearchProgress fake timer */}
+            {/* Real-time phase message */}
             {isResearching && researchPhase && (
               <p className="text-sm text-gray-500 animate-pulse">{researchPhase}</p>
             )}
@@ -449,8 +450,6 @@ export function GenerateWizard() {
               </div>
             )}
 
-            {/* Add theme + counter + research button — always shown when not mid-stream.
-                Covers: normal state (themes exist), empty state (research failed), initial state. */}
             {!isResearching && (
               <>
                 <div className="flex items-center justify-between">
@@ -498,7 +497,6 @@ export function GenerateWizard() {
         {currentStep === 5 && (
           <div className="flex flex-col gap-4">
 
-            {/* Real-time progress counter — driven by stream events, not a fake timer */}
             {isGenerating && streamTotal > 0 && (
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between text-sm text-gray-500">
@@ -514,7 +512,6 @@ export function GenerateWizard() {
               </div>
             )}
 
-            {/* Skeleton + real post slots — N slots rendered immediately, swapped as posts arrive */}
             {(isGenerating || generatedPosts.length > 0) && streamTotal > 0 && (
               Array.from({ length: streamTotal }, (_, i) => {
                 const item = generatedPosts[i]
@@ -534,7 +531,6 @@ export function GenerateWizard() {
               })
             )}
 
-            {/* All posts reviewed */}
             {!isGenerating && generatedPosts.length === 0 && hasGenerated && (
               <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 text-center">
                 <div className="h-16 w-16 rounded-full bg-green-50 flex items-center justify-center">
@@ -572,7 +568,6 @@ export function GenerateWizard() {
               </div>
             )}
 
-            {/* Error / no posts generated */}
             {!isGenerating && generatedPosts.length === 0 && !hasGenerated && streamTotal === 0 && (
               <div className="flex flex-col items-center justify-center py-16 gap-4 text-center">
                 <div className="h-12 w-12 rounded-full bg-gray-100 flex items-center justify-center">
@@ -630,4 +625,54 @@ export function GenerateWizard() {
       )}
     </div>
   )
+}
+
+/** Extract the BrandProfile shape (used for source_strategy display) from ClientData. */
+function extractBrandProfile(data: ClientData): BrandProfile {
+  return {
+    tone: data.profile.tone as BrandProfileRow['tone'],
+    target_audience: data.profile.targetAudience as BrandProfileRow['target_audience'],
+    content_pillars: null, // not needed for UI display
+    default_post_type: data.profile.defaultPostType ?? null,
+    default_carousel_slides: data.profile.defaultCarouselSlides,
+    source_strategy: null, // populated by client change fetch when user switches clients
+  }
+}
+
+/** Map ClientData to the flat wire type the research route expects as brandProfile. */
+function toResearchBrandProfile(data: ClientData) {
+  return {
+    content_pillars: serializePillars(data.profile.contentPillars) || null,
+    source_strategy: data.profile.sourceStrategy as Record<string, boolean> | null,
+    language_formality: data.profile.formality,
+    language_notes: data.profile.languageNotes,
+    language_instructions: data.languageRules.languageInstructions,
+    post_history: data.postHistory,
+  }
+}
+
+/** Map ClientData to the flat snake_case wire type the generate route expects. */
+function toGenerateWireData(data: ClientData) {
+  return {
+    client: data.client,
+    profile: {
+      tone: data.profile.tone,
+      target_audience: data.profile.targetAudience,
+      formality: data.profile.formality,
+      avoid_topics: data.profile.avoidTopics,
+      client_testimonial_voice: data.profile.clientTestimonialVoice,
+      content_pillars: serializePillars(data.profile.contentPillars) || null,
+      default_carousel_slides: data.profile.defaultCarouselSlides,
+      require_source_grounding: data.profile.requireSourceGrounding,
+      is_health_niche: data.profile.isHealthNiche,
+      language_notes: data.profile.languageNotes,
+      top_performing_posts: data.profile.topPerformingPosts,
+    },
+    language_rules: {
+      carousel_swipe_cues: data.languageRules.carouselSwipeCues,
+      formality_rules: data.languageRules.formalityRules,
+      language_instructions: data.languageRules.languageInstructions,
+    },
+    post_history: data.postHistory,
+  }
 }

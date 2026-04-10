@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
-
-const META_GRAPH_VERSION = 'v21.0'
-const GRAPH_BASE = `https://graph.facebook.com/${META_GRAPH_VERSION}`
+import { META_GRAPH_VERSION, META_GRAPH_BASE as GRAPH_BASE } from '../meta-constants'
 
 // ---- Instagram Business Login token exchange ----
 

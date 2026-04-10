@@ -1,13 +1,9 @@
 import { parsePillars, type WeightedPillar } from '@/lib/clients/content-pillars'
 import { toCarouselSwipeCues, toFormalityRulesData, type LanguageConfig } from '@/lib/clients/language-rules'
-import type { Json } from '@/types/database'
+import { fetchBrandProfileByClient, fetchLanguageRulesByLanguage, type LanguageRulesRow } from '@/lib/queries/db'
 import { createAllSources } from './sources/source-factory'
-import { RssResearchSource } from './sources/rss-source'
-import { WebsiteResearchSource } from './sources/website-source'
-import { FileResearchSource } from './sources/file-source'
 import { ResearchSource } from './sources/research-source'
-import { Deduplicator } from './deduplicator'
-import { ResearchPromptBuilder } from './prompts/prompt-builder'
+import { ResearchPromptBuilder } from './prompt-builder'
 import { computeFetchLimits, SOURCE_FULL_TEXT_CAP } from './fetch-limits'
 import type {
   ResearchRunContext,
@@ -31,15 +27,10 @@ interface RawClientProfile {
     language_formality: string | null
     language_notes: string | null
   } | null
-  langRules: {
-    native_cta_phrases: Json | null
-    formality_rules: Json | null
-    language_instructions: string | null
-    opener_examples: Json | null
-  } | null
+  langRules: LanguageRulesRow | null
 }
 
-interface ClientData {
+interface ResearchClientData {
   contentPillars: WeightedPillar[]
   history: string[]
   sources: ClientSourceRow[]
@@ -88,34 +79,33 @@ export class ResearchPipeline {
     })
 
     const requestedCount = this.ctx.count
-    const dedup = new Deduplicator(this.ctx.language)
 
-    // Initial generation
-    let filteredTopics = await this.generateAndFilter(
-      requestedCount, builder, sourceContext, clientData.history, fullTextIndex, dedup
-    )
+    // Initial generation — exact count, trust the LLM + exclusion list
+    const {
+      topics: initialTopics,
+      userPrompt: firstUserPrompt,
+      rawResponse: firstRawResponse,
+    } = await this.generateAndFilter(requestedCount, builder, sourceContext, fullTextIndex)
 
-    // Optional LLM dedup pass (expensive — only runs once, not on retries)
-    this.ctx.onPhase?.('Filtering for originality...')
-    filteredTopics = await dedup.filterWithLLM(filteredTopics, clientData.history, this.ctx.language || 'English')
+    let topics = initialTopics
 
-    // Retry loop — request deficit only
-    for (let retry = 0; retry < MAX_RESEARCH_RETRIES && filteredTopics.length < requestedCount; retry++) {
-      const extendedHistory = [...clientData.history, ...filteredTopics.map((t) => t.suggested_theme)]
-      const deficit = requestedCount - filteredTopics.length
-
+    // Retry loop — uses conversation history so source data is NOT re-sent
+    for (let retry = 0; retry < MAX_RESEARCH_RETRIES && topics.length < requestedCount; retry++) {
+      this.ctx.onPhase?.('Refining themes...')
+      const deficit = requestedCount - topics.length
+      const extendedHistory = [...clientData.history, ...topics.map((t: ResearchTopic) => t.suggested_theme)]
       builder.updateHistory(extendedHistory)
-      const retryTopics = await this.generateAndFilter(
-        deficit, builder, sourceContext, extendedHistory, fullTextIndex, dedup
-      )
-      filteredTopics.push(...retryTopics)
+
+      const retryTopics = await builder.generateTopicsRetry(deficit, firstUserPrompt, firstRawResponse)
+      this.attachSourceFullText(retryTopics, fullTextIndex)
+      topics.push(...retryTopics)
     }
 
-    if (filteredTopics.length < requestedCount) {
-      console.warn(`[research] Only ${filteredTopics.length}/${requestedCount} themes survived dedup after retry`)
+    if (topics.length < requestedCount) {
+      console.warn(`[research] Only ${topics.length}/${requestedCount} themes generated after retry`)
     }
 
-    const finalTopics = filteredTopics.slice(0, requestedCount)
+    const finalTopics = topics.slice(0, requestedCount)
 
     // Emit each final topic for streaming consumers (after all dedup/retry is done)
     for (const topic of finalTopics) {
@@ -128,7 +118,7 @@ export class ResearchPipeline {
   // ---- Private methods ----
 
   /** Load brand profile, post history, generation themes, and client sources. */
-  private async loadClientData(): Promise<ClientData> {
+  private async loadClientData(): Promise<ResearchClientData> {
     const defaultLanguageConfig = this.buildDefaultLanguageConfig()
 
     if (!this.ctx.clientId) {
@@ -179,29 +169,41 @@ export class ResearchPipeline {
     return !!data
   }
 
-  /** Fetch brand profile and language rules. */
+  /** Fetch brand profile and language rules — skips DB when pre-loaded data is provided. */
   private async fetchClientProfile(): Promise<RawClientProfile> {
+    // Use pre-loaded data from wizard if available — avoids 2 DB queries per run
+    if (this.ctx.preloaded) {
+      return {
+        profile: {
+          content_pillars:    this.ctx.preloaded.contentPillars,
+          source_strategy:    this.ctx.preloaded.sourceStrategy,
+          language_formality: this.ctx.preloaded.languageFormality,
+          language_notes:     this.ctx.preloaded.languageNotes,
+        },
+        langRules: {
+          native_cta_phrases:    null,
+          formality_rules:       null,
+          language_instructions: this.ctx.preloaded.languageInstructions,
+        },
+      }
+    }
+
+    // DB fallback — used by cron jobs and callers without pre-loaded data
     const language = this.ctx.language || 'English'
-    const [profileResult, langRulesResult] = await Promise.all([
-      this.ctx.supabase
-        .from('brand_profiles')
-        .select('content_pillars, source_strategy, language_formality, language_notes')
-        .eq('client_id', this.ctx.clientId!)
-        .single(),
-      this.ctx.supabase
-        .from('language_rules')
-        .select('native_cta_phrases, formality_rules, language_instructions, opener_examples')
-        .eq('language', language)
-        .single(),
+    const [profile, langRules] = await Promise.all([
+      fetchBrandProfileByClient(this.ctx.supabase, this.ctx.clientId!),
+      fetchLanguageRulesByLanguage(this.ctx.supabase, language),
     ])
     return {
-      profile: profileResult.data as RawClientProfile['profile'],
-      langRules: langRulesResult.data as RawClientProfile['langRules'],
+      profile: profile as RawClientProfile['profile'],
+      langRules: langRules as RawClientProfile['langRules'],
     }
   }
 
   /** Fetch post history + recently generated theme descriptions. */
   private async fetchClientHistory(): Promise<string[]> {
+    if (this.ctx.preloaded?.postHistory) return this.ctx.preloaded.postHistory
+
     const [historyResult, themesResult] = await Promise.all([
       this.ctx.supabase
         .from('post_history')
@@ -261,29 +263,28 @@ export class ResearchPipeline {
     return {
       language: defaults.language,
       formality: profile?.language_formality ?? 'neutral',
-      carouselSwipeCues: toCarouselSwipeCues(langRules?.native_cta_phrases),
-      formalityRules: toFormalityRulesData(langRules?.formality_rules),
+      carouselSwipeCues: toCarouselSwipeCues(langRules?.native_cta_phrases as never),
+      formalityRules: toFormalityRulesData(langRules?.formality_rules as never),
       languageInstructions: langRules?.language_instructions ?? '',
       languageNotes: profile?.language_notes ?? '',
     }
   }
 
-  /** Fetch all sources in parallel. Reports status to DB for fetchable sources. */
+  /** Fetch all sources in parallel. Reports status to DB for network sources. */
   private async fetchAllSources(sources: ResearchSource[], limits: FetchLimits): Promise<void> {
-    const fetchable = sources.filter((s) => !(s instanceof FileResearchSource))
-    const files = sources.filter((s): s is FileResearchSource => s instanceof FileResearchSource)
+    const networkSources = sources.filter((s) => s.isNetworkFetchable())
+    const fileSources = sources.filter((s) => !s.isNetworkFetchable())
 
-    // Fetch network sources in parallel (limits control items/pages per source)
     await Promise.allSettled(
-      fetchable.map(async (source) => {
+      networkSources.map(async (source) => {
         const result = await source.fetch(limits)
         source.reportStatus(this.ctx.supabase, result)
       })
     )
 
-    // File sources: call fetch() (no-op, but consistent)
-    for (const file of files) {
-      await file.fetch()
+    // File sources: no-op fetch, no network call, no status report
+    for (const source of fileSources) {
+      await source.fetch()
     }
   }
 
@@ -296,12 +297,8 @@ export class ResearchPipeline {
     strategy: SourceStrategy,
     limits: FetchLimits
   ): SourceContext | undefined {
-    const rssSources = sources.filter((s): s is RssResearchSource => s instanceof RssResearchSource)
-    const webSources = sources.filter((s): s is WebsiteResearchSource => s instanceof WebsiteResearchSource)
-    const fileSources = sources.filter((s): s is FileResearchSource => s instanceof FileResearchSource)
-
-    // RSS: aggregate all items, cap at scaled global limit
-    const allRssItems = rssSources.flatMap((s) => s.getItems()).slice(0, limits.rssGlobalCap)
+    // RSS: aggregate all items across sources, cap at scaled global limit
+    const allRssItems = sources.flatMap((s) => s.getRssItems()).slice(0, limits.rssGlobalCap)
 
     // Check if RSS text fits budget (for determining if we have content)
     const rssText = allRssItems
@@ -311,17 +308,17 @@ export class ResearchPipeline {
     const cappedRssItems = rssText.length > 0 ? allRssItems : []
 
     // Website: distribute scaled web budget across all excerpts from all sources
-    const allWebExcerpts = webSources.flatMap((s) => s.getRawExcerpts())
+    const allWebExcerpts = sources.flatMap((s) => s.getWebExcerpts())
     const perWebBudget = allWebExcerpts.length > 0 ? Math.floor(limits.webBudget / allWebExcerpts.length) : 0
     const cappedWebExcerpts = allWebExcerpts
       .map((w) => ({ ...w, text: w.text.slice(0, perWebBudget) }))
       .filter((w) => w.text.length > 0)
 
-    // File: distribute scaled file budget across all file sources with content
-    const fileSourcesWithContent = fileSources.filter((s) => s.hasContent())
-    const perFileBudget = fileSourcesWithContent.length > 0 ? Math.floor(limits.fileBudget / fileSourcesWithContent.length) : 0
-    const cappedFileExcerpts: FileExcerpt[] = fileSourcesWithContent
-      .map((s) => s.getCappedExcerpt(perFileBudget))
+    // File: distribute scaled file budget across sources with content
+    const sourcesWithFiles = sources.filter((s) => s.hasFileContent())
+    const perFileBudget = sourcesWithFiles.length > 0 ? Math.floor(limits.fileBudget / sourcesWithFiles.length) : 0
+    const cappedFileExcerpts: FileExcerpt[] = sourcesWithFiles
+      .map((s) => s.getFileExcerpt(perFileBudget))
       .filter((f): f is FileExcerpt => f !== null)
 
     if (cappedRssItems.length === 0 && cappedWebExcerpts.length === 0 && cappedFileExcerpts.length === 0) {
@@ -340,31 +337,25 @@ export class ResearchPipeline {
     const byLabel = new Map<string, string>()
 
     for (const source of sources) {
-      const entries = source.getFullTextEntries(SOURCE_FULL_TEXT_CAP)
-      const targetMap = source instanceof FileResearchSource ? byLabel : byUrl
-      for (const [key, value] of entries) {
-        targetMap.set(key, value)
-      }
+      source.addToFullTextIndex(byUrl, byLabel, SOURCE_FULL_TEXT_CAP)
     }
 
     return { byUrl, byLabel }
   }
 
   /**
-   * Generate topics, attach source full text, then run algorithmic dedup.
-   * Used by both the initial run and the retry loop.
+   * Generate topics and attach source full text.
+   * Returns topics plus the raw prompt/response needed for retry conversation history.
    */
   private async generateAndFilter(
     count: number,
     builder: ResearchPromptBuilder,
     sourceContext: SourceContext | undefined,
-    history: string[],
     fullTextIndex: SourceFullTextIndex,
-    dedup: Deduplicator,
-  ): Promise<ResearchTopic[]> {
-    const topics = await builder.generateTopics(count, sourceContext)
+  ): Promise<{ topics: ResearchTopic[]; userPrompt: string; rawResponse: string }> {
+    const { topics, userPrompt, rawResponse } = await builder.generateTopics(count, sourceContext)
     this.attachSourceFullText(topics, fullTextIndex)
-    return dedup.filterConflicts(topics, history)
+    return { topics, userPrompt, rawResponse }
   }
 
   /** Attach full source text to topics based on their source metadata. */

@@ -21,8 +21,10 @@ export interface CallAnthropicOptions {
   maxTokens?: number
   /** Whether to cache the system prompt (default: true when systemPrompt is provided) */
   cacheSystemPrompt?: boolean
-  /** Optional prefilled assistant turn (e.g. '{' to guide JSON output) */
+  /** Optional prefilled assistant turn (e.g. '[' to guide JSON array output) */
   assistantPrefill?: string
+  /** Optional prior conversation turns — used for retry calls to avoid re-sending source context */
+  conversationHistory?: MessageParam[]
 }
 
 export async function callAnthropic(opts: CallAnthropicOptions): Promise<Message> {
@@ -33,9 +35,13 @@ export async function callAnthropic(opts: CallAnthropicOptions): Promise<Message
     maxTokens = DEFAULT_MAX_TOKENS,
     cacheSystemPrompt = true,
     assistantPrefill,
+    conversationHistory = [],
   } = opts
 
-  const messages: MessageParam[] = [{ role: 'user', content: userMessage }]
+  const messages: MessageParam[] = [
+    ...conversationHistory,
+    { role: 'user', content: userMessage },
+  ]
   if (assistantPrefill) {
     messages.push({ role: 'assistant', content: assistantPrefill })
   }

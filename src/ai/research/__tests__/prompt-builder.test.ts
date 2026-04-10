@@ -3,20 +3,21 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 vi.mock('@/utils/ai-client')
 
 import { callAnthropic, mockClaudeResponse } from '@/utils/__mocks__/ai-client'
-import { ResearchPromptBuilder } from '../prompts/prompt-builder'
+import { ResearchPromptBuilder } from '../prompt-builder'
 import type { SourceContext } from '../types'
 
 beforeEach(() => {
   vi.clearAllMocks()
 })
 
+// Claude's response body after the '[' assistantPrefill — excludes the leading '[' character
 const VALID_RESPONSE = JSON.stringify([
   { finding: 'Article about HIIT workouts', suggested_theme: 'Share latest HIIT research' },
   { finding: 'Trending meal prep videos', suggested_theme: 'Weekly meal prep guide' },
   { finding: 'Mental health awareness', suggested_theme: 'Mindfulness for athletes' },
   { finding: 'Recovery techniques post', suggested_theme: 'Post-workout recovery tips' },
   { finding: 'New supplement study', suggested_theme: 'Science-backed supplements' },
-])
+]).slice(1)
 
 import type { LanguageConfig } from '@/lib/clients/language-rules'
 
@@ -45,10 +46,10 @@ describe('ResearchPromptBuilder', () => {
   it('returns parsed research topics from Claude response', async () => {
     mockClaudeResponse(VALID_RESPONSE)
     const builder = createBuilder()
-    const result = await builder.generateTopics(5)
-    expect(result).toHaveLength(5)
-    expect(result[0]!.finding).toBe('Article about HIIT workouts')
-    expect(result[0]!.suggested_theme).toBe('Share latest HIIT research')
+    const { topics } = await builder.generateTopics(5)
+    expect(topics).toHaveLength(5)
+    expect(topics[0]!.finding).toBe('Article about HIIT workouts')
+    expect(topics[0]!.suggested_theme).toBe('Share latest HIIT research')
   })
 
   it('uses source-grounded prompt when sourceContext has RSS items', async () => {
@@ -67,8 +68,8 @@ describe('ResearchPromptBuilder', () => {
     const prompt = callArgs.userMessage as string
     expect(prompt).toContain('HIIT Benefits')
     expect(prompt).toContain('https://x.com/1')
-    expect(prompt).toContain('Ground each theme')
-    expect(prompt).not.toContain('Search for what is trending')
+    expect(prompt).toContain('SOURCING PROTOCOL')
+    expect(prompt).not.toContain('RESEARCH BRIEF')
   })
 
   it('uses source-grounded prompt when sourceContext has website excerpts', async () => {
@@ -84,7 +85,7 @@ describe('ResearchPromptBuilder', () => {
     const callArgs = callAnthropic.mock.calls[0]![0]
     const prompt = callArgs.userMessage as string
     expect(prompt).toContain('Our Services')
-    expect(prompt).toContain('WEBSITE CONTENT')
+    expect(prompt).toContain('website_content')
   })
 
   it('uses source-grounded prompt when sourceContext has file excerpts', async () => {
@@ -100,9 +101,7 @@ describe('ResearchPromptBuilder', () => {
     const callArgs = callAnthropic.mock.calls[0]![0]
     const prompt = callArgs.userMessage as string
     expect(prompt).toContain('Botox')
-    expect(prompt).toContain('UPLOADED DOCUMENTS')
-    expect(prompt).toContain('Ground each theme')
-    expect(prompt).not.toContain('Search for what is trending')
+    expect(prompt).toContain('document_content')
   })
 
   it('uses trend-based fallback when no sourceContext', async () => {
@@ -112,8 +111,8 @@ describe('ResearchPromptBuilder', () => {
 
     const callArgs = callAnthropic.mock.calls[0]![0]
     const prompt = callArgs.userMessage as string
-    expect(prompt).toContain('Search for what is trending')
-    expect(prompt).not.toContain('Ground each theme')
+    expect(prompt).toContain('RESEARCH BRIEF')
+    expect(prompt).not.toContain('SOURCING PROTOCOL')
   })
 
   it('uses trend-based fallback when sourceContext is empty', async () => {
@@ -123,7 +122,7 @@ describe('ResearchPromptBuilder', () => {
 
     const callArgs = callAnthropic.mock.calls[0]![0]
     const prompt = callArgs.userMessage as string
-    expect(prompt).toContain('Search for what is trending')
+    expect(prompt).toContain('RESEARCH BRIEF')
   })
 
   it('includes content pillars in prompt when provided', async () => {
@@ -153,15 +152,15 @@ describe('ResearchPromptBuilder', () => {
   it('handles JSON wrapped in markdown code block', async () => {
     mockClaudeResponse('```json\n' + VALID_RESPONSE + '\n```')
     const builder = createBuilder()
-    const result = await builder.generateTopics(5)
-    expect(result).toHaveLength(5)
+    const { topics } = await builder.generateTopics(5)
+    expect(topics).toHaveLength(5)
   })
 
   it('returns empty array when Claude returns no JSON', async () => {
     mockClaudeResponse('I could not find any trends.')
     const builder = createBuilder()
-    const result = await builder.generateTopics(5)
-    expect(result).toEqual([])
+    const { topics } = await builder.generateTopics(5)
+    expect(topics).toEqual([])
   })
 
   it('uses custom count in fallback prompt', async () => {
@@ -171,8 +170,8 @@ describe('ResearchPromptBuilder', () => {
 
     const callArgs = callAnthropic.mock.calls[0]![0]
     const prompt = callArgs.userMessage as string
-    expect(prompt).toContain('Return exactly 3 findings')
-    expect(prompt).not.toContain('Return exactly 5')
+    expect(prompt).toContain('Identify exactly 3')
+    expect(prompt).not.toContain('Identify exactly 5')
   })
 
   it('uses custom count in source-grounded prompt', async () => {
@@ -189,8 +188,8 @@ describe('ResearchPromptBuilder', () => {
 
     const callArgs = callAnthropic.mock.calls[0]![0]
     const prompt = callArgs.userMessage as string
-    expect(prompt).toContain('identify 7 specific post themes for a')
-    expect(prompt).toContain('Return exactly 7 findings')
+    expect(prompt).toContain('Identify exactly 7')
+    expect(prompt).toContain('Generate exactly 7')
   })
 
   it('defaults count works correctly', async () => {
@@ -200,7 +199,7 @@ describe('ResearchPromptBuilder', () => {
 
     const callArgs = callAnthropic.mock.calls[0]![0]
     const prompt = callArgs.userMessage as string
-    expect(prompt).toContain('Return exactly 5 findings')
+    expect(prompt).toContain('Generate exactly 5')
   })
 
   it('includes post history in prompt when provided', async () => {
@@ -215,7 +214,7 @@ describe('ResearchPromptBuilder', () => {
     expect(prompt).toContain('Protein myths')
   })
 
-  it('includes hybrid sourcing instruction when sourceContext has content', async () => {
+  it('includes sourcing protocol in source-grounded prompt', async () => {
     mockClaudeResponse(VALID_RESPONSE)
     const sourceContext: SourceContext = {
       rssItems: [
@@ -234,19 +233,36 @@ describe('ResearchPromptBuilder', () => {
 
     const callArgs = callAnthropic.mock.calls[0]![0]
     const prompt = callArgs.userMessage as string
-    expect(prompt).toContain('HYBRID SOURCING')
-    expect(prompt).toContain('source_url, source_title, and source_type to null')
+    expect(prompt).toContain('SOURCING PROTOCOL')
     expect(prompt).toContain('fitness')
   })
 
-  it('does not include hybrid sourcing in trend-based fallback', async () => {
+  it('does not include sourcing protocol in trend-based fallback', async () => {
     mockClaudeResponse(VALID_RESPONSE)
     const builder = createBuilder()
     await builder.generateTopics(5)
 
     const callArgs = callAnthropic.mock.calls[0]![0]
     const prompt = callArgs.userMessage as string
-    expect(prompt).not.toContain('HYBRID SOURCING')
-    expect(prompt).toContain('Search for what is trending')
+    expect(prompt).not.toContain('SOURCING PROTOCOL')
+    expect(prompt).toContain('RESEARCH BRIEF')
+  })
+
+  it('uses assistantPrefill [ for JSON array responses', async () => {
+    mockClaudeResponse(VALID_RESPONSE)
+    const builder = createBuilder()
+    await builder.generateTopics(5)
+
+    const callArgs = callAnthropic.mock.calls[0]![0]
+    expect(callArgs.assistantPrefill).toBe('[')
+  })
+
+  it('returns userPrompt and rawResponse alongside topics', async () => {
+    mockClaudeResponse(VALID_RESPONSE)
+    const builder = createBuilder()
+    const result = await builder.generateTopics(5)
+    expect(result.userPrompt).toBeTruthy()
+    expect(result.rawResponse).toBeTruthy()
+    expect(result.topics).toHaveLength(5)
   })
 })

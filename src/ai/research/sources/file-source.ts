@@ -8,27 +8,19 @@ export class FileResearchSource extends ResearchSource {
     return { status: this.extractedText ? 'ok' : 'error', error: null }
   }
 
-  /** Check if the file has extracted text content. */
-  hasContent(): boolean {
-    return !!this.extractedText
-  }
+  isNetworkFetchable(): boolean { return false }
 
-  /** Get a single capped file excerpt for the prompt context. */
-  getCappedExcerpt(budget: number): FileExcerpt | null {
+  hasFileContent(): boolean { return !!this.extractedText }
+
+  getFileExcerpt(budget: number): FileExcerpt | null {
     if (!this.extractedText) return null
     const text = this.extractedText.slice(0, budget)
     return text.length > 0 ? { label: this.label, text } : null
   }
 
-  getCappedContent(budget: number): string {
-    return (this.extractedText ?? '').slice(0, budget)
-  }
-
-  getFullTextEntries(cap: number = SOURCE_FULL_TEXT_CAP): Map<string, string> {
-    const map = new Map<string, string>()
+  addToFullTextIndex(_byUrl: Map<string, string>, byLabel: Map<string, string>, cap: number = SOURCE_FULL_TEXT_CAP): void {
     if (this.extractedText) {
-      map.set(this.label, this.extractedText.slice(0, cap))
+      byLabel.set(this.label, this.extractedText.slice(0, cap))
     }
-    return map
   }
 }

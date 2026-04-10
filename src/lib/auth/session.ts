@@ -10,8 +10,8 @@ import { getUserRecord } from '@/lib/auth/helpers'
  */
 export const getAuthUser = cache(async () => {
   const supabase = await createServerSupabaseClient()
-  const { data: { session } } = await supabase.auth.getSession()
-  return session?.user ?? null
+  const { data: { user } } = await supabase.auth.getUser()
+  return user ?? null
 })
 
 /**

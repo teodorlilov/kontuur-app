@@ -1,10 +1,10 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { ClientSourceRow, FetchLimits, SourceFetchResult } from '../types'
+import type { ClientSourceRow, FetchLimits, SourceFetchResult, RssItem, WebsiteExcerpt, FileExcerpt } from '../types'
 
 /**
  * Abstract base class for all research content sources.
- * Concrete subclasses handle fetching, budgeting, and full-text mapping
- * for their specific source type (RSS, website, file).
+ * Defines the full contract — subclasses override only the methods relevant to their type.
+ * Pipeline works exclusively against this interface; no instanceof checks needed.
  */
 export abstract class ResearchSource {
   readonly id: string
@@ -23,16 +23,36 @@ export abstract class ResearchSource {
     this.extractedText = row.extracted_text
   }
 
-  /** Fetch content from this source. File sources are no-ops. */
+  /** Fetch content from this source. */
   abstract fetch(limits?: FetchLimits): Promise<SourceFetchResult>
 
-  /** Return capped text content within the given character budget. */
-  abstract getCappedContent(budget: number): string
+  /**
+   * Write this source's full-text entries into the appropriate index map.
+   * RSS and website sources key by URL (byUrl); file sources key by label (byLabel).
+   * Each subclass knows which map it belongs to — pipeline never decides.
+   */
+  abstract addToFullTextIndex(byUrl: Map<string, string>, byLabel: Map<string, string>, cap: number): void
 
-  /** Return full-text map entries for source grounding (key → uncapped text). */
-  abstract getFullTextEntries(cap: number): Map<string, string>
+  // ---- Content accessors (Null Object defaults — override only what applies) ----
 
-  /** Fire-and-forget DB status update (shared by all subclasses). */
+  /** Whether this source requires a network fetch. File sources return false. */
+  isNetworkFetchable(): boolean { return true }
+
+  /** RSS items fetched from this source. Only RssResearchSource returns non-empty. */
+  getRssItems(): RssItem[] { return [] }
+
+  /** Website excerpts fetched from this source. Only WebsiteResearchSource returns non-empty. */
+  getWebExcerpts(): WebsiteExcerpt[] { return [] }
+
+  /** Whether this file source has extracted text content. Only FileResearchSource returns true. */
+  hasFileContent(): boolean { return false }
+
+  /** Capped file excerpt for prompt context. Only FileResearchSource returns non-null. */
+  getFileExcerpt(_budget: number): FileExcerpt | null { return null }
+
+  // ---- Shared ----
+
+  /** Fire-and-forget DB status update after a network fetch. */
   reportStatus(supabase: SupabaseClient, result: SourceFetchResult): void {
     void supabase
       .from('client_sources')

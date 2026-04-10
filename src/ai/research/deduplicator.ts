@@ -1,7 +1,4 @@
-import { NGRAM_SIZE, NGRAM_SIMILARITY_THRESHOLD, ENABLE_LLM_DEDUP } from '@/lib/content-rules/constants'
-import { callAnthropic } from '@/utils/ai-client'
-import { parseJsonResponse } from '@/utils/ai'
-import { sanitizePromptField, PROMPT_FIELD_LIMITS, DEFENSIVE_DATA_CLAUSE } from '@/ai/utils/sanitize'
+import { NGRAM_SIZE } from '@/lib/content-rules/constants'
 
 // ---------------------------------------------------------------------------
 // Language config registry — add new languages here, no code changes needed
@@ -35,33 +32,14 @@ const LANGUAGE_CONFIGS: Record<string, LanguageConfig> = {
 
 const DEFAULT_CONFIG: LanguageConfig = { stopWords: EN_STOP_WORDS, minWordLength: 4 }
 
-// ---------------------------------------------------------------------------
-// LLM dedup response shape
-// ---------------------------------------------------------------------------
-
-interface DedupResult {
-  duplicates: string[]
-}
-
 /**
- * Encapsulates both algorithmic (n-gram + word-overlap) and LLM-based
- * semantic deduplication of research themes against post history.
+ * Static utility for n-gram similarity scoring between research themes.
+ * Used by the generation pipeline to detect near-duplicate angles.
  */
 export class Deduplicator {
-  private static readonly MIN_MATCH_COUNT = 2
-  private static readonly OVERLAP_THRESHOLD = 0.5
-
-  private readonly config: LanguageConfig
-
-  constructor(language?: string) {
-    this.config = Deduplicator.resolveConfig(language)
-  }
-
-  // ---- Static public API (for external consumers like generate-posts.ts) ----
-
   /**
    * Compute n-gram similarity between two text strings.
-   * Static so it can be called without instantiating: Deduplicator.ngramSimilarity(a, b, lang)
+   * Called as Deduplicator.ngramSimilarity(a, b, lang) — no instantiation needed.
    */
   static ngramSimilarity(a: string, b: string, language?: string): number {
     const config = Deduplicator.resolveConfig(language)
@@ -73,68 +51,6 @@ export class Deduplicator {
       Deduplicator.generateNgrams(wordsB)
     )
   }
-
-  // ---- Instance methods (used by the pipeline) ----
-
-  /**
-   * Check if a theme conflicts with any previously covered topic.
-   * Uses two strategies (OR logic):
-   * 1. Character n-gram similarity (handles morphological variants)
-   * 2. Word-overlap matching (catches exact matches)
-   */
-  hasConflict(theme: string, history: string[]): boolean {
-    const themeWords = Deduplicator.extractWords(theme, this.config)
-    if (themeWords.length === 0) return false
-
-    const themeNgramText = themeWords.join('')
-    const themeNgrams = Deduplicator.generateNgrams(themeNgramText)
-
-    return history.some((topic) => {
-      // Strategy 1: n-gram similarity (catches morphological variants)
-      const topicWords = Deduplicator.extractWords(topic, this.config)
-      const topicNgramText = topicWords.join('')
-      const topicNgrams = Deduplicator.generateNgrams(topicNgramText)
-      if (Deduplicator.jaccardSimilarity(themeNgrams, topicNgrams) > NGRAM_SIMILARITY_THRESHOLD) {
-        return true
-      }
-
-      // Strategy 2: word-overlap matching (original algorithm)
-      const topicWordSet = new Set(topic.toLowerCase().split(/\s+/))
-      const matchCount = themeWords.filter((w) => topicWordSet.has(w)).length
-      return (
-        matchCount >= Deduplicator.MIN_MATCH_COUNT ||
-        (themeWords.length > 0 && matchCount / themeWords.length > Deduplicator.OVERLAP_THRESHOLD)
-      )
-    })
-  }
-
-  /** Filter topics, removing those that conflict with history. */
-  filterConflicts<T extends { suggested_theme: string }>(topics: T[], history: string[]): T[] {
-    return topics.filter((t) => !this.hasConflict(t.suggested_theme, history))
-  }
-
-  /**
-   * Run LLM semantic dedup if enabled. Returns filtered topics.
-   * Falls back to input topics on LLM error (logs warning).
-   */
-  async filterWithLLM<T extends { suggested_theme: string }>(
-    topics: T[],
-    history: string[],
-    language: string
-  ): Promise<T[]> {
-    if (!ENABLE_LLM_DEDUP || topics.length === 0 || history.length === 0) return topics
-
-    try {
-      const candidates = topics.map((t) => t.suggested_theme)
-      const duplicateIndices = await this.dedupThemesWithLLM(candidates, history, language)
-      return topics.filter((_, i) => !duplicateIndices.has(i))
-    } catch (err) {
-      console.error('[research] LLM dedup failed, using algorithmic results only:', err)
-      return topics
-    }
-  }
-
-  // ---- Private static helpers ----
 
   private static resolveConfig(language?: string): LanguageConfig {
     if (!language) return DEFAULT_CONFIG
@@ -164,50 +80,5 @@ export class Deduplicator {
     }
     const union = a.size + b.size - intersection
     return union === 0 ? 0 : intersection / union
-  }
-
-  // ---- Private instance methods ----
-
-  private async dedupThemesWithLLM(
-    candidates: string[],
-    existing: string[],
-    language: string
-  ): Promise<Set<number>> {
-    if (candidates.length === 0 || existing.length === 0) return new Set()
-
-    // Sanitize per-item without filtering so indices stay aligned with the original arrays
-    const candidateList = candidates.map((c, i) => `${i}. ${sanitizePromptField(c)}`).join('\n')
-    const existingList = existing.map((e, i) => `${i + 1}. ${sanitizePromptField(e)}`).join('\n')
-
-    const prompt = `You are a deduplication filter for social media post themes in ${sanitizePromptField(language, PROMPT_FIELD_LIMITS.short)}. ${DEFENSIVE_DATA_CLAUSE}
-
-EXISTING themes (already used — do NOT repeat these):
-${existingList}
-
-CANDIDATE themes (new suggestions to check):
-${candidateList}
-
-Task: Identify which CANDIDATE themes are semantically the same topic as any EXISTING theme, even if worded differently, in different grammatical forms, or using synonyms.
-
-Two themes are duplicates if a social media post written for one would cover essentially the same topic as a post written for the other.
-
-Return JSON only:
-{ "duplicates": ["0", "3"] }
-
-The "duplicates" array should contain the index numbers (as strings) of CANDIDATE themes that duplicate an existing theme. Return an empty array if no duplicates found.`
-
-    const message = await callAnthropic({ userMessage: prompt })
-
-    const result = parseJsonResponse<DedupResult>(message)
-    const duplicateIndices = new Set<number>()
-
-    for (const idx of result.duplicates) {
-      const parsed = parseInt(idx, 10)
-      if (!isNaN(parsed) && parsed >= 0 && parsed < candidates.length) {
-        duplicateIndices.add(parsed)
-      }
-    }
-
-    return duplicateIndices
   }
 }

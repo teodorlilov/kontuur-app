@@ -18,6 +18,9 @@ import {
   POSTING_SCHEDULE_COLUMNS,
   USER_COLUMNS,
   SOCIAL_CONNECTION_COLUMNS,
+  LANGUAGE_RULES_COLUMNS,
+  POST_HISTORY_COLUMNS,
+  TOP_POSTS_COLUMNS,
 } from '@/lib/queries/select-columns'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import type { TeamMember, MetaConnection } from '@/types/api'
@@ -172,7 +175,86 @@ export async function fetchConnectionsByClient(
   return (data ?? []) as MetaConnection[]
 }
 
+// ---------- language_rules ----------
+
+export type LanguageRulesRow = {
+  native_cta_phrases: unknown | null
+  formality_rules: unknown | null
+  language_instructions: string | null
+}
+
+/**
+ * Fetches language rules for a given language name (e.g. "English", "Bulgarian").
+ * Returns null when no row exists for that language.
+ *
+ * Used in:
+ *   src/ai/research/pipeline.ts (fetchClientProfile DB fallback)
+ *   src/lib/clients/fetch-client-data.ts
+ */
+export async function fetchLanguageRulesByLanguage(
+  supabase: SupabaseClient,
+  language: string
+): Promise<LanguageRulesRow | null> {
+  const { data } = await supabase
+    .from('language_rules')
+    .select(LANGUAGE_RULES_COLUMNS)
+    .eq('language', language)
+    .single()
+  return (data as LanguageRulesRow | null)
+}
+
 // ---------- posts ----------
+
+// ---------- post_history ----------
+
+/**
+ * Fetches recent post history summaries for a client, ordered newest first.
+ * Returns a flat string array (topic_summary values).
+ *
+ * Used in:
+ *   src/app/(dashboard)/generate/page.tsx (server-side prefetch)
+ */
+export async function fetchPostHistoryByClient(
+  supabase: SupabaseClient,
+  clientId: string,
+  limit = 30
+): Promise<string[]> {
+  const { data } = await supabase
+    .from('post_history')
+    .select(POST_HISTORY_COLUMNS)
+    .eq('client_id', clientId)
+    .order('created_at', { ascending: false })
+    .limit(limit)
+  return (data as Array<{ topic_summary: string | null }> | null)
+    ?.map((h) => h.topic_summary)
+    .filter((s): s is string => s !== null) ?? []
+}
+
+// ---------- posts ----------
+
+/**
+ * Fetches captions of top-performing approved posts for a client (quality_score_avg >= 7.5).
+ * Returns a flat string array of truncated captions (first 120 chars each).
+ *
+ * Used in:
+ *   src/app/(dashboard)/generate/page.tsx (server-side prefetch)
+ */
+export async function fetchTopPostsByClient(
+  supabase: SupabaseClient,
+  clientId: string
+): Promise<string[]> {
+  const { data } = await supabase
+    .from('posts')
+    .select(TOP_POSTS_COLUMNS)
+    .eq('client_id', clientId)
+    .eq('status', 'approved')
+    .gte('quality_score_avg', 7.5)
+    .order('quality_score_avg', { ascending: false })
+    .limit(20)
+  return (data as Array<{ caption: string | null }> | null)
+    ?.map((p) => (p.caption ?? '').slice(0, 120))
+    .filter(Boolean) ?? []
+}
 
 /**
  * Counts posts with status='pending_review' across the given client ids.

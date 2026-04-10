@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
-import { suggestSources } from '@/ai/research/suggest-sources'
+import { suggestSources } from '@/ai/suggest-sources/suggest-sources'
 import { isValidRssUrl } from '@/lib/sources/fetch-rss'
 import type { SourceSuggestion } from '@/types/api'
 

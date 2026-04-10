@@ -19,25 +19,15 @@ export class RssResearchSource extends ResearchSource {
     }
   }
 
-  /** Get the raw fetched items for pipeline aggregation across all RSS sources. */
-  getItems(): RssItem[] {
+  getRssItems(): RssItem[] {
     return this.items
   }
 
-  getCappedContent(budget: number): string {
-    return this.items
-      .map((item) => `- ${item.title}: ${item.description}${item.link ? ` (${item.link})` : ''}`)
-      .join('\n')
-      .slice(0, budget)
-  }
-
-  getFullTextEntries(cap: number = SOURCE_FULL_TEXT_CAP): Map<string, string> {
-    const map = new Map<string, string>()
+  addToFullTextIndex(byUrl: Map<string, string>, _byLabel: Map<string, string>, cap: number = SOURCE_FULL_TEXT_CAP): void {
     for (const item of this.items) {
       if (item.link) {
-        map.set(item.link, `${item.title}\n${item.description}`.slice(0, cap))
+        byUrl.set(item.link, `${item.title}\n${item.description}`.slice(0, cap))
       }
     }
-    return map
   }
 }

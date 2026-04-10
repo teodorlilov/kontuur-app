@@ -10,10 +10,16 @@ export function extractTextFromMessage(message: Anthropic.Message): string {
   return block?.type === 'text' ? block.text : ''
 }
 
-export function parseJsonResponse<T>(message: Anthropic.Message, mode: 'object' | 'array' = 'object'): T {
+export function parseJsonResponse<T>(
+  message: Anthropic.Message,
+  mode: 'object' | 'array' = 'object',
+  /** Prepend this string before parsing — use when assistantPrefill was set (e.g. '[') */
+  prefill?: string,
+): T {
   const text = extractTextFromMessage(message)
+  const withPrefill = prefill ? prefill + text : text
   const fallback = (mode === 'array' ? [] : {}) as T
-  return sanitizeAndParseJson<T>(text, fallback, mode)
+  return sanitizeAndParseJson<T>(withPrefill, fallback, mode)
 }
 
 export function stripPlanningPrefix(text: string): string {
@@ -51,21 +57,6 @@ export function sanitizeAndParseJson<T>(raw: string, fallback: T, mode?: 'object
   if (!match) return fallback
 
   const json = match[0]
-    .replace(/,\s*([}\]])/g, '$1')
-    .replace(
-      /"(?:[^"\\]|\\[\s\S])*"/g,
-      (s) =>
-        s
-          .replace(/\\(?!["\\\/bfnrtu])/g, '\\\\')
-          .replace(/[\x00-\x1f]/g, (c) => {
-            switch (c) {
-              case '\t': return '\\t'
-              case '\n': return '\\n'
-              case '\r': return '\\r'
-              default: return '\\u' + c.charCodeAt(0).toString(16).padStart(4, '0')
-            }
-          }),
-    )
 
   try {
     return JSON.parse(json) as T
@@ -73,7 +64,7 @@ export function sanitizeAndParseJson<T>(raw: string, fallback: T, mode?: 'object
     try {
       return JSON.parse(jsonrepair(json)) as T
     } catch (err) {
-      console.warn('[sanitizeAndParseJson] Failed to parse LLM JSON:', err)
+      console.warn('[sanitizeAndParseJson] Failed to parse LLM JSON:', err, '\nExtracted (first 500):', json.slice(0, 500))
       return fallback
     }
   }

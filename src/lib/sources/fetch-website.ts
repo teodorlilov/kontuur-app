@@ -1,6 +1,7 @@
 const MIN_CONTENT_LENGTH = 200
 
 const LINK_LINE = /^\s*[-*]?\s*\[.*\]\(.*\)\s*$/
+const IMAGE_LINE = /!\[Image\b/
 
 /**
  * Remove navigation-heavy blocks from Jina markdown output.
@@ -15,9 +16,14 @@ function stripNavigationBlocks(markdown: string): string {
     if (lines.length <= 3) return true
     const linkCount = lines.filter((l) => LINK_LINE.test(l)).length
     return linkCount / lines.length < 0.6
-  })
+  }).map((block) =>
+    block
+      .split('\n')
+      .filter((l) => !IMAGE_LINE.test(l.trim()))
+      .join('\n')
+  )
 
-  const result = kept.join('\n\n')
+  const result = kept.join('\n\n').replace(/\n{3,}/g, '\n\n').trim()
   return result.length >= MIN_CONTENT_LENGTH ? result : markdown
 }
 

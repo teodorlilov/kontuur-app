@@ -24,31 +24,13 @@ export class WebsiteResearchSource extends ResearchSource {
     }
   }
 
-  /** Get raw (uncapped) excerpts for pipeline budgeting. */
-  getRawExcerpts(): WebsiteExcerpt[] {
+  getWebExcerpts(): WebsiteExcerpt[] {
     return this.excerpts
   }
 
-  /** Get excerpts capped to fit within total budget, distributed across all excerpts. */
-  getCappedExcerpts(budget: number): WebsiteExcerpt[] {
-    if (this.excerpts.length === 0) return []
-    const perExcerpt = Math.floor(budget / this.excerpts.length)
-    return this.excerpts
-      .map((w) => ({ ...w, text: w.text.slice(0, perExcerpt) }))
-      .filter((w) => w.text.length > 0)
-  }
-
-  getCappedContent(budget: number): string {
-    return this.getCappedExcerpts(budget)
-      .map((w) => w.text)
-      .join('\n\n---\n\n')
-  }
-
-  getFullTextEntries(cap: number = SOURCE_FULL_TEXT_CAP): Map<string, string> {
-    const map = new Map<string, string>()
+  addToFullTextIndex(byUrl: Map<string, string>, _byLabel: Map<string, string>, cap: number = SOURCE_FULL_TEXT_CAP): void {
     for (const w of this.excerpts) {
-      map.set(w.url, w.text.slice(0, cap))
+      byUrl.set(w.url, w.text.slice(0, cap))
     }
-    return map
   }
 }

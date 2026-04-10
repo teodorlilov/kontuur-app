@@ -13,15 +13,13 @@ import { validateLanguage } from '@/ai/validation/prompts/validate-language'
 import { deriveSlopFromQuality, computeDeterministicPreScore } from '@/ai/validation/content-rules/compute-scores'
 import { applyTextCorrections, applySlideCorrections } from '@/ai/validation/correction-utils'
 import { Deduplicator } from '@/ai/research/deduplicator'
-import { ANGLE_SIMILARITY_THRESHOLD } from '@/lib/content-rules/constants'
+import { ANGLE_SIMILARITY_THRESHOLD, DEFAULT_QUALITY_SCORE } from '@/lib/content-rules/constants'
 import { toBrandQualityFields } from '@/lib/clients/fetch-client-data'
 import { OVER_REQUEST_MULTIPLIER, QUALITY_FLOOR, DEFAULT_CAROUSEL_SLIDES } from '@/utils/constants'
 import type { QualityResult } from '@/ai/validation/prompts/validate-quality'
 
 const MAX_CONCURRENT_AI_CALLS = 5
 
-/** Default quality scores for content types where quality validation is not meaningful (e.g. reels scripts). */
-const DEFAULT_QUALITY_SCORE = 5
 
 /** Default quality result for reels — quality metrics don't apply to spoken scripts. */
 const DEFAULT_REELS_QUALITY: QualityResult = {

@@ -4,6 +4,7 @@ import type { LanguageConfig } from '@/lib/clients/language-rules'
 import { parsePillars, type WeightedPillar } from '@/lib/clients/content-pillars'
 import { MAX_POST_HISTORY_COUNT } from '@/utils/constants'
 import type { Json } from '@/types/database'
+import type { LanguageRulesRow } from '@/lib/queries/db'
 
 export interface ClientContext {
   id: string
@@ -35,7 +36,9 @@ export interface ClientData {
     clientTestimonialVoice: string
     contentPillars: WeightedPillar[]
     defaultCarouselSlides: number
+    defaultPostType: string | null
     requireSourceGrounding: boolean
+    sourceStrategy: Record<string, boolean> | null
     isHealthNiche: boolean | null
     languageNotes: string
     topPerformingPosts: string[]
@@ -56,6 +59,73 @@ export function toBrandQualityFields(client: ClientContext) {
     niche: client.niche || undefined,
     clientTestimonialVoice: client.clientTestimonialVoice || undefined,
     isHealthClient: client.isHealthNiche ?? undefined,
+  }
+}
+
+/**
+ * Raw DB row types used as inputs to buildClientData.
+ * Kept local — callers use the db.ts helpers which return these shapes.
+ */
+type RawProfile = {
+  tone: string | null
+  target_audience: string | null
+  content_pillars: string | null
+  avoid_topics: string | null
+  client_testimonial_voice: string | null
+  language_formality: string | null
+  default_post_type: string | null
+  default_carousel_slides: number | null
+  source_strategy: unknown
+  is_health_niche: boolean | null
+  language_notes: string | null
+} | null
+
+
+function parseRequireSourceGrounding(strategy: unknown): boolean {
+  return (strategy as { require_source_grounding?: boolean } | null)?.require_source_grounding ?? false
+}
+
+/**
+ * Assembles a ClientData from raw DB rows — no DB calls.
+ * Used by the generate page server component to build preloaded data from
+ * individually fetched rows without the ownership check (already guaranteed
+ * by getCachedAgencyClients).
+ */
+export function buildClientData(
+  client: { id: string; name: string; niche: string | null; language: string; posts_per_week?: number },
+  profile: RawProfile,
+  langRules: LanguageRulesRow | null,
+  postHistory: string[],
+  topPerformingPosts: string[],
+): ClientData {
+  return {
+    client: {
+      id: client.id,
+      name: client.name,
+      niche: client.niche ?? 'General',
+      language: client.language,
+    },
+    profile: {
+      tone: profile?.tone ?? 'professional',
+      targetAudience: profile?.target_audience ?? 'general audience',
+      formality: profile?.language_formality ?? 'formal',
+      avoidTopics: profile?.avoid_topics ?? '',
+      clientTestimonialVoice: profile?.client_testimonial_voice ?? '',
+      contentPillars: parsePillars(profile?.content_pillars ?? null),
+      defaultCarouselSlides: profile?.default_carousel_slides ?? 7,
+      defaultPostType: profile?.default_post_type ?? null,
+      requireSourceGrounding: parseRequireSourceGrounding(profile?.source_strategy),
+      sourceStrategy: profile?.source_strategy as Record<string, boolean> | null ?? null,
+      isHealthNiche: profile?.is_health_niche ?? null,
+      languageNotes: profile?.language_notes ?? '',
+      topPerformingPosts,
+    },
+    languageRules: {
+      carouselSwipeCues: toCarouselSwipeCues(langRules?.native_cta_phrases as Json ?? null),
+      formalityRules: toFormalityRulesData(langRules?.formality_rules as Json ?? null),
+      languageInstructions: langRules?.language_instructions ?? '',
+    },
+    postHistory,
   }
 }
 
@@ -86,12 +156,17 @@ export function toClientContext(data: ClientData): ClientContext {
 
 /**
  * Fetches all client context needed for AI generation and rewrite operations.
- * Runs 4 parallel queries: client, brand_profile, language_rules, post_history.
+ * Always verifies agency ownership. When preloaded is provided, skips the
+ * remaining 4 DB queries and returns the preloaded data immediately.
+ *
+ * @param preloaded - Optional preloaded ClientData (e.g. from the wizard server prefetch).
+ *                    Ownership is still verified even when preloaded data is present.
  */
 export async function fetchClientData(
   supabase: SupabaseClient,
   clientId: string,
   agencyId: string,
+  preloaded?: ClientData,
 ): Promise<{ data: ClientData } | { error: string }> {
   const { data: rawClient } = await supabase
     .from('clients')
@@ -103,6 +178,8 @@ export async function fetchClientData(
   const client = rawClient as { id: string; name: string; niche: string | null; language: string } | null
   if (!client) return { error: 'Client not found' }
 
+  if (preloaded) return { data: preloaded }
+
   const [profileResult, langRulesResult, historyResult, topPostsResult] = await Promise.all([
     supabase
       .from('brand_profiles')
@@ -111,7 +188,7 @@ export async function fetchClientData(
       .single(),
     supabase
       .from('language_rules')
-      .select('native_cta_phrases, formality_rules, language_instructions, opener_examples')
+      .select('native_cta_phrases, formality_rules, language_instructions')
       .eq('language', client.language)
       .single(),
     supabase
@@ -147,7 +224,6 @@ export async function fetchClientData(
     native_cta_phrases: Json | null
     formality_rules: Json | null
     language_instructions: string | null
-    opener_examples: Json | null
   } | null
 
   const postHistory = (historyResult.data as Array<{ topic_summary: string | null }> | null)
@@ -174,7 +250,9 @@ export async function fetchClientData(
         clientTestimonialVoice: profile?.client_testimonial_voice ?? '',
         contentPillars: parsePillars(profile?.content_pillars ?? null),
         defaultCarouselSlides: profile?.default_carousel_slides ?? 7,
-        requireSourceGrounding: profile?.source_strategy?.require_source_grounding ?? false,
+        defaultPostType: null,
+        requireSourceGrounding: parseRequireSourceGrounding(profile?.source_strategy),
+        sourceStrategy: null,
         isHealthNiche: profile?.is_health_niche ?? null,
         languageNotes: profile?.language_notes ?? '',
         topPerformingPosts,
