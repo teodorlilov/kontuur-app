@@ -44,7 +44,8 @@ export function DashboardPreview() {
             lineHeight: 1.6,
           }}
         >
-          One workspace for all your clients. Generate, review, schedule, and analyse Instagram content without switching tabs.
+          One workspace for all your clients. Generate, review, schedule, and analyse Instagram
+          content without switching tabs.
         </p>
       </AnimateIn>
 

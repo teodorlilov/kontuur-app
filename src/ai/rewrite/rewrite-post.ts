@@ -55,12 +55,14 @@ export async function performRewrite(ctx: RewriteContext) {
   const finalSlidesJson = isCarousel
     ? applySlideCorrections(
         newSlidesJson as Array<{ headline: string; body: string }>,
-        validation.language.corrected_slides,
+        validation.language.corrected_slides
       )
     : newSlidesJson
 
   // If language corrections were auto-applied, update the score to reflect corrected text
-  const langCorrected = !!(validation.language.corrected_text || validation.language.corrected_slides)
+  const langCorrected = !!(
+    validation.language.corrected_text || validation.language.corrected_slides
+  )
   const language = langCorrected
     ? { ...validation.language, language_score: 10, passes: true }
     : validation.language

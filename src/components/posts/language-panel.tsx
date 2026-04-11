@@ -7,7 +7,10 @@ import type { LanguageIssueType, LanguageResult } from '@/types/api'
 
 interface LanguagePanelProps {
   result: LanguageResult
-  onApplyFixes: (correctedText: string, correctedSlides?: Array<{ headline: string; body: string }> | null) => void
+  onApplyFixes: (
+    correctedText: string,
+    correctedSlides?: Array<{ headline: string; body: string }> | null
+  ) => void
   /** When true, corrections were already applied server-side — panel is informational */
   autoApplied?: boolean
 }
@@ -46,7 +49,12 @@ export function LanguagePanel({ result, onApplyFixes, autoApplied = false }: Lan
       >
         <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Language</p>
         <div className="flex items-center gap-2">
-          <span className={cn('text-xs font-semibold px-2 py-0.5 rounded-full', scoreBadgeClass(language_score))}>
+          <span
+            className={cn(
+              'text-xs font-semibold px-2 py-0.5 rounded-full',
+              scoreBadgeClass(language_score)
+            )}
+          >
             {language_score}/10
           </span>
           {showAutoAppliedBadge ? (
@@ -54,7 +62,9 @@ export function LanguagePanel({ result, onApplyFixes, autoApplied = false }: Lan
           ) : passes ? (
             <span className="text-xs text-green-600">✓ Pass</span>
           ) : (
-            <span className="text-xs text-red-600">{issues.length} issue{issues.length !== 1 ? 's' : ''}</span>
+            <span className="text-xs text-red-600">
+              {issues.length} issue{issues.length !== 1 ? 's' : ''}
+            </span>
           )}
         </div>
       </button>
@@ -62,12 +72,19 @@ export function LanguagePanel({ result, onApplyFixes, autoApplied = false }: Lan
       {expanded && issues.length > 0 && (
         <div className="flex flex-col gap-3">
           {showAutoAppliedBadge && (
-            <p className="text-xs text-blue-600">These issues were automatically corrected in the text above.</p>
+            <p className="text-xs text-blue-600">
+              These issues were automatically corrected in the text above.
+            </p>
           )}
           {issues.map((issue, i) => (
             <div key={i} className="flex flex-col gap-1">
               <div className="flex items-center gap-2">
-                <span className={cn('text-xs px-1.5 py-0.5 rounded font-medium', typeColors[issue.type])}>
+                <span
+                  className={cn(
+                    'text-xs px-1.5 py-0.5 rounded font-medium',
+                    typeColors[issue.type]
+                  )}
+                >
                   {typeLabels[issue.type]}
                 </span>
                 <span className="text-xs text-gray-500 italic">"{issue.original_text}"</span>

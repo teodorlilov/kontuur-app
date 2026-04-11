@@ -9,7 +9,10 @@ interface SourceGroundingPanelProps {
   result: SourceGroundingResult
   sourceUrl?: string | null
   sourceTitle?: string | null
-  onApplyFixes?: (correctedText: string, correctedSlides?: Array<{ headline: string; body: string }> | null) => void
+  onApplyFixes?: (
+    correctedText: string,
+    correctedSlides?: Array<{ headline: string; body: string }> | null
+  ) => void
 }
 
 const statusColors: Record<string, string> = {
@@ -24,7 +27,12 @@ const statusLabels: Record<string, string> = {
   partially_grounded: 'Partial',
 }
 
-export function SourceGroundingPanel({ result, sourceUrl, sourceTitle, onApplyFixes }: SourceGroundingPanelProps) {
+export function SourceGroundingPanel({
+  result,
+  sourceUrl,
+  sourceTitle,
+  onApplyFixes,
+}: SourceGroundingPanelProps) {
   const [expanded, setExpanded] = useState(!result.grounded)
   const ungroundedCount = result.flagged_claims.filter((c) => c.status !== 'grounded').length
 
@@ -34,9 +42,16 @@ export function SourceGroundingPanel({ result, sourceUrl, sourceTitle, onApplyFi
         onClick={() => setExpanded((e) => !e)}
         className="flex items-center justify-between w-full text-left"
       >
-        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Source Grounding</p>
+        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+          Source Grounding
+        </p>
         <div className="flex items-center gap-2">
-          <span className={cn('text-xs font-semibold px-2 py-0.5 rounded-full', scoreBadgeClass(result.grounding_score))}>
+          <span
+            className={cn(
+              'text-xs font-semibold px-2 py-0.5 rounded-full',
+              scoreBadgeClass(result.grounding_score)
+            )}
+          >
             {result.grounding_score}/10
           </span>
           {result.grounded ? (
@@ -54,7 +69,12 @@ export function SourceGroundingPanel({ result, sourceUrl, sourceTitle, onApplyFi
           {result.flagged_claims.map((claim, i) => (
             <div key={i} className="flex flex-col gap-1">
               <div className="flex items-center gap-2">
-                <span className={cn('text-xs px-1.5 py-0.5 rounded font-medium', statusColors[claim.status] ?? 'bg-gray-100 text-gray-700')}>
+                <span
+                  className={cn(
+                    'text-xs px-1.5 py-0.5 rounded font-medium',
+                    statusColors[claim.status] ?? 'bg-gray-100 text-gray-700'
+                  )}
+                >
                   {statusLabels[claim.status] ?? claim.status}
                 </span>
                 <span className="text-xs text-gray-600 italic">"{claim.claim}"</span>

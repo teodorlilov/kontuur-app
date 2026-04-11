@@ -14,7 +14,12 @@ import {
 import type { ClientData } from '@/lib/clients/fetch-client-data'
 import type { LanguageConfig } from '@/lib/clients/language-rules'
 import { formatFormalityRules } from './formality-guidance'
-import { sanitizePromptField, sanitizePromptArray, PROMPT_FIELD_LIMITS, DEFENSIVE_DATA_CLAUSE } from '@/ai/utils/sanitize'
+import {
+  sanitizePromptField,
+  sanitizePromptArray,
+  PROMPT_FIELD_LIMITS,
+  DEFENSIVE_DATA_CLAUSE,
+} from '@/ai/utils/sanitize'
 
 export interface ClientProfileInput {
   client: ClientData
@@ -40,7 +45,9 @@ export function buildBrandVoiceDescription(opts: {
     lines.push(`These two descriptions define one emotional identity.`)
   }
   if (opts.formality) {
-    lines.push(`Evaluate within the ${sanitizePromptField(opts.formality, PROMPT_FIELD_LIMITS.short)} register. Emotion can be warm even when register is formal.`)
+    lines.push(
+      `Evaluate within the ${sanitizePromptField(opts.formality, PROMPT_FIELD_LIMITS.short)} register. Emotion can be warm even when register is formal.`
+    )
   }
   return lines.join('\n')
 }
@@ -117,7 +124,9 @@ Generic niche observations any competitor could post will score poorly.`)
   sections.push(buildLanguagePrompt(lc))
 
   // 2b. AI TELLS (language-specific)
-  sections.push(`AI-generated text does these things — never do them:\n${formatAiTells(lc.language)}`)
+  sections.push(
+    `AI-generated text does these things — never do them:\n${formatAiTells(lc.language)}`
+  )
 
   // 3. BRAND VOICE
   sections.push(buildBrandVoicePrompt(client))
@@ -128,7 +137,9 @@ Generic niche observations any competitor could post will score poorly.`)
 These recently approved posts scored above 7.5/10. Study their tone, specificity, and structure as a quality benchmark. Do not copy them — match their standard.
 
 <reference_posts>
-${sanitizePromptArray(client.topPerformingPosts!).map((p) => `<post>${p}</post>`).join('\n')}
+${sanitizePromptArray(client.topPerformingPosts!)
+  .map((p) => `<post>${p}</post>`)
+  .join('\n')}
 </reference_posts>`)
   }
 
@@ -175,7 +186,9 @@ export function buildLanguagePrompt(config: LanguageConfig): string {
 
   // Per-client language notes from brand_profiles
   if (config.languageNotes) {
-    sections.push(`CLIENT-SPECIFIC LANGUAGE REQUIREMENTS:\n${sanitizePromptField(config.languageNotes, PROMPT_FIELD_LIMITS.long)}`)
+    sections.push(
+      `CLIENT-SPECIFIC LANGUAGE REQUIREMENTS:\n${sanitizePromptField(config.languageNotes, PROMPT_FIELD_LIMITS.long)}`
+    )
   }
 
   return sections.join('\n\n')
@@ -188,7 +201,9 @@ export function buildLanguagePrompt(config: LanguageConfig): string {
 export function buildAngleVariationPrompt(similarThemes: string[]): string {
   if (similarThemes.length === 0) return ''
 
-  const themeList = sanitizePromptArray(similarThemes).map((t) => `- "${t}"`).join('\n')
+  const themeList = sanitizePromptArray(similarThemes)
+    .map((t) => `- "${t}"`)
+    .join('\n')
 
   return `
 ANGLE DIFFERENTIATION (critical — similar posts already exist):

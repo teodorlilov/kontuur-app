@@ -29,16 +29,16 @@ Open [http://localhost:3000](http://localhost:3000) to see the app.
 
 ### Environment Variables
 
-| Variable | Description |
-|---|---|
-| `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon key |
-| `NEXT_PUBLIC_APP_URL` | App URL (default: `http://localhost:3000`) |
-| `SUPABASE_SERVICE_ROLE_KEY` | Supabase service role key |
-| `ANTHROPIC_API_KEY` | Claude API key |
-| `RESEND_API_KEY` | Email service key |
-| `CRON_SECRET` | Secret for scheduled jobs |
-| `JINA_API_KEY` | Optional — website content extraction |
+| Variable                        | Description                                |
+| ------------------------------- | ------------------------------------------ |
+| `NEXT_PUBLIC_SUPABASE_URL`      | Supabase project URL                       |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon key                          |
+| `NEXT_PUBLIC_APP_URL`           | App URL (default: `http://localhost:3000`) |
+| `SUPABASE_SERVICE_ROLE_KEY`     | Supabase service role key                  |
+| `ANTHROPIC_API_KEY`             | Claude API key                             |
+| `RESEND_API_KEY`                | Email service key                          |
+| `CRON_SECRET`                   | Secret for scheduled jobs                  |
+| `JINA_API_KEY`                  | Optional — website content extraction      |
 
 ## Features
 

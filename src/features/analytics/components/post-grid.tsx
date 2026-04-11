@@ -16,9 +16,10 @@ export function PostGrid({ metrics }: PostGridProps) {
       <p className="text-sm font-medium text-gray-700 mb-4">All posts</p>
       <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-2">
         {posts.map((post) => {
-          const saveRate = post.reach && post.reach > 0 && post.saved != null
-            ? Math.round((post.saved / post.reach) * 1000) / 10
-            : null
+          const saveRate =
+            post.reach && post.reach > 0 && post.saved != null
+              ? Math.round((post.saved / post.reach) * 1000) / 10
+              : null
           return (
             <a
               key={post.id}
@@ -28,13 +29,11 @@ export function PostGrid({ metrics }: PostGridProps) {
               className="relative aspect-square rounded-lg overflow-hidden bg-gray-100 block group"
             >
               {post.thumbnail_url ? (
-                <img
-                  src={post.thumbnail_url}
-                  alt=""
-                  className="w-full h-full object-cover"
-                />
+                <img src={post.thumbnail_url} alt="" className="w-full h-full object-cover" />
               ) : (
-                <div className={`w-full h-full flex items-center justify-center text-xs font-semibold text-white ${typeColor(post.media_type)}`}>
+                <div
+                  className={`w-full h-full flex items-center justify-center text-xs font-semibold text-white ${typeColor(post.media_type)}`}
+                >
                   {formatType(post.media_type)}
                 </div>
               )}

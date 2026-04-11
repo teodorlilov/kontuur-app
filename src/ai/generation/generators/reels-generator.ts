@@ -4,7 +4,6 @@ import { ContentGenerator } from './content-generator'
 import type { GenerationInput, ReelsResult } from '../types'
 
 export class ReelsGenerator extends ContentGenerator<GenerationInput, ReelsResult> {
-
   protected getPlatform(): string {
     return 'Instagram'
   }

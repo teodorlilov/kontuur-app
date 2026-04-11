@@ -5,7 +5,11 @@ import { cn } from '@/utils/cn'
 import { Button } from '@/components/ui/button'
 import { BatchScheduleModal } from '@/components/scheduling/batch-schedule-modal'
 import { ReviewPostCard } from './review-post-card'
-import { filterReviewPosts, type ReviewPost, type ReviewTab } from '@/lib/review/filter-review-posts'
+import {
+  filterReviewPosts,
+  type ReviewPost,
+  type ReviewTab,
+} from '@/lib/review/filter-review-posts'
 
 interface ReviewQueueProps {
   initialPosts: ReviewPost[]
@@ -88,11 +92,7 @@ export function ReviewQueue({ initialPosts, clients }: ReviewQueueProps) {
         {/* Schedule batch + Count */}
         <div className="flex items-center gap-3 sm:ml-auto">
           {approvedPosts.length > 0 && (
-            <Button
-              onClick={() => setBatchOpen(true)}
-              size="sm"
-              variant="secondary"
-            >
+            <Button onClick={() => setBatchOpen(true)} size="sm" variant="secondary">
               Schedule {approvedPosts.length} approved
             </Button>
           )}

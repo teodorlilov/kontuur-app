@@ -44,7 +44,9 @@ export function SetupPasswordForm() {
     const supabase = createBrowserSupabaseClient()
 
     // Check that user has a session
-    const { data: { user } } = await supabase.auth.getUser()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
     if (!user) {
       toast.error('Session expired. Please use your invite link again or reset your password.')
       window.location.href = '/login'
@@ -78,7 +80,10 @@ export function SetupPasswordForm() {
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="bg-white rounded-xl border border-gray-200 p-6 flex flex-col gap-4">
+        <form
+          onSubmit={handleSubmit}
+          className="bg-white rounded-xl border border-gray-200 p-6 flex flex-col gap-4"
+        >
           <Input
             label="Password"
             type="password"

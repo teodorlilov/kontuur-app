@@ -30,18 +30,22 @@ export function SlopDetector({ result }: SlopDetectorProps) {
       {human_authenticity_score >= 4 && human_authenticity_score < 6 && (
         <p className="text-xs text-amber-600">May read as AI-generated</p>
       )}
-      {human_authenticity_score >= 6 && human_authenticity_score < 8 && ai_tells_found.length > 0 && (
-        <p className="text-xs text-gray-500">
-          {ai_tells_found.length} AI pattern{ai_tells_found.length !== 1 ? 's' : ''} detected
-        </p>
-      )}
+      {human_authenticity_score >= 6 &&
+        human_authenticity_score < 8 &&
+        ai_tells_found.length > 0 && (
+          <p className="text-xs text-gray-500">
+            {ai_tells_found.length} AI pattern{ai_tells_found.length !== 1 ? 's' : ''} detected
+          </p>
+        )}
 
       {ai_tells_found.length > 0 && (
         <button
           onClick={() => setExpanded((e) => !e)}
           className="text-xs text-gray-400 hover:text-gray-600 text-left"
         >
-          {expanded ? 'Hide' : `Show ${ai_tells_found.length} AI tell${ai_tells_found.length !== 1 ? 's' : ''}`}
+          {expanded
+            ? 'Hide'
+            : `Show ${ai_tells_found.length} AI tell${ai_tells_found.length !== 1 ? 's' : ''}`}
         </button>
       )}
 
@@ -53,9 +57,7 @@ export function SlopDetector({ result }: SlopDetectorProps) {
             </p>
           ))}
           {worst_offending_phrase && (
-            <p className="text-xs text-red-500 italic mt-1">
-              Worst: "{worst_offending_phrase}"
-            </p>
+            <p className="text-xs text-red-500 italic mt-1">Worst: "{worst_offending_phrase}"</p>
           )}
         </div>
       )}

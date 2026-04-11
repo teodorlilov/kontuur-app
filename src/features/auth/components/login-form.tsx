@@ -76,7 +76,10 @@ export function LoginForm() {
           <p className="text-sm text-gray-500 mt-1">Sign in to your account</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="bg-white rounded-xl border border-gray-200 p-6 flex flex-col gap-4">
+        <form
+          onSubmit={handleSubmit}
+          className="bg-white rounded-xl border border-gray-200 p-6 flex flex-col gap-4"
+        >
           <Input
             label="Email"
             type="email"

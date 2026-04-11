@@ -15,7 +15,12 @@ import type {
 } from './types'
 import type { ClientData } from '@/lib/clients/fetch-client-data'
 
-const DEFAULT_STRATEGY: SourceStrategy = { rss: true, website: true, file: true, trend_fallback: true }
+const DEFAULT_STRATEGY: SourceStrategy = {
+  rss: true,
+  website: true,
+  file: true,
+  trend_fallback: true,
+}
 const MAX_RESEARCH_RETRIES = 1
 
 interface ResearchClientData extends ClientData {
@@ -80,21 +85,33 @@ export class ResearchPipeline {
     for (let retry = 0; retry < MAX_RESEARCH_RETRIES && topics.length < requestedCount; retry++) {
       this.ctx.onPhase?.('Refining themes...')
       const deficit = requestedCount - topics.length
-      const extendedHistory = [...clientData.history, ...topics.map((t: ResearchTopic) => t.suggested_theme)]
+      const extendedHistory = [
+        ...clientData.history,
+        ...topics.map((t: ResearchTopic) => t.suggested_theme),
+      ]
       builder.updateHistory(extendedHistory)
 
       try {
-        const retryTopics = await builder.generateTopicsRetry(deficit, firstUserPrompt, firstRawResponse)
+        const retryTopics = await builder.generateTopicsRetry(
+          deficit,
+          firstUserPrompt,
+          firstRawResponse
+        )
         this.attachSourceFullText(retryTopics, fullTextIndex)
         topics.push(...retryTopics)
       } catch (err) {
-        console.error(`[research] Retry ${retry + 1} failed — keeping ${topics.length} topics already generated`, err)
+        console.error(
+          `[research] Retry ${retry + 1} failed — keeping ${topics.length} topics already generated`,
+          err
+        )
         break
       }
     }
 
     if (topics.length < requestedCount) {
-      console.warn(`[research] Only ${topics.length}/${requestedCount} themes generated after retry`)
+      console.warn(
+        `[research] Only ${topics.length}/${requestedCount} themes generated after retry`
+      )
     }
 
     const finalTopics = topics.slice(0, requestedCount)
@@ -113,8 +130,12 @@ export class ResearchPipeline {
     if (this.ctx.preloadedClientData) {
       const data: ClientData = this.ctx.preloadedClientData
       const strategy: SourceStrategy = data.sourceStrategy ?? DEFAULT_STRATEGY
-      const sources = this.ctx.clientId ? await fetchClientSources(this.ctx.supabase, this.ctx.clientId) : []
-      const themeHistory = this.ctx.clientId ? await fetchThemeDescriptions(this.ctx.supabase, this.ctx.clientId) : []
+      const sources = this.ctx.clientId
+        ? await fetchClientSources(this.ctx.supabase, this.ctx.clientId)
+        : []
+      const themeHistory = this.ctx.clientId
+        ? await fetchThemeDescriptions(this.ctx.supabase, this.ctx.clientId)
+        : []
       return {
         ...data,
         sources,
@@ -156,26 +177,36 @@ export class ResearchPipeline {
 
     // Website: distribute scaled web budget across all excerpts from all sources
     const allWebExcerpts = sources.flatMap((s) => s.getWebExcerpts())
-    const perWebBudget = allWebExcerpts.length > 0 ? Math.floor(limits.webBudget / allWebExcerpts.length) : 0
+    const perWebBudget =
+      allWebExcerpts.length > 0 ? Math.floor(limits.webBudget / allWebExcerpts.length) : 0
     const cappedWebExcerpts = allWebExcerpts
       .map((w) => ({ ...w, text: w.text.slice(0, perWebBudget) }))
       .filter((w) => w.text.length > 0)
 
     // File: distribute scaled file budget across sources with content
     const sourcesWithFiles = sources.filter((s) => s.hasFileContent())
-    const perFileBudget = sourcesWithFiles.length > 0 ? Math.floor(limits.fileBudget / sourcesWithFiles.length) : 0
+    const perFileBudget =
+      sourcesWithFiles.length > 0 ? Math.floor(limits.fileBudget / sourcesWithFiles.length) : 0
     const cappedFileExcerpts: FileExcerpt[] = sourcesWithFiles
       .map((s) => s.getFileExcerpt(perFileBudget))
       .filter((f): f is FileExcerpt => f !== null)
 
-    if (cappedRssItems.length === 0 && cappedWebExcerpts.length === 0 && cappedFileExcerpts.length === 0) {
+    if (
+      cappedRssItems.length === 0 &&
+      cappedWebExcerpts.length === 0 &&
+      cappedFileExcerpts.length === 0
+    ) {
       if (!strategy.trend_fallback) {
         return { rssItems: [], websiteExcerpts: [], fileExcerpts: [] }
       }
       return undefined
     }
 
-    return { rssItems: cappedRssItems, websiteExcerpts: cappedWebExcerpts, fileExcerpts: cappedFileExcerpts }
+    return {
+      rssItems: cappedRssItems,
+      websiteExcerpts: cappedWebExcerpts,
+      fileExcerpts: cappedFileExcerpts,
+    }
   }
 
   /** Build full-text index from source objects for source grounding. */

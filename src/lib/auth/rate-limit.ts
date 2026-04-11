@@ -36,10 +36,7 @@ export interface RateLimitResult {
 /**
  * Check and consume one request against the rate limit for a given key.
  */
-export function checkRateLimit(
-  key: string,
-  config: RateLimitConfig
-): RateLimitResult {
+export function checkRateLimit(key: string, config: RateLimitConfig): RateLimitResult {
   const now = Date.now()
   const entry = store.get(key)
 

@@ -6,7 +6,6 @@ Have your Supabase URL, Supabase anon key, and Anthropic API key
 ready — Claude Code will ask for them during setup.
 ================================================================
 
-
 I am building a SaaS platform called PostFlow for social media
 marketing agencies. The platform allows agencies to manage multiple
 clients, generate AI-written social media posts using the Anthropic
@@ -14,6 +13,7 @@ Claude API, review and approve posts, schedule them on a content
 calendar, and generate analytics reports per client.
 
 Scaffold the complete project using:
+
 - Next.js 14 (App Router)
 - TypeScript
 - Supabase (database + authentication)
@@ -42,150 +42,150 @@ Run this SQL in the Supabase SQL editor after scaffolding.
 
 -- AGENCIES
 create table agencies (
-  id uuid primary key default gen_random_uuid(),
-  name text not null,
-  plan text default 'free',
-  created_at timestamp default now()
+id uuid primary key default gen_random_uuid(),
+name text not null,
+plan text default 'free',
+created_at timestamp default now()
 );
 
 -- USERS
 create table users (
-  id uuid primary key references auth.users,
-  agency_id uuid references agencies(id),
-  email text not null,
-  role text default 'admin',
-  created_at timestamp default now()
+id uuid primary key references auth.users,
+agency_id uuid references agencies(id),
+email text not null,
+role text default 'admin',
+created_at timestamp default now()
 );
 
 -- CLIENTS
 create table clients (
-  id uuid primary key default gen_random_uuid(),
-  agency_id uuid references agencies(id),
-  name text not null,
-  niche text,
-  posts_per_week integer default 3,
-  language text default 'English',
-  created_at timestamp default now()
+id uuid primary key default gen_random_uuid(),
+agency_id uuid references agencies(id),
+name text not null,
+niche text,
+posts_per_week integer default 3,
+language text default 'English',
+created_at timestamp default now()
 );
 
 -- BRAND PROFILES
 create table brand_profiles (
-  id uuid primary key default gen_random_uuid(),
-  client_id uuid references clients(id) unique,
-  tone text,
-  target_audience text,
-  content_pillars text,
-  avoid_topics text,
-  client_testimonial_voice text,
-  default_post_type text default 'single',
-  default_carousel_slides integer default 6,
-  weekly_mix_json jsonb default '{"carousel": 2, "single": 1}',
-  language_formality text default 'neutral',
-  secondary_language text,
-  is_health_niche boolean default false,
-  language_notes text default ''
+id uuid primary key default gen_random_uuid(),
+client_id uuid references clients(id) unique,
+tone text,
+target_audience text,
+content_pillars text,
+avoid_topics text,
+client_testimonial_voice text,
+default_post_type text default 'single',
+default_carousel_slides integer default 6,
+weekly_mix_json jsonb default '{"carousel": 2, "single": 1}',
+language_formality text default 'neutral',
+secondary_language text,
+is_health_niche boolean default false,
+language_notes text default ''
 );
 
 -- POSTING SCHEDULES
 create table posting_schedules (
-  id uuid primary key default gen_random_uuid(),
-  client_id uuid references clients(id),
-  is_active boolean default true,
-  frequency_type text default 'per_week',
-  frequency_value integer default 3,
-  auto_generate_day text default 'monday',
-  auto_generate_time text default '09:00',
-  created_at timestamp default now()
+id uuid primary key default gen_random_uuid(),
+client_id uuid references clients(id),
+is_active boolean default true,
+frequency_type text default 'per_week',
+frequency_value integer default 3,
+auto_generate_day text default 'monday',
+auto_generate_time text default '09:00',
+created_at timestamp default now()
 );
 
 -- POSTS
 create table posts (
-  id uuid primary key default gen_random_uuid(),
-  client_id uuid references clients(id),
-  caption text,
-  platform text,
-  post_type text default 'single',
-  slides_json jsonb,
-  carousel_quality_json jsonb,
-  status text default 'draft',
-  priority boolean default false,
-  scheduled_at timestamp,
-  published_at timestamp,
-  created_at timestamp default now()
+id uuid primary key default gen_random_uuid(),
+client_id uuid references clients(id),
+caption text,
+platform text,
+post_type text default 'single',
+slides_json jsonb,
+carousel_quality_json jsonb,
+status text default 'draft',
+priority boolean default false,
+scheduled_at timestamp,
+published_at timestamp,
+created_at timestamp default now()
 );
 
 -- POST HISTORY
 create table post_history (
-  id uuid primary key default gen_random_uuid(),
-  client_id uuid references clients(id),
-  topic_summary text,
-  created_at timestamp default now()
+id uuid primary key default gen_random_uuid(),
+client_id uuid references clients(id),
+topic_summary text,
+created_at timestamp default now()
 );
 
 -- GENERATION RUNS
 create table generation_runs (
-  id uuid primary key default gen_random_uuid(),
-  client_id uuid references clients(id),
-  platform text,
-  created_at timestamp default now()
+id uuid primary key default gen_random_uuid(),
+client_id uuid references clients(id),
+platform text,
+created_at timestamp default now()
 );
 
 -- GENERATION THEMES
 create table generation_themes (
-  id uuid primary key default gen_random_uuid(),
-  run_id uuid references generation_runs(id),
-  theme_description text,
-  post_count integer default 1,
-  is_priority boolean default false,
-  priority_brief text,
-  target_date date,
-  research_used boolean default false
+id uuid primary key default gen_random_uuid(),
+run_id uuid references generation_runs(id),
+theme_description text,
+post_count integer default 1,
+is_priority boolean default false,
+priority_brief text,
+target_date date,
+research_used boolean default false
 );
 
 -- SOCIAL CONNECTIONS (for analytics)
 create table social_connections (
-  id uuid primary key default gen_random_uuid(),
-  client_id uuid references clients(id),
-  platform text,
-  account_id text,
-  account_name text,
-  access_token text,
-  token_expires_at timestamp,
-  created_at timestamp default now()
+id uuid primary key default gen_random_uuid(),
+client_id uuid references clients(id),
+platform text,
+account_id text,
+account_name text,
+access_token text,
+token_expires_at timestamp,
+created_at timestamp default now()
 );
 
 -- ANALYTICS REPORTS
 create table analytics_reports (
-  id uuid primary key default gen_random_uuid(),
-  client_id uuid references clients(id),
-  platform text,
-  period_start date,
-  period_end date,
-  metrics_json jsonb,
-  ai_summary text,
-  created_at timestamp default now()
+id uuid primary key default gen_random_uuid(),
+client_id uuid references clients(id),
+platform text,
+period_start date,
+period_end date,
+metrics_json jsonb,
+ai_summary text,
+created_at timestamp default now()
 );
 
 -- NOTIFICATIONS
 create table notifications (
-  id uuid primary key default gen_random_uuid(),
-  agency_id uuid references agencies(id),
-  message text,
-  is_read boolean default false,
-  created_at timestamp default now()
+id uuid primary key default gen_random_uuid(),
+agency_id uuid references agencies(id),
+message text,
+is_read boolean default false,
+created_at timestamp default now()
 );
 
 -- LANGUAGE RULES
 create table language_rules (
-  id uuid primary key default gen_random_uuid(),
-  language text unique not null,
-  banned_anglicisms jsonb,
-  banned_calques jsonb,
-  native_cta_phrases jsonb,
-  formality_default text default 'neutral',
-  formality_rules jsonb default '{}',
-  language_instructions text default '',
-  opener_examples jsonb default '[]'
+id uuid primary key default gen_random_uuid(),
+language text unique not null,
+banned_anglicisms jsonb,
+banned_calques jsonb,
+native_cta_phrases jsonb,
+formality_default text default 'neutral',
+formality_rules jsonb default '{}',
+language_instructions text default '',
+opener_examples jsonb default '[]'
 );
 
 -- Seed language rules (Bulgarian + English)
@@ -195,9 +195,9 @@ create table language_rules (
 -- but remain in the schema for backwards compatibility.
 --
 -- New columns:
---   formality_rules: JSONB { registers: { formal: { rules: [...], examples: { bulgarian: [...] } }, ... } }
---   language_instructions: TEXT — language-specific writing rules and common errors
---   opener_examples: JSONB [{ formality, id, content }] — per-language opener type examples
+-- formality_rules: JSONB { registers: { formal: { rules: [...], examples: { bulgarian: [...] } }, ... } }
+-- language_instructions: TEXT — language-specific writing rules and common errors
+-- opener_examples: JSONB [{ formality, id, content }] — per-language opener type examples
 --
 -- See the migration file for the complete INSERT statements with all data.
 
@@ -220,6 +220,7 @@ SECTION 4 — NAVIGATION AND LAYOUT
 Sidebar layout used on all authenticated pages.
 
 Sidebar links:
+
 - Dashboard (/dashboard)
 - Clients (/clients)
 - Generate (/generate) — label: "Generate posts"
@@ -229,16 +230,19 @@ Sidebar links:
 - Settings (/settings)
 
 Top navbar:
+
 - Page title (left)
 - Bell icon with unread notifications count (right)
 - Clicking bell opens a dropdown of recent notifications
 
 Notification dropdown shows:
+
 - Message text
 - Time ago
 - Mark as read on click
 
 Styling:
+
 - Clean minimal professional design
 - Purple accent: #534AB7
 - Sidebar background: slightly off-white / dark in dark mode
@@ -250,14 +254,15 @@ SECTION 5 — PAGE: /login and /signup
 
 /login — email + password form using Supabase Auth
 /signup — email, password, agency name
-  → on submit: create Supabase auth user, insert agencies row,
-    insert users row linked to new agency
+→ on submit: create Supabase auth user, insert agencies row,
+insert users row linked to new agency
 
 ================================================================
 SECTION 6 — PAGE: /dashboard
 ================================================================
 
 Show:
+
 - 4 stat cards: active clients, posts pending review,
   posts scheduled this week, total published all time
 - Client list: each row shows name, niche,
@@ -269,7 +274,7 @@ SECTION 7 — PAGE: /clients
 ================================================================
 
 List all clients for the logged-in agency.
-Each row: client name, niche, posts per week, platforms, 
+Each row: client name, niche, posts per week, platforms,
 pending posts badge, Edit button.
 
 "+ Add client" button links to /clients/new
@@ -287,34 +292,34 @@ Show a progress bar: Step X of 6.
 Ask these questions one at a time with quick-reply chips:
 
 Q1: "What does your client actually do?
-     Describe it like you would tell a friend."
+Describe it like you would tell a friend."
 
 Q2: "Who are their ideal customers?
-     Think about who actually buys from them —
-     age, lifestyle, what they care about."
+Think about who actually buys from them —
+age, lifestyle, what they care about."
 
 Q3: "What is the main goal for their social media?
-     Getting new customers, building trust and authority,
-     keeping existing ones engaged — or a mix?"
+Getting new customers, building trust and authority,
+keeping existing ones engaged — or a mix?"
 Quick replies: Get new customers / Build trust and authority /
 Both — attract and educate / Keep existing clients engaged
 
 Q4: "How should their posts sound?
-     Think about how they talk to customers in real life."
+Think about how they talk to customers in real life."
 Quick replies: Warm and reassuring / Professional and elegant /
 Educational and informative / Friendly and casual
 
 Q4b: "What language should posts be written in?
-      And should the tone be formal, neutral, or casual?"
+And should the tone be formal, neutral, or casual?"
 Quick replies: Bulgarian — formal / Bulgarian — neutral /
 Bulgarian — casual / English — neutral / English — casual /
 Other — I will type it
 
 Q5: "Anything they absolutely do not want on their social media?
-     Sensitive topics, things to avoid, off-limits subjects."
+Sensitive topics, things to avoid, off-limits subjects."
 
 Q6: "Last one — how would a happy client describe this business
-     to a friend? Just one sentence, in their words."
+to a friend? Just one sentence, in their words."
 
 After all 6 answers, call the Anthropic Claude API:
 
@@ -333,26 +338,27 @@ Q6 - Client testimonial voice: {answer6}
 
 Return JSON only, no other text:
 {
-  niche: string,
-  niche_reasoning: string,
-  target_audience: string[],
-  social_goals: string[],
-  content_pillars: string[],
-  content_pillars_reasoning: string,
-  tone: string,
-  avoid_topics: string,
-  client_testimonial_voice: string,
-  recommended_platforms: [{ platform: string, priority: string, reason: string }],
-  platform_reasoning: string,
-  is_health_niche: boolean,
-  suggested_post_frequency: string,
-  language: string,
-  language_formality: string
+niche: string,
+niche_reasoning: string,
+target_audience: string[],
+social_goals: string[],
+content_pillars: string[],
+content_pillars_reasoning: string,
+tone: string,
+avoid_topics: string,
+client_testimonial_voice: string,
+recommended_platforms: [{ platform: string, priority: string, reason: string }],
+platform_reasoning: string,
+is_health_niche: boolean,
+suggested_post_frequency: string,
+language: string,
+language_formality: string
 }"
 
 --- STAGE 2: PROFILE REVIEW ---
 
 Display generated profile in sections:
+
 - Niche (with niche_reasoning in a tinted box)
 - Target audience (chips)
 - Social media goals (chips)
@@ -371,6 +377,7 @@ include medical content safety instructions. Human review
 is mandatory before any post is published."
 
 "Confirm and save client" saves to:
+
 - clients table
 - brand_profiles table
 - posting_schedules table (with defaults)
@@ -382,6 +389,7 @@ SECTION 9 — PAGE: /clients/[id]/edit
 ================================================================
 
 Full edit form for all brand profile fields:
+
 - Client name, niche, language, language formality
 - Brand tone (textarea)
 - Target audience (textarea)
@@ -415,6 +423,7 @@ Multi-step generation flow. Steps shown in a progress bar.
 
 "Priority posts this week" section above themes.
 "+ Add priority post" button adds a row with:
+
 - Title field (e.g. "Spring promotion — 20% off fillers")
 - Brief field (what the post must say or promote)
 - Platform selector
@@ -427,6 +436,7 @@ Shown with a red "Priority" badge in the review queue.
 --- STEP 3: WEEKLY THEMES ---
 
 Dynamic list of theme rows. Each row:
+
 - Text input for theme description
 - Number input for post count (default 1)
 - Remove button (×)
@@ -436,15 +446,15 @@ Running total: "Total posts: X" updates live.
 
 "Research trending topics for me" button:
 → Calls Anthropic Claude API with web_search tool:
-  "Search the web for what is trending right now in {niche}
-   on social media in {language}-speaking markets.
-   Focus on: popular content formats, seasonal topics,
-   viral post angles, relevant news.
-   Return exactly 5 findings as JSON:
-   [{ finding: string, suggested_theme: string }]"
+"Search the web for what is trending right now in {niche}
+on social media in {language}-speaking markets.
+Focus on: popular content formats, seasonal topics,
+viral post angles, relevant news.
+Return exactly 5 findings as JSON:
+[{ finding: string, suggested_theme: string }]"
 → Display results as a list.
 → Each finding has "Use as theme" button that adds it
-  to the theme list.
+to the theme list.
 
 --- STEP 4: CONTENT PILLARS ---
 
@@ -452,14 +462,15 @@ Show client's content_pillars as selectable chip buttons.
 All selected by default. Agency can deselect for this run.
 
 "Suggest more pillars" button calls Claude:
-  "Suggest 6 content pillar ideas for a {niche} account.
-   Return JSON: [{ pillar: string }]"
+"Suggest 6 content pillar ideas for a {niche} account.
+Return JSON: [{ pillar: string }]"
 Suggestions appear as dashed chips. Clicking one adds it
 permanently to the client's brand_profile content_pillars.
 
 --- STEP 5: POST TYPE (Instagram only) ---
 
 When Instagram is selected, show post type selector:
+
 - Single image post (default — pre-filled from client default)
 - Carousel post
 
@@ -506,6 +517,7 @@ Use {language_formality} address consistently. Never mix
 formal and informal address in the same post.
 
 WRITING RULES:
+
 1. OPENER: Never start with a generic statement.
    Open with: a question naming a specific feeling,
    a counterintuitive statement, a specific detail,
@@ -582,6 +594,7 @@ Never invent swipe phrases. Always pick from the list above.
 Use {language_formality} address consistently.
 
 CAROUSEL STRUCTURE:
+
 - Slide 1 (Cover): Bold hook headline only. Opens a loop
   the reader must swipe to resolve. Add an approved swipe
   cue phrase. No body text.
@@ -593,6 +606,7 @@ CAROUSEL STRUCTURE:
   invitation. Include a CTA button text suggestion.
 
 SLIDE QUALITY RULES:
+
 1. Every headline must contain: a specific number/stat,
    a named tension the reader recognises, or a
    counterintuitive specific claim.
@@ -617,23 +631,24 @@ FOR EACH SLIDE PROVIDE a design note (1-2 sentences)
 telling the Canva designer what visual treatment to use.
 
 MAIN CAPTION (separate from slides):
+
 - Max 3 lines, teases the carousel without revealing it
 - Ends with an approved swipe cue from the list above
 - 1-3 niche-specific hashtags at the end
 
 Return JSON only:
 {
-  main_caption: string,
-  slides: [
-    {
-      slide_number: number,
-      slide_role: 'cover' | 'content' | 'value' | 'cta',
-      headline: string,
-      body: string,
-      cta_text: string | null,
-      design_note: string
-    }
-  ]
+main_caption: string,
+slides: [
+{
+slide_number: number,
+slide_role: 'cover' | 'content' | 'value' | 'cta',
+headline: string,
+body: string,
+cta_text: string | null,
+design_note: string
+}
+]
 }"
 
 --- CONTENT QUALITY VALIDATION ---
@@ -645,10 +660,10 @@ For single posts:
 "Rate this social media post on three criteria.
 Return JSON only:
 {
-  human_score: number 1-10,
-  hook_score: number 1-10,
-  cta_score: number 1-10,
-  issues: [{ type: string, description: string }]
+human_score: number 1-10,
+hook_score: number 1-10,
+cta_score: number 1-10,
+issues: [{ type: string, description: string }]
 }
 Post: {generated_post}"
 
@@ -658,6 +673,7 @@ Evaluate each slide against these rules and return a
 JSON quality report.
 
 Rules per slide:
+
 - headline_specific: headline contains specific claim,
   number, or named tension (not a generic topic label)
 - body_adds_value: body adds NEW information beyond headline
@@ -669,19 +685,19 @@ Rules per slide:
 
 Return JSON only:
 {
-  overall_pass: boolean,
-  slides_passing: number,
-  slides_total: number,
-  slides: [
-    {
-      slide_number: number,
-      status: 'pass' | 'warn' | 'fail',
-      scores: { specificity: number, hook_strength: number,
-                info_density: number },
-      issues: [{ rule: string, problem: string,
-                 suggestion: string }]
-    }
-  ]
+overall_pass: boolean,
+slides_passing: number,
+slides_total: number,
+slides: [
+{
+slide_number: number,
+status: 'pass' | 'warn' | 'fail',
+scores: { specificity: number, hook_strength: number,
+info_density: number },
+issues: [{ rule: string, problem: string,
+suggestion: string }]
+}
+]
 }"
 
 --- LANGUAGE VALIDATION ---
@@ -692,6 +708,7 @@ After every generation, run a language validation call:
 social media copy for professional quality.
 
 Check for:
+
 1. ANGLICISMS: English words written in target language
    script. Flag each + provide native alternative.
 2. CALQUES: Grammatically correct but clearly translated
@@ -708,22 +725,23 @@ Configured formality: {language_formality}
 
 Return JSON only:
 {
-  passes: boolean,
-  naturalness_score: number 1-10,
-  issues: [
-    {
-      type: 'anglicism'|'calque'|'grammar'|'formality'|'register',
-      original_text: string,
-      issue_description: string,
-      suggested_fix: string
-    }
-  ],
-  corrected_text: string | null
+passes: boolean,
+naturalness_score: number 1-10,
+issues: [
+{
+type: 'anglicism'|'calque'|'grammar'|'formality'|'register',
+original_text: string,
+issue_description: string,
+suggested_fix: string
+}
+],
+corrected_text: string | null
 }"
 
 --- POST CARD UI ---
 
 Each generated post card shows:
+
 - Client name, theme tag, platform tag, post type tag
 - For carousels: "🎠 Carousel · N slides" badge
 - Main caption (with Copy button)
@@ -746,18 +764,20 @@ Health client notice on every post card if is_health_niche:
 approving this post."
 
 "Rewrite this slide" button on carousel quality panel:
+
 - Optional instruction textarea
 - Triggers single-slide regeneration API call:
   "Rewrite only slide {n}.
-   Original: {slide_content}
-   Issues to fix: {issues_list}
-   Agency instructions: {agency_note}
-   Apply all carousel and language rules.
-   Return JSON: { headline, body, cta_text, design_note }"
+  Original: {slide_content}
+  Issues to fix: {issues_list}
+  Agency instructions: {agency_note}
+  Apply all carousel and language rules.
+  Return JSON: { headline, body, cta_text, design_note }"
 - Replace only that slide in slides_json
 - Re-run validation on updated slide
 
 Saving approved posts:
+
 - status: 'approved', saved to posts table
 - topic_summary saved to post_history
 
@@ -778,6 +798,7 @@ On /clients/[id]/edit, "Autonomous schedule" section:
 - Auto-generate time: time picker
 
 Default content mix:
+
 - Carousel posts per week (number input)
 - Single image posts per week (number input)
 - Default carousel slide count (3/4/5/6/7/8/10)
@@ -791,6 +812,7 @@ Recommended: 2 carousels + 1 single per week."
 Create this API route.
 
 When called:
+
 1. Fetch all clients where posting_schedules.is_active = true
 2. For each, check if today matches auto_generate_day
 3. If yes, read weekly_mix_json from brand_profiles
@@ -800,16 +822,16 @@ When called:
 6. Save posts to posts table with status 'pending_review'
 7. Insert notification:
    "New posts ready to review for {client_name}
-    — {count} posts generated automatically."
+   — {count} posts generated automatically."
 
 Create vercel.json in project root:
 {
-  "crons": [
-    {
-      "path": "/api/cron/generate",
-      "schedule": "0 9 * * 1"
-    }
-  ]
+"crons": [
+{
+"path": "/api/cron/generate",
+"schedule": "0 9 * * 1"
+}
+]
 }
 
 ================================================================
@@ -822,6 +844,7 @@ across all clients for the logged-in agency.
 Filter tabs: All / Pending / Approved / Priority
 
 Each post card shows:
+
 - Priority badge (red) if priority: true — always at top
 - Client name, platform, post type
 - Caption preview (truncated, expandable)
@@ -848,6 +871,7 @@ Client colours: assign a consistent colour per client
 (cycle through purple/teal/amber/blue/green).
 
 Clicking a post opens a side panel:
+
 - Full caption
 - For carousels: all slides in tabs
 - Date/time picker to schedule
@@ -862,10 +886,12 @@ SECTION 14 — META OAUTH: /api/auth/meta
 ================================================================
 
 On /clients/[id]/edit add "Connected accounts" section with:
+
 - "Connect Instagram" button
 - "Connect Facebook Page" button
 
 OAuth flow:
+
 1. Redirect to Meta OAuth with permissions:
    instagram_basic, instagram_manage_insights,
    pages_read_engagement, pages_show_list, read_insights
@@ -891,6 +917,7 @@ SECTION 15 — PAGE: /analytics
 When "Generate report" is clicked, call Meta Graph API:
 
 Instagram:
+
 - Account: followers_count, follows_count, media_count
 - Insights (date range): reach, impressions, profile_views,
   follower_count daily breakdown
@@ -898,6 +925,7 @@ Instagram:
   like_count, comments_count, saved, reach, impressions
 
 Facebook:
+
 - Page: fan_count, followers_count
 - Insights (date range): page_impressions, page_reach,
   page_engaged_users, page_views_total
@@ -905,6 +933,7 @@ Facebook:
   shares, reach, impressions
 
 Save to analytics_reports table:
+
 - metrics_json: full raw metrics
 - ai_summary: generated by Claude (see below)
 
@@ -916,6 +945,7 @@ for a marketing agency.
 Given these metrics for {client_name}'s {platform} account
 for {start_date} to {end_date}, write a concise 4-5 sentence
 summary covering:
+
 - Overall performance trend
 - Best performing content type or post and why
 - Audience or engagement insight worth highlighting
@@ -940,6 +970,7 @@ Metrics: {metrics_json}"
 --- PDF EXPORT ---
 
 Use jsPDF to generate downloadable PDF containing:
+
 - Agency and client name header
 - Date range
 - All key metrics
@@ -950,6 +981,7 @@ Use jsPDF to generate downloadable PDF containing:
 
 Below the report generator, show "Previous reports"
 listing all saved reports for selected client:
+
 - Date generated
 - Platform
 - "View report" button reloads from saved metrics_json
@@ -959,12 +991,14 @@ SECTION 16 — PAGE: /settings
 ================================================================
 
 /settings/team:
+
 - List team members (users with same agency_id)
 - "Invite team member" form: email input
   → Supabase auth invite email
 - Show role badge (admin / member)
 
 /settings/account:
+
 - Agency name edit
 - Plan display
 
@@ -997,11 +1031,11 @@ SECTION 18 — RECOMMENDED CONTENT MIX GUIDANCE
 Show a subtle guidance panel on /generate for Instagram:
 
 "Recommended weekly mix based on 2026 engagement data:
- Carousels → highest engagement (10% avg engagement rate,
- 3.4× more saves than single images)
- Reels → best for reach and new audience discovery
- Single images → promotions, announcements, quotes
- Suggested mix: 2 carousels + 1 single per week"
+Carousels → highest engagement (10% avg engagement rate,
+3.4× more saves than single images)
+Reels → best for reach and new audience discovery
+Single images → promotions, announcements, quotes
+Suggested mix: 2 carousels + 1 single per week"
 
 ================================================================
 SECTION 19 — BUILD ORDER

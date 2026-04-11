@@ -24,11 +24,15 @@ export function TopPostsTable({ metrics, limit = 5 }: TopPostsTableProps) {
             const engagements = post.like_count + post.comments_count
             const denominator = post.reach && post.reach > 0 ? post.reach : followers
             const engagementRate = Math.round((engagements / denominator) * 1000) / 10
-            const saveRate = post.reach && post.reach > 0
-              ? Math.round(((post.saved ?? 0) / post.reach) * 1000) / 10
-              : null
+            const saveRate =
+              post.reach && post.reach > 0
+                ? Math.round(((post.saved ?? 0) / post.reach) * 1000) / 10
+                : null
             return (
-              <div key={post.id} className="flex items-center gap-3 py-2 border-b border-gray-100 last:border-0">
+              <div
+                key={post.id}
+                className="flex items-center gap-3 py-2 border-b border-gray-100 last:border-0"
+              >
                 <span className="text-xs font-medium text-gray-400 w-4 shrink-0">{idx + 1}</span>
                 {post.thumbnail_url ? (
                   <img
@@ -37,7 +41,9 @@ export function TopPostsTable({ metrics, limit = 5 }: TopPostsTableProps) {
                     className="w-10 h-10 rounded object-cover shrink-0"
                   />
                 ) : (
-                  <div className={`w-10 h-10 rounded shrink-0 flex items-center justify-center text-[9px] font-semibold text-white ${typeColor(post.media_type)}`}>
+                  <div
+                    className={`w-10 h-10 rounded shrink-0 flex items-center justify-center text-[9px] font-semibold text-white ${typeColor(post.media_type)}`}
+                  >
                     {formatType(post.media_type).slice(0, 3).toUpperCase()}
                   </div>
                 )}
@@ -52,7 +58,9 @@ export function TopPostsTable({ metrics, limit = 5 }: TopPostsTableProps) {
                       {post.caption ?? '(no caption)'}
                     </a>
                   ) : (
-                    <p className="text-sm text-gray-800 line-clamp-1">{post.caption ?? '(no caption)'}</p>
+                    <p className="text-sm text-gray-800 line-clamp-1">
+                      {post.caption ?? '(no caption)'}
+                    </p>
                   )}
                   <p className="text-xs text-gray-400 mt-0.5">
                     {new Date(post.timestamp).toLocaleDateString()} · {formatType(post.media_type)}
@@ -70,7 +78,9 @@ export function TopPostsTable({ metrics, limit = 5 }: TopPostsTableProps) {
                     <p className="text-xs text-gray-400">eng.</p>
                   </div>
                   <div>
-                    <p className="text-xs font-medium text-gray-700">{(post.reach ?? 0).toLocaleString()}</p>
+                    <p className="text-xs font-medium text-gray-700">
+                      {(post.reach ?? 0).toLocaleString()}
+                    </p>
                     <p className="text-xs text-gray-400">reach</p>
                   </div>
                 </div>
@@ -103,14 +113,19 @@ export function TopPostsTable({ metrics, limit = 5 }: TopPostsTableProps) {
           const engagements = post.reactions + post.comments + post.shares
           const engagementRate = Math.round((engagements / fans) * 1000) / 10
           return (
-            <div key={post.id} className="flex items-center gap-3 py-2 border-b border-gray-100 last:border-0">
+            <div
+              key={post.id}
+              className="flex items-center gap-3 py-2 border-b border-gray-100 last:border-0"
+            >
               <span className="text-xs font-medium text-gray-400 w-4 shrink-0">{idx + 1}</span>
               <div className="w-10 h-10 rounded shrink-0 flex items-center justify-center text-[9px] font-semibold text-white bg-blue-400">
                 POST
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm text-gray-800 line-clamp-1">{post.message ?? '(no text)'}</p>
-                <p className="text-xs text-gray-400 mt-0.5">{new Date(post.created_time).toLocaleDateString()}</p>
+                <p className="text-xs text-gray-400 mt-0.5">
+                  {new Date(post.created_time).toLocaleDateString()}
+                </p>
               </div>
               <div className="flex gap-4 text-right shrink-0">
                 <div>
@@ -118,11 +133,15 @@ export function TopPostsTable({ metrics, limit = 5 }: TopPostsTableProps) {
                   <p className="text-xs text-gray-400">eng.</p>
                 </div>
                 <div>
-                  <p className="text-xs font-medium text-gray-700">{(post.reach ?? 0).toLocaleString()}</p>
+                  <p className="text-xs font-medium text-gray-700">
+                    {(post.reach ?? 0).toLocaleString()}
+                  </p>
                   <p className="text-xs text-gray-400">reach</p>
                 </div>
                 <div>
-                  <p className="text-xs font-medium text-gray-700">{post.shares.toLocaleString()}</p>
+                  <p className="text-xs font-medium text-gray-700">
+                    {post.shares.toLocaleString()}
+                  </p>
                   <p className="text-xs text-gray-400">shares</p>
                 </div>
               </div>

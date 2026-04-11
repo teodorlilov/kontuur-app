@@ -38,7 +38,11 @@ export default async function CalendarPage() {
   ])
 
   const clientList = (clientRows as ClientRow[] | null) ?? []
-  const clients = clientList.map((c) => ({ id: c.id, name: c.name, contact_email: c.contact_email ?? null }))
+  const clients = clientList.map((c) => ({
+    id: c.id,
+    name: c.name,
+    contact_email: c.contact_email ?? null,
+  }))
 
   // Build best-time lookup
   const bestTimeMap: Record<string, BestTimePlatform[]> = {}
@@ -109,11 +113,7 @@ export default async function CalendarPage() {
     <>
       <Topbar title="Calendar" />
       <div className="p-6">
-        <CalendarView
-          initialPosts={posts}
-          clients={clients}
-          bestTimeMap={bestTimeMap}
-        />
+        <CalendarView initialPosts={posts} clients={clients} bestTimeMap={bestTimeMap} />
       </div>
     </>
   )

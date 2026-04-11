@@ -43,9 +43,18 @@ export function Nav() {
           <a
             key={label}
             href={href}
-            style={{ fontSize: 14, color: 'var(--color-text-2)', textDecoration: 'none', transition: 'color 120ms ease' }}
-            onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--color-text-1)' }}
-            onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--color-text-2)' }}
+            style={{
+              fontSize: 14,
+              color: 'var(--color-text-2)',
+              textDecoration: 'none',
+              transition: 'color 120ms ease',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.color = 'var(--color-text-1)'
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.color = 'var(--color-text-2)'
+            }}
           >
             {label}
           </a>
@@ -67,8 +76,12 @@ export function Nav() {
           lineHeight: 1,
           transition: 'background 150ms ease',
         }}
-        onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--color-brand-hover)' }}
-        onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--color-brand)' }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.background = 'var(--color-brand-hover)'
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.background = 'var(--color-brand)'
+        }}
       >
         Log in
       </Link>

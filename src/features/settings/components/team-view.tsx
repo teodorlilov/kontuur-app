@@ -15,7 +15,12 @@ interface TeamViewProps {
   agencyMode: 'agency' | 'solo'
 }
 
-export function TeamView({ members: initialMembers, currentUserRole, currentUserId, agencyMode }: TeamViewProps) {
+export function TeamView({
+  members: initialMembers,
+  currentUserRole,
+  currentUserId,
+  agencyMode,
+}: TeamViewProps) {
   const [members] = useState(initialMembers)
   const [email, setEmail] = useState('')
   const [emailError, setEmailError] = useState<string | null>(null)
@@ -46,7 +51,7 @@ export function TeamView({ members: initialMembers, currentUserRole, currentUser
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: email.trim() }),
       })
-      const data = await res.json() as { error?: string; success?: boolean }
+      const data = (await res.json()) as { error?: string; success?: boolean }
       if (!res.ok) {
         throw new Error(data.error ?? 'Failed to send invite')
       }
@@ -121,9 +126,7 @@ export function TeamView({ members: initialMembers, currentUserRole, currentUser
                       <span className="text-gray-400 font-normal ml-1">(you)</span>
                     )}
                   </p>
-                  <p className="text-xs text-gray-400">
-                    Joined {formatDate(member.created_at)}
-                  </p>
+                  <p className="text-xs text-gray-400">Joined {formatDate(member.created_at)}</p>
                 </div>
               </div>
               <Badge variant={member.role === 'admin' ? 'info' : 'default'}>

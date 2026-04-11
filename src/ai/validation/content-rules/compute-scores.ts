@@ -13,9 +13,18 @@ import {
   CRITERIA_PENALTIES,
 } from '@/ai/validation/content-rules/validation-criteria'
 import { CTA_EXEMPT_STRUCTURES, PLATFORM_LIMITS } from '@/ai/generation/generation-criteria'
-import { analyzeSentenceVariety, countWords, countHashtags } from '@/ai/validation/content-rules/text-analysis'
+import {
+  analyzeSentenceVariety,
+  countWords,
+  countHashtags,
+} from '@/ai/validation/content-rules/text-analysis'
 import type { SentenceVarietyResult } from '@/ai/validation/content-rules/text-analysis'
-import type { HookVerdict, CtaVerdict, SlopDetection, LanguageIssueType } from '@/ai/validation/types/scoring'
+import type {
+  HookVerdict,
+  CtaVerdict,
+  SlopDetection,
+  LanguageIssueType,
+} from '@/ai/validation/types/scoring'
 
 // ---------------------------------------------------------------------------
 // Language scoring
@@ -63,14 +72,16 @@ export function computeLanguageScore(input: LanguageScoreInput): ComputedLanguag
 // ---------------------------------------------------------------------------
 
 /** Hook verdict → base score mapping (derived from evaluation-criteria.ts). */
-const HOOK_VERDICT_SCORES = Object.fromEntries(
-  HOOK_VERDICTS.map((v) => [v.id, v.score])
-) as Record<HookVerdict, number>
+const HOOK_VERDICT_SCORES = Object.fromEntries(HOOK_VERDICTS.map((v) => [v.id, v.score])) as Record<
+  HookVerdict,
+  number
+>
 
 /** CTA verdict → base score mapping (derived from evaluation-criteria.ts). */
-const CTA_VERDICT_SCORES = Object.fromEntries(
-  CTA_VERDICTS.map((v) => [v.id, v.score])
-) as Record<CtaVerdict, number>
+const CTA_VERDICT_SCORES = Object.fromEntries(CTA_VERDICTS.map((v) => [v.id, v.score])) as Record<
+  CtaVerdict,
+  number
+>
 
 /** Quality issue types that penalize the human (authenticity) score. */
 const HUMAN_SCORE_ISSUE_PENALTIES: Record<string, number> = {
@@ -145,7 +156,8 @@ export function computeCriteriaScore(d: CriteriaDetections): number {
 function computeWordCountPenalty(wordCount: number, platform: string): number {
   const limits = PLATFORM_LIMITS[platform]
   if (!limits) return 0
-  if (wordCount < limits.wordCount.min || wordCount > limits.wordCount.max) return CRITERIA_PENALTIES.WORD_COUNT_VIOLATION
+  if (wordCount < limits.wordCount.min || wordCount > limits.wordCount.max)
+    return CRITERIA_PENALTIES.WORD_COUNT_VIOLATION
   return 0
 }
 
@@ -175,21 +187,27 @@ export function computeDeterministicPreScore(caption: string, platform: string):
 
 export function computeQualityScores(
   detections: QualityDetections,
-  criteria_score?: number,
+  criteria_score?: number
 ): ComputedQualityScores {
   // Human score: 10 minus penalties from AI tells, issues, and brand checks
   const issuePenalty = detections.issues.reduce((sum, issue) => {
     return sum + (HUMAN_SCORE_ISSUE_PENALTIES[issue.type] ?? 0)
   }, 0)
 
-  const human_score = Math.max(1, Math.round(
-    10
-    - Math.min(detections.ai_tells.length * HUMAN_SCORE_PENALTIES.AI_TELL, HUMAN_SCORE_PENALTIES.AI_TELL_CAP)
-    - issuePenalty
-    - (detections.brand_voice_match ? 0 : HUMAN_SCORE_PENALTIES.BRAND_VOICE_MISMATCH)
-    - (detections.niche_specificity ? 0 : HUMAN_SCORE_PENALTIES.NICHE_NOT_SPECIFIC)
-    - (detections.audience_targeting ? 0 : HUMAN_SCORE_PENALTIES.AUDIENCE_NOT_TARGETED)
-  ))
+  const human_score = Math.max(
+    1,
+    Math.round(
+      10 -
+        Math.min(
+          detections.ai_tells.length * HUMAN_SCORE_PENALTIES.AI_TELL,
+          HUMAN_SCORE_PENALTIES.AI_TELL_CAP
+        ) -
+        issuePenalty -
+        (detections.brand_voice_match ? 0 : HUMAN_SCORE_PENALTIES.BRAND_VOICE_MISMATCH) -
+        (detections.niche_specificity ? 0 : HUMAN_SCORE_PENALTIES.NICHE_NOT_SPECIFIC) -
+        (detections.audience_targeting ? 0 : HUMAN_SCORE_PENALTIES.AUDIENCE_NOT_TARGETED)
+    )
+  )
 
   // Hook score: verdict base minus issue penalties
   const hookPenalty = detections.issues.reduce((sum, issue) => {
@@ -201,9 +219,10 @@ export function computeQualityScores(
   const ctaPenalty = detections.issues.reduce((sum, issue) => {
     return sum + (CTA_ISSUE_PENALTIES[issue.type] ?? 0)
   }, 0)
-  const isCtaExempt = detections.cta_verdict === 'missing'
-    && detections.structure_used != null
-    && CTA_EXEMPT_STRUCTURES.includes(detections.structure_used)
+  const isCtaExempt =
+    detections.cta_verdict === 'missing' &&
+    detections.structure_used != null &&
+    CTA_EXEMPT_STRUCTURES.includes(detections.structure_used)
   const cta_score = isCtaExempt
     ? 10
     : Math.max(1, CTA_VERDICT_SCORES[detections.cta_verdict] - ctaPenalty)
@@ -225,7 +244,13 @@ export function safeParseHookVerdict(value: unknown): HookVerdict {
 }
 
 export function safeParseCtaVerdict(value: unknown): CtaVerdict {
-  const valid: CtaVerdict[] = ['natural_specific', 'clear_relevant', 'generic', 'weak_mismatched', 'missing']
+  const valid: CtaVerdict[] = [
+    'natural_specific',
+    'clear_relevant',
+    'generic',
+    'weak_mismatched',
+    'missing',
+  ]
   return typeof value === 'string' && valid.includes(value as CtaVerdict)
     ? (value as CtaVerdict)
     : 'generic'
@@ -257,7 +282,10 @@ export function computeGroundingScore(input: GroundingScoreInput): ComputedGroun
     else if (claim.status === 'partially_grounded') partialCount++
   }
 
-  const grounding_score = Math.max(1, Math.round(10 * (groundedCount + 0.5 * partialCount) / total))
+  const grounding_score = Math.max(
+    1,
+    Math.round((10 * (groundedCount + 0.5 * partialCount)) / total)
+  )
   const grounded = grounding_score === 10
 
   return { grounding_score, grounded }

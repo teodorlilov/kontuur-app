@@ -38,14 +38,18 @@ export function MediaTypeBreakdown({ metrics }: MediaTypeBreakdownProps) {
           const widthPct = Math.round((item.avg_engagement_rate / maxRate) * 100)
           return (
             <div key={item.type} className="flex items-center gap-3">
-              <span className="text-xs text-gray-600 w-16 shrink-0 text-right">{formatType(item.type)}</span>
+              <span className="text-xs text-gray-600 w-16 shrink-0 text-right">
+                {formatType(item.type)}
+              </span>
               <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
                 <div
                   className="h-full rounded-full transition-all"
                   style={{ width: `${widthPct}%`, backgroundColor: color }}
                 />
               </div>
-              <span className="text-xs font-medium text-gray-700 w-10 shrink-0">{item.avg_engagement_rate}%</span>
+              <span className="text-xs font-medium text-gray-700 w-10 shrink-0">
+                {item.avg_engagement_rate}%
+              </span>
             </div>
           )
         })}

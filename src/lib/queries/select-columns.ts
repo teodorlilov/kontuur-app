@@ -16,8 +16,7 @@ export const POST_COLUMNS =
 export const CLIENT_COLUMNS =
   'id, name, niche, posts_per_week, language, website_url, contact_email, created_at'
 
-export const CLIENT_LIST_COLUMNS =
-  'id, name, niche, posts_per_week, language, created_at'
+export const CLIENT_LIST_COLUMNS = 'id, name, niche, posts_per_week, language, created_at'
 
 // brand_profiles
 export const BRAND_PROFILE_COLUMNS =
@@ -42,15 +41,12 @@ export const CLIENT_SOURCE_FULL_COLUMNS =
   'id, client_id, type, label, url, is_active, last_fetched_at, last_fetch_status, last_fetch_error, config, file_path, extracted_text, created_at'
 
 // client_sources (research pipeline — active only, with extracted_text for file sources)
-export const CLIENT_SOURCE_RESEARCH_COLUMNS =
-  'id, type, label, url, config, extracted_text'
+export const CLIENT_SOURCE_RESEARCH_COLUMNS = 'id, type, label, url, config, extracted_text'
 
 // users
-export const USER_COLUMNS =
-  'id, email, role, created_at'
+export const USER_COLUMNS = 'id, email, role, created_at'
 
-export const USER_AUTH_COLUMNS =
-  'agency_id, role'
+export const USER_AUTH_COLUMNS = 'agency_id, role'
 
 // social_connections
 export const SOCIAL_CONNECTION_COLUMNS =
@@ -61,8 +57,7 @@ export const BRIEFING_COLUMNS =
   'briefing_text, action_nudge, weekly_tip, platform_updates, week_start, coaching_points'
 
 // language_rules
-export const LANGUAGE_RULES_COLUMNS =
-  'native_cta_phrases, formality_rules, language_instructions'
+export const LANGUAGE_RULES_COLUMNS = 'native_cta_phrases, formality_rules, language_instructions'
 
 // post_history
 export const POST_HISTORY_COLUMNS = 'topic_summary'

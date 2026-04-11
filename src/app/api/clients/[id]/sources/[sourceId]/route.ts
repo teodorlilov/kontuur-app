@@ -24,7 +24,7 @@ export async function PATCH(
 
   let body: PatchSourceBody
   try {
-    body = await request.json() as PatchSourceBody
+    body = (await request.json()) as PatchSourceBody
   } catch {
     return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
   }
@@ -39,10 +39,7 @@ export async function PATCH(
     return NextResponse.json({ error: 'No valid fields to update' }, { status: 400 })
   }
 
-  const { error } = await supabase
-    .from('client_sources')
-    .update(updates)
-    .eq('id', sourceId)
+  const { error } = await supabase.from('client_sources').update(updates).eq('id', sourceId)
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
@@ -74,10 +71,7 @@ export async function DELETE(
     await admin.storage.from('client-files').remove([source.file_path])
   }
 
-  const { error } = await supabase
-    .from('client_sources')
-    .delete()
-    .eq('id', sourceId)
+  const { error } = await supabase.from('client_sources').delete().eq('id', sourceId)
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 

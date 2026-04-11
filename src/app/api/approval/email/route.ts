@@ -57,7 +57,10 @@ export async function POST(request: Request) {
     })
   } catch (err) {
     console.error('Resend error:', err)
-    return NextResponse.json({ error: 'Failed to send email. Check RESEND_API_KEY and RESEND_FROM_EMAIL.' }, { status: 500 })
+    return NextResponse.json(
+      { error: 'Failed to send email. Check RESEND_API_KEY and RESEND_FROM_EMAIL.' },
+      { status: 500 }
+    )
   }
 
   await supabase.from('notifications').insert({

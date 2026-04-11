@@ -37,8 +37,14 @@ function buildAudienceDemographics(
   if (Object.keys(genderAge).length === 0) return null
   return {
     gender_age: genderAge,
-    top_cities: Object.entries(cityRaw).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([name, value]) => ({ name, value })),
-    top_countries: Object.entries(countryRaw).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([name, value]) => ({ name, value })),
+    top_cities: Object.entries(cityRaw)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([name, value]) => ({ name, value })),
+    top_countries: Object.entries(countryRaw)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([name, value]) => ({ name, value })),
   }
 }
 
@@ -62,7 +68,7 @@ async function fetchInstagramMetrics(
     `${igBase}/${accountId}?fields=followers_count,follows_count,media_count&${token}`
   )
   if (!acctRes.ok) throw new Error('Failed to fetch Instagram account data')
-  const account = await acctRes.json() as {
+  const account = (await acctRes.json()) as {
     followers_count: number
     follows_count: number
     media_count: number
@@ -74,10 +80,15 @@ async function fetchInstagramMetrics(
   const insightRes = await fetch(
     `${igBase}/${accountId}/insights?metric=${insightMetrics}&period=day&since=${sinceTs}&until=${untilTs}&${token}`
   )
-  let insightData: { data: Array<{ name: string; values: Array<{ value: number; end_time: string }> }> } = { data: [] }
+  let insightData: {
+    data: Array<{ name: string; values: Array<{ value: number; end_time: string }> }>
+  } = { data: [] }
   if (insightRes.ok) {
-    insightData = await insightRes.json() as typeof insightData
-    console.log('[IG insights] metrics returned:', insightData.data.map((d) => `${d.name}(${d.values.length} days)`))
+    insightData = (await insightRes.json()) as typeof insightData
+    console.log(
+      '[IG insights] metrics returned:',
+      insightData.data.map((d) => `${d.name}(${d.values.length} days)`)
+    )
   } else {
     const errText = await insightRes.text()
     console.error('[IG insights] fetch failed:', insightRes.status, errText)
@@ -104,9 +115,21 @@ async function fetchInstagramMetrics(
   const mediaRes = await fetch(
     `${igBase}/${accountId}/media?fields=id,caption,timestamp,media_type,like_count,comments_count,permalink,thumbnail_url,media_url&limit=50&${token}`
   )
-  const mediaData = mediaRes.ok ? await mediaRes.json() as {
-    data: Array<{ id: string; caption?: string; timestamp: string; media_type: string; like_count: number; comments_count: number; permalink?: string; thumbnail_url?: string; media_url?: string }>
-  } : { data: [] }
+  const mediaData = mediaRes.ok
+    ? ((await mediaRes.json()) as {
+        data: Array<{
+          id: string
+          caption?: string
+          timestamp: string
+          media_type: string
+          like_count: number
+          comments_count: number
+          permalink?: string
+          thumbnail_url?: string
+          media_url?: string
+        }>
+      })
+    : { data: [] }
 
   // Filter to posts within the selected date range
   const sinceDate = new Date(since)
@@ -128,17 +151,19 @@ async function fetchInstagramMetrics(
         `${igBase}/${media.id}/insights?metric=saved,reach,views&${token}`
       )
       if (postInsightRes.ok) {
-        const postInsight = await postInsightRes.json() as {
+        const postInsight = (await postInsightRes.json()) as {
           data: Array<{ name: string; values: Array<{ value: number }> }>
         }
         for (const m of postInsight.data) {
           const val = m.values[0]?.value ?? 0
           if (m.name === 'saved') saved = val
           if (m.name === 'reach') reach = val
-          if (m.name === 'views') impressions = val  // 'views' = impressions in new API
+          if (m.name === 'views') impressions = val // 'views' = impressions in new API
         }
       }
-    } catch { /* ignore individual post errors */ }
+    } catch {
+      /* ignore individual post errors */
+    }
 
     posts.push({
       id: media.id,
@@ -162,9 +187,8 @@ async function fetchInstagramMetrics(
 
   const followers = account.followers_count || 1
   const totalEngagements = posts.reduce((sum, p) => sum + p.like_count + p.comments_count, 0)
-  const avgEngagementRate = posts.length > 0
-    ? Math.round((totalEngagements / posts.length / followers) * 1000) / 10
-    : 0
+  const avgEngagementRate =
+    posts.length > 0 ? Math.round((totalEngagements / posts.length / followers) * 1000) / 10 : 0
 
   // Compute new followers / unfollowers from daily follower_count snapshots
   const followerSeries = dailyInsights
@@ -193,7 +217,7 @@ async function fetchInstagramMetrics(
       `${igBase}/${accountId}/insights?metric=${insightMetrics}&period=day&since=${prevSinceTsIg}&until=${prevUntilTsIg}&${token}`
     )
     if (prevInsightRes.ok) {
-      const prevInsightData = await prevInsightRes.json() as {
+      const prevInsightData = (await prevInsightRes.json()) as {
         data: Array<{ name: string; values: Array<{ value: number; end_time: string }> }>
       }
       const prevDailyMap: Record<string, Record<string, unknown>> = {}
@@ -218,7 +242,9 @@ async function fetchInstagramMetrics(
         if (c - p > 0) prevNewFollowers += c - p
       }
     }
-  } catch { /* delta is optional */ }
+  } catch {
+    /* delta is optional */
+  }
 
   // Media type breakdown (no extra API call)
   const mediaTypeMap: Record<string, { totalER: number; count: number }> = {}
@@ -230,12 +256,17 @@ async function fetchInstagramMetrics(
     mediaTypeMap[post.media_type]!.count++
   }
   const media_type_breakdown: MediaTypeBreakdownItem[] = Object.entries(mediaTypeMap)
-    .map(([type, d]) => ({ type, avg_engagement_rate: Math.round((d.totalER / d.count) * 10) / 10, count: d.count }))
+    .map(([type, d]) => ({
+      type,
+      avg_engagement_rate: Math.round((d.totalER / d.count) * 10) / 10,
+      count: d.count,
+    }))
     .sort((a, b) => b.avg_engagement_rate - a.avg_engagement_rate)
 
   const totalSaved = posts.reduce((s, p) => s + (p.saved ?? 0), 0)
   const totalReachForSR = posts.reduce((s, p) => s + (p.reach ?? 0), 0)
-  const avg_save_rate = totalReachForSR > 0 ? Math.round((totalSaved / totalReachForSR) * 1000) / 10 : 0
+  const avg_save_rate =
+    totalReachForSR > 0 ? Math.round((totalSaved / totalReachForSR) * 1000) / 10 : 0
 
   // Audience demographics (optional — may fail for small/non-business accounts)
   let audience: AudienceDemographics | null = null
@@ -244,10 +275,17 @@ async function fetchInstagramMetrics(
       `${igBase}/${accountId}/insights?metric=audience_gender_age,audience_city,audience_country&period=lifetime&${token}`
     )
     if (audienceRes.ok) {
-      const { data } = await audienceRes.json() as { data: AudienceApiData }
-      audience = buildAudienceDemographics(data, 'audience_gender_age', 'audience_city', 'audience_country')
+      const { data } = (await audienceRes.json()) as { data: AudienceApiData }
+      audience = buildAudienceDemographics(
+        data,
+        'audience_gender_age',
+        'audience_city',
+        'audience_country'
+      )
     }
-  } catch { /* audience data is optional */ }
+  } catch {
+    /* audience data is optional */
+  }
 
   return {
     platform: 'instagram',
@@ -296,20 +334,21 @@ async function fetchFacebookMetrics(
   const untilTs = Math.floor(new Date(until).getTime() / 1000)
 
   // Page summary
-  const pageRes = await fetch(
-    `${GRAPH_BASE}/${pageId}?fields=fan_count,followers_count&${token}`
-  )
+  const pageRes = await fetch(`${GRAPH_BASE}/${pageId}?fields=fan_count,followers_count&${token}`)
   if (!pageRes.ok) throw new Error('Failed to fetch Facebook page data')
-  const page = await pageRes.json() as { fan_count: number; followers_count: number }
+  const page = (await pageRes.json()) as { fan_count: number; followers_count: number }
 
   // Page insights (uses Unix timestamps)
-  const insightMetrics = 'page_impressions,page_reach,page_engaged_users,page_views_total,page_fan_adds,page_fan_removes,page_organic_reach,page_paid_reach'
+  const insightMetrics =
+    'page_impressions,page_reach,page_engaged_users,page_views_total,page_fan_adds,page_fan_removes,page_organic_reach,page_paid_reach'
   const insightRes = await fetch(
     `${GRAPH_BASE}/${pageId}/insights?metric=${insightMetrics}&period=day&since=${sinceTs}&until=${untilTs}&${token}`
   )
-  const insightData = insightRes.ok ? await insightRes.json() as {
-    data: Array<{ name: string; values: Array<{ value: number; end_time: string }> }>
-  } : { data: [] }
+  const insightData = insightRes.ok
+    ? ((await insightRes.json()) as {
+        data: Array<{ name: string; values: Array<{ value: number; end_time: string }> }>
+      })
+    : { data: [] }
 
   const dailyMap: Record<string, Record<string, unknown>> = {}
   const insightKeyMap: Record<string, string> = {
@@ -339,9 +378,11 @@ async function fetchFacebookMetrics(
   const postsRes = await fetch(
     `${GRAPH_BASE}/${pageId}/posts?fields=id,message,created_time&since=${since}&until=${until}&limit=25&${token}`
   )
-  const postsData = postsRes.ok ? await postsRes.json() as {
-    data: Array<{ id: string; message?: string; created_time: string }>
-  } : { data: [] }
+  const postsData = postsRes.ok
+    ? ((await postsRes.json()) as {
+        data: Array<{ id: string; message?: string; created_time: string }>
+      })
+    : { data: [] }
 
   const posts: FBPost[] = []
   for (const post of postsData.data.slice(0, 10)) {
@@ -355,15 +396,16 @@ async function fetchFacebookMetrics(
         `${GRAPH_BASE}/${post.id}/insights?metric=post_reactions_by_type_total,post_comments,post_shares,post_reach,post_impressions&${token}`
       )
       if (postInsightRes.ok) {
-        const postInsight = await postInsightRes.json() as {
+        const postInsight = (await postInsightRes.json()) as {
           data: Array<{ name: string; values: Array<{ value: number | Record<string, number> }> }>
         }
         for (const m of postInsight.data) {
           const rawVal = m.values[0]?.value ?? 0
           if (m.name === 'post_reactions_by_type_total') {
-            reactions = typeof rawVal === 'object'
-              ? Object.values(rawVal).reduce((s, v) => s + (v as number), 0)
-              : (rawVal as number)
+            reactions =
+              typeof rawVal === 'object'
+                ? Object.values(rawVal).reduce((s, v) => s + (v as number), 0)
+                : (rawVal as number)
           }
           if (m.name === 'post_comments') comments = rawVal as number
           if (m.name === 'post_shares') shares = rawVal as number
@@ -371,7 +413,9 @@ async function fetchFacebookMetrics(
           if (m.name === 'post_impressions') impressions = rawVal as number
         }
       }
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
 
     posts.push({
       id: post.id,
@@ -391,9 +435,8 @@ async function fetchFacebookMetrics(
 
   const fans = page.fan_count || 1
   const totalEngagements = posts.reduce((sum, p) => sum + p.reactions + p.comments + p.shares, 0)
-  const avgEngagementRate = posts.length > 0
-    ? Math.round((totalEngagements / posts.length / fans) * 1000) / 10
-    : 0
+  const avgEngagementRate =
+    posts.length > 0 ? Math.round((totalEngagements / posts.length / fans) * 1000) / 10 : 0
 
   const totalNewFollowers = dailyInsights.reduce((sum, d) => sum + (d.fan_adds ?? 0), 0)
   const totalUnfollowers = dailyInsights.reduce((sum, d) => sum + (d.fan_removes ?? 0), 0)
@@ -414,7 +457,7 @@ async function fetchFacebookMetrics(
       `${GRAPH_BASE}/${pageId}/insights?metric=${insightMetrics}&period=day&since=${prevSinceTsFb}&until=${prevUntilTsFb}&${token}`
     )
     if (prevInsightRes.ok) {
-      const prevInsightData = await prevInsightRes.json() as {
+      const prevInsightData = (await prevInsightRes.json()) as {
         data: Array<{ name: string; values: Array<{ value: number; end_time: string }> }>
       }
       const prevDailyMap: Record<string, Record<string, unknown>> = {}
@@ -432,7 +475,9 @@ async function fetchFacebookMetrics(
       prevTotalImpressionsFb = prevInsights.reduce((s, d) => s + (d.impressions ?? 0), 0)
       prevNewFollowersFb = prevInsights.reduce((s, d) => s + (d.fan_adds ?? 0), 0)
     }
-  } catch { /* delta is optional */ }
+  } catch {
+    /* delta is optional */
+  }
 
   // Media type breakdown (from posts, no extra API call)
   const fbMediaTypeMap: Record<string, { totalER: number; count: number }> = {}
@@ -444,8 +489,13 @@ async function fetchFacebookMetrics(
     fbMediaTypeMap[type]!.totalER += er
     fbMediaTypeMap[type]!.count++
   }
-  const fb_media_type_breakdown: MediaTypeBreakdownItem[] = Object.entries(fbMediaTypeMap)
-    .map(([type, d]) => ({ type, avg_engagement_rate: Math.round((d.totalER / d.count) * 10) / 10, count: d.count }))
+  const fb_media_type_breakdown: MediaTypeBreakdownItem[] = Object.entries(fbMediaTypeMap).map(
+    ([type, d]) => ({
+      type,
+      avg_engagement_rate: Math.round((d.totalER / d.count) * 10) / 10,
+      count: d.count,
+    })
+  )
 
   const fbTotalShares = posts.reduce((s, p) => s + p.shares, 0)
 
@@ -456,10 +506,17 @@ async function fetchFacebookMetrics(
       `${GRAPH_BASE}/${pageId}/insights?metric=page_fans_gender_age,page_fans_country,page_fans_city&period=lifetime&${token}`
     )
     if (audienceRes.ok) {
-      const { data } = await audienceRes.json() as { data: AudienceApiData }
-      audience = buildAudienceDemographics(data, 'page_fans_gender_age', 'page_fans_city', 'page_fans_country')
+      const { data } = (await audienceRes.json()) as { data: AudienceApiData }
+      audience = buildAudienceDemographics(
+        data,
+        'page_fans_gender_age',
+        'page_fans_city',
+        'page_fans_country'
+      )
     }
-  } catch { /* audience data is optional */ }
+  } catch {
+    /* audience data is optional */
+  }
 
   return {
     platform: 'facebook',
@@ -501,14 +558,17 @@ export async function POST(request: NextRequest) {
 
   let body: AnalyticsReportRequest
   try {
-    body = await request.json() as AnalyticsReportRequest
+    body = (await request.json()) as AnalyticsReportRequest
   } catch {
     return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
   }
 
   const { client_id, platform, period_start, period_end } = body
   if (!client_id || !platform || !period_start || !period_end) {
-    return NextResponse.json({ error: 'client_id, platform, period_start, period_end are required' }, { status: 400 })
+    return NextResponse.json(
+      { error: 'client_id, platform, period_start, period_end are required' },
+      { status: 400 }
+    )
   }
   if (!['instagram', 'facebook'].includes(platform)) {
     return NextResponse.json({ error: 'platform must be instagram or facebook' }, { status: 400 })

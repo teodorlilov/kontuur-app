@@ -12,11 +12,11 @@ export async function GET(
   const { supabase, agencyId } = auth
 
   // Verify the report belongs to a client owned by this agency
-  const { data: reportWithClient } = await supabase
+  const { data: reportWithClient } = (await supabase
     .from('analytics_reports')
     .select('*, clients!inner(agency_id)')
     .eq('id', reportId)
-    .single() as { data: (Record<string, unknown> & { clients: { agency_id: string } }) | null }
+    .single()) as { data: (Record<string, unknown> & { clients: { agency_id: string } }) | null }
 
   if (!reportWithClient) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
@@ -39,21 +39,18 @@ export async function DELETE(
   if (!auth.ok) return auth.response
   const { supabase, agencyId } = auth
 
-  const { data: reportWithClient } = await supabase
+  const { data: reportWithClient } = (await supabase
     .from('analytics_reports')
     .select('id, clients!inner(agency_id)')
     .eq('id', reportId)
-    .single() as { data: (Record<string, unknown> & { clients: { agency_id: string } }) | null }
+    .single()) as { data: (Record<string, unknown> & { clients: { agency_id: string } }) | null }
 
   if (!reportWithClient) return NextResponse.json({ error: 'Not found' }, { status: 404 })
   if (reportWithClient.clients.agency_id !== agencyId) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
 
-  const { error } = await supabase
-    .from('analytics_reports')
-    .delete()
-    .eq('id', reportId)
+  const { error } = await supabase.from('analytics_reports').delete().eq('id', reportId)
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 

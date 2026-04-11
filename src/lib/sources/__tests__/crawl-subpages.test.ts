@@ -5,7 +5,8 @@ describe('extractLinks', () => {
   const base = 'https://example.com/listings/'
 
   it('extracts markdown links', () => {
-    const md = '[Property A](https://example.com/property/a) and [Property B](https://example.com/property/b)'
+    const md =
+      '[Property A](https://example.com/property/a) and [Property B](https://example.com/property/b)'
     expect(extractLinks(md, base)).toEqual([
       'https://example.com/property/a',
       'https://example.com/property/b',

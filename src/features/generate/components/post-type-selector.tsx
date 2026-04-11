@@ -22,10 +22,22 @@ export function PostTypeSelector({
 
   const options: Array<{ type: PostType; label: string; sub: string; icon: string }> = [
     { type: 'single', label: 'Single image', sub: 'One polished caption', icon: '📸' },
-    ...(isInstagram ? [
-      { type: 'carousel' as PostType, label: 'Carousel', sub: 'Multiple slides with rich content', icon: '🎠' },
-      { type: 'reels' as PostType, label: 'Reels script', sub: '15–60 second spoken script', icon: '🎬' },
-    ] : []),
+    ...(isInstagram
+      ? [
+          {
+            type: 'carousel' as PostType,
+            label: 'Carousel',
+            sub: 'Multiple slides with rich content',
+            icon: '🎠',
+          },
+          {
+            type: 'reels' as PostType,
+            label: 'Reels script',
+            sub: '15–60 second spoken script',
+            icon: '🎬',
+          },
+        ]
+      : []),
   ]
 
   return (
@@ -33,7 +45,8 @@ export function PostTypeSelector({
       {isInstagram && (
         <div className="bg-brand-purple-light border border-brand-purple/20 rounded-lg px-5 py-3">
           <p className="text-sm text-brand-purple font-medium">
-            Carousels drive the highest engagement in 2026. Recommended: 2 carousels + 1 single per week.
+            Carousels drive the highest engagement in 2026. Recommended: 2 carousels + 1 single per
+            week.
           </p>
         </div>
       )}
@@ -53,7 +66,12 @@ export function PostTypeSelector({
           >
             <span className="text-xl mt-0.5">{opt.icon}</span>
             <div>
-              <span className={cn('text-base font-medium block', value === opt.type ? 'text-brand-purple' : 'text-gray-800')}>
+              <span
+                className={cn(
+                  'text-base font-medium block',
+                  value === opt.type ? 'text-brand-purple' : 'text-gray-800'
+                )}
+              >
                 {opt.label}
               </span>
               <span className="text-sm text-gray-400 mt-0.5 block">{opt.sub}</span>

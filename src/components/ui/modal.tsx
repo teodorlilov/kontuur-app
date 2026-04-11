@@ -67,10 +67,7 @@ export function Modal({ open, onClose, title, children, className }: ModalProps)
                 {title}
               </Dialog.Title>
             )}
-            <Dialog.Close
-              asChild
-              style={{ marginLeft: 'auto' }}
-            >
+            <Dialog.Close asChild style={{ marginLeft: 'auto' }}>
               <button
                 aria-label="Close"
                 style={{

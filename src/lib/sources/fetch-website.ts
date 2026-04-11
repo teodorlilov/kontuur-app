@@ -11,19 +11,24 @@ const IMAGE_LINE = /!\[Image\b/
 function stripNavigationBlocks(markdown: string): string {
   const blocks = markdown.split(/\n{2,}/)
 
-  const kept = blocks.filter((block) => {
-    const lines = block.split('\n').filter((l) => l.trim())
-    if (lines.length <= 3) return true
-    const linkCount = lines.filter((l) => LINK_LINE.test(l)).length
-    return linkCount / lines.length < 0.6
-  }).map((block) =>
-    block
-      .split('\n')
-      .filter((l) => !IMAGE_LINE.test(l.trim()))
-      .join('\n')
-  )
+  const kept = blocks
+    .filter((block) => {
+      const lines = block.split('\n').filter((l) => l.trim())
+      if (lines.length <= 3) return true
+      const linkCount = lines.filter((l) => LINK_LINE.test(l)).length
+      return linkCount / lines.length < 0.6
+    })
+    .map((block) =>
+      block
+        .split('\n')
+        .filter((l) => !IMAGE_LINE.test(l.trim()))
+        .join('\n')
+    )
 
-  const result = kept.join('\n\n').replace(/\n{3,}/g, '\n\n').trim()
+  const result = kept
+    .join('\n\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
   return result.length >= MIN_CONTENT_LENGTH ? result : markdown
 }
 
@@ -100,7 +105,10 @@ export async function fetchWebsiteWithSubpages(
     )
 
     const excerpts = results
-      .filter((r): r is PromiseFulfilledResult<{ url: string; markdown: string } | null> => r.status === 'fulfilled')
+      .filter(
+        (r): r is PromiseFulfilledResult<{ url: string; markdown: string } | null> =>
+          r.status === 'fulfilled'
+      )
       .map((r) => r.value)
       .filter((r): r is { url: string; markdown: string } => r !== null)
 

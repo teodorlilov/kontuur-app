@@ -56,11 +56,15 @@ export function ReelsScript({ script }: ReelsScriptProps) {
           <ol className="flex flex-col gap-2">
             {script.main_points.map((point, i) => (
               <li key={i} className="flex gap-2">
-                <span className="text-xs font-bold text-brand-purple mt-0.5 shrink-0">{i + 1}.</span>
+                <span className="text-xs font-bold text-brand-purple mt-0.5 shrink-0">
+                  {i + 1}.
+                </span>
                 <div className="flex flex-col gap-0.5">
                   <p className="text-sm text-gray-800">{point}</p>
                   {script.visual_directions[i + 1] && (
-                    <p className="text-xs text-gray-400 italic">{script.visual_directions[i + 1]}</p>
+                    <p className="text-xs text-gray-400 italic">
+                      {script.visual_directions[i + 1]}
+                    </p>
                   )}
                 </div>
               </li>

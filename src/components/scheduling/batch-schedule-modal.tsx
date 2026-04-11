@@ -67,7 +67,9 @@ export function BatchScheduleModal({ open, onClose, posts, onComplete }: BatchSc
 
             <div className="flex gap-2 pt-2 border-t border-gray-100">
               <Button
-                onClick={() => { void scheduleAll() }}
+                onClick={() => {
+                  void scheduleAll()
+                }}
                 loading={loading}
                 className="flex-1"
               >

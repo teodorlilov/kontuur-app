@@ -1,5 +1,12 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { ClientSourceRow, FetchLimits, SourceFetchResult, RssItem, WebsiteExcerpt, FileExcerpt } from '../types'
+import type {
+  ClientSourceRow,
+  FetchLimits,
+  SourceFetchResult,
+  RssItem,
+  WebsiteExcerpt,
+  FileExcerpt,
+} from '../types'
 
 /**
  * Abstract base class for all research content sources.
@@ -31,24 +38,38 @@ export abstract class ResearchSource {
    * RSS and website sources key by URL (byUrl); file sources key by label (byLabel).
    * Each subclass knows which map it belongs to — pipeline never decides.
    */
-  abstract addToFullTextIndex(byUrl: Map<string, string>, byLabel: Map<string, string>, cap: number): void
+  abstract addToFullTextIndex(
+    byUrl: Map<string, string>,
+    byLabel: Map<string, string>,
+    cap: number
+  ): void
 
   // ---- Content accessors (Null Object defaults — override only what applies) ----
 
   /** Whether this source requires a network fetch. File sources return false. */
-  isNetworkFetchable(): boolean { return true }
+  isNetworkFetchable(): boolean {
+    return true
+  }
 
   /** RSS items fetched from this source. Only RssResearchSource returns non-empty. */
-  getRssItems(): RssItem[] { return [] }
+  getRssItems(): RssItem[] {
+    return []
+  }
 
   /** Website excerpts fetched from this source. Only WebsiteResearchSource returns non-empty. */
-  getWebExcerpts(): WebsiteExcerpt[] { return [] }
+  getWebExcerpts(): WebsiteExcerpt[] {
+    return []
+  }
 
   /** Whether this file source has extracted text content. Only FileResearchSource returns true. */
-  hasFileContent(): boolean { return false }
+  hasFileContent(): boolean {
+    return false
+  }
 
   /** Capped file excerpt for prompt context. Only FileResearchSource returns non-null. */
-  getFileExcerpt(_budget: number): FileExcerpt | null { return null }
+  getFileExcerpt(_budget: number): FileExcerpt | null {
+    return null
+  }
 
   // ---- Shared ----
 

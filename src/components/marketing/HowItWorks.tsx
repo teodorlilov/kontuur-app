@@ -4,12 +4,12 @@ const steps = [
   {
     num: '1',
     title: 'Connect your client Instagram account.',
-    desc: 'Link your clients\' Instagram accounts in seconds using the official Meta API. One-time setup per account.',
+    desc: "Link your clients' Instagram accounts in seconds using the official Meta API. One-time setup per account.",
   },
   {
     num: '2',
     title: 'Generate AI posts from their website.',
-    desc: 'Kontuur reads your client\'s website, documents, and previous posts to generate on-brand content automatically.',
+    desc: "Kontuur reads your client's website, documents, and previous posts to generate on-brand content automatically.",
   },
   {
     num: '3',
@@ -88,10 +88,25 @@ export function HowItWorks() {
               >
                 {step.num}
               </div>
-              <h3 style={{ fontSize: 15, fontWeight: 500, marginBottom: 10, color: 'var(--color-text-1)', lineHeight: 1.4 }}>
+              <h3
+                style={{
+                  fontSize: 15,
+                  fontWeight: 500,
+                  marginBottom: 10,
+                  color: 'var(--color-text-1)',
+                  lineHeight: 1.4,
+                }}
+              >
                 {step.title}
               </h3>
-              <p style={{ fontSize: 13.5, color: 'var(--color-text-2)', lineHeight: 1.65, margin: 0 }}>
+              <p
+                style={{
+                  fontSize: 13.5,
+                  color: 'var(--color-text-2)',
+                  lineHeight: 1.65,
+                  margin: 0,
+                }}
+              >
                 {step.desc}
               </p>
             </div>

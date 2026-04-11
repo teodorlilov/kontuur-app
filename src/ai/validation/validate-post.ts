@@ -1,10 +1,17 @@
 import { validateQuality } from '@/ai/validation/prompts/validate-quality'
 import { validateLanguage } from '@/ai/validation/prompts/validate-language'
 import { validateSourceGrounding } from '@/ai/validation/prompts/validate-source-grounding'
-import { deriveSlopFromQuality, computeCriteriaScore } from '@/ai/validation/content-rules/compute-scores'
+import {
+  deriveSlopFromQuality,
+  computeCriteriaScore,
+} from '@/ai/validation/content-rules/compute-scores'
 import type { CriteriaDetections } from '@/ai/validation/content-rules/compute-scores'
 import { DEFAULT_QUALITY_SCORE } from '@/lib/content-rules/constants'
-import { analyzeSentenceVariety, countWords, countHashtags } from '@/ai/validation/content-rules/text-analysis'
+import {
+  analyzeSentenceVariety,
+  countWords,
+  countHashtags,
+} from '@/ai/validation/content-rules/text-analysis'
 import type { QualityResult, QualityContext } from '@/ai/validation/prompts/validate-quality'
 import type { LanguageValidationResult } from '@/ai/validation/prompts/validate-language'
 import type { SourceGroundingResult } from '@/ai/validation/prompts/validate-source-grounding'
@@ -82,17 +89,14 @@ export async function validatePost(input: ValidatePostInput): Promise<PostValida
 
   // Run LLM validations in parallel
   const [quality, lang, grounding] = await Promise.all([
-    validateQuality(
-      { caption: input.caption, slides: input.slides },
-      ctx,
-    ).catch((err) => {
+    validateQuality({ caption: input.caption, slides: input.slides }, ctx).catch((err) => {
       console.error(`[generate] ${input.label} quality validation failed:`, err)
       validationWarnings.push('quality')
       return defaultQualityFallback(isCarousel)
     }),
     validateLanguage(
       isCarousel ? { text: input.caption, slides: input.slides } : { text: input.caption },
-      input.languageConfig,
+      input.languageConfig
     ).catch((err) => {
       console.error(`[generate] ${input.label} language validation failed:`, err)
       validationWarnings.push('language')

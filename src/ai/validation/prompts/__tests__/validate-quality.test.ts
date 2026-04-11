@@ -43,16 +43,18 @@ describe('validateQuality — single post', () => {
   })
 
   it('returns ai_tells and worst_offending_phrase', async () => {
-    mockClaudeResponse(llmResponse({
-      ai_tells: ['Generic enthusiasm', 'Formulaic structure'],
-      worst_offending_phrase: 'In today\'s fast-paced world',
-      issues: [{ type: 'weak_hook', description: 'Opening lacks specificity' }],
-      hook_verdict: 'generic',
-      cta_verdict: 'generic',
-    }))
+    mockClaudeResponse(
+      llmResponse({
+        ai_tells: ['Generic enthusiasm', 'Formulaic structure'],
+        worst_offending_phrase: "In today's fast-paced world",
+        issues: [{ type: 'weak_hook', description: 'Opening lacks specificity' }],
+        hook_verdict: 'generic',
+        cta_verdict: 'generic',
+      })
+    )
     const result = await validateQuality({ caption: 'This is a generic post' })
     expect(result.ai_tells).toHaveLength(2)
-    expect(result.worst_offending_phrase).toBe('In today\'s fast-paced world')
+    expect(result.worst_offending_phrase).toBe("In today's fast-paced world")
     expect(result.issues).toHaveLength(1)
     // 2 ai_tells (-2) → human_score = 8
     expect(result.human_score).toBe(8)
@@ -86,7 +88,22 @@ describe('validateQuality — single post', () => {
 
   it('includes brand context when QualityContext provided', async () => {
     mockClaudeResponse(llmResponse())
-    await validateQuality({ caption: 'Test' }, { tone: 'casual', niche: 'fitness', targetAudience: 'gym-goers', languageConfig: { language: 'Bulgarian', formality: 'neutral', carouselSwipeCues: '', formalityRules: null, languageInstructions: '', languageNotes: '' } })
+    await validateQuality(
+      { caption: 'Test' },
+      {
+        tone: 'casual',
+        niche: 'fitness',
+        targetAudience: 'gym-goers',
+        languageConfig: {
+          language: 'Bulgarian',
+          formality: 'neutral',
+          carouselSwipeCues: '',
+          formalityRules: null,
+          languageInstructions: '',
+          languageNotes: '',
+        },
+      }
+    )
 
     const callArgs = callAnthropic.mock.calls[0]![0]
     const systemText = callArgs.systemPrompt as string
@@ -97,7 +114,20 @@ describe('validateQuality — single post', () => {
 
   it('includes criteria checklist in system prompt', async () => {
     mockClaudeResponse(llmResponse())
-    await validateQuality({ caption: 'Test' }, { platform: 'Instagram', languageConfig: { language: 'Bulgarian', formality: 'formal', carouselSwipeCues: '', formalityRules: null, languageInstructions: '', languageNotes: '' } })
+    await validateQuality(
+      { caption: 'Test' },
+      {
+        platform: 'Instagram',
+        languageConfig: {
+          language: 'Bulgarian',
+          formality: 'formal',
+          carouselSwipeCues: '',
+          formalityRules: null,
+          languageInstructions: '',
+          languageNotes: '',
+        },
+      }
+    )
 
     const callArgs = callAnthropic.mock.calls[0]![0]
     const systemText = callArgs.systemPrompt as string
@@ -108,10 +138,12 @@ describe('validateQuality — single post', () => {
   })
 
   it('includes new detection fields in return format', async () => {
-    mockClaudeResponse(llmResponse({
-      structure_used: 'OBSERVATION',
-      formality_consistent: true,
-    }))
+    mockClaudeResponse(
+      llmResponse({
+        structure_used: 'OBSERVATION',
+        formality_consistent: true,
+      })
+    )
     const result = await validateQuality({ caption: 'Test' })
     expect(result.structure_used).toBe('OBSERVATION')
     expect(result.formality_consistent).toBe(true)
@@ -119,7 +151,19 @@ describe('validateQuality — single post', () => {
 
   it('includes language-specific AI tells when languageConfig provided', async () => {
     mockClaudeResponse(llmResponse())
-    await validateQuality({ caption: 'Тест пост' }, { languageConfig: { language: 'Bulgarian', formality: 'neutral', carouselSwipeCues: '', formalityRules: null, languageInstructions: '', languageNotes: '' } })
+    await validateQuality(
+      { caption: 'Тест пост' },
+      {
+        languageConfig: {
+          language: 'Bulgarian',
+          formality: 'neutral',
+          carouselSwipeCues: '',
+          formalityRules: null,
+          languageInstructions: '',
+          languageNotes: '',
+        },
+      }
+    )
 
     const callArgs = callAnthropic.mock.calls[0]![0]
     const systemText = callArgs.systemPrompt as string
@@ -131,11 +175,13 @@ describe('validateQuality — single post', () => {
 
 describe('validateQuality — carousel', () => {
   it('returns carousel quality with kind: carousel', async () => {
-    mockClaudeResponse(llmResponse({
-      ai_tells: ['Generic enthusiasm'],
-      hook_verdict: 'clear_value',
-      cta_verdict: 'clear_relevant',
-    }))
+    mockClaudeResponse(
+      llmResponse({
+        ai_tells: ['Generic enthusiasm'],
+        hook_verdict: 'clear_value',
+        cta_verdict: 'clear_relevant',
+      })
+    )
 
     const slides = [
       { headline: 'H1', body: 'B1' },

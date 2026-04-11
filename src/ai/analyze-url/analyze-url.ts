@@ -6,10 +6,14 @@ export interface AnalyzeUrlInput {
 export function buildAnalyzeUrlPrompt(input: AnalyzeUrlInput): string {
   const contentSections: string[] = []
   if (input.websiteContent) {
-    contentSections.push(`WEBSITE CONTENT:\n<website_content>\n${input.websiteContent}\n</website_content>`)
+    contentSections.push(
+      `WEBSITE CONTENT:\n<website_content>\n${input.websiteContent}\n</website_content>`
+    )
   }
   if (input.instagramContent) {
-    contentSections.push(`INSTAGRAM PROFILE:\n<instagram_content>\n${input.instagramContent}\n</instagram_content>`)
+    contentSections.push(
+      `INSTAGRAM PROFILE:\n<instagram_content>\n${input.instagramContent}\n</instagram_content>`
+    )
   }
 
   return `Analyze the following content from a business's online presence and extract a structured brand profile for social media content creation.

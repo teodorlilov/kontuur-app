@@ -83,6 +83,7 @@ export function cn(...inputs: ClassValue[]) {
 ```
 
 **`lib/utils/format.ts`** — formatting helpers:
+
 - `formatDate(date: Date): string`
 - `formatRelativeTime(date: Date): string`
 - `truncateText(text: string, maxLength: number): string`
@@ -154,6 +155,7 @@ colors: {
 ### Step 1 — Authentication Pages
 
 **`app/(auth)/login/page.tsx`:**
+
 - Email + password form
 - `supabase.auth.signInWithPassword`
 - Redirect to `/dashboard` on success
@@ -161,6 +163,7 @@ colors: {
 - Error toast on failure
 
 **`app/(auth)/signup/page.tsx`:**
+
 - Email · password · business name inputs
 - Mode selector: `'I manage social media for clients'` or `'I manage my own business socials'`
 - On submit:
@@ -173,6 +176,7 @@ colors: {
 ### Step 2 — Global Auth Context
 
 **`components/providers/auth-provider.tsx`:**
+
 - Fetch current user on mount
 - Fetch their agency and users record
 - Expose: `user` · `agency` · `agencyMode ('agency' | 'solo')`
@@ -181,6 +185,7 @@ colors: {
 ### Step 3 — Dashboard Layout
 
 **`app/(dashboard)/layout.tsx`:**
+
 - Requires authentication (redirect if no user)
 - Renders sidebar + topbar + main content area
 - Passes `agencyMode` to sidebar for navigation variant
@@ -188,6 +193,7 @@ colors: {
 ### Step 4 — Sidebar Component
 
 **`components/layout/sidebar.tsx`:**
+
 - Agency mode: full navigation (Section 4 of master prompt)
 - Solo mode: simplified navigation (Section 4)
 - Active state highlighting for current route
@@ -198,6 +204,7 @@ colors: {
 ### Step 5 — Topbar Component
 
 **`components/layout/topbar.tsx`:**
+
 - Page title (passed as prop)
 - Notifications bell with unread count badge
 - Notifications dropdown: last 10, mark as read on click
@@ -206,17 +213,17 @@ colors: {
 
 Build these before anything else needs them:
 
-| Component | Variants |
-|---|---|
-| `components/ui/button.tsx` | primary · secondary · ghost · danger; sizes sm/md/lg |
-| `components/ui/input.tsx` | with label and error state |
-| `components/ui/textarea.tsx` | with label and error state |
-| `components/ui/select.tsx` | with label and error state |
-| `components/ui/badge.tsx` | success · warning · danger · info · default · priority |
-| `components/ui/card.tsx` | basic card container |
-| `components/ui/modal.tsx` | overlay with close button |
-| `components/ui/spinner.tsx` | loading spinner |
-| `components/ui/toast.tsx` | install and configure react-hot-toast or sonner |
+| Component                    | Variants                                               |
+| ---------------------------- | ------------------------------------------------------ |
+| `components/ui/button.tsx`   | primary · secondary · ghost · danger; sizes sm/md/lg   |
+| `components/ui/input.tsx`    | with label and error state                             |
+| `components/ui/textarea.tsx` | with label and error state                             |
+| `components/ui/select.tsx`   | with label and error state                             |
+| `components/ui/badge.tsx`    | success · warning · danger · info · default · priority |
+| `components/ui/card.tsx`     | basic card container                                   |
+| `components/ui/modal.tsx`    | overlay with close button                              |
+| `components/ui/spinner.tsx`  | loading spinner                                        |
+| `components/ui/toast.tsx`    | install and configure react-hot-toast or sonner        |
 
 ### Step 7 — Loading States
 
@@ -243,6 +250,7 @@ Create `app/(dashboard)/dashboard/page.tsx` showing `'Dashboard coming in Sessio
 **`app/(dashboard)/dashboard/page.tsx`** — Server Component.
 
 Fetch server-side:
+
 - Count of active clients for this agency
 - Count of posts with status `pending_review`
 - Count of posts with status `scheduled` this week
@@ -251,12 +259,14 @@ Fetch server-side:
 - Latest `intelligence_briefing` for this agency
 
 **Agency mode layout:**
+
 - 4 stat cards
 - Intelligence briefing card (placeholder text if none exists yet)
 - Client list rows with name · niche · pending badge
 - `'Review X pending posts'` button if count > 0
 
 **Solo mode layout:**
+
 - Simplified stat cards with plain language labels
 - Intelligence briefing card prominently at top
 - Action nudge in highlighted purple box
@@ -265,6 +275,7 @@ Fetch server-side:
 ### Step 2 — Clients List Page
 
 **`app/(dashboard)/clients/page.tsx`** — Server Component.
+
 - Fetch all clients with brand profiles
 - Each row: name · niche · posts/week · platforms · pending badge · Edit button
 - `'+ Add client'` → `/clients/new`
@@ -275,6 +286,7 @@ Fetch server-side:
 **`app/(dashboard)/clients/new/page.tsx`** — Client Component (requires interactivity).
 
 **Stage 1 — Chat interview:**
+
 - Chat UI with AI avatar (`✦`)
 - Progress bar: Step X of 6
 - AI bubbles left, user response bubbles right
@@ -285,6 +297,7 @@ Fetch server-side:
 - After Q6: call `/api/ai/onboard`, show `'Building your client profile...'`
 
 **Stage 2 — Profile review:**
+
 - Display generated profile in editable sections
 - Each section: label · content · Edit button (switches to inline textarea)
 - Chips for `target_audience`, `social_goals`, `content_pillars`, `recommended_platforms`
@@ -294,6 +307,7 @@ Fetch server-side:
 - `'Redo interview'` button
 
 **On save:**
+
 1. POST to `/api/clients`
 2. API creates: `clients` row · `brand_profiles` row · `posting_schedules` row
 3. Trigger best time generation: call `/api/ai/best-time`
@@ -302,6 +316,7 @@ Fetch server-side:
 ### Step 4 — Client Edit Page
 
 **`app/(dashboard)/clients/[id]/edit/page.tsx`:**
+
 - Load existing client and `brand_profile` server-side
 - Full edit form with all fields from `MASTER_PROMPT.md` Section 9
 - Platform pill toggles
@@ -312,13 +327,13 @@ Fetch server-side:
 
 ### Step 5 — API Routes
 
-| Route | Methods |
-|---|---|
-| `app/api/clients/route.ts` | GET (list), POST (create) |
-| `app/api/clients/[id]/route.ts` | GET (one), PUT, DELETE |
-| `app/api/ai/onboard/route.ts` | POST — profile generation |
+| Route                           | Methods                     |
+| ------------------------------- | --------------------------- |
+| `app/api/clients/route.ts`      | GET (list), POST (create)   |
+| `app/api/clients/[id]/route.ts` | GET (one), PUT, DELETE      |
+| `app/api/ai/onboard/route.ts`   | POST — profile generation   |
 | `app/api/ai/best-time/route.ts` | POST — best time generation |
-| `app/api/ai/pillars/route.ts` | POST — pillar suggestions |
+| `app/api/ai/pillars/route.ts`   | POST — pillar suggestions   |
 
 All routes: authenticate · verify agency ownership · validate input · handle errors.
 
@@ -343,21 +358,22 @@ Best time prompt file `lib/anthropic/prompts/best-time.ts` uses `web_search` too
 
 Create every prompt file before building any UI. Each exports a typed async function that builds the prompt, calls Claude, parses JSON, and returns typed data.
 
-| File | Purpose |
-|---|---|
-| `lib/anthropic/prompts/generate-post.ts` | Single image post generation |
-| `lib/anthropic/prompts/generate-carousel.ts` | Carousel post + slides generation |
-| `lib/anthropic/prompts/generate-reels.ts` | Reels script generation |
-| `lib/anthropic/prompts/validate-quality.ts` | Content quality check (single + carousel) |
-| `lib/anthropic/prompts/validate-language.ts` | Language validation with auto-fix |
-| `lib/anthropic/prompts/detect-slop.ts` | AI slop / authenticity detection |
-| `lib/anthropic/prompts/research-topics.ts` | Trending topic web search |
+| File                                         | Purpose                                   |
+| -------------------------------------------- | ----------------------------------------- |
+| `lib/anthropic/prompts/generate-post.ts`     | Single image post generation              |
+| `lib/anthropic/prompts/generate-carousel.ts` | Carousel post + slides generation         |
+| `lib/anthropic/prompts/generate-reels.ts`    | Reels script generation                   |
+| `lib/anthropic/prompts/validate-quality.ts`  | Content quality check (single + carousel) |
+| `lib/anthropic/prompts/validate-language.ts` | Language validation with auto-fix         |
+| `lib/anthropic/prompts/detect-slop.ts`       | AI slop / authenticity detection          |
+| `lib/anthropic/prompts/research-topics.ts`   | Trending topic web search                 |
 
 Use the exact prompts from `MASTER_PROMPT.md` Sections 10 and 19. Do not shorten or paraphrase them.
 
 ### Step 2 — Generation API Route
 
 **`app/api/ai/generate/route.ts`:**
+
 1. Accept: `clientId` · `platform` · `themes` · `postType` · `slideCount` · `selectedPillars` · `priorityPosts`
 2. Load client `brand_profile` and `language_rules` for their language
 3. Load `post_history` (last 50) for this client
@@ -371,14 +387,14 @@ Use the exact prompts from `MASTER_PROMPT.md` Sections 10 and 19. Do not shorten
 
 Steps controlled by `currentStep` state. Build sub-components first:
 
-| Component | Purpose |
-|---|---|
-| `components/generate/priority-post-form.tsx` | Priority post rows |
-| `components/generate/theme-row.tsx` | Single theme input row |
-| `components/generate/pillar-selector.tsx` | Toggleable pillar chips |
-| `components/generate/post-type-selector.tsx` | Single/Carousel/Reels selector |
-| `components/generate/research-results.tsx` | Trending topic results |
-| `components/generate/generation-progress.tsx` | Generation loading state |
+| Component                                     | Purpose                        |
+| --------------------------------------------- | ------------------------------ |
+| `components/generate/priority-post-form.tsx`  | Priority post rows             |
+| `components/generate/theme-row.tsx`           | Single theme input row         |
+| `components/generate/pillar-selector.tsx`     | Toggleable pillar chips        |
+| `components/generate/post-type-selector.tsx`  | Single/Carousel/Reels selector |
+| `components/generate/research-results.tsx`    | Trending topic results         |
+| `components/generate/generation-progress.tsx` | Generation loading state       |
 
 **Step 1** — client + platform selector. Load client defaults when selected.
 
@@ -394,23 +410,23 @@ Steps controlled by `currentStep` state. Build sub-components first:
 
 ### Step 4 — Post Card Components
 
-| Component | Purpose |
-|---|---|
-| `components/posts/post-card.tsx` | Main container with all badges and actions |
+| Component                              | Purpose                                                      |
+| -------------------------------------- | ------------------------------------------------------------ |
+| `components/posts/post-card.tsx`       | Main container with all badges and actions                   |
 | `components/posts/carousel-slides.tsx` | Slide tab bar with quality dots, copy buttons, rewrite panel |
-| `components/posts/reels-script.tsx` | Hook · points · CTA · on-screen text · visual directions |
-| `components/posts/quality-scores.tsx` | Human/Hook/CTA score bars, colour coded |
-| `components/posts/language-panel.tsx` | Issues list with Apply all fixes button |
-| `components/posts/slop-detector.tsx` | Authenticity score with warning badges |
+| `components/posts/reels-script.tsx`    | Hook · points · CTA · on-screen text · visual directions     |
+| `components/posts/quality-scores.tsx`  | Human/Hook/CTA score bars, colour coded                      |
+| `components/posts/language-panel.tsx`  | Issues list with Apply all fixes button                      |
+| `components/posts/slop-detector.tsx`   | Authenticity score with warning badges                       |
 
 **Carousel `Copy all slides`** button formats all slides for pasting directly into Canva text boxes, separated by `---`.
 
 ### Step 5 — Research and Pillar API Routes
 
-| Route | Prompt file |
-|---|---|
+| Route                          | Prompt file                                                     |
+| ------------------------------ | --------------------------------------------------------------- |
 | `app/api/ai/research/route.ts` | `lib/anthropic/prompts/research-topics.ts` (web_search enabled) |
-| `app/api/ai/pillars/route.ts` | `lib/anthropic/prompts/suggest-pillars.ts` |
+| `app/api/ai/pillars/route.ts`  | `lib/anthropic/prompts/suggest-pillars.ts`                      |
 
 ### ✓ Verify Before Stopping
 
@@ -430,6 +446,7 @@ Steps controlled by `currentStep` state. Build sub-components first:
 ### Step 1 — Review Queue Page
 
 **`app/(dashboard)/review/page.tsx`:**
+
 - Server Component for initial load
 - Fetch all posts for this agency with status `pending_review` or `approved`
 - Sort: priority posts first, then by `created_at`
@@ -438,6 +455,7 @@ Steps controlled by `currentStep` state. Build sub-components first:
 Filter tabs: All · Pending · Approved · Priority (client-side filtering of loaded posts)
 
 Each post renders `post-card.tsx` with additional review features:
+
 - Approval token status if one exists
 - `'Send to client for approval'` button
 - Schedule button opening a date-time picker
@@ -447,6 +465,7 @@ Health client posts: yellow `'Health content — review carefully'` banner.
 ### Step 2 — Client Approval Portal
 
 **`app/api/approval/send/route.ts`:**
+
 1. Accept `postId` and `clientEmail`
 2. Generate unique token (uuid)
 3. Insert into `post_approval_tokens`
@@ -454,6 +473,7 @@ Health client posts: yellow `'Health content — review carefully'` banner.
 5. Return success
 
 **`app/approve/[token]/page.tsx`** — public page, no auth required:
+
 - Fetch post via token. Verify not expired and not already used.
 - Show full post content (caption · slides · reels script)
 - `'Looks good — approve'` and `'I would like some changes'` + textarea buttons
@@ -461,16 +481,17 @@ Health client posts: yellow `'Health content — review carefully'` banner.
 - On changes: update token status, save note, notify agency
 
 **`app/api/approval/[token]/route.ts`:**
+
 - Handle both approve and changes responses
 - Update `post_approval_tokens`
 - Create notification for agency
 
 **Post card approval status badges:**
 
-| Status | Badge |
-|---|---|
-| `pending` | amber `'Awaiting client approval'` |
-| `approved` | green `'Client approved ✓'` |
+| Status              | Badge                                          |
+| ------------------- | ---------------------------------------------- |
+| `pending`           | amber `'Awaiting client approval'`             |
+| `approved`          | green `'Client approved ✓'`                    |
 | `changes_requested` | red `'Changes requested'` + client note inline |
 
 ### Step 3 — Calendar Page
@@ -478,6 +499,7 @@ Health client posts: yellow `'Health content — review carefully'` banner.
 **`app/(dashboard)/calendar/page.tsx`** — Client Component (interactive navigation).
 
 Build calendar grid from scratch:
+
 - 7 columns (Mon–Sun), rows for each week of the current month
 - Prev/Next month navigation
 - Fetch all posts with `scheduled_at` in the current month range
@@ -485,6 +507,7 @@ Build calendar grid from scratch:
 Per post: small coloured chip with client name. Assign consistent colours per client cycling through an 8-colour palette.
 
 **Side panel on chip click:**
+
 - Full caption (carousel: slides in tabs · reels: full script)
 - Best time recommendations from `brand_profiles.best_time_json`
 - Best day chips → clicking selects that day in date picker
@@ -493,27 +516,29 @@ Per post: small coloured chip with client name. Assign consistent colours per cl
 
 ### Step 4 — Post API Routes
 
-| Route | Methods |
-|---|---|
-| `app/api/posts/route.ts` | GET (list with filters), POST |
+| Route                         | Methods                                    |
+| ----------------------------- | ------------------------------------------ |
+| `app/api/posts/route.ts`      | GET (list with filters), POST              |
 | `app/api/posts/[id]/route.ts` | GET, PUT (status/schedule/caption), DELETE |
 
 ADDITION 1 — Add crawl page limits
 
 In brand_profiles add:
+
 - crawl_pages_used integer DEFAULT 0
 - crawl_pages_limit integer DEFAULT 50
 
 In /api/clients/[id]/crawl-website:
+
 - Check crawl_pages_used against plan limit
   (derive from agencies.plan)
 - If at limit: return 402 with message
   'Crawl credit limit reached — upgrade your plan
-   or wait for next month'
-- After crawl: increment crawl_pages_used by 
+  or wait for next month'
+- After crawl: increment crawl_pages_used by
   pages fetched
 
-Reset crawl_pages_used to 0 on the 1st of each 
+Reset crawl_pages_used to 0 on the 1st of each
 month via cron job.
 
 Plan limits:
@@ -525,7 +550,8 @@ agency_pro: 10000 pages/month
 ADDITION 2 — Make the scraper provider configurable
 
 In .env.local add:
-SCRAPER_PROVIDER=firecrawl  
+SCRAPER_PROVIDER=firecrawl
+
 # future values: jina, brightdata, scrapingbee
 
 In lib/sources/fetch-website.ts:
@@ -560,6 +586,7 @@ and changing one env var — zero application changes.
 Controls: client selector + date range picker (default last 30 days) + Generate report button.
 
 **Data to calculate for the period:**
+
 - Posts generated · approved (+ approval rate %) · published
 - Content pillars covered and frequency
 - Average `quality_score_avg`
@@ -567,6 +594,7 @@ Controls: client selector + date range picker (default last 30 days) + Generate 
 - Most approved themes · Most rewritten themes
 
 **Display:**
+
 - 4 metric cards
 - AI summary in purple-tinted box
 - Content pillars coverage bar chart (Recharts)
@@ -580,12 +608,14 @@ Controls: client selector + date range picker (default last 30 days) + Generate 
 ### Step 2 — Report API and PDF
 
 **`app/api/reports/route.ts`:**
+
 - Accept `clientId` · `periodStart` · `periodEnd` · `format`
 - Calculate all internal metrics
 - Call AI for summary (Section 27 prompt from `MASTER_PROMPT.md`)
 - If `format: 'pdf'`: generate via jsPDF, return PDF buffer
 
 **`lib/pdf/report.ts`:**
+
 - `generateActivityReport(data)` function
 - PDF header: agency name + logo — **not** PostFlow branding
 - All metrics, AI summary, themes table
@@ -599,6 +629,7 @@ Controls: client selector + date range picker (default last 30 days) + Generate 
 **`lib/anthropic/prompts/intelligence-briefing.ts`** — weekly briefing prompt from Section 22. Uses `web_search` tool. Returns structured JSON.
 
 **`app/api/ai/intelligence/route.ts`:**
+
 - Fetch all niches for this agency's clients
 - Fetch recent posts summary
 - Call briefing prompt, save to `intelligence_briefings`
@@ -606,6 +637,7 @@ Controls: client selector + date range picker (default last 30 days) + Generate 
 **`app/api/ai/intelligence/tip/route.ts`** — on-demand single tip (2-sentence response).
 
 **`components/intelligence/briefing-card.tsx`:**
+
 - Platform updates (hidden if empty array)
 - Niche trends per client
 - Weekly tip
@@ -616,6 +648,7 @@ Controls: client selector + date range picker (default last 30 days) + Generate 
 ### Step 4 — Add Intelligence to Cron Job
 
 Update `app/api/cron/generate/route.ts` to:
+
 - Check if this week's briefing exists for this agency
 - If not: generate and save it
 
@@ -663,16 +696,19 @@ Update `app/api/cron/generate/route.ts` to:
 ```json
 // vercel.json
 {
-  "crons": [{
-    "path": "/api/cron/generate",
-    "schedule": "0 9 * * 1"
-  }]
+  "crons": [
+    {
+      "path": "/api/cron/generate",
+      "schedule": "0 9 * * 1"
+    }
+  ]
 }
 ```
 
 ### Step 2 — Performance Feedback in Generation Prompts
 
 Update `generate-post.ts` and `generate-carousel.ts`:
+
 1. Before generation: fetch last 20 approved posts for this client with `quality_score_avg`
 2. Filter to posts with `quality_score_avg > 7.5`
 3. Include in prompt: `'Previous posts that scored highest: {patterns}. Note patterns and lean toward those characteristics.'`
@@ -680,6 +716,7 @@ Update `generate-post.ts` and `generate-carousel.ts`:
 ### Step 3 — Content Insights on Client Edit Page
 
 Add to `/clients/[id]/edit` a content insights section. Load from `posts` table:
+
 - Average `quality_score_avg` all time
 - Trend: improving · stable · declining (last 10 vs prior 10)
 - Themes with highest approval rate
@@ -698,6 +735,7 @@ Display on solo dashboard prominently at the top.
 ### Step 5 — Test the Full Autonomous Loop
 
 Manually trigger:
+
 ```bash
 curl -X POST https://your-app.vercel.app/api/cron/generate \
   -H "Authorization: Bearer {CRON_SECRET}"
@@ -743,16 +781,17 @@ Use Tailwind's `animate-pulse` for shimmer effect.
 
 ### Step 3 — Empty States
 
-| Page | Empty state message |
-|---|---|
-| `/clients` | `'No clients yet — add your first client'` + button |
-| `/review` | `'No posts waiting for review — generate some'` + button |
-| `/calendar` | `'Nothing scheduled this week'` |
-| `/analytics` | `'Select a client and date range above'` |
+| Page         | Empty state message                                      |
+| ------------ | -------------------------------------------------------- |
+| `/clients`   | `'No clients yet — add your first client'` + button      |
+| `/review`    | `'No posts waiting for review — generate some'` + button |
+| `/calendar`  | `'Nothing scheduled this week'`                          |
+| `/analytics` | `'Select a client and date range above'`                 |
 
 ### Step 4 — Error States
 
 Every page needs an `error.tsx`:
+
 - Clear error message
 - Retry button
 - Never show raw error stack traces to users
@@ -760,6 +799,7 @@ Every page needs an `error.tsx`:
 ### Step 5 — Consistency Audit
 
 Check every page:
+
 - [ ] All buttons use `Button` component from `components/ui/`
 - [ ] All inputs use `Input` component
 - [ ] Spacing consistent (Tailwind spacing scale)
@@ -770,18 +810,19 @@ Check every page:
 
 Every user action must produce feedback:
 
-| Action | Toast |
-|---|---|
-| Approve post | `'Post approved'` |
-| Save client | `'Client saved'` |
-| Send approval | `'Approval request sent to {email}'` |
-| Generate posts | `'Generating {N} posts...'` → `'Generation complete'` |
-| Generation error | `'Generation failed — please retry'` |
-| Copy to clipboard | `'Copied to clipboard'` |
+| Action            | Toast                                                 |
+| ----------------- | ----------------------------------------------------- |
+| Approve post      | `'Post approved'`                                     |
+| Save client       | `'Client saved'`                                      |
+| Send approval     | `'Approval request sent to {email}'`                  |
+| Generate posts    | `'Generating {N} posts...'` → `'Generation complete'` |
+| Generation error  | `'Generation failed — please retry'`                  |
+| Copy to clipboard | `'Copied to clipboard'`                               |
 
 ### Step 7 — Form Validation
 
 Every form validates before submit:
+
 - Required fields: red border + error message
 - Email format validation
 - Number inputs: min/max
@@ -811,6 +852,7 @@ Every form validates before submit:
 ### Step 1 — Environment Variable Audit
 
 Every variable must be:
+
 - [ ] Listed in `.env.example` with a comment
 - [ ] Validated at startup in the relevant `lib/` file
 - [ ] Not accidentally exposed to the client (no secret in `NEXT_PUBLIC_`)
@@ -834,6 +876,7 @@ git push origin main
 ### Step 3 — Supabase Production Configuration
 
 In Supabase dashboard:
+
 - Site URL: set to your Vercel URL
 - Redirect URLs: add `https://your-app.vercel.app/**`
 - Email templates: customise invite and magic link emails with PostFlow branding
@@ -842,6 +885,7 @@ In Supabase dashboard:
 ### Step 4 — Production Test Checklist
 
 **Auth:**
+
 - [ ] Sign up as agency creates account correctly
 - [ ] Sign up as solo creates account + auto-client
 - [ ] Login redirects to dashboard
@@ -849,11 +893,13 @@ In Supabase dashboard:
 - [ ] Unauthenticated routes redirect to login
 
 **Client management:**
+
 - [ ] AI interview completes and saves profile
 - [ ] Edit client saves all fields
 - [ ] Best time recommendations generate on save
 
 **Generation:**
+
 - [ ] Single post generates with all 3 validations
 - [ ] Carousel generates with slide quality check
 - [ ] Reels script generates correctly
@@ -862,11 +908,13 @@ In Supabase dashboard:
 - [ ] Pillar suggestions work
 
 **Review and scheduling:**
+
 - [ ] Approval email sends with correct magic link
 - [ ] `/approve/[token]` works on production URL
 - [ ] Calendar saves scheduled posts correctly
 
 **Cron job:**
+
 - [ ] Test manually with `CRON_SECRET` header
 - [ ] Posts created in database
 - [ ] Notifications created
@@ -883,6 +931,7 @@ Fix all errors before considering the build done.
 ### Step 6 — Create README.md
 
 Document:
+
 - What PostFlow is (one paragraph)
 - Tech stack
 - Local setup instructions
@@ -896,6 +945,7 @@ Document:
 ### Step 7 — Create PHASE2.md
 
 Document everything needed to activate Meta analytics:
+
 - Meta Developer App setup steps
 - OAuth flow to build in `/api/auth/meta/`
 - Permissions to request
@@ -917,28 +967,28 @@ Document everything needed to activate Meta analytics:
 
 ## Phase 1 — What You Have Built
 
-| Feature | Status |
-|---|---|
-| Full agency SaaS with multi-client management | ✓ |
-| AI-powered smart onboarding for any niche | ✓ |
-| Three content types: single · carousel · Reels scripts | ✓ |
-| Three-layer quality validation on every post | ✓ |
-| Language authenticity system (Bulgarian + English) | ✓ |
-| AI slop detection with authenticity scoring | ✓ |
-| Source-grounded fact-checking with attribution | ✓ |
-| Autonomous posting with configurable schedules | ✓ |
-| Client approval portal via magic link | ✓ |
-| Weekly social intelligence briefing | ✓ |
-| Dynamic best time recommendations for any niche | ✓ |
-| Internal analytics and white-label PDF reports | ✓ |
-| Solo mode for non-marketing business owners | ✓ |
-| Performance feedback loop improving over time | ✓ |
-| Production deployment on Vercel | ✓ |
-| Full Phase 2 documentation ready | ✓ |
+| Feature                                                | Status |
+| ------------------------------------------------------ | ------ |
+| Full agency SaaS with multi-client management          | ✓      |
+| AI-powered smart onboarding for any niche              | ✓      |
+| Three content types: single · carousel · Reels scripts | ✓      |
+| Three-layer quality validation on every post           | ✓      |
+| Language authenticity system (Bulgarian + English)     | ✓      |
+| AI slop detection with authenticity scoring            | ✓      |
+| Source-grounded fact-checking with attribution         | ✓      |
+| Autonomous posting with configurable schedules         | ✓      |
+| Client approval portal via magic link                  | ✓      |
+| Weekly social intelligence briefing                    | ✓      |
+| Dynamic best time recommendations for any niche        | ✓      |
+| Internal analytics and white-label PDF reports         | ✓      |
+| Solo mode for non-marketing business owners            | ✓      |
+| Performance feedback loop improving over time          | ✓      |
+| Production deployment on Vercel                        | ✓      |
+| Full Phase 2 documentation ready                       | ✓      |
 
 **Next:** Set up Meta Developer App (follow `PHASE2.md`), then implement Stripe billing.
 
 ---
 
-*PostFlow Build Sessions — Phase 1*
-*Use alongside `MASTER_PROMPT.md` and `ARCHITECTURE.md`*
+_PostFlow Build Sessions — Phase 1_
+_Use alongside `MASTER_PROMPT.md` and `ARCHITECTURE.md`_

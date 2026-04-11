@@ -6,10 +6,7 @@ import type { PostValidationResult } from './validate-post'
  * Grounding is applied first (fixes factual errors), then language overwrites
  * (ensures the corrected text is grammatically native).
  */
-export function applyTextCorrections(
-  original: string,
-  validation: PostValidationResult,
-): string {
+export function applyTextCorrections(original: string, validation: PostValidationResult): string {
   let result = original
   if (validation.sourceGrounding?.corrected_text) {
     result = validation.sourceGrounding.corrected_text
@@ -27,7 +24,7 @@ export function applyTextCorrections(
  */
 export function applySlideCorrections<T extends { headline: string; body: string }>(
   slides: T[],
-  correctedSlides: Array<{ headline: string; body: string }> | null | undefined,
+  correctedSlides: Array<{ headline: string; body: string }> | null | undefined
 ): T[] {
   if (!correctedSlides) return slides
   return slides.map((existing, i) => {

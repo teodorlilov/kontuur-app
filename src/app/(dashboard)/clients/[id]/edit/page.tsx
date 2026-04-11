@@ -2,7 +2,11 @@ import { notFound } from 'next/navigation'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { requireSessionUser } from '@/lib/auth/session'
 import { ClientEditForm } from '@/features/clients/components/client-edit-form'
-import { fetchClientById, fetchBrandProfileByClient, fetchPostingScheduleByClient } from '@/lib/queries/db'
+import {
+  fetchClientById,
+  fetchBrandProfileByClient,
+  fetchPostingScheduleByClient,
+} from '@/lib/queries/db'
 
 export default async function EditClientPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -15,27 +19,28 @@ export default async function EditClientPage({ params }: { params: Promise<{ id:
   if (!client) notFound()
 
   // All independent queries in parallel — brand_profiles, schedule, and analytics run concurrently
-  const [profile, schedule, { count: sourceCount }, recentPostsRes, allPostsRes] = await Promise.all([
-    fetchBrandProfileByClient(supabase, id),
-    fetchPostingScheduleByClient(supabase, id),
-    supabase
-      .from('client_sources')
-      .select('*', { count: 'exact', head: true })
-      .eq('client_id', id)
-      .eq('is_active', true),
-    supabase
-      .from('posts')
-      .select('quality_score_avg')
-      .eq('client_id', id)
-      .not('quality_score_avg', 'is', null)
-      .order('created_at', { ascending: false })
-      .limit(20),
-    supabase
-      .from('posts')
-      .select('pillar, status, rewrite_count')
-      .eq('client_id', id)
-      .not('pillar', 'is', null),
-  ])
+  const [profile, schedule, { count: sourceCount }, recentPostsRes, allPostsRes] =
+    await Promise.all([
+      fetchBrandProfileByClient(supabase, id),
+      fetchPostingScheduleByClient(supabase, id),
+      supabase
+        .from('client_sources')
+        .select('*', { count: 'exact', head: true })
+        .eq('client_id', id)
+        .eq('is_active', true),
+      supabase
+        .from('posts')
+        .select('quality_score_avg')
+        .eq('client_id', id)
+        .not('quality_score_avg', 'is', null)
+        .order('created_at', { ascending: false })
+        .limit(20),
+      supabase
+        .from('posts')
+        .select('pillar, status, rewrite_count')
+        .eq('client_id', id)
+        .not('pillar', 'is', null),
+    ])
 
   // Compute content insights server-side
   type ContentInsights = {
@@ -46,19 +51,24 @@ export default async function EditClientPage({ params }: { params: Promise<{ id:
   }
 
   const scores = (recentPostsRes.data as Array<{ quality_score_avg: number }> | null) ?? []
-  const avgScore = scores.length > 0
-    ? Math.round((scores.reduce((s, r) => s + r.quality_score_avg, 0) / scores.length) * 10) / 10
-    : null
+  const avgScore =
+    scores.length > 0
+      ? Math.round((scores.reduce((s, r) => s + r.quality_score_avg, 0) / scores.length) * 10) / 10
+      : null
 
   let trend: ContentInsights['trend'] = 'insufficient_data'
   if (scores.length >= 10) {
     const recentAvg = scores.slice(0, 10).reduce((s, r) => s + r.quality_score_avg, 0) / 10
-    const olderAvg = scores.slice(10).reduce((s, r) => s + r.quality_score_avg, 0) / Math.max(scores.slice(10).length, 1)
+    const olderAvg =
+      scores.slice(10).reduce((s, r) => s + r.quality_score_avg, 0) /
+      Math.max(scores.slice(10).length, 1)
     const diff = recentAvg - olderAvg
     trend = diff > 1 ? 'improving' : diff < -1 ? 'declining' : 'stable'
   }
 
-  const allPostRows = (allPostsRes.data as Array<{ pillar: string; status: string; rewrite_count: number }> | null) ?? []
+  const allPostRows =
+    (allPostsRes.data as Array<{ pillar: string; status: string; rewrite_count: number }> | null) ??
+    []
 
   // Top approved pillars by approval rate
   const pillarApproved = new Map<string, number>()
@@ -93,5 +103,14 @@ export default async function EditClientPage({ params }: { params: Promise<{ id:
       ? { avgScore, trend, topApprovedPillars, topRewritePillars }
       : null
 
-  return <ClientEditForm clientId={id} sourceCount={sourceCount ?? 0} client={client} profile={profile} schedule={schedule} insights={insights} />
+  return (
+    <ClientEditForm
+      clientId={id}
+      sourceCount={sourceCount ?? 0}
+      client={client}
+      profile={profile}
+      schedule={schedule}
+      insights={insights}
+    />
+  )
 }

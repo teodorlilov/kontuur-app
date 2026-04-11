@@ -1,5 +1,6 @@
 /** Paths that are almost never individual content pages */
-const EXCLUDED_PATH_RE = /\/(page|tag|category|author|search|login|register|cart|checkout|wp-admin|feed|rss|sitemap)\b/i
+const EXCLUDED_PATH_RE =
+  /\/(page|tag|category|author|search|login|register|cart|checkout|wp-admin|feed|rss|sitemap)\b/i
 
 /**
  * Extract internal links from Jina-produced markdown.
@@ -16,7 +17,14 @@ export function extractLinks(markdown: string, baseUrl: string): string[] {
 
   while ((match = linkRegex.exec(markdown)) !== null) {
     const href = match[2]!
-    if (!href || href.startsWith('#') || href.startsWith('?') || href.startsWith('mailto:') || href.startsWith('tel:')) continue
+    if (
+      !href ||
+      href.startsWith('#') ||
+      href.startsWith('?') ||
+      href.startsWith('mailto:') ||
+      href.startsWith('tel:')
+    )
+      continue
 
     let resolved: URL
     try {

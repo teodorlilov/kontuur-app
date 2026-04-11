@@ -15,11 +15,11 @@ const sizeStyles: Record<AvatarSize, { width: number; height: number; fontSize: 
 }
 
 const colorStyles: Record<AvatarColor, { background: string; color: string }> = {
-  blue:   { background: '#E6F1FB', color: '#0C447C' },
-  green:  { background: '#EAF3DE', color: '#27500A' },
+  blue: { background: '#E6F1FB', color: '#0C447C' },
+  green: { background: '#EAF3DE', color: '#27500A' },
   purple: { background: '#EEEDFE', color: '#3C3489' },
-  amber:  { background: '#FAEEDA', color: '#633806' },
-  brand:  { background: '#2C3E50', color: '#FFFFFF' },
+  amber: { background: '#FAEEDA', color: '#633806' },
+  brand: { background: '#2C3E50', color: '#FFFFFF' },
 }
 
 const colorKeys: AvatarColor[] = ['blue', 'green', 'purple', 'amber']

@@ -12,9 +12,7 @@ export function SettingsTabs({ agencyMode }: SettingsTabsProps) {
   const pathname = usePathname()
 
   const tabs = [
-    ...(agencyMode === 'agency'
-      ? [{ label: 'Team', href: '/settings/team' }]
-      : []),
+    ...(agencyMode === 'agency' ? [{ label: 'Team', href: '/settings/team' }] : []),
     { label: 'Account', href: '/settings/account' },
   ]
 

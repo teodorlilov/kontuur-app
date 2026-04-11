@@ -76,9 +76,7 @@ export function ReviewPostCard({ post, onApprove, onDelete }: ReviewPostCardProp
   const isReels = post.post_type === 'reels'
   const slides = Array.isArray(slidesJson) ? (slidesJson as CarouselSlide[]) : []
   const reelsData =
-    isReels && slidesJson && !Array.isArray(slidesJson)
-      ? (slidesJson as ReelsScriptData)
-      : null
+    isReels && slidesJson && !Array.isArray(slidesJson) ? (slidesJson as ReelsScriptData) : null
 
   // Run slop detection on first expand
   useEffect(() => {
@@ -123,9 +121,7 @@ export function ReviewPostCard({ post, onApprove, onDelete }: ReviewPostCardProp
       {/* Health warning banner */}
       {post.is_health_niche && (
         <div className="bg-amber-50 border-b border-amber-200 px-5 py-2">
-          <p className="text-xs text-amber-700 font-medium">
-            Health content — review carefully
-          </p>
+          <p className="text-xs text-amber-700 font-medium">Health content — review carefully</p>
         </div>
       )}
 
@@ -148,18 +144,17 @@ export function ReviewPostCard({ post, onApprove, onDelete }: ReviewPostCardProp
           <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
         </svg>
         {post.priority && <Badge variant="priority">Priority</Badge>}
-        {post.pillar && (() => {
-          const pc = getPillarColor(post.pillar)
-          return (
-            <span className={cn('text-xs px-2 py-0.5 rounded-full', pc.bg, pc.text)}>
-              {post.pillar}
-            </span>
-          )
-        })()}
+        {post.pillar &&
+          (() => {
+            const pc = getPillarColor(post.pillar)
+            return (
+              <span className={cn('text-xs px-2 py-0.5 rounded-full', pc.bg, pc.text)}>
+                {post.pillar}
+              </span>
+            )
+          })()}
         <span className="text-xs font-medium text-gray-700">{post.client_name}</span>
-        {post.platform && (
-          <Badge variant="info">{post.platform}</Badge>
-        )}
+        {post.platform && <Badge variant="info">{post.platform}</Badge>}
         <span
           className={cn(
             'text-xs px-2 py-0.5 rounded-full',
@@ -186,9 +181,7 @@ export function ReviewPostCard({ post, onApprove, onDelete }: ReviewPostCardProp
             Score: {post.quality_score_avg}
           </span>
         )}
-        <p className="text-sm text-gray-600 truncate ml-2 flex-1 min-w-0">
-          {caption}
-        </p>
+        <p className="text-sm text-gray-600 truncate ml-2 flex-1 min-w-0">{caption}</p>
       </button>
 
       {/* Expanded content */}
@@ -260,9 +253,7 @@ export function ReviewPostCard({ post, onApprove, onDelete }: ReviewPostCardProp
           )}
 
           {/* Carousel slides */}
-          {isCarousel && slides.length > 0 && (
-            <CarouselSlides slides={slides} />
-          )}
+          {isCarousel && slides.length > 0 && <CarouselSlides slides={slides} />}
 
           {/* Reels script */}
           {isReels && reelsData && <ReelsScript script={reelsData} />}
@@ -278,11 +269,7 @@ export function ReviewPostCard({ post, onApprove, onDelete }: ReviewPostCardProp
 
           {/* Actions */}
           <div className="flex gap-2 pt-1 border-t border-gray-100 flex-wrap">
-            <Button
-              onClick={handleApproveClick}
-              loading={approving}
-              size="sm"
-            >
+            <Button onClick={handleApproveClick} loading={approving} size="sm">
               Approve
             </Button>
             <Button
@@ -308,11 +295,7 @@ export function ReviewPostCard({ post, onApprove, onDelete }: ReviewPostCardProp
                 >
                   Confirm
                 </Button>
-                <Button
-                  onClick={() => setConfirmDelete(false)}
-                  variant="ghost"
-                  size="sm"
-                >
+                <Button onClick={() => setConfirmDelete(false)} variant="ghost" size="sm">
                   Cancel
                 </Button>
               </div>
@@ -333,7 +316,9 @@ export function ReviewPostCard({ post, onApprove, onDelete }: ReviewPostCardProp
       <ScheduleModal
         open={scheduleModal.isOpen}
         onClose={scheduleModal.closeModal}
-        onSchedule={(scheduledAt) => { void handleScheduleDecision(scheduledAt) }}
+        onSchedule={(scheduledAt) => {
+          void handleScheduleDecision(scheduledAt)
+        }}
         bestTimeData={bestTimeData}
         platform={post.platform}
         loading={approving}

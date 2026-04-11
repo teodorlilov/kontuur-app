@@ -34,13 +34,17 @@ calls identically:
 
 ```typescript
 import { buildSourceGroundingSection } from '@/ai/generation/prompts/source-grounding'
-import { buildClientProfile, buildAngleDifferentiationSection } from '@/ai/generation/prompts/prompt-sections'
+import {
+  buildClientProfile,
+  buildAngleDifferentiationSection,
+} from '@/ai/generation/prompts/prompt-sections'
 
 // In buildUserMessage:
 buildClientProfile({ client, platform, targetPillar })
 buildSourceGroundingSection({ sourceExcerpt, sourceUrl, requireSourceGrounding })
-buildAngleDifferentiationSection(input.similarPastThemes ?? [])
-`Today's date: ${new Date().toISOString().split('T')[0]}`
+buildAngleDifferentiationSection(
+  input.similarPastThemes ?? []
+)`Today's date: ${new Date().toISOString().split('T')[0]}`
 ```
 
 In `generate-posts.ts`, the three `process*Result` functions each build an identical `validatePost`
@@ -135,8 +139,9 @@ protected abstract buildTypeSpecificMessage(input: TInput): string
 ```
 
 ### ✓ Step 1 Verification
+
 - [ ] `npx tsc --noEmit` — TypeScript errors expected here (subclasses no longer implement the
-  right method name). These are fixed in Steps 4-6.
+      right method name). These are fixed in Steps 4-6.
 - [ ] `buildTypeSpecificMessage` is abstract in `ContentGenerator`
 - [ ] `buildUserMessage` is no longer abstract
 
@@ -186,6 +191,7 @@ protected buildUserMessage(input: TInput): string {
 ```
 
 ### ✓ Step 2 Verification
+
 - [ ] `npx tsc --noEmit` — still errors from Steps 4-6 not done yet, but no new errors
 - [ ] `buildUserMessage` in base class imports from `prompt-sections` and `source-grounding`
 - [ ] `buildUserMessage` calls `this.buildTypeSpecificMessage(input)` as its last section
@@ -211,6 +217,7 @@ protected getplatform(input: TInput): string {
 ```
 
 ### ✓ Step 3 Verification
+
 - [ ] `npx tsc --noEmit` — no new errors introduced
 - [ ] `getplatform` is `protected` — subclasses can override
 
@@ -233,7 +240,6 @@ import { ContentGenerator } from './base-generator'
 import type { GeneratePostInput } from './types'
 
 export class PostGenerator extends ContentGenerator<GeneratePostInput, string[]> {
-
   protected buildTypeSpecificMessage(input: GeneratePostInput): string {
     return `PLANNING STEP — complete before writing:
 Review the ALLOWED OPENERS and ALLOWED STRUCTURES above.
@@ -247,15 +253,20 @@ Separate multiple posts with ---.`
 
   protected parseResponse(message: Message): string[] {
     const text = message.content[0]?.type === 'text' ? message.content[0].text : ''
-    return text.split('---').map(p => p.trim()).filter(Boolean).map(stripPlanningPrefix)
+    return text
+      .split('---')
+      .map((p) => p.trim())
+      .filter(Boolean)
+      .map(stripPlanningPrefix)
   }
 }
 ```
 
 ### ✓ Step 4 Verification
+
 - [ ] `npx tsc --noEmit` — no errors for this file
 - [ ] No imports of `buildClientProfile`, `buildSourceGroundingSection`,
-  `buildAngleDifferentiationSection`
+      `buildAngleDifferentiationSection`
 - [ ] `buildTypeSpecificMessage` contains only the planning step + theme directive
 - [ ] File is under 25 lines
 
@@ -286,7 +297,6 @@ import { ContentGenerator } from './base-generator'
 import type { GenerateCarouselInput, CarouselResult } from './types'
 
 export class CarouselGenerator extends ContentGenerator<GenerateCarouselInput, CarouselResult> {
-
   protected getplatform(): string {
     return 'Instagram'
   }
@@ -346,9 +356,10 @@ Return JSON only:
 ```
 
 ### ✓ Step 5 Verification
+
 - [ ] `npx tsc --noEmit` — no errors
 - [ ] No imports of `buildClientProfile`, `buildSourceGroundingSection`,
-  `buildAngleDifferentiationSection`
+      `buildAngleDifferentiationSection`
 - [ ] `buildCarouselRules` private method removed — content is inline
 - [ ] `getplatform` overridden to return `'Instagram'`
 - [ ] File is under 60 lines
@@ -370,7 +381,6 @@ import { ContentGenerator } from './base-generator'
 import type { BaseGenerateInput, ReelsResult } from './types'
 
 export class ReelsGenerator extends ContentGenerator<BaseGenerateInput, ReelsResult> {
-
   protected getplatform(): string {
     return 'Instagram'
   }
@@ -410,6 +420,7 @@ Return JSON only:
 ```
 
 ### ✓ Step 6 Verification
+
 - [ ] `npx tsc --noEmit` — no errors
 - [ ] `ReelsGenerator` accepts `BaseGenerateInput` not `GenerateReelsInput`
 - [ ] No imports of shared prompt builders
@@ -433,6 +444,7 @@ Update `generator-factory.ts` if it references `GenerateReelsInput` in type anno
 Update `buildGeneratorInput` in `generate-posts.ts` if it casts to `GenerateReelsInput`.
 
 ### ✓ Step 7 Verification
+
 - [ ] `npx tsc --noEmit` — no errors
 - [ ] `grep -r "GenerateReelsInput" src/` — returns nothing
 
@@ -447,6 +459,7 @@ npm run build
 ```
 
 ### Line count audit
+
 ```bash
 wc -l src/features/ai/generation/post-generator.ts      # target: <25
 wc -l src/features/ai/generation/carousel-generator.ts  # target: <60
@@ -454,6 +467,7 @@ wc -l src/features/ai/generation/reels-generator.ts     # target: <40
 ```
 
 ### Import audit — shared builders now only in base class
+
 ```bash
 grep -r "buildClientProfile" src/features/ai/generation/ | grep -v "base-generator\|prompt-sections"
 # Expected: nothing — only base-generator.ts should call buildClientProfile
@@ -466,11 +480,12 @@ grep -r "buildAngleDifferentiationSection" src/features/ai/generation/ | grep -v
 ```
 
 ### Functional verification
+
 - [ ] Generate a single post — correct output, planning prefix stripped
 - [ ] Generate a carousel — correct slide count, JSON parsed
 - [ ] Generate a reels — correct JSON structure, script-writing system prompt used
 - [ ] All three receive client profile, source grounding, angle differentiation (check rendered
-  prompt by logging `userMessage` in base class temporarily)
+      prompt by logging `userMessage` in base class temporarily)
 
 ---
 
@@ -508,6 +523,7 @@ async function runValidation(
 Do not change the three process functions yet — that is Steps 10-12.
 
 ### ✓ Step 9 Verification
+
 - [ ] `npx tsc --noEmit` — no errors
 - [ ] `runValidation` is a function inside `generatePosts` scope
 - [ ] Three process functions unchanged — still call `validatePost` directly
@@ -535,17 +551,21 @@ async function processCarouselResult(theme: ThemeWithMeta, result: CarouselResul
   })
 
   void ctx.trackTheme(theme, 1)
-  pushEntry(validation, buildPostEntry(theme, {
-    caption: applyTextCorrections(result.main_caption, validation),
-    post_type: 'carousel',
-    slides_json: applySlideCorrections(result.slides, validation.language.corrected_slides),
-    carousel_quality_json: validation.quality,
-    quality_score_avg: validation.qualityScore,
-  }))
+  pushEntry(
+    validation,
+    buildPostEntry(theme, {
+      caption: applyTextCorrections(result.main_caption, validation),
+      post_type: 'carousel',
+      slides_json: applySlideCorrections(result.slides, validation.language.corrected_slides),
+      carousel_quality_json: validation.quality,
+      quality_score_avg: validation.qualityScore,
+    })
+  )
 }
 ```
 
 ### ✓ Step 10 Verification
+
 - [ ] `npx tsc --noEmit` — no errors
 - [ ] `processCarouselResult` does not call `validatePost` directly — uses `runValidation`
 - [ ] Slide count warning is present
@@ -563,12 +583,15 @@ async function processReelsResult(theme: ThemeWithMeta, result: ReelsResult) {
   const validation = await runValidation(scriptText, theme, { label: 'reels' })
 
   void ctx.trackTheme(theme, 1)
-  pushEntry(validation, buildPostEntry(theme, {
-    caption: applyTextCorrections(scriptText, validation),
-    post_type: 'reels',
-    slides_json: result,
-    quality_score_avg: validation.qualityScore,
-  }))
+  pushEntry(
+    validation,
+    buildPostEntry(theme, {
+      caption: applyTextCorrections(scriptText, validation),
+      post_type: 'reels',
+      slides_json: result,
+      quality_score_avg: validation.qualityScore,
+    })
+  )
 }
 ```
 
@@ -576,6 +599,7 @@ Note: reels quality validation fix (language-only) is in Phase 3 Step 15. This s
 shared `runValidation` helper — no behaviour change yet.
 
 ### ✓ Step 11 Verification
+
 - [ ] `npx tsc --noEmit` — no errors
 - [ ] Script assembled with `join('\n')` not string interpolation
 
@@ -591,12 +615,15 @@ async function processSingleResult(theme: ThemeWithMeta, captions: string[]) {
 
   for (const caption of captions) {
     const validation = await runValidation(caption, theme, { label: 'single' })
-    pushEntry(validation, buildPostEntry(theme, {
-      caption: applyTextCorrections(caption, validation),
-      post_type: 'single',
-      slides_json: null,
-      quality_score_avg: validation.qualityScore,
-    }))
+    pushEntry(
+      validation,
+      buildPostEntry(theme, {
+        caption: applyTextCorrections(caption, validation),
+        post_type: 'single',
+        slides_json: null,
+        quality_score_avg: validation.qualityScore,
+      })
+    )
   }
 }
 ```
@@ -604,6 +631,7 @@ async function processSingleResult(theme: ThemeWithMeta, captions: string[]) {
 Note: parallelizing this loop is Phase 3 Step 14 — keep sequential here, one change at a time.
 
 ### ✓ Step 12 Verification
+
 - [ ] `npx tsc --noEmit` — no errors
 - [ ] `processSingleResult` uses `runValidation`
 - [ ] All three process functions no longer call `validatePost` directly
@@ -647,12 +675,15 @@ async function processSingleResult(theme: ThemeWithMeta, captions: string[]) {
   await Promise.all(
     captions.map(async (caption) => {
       const validation = await runValidation(caption, theme, { label: 'single' })
-      pushEntry(validation, buildPostEntry(theme, {
-        caption: applyTextCorrections(caption, validation),
-        post_type: 'single',
-        slides_json: null,
-        quality_score_avg: validation.qualityScore,
-      }))
+      pushEntry(
+        validation,
+        buildPostEntry(theme, {
+          caption: applyTextCorrections(caption, validation),
+          post_type: 'single',
+          slides_json: null,
+          quality_score_avg: validation.qualityScore,
+        })
+      )
     })
   )
 }
@@ -673,18 +704,22 @@ const entries = await Promise.all(
   })
 )
 entries.forEach(({ validation, caption }) =>
-  pushEntry(validation, buildPostEntry(theme, {
-    caption,
-    post_type: 'single',
-    slides_json: null,
-    quality_score_avg: validation.qualityScore,
-  }))
+  pushEntry(
+    validation,
+    buildPostEntry(theme, {
+      caption,
+      post_type: 'single',
+      slides_json: null,
+      quality_score_avg: validation.qualityScore,
+    })
+  )
 )
 ```
 
 Use the second pattern if output order within a theme matters.
 
 ### ✓ Step 14 Verification
+
 - [ ] `npx tsc --noEmit` — no errors
 - [ ] Generate 3 captions for a single theme — all 3 validated concurrently (check log timestamps)
 - [ ] All 3 posts appear in output
@@ -712,16 +747,15 @@ async function processReelsResult(theme: ThemeWithMeta, result: ReelsResult) {
 
   // Language validation is meaningful for reels — checks anglicisms, calques, formality
   // Quality validation is not — post-specific metrics do not apply to spoken scripts
-  const langResult = await validateLanguage(
-    { text: scriptText },
-    ctx.client.languageConfig,
-  ).catch(() => ({
-    passes: true,
-    language_score: 10,
-    issues: [],
-    corrected_text: null,
-    corrected_slides: null,
-  }))
+  const langResult = await validateLanguage({ text: scriptText }, ctx.client.languageConfig).catch(
+    () => ({
+      passes: true,
+      language_score: 10,
+      issues: [],
+      corrected_text: null,
+      corrected_slides: null,
+    })
+  )
 
   const defaultQuality = createDefaultQuality('single')
   const slop = deriveSlopFromQuality(defaultQuality)
@@ -733,7 +767,7 @@ async function processReelsResult(theme: ThemeWithMeta, result: ReelsResult) {
       caption: langResult.corrected_text ?? scriptText,
       post_type: 'reels',
       slides_json: result,
-      quality_score_avg: 0,   // intentional — not meaningful for reels
+      quality_score_avg: 0, // intentional — not meaningful for reels
     }),
     quality: defaultQuality,
     language: langResult,
@@ -747,6 +781,7 @@ than a score. Add a note in the database row or a separate `validation_skipped` 
 to distinguish this case.
 
 ### ✓ Step 15 Verification
+
 - [ ] `npx tsc --noEmit` — no errors
 - [ ] Generate a reels — `quality_score_avg` is 0 in the database row
 - [ ] Language corrections still applied (corrected_text used if present)
@@ -816,22 +851,24 @@ async function processSingleResult(theme: ThemeWithMeta, captions: string[]) {
 
   // Sort by score descending, filter by floor, keep only as many as originally requested
   const qualified = results
-    .filter(r => r.score >= QUALITY_FLOOR)
+    .filter((r) => r.score >= QUALITY_FLOOR)
     .sort((a, b) => b.score - a.score)
     .slice(0, requested)
 
   // Fall back to best available if all fail the floor
-  const toKeep = qualified.length > 0
-    ? qualified
-    : results.sort((a, b) => b.score - a.score).slice(0, requested)
+  const toKeep =
+    qualified.length > 0 ? qualified : results.sort((a, b) => b.score - a.score).slice(0, requested)
 
   toKeep.forEach(({ validation, caption }) =>
-    pushEntry(validation, buildPostEntry(theme, {
-      caption,
-      post_type: 'single',
-      slides_json: null,
-      quality_score_avg: validation.qualityScore,
-    }))
+    pushEntry(
+      validation,
+      buildPostEntry(theme, {
+        caption,
+        post_type: 'single',
+        slides_json: null,
+        quality_score_avg: validation.qualityScore,
+      })
+    )
   )
 }
 ```
@@ -841,6 +878,7 @@ poor source material), returning nothing is worse than returning the best availa
 ensures the agency always gets at least one post per theme.
 
 ### ✓ Step 16 Verification
+
 - [ ] `npx tsc --noEmit` — no errors
 - [ ] `OVER_REQUEST_MULTIPLIER` and `QUALITY_FLOOR` exported from constants
 - [ ] For `count: 2`, generator receives `count: 3` (ceil(2 × 1.5))
@@ -859,19 +897,23 @@ npm run build
 ```
 
 ### Performance check
+
 - [ ] Generate 3 captions for a single theme — faster than sequential (check log timestamps)
 - [ ] Total generation time for 5-theme batch is reduced
 
 ### Quality floor check
+
 - [ ] Set `QUALITY_FLOOR = 9` temporarily — confirm most posts are filtered and fallback kicks in
 - [ ] Restore `QUALITY_FLOOR = 5`
 
 ### Reels check
+
 - [ ] Generate a reels post — `quality_score_avg` is 0
 - [ ] Language corrections present if any anglicisms detected
 - [ ] No quality validation errors in logs for reels
 
 ### Functional end-to-end
+
 - [ ] Single post generation — correct output
 - [ ] Carousel generation — slide count correct, corrections applied
 - [ ] Reels generation — script assembled, language-only validation
@@ -1000,18 +1042,18 @@ ls src/features/ai/generation/prompts/
 Search-and-replace each function name. Do one rename at a time, verify tsc passes, then do the
 next. The table shows all names that change and why.
 
-| Old name | New name | Reason |
-|---|---|---|
-| `generatePosts` | `runGenerationBatch` | the exported function runs a batch, not just posts |
-| `processTheme` | `generateForTheme` | "process" is vague — it generates content for a theme |
-| `buildGeneratorInput` | `buildThemeInput` | builds input from a theme, not a generic generator input |
-| `buildSourceContext` | `buildGroundingContext` | matches "source grounding" naming used everywhere |
-| `buildPostEntry` | `buildDraftRecord` | it builds a database record for a draft post |
-| `pushEntry` | `collectResult` | "push" is an implementation detail, "collect" describes the intent |
-| `runValidation` | `validateContent` | what it does — validates content |
-| `processCarouselResult` | `collectCarousel` | parallel to collectResult, consistent pattern |
-| `processReelsResult` | `collectReels` | consistent |
-| `processSingleResult` | `collectSinglePosts` | plural because it handles multiple captions |
+| Old name                | New name                | Reason                                                             |
+| ----------------------- | ----------------------- | ------------------------------------------------------------------ |
+| `generatePosts`         | `runGenerationBatch`    | the exported function runs a batch, not just posts                 |
+| `processTheme`          | `generateForTheme`      | "process" is vague — it generates content for a theme              |
+| `buildGeneratorInput`   | `buildThemeInput`       | builds input from a theme, not a generic generator input           |
+| `buildSourceContext`    | `buildGroundingContext` | matches "source grounding" naming used everywhere                  |
+| `buildPostEntry`        | `buildDraftRecord`      | it builds a database record for a draft post                       |
+| `pushEntry`             | `collectResult`         | "push" is an implementation detail, "collect" describes the intent |
+| `runValidation`         | `validateContent`       | what it does — validates content                                   |
+| `processCarouselResult` | `collectCarousel`       | parallel to collectResult, consistent pattern                      |
+| `processReelsResult`    | `collectReels`          | consistent                                                         |
+| `processSingleResult`   | `collectSinglePosts`    | plural because it handles multiple captions                        |
 
 After renaming `generatePosts` → `runGenerationBatch`, update the import in the API route:
 
@@ -1045,11 +1087,11 @@ grep -r "generatePosts\|processTheme\|buildGeneratorInput\|buildSourceContext\|b
 
 ### 20a — content-generator.ts (was base-generator.ts)
 
-| Old name | New name | Reason |
-|---|---|---|
+| Old name                   | New name         | Reason                                                             |
+| -------------------------- | ---------------- | ------------------------------------------------------------------ |
 | `buildTypeSpecificMessage` | `buildDirective` | it builds the model's content-type directive — shorter and precise |
-| `getplatform` | `getPlatform` | capitalise P — consistent with TypeScript conventions |
-| `callApi` | `callAnthropic` | specific — there is only one API being called |
+| `getplatform`              | `getPlatform`    | capitalise P — consistent with TypeScript conventions              |
+| `callApi`                  | `callAnthropic`  | specific — there is only one API being called                      |
 
 Update all subclass overrides (`post-generator.ts`, `carousel-generator.ts`, `reels-generator.ts`)
 to use the new method names. Find them with:
@@ -1060,16 +1102,16 @@ grep -r "buildTypeSpecificMessage\|getplatform\|callApi" src/features/ai/generat
 
 ### 20b — client-profile.ts (was prompt-sections.ts)
 
-| Old name | New name | Reason |
-|---|---|---|
+| Old name                           | New name                    | Reason                                                                              |
+| ---------------------------------- | --------------------------- | ----------------------------------------------------------------------------------- |
 | `buildAngleDifferentiationSection` | `buildAngleVariationPrompt` | "prompt" consistent with other builders, "variation" clearer than "differentiation" |
-| `buildLanguageRulesSection` | `buildLanguagePrompt` | consistent pattern |
-| `buildBrandVoiceSection` | `buildBrandVoicePrompt` | consistent pattern |
+| `buildLanguageRulesSection`        | `buildLanguagePrompt`       | consistent pattern                                                                  |
+| `buildBrandVoiceSection`           | `buildBrandVoicePrompt`     | consistent pattern                                                                  |
 
 ### 20c — source-grounding.ts
 
-| Old name | New name | Reason |
-|---|---|---|
+| Old name                      | New name               | Reason                                         |
+| ----------------------------- | ---------------------- | ---------------------------------------------- |
 | `buildSourceGroundingSection` | `buildGroundingPrompt` | consistent with other prompt builders, shorter |
 
 Update all call sites for all renamed functions:
@@ -1099,16 +1141,17 @@ grep -r "buildTypeSpecificMessage\|getplatform\b\|\.callApi" src/features/ai/gen
 
 > **Files:** `features/ai/generation/types.ts` and all consumers.
 
-| Old name | New name | Reason |
-|---|---|---|
-| `GeneratePostsContext` | `GenerationRunContext` | context for a full generation run across all content types |
-| `ThemeWithMeta` | `EnrichedTheme` | "with meta" is vague — "enriched" signals it has been augmented |
-| `BaseGenerateInput` | `GenerationInput` | "Base" is an OOP term that leaks implementation detail |
-| `GeneratedPostEntry` | `GenerationResult` | one result from the generation pipeline |
-| `GeneratePostInput` | `SinglePostInput` | matches `CarouselInput`, `ReelsInput` for consistency |
-| `GenerateCarouselInput` | `CarouselInput` | removes redundant "Generate" prefix |
+| Old name                | New name               | Reason                                                          |
+| ----------------------- | ---------------------- | --------------------------------------------------------------- |
+| `GeneratePostsContext`  | `GenerationRunContext` | context for a full generation run across all content types      |
+| `ThemeWithMeta`         | `EnrichedTheme`        | "with meta" is vague — "enriched" signals it has been augmented |
+| `BaseGenerateInput`     | `GenerationInput`      | "Base" is an OOP term that leaks implementation detail          |
+| `GeneratedPostEntry`    | `GenerationResult`     | one result from the generation pipeline                         |
+| `GeneratePostInput`     | `SinglePostInput`      | matches `CarouselInput`, `ReelsInput` for consistency           |
+| `GenerateCarouselInput` | `CarouselInput`        | removes redundant "Generate" prefix                             |
 
 **Do not rename:**
+
 - `CarouselResult` — matches what the LLM returns
 - `ReelsResult` — matches what the LLM returns
 - `CarouselSlide` — domain term, widely understood
@@ -1218,7 +1261,7 @@ export interface DraftPost {
   status: 'draft'
   priority: boolean
   topic_summary: string
-  slides_json: unknown       // JSONB — typed at point of use, not here
+  slides_json: unknown // JSONB — typed at point of use, not here
   carousel_quality_json: unknown
   quality_score_avg: number
   source_url: string | null
@@ -1230,7 +1273,7 @@ export interface DraftPost {
 }
 
 export interface GenerationResult {
-  post: DraftPost            // was Record<string, unknown>
+  post: DraftPost // was Record<string, unknown>
   quality: QualityResult
   language: LanguageValidationResult
   slop: SlopDetection
@@ -1249,7 +1292,7 @@ function buildDraftRecord(
     slides_json: unknown
     carousel_quality_json?: unknown
     quality_score_avg: number
-  },
+  }
 ): DraftPost {
   return {
     id: randomUUID(),
@@ -1276,6 +1319,7 @@ type is `Json` or `unknown` anyway. Keep the construction-time type simple and l
 when they need the specific shape.
 
 ### ✓ Step 23 Verification
+
 - [ ] `npx tsc --noEmit` — no errors
 - [ ] `buildDraftRecord` return type is `DraftPost`
 - [ ] `GenerationResult.post` is `DraftPost`
@@ -1313,9 +1357,9 @@ export interface GenerationInput {
   requireSourceGrounding?: boolean
   similarPastThemes?: string[]
   // Post-type-specific — present only when the generator needs them
-  platform?: string       // single posts
-  count?: number          // single posts
-  slideCount?: number     // carousel
+  platform?: string // single posts
+  count?: number // single posts
+  slideCount?: number // carousel
 }
 ```
 
@@ -1341,7 +1385,7 @@ function buildThemeInput(c: GenerationRunContext, theme: Theme): GenerationInput
   if (c.postType === 'carousel') {
     return { ...base, slideCount: c.slideCount }
   }
-  return base   // reels
+  return base // reels
 }
 ```
 
@@ -1383,6 +1427,7 @@ protected buildDirective(input: GenerationInput): string {
 **Remove `SinglePostInput` and `CarouselInput` from `types.ts`** — they are no longer referenced.
 
 ### ✓ Step 24 Verification
+
 - [ ] `npx tsc --noEmit` — no errors
 - [ ] `SinglePostInput`, `CarouselInput` not in codebase
 - [ ] `grep -r "SinglePostInput\|CarouselInput" src/` — nothing
@@ -1403,7 +1448,7 @@ export interface GenerationRunContext {
   client: ClientContext
   platform: string
   postType: PostType
-  slideCount?: number          // optional — only meaningful for carousel
+  slideCount?: number // optional — only meaningful for carousel
   requireSourceGrounding: boolean
   themes: Theme[]
   priorityPosts: PriorityPost[]
@@ -1417,7 +1462,9 @@ In `collectCarousel`, use a safe fallback if `slideCount` is somehow absent:
 async function collectCarousel(theme: Theme, result: CarouselResult) {
   const expectedSlides = ctx.slideCount ?? result.slides.length
   if (result.slides.length !== expectedSlides) {
-    console.warn(`[generate] carousel "${theme.description}": got ${result.slides.length} slides, expected ${expectedSlides}`)
+    console.warn(
+      `[generate] carousel "${theme.description}": got ${result.slides.length} slides, expected ${expectedSlides}`
+    )
   }
   // ...
 }
@@ -1427,6 +1474,7 @@ The route handler passes `slideCount` when `postType === 'carousel'` — this is
 by the UI that sends the request. No discriminated union needed for one optional field.
 
 ### ✓ Step 25 Verification
+
 - [ ] `npx tsc --noEmit` — no errors
 - [ ] `GenerationRunContext` is a single flat interface
 - [ ] `slideCount` is optional
@@ -1461,7 +1509,7 @@ export interface Theme {
   targetDate?: string
   // Populated during enrichment — undefined before runGenerationBatch enriches themes
   similarPastThemes?: string[]
-  groundingText?: string        // resolved from sourceFullText ?? sourceExcerpt
+  groundingText?: string // resolved from sourceFullText ?? sourceExcerpt
 }
 ```
 
@@ -1470,7 +1518,7 @@ export interface Theme {
 
 ```typescript
 const allThemes: Theme[] = [
-  ...(ctx.priorityPosts ?? []).map(pp => ({
+  ...(ctx.priorityPosts ?? []).map((pp) => ({
     description: pp.title,
     count: 1,
     isPriority: true as const,
@@ -1478,14 +1526,14 @@ const allThemes: Theme[] = [
     targetDate: pp.targetDate,
   })),
   ...(ctx.themes ?? []),
-].map(theme => ({
+].map((theme) => ({
   ...theme,
   groundingText: theme.sourceFullText || theme.sourceExcerpt || undefined,
   similarPastThemes: ctx.client.postHistory
-    .filter(topic =>
-      Deduplicator.ngramSimilarity(
-        theme.description, topic, ctx.client.languageConfig.language
-      ) > ANGLE_SIMILARITY_THRESHOLD
+    .filter(
+      (topic) =>
+        Deduplicator.ngramSimilarity(theme.description, topic, ctx.client.languageConfig.language) >
+        ANGLE_SIMILARITY_THRESHOLD
     )
     .slice(0, 3),
 }))
@@ -1496,6 +1544,7 @@ const allThemes: Theme[] = [
 **Update `GenerationRunContext.trackTheme`** — was `(theme: EnrichedTheme, ...)`, now `(theme: Theme, ...)`.
 
 ### ✓ Step 26 Verification
+
 - [ ] `npx tsc --noEmit` — no errors
 - [ ] `EnrichedTheme` not in codebase
 - [ ] `grep -r "EnrichedTheme" src/` — nothing
@@ -1510,8 +1559,12 @@ const allThemes: Theme[] = [
 `QualityResult` is a discriminated union where both variants have identical fields:
 
 ```typescript
-interface SingleQualityResult extends QualityBase { kind: 'single' }
-interface CarouselQualityResult extends QualityBase { kind: 'carousel' }
+interface SingleQualityResult extends QualityBase {
+  kind: 'single'
+}
+interface CarouselQualityResult extends QualityBase {
+  kind: 'carousel'
+}
 type QualityResult = SingleQualityResult | CarouselQualityResult
 ```
 
@@ -1528,7 +1581,7 @@ grep -r "quality\.kind\|\.kind === 'carousel'\|\.kind === 'single'\|QualityResul
 
 ```typescript
 export interface QualityResult extends QualityBase {
-  kind: 'single' | 'carousel'   // kept for potential UI display use
+  kind: 'single' | 'carousel' // kept for potential UI display use
 }
 ```
 
@@ -1547,9 +1600,10 @@ types.
 remove the union — use the flat interface with `kind: 'single' | 'carousel'`.
 
 ### ✓ Step 27 Verification
+
 - [ ] `npx tsc --noEmit` — no errors
 - [ ] Decision documented in a comment in `scoring.ts`: either "kept because narrowed at X" or
-  "collapsed — kind used for display only"
+      "collapsed — kind used for display only"
 - [ ] `SingleQualityResult` and `CarouselQualityResult` removed if union collapsed
 
 ---
@@ -1584,6 +1638,7 @@ which structures the model picks, add temporary logging in `collectCarousel` rat
 it permanently in every carousel record.
 
 ### ✓ Step 28 Verification
+
 - [ ] `npx tsc --noEmit` — no errors
 - [ ] `CarouselResult` has no `chosen_structure` or `chosen_opener` fields
 - [ ] The carousel prompt JSON format does not include those keys
@@ -1604,7 +1659,7 @@ it permanently in every carousel record.
 import type { PostType } from '@/types/api'
 
 export interface GenerationRunContext {
-  postType: PostType    // imported canonical type
+  postType: PostType // imported canonical type
   // ...
 }
 ```
@@ -1618,6 +1673,7 @@ grep -r "PostType" src/ --include="*.ts"
 ```
 
 ### ✓ Step 29 Verification
+
 - [ ] `npx tsc --noEmit` — no errors
 - [ ] `PostType` defined exactly once
 - [ ] `grep -rn "^export type PostType\|^type PostType" src/` — exactly 1 result
@@ -1653,6 +1709,7 @@ grep -r "Record<string, unknown>" src/features/ai/generation/   # nothing
 ```
 
 ### Functional verification
+
 - [ ] Generate a single post — `GenerationResult.post` is typed as `DraftPost`
 - [ ] Generate a carousel — correct slide count, `buildDraftRecord` receives typed overrides
 - [ ] Generate a reels — language-only validation, `quality_score_avg: 0`
@@ -1665,59 +1722,59 @@ grep -r "Record<string, unknown>" src/features/ai/generation/   # nothing
 
 ### Phase 1 — Base Class Refactor
 
-| Concern | Before | After |
-|---|---|---|
-| Shared prompt builders | Imported and called in all 3 generators | Base class only |
-| `buildUserMessage` | Each generator implements fully | Base class concrete method |
-| `buildTypeSpecificMessage` | Did not exist | Abstract — each generator implements |
-| `getplatform()` | Hardcoded `'Instagram'` in carousel/reels | Overridable hook |
-| `GenerateReelsInput` | Empty interface extending `BaseGenerateInput` | Removed |
-| `post-generator.ts` | ~48 lines | ~22 lines |
-| `carousel-generator.ts` | ~90 lines | ~57 lines |
-| `reels-generator.ts` | ~67 lines | ~37 lines |
+| Concern                    | Before                                        | After                                |
+| -------------------------- | --------------------------------------------- | ------------------------------------ |
+| Shared prompt builders     | Imported and called in all 3 generators       | Base class only                      |
+| `buildUserMessage`         | Each generator implements fully               | Base class concrete method           |
+| `buildTypeSpecificMessage` | Did not exist                                 | Abstract — each generator implements |
+| `getplatform()`            | Hardcoded `'Instagram'` in carousel/reels     | Overridable hook                     |
+| `GenerateReelsInput`       | Empty interface extending `BaseGenerateInput` | Removed                              |
+| `post-generator.ts`        | ~48 lines                                     | ~22 lines                            |
+| `carousel-generator.ts`    | ~90 lines                                     | ~57 lines                            |
+| `reels-generator.ts`       | ~67 lines                                     | ~37 lines                            |
 
 ### Phase 2 — generate-posts.ts Cleanup
 
-| Concern | Before | After |
-|---|---|---|
-| `validatePost` call | Repeated in all 3 process functions | `validateContent` helper — once |
-| Process functions | Mix of validation setup + business logic | Business logic only |
+| Concern             | Before                                   | After                           |
+| ------------------- | ---------------------------------------- | ------------------------------- |
+| `validatePost` call | Repeated in all 3 process functions      | `validateContent` helper — once |
+| Process functions   | Mix of validation setup + business logic | Business logic only             |
 
 ### Phase 3 — Flow Optimizations
 
-| Concern | Before | After |
-|---|---|---|
-| Caption validation | Sequential — 3 captions × 4s = 12s | Parallel — 4s |
-| Reels validation | Post metrics on a script | Language-only — correct metrics |
-| Quality floor | All posts enter review queue | Posts below `QUALITY_FLOOR` discarded |
-| Over-request | Exact count generated | 1.5× generated, best kept |
+| Concern            | Before                             | After                                 |
+| ------------------ | ---------------------------------- | ------------------------------------- |
+| Caption validation | Sequential — 3 captions × 4s = 12s | Parallel — 4s                         |
+| Reels validation   | Post metrics on a script           | Language-only — correct metrics       |
+| Quality floor      | All posts enter review queue       | Posts below `QUALITY_FLOOR` discarded |
+| Over-request       | Exact count generated              | 1.5× generated, best kept             |
 
 ### Phase 4 — Naming & Structure
 
-| Concern | Before | After |
-|---|---|---|
-| Generator files | Flat in `generation/` | Grouped in `generation/generators/` |
-| `base-generator.ts` | Generic name | `content-generator.ts` — matches class name |
-| `generate-posts.ts` | Implies posts only | `generation-run.ts` — all content types |
-| `prompt-sections.ts` | Implementation detail | `client-profile.ts` — describes purpose |
-| All function names | Mixed intent/impl naming | Intent-based — see rename table |
-| All type names | Prefixed with "Generate" | Concise — see rename table |
+| Concern              | Before                   | After                                       |
+| -------------------- | ------------------------ | ------------------------------------------- |
+| Generator files      | Flat in `generation/`    | Grouped in `generation/generators/`         |
+| `base-generator.ts`  | Generic name             | `content-generator.ts` — matches class name |
+| `generate-posts.ts`  | Implies posts only       | `generation-run.ts` — all content types     |
+| `prompt-sections.ts` | Implementation detail    | `client-profile.ts` — describes purpose     |
+| All function names   | Mixed intent/impl naming | Intent-based — see rename table             |
+| All type names       | Prefixed with "Generate" | Concise — see rename table                  |
 
 ### Phase 5 — Type Simplification
 
-| Concern | Before | After |
-|---|---|---|
-| `GenerationResult.post` | `Record<string, unknown>` | `DraftPost` — fully typed |
-| `slides_json` type | `CarouselSlide[] \| ReelsResult \| null` | `unknown` — matches DB reality |
-| Generator input types | 3-level hierarchy for 3 extra fields | `GenerationInput` flat — one type |
-| `GenerationRunContext` | Inline union for `postType` | `PostType` imported from canonical source |
-| `slideCount` | Would need discriminated union | Optional field — simpler, same safety |
-| `Theme` / `EnrichedTheme` | Two types, implicit conversion | One `Theme` with optional enrichment fields |
-| `QualityResult` | Discriminated union (if `kind` unused) | Flat interface with `kind` field |
-| `chosen_structure/opener` | Requested by prompt, silently dropped | Removed from prompt — never wasted tokens |
-| `PostType` | Defined in two places | One definition in `types/api.ts`, imported elsewhere |
+| Concern                   | Before                                   | After                                                |
+| ------------------------- | ---------------------------------------- | ---------------------------------------------------- |
+| `GenerationResult.post`   | `Record<string, unknown>`                | `DraftPost` — fully typed                            |
+| `slides_json` type        | `CarouselSlide[] \| ReelsResult \| null` | `unknown` — matches DB reality                       |
+| Generator input types     | 3-level hierarchy for 3 extra fields     | `GenerationInput` flat — one type                    |
+| `GenerationRunContext`    | Inline union for `postType`              | `PostType` imported from canonical source            |
+| `slideCount`              | Would need discriminated union           | Optional field — simpler, same safety                |
+| `Theme` / `EnrichedTheme` | Two types, implicit conversion           | One `Theme` with optional enrichment fields          |
+| `QualityResult`           | Discriminated union (if `kind` unused)   | Flat interface with `kind` field                     |
+| `chosen_structure/opener` | Requested by prompt, silently dropped    | Removed from prompt — never wasted tokens            |
+| `PostType`                | Defined in two places                    | One definition in `types/api.ts`, imported elsewhere |
 
 ---
 
-*PostFlow — Generation Flow Refactoring & Optimization*
-*Implement phase by phase. `npx tsc --noEmit` after every step.*
+_PostFlow — Generation Flow Refactoring & Optimization_
+_Implement phase by phase. `npx tsc --noEmit` after every step._

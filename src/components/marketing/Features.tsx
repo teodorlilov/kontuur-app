@@ -6,7 +6,7 @@ const features = [
   {
     icon: Sparkles,
     title: 'AI content generation',
-    body: 'Generate posts from your client\'s website and documents. On-brand Instagram content in Bulgarian or English — single images, carousels, and Reels scripts.',
+    body: "Generate posts from your client's website and documents. On-brand Instagram content in Bulgarian or English — single images, carousels, and Reels scripts.",
   },
   {
     icon: CheckSquare,
@@ -82,10 +82,24 @@ export function Features() {
               }}
             >
               <f.icon size={32} color="var(--color-brand-accent)" style={{ marginBottom: 20 }} />
-              <h3 style={{ fontSize: 16, fontWeight: 500, marginBottom: 10, color: 'var(--color-text-1)' }}>
+              <h3
+                style={{
+                  fontSize: 16,
+                  fontWeight: 500,
+                  marginBottom: 10,
+                  color: 'var(--color-text-1)',
+                }}
+              >
                 {f.title}
               </h3>
-              <p style={{ fontSize: 13.5, color: 'var(--color-text-2)', lineHeight: 1.65, margin: 0 }}>
+              <p
+                style={{
+                  fontSize: 13.5,
+                  color: 'var(--color-text-2)',
+                  lineHeight: 1.65,
+                  margin: 0,
+                }}
+              >
                 {f.body}
               </p>
             </div>

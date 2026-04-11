@@ -9,10 +9,7 @@ import { buildGroundingPrompt } from '@/ai/generation/prompts/source-grounding'
 import { todayDateString, formatHistory } from '@/ai/utils/prompt-helpers'
 import type { GenerationInput } from '../types'
 
-export abstract class ContentGenerator<
-  TInput extends GenerationInput,
-  TOutput
-> {
+export abstract class ContentGenerator<TInput extends GenerationInput, TOutput> {
   /**
    * The single public entry point.
    * Orchestrates: system prompt → user message → API call → parse.
@@ -77,9 +74,7 @@ export abstract class ContentGenerator<
     const today = `Today's date: ${todayDateString()}`
     const directive = this.buildDirective(input)
 
-    return [profile, source, history, angleDiff, today, directive]
-      .filter(Boolean)
-      .join('\n\n')
+    return [profile, source, history, angleDiff, today, directive].filter(Boolean).join('\n\n')
   }
 
   /**
@@ -99,7 +94,6 @@ export abstract class ContentGenerator<
    * Private — subclasses never call this directly.
    */
   private async callAnthropic(systemPrompt: string, userMessage: string): Promise<Message> {
-
     const result = await callAnthropic({ systemPrompt, userMessage })
     return result
   }

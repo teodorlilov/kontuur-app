@@ -37,25 +37,33 @@ export function Button({
       style={{
         fontFamily: 'var(--font-sans)',
         lineHeight: 1,
-        ...(variant === 'primary' ? {
-          background: 'var(--color-brand)',
-          color: 'var(--color-text-inv)',
-        } : variant === 'secondary' ? {
-          background: 'transparent',
-          color: 'var(--color-text-1)',
-          borderColor: 'var(--color-border-2)',
-          borderWidth: '0.5px',
-          borderStyle: 'solid',
-        } : variant === 'ghost' ? {
-          background: 'transparent',
-          color: 'var(--color-text-2)',
-        } : variant === 'danger' ? {
-          background: 'transparent',
-          color: 'var(--color-error-fg)',
-          borderColor: 'var(--color-error-bg)',
-          borderWidth: '0.5px',
-          borderStyle: 'solid',
-        } : {}),
+        ...(variant === 'primary'
+          ? {
+              background: 'var(--color-brand)',
+              color: 'var(--color-text-inv)',
+            }
+          : variant === 'secondary'
+            ? {
+                background: 'transparent',
+                color: 'var(--color-text-1)',
+                borderColor: 'var(--color-border-2)',
+                borderWidth: '0.5px',
+                borderStyle: 'solid',
+              }
+            : variant === 'ghost'
+              ? {
+                  background: 'transparent',
+                  color: 'var(--color-text-2)',
+                }
+              : variant === 'danger'
+                ? {
+                    background: 'transparent',
+                    color: 'var(--color-error-fg)',
+                    borderColor: 'var(--color-error-bg)',
+                    borderWidth: '0.5px',
+                    borderStyle: 'solid',
+                  }
+                : {}),
       }}
       onMouseEnter={(e) => {
         const el = e.currentTarget
@@ -96,8 +104,19 @@ export function Button({
           fill="none"
           viewBox="0 0 24 24"
         >
-          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+          <circle
+            className="opacity-25"
+            cx="12"
+            cy="12"
+            r="10"
+            stroke="currentColor"
+            strokeWidth="4"
+          />
+          <path
+            className="opacity-75"
+            fill="currentColor"
+            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+          />
         </svg>
       )}
       {children}

@@ -41,7 +41,9 @@ function ScoreBar({ label, score }: { label: string; score: number }) {
           style={{ width: `${score * 10}%` }}
         />
       </div>
-      <span className={cn('text-xs font-semibold w-6 text-right', scoreTextColor(score))}>{score}</span>
+      <span className={cn('text-xs font-semibold w-6 text-right', scoreTextColor(score))}>
+        {score}
+      </span>
     </div>
   )
 }
@@ -76,13 +78,22 @@ export function QualityScores({
 }: QualityScoresProps) {
   const brandChecks: Array<{ label: string; check: BrandCheck }> = []
   if (brandVoiceMatch !== undefined) {
-    brandChecks.push({ label: 'Brand Voice', check: { passed: brandVoiceMatch, detail: brandVoiceDeviation ?? null } })
+    brandChecks.push({
+      label: 'Brand Voice',
+      check: { passed: brandVoiceMatch, detail: brandVoiceDeviation ?? null },
+    })
   }
   if (audienceTargeting !== undefined) {
-    brandChecks.push({ label: 'Audience', check: { passed: audienceTargeting, detail: audienceGap ?? null } })
+    brandChecks.push({
+      label: 'Audience',
+      check: { passed: audienceTargeting, detail: audienceGap ?? null },
+    })
   }
   if (nicheSpecificity !== undefined) {
-    brandChecks.push({ label: 'Niche', check: { passed: nicheSpecificity, detail: nicheGap ?? null } })
+    brandChecks.push({
+      label: 'Niche',
+      check: { passed: nicheSpecificity, detail: nicheGap ?? null },
+    })
   }
 
   // Build criteria failure list when score is low
@@ -92,7 +103,10 @@ export function QualityScores({
       criteriaFailures.push({ label: 'Structure', detail: 'Predictable/formulaic structure' })
     }
     if (criteriaDetails.formalityConsistent === false) {
-      criteriaFailures.push({ label: 'Formality', detail: criteriaDetails.formalityViolation ?? 'Inconsistent register' })
+      criteriaFailures.push({
+        label: 'Formality',
+        detail: criteriaDetails.formalityViolation ?? 'Inconsistent register',
+      })
     }
     if (criteriaDetails.sourceFidelityOk === false) {
       criteriaFailures.push({ label: 'Source', detail: 'Facts not grounded in source' })
@@ -126,7 +140,11 @@ export function QualityScores({
       {criteriaFailures.length > 0 && (
         <div className="flex flex-col gap-1 pt-1 border-t border-gray-100">
           {criteriaFailures.map((cf) => (
-            <BrandCheckRow key={cf.label} label={cf.label} check={{ passed: false, detail: cf.detail }} />
+            <BrandCheckRow
+              key={cf.label}
+              label={cf.label}
+              check={{ passed: false, detail: cf.detail }}
+            />
           ))}
         </div>
       )}

@@ -36,7 +36,12 @@ export async function POST(request: Request) {
     .eq('agency_id', agencyId)
     .single()
 
-  const clientData = rawClientData as { id: string; name: string; niche: string | null; language: string } | null
+  const clientData = rawClientData as {
+    id: string
+    name: string
+    niche: string | null
+    language: string
+  } | null
   if (!clientData) return NextResponse.json({ error: 'Client not found' }, { status: 404 })
 
   const { data: rawProfile } = await supabase

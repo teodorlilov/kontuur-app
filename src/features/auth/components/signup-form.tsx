@@ -80,7 +80,7 @@ export function SignupForm() {
     })
 
     if (!res.ok) {
-      const data = await res.json() as { error?: string }
+      const data = (await res.json()) as { error?: string }
       toast.error(data.error ?? 'Failed to set up account')
       setLoading(false)
       return
@@ -101,7 +101,10 @@ export function SignupForm() {
           <p className="text-sm text-gray-500 mt-1">14-day free trial, no card required</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="bg-white rounded-xl border border-gray-200 p-6 flex flex-col gap-4">
+        <form
+          onSubmit={handleSubmit}
+          className="bg-white rounded-xl border border-gray-200 p-6 flex flex-col gap-4"
+        >
           <Input
             label="Business name"
             type="text"
@@ -133,18 +136,20 @@ export function SignupForm() {
           <div className="flex flex-col gap-2">
             <p className="text-sm font-medium text-gray-700">How will you use kontuur?</p>
             <div className="flex flex-col gap-2">
-              {([
-                {
-                  value: 'agency' as Mode,
-                  label: 'I manage social media for clients',
-                  sub: 'Agency mode — manage multiple clients',
-                },
-                {
-                  value: 'solo' as Mode,
-                  label: 'I manage my own business socials',
-                  sub: 'Solo mode — simplified for one brand',
-                },
-              ] as const).map((opt) => (
+              {(
+                [
+                  {
+                    value: 'agency' as Mode,
+                    label: 'I manage social media for clients',
+                    sub: 'Agency mode — manage multiple clients',
+                  },
+                  {
+                    value: 'solo' as Mode,
+                    label: 'I manage my own business socials',
+                    sub: 'Solo mode — simplified for one brand',
+                  },
+                ] as const
+              ).map((opt) => (
                 <button
                   key={opt.value}
                   type="button"

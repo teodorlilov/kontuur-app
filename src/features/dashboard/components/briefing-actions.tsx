@@ -54,9 +54,7 @@ export function BriefingActions() {
           {fetchingTip ? 'Getting tip…' : tip ? 'Hide tip' : 'Get a tip'}
         </button>
       </div>
-      {tip && (
-        <p className="text-sm text-gray-700 bg-gray-50 rounded-lg px-3 py-2">{tip}</p>
-      )}
+      {tip && <p className="text-sm text-gray-700 bg-gray-50 rounded-lg px-3 py-2">{tip}</p>}
     </div>
   )
 }

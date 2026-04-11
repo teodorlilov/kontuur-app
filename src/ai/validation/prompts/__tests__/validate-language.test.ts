@@ -24,13 +24,15 @@ function makeLanguageConfig(overrides: Partial<LanguageConfig> = {}): LanguageCo
 
 describe('validateLanguage', () => {
   it('returns passing result for clean text', async () => {
-    mockClaudeResponse(JSON.stringify({
-      issues: [],
-      corrected_text: null,
-    }))
+    mockClaudeResponse(
+      JSON.stringify({
+        issues: [],
+        corrected_text: null,
+      })
+    )
     const result = await validateLanguage(
       { text: 'Чудесен ден за разходка.' },
-      makeLanguageConfig({ formality: 'casual' }),
+      makeLanguageConfig({ formality: 'casual' })
     )
     expect(result.passes).toBe(true)
     expect(result.language_score).toBe(10)
@@ -39,26 +41,28 @@ describe('validateLanguage', () => {
   })
 
   it('returns issues with corrections', async () => {
-    mockClaudeResponse(JSON.stringify({
-      issues: [
-        {
-          type: 'anglicism',
-          original_text: 'тренд',
-          issue_description: 'English loanword used unnecessarily',
-          suggested_fix: 'тенденция',
-        },
-        {
-          type: 'calque',
-          original_text: 'направи разлика',
-          issue_description: 'Calque from "make a difference"',
-          suggested_fix: 'повлияй',
-        },
-      ],
-      corrected_text: 'Следвайте новите тенденции и повлияйте на живота си.',
-    }))
+    mockClaudeResponse(
+      JSON.stringify({
+        issues: [
+          {
+            type: 'anglicism',
+            original_text: 'тренд',
+            issue_description: 'English loanword used unnecessarily',
+            suggested_fix: 'тенденция',
+          },
+          {
+            type: 'calque',
+            original_text: 'направи разлика',
+            issue_description: 'Calque from "make a difference"',
+            suggested_fix: 'повлияй',
+          },
+        ],
+        corrected_text: 'Следвайте новите тенденции и повлияйте на живота си.',
+      })
+    )
     const result = await validateLanguage(
       { text: 'Следвайте новите тренд и направете разлика.' },
-      makeLanguageConfig(),
+      makeLanguageConfig()
     )
     expect(result.passes).toBe(false)
     // anglicism (1.0) + calque (1.5) = 2.5 penalty → score = round(10 - 2.5) = 8
@@ -71,13 +75,15 @@ describe('validateLanguage', () => {
 
   it('includes language and formality in the prompt', async () => {
     const { callAnthropic } = await import('@/utils/__mocks__/ai-client')
-    mockClaudeResponse(JSON.stringify({
-      issues: [],
-      corrected_text: null,
-    }))
+    mockClaudeResponse(
+      JSON.stringify({
+        issues: [],
+        corrected_text: null,
+      })
+    )
     await validateLanguage(
       { text: 'Test text' },
-      makeLanguageConfig({ language: 'Spanish', formality: 'formal' }),
+      makeLanguageConfig({ language: 'Spanish', formality: 'formal' })
     )
 
     const callArgs = callAnthropic.mock.calls[0]![0]
@@ -90,7 +96,7 @@ describe('validateLanguage', () => {
     mockClaudeResponse('```json\n{"issues":[],"corrected_text":null}\n```')
     const result = await validateLanguage(
       { text: 'Text' },
-      makeLanguageConfig({ language: 'English', formality: 'casual' }),
+      makeLanguageConfig({ language: 'English', formality: 'casual' })
     )
     expect(result.passes).toBe(true)
     expect(result.language_score).toBe(10)
@@ -98,15 +104,17 @@ describe('validateLanguage', () => {
 
   it('includes language instructions in the system prompt when provided', async () => {
     const { callAnthropic } = await import('@/utils/__mocks__/ai-client')
-    mockClaudeResponse(JSON.stringify({
-      issues: [],
-      corrected_text: null,
-    }))
+    mockClaudeResponse(
+      JSON.stringify({
+        issues: [],
+        corrected_text: null,
+      })
+    )
     await validateLanguage(
       { text: 'Test text' },
       makeLanguageConfig({
         languageInstructions: 'Avoid English loanwords. Use native Bulgarian equivalents.',
-      }),
+      })
     )
 
     const callArgs = callAnthropic.mock.calls[0]![0]
@@ -117,15 +125,18 @@ describe('validateLanguage', () => {
 
   it('includes language-specific checks when languageInstructions provided', async () => {
     const { callAnthropic } = await import('@/utils/__mocks__/ai-client')
-    mockClaudeResponse(JSON.stringify({
-      issues: [],
-      corrected_text: null,
-    }))
+    mockClaudeResponse(
+      JSON.stringify({
+        issues: [],
+        corrected_text: null,
+      })
+    )
     await validateLanguage(
       { text: 'Test text' },
       makeLanguageConfig({
-        languageInstructions: 'BULGARIAN-SPECIFIC: Check that sounds translated from English are flagged.',
-      }),
+        languageInstructions:
+          'BULGARIAN-SPECIFIC: Check that sounds translated from English are flagged.',
+      })
     )
 
     const callArgs = callAnthropic.mock.calls[0]![0]
@@ -136,15 +147,17 @@ describe('validateLanguage', () => {
 
   it('includes client language notes in the system prompt', async () => {
     const { callAnthropic } = await import('@/utils/__mocks__/ai-client')
-    mockClaudeResponse(JSON.stringify({
-      issues: [],
-      corrected_text: null,
-    }))
+    mockClaudeResponse(
+      JSON.stringify({
+        issues: [],
+        corrected_text: null,
+      })
+    )
     await validateLanguage(
       { text: 'Test text' },
       makeLanguageConfig({
         languageNotes: 'Always use програма not план',
-      }),
+      })
     )
 
     const callArgs = callAnthropic.mock.calls[0]![0]
@@ -154,13 +167,15 @@ describe('validateLanguage', () => {
 
   it('does not include language instructions when empty', async () => {
     const { callAnthropic } = await import('@/utils/__mocks__/ai-client')
-    mockClaudeResponse(JSON.stringify({
-      issues: [],
-      corrected_text: null,
-    }))
+    mockClaudeResponse(
+      JSON.stringify({
+        issues: [],
+        corrected_text: null,
+      })
+    )
     await validateLanguage(
       { text: 'Test text' },
-      makeLanguageConfig({ language: 'English', languageInstructions: '' }),
+      makeLanguageConfig({ language: 'English', languageInstructions: '' })
     )
 
     const callArgs = callAnthropic.mock.calls[0]![0]

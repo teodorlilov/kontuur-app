@@ -3,7 +3,11 @@
  * Shared by both generation and validation — generation uses "follow these rules",
  * validation uses "flag violations of these rules."
  */
-import type { LanguageConfig, FormalityExample, NeutralFormalityExample } from '@/lib/clients/language-rules'
+import type {
+  LanguageConfig,
+  FormalityExample,
+  NeutralFormalityExample,
+} from '@/lib/clients/language-rules'
 
 function isFormalityExample(e: FormalityExample | NeutralFormalityExample): e is FormalityExample {
   return 'bad' in e && 'good' in e
@@ -34,16 +38,15 @@ export function formatFormalityRules(config: LanguageConfig | null): string {
     return `LANGUAGE REGISTER: Use ${formality} register consistently.`
   }
 
-  const rulesBlock = register.rules
-    .map((r: string, i: number) => `${i + 1}. ${r}`)
-    .join('\n')
+  const rulesBlock = register.rules.map((r: string, i: number) => `${i + 1}. ${r}`).join('\n')
 
   const langKey = language.toLowerCase()
   const langExamples = register.examples[langKey] ?? register.examples['general'] ?? []
 
-  const examplesBlock = langExamples.length > 0
-    ? `\n\n${formality.toUpperCase()} REGISTER — EXAMPLES:\n${langExamples.map(formatExample).join('\n\n')}`
-    : ''
+  const examplesBlock =
+    langExamples.length > 0
+      ? `\n\n${formality.toUpperCase()} REGISTER — EXAMPLES:\n${langExamples.map(formatExample).join('\n\n')}`
+      : ''
 
   return `LANGUAGE REGISTER (${formality.toUpperCase()}):\n${rulesBlock}${examplesBlock}`
 }

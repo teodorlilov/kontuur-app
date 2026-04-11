@@ -49,7 +49,15 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   )
 }
 
-function NavLink({ item, pathname, onClose }: { item: NavItem; pathname: string; onClose?: () => void }) {
+function NavLink({
+  item,
+  pathname,
+  onClose,
+}: {
+  item: NavItem
+  pathname: string
+  onClose?: () => void
+}) {
   const active = pathname === item.href || pathname.startsWith(item.href + '/')
   return (
     <Link
@@ -100,7 +108,15 @@ function NavLink({ item, pathname, onClose }: { item: NavItem; pathname: string;
   )
 }
 
-function NavLinks({ items, pathname, onClose }: { items: NavItem[]; pathname: string; onClose?: () => void }) {
+function NavLinks({
+  items,
+  pathname,
+  onClose,
+}: {
+  items: NavItem[]
+  pathname: string
+  onClose?: () => void
+}) {
   return (
     <nav style={{ flex: 1 }}>
       <SectionLabel>Workspace</SectionLabel>
@@ -120,7 +136,12 @@ export function Sidebar({ agencyMode, pendingCount = 0 }: SidebarProps) {
     { label: 'Dashboard', href: '/dashboard', icon: <LayoutDashboard size={16} /> },
     { label: 'Clients', href: '/clients', icon: <Users size={16} /> },
     { label: 'Generate posts', href: '/generate', icon: <Sparkles size={16} /> },
-    { label: 'Review queue', href: '/review', icon: <ClipboardList size={16} />, badge: pendingCount },
+    {
+      label: 'Review queue',
+      href: '/review',
+      icon: <ClipboardList size={16} />,
+      badge: pendingCount,
+    },
     { label: 'Calendar', href: '/calendar', icon: <Calendar size={16} /> },
     { label: 'Analytics', href: '/analytics', icon: <BarChart2 size={16} /> },
   ]
@@ -234,7 +255,12 @@ export function Sidebar({ agencyMode, pendingCount = 0 }: SidebarProps) {
             <button
               onClick={() => setMobileOpen(false)}
               className="absolute top-4 right-4"
-              style={{ color: 'var(--sidebar-text)', background: 'none', border: 'none', cursor: 'pointer' }}
+              style={{
+                color: 'var(--sidebar-text)',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+              }}
               aria-label="Close menu"
             >
               <X size={16} />

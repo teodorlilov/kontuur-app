@@ -5,7 +5,6 @@ import type { CarouselInput, CarouselResult } from '../types'
 import { sanitizePromptField } from '@/ai/utils/sanitize'
 
 export class CarouselGenerator extends ContentGenerator<CarouselInput, CarouselResult> {
-
   protected buildDirective(input: CarouselInput): string {
     const swipeCues = input.client.languageConfig.carouselSwipeCues
 

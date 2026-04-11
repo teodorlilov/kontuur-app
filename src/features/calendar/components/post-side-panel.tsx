@@ -18,7 +18,14 @@ interface PostSidePanelProps {
   saving: boolean
 }
 
-export function PostSidePanel({ post, onClose, onSave, onUnschedule, bestTimeData, saving }: PostSidePanelProps) {
+export function PostSidePanel({
+  post,
+  onClose,
+  onSave,
+  onUnschedule,
+  bestTimeData,
+  saving,
+}: PostSidePanelProps) {
   const [selectedDate, setSelectedDate] = useState('')
   const [selectedTime, setSelectedTime] = useState('')
   const [selectedPlatform, setSelectedPlatform] = useState('')
@@ -75,19 +82,25 @@ export function PostSidePanel({ post, onClose, onSave, onUnschedule, bestTimeDat
           {/* Post meta */}
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-xs font-medium text-gray-700">{post.client_name}</span>
-            <span className={cn(
-              'text-xs px-2 py-0.5 rounded-full',
-              post.status === 'scheduled' ? 'bg-blue-50 text-blue-700' : 'bg-green-50 text-green-700'
-            )}>
+            <span
+              className={cn(
+                'text-xs px-2 py-0.5 rounded-full',
+                post.status === 'scheduled'
+                  ? 'bg-blue-50 text-blue-700'
+                  : 'bg-green-50 text-green-700'
+              )}
+            >
               {post.status === 'scheduled' ? 'Scheduled' : 'Approved'}
             </span>
             {post.approval_status && (
-              <span className={cn(
-                'text-xs px-2 py-0.5 rounded-full',
-                post.approval_status === 'pending' && 'bg-amber-50 text-amber-700',
-                post.approval_status === 'approved' && 'bg-green-50 text-green-700',
-                post.approval_status === 'changes_requested' && 'bg-red-50 text-red-700'
-              )}>
+              <span
+                className={cn(
+                  'text-xs px-2 py-0.5 rounded-full',
+                  post.approval_status === 'pending' && 'bg-amber-50 text-amber-700',
+                  post.approval_status === 'approved' && 'bg-green-50 text-green-700',
+                  post.approval_status === 'changes_requested' && 'bg-red-50 text-red-700'
+                )}
+              >
                 {post.approval_status === 'pending'
                   ? 'Awaiting client approval'
                   : post.approval_status === 'approved'
@@ -161,7 +174,9 @@ export function PostSidePanel({ post, onClose, onSave, onUnschedule, bestTimeDat
           {/* Date + Time pickers */}
           <div className="flex gap-3">
             <div className="flex flex-col gap-1.5 flex-1">
-              <label htmlFor="panel-date" className="text-xs font-medium text-gray-600">Date</label>
+              <label htmlFor="panel-date" className="text-xs font-medium text-gray-600">
+                Date
+              </label>
               <input
                 id="panel-date"
                 type="date"
@@ -172,7 +187,9 @@ export function PostSidePanel({ post, onClose, onSave, onUnschedule, bestTimeDat
               />
             </div>
             <div className="flex flex-col gap-1.5 flex-1">
-              <label htmlFor="panel-time" className="text-xs font-medium text-gray-600">Time</label>
+              <label htmlFor="panel-time" className="text-xs font-medium text-gray-600">
+                Time
+              </label>
               <input
                 id="panel-time"
                 type="time"

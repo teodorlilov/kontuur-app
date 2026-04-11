@@ -1,9 +1,9 @@
 export const CHART_COLORS = {
-  primary:   '#4A6FA5',
+  primary: '#4A6FA5',
   secondary: '#1D9E75',
-  tertiary:  '#BA7517',
-  grid:      '#EAE8E3',
-  label:     '#9C9890',
+  tertiary: '#BA7517',
+  grid: '#EAE8E3',
+  label: '#9C9890',
 }
 
 export const CHART_AXIS_PROPS = {

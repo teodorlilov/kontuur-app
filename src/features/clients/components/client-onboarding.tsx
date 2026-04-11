@@ -58,7 +58,7 @@ interface OnboardProfile {
 const QUESTIONS: Question[] = [
   {
     id: 'q0',
-    text: 'What\'s the name of this client or business?',
+    text: "What's the name of this client or business?",
     chips: [],
   },
   {
@@ -191,9 +191,7 @@ export function ClientOnboarding() {
     'url-input' | 'analyzing' | 'interview' | 'generating' | 'review'
   >('url-input')
   const [currentQ, setCurrentQ] = useState(0)
-  const [messages, setMessages] = useState<Message[]>([
-    { role: 'ai', text: QUESTIONS[0]!.text },
-  ])
+  const [messages, setMessages] = useState<Message[]>([{ role: 'ai', text: QUESTIONS[0]!.text }])
   const [answers, setAnswers] = useState<Record<string, string>>({})
   const [input, setInput] = useState('')
   const [profile, setProfile] = useState<OnboardProfile | null>(null)
@@ -283,10 +281,7 @@ export function ClientOnboarding() {
 
       setMessages([...newMessages, { role: 'ai', text: questionText }])
     } else {
-      setMessages([
-        ...newMessages,
-        { role: 'ai', text: 'Building your client profile...' },
-      ])
+      setMessages([...newMessages, { role: 'ai', text: 'Building your client profile...' }])
       setStage('generating')
       generateProfile(newAnswers)
     }
@@ -432,7 +427,9 @@ export function ClientOnboarding() {
 
           <div className="space-y-3">
             <Button
-              onClick={() => { void handleAnalyzeUrl() }}
+              onClick={() => {
+                void handleAnalyzeUrl()
+              }}
               className="w-full"
               disabled={!websiteUrl.trim() && !instagramHandle.trim()}
             >
@@ -472,9 +469,7 @@ export function ClientOnboarding() {
   if (stage === 'interview' || stage === 'generating') {
     const currentQuestion = QUESTIONS[currentQ]
     const isMultiSelect = currentQuestion?.multiSelect
-    const detected = currentQuestion
-      ? getDetectedAnswer(currentQuestion.id, analysisData)
-      : null
+    const detected = currentQuestion ? getDetectedAnswer(currentQuestion.id, analysisData) : null
 
     return (
       <InterviewStage
@@ -583,7 +578,9 @@ function InterviewStage({
             />
           </div>
           {analysisData && (
-            <p className="text-xs text-[#534AB7] mt-2">Auto-detected answers shown — confirm or type your own</p>
+            <p className="text-xs text-[#534AB7] mt-2">
+              Auto-detected answers shown — confirm or type your own
+            </p>
           )}
         </div>
       </div>
@@ -594,10 +591,7 @@ function InterviewStage({
           {messages.map((msg, i) => (
             <div
               key={i}
-              className={cn(
-                'flex gap-3',
-                msg.role === 'user' ? 'justify-end' : 'justify-start'
-              )}
+              className={cn('flex gap-3', msg.role === 'user' ? 'justify-end' : 'justify-start')}
             >
               {msg.role === 'ai' && (
                 <div className="h-8 w-8 rounded-lg bg-[#534AB7] flex items-center justify-center shrink-0 mt-0.5">
@@ -709,11 +703,7 @@ function InterviewStage({
                   Continue
                 </Button>
               ) : (
-                <Button
-                  onClick={() => submitAnswer(input)}
-                  disabled={!input.trim()}
-                  size="sm"
-                >
+                <Button onClick={() => submitAnswer(input)} disabled={!input.trim()} size="sm">
                   Send
                 </Button>
               )}
@@ -758,9 +748,7 @@ function ReviewSection({
   return (
     <div className="border-b border-gray-100 py-4 last:border-0">
       <div className="flex items-center justify-between mb-2">
-        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
-          {label}
-        </p>
+        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">{label}</p>
         {!isEditing && (
           <button
             type="button"
@@ -792,11 +780,7 @@ function ReviewSection({
             >
               Save
             </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => setEditSection(null)}
-            >
+            <Button size="sm" variant="ghost" onClick={() => setEditSection(null)}>
               Cancel
             </Button>
           </div>
@@ -870,9 +854,7 @@ function ReviewStage({
     <div className="flex flex-col h-screen bg-gray-50">
       <div className="shrink-0 bg-white border-b border-gray-200 px-4 py-3">
         <div className="max-w-2xl mx-auto flex items-center justify-between">
-          <p className="text-sm font-medium text-gray-700">
-            Review client profile
-          </p>
+          <p className="text-sm font-medium text-gray-700">Review client profile</p>
           <button
             type="button"
             onClick={handleRedo}
@@ -906,12 +888,10 @@ function ReviewStage({
           {/* Health niche warning */}
           {profile.is_health_niche && (
             <div className="bg-amber-50 border border-amber-200 rounded-xl px-5 py-4">
-              <p className="text-sm font-medium text-amber-800">
-                Health-related client detected
-              </p>
+              <p className="text-sm font-medium text-amber-800">Health-related client detected</p>
               <p className="text-xs text-amber-700 mt-1">
-                All generated posts will include medical safety instructions.
-                Human review is mandatory before any post is published.
+                All generated posts will include medical safety instructions. Human review is
+                mandatory before any post is published.
               </p>
             </div>
           )}
@@ -924,11 +904,7 @@ function ReviewStage({
                 sectionKey="niche"
                 editSection={editSection}
                 setEditSection={setEditSection}
-                editValue={
-                  editSection === 'niche'
-                    ? editValue || profile.niche
-                    : editValue
-                }
+                editValue={editSection === 'niche' ? editValue || profile.niche : editValue}
                 setEditValue={setEditValue}
                 onSave={handleFieldSave}
               >
@@ -985,11 +961,7 @@ function ReviewStage({
                 sectionKey="tone"
                 editSection={editSection}
                 setEditSection={setEditSection}
-                editValue={
-                  editSection === 'tone'
-                    ? editValue || profile.tone
-                    : editValue
-                }
+                editValue={editSection === 'tone' ? editValue || profile.tone : editValue}
                 setEditValue={setEditValue}
                 onSave={handleFieldSave}
               >
@@ -1002,9 +974,7 @@ function ReviewStage({
                 editSection={editSection}
                 setEditSection={setEditSection}
                 editValue={
-                  editSection === 'avoid_topics'
-                    ? editValue || profile.avoid_topics
-                    : editValue
+                  editSection === 'avoid_topics' ? editValue || profile.avoid_topics : editValue
                 }
                 setEditValue={setEditValue}
                 onSave={handleFieldSave}
@@ -1044,9 +1014,7 @@ function ReviewStage({
             )}
             <PillarEditor
               pillars={profile.content_pillars}
-              onChange={(pillars) =>
-                setProfile({ ...profile, content_pillars: pillars })
-              }
+              onChange={(pillars) => setProfile({ ...profile, content_pillars: pillars })}
             />
           </div>
 
@@ -1131,11 +1099,7 @@ function ReviewStage({
       {/* Footer */}
       <div className="shrink-0 bg-white border-t border-gray-200 px-4 py-4">
         <div className="max-w-2xl mx-auto flex gap-3">
-          <Button
-            onClick={handleSave}
-            loading={saving}
-            className="flex-1"
-          >
+          <Button onClick={handleSave} loading={saving} className="flex-1">
             Confirm and save client
           </Button>
           <Button variant="ghost" onClick={handleRedo} disabled={saving}>

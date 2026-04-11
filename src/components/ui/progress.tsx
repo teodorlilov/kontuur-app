@@ -1,7 +1,7 @@
 type ProgressVariant = 'default' | 'success' | 'warning' | 'error'
 
 interface ProgressProps {
-  value: number  // 0–100
+  value: number // 0–100
   variant?: ProgressVariant
   className?: string
 }
@@ -10,7 +10,7 @@ const fillColors: Record<ProgressVariant, string> = {
   default: 'var(--color-brand-accent)',
   success: '#1D9E75',
   warning: '#BA7517',
-  error:   '#E24B4A',
+  error: '#E24B4A',
 }
 
 export function Progress({ value, variant = 'default', className }: ProgressProps) {

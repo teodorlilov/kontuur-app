@@ -30,10 +30,10 @@ Before and after each step, log the token counts from the API response to confir
 ```typescript
 // Add to callAnthropic in content-generator.ts temporarily
 console.log('[tokens]', {
-  input:          message.usage.input_tokens,
-  output:         message.usage.output_tokens,
+  input: message.usage.input_tokens,
+  output: message.usage.output_tokens,
   cache_creation: message.usage.cache_creation_input_tokens ?? 0,
-  cache_read:     message.usage.cache_read_input_tokens ?? 0,
+  cache_read: message.usage.cache_read_input_tokens ?? 0,
 })
 ```
 
@@ -83,6 +83,7 @@ model what good openers look like. The per-call section needs to convey the allo
 re-teach the concept.
 
 **Current output per opener (~150 tokens each):**
+
 ```
 (a) professional_observation: Open with a specific observation from clinical or professional
 practice — something the expert notices that clients often miss. Framed as knowledge, not
@@ -91,6 +92,7 @@ outcome]." NOT: "Many people struggle with X" (too generic).
 ```
 
 **Target output per opener (~35 tokens each):**
+
 ```
 (a) PROFESSIONAL OBSERVATION
     A specific clinical insight clients typically miss.
@@ -98,6 +100,7 @@ outcome]." NOT: "Many people struggle with X" (too generic).
 ```
 
 The compression rules:
+
 - Title in CAPS — scannable
 - One sentence of description — what it is, not how to do it
 - One example cue — the pattern, not a counter-example
@@ -115,9 +118,11 @@ export function formatAllowedOpeners(config?: LanguageConfig | null): string {
     .map((e, i) => {
       const label = String.fromCharCode(97 + i)
       // Compressed format — title + one-line description + cue only
-      return `   (${label}) ${e.id.toUpperCase().replace(/_/g, ' ')}\n` +
-             `       ${e.shortDescription ?? e.description.split('.')[0]}.\n` +
-             `       Cue: ${e.exampleCue ?? e.content}`
+      return (
+        `   (${label}) ${e.id.toUpperCase().replace(/_/g, ' ')}\n` +
+        `       ${e.shortDescription ?? e.description.split('.')[0]}.\n` +
+        `       Cue: ${e.exampleCue ?? e.content}`
+      )
     })
     .join('\n')
 }
@@ -143,6 +148,7 @@ function extractExampleCue(content: string): string {
 ```
 
 ### ✓ Step 1 Verification
+
 - [ ] `npx tsc --noEmit` — no errors
 - [ ] Log token counts before and after — input tokens reduced by ~400-450 per call
 - [ ] Generate a single post — opener types still present in rendered prompt
@@ -161,8 +167,8 @@ A character cap further limits runaway costs from unusually verbose history entr
 ```typescript
 // In buildClientProfile or buildUserMessage where postHistory is assembled:
 
-const HISTORY_ENTRY_LIMIT = 10          // max recent entries — was PROMPT_HISTORY_LIMIT
-const HISTORY_CHAR_CAP = 400            // hard character cap on the joined string
+const HISTORY_ENTRY_LIMIT = 10 // max recent entries — was PROMPT_HISTORY_LIMIT
+const HISTORY_CHAR_CAP = 400 // hard character cap on the joined string
 
 const historyText = input.client.postHistory
   .slice(0, HISTORY_ENTRY_LIMIT)
@@ -175,13 +181,14 @@ const historySection = historyText
 ```
 
 The wording change ("do not repeat angles from" vs "do not repeat") is also an improvement — the
-model should avoid the *angle*, not refuse the topic entirely. A post about hydration can be written
+model should avoid the _angle_, not refuse the topic entirely. A post about hydration can be written
 from a new angle even if a previous post covered hydration.
 
 **Add `HISTORY_ENTRY_LIMIT` and `HISTORY_CHAR_CAP` to `features/ai/constants.ts`** alongside the
 existing `PROMPT_HISTORY_LIMIT`. Remove `PROMPT_HISTORY_LIMIT` if it is only used for this purpose.
 
 ### ✓ Step 2 Verification
+
 - [ ] `npx tsc --noEmit` — no errors
 - [ ] Log token counts — input tokens reduced by ~300-475 per call
 - [ ] Clients with short history (< 10 entries) — behaviour unchanged
@@ -214,7 +221,7 @@ higher than 1500 tokens (~6000 characters), reduce it:
 
 ```typescript
 // lib/sources/cap-source-text.ts
-const MAX_SOURCE_CHARS = 6000   // ~1500 tokens
+const MAX_SOURCE_CHARS = 6000 // ~1500 tokens
 
 export function capSourceText(text: string | undefined): string | undefined {
   if (!text) return undefined
@@ -255,9 +262,10 @@ ${capped}
 **Add `MAX_SOURCE_CHARS` to `features/ai/constants.ts`** and import it in `cap-source-text.ts`.
 
 ### ✓ Step 3 Verification
+
 - [ ] `npx tsc --noEmit` — no errors
 - [ ] Log token counts for a call with source material — input tokens reduced by
-  `(original_source_length - 6000_chars) / 4` tokens
+      `(original_source_length - 6000_chars) / 4` tokens
 - [ ] `[Source truncated]` marker appears in rendered prompt when source is long
 - [ ] Generated post still cites facts correctly — cap is at a sensible boundary
 
@@ -338,6 +346,7 @@ starts generating content immediately without preamble, which occasionally elimi
 `"Here is the JSON:"` prefix that breaks `parseJsonResponse`.
 
 ### ✓ Step 4 Verification
+
 - [ ] `npx tsc --noEmit` — no errors
 - [ ] Generate a carousel — response parses correctly, `{` prefix handled
 - [ ] Generate a reels — response parses correctly
@@ -359,15 +368,16 @@ npm run build
 Run a generation with logging enabled (add the temporary logging from the Context section).
 Compare before vs after for a 5-theme batch with source material:
 
-| Metric | Before | After | Target saving |
-|---|---|---|---|
-| Input tokens per generation call | ~2600 | ~1700 | ~900 |
-| Input tokens per batch (5 themes) | ~13,000 | ~8,500 | ~4,500 |
-| Source text tokens (per post with source) | up to 4000 | ≤1500 | up to 2500 |
-| History tokens per call | up to 600 | ~125 | ~475 |
-| Opener tokens per call | ~600 | ~150 | ~450 |
+| Metric                                    | Before     | After  | Target saving |
+| ----------------------------------------- | ---------- | ------ | ------------- |
+| Input tokens per generation call          | ~2600      | ~1700  | ~900          |
+| Input tokens per batch (5 themes)         | ~13,000    | ~8,500 | ~4,500        |
+| Source text tokens (per post with source) | up to 4000 | ≤1500  | up to 2500    |
+| History tokens per call                   | up to 600  | ~125   | ~475          |
+| Opener tokens per call                    | ~600       | ~150   | ~450          |
 
 ### Functional verification
+
 - [ ] Single post generation — quality unchanged
 - [ ] Carousel generation — correct structure
 - [ ] Reels generation — correct structure, prefill works
@@ -524,6 +534,7 @@ needs to call `buildUserMessage()` first — the two-block assembly is internal 
 
 **Cache effectiveness condition:** the cache hit only fires when the client context block is
 byte-for-byte identical between calls. This means:
+
 - Same client (same profile, openers, language rules)
 - Same formality, same platform
 - Same health niche status
@@ -532,6 +543,7 @@ For a batch of themes for the same client, all of these are true. The first them
 writes the cache entry. Themes 2-5 get cache hits.
 
 ### ✓ Step 6 Verification
+
 - [ ] `npx tsc --noEmit` — no errors
 - [ ] Add temporary token logging (from Context section)
 - [ ] Run a 3-theme batch: theme 1 should show `cache_creation_input_tokens > 0`
@@ -549,9 +561,11 @@ client profile:
 ```typescript
 // Temporary diagnostic in callAnthropic:
 const usage = message.usage
-console.log(`[cache] theme input=${usage.input_tokens} ` +
-  `creation=${usage.cache_creation_input_tokens ?? 0} ` +
-  `read=${usage.cache_read_input_tokens ?? 0}`)
+console.log(
+  `[cache] theme input=${usage.input_tokens} ` +
+    `creation=${usage.cache_creation_input_tokens ?? 0} ` +
+    `read=${usage.cache_read_input_tokens ?? 0}`
+)
 ```
 
 Expected output for a 3-theme batch:
@@ -564,6 +578,7 @@ Expected output for a 3-theme batch:
 
 If `cache_read_input_tokens` is 0 for themes 2 and 3, the client context is not byte-identical
 between calls. Common causes:
+
 - `new Date()` called inside `buildClientContext` — move date to `buildThemeContext`
 - Non-deterministic field ordering in `ClientContext`
 - Health rules block includes dynamic content
@@ -571,6 +586,7 @@ between calls. Common causes:
 **Remove the temporary logging after verification.**
 
 ### ✓ Step 7 Verification
+
 - [ ] Cache hits confirmed for themes 2+ in a multi-theme batch
 - [ ] Token logging removed
 - [ ] Full functional test: generate 5-theme batch, all posts correct
@@ -691,9 +707,10 @@ function buildQualityResult(
 ```
 
 ### ✓ Step 9 Verification
+
 - [ ] `npx tsc --noEmit` — no errors
 - [ ] `validateQualityBatch(['single caption'], ctx)` returns `[QualityResult]` — same as
-  `validateQuality`
+      `validateQuality`
 - [ ] `validateQualityBatch(['caption1', 'caption2'], ctx)` returns 2 results in correct order
 - [ ] Results are structurally identical to individual `validateQuality` calls
 
@@ -723,11 +740,8 @@ async function collectSinglePosts(theme: Theme, captions: string[]) {
     validateQualityBatch(captions, sharedQualityContext).catch(() =>
       captions.map(() => createDefaultQuality('single'))
     ),
-    ...captions.map(caption =>
-      validateLanguage(
-        { text: caption },
-        ctx.client.languageConfig,
-      ).catch(() => ({
+    ...captions.map((caption) =>
+      validateLanguage({ text: caption }, ctx.client.languageConfig).catch(() => ({
         passes: true,
         language_score: 10,
         issues: [],
@@ -740,40 +754,54 @@ async function collectSinglePosts(theme: Theme, captions: string[]) {
   // Source grounding — run once for the first caption (shared source)
   // Only fires when requireSourceGrounding is true
   const groundingResult = sourceContext
-    ? await validateSourceGrounding(
-        captions[0]!,
-        sourceContext.excerpt,
-      ).catch(() => null)
+    ? await validateSourceGrounding(captions[0]!, sourceContext.excerpt).catch(() => null)
     : null
 
   // Apply over-request quality floor (from Phase 3 Step 16)
   const results = captions.map((caption, i) => {
     const quality = qualityResults[i] ?? createDefaultQuality('single')
-    const lang = langResults[i] ?? { passes: true, language_score: 10, issues: [], corrected_text: null }
-    const finalCaption = applyTextCorrections(caption, { quality, language: lang, sourceGrounding: groundingResult })
+    const lang = langResults[i] ?? {
+      passes: true,
+      language_score: 10,
+      issues: [],
+      corrected_text: null,
+    }
+    const finalCaption = applyTextCorrections(caption, {
+      quality,
+      language: lang,
+      sourceGrounding: groundingResult,
+    })
     return {
-      validation: { quality, language: lang, slop: deriveSlopFromQuality(quality), sourceGrounding: groundingResult ?? undefined, qualityScore: quality.quality_score_avg },
+      validation: {
+        quality,
+        language: lang,
+        slop: deriveSlopFromQuality(quality),
+        sourceGrounding: groundingResult ?? undefined,
+        qualityScore: quality.quality_score_avg,
+      },
       caption: finalCaption,
       score: quality.quality_score_avg,
     }
   })
 
   const qualified = results
-    .filter(r => r.score >= QUALITY_FLOOR)
+    .filter((r) => r.score >= QUALITY_FLOOR)
     .sort((a, b) => b.score - a.score)
     .slice(0, requested)
 
-  const toKeep = qualified.length > 0
-    ? qualified
-    : results.sort((a, b) => b.score - a.score).slice(0, requested)
+  const toKeep =
+    qualified.length > 0 ? qualified : results.sort((a, b) => b.score - a.score).slice(0, requested)
 
   toKeep.forEach(({ validation, caption }) =>
-    collectResult(validation, buildDraftRecord(theme, {
-      caption,
-      post_type: 'single',
-      slides_json: null,
-      quality_score_avg: validation.qualityScore,
-    }))
+    collectResult(
+      validation,
+      buildDraftRecord(theme, {
+        caption,
+        post_type: 'single',
+        slides_json: null,
+        quality_score_avg: validation.qualityScore,
+      })
+    )
   )
 }
 ```
@@ -784,6 +812,7 @@ facts either ground the theme or they do not. Run it once on the first caption a
 grounding result to all.
 
 ### ✓ Step 10 Verification
+
 - [ ] `npx tsc --noEmit` — no errors
 - [ ] Log token counts — for a 3-caption theme: quality system prompt paid once not 3 times
 - [ ] All 3 captions receive quality results
@@ -811,6 +840,7 @@ Saving: 1600 tokens per multi-caption theme
 ```
 
 ### Functional verification
+
 - [ ] Generate 3 captions for a theme — all 3 receive quality scores
 - [ ] Quality floor still discards low-scoring posts
 - [ ] Language corrections applied to each caption independently
@@ -823,19 +853,19 @@ Saving: 1600 tokens per multi-caption theme
 
 ### Session A — String-Level Optimizations
 
-| Optimization | File | Token saving |
-|---|---|---|
-| Compress opener descriptions | `generation-criteria.ts` | ~450/call |
-| Trim post history | `client-profile.ts` | ~475/call |
-| Cap source text | `generation-run.ts`, `source-grounding.ts` | up to 2500/post with source |
-| JSON prefill | `content-generator.ts`, `carousel-generator.ts`, `reels-generator.ts` | ~5-10/call |
+| Optimization                 | File                                                                  | Token saving                |
+| ---------------------------- | --------------------------------------------------------------------- | --------------------------- |
+| Compress opener descriptions | `generation-criteria.ts`                                              | ~450/call                   |
+| Trim post history            | `client-profile.ts`                                                   | ~475/call                   |
+| Cap source text              | `generation-run.ts`, `source-grounding.ts`                            | up to 2500/post with source |
+| JSON prefill                 | `content-generator.ts`, `carousel-generator.ts`, `reels-generator.ts` | ~5-10/call                  |
 
 **Total Session A saving per 5-theme batch:** ~5,000-15,000 tokens depending on source text length.
 
 ### Session B — Cache Client Profile Block
 
-| Optimization | File | Token saving |
-|---|---|---|
+| Optimization                                     | File                   | Token saving                                     |
+| ------------------------------------------------ | ---------------------- | ------------------------------------------------ |
 | Split user message into cached + uncached blocks | `content-generator.ts` | ~5,760/batch (themes 2-5 at 10% cache read cost) |
 
 **Requires:** client context block must be byte-identical across themes in a batch.
@@ -843,10 +873,10 @@ Saving: 1600 tokens per multi-caption theme
 
 ### Session C — Batch Quality Validation
 
-| Optimization | File | Token saving |
-|---|---|---|
-| `validateQualityBatch` | `validate-quality.ts` | ~1,600 per multi-caption theme (3 captions) |
-| Single source grounding per theme | `generation-run.ts` | ~300 per theme with source |
+| Optimization                      | File                  | Token saving                                |
+| --------------------------------- | --------------------- | ------------------------------------------- |
+| `validateQualityBatch`            | `validate-quality.ts` | ~1,600 per multi-caption theme (3 captions) |
+| Single source grounding per theme | `generation-run.ts`   | ~300 per theme with source                  |
 
 **Applies to:** single post themes with `count > 1` or over-request multiplier active.
 **No change for:** carousel (always 1 result), reels (always 1 result).
@@ -866,5 +896,5 @@ multiple clients and daily generation runs.
 
 ---
 
-*PostFlow — Token Usage Optimization*
-*Implement session by session. Verify token counts at end of each session.*
+_PostFlow — Token Usage Optimization_
+_Implement session by session. Verify token counts at end of each session._

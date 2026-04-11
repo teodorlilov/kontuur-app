@@ -62,19 +62,28 @@ export function PostContentDisplay({
   const isReels = postType === 'reels'
 
   const slides = Array.isArray(slidesJson) ? (slidesJson as CarouselSlide[]) : []
-  const reelsData = isReels && slidesJson && !Array.isArray(slidesJson)
-    ? (slidesJson as ReelsScriptData)
-    : null
+  const reelsData =
+    isReels && slidesJson && !Array.isArray(slidesJson) ? (slidesJson as ReelsScriptData) : null
 
-  const sourceLabel = sourceType === 'rss' ? 'RSS Feed'
-    : sourceType === 'website' ? 'Website'
-    : sourceType === 'file' ? 'Document'
-    : !sourceUrl ? 'Trend-based' : null
+  const sourceLabel =
+    sourceType === 'rss'
+      ? 'RSS Feed'
+      : sourceType === 'website'
+        ? 'Website'
+        : sourceType === 'file'
+          ? 'Document'
+          : !sourceUrl
+            ? 'Trend-based'
+            : null
 
-  const sourceClass = sourceType === 'rss' ? 'bg-orange-50 text-orange-700'
-    : sourceType === 'website' ? 'bg-teal-50 text-teal-700'
-    : sourceType === 'file' ? 'bg-amber-50 text-amber-700'
-    : 'bg-gray-100 text-gray-500'
+  const sourceClass =
+    sourceType === 'rss'
+      ? 'bg-orange-50 text-orange-700'
+      : sourceType === 'website'
+        ? 'bg-teal-50 text-teal-700'
+        : sourceType === 'file'
+          ? 'bg-amber-50 text-amber-700'
+          : 'bg-gray-100 text-gray-500'
 
   const pillarColor = pillar ? getPillarColor(pillar) : null
 
@@ -94,7 +103,9 @@ export function PostContentDisplay({
           </span>
         )}
         {pillar && pillarColor && (
-          <span className={cn('text-xs px-2 py-0.5 rounded-full', pillarColor.bg, pillarColor.text)}>
+          <span
+            className={cn('text-xs px-2 py-0.5 rounded-full', pillarColor.bg, pillarColor.text)}
+          >
             {pillar}
           </span>
         )}
@@ -108,18 +119,24 @@ export function PostContentDisplay({
             {platform}
           </span>
         )}
-        <span className={cn(
-          'text-xs px-2 py-0.5 rounded-full',
-          isCarousel ? 'bg-purple-50 text-purple-700' :
-          isReels ? 'bg-pink-50 text-pink-700' : 'bg-gray-100 text-gray-600'
-        )}>
-          {isCarousel ? `🎠 Carousel · ${slides.length} slides` :
-           isReels ? '🎬 Reels script' : 'Single image'}
+        <span
+          className={cn(
+            'text-xs px-2 py-0.5 rounded-full',
+            isCarousel
+              ? 'bg-purple-50 text-purple-700'
+              : isReels
+                ? 'bg-pink-50 text-pink-700'
+                : 'bg-gray-100 text-gray-600'
+          )}
+        >
+          {isCarousel
+            ? `🎠 Carousel · ${slides.length} slides`
+            : isReels
+              ? '🎬 Reels script'
+              : 'Single image'}
         </span>
         {sourceLabel && (
-          <span className={cn('text-xs px-2 py-0.5 rounded-full', sourceClass)}>
-            {sourceLabel}
-          </span>
+          <span className={cn('text-xs px-2 py-0.5 rounded-full', sourceClass)}>{sourceLabel}</span>
         )}
         {sourceUrl && (
           <a
@@ -133,10 +150,12 @@ export function PostContentDisplay({
           </a>
         )}
         {qualityScoreAvg !== null && (
-          <span className={cn(
-            'text-xs px-2 py-0.5 rounded-full ml-auto',
-            qualityScoreBadgeClass(qualityScoreAvg)
-          )}>
+          <span
+            className={cn(
+              'text-xs px-2 py-0.5 rounded-full ml-auto',
+              qualityScoreBadgeClass(qualityScoreAvg)
+            )}
+          >
             Score: {qualityScoreAvg}
           </span>
         )}
@@ -146,7 +165,9 @@ export function PostContentDisplay({
       {sourceExcerpt && (
         <div className="flex flex-col gap-1.5 bg-gray-50 rounded-lg px-3 py-2">
           <div className="flex items-center justify-between">
-            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Source context</p>
+            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+              Source context
+            </p>
             {!sourceUrl && (
               <a
                 href={`https://www.google.com/search?q=${encodeURIComponent(sourceExcerpt.slice(0, 120))}`}
@@ -176,19 +197,17 @@ export function PostContentDisplay({
               Copy
             </button>
           </div>
-          <p className="text-sm text-gray-900 whitespace-pre-wrap leading-relaxed">{caption ? decodeUrlsInText(caption) : caption}</p>
+          <p className="text-sm text-gray-900 whitespace-pre-wrap leading-relaxed">
+            {caption ? decodeUrlsInText(caption) : caption}
+          </p>
         </div>
       )}
 
       {/* Carousel slides */}
-      {isCarousel && slides.length > 0 && (
-        <CarouselSlides slides={slides} />
-      )}
+      {isCarousel && slides.length > 0 && <CarouselSlides slides={slides} />}
 
       {/* Reels script */}
-      {isReels && reelsData && (
-        <ReelsScript script={reelsData} />
-      )}
+      {isReels && reelsData && <ReelsScript script={reelsData} />}
 
       {/* Quality scores (all post types, generation flow only) */}
       {qualityScores && (

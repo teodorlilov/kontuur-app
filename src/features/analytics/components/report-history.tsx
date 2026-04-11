@@ -52,7 +52,7 @@ export function ReportHistory({ clientId, platform, onLoad }: ReportHistoryProps
     try {
       const res = await fetch(`/api/analytics/report/${reportId}`)
       if (!res.ok) throw new Error('Failed to load report')
-      const data = await res.json() as { report?: AnalyticsReport }
+      const data = (await res.json()) as { report?: AnalyticsReport }
       if (data.report) onLoad(data.report)
     } catch {
       // silently ignore
@@ -69,11 +69,14 @@ export function ReportHistory({ clientId, platform, onLoad }: ReportHistoryProps
       <p className="text-sm font-medium text-gray-700 mb-3">Previous reports</p>
       <div className="space-y-2">
         {reports.map((r) => (
-          <div key={r.id} className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
+          <div
+            key={r.id}
+            className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0"
+          >
             <div>
               <p className="text-sm text-gray-800">
-                {r.platform.charAt(0).toUpperCase() + r.platform.slice(1)} ·{' '}
-                {r.period_start} to {r.period_end}
+                {r.platform.charAt(0).toUpperCase() + r.platform.slice(1)} · {r.period_start} to{' '}
+                {r.period_end}
               </p>
               {r.ai_summary && (
                 <p className="text-xs text-gray-400 line-clamp-1 mt-0.5">{r.ai_summary}</p>

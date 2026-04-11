@@ -51,8 +51,14 @@ export function Footer() {
         {/* Brand column */}
         <div>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/kontuur_logo_white.svg" alt="Kontuur" style={{ height: 28, width: 'auto', marginBottom: 12 }} />
-          <p style={{ fontSize: 13.5, color: 'rgba(255,255,255,0.55)', lineHeight: 1.6, margin: 0 }}>
+          <img
+            src="/kontuur_logo_white.svg"
+            alt="Kontuur"
+            style={{ height: 28, width: 'auto', marginBottom: 12 }}
+          />
+          <p
+            style={{ fontSize: 13.5, color: 'rgba(255,255,255,0.55)', lineHeight: 1.6, margin: 0 }}
+          >
             social intelligence
           </p>
         </div>
@@ -72,7 +78,16 @@ export function Footer() {
             >
               {col.title}
             </p>
-            <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <ul
+              style={{
+                listStyle: 'none',
+                padding: 0,
+                margin: 0,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 10,
+              }}
+            >
               {col.links.map((link) => (
                 <li key={link.label}>
                   <Link
@@ -83,8 +98,12 @@ export function Footer() {
                       textDecoration: 'none',
                       transition: 'color 120ms ease',
                     }}
-                    onMouseEnter={(e) => { e.currentTarget.style.color = 'rgba(255,255,255,0.85)' }}
-                    onMouseLeave={(e) => { e.currentTarget.style.color = 'rgba(255,255,255,0.55)' }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.color = 'rgba(255,255,255,0.85)'
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.color = 'rgba(255,255,255,0.55)'
+                    }}
                   >
                     {link.label}
                   </Link>

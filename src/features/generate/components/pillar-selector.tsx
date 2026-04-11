@@ -21,7 +21,9 @@ export function PillarSelector({
     <div className="flex flex-col gap-4">
       {pillars.length > 0 && (
         <div className="flex flex-col gap-2">
-          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Client pillars</p>
+          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+            Client pillars
+          </p>
           <div className="flex flex-wrap gap-2">
             {pillars.map((pillar) => {
               const isSelected = selected.includes(pillar)
@@ -46,7 +48,9 @@ export function PillarSelector({
 
       {suggested.length > 0 && (
         <div className="flex flex-col gap-2">
-          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Suggested pillars</p>
+          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+            Suggested pillars
+          </p>
           <div className="flex flex-wrap gap-2">
             {suggested.map((pillar) => {
               const isAdded = pillars.includes(pillar)
@@ -61,7 +65,8 @@ export function PillarSelector({
                       : 'border-dashed border-gray-300 text-gray-600 hover:border-brand-purple hover:text-brand-purple'
                   )}
                 >
-                  {isAdded ? '✓ ' : '+ '}{pillar}
+                  {isAdded ? '✓ ' : '+ '}
+                  {pillar}
                 </button>
               )
             })}

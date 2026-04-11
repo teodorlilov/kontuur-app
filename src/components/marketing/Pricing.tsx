@@ -79,7 +79,16 @@ export function Pricing() {
               flexDirection: 'column',
             }}
           >
-            <p style={{ fontSize: 16, fontWeight: 500, color: 'var(--color-text-1)', marginBottom: 8 }}>Starter</p>
+            <p
+              style={{
+                fontSize: 16,
+                fontWeight: 500,
+                color: 'var(--color-text-1)',
+                marginBottom: 8,
+              }}
+            >
+              Starter
+            </p>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, marginBottom: 4 }}>
               <span
                 style={{
@@ -93,7 +102,9 @@ export function Pricing() {
                 €49
               </span>
             </div>
-            <p style={{ fontSize: 14, color: 'var(--color-text-3)', marginBottom: 28 }}>per month</p>
+            <p style={{ fontSize: 14, color: 'var(--color-text-3)', marginBottom: 28 }}>
+              per month
+            </p>
             <ul
               style={{
                 listStyle: 'none',
@@ -106,7 +117,16 @@ export function Pricing() {
               }}
             >
               {starterFeatures.map((f) => (
-                <li key={f} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13.5, color: 'var(--color-text-2)' }}>
+                <li
+                  key={f}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    fontSize: 13.5,
+                    color: 'var(--color-text-2)',
+                  }}
+                >
                   <Check size={14} color="var(--color-published-fg)" strokeWidth={2.5} />
                   {f}
                 </li>
@@ -164,7 +184,16 @@ export function Pricing() {
             >
               Most popular
             </span>
-            <p style={{ fontSize: 16, fontWeight: 500, color: 'var(--color-text-1)', marginBottom: 8 }}>Pro</p>
+            <p
+              style={{
+                fontSize: 16,
+                fontWeight: 500,
+                color: 'var(--color-text-1)',
+                marginBottom: 8,
+              }}
+            >
+              Pro
+            </p>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, marginBottom: 4 }}>
               <span
                 style={{
@@ -178,7 +207,9 @@ export function Pricing() {
                 €99
               </span>
             </div>
-            <p style={{ fontSize: 14, color: 'var(--color-text-3)', marginBottom: 28 }}>per month</p>
+            <p style={{ fontSize: 14, color: 'var(--color-text-3)', marginBottom: 28 }}>
+              per month
+            </p>
             <ul
               style={{
                 listStyle: 'none',
@@ -191,7 +222,16 @@ export function Pricing() {
               }}
             >
               {proFeatures.map((f) => (
-                <li key={f} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13.5, color: 'var(--color-text-2)' }}>
+                <li
+                  key={f}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    fontSize: 13.5,
+                    color: 'var(--color-text-2)',
+                  }}
+                >
                   <Check size={14} color="var(--color-published-fg)" strokeWidth={2.5} />
                   {f}
                 </li>

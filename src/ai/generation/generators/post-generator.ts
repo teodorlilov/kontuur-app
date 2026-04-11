@@ -42,7 +42,6 @@ function parsePostDeclaration(text: string): ParsedPost {
 }
 
 export class PostGenerator extends ContentGenerator<SinglePostInput, ParsedPost[]> {
-
   protected buildDirective(input: SinglePostInput): string {
     return `Write ${input.count} post(s) for theme '${sanitizePromptField(input.theme)}'.
 For each post, pick a structure from the POST STRUCTURES above and declare it: [STRUCTURE: name]
@@ -59,7 +58,7 @@ SELF-CHECK: Can the reader predict the post's structure after the first line? If
     const text = message.content[0]?.type === 'text' ? message.content[0].text : ''
     return text
       .split('---')
-      .map(p => p.trim())
+      .map((p) => p.trim())
       .filter(Boolean)
       .map(parsePostDeclaration)
   }

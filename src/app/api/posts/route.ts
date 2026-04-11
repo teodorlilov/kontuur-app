@@ -35,7 +35,10 @@ export async function GET(request: Request) {
 
   // Support comma-separated status values: ?status=approved,scheduled
   if (status) {
-    const statuses = status.split(',').map((s) => s.trim()).filter(Boolean)
+    const statuses = status
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean)
     if (statuses.length === 1 && statuses[0]) {
       query = query.eq('status', statuses[0])
     } else if (statuses.length > 1) {
@@ -117,7 +120,12 @@ export async function POST(request: Request) {
       post_type: body.post_type ?? 'single',
       slides_json: (body.slides_json as Json) ?? null,
       carousel_quality_json: (body.carousel_quality_json as Json) ?? null,
-      status: body.status === 'pending_review' ? 'pending_review' : body.status === 'scheduled' ? 'scheduled' : 'approved',
+      status:
+        body.status === 'pending_review'
+          ? 'pending_review'
+          : body.status === 'scheduled'
+            ? 'scheduled'
+            : 'approved',
       scheduled_at: body.scheduled_at ?? null,
       priority: body.priority ?? false,
       quality_score_avg: body.quality_score_avg ?? null,

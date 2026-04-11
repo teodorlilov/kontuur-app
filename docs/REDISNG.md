@@ -13,6 +13,7 @@ enough to be approachable for agency owners, precise enough to feel professional
 for daily use. Later's warmth, Linear's density, Vercel's typography.
 
 Three guiding principles:
+
 - **Content first** — the posts, data, and clients are the thing. The UI recedes.
 - **Calm confidence** — no aggressive CTAs, no anxiety-inducing red states.
   Status colours are muted, not alarming.
@@ -28,40 +29,45 @@ Three guiding principles:
 ```css
 :root {
   /* Page backgrounds */
-  --color-page:       #F9F7F4;   /* warm off-white — main page bg */
-  --color-surface:    #FFFFFF;   /* card surfaces */
-  --color-sunken:     #F2F0EC;   /* inset sections, code blocks */
-  --color-overlay:    rgba(26,25,24,0.04);  /* hover states on white */
+  --color-page: #f9f7f4; /* warm off-white — main page bg */
+  --color-surface: #ffffff; /* card surfaces */
+  --color-sunken: #f2f0ec; /* inset sections, code blocks */
+  --color-overlay: rgba(26, 25, 24, 0.04); /* hover states on white */
 
   /* Brand */
-  --color-brand:      #2C3E50;   /* Kontuur slate — sidebar, primary buttons */
-  --color-brand-mid:  #3D5166;   /* hover state on brand */
-  --color-brand-muted:#4A6FA5;   /* links, accents, mark blocks */
+  --color-brand: #2c3e50; /* Kontuur slate — sidebar, primary buttons */
+  --color-brand-mid: #3d5166; /* hover state on brand */
+  --color-brand-muted: #4a6fa5; /* links, accents, mark blocks */
 
   /* Text */
-  --color-text-1:     #1A1918;   /* primary — headings, values */
-  --color-text-2:     #6B6862;   /* secondary — descriptions, labels */
-  --color-text-3:     #9C9890;   /* tertiary — hints, timestamps, placeholders */
-  --color-text-inv:   #FFFFFF;   /* text on dark backgrounds */
+  --color-text-1: #1a1918; /* primary — headings, values */
+  --color-text-2: #6b6862; /* secondary — descriptions, labels */
+  --color-text-3: #9c9890; /* tertiary — hints, timestamps, placeholders */
+  --color-text-inv: #ffffff; /* text on dark backgrounds */
 
   /* Borders */
-  --color-border-1:   #EAE8E3;   /* default — card edges, dividers */
-  --color-border-2:   #D4D1CA;   /* emphasis — input borders, focused */
-  --color-border-3:   #B8B5AE;   /* strong — active inputs */
+  --color-border-1: #eae8e3; /* default — card edges, dividers */
+  --color-border-2: #d4d1ca; /* emphasis — input borders, focused */
+  --color-border-3: #b8b5ae; /* strong — active inputs */
 
   /* Status — intentionally muted, never alarming */
-  --color-published-bg:  #EAF3DE;  --color-published-text: #27500A;
-  --color-scheduled-bg:  #EEF2FF;  --color-scheduled-text: #3C3489;
-  --color-pending-bg:    #FAEEDA;  --color-pending-text:   #633806;
-  --color-draft-bg:      #F2F0EC;  --color-draft-text:     #6B6862;
-  --color-error-bg:      #FCEBEB;  --color-error-text:     #791F1F;
+  --color-published-bg: #eaf3de;
+  --color-published-text: #27500a;
+  --color-scheduled-bg: #eef2ff;
+  --color-scheduled-text: #3c3489;
+  --color-pending-bg: #faeeda;
+  --color-pending-text: #633806;
+  --color-draft-bg: #f2f0ec;
+  --color-draft-text: #6b6862;
+  --color-error-bg: #fcebeb;
+  --color-error-text: #791f1f;
 
   /* Charts */
-  --color-chart-1:    #4A6FA5;   /* primary data series — brand blue */
-  --color-chart-2:    #1D9E75;   /* secondary — teal */
-  --color-chart-3:    #BA7517;   /* tertiary — amber */
-  --color-chart-grid: #EAE8E3;   /* grid lines */
-  --color-chart-label:#9C9890;   /* axis labels */
+  --color-chart-1: #4a6fa5; /* primary data series — brand blue */
+  --color-chart-2: #1d9e75; /* secondary — teal */
+  --color-chart-3: #ba7517; /* tertiary — amber */
+  --color-chart-grid: #eae8e3; /* grid lines */
+  --color-chart-label: #9c9890; /* axis labels */
 }
 ```
 
@@ -69,15 +75,15 @@ Three guiding principles:
 
 ```css
 .sidebar {
-  --sidebar-bg:       #2C3E50;
-  --sidebar-item:     rgba(255,255,255,0.55);
-  --sidebar-item-hover: rgba(255,255,255,0.85);
-  --sidebar-item-active: rgba(255,255,255,1);
-  --sidebar-item-bg-hover: rgba(255,255,255,0.07);
-  --sidebar-item-bg-active: rgba(255,255,255,0.12);
-  --sidebar-border:   rgba(255,255,255,0.08);
-  --sidebar-badge-bg: rgba(255,255,255,0.15);
-  --sidebar-badge-text: rgba(255,255,255,0.8);
+  --sidebar-bg: #2c3e50;
+  --sidebar-item: rgba(255, 255, 255, 0.55);
+  --sidebar-item-hover: rgba(255, 255, 255, 0.85);
+  --sidebar-item-active: rgba(255, 255, 255, 1);
+  --sidebar-item-bg-hover: rgba(255, 255, 255, 0.07);
+  --sidebar-item-bg-active: rgba(255, 255, 255, 0.12);
+  --sidebar-border: rgba(255, 255, 255, 0.08);
+  --sidebar-badge-bg: rgba(255, 255, 255, 0.15);
+  --sidebar-badge-text: rgba(255, 255, 255, 0.8);
 }
 ```
 
@@ -86,14 +92,14 @@ Three guiding principles:
 ```css
 @media (prefers-color-scheme: dark) {
   :root {
-    --color-page:    #141312;
-    --color-surface: #1C1B19;
-    --color-sunken:  #111010;
-    --color-text-1:  #F0EDE8;
-    --color-text-2:  #8A8880;
-    --color-text-3:  #5A5854;
-    --color-border-1:#2A2927;
-    --color-border-2:#3A3835;
+    --color-page: #141312;
+    --color-surface: #1c1b19;
+    --color-sunken: #111010;
+    --color-text-1: #f0ede8;
+    --color-text-2: #8a8880;
+    --color-text-3: #5a5854;
+    --color-border-1: #2a2927;
+    --color-border-2: #3a3835;
   }
 }
 ```
@@ -136,33 +142,33 @@ body {
 
 ```css
 :root {
-  --text-2xs:    10px;   /* column labels — uppercase, tracked */
-  --text-xs:     11px;   /* timestamps, badge text */
-  --text-sm:     12px;   /* secondary descriptions, captions */
-  --text-base:   13.5px; /* body, nav items, table cells */
-  --text-md:     15px;   /* card titles, section headings */
-  --text-lg:     18px;   /* subsection headings */
-  --text-xl:     22px;   /* small stat numbers */
-  --text-2xl:    32px;   /* large stat numbers */
-  --text-display:28px;   /* page titles — Playfair */
-  --text-hero:   52px;   /* landing page hero — Playfair */
+  --text-2xs: 10px; /* column labels — uppercase, tracked */
+  --text-xs: 11px; /* timestamps, badge text */
+  --text-sm: 12px; /* secondary descriptions, captions */
+  --text-base: 13.5px; /* body, nav items, table cells */
+  --text-md: 15px; /* card titles, section headings */
+  --text-lg: 18px; /* subsection headings */
+  --text-xl: 22px; /* small stat numbers */
+  --text-2xl: 32px; /* large stat numbers */
+  --text-display: 28px; /* page titles — Playfair */
+  --text-hero: 52px; /* landing page hero — Playfair */
 }
 ```
 
 ### Usage rules
 
-| Element | Size | Weight | Font | Letter spacing |
-|---|---|---|---|---|
-| Page title | 28px | 400 | Playfair | -0.02em |
-| Stat number (large) | 32px | 400 | Geist | -0.02em |
-| Card title | 15px | 500 | Geist | 0 |
-| Nav items | 13.5px | 400 | Geist | 0 |
-| Table cell | 13.5px | 400 | Geist | 0 |
-| Table header | 11px | 500 | Geist | +0.06em (uppercase) |
-| Badge | 11px | 500 | Geist | +0.02em |
-| Timestamp | 12px | 400 | Geist | 0 |
-| Hint / placeholder | 12px | 400 | Geist | 0 |
-| Hero (landing) | 52–64px | 400 | Playfair | -0.03em |
+| Element             | Size    | Weight | Font     | Letter spacing      |
+| ------------------- | ------- | ------ | -------- | ------------------- |
+| Page title          | 28px    | 400    | Playfair | -0.02em             |
+| Stat number (large) | 32px    | 400    | Geist    | -0.02em             |
+| Card title          | 15px    | 500    | Geist    | 0                   |
+| Nav items           | 13.5px  | 400    | Geist    | 0                   |
+| Table cell          | 13.5px  | 400    | Geist    | 0                   |
+| Table header        | 11px    | 500    | Geist    | +0.06em (uppercase) |
+| Badge               | 11px    | 500    | Geist    | +0.02em             |
+| Timestamp           | 12px    | 400    | Geist    | 0                   |
+| Hint / placeholder  | 12px    | 400    | Geist    | 0                   |
+| Hero (landing)      | 52–64px | 400    | Playfair | -0.03em             |
 
 ---
 
@@ -170,27 +176,27 @@ body {
 
 ```css
 :root {
-  --space-1:   4px;
-  --space-2:   8px;
-  --space-3:   12px;
-  --space-4:   16px;
-  --space-5:   20px;
-  --space-6:   24px;
-  --space-8:   32px;
-  --space-10:  40px;
-  --space-12:  48px;
-  --space-16:  64px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
 
-  --radius-sm: 6px;    /* badges, small elements */
-  --radius-md: 8px;    /* buttons, inputs */
-  --radius-lg: 12px;   /* cards */
-  --radius-xl: 16px;   /* large cards, modals */
+  --radius-sm: 6px; /* badges, small elements */
+  --radius-md: 8px; /* buttons, inputs */
+  --radius-lg: 12px; /* cards */
+  --radius-xl: 16px; /* large cards, modals */
   --radius-full: 9999px; /* pills, avatars */
 
   --sidebar-width: 224px;
-  --page-padding:  40px;
-  --card-padding:  20px 24px;
-  --content-max:   1280px;
+  --page-padding: 40px;
+  --card-padding: 20px 24px;
+  --content-max: 1280px;
 }
 ```
 
@@ -217,7 +223,9 @@ body {
   border: 0.5px solid var(--color-border-1);
   border-radius: var(--radius-lg);
   padding: 20px 22px;
-  transition: border-color 0.15s ease, transform 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    transform 0.15s ease;
 }
 .metric-card:hover {
   border-color: var(--color-border-2);
@@ -243,8 +251,12 @@ body {
   margin-top: 6px;
   color: var(--color-text-3);
 }
-.metric-delta.up   { color: var(--color-published-text); }
-.metric-delta.down { color: var(--color-error-text); }
+.metric-delta.up {
+  color: var(--color-published-text);
+}
+.metric-delta.down {
+  color: var(--color-error-text);
+}
 ```
 
 ### Post card (review queue)
@@ -255,16 +267,18 @@ body {
   border: 0.5px solid var(--color-border-1);
   border-radius: var(--radius-lg);
   padding: 18px 20px;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
   cursor: pointer;
 }
 .post-card:hover {
   border-color: var(--color-border-2);
-  box-shadow: 0 2px 12px rgba(26,25,24,0.06);
+  box-shadow: 0 2px 12px rgba(26, 25, 24, 0.06);
 }
 .post-card.selected {
   border-color: var(--color-brand-muted);
-  box-shadow: 0 0 0 3px rgba(74,111,165,0.12);
+  box-shadow: 0 0 0 3px rgba(74, 111, 165, 0.12);
 }
 ```
 
@@ -291,8 +305,12 @@ body {
   background: var(--color-brand);
   color: var(--color-text-inv);
 }
-.btn-primary:hover  { background: var(--color-brand-mid); }
-.btn-primary:active { transform: scale(0.98); }
+.btn-primary:hover {
+  background: var(--color-brand-mid);
+}
+.btn-primary:active {
+  transform: scale(0.98);
+}
 
 /* Secondary — outlined */
 .btn-secondary {
@@ -312,7 +330,10 @@ body {
   border: none;
   padding: 8px 10px;
 }
-.btn-ghost:hover { background: var(--color-overlay); color: var(--color-text-1); }
+.btn-ghost:hover {
+  background: var(--color-overlay);
+  color: var(--color-text-1);
+}
 
 /* Destructive */
 .btn-danger {
@@ -320,11 +341,20 @@ body {
   color: var(--color-error-text);
   border: 0.5px solid var(--color-error-bg);
 }
-.btn-danger:hover { background: var(--color-error-bg); }
+.btn-danger:hover {
+  background: var(--color-error-bg);
+}
 
 /* Size variants */
-.btn-sm { padding: 5px 12px; font-size: var(--text-sm); border-radius: var(--radius-sm); }
-.btn-lg { padding: 11px 22px; font-size: var(--text-md); }
+.btn-sm {
+  padding: 5px 12px;
+  font-size: var(--text-sm);
+  border-radius: var(--radius-sm);
+}
+.btn-lg {
+  padding: 11px 22px;
+  font-size: var(--text-md);
+}
 ```
 
 ---
@@ -332,7 +362,11 @@ body {
 ## 7. Forms & Inputs
 
 ```css
-.field { display: flex; flex-direction: column; gap: 6px; }
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
 
 .label {
   font-size: var(--text-sm);
@@ -341,7 +375,9 @@ body {
   letter-spacing: 0.01em;
 }
 
-.input, .select, .textarea {
+.input,
+.select,
+.textarea {
   width: 100%;
   background: var(--color-surface);
   border: 1px solid var(--color-border-2);
@@ -350,27 +386,39 @@ body {
   font-size: var(--text-base);
   color: var(--color-text-1);
   font-family: var(--font-sans);
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
   outline: none;
 }
-.input::placeholder  { color: var(--color-text-3); }
-.input:hover         { border-color: var(--color-border-3); }
+.input::placeholder {
+  color: var(--color-text-3);
+}
+.input:hover {
+  border-color: var(--color-border-3);
+}
 .input:focus {
   border-color: var(--color-brand-muted);
-  box-shadow: 0 0 0 3px rgba(74,111,165,0.12);
+  box-shadow: 0 0 0 3px rgba(74, 111, 165, 0.12);
 }
 .input.error {
-  border-color: #E24B4A;
-  box-shadow: 0 0 0 3px rgba(226,75,74,0.1);
+  border-color: #e24b4a;
+  box-shadow: 0 0 0 3px rgba(226, 75, 74, 0.1);
 }
 
-.textarea { min-height: 100px; resize: vertical; line-height: 1.6; }
+.textarea {
+  min-height: 100px;
+  resize: vertical;
+  line-height: 1.6;
+}
 
 .hint {
   font-size: var(--text-sm);
   color: var(--color-text-3);
 }
-.hint.error { color: var(--color-error-text); }
+.hint.error {
+  color: var(--color-error-text);
+}
 ```
 
 ### Dropdown / Select (custom)
@@ -383,9 +431,11 @@ Use Radix UI `Select` or `@radix-ui/react-dropdown-menu` for accessible dropdown
   border: 0.5px solid var(--color-border-1);
   border-radius: var(--radius-lg);
   padding: 6px;
-  box-shadow: 0 4px 24px rgba(26,25,24,0.10), 0 1px 4px rgba(26,25,24,0.06);
+  box-shadow:
+    0 4px 24px rgba(26, 25, 24, 0.1),
+    0 1px 4px rgba(26, 25, 24, 0.06);
   min-width: 180px;
-  animation: dropdown-in 0.15s cubic-bezier(0.16,1,0.3,1);
+  animation: dropdown-in 0.15s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .dropdown-item {
   padding: 7px 10px;
@@ -398,9 +448,15 @@ Use Radix UI `Select` or `@radix-ui/react-dropdown-menu` for accessible dropdown
   align-items: center;
   gap: 8px;
 }
-.dropdown-item:hover  { background: var(--color-overlay); }
-.dropdown-item.danger { color: var(--color-error-text); }
-.dropdown-item.danger:hover { background: var(--color-error-bg); }
+.dropdown-item:hover {
+  background: var(--color-overlay);
+}
+.dropdown-item.danger {
+  color: var(--color-error-text);
+}
+.dropdown-item.danger:hover {
+  background: var(--color-error-bg);
+}
 
 .dropdown-separator {
   height: 0.5px;
@@ -409,8 +465,14 @@ Use Radix UI `Select` or `@radix-ui/react-dropdown-menu` for accessible dropdown
 }
 
 @keyframes dropdown-in {
-  from { opacity: 0; transform: translateY(-6px) scale(0.97); }
-  to   { opacity: 1; transform: translateY(0) scale(1); }
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 ```
 
@@ -437,11 +499,26 @@ Use Radix UI `Select` or `@radix-ui/react-dropdown-menu` for accessible dropdown
   background: currentColor;
 }
 
-.badge-published { background: var(--color-published-bg); color: var(--color-published-text); }
-.badge-scheduled { background: var(--color-scheduled-bg); color: var(--color-scheduled-text); }
-.badge-pending   { background: var(--color-pending-bg);   color: var(--color-pending-text); }
-.badge-draft     { background: var(--color-draft-bg);     color: var(--color-draft-text); }
-.badge-error     { background: var(--color-error-bg);     color: var(--color-error-text); }
+.badge-published {
+  background: var(--color-published-bg);
+  color: var(--color-published-text);
+}
+.badge-scheduled {
+  background: var(--color-scheduled-bg);
+  color: var(--color-scheduled-text);
+}
+.badge-pending {
+  background: var(--color-pending-bg);
+  color: var(--color-pending-text);
+}
+.badge-draft {
+  background: var(--color-draft-bg);
+  color: var(--color-draft-text);
+}
+.badge-error {
+  background: var(--color-error-bg);
+  color: var(--color-error-text);
+}
 ```
 
 ---
@@ -454,11 +531,11 @@ All charts use Recharts. Consistent visual language:
 // shared chart config
 export const CHART_CONFIG = {
   colors: {
-    primary:   '#4A6FA5',
+    primary: '#4A6FA5',
     secondary: '#1D9E75',
-    tertiary:  '#BA7517',
-    grid:      '#EAE8E3',
-    label:     '#9C9890',
+    tertiary: '#BA7517',
+    grid: '#EAE8E3',
+    label: '#9C9890',
   },
   axis: {
     tick: { fontSize: 11, fill: '#9C9890', fontFamily: 'var(--font-sans)' },
@@ -510,10 +587,14 @@ Rounded bars: `radius={[4, 4, 0, 0]}`, gap between bars `barCategoryGap="35%"`.
   height: 100%;
   border-radius: var(--radius-full);
   background: var(--color-brand-muted);
-  transition: width 0.6s cubic-bezier(0.16,1,0.3,1);
+  transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1);
 }
-.progress-fill.success { background: #1D9E75; }
-.progress-fill.warning { background: #BA7517; }
+.progress-fill.success {
+  background: #1d9e75;
+}
+.progress-fill.warning {
+  background: #ba7517;
+}
 ```
 
 ---
@@ -525,17 +606,23 @@ no bounce, no overshoot.
 
 ```css
 :root {
-  --ease-spring: cubic-bezier(0.16,1,0.3,1);
-  --ease-smooth: cubic-bezier(0.4,0,0.2,1);
-  --duration-fast:   120ms;
-  --duration-base:   200ms;
-  --duration-slow:   350ms;
+  --ease-spring: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+  --duration-fast: 120ms;
+  --duration-base: 200ms;
+  --duration-slow: 350ms;
 }
 
 /* Page entrance */
 @keyframes fade-up {
-  from { opacity: 0; transform: translateY(8px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 .animate-in {
   animation: fade-up var(--duration-base) var(--ease-spring) both;
@@ -545,15 +632,27 @@ no bounce, no overshoot.
 .stagger-children > * {
   animation: fade-up var(--duration-base) var(--ease-spring) both;
 }
-.stagger-children > *:nth-child(1) { animation-delay: 0ms; }
-.stagger-children > *:nth-child(2) { animation-delay: 40ms; }
-.stagger-children > *:nth-child(3) { animation-delay: 80ms; }
-.stagger-children > *:nth-child(4) { animation-delay: 120ms; }
+.stagger-children > *:nth-child(1) {
+  animation-delay: 0ms;
+}
+.stagger-children > *:nth-child(2) {
+  animation-delay: 40ms;
+}
+.stagger-children > *:nth-child(3) {
+  animation-delay: 80ms;
+}
+.stagger-children > *:nth-child(4) {
+  animation-delay: 120ms;
+}
 
 /* Skeleton loading */
 @keyframes shimmer {
-  from { background-position: -200% 0; }
-  to   { background-position: 200% 0; }
+  from {
+    background-position: -200% 0;
+  }
+  to {
+    background-position: 200% 0;
+  }
 }
 .skeleton {
   background: linear-gradient(
@@ -569,14 +668,21 @@ no bounce, no overshoot.
 
 /* Sidebar item hover */
 .nav-item {
-  transition: color var(--duration-fast) var(--ease-smooth),
-              background var(--duration-fast) var(--ease-smooth);
+  transition:
+    color var(--duration-fast) var(--ease-smooth),
+    background var(--duration-fast) var(--ease-smooth);
 }
 
 /* Toast / notification entry */
 @keyframes slide-in-right {
-  from { opacity: 0; transform: translateX(16px); }
-  to   { opacity: 1; transform: translateX(0); }
+  from {
+    opacity: 0;
+    transform: translateX(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 .toast {
   animation: slide-in-right var(--duration-base) var(--ease-spring);
@@ -584,15 +690,29 @@ no bounce, no overshoot.
 
 /* Modal overlay */
 @keyframes fade-in {
-  from { opacity: 0; }
-  to   { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 @keyframes scale-in {
-  from { opacity: 0; transform: scale(0.96) translateY(4px); }
-  to   { opacity: 1; transform: scale(1) translateY(0); }
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
 }
-.modal-overlay { animation: fade-in var(--duration-base) var(--ease-smooth); }
-.modal-content { animation: scale-in var(--duration-base) var(--ease-spring); }
+.modal-overlay {
+  animation: fade-in var(--duration-base) var(--ease-smooth);
+}
+.modal-content {
+  animation: scale-in var(--duration-base) var(--ease-spring);
+}
 ```
 
 ### Framer Motion usage
@@ -628,7 +748,11 @@ const item = {
 ## 12. Tables
 
 ```css
-.table { width: 100%; border-collapse: collapse; font-size: var(--text-base); }
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-base);
+}
 
 .table thead th {
   font-size: var(--text-2xs);
@@ -649,12 +773,16 @@ const item = {
   vertical-align: middle;
 }
 
-.table tbody tr:last-child td { border-bottom: none; }
+.table tbody tr:last-child td {
+  border-bottom: none;
+}
 
 .table tbody tr {
   transition: background var(--duration-fast) var(--ease-smooth);
 }
-.table tbody tr:hover { background: var(--color-overlay); }
+.table tbody tr:hover {
+  background: var(--color-overlay);
+}
 ```
 
 ---
@@ -684,7 +812,7 @@ const item = {
   font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.1em;
-  color: rgba(255,255,255,0.25);
+  color: rgba(255, 255, 255, 0.25);
 }
 
 /* Nav item */
@@ -697,8 +825,9 @@ const item = {
   color: var(--sidebar-item);
   cursor: pointer;
   border-radius: 0;
-  transition: color var(--duration-fast),
-              background var(--duration-fast);
+  transition:
+    color var(--duration-fast),
+    background var(--duration-fast);
   user-select: none;
 }
 .nav-item:hover {
@@ -761,10 +890,12 @@ CTA button right.
   display: flex;
   align-items: center;
   justify-content: space-between;
-  transition: background 0.2s ease, border-color 0.2s ease;
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease;
 }
 .landing-nav.scrolled {
-  background: rgba(249,247,244,0.92);
+  background: rgba(249, 247, 244, 0.92);
   backdrop-filter: blur(12px);
   border-bottom: 0.5px solid var(--color-border-1);
 }
@@ -786,6 +917,7 @@ Visual:      Dashboard screenshot / animated mockup
 ```
 
 Typography:
+
 ```css
 .hero-headline {
   font-family: var(--font-display);
@@ -806,6 +938,7 @@ Typography:
 ### Social proof bar
 
 Thin horizontal strip between hero and features:
+
 ```
 "Trusted by agencies across Europe"
 [Logo] [Logo] [Logo] [Logo] [Logo]
@@ -858,6 +991,7 @@ Pro card accented with `border: 1.5px solid var(--color-brand-muted)`.
 ### Footer
 
 4-column grid:
+
 ```
 Kontuur             Product             Company         Legal
 [tagline]           Features            About           Privacy policy
@@ -932,5 +1066,5 @@ npm install framer-motion
 
 ---
 
-*Kontuur Design System — v1.0*
-*Later.com warmth × Linear precision × Playfair editorial identity*
+_Kontuur Design System — v1.0_
+_Later.com warmth × Linear precision × Playfair editorial identity_

@@ -2,7 +2,13 @@
 
 import { useState } from 'react'
 import { cn } from '@/utils/cn'
-import { getDaysInMonth, toDateKey, groupPostsByDate, isToday, isSameMonth } from '@/features/calendar/helpers'
+import {
+  getDaysInMonth,
+  toDateKey,
+  groupPostsByDate,
+  isToday,
+  isSameMonth,
+} from '@/features/calendar/helpers'
 import { getPillarColor } from '@/components/ui/colors/pillar-colors'
 import type { CalendarPost } from '@/types/api'
 
@@ -18,7 +24,14 @@ interface CalendarGridProps {
   onDrop: (postId: string, date: string) => void
 }
 
-export function CalendarGrid({ year, month, posts, colorMap, onPostClick, onDrop }: CalendarGridProps) {
+export function CalendarGrid({
+  year,
+  month,
+  posts,
+  colorMap,
+  onPostClick,
+  onDrop,
+}: CalendarGridProps) {
   const [dragOverDate, setDragOverDate] = useState<string | null>(null)
   const days = getDaysInMonth(year, month)
   const postsByDate = groupPostsByDate(posts)
@@ -48,7 +61,10 @@ export function CalendarGrid({ year, month, posts, colorMap, onPostClick, onDrop
       {/* Day headers */}
       <div className="grid grid-cols-7 border-b border-gray-100">
         {DAY_HEADERS.map((day) => (
-          <div key={day} className="px-2 py-2 text-center text-xs font-medium text-gray-500 uppercase">
+          <div
+            key={day}
+            className="px-2 py-2 text-center text-xs font-medium text-gray-500 uppercase"
+          >
             {day}
           </div>
         ))}
@@ -83,7 +99,8 @@ export function CalendarGrid({ year, month, posts, colorMap, onPostClick, onDrop
                   'text-xs mb-1',
                   !inMonth && 'text-gray-300',
                   inMonth && 'text-gray-600',
-                  today && 'font-bold text-[#534AB7] bg-indigo-50 w-6 h-6 rounded-full flex items-center justify-center'
+                  today &&
+                    'font-bold text-[#534AB7] bg-indigo-50 w-6 h-6 rounded-full flex items-center justify-center'
                 )}
               >
                 {date.getDate()}

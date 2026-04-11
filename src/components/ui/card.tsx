@@ -21,14 +21,16 @@ export function Card({ children, className, hover = false }: CardProps) {
         borderRadius: 'var(--radius-lg)',
         padding: '20px 24px',
       }}
-      {...(hover ? {
-        onMouseEnter: (e: React.MouseEvent<HTMLDivElement>) => {
-          e.currentTarget.style.borderColor = 'var(--color-border-2)'
-        },
-        onMouseLeave: (e: React.MouseEvent<HTMLDivElement>) => {
-          e.currentTarget.style.borderColor = 'var(--color-border-1)'
-        },
-      } : {})}
+      {...(hover
+        ? {
+            onMouseEnter: (e: React.MouseEvent<HTMLDivElement>) => {
+              e.currentTarget.style.borderColor = 'var(--color-border-2)'
+            },
+            onMouseLeave: (e: React.MouseEvent<HTMLDivElement>) => {
+              e.currentTarget.style.borderColor = 'var(--color-border-1)'
+            },
+          }
+        : {})}
     >
       {children}
     </div>

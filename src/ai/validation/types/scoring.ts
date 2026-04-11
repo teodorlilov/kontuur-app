@@ -3,7 +3,12 @@ import type { LanguageConfig } from '@/lib/clients/language-rules'
 // ---- Scoring verdicts ----
 
 export type HookVerdict = 'stops_scroll' | 'clear_value' | 'generic' | 'buries_lead' | 'no_hook'
-export type CtaVerdict = 'natural_specific' | 'clear_relevant' | 'generic' | 'weak_mismatched' | 'missing'
+export type CtaVerdict =
+  | 'natural_specific'
+  | 'clear_relevant'
+  | 'generic'
+  | 'weak_mismatched'
+  | 'missing'
 
 // ---- Quality Context ----
 
@@ -71,7 +76,14 @@ export type QualityResult = SingleQualityResult | CarouselQualityResult
 
 // ---- Language ----
 
-export type LanguageIssueType = 'anglicism' | 'calque' | 'grammar' | 'formality' | 'register' | 'mixed_script' | 'vocabulary'
+export type LanguageIssueType =
+  | 'anglicism'
+  | 'calque'
+  | 'grammar'
+  | 'formality'
+  | 'register'
+  | 'mixed_script'
+  | 'vocabulary'
 
 export interface LanguageIssue {
   type: LanguageIssueType

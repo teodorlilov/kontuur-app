@@ -22,16 +22,16 @@ interface BadgeProps {
 const variantStyles: Record<BadgeVariant, { background: string; color: string }> = {
   published: { background: 'var(--color-published-bg)', color: 'var(--color-published-fg)' },
   scheduled: { background: 'var(--color-scheduled-bg)', color: 'var(--color-scheduled-fg)' },
-  pending:   { background: 'var(--color-pending-bg)',   color: 'var(--color-pending-fg)' },
-  draft:     { background: 'var(--color-draft-bg)',     color: 'var(--color-draft-fg)' },
-  error:     { background: 'var(--color-error-bg)',     color: 'var(--color-error-fg)' },
+  pending: { background: 'var(--color-pending-bg)', color: 'var(--color-pending-fg)' },
+  draft: { background: 'var(--color-draft-bg)', color: 'var(--color-draft-fg)' },
+  error: { background: 'var(--color-error-bg)', color: 'var(--color-error-fg)' },
   // Legacy
-  success:  { background: 'var(--color-published-bg)', color: 'var(--color-published-fg)' },
-  warning:  { background: 'var(--color-pending-bg)',   color: 'var(--color-pending-fg)' },
-  danger:   { background: 'var(--color-error-bg)',     color: 'var(--color-error-fg)' },
-  info:     { background: 'var(--color-scheduled-bg)', color: 'var(--color-scheduled-fg)' },
-  default:  { background: 'var(--color-draft-bg)',     color: 'var(--color-draft-fg)' },
-  priority: { background: 'var(--color-error-bg)',     color: 'var(--color-error-fg)' },
+  success: { background: 'var(--color-published-bg)', color: 'var(--color-published-fg)' },
+  warning: { background: 'var(--color-pending-bg)', color: 'var(--color-pending-fg)' },
+  danger: { background: 'var(--color-error-bg)', color: 'var(--color-error-fg)' },
+  info: { background: 'var(--color-scheduled-bg)', color: 'var(--color-scheduled-fg)' },
+  default: { background: 'var(--color-draft-bg)', color: 'var(--color-draft-fg)' },
+  priority: { background: 'var(--color-error-bg)', color: 'var(--color-error-fg)' },
 }
 
 export function Badge({ variant = 'default', dot = false, children, className }: BadgeProps) {

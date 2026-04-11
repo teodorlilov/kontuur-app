@@ -35,80 +35,80 @@
 ```css
 :root {
   /* Backgrounds */
-  --color-page:          #F9F7F4;   /* main page bg — never pure white */
-  --color-surface:       #FFFFFF;   /* card surfaces */
-  --color-sunken:        #F2F0EC;   /* inset areas, table headers, code blocks */
-  --color-overlay:       rgba(26,25,24,0.04);  /* hover bg on white surfaces */
+  --color-page: #f9f7f4; /* main page bg — never pure white */
+  --color-surface: #ffffff; /* card surfaces */
+  --color-sunken: #f2f0ec; /* inset areas, table headers, code blocks */
+  --color-overlay: rgba(26, 25, 24, 0.04); /* hover bg on white surfaces */
 
   /* Brand */
-  --color-brand:         #2C3E50;   /* sidebar, primary buttons */
-  --color-brand-hover:   #3D5166;   /* brand hover state */
-  --color-brand-accent:  #4A6FA5;   /* links, chart primary, mark blocks */
-  --color-brand-light:   rgba(74,111,165,0.12);  /* focus ring fill */
+  --color-brand: #2c3e50; /* sidebar, primary buttons */
+  --color-brand-hover: #3d5166; /* brand hover state */
+  --color-brand-accent: #4a6fa5; /* links, chart primary, mark blocks */
+  --color-brand-light: rgba(74, 111, 165, 0.12); /* focus ring fill */
 
   /* Text */
-  --color-text-1:        #1A1918;   /* primary — headings, values, body */
-  --color-text-2:        #6B6862;   /* secondary — descriptions, form labels */
-  --color-text-3:        #9C9890;   /* tertiary — hints, timestamps, placeholders */
-  --color-text-inv:      #FFFFFF;   /* text on dark/brand backgrounds */
+  --color-text-1: #1a1918; /* primary — headings, values, body */
+  --color-text-2: #6b6862; /* secondary — descriptions, form labels */
+  --color-text-3: #9c9890; /* tertiary — hints, timestamps, placeholders */
+  --color-text-inv: #ffffff; /* text on dark/brand backgrounds */
 
   /* Borders */
-  --color-border-1:      #EAE8E3;   /* default — card edges, dividers, table rows */
-  --color-border-2:      #D4D1CA;   /* emphasis — input borders */
-  --color-border-3:      #B8B5AE;   /* strong — active/focused inputs */
+  --color-border-1: #eae8e3; /* default — card edges, dividers, table rows */
+  --color-border-2: #d4d1ca; /* emphasis — input borders */
+  --color-border-3: #b8b5ae; /* strong — active/focused inputs */
 
   /* Status — intentionally muted */
-  --color-published-bg:  #EAF3DE;
-  --color-published-fg:  #27500A;
-  --color-scheduled-bg:  #EEF2FF;
-  --color-scheduled-fg:  #3C3489;
-  --color-pending-bg:    #FAEEDA;
-  --color-pending-fg:    #633806;
-  --color-draft-bg:      #F2F0EC;
-  --color-draft-fg:      #6B6862;
-  --color-error-bg:      #FCEBEB;
-  --color-error-fg:      #791F1F;
+  --color-published-bg: #eaf3de;
+  --color-published-fg: #27500a;
+  --color-scheduled-bg: #eef2ff;
+  --color-scheduled-fg: #3c3489;
+  --color-pending-bg: #faeeda;
+  --color-pending-fg: #633806;
+  --color-draft-bg: #f2f0ec;
+  --color-draft-fg: #6b6862;
+  --color-error-bg: #fcebeb;
+  --color-error-fg: #791f1f;
 
   /* Charts */
-  --color-chart-1:       #4A6FA5;   /* primary series */
-  --color-chart-2:       #1D9E75;   /* secondary series */
-  --color-chart-3:       #BA7517;   /* tertiary series */
-  --color-chart-grid:    #EAE8E3;
-  --color-chart-label:   #9C9890;
+  --color-chart-1: #4a6fa5; /* primary series */
+  --color-chart-2: #1d9e75; /* secondary series */
+  --color-chart-3: #ba7517; /* tertiary series */
+  --color-chart-grid: #eae8e3;
+  --color-chart-label: #9c9890;
 
   /* Radius */
-  --radius-xs:   4px;    /* badge corners */
-  --radius-sm:   6px;    /* small buttons, dropdown items */
-  --radius-md:   8px;    /* buttons, inputs, standard elements */
-  --radius-lg:   12px;   /* cards */
-  --radius-xl:   16px;   /* modals, large cards */
+  --radius-xs: 4px; /* badge corners */
+  --radius-sm: 6px; /* small buttons, dropdown items */
+  --radius-md: 8px; /* buttons, inputs, standard elements */
+  --radius-lg: 12px; /* cards */
+  --radius-xl: 16px; /* modals, large cards */
   --radius-full: 9999px; /* pills, avatars, progress bars */
 
   /* Sidebar (always dark) */
-  --sidebar-bg:              #2C3E50;
-  --sidebar-text:            rgba(255,255,255,0.55);
-  --sidebar-text-hover:      rgba(255,255,255,0.85);
-  --sidebar-text-active:     rgba(255,255,255,1);
-  --sidebar-item-bg-hover:   rgba(255,255,255,0.07);
-  --sidebar-item-bg-active:  rgba(255,255,255,0.12);
-  --sidebar-border:          rgba(255,255,255,0.08);
-  --sidebar-badge-bg:        rgba(255,255,255,0.15);
-  --sidebar-badge-text:      rgba(255,255,255,0.8);
+  --sidebar-bg: #2c3e50;
+  --sidebar-text: rgba(255, 255, 255, 0.55);
+  --sidebar-text-hover: rgba(255, 255, 255, 0.85);
+  --sidebar-text-active: rgba(255, 255, 255, 1);
+  --sidebar-item-bg-hover: rgba(255, 255, 255, 0.07);
+  --sidebar-item-bg-active: rgba(255, 255, 255, 0.12);
+  --sidebar-border: rgba(255, 255, 255, 0.08);
+  --sidebar-badge-bg: rgba(255, 255, 255, 0.15);
+  --sidebar-badge-text: rgba(255, 255, 255, 0.8);
 }
 ```
 
 ### Colour usage rules
 
-| Use case | Value | Never use |
-|---|---|---|
+| Use case        | Value     | Never use                        |
+| --------------- | --------- | -------------------------------- |
 | Page background | `#F9F7F4` | `#FFFFFF`, `gray-50`, `gray-100` |
-| Card surface | `#FFFFFF` | `gray-50` |
-| Card border | `#EAE8E3` | `gray-200` |
-| Primary button | `#2C3E50` | `blue-500`, `blue-600` |
-| Link / accent | `#4A6FA5` | `blue-500` |
-| Body text | `#1A1918` | `gray-900`, `black` |
-| Muted text | `#9C9890` | `gray-400`, `gray-500` |
-| Sidebar | `#2C3E50` | `gray-900`, `slate-800` |
+| Card surface    | `#FFFFFF` | `gray-50`                        |
+| Card border     | `#EAE8E3` | `gray-200`                       |
+| Primary button  | `#2C3E50` | `blue-500`, `blue-600`           |
+| Link / accent   | `#4A6FA5` | `blue-500`                       |
+| Body text       | `#1A1918` | `gray-900`, `black`              |
+| Muted text      | `#9C9890` | `gray-400`, `gray-500`           |
+| Sidebar         | `#2C3E50` | `gray-900`, `slate-800`          |
 
 ---
 
@@ -158,18 +158,18 @@ body {
 
 ### Type scale
 
-| Token | Size | Weight | Font | Use |
-|---|---|---|---|---|
-| `text-2xs` | 10px | 500 | Geist | Table column headers (uppercase, +0.07em) |
-| `text-xs` | 11px | 400/500 | Geist | Badges, timestamps |
-| `text-sm` | 12px | 400 | Geist | Hints, captions, secondary descriptions |
-| `text-base` | 13.5px | 400 | Geist | Body text, nav items, table cells |
-| `text-md` | 15px | 500 | Geist | Card titles, section headings |
-| `text-lg` | 18px | 400 | Geist | Sub-section headings |
-| `text-xl` | 22px | 400 | Geist | Small stat numbers |
-| `text-2xl` | 32px | 400 | Geist | Large stat numbers |
-| `text-display` | 28px | 400 | **Playfair** | Page titles |
-| `text-hero` | 52–64px | 400 | **Playfair** | Landing page hero |
+| Token          | Size    | Weight  | Font         | Use                                       |
+| -------------- | ------- | ------- | ------------ | ----------------------------------------- |
+| `text-2xs`     | 10px    | 500     | Geist        | Table column headers (uppercase, +0.07em) |
+| `text-xs`      | 11px    | 400/500 | Geist        | Badges, timestamps                        |
+| `text-sm`      | 12px    | 400     | Geist        | Hints, captions, secondary descriptions   |
+| `text-base`    | 13.5px  | 400     | Geist        | Body text, nav items, table cells         |
+| `text-md`      | 15px    | 500     | Geist        | Card titles, section headings             |
+| `text-lg`      | 18px    | 400     | Geist        | Sub-section headings                      |
+| `text-xl`      | 22px    | 400     | Geist        | Small stat numbers                        |
+| `text-2xl`     | 32px    | 400     | Geist        | Large stat numbers                        |
+| `text-display` | 28px    | 400     | **Playfair** | Page titles                               |
+| `text-hero`    | 52–64px | 400     | **Playfair** | Landing page hero                         |
 
 ### Rules
 
@@ -200,6 +200,7 @@ Use these values exclusively. Do not invent intermediate values.
 ```
 
 **Page layout:**
+
 - Page padding: `40px` horizontal
 - Max content width: `1280px`
 - Sidebar width: `224px`
@@ -225,9 +226,9 @@ Use these values exclusively. Do not invent intermediate values.
 <div className="flex h-screen">
   <Sidebar />
   <main className="flex-1 overflow-y-auto bg-[#F9F7F4] p-10">
-    <PageHeader />   {/* title + date + action buttons */}
-    <StatCards />    {/* 4-column grid */}
-    <ContentArea />  {/* cards, tables, charts */}
+    <PageHeader /> {/* title + date + action buttons */}
+    <StatCards /> {/* 4-column grid */}
+    <ContentArea /> {/* cards, tables, charts */}
   </main>
 </div>
 ```
@@ -239,21 +240,29 @@ Use these values exclusively. Do not invent intermediate values.
 ```tsx
 // Structure
 <aside style={{ background: 'var(--sidebar-bg)', width: 224 }}>
-  <div className="logo-area">  {/* padding: 26px 22px 18px */}
+  <div className="logo-area">
+    {' '}
+    {/* padding: 26px 22px 18px */}
     <KontuurLogo />
   </div>
-  <div className="divider" />  {/* 0.5px, rgba(255,255,255,0.08) */}
+  <div className="divider" /> {/* 0.5px, rgba(255,255,255,0.08) */}
   <nav>
     <SectionLabel>Workspace</SectionLabel>
-    <NavItem href="/dashboard" active>Dashboard</NavItem>
+    <NavItem href="/dashboard" active>
+      Dashboard
+    </NavItem>
     <NavItem href="/clients">Clients</NavItem>
     <NavItem href="/generate">Generate posts</NavItem>
-    <NavItem href="/review" badge={3}>Review queue</NavItem>
+    <NavItem href="/review" badge={3}>
+      Review queue
+    </NavItem>
     <SectionLabel>Insights</SectionLabel>
     <NavItem href="/calendar">Calendar</NavItem>
     <NavItem href="/analytics">Analytics</NavItem>
   </nav>
-  <div className="sidebar-footer">  {/* margin-top: auto */}
+  <div className="sidebar-footer">
+    {' '}
+    {/* margin-top: auto */}
     <UserRow />
   </div>
 </aside>
@@ -265,8 +274,8 @@ Use these values exclusively. Do not invent intermediate values.
   font-size: 10px;
   font-weight: 500;
   text-transform: uppercase;
-  letter-spacing: 0.10em;
-  color: rgba(255,255,255,0.25);
+  letter-spacing: 0.1em;
+  color: rgba(255, 255, 255, 0.25);
   font-family: var(--font-sans);
 }
 
@@ -278,7 +287,9 @@ Use these values exclusively. Do not invent intermediate values.
   font-size: 13.5px;
   color: var(--sidebar-text);
   cursor: pointer;
-  transition: color 120ms ease, background 120ms ease;
+  transition:
+    color 120ms ease,
+    background 120ms ease;
 }
 .nav-item:hover {
   color: var(--sidebar-text-hover);
@@ -308,7 +319,7 @@ Use these values exclusively. Do not invent intermediate values.
 .card {
   background: var(--color-surface);
   border: 0.5px solid var(--color-border-1);
-  border-radius: var(--radius-lg);  /* 12px */
+  border-radius: var(--radius-lg); /* 12px */
   padding: 20px 24px;
 }
 ```
@@ -321,7 +332,9 @@ Use these values exclusively. Do not invent intermediate values.
   border: 0.5px solid var(--color-border-1);
   border-radius: var(--radius-lg);
   padding: 20px 22px;
-  transition: border-color 150ms ease, transform 150ms ease;
+  transition:
+    border-color 150ms ease,
+    transform 150ms ease;
 }
 .metric-card:hover {
   border-color: var(--color-border-2);
@@ -346,9 +359,15 @@ Use these values exclusively. Do not invent intermediate values.
   font-size: 12px;
   margin-top: 6px;
 }
-.metric-delta.up   { color: var(--color-published-fg); }
-.metric-delta.down { color: var(--color-error-fg); }
-.metric-delta.neutral { color: var(--color-text-3); }
+.metric-delta.up {
+  color: var(--color-published-fg);
+}
+.metric-delta.down {
+  color: var(--color-error-fg);
+}
+.metric-delta.neutral {
+  color: var(--color-text-3);
+}
 ```
 
 ### Post card (review queue)
@@ -359,12 +378,14 @@ Use these values exclusively. Do not invent intermediate values.
   border: 0.5px solid var(--color-border-1);
   border-radius: var(--radius-lg);
   padding: 18px 20px;
-  transition: border-color 150ms ease, box-shadow 200ms ease;
+  transition:
+    border-color 150ms ease,
+    box-shadow 200ms ease;
   cursor: pointer;
 }
 .post-card:hover {
   border-color: var(--color-border-2);
-  box-shadow: 0 2px 12px rgba(26,25,24,0.06);
+  box-shadow: 0 2px 12px rgba(26, 25, 24, 0.06);
 }
 .post-card.selected {
   border-color: var(--color-brand-accent);
@@ -390,19 +411,26 @@ Four variants. Use exactly these — no custom colour combinations.
   font-weight: 500;
   font-family: var(--font-sans);
   cursor: pointer;
-  transition: background 150ms ease, border-color 150ms ease, transform 100ms ease;
+  transition:
+    background 150ms ease,
+    border-color 150ms ease,
+    transform 100ms ease;
   border: none;
   white-space: nowrap;
   line-height: 1;
 }
-.btn:active { transform: scale(0.98); }
+.btn:active {
+  transform: scale(0.98);
+}
 
 /* Primary — use for the single main action on a page */
 .btn-primary {
   background: var(--color-brand);
   color: var(--color-text-inv);
 }
-.btn-primary:hover { background: var(--color-brand-hover); }
+.btn-primary:hover {
+  background: var(--color-brand-hover);
+}
 
 /* Secondary — use for secondary actions, destructive confirmations */
 .btn-secondary {
@@ -432,11 +460,20 @@ Four variants. Use exactly these — no custom colour combinations.
   color: var(--color-error-fg);
   border: 0.5px solid var(--color-error-bg);
 }
-.btn-danger:hover { background: var(--color-error-bg); }
+.btn-danger:hover {
+  background: var(--color-error-bg);
+}
 
 /* Sizes */
-.btn-sm { padding: 5px 12px; font-size: 12px; border-radius: var(--radius-sm); }
-.btn-lg { padding: 11px 22px; font-size: 15px; }
+.btn-sm {
+  padding: 5px 12px;
+  font-size: 12px;
+  border-radius: var(--radius-sm);
+}
+.btn-lg {
+  padding: 11px 22px;
+  font-size: 15px;
+}
 ```
 
 ---
@@ -468,21 +505,31 @@ Four variants. Use exactly these — no custom colour combinations.
   font-size: 13.5px;
   font-family: var(--font-sans);
   color: var(--color-text-1);
-  transition: border-color 150ms ease, box-shadow 150ms ease;
+  transition:
+    border-color 150ms ease,
+    box-shadow 150ms ease;
   outline: none;
   height: 36px;
 }
-.textarea { height: auto; min-height: 100px; resize: vertical; }
-.input::placeholder { color: var(--color-text-3); }
+.textarea {
+  height: auto;
+  min-height: 100px;
+  resize: vertical;
+}
+.input::placeholder {
+  color: var(--color-text-3);
+}
 
-.input:hover  { border-color: var(--color-border-3); }
-.input:focus  {
+.input:hover {
+  border-color: var(--color-border-3);
+}
+.input:focus {
   border-color: var(--color-brand-accent);
   box-shadow: 0 0 0 3px var(--color-brand-light);
 }
-.input.error  {
-  border-color: #E24B4A;
-  box-shadow: 0 0 0 3px rgba(226,75,74,0.10);
+.input.error {
+  border-color: #e24b4a;
+  box-shadow: 0 0 0 3px rgba(226, 75, 74, 0.1);
 }
 .input:disabled {
   opacity: 0.45;
@@ -494,7 +541,9 @@ Four variants. Use exactly these — no custom colour combinations.
   font-size: 12px;
   color: var(--color-text-3);
 }
-.hint.error { color: var(--color-error-fg); }
+.hint.error {
+  color: var(--color-error-fg);
+}
 ```
 
 ### Select / Dropdown
@@ -507,10 +556,12 @@ Use `@radix-ui/react-select` or `@radix-ui/react-dropdown-menu`. Style the conte
   border: 0.5px solid var(--color-border-1);
   border-radius: var(--radius-lg);
   padding: 6px;
-  box-shadow: 0 4px 24px rgba(26,25,24,0.10), 0 1px 4px rgba(26,25,24,0.06);
+  box-shadow:
+    0 4px 24px rgba(26, 25, 24, 0.1),
+    0 1px 4px rgba(26, 25, 24, 0.06);
   min-width: 180px;
   z-index: 100;
-  animation: dropdown-in 150ms cubic-bezier(0.16,1,0.3,1);
+  animation: dropdown-in 150ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 .dropdown-item {
   display: flex;
@@ -525,10 +576,18 @@ Use `@radix-ui/react-select` or `@radix-ui/react-dropdown-menu`. Style the conte
   transition: background 100ms ease;
   user-select: none;
 }
-.dropdown-item:hover      { background: var(--color-overlay); }
-.dropdown-item[data-highlighted] { background: var(--color-overlay); }
-.dropdown-item.danger     { color: var(--color-error-fg); }
-.dropdown-item.danger:hover { background: var(--color-error-bg); }
+.dropdown-item:hover {
+  background: var(--color-overlay);
+}
+.dropdown-item[data-highlighted] {
+  background: var(--color-overlay);
+}
+.dropdown-item.danger {
+  color: var(--color-error-fg);
+}
+.dropdown-item.danger:hover {
+  background: var(--color-error-bg);
+}
 .dropdown-separator {
   height: 0.5px;
   background: var(--color-border-1);
@@ -544,8 +603,14 @@ Use `@radix-ui/react-select` or `@radix-ui/react-dropdown-menu`. Style the conte
 }
 
 @keyframes dropdown-in {
-  from { opacity: 0; transform: translateY(-6px) scale(0.97); }
-  to   { opacity: 1; transform: translateY(0) scale(1); }
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 ```
 
@@ -574,11 +639,26 @@ Use `@radix-ui/react-select` or `@radix-ui/react-dropdown-menu`. Style the conte
   flex-shrink: 0;
 }
 
-.badge-published { background: var(--color-published-bg); color: var(--color-published-fg); }
-.badge-scheduled { background: var(--color-scheduled-bg); color: var(--color-scheduled-fg); }
-.badge-pending   { background: var(--color-pending-bg);   color: var(--color-pending-fg); }
-.badge-draft     { background: var(--color-draft-bg);     color: var(--color-draft-fg); }
-.badge-error     { background: var(--color-error-bg);     color: var(--color-error-fg); }
+.badge-published {
+  background: var(--color-published-bg);
+  color: var(--color-published-fg);
+}
+.badge-scheduled {
+  background: var(--color-scheduled-bg);
+  color: var(--color-scheduled-fg);
+}
+.badge-pending {
+  background: var(--color-pending-bg);
+  color: var(--color-pending-fg);
+}
+.badge-draft {
+  background: var(--color-draft-bg);
+  color: var(--color-draft-fg);
+}
+.badge-error {
+  background: var(--color-error-bg);
+  color: var(--color-error-fg);
+}
 ```
 
 ---
@@ -610,11 +690,15 @@ Use `@radix-ui/react-select` or `@radix-ui/react-dropdown-menu`. Style the conte
   border-bottom: 0.5px solid var(--color-border-1);
   vertical-align: middle;
 }
-.table tbody tr:last-child td { border-bottom: none; }
+.table tbody tr:last-child td {
+  border-bottom: none;
+}
 .table tbody tr {
   transition: background 120ms ease;
 }
-.table tbody tr:hover { background: var(--color-overlay); }
+.table tbody tr:hover {
+  background: var(--color-overlay);
+}
 ```
 
 ---
@@ -633,11 +717,17 @@ Use `@radix-ui/react-select` or `@radix-ui/react-dropdown-menu`. Style the conte
   height: 100%;
   border-radius: var(--radius-full);
   background: var(--color-brand-accent);
-  transition: width 600ms cubic-bezier(0.16,1,0.3,1);
+  transition: width 600ms cubic-bezier(0.16, 1, 0.3, 1);
 }
-.progress-fill.success { background: #1D9E75; }
-.progress-fill.warning { background: #BA7517; }
-.progress-fill.error   { background: #E24B4A; }
+.progress-fill.success {
+  background: #1d9e75;
+}
+.progress-fill.warning {
+  background: #ba7517;
+}
+.progress-fill.error {
+  background: #e24b4a;
+}
 ```
 
 ---
@@ -649,11 +739,11 @@ All charts use this shared config. Import and spread into Recharts components.
 ```typescript
 // lib/chart-config.ts
 export const CHART_COLORS = {
-  primary:   '#4A6FA5',
+  primary: '#4A6FA5',
   secondary: '#1D9E75',
-  tertiary:  '#BA7517',
-  grid:      '#EAE8E3',
-  label:     '#9C9890',
+  tertiary: '#BA7517',
+  grid: '#EAE8E3',
+  label: '#9C9890',
 }
 
 export const CHART_AXIS_PROPS = {
@@ -695,11 +785,13 @@ export const LINE_PROPS = {
 ```
 
 **Line / Area charts:**
+
 - `strokeWidth: 2`, no dots, active dot radius 4
 - Area fill: `fillOpacity: 0.08` — subtle, not heavy
 - Grid lines: `stroke="#EAE8E3"` `strokeDasharray="0"` (solid, not dashed)
 
 **Bar charts:**
+
 - `radius={[4, 4, 0, 0]}` — rounded tops only
 - `barCategoryGap="35%"` — generous gap between groups
 - Single colour per bar group
@@ -721,16 +813,43 @@ export const LINE_PROPS = {
 }
 
 /* Sizes */
-.avatar-lg { width: 44px; height: 44px; font-size: 14px; }
-.avatar-md { width: 32px; height: 32px; font-size: 12px; }
-.avatar-sm { width: 24px; height: 24px; font-size: 10px; }
+.avatar-lg {
+  width: 44px;
+  height: 44px;
+  font-size: 14px;
+}
+.avatar-md {
+  width: 32px;
+  height: 32px;
+  font-size: 12px;
+}
+.avatar-sm {
+  width: 24px;
+  height: 24px;
+  font-size: 10px;
+}
 
 /* Colour variants — assign by hashing the client/user name */
-.avatar-blue   { background: #E6F1FB; color: #0C447C; }
-.avatar-green  { background: #EAF3DE; color: #27500A; }
-.avatar-purple { background: #EEEDFE; color: #3C3489; }
-.avatar-amber  { background: #FAEEDA; color: #633806; }
-.avatar-brand  { background: #2C3E50; color: #FFFFFF; }
+.avatar-blue {
+  background: #e6f1fb;
+  color: #0c447c;
+}
+.avatar-green {
+  background: #eaf3de;
+  color: #27500a;
+}
+.avatar-purple {
+  background: #eeedfe;
+  color: #3c3489;
+}
+.avatar-amber {
+  background: #faeeda;
+  color: #633806;
+}
+.avatar-brand {
+  background: #2c3e50;
+  color: #ffffff;
+}
 ```
 
 ---
@@ -739,53 +858,89 @@ export const LINE_PROPS = {
 
 ### Timing reference
 
-| Name | Duration | Curve | Use |
-|---|---|---|---|
-| Fast | 120ms | ease | Hover colour/bg transitions |
-| Base | 200ms | spring | Dropdowns, modals, cards entering |
-| Slow | 350ms | spring | Page transitions, skeleton reveals |
-| Spring | — | `cubic-bezier(0.16,1,0.3,1)` | All entrances |
-| Smooth | — | `cubic-bezier(0.4,0,0.2,1)` | Exits, fades |
+| Name   | Duration | Curve                        | Use                                |
+| ------ | -------- | ---------------------------- | ---------------------------------- |
+| Fast   | 120ms    | ease                         | Hover colour/bg transitions        |
+| Base   | 200ms    | spring                       | Dropdowns, modals, cards entering  |
+| Slow   | 350ms    | spring                       | Page transitions, skeleton reveals |
+| Spring | —        | `cubic-bezier(0.16,1,0.3,1)` | All entrances                      |
+| Smooth | —        | `cubic-bezier(0.4,0,0.2,1)`  | Exits, fades                       |
 
 ### CSS keyframes
 
 ```css
 /* Page / section entrance */
 @keyframes fade-up {
-  from { opacity: 0; transform: translateY(8px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* Dropdown / tooltip entrance */
 @keyframes scale-in {
-  from { opacity: 0; transform: scale(0.96) translateY(4px); }
-  to   { opacity: 1; transform: scale(1) translateY(0); }
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
 }
 
 /* Toast notification */
 @keyframes slide-in-right {
-  from { opacity: 0; transform: translateX(16px); }
-  to   { opacity: 1; transform: translateX(0); }
+  from {
+    opacity: 0;
+    transform: translateX(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
 /* Modal overlay */
 @keyframes fade-in {
-  from { opacity: 0; }
-  to   { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 /* Skeleton shimmer */
 @keyframes shimmer {
-  from { background-position: -200% 0; }
-  to   { background-position:  200% 0; }
+  from {
+    background-position: -200% 0;
+  }
+  to {
+    background-position: 200% 0;
+  }
 }
 
 /* Stagger children — apply to list containers */
-.stagger > *:nth-child(1) { animation-delay:   0ms; }
-.stagger > *:nth-child(2) { animation-delay:  40ms; }
-.stagger > *:nth-child(3) { animation-delay:  80ms; }
-.stagger > *:nth-child(4) { animation-delay: 120ms; }
-.stagger > *:nth-child(5) { animation-delay: 160ms; }
+.stagger > *:nth-child(1) {
+  animation-delay: 0ms;
+}
+.stagger > *:nth-child(2) {
+  animation-delay: 40ms;
+}
+.stagger > *:nth-child(3) {
+  animation-delay: 80ms;
+}
+.stagger > *:nth-child(4) {
+  animation-delay: 120ms;
+}
+.stagger > *:nth-child(5) {
+  animation-delay: 160ms;
+}
 ```
 
 ### Skeleton loading
@@ -811,7 +966,7 @@ export const LINE_PROPS = {
 export const pageVariants = {
   initial: { opacity: 0, y: 8 },
   animate: { opacity: 1, y: 0 },
-  exit:    { opacity: 0, y: -4 },
+  exit: { opacity: 0, y: -4 },
 }
 export const pageTransition = {
   duration: 0.2,
@@ -828,19 +983,19 @@ export const listContainer = {
 }
 export const listItem = {
   hidden: { opacity: 0, y: 6 },
-  show:   { opacity: 1, y: 0, transition: { duration: 0.2, ease: [0.16,1,0.3,1] } },
+  show: { opacity: 1, y: 0, transition: { duration: 0.2, ease: [0.16, 1, 0.3, 1] } },
 }
 
 // Modal
 export const modalOverlay = {
   initial: { opacity: 0 },
   animate: { opacity: 1 },
-  exit:    { opacity: 0 },
+  exit: { opacity: 0 },
 }
 export const modalContent = {
   initial: { opacity: 0, scale: 0.96, y: 6 },
-  animate: { opacity: 1, scale: 1,    y: 0 },
-  exit:    { opacity: 0, scale: 0.96, y: 6 },
+  animate: { opacity: 1, scale: 1, y: 0 },
+  exit: { opacity: 0, scale: 0.96, y: 6 },
 }
 ```
 
@@ -854,7 +1009,7 @@ Use `@radix-ui/react-dialog`.
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(26,25,24,0.45);
+  background: rgba(26, 25, 24, 0.45);
   z-index: 200;
 }
 .modal-content {
@@ -951,7 +1106,10 @@ Every list, table, and data section needs an empty state.
   text-align: center;
   gap: 8px;
 }
-.empty-icon { color: var(--color-border-2); margin-bottom: 4px; }
+.empty-icon {
+  color: var(--color-border-2);
+  margin-bottom: 4px;
+}
 .empty-title {
   font-size: 15px;
   font-weight: 500;
@@ -969,12 +1127,14 @@ Every list, table, and data section needs an empty state.
 ## Loading States
 
 **Skeleton** — for initial page loads, before data is available:
+
 ```tsx
 <div className="skeleton" style={{ height: 32, width: '60%' }} />
 <div className="skeleton" style={{ height: 16, width: '40%', marginTop: 8 }} />
 ```
 
 **Spinner** — for actions in progress (button loading, form submitting):
+
 ```tsx
 // Inline in button
 <button className="btn btn-primary" disabled={loading}>
@@ -1016,21 +1176,21 @@ Do not mix icon libraries. Do not use emoji as icons.
 
 ## Do / Don't
 
-| ✓ Do | ✗ Don't |
-|---|---|
-| `background: #F9F7F4` for page | `bg-gray-50`, `bg-white` for page |
-| `border: 0.5px solid #EAE8E3` | `border border-gray-200` |
-| `border-radius: 12px` for cards | `rounded-md` (8px) for cards |
-| `font-weight: 400` or `500` | `font-weight: 600` or `700` |
-| Geist for all UI text | Inter, System UI defaults |
-| Playfair for page titles only | Playfair for body/labels/buttons |
-| `#2C3E50` for primary button | `bg-blue-500`, `bg-blue-600` |
-| `#4A6FA5` for links/accents | `text-blue-500` |
-| Muted status colours | Saturated `green-500`, `red-500` |
-| `cubic-bezier(0.16,1,0.3,1)` | `linear`, `ease-in`, `ease-out` |
-| Radix UI + custom CSS | shadcn default styles |
-| `0.5px` card borders | `1px` card borders |
-| Subtle hover states | Colour changes on hover |
+| ✓ Do                            | ✗ Don't                           |
+| ------------------------------- | --------------------------------- |
+| `background: #F9F7F4` for page  | `bg-gray-50`, `bg-white` for page |
+| `border: 0.5px solid #EAE8E3`   | `border border-gray-200`          |
+| `border-radius: 12px` for cards | `rounded-md` (8px) for cards      |
+| `font-weight: 400` or `500`     | `font-weight: 600` or `700`       |
+| Geist for all UI text           | Inter, System UI defaults         |
+| Playfair for page titles only   | Playfair for body/labels/buttons  |
+| `#2C3E50` for primary button    | `bg-blue-500`, `bg-blue-600`      |
+| `#4A6FA5` for links/accents     | `text-blue-500`                   |
+| Muted status colours            | Saturated `green-500`, `red-500`  |
+| `cubic-bezier(0.16,1,0.3,1)`    | `linear`, `ease-in`, `ease-out`   |
+| Radix UI + custom CSS           | shadcn default styles             |
+| `0.5px` card borders            | `1px` card borders                |
+| Subtle hover states             | Colour changes on hover           |
 
 ---
 
@@ -1081,10 +1241,12 @@ Do not mix icon libraries. Do not use emoji as icons.
   display: flex;
   align-items: center;
   justify-content: space-between;
-  transition: background 200ms ease, border-color 200ms ease;
+  transition:
+    background 200ms ease,
+    border-color 200ms ease;
 }
 .landing-nav.scrolled {
-  background: rgba(249,247,244,0.92);
+  background: rgba(249, 247, 244, 0.92);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border-bottom: 0.5px solid var(--color-border-1);
@@ -1145,6 +1307,6 @@ components/
 
 ---
 
-*Kontuur Style Guide — v1.0*
-*Last updated: April 2026*
-*Every decision in this document is intentional. When in doubt, check here first.*
+_Kontuur Style Guide — v1.0_
+_Last updated: April 2026_
+_Every decision in this document is intentional. When in doubt, check here first._

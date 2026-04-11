@@ -38,11 +38,17 @@ export async function POST(request: Request) {
   }
 
   if (!body.clientId || !body.platform || !body.postType) {
-    return NextResponse.json({ error: 'clientId, platform, and postType are required' }, { status: 400 })
+    return NextResponse.json(
+      { error: 'clientId, platform, and postType are required' },
+      { status: 400 }
+    )
   }
 
   if (!body.themes?.length && !body.priorityPosts?.length) {
-    return NextResponse.json({ error: 'At least one theme or priority post is required' }, { status: 400 })
+    return NextResponse.json(
+      { error: 'At least one theme or priority post is required' },
+      { status: 400 }
+    )
   }
 
   const result = await fetchClientData(supabase, body.clientId, agencyId, body.preloadedClientData)

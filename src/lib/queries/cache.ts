@@ -21,7 +21,7 @@ const _fetchAgency = unstable_cache(
       .select(AGENCY_COLUMNS)
       .eq('id', agencyId)
       .single()
-    return (data as Agency | null)
+    return data as Agency | null
   },
   ['agency'],
   { revalidate: 60, tags: ['agencies'] }
@@ -39,14 +39,21 @@ export const getCachedAgency = cache(_fetchAgency)
  * issue their own targeted queries in addition to calling this function.
  */
 const _fetchAgencyClients = unstable_cache(
-  async (agencyId: string): Promise<Pick<Client, 'id' | 'name' | 'niche' | 'posts_per_week' | 'language' | 'created_at'>[]> => {
+  async (
+    agencyId: string
+  ): Promise<
+    Pick<Client, 'id' | 'name' | 'niche' | 'posts_per_week' | 'language' | 'created_at'>[]
+  > => {
     const supabase = await createServerSupabaseClient()
     const { data } = await supabase
       .from('clients')
       .select(CLIENT_LIST_COLUMNS)
       .eq('agency_id', agencyId)
       .order('created_at', { ascending: true })
-    return (data ?? []) as Pick<Client, 'id' | 'name' | 'niche' | 'posts_per_week' | 'language' | 'created_at'>[]
+    return (data ?? []) as Pick<
+      Client,
+      'id' | 'name' | 'niche' | 'posts_per_week' | 'language' | 'created_at'
+    >[]
   },
   ['agency-clients'],
   { revalidate: 60, tags: ['agency-clients'] }

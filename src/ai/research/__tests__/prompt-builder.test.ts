@@ -32,7 +32,14 @@ function makeLanguageConfig(language = 'English'): LanguageConfig {
   }
 }
 
-function createBuilder(overrides?: Partial<{ niche: string; languageConfig: LanguageConfig; contentPillars: { pillar: string; weight: number }[]; postHistory: string[] }>) {
+function createBuilder(
+  overrides?: Partial<{
+    niche: string
+    languageConfig: LanguageConfig
+    contentPillars: { pillar: string; weight: number }[]
+    postHistory: string[]
+  }>
+) {
   return new ResearchPromptBuilder({
     niche: 'fitness',
     languageConfig: makeLanguageConfig(),
@@ -56,7 +63,12 @@ describe('ResearchPromptBuilder', () => {
     mockClaudeResponse(VALID_RESPONSE)
     const sourceContext: SourceContext = {
       rssItems: [
-        { title: 'HIIT Benefits', description: 'New study on HIIT', link: 'https://x.com/1', pubDate: null },
+        {
+          title: 'HIIT Benefits',
+          description: 'New study on HIIT',
+          link: 'https://x.com/1',
+          pubDate: null,
+        },
       ],
       websiteExcerpts: [],
       fileExcerpts: [],
@@ -76,7 +88,12 @@ describe('ResearchPromptBuilder', () => {
     mockClaudeResponse(VALID_RESPONSE)
     const sourceContext: SourceContext = {
       rssItems: [],
-      websiteExcerpts: [{ url: 'https://example.com', text: '## Our Services\n\nPersonal training and group classes.' }],
+      websiteExcerpts: [
+        {
+          url: 'https://example.com',
+          text: '## Our Services\n\nPersonal training and group classes.',
+        },
+      ],
       fileExcerpts: [],
     }
     const builder = createBuilder()
@@ -93,7 +110,12 @@ describe('ResearchPromptBuilder', () => {
     const sourceContext: SourceContext = {
       rssItems: [],
       websiteExcerpts: [],
-      fileExcerpts: [{ label: 'Services', text: 'We offer Botox, dermal fillers, and chemical peels for facial rejuvenation.' }],
+      fileExcerpts: [
+        {
+          label: 'Services',
+          text: 'We offer Botox, dermal fillers, and chemical peels for facial rejuvenation.',
+        },
+      ],
     }
     const builder = createBuilder()
     await builder.generateTopics(5, sourceContext)
@@ -128,7 +150,11 @@ describe('ResearchPromptBuilder', () => {
   it('includes content pillars in prompt when provided', async () => {
     mockClaudeResponse(VALID_RESPONSE)
     const builder = createBuilder({
-      contentPillars: [{ pillar: 'Nutrition', weight: 40 }, { pillar: 'Workouts', weight: 35 }, { pillar: 'Recovery', weight: 25 }],
+      contentPillars: [
+        { pillar: 'Nutrition', weight: 40 },
+        { pillar: 'Workouts', weight: 35 },
+        { pillar: 'Recovery', weight: 25 },
+      ],
     })
     await builder.generateTopics(5)
 
@@ -177,9 +203,7 @@ describe('ResearchPromptBuilder', () => {
   it('uses custom count in source-grounded prompt', async () => {
     mockClaudeResponse(VALID_RESPONSE)
     const sourceContext: SourceContext = {
-      rssItems: [
-        { title: 'Article', description: 'Desc', link: 'https://x.com/1', pubDate: null },
-      ],
+      rssItems: [{ title: 'Article', description: 'Desc', link: 'https://x.com/1', pubDate: null }],
       websiteExcerpts: [],
       fileExcerpts: [],
     }
@@ -217,9 +241,7 @@ describe('ResearchPromptBuilder', () => {
   it('includes sourcing protocol in source-grounded prompt', async () => {
     mockClaudeResponse(VALID_RESPONSE)
     const sourceContext: SourceContext = {
-      rssItems: [
-        { title: 'Article', description: 'Desc', link: 'https://x.com/1', pubDate: null },
-      ],
+      rssItems: [{ title: 'Article', description: 'Desc', link: 'https://x.com/1', pubDate: null }],
       websiteExcerpts: [],
       fileExcerpts: [],
     }

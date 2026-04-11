@@ -31,16 +31,14 @@ export default async function ClientSourcesPage({
       .select(CLIENT_SOURCE_FULL_COLUMNS)
       .eq('client_id', id)
       .order('created_at', { ascending: false }),
-    supabase
-      .from('brand_profiles')
-      .select('source_strategy')
-      .eq('client_id', id)
-      .single(),
+    supabase.from('brand_profiles').select('source_strategy').eq('client_id', id).single(),
   ])
 
   const initialSources = (sourcesResult.data as ClientSource[] | null) ?? []
   const defaultStrategy = { rss: true, website: true, file: true, trend_fallback: true }
-  const sourceStrategy = (profileResult.data as { source_strategy: Record<string, boolean> } | null)?.source_strategy ?? defaultStrategy
+  const sourceStrategy =
+    (profileResult.data as { source_strategy: Record<string, boolean> } | null)?.source_strategy ??
+    defaultStrategy
 
   return (
     <SourcesManager
@@ -49,7 +47,9 @@ export default async function ClientSourcesPage({
       niche={client.niche ?? ''}
       initialSources={initialSources}
       isOnboarding={isOnboarding}
-      initialSourceStrategy={sourceStrategy as { rss: boolean; website: boolean; file: boolean; trend_fallback: boolean }}
+      initialSourceStrategy={
+        sourceStrategy as { rss: boolean; website: boolean; file: boolean; trend_fallback: boolean }
+      }
     />
   )
 }

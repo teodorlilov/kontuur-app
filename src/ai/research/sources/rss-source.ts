@@ -23,7 +23,11 @@ export class RssResearchSource extends ResearchSource {
     return this.items
   }
 
-  addToFullTextIndex(byUrl: Map<string, string>, _byLabel: Map<string, string>, cap: number = SOURCE_FULL_TEXT_CAP): void {
+  addToFullTextIndex(
+    byUrl: Map<string, string>,
+    _byLabel: Map<string, string>,
+    cap: number = SOURCE_FULL_TEXT_CAP
+  ): void {
     for (const item of this.items) {
       if (item.link) {
         byUrl.set(item.link, `${item.title}\n${item.description}`.slice(0, cap))

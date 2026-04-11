@@ -19,7 +19,12 @@ export function analyzeSentenceVariety(text: string): SentenceVarietyResult {
     .filter((s) => s.length > 0)
 
   if (sentences.length === 0) {
-    return { hasShortSentence: false, hasLongSentence: false, maxConsecutiveSimilar: 0, passes: false }
+    return {
+      hasShortSentence: false,
+      hasLongSentence: false,
+      maxConsecutiveSimilar: 0,
+      passes: false,
+    }
   }
 
   const wordCounts = sentences.map((s) => s.split(/\s+/).filter((w) => w.length > 0).length)
@@ -57,4 +62,3 @@ export function countHashtags(text: string): number {
   const matches = text.match(/#[^\s#]+/g)
   return matches?.length ?? 0
 }
-

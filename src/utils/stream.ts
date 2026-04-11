@@ -4,7 +4,7 @@
  */
 export async function readNDJSONStream<T>(
   response: Response,
-  onItem: (item: T) => void,
+  onItem: (item: T) => void
 ): Promise<void> {
   const reader = response.body!.getReader()
   const decoder = new TextDecoder()

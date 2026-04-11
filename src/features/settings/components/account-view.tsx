@@ -43,7 +43,7 @@ export function AccountView({ agency, currentUserRole }: AccountViewProps) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: name.trim(), timezone }),
       })
-      const data = await res.json() as { error?: string; success?: boolean }
+      const data = (await res.json()) as { error?: string; success?: boolean }
       if (!res.ok) {
         throw new Error(data.error ?? 'Failed to update')
       }
@@ -105,11 +105,7 @@ export function AccountView({ agency, currentUserRole }: AccountViewProps) {
           </p>
         </div>
         {isAdmin ? (
-          <Button
-            onClick={handleSave}
-            loading={saving}
-            disabled={!hasChanged}
-          >
+          <Button onClick={handleSave} loading={saving} disabled={!hasChanged}>
             Save
           </Button>
         ) : (
@@ -128,7 +124,9 @@ export function AccountView({ agency, currentUserRole }: AccountViewProps) {
           <div className="flex items-center justify-between">
             <span className="text-sm text-gray-500">Status</span>
             <span className="text-sm font-medium text-gray-900">
-              {agency.subscription_status === 'trialing' ? 'Trial' : formatPlanLabel(agency.subscription_status)}
+              {agency.subscription_status === 'trialing'
+                ? 'Trial'
+                : formatPlanLabel(agency.subscription_status)}
             </span>
           </div>
           {agency.subscription_status === 'trialing' && (
@@ -141,9 +139,7 @@ export function AccountView({ agency, currentUserRole }: AccountViewProps) {
           )}
           <div className="flex items-center justify-between">
             <span className="text-sm text-gray-500">Client limit</span>
-            <span className="text-sm font-medium text-gray-900">
-              {agency.plan_client_limit}
-            </span>
+            <span className="text-sm font-medium text-gray-900">{agency.plan_client_limit}</span>
           </div>
           <div className="flex items-center justify-between">
             <span className="text-sm text-gray-500">Mode</span>

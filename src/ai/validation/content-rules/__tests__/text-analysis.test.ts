@@ -3,7 +3,8 @@ import { analyzeSentenceVariety, countWords, countHashtags } from '../text-analy
 
 describe('analyzeSentenceVariety', () => {
   it('detects short and long sentences', () => {
-    const text = 'Short. This is a much longer sentence that has more than twenty words in it to satisfy the long sentence requirement easily.'
+    const text =
+      'Short. This is a much longer sentence that has more than twenty words in it to satisfy the long sentence requirement easily.'
     const result = analyzeSentenceVariety(text)
     expect(result.hasShortSentence).toBe(true)
     expect(result.hasLongSentence).toBe(true)
@@ -11,7 +12,8 @@ describe('analyzeSentenceVariety', () => {
   })
 
   it('fails when no short sentence', () => {
-    const text = 'This sentence has seven words total. This one also has seven words. Another sentence with seven words here.'
+    const text =
+      'This sentence has seven words total. This one also has seven words. Another sentence with seven words here.'
     const result = analyzeSentenceVariety(text)
     expect(result.hasShortSentence).toBe(false)
     expect(result.passes).toBe(false)
@@ -26,7 +28,8 @@ describe('analyzeSentenceVariety', () => {
 
   it('detects consecutive similar-length sentences', () => {
     // Three sentences of similar length (within 3 words)
-    const text = 'I like running in the park. She enjoys swimming at the beach. He prefers biking on the road. This is completely different and much much longer than the others so variety is achieved.'
+    const text =
+      'I like running in the park. She enjoys swimming at the beach. He prefers biking on the road. This is completely different and much much longer than the others so variety is achieved.'
     const result = analyzeSentenceVariety(text)
     expect(result.maxConsecutiveSimilar).toBe(3)
     expect(result.passes).toBe(false) // max consecutive > 2
@@ -78,4 +81,3 @@ describe('countHashtags', () => {
     expect(countHashtags('Post text #tag1 #tag2 #tag3')).toBe(3)
   })
 })
-

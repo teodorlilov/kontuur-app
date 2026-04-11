@@ -22,19 +22,19 @@ improve maintainability but do not change correctness. Efficiency changes follow
 
 ## File Map
 
-| File | What it builds |
-|---|---|
-| `generation-criteria.ts` | `AI_TELL_PATTERNS`, `SOURCE_GROUNDING_RULES`, platform limits, structures |
-| `client-profile.ts` | Generation user prompt — client profile, register, brand voice, health rules |
-| `source-grounding.ts` | Source fidelity section in generation and validation |
-| `carousel-generator.ts` | `buildDirective()` — carousel-specific slide rules, JSON format |
-| `post-generator.ts` | `buildDirective()` — single post planning step |
-| `validation-criteria.ts` | `buildCriteriaChecklist()` — used by validate quality |
-| `validate-quality.ts` | Quality system prompt assembly |
-| `validate-language.ts` | Language system prompt + user message assembly |
-| `validate-post.ts` | Orchestrator — threads context between validators |
-| `content-section.ts` | `buildContentSection()` — carousel/single content blocks |
-| `scoring.ts` | `QualityContext` type definition |
+| File                     | What it builds                                                               |
+| ------------------------ | ---------------------------------------------------------------------------- |
+| `generation-criteria.ts` | `AI_TELL_PATTERNS`, `SOURCE_GROUNDING_RULES`, platform limits, structures    |
+| `client-profile.ts`      | Generation user prompt — client profile, register, brand voice, health rules |
+| `source-grounding.ts`    | Source fidelity section in generation and validation                         |
+| `carousel-generator.ts`  | `buildDirective()` — carousel-specific slide rules, JSON format              |
+| `post-generator.ts`      | `buildDirective()` — single post planning step                               |
+| `validation-criteria.ts` | `buildCriteriaChecklist()` — used by validate quality                        |
+| `validate-quality.ts`    | Quality system prompt assembly                                               |
+| `validate-language.ts`   | Language system prompt + user message assembly                               |
+| `validate-post.ts`       | Orchestrator — threads context between validators                            |
+| `content-section.ts`     | `buildContentSection()` — carousel/single content blocks                     |
+| `scoring.ts`             | `QualityContext` type definition                                             |
 
 ---
 
@@ -83,6 +83,7 @@ max 3 lines by the generation directive, not 150-220 words. The word count check
 for single posts.
 
 Two separate issues:
+
 1. The word count check runs on the carousel caption using single-post limits
 2. Carousel slides have no per-slide body length check at all
 
@@ -94,7 +95,7 @@ carousel, replacing it with a slide body check:
 ```typescript
 export function buildCriteriaChecklist(ctx: {
   platform?: string
-  postType?: 'single' | 'carousel' | 'reels'   // ADD
+  postType?: 'single' | 'carousel' | 'reels' // ADD
   hasSource?: boolean
   isHealthClient?: boolean
   languageConfig?: LanguageConfig
@@ -127,7 +128,7 @@ export function buildCriteriaChecklist(ctx: {
 // validate-post.ts
 const ctx: QualityContext = {
   platform: input.platform,
-  postType: input.slides && input.slides.length > 0 ? 'carousel' : 'single',   // ADD
+  postType: input.slides && input.slides.length > 0 ? 'carousel' : 'single', // ADD
   languageConfig: input.languageConfig,
   ...input.qualityContext,
 }
@@ -138,11 +139,12 @@ const ctx: QualityContext = {
 ```typescript
 export interface QualityContext {
   // ... existing fields ...
-  postType?: 'single' | 'carousel' | 'reels'   // ADD
+  postType?: 'single' | 'carousel' | 'reels' // ADD
 }
 ```
 
 ### ✓ Step 1 Verification
+
 - [ ] `npx tsc --noEmit` — no errors
 - [ ] Carousel validate quality prompt shows slide body check, not word count check
 - [ ] Single post validate quality prompt still shows word count check
@@ -165,7 +167,7 @@ caption using MYTH-BREAKER can include a CTA without the validator catching it.
 ```typescript
 // In CarouselResult type (types.ts):
 export interface CarouselResult {
-  chosen_structure?: string   // already present but unused
+  chosen_structure?: string // already present but unused
   chosen_opener?: string
   main_caption: string
   slides: CarouselSlide[]
@@ -182,7 +184,7 @@ async function collectCarousel(theme: Theme, result: CarouselResult) {
   const validation = await validateContent(result.main_caption, theme, {
     label: 'carousel',
     slides: result.slides,
-    declaredStructure: result.chosen_structure ?? undefined,   // ADD
+    declaredStructure: result.chosen_structure ?? undefined, // ADD
   })
   // ...
 }
@@ -210,7 +212,7 @@ async function validateContent(
     qualityContext: {
       ...sharedQualityContext,
       theme: theme.description,
-      declaredStructure: opts.declaredStructure,   // already in QualityContext from align plan
+      declaredStructure: opts.declaredStructure, // already in QualityContext from align plan
     },
   })
 }
@@ -221,6 +223,7 @@ Gen-Val Alignment plan Step 13) — the checklist will show the declared structu
 carousel captions the same as single posts.
 
 ### ✓ Step 2 Verification
+
 - [ ] `npx tsc --noEmit` — no errors
 - [ ] Generate a carousel — validate quality prompt includes `[] DECLARED STRUCTURE` entry
 - [ ] Generate a carousel with MYTH-BREAKER caption that includes a CTA — validator flags it
@@ -248,7 +251,7 @@ content. Fix by labelling intentional absences:
 export function buildContentSection(
   text: string,
   slides: Array<{ headline: string; body: string; slide_role?: string }> | undefined,
-  opts: ContentSectionOpts,
+  opts: ContentSectionOpts
 ): string {
   if (!slides?.length) {
     return `\n<${opts.captionTag}>\n${text}\n</${opts.captionTag}>`
@@ -256,15 +259,14 @@ export function buildContentSection(
 
   const slidesText = slides
     .map((s, i) => {
-      const roleLabel = s.slide_role === 'cover'
-        ? ' [COVER — no body text by design]'
-        : s.slide_role === 'cta'
-        ? ' [CTA — no body text by design]'
-        : ''
+      const roleLabel =
+        s.slide_role === 'cover'
+          ? ' [COVER — no body text by design]'
+          : s.slide_role === 'cta'
+            ? ' [CTA — no body text by design]'
+            : ''
 
-      const bodyLine = s.body?.trim()
-        ? `Body: ${s.body}`
-        : `Body:${roleLabel}`
+      const bodyLine = s.body?.trim() ? `Body: ${s.body}` : `Body:${roleLabel}`
 
       return `[SLIDE ${i + 1}]\nHeadline: ${s.headline}\n${bodyLine}`
     })
@@ -283,6 +285,7 @@ Pass `slide_role` from `CarouselSlide` through `buildContentSection`. The `Carou
 already has `slide_role: 'cover' | 'content' | 'value' | 'cta'`.
 
 ### ✓ Step 3 Verification
+
 - [ ] `npx tsc --noEmit` — no errors
 - [ ] Generate a carousel — validate quality user prompt shows:
   ```
@@ -327,10 +330,11 @@ grep -r "listing type\|кв\. Беломорски\|apartment in\|floor number" 
 ```
 
 ### ✓ Step 4 Verification
+
 - [ ] `npx tsc --noEmit` — no errors
 - [ ] `grep -r "listing type" src/features/ai/` — nothing
 - [ ] Generate a single post with source — rendered source fidelity rules contain no
-  real-estate vocabulary
+      real-estate vocabulary
 
 ---
 
@@ -340,6 +344,7 @@ grep -r "listing type\|кв\. Беломорски\|apartment in\|floor number" 
 > — `buildDirective()`
 
 For a 4-slide carousel the directive currently outputs:
+
 ```
 - Slide 1 (Cover): ...
 - Slides 2 to 2: One distinct idea per slide...
@@ -351,10 +356,11 @@ For a 4-slide carousel the directive currently outputs:
 The calculation `slideCount - 2` for the upper bound of content slides is off by one.
 
 For a 4-slide layout: cover (1) + content slides (2-3) + value (implicit in content or explicit)
-+ CTA (4). But the current structure lists cover, content range, value, CTA as four roles —
-so for 4 slides: cover (1), content (2 to 2 = one slide), value (3), CTA (4). The
-value slide should be slide 3, CTA slide 4. With 4 slides there is only ONE content slide
-(slide 2), which is correct — but "Slides 2 to 2" makes it look like a bug.
+
+- CTA (4). But the current structure lists cover, content range, value, CTA as four roles —
+  so for 4 slides: cover (1), content (2 to 2 = one slide), value (3), CTA (4). The
+  value slide should be slide 3, CTA slide 4. With 4 slides there is only ONE content slide
+  (slide 2), which is correct — but "Slides 2 to 2" makes it look like a bug.
 
 **Fix — generate the roles explicitly, not as a range:**
 
@@ -430,6 +436,7 @@ Note: `chosen_opener` removed from JSON format here — aligns with Step 2 (only
 `chosen_structure` is needed, opener is not prescribed).
 
 ### ✓ Step 5 Verification
+
 - [ ] `npx tsc --noEmit` — no errors
 - [ ] 4-slide carousel directive shows `- Slide 2: One distinct idea...` (not "Slides 2 to 2")
 - [ ] 6-slide carousel directive shows `- Slides 2 to 4: One distinct idea...` (correct range)
@@ -446,6 +453,7 @@ npm run build
 ```
 
 ### Functional verification
+
 - [ ] Generate a 4-slide carousel — directive is unambiguous, model returns correct structure
 - [ ] Carousel validate quality prompt: shows slide body check not word count check
 - [ ] Carousel validate quality prompt: shows `[] DECLARED STRUCTURE` entry
@@ -491,13 +499,13 @@ replace it with the function call.
 
 ```typescript
 // In formatFormalityRules (formality-guidance.ts):
-const langExamples = (register.examples[langKey] ?? register.examples['general'] ?? [])
-  .slice(0, 1)   // was unlimited — cap at 1 example per language
+const langExamples = (register.examples[langKey] ?? register.examples['general'] ?? []).slice(0, 1) // was unlimited — cap at 1 example per language
 ```
 
 **Saving:** ~100 tokens per consumer × 3 consumers = ~300 tokens per generation cycle.
 
 ### ✓ Step 7 Verification
+
 - [ ] `npx tsc --noEmit` — no errors
 - [ ] `grep -r "LANGUAGE REGISTER (FORMAL)" src/features/ai/` — nothing hardcoded inline
 - [ ] Each prompt shows exactly 1 BAD/GOOD/WHY example, not 2
@@ -535,6 +543,7 @@ The 6 pattern descriptions must be byte-for-byte identical.
 update automatically propagates to both.
 
 ### ✓ Step 8 Verification
+
 - [ ] `npx tsc --noEmit` — no errors
 - [ ] `grep -rn "^export const AI_TELL_PATTERNS" src/` — 1 result (generation-criteria.ts)
 - [ ] Generation and validation prompts show identical pattern text
@@ -546,6 +555,7 @@ update automatically propagates to both.
 > **Files:** `client-profile.ts`, `validate-quality.ts`
 
 The brand tone description appears twice in the validate quality system prompt:
+
 - Once in the opening `BRAND CONTEXT` section (~80 tokens)
 - Once inside `buildBrandVoiceCheck()` (~80 tokens)
 
@@ -575,6 +585,7 @@ Register: ${formality}.`
 **Saving:** ~80 tokens per quality validation call.
 
 ### ✓ Step 9 Verification
+
 - [ ] `npx tsc --noEmit` — no errors
 - [ ] `grep -rn "^export function buildBrandVoiceDescription" src/` — 1 result
 - [ ] Brand tone description appears once in quality validator (inside BRAND CHECKS section)
@@ -594,7 +605,8 @@ differs between chains.
 **Export `SOURCE_GROUNDING_RULES` constant from `source-grounding.ts`:**
 
 ```typescript
-export const SOURCE_GROUNDING_RULES = `- Use ONLY facts explicitly stated in the source — no inference, no invented details.
+export const SOURCE_GROUNDING_RULES =
+  `- Use ONLY facts explicitly stated in the source — no inference, no invented details.
 - Pick ONE angle, not a summary. If covering more than 2 facts, stop and cut.
 - Post structure must come from the POST STRUCTURES list, NOT the source article's structure.` as const
 ```
@@ -613,11 +625,12 @@ ${SOURCE_GROUNDING_RULES}`)
 This is Step 2 of the Gen-Val Alignment plan. If already done, confirm and skip.
 
 ### ✓ Step 10 Verification
+
 - [ ] `npx tsc --noEmit` — no errors
 - [ ] `grep -rn "^export const SOURCE_GROUNDING_RULES" src/` — 1 result (source-grounding.ts)
 - [ ] Generation and validation show identical source fidelity text
 - [ ] Validation criteria checklist includes all three rules including "post structure ≠
-  source structure"
+      source structure"
 
 ---
 
@@ -639,7 +652,7 @@ and the return format instruction.
 const systemText = `${persona}
 
 ${rules}            // ← buildLanguageValidationRules output stays here
-${instructions}`    // ← task description stays here
+${instructions}` // ← task description stays here
 
 // User message — text only, no rule repetition:
 const message = await callAnthropic({
@@ -666,6 +679,7 @@ grep -n "buildLanguageValidationRules" src/features/ai/validation/prompts/valida
 **Saving:** ~400 tokens per language validation call (rules sent once not twice).
 
 ### ✓ Step 11 Verification
+
 - [ ] `npx tsc --noEmit` — no errors
 - [ ] `grep -c "buildLanguageValidationRules" src/.../validate-language.ts` — 1 (not 2)
 - [ ] Language validator system prompt contains full rules
@@ -686,13 +700,14 @@ npm run build
 
 Run a 2-post single image generation for Физиомед with token logging enabled:
 
-| Call | Before | After | Expected saving |
-|---|---|---|---|
-| Generation | ~2600 tokens | ~2100 tokens | Register (−100), AI tells (−120), source fidelity (−50) |
-| Validate quality | ~1800 tokens | ~1400 tokens | Register (−100), brand voice dup (−80), AI tells (−120), audience (see Phase 3) |
-| Validate language | ~1200 tokens | ~800 tokens | Rules sent once not twice (−400) |
+| Call              | Before       | After        | Expected saving                                                                 |
+| ----------------- | ------------ | ------------ | ------------------------------------------------------------------------------- |
+| Generation        | ~2600 tokens | ~2100 tokens | Register (−100), AI tells (−120), source fidelity (−50)                         |
+| Validate quality  | ~1800 tokens | ~1400 tokens | Register (−100), brand voice dup (−80), AI tells (−120), audience (see Phase 3) |
+| Validate language | ~1200 tokens | ~800 tokens  | Rules sent once not twice (−400)                                                |
 
 ### Content verification
+
 - [ ] Register rules in generation and validation are byte-identical
 - [ ] AI tell patterns in generation and validation are byte-identical
 - [ ] Brand voice description in generation and validation is byte-identical
@@ -715,7 +730,7 @@ it is also removed from `CarouselResult` type if it is no longer used:
 ```typescript
 // types.ts — update CarouselResult:
 export interface CarouselResult {
-  chosen_structure?: string   // kept — threaded to validator in Step 2
+  chosen_structure?: string // kept — threaded to validator in Step 2
   // chosen_opener removed — was never used, wasted ~10 tokens per call
   main_caption: string
   slides: CarouselSlide[]
@@ -730,6 +745,7 @@ grep -rn "chosen_opener" src/
 **Saving:** ~10 tokens per carousel generation call (minor, but eliminates dead field).
 
 ### ✓ Step 13 Verification
+
 - [ ] `npx tsc --noEmit` — no errors
 - [ ] `grep -r "chosen_opener" src/` — nothing
 
@@ -740,6 +756,7 @@ grep -rn "chosen_opener" src/
 > **Files:** `client-profile.ts`, `validate-quality.ts`
 
 Full taxonomy (~120 tokens) in both generation and validation, both chains:
+
 ```
 Target audience: Patients with chronic musculoskeletal disorders and persistent pain conditions
 seeking advanced treatment options, Athletes and active individuals requiring sports injury
@@ -749,7 +766,7 @@ therapies, Patients who have not responded to conventional physiotherapy treatme
 Health-conscious professionals seeking preventive care and ergonomic solutions
 ```
 
-The model needs to know *who* it is writing for emotionally, not a clinical taxonomy.
+The model needs to know _who_ it is writing for emotionally, not a clinical taxonomy.
 
 **Replace in `buildClientProfile` and `buildBrandContext`** with a compressed version built
 from the same DB data:
@@ -764,7 +781,7 @@ export function buildCompressedAudience(targetAudience: string): string {
   // and taking the first 3-4 meaningful segments
   const segments = targetAudience
     .split(/,(?=[A-Z])|\.\s+(?=[A-Z])/)
-    .map(s => s.trim())
+    .map((s) => s.trim())
     .filter(Boolean)
     .slice(0, 4)
 
@@ -785,6 +802,7 @@ Until the DB column is available, use the extraction approach above.
 **Saving:** ~70 tokens × 2 calls × 2 chains = ~280 tokens per session.
 
 ### ✓ Step 14 Verification
+
 - [ ] `npx tsc --noEmit` — no errors
 - [ ] Target audience section in both prompts is ≤200 characters
 - [ ] Quality validator still correctly assesses audience targeting for Физиомед posts
@@ -797,17 +815,17 @@ Until the DB column is available, use the extraction approach above.
 
 9 items listed, 5 redundant with health rules or brand voice:
 
-| Item | Keep? | Reason |
-|---|---|---|
-| Unproven medical claims | **Remove** | Covered by health rules |
-| Diagnosis recommendations | **Remove** | Covered by health rules |
-| Comparisons with other clinics | **Keep** | Unique constraint |
-| Treatments outside scope | **Remove** | Covered by health rules |
-| Guarantees of outcomes | **Remove** | Covered by health rules |
-| Patient photos without consent | **Keep** | Unique constraint |
-| Fear-mongering | **Remove** | Covered by health rules |
-| Overly promotional content | **Remove** | Covered by brand voice checks |
-| Pricing discussion | **Keep** | Unique constraint, platform policy |
+| Item                           | Keep?      | Reason                             |
+| ------------------------------ | ---------- | ---------------------------------- |
+| Unproven medical claims        | **Remove** | Covered by health rules            |
+| Diagnosis recommendations      | **Remove** | Covered by health rules            |
+| Comparisons with other clinics | **Keep**   | Unique constraint                  |
+| Treatments outside scope       | **Remove** | Covered by health rules            |
+| Guarantees of outcomes         | **Remove** | Covered by health rules            |
+| Patient photos without consent | **Keep**   | Unique constraint                  |
+| Fear-mongering                 | **Remove** | Covered by health rules            |
+| Overly promotional content     | **Remove** | Covered by brand voice checks      |
+| Pricing discussion             | **Keep**   | Unique constraint, platform policy |
 
 **Replace the 9-item list with the 3 unique constraints:**
 
@@ -820,6 +838,7 @@ Health rules below override everything else.`
 **Saving:** ~60 tokens per generation call.
 
 ### ✓ Step 15 Verification
+
 - [ ] `npx tsc --noEmit` — no errors
 - [ ] Topics to avoid section: 3 items only
 - [ ] Health rules section still present and marked as override
@@ -832,6 +851,7 @@ Health rules below override everything else.`
 > **File:** `features/ai/generation/prompts/client-profile.ts`
 
 This section appears in the generation user prompt:
+
 ```
 SPECIFICITY REQUIREMENT:
 The post must contain at least one detail that could only come from Физиомед (Physiomed Plovdiv)
@@ -840,6 +860,7 @@ Generic niche observations any competitor could post will score poorly.
 ```
 
 The same constraint is enforced by:
+
 - Generation system prompt self-check: "Could this post be written about any business in the
   niche? If yes — add specificity."
 - Quality validator `niche_specificity` field
@@ -855,6 +876,7 @@ The post must contain at least one detail...`)
 **Saving:** ~30 tokens per generation call.
 
 ### ✓ Step 16 Verification
+
 - [ ] `npx tsc --noEmit` — no errors
 - [ ] `grep -r "SPECIFICITY REQUIREMENT" src/features/ai/` — nothing
 - [ ] Generation self-check still includes the specificity instruction
@@ -868,6 +890,7 @@ The post must contain at least one detail...`)
 > (prompt-builder.ts)
 
 The Bulgarian naturalness block appears in multiple places:
+
 ```
 LANGUAGE RULES — BULGARIAN:
 Think in Bulgarian from the start.
@@ -907,6 +930,7 @@ and after to confirm detection is identical.
 **Saving:** ~150 tokens per call where the block was duplicated.
 
 ### ✓ Step 17 Verification
+
 - [ ] Bulgarian: `language_rules.language_instructions` contains naturalness test content
 - [ ] No hardcoded "Think in Bulgarian from the start" block in any TypeScript file
 - [ ] `grep -r "Think in Bulgarian" src/features/ai/` — nothing
@@ -926,16 +950,17 @@ npm run build
 
 Run a 2-post single image generation + validation for Физиомед with logging:
 
-| Call | Before all phases | After all phases | Total saving |
-|---|---|---|---|
-| Research | ~2100 tokens | ~1800 tokens | ~300 |
-| Generation | ~2600 tokens | ~2000 tokens | ~600 |
-| Validate source | ~400 tokens | ~400 tokens | 0 |
-| Validate quality (×2) | ~1800 tokens | ~1300 tokens | ~1000 |
-| Validate language (×2) | ~1200 tokens | ~750 tokens | ~900 |
+| Call                       | Before all phases | After all phases | Total saving     |
+| -------------------------- | ----------------- | ---------------- | ---------------- |
+| Research                   | ~2100 tokens      | ~1800 tokens     | ~300             |
+| Generation                 | ~2600 tokens      | ~2000 tokens     | ~600             |
+| Validate source            | ~400 tokens       | ~400 tokens      | 0                |
+| Validate quality (×2)      | ~1800 tokens      | ~1300 tokens     | ~1000            |
+| Validate language (×2)     | ~1200 tokens      | ~750 tokens      | ~900             |
 | **Total per 2-post cycle** | **~11900 tokens** | **~8900 tokens** | **~3000 (~25%)** |
 
 ### Functional verification — both post types
+
 - [ ] Single image: generate 2 posts → all validation scores correct
 - [ ] Carousel: generate 1 carousel → declared structure checked in validator
 - [ ] Carousel: cover/CTA slides labelled `[no body text by design]`
@@ -950,35 +975,35 @@ Run a 2-post single image generation + validation for Физиомед with logg
 
 ### Phase 1 — Bugs
 
-| Bug | File | Fix |
-|---|---|---|
-| Carousel word count uses single post limit | `validation-criteria.ts` | `postType` in `QualityContext` → carousel shows slide body check |
-| Carousel declared structure not verified | `carousel-generator.ts`, `generation-run.ts`, `validate-post.ts` | Thread `chosen_structure` → `declaredStructure` → criteria checklist |
-| Empty slide bodies confuse validator | `content-section.ts` | Label cover/CTA slides `[no body text by design]` |
-| "based on the listing type" real-estate remnant | `source-grounding.ts` | Remove domain-specific language |
-| "Slides 2 to 2" ambiguous range | `carousel-generator.ts` | Explicit role per slide number |
+| Bug                                             | File                                                             | Fix                                                                  |
+| ----------------------------------------------- | ---------------------------------------------------------------- | -------------------------------------------------------------------- |
+| Carousel word count uses single post limit      | `validation-criteria.ts`                                         | `postType` in `QualityContext` → carousel shows slide body check     |
+| Carousel declared structure not verified        | `carousel-generator.ts`, `generation-run.ts`, `validate-post.ts` | Thread `chosen_structure` → `declaredStructure` → criteria checklist |
+| Empty slide bodies confuse validator            | `content-section.ts`                                             | Label cover/CTA slides `[no body text by design]`                    |
+| "based on the listing type" real-estate remnant | `source-grounding.ts`                                            | Remove domain-specific language                                      |
+| "Slides 2 to 2" ambiguous range                 | `carousel-generator.ts`                                          | Explicit role per slide number                                       |
 
 ### Phase 2 — Redundancy
 
-| Redundancy | Tokens saved | Fix |
-|---|---|---|
-| Register rules in 3 prompts per chain | ~300/cycle | `formatFormalityRules(lc)` one source, 1 example not 2 |
-| AI tell patterns in generation + validation | ~120/cycle | `AI_TELL_PATTERNS` in `generation-criteria.ts` |
-| Brand voice described twice in quality validator | ~80/cycle | `buildBrandVoiceDescription()` called once |
-| Source fidelity rules in different phrasing | 0 tokens (correctness) | `SOURCE_GROUNDING_RULES` constant |
-| Language rules sent twice to same call | ~400/cycle | Rules in system prompt only |
+| Redundancy                                       | Tokens saved           | Fix                                                    |
+| ------------------------------------------------ | ---------------------- | ------------------------------------------------------ |
+| Register rules in 3 prompts per chain            | ~300/cycle             | `formatFormalityRules(lc)` one source, 1 example not 2 |
+| AI tell patterns in generation + validation      | ~120/cycle             | `AI_TELL_PATTERNS` in `generation-criteria.ts`         |
+| Brand voice described twice in quality validator | ~80/cycle              | `buildBrandVoiceDescription()` called once             |
+| Source fidelity rules in different phrasing      | 0 tokens (correctness) | `SOURCE_GROUNDING_RULES` constant                      |
+| Language rules sent twice to same call           | ~400/cycle             | Rules in system prompt only                            |
 
 ### Phase 3 — Efficiency
 
-| Inefficiency | Tokens saved | Fix |
-|---|---|---|
-| `chosen_opener` generated and discarded | ~10/carousel call | Removed from JSON format and type |
-| Target audience clinical taxonomy × 2 calls | ~280/session | Compressed to ~50 tokens |
-| Topics to avoid 5/9 items redundant | ~60/generation call | Compressed to 3 unique constraints |
-| Specificity requirement in 3 places | ~30/generation call | Removed standalone section |
-| Bulgarian naturalness block hardcoded | ~150/affected call | Moved to DB `language_instructions` |
+| Inefficiency                                | Tokens saved        | Fix                                 |
+| ------------------------------------------- | ------------------- | ----------------------------------- |
+| `chosen_opener` generated and discarded     | ~10/carousel call   | Removed from JSON format and type   |
+| Target audience clinical taxonomy × 2 calls | ~280/session        | Compressed to ~50 tokens            |
+| Topics to avoid 5/9 items redundant         | ~60/generation call | Compressed to 3 unique constraints  |
+| Specificity requirement in 3 places         | ~30/generation call | Removed standalone section          |
+| Bulgarian naturalness block hardcoded       | ~150/affected call  | Moved to DB `language_instructions` |
 
 ---
 
-*PostFlow — Prompt Pipeline Fixes*
-*Fix bugs before touching redundancy. Verify each phase end-to-end before starting the next.*
+_PostFlow — Prompt Pipeline Fixes_
+_Fix bugs before touching redundancy. Verify each phase end-to-end before starting the next._

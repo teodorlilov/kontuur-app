@@ -11,8 +11,18 @@ import { PostSidePanel } from './post-side-panel'
 import type { CalendarPost, BestTimePlatform } from '@/types/api'
 
 const MONTH_NAMES = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December',
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
 ]
 
 interface ClientEntry {
@@ -73,7 +83,9 @@ function ApprovalButton({
             <button
               key={c.id}
               type="button"
-              onClick={() => { onSelectClient(c.id) }}
+              onClick={() => {
+                onSelectClient(c.id)
+              }}
               className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
             >
               {c.name}
@@ -107,10 +119,7 @@ export function CalendarView({ initialPosts, clients, bestTimeMap }: CalendarVie
     saving,
   } = useCalendar(initialPosts)
 
-  const colorMap = useMemo(
-    () => getClientColorMap(clients.map((c) => c.id)),
-    [clients]
-  )
+  const colorMap = useMemo(() => getClientColorMap(clients.map((c) => c.id)), [clients])
 
   // Filter by client
   const filteredUnscheduled = selectedClientId
@@ -138,7 +147,10 @@ export function CalendarView({ initialPosts, clients, bestTimeMap }: CalendarVie
     }
   }
 
-  function handleSidebarSave(postId: string, updates: { scheduled_at?: string; platform?: string }) {
+  function handleSidebarSave(
+    postId: string,
+    updates: { scheduled_at?: string; platform?: string }
+  ) {
     if (updates.scheduled_at) {
       void schedulePost(postId, updates.scheduled_at, updates.platform)
     }
@@ -150,9 +162,7 @@ export function CalendarView({ initialPosts, clients, bestTimeMap }: CalendarVie
   }
 
   // Best time data for selected post
-  const selectedBestTime = selectedPost
-    ? bestTimeMap[selectedPost.client_id] ?? null
-    : null
+  const selectedBestTime = selectedPost ? (bestTimeMap[selectedPost.client_id] ?? null) : null
 
   // Clients that have scheduled posts in the visible month
   const clientsWithScheduledPosts = useMemo(() => {
@@ -194,7 +204,9 @@ export function CalendarView({ initialPosts, clients, bestTimeMap }: CalendarVie
 
       const data = (await res.json()) as { url: string; postCount: number }
       await navigator.clipboard.writeText(data.url)
-      toast.success(`Approval link copied! (${data.postCount} post${data.postCount === 1 ? '' : 's'})`)
+      toast.success(
+        `Approval link copied! (${data.postCount} post${data.postCount === 1 ? '' : 's'})`
+      )
     } catch {
       toast.error('Failed to generate approval link')
     } finally {
@@ -220,7 +232,9 @@ export function CalendarView({ initialPosts, clients, bestTimeMap }: CalendarVie
       }
 
       const data = (await res.json()) as { postCount: number }
-      toast.success(`Approval email sent! (${data.postCount} post${data.postCount === 1 ? '' : 's'})`)
+      toast.success(
+        `Approval email sent! (${data.postCount} post${data.postCount === 1 ? '' : 's'})`
+      )
     } catch {
       toast.error('Failed to send approval email')
     } finally {
@@ -278,7 +292,9 @@ export function CalendarView({ initialPosts, clients, bestTimeMap }: CalendarVie
               clients={clientsWithScheduledPosts}
               pickerOpen={copyLinkPicker}
               onTogglePicker={() => setCopyLinkPicker((v) => !v)}
-              onSelectClient={(id) => { void handleCopyLink(id) }}
+              onSelectClient={(id) => {
+                void handleCopyLink(id)
+              }}
             />
           )}
 
@@ -292,18 +308,16 @@ export function CalendarView({ initialPosts, clients, bestTimeMap }: CalendarVie
               clients={clientsWithEmail}
               pickerOpen={emailPicker}
               onTogglePicker={() => setEmailPicker((v) => !v)}
-              onSelectClient={(id) => { void handleEmailClient(id) }}
+              onSelectClient={(id) => {
+                void handleEmailClient(id)
+              }}
             />
           )}
         </div>
       </div>
 
       {/* Unscheduled strip */}
-      <UnscheduledStrip
-        posts={filteredUnscheduled}
-        colorMap={colorMap}
-        onPostClick={selectPost}
-      />
+      <UnscheduledStrip posts={filteredUnscheduled} colorMap={colorMap} onPostClick={selectPost} />
 
       {/* Calendar grid */}
       <CalendarGrid

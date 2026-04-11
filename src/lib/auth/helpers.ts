@@ -20,7 +20,10 @@ export class AuthError extends Error {
 export async function requireAuth(
   supabase: SupabaseServerClient
 ): Promise<{ userId: string; agencyId: string }> {
-  const { data: { user }, error: authError } = await supabase.auth.getUser()
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser()
   if (authError || !user) {
     throw new AuthError('Unauthorized', 401)
   }
@@ -33,12 +36,11 @@ export async function requireAuth(
   return { userId: user.id, agencyId }
 }
 
-export async function getAgencyId(supabase: SupabaseServerClient, userId: string): Promise<string | null> {
-  const { data } = await supabase
-    .from('users')
-    .select('agency_id')
-    .eq('id', userId)
-    .single()
+export async function getAgencyId(
+  supabase: SupabaseServerClient,
+  userId: string
+): Promise<string | null> {
+  const { data } = await supabase.from('users').select('agency_id').eq('id', userId).single()
   return data?.agency_id ?? null
 }
 
@@ -46,11 +48,7 @@ export async function getUserRecord(
   supabase: SupabaseServerClient,
   userId: string
 ): Promise<{ agency_id: string; role: string } | null> {
-  const { data } = await supabase
-    .from('users')
-    .select(USER_AUTH_COLUMNS)
-    .eq('id', userId)
-    .single()
+  const { data } = await supabase.from('users').select(USER_AUTH_COLUMNS).eq('id', userId).single()
   return data as { agency_id: string; role: string } | null
 }
 
@@ -132,17 +130,13 @@ export async function fetchClientWithOwnership(
     .eq('id', clientId)
     .eq('agency_id', agencyId)
     .single()
-  return (data as { id: string; name: string } | null)
+  return data as { id: string; name: string } | null
 }
 
 export async function verifyAdminRole(
   supabase: SupabaseServerClient,
   userId: string
 ): Promise<boolean> {
-  const { data } = await supabase
-    .from('users')
-    .select('role')
-    .eq('id', userId)
-    .single()
+  const { data } = await supabase.from('users').select('role').eq('id', userId).single()
   return data?.role === 'admin'
 }

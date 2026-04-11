@@ -33,7 +33,9 @@ export default async function ClientsPage() {
       <Topbar title="Clients" />
       <div className="p-6">
         <div className="flex items-center justify-between mb-6">
-          <p className="text-sm text-gray-500">{clients.length} {clients.length === 1 ? 'client' : 'clients'}</p>
+          <p className="text-sm text-gray-500">
+            {clients.length} {clients.length === 1 ? 'client' : 'clients'}
+          </p>
           <Link href="/clients/new">
             <Button size="sm">+ Add client</Button>
           </Link>
@@ -81,8 +83,12 @@ export default async function ClientsPage() {
                       <td className="px-5 py-4 text-gray-500 hidden md:table-cell">
                         {client.niche ?? <span className="text-gray-300 italic">—</span>}
                       </td>
-                      <td className="px-5 py-4 text-gray-500 hidden lg:table-cell">{client.posts_per_week}</td>
-                      <td className="px-5 py-4 text-gray-500 hidden lg:table-cell">{client.language}</td>
+                      <td className="px-5 py-4 text-gray-500 hidden lg:table-cell">
+                        {client.posts_per_week}
+                      </td>
+                      <td className="px-5 py-4 text-gray-500 hidden lg:table-cell">
+                        {client.language}
+                      </td>
                       <td className="px-5 py-4">
                         {pending > 0 ? (
                           <Badge variant="warning">{pending}</Badge>

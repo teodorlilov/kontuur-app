@@ -65,7 +65,9 @@ export function useBatchSchedule(posts: BatchPost[], onComplete: () => void) {
         })
       )
 
-      const succeeded = results.filter((r) => r.status === 'fulfilled' && (r.value as Response).ok).length
+      const succeeded = results.filter(
+        (r) => r.status === 'fulfilled' && (r.value as Response).ok
+      ).length
       toast.success(`Scheduled ${succeeded} of ${toSchedule.length} posts`)
       if (succeeded > 0) onComplete()
     } catch {

@@ -9,7 +9,7 @@ export interface RssItem {
   link: string
   pubDate: string | null
 }
- 
+
 /**
  * Fetch and parse an RSS/Atom feed.
  * Default maxItems = 4: in the research API we cap total RSS items at 20,
@@ -79,11 +79,12 @@ function parseRssXml(xml: string, maxItems: number): RssItem[] {
 }
 
 function extractTag(xml: string, tag: string): string {
-  return (
-    xml.match(new RegExp(`<${tag}[^>]*>([\\s\\S]*?)<\\/${tag}>`, 'i'))?.[1]?.trim() ?? ''
-  )
+  return xml.match(new RegExp(`<${tag}[^>]*>([\\s\\S]*?)<\\/${tag}>`, 'i'))?.[1]?.trim() ?? ''
 }
 
 function stripHtml(html: string): string {
-  return html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
+  return html
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
 }

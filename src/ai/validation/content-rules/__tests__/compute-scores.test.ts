@@ -47,9 +47,9 @@ describe('computeLanguageScore', () => {
   it('deducts correctly for multiple issues', () => {
     const result = computeLanguageScore({
       issues: [
-        { type: 'anglicism' },  // -1.0
-        { type: 'calque' },      // -1.5
-        { type: 'grammar' },     // -1.5
+        { type: 'anglicism' }, // -1.0
+        { type: 'calque' }, // -1.5
+        { type: 'grammar' }, // -1.5
       ],
     })
     expect(result.language_score).toBe(6) // round(10 - 4.0) = 6
@@ -61,10 +61,10 @@ describe('computeLanguageScore', () => {
       issues: [
         { type: 'mixed_script' }, // -2.0
         { type: 'mixed_script' }, // -2.0
-        { type: 'grammar' },      // -1.5
-        { type: 'grammar' },      // -1.5
-        { type: 'calque' },       // -1.5
-        { type: 'calque' },       // -1.5
+        { type: 'grammar' }, // -1.5
+        { type: 'grammar' }, // -1.5
+        { type: 'calque' }, // -1.5
+        { type: 'calque' }, // -1.5
       ],
     })
     expect(result.language_score).toBe(1) // 10 - 10.0 = 0 → clamped to 1
@@ -127,9 +127,11 @@ describe('computeQualityScores', () => {
   })
 
   it('penalizes human_score by 1 per AI tell', () => {
-    const result = computeQualityScores(baseDetections({
-      ai_tells: ['generic enthusiasm', 'power words without proof'],
-    }))
+    const result = computeQualityScores(
+      baseDetections({
+        ai_tells: ['generic enthusiasm', 'power words without proof'],
+      })
+    )
     expect(result.human_score).toBe(8) // 10 - 2
   })
 
@@ -144,17 +146,26 @@ describe('computeQualityScores', () => {
   })
 
   it('penalizes human_score for quality issues', () => {
-    const result = computeQualityScores(baseDetections({
-      issues: [
-        { type: 'no_personality' },  // -1.5
-        { type: 'too_polished' },     // -1.0
-      ],
-    }))
+    const result = computeQualityScores(
+      baseDetections({
+        issues: [
+          { type: 'no_personality' }, // -1.5
+          { type: 'too_polished' }, // -1.0
+        ],
+      })
+    )
     expect(result.human_score).toBe(8) // round(10 - 2.5) = 8
   })
 
   it('maps hook verdict to correct base score', () => {
-    const verdicts: Array<[typeof baseDetections extends (o?: infer T) => infer R ? Parameters<typeof computeQualityScores>[0]['hook_verdict'] : never, number]> = [
+    const verdicts: Array<
+      [
+        typeof baseDetections extends (o?: infer T) => infer R
+          ? Parameters<typeof computeQualityScores>[0]['hook_verdict']
+          : never,
+        number,
+      ]
+    > = [
       ['stops_scroll', 10],
       ['clear_value', 8],
       ['generic', 5],
@@ -168,7 +179,14 @@ describe('computeQualityScores', () => {
   })
 
   it('maps CTA verdict to correct base score', () => {
-    const verdicts: Array<[typeof baseDetections extends (o?: infer T) => infer R ? Parameters<typeof computeQualityScores>[0]['cta_verdict'] : never, number]> = [
+    const verdicts: Array<
+      [
+        typeof baseDetections extends (o?: infer T) => infer R
+          ? Parameters<typeof computeQualityScores>[0]['cta_verdict']
+          : never,
+        number,
+      ]
+    > = [
       ['natural_specific', 10],
       ['clear_relevant', 8],
       ['generic', 5],
@@ -182,27 +200,33 @@ describe('computeQualityScores', () => {
   })
 
   it('penalizes hook score for hook issues', () => {
-    const result = computeQualityScores(baseDetections({
-      hook_verdict: 'clear_value',
-      issues: [{ type: 'weak_hook' }, { type: 'buried_lead' }],
-    }))
+    const result = computeQualityScores(
+      baseDetections({
+        hook_verdict: 'clear_value',
+        issues: [{ type: 'weak_hook' }, { type: 'buried_lead' }],
+      })
+    )
     expect(result.hook_score).toBe(6) // 8 - 1 - 1
   })
 
   it('penalizes CTA score for CTA issues', () => {
-    const result = computeQualityScores(baseDetections({
-      cta_verdict: 'clear_relevant',
-      issues: [{ type: 'generic_cta' }],
-    }))
+    const result = computeQualityScores(
+      baseDetections({
+        cta_verdict: 'clear_relevant',
+        issues: [{ type: 'generic_cta' }],
+      })
+    )
     expect(result.cta_score).toBe(7) // 8 - 1
   })
 
   it('computes quality_score_avg as 4-way rounded average', () => {
-    const result = computeQualityScores(baseDetections({
-      hook_verdict: 'generic', // 5
-      cta_verdict: 'clear_relevant', // 8
-      // human = 10, hook = 5, cta = 8, criteria = 10 (default) → avg = 8.25 → 8
-    }))
+    const result = computeQualityScores(
+      baseDetections({
+        hook_verdict: 'generic', // 5
+        cta_verdict: 'clear_relevant', // 8
+        // human = 10, hook = 5, cta = 8, criteria = 10 (default) → avg = 8.25 → 8
+      })
+    )
     expect(result.quality_score_avg).toBe(8)
   })
 
@@ -214,13 +238,15 @@ describe('computeQualityScores', () => {
   })
 
   it('clamps all scores to minimum 1', () => {
-    const result = computeQualityScores(baseDetections({
-      ai_tells: Array(15).fill('tell'), // -4 (capped) on human
-      hook_verdict: 'no_hook',
-      cta_verdict: 'missing',
-      brand_voice_match: false,          // -1.5
-      niche_specificity: false,          // -1.5
-    }))
+    const result = computeQualityScores(
+      baseDetections({
+        ai_tells: Array(15).fill('tell'), // -4 (capped) on human
+        hook_verdict: 'no_hook',
+        cta_verdict: 'missing',
+        brand_voice_match: false, // -1.5
+        niche_specificity: false, // -1.5
+      })
+    )
     // human: 10 - 4 (cap) - 1.5 - 1.5 = 3
     expect(result.human_score).toBe(3)
     expect(result.hook_score).toBe(1)
@@ -230,13 +256,15 @@ describe('computeQualityScores', () => {
   })
 
   it('combines multiple penalties on human_score', () => {
-    const result = computeQualityScores(baseDetections({
-      ai_tells: ['tell1', 'tell2'],       // -2
-      brand_voice_match: false,              // -1.5
-      niche_specificity: false,             // -1.5
-      audience_targeting: false,             // -1.0
-      issues: [{ type: 'no_personality' }], // -1.5
-    }))
+    const result = computeQualityScores(
+      baseDetections({
+        ai_tells: ['tell1', 'tell2'], // -2
+        brand_voice_match: false, // -1.5
+        niche_specificity: false, // -1.5
+        audience_targeting: false, // -1.0
+        issues: [{ type: 'no_personality' }], // -1.5
+      })
+    )
     expect(result.human_score).toBe(3) // round(10 - 7.5) = 3
   })
 
@@ -246,16 +274,20 @@ describe('computeQualityScores', () => {
   })
 
   it('penalizes human_score for off_brand issue (bug fix)', () => {
-    const result = computeQualityScores(baseDetections({
-      issues: [{ type: 'off_brand' }],
-    }))
+    const result = computeQualityScores(
+      baseDetections({
+        issues: [{ type: 'off_brand' }],
+      })
+    )
     expect(result.human_score).toBe(9) // round(10 - 1.5) = 9
   })
 
   it('penalizes human_score for wrong_audience issue (bug fix)', () => {
-    const result = computeQualityScores(baseDetections({
-      issues: [{ type: 'wrong_audience' }],
-    }))
+    const result = computeQualityScores(
+      baseDetections({
+        issues: [{ type: 'wrong_audience' }],
+      })
+    )
     expect(result.human_score).toBe(9) // round(10 - 1.0) = 9
   })
 })
@@ -266,33 +298,41 @@ describe('computeQualityScores', () => {
 
 describe('CTA exemption for no-CTA structures', () => {
   it('gives cta_score 10 for MYTH-BREAKER with missing CTA', () => {
-    const result = computeQualityScores(baseDetections({
-      cta_verdict: 'missing',
-      structure_used: 'MYTH-BREAKER',
-    }))
+    const result = computeQualityScores(
+      baseDetections({
+        cta_verdict: 'missing',
+        structure_used: 'MYTH-BREAKER',
+      })
+    )
     expect(result.cta_score).toBe(10)
   })
 
   it('gives cta_score 10 for CONFESSION with missing CTA', () => {
-    const result = computeQualityScores(baseDetections({
-      cta_verdict: 'missing',
-      structure_used: 'CONFESSION',
-    }))
+    const result = computeQualityScores(
+      baseDetections({
+        cta_verdict: 'missing',
+        structure_used: 'CONFESSION',
+      })
+    )
     expect(result.cta_score).toBe(10)
   })
 
   it('still penalizes missing CTA for non-exempt structures', () => {
-    const result = computeQualityScores(baseDetections({
-      cta_verdict: 'missing',
-      structure_used: 'OBSERVATION',
-    }))
+    const result = computeQualityScores(
+      baseDetections({
+        cta_verdict: 'missing',
+        structure_used: 'OBSERVATION',
+      })
+    )
     expect(result.cta_score).toBe(1)
   })
 
   it('still penalizes missing CTA when no structure_used provided', () => {
-    const result = computeQualityScores(baseDetections({
-      cta_verdict: 'missing',
-    }))
+    const result = computeQualityScores(
+      baseDetections({
+        cta_verdict: 'missing',
+      })
+    )
     expect(result.cta_score).toBe(1)
   })
 })
@@ -307,7 +347,12 @@ function baseCriteriaDetections(overrides?: Partial<CriteriaDetections>): Criter
     formality_consistent: true,
     source_fidelity_ok: null,
     health_compliant: null,
-    sentenceVariety: { hasShortSentence: true, hasLongSentence: true, maxConsecutiveSimilar: 1, passes: true },
+    sentenceVariety: {
+      hasShortSentence: true,
+      hasLongSentence: true,
+      maxConsecutiveSimilar: 1,
+      passes: true,
+    },
     wordCount: 180,
     platform: 'Instagram',
     hashtagCount: 2,
@@ -325,9 +370,18 @@ describe('computeCriteriaScore', () => {
   })
 
   it('penalizes sentence variety failure (-1.0)', () => {
-    expect(computeCriteriaScore(baseCriteriaDetections({
-      sentenceVariety: { hasShortSentence: false, hasLongSentence: true, maxConsecutiveSimilar: 1, passes: false },
-    }))).toBe(9)
+    expect(
+      computeCriteriaScore(
+        baseCriteriaDetections({
+          sentenceVariety: {
+            hasShortSentence: false,
+            hasLongSentence: true,
+            maxConsecutiveSimilar: 1,
+            passes: false,
+          },
+        })
+      )
+    ).toBe(9)
   })
 
   it('penalizes formality violation (-1.5)', () => {
@@ -367,22 +421,35 @@ describe('computeCriteriaScore', () => {
   })
 
   it('accumulates multiple penalties', () => {
-    expect(computeCriteriaScore(baseCriteriaDetections({
-      structure_is_predictable: true,  // -1.5
-      formality_consistent: false,     // -1.5
-    }))).toBe(7) // 10 - 3.0 = 7
+    expect(
+      computeCriteriaScore(
+        baseCriteriaDetections({
+          structure_is_predictable: true, // -1.5
+          formality_consistent: false, // -1.5
+        })
+      )
+    ).toBe(7) // 10 - 3.0 = 7
   })
 
   it('clamps to minimum 1', () => {
-    expect(computeCriteriaScore(baseCriteriaDetections({
-      structure_is_predictable: true,  // -1.5
-      formality_consistent: false,     // -1.5
-      health_compliant: false,         // -2.0
-      source_fidelity_ok: false,       // -1.5
-      wordCount: 50,                   // -0.75 (under min)
-      sentenceVariety: { hasShortSentence: false, hasLongSentence: false, maxConsecutiveSimilar: 4, passes: false }, // -1.0
-      hashtagCount: 10,               // -0.5
-    }))).toBe(1)
+    expect(
+      computeCriteriaScore(
+        baseCriteriaDetections({
+          structure_is_predictable: true, // -1.5
+          formality_consistent: false, // -1.5
+          health_compliant: false, // -2.0
+          source_fidelity_ok: false, // -1.5
+          wordCount: 50, // -0.75 (under min)
+          sentenceVariety: {
+            hasShortSentence: false,
+            hasLongSentence: false,
+            maxConsecutiveSimilar: 4,
+            passes: false,
+          }, // -1.0
+          hashtagCount: 10, // -0.5
+        })
+      )
+    ).toBe(1)
   })
 })
 
@@ -429,11 +496,7 @@ describe('computeGroundingScore', () => {
 
   it('returns 10 when all claims are grounded', () => {
     const result = computeGroundingScore({
-      flagged_claims: [
-        { status: 'grounded' },
-        { status: 'grounded' },
-        { status: 'grounded' },
-      ],
+      flagged_claims: [{ status: 'grounded' }, { status: 'grounded' }, { status: 'grounded' }],
     })
     expect(result.grounding_score).toBe(10)
     expect(result.grounded).toBe(true)
@@ -441,10 +504,7 @@ describe('computeGroundingScore', () => {
 
   it('returns lower score for partially grounded claims', () => {
     const result = computeGroundingScore({
-      flagged_claims: [
-        { status: 'grounded' },
-        { status: 'partially_grounded' },
-      ],
+      flagged_claims: [{ status: 'grounded' }, { status: 'partially_grounded' }],
     })
     // 10 * (1 + 0.5) / 2 = 7.5 → 8
     expect(result.grounding_score).toBe(8)
@@ -453,10 +513,7 @@ describe('computeGroundingScore', () => {
 
   it('returns lower score for ungrounded claims', () => {
     const result = computeGroundingScore({
-      flagged_claims: [
-        { status: 'grounded' },
-        { status: 'ungrounded' },
-      ],
+      flagged_claims: [{ status: 'grounded' }, { status: 'ungrounded' }],
     })
     // 10 * (1 + 0) / 2 = 5
     expect(result.grounding_score).toBe(5)
@@ -465,10 +522,7 @@ describe('computeGroundingScore', () => {
 
   it('returns 1 when all claims are ungrounded', () => {
     const result = computeGroundingScore({
-      flagged_claims: [
-        { status: 'ungrounded' },
-        { status: 'ungrounded' },
-      ],
+      flagged_claims: [{ status: 'ungrounded' }, { status: 'ungrounded' }],
     })
     // 10 * 0 / 2 = 0 → clamped to 1
     expect(result.grounding_score).toBe(1)

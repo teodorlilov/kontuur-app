@@ -62,7 +62,9 @@ export function PriorityPostForm({ posts, onChange }: PriorityPostFormProps) {
                 className="rounded-lg border border-gray-300 px-4 py-3 text-base text-gray-900 focus:border-brand-purple focus:outline-none focus:ring-1 focus:ring-brand-purple"
               >
                 {PLATFORMS.map((p) => (
-                  <option key={p} value={p}>{p}</option>
+                  <option key={p} value={p}>
+                    {p}
+                  </option>
                 ))}
               </select>
             </div>

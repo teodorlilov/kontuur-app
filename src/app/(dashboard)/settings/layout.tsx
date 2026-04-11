@@ -3,11 +3,7 @@ import { getCachedAgency } from '@/lib/queries/cache'
 import { Topbar } from '@/components/layout/topbar'
 import { SettingsTabs } from '@/features/settings/components/settings-tabs'
 
-export default async function SettingsLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
+export default async function SettingsLayout({ children }: { children: React.ReactNode }) {
   const { agencyId } = await requireSessionUser()
 
   const agencyData = await getCachedAgency(agencyId)

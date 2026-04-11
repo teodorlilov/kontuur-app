@@ -9,19 +9,19 @@
 
 ## Part 1 — Project Stack
 
-| Layer | Technology |
-|---|---|
-| Framework | Next.js 14 with App Router (not Pages Router) |
-| Language | TypeScript — strict mode enabled |
-| Styling | Tailwind CSS — utility classes only, no custom CSS files except `globals.css` for base resets |
-| Database | Supabase (PostgreSQL) |
-| Auth | Supabase Auth |
-| AI | Anthropic Claude API (`claude-sonnet-4-5`) |
-| Email | Resend |
-| PDF | jsPDF |
-| Charts | Recharts |
-| Icons | Lucide React |
-| Deployment | Vercel |
+| Layer      | Technology                                                                                    |
+| ---------- | --------------------------------------------------------------------------------------------- |
+| Framework  | Next.js 14 with App Router (not Pages Router)                                                 |
+| Language   | TypeScript — strict mode enabled                                                              |
+| Styling    | Tailwind CSS — utility classes only, no custom CSS files except `globals.css` for base resets |
+| Database   | Supabase (PostgreSQL)                                                                         |
+| Auth       | Supabase Auth                                                                                 |
+| AI         | Anthropic Claude API (`claude-sonnet-4-5`)                                                    |
+| Email      | Resend                                                                                        |
+| PDF        | jsPDF                                                                                         |
+| Charts     | Recharts                                                                                      |
+| Icons      | Lucide React                                                                                  |
+| Deployment | Vercel                                                                                        |
 
 ---
 
@@ -266,14 +266,14 @@ export interface GeneratePostResponse {
 
 ### Naming Conventions
 
-| Type | Convention | Example |
-|---|---|---|
-| Files | kebab-case | `post-card.tsx` |
-| Components | PascalCase | `PostCard` |
-| Functions | camelCase | `generatePost` |
-| Constants | SCREAMING_SNAKE_CASE | `MAX_SLIDE_COUNT` |
-| Types/Interfaces | PascalCase | `GeneratedPost` |
-| Database tables | snake_case | `post_history` |
+| Type             | Convention           | Example           |
+| ---------------- | -------------------- | ----------------- |
+| Files            | kebab-case           | `post-card.tsx`   |
+| Components       | PascalCase           | `PostCard`        |
+| Functions        | camelCase            | `generatePost`    |
+| Constants        | SCREAMING_SNAKE_CASE | `MAX_SLIDE_COUNT` |
+| Types/Interfaces | PascalCase           | `GeneratedPost`   |
+| Database tables  | snake_case           | `post_history`    |
 
 ### Component File Structure
 
@@ -332,7 +332,10 @@ export async function POST(request: NextRequest) {
   try {
     // 1. Authenticate
     const supabase = createServerSupabaseClient()
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser()
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorised' }, { status: 401 })
     }
@@ -350,10 +353,7 @@ export async function POST(request: NextRequest) {
     // 3. Validate request body
     const body: YourRequestType = await request.json()
     if (!body.requiredField) {
-      return NextResponse.json(
-        { error: 'requiredField is required' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'requiredField is required' }, { status: 400 })
     }
 
     // 4. Business logic
@@ -361,7 +361,6 @@ export async function POST(request: NextRequest) {
 
     // 5. Return response
     return NextResponse.json({ data: result })
-
   } catch (error) {
     console.error('API Error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
@@ -420,10 +419,10 @@ export function createServerSupabaseClient() {
 ### Usage Rules
 
 | Use server client in | Use browser client in |
-|---|---|
-| API routes | Client Components |
-| Server Components | Custom hooks |
-| Middleware | — |
+| -------------------- | --------------------- |
+| API routes           | Client Components     |
+| Server Components    | Custom hooks          |
+| Middleware           | —                     |
 
 - **Never** import server client in Client Components
 - **Never** import browser client in API routes
@@ -453,24 +452,20 @@ export const DEFAULT_MAX_TOKENS = 4096
 
 All AI prompts live in `lib/anthropic/prompts/` as individual typed functions:
 
-```typescript
+````typescript
 // lib/anthropic/prompts/generate-post.ts
 
 import { anthropic, DEFAULT_MODEL, DEFAULT_MAX_TOKENS } from '../client'
 import type { GeneratePostInput, GeneratedPost } from '@/types'
 
-export async function generateSinglePost(
-  input: GeneratePostInput
-): Promise<GeneratedPost> {
+export async function generateSinglePost(input: GeneratePostInput): Promise<GeneratedPost> {
   const response = await anthropic.messages.create({
     model: DEFAULT_MODEL,
     max_tokens: DEFAULT_MAX_TOKENS,
-    messages: [{ role: 'user', content: buildPrompt(input) }]
+    messages: [{ role: 'user', content: buildPrompt(input) }],
   })
 
-  const text = response.content[0].type === 'text'
-    ? response.content[0].text
-    : ''
+  const text = response.content[0].type === 'text' ? response.content[0].text : ''
 
   return parseResponse(text)
 }
@@ -487,7 +482,7 @@ function parseResponse(text: string): GeneratedPost {
     throw new Error('Failed to parse AI response')
   }
 }
-```
+````
 
 ### Web Search Pattern
 
@@ -497,17 +492,19 @@ When a prompt requires current information:
 const response = await anthropic.messages.create({
   model: DEFAULT_MODEL,
   max_tokens: DEFAULT_MAX_TOKENS,
-  tools: [{
-    type: 'web_search_20250305',
-    name: 'web_search'
-  }],
-  messages: [{ role: 'user', content: prompt }]
+  tools: [
+    {
+      type: 'web_search_20250305',
+      name: 'web_search',
+    },
+  ],
+  messages: [{ role: 'user', content: prompt }],
 })
 
 // Extract text from potentially mixed content blocks
 const text = response.content
-  .filter(block => block.type === 'text')
-  .map(block => block.type === 'text' ? block.text : '')
+  .filter((block) => block.type === 'text')
+  .map((block) => (block.type === 'text' ? block.text : ''))
   .join('')
 ```
 
@@ -590,7 +587,7 @@ async function handleApprove(postId: string) {
   const response = await fetch(`/api/posts/${postId}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ status: 'approved' })
+    body: JSON.stringify({ status: 'approved' }),
   })
   if (!response.ok) throw new Error('Failed to approve post')
   const { data } = await response.json()
@@ -608,12 +605,12 @@ Every data fetch must handle three states: `loading` (spinner/skeleton) · `erro
 
 Do **not** install Redux, Zustand, or any state management library. Use this hierarchy:
 
-| Layer | Use for |
-|---|---|
-| URL state | Shareable state — active tab, selected client, date range. Use Next.js `searchParams`. |
-| Local component state | UI-only state — modal open, form values, loading flags. Use `useState`. |
-| Custom hooks | Shared data fetching state — `usePosts`, `useClients`. |
-| React Context | Truly global state only — auth user, agency info, user mode. One context per concern. |
+| Layer                 | Use for                                                                                |
+| --------------------- | -------------------------------------------------------------------------------------- |
+| URL state             | Shareable state — active tab, selected client, date range. Use Next.js `searchParams`. |
+| Local component state | UI-only state — modal open, form values, loading flags. Use `useState`.                |
+| Custom hooks          | Shared data fetching state — `usePosts`, `useClients`.                                 |
+| React Context         | Truly global state only — auth user, agency info, user mode. One context per concern.  |
 
 ### Global Contexts to Create
 
@@ -631,10 +628,7 @@ Never put server data in client-side global state. Fetch it server-side in Serve
 **Layer 1 — API routes:** always return structured errors
 
 ```typescript
-return NextResponse.json(
-  { error: 'Descriptive message', code: 'ERROR_CODE' },
-  { status: 400 }
-)
+return NextResponse.json({ error: 'Descriptive message', code: 'ERROR_CODE' }, { status: 400 })
 ```
 
 **Layer 2 — Client fetches:** always catch and display
@@ -653,12 +647,12 @@ try {
 
 ### Toast Notification Standards
 
-| Type | Colour | Example |
-|---|---|---|
-| Success | green | `'Post approved successfully'` |
-| Error | red | Specific message, never just `'Error'` |
-| Info | blue | `'Generating your posts...'` |
-| Warning | amber | `'This post may read as AI-generated'` |
+| Type    | Colour | Example                                |
+| ------- | ------ | -------------------------------------- |
+| Success | green  | `'Post approved successfully'`         |
+| Error   | red    | Specific message, never just `'Error'` |
+| Info    | blue   | `'Generating your posts...'`           |
+| Warning | amber  | `'This post may read as AI-generated'` |
 
 Never use `alert()`. Never use `console.log()` in production. Use `console.error()` only for unexpected errors in catch blocks.
 
@@ -668,15 +662,15 @@ Never use `alert()`. Never use `console.log()` in production. Use `console.error
 
 ### Rules
 
-| Variable | Exposure |
-|---|---|
-| `ANTHROPIC_API_KEY` | Server only — never `NEXT_PUBLIC_` |
-| `META_APP_SECRET` | Server only |
-| `RESEND_API_KEY` | Server only |
-| `CRON_SECRET` | Server only |
-| `NEXT_PUBLIC_SUPABASE_URL` | Safe as public — designed to be |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Safe as public — designed to be |
-| `NEXT_PUBLIC_APP_URL` | Safe as public |
+| Variable                        | Exposure                           |
+| ------------------------------- | ---------------------------------- |
+| `ANTHROPIC_API_KEY`             | Server only — never `NEXT_PUBLIC_` |
+| `META_APP_SECRET`               | Server only                        |
+| `RESEND_API_KEY`                | Server only                        |
+| `CRON_SECRET`                   | Server only                        |
+| `NEXT_PUBLIC_SUPABASE_URL`      | Safe as public — designed to be    |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Safe as public — designed to be    |
+| `NEXT_PUBLIC_APP_URL`           | Safe as public                     |
 
 Validate env vars at startup in `lib/anthropic/client.ts` and `lib/supabase/server.ts` — throw clear errors if missing.
 
@@ -702,9 +696,7 @@ These are non-negotiable:
 export { default } from '@/lib/supabase/middleware'
 
 export const config = {
-  matcher: [
-    '/((?!login|signup|approve|api/approval|_next|favicon).*)'
-  ]
+  matcher: ['/((?!login|signup|approve|api/approval|_next|favicon).*)'],
 }
 ```
 
@@ -726,6 +718,7 @@ export const config = {
 1. **Single responsibility** — every function does one thing. If a function is over 30 lines it probably needs to be split.
 
 2. **No magic numbers** — extract into named constants in `lib/utils/constants.ts`:
+
    ```typescript
    // BAD
    if (posts.length > 50)
@@ -734,6 +727,7 @@ export const config = {
    ```
 
 3. **Meaningful names** — variable names explain intent:
+
    ```typescript
    // BAD
    const d = new Date()
@@ -742,6 +736,7 @@ export const config = {
    ```
 
 4. **Comments explain why, not what:**
+
    ```typescript
    // BAD
    // increment counter
@@ -817,5 +812,5 @@ Read everything above carefully, then reply with:
 
 ---
 
-*PostFlow Technical Architecture — Session 0*
-*Reference this alongside every build session.*
+_PostFlow Technical Architecture — Session 0_
+_Reference this alongside every build session._

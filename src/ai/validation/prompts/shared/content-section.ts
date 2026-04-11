@@ -19,7 +19,7 @@ export interface ContentSectionOpts {
 export function buildContentSection(
   text: string,
   slides: Array<{ headline: string; body: string }> | undefined,
-  opts: ContentSectionOpts,
+  opts: ContentSectionOpts
 ): string {
   const isCarousel = !!slides?.length
 

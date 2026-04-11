@@ -47,7 +47,7 @@ export class ResearchPromptBuilder {
    */
   async generateTopics(
     count: number,
-    sourceContext?: SourceContext,
+    sourceContext?: SourceContext
   ): Promise<{ topics: ResearchTopic[]; userPrompt: string; rawResponse: string }> {
     const pillarsContext = this.buildPillarAllocationBlock(count)
     const historyContext = this.buildCoveredTopicsBlock()
@@ -80,7 +80,7 @@ export class ResearchPromptBuilder {
   async generateTopicsRetry(
     deficit: number,
     originalUserPrompt: string,
-    originalRawResponse: string,
+    originalRawResponse: string
   ): Promise<ResearchTopic[]> {
     const message = await callAnthropic({
       systemPrompt: this.systemPrompt,
@@ -113,7 +113,7 @@ LANGUAGE RULES —
 ${languageInstructions}
 
 Make sure the generated topics are relevant to the client's niche - ${this.niche}
-`
+`,
     ]
 
     return parts.join('\n\n')
@@ -125,22 +125,36 @@ Make sure the generated topics are relevant to the client's niche - ${this.niche
     count: number,
     sourceContext: SourceContext,
     pillarsContext: string,
-    historyContext: string,
+    historyContext: string
   ): string {
-    const rssSection = sourceContext.rssItems.length > 0
-      ? buildPromptSection('RSS_FEED', 'rss_content',
-        sourceContext.rssItems.map(i => `- ${i.title}: ${i.description} (${i.link})`).join('\n'))
-      : ''
+    const rssSection =
+      sourceContext.rssItems.length > 0
+        ? buildPromptSection(
+            'RSS_FEED',
+            'rss_content',
+            sourceContext.rssItems
+              .map((i) => `- ${i.title}: ${i.description} (${i.link})`)
+              .join('\n')
+          )
+        : ''
 
-    const webSection = sourceContext.websiteExcerpts.length > 0
-      ? buildPromptSection('WEBSITE_DATA', 'website_content',
-        sourceContext.websiteExcerpts.map(w => `[URL: ${w.url}]\n${w.text}`).join('\n\n'))
-      : ''
+    const webSection =
+      sourceContext.websiteExcerpts.length > 0
+        ? buildPromptSection(
+            'WEBSITE_DATA',
+            'website_content',
+            sourceContext.websiteExcerpts.map((w) => `[URL: ${w.url}]\n${w.text}`).join('\n\n')
+          )
+        : ''
 
-    const fileSection = sourceContext.fileExcerpts.length > 0
-      ? buildPromptSection('INTERNAL_DOCUMENTS', 'document_content',
-        sourceContext.fileExcerpts.map(f => `[File: ${f.label}]\n${f.text}`).join('\n\n'))
-      : ''
+    const fileSection =
+      sourceContext.fileExcerpts.length > 0
+        ? buildPromptSection(
+            'INTERNAL_DOCUMENTS',
+            'document_content',
+            sourceContext.fileExcerpts.map((f) => `[File: ${f.label}]\n${f.text}`).join('\n\n')
+          )
+        : ''
 
     return `Date: ${todayDateString()}
 Target: ${this.niche} | Language: ${this.languageConfig.language}
@@ -177,7 +191,7 @@ Generate exactly ${count} object${count > 1 ? 's' : ''}:
   private buildTrendResearchPrompt(
     count: number,
     pillarsContext: string,
-    historyContext: string,
+    historyContext: string
   ): string {
     const monthYear = new Date().toLocaleString('en-US', { month: 'long', year: 'numeric' })
     return `Date: ${todayDateString()}
@@ -227,7 +241,9 @@ Return exactly ${deficit} JSON object${deficit > 1 ? 's' : ''} using the same fo
     if (this.contentPillars.length === 0) return ''
     const allocation = allocateByWeight(this.contentPillars, count)
     const pillarInstructions = this.contentPillars
-      .map((p) => `- "${p.pillar}" (${p.weight}%): generate ${allocation.get(p.pillar) ?? 0} topic(s)`)
+      .map(
+        (p) => `- "${p.pillar}" (${p.weight}%): generate ${allocation.get(p.pillar) ?? 0} topic(s)`
+      )
       .join('\n')
     return `Content pillars with weighted distribution:\n${pillarInstructions}\nDistribute topics according to these weights. Include the pillar name in each topic's response.`
   }

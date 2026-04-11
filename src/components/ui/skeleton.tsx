@@ -6,10 +6,5 @@ interface SkeletonProps {
 }
 
 export function Skeleton({ height, width, className, style }: SkeletonProps) {
-  return (
-    <div
-      className={`skeleton ${className ?? ''}`}
-      style={{ height, width, ...style }}
-    />
-  )
+  return <div className={`skeleton ${className ?? ''}`} style={{ height, width, ...style }} />
 }

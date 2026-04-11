@@ -1,4 +1,9 @@
-import type { QualityScores, CarouselQuality, LanguageValidation, SlopDetection } from '@/ai/validation/types/scoring'
+import type {
+  QualityScores,
+  CarouselQuality,
+  LanguageValidation,
+  SlopDetection,
+} from '@/ai/validation/types/scoring'
 
 // ---- Shared enums / unions ----
 
@@ -244,7 +249,7 @@ export interface AnalyticsReportRequest {
   client_id: string
   platform: 'instagram' | 'facebook'
   period_start: string // ISO date YYYY-MM-DD
-  period_end: string   // ISO date YYYY-MM-DD
+  period_end: string // ISO date YYYY-MM-DD
 }
 
 export interface AudienceDemographics {

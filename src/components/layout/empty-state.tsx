@@ -20,11 +20,7 @@ export function EmptyState({ icon, title, description, action, className }: Empt
         gap: 8,
       }}
     >
-      {icon && (
-        <div style={{ color: 'var(--color-border-2)', marginBottom: 4 }}>
-          {icon}
-        </div>
-      )}
+      {icon && <div style={{ color: 'var(--color-border-2)', marginBottom: 4 }}>{icon}</div>}
       <p style={{ fontSize: 15, fontWeight: 500, color: 'var(--color-text-1)', margin: 0 }}>
         {title}
       </p>

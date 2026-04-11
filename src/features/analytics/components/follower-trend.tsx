@@ -9,7 +9,12 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts'
-import type { AnalyticsMetrics, InstagramMetrics, FacebookMetrics, IGDailyInsight } from '@/types/api'
+import type {
+  AnalyticsMetrics,
+  InstagramMetrics,
+  FacebookMetrics,
+  IGDailyInsight,
+} from '@/types/api'
 
 interface FollowerTrendProps {
   metrics: AnalyticsMetrics
@@ -40,27 +45,36 @@ export function FollowerTrend({ metrics }: FollowerTrendProps) {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <div>
           <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Total</p>
-          <p className="text-2xl font-semibold text-gray-900 mt-1">{totalFollowers.toLocaleString()}</p>
+          <p className="text-2xl font-semibold text-gray-900 mt-1">
+            {totalFollowers.toLocaleString()}
+          </p>
         </div>
         <div>
           <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">New</p>
-          <p className="text-2xl font-semibold text-gray-900 mt-1">+{summary.new_followers.toLocaleString()}</p>
+          <p className="text-2xl font-semibold text-gray-900 mt-1">
+            +{summary.new_followers.toLocaleString()}
+          </p>
         </div>
         <div>
           <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Unfollowers</p>
-          <p className="text-2xl font-semibold text-gray-900 mt-1">−{summary.unfollowers.toLocaleString()}</p>
+          <p className="text-2xl font-semibold text-gray-900 mt-1">
+            −{summary.unfollowers.toLocaleString()}
+          </p>
         </div>
         <div>
           <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Net growth</p>
-          <p className={`text-2xl font-semibold mt-1 ${netGrowth >= 0 ? 'text-green-600' : 'text-red-500'}`}>
-            {netGrowth >= 0 ? '+' : ''}{netGrowth.toLocaleString()}
+          <p
+            className={`text-2xl font-semibold mt-1 ${netGrowth >= 0 ? 'text-green-600' : 'text-red-500'}`}
+          >
+            {netGrowth >= 0 ? '+' : ''}
+            {netGrowth.toLocaleString()}
           </p>
         </div>
       </div>
 
       {/* Follower count over time (Instagram only) */}
-      {isIG && (
-        followerSeries.length > 1 ? (
+      {isIG &&
+        (followerSeries.length > 1 ? (
           <div>
             <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3">
               Follower count over time
@@ -80,7 +94,9 @@ export function FollowerTrend({ metrics }: FollowerTrendProps) {
                   tickLine={false}
                   axisLine={false}
                   domain={['auto', 'auto']}
-                  tickFormatter={(v: number) => v >= 1000 ? `${(v / 1000).toFixed(0)}k` : String(v)}
+                  tickFormatter={(v: number) =>
+                    v >= 1000 ? `${(v / 1000).toFixed(0)}k` : String(v)
+                  }
                 />
                 <Tooltip
                   contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #e5e7eb' }}
@@ -95,8 +111,7 @@ export function FollowerTrend({ metrics }: FollowerTrendProps) {
           </div>
         ) : (
           <p className="text-xs text-gray-400">No follower trend data available</p>
-        )
-      )}
+        ))}
     </div>
   )
 }

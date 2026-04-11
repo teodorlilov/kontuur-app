@@ -88,9 +88,7 @@ export async function fetchSingleSitemap(sitemapUrl: string): Promise<string[]> 
   // Follow sub-refs one level deep (handles nested sitemap indexes)
   if (sitemapRefs.length > 0) {
     const toFollow = sitemapRefs.slice(0, MAX_SUB_SITEMAPS)
-    const subResults = await Promise.allSettled(
-      toFollow.map((ref) => fetchXml(ref))
-    )
+    const subResults = await Promise.allSettled(toFollow.map((ref) => fetchXml(ref)))
     for (const result of subResults) {
       if (result.status !== 'fulfilled' || !result.value) continue
       const sub = parseSitemapXml(result.value)

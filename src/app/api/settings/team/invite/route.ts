@@ -36,10 +36,7 @@ export async function POST(request: Request) {
     .eq('email', email)
 
   if (existingMembers && existingMembers.length > 0) {
-    return NextResponse.json(
-      { error: 'This email is already a team member' },
-      { status: 409 }
-    )
+    return NextResponse.json({ error: 'This email is already a team member' }, { status: 409 })
   }
 
   // Invite via Supabase Auth

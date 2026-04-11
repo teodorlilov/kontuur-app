@@ -28,7 +28,11 @@ export class WebsiteResearchSource extends ResearchSource {
     return this.excerpts
   }
 
-  addToFullTextIndex(byUrl: Map<string, string>, _byLabel: Map<string, string>, cap: number = SOURCE_FULL_TEXT_CAP): void {
+  addToFullTextIndex(
+    byUrl: Map<string, string>,
+    _byLabel: Map<string, string>,
+    cap: number = SOURCE_FULL_TEXT_CAP
+  ): void {
     for (const w of this.excerpts) {
       byUrl.set(w.url, w.text.slice(0, cap))
     }

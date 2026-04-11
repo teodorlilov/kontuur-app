@@ -24,32 +24,32 @@ them in four phases:
 
 ## Current State: What Is Out of Sync
 
-| What generator tells model | What validator checks | Gap |
-|---|---|---|
-| Full structure descriptions (what each means, CTA rules) | Structure names only | Validator cannot enforce structure-specific rules |
-| `[STRUCTURE: MYTH-BREAKER]` declared in planning step | Infers structure from post body | MYTH-BREAKER with CTA passes validation |
-| Brand voice: "This brand sounds X. Clients say Y." | Same data, different function, different format | Can drift silently |
-| Source rules: "Pick ONE angle. Post structure ≠ source structure." | "Focus on 1-2 angles" | Third rule not checked |
-| AI tell patterns (6 patterns) | Same 6 patterns — but defined in validation-criteria.ts | Generation team edits wrong file |
-| Language-specific patterns from `languageConfig.languageInstructions` | Hardcoded Bulgarian checks in TypeScript | New languages require code changes |
+| What generator tells model                                            | What validator checks                                   | Gap                                               |
+| --------------------------------------------------------------------- | ------------------------------------------------------- | ------------------------------------------------- |
+| Full structure descriptions (what each means, CTA rules)              | Structure names only                                    | Validator cannot enforce structure-specific rules |
+| `[STRUCTURE: MYTH-BREAKER]` declared in planning step                 | Infers structure from post body                         | MYTH-BREAKER with CTA passes validation           |
+| Brand voice: "This brand sounds X. Clients say Y."                    | Same data, different function, different format         | Can drift silently                                |
+| Source rules: "Pick ONE angle. Post structure ≠ source structure."    | "Focus on 1-2 angles"                                   | Third rule not checked                            |
+| AI tell patterns (6 patterns)                                         | Same 6 patterns — but defined in validation-criteria.ts | Generation team edits wrong file                  |
+| Language-specific patterns from `languageConfig.languageInstructions` | Hardcoded Bulgarian checks in TypeScript                | New languages require code changes                |
 
 ---
 
 ## What Is Duplicated Right Now
 
-| Duplicate | Locations | Fix |
-|---|---|---|
-| `AI_TELL_PATTERNS` and `formatAiTellPatterns()` | `validation-criteria.ts` (defined), `generation-criteria.ts` (used) | Move to `generation-criteria.ts`, re-export from validation |
-| `QualityResult` type | `validate-quality.ts` + `scoring.ts` | `scoring.ts` canonical only |
-| `LanguageValidationResult` type | `validate-language.ts` + `scoring.ts` | `scoring.ts` canonical only |
-| `SourceGroundingResult` type | `validate-source-grounding.ts` + `scoring.ts` | `scoring.ts` canonical only |
-| `LanguageIssueType` | `validate-language.ts`, `scoring.ts`, `compute-scores.ts` | `scoring.ts` canonical only |
-| `QualityContext` | Inside `validate-quality.ts` | Move to `scoring.ts` |
-| Carousel content block builder | `validate-quality.ts`, `validate-language.ts`, `validate-source-grounding.ts` | `buildContentSection()` shared helper |
-| Brand voice description | `buildBrandVoiceSection()` (generation) + `buildBrandVoiceCheck()` (validation) | One `buildBrandVoiceDescription()` |
-| Bulgarian-specific AI tells | Hardcoded in `buildLanguageTells()` | Move to DB `language_rules.language_instructions` |
-| `new Date().toISOString().split('T')[0]` | Both prompt files | `todayDateString()` helper |
-| Source full text cap constant | 4 files | One constant in `fetch-limits.ts` |
+| Duplicate                                       | Locations                                                                       | Fix                                                         |
+| ----------------------------------------------- | ------------------------------------------------------------------------------- | ----------------------------------------------------------- |
+| `AI_TELL_PATTERNS` and `formatAiTellPatterns()` | `validation-criteria.ts` (defined), `generation-criteria.ts` (used)             | Move to `generation-criteria.ts`, re-export from validation |
+| `QualityResult` type                            | `validate-quality.ts` + `scoring.ts`                                            | `scoring.ts` canonical only                                 |
+| `LanguageValidationResult` type                 | `validate-language.ts` + `scoring.ts`                                           | `scoring.ts` canonical only                                 |
+| `SourceGroundingResult` type                    | `validate-source-grounding.ts` + `scoring.ts`                                   | `scoring.ts` canonical only                                 |
+| `LanguageIssueType`                             | `validate-language.ts`, `scoring.ts`, `compute-scores.ts`                       | `scoring.ts` canonical only                                 |
+| `QualityContext`                                | Inside `validate-quality.ts`                                                    | Move to `scoring.ts`                                        |
+| Carousel content block builder                  | `validate-quality.ts`, `validate-language.ts`, `validate-source-grounding.ts`   | `buildContentSection()` shared helper                       |
+| Brand voice description                         | `buildBrandVoiceSection()` (generation) + `buildBrandVoiceCheck()` (validation) | One `buildBrandVoiceDescription()`                          |
+| Bulgarian-specific AI tells                     | Hardcoded in `buildLanguageTells()`                                             | Move to DB `language_rules.language_instructions`           |
+| `new Date().toISOString().split('T')[0]`        | Both prompt files                                                               | `todayDateString()` helper                                  |
+| Source full text cap constant                   | 4 files                                                                         | One constant in `fetch-limits.ts`                           |
 
 ---
 
@@ -156,9 +156,9 @@ export const AI_TELL_PATTERNS: readonly string[] = [
 ] as const
 
 export function formatAiTellPatterns(languagePatterns?: string[]): string {
-  const base = AI_TELL_PATTERNS.map(p => `- ${p}`).join('\n')
+  const base = AI_TELL_PATTERNS.map((p) => `- ${p}`).join('\n')
   if (!languagePatterns?.length) return base
-  return `${base}\n\nLanguage-specific patterns to also check:\n${languagePatterns.map(p => `- ${p}`).join('\n')}`
+  return `${base}\n\nLanguage-specific patterns to also check:\n${languagePatterns.map((p) => `- ${p}`).join('\n')}`
 }
 ```
 
@@ -173,6 +173,7 @@ export { AI_TELL_PATTERNS, formatAiTellPatterns } from '@/ai/generation/generati
 ```
 
 ### ✓ Step 1 Verification
+
 - [ ] `npx tsc --noEmit` — no errors
 - [ ] `grep -rn "^export const AI_TELL_PATTERNS" src/` — 1 result (`generation-criteria.ts`)
 - [ ] Generation system prompt and validation prompt both reference the same 6 patterns
@@ -194,7 +195,8 @@ Export the rules text so both use the same string.
  * Exported so the validation criteria checklist uses the same text.
  * What the generator was told to follow — the validator must check.
  */
-export const SOURCE_GROUNDING_RULES = `- Use ONLY facts explicitly stated in the source — no inference, no invented details.
+export const SOURCE_GROUNDING_RULES =
+  `- Use ONLY facts explicitly stated in the source — no inference, no invented details.
 - Pick ONE angle, not a summary. If covering more than 2 facts, stop and cut.
 - Post structure must come from the POST STRUCTURES list, NOT the source article's structure.` as const
 ```
@@ -202,7 +204,11 @@ export const SOURCE_GROUNDING_RULES = `- Use ONLY facts explicitly stated in the
 Use it inside `buildGroundingPrompt`:
 
 ```typescript
-export function buildGroundingPrompt(opts: { sourceExcerpt?: string; sourceUrl?: string | null; requireSourceGrounding?: boolean }): string {
+export function buildGroundingPrompt(opts: {
+  sourceExcerpt?: string
+  sourceUrl?: string | null
+  requireSourceGrounding?: boolean
+}): string {
   if (!opts.requireSourceGrounding || !opts.sourceExcerpt) return ''
   const capped = capSourceText(opts.sourceExcerpt) ?? opts.sourceExcerpt
   const urlLine = opts.sourceUrl ? `\nSource: ${opts.sourceUrl}` : ''
@@ -226,6 +232,7 @@ ${SOURCE_GROUNDING_RULES}`)
 ```
 
 ### ✓ Step 2 Verification
+
 - [ ] `npx tsc --noEmit` — no errors
 - [ ] `grep -rn "^export const SOURCE_GROUNDING_RULES" src/` — 1 result (`source-grounding.ts`)
 - [ ] Validation criteria checklist includes all three source rules including the structure one
@@ -257,7 +264,9 @@ export function buildBrandVoiceDescription(opts: {
     lines.push(`These two descriptions define one emotional identity.`)
   }
   if (opts.formality) {
-    lines.push(`Evaluate within the ${opts.formality} register. Emotion can be warm even when register is formal.`)
+    lines.push(
+      `Evaluate within the ${opts.formality} register. Emotion can be warm even when register is formal.`
+    )
   }
   return lines.join('\n')
 }
@@ -295,6 +304,7 @@ function buildBrandVoiceCheck(ctx?: QualityContext): string {
 ```
 
 ### ✓ Step 3 Verification
+
 - [ ] `npx tsc --noEmit` — no errors
 - [ ] `grep -rn "^export function buildBrandVoiceDescription" src/` — 1 result (`client-profile.ts`)
 - [ ] Brand voice description in generation prompt and validation prompt is byte-identical for same client
@@ -310,14 +320,19 @@ The validator currently sees structure names only. It cannot enforce structure-s
 the generator showed.
 
 **Current:**
+
 ```typescript
-`[] STRUCTURE: Must NOT be predictable problem→solution→CTA.
+;`[] STRUCTURE: Must NOT be predictable problem→solution→CTA.
    Allowed structures: ${formatStructures()}`
 ```
 
 **After:**
+
 ```typescript
-import { formatStructureDescriptions, CTA_EXEMPT_STRUCTURES } from '@/ai/generation/generation-criteria'
+import {
+  formatStructureDescriptions,
+  CTA_EXEMPT_STRUCTURES,
+} from '@/ai/generation/generation-criteria'
 
 // In buildCriteriaChecklist:
 sections.push(`[] STRUCTURE: Must NOT be predictable problem→solution→CTA.
@@ -334,6 +349,7 @@ if (ctx.declaredStructure) {
 ```
 
 ### ✓ Step 4 Verification
+
 - [ ] `npx tsc --noEmit` — no errors
 - [ ] Validation criteria checklist shows MYTH-BREAKER's "No CTA needed" in the description
 - [ ] Generate a MYTH-BREAKER post with a CTA — validator now has the information to flag it
@@ -354,6 +370,7 @@ Expected: `formatHealthRules()` defined once in `generation-criteria.ts`, import
 remove it and use the import.
 
 ### ✓ Step 5 Verification
+
 - [ ] `grep -rn "^export function formatHealthRules" src/` — 1 result (`generation-criteria.ts`)
 - [ ] No health rules text duplicated in `validation-criteria.ts`
 
@@ -401,7 +418,6 @@ to `formatAiTellPatterns`.
 ```typescript
 // When building the system prompt, extract language-specific AI tells:
 const langAiTells = extractLanguageAiTells(lc.languageInstructions)
-
 // System prompt section:
 `AI-generated text does these things — never do them:
 ${formatAiTellPatterns(langAiTells)}`
@@ -425,8 +441,8 @@ export function extractLanguageAiTells(languageInstructions?: string): string[] 
   if (!languageInstructions) return []
   return languageInstructions
     .split('\n')
-    .filter(line => line.trim().startsWith('AI TELL:'))
-    .map(line => line.replace(/^AI TELL:\s*/, '').trim())
+    .filter((line) => line.trim().startsWith('AI TELL:'))
+    .map((line) => line.replace(/^AI TELL:\s*/, '').trim())
     .filter(Boolean)
 }
 ```
@@ -446,6 +462,7 @@ AI TELL: Calque constructions following English word order
 This is a **manual DB update**, not a code change. The code reads whatever is in the DB.
 
 ### ✓ Step 7 Verification
+
 - [ ] `npx tsc --noEmit` — no errors
 - [ ] `extractLanguageAiTells('')` returns `[]`
 - [ ] `extractLanguageAiTells('AI TELL: Mixed address\nOther instruction')` returns `['Mixed address']`
@@ -482,21 +499,19 @@ function buildLanguageTells(ctx?: QualityContext): string {
 - Literal calques from English that no native ${lc.language} speaker would write
 - Unnatural word order following English syntax
 - Register violation: ${
-    lc.formality === 'formal' ? 'informal address in a formal-register post' :
-    lc.formality === 'casual' ? 'formal address in a casual-register post' :
-    'extreme formality or casualness when neutral register is required'
+    lc.formality === 'formal'
+      ? 'informal address in a formal-register post'
+      : lc.formality === 'casual'
+        ? 'formal address in a casual-register post'
+        : 'extreme formality or casualness when neutral register is required'
   }`
 
   // Language-specific AI tells from DB (set up via extractLanguageAiTells convention)
   const dbTells = extractLanguageAiTells(lc.languageInstructions)
-  const dbTellsSection = dbTells.length > 0
-    ? `\n${dbTells.map(t => `- ${t}`).join('\n')}`
-    : ''
+  const dbTellsSection = dbTells.length > 0 ? `\n${dbTells.map((t) => `- ${t}`).join('\n')}` : ''
 
   // Per-client language notes from DB
-  const clientNotes = lc.languageNotes
-    ? `\n${lc.languageNotes}`
-    : ''
+  const clientNotes = lc.languageNotes ? `\n${lc.languageNotes}` : ''
 
   return `${base}${dbTellsSection}${clientNotes}`
 }
@@ -506,6 +521,7 @@ Import `extractLanguageAiTells` from `generation-criteria.ts` — same function 
 Same extraction logic means generation and validation check the same language-specific patterns.
 
 ### ✓ Step 8 Verification
+
 - [ ] `npx tsc --noEmit` — no errors
 - [ ] `grep "language === " src/ai/validation/prompts/validate-quality.ts` — nothing
 - [ ] Bulgarian validation: mixed address still detected (via DB, not code)
@@ -530,6 +546,7 @@ universal — they stay. Only the examples and patterns inside them should be la
 from DB.
 
 ### ✓ Step 9 Verification
+
 - [ ] No `language ===` conditionals in `language-validation-rules.ts`
 - [ ] Language-specific check examples come from `config.languageInstructions`
 
@@ -600,11 +617,12 @@ The return type changes from `string[]` to `ParsedPost[]`. Update the `ContentGe
 accordingly — `PostGenerator` now extends `ContentGenerator<GenerationInput, ParsedPost[]>`.
 
 ### ✓ Step 11 Verification
+
 - [ ] `npx tsc --noEmit` — no errors (expect errors in generation-run.ts — fixed in Step 12)
 - [ ] `parsePostDeclaration('[STRUCTURE: MYTH-BREAKER]\n\nPost body')` returns
-  `{ declaredStructure: 'MYTH-BREAKER', caption: 'Post body' }`
+      `{ declaredStructure: 'MYTH-BREAKER', caption: 'Post body' }`
 - [ ] `parsePostDeclaration('No declaration here')` returns
-  `{ declaredStructure: null, caption: 'No declaration here' }`
+      `{ declaredStructure: null, caption: 'No declaration here' }`
 
 ---
 
@@ -633,22 +651,28 @@ async function collectSinglePosts(theme: Theme, posts: ParsedPost[]) {
 
   // Quality floor — keep best N
   const toKeep = results
-    .filter(r => r.validation.qualityScore >= QUALITY_FLOOR)
+    .filter((r) => r.validation.qualityScore >= QUALITY_FLOOR)
     .sort((a, b) => b.validation.qualityScore - a.validation.qualityScore)
     .slice(0, requested)
 
-  const fallback = toKeep.length > 0
-    ? toKeep
-    : results.sort((a, b) => b.validation.qualityScore - a.validation.qualityScore).slice(0, requested)
+  const fallback =
+    toKeep.length > 0
+      ? toKeep
+      : results
+          .sort((a, b) => b.validation.qualityScore - a.validation.qualityScore)
+          .slice(0, requested)
 
   fallback.forEach(({ caption, validation, declaredStructure }) =>
-    collectResult(validation, buildDraftRecord(theme, {
-      caption,
-      post_type: 'single',
-      slides_json: null,
-      quality_score_avg: validation.qualityScore,
-      declared_structure: declaredStructure,   // store for debugging/analytics
-    }))
+    collectResult(
+      validation,
+      buildDraftRecord(theme, {
+        caption,
+        post_type: 'single',
+        slides_json: null,
+        quality_score_avg: validation.qualityScore,
+        declared_structure: declaredStructure, // store for debugging/analytics
+      })
+    )
   )
 }
 ```
@@ -671,13 +695,14 @@ async function validateContent(
     qualityContext: {
       ...sharedQualityContext,
       theme: theme.description,
-      declaredStructure: opts.declaredStructure,   // ADD
+      declaredStructure: opts.declaredStructure, // ADD
     },
   })
 }
 ```
 
 ### ✓ Step 12 Verification
+
 - [ ] `npx tsc --noEmit` — no errors
 - [ ] `GenerationResult` includes `declaredStructure` in the post record
 - [ ] `QualityContext` includes `declaredStructure` — add field if missing
@@ -702,7 +727,7 @@ export interface QualityContext {
   isHealthClient?: boolean
   languageConfig?: LanguageConfig
   theme?: string
-  declaredStructure?: string   // ADD — structure the generator declared
+  declaredStructure?: string // ADD — structure the generator declared
 }
 ```
 
@@ -715,21 +740,25 @@ export function buildCriteriaChecklist(ctx: {
   isHealthClient?: boolean
   languageConfig?: LanguageConfig
   theme?: string
-  declaredStructure?: string   // ADD
+  declaredStructure?: string // ADD
 }): string {
   // ...existing sections...
 
   // Structure section — full descriptions (from Step 4)
-  const structureSection = [`[] STRUCTURE: Must NOT be predictable problem→solution→CTA.
+  const structureSection = [
+    `[] STRUCTURE: Must NOT be predictable problem→solution→CTA.
    Each structure below has specific rules the post must follow:
-${formatStructureDescriptions()}`]
+${formatStructureDescriptions()}`,
+  ]
 
   // If we know the declared structure, add a specific compliance check
   if (ctx.declaredStructure) {
     const isCtaExempt = CTA_EXEMPT_STRUCTURES.includes(ctx.declaredStructure)
     structureSection.push(`[] DECLARED STRUCTURE: The generator declared "${ctx.declaredStructure}".
    Verify the post actually follows this structure's definition above.${
-     isCtaExempt ? '\n   This structure explicitly forbids CTAs — a CTA present is a violation.' : ''
+     isCtaExempt
+       ? '\n   This structure explicitly forbids CTAs — a CTA present is a violation.'
+       : ''
    }`)
   }
 
@@ -747,17 +776,18 @@ const criteriaChecklist = buildCriteriaChecklist({
   isHealthClient: ctx?.isHealthClient,
   languageConfig: ctx?.languageConfig,
   theme: ctx?.theme,
-  declaredStructure: ctx?.declaredStructure,   // ADD
+  declaredStructure: ctx?.declaredStructure, // ADD
 })
 ```
 
 ### ✓ Step 13 Verification
+
 - [ ] `npx tsc --noEmit` — no errors
 - [ ] Generate a MYTH-BREAKER post — `declared_structure: 'MYTH-BREAKER'` in DB record
 - [ ] Generate a MYTH-BREAKER post WITH a CTA — validation criteria checklist includes
-  "This structure explicitly forbids CTAs"
+      "This structure explicitly forbids CTAs"
 - [ ] Generate a post with no planning declaration — `declaredStructure: null`,
-  no "DECLARED STRUCTURE" section in checklist
+      no "DECLARED STRUCTURE" section in checklist
 
 ---
 
@@ -770,14 +800,14 @@ npx vitest run
 
 ### Structure alignment test
 
-| Scenario | Expected result |
-|---|---|
-| MYTH-BREAKER, no CTA | `cta_verdict: missing`, score 10 (exempt) |
-| MYTH-BREAKER, has CTA | Criteria checklist flags it, `cta_score` penalised |
-| CONFESSION, no CTA | `cta_verdict: missing`, score 10 (exempt) |
-| OBSERVATION, no CTA | `cta_verdict: missing`, score 1 (not exempt, missing CTA) |
-| STORY-FIRST, well-formed | `structure_is_predictable: false` |
-| No declaration in output | `declaredStructure: null`, no structure compliance check |
+| Scenario                 | Expected result                                           |
+| ------------------------ | --------------------------------------------------------- |
+| MYTH-BREAKER, no CTA     | `cta_verdict: missing`, score 10 (exempt)                 |
+| MYTH-BREAKER, has CTA    | Criteria checklist flags it, `cta_score` penalised        |
+| CONFESSION, no CTA       | `cta_verdict: missing`, score 10 (exempt)                 |
+| OBSERVATION, no CTA      | `cta_verdict: missing`, score 1 (not exempt, missing CTA) |
+| STORY-FIRST, well-formed | `structure_is_predictable: false`                         |
+| No declaration in output | `declaredStructure: null`, no structure compliance check  |
 
 - [ ] All 5 scenarios produce expected results
 - [ ] `declared_structure` written to database for all generated posts
@@ -797,21 +827,21 @@ everywhere.
 
 **Types to consolidate (remove from source files, canonical in `scoring.ts`):**
 
-| Type | Currently also in | Action |
-|---|---|---|
-| `QualityResult` | `validate-quality.ts` | Remove from validate-quality.ts |
-| `SingleQualityResult` | `validate-quality.ts` | Remove |
-| `CarouselQualityResult` | `validate-quality.ts` | Remove |
-| `QualityBase` | `validate-quality.ts` | Remove |
-| `QualityContext` | `validate-quality.ts` | Move to scoring.ts |
-| `QualityIssue` | `validate-quality.ts` | Remove — use `{ type: string; description: string }` inline |
-| `LanguageValidationResult` | `validate-language.ts` | Remove |
-| `LanguageIssue` | `validate-language.ts` | Remove |
-| `SourceGroundingResult` | `validate-source-grounding.ts` | Remove |
-| `SourceGroundingIssue` | `validate-source-grounding.ts` | Remove |
-| `LanguageIssueType` | `validate-language.ts`, `compute-scores.ts` | Remove from both |
-| `HookVerdict`, `CtaVerdict` | `types/api.ts` or `validate-quality.ts` | Canonical in `scoring.ts` |
-| `SlopDetection` | `types/api.ts` | Canonical in `scoring.ts`, re-export from api.ts |
+| Type                        | Currently also in                           | Action                                                      |
+| --------------------------- | ------------------------------------------- | ----------------------------------------------------------- |
+| `QualityResult`             | `validate-quality.ts`                       | Remove from validate-quality.ts                             |
+| `SingleQualityResult`       | `validate-quality.ts`                       | Remove                                                      |
+| `CarouselQualityResult`     | `validate-quality.ts`                       | Remove                                                      |
+| `QualityBase`               | `validate-quality.ts`                       | Remove                                                      |
+| `QualityContext`            | `validate-quality.ts`                       | Move to scoring.ts                                          |
+| `QualityIssue`              | `validate-quality.ts`                       | Remove — use `{ type: string; description: string }` inline |
+| `LanguageValidationResult`  | `validate-language.ts`                      | Remove                                                      |
+| `LanguageIssue`             | `validate-language.ts`                      | Remove                                                      |
+| `SourceGroundingResult`     | `validate-source-grounding.ts`              | Remove                                                      |
+| `SourceGroundingIssue`      | `validate-source-grounding.ts`              | Remove                                                      |
+| `LanguageIssueType`         | `validate-language.ts`, `compute-scores.ts` | Remove from both                                            |
+| `HookVerdict`, `CtaVerdict` | `types/api.ts` or `validate-quality.ts`     | Canonical in `scoring.ts`                                   |
+| `SlopDetection`             | `types/api.ts`                              | Canonical in `scoring.ts`, re-export from api.ts            |
 
 **Keep in each validator file:**
 
@@ -829,6 +859,7 @@ grep -rn "^export type LanguageIssueType" src/
 ```
 
 ### ✓ Step 15 Verification
+
 - [ ] `npx tsc --noEmit` — no errors
 - [ ] All types defined exactly once — in `scoring.ts`
 
@@ -843,7 +874,9 @@ The carousel-vs-single content block is identically duplicated in all three vali
 ```typescript
 // Appears 3× with minor tag name variations:
 if (isCarousel) {
-  const slidesText = slides.map((s, i) => `[SLIDE ${i+1}]\nHeadline: ${s.headline}\nBody: ${s.body}`).join('\n\n')
+  const slidesText = slides
+    .map((s, i) => `[SLIDE ${i + 1}]\nHeadline: ${s.headline}\nBody: ${s.body}`)
+    .join('\n\n')
   contentSection = `\n[CAPTION]\n<caption_tag>\n${caption}\n</caption_tag>\n<slides_tag>\n${slidesText}\n</slides_tag>`
 } else {
   contentSection = `\n<caption_tag>\n${caption}\n</caption_tag>`
@@ -864,7 +897,7 @@ export interface ContentSectionOpts {
 export function buildContentSection(
   text: string,
   slides: Array<{ headline: string; body: string }> | undefined,
-  opts: ContentSectionOpts,
+  opts: ContentSectionOpts
 ): string {
   const isCarousel = !!slides?.length
 
@@ -909,6 +942,7 @@ const contentSection = buildContentSection(generatedText, slides, {
 ```
 
 ### ✓ Step 16 Verification
+
 - [ ] `npx tsc --noEmit` — no errors
 - [ ] No inline carousel/single branching in any validator file
 - [ ] Rendered content blocks byte-identical to before
@@ -959,6 +993,7 @@ grep -r "opener_follows_rules\|opener_violation\|OPENER_VIOLATION\|formatBannedO
 ```
 
 ### ✓ Step 17 Verification
+
 - [ ] `npx tsc --noEmit` — no errors
 - [ ] `grep -r "opener_follows_rules" src/` — nothing
 - [ ] `grep -r "formatBannedOpeners\|formatAllowedOpeners" src/` — nothing
@@ -992,9 +1027,8 @@ export function formatHistory(
   const format = opts?.format ?? 'pipe'
   if (history.length === 0) return ''
   const entries = history.slice(0, limit)
-  const joined = format === 'bullets'
-    ? entries.map(t => `- ${t}`).join('\n')
-    : entries.join(' | ')
+  const joined =
+    format === 'bullets' ? entries.map((t) => `- ${t}`).join('\n') : entries.join(' | ')
   return joined.slice(0, cap)
 }
 
@@ -1021,6 +1055,7 @@ grep -rn "postHistory.*join\|postHistory.*slice" src/ai/
 ```
 
 ### ✓ Step 18 Verification
+
 - [ ] `npx tsc --noEmit` — no errors
 - [ ] `grep -r "toISOString().split" src/ai/` — nothing (all use `todayDateString()`)
 - [ ] Both research and generation use `formatHistory()` with the same limit constants
@@ -1073,46 +1108,46 @@ Run generation + validation for Физиомед (formal, Bulgarian, health clie
 
 ### Phase 1 — Single Source of Truth
 
-| Concern | Before | After |
-|---|---|---|
-| `AI_TELL_PATTERNS` location | `validation-criteria.ts` | `generation-criteria.ts` — re-exported from validation |
-| Source grounding rules | Different text in generation and validation | `SOURCE_GROUNDING_RULES` constant in `source-grounding.ts` |
-| Brand voice description | Two functions, same data | `buildBrandVoiceDescription()` — one function, two callers |
-| Structure descriptions in validator | Names only | Full descriptions via `formatStructureDescriptions()` |
-| Health rules | Confirmed single source | `formatHealthRules()` in `generation-criteria.ts` |
+| Concern                             | Before                                      | After                                                      |
+| ----------------------------------- | ------------------------------------------- | ---------------------------------------------------------- |
+| `AI_TELL_PATTERNS` location         | `validation-criteria.ts`                    | `generation-criteria.ts` — re-exported from validation     |
+| Source grounding rules              | Different text in generation and validation | `SOURCE_GROUNDING_RULES` constant in `source-grounding.ts` |
+| Brand voice description             | Two functions, same data                    | `buildBrandVoiceDescription()` — one function, two callers |
+| Structure descriptions in validator | Names only                                  | Full descriptions via `formatStructureDescriptions()`      |
+| Health rules                        | Confirmed single source                     | `formatHealthRules()` in `generation-criteria.ts`          |
 
 ### Phase 2 — Language-Driven Rules
 
-| Concern | Before | After |
-|---|---|---|
-| Bulgarian AI tells | Hardcoded `if (language === 'Bulgarian')` blocks | DB `language_instructions` with `AI TELL:` prefix |
-| Language tell extraction | None — all hardcoded | `extractLanguageAiTells(languageInstructions)` |
-| Adding new language | Requires code change + deploy | Requires only DB entry |
-| Formality register patterns | Per-language if blocks | Derived from `lc.formality` value |
+| Concern                     | Before                                           | After                                             |
+| --------------------------- | ------------------------------------------------ | ------------------------------------------------- |
+| Bulgarian AI tells          | Hardcoded `if (language === 'Bulgarian')` blocks | DB `language_instructions` with `AI TELL:` prefix |
+| Language tell extraction    | None — all hardcoded                             | `extractLanguageAiTells(languageInstructions)`    |
+| Adding new language         | Requires code change + deploy                    | Requires only DB entry                            |
+| Formality register patterns | Per-language if blocks                           | Derived from `lc.formality` value                 |
 
 ### Phase 3 — Thread Declared Structure
 
-| Concern | Before | After |
-|---|---|---|
-| Planning declaration | Stripped and discarded | Extracted into `ParsedPost.declaredStructure` |
-| Validator knowledge of structure | Inferred from post body | Explicitly passed as `QualityContext.declaredStructure` |
-| MYTH-BREAKER CTA check | Validator guesses | Validator knows: "this structure forbids CTAs" |
-| Structure compliance check | Generic "not predictable" | Specific to declared structure definition |
+| Concern                          | Before                    | After                                                   |
+| -------------------------------- | ------------------------- | ------------------------------------------------------- |
+| Planning declaration             | Stripped and discarded    | Extracted into `ParsedPost.declaredStructure`           |
+| Validator knowledge of structure | Inferred from post body   | Explicitly passed as `QualityContext.declaredStructure` |
+| MYTH-BREAKER CTA check           | Validator guesses         | Validator knows: "this structure forbids CTAs"          |
+| Structure compliance check       | Generic "not predictable" | Specific to declared structure definition               |
 
 ### Phase 4 — Code Reduction
 
-| Concern | Before | After |
-|---|---|---|
-| `QualityResult` and related types | In `validate-quality.ts` + `scoring.ts` | `scoring.ts` only |
-| `LanguageValidationResult` | In `validate-language.ts` + `scoring.ts` | `scoring.ts` only |
-| `SourceGroundingResult` | In `validate-source-grounding.ts` + `scoring.ts` | `scoring.ts` only |
-| `QualityContext` | Inside `validate-quality.ts` | `scoring.ts` |
-| Carousel content block | 3 identical implementations | `buildContentSection()` shared helper |
-| `opener_follows_rules` | Types, scoring, criteria, prompt | Fully removed |
-| Date formatting | `new Date().toISOString().split('T')[0]` × N | `todayDateString()` |
-| History formatting | Different format per flow | `formatHistory()` shared helper |
+| Concern                           | Before                                           | After                                 |
+| --------------------------------- | ------------------------------------------------ | ------------------------------------- |
+| `QualityResult` and related types | In `validate-quality.ts` + `scoring.ts`          | `scoring.ts` only                     |
+| `LanguageValidationResult`        | In `validate-language.ts` + `scoring.ts`         | `scoring.ts` only                     |
+| `SourceGroundingResult`           | In `validate-source-grounding.ts` + `scoring.ts` | `scoring.ts` only                     |
+| `QualityContext`                  | Inside `validate-quality.ts`                     | `scoring.ts`                          |
+| Carousel content block            | 3 identical implementations                      | `buildContentSection()` shared helper |
+| `opener_follows_rules`            | Types, scoring, criteria, prompt                 | Fully removed                         |
+| Date formatting                   | `new Date().toISOString().split('T')[0]` × N     | `todayDateString()`                   |
+| History formatting                | Different format per flow                        | `formatHistory()` shared helper       |
 
 ---
 
-*PostFlow — Generation–Validation Sync*
-*Implement phase by phase. Verify end-to-end after each phase.*
+_PostFlow — Generation–Validation Sync_
+_Implement phase by phase. Verify end-to-end after each phase._

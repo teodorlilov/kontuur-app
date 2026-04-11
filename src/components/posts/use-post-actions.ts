@@ -65,7 +65,7 @@ export function usePostActions({ post, onApprove, onRegenerate }: UsePostActions
     aiTells: string[],
     qualityIssues: string[],
     setLanguageData: (data: ValidationData['language']) => void,
-    setSourceGroundingData: (data: ValidationData['sourceGrounding']) => void,
+    setSourceGroundingData: (data: ValidationData['sourceGrounding']) => void
   ) {
     setRegenerating(true)
     try {
@@ -87,7 +87,7 @@ export function usePostActions({ post, onApprove, onRegenerate }: UsePostActions
         toast.error('Failed to rewrite post')
         return
       }
-      const data = await res.json() as {
+      const data = (await res.json()) as {
         caption: string
         slides_json: unknown
         quality_score_avg: number

@@ -11,11 +11,7 @@ import { AuthProvider } from '@/components/providers/auth-provider'
 import { Sidebar } from '@/components/layout/sidebar'
 import { NotificationsBell } from '@/components/layout/notifications-bell'
 
-export default async function DashboardLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
+export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const user = await getAuthUser()
 
   if (!user) {
@@ -65,16 +61,16 @@ export default async function DashboardLayout({
 
   return (
     <>
-    <NextTopLoader color="var(--brand-purple, #7c3aed)" height={2} showSpinner={false} />
-    <AuthProvider>
-      <div className="flex h-screen overflow-hidden" style={{ background: 'var(--color-page)' }}>
-        <Sidebar agencyMode={agencyMode} pendingCount={pendingCount} />
-        <main className="flex-1 overflow-y-auto">{children}</main>
-        <div style={{ position: 'fixed', top: 12, right: 40, zIndex: 50 }}>
-          <NotificationsBell />
+      <NextTopLoader color="var(--brand-purple, #7c3aed)" height={2} showSpinner={false} />
+      <AuthProvider>
+        <div className="flex h-screen overflow-hidden" style={{ background: 'var(--color-page)' }}>
+          <Sidebar agencyMode={agencyMode} pendingCount={pendingCount} />
+          <main className="flex-1 overflow-y-auto">{children}</main>
+          <div style={{ position: 'fixed', top: 12, right: 40, zIndex: 50 }}>
+            <NotificationsBell />
+          </div>
         </div>
-      </div>
-    </AuthProvider>
+      </AuthProvider>
     </>
   )
 }

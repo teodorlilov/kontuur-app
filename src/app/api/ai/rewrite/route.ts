@@ -26,7 +26,10 @@ export async function POST(request: Request) {
 
     const rl = checkRateLimit(`ai:rewrite:${userId}`, AI_RATE_LIMIT)
     if (!rl.allowed) {
-      return NextResponse.json({ error: 'Too many requests. Please wait a moment.' }, { status: 429 })
+      return NextResponse.json(
+        { error: 'Too many requests. Please wait a moment.' },
+        { status: 429 }
+      )
     }
 
     let body: RewriteRequestBody
@@ -41,7 +44,8 @@ export async function POST(request: Request) {
     }
 
     const clientResult = await fetchClientData(supabase, body.clientId, agencyId)
-    if ('error' in clientResult) return NextResponse.json({ error: clientResult.error }, { status: 404 })
+    if ('error' in clientResult)
+      return NextResponse.json({ error: clientResult.error }, { status: 404 })
 
     const result = await performRewrite({
       caption: body.caption,
@@ -59,6 +63,9 @@ export async function POST(request: Request) {
     return NextResponse.json(result)
   } catch (error) {
     console.error('[rewrite] Unhandled error:', error)
-    return NextResponse.json({ error: 'Failed to rewrite post. Please try again.' }, { status: 500 })
+    return NextResponse.json(
+      { error: 'Failed to rewrite post. Please try again.' },
+      { status: 500 }
+    )
   }
 }

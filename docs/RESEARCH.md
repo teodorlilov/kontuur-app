@@ -36,16 +36,16 @@ configuration but just forwards `FetchLimits`. `SourceFullTextMap` more clearly 
 
 ## What Is Redundant Right Now
 
-| Issue | Where | Fix |
-|---|---|---|
-| `SOURCE_FULL_TEXT_CAP = 4000` | `research-pipeline.ts`, `rss-source.ts`, `file-source.ts`, `website-source.ts` | One constant in `fetch-limits.ts` |
-| `this.language = opts.languageConfig.language` | `prompt-builder.ts` | Remove — use `this.languageConfig.language` |
-| `new Date().toISOString().split('T')[0]` | Both prompt methods | `todayDate()` helper |
-| Three source section builders with identical pattern | `prompt-builder.ts` | `buildSourceSection()` helper |
-| `FetchOptions { limits?: FetchLimits }` | `types.ts`, all source files | Remove — pass `FetchLimits` directly |
-| Retry loop duplicates initial generation call | `research-pipeline.ts` | Extract `generateAndFilter()` |
-| `SourceFactory` class with only static methods | `source-factory.ts` | Plain exported functions |
-| `system-prompt.ts` single function | Separate file | Merge into `prompt-builder.ts` |
+| Issue                                                | Where                                                                          | Fix                                         |
+| ---------------------------------------------------- | ------------------------------------------------------------------------------ | ------------------------------------------- |
+| `SOURCE_FULL_TEXT_CAP = 4000`                        | `research-pipeline.ts`, `rss-source.ts`, `file-source.ts`, `website-source.ts` | One constant in `fetch-limits.ts`           |
+| `this.language = opts.languageConfig.language`       | `prompt-builder.ts`                                                            | Remove — use `this.languageConfig.language` |
+| `new Date().toISOString().split('T')[0]`             | Both prompt methods                                                            | `todayDate()` helper                        |
+| Three source section builders with identical pattern | `prompt-builder.ts`                                                            | `buildSourceSection()` helper               |
+| `FetchOptions { limits?: FetchLimits }`              | `types.ts`, all source files                                                   | Remove — pass `FetchLimits` directly        |
+| Retry loop duplicates initial generation call        | `research-pipeline.ts`                                                         | Extract `generateAndFilter()`               |
+| `SourceFactory` class with only static methods       | `source-factory.ts`                                                            | Plain exported functions                    |
+| `system-prompt.ts` single function                   | Separate file                                                                  | Merge into `prompt-builder.ts`              |
 
 ---
 
@@ -144,6 +144,7 @@ import { computeFetchLimits, SOURCE_FULL_TEXT_CAP } from './fetch-limits'
 ```
 
 ### ✓ Step 1 Verification
+
 - [ ] `npx tsc --noEmit` — no errors
 - [ ] `grep -r "SOURCE_FULL_TEXT_CAP = 4000" src/` — exactly 1 result (fetch-limits.ts)
 - [ ] All source files import from fetch-limits
@@ -193,6 +194,7 @@ constructor(opts: { niche: string; languageConfig: LanguageConfig; contentPillar
 Replace all `this.language` usages in the file with `this.languageConfig.language`.
 
 ### ✓ Step 2 Verification
+
 - [ ] `npx tsc --noEmit` — no errors
 - [ ] `grep "this\.language\b" src/features/ai/research/prompts/prompt-builder.ts` — nothing
 
@@ -216,13 +218,13 @@ Replace both occurrences:
 
 ```typescript
 // Before:
-`Today's date: ${new Date().toISOString().split('T')[0]}`
-
+;`Today's date: ${new Date().toISOString().split('T')[0]}`
 // After:
 `Today's date: ${todayDate()}`
 ```
 
 ### ✓ Step 3 Verification
+
 - [ ] `npx tsc --noEmit` — no errors
 - [ ] `grep "toISOString" src/features/ai/research/prompts/prompt-builder.ts` — nothing
 - [ ] `todayDate()` called in both prompt methods
@@ -270,7 +272,7 @@ const rssSection = buildSourceSection(
   'RSS FEED CONTENT (recent articles and items)',
   'rss_content',
   sourceContext.rssItems
-    .map(item => `- ${item.title}: ${item.description}${item.link ? ` (${item.link})` : ''}`)
+    .map((item) => `- ${item.title}: ${item.description}${item.link ? ` (${item.link})` : ''}`)
     .join('\n')
 )
 
@@ -278,20 +280,22 @@ const webSection = buildSourceSection(
   'WEBSITE CONTENT',
   'website_content',
   sourceContext.websiteExcerpts
-    .map(w => `[Source URL: ${w.url}]${w.focusInstructions ? `\n[AI FOCUS: ${w.focusInstructions}]` : ''}\n${w.text}`)
+    .map(
+      (w) =>
+        `[Source URL: ${w.url}]${w.focusInstructions ? `\n[AI FOCUS: ${w.focusInstructions}]` : ''}\n${w.text}`
+    )
     .join('\n\n---\n\n')
 )
 
 const fileSection = buildSourceSection(
   'UPLOADED DOCUMENTS (client reference material)',
   'document_content',
-  sourceContext.fileExcerpts
-    .map(f => `[Document: "${f.label}"]\n${f.text}`)
-    .join('\n\n---\n\n')
+  sourceContext.fileExcerpts.map((f) => `[Document: "${f.label}"]\n${f.text}`).join('\n\n---\n\n')
 )
 ```
 
 ### ✓ Step 4 Verification
+
 - [ ] `npx tsc --noEmit` — no errors
 - [ ] `buildSourceSection` appears once as a definition, called three times
 - [ ] Rendered prompts are byte-for-byte identical to before (no content change)
@@ -324,7 +328,7 @@ function buildResearchSystemPrompt(config: LanguageConfig): string {
   const { language } = config
   const sections: string[] = [
     `You are a social media strategist identifying specific, high-quality post themes.
-...`
+...`,
   ]
   // non-Latin script check
   // languageInstructions
@@ -343,6 +347,7 @@ grep -r "system-prompt" src/ --include="*.ts"   # nothing
 ```
 
 ### ✓ Step 5 Verification
+
 - [ ] `npx tsc --noEmit` — no errors
 - [ ] `system-prompt.ts` file does not exist
 - [ ] `grep -r "system-prompt" src/` — nothing
@@ -437,10 +442,11 @@ And the file source loop:
 await file.fetch()
 
 // After:
-await file.fetch()   // unchanged — no limits needed for files
+await file.fetch() // unchanged — no limits needed for files
 ```
 
 ### ✓ Step 7 Verification
+
 - [ ] `npx tsc --noEmit` — no errors
 - [ ] `grep -r "FetchOptions" src/` — nothing
 - [ ] All `fetch()` calls pass `FetchLimits` directly or nothing
@@ -455,8 +461,8 @@ await file.fetch()   // unchanged — no limits needed for files
 
 ```typescript
 export interface FullTextMaps {
-  sourceFullTextMap: Map<string, string>   // keyed by URL (RSS, website)
-  fileFullTextMap: Map<string, string>     // keyed by label (file)
+  sourceFullTextMap: Map<string, string> // keyed by URL (RSS, website)
+  fileFullTextMap: Map<string, string> // keyed by label (file)
 }
 ```
 
@@ -471,8 +477,8 @@ export type SourceFullTextIndex = Map<string, string>
 
 // Option B — rename only, keep structure (safer rename):
 export interface SourceFullTextIndex {
-  byUrl: Map<string, string>      // RSS items and website pages keyed by URL
-  byLabel: Map<string, string>    // File sources keyed by label
+  byUrl: Map<string, string> // RSS items and website pages keyed by URL
+  byLabel: Map<string, string> // File sources keyed by label
 }
 ```
 
@@ -524,6 +530,7 @@ private attachSourceFullText(topics: ResearchTopic[], index: SourceFullTextIndex
 ```
 
 ### ✓ Step 8 Verification
+
 - [ ] `npx tsc --noEmit` — no errors
 - [ ] `grep -r "FullTextMaps" src/` — nothing
 - [ ] `grep -r "SourceFullTextIndex" src/` — used in `types.ts` and `research-pipeline.ts` only
@@ -556,6 +563,7 @@ grep -r "ResearchContext" src/ --include="*.ts" -l
 Update each one. Expected files: `research-pipeline.ts`, the research API route handler.
 
 ### ✓ Step 9 Verification
+
 - [ ] `npx tsc --noEmit` — no errors
 - [ ] `grep -r "ResearchContext\b" src/` — nothing (old name gone)
 - [ ] `grep -r "ResearchRunContext" src/` — used in types.ts, pipeline, and route
@@ -607,10 +615,14 @@ export class SourceFactory {
 /** Create a ResearchSource from a DB row. Returns null for unknown types. */
 export function createSource(row: ClientSourceRow): ResearchSource | null {
   switch (row.type) {
-    case 'rss':     return new RssResearchSource(row)
-    case 'website': return new WebsiteResearchSource(row)
-    case 'file':    return new FileResearchSource(row)
-    default:        return null
+    case 'rss':
+      return new RssResearchSource(row)
+    case 'website':
+      return new WebsiteResearchSource(row)
+    case 'file':
+      return new FileResearchSource(row)
+    default:
+      return null
   }
 }
 
@@ -638,6 +650,7 @@ const sourceObjects = createAllSources(clientData.sources)
 ```
 
 ### ✓ Step 11 Verification
+
 - [ ] `npx tsc --noEmit` — no errors
 - [ ] `grep -r "SourceFactory" src/` — nothing
 - [ ] `grep -r "createAllSources\|createSource" src/` — used in pipeline and factory file only
@@ -805,8 +818,18 @@ private buildLanguageConfig(raw: RawClientProfile, defaults: LanguageConfig): La
 
 ```typescript
 interface RawClientProfile {
-  profile: { content_pillars: string | null; source_strategy: SourceStrategy | null; language_formality: string | null; language_notes: string | null } | null
-  langRules: { native_cta_phrases: Json | null; formality_rules: Json | null; language_instructions: string | null; opener_examples: Json | null } | null
+  profile: {
+    content_pillars: string | null
+    source_strategy: SourceStrategy | null
+    language_formality: string | null
+    language_notes: string | null
+  } | null
+  langRules: {
+    native_cta_phrases: Json | null
+    formality_rules: Json | null
+    language_instructions: string | null
+    opener_examples: Json | null
+  } | null
 }
 ```
 
@@ -823,6 +846,7 @@ interface ClientData {
 ```
 
 ### ✓ Step 12 Verification
+
 - [ ] `npx tsc --noEmit` — no errors
 - [ ] `loadClientData` body is ≤25 lines — just orchestration, no inline logic
 - [ ] Each private method has one clear responsibility
@@ -913,6 +937,7 @@ The LLM dedup pass is deliberately excluded from `generateAndFilter` — it is e
 runs once, not on every retry.
 
 ### ✓ Step 13 Verification
+
 - [ ] `npx tsc --noEmit` — no errors
 - [ ] `execute()` body is ≤40 lines — orchestration only, no inline logic
 - [ ] `generateAndFilter` called twice: initial run and inside retry loop
@@ -929,6 +954,7 @@ npm run build
 ```
 
 ### Structure audit
+
 ```bash
 # SourceFactory class gone
 grep -r "class SourceFactory" src/   # nothing
@@ -942,6 +968,7 @@ grep -n "private.*loadClientData\|private.*verifyClientOwnership\|private.*fetch
 ```
 
 ### Functional verification
+
 - [ ] Research run with RSS sources — topics grounded in RSS content
 - [ ] Research run with website sources — topics grounded in website content
 - [ ] Research run with no sources — trend fallback activates
@@ -954,32 +981,32 @@ grep -n "private.*loadClientData\|private.*verifyClientOwnership\|private.*fetch
 
 ### Phase 1 — Constant and Redundancy Cleanup
 
-| Concern | Before | After |
-|---|---|---|
-| `SOURCE_FULL_TEXT_CAP = 4000` | Defined in 4 files | Defined once in `fetch-limits.ts`, imported |
-| `this.language` | Redundant field in `ResearchPromptBuilder` | Removed — use `this.languageConfig.language` |
-| Date formatting | `new Date().toISOString().split('T')[0]` duplicated | `todayDate()` helper |
-| Source section builders | Three identical conditional patterns | `buildSourceSection(title, tag, content)` |
-| `system-prompt.ts` | Separate file for one function | Merged into `prompt-builder.ts` |
+| Concern                       | Before                                              | After                                        |
+| ----------------------------- | --------------------------------------------------- | -------------------------------------------- |
+| `SOURCE_FULL_TEXT_CAP = 4000` | Defined in 4 files                                  | Defined once in `fetch-limits.ts`, imported  |
+| `this.language`               | Redundant field in `ResearchPromptBuilder`          | Removed — use `this.languageConfig.language` |
+| Date formatting               | `new Date().toISOString().split('T')[0]` duplicated | `todayDate()` helper                         |
+| Source section builders       | Three identical conditional patterns                | `buildSourceSection(title, tag, content)`    |
+| `system-prompt.ts`            | Separate file for one function                      | Merged into `prompt-builder.ts`              |
 
 ### Phase 2 — Type Simplification
 
-| Concern | Before | After |
-|---|---|---|
-| `FetchOptions` | Wrapper interface with one field `limits?: FetchLimits` | Removed — pass `FetchLimits` directly |
-| `FullTextMaps` | Two Maps, generic name | `SourceFullTextIndex` with `byUrl` and `byLabel` |
-| `ResearchContext` | Inconsistent with `GenerationRunContext` convention | `ResearchRunContext` |
+| Concern           | Before                                                  | After                                            |
+| ----------------- | ------------------------------------------------------- | ------------------------------------------------ |
+| `FetchOptions`    | Wrapper interface with one field `limits?: FetchLimits` | Removed — pass `FetchLimits` directly            |
+| `FullTextMaps`    | Two Maps, generic name                                  | `SourceFullTextIndex` with `byUrl` and `byLabel` |
+| `ResearchContext` | Inconsistent with `GenerationRunContext` convention     | `ResearchRunContext`                             |
 
 ### Phase 3 — Structure Improvements
 
-| Concern | Before | After |
-|---|---|---|
-| `SourceFactory` | Class with only static methods | Plain exported functions `createSource`, `createAllSources` |
-| `loadClientData` | ~100 lines, five concerns inline | ≤25 lines — delegates to 6 focused private methods |
-| Initial generation + retry | Duplicated `generateTopics` + `attachSourceFullText` + `filterConflicts` | `generateAndFilter()` called in both places |
-| `execute()` | Mixed orchestration and inline logic | Pure orchestration — all logic in named methods |
+| Concern                    | Before                                                                   | After                                                       |
+| -------------------------- | ------------------------------------------------------------------------ | ----------------------------------------------------------- |
+| `SourceFactory`            | Class with only static methods                                           | Plain exported functions `createSource`, `createAllSources` |
+| `loadClientData`           | ~100 lines, five concerns inline                                         | ≤25 lines — delegates to 6 focused private methods          |
+| Initial generation + retry | Duplicated `generateTopics` + `attachSourceFullText` + `filterConflicts` | `generateAndFilter()` called in both places                 |
+| `execute()`                | Mixed orchestration and inline logic                                     | Pure orchestration — all logic in named methods             |
 
 ---
 
-*PostFlow — Research Flow Refactoring*
-*Implement phase by phase. `npx tsc --noEmit` after every step.*
+_PostFlow — Research Flow Refactoring_
+_Implement phase by phase. `npx tsc --noEmit` after every step._

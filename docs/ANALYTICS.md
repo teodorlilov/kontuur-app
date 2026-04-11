@@ -14,41 +14,41 @@ The UI reads from the database — zero live API calls on page load.
 
 Three data sources, implemented in three phases:
 
-| Phase | Data | API | Permissions |
-|---|---|---|---|
-| 1 | Account + post insights (organic) | `graph.instagram.com` | `instagram_business_manage_insights` ✅ already configured |
-| 2 | Full post grid + media sync | `graph.instagram.com` | Same |
-| 3 | Paid ads insights | `graph.facebook.com` | `ads_read` + Facebook Login — requires additional setup |
+| Phase | Data                              | API                   | Permissions                                                |
+| ----- | --------------------------------- | --------------------- | ---------------------------------------------------------- |
+| 1     | Account + post insights (organic) | `graph.instagram.com` | `instagram_business_manage_insights` ✅ already configured |
+| 2     | Full post grid + media sync       | `graph.instagram.com` | Same                                                       |
+| 3     | Paid ads insights                 | `graph.facebook.com`  | `ads_read` + Facebook Login — requires additional setup    |
 
 ---
 
 ## File Map
 
-| File | Role |
-|---|---|
-| `supabase/migrations/YYYYMMDD_instagram_analytics.sql` | Database schema |
-| `lib/meta/client.ts` | Base fetch helper, rate limit handling |
-| `lib/meta/sync.ts` | Three sync functions (media, insights, account daily) |
-| `lib/meta/ads.ts` | Ads sync (Phase 3) |
-| `lib/meta/tokens.ts` | Token refresh logic |
-| `app/api/cron/ig-sync/route.ts` | Every 6h — media + post insights |
-| `app/api/cron/ig-daily/route.ts` | Daily 3am — account metrics |
-| `app/api/cron/ig-ads/route.ts` | Daily 4am — ads insights (Phase 3) |
-| `app/api/cron/refresh-tokens/route.ts` | Daily 2am — keep tokens alive |
-| `app/api/meta/connect/route.ts` | OAuth redirect (already exists from publishing) |
-| `app/api/meta/callback/route.ts` | OAuth callback (already exists from publishing) |
-| `app/api/meta/ads-connect/route.ts` | Facebook Login OAuth for ads (Phase 3) |
-| `app/api/meta/ads-callback/route.ts` | Facebook Login callback (Phase 3) |
-| `app/(dashboard)/analytics/page.tsx` | Analytics page |
-| `app/(dashboard)/analytics/[clientId]/page.tsx` | Per-client analytics |
-| `components/analytics/AccountMetrics.tsx` | 4-card header row |
-| `components/analytics/ReachChart.tsx` | Daily reach/views line chart |
-| `components/analytics/MediaTypeBreakdown.tsx` | Bar chart by type |
-| `components/analytics/TopPosts.tsx` | Ranked list by save rate |
-| `components/analytics/PostGrid.tsx` | All posts with hover metrics |
-| `components/analytics/AdsSection.tsx` | Ads metrics or connect prompt |
-| `components/analytics/DateRangePicker.tsx` | 7d / 30d / 90d selector |
-| `hooks/useAnalytics.ts` | Data fetching hooks (reads from Supabase) |
+| File                                                   | Role                                                  |
+| ------------------------------------------------------ | ----------------------------------------------------- |
+| `supabase/migrations/YYYYMMDD_instagram_analytics.sql` | Database schema                                       |
+| `lib/meta/client.ts`                                   | Base fetch helper, rate limit handling                |
+| `lib/meta/sync.ts`                                     | Three sync functions (media, insights, account daily) |
+| `lib/meta/ads.ts`                                      | Ads sync (Phase 3)                                    |
+| `lib/meta/tokens.ts`                                   | Token refresh logic                                   |
+| `app/api/cron/ig-sync/route.ts`                        | Every 6h — media + post insights                      |
+| `app/api/cron/ig-daily/route.ts`                       | Daily 3am — account metrics                           |
+| `app/api/cron/ig-ads/route.ts`                         | Daily 4am — ads insights (Phase 3)                    |
+| `app/api/cron/refresh-tokens/route.ts`                 | Daily 2am — keep tokens alive                         |
+| `app/api/meta/connect/route.ts`                        | OAuth redirect (already exists from publishing)       |
+| `app/api/meta/callback/route.ts`                       | OAuth callback (already exists from publishing)       |
+| `app/api/meta/ads-connect/route.ts`                    | Facebook Login OAuth for ads (Phase 3)                |
+| `app/api/meta/ads-callback/route.ts`                   | Facebook Login callback (Phase 3)                     |
+| `app/(dashboard)/analytics/page.tsx`                   | Analytics page                                        |
+| `app/(dashboard)/analytics/[clientId]/page.tsx`        | Per-client analytics                                  |
+| `components/analytics/AccountMetrics.tsx`              | 4-card header row                                     |
+| `components/analytics/ReachChart.tsx`                  | Daily reach/views line chart                          |
+| `components/analytics/MediaTypeBreakdown.tsx`          | Bar chart by type                                     |
+| `components/analytics/TopPosts.tsx`                    | Ranked list by save rate                              |
+| `components/analytics/PostGrid.tsx`                    | All posts with hover metrics                          |
+| `components/analytics/AdsSection.tsx`                  | Ads metrics or connect prompt                         |
+| `components/analytics/DateRangePicker.tsx`             | 7d / 30d / 90d selector                               |
+| `hooks/useAnalytics.ts`                                | Data fetching hooks (reads from Supabase)             |
 
 ---
 
@@ -223,6 +223,7 @@ CREATE POLICY "agency_own_clients" ON ig_media
 ```
 
 ### ✓ Step 1 Verification
+
 - [ ] `supabase db push` — no errors
 - [ ] All five tables exist in Supabase dashboard
 - [ ] Computed columns `engagement_rate` and `save_rate` visible in table schema
@@ -249,16 +250,15 @@ export class MetaApiError extends Error {
   constructor(
     message: string,
     public code: number,
-    public subcode?: number,
-  ) { super(message) }
+    public subcode?: number
+  ) {
+    super(message)
+  }
 }
 
 const BASE = 'https://graph.instagram.com/v25.0'
 
-export async function graphRequest<T>(
-  path: string,
-  opts: GraphOptions,
-): Promise<T> {
+export async function graphRequest<T>(path: string, opts: GraphOptions): Promise<T> {
   const url = new URL(`${BASE}${path}`)
 
   if (opts.method !== 'POST') {
@@ -270,13 +270,15 @@ export async function graphRequest<T>(
 
   const res = await fetch(url.toString(), {
     method: opts.method ?? 'GET',
-    ...(opts.method === 'POST' ? {
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({
-        access_token: opts.token,
-        ...opts.body,
-      }),
-    } : {}),
+    ...(opts.method === 'POST'
+      ? {
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams({
+            access_token: opts.token,
+            ...opts.body,
+          }),
+        }
+      : {}),
   })
 
   const data = await res.json()
@@ -293,11 +295,11 @@ export async function graphRequest<T>(
 
 // Respect rate limit: 200 calls/hour per account
 // 500ms between calls = max 120/min = safe
-export const sleep = (ms: number) =>
-  new Promise(r => setTimeout(r, ms))
+export const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 ```
 
 ### ✓ Step 2 Verification
+
 - [ ] `npx tsc --noEmit` — no errors
 - [ ] Call `graphRequest('/me', { token: testToken, params: { fields: 'id,username' } })` — returns profile
 
@@ -315,25 +317,26 @@ export async function syncAccountMedia(
   igUserId: string,
   accessToken: string,
   clientId: string,
-  supabase: SupabaseClient,
+  supabase: SupabaseClient
 ): Promise<number> {
   let synced = 0
   let nextUrl: string | null = null
 
   // First page
-  const firstPage = await graphRequest<{ data: IgMediaObject[], paging: Paging }>(
+  const firstPage = await graphRequest<{ data: IgMediaObject[]; paging: Paging }>(
     `/${igUserId}/media`,
     {
       token: accessToken,
       params: {
-        fields: 'id,caption,media_type,timestamp,permalink,thumbnail_url,media_url,like_count,comments_count',
+        fields:
+          'id,caption,media_type,timestamp,permalink,thumbnail_url,media_url,like_count,comments_count',
         limit: '50',
       },
     }
   )
 
   const processPage = async (items: IgMediaObject[]) => {
-    const rows = items.map(m => ({
+    const rows = items.map((m) => ({
       client_id: clientId,
       ig_media_id: m.id,
       media_type: m.media_type,
@@ -346,9 +349,7 @@ export async function syncAccountMedia(
       synced_at: new Date().toISOString(),
     }))
 
-    const { error } = await supabase
-      .from('ig_media')
-      .upsert(rows, { onConflict: 'ig_media_id' })
+    const { error } = await supabase.from('ig_media').upsert(rows, { onConflict: 'ig_media_id' })
 
     if (error) throw error
     synced += rows.length
@@ -359,7 +360,7 @@ export async function syncAccountMedia(
 
   // Follow pagination (Instagram returns 50 per page)
   while (nextUrl) {
-    const page = await fetch(nextUrl).then(r => r.json())
+    const page = await fetch(nextUrl).then((r) => r.json())
     await processPage(page.data ?? [])
     nextUrl = page.paging?.next ?? null
     await sleep(300) // stay well within rate limit
@@ -370,6 +371,7 @@ export async function syncAccountMedia(
 ```
 
 ### ✓ Step 3 Verification
+
 - [ ] `npx tsc --noEmit` — no errors
 - [ ] Call for a test account — rows appear in `ig_media`
 - [ ] Re-run — no duplicate rows (upsert on `ig_media_id`)
@@ -389,7 +391,7 @@ Skips posts older than 90 days (API returns nothing).
 export async function syncMediaInsights(
   clientId: string,
   accessToken: string,
-  supabase: SupabaseClient,
+  supabase: SupabaseClient
 ): Promise<{ synced: number; skipped: number; empty: number }> {
   const cutoff90d = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000)
 
@@ -400,31 +402,38 @@ export async function syncMediaInsights(
     .gte('published_at', cutoff90d.toISOString())
     .order('published_at', { ascending: false })
 
-  let synced = 0, skipped = 0, empty = 0
+  let synced = 0,
+    skipped = 0,
+    empty = 0
 
   for (const post of posts ?? []) {
     const hoursOld = (Date.now() - new Date(post.published_at).getTime()) / 3_600_000
 
     if (hoursOld < 20) {
       skipped++
-      continue  // too fresh — insights not populated yet
+      continue // too fresh — insights not populated yet
     }
 
     const isReels = post.media_type === 'REELS'
     const metrics = [
-      'reach', 'views', 'likes', 'comments', 'shares', 'saved',
+      'reach',
+      'views',
+      'likes',
+      'comments',
+      'shares',
+      'saved',
       ...(isReels ? ['ig_reels_avg_watch_time', 'ig_reels_video_view_total_time'] : []),
     ].join(',')
 
     try {
-      const data = await graphRequest<{ data: InsightMetric[] }>(
-        `/${post.ig_media_id}/insights`,
-        { token: accessToken, params: { metric: metrics } }
-      )
+      const data = await graphRequest<{ data: InsightMetric[] }>(`/${post.ig_media_id}/insights`, {
+        token: accessToken,
+        params: { metric: metrics },
+      })
 
       if (!data.data?.length) {
         empty++
-        continue  // API returned nothing — post not yet eligible
+        continue // API returned nothing — post not yet eligible
       }
 
       const values: Record<string, number> = {}
@@ -432,20 +441,21 @@ export async function syncMediaInsights(
         values[item.name] = item.values?.[0]?.value ?? 0
       }
 
-      await supabase
-        .from('ig_media_insights')
-        .upsert({
+      await supabase.from('ig_media_insights').upsert(
+        {
           ig_media_id: post.ig_media_id,
           client_id: clientId,
           fetched_at: new Date().toISOString(),
-          reach:         values.reach ?? 0,
-          views:         values.views ?? 0,
-          likes:         values.likes ?? 0,
-          comments:      values.comments ?? 0,
-          shares:        values.shares ?? 0,
-          saved:         values.saved ?? 0,
+          reach: values.reach ?? 0,
+          views: values.views ?? 0,
+          likes: values.likes ?? 0,
+          comments: values.comments ?? 0,
+          shares: values.shares ?? 0,
+          saved: values.saved ?? 0,
           avg_watch_time: values.ig_reels_avg_watch_time ?? null,
-        }, { onConflict: 'ig_media_id' })
+        },
+        { onConflict: 'ig_media_id' }
+      )
 
       synced++
     } catch (err) {
@@ -457,7 +467,7 @@ export async function syncMediaInsights(
       throw err
     }
 
-    await sleep(500)  // 200 calls/hour limit — stay safe
+    await sleep(500) // 200 calls/hour limit — stay safe
   }
 
   return { synced, skipped, empty }
@@ -465,6 +475,7 @@ export async function syncMediaInsights(
 ```
 
 ### ✓ Step 4 Verification
+
 - [ ] `npx tsc --noEmit` — no errors
 - [ ] Run for test account — `ig_media_insights` rows populated
 - [ ] Posts under 20h old: skipped, no error
@@ -486,25 +497,22 @@ export async function syncAccountDaily(
   accessToken: string,
   clientId: string,
   date: Date,
-  supabase: SupabaseClient,
+  supabase: SupabaseClient
 ): Promise<void> {
   const since = Math.floor(date.getTime() / 1000)
   const until = Math.floor((date.getTime() + 86_400_000) / 1000)
 
-  const data = await graphRequest<{ data: InsightMetric[] }>(
-    `/${igUserId}/insights`,
-    {
-      token: accessToken,
-      params: {
-        metric: 'reach,views,profile_views,follows,follower_count',
-        period: 'day',
-        since: String(since),
-        until: String(until),
-      },
-    }
-  )
+  const data = await graphRequest<{ data: InsightMetric[] }>(`/${igUserId}/insights`, {
+    token: accessToken,
+    params: {
+      metric: 'reach,views,profile_views,follows,follower_count',
+      period: 'day',
+      since: String(since),
+      until: String(until),
+    },
+  })
 
-  if (!data.data?.length) return  // no data for this date yet
+  if (!data.data?.length) return // no data for this date yet
 
   const values: Record<string, number> = {}
   for (const metric of data.data) {
@@ -513,17 +521,18 @@ export async function syncAccountDaily(
 
   const dateStr = date.toISOString().split('T')[0]!
 
-  await supabase
-    .from('ig_account_daily')
-    .upsert({
-      client_id:     clientId,
-      date:          dateStr,
-      reach:         values.reach ?? 0,
-      views:         values.views ?? 0,
+  await supabase.from('ig_account_daily').upsert(
+    {
+      client_id: clientId,
+      date: dateStr,
+      reach: values.reach ?? 0,
+      views: values.views ?? 0,
       profile_views: values.profile_views ?? 0,
-      follows:       values.follows ?? 0,
+      follows: values.follows ?? 0,
       follower_count: values.follower_count ?? 0,
-    }, { onConflict: 'client_id,date' })
+    },
+    { onConflict: 'client_id,date' }
+  )
 }
 ```
 
@@ -535,7 +544,7 @@ export async function backfillAccountDaily(
   accessToken: string,
   clientId: string,
   supabase: SupabaseClient,
-  days = 90,
+  days = 90
 ): Promise<void> {
   for (let i = 1; i <= days; i++) {
     const date = new Date(Date.now() - i * 86_400_000)
@@ -546,6 +555,7 @@ export async function backfillAccountDaily(
 ```
 
 ### ✓ Step 5 Verification
+
 - [ ] `npx tsc --noEmit` — no errors
 - [ ] Run backfill for test account — `ig_account_daily` has ~90 rows
 - [ ] Re-run for same date — upsert, no duplicate rows
@@ -567,8 +577,8 @@ export async function refreshLongLivedToken(currentToken: string): Promise<{
 }> {
   const data = await fetch(
     `https://graph.instagram.com/refresh_access_token?` +
-    `grant_type=ig_refresh_token&access_token=${currentToken}`
-  ).then(r => r.json())
+      `grant_type=ig_refresh_token&access_token=${currentToken}`
+  ).then((r) => r.json())
 
   if (data.error) {
     throw new MetaApiError(data.error.message, data.error.code)
@@ -596,11 +606,10 @@ export async function refreshAllTokens(supabase: SupabaseClient): Promise<void> 
       await supabase
         .from('client_instagram_accounts')
         .update({
-          access_token: accessToken,  // encrypt before storing in production
+          access_token: accessToken, // encrypt before storing in production
           token_expires_at: expiresAt.toISOString(),
         })
         .eq('id', account.id)
-
     } catch (err) {
       // Token fully expired — mark inactive, agency must reconnect
       if (err instanceof MetaApiError && err.code === 190) {
@@ -621,6 +630,7 @@ export async function refreshAllTokens(supabase: SupabaseClient): Promise<void> 
 ```
 
 ### ✓ Step 6 Verification
+
 - [ ] `npx tsc --noEmit` — no errors
 - [ ] Refresh runs on a token expiring in 10 days — new token stored
 - [ ] Fully expired token — account marked `is_active = false`, no crash
@@ -656,7 +666,7 @@ export async function GET(request: Request) {
     })
   )
 
-  const failed = results.filter(r => r.status === 'rejected').length
+  const failed = results.filter((r) => r.status === 'rejected').length
   return Response.json({ processed: accounts?.length ?? 0, failed })
 }
 
@@ -676,8 +686,14 @@ export async function GET(request: Request) {
     .eq('is_active', true)
 
   await Promise.allSettled(
-    (accounts ?? []).map(account =>
-      syncAccountDaily(account.ig_user_id, account.access_token, account.client_id, yesterday, supabase)
+    (accounts ?? []).map((account) =>
+      syncAccountDaily(
+        account.ig_user_id,
+        account.access_token,
+        account.client_id,
+        yesterday,
+        supabase
+      )
     )
   )
 
@@ -701,19 +717,21 @@ export async function GET(request: Request) {
 // vercel.json
 {
   "crons": [
-    { "path": "/api/cron/ig-sync",        "schedule": "0 */6 * * *" },
-    { "path": "/api/cron/ig-daily",       "schedule": "0 3 * * *"   },
-    { "path": "/api/cron/refresh-tokens", "schedule": "0 2 * * *"   }
+    { "path": "/api/cron/ig-sync", "schedule": "0 */6 * * *" },
+    { "path": "/api/cron/ig-daily", "schedule": "0 3 * * *" },
+    { "path": "/api/cron/refresh-tokens", "schedule": "0 2 * * *" }
   ]
 }
 ```
 
 Add to `.env.local`:
+
 ```bash
 CRON_SECRET=your-random-secret-here
 ```
 
 ### ✓ Step 7 Verification
+
 - [ ] `npx tsc --noEmit` — no errors
 - [ ] Call `/api/cron/ig-sync` with wrong secret — 401 returned
 - [ ] Call with correct secret — sync runs, rows appear in tables
@@ -729,6 +747,7 @@ npm run build
 ```
 
 ### Data pipeline end-to-end test
+
 1. Connect a test Instagram account via the existing OAuth flow
 2. Trigger the backfill manually:
    - Call `syncAccountMedia` — `ig_media` populated
@@ -784,6 +803,7 @@ export default async function ClientAnalyticsPage({
 ```
 
 ### ✓ Step 9 Verification
+
 - [ ] `/analytics/[clientId]` loads without error
 - [ ] Wrong client ID returns 404
 - [ ] `igAccount` is null when Instagram not connected — shows connect prompt
@@ -805,30 +825,21 @@ export function useAnalytics(clientId: string, range: '7d' | '30d' | '90d') {
     return new Date(Date.now() - days * 86_400_000).toISOString()
   }, [range])
 
-  const accountMetrics = useSWR(
-    ['account-metrics', clientId, since],
-    () => fetchAccountMetrics(clientId, since),
+  const accountMetrics = useSWR(['account-metrics', clientId, since], () =>
+    fetchAccountMetrics(clientId, since)
   )
 
-  const dailyTrend = useSWR(
-    ['daily-trend', clientId, since],
-    () => fetchDailyTrend(clientId, since),
+  const dailyTrend = useSWR(['daily-trend', clientId, since], () =>
+    fetchDailyTrend(clientId, since)
   )
 
-  const mediaTypeBreakdown = useSWR(
-    ['media-type', clientId, since],
-    () => fetchMediaTypeBreakdown(clientId, since),
+  const mediaTypeBreakdown = useSWR(['media-type', clientId, since], () =>
+    fetchMediaTypeBreakdown(clientId, since)
   )
 
-  const topPosts = useSWR(
-    ['top-posts', clientId, since],
-    () => fetchTopPosts(clientId, since, 5),
-  )
+  const topPosts = useSWR(['top-posts', clientId, since], () => fetchTopPosts(clientId, since, 5))
 
-  const allMedia = useSWR(
-    ['all-media', clientId, since],
-    () => fetchAllMedia(clientId, since),
-  )
+  const allMedia = useSWR(['all-media', clientId, since], () => fetchAllMedia(clientId, since))
 
   return { accountMetrics, dailyTrend, mediaTypeBreakdown, topPosts, allMedia }
 }
@@ -847,18 +858,19 @@ async function fetchAccountMetrics(clientId: string, since: string) {
   if (!data?.length) return null
 
   return {
-    totalReach:       data.reduce((s, r) => s + r.reach, 0),
-    totalViews:       data.reduce((s, r) => s + r.views, 0),
+    totalReach: data.reduce((s, r) => s + r.reach, 0),
+    totalViews: data.reduce((s, r) => s + r.views, 0),
     totalProfileViews: data.reduce((s, r) => s + r.profile_views, 0),
-    newFollowers:     data.reduce((s, r) => s + r.follows, 0),
+    newFollowers: data.reduce((s, r) => s + r.follows, 0),
     // Period-over-period delta: compare first half vs second half
-    reachDelta:       computeDelta(data, 'reach'),
-    viewsDelta:       computeDelta(data, 'views'),
+    reachDelta: computeDelta(data, 'reach'),
+    viewsDelta: computeDelta(data, 'views'),
   }
 }
 ```
 
 ### ✓ Step 10 Verification
+
 - [ ] `npx tsc --noEmit` — no errors
 - [ ] Changing range re-fetches and updates UI
 - [ ] No API calls made from the browser (confirm in Network tab)
@@ -912,6 +924,7 @@ function MetricCard({ label, value, delta, loading }) {
 ```
 
 ### ✓ Step 11 Verification
+
 - [ ] Four cards render with real data from `ig_account_daily`
 - [ ] Delta shows correct sign and percentage
 - [ ] Loading state shows `—` not 0
@@ -971,6 +984,7 @@ export function ReachChart({ data }: { data: DailyRow[] }) {
 ```
 
 ### ✓ Step 12 Verification
+
 - [ ] Chart renders with real data
 - [ ] X-axis labels use Bulgarian locale date format
 - [ ] Tooltip shows formatted numbers
@@ -1003,15 +1017,18 @@ async function fetchMediaTypeBreakdown(clientId: string, since: string) {
     byType[type]!.push(row.engagement_rate)
   }
 
-  return Object.entries(byType).map(([type, rates]) => ({
-    type: formatMediaType(type),  // 'CAROUSEL_ALBUM' → 'Carousel'
-    avgEngagementRate: rates.reduce((s, r) => s + r, 0) / rates.length,
-    postCount: rates.length,
-  })).sort((a, b) => b.avgEngagementRate - a.avgEngagementRate)
+  return Object.entries(byType)
+    .map(([type, rates]) => ({
+      type: formatMediaType(type), // 'CAROUSEL_ALBUM' → 'Carousel'
+      avgEngagementRate: rates.reduce((s, r) => s + r, 0) / rates.length,
+      postCount: rates.length,
+    }))
+    .sort((a, b) => b.avgEngagementRate - a.avgEngagementRate)
 }
 ```
 
 ### ✓ Step 13 Verification
+
 - [ ] Bars render with correct relative widths
 - [ ] `CAROUSEL_ALBUM` displays as "Carousel", not raw API value
 - [ ] Post count shown below chart for context
@@ -1029,13 +1046,15 @@ Each row: rank, thumbnail, caption preview, date + type, save rate.
 async function fetchTopPosts(clientId: string, since: string, limit: number) {
   const { data } = await supabase
     .from('ig_media_insights')
-    .select(`
+    .select(
+      `
       save_rate, engagement_rate,
       ig_media!inner(ig_media_id, caption, media_type, thumbnail_url, published_at, permalink, client_id)
-    `)
+    `
+    )
     .eq('ig_media.client_id', clientId)
     .gte('ig_media.published_at', since)
-    .gt('reach', 50)  // filter out zero-reach posts
+    .gt('reach', 50) // filter out zero-reach posts
     .order('save_rate', { ascending: false })
     .limit(limit)
 
@@ -1044,6 +1063,7 @@ async function fetchTopPosts(clientId: string, since: string, limit: number) {
 ```
 
 ### ✓ Step 14 Verification
+
 - [ ] 5 posts listed, highest save rate first
 - [ ] Caption truncated correctly with ellipsis
 - [ ] Clicking a row opens the Instagram permalink in a new tab
@@ -1105,6 +1125,7 @@ function PostThumb({ post }: { post: PostWithInsights }) {
 ```
 
 ### ✓ Step 15 Verification
+
 - [ ] Grid renders all posts in date range
 - [ ] Hover shows real metrics from `ig_media_insights`
 - [ ] Posts without insights yet: no hover overlay, no errors
@@ -1121,6 +1142,7 @@ npm run build
 ```
 
 ### Full UI walkthrough
+
 - [ ] Analytics page loads in < 500ms (reading from Supabase, not API)
 - [ ] 7d / 30d / 90d range selector updates all sections
 - [ ] AccountMetrics: 4 cards with non-zero values
@@ -1151,16 +1173,14 @@ export async function GET(request: Request) {
   const clientId = searchParams.get('clientId')
 
   const params = new URLSearchParams({
-    client_id:    process.env.FACEBOOK_APP_ID!,   // the original Facebook app
+    client_id: process.env.FACEBOOK_APP_ID!, // the original Facebook app
     redirect_uri: `${process.env.NEXT_PUBLIC_APP_URL}/api/meta/ads-callback`,
-    scope:        'ads_read,ads_management,instagram_basic,pages_read_engagement',
+    scope: 'ads_read,ads_management,instagram_basic,pages_read_engagement',
     response_type: 'code',
-    state:        clientId ?? '',
+    state: clientId ?? '',
   })
 
-  return NextResponse.redirect(
-    `https://www.facebook.com/v25.0/dialog/oauth?${params}`
-  )
+  return NextResponse.redirect(`https://www.facebook.com/v25.0/dialog/oauth?${params}`)
 }
 
 // app/api/meta/ads-callback/route.ts
@@ -1173,32 +1193,33 @@ export async function GET(request: Request) {
   const tokenRes = await fetch('https://graph.facebook.com/v25.0/oauth/access_token', {
     method: 'POST',
     body: new URLSearchParams({
-      client_id:     process.env.FACEBOOK_APP_ID!,
+      client_id: process.env.FACEBOOK_APP_ID!,
       client_secret: process.env.FACEBOOK_APP_SECRET!,
-      redirect_uri:  `${process.env.NEXT_PUBLIC_APP_URL}/api/meta/ads-callback`,
+      redirect_uri: `${process.env.NEXT_PUBLIC_APP_URL}/api/meta/ads-callback`,
       code: code!,
     }),
-  }).then(r => r.json())
+  }).then((r) => r.json())
 
   // Get list of ad accounts this user has access to
   const adAccounts = await fetch(
     `https://graph.facebook.com/v25.0/me/adaccounts?` +
-    `fields=id,name,account_status&access_token=${tokenRes.access_token}`
-  ).then(r => r.json())
+      `fields=id,name,account_status&access_token=${tokenRes.access_token}`
+  ).then((r) => r.json())
 
   // Store each ad account with the Facebook token
   const supabase = createServerSupabaseClient()
   for (const account of adAccounts.data ?? []) {
-    await supabase
-      .from('ig_ad_accounts')
-      .upsert({
-        client_id:       clientId,
-        ad_account_id:   account.id,
+    await supabase.from('ig_ad_accounts').upsert(
+      {
+        client_id: clientId,
+        ad_account_id: account.id,
         ad_account_name: account.name,
-        facebook_token:  tokenRes.access_token,  // encrypt in production
-        connected_at:    new Date().toISOString(),
-        is_active:       account.account_status === 1,
-      }, { onConflict: 'client_id,ad_account_id' })
+        facebook_token: tokenRes.access_token, // encrypt in production
+        connected_at: new Date().toISOString(),
+        is_active: account.account_status === 1,
+      },
+      { onConflict: 'client_id,ad_account_id' }
+    )
   }
 
   return NextResponse.redirect('/dashboard?success=ads_connected')
@@ -1206,6 +1227,7 @@ export async function GET(request: Request) {
 ```
 
 ### ✓ Step 17 Verification
+
 - [ ] `npx tsc --noEmit` — no errors
 - [ ] OAuth flow completes — ad accounts stored in `ig_ad_accounts`
 - [ ] `FACEBOOK_APP_ID` and `FACEBOOK_APP_SECRET` added to `.env.local`
@@ -1220,12 +1242,14 @@ The selected ad account drives the ads sync and display.
 ```typescript
 // If only one ad account — use it automatically
 // If multiple — add a selector to the analytics page header
-const activeAdAccount = adAccounts.length === 1
-  ? adAccounts[0]
-  : adAccounts.find(a => a.id === selectedAdAccountId) ?? adAccounts[0]
+const activeAdAccount =
+  adAccounts.length === 1
+    ? adAccounts[0]
+    : (adAccounts.find((a) => a.id === selectedAdAccountId) ?? adAccounts[0])
 ```
 
 ### ✓ Step 18 Verification
+
 - [ ] Single ad account: no selector shown, account used automatically
 - [ ] Multiple accounts: selector renders, switching updates the ads section
 
@@ -1243,30 +1267,30 @@ export async function syncAdsDailyInsights(
   clientId: string,
   since: string,
   until: string,
-  supabase: SupabaseClient,
+  supabase: SupabaseClient
 ): Promise<void> {
   const data = await fetch(
     `https://graph.facebook.com/v25.0/${adAccountId}/insights?` +
-    `fields=campaign_id,campaign_name,spend,impressions,reach,clicks,` +
-    `cpc,cpm,ctr,actions,instagram_follows&` +
-    `time_range={"since":"${since}","until":"${until}"}&` +
-    `level=campaign&` +
-    `access_token=${facebookToken}`
-  ).then(r => r.json())
+      `fields=campaign_id,campaign_name,spend,impressions,reach,clicks,` +
+      `cpc,cpm,ctr,actions,instagram_follows&` +
+      `time_range={"since":"${since}","until":"${until}"}&` +
+      `level=campaign&` +
+      `access_token=${facebookToken}`
+  ).then((r) => r.json())
 
   const rows = (data.data ?? []).map((c: any) => ({
-    client_id:         clientId,
-    ad_account_id:     adAccountId,
-    date:              since,
-    campaign_id:       c.campaign_id,
-    campaign_name:     c.campaign_name,
-    spend:             parseFloat(c.spend ?? '0'),
-    impressions:       parseInt(c.impressions ?? '0'),
-    reach:             parseInt(c.reach ?? '0'),
-    clicks:            parseInt(c.clicks ?? '0'),
-    cpc:               c.cpc ? parseFloat(c.cpc) : null,
-    cpm:               c.cpm ? parseFloat(c.cpm) : null,
-    ctr:               c.ctr ? parseFloat(c.ctr) : null,
+    client_id: clientId,
+    ad_account_id: adAccountId,
+    date: since,
+    campaign_id: c.campaign_id,
+    campaign_name: c.campaign_name,
+    spend: parseFloat(c.spend ?? '0'),
+    impressions: parseInt(c.impressions ?? '0'),
+    reach: parseInt(c.reach ?? '0'),
+    clicks: parseInt(c.clicks ?? '0'),
+    cpc: c.cpc ? parseFloat(c.cpc) : null,
+    cpm: c.cpm ? parseFloat(c.cpm) : null,
+    ctr: c.ctr ? parseFloat(c.ctr) : null,
     instagram_follows: extractAction(c.actions, 'follow'),
   }))
 
@@ -1278,7 +1302,7 @@ export async function syncAdsDailyInsights(
 }
 
 function extractAction(actions: any[], actionType: string): number {
-  return parseInt(actions?.find(a => a.action_type === actionType)?.value ?? '0')
+  return parseInt(actions?.find((a) => a.action_type === actionType)?.value ?? '0')
 }
 ```
 
@@ -1288,6 +1312,7 @@ function extractAction(actions: any[], actionType: string): number {
 ```
 
 ### ✓ Step 19 Verification
+
 - [ ] `npx tsc --noEmit` — no errors
 - [ ] Run sync for a test ad account with active campaigns — `ig_ads_daily` populated
 - [ ] `spend` has correct decimal precision
@@ -1338,6 +1363,7 @@ Ads metric cards: total spend, avg CPM, avg CPC, total follower gains from ads.
 Campaign table: campaign name, spend, reach, clicks, CTR, CPC, follows — one row per campaign.
 
 ### ✓ Step 20 Verification
+
 - [ ] No ad account: banner with connect link renders
 - [ ] Ad account connected: metric cards show real data from `ig_ads_daily`
 - [ ] Campaign table sortable by spend, reach, CTR
@@ -1415,6 +1441,6 @@ Analytics page (reads only — zero API calls)
 
 ---
 
-*PostFlow — Instagram Analytics Implementation*
-*Phase 1 (data layer) must be running and verified before building Phase 2 (UI).*
-*Never display a number that has not passed through toLocaleString(), toFixed(), or Math.round().*
+_PostFlow — Instagram Analytics Implementation_
+_Phase 1 (data layer) must be running and verified before building Phase 2 (UI)._
+_Never display a number that has not passed through toLocaleString(), toFixed(), or Math.round()._

@@ -13,10 +13,7 @@ describe('validateUpload', () => {
   })
 
   it('accepts a valid TXT file with label', () => {
-    const result = validateUpload(
-      { type: 'text/plain', size: 500, name: 'notes.txt' },
-      'Notes'
-    )
+    const result = validateUpload({ type: 'text/plain', size: 500, name: 'notes.txt' }, 'Notes')
     expect(result.valid).toBe(true)
     expect(result.error).toBeUndefined()
   })
@@ -30,10 +27,7 @@ describe('validateUpload', () => {
   })
 
   it('accepts label with surrounding whitespace (trims it)', () => {
-    const result = validateUpload(
-      { type: 'text/plain', size: 100, name: 'a.txt' },
-      '  My Label  '
-    )
+    const result = validateUpload({ type: 'text/plain', size: 100, name: 'a.txt' }, '  My Label  ')
     expect(result.valid).toBe(true)
   })
 
@@ -46,47 +40,32 @@ describe('validateUpload', () => {
 
   // Negative tests — label
   it('rejects when label is null', () => {
-    const result = validateUpload(
-      { type: 'application/pdf', size: 100, name: 'a.pdf' },
-      null
-    )
+    const result = validateUpload({ type: 'application/pdf', size: 100, name: 'a.pdf' }, null)
     expect(result.valid).toBe(false)
     expect(result.error).toBe('Label is required')
   })
 
   it('rejects when label is undefined', () => {
-    const result = validateUpload(
-      { type: 'application/pdf', size: 100, name: 'a.pdf' },
-      undefined
-    )
+    const result = validateUpload({ type: 'application/pdf', size: 100, name: 'a.pdf' }, undefined)
     expect(result.valid).toBe(false)
     expect(result.error).toBe('Label is required')
   })
 
   it('rejects when label is empty string', () => {
-    const result = validateUpload(
-      { type: 'application/pdf', size: 100, name: 'a.pdf' },
-      ''
-    )
+    const result = validateUpload({ type: 'application/pdf', size: 100, name: 'a.pdf' }, '')
     expect(result.valid).toBe(false)
     expect(result.error).toBe('Label is required')
   })
 
   it('rejects when label is only whitespace', () => {
-    const result = validateUpload(
-      { type: 'application/pdf', size: 100, name: 'a.pdf' },
-      '   '
-    )
+    const result = validateUpload({ type: 'application/pdf', size: 100, name: 'a.pdf' }, '   ')
     expect(result.valid).toBe(false)
     expect(result.error).toBe('Label is required')
   })
 
   // Negative tests — MIME type
   it('rejects image/png', () => {
-    const result = validateUpload(
-      { type: 'image/png', size: 100, name: 'pic.png' },
-      'Image'
-    )
+    const result = validateUpload({ type: 'image/png', size: 100, name: 'pic.png' }, 'Image')
     expect(result.valid).toBe(false)
     expect(result.error).toBe('Only PDF and TXT files are supported')
   })
@@ -110,10 +89,7 @@ describe('validateUpload', () => {
   })
 
   it('rejects text/html', () => {
-    const result = validateUpload(
-      { type: 'text/html', size: 100, name: 'page.html' },
-      'Page'
-    )
+    const result = validateUpload({ type: 'text/html', size: 100, name: 'page.html' }, 'Page')
     expect(result.valid).toBe(false)
     expect(result.error).toBe('Only PDF and TXT files are supported')
   })
@@ -155,10 +131,7 @@ describe('validateUpload', () => {
 
   // Validation order: label checked before type
   it('checks label before MIME type', () => {
-    const result = validateUpload(
-      { type: 'image/png', size: 100, name: 'pic.png' },
-      ''
-    )
+    const result = validateUpload({ type: 'image/png', size: 100, name: 'pic.png' }, '')
     expect(result.valid).toBe(false)
     expect(result.error).toBe('Label is required')
   })

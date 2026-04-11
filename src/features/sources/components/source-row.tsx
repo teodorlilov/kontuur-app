@@ -14,7 +14,14 @@ interface SourceRowProps {
   onScanPages?: (url: string, sourceId: string, currentSelected: string[]) => void
 }
 
-export function SourceRow({ source, statusBadge, onToggle, onEdit, onDelete, onScanPages }: SourceRowProps) {
+export function SourceRow({
+  source,
+  statusBadge,
+  onToggle,
+  onEdit,
+  onDelete,
+  onScanPages,
+}: SourceRowProps) {
   const [editing, setEditing] = useState(false)
   const [editLabel, setEditLabel] = useState(source.label)
   const [editUrl, setEditUrl] = useState(source.url)
@@ -72,7 +79,9 @@ export function SourceRow({ source, statusBadge, onToggle, onEdit, onDelete, onS
         {source.type === 'website' && (
           <>
             <div className="flex flex-col gap-1">
-              <label className="text-xs font-medium text-gray-600">Focus instructions (optional)</label>
+              <label className="text-xs font-medium text-gray-600">
+                Focus instructions (optional)
+              </label>
               <textarea
                 value={editFocus}
                 onChange={(e) => setEditFocus(e.target.value)}

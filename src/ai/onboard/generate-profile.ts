@@ -1,7 +1,11 @@
 import { callAnthropic } from '@/utils/ai-client'
 import { parseJsonResponse } from '@/utils/ai'
 import type { OnboardResponse, UrlAnalysisResponse } from '@/types/api'
-import { sanitizePromptField, PROMPT_FIELD_LIMITS, DEFENSIVE_DATA_CLAUSE } from '@/ai/utils/sanitize'
+import {
+  sanitizePromptField,
+  PROMPT_FIELD_LIMITS,
+  DEFENSIVE_DATA_CLAUSE,
+} from '@/ai/utils/sanitize'
 
 export interface GenerateProfileInput {
   answers: {

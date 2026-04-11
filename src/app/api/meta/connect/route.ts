@@ -27,7 +27,10 @@ export async function GET(request: NextRequest) {
   const platform = searchParams.get('platform')
 
   if (!clientId || !platform || !['instagram', 'facebook'].includes(platform)) {
-    return NextResponse.json({ error: 'client_id and platform (instagram|facebook) are required' }, { status: 400 })
+    return NextResponse.json(
+      { error: 'client_id and platform (instagram|facebook) are required' },
+      { status: 400 }
+    )
   }
 
   const auth = await resolveAuth()

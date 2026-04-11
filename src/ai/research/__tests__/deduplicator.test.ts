@@ -44,7 +44,11 @@ describe('Deduplicator.ngramSimilarity', () => {
   })
 
   it('handles English morphological variants', () => {
-    const score = Deduplicator.ngramSimilarity('updating database daily', 'updated databases daily', 'English')
+    const score = Deduplicator.ngramSimilarity(
+      'updating database daily',
+      'updated databases daily',
+      'English'
+    )
     expect(score).toBeGreaterThan(0.3)
   })
 })

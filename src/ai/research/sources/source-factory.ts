@@ -20,7 +20,5 @@ export function createSource(row: ClientSourceRow): ResearchSource | null {
 
 /** Create sources from all DB rows, filtering out unknown types. */
 export function createAllSources(rows: ClientSourceRow[]): ResearchSource[] {
-  return rows
-    .map((r) => createSource(r))
-    .filter((s): s is ResearchSource => s !== null)
+  return rows.map((r) => createSource(r)).filter((s): s is ResearchSource => s !== null)
 }

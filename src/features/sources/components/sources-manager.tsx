@@ -60,7 +60,14 @@ export function SourcesManager({
     handleEditSource,
     handleToggleActive,
     handleDelete,
-  } = useSources({ clientId, clientName, niche, initialSources, isOnboarding, initialSourceStrategy })
+  } = useSources({
+    clientId,
+    clientName,
+    niche,
+    initialSources,
+    isOnboarding,
+    initialSourceStrategy,
+  })
 
   const [adding, setAdding] = useState<'rss' | 'website' | 'file' | null>(null)
   const [addForm, setAddForm] = useState<AddForm>({ label: '', url: '', focusInstructions: '' })
@@ -74,7 +81,11 @@ export function SourcesManager({
   const [sitemapLoading, setSitemapLoading] = useState(false)
   const [addSelectedPages, setAddSelectedPages] = useState<string[]>([])
 
-  async function handleDiscoverPages(url: string, target: 'add' | string, initialSelected: string[] = []) {
+  async function handleDiscoverPages(
+    url: string,
+    target: 'add' | string,
+    initialSelected: string[] = []
+  ) {
     setDiscoverLoading(true)
     setDiscoveredPages([])
     setDiscoveredSitemaps([])
@@ -85,7 +96,7 @@ export function SourcesManager({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url }),
       })
-      const data = await res.json() as { pages: string[]; sitemaps?: string[] }
+      const data = (await res.json()) as { pages: string[]; sitemaps?: string[] }
       if (data.sitemaps && data.sitemaps.length > 0) {
         setDiscoveredSitemaps(data.sitemaps)
         setDiscoveredPages([])
@@ -103,9 +114,8 @@ export function SourcesManager({
   }
 
   async function handleSelectSitemap(sitemapUrl: string) {
-    const url = pagePickerFor === 'add'
-      ? addForm.url
-      : sources.find((s) => s.id === pagePickerFor)?.url
+    const url =
+      pagePickerFor === 'add' ? addForm.url : sources.find((s) => s.id === pagePickerFor)?.url
     if (!url) return
 
     setSitemapLoading(true)
@@ -115,7 +125,7 @@ export function SourcesManager({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url, sitemapUrl }),
       })
-      const data = await res.json() as { pages: string[] }
+      const data = (await res.json()) as { pages: string[] }
       setDiscoveredPages(data.pages ?? [])
     } catch {
       toast.error('Failed to load sitemap pages')
@@ -126,10 +136,17 @@ export function SourcesManager({
   }
 
   async function onAddSource(type: 'rss' | 'website') {
-    const ok = await handleAddSource(type, addForm.label, addForm.url, type === 'website' ? {
-      focusInstructions: addForm.focusInstructions,
-      selectedPages: addSelectedPages.length > 0 ? addSelectedPages : undefined,
-    } : undefined)
+    const ok = await handleAddSource(
+      type,
+      addForm.label,
+      addForm.url,
+      type === 'website'
+        ? {
+            focusInstructions: addForm.focusInstructions,
+            selectedPages: addSelectedPages.length > 0 ? addSelectedPages : undefined,
+          }
+        : undefined
+    )
     if (ok) {
       setAdding(null)
       setAddForm({ label: '', url: '', focusInstructions: '' })
@@ -159,9 +176,7 @@ export function SourcesManager({
         ? formatRelativeTime(new Date(source.last_fetched_at))
         : ''
       return (
-        <span className="text-xs text-green-600">
-          ✓ Working{timeAgo ? ` · ${timeAgo}` : ''}
-        </span>
+        <span className="text-xs text-green-600">✓ Working{timeAgo ? ` · ${timeAgo}` : ''}</span>
       )
     }
     return (
@@ -182,9 +197,21 @@ export function SourcesManager({
         <a href={`/clients/${clientId}/edit`} className="text-sm text-gray-500 hover:text-gray-700">
           ← Back to {clientName}
         </a>
-        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 400, color: 'var(--color-text-1)', letterSpacing: '-0.02em', margin: '12px 0 0' }}>Research Sources</h1>
+        <h1
+          style={{
+            fontFamily: 'var(--font-display)',
+            fontSize: 28,
+            fontWeight: 400,
+            color: 'var(--color-text-1)',
+            letterSpacing: '-0.02em',
+            margin: '12px 0 0',
+          }}
+        >
+          Research Sources
+        </h1>
         <p className="text-sm text-gray-500 mt-1">
-          Sources are fetched during the research step to suggest post themes grounded in real content.
+          Sources are fetched during the research step to suggest post themes grounded in real
+          content.
         </p>
       </div>
 
@@ -194,34 +221,46 @@ export function SourcesManager({
           <p className="text-sm font-medium text-gray-700">Source strategy</p>
           {savingStrategy && <span className="text-xs text-gray-400">Saving...</span>}
         </div>
-        <p className="text-xs text-gray-500">Control which source types the AI uses during research.</p>
+        <p className="text-xs text-gray-500">
+          Control which source types the AI uses during research.
+        </p>
         <div className="flex flex-col gap-2.5">
           <StrategyToggle
             label="RSS feeds"
             enabled={strategy.rss}
-            onChange={(v) => { void handleSaveStrategy({ ...strategy, rss: v }) }}
+            onChange={(v) => {
+              void handleSaveStrategy({ ...strategy, rss: v })
+            }}
           />
           <StrategyToggle
             label="Website content"
             enabled={strategy.website}
-            onChange={(v) => { void handleSaveStrategy({ ...strategy, website: v }) }}
+            onChange={(v) => {
+              void handleSaveStrategy({ ...strategy, website: v })
+            }}
           />
           <StrategyToggle
             label="Uploaded documents"
             enabled={strategy.file}
-            onChange={(v) => { void handleSaveStrategy({ ...strategy, file: v }) }}
+            onChange={(v) => {
+              void handleSaveStrategy({ ...strategy, file: v })
+            }}
           />
           <StrategyToggle
             label="Trend-based research"
             description="Suggest themes based on niche trends when no source content is available"
             enabled={strategy.trend_fallback}
-            onChange={(v) => { void handleSaveStrategy({ ...strategy, trend_fallback: v }) }}
+            onChange={(v) => {
+              void handleSaveStrategy({ ...strategy, trend_fallback: v })
+            }}
           />
           <StrategyToggle
             label="Require source grounding"
             description="Posts will only use facts from your sources. Ungrounded claims are flagged."
             enabled={strategy.require_source_grounding ?? false}
-            onChange={(v) => { void handleSaveStrategy({ ...strategy, require_source_grounding: v }) }}
+            onChange={(v) => {
+              void handleSaveStrategy({ ...strategy, require_source_grounding: v })
+            }}
           />
         </div>
       </section>
@@ -232,10 +271,14 @@ export function SourcesManager({
           <div>
             <p className="text-sm font-medium text-brand-purple">Set up research sources</p>
             <p className="text-xs text-brand-purple/70 mt-0.5">
-              Add RSS feeds or your client&apos;s website so research is grounded in their real content.
+              Add RSS feeds or your client&apos;s website so research is grounded in their real
+              content.
             </p>
           </div>
-          <a href="/clients" className="text-xs text-gray-500 hover:text-gray-700 whitespace-nowrap mt-0.5">
+          <a
+            href="/clients"
+            className="text-xs text-gray-500 hover:text-gray-700 whitespace-nowrap mt-0.5"
+          >
             Skip for now →
           </a>
         </div>
@@ -250,7 +293,9 @@ export function SourcesManager({
               variant="ghost"
               size="sm"
               loading={suggesting}
-              onClick={() => { void handleSuggest() }}
+              onClick={() => {
+                void handleSuggest()
+              }}
             >
               Suggest feeds
             </Button>
@@ -258,7 +303,10 @@ export function SourcesManager({
               variant="secondary"
               size="sm"
               disabled={!strategy.rss}
-              onClick={() => { setAdding('rss'); setAddForm({ label: '', url: '', focusInstructions: '' }) }}
+              onClick={() => {
+                setAdding('rss')
+                setAddForm({ label: '', url: '', focusInstructions: '' })
+              }}
             >
               + Add RSS feed
             </Button>
@@ -293,7 +341,9 @@ export function SourcesManager({
                 size="sm"
                 loading={isSaving}
                 disabled={!addForm.label.trim() || !addForm.url.trim()}
-                onClick={() => { void onAddSource('rss') }}
+                onClick={() => {
+                  void onAddSource('rss')
+                }}
               >
                 Add & Test
               </Button>
@@ -319,9 +369,15 @@ export function SourcesManager({
                 key={source.id}
                 source={source}
                 statusBadge={getStatusBadge(source)}
-                onToggle={() => { void handleToggleActive(source) }}
-                onEdit={(updates) => { void handleEditSource(source.id, updates) }}
-                onDelete={() => { void handleDelete(source.id) }}
+                onToggle={() => {
+                  void handleToggleActive(source)
+                }}
+                onEdit={(updates) => {
+                  void handleEditSource(source.id, updates)
+                }}
+                onDelete={() => {
+                  void handleDelete(source.id)
+                }}
               />
             ))}
           </div>
@@ -336,7 +392,10 @@ export function SourcesManager({
             variant="secondary"
             size="sm"
             disabled={!strategy.website}
-            onClick={() => { setAdding('website'); setAddForm({ label: '', url: '', focusInstructions: '' }) }}
+            onClick={() => {
+              setAdding('website')
+              setAddForm({ label: '', url: '', focusInstructions: '' })
+            }}
           >
             + Add website URL
           </Button>
@@ -366,7 +425,9 @@ export function SourcesManager({
               />
             </div>
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium text-gray-600">Focus instructions (optional)</label>
+              <label className="text-xs font-medium text-gray-600">
+                Focus instructions (optional)
+              </label>
               <textarea
                 value={addForm.focusInstructions}
                 onChange={(e) => setAddForm((f) => ({ ...f, focusInstructions: e.target.value }))}
@@ -384,7 +445,9 @@ export function SourcesManager({
                   variant="secondary"
                   size="sm"
                   disabled={!addForm.url.trim()}
-                  onClick={() => { void handleDiscoverPages(addForm.url, 'add', addSelectedPages) }}
+                  onClick={() => {
+                    void handleDiscoverPages(addForm.url, 'add', addSelectedPages)
+                  }}
                 >
                   Scan for pages
                 </Button>
@@ -400,7 +463,9 @@ export function SourcesManager({
                 size="sm"
                 loading={isSaving}
                 disabled={!addForm.label.trim() || !addForm.url.trim()}
-                onClick={() => { void onAddSource('website') }}
+                onClick={() => {
+                  void onAddSource('website')
+                }}
               >
                 Add & Test
               </Button>
@@ -417,7 +482,8 @@ export function SourcesManager({
         {/* Source list */}
         {websiteSources.length === 0 && adding !== 'website' ? (
           <p className="text-sm text-gray-400 py-4">
-            No websites yet. Add your client&apos;s website URL to use their content as research material.
+            No websites yet. Add your client&apos;s website URL to use their content as research
+            material.
           </p>
         ) : (
           <div className="flex flex-col gap-2">
@@ -426,9 +492,15 @@ export function SourcesManager({
                 key={source.id}
                 source={source}
                 statusBadge={getStatusBadge(source)}
-                onToggle={() => { void handleToggleActive(source) }}
-                onEdit={(updates) => { void handleEditSource(source.id, updates) }}
-                onDelete={() => { void handleDelete(source.id) }}
+                onToggle={() => {
+                  void handleToggleActive(source)
+                }}
+                onEdit={(updates) => {
+                  void handleEditSource(source.id, updates)
+                }}
+                onDelete={() => {
+                  void handleDelete(source.id)
+                }}
                 onScanPages={(url, sourceId, currentSelected) => {
                   void handleDiscoverPages(url, sourceId, currentSelected)
                 }}
@@ -446,7 +518,11 @@ export function SourcesManager({
             variant="secondary"
             size="sm"
             disabled={!strategy.file}
-            onClick={() => { setAdding('file'); setAddForm({ label: '', url: '', focusInstructions: '' }); setSelectedFile(null) }}
+            onClick={() => {
+              setAdding('file')
+              setAddForm({ label: '', url: '', focusInstructions: '' })
+              setSelectedFile(null)
+            }}
           >
             + Upload document
           </Button>
@@ -482,12 +558,17 @@ export function SourcesManager({
                 size="sm"
                 loading={isSaving}
                 disabled={!addForm.label.trim() || !selectedFile}
-                onClick={() => { void onUploadFile() }}
+                onClick={() => {
+                  void onUploadFile()
+                }}
               >
                 Upload & Extract
               </Button>
               <button
-                onClick={() => { setAdding(null); setSelectedFile(null) }}
+                onClick={() => {
+                  setAdding(null)
+                  setSelectedFile(null)
+                }}
                 className="text-sm text-gray-400 hover:text-gray-600"
               >
                 Cancel
@@ -508,9 +589,15 @@ export function SourcesManager({
                 key={source.id}
                 source={source}
                 statusBadge={getStatusBadge(source)}
-                onToggle={() => { void handleToggleActive(source) }}
-                onEdit={(updates) => { void handleEditSource(source.id, updates) }}
-                onDelete={() => { void handleDelete(source.id) }}
+                onToggle={() => {
+                  void handleToggleActive(source)
+                }}
+                onEdit={(updates) => {
+                  void handleEditSource(source.id, updates)
+                }}
+                onDelete={() => {
+                  void handleDelete(source.id)
+                }}
               />
             ))}
           </div>
@@ -522,7 +609,7 @@ export function SourcesManager({
         <div className="border border-brand-purple/20 rounded-xl p-6 bg-brand-purple-light/40 text-center">
           <p className="text-sm font-medium text-gray-900">
             {sources.length > 0
-              ? 'Sources are set up — you\'re ready to generate content!'
+              ? "Sources are set up — you're ready to generate content!"
               : 'You can always add sources later from the client settings.'}
           </p>
           <p className="text-xs text-gray-500 mt-1">
@@ -534,10 +621,7 @@ export function SourcesManager({
             <a href="/generate">
               <Button size="sm">Generate content →</Button>
             </a>
-            <a
-              href="/clients"
-              className="text-sm text-gray-500 hover:text-gray-700"
-            >
+            <a href="/clients" className="text-sm text-gray-500 hover:text-gray-700">
               Go to clients
             </a>
           </div>
@@ -547,20 +631,36 @@ export function SourcesManager({
       {/* Page Picker Modal */}
       <PagePickerModal
         open={pagePickerFor !== null}
-        onClose={() => { setPagePickerFor(null); setDiscoveredSitemaps([]) }}
+        onClose={() => {
+          setPagePickerFor(null)
+          setDiscoveredSitemaps([])
+        }}
         pages={discoveredPages}
         sitemaps={discoveredSitemaps}
         loading={discoverLoading}
         sitemapLoading={sitemapLoading}
-        initialSelected={pagePickerFor === 'add' ? addSelectedPages : (() => {
-          const source = sources.find((s) => s.id === pagePickerFor)
-          return ((source?.config as Record<string, unknown> | null)?.selected_pages as string[] | undefined) ?? []
-        })()}
+        initialSelected={
+          pagePickerFor === 'add'
+            ? addSelectedPages
+            : (() => {
+                const source = sources.find((s) => s.id === pagePickerFor)
+                return (
+                  ((source?.config as Record<string, unknown> | null)?.selected_pages as
+                    | string[]
+                    | undefined) ?? []
+                )
+              })()
+        }
         siteOrigin={(() => {
           try {
-            const url = pagePickerFor === 'add' ? addForm.url : sources.find((s) => s.id === pagePickerFor)?.url
+            const url =
+              pagePickerFor === 'add'
+                ? addForm.url
+                : sources.find((s) => s.id === pagePickerFor)?.url
             return url ? new URL(url).origin : ''
-          } catch { return '' }
+          } catch {
+            return ''
+          }
         })()}
         onSave={(selected) => {
           if (pagePickerFor === 'add') {
@@ -624,7 +724,9 @@ export function SourcesManager({
                     size="sm"
                     variant="secondary"
                     loading={addingFromSuggestion === s.url}
-                    onClick={() => { void handleAddFromSuggestion(s) }}
+                    onClick={() => {
+                      void handleAddFromSuggestion(s)
+                    }}
                     className="shrink-0"
                   >
                     Add

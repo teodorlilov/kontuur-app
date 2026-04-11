@@ -20,7 +20,10 @@ function makeClient(overrides: Partial<ClientData> = {}): ClientData {
     targetAudience: 'Women 25-45',
     clientTestimonialVoice: 'They really care about my skin.',
     avoidTopics: 'politics',
-    contentPillars: [{ pillar: 'Skincare tips', weight: 50 }, { pillar: 'Product reviews', weight: 50 }],
+    contentPillars: [
+      { pillar: 'Skincare tips', weight: 50 },
+      { pillar: 'Product reviews', weight: 50 },
+    ],
     isHealthNiche: null,
     topPerformingPosts: [],
     defaultCarouselSlides: 7,
@@ -122,7 +125,8 @@ describe('rewriteCaption', () => {
 
 describe('rewriteCarousel', () => {
   // Response without leading '{' — the code prepends it via assistant prefill
-  const CAROUSEL_RESPONSE_BODY = '"main_caption": "Rewritten carousel caption", "slides": [{"headline": "New H1", "body": "New B1"}, {"headline": "New H2", "body": "New B2"}]}'
+  const CAROUSEL_RESPONSE_BODY =
+    '"main_caption": "Rewritten carousel caption", "slides": [{"headline": "New H1", "body": "New B1"}, {"headline": "New H2", "body": "New B2"}]}'
 
   it('returns parsed carousel result', async () => {
     mockClaudeResponse(CAROUSEL_RESPONSE_BODY)

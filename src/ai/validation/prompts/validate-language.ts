@@ -21,7 +21,7 @@ export async function validateLanguage(
     text: string
     slides?: Array<{ headline: string; body: string }>
   },
-  languageConfig: LanguageConfig,
+  languageConfig: LanguageConfig
 ): Promise<LanguageValidationResult> {
   const { language, formality } = languageConfig
   const rules = buildLanguageValidationRules(languageConfig)
@@ -96,7 +96,6 @@ ${returnFormat}`,
     maxTokens: 2048,
     model: LIGHT_MODEL,
   })
-
 
   const parsed = parseJsonResponse<LlmLanguageResponse>(message)
   const issues = Array.isArray(parsed.issues) ? parsed.issues : []

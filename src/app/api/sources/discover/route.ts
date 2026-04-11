@@ -62,7 +62,11 @@ export async function POST(request: Request) {
   // Strategy 2: Fallback — fetch the page via Jina and extract links
   const { markdown, error } = await fetchWebsiteSource(body.url)
   if (error || !markdown) {
-    return NextResponse.json({ pages: [], sitemaps: [], source: 'none' } satisfies DiscoverPagesResponse)
+    return NextResponse.json({
+      pages: [],
+      sitemaps: [],
+      source: 'none',
+    } satisfies DiscoverPagesResponse)
   }
 
   const links = extractLinks(markdown, body.url)
@@ -74,5 +78,9 @@ export async function POST(request: Request) {
     } satisfies DiscoverPagesResponse)
   }
 
-  return NextResponse.json({ pages: [], sitemaps: [], source: 'none' } satisfies DiscoverPagesResponse)
+  return NextResponse.json({
+    pages: [],
+    sitemaps: [],
+    source: 'none',
+  } satisfies DiscoverPagesResponse)
 }

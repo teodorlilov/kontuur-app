@@ -16,7 +16,9 @@ export default function ApprovalPage() {
   const [postNotes, setPostNotes] = useState<Record<string, string>>({})
   const [expandedNotes, setExpandedNotes] = useState<Set<string>>(new Set())
   const [submitting, setSubmitting] = useState(false)
-  const [submittedStatus, setSubmittedStatus] = useState<'approved' | 'changes_requested' | null>(null)
+  const [submittedStatus, setSubmittedStatus] = useState<'approved' | 'changes_requested' | null>(
+    null
+  )
 
   useEffect(() => {
     async function load() {
@@ -129,9 +131,7 @@ export default function ApprovalPage() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="bg-white rounded-xl border border-gray-200 p-8 max-w-md text-center">
-          <div className="text-3xl mb-3">
-            {submittedStatus === 'approved' ? '✅' : '📝'}
-          </div>
+          <div className="text-3xl mb-3">{submittedStatus === 'approved' ? '✅' : '📝'}</div>
           <h2 className="text-lg font-semibold text-gray-900 mb-2">
             {submittedStatus === 'approved'
               ? 'Thank you! Your posts are confirmed.'
@@ -155,11 +155,10 @@ export default function ApprovalPage() {
               {data.agencyName}
             </p>
           )}
-          <h1 className="text-xl font-semibold text-gray-900">
-            Posts for review
-          </h1>
+          <h1 className="text-xl font-semibold text-gray-900">Posts for review</h1>
           <p className="text-sm text-gray-500 mt-1">
-            {data.clientName} · {formatWeekRange(data.posts)} · {data.posts.length} post{data.posts.length === 1 ? '' : 's'}
+            {data.clientName} · {formatWeekRange(data.posts)} · {data.posts.length} post
+            {data.posts.length === 1 ? '' : 's'}
           </p>
         </div>
       </div>
@@ -174,9 +173,7 @@ export default function ApprovalPage() {
             noteExpanded={expandedNotes.has(post.id)}
             noteValue={postNotes[post.id] ?? ''}
             onToggleNote={() => toggleNote(post.id)}
-            onNoteChange={(val) =>
-              setPostNotes((prev) => ({ ...prev, [post.id]: val }))
-            }
+            onNoteChange={(val) => setPostNotes((prev) => ({ ...prev, [post.id]: val }))}
           />
         ))}
       </div>
@@ -185,14 +182,18 @@ export default function ApprovalPage() {
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg">
         <div className="max-w-3xl mx-auto px-4 py-4 flex gap-3 justify-end">
           <button
-            onClick={() => { void handleSubmit('changes_requested') }}
+            onClick={() => {
+              void handleSubmit('changes_requested')
+            }}
             disabled={submitting}
             className="px-5 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
           >
             Request changes
           </button>
           <button
-            onClick={() => { void handleSubmit('approved') }}
+            onClick={() => {
+              void handleSubmit('approved')
+            }}
             disabled={submitting}
             className="px-5 py-2.5 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
           >
@@ -225,12 +226,12 @@ function PostPreviewCard({
 }: PostPreviewCardProps) {
   const isCarousel = post.post_type === 'carousel'
   const isReels = post.post_type === 'reels'
-  const slides = isCarousel && Array.isArray(post.slides_json)
-    ? (post.slides_json as CarouselSlide[])
-    : []
-  const reelsData = isReels && post.slides_json && !Array.isArray(post.slides_json)
-    ? (post.slides_json as ReelsScriptData)
-    : null
+  const slides =
+    isCarousel && Array.isArray(post.slides_json) ? (post.slides_json as CarouselSlide[]) : []
+  const reelsData =
+    isReels && post.slides_json && !Array.isArray(post.slides_json)
+      ? (post.slides_json as ReelsScriptData)
+      : null
 
   const scheduledDate = post.scheduled_at
     ? new Date(post.scheduled_at).toLocaleDateString('en-US', {
@@ -254,7 +255,11 @@ function PostPreviewCard({
           </span>
         )}
         <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">
-          {isCarousel ? `Carousel · ${slides.length} slides` : isReels ? 'Reels script' : 'Single image'}
+          {isCarousel
+            ? `Carousel · ${slides.length} slides`
+            : isReels
+              ? 'Reels script'
+              : 'Single image'}
         </span>
         {post.pillar && (
           <span className="text-xs px-2 py-0.5 rounded-full bg-purple-50 text-purple-700">
@@ -296,7 +301,9 @@ function PostPreviewCard({
               <p className="text-sm text-gray-900">{reelsData.hook}</p>
             </div>
             <div>
-              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Main points</p>
+              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
+                Main points
+              </p>
               <ol className="list-decimal list-inside text-sm text-gray-900 space-y-1">
                 {reelsData.main_points.map((point, i) => (
                   <li key={i}>{point}</li>
@@ -304,12 +311,16 @@ function PostPreviewCard({
               </ol>
             </div>
             <div>
-              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Call to action</p>
+              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
+                Call to action
+              </p>
               <p className="text-sm text-gray-900">{reelsData.cta}</p>
             </div>
             {reelsData.on_screen_text.length > 0 && (
               <div>
-                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">On-screen text</p>
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
+                  On-screen text
+                </p>
                 <ul className="list-disc list-inside text-sm text-gray-700 space-y-0.5">
                   {reelsData.on_screen_text.map((t, i) => (
                     <li key={i}>{t}</li>

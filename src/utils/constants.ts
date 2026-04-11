@@ -26,8 +26,14 @@ export const MAX_RSS_ITEMS = 20
 export const PLATFORMS = ['Instagram', 'Facebook', 'LinkedIn', 'X / Twitter', 'TikTok'] as const
 
 export const CLIENT_COLORS = [
-  '#4F46E5', '#7C3AED', '#DB2777', '#EA580C',
-  '#D97706', '#059669', '#0891B2', '#2563EB',
+  '#4F46E5',
+  '#7C3AED',
+  '#DB2777',
+  '#EA580C',
+  '#D97706',
+  '#059669',
+  '#0891B2',
+  '#2563EB',
 ] as const
 
 export const WEEKDAY_OPTIONS = [

@@ -12,7 +12,6 @@ import { formatFormalityRules } from '@/ai/generation/prompts/formality-guidance
 import { SOURCE_GROUNDING_RULES } from '@/ai/generation/prompts/source-grounding'
 import type { LanguageConfig } from '@/lib/clients/language-rules'
 
-
 // ---- Issue Type Definitions ----
 // Used by validate-quality.ts to give the LLM precise definitions for each issue type.
 export const ISSUE_TYPE_DEFINITIONS: Record<string, string> = {
@@ -39,19 +38,61 @@ export interface VerdictDefinition {
 }
 
 export const HOOK_VERDICTS: readonly VerdictDefinition[] = [
-  { id: 'stops_scroll', score: 10, description: 'Opener is brilliant, specific, and perfectly matched to theme and register — reader MUST keep reading' },
-  { id: 'clear_value', score: 8, description: 'Opener is effective but could be sharper or more specific to the theme' },
-  { id: 'generic', score: 5, description: 'Opener is too vague or generic to stop scrolling for this specific theme' },
-  { id: 'buries_lead', score: 3, description: 'Opens with filler or context before eventually getting to value' },
-  { id: 'no_hook', score: 1, description: 'Opens with filler, a general truth, or has no value at all' },
+  {
+    id: 'stops_scroll',
+    score: 10,
+    description:
+      'Opener is brilliant, specific, and perfectly matched to theme and register — reader MUST keep reading',
+  },
+  {
+    id: 'clear_value',
+    score: 8,
+    description: 'Opener is effective but could be sharper or more specific to the theme',
+  },
+  {
+    id: 'generic',
+    score: 5,
+    description: 'Opener is too vague or generic to stop scrolling for this specific theme',
+  },
+  {
+    id: 'buries_lead',
+    score: 3,
+    description: 'Opens with filler or context before eventually getting to value',
+  },
+  {
+    id: 'no_hook',
+    score: 1,
+    description: 'Opens with filler, a general truth, or has no value at all',
+  },
 ] as const
 
 export const CTA_VERDICTS: readonly VerdictDefinition[] = [
-  { id: 'natural_specific', score: 10, description: "One CTA, specific to this post's topic, low-pressure — feels like advice not marketing" },
-  { id: 'clear_relevant', score: 8, description: 'One CTA, relevant but expected ("Link in bio", "Save this for later")' },
-  { id: 'generic', score: 5, description: 'Could be on any post ("Follow for more!", "Share your thoughts!")' },
-  { id: 'weak_mismatched', score: 3, description: "Multiple CTAs, or CTA doesn't match content, or high-pressure sales language" },
-  { id: 'missing', score: 1, description: 'No CTA present — acceptable for MYTH-BREAKER or CONFESSION structures' },
+  {
+    id: 'natural_specific',
+    score: 10,
+    description:
+      "One CTA, specific to this post's topic, low-pressure — feels like advice not marketing",
+  },
+  {
+    id: 'clear_relevant',
+    score: 8,
+    description: 'One CTA, relevant but expected ("Link in bio", "Save this for later")',
+  },
+  {
+    id: 'generic',
+    score: 5,
+    description: 'Could be on any post ("Follow for more!", "Share your thoughts!")',
+  },
+  {
+    id: 'weak_mismatched',
+    score: 3,
+    description: "Multiple CTAs, or CTA doesn't match content, or high-pressure sales language",
+  },
+  {
+    id: 'missing',
+    score: 1,
+    description: 'No CTA present — acceptable for MYTH-BREAKER or CONFESSION structures',
+  },
 ] as const
 
 // ---- Penalty Weights ----
@@ -141,7 +182,9 @@ ${formatStructureDescriptions()}`
       const isCtaExempt = CTA_EXEMPT_STRUCTURES.includes(ctx.declaredStructure)
       structureSection += `\n\n[] DECLARED STRUCTURE: The generator declared "${ctx.declaredStructure}".
    Verify the post actually follows this structure's definition above.${
-     isCtaExempt ? '\n   This structure explicitly forbids CTAs — a CTA present is a violation.' : ''
+     isCtaExempt
+       ? '\n   This structure explicitly forbids CTAs — a CTA present is a violation.'
+       : ''
    }`
     }
 

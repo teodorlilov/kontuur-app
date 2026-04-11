@@ -1,7 +1,10 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { fetchRssSource, isValidRssUrl } from '../fetch-rss'
 
-function mockFetchResponse(body: string, opts: { ok?: boolean; status?: number; contentType?: string } = {}) {
+function mockFetchResponse(
+  body: string,
+  opts: { ok?: boolean; status?: number; contentType?: string } = {}
+) {
   const { ok = true, status = 200, contentType = 'application/rss+xml' } = opts
   return vi.fn().mockResolvedValue({
     ok,
@@ -180,12 +183,18 @@ describe('isValidRssUrl', () => {
   })
 
   it('returns true for application/atom+xml content type', async () => {
-    vi.stubGlobal('fetch', mockFetchResponse('<feed></feed>', { contentType: 'application/atom+xml' }))
+    vi.stubGlobal(
+      'fetch',
+      mockFetchResponse('<feed></feed>', { contentType: 'application/atom+xml' })
+    )
     expect(await isValidRssUrl('https://example.com/atom')).toBe(true)
   })
 
   it('returns true for text/xml with <rss in body', async () => {
-    vi.stubGlobal('fetch', mockFetchResponse('<rss version="2.0"></rss>', { contentType: 'text/html' }))
+    vi.stubGlobal(
+      'fetch',
+      mockFetchResponse('<rss version="2.0"></rss>', { contentType: 'text/html' })
+    )
     expect(await isValidRssUrl('https://example.com/rss')).toBe(true)
   })
 
@@ -195,12 +204,18 @@ describe('isValidRssUrl', () => {
   })
 
   it('returns true for <?xml in body', async () => {
-    vi.stubGlobal('fetch', mockFetchResponse('<?xml version="1.0"?><rss></rss>', { contentType: 'text/plain' }))
+    vi.stubGlobal(
+      'fetch',
+      mockFetchResponse('<?xml version="1.0"?><rss></rss>', { contentType: 'text/plain' })
+    )
     expect(await isValidRssUrl('https://example.com/xml')).toBe(true)
   })
 
   it('returns false for HTML with no XML markers', async () => {
-    vi.stubGlobal('fetch', mockFetchResponse('<html><body>Hello</body></html>', { contentType: 'text/html' }))
+    vi.stubGlobal(
+      'fetch',
+      mockFetchResponse('<html><body>Hello</body></html>', { contentType: 'text/html' })
+    )
     expect(await isValidRssUrl('https://example.com/html')).toBe(false)
   })
 

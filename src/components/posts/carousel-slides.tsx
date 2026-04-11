@@ -15,7 +15,10 @@ export function CarouselSlides({ slides }: CarouselSlidesProps) {
 
   function handleCopyAll() {
     const text = slides
-      .map((s, i) => `Slide ${s.slide_number ?? i + 1}\n${s.headline}${s.body ? `\n${s.body}` : ''}${s.cta_text ? `\n${s.cta_text}` : ''}`)
+      .map(
+        (s, i) =>
+          `Slide ${s.slide_number ?? i + 1}\n${s.headline}${s.body ? `\n${s.body}` : ''}${s.cta_text ? `\n${s.cta_text}` : ''}`
+      )
       .join('\n---\n')
     void navigator.clipboard.writeText(text)
     toast.success('Copied to clipboard')

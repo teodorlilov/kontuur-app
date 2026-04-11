@@ -8,7 +8,7 @@ import type { PostType } from '@/types/api'
 export class GeneratorFactory {
   /**
    * Returns the correct ContentGenerator for the requested post type.
-   * 
+   *
    * To add a new content type:
    * 1. Create a new subclass of ContentGenerator
    * 2. Add a case here

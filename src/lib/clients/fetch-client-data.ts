@@ -32,7 +32,9 @@ export interface ClientData {
 }
 
 function parseRequireSourceGrounding(strategy: unknown): boolean {
-  return (strategy as { require_source_grounding?: boolean } | null)?.require_source_grounding ?? false
+  return (
+    (strategy as { require_source_grounding?: boolean } | null)?.require_source_grounding ?? false
+  )
 }
 
 /**
@@ -47,7 +49,7 @@ export async function fetchClientData(
   supabase: SupabaseClient,
   clientId: string,
   agencyId: string,
-  preloaded?: ClientData,
+  preloaded?: ClientData
 ): Promise<{ data: ClientData } | { error: string }> {
   const { data: rawClient } = await supabase
     .from('clients')
@@ -56,7 +58,12 @@ export async function fetchClientData(
     .eq('agency_id', agencyId)
     .single()
 
-  const client = rawClient as { id: string; name: string; niche: string | null; language: string } | null
+  const client = rawClient as {
+    id: string
+    name: string
+    niche: string | null
+    language: string
+  } | null
   if (!client) return { error: 'Client not found' }
 
   if (preloaded) return { data: preloaded }
@@ -64,7 +71,9 @@ export async function fetchClientData(
   const [profileResult, langRulesResult, historyResult, topPostsResult] = await Promise.all([
     supabase
       .from('brand_profiles')
-      .select('tone, target_audience, content_pillars, avoid_topics, client_testimonial_voice, language_formality, default_post_type, default_carousel_slides, source_strategy, is_health_niche, language_notes')
+      .select(
+        'tone, target_audience, content_pillars, avoid_topics, client_testimonial_voice, language_formality, default_post_type, default_carousel_slides, source_strategy, is_health_niche, language_notes'
+      )
       .eq('client_id', clientId)
       .single(),
     supabase
@@ -108,13 +117,15 @@ export async function fetchClientData(
     language_instructions: string | null
   } | null
 
-  const postHistory = (historyResult.data as Array<{ topic_summary: string | null }> | null)
-    ?.map((h) => h.topic_summary)
-    .filter((s): s is string => s !== null) ?? []
+  const postHistory =
+    (historyResult.data as Array<{ topic_summary: string | null }> | null)
+      ?.map((h) => h.topic_summary)
+      .filter((s): s is string => s !== null) ?? []
 
-  const topPerformingPosts = (topPostsResult.data as Array<{ caption: string | null }> | null)
-    ?.map((p) => (p.caption ?? '').slice(0, 120))
-    .filter(Boolean) ?? []
+  const topPerformingPosts =
+    (topPostsResult.data as Array<{ caption: string | null }> | null)
+      ?.map((p) => (p.caption ?? '').slice(0, 120))
+      .filter(Boolean) ?? []
 
   return {
     data: {
@@ -132,7 +143,7 @@ export async function fetchClientData(
       defaultCarouselSlides: profile?.default_carousel_slides ?? 7,
       defaultPostType: profile?.default_post_type ?? null,
       requireSourceGrounding: parseRequireSourceGrounding(profile?.source_strategy),
-      sourceStrategy: profile?.source_strategy as SourceStrategy | null ?? null,
+      sourceStrategy: (profile?.source_strategy as SourceStrategy | null) ?? null,
       languageNotes: profile?.language_notes ?? '',
       languageConfig: {
         language: client.language,
@@ -150,7 +161,7 @@ export async function fetchClientData(
 /** Returns the most common niche across an agency's clients, or undefined. */
 export async function getAgencyNiche(
   supabase: SupabaseClient,
-  agencyId: string,
+  agencyId: string
 ): Promise<string | undefined> {
   const { data } = await supabase.from('clients').select('niche').eq('agency_id', agencyId)
   const rows = (data as Array<{ niche: string | null }> | null) ?? []
@@ -158,9 +169,7 @@ export async function getAgencyNiche(
   for (const { niche } of rows) {
     if (niche) freq.set(niche, (freq.get(niche) ?? 0) + 1)
   }
-  return freq.size === 0
-    ? undefined
-    : [...freq.entries()].sort((a, b) => b[1] - a[1])[0]?.[0]
+  return freq.size === 0 ? undefined : [...freq.entries()].sort((a, b) => b[1] - a[1])[0]?.[0]
 }
 
 /** Extracts the platform name from weekly_mix_json (e.g. { "Instagram": 1 } → "Instagram"). */

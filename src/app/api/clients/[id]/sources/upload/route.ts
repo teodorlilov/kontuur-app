@@ -7,10 +7,7 @@ import { CLIENT_SOURCE_FULL_COLUMNS } from '@/lib/queries/select-columns'
 import { extractText } from '@/lib/sources/extract-text'
 import { validateUpload, getFileExtension } from '@/lib/sources/validate-upload'
 
-export async function POST(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id: clientId } = await params
   const auth = await resolveAuth()
   if (!auth.ok) return auth.response
@@ -46,7 +43,10 @@ export async function POST(
   const { text: extractedText, error: extractionError } = await extractText(buffer, validFile.type)
 
   if (extractionError && !extractedText) {
-    return NextResponse.json({ error: `Text extraction failed: ${extractionError}` }, { status: 400 })
+    return NextResponse.json(
+      { error: `Text extraction failed: ${extractionError}` },
+      { status: 400 }
+    )
   }
 
   // Upload file to Supabase Storage using admin client
@@ -54,12 +54,10 @@ export async function POST(
   const ext = getFileExtension(validFile.name)
   const filePath = `${clientId}/${randomUUID()}.${ext}`
 
-  const { error: uploadError } = await admin.storage
-    .from('client-files')
-    .upload(filePath, buffer, {
-      contentType: validFile.type,
-      upsert: false,
-    })
+  const { error: uploadError } = await admin.storage.from('client-files').upload(filePath, buffer, {
+    contentType: validFile.type,
+    upsert: false,
+  })
 
   if (uploadError) {
     return NextResponse.json({ error: 'Failed to upload file to storage' }, { status: 500 })

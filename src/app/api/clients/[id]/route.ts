@@ -5,10 +5,7 @@ import { verifyClientOwnership } from '@/lib/auth/helpers'
 import { fetchPostingScheduleByClient } from '@/lib/queries/db'
 import { fetchClientData } from '@/lib/clients/fetch-client-data'
 
-export async function GET(
-  _request: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const auth = await resolveAuth()
   if (!auth.ok) return auth.response
@@ -55,10 +52,7 @@ interface UpdateClientBody {
   }
 }
 
-export async function PUT(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const auth = await resolveAuth()
   if (!auth.ok) return auth.response
@@ -96,18 +90,25 @@ export async function PUT(
     if (bp.target_audience !== undefined) profileUpdates.target_audience = bp.target_audience
     if (bp.content_pillars !== undefined) profileUpdates.content_pillars = bp.content_pillars
     if (bp.avoid_topics !== undefined) profileUpdates.avoid_topics = bp.avoid_topics
-    if (bp.client_testimonial_voice !== undefined) profileUpdates.client_testimonial_voice = bp.client_testimonial_voice
+    if (bp.client_testimonial_voice !== undefined)
+      profileUpdates.client_testimonial_voice = bp.client_testimonial_voice
     if (bp.default_post_type !== undefined) profileUpdates.default_post_type = bp.default_post_type
-    if (bp.default_carousel_slides !== undefined) profileUpdates.default_carousel_slides = bp.default_carousel_slides
+    if (bp.default_carousel_slides !== undefined)
+      profileUpdates.default_carousel_slides = bp.default_carousel_slides
     if (bp.weekly_mix_json !== undefined) profileUpdates.weekly_mix_json = bp.weekly_mix_json
-    if (bp.language_formality !== undefined) profileUpdates.language_formality = bp.language_formality
-    if (bp.secondary_language !== undefined) profileUpdates.secondary_language = bp.secondary_language
+    if (bp.language_formality !== undefined)
+      profileUpdates.language_formality = bp.language_formality
+    if (bp.secondary_language !== undefined)
+      profileUpdates.secondary_language = bp.secondary_language
     if (bp.is_health_niche !== undefined) profileUpdates.is_health_niche = bp.is_health_niche
     if (bp.source_strategy !== undefined) profileUpdates.source_strategy = bp.source_strategy
     if (bp.language_notes !== undefined) profileUpdates.language_notes = bp.language_notes
 
     if (Object.keys(profileUpdates).length > 0) {
-      const { error } = await supabase.from('brand_profiles').update(profileUpdates).eq('client_id', id)
+      const { error } = await supabase
+        .from('brand_profiles')
+        .update(profileUpdates)
+        .eq('client_id', id)
       if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     }
   }
@@ -120,10 +121,14 @@ export async function PUT(
     if (ps.frequency_type !== undefined) scheduleUpdates.frequency_type = ps.frequency_type
     if (ps.frequency_value !== undefined) scheduleUpdates.frequency_value = ps.frequency_value
     if (ps.auto_generate_day !== undefined) scheduleUpdates.auto_generate_day = ps.auto_generate_day
-    if (ps.auto_generate_time !== undefined) scheduleUpdates.auto_generate_time = ps.auto_generate_time
+    if (ps.auto_generate_time !== undefined)
+      scheduleUpdates.auto_generate_time = ps.auto_generate_time
 
     if (Object.keys(scheduleUpdates).length > 0) {
-      const { error } = await supabase.from('posting_schedules').update(scheduleUpdates).eq('client_id', id)
+      const { error } = await supabase
+        .from('posting_schedules')
+        .update(scheduleUpdates)
+        .eq('client_id', id)
       if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     }
   }
@@ -132,10 +137,7 @@ export async function PUT(
   return NextResponse.json({ success: true })
 }
 
-export async function DELETE(
-  _request: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const auth = await resolveAuth()
   if (!auth.ok) return auth.response

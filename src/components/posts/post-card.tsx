@@ -13,7 +13,10 @@ import { SlopDetector } from './slop-detector'
 import { LanguagePanel } from './language-panel'
 import type { CarouselSlide, LanguageResult } from '@/types/api'
 import { SourceGroundingPanel } from './source-grounding-panel'
-import { REWRITE_SCORE_THRESHOLD, AUTHENTICITY_URGENT_THRESHOLD } from '@/lib/content-rules/constants'
+import {
+  REWRITE_SCORE_THRESHOLD,
+  AUTHENTICITY_URGENT_THRESHOLD,
+} from '@/lib/content-rules/constants'
 import type {
   SlopDetection,
   SingleQualityResult,
@@ -62,7 +65,14 @@ interface PostCardProps {
   onRegenerate?: (postId: string, updatedPost: PostData, updatedValidation: ValidationData) => void
 }
 
-export function PostCard({ post, validationData, theme, onApprove, onDiscard, onRegenerate }: PostCardProps) {
+export function PostCard({
+  post,
+  validationData,
+  theme,
+  onApprove,
+  onDiscard,
+  onRegenerate,
+}: PostCardProps) {
   const {
     caption,
     setCaption,
@@ -82,7 +92,10 @@ export function PostCard({ post, validationData, theme, onApprove, onDiscard, on
 
   const { quality, slop } = validationData
 
-  function handleApplyFixes(correctedText: string, correctedSlides?: Array<{ headline: string; body: string }> | null) {
+  function handleApplyFixes(
+    correctedText: string,
+    correctedSlides?: Array<{ headline: string; body: string }> | null
+  ) {
     if (correctedText) setCaption(correctedText)
     if (correctedSlides && Array.isArray(slidesJson)) {
       const merged = (slidesJson as CarouselSlide[]).map((existing, i) => {
@@ -91,11 +104,20 @@ export function PostCard({ post, validationData, theme, onApprove, onDiscard, on
       })
       setSlidesJson(merged)
     }
-    setLanguageData({ passes: true, language_score: 10, issues: [], corrected_text: null, corrected_slides: null })
+    setLanguageData({
+      passes: true,
+      language_score: 10,
+      issues: [],
+      corrected_text: null,
+      corrected_slides: null,
+    })
     toast.success('Language fixes applied')
   }
 
-  function handleApplySourceGroundingFixes(correctedText: string, correctedSlides?: Array<{ headline: string; body: string }> | null) {
+  function handleApplySourceGroundingFixes(
+    correctedText: string,
+    correctedSlides?: Array<{ headline: string; body: string }> | null
+  ) {
     if (correctedText) setCaption(correctedText)
     if (correctedSlides && Array.isArray(slidesJson)) {
       const merged = (slidesJson as CarouselSlide[]).map((existing, i) => {
@@ -104,7 +126,13 @@ export function PostCard({ post, validationData, theme, onApprove, onDiscard, on
       })
       setSlidesJson(merged)
     }
-    setSourceGroundingData({ grounded: true, grounding_score: 10, flagged_claims: [], corrected_text: null, corrected_slides: null })
+    setSourceGroundingData({
+      grounded: true,
+      grounding_score: 10,
+      flagged_claims: [],
+      corrected_text: null,
+      corrected_slides: null,
+    })
     toast.success('Ungrounded claims fixed')
   }
 
@@ -176,7 +204,9 @@ export function PostCard({ post, validationData, theme, onApprove, onDiscard, on
         {/* Regenerate button — shown when quality/authenticity issues detected */}
         {showRewrite && (
           <Button
-            onClick={() => { void handleRegenerate() }}
+            onClick={() => {
+              void handleRegenerate()
+            }}
             loading={regenerating}
             variant="secondary"
             size="sm"
@@ -202,7 +232,10 @@ export function PostCard({ post, validationData, theme, onApprove, onDiscard, on
         <LanguagePanel
           result={languageData}
           onApplyFixes={handleApplyFixes}
-          autoApplied={(languageData.issues?.length ?? 0) > 0 && !!(languageData.corrected_text || languageData.corrected_slides)}
+          autoApplied={
+            (languageData.issues?.length ?? 0) > 0 &&
+            !!(languageData.corrected_text || languageData.corrected_slides)
+          }
         />
 
         {/* Source grounding panel */}
@@ -217,16 +250,13 @@ export function PostCard({ post, validationData, theme, onApprove, onDiscard, on
 
         {/* Actions */}
         <div className="flex gap-2 pt-1 border-t border-gray-100">
-          <Button
-            onClick={handleApproveClick}
-            loading={approving}
-            className="flex-1"
-            size="sm"
-          >
+          <Button onClick={handleApproveClick} loading={approving} className="flex-1" size="sm">
             Approve
           </Button>
           <Button
-            onClick={() => { void handleDiscard() }}
+            onClick={() => {
+              void handleDiscard()
+            }}
             loading={discarding}
             variant="ghost"
             size="sm"
@@ -240,7 +270,9 @@ export function PostCard({ post, validationData, theme, onApprove, onDiscard, on
       <ScheduleModal
         open={scheduleModal.isOpen}
         onClose={scheduleModal.closeModal}
-        onSchedule={(scheduledAt) => { void handleScheduleDecision(scheduledAt) }}
+        onSchedule={(scheduledAt) => {
+          void handleScheduleDecision(scheduledAt)
+        }}
         bestTimeData={bestTimeData}
         platform={post.platform}
         loading={approving}

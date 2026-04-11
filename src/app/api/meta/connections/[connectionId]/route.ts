@@ -12,11 +12,11 @@ export async function DELETE(
   const { supabase, agencyId } = auth
 
   // Verify the connection belongs to a client owned by this agency
-  const { data: connection } = await supabase
+  const { data: connection } = (await supabase
     .from('social_connections')
     .select('id, client_id, clients!inner(agency_id)')
     .eq('id', connectionId)
-    .single() as { data: (Record<string, unknown> & { clients: { agency_id: string } }) | null }
+    .single()) as { data: (Record<string, unknown> & { clients: { agency_id: string } }) | null }
 
   if (!connection) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
@@ -24,10 +24,7 @@ export async function DELETE(
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
 
-  const { error } = await supabase
-    .from('social_connections')
-    .delete()
-    .eq('id', connectionId)
+  const { error } = await supabase.from('social_connections').delete().eq('id', connectionId)
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 

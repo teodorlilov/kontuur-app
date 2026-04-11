@@ -24,7 +24,8 @@ export async function POST(request: Request) {
   }
 
   const { businessName, mode } = body
-  if (!businessName) return NextResponse.json({ error: 'businessName is required' }, { status: 400 })
+  if (!businessName)
+    return NextResponse.json({ error: 'businessName is required' }, { status: 400 })
 
   // Check if user record already exists (prevent duplicate setup)
   const { data: existingUser } = await supabase

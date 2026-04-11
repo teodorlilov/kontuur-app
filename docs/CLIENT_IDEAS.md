@@ -169,6 +169,7 @@ Step 12 → Verification
 Create the two tables above. Run in Supabase SQL editor.
 
 After running:
+
 - [ ] Both tables visible in Supabase table editor
 - [ ] RLS enabled on both
 - [ ] `gen_random_uuid()` works (requires pgcrypto — already enabled in Supabase)
@@ -195,7 +196,7 @@ export interface ClientPostIdea {
   client_id: string
   title: string
   description: string | null
-  target_date: string | null    // ISO date string YYYY-MM-DD
+  target_date: string | null // ISO date string YYYY-MM-DD
   priority: number
   included_in_run: boolean
   used_at: string | null
@@ -300,6 +301,7 @@ Per idea:
 The form should be clean and minimal — the client should not feel like they are filling in a work form. No PostFlow branding beyond the client name in the header. White page, large text, one action per line.
 
 ### ✓ Step 5 Verification
+
 - [ ] `/submit/[valid-token]` renders the form
 - [ ] `/submit/[expired-token]` renders the expired message
 - [ ] `/submit/[invalid-token]` renders the invalid message
@@ -400,6 +402,7 @@ Place on the client detail page, near the generation controls.
 ```
 
 On click:
+
 1. Call `POST /api/submission-tokens` with `client_id`
 2. Copy URL to clipboard
 3. Show toast: "Link copied — send it to [client name]"
@@ -407,8 +410,7 @@ On click:
 
 ```typescript
 // WhatsApp deep link:
-`https://wa.me/?text=${encodeURIComponent('Here is your idea submission link: ' + url)}`
-
+;`https://wa.me/?text=${encodeURIComponent('Here is your idea submission link: ' + url)}`
 // Email compose:
 `mailto:?subject=Post ideas for this week&body=${encodeURIComponent(url)}`
 ```
@@ -457,10 +459,10 @@ const { data: clientIdeas } = await supabase
   .select('*')
   .eq('client_id', body.client_id)
   .eq('included_in_run', true)
-  .is('used_at', null)    // only unprocessed ideas
+  .is('used_at', null) // only unprocessed ideas
 
 // Map to PriorityPost shape
-const ideaPriorityPosts: PriorityPost[] = clientIdeas.map(idea => ({
+const ideaPriorityPosts: PriorityPost[] = clientIdeas.map((idea) => ({
   title: idea.title,
   brief: idea.description ?? undefined,
   targetDate: idea.target_date ?? undefined,
@@ -483,7 +485,10 @@ if (clientIdeas.length > 0) {
   void supabase
     .from('client_post_ideas')
     .update({ used_at: new Date().toISOString() })
-    .in('id', clientIdeas.map(i => i.id))
+    .in(
+      'id',
+      clientIdeas.map((i) => i.id)
+    )
 }
 ```
 
@@ -492,6 +497,7 @@ if (clientIdeas.length > 0) {
 ## Step 12 — Verification
 
 ### API verification
+
 ```bash
 # Generate a token (replace with real client_id and auth cookie)
 curl -X POST /api/submission-tokens \
@@ -514,6 +520,7 @@ curl /api/client-ideas?client_id=[id]
 ```
 
 ### UI verification
+
 - [ ] "Request ideas" button generates a link and copies to clipboard
 - [ ] Public form renders at `/submit/[token]` on mobile
 - [ ] Form submits and redirects to success page
@@ -525,6 +532,7 @@ curl /api/client-ideas?client_id=[id]
 - [ ] After generation, included ideas are marked `used_at`
 
 ### Edge cases
+
 - [ ] Empty title — form validates, submission rejected with 400
 - [ ] More than 5 ideas — 6th row cannot be added
 - [ ] Token used after expiry — returns 410 Gone
@@ -554,5 +562,5 @@ curl /api/client-ideas?client_id=[id]
 
 ---
 
-*PostFlow — Client Idea Submission Feature*
-*Build in step order. Verify each step before proceeding.*
+_PostFlow — Client Idea Submission Feature_
+_Build in step order. Verify each step before proceeding._

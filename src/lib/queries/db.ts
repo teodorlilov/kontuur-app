@@ -62,7 +62,7 @@ export async function fetchClientById(
     .eq('id', clientId)
     .eq('agency_id', agencyId)
     .single()
-  return (data as Omit<ClientRow, 'agency_id'> | null)
+  return data as Omit<ClientRow, 'agency_id'> | null
 }
 
 // ---------- brand_profiles ----------
@@ -84,7 +84,7 @@ export async function fetchBrandProfileByClient(
     .select(BRAND_PROFILE_COLUMNS)
     .eq('client_id', clientId)
     .single()
-  return (data as Omit<BrandProfileRow, 'client_id'> | null)
+  return data as Omit<BrandProfileRow, 'client_id'> | null
 }
 
 // ---------- posting_schedules ----------
@@ -106,7 +106,7 @@ export async function fetchPostingScheduleByClient(
     .select(POSTING_SCHEDULE_COLUMNS)
     .eq('client_id', clientId)
     .single()
-  return (data as Omit<PostingScheduleRow, 'client_id' | 'created_at'> | null)
+  return data as Omit<PostingScheduleRow, 'client_id' | 'created_at'> | null
 }
 
 // ---------- agencies ----------
@@ -130,7 +130,7 @@ export async function fetchAgencyById(
     .select(AGENCY_SETTINGS_COLUMNS)
     .eq('id', agencyId)
     .single()
-  return (data as AgencySettings | null)
+  return data as AgencySettings | null
 }
 
 // ---------- users ----------
@@ -201,7 +201,7 @@ export async function fetchLanguageRulesByLanguage(
     .select(LANGUAGE_RULES_COLUMNS)
     .eq('language', language)
     .single()
-  return (data as LanguageRulesRow | null)
+  return data as LanguageRulesRow | null
 }
 
 // ---------- posts ----------
@@ -226,9 +226,11 @@ export async function fetchPostHistoryByClient(
     .eq('client_id', clientId)
     .order('created_at', { ascending: false })
     .limit(limit)
-  return (data as Array<{ topic_summary: string | null }> | null)
-    ?.map((h) => h.topic_summary)
-    .filter((s): s is string => s !== null) ?? []
+  return (
+    (data as Array<{ topic_summary: string | null }> | null)
+      ?.map((h) => h.topic_summary)
+      .filter((s): s is string => s !== null) ?? []
+  )
 }
 
 // ---------- posts ----------
@@ -252,9 +254,11 @@ export async function fetchTopPostsByClient(
     .gte('quality_score_avg', 7.5)
     .order('quality_score_avg', { ascending: false })
     .limit(20)
-  return (data as Array<{ caption: string | null }> | null)
-    ?.map((p) => (p.caption ?? '').slice(0, 120))
-    .filter(Boolean) ?? []
+  return (
+    (data as Array<{ caption: string | null }> | null)
+      ?.map((p) => (p.caption ?? '').slice(0, 120))
+      .filter(Boolean) ?? []
+  )
 }
 
 /**
@@ -329,7 +333,9 @@ export async function fetchThemeDescriptions(
     .eq('client_id', clientId)
     .order('created_at', { ascending: false })
     .limit(limit)
-  const rows = data as Array<{ generation_themes: Array<{ theme_description: string | null }> }> | null
+  const rows = data as Array<{
+    generation_themes: Array<{ theme_description: string | null }>
+  }> | null
   return (rows ?? []).flatMap((run) =>
     run.generation_themes.map((t) => t.theme_description).filter((t): t is string => t !== null)
   )

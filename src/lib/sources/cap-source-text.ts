@@ -32,7 +32,10 @@ export function capSourceText(
   }
 
   // Ensure total doesn't exceed cap
-  let total = Math.min(lengths.rss, budgets.rss) + Math.min(lengths.website, budgets.website) + Math.min(lengths.file, budgets.file)
+  let total =
+    Math.min(lengths.rss, budgets.rss) +
+    Math.min(lengths.website, budgets.website) +
+    Math.min(lengths.file, budgets.file)
   const scale = total > TOTAL_CAP ? TOTAL_CAP / total : 1
 
   return {

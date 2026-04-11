@@ -44,9 +44,7 @@ export function NotificationsBell() {
   async function markRead(id: string) {
     const supabase = createBrowserSupabaseClient()
     await supabase.from('notifications').update({ is_read: true }).eq('id', id)
-    setNotifications((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, is_read: true } : n))
-    )
+    setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, is_read: true } : n)))
   }
 
   return (

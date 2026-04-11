@@ -1,67 +1,67 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
 /* ─── Kontuur Design System — CSS Custom Properties ─── */
 :root {
   /* Backgrounds */
-  --color-page:          #F9F7F4;
-  --color-surface:       #FFFFFF;
-  --color-sunken:        #F2F0EC;
-  --color-overlay:       rgba(26,25,24,0.04);
+  --color-page: #f9f7f4;
+  --color-surface: #ffffff;
+  --color-sunken: #f2f0ec;
+  --color-overlay: rgba(26, 25, 24, 0.04);
 
   /* Brand */
-  --color-brand:         #2C3E50;
-  --color-brand-hover:   #3D5166;
-  --color-brand-accent:  #4A6FA5;
-  --color-brand-light:   rgba(74,111,165,0.12);
+  --color-brand: #2c3e50;
+  --color-brand-hover: #3d5166;
+  --color-brand-accent: #4a6fa5;
+  --color-brand-light: rgba(74, 111, 165, 0.12);
 
   /* Text */
-  --color-text-1:        #1A1918;
-  --color-text-2:        #6B6862;
-  --color-text-3:        #9C9890;
-  --color-text-inv:      #FFFFFF;
+  --color-text-1: #1a1918;
+  --color-text-2: #6b6862;
+  --color-text-3: #9c9890;
+  --color-text-inv: #ffffff;
 
   /* Borders */
-  --color-border-1:      #EAE8E3;
-  --color-border-2:      #D4D1CA;
-  --color-border-3:      #B8B5AE;
+  --color-border-1: #eae8e3;
+  --color-border-2: #d4d1ca;
+  --color-border-3: #b8b5ae;
 
   /* Status — intentionally muted */
-  --color-published-bg:  #EAF3DE;
-  --color-published-fg:  #27500A;
-  --color-scheduled-bg:  #EEF2FF;
-  --color-scheduled-fg:  #3C3489;
-  --color-pending-bg:    #FAEEDA;
-  --color-pending-fg:    #633806;
-  --color-draft-bg:      #F2F0EC;
-  --color-draft-fg:      #6B6862;
-  --color-error-bg:      #FCEBEB;
-  --color-error-fg:      #791F1F;
+  --color-published-bg: #eaf3de;
+  --color-published-fg: #27500a;
+  --color-scheduled-bg: #eef2ff;
+  --color-scheduled-fg: #3c3489;
+  --color-pending-bg: #faeeda;
+  --color-pending-fg: #633806;
+  --color-draft-bg: #f2f0ec;
+  --color-draft-fg: #6b6862;
+  --color-error-bg: #fcebeb;
+  --color-error-fg: #791f1f;
 
   /* Charts */
-  --color-chart-1:       #4A6FA5;
-  --color-chart-2:       #1D9E75;
-  --color-chart-3:       #BA7517;
-  --color-chart-grid:    #EAE8E3;
-  --color-chart-label:   #9C9890;
+  --color-chart-1: #4a6fa5;
+  --color-chart-2: #1d9e75;
+  --color-chart-3: #ba7517;
+  --color-chart-grid: #eae8e3;
+  --color-chart-label: #9c9890;
 
   /* Radius */
-  --radius-xs:   4px;
-  --radius-sm:   6px;
-  --radius-md:   8px;
-  --radius-lg:   12px;
-  --radius-xl:   16px;
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
   --radius-full: 9999px;
 
   /* Sidebar (always dark) */
-  --sidebar-bg:              #2C3E50;
-  --sidebar-text:            rgba(255,255,255,0.55);
-  --sidebar-text-hover:      rgba(255,255,255,0.85);
-  --sidebar-text-active:     rgba(255,255,255,1);
-  --sidebar-item-bg-hover:   rgba(255,255,255,0.07);
-  --sidebar-item-bg-active:  rgba(255,255,255,0.12);
-  --sidebar-border:          rgba(255,255,255,0.08);
-  --sidebar-badge-bg:        rgba(255,255,255,0.15);
-  --sidebar-badge-text:      rgba(255,255,255,0.8);
+  --sidebar-bg: #2c3e50;
+  --sidebar-text: rgba(255, 255, 255, 0.55);
+  --sidebar-text-hover: rgba(255, 255, 255, 0.85);
+  --sidebar-text-active: rgba(255, 255, 255, 1);
+  --sidebar-item-bg-hover: rgba(255, 255, 255, 0.07);
+  --sidebar-item-bg-active: rgba(255, 255, 255, 0.12);
+  --sidebar-border: rgba(255, 255, 255, 0.08);
+  --sidebar-badge-bg: rgba(255, 255, 255, 0.15);
+  --sidebar-badge-text: rgba(255, 255, 255, 0.8);
 }
 
 @theme inline {
@@ -88,46 +88,94 @@ body {
 
 /* ─── Keyframes ─── */
 @keyframes fade-up {
-  from { opacity: 0; transform: translateY(8px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @keyframes scale-in {
-  from { opacity: 0; transform: scale(0.96) translateY(4px); }
-  to   { opacity: 1; transform: scale(1) translateY(0); }
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
 }
 
 @keyframes slide-in-right {
-  from { opacity: 0; transform: translateX(16px); }
-  to   { opacity: 1; transform: translateX(0); }
+  from {
+    opacity: 0;
+    transform: translateX(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
 @keyframes fade-in {
-  from { opacity: 0; }
-  to   { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes shimmer {
-  from { background-position: -200% 0; }
-  to   { background-position:  200% 0; }
+  from {
+    background-position: -200% 0;
+  }
+  to {
+    background-position: 200% 0;
+  }
 }
 
 @keyframes dropdown-in {
-  from { opacity: 0; transform: translateY(-6px) scale(0.97); }
-  to   { opacity: 1; transform: translateY(0) scale(1); }
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 @keyframes fadein {
-  from { opacity: 0; transform: translateY(4px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* ─── Stagger utilities ─── */
-.stagger > *:nth-child(1) { animation-delay:   0ms; }
-.stagger > *:nth-child(2) { animation-delay:  40ms; }
-.stagger > *:nth-child(3) { animation-delay:  80ms; }
-.stagger > *:nth-child(4) { animation-delay: 120ms; }
-.stagger > *:nth-child(5) { animation-delay: 160ms; }
+.stagger > *:nth-child(1) {
+  animation-delay: 0ms;
+}
+.stagger > *:nth-child(2) {
+  animation-delay: 40ms;
+}
+.stagger > *:nth-child(3) {
+  animation-delay: 80ms;
+}
+.stagger > *:nth-child(4) {
+  animation-delay: 120ms;
+}
+.stagger > *:nth-child(5) {
+  animation-delay: 160ms;
+}
 
 /* ─── Skeleton ─── */
 .skeleton {
@@ -144,8 +192,12 @@ body {
 
 /* ─── Print styles ─── */
 @media print {
-  body > * { display: none !important; }
-  #analytics-print-area { display: block !important; }
+  body > * {
+    display: none !important;
+  }
+  #analytics-print-area {
+    display: block !important;
+  }
 
   #analytics-print-area {
     position: fixed;
@@ -156,5 +208,7 @@ body {
     font-size: 12pt;
   }
 
-  .print-hide { display: none !important; }
+  .print-hide {
+    display: none !important;
+  }
 }

@@ -38,10 +38,7 @@ export async function callAnthropic(opts: CallAnthropicOptions): Promise<Message
     conversationHistory = [],
   } = opts
 
-  const messages: MessageParam[] = [
-    ...conversationHistory,
-    { role: 'user', content: userMessage },
-  ]
+  const messages: MessageParam[] = [...conversationHistory, { role: 'user', content: userMessage }]
   if (assistantPrefill) {
     messages.push({ role: 'assistant', content: assistantPrefill })
   }
@@ -57,4 +54,3 @@ export async function callAnthropic(opts: CallAnthropicOptions): Promise<Message
     messages,
   })
 }
-

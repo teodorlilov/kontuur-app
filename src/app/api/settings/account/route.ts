@@ -47,10 +47,7 @@ export async function PUT(request: Request) {
     return NextResponse.json({ error: 'Nothing to update' }, { status: 400 })
   }
 
-  const { error } = await supabase
-    .from('agencies')
-    .update(updates)
-    .eq('id', agencyId)
+  const { error } = await supabase.from('agencies').update(updates).eq('id', agencyId)
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })

@@ -39,13 +39,13 @@ describe('toCarouselSwipeCues', () => {
   })
 
   it('returns carousel_swipe property if present', () => {
-    expect(toCarouselSwipeCues({ carousel_swipe: 'Плъзнете →', other: 'ignored' }))
-      .toBe('Плъзнете →')
+    expect(toCarouselSwipeCues({ carousel_swipe: 'Плъзнете →', other: 'ignored' })).toBe(
+      'Плъзнете →'
+    )
   })
 
   it('joins object values when no carousel_swipe', () => {
-    expect(toCarouselSwipeCues({ cue1: 'Плъзнете', cue2: 'Още' }))
-      .toBe('Плъзнете, Още')
+    expect(toCarouselSwipeCues({ cue1: 'Плъзнете', cue2: 'Още' })).toBe('Плъзнете, Още')
   })
 
   it('returns empty string for non-object', () => {

@@ -2,15 +2,23 @@ import { randomUUID } from 'crypto'
 import { GeneratorFactory } from '@/ai/generation/generators/generator-factory'
 import type { ParsedPost } from '@/ai/generation/generators/post-generator'
 import type {
-  SinglePostInput, CarouselInput,
-  CarouselResult, ReelsResult, DraftPost,
-  GenerationResult, EnrichedTheme, GenerationRunContext,
+  SinglePostInput,
+  CarouselInput,
+  CarouselResult,
+  ReelsResult,
+  DraftPost,
+  GenerationResult,
+  EnrichedTheme,
+  GenerationRunContext,
   GenerationInput,
 } from '@/ai/generation/types'
 import { validatePost } from '@/ai/validation/validate-post'
 import type { PostValidationResult } from '@/ai/validation/validate-post'
 import { validateLanguage } from '@/ai/validation/prompts/validate-language'
-import { deriveSlopFromQuality, computeDeterministicPreScore } from '@/ai/validation/content-rules/compute-scores'
+import {
+  deriveSlopFromQuality,
+  computeDeterministicPreScore,
+} from '@/ai/validation/content-rules/compute-scores'
 import { applyTextCorrections, applySlideCorrections } from '@/ai/validation/correction-utils'
 import { Deduplicator } from '@/ai/research/deduplicator'
 import { ANGLE_SIMILARITY_THRESHOLD, DEFAULT_QUALITY_SCORE } from '@/lib/content-rules/constants'
@@ -18,7 +26,6 @@ import { OVER_REQUEST_MULTIPLIER, QUALITY_FLOOR, DEFAULT_CAROUSEL_SLIDES } from 
 import type { QualityResult } from '@/ai/validation/prompts/validate-quality'
 
 const MAX_CONCURRENT_AI_CALLS = 5
-
 
 /** Default quality result for reels — quality metrics don't apply to spoken scripts. */
 const DEFAULT_REELS_QUALITY: QualityResult = {
@@ -65,7 +72,9 @@ export async function runGenerationBatch(ctx: GenerationRunContext): Promise<Gen
   // Attach similar past themes for angle differentiation
   for (const theme of allThemes) {
     const similar = ctx.client.postHistory.filter(
-      (topic) => Deduplicator.ngramSimilarity(theme.description, topic, ctx.client.languageConfig.language) > ANGLE_SIMILARITY_THRESHOLD
+      (topic) =>
+        Deduplicator.ngramSimilarity(theme.description, topic, ctx.client.languageConfig.language) >
+        ANGLE_SIMILARITY_THRESHOLD
     )
     if (similar.length > 0) {
       theme.similarPastThemes = similar.slice(0, 3)
@@ -93,7 +102,13 @@ export async function runGenerationBatch(ctx: GenerationRunContext): Promise<Gen
   }
 
   function isParsedPostArray(r: unknown): r is ParsedPost[] {
-    return Array.isArray(r) && r.length > 0 && typeof r[0] === 'object' && r[0] !== null && 'caption' in r[0]
+    return (
+      Array.isArray(r) &&
+      r.length > 0 &&
+      typeof r[0] === 'object' &&
+      r[0] !== null &&
+      'caption' in r[0]
+    )
   }
 
   async function generateForTheme(theme: EnrichedTheme): Promise<void> {
@@ -114,7 +129,7 @@ export async function runGenerationBatch(ctx: GenerationRunContext): Promise<Gen
   // Process themes in batches of MAX_CONCURRENT_AI_CALLS
   for (let i = 0; i < allThemes.length; i += MAX_CONCURRENT_AI_CALLS) {
     const batch = allThemes.slice(i, i + MAX_CONCURRENT_AI_CALLS)
-    const results = await Promise.allSettled(batch.map(theme => generateForTheme(theme)))
+    const results = await Promise.allSettled(batch.map((theme) => generateForTheme(theme)))
 
     results.forEach((result, idx) => {
       if (result.status === 'rejected') {
@@ -130,7 +145,7 @@ export async function runGenerationBatch(ctx: GenerationRunContext): Promise<Gen
 
   function buildThemeInput(
     c: GenerationRunContext,
-    theme: EnrichedTheme,
+    theme: EnrichedTheme
   ): SinglePostInput | CarouselInput | GenerationInput {
     const groundingText = getGroundingText(theme)
     const base = {
@@ -172,7 +187,7 @@ export async function runGenerationBatch(ctx: GenerationRunContext): Promise<Gen
       slides_json: unknown
       carousel_quality_json?: unknown
       quality_score_avg: number
-    },
+    }
   ): DraftPost {
     return {
       id: randomUUID(),
@@ -194,7 +209,9 @@ export async function runGenerationBatch(ctx: GenerationRunContext): Promise<Gen
 
   function collectResult(validation: PostValidationResult, post: DraftPost) {
     // If language corrections were auto-applied, update the score to reflect corrected text
-    const langCorrected = !!(validation.language.corrected_text || validation.language.corrected_slides)
+    const langCorrected = !!(
+      validation.language.corrected_text || validation.language.corrected_slides
+    )
     const language = langCorrected
       ? { ...validation.language, language_score: 10, passes: true }
       : validation.language
@@ -213,7 +230,7 @@ export async function runGenerationBatch(ctx: GenerationRunContext): Promise<Gen
   async function validateContent(
     caption: string,
     theme: EnrichedTheme,
-    opts: { slides?: CarouselResult['slides']; label: string; declaredStructure?: string },
+    opts: { slides?: CarouselResult['slides']; label: string; declaredStructure?: string }
   ): Promise<PostValidationResult> {
     return validatePost({
       caption,
@@ -244,13 +261,16 @@ export async function runGenerationBatch(ctx: GenerationRunContext): Promise<Gen
     })
 
     void ctx.trackTheme(theme, 1)
-    collectResult(validation, buildDraftRecord(theme, {
-      caption: applyTextCorrections(result.main_caption, validation),
-      post_type: 'carousel',
-      slides_json: applySlideCorrections(result.slides, validation.language.corrected_slides),
-      carousel_quality_json: validation.quality,
-      quality_score_avg: validation.qualityScore,
-    }))
+    collectResult(
+      validation,
+      buildDraftRecord(theme, {
+        caption: applyTextCorrections(result.main_caption, validation),
+        post_type: 'carousel',
+        slides_json: applySlideCorrections(result.slides, validation.language.corrected_slides),
+        carousel_quality_json: validation.quality,
+        quality_score_avg: validation.qualityScore,
+      })
+    )
   }
 
   // Language validation is meaningful for reels — checks anglicisms, calques, formality.
@@ -260,7 +280,7 @@ export async function runGenerationBatch(ctx: GenerationRunContext): Promise<Gen
 
     const langResult = await validateLanguage(
       { text: scriptText },
-      ctx.client.languageConfig,
+      ctx.client.languageConfig
     ).catch(() => ({
       passes: true,
       language_score: 10,
@@ -294,7 +314,10 @@ export async function runGenerationBatch(ctx: GenerationRunContext): Promise<Gen
 
     // Pre-select top `requested` posts using zero-cost text analysis — no LLM calls yet
     const candidates = posts
-      .map(post => ({ ...post, preScore: computeDeterministicPreScore(post.caption, ctx.platform ?? '') }))
+      .map((post) => ({
+        ...post,
+        preScore: computeDeterministicPreScore(post.caption, ctx.platform ?? ''),
+      }))
       .sort((a, b) => b.preScore - a.preScore)
       .slice(0, requested)
 
@@ -315,22 +338,26 @@ export async function runGenerationBatch(ctx: GenerationRunContext): Promise<Gen
 
     // Sort by score descending, filter by floor, keep only as many as originally requested
     const qualified = results
-      .filter(r => r.score >= QUALITY_FLOOR)
+      .filter((r) => r.score >= QUALITY_FLOOR)
       .sort((a, b) => b.score - a.score)
       .slice(0, requested)
 
     // Fall back to best available if all fail the floor
-    const toKeep = qualified.length > 0
-      ? qualified
-      : results.sort((a, b) => b.score - a.score).slice(0, requested)
+    const toKeep =
+      qualified.length > 0
+        ? qualified
+        : results.sort((a, b) => b.score - a.score).slice(0, requested)
 
     toKeep.forEach(({ validation, caption }) =>
-      collectResult(validation, buildDraftRecord(theme, {
-        caption,
-        post_type: 'single',
-        slides_json: null,
-        quality_score_avg: validation.qualityScore,
-      }))
+      collectResult(
+        validation,
+        buildDraftRecord(theme, {
+          caption,
+          post_type: 'single',
+          slides_json: null,
+          quality_score_avg: validation.qualityScore,
+        })
+      )
     )
   }
 }

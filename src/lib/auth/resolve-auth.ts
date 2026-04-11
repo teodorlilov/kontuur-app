@@ -28,8 +28,14 @@ export async function resolveAuth(): Promise<AuthResult> {
     return { ok: true, supabase, agencyId, userId }
   } catch (err) {
     if (err instanceof AuthError) {
-      return { ok: false, response: NextResponse.json({ error: err.message }, { status: err.statusCode }) }
+      return {
+        ok: false,
+        response: NextResponse.json({ error: err.message }, { status: err.statusCode }),
+      }
     }
-    return { ok: false, response: NextResponse.json({ error: 'Internal server error' }, { status: 500 }) }
+    return {
+      ok: false,
+      response: NextResponse.json({ error: 'Internal server error' }, { status: 500 }),
+    }
   }
 }

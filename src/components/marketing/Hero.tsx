@@ -45,7 +45,9 @@ export function Hero() {
           margin: '0 auto 24px',
         }}
       >
-        AI-powered social media<br />for serious agencies.
+        AI-powered social media
+        <br />
+        for serious agencies.
       </motion.h1>
 
       <motion.p
@@ -58,12 +60,19 @@ export function Hero() {
           lineHeight: 1.6,
         }}
       >
-        Generate, review, schedule and analyse Instagram content for all your clients — from one place.
+        Generate, review, schedule and analyse Instagram content for all your clients — from one
+        place.
       </motion.p>
 
       <motion.div
         {...fadeUp(0.18)}
-        style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap', marginBottom: 72 }}
+        style={{
+          display: 'flex',
+          gap: 12,
+          justifyContent: 'center',
+          flexWrap: 'wrap',
+          marginBottom: 72,
+        }}
       >
         <Link
           href="/dashboard"
@@ -81,8 +90,12 @@ export function Hero() {
             lineHeight: 1,
             transition: 'background 150ms ease',
           }}
-          onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--color-brand-hover)' }}
-          onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--color-brand)' }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = 'var(--color-brand-hover)'
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = 'var(--color-brand)'
+          }}
         >
           Get started free →
         </Link>
@@ -102,8 +115,12 @@ export function Hero() {
             lineHeight: 1,
             transition: 'background 150ms ease',
           }}
-          onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--color-overlay)' }}
-          onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = 'var(--color-overlay)'
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = 'transparent'
+          }}
         >
           See how it works
         </a>

@@ -80,6 +80,7 @@ components/
 **Layout:** Logo left · Nav links centre · Login button right
 
 **Behaviour:**
+
 - Transparent background on page load
 - On scroll > 40px: frosted glass effect kicks in
 - Login button → `/dashboard` (protected route, redirects to login if not authenticated)
@@ -127,10 +128,12 @@ export function Nav() {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  transition: background 200ms ease, border-color 200ms ease;
+  transition:
+    background 200ms ease,
+    border-color 200ms ease;
 }
 .landing-nav.scrolled {
-  background: rgba(249,247,244,0.92);
+  background: rgba(249, 247, 244, 0.92);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border-bottom: 0.5px solid var(--color-border-1);
@@ -145,7 +148,9 @@ export function Nav() {
   text-decoration: none;
   transition: color 120ms ease;
 }
-.nav-links a:hover { color: var(--color-text-1); }
+.nav-links a:hover {
+  color: var(--color-text-1);
+}
 ```
 
 ---
@@ -157,6 +162,7 @@ export function Nav() {
 **Layout:** Centred, full-width
 
 **Content:**
+
 ```
 EYEBROW:   Built for marketing agencies
 
@@ -174,11 +180,13 @@ VISUAL:    Dashboard screenshot (or animated mockup)
 ```
 
 **Typography:**
+
 - Eyebrow: 11px, uppercase, letter-spacing 0.1em, `var(--color-brand-accent)`
 - Headline: Playfair Display, `clamp(40px, 5vw, 64px)`, weight 400, `-0.03em`
 - Sub: Geist, 18px, `var(--color-text-2)`, max-width 480px
 
 **Animations:**
+
 - Eyebrow: `fade-up` 0ms delay
 - Headline: `fade-up` 60ms delay
 - Sub: `fade-up` 120ms delay
@@ -186,6 +194,7 @@ VISUAL:    Dashboard screenshot (or animated mockup)
 - Dashboard image: `fade-up` 300ms delay, scale from 0.97 to 1
 
 **CTA buttons:**
+
 - Primary: `btn btn-primary btn-lg` → `/dashboard`
 - Secondary: `btn btn-secondary btn-lg` → scroll to `#how-it-works`
 
@@ -198,17 +207,20 @@ VISUAL:    Dashboard screenshot (or animated mockup)
 **Layout:** Full-width, thin horizontal band
 
 **Content:**
+
 ```
 "Trusted by agencies in Bulgaria and across Europe"
 [Agency logo] [Agency logo] [Agency logo] [Agency logo] [Agency logo]
 ```
 
 Initially use placeholder names until real agency logos are available:
+
 ```
 About Social Media  ·  Agency 2  ·  Agency 3  ·  Agency 4
 ```
 
 **Style:**
+
 - Background: `var(--color-sunken)` `#F2F0EC`
 - Border top + bottom: `0.5px solid var(--color-border-1)`
 - Padding: `20px 40px`
@@ -241,11 +253,13 @@ About Social Media  ·  Agency 2  ·  Agency 3  ·  Agency 4
 ```
 
 **Icons:**
+
 - AI generation: `Sparkles` (Lucide)
 - Review & approve: `CheckSquare` (Lucide)
 - Analytics: `BarChart2` (Lucide)
 
 **Card style:**
+
 - Background: `var(--color-sunken)` — NOT white, so they read as a different zone
 - No border
 - Border radius: `var(--radius-xl)` — 16px
@@ -274,6 +288,7 @@ account.             from their website.  with one click.
 ```
 
 **Style:**
+
 - Step number: 36×36px circle, `var(--color-brand)` background, white number
 - Title: 15px, weight 500
 - Description: 13.5px, `var(--color-text-2)`
@@ -290,6 +305,7 @@ account.             from their website.  with one click.
 **Layout:** Full-width, edge-to-edge with clipped overflow
 
 **Content:**
+
 - Section label: "The dashboard"
 - Short headline: `Everything in one place`
 - Short subtext: 1 sentence
@@ -305,12 +321,18 @@ account.             from their website.  with one click.
   padding: 80px 40px 0;
   overflow: hidden;
 }
-.dashboard-preview-section .section-label { color: rgba(255,255,255,0.4); }
-.dashboard-preview-section h2 { color: rgba(255,255,255,0.95); }
-.dashboard-preview-section p  { color: rgba(255,255,255,0.55); }
+.dashboard-preview-section .section-label {
+  color: rgba(255, 255, 255, 0.4);
+}
+.dashboard-preview-section h2 {
+  color: rgba(255, 255, 255, 0.95);
+}
+.dashboard-preview-section p {
+  color: rgba(255, 255, 255, 0.55);
+}
 .dashboard-screenshot {
   border-radius: 16px 16px 0 0;
-  border: 0.5px solid rgba(255,255,255,0.12);
+  border: 0.5px solid rgba(255, 255, 255, 0.12);
   width: 100%;
   margin-top: 48px;
 }
@@ -370,6 +392,7 @@ Tag:   Analytics · Instagram insights
 ```
 
 **Style:**
+
 - Section padding: `80px 40px`
 - Between features: `80px` gap
 - Copy column: max-width `440px`
@@ -407,6 +430,7 @@ Tag:   Analytics · Instagram insights
 ```
 
 **Card styles:**
+
 - Starter: standard card, `border: 0.5px solid var(--color-border-1)`
 - Pro: `border: 1.5px solid var(--color-brand-accent)`, "Most popular" badge
 - Both: white surface, `border-radius: var(--radius-xl)`, padding `32px`
@@ -424,6 +448,7 @@ Tag:   Analytics · Instagram insights
 **Layout:** Centred, generous padding
 
 **Content:**
+
 ```
 Headline:    Start managing your clients' Instagram today.
 
@@ -438,6 +463,7 @@ Visual:      Optional — the Kontuur logo mark (large, muted)
 ```
 
 **Style:**
+
 - Background: `var(--color-sunken)` `#F2F0EC`
 - Headline: Playfair, 36px, weight 400
 - Padding: `96px 40px`
@@ -450,6 +476,7 @@ Visual:      Optional — the Kontuur logo mark (large, muted)
 **Layout:** 4-column grid
 
 **Columns:**
+
 ```
 Kontuur              Product              Company         Legal
 [Logo mark]          Features             About           Privacy policy
@@ -459,6 +486,7 @@ social intelligence  Pricing              Blog            Terms of service
 ```
 
 **Style:**
+
 - Background: `var(--color-brand)` `#2C3E50`
 - Text: `rgba(255,255,255,0.55)`
 - Hover: `rgba(255,255,255,0.85)`
@@ -475,11 +503,12 @@ social intelligence  Pricing              Blog            Terms of service
 // app/(marketing)/page.tsx
 export const metadata = {
   title: 'Kontuur — AI-powered social media for agencies',
-  description: 'Generate, review, schedule and analyse Instagram content for all your clients from one place. Built for marketing agencies.',
+  description:
+    'Generate, review, schedule and analyse Instagram content for all your clients from one place. Built for marketing agencies.',
   openGraph: {
     title: 'Kontuur',
     description: 'AI-powered social media management for agencies.',
-    image: '/og-image.png',   // 1200×630px
+    image: '/og-image.png', // 1200×630px
     url: 'https://kontuur.app',
   },
 }
@@ -526,11 +555,11 @@ Use `once: true` — elements animate in once, never re-animate on scroll back u
 
 ## Responsive breakpoints
 
-| Breakpoint | Layout change |
-|---|---|
-| `< 768px` | Single column everything, nav collapses to hamburger |
-| `768px–1024px` | Feature cards 2-col, alternating features stack |
-| `> 1024px` | Full layout as designed |
+| Breakpoint     | Layout change                                        |
+| -------------- | ---------------------------------------------------- |
+| `< 768px`      | Single column everything, nav collapses to hamburger |
+| `768px–1024px` | Feature cards 2-col, alternating features stack      |
+| `> 1024px`     | Full layout as designed                              |
 
 ---
 
@@ -562,6 +591,7 @@ Steps 10 and 11 require real screenshots from the built app. Build them last.
 The nav "Log in" button and all "Get started" CTAs point to `/dashboard`.
 
 Middleware handles auth redirect:
+
 ```typescript
 // middleware.ts (already exists for i18n)
 // Add: if not authenticated and hitting /dashboard → redirect to /login
@@ -572,5 +602,5 @@ The login page at `/login` uses your existing Supabase auth flow.
 
 ---
 
-*Kontuur Landing Page Plan — v1.0*
-*Later.com warmth · generous whitespace · editorial typography · calm confidence*
+_Kontuur Landing Page Plan — v1.0_
+_Later.com warmth · generous whitespace · editorial typography · calm confidence_

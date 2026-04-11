@@ -55,7 +55,12 @@ export function useCalendar(initialPosts: CalendarPost[]) {
       setPosts((prev) =>
         prev.map((p) =>
           p.id === postId
-            ? { ...p, status: 'scheduled', scheduled_at: scheduledAt, platform: platform ?? p.platform }
+            ? {
+                ...p,
+                status: 'scheduled',
+                scheduled_at: scheduledAt,
+                platform: platform ?? p.platform,
+              }
             : p
         )
       )
@@ -82,9 +87,7 @@ export function useCalendar(initialPosts: CalendarPost[]) {
       }
 
       setPosts((prev) =>
-        prev.map((p) =>
-          p.id === postId ? { ...p, status: 'approved', scheduled_at: null } : p
-        )
+        prev.map((p) => (p.id === postId ? { ...p, status: 'approved', scheduled_at: null } : p))
       )
       toast.success('Post moved to unscheduled')
     } catch {

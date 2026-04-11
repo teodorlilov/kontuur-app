@@ -46,7 +46,11 @@ interface GenerateWizardProps {
   initialTargetPostCount: number
 }
 
-export function GenerateWizard({ initialClients, initialClientData, initialTargetPostCount }: GenerateWizardProps) {
+export function GenerateWizard({
+  initialClients,
+  initialClientData,
+  initialTargetPostCount,
+}: GenerateWizardProps) {
   const [currentStep, setCurrentStep] = useState(1)
 
   // Step 1
@@ -56,7 +60,9 @@ export function GenerateWizard({ initialClients, initialClientData, initialTarge
   const [brandProfileLoading, setBrandProfileLoading] = useState(false)
   const [targetPostCount, setTargetPostCount] = useState(initialTargetPostCount)
   // Holds full ClientData for passthrough to research + generate APIs. Cleared on client change.
-  const [preloadedClientData, setPreloadedClientData] = useState<ClientData | null>(initialClientData)
+  const [preloadedClientData, setPreloadedClientData] = useState<ClientData | null>(
+    initialClientData
+  )
 
   // Step 2
   const [priorityPosts, setPriorityPosts] = useState<PriorityPost[]>([])
@@ -70,8 +76,11 @@ export function GenerateWizard({ initialClients, initialClientData, initialTarge
 
   // Step 4
   const [postType, setPostType] = useState<PostType>(
-    initialClientData?.defaultPostType === 'carousel' ? 'carousel'
-    : initialClientData?.defaultPostType === 'reels' ? 'reels' : 'single'
+    initialClientData?.defaultPostType === 'carousel'
+      ? 'carousel'
+      : initialClientData?.defaultPostType === 'reels'
+        ? 'reels'
+        : 'single'
   )
   const [slideCount, setSlideCount] = useState(initialClientData?.defaultCarouselSlides ?? 6)
 
@@ -86,7 +95,10 @@ export function GenerateWizard({ initialClients, initialClientData, initialTarge
 
   // Load brand profile when client changes (skips first render — initial data comes from props)
   useEffect(() => {
-    if (isInitialMount.current) { isInitialMount.current = false; return }
+    if (isInitialMount.current) {
+      isInitialMount.current = false
+      return
+    }
     if (!clientId) return
     // Client changed — clear preloaded data and fetch fresh
     setPreloadedClientData(null)
@@ -109,7 +121,7 @@ export function GenerateWizard({ initialClients, initialClientData, initialTarge
         }
       })
       .finally(() => setBrandProfileLoading(false))
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clientId])
 
   // Auto-research when entering step 3 — gated on brandProfileLoading to fix race condition
@@ -118,7 +130,7 @@ export function GenerateWizard({ initialClients, initialClientData, initialTarge
       setHasAutoResearched(true)
       void handleResearch()
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentStep, brandProfileLoading])
 
   // Start generation when entering step 5
@@ -126,7 +138,7 @@ export function GenerateWizard({ initialClients, initialClientData, initialTarge
     if (currentStep === 5 && generatedPosts.length === 0 && !isGenerating) {
       void startGeneration()
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentStep])
 
   // Abort any in-flight streams when navigating between steps
@@ -180,7 +192,7 @@ export function GenerateWizard({ initialClients, initialClientData, initialTarge
       })
 
       if (!res.ok) {
-        const err = await res.json() as { error?: string }
+        const err = (await res.json()) as { error?: string }
         toast.error(err.error ?? 'Generation failed')
         setCurrentStep(3)
         return
@@ -227,7 +239,7 @@ export function GenerateWizard({ initialClients, initialClientData, initialTarge
       })
 
       if (!res.ok) {
-        const err = await res.json() as { error?: string }
+        const err = (await res.json()) as { error?: string }
         toast.error(err.error ?? 'Research failed')
         return
       }
@@ -288,9 +300,13 @@ export function GenerateWizard({ initialClients, initialClientData, initialTarge
     setStreamTotal((t) => t - 1)
   }
 
-  function handlePostRegenerated(postId: string, updatedPost: PostData, updatedValidation: ValidationData) {
+  function handlePostRegenerated(
+    postId: string,
+    updatedPost: PostData,
+    updatedValidation: ValidationData
+  ) {
     setGeneratedPosts((prev) =>
-      prev.map((p) => p.post.id === postId ? { post: updatedPost, ...updatedValidation } : p)
+      prev.map((p) => (p.post.id === postId ? { post: updatedPost, ...updatedValidation } : p))
     )
   }
 
@@ -298,7 +314,8 @@ export function GenerateWizard({ initialClients, initialClientData, initialTarge
 
   const canNext = (() => {
     if (currentStep === 1) return !!clientId
-    if (currentStep === 3) return themes.some((t) => t.selected && t.description.trim()) || priorityPosts.length > 0
+    if (currentStep === 3)
+      return themes.some((t) => t.selected && t.description.trim()) || priorityPosts.length > 0
     return true
   })()
 
@@ -306,15 +323,30 @@ export function GenerateWizard({ initialClients, initialClientData, initialTarge
     return (
       <div className="flex flex-col items-center justify-center min-h-[calc(100vh-4rem)] gap-4 text-center">
         <div className="h-12 w-12 rounded-full bg-gray-100 flex items-center justify-center">
-          <svg className="h-6 w-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
+          <svg
+            className="h-6 w-6 text-gray-400"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={1.5}
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z"
+            />
           </svg>
         </div>
         <div>
           <p className="text-sm font-medium text-gray-900">No clients yet</p>
-          <p className="text-sm text-gray-500 mt-1">Add your first client before generating posts.</p>
+          <p className="text-sm text-gray-500 mt-1">
+            Add your first client before generating posts.
+          </p>
         </div>
-        <a href="/clients/new" className="inline-flex items-center gap-1.5 text-sm font-medium text-[#534AB7] hover:underline">
+        <a
+          href="/clients/new"
+          className="inline-flex items-center gap-1.5 text-sm font-medium text-[#534AB7] hover:underline"
+        >
           + Add your first client
         </a>
       </div>
@@ -327,7 +359,18 @@ export function GenerateWizard({ initialClients, initialClientData, initialTarge
       {!(hasGenerated && generatedPosts.length === 0) && (
         <>
           <div className="mb-10">
-            <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 400, color: 'var(--color-text-1)', letterSpacing: '-0.02em', margin: 0 }}>Generate posts</h1>
+            <h1
+              style={{
+                fontFamily: 'var(--font-display)',
+                fontSize: 28,
+                fontWeight: 400,
+                color: 'var(--color-text-1)',
+                letterSpacing: '-0.02em',
+                margin: 0,
+              }}
+            >
+              Generate posts
+            </h1>
             <p className="text-base text-gray-500 mt-1">
               Step {currentStep} of {STEP_LABELS.length} — {STEP_LABELS[currentStep - 1]}
             </p>
@@ -353,65 +396,65 @@ export function GenerateWizard({ initialClients, initialClientData, initialTarge
 
       {/* Step content */}
       <div className="flex flex-col gap-8">
-
         {/* Step 1 — Client & Platform */}
         {currentStep === 1 && (
-            <div className="flex flex-col gap-6">
-              <div className="flex flex-col gap-2">
-                <label className="text-base font-medium text-gray-700">Client</label>
-                <select
-                  value={clientId}
-                  onChange={(e) => setClientId(e.target.value)}
-                  className="rounded-lg border border-gray-300 px-4 py-3 text-base text-gray-900 focus:border-[#534AB7] focus:outline-none focus:ring-1 focus:ring-[#534AB7]"
-                >
-                  {clients.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
+          <div className="flex flex-col gap-6">
+            <div className="flex flex-col gap-2">
+              <label className="text-base font-medium text-gray-700">Client</label>
+              <select
+                value={clientId}
+                onChange={(e) => setClientId(e.target.value)}
+                className="rounded-lg border border-gray-300 px-4 py-3 text-base text-gray-900 focus:border-[#534AB7] focus:outline-none focus:ring-1 focus:ring-[#534AB7]"
+              >
+                {clients.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {brandProfileLoading && (
+              <div className="flex items-center gap-2 text-xs text-gray-400">
+                <Spinner size="sm" />
+                Loading brand profile...
               </div>
+            )}
 
-              {brandProfileLoading && (
-                <div className="flex items-center gap-2 text-xs text-gray-400">
-                  <Spinner size="sm" />
-                  Loading brand profile...
-                </div>
-              )}
-
-              <div className="flex flex-col gap-2">
-                <label className="text-base font-medium text-gray-700">Platform</label>
-                <div className="flex flex-wrap gap-2.5">
-                  {PLATFORMS.map((p) => (
-                    <button
-                      key={p}
-                      type="button"
-                      onClick={() => {
-                        setPlatform(p)
-                        if (p !== 'Instagram' && (postType === 'carousel' || postType === 'reels')) {
-                          setPostType('single')
-                        }
-                      }}
-                      className={cn(
-                        'px-4 py-2 rounded-full border text-base transition-colors',
-                        platform === p
-                          ? 'border-[#534AB7] bg-[#EEEDFE] text-[#534AB7]'
-                          : 'border-gray-200 text-gray-600 hover:border-gray-300'
-                      )}
-                    >
-                      {p}
-                    </button>
-                  ))}
-                </div>
+            <div className="flex flex-col gap-2">
+              <label className="text-base font-medium text-gray-700">Platform</label>
+              <div className="flex flex-wrap gap-2.5">
+                {PLATFORMS.map((p) => (
+                  <button
+                    key={p}
+                    type="button"
+                    onClick={() => {
+                      setPlatform(p)
+                      if (p !== 'Instagram' && (postType === 'carousel' || postType === 'reels')) {
+                        setPostType('single')
+                      }
+                    }}
+                    className={cn(
+                      'px-4 py-2 rounded-full border text-base transition-colors',
+                      platform === p
+                        ? 'border-[#534AB7] bg-[#EEEDFE] text-[#534AB7]'
+                        : 'border-gray-200 text-gray-600 hover:border-gray-300'
+                    )}
+                  >
+                    {p}
+                  </button>
+                ))}
               </div>
             </div>
+          </div>
         )}
 
         {/* Step 2 — Priority Posts */}
         {currentStep === 2 && (
           <div className="flex flex-col gap-5">
             <p className="text-base text-gray-600">
-              Add priority posts for specific campaigns or announcements. They generate first and appear with a red badge in review.
+              Add priority posts for specific campaigns or announcements. They generate first and
+              appear with a red badge in review.
             </p>
             <PriorityPostForm posts={priorityPosts} onChange={setPriorityPosts} />
             {priorityPosts.length === 0 && (
@@ -423,7 +466,6 @@ export function GenerateWizard({ initialClients, initialClientData, initialTarge
         {/* Step 3 — Weekly Themes */}
         {currentStep === 3 && (
           <div className="flex flex-col gap-5">
-
             {/* Real-time phase message */}
             {isResearching && researchPhase && (
               <p className="text-sm text-gray-500 animate-pulse">{researchPhase}</p>
@@ -434,13 +476,18 @@ export function GenerateWizard({ initialClients, initialClientData, initialTarge
               <div className="flex flex-col gap-3">
                 {themes.map((theme, i) => (
                   <div key={i} className="animate-[fadein_0.4s_ease-out_forwards] opacity-0">
-                    <ThemeRow theme={theme} index={i} onChange={handleThemeChange} onRemove={handleThemeRemove} />
+                    <ThemeRow
+                      theme={theme}
+                      index={i}
+                      onChange={handleThemeChange}
+                      onRemove={handleThemeRemove}
+                    />
                   </div>
                 ))}
-                {isResearching && Array.from(
-                  { length: Math.max(0, targetPostCount - themes.length) },
-                  (_, i) => <ThemeRowSkeleton key={`skeleton-${i}`} />
-                )}
+                {isResearching &&
+                  Array.from({ length: Math.max(0, targetPostCount - themes.length) }, (_, i) => (
+                    <ThemeRowSkeleton key={`skeleton-${i}`} />
+                  ))}
               </div>
             )}
 
@@ -449,7 +496,12 @@ export function GenerateWizard({ initialClients, initialClientData, initialTarge
                 <div className="flex items-center justify-between">
                   {selectedThemes.length < targetPostCount && (
                     <button
-                      onClick={() => setThemes((prev) => [...prev, { description: '', count: 1, selected: true }])}
+                      onClick={() =>
+                        setThemes((prev) => [
+                          ...prev,
+                          { description: '', count: 1, selected: true },
+                        ])
+                      }
                       className="text-base font-medium text-[#534AB7] hover:underline"
                     >
                       + Add theme
@@ -465,14 +517,15 @@ export function GenerateWizard({ initialClients, initialClientData, initialTarge
                   <Button
                     variant="secondary"
                     size="sm"
-                    onClick={() => { void handleResearch() }}
+                    onClick={() => {
+                      void handleResearch()
+                    }}
                   >
                     Research more topics
                   </Button>
                 )}
               </>
             )}
-
           </div>
         )}
 
@@ -490,12 +543,13 @@ export function GenerateWizard({ initialClients, initialClientData, initialTarge
         {/* Step 5 — Generated Posts */}
         {currentStep === 5 && (
           <div className="flex flex-col gap-4">
-
             {isGenerating && streamTotal > 0 && (
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between text-sm text-gray-500">
                   <span>Generating posts...</span>
-                  <span>{generatedPosts.length} of {streamTotal} complete</span>
+                  <span>
+                    {generatedPosts.length} of {streamTotal} complete
+                  </span>
                 </div>
                 <div className="h-1.5 w-full rounded-full bg-gray-100 overflow-hidden">
                   <div
@@ -506,14 +560,23 @@ export function GenerateWizard({ initialClients, initialClientData, initialTarge
               </div>
             )}
 
-            {(isGenerating || generatedPosts.length > 0) && streamTotal > 0 && (
+            {(isGenerating || generatedPosts.length > 0) &&
+              streamTotal > 0 &&
               Array.from({ length: streamTotal }, (_, i) => {
                 const item = generatedPosts[i]
                 return item ? (
-                  <div key={item.post.id} className="animate-[fadein_0.4s_ease-out_forwards] opacity-0">
+                  <div
+                    key={item.post.id}
+                    className="animate-[fadein_0.4s_ease-out_forwards] opacity-0"
+                  >
                     <PostCard
                       post={item.post}
-                      validationData={{ quality: item.quality, language: item.language, slop: item.slop, sourceGrounding: item.sourceGrounding }}
+                      validationData={{
+                        quality: item.quality,
+                        language: item.language,
+                        slop: item.slop,
+                        sourceGrounding: item.sourceGrounding,
+                      }}
                       onApprove={handlePostApproved}
                       onDiscard={handlePostRemoved}
                       onRegenerate={handlePostRegenerated}
@@ -522,13 +585,18 @@ export function GenerateWizard({ initialClients, initialClientData, initialTarge
                 ) : (
                   <PostCardSkeleton key={`skeleton-${i}`} />
                 )
-              })
-            )}
+              })}
 
             {!isGenerating && generatedPosts.length === 0 && hasGenerated && (
               <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 text-center">
                 <div className="h-16 w-16 rounded-full bg-green-50 flex items-center justify-center">
-                  <svg className="h-8 w-8 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <svg
+                    className="h-8 w-8 text-green-500"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={2}
+                  >
                     <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
                   </svg>
                 </div>
@@ -565,23 +633,36 @@ export function GenerateWizard({ initialClients, initialClientData, initialTarge
             {!isGenerating && generatedPosts.length === 0 && !hasGenerated && streamTotal === 0 && (
               <div className="flex flex-col items-center justify-center py-16 gap-4 text-center">
                 <div className="h-12 w-12 rounded-full bg-gray-100 flex items-center justify-center">
-                  <svg className="h-6 w-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
+                  <svg
+                    className="h-6 w-6 text-gray-400"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={1.5}
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"
+                    />
                   </svg>
                 </div>
                 <div>
                   <p className="text-sm font-medium text-gray-900">No posts generated</p>
-                  <p className="text-sm text-gray-500 mt-1">Something went wrong during generation.</p>
+                  <p className="text-sm text-gray-500 mt-1">
+                    Something went wrong during generation.
+                  </p>
                 </div>
                 <button
-                  onClick={() => { void startGeneration() }}
+                  onClick={() => {
+                    void startGeneration()
+                  }}
                   className="text-sm font-medium text-[#534AB7] hover:underline"
                 >
                   Retry generation
                 </button>
               </div>
             )}
-
           </div>
         )}
       </div>
@@ -607,11 +688,7 @@ export function GenerateWizard({ initialClients, initialClientData, initialTarge
                 Skip
               </button>
             )}
-            <Button
-              size="lg"
-              onClick={() => setCurrentStep((s) => s + 1)}
-              disabled={!canNext}
-            >
+            <Button size="lg" onClick={() => setCurrentStep((s) => s + 1)} disabled={!canNext}>
               {currentStep === 4 ? 'Generate' : 'Next'}
             </Button>
           </div>

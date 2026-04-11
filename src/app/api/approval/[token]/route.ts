@@ -2,10 +2,7 @@ import { NextResponse } from 'next/server'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import type { ApprovalResponse, ApprovalPostData, ApprovalBatchData } from '@/types/api'
 
-export async function GET(
-  _request: Request,
-  { params }: { params: Promise<{ token: string }> }
-) {
+export async function GET(_request: Request, { params }: { params: Promise<{ token: string }> }) {
   const { token } = await params
   const supabase = createAdminSupabaseClient()
 
@@ -88,10 +85,7 @@ export async function GET(
   return NextResponse.json(result)
 }
 
-export async function POST(
-  request: Request,
-  { params }: { params: Promise<{ token: string }> }
-) {
+export async function POST(request: Request, { params }: { params: Promise<{ token: string }> }) {
   const { token } = await params
   const supabase = createAdminSupabaseClient()
 
@@ -103,7 +97,10 @@ export async function POST(
   }
 
   if (body.status !== 'approved' && body.status !== 'changes_requested') {
-    return NextResponse.json({ error: 'status must be "approved" or "changes_requested"' }, { status: 400 })
+    return NextResponse.json(
+      { error: 'status must be "approved" or "changes_requested"' },
+      { status: 400 }
+    )
   }
 
   // Fetch token rows (client_email stores the batch ID)
@@ -119,10 +116,7 @@ export async function POST(
   // Check expiry
   const firstRow = tokenRows[0]!
   if (new Date(firstRow.expires_at) < new Date()) {
-    return NextResponse.json(
-      { error: 'This approval link has expired' },
-      { status: 410 }
-    )
+    return NextResponse.json({ error: 'This approval link has expired' }, { status: 410 })
   }
 
   // Check if already responded

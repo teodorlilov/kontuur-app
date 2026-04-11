@@ -15,9 +15,7 @@ export function UnscheduledStrip({ posts, colorMap, onPostClick }: UnscheduledSt
   return (
     <div className="bg-white border border-gray-200 rounded-xl p-4">
       <div className="flex items-center gap-2 mb-3">
-        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
-          Unscheduled
-        </p>
+        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Unscheduled</p>
         <span className="text-xs bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded-full">
           {posts.length}
         </span>
@@ -44,12 +42,8 @@ export function UnscheduledStrip({ posts, colorMap, onPostClick }: UnscheduledSt
                   style={{ backgroundColor: getPillarColor(post.pillar).hex }}
                 />
               )}
-              <span className="text-xs font-medium text-gray-700 truncate">
-                {post.client_name}
-              </span>
-              {post.platform && (
-                <span className="text-[10px] text-gray-400">{post.platform}</span>
-              )}
+              <span className="text-xs font-medium text-gray-700 truncate">{post.client_name}</span>
+              {post.platform && <span className="text-[10px] text-gray-400">{post.platform}</span>}
             </button>
           )
         })}

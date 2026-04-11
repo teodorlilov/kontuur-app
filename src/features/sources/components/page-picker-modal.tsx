@@ -129,12 +129,15 @@ export function PagePickerModal({
         ) : sitemaps.length === 0 ? (
           <div className="text-center py-8">
             <p className="text-sm text-gray-500">No sitemaps found on this website.</p>
-            <p className="text-xs text-gray-400 mt-1">The site may not have a sitemap or accessible links.</p>
+            <p className="text-xs text-gray-400 mt-1">
+              The site may not have a sitemap or accessible links.
+            </p>
           </div>
         ) : (
           <>
             <p className="text-sm text-gray-600 mb-3">
-              Found {sitemaps.length} sitemaps on {siteOrigin.replace(/^https?:\/\//, '')}. Select one to browse its pages.
+              Found {sitemaps.length} sitemaps on {siteOrigin.replace(/^https?:\/\//, '')}. Select
+              one to browse its pages.
             </p>
 
             <div className="max-h-[40vh] overflow-y-auto border border-gray-100 rounded-lg divide-y divide-gray-50">
@@ -148,9 +151,7 @@ export function PagePickerModal({
                   <span className="text-sm font-medium text-gray-900">
                     {displaySitemapName(url)}
                   </span>
-                  <span className="text-xs text-gray-400 truncate ml-auto">
-                    {url}
-                  </span>
+                  <span className="text-xs text-gray-400 truncate ml-auto">{url}</span>
                 </button>
               ))}
             </div>
@@ -166,7 +167,9 @@ export function PagePickerModal({
         /* ---- No pages found ---- */
         <div className="text-center py-8">
           <p className="text-sm text-gray-500">No pages found on this website.</p>
-          <p className="text-xs text-gray-400 mt-1">The site may not have a sitemap or accessible links.</p>
+          <p className="text-xs text-gray-400 mt-1">
+            The site may not have a sitemap or accessible links.
+          </p>
           {sitemaps.length > 0 && (
             <button
               type="button"

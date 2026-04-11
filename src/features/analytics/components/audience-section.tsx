@@ -1,14 +1,6 @@
 'use client'
 
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-} from 'recharts'
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import type { AnalyticsMetrics } from '@/types/api'
 
 interface AudienceSectionProps {
@@ -89,7 +81,9 @@ export function AudienceSection({ metrics }: AudienceSectionProps) {
                   tick={{ fontSize: 9, fill: '#9ca3af' }}
                   tickLine={false}
                   axisLine={false}
-                  tickFormatter={(v: number) => v >= 1000 ? `${(v / 1000).toFixed(0)}k` : String(v)}
+                  tickFormatter={(v: number) =>
+                    v >= 1000 ? `${(v / 1000).toFixed(0)}k` : String(v)
+                  }
                 />
                 <Tooltip
                   contentStyle={{ fontSize: 11, borderRadius: 8, border: '1px solid #e5e7eb' }}
@@ -105,7 +99,9 @@ export function AudienceSection({ metrics }: AudienceSectionProps) {
 
         {/* Top locations */}
         <div>
-          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3">Top locations</p>
+          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3">
+            Top locations
+          </p>
           <div className="grid grid-cols-2 gap-4">
             {audience.top_countries.length > 0 && (
               <div>

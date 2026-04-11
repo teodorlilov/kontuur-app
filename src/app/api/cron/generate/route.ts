@@ -1,6 +1,10 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
-import { fetchClientData, getAgencyNiche, extractPlatformFromMix } from '@/lib/clients/fetch-client-data'
+import {
+  fetchClientData,
+  getAgencyNiche,
+  extractPlatformFromMix,
+} from '@/lib/clients/fetch-client-data'
 import { allocateByWeight } from '@/lib/clients/content-pillars'
 import { runGenerationBatch } from '@/ai/generation/generation-run'
 import { generateBriefing } from '@/ai/intelligence/generate-briefing'
@@ -98,7 +102,7 @@ export async function GET(request: NextRequest) {
       const total = (schedule as { frequency_value: number }).frequency_value || 1
       const allocation = allocateByWeight(
         pillars.length > 0 ? pillars : [{ pillar: client.niche, weight: 100 }],
-        total,
+        total
       )
       const themes: Theme[] = []
       for (const [pillar, count] of allocation) {
@@ -159,7 +163,8 @@ export async function GET(request: NextRequest) {
       // 12. Refresh best-time if stale
       const updatedAt = brandProfile?.best_time_updated_at
       const isStale =
-        !updatedAt || Date.now() - new Date(updatedAt).getTime() > BEST_TIME_REFRESH_DAYS * 86_400_000
+        !updatedAt ||
+        Date.now() - new Date(updatedAt).getTime() > BEST_TIME_REFRESH_DAYS * 86_400_000
       if (isStale) {
         const bestTime = await generateBestTime({
           niche: (clientRow as { niche: string | null }).niche ?? 'General',
@@ -231,8 +236,8 @@ export async function GET(request: NextRequest) {
               .from('clients')
               .select('id')
               .eq('agency_id', agencyId)
-            const agencyClientIds = (agencyClients as Array<{ id: string }> | null ?? []).map(
-              (c) => c.id,
+            const agencyClientIds = ((agencyClients as Array<{ id: string }> | null) ?? []).map(
+              (c) => c.id
             )
 
             let pendingCount = 0

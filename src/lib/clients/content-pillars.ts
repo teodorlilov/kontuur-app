@@ -50,10 +50,7 @@ export function equalizeWeights(pillars: WeightedPillar[]): WeightedPillar[] {
  * Ensures at least 1 allocation for any pillar with weight > 0 when total allows.
  * Returns a Map<pillarName, count>.
  */
-export function allocateByWeight(
-  pillars: WeightedPillar[],
-  total: number
-): Map<string, number> {
+export function allocateByWeight(pillars: WeightedPillar[], total: number): Map<string, number> {
   const result = new Map<string, number>()
   if (pillars.length === 0 || total <= 0) return result
 

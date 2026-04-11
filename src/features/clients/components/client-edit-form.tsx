@@ -38,7 +38,14 @@ interface ClientEditFormProps {
   insights: ContentInsights | null
 }
 
-export function ClientEditForm({ clientId, sourceCount, client, profile, schedule, insights }: ClientEditFormProps) {
+export function ClientEditForm({
+  clientId,
+  sourceCount,
+  client,
+  profile,
+  schedule,
+  insights,
+}: ClientEditFormProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [saving, setSaving] = useState(false)
@@ -52,7 +59,9 @@ export function ClientEditForm({ clientId, sourceCount, client, profile, schedul
     const connected = searchParams.get('meta_connected')
     const error = searchParams.get('meta_error')
     if (connected) {
-      toast.success(`${connected === 'instagram' ? 'Instagram' : 'Facebook'} account connected successfully`)
+      toast.success(
+        `${connected === 'instagram' ? 'Instagram' : 'Facebook'} account connected successfully`
+      )
     } else if (error) {
       toast.error('Failed to connect account. Please try again.')
     }
@@ -64,7 +73,9 @@ export function ClientEditForm({ clientId, sourceCount, client, profile, schedul
       .then((data: { connections?: MetaConnection[] }) => {
         if (data.connections) setConnections(data.connections)
       })
-      .catch(() => { /* silently ignore */ })
+      .catch(() => {
+        /* silently ignore */
+      })
   }, [clientId])
 
   async function handleDisconnect(connectionId: string) {
@@ -99,7 +110,9 @@ export function ClientEditForm({ clientId, sourceCount, client, profile, schedul
   )
   const [avoidTopics, setAvoidTopics] = useState(profile?.avoid_topics ?? '')
   const [testimonialVoice, setTestimonialVoice] = useState(profile?.client_testimonial_voice ?? '')
-  const [languageFormality, setLanguageFormality] = useState(profile?.language_formality ?? 'neutral')
+  const [languageFormality, setLanguageFormality] = useState(
+    profile?.language_formality ?? 'neutral'
+  )
   const [secondaryLanguage, setSecondaryLanguage] = useState(profile?.secondary_language ?? '')
   const [isHealthNiche, setIsHealthNiche] = useState(profile?.is_health_niche ?? false)
   const [languageNotes, setLanguageNotes] = useState(profile?.language_notes ?? '')
@@ -111,7 +124,8 @@ export function ClientEditForm({ clientId, sourceCount, client, profile, schedul
   // Platform — single select, derive from weekly_mix_json or default to Instagram
   const mixJson = profile?.weekly_mix_json as Record<string, unknown> | null
   const firstPlatform = mixJson
-    ? (Object.keys(mixJson).find((k) => !['carousel', 'single', 'reels'].includes(k)) ?? 'Instagram')
+    ? (Object.keys(mixJson).find((k) => !['carousel', 'single', 'reels'].includes(k)) ??
+      'Instagram')
     : 'Instagram'
   const [activePlatform, setActivePlatform] = useState<string>(firstPlatform)
 
@@ -177,9 +191,25 @@ export function ClientEditForm({ clientId, sourceCount, client, profile, schedul
         <section className="bg-white rounded-xl border border-gray-200 p-5 space-y-4">
           <p className="text-sm font-medium text-gray-700">Basic info</p>
           <Input label="Client name" value={name} onChange={(e) => setName(e.target.value)} />
-          <Input label="Niche" value={niche} onChange={(e) => setNiche(e.target.value)} placeholder="e.g. Fitness coaching" />
-          <Input label="Website URL" value={websiteUrl} onChange={(e) => setWebsiteUrl(e.target.value)} placeholder="e.g. https://example.com" />
-          <Input label="Client contact email" type="email" value={contactEmail} onChange={(e) => setContactEmail(e.target.value)} placeholder="client@example.com" />
+          <Input
+            label="Niche"
+            value={niche}
+            onChange={(e) => setNiche(e.target.value)}
+            placeholder="e.g. Fitness coaching"
+          />
+          <Input
+            label="Website URL"
+            value={websiteUrl}
+            onChange={(e) => setWebsiteUrl(e.target.value)}
+            placeholder="e.g. https://example.com"
+          />
+          <Input
+            label="Client contact email"
+            type="email"
+            value={contactEmail}
+            onChange={(e) => setContactEmail(e.target.value)}
+            placeholder="client@example.com"
+          />
           <Select
             label="Primary language"
             value={language}
@@ -307,27 +337,32 @@ export function ClientEditForm({ clientId, sourceCount, client, profile, schedul
         </section>
 
         {/* Post type defaults — only relevant for Instagram */}
-        {activePlatform === 'Instagram' && <section className="bg-white rounded-xl border border-gray-200 p-5 space-y-4">
-          <p className="text-sm font-medium text-gray-700">Post defaults</p>
-          <Select
-            label="Default post type"
-            value={defaultPostType}
-            onChange={(e) => setDefaultPostType(e.target.value)}
-            options={[
-              { value: 'single', label: 'Single image' },
-              { value: 'carousel', label: 'Carousel' },
-              { value: 'reels', label: 'Reels / video' },
-            ]}
-          />
-          {defaultPostType === 'carousel' && (
+        {activePlatform === 'Instagram' && (
+          <section className="bg-white rounded-xl border border-gray-200 p-5 space-y-4">
+            <p className="text-sm font-medium text-gray-700">Post defaults</p>
             <Select
-              label="Default carousel slides"
-              value={defaultCarouselSlides}
-              onChange={(e) => setDefaultCarouselSlides(e.target.value)}
-              options={CAROUSEL_SLIDE_OPTIONS.map((n) => ({ value: String(n), label: `${n} slides` }))}
+              label="Default post type"
+              value={defaultPostType}
+              onChange={(e) => setDefaultPostType(e.target.value)}
+              options={[
+                { value: 'single', label: 'Single image' },
+                { value: 'carousel', label: 'Carousel' },
+                { value: 'reels', label: 'Reels / video' },
+              ]}
             />
-          )}
-        </section>}
+            {defaultPostType === 'carousel' && (
+              <Select
+                label="Default carousel slides"
+                value={defaultCarouselSlides}
+                onChange={(e) => setDefaultCarouselSlides(e.target.value)}
+                options={CAROUSEL_SLIDE_OPTIONS.map((n) => ({
+                  value: String(n),
+                  label: `${n} slides`,
+                }))}
+              />
+            )}
+          </section>
+        )}
 
         {/* Autonomous schedule */}
         <section className="bg-white rounded-xl border border-gray-200 p-5 space-y-4">
@@ -355,11 +390,18 @@ export function ClientEditForm({ clientId, sourceCount, client, profile, schedul
           {connections.length > 0 && (
             <div className="space-y-2">
               {connections.map((conn) => {
-                const isExpired = conn.token_expires_at ? new Date(conn.token_expires_at) < new Date() : false
+                const isExpired = conn.token_expires_at
+                  ? new Date(conn.token_expires_at) < new Date()
+                  : false
                 return (
-                  <div key={conn.id} className="flex items-center justify-between rounded-lg border border-gray-200 px-3 py-2">
+                  <div
+                    key={conn.id}
+                    className="flex items-center justify-between rounded-lg border border-gray-200 px-3 py-2"
+                  >
                     <div className="flex items-center gap-2">
-                      <span className="text-base">{conn.platform === 'instagram' ? '📸' : '👤'}</span>
+                      <span className="text-base">
+                        {conn.platform === 'instagram' ? '📸' : '👤'}
+                      </span>
                       <div>
                         <p className="text-sm font-medium text-gray-800">
                           {conn.platform === 'instagram' ? 'Instagram' : 'Facebook'}
@@ -367,7 +409,9 @@ export function ClientEditForm({ clientId, sourceCount, client, profile, schedul
                           <span className="font-normal text-gray-600">{conn.account_name}</span>
                         </p>
                         {isExpired && (
-                          <p className="text-xs text-red-500">Token expired — reconnect to refresh</p>
+                          <p className="text-xs text-red-500">
+                            Token expired — reconnect to refresh
+                          </p>
                         )}
                       </div>
                     </div>
@@ -406,7 +450,10 @@ export function ClientEditForm({ clientId, sourceCount, client, profile, schedul
                   : 'border-gray-200 text-gray-700 hover:border-gray-300'
               )}
             >
-              👤 {connectedPlatforms.has('facebook') ? 'Reconnect Facebook Page' : 'Connect Facebook Page'}
+              👤{' '}
+              {connectedPlatforms.has('facebook')
+                ? 'Reconnect Facebook Page'
+                : 'Connect Facebook Page'}
             </a>
           </div>
           <p className="text-xs text-gray-400">
@@ -422,21 +469,35 @@ export function ClientEditForm({ clientId, sourceCount, client, profile, schedul
               <div className="flex items-center gap-2">
                 <span className="text-sm text-gray-600">Avg quality score:</span>
                 <span className="text-sm font-semibold text-gray-900">{insights.avgScore}/10</span>
-                {insights.trend === 'improving' && <span className="text-green-500 text-sm">↑ improving</span>}
-                {insights.trend === 'declining' && <span className="text-red-500 text-sm">↓ declining</span>}
-                {insights.trend === 'stable' && <span className="text-gray-400 text-sm">→ stable</span>}
+                {insights.trend === 'improving' && (
+                  <span className="text-green-500 text-sm">↑ improving</span>
+                )}
+                {insights.trend === 'declining' && (
+                  <span className="text-red-500 text-sm">↓ declining</span>
+                )}
+                {insights.trend === 'stable' && (
+                  <span className="text-gray-400 text-sm">→ stable</span>
+                )}
               </div>
             )}
             {insights.topApprovedPillars.length > 0 && (
               <div>
-                <span className="text-xs text-gray-500 uppercase tracking-wide">Top approved pillars: </span>
-                <span className="text-sm text-gray-700">{insights.topApprovedPillars.join(', ')}</span>
+                <span className="text-xs text-gray-500 uppercase tracking-wide">
+                  Top approved pillars:{' '}
+                </span>
+                <span className="text-sm text-gray-700">
+                  {insights.topApprovedPillars.join(', ')}
+                </span>
               </div>
             )}
             {insights.topRewritePillars.length > 0 && (
               <div>
-                <span className="text-xs text-gray-500 uppercase tracking-wide">Most rewritten pillars: </span>
-                <span className="text-sm text-gray-700">{insights.topRewritePillars.join(', ')}</span>
+                <span className="text-xs text-gray-500 uppercase tracking-wide">
+                  Most rewritten pillars:{' '}
+                </span>
+                <span className="text-sm text-gray-700">
+                  {insights.topRewritePillars.join(', ')}
+                </span>
               </div>
             )}
           </section>
@@ -481,4 +542,3 @@ export function ClientEditForm({ clientId, sourceCount, client, profile, schedul
     </>
   )
 }
-

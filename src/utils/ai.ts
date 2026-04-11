@@ -3,7 +3,11 @@ import type Anthropic from '@anthropic-ai/sdk'
 import type { UrlAnalysisResponse } from '@/types/api'
 import { callAnthropic, LIGHT_MODEL } from '@/utils/ai-client'
 import { buildAnalyzeUrlPrompt, type AnalyzeUrlInput } from '@/ai/analyze-url/analyze-url'
-import { buildPillarsPrompt, type GeneratePillarsInput, type GeneratePillarsResult } from '@/ai/generate-pillars/generate-pillars'
+import {
+  buildPillarsPrompt,
+  type GeneratePillarsInput,
+  type GeneratePillarsResult,
+} from '@/ai/generate-pillars/generate-pillars'
 
 export function extractTextFromMessage(message: Anthropic.Message): string {
   const block = message.content[0]
@@ -14,7 +18,7 @@ export function parseJsonResponse<T>(
   message: Anthropic.Message,
   mode: 'object' | 'array' = 'object',
   /** Prepend this string before parsing — use when assistantPrefill was set (e.g. '[') */
-  prefill?: string,
+  prefill?: string
 ): T {
   const text = extractTextFromMessage(message)
   const withPrefill = prefill ? prefill + text : text
@@ -64,7 +68,12 @@ export function sanitizeAndParseJson<T>(raw: string, fallback: T, mode?: 'object
     try {
       return JSON.parse(jsonrepair(json)) as T
     } catch (err) {
-      console.warn('[sanitizeAndParseJson] Failed to parse LLM JSON:', err, '\nExtracted (first 500):', json.slice(0, 500))
+      console.warn(
+        '[sanitizeAndParseJson] Failed to parse LLM JSON:',
+        err,
+        '\nExtracted (first 500):',
+        json.slice(0, 500)
+      )
       return fallback
     }
   }

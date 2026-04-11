@@ -22,11 +22,41 @@ function makePost(overrides: Partial<ReviewPost> = {}): ReviewPost {
 }
 
 const posts: ReviewPost[] = [
-  makePost({ id: 'p1', client_id: 'c1', priority: true, created_at: '2026-03-20T10:00:00Z', client_name: 'Alpha' }),
-  makePost({ id: 'p2', client_id: 'c1', priority: false, created_at: '2026-03-21T10:00:00Z', client_name: 'Alpha' }),
-  makePost({ id: 'p3', client_id: 'c2', priority: false, created_at: '2026-03-19T10:00:00Z', client_name: 'Beta' }),
-  makePost({ id: 'p4', client_id: 'c2', priority: true, created_at: '2026-03-22T10:00:00Z', client_name: 'Beta' }),
-  makePost({ id: 'p5', client_id: 'c1', priority: false, created_at: '2026-03-18T10:00:00Z', client_name: 'Alpha' }),
+  makePost({
+    id: 'p1',
+    client_id: 'c1',
+    priority: true,
+    created_at: '2026-03-20T10:00:00Z',
+    client_name: 'Alpha',
+  }),
+  makePost({
+    id: 'p2',
+    client_id: 'c1',
+    priority: false,
+    created_at: '2026-03-21T10:00:00Z',
+    client_name: 'Alpha',
+  }),
+  makePost({
+    id: 'p3',
+    client_id: 'c2',
+    priority: false,
+    created_at: '2026-03-19T10:00:00Z',
+    client_name: 'Beta',
+  }),
+  makePost({
+    id: 'p4',
+    client_id: 'c2',
+    priority: true,
+    created_at: '2026-03-22T10:00:00Z',
+    client_name: 'Beta',
+  }),
+  makePost({
+    id: 'p5',
+    client_id: 'c1',
+    priority: false,
+    created_at: '2026-03-18T10:00:00Z',
+    client_name: 'Alpha',
+  }),
 ]
 
 describe('filterReviewPosts', () => {
@@ -56,8 +86,12 @@ describe('filterReviewPosts', () => {
 
   it('sorts priority posts before non-priority', () => {
     const result = filterReviewPosts(posts, 'all', null)
-    const priorityIndices = result.map((p, i) => (p.priority ? i : null)).filter((i): i is number => i !== null)
-    const nonPriorityIndices = result.map((p, i) => (!p.priority ? i : null)).filter((i): i is number => i !== null)
+    const priorityIndices = result
+      .map((p, i) => (p.priority ? i : null))
+      .filter((i): i is number => i !== null)
+    const nonPriorityIndices = result
+      .map((p, i) => (!p.priority ? i : null))
+      .filter((i): i is number => i !== null)
     const lastPriority = Math.max(...priorityIndices)
     const firstNonPriority = Math.min(...nonPriorityIndices)
     expect(lastPriority).toBeLessThan(firstNonPriority)

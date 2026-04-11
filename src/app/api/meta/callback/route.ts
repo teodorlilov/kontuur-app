@@ -15,7 +15,10 @@ interface IGLongLivedToken {
   expires_in: number
 }
 
-async function exchangeInstagramCode(code: string, redirectUri: string): Promise<IGShortLivedToken> {
+async function exchangeInstagramCode(
+  code: string,
+  redirectUri: string
+): Promise<IGShortLivedToken> {
   const body = new URLSearchParams()
   body.set('client_id', process.env.META_INSTAGRAM_APP_ID!)
   body.set('client_secret', process.env.META_INSTAGRAM_APP_SECRET!)
@@ -101,24 +104,22 @@ async function connectInstagram(
     `https://graph.instagram.com/${META_GRAPH_VERSION}/me?fields=id,username,name&access_token=${longLivedToken}`
   )
   if (!igRes.ok) throw new Error('Failed to fetch Instagram account details')
-  const igUser = await igRes.json() as { id: string; username?: string; name?: string }
+  const igUser = (await igRes.json()) as { id: string; username?: string; name?: string }
 
   const expiresAt = new Date()
   expiresAt.setSeconds(expiresAt.getSeconds() + expiresIn)
 
-  const { error } = await admin
-    .from('social_connections')
-    .upsert(
-      {
-        client_id: clientId,
-        platform: 'instagram',
-        account_id: igUser.id ?? igUserId,
-        account_name: igUser.username ?? igUser.name ?? igUserId,
-        access_token: longLivedToken,
-        token_expires_at: expiresAt.toISOString(),
-      },
-      { onConflict: 'client_id,platform' }
-    )
+  const { error } = await admin.from('social_connections').upsert(
+    {
+      client_id: clientId,
+      platform: 'instagram',
+      account_id: igUser.id ?? igUserId,
+      account_name: igUser.username ?? igUser.name ?? igUserId,
+      access_token: longLivedToken,
+      token_expires_at: expiresAt.toISOString(),
+    },
+    { onConflict: 'client_id,platform' }
+  )
 
   if (error) throw new Error(`Failed to save Instagram connection: ${error.message}`)
 }
@@ -138,9 +139,11 @@ async function connectFacebook(
   const pagesRes = await fetch(
     `${GRAPH_BASE}/me/accounts?fields=id,name,access_token&limit=100&access_token=${longLivedToken}`
   )
-  const pagesBody = await pagesRes.json() as { data?: FBPage[]; error?: { message: string } }
+  const pagesBody = (await pagesRes.json()) as { data?: FBPage[]; error?: { message: string } }
   if (!pagesRes.ok || pagesBody.error) {
-    throw new Error(`Failed to fetch Facebook pages: ${pagesBody.error?.message ?? pagesRes.status}`)
+    throw new Error(
+      `Failed to fetch Facebook pages: ${pagesBody.error?.message ?? pagesRes.status}`
+    )
   }
 
   let page: FBPage | undefined = pagesBody.data?.[0]
@@ -150,29 +153,29 @@ async function connectFacebook(
     const bmRes = await fetch(
       `${GRAPH_BASE}/me/businesses?fields=owned_pages{id,name,access_token}&limit=10&access_token=${longLivedToken}`
     )
-    const bmBody = await bmRes.json() as { data?: Array<{ owned_pages?: { data: FBPage[] } }> }
+    const bmBody = (await bmRes.json()) as { data?: Array<{ owned_pages?: { data: FBPage[] } }> }
     page = bmBody.data?.[0]?.owned_pages?.data?.[0]
   }
 
   if (!page) {
-    throw new Error('No Facebook Pages found. Please connect a Facebook Page managed directly by your account.')
+    throw new Error(
+      'No Facebook Pages found. Please connect a Facebook Page managed directly by your account.'
+    )
   }
   const expiresAt = new Date()
   expiresAt.setDate(expiresAt.getDate() + 60)
 
-  const { error } = await admin
-    .from('social_connections')
-    .upsert(
-      {
-        client_id: clientId,
-        platform: 'facebook',
-        account_id: page.id,
-        account_name: page.name,
-        access_token: page.access_token,
-        token_expires_at: expiresAt.toISOString(),
-      },
-      { onConflict: 'client_id,platform' }
-    )
+  const { error } = await admin.from('social_connections').upsert(
+    {
+      client_id: clientId,
+      platform: 'facebook',
+      account_id: page.id,
+      account_name: page.name,
+      access_token: page.access_token,
+      token_expires_at: expiresAt.toISOString(),
+    },
+    { onConflict: 'client_id,platform' }
+  )
 
   if (error) throw new Error(`Failed to save Facebook connection: ${error.message}`)
 }
@@ -222,7 +225,13 @@ export async function GET(request: NextRequest) {
       // Instagram Business Login flow
       const shortLived = await exchangeInstagramCode(code, redirectUri)
       const longLived = await exchangeInstagramForLongLived(shortLived.access_token)
-      await connectInstagram(longLived.access_token, shortLived.user_id, longLived.expires_in, clientId, admin)
+      await connectInstagram(
+        longLived.access_token,
+        shortLived.user_id,
+        longLived.expires_in,
+        clientId,
+        admin
+      )
     } else if (platform === 'facebook') {
       // Facebook Pages flow
       const shortLived = await exchangeFacebookCode(code, redirectUri)

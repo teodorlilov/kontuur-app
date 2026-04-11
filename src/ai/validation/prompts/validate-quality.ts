@@ -24,7 +24,13 @@ import type {
 } from '@/ai/validation/types/scoring'
 
 // Re-export types for existing consumers
-export type { QualityContext, QualityIssue, QualityResult, SingleQualityResult, CarouselQualityResult }
+export type {
+  QualityContext,
+  QualityIssue,
+  QualityResult,
+  SingleQualityResult,
+  CarouselQualityResult,
+}
 
 // ---- Raw LLM response (internal) ----
 
@@ -88,20 +94,25 @@ ${language}-specific AI patterns to also check:
 - Literal calques from English that no native ${language} speaker would write
 - Unnatural word order following English syntax
 - Register violation: ${
-    formality === 'formal' ? 'informal address in a formal-register post' :
-    formality === 'casual' ? 'formal address in a casual-register post' :
-    'extreme formality or casualness when neutral register is required'
+    formality === 'formal'
+      ? 'informal address in a formal-register post'
+      : formality === 'casual'
+        ? 'formal address in a casual-register post'
+        : 'extreme formality or casualness when neutral register is required'
   }`
 
   // Per-client language notes from DB
-  const clientNotes = lc.languageNotes
-    ? `\n${lc.languageNotes}`
-    : ''
+  const clientNotes = lc.languageNotes ? `\n${lc.languageNotes}` : ''
 
   return `${base}${clientNotes}`
 }
 
-function buildBasePrompt(brandCtx: string, langTells: string, ctx?: QualityContext, isCarousel?: boolean): string {
+function buildBasePrompt(
+  brandCtx: string,
+  langTells: string,
+  ctx?: QualityContext,
+  isCarousel?: boolean
+): string {
   const lc = ctx?.languageConfig
 
   const formality = lc?.formality ?? 'neutral'

@@ -17,10 +17,7 @@ interface AddSourceBody {
   selectedPages?: string[]
 }
 
-export async function GET(
-  _request: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id: clientId } = await params
   const auth = await resolveAuth()
   if (!auth.ok) return auth.response
@@ -40,10 +37,7 @@ export async function GET(
   return NextResponse.json({ sources: data as ClientSource[] })
 }
 
-export async function POST(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id: clientId } = await params
   const auth = await resolveAuth()
   if (!auth.ok) return auth.response
@@ -54,7 +48,7 @@ export async function POST(
 
   let body: AddSourceBody
   try {
-    body = await request.json() as AddSourceBody
+    body = (await request.json()) as AddSourceBody
   } catch {
     return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
   }
@@ -68,7 +62,10 @@ export async function POST(
   }
 
   if (!validateSourceUrl(body.url)) {
-    return NextResponse.json({ error: 'Invalid URL — must be a public http/https URL' }, { status: 400 })
+    return NextResponse.json(
+      { error: 'Invalid URL — must be a public http/https URL' },
+      { status: 400 }
+    )
   }
 
   // Test the URL before saving
