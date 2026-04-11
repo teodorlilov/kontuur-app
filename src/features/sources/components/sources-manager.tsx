@@ -257,6 +257,7 @@ export function SourcesManager({
             <Button
               variant="secondary"
               size="sm"
+              disabled={!strategy.rss}
               onClick={() => { setAdding('rss'); setAddForm({ label: '', url: '', focusInstructions: '' }) }}
             >
               + Add RSS feed
@@ -334,6 +335,7 @@ export function SourcesManager({
           <Button
             variant="secondary"
             size="sm"
+            disabled={!strategy.website}
             onClick={() => { setAdding('website'); setAddForm({ label: '', url: '', focusInstructions: '' }) }}
           >
             + Add website URL
@@ -443,6 +445,7 @@ export function SourcesManager({
           <Button
             variant="secondary"
             size="sm"
+            disabled={!strategy.file}
             onClick={() => { setAdding('file'); setAddForm({ label: '', url: '', focusInstructions: '' }); setSelectedFile(null) }}
           >
             + Upload document

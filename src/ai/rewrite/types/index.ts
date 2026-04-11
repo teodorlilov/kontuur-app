@@ -1,4 +1,4 @@
-import type { ClientContext } from '@/lib/clients/fetch-client-data'
+import type { ClientData } from '@/lib/clients/fetch-client-data'
 
 export interface RewriteContext {
   caption: string
@@ -10,14 +10,14 @@ export interface RewriteContext {
   sourceExcerpt?: string | null
   sourceUrl?: string | null
   rewriteReason: 'quality' | 'language' | 'source_grounding' | 'manual'
-  client: ClientContext
+  client: ClientData
 }
 
 export interface RewriteCaptionInput {
   caption: string
   aiTells: string[]
   qualityIssues?: string[]
-  client: ClientContext
+  client: ClientData
   platform: string
 }
 
@@ -26,7 +26,7 @@ export interface RewriteCarouselInput {
   slides: Array<{ headline: string; body: string }>
   aiTells: string[]
   qualityIssues?: string[]
-  client: ClientContext
+  client: ClientData
   platform: string
 }
 

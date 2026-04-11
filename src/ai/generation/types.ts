@@ -1,4 +1,4 @@
-import type { ClientContext } from '@/lib/clients/fetch-client-data'
+import type { ClientData } from '@/lib/clients/fetch-client-data'
 import type { PriorityPost, PostType, SlopDetection } from '@/types/api'
 import type { QualityResult } from '@/ai/validation/prompts/validate-quality'
 import type { LanguageValidationResult } from '@/ai/validation/prompts/validate-language'
@@ -6,7 +6,7 @@ import type { SourceGroundingResult } from '@/ai/validation/prompts/validate-sou
 
 // ---- Shared base input — fields common to all content types ----
 export interface GenerationInput {
-  client: ClientContext
+  client: ClientData
   theme: string
   targetPillar?: string
   sourceExcerpt?: string
@@ -99,7 +99,7 @@ export interface EnrichedTheme extends Theme {
 }
 
 export interface GenerationRunContext {
-  client: ClientContext
+  client: ClientData
   platform: string
   postType: PostType
   slideCount?: number

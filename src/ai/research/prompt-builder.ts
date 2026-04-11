@@ -16,14 +16,6 @@ function buildPromptSection(title: string, tag: string, content: string): string
   return `${title}:\n<${tag}>\n${content}\n</${tag}>`
 }
 
-/**
- * Encapsulates research prompt construction and LLM execution.
- * Builds source-grounded or trend-based prompts depending on available sources.
- *
- * Immutable fields (niche, languageConfig, contentPillars, systemPrompt) are set once
- * in the constructor. postHistory is the only mutable field, updated by the retry loop
- * via updateHistory().
- */ 
 export class ResearchPromptBuilder {
   private readonly niche: string
   private readonly languageConfig: LanguageConfig
@@ -40,7 +32,7 @@ export class ResearchPromptBuilder {
     this.niche = opts.niche
     this.languageConfig = opts.languageConfig
     this.contentPillars = opts.contentPillars
-    this.postHistory = opts.postHistory 
+    this.postHistory = opts.postHistory
     this.systemPrompt = this.buildResearcherSystemPrompt()
   }
 
@@ -90,8 +82,6 @@ export class ResearchPromptBuilder {
     originalUserPrompt: string,
     originalRawResponse: string,
   ): Promise<ResearchTopic[]> {
-    console.log(`[ai:research] → retry callAnthropic (deficit=${deficit}, model=haiku)`)
-    const t0 = Date.now()
     const message = await callAnthropic({
       systemPrompt: this.systemPrompt,
       userMessage: this.buildRetryPrompt(deficit),
@@ -109,29 +99,22 @@ export class ResearchPromptBuilder {
   // ---- System prompt (Step 3: role + language identity only) ----
 
   private buildResearcherSystemPrompt(): string {
-    const { language, languageInstructions } = this.languageConfig
+    const { languageInstructions } = this.languageConfig
 
     const parts: string[] = [
       `You are a strategic content researcher for social media agencies.
+
 You analyse raw business data — service descriptions, documents,
+
 RSS feeds — and extract post themes that are specific, factual, and immediately
 actionable for the client's social media manager.
 
-You write exclusively in ${language} using natural native phrasing.
-When source material is in English, do NOT translate or transliterate it — reason about the idea and express it as a native ${language} speaker would write it independently.
-If source data uses technical or medical terminology, use the established ${language} word where one exists; keep the technical term only when no native equivalent exists.`,
+LANGUAGE RULES — 
+${languageInstructions}
+
+Make sure the generated topics are relevant to the client's niche - ${this.niche}
+`
     ]
-
-    if (ResearchPromptBuilder.usesNonLatinScript(language)) {
-      parts.push(
-        `Every theme and excerpt must use the native ${language} script exclusively.
-The only exception is 'source_url' which may contain Latin characters.`
-      )
-    }
-
-    if (languageInstructions) {
-      parts.push(languageInstructions)
-    }
 
     return parts.join('\n\n')
   }
@@ -146,17 +129,17 @@ The only exception is 'source_url' which may contain Latin characters.`
   ): string {
     const rssSection = sourceContext.rssItems.length > 0
       ? buildPromptSection('RSS_FEED', 'rss_content',
-          sourceContext.rssItems.map(i => `- ${i.title}: ${i.description} (${i.link})`).join('\n'))
+        sourceContext.rssItems.map(i => `- ${i.title}: ${i.description} (${i.link})`).join('\n'))
       : ''
 
     const webSection = sourceContext.websiteExcerpts.length > 0
       ? buildPromptSection('WEBSITE_DATA', 'website_content',
-          sourceContext.websiteExcerpts.map(w => `[URL: ${w.url}]\n${w.text}`).join('\n\n'))
+        sourceContext.websiteExcerpts.map(w => `[URL: ${w.url}]\n${w.text}`).join('\n\n'))
       : ''
 
     const fileSection = sourceContext.fileExcerpts.length > 0
       ? buildPromptSection('INTERNAL_DOCUMENTS', 'document_content',
-          sourceContext.fileExcerpts.map(f => `[File: ${f.label}]\n${f.text}`).join('\n\n'))
+        sourceContext.fileExcerpts.map(f => `[File: ${f.label}]\n${f.text}`).join('\n\n'))
       : ''
 
     return `Date: ${todayDateString()}
@@ -171,25 +154,18 @@ ${fileSection}
 ### CONTENT PILLARS & DISTRIBUTION:
 ${pillarsContext}
 
-### EXCLUSION LIST (Do NOT suggest these):
+### EXCLUSION LIST:
 ${historyContext}
 
 ### SOURCING PROTOCOL:
 1. **Grounded Sourcing (Priority):** If the input data above contains specific facts, features, or updates, use them. Reference the source URL/Title in the JSON.
 2. **Trend-Based Sourcing (Backup):** If data is missing for a required pillar, suggest a theme based on 2026 industry trends for "${this.niche}". Set source fields to null and describe the trend in 'source_excerpt'.
 
-### THEME RULES (apply to every theme):
-- 6–10 words. One punchy declarative statement.
-- Must include one hard fact: price, location, feature name, or measurable result.
-- Never generic. Name the specific thing, not the category.
-- No clickbait. No dashes. No colons. No multiple sentences.
-- Write as a native ${this.languageConfig.language} speaker — rephrase ideas naturally, never copy-translate English phrasing or transliterate technical terms.
-
 ### JSON OUTPUT FORMAT:
 Generate exactly ${count} object${count > 1 ? 's' : ''}:
 [{
   "finding": "Why this theme was chosen (based on source or trend).",
-  "suggested_theme": "The 6-10 word theme in ${this.languageConfig.language}.",
+  "suggested_theme": "The 6-10 word generated theme",
   "pillar": "Pillar name",
   "source_url": "string | null",
   "source_title": "string | null",
@@ -217,21 +193,14 @@ No client documents were provided for this run. Analyse the current ${monthYear}
 ### CONTENT PILLARS & DISTRIBUTION:
 ${pillarsContext}
 
-### EXCLUSION LIST (Do NOT repeat these):
+### EXCLUSION LIST:
 ${historyContext}
-
-### THEME RULES (apply to every theme):
-- 6–10 words. One punchy declarative statement.
-- Must include one hard fact: price, location, feature name, or measurable result.
-- Never generic. Name the specific thing, not the category.
-- No clickbait. No dashes. No colons. No multiple sentences.
-- Write as a native ${this.languageConfig.language} speaker — rephrase ideas naturally, never copy-translate English phrasing or transliterate technical terms.
 
 ### JSON OUTPUT FORMAT:
 Generate exactly ${count} object${count > 1 ? 's' : ''}. Use 'source_excerpt' to describe the specific trend or hook that justifies the theme.
 [{
   "finding": "Specific observation of a current market trend or consumer behavior.",
-  "suggested_theme": "The 6-10 word theme in ${this.languageConfig.language}.",
+  "suggested_theme": "The 6-10 word generated theme",
   "pillar": "Pillar name",
   "source_url": null,
   "source_title": null,
@@ -275,10 +244,5 @@ Return exactly ${deficit} JSON object${deficit > 1 ? 's' : ''} using the same fo
       !!ctx &&
       (ctx.rssItems.length > 0 || ctx.websiteExcerpts.length > 0 || ctx.fileExcerpts.length > 0)
     )
-  }
-
-  private static usesNonLatinScript(language: string): boolean {
-    const nonLatinLanguages = ['bulgarian', 'russian', 'ukrainian', 'greek', 'arabic', 'hebrew', 'chinese', 'japanese', 'korean']
-    return nonLatinLanguages.includes(language.toLowerCase())
   }
 }

@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server'
 import { revalidateTag } from 'next/cache'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
 import { verifyClientOwnership } from '@/lib/auth/helpers'
-import { fetchClientById, fetchBrandProfileByClient, fetchPostingScheduleByClient } from '@/lib/queries/db'
+import { fetchPostingScheduleByClient } from '@/lib/queries/db'
+import { fetchClientData } from '@/lib/clients/fetch-client-data'
 
 export async function GET(
   _request: Request,
@@ -13,18 +14,14 @@ export async function GET(
   if (!auth.ok) return auth.response
   const { supabase, agencyId } = auth
 
-  // Single query: agency_id filter enforces ownership at DB level
-  const clientData = await fetchClientById(supabase, id, agencyId)
-
-  if (!clientData) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-
-  // Fetch brand_profiles and posting_schedules in parallel — independent queries
-  const [profileData, scheduleData] = await Promise.all([
-    fetchBrandProfileByClient(supabase, id),
+  const [clientDataResult, scheduleData] = await Promise.all([
+    fetchClientData(supabase, id, agencyId),
     fetchPostingScheduleByClient(supabase, id),
   ])
 
-  return NextResponse.json({ client: clientData, brand_profile: profileData, posting_schedule: scheduleData })
+  if ('error' in clientDataResult) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+
+  return NextResponse.json({ clientData: clientDataResult.data, posting_schedule: scheduleData })
 }
 
 interface UpdateClientBody {

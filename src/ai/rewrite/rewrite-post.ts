@@ -1,7 +1,6 @@
 import { rewriteCaption, rewriteCarousel } from '@/ai/rewrite/prompts/rewrite-prompts'
 import { validatePost } from '@/ai/validation/validate-post'
 import { applyTextCorrections, applySlideCorrections } from '@/ai/validation/correction-utils'
-import { toBrandQualityFields } from '@/lib/clients/fetch-client-data'
 import type { RewriteContext } from './types'
 
 export type { RewriteContext }
@@ -43,7 +42,13 @@ export async function performRewrite(ctx: RewriteContext) {
     sourceContext: ctx.sourceExcerpt
       ? { excerpt: ctx.sourceExcerpt, url: ctx.sourceUrl }
       : undefined,
-    qualityContext: toBrandQualityFields(ctx.client),
+    qualityContext: {
+      tone: ctx.client.tone || undefined,
+      targetAudience: ctx.client.targetAudience || undefined,
+      niche: ctx.client.niche || undefined,
+      clientTestimonialVoice: ctx.client.clientTestimonialVoice || undefined,
+      isHealthClient: ctx.client.isHealthNiche ?? undefined,
+    },
   })
 
   const finalCaption = applyTextCorrections(newCaption, validation)

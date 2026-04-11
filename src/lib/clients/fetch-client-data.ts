@@ -2,156 +2,37 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { toCarouselSwipeCues, toFormalityRulesData } from '@/lib/clients/language-rules'
 import type { LanguageConfig } from '@/lib/clients/language-rules'
 import { parsePillars, type WeightedPillar } from '@/lib/clients/content-pillars'
+import type { SourceStrategy } from '@/types/api'
 import { MAX_POST_HISTORY_COUNT } from '@/utils/constants'
 import type { Json } from '@/types/database'
-import type { LanguageRulesRow } from '@/lib/queries/db'
 
-export interface ClientContext {
+export interface ClientData {
+  // from clients table
   id: string
   name: string
   niche: string
+  language: string
+  // from brand_profiles
   tone: string
   targetAudience: string
-  clientTestimonialVoice: string
   avoidTopics: string
+  clientTestimonialVoice: string
   contentPillars: WeightedPillar[]
   isHealthNiche: boolean | null
-  postHistory: string[]
+  topPerformingPosts: string[]
+  defaultCarouselSlides: number
+  defaultPostType: string | null
+  requireSourceGrounding: boolean
+  sourceStrategy: SourceStrategy | null
+  languageNotes: string
+  // assembled from language_rules
   languageConfig: LanguageConfig
-  topPerformingPosts?: string[]
-}
-
-export interface ClientData {
-  client: {
-    id: string
-    name: string
-    niche: string
-    language: string
-  }
-  profile: {
-    tone: string
-    targetAudience: string
-    formality: string
-    avoidTopics: string
-    clientTestimonialVoice: string
-    contentPillars: WeightedPillar[]
-    defaultCarouselSlides: number
-    defaultPostType: string | null
-    requireSourceGrounding: boolean
-    sourceStrategy: Record<string, boolean> | null
-    isHealthNiche: boolean | null
-    languageNotes: string
-    topPerformingPosts: string[]
-  }
-  languageRules: {
-    carouselSwipeCues: string
-    formalityRules: ReturnType<typeof toFormalityRulesData>
-    languageInstructions: string
-  }
+  // from post_history
   postHistory: string[]
 }
-
-/** Extract brand fields from ClientContext for QualityContext. */
-export function toBrandQualityFields(client: ClientContext) {
-  return {
-    tone: client.tone || undefined,
-    targetAudience: client.targetAudience || undefined,
-    niche: client.niche || undefined,
-    clientTestimonialVoice: client.clientTestimonialVoice || undefined,
-    isHealthClient: client.isHealthNiche ?? undefined,
-  }
-}
-
-/**
- * Raw DB row types used as inputs to buildClientData.
- * Kept local — callers use the db.ts helpers which return these shapes.
- */
-type RawProfile = {
-  tone: string | null
-  target_audience: string | null
-  content_pillars: string | null
-  avoid_topics: string | null
-  client_testimonial_voice: string | null
-  language_formality: string | null
-  default_post_type: string | null
-  default_carousel_slides: number | null
-  source_strategy: unknown
-  is_health_niche: boolean | null
-  language_notes: string | null
-} | null
-
 
 function parseRequireSourceGrounding(strategy: unknown): boolean {
   return (strategy as { require_source_grounding?: boolean } | null)?.require_source_grounding ?? false
-}
-
-/**
- * Assembles a ClientData from raw DB rows — no DB calls.
- * Used by the generate page server component to build preloaded data from
- * individually fetched rows without the ownership check (already guaranteed
- * by getCachedAgencyClients).
- */
-export function buildClientData(
-  client: { id: string; name: string; niche: string | null; language: string; posts_per_week?: number },
-  profile: RawProfile,
-  langRules: LanguageRulesRow | null,
-  postHistory: string[],
-  topPerformingPosts: string[],
-): ClientData {
-  return {
-    client: {
-      id: client.id,
-      name: client.name,
-      niche: client.niche ?? 'General',
-      language: client.language,
-    },
-    profile: {
-      tone: profile?.tone ?? 'professional',
-      targetAudience: profile?.target_audience ?? 'general audience',
-      formality: profile?.language_formality ?? 'formal',
-      avoidTopics: profile?.avoid_topics ?? '',
-      clientTestimonialVoice: profile?.client_testimonial_voice ?? '',
-      contentPillars: parsePillars(profile?.content_pillars ?? null),
-      defaultCarouselSlides: profile?.default_carousel_slides ?? 7,
-      defaultPostType: profile?.default_post_type ?? null,
-      requireSourceGrounding: parseRequireSourceGrounding(profile?.source_strategy),
-      sourceStrategy: profile?.source_strategy as Record<string, boolean> | null ?? null,
-      isHealthNiche: profile?.is_health_niche ?? null,
-      languageNotes: profile?.language_notes ?? '',
-      topPerformingPosts,
-    },
-    languageRules: {
-      carouselSwipeCues: toCarouselSwipeCues(langRules?.native_cta_phrases as Json ?? null),
-      formalityRules: toFormalityRulesData(langRules?.formality_rules as Json ?? null),
-      languageInstructions: langRules?.language_instructions ?? '',
-    },
-    postHistory,
-  }
-}
-
-/** Build a ClientContext from fetched ClientData — used by API routes. */
-export function toClientContext(data: ClientData): ClientContext {
-  return {
-    id: data.client.id,
-    name: data.client.name,
-    niche: data.client.niche,
-    tone: data.profile.tone,
-    targetAudience: data.profile.targetAudience,
-    clientTestimonialVoice: data.profile.clientTestimonialVoice,
-    avoidTopics: data.profile.avoidTopics,
-    contentPillars: data.profile.contentPillars,
-    isHealthNiche: data.profile.isHealthNiche,
-    postHistory: data.postHistory,
-    topPerformingPosts: data.profile.topPerformingPosts,
-    languageConfig: {
-      language: data.client.language,
-      formality: data.profile.formality,
-      carouselSwipeCues: data.languageRules.carouselSwipeCues,
-      formalityRules: data.languageRules.formalityRules,
-      languageInstructions: data.languageRules.languageInstructions,
-      languageNotes: data.profile.languageNotes,
-    },
-  }
 }
 
 /**
@@ -183,7 +64,7 @@ export async function fetchClientData(
   const [profileResult, langRulesResult, historyResult, topPostsResult] = await Promise.all([
     supabase
       .from('brand_profiles')
-      .select('tone, target_audience, content_pillars, avoid_topics, client_testimonial_voice, language_formality, default_carousel_slides, source_strategy, is_health_niche, language_notes')
+      .select('tone, target_audience, content_pillars, avoid_topics, client_testimonial_voice, language_formality, default_post_type, default_carousel_slides, source_strategy, is_health_niche, language_notes')
       .eq('client_id', clientId)
       .single(),
     supabase
@@ -213,8 +94,9 @@ export async function fetchClientData(
     content_pillars: string | null
     avoid_topics: string | null
     client_testimonial_voice: string | null
-    language_formality: string
-    default_carousel_slides: number
+    language_formality: string | null
+    default_post_type: string | null
+    default_carousel_slides: number | null
     source_strategy: { require_source_grounding?: boolean } | null
     is_health_niche: boolean | null
     language_notes: string | null
@@ -236,31 +118,29 @@ export async function fetchClientData(
 
   return {
     data: {
-      client: {
-        id: client.id,
-        name: client.name,
-        niche: client.niche ?? 'General',
+      id: client.id,
+      name: client.name,
+      niche: client.niche ?? 'General',
+      language: client.language,
+      tone: profile?.tone ?? 'professional',
+      targetAudience: profile?.target_audience ?? 'general audience',
+      avoidTopics: profile?.avoid_topics ?? '',
+      clientTestimonialVoice: profile?.client_testimonial_voice ?? '',
+      contentPillars: parsePillars(profile?.content_pillars ?? null),
+      isHealthNiche: profile?.is_health_niche ?? null,
+      topPerformingPosts,
+      defaultCarouselSlides: profile?.default_carousel_slides ?? 7,
+      defaultPostType: profile?.default_post_type ?? null,
+      requireSourceGrounding: parseRequireSourceGrounding(profile?.source_strategy),
+      sourceStrategy: profile?.source_strategy as SourceStrategy | null ?? null,
+      languageNotes: profile?.language_notes ?? '',
+      languageConfig: {
         language: client.language,
-      },
-      profile: {
-        tone: profile?.tone ?? 'professional',
-        targetAudience: profile?.target_audience ?? 'general audience',
         formality: profile?.language_formality ?? 'formal',
-        avoidTopics: profile?.avoid_topics ?? '',
-        clientTestimonialVoice: profile?.client_testimonial_voice ?? '',
-        contentPillars: parsePillars(profile?.content_pillars ?? null),
-        defaultCarouselSlides: profile?.default_carousel_slides ?? 7,
-        defaultPostType: null,
-        requireSourceGrounding: parseRequireSourceGrounding(profile?.source_strategy),
-        sourceStrategy: null,
-        isHealthNiche: profile?.is_health_niche ?? null,
-        languageNotes: profile?.language_notes ?? '',
-        topPerformingPosts,
-      },
-      languageRules: {
         carouselSwipeCues: toCarouselSwipeCues(langRules?.native_cta_phrases),
         formalityRules: toFormalityRulesData(langRules?.formality_rules),
         languageInstructions: langRules?.language_instructions ?? '',
+        languageNotes: profile?.language_notes ?? '',
       },
       postHistory,
     },

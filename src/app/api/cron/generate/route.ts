@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
-import { fetchClientData, toClientContext, getAgencyNiche, extractPlatformFromMix } from '@/lib/clients/fetch-client-data'
+import { fetchClientData, getAgencyNiche, extractPlatformFromMix } from '@/lib/clients/fetch-client-data'
 import { allocateByWeight } from '@/lib/clients/content-pillars'
 import { runGenerationBatch } from '@/ai/generation/generation-run'
 import { generateBriefing } from '@/ai/intelligence/generate-briefing'
@@ -82,10 +82,10 @@ export async function GET(request: NextRequest) {
         best_time_updated_at: string | null
       } | null
 
-      // 6. Fetch full ClientContext (includes top-performing posts)
+      // 6. Fetch full ClientData (includes top-performing posts)
       const clientResult = await fetchClientData(supabase, clientId, agencyId)
       if ('error' in clientResult) continue
-      const client = toClientContext(clientResult.data)
+      const client = clientResult.data
 
       // 7. Determine platform, post type, slide count
       const mixJson = (brandProfile?.weekly_mix_json ?? {}) as Record<string, unknown>
@@ -111,7 +111,7 @@ export async function GET(request: NextRequest) {
         platform,
         postType,
         slideCount,
-        requireSourceGrounding: clientResult.data.profile.requireSourceGrounding,
+        requireSourceGrounding: client.requireSourceGrounding,
         themes,
         priorityPosts: [],
         trackTheme: async () => {},
@@ -164,7 +164,7 @@ export async function GET(request: NextRequest) {
         const bestTime = await generateBestTime({
           niche: (clientRow as { niche: string | null }).niche ?? 'General',
           targetAudience: client.targetAudience,
-          language: clientResult.data.client.language,
+          language: client.language,
           platforms: platform,
         })
         await supabase

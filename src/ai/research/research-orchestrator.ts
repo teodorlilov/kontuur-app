@@ -1,6 +1,4 @@
-import { parsePillars, type WeightedPillar } from '@/lib/clients/content-pillars'
-import { toCarouselSwipeCues, toFormalityRulesData, type LanguageConfig } from '@/lib/clients/language-rules'
-import { fetchBrandProfileByClient, fetchLanguageRulesByLanguage, type LanguageRulesRow } from '@/lib/queries/db'
+import { fetchClientSources, fetchThemeDescriptions } from '@/lib/queries/db'
 import { createAllSources } from './sources/source-factory'
 import { ResearchSource } from './sources/research-source'
 import { ResearchPromptBuilder } from './prompt-builder'
@@ -15,29 +13,15 @@ import type {
   SourceStrategy,
   FileExcerpt,
 } from './types'
+import type { ClientData } from '@/lib/clients/fetch-client-data'
 
 const DEFAULT_STRATEGY: SourceStrategy = { rss: true, website: true, file: true, trend_fallback: true }
-
 const MAX_RESEARCH_RETRIES = 1
-const POST_HISTORY_LIMIT = 30
-const GENERATION_RUNS_LIMIT = 10
 
-interface RawClientProfile {
-  profile: {
-    content_pillars: string | null
-    source_strategy: SourceStrategy | null
-    language_formality: string | null
-    language_notes: string | null
-  } | null
-  langRules: LanguageRulesRow | null
-}
-
-interface ResearchClientData {
-  contentPillars: WeightedPillar[]
-  history: string[]
+interface ResearchClientData extends ClientData {
   sources: ClientSourceRow[]
+  history: string[]
   strategy: SourceStrategy
-  languageConfig: LanguageConfig
 }
 
 /**
@@ -57,9 +41,6 @@ export class ResearchPipeline {
     this.ctx.onPhase?.('Loading brand profile...')
     const clientData = await this.loadClientData()
 
-    console.log("Client Data is ", clientData)
-
-
     // 2. Compute fetch limits scaled to requested post count
     // 3. Create source objects via factory (polymorphic creation)
     // 4. Fetch all sources in parallel (limits control how much each source fetches)
@@ -68,16 +49,11 @@ export class ResearchPipeline {
     const sourceObjects = createAllSources(clientData.sources)
     await this.fetchAllSources(sourceObjects, limits)
 
-    console.log("sourceObjects is ", sourceObjects)
-
     // 5. Build source context from fetched sources (limits control token budgets)
     const sourceContext = this.buildSourceContext(sourceObjects, clientData.strategy, limits)
 
-    console.log("sourceContext is ", sourceContext)
     // 6. Build full-text maps for source grounding
     const fullTextIndex = this.buildSourceFullTextIndex(sourceObjects)
-
-    console.log("fullTextIndex is ", fullTextIndex)
 
     // 7. Generate topics via prompt builder (exact count, no multiplier)
     this.ctx.onPhase?.('Generating theme ideas...')
@@ -87,8 +63,6 @@ export class ResearchPipeline {
       contentPillars: clientData.contentPillars,
       postHistory: clientData.history,
     })
-
-    console.log("builder is ", builder)
 
     const requestedCount = this.ctx.count
 
@@ -133,165 +107,23 @@ export class ResearchPipeline {
     return finalTopics
   }
 
-  // ---- Private methods ----
-
   /** Load brand profile, post history, generation themes, and client sources. */
   private async loadClientData(): Promise<ResearchClientData> {
-    const defaultLanguageConfig = this.buildDefaultLanguageConfig()
-
-    if (!this.ctx.clientId) {
-      return { contentPillars: [], history: [], sources: [], strategy: DEFAULT_STRATEGY, languageConfig: defaultLanguageConfig }
-    }
-
-    const owns = await this.verifyClientOwnership()
-    if (!owns) {
-      return { contentPillars: [], history: [], sources: [], strategy: DEFAULT_STRATEGY, languageConfig: defaultLanguageConfig }
-    }
-
-    const [profile, history, sources] = await Promise.all([
-      this.fetchClientProfile(),
-      this.fetchClientHistory(),
-      this.fetchClientSources(),
-    ])
-
-    const languageConfig = this.buildLanguageConfig(profile, defaultLanguageConfig)
-    const contentPillars = profile.profile?.content_pillars ? parsePillars(profile.profile.content_pillars) : []
-    const strategy = profile.profile?.source_strategy
-      ? { ...DEFAULT_STRATEGY, ...profile.profile.source_strategy }
-      : DEFAULT_STRATEGY
-    const filteredSources = this.filterSourcesByStrategy(sources, strategy)
-
-    const clinetProfile = { contentPillars, history, sources: filteredSources, strategy, languageConfig }
-
-    console.log("Client Ownership is", owns)
-    console.log("Profile is", profile)
-    console.log("History is", history)
-    console.log("Sources is", sources)
-    console.log("Language config is", languageConfig)
-
-
-    console.log("Client Profile is ", clinetProfile)
-
-    return clinetProfile
-  }
-
-  /** Returns the fallback LanguageConfig when no DB data is available. */
-  private buildDefaultLanguageConfig(): LanguageConfig {
-    return {
-      language: this.ctx.language || 'English',
-      formality: 'neutral',
-      carouselSwipeCues: '',
-      formalityRules: null,
-      languageInstructions: '',
-      languageNotes: '',
-    }
-  }
-
-  /** Verify the client belongs to this agency. */
-  private async verifyClientOwnership(): Promise<boolean> {
-    const { data } = await this.ctx.supabase
-      .from('clients')
-      .select('id')
-      .eq('id', this.ctx.clientId!)
-      .eq('agency_id', this.ctx.agencyId)
-      .single()
-    return !!data
-  }
-
-  /** Fetch brand profile and language rules — skips DB when pre-loaded data is provided. */
-  private async fetchClientProfile(): Promise<RawClientProfile> {
-    // Use pre-loaded data from wizard if available — avoids 2 DB queries per run
-    if (this.ctx.preloaded) {
+    // Preloaded path — wizard always passes ClientData with full context
+    if (this.ctx.preloadedClientData) {
+      const data: ClientData = this.ctx.preloadedClientData
+      const strategy: SourceStrategy = data.sourceStrategy ?? DEFAULT_STRATEGY
+      const sources = this.ctx.clientId ? await fetchClientSources(this.ctx.supabase, this.ctx.clientId) : []
+      const themeHistory = this.ctx.clientId ? await fetchThemeDescriptions(this.ctx.supabase, this.ctx.clientId) : []
       return {
-        profile: {
-          content_pillars: this.ctx.preloaded.contentPillars,
-          source_strategy: this.ctx.preloaded.sourceStrategy,
-          language_formality: this.ctx.preloaded.languageFormality,
-          language_notes: this.ctx.preloaded.languageNotes,
-        },
-        langRules: {
-          native_cta_phrases: null,
-          formality_rules: null,
-          language_instructions: this.ctx.preloaded.languageInstructions,
-        },
+        ...data,
+        sources,
+        history: [...data.postHistory, ...themeHistory],
+        strategy,
       }
     }
 
-    // DB fallback — used by cron jobs and callers without pre-loaded data
-    const language = this.ctx.language || 'English'
-    const [profile, langRules] = await Promise.all([
-      fetchBrandProfileByClient(this.ctx.supabase, this.ctx.clientId!),
-      fetchLanguageRulesByLanguage(this.ctx.supabase, language),
-    ])
-    return {
-      profile: profile as RawClientProfile['profile'],
-      langRules: langRules as RawClientProfile['langRules'],
-    }
-  }
-
-  /** Fetch post history + recently generated theme descriptions. */
-  private async fetchClientHistory(): Promise<string[]> {
-    if (this.ctx.preloaded?.postHistory) return this.ctx.preloaded.postHistory
-
-    const [historyResult, themesResult] = await Promise.all([
-      this.ctx.supabase
-        .from('post_history')
-        .select('topic_summary')
-        .eq('client_id', this.ctx.clientId!)
-        .order('created_at', { ascending: false })
-        .limit(POST_HISTORY_LIMIT),
-      this.ctx.supabase
-        .from('generation_runs')
-        .select('generation_themes(theme_description)')
-        .eq('client_id', this.ctx.clientId!)
-        .order('created_at', { ascending: false })
-        .limit(GENERATION_RUNS_LIMIT),
-    ])
-
-    const postTopics =
-      (historyResult.data as Array<{ topic_summary: string | null }> | null)
-        ?.map((h) => h.topic_summary)
-        .filter((s): s is string => s !== null) ?? []
-
-    const runsData = themesResult.data as Array<{ generation_themes: Array<{ theme_description: string | null }> }> | null
-    const themeDescriptions = (runsData ?? []).flatMap((run) =>
-      run.generation_themes.map((t) => t.theme_description).filter((t): t is string => t !== null)
-    )
-
-    return [...postTopics, ...themeDescriptions]
-  }
-
-  /** Fetch active client sources. */
-  private async fetchClientSources(): Promise<ClientSourceRow[]> {
-    const { data } = await this.ctx.supabase
-      .from('client_sources')
-      .select('id, type, label, url, config, extracted_text')
-      .eq('client_id', this.ctx.clientId!)
-      .eq('is_active', true)
-    return (data as ClientSourceRow[] | null) ?? []
-  }
-
-  /** Filter sources by the client's source strategy. */
-  private filterSourcesByStrategy(sources: ClientSourceRow[], strategy: SourceStrategy): ClientSourceRow[] {
-    return sources.filter((s) => {
-      if (s.type === 'rss' && !strategy.rss) return false
-      if (s.type === 'website' && !strategy.website) return false
-      if (s.type === 'file' && !strategy.file) return false
-      return true
-    })
-  }
-
-  /** Build LanguageConfig from raw DB data. */
-  private buildLanguageConfig(raw: RawClientProfile, defaults: LanguageConfig): LanguageConfig {
-    const { profile, langRules } = raw
-    return {
-      language: defaults.language,
-      formality: profile?.language_formality ?? 'neutral',
-      carouselSwipeCues: toCarouselSwipeCues(langRules?.native_cta_phrases as never),
-      formalityRules: toFormalityRulesData(langRules?.formality_rules as never),
-      languageInstructions: langRules?.language_instructions ?? '',
-      languageNotes: profile?.language_notes ?? '',
-    }
+    throw new Error('[research] No preloaded client data')
   }
 
   /** Fetch all sources in parallel. Reports status to DB for network sources. */
@@ -370,10 +202,6 @@ export class ResearchPipeline {
   }
 }
 
-/**
- * Convenience function preserving the old API shape.
- * Route handlers can import this directly.
- */
 export async function performResearch(ctx: ResearchRunContext): Promise<ResearchTopic[]> {
   const pipeline = new ResearchPipeline(ctx)
   return pipeline.execute()

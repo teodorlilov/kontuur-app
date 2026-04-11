@@ -4,23 +4,30 @@ vi.mock('@/utils/ai-client')
 
 import { callAnthropic, mockClaudeResponse } from '@/utils/__mocks__/ai-client'
 import { rewriteCaption, rewriteCarousel } from '../rewrite-prompts'
-import type { ClientContext } from '@/lib/clients/fetch-client-data'
+import type { ClientData } from '@/lib/clients/fetch-client-data'
 
 beforeEach(() => {
   vi.clearAllMocks()
 })
 
-function makeClient(overrides: Partial<ClientContext> = {}): ClientContext {
+function makeClient(overrides: Partial<ClientData> = {}): ClientData {
   return {
     id: 'test-client-id',
     name: 'Test Client',
     niche: 'Skincare',
+    language: 'Bulgarian',
     tone: 'professional',
     targetAudience: 'Women 25-45',
     clientTestimonialVoice: 'They really care about my skin.',
     avoidTopics: 'politics',
     contentPillars: [{ pillar: 'Skincare tips', weight: 50 }, { pillar: 'Product reviews', weight: 50 }],
     isHealthNiche: null,
+    topPerformingPosts: [],
+    defaultCarouselSlides: 7,
+    defaultPostType: null,
+    requireSourceGrounding: false,
+    sourceStrategy: null,
+    languageNotes: '',
     postHistory: ['hydration tips', 'sunscreen myths'],
     languageConfig: {
       language: 'Bulgarian',

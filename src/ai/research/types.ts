@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { SourceStrategy } from '@/types/api'
+import type { ClientData } from '@/lib/clients/fetch-client-data'
 
 export type { RssItem } from '@/lib/sources/fetch-rss'
 export type { WeightedPillar } from '@/lib/clients/content-pillars'
@@ -34,28 +34,7 @@ export interface SourceContext {
   fileExcerpts: FileExcerpt[]
 }
 
-export interface ClientSourceRow {
-  id: string
-  type: string
-  label: string
-  url: string
-  config: Record<string, unknown>
-  extracted_text: string | null
-}
-
-/**
- * Pre-loaded brand profile data passed from the wizard to avoid redundant DB fetches.
- * When provided, the pipeline skips the brand_profiles and language_rules DB queries.
- */
-export interface PreloadedClientData {
-  contentPillars: string | null
-  sourceStrategy: SourceStrategy | null
-  languageFormality: string | null
-  languageNotes: string | null
-  languageInstructions: string | null
-  /** Pre-fetched post history — when present, pipeline skips the post_history + generation_runs DB queries. */
-  postHistory?: string[]
-}
+export type { ClientSourceRow } from '@/lib/queries/db'
 
 export interface ResearchRunContext {
   supabase: SupabaseClient
@@ -68,8 +47,8 @@ export interface ResearchRunContext {
   onPhase?: (message: string) => void
   /** Called for each final topic after dedup/retry. Used for streaming responses. */
   onTopic?: (topic: ResearchTopic) => void
-  /** Optional pre-loaded brand profile from wizard — skips brand_profiles + language_rules DB fetch. */
-  preloaded?: PreloadedClientData
+  /** Optional pre-loaded client data from wizard — skips all DB fetches except client_sources. */
+  preloadedClientData?: ClientData
 }
 
 export type ResearchStreamEvent =

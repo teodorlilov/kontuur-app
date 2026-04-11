@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
-import { fetchClientData, toClientContext } from '@/lib/clients/fetch-client-data'
+import { fetchClientData } from '@/lib/clients/fetch-client-data'
 import { checkRateLimit, AI_RATE_LIMIT } from '@/lib/auth/rate-limit'
 import { performRewrite } from '@/ai/rewrite/rewrite-post'
 
@@ -43,8 +43,6 @@ export async function POST(request: Request) {
     const clientResult = await fetchClientData(supabase, body.clientId, agencyId)
     if ('error' in clientResult) return NextResponse.json({ error: clientResult.error }, { status: 404 })
 
-    const client = toClientContext(clientResult.data)
-
     const result = await performRewrite({
       caption: body.caption,
       postType: body.postType,
@@ -55,7 +53,7 @@ export async function POST(request: Request) {
       sourceExcerpt: body.sourceExcerpt,
       sourceUrl: body.sourceUrl,
       rewriteReason: body.rewriteReason ?? 'manual',
-      client,
+      client: clientResult.data,
     })
 
     return NextResponse.json(result)

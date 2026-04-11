@@ -46,20 +46,41 @@ export function useSources({
       return
     }
 
+    // Deactivate sources whose type is being disabled
+    const nowDisabled = (['rss', 'website', 'file'] as const).filter(
+      (t) => !updated[t] && strategy[t]
+    )
+    const toDeactivate = nowDisabled.length > 0
+      ? sources.filter((s) => nowDisabled.includes(s.type as 'rss' | 'website' | 'file') && s.is_active)
+      : []
+
     const previous = strategy
     setStrategy(updated)
+    if (toDeactivate.length > 0) {
+      setSources((prev) => prev.map((s) => toDeactivate.some((d) => d.id === s.id) ? { ...s, is_active: false } : s))
+    }
     setSavingStrategy(true)
 
     try {
-      const res = await fetch(`/api/clients/${clientId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ brand_profile: { source_strategy: updated } }),
+      await Promise.all([
+        fetch(`/api/clients/${clientId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ brand_profile: { source_strategy: updated } }),
+        }),
+        ...toDeactivate.map((s) =>
+          fetch(`/api/clients/${clientId}/sources/${s.id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ is_active: false }),
+          })
+        ),
+      ]).then((responses) => {
+        if (responses.some((r) => !r.ok)) {
+          setStrategy(previous)
+          toast.error('Failed to save source strategy')
+        }
       })
-      if (!res.ok) {
-        setStrategy(previous)
-        toast.error('Failed to save source strategy')
-      }
     } catch {
       setStrategy(previous)
       toast.error('Failed to save source strategy')
@@ -210,6 +231,12 @@ export function useSources({
   }
 
   async function handleToggleActive(source: ClientSource) {
+    const typeKey = source.type as 'rss' | 'website' | 'file'
+    if (!source.is_active && strategy[typeKey] === false) {
+      toast.error(`Enable "${source.type === 'rss' ? 'RSS feeds' : source.type === 'website' ? 'Website content' : 'Uploaded documents'}" in Source Strategy first`)
+      return
+    }
+
     const previous = sources
     setSources((prev) => prev.map((s) => s.id === source.id ? { ...s, is_active: !s.is_active } : s))
 

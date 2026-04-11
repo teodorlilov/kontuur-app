@@ -14,7 +14,6 @@ import { deriveSlopFromQuality, computeDeterministicPreScore } from '@/ai/valida
 import { applyTextCorrections, applySlideCorrections } from '@/ai/validation/correction-utils'
 import { Deduplicator } from '@/ai/research/deduplicator'
 import { ANGLE_SIMILARITY_THRESHOLD, DEFAULT_QUALITY_SCORE } from '@/lib/content-rules/constants'
-import { toBrandQualityFields } from '@/lib/clients/fetch-client-data'
 import { OVER_REQUEST_MULTIPLIER, QUALITY_FLOOR, DEFAULT_CAROUSEL_SLIDES } from '@/utils/constants'
 import type { QualityResult } from '@/ai/validation/prompts/validate-quality'
 
@@ -75,7 +74,13 @@ export async function runGenerationBatch(ctx: GenerationRunContext): Promise<Gen
 
   const getGroundingText = (theme: EnrichedTheme) => theme.sourceFullText || theme.sourceExcerpt
 
-  const sharedQualityContext = toBrandQualityFields(ctx.client)
+  const sharedQualityContext = {
+    tone: ctx.client.tone || undefined,
+    targetAudience: ctx.client.targetAudience || undefined,
+    niche: ctx.client.niche || undefined,
+    clientTestimonialVoice: ctx.client.clientTestimonialVoice || undefined,
+    isHealthClient: ctx.client.isHealthNiche ?? undefined,
+  }
 
   const generator = GeneratorFactory.create(ctx.postType)
 

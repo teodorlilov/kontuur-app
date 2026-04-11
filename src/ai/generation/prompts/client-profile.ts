@@ -11,13 +11,13 @@ import {
   formatStructureDescriptions,
   formatAiTells,
 } from '@/ai/generation/generation-criteria'
-import type { ClientContext } from '@/lib/clients/fetch-client-data'
+import type { ClientData } from '@/lib/clients/fetch-client-data'
 import type { LanguageConfig } from '@/lib/clients/language-rules'
 import { formatFormalityRules } from './formality-guidance'
 import { sanitizePromptField, sanitizePromptArray, PROMPT_FIELD_LIMITS, DEFENSIVE_DATA_CLAUSE } from '@/ai/utils/sanitize'
 
 export interface ClientProfileInput {
-  client: ClientContext
+  client: ClientData
   platform: string
   targetPillar?: string
 }
@@ -45,7 +45,7 @@ export function buildBrandVoiceDescription(opts: {
   return lines.join('\n')
 }
 
-export function buildBrandVoicePrompt(client: ClientContext): string {
+export function buildBrandVoicePrompt(client: ClientData): string {
   return `BRAND VOICE:
 ${buildBrandVoiceDescription({
   tone: client.tone,

@@ -15,17 +15,11 @@ import { ThemeRowSkeleton } from '@/features/generate/components/theme-row-skele
 import { shouldShowResearchButton } from '@/features/generate/helpers/should-show-research-button'
 import { readNDJSONStream } from '@/utils/stream'
 import { PLATFORMS } from '@/utils/constants'
-import type { ClientRow, BrandProfileRow } from '@/types/database'
+import type { ClientRow } from '@/types/database'
 import type { ResearchStreamEvent } from '@/ai/research/types'
 import type { ClientData } from '@/lib/clients/fetch-client-data'
-import { serializePillars } from '@/lib/clients/content-pillars'
 
 type Client = Pick<ClientRow, 'id' | 'name' | 'niche' | 'language' | 'posts_per_week'>
-
-type BrandProfile = Pick<BrandProfileRow, 'tone' | 'target_audience' | 'content_pillars' | 'default_carousel_slides'> & {
-  default_post_type: BrandProfileRow['default_post_type'] | null
-  source_strategy: { rss: boolean; website: boolean; file: boolean; trend_fallback: boolean; require_source_grounding?: boolean } | null
-}
 
 interface ThemeWithSource extends ThemeInput {
   pillar?: string
@@ -59,9 +53,6 @@ export function GenerateWizard({ initialClients, initialClientData, initialTarge
   const [clients] = useState<Client[]>(initialClients)
   const [clientId, setClientId] = useState(initialClients[0]?.id ?? '')
   const [platform, setPlatform] = useState('Instagram')
-  const [brandProfile, setBrandProfile] = useState<BrandProfile | null>(
-    initialClientData ? extractBrandProfile(initialClientData) : null
-  )
   const [brandProfileLoading, setBrandProfileLoading] = useState(false)
   const [targetPostCount, setTargetPostCount] = useState(initialTargetPostCount)
   // Holds full ClientData for passthrough to research + generate APIs. Cleared on client change.
@@ -78,8 +69,11 @@ export function GenerateWizard({ initialClients, initialClientData, initialTarge
   const researchAbortRef = useRef<AbortController | null>(null)
 
   // Step 4
-  const [postType, setPostType] = useState<PostType>('single')
-  const [slideCount, setSlideCount] = useState(initialClientData?.profile.defaultCarouselSlides ?? 6)
+  const [postType, setPostType] = useState<PostType>(
+    initialClientData?.defaultPostType === 'carousel' ? 'carousel'
+    : initialClientData?.defaultPostType === 'reels' ? 'reels' : 'single'
+  )
+  const [slideCount, setSlideCount] = useState(initialClientData?.defaultCarouselSlides ?? 6)
 
   // Step 5
   const [isGenerating, setIsGenerating] = useState(false)
@@ -99,17 +93,19 @@ export function GenerateWizard({ initialClients, initialClientData, initialTarge
     setBrandProfileLoading(true)
     void fetch(`/api/clients/${clientId}`)
       .then((r) => r.json())
-      .then((data: { client?: { posts_per_week: number }; brand_profile?: BrandProfile }) => {
-        if (data.brand_profile) {
-          const profile = data.brand_profile
-          setBrandProfile(profile)
-          if (profile.default_post_type === 'carousel') setPostType('carousel')
-          else if (profile.default_post_type === 'reels') setPostType('reels')
+      .then((data: { clientData?: ClientData; posting_schedule?: unknown }) => {
+        if (data.clientData) {
+          const cd = data.clientData
+          setPreloadedClientData(cd)
+          if (cd.defaultPostType === 'carousel') setPostType('carousel')
+          else if (cd.defaultPostType === 'reels') setPostType('reels')
           else setPostType('single')
-          setSlideCount(profile.default_carousel_slides || 6)
+          setSlideCount(cd.defaultCarouselSlides || 6)
         }
-        if (data.client?.posts_per_week != null && data.client.posts_per_week > 0) {
-          setTargetPostCount(data.client.posts_per_week)
+        // posts_per_week comes from the clients list already loaded at page render
+        const changedClient = clients.find((c) => c.id === clientId)
+        if (changedClient && changedClient.posts_per_week > 0) {
+          setTargetPostCount(changedClient.posts_per_week)
         }
       })
       .finally(() => setBrandProfileLoading(false))
@@ -179,7 +175,7 @@ export function GenerateWizard({ initialClients, initialClientData, initialTarge
           postType,
           slideCount,
           priorityPosts,
-          preloadedClientData: preloadedClientData ? toGenerateWireData(preloadedClientData) : undefined,
+          preloadedClientData: preloadedClientData ?? undefined,
         }),
       })
 
@@ -226,9 +222,7 @@ export function GenerateWizard({ initialClients, initialClientData, initialTarge
           niche: client.niche ?? 'general',
           language: client.language,
           count: targetPostCount,
-          brandProfile: preloadedClientData
-            ? toResearchBrandProfile(preloadedClientData)
-            : (brandProfile ?? undefined),
+          preloadedClientData: preloadedClientData ?? undefined,
         }),
       })
 
@@ -467,7 +461,7 @@ export function GenerateWizard({ initialClients, initialClientData, initialTarge
                   </span>
                 </div>
 
-                {shouldShowResearchButton(brandProfile?.source_strategy) && (
+                {shouldShowResearchButton(preloadedClientData?.sourceStrategy) && (
                   <Button
                     variant="secondary"
                     size="sm"
@@ -625,54 +619,4 @@ export function GenerateWizard({ initialClients, initialClientData, initialTarge
       )}
     </div>
   )
-}
-
-/** Extract the BrandProfile shape (used for source_strategy display) from ClientData. */
-function extractBrandProfile(data: ClientData): BrandProfile {
-  return {
-    tone: data.profile.tone as BrandProfileRow['tone'],
-    target_audience: data.profile.targetAudience as BrandProfileRow['target_audience'],
-    content_pillars: null, // not needed for UI display
-    default_post_type: data.profile.defaultPostType ?? null,
-    default_carousel_slides: data.profile.defaultCarouselSlides,
-    source_strategy: null, // populated by client change fetch when user switches clients
-  }
-}
-
-/** Map ClientData to the flat wire type the research route expects as brandProfile. */
-function toResearchBrandProfile(data: ClientData) {
-  return {
-    content_pillars: serializePillars(data.profile.contentPillars) || null,
-    source_strategy: data.profile.sourceStrategy as Record<string, boolean> | null,
-    language_formality: data.profile.formality,
-    language_notes: data.profile.languageNotes,
-    language_instructions: data.languageRules.languageInstructions,
-    post_history: data.postHistory,
-  }
-}
-
-/** Map ClientData to the flat snake_case wire type the generate route expects. */
-function toGenerateWireData(data: ClientData) {
-  return {
-    client: data.client,
-    profile: {
-      tone: data.profile.tone,
-      target_audience: data.profile.targetAudience,
-      formality: data.profile.formality,
-      avoid_topics: data.profile.avoidTopics,
-      client_testimonial_voice: data.profile.clientTestimonialVoice,
-      content_pillars: serializePillars(data.profile.contentPillars) || null,
-      default_carousel_slides: data.profile.defaultCarouselSlides,
-      require_source_grounding: data.profile.requireSourceGrounding,
-      is_health_niche: data.profile.isHealthNiche,
-      language_notes: data.profile.languageNotes,
-      top_performing_posts: data.profile.topPerformingPosts,
-    },
-    language_rules: {
-      carousel_swipe_cues: data.languageRules.carouselSwipeCues,
-      formality_rules: data.languageRules.formalityRules,
-      language_instructions: data.languageRules.languageInstructions,
-    },
-    post_history: data.postHistory,
-  }
 }
