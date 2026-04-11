@@ -52,9 +52,9 @@ export abstract class ResearchSource {
 
   // ---- Shared ----
 
-  /** Fire-and-forget DB status update after a network fetch. */
-  reportStatus(supabase: SupabaseClient, result: SourceFetchResult): void {
-    void supabase
+  /** Update DB status after a network fetch. */
+  async reportStatus(supabase: SupabaseClient, result: SourceFetchResult): Promise<void> {
+    await supabase
       .from('client_sources')
       .update({
         last_fetched_at: new Date().toISOString(),

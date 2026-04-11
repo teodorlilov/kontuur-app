@@ -23,6 +23,7 @@ export interface ClientProfileInput {
 }
 
 let _cachedStaticPrompt: string | null = null
+// Cache is process-scoped. To pick up changes during development, restart the server.
 
 /**
  * Formats brand voice for use in both generation and validation prompts.
@@ -83,7 +84,8 @@ WRITING RULES:
 SELF-CHECK (before returning your response):
 - Does the opener make someone stop scrolling? If not — rewrite it.
 - Could this post be written about any business in the niche? If yes — add specificity.
-- If source was provided: does the post focus on ONE angle or summarize?`
+- If source was provided: does the post focus on ONE angle or summarize?
+- Read the post aloud as if speaking to a person. Does every sentence sound like something a real human would say? Any sentence that sounds like a written report, consultant memo, or bureaucratic form must be rewritten in spoken language.`
   return _cachedStaticPrompt
 }
 

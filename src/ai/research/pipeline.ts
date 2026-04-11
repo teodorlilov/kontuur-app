@@ -19,6 +19,8 @@ import type {
 const DEFAULT_STRATEGY: SourceStrategy = { rss: true, website: true, file: true, trend_fallback: true }
 
 const MAX_RESEARCH_RETRIES = 1
+const POST_HISTORY_LIMIT = 30
+const GENERATION_RUNS_LIMIT = 10
 
 interface RawClientProfile {
   profile: {
@@ -47,13 +49,16 @@ export class ResearchPipeline {
 
   constructor(ctx: ResearchRunContext) {
     this.ctx = ctx
-  } 
+  }
 
   /** Execute the full research pipeline. Main entry point. */
   async execute(): Promise<ResearchTopic[]> {
     // 1. Load client data (pillars, history, sources, strategy)
     this.ctx.onPhase?.('Loading brand profile...')
     const clientData = await this.loadClientData()
+
+    console.log("Client Data is ", clientData)
+
 
     // 2. Compute fetch limits scaled to requested post count
     // 3. Create source objects via factory (polymorphic creation)
@@ -63,11 +68,16 @@ export class ResearchPipeline {
     const sourceObjects = createAllSources(clientData.sources)
     await this.fetchAllSources(sourceObjects, limits)
 
+    console.log("sourceObjects is ", sourceObjects)
+
     // 5. Build source context from fetched sources (limits control token budgets)
     const sourceContext = this.buildSourceContext(sourceObjects, clientData.strategy, limits)
 
+    console.log("sourceContext is ", sourceContext)
     // 6. Build full-text maps for source grounding
     const fullTextIndex = this.buildSourceFullTextIndex(sourceObjects)
+
+    console.log("fullTextIndex is ", fullTextIndex)
 
     // 7. Generate topics via prompt builder (exact count, no multiplier)
     this.ctx.onPhase?.('Generating theme ideas...')
@@ -78,6 +88,8 @@ export class ResearchPipeline {
       postHistory: clientData.history,
     })
 
+    console.log("builder is ", builder)
+
     const requestedCount = this.ctx.count
 
     // Initial generation — exact count, trust the LLM + exclusion list
@@ -85,7 +97,8 @@ export class ResearchPipeline {
       topics: initialTopics,
       userPrompt: firstUserPrompt,
       rawResponse: firstRawResponse,
-    } = await this.generateAndFilter(requestedCount, builder, sourceContext, fullTextIndex)
+    } = await builder.generateTopics(requestedCount, sourceContext)
+    this.attachSourceFullText(initialTopics, fullTextIndex)
 
     let topics = initialTopics
 
@@ -96,9 +109,14 @@ export class ResearchPipeline {
       const extendedHistory = [...clientData.history, ...topics.map((t: ResearchTopic) => t.suggested_theme)]
       builder.updateHistory(extendedHistory)
 
-      const retryTopics = await builder.generateTopicsRetry(deficit, firstUserPrompt, firstRawResponse)
-      this.attachSourceFullText(retryTopics, fullTextIndex)
-      topics.push(...retryTopics)
+      try {
+        const retryTopics = await builder.generateTopicsRetry(deficit, firstUserPrompt, firstRawResponse)
+        this.attachSourceFullText(retryTopics, fullTextIndex)
+        topics.push(...retryTopics)
+      } catch (err) {
+        console.error(`[research] Retry ${retry + 1} failed — keeping ${topics.length} topics already generated`, err)
+        break
+      }
     }
 
     if (topics.length < requestedCount) {
@@ -143,7 +161,18 @@ export class ResearchPipeline {
       : DEFAULT_STRATEGY
     const filteredSources = this.filterSourcesByStrategy(sources, strategy)
 
-    return { contentPillars, history, sources: filteredSources, strategy, languageConfig }
+    const clinetProfile = { contentPillars, history, sources: filteredSources, strategy, languageConfig }
+
+    console.log("Client Ownership is", owns)
+    console.log("Profile is", profile)
+    console.log("History is", history)
+    console.log("Sources is", sources)
+    console.log("Language config is", languageConfig)
+
+
+    console.log("Client Profile is ", clinetProfile)
+
+    return clinetProfile
   }
 
   /** Returns the fallback LanguageConfig when no DB data is available. */
@@ -175,14 +204,14 @@ export class ResearchPipeline {
     if (this.ctx.preloaded) {
       return {
         profile: {
-          content_pillars:    this.ctx.preloaded.contentPillars,
-          source_strategy:    this.ctx.preloaded.sourceStrategy,
+          content_pillars: this.ctx.preloaded.contentPillars,
+          source_strategy: this.ctx.preloaded.sourceStrategy,
           language_formality: this.ctx.preloaded.languageFormality,
-          language_notes:     this.ctx.preloaded.languageNotes,
+          language_notes: this.ctx.preloaded.languageNotes,
         },
         langRules: {
-          native_cta_phrases:    null,
-          formality_rules:       null,
+          native_cta_phrases: null,
+          formality_rules: null,
           language_instructions: this.ctx.preloaded.languageInstructions,
         },
       }
@@ -210,13 +239,13 @@ export class ResearchPipeline {
         .select('topic_summary')
         .eq('client_id', this.ctx.clientId!)
         .order('created_at', { ascending: false })
-        .limit(30),
+        .limit(POST_HISTORY_LIMIT),
       this.ctx.supabase
         .from('generation_runs')
         .select('generation_themes(theme_description)')
         .eq('client_id', this.ctx.clientId!)
         .order('created_at', { ascending: false })
-        .limit(10),
+        .limit(GENERATION_RUNS_LIMIT),
     ])
 
     const postTopics =
@@ -224,15 +253,10 @@ export class ResearchPipeline {
         ?.map((h) => h.topic_summary)
         .filter((s): s is string => s !== null) ?? []
 
-    const themeDescriptions: string[] = []
     const runsData = themesResult.data as Array<{ generation_themes: Array<{ theme_description: string | null }> }> | null
-    if (runsData) {
-      for (const run of runsData) {
-        for (const theme of run.generation_themes) {
-          if (theme.theme_description) themeDescriptions.push(theme.theme_description)
-        }
-      }
-    }
+    const themeDescriptions = (runsData ?? []).flatMap((run) =>
+      run.generation_themes.map((t) => t.theme_description).filter((t): t is string => t !== null)
+    )
 
     return [...postTopics, ...themeDescriptions]
   }
@@ -278,14 +302,12 @@ export class ResearchPipeline {
     await Promise.allSettled(
       networkSources.map(async (source) => {
         const result = await source.fetch(limits)
-        source.reportStatus(this.ctx.supabase, result)
+        await source.reportStatus(this.ctx.supabase, result)
       })
     )
 
     // File sources: no-op fetch, no network call, no status report
-    for (const source of fileSources) {
-      await source.fetch()
-    }
+    await Promise.all(fileSources.map((source) => source.fetch()))
   }
 
   /**
@@ -298,14 +320,7 @@ export class ResearchPipeline {
     limits: FetchLimits
   ): SourceContext | undefined {
     // RSS: aggregate all items across sources, cap at scaled global limit
-    const allRssItems = sources.flatMap((s) => s.getRssItems()).slice(0, limits.rssGlobalCap)
-
-    // Check if RSS text fits budget (for determining if we have content)
-    const rssText = allRssItems
-      .map((item) => `- ${item.title}: ${item.description}${item.link ? ` (${item.link})` : ''}`)
-      .join('\n')
-      .slice(0, limits.rssBudget)
-    const cappedRssItems = rssText.length > 0 ? allRssItems : []
+    const cappedRssItems = sources.flatMap((s) => s.getRssItems()).slice(0, limits.rssGlobalCap)
 
     // Website: distribute scaled web budget across all excerpts from all sources
     const allWebExcerpts = sources.flatMap((s) => s.getWebExcerpts())
@@ -341,21 +356,6 @@ export class ResearchPipeline {
     }
 
     return { byUrl, byLabel }
-  }
-
-  /**
-   * Generate topics and attach source full text.
-   * Returns topics plus the raw prompt/response needed for retry conversation history.
-   */
-  private async generateAndFilter(
-    count: number,
-    builder: ResearchPromptBuilder,
-    sourceContext: SourceContext | undefined,
-    fullTextIndex: SourceFullTextIndex,
-  ): Promise<{ topics: ResearchTopic[]; userPrompt: string; rawResponse: string }> {
-    const { topics, userPrompt, rawResponse } = await builder.generateTopics(count, sourceContext)
-    this.attachSourceFullText(topics, fullTextIndex)
-    return { topics, userPrompt, rawResponse }
   }
 
   /** Attach full source text to topics based on their source metadata. */

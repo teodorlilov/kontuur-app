@@ -77,16 +77,20 @@ export const BG_SPECIFIC_AI_TELLS: readonly string[] = [
   'Conditional Politeness: Excessive use of "Бихме желали/искали" which creates a robotic "template" feel.',
   'Shortened Form Avoidance: AI never uses natural Bulgarian shortened verbs or particles (e.g., "ще се справя" vs the AI\'s "ще успея да се справя").',
   'Cliché Superlatives: Use of empty words like "уникален", "ексклузивен", or "невероятен" without factual backing.',
+  'Impersonal Passive Instructions: "Препоръчва се да", "Съветва се да", "Необходимо е да" instead of direct second-person address like "Провери", "Помисли", "Знай".',
+  'Bureaucratic Compound Nouns: Formal compound phrases like "семеен състав", "жилищна площ", "потребителски профил" where a native speaker would use simple, conversational words.',
+  'Mechanical Parallel Questions: Firing 2-3 Вие-form questions back-to-back with identical structure ("Очаквате ли X? Планирате ли Y?") — sounds like a bureaucratic form, not a human speaking.',
+  'English Marketing Calques: Translating abstract English marketing phrases literally instead of using native Bulgarian expressions (e.g., "надхвърля стандартната презентация" for "goes beyond the standard presentation").',
 ] as const
 
 const AI_TELLS_BY_LANGUAGE: Record<string, readonly string[]> = {
-  English: EN_SPECIFIC_AI_TELLS,
-  Bulgarian: BG_SPECIFIC_AI_TELLS,
+  english: EN_SPECIFIC_AI_TELLS,
+  bulgarian: BG_SPECIFIC_AI_TELLS,
 }
 
 /** Returns AI tell patterns for a given language. Falls back to English. */
 export function getAiTellsForLanguage(language: string): readonly string[] {
-  return AI_TELLS_BY_LANGUAGE[language] ?? EN_SPECIFIC_AI_TELLS
+  return AI_TELLS_BY_LANGUAGE[language.toLowerCase()] ?? EN_SPECIFIC_AI_TELLS
 }
 
 /** Formats AI tell patterns for prompt injection — single function for all consumers. */

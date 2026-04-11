@@ -23,7 +23,7 @@ function buildPromptSection(title: string, tag: string, content: string): string
  * Immutable fields (niche, languageConfig, contentPillars, systemPrompt) are set once
  * in the constructor. postHistory is the only mutable field, updated by the retry loop
  * via updateHistory().
- */
+ */ 
 export class ResearchPromptBuilder {
   private readonly niche: string
   private readonly languageConfig: LanguageConfig
@@ -40,7 +40,7 @@ export class ResearchPromptBuilder {
     this.niche = opts.niche
     this.languageConfig = opts.languageConfig
     this.contentPillars = opts.contentPillars
-    this.postHistory = opts.postHistory
+    this.postHistory = opts.postHistory 
     this.systemPrompt = this.buildResearcherSystemPrompt()
   }
 
@@ -64,18 +64,12 @@ export class ResearchPromptBuilder {
       ? this.buildResearcherUserPrompt(count, sourceContext!, pillarsContext, historyContext)
       : this.buildTrendResearchPrompt(count, pillarsContext, historyContext)
 
-    console.log("RESEARCH USER PROMPT", userPrompt)
-    console.log("RESEARCH SYSTEM PROMPT", this.systemPrompt)
-
-    console.log(`[ai:research] → callAnthropic (count=${count}, model=haiku)`)
-    const t0 = Date.now()
     const message = await callAnthropic({
       systemPrompt: this.systemPrompt,
       userMessage: userPrompt,
       model: LIGHT_MODEL,
       assistantPrefill: '[',
     })
-    console.log(`[ai:research] ← done in ${Date.now() - t0}ms`)
 
     const rawResponse = message.content
       .filter((b) => b.type === 'text')
@@ -108,7 +102,6 @@ export class ResearchPromptBuilder {
         { role: 'assistant', content: '[' + originalRawResponse },
       ],
     })
-    console.log(`[ai:research] ← retry done in ${Date.now() - t0}ms`)
 
     return parseJsonResponse<ResearchTopic[]>(message, 'array', '[')
   }
@@ -125,7 +118,8 @@ RSS feeds — and extract post themes that are specific, factual, and immediatel
 actionable for the client's social media manager.
 
 You write exclusively in ${language} using natural native phrasing.
-Never translate literally from English — write as a ${language} native speaker would.`,
+When source material is in English, do NOT translate or transliterate it — reason about the idea and express it as a native ${language} speaker would write it independently.
+If source data uses technical or medical terminology, use the established ${language} word where one exists; keep the technical term only when no native equivalent exists.`,
     ]
 
     if (ResearchPromptBuilder.usesNonLatinScript(language)) {
@@ -189,6 +183,7 @@ ${historyContext}
 - Must include one hard fact: price, location, feature name, or measurable result.
 - Never generic. Name the specific thing, not the category.
 - No clickbait. No dashes. No colons. No multiple sentences.
+- Write as a native ${this.languageConfig.language} speaker — rephrase ideas naturally, never copy-translate English phrasing or transliterate technical terms.
 
 ### JSON OUTPUT FORMAT:
 Generate exactly ${count} object${count > 1 ? 's' : ''}:
@@ -208,12 +203,13 @@ Generate exactly ${count} object${count > 1 ? 's' : ''}:
     pillarsContext: string,
     historyContext: string,
   ): string {
+    const monthYear = new Date().toLocaleString('en-US', { month: 'long', year: 'numeric' })
     return `Date: ${todayDateString()}
 Target: ${this.niche} | Language: ${this.languageConfig.language}
 Task: Identify exactly ${count} unique, trend-based post theme${count > 1 ? 's' : ''}.
 
 ### RESEARCH BRIEF:
-No client documents were provided for this run. Analyse the current April 2026 landscape for the "${this.niche}" industry. Focus on:
+No client documents were provided for this run. Analyse the current ${monthYear} landscape for the "${this.niche}" industry. Focus on:
 - **Seasonality:** What are consumers in the ${this.languageConfig.language} market concerned about right now?
 - **Emerging Shifts:** New technologies, methods, or industry news making headlines this month.
 - **Viral Formats:** Content structures currently performing well.
@@ -229,6 +225,7 @@ ${historyContext}
 - Must include one hard fact: price, location, feature name, or measurable result.
 - Never generic. Name the specific thing, not the category.
 - No clickbait. No dashes. No colons. No multiple sentences.
+- Write as a native ${this.languageConfig.language} speaker — rephrase ideas naturally, never copy-translate English phrasing or transliterate technical terms.
 
 ### JSON OUTPUT FORMAT:
 Generate exactly ${count} object${count > 1 ? 's' : ''}. Use 'source_excerpt' to describe the specific trend or hook that justifies the theme.
@@ -281,7 +278,7 @@ Return exactly ${deficit} JSON object${deficit > 1 ? 's' : ''} using the same fo
   }
 
   private static usesNonLatinScript(language: string): boolean {
-    const nonLatinLanguages = ['Bulgarian', 'Russian', 'Ukrainian', 'Greek', 'Arabic', 'Hebrew', 'Chinese', 'Japanese', 'Korean']
-    return nonLatinLanguages.includes(language)
+    const nonLatinLanguages = ['bulgarian', 'russian', 'ukrainian', 'greek', 'arabic', 'hebrew', 'chinese', 'japanese', 'korean']
+    return nonLatinLanguages.includes(language.toLowerCase())
   }
 }

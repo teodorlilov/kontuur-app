@@ -4,13 +4,12 @@ import { checkRateLimit, AI_RATE_LIMIT } from '@/lib/auth/rate-limit'
 import { performResearch } from '@/ai/research/pipeline'
 import type { ResearchStreamEvent, PreloadedClientData } from '@/ai/research/types'
 import type { SourceStrategy } from '@/types/api'
-
+ 
 interface ResearchRequestBody {
   clientId: string
   niche: string
   language: string
   count?: number
-  /** Optional — wizard passes pre-loaded brand profile to skip redundant DB fetch. */
   brandProfile?: {
     content_pillars: string | null
     source_strategy: Record<string, boolean> | null
