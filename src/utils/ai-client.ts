@@ -25,6 +25,8 @@ export interface CallAnthropicOptions {
   assistantPrefill?: string
   /** Optional prior conversation turns — used for retry calls to avoid re-sending source context */
   conversationHistory?: MessageParam[]
+  /** Called for each text token as it streams from the API. */
+  onToken?: (text: string) => void
 }
 
 export async function callAnthropic(opts: CallAnthropicOptions): Promise<Message> {
@@ -36,6 +38,7 @@ export async function callAnthropic(opts: CallAnthropicOptions): Promise<Message
     cacheSystemPrompt = true,
     assistantPrefill,
     conversationHistory = [],
+    onToken,
   } = opts
 
   const messages: MessageParam[] = [...conversationHistory, { role: 'user', content: userMessage }]
@@ -43,7 +46,7 @@ export async function callAnthropic(opts: CallAnthropicOptions): Promise<Message
     messages.push({ role: 'assistant', content: assistantPrefill })
   }
 
-  return anthropic.messages.create({
+  const stream = anthropic.messages.stream({
     model,
     max_tokens: maxTokens,
     ...(systemPrompt && {
@@ -53,4 +56,6 @@ export async function callAnthropic(opts: CallAnthropicOptions): Promise<Message
     }),
     messages,
   })
+  if (onToken) stream.on('text', onToken)
+  return stream.finalMessage()
 }

@@ -8,7 +8,6 @@ import { toast } from '@/components/ui/toast'
 import { PriorityPostForm } from '@/features/generate/components/priority-post-form'
 import { ThemeRow, type ThemeInput } from '@/features/generate/components/theme-row'
 import { PostTypeSelector } from '@/features/generate/components/post-type-selector'
-import type { PriorityPost, PostType } from '@/types/api'
 import { PostCard, type PostData, type ValidationData } from '@/components/posts/post-card'
 import { PostCardSkeleton } from '@/components/posts/post-card-skeleton'
 import { ThemeRowSkeleton } from '@/features/generate/components/theme-row-skeleton'
@@ -18,6 +17,8 @@ import { PLATFORMS } from '@/utils/constants'
 import type { ClientRow } from '@/types/database'
 import type { ResearchStreamEvent } from '@/ai/research/types'
 import type { ClientData } from '@/lib/clients/fetch-client-data'
+import type { PriorityPost, PostType } from '@/types/api'
+import type { GenerateStreamEvent } from '@/ai/generation/types'
 
 type Client = Pick<ClientRow, 'id' | 'name' | 'niche' | 'language' | 'posts_per_week'>
 
@@ -198,8 +199,10 @@ export function GenerateWizard({
         return
       }
 
-      await readNDJSONStream<GeneratedPost>(res, (post) => {
-        setGeneratedPosts((prev) => [...prev, post])
+      await readNDJSONStream<GenerateStreamEvent>(res, (event) => {
+        if (event.type === 'result') {
+          setGeneratedPosts((prev) => [...prev, event.data as unknown as GeneratedPost])
+        }
       })
 
       setHasGenerated(true)

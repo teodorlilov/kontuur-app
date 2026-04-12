@@ -112,6 +112,7 @@ export async function runGenerationBatch(ctx: GenerationRunContext): Promise<Gen
   }
 
   async function generateForTheme(theme: EnrichedTheme): Promise<void> {
+    ctx.onProgress?.(theme.description)
     const input = buildThemeInput(ctx, theme)
     const result = await generator.generate(input)
 

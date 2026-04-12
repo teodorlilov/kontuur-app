@@ -1,4 +1,3 @@
-import type { Message } from '@anthropic-ai/sdk/resources'
 import { callAnthropic } from '@/utils/ai-client'
 import {
   buildStaticSystemPrompt,
@@ -8,16 +7,17 @@ import {
 import { buildGroundingPrompt } from '@/ai/generation/prompts/source-grounding'
 import { todayDateString, formatHistory } from '@/ai/utils/prompt-helpers'
 import type { GenerationInput } from '../types'
+import type { Message } from '@anthropic-ai/sdk/resources'
 
 export abstract class ContentGenerator<TInput extends GenerationInput, TOutput> {
   /**
    * The single public entry point.
    * Orchestrates: system prompt → user message → API call → parse.
    */
-  async generate(input: TInput): Promise<TOutput> {
+  async generate(input: TInput, onToken?: (text: string) => void): Promise<TOutput> {
     const systemPrompt = this.buildSystemPrompt(input)
     const userMessage = this.buildUserMessage(input)
-    const message = await this.callAnthropic(systemPrompt, userMessage)
+    const message = await callAnthropic({ systemPrompt, userMessage, onToken })
     return this.parseResponse(message, input)
   }
 
@@ -89,12 +89,4 @@ export abstract class ContentGenerator<TInput extends GenerationInput, TOutput> 
    */
   protected abstract parseResponse(message: Message, input: TInput): TOutput
 
-  /**
-   * Shared Anthropic API call with system prompt caching.
-   * Private — subclasses never call this directly.
-   */
-  private async callAnthropic(systemPrompt: string, userMessage: string): Promise<Message> {
-    const result = await callAnthropic({ systemPrompt, userMessage })
-    return result
-  }
 }

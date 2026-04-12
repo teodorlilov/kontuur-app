@@ -109,4 +109,10 @@ export interface GenerationRunContext {
   trackTheme: (theme: EnrichedTheme, postCount: number) => Promise<void>
   /** Called immediately when each theme's result is ready. Used for streaming responses. */
   onResult?: (result: GenerationResult) => void
+  /** Called when generation starts for a theme. Used for progress events. */
+  onProgress?: (theme: string) => void
 }
+
+export type GenerateStreamEvent =
+  | { type: 'progress'; theme: string }
+  | { type: 'result'; data: GenerationResult }

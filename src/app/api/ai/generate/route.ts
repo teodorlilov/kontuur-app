@@ -5,7 +5,7 @@ import { DEFAULT_CAROUSEL_SLIDES } from '@/utils/constants'
 import { checkRateLimit, AI_RATE_LIMIT } from '@/lib/auth/rate-limit'
 import { runGenerationBatch } from '@/ai/generation/generation-run'
 import type { PriorityPost } from '@/types/api'
-import type { Theme } from '@/ai/generation/types'
+import type { Theme, GenerateStreamEvent } from '@/ai/generation/types'
 
 export const maxDuration = 300 // 5 minutes — each carousel/reels theme needs ~15-25s
 
@@ -66,6 +66,9 @@ export async function POST(request: Request) {
   const runId = (runData as { id: string } | null)?.id
 
   const encoder = new TextEncoder()
+  const send = (event: GenerateStreamEvent, controller: ReadableStreamDefaultController<Uint8Array>) =>
+    controller.enqueue(encoder.encode(JSON.stringify(event) + '\n'))
+
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
       try {
@@ -89,8 +92,11 @@ export async function POST(request: Request) {
               research_used: !!theme.sourceExcerpt,
             })
           },
+          onProgress: (theme) => {
+            send({ type: 'progress', theme }, controller)
+          },
           onResult: (generationResult) => {
-            controller.enqueue(encoder.encode(JSON.stringify(generationResult) + '\n'))
+            send({ type: 'result', data: generationResult }, controller)
           },
         })
       } finally {
