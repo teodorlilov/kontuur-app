@@ -14,7 +14,7 @@ const steps = [
   {
     num: '3',
     title: 'Publish directly to Instagram with one click.',
-    desc: 'Review, approve, and schedule. Kontuur handles publishing — single images, carousels, and Reels — via the official Meta API.',
+    desc: 'Review, approve, and schedule. Kontuur handles publishing — single images and carousels — via the official Meta API.',
   },
 ]
 

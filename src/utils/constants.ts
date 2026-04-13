@@ -3,7 +3,7 @@ export const PROMPT_HISTORY_LIMIT = 20
 /**
  * Generate this many extra posts per requested count.
  * 1.5 = request 50% more than needed, keep the best ones.
- * Only applies to single posts — carousel and reels generate exactly one result.
+ * Only applies to single posts — carousel generates exactly one result.
  */
 export const OVER_REQUEST_MULTIPLIER = 1.5
 

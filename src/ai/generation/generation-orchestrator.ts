@@ -1,18 +1,15 @@
 import { randomUUID } from 'crypto'
 import { generatePost } from '@/ai/generation/generators/post-generator'
 import { generateCarousel } from '@/ai/generation/generators/carousel-generator'
-import { generateReels } from '@/ai/generation/generators/reels-generator'
 import type { ParsedPost } from '@/ai/generation/generators/post-generator'
 import type {
   SinglePostInput,
   CarouselInput,
   CarouselResult,
-  ReelsResult,
   DraftPost,
   GenerationResult,
   EnrichedTheme,
   GenerationRunContext,
-  GenerationInput,
 } from '@/ai/generation/types'
 import { validatePost } from '@/ai/validation/validate-post'
 import type { PostValidationResult } from '@/ai/validation/validate-post'
@@ -84,14 +81,12 @@ export class GenerationPipeline {
 
     if (this.ctx.postType === 'carousel') {
       await this.collectCarousel(theme, await generateCarousel(input as CarouselInput))
-    } else if (this.ctx.postType === 'reels') {
-      await this.collectReels(theme, await generateReels(input))
     } else {
       await this.collectSinglePosts(theme, await generatePost(input as SinglePostInput))
     }
   }
 
-  private buildThemeInput(theme: EnrichedTheme): SinglePostInput | CarouselInput | GenerationInput {
+  private buildThemeInput(theme: EnrichedTheme): SinglePostInput | CarouselInput {
     const hasGrounding = !!(theme.sourceFullText || theme.sourceExcerpt)
     const base = {
       client: this.ctx.client,
@@ -109,9 +104,6 @@ export class GenerationPipeline {
     if (this.ctx.postType === 'carousel') {
       return { ...base, slideCount: this.ctx.slideCount ?? DEFAULT_CAROUSEL_SLIDES, platform: this.ctx.platform }
     }
-    if (this.ctx.postType === 'reels') {
-      return base
-    }
     return { ...base, platform: this.ctx.platform, count: theme.count || 1 }
   }
 
@@ -126,7 +118,7 @@ export class GenerationPipeline {
     theme: EnrichedTheme,
     overrides: {
       caption: string
-      post_type: 'single' | 'carousel' | 'reels'
+      post_type: 'single' | 'carousel'
       slides_json: unknown
       carousel_quality_json?: unknown
       quality_score_avg: number
@@ -249,20 +241,6 @@ export class GenerationPipeline {
     )
   }
 
-  private async collectReels(theme: EnrichedTheme, result: ReelsResult): Promise<void> {
-    void this.ctx.trackTheme(theme, 1)
-    const scriptText = [result.hook, ...result.main_points, result.cta].join('\n')
-    const item: GenerationResult = {
-      post: this.buildDraftRecord(theme, {
-        caption: scriptText,
-        post_type: 'reels',
-        slides_json: result,
-        quality_score_avg: 0,
-      }),
-    }
-    this.results.push(item)
-    this.ctx.onResult?.(item)
-  }
 }
 
 /** Backwards-compatible entry point for API routes. */

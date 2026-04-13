@@ -8,13 +8,13 @@ import type { PriorityPost } from '@/types/api'
 import type { Theme, GenerateStreamEvent } from '@/ai/generation/types'
 import type { ClientData } from '@/lib/clients/fetch-client-data'
 
-export const maxDuration = 300 // 5 minutes — each carousel/reels theme needs ~15-25s
+export const maxDuration = 300 // 5 minutes — each carousel theme needs ~15-25s
 
 interface GenerateRequestBody {
   clientId: string
   platform: string
   themes: Theme[]
-  postType: 'single' | 'carousel' | 'reels'
+  postType: 'single' | 'carousel'
   slideCount: number
   priorityPosts: PriorityPost[]
   preloadedClientData: ClientData

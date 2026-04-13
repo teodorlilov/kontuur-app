@@ -10,7 +10,6 @@ import { Badge } from '@/components/ui/badge'
 import { SlopDetector } from '@/components/posts/slop-detector'
 import { CarouselSlides } from '@/components/posts/carousel-slides'
 import type { CarouselSlide } from '@/types/api'
-import { ReelsScript, type ReelsScriptData } from '@/components/posts/reels-script'
 import { useReviewActions } from '@/features/review/hooks/use-review-actions'
 import { useScheduleModal } from '@/components/scheduling/use-schedule-modal'
 import { useBestTime } from '@/components/posts/use-best-time'
@@ -73,10 +72,7 @@ export function ReviewPostCard({ post, onApprove, onDelete }: ReviewPostCardProp
   const [confirmDelete, setConfirmDelete] = useState(false)
 
   const isCarousel = post.post_type === 'carousel'
-  const isReels = post.post_type === 'reels'
   const slides = Array.isArray(slidesJson) ? (slidesJson as CarouselSlide[]) : []
-  const reelsData =
-    isReels && slidesJson && !Array.isArray(slidesJson) ? (slidesJson as ReelsScriptData) : null
 
   // Run slop detection on first expand
   useEffect(() => {
@@ -158,18 +154,10 @@ export function ReviewPostCard({ post, onApprove, onDelete }: ReviewPostCardProp
         <span
           className={cn(
             'text-xs px-2 py-0.5 rounded-full',
-            isCarousel
-              ? 'bg-purple-50 text-purple-700'
-              : isReels
-                ? 'bg-pink-50 text-pink-700'
-                : 'bg-gray-100 text-gray-600'
+            isCarousel ? 'bg-purple-50 text-purple-700' : 'bg-gray-100 text-gray-600'
           )}
         >
-          {isCarousel
-            ? `Carousel · ${slides.length} slides`
-            : isReels
-              ? 'Reels script'
-              : 'Single image'}
+          {isCarousel ? `Carousel · ${slides.length} slides` : 'Single image'}
         </span>
         {post.quality_score_avg !== null && (
           <span
@@ -188,75 +176,70 @@ export function ReviewPostCard({ post, onApprove, onDelete }: ReviewPostCardProp
       {expanded && (
         <div className="border-t border-gray-100 p-5 flex flex-col gap-5">
           {/* Caption */}
-          {!isReels && (
-            <div className="flex flex-col gap-2">
-              <div className="flex items-center justify-between">
-                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
-                  {isCarousel ? 'Main Caption' : 'Caption'}
-                </p>
-                <div className="flex items-center gap-2">
-                  {!editing && (
-                    <button
-                      onClick={() => {
-                        setEditCaption(caption)
-                        setEditing(true)
-                      }}
-                      className="text-xs text-brand-purple hover:underline font-medium"
-                    >
-                      Edit
-                    </button>
-                  )}
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+                {isCarousel ? 'Main Caption' : 'Caption'}
+              </p>
+              <div className="flex items-center gap-2">
+                {!editing && (
                   <button
-                    onClick={handleCopyCaption}
-                    className="text-xs text-gray-500 hover:text-gray-700 font-medium"
+                    onClick={() => {
+                      setEditCaption(caption)
+                      setEditing(true)
+                    }}
+                    className="text-xs text-brand-purple hover:underline font-medium"
                   >
-                    Copy
+                    Edit
                   </button>
+                )}
+                <button
+                  onClick={handleCopyCaption}
+                  className="text-xs text-gray-500 hover:text-gray-700 font-medium"
+                >
+                  Copy
+                </button>
+              </div>
+            </div>
+            {editing ? (
+              <div className="flex flex-col gap-2">
+                <textarea
+                  value={editCaption}
+                  onChange={(e) => setEditCaption(e.target.value)}
+                  rows={6}
+                  className="w-full text-sm text-gray-900 border border-gray-300 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-brand-purple focus:border-transparent resize-y"
+                />
+                <div className="flex gap-2">
+                  <Button
+                    onClick={() => {
+                      void handleSaveCaption()
+                    }}
+                    loading={saving}
+                    size="sm"
+                  >
+                    Save
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      setEditCaption(caption)
+                      setEditing(false)
+                    }}
+                    variant="ghost"
+                    size="sm"
+                  >
+                    Cancel
+                  </Button>
                 </div>
               </div>
-              {editing ? (
-                <div className="flex flex-col gap-2">
-                  <textarea
-                    value={editCaption}
-                    onChange={(e) => setEditCaption(e.target.value)}
-                    rows={6}
-                    className="w-full text-sm text-gray-900 border border-gray-300 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-brand-purple focus:border-transparent resize-y"
-                  />
-                  <div className="flex gap-2">
-                    <Button
-                      onClick={() => {
-                        void handleSaveCaption()
-                      }}
-                      loading={saving}
-                      size="sm"
-                    >
-                      Save
-                    </Button>
-                    <Button
-                      onClick={() => {
-                        setEditCaption(caption)
-                        setEditing(false)
-                      }}
-                      variant="ghost"
-                      size="sm"
-                    >
-                      Cancel
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <p className="text-sm text-gray-900 whitespace-pre-wrap leading-relaxed">
-                  {caption}
-                </p>
-              )}
-            </div>
-          )}
+            ) : (
+              <p className="text-sm text-gray-900 whitespace-pre-wrap leading-relaxed">
+                {caption}
+              </p>
+            )}
+          </div>
 
           {/* Carousel slides */}
           {isCarousel && slides.length > 0 && <CarouselSlides slides={slides} />}
-
-          {/* Reels script */}
-          {isReels && reelsData && <ReelsScript script={reelsData} />}
 
           {/* Slop detection */}
           {slopLoading && (

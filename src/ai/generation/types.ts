@@ -44,22 +44,12 @@ export interface CarouselInput extends GenerationInput {
   platform: string
 }
 
-// ---- Reels ----
-export interface ReelsResult {
-  hook: string
-  main_points: string[]
-  cta: string
-  on_screen_text: string[]
-  visual_directions: string[]
-  estimated_seconds: number
-}
-
 // ---- Draft post record (typed replacement for Record<string, unknown>) ----
 export interface DraftPost {
   id: string
   client_id: string
   platform: string
-  post_type: PostType
+  post_type: 'single' | 'carousel'
   caption: string
   status: 'draft'
   priority: boolean

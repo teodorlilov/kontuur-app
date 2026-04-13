@@ -77,11 +77,7 @@ export function GenerateWizard({
 
   // Step 4
   const [postType, setPostType] = useState<PostType>(
-    initialClientData?.defaultPostType === 'carousel'
-      ? 'carousel'
-      : initialClientData?.defaultPostType === 'reels'
-        ? 'reels'
-        : 'single'
+    initialClientData?.defaultPostType === 'carousel' ? 'carousel' : 'single'
   )
   const [slideCount, setSlideCount] = useState(initialClientData?.defaultCarouselSlides ?? 6)
 
@@ -111,7 +107,6 @@ export function GenerateWizard({
           const cd = data.clientData
           setPreloadedClientData(cd)
           if (cd.defaultPostType === 'carousel') setPostType('carousel')
-          else if (cd.defaultPostType === 'reels') setPostType('reels')
           else setPostType('single')
           setSlideCount(cd.defaultCarouselSlides || 6)
         }
@@ -433,7 +428,7 @@ export function GenerateWizard({
                     type="button"
                     onClick={() => {
                       setPlatform(p)
-                      if (p !== 'Instagram' && (postType === 'carousel' || postType === 'reels')) {
+                      if (p !== 'Instagram' && postType === 'carousel') {
                         setPostType('single')
                       }
                     }}

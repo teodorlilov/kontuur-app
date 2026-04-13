@@ -2,7 +2,7 @@ import type { ClientData } from '@/lib/clients/fetch-client-data'
 
 export interface RewriteContext {
   caption: string
-  postType: 'single' | 'carousel' | 'reels'
+  postType: 'single' | 'carousel'
   slidesJson?: Array<{ headline: string; body: string }>
   aiTells: string[]
   qualityIssues?: string[]

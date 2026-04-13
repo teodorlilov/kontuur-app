@@ -124,7 +124,7 @@ export function ClientEditForm({
   // Platform — single select, derive from weekly_mix_json or default to Instagram
   const mixJson = profile?.weekly_mix_json as Record<string, unknown> | null
   const firstPlatform = mixJson
-    ? (Object.keys(mixJson).find((k) => !['carousel', 'single', 'reels'].includes(k)) ??
+    ? (Object.keys(mixJson).find((k) => !['carousel', 'single'].includes(k)) ??
       'Instagram')
     : 'Instagram'
   const [activePlatform, setActivePlatform] = useState<string>(firstPlatform)
@@ -347,7 +347,6 @@ export function ClientEditForm({
               options={[
                 { value: 'single', label: 'Single image' },
                 { value: 'carousel', label: 'Carousel' },
-                { value: 'reels', label: 'Reels / video' },
               ]}
             />
             {defaultPostType === 'carousel' && (

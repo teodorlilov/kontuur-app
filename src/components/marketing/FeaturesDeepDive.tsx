@@ -15,7 +15,7 @@ const features: Feature[] = [
   {
     icon: Sparkles,
     title: 'Generate posts from real content',
-    body: "Kontuur reads your client's website, documents, and previous posts to generate on-brand Instagram content in Bulgarian or English. Single images, carousels, and Reels scripts — all with one click.",
+    body: "Kontuur reads your client's website, documents, and previous posts to generate on-brand Instagram content in Bulgarian or English. Single images, carousels — all with one click.",
     tags: ['AI', 'Content generation'],
     imageAlt: 'Generate posts page',
     reversed: false,

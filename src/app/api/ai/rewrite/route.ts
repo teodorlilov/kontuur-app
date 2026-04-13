@@ -7,7 +7,7 @@ import { performRewrite } from '@/ai/rewrite/rewrite-post'
 interface RewriteRequestBody {
   clientId: string
   caption: string
-  postType: 'single' | 'carousel' | 'reels'
+  postType: 'single' | 'carousel'
   slidesJson?: Array<{ headline: string; body: string }>
   aiTells?: string[]
   qualityIssues?: string[]

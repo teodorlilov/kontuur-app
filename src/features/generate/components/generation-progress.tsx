@@ -4,7 +4,7 @@ import { PhaseProgress, type Phase } from '@/components/ui/phase-progress'
 
 interface GenerationProgressProps {
   total: number
-  postType: 'single' | 'carousel' | 'reels'
+  postType: 'single' | 'carousel'
 }
 
 const STATIC_PHASES: Phase[] = [
@@ -20,7 +20,7 @@ const VALIDATION_PHASES: Phase[] = [
 ]
 
 function buildPhases(total: number, postType: string): Phase[] {
-  const typeLabel = postType === 'carousel' ? 'carousel' : postType === 'reels' ? 'reel' : 'post'
+  const typeLabel = postType === 'carousel' ? 'carousel' : 'post'
 
   const generationPhases: Phase[] = Array.from({ length: total }, (_, i) => ({
     message: `Generating ${typeLabel} ${i + 1} of ${total}...`,

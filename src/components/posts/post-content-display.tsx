@@ -7,7 +7,6 @@ import { toast } from '@/components/ui/toast'
 import { decodeUrlsInText } from '@/utils/decode-url'
 import { CarouselSlides } from './carousel-slides'
 import type { CarouselSlide } from '@/types/api'
-import { ReelsScript, type ReelsScriptData } from './reels-script'
 import { QualityScores } from './quality-scores'
 
 export interface PostContentDisplayProps {
@@ -59,11 +58,8 @@ export function PostContentDisplay({
   qualityScores,
 }: PostContentDisplayProps) {
   const isCarousel = postType === 'carousel'
-  const isReels = postType === 'reels'
 
   const slides = Array.isArray(slidesJson) ? (slidesJson as CarouselSlide[]) : []
-  const reelsData =
-    isReels && slidesJson && !Array.isArray(slidesJson) ? (slidesJson as ReelsScriptData) : null
 
   const sourceLabel =
     sourceType === 'rss'
@@ -122,18 +118,10 @@ export function PostContentDisplay({
         <span
           className={cn(
             'text-xs px-2 py-0.5 rounded-full',
-            isCarousel
-              ? 'bg-purple-50 text-purple-700'
-              : isReels
-                ? 'bg-pink-50 text-pink-700'
-                : 'bg-gray-100 text-gray-600'
+            isCarousel ? 'bg-purple-50 text-purple-700' : 'bg-gray-100 text-gray-600'
           )}
         >
-          {isCarousel
-            ? `🎠 Carousel · ${slides.length} slides`
-            : isReels
-              ? '🎬 Reels script'
-              : 'Single image'}
+          {isCarousel ? `🎠 Carousel · ${slides.length} slides` : 'Single image'}
         </span>
         {sourceLabel && (
           <span className={cn('text-xs px-2 py-0.5 rounded-full', sourceClass)}>{sourceLabel}</span>
@@ -184,30 +172,25 @@ export function PostContentDisplay({
       )}
 
       {/* Caption */}
-      {!isReels && (
-        <div className="flex flex-col gap-2">
-          <div className="flex items-center justify-between">
-            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
-              {isCarousel ? 'Main Caption' : 'Caption'}
-            </p>
-            <button
-              onClick={handleCopyCaption}
-              className="text-xs text-gray-500 hover:text-gray-700 font-medium"
-            >
-              Copy
-            </button>
-          </div>
-          <p className="text-sm text-gray-900 whitespace-pre-wrap leading-relaxed">
-            {caption ? decodeUrlsInText(caption) : caption}
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center justify-between">
+          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+            {isCarousel ? 'Main Caption' : 'Caption'}
           </p>
+          <button
+            onClick={handleCopyCaption}
+            className="text-xs text-gray-500 hover:text-gray-700 font-medium"
+          >
+            Copy
+          </button>
         </div>
-      )}
+        <p className="text-sm text-gray-900 whitespace-pre-wrap leading-relaxed">
+          {caption ? decodeUrlsInText(caption) : caption}
+        </p>
+      </div>
 
       {/* Carousel slides */}
       {isCarousel && slides.length > 0 && <CarouselSlides slides={slides} />}
-
-      {/* Reels script */}
-      {isReels && reelsData && <ReelsScript script={reelsData} />}
 
       {/* Quality scores (all post types, generation flow only) */}
       {qualityScores && (

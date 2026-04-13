@@ -7,7 +7,7 @@ import type {
 
 // ---- Shared enums / unions ----
 
-export type PostType = 'single' | 'carousel' | 'reels'
+export type PostType = 'single' | 'carousel'
 
 // ---- Generate ----
 
@@ -27,22 +27,12 @@ export interface CarouselSlide {
   design_note?: string
 }
 
-export interface ReelsScript {
-  hook: string
-  main_points: string[]
-  cta: string
-  on_screen_text: string[]
-  visual_directions: string[]
-  estimated_seconds: number
-}
-
 export interface GeneratedPost {
   theme: string
   platform: string
-  postType: 'single' | 'carousel' | 'reels'
+  postType: 'single' | 'carousel'
   caption: string
   slides?: CarouselSlide[]
-  reelsScript?: ReelsScript
   qualityScores?: QualityScores
   carouselQuality?: CarouselQuality
   languageValidation?: LanguageValidation

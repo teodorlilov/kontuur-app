@@ -34,7 +34,6 @@ export type {
   PriorityPost,
   GeneratedPost,
   CarouselSlide,
-  ReelsScript,
   OnboardRequest,
   OnboardResponse,
   UrlAnalysisRequest,

@@ -6,7 +6,6 @@ interface MediaTypeBreakdownProps {
 
 function formatType(type: string): string {
   if (type === 'CAROUSEL_ALBUM') return 'Carousel'
-  if (type === 'REELS') return 'Reels'
   if (type === 'VIDEO') return 'Video'
   if (type === 'IMAGE') return 'Image'
   return type
@@ -14,7 +13,6 @@ function formatType(type: string): string {
 
 const TYPE_COLORS: Record<string, string> = {
   CAROUSEL_ALBUM: '#534AB7',
-  REELS: '#7c6fd0',
   VIDEO: '#9b8fe0',
   IMAGE: '#c4bff0',
   Post: '#534AB7',

@@ -30,12 +30,6 @@ export function PostTypeSelector({
             sub: 'Multiple slides with rich content',
             icon: '🎠',
           },
-          {
-            type: 'reels' as PostType,
-            label: 'Reels script',
-            sub: '15–60 second spoken script',
-            icon: '🎬',
-          },
         ]
       : []),
   ]

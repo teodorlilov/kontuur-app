@@ -174,5 +174,5 @@ export async function getAgencyNiche(
 
 /** Extracts the platform name from weekly_mix_json (e.g. { "Instagram": 1 } → "Instagram"). */
 export function extractPlatformFromMix(mix: Record<string, unknown>): string {
-  return Object.keys(mix).find((k) => !['carousel', 'single', 'reels'].includes(k)) ?? 'Instagram'
+  return Object.keys(mix).find((k) => !['carousel', 'single'].includes(k)) ?? 'Instagram'
 }

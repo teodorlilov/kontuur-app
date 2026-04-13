@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
 import { Spinner } from '@/components/ui/spinner'
 import type { ApprovalBatchData, ApprovalPostData, CarouselSlide } from '@/types/api'
-import type { ReelsScriptData } from '@/components/posts/reels-script'
 
 type PageState = 'loading' | 'error' | 'review' | 'submitted'
 
@@ -225,13 +224,8 @@ function PostPreviewCard({
   onNoteChange,
 }: PostPreviewCardProps) {
   const isCarousel = post.post_type === 'carousel'
-  const isReels = post.post_type === 'reels'
   const slides =
     isCarousel && Array.isArray(post.slides_json) ? (post.slides_json as CarouselSlide[]) : []
-  const reelsData =
-    isReels && post.slides_json && !Array.isArray(post.slides_json)
-      ? (post.slides_json as ReelsScriptData)
-      : null
 
   const scheduledDate = post.scheduled_at
     ? new Date(post.scheduled_at).toLocaleDateString('en-US', {
@@ -255,11 +249,7 @@ function PostPreviewCard({
           </span>
         )}
         <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">
-          {isCarousel
-            ? `Carousel · ${slides.length} slides`
-            : isReels
-              ? 'Reels script'
-              : 'Single image'}
+          {isCarousel ? `Carousel · ${slides.length} slides` : 'Single image'}
         </span>
         {post.pillar && (
           <span className="text-xs px-2 py-0.5 rounded-full bg-purple-50 text-purple-700">
@@ -271,7 +261,7 @@ function PostPreviewCard({
       {/* Content */}
       <div className="p-5 flex flex-col gap-4">
         {/* Caption */}
-        {!isReels && post.caption && (
+        {post.caption && (
           <p className="text-sm text-gray-900 whitespace-pre-wrap leading-relaxed">
             {post.caption}
           </p>
@@ -290,44 +280,6 @@ function PostPreviewCard({
                 </div>
               ))}
             </div>
-          </div>
-        )}
-
-        {/* Reels script */}
-        {isReels && reelsData && (
-          <div className="flex flex-col gap-3">
-            <div>
-              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Hook</p>
-              <p className="text-sm text-gray-900">{reelsData.hook}</p>
-            </div>
-            <div>
-              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
-                Main points
-              </p>
-              <ol className="list-decimal list-inside text-sm text-gray-900 space-y-1">
-                {reelsData.main_points.map((point, i) => (
-                  <li key={i}>{point}</li>
-                ))}
-              </ol>
-            </div>
-            <div>
-              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
-                Call to action
-              </p>
-              <p className="text-sm text-gray-900">{reelsData.cta}</p>
-            </div>
-            {reelsData.on_screen_text.length > 0 && (
-              <div>
-                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
-                  On-screen text
-                </p>
-                <ul className="list-disc list-inside text-sm text-gray-700 space-y-0.5">
-                  {reelsData.on_screen_text.map((t, i) => (
-                    <li key={i}>{t}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
           </div>
         )}
 

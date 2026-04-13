@@ -6,7 +6,7 @@ const features = [
   {
     icon: Sparkles,
     title: 'AI content generation',
-    body: "Generate posts from your client's website and documents. On-brand Instagram content in Bulgarian or English — single images, carousels, and Reels scripts.",
+    body: "Generate posts from your client's website and documents. On-brand Instagram content in Bulgarian or English",
   },
   {
     icon: CheckSquare,
