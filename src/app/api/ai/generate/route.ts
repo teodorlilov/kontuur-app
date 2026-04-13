@@ -1,11 +1,12 @@
 import { NextResponse } from 'next/server'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
-import { fetchClientData, type ClientData } from '@/lib/clients/fetch-client-data'
+import { fetchClientById } from '@/lib/queries/db'
 import { DEFAULT_CAROUSEL_SLIDES } from '@/utils/constants'
 import { checkRateLimit, AI_RATE_LIMIT } from '@/lib/auth/rate-limit'
-import { runGenerationBatch } from '@/ai/generation/generation-run'
+import { runGenerationBatch } from '@/ai/generation/generation-orchestrator'
 import type { PriorityPost } from '@/types/api'
 import type { Theme, GenerateStreamEvent } from '@/ai/generation/types'
+import type { ClientData } from '@/lib/clients/fetch-client-data'
 
 export const maxDuration = 300 // 5 minutes — each carousel/reels theme needs ~15-25s
 
@@ -16,8 +17,7 @@ interface GenerateRequestBody {
   postType: 'single' | 'carousel' | 'reels'
   slideCount: number
   priorityPosts: PriorityPost[]
-  /** Optional — wizard passes server-prefetched client data to skip DB queries. */
-  preloadedClientData?: ClientData
+  preloadedClientData: ClientData
 }
 
 export async function POST(request: Request) {
@@ -51,10 +51,14 @@ export async function POST(request: Request) {
     )
   }
 
-  const result = await fetchClientData(supabase, body.clientId, agencyId, body.preloadedClientData)
-  if ('error' in result) return NextResponse.json({ error: result.error }, { status: 404 })
+  if (!body.preloadedClientData) {
+    return NextResponse.json({ error: 'preloadedClientData is required' }, { status: 400 })
+  }
 
-  const client = result.data
+  const ownerCheck = await fetchClientById(supabase, body.clientId, agencyId)
+  if (!ownerCheck) return NextResponse.json({ error: 'Client not found' }, { status: 404 })
+
+  const client = body.preloadedClientData
 
   // Track generation run
   const { data: runData } = await supabase
@@ -70,7 +74,7 @@ export async function POST(request: Request) {
     controller.enqueue(encoder.encode(JSON.stringify(event) + '\n'))
 
   const stream = new ReadableStream<Uint8Array>({
-    async start(controller) {
+    async start(controller) { 
       try {
         await runGenerationBatch({
           client,

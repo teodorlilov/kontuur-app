@@ -1,14 +1,5 @@
-/**
- * Builds language-specific validation rules for the language validator.
- *
- * This is a VALIDATION concern — not a generation concern.
- * It lives here, not in prompt-sections.ts, because it builds instructions
- * for validate-language.ts, not for any generation prompt.
- *
- * Consumer: features/ai/prompts/validation/validate-language.ts
- */
 import type { LanguageConfig } from '@/lib/clients/language-rules'
-import { formatFormalityRules } from '@/ai/generation/prompts/formality-guidance'
+import { formatFormalityRules } from '@/ai/shared/formality-guidance'
 
 export function buildLanguageValidationRules(config: LanguageConfig): string {
   const baseRules = `Check for:

@@ -36,19 +36,12 @@ export async function performRewrite(ctx: RewriteContext) {
   const validation = await validatePost({
     caption: newCaption,
     slides: isCarousel ? (newSlidesJson as Array<{ headline: string; body: string }>) : undefined,
-    languageConfig: ctx.client.languageConfig,
+    client: ctx.client,
     label: `rewrite-${ctx.postType}`,
     platform: ctx.platform,
     sourceContext: ctx.sourceExcerpt
       ? { excerpt: ctx.sourceExcerpt, url: ctx.sourceUrl }
       : undefined,
-    qualityContext: {
-      tone: ctx.client.tone || undefined,
-      targetAudience: ctx.client.targetAudience || undefined,
-      niche: ctx.client.niche || undefined,
-      clientTestimonialVoice: ctx.client.clientTestimonialVoice || undefined,
-      isHealthClient: ctx.client.isHealthNiche ?? undefined,
-    },
   })
 
   const finalCaption = applyTextCorrections(newCaption, validation)

@@ -347,15 +347,6 @@ function baseCriteriaDetections(overrides?: Partial<CriteriaDetections>): Criter
     formality_consistent: true,
     source_fidelity_ok: null,
     health_compliant: null,
-    sentenceVariety: {
-      hasShortSentence: true,
-      hasLongSentence: true,
-      maxConsecutiveSimilar: 1,
-      passes: true,
-    },
-    wordCount: 180,
-    platform: 'Instagram',
-    hashtagCount: 2,
     ...overrides,
   }
 }
@@ -367,21 +358,6 @@ describe('computeCriteriaScore', () => {
 
   it('penalizes predictable structure (-1.5)', () => {
     expect(computeCriteriaScore(baseCriteriaDetections({ structure_is_predictable: true }))).toBe(9)
-  })
-
-  it('penalizes sentence variety failure (-1.0)', () => {
-    expect(
-      computeCriteriaScore(
-        baseCriteriaDetections({
-          sentenceVariety: {
-            hasShortSentence: false,
-            hasLongSentence: true,
-            maxConsecutiveSimilar: 1,
-            passes: false,
-          },
-        })
-      )
-    ).toBe(9)
   })
 
   it('penalizes formality violation (-1.5)', () => {
@@ -404,22 +380,6 @@ describe('computeCriteriaScore', () => {
     expect(computeCriteriaScore(baseCriteriaDetections({ health_compliant: null }))).toBe(10)
   })
 
-  it('penalizes word count out of range (-0.75)', () => {
-    // Instagram: 150-220, 100 words is below
-    expect(computeCriteriaScore(baseCriteriaDetections({ wordCount: 100 }))).toBe(9)
-    // 250 words is above
-    expect(computeCriteriaScore(baseCriteriaDetections({ wordCount: 250 }))).toBe(9)
-  })
-
-  it('does not penalize word count for unknown platform', () => {
-    expect(computeCriteriaScore(baseCriteriaDetections({ platform: 'Unknown' }))).toBe(10)
-  })
-
-  it('penalizes hashtag violation (-0.5)', () => {
-    // Instagram max 3, so 5 is over
-    expect(computeCriteriaScore(baseCriteriaDetections({ hashtagCount: 5 }))).toBe(10) // round(10 - 0.5) = 10
-  })
-
   it('accumulates multiple penalties', () => {
     expect(
       computeCriteriaScore(
@@ -439,17 +399,9 @@ describe('computeCriteriaScore', () => {
           formality_consistent: false, // -1.5
           health_compliant: false, // -2.0
           source_fidelity_ok: false, // -1.5
-          wordCount: 50, // -0.75 (under min)
-          sentenceVariety: {
-            hasShortSentence: false,
-            hasLongSentence: false,
-            maxConsecutiveSimilar: 4,
-            passes: false,
-          }, // -1.0
-          hashtagCount: 10, // -0.5
         })
       )
-    ).toBe(1)
+    ).toBe(4) // 10 - 6.5 = 3.5 → Math.round(3.5) = 4
   })
 })
 

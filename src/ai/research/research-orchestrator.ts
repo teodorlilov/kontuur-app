@@ -1,7 +1,8 @@
 import { fetchClientSources, fetchThemeDescriptions } from '@/lib/queries/db'
 import { createAllSources } from './sources/source-factory'
 import { ResearchSource } from './sources/research-source'
-import { ResearchPromptBuilder } from './prompt-builder'
+import { ResearchPromptBuilder } from './prompts/prompt-builder'
+import { generateTopics } from './generators/topic-generator'
 import { computeFetchLimits, SOURCE_FULL_TEXT_CAP } from './fetch-limits'
 import type {
   ResearchRunContext,
@@ -21,7 +22,6 @@ const DEFAULT_STRATEGY: SourceStrategy = {
   file: true,
   trend_fallback: true,
 }
-const MAX_RESEARCH_RETRIES = 1
 
 interface ResearchClientData extends ClientData {
   sources: ClientSourceRow[]
@@ -71,48 +71,8 @@ export class ResearchPipeline {
 
     const requestedCount = this.ctx.count
 
-    // Initial generation — exact count, trust the LLM + exclusion list
-    const {
-      topics: initialTopics,
-      userPrompt: firstUserPrompt,
-      rawResponse: firstRawResponse,
-    } = await builder.generateTopics(requestedCount, sourceContext)
-    this.attachSourceFullText(initialTopics, fullTextIndex)
-
-    let topics = initialTopics
-
-    // Retry loop — uses conversation history so source data is NOT re-sent
-    for (let retry = 0; retry < MAX_RESEARCH_RETRIES && topics.length < requestedCount; retry++) {
-      this.ctx.onPhase?.('Refining themes...')
-      const deficit = requestedCount - topics.length
-      const extendedHistory = [
-        ...clientData.history,
-        ...topics.map((t: ResearchTopic) => t.suggested_theme),
-      ]
-      builder.updateHistory(extendedHistory)
-
-      try {
-        const retryTopics = await builder.generateTopicsRetry(
-          deficit,
-          firstUserPrompt,
-          firstRawResponse
-        )
-        this.attachSourceFullText(retryTopics, fullTextIndex)
-        topics.push(...retryTopics)
-      } catch (err) {
-        console.error(
-          `[research] Retry ${retry + 1} failed — keeping ${topics.length} topics already generated`,
-          err
-        )
-        break
-      }
-    }
-
-    if (topics.length < requestedCount) {
-      console.warn(
-        `[research] Only ${topics.length}/${requestedCount} themes generated after retry`
-      )
-    }
+    const topics = await generateTopics(builder, requestedCount, sourceContext)
+    this.attachSourceFullText(topics, fullTextIndex)
 
     const finalTopics = topics.slice(0, requestedCount)
 
@@ -136,6 +96,7 @@ export class ResearchPipeline {
       const themeHistory = this.ctx.clientId
         ? await fetchThemeDescriptions(this.ctx.supabase, this.ctx.clientId)
         : []
+
       return {
         ...data,
         sources,

@@ -1,5 +1,3 @@
-import type { LanguageConfig } from '@/lib/clients/language-rules'
-
 // ---- Scoring verdicts ----
 
 export type HookVerdict = 'stops_scroll' | 'clear_value' | 'generic' | 'buries_lead' | 'no_hook'
@@ -9,22 +7,6 @@ export type CtaVerdict =
   | 'generic'
   | 'weak_mismatched'
   | 'missing'
-
-// ---- Quality Context ----
-
-export interface QualityContext {
-  tone?: string
-  targetAudience?: string
-  niche?: string
-  platform?: string
-  clientTestimonialVoice?: string
-  sourceExcerpt?: string
-  targetPillar?: string
-  isHealthClient?: boolean
-  languageConfig?: LanguageConfig
-  theme?: string
-  declaredStructure?: string
-}
 
 export interface QualityIssue {
   type: string

@@ -16,15 +16,17 @@ export const SOURCE_GROUNDING_RULES =
  */
 export function buildGroundingPrompt(opts: {
   sourceExcerpt?: string
+  sourceFullText?: string
   sourceUrl?: string | null
   requireSourceGrounding?: boolean
   contentLabel?: string
 }): string {
-  const { sourceExcerpt, sourceUrl, requireSourceGrounding, contentLabel = 'caption' } = opts
-  if (!requireSourceGrounding || !sourceExcerpt) return ''
+  const { sourceExcerpt, sourceFullText, sourceUrl, requireSourceGrounding, contentLabel = 'caption' } = opts
+  const sourceText = sourceFullText || sourceExcerpt
+  if (!requireSourceGrounding || !sourceText) return ''
 
   const urlLine = sourceUrl
-    ? `Source link: ${decodeUrl(sourceUrl)}`
+    ? `${decodeUrl(sourceUrl)}`
     : '(No external URL available for this source)'
   const linkInstruction = sourceUrl
     ? `If appropriate, naturally reference or link to the source article in the ${contentLabel}.`
@@ -32,10 +34,8 @@ export function buildGroundingPrompt(opts: {
 
   return `
 SOURCE MATERIAL (ground all facts in this):
-<source_excerpt>
-${sourceExcerpt}
-</source_excerpt>
-${urlLine}
+Source Text: ${sourceText}
+Source URL: ${urlLine}
 
 CRITICAL SOURCE FIDELITY RULES:
 - Every statistic, number, price, feature, or specific claim MUST come from the source material above.

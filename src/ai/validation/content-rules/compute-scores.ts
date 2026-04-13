@@ -12,13 +12,7 @@ import {
   HUMAN_SCORE_PENALTIES,
   CRITERIA_PENALTIES,
 } from '@/ai/validation/content-rules/validation-criteria'
-import { CTA_EXEMPT_STRUCTURES, PLATFORM_LIMITS } from '@/ai/generation/generation-criteria'
-import {
-  analyzeSentenceVariety,
-  countWords,
-  countHashtags,
-} from '@/ai/validation/content-rules/text-analysis'
-import type { SentenceVarietyResult } from '@/ai/validation/content-rules/text-analysis'
+import { CTA_EXEMPT_STRUCTURES } from '@/ai/shared/content-criteria'
 import type {
   HookVerdict,
   CtaVerdict,
@@ -134,54 +128,14 @@ export interface CriteriaDetections {
   formality_consistent: boolean
   source_fidelity_ok: boolean | null
   health_compliant: boolean | null
-  // From deterministic text analysis
-  sentenceVariety: SentenceVarietyResult
-  wordCount: number
-  platform: string
-  hashtagCount: number
 }
 
 export function computeCriteriaScore(d: CriteriaDetections): number {
   let penalty = 0
   if (d.structure_is_predictable) penalty += CRITERIA_PENALTIES.STRUCTURE_PREDICTABLE
-  if (!d.sentenceVariety.passes) penalty += CRITERIA_PENALTIES.SENTENCE_VARIETY_FAIL
   if (!d.formality_consistent) penalty += CRITERIA_PENALTIES.FORMALITY_VIOLATION
   if (d.source_fidelity_ok === false) penalty += CRITERIA_PENALTIES.SOURCE_FIDELITY_FAIL
   if (d.health_compliant === false) penalty += CRITERIA_PENALTIES.HEALTH_CONTENT_VIOLATION
-  penalty += computeWordCountPenalty(d.wordCount, d.platform)
-  penalty += computeHashtagPenalty(d.hashtagCount, d.platform)
-  return Math.max(1, Math.round(10 - penalty))
-}
-
-function computeWordCountPenalty(wordCount: number, platform: string): number {
-  const limits = PLATFORM_LIMITS[platform]
-  if (!limits) return 0
-  if (wordCount < limits.wordCount.min || wordCount > limits.wordCount.max)
-    return CRITERIA_PENALTIES.WORD_COUNT_VIOLATION
-  return 0
-}
-
-function computeHashtagPenalty(hashtagCount: number, platform: string): number {
-  const limits = PLATFORM_LIMITS[platform]
-  if (!limits) return 0
-  if (hashtagCount > limits.hashtags.max) return CRITERIA_PENALTIES.HASHTAG_VIOLATION
-  return 0
-}
-
-/**
- * Deterministic pre-score for caption ranking before LLM validation.
- * Uses only zero-cost text analysis — no API calls.
- * Used to pre-select the best candidates from over-requested posts so
- * expensive LLM validators (validateQuality etc.) only run on kept posts.
- */
-export function computeDeterministicPreScore(caption: string, platform: string): number {
-  const wordCount = countWords(caption)
-  const hashtagCount = countHashtags(caption)
-  const sentenceVariety = analyzeSentenceVariety(caption)
-  let penalty = 0
-  penalty += computeWordCountPenalty(wordCount, platform)
-  penalty += computeHashtagPenalty(hashtagCount, platform)
-  if (!sentenceVariety.passes) penalty += CRITERIA_PENALTIES.SENTENCE_VARIETY_FAIL
   return Math.max(1, Math.round(10 - penalty))
 }
 

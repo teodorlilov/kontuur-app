@@ -7,16 +7,11 @@ import {
 } from '@/ai/validation/content-rules/compute-scores'
 import type { CriteriaDetections } from '@/ai/validation/content-rules/compute-scores'
 import { DEFAULT_QUALITY_SCORE } from '@/lib/content-rules/constants'
-import {
-  analyzeSentenceVariety,
-  countWords,
-  countHashtags,
-} from '@/ai/validation/content-rules/text-analysis'
-import type { QualityResult, QualityContext } from '@/ai/validation/prompts/validate-quality'
+import type { QualityResult } from '@/ai/validation/prompts/validate-quality'
 import type { LanguageValidationResult } from '@/ai/validation/prompts/validate-language'
 import type { SourceGroundingResult } from '@/ai/validation/prompts/validate-source-grounding'
 import type { SlopDetection } from '@/types/api'
-import type { LanguageConfig } from '@/lib/clients/language-rules'
+import type { ClientData } from '@/lib/clients/fetch-client-data'
 
 export interface SourceContext {
   excerpt: string
@@ -26,11 +21,13 @@ export interface SourceContext {
 export interface ValidatePostInput {
   caption: string
   slides?: Array<{ headline: string; body: string }>
-  languageConfig: LanguageConfig
-  label: string
-  platform?: string
+  client: ClientData
+  platform: string
   sourceContext?: SourceContext
-  qualityContext?: QualityContext
+  theme?: string
+  targetPillar?: string
+  declaredStructure?: string
+  label: string
 }
 
 export interface PostValidationResult {
@@ -74,29 +71,29 @@ function defaultQualityFallback(isCarousel: boolean): QualityResult {
 
 /**
  * Unified validation for both single posts and carousels.
- * Runs LLM validations in parallel with deterministic text analysis,
+ * Runs quality, language, and source grounding validation in parallel,
  * then combines results to compute criteria_score.
  */
 export async function validatePost(input: ValidatePostInput): Promise<PostValidationResult> {
   const validationWarnings: string[] = []
   const isCarousel = !!input.slides && input.slides.length > 0
 
-  const ctx: QualityContext = {
-    platform: input.platform,
-    languageConfig: input.languageConfig,
-    ...input.qualityContext,
-  }
-
   // Run LLM validations in parallel
   const [quality, lang, grounding] = await Promise.all([
-    validateQuality({ caption: input.caption, slides: input.slides }, ctx).catch((err) => {
+    validateQuality({ caption: input.caption, slides: input.slides }, input.client, {
+      theme: input.theme,
+      targetPillar: input.targetPillar,
+      declaredStructure: input.declaredStructure,
+      platform: input.platform,
+      sourceExcerpt: input.sourceContext?.excerpt,
+    }).catch((err) => {
       console.error(`[generate] ${input.label} quality validation failed:`, err)
       validationWarnings.push('quality')
       return defaultQualityFallback(isCarousel)
     }),
     validateLanguage(
       isCarousel ? { text: input.caption, slides: input.slides } : { text: input.caption },
-      input.languageConfig
+      input.client.languageConfig
     ).catch((err) => {
       console.error(`[generate] ${input.label} language validation failed:`, err)
       validationWarnings.push('language')
@@ -111,29 +108,19 @@ export async function validatePost(input: ValidatePostInput): Promise<PostValida
       : Promise.resolve(null),
   ])
 
-  // Deterministic text analysis (zero cost, runs immediately)
-  const sentenceVariety = analyzeSentenceVariety(input.caption)
-  const wordCount = countWords(input.caption)
-  const hashtagCount = countHashtags(input.caption)
-
-  // Compute criteria score from LLM detections + deterministic analysis
+  // Compute criteria score from LLM detections
   const criteriaDetections: CriteriaDetections = {
     structure_is_predictable: isCarousel ? false : quality.structure_is_predictable,
     formality_consistent: quality.formality_consistent,
     source_fidelity_ok: quality.source_fidelity_ok,
     health_compliant: quality.health_compliant,
-    sentenceVariety,
-    wordCount,
-    platform: input.platform ?? '',
-    hashtagCount,
   }
   const criteriaScore = computeCriteriaScore(criteriaDetections)
 
   // Derive slop-compatible shape from quality result (no separate LLM call)
   const slop = deriveSlopFromQuality(quality)
 
-  // Recalculate quality_score_avg with the deterministic criteria_score
-  // (the original avg used criteria_score=10 default from computeQualityScores)
+  // Recalculate quality_score_avg with the computed criteria_score
   const recalculatedAvg = Math.round(
     (quality.human_score + quality.hook_score + quality.cta_score + criteriaScore) / 4
   )

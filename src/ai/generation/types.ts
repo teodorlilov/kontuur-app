@@ -10,9 +10,12 @@ export interface GenerationInput {
   theme: string
   targetPillar?: string
   sourceExcerpt?: string
+  sourceFullText?: string
   sourceUrl?: string | null
   requireSourceGrounding?: boolean
   similarPastThemes?: string[]
+  brief?: string
+  targetDate?: string
 }
 
 // ---- Single post ----
@@ -38,6 +41,7 @@ export interface CarouselResult {
 
 export interface CarouselInput extends GenerationInput {
   slideCount: number
+  platform: string
 }
 
 // ---- Reels ----
@@ -74,9 +78,9 @@ export interface DraftPost {
 // ---- Generation orchestration ----
 export interface GenerationResult {
   post: DraftPost
-  quality: QualityResult
-  language: LanguageValidationResult
-  slop: SlopDetection
+  quality?: QualityResult
+  language?: LanguageValidationResult
+  slop?: SlopDetection
   sourceGrounding?: SourceGroundingResult
 }
 

@@ -7,8 +7,8 @@ import {
   formatWordCount,
   formatHashtagRules,
   formatHealthRules,
-} from '@/ai/generation/generation-criteria'
-import { formatFormalityRules } from '@/ai/generation/prompts/formality-guidance'
+} from '@/ai/shared/content-criteria'
+import { formatFormalityRules } from '@/ai/shared/formality-guidance'
 import { SOURCE_GROUNDING_RULES } from '@/ai/generation/prompts/source-grounding'
 import type { LanguageConfig } from '@/lib/clients/language-rules'
 

@@ -5,7 +5,7 @@ import {
   formatStructureDescriptions,
   formatWordCount,
   formatHashtagRules,
-} from '../generation-criteria'
+} from '@/ai/shared/content-criteria'
 
 describe('ALL_POST_STRUCTURES', () => {
   it('includes all 6 structures', () => {

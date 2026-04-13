@@ -29,6 +29,18 @@ export interface CallAnthropicOptions {
   onToken?: (text: string) => void
 }
 
+const MAX_RETRIES = 3
+const RETRY_BASE_DELAY_MS = 1000
+
+function isOverloaded(err: unknown): boolean {
+  if (err instanceof Anthropic.APIError) return err.status === 529
+  if (err && typeof err === 'object' && 'error' in err) {
+    const inner = (err as { error?: { error?: { type?: string } } }).error
+    return inner?.error?.type === 'overloaded_error'
+  }
+  return false
+}
+
 export async function callAnthropic(opts: CallAnthropicOptions): Promise<Message> {
   const {
     systemPrompt,
@@ -46,16 +58,33 @@ export async function callAnthropic(opts: CallAnthropicOptions): Promise<Message
     messages.push({ role: 'assistant', content: assistantPrefill })
   }
 
-  const stream = anthropic.messages.stream({
+  const requestParams = {
     model,
     max_tokens: maxTokens,
     ...(systemPrompt && {
       system: cacheSystemPrompt
-        ? [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } }]
+        ? [{ type: 'text' as const, text: systemPrompt, cache_control: { type: 'ephemeral' as const } }]
         : systemPrompt,
     }),
     messages,
-  })
-  if (onToken) stream.on('text', onToken)
-  return stream.finalMessage()
+  }
+
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      const stream = anthropic.messages.stream(requestParams)
+      if (onToken) stream.on('text', onToken)
+      return await stream.finalMessage()
+    } catch (err) {
+      if (isOverloaded(err) && attempt < MAX_RETRIES) {
+        const delay = RETRY_BASE_DELAY_MS * 2 ** attempt
+        console.warn(`[ai-client] overloaded, retrying in ${delay}ms (attempt ${attempt + 1}/${MAX_RETRIES})`)
+        await new Promise((r) => setTimeout(r, delay))
+        continue
+      }
+      throw err
+    }
+  }
+
+  // Unreachable — loop always throws or returns
+  throw new Error('callAnthropic: exhausted retries')
 }

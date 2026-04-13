@@ -1,22 +1,37 @@
 import { callAnthropic } from '@/utils/ai-client'
 import { extractTextFromMessage, sanitizeAndParseJson } from '@/utils/ai'
-import { buildStaticSystemPrompt, buildClientProfile } from '@/ai/generation/prompts/client-profile'
+import { buildClientSection } from '@/ai/shared/build-client-profile'
 import { formatHistory } from '@/ai/utils/prompt-helpers'
+import { DEFENSIVE_DATA_CLAUSE } from '@/ai/utils/sanitize'
 import type { RewriteCaptionInput, RewriteCarouselInput, RewriteCarouselResult } from '../types'
 
-const systemText = buildStaticSystemPrompt()
+const SYSTEM_PROMPT = `You are a senior social media copywriter. You write for humans, not algorithms. ${DEFENSIVE_DATA_CLAUSE}
+
+OPENER — the most important line. Choose whatever stops scrolling for this specific theme and register.
+NEVER bury the lead — start with the payoff, not the context.
+
+WRITING RULES:
+1. Mix short and long sentences. At least one under 6 words and one over 20.
+   Never three consecutive sentences of similar length.
+2. One CTA maximum. Specific and low-pressure.
+3. Follow hashtag and word count limits from the client brief.
+4. The language register rules are in the client brief. Follow them exactly — they are non-negotiable.
+5. Every claim must be grounded in what this specific business does — not abstract promises.
+
+SELF-CHECK (before returning your response):
+- Does the opener make someone stop scrolling? If not — rewrite it.
+- Could this post be written about any business in the niche? If yes — add specificity.
+- If source was provided: does the post focus on ONE angle or summarize?
+- Read the post aloud as if speaking to a person. Does every sentence sound like something a real human would say? Any sentence that sounds like a written report, consultant memo, or bureaucratic form must be rewritten in spoken language.`
 
 export async function rewriteCaption(input: RewriteCaptionInput): Promise<string> {
   const { client } = input
   const lc = client.languageConfig
 
-  const clientProfile = buildClientProfile({
-    client,
-    platform: input.platform,
-  })
+  const clientProfile = buildClientSection(client, input.platform)
 
   const message = await callAnthropic({
-    systemPrompt: systemText,
+    systemPrompt: SYSTEM_PROMPT,
     userMessage: `${clientProfile}
 
 Recent topics already covered — do not drift into: ${formatHistory(client.postHistory, { limit: 15 })}
@@ -52,13 +67,10 @@ export async function rewriteCarousel(input: RewriteCarouselInput): Promise<Rewr
   const { client } = input
   const lc = client.languageConfig
 
-  const clientProfile = buildClientProfile({
-    client,
-    platform: input.platform,
-  })
+  const clientProfile = buildClientSection(client, input.platform)
 
   const message = await callAnthropic({
-    systemPrompt: systemText,
+    systemPrompt: SYSTEM_PROMPT,
     userMessage: `${clientProfile}
 
 CAROUSEL RULES:

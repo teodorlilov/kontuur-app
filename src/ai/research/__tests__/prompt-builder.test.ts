@@ -3,7 +3,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 vi.mock('@/utils/ai-client')
 
 import { callAnthropic, mockClaudeResponse } from '@/utils/__mocks__/ai-client'
-import { ResearchPromptBuilder } from '../prompt-builder'
+import { ResearchPromptBuilder } from '../prompts/prompt-builder'
+import { generateTopics } from '../generators/topic-generator'
 import type { SourceContext } from '../types'
 
 beforeEach(() => {
@@ -53,7 +54,7 @@ describe('ResearchPromptBuilder', () => {
   it('returns parsed research topics from Claude response', async () => {
     mockClaudeResponse(VALID_RESPONSE)
     const builder = createBuilder()
-    const { topics } = await builder.generateTopics(5)
+    const topics = await generateTopics(builder,5)
     expect(topics).toHaveLength(5)
     expect(topics[0]!.finding).toBe('Article about HIIT workouts')
     expect(topics[0]!.suggested_theme).toBe('Share latest HIIT research')
@@ -74,7 +75,7 @@ describe('ResearchPromptBuilder', () => {
       fileExcerpts: [],
     }
     const builder = createBuilder()
-    await builder.generateTopics(5, sourceContext)
+    await generateTopics(builder,5, sourceContext)
 
     const callArgs = callAnthropic.mock.calls[0]![0]
     const prompt = callArgs.userMessage as string
@@ -97,7 +98,7 @@ describe('ResearchPromptBuilder', () => {
       fileExcerpts: [],
     }
     const builder = createBuilder()
-    await builder.generateTopics(5, sourceContext)
+    await generateTopics(builder,5, sourceContext)
 
     const callArgs = callAnthropic.mock.calls[0]![0]
     const prompt = callArgs.userMessage as string
@@ -118,7 +119,7 @@ describe('ResearchPromptBuilder', () => {
       ],
     }
     const builder = createBuilder()
-    await builder.generateTopics(5, sourceContext)
+    await generateTopics(builder,5, sourceContext)
 
     const callArgs = callAnthropic.mock.calls[0]![0]
     const prompt = callArgs.userMessage as string
@@ -129,7 +130,7 @@ describe('ResearchPromptBuilder', () => {
   it('uses trend-based fallback when no sourceContext', async () => {
     mockClaudeResponse(VALID_RESPONSE)
     const builder = createBuilder()
-    await builder.generateTopics(5)
+    await generateTopics(builder,5)
 
     const callArgs = callAnthropic.mock.calls[0]![0]
     const prompt = callArgs.userMessage as string
@@ -140,7 +141,7 @@ describe('ResearchPromptBuilder', () => {
   it('uses trend-based fallback when sourceContext is empty', async () => {
     mockClaudeResponse(VALID_RESPONSE)
     const builder = createBuilder()
-    await builder.generateTopics(5, { rssItems: [], websiteExcerpts: [], fileExcerpts: [] })
+    await generateTopics(builder,5, { rssItems: [], websiteExcerpts: [], fileExcerpts: [] })
 
     const callArgs = callAnthropic.mock.calls[0]![0]
     const prompt = callArgs.userMessage as string
@@ -156,7 +157,7 @@ describe('ResearchPromptBuilder', () => {
         { pillar: 'Recovery', weight: 25 },
       ],
     })
-    await builder.generateTopics(5)
+    await generateTopics(builder,5)
 
     const callArgs = callAnthropic.mock.calls[0]![0]
     const prompt = callArgs.userMessage as string
@@ -168,7 +169,7 @@ describe('ResearchPromptBuilder', () => {
   it('includes language in prompt', async () => {
     mockClaudeResponse(VALID_RESPONSE)
     const builder = createBuilder({ languageConfig: makeLanguageConfig('Bulgarian') })
-    await builder.generateTopics(5)
+    await generateTopics(builder,5)
 
     const callArgs = callAnthropic.mock.calls[0]![0]
     const prompt = callArgs.userMessage as string
@@ -178,21 +179,21 @@ describe('ResearchPromptBuilder', () => {
   it('handles JSON wrapped in markdown code block', async () => {
     mockClaudeResponse('```json\n' + VALID_RESPONSE + '\n```')
     const builder = createBuilder()
-    const { topics } = await builder.generateTopics(5)
+    const topics = await generateTopics(builder,5)
     expect(topics).toHaveLength(5)
   })
 
   it('returns empty array when Claude returns no JSON', async () => {
     mockClaudeResponse('I could not find any trends.')
     const builder = createBuilder()
-    const { topics } = await builder.generateTopics(5)
+    const topics = await generateTopics(builder,5)
     expect(topics).toEqual([])
   })
 
   it('uses custom count in fallback prompt', async () => {
     mockClaudeResponse(VALID_RESPONSE)
     const builder = createBuilder()
-    await builder.generateTopics(3)
+    await generateTopics(builder,3)
 
     const callArgs = callAnthropic.mock.calls[0]![0]
     const prompt = callArgs.userMessage as string
@@ -208,7 +209,7 @@ describe('ResearchPromptBuilder', () => {
       fileExcerpts: [],
     }
     const builder = createBuilder()
-    await builder.generateTopics(7, sourceContext)
+    await generateTopics(builder,7, sourceContext)
 
     const callArgs = callAnthropic.mock.calls[0]![0]
     const prompt = callArgs.userMessage as string
@@ -219,7 +220,7 @@ describe('ResearchPromptBuilder', () => {
   it('defaults count works correctly', async () => {
     mockClaudeResponse(VALID_RESPONSE)
     const builder = createBuilder()
-    await builder.generateTopics(5)
+    await generateTopics(builder,5)
 
     const callArgs = callAnthropic.mock.calls[0]![0]
     const prompt = callArgs.userMessage as string
@@ -229,7 +230,7 @@ describe('ResearchPromptBuilder', () => {
   it('includes post history in prompt when provided', async () => {
     mockClaudeResponse(VALID_RESPONSE)
     const builder = createBuilder({ postHistory: ['HIIT benefits', 'Protein myths'] })
-    await builder.generateTopics(5)
+    await generateTopics(builder,5)
 
     const callArgs = callAnthropic.mock.calls[0]![0]
     const prompt = callArgs.userMessage as string
@@ -251,7 +252,7 @@ describe('ResearchPromptBuilder', () => {
         { pillar: 'Investment Tips', weight: 50 },
       ],
     })
-    await builder.generateTopics(5, sourceContext)
+    await generateTopics(builder,5, sourceContext)
 
     const callArgs = callAnthropic.mock.calls[0]![0]
     const prompt = callArgs.userMessage as string
@@ -262,7 +263,7 @@ describe('ResearchPromptBuilder', () => {
   it('does not include sourcing protocol in trend-based fallback', async () => {
     mockClaudeResponse(VALID_RESPONSE)
     const builder = createBuilder()
-    await builder.generateTopics(5)
+    await generateTopics(builder,5)
 
     const callArgs = callAnthropic.mock.calls[0]![0]
     const prompt = callArgs.userMessage as string
@@ -273,18 +274,16 @@ describe('ResearchPromptBuilder', () => {
   it('uses assistantPrefill [ for JSON array responses', async () => {
     mockClaudeResponse(VALID_RESPONSE)
     const builder = createBuilder()
-    await builder.generateTopics(5)
+    await generateTopics(builder,5)
 
     const callArgs = callAnthropic.mock.calls[0]![0]
     expect(callArgs.assistantPrefill).toBe('[')
   })
 
-  it('returns userPrompt and rawResponse alongside topics', async () => {
+  it('returns parsed topics array', async () => {
     mockClaudeResponse(VALID_RESPONSE)
     const builder = createBuilder()
-    const result = await builder.generateTopics(5)
-    expect(result.userPrompt).toBeTruthy()
-    expect(result.rawResponse).toBeTruthy()
-    expect(result.topics).toHaveLength(5)
+    const topics = await generateTopics(builder,5)
+    expect(topics).toHaveLength(5)
   })
 })

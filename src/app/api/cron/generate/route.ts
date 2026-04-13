@@ -6,7 +6,7 @@ import {
   extractPlatformFromMix,
 } from '@/lib/clients/fetch-client-data'
 import { allocateByWeight } from '@/lib/clients/content-pillars'
-import { runGenerationBatch } from '@/ai/generation/generation-run'
+import { runGenerationBatch } from '@/ai/generation/generation-orchestrator'
 import { generateBriefing } from '@/ai/intelligence/generate-briefing'
 import { generateSoloCoaching } from '@/ai/solo-coaching/generate-coaching'
 import { generateBestTime } from '@/ai/best-time/generate-best-time'

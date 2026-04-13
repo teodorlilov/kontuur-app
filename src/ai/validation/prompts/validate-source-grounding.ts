@@ -87,8 +87,6 @@ ${returnFormat}`,
     maxTokens: 2048,
   })
 
-  console.log('VALIDATE SOURCE SYSTEM PROMPT', systemText)
-
   const parsed = parseJsonResponse<LlmGroundingResponse>(message)
   const flagged_claims = Array.isArray(parsed.flagged_claims) ? parsed.flagged_claims : []
 

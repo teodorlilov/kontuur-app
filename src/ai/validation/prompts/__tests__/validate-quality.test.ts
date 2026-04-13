@@ -4,10 +4,46 @@ vi.mock('@/utils/ai-client')
 
 import { mockClaudeResponse, callAnthropic } from '@/utils/__mocks__/ai-client'
 import { validateQuality } from '../validate-quality'
+import type { ClientData } from '@/lib/clients/fetch-client-data'
+import type { LanguageConfig } from '@/lib/clients/language-rules'
 
 beforeEach(() => {
   vi.clearAllMocks()
 })
+
+const DEFAULT_LANGUAGE_CONFIG: LanguageConfig = {
+  language: 'English',
+  formality: 'neutral',
+  carouselSwipeCues: '',
+  formalityRules: null,
+  languageInstructions: '',
+  languageNotes: '',
+}
+
+/** Helper: build a minimal ClientData for tests. */
+function makeClientData(overrides: Partial<ClientData> = {}): ClientData {
+  return {
+    id: 'test-id',
+    name: 'Test Client',
+    niche: 'wellness',
+    language: 'English',
+    tone: 'professional',
+    targetAudience: 'adults',
+    avoidTopics: '',
+    clientTestimonialVoice: '',
+    contentPillars: [],
+    isHealthNiche: null,
+    topPerformingPosts: [],
+    defaultCarouselSlides: 5,
+    defaultPostType: null,
+    requireSourceGrounding: false,
+    sourceStrategy: null,
+    languageNotes: '',
+    languageConfig: DEFAULT_LANGUAGE_CONFIG,
+    postHistory: [],
+    ...overrides,
+  }
+}
 
 /** Helper: build a valid LLM response with sensible defaults. */
 function llmResponse(overrides: Record<string, unknown> = {}) {
@@ -86,23 +122,11 @@ describe('validateQuality — single post', () => {
     expect(systemText).toContain('brand_voice_match')
   })
 
-  it('includes brand context when QualityContext provided', async () => {
+  it('includes brand context when ClientData provided', async () => {
     mockClaudeResponse(llmResponse())
     await validateQuality(
       { caption: 'Test' },
-      {
-        tone: 'casual',
-        niche: 'fitness',
-        targetAudience: 'gym-goers',
-        languageConfig: {
-          language: 'Bulgarian',
-          formality: 'neutral',
-          carouselSwipeCues: '',
-          formalityRules: null,
-          languageInstructions: '',
-          languageNotes: '',
-        },
-      }
+      makeClientData({ tone: 'casual', niche: 'fitness', targetAudience: 'gym-goers' })
     )
 
     const callArgs = callAnthropic.mock.calls[0]![0]
@@ -116,8 +140,7 @@ describe('validateQuality — single post', () => {
     mockClaudeResponse(llmResponse())
     await validateQuality(
       { caption: 'Test' },
-      {
-        platform: 'Instagram',
+      makeClientData({
         languageConfig: {
           language: 'Bulgarian',
           formality: 'formal',
@@ -126,7 +149,8 @@ describe('validateQuality — single post', () => {
           languageInstructions: '',
           languageNotes: '',
         },
-      }
+      }),
+      { platform: 'Instagram' }
     )
 
     const callArgs = callAnthropic.mock.calls[0]![0]
@@ -149,11 +173,11 @@ describe('validateQuality — single post', () => {
     expect(result.formality_consistent).toBe(true)
   })
 
-  it('includes language-specific AI tells when languageConfig provided', async () => {
+  it('includes language-specific AI tells when ClientData provided', async () => {
     mockClaudeResponse(llmResponse())
     await validateQuality(
       { caption: 'Тест пост' },
-      {
+      makeClientData({
         languageConfig: {
           language: 'Bulgarian',
           formality: 'neutral',
@@ -162,7 +186,7 @@ describe('validateQuality — single post', () => {
           languageInstructions: '',
           languageNotes: '',
         },
-      }
+      })
     )
 
     const callArgs = callAnthropic.mock.calls[0]![0]
