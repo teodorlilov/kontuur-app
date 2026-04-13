@@ -1,5 +1,17 @@
 import { jsonrepair } from 'jsonrepair'
 import type Anthropic from '@anthropic-ai/sdk'
+import type { ToolUseBlock } from '@anthropic-ai/sdk/resources'
+
+/**
+ * Extracts the structured input from a tool_use response block.
+ * Use this when callAnthropic was called with outputSchema — the result is
+ * guaranteed valid JSON from the API, no manual parsing needed.
+ */
+export function extractToolInput<T>(message: Anthropic.Message): T {
+  const block = message.content.find((b): b is ToolUseBlock => b.type === 'tool_use')
+  if (block) return block.input as T
+  throw new Error('[extractToolInput] No tool_use block in response')
+}
 import type { UrlAnalysisResponse } from '@/types/api'
 import { callAnthropic, LIGHT_MODEL } from '@/utils/ai-client'
 import { buildAnalyzeUrlPrompt, type AnalyzeUrlInput } from '@/ai/analyze-url/analyze-url'

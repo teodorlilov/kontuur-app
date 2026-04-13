@@ -23,6 +23,8 @@ import type {
   CarouselQualityResult,
   QualityResult,
   SourceGroundingResult,
+  ValidationCriteria,
+  ValidationScores,
 } from '@/types/api'
 
 export type { SingleQualityResult, CarouselQualityResult }
@@ -32,6 +34,8 @@ export interface ValidationData {
   language: LanguageResult
   slop: SlopDetection
   sourceGrounding?: SourceGroundingResult
+  criteria?: ValidationCriteria
+  scores?: ValidationScores
 }
 
 export interface PostData {
@@ -90,7 +94,7 @@ export function PostCard({
   const [languageData, setLanguageData] = useState(validationData.language)
   const [sourceGroundingData, setSourceGroundingData] = useState(validationData.sourceGrounding)
 
-  const { quality, slop } = validationData
+  const { quality, slop, criteria, scores } = validationData
 
   function handleApplyFixes(
     correctedText: string,
@@ -160,25 +164,6 @@ export function PostCard({
   const hasLowQuality = avgScore < REWRITE_SCORE_THRESHOLD
   const showRewrite = hasLowAuthenticity || hasAiTells || hasLowQuality
 
-  const qualityScores = {
-    human_score: quality.human_score,
-    hook_score: quality.hook_score,
-    cta_score: quality.cta_score,
-    criteria_score: quality.criteria_score,
-    structure_used: quality.structure_used,
-    brand_voice_match: quality.brand_voice_match,
-    brand_voice_deviation: quality.brand_voice_deviation,
-    audience_targeting: quality.audience_targeting,
-    audience_gap: quality.audience_gap,
-    niche_specificity: quality.niche_specificity,
-    niche_gap: quality.niche_gap,
-    structure_is_predictable: quality.structure_is_predictable,
-    formality_consistent: quality.formality_consistent,
-    formality_violation: quality.formality_violation,
-    source_fidelity_ok: quality.source_fidelity_ok,
-    health_compliant: quality.health_compliant,
-  }
-
   return (
     <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
       <div className="p-5 flex flex-col gap-5">
@@ -195,7 +180,8 @@ export function PostCard({
           sourceExcerpt={post.source_excerpt}
           pillar={post.pillar}
           theme={theme}
-          qualityScores={qualityScores}
+          criteria={criteria}
+          scores={scores}
         />
 
         {/* Slop detector */}

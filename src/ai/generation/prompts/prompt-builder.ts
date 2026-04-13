@@ -123,7 +123,9 @@ export function buildGenerateUserCarouselPrompt(input: CarouselInput): string {
     `Before writing, verify:
 - Does the opener stop scrolling for this specific theme? If not, rewrite it.
 - Could this post be for any ${sanitizePromptField(input.client.niche)} business? If yes, add a specific detail only ${sanitizePromptField(input.client.name)} could claim.
-- Does it focus on ONE angle, not a summary?
+- Does the content cover a meaningful aspect of what the source says about who this helps, how it works, or what result it delivers — rather than drilling into mechanism sub-details across every slide?
+- REGISTER: Does every slide maintain ${input.client.languageConfig.formality} address? Scan each slide body for first-person plural verbs ("we treat", "we help", "we use"). Replace with the patient's direct experience ("you feel", "your body"), the process impersonally ("the therapy", "this method"), or an impersonal result statement.
+- BRAND VOICE: Does every slide match the declared tone? Generic industry phrases that any competitor in this niche could use will fail validation if the client's voice is evidence-based or authoritative. Replace with specific mechanisms, concrete results, data points, or observations unique to this client.
 
 CAROUSEL-SPECIFIC RULES:
 SLIDE STRUCTURE:
@@ -141,25 +143,15 @@ Body text must add NEW information beyond the headline. Never explain the headli
 Minimum 2 sentences per content slide.
 Each slide covers a DISTINCT idea — check all prior slides before writing the next.
 
+REGISTER CONSISTENCY (${input.client.languageConfig.formality.toUpperCase()} throughout):
+Language register rules from the system prompt apply to every individual slide. When describing what the service or treatment does, do NOT use first-person plural ("we", "our team", "we treat"). Use impersonal constructions ("the therapy", "this method", "the treatment") or direct address ("you feel", "your body recovers") instead.
+
 MAIN CAPTION: 40–60 words. One sharp hook sentence + one bridging sentence + hashtags. Tease the core insight without revealing all slides.
 
 Theme: ${sanitizePromptField(input.theme)}
-You MUST return exactly ${input.slideCount} slides in the JSON array.
+You MUST return exactly ${input.slideCount} slides.
 
 FOR EACH SLIDE: provide a design note (1-2 sentences) for Canva. For the cover slide, suggest a swipe cue overlay text from: ${input.client.languageConfig.carouselSwipeCues}
-
-Return JSON only:
-{
-  "main_caption": string,
-  "slides": [{
-    "slide_number": number,
-    "slide_role": "cover" | "content" | "value" | "cta",
-    "headline": string,
-    "body": string,
-    "cta_text": string | null,
-    "design_note": string
-  }]
-}
 `,
   ]
     .filter(Boolean)

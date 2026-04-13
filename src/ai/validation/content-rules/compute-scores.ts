@@ -11,29 +11,23 @@ import {
   CTA_VERDICTS,
   HUMAN_SCORE_PENALTIES,
   CRITERIA_PENALTIES,
-} from '@/ai/validation/content-rules/validation-criteria'
-import { CTA_EXEMPT_STRUCTURES } from '@/ai/shared/content-criteria'
+  LANGUAGE_ISSUE_WEIGHTS,
+  DIMENSION_BY_ISSUE_TYPE,
+} from '@/ai/validation/criteria'
 import type {
   HookVerdict,
   CtaVerdict,
   SlopDetection,
   LanguageIssueType,
-} from '@/ai/validation/types/scoring'
+  LanguageIssue,
+  ValidationCriteria,
+  ValidationScores,
+  SourceGroundingIssue,
+} from '@/ai/validation/types'
 
 // ---------------------------------------------------------------------------
 // Language scoring
 // ---------------------------------------------------------------------------
-
-/** Penalty per language issue type (deducted from 10). */
-const LANGUAGE_ISSUE_WEIGHTS: Record<LanguageIssueType, number> = {
-  grammar: 1.5,
-  mixed_script: 2.0,
-  calque: 1.5,
-  anglicism: 1.0,
-  formality: 1.0,
-  register: 0.75,
-  vocabulary: 1.0,
-}
 
 export interface LanguageScoreInput {
   issues: Array<{ type: LanguageIssueType }>
@@ -44,7 +38,7 @@ export interface LanguageScoreInput {
 export interface ComputedLanguageScore {
   language_score: number
   passes: boolean
-}
+} 
 
 export function computeLanguageScore(input: LanguageScoreInput): ComputedLanguageScore {
   if (input.corrected) {
@@ -62,16 +56,49 @@ export function computeLanguageScore(input: LanguageScoreInput): ComputedLanguag
 }
 
 // ---------------------------------------------------------------------------
+// Language sub-scores (naturalness + register dimensions)
+// ---------------------------------------------------------------------------
+
+export interface ComputedLanguageSubScores {
+  naturalness_score: number
+  register_score: number
+  language_score: number
+}
+
+/**
+ * Splits language issues into naturalness and register dimensions using the static
+ * DIMENSION_BY_ISSUE_TYPE mapping. No LLM classification needed.
+ */
+export function computeLanguageSubScores(issues: LanguageIssue[]): ComputedLanguageSubScores {
+  let naturalnessPenalty = 0
+  let registerPenalty = 0
+
+  for (const issue of issues) {
+    const weight = LANGUAGE_ISSUE_WEIGHTS[issue.type] ?? 0
+    const dimension = DIMENSION_BY_ISSUE_TYPE[issue.type]
+    if (dimension === 'naturalness') naturalnessPenalty += weight
+    else if (dimension === 'register') registerPenalty += weight
+  }
+
+  const naturalness_score = Math.max(1, Math.round(10 - naturalnessPenalty))
+  const register_score = Math.max(1, Math.round(10 - registerPenalty))
+  // Naturalness 55%, register 45%
+  const language_score = Math.max(1, Math.round(naturalness_score * 0.55 + register_score * 0.45))
+
+  return { naturalness_score, register_score, language_score }
+}
+
+// ---------------------------------------------------------------------------
 // Quality scoring
 // ---------------------------------------------------------------------------
 
-/** Hook verdict → base score mapping (derived from evaluation-criteria.ts). */
+/** Hook verdict → base score mapping. */
 const HOOK_VERDICT_SCORES = Object.fromEntries(HOOK_VERDICTS.map((v) => [v.id, v.score])) as Record<
   HookVerdict,
   number
 >
 
-/** CTA verdict → base score mapping (derived from evaluation-criteria.ts). */
+/** CTA verdict → base score mapping. */
 const CTA_VERDICT_SCORES = Object.fromEntries(CTA_VERDICTS.map((v) => [v.id, v.score])) as Record<
   CtaVerdict,
   number
@@ -169,17 +196,11 @@ export function computeQualityScores(
   }, 0)
   const hook_score = Math.max(1, HOOK_VERDICT_SCORES[detections.hook_verdict] - hookPenalty)
 
-  // CTA score: verdict base minus issue penalties, with CTA exemption
+  // CTA score: verdict base minus issue penalties
   const ctaPenalty = detections.issues.reduce((sum, issue) => {
     return sum + (CTA_ISSUE_PENALTIES[issue.type] ?? 0)
   }, 0)
-  const isCtaExempt =
-    detections.cta_verdict === 'missing' &&
-    detections.structure_used != null &&
-    CTA_EXEMPT_STRUCTURES.includes(detections.structure_used)
-  const cta_score = isCtaExempt
-    ? 10
-    : Math.max(1, CTA_VERDICT_SCORES[detections.cta_verdict] - ctaPenalty)
+  const cta_score = Math.max(1, CTA_VERDICT_SCORES[detections.cta_verdict] - ctaPenalty)
 
   // Criteria score defaults to 10 when not provided (backwards compatibility)
   const cs = criteria_score ?? 10
@@ -246,7 +267,7 @@ export function computeGroundingScore(input: GroundingScoreInput): ComputedGroun
 }
 
 // ---------------------------------------------------------------------------
-// Slop derivation (DRY — extracted from 3 duplicate locations)
+// Slop derivation
 // ---------------------------------------------------------------------------
 
 interface SlopInput {
@@ -262,4 +283,97 @@ export function deriveSlopFromQuality(quality: SlopInput): SlopDetection {
     worst_offending_phrase: quality.worst_offending_phrase,
     human_authenticity_score: quality.human_score,
   }
+}
+
+// ---------------------------------------------------------------------------
+// New score dimensions (brief / craft / voice / source / overall)
+// ---------------------------------------------------------------------------
+
+/**
+ * Brief adherence score: 10 − penalties for failed checks.
+ * When pillar is not provided its weight is redistributed proportionally across the other three.
+ */
+export function computeBriefScore(c: ValidationCriteria, hasPillar: boolean): number {
+  let penalty = 0
+  if (!c.niche_fit.passes) penalty += hasPillar ? 2.5 : 3.1
+  if (!c.audience_match.passes) penalty += hasPillar ? 2.0 : 2.5
+  if (hasPillar && c.pillar_match !== null && !c.pillar_match.passes) penalty += 2.0
+  if (!c.theme_adherence.passes) penalty += hasPillar ? 2.5 : 3.1
+  return Math.max(1, Math.round(10 - penalty))
+}
+
+/**
+ * Craft score: average of hook, CTA, structure compliance, and authenticity components.
+ * When no structure was declared (single post only), structure component is excluded.
+ */
+export function computeCraftScore(c: ValidationCriteria): number {
+  const hookScore = HOOK_VERDICT_SCORES[c.hook.verdict] ?? 5
+  const hookPenalty = c.issues.reduce((sum, i) => sum + (HOOK_ISSUE_PENALTIES[i.type] ?? 0), 0)
+  const hook = Math.max(1, hookScore - hookPenalty)
+
+  const ctaScore = CTA_VERDICT_SCORES[c.cta.verdict] ?? 5
+  const ctaPenalty = c.issues.reduce((sum, i) => sum + (CTA_ISSUE_PENALTIES[i.type] ?? 0), 0)
+  const cta = Math.max(1, ctaScore - ctaPenalty)
+
+  const authenticity = Math.max(6, 10 - c.ai_tells.length * 1.0)
+
+  if (c.structure_followed === null) {
+    // No declared structure — average of 3 components
+    return Math.max(1, Math.round((hook + cta + authenticity) / 3))
+  }
+
+  const totalChecks = c.structure_followed.checks.length
+  const passesCount = c.structure_followed.checks.filter((ch) => ch.passes).length
+  const structure = totalChecks > 0 ? (passesCount / totalChecks) * 10 : 10
+
+  return Math.max(1, Math.round((hook + cta + structure + authenticity) / 4))
+}
+
+/**
+ * Voice score: 10 − penalties for brand voice and formality failures.
+ */
+export function computeVoiceScore(c: ValidationCriteria): number {
+  let penalty = 0
+  if (!c.brand_voice.passes) penalty += 3.0
+  if (!c.formality.passes) penalty += 2.5
+  return Math.max(1, Math.round(10 - penalty))
+}
+
+/**
+ * Source score: null when no source present; otherwise derived from claim verdicts.
+ */
+export function computeSourceScore(claims: SourceGroundingIssue[] | null): number | null {
+  if (claims === null) return null
+  const { grounding_score } = computeGroundingScore({ flagged_claims: claims })
+  return grounding_score
+}
+
+/**
+ * Overall score: weighted average of all applicable dimensions.
+ * Weights shift when source score is present.
+ */
+export function computeOverallScore(s: Omit<ValidationScores, 'overall_score'>): number {
+  if (s.source_score !== null) {
+    // With source: brief 25%, craft 25%, voice 15%, language 15%, source 20%
+    return Math.max(
+      1,
+      Math.round(
+        s.brief_score * 0.25 +
+          s.craft_score * 0.25 +
+          s.voice_score * 0.15 +
+          s.language_score * 0.15 +
+          s.source_score * 0.2
+      )
+    )
+  }
+  // Without source: brief 30%, craft 30%, voice 20%, language 20%
+  return Math.max(
+    1,
+    Math.round(
+      s.brief_score * 0.3 +
+        s.craft_score * 0.3 +
+        s.voice_score * 0.2 +
+        s.language_score * 0.2
+    )
+  )
 }

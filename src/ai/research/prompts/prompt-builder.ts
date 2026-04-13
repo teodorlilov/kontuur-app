@@ -116,12 +116,12 @@ ${fileSection}
 CRITICAL: You MUST return EXACTLY ${count} JSON object${count > 1 ? 's' : ''} — never fewer. If source material does not cover all pillars, use current ${new Date().toLocaleString('en-US', { month: 'long', year: 'numeric' })} industry trends for the remaining slots and set source fields to null.
 [{
   "finding": "one sentence: why this theme, what specific fact justifies it",
-  "suggested_theme": "5-8 words about the theme in ${this.languageConfig.language}, use proper grammer",
+  "suggested_theme": "5-10 words summary about the theme in ${this.languageConfig.language}, use proper grammer",
   "pillar": "pillar name",
   "source_url": "url or null",
   "source_title": "title or null",
   "source_type": "rss | website | file | null",
-  "source_excerpt": "5-8 sentences of key facts. Replace all double-quotes with single-quotes."
+  "source_excerpt": "5-10 sentences covering: (1) who this is for and what problems/conditions it addresses, (2) how it works (mechanism or key features), (3) what result or outcome it delivers. Replace all double-quotes with single-quotes."
 }]`
   }
 
@@ -147,12 +147,12 @@ ${historyContext}
 CRITICAL: Generate EXACTLY ${count} object${count > 1 ? 's' : ''} — never fewer. Use 'source_excerpt' to describe the specific trend or hook that justifies the theme.
 [{
   "finding": "one sentence: why this theme, what specific fact justifies it",
-  "suggested_theme": "5-8 words about the theme in ${this.languageConfig.language}, use proper grammer",
+  "suggested_theme": "5-10 words summary about the theme in ${this.languageConfig.language}, use proper grammer",
   "pillar": "pillar name",
   "source_url": "url or null",
   "source_title": "title or null",
   "source_type": "rss | website | file | null",
-  "source_excerpt": "5-8 sentences of key facts. Replace all double-quotes with single-quotes."
+  "source_excerpt": "5-10 sentences covering: (1) who this is for and what problems/conditions it addresses, (2) how it works (mechanism or key features), (3) what result or outcome it delivers. Replace all double-quotes with single-quotes."
 }]`
   }
 

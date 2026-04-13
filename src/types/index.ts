@@ -16,7 +16,7 @@ export type {
   LanguageValidation,
   SlopDetection,
   SourceGroundingResult,
-} from '@/ai/validation/types/scoring'
+} from '@/ai/validation/types'
 
 export type {
   ClientSource,

@@ -6,7 +6,7 @@ import { getPillarColor } from '@/components/ui/colors/pillar-colors'
 import { toast } from '@/components/ui/toast'
 import { decodeUrlsInText } from '@/utils/decode-url'
 import { CarouselSlides } from './carousel-slides'
-import type { CarouselSlide } from '@/types/api'
+import type { CarouselSlide, ValidationCriteria, ValidationScores } from '@/types/api'
 import { QualityScores } from './quality-scores'
 
 export interface PostContentDisplayProps {
@@ -22,24 +22,8 @@ export interface PostContentDisplayProps {
   sourceExcerpt?: string | null
   pillar?: string | null
   theme?: string
-  qualityScores?: {
-    human_score: number
-    hook_score: number
-    cta_score: number
-    criteria_score?: number
-    structure_used?: string | null
-    brand_voice_match?: boolean
-    brand_voice_deviation?: string | null
-    audience_targeting?: boolean
-    audience_gap?: string | null
-    niche_specificity?: boolean
-    niche_gap?: string | null
-    structure_is_predictable?: boolean
-    formality_consistent?: boolean
-    formality_violation?: string | null
-    source_fidelity_ok?: boolean | null
-    health_compliant?: boolean | null
-  } | null
+  criteria?: ValidationCriteria | null
+  scores?: ValidationScores | null
 }
 
 export function PostContentDisplay({
@@ -55,7 +39,8 @@ export function PostContentDisplay({
   sourceExcerpt,
   pillar,
   theme,
-  qualityScores,
+  criteria,
+  scores,
 }: PostContentDisplayProps) {
   const isCarousel = postType === 'carousel'
 
@@ -192,28 +177,9 @@ export function PostContentDisplay({
       {/* Carousel slides */}
       {isCarousel && slides.length > 0 && <CarouselSlides slides={slides} />}
 
-      {/* Quality scores (all post types, generation flow only) */}
-      {qualityScores && (
-        <QualityScores
-          humanScore={qualityScores.human_score}
-          hookScore={qualityScores.hook_score}
-          ctaScore={qualityScores.cta_score}
-          criteriaScore={qualityScores.criteria_score}
-          structureUsed={qualityScores.structure_used}
-          brandVoiceMatch={qualityScores.brand_voice_match}
-          brandVoiceDeviation={qualityScores.brand_voice_deviation}
-          audienceTargeting={qualityScores.audience_targeting}
-          audienceGap={qualityScores.audience_gap}
-          nicheSpecificity={qualityScores.niche_specificity}
-          nicheGap={qualityScores.niche_gap}
-          criteriaDetails={{
-            structureIsPredictable: qualityScores.structure_is_predictable,
-            formalityConsistent: qualityScores.formality_consistent,
-            formalityViolation: qualityScores.formality_violation,
-            sourceFidelityOk: qualityScores.source_fidelity_ok,
-            healthCompliant: qualityScores.health_compliant,
-          }}
-        />
+      {/* Quality scores (generation flow only) */}
+      {criteria && scores && (
+        <QualityScores criteria={criteria} scores={scores} />
       )}
     </div>
   )

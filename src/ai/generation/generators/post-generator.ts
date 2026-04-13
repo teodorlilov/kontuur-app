@@ -1,4 +1,4 @@
-import { callAnthropic, DEFAULT_MODEL, LIGHT_MODEL } from '@/utils/ai-client'
+import { callAnthropic, DEFAULT_MODEL } from '@/utils/ai-client'
 import { buildGenerateSystemPrompt, buildGenerateUserPrompt } from '@/ai/generation/prompts/prompt-builder'
 import type { SinglePostInput } from '../types'
 
@@ -44,9 +44,6 @@ export async function generatePost(
   const systemPrompt = buildGenerateSystemPrompt(input.client, input.platform, input.targetPillar)
   const userMessage = buildGenerateUserPrompt(input)
 
-
-  console.log("Generate system prompt is ", systemPrompt)
-  console.log("Generate user prompt is ", userMessage)
 
   const message = await callAnthropic({ systemPrompt, userMessage, onToken, model: DEFAULT_MODEL })
   const text = message.content[0]?.type === 'text' ? message.content[0].text : ''

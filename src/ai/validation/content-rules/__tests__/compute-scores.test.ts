@@ -10,7 +10,7 @@ import {
   type QualityDetections,
   type CriteriaDetections,
 } from '../compute-scores'
-import type { LanguageIssueType } from '@/ai/validation/types/scoring'
+import type { LanguageIssueType } from '@/ai/validation/types'
 
 // ---------------------------------------------------------------------------
 // Language scoring

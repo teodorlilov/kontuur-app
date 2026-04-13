@@ -5,17 +5,15 @@ export interface PlatformLimits {
 
 // Structure descriptions — single source of truth for both generator and evaluator.
 const STRUCTURE_DESCRIPTIONS: Record<string, string> = {
-  'STORY-FIRST': `STORY-FIRST: Start with a specific moment or scene — something observed, a pattern noticed, a before/after. Let the reader draw their own conclusion. Close with a question or soft invitation.`,
-  'MYTH-BREAKER': `MYTH-BREAKER: Name a common belief that most people hold. Explain why it is wrong using one specific, concrete detail. Leave the reader with a new mental model. No CTA needed.`,
-  'CLIENT-WORLD SNAPSHOT': `CLIENT-WORLD SNAPSHOT: Describe something only this business's clients experience — a feeling, a moment, a small detail others would miss. Connect it to why it matters.`,
-  'OBSERVATION': `OBSERVATION: Share a specific pattern noticed about clients, the work, or the field. Add one sentence of insight. Close connecting the observation to what the reader can do or notice.`,
-  'CONFESSION': `CONFESSION: Admit something surprising or counterintuitive about the business or the work. Connect it to why it matters to the reader. No CTA needed.`,
-  'SINGLE VIVID IMAGE': `SINGLE VIVID IMAGE: Open with one striking image, detail, or sensory observation. Build 2-3 sentences of context. Close with a reflection or question that ties it to the reader's experience.`,
+  'THE SPECIFIC ENCOUNTER': `THE SPECIFIC ENCOUNTER: Start mid-action with a specific client interaction, question, or realization. (e.g., 'A client walked in today and said...', 'I was looking at the market data when...'). Describe one concrete detail. End with a professional insight that changes how the reader sees the service. No generic 'We are here to help' endings.`,
+  'THE COUNTER-INTUITIVE TRUTH': `THE COUNTER-INTUITIVE TRUTH: Identify a common belief in the field that is actually a mistake. (e.g., 'Most people think [X], but the data shows [Y]'). Use a specific number or technical fact from the source to prove it. Close by explaining the benefit of this 'new' way of thinking.`,
+  'SENSORY SNAPSHOT': `SENSORY SNAPSHOT: Focus entirely on one physical or visual detail of the work. (e.g., The sound of a specific machine, the light in a renovated kitchen, the texture of a product). Describe it with precision. Connect this small detail to the high quality of the overall result.`,
+  'PROFESSIONAL PERSPECTIVE': `PROFESSIONAL PERSPECTIVE: Share a pattern you've noticed after seeing hundreds of cases/clients. (e.g., 'The biggest mistake people make in their first week of [X] is...'). Offer one deep, expert solution. The tone should be 'Expert Peer'—knowledgeable but not preaching.`,
+  'THE TRANSPARENT PROCESS': `THE TRANSPARENT PROCESS: Pull back the curtain on one specific part of the job that people don't usually see. (e.g., How you choose a specific material, how you prep a room, or why a certain tech takes exactly 12 minutes). Explain why this 'hidden' effort is what actually creates the value.`,
+  'THE CONTRAST': `THE CONTRAST: Directly compare two states without using hype words. (e.g., 'Before [X], the situation was [Detail A]. After 20 minutes of [Y], it was [Detail B]'). Use technical or factual descriptions only. Let the evidence speak for itself. No 'Amazing results' or 'Life-changing' adjectives.`,
 } as const
 
 export const ALL_POST_STRUCTURES: readonly string[] = Object.keys(STRUCTURE_DESCRIPTIONS)
-
-export const CTA_EXEMPT_STRUCTURES: readonly string[] = ['MYTH-BREAKER', 'CONFESSION'] as const
 
 // ---- Sentence Variety ----
 export const MIN_SHORT_SENTENCE_WORDS = 6

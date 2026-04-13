@@ -143,18 +143,13 @@ export class GenerationPipeline {
   }
 
   private collectResult(validation: PostValidationResult, post: DraftPost): void {
-    const langCorrected = !!(
-      validation.language.corrected_text || validation.language.corrected_slides
-    )
-    const language = langCorrected
-      ? { ...validation.language, language_score: 10, passes: true }
-      : validation.language
-
     const item: GenerationResult = {
       post,
       quality: validation.quality,
-      language,
+      language: validation.language,
       slop: validation.slop,
+      criteria: validation.criteria,
+      scores: validation.scores,
       ...(validation.sourceGrounding ? { sourceGrounding: validation.sourceGrounding } : {}),
     }
     this.results.push(item)

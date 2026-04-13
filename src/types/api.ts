@@ -3,7 +3,7 @@ import type {
   CarouselQuality,
   LanguageValidation,
   SlopDetection,
-} from '@/ai/validation/types/scoring'
+} from '@/ai/validation/types'
 
 // ---- Shared enums / unions ----
 
@@ -392,13 +392,14 @@ export type {
   LanguageValidation as LanguageResult,
   SlopDetection,
   SourceGroundingResult,
-} from '@/ai/validation/types/scoring'
-
-export type {
   SingleQualityResult,
   CarouselQualityResult,
   QualityResult,
-} from '@/ai/validation/prompts/validate-quality'
+  ValidationCriteria,
+  ValidationScores,
+  CriterionResult,
+  StructureCheck,
+} from '@/ai/validation/types'
 
 export type {
   ClientSource,

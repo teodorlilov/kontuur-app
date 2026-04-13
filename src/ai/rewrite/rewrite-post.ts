@@ -52,21 +52,15 @@ export async function performRewrite(ctx: RewriteContext) {
       )
     : newSlidesJson
 
-  // If language corrections were auto-applied, update the score to reflect corrected text
-  const langCorrected = !!(
-    validation.language.corrected_text || validation.language.corrected_slides
-  )
-  const language = langCorrected
-    ? { ...validation.language, language_score: 10, passes: true }
-    : validation.language
-
   return {
     caption: finalCaption,
     slides_json: finalSlidesJson,
     quality_score_avg: validation.qualityScore,
     quality: validation.quality,
-    language,
+    language: validation.language,
     slop: validation.slop,
     sourceGrounding: validation.sourceGrounding ?? null,
+    criteria: validation.criteria,
+    scores: validation.scores,
   }
 }

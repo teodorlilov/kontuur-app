@@ -1,16 +1,6 @@
 import { decodeUrl } from '@/utils/decode-url'
 
 /**
- * Source grounding rules shown to the generator.
- * Exported so the validation criteria checklist uses the same text.
- * What the generator was told to follow — the validator must check.
- */
-export const SOURCE_GROUNDING_RULES =
-  `- Every statistic, number, price, feature, or specific claim MUST come from the source material.
-- Do NOT invent facts, numbers, or statistics that are not in the source. Absence of information is not creative license — it is a boundary.
-- Pick ONE specific angle from the source — do not summarize. Structure the post using the post structures, NOT the source's structure. If covering more than 2-3 facts, stop and refocus.` as const
-
-/**
  * Shared source grounding section builder for AI prompts.
  * Used by generate-post.ts and generate-carousel.ts.
  */
@@ -44,7 +34,7 @@ CRITICAL SOURCE FIDELITY RULES:
 - Do NOT extrapolate or "fill in" details that seem plausible but are not stated in the source.
 - Prefer being less specific over being fabricated-specific. A post with fewer details that are all true is better than a vivid post with invented facts.
 - Write ONLY about what the source explicitly states.
-- CRITICAL: Pick ONE specific angle from the source — do not summarize. Structure the post using the post structures above, NOT the source's structure. If covering more than 2-3 facts, stop and refocus.
+- CRITICAL: Ground the content in what the source actually says about: WHO this helps (conditions, indications, use cases), HOW it works (mechanism, key features), and WHAT outcome it delivers. For a single post, pick the angle from this arc that is most compelling for the audience. For multi-slide content, map distinct aspects of this arc across slides — do not fill slides with sub-details of the same mechanism point.
 ${linkInstruction}
 `
 }

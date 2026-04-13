@@ -1,9 +1,9 @@
 import { callAnthropic, LIGHT_MODEL } from '@/utils/ai-client'
-import { parseJsonResponse } from '@/utils/ai'
+import { extractToolInput } from '@/utils/ai'
 import { buildLanguageValidationRules } from '@/ai/validation/prompts/language-validation-rules'
 import { computeLanguageScore } from '@/ai/validation/content-rules/compute-scores'
 import type { LanguageConfig } from '@/lib/clients/language-rules'
-import type { LanguageIssue, LanguageValidationResult } from '@/ai/validation/types/scoring'
+import type { LanguageIssue, LanguageValidationResult } from '@/ai/validation/types'
 import { buildContentSection } from '@/ai/validation/prompts/shared/content-section'
 
 // Re-export types for existing consumers
@@ -48,56 +48,59 @@ If ANY issues are found, provide a corrected version of the full text with all f
     carouselIntro: '\nThe text below is a carousel post with a CAPTION and multiple SLIDES.',
   })
 
-  let returnFormat: string
-
-  if (isCarousel) {
-    returnFormat = `{
-  "issues": [{
-    "type": "anglicism" | "calque" | "grammar" | "formality" | "register" | "mixed_script" | "vocabulary",
-    "original_text": string,
-    "issue_description": string,
-    "suggested_fix": string
-  }],
-  "corrected_text": string | null (corrected CAPTION only, null if caption has no issues),
-  "corrected_slides": [{
-    "headline": string,
-    "body": string
-  }] | null (corrected slides array with ALL slides — each slide corrected — null if slides have no issues)
-}
-
-IMPORTANT: "corrected_text" must contain ONLY the corrected caption, NOT the slide text. "corrected_slides" must contain ALL slides in order, each with corrected headline and body.`
-  } else {
-    returnFormat = `{
-  "issues": [{
-    "type": "anglicism" | "calque" | "grammar" | "formality" | "register" | "mixed_script" | "vocabulary",
-    "original_text": string,
-    "issue_description": string,
-    "suggested_fix": string
-  }],
-  "corrected_text": string | null (full corrected text if any issues found, null if no issues)
-}`
+  const issueSchema = {
+    type: 'object' as const,
+    properties: {
+      type: { type: 'string' },
+      original_text: { type: 'string' },
+      issue_description: { type: 'string' },
+      suggested_fix: { type: 'string' },
+    },
+    required: ['type', 'original_text', 'issue_description', 'suggested_fix'],
   }
+
+  const correctedSlideSchema = {
+    type: 'object' as const,
+    properties: { headline: { type: 'string' }, body: { type: 'string' } },
+    required: ['headline', 'body'],
+  }
+
+  const outputSchema = {
+    type: 'object' as const,
+    properties: {
+      issues: { type: 'array', items: issueSchema },
+      corrected_text: { type: ['string', 'null'] },
+      ...(isCarousel
+        ? { corrected_slides: { type: ['array', 'null'], items: correctedSlideSchema } }
+        : {}),
+    },
+    required: isCarousel
+      ? ['issues', 'corrected_text', 'corrected_slides']
+      : ['issues', 'corrected_text'],
+  }
+
+  const carouselNotes = isCarousel
+    ? `\nIMPORTANT: "corrected_text" must contain ONLY the corrected caption. "corrected_slides" must contain ALL slides in order (null if slides have no issues).`
+    : ''
 
   // Static instructions — persona + rules cached; content is dynamic
   const systemText = `${persona}
 
 ${rules}
-${instructions}`
+${instructions}${carouselNotes}`
 
   const message = await callAnthropic({
     systemPrompt: systemText,
     userMessage: `${contentSection}
 
 Language: ${language}
-Formality: ${formality}
-
-Return JSON only:
-${returnFormat}`,
+Formality: ${formality}`,
     maxTokens: 2048,
     model: LIGHT_MODEL,
+    outputSchema,
   })
 
-  const parsed = parseJsonResponse<LlmLanguageResponse>(message)
+  const parsed = extractToolInput<LlmLanguageResponse>(message)
   const issues = Array.isArray(parsed.issues) ? parsed.issues : []
   const { language_score, passes } = computeLanguageScore({ issues })
 

@@ -21,12 +21,18 @@ export interface CallAnthropicOptions {
   maxTokens?: number
   /** Whether to cache the system prompt (default: true when systemPrompt is provided) */
   cacheSystemPrompt?: boolean
-  /** Optional prefilled assistant turn (e.g. '[' to guide JSON array output) */
+  /** Optional prefilled assistant turn (e.g. '[' to guide JSON array output). Incompatible with outputSchema. */
   assistantPrefill?: string
   /** Optional prior conversation turns — used for retry calls to avoid re-sending source context */
   conversationHistory?: MessageParam[]
   /** Called for each text token as it streams from the API. */
   onToken?: (text: string) => void
+  /**
+   * When provided, forces tool use with this JSON Schema as the output schema.
+   * The API guarantees the response is valid JSON matching the schema — no parsing required.
+   * Incompatible with assistantPrefill.
+   */
+  outputSchema?: { type: 'object'; properties?: Record<string, unknown>; required?: string[]; [key: string]: unknown }
 }
 
 const MAX_RETRIES = 3
@@ -51,6 +57,7 @@ export async function callAnthropic(opts: CallAnthropicOptions): Promise<Message
     assistantPrefill,
     conversationHistory = [],
     onToken,
+    outputSchema,
   } = opts
 
   const messages: MessageParam[] = [...conversationHistory, { role: 'user', content: userMessage }]
@@ -67,6 +74,10 @@ export async function callAnthropic(opts: CallAnthropicOptions): Promise<Message
         : systemPrompt,
     }),
     messages,
+    ...(outputSchema && {
+      tools: [{ name: 'output', description: 'Return the structured output', input_schema: outputSchema }],
+      tool_choice: { type: 'tool' as const, name: 'output' },
+    }),
   }
 
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {

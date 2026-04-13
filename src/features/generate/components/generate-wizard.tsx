@@ -574,6 +574,8 @@ export function GenerateWizard({
                         language: item.language,
                         slop: item.slop,
                         sourceGrounding: item.sourceGrounding,
+                        criteria: item.criteria,
+                        scores: item.scores,
                       }}
                       onApprove={handlePostApproved}
                       onDiscard={handlePostRemoved}

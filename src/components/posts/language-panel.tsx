@@ -23,6 +23,7 @@ const typeLabels: Record<LanguageIssueType, string> = {
   register: 'Register',
   mixed_script: 'Mixed Script',
   vocabulary: 'Vocabulary',
+  instructions: 'Protocol',
 }
 
 const typeColors: Record<LanguageIssueType, string> = {
@@ -33,6 +34,7 @@ const typeColors: Record<LanguageIssueType, string> = {
   register: 'bg-blue-100 text-blue-700',
   mixed_script: 'bg-rose-100 text-rose-700',
   vocabulary: 'bg-teal-100 text-teal-700',
+  instructions: 'bg-indigo-100 text-indigo-700',
 }
 
 export function LanguagePanel({ result, onApplyFixes, autoApplied = false }: LanguagePanelProps) {

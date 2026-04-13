@@ -95,6 +95,8 @@ export function usePostActions({ post, onApprove, onRegenerate }: UsePostActions
         language: ValidationData['language']
         slop: ValidationData['slop']
         sourceGrounding: ValidationData['sourceGrounding'] | null
+        criteria: ValidationData['criteria']
+        scores: ValidationData['scores']
       }
       setCaption(data.caption)
       setSlidesJson(data.slides_json)
@@ -114,6 +116,8 @@ export function usePostActions({ post, onApprove, onRegenerate }: UsePostActions
         language: data.language,
         slop: data.slop,
         sourceGrounding: data.sourceGrounding ?? undefined,
+        criteria: data.criteria,
+        scores: data.scores,
       })
     } catch {
       toast.error('Failed to rewrite post')

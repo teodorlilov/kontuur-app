@@ -1,17 +1,22 @@
-import { validateQuality } from '@/ai/validation/prompts/validate-quality'
+import { validateQuality } from '@/ai/validation/prompts/prompt-builder'
 import { validateLanguage } from '@/ai/validation/prompts/validate-language'
-import { validateSourceGrounding } from '@/ai/validation/prompts/validate-source-grounding'
 import {
-  deriveSlopFromQuality,
-  computeCriteriaScore,
+  computeBriefScore,
+  computeCraftScore,
+  computeVoiceScore,
+  computeSourceScore,
+  computeOverallScore,
+  computeLanguageSubScores,
 } from '@/ai/validation/content-rules/compute-scores'
-import type { CriteriaDetections } from '@/ai/validation/content-rules/compute-scores'
-import { DEFAULT_QUALITY_SCORE } from '@/lib/content-rules/constants'
-import type { QualityResult } from '@/ai/validation/prompts/validate-quality'
-import type { LanguageValidationResult } from '@/ai/validation/prompts/validate-language'
-import type { SourceGroundingResult } from '@/ai/validation/prompts/validate-source-grounding'
-import type { SlopDetection } from '@/types/api'
+import { deriveQualityResult, deriveSourceGroundingResult, deriveSlopFromQuality } from '@/ai/validation/correction-utils'
+import { safeParseHookVerdict, safeParseCtaVerdict } from '@/ai/validation/content-rules/compute-scores'
 import type { ClientData } from '@/lib/clients/fetch-client-data'
+import type {
+  ValidationCriteria,
+  ValidationScores,
+  PostValidationResult,
+  LanguageValidationResult,
+} from '@/ai/validation/types'
 
 export interface SourceContext {
   excerpt: string
@@ -30,107 +35,159 @@ export interface ValidatePostInput {
   label: string
 }
 
-export interface PostValidationResult {
-  quality: QualityResult
-  language: LanguageValidationResult
-  slop: SlopDetection
-  sourceGrounding?: SourceGroundingResult
-  qualityScore: number
-  /** Names of validation steps that failed and fell back to defaults */
-  validationWarnings: string[]
-}
-
-/** Safe default quality fallback. Adapts to single or carousel. */
-function defaultQualityFallback(isCarousel: boolean): QualityResult {
-  const base = {
-    human_score: DEFAULT_QUALITY_SCORE,
-    hook_score: DEFAULT_QUALITY_SCORE,
-    cta_score: DEFAULT_QUALITY_SCORE,
-    criteria_score: DEFAULT_QUALITY_SCORE,
-    quality_score_avg: DEFAULT_QUALITY_SCORE,
-    hook_verdict: 'clear_value' as const,
-    cta_verdict: 'clear_relevant' as const,
-    brand_voice_match: true,
-    brand_voice_deviation: null,
-    audience_targeting: true,
-    audience_gap: null,
-    niche_specificity: true,
-    niche_gap: null,
-    ai_tells: [] as string[],
-    worst_offending_phrase: null,
-    issues: [] as Array<{ type: string; description: string }>,
-    structure_is_predictable: false,
-    structure_used: null,
-    formality_consistent: true,
-    formality_violation: null,
-    source_fidelity_ok: null,
-    health_compliant: null,
-  }
-  return isCarousel ? { ...base, kind: 'carousel' } : { ...base, kind: 'single' }
-}
+// Re-export for consumers that import PostValidationResult from here
+export type { PostValidationResult }
 
 /**
  * Unified validation for both single posts and carousels.
- * Runs quality, language, and source grounding validation in parallel,
- * then combines results to compute criteria_score.
+ * Runs quality (+ source grounding) and language validation in parallel (2 LLM calls).
  */
 export async function validatePost(input: ValidatePostInput): Promise<PostValidationResult> {
   const validationWarnings: string[] = []
   const isCarousel = !!input.slides && input.slides.length > 0
 
-  // Run LLM validations in parallel
-  const [quality, lang, grounding] = await Promise.all([
-    validateQuality({ caption: input.caption, slides: input.slides }, input.client, {
+  const [qualityRaw, lang] = await Promise.all([
+    validateQuality({
+      caption: input.caption,
+      slides: input.slides,
+      client: input.client,
+      platform: input.platform,
       theme: input.theme,
       targetPillar: input.targetPillar,
       declaredStructure: input.declaredStructure,
-      platform: input.platform,
-      sourceExcerpt: input.sourceContext?.excerpt,
+      sourceContext: input.sourceContext,
     }).catch((err) => {
-      console.error(`[generate] ${input.label} quality validation failed:`, err)
+      console.error(`[${input.label ?? 'validate'}] quality validation failed:`, err)
       validationWarnings.push('quality')
-      return defaultQualityFallback(isCarousel)
+      return null
     }),
     validateLanguage(
       isCarousel ? { text: input.caption, slides: input.slides } : { text: input.caption },
       input.client.languageConfig
     ).catch((err) => {
-      console.error(`[generate] ${input.label} language validation failed:`, err)
+      console.error(`[${input.label ?? 'validate'}] language validation failed:`, err)
       validationWarnings.push('language')
-      return { passes: true, language_score: 10, issues: [], corrected_text: null }
+      return {
+        passes: true,
+        language_score: 10,
+        issues: [],
+        corrected_text: null,
+      } as LanguageValidationResult
     }),
-    input.sourceContext
-      ? validateSourceGrounding(input.caption, input.sourceContext.excerpt).catch((err) => {
-          console.error(`[generate] ${input.label} source grounding validation failed:`, err)
-          validationWarnings.push('source_grounding')
-          return null
-        })
-      : Promise.resolve(null),
   ])
 
-  // Compute criteria score from LLM detections
-  const criteriaDetections: CriteriaDetections = {
-    structure_is_predictable: isCarousel ? false : quality.structure_is_predictable,
-    formality_consistent: quality.formality_consistent,
-    source_fidelity_ok: quality.source_fidelity_ok,
-    health_compliant: quality.health_compliant,
+  // Build ValidationCriteria from raw LLM output
+  let criteria: ValidationCriteria
+  if (qualityRaw === null) {
+    // Quality call failed — use defaults
+    criteria = {
+      niche_fit: { passes: true, gap: null },
+      audience_match: { passes: true, gap: null },
+      pillar_match: null,
+      theme_adherence: { passes: true, gap: null },
+      hook: { verdict: 'clear_value', note: null },
+      cta: { verdict: 'clear_relevant', note: null },
+      structure_followed: null,
+      ai_tells: [],
+      worst_offending_phrase: null,
+      brand_voice: { passes: true, gap: null },
+      formality: { passes: true, gap: null },
+      source_claims: null,
+      health_compliant: null,
+      issues: [],
+    }
+  } else {
+    criteria = {
+      niche_fit: { passes: qualityRaw.niche_fit, gap: qualityRaw.niche_gap },
+      audience_match: { passes: qualityRaw.audience_match, gap: qualityRaw.audience_gap },
+      pillar_match: input.targetPillar
+        ? { passes: qualityRaw.pillar_match ?? true, gap: qualityRaw.pillar_gap }
+        : null,
+      theme_adherence: { passes: qualityRaw.theme_adherence, gap: qualityRaw.theme_gap },
+      hook: {
+        verdict: safeParseHookVerdict(qualityRaw.hook_verdict),
+        note: qualityRaw.hook_note,
+      },
+      cta: {
+        verdict: safeParseCtaVerdict(qualityRaw.cta_verdict),
+        note: qualityRaw.cta_note,
+      },
+      structure_followed: qualityRaw.structure_checks
+        ? {
+            checks: qualityRaw.structure_checks,
+            passes: qualityRaw.structure_checks.every((c) => c.passes),
+          }
+        : null,
+      ai_tells: qualityRaw.ai_tells,
+      worst_offending_phrase: qualityRaw.worst_offending_phrase,
+      brand_voice: { passes: qualityRaw.brand_voice_match, gap: qualityRaw.brand_voice_deviation },
+      formality: { passes: qualityRaw.formality_consistent, gap: qualityRaw.formality_violation },
+      source_claims: input.sourceContext ? qualityRaw.flagged_claims : null,
+      health_compliant: qualityRaw.health_compliant,
+      issues: qualityRaw.issues,
+    }
   }
-  const criteriaScore = computeCriteriaScore(criteriaDetections)
 
-  // Derive slop-compatible shape from quality result (no separate LLM call)
-  const slop = deriveSlopFromQuality(quality)
+  // Compute new score dimensions
+  // If language was auto-corrected, treat sub-scores as 10 so scores stay consistent.
+  const langSubScores = computeLanguageSubScores(lang.issues)
+  const langCorrected = !!(lang.corrected_text || lang.corrected_slides)
+  const effectiveLangScores = langCorrected
+    ? { naturalness_score: 10, register_score: 10, language_score: 10 }
+    : langSubScores
+  const scores: ValidationScores = {
+    brief_score: computeBriefScore(criteria, !!input.targetPillar),
+    craft_score: computeCraftScore(criteria),
+    voice_score: computeVoiceScore(criteria),
+    source_score: computeSourceScore(criteria.source_claims),
+    language_score: effectiveLangScores.language_score,
+    language_naturalness_score: effectiveLangScores.naturalness_score,
+    language_register_score: effectiveLangScores.register_score,
+    overall_score: 0, // filled below
+  }
+  scores.overall_score = computeOverallScore(scores)
 
-  // Recalculate quality_score_avg with the computed criteria_score
-  const recalculatedAvg = Math.round(
-    (quality.human_score + quality.hook_score + quality.cta_score + criteriaScore) / 4
-  )
+  // Derive backward-compatible QualityResult
+  const quality = deriveQualityResult(criteria, {
+    declaredStructure: input.declaredStructure,
+    isCarousel,
+  })
+
+  // Derive SlopDetection from quality
+  const slop = deriveSlopFromQuality({
+    human_score: quality.human_score,
+    ai_tells: quality.ai_tells,
+    worst_offending_phrase: quality.worst_offending_phrase,
+  })
+
+  // Derive SourceGroundingResult when source was provided
+  const sourceGrounding =
+    input.sourceContext && qualityRaw && criteria.source_claims !== null
+      ? deriveSourceGroundingResult(
+          criteria.source_claims,
+          qualityRaw.corrected_text,
+          qualityRaw.corrected_slides
+        )
+      : undefined 
+
+  // Attach language sub-scores; use effective scores so correction is reflected everywhere.
+  const languageWithSubScores: LanguageValidationResult = {
+    ...lang,
+    language_score: effectiveLangScores.language_score,
+    passes: langCorrected ? true : lang.passes,
+    language_naturalness_score: effectiveLangScores.naturalness_score,
+    language_register_score: effectiveLangScores.register_score,
+  }
+
 
   return {
-    quality: { ...quality, criteria_score: criteriaScore, quality_score_avg: recalculatedAvg },
-    language: lang,
+    criteria,
+    scores,
+    quality,
+    language: languageWithSubScores,
     slop,
-    ...(grounding ? { sourceGrounding: grounding } : {}),
-    qualityScore: recalculatedAvg,
+    ...(sourceGrounding ? { sourceGrounding } : {}),
+    qualityScore: scores.overall_score,
     validationWarnings,
   }
 }
