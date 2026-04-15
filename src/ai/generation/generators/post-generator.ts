@@ -44,6 +44,8 @@ export async function generatePost(
   const systemPrompt = buildGenerateSystemPrompt(input.client, input.platform, input.targetPillar)
   const userMessage = buildGenerateUserPrompt(input)
 
+  console.log("Single Post Generation System Prompt", systemPrompt)
+  console.log("Single Post Generation User Prompt", userMessage)
 
   const message = await callAnthropic({ systemPrompt, userMessage, onToken, model: DEFAULT_MODEL })
   const text = message.content[0]?.type === 'text' ? message.content[0].text : ''

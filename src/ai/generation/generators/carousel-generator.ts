@@ -34,6 +34,10 @@ export async function generateCarousel(
   const systemPrompt = buildGenerateSystemPrompt(input.client, input.platform, input.targetPillar)
   const userMessage = buildGenerateUserCarouselPrompt(input)
 
+  console.log("Carousel Generation System Prompt", systemPrompt)
+  console.log("Carousel Generation User Prompt", userMessage)
+
+
   const message = await callAnthropic({
     systemPrompt,
     userMessage,
@@ -41,5 +45,5 @@ export async function generateCarousel(
     model: DEFAULT_MODEL,
     outputSchema: CAROUSEL_OUTPUT_SCHEMA,
   })
-  return extractToolInput<CarouselResult>(message)
+  return extractToolInput<CarouselResult>(message, CAROUSEL_OUTPUT_SCHEMA)
 }

@@ -92,6 +92,7 @@ export const BG_SPECIFIC_AI_TELLS: readonly string[] = [
   'Bureaucratic Compound Nouns: Formal compound phrases like "семеен състав", "жилищна площ", "потребителски профил" where a native speaker would use simple, conversational words.',
   'Mechanical Parallel Questions: Firing 2-3 Вие-form questions back-to-back with identical structure ("Очаквате ли X? Планирате ли Y?") — sounds like a bureaucratic form, not a human speaking.',
   'English Marketing Calques: Translating abstract English marketing phrases literally instead of using native Bulgarian expressions (e.g., "надхвърля стандартната презентация" for "goes beyond the standard presentation").',
+  'Character Confusion: Replacing or dropping "ъ" (er golam, U+044A) — a letter unique to Bulgarian. Never substitute it with "ь" (soft sign) or omit it. Correct spellings: "съобщение", "съседен", "също", "към", "бъдеще", "събитие", "Съседни".',
 ] as const
 
 const AI_TELLS_BY_LANGUAGE: Record<string, readonly string[]> = {
