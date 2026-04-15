@@ -45,10 +45,7 @@ export interface SuggestSourcesResponse {
 }
 
 export interface SourceStrategy {
-  rss: boolean
-  website: boolean
-  file: boolean
-  trend_fallback: boolean
+  trend_fallback?: boolean
   require_source_grounding?: boolean
 }
 

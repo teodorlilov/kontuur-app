@@ -11,7 +11,7 @@ import { cn } from '@/utils/cn'
 import { formatRelativeTime } from '@/utils/format'
 import { useSources } from '@/features/sources/hooks/use-sources'
 import { toast } from '@/components/ui/toast'
-import type { ClientSource, SourceSuggestion } from '@/types/api'
+import type { ClientSource, SourceStrategy } from '@/types/api'
 
 interface SourcesManagerProps {
   clientId: string
@@ -19,13 +19,7 @@ interface SourcesManagerProps {
   niche: string
   initialSources: ClientSource[]
   isOnboarding: boolean
-  initialSourceStrategy?: {
-    rss: boolean
-    website: boolean
-    file: boolean
-    trend_fallback: boolean
-    require_source_grounding?: boolean
-  }
+  initialSourceStrategy?: SourceStrategy
 }
 
 interface AddForm {
@@ -48,11 +42,10 @@ export function SourcesManager({
     suggestions,
     isSaving,
     suggesting,
-    savingStrategy,
     addingFromSuggestion,
     showModal,
     setShowModal,
-    handleSaveStrategy,
+    handleToggleGrounding,
     handleSuggest,
     handleAddSource,
     handleUploadFile,
@@ -189,6 +182,71 @@ export function SourcesManager({
   const rssSources = sources.filter((s) => s.type === 'rss')
   const websiteSources = sources.filter((s) => s.type === 'website')
   const fileSources = sources.filter((s) => s.type === 'file')
+  const activeSourceCount = sources.filter((s) => s.is_active).length
+  const requireGrounding = strategy.require_source_grounding ?? false
+
+  function renderLabelInput(placeholder: string) {
+    return (
+      <div className="flex flex-col gap-1.5">
+        <label className="text-xs font-medium text-gray-600">Label</label>
+        <input
+          type="text"
+          value={addForm.label}
+          onChange={(e) => setAddForm((f) => ({ ...f, label: e.target.value }))}
+          placeholder={placeholder}
+          className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-brand-purple focus:outline-none focus:ring-1 focus:ring-brand-purple"
+        />
+      </div>
+    )
+  }
+
+  function renderSourceList(
+    sourcesOfType: ClientSource[],
+    emptyMessage: string,
+    sourceType: 'rss' | 'website' | 'file',
+    onScanPages?: (url: string, sourceId: string, selected: string[]) => void
+  ) {
+    if (sourcesOfType.length === 0) {
+      return adding === sourceType ? null : <p className="text-sm text-gray-400 py-4">{emptyMessage}</p>
+    }
+    return (
+      <div className="flex flex-col gap-2">
+        {sourcesOfType.map((source) => (
+          <SourceRow
+            key={source.id}
+            source={source}
+            statusBadge={getStatusBadge(source)}
+            onToggle={() => {
+              void handleToggleActive(source)
+            }}
+            onEdit={(updates) => {
+              void handleEditSource(source.id, updates)
+            }}
+            onDelete={() => {
+              void handleDelete(source)
+            }}
+            onScanPages={onScanPages}
+          />
+        ))}
+      </div>
+    )
+  }
+
+  const pagePickerSource =
+    pagePickerFor && pagePickerFor !== 'add' ? sources.find((s) => s.id === pagePickerFor) : undefined
+  const pagePickerInitialSelected: string[] =
+    pagePickerFor === 'add'
+      ? addSelectedPages
+      : ((pagePickerSource?.config as Record<string, unknown> | null)?.selected_pages as
+          | string[]
+          | undefined) ?? []
+  let pagePickerSiteOrigin = ''
+  try {
+    const rawUrl = pagePickerFor === 'add' ? addForm.url : pagePickerSource?.url
+    if (rawUrl) pagePickerSiteOrigin = new URL(rawUrl).origin
+  } catch {
+    // invalid URL
+  }
 
   return (
     <div className="max-w-2xl mx-auto px-6 py-8">
@@ -215,55 +273,36 @@ export function SourcesManager({
         </p>
       </div>
 
-      {/* Source strategy toggles */}
-      <section className="mb-8 bg-white rounded-xl border border-gray-200 p-5 space-y-3">
-        <div className="flex items-center justify-between">
-          <p className="text-sm font-medium text-gray-700">Source strategy</p>
-          {savingStrategy && <span className="text-xs text-gray-400">Saving...</span>}
-        </div>
-        <p className="text-xs text-gray-500">
-          Control which source types the AI uses during research.
-        </p>
-        <div className="flex flex-col gap-2.5">
-          <StrategyToggle
-            label="RSS feeds"
-            enabled={strategy.rss}
-            onChange={(v) => {
-              void handleSaveStrategy({ ...strategy, rss: v })
-            }}
-          />
-          <StrategyToggle
-            label="Website content"
-            enabled={strategy.website}
-            onChange={(v) => {
-              void handleSaveStrategy({ ...strategy, website: v })
-            }}
-          />
-          <StrategyToggle
-            label="Uploaded documents"
-            enabled={strategy.file}
-            onChange={(v) => {
-              void handleSaveStrategy({ ...strategy, file: v })
-            }}
-          />
-          <StrategyToggle
-            label="Trend-based research"
-            description="Suggest themes based on niche trends when no source content is available"
-            enabled={strategy.trend_fallback}
-            onChange={(v) => {
-              void handleSaveStrategy({ ...strategy, trend_fallback: v })
-            }}
-          />
-          <StrategyToggle
-            label="Require source grounding"
-            description="Posts will only use facts from your sources. Ungrounded claims are flagged."
-            enabled={strategy.require_source_grounding ?? false}
-            onChange={(v) => {
-              void handleSaveStrategy({ ...strategy, require_source_grounding: v })
-            }}
-          />
-        </div>
+      {/* Research settings */}
+      <section className="mb-6 bg-white rounded-xl border border-gray-200 p-5">
+        <p className="text-sm font-medium text-gray-700 mb-3">Research settings</p>
+        <StrategyToggle
+          label="Require source grounding"
+          description="Posts will only use facts from your sources. Ungrounded claims are flagged."
+          enabled={requireGrounding}
+          onChange={(v) => {
+            void handleToggleGrounding(v)
+          }}
+        />
       </section>
+
+      {/* Research status */}
+      <div className="mb-6">
+        {requireGrounding && activeSourceCount === 0 ? (
+          <p className="text-xs text-amber-600">
+            Source grounding is on but no sources are active — disable grounding or activate a
+            source.
+          </p>
+        ) : activeSourceCount === 0 ? (
+          <p className="text-xs text-gray-500">
+            No active sources · research will use trend-based topics
+          </p>
+        ) : (
+          <p className="text-xs text-gray-500">
+            {activeSourceCount} {activeSourceCount === 1 ? 'source' : 'sources'} active
+          </p>
+        )}
+      </div>
 
       {/* Onboarding banner */}
       {isOnboarding && (
@@ -302,7 +341,6 @@ export function SourcesManager({
             <Button
               variant="secondary"
               size="sm"
-              disabled={!strategy.rss}
               onClick={() => {
                 setAdding('rss')
                 setAddForm({ label: '', url: '', focusInstructions: '' })
@@ -316,16 +354,7 @@ export function SourcesManager({
         {/* Inline add form */}
         {adding === 'rss' && (
           <div className="mb-3 p-4 rounded-xl border border-brand-purple/30 bg-brand-purple-light/30 flex flex-col gap-3">
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium text-gray-600">Label</label>
-              <input
-                type="text"
-                value={addForm.label}
-                onChange={(e) => setAddForm((f) => ({ ...f, label: e.target.value }))}
-                placeholder="e.g. Health News Daily"
-                className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-brand-purple focus:outline-none focus:ring-1 focus:ring-brand-purple"
-              />
-            </div>
+            {renderLabelInput('e.g. Health News Daily')}
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-medium text-gray-600">RSS Feed URL</label>
               <input
@@ -357,30 +386,10 @@ export function SourcesManager({
           </div>
         )}
 
-        {/* Source list */}
-        {rssSources.length === 0 && adding !== 'rss' ? (
-          <p className="text-sm text-gray-400 py-4">
-            No RSS feeds yet. Add a feed URL to pull recent articles into your research.
-          </p>
-        ) : (
-          <div className="flex flex-col gap-2">
-            {rssSources.map((source) => (
-              <SourceRow
-                key={source.id}
-                source={source}
-                statusBadge={getStatusBadge(source)}
-                onToggle={() => {
-                  void handleToggleActive(source)
-                }}
-                onEdit={(updates) => {
-                  void handleEditSource(source.id, updates)
-                }}
-                onDelete={() => {
-                  void handleDelete(source.id)
-                }}
-              />
-            ))}
-          </div>
+        {renderSourceList(
+          rssSources,
+          'No RSS feeds yet. Add a feed URL to pull recent articles into your research.',
+          'rss'
         )}
       </section>
 
@@ -391,7 +400,6 @@ export function SourcesManager({
           <Button
             variant="secondary"
             size="sm"
-            disabled={!strategy.website}
             onClick={() => {
               setAdding('website')
               setAddForm({ label: '', url: '', focusInstructions: '' })
@@ -404,16 +412,7 @@ export function SourcesManager({
         {/* Inline add form */}
         {adding === 'website' && (
           <div className="mb-3 p-4 rounded-xl border border-brand-purple/30 bg-brand-purple-light/30 flex flex-col gap-3">
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium text-gray-600">Label</label>
-              <input
-                type="text"
-                value={addForm.label}
-                onChange={(e) => setAddForm((f) => ({ ...f, label: e.target.value }))}
-                placeholder="e.g. diagnosa.info"
-                className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-brand-purple focus:outline-none focus:ring-1 focus:ring-brand-purple"
-              />
-            </div>
+            {renderLabelInput('e.g. diagnosa.info')}
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-medium text-gray-600">Website URL</label>
               <input
@@ -479,34 +478,13 @@ export function SourcesManager({
           </div>
         )}
 
-        {/* Source list */}
-        {websiteSources.length === 0 && adding !== 'website' ? (
-          <p className="text-sm text-gray-400 py-4">
-            No websites yet. Add your client&apos;s website URL to use their content as research
-            material.
-          </p>
-        ) : (
-          <div className="flex flex-col gap-2">
-            {websiteSources.map((source) => (
-              <SourceRow
-                key={source.id}
-                source={source}
-                statusBadge={getStatusBadge(source)}
-                onToggle={() => {
-                  void handleToggleActive(source)
-                }}
-                onEdit={(updates) => {
-                  void handleEditSource(source.id, updates)
-                }}
-                onDelete={() => {
-                  void handleDelete(source.id)
-                }}
-                onScanPages={(url, sourceId, currentSelected) => {
-                  void handleDiscoverPages(url, sourceId, currentSelected)
-                }}
-              />
-            ))}
-          </div>
+        {renderSourceList(
+          websiteSources,
+          "No websites yet. Add your client's website URL to use their content as research material.",
+          'website',
+          (url, sourceId, currentSelected) => {
+            void handleDiscoverPages(url, sourceId, currentSelected)
+          }
         )}
       </section>
 
@@ -517,7 +495,6 @@ export function SourcesManager({
           <Button
             variant="secondary"
             size="sm"
-            disabled={!strategy.file}
             onClick={() => {
               setAdding('file')
               setAddForm({ label: '', url: '', focusInstructions: '' })
@@ -531,16 +508,7 @@ export function SourcesManager({
         {/* Inline upload form */}
         {adding === 'file' && (
           <div className="mb-3 p-4 rounded-xl border border-brand-purple/30 bg-brand-purple-light/30 flex flex-col gap-3">
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium text-gray-600">Label</label>
-              <input
-                type="text"
-                value={addForm.label}
-                onChange={(e) => setAddForm((f) => ({ ...f, label: e.target.value }))}
-                placeholder="e.g. Service descriptions"
-                className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-brand-purple focus:outline-none focus:ring-1 focus:ring-brand-purple"
-              />
-            </div>
+            {renderLabelInput('e.g. Service descriptions')}
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-medium text-gray-600">File (PDF or TXT)</label>
               <input
@@ -577,30 +545,10 @@ export function SourcesManager({
           </div>
         )}
 
-        {/* File source list */}
-        {fileSources.length === 0 && adding !== 'file' ? (
-          <p className="text-sm text-gray-400 py-4">
-            No documents yet. Upload PDFs or text files with client info the AI should reference.
-          </p>
-        ) : (
-          <div className="flex flex-col gap-2">
-            {fileSources.map((source) => (
-              <SourceRow
-                key={source.id}
-                source={source}
-                statusBadge={getStatusBadge(source)}
-                onToggle={() => {
-                  void handleToggleActive(source)
-                }}
-                onEdit={(updates) => {
-                  void handleEditSource(source.id, updates)
-                }}
-                onDelete={() => {
-                  void handleDelete(source.id)
-                }}
-              />
-            ))}
-          </div>
+        {renderSourceList(
+          fileSources,
+          'No documents yet. Upload PDFs or text files with client info the AI should reference.',
+          'file'
         )}
       </section>
 
@@ -639,29 +587,8 @@ export function SourcesManager({
         sitemaps={discoveredSitemaps}
         loading={discoverLoading}
         sitemapLoading={sitemapLoading}
-        initialSelected={
-          pagePickerFor === 'add'
-            ? addSelectedPages
-            : (() => {
-                const source = sources.find((s) => s.id === pagePickerFor)
-                return (
-                  ((source?.config as Record<string, unknown> | null)?.selected_pages as
-                    | string[]
-                    | undefined) ?? []
-                )
-              })()
-        }
-        siteOrigin={(() => {
-          try {
-            const url =
-              pagePickerFor === 'add'
-                ? addForm.url
-                : sources.find((s) => s.id === pagePickerFor)?.url
-            return url ? new URL(url).origin : ''
-          } catch {
-            return ''
-          }
-        })()}
+        initialSelected={pagePickerInitialSelected}
+        siteOrigin={pagePickerSiteOrigin}
         onSave={(selected) => {
           if (pagePickerFor === 'add') {
             setAddSelectedPages(selected)

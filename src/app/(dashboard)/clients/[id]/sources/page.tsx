@@ -4,7 +4,7 @@ import { requireSessionUser } from '@/lib/auth/session'
 import { SourcesManager } from '@/features/sources/components/sources-manager'
 import { fetchClientById } from '@/lib/queries/db'
 import { CLIENT_SOURCE_FULL_COLUMNS } from '@/lib/queries/select-columns'
-import type { ClientSource } from '@/types/api'
+import type { ClientSource, SourceStrategy } from '@/types/api'
 
 export default async function ClientSourcesPage({
   params,
@@ -35,10 +35,9 @@ export default async function ClientSourcesPage({
   ])
 
   const initialSources = (sourcesResult.data as ClientSource[] | null) ?? []
-  const defaultStrategy = { rss: true, website: true, file: true, trend_fallback: true }
   const sourceStrategy =
-    (profileResult.data as { source_strategy: Record<string, boolean> } | null)?.source_strategy ??
-    defaultStrategy
+    ((profileResult.data as { source_strategy: unknown } | null)?.source_strategy as SourceStrategy | null) ??
+    {}
 
   return (
     <SourcesManager
@@ -47,9 +46,7 @@ export default async function ClientSourcesPage({
       niche={client.niche ?? ''}
       initialSources={initialSources}
       isOnboarding={isOnboarding}
-      initialSourceStrategy={
-        sourceStrategy as { rss: boolean; website: boolean; file: boolean; trend_fallback: boolean }
-      }
+      initialSourceStrategy={sourceStrategy}
     />
   )
 }

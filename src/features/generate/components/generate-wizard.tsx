@@ -11,7 +11,6 @@ import { PostTypeSelector } from '@/features/generate/components/post-type-selec
 import { PostCard, type PostData, type ValidationData } from '@/components/posts/post-card'
 import { PostCardSkeleton } from '@/components/posts/post-card-skeleton'
 import { ThemeRowSkeleton } from '@/features/generate/components/theme-row-skeleton'
-import { shouldShowResearchButton } from '@/features/generate/helpers/should-show-research-button'
 import { readNDJSONStream } from '@/utils/stream'
 import { PLATFORMS } from '@/utils/constants'
 import type { ClientRow } from '@/types/database'
@@ -511,17 +510,15 @@ export function GenerateWizard({
                   </span>
                 </div>
 
-                {shouldShowResearchButton(preloadedClientData?.sourceStrategy) && (
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => {
-                      void handleResearch()
-                    }}
-                  >
-                    Research more topics
-                  </Button>
-                )}
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => {
+                    void handleResearch()
+                  }}
+                >
+                  Research more topics
+                </Button>
               </>
             )}
           </div>

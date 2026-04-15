@@ -17,9 +17,6 @@ import type {
 import type { ClientData } from '@/lib/clients/fetch-client-data'
 
 const DEFAULT_STRATEGY: SourceStrategy = {
-  rss: true,
-  website: true,
-  file: true,
   trend_fallback: true,
 }
 

@@ -5,10 +5,28 @@ import { toast } from '@/components/ui/toast'
 import type { ClientSource, SourceSuggestion, SourceStrategy } from '@/types/api'
 
 const DEFAULT_STRATEGY: SourceStrategy = {
-  rss: true,
-  website: true,
-  file: true,
   trend_fallback: true,
+}
+
+async function withRollback<T>(
+  previous: T,
+  restore: (v: T) => void,
+  fetchFn: () => Promise<Response>,
+  errorMessage: string
+): Promise<boolean> {
+  try {
+    const res = await fetchFn()
+    if (!res.ok) {
+      restore(previous)
+      toast.error(errorMessage)
+      return false
+    }
+    return true
+  } catch {
+    restore(previous)
+    toast.error(errorMessage)
+    return false
+  }
 }
 
 interface UseSourcesOptions {
@@ -35,7 +53,6 @@ export function useSources({
   const [suggestions, setSuggestions] = useState<SourceSuggestion[]>([])
   const [isSaving, setIsSaving] = useState(false)
   const [suggesting, setSuggesting] = useState(false)
-  const [savingStrategy, setSavingStrategy] = useState(false)
   const [addingFromSuggestion, setAddingFromSuggestion] = useState<string | null>(null)
   const [showModal, setShowModal] = useState(false)
 
@@ -46,64 +63,18 @@ export function useSources({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  async function handleSaveStrategy(updated: SourceStrategy) {
-    const enabledCount = [
-      updated.rss,
-      updated.website,
-      updated.file,
-      updated.trend_fallback,
-    ].filter(Boolean).length
-    if (enabledCount === 0) {
-      toast.error('At least one source type must be enabled')
-      return
-    }
-
-    // Deactivate sources whose type is being disabled
-    const nowDisabled = (['rss', 'website', 'file'] as const).filter(
-      (t) => !updated[t] && strategy[t]
-    )
-    const toDeactivate =
-      nowDisabled.length > 0
-        ? sources.filter(
-            (s) => nowDisabled.includes(s.type as 'rss' | 'website' | 'file') && s.is_active
-          )
-        : []
-
+  async function handleToggleGrounding(enabled: boolean) {
+    const updated: SourceStrategy = { ...strategy, require_source_grounding: enabled, trend_fallback: true }
     const previous = strategy
     setStrategy(updated)
-    if (toDeactivate.length > 0) {
-      setSources((prev) =>
-        prev.map((s) => (toDeactivate.some((d) => d.id === s.id) ? { ...s, is_active: false } : s))
-      )
-    }
-    setSavingStrategy(true)
-
-    try {
-      await Promise.all([
-        fetch(`/api/clients/${clientId}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ brand_profile: { source_strategy: updated } }),
-        }),
-        ...toDeactivate.map((s) =>
-          fetch(`/api/clients/${clientId}/sources/${s.id}`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ is_active: false }),
-          })
-        ),
-      ]).then((responses) => {
-        if (responses.some((r) => !r.ok)) {
-          setStrategy(previous)
-          toast.error('Failed to save source strategy')
-        }
-      })
-    } catch {
-      setStrategy(previous)
-      toast.error('Failed to save source strategy')
-    } finally {
-      setSavingStrategy(false)
-    }
+    await withRollback(previous, setStrategy,
+      () => fetch(`/api/clients/${clientId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ brand_profile: { source_strategy: updated } }),
+      }),
+      'Failed to save research settings'
+    )
   }
 
   async function handleSuggest() {
@@ -233,69 +204,41 @@ export function useSources({
   ) {
     const previous = sources
     setSources((prev) => prev.map((s) => (s.id === sourceId ? { ...s, ...updates } : s)))
-
-    try {
-      const res = await fetch(`/api/clients/${clientId}/sources/${sourceId}`, {
+    const ok = await withRollback(previous, setSources,
+      () => fetch(`/api/clients/${clientId}/sources/${sourceId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updates),
-      })
-      if (!res.ok) {
-        setSources(previous)
-        toast.error('Failed to update source')
-        return false
-      }
-      toast.success('Source updated')
-      return true
-    } catch {
-      setSources(previous)
-      toast.error('Failed to update source')
-      return false
-    }
+      }),
+      'Failed to update source'
+    )
+    if (ok) toast.success('Source updated')
+    return ok
   }
 
   async function handleToggleActive(source: ClientSource) {
-    const typeKey = source.type as 'rss' | 'website' | 'file'
-    if (!source.is_active && strategy[typeKey] === false) {
-      toast.error(
-        `Enable "${source.type === 'rss' ? 'RSS feeds' : source.type === 'website' ? 'Website content' : 'Uploaded documents'}" in Source Strategy first`
-      )
-      return
-    }
-
     const previous = sources
     setSources((prev) =>
       prev.map((s) => (s.id === source.id ? { ...s, is_active: !s.is_active } : s))
     )
-
-    try {
-      const res = await fetch(`/api/clients/${clientId}/sources/${source.id}`, {
+    await withRollback(previous, setSources,
+      () => fetch(`/api/clients/${clientId}/sources/${source.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ is_active: !source.is_active }),
-      })
-      if (!res.ok) {
-        setSources(previous)
-        toast.error('Failed to update source')
-      }
-    } catch {
-      setSources(previous)
-      toast.error('Failed to update source')
-    }
+      }),
+      'Failed to update source'
+    )
   }
 
-  async function handleDelete(sourceId: string) {
-    setSources((prev) => prev.filter((s) => s.id !== sourceId))
-    try {
-      const res = await fetch(`/api/clients/${clientId}/sources/${sourceId}`, { method: 'DELETE' })
-      if (!res.ok) {
-        toast.error('Failed to delete source')
-      } else {
-        toast.success('Source removed')
-      }
-    } catch {
-      toast.error('Failed to delete source')
-    }
+  async function handleDelete(source: ClientSource) {
+    const previous = sources
+    setSources((prev) => prev.filter((s) => s.id !== source.id))
+    const ok = await withRollback(previous, setSources,
+      () => fetch(`/api/clients/${clientId}/sources/${source.id}`, { method: 'DELETE' }),
+      'Failed to delete source'
+    )
+    if (ok) toast.success('Source removed')
   }
 
   return {
@@ -304,11 +247,10 @@ export function useSources({
     suggestions,
     isSaving,
     suggesting,
-    savingStrategy,
     addingFromSuggestion,
     showModal,
     setShowModal,
-    handleSaveStrategy,
+    handleToggleGrounding,
     handleSuggest,
     handleAddSource,
     handleUploadFile,
