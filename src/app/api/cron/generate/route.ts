@@ -5,8 +5,8 @@ import {
   getAgencyNiche,
   extractPlatformFromMix,
 } from '@/lib/clients/fetch-client-data'
-import { allocateByWeight } from '@/lib/clients/content-pillars'
 import { runGenerationBatch } from '@/ai/generation/generation-orchestrator'
+import { performResearch } from '@/ai/research/research-orchestrator'
 import { generateBriefing } from '@/ai/intelligence/generate-briefing'
 import { generateSoloCoaching } from '@/ai/solo-coaching/generate-coaching'
 import { generateBestTime } from '@/ai/best-time/generate-best-time'
@@ -97,17 +97,33 @@ export async function GET(request: NextRequest) {
       const postType = (brandProfile?.default_post_type ?? 'single') as PostType
       const slideCount = brandProfile?.default_carousel_slides ?? DEFAULT_CAROUSEL_SLIDES
 
-      // 8. Derive themes proportionally from content pillars
-      const pillars = client.contentPillars
+      // 8. Research themes via Tavily + LLM (same pipeline as wizard)
       const total = (schedule as { frequency_value: number }).frequency_value || 1
-      const allocation = allocateByWeight(
-        pillars.length > 0 ? pillars : [{ pillar: client.niche, weight: 100 }],
-        total
-      )
-      const themes: Theme[] = []
-      for (const [pillar, count] of allocation) {
-        if (count > 0) themes.push({ description: pillar, count, pillar })
+      const researchTopics = await performResearch({
+        supabase,
+        agencyId,
+        clientId,
+        niche: client.niche,
+        language: client.language,
+        count: total,
+        preloadedClientData: client,
+      })
+
+      if (researchTopics.length === 0) {
+        console.error(`[cron] No research topics for client ${clientId} — skipping generation`)
+        continue
       }
+
+      const themes: Theme[] = researchTopics.map((t) => ({
+        description: t.suggested_theme,
+        count: 1,
+        pillar: t.pillar,
+        sourceUrl: t.source_url,
+        sourceTitle: t.source_title,
+        sourceType: t.source_type ?? undefined,
+        sourceExcerpt: t.source_excerpt,
+        sourceFullText: t.source_full_text,
+      }))
 
       // 9. Run generation pipeline
       const generationResults = await runGenerationBatch({

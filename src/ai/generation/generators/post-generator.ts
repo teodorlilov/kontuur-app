@@ -47,7 +47,7 @@ export async function generatePost(
   console.log("Single Post Generation System Prompt", systemPrompt)
   console.log("Single Post Generation User Prompt", userMessage)
 
-  const message = await callAnthropic({ systemPrompt, userMessage, onToken, model: DEFAULT_MODEL })
+  const message = await callAnthropic({ systemPrompt, userMessage, onToken, model: DEFAULT_MODEL, maxTokens: 800 })
   const text = message.content[0]?.type === 'text' ? message.content[0].text : ''
   return text
     .split('---')

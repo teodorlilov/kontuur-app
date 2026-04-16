@@ -44,6 +44,7 @@ export async function generateCarousel(
     onToken,
     model: DEFAULT_MODEL,
     outputSchema: CAROUSEL_OUTPUT_SCHEMA,
+    maxTokens: 2048,
   })
   return extractToolInput<CarouselResult>(message, CAROUSEL_OUTPUT_SCHEMA)
 }

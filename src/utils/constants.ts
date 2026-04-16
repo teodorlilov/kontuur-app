@@ -1,11 +1,4 @@
-export const PROMPT_HISTORY_LIMIT = 20
-
-/**
- * Generate this many extra posts per requested count.
- * 1.5 = request 50% more than needed, keep the best ones.
- * Only applies to single posts — carousel generates exactly one result.
- */
-export const OVER_REQUEST_MULTIPLIER = 1.5
+export const PROMPT_HISTORY_LIMIT = 10
 
 /**
  * Minimum quality_score_avg for a post to enter the review queue.

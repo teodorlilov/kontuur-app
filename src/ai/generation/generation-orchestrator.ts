@@ -108,7 +108,8 @@ export class GenerationPipeline {
   }
 
   private buildGroundingContext(theme: EnrichedTheme) {
-    const groundingText = theme.sourceExcerpt || theme.sourceFullText
+    const MAX_SOURCE_CHARS = 3000
+    const groundingText = (theme.sourceExcerpt || theme.sourceFullText)?.slice(0, MAX_SOURCE_CHARS)
     return this.ctx.requireSourceGrounding && groundingText
       ? { excerpt: groundingText, url: theme.sourceUrl }
       : undefined

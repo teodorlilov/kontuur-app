@@ -1,13 +1,4 @@
-/**
- * Unified quality + source-grounding validator.
- * Replaces validate-quality.ts + validate-source-grounding.ts.
- *
- * Caching strategy: system prompt is byte-for-byte stable per client.
- * All volatile content (theme, pillar, structure name, source excerpt, post text)
- * is in the user turn only.
- */
-
-import { callAnthropic } from '@/utils/ai-client'
+import { callAnthropic, LIGHT_MODEL } from '@/utils/ai-client'
 import { extractToolInput } from '@/utils/ai'
 import { buildClientProfileSection } from '@/ai/shared/build-client-profile'
 import { buildAiTellsSection } from '@/ai/shared/build-client-profile'
@@ -23,10 +14,7 @@ import {
 } from '@/ai/validation/criteria'
 import type { ClientData } from '@/lib/clients/fetch-client-data'
 import type {
-  HookVerdict,
-  CtaVerdict,
   QualityIssue,
-  StructureCheck,
   ClaimStatus,
 } from '@/ai/validation/types'
 
@@ -101,24 +89,23 @@ brand_voice: Does the post match the tone and testimonial voice described in the
 formality: Is the address register consistent throughout? (pronoun choice and formal constructions only — vocabulary anglicisms go in issues)`
 }
 
-function buildStructureChecklistsSection(): string {
-  const singleChecklists = Object.entries(STRUCTURE_CHECKLISTS)
-    .map(([name, rules]) => {
-      const ruleList = rules.map((r, i) => `  ${i + 1}. ${r}`).join('\n')
-      return `[${name}]\n${ruleList}`
-    })
-    .join('\n\n')
-
-  const carouselRules = CAROUSEL_STRUCTURE_CHECKLIST.map((r, i) => `  ${i + 1}. ${r}`).join('\n')
-
-  return `STRUCTURE CHECKLISTS:
-Apply the checklist named in the user turn. Set structure_checks to null when "No declared structure".
-
-SINGLE POST STRUCTURES:
-${singleChecklists}
-
-[CAROUSEL]
-${carouselRules}`
+function buildStructureChecklistsSection(declaredStructure?: string, isCarousel?: boolean): string {
+  if (isCarousel) {
+    const rules = CAROUSEL_STRUCTURE_CHECKLIST.map((r, i) => `  ${i + 1}. ${r}`).join('\n')
+    return `STRUCTURE CHECKLIST (carousel):\n${rules}`
+  }
+  if (!declaredStructure) {
+    return 'STRUCTURE CHECKLIST: No declared structure — set structure_checks to null.'
+  }
+  // Case-insensitive lookup — LLM may produce title-case or mixed-case variants
+  const key = Object.keys(STRUCTURE_CHECKLISTS).find(
+    (k) => k.toUpperCase() === declaredStructure.toUpperCase()
+  )
+  const rules = key ? STRUCTURE_CHECKLISTS[key] : undefined
+  if (!rules) {
+    return `STRUCTURE CHECKLIST: Unknown structure "${declaredStructure}" — set structure_checks to null.`
+  }
+  return `STRUCTURE CHECKLIST [${key}]:\n${rules.map((r, i) => `  ${i + 1}. ${r}`).join('\n')}`
 }
 
 function buildIssueTypesSection(): string {
@@ -176,7 +163,6 @@ function buildSystemPrompt(client?: ClientData, platform?: string, targetPillar?
   sections.push(buildHookVerdictSection())
   sections.push(buildCtaVerdictSection())
   sections.push(buildBriefAdherenceSection(client, targetPillar))
-  sections.push(buildStructureChecklistsSection())
   sections.push(buildIssueTypesSection())
   sections.push(buildSourceGroundingSection())
 
@@ -199,11 +185,7 @@ function buildUserTurn(
   if (input.targetPillar) parts.push(`Pillar: ${input.targetPillar}`)
   if (isCarousel) parts.push('Is carousel: yes')
 
-  if (input.declaredStructure) {
-    parts.push(`Declared structure: ${input.declaredStructure} — apply its checklist from the STRUCTURE CHECKLISTS section.`)
-  } else {
-    parts.push('No declared structure — set structure_checks to null.')
-  }
+  parts.push(buildStructureChecklistsSection(input.declaredStructure, isCarousel))
 
   if (input.sourceContext?.excerpt) {
     parts.push(`SOURCE MATERIAL to verify claims against:\n<source_excerpt>\n${input.sourceContext.excerpt}\n</source_excerpt>`)
@@ -290,6 +272,7 @@ export async function validateQuality(input: ValidateQualityInput): Promise<LlmQ
     userMessage,
     maxTokens: 2048,
     outputSchema: QUALITY_OUTPUT_SCHEMA,
+    model: LIGHT_MODEL,
   })
 
   const parsed = extractToolInput<LlmQualityResponse>(message)

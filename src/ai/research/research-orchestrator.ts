@@ -76,7 +76,7 @@ export class ResearchPipeline {
 
     // If still no context (no sources + Tavily unavailable/failed), skip LLM call
     if (!effectiveContext) {
-      this.ctx.onPhase?.('No sources or web search key configured')
+      this.ctx.onPhase?.('No source material found — web search returned no matching articles')
       return []
     }
 

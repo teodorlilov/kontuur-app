@@ -89,14 +89,75 @@ export interface TrendSearchResult {
   score: number
 }
 
-const SCORE_THRESHOLD = 0.3
 const TIME_RANGES = ['week', 'month', '3months'] as const
+
+/**
+ * Executes a batch of Tavily queries in parallel, merges results, and deduplicates by URL.
+ * Returns all results scoring at or above scoreThreshold.
+ */
+async function runTavilyQueries(
+  key: string,
+  queries: Array<{ query: string; pillar: string }>,
+  perQueryMax: number,
+  scoreThreshold: number,
+  timeRangeOverride?: string,
+  searchDepth: 'basic' | 'advanced' = 'basic',
+): Promise<TrendSearchResult[]> {
+  const results = await Promise.allSettled(
+    queries.map(async ({ query }, i) => {
+      const topic = i % 2 === 0 ? 'news' : 'general'
+      const time_range = timeRangeOverride ?? TIME_RANGES[i % TIME_RANGES.length]
+      const res = await fetch(TAVILY_API, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          api_key: key,
+          query,
+          topic,
+          time_range,
+          search_depth: searchDepth,
+          max_results: Math.min(perQueryMax, 10),
+        }),
+        signal: AbortSignal.timeout(10000),
+      })
+      if (!res.ok) return []
+      const data = (await res.json()) as {
+        results?: Array<{ title: string; url: string; content: string; score: number }>
+      }
+      return (data.results ?? []).map((r) => ({
+        title: r.title,
+        snippet: r.content,
+        url: r.url,
+        score: r.score,
+      }))
+    }),
+  )
+
+  const byUrl = new Map<string, TrendSearchResult>()
+  for (const result of results) {
+    if (result.status === 'fulfilled') {
+      for (const item of result.value) {
+        if (item.score < scoreThreshold) continue
+        const existing = byUrl.get(item.url)
+        if (!existing || item.score > existing.score) {
+          byUrl.set(item.url, item)
+        }
+      }
+    }
+  }
+  return [...byUrl.values()]
+}
 
 /**
  * Search for current trending content in a niche using Tavily.
  * When clientContext is provided, uses Claude Haiku to generate
  * multiple pillar-specific queries and runs them in parallel —
  * produces varied, deduplicated results across runs.
+ *
+ * Two-pass strategy:
+ * - Pass 1: recent articles (week/month/3months), strict threshold (0.3)
+ * - Pass 2 (only if pass 1 yields nothing): broad query, year range, lower threshold (0.15)
+ *
  * Returns [] immediately if TAVILY_API_KEY is not set or on any error.
  */
 export async function searchTrends(
@@ -116,57 +177,20 @@ export async function searchTrends(
   const perQueryMax = Math.ceil((count * 3) / queries.length)
 
   try {
-    const results = await Promise.allSettled(
-      queries.map(({ query }, i) => {
-        // Alternate topic and time_range across queries for pool diversity
-        const topic = i % 2 === 0 ? 'news' : 'general'
-        const time_range = TIME_RANGES[i % TIME_RANGES.length]
-        return fetch(TAVILY_API, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            api_key: key,
-            query,
-            topic,
-            time_range,
-            search_depth: 'basic',
-            max_results: Math.min(perQueryMax, 10),
-          }),
-          signal: AbortSignal.timeout(10000),
-        }).then(async (res) => {
-          if (!res.ok) return []
-          const data = (await res.json()) as {
-            results?: Array<{ title: string; url: string; content: string; score: number }>
-          }
-          return (data.results ?? []).map((r) => ({
-            title: r.title,
-            snippet: r.content,
-            url: r.url,
-            score: r.score,
-          }))
-        })
-      }),
-    )
+    // Pass 1: recent articles, strict relevance threshold
+    let pool = await runTavilyQueries(key, queries, perQueryMax, 0.3)
 
-    // Merge, deduplicate by URL, keep highest score per URL, filter low-relevance results
-    const byUrl = new Map<string, TrendSearchResult>()
-    for (const result of results) {
-      if (result.status === 'fulfilled') {
-        for (const item of result.value) {
-          if (item.score < SCORE_THRESHOLD) continue
-          const existing = byUrl.get(item.url)
-          if (!existing || item.score > existing.score) {
-            byUrl.set(item.url, item)
-          }
-        }
-      }
+    // Pass 2: only if pass 1 yielded nothing — broader time range, lower threshold
+    if (pool.length === 0) {
+      const fallbackQuery = [{ query: `${toSearchQuery(niche)} ${new Date().getFullYear()}`, pillar: 'general' }]
+      pool = await runTavilyQueries(key, fallbackQuery, count + 2, 0.15, 'year', 'advanced')
     }
 
     // Filter out URLs already used in previous posts
     const excluded = new Set(clientContext?.excludedUrls ?? [])
-    const pool = [...byUrl.values()].filter((r) => !excluded.has(r.url))
+    const filtered = pool.filter((r) => !excluded.has(r.url))
 
-    return shuffleArray(pool).slice(0, count + 2)
+    return shuffleArray(filtered).slice(0, count + 2)
   } catch {
     return []
   }
