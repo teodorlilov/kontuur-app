@@ -1,4 +1,5 @@
-import { fetchClientSources, fetchThemeDescriptions } from '@/lib/queries/db'
+import { fetchClientSources, fetchThemeDescriptions, fetchUsedSourceUrls } from '@/lib/queries/db'
+import { searchTrends } from '@/lib/sources/fetch-trend-search'
 import { createAllSources } from './sources/source-factory'
 import { ResearchSource } from './sources/research-source'
 import { ResearchPromptBuilder } from './prompts/prompt-builder'
@@ -24,6 +25,7 @@ interface ResearchClientData extends ClientData {
   sources: ClientSourceRow[]
   history: string[]
   strategy: SourceStrategy
+  usedUrls: string[]
 }
 
 /**
@@ -54,7 +56,31 @@ export class ResearchPipeline {
     // 5. Build source context from fetched sources (limits control token budgets)
     const sourceContext = this.buildSourceContext(sourceObjects, clientData.strategy, limits)
 
-    // 6. Build full-text maps for source grounding
+    const requestedCount = this.ctx.count
+
+    // 5a. If no source context, try Tavily web search for current trends
+    let effectiveContext: SourceContext | undefined = sourceContext
+    if (!sourceContext) {
+      this.ctx.onPhase?.('Searching current trends...')
+      const webSearchItems = await searchTrends(this.ctx.niche, requestedCount + 2, {
+        targetAudience: clientData.targetAudience,
+        contentPillars: clientData.contentPillars,
+        postHistory: clientData.history,
+        language: clientData.language,
+        excludedUrls: clientData.usedUrls,
+      })
+      if (webSearchItems.length > 0) {
+        effectiveContext = { rssItems: [], websiteExcerpts: [], fileExcerpts: [], webSearchItems }
+      }
+    }
+
+    // If still no context (no sources + Tavily unavailable/failed), skip LLM call
+    if (!effectiveContext) {
+      this.ctx.onPhase?.('No sources or web search key configured')
+      return []
+    }
+
+    // 6. Build full-text maps for source grounding (RSS/website/file sources only)
     const fullTextIndex = this.buildSourceFullTextIndex(sourceObjects)
 
     // 7. Generate topics via prompt builder (exact count, no multiplier)
@@ -64,14 +90,15 @@ export class ResearchPipeline {
       languageConfig: clientData.languageConfig,
       contentPillars: clientData.contentPillars,
       postHistory: clientData.history,
+      excludedUrls: clientData.usedUrls,
     })
 
-    const requestedCount = this.ctx.count
-
-    const topics = await generateTopics(builder, requestedCount, sourceContext)
+    const topics = await generateTopics(builder, requestedCount, effectiveContext)
     this.attachSourceFullText(topics, fullTextIndex)
 
-    const finalTopics = topics.slice(0, requestedCount)
+    const finalTopics = topics
+      .filter((t) => t.suggested_theme?.trim())
+      .slice(0, requestedCount)
 
     // Emit each final topic for streaming consumers (after all dedup/retry is done)
     for (const topic of finalTopics) {
@@ -90,15 +117,21 @@ export class ResearchPipeline {
       const sources = this.ctx.clientId
         ? await fetchClientSources(this.ctx.supabase, this.ctx.clientId)
         : []
-      const themeHistory = this.ctx.clientId
-        ? await fetchThemeDescriptions(this.ctx.supabase, this.ctx.clientId)
-        : []
+      const [themeHistory, usedUrls] = await Promise.all([
+        this.ctx.clientId
+          ? fetchThemeDescriptions(this.ctx.supabase, this.ctx.clientId)
+          : Promise.resolve([]),
+        this.ctx.clientId
+          ? fetchUsedSourceUrls(this.ctx.supabase, this.ctx.clientId)
+          : Promise.resolve([]),
+      ])
 
       return {
         ...data,
         sources,
         history: [...data.postHistory, ...themeHistory],
         strategy,
+        usedUrls,
       }
     }
 

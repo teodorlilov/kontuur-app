@@ -23,7 +23,7 @@ ${contentSections.join('\n\n---\n\n')}
 Based on this content, return a JSON object with these fields:
 {
   "detected_business_name": string | null (the business/brand name as it appears on the website or profile — null if not found),
-  "detected_niche": string (specific business category, e.g. "Dermatology clinic" not just "Healthcare"),
+  "detected_niche": string (2-5 words, e.g. "dermatology clinic", "physiotherapy clinic", "real estate agency" — concise and search-friendly, NOT a full description),
   "detected_niche_confidence": "high" | "medium" | "low",
   "detected_target_audience": string[] (2-4 specific audience segments),
   "detected_tone": string (the tone/voice they use — e.g. "Expert and trustworthy", "Warm and approachable"),

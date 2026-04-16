@@ -361,3 +361,28 @@ export async function fetchResearchHistory(
   ])
   return [...postTopics, ...themeDescriptions]
 }
+
+/**
+ * Fetches source URLs from recent posts for a client.
+ * Used to exclude already-used articles from Tavily search results
+ * and from the research LLM prompt.
+ *
+ * Used in:
+ *   src/ai/research/research-orchestrator.ts
+ */
+export async function fetchUsedSourceUrls(
+  supabase: SupabaseClient,
+  clientId: string,
+  limit = 50
+): Promise<string[]> {
+  const { data } = await supabase
+    .from('posts')
+    .select('source_url')
+    .eq('client_id', clientId)
+    .not('source_url', 'is', null)
+    .order('created_at', { ascending: false })
+    .limit(limit)
+  return (data as Array<{ source_url: string | null }> | null)
+    ?.map((r) => r.source_url)
+    .filter((u): u is string => u !== null) ?? []
+}

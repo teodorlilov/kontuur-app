@@ -81,7 +81,7 @@ describe('ResearchPromptBuilder', () => {
     const prompt = callArgs.userMessage as string
     expect(prompt).toContain('HIIT Benefits')
     expect(prompt).toContain('https://x.com/1')
-    expect(prompt).toContain('SOURCING PROTOCOL')
+    expect(prompt).toContain('SOURCING:')
     expect(prompt).not.toContain('RESEARCH BRIEF')
   })
 
@@ -125,27 +125,6 @@ describe('ResearchPromptBuilder', () => {
     const prompt = callArgs.userMessage as string
     expect(prompt).toContain('Botox')
     expect(prompt).toContain('document_content')
-  })
-
-  it('uses trend-based fallback when no sourceContext', async () => {
-    mockClaudeResponse(VALID_RESPONSE)
-    const builder = createBuilder()
-    await generateTopics(builder,5)
-
-    const callArgs = callAnthropic.mock.calls[0]![0]
-    const prompt = callArgs.userMessage as string
-    expect(prompt).toContain('RESEARCH BRIEF')
-    expect(prompt).not.toContain('SOURCING PROTOCOL')
-  })
-
-  it('uses trend-based fallback when sourceContext is empty', async () => {
-    mockClaudeResponse(VALID_RESPONSE)
-    const builder = createBuilder()
-    await generateTopics(builder,5, { rssItems: [], websiteExcerpts: [], fileExcerpts: [] })
-
-    const callArgs = callAnthropic.mock.calls[0]![0]
-    const prompt = callArgs.userMessage as string
-    expect(prompt).toContain('RESEARCH BRIEF')
   })
 
   it('includes content pillars in prompt when provided', async () => {
@@ -214,7 +193,6 @@ describe('ResearchPromptBuilder', () => {
     const callArgs = callAnthropic.mock.calls[0]![0]
     const prompt = callArgs.userMessage as string
     expect(prompt).toContain('Identify exactly 7')
-    expect(prompt).toContain('Generate exactly 7')
   })
 
   it('defaults count works correctly', async () => {
@@ -224,7 +202,7 @@ describe('ResearchPromptBuilder', () => {
 
     const callArgs = callAnthropic.mock.calls[0]![0]
     const prompt = callArgs.userMessage as string
-    expect(prompt).toContain('Generate exactly 5')
+    expect(prompt).toContain('Identify exactly 5')
   })
 
   it('includes post history in prompt when provided', async () => {
@@ -256,19 +234,8 @@ describe('ResearchPromptBuilder', () => {
 
     const callArgs = callAnthropic.mock.calls[0]![0]
     const prompt = callArgs.userMessage as string
-    expect(prompt).toContain('SOURCING PROTOCOL')
+    expect(prompt).toContain('SOURCING:')
     expect(prompt).toContain('fitness')
-  })
-
-  it('does not include sourcing protocol in trend-based fallback', async () => {
-    mockClaudeResponse(VALID_RESPONSE)
-    const builder = createBuilder()
-    await generateTopics(builder,5)
-
-    const callArgs = callAnthropic.mock.calls[0]![0]
-    const prompt = callArgs.userMessage as string
-    expect(prompt).not.toContain('SOURCING PROTOCOL')
-    expect(prompt).toContain('RESEARCH BRIEF')
   })
 
   it('uses assistantPrefill [ for JSON array responses', async () => {

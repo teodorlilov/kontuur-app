@@ -25,7 +25,7 @@ interface ThemeWithSource extends ThemeInput {
   pillar?: string
   sourceUrl?: string | null
   sourceTitle?: string | null
-  sourceType?: 'rss' | 'website' | 'file'
+  sourceType?: 'rss' | 'website' | 'file' | 'web_search'
   sourceExcerpt?: string
   sourceFullText?: string
 }

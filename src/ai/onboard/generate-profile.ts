@@ -45,7 +45,7 @@ function buildPrompt(input: GenerateProfileInput): string {
 ${analysisContext}
 Return JSON only, no other text:
 {
-  "niche": string,
+  "niche": string (2-5 words, e.g. "physiotherapy clinic", "real estate agency", "dermatology clinic" — concise and search-friendly, NOT a full description),
   "niche_reasoning": string,
   "target_audience": string[],
   "social_goals": string[],

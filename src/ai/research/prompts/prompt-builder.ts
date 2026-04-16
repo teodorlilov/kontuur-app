@@ -7,13 +7,14 @@ import { buildLanguageRulesSection } from '@/ai/shared/build-client-profile'
 function buildPromptSection(title: string, tag: string, content: string): string {
   if (!content.trim()) return ''
   return `${title}:\n<${tag}>\n${content}\n</${tag}>`
-} 
+}
 
 export class ResearchPromptBuilder {
   private readonly niche: string
   private readonly languageConfig: LanguageConfig
   private readonly contentPillars: WeightedPillar[]
   private postHistory: string[]
+  private readonly excludedUrls: string[]
   readonly systemPrompt: string
 
   constructor(opts: {
@@ -21,11 +22,13 @@ export class ResearchPromptBuilder {
     languageConfig: LanguageConfig
     contentPillars: WeightedPillar[]
     postHistory: string[]
+    excludedUrls?: string[]
   }) {
     this.niche = opts.niche
     this.languageConfig = opts.languageConfig
     this.contentPillars = opts.contentPillars
     this.postHistory = opts.postHistory
+    this.excludedUrls = opts.excludedUrls ?? []
     this.systemPrompt = this.buildResearchSystemPrompt()
   }
 
@@ -33,12 +36,10 @@ export class ResearchPromptBuilder {
   buildResearchUserPrompt(count: number, sourceContext?: SourceContext): string {
     const pillarsContext = this.buildPillarAllocationBlock(count)
     const historyContext = this.buildCoveredTopicsBlock()
-
-    return this.hasResearchSources(sourceContext)
-      ? this.buildSourcedPrompt(count, sourceContext!, pillarsContext, historyContext)
-      : this.buildTrendPrompt(count, pillarsContext, historyContext)
+    const ctx: SourceContext = sourceContext ?? { rssItems: [], websiteExcerpts: [], fileExcerpts: [] }
+    return this.buildSourcedPrompt(count, ctx, pillarsContext, historyContext)
   }
- 
+
   // ---- Private prompt builders ----
 
   private buildResearchSystemPrompt(): string {
@@ -93,9 +94,19 @@ You read raw business data and extract post themes that are specific, factual, a
           )
         : ''
 
+    const webSearchSection =
+      sourceContext.webSearchItems && sourceContext.webSearchItems.length > 0
+        ? buildPromptSection(
+            'WEB_SEARCH_RESULTS',
+            'web_search_content',
+            sourceContext.webSearchItems
+              .map((r) => `- ${r.title}: ${r.snippet} (${r.url})`)
+              .join('\n')
+          )
+        : ''
+
     return `Date: ${todayDateString()}
-Niche: ${this.niche}
-Task: Identify exactly ${count} unique post theme${count > 1 ? 's' : ''}.
+### NICHE: ${this.niche}
 
 ### CONTENT PILLARS & DISTRIBUTION:
 ${pillarsContext}
@@ -107,10 +118,16 @@ ${historyContext}
 ${rssSection}
 ${webSection}
 ${fileSection}
+${webSearchSection}
 
 ### SOURCING:
 - Grounded (priority): use specific facts, device names, mechanisms from the source above. Reference source URL.
+- RSS/website/file: set source_type to "rss", "website", or "file" respectively.
+- Web search (trend): items from WEB_SEARCH_RESULTS are current web articles from this month. Set source_type to "web_search".
 - Trend fallback: if a pillar has no source coverage, use ${new Date().toLocaleString('en-US', { month: 'long', year: 'numeric' })} trends. Set source fields to null.
+
+
+### TASK: Identify exactly ${count} unique post theme${count > 1 ? 's' : ''}.
 
 
 CRITICAL: You MUST return EXACTLY ${count} JSON object${count > 1 ? 's' : ''} — never fewer. If source material does not cover all pillars, use current ${new Date().toLocaleString('en-US', { month: 'long', year: 'numeric' })} industry trends for the remaining slots and set source fields to null.
@@ -120,39 +137,8 @@ CRITICAL: You MUST return EXACTLY ${count} JSON object${count > 1 ? 's' : ''} �
   "pillar": "pillar name",
   "source_url": "url or null",
   "source_title": "title or null",
-  "source_type": "rss | website | file | null",
-  "source_excerpt": "5-10 sentences covering: (1) who this is for and what problems/conditions it addresses, (2) how it works (mechanism or key features), (3) what result or outcome it delivers. Replace all double-quotes with single-quotes."
-}]`
-  }
-
-  private buildTrendPrompt(count: number, pillarsContext: string, historyContext: string): string {
-    const monthYear = new Date().toLocaleString('en-US', { month: 'long', year: 'numeric' })
-    return `Date: ${todayDateString()}
-Target: ${this.niche} | Language: ${this.languageConfig.language}
-Task: Identify exactly ${count} unique, trend-based post theme${count > 1 ? 's' : ''}.
-
-### RESEARCH BRIEF:
-No client documents were provided for this run. Analyse the current ${monthYear} landscape for the "${this.niche}" industry. Focus on:
-- **Seasonality:** What are consumers in the ${this.languageConfig.language} market concerned about right now?
-- **Emerging Shifts:** New technologies, methods, or industry news making headlines this month.
-- **Viral Formats:** Content structures currently performing well.
-
-### CONTENT PILLARS & DISTRIBUTION:
-${pillarsContext}
-
-### EXCLUSION LIST:
-${historyContext}
-
-### JSON OUTPUT FORMAT:
-CRITICAL: Generate EXACTLY ${count} object${count > 1 ? 's' : ''} — never fewer. Use 'source_excerpt' to describe the specific trend or hook that justifies the theme.
-[{
-  "finding": "one sentence: why this theme, what specific fact justifies it",
-  "suggested_theme": "5-10 words summary about the theme in ${this.languageConfig.language}, use proper grammer",
-  "pillar": "pillar name",
-  "source_url": "url or null",
-  "source_title": "title or null",
-  "source_type": "rss | website | file | null",
-  "source_excerpt": "5-10 sentences covering: (1) who this is for and what problems/conditions it addresses, (2) how it works (mechanism or key features), (3) what result or outcome it delivers. Replace all double-quotes with single-quotes."
+  "source_type": "rss | website | file | web_search | null",
+  "source_excerpt": "Write in ${this.languageConfig.language}. 5-8 sentences covering: (1) who this is for and what specific problems or conditions it addresses, (2) how it works — name the exact mechanism, technology, or clinical approach, (3) what measurable result or outcome it delivers. Use correct professional terminology as a practitioner in ${this.languageConfig.language} would write it — do NOT transliterate or literally translate terms from the source language. This text will be used directly as the primary grounding context for post generation, so it must be accurate, specific, and written in the client's register. Replace all double-quotes with single-quotes."
 }]`
   }
 
@@ -168,14 +154,14 @@ CRITICAL: Generate EXACTLY ${count} object${count > 1 ? 's' : ''} — never fewe
   }
 
   private buildCoveredTopicsBlock(): string {
-    if (this.postHistory.length === 0) return ''
-    return `\nRECENTLY COVERED TOPICS (do NOT suggest these or closely related themes — find fresh angles the client has NOT posted about yet):\n${this.postHistory.map((t) => `- ${t}`).join('\n')}\n`
+    const lines: string[] = []
+    if (this.postHistory.length > 0) {
+      lines.push(`RECENTLY COVERED TOPICS (do NOT suggest these or closely related themes — find fresh angles the client has NOT posted about yet):\n${this.postHistory.map((t) => `- ${t}`).join('\n')}`)
+    }
+    if (this.excludedUrls.length > 0) {
+      lines.push(`DO NOT use these source URLs — already used in previous posts:\n${this.excludedUrls.map((u) => `- ${u}`).join('\n')}`)
+    }
+    return lines.length > 0 ? `\n${lines.join('\n\n')}\n` : ''
   }
 
-  private hasResearchSources(ctx?: SourceContext): boolean {
-    return (
-      !!ctx &&
-      (ctx.rssItems.length > 0 || ctx.websiteExcerpts.length > 0 || ctx.fileExcerpts.length > 0)
-    )
-  }
 }

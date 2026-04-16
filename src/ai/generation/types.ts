@@ -63,7 +63,7 @@ export interface DraftPost {
   quality_score_avg: number
   source_url: string | null
   source_title: string | null
-  source_type: 'rss' | 'website' | 'file' | null
+  source_type: 'rss' | 'website' | 'file' | 'web_search' | null
   source_excerpt: string | null
   pillar: string | null
   created_at: string
@@ -86,7 +86,7 @@ export interface Theme {
   pillar?: string
   sourceUrl?: string | null
   sourceTitle?: string | null
-  sourceType?: 'rss' | 'website' | 'file'
+  sourceType?: 'rss' | 'website' | 'file' | 'web_search'
   sourceExcerpt?: string
   sourceFullText?: string
 }

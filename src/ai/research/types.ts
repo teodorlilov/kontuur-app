@@ -4,6 +4,7 @@ import type { ClientData } from '@/lib/clients/fetch-client-data'
 export type { RssItem } from '@/lib/sources/fetch-rss'
 export type { WeightedPillar } from '@/lib/clients/content-pillars'
 export type { SourceStrategy } from '@/types/api'
+export type { TrendSearchResult } from '@/lib/sources/fetch-trend-search'
 
 export interface ResearchTopic {
   finding: string
@@ -11,7 +12,7 @@ export interface ResearchTopic {
   pillar?: string
   source_url?: string | null
   source_title?: string | null
-  source_type?: 'rss' | 'website' | 'file' | null
+  source_type?: 'rss' | 'website' | 'file' | 'web_search' | null
   source_excerpt?: string
   /** Full source text attached after LLM research, from the fetched source map. Not LLM-generated. */
   source_full_text?: string
@@ -32,6 +33,8 @@ export interface SourceContext {
   rssItems: import('@/lib/sources/fetch-rss').RssItem[]
   websiteExcerpts: WebsiteExcerpt[]
   fileExcerpts: FileExcerpt[]
+  /** Tavily web search results — populated when no client sources are configured */
+  webSearchItems?: import('@/lib/sources/fetch-trend-search').TrendSearchResult[]
 }
 
 export type { ClientSourceRow } from '@/lib/queries/db'

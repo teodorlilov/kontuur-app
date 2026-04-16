@@ -16,9 +16,10 @@ const TOPICS_OUTPUT_SCHEMA = {
           pillar: { type: ['string', 'null'] },
           source_url: { type: ['string', 'null'] },
           source_title: { type: ['string', 'null'] },
-          source_type: { type: ['string', 'null'] },
+          source_type: { type: ['string', 'null'] },  // 'rss' | 'website' | 'file' | 'web_search' | null
+          source_excerpt: { type: 'string' },
         },
-        required: ['finding', 'suggested_theme', 'pillar', 'source_url', 'source_title', 'source_type'],
+        required: ['finding', 'suggested_theme', 'pillar', 'source_url', 'source_title', 'source_type', 'source_excerpt'],
       },
     },
   },

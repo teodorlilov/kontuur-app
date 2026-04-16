@@ -87,7 +87,7 @@ export class GenerationPipeline {
   }
 
   private buildThemeInput(theme: EnrichedTheme): SinglePostInput | CarouselInput {
-    const hasGrounding = !!(theme.sourceFullText || theme.sourceExcerpt)
+    const hasGrounding = !!(theme.sourceExcerpt || theme.sourceFullText)
     const base = {
       client: this.ctx.client,
       theme: theme.description,
@@ -108,7 +108,7 @@ export class GenerationPipeline {
   }
 
   private buildGroundingContext(theme: EnrichedTheme) {
-    const groundingText = theme.sourceFullText || theme.sourceExcerpt
+    const groundingText = theme.sourceExcerpt || theme.sourceFullText
     return this.ctx.requireSourceGrounding && groundingText
       ? { excerpt: groundingText, url: theme.sourceUrl }
       : undefined

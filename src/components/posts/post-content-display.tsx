@@ -53,9 +53,11 @@ export function PostContentDisplay({
         ? 'Website'
         : sourceType === 'file'
           ? 'Document'
-          : !sourceUrl
-            ? 'Trend-based'
-            : null
+          : sourceType === 'web_search'
+            ? 'Web Search'
+            : !sourceUrl
+              ? 'Trend-based'
+              : null
 
   const sourceClass =
     sourceType === 'rss'
@@ -64,7 +66,9 @@ export function PostContentDisplay({
         ? 'bg-teal-50 text-teal-700'
         : sourceType === 'file'
           ? 'bg-amber-50 text-amber-700'
-          : 'bg-gray-100 text-gray-500'
+          : sourceType === 'web_search'
+            ? 'bg-blue-50 text-blue-700'
+            : 'bg-gray-100 text-gray-500'
 
   const pillarColor = pillar ? getPillarColor(pillar) : null
 
