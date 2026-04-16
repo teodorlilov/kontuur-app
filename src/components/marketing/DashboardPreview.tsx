@@ -3,9 +3,11 @@ import { AnimateIn } from './AnimateIn'
 export function DashboardPreview() {
   return (
     <section
+      className="mkt-pad"
       style={{
         background: 'var(--color-brand)',
-        padding: '80px 40px 0',
+        paddingTop: 80,
+        paddingBottom: 0,
         overflow: 'hidden',
         textAlign: 'center',
       }}
@@ -49,23 +51,19 @@ export function DashboardPreview() {
         </p>
       </AnimateIn>
 
-      {/* Placeholder — replace with real screenshot */}
-      <div
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src="/dashboard.png"
+        alt="Kontuur dashboard"
         style={{
           borderRadius: '16px 16px 0 0',
           border: '0.5px solid rgba(255,255,255,0.12)',
           width: '100%',
           maxWidth: 1200,
           margin: '0 auto',
-          background: 'rgba(255,255,255,0.05)',
-          minHeight: 480,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
+          display: 'block',
         }}
-      >
-        <p style={{ color: 'rgba(255,255,255,0.2)', fontSize: 13 }}>Dashboard screenshot</p>
-      </div>
+      />
     </section>
   )
 }

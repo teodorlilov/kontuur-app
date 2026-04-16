@@ -22,8 +22,10 @@ export function Pricing() {
   return (
     <section
       id="pricing"
+      className="mkt-pad"
       style={{
-        padding: '96px 40px',
+        paddingTop: 96,
+        paddingBottom: 96,
         background: 'var(--color-page)',
         borderTop: '0.5px solid var(--color-border-1)',
       }}

@@ -190,6 +190,15 @@ body {
   border-radius: var(--radius-sm);
 }
 
+/* ─── Marketing responsive layout ─── */
+
+/* Section horizontal padding — used by all marketing sections */
+.mkt-pad { padding-left: 40px; padding-right: 40px; }
+
+@media (max-width: 768px) {
+  .mkt-pad { padding-left: 20px; padding-right: 20px; }
+}
+
 /* ─── Print styles ─── */
 @media print {
   body > * {

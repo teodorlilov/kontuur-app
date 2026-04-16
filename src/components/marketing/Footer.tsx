@@ -1,5 +1,6 @@
 'use client'
 import Link from 'next/link'
+import { useIsMobile } from '@/hooks/useIsMobile'
 
 const columns = [
   {
@@ -22,19 +23,26 @@ const columns = [
   {
     title: 'Legal',
     links: [
-      { label: 'Privacy policy', href: '#' },
-      { label: 'Terms of service', href: '#' },
+      { label: 'Privacy policy', href: '/privacy' },
+      { label: 'Terms of service', href: '/terms' },
       { label: 'Cookie policy', href: '#' },
     ],
   },
 ]
 
 export function Footer() {
+  const isMobile = useIsMobile()
+  const isSmall = useIsMobile(480)
+
+  const gridCols = isSmall ? '1fr' : isMobile ? '1fr 1fr' : '2fr 1fr 1fr 1fr'
+
   return (
     <footer
+      className="mkt-pad"
       style={{
         background: 'var(--color-brand)',
-        padding: '64px 40px 40px',
+        paddingTop: 64,
+        paddingBottom: 40,
         borderTop: '0.5px solid rgba(255,255,255,0.08)',
       }}
     >
@@ -43,8 +51,8 @@ export function Footer() {
           maxWidth: 1100,
           margin: '0 auto',
           display: 'grid',
-          gridTemplateColumns: '2fr 1fr 1fr 1fr',
-          gap: 48,
+          gridTemplateColumns: gridCols,
+          gap: isMobile ? 32 : 48,
           marginBottom: 48,
         }}
       >

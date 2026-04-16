@@ -22,7 +22,7 @@ const features = [
 
 export function Features() {
   return (
-    <section id="features" style={{ padding: '96px 40px', background: 'var(--color-page)' }}>
+    <section id="features" className="mkt-pad" style={{ paddingTop: 96, paddingBottom: 96, background: 'var(--color-page)' }}>
       <AnimateIn>
         <p
           style={{

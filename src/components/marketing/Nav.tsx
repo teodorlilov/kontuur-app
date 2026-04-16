@@ -1,9 +1,11 @@
 'use client'
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { useIsMobile } from '@/hooks/useIsMobile'
 
 export function Nav() {
   const [scrolled, setScrolled] = useState(false)
+  const isMobile = useIsMobile()
 
   useEffect(() => {
     const handler = () => setScrolled(window.scrollY > 40)
@@ -17,7 +19,7 @@ export function Nav() {
         position: 'sticky',
         top: 0,
         zIndex: 50,
-        padding: '0 40px',
+        padding: isMobile ? '0 20px' : '0 40px',
         height: 64,
         display: 'flex',
         alignItems: 'center',
@@ -34,32 +36,34 @@ export function Nav() {
         <img src="/kontuur_logo.svg" alt="Kontuur" style={{ height: 26, width: 'auto' }} />
       </Link>
 
-      <div style={{ display: 'flex', gap: 32 }}>
-        {[
-          { label: 'Features', href: '#features' },
-          { label: 'How it works', href: '#how-it-works' },
-          { label: 'Pricing', href: '#pricing' },
-        ].map(({ label, href }) => (
-          <a
-            key={label}
-            href={href}
-            style={{
-              fontSize: 14,
-              color: 'var(--color-text-2)',
-              textDecoration: 'none',
-              transition: 'color 120ms ease',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.color = 'var(--color-text-1)'
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.color = 'var(--color-text-2)'
-            }}
-          >
-            {label}
-          </a>
-        ))}
-      </div>
+      {!isMobile && (
+        <div style={{ display: 'flex', gap: 32 }}>
+          {[
+            { label: 'Features', href: '#features' },
+            { label: 'How it works', href: '#how-it-works' },
+            { label: 'Pricing', href: '#pricing' },
+          ].map(({ label, href }) => (
+            <a
+              key={label}
+              href={href}
+              style={{
+                fontSize: 14,
+                color: 'var(--color-text-2)',
+                textDecoration: 'none',
+                transition: 'color 120ms ease',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.color = 'var(--color-text-1)'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.color = 'var(--color-text-2)'
+              }}
+            >
+              {label}
+            </a>
+          ))}
+        </div>
+      )}
 
       <Link
         href="/dashboard"

@@ -22,8 +22,10 @@ export function HowItWorks() {
   return (
     <section
       id="how-it-works"
+      className="mkt-pad"
       style={{
-        padding: '96px 40px',
+        paddingTop: 96,
+        paddingBottom: 96,
         background: 'var(--color-sunken)',
         borderTop: '0.5px solid var(--color-border-1)',
         borderBottom: '0.5px solid var(--color-border-1)',

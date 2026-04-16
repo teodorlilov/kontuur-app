@@ -1,6 +1,8 @@
+'use client'
 import { Sparkles, CheckSquare, Send, BarChart2 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { AnimateIn } from './AnimateIn'
+import { useIsMobile } from '@/hooks/useIsMobile'
 
 interface Feature {
   icon: LucideIcon
@@ -8,6 +10,7 @@ interface Feature {
   body: string
   tags: string[]
   imageAlt: string
+  imageSrc: string
   reversed: boolean
 }
 
@@ -18,6 +21,7 @@ const features: Feature[] = [
     body: "Kontuur reads your client's website, documents, and previous posts to generate on-brand Instagram content in Bulgarian or English. Single images, carousels — all with one click.",
     tags: ['AI', 'Content generation'],
     imageAlt: 'Generate posts page',
+    imageSrc: '/generation.png',
     reversed: false,
   },
   {
@@ -26,6 +30,7 @@ const features: Feature[] = [
     body: 'Every generated post goes into a review queue. Read the caption, check the source grounding, approve or reject. Schedule directly to Instagram from the same screen.',
     tags: ['Review', 'Approval workflow'],
     imageAlt: 'Review queue',
+    imageSrc: '/review.png',
     reversed: true,
   },
   {
@@ -34,6 +39,7 @@ const features: Feature[] = [
     body: "Connect your clients' Instagram accounts once. Kontuur handles publishing — single images, carousels, and scheduled posts — using the official Meta API.",
     tags: ['Publishing', 'Scheduling'],
     imageAlt: 'Calendar / scheduling view',
+    imageSrc: '/calendar.png',
     reversed: false,
   },
   {
@@ -42,20 +48,23 @@ const features: Feature[] = [
     body: 'Analytics pulled directly from the Instagram API — reach, saves, engagement rate, follower growth, and post-level performance for every client account.',
     tags: ['Analytics', 'Instagram insights'],
     imageAlt: 'Analytics page',
+    imageSrc: '/report.png',
     reversed: true,
   },
 ]
 
 export function FeaturesDeepDive() {
+  const isMobile = useIsMobile()
+
   return (
-    <section style={{ padding: '80px 40px', background: 'var(--color-page)' }}>
+    <section className="mkt-pad" style={{ paddingTop: 80, paddingBottom: 80, background: 'var(--color-page)' }}>
       <div
         style={{
           maxWidth: 1100,
           margin: '0 auto',
           display: 'flex',
           flexDirection: 'column',
-          gap: 80,
+          gap: isMobile ? 48 : 80,
         }}
       >
         {features.map((f) => (
@@ -63,13 +72,13 @@ export function FeaturesDeepDive() {
             <div
               style={{
                 display: 'grid',
-                gridTemplateColumns: '1fr 1fr',
-                gap: 64,
+                gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
+                gap: isMobile ? 24 : 64,
                 alignItems: 'center',
               }}
             >
-              {/* Text column */}
-              <div style={{ order: f.reversed ? 2 : 1 }}>
+              {/* Text column — always first on mobile */}
+              <div style={{ order: isMobile ? 1 : f.reversed ? 2 : 1 }}>
                 <f.icon size={28} color="var(--color-brand-accent)" style={{ marginBottom: 16 }} />
                 <h3
                   style={{
@@ -115,21 +124,19 @@ export function FeaturesDeepDive() {
                 </div>
               </div>
 
-              {/* Image column — placeholder until real screenshots */}
-              <div
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={f.imageSrc}
+                alt={f.imageAlt}
                 style={{
-                  order: f.reversed ? 1 : 2,
-                  background: 'var(--color-sunken)',
+                  order: isMobile ? 2 : f.reversed ? 1 : 2,
+                  width: '100%',
                   borderRadius: 12,
                   border: '0.5px solid var(--color-border-1)',
-                  minHeight: 300,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
+                  display: 'block',
+                  boxShadow: '0 4px 24px rgba(0,0,0,0.08)',
                 }}
-              >
-                <p style={{ fontSize: 12, color: 'var(--color-text-3)' }}>{f.imageAlt}</p>
-              </div>
+              />
             </div>
           </AnimateIn>
         ))}

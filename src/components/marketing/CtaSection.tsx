@@ -4,9 +4,11 @@ import { AnimateIn } from './AnimateIn'
 export function CtaSection() {
   return (
     <section
+      className="mkt-pad"
       style={{
         background: 'var(--color-sunken)',
-        padding: '96px 40px',
+        paddingTop: 96,
+        paddingBottom: 96,
         textAlign: 'center',
         borderTop: '0.5px solid var(--color-border-1)',
       }}

@@ -11,8 +11,10 @@ const fadeUp = (delay: number) => ({
 export function Hero() {
   return (
     <section
+      className="mkt-pad"
       style={{
-        padding: '96px 40px 0',
+        paddingTop: 96,
+        paddingBottom: 0,
         textAlign: 'center',
         background: 'var(--color-page)',
         overflow: 'hidden',
@@ -126,28 +128,24 @@ export function Hero() {
         </a>
       </motion.div>
 
-      {/* Dashboard screenshot — placeholder until real screenshot */}
-      <motion.div
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <motion.img
+        src="/dashboard.png"
+        alt="Kontuur dashboard"
         initial={{ opacity: 0, y: 32, scale: 0.97 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ duration: 0.6, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
         style={{
           maxWidth: 1100,
+          width: '100%',
           margin: '0 auto',
           borderRadius: '16px 16px 0 0',
-          overflow: 'hidden',
           border: '0.5px solid var(--color-border-1)',
           borderBottom: 'none',
           boxShadow: '0 -8px 48px rgba(26,25,24,0.08)',
-          background: 'var(--color-brand)',
-          minHeight: 520,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
+          display: 'block',
         }}
-      >
-        <p style={{ color: 'rgba(255,255,255,0.2)', fontSize: 13 }}>Dashboard screenshot</p>
-      </motion.div>
+      />
     </section>
   )
 }

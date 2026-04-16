@@ -3,11 +3,13 @@ const agencies = ['About Social Media', 'Agency 2', 'Agency 3', 'Agency 4', 'Age
 export function SocialProof() {
   return (
     <section
+      className="mkt-pad"
       style={{
         background: 'var(--color-sunken)',
         borderTop: '0.5px solid var(--color-border-1)',
         borderBottom: '0.5px solid var(--color-border-1)',
-        padding: '20px 40px',
+        paddingTop: 20,
+        paddingBottom: 20,
         textAlign: 'center',
       }}
     >
