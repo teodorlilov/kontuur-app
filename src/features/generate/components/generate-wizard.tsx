@@ -72,6 +72,7 @@ export function GenerateWizard({
   const [isResearching, setIsResearching] = useState(false)
   const [hasAutoResearched, setHasAutoResearched] = useState(false)
   const [researchPhase, setResearchPhase] = useState('')
+  const [researchError, setResearchError] = useState<string | null>(null)
   const researchAbortRef = useRef<AbortController | null>(null)
 
   // Step 4
@@ -219,6 +220,7 @@ export function GenerateWizard({
 
     setThemes([])
     setResearchPhase('')
+    setResearchError(null)
     setIsResearching(true)
 
     try {
@@ -241,10 +243,12 @@ export function GenerateWizard({
         return
       }
 
+      let topicsReceived = 0
       await readNDJSONStream<ResearchStreamEvent>(res, (event) => {
         if (event.type === 'phase') {
           setResearchPhase(event.message)
         } else if (event.type === 'topic') {
+          topicsReceived++
           setThemes((prev) => [
             ...prev,
             {
@@ -261,6 +265,12 @@ export function GenerateWizard({
           ])
         }
       })
+
+      if (topicsReceived === 0 && !controller.signal.aborted) {
+        setResearchError(
+          "Web search couldn't find relevant content for this client. Try again, or add RSS feeds or a website source for more reliable results. You can also enter themes manually below."
+        )
+      }
     } catch (err) {
       if (err instanceof Error && err.name === 'AbortError') return
       toast.error('Research failed')
@@ -466,6 +476,11 @@ export function GenerateWizard({
             {/* Real-time phase message */}
             {isResearching && researchPhase && (
               <p className="text-sm text-gray-500 animate-pulse">{researchPhase}</p>
+            )}
+
+            {/* Error when research returns 0 topics */}
+            {!isResearching && researchError && themes.length === 0 && (
+              <p className="text-sm text-amber-600">{researchError}</p>
             )}
 
             {/* Theme rows: real rows + skeleton slots while researching */}
