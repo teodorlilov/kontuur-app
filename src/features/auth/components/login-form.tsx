@@ -13,7 +13,6 @@ export function LoginForm() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
-  const [resetLoading, setResetLoading] = useState(false)
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({})
 
   function validate() {
@@ -44,25 +43,6 @@ export function LoginForm() {
     }
 
     window.location.href = '/dashboard'
-  }
-
-  async function handleForgotPassword() {
-    const emailErr = validateEmail(email)
-    if (emailErr) {
-      setErrors({ email: emailErr })
-      return
-    }
-    setResetLoading(true)
-    const supabase = createBrowserSupabaseClient()
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/auth/callback`,
-    })
-    if (error) {
-      toast.error(error.message)
-    } else {
-      toast.success('Check your email for a password reset link')
-    }
-    setResetLoading(false)
   }
 
   return (
@@ -101,14 +81,12 @@ export function LoginForm() {
           <Button type="submit" loading={loading} className="w-full mt-1">
             Sign in
           </Button>
-          <button
-            type="button"
-            onClick={handleForgotPassword}
-            disabled={resetLoading}
-            className="text-sm text-brand-purple hover:underline w-full text-center mt-1"
+          <Link
+            href="/forgot-password"
+            className="text-sm text-brand-purple hover:underline w-full text-center mt-1 block"
           >
-            {resetLoading ? 'Sending...' : 'Forgot password?'}
-          </button>
+            Forgot password?
+          </Link>
         </form>
 
         <p className="text-center text-sm text-gray-500 mt-4">

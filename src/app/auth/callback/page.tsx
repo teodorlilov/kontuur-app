@@ -11,6 +11,7 @@ export default async function AuthCallbackPage({
 }) {
   const params = await searchParams
   const code = typeof params.code === 'string' ? params.code : null
+  const type = typeof params.type === 'string' ? params.type : null
 
   if (code) {
     // PKCE flow (signup, password reset)
@@ -18,6 +19,11 @@ export default async function AuthCallbackPage({
     const { error } = await supabase.auth.exchangeCodeForSession(code)
 
     if (!error) {
+      // Password reset flow — send user to set their new password
+      if (type === 'recovery') {
+        redirect('/setup-password')
+      }
+
       const {
         data: { user },
       } = await supabase.auth.getUser()
