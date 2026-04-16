@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { Nav } from '@/components/marketing/Nav'
+import Link from 'next/link'
 import { Footer } from '@/components/marketing/Footer'
 
 export const metadata: Metadata = {
@@ -49,10 +49,22 @@ const dividerStyle: React.CSSProperties = {
 export default function PrivacyPage() {
   return (
     <>
-      <Nav />
       <main style={{ background: 'var(--color-page)', minHeight: '100vh' }}>
         <div style={{ maxWidth: 720, margin: '0 auto', padding: '80px 24px 100px' }}>
-          {/* Header */}
+          <Link
+            href="/"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              fontSize: 14,
+              color: 'var(--color-text-3)',
+              textDecoration: 'none',
+              marginBottom: 48,
+            }}
+          >
+            ← Back
+          </Link>
           <p style={{ fontSize: 13, color: 'var(--color-text-3)', marginBottom: 16 }}>
             Last updated: April 16, 2025
           </p>
@@ -118,6 +130,13 @@ export default function PrivacyPage() {
             You can revoke Kontuur&apos;s access to your Meta accounts at any time from your
             Facebook Settings &rarr; Apps and Websites. Revoking access will remove the connection
             from Kontuur within 24 hours.
+          </p>
+          <p style={pStyle}>
+            To request deletion of all Meta-derived data we hold about you, visit our{' '}
+            <a href="/data-deletion" style={{ color: 'var(--color-brand-accent)' }}>
+              Data Deletion page
+            </a>
+            .
           </p>
 
           {/* 3. How we use information */}
