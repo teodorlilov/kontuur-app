@@ -114,10 +114,10 @@ export class ResearchPipeline {
     if (this.ctx.preloadedClientData) {
       const data: ClientData = this.ctx.preloadedClientData
       const strategy: SourceStrategy = data.sourceStrategy ?? DEFAULT_STRATEGY
-      const sources = this.ctx.clientId
-        ? await fetchClientSources(this.ctx.supabase, this.ctx.clientId)
-        : []
-      const [themeHistory, usedUrls] = await Promise.all([
+      const [sources, themeHistory, usedUrls] = await Promise.all([
+        this.ctx.clientId
+          ? fetchClientSources(this.ctx.supabase, this.ctx.clientId)
+          : Promise.resolve([]),
         this.ctx.clientId
           ? fetchThemeDescriptions(this.ctx.supabase, this.ctx.clientId)
           : Promise.resolve([]),
@@ -146,7 +146,9 @@ export class ResearchPipeline {
     await Promise.allSettled(
       networkSources.map(async (source) => {
         const result = await source.fetch(limits)
-        await source.reportStatus(this.ctx.supabase, result)
+        void source.reportStatus(this.ctx.supabase, result).catch((err: unknown) => {
+            console.error('[research] reportStatus failed:', err)
+          })
       })
     )
 

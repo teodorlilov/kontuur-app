@@ -34,9 +34,6 @@ export async function generateTopics(
   const userPrompt = builder.buildResearchUserPrompt(count, sourceContext)
   const systemPrompt = builder.systemPrompt
 
-  console.log("Research User Prompt/n", userPrompt)
-  console.log("Research System Prompt/n", systemPrompt)
-
   const message = await callAnthropic({
     systemPrompt,
     userMessage: userPrompt,

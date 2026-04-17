@@ -3,20 +3,28 @@ import { resolveAuth } from '@/lib/auth/resolve-auth'
 import { fetchClientById } from '@/lib/queries/db'
 import { DEFAULT_CAROUSEL_SLIDES } from '@/utils/constants'
 import { checkRateLimit, AI_RATE_LIMIT } from '@/lib/auth/rate-limit'
+import { performResearch } from '@/ai/research/research-orchestrator'
 import { runGenerationBatch } from '@/ai/generation/generation-orchestrator'
+import type { ResearchTopic } from '@/ai/research/types'
+import type { Theme } from '@/ai/generation/types'
 import type { PriorityPost } from '@/types/api'
-import type { Theme, GenerateStreamEvent } from '@/ai/generation/types'
 import type { ClientData } from '@/lib/clients/fetch-client-data'
 
-export const maxDuration = 300 // 5 minutes — each carousel theme needs ~15-25s
+export const maxDuration = 300
 
-interface GenerateRequestBody {
+type UnifiedStreamEvent =
+  | { type: 'total'; count: number }
+  | { type: 'phase'; message: string }
+  | { type: 'result'; data: unknown }
+  | { type: 'error'; message: string }
+
+interface GenerateStreamRequestBody {
   clientId: string
   platform: string
-  themes: Theme[]
   postType: 'single' | 'carousel'
   slideCount: number
   priorityPosts: PriorityPost[]
+  targetPostCount: number
   preloadedClientData: ClientData
 }
 
@@ -30,7 +38,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Too many requests. Please wait a moment.' }, { status: 429 })
   }
 
-  let body: GenerateRequestBody
+  let body: GenerateStreamRequestBody
   try {
     body = await request.json()
   } catch {
@@ -44,13 +52,6 @@ export async function POST(request: Request) {
     )
   }
 
-  if (!body.themes?.length && !body.priorityPosts?.length) {
-    return NextResponse.json(
-      { error: 'At least one theme or priority post is required' },
-      { status: 400 }
-    )
-  }
-
   if (!body.preloadedClientData) {
     return NextResponse.json({ error: 'preloadedClientData is required' }, { status: 400 })
   }
@@ -60,7 +61,6 @@ export async function POST(request: Request) {
 
   const client = body.preloadedClientData
 
-  // Track generation run
   const { data: runData } = await supabase
     .from('generation_runs')
     .insert({ client_id: body.clientId, platform: body.platform })
@@ -70,20 +70,53 @@ export async function POST(request: Request) {
   const runId = (runData as { id: string } | null)?.id
 
   const encoder = new TextEncoder()
-  const send = (event: GenerateStreamEvent, controller: ReadableStreamDefaultController<Uint8Array>) =>
-    controller.enqueue(encoder.encode(JSON.stringify(event) + '\n'))
-
   const stream = new ReadableStream<Uint8Array>({
-    async start(controller) { 
+    async start(controller) {
+      const send = (event: UnifiedStreamEvent) =>
+        controller.enqueue(encoder.encode(JSON.stringify(event) + '\n'))
+
       try {
+        // Emit total upfront so the UI shows skeletons immediately
+        send({ type: 'total', count: body.targetPostCount + (body.priorityPosts?.length ?? 0) })
+
+        // Run research — phase messages stream; topics collected for generation
+        const topics: ResearchTopic[] = []
+        await performResearch({
+          supabase,
+          agencyId,
+          clientId: body.clientId,
+          niche: client.niche ?? 'general',
+          language: client.language ?? 'English',
+          count: body.targetPostCount,
+          preloadedClientData: body.preloadedClientData,
+          onPhase: (message) => send({ type: 'phase', message }),
+          onTopic: (topic) => topics.push(topic),
+        })
+
+        if (topics.length === 0 && (body.priorityPosts?.length ?? 0) === 0) {
+          send({ type: 'error', message: 'Research found no topics. Check your client sources or try again.' })
+          return
+        }
+
+        const themes: Theme[] = topics.map((t) => ({
+          description: t.suggested_theme,
+          count: 1,
+          pillar: t.pillar ?? undefined,
+          sourceUrl: t.source_url,
+          sourceTitle: t.source_title,
+          sourceType: t.source_type ?? undefined,
+          sourceExcerpt: t.source_excerpt,
+          sourceFullText: t.source_full_text,
+        }))
+
         await runGenerationBatch({
           client,
           platform: body.platform,
           postType: body.postType,
           slideCount: body.slideCount || client.defaultCarouselSlides || DEFAULT_CAROUSEL_SLIDES,
           requireSourceGrounding: client.requireSourceGrounding,
-          themes: body.themes,
-          priorityPosts: body.priorityPosts,
+          themes,
+          priorityPosts: body.priorityPosts ?? [],
           trackTheme: async (theme, postCount) => {
             if (!runId) return
             await supabase.from('generation_themes').insert({
@@ -96,12 +129,7 @@ export async function POST(request: Request) {
               research_used: !!theme.sourceExcerpt,
             })
           },
-          onProgress: (theme) => {
-            send({ type: 'progress', theme }, controller)
-          },
-          onResult: (generationResult) => {
-            send({ type: 'result', data: generationResult }, controller)
-          },
+          onResult: (result) => send({ type: 'result', data: result }),
         })
       } finally {
         controller.close()

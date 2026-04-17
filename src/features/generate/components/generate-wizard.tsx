@@ -6,36 +6,29 @@ import { Spinner } from '@/components/ui/spinner'
 import { cn } from '@/utils/cn'
 import { toast } from '@/components/ui/toast'
 import { PriorityPostForm } from '@/features/generate/components/priority-post-form'
-import { ThemeRow, type ThemeInput } from '@/features/generate/components/theme-row'
 import { PostTypeSelector } from '@/features/generate/components/post-type-selector'
 import { PostCard, type PostData, type ValidationData } from '@/components/posts/post-card'
 import { PostCardSkeleton } from '@/components/posts/post-card-skeleton'
-import { ThemeRowSkeleton } from '@/features/generate/components/theme-row-skeleton'
 import { readNDJSONStream } from '@/utils/stream'
 import { PLATFORMS } from '@/utils/constants'
 import type { ClientRow } from '@/types/database'
-import type { ResearchStreamEvent } from '@/ai/research/types'
 import type { ClientData } from '@/lib/clients/fetch-client-data'
 import type { PriorityPost, PostType } from '@/types/api'
-import type { GenerateStreamEvent } from '@/ai/generation/types'
+import type { GenerationResult } from '@/ai/generation/types'
 
 type Client = Pick<ClientRow, 'id' | 'name' | 'niche' | 'language' | 'posts_per_week'>
 
-interface ThemeWithSource extends ThemeInput {
-  pillar?: string
-  sourceUrl?: string | null
-  sourceTitle?: string | null
-  sourceType?: 'rss' | 'website' | 'file' | 'web_search'
-  sourceExcerpt?: string
-  sourceFullText?: string
-}
-
 type GeneratedPost = { post: PostData } & ValidationData
+
+type UnifiedStreamEvent =
+  | { type: 'total'; count: number }
+  | { type: 'phase'; message: string }
+  | { type: 'result'; data: GenerationResult }
+  | { type: 'error'; message: string }
 
 const STEP_LABELS = [
   'Client & Platform',
   'Priority Posts',
-  'Weekly Themes',
   'Post Type',
   'Generated Posts',
 ]
@@ -59,7 +52,7 @@ export function GenerateWizard({
   const [platform, setPlatform] = useState('Instagram')
   const [brandProfileLoading, setBrandProfileLoading] = useState(false)
   const [targetPostCount, setTargetPostCount] = useState(initialTargetPostCount)
-  // Holds full ClientData for passthrough to research + generate APIs. Cleared on client change.
+  // Holds full ClientData for passthrough to generate-stream API. Cleared on client change.
   const [preloadedClientData, setPreloadedClientData] = useState<ClientData | null>(
     initialClientData
   )
@@ -68,23 +61,16 @@ export function GenerateWizard({
   const [priorityPosts, setPriorityPosts] = useState<PriorityPost[]>([])
 
   // Step 3
-  const [themes, setThemes] = useState<ThemeWithSource[]>([])
-  const [isResearching, setIsResearching] = useState(false)
-  const [hasAutoResearched, setHasAutoResearched] = useState(false)
-  const [researchPhase, setResearchPhase] = useState('')
-  const [researchError, setResearchError] = useState<string | null>(null)
-  const researchAbortRef = useRef<AbortController | null>(null)
-
-  // Step 4
   const [postType, setPostType] = useState<PostType>(
     initialClientData?.defaultPostType === 'carousel' ? 'carousel' : 'single'
   )
   const [slideCount, setSlideCount] = useState(initialClientData?.defaultCarouselSlides ?? 6)
 
-  // Step 5
+  // Step 4
   const [isGenerating, setIsGenerating] = useState(false)
   const [generatedPosts, setGeneratedPosts] = useState<GeneratedPost[]>([])
   const [streamTotal, setStreamTotal] = useState(0)
+  const [researchPhase, setResearchPhase] = useState('')
   const [hasGenerated, setHasGenerated] = useState(false)
   const [approvedCount, setApprovedCount] = useState(0)
   const abortControllerRef = useRef<AbortController | null>(null)
@@ -120,18 +106,9 @@ export function GenerateWizard({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clientId])
 
-  // Auto-research when entering step 3 — gated on brandProfileLoading to fix race condition
+  // Start generation when entering step 4
   useEffect(() => {
-    if (currentStep === 3 && !hasAutoResearched && clientId && !brandProfileLoading) {
-      setHasAutoResearched(true)
-      void handleResearch()
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentStep, brandProfileLoading])
-
-  // Start generation when entering step 5
-  useEffect(() => {
-    if (currentStep === 5 && generatedPosts.length === 0 && !isGenerating) {
+    if (currentStep === 4 && generatedPosts.length === 0 && !isGenerating) {
       void startGeneration()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -141,7 +118,6 @@ export function GenerateWizard({
   useEffect(() => {
     return () => {
       abortControllerRef.current?.abort()
-      researchAbortRef.current?.abort()
     }
   }, [currentStep])
 
@@ -150,39 +126,23 @@ export function GenerateWizard({
     const controller = new AbortController()
     abortControllerRef.current = controller
 
-    const validThemes = themes.filter((t) => t.selected && t.description.trim())
-    if (validThemes.length === 0 && priorityPosts.length === 0) {
-      toast.error('Add at least one theme to generate posts')
-      setCurrentStep(3)
-      return
-    }
-
-    const total = validThemes.length + priorityPosts.length
-    setStreamTotal(total)
+    setStreamTotal(0)
     setGeneratedPosts([])
+    setResearchPhase('')
     setIsGenerating(true)
 
     try {
-      const res = await fetch('/api/ai/generate', {
+      const res = await fetch('/api/ai/generate-stream', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         signal: controller.signal,
         body: JSON.stringify({
           clientId,
           platform,
-          themes: validThemes.map((t) => ({
-            description: t.description,
-            count: 1,
-            pillar: t.pillar,
-            sourceUrl: t.sourceUrl,
-            sourceTitle: t.sourceTitle,
-            sourceType: t.sourceType,
-            sourceExcerpt: t.sourceExcerpt,
-            sourceFullText: t.sourceFullText,
-          })),
           postType,
           slideCount,
           priorityPosts,
+          targetPostCount,
           preloadedClientData: preloadedClientData ?? undefined,
         }),
       })
@@ -194,9 +154,17 @@ export function GenerateWizard({
         return
       }
 
-      await readNDJSONStream<GenerateStreamEvent>(res, (event) => {
-        if (event.type === 'result') {
+      await readNDJSONStream<UnifiedStreamEvent>(res, (event) => {
+        if (event.type === 'total') {
+          setStreamTotal(event.count)
+        } else if (event.type === 'phase') {
+          setResearchPhase(event.message)
+        } else if (event.type === 'result') {
+          setResearchPhase('')
           setGeneratedPosts((prev) => [...prev, event.data as unknown as GeneratedPost])
+        } else if (event.type === 'error') {
+          toast.error(event.message)
+          setCurrentStep(3)
         }
       })
 
@@ -208,92 +176,6 @@ export function GenerateWizard({
     } finally {
       setIsGenerating(false)
     }
-  }
-
-  async function handleResearch() {
-    const client = clients.find((c) => c.id === clientId)
-    if (!client) return
-
-    researchAbortRef.current?.abort()
-    const controller = new AbortController()
-    researchAbortRef.current = controller
-
-    setThemes([])
-    setResearchPhase('')
-    setResearchError(null)
-    setIsResearching(true)
-
-    try {
-      const res = await fetch('/api/ai/research', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        signal: controller.signal,
-        body: JSON.stringify({
-          clientId,
-          niche: client.niche ?? 'general',
-          language: client.language,
-          count: targetPostCount,
-          preloadedClientData: preloadedClientData ?? undefined,
-        }),
-      })
-
-      if (!res.ok) {
-        const err = (await res.json()) as { error?: string }
-        toast.error(err.error ?? 'Research failed')
-        return
-      }
-
-      let topicsReceived = 0
-      await readNDJSONStream<ResearchStreamEvent>(res, (event) => {
-        if (event.type === 'phase') {
-          setResearchPhase(event.message)
-        } else if (event.type === 'topic') {
-          topicsReceived++
-          setThemes((prev) => [
-            ...prev,
-            {
-              description: event.data.suggested_theme,
-              count: 1,
-              selected: prev.length < targetPostCount,
-              pillar: event.data.pillar,
-              sourceUrl: event.data.source_url,
-              sourceTitle: event.data.source_title,
-              sourceType: event.data.source_type ?? undefined,
-              sourceExcerpt: event.data.source_excerpt,
-              sourceFullText: event.data.source_full_text,
-            },
-          ])
-        }
-      })
-
-      if (topicsReceived === 0 && !controller.signal.aborted) {
-        setResearchError(
-          "Web search couldn't find relevant content for this client. Try again, or add RSS feeds or a website source for more reliable results. You can also enter themes manually below."
-        )
-      }
-    } catch (err) {
-      if (err instanceof Error && err.name === 'AbortError') return
-      toast.error('Research failed')
-    } finally {
-      setIsResearching(false)
-      setResearchPhase('')
-    }
-  }
-
-  function handleThemeChange(index: number, theme: ThemeInput) {
-    const current = themes[index]
-    if (current && !current.selected && theme.selected) {
-      const currentSelected = themes.filter((t) => t.selected).length
-      if (currentSelected >= targetPostCount) {
-        toast.error(`Maximum ${targetPostCount} theme${targetPostCount !== 1 ? 's' : ''} allowed`)
-        return
-      }
-    }
-    setThemes((prev) => prev.map((t, i) => (i === index ? { ...t, ...theme } : t)))
-  }
-
-  function handleThemeRemove(index: number) {
-    setThemes((prev) => prev.filter((_, i) => i !== index))
   }
 
   function handlePostRemoved(postId: string) {
@@ -317,12 +199,8 @@ export function GenerateWizard({
     )
   }
 
-  const selectedThemes = themes.filter((t) => t.selected && t.description.trim())
-
   const canNext = (() => {
-    if (currentStep === 1) return !!clientId
-    if (currentStep === 3)
-      return themes.some((t) => t.selected && t.description.trim()) || priorityPosts.length > 0
+    if (currentStep === 1) return !!clientId && !brandProfileLoading
     return true
   })()
 
@@ -470,77 +348,8 @@ export function GenerateWizard({
           </div>
         )}
 
-        {/* Step 3 — Weekly Themes */}
+        {/* Step 3 — Post Type */}
         {currentStep === 3 && (
-          <div className="flex flex-col gap-5">
-            {/* Real-time phase message */}
-            {isResearching && researchPhase && (
-              <p className="text-sm text-gray-500 animate-pulse">{researchPhase}</p>
-            )}
-
-            {/* Error when research returns 0 topics */}
-            {!isResearching && researchError && themes.length === 0 && (
-              <p className="text-sm text-amber-600">{researchError}</p>
-            )}
-
-            {/* Theme rows: real rows + skeleton slots while researching */}
-            {(themes.length > 0 || isResearching) && (
-              <div className="flex flex-col gap-3">
-                {themes.map((theme, i) => (
-                  <div key={i} className="animate-[fadein_0.4s_ease-out_forwards] opacity-0">
-                    <ThemeRow
-                      theme={theme}
-                      index={i}
-                      onChange={handleThemeChange}
-                      onRemove={handleThemeRemove}
-                    />
-                  </div>
-                ))}
-                {isResearching &&
-                  Array.from({ length: Math.max(0, targetPostCount - themes.length) }, (_, i) => (
-                    <ThemeRowSkeleton key={`skeleton-${i}`} />
-                  ))}
-              </div>
-            )}
-
-            {!isResearching && (
-              <>
-                <div className="flex items-center justify-between">
-                  {selectedThemes.length < targetPostCount && (
-                    <button
-                      onClick={() =>
-                        setThemes((prev) => [
-                          ...prev,
-                          { description: '', count: 1, selected: true },
-                        ])
-                      }
-                      className="text-base font-medium text-[#534AB7] hover:underline"
-                    >
-                      + Add theme
-                    </button>
-                  )}
-                  <span className="text-sm text-gray-500 ml-auto">
-                    {selectedThemes.length} of {targetPostCount} themes
-                    {priorityPosts.length > 0 && ` + ${priorityPosts.length} priority`}
-                  </span>
-                </div>
-
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => {
-                    void handleResearch()
-                  }}
-                >
-                  Research more topics
-                </Button>
-              </>
-            )}
-          </div>
-        )}
-
-        {/* Step 4 — Post Type */}
-        {currentStep === 4 && (
           <PostTypeSelector
             value={postType}
             slideCount={slideCount}
@@ -550,9 +359,13 @@ export function GenerateWizard({
           />
         )}
 
-        {/* Step 5 — Generated Posts */}
-        {currentStep === 5 && (
+        {/* Step 4 — Generated Posts */}
+        {currentStep === 4 && (
           <div className="flex flex-col gap-4">
+            {isGenerating && researchPhase && (
+              <p className="text-sm text-gray-500 animate-pulse">{researchPhase}</p>
+            )}
+
             {isGenerating && streamTotal > 0 && (
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between text-sm text-gray-500">
@@ -564,7 +377,7 @@ export function GenerateWizard({
                 <div className="h-1.5 w-full rounded-full bg-gray-100 overflow-hidden">
                   <div
                     className="h-full rounded-full bg-[#534AB7] transition-all duration-700 ease-out"
-                    style={{ width: `${Math.round((generatedPosts.length / streamTotal) * 100)}%` }}
+                    style={{ width: `${streamTotal > 0 ? Math.round((generatedPosts.length / streamTotal) * 100) : 0}%` }}
                   />
                 </div>
               </div>
@@ -627,7 +440,6 @@ export function GenerateWizard({
                       setGeneratedPosts([])
                       setHasGenerated(false)
                       setApprovedCount(0)
-                      setHasAutoResearched(false)
                       setCurrentStep(3)
                     }}
                   >
@@ -680,30 +492,40 @@ export function GenerateWizard({
       </div>
 
       {/* Navigation */}
-      {currentStep < 5 && clients.length > 0 && (
+      {clients.length > 0 && (currentStep < 4 || isGenerating) && (
         <div className="flex items-center justify-between mt-10 pt-6 border-t border-gray-100">
           <Button
             variant="ghost"
             size="lg"
-            onClick={() => setCurrentStep((s) => Math.max(1, s - 1))}
+            onClick={() => {
+              if (currentStep === 4) {
+                abortControllerRef.current?.abort()
+                setGeneratedPosts([])
+                setStreamTotal(0)
+                setResearchPhase('')
+              }
+              setCurrentStep((s) => Math.max(1, s - 1))
+            }}
             disabled={currentStep === 1}
           >
-            Back
+            {currentStep === 4 ? 'Cancel' : 'Back'}
           </Button>
 
-          <div className="flex items-center gap-4">
-            {currentStep === 2 && (
-              <button
-                onClick={() => setCurrentStep(3)}
-                className="text-base text-gray-400 hover:text-gray-600"
-              >
-                Skip
-              </button>
-            )}
-            <Button size="lg" onClick={() => setCurrentStep((s) => s + 1)} disabled={!canNext}>
-              {currentStep === 4 ? 'Generate' : 'Next'}
-            </Button>
-          </div>
+          {currentStep < 4 && (
+            <div className="flex items-center gap-4">
+              {currentStep === 2 && (
+                <button
+                  onClick={() => setCurrentStep(3)}
+                  className="text-base text-gray-400 hover:text-gray-600"
+                >
+                  Skip
+                </button>
+              )}
+              <Button size="lg" onClick={() => setCurrentStep((s) => s + 1)} disabled={!canNext}>
+                {currentStep === 3 ? 'Generate' : 'Next'}
+              </Button>
+            </div>
+          )}
         </div>
       )}
     </div>
