@@ -5,15 +5,16 @@ import { fieldBaseStyle, fieldErrorStyle, fieldLabelStyle, makeFieldHandlers } f
 interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label?: string
   error?: string
+  labelStyle?: React.CSSProperties
 }
 
-export function Input({ label, error, style, id, ...props }: InputProps) {
+export function Input({ label, error, style, labelStyle, id, ...props }: InputProps) {
   const inputId = id ?? label?.toLowerCase().replace(/\s+/g, '-')
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
       {label && (
-        <label htmlFor={inputId} style={fieldLabelStyle}>
+        <label htmlFor={inputId} style={{ ...fieldLabelStyle, ...labelStyle }}>
           {label}
         </label>
       )}

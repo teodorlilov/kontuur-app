@@ -5,11 +5,9 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createBrowserSupabaseClient } from '@/lib/supabase/client'
 import { validateEmail, validatePassword } from '@/lib/validation'
-import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { toast } from '@/components/ui/toast'
-import { cn } from '@/utils/cn'
-import { KontuurLogo } from '@/components/ui/kontuur-logo'
+import { AuthLayout } from '@/components/auth/auth-layout'
 
 type Mode = 'agency' | 'solo'
 
@@ -17,6 +15,71 @@ interface FormErrors {
   email?: string
   password?: string
   businessName?: string
+}
+
+const INPUT_STYLE: React.CSSProperties = {
+  background: '#fff',
+  border: '1px solid rgba(44,62,80,0.14)',
+  borderRadius: 4,
+  padding: '12px 14px',
+  fontSize: 13,
+  height: 'auto',
+}
+
+const LABEL_STYLE: React.CSSProperties = {
+  fontSize: 10,
+  fontWeight: 500,
+  color: '#1A2630',
+  letterSpacing: '2px',
+  textTransform: 'uppercase',
+}
+
+function onFocus(e: React.FocusEvent<HTMLInputElement>) {
+  e.currentTarget.style.borderColor = '#C07B55'
+}
+
+function onBlur(e: React.FocusEvent<HTMLInputElement>) {
+  e.currentTarget.style.borderColor = 'rgba(44,62,80,0.14)'
+}
+
+interface ModeSelectorProps {
+  mode: Mode
+  setMode: (m: Mode) => void
+}
+
+function ModeSelector({ mode, setMode }: ModeSelectorProps) {
+  const options = [
+    { value: 'agency' as Mode, label: 'I manage social media for clients', sub: 'Agency mode — manage multiple clients' },
+    { value: 'solo' as Mode, label: 'I manage my own business socials', sub: 'Solo mode — simplified for one brand' },
+  ]
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <p style={{ fontSize: 10, fontWeight: 500, color: '#1A2630', letterSpacing: '2px', textTransform: 'uppercase' }}>
+        How will you use kontuur?
+      </p>
+      {options.map((opt) => (
+        <button
+          key={opt.value}
+          type="button"
+          onClick={() => setMode(opt.value)}
+          style={{
+            textAlign: 'left',
+            padding: '12px 14px',
+            borderRadius: 4,
+            border: mode === opt.value ? '1px solid #1A2630' : '1px solid rgba(44,62,80,0.14)',
+            background: '#fff',
+            cursor: 'pointer',
+            transition: 'border-color 0.15s',
+          }}
+          onMouseEnter={(e) => { if (mode !== opt.value) e.currentTarget.style.borderColor = '#C07B55' }}
+          onMouseLeave={(e) => { if (mode !== opt.value) e.currentTarget.style.borderColor = 'rgba(44,62,80,0.14)' }}
+        >
+          <span style={{ fontSize: 13, fontWeight: 500, color: '#1A2630', display: 'block' }}>{opt.label}</span>
+          <span style={{ fontSize: 12, color: '#8A8070', marginTop: 2, display: 'block' }}>{opt.sub}</span>
+        </button>
+      ))}
+    </div>
+  )
 }
 
 export function SignupForm() {
@@ -38,7 +101,7 @@ export function SignupForm() {
     return next
   }
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.SyntheticEvent<HTMLFormElement>) {
     e.preventDefault()
     const errs = validate()
     if (Object.keys(errs).length > 0) {
@@ -50,7 +113,6 @@ export function SignupForm() {
 
     const supabase = createBrowserSupabaseClient()
 
-    // 1. Create auth user in browser — returns a session immediately (requires email confirmation OFF)
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email,
       password,
@@ -67,12 +129,10 @@ export function SignupForm() {
     }
 
     if (!authData.session) {
-      // Email confirmation is enabled — redirect to a confirmation notice page
       router.push(`/signup/check-email?email=${encodeURIComponent(email)}`)
       return
     }
 
-    // 2. Set up agency + user records server-side (admin client bypasses RLS)
     const res = await fetch('/api/auth/signup', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -91,20 +151,13 @@ export function SignupForm() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4 py-10">
-      <div className="w-full max-w-sm">
-        <div className="mb-8 text-center">
-          <div className="inline-flex mb-6">
-            <KontuurLogo />
-          </div>
-          <h1 className="text-xl font-semibold text-gray-900">Create your account</h1>
-          <p className="text-sm text-gray-500 mt-1">14-day free trial, no card required</p>
-        </div>
-
-        <form
-          onSubmit={handleSubmit}
-          className="bg-white rounded-xl border border-gray-200 p-6 flex flex-col gap-4"
-        >
+    <AuthLayout>
+      <div>
+        <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 400, color: '#1A2630', marginBottom: 4 }}>
+          Create your account
+        </h3>
+        <p style={{ fontSize: 13, color: '#8A8070', marginBottom: 32 }}>14-day free trial, no card required</p>
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <Input
             label="Business name"
             type="text"
@@ -113,6 +166,10 @@ export function SignupForm() {
             onChange={(e) => setBusinessName(e.target.value)}
             error={errors.businessName}
             autoComplete="organization"
+            style={INPUT_STYLE}
+            labelStyle={LABEL_STYLE}
+            onFocus={onFocus}
+            onBlur={onBlur}
           />
           <Input
             label="Email"
@@ -122,6 +179,10 @@ export function SignupForm() {
             onChange={(e) => setEmail(e.target.value)}
             error={errors.email}
             autoComplete="email"
+            style={INPUT_STYLE}
+            labelStyle={LABEL_STYLE}
+            onFocus={onFocus}
+            onBlur={onBlur}
           />
           <Input
             label="Password"
@@ -131,55 +192,54 @@ export function SignupForm() {
             onChange={(e) => setPassword(e.target.value)}
             error={errors.password}
             autoComplete="new-password"
+            style={INPUT_STYLE}
+            labelStyle={LABEL_STYLE}
+            onFocus={onFocus}
+            onBlur={onBlur}
           />
-
-          <div className="flex flex-col gap-2">
-            <p className="text-sm font-medium text-gray-700">How will you use kontuur?</p>
-            <div className="flex flex-col gap-2">
-              {(
-                [
-                  {
-                    value: 'agency' as Mode,
-                    label: 'I manage social media for clients',
-                    sub: 'Agency mode — manage multiple clients',
-                  },
-                  {
-                    value: 'solo' as Mode,
-                    label: 'I manage my own business socials',
-                    sub: 'Solo mode — simplified for one brand',
-                  },
-                ] as const
-              ).map((opt) => (
-                <button
-                  key={opt.value}
-                  type="button"
-                  onClick={() => setMode(opt.value)}
-                  className={cn(
-                    'text-left px-4 py-3 rounded-lg border text-sm transition-colors',
-                    mode === opt.value
-                      ? 'border-brand-purple bg-brand-purple-light text-brand-purple'
-                      : 'border-gray-200 text-gray-700 hover:border-gray-300'
-                  )}
-                >
-                  <span className="font-medium block">{opt.label}</span>
-                  <span className="text-xs text-gray-400 mt-0.5 block">{opt.sub}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <Button type="submit" loading={loading} className="w-full mt-1">
+          <ModeSelector mode={mode} setMode={setMode} />
+          <button
+            type="submit"
+            disabled={loading}
+            style={{
+              width: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 6,
+              padding: '13px 0',
+              background: '#1A2630',
+              color: '#ECE8E1',
+              fontFamily: 'var(--font-sans)',
+              fontSize: 10,
+              fontWeight: 800,
+              letterSpacing: '2.5px',
+              textTransform: 'uppercase',
+              border: 'none',
+              borderRadius: 4,
+              cursor: loading ? 'not-allowed' : 'pointer',
+              opacity: loading ? 0.5 : 1,
+              marginTop: 8,
+            }}
+            onMouseEnter={(e) => { if (!loading) e.currentTarget.style.background = '#C07B55' }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = '#1A2630' }}
+          >
+            {loading && (
+              <svg style={{ width: 14, height: 14, animation: 'spin 1s linear infinite' }} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle style={{ opacity: 0.25 }} cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path style={{ opacity: 0.75 }} fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+              </svg>
+            )}
             Create account
-          </Button>
+          </button>
         </form>
-
-        <p className="text-center text-sm text-gray-500 mt-4">
+        <p style={{ textAlign: 'center', fontSize: 12, color: '#7A7060', marginTop: 20 }}>
           Already have an account?{' '}
-          <Link href="/login" className="text-brand-purple font-medium hover:underline">
+          <Link href="/login" style={{ color: '#C07B55', textDecoration: 'none' }}>
             Sign in
           </Link>
         </p>
       </div>
-    </div>
+    </AuthLayout>
   )
 }
