@@ -24,6 +24,7 @@ const INPUT_STYLE: React.CSSProperties = {
   padding: '12px 14px',
   fontSize: 13,
   height: 'auto',
+  color: '#1A2630',
 }
 
 const LABEL_STYLE: React.CSSProperties = {
@@ -168,6 +169,7 @@ export function SignupForm() {
             autoComplete="organization"
             style={INPUT_STYLE}
             labelStyle={LABEL_STYLE}
+
             onFocus={onFocus}
             onBlur={onBlur}
           />
@@ -181,6 +183,7 @@ export function SignupForm() {
             autoComplete="email"
             style={INPUT_STYLE}
             labelStyle={LABEL_STYLE}
+
             onFocus={onFocus}
             onBlur={onBlur}
           />
@@ -194,6 +197,7 @@ export function SignupForm() {
             autoComplete="new-password"
             style={INPUT_STYLE}
             labelStyle={LABEL_STYLE}
+
             onFocus={onFocus}
             onBlur={onBlur}
           />
