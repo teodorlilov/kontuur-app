@@ -20,8 +20,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'No account found with this email' }, { status: 404 })
   }
 
+  const origin = new URL(request.url).origin
   const { error } = await admin.auth.resetPasswordForEmail(email, {
-    redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/auth/callback?type=recovery`,
+    redirectTo: `${origin}/auth/callback?type=recovery`,
   })
 
   if (error) {

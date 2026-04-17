@@ -1,10 +1,38 @@
 import { AuthSlider } from './auth-slider'
 
-interface AuthLayoutProps {
-  children: React.ReactNode
+interface StaticCopy {
+  headline: string
+  italicWord?: string
+  body: string
 }
 
-export function AuthLayout({ children }: AuthLayoutProps) {
+interface AuthLayoutProps {
+  children: React.ReactNode
+  staticCopy?: StaticCopy
+}
+
+function StaticLeftCopy({ headline, italicWord, body }: StaticCopy) {
+  const parts = italicWord ? headline.split(italicWord) : [headline]
+  return (
+    <div>
+      <h2 style={{ fontFamily: 'var(--font-display, Georgia, serif)', fontSize: '40px', fontWeight: 400, color: '#ECE8E1', lineHeight: 1.3, marginBottom: '16px' }}>
+        {parts.map((part, i) => (
+          <span key={i}>
+            {part}
+            {i < parts.length - 1 && italicWord && (
+              <em style={{ fontStyle: 'italic', color: '#C07B55' }}>{italicWord}</em>
+            )}
+          </span>
+        ))}
+      </h2>
+      <p style={{ fontSize: '16px', color: 'rgba(236,232,225,0.42)', lineHeight: 1.75, maxWidth: '380px' }}>
+        {body}
+      </p>
+    </div>
+  )
+}
+
+export function AuthLayout({ children, staticCopy }: AuthLayoutProps) {
   return (
     <div className="flex min-h-screen">
 
@@ -52,9 +80,9 @@ export function AuthLayout({ children }: AuthLayoutProps) {
           </div>
         </div>
 
-        {/* Slider */}
+        {/* Slider or static copy */}
         <div className="relative z-10 flex-1 flex flex-col justify-end pt-12">
-          <AuthSlider />
+          {staticCopy ? <StaticLeftCopy {...staticCopy} /> : <AuthSlider />}
         </div>
       </div>
 
