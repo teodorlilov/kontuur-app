@@ -9,8 +9,7 @@ export function KontuurLogo({ height = 80, className }: KontuurLogoProps) {
     <img
       src="/kontuur_logo_white.svg"
       alt="kontuur"
-      height={height}
-      style={{ height: `${height}px`, width: 'auto' }}
+      style={{ height: `${height}px`, width: 'auto', maxWidth: '100%' }}
       className={className}
     />
   )

@@ -34,44 +34,26 @@ export function Footer() {
   const isMobile = useIsMobile()
   const isSmall = useIsMobile(480)
 
-  const gridCols = isSmall ? '1fr' : isMobile ? '1fr 1fr' : '2fr 1fr 1fr 1fr'
-
   return (
     <footer
       className="mkt-pad"
       style={{
         background: 'var(--color-brand)',
+        borderTop: '0.5px solid rgba(255,255,255,0.08)',
         paddingTop: 64,
         paddingBottom: 40,
-        borderTop: '0.5px solid rgba(255,255,255,0.08)',
       }}
     >
+      {/* Link columns — centered */}
       <div
         style={{
-          maxWidth: 1100,
-          margin: '0 auto',
-          display: 'grid',
-          gridTemplateColumns: gridCols,
-          gap: isMobile ? 32 : 48,
+          display: 'flex',
+          justifyContent: 'center',
+          gap: isSmall ? 32 : isMobile ? 48 : 80,
+          flexWrap: 'wrap',
           marginBottom: 48,
         }}
       >
-        {/* Brand column */}
-        <div>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src="/kontuur_logo_white.svg"
-            alt="Kontuur"
-            style={{ height: 28, width: 'auto', marginBottom: 12 }}
-          />
-          <p
-            style={{ fontSize: 13.5, color: 'rgba(255,255,255,0.55)', lineHeight: 1.6, margin: 0 }}
-          >
-            social intelligence
-          </p>
-        </div>
-
-        {/* Link columns */}
         {columns.map((col) => (
           <div key={col.title}>
             <p
@@ -122,12 +104,11 @@ export function Footer() {
         ))}
       </div>
 
+      {/* Bottom bar */}
       <div
         style={{
           borderTop: '0.5px solid rgba(255,255,255,0.08)',
           paddingTop: 24,
-          maxWidth: 1100,
-          margin: '0 auto',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',

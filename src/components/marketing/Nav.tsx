@@ -33,7 +33,7 @@ export function Nav() {
     >
       <Link href="/" style={{ display: 'flex', alignItems: 'center' }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/kontuur_logo.svg" alt="Kontuur" style={{ height: 26, width: 'auto' }} />
+        <img src="/kontuur_logo.svg" alt="Kontuur" style={{ height: 48, width: 'auto' }} />
       </Link>
 
       {!isMobile && (

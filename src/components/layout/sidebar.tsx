@@ -3,7 +3,6 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { KontuurLogo } from '@/components/ui/kontuur-logo'
 import {
   LayoutDashboard,
   Users,
@@ -173,7 +172,10 @@ export function Sidebar({ agencyMode, pendingCount = 0 }: SidebarProps) {
           borderBottom: '0.5px solid var(--sidebar-border)',
         }}
       >
-        <KontuurLogo height={100} />
+        <Link href="/dashboard" style={{ display: 'block' }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/kontuur_logo_white.svg" alt="kontuur" style={{ width: '100%', height: 'auto' }} />
+        </Link>
       </div>
 
       <NavLinks items={navItems} pathname={pathname} onClose={onClose} />
