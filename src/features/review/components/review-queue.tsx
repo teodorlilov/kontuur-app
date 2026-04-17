@@ -10,10 +10,12 @@ import {
   type ReviewPost,
   type ReviewTab,
 } from '@/lib/review/filter-review-posts'
+import type { BestTimePlatform } from '@/types/api'
 
 interface ReviewQueueProps {
   initialPosts: ReviewPost[]
   clients: Array<{ id: string; name: string; is_health_niche: boolean }>
+  bestTimeMap: Record<string, BestTimePlatform[] | null>
 }
 
 const tabs: Array<{ key: ReviewTab; label: string }> = [
@@ -21,7 +23,7 @@ const tabs: Array<{ key: ReviewTab; label: string }> = [
   { key: 'priority', label: 'Priority' },
 ]
 
-export function ReviewQueue({ initialPosts, clients }: ReviewQueueProps) {
+export function ReviewQueue({ initialPosts, clients, bestTimeMap }: ReviewQueueProps) {
   const [posts, setPosts] = useState(initialPosts)
   const [activeTab, setActiveTab] = useState<ReviewTab>('all')
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null)
@@ -116,6 +118,7 @@ export function ReviewQueue({ initialPosts, clients }: ReviewQueueProps) {
             <ReviewPostCard
               key={post.id}
               post={post}
+              bestTimeData={bestTimeMap[post.client_id] ?? null}
               onApprove={handleApprove}
               onDelete={handleDelete}
             />

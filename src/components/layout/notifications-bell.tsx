@@ -9,6 +9,10 @@ import type { Database } from '@/types/database'
 
 type Notification = Database['public']['Tables']['notifications']['Row']
 
+// Module-level cache — survives remounts across tab navigations (layout re-mounts on every RSC render)
+let notifCache: { data: Notification[]; ts: number } | null = null
+const CACHE_TTL = 30_000
+
 export function NotificationsBell() {
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [loading, setLoading] = useState(true)
@@ -18,6 +22,12 @@ export function NotificationsBell() {
   const unread = notifications.filter((n) => !n.is_read).length
 
   useEffect(() => {
+    if (notifCache && Date.now() - notifCache.ts < CACHE_TTL) {
+      setNotifications(notifCache.data)
+      setLoading(false)
+      return
+    }
+
     async function load() {
       const supabase = createBrowserSupabaseClient()
       const { data } = await supabase
@@ -25,10 +35,12 @@ export function NotificationsBell() {
         .select('id, agency_id, message, is_read, created_at')
         .order('created_at', { ascending: false })
         .limit(10)
-      setNotifications(data ?? [])
+      const result = data ?? []
+      notifCache = { data: result, ts: Date.now() }
+      setNotifications(result)
       setLoading(false)
     }
-    load()
+    void load()
   }, [])
 
   useEffect(() => {
@@ -44,7 +56,11 @@ export function NotificationsBell() {
   async function markRead(id: string) {
     const supabase = createBrowserSupabaseClient()
     await supabase.from('notifications').update({ is_read: true }).eq('id', id)
-    setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, is_read: true } : n)))
+    setNotifications((prev) => {
+      const updated = prev.map((n) => (n.id === id ? { ...n, is_read: true } : n))
+      if (notifCache) notifCache = { data: updated, ts: notifCache.ts }
+      return updated
+    })
   }
 
   return (

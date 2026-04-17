@@ -1,5 +1,5 @@
 import type { ClientData } from '@/lib/clients/fetch-client-data'
-import type { PriorityPost, PostType, SlopDetection } from '@/types/api'
+import type { PriorityPost, PostType, SlopDetection, CarouselSlide } from '@/types/api'
 import type {
   QualityResult,
   LanguageValidationResult,
@@ -29,14 +29,7 @@ export interface SinglePostInput extends GenerationInput {
 }
 
 // ---- Carousel ----
-export interface CarouselSlide {
-  slide_number: number
-  slide_role: 'cover' | 'content' | 'value' | 'cta'
-  headline: string
-  body: string
-  cta_text: string | null
-  design_note: string
-}
+export type { CarouselSlide }
 
 export interface CarouselResult {
   main_caption: string

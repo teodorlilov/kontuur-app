@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
-import { verifyClientOwnership } from '@/lib/auth/helpers'
+import { verifyClientOwnership, fetchClientWithOwnership } from '@/lib/auth/helpers'
 import { generateAnalyticsSummary } from '@/ai/analytics/generate-summary'
 import type {
   AnalyticsReportRequest,
@@ -140,45 +140,45 @@ async function fetchInstagramMetrics(
     return t >= sinceDate && t <= untilDate
   })
 
-  // Per-post insights (max 20)
-  const posts: IGPost[] = []
-  for (const media of filteredMedia.slice(0, 20)) {
-    let saved = 0
-    let reach = 0
-    let impressions = 0
-    try {
-      const postInsightRes = await fetch(
-        `${igBase}/${media.id}/insights?metric=saved,reach,views&${token}`
-      )
-      if (postInsightRes.ok) {
-        const postInsight = (await postInsightRes.json()) as {
-          data: Array<{ name: string; values: Array<{ value: number }> }>
+  // Per-post insights (max 20) — all fetches run in parallel
+  const posts: IGPost[] = await Promise.all(
+    filteredMedia.slice(0, 20).map(async (media) => {
+      let saved = 0
+      let reach = 0
+      let impressions = 0
+      try {
+        const postInsightRes = await fetch(
+          `${igBase}/${media.id}/insights?metric=saved,reach,views&${token}`
+        )
+        if (postInsightRes.ok) {
+          const postInsight = (await postInsightRes.json()) as {
+            data: Array<{ name: string; values: Array<{ value: number }> }>
+          }
+          for (const m of postInsight.data) {
+            const val = m.values[0]?.value ?? 0
+            if (m.name === 'saved') saved = val
+            if (m.name === 'reach') reach = val
+            if (m.name === 'views') impressions = val // 'views' = impressions in new API
+          }
         }
-        for (const m of postInsight.data) {
-          const val = m.values[0]?.value ?? 0
-          if (m.name === 'saved') saved = val
-          if (m.name === 'reach') reach = val
-          if (m.name === 'views') impressions = val // 'views' = impressions in new API
-        }
+      } catch {
+        /* ignore individual post errors */
       }
-    } catch {
-      /* ignore individual post errors */
-    }
-
-    posts.push({
-      id: media.id,
-      caption: media.caption ?? null,
-      timestamp: media.timestamp,
-      media_type: media.media_type,
-      like_count: media.like_count,
-      comments_count: media.comments_count,
-      saved,
-      reach,
-      impressions,
-      permalink: media.permalink,
-      thumbnail_url: media.thumbnail_url ?? media.media_url ?? null,
+      return {
+        id: media.id,
+        caption: media.caption ?? null,
+        timestamp: media.timestamp,
+        media_type: media.media_type,
+        like_count: media.like_count,
+        comments_count: media.comments_count,
+        saved,
+        reach,
+        impressions,
+        permalink: media.permalink,
+        thumbnail_url: media.thumbnail_url ?? media.media_url ?? null,
+      }
     })
-  }
+  )
 
   // Compute summary
   const totalReach = dailyInsights.reduce((sum, d) => sum + (d.reach ?? 0), 0)
@@ -384,50 +384,51 @@ async function fetchFacebookMetrics(
       })
     : { data: [] }
 
-  const posts: FBPost[] = []
-  for (const post of postsData.data.slice(0, 10)) {
-    let reactions = 0
-    let comments = 0
-    let shares = 0
-    let reach = 0
-    let impressions = 0
-    try {
-      const postInsightRes = await fetch(
-        `${GRAPH_BASE}/${post.id}/insights?metric=post_reactions_by_type_total,post_comments,post_shares,post_reach,post_impressions&${token}`
-      )
-      if (postInsightRes.ok) {
-        const postInsight = (await postInsightRes.json()) as {
-          data: Array<{ name: string; values: Array<{ value: number | Record<string, number> }> }>
-        }
-        for (const m of postInsight.data) {
-          const rawVal = m.values[0]?.value ?? 0
-          if (m.name === 'post_reactions_by_type_total') {
-            reactions =
-              typeof rawVal === 'object'
-                ? Object.values(rawVal).reduce((s, v) => s + (v as number), 0)
-                : (rawVal as number)
+  // Per-post insights (max 10) — all fetches run in parallel
+  const posts: FBPost[] = await Promise.all(
+    postsData.data.slice(0, 10).map(async (post) => {
+      let reactions = 0
+      let comments = 0
+      let shares = 0
+      let reach = 0
+      let impressions = 0
+      try {
+        const postInsightRes = await fetch(
+          `${GRAPH_BASE}/${post.id}/insights?metric=post_reactions_by_type_total,post_comments,post_shares,post_reach,post_impressions&${token}`
+        )
+        if (postInsightRes.ok) {
+          const postInsight = (await postInsightRes.json()) as {
+            data: Array<{ name: string; values: Array<{ value: number | Record<string, number> }> }>
           }
-          if (m.name === 'post_comments') comments = rawVal as number
-          if (m.name === 'post_shares') shares = rawVal as number
-          if (m.name === 'post_reach') reach = rawVal as number
-          if (m.name === 'post_impressions') impressions = rawVal as number
+          for (const m of postInsight.data) {
+            const rawVal = m.values[0]?.value ?? 0
+            if (m.name === 'post_reactions_by_type_total') {
+              reactions =
+                typeof rawVal === 'object'
+                  ? Object.values(rawVal).reduce((s, v) => s + (v as number), 0)
+                  : (rawVal as number)
+            }
+            if (m.name === 'post_comments') comments = rawVal as number
+            if (m.name === 'post_shares') shares = rawVal as number
+            if (m.name === 'post_reach') reach = rawVal as number
+            if (m.name === 'post_impressions') impressions = rawVal as number
+          }
         }
+      } catch {
+        /* ignore */
       }
-    } catch {
-      /* ignore */
-    }
-
-    posts.push({
-      id: post.id,
-      message: post.message ?? null,
-      created_time: post.created_time,
-      reactions,
-      comments,
-      shares,
-      reach,
-      impressions,
+      return {
+        id: post.id,
+        message: post.message ?? null,
+        created_time: post.created_time,
+        reactions,
+        comments,
+        shares,
+        reach,
+        impressions,
+      }
     })
-  }
+  )
 
   const totalReach = dailyInsights.reduce((sum, d) => sum + (d.reach ?? 0), 0)
   const totalImpressions = dailyInsights.reduce((sum, d) => sum + (d.impressions ?? 0), 0)
@@ -574,8 +575,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'platform must be instagram or facebook' }, { status: 400 })
   }
 
-  const owned = await verifyClientOwnership(supabase, client_id, agencyId)
-  if (!owned) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  const clientRow = await fetchClientWithOwnership(supabase, client_id, agencyId)
+  if (!clientRow) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+
+  const clientName = clientRow.name
 
   // Get social connection for client + platform
   const { data: connection } = await supabase
@@ -598,15 +601,6 @@ export async function POST(request: NextRequest) {
       { status: 422 }
     )
   }
-
-  // Get client name for AI summary
-  const { data: clientRow } = await supabase
-    .from('clients')
-    .select('name')
-    .eq('id', client_id)
-    .single()
-
-  const clientName = clientRow?.name ?? 'Client'
 
   try {
     let metrics: InstagramMetrics | FacebookMetrics

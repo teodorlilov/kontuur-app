@@ -1,31 +1,23 @@
 import Link from 'next/link'
-import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { requireSessionUser } from '@/lib/auth/session'
-import { getCachedAgencyClients } from '@/lib/queries/cache'
+import { getCachedAgencyClients, getCachedPendingRows } from '@/lib/queries/cache'
 import { Topbar } from '@/components/layout/topbar'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 
 export default async function ClientsPage() {
   const { agencyId } = await requireSessionUser()
-  const supabase = await createServerSupabaseClient()
 
-  // Cache hit — layout already populated this for the current request
-  const clients = await getCachedAgencyClients(agencyId)
-  const clientIds = clients.map((c) => c.id)
+  // Both are React cache hits — layout already populated them for this request
+  const [clients, pendingRows] = await Promise.all([
+    getCachedAgencyClients(agencyId),
+    getCachedPendingRows(agencyId),
+  ])
 
   // Pending counts per client
   const clientPendingMap: Record<string, number> = {}
-  if (clientIds.length > 0) {
-    const { data: pendingRows } = await supabase
-      .from('posts')
-      .select('client_id')
-      .eq('status', 'pending_review')
-      .in('client_id', clientIds)
-
-    for (const row of (pendingRows as Array<{ client_id: string }> | null) ?? []) {
-      clientPendingMap[row.client_id] = (clientPendingMap[row.client_id] ?? 0) + 1
-    }
+  for (const row of pendingRows) {
+    clientPendingMap[row.client_id] = (clientPendingMap[row.client_id] ?? 0) + 1
   }
 
   return (
@@ -36,7 +28,7 @@ export default async function ClientsPage() {
           <p className="text-sm text-gray-500">
             {clients.length} {clients.length === 1 ? 'client' : 'clients'}
           </p>
-          <Link href="/clients/new">
+          <Link href="/clients/new" prefetch={false}>
             <Button size="sm">+ Add client</Button>
           </Link>
         </div>
@@ -47,7 +39,7 @@ export default async function ClientsPage() {
             <p className="text-sm text-gray-400 mt-1 mb-6">
               Add your first client to start generating content
             </p>
-            <Link href="/clients/new">
+            <Link href="/clients/new" prefetch={false}>
               <Button>Add your first client</Button>
             </Link>
           </div>
@@ -99,6 +91,7 @@ export default async function ClientsPage() {
                       <td className="px-5 py-4 text-right">
                         <Link
                           href={`/clients/${client.id}/edit`}
+                          prefetch={false}
                           className="text-xs text-brand-purple font-medium hover:underline"
                         >
                           Edit

@@ -46,6 +46,13 @@ export function AnalyticsView({ clients, initialConnections }: AnalyticsViewProp
   const [generating, setGenerating] = useState(false)
   const [report, setReport] = useState<AnalyticsReport | null>(null)
 
+  // Tracks the (clientId, platform) pair that ReportHistory should fetch for.
+  // Updated atomically after connections resolve so ReportHistory never fires with a mismatched pair.
+  const [historyClientId, setHistoryClientId] = useState(clients[0]?.id ?? '')
+  const [historyPlatform, setHistoryPlatform] = useState<'instagram' | 'facebook'>(
+    (initialConnections[0]?.platform as 'instagram' | 'facebook') ?? 'instagram'
+  )
+
   const isInitialMount = useRef(true)
 
   // Fetch connections when the selected client changes.
@@ -65,7 +72,13 @@ export function AnalyticsView({ clients, initialConnections }: AnalyticsViewProp
         setConnections(conns)
         const firstConn = conns[0]
         if (firstConn) {
-          setPlatform(firstConn.platform as 'instagram' | 'facebook')
+          const resolvedPlatform = firstConn.platform as 'instagram' | 'facebook'
+          setPlatform(resolvedPlatform)
+          // Update history fetch key atomically — both clientId and platform are now settled
+          setHistoryClientId(selectedClientId)
+          setHistoryPlatform(resolvedPlatform)
+        } else {
+          setHistoryClientId(selectedClientId)
         }
       })
       .catch(() => setConnections([]))
@@ -105,6 +118,7 @@ export function AnalyticsView({ clients, initialConnections }: AnalyticsViewProp
   const handleLoadReport = useCallback((loaded: AnalyticsReport) => {
     setReport(loaded)
     setPlatform(loaded.platform as 'instagram' | 'facebook')
+    setHistoryPlatform(loaded.platform as 'instagram' | 'facebook')
     setActiveTab('overview')
   }, [])
 
@@ -148,7 +162,7 @@ export function AnalyticsView({ clients, initialConnections }: AnalyticsViewProp
                   <button
                     key={p}
                     type="button"
-                    onClick={() => setPlatform(p)}
+                    onClick={() => { setPlatform(p); setHistoryPlatform(p) }}
                     className={`px-3 py-2 rounded-lg text-sm font-medium border transition-colors ${
                       platform === p
                         ? 'bg-[#534AB7] text-white border-[#534AB7]'
@@ -381,8 +395,8 @@ export function AnalyticsView({ clients, initialConnections }: AnalyticsViewProp
       )}
 
       {/* Report history */}
-      {selectedClientId && (
-        <ReportHistory clientId={selectedClientId} platform={platform} onLoad={handleLoadReport} />
+      {historyClientId && (
+        <ReportHistory clientId={historyClientId} platform={historyPlatform} onLoad={handleLoadReport} />
       )}
     </div>
   )

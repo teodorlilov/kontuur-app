@@ -44,24 +44,15 @@ export async function GET(_request: Request, { params }: { params: Promise<{ tok
   // Build client note lookup from token rows
   const noteMap = new Map(tokenRows.map((r) => [r.post_id, r.client_note]))
 
-  // Fetch client name
+  // Fetch client name + agency name in one join — saves one round-trip
   const clientId = posts[0]!.client_id
   const { data: client } = await supabase
     .from('clients')
-    .select('name, agency_id')
+    .select('name, agencies!inner(name)')
     .eq('id', clientId)
-    .single()
+    .single() as { data: { name: string; agencies: { name: string } } | null }
 
-  // Fetch agency name
-  let agencyName = ''
-  if (client?.agency_id) {
-    const { data: agency } = await supabase
-      .from('agencies')
-      .select('name')
-      .eq('id', client.agency_id)
-      .single()
-    agencyName = agency?.name ?? ''
-  }
+  const agencyName = (client?.agencies as { name: string } | null)?.name ?? ''
 
   const approvalPosts: ApprovalPostData[] = posts.map((p) => ({
     id: p.id,
@@ -151,32 +142,21 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
   // Post status stays as 'scheduled' — approval is tracked in post_approval_tokens
   const postIds = tokenRows.map((r) => r.post_id)
 
-  // Create notification for the agency
-  // First get the agency_id via post → client → agency chain
-  const { data: firstPost } = await supabase
+  // Create notification for the agency — join post→client in one query instead of two
+  const { data: postWithClient } = await supabase
     .from('posts')
-    .select('client_id')
+    .select('clients!inner(name, agency_id)')
     .eq('id', postIds[0]!)
-    .single()
+    .single() as { data: { clients: { name: string; agency_id: string } } | null }
 
-  if (firstPost) {
-    const { data: client } = await supabase
-      .from('clients')
-      .select('name, agency_id')
-      .eq('id', firstPost.client_id)
-      .single()
+  if (postWithClient) {
+    const { name, agency_id } = postWithClient.clients
+    const message =
+      body.status === 'approved'
+        ? `${name} approved weekly calendar (${postIds.length} post${postIds.length === 1 ? '' : 's'})`
+        : `${name} requested changes on weekly calendar`
 
-    if (client) {
-      const message =
-        body.status === 'approved'
-          ? `${client.name} approved weekly calendar (${postIds.length} post${postIds.length === 1 ? '' : 's'})`
-          : `${client.name} requested changes on weekly calendar`
-
-      await supabase.from('notifications').insert({
-        agency_id: client.agency_id,
-        message,
-      })
-    }
+    await supabase.from('notifications').insert({ agency_id, message })
   }
 
   return NextResponse.json({ success: true })

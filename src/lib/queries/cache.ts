@@ -1,6 +1,6 @@
 import { cache } from 'react'
 import { unstable_cache } from 'next/cache'
-import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { AGENCY_COLUMNS, CLIENT_LIST_COLUMNS } from '@/lib/queries/select-columns'
 import type { Database } from '@/types/database'
 
@@ -15,7 +15,7 @@ type Client = Database['public']['Tables']['clients']['Row']
  */
 const _fetchAgency = unstable_cache(
   async (agencyId: string): Promise<Agency | null> => {
-    const supabase = await createServerSupabaseClient()
+    const supabase = createAdminSupabaseClient()
     const { data } = await supabase
       .from('agencies')
       .select(AGENCY_COLUMNS)
@@ -44,7 +44,7 @@ const _fetchAgencyClients = unstable_cache(
   ): Promise<
     Pick<Client, 'id' | 'name' | 'niche' | 'posts_per_week' | 'language' | 'created_at'>[]
   > => {
-    const supabase = await createServerSupabaseClient()
+    const supabase = createAdminSupabaseClient()
     const { data } = await supabase
       .from('clients')
       .select(CLIENT_LIST_COLUMNS)
@@ -60,3 +60,18 @@ const _fetchAgencyClients = unstable_cache(
 )
 
 export const getCachedAgencyClients = cache(_fetchAgencyClients)
+
+/**
+ * Returns pending-review post rows (client_id only) for all clients of the given agency.
+ * - React cache(): deduplicates within a single SSR request so layout + page share one result
+ * Keyed by agencyId so the cache key is a primitive — no array reference issues.
+ */
+export const getCachedPendingRows = cache(async (agencyId: string): Promise<{ client_id: string }[]> => {
+  const supabase = createAdminSupabaseClient()
+  const { data } = await supabase
+    .from('posts')
+    .select('client_id, clients!inner(agency_id)')
+    .eq('status', 'pending_review')
+    .eq('clients.agency_id', agencyId)
+  return (data as { client_id: string }[] | null) ?? []
+})

@@ -1,4 +1,6 @@
+import { unstable_cache } from 'next/cache'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { USER_AUTH_COLUMNS } from '@/lib/queries/select-columns'
 
 export type SupabaseServerClient = Awaited<ReturnType<typeof createServerSupabaseClient>>
@@ -12,6 +14,20 @@ export class AuthError extends Error {
     this.name = 'AuthError'
   }
 }
+
+/**
+ * Cached agency_id lookup keyed by userId — uses admin client so it runs outside the React render tree.
+ * TTL 5 minutes; invalidate with revalidateTag('user-agency') on agency membership changes.
+ */
+const _fetchAgencyId = unstable_cache(
+  async (userId: string): Promise<string | null> => {
+    const admin = createAdminSupabaseClient()
+    const { data } = await admin.from('users').select('agency_id').eq('id', userId).single()
+    return data?.agency_id ?? null
+  },
+  ['user-agency-id'],
+  { revalidate: 300, tags: ['user-agency'] }
+)
 
 /**
  * Authenticate the current user and resolve their agency_id.
@@ -28,20 +44,12 @@ export async function requireAuth(
     throw new AuthError('Unauthorized', 401)
   }
 
-  const agencyId = await getAgencyId(supabase, user.id)
+  const agencyId = await _fetchAgencyId(user.id)
   if (!agencyId) {
     throw new AuthError('User not found', 404)
   }
 
   return { userId: user.id, agencyId }
-}
-
-export async function getAgencyId(
-  supabase: SupabaseServerClient,
-  userId: string
-): Promise<string | null> {
-  const { data } = await supabase.from('users').select('agency_id').eq('id', userId).single()
-  return data?.agency_id ?? null
 }
 
 export async function getUserRecord(
@@ -75,23 +83,16 @@ export async function verifyPostOwnership(
   postId: string,
   agencyId: string
 ): Promise<{ id: string; client_id: string } | null> {
-  const { data: post } = await supabase
+  const { data } = await supabase
     .from('posts')
-    .select('id, client_id')
+    .select('id, client_id, clients!inner(agency_id)')
     .eq('id', postId)
+    .eq('clients.agency_id', agencyId)
     .single()
-
-  if (!post) return null
-
-  const { data: client } = await supabase
-    .from('clients')
-    .select('id')
-    .eq('id', post.client_id)
-    .eq('agency_id', agencyId)
-    .single()
-
-  if (!client) return null
-  return post
+  if (!data) return null
+  // Type assertion required: Supabase types cannot resolve the !inner join shape
+  const row = data as unknown as { id: string; client_id: string }
+  return { id: row.id, client_id: row.client_id }
 }
 
 /**
@@ -111,9 +112,6 @@ export async function verifySourceOwnership(
   return !!data
 }
 
-/**
- * Verify a user has admin role within their agency.
- */
 /**
  * Like verifyClientOwnership, but returns the client row on success.
  * Use when you need client data immediately after ownership verification

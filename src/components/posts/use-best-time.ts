@@ -1,35 +1,43 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import type { BestTimePlatform } from '@/types/api'
+
+// Module-level promise cache — concurrent calls for the same clientId share one in-flight request
+const cache = new Map<string, Promise<BestTimePlatform[] | null>>()
+
+function fetchBestTime(clientId: string): Promise<BestTimePlatform[] | null> {
+  if (!cache.has(clientId)) {
+    cache.set(
+      clientId,
+      fetch(`/api/clients/${clientId}`)
+        .then(async (res) => {
+          if (!res.ok) return null
+          const data = (await res.json()) as {
+            brand_profile?: { best_time_json?: BestTimePlatform[] | null }
+          }
+          const btj = data.brand_profile?.best_time_json
+          return Array.isArray(btj) ? btj : null
+        })
+        .catch(() => null)
+    )
+  }
+  return cache.get(clientId)!
+}
 
 /**
  * Fetch best_time_json for a client from their brand profile.
- * Caches result per client ID to avoid re-fetching.
+ * Module-level promise cache ensures all instances for the same clientId share one request.
  */
 export function useBestTime(clientId: string) {
   const [bestTimeData, setBestTimeData] = useState<BestTimePlatform[] | null>(null)
   const [loading, setLoading] = useState(false)
-  const fetchedRef = useRef<string | null>(null)
 
   useEffect(() => {
-    if (!clientId || fetchedRef.current === clientId) return
-    fetchedRef.current = clientId
+    if (!clientId) return
     setLoading(true)
-
-    void fetch(`/api/clients/${clientId}`)
-      .then(async (res) => {
-        if (!res.ok) return
-        const data = (await res.json()) as {
-          client: Record<string, unknown>
-          brand_profile?: { best_time_json?: BestTimePlatform[] | null }
-        }
-        const btj = data.brand_profile?.best_time_json
-        if (Array.isArray(btj)) setBestTimeData(btj)
-      })
-      .catch(() => {
-        // best-time fetch is non-critical
-      })
+    void fetchBestTime(clientId)
+      .then(setBestTimeData)
       .finally(() => setLoading(false))
   }, [clientId])
 

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import type { AnalyticsReport } from '@/types/api'
+import { createModuleCache } from '@/utils/module-cache'
 
 interface ReportHistoryEntry {
   id: string
@@ -18,6 +19,9 @@ interface ReportHistoryProps {
   onLoad: (report: AnalyticsReport) => void
 }
 
+// Module-level cache — survives remounts when navigating away and back to analytics tab
+const historyCache = createModuleCache<ReportHistoryEntry[]>(60_000)
+
 export function ReportHistory({ clientId, platform, onLoad }: ReportHistoryProps) {
   const [reports, setReports] = useState<ReportHistoryEntry[]>([])
   const [loading, setLoading] = useState(true)
@@ -25,11 +29,21 @@ export function ReportHistory({ clientId, platform, onLoad }: ReportHistoryProps
   const [deletingId, setDeletingId] = useState<string | null>(null)
 
   useEffect(() => {
+    const key = `${clientId}:${platform}`
+    const cached = historyCache.get(key)
+    if (cached) {
+      setReports(cached)
+      setLoading(false)
+      return
+    }
+
     setLoading(true)
     fetch(`/api/analytics/report?client_id=${clientId}&platform=${platform}`)
       .then((r) => r.json())
       .then((data: { reports?: ReportHistoryEntry[] }) => {
-        setReports(data.reports ?? [])
+        const result = data.reports ?? []
+        historyCache.set(key, result)
+        setReports(result)
       })
       .catch(() => setReports([]))
       .finally(() => setLoading(false))
@@ -39,7 +53,11 @@ export function ReportHistory({ clientId, platform, onLoad }: ReportHistoryProps
     setDeletingId(reportId)
     try {
       await fetch(`/api/analytics/report/${reportId}`, { method: 'DELETE' })
-      setReports((prev) => prev.filter((r) => r.id !== reportId))
+      setReports((prev) => {
+        const updated = prev.filter((r) => r.id !== reportId)
+        historyCache.patch(`${clientId}:${platform}`, updated)
+        return updated
+      })
     } catch {
       // silently ignore
     } finally {

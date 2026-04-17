@@ -13,6 +13,7 @@ import { Topbar } from '@/components/layout/topbar'
 import { toast } from '@/components/ui/toast'
 import { PLATFORMS, WEEKDAY_OPTIONS, CAROUSEL_SLIDE_OPTIONS } from '@/utils/constants'
 import type { ClientRow, BrandProfileRow, PostingScheduleRow } from '@/types/database'
+import { createModuleCache } from '@/utils/module-cache'
 
 interface MetaConnection {
   id: string
@@ -21,6 +22,9 @@ interface MetaConnection {
   account_name: string
   token_expires_at: string | null
 }
+
+// Module-level cache — prevents double-fetch from React Strict Mode (dev) and remounts
+const connectionsCache = createModuleCache<MetaConnection[]>(30_000)
 
 interface ContentInsights {
   avgScore: number | null
@@ -59,19 +63,28 @@ export function ClientEditForm({
     const connected = searchParams.get('meta_connected')
     const error = searchParams.get('meta_error')
     if (connected) {
+      // Bust cache so the new connection is fetched fresh
+      connectionsCache.delete(clientId)
       toast.success(
         `${connected === 'instagram' ? 'Instagram' : 'Facebook'} account connected successfully`
       )
     } else if (error) {
       toast.error('Failed to connect account. Please try again.')
     }
-  }, [searchParams])
+  }, [searchParams, clientId])
 
   useEffect(() => {
+    const cached = connectionsCache.get(clientId)
+    if (cached) {
+      setConnections(cached)
+      return
+    }
     fetch(`/api/meta/connections?client_id=${clientId}`)
       .then((r) => r.json())
       .then((data: { connections?: MetaConnection[] }) => {
-        if (data.connections) setConnections(data.connections)
+        const result = data.connections ?? []
+        connectionsCache.set(clientId, result)
+        setConnections(result)
       })
       .catch(() => {
         /* silently ignore */
@@ -83,7 +96,11 @@ export function ClientEditForm({
     try {
       const res = await fetch(`/api/meta/connections/${connectionId}`, { method: 'DELETE' })
       if (!res.ok) throw new Error('Failed to disconnect')
-      setConnections((prev) => prev.filter((c) => c.id !== connectionId))
+      setConnections((prev) => {
+        const updated = prev.filter((c) => c.id !== connectionId)
+        connectionsCache.patch(clientId, updated)
+        return updated
+      })
       toast.success('Account disconnected')
     } catch {
       toast.error('Failed to disconnect account')

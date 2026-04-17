@@ -4,9 +4,8 @@ import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { createUserRecord } from '@/lib/auth/create-user-record'
 import { getAuthUser, getCachedUserRecord } from '@/lib/auth/session'
-import { getCachedAgency, getCachedAgencyClients } from '@/lib/queries/cache'
+import { getCachedAgency, getCachedAgencyClients, getCachedPendingRows } from '@/lib/queries/cache'
 import { USER_AUTH_COLUMNS } from '@/lib/queries/select-columns'
-import { countPendingPostsByClients } from '@/lib/queries/db'
 import { AuthProvider } from '@/components/providers/auth-provider'
 import { Sidebar } from '@/components/layout/sidebar'
 import { NotificationsBell } from '@/components/layout/notifications-bell'
@@ -47,16 +46,16 @@ export default async function DashboardLayout({ children }: { children: React.Re
   let pendingCount = 0
 
   if (userData) {
-    const [agencyData, clients] = await Promise.all([
+    const [agencyData] = await Promise.all([
       getCachedAgency(userData.agency_id),
       getCachedAgencyClients(userData.agency_id),
     ])
 
     if (agencyData?.mode === 'solo') agencyMode = 'solo'
 
-    // Pending review count for badge
-    const clientIds = clients.map((c) => c.id)
-    pendingCount = await countPendingPostsByClients(supabase, clientIds)
+    // Pending review count for badge — React cache deduplicates with clients/dashboard pages
+    const pendingRows = await getCachedPendingRows(userData.agency_id)
+    pendingCount = pendingRows.length
   }
 
   return (

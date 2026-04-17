@@ -1,8 +1,7 @@
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { requireSessionUser } from '@/lib/auth/session'
-import { getCachedAgency, getCachedAgencyClients } from '@/lib/queries/cache'
+import { getCachedAgency, getCachedAgencyClients, getCachedPendingRows } from '@/lib/queries/cache'
 import { BRIEFING_COLUMNS } from '@/lib/queries/select-columns'
-import { countPendingPostsByClients } from '@/lib/queries/db'
 import { Topbar } from '@/components/layout/topbar'
 import { DashboardView } from '@/features/dashboard/components/dashboard-view'
 import { PageTransition } from '@/components/providers/page-transition'
@@ -40,8 +39,8 @@ export default async function DashboardPage() {
     .single()
 
   if (clientIds.length > 0) {
-    const [pendingRes, scheduledRes, publishedRes, clientPendingRes] = await Promise.all([
-      countPendingPostsByClients(supabase, clientIds),
+    // getCachedPendingRows is a React cache hit — layout already populated it for this request
+    const [scheduledRes, publishedRes, pendingRows] = await Promise.all([
       supabase
         .from('posts')
         .select('id', { count: 'exact', head: true })
@@ -53,18 +52,13 @@ export default async function DashboardPage() {
         .select('id', { count: 'exact', head: true })
         .eq('status', 'published')
         .in('client_id', clientIds),
-      supabase
-        .from('posts')
-        .select('client_id')
-        .eq('status', 'pending_review')
-        .in('client_id', clientIds),
+      getCachedPendingRows(agencyId),
     ])
 
-    pendingCount = pendingRes
     scheduledCount = scheduledRes.count ?? 0
     publishedCount = publishedRes.count ?? 0
 
-    const pendingRows = (clientPendingRes.data as Array<{ client_id: string }> | null) ?? []
+    pendingCount = pendingRows.length
     for (const row of pendingRows) {
       clientPendingMap[row.client_id] = (clientPendingMap[row.client_id] ?? 0) + 1
     }

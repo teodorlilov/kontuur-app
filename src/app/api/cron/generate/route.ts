@@ -137,36 +137,38 @@ export async function GET(request: NextRequest) {
         trackTheme: async () => {},
       })
 
-      // 10. Save posts to DB as pending_review
-      for (const result of generationResults) {
-        const { post } = result
-        const { data: saved } = await supabase
+      // 10. Save posts to DB as pending_review — batch insert to avoid N serial round-trips
+      if (generationResults.length > 0) {
+        const { data: savedPosts } = await supabase
           .from('posts')
-          .insert({
-            client_id: clientId,
-            caption: post.caption,
-            platform: post.platform,
-            post_type: post.post_type,
-            slides_json: post.slides_json as Json,
-            carousel_quality_json: post.carousel_quality_json as Json,
-            status: 'pending_review',
-            priority: false,
-            quality_score_avg: post.quality_score_avg,
-            source_url: post.source_url,
-            source_title: post.source_title,
-            source_type: post.source_type,
-            source_excerpt: post.source_excerpt,
-            pillar: post.pillar,
-          })
+          .insert(
+            generationResults.map(({ post }) => ({
+              client_id: clientId,
+              caption: post.caption,
+              platform: post.platform,
+              post_type: post.post_type,
+              slides_json: post.slides_json as Json,
+              carousel_quality_json: post.carousel_quality_json as Json,
+              status: 'pending_review',
+              priority: false,
+              quality_score_avg: post.quality_score_avg,
+              source_url: post.source_url,
+              source_title: post.source_title,
+              source_type: post.source_type,
+              source_excerpt: post.source_excerpt,
+              pillar: post.pillar,
+            }))
+          )
           .select('id')
-          .single()
 
-        if (saved) {
-          await supabase.from('post_history').insert({
-            client_id: clientId,
-            topic_summary: post.topic_summary,
-          })
-          results.posts_created++
+        if (savedPosts && savedPosts.length > 0) {
+          await supabase.from('post_history').insert(
+            generationResults.map(({ post }) => ({
+              client_id: clientId,
+              topic_summary: post.topic_summary,
+            }))
+          )
+          results.posts_created += savedPosts.length
         }
       }
 

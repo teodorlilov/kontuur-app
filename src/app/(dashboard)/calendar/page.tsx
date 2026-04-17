@@ -30,7 +30,7 @@ export default async function CalendarPage() {
     clientIds.length > 0
       ? supabase
           .from('posts')
-          .select(POST_COLUMNS)
+          .select(`${POST_COLUMNS}, post_approval_tokens(status, client_note, created_at)`)
           .in('client_id', clientIds)
           .in('status', ['approved', 'scheduled'])
           .order('created_at', { ascending: false })
@@ -53,6 +53,8 @@ export default async function CalendarPage() {
     }
   }
 
+  type ApprovalTokenRow = { status: string; client_note: string | null; created_at: string }
+
   type PostRow = {
     id: string
     client_id: string
@@ -71,41 +73,24 @@ export default async function CalendarPage() {
     pillar: string | null
     source_excerpt: string | null
     created_at: string
+    post_approval_tokens: ApprovalTokenRow[]
   }
 
   const clientNameMap = new Map(clientList.map((c) => [c.id, c.name]))
   const typedPostRows = (postRows as PostRow[] | null) ?? []
 
-  // Fetch approval statuses for these posts (sequential — genuinely needs postIds)
-  const postIds = typedPostRows.map((p) => p.id)
-  const approvalMap = new Map<string, { status: string; client_note: string | null }>()
-
-  if (postIds.length > 0) {
-    const { data: tokenRows } = await supabase
-      .from('post_approval_tokens')
-      .select('post_id, status, client_note')
-      .in('post_id', postIds)
-      .order('created_at', { ascending: false })
-
-    if (tokenRows) {
-      // Use the latest token per post
-      for (const row of tokenRows) {
-        if (!approvalMap.has(row.post_id)) {
-          approvalMap.set(row.post_id, { status: row.status, client_note: row.client_note })
-        }
-      }
-    }
-  }
-
   const posts: CalendarPost[] = typedPostRows.map((p) => {
-    const approval = approvalMap.get(p.id)
+    // Sort tokens by created_at desc and take the latest
+    const latestToken = p.post_approval_tokens
+      .slice()
+      .sort((a, b) => b.created_at.localeCompare(a.created_at))[0]
     return {
       ...p,
       slides_json: p.slides_json as CalendarPost['slides_json'],
       carousel_quality_json: p.carousel_quality_json as CalendarPost['carousel_quality_json'],
       client_name: clientNameMap.get(p.client_id) ?? 'Unknown',
-      approval_status: approval?.status ?? null,
-      approval_client_note: approval?.client_note ?? null,
+      approval_status: latestToken?.status ?? null,
+      approval_client_note: latestToken?.client_note ?? null,
     }
   })
 

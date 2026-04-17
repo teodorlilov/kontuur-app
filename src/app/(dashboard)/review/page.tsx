@@ -1,9 +1,11 @@
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { requireSessionUser } from '@/lib/auth/session'
 import { getCachedAgencyClients } from '@/lib/queries/cache'
+import { POST_COLUMNS } from '@/lib/queries/select-columns'
 import { Topbar } from '@/components/layout/topbar'
 import { ReviewQueue } from '@/features/review/components/review-queue'
 import type { ReviewPost } from '@/lib/review/filter-review-posts'
+import type { BestTimePlatform } from '@/types/api'
 
 export default async function ReviewPage() {
   const { agencyId } = await requireSessionUser()
@@ -16,19 +18,19 @@ export default async function ReviewPage() {
   type ClientRow = {
     id: string
     name: string
-    brand_profiles: { is_health_niche: boolean } | null
+    brand_profiles: { is_health_niche: boolean; best_time_json: unknown } | null
   }
 
   // Fetch brand_profiles and posts in parallel instead of sequentially
   const [{ data: clientRows }, { data: postRows }] = await Promise.all([
     supabase
       .from('clients')
-      .select('id, name, brand_profiles(is_health_niche)')
+      .select('id, name, brand_profiles(is_health_niche, best_time_json)')
       .eq('agency_id', agencyId),
     clientIds.length > 0
       ? supabase
           .from('posts')
-          .select('*')
+          .select(POST_COLUMNS)
           .in('client_id', clientIds)
           .eq('status', 'pending_review')
           .order('priority', { ascending: false })
@@ -44,8 +46,13 @@ export default async function ReviewPage() {
     is_health_niche: c.brand_profiles?.is_health_niche ?? false,
   }))
 
-  // Build client lookup
+  // Build client lookup and best-time map (avoids N client fetches from post cards)
   const clientMap = new Map(clients.map((c) => [c.id, c]))
+  const bestTimeMap: Record<string, BestTimePlatform[] | null> = {}
+  for (const c of clientList) {
+    const btj = c.brand_profiles?.best_time_json
+    bestTimeMap[c.id] = Array.isArray(btj) ? (btj as BestTimePlatform[]) : null
+  }
 
   type PostRow = {
     id: string
@@ -98,7 +105,7 @@ export default async function ReviewPage() {
     <>
       <Topbar title="Review queue" />
       <div className="p-6">
-        <ReviewQueue initialPosts={posts} clients={clients} />
+        <ReviewQueue initialPosts={posts} clients={clients} bestTimeMap={bestTimeMap} />
       </div>
     </>
   )

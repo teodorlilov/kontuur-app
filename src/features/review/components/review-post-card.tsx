@@ -12,10 +12,9 @@ import { CarouselSlides } from '@/components/posts/carousel-slides'
 import type { CarouselSlide } from '@/types/api'
 import { useReviewActions } from '@/features/review/hooks/use-review-actions'
 import { useScheduleModal } from '@/components/scheduling/use-schedule-modal'
-import { useBestTime } from '@/components/posts/use-best-time'
 import { ScheduleModal } from '@/components/scheduling/schedule-modal'
 import type { ReviewPost } from '@/lib/review/filter-review-posts'
-import type { SlopDetection } from '@/types/api'
+import type { SlopDetection, BestTimePlatform } from '@/types/api'
 import { deriveSlopFromQuality as computeSlop } from '@/ai/validation/content-rules/compute-scores'
 
 /** Derive slop data from carousel_quality_json if available (avoids a separate API call) */
@@ -35,11 +34,12 @@ function deriveSlopFromQuality(post: ReviewPost): SlopDetection | null {
 
 interface ReviewPostCardProps {
   post: ReviewPost
+  bestTimeData: BestTimePlatform[] | null
   onApprove: (postId: string) => void
   onDelete: (postId: string) => void
 }
 
-export function ReviewPostCard({ post, onApprove, onDelete }: ReviewPostCardProps) {
+export function ReviewPostCard({ post, bestTimeData, onApprove, onDelete }: ReviewPostCardProps) {
   const {
     caption,
     slidesJson,
@@ -65,7 +65,6 @@ export function ReviewPostCard({ post, onApprove, onDelete }: ReviewPostCardProp
   })
 
   const scheduleModal = useScheduleModal()
-  const { bestTimeData } = useBestTime(post.client_id)
   const [expanded, setExpanded] = useState(false)
   const [editing, setEditing] = useState(false)
   const [editCaption, setEditCaption] = useState(caption)
