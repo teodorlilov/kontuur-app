@@ -115,6 +115,7 @@ export function CalendarView({ initialPosts, clients, bestTimeMap }: CalendarVie
     clearSelection,
     schedulePost,
     unschedulePost,
+    savePostContent,
     handleDrop,
     saving,
   } = useCalendar(initialPosts)
@@ -149,10 +150,17 @@ export function CalendarView({ initialPosts, clients, bestTimeMap }: CalendarVie
 
   function handleSidebarSave(
     postId: string,
-    updates: { scheduled_at?: string; platform?: string }
+    updates: { scheduled_at?: string; platform?: string; caption?: string; slides_json?: unknown }
   ) {
+    const contentUpdates =
+      updates.caption !== undefined || updates.slides_json !== undefined
+        ? { caption: updates.caption, slides_json: updates.slides_json }
+        : undefined
+
     if (updates.scheduled_at) {
-      void schedulePost(postId, updates.scheduled_at, updates.platform)
+      void schedulePost(postId, updates.scheduled_at, updates.platform, contentUpdates)
+    } else if (contentUpdates) {
+      void savePostContent(postId, contentUpdates)
     }
   }
 

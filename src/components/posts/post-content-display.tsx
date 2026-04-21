@@ -1,5 +1,6 @@
 'use client'
 
+import { useState, useRef, useEffect } from 'react'
 import { cn } from '@/utils/cn'
 import { qualityScoreBadgeClass } from '@/components/ui/colors/score-colors'
 import { getPillarColor } from '@/components/ui/colors/pillar-colors'
@@ -24,6 +25,91 @@ export interface PostContentDisplayProps {
   theme?: string
   criteria?: ValidationCriteria | null
   scores?: ValidationScores | null
+  editable?: boolean
+  onCaptionChange?: (caption: string) => void
+  onSlidesChange?: (slides: CarouselSlide[]) => void
+}
+
+/** Inline-editable caption that switches to a textarea on click */
+function EditableCaption({
+  caption,
+  label,
+  editable,
+  onCaptionChange,
+  onCopy,
+}: {
+  caption: string | null
+  label: string
+  editable?: boolean
+  onCaptionChange?: (caption: string) => void
+  onCopy: () => void
+}) {
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState(caption ?? '')
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+
+  useEffect(() => {
+    setDraft(caption ?? '')
+  }, [caption])
+
+  useEffect(() => {
+    if (editing && textareaRef.current) {
+      textareaRef.current.focus()
+      textareaRef.current.style.height = 'auto'
+      textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`
+    }
+  }, [editing])
+
+  function commit() {
+    setEditing(false)
+    if (draft !== (caption ?? '') && onCaptionChange) {
+      onCaptionChange(draft)
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex items-center justify-between">
+        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">{label}</p>
+        <button
+          onClick={onCopy}
+          className="text-xs text-gray-500 hover:text-gray-700 font-medium"
+        >
+          Copy
+        </button>
+      </div>
+      {editable && onCaptionChange && !editing ? (
+        <p
+          onClick={() => setEditing(true)}
+          className="text-sm text-gray-900 whitespace-pre-wrap leading-relaxed cursor-text rounded px-1 -mx-1 hover:bg-gray-50 hover:ring-1 hover:ring-gray-200 transition-all"
+        >
+          {caption ? decodeUrlsInText(caption) : caption}
+        </p>
+      ) : editing ? (
+        <textarea
+          ref={textareaRef}
+          value={draft}
+          onChange={(e) => {
+            setDraft(e.target.value)
+            e.target.style.height = 'auto'
+            e.target.style.height = `${e.target.scrollHeight}px`
+          }}
+          onBlur={commit}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') {
+              setDraft(caption ?? '')
+              setEditing(false)
+            }
+          }}
+          className="w-full text-sm text-gray-900 whitespace-pre-wrap leading-relaxed border border-gray-300 rounded-lg px-2 py-1 -mx-1 focus:outline-none focus:ring-2 focus:ring-brand-purple focus:border-transparent resize-none"
+        />
+      ) : (
+        <p className="text-sm text-gray-900 whitespace-pre-wrap leading-relaxed">
+          {caption ? decodeUrlsInText(caption) : caption}
+        </p>
+      )}
+    </div>
+  )
 }
 
 export function PostContentDisplay({
@@ -41,6 +127,9 @@ export function PostContentDisplay({
   theme,
   criteria,
   scores,
+  editable,
+  onCaptionChange,
+  onSlidesChange,
 }: PostContentDisplayProps) {
   const isCarousel = postType === 'carousel'
 
@@ -161,25 +250,18 @@ export function PostContentDisplay({
       )}
 
       {/* Caption */}
-      <div className="flex flex-col gap-2">
-        <div className="flex items-center justify-between">
-          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
-            {isCarousel ? 'Main Caption' : 'Caption'}
-          </p>
-          <button
-            onClick={handleCopyCaption}
-            className="text-xs text-gray-500 hover:text-gray-700 font-medium"
-          >
-            Copy
-          </button>
-        </div>
-        <p className="text-sm text-gray-900 whitespace-pre-wrap leading-relaxed">
-          {caption ? decodeUrlsInText(caption) : caption}
-        </p>
-      </div>
+      <EditableCaption
+        caption={caption}
+        label={isCarousel ? 'Main Caption' : 'Caption'}
+        editable={editable}
+        onCaptionChange={onCaptionChange}
+        onCopy={handleCopyCaption}
+      />
 
       {/* Carousel slides */}
-      {isCarousel && slides.length > 0 && <CarouselSlides slides={slides} />}
+      {isCarousel && slides.length > 0 && (
+        <CarouselSlides slides={slides} editable={editable} onSlidesChange={onSlidesChange} />
+      )}
 
       {/* Quality scores (generation flow only) */}
       {criteria && scores && (

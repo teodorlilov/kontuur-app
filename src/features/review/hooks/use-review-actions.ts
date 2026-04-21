@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useRef } from 'react'
 import { toast } from '@/components/ui/toast'
 import type { SlopDetection } from '@/types/api'
 
@@ -122,6 +122,29 @@ export function useReviewActions({
     }
   }
 
+  async function saveSlidesJson(newSlides: unknown): Promise<boolean> {
+    setSaving(true)
+    try {
+      const res = await fetch(`/api/posts/${postId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ slides_json: newSlides }),
+      })
+      if (res.ok) {
+        setSlidesJson(newSlides)
+        toast.success('Slides updated')
+        return true
+      }
+      toast.error('Failed to save slides')
+      return false
+    } catch {
+      toast.error('Failed to save slides')
+      return false
+    } finally {
+      setSaving(false)
+    }
+  }
+
   async function rewrite() {
     setRewriting(true)
     try {
@@ -190,6 +213,7 @@ export function useReviewActions({
     approve,
     deletePost,
     saveCaption,
+    saveSlidesJson,
     rewrite,
   }
 }

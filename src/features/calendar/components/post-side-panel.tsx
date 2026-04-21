@@ -7,12 +7,15 @@ import { getNextDateForDay } from '@/utils/date-helpers'
 import { Button } from '@/components/ui/button'
 import { PLATFORMS } from '@/utils/constants'
 import { PostContentDisplay } from '@/components/posts/post-content-display'
-import type { CalendarPost, BestTimePlatform } from '@/types/api'
+import type { CalendarPost, BestTimePlatform, CarouselSlide } from '@/types/api'
 
 interface PostSidePanelProps {
   post: CalendarPost | null
   onClose: () => void
-  onSave: (postId: string, updates: { scheduled_at?: string; platform?: string }) => void
+  onSave: (
+    postId: string,
+    updates: { scheduled_at?: string; platform?: string; caption?: string; slides_json?: unknown }
+  ) => void
   onUnschedule?: (postId: string) => void
   bestTimeData?: BestTimePlatform[] | null
   saving: boolean
@@ -29,6 +32,10 @@ export function PostSidePanel({
   const [selectedDate, setSelectedDate] = useState('')
   const [selectedTime, setSelectedTime] = useState('')
   const [selectedPlatform, setSelectedPlatform] = useState('')
+  const [editedCaption, setEditedCaption] = useState(post?.caption ?? '')
+  const [editedSlides, setEditedSlides] = useState<CarouselSlide[]>(
+    Array.isArray(post?.slides_json) ? (post.slides_json as CarouselSlide[]) : []
+  )
 
   // Reset form when post changes
   useEffect(() => {
@@ -42,6 +49,10 @@ export function PostSidePanel({
       setSelectedTime('')
     }
     setSelectedPlatform(post.platform ?? '')
+    setEditedCaption(post.caption ?? '')
+    setEditedSlides(
+      Array.isArray(post.slides_json) ? (post.slides_json as CarouselSlide[]) : []
+    )
   }, [post])
 
   if (!post) return null
@@ -50,13 +61,29 @@ export function PostSidePanel({
     (bt) => bt.platform.toLowerCase() === (selectedPlatform || post.platform || '').toLowerCase()
   )
 
+  const captionChanged = editedCaption !== (post?.caption ?? '')
+  const slidesChanged =
+    post?.post_type === 'carousel' &&
+    JSON.stringify(editedSlides) !== JSON.stringify(post?.slides_json)
+
   function handleSave() {
-    if (!selectedDate || !post) return
-    const scheduledAt = new Date(`${selectedDate}T${selectedTime || '12:00'}:00`).toISOString()
-    const updates: { scheduled_at?: string; platform?: string } = { scheduled_at: scheduledAt }
+    if (!post) return
+    const updates: {
+      scheduled_at?: string
+      platform?: string
+      caption?: string
+      slides_json?: unknown
+    } = {}
+    if (selectedDate) {
+      updates.scheduled_at = new Date(
+        `${selectedDate}T${selectedTime || '12:00'}:00`
+      ).toISOString()
+    }
     if (selectedPlatform && selectedPlatform !== post.platform) {
       updates.platform = selectedPlatform
     }
+    if (captionChanged) updates.caption = editedCaption
+    if (slidesChanged) updates.slides_json = editedSlides
     onSave(post.id, updates)
   }
 
@@ -120,10 +147,10 @@ export function PostSidePanel({
 
           {/* Post content (shared with generation flow) */}
           <PostContentDisplay
-            caption={post.caption}
+            caption={editedCaption}
             platform={post.platform}
             postType={post.post_type}
-            slidesJson={post.slides_json}
+            slidesJson={editedSlides.length > 0 ? editedSlides : post.slides_json}
             priority={post.priority}
             qualityScoreAvg={post.quality_score_avg}
             sourceUrl={post.source_url}
@@ -131,6 +158,9 @@ export function PostSidePanel({
             sourceType={post.source_type}
             sourceExcerpt={post.source_excerpt}
             pillar={post.pillar}
+            editable
+            onCaptionChange={setEditedCaption}
+            onSlidesChange={setEditedSlides}
           />
 
           {/* Best time recommendations */}
@@ -227,10 +257,16 @@ export function PostSidePanel({
             <Button
               onClick={handleSave}
               loading={saving}
-              disabled={!selectedDate}
+              disabled={!selectedDate && !captionChanged && !slidesChanged}
               className="flex-1"
             >
-              {post.status === 'scheduled' ? 'Update schedule' : 'Schedule'}
+              {captionChanged || slidesChanged
+                ? selectedDate
+                  ? 'Save & schedule'
+                  : 'Save changes'
+                : post.status === 'scheduled'
+                  ? 'Update schedule'
+                  : 'Schedule'}
             </Button>
             {post.status === 'scheduled' && onUnschedule && (
               <Button

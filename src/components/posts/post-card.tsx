@@ -182,6 +182,9 @@ export function PostCard({
           theme={theme}
           criteria={criteria}
           scores={scores}
+          editable
+          onCaptionChange={setCaption}
+          onSlidesChange={setSlidesJson}
         />
 
         {/* Slop detector */}

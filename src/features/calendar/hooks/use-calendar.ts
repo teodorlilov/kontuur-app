@@ -32,7 +32,12 @@ export function useCalendar(initialPosts: CalendarPost[]) {
     setSelectedPostId(null)
   }, [])
 
-  async function schedulePost(postId: string, scheduledAt: string, platform?: string) {
+  async function schedulePost(
+    postId: string,
+    scheduledAt: string,
+    platform?: string,
+    contentUpdates?: { caption?: string; slides_json?: unknown }
+  ) {
     setSaving(true)
     try {
       const body: Record<string, unknown> = {
@@ -40,6 +45,8 @@ export function useCalendar(initialPosts: CalendarPost[]) {
         scheduled_at: scheduledAt,
       }
       if (platform) body.platform = platform
+      if (contentUpdates?.caption !== undefined) body.caption = contentUpdates.caption
+      if (contentUpdates?.slides_json !== undefined) body.slides_json = contentUpdates.slides_json
 
       const res = await fetch(`/api/posts/${postId}`, {
         method: 'PUT',
@@ -60,6 +67,10 @@ export function useCalendar(initialPosts: CalendarPost[]) {
                 status: 'scheduled',
                 scheduled_at: scheduledAt,
                 platform: platform ?? p.platform,
+                ...(contentUpdates?.caption !== undefined && { caption: contentUpdates.caption }),
+                ...(contentUpdates?.slides_json !== undefined && {
+                  slides_json: contentUpdates.slides_json as CalendarPost['slides_json'],
+                }),
               }
             : p
         )
@@ -67,6 +78,43 @@ export function useCalendar(initialPosts: CalendarPost[]) {
       toast.success('Post scheduled')
     } catch {
       toast.error('Failed to schedule post')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  /** Save content edits (caption/slides) without changing schedule */
+  async function savePostContent(
+    postId: string,
+    updates: { caption?: string; slides_json?: unknown }
+  ) {
+    setSaving(true)
+    try {
+      const res = await fetch(`/api/posts/${postId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates),
+      })
+      if (!res.ok) {
+        toast.error('Failed to save changes')
+        return
+      }
+      setPosts((prev) =>
+        prev.map((p) =>
+          p.id === postId
+            ? {
+                ...p,
+                ...(updates.caption !== undefined && { caption: updates.caption }),
+                ...(updates.slides_json !== undefined && {
+                  slides_json: updates.slides_json as CalendarPost['slides_json'],
+                }),
+              }
+            : p
+        )
+      )
+      toast.success('Post updated')
+    } catch {
+      toast.error('Failed to save changes')
     } finally {
       setSaving(false)
     }
@@ -112,6 +160,7 @@ export function useCalendar(initialPosts: CalendarPost[]) {
     clearSelection,
     schedulePost,
     unschedulePost,
+    savePostContent,
     handleDrop,
     saving,
   }

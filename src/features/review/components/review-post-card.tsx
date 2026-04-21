@@ -4,11 +4,10 @@ import { useState, useEffect } from 'react'
 import { cn } from '@/utils/cn'
 import { qualityScoreBadgeClass } from '@/components/ui/colors/score-colors'
 import { getPillarColor } from '@/components/ui/colors/pillar-colors'
-import { toast } from '@/components/ui/toast'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { SlopDetector } from '@/components/posts/slop-detector'
-import { CarouselSlides } from '@/components/posts/carousel-slides'
+import { PostContentDisplay } from '@/components/posts/post-content-display'
 import type { CarouselSlide } from '@/types/api'
 import { useReviewActions } from '@/features/review/hooks/use-review-actions'
 import { useScheduleModal } from '@/components/scheduling/use-schedule-modal'
@@ -47,12 +46,12 @@ export function ReviewPostCard({ post, bestTimeData, onApprove, onDelete }: Revi
     slopLoading,
     approving,
     deleting,
-    saving,
     rewriting,
     runSlopDetection,
     approve,
     deletePost,
     saveCaption,
+    saveSlidesJson,
     rewrite,
   } = useReviewActions({
     postId: post.id,
@@ -66,8 +65,6 @@ export function ReviewPostCard({ post, bestTimeData, onApprove, onDelete }: Revi
 
   const scheduleModal = useScheduleModal()
   const [expanded, setExpanded] = useState(false)
-  const [editing, setEditing] = useState(false)
-  const [editCaption, setEditCaption] = useState(caption)
   const [confirmDelete, setConfirmDelete] = useState(false)
 
   const isCarousel = post.post_type === 'carousel'
@@ -81,11 +78,6 @@ export function ReviewPostCard({ post, bestTimeData, onApprove, onDelete }: Revi
       : caption
     runSlopDetection(textForSlop)
   }, [expanded]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  function handleCopyCaption() {
-    void navigator.clipboard.writeText(caption)
-    toast.success('Copied to clipboard')
-  }
 
   function handleApproveClick() {
     scheduleModal.openModal()
@@ -101,14 +93,16 @@ export function ReviewPostCard({ post, bestTimeData, onApprove, onDelete }: Revi
     setConfirmDelete(false)
   }
 
-  async function handleSaveCaption() {
-    const ok = await saveCaption(editCaption)
-    if (ok) setEditing(false)
+  function handleCaptionChange(newCaption: string) {
+    void saveCaption(newCaption)
+  }
+
+  function handleSlidesChange(newSlides: CarouselSlide[]) {
+    void saveSlidesJson(newSlides)
   }
 
   async function handleRewrite() {
     await rewrite()
-    setEditCaption(caption)
   }
 
   return (
@@ -174,71 +168,18 @@ export function ReviewPostCard({ post, bestTimeData, onApprove, onDelete }: Revi
       {/* Expanded content */}
       {expanded && (
         <div className="border-t border-gray-100 p-5 flex flex-col gap-5">
-          {/* Caption */}
-          <div className="flex flex-col gap-2">
-            <div className="flex items-center justify-between">
-              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
-                {isCarousel ? 'Main Caption' : 'Caption'}
-              </p>
-              <div className="flex items-center gap-2">
-                {!editing && (
-                  <button
-                    onClick={() => {
-                      setEditCaption(caption)
-                      setEditing(true)
-                    }}
-                    className="text-xs text-brand-purple hover:underline font-medium"
-                  >
-                    Edit
-                  </button>
-                )}
-                <button
-                  onClick={handleCopyCaption}
-                  className="text-xs text-gray-500 hover:text-gray-700 font-medium"
-                >
-                  Copy
-                </button>
-              </div>
-            </div>
-            {editing ? (
-              <div className="flex flex-col gap-2">
-                <textarea
-                  value={editCaption}
-                  onChange={(e) => setEditCaption(e.target.value)}
-                  rows={6}
-                  className="w-full text-sm text-gray-900 border border-gray-300 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-brand-purple focus:border-transparent resize-y"
-                />
-                <div className="flex gap-2">
-                  <Button
-                    onClick={() => {
-                      void handleSaveCaption()
-                    }}
-                    loading={saving}
-                    size="sm"
-                  >
-                    Save
-                  </Button>
-                  <Button
-                    onClick={() => {
-                      setEditCaption(caption)
-                      setEditing(false)
-                    }}
-                    variant="ghost"
-                    size="sm"
-                  >
-                    Cancel
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <p className="text-sm text-gray-900 whitespace-pre-wrap leading-relaxed">
-                {caption}
-              </p>
-            )}
-          </div>
-
-          {/* Carousel slides */}
-          {isCarousel && slides.length > 0 && <CarouselSlides slides={slides} />}
+          {/* Post content — editable caption + slides */}
+          <PostContentDisplay
+            caption={caption}
+            platform={post.platform}
+            postType={post.post_type}
+            slidesJson={slidesJson}
+            priority={false}
+            qualityScoreAvg={null}
+            editable
+            onCaptionChange={handleCaptionChange}
+            onSlidesChange={handleSlidesChange}
+          />
 
           {/* Slop detection */}
           {slopLoading && (
