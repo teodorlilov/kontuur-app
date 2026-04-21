@@ -15,6 +15,9 @@ export const APPROVAL_TOKEN_EXPIRY_HOURS = 48
 export const BEST_TIME_REFRESH_DAYS = 30
 export const TRIAL_DAYS = 14
 export const MAX_RSS_ITEMS = 20
+export const TAVILY_API_URL = 'https://api.tavily.com/search'
+export const USER_AGENT_BROWSER = 'Mozilla/5.0 (compatible; Postflow/1.0)'
+export const USER_AGENT_BOT = 'PostflowBot/1.0'
 
 export const PLATFORMS = ['Instagram', 'Facebook', 'LinkedIn', 'X / Twitter', 'TikTok'] as const
 

@@ -1,4 +1,5 @@
 export interface WeightedPillar {
+  id: string
   pillar: string
   weight: number
 }
@@ -6,21 +7,45 @@ export interface WeightedPillar {
 /**
  * Parse content_pillars JSON string into WeightedPillar[].
  * Returns [] if null/empty/invalid.
+ * Assigns a stable UUID to any pillar missing an id (legacy data or LLM output).
  */
 export function parsePillars(raw: string | null): WeightedPillar[] {
-  if (!raw?.trim()) return []
+  return parsePillarsWithMeta(raw).pillars
+}
+
+/**
+ * Like parsePillars but also reports whether any IDs were generated.
+ * Use this when you need to persist the generated IDs back to the DB.
+ */
+export function parsePillarsWithMeta(raw: string | null): {
+  pillars: WeightedPillar[]
+  hadMissingIds: boolean
+} {
+  if (!raw?.trim()) return { pillars: [], hadMissingIds: false }
   try {
     const parsed = JSON.parse(raw) as unknown
-    if (!Array.isArray(parsed)) return []
-    return parsed.filter(
-      (item): item is WeightedPillar =>
-        typeof item === 'object' &&
-        item !== null &&
-        typeof (item as Record<string, unknown>).pillar === 'string' &&
-        typeof (item as Record<string, unknown>).weight === 'number'
-    )
+    if (!Array.isArray(parsed)) return { pillars: [], hadMissingIds: false }
+    let hadMissingIds = false
+    const pillars = parsed
+      .filter(
+        (item): item is Record<string, unknown> =>
+          typeof item === 'object' &&
+          item !== null &&
+          typeof (item as Record<string, unknown>).pillar === 'string' &&
+          typeof (item as Record<string, unknown>).weight === 'number'
+      )
+      .map((item) => {
+        const hasId = typeof item.id === 'string' && item.id.length > 0
+        if (!hasId) hadMissingIds = true
+        return {
+          id: hasId ? (item.id as string) : crypto.randomUUID(),
+          pillar: item.pillar as string,
+          weight: item.weight as number,
+        }
+      })
+    return { pillars, hadMissingIds }
   } catch {
-    return []
+    return { pillars: [], hadMissingIds: false }
   }
 }
 
@@ -40,6 +65,7 @@ export function equalizeWeights(pillars: WeightedPillar[]): WeightedPillar[] {
   const base = Math.floor(100 / pillars.length)
   const remainder = 100 - base * pillars.length
   return pillars.map((p, i) => ({
+    id: p.id,
     pillar: p.pillar,
     weight: base + (i < remainder ? 1 : 0),
   }))
@@ -85,4 +111,24 @@ export function allocateByWeight(pillars: WeightedPillar[], total: number): Map<
 
   pillars.forEach((p, i) => result.set(p.pillar, floored[i]!))
   return result
+}
+
+/** Extract pillar IDs from a source's pillar_ids column. Empty array = feeds all pillars. */
+export function getSourcePillarIds(pillarIds: unknown): string[] {
+  if (!Array.isArray(pillarIds)) return []
+  return pillarIds.filter((id): id is string => typeof id === 'string' && id.length > 0)
+}
+
+/** Resolve pillar IDs to pillar names. Returns [] if ids is empty (= all pillars). */
+export function resolvePillarNames(ids: string[], pillars: WeightedPillar[]): string[] {
+  if (ids.length === 0) return []
+  const idSet = new Set(ids)
+  return pillars.filter((p) => idSet.has(p.id)).map((p) => p.pillar)
+}
+
+/** Check if a pillar has at least one eligible source (any source with empty pillar_ids or containing this pillar's id). */
+export function pillarHasSources(pillarId: string, allSourcePillarIds: string[][]): boolean {
+  return allSourcePillarIds.some(
+    (ids) => ids.length === 0 || ids.includes(pillarId)
+  )
 }

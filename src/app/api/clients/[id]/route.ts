@@ -1,9 +1,11 @@
 import { NextResponse } from 'next/server'
-import { revalidateTag } from 'next/cache'
+import { revalidateTag, revalidatePath } from 'next/cache'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
 import { verifyClientOwnership } from '@/lib/auth/helpers'
 import { fetchPostingScheduleByClient } from '@/lib/queries/db'
 import { fetchClientData } from '@/lib/clients/fetch-client-data'
+import { parsePillars } from '@/lib/clients/content-pillars'
+import { removeDeletedPillarIds } from '@/lib/clients/sync-source-pillars'
 
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -105,6 +107,24 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
     if (bp.language_notes !== undefined) profileUpdates.language_notes = bp.language_notes
 
     if (Object.keys(profileUpdates).length > 0) {
+      // If content_pillars changed, sync deleted pillar IDs from sources
+      if (bp.content_pillars !== undefined) {
+        const { data: oldProfile } = await supabase
+          .from('brand_profiles')
+          .select('content_pillars')
+          .eq('client_id', id)
+          .single()
+        const oldPillars = parsePillars(
+          (oldProfile as { content_pillars: string | null } | null)?.content_pillars ?? null
+        )
+        const newPillars = parsePillars(bp.content_pillars)
+        const newIds = new Set(newPillars.map((p) => p.id))
+        const deletedIds = oldPillars.map((p) => p.id).filter((pid) => !newIds.has(pid))
+        if (deletedIds.length > 0) {
+          await removeDeletedPillarIds(supabase, id, deletedIds)
+        }
+      }
+
       const { error } = await supabase
         .from('brand_profiles')
         .update(profileUpdates)
@@ -134,6 +154,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
   }
 
   revalidateTag('agency-clients', 'max')
+  revalidatePath('/generate')
   return NextResponse.json({ success: true })
 }
 

@@ -1,5 +1,12 @@
 import { fetchClientSources, fetchThemeDescriptions, fetchUsedSourceUrls } from '@/lib/queries/db'
 import { searchTrends } from '@/lib/sources/fetch-trend-search'
+import {
+  allocateByWeight,
+  getSourcePillarIds,
+  resolvePillarNames,
+  pillarHasSources,
+} from '@/lib/clients/content-pillars'
+import type { TavilyConfig } from '@/types/sources'
 import { createAllSources } from './sources/source-factory'
 import { ResearchSource } from './sources/research-source'
 import { ResearchPromptBuilder } from './prompts/prompt-builder'
@@ -12,19 +19,14 @@ import type {
   ClientSourceRow,
   FetchLimits,
   SourceFullTextIndex,
-  SourceStrategy,
+  SkippedPillar,
   FileExcerpt,
 } from './types'
 import type { ClientData } from '@/lib/clients/fetch-client-data'
 
-const DEFAULT_STRATEGY: SourceStrategy = {
-  trend_fallback: true,
-}
-
 interface ResearchClientData extends ClientData {
   sources: ClientSourceRow[]
   history: string[]
-  strategy: SourceStrategy
   usedUrls: string[]
 }
 
@@ -41,70 +43,115 @@ export class ResearchPipeline {
 
   /** Execute the full research pipeline. Main entry point. */
   async execute(): Promise<ResearchTopic[]> {
-    // 1. Load client data (pillars, history, sources, strategy)
     this.ctx.onPhase?.('Loading brand profile...')
     const clientData = await this.loadClientData()
-
-    // 2. Compute fetch limits scaled to requested post count
-    // 3. Create source objects via factory (polymorphic creation)
-    // 4. Fetch all sources in parallel (limits control how much each source fetches)
-    this.ctx.onPhase?.('Fetching sources...')
     const limits = computeFetchLimits(this.ctx.count)
-    const sourceObjects = createAllSources(clientData.sources)
-    await this.fetchAllSources(sourceObjects, limits)
-
-    // 5. Build source context from fetched sources (limits control token budgets)
-    const sourceContext = this.buildSourceContext(sourceObjects, clientData.strategy, limits)
-
     const requestedCount = this.ctx.count
+    const pillars = clientData.contentPillars
 
-    // 5a. If no source context, try Tavily web search for current trends
-    let effectiveContext: SourceContext | undefined = sourceContext
-    if (!sourceContext) {
-      this.ctx.onPhase?.('Searching current trends...')
-      const webSearchItems = await searchTrends(this.ctx.niche, requestedCount + 2, {
-        targetAudience: clientData.targetAudience,
-        contentPillars: clientData.contentPillars,
-        postHistory: clientData.history,
-        language: clientData.language,
-        excludedUrls: clientData.usedUrls,
-      })
-      if (webSearchItems.length > 0) {
-        effectiveContext = { rssItems: [], websiteExcerpts: [], fileExcerpts: [], webSearchItems }
-      }
+    this.ctx.onPhase?.('Fetching sources...')
+
+    // Separate tavily row (not a ResearchSource — uses searchTrends API)
+    const tavilyRow = clientData.sources.find((r) => r.type === 'tavily')
+    const nonTavilySources = clientData.sources.filter((r) => r.type !== 'tavily')
+    const sourceObjects = createAllSources(nonTavilySources)
+
+    // Pre-cache pillar names per source to avoid redundant resolution in buildSourceContext
+    const pillarNamesById = new Map<string, string[]>()
+    for (const s of sourceObjects) {
+      pillarNamesById.set(s.id, resolvePillarNames(getSourcePillarIds(s.pillarIds), pillars))
     }
 
-    // If still no context (no sources + Tavily unavailable/failed), skip LLM call
-    if (!effectiveContext) {
-      this.ctx.onPhase?.('No source material found — web search returned no matching articles')
+    const shouldSearchWeb = !!tavilyRow
+    const tavilyConfig = (tavilyRow?.config ?? {}) as TavilyConfig
+
+    // Skip pillars with no eligible sources
+    const allSourcePillarIds = [
+      ...sourceObjects.map((s) => getSourcePillarIds(s.pillarIds)),
+      ...(tavilyRow ? [getSourcePillarIds(tavilyRow.pillar_ids)] : []),
+    ]
+    const effectivePillars = pillars.filter((p) => pillarHasSources(p.id, allSourcePillarIds))
+    const preSkippedPillars: SkippedPillar[] = pillars
+      .filter((p) => !pillarHasSources(p.id, allSourcePillarIds))
+      .map((p) => ({ name: p.pillar }))
+
+    const [, allWebSearchItems] = await Promise.all([
+      this.fetchAllSources(sourceObjects, limits),
+      shouldSearchWeb
+        ? searchTrends(this.ctx.niche, requestedCount + 2, {
+            targetAudience: clientData.targetAudience,
+            contentPillars: effectivePillars,
+            postHistory: clientData.history,
+            language: clientData.language,
+            excludedUrls: clientData.usedUrls,
+            tavilyConfig,
+          })
+        : Promise.resolve([]),
+    ])
+
+    // Tag web search items with tavily source's eligible pillars
+    const tavilyPillarNames = tavilyRow
+      ? resolvePillarNames(getSourcePillarIds(tavilyRow.pillar_ids), pillars)
+      : []
+    const webSearchItems = shouldSearchWeb
+      ? tavilyPillarNames.length > 0
+        ? allWebSearchItems.map((r) => ({ ...r, eligiblePillars: tavilyPillarNames }))
+        : allWebSearchItems
+      : []
+
+    const clientSourceContext = this.buildSourceContext(sourceObjects, limits, pillarNamesById)
+
+    const hasAnySources =
+      clientSourceContext.rssItems.length > 0 ||
+      clientSourceContext.websiteExcerpts.length > 0 ||
+      clientSourceContext.fileExcerpts.length > 0 ||
+      webSearchItems.length > 0
+
+    if (!hasAnySources) {
+      this.ctx.onPhase?.('No source material found')
       return []
     }
 
-    // 6. Build full-text maps for source grounding (RSS/website/file sources only)
-    const fullTextIndex = this.buildSourceFullTextIndex(sourceObjects)
+    const effectiveContext: SourceContext = {
+      ...clientSourceContext,
+      webSearchItems: webSearchItems.length > 0 ? webSearchItems : undefined,
+    }
 
-    // 7. Generate topics via prompt builder (exact count, no multiplier)
     this.ctx.onPhase?.('Generating theme ideas...')
     const builder = new ResearchPromptBuilder({
       niche: this.ctx.niche,
       languageConfig: clientData.languageConfig,
-      contentPillars: clientData.contentPillars,
+      contentPillars: effectivePillars,
       postHistory: clientData.history,
       excludedUrls: clientData.usedUrls,
     })
 
     const topics = await generateTopics(builder, requestedCount, effectiveContext)
-    this.attachSourceFullText(topics, fullTextIndex)
 
-    const finalTopics = topics
-      .filter((t) => t.suggested_theme?.trim())
-      .slice(0, requestedCount)
+    // Filter LLM-hallucinated topics (no source URL except file type)
+    const groundedTopics = topics.filter(
+      (t) => t.suggested_theme?.trim() && (t.source_url || t.source_type === 'file')
+    )
 
-    // Emit each final topic for streaming consumers (after all dedup/retry is done)
-    for (const topic of finalTopics) {
-      this.ctx.onTopic?.(topic)
+    // Detect skipped pillars (pillars with no returned topics — includes pre-skipped + post-LLM)
+    const coveredPillars = new Set(groundedTopics.map((t) => t.pillar).filter(Boolean))
+    const postLlmSkipped: SkippedPillar[] = effectivePillars
+      .filter((p) => !coveredPillars.has(p.pillar))
+      .map((p) => ({ name: p.pillar }))
+    const skippedPillars = [...preSkippedPillars, ...postLlmSkipped]
+
+    if (skippedPillars.length > 0) {
+      const allocation = allocateByWeight(clientData.contentPillars, requestedCount)
+      const skippedCount = skippedPillars.reduce(
+        (sum, p) => sum + (allocation.get(p.name) ?? 0),
+        0
+      )
+      this.ctx.onSkippedPillars?.(skippedPillars, skippedCount)
     }
 
+    this.attachSourceFullText(groundedTopics, this.buildSourceFullTextIndex(sourceObjects))
+    const finalTopics = groundedTopics.slice(0, requestedCount)
+    for (const topic of finalTopics) this.ctx.onTopic?.(topic)
     return finalTopics
   }
 
@@ -113,7 +160,6 @@ export class ResearchPipeline {
     // Preloaded path — wizard always passes ClientData with full context
     if (this.ctx.preloadedClientData) {
       const data: ClientData = this.ctx.preloadedClientData
-      const strategy: SourceStrategy = data.sourceStrategy ?? DEFAULT_STRATEGY
       const [sources, themeHistory, usedUrls] = await Promise.all([
         this.ctx.clientId
           ? fetchClientSources(this.ctx.supabase, this.ctx.clientId)
@@ -130,7 +176,6 @@ export class ResearchPipeline {
         ...data,
         sources,
         history: [...data.postHistory, ...themeHistory],
-        strategy,
         usedUrls,
       }
     }
@@ -147,8 +192,8 @@ export class ResearchPipeline {
       networkSources.map(async (source) => {
         const result = await source.fetch(limits)
         void source.reportStatus(this.ctx.supabase, result).catch((err: unknown) => {
-            console.error('[research] reportStatus failed:', err)
-          })
+          console.error('[research] reportStatus failed:', err)
+        })
       })
     )
 
@@ -158,42 +203,48 @@ export class ResearchPipeline {
 
   /**
    * Build the SourceContext from fetched source objects.
-   * Aggregates RSS items (global cap), budgets website/file excerpts.
+   * Tags each item with eligible pillar names based on the source's pillar_ids.
    */
   private buildSourceContext(
     sources: ResearchSource[],
-    strategy: SourceStrategy,
-    limits: FetchLimits
-  ): SourceContext | undefined {
-    // RSS: aggregate all items across sources, cap at scaled global limit
-    const cappedRssItems = sources.flatMap((s) => s.getRssItems()).slice(0, limits.rssGlobalCap)
+    limits: FetchLimits,
+    pillarNamesById: Map<string, string[]>
+  ): SourceContext {
+    // RSS: aggregate all items across sources, tag with eligible pillars, cap at global limit
+    const cappedRssItems = sources
+      .flatMap((s) => {
+        const names = pillarNamesById.get(s.id) ?? []
+        return s.getRssItems().map((item) =>
+          names.length > 0 ? { ...item, eligiblePillars: names } : item
+        )
+      })
+      .slice(0, limits.rssGlobalCap)
 
-    // Website: distribute scaled web budget across all excerpts from all sources
-    const allWebExcerpts = sources.flatMap((s) => s.getWebExcerpts())
+    // Website: distribute scaled web budget, tag with eligible pillars
+    const allWebExcerpts = sources.flatMap((s) => {
+      const names = pillarNamesById.get(s.id) ?? []
+      return s.getWebExcerpts().map((w) =>
+        names.length > 0 ? { ...w, eligiblePillars: names } : w
+      )
+    })
     const perWebBudget =
       allWebExcerpts.length > 0 ? Math.floor(limits.webBudget / allWebExcerpts.length) : 0
     const cappedWebExcerpts = allWebExcerpts
       .map((w) => ({ ...w, text: w.text.slice(0, perWebBudget) }))
       .filter((w) => w.text.length > 0)
 
-    // File: distribute scaled file budget across sources with content
+    // File: distribute scaled file budget, tag with eligible pillars
     const sourcesWithFiles = sources.filter((s) => s.hasFileContent())
     const perFileBudget =
       sourcesWithFiles.length > 0 ? Math.floor(limits.fileBudget / sourcesWithFiles.length) : 0
     const cappedFileExcerpts: FileExcerpt[] = sourcesWithFiles
-      .map((s) => s.getFileExcerpt(perFileBudget))
+      .map((s) => {
+        const names = pillarNamesById.get(s.id) ?? []
+        const excerpt = s.getFileExcerpt(perFileBudget)
+        if (!excerpt) return null
+        return names.length > 0 ? { ...excerpt, eligiblePillars: names } : excerpt
+      })
       .filter((f): f is FileExcerpt => f !== null)
-
-    if (
-      cappedRssItems.length === 0 &&
-      cappedWebExcerpts.length === 0 &&
-      cappedFileExcerpts.length === 0
-    ) {
-      if (!strategy.trend_fallback) {
-        return { rssItems: [], websiteExcerpts: [], fileExcerpts: [] }
-      }
-      return undefined
-    }
 
     return {
       rssItems: cappedRssItems,

@@ -3,7 +3,11 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { truncateText } from '@/utils/format'
+import { resolvePillarNames } from '@/lib/clients/content-pillars'
+import { getPillarColor } from '@/components/ui/colors/pillar-colors'
+import { PillarAssignmentPopover } from './pillar-assignment-popover'
 import type { ClientSource } from '@/types/api'
+import type { WeightedPillar } from '@/lib/clients/content-pillars'
 
 interface SourceRowProps {
   source: ClientSource
@@ -12,6 +16,8 @@ interface SourceRowProps {
   onEdit: (updates: { label?: string; url?: string; config?: Record<string, unknown> }) => void
   onDelete: () => void
   onScanPages?: (url: string, sourceId: string, currentSelected: string[]) => void
+  pillars?: WeightedPillar[]
+  onPillarIdsChange?: (pillarIds: string[]) => void
 }
 
 export function SourceRow({
@@ -21,6 +27,8 @@ export function SourceRow({
   onEdit,
   onDelete,
   onScanPages,
+  pillars,
+  onPillarIdsChange,
 }: SourceRowProps) {
   const [editing, setEditing] = useState(false)
   const [editLabel, setEditLabel] = useState(source.label)
@@ -28,6 +36,8 @@ export function SourceRow({
   const config = source.config as Record<string, unknown> | null
   const [editFocus, setEditFocus] = useState((config?.focus_instructions as string) ?? '')
   const selectedPages = (config?.selected_pages as string[] | undefined) ?? []
+
+  const pillarNames = pillars ? resolvePillarNames(source.pillar_ids ?? [], pillars) : []
 
   function handleSave() {
     const updates: { label?: string; url?: string; config?: Record<string, unknown> } = {}
@@ -65,7 +75,7 @@ export function SourceRow({
             className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-900 focus:border-brand-purple focus:outline-none focus:ring-1 focus:ring-brand-purple"
           />
         </div>
-        {source.type !== 'file' && (
+        {source.type !== 'file' && source.type !== 'tavily' && (
           <div className="flex flex-col gap-1">
             <label className="text-xs font-medium text-gray-600">URL</label>
             <input
@@ -111,7 +121,7 @@ export function SourceRow({
         <div className="flex items-center gap-2">
           <Button
             size="sm"
-            disabled={!editLabel.trim() || (source.type !== 'file' && !editUrl.trim())}
+            disabled={!editLabel.trim() || (source.type !== 'file' && source.type !== 'tavily' && !editUrl.trim())}
             onClick={handleSave}
           >
             Save
@@ -125,7 +135,7 @@ export function SourceRow({
   }
 
   return (
-    <div className="flex items-center gap-3 px-4 py-3 rounded-xl border border-gray-200 bg-white">
+    <div className={`flex items-center gap-3 px-4 py-3 rounded-xl border bg-white transition-opacity ${source.is_active ? 'border-gray-200' : 'border-gray-100 opacity-50'}`}>
       <input
         type="checkbox"
         checked={source.is_active}
@@ -146,9 +156,38 @@ export function SourceRow({
             </span>
           )}
         </div>
-        <p className="text-xs text-gray-400 truncate">{truncateText(source.url, 60)}</p>
+        {source.type !== 'tavily' && (
+          <p className="text-xs text-gray-400 truncate">{truncateText(source.url, 60)}</p>
+        )}
+        {pillars && pillarNames.length > 0 && (
+          <div className="flex flex-wrap gap-1 mt-1">
+            {pillarNames.map((name) => {
+              const color = getPillarColor(name)
+              return (
+                <span
+                  key={name}
+                  className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${color.bg} ${color.text}`}
+                >
+                  {name}
+                </span>
+              )
+            })}
+          </div>
+        )}
+        {pillars && pillarNames.length === 0 && (
+          <p className="text-[10px] text-gray-400 mt-0.5">All pillars</p>
+        )}
         <div className="mt-0.5">{statusBadge}</div>
       </div>
+      {pillars && onPillarIdsChange && (
+        <div className="shrink-0">
+          <PillarAssignmentPopover
+            pillars={pillars}
+            assignedPillarIds={source.pillar_ids ?? []}
+            onChange={onPillarIdsChange}
+          />
+        </div>
+      )}
       <button
         onClick={onDelete}
         className="text-gray-400 hover:text-red-500 transition-colors px-1 py-1 shrink-0"

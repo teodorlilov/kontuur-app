@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
 import { fetchWebsiteSource } from '@/lib/sources/fetch-website'
+import { fetchInstagramProfile } from '@/lib/sources/fetch-instagram'
 import { analyzeUrl } from '@/utils/ai'
 
 interface AnalyzeUrlBody {
@@ -42,7 +43,7 @@ export async function POST(request: Request) {
   if (body.instagramHandle?.trim()) {
     const handle = body.instagramHandle.trim().replace(/^@/, '')
     fetches.push(
-      fetchWebsiteSource(`https://www.instagram.com/${handle}/`).then((r) => ({
+      fetchInstagramProfile(handle).then((r) => ({
         source: 'instagram',
         markdown: r.markdown,
         error: r.error,

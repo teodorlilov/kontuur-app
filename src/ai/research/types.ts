@@ -3,7 +3,6 @@ import type { ClientData } from '@/lib/clients/fetch-client-data'
 
 export type { RssItem } from '@/lib/sources/fetch-rss'
 export type { WeightedPillar } from '@/lib/clients/content-pillars'
-export type { SourceStrategy } from '@/types/api'
 export type { TrendSearchResult } from '@/lib/sources/fetch-trend-search'
 
 export interface ResearchTopic {
@@ -22,19 +21,24 @@ export interface WebsiteExcerpt {
   url: string
   text: string
   focusInstructions?: string
+  eligiblePillars?: string[]
 }
 
 export interface FileExcerpt {
   label: string
   text: string
+  eligiblePillars?: string[]
 }
 
 export interface SourceContext {
   rssItems: import('@/lib/sources/fetch-rss').RssItem[]
   websiteExcerpts: WebsiteExcerpt[]
   fileExcerpts: FileExcerpt[]
-  /** Tavily web search results — populated when no client sources are configured */
   webSearchItems?: import('@/lib/sources/fetch-trend-search').TrendSearchResult[]
+}
+
+export interface SkippedPillar {
+  name: string
 }
 
 export type { ClientSourceRow } from '@/lib/queries/db'
@@ -50,6 +54,8 @@ export interface ResearchRunContext {
   onPhase?: (message: string) => void
   /** Called for each final topic after dedup/retry. Used for streaming responses. */
   onTopic?: (topic: ResearchTopic) => void
+  /** Called after research if any pillar had no coverage from assigned sources. */
+  onSkippedPillars?: (pillars: SkippedPillar[], skippedCount: number) => void
   /** Optional pre-loaded client data from wizard — skips all DB fetches except client_sources. */
   preloadedClientData?: ClientData
 }

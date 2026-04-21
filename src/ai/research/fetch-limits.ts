@@ -20,15 +20,11 @@ const MIN_BUDGET_RATIO = 0.4
  * Below 5, everything scales down linearly — fewer subpages, fewer RSS items,
  * smaller prompt budgets.
  */
-export function computeFetchLimits(
-  count: number,
-  hasJinaKey = !!process.env.JINA_API_KEY
-): FetchLimits {
+export function computeFetchLimits(count: number): FetchLimits {
   const s = Math.min(Math.max(count, 1) / BASE_COUNT, 1)
-  const maxPages = hasJinaKey ? 5 : 2
 
   return {
-    websiteMaxPages: Math.max(1, Math.round(maxPages * s)),
+    websiteMaxPages: Math.min(count, 10),
     rssItemsPerSource: Math.max(1, Math.round(RSS_ITEMS_PER_SOURCE_MAX * s)),
     rssGlobalCap: Math.max(4, Math.round(MAX_RSS_ITEMS * s)),
     rssBudget: Math.round(RSS_BUDGET_MAX * Math.max(s, MIN_BUDGET_RATIO)),

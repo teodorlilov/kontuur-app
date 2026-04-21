@@ -26,11 +26,6 @@ export function extractToolInput<T>(
 import type { UrlAnalysisResponse } from '@/types/api'
 import { callAnthropic, LIGHT_MODEL } from '@/utils/ai-client'
 import { buildAnalyzeUrlPrompt, type AnalyzeUrlInput } from '@/ai/analyze-url/analyze-url'
-import {
-  buildPillarsPrompt,
-  type GeneratePillarsInput,
-  type GeneratePillarsResult,
-} from '@/ai/generate-pillars/generate-pillars'
 
 export function extractTextFromMessage(message: Anthropic.Message): string {
   const block = message.content[0]
@@ -110,14 +105,4 @@ export async function analyzeUrl(input: AnalyzeUrlInput): Promise<UrlAnalysisRes
   })
 
   return parseJsonResponse<UrlAnalysisResponse>(message)
-}
-
-export async function generatePillars(input: GeneratePillarsInput): Promise<GeneratePillarsResult> {
-  const message = await callAnthropic({
-    model: LIGHT_MODEL,
-    maxTokens: 1024,
-    userMessage: buildPillarsPrompt(input),
-  })
-
-  return parseJsonResponse<GeneratePillarsResult>(message)
 }

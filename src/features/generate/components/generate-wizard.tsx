@@ -15,6 +15,7 @@ import type { ClientRow } from '@/types/database'
 import type { ClientData } from '@/lib/clients/fetch-client-data'
 import type { PriorityPost, PostType } from '@/types/api'
 import type { GenerationResult } from '@/ai/generation/types'
+import type { SkippedPillar } from '@/ai/research/types'
 
 type Client = Pick<ClientRow, 'id' | 'name' | 'niche' | 'language' | 'posts_per_week'>
 
@@ -24,6 +25,7 @@ type UnifiedStreamEvent =
   | { type: 'total'; count: number }
   | { type: 'phase'; message: string }
   | { type: 'result'; data: GenerationResult }
+  | { type: 'skipped_pillars'; pillars: SkippedPillar[]; skippedCount: number }
   | { type: 'error'; message: string }
 
 const STEP_LABELS = [
@@ -71,6 +73,7 @@ export function GenerateWizard({
   const [generatedPosts, setGeneratedPosts] = useState<GeneratedPost[]>([])
   const [streamTotal, setStreamTotal] = useState(0)
   const [researchPhase, setResearchPhase] = useState('')
+  const [skippedPillars, setSkippedPillars] = useState<SkippedPillar[]>([])
   const [hasGenerated, setHasGenerated] = useState(false)
   const [approvedCount, setApprovedCount] = useState(0)
   const abortControllerRef = useRef<AbortController | null>(null)
@@ -129,6 +132,7 @@ export function GenerateWizard({
     setStreamTotal(0)
     setGeneratedPosts([])
     setResearchPhase('')
+    setSkippedPillars([])
     setIsGenerating(true)
 
     try {
@@ -162,6 +166,8 @@ export function GenerateWizard({
         } else if (event.type === 'result') {
           setResearchPhase('')
           setGeneratedPosts((prev) => [...prev, event.data as unknown as GeneratedPost])
+        } else if (event.type === 'skipped_pillars') {
+          setSkippedPillars(event.pillars)
         } else if (event.type === 'error') {
           toast.error(event.message)
           setCurrentStep(3)
@@ -331,6 +337,7 @@ export function GenerateWizard({
                 ))}
               </div>
             </div>
+
           </div>
         )}
 
@@ -364,6 +371,19 @@ export function GenerateWizard({
           <div className="flex flex-col gap-4">
             {isGenerating && researchPhase && (
               <p className="text-sm text-gray-500 animate-pulse">{researchPhase}</p>
+            )}
+
+            {skippedPillars.length > 0 && generatedPosts.length > 0 && (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-700 space-y-1">
+                <p className="font-medium">
+                  {skippedPillars.length === 1 ? '1 pillar skipped' : `${skippedPillars.length} pillars skipped`}
+                </p>
+                {skippedPillars.map((p) => (
+                  <p key={p.name} className="text-xs">
+                    <span className="font-medium">{p.name}</span> — no sources assigned or no content found.
+                  </p>
+                ))}
+              </div>
             )}
 
             {isGenerating && streamTotal > 0 && (

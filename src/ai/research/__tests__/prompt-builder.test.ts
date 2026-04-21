@@ -37,7 +37,7 @@ function createBuilder(
   overrides?: Partial<{
     niche: string
     languageConfig: LanguageConfig
-    contentPillars: { pillar: string; weight: number }[]
+    contentPillars: import('@/lib/clients/content-pillars').WeightedPillar[]
     postHistory: string[]
   }>
 ) {
@@ -81,7 +81,7 @@ describe('ResearchPromptBuilder', () => {
     const prompt = callArgs.userMessage as string
     expect(prompt).toContain('HIIT Benefits')
     expect(prompt).toContain('https://x.com/1')
-    expect(prompt).toContain('SOURCING:')
+    expect(prompt).toContain('SOURCING RULES:')
     expect(prompt).not.toContain('RESEARCH BRIEF')
   })
 
@@ -131,9 +131,9 @@ describe('ResearchPromptBuilder', () => {
     mockClaudeResponse(VALID_RESPONSE)
     const builder = createBuilder({
       contentPillars: [
-        { pillar: 'Nutrition', weight: 40 },
-        { pillar: 'Workouts', weight: 35 },
-        { pillar: 'Recovery', weight: 25 },
+        { id: 'p1', pillar: 'Nutrition', weight: 40 },
+        { id: 'p2', pillar: 'Workouts', weight: 35 },
+        { id: 'p3', pillar: 'Recovery', weight: 25 },
       ],
     })
     await generateTopics(builder,5)
@@ -226,15 +226,15 @@ describe('ResearchPromptBuilder', () => {
     }
     const builder = createBuilder({
       contentPillars: [
-        { pillar: 'Nutrition', weight: 50 },
-        { pillar: 'Investment Tips', weight: 50 },
+        { id: 'p1', pillar: 'Nutrition', weight: 50 },
+        { id: 'p2', pillar: 'Investment Tips', weight: 50 },
       ],
     })
     await generateTopics(builder,5, sourceContext)
 
     const callArgs = callAnthropic.mock.calls[0]![0]
     const prompt = callArgs.userMessage as string
-    expect(prompt).toContain('SOURCING:')
+    expect(prompt).toContain('SOURCING RULES:')
     expect(prompt).toContain('fitness')
   })
 

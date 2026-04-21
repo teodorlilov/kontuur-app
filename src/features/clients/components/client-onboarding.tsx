@@ -12,6 +12,7 @@ import type { WeightedPillar } from '@/lib/clients/content-pillars'
 import { PillarEditor } from '@/features/generate/components/pillar-editor'
 import type { UrlAnalysisResponse } from '@/types/api'
 import { WEEKDAY_OPTIONS } from '@/utils/constants'
+import { PillarSourceStepper } from '@/features/sources/components/stepper/pillar-source-stepper'
 
 // --- Types ---
 
@@ -206,6 +207,11 @@ export function ClientOnboarding() {
   const [analysisData, setAnalysisData] = useState<UrlAnalysisResponse | null>(null)
   const [analyzeProgress, setAnalyzeProgress] = useState('')
 
+  // Stepper state
+  const [showStepper, setShowStepper] = useState(false)
+  const [savedClientId, setSavedClientId] = useState<string | null>(null)
+  const [savedPillars, setSavedPillars] = useState<WeightedPillar[]>([])
+
   // Multi-select state for Q7
   const [multiSelectAnswers, setMultiSelectAnswers] = useState<string[]>([])
 
@@ -333,6 +339,12 @@ export function ClientOnboarding() {
 
     setSaving(true)
 
+    // Generate stable IDs once — used for both DB save and stepper
+    const pillarsWithIds: WeightedPillar[] = profile.content_pillars.map((p) => ({
+      ...p,
+      id: crypto.randomUUID(),
+    }))
+
     try {
       const res = await fetch('/api/clients', {
         method: 'POST',
@@ -346,7 +358,7 @@ export function ClientOnboarding() {
           brand_profile: {
             tone: profile.tone,
             target_audience: profile.target_audience.join(', '),
-            content_pillars: serializePillars(profile.content_pillars),
+            content_pillars: serializePillars(pillarsWithIds),
             avoid_topics: profile.avoid_topics,
             client_testimonial_voice: profile.client_testimonial_voice,
             language_formality: profile.language_formality,
@@ -373,7 +385,10 @@ export function ClientOnboarding() {
       }).catch(() => null)
 
       toast.success('Client saved!')
-      router.push(`/clients/${data.client_id}/sources?onboarding=true`)
+      setSaving(false)
+      setSavedClientId(data.client_id)
+      setSavedPillars(pillarsWithIds)
+      setShowStepper(true)
     } catch {
       toast.error('Failed to save client. Please try again.')
       setSaving(false)
@@ -491,6 +506,19 @@ export function ClientOnboarding() {
   }
 
   return (
+    <>
+    {showStepper && savedClientId && profile && (
+      <PillarSourceStepper
+        open={showStepper}
+        clientId={savedClientId}
+        clientName={clientName}
+        niche={profile.niche}
+        websiteUrl={websiteUrl}
+        pillars={savedPillars}
+        onComplete={() => router.push(`/clients/${savedClientId}/sources`)}
+        onDismiss={() => router.push(`/clients/${savedClientId}/sources`)}
+      />
+    )}
     <ReviewStage
       profile={profile!}
       clientName={clientName}
@@ -512,6 +540,7 @@ export function ClientOnboarding() {
       handleSave={handleSave}
       handleRedo={handleRedo}
     />
+    </>
   )
 }
 

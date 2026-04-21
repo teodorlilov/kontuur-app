@@ -1,22 +1,21 @@
+import { parseHTML } from 'linkedom'
+
 /** Paths that are almost never individual content pages */
 const EXCLUDED_PATH_RE =
   /\/(page|tag|category|author|search|login|register|cart|checkout|wp-admin|feed|rss|sitemap)\b/i
 
 /**
- * Extract internal links from Jina-produced markdown.
- * Returns deduplicated, same-origin URLs excluding navigation/pagination.
- * Used as a fallback when sitemap discovery finds nothing.
+ * Extract internal links from raw HTML.
+ * Returns deduplicated, same-origin content URLs excluding navigation/pagination.
  */
-export function extractLinks(markdown: string, baseUrl: string): string[] {
+export function extractLinksFromHtml(html: string, baseUrl: string): string[] {
   const baseOrigin = new URL(baseUrl).origin
+  const { document } = parseHTML(html)
   const seen = new Set<string>()
   const links: string[] = []
 
-  const linkRegex = /\[([^\]]*)\]\(([^)]+)\)/g
-  let match: RegExpExecArray | null
-
-  while ((match = linkRegex.exec(markdown)) !== null) {
-    const href = match[2]!
+  for (const anchor of document.querySelectorAll('a[href]')) {
+    const href = anchor.getAttribute('href')
     if (
       !href ||
       href.startsWith('#') ||
@@ -36,6 +35,9 @@ export function extractLinks(markdown: string, baseUrl: string): string[] {
     // Same-origin only
     if (resolved.origin !== baseOrigin) continue
 
+    // Skip excluded navigation paths
+    if (EXCLUDED_PATH_RE.test(resolved.pathname)) continue
+
     // Strip hash and query for dedup
     resolved.hash = ''
     resolved.search = ''
@@ -43,9 +45,6 @@ export function extractLinks(markdown: string, baseUrl: string): string[] {
 
     // Skip the source page itself
     if (full === new URL(baseUrl).href) continue
-
-    // Skip excluded navigation paths
-    if (EXCLUDED_PATH_RE.test(resolved.pathname)) continue
 
     if (!seen.has(full)) {
       seen.add(full)

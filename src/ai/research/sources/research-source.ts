@@ -19,6 +19,7 @@ export abstract class ResearchSource {
   readonly label: string
   readonly url: string
   readonly config: Record<string, unknown>
+  readonly pillarIds: unknown
   protected readonly extractedText: string | null
 
   constructor(row: ClientSourceRow) {
@@ -27,6 +28,7 @@ export abstract class ResearchSource {
     this.label = row.label
     this.url = row.url
     this.config = row.config
+    this.pillarIds = row.pillar_ids
     this.extractedText = row.extracted_text
   }
 

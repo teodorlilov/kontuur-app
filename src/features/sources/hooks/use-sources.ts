@@ -1,12 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { toast } from '@/components/ui/toast'
 import type { ClientSource, SourceSuggestion, SourceStrategy } from '@/types/api'
-
-const DEFAULT_STRATEGY: SourceStrategy = {
-  trend_fallback: true,
-}
 
 async function withRollback<T>(
   previous: T,
@@ -34,7 +30,6 @@ interface UseSourcesOptions {
   clientName: string
   niche: string
   initialSources: ClientSource[]
-  isOnboarding: boolean
   initialSourceStrategy?: SourceStrategy
 }
 
@@ -43,12 +38,11 @@ export function useSources({
   clientName,
   niche,
   initialSources,
-  isOnboarding,
   initialSourceStrategy,
 }: UseSourcesOptions) {
   const [sources, setSources] = useState<ClientSource[]>(initialSources)
   const [strategy, setStrategy] = useState<SourceStrategy>(
-    initialSourceStrategy ?? DEFAULT_STRATEGY
+    initialSourceStrategy ?? {}
   )
   const [suggestions, setSuggestions] = useState<SourceSuggestion[]>([])
   const [isSaving, setIsSaving] = useState(false)
@@ -56,15 +50,8 @@ export function useSources({
   const [addingFromSuggestion, setAddingFromSuggestion] = useState<string | null>(null)
   const [showModal, setShowModal] = useState(false)
 
-  useEffect(() => {
-    if (isOnboarding && niche) {
-      void handleSuggest()
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
   async function handleToggleGrounding(enabled: boolean) {
-    const updated: SourceStrategy = { ...strategy, require_source_grounding: enabled, trend_fallback: true }
+    const updated: SourceStrategy = { ...strategy, require_source_grounding: enabled }
     const previous = strategy
     setStrategy(updated)
     await withRollback(previous, setStrategy,
@@ -200,7 +187,7 @@ export function useSources({
 
   async function handleEditSource(
     sourceId: string,
-    updates: { label?: string; url?: string; config?: Record<string, unknown> }
+    updates: { label?: string; url?: string; config?: Record<string, unknown>; pillar_ids?: string[] }
   ) {
     const previous = sources
     setSources((prev) => prev.map((s) => (s.id === sourceId ? { ...s, ...updates } : s)))

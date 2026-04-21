@@ -21,3 +21,10 @@ export function mockClaudeResponse(text: string) {
     content: [{ type: 'text', text }],
   })
 }
+
+/** Helper to mock a Claude response that returns structured tool_use output. */
+export function mockClaudeToolResponse(input: Record<string, unknown>) {
+  callAnthropic.mockResolvedValue({
+    content: [{ type: 'tool_use', id: 'mock', name: 'output', input }],
+  })
+}

@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 vi.mock('@/utils/ai-client')
 
-import { callAnthropic, mockClaudeResponse } from '@/utils/__mocks__/ai-client'
+import { callAnthropic, mockClaudeResponse, mockClaudeToolResponse } from '@/utils/__mocks__/ai-client'
 import { rewriteCaption, rewriteCarousel } from '../rewrite-prompts'
 import type { ClientData } from '@/lib/clients/fetch-client-data'
 
@@ -21,8 +21,8 @@ function makeClient(overrides: Partial<ClientData> = {}): ClientData {
     clientTestimonialVoice: 'They really care about my skin.',
     avoidTopics: 'politics',
     contentPillars: [
-      { pillar: 'Skincare tips', weight: 50 },
-      { pillar: 'Product reviews', weight: 50 },
+      { id: 'p1', pillar: 'Skincare tips', weight: 50 },
+      { id: 'p2', pillar: 'Product reviews', weight: 50 },
     ],
     isHealthNiche: null,
     topPerformingPosts: [],
@@ -124,12 +124,16 @@ describe('rewriteCaption', () => {
 })
 
 describe('rewriteCarousel', () => {
-  // Response without leading '{' — the code prepends it via assistant prefill
-  const CAROUSEL_RESPONSE_BODY =
-    '"main_caption": "Rewritten carousel caption", "slides": [{"headline": "New H1", "body": "New B1"}, {"headline": "New H2", "body": "New B2"}]}'
+  const CAROUSEL_TOOL_INPUT = {
+    main_caption: 'Rewritten carousel caption',
+    slides: [
+      { headline: 'New H1', body: 'New B1' },
+      { headline: 'New H2', body: 'New B2' },
+    ],
+  }
 
   it('returns parsed carousel result', async () => {
-    mockClaudeResponse(CAROUSEL_RESPONSE_BODY)
+    mockClaudeToolResponse(CAROUSEL_TOOL_INPUT)
     const result = await rewriteCarousel({
       mainCaption: 'Original caption',
       slides: [
@@ -146,20 +150,8 @@ describe('rewriteCarousel', () => {
     expect(result.slides[1]!.body).toBe('New B2')
   })
 
-  it('handles JSON wrapped in markdown code block', async () => {
-    mockClaudeResponse('```json\n' + CAROUSEL_RESPONSE_BODY + '\n```')
-    const result = await rewriteCarousel({
-      mainCaption: 'Caption',
-      slides: [{ headline: 'H1', body: 'B1' }],
-      aiTells: [],
-      client: makeClient(),
-      platform: 'instagram',
-    })
-    expect(result.main_caption).toBe('Rewritten carousel caption')
-  })
-
   it('includes slide content in the prompt', async () => {
-    mockClaudeResponse(CAROUSEL_RESPONSE_BODY)
+    mockClaudeToolResponse(CAROUSEL_TOOL_INPUT)
     await rewriteCarousel({
       mainCaption: 'Caption',
       slides: [
@@ -175,12 +167,12 @@ describe('rewriteCarousel', () => {
     const prompt = callArgs.userMessage as string
     expect(prompt).toContain('Slide One Title')
     expect(prompt).toContain('Slide two body text')
-    expect(prompt).toContain('Slide 1:')
-    expect(prompt).toContain('Slide 2:')
+    expect(prompt).toContain('Slide 1')
+    expect(prompt).toContain('Slide 2')
   })
 
   it('includes AI tells in carousel prompt', async () => {
-    mockClaudeResponse(CAROUSEL_RESPONSE_BODY)
+    mockClaudeToolResponse(CAROUSEL_TOOL_INPUT)
     await rewriteCarousel({
       mainCaption: 'Caption',
       slides: [{ headline: 'H', body: 'B' }],
@@ -193,5 +185,25 @@ describe('rewriteCarousel', () => {
     const prompt = callArgs.userMessage as string
     expect(prompt).toContain('Perfectly balanced structure')
     expect(prompt).toContain('Abstract benefits')
+  })
+
+  it('enforces slide count in output schema', async () => {
+    mockClaudeToolResponse(CAROUSEL_TOOL_INPUT)
+    await rewriteCarousel({
+      mainCaption: 'Caption',
+      slides: [
+        { headline: 'H1', body: 'B1' },
+        { headline: 'H2', body: 'B2' },
+        { headline: 'H3', body: 'B3' },
+      ],
+      aiTells: [],
+      client: makeClient(),
+      platform: 'instagram',
+    })
+
+    const callArgs = callAnthropic.mock.calls[0]![0]
+    const schema = callArgs.outputSchema
+    expect(schema.properties.slides.minItems).toBe(3)
+    expect(schema.properties.slides.maxItems).toBe(3)
   })
 })

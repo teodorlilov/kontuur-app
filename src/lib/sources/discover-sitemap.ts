@@ -1,8 +1,9 @@
 /**
  * Sitemap-based page discovery — finds content URLs from a website's sitemap.
  * No external XML parser — uses regex (same pattern as fetch-rss.ts).
- * Fetches sitemaps directly via fetch(), not Jina Reader.
+ * Fetches sitemaps directly via fetch().
  */
+import { USER_AGENT_BOT } from '@/utils/constants'
 
 const MAX_URLS = 5000
 const MAX_SUB_SITEMAPS = 5
@@ -45,7 +46,7 @@ export async function discoverSitemapUrls(siteUrl: string): Promise<SitemapDisco
   }
 
   const allUrls = new Set<string>()
-  const allSitemapRefs: string[] = []
+  const allSitemapRefs = new Set<string>()
 
   for (const candidate of sitemapCandidates) {
     const xml = await fetchXml(candidate)
@@ -55,21 +56,19 @@ export async function discoverSitemapUrls(siteUrl: string): Promise<SitemapDisco
     for (const url of urls) allUrls.add(url)
 
     // Return sub-sitemap refs to the caller instead of auto-following
-    if (sitemapRefs.length > 0) {
-      allSitemapRefs.push(...sitemapRefs)
-    }
+    for (const ref of sitemapRefs) allSitemapRefs.add(ref)
 
     // For fallback candidates, stop at the first working sitemap
     if (useFallbacks) break
   }
 
-  if (allUrls.size === 0 && allSitemapRefs.length === 0) {
+  if (allUrls.size === 0 && allSitemapRefs.size === 0) {
     return { urls: [], sitemapRefs: [], source: 'none' }
   }
 
   return {
     urls: [...allUrls].slice(0, MAX_URLS),
-    sitemapRefs: allSitemapRefs,
+    sitemapRefs: [...allSitemapRefs],
     source: 'sitemap',
   }
 }
@@ -155,7 +154,7 @@ async function fetchXml(url: string, timeoutMs = FETCH_TIMEOUT): Promise<string 
   try {
     const res = await fetch(url, {
       signal: controller.signal,
-      headers: { 'User-Agent': 'PostflowBot/1.0' },
+      headers: { 'User-Agent': USER_AGENT_BOT },
     })
     clearTimeout(timer)
     if (!res.ok) return null

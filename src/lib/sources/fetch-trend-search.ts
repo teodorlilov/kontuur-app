@@ -1,9 +1,9 @@
 import { callAnthropic, LIGHT_MODEL } from '@/utils/ai-client'
 import { parseJsonResponse } from '@/utils/ai'
 import { shuffleArray } from '@/utils/shuffle'
+import { TAVILY_API_URL } from '@/utils/constants'
 import type { WeightedPillar } from '@/lib/clients/content-pillars'
-
-const TAVILY_API = 'https://api.tavily.com/search'
+import type { TavilyConfig } from '@/types/sources'
 
 export interface ClientSearchContext {
   targetAudience?: string
@@ -11,6 +11,7 @@ export interface ClientSearchContext {
   postHistory?: string[]
   language?: string
   excludedUrls?: string[]
+  tavilyConfig?: TavilyConfig
 }
 
 function toSearchQuery(niche: string): string {
@@ -87,6 +88,7 @@ export interface TrendSearchResult {
   snippet: string
   url: string
   score: number
+  eligiblePillars?: string[]
 }
 
 const TIME_RANGES = ['week', 'month', '3months'] as const
@@ -102,12 +104,14 @@ async function runTavilyQueries(
   scoreThreshold: number,
   timeRangeOverride?: string,
   searchDepth: 'basic' | 'advanced' = 'basic',
+  includeDomains?: string[],
+  excludeDomains?: string[],
 ): Promise<TrendSearchResult[]> {
   const results = await Promise.allSettled(
     queries.map(async ({ query }, i) => {
       const topic = i % 2 === 0 ? 'news' : 'general'
       const time_range = timeRangeOverride ?? TIME_RANGES[i % TIME_RANGES.length]
-      const res = await fetch(TAVILY_API, {
+      const res = await fetch(TAVILY_API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -117,6 +121,8 @@ async function runTavilyQueries(
           time_range,
           search_depth: searchDepth,
           max_results: Math.min(perQueryMax, 10),
+          ...(includeDomains?.length ? { include_domains: includeDomains } : {}),
+          ...(excludeDomains?.length ? { exclude_domains: excludeDomains } : {}),
         }),
         signal: AbortSignal.timeout(10000),
       })
@@ -158,14 +164,14 @@ async function runTavilyQueries(
  * - Pass 1: recent articles (week/month/3months), strict threshold (0.3)
  * - Pass 2 (only if pass 1 yields nothing): broad query, year range, lower threshold (0.15)
  *
- * Returns [] immediately if TAVILY_API_KEY is not set or on any error.
+ * Returns [] immediately if TAVILY_API_URL_KEY is not set or on any error.
  */
 export async function searchTrends(
   niche: string,
   count: number,
   clientContext?: ClientSearchContext,
 ): Promise<TrendSearchResult[]> {
-  const key = process.env.TAVILY_API_KEY
+  const key = process.env.TAVILY_API_URL_KEY
   if (!key) return []
 
   // Always generate at least 3 queries to ensure pool diversity, even for small counts
@@ -176,14 +182,17 @@ export async function searchTrends(
 
   const perQueryMax = Math.ceil((count * 3) / queries.length)
 
+  const includeDomains = clientContext?.tavilyConfig?.include_domains
+  const excludeDomains = clientContext?.tavilyConfig?.exclude_domains
+
   try {
     // Pass 1: recent articles, strict relevance threshold
-    let pool = await runTavilyQueries(key, queries, perQueryMax, 0.3)
+    let pool = await runTavilyQueries(key, queries, perQueryMax, 0.3, undefined, 'basic', includeDomains, excludeDomains)
 
     // Pass 2: only if pass 1 yielded nothing — broader time range, lower threshold
     if (pool.length === 0) {
       const fallbackQuery = [{ query: `${toSearchQuery(niche)} ${new Date().getFullYear()}`, pillar: 'general' }]
-      pool = await runTavilyQueries(key, fallbackQuery, count + 2, 0.15, 'year', 'advanced')
+      pool = await runTavilyQueries(key, fallbackQuery, count + 2, 0.15, 'year', 'advanced', includeDomains, excludeDomains)
     }
 
     // Filter out URLs already used in previous posts

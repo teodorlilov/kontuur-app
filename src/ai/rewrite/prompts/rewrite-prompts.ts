@@ -45,7 +45,13 @@ Return ONLY the rewritten post text. No explanations, no commentary.`,
 
 export async function rewriteCarousel(input: RewriteCarouselInput): Promise<RewriteCarouselResult> {
   const slidesText = input.slides
-    .map((s, i) => `Slide ${i + 1}:\nHeadline: ${s.headline}\nBody: ${s.body}`)
+    .map((s, i) => {
+      const role = (s as Record<string, unknown>).slide_role
+      const cta = (s as Record<string, unknown>).cta_text
+      let text = `Slide ${i + 1}${role ? ` (${role})` : ''}:\nHeadline: ${s.headline}\nBody: ${s.body}`
+      if (cta) text += `\nCTA: ${cta}`
+      return text
+    })
     .join('\n\n')
 
   const { client } = input
@@ -87,6 +93,8 @@ SELF-CHECK before returning:
         main_caption: { type: 'string' },
         slides: {
           type: 'array',
+          minItems: input.slides.length,
+          maxItems: input.slides.length,
           items: {
             type: 'object',
             properties: { headline: { type: 'string' }, body: { type: 'string' } },

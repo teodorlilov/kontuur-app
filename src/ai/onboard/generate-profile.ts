@@ -62,8 +62,8 @@ Return JSON only, no other text:
   "language_formality": string
 }
 
-For content_pillars: suggest 3-6 pillars with weights that sum to 100. Each pillar should be a specific content theme relevant to this business.
-${answers.q7 ? `The user selected these content pillar preferences: ${sanitizePromptField(answers.q7)}. Use these as a starting point but refine and expand based on the business.` : ''}
+For content_pillars: suggest exactly 4 pillars with weights that sum to 100. Each pillar must focus on ONE specific topic — never combine multiple topics with "&", "and", "or", or similar. Bad: "Health & Wellness". Good: "Preventive Health Tips".
+${answers.q7 ? `The user selected these exact content pillars: ${sanitizePromptField(answers.q7)}. You MUST use these exact pillar names unchanged. Only assign appropriate weights (summing to 100) to each. Do not rename, merge, split, or rephrase them. If the user selected more than 4, pick the 4 most relevant.` : ''}
 
 ${DEFENSIVE_DATA_CLAUSE}
 <user_answers>

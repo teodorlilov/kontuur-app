@@ -20,7 +20,10 @@ export async function performRewrite(ctx: RewriteContext) {
       platform: ctx.platform,
     })
     newCaption = result.main_caption
-    newSlidesJson = result.slides
+    // Merge rewritten headline/body onto originals to preserve slide_number, slide_role, etc.
+    newSlidesJson = applySlideCorrections(ctx.slidesJson, result.slides)
+  } else if (ctx.postType === 'carousel') {
+    throw new Error('Cannot rewrite carousel: slides_json is missing or invalid')
   } else {
     newCaption = await rewriteCaption({
       caption: ctx.caption,

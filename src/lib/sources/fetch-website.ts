@@ -1,73 +1,50 @@
+import { Readability } from '@mozilla/readability'
+import { parseHTML } from 'linkedom'
+import { USER_AGENT_BROWSER } from '@/utils/constants'
+import { readLimitedText } from './read-limited-text'
+
+const FETCH_TIMEOUT = 8000
+const MAX_HTML_BYTES = 500_000
 const MIN_CONTENT_LENGTH = 200
 
-const LINK_LINE = /^\s*[-*]?\s*\[.*\]\(.*\)\s*$/
-const IMAGE_LINE = /!\[Image\b/
-
-/**
- * Remove navigation-heavy blocks from Jina markdown output.
- * Drops blocks where >60% of lines are markdown links (menus, sidebars, region lists).
- * Preserves short blocks (≤3 lines) to avoid stripping inline references.
- */
-function stripNavigationBlocks(markdown: string): string {
-  const blocks = markdown.split(/\n{2,}/)
-
-  const kept = blocks
-    .filter((block) => {
-      const lines = block.split('\n').filter((l) => l.trim())
-      if (lines.length <= 3) return true
-      const linkCount = lines.filter((l) => LINK_LINE.test(l)).length
-      return linkCount / lines.length < 0.6
-    })
-    .map((block) =>
-      block
-        .split('\n')
-        .filter((l) => !IMAGE_LINE.test(l.trim()))
-        .join('\n')
-    )
-
-  const result = kept
-    .join('\n\n')
-    .replace(/\n{3,}/g, '\n\n')
-    .trim()
-  return result.length >= MIN_CONTENT_LENGTH ? result : markdown
+const FETCH_HEADERS = {
+  'User-Agent': USER_AGENT_BROWSER,
+  Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+  'Accept-Language': 'en-US,en;q=0.9',
 }
 
 /**
- * Fetches clean markdown content from a website via Jina AI Reader.
+ * Fetches clean article text from a website by fetching HTML directly
+ * and running Mozilla Readability to extract the main content.
  *
- * Free tier: 20 RPM without an API key (avg 7.9s latency).
- * Set JINA_API_KEY env var to access the 500 RPM free tier.
- * https://jina.ai/reader/
+ * Returns plain text (no markdown, no images, no nav) capped at 8000 chars.
  */
 export async function fetchWebsiteSource(
   url: string
 ): Promise<{ markdown: string; error?: string }> {
   const controller = new AbortController()
-  const timer = setTimeout(() => controller.abort(), 15000)
-
-  const headers: Record<string, string> = {
-    Accept: 'text/plain',
-    'X-Remove-Selector': 'nav, header, footer',
-  }
-  if (process.env.JINA_API_KEY) {
-    headers['Authorization'] = `Bearer ${process.env.JINA_API_KEY}`
-  }
+  const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT)
 
   try {
-    const res = await fetch(`https://r.jina.ai/${url}`, {
-      signal: controller.signal,
-      headers,
-    })
+    const res = await fetch(url, { signal: controller.signal, headers: FETCH_HEADERS })
     clearTimeout(timer)
     if (!res.ok) return { markdown: '', error: `HTTP ${res.status}` }
-    // Overfetch since stripNavigationBlocks may remove a significant prefix
-    const raw = (await res.text()).slice(0, 12000)
-    const markdown = stripNavigationBlocks(raw).slice(0, 8000)
-    return { markdown }
+
+    const rawHtml = await readLimitedText(res, MAX_HTML_BYTES)
+    const { document } = parseHTML(rawHtml)
+    const article = new Readability(document as unknown as Document).parse()
+
+    if (!article?.textContent?.trim()) {
+      return { markdown: '', error: 'No readable content found' }
+    }
+
+    const text = article.textContent.trim().replace(/\n{3,}/g, '\n\n').slice(0, 8000)
+    if (text.length < MIN_CONTENT_LENGTH) return { markdown: '', error: 'Content too short' }
+
+    return { markdown: text }
   } catch (err) {
     clearTimeout(timer)
-    const message = err instanceof Error ? err.message : 'Unknown error'
-    return { markdown: '', error: message }
+    return { markdown: '', error: err instanceof Error ? err.message : 'Unknown error' }
   }
 }
 
@@ -89,11 +66,8 @@ export async function fetchWebsiteWithSubpages(
   const selectedPages = config.selected_pages as string[] | undefined
 
   if (selectedPages && selectedPages.length > 0) {
-    // Pick random pages from the user's selection
     const { pickRandom } = await import('./crawl-subpages')
-    const hasApiKey = !!process.env.JINA_API_KEY
-    const defaultMax = hasApiKey ? 5 : 2
-    const maxCount = maxPages ?? defaultMax
+    const maxCount = maxPages ?? 3
     const selected = pickRandom(selectedPages, maxCount)
 
     const results = await Promise.allSettled(

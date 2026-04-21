@@ -27,7 +27,7 @@ Based on this content, return a JSON object with these fields:
   "detected_niche_confidence": "high" | "medium" | "low",
   "detected_target_audience": string[] (2-4 specific audience segments),
   "detected_tone": string (the tone/voice they use — e.g. "Expert and trustworthy", "Warm and approachable"),
-  "detected_content_pillars": [{ "pillar": string, "weight": number }] (3-6 content themes with weights summing to 100),
+  "detected_content_pillars": [{ "pillar": string, "weight": number }] (exactly 4 content themes with weights summing to 100),
   "detected_services_products": string[] (specific services or products they offer),
   "detected_language": string (primary language of content),
   "detected_language_formality": "formal" | "casual" | "neutral",
@@ -36,7 +36,7 @@ Based on this content, return a JSON object with these fields:
   "detected_avoid_topics": string | null (any topics that seem off-brand or risky for this business)
 }
 
-For content pillars, identify the main themes/topics this business should post about based on their services and content. Assign weights reflecting how much emphasis each pillar should get (must sum to 100).
+For content pillars, identify the main themes/topics this business should post about based on their services and content. Assign weights reflecting how much emphasis each pillar should get (must sum to 100). 
 
 Return JSON only, no markdown wrapper.`
 }

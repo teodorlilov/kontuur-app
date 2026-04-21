@@ -26,7 +26,7 @@ export function PillarEditor({ pillars, onChange, allowEmpty = false }: PillarEd
   }
 
   function handleAdd() {
-    const newPillars = [...pillars, { pillar: '', weight: 0 }]
+    const newPillars: WeightedPillar[] = [...pillars, { id: crypto.randomUUID(), pillar: '', weight: 0 }]
     onChange(equalizeWeights(newPillars))
   }
 
@@ -91,13 +91,15 @@ export function PillarEditor({ pillars, onChange, allowEmpty = false }: PillarEd
       ))}
 
       <div className="flex items-center justify-between">
-        <button
-          type="button"
-          onClick={handleAdd}
-          className="text-xs text-brand-purple hover:underline font-medium"
-        >
-          + Add pillar
-        </button>
+        {pillars.length < 4 && (
+          <button
+            type="button"
+            onClick={handleAdd}
+            className="text-xs text-brand-purple hover:underline font-medium"
+          >
+            + Add pillar
+          </button>
+        )}
         {pillars.length > 0 && (
           <span
             className={cn(

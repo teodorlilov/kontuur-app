@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
 import { suggestSources } from '@/ai/suggest-sources/suggest-sources'
-import { isValidRssUrl } from '@/lib/sources/fetch-rss'
 import type { SourceSuggestion } from '@/types/api'
 
 interface SuggestSourcesBody {
@@ -24,33 +23,17 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'niche is required' }, { status: 400 })
   }
 
-  let claudeSuggestions
   try {
-    claudeSuggestions = await suggestSources({ niche: body.niche, clientName: body.clientName })
+    const results = await suggestSources({ niche: body.niche, clientName: body.clientName })
+    const suggestions: SourceSuggestion[] = results.map((s) => ({
+      url: s.url,
+      label: s.label,
+      reason: s.reason,
+      valid: true,
+    }))
+    return NextResponse.json({ suggestions })
   } catch (err) {
-    console.error('[suggest-sources] AI call failed:', err)
+    console.error('[suggest-sources] failed:', err)
     return NextResponse.json({ suggestions: [] })
   }
-
-  // Validate all suggested URLs in parallel
-  const validated = await Promise.allSettled(
-    claudeSuggestions.map(async (s) => {
-      const valid = await isValidRssUrl(s.url)
-      return { ...s, valid, error: valid ? undefined : 'URL did not return a valid RSS feed' }
-    })
-  )
-
-  const suggestions: SourceSuggestion[] = validated.map((result, i) => {
-    if (result.status === 'fulfilled') return result.value
-    const fallback = claudeSuggestions[i]
-    return {
-      url: fallback?.url ?? '',
-      label: fallback?.label ?? '',
-      reason: fallback?.reason ?? '',
-      valid: false,
-      error: 'Validation failed',
-    }
-  })
-
-  return NextResponse.json({ suggestions })
 }

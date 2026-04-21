@@ -2,12 +2,14 @@
  * Regex-based RSS/Atom feed fetcher — no external XML parser dependency.
  * Handles RSS 2.0 and Atom, including CDATA-wrapped content.
  */
+import { USER_AGENT_BOT } from '@/utils/constants'
 
 export interface RssItem {
   title: string
   description: string
   link: string
   pubDate: string | null
+  eligiblePillars?: string[]
 }
 
 /**
@@ -24,7 +26,7 @@ export async function fetchRssSource(
   try {
     const res = await fetch(url, {
       signal: controller.signal,
-      headers: { 'User-Agent': 'PostflowBot/1.0' },
+      headers: { 'User-Agent': USER_AGENT_BOT },
     })
     clearTimeout(timer)
     if (!res.ok) return { items: [], error: `HTTP ${res.status}` }
@@ -45,7 +47,7 @@ export async function isValidRssUrl(url: string): Promise<boolean> {
   try {
     const res = await fetch(url, {
       signal: AbortSignal.timeout(5000),
-      headers: { 'User-Agent': 'PostflowBot/1.0' },
+      headers: { 'User-Agent': USER_AGENT_BOT },
     })
     if (!res.ok) return false
     const ct = res.headers.get('content-type') ?? ''

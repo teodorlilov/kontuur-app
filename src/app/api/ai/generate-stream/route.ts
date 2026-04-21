@@ -5,7 +5,7 @@ import { DEFAULT_CAROUSEL_SLIDES } from '@/utils/constants'
 import { checkRateLimit, AI_RATE_LIMIT } from '@/lib/auth/rate-limit'
 import { performResearch } from '@/ai/research/research-orchestrator'
 import { runGenerationBatch } from '@/ai/generation/generation-orchestrator'
-import type { ResearchTopic } from '@/ai/research/types'
+import type { ResearchTopic, SkippedPillar } from '@/ai/research/types'
 import type { Theme } from '@/ai/generation/types'
 import type { PriorityPost } from '@/types/api'
 import type { ClientData } from '@/lib/clients/fetch-client-data'
@@ -16,6 +16,7 @@ type UnifiedStreamEvent =
   | { type: 'total'; count: number }
   | { type: 'phase'; message: string }
   | { type: 'result'; data: unknown }
+  | { type: 'skipped_pillars'; pillars: SkippedPillar[]; skippedCount: number }
   | { type: 'error'; message: string }
 
 interface GenerateStreamRequestBody {
@@ -91,6 +92,8 @@ export async function POST(request: Request) {
           preloadedClientData: body.preloadedClientData,
           onPhase: (message) => send({ type: 'phase', message }),
           onTopic: (topic) => topics.push(topic),
+          onSkippedPillars: (pillars, skippedCount) =>
+            send({ type: 'skipped_pillars', pillars, skippedCount }),
         })
 
         if (topics.length === 0 && (body.priorityPosts?.length ?? 0) === 0) {

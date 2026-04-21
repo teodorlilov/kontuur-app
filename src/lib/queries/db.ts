@@ -290,6 +290,7 @@ export interface ClientSourceRow {
   label: string
   url: string
   config: Record<string, unknown>
+  pillar_ids: string[]
   extracted_text: string | null
 }
 

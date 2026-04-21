@@ -35,13 +35,13 @@ export const AGENCY_SETTINGS_COLUMNS =
 
 // client_sources
 export const CLIENT_SOURCE_COLUMNS =
-  'id, client_id, type, label, url, is_active, last_fetched_at, last_fetch_status, last_fetch_error, config, created_at'
+  'id, client_id, type, label, url, is_active, last_fetched_at, last_fetch_status, last_fetch_error, config, pillar_ids, created_at'
 
 export const CLIENT_SOURCE_FULL_COLUMNS =
-  'id, client_id, type, label, url, is_active, last_fetched_at, last_fetch_status, last_fetch_error, config, file_path, extracted_text, created_at'
+  'id, client_id, type, label, url, is_active, last_fetched_at, last_fetch_status, last_fetch_error, config, pillar_ids, file_path, extracted_text, created_at'
 
 // client_sources (research pipeline — active only, with extracted_text for file sources)
-export const CLIENT_SOURCE_RESEARCH_COLUMNS = 'id, type, label, url, config, extracted_text'
+export const CLIENT_SOURCE_RESEARCH_COLUMNS = 'id, type, label, url, config, pillar_ids, extracted_text'
 
 // users
 export const USER_COLUMNS = 'id, email, role, created_at'

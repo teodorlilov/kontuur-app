@@ -10,16 +10,18 @@ import { ManualAddInModal } from '@/features/sources/components/manual-add-modal
 import { cn } from '@/utils/cn'
 import { formatRelativeTime } from '@/utils/format'
 import { useSources } from '@/features/sources/hooks/use-sources'
+import { pillarHasSources, getSourcePillarIds } from '@/lib/clients/content-pillars'
 import { toast } from '@/components/ui/toast'
 import type { ClientSource, SourceStrategy } from '@/types/api'
+import type { WeightedPillar } from '@/lib/clients/content-pillars'
 
 interface SourcesManagerProps {
   clientId: string
   clientName: string
   niche: string
   initialSources: ClientSource[]
-  isOnboarding: boolean
   initialSourceStrategy?: SourceStrategy
+  pillars: WeightedPillar[]
 }
 
 interface AddForm {
@@ -33,8 +35,8 @@ export function SourcesManager({
   clientName,
   niche,
   initialSources,
-  isOnboarding,
   initialSourceStrategy,
+  pillars,
 }: SourcesManagerProps) {
   const {
     sources,
@@ -58,7 +60,6 @@ export function SourcesManager({
     clientName,
     niche,
     initialSources,
-    isOnboarding,
     initialSourceStrategy,
   })
 
@@ -161,6 +162,9 @@ export function SourcesManager({
     if (source.type === 'file') {
       return <span className="text-xs text-green-600">Uploaded</span>
     }
+    if (source.type === 'tavily') {
+      return <span className="text-xs text-gray-400">Web search</span>
+    }
     if (!source.last_fetch_status) {
       return <span className="text-xs text-gray-400">Never fetched</span>
     }
@@ -182,23 +186,15 @@ export function SourcesManager({
   const rssSources = sources.filter((s) => s.type === 'rss')
   const websiteSources = sources.filter((s) => s.type === 'website')
   const fileSources = sources.filter((s) => s.type === 'file')
+  const tavilySource = sources.find((s) => s.type === 'tavily')
   const activeSourceCount = sources.filter((s) => s.is_active).length
   const requireGrounding = strategy.require_source_grounding ?? false
 
-  function renderLabelInput(placeholder: string) {
-    return (
-      <div className="flex flex-col gap-1.5">
-        <label className="text-xs font-medium text-gray-600">Label</label>
-        <input
-          type="text"
-          value={addForm.label}
-          onChange={(e) => setAddForm((f) => ({ ...f, label: e.target.value }))}
-          placeholder={placeholder}
-          className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-brand-purple focus:outline-none focus:ring-1 focus:ring-brand-purple"
-        />
-      </div>
-    )
-  }
+  // Compute uncovered pillars
+  const allSourcePillarIds = sources
+    .filter((s) => s.is_active)
+    .map((s) => getSourcePillarIds(s.pillar_ids))
+  const uncoveredPillars = pillars.filter((p) => !pillarHasSources(p.id, allSourcePillarIds))
 
   function renderSourceList(
     sourcesOfType: ClientSource[],
@@ -216,6 +212,10 @@ export function SourcesManager({
             key={source.id}
             source={source}
             statusBadge={getStatusBadge(source)}
+            pillars={pillars}
+            onPillarIdsChange={(ids) => {
+              void handleEditSource(source.id, { pillar_ids: ids })
+            }}
             onToggle={() => {
               void handleToggleActive(source)
             }}
@@ -228,6 +228,21 @@ export function SourcesManager({
             onScanPages={onScanPages}
           />
         ))}
+      </div>
+    )
+  }
+
+  function renderLabelInput(placeholder: string) {
+    return (
+      <div className="flex flex-col gap-1.5">
+        <label className="text-xs font-medium text-gray-600">Label</label>
+        <input
+          type="text"
+          value={addForm.label}
+          onChange={(e) => setAddForm((f) => ({ ...f, label: e.target.value }))}
+          placeholder={placeholder}
+          className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-brand-purple focus:outline-none focus:ring-1 focus:ring-brand-purple"
+        />
       </div>
     )
   }
@@ -286,6 +301,18 @@ export function SourcesManager({
         />
       </section>
 
+      {/* Uncovered pillar warnings */}
+      {uncoveredPillars.length > 0 && (
+        <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 space-y-1">
+          {uncoveredPillars.map((p) => (
+            <p key={p.id} className="text-xs text-amber-700">
+              <span className="font-medium">&quot;{p.pillar}&quot;</span> has no sources assigned.
+              Assign sources to generate content for this pillar.
+            </p>
+          ))}
+        </div>
+      )}
+
       {/* Research status */}
       <div className="mb-6">
         {requireGrounding && activeSourceCount === 0 ? (
@@ -295,7 +322,7 @@ export function SourcesManager({
           </p>
         ) : activeSourceCount === 0 ? (
           <p className="text-xs text-gray-500">
-            No active sources · research will use trend-based topics
+            No active sources — generation will have no source material.
           </p>
         ) : (
           <p className="text-xs text-gray-500">
@@ -304,23 +331,28 @@ export function SourcesManager({
         )}
       </div>
 
-      {/* Onboarding banner */}
-      {isOnboarding && (
-        <div className="bg-brand-purple-light border border-brand-purple/20 rounded-xl p-4 mb-6 flex items-start justify-between gap-4">
-          <div>
-            <p className="text-sm font-medium text-brand-purple">Set up research sources</p>
-            <p className="text-xs text-brand-purple/70 mt-0.5">
-              Add RSS feeds or your client&apos;s website so research is grounded in their real
-              content.
-            </p>
-          </div>
-          <a
-            href="/clients"
-            className="text-xs text-gray-500 hover:text-gray-700 whitespace-nowrap mt-0.5"
-          >
-            Skip for now →
-          </a>
-        </div>
+      {/* Web Search (Tavily) section */}
+      {tavilySource && (
+        <section className="mb-8">
+          <h2 className="text-sm font-semibold text-gray-700 mb-3">Web Search</h2>
+          <SourceRow
+            source={tavilySource}
+            statusBadge={getStatusBadge(tavilySource)}
+            pillars={pillars}
+            onPillarIdsChange={(ids) => {
+              void handleEditSource(tavilySource.id, { pillar_ids: ids })
+            }}
+            onToggle={() => {
+              void handleToggleActive(tavilySource)
+            }}
+            onEdit={(updates) => {
+              void handleEditSource(tavilySource.id, updates)
+            }}
+            onDelete={() => {
+              void handleDelete(tavilySource)
+            }}
+          />
+        </section>
       )}
 
       {/* RSS Feeds section */}
@@ -551,30 +583,6 @@ export function SourcesManager({
           'file'
         )}
       </section>
-
-      {/* Onboarding CTA */}
-      {isOnboarding && (
-        <div className="border border-brand-purple/20 rounded-xl p-6 bg-brand-purple-light/40 text-center">
-          <p className="text-sm font-medium text-gray-900">
-            {sources.length > 0
-              ? "Sources are set up — you're ready to generate content!"
-              : 'You can always add sources later from the client settings.'}
-          </p>
-          <p className="text-xs text-gray-500 mt-1">
-            {sources.length > 0
-              ? 'Research will pull from your sources to suggest relevant themes.'
-              : 'Without sources, research will suggest themes based on trending topics in your niche.'}
-          </p>
-          <div className="flex items-center justify-center gap-3 mt-4">
-            <a href="/generate">
-              <Button size="sm">Generate content →</Button>
-            </a>
-            <a href="/clients" className="text-sm text-gray-500 hover:text-gray-700">
-              Go to clients
-            </a>
-          </div>
-        </div>
-      )}
 
       {/* Page Picker Modal */}
       <PagePickerModal

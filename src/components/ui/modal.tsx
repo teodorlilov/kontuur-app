@@ -10,9 +10,10 @@ interface ModalProps {
   title?: string
   children: React.ReactNode
   className?: string
+  maxWidth?: number
 }
 
-export function Modal({ open, onClose, title, children, className }: ModalProps) {
+export function Modal({ open, onClose, title, children, className, maxWidth = 520 }: ModalProps) {
   return (
     <Dialog.Root open={open} onOpenChange={(o) => !o && onClose()}>
       <Dialog.Portal>
@@ -36,7 +37,7 @@ export function Modal({ open, onClose, title, children, className }: ModalProps)
             background: 'var(--color-surface)',
             borderRadius: 'var(--radius-xl)',
             width: '90vw',
-            maxWidth: 520,
+            maxWidth,
             maxHeight: '90vh',
             border: '0.5px solid var(--color-border-1)',
             zIndex: 201,

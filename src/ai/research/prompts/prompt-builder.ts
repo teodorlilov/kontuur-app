@@ -71,7 +71,10 @@ You read raw business data and extract post themes that are specific, factual, a
             'RSS_FEED',
             'rss_content',
             sourceContext.rssItems
-              .map((i) => `- ${i.title}: ${i.description} (${i.link})`)
+              .map((i) => {
+                const tag = i.eligiblePillars?.length ? `[${i.eligiblePillars.join(', ')}] ` : ''
+                return `- ${tag}${i.title}: ${i.description} (${i.link})`
+              })
               .join('\n')
           )
         : ''
@@ -81,7 +84,14 @@ You read raw business data and extract post themes that are specific, factual, a
         ? buildPromptSection(
             'WEBSITE_DATA',
             'website_content',
-            sourceContext.websiteExcerpts.map((w) => `[URL: ${w.url}]\n${w.text}`).join('\n\n')
+            sourceContext.websiteExcerpts
+              .map((w) => {
+                const tag = w.eligiblePillars?.length ? `[${w.eligiblePillars.join(', ')}] ` : ''
+                return w.focusInstructions
+                  ? `${tag}[URL: ${w.url}]\n[Focus: ${w.focusInstructions}]\n${w.text}`
+                  : `${tag}[URL: ${w.url}]\n${w.text}`
+              })
+              .join('\n\n')
           )
         : ''
 
@@ -90,7 +100,12 @@ You read raw business data and extract post themes that are specific, factual, a
         ? buildPromptSection(
             'INTERNAL_DOCUMENTS',
             'document_content',
-            sourceContext.fileExcerpts.map((f) => `[File: ${f.label}]\n${f.text}`).join('\n\n')
+            sourceContext.fileExcerpts
+              .map((f) => {
+                const tag = f.eligiblePillars?.length ? `[${f.eligiblePillars.join(', ')}] ` : ''
+                return `${tag}[File: ${f.label}]\n${f.text}`
+              })
+              .join('\n\n')
           )
         : ''
 
@@ -100,7 +115,10 @@ You read raw business data and extract post themes that are specific, factual, a
             'WEB_SEARCH_RESULTS',
             'web_search_content',
             sourceContext.webSearchItems
-              .map((r) => `- ${r.title}: ${r.snippet} (${r.url})`)
+              .map((r) => {
+                const tag = r.eligiblePillars?.length ? `[${r.eligiblePillars.join(', ')}] ` : ''
+                return `- ${tag}${r.title}: ${r.snippet} (${r.url})`
+              })
               .join('\n')
           )
         : ''
@@ -120,17 +138,18 @@ ${webSection}
 ${fileSection}
 ${webSearchSection}
 
-### SOURCING:
-- Grounded (priority): use specific facts, device names, mechanisms from the source above. Reference source URL.
-- RSS/website/file: set source_type to "rss", "website", or "file" respectively.
-- Web search (trend): items from WEB_SEARCH_RESULTS are current web articles from this month. Set source_type to "web_search".
-- Trend fallback: if a pillar has no source coverage, use ${new Date().toLocaleString('en-US', { month: 'long', year: 'numeric' })} trends. Set source fields to null.
+### SOURCING RULES:
+- Every topic MUST be grounded in the provided source material. Never use your own knowledge.
+- If a source item has a pillar tag in brackets (e.g. [Pillar A, Pillar B]), only use it for the named pillars. Untagged items are available to all pillars.
+- RSS items → source_type "rss", source_url = item link.
+- Website pages → source_type "website", source_url = page URL.
+- Documents → source_type "file", source_url = null.
+- Web search → source_type "web_search", source_url = result URL.
+- If a pillar has no available source items, omit that pillar entirely — do NOT fabricate.
+- Never return a topic with source_url null unless source_type is "file".
+- Maximize source diversity: use each available source URL at least once before reusing any URL for a second topic. Each topic from the same URL must cover a genuinely different angle.
 
-
-### TASK: Identify exactly ${count} unique post theme${count > 1 ? 's' : ''}.
-
-
-CRITICAL: You MUST return EXACTLY ${count} JSON object${count > 1 ? 's' : ''} — never fewer. If source material does not cover all pillars, use current ${new Date().toLocaleString('en-US', { month: 'long', year: 'numeric' })} industry trends for the remaining slots and set source fields to null.
+### TASK: Identify up to ${count} unique post theme${count > 1 ? 's' : ''}. Return only topics grounded in the provided source material — fewer than ${count} is acceptable if sources don't fully cover all pillars.
 [{
   "finding": "one sentence: why this theme, what specific fact justifies it",
   "suggested_theme": "5-10 words summary about the theme in ${this.languageConfig.language}, use proper grammer",
@@ -146,11 +165,13 @@ CRITICAL: You MUST return EXACTLY ${count} JSON object${count > 1 ? 's' : ''} �
     if (this.contentPillars.length === 0) return ''
     const allocation = allocateByWeight(this.contentPillars, count)
     const pillarInstructions = this.contentPillars
-      .map(
-        (p) => `- "${p.pillar}" (${p.weight}%): generate ${allocation.get(p.pillar) ?? 0} topic(s)`
-      )
+      .map((p) => {
+        const n = allocation.get(p.pillar) ?? 0
+        return `- "${p.pillar}" (${p.weight}%): generate ${n} topic(s)`
+      })
       .join('\n')
-    return `Content pillars with weighted distribution:\n${pillarInstructions}\nDistribute topics according to these weights. Include the pillar name in each topic's response.`
+
+    return `Content pillars with weighted distribution:\n${pillarInstructions}`
   }
 
   private buildCoveredTopicsBlock(): string {

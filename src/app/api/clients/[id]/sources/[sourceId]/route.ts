@@ -8,6 +8,7 @@ interface PatchSourceBody {
   label?: string
   url?: string
   config?: Record<string, unknown>
+  pillar_ids?: string[]
 }
 
 export async function PATCH(
@@ -34,6 +35,7 @@ export async function PATCH(
   if (body.label !== undefined && body.label.trim()) updates.label = body.label.trim()
   if (body.url !== undefined && body.url.trim()) updates.url = body.url.trim()
   if (body.config !== undefined) updates.config = body.config
+  if (body.pillar_ids !== undefined) updates.pillar_ids = body.pillar_ids
 
   if (Object.keys(updates).length === 0) {
     return NextResponse.json({ error: 'No valid fields to update' }, { status: 400 })

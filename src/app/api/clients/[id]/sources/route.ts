@@ -34,7 +34,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  return NextResponse.json({ sources: data as ClientSource[] })
+  return NextResponse.json({ sources: data as unknown as ClientSource[] })
 }
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -114,7 +114,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   if (insertError) return NextResponse.json({ error: insertError.message }, { status: 500 })
 
   return NextResponse.json({
-    source: insertedRow as ClientSource,
+    source: insertedRow as unknown as ClientSource,
     fetch_status: fetchStatus,
     fetch_error: fetchError,
   })
