@@ -32,6 +32,22 @@ export const CLIENT_COLORS = [
   '#2563EB',
 ] as const
 
+export const AVATAR_GRADIENTS = [
+  'linear-gradient(135deg, #2C5F4A, #1A3D2E)',
+  'linear-gradient(135deg, #8A3A5A, #5A2040)',
+  'linear-gradient(135deg, #5A4A2A, #3A2A10)',
+  'linear-gradient(135deg, #2C3E5F, #1A2A4A)',
+] as const
+
+export const TOP_BAR_GRADIENTS = [
+  'linear-gradient(90deg, #C07B55, #8B5A3A)',
+  'linear-gradient(90deg, #2C5F8A, #1A3D5A)',
+  'linear-gradient(90deg, #5A8A4A, #3A6A2A)',
+  'linear-gradient(90deg, #8A5A2A, #5A3A10)',
+] as const
+
+export const SETUP_TOP_BAR_GRADIENT = 'linear-gradient(90deg, #C07B55, #E8A87C)'
+
 export const WEEKDAY_OPTIONS = [
   { value: 'monday', label: 'Monday' },
   { value: 'tuesday', label: 'Tuesday' },

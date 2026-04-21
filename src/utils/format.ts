@@ -25,3 +25,20 @@ export function truncateText(text: string, maxLength: number): string {
   if (text.length <= maxLength) return text
   return text.slice(0, maxLength).trimEnd() + '…'
 }
+
+/** Extracts up to 2-letter initials from a name string, supporting non-Latin scripts. */
+export function extractInitials(name: string): string {
+  const cleaned = name.replace(/[^\p{L}\s]/gu, '').trim()
+  if (!cleaned) return name.charAt(0).toUpperCase() || 'A'
+  const parts = cleaned.split(/\s+/)
+  const first = parts[0] ?? ''
+  const second = parts[1] ?? ''
+  if (!second) return first.slice(0, 2).toUpperCase()
+  return (first.charAt(0) + second.charAt(0)).toUpperCase()
+}
+
+/** Formats a number compactly: 1200 → "1.2K", 50 → "50". */
+export function formatCompactNumber(n: number): string {
+  if (n >= 1000) return `${(n / 1000).toFixed(1)}K`
+  return String(n)
+}

@@ -16,6 +16,7 @@ import {
   LogOut,
 } from 'lucide-react'
 import { createBrowserSupabaseClient } from '@/lib/supabase/client'
+import { extractInitials } from '@/utils/format'
 import { toast } from 'sonner'
 
 interface NavItem {
@@ -29,17 +30,6 @@ interface SidebarProps {
   agencyMode: 'agency' | 'solo'
   pendingCount?: number
   agencyName?: string
-}
-
-/** Extracts up to 2-letter initials from a name string. */
-function extractInitials(name: string): string {
-  const cleaned = name.replace(/[^a-zA-Z\s]/g, '').trim()
-  if (!cleaned) return 'A'
-  const parts = cleaned.split(/\s+/)
-  const first = parts[0] ?? ''
-  const second = parts[1] ?? ''
-  if (!second) return first.slice(0, 2).toUpperCase()
-  return (first.charAt(0) + second.charAt(0)).toUpperCase()
 }
 
 function LogoMark() {

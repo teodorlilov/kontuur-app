@@ -227,7 +227,7 @@ export function DashboardView({
                 niche={c.niche}
                 status="active"
                 pendingCount={clientPendingMap[c.id] ?? 0}
-                href={`/clients/${c.id}`}
+                href={`/clients/${c.id}/edit`}
               />
             ))
           )}

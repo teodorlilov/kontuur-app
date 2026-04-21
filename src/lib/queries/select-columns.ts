@@ -18,6 +18,8 @@ export const CLIENT_COLUMNS =
 
 export const CLIENT_LIST_COLUMNS = 'id, name, niche, posts_per_week, language, created_at'
 
+export const CLIENT_CARD_COLUMNS = 'id, name, niche, posts_per_week, language, created_at, brand_profiles(content_pillars)'
+
 // brand_profiles
 export const BRAND_PROFILE_COLUMNS =
   'id, tone, target_audience, content_pillars, avoid_topics, client_testimonial_voice, default_post_type, default_carousel_slides, weekly_mix_json, language_formality, secondary_language, is_health_niche, best_time_json, best_time_updated_at, source_strategy, language_notes'
