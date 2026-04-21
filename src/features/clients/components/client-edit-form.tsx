@@ -202,7 +202,7 @@ export function ClientEditForm({
 
   return (
     <>
-      <Topbar title={`Edit: ${client.name}`} />
+      <Topbar />
       <div className="p-6 max-w-2xl mx-auto space-y-6 pb-24">
         {/* Basic info */}
         <section className="bg-white rounded-xl border border-gray-200 p-5 space-y-4">

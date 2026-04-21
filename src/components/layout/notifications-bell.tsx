@@ -72,7 +72,7 @@ export function NotificationsBell() {
       >
         <Bell className="h-5 w-5" />
         {unread > 0 && (
-          <span className="absolute top-1 right-1 h-4 w-4 rounded-full bg-brand-purple text-white text-[10px] font-bold flex items-center justify-center">
+          <span className="absolute top-1 right-1 h-4 w-4 rounded-full text-white text-[10px] font-bold flex items-center justify-center" style={{ background: 'var(--color-terracotta)' }}>
             {unread > 9 ? '9+' : unread}
           </span>
         )}

@@ -28,19 +28,68 @@ interface NavItem {
 interface SidebarProps {
   agencyMode: 'agency' | 'solo'
   pendingCount?: number
+  agencyName?: string
+}
+
+/** Extracts up to 2-letter initials from a name string. */
+function extractInitials(name: string): string {
+  const cleaned = name.replace(/[^a-zA-Z\s]/g, '').trim()
+  if (!cleaned) return 'A'
+  const parts = cleaned.split(/\s+/)
+  const first = parts[0] ?? ''
+  const second = parts[1] ?? ''
+  if (!second) return first.slice(0, 2).toUpperCase()
+  return (first.charAt(0) + second.charAt(0)).toUpperCase()
+}
+
+function LogoMark() {
+  return (
+    <div
+      style={{
+        borderLeft: '1.5px solid var(--color-terracotta)',
+        borderRight: '1.5px solid var(--color-terracotta)',
+        borderTop: '0.5px solid rgba(236,232,225,0.18)',
+        borderBottom: '0.5px solid rgba(236,232,225,0.18)',
+        padding: '11px 16px',
+        display: 'inline-block',
+      }}
+    >
+      <div
+        style={{
+          fontFamily: 'var(--font-display, Georgia, serif)',
+          fontSize: 18,
+          fontWeight: 400,
+          color: '#ECE8E1',
+          letterSpacing: '4px',
+        }}
+      >
+        KONTUUR
+      </div>
+      <div
+        style={{
+          fontSize: 7,
+          color: 'var(--color-terracotta)',
+          letterSpacing: '6px',
+          marginTop: 4,
+        }}
+      >
+        SOCIAL INTELLIGENCE
+      </div>
+    </div>
+  )
 }
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
     <div
       style={{
-        padding: '20px 22px 6px',
-        fontSize: 10,
+        fontSize: 9,
         fontWeight: 500,
+        color: 'var(--sidebar-section-label)',
+        letterSpacing: '2.5px',
         textTransform: 'uppercase',
-        letterSpacing: '0.10em',
-        color: 'rgba(255,255,255,0.25)',
-        fontFamily: 'var(--font-sans)',
+        marginBottom: 8,
+        padding: '0 4px',
       }}
     >
       {children}
@@ -57,7 +106,7 @@ function NavLink({
   pathname: string
   onClose?: () => void
 }) {
-  const active = pathname === item.href || pathname.startsWith(item.href + '/')
+  const isActive = pathname === item.href || pathname.startsWith(item.href + '/')
   return (
     <Link
       href={item.href}
@@ -65,44 +114,47 @@ function NavLink({
       style={{
         display: 'flex',
         alignItems: 'center',
-        gap: 9,
-        padding: '8px 22px',
-        fontSize: 13.5,
-        color: active ? 'var(--sidebar-text-active)' : 'var(--sidebar-text)',
-        background: active ? 'var(--sidebar-item-bg-active)' : 'transparent',
+        gap: 10,
+        padding: '9px 12px',
+        borderRadius: 7,
+        fontSize: 13,
+        fontWeight: isActive ? 500 : 400,
+        color: isActive ? 'var(--sidebar-text-active)' : 'var(--sidebar-text)',
+        background: isActive ? 'var(--sidebar-item-bg-active)' : 'transparent',
         cursor: 'pointer',
-        transition: 'color 120ms ease, background 120ms ease',
+        transition: 'background 0.15s',
         textDecoration: 'none',
-        minHeight: 36,
       }}
       onMouseEnter={(e) => {
-        if (!active) {
-          e.currentTarget.style.color = 'var(--sidebar-text-hover)'
+        if (!isActive) {
           e.currentTarget.style.background = 'var(--sidebar-item-bg-hover)'
         }
       }}
       onMouseLeave={(e) => {
-        if (!active) {
-          e.currentTarget.style.color = 'var(--sidebar-text)'
+        if (!isActive) {
           e.currentTarget.style.background = 'transparent'
         }
       }}
     >
-      {item.icon}
+      <span style={{ color: isActive ? 'var(--sidebar-icon-active)' : 'var(--sidebar-icon)', display: 'flex' }}>
+        {item.icon}
+      </span>
       <span style={{ flex: 1 }}>{item.label}</span>
-      {item.badge && item.badge > 0 ? (
+      {item.badge !== undefined && item.badge > 0 && (
         <span
           style={{
+            fontSize: 10,
+            fontWeight: 500,
             background: 'var(--sidebar-badge-bg)',
             color: 'var(--sidebar-badge-text)',
-            fontSize: 10,
-            padding: '1px 6px',
-            borderRadius: 'var(--radius-full)',
+            padding: '2px 6px',
+            borderRadius: 4,
+            lineHeight: 1.4,
           }}
         >
           {item.badge}
         </span>
-      ) : null}
+      )}
     </Link>
   )
 }
@@ -117,40 +169,135 @@ function NavLinks({
   onClose?: () => void
 }) {
   return (
-    <nav style={{ flex: 1 }}>
-      <SectionLabel>Workspace</SectionLabel>
-      {items.map((item) => (
-        <NavLink key={item.href} item={item} pathname={pathname} onClose={onClose} />
-      ))}
+    <nav style={{ flex: 1, padding: '0 12px' }}>
+      <div style={{ marginBottom: 8 }}>
+        <SectionLabel>Workspace</SectionLabel>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+        {items.map((item) => (
+          <NavLink key={item.href} item={item} pathname={pathname} onClose={onClose} />
+        ))}
+      </div>
     </nav>
   )
 }
 
-export function Sidebar({ agencyMode, pendingCount = 0 }: SidebarProps) {
+function SettingsLink({ pathname, onClose }: { pathname: string; onClose?: () => void }) {
+  const isActive = pathname === '/settings' || pathname.startsWith('/settings/')
+  return (
+    <Link
+      href="/settings"
+      onClick={onClose}
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 8,
+        padding: '8px 12px',
+        borderRadius: 7,
+        cursor: 'pointer',
+        textDecoration: 'none',
+        marginBottom: 6,
+        background: isActive ? 'var(--sidebar-item-bg-active)' : 'transparent',
+        transition: 'background 0.15s',
+      }}
+      onMouseEnter={(e) => {
+        if (!isActive) e.currentTarget.style.background = 'rgba(236,232,225,0.06)'
+      }}
+      onMouseLeave={(e) => {
+        if (!isActive) e.currentTarget.style.background = 'transparent'
+      }}
+    >
+      <Settings size={14} style={{ color: isActive ? 'var(--sidebar-icon-active)' : 'rgba(236,232,225,0.30)' }} />
+      <span style={{ fontSize: 12, color: isActive ? 'var(--sidebar-text-active)' : 'rgba(236,232,225,0.38)' }}>
+        Settings
+      </span>
+    </Link>
+  )
+}
+
+function AgencyChip({ agencyName }: { agencyName: string }) {
+  const initials = extractInitials(agencyName || 'A')
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 10,
+        padding: '10px 12px',
+        borderRadius: 8,
+        background: 'rgba(236,232,225,0.06)',
+        border: '0.5px solid rgba(236,232,225,0.10)',
+      }}
+    >
+      <div
+        style={{
+          width: 28,
+          height: 28,
+          borderRadius: '50%',
+          background: 'linear-gradient(135deg, #C07B55, #8B5A3A)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: 11,
+          fontWeight: 500,
+          color: '#fff',
+          flexShrink: 0,
+        }}
+      >
+        {initials}
+      </div>
+      <div style={{ minWidth: 0 }}>
+        <div
+          style={{
+            fontSize: 12,
+            color: 'rgba(236,232,225,0.70)',
+            fontWeight: 500,
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {agencyName || 'Agency'}
+        </div>
+        <div style={{ fontSize: 10, color: 'rgba(236,232,225,0.30)' }}>Agency workspace</div>
+      </div>
+    </div>
+  )
+}
+
+function DecorativeRings() {
+  return (
+    <svg
+      style={{ position: 'absolute', inset: 0, pointerEvents: 'none', width: '100%', height: '100%' }}
+      viewBox="0 0 220 700"
+      fill="none"
+    >
+      <ellipse cx="200" cy="350" rx="180" ry="180" stroke="rgba(236,232,225,0.025)" strokeWidth="50" />
+      <ellipse cx="200" cy="350" rx="120" ry="120" stroke="rgba(192,123,85,0.035)" strokeWidth="30" />
+    </svg>
+  )
+}
+
+export function Sidebar({ agencyMode, pendingCount = 0, agencyName = '' }: SidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
   const [mobileOpen, setMobileOpen] = useState(false)
 
   const agencyNav: NavItem[] = [
-    { label: 'Dashboard', href: '/dashboard', icon: <LayoutDashboard size={16} /> },
-    { label: 'Clients', href: '/clients', icon: <Users size={16} /> },
-    { label: 'Generate posts', href: '/generate', icon: <Sparkles size={16} /> },
-    {
-      label: 'Review queue',
-      href: '/review',
-      icon: <ClipboardList size={16} />,
-      badge: pendingCount,
-    },
-    { label: 'Calendar', href: '/calendar', icon: <Calendar size={16} /> },
-    { label: 'Analytics', href: '/analytics', icon: <BarChart2 size={16} /> },
+    { label: 'Dashboard', href: '/dashboard', icon: <LayoutDashboard size={15} /> },
+    { label: 'Clients', href: '/clients', icon: <Users size={15} /> },
+    { label: 'Generate posts', href: '/generate', icon: <Sparkles size={15} /> },
+    { label: 'Review queue', href: '/review', icon: <ClipboardList size={15} />, badge: pendingCount },
+    { label: 'Calendar', href: '/calendar', icon: <Calendar size={15} /> },
+    { label: 'Analytics', href: '/analytics', icon: <BarChart2 size={15} /> },
   ]
 
   const soloNav: NavItem[] = [
-    { label: 'Dashboard', href: '/dashboard', icon: <LayoutDashboard size={16} /> },
-    { label: 'Create content', href: '/generate', icon: <Sparkles size={16} /> },
-    { label: 'My drafts', href: '/review', icon: <ClipboardList size={16} />, badge: pendingCount },
-    { label: 'My calendar', href: '/calendar', icon: <Calendar size={16} /> },
-    { label: 'My results', href: '/analytics', icon: <BarChart2 size={16} /> },
+    { label: 'Dashboard', href: '/dashboard', icon: <LayoutDashboard size={15} /> },
+    { label: 'Create content', href: '/generate', icon: <Sparkles size={15} /> },
+    { label: 'My drafts', href: '/review', icon: <ClipboardList size={15} />, badge: pendingCount },
+    { label: 'My calendar', href: '/calendar', icon: <Calendar size={15} /> },
+    { label: 'My results', href: '/analytics', icon: <BarChart2 size={15} /> },
   ]
 
   const navItems = agencyMode === 'solo' ? soloNav : agencyNav
@@ -164,59 +311,56 @@ export function Sidebar({ agencyMode, pendingCount = 0 }: SidebarProps) {
   }
 
   const sidebarContent = (onClose?: () => void) => (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      {/* Logo area */}
-      <div
-        style={{
-          padding: '26px 22px 18px',
-          borderBottom: '0.5px solid var(--sidebar-border)',
-        }}
-      >
-        <Link href="/dashboard" style={{ display: 'block' }}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/kontuur_logo_white.svg" alt="kontuur" style={{ width: '100%', height: 'auto' }} />
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', position: 'relative', overflow: 'hidden' }}>
+      <DecorativeRings />
+
+      {/* Logo */}
+      <div style={{ padding: '26px 22px 32px', position: 'relative', zIndex: 1 }}>
+        <Link href="/dashboard" style={{ display: 'inline-block', textDecoration: 'none' }}>
+          <LogoMark />
         </Link>
       </div>
 
-      <NavLinks items={navItems} pathname={pathname} onClose={onClose} />
+      {/* Nav */}
+      <div style={{ position: 'relative', zIndex: 1, flex: 1 }}>
+        <NavLinks items={navItems} pathname={pathname} onClose={onClose} />
+      </div>
 
       {/* Footer */}
-      <div style={{ padding: '16px 0', borderTop: '0.5px solid var(--sidebar-border)' }}>
-        <NavLink
-          item={{ label: 'Settings', href: '/settings', icon: <Settings size={16} /> }}
-          pathname={pathname}
-          onClose={onClose}
-        />
+      <div style={{ padding: '12px', position: 'relative', zIndex: 1 }}>
+        <SettingsLink pathname={pathname} onClose={onClose} />
+
         <button
           onClick={handleSignOut}
           style={{
             display: 'flex',
             alignItems: 'center',
-            gap: 9,
-            padding: '8px 22px',
-            fontSize: 13.5,
-            color: 'var(--sidebar-text)',
+            gap: 8,
+            padding: '8px 12px',
+            borderRadius: 7,
+            fontSize: 12,
+            color: 'rgba(236,232,225,0.38)',
             background: 'transparent',
             cursor: 'pointer',
-            transition: 'color 120ms ease, background 120ms ease',
+            transition: 'background 0.15s',
             border: 'none',
             width: '100%',
             textAlign: 'left',
             fontFamily: 'var(--font-sans)',
-            minHeight: 36,
+            marginBottom: 8,
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.color = 'var(--sidebar-text-hover)'
-            e.currentTarget.style.background = 'var(--sidebar-item-bg-hover)'
+            e.currentTarget.style.background = 'rgba(236,232,225,0.06)'
           }}
           onMouseLeave={(e) => {
-            e.currentTarget.style.color = 'var(--sidebar-text)'
             e.currentTarget.style.background = 'transparent'
           }}
         >
-          <LogOut size={16} />
+          <LogOut size={14} style={{ color: 'rgba(236,232,225,0.30)' }} />
           Sign out
         </button>
+
+        <AgencyChip agencyName={agencyName} />
       </div>
     </div>
   )
@@ -262,6 +406,7 @@ export function Sidebar({ agencyMode, pendingCount = 0 }: SidebarProps) {
                 background: 'none',
                 border: 'none',
                 cursor: 'pointer',
+                zIndex: 2,
               }}
               aria-label="Close menu"
             >

@@ -22,7 +22,7 @@ export default async function ClientsPage() {
 
   return (
     <>
-      <Topbar title="Clients" />
+      <Topbar />
       <div className="p-6">
         <div className="flex items-center justify-between mb-6">
           <p className="text-sm text-gray-500">

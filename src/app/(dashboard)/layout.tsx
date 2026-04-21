@@ -8,7 +8,6 @@ import { getCachedAgency, getCachedAgencyClients, getCachedPendingRows } from '@
 import { USER_AUTH_COLUMNS } from '@/lib/queries/select-columns'
 import { AuthProvider } from '@/components/providers/auth-provider'
 import { Sidebar } from '@/components/layout/sidebar'
-import { NotificationsBell } from '@/components/layout/notifications-bell'
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const user = await getAuthUser()
@@ -44,6 +43,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   let agencyMode: 'agency' | 'solo' = 'agency'
   let pendingCount = 0
+  let agencyName = ''
 
   if (userData) {
     const [agencyData] = await Promise.all([
@@ -52,6 +52,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
     ])
 
     if (agencyData?.mode === 'solo') agencyMode = 'solo'
+    agencyName = agencyData?.name ?? ''
 
     // Pending review count for badge — React cache deduplicates with clients/dashboard pages
     const pendingRows = await getCachedPendingRows(userData.agency_id)
@@ -60,14 +61,11 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   return (
     <>
-      <NextTopLoader color="var(--brand-purple, #7c3aed)" height={2} showSpinner={false} />
+      <NextTopLoader color="#2C3E50" height={2} showSpinner={false} />
       <AuthProvider>
         <div className="flex h-screen overflow-hidden" style={{ background: 'var(--color-page)' }}>
-          <Sidebar agencyMode={agencyMode} pendingCount={pendingCount} />
+          <Sidebar agencyMode={agencyMode} pendingCount={pendingCount} agencyName={agencyName} />
           <main className="flex-1 overflow-y-auto">{children}</main>
-          <div style={{ position: 'fixed', top: 12, right: 40, zIndex: 50 }}>
-            <NotificationsBell />
-          </div>
         </div>
       </AuthProvider>
     </>

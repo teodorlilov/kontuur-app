@@ -42,7 +42,8 @@ export function BriefingActions() {
         <button
           onClick={handleGenerate}
           disabled={generating}
-          className="text-xs font-medium text-brand-purple border border-brand-purple rounded-lg px-3 py-1.5 hover:bg-brand-purple/5 transition-colors disabled:opacity-50"
+          className="text-xs font-medium rounded-lg px-3 py-1.5 transition-colors disabled:opacity-50"
+          style={{ color: 'var(--color-terracotta)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--color-terracotta)' }}
         >
           {generating ? 'Generating…' : 'Refresh briefing'}
         </button>

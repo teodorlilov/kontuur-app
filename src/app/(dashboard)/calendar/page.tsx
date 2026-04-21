@@ -96,7 +96,7 @@ export default async function CalendarPage() {
 
   return (
     <>
-      <Topbar title="Calendar" />
+      <Topbar />
       <div className="p-6">
         <CalendarView initialPosts={posts} clients={clients} bestTimeMap={bestTimeMap} />
       </div>

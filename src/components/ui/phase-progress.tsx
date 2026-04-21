@@ -41,8 +41,8 @@ export function PhaseProgress({ phases, subtitle }: PhaseProgressProps) {
 
       <div className="w-48 h-1.5 bg-gray-100 rounded-full overflow-hidden">
         <div
-          className="h-full bg-brand-purple rounded-full transition-all duration-700 ease-out"
-          style={{ width: `${progress}%` }}
+          className="h-full rounded-full transition-all duration-700 ease-out"
+          style={{ background: 'var(--color-brand)', width: `${progress}%` }}
         />
       </div>
 

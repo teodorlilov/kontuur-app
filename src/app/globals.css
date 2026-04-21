@@ -53,15 +53,34 @@
   --radius-full: 9999px;
 
   /* Sidebar (always dark) */
-  --sidebar-bg: #2c3e50;
-  --sidebar-text: rgba(255, 255, 255, 0.55);
-  --sidebar-text-hover: rgba(255, 255, 255, 0.85);
-  --sidebar-text-active: rgba(255, 255, 255, 1);
-  --sidebar-item-bg-hover: rgba(255, 255, 255, 0.07);
-  --sidebar-item-bg-active: rgba(255, 255, 255, 0.12);
-  --sidebar-border: rgba(255, 255, 255, 0.08);
-  --sidebar-badge-bg: rgba(255, 255, 255, 0.15);
-  --sidebar-badge-text: rgba(255, 255, 255, 0.8);
+  --sidebar-bg: #1a2630;
+  --sidebar-text: rgba(236, 232, 225, 0.55);
+  --sidebar-text-hover: rgba(236, 232, 225, 0.85);
+  --sidebar-text-active: #ece8e1;
+  --sidebar-icon: rgba(236, 232, 225, 0.38);
+  --sidebar-icon-active: #c07b55;
+  --sidebar-item-bg-hover: rgba(236, 232, 225, 0.07);
+  --sidebar-item-bg-active: rgba(192, 123, 85, 0.15);
+  --sidebar-border: rgba(236, 232, 225, 0.10);
+  --sidebar-badge-bg: rgba(192, 123, 85, 0.25);
+  --sidebar-badge-text: #c07b55;
+  --sidebar-section-label: rgba(236, 232, 225, 0.30);
+
+  /* Terracotta accent */
+  --color-terracotta: #c07b55;
+
+  /* Metric accent colours (top borders) */
+  --accent-m1: #c07b55;
+  --accent-m2: #2c5f8a;
+  --accent-m3: #5a8a4a;
+  --accent-m4: #8a5a2a;
+
+  /* Status colours (dashboard) */
+  --status-ok: #7a9a6a;
+  --status-warn: #c07b55;
+
+  /* Muted text */
+  --color-muted: #8a8070;
 }
 
 @theme inline {

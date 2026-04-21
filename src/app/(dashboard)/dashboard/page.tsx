@@ -4,7 +4,6 @@ import { getCachedAgency, getCachedAgencyClients, getCachedPendingRows } from '@
 import { BRIEFING_COLUMNS } from '@/lib/queries/select-columns'
 import { Topbar } from '@/components/layout/topbar'
 import { DashboardView } from '@/features/dashboard/components/dashboard-view'
-import { PageTransition } from '@/components/providers/page-transition'
 
 export default async function DashboardPage() {
   const { agencyId } = await requireSessionUser()
@@ -29,7 +28,7 @@ export default async function DashboardPage() {
   let publishedCount = 0
   const clientPendingMap: Record<string, number> = {}
 
-  // Start briefing query immediately — independent of clientIds, runs in parallel with stats
+  // Start briefing + pending post previews immediately — independent of stats
   const briefingQuery = supabase
     .from('intelligence_briefings')
     .select(BRIEFING_COLUMNS)
@@ -37,6 +36,16 @@ export default async function DashboardPage() {
     .order('created_at', { ascending: false })
     .limit(1)
     .single()
+
+  const pendingPostsQuery = clientIds.length > 0
+    ? supabase
+        .from('posts')
+        .select('id, caption, platform, pillar, created_at, client_id')
+        .in('client_id', clientIds)
+        .eq('status', 'pending_review')
+        .order('created_at', { ascending: false })
+        .limit(3)
+    : Promise.resolve({ data: [] as { id: string; caption: string; platform: string; pillar: string | null; created_at: string; client_id: string }[] })
 
   if (clientIds.length > 0) {
     // getCachedPendingRows is a React cache hit — layout already populated it for this request
@@ -64,8 +73,11 @@ export default async function DashboardPage() {
     }
   }
 
-  // Collect briefing — has been running while stats ran
-  const { data: rawBriefing } = await briefingQuery
+  // Collect briefing + pending posts — have been running while stats ran
+  const [{ data: rawBriefing }, { data: rawPendingPosts }] = await Promise.all([
+    briefingQuery,
+    pendingPostsQuery,
+  ])
 
   const briefing = rawBriefing as {
     briefing_text: string | null
@@ -76,21 +88,35 @@ export default async function DashboardPage() {
     coaching_points: string[] | null
   } | null
 
+  // Build client name lookup for pending post previews
+  const clientNameMap: Record<string, string> = {}
+  for (const c of clients) {
+    clientNameMap[c.id] = c.name
+  }
+
+  const pendingPosts = (rawPendingPosts ?? []).map((p) => ({
+    id: p.id as string,
+    caption: p.caption as string,
+    platform: p.platform as string,
+    pillar: (p.pillar as string) ?? '',
+    createdAt: p.created_at as string,
+    clientName: clientNameMap[p.client_id as string] ?? 'Unknown',
+  }))
+
   return (
     <>
-      <Topbar title="Dashboard" />
-      <PageTransition className="p-10 flex flex-col gap-6">
-        <DashboardView
-          isSolo={isSolo}
-          clientCount={clients.length}
-          pendingCount={pendingCount}
-          scheduledCount={scheduledCount}
-          publishedCount={publishedCount}
-          clients={clients}
-          clientPendingMap={clientPendingMap}
-          briefing={briefing}
-        />
-      </PageTransition>
+      <Topbar />
+      <DashboardView
+        isSolo={isSolo}
+        clientCount={clients.length}
+        pendingCount={pendingCount}
+        scheduledCount={scheduledCount}
+        publishedCount={publishedCount}
+        clients={clients}
+        clientPendingMap={clientPendingMap}
+        briefing={briefing}
+        pendingPosts={pendingPosts}
+      />
     </>
   )
 }

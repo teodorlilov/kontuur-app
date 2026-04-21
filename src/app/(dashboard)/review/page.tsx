@@ -103,7 +103,7 @@ export default async function ReviewPage() {
 
   return (
     <>
-      <Topbar title="Review queue" />
+      <Topbar />
       <div className="p-6">
         <ReviewQueue initialPosts={posts} clients={clients} bestTimeMap={bestTimeMap} />
       </div>
