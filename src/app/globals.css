@@ -106,6 +106,11 @@ body {
 }
 
 /* ─── Keyframes ─── */
+@keyframes bounce-dot {
+  0%, 80%, 100% { opacity: 0.3; }
+  40% { opacity: 1; }
+}
+
 @keyframes fade-up {
   from {
     opacity: 0;
