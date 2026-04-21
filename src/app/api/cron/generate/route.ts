@@ -97,7 +97,15 @@ export async function GET(request: NextRequest) {
       const postType = (brandProfile?.default_post_type ?? 'single') as PostType
       const slideCount = brandProfile?.default_carousel_slides ?? DEFAULT_CAROUSEL_SLIDES
 
-      // 8. Research themes via Tavily + LLM (same pipeline as wizard)
+      // 8. Create generation run (mirrors the wizard flow for dedup tracking)
+      const { data: runData } = await supabase
+        .from('generation_runs')
+        .insert({ client_id: clientId, platform })
+        .select('id')
+        .single()
+      const runId = (runData as { id: string } | null)?.id
+
+      // 9. Research themes via Tavily + LLM (same pipeline as wizard)
       const total = (schedule as { frequency_value: number }).frequency_value || 1
       const researchTopics = await performResearch({
         supabase,
@@ -125,7 +133,7 @@ export async function GET(request: NextRequest) {
         sourceFullText: t.source_full_text,
       }))
 
-      // 9. Run generation pipeline
+      // 10. Run generation pipeline (with trackTheme wired up, same as wizard)
       const generationResults = await runGenerationBatch({
         client,
         platform,
@@ -134,10 +142,21 @@ export async function GET(request: NextRequest) {
         requireSourceGrounding: client.requireSourceGrounding,
         themes,
         priorityPosts: [],
-        trackTheme: async () => {},
+        trackTheme: async (theme, postCount) => {
+          if (!runId) return
+          await supabase.from('generation_themes').insert({
+            run_id: runId,
+            theme_description: theme.description,
+            post_count: postCount,
+            is_priority: theme.isPriority ?? false,
+            priority_brief: theme.brief ?? null,
+            target_date: theme.targetDate ?? null,
+            research_used: !!theme.sourceExcerpt,
+          })
+        },
       })
 
-      // 10. Save posts to DB as pending_review — batch insert to avoid N serial round-trips
+      // 11. Save posts to DB as pending_review — batch insert to avoid N serial round-trips
       if (generationResults.length > 0) {
         const { data: savedPosts } = await supabase
           .from('posts')
@@ -172,13 +191,13 @@ export async function GET(request: NextRequest) {
         }
       }
 
-      // 11. Notify agency
+      // 12. Notify agency
       await supabase.from('notifications').insert({
         agency_id: agencyId,
         message: `${generationResults.length} post${generationResults.length === 1 ? '' : 's'} ready to review for ${(clientRow as { name: string }).name}`,
       })
 
-      // 12. Refresh best-time if stale
+      // 13. Refresh best-time if stale
       const updatedAt = brandProfile?.best_time_updated_at
       const isStale =
         !updatedAt ||
@@ -209,7 +228,7 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  // 13. Intelligence briefing — one per agency per week
+  // 14. Intelligence briefing — one per agency per week
   const weekStart = getMondayISO()
   for (const agencyId of processedAgencyIds) {
     try {
