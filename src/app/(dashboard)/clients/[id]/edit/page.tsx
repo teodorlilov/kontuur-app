@@ -1,25 +1,24 @@
 import { notFound } from 'next/navigation'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { requireSessionUser } from '@/lib/auth/session'
-import { ClientEditForm } from '@/features/clients/components/client-edit-form'
+import { ClientSettingsForm } from '@/features/clients/components/settings/client-settings-form'
+import type { ContentInsights } from '@/features/clients/components/settings/content-insights-tab'
 import {
   fetchClientById,
   fetchBrandProfileByClient,
   fetchPostingScheduleByClient,
 } from '@/lib/queries/db'
+import { getCachedClientPostStats, getCachedPendingRows } from '@/lib/queries/cache'
 
 export default async function EditClientPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const { agencyId } = await requireSessionUser()
   const supabase = await createServerSupabaseClient()
 
-  // Ownership check folded into data query — single round-trip, agency_id filter implicitly verifies access
   const client = await fetchClientById(supabase, id, agencyId)
-
   if (!client) notFound()
 
-  // All independent queries in parallel — brand_profiles, schedule, and analytics run concurrently
-  const [profile, schedule, { count: sourceCount }, recentPostsRes, allPostsRes] =
+  const [profile, schedule, { count: sourceCount }, recentPostsRes, allPostsRes, postStats, pendingRows] =
     await Promise.all([
       fetchBrandProfileByClient(supabase, id),
       fetchPostingScheduleByClient(supabase, id),
@@ -40,16 +39,17 @@ export default async function EditClientPage({ params }: { params: Promise<{ id:
         .select('pillar, status, rewrite_count')
         .eq('client_id', id)
         .not('pillar', 'is', null),
+      getCachedClientPostStats(agencyId),
+      getCachedPendingRows(agencyId),
     ])
 
-  // Compute content insights server-side
-  type ContentInsights = {
-    avgScore: number | null
-    trend: 'improving' | 'stable' | 'declining' | 'insufficient_data'
-    topApprovedPillars: string[]
-    topRewritePillars: string[]
-  }
+  // Status card data
+  const clientStats = postStats[id]
+  const publishedCount = clientStats?.publishedCount ?? 0
+  const lastGeneratedAt = clientStats?.lastGeneratedAt ?? null
+  const pendingCount = pendingRows.filter((r) => r.client_id === id).length
 
+  // Compute content insights server-side
   const scores = (recentPostsRes.data as Array<{ quality_score_avg: number }> | null) ?? []
   const avgScore =
     scores.length > 0
@@ -70,7 +70,6 @@ export default async function EditClientPage({ params }: { params: Promise<{ id:
     (allPostsRes.data as Array<{ pillar: string; status: string; rewrite_count: number }> | null) ??
     []
 
-  // Top approved pillars by approval rate
   const pillarApproved = new Map<string, number>()
   const pillarTotal = new Map<string, number>()
   for (const row of allPostRows) {
@@ -87,7 +86,6 @@ export default async function EditClientPage({ params }: { params: Promise<{ id:
     })
     .slice(0, 3)
 
-  // Top rewrite pillars by total rewrite count
   const pillarRewrites = new Map<string, number>()
   for (const row of allPostRows) {
     pillarRewrites.set(row.pillar, (pillarRewrites.get(row.pillar) ?? 0) + row.rewrite_count)
@@ -104,13 +102,16 @@ export default async function EditClientPage({ params }: { params: Promise<{ id:
       : null
 
   return (
-    <ClientEditForm
+    <ClientSettingsForm
       clientId={id}
       sourceCount={sourceCount ?? 0}
       client={client}
       profile={profile}
       schedule={schedule}
       insights={insights}
+      publishedCount={publishedCount}
+      pendingCount={pendingCount}
+      lastGeneratedAt={lastGeneratedAt}
     />
   )
 }
