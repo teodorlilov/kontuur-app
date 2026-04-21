@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { deleteReport } from '@/lib/actions/report-actions'
 import type { AnalyticsReport } from '@/types/api'
 import { createModuleCache } from '@/utils/module-cache'
 
@@ -52,7 +53,7 @@ export function ReportHistory({ clientId, platform, onLoad }: ReportHistoryProps
   async function handleDelete(reportId: string) {
     setDeletingId(reportId)
     try {
-      await fetch(`/api/analytics/report/${reportId}`, { method: 'DELETE' })
+      await deleteReport(reportId)
       setReports((prev) => {
         const updated = prev.filter((r) => r.id !== reportId)
         historyCache.patch(`${clientId}:${platform}`, updated)

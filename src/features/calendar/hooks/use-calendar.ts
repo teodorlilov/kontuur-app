@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback } from 'react'
 import { toast } from '@/components/ui/toast'
+import { updatePost } from '@/lib/actions/post-actions'
 import type { CalendarPost } from '@/types/api'
 
 export function useCalendar(initialPosts: CalendarPost[]) {
@@ -40,21 +41,17 @@ export function useCalendar(initialPosts: CalendarPost[]) {
   ) {
     setSaving(true)
     try {
-      const body: Record<string, unknown> = {
+      const result = await updatePost(postId, {
         status: 'scheduled',
         scheduled_at: scheduledAt,
-      }
-      if (platform) body.platform = platform
-      if (contentUpdates?.caption !== undefined) body.caption = contentUpdates.caption
-      if (contentUpdates?.slides_json !== undefined) body.slides_json = contentUpdates.slides_json
-
-      const res = await fetch(`/api/posts/${postId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
+        ...(platform ? { platform } : {}),
+        ...(contentUpdates?.caption !== undefined ? { caption: contentUpdates.caption } : {}),
+        ...(contentUpdates?.slides_json !== undefined
+          ? { slides_json: contentUpdates.slides_json }
+          : {}),
       })
 
-      if (!res.ok) {
+      if (!result.ok) {
         toast.error('Failed to schedule post')
         return
       }
@@ -90,12 +87,8 @@ export function useCalendar(initialPosts: CalendarPost[]) {
   ) {
     setSaving(true)
     try {
-      const res = await fetch(`/api/posts/${postId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updates),
-      })
-      if (!res.ok) {
+      const result = await updatePost(postId, updates)
+      if (!result.ok) {
         toast.error('Failed to save changes')
         return
       }
@@ -123,13 +116,9 @@ export function useCalendar(initialPosts: CalendarPost[]) {
   async function unschedulePost(postId: string) {
     setSaving(true)
     try {
-      const res = await fetch(`/api/posts/${postId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'approved', scheduled_at: null }),
-      })
+      const result = await updatePost(postId, { status: 'approved', scheduled_at: null })
 
-      if (!res.ok) {
+      if (!result.ok) {
         toast.error('Failed to unschedule post')
         return
       }

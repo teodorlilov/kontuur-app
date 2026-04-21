@@ -2,19 +2,22 @@
 
 import { useState } from 'react'
 import { toast } from '@/components/ui/toast'
+import { updateClient } from '@/lib/actions/client-actions'
+import { createSource, uploadSource, updateSource, deleteSource } from '@/lib/actions/source-actions'
+import type { ActionResult } from '@/lib/actions/types'
 import type { ClientSource, SourceSuggestion, SourceStrategy } from '@/types/api'
 
 async function withRollback<T>(
   previous: T,
   restore: (v: T) => void,
-  fetchFn: () => Promise<Response>,
+  actionFn: () => Promise<ActionResult>,
   errorMessage: string
 ): Promise<boolean> {
   try {
-    const res = await fetchFn()
-    if (!res.ok) {
+    const result = await actionFn()
+    if (!result.ok) {
       restore(previous)
-      toast.error(errorMessage)
+      toast.error(result.error || errorMessage)
       return false
     }
     return true
@@ -55,11 +58,7 @@ export function useSources({
     const previous = strategy
     setStrategy(updated)
     await withRollback(previous, setStrategy,
-      () => fetch(`/api/clients/${clientId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ brand_profile: { source_strategy: updated } }),
-      }),
+      () => updateClient(clientId, { brand_profile: { source_strategy: updated } }),
       'Failed to save research settings'
     )
   }
@@ -91,36 +90,24 @@ export function useSources({
   ) {
     setIsSaving(true)
     try {
-      const payload: Record<string, unknown> = { type, label: label.trim(), url: url.trim() }
-      if (type === 'website') {
-        if (options?.focusInstructions?.trim()) {
-          payload.focusInstructions = options.focusInstructions.trim()
-        }
-        if (options?.selectedPages && options.selectedPages.length > 0) {
-          payload.selectedPages = options.selectedPages
-        }
-      }
-      const res = await fetch(`/api/clients/${clientId}/sources`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+      const result = await createSource(clientId, {
+        type,
+        label: label.trim(),
+        url: url.trim(),
+        ...(type === 'website' ? {
+          focusInstructions: options?.focusInstructions,
+          selectedPages: options?.selectedPages,
+        } : {}),
       })
-      const data = (await res.json()) as {
-        source?: ClientSource
-        fetch_status?: string
-        error?: string
-      }
-      if (!res.ok) {
-        toast.error(data.error ?? 'Failed to add source')
+      if (!result.ok) {
+        toast.error(result.error)
         return false
       }
-      if (data.source) {
-        setSources((prev) => [data.source!, ...prev])
-        if (data.fetch_status === 'error') {
-          toast.error('Source added but could not be reached — check the URL')
-        } else {
-          toast.success('Source added')
-        }
+      setSources((prev) => [result.data.source, ...prev])
+      if (result.data.fetchStatus === 'error') {
+        toast.error('Source added but could not be reached — check the URL')
+      } else {
+        toast.success('Source added')
       }
       return true
     } catch {
@@ -138,19 +125,13 @@ export function useSources({
       formData.append('file', file)
       formData.append('label', label.trim())
 
-      const res = await fetch(`/api/clients/${clientId}/sources/upload`, {
-        method: 'POST',
-        body: formData,
-      })
-      const data = (await res.json()) as { source?: ClientSource; error?: string }
-      if (!res.ok) {
-        toast.error(data.error ?? 'Upload failed')
+      const result = await uploadSource(clientId, formData)
+      if (!result.ok) {
+        toast.error(result.error)
         return false
       }
-      if (data.source) {
-        setSources((prev) => [data.source!, ...prev])
-        toast.success('Document uploaded and text extracted')
-      }
+      setSources((prev) => [result.data, ...prev])
+      toast.success('Document uploaded and text extracted')
       return true
     } catch {
       toast.error('Upload failed')
@@ -163,21 +144,18 @@ export function useSources({
   async function handleAddFromSuggestion(suggestion: SourceSuggestion) {
     setAddingFromSuggestion(suggestion.url)
     try {
-      const res = await fetch(`/api/clients/${clientId}/sources`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: 'rss', label: suggestion.label, url: suggestion.url }),
+      const result = await createSource(clientId, {
+        type: 'rss',
+        label: suggestion.label,
+        url: suggestion.url,
       })
-      const data = (await res.json()) as { source?: ClientSource; error?: string }
-      if (!res.ok) {
-        toast.error(data.error ?? 'Failed to add source')
+      if (!result.ok) {
+        toast.error(result.error)
         return
       }
-      if (data.source) {
-        setSources((prev) => [data.source!, ...prev])
-        setSuggestions((prev) => prev.filter((s) => s.url !== suggestion.url))
-        toast.success(`Added ${suggestion.label}`)
-      }
+      setSources((prev) => [result.data.source, ...prev])
+      setSuggestions((prev) => prev.filter((s) => s.url !== suggestion.url))
+      toast.success(`Added ${suggestion.label}`)
     } catch {
       toast.error('Failed to add source')
     } finally {
@@ -192,11 +170,7 @@ export function useSources({
     const previous = sources
     setSources((prev) => prev.map((s) => (s.id === sourceId ? { ...s, ...updates } : s)))
     const ok = await withRollback(previous, setSources,
-      () => fetch(`/api/clients/${clientId}/sources/${sourceId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updates),
-      }),
+      () => updateSource(sourceId, updates),
       'Failed to update source'
     )
     if (ok) toast.success('Source updated')
@@ -209,11 +183,7 @@ export function useSources({
       prev.map((s) => (s.id === source.id ? { ...s, is_active: !s.is_active } : s))
     )
     await withRollback(previous, setSources,
-      () => fetch(`/api/clients/${clientId}/sources/${source.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ is_active: !source.is_active }),
-      }),
+      () => updateSource(source.id, { is_active: !source.is_active }),
       'Failed to update source'
     )
   }
@@ -222,7 +192,7 @@ export function useSources({
     const previous = sources
     setSources((prev) => prev.filter((s) => s.id !== source.id))
     const ok = await withRollback(previous, setSources,
-      () => fetch(`/api/clients/${clientId}/sources/${source.id}`, { method: 'DELETE' }),
+      () => deleteSource(source.id),
       'Failed to delete source'
     )
     if (ok) toast.success('Source removed')

@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { toast } from '@/components/ui/toast'
+import { batchSchedulePosts } from '@/lib/actions/post-actions'
 import { formatScheduledAt } from '@/utils/date-helpers'
 
 interface BatchPost {
@@ -51,25 +52,19 @@ export function useBatchSchedule(posts: BatchPost[], onComplete: () => void) {
 
     setLoading(true)
     try {
-      const results = await Promise.allSettled(
-        toSchedule.map((p) => {
-          const a = assignments.get(p.id)!
-          return fetch(`/api/posts/${p.id}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              status: 'scheduled',
-              scheduled_at: formatScheduledAt(a.date, a.time),
-            }),
-          })
-        })
-      )
+      const items = toSchedule.map((p) => {
+        const a = assignments.get(p.id)!
+        return { postId: p.id, scheduledAt: formatScheduledAt(a.date, a.time) }
+      })
 
-      const succeeded = results.filter(
-        (r) => r.status === 'fulfilled' && (r.value as Response).ok
-      ).length
-      toast.success(`Scheduled ${succeeded} of ${toSchedule.length} posts`)
-      if (succeeded > 0) onComplete()
+      const result = await batchSchedulePosts(items)
+
+      if (result.ok) {
+        toast.success(`Scheduled ${result.data.succeeded} of ${result.data.total} posts`)
+        if (result.data.succeeded > 0) onComplete()
+      } else {
+        toast.error('Failed to schedule posts')
+      }
     } catch {
       toast.error('Failed to schedule posts')
     } finally {

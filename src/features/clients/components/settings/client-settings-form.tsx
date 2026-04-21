@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { parsePillars, serializePillars, type WeightedPillar } from '@/lib/clients/content-pillars'
+import { updateClient } from '@/lib/actions/client-actions'
 import { Button } from '@/components/ui/button'
 import { Avatar } from '@/components/ui/avatar'
 import { toast } from '@/components/ui/toast'
@@ -104,42 +105,37 @@ export function ClientSettingsForm({
       return
     }
     setSaving(true)
-    try {
-      const res = await fetch(`/api/clients/${clientId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name,
-          niche: niche || null,
-          language,
-          website_url: websiteUrl || null,
-          contact_email: contactEmail || null,
-          posts_per_week: parseInt(postsPerWeek, 10),
-          brand_profile: {
-            tone: tone || null,
-            target_audience: targetAudience || null,
-            content_pillars:
-              contentPillars.length > 0 ? serializePillars(contentPillars) : null,
-            avoid_topics: avoidTopics || null,
-            client_testimonial_voice: testimonialVoice || null,
-            language_formality: languageFormality,
-            secondary_language: secondaryLanguage || null,
-            is_health_niche: isHealthNiche,
-            language_notes: languageNotes || null,
-            default_post_type: defaultPostType,
-            default_carousel_slides: parseInt(defaultCarouselSlides, 10),
-            weekly_mix_json: { [activePlatform]: 1 },
-          },
-          posting_schedule: {
-            frequency_value: parseInt(freqValue, 10),
-            auto_generate_day: autoDay,
-          },
-        }),
-      })
-      if (!res.ok) throw new Error('Failed to save')
+    const result = await updateClient(clientId, {
+      name,
+      niche: niche || null,
+      language,
+      website_url: websiteUrl || null,
+      contact_email: contactEmail || null,
+      posts_per_week: parseInt(postsPerWeek, 10),
+      brand_profile: {
+        tone: tone || null,
+        target_audience: targetAudience || null,
+        content_pillars:
+          contentPillars.length > 0 ? serializePillars(contentPillars) : null,
+        avoid_topics: avoidTopics || null,
+        client_testimonial_voice: testimonialVoice || null,
+        language_formality: languageFormality,
+        secondary_language: secondaryLanguage || null,
+        is_health_niche: isHealthNiche,
+        language_notes: languageNotes || null,
+        default_post_type: defaultPostType,
+        default_carousel_slides: parseInt(defaultCarouselSlides, 10),
+        weekly_mix_json: { [activePlatform]: 1 },
+      },
+      posting_schedule: {
+        frequency_value: parseInt(freqValue, 10),
+        auto_generate_day: autoDay,
+      },
+    })
+    if (result.ok) {
       toast.success('Client updated')
       router.push('/clients')
-    } catch {
+    } else {
       toast.error('Failed to save changes. Please try again.')
       setSaving(false)
     }

@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { toast } from '@/components/ui/toast'
+import { uploadSource } from '@/lib/actions/source-actions'
 
 interface DocumentsStepProps {
   clientId: string
@@ -32,20 +33,14 @@ export function DocumentsStep({
       formData.append('file', file)
       formData.append('label', label.trim())
 
-      const res = await fetch(`/api/clients/${clientId}/sources/upload`, {
-        method: 'POST',
-        body: formData,
-      })
-      const data = (await res.json()) as { source?: { id: string }; error?: string }
-      if (!res.ok) {
-        toast.error(data.error ?? 'Upload failed')
+      const result = await uploadSource(clientId, formData)
+      if (!result.ok) {
+        toast.error(result.error)
         return
       }
-      if (data.source) {
-        onUploaded(data.source.id)
-        setUploadedCount((c) => c + 1)
-        toast.success('Document uploaded')
-      }
+      onUploaded(result.data.id)
+      setUploadedCount((c) => c + 1)
+      toast.success('Document uploaded')
       setFile(null)
       setLabel('')
     } catch {

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { cn } from '@/utils/cn'
 import { toast } from '@/components/ui/toast'
+import { disconnectConnection } from '@/lib/actions/connection-actions'
 import { createModuleCache } from '@/utils/module-cache'
 import { PanelHeader } from './basic-info-tab'
 
@@ -52,8 +53,8 @@ export function ConnectedAccountsTab({ clientId }: ConnectedAccountsTabProps) {
   async function handleDisconnect(connectionId: string) {
     setDisconnecting(connectionId)
     try {
-      const res = await fetch(`/api/meta/connections/${connectionId}`, { method: 'DELETE' })
-      if (!res.ok) throw new Error('Failed to disconnect')
+      const result = await disconnectConnection(connectionId)
+      if (!result.ok) throw new Error(result.error)
       setConnections((prev) => {
         const updated = prev.filter((c) => c.id !== connectionId)
         connectionsCache.patch(clientId, updated)

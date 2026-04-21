@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { toast } from '@/components/ui/toast'
+import { createSource } from '@/lib/actions/source-actions'
 
 interface WebsiteConfirmStepProps {
   clientId: string
@@ -26,23 +27,17 @@ export function WebsiteConfirmStep({
   async function handleSave() {
     setSaving(true)
     try {
-      const res = await fetch(`/api/clients/${clientId}/sources`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          type: 'website',
-          label: new URL(websiteUrl).hostname,
-          url: websiteUrl,
-          selectedPages: selectedPages.length > 0 ? selectedPages : undefined,
-        }),
+      const result = await createSource(clientId, {
+        type: 'website',
+        label: new URL(websiteUrl).hostname,
+        url: websiteUrl,
+        selectedPages: selectedPages.length > 0 ? selectedPages : undefined,
       })
-      if (!res.ok) {
-        const data = (await res.json()) as { error?: string }
-        toast.error(data.error ?? 'Failed to save website source')
+      if (!result.ok) {
+        toast.error(result.error)
         return
       }
-      const data = (await res.json()) as { source?: { id: string } }
-      if (data.source?.id) onSourceCreated?.(data.source.id)
+      onSourceCreated?.(result.data.source.id)
       toast.success('Website source added')
       onSaved()
     } catch {

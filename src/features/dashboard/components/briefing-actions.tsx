@@ -1,10 +1,9 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { generateBriefing } from '@/lib/actions/briefing-actions'
 
 export function BriefingActions() {
-  const router = useRouter()
   const [generating, setGenerating] = useState(false)
   const [fetchingTip, setFetchingTip] = useState(false)
   const [tip, setTip] = useState<string | null>(null)
@@ -12,8 +11,7 @@ export function BriefingActions() {
   async function handleGenerate() {
     setGenerating(true)
     try {
-      const res = await fetch('/api/ai/intelligence', { method: 'POST' })
-      if (res.ok) router.refresh()
+      await generateBriefing()
     } finally {
       setGenerating(false)
     }

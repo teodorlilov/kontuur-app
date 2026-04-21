@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { getPillarColor } from '@/components/ui/colors/pillar-colors'
+import { updateSource } from '@/lib/actions/source-actions'
 import type { WeightedPillar } from '@/lib/clients/content-pillars'
 import type { ClientSource } from '@/types/api'
 
@@ -71,17 +72,12 @@ export function AssignPillarsStep({
   async function handleSave() {
     setSaving(true)
     try {
-      // Save pillar_ids for each source that changed
       await Promise.all(
         sources.map((s) => {
           const newIds = assignments.get(s.id) ?? []
           const oldIds = s.pillar_ids ?? []
           if (JSON.stringify(newIds.sort()) === JSON.stringify(oldIds.sort())) return null
-          return fetch(`/api/clients/${clientId}/sources/${s.id}`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ pillar_ids: newIds }),
-          })
+          return updateSource(s.id, { pillar_ids: newIds })
         })
       )
       onNext()

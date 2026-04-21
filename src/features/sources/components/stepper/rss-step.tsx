@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { ManualAddInModal } from '@/features/sources/components/manual-add-modal'
 import { cn } from '@/utils/cn'
 import { toast } from '@/components/ui/toast'
+import { createSource } from '@/lib/actions/source-actions'
 import type { SourceSuggestion } from '@/types/api'
 
 interface RssStepProps {
@@ -47,18 +48,12 @@ export function RssStep({ clientId, niche, clientName, onSaved, onSourceCreated,
   async function handleAdd(suggestion: SourceSuggestion) {
     setAddingUrl(suggestion.url)
     try {
-      const res = await fetch(`/api/clients/${clientId}/sources`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: 'rss', label: suggestion.label, url: suggestion.url }),
-      })
-      if (!res.ok) {
-        const data = (await res.json()) as { error?: string }
-        toast.error(data.error ?? 'Failed to add feed')
+      const result = await createSource(clientId, { type: 'rss', label: suggestion.label, url: suggestion.url })
+      if (!result.ok) {
+        toast.error(result.error)
         return
       }
-      const data = (await res.json()) as { source?: { id: string } }
-      if (data.source?.id) onSourceCreated?.(data.source.id)
+      onSourceCreated?.(result.data.source.id)
       onRssFeedAdded?.(suggestion.label, suggestion.url)
       setSuggestions((prev) => prev.filter((s) => s.url !== suggestion.url))
       setAddedCount((c) => c + 1)
@@ -73,18 +68,12 @@ export function RssStep({ clientId, niche, clientName, onSaved, onSourceCreated,
   async function handleManualAdd(label: string, url: string) {
     setManualSaving(true)
     try {
-      const res = await fetch(`/api/clients/${clientId}/sources`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: 'rss', label, url }),
-      })
-      if (!res.ok) {
-        const data = (await res.json()) as { error?: string }
-        toast.error(data.error ?? 'Failed to add feed')
+      const result = await createSource(clientId, { type: 'rss', label, url })
+      if (!result.ok) {
+        toast.error(result.error)
         return
       }
-      const data = (await res.json()) as { source?: { id: string } }
-      if (data.source?.id) onSourceCreated?.(data.source.id)
+      onSourceCreated?.(result.data.source.id)
       onRssFeedAdded?.(label, url)
       setAddedCount((c) => c + 1)
       toast.success('Feed added')

@@ -131,6 +131,27 @@ export async function fetchClientWithOwnership(
   return data as { id: string; name: string } | null
 }
 
+/**
+ * Resolve authentication for a Server Action.
+ * Returns the auth context on success, or an error string on failure.
+ * Mirrors resolveAuth() but returns ActionResult-shaped output instead of NextResponse.
+ */
+export async function resolveActionAuth(): Promise<
+  | { ok: true; supabase: SupabaseServerClient; agencyId: string; userId: string }
+  | { ok: false; error: string }
+> {
+  const supabase = await createServerSupabaseClient()
+  try {
+    const { agencyId, userId } = await requireAuth(supabase)
+    return { ok: true, supabase, agencyId, userId }
+  } catch (err) {
+    if (err instanceof AuthError) {
+      return { ok: false, error: err.message }
+    }
+    return { ok: false, error: 'Authentication failed' }
+  }
+}
+
 export async function verifyAdminRole(
   supabase: SupabaseServerClient,
   userId: string

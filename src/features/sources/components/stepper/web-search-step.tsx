@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { toast } from '@/components/ui/toast'
+import { upsertTavilySource } from '@/lib/actions/source-actions'
 import type { ClientSource } from '@/types/api'
 import type { TavilyConfig } from '@/types/sources'
 
@@ -97,18 +98,12 @@ export function WebSearchStep({
       if (includes.length > 0) config.include_domains = includes
       if (excludes.length > 0) config.exclude_domains = excludes
 
-      const res = await fetch(`/api/clients/${clientId}/sources/tavily`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ is_active: isEnabled, config }),
-      })
-      if (!res.ok) {
-        const data = (await res.json()) as { error?: string }
-        toast.error(data.error ?? 'Failed to save web search settings')
+      const result = await upsertTavilySource(clientId, { is_active: isEnabled, config })
+      if (!result.ok) {
+        toast.error(result.error)
         return
       }
-      const data = (await res.json()) as { source?: { id: string } }
-      if (data.source?.id) onSourceCreated(data.source.id)
+      onSourceCreated(result.data.id)
       onConfigChange({
         enabled: isEnabled,
         includeDomains: includes,

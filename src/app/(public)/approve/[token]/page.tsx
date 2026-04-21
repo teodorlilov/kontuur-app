@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
 import { Spinner } from '@/components/ui/spinner'
+import { submitApproval } from '@/lib/actions/approval-actions'
 import type { ApprovalBatchData, ApprovalPostData, CarouselSlide } from '@/types/api'
 
 type PageState = 'loading' | 'error' | 'review' | 'submitted'
@@ -57,15 +58,14 @@ export default function ApprovalPage() {
         .filter(([, note]) => note.trim().length > 0)
         .map(([postId, note]) => ({ postId, note: note.trim() }))
 
-      const res = await fetch(`/api/approval/${token}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status, postNotes: notes.length > 0 ? notes : undefined }),
-      })
+      const result = await submitApproval(
+        token,
+        status,
+        notes.length > 0 ? notes : undefined
+      )
 
-      if (!res.ok) {
-        const err = (await res.json()) as { error: string }
-        setErrorMessage(err.error || 'Failed to submit response')
+      if (!result.ok) {
+        setErrorMessage(result.error || 'Failed to submit response')
         setState('error')
         return
       }

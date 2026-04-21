@@ -2,6 +2,7 @@
 
 import { useState, useRef } from 'react'
 import { toast } from '@/components/ui/toast'
+import { updatePost as updatePostAction, deletePost as deletePostAction } from '@/lib/actions/post-actions'
 import type { SlopDetection } from '@/types/api'
 
 interface UseReviewActionsOptions {
@@ -61,15 +62,11 @@ export function useReviewActions({
   async function approve(onSuccess: () => void, scheduledAt?: string) {
     setApproving(true)
     try {
-      const payload: Record<string, unknown> = scheduledAt
+      const payload = scheduledAt
         ? { status: 'scheduled', scheduled_at: scheduledAt }
-        : { status: 'approved' }
-      const res = await fetch(`/api/posts/${postId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      })
-      if (res.ok) {
+        : { status: 'approved' as const }
+      const result = await updatePostAction(postId, payload)
+      if (result.ok) {
         toast.success('Post approved')
         onSuccess()
       } else {
@@ -82,11 +79,11 @@ export function useReviewActions({
     }
   }
 
-  async function deletePost(onSuccess: () => void) {
+  async function handleDelete(onSuccess: () => void) {
     setDeleting(true)
     try {
-      const res = await fetch(`/api/posts/${postId}`, { method: 'DELETE' })
-      if (res.ok) {
+      const result = await deletePostAction(postId)
+      if (result.ok) {
         toast.success('Post deleted')
         onSuccess()
       } else {
@@ -102,12 +99,8 @@ export function useReviewActions({
   async function saveCaption(newCaption: string): Promise<boolean> {
     setSaving(true)
     try {
-      const res = await fetch(`/api/posts/${postId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ caption: newCaption }),
-      })
-      if (res.ok) {
+      const result = await updatePostAction(postId, { caption: newCaption })
+      if (result.ok) {
         setCaption(newCaption)
         toast.success('Caption updated')
         return true
@@ -125,12 +118,8 @@ export function useReviewActions({
   async function saveSlidesJson(newSlides: unknown): Promise<boolean> {
     setSaving(true)
     try {
-      const res = await fetch(`/api/posts/${postId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ slides_json: newSlides }),
-      })
-      if (res.ok) {
+      const result = await updatePostAction(postId, { slides_json: newSlides })
+      if (result.ok) {
         setSlidesJson(newSlides)
         toast.success('Slides updated')
         return true
@@ -176,20 +165,15 @@ export function useReviewActions({
       if (data.slop) setSlopDetection(data.slop)
 
       // Persist rewrite to DB
-      const putBody: Record<string, unknown> = {
+      await updatePostAction(postId, {
         caption: data.caption,
         slides_json: data.slides_json,
         quality_score_avg: data.quality_score_avg,
         was_rewritten: true,
         rewrite_count: rewriteCount + 1,
-      }
-      if (postType === 'carousel' && data.quality?.kind === 'carousel') {
-        putBody.carousel_quality_json = data.quality
-      }
-      await fetch(`/api/posts/${postId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(putBody),
+        ...(postType === 'carousel' && data.quality?.kind === 'carousel'
+          ? { carousel_quality_json: data.quality }
+          : {}),
       })
 
       toast.success('Post rewritten')
@@ -211,7 +195,7 @@ export function useReviewActions({
     rewriting,
     runSlopDetection,
     approve,
-    deletePost,
+    deletePost: handleDelete,
     saveCaption,
     saveSlidesJson,
     rewrite,
