@@ -121,7 +121,7 @@ export class GenerationPipeline {
       caption: string
       post_type: 'single' | 'carousel'
       slides_json: unknown
-      carousel_quality_json?: unknown
+      validation_json?: unknown
       quality_score_avg: number
     }
   ): DraftPost {
@@ -137,7 +137,7 @@ export class GenerationPipeline {
       source_type: theme.sourceType ?? null,
       source_excerpt: theme.sourceExcerpt ?? null,
       pillar: theme.pillar ?? null,
-      carousel_quality_json: null,
+      validation_json: null,
       created_at: new Date().toISOString(),
       ...overrides,
     }
@@ -146,7 +146,6 @@ export class GenerationPipeline {
   private collectResult(validation: PostValidationResult, post: DraftPost): void {
     const item: GenerationResult = {
       post,
-      quality: validation.quality,
       language: validation.language,
       slop: validation.slop,
       criteria: validation.criteria,
@@ -176,6 +175,7 @@ export class GenerationPipeline {
       label: 'carousel',
     })
 
+  
     void this.ctx.trackTheme(theme, 1)
     this.collectResult(
       validation,
@@ -183,7 +183,7 @@ export class GenerationPipeline {
         caption: applyTextCorrections(result.main_caption, validation),
         post_type: 'carousel',
         slides_json: applySlideCorrections(result.slides, validation.language.corrected_slides),
-        carousel_quality_json: validation.quality,
+        validation_json: { criteria: validation.criteria, scores: validation.scores },
         quality_score_avg: validation.qualityScore,
       })
     )
@@ -231,6 +231,7 @@ export class GenerationPipeline {
           caption,
           post_type: 'single',
           slides_json: null,
+          validation_json: { criteria: validation.criteria, scores: validation.scores },
           quality_score_avg: validation.qualityScore,
         })
       )

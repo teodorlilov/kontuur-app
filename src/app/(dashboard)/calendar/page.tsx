@@ -62,7 +62,7 @@ export default async function CalendarPage() {
     platform: string | null
     post_type: string
     slides_json: unknown
-    carousel_quality_json: unknown
+    validation_json: unknown
     status: string
     scheduled_at: string | null
     priority: boolean
@@ -87,7 +87,7 @@ export default async function CalendarPage() {
     return {
       ...p,
       slides_json: p.slides_json as CalendarPost['slides_json'],
-      carousel_quality_json: p.carousel_quality_json as CalendarPost['carousel_quality_json'],
+      validation_json: p.validation_json as CalendarPost['validation_json'],
       client_name: clientNameMap.get(p.client_id) ?? 'Unknown',
       approval_status: latestToken?.status ?? null,
       approval_client_note: latestToken?.client_note ?? null,

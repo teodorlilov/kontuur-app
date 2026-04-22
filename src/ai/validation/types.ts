@@ -69,55 +69,16 @@ export interface ValidationScores {
   language_score: number
   language_naturalness_score: number
   language_register_score: number
+  /** Authenticity score — used for slop detection threshold */
+  human_score: number
   source_score: number | null
   overall_score: number
 }
-
-// ---- Existing types (kept verbatim for backward compatibility) ----
 
 export interface QualityIssue {
   type: string
   description: string
 }
-
-export interface QualityScores {
-  human_score: number
-  hook_score: number
-  cta_score: number
-  criteria_score: number
-  quality_score_avg: number
-  hook_verdict: HookVerdict
-  cta_verdict: CtaVerdict
-  brand_voice_match: boolean
-  brand_voice_deviation: string | null
-  audience_targeting: boolean
-  audience_gap: string | null
-  niche_specificity: boolean
-  niche_gap: string | null
-  ai_tells: string[]
-  worst_offending_phrase: string | null
-  issues: QualityIssue[]
-  structure_is_predictable: boolean
-  structure_used: string | null
-  formality_consistent: boolean
-  formality_violation: string | null
-  source_fidelity_ok: boolean | null
-  health_compliant: boolean | null
-}
-
-/** @deprecated Use QualityScores — identical shape */
-export type CarouselQuality = QualityScores
-
-export interface SingleQualityResult extends QualityScores {
-  kind: 'single'
-}
-
-export interface CarouselQualityResult extends QualityScores {
-  kind: 'carousel'
-}
-
-/** Discriminated union — narrow with `quality.kind` */
-export type QualityResult = SingleQualityResult | CarouselQualityResult
 
 export interface LanguageIssue {
   type: LanguageIssueType
@@ -136,8 +97,6 @@ export interface LanguageValidationResult {
   language_register_score?: number
 }
 
-/** Alias for backward compatibility */
-export type LanguageValidation = LanguageValidationResult
 
 export interface SlopDetection {
   reads_as_human: boolean
@@ -165,8 +124,6 @@ export interface SourceGroundingResult {
 export interface PostValidationResult {
   criteria: ValidationCriteria
   scores: ValidationScores
-  /** Kept for DB and UI backward compatibility */
-  quality: QualityResult
   language: LanguageValidationResult
   slop: SlopDetection
   sourceGrounding?: SourceGroundingResult

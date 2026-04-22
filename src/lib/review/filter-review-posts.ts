@@ -7,7 +7,7 @@ export interface ReviewPost {
   platform: string | null
   post_type: string
   slides_json: unknown
-  carousel_quality_json: unknown
+  validation_json: unknown
   status: string
   priority: boolean
   quality_score_avg: number | null

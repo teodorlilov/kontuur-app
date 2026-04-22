@@ -19,23 +19,17 @@ import {
 } from '@/lib/content-rules/constants'
 import type {
   SlopDetection,
-  SingleQualityResult,
-  CarouselQualityResult,
-  QualityResult,
   SourceGroundingResult,
   ValidationCriteria,
   ValidationScores,
 } from '@/types/api'
 
-export type { SingleQualityResult, CarouselQualityResult }
-
 export interface ValidationData {
-  quality: QualityResult
   language: LanguageResult
   slop: SlopDetection
   sourceGrounding?: SourceGroundingResult
-  criteria?: ValidationCriteria
-  scores?: ValidationScores
+  criteria: ValidationCriteria
+  scores: ValidationScores
 }
 
 export interface PostData {
@@ -45,7 +39,7 @@ export interface PostData {
   platform: string | null
   post_type: string
   slides_json: unknown
-  carousel_quality_json: unknown
+  validation_json: unknown
   status: string
   priority: boolean
   quality_score_avg: number | null
@@ -94,7 +88,7 @@ export function PostCard({
   const [languageData, setLanguageData] = useState(validationData.language)
   const [sourceGroundingData, setSourceGroundingData] = useState(validationData.sourceGrounding)
 
-  const { quality, slop, criteria, scores } = validationData
+  const { slop, criteria, scores } = validationData
 
   function handleApplyFixes(
     correctedText: string,
@@ -154,11 +148,11 @@ export function PostCard({
   }
 
   async function handleRegenerate() {
-    const qualityIssues = quality.issues.map((i) => `${i.type}: ${i.description}`)
+    const qualityIssues = criteria.issues.map((i) => `${i.type}: ${i.description}`)
     await regenerate(slop.ai_tells_found, qualityIssues, setLanguageData, setSourceGroundingData)
   }
 
-  const avgScore = quality.quality_score_avg
+  const avgScore = scores.overall_score
   const hasLowAuthenticity = slop.human_authenticity_score < AUTHENTICITY_URGENT_THRESHOLD
   const hasAiTells = slop.ai_tells_found.length > 0
   const hasLowQuality = avgScore < REWRITE_SCORE_THRESHOLD

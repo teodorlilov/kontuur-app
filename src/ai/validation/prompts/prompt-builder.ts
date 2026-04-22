@@ -258,7 +258,7 @@ const QUALITY_OUTPUT_SCHEMA = {
     'corrected_text', 'corrected_slides', 'health_compliant', 'issues',
   ],
 }
-
+ 
 // ---- Main validator ----
 
 export async function validateQuality(input: ValidateQualityInput): Promise<LlmQualityResponse> {

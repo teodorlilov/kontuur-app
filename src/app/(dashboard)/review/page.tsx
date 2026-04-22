@@ -61,7 +61,7 @@ export default async function ReviewPage() {
     platform: string | null
     post_type: string
     slides_json: unknown
-    carousel_quality_json: unknown
+    validation_json: unknown
     status: string
     priority: boolean
     quality_score_avg: number | null
@@ -84,7 +84,7 @@ export default async function ReviewPage() {
       platform: p.platform,
       post_type: p.post_type,
       slides_json: p.slides_json,
-      carousel_quality_json: p.carousel_quality_json,
+      validation_json: p.validation_json,
       status: p.status,
       priority: p.priority,
       quality_score_avg: p.quality_score_avg,

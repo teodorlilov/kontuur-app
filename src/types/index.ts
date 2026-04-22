@@ -10,10 +10,7 @@ export type {
 export type {
   HookVerdict,
   CtaVerdict,
-  QualityScores,
-  CarouselQuality,
   LanguageIssueType,
-  LanguageValidation,
   SlopDetection,
   SourceGroundingResult,
 } from '@/ai/validation/types'
@@ -32,7 +29,6 @@ export type {
 
 export type {
   PriorityPost,
-  GeneratedPost,
   CarouselSlide,
   OnboardRequest,
   OnboardResponse,

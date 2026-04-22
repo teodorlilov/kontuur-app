@@ -213,7 +213,7 @@ export interface Database {
           platform: string | null
           post_type: string
           slides_json: Json | null
-          carousel_quality_json: Json | null
+          validation_json: Json | null
           status: string
           priority: boolean
           scheduled_at: string | null
@@ -235,7 +235,7 @@ export interface Database {
           platform?: string | null
           post_type?: string
           slides_json?: Json | null
-          carousel_quality_json?: Json | null
+          validation_json?: Json | null
           status?: string
           priority?: boolean
           scheduled_at?: string | null
@@ -257,7 +257,7 @@ export interface Database {
           platform?: string | null
           post_type?: string
           slides_json?: Json | null
-          carousel_quality_json?: Json | null
+          validation_json?: Json | null
           status?: string
           priority?: boolean
           scheduled_at?: string | null

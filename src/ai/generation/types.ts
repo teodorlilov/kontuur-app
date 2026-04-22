@@ -1,7 +1,6 @@
 import type { ClientData } from '@/lib/clients/fetch-client-data'
 import type { PriorityPost, PostType, SlopDetection, CarouselSlide } from '@/types/api'
 import type {
-  QualityResult,
   LanguageValidationResult,
   SourceGroundingResult,
   ValidationCriteria,
@@ -52,7 +51,7 @@ export interface DraftPost {
   priority: boolean
   topic_summary: string
   slides_json: unknown
-  carousel_quality_json: unknown
+  validation_json: unknown
   quality_score_avg: number
   source_url: string | null
   source_title: string | null
@@ -65,12 +64,11 @@ export interface DraftPost {
 // ---- Generation orchestration ----
 export interface GenerationResult {
   post: DraftPost
-  quality?: QualityResult
   language?: LanguageValidationResult
   slop?: SlopDetection
   sourceGrounding?: SourceGroundingResult
-  criteria?: ValidationCriteria
-  scores?: ValidationScores
+  criteria: ValidationCriteria
+  scores: ValidationScores
 }
 
 export interface Theme {

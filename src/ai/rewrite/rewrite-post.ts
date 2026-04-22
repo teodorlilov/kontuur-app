@@ -59,7 +59,6 @@ export async function performRewrite(ctx: RewriteContext) {
     caption: finalCaption,
     slides_json: finalSlidesJson,
     quality_score_avg: validation.qualityScore,
-    quality: validation.quality,
     language: validation.language,
     slop: validation.slop,
     sourceGrounding: validation.sourceGrounding ?? null,

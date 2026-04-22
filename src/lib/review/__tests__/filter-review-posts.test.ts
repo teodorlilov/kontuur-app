@@ -9,7 +9,7 @@ function makePost(overrides: Partial<ReviewPost> = {}): ReviewPost {
     platform: overrides.platform ?? 'instagram',
     post_type: overrides.post_type ?? 'single',
     slides_json: overrides.slides_json ?? null,
-    carousel_quality_json: overrides.carousel_quality_json ?? null,
+    validation_json: overrides.validation_json ?? null,
     status: overrides.status ?? 'pending_review',
     priority: overrides.priority ?? false,
     quality_score_avg: overrides.quality_score_avg ?? 7.5,

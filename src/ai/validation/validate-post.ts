@@ -7,9 +7,12 @@ import {
   computeSourceScore,
   computeOverallScore,
   computeLanguageSubScores,
+  computeQualityScores,
+  safeParseHookVerdict,
+  safeParseCtaVerdict,
+  deriveSlopFromQuality,
 } from '@/ai/validation/content-rules/compute-scores'
-import { deriveQualityResult, deriveSourceGroundingResult, deriveSlopFromQuality } from '@/ai/validation/correction-utils'
-import { safeParseHookVerdict, safeParseCtaVerdict } from '@/ai/validation/content-rules/compute-scores'
+import { deriveSourceGroundingResult } from '@/ai/validation/correction-utils'
 import type { ClientData } from '@/lib/clients/fetch-client-data'
 import type {
   ValidationCriteria,
@@ -47,7 +50,7 @@ export async function validatePost(input: ValidatePostInput): Promise<PostValida
   const isCarousel = !!input.slides && input.slides.length > 0
 
   const [qualityRaw, lang] = await Promise.all([
-    validateQuality({
+    validateQuality({ 
       caption: input.caption,
       slides: input.slides,
       client: input.client,
@@ -135,6 +138,16 @@ export async function validatePost(input: ValidatePostInput): Promise<PostValida
   const effectiveLangScores = langCorrected
     ? { naturalness_score: 10, register_score: 10, language_score: 10 }
     : langSubScores
+  const humanScore = computeQualityScores({
+    ai_tells: criteria.ai_tells,
+    issues: criteria.issues,
+    hook_verdict: criteria.hook.verdict,
+    cta_verdict: criteria.cta.verdict,
+    brand_voice_match: criteria.brand_voice.passes,
+    audience_targeting: criteria.audience_match.passes,
+    niche_specificity: criteria.niche_fit.passes,
+  }).human_score
+
   const scores: ValidationScores = {
     brief_score: computeBriefScore(criteria, !!input.targetPillar),
     craft_score: computeCraftScore(criteria),
@@ -143,21 +156,15 @@ export async function validatePost(input: ValidatePostInput): Promise<PostValida
     language_score: effectiveLangScores.language_score,
     language_naturalness_score: effectiveLangScores.naturalness_score,
     language_register_score: effectiveLangScores.register_score,
+    human_score: humanScore,
     overall_score: 0, // filled below
   }
   scores.overall_score = computeOverallScore(scores)
 
-  // Derive backward-compatible QualityResult
-  const quality = deriveQualityResult(criteria, {
-    declaredStructure: input.declaredStructure,
-    isCarousel,
-  })
-
-  // Derive SlopDetection from quality
   const slop = deriveSlopFromQuality({
-    human_score: quality.human_score,
-    ai_tells: quality.ai_tells,
-    worst_offending_phrase: quality.worst_offending_phrase,
+    human_score: humanScore,
+    ai_tells: criteria.ai_tells,
+    worst_offending_phrase: criteria.worst_offending_phrase,
   })
 
   // Derive SourceGroundingResult when source was provided
@@ -183,7 +190,6 @@ export async function validatePost(input: ValidatePostInput): Promise<PostValida
   return {
     criteria,
     scores,
-    quality,
     language: languageWithSubScores,
     slop,
     ...(sourceGrounding ? { sourceGrounding } : {}),

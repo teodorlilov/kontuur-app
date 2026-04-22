@@ -59,7 +59,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
   if (body.source_url !== undefined) updatePayload.source_url = body.source_url
   if (body.source_title !== undefined) updatePayload.source_title = body.source_title
   if (body.quality_score_avg !== undefined) updatePayload.quality_score_avg = body.quality_score_avg
-  if (body.carousel_quality_json !== undefined) updatePayload.carousel_quality_json = body.carousel_quality_json
+  if (body.validation_json !== undefined) updatePayload.validation_json = body.validation_json
 
   const { data: updated, error } = await supabase
     .from('posts')

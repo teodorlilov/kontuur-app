@@ -167,7 +167,7 @@ export async function GET(request: NextRequest) {
               platform: post.platform,
               post_type: post.post_type,
               slides_json: post.slides_json as Json,
-              carousel_quality_json: post.carousel_quality_json as Json,
+              validation_json: post.validation_json as Json,
               status: 'pending_review',
               priority: false,
               quality_score_avg: post.quality_score_avg,

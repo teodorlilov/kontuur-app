@@ -31,7 +31,7 @@ export function PostList({ posts, selectedPostId, onSelect }: PostListProps) {
           <PostListItem
             key={item.post.id}
             post={item.post}
-            score={item.quality.quality_score_avg}
+            score={item.scores.overall_score}
             isActive={item.post.id === selectedPostId}
             onClick={() => onSelect(item.post.id)}
           />

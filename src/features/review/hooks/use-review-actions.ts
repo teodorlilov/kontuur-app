@@ -157,8 +157,9 @@ export function useReviewActions({
         caption: string
         slides_json: unknown
         quality_score_avg: number
-        quality: { kind: string; slides?: unknown[] } & Record<string, unknown>
         slop: SlopDetection
+        criteria: unknown
+        scores: unknown
       }
       setCaption(data.caption)
       setSlidesJson(data.slides_json)
@@ -171,9 +172,7 @@ export function useReviewActions({
         quality_score_avg: data.quality_score_avg,
         was_rewritten: true,
         rewrite_count: rewriteCount + 1,
-        ...(postType === 'carousel' && data.quality?.kind === 'carousel'
-          ? { carousel_quality_json: data.quality }
-          : {}),
+        validation_json: { criteria: data.criteria, scores: data.scores },
       })
 
       toast.success('Post rewritten')

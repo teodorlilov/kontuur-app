@@ -19,7 +19,7 @@ interface QualityPanelProps {
 
 /** Right panel: quality scores, source context, and run summary. */
 export function QualityPanel({ post, validationData, runSummary }: QualityPanelProps) {
-  const { quality, criteria, scores } = validationData
+  const { criteria, scores } = validationData
 
   return (
     <div
@@ -33,7 +33,7 @@ export function QualityPanel({ post, validationData, runSummary }: QualityPanelP
         flexDirection: 'column',
       }}
     >
-      <QualitySection score={quality.quality_score_avg} criteria={criteria} scores={scores} />
+      <QualitySection score={scores.overall_score} criteria={criteria} scores={scores} />
       <SourceSection post={post} />
       <RunSummarySection summary={runSummary} />
     </div>

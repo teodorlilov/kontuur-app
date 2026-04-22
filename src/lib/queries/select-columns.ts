@@ -10,7 +10,7 @@
 
 // posts
 export const POST_COLUMNS =
-  'id, client_id, caption, platform, post_type, slides_json, carousel_quality_json, status, priority, scheduled_at, published_at, quality_score_avg, was_rewritten, rewrite_count, source_url, source_title, source_type, pillar, source_excerpt, created_at'
+  'id, client_id, caption, platform, post_type, slides_json, validation_json, status, priority, scheduled_at, published_at, quality_score_avg, was_rewritten, rewrite_count, source_url, source_title, source_type, pillar, source_excerpt, created_at'
 
 // clients
 export const CLIENT_COLUMNS =

@@ -88,7 +88,6 @@ export function ResultsView({
             key={selectedPost.post.id}
             post={selectedPost.post}
             validationData={{
-              quality: selectedPost.quality,
               language: selectedPost.language,
               slop: selectedPost.slop,
               sourceGrounding: selectedPost.sourceGrounding,
@@ -105,7 +104,6 @@ export function ResultsView({
             key={`quality-${selectedPost.post.id}`}
             post={selectedPost.post}
             validationData={{
-              quality: selectedPost.quality,
               language: selectedPost.language,
               slop: selectedPost.slop,
               sourceGrounding: selectedPost.sourceGrounding,

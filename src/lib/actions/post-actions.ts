@@ -15,7 +15,7 @@ interface UpdatePostInput {
   source_url?: string
   source_title?: string
   quality_score_avg?: number
-  carousel_quality_json?: unknown
+  validation_json?: unknown
 }
 
 /** Update a post's fields. */
@@ -41,8 +41,8 @@ export async function updatePost(
   if (fields.source_url !== undefined) updates.source_url = fields.source_url
   if (fields.source_title !== undefined) updates.source_title = fields.source_title
   if (fields.quality_score_avg !== undefined) updates.quality_score_avg = fields.quality_score_avg
-  if (fields.carousel_quality_json !== undefined)
-    updates.carousel_quality_json = fields.carousel_quality_json
+  if (fields.validation_json !== undefined)
+    updates.validation_json = fields.validation_json
 
   const { error } = await supabase.from('posts').update(updates).eq('id', postId)
   if (error) return { ok: false, error: error.message }

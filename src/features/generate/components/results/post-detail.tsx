@@ -38,8 +38,8 @@ export function PostDetail({ post, validationData, onApprove, onDiscard, onRegen
   const scheduleModal = useScheduleModal()
   const { bestTimeData } = useBestTime(post.client_id)
 
-  const { quality, slop } = validationData
-  const hasLowQuality = quality.quality_score_avg < REWRITE_SCORE_THRESHOLD
+  const { slop, criteria, scores } = validationData
+  const hasLowQuality = scores.overall_score < REWRITE_SCORE_THRESHOLD
   const hasLowAuthenticity = slop.human_authenticity_score < AUTHENTICITY_URGENT_THRESHOLD
   const hasAiTells = slop.ai_tells_found.length > 0
   const showRewrite = hasLowAuthenticity || hasAiTells || hasLowQuality
@@ -76,7 +76,7 @@ export function PostDetail({ post, validationData, onApprove, onDiscard, onRegen
             hasLowQuality={hasLowQuality}
             regenerating={regenerating}
             onClick={() => {
-              const qualityIssues = quality.issues.map((i) => `${i.type}: ${i.description}`)
+              const qualityIssues = criteria.issues.map((i: { type: string; description: string }) => `${i.type}: ${i.description}`)
               const noop = () => {}
               void regenerate(slop.ai_tells_found, qualityIssues, noop, noop)
             }}

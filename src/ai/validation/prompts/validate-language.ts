@@ -14,7 +14,7 @@ interface LlmLanguageResponse {
   issues: LanguageIssue[]
   corrected_text: string | null
   corrected_slides?: Array<{ headline: string; body: string }> | null
-}
+} 
 
 export async function validateLanguage(
   input: {

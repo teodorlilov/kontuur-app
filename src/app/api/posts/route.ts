@@ -70,7 +70,7 @@ interface CreatePostBody {
   platform: string | null
   post_type: string
   slides_json?: unknown
-  carousel_quality_json?: unknown
+  validation_json?: unknown
   status?: string
   scheduled_at?: string
   priority?: boolean
@@ -119,7 +119,7 @@ export async function POST(request: Request) {
       platform: body.platform ?? null,
       post_type: body.post_type ?? 'single',
       slides_json: (body.slides_json as Json) ?? null,
-      carousel_quality_json: (body.carousel_quality_json as Json) ?? null,
+      validation_json: (body.validation_json as Json) ?? null,
       status:
         body.status === 'pending_review'
           ? 'pending_review'

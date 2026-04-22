@@ -8,26 +8,33 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { SlopDetector } from '@/components/posts/slop-detector'
 import { PostContentDisplay } from '@/components/posts/post-content-display'
-import type { CarouselSlide } from '@/types/api'
+import type { CarouselSlide, ValidationCriteria, ValidationScores } from '@/types/api'
 import { useReviewActions } from '@/features/review/hooks/use-review-actions'
 import { useScheduleModal } from '@/components/scheduling/use-schedule-modal'
 import { ScheduleModal } from '@/components/scheduling/schedule-modal'
 import type { ReviewPost } from '@/lib/review/filter-review-posts'
 import type { SlopDetection, BestTimePlatform } from '@/types/api'
 import { deriveSlopFromQuality as computeSlop } from '@/ai/validation/content-rules/compute-scores'
+import { QualityScores } from '@/components/posts/quality-scores'
 
-/** Derive slop data from carousel_quality_json if available (avoids a separate API call) */
-function deriveSlopFromQuality(post: ReviewPost): SlopDetection | null {
-  const q = post.carousel_quality_json as {
-    human_score?: number
-    ai_tells?: string[]
-    worst_offending_phrase?: string | null
-  } | null
-  if (!q || typeof q.human_score !== 'number') return null
+/** Extract criteria + scores from the validation JSON blob stored in DB */
+function parseValidationJson(
+  raw: unknown
+): { criteria: ValidationCriteria; scores: ValidationScores } | null {
+  const q = raw as { criteria?: ValidationCriteria; scores?: ValidationScores } | null
+  if (!q || typeof q !== 'object') return null
+  if (q.criteria && q.scores) return { criteria: q.criteria, scores: q.scores }
+  return null
+}
+
+/** Derive slop data from validation JSON if available (avoids a separate API call) */
+function deriveSlopFromValidation(post: ReviewPost): SlopDetection | null {
+  const parsed = parseValidationJson(post.validation_json)
+  if (!parsed?.scores.human_score) return null
   return computeSlop({
-    human_score: q.human_score,
-    ai_tells: Array.isArray(q.ai_tells) ? q.ai_tells : [],
-    worst_offending_phrase: q.worst_offending_phrase ?? null,
+    human_score: parsed.scores.human_score,
+    ai_tells: parsed.criteria.ai_tells ?? [],
+    worst_offending_phrase: parsed.criteria.worst_offending_phrase ?? null,
   })
 }
 
@@ -60,7 +67,7 @@ export function ReviewPostCard({ post, bestTimeData, onApprove, onDelete }: Revi
     initialSlidesJson: post.slides_json,
     postType: post.post_type,
     rewriteCount: post.rewrite_count ?? 0,
-    initialSlop: deriveSlopFromQuality(post),
+    initialSlop: deriveSlopFromValidation(post),
   })
 
   const scheduleModal = useScheduleModal()
@@ -69,6 +76,7 @@ export function ReviewPostCard({ post, bestTimeData, onApprove, onDelete }: Revi
 
   const isCarousel = post.post_type === 'carousel'
   const slides = Array.isArray(slidesJson) ? (slidesJson as CarouselSlide[]) : []
+  const qualityData = parseValidationJson(post.validation_json)
 
   // Run slop detection on first expand
   useEffect(() => {
@@ -180,6 +188,11 @@ export function ReviewPostCard({ post, bestTimeData, onApprove, onDelete }: Revi
             onCaptionChange={handleCaptionChange}
             onSlidesChange={handleSlidesChange}
           />
+
+          {/* Quality breakdown */}
+          {qualityData && (
+            <QualityScores criteria={qualityData.criteria} scores={qualityData.scores} />
+          )}
 
           {/* Slop detection */}
           {slopLoading && (

@@ -33,7 +33,7 @@ export function usePostActions({ post, onApprove, onRegenerate }: UsePostActions
           platform: post.platform,
           post_type: post.post_type,
           slides_json: slidesJson,
-          carousel_quality_json: post.carousel_quality_json,
+          validation_json: post.validation_json,
           status: scheduledAt ? 'scheduled' : 'approved',
           scheduled_at: scheduledAt ?? null,
           priority: post.priority,
@@ -91,7 +91,6 @@ export function usePostActions({ post, onApprove, onRegenerate }: UsePostActions
         caption: string
         slides_json: unknown
         quality_score_avg: number
-        quality: ValidationData['quality']
         language: ValidationData['language']
         slop: ValidationData['slop']
         sourceGrounding: ValidationData['sourceGrounding'] | null
@@ -112,7 +111,6 @@ export function usePostActions({ post, onApprove, onRegenerate }: UsePostActions
         rewrite_count: (post.rewrite_count ?? 0) + 1,
       }
       onRegenerate?.(post.id, updatedPost, {
-        quality: data.quality,
         language: data.language,
         slop: data.slop,
         sourceGrounding: data.sourceGrounding ?? undefined,

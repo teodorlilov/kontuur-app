@@ -1,10 +1,3 @@
-import type {
-  QualityScores,
-  CarouselQuality,
-  LanguageValidation,
-  SlopDetection,
-} from '@/ai/validation/types'
-
 // ---- Shared enums / unions ----
 
 export type PostType = 'single' | 'carousel'
@@ -27,18 +20,6 @@ export interface CarouselSlide {
   design_note?: string
 }
 
-export interface GeneratedPost {
-  theme: string
-  platform: string
-  postType: 'single' | 'carousel'
-  caption: string
-  slides?: CarouselSlide[]
-  qualityScores?: QualityScores
-  carouselQuality?: CarouselQuality
-  languageValidation?: LanguageValidation
-  slopDetection?: SlopDetection
-  isPriority: boolean
-}
 
 // ---- Onboarding ----
 
@@ -190,7 +171,7 @@ export interface CalendarPost {
   platform: string | null
   post_type: string
   slides_json: CarouselSlide[] | null
-  carousel_quality_json: CarouselQuality | null
+  validation_json: unknown
   status: string
   scheduled_at: string | null
   priority: boolean
@@ -381,20 +362,14 @@ export interface ApiError {
   code?: string
 }
 
-// Re-export scoring and source types so existing `from '@/types/api'` imports keep working
+// Re-export validation types so consumers import from '@/types/api'
 export type {
   HookVerdict,
   CtaVerdict,
-  QualityScores,
-  CarouselQuality,
   LanguageIssueType,
-  LanguageValidation,
-  LanguageValidation as LanguageResult,
+  LanguageValidationResult as LanguageResult,
   SlopDetection,
   SourceGroundingResult,
-  SingleQualityResult,
-  CarouselQualityResult,
-  QualityResult,
   ValidationCriteria,
   ValidationScores,
   CriterionResult,
