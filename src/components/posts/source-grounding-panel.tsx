@@ -88,7 +88,7 @@ export function SourceGroundingPanel({
           {onApplyFixes && result.corrected_text && (
             <button
               onClick={() => onApplyFixes(result.corrected_text!, result.corrected_slides)}
-              className="text-xs font-medium text-brand-purple hover:underline text-left"
+              className="text-xs font-medium text-[var(--color-terracotta)] hover:underline text-left"
             >
               Fix ungrounded claims
             </button>
@@ -101,7 +101,7 @@ export function SourceGroundingPanel({
                   href={sourceUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-xs font-medium text-brand-purple hover:underline"
+                  className="text-xs font-medium text-[var(--color-terracotta)] hover:underline"
                 >
                   {sourceTitle ?? 'View source'}
                 </a>

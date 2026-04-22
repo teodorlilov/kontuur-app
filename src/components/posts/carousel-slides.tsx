@@ -81,7 +81,7 @@ function EditableField({
         }}
         className={cn(
           editClassName ?? className,
-          'w-full border border-gray-300 rounded-lg px-2 py-1 -mx-1 focus:outline-none focus:ring-2 focus:ring-brand-purple focus:border-transparent resize-none'
+          'w-full border border-gray-300 rounded-lg px-2 py-1 -mx-1 focus:outline-none focus:ring-2 focus:ring-[var(--color-border-3)] focus:border-transparent resize-none'
         )}
       />
     )
@@ -102,7 +102,7 @@ function EditableField({
       }}
       className={cn(
         editClassName ?? className,
-        'w-full border border-gray-300 rounded-lg px-2 py-1 -mx-1 focus:outline-none focus:ring-2 focus:ring-brand-purple focus:border-transparent'
+        'w-full border border-gray-300 rounded-lg px-2 py-1 -mx-1 focus:outline-none focus:ring-2 focus:ring-[var(--color-border-3)] focus:border-transparent'
       )}
     />
   )
@@ -133,16 +133,8 @@ export function CarouselSlides({ slides, editable, onSlidesChange }: CarouselSli
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex items-center justify-between">
-        <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">
-          Carousel · {slides.length} slides
-        </span>
-        <button
-          onClick={handleCopyAll}
-          className="text-xs text-gray-500 hover:text-gray-700 font-medium"
-        >
-          Copy all slides
-        </button>
+      <div className="flex justify-end">
+        <button onClick={handleCopyAll} className="text-xs text-gray-500 hover:text-gray-700 font-medium">Copy all slides</button>
       </div>
 
       {/* Tab bar */}
@@ -154,7 +146,7 @@ export function CarouselSlides({ slides, editable, onSlidesChange }: CarouselSli
             className={cn(
               'px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors',
               activeIndex === i
-                ? 'bg-brand-purple-light text-brand-purple'
+                ? 'bg-[rgba(44,62,80,0.08)] text-[var(--color-text-1)]'
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
             )}
           >
@@ -198,7 +190,7 @@ export function CarouselSlides({ slides, editable, onSlidesChange }: CarouselSli
           )}
 
           {activeSlide.cta_text && (
-            <p className="text-xs font-medium text-brand-purple">→ {activeSlide.cta_text}</p>
+            <p className="text-xs font-medium text-[var(--color-terracotta)]">→ {activeSlide.cta_text}</p>
           )}
 
           {activeSlide.design_note && (

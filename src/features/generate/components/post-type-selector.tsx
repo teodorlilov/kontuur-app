@@ -37,8 +37,15 @@ export function PostTypeSelector({
   return (
     <div className="flex flex-col gap-5">
       {isInstagram && (
-        <div className="bg-brand-purple-light border border-brand-purple/20 rounded-lg px-5 py-3">
-          <p className="text-sm text-brand-purple font-medium">
+        <div
+          style={{
+            background: 'rgba(192,123,85,0.10)',
+            border: '1px solid rgba(192,123,85,0.20)',
+            borderRadius: '9px',
+            padding: '10px 14px',
+          }}
+        >
+          <p style={{ fontSize: '12px', color: '#7A4A35', lineHeight: 1.55 }}>
             Carousels drive the highest engagement in 2026. Recommended: 2 carousels + 1 single per
             week.
           </p>
@@ -54,7 +61,7 @@ export function PostTypeSelector({
             className={cn(
               'text-left px-5 py-4 rounded-lg border transition-colors flex items-start gap-4',
               value === opt.type
-                ? 'border-brand-purple bg-brand-purple-light'
+                ? 'border-[var(--sidebar-bg)] bg-[rgba(44,62,80,0.025)]'
                 : 'border-gray-200 hover:border-gray-300 bg-white'
             )}
           >
@@ -63,7 +70,7 @@ export function PostTypeSelector({
               <span
                 className={cn(
                   'text-base font-medium block',
-                  value === opt.type ? 'text-brand-purple' : 'text-gray-800'
+                  value === opt.type ? 'text-[var(--color-text-1)]' : 'text-gray-800'
                 )}
               >
                 {opt.label}
@@ -83,7 +90,7 @@ export function PostTypeSelector({
             max={10}
             value={slideCount}
             onChange={(e) => onSlideCountChange(parseInt(e.target.value, 10))}
-            className="w-20 rounded-lg border border-gray-300 px-4 py-3 text-base text-gray-900 focus:border-brand-purple focus:outline-none focus:ring-1 focus:ring-brand-purple"
+            className="w-20 rounded-lg border border-gray-300 px-4 py-3 text-base text-gray-900 focus:border-[var(--color-border-3)] focus:outline-none focus:ring-1 focus:ring-[var(--color-border-3)]"
           />
           <span className="text-sm text-gray-400">3–10 slides</span>
         </div>

@@ -1,21 +1,24 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
-import { Spinner } from '@/components/ui/spinner'
-import { cn } from '@/utils/cn'
 import { toast } from '@/components/ui/toast'
-import { PriorityPostForm } from '@/features/generate/components/priority-post-form'
-import { PostTypeSelector } from '@/features/generate/components/post-type-selector'
-import { PostCard, type PostData, type ValidationData } from '@/components/posts/post-card'
-import { PostCardSkeleton } from '@/components/posts/post-card-skeleton'
 import { readNDJSONStream } from '@/utils/stream'
-import { PLATFORMS } from '@/utils/constants'
+import { GenerateShell, type GenerateStep } from './generate-shell'
+import { WizardSidebar } from './wizard-sidebar'
+import { WizardLayout } from './wizard-layout'
+import { StepClient } from './step-client'
+import { StepPriority } from './step-priority'
+import { StepType } from './step-type'
+import { StepLoading, mapPhaseToStage } from './step-loading'
+import { ResultsView } from './results/results-view'
 import type { ClientRow } from '@/types/database'
 import type { ClientData } from '@/lib/clients/fetch-client-data'
 import type { PriorityPost, PostType } from '@/types/api'
 import type { GenerationResult } from '@/ai/generation/types'
 import type { SkippedPillar } from '@/ai/research/types'
+import type { PostData, ValidationData } from '@/components/posts/post-card'
 
 type Client = Pick<ClientRow, 'id' | 'name' | 'niche' | 'language' | 'posts_per_week'>
 
@@ -28,13 +31,6 @@ type UnifiedStreamEvent =
   | { type: 'skipped_pillars'; pillars: SkippedPillar[]; skippedCount: number }
   | { type: 'error'; message: string }
 
-const STEP_LABELS = [
-  'Client & Platform',
-  'Priority Posts',
-  'Post Type',
-  'Generated Posts',
-]
-
 interface GenerateWizardProps {
   initialClients: Client[]
   initialClientData: ClientData | null
@@ -46,7 +42,8 @@ export function GenerateWizard({
   initialClientData,
   initialTargetPostCount,
 }: GenerateWizardProps) {
-  const [currentStep, setCurrentStep] = useState(1)
+  const router = useRouter()
+  const [step, setStep] = useState<GenerateStep>('client')
 
   // Step 1
   const [clients] = useState<Client[]>(initialClients)
@@ -54,10 +51,7 @@ export function GenerateWizard({
   const [platform, setPlatform] = useState('Instagram')
   const [brandProfileLoading, setBrandProfileLoading] = useState(false)
   const [targetPostCount, setTargetPostCount] = useState(initialTargetPostCount)
-  // Holds full ClientData for passthrough to generate-stream API. Cleared on client change.
-  const [preloadedClientData, setPreloadedClientData] = useState<ClientData | null>(
-    initialClientData
-  )
+  const [preloadedClientData, setPreloadedClientData] = useState<ClientData | null>(initialClientData)
 
   // Step 2
   const [priorityPosts, setPriorityPosts] = useState<PriorityPost[]>([])
@@ -68,61 +62,43 @@ export function GenerateWizard({
   )
   const [slideCount, setSlideCount] = useState(initialClientData?.defaultCarouselSlides ?? 6)
 
-  // Step 4
+  // Step 4 + 5
   const [isGenerating, setIsGenerating] = useState(false)
   const [generatedPosts, setGeneratedPosts] = useState<GeneratedPost[]>([])
   const [streamTotal, setStreamTotal] = useState(0)
   const [researchPhase, setResearchPhase] = useState('')
+  const [loadingStage, setLoadingStage] = useState(0)
   const [skippedPillars, setSkippedPillars] = useState<SkippedPillar[]>([])
-  const [hasGenerated, setHasGenerated] = useState(false)
   const [approvedCount, setApprovedCount] = useState(0)
   const abortControllerRef = useRef<AbortController | null>(null)
   const isInitialMount = useRef(true)
 
-  // Load brand profile when client changes (skips first render — initial data comes from props)
-  useEffect(() => {
-    if (isInitialMount.current) {
-      isInitialMount.current = false
-      return
-    }
-    if (!clientId) return
-    // Client changed — clear preloaded data and fetch fresh
-    setPreloadedClientData(null)
-    setBrandProfileLoading(true)
-    void fetch(`/api/clients/${clientId}`)
-      .then((r) => r.json())
-      .then((data: { clientData?: ClientData; posting_schedule?: unknown }) => {
-        if (data.clientData) {
-          const cd = data.clientData
-          setPreloadedClientData(cd)
-          if (cd.defaultPostType === 'carousel') setPostType('carousel')
-          else setPostType('single')
-          setSlideCount(cd.defaultCarouselSlides || 6)
-        }
-        // posts_per_week comes from the clients list already loaded at page render
-        const changedClient = clients.find((c) => c.id === clientId)
-        if (changedClient && changedClient.posts_per_week > 0) {
-          setTargetPostCount(changedClient.posts_per_week)
-        }
-      })
-      .finally(() => setBrandProfileLoading(false))
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [clientId])
+  const selectedClient = clients.find((c) => c.id === clientId)
+  const clientName = selectedClient?.name ?? 'Client'
 
-  // Start generation when entering step 4
+  useLoadClientData({
+    clientId,
+    clients,
+    isInitialMount,
+    setBrandProfileLoading,
+    setPreloadedClientData,
+    setPostType,
+    setSlideCount,
+    setTargetPostCount,
+  })
+
+  // Start generation when entering loading step
   useEffect(() => {
-    if (currentStep === 4 && generatedPosts.length === 0 && !isGenerating) {
+    if (step === 'loading' && generatedPosts.length === 0 && !isGenerating) {
       void startGeneration()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentStep])
+  }, [step])
 
-  // Abort any in-flight streams when navigating between steps
+  // Abort streams on step change
   useEffect(() => {
-    return () => {
-      abortControllerRef.current?.abort()
-    }
-  }, [currentStep])
+    return () => { abortControllerRef.current?.abort() }
+  }, [step])
 
   async function startGeneration() {
     abortControllerRef.current?.abort()
@@ -132,6 +108,7 @@ export function GenerateWizard({
     setStreamTotal(0)
     setGeneratedPosts([])
     setResearchPhase('')
+    setLoadingStage(0)
     setSkippedPillars([])
     setIsGenerating(true)
 
@@ -154,7 +131,7 @@ export function GenerateWizard({
       if (!res.ok) {
         const err = (await res.json()) as { error?: string }
         toast.error(err.error ?? 'Generation failed')
-        setCurrentStep(3)
+        setStep('type')
         return
       }
 
@@ -163,22 +140,24 @@ export function GenerateWizard({
           setStreamTotal(event.count)
         } else if (event.type === 'phase') {
           setResearchPhase(event.message)
+          setLoadingStage((prev) => Math.max(prev, mapPhaseToStage(event.message)))
         } else if (event.type === 'result') {
           setResearchPhase('')
+          setLoadingStage((prev) => Math.max(prev, 2))
           setGeneratedPosts((prev) => [...prev, event.data as unknown as GeneratedPost])
         } else if (event.type === 'skipped_pillars') {
           setSkippedPillars(event.pillars)
         } else if (event.type === 'error') {
           toast.error(event.message)
-          setCurrentStep(3)
+          setStep('type')
         }
       })
 
-      setHasGenerated(true)
+      setStep('results')
     } catch (err) {
       if (err instanceof Error && err.name === 'AbortError') return
       toast.error('Generation failed — please retry')
-      setCurrentStep(3)
+      setStep('type')
     } finally {
       setIsGenerating(false)
     }
@@ -195,359 +174,257 @@ export function GenerateWizard({
     setStreamTotal((t) => t - 1)
   }
 
-  function handlePostRegenerated(
-    postId: string,
-    updatedPost: PostData,
-    updatedValidation: ValidationData
-  ) {
+  function handlePostRegenerated(postId: string, updatedPost: PostData, updatedValidation: ValidationData) {
     setGeneratedPosts((prev) =>
       prev.map((p) => (p.post.id === postId ? { post: updatedPost, ...updatedValidation } : p))
     )
   }
 
-  const canNext = (() => {
-    if (currentStep === 1) return !!clientId && !brandProfileLoading
-    return true
-  })()
-
-  if (clients.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[calc(100vh-4rem)] gap-4 text-center">
-        <div className="h-12 w-12 rounded-full bg-gray-100 flex items-center justify-center">
-          <svg
-            className="h-6 w-6 text-gray-400"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            strokeWidth={1.5}
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z"
-            />
-          </svg>
-        </div>
-        <div>
-          <p className="text-sm font-medium text-gray-900">No clients yet</p>
-          <p className="text-sm text-gray-500 mt-1">
-            Add your first client before generating posts.
-          </p>
-        </div>
-        <a
-          href="/clients/new"
-          className="inline-flex items-center gap-1.5 text-sm font-medium text-[#534AB7] hover:underline"
-        >
-          + Add your first client
-        </a>
-      </div>
-    )
+  function handleNewRun() {
+    setGeneratedPosts([])
+    setApprovedCount(0)
+    setStreamTotal(0)
+    setLoadingStage(0)
+    setStep('client')
   }
 
-  return (
-    <div className="max-w-3xl mx-auto px-6 py-12">
-      {/* Header + progress bar — hidden on completion state */}
-      {!(hasGenerated && generatedPosts.length === 0) && (
-        <>
-          <div className="mb-10">
-            <h1
-              style={{
-                fontFamily: 'var(--font-display)',
-                fontSize: 28,
-                fontWeight: 400,
-                color: 'var(--color-text-1)',
-                letterSpacing: '-0.02em',
-                margin: 0,
-              }}
-            >
-              Generate posts
-            </h1>
-            <p className="text-base text-gray-500 mt-1">
-              Step {currentStep} of {STEP_LABELS.length} — {STEP_LABELS[currentStep - 1]}
-            </p>
-          </div>
+  function handlePlatformChange(p: string) {
+    setPlatform(p)
+    if (p !== 'Instagram' && postType === 'carousel') setPostType('single')
+  }
 
-          <div className="flex gap-1.5 mb-10">
-            {STEP_LABELS.map((_, i) => (
-              <div
-                key={i}
-                className={cn(
-                  'h-1.5 flex-1 rounded-full transition-colors',
-                  i + 1 < currentStep
-                    ? 'bg-[#534AB7]'
-                    : i + 1 === currentStep
-                      ? 'bg-[#7F77DD]'
-                      : 'bg-gray-200'
-                )}
-              />
-            ))}
-          </div>
-        </>
+  function handleGenerate() {
+    setStep('loading')
+  }
+
+  if (clients.length === 0) return <NoClientsState />
+
+  const sidebarItems = buildSidebarItems(step, clientName, platform, priorityPosts)
+  const sidebarFooter = buildSidebarFooter(step)
+
+  return (
+    <GenerateShell currentStep={step} onCancel={() => router.push('/dashboard')}>
+      {step === 'client' && (
+        <WizardLayout sidebar={<WizardSidebar items={sidebarItems} footerNote={sidebarFooter} />}>
+          <StepClient
+            clients={clients}
+            selectedClient={clientId}
+            selectedPlatform={platform}
+            brandProfileLoading={brandProfileLoading}
+            onClientChange={setClientId}
+            onPlatformChange={handlePlatformChange}
+            onNext={() => setStep('priority')}
+          />
+        </WizardLayout>
       )}
 
-      {/* Step content */}
-      <div className="flex flex-col gap-8">
-        {/* Step 1 — Client & Platform */}
-        {currentStep === 1 && (
-          <div className="flex flex-col gap-6">
-            <div className="flex flex-col gap-2">
-              <label className="text-base font-medium text-gray-700">Client</label>
-              <select
-                value={clientId}
-                onChange={(e) => setClientId(e.target.value)}
-                className="rounded-lg border border-gray-300 px-4 py-3 text-base text-gray-900 focus:border-[#534AB7] focus:outline-none focus:ring-1 focus:ring-[#534AB7]"
-              >
-                {clients.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+      {step === 'priority' && (
+        <WizardLayout
+          sidebar={<WizardSidebar items={sidebarItems} footerNote={sidebarFooter} />}
+          centerContent={false}
+          maxWidth="660px"
+        >
+          <StepPriority
+            posts={priorityPosts}
+            onChange={setPriorityPosts}
+            onBack={() => setStep('client')}
+            onSkip={() => setStep('type')}
+            onNext={() => setStep('type')}
+          />
+        </WizardLayout>
+      )}
 
-            {brandProfileLoading && (
-              <div className="flex items-center gap-2 text-xs text-gray-400">
-                <Spinner size="sm" />
-                Loading brand profile...
-              </div>
-            )}
-
-            <div className="flex flex-col gap-2">
-              <label className="text-base font-medium text-gray-700">Platform</label>
-              <div className="flex flex-wrap gap-2.5">
-                {PLATFORMS.map((p) => (
-                  <button
-                    key={p}
-                    type="button"
-                    onClick={() => {
-                      setPlatform(p)
-                      if (p !== 'Instagram' && postType === 'carousel') {
-                        setPostType('single')
-                      }
-                    }}
-                    className={cn(
-                      'px-4 py-2 rounded-full border text-base transition-colors',
-                      platform === p
-                        ? 'border-[#534AB7] bg-[#EEEDFE] text-[#534AB7]'
-                        : 'border-gray-200 text-gray-600 hover:border-gray-300'
-                    )}
-                  >
-                    {p}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-          </div>
-        )}
-
-        {/* Step 2 — Priority Posts */}
-        {currentStep === 2 && (
-          <div className="flex flex-col gap-5">
-            <p className="text-base text-gray-600">
-              Add priority posts for specific campaigns or announcements. They generate first and
-              appear with a red badge in review.
-            </p>
-            <PriorityPostForm posts={priorityPosts} onChange={setPriorityPosts} />
-            {priorityPosts.length === 0 && (
-              <p className="text-sm text-gray-400">No priority posts — this step is optional.</p>
-            )}
-          </div>
-        )}
-
-        {/* Step 3 — Post Type */}
-        {currentStep === 3 && (
-          <PostTypeSelector
-            value={postType}
+      {step === 'type' && (
+        <WizardLayout sidebar={<WizardSidebar items={sidebarItems} footerNote={sidebarFooter} />}>
+          <StepType
+            postType={postType}
             slideCount={slideCount}
             platform={platform}
-            onChange={setPostType}
+            onTypeChange={setPostType}
             onSlideCountChange={setSlideCount}
+            onBack={() => setStep('priority')}
+            onGenerate={handleGenerate}
           />
-        )}
+        </WizardLayout>
+      )}
 
-        {/* Step 4 — Generated Posts */}
-        {currentStep === 4 && (
-          <div className="flex flex-col gap-4">
-            {isGenerating && researchPhase && (
-              <p className="text-sm text-gray-500 animate-pulse">{researchPhase}</p>
-            )}
+      {step === 'loading' && (
+        <StepLoading
+          clientName={clientName}
+          stage={loadingStage}
+          streamTotal={streamTotal}
+          generatedCount={generatedPosts.length}
+          researchPhase={researchPhase}
+        />
+      )}
 
-            {skippedPillars.length > 0 && generatedPosts.length > 0 && (
-              <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-700 space-y-1">
-                <p className="font-medium">
-                  {skippedPillars.length === 1 ? '1 pillar skipped' : `${skippedPillars.length} pillars skipped`}
-                </p>
-                {skippedPillars.map((p) => (
-                  <p key={p.name} className="text-xs">
-                    <span className="font-medium">{p.name}</span> — no sources assigned or no content found.
-                  </p>
-                ))}
-              </div>
-            )}
+      {step === 'results' && (
+        <>
+          {generatedPosts.length > 0 ? (
+            <ResultsView
+              posts={generatedPosts}
+              clientName={clientName}
+              platform={platform}
+              postType={postType}
+              skippedPillars={skippedPillars}
+              onApprove={handlePostApproved}
+              onDiscard={handlePostRemoved}
+              onRegenerate={handlePostRegenerated}
+              onNewRun={handleNewRun}
+            />
+          ) : (
+            <AllReviewedState
+              approvedCount={approvedCount}
+              onGenerateMore={() => { setApprovedCount(0); setStep('type') }}
+            />
+          )}
+        </>
+      )}
+    </GenerateShell>
+  )
+}
 
-            {isGenerating && streamTotal > 0 && (
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between text-sm text-gray-500">
-                  <span>Generating posts...</span>
-                  <span>
-                    {generatedPosts.length} of {streamTotal} complete
-                  </span>
-                </div>
-                <div className="h-1.5 w-full rounded-full bg-gray-100 overflow-hidden">
-                  <div
-                    className="h-full rounded-full bg-[#534AB7] transition-all duration-700 ease-out"
-                    style={{ width: `${streamTotal > 0 ? Math.round((generatedPosts.length / streamTotal) * 100) : 0}%` }}
-                  />
-                </div>
-              </div>
-            )}
+/* ─── Hook: load client data on client change ─── */
 
-            {(isGenerating || generatedPosts.length > 0) &&
-              streamTotal > 0 &&
-              Array.from({ length: streamTotal }, (_, i) => {
-                const item = generatedPosts[i]
-                return item ? (
-                  <div
-                    key={item.post.id}
-                    className="animate-[fadein_0.4s_ease-out_forwards] opacity-0"
-                  >
-                    <PostCard
-                      post={item.post}
-                      validationData={{
-                        quality: item.quality,
-                        language: item.language,
-                        slop: item.slop,
-                        sourceGrounding: item.sourceGrounding,
-                        criteria: item.criteria,
-                        scores: item.scores,
-                      }}
-                      onApprove={handlePostApproved}
-                      onDiscard={handlePostRemoved}
-                      onRegenerate={handlePostRegenerated}
-                    />
-                  </div>
-                ) : (
-                  <PostCardSkeleton key={`skeleton-${i}`} />
-                )
-              })}
+function useLoadClientData({
+  clientId,
+  clients,
+  isInitialMount,
+  setBrandProfileLoading,
+  setPreloadedClientData,
+  setPostType,
+  setSlideCount,
+  setTargetPostCount,
+}: {
+  clientId: string
+  clients: Client[]
+  isInitialMount: React.RefObject<boolean>
+  setBrandProfileLoading: (v: boolean) => void
+  setPreloadedClientData: (v: ClientData | null) => void
+  setPostType: (v: PostType) => void
+  setSlideCount: (v: number) => void
+  setTargetPostCount: (v: number) => void
+}) {
+  useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false
+      return
+    }
+    if (!clientId) return
+    setPreloadedClientData(null)
+    setBrandProfileLoading(true)
+    void fetch(`/api/clients/${clientId}`)
+      .then((r) => r.json())
+      .then((data: { clientData?: ClientData }) => {
+        if (data.clientData) {
+          const cd = data.clientData
+          setPreloadedClientData(cd)
+          setPostType(cd.defaultPostType === 'carousel' ? 'carousel' : 'single')
+          setSlideCount(cd.defaultCarouselSlides || 6)
+        }
+        const changedClient = clients.find((c) => c.id === clientId)
+        if (changedClient && changedClient.posts_per_week > 0) {
+          setTargetPostCount(changedClient.posts_per_week)
+        }
+      })
+      .finally(() => setBrandProfileLoading(false))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clientId])
+}
 
-            {!isGenerating && generatedPosts.length === 0 && hasGenerated && (
-              <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 text-center">
-                <div className="h-16 w-16 rounded-full bg-green-50 flex items-center justify-center">
-                  <svg
-                    className="h-8 w-8 text-green-500"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    strokeWidth={2}
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                  </svg>
-                </div>
-                <div>
-                  <p className="text-lg font-semibold text-gray-900">All posts reviewed</p>
-                  <p className="text-base text-gray-500 mt-1">
-                    {approvedCount > 0
-                      ? `${approvedCount} post${approvedCount !== 1 ? 's' : ''} approved and saved.`
-                      : 'All posts were discarded.'}
-                  </p>
-                </div>
-                <div className="flex items-center gap-3 mt-2">
-                  <Button
-                    size="sm"
-                    onClick={() => {
-                      setGeneratedPosts([])
-                      setHasGenerated(false)
-                      setApprovedCount(0)
-                      setCurrentStep(3)
-                    }}
-                  >
-                    Generate more
-                  </Button>
-                  {approvedCount > 0 && (
-                    <a href="/calendar" className="text-sm text-gray-500 hover:text-gray-700">
-                      View approved posts
-                    </a>
-                  )}
-                </div>
-              </div>
-            )}
+/* ─── Sidebar helpers ─── */
 
-            {!isGenerating && generatedPosts.length === 0 && !hasGenerated && streamTotal === 0 && (
-              <div className="flex flex-col items-center justify-center py-16 gap-4 text-center">
-                <div className="h-12 w-12 rounded-full bg-gray-100 flex items-center justify-center">
-                  <svg
-                    className="h-6 w-6 text-gray-400"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    strokeWidth={1.5}
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"
-                    />
-                  </svg>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-900">No posts generated</p>
-                  <p className="text-sm text-gray-500 mt-1">
-                    Something went wrong during generation.
-                  </p>
-                </div>
-                <button
-                  onClick={() => {
-                    void startGeneration()
-                  }}
-                  className="text-sm font-medium text-[#534AB7] hover:underline"
-                >
-                  Retry generation
-                </button>
-              </div>
-            )}
-          </div>
+function buildSidebarItems(
+  step: GenerateStep,
+  clientName: string,
+  platform: string,
+  priorityPosts: PriorityPost[]
+) {
+  if (step === 'client') {
+    return [
+      { label: 'Client & platform', status: 'active' as const },
+      { label: 'Priority posts', status: 'idle' as const },
+      { label: 'Post type', status: 'idle' as const },
+      { label: 'Generate', status: 'idle' as const },
+    ]
+  }
+  if (step === 'priority') {
+    return [
+      { label: `${clientName} · ${platform}`, status: 'done' as const },
+      { label: 'Priority posts', status: 'active' as const },
+      { label: 'Post type', status: 'idle' as const },
+      { label: 'Generate', status: 'idle' as const },
+    ]
+  }
+  const count = priorityPosts.length
+  const priorityLabel = count > 0 ? `${count} priority post${count > 1 ? 's' : ''}` : 'No priority posts'
+  return [
+    { label: `${clientName} · ${platform}`, status: 'done' as const },
+    { label: priorityLabel, status: 'done' as const },
+    { label: 'Post type', status: 'active' as const },
+    { label: 'Generate', status: 'idle' as const },
+  ]
+}
+
+function buildSidebarFooter(step: GenerateStep): string {
+  if (step === 'client') {
+    return 'Select a client and platform to begin. Kontuur will pull their brand profile, sources, and content pillars automatically.'
+  }
+  if (step === 'priority') {
+    return 'Priority posts generate first and appear with a priority badge in the review queue. Skip if it\'s a regular content run.'
+  }
+  return 'Carousels consistently outperform single images for medical and professional service content — higher saves and shares.'
+}
+
+/* ─── Empty states ─── */
+
+function NoClientsState() {
+  return (
+    <div className="flex flex-col items-center justify-center min-h-[calc(100vh-4rem)] gap-4 text-center">
+      <div className="h-12 w-12 rounded-full bg-gray-100 flex items-center justify-center">
+        <svg className="h-6 w-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
+        </svg>
+      </div>
+      <div>
+        <p className="text-sm font-medium text-gray-900">No clients yet</p>
+        <p className="text-sm text-gray-500 mt-1">Add your first client before generating posts.</p>
+      </div>
+      <a href="/clients/new" className="inline-flex items-center gap-1.5 text-sm font-medium text-[var(--color-terracotta)] hover:underline">
+        + Add your first client
+      </a>
+    </div>
+  )
+}
+
+function AllReviewedState({
+  approvedCount,
+  onGenerateMore,
+}: {
+  approvedCount: number
+  onGenerateMore: () => void
+}) {
+  return (
+    <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 text-center">
+      <div className="h-16 w-16 rounded-full bg-green-50 flex items-center justify-center">
+        <svg className="h-8 w-8 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+        </svg>
+      </div>
+      <div>
+        <p className="text-lg font-semibold text-gray-900">All posts reviewed</p>
+        <p className="text-base text-gray-500 mt-1">
+          {approvedCount > 0
+            ? `${approvedCount} post${approvedCount !== 1 ? 's' : ''} approved and saved.`
+            : 'All posts were discarded.'}
+        </p>
+      </div>
+      <div className="flex items-center gap-3 mt-2">
+        <Button size="sm" onClick={onGenerateMore}>Generate more</Button>
+        {approvedCount > 0 && (
+          <a href="/calendar" className="text-sm text-gray-500 hover:text-gray-700">View approved posts</a>
         )}
       </div>
-
-      {/* Navigation */}
-      {clients.length > 0 && (currentStep < 4 || isGenerating) && (
-        <div className="flex items-center justify-between mt-10 pt-6 border-t border-gray-100">
-          <Button
-            variant="ghost"
-            size="lg"
-            onClick={() => {
-              if (currentStep === 4) {
-                abortControllerRef.current?.abort()
-                setGeneratedPosts([])
-                setStreamTotal(0)
-                setResearchPhase('')
-              }
-              setCurrentStep((s) => Math.max(1, s - 1))
-            }}
-            disabled={currentStep === 1}
-          >
-            {currentStep === 4 ? 'Cancel' : 'Back'}
-          </Button>
-
-          {currentStep < 4 && (
-            <div className="flex items-center gap-4">
-              {currentStep === 2 && (
-                <button
-                  onClick={() => setCurrentStep(3)}
-                  className="text-base text-gray-400 hover:text-gray-600"
-                >
-                  Skip
-                </button>
-              )}
-              <Button size="lg" onClick={() => setCurrentStep((s) => s + 1)} disabled={!canNext}>
-                {currentStep === 3 ? 'Generate' : 'Next'}
-              </Button>
-            </div>
-          )}
-        </div>
-      )}
     </div>
   )
 }

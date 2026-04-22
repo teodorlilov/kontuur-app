@@ -99,7 +99,7 @@ export function LanguagePanel({ result, onApplyFixes, autoApplied = false }: Lan
           {!autoApplied && (corrected_text || corrected_slides) && (
             <button
               onClick={() => onApplyFixes(corrected_text ?? '', corrected_slides)}
-              className="text-xs font-medium text-brand-purple hover:underline text-left"
+              className="text-xs font-medium text-[var(--color-terracotta)] hover:underline text-left"
             >
               Apply all fixes
             </button>
