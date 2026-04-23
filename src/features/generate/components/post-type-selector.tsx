@@ -61,7 +61,7 @@ export function PostTypeSelector({
             className={cn(
               'text-left px-5 py-4 rounded-lg border transition-colors flex items-start gap-4',
               value === opt.type
-                ? 'border-[var(--sidebar-bg)] bg-[rgba(44,62,80,0.025)]'
+                ? 'border-[var(--color-terracotta)] bg-[rgba(192,123,85,0.04)]'
                 : 'border-gray-200 hover:border-gray-300 bg-white'
             )}
           >

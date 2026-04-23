@@ -6,11 +6,12 @@ import { Button } from '@/components/ui/button'
 import { toast } from '@/components/ui/toast'
 import { readNDJSONStream } from '@/utils/stream'
 import { GenerateShell, type GenerateStep } from './generate-shell'
-import { WizardSidebar } from './wizard-sidebar'
-import { WizardLayout } from './wizard-layout'
+import { STEP_ORDER } from './wizard-topbar'
+import { WizardCard } from './wizard-card'
+import { WizardFooter } from './wizard-footer'
 import { StepClient } from './step-client'
 import { StepPriority } from './step-priority'
-import { StepType } from './step-type'
+import { PostTypeSelector } from './post-type-selector'
 import { StepLoading, mapPhaseToStage } from './step-loading'
 import { ResultsView } from './results/results-view'
 import type { ClientRow } from '@/types/database'
@@ -87,7 +88,6 @@ export function GenerateWizard({
     setTargetPostCount,
   })
 
-  // Start generation when entering loading step
   useEffect(() => {
     if (step === 'loading' && generatedPosts.length === 0 && !isGenerating) {
       void startGeneration()
@@ -95,7 +95,6 @@ export function GenerateWizard({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step])
 
-  // Abort streams on step change
   useEffect(() => {
     return () => { abortControllerRef.current?.abort() }
   }, [step])
@@ -180,6 +179,46 @@ export function GenerateWizard({
     )
   }
 
+  async function handleApproveAll() {
+    const remaining = [...generatedPosts]
+    for (const item of remaining) {
+      try {
+        const res = await fetch('/api/posts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            client_id: item.post.client_id,
+            caption: item.post.caption,
+            platform: item.post.platform,
+            post_type: item.post.post_type,
+            slides_json: item.post.slides_json,
+            validation_json: item.post.validation_json,
+            status: 'approved',
+            scheduled_at: null,
+            priority: item.post.priority,
+            quality_score_avg: item.post.quality_score_avg,
+            topic_summary: item.post.topic_summary,
+            was_rewritten: item.post.was_rewritten,
+            rewrite_count: item.post.rewrite_count,
+            source_url: item.post.source_url ?? null,
+            source_title: item.post.source_title ?? null,
+            source_type: item.post.source_type ?? null,
+            source_excerpt: item.post.source_excerpt ?? null,
+            pillar: item.post.pillar ?? null,
+          }),
+        })
+        if (res.ok) {
+          handlePostApproved(item.post.id)
+        } else {
+          toast.error(`Failed to approve "${item.post.pillar ?? 'post'}"`)
+        }
+      } catch {
+        toast.error(`Failed to approve "${item.post.pillar ?? 'post'}"`)
+      }
+    }
+    toast.success(`${remaining.length} post${remaining.length !== 1 ? 's' : ''} approved`)
+  }
+
   function handleNewRun() {
     setGeneratedPosts([])
     setApprovedCount(0)
@@ -193,19 +232,21 @@ export function GenerateWizard({
     if (p !== 'Instagram' && postType === 'carousel') setPostType('single')
   }
 
-  function handleGenerate() {
-    setStep('loading')
+  function handleStepClick(targetStep: GenerateStep) {
+    if (STEP_ORDER[targetStep] < STEP_ORDER[step]) setStep(targetStep)
   }
 
   if (clients.length === 0) return <NoClientsState />
 
-  const sidebarItems = buildSidebarItems(step, clientName, platform, priorityPosts)
-  const sidebarFooter = buildSidebarFooter(step)
+  const priorityBadge =
+    priorityPosts.length > 0
+      ? `Optional · ${priorityPosts.length} brief${priorityPosts.length > 1 ? 's' : ''}`
+      : 'Optional'
 
   return (
-    <GenerateShell currentStep={step} onCancel={() => router.push('/dashboard')}>
+    <GenerateShell currentStep={step} onCancel={() => router.push('/dashboard')} onStepClick={handleStepClick}>
       {step === 'client' && (
-        <WizardLayout sidebar={<WizardSidebar items={sidebarItems} footerNote={sidebarFooter} />}>
+        <WizardCard title="Client & platform" subtitle="Choose which client and platform to generate for">
           <StepClient
             clients={clients}
             selectedClient={clientId}
@@ -213,39 +254,37 @@ export function GenerateWizard({
             brandProfileLoading={brandProfileLoading}
             onClientChange={setClientId}
             onPlatformChange={handlePlatformChange}
-            onNext={() => setStep('priority')}
           />
-        </WizardLayout>
+          <WizardFooter onNext={() => setStep('priority')} nextDisabled={!clientId || brandProfileLoading} />
+        </WizardCard>
       )}
 
       {step === 'priority' && (
-        <WizardLayout
-          sidebar={<WizardSidebar items={sidebarItems} footerNote={sidebarFooter} />}
-          centerContent={false}
-          maxWidth="660px"
+        <WizardCard
+          title="Priority posts"
+          subtitle="Optional — specific campaigns or announcements that generate first"
+          badge={priorityBadge}
         >
-          <StepPriority
-            posts={priorityPosts}
-            onChange={setPriorityPosts}
+          <StepPriority posts={priorityPosts} onChange={setPriorityPosts} />
+          <WizardFooter
             onBack={() => setStep('client')}
             onSkip={() => setStep('type')}
             onNext={() => setStep('type')}
           />
-        </WizardLayout>
+        </WizardCard>
       )}
 
       {step === 'type' && (
-        <WizardLayout sidebar={<WizardSidebar items={sidebarItems} footerNote={sidebarFooter} />}>
-          <StepType
-            postType={postType}
+        <WizardCard title="Post type" subtitle="Choose the format for this generation run">
+          <PostTypeSelector
+            value={postType}
             slideCount={slideCount}
             platform={platform}
-            onTypeChange={setPostType}
+            onChange={setPostType}
             onSlideCountChange={setSlideCount}
-            onBack={() => setStep('priority')}
-            onGenerate={handleGenerate}
           />
-        </WizardLayout>
+          <WizardFooter onBack={() => setStep('priority')} onGenerate={() => setStep('loading')} />
+        </WizardCard>
       )}
 
       {step === 'loading' && (
@@ -271,6 +310,7 @@ export function GenerateWizard({
               onDiscard={handlePostRemoved}
               onRegenerate={handlePostRegenerated}
               onNewRun={handleNewRun}
+              onApproveAll={handleApproveAll}
             />
           ) : (
             <AllReviewedState
@@ -330,50 +370,6 @@ function useLoadClientData({
       .finally(() => setBrandProfileLoading(false))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clientId])
-}
-
-/* ─── Sidebar helpers ─── */
-
-function buildSidebarItems(
-  step: GenerateStep,
-  clientName: string,
-  platform: string,
-  priorityPosts: PriorityPost[]
-) {
-  if (step === 'client') {
-    return [
-      { label: 'Client & platform', status: 'active' as const },
-      { label: 'Priority posts', status: 'idle' as const },
-      { label: 'Post type', status: 'idle' as const },
-      { label: 'Generate', status: 'idle' as const },
-    ]
-  }
-  if (step === 'priority') {
-    return [
-      { label: `${clientName} · ${platform}`, status: 'done' as const },
-      { label: 'Priority posts', status: 'active' as const },
-      { label: 'Post type', status: 'idle' as const },
-      { label: 'Generate', status: 'idle' as const },
-    ]
-  }
-  const count = priorityPosts.length
-  const priorityLabel = count > 0 ? `${count} priority post${count > 1 ? 's' : ''}` : 'No priority posts'
-  return [
-    { label: `${clientName} · ${platform}`, status: 'done' as const },
-    { label: priorityLabel, status: 'done' as const },
-    { label: 'Post type', status: 'active' as const },
-    { label: 'Generate', status: 'idle' as const },
-  ]
-}
-
-function buildSidebarFooter(step: GenerateStep): string {
-  if (step === 'client') {
-    return 'Select a client and platform to begin. Kontuur will pull their brand profile, sources, and content pillars automatically.'
-  }
-  if (step === 'priority') {
-    return 'Priority posts generate first and appear with a priority badge in the review queue. Skip if it\'s a regular content run.'
-  }
-  return 'Carousels consistently outperform single images for medical and professional service content — higher saves and shares.'
 }
 
 /* ─── Empty states ─── */

@@ -1,6 +1,5 @@
 'use client'
 
-import { ChevronRight } from 'lucide-react'
 import { Spinner } from '@/components/ui/spinner'
 import { PLATFORMS } from '@/utils/constants'
 
@@ -11,10 +10,9 @@ interface StepClientProps {
   brandProfileLoading: boolean
   onClientChange: (id: string) => void
   onPlatformChange: (platform: string) => void
-  onNext: () => void
 }
 
-/** Step 1: client selector + platform pills. */
+/** Step 1: client selector + platform pills (content only, no heading or footer). */
 export function StepClient({
   clients,
   selectedClient,
@@ -22,14 +20,9 @@ export function StepClient({
   brandProfileLoading,
   onClientChange,
   onPlatformChange,
-  onNext,
 }: StepClientProps) {
-  const canNext = !!selectedClient && !brandProfileLoading
-
   return (
     <>
-      <CardHeading title="Client & platform" subtitle="Choose which client and platform to generate for" />
-
       <FieldLabel>Client</FieldLabel>
       <select
         value={selectedClient}
@@ -63,12 +56,6 @@ export function StepClient({
           />
         ))}
       </div>
-
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '24px' }}>
-        <PrimaryButton onClick={onNext} disabled={!canNext}>
-          Next <ChevronRight size={14} />
-        </PrimaryButton>
-      </div>
     </>
   )
 }
@@ -92,38 +79,15 @@ function PlatformPill({
         fontSize: '12px',
         fontWeight: 500,
         cursor: 'pointer',
-        border: isSelected ? '1.5px solid var(--sidebar-bg)' : '1.5px solid var(--color-border-2)',
-        background: isSelected ? 'var(--sidebar-bg)' : 'var(--color-surface)',
-        color: isSelected ? 'var(--sidebar-text-active)' : 'var(--color-muted)',
+        border: isSelected ? '1.5px solid #1A2630' : '1.5px solid rgba(44,62,80,0.14)',
+        background: isSelected ? '#1A2630' : '#fff',
+        color: isSelected ? '#ECE8E1' : '#8A8070',
         fontFamily: 'inherit',
         transition: 'all 0.15s',
       }}
     >
       {label}
     </button>
-  )
-}
-
-/* ─── Shared form primitives ─── */
-
-function CardHeading({ title, subtitle }: { title: string; subtitle: string }) {
-  return (
-    <>
-      <h2
-        style={{
-          fontFamily: 'var(--font-display)',
-          fontSize: '22px',
-          fontWeight: 400,
-          color: 'var(--color-text-1)',
-          marginBottom: '4px',
-        }}
-      >
-        {title}
-      </h2>
-      <p style={{ fontSize: '13px', color: 'var(--color-muted)', marginBottom: '24px', lineHeight: 1.55 }}>
-        {subtitle}
-      </p>
-    </>
   )
 }
 
@@ -144,45 +108,6 @@ function FieldLabel({ children }: { children: React.ReactNode }) {
   )
 }
 
-function PrimaryButton({
-  children,
-  onClick,
-  disabled,
-  variant = 'slate',
-}: {
-  children: React.ReactNode
-  onClick: () => void
-  disabled?: boolean
-  variant?: 'slate' | 'terra'
-}) {
-  const bg = variant === 'terra' ? 'var(--color-terracotta)' : 'var(--sidebar-bg)'
-
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      style={{
-        padding: '11px 26px',
-        background: disabled ? 'rgba(44,62,80,0.3)' : bg,
-        color: 'var(--sidebar-text-active)',
-        border: 'none',
-        borderRadius: '9px',
-        fontSize: '13px',
-        fontWeight: 500,
-        cursor: disabled ? 'not-allowed' : 'pointer',
-        fontFamily: 'inherit',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '7px',
-        transition: 'background 0.15s',
-      }}
-    >
-      {children}
-    </button>
-  )
-}
-
 const SELECT_STYLE: React.CSSProperties = {
   width: '100%',
   padding: '10px 13px',
@@ -195,5 +120,3 @@ const SELECT_STYLE: React.CSSProperties = {
   outline: 'none',
   cursor: 'pointer',
 }
-
-export { CardHeading, FieldLabel, PrimaryButton, SELECT_STYLE }

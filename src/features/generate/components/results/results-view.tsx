@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { ChevronLeft, ChevronRight, AlertTriangle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { PostList } from './post-list'
@@ -21,6 +21,7 @@ interface ResultsViewProps {
   onDiscard: (postId: string) => void
   onRegenerate: (postId: string, updatedPost: PostData, updatedValidation: ValidationData) => void
   onNewRun: () => void
+  onApproveAll?: () => void
 }
 
 /** Step 5: three-panel results view with topbar. */
@@ -34,29 +35,27 @@ export function ResultsView({
   onDiscard,
   onRegenerate,
   onNewRun,
+  onApproveAll,
 }: ResultsViewProps) {
   const [selectedPostId, setSelectedPostId] = useState(posts[0]?.post.id ?? '')
+  const prevPostIdsRef = useRef<string[]>([])
+
+  // When posts array changes (post removed), auto-select the next valid post
+  useEffect(() => {
+    const currentIds = posts.map((p) => p.post.id)
+    const prevIds = prevPostIdsRef.current
+    prevPostIdsRef.current = currentIds
+
+    if (!currentIds.includes(selectedPostId) && currentIds.length > 0) {
+      const removedIndex = prevIds.indexOf(selectedPostId)
+      const nextIndex = Math.min(Math.max(0, removedIndex), currentIds.length - 1)
+      setSelectedPostId(currentIds[nextIndex]!)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [posts])
 
   const selectedPost = posts.find((p) => p.post.id === selectedPostId)
   const selectedIndex = posts.findIndex((p) => p.post.id === selectedPostId)
-
-  function handleApprove(postId: string) {
-    onApprove(postId)
-    selectNextAfterRemoval(postId)
-  }
-
-  function handleDiscard(postId: string) {
-    onDiscard(postId)
-    selectNextAfterRemoval(postId)
-  }
-
-  function selectNextAfterRemoval(removedId: string) {
-    const remaining = posts.filter((p) => p.post.id !== removedId)
-    if (remaining.length === 0) return
-    const removedIndex = posts.findIndex((p) => p.post.id === removedId)
-    const nextIndex = Math.min(removedIndex, remaining.length - 1)
-    setSelectedPostId(remaining[nextIndex]!.post.id)
-  }
 
   function navigatePrev() {
     if (selectedIndex > 0) setSelectedPostId(posts[selectedIndex - 1]!.post.id)
@@ -79,6 +78,7 @@ export function ResultsView({
         onPrev={navigatePrev}
         onNext={navigateNext}
         onNewRun={onNewRun}
+        onApproveAll={onApproveAll}
       />
       {skippedPillars.length > 0 && <SkippedBanner pillars={skippedPillars} />}
       <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
@@ -94,8 +94,8 @@ export function ResultsView({
               criteria: selectedPost.criteria,
               scores: selectedPost.scores,
             }}
-            onApprove={handleApprove}
-            onDiscard={handleDiscard}
+            onApprove={onApprove}
+            onDiscard={onDiscard}
             onRegenerate={onRegenerate}
           />
         )}
@@ -132,6 +132,7 @@ function ResultsTopbar({
   onPrev,
   onNext,
   onNewRun,
+  onApproveAll,
 }: {
   postsCount: number
   clientName: string
@@ -141,11 +142,12 @@ function ResultsTopbar({
   onPrev: () => void
   onNext: () => void
   onNewRun: () => void
+  onApproveAll?: () => void
 }) {
   return (
     <div
       style={{
-        height: '48px',
+        height: '46px',
         background: 'var(--color-surface)',
         borderBottom: '0.5px solid var(--color-border-1)',
         display: 'flex',
@@ -167,6 +169,11 @@ function ResultsTopbar({
         <Button variant="ghost" size="sm" onClick={onNewRun}>
           New run
         </Button>
+        {onApproveAll && (
+          <Button size="sm" onClick={onApproveAll}>
+            Approve all
+          </Button>
+        )}
       </div>
     </div>
   )

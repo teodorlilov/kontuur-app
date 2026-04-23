@@ -28,10 +28,10 @@ export function PriorityPostForm({ posts, onChange }: PriorityPostFormProps) {
         <div
           key={i}
           style={{
-            border: '0.5px solid rgba(192,123,85,0.25)',
+            border: '0.5px solid rgba(44,62,80,0.10)',
             borderRadius: '12px',
-            padding: '16px 18px',
-            background: 'rgba(192,123,85,0.04)',
+            padding: '18px 20px',
+            background: '#F9F6F2',
           }}
         >
           <div className="flex items-center justify-between mb-3">
@@ -97,17 +97,18 @@ export function PriorityPostForm({ posts, onChange }: PriorityPostFormProps) {
       <button
         onClick={addRow}
         style={{
+          width: '100%',
+          padding: '12px',
           fontSize: '12px',
           fontWeight: 500,
-          color: 'var(--color-terracotta)',
+          color: '#8A8070',
           background: 'none',
-          border: 'none',
+          border: '1px dashed rgba(44,62,80,0.22)',
+          borderRadius: '10px',
           cursor: 'pointer',
           fontFamily: 'inherit',
-          textAlign: 'left',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '5px',
+          textAlign: 'center',
+          transition: 'all 0.15s',
         }}
       >
         + Add another priority post

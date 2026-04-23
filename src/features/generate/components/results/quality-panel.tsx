@@ -24,7 +24,7 @@ export function QualityPanel({ post, validationData, runSummary }: QualityPanelP
   return (
     <div
       style={{
-        width: '400px',
+        width: '350px',
         flexShrink: 0,
         background: 'var(--color-surface)',
         borderLeft: '0.5px solid var(--color-border-1)',

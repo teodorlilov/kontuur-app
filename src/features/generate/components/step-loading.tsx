@@ -101,7 +101,7 @@ function StageRow({ isDone, isActive, label }: { isDone: boolean; isActive: bool
         gap: '10px',
         padding: '10px 14px',
         borderRadius: '8px',
-        background: isDone ? 'rgba(122,154,106,0.08)' : isActive ? 'rgba(44,62,80,0.06)' : 'var(--color-page)',
+        background: isDone ? 'rgba(90,138,74,0.07)' : isActive ? 'rgba(44,62,80,0.06)' : 'var(--color-page)',
         transition: 'background 0.3s',
       }}
     >
