@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { toast } from '@/components/ui/toast'
-import type { PostData, ValidationData } from '@/components/posts/post-card'
+import type { PostData, ValidationData } from '@/types/post'
 
 interface UsePostActionsOptions {
   post: PostData

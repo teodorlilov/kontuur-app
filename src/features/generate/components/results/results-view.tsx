@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { PostList } from './post-list'
 import { PostDetail } from './post-detail'
 import { QualityPanel } from './quality-panel'
-import type { PostData, ValidationData } from '@/components/posts/post-card'
+import type { PostData, ValidationData } from '@/types/post'
 import type { SkippedPillar } from '@/ai/research/types'
 
 type GeneratedPost = { post: PostData } & ValidationData

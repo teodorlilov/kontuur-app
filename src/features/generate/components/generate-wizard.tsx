@@ -18,7 +18,7 @@ import type { ClientData } from '@/lib/clients/fetch-client-data'
 import type { PriorityPost, PostType } from '@/types/api'
 import type { GenerationResult } from '@/ai/generation/types'
 import type { SkippedPillar } from '@/ai/research/types'
-import type { PostData, ValidationData } from '@/components/posts/post-card'
+import type { PostData, ValidationData } from '@/types/post'
 
 type Client = Pick<ClientRow, 'id' | 'name' | 'niche' | 'language' | 'posts_per_week'>
 

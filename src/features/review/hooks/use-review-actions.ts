@@ -10,6 +10,7 @@ interface UseReviewActionsOptions {
   clientId: string
   initialCaption: string
   initialSlidesJson: unknown
+  initialValidationJson: unknown
   postType: string
   rewriteCount: number
   /** Pre-computed slop data from generation quality scores — skips the detect-slop API call */
@@ -21,12 +22,14 @@ export function useReviewActions({
   clientId,
   initialCaption,
   initialSlidesJson,
+  initialValidationJson,
   postType,
   rewriteCount,
   initialSlop,
 }: UseReviewActionsOptions) {
   const [caption, setCaption] = useState(initialCaption)
   const [slidesJson, setSlidesJson] = useState(initialSlidesJson)
+  const [validationJson, setValidationJson] = useState(initialValidationJson)
   const [slopResult, setSlopDetection] = useState<SlopDetection | null>(initialSlop ?? null)
   const [slopLoading, setSlopLoading] = useState(false)
   const [approving, setApproving] = useState(false)
@@ -165,6 +168,9 @@ export function useReviewActions({
       setSlidesJson(data.slides_json)
       if (data.slop) setSlopDetection(data.slop)
 
+      const newValidationJson = { criteria: data.criteria, scores: data.scores }
+      setValidationJson(newValidationJson)
+
       // Persist rewrite to DB
       await updatePostAction(postId, {
         caption: data.caption,
@@ -172,7 +178,7 @@ export function useReviewActions({
         quality_score_avg: data.quality_score_avg,
         was_rewritten: true,
         rewrite_count: rewriteCount + 1,
-        validation_json: { criteria: data.criteria, scores: data.scores },
+        validation_json: newValidationJson,
       })
 
       toast.success('Post rewritten')
@@ -186,6 +192,7 @@ export function useReviewActions({
   return {
     caption,
     slidesJson,
+    validationJson,
     slopResult,
     slopLoading,
     approving,

@@ -1,4 +1,4 @@
-export type ReviewTab = 'all' | 'priority'
+export type ReviewTab = 'all' | 'priority' | 'health'
 
 export interface ReviewPost {
   id: string
@@ -36,6 +36,8 @@ export function filterReviewPosts(
 
   if (tab === 'priority') {
     filtered = filtered.filter((p) => p.priority)
+  } else if (tab === 'health') {
+    filtered = filtered.filter((p) => p.is_health_niche)
   }
 
   return [...filtered].sort((a, b) => {

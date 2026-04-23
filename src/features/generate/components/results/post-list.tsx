@@ -1,7 +1,8 @@
 'use client'
 
 import { getPillarColor } from '@/components/ui/colors/pillar-colors'
-import type { PostData, ValidationData } from '@/components/posts/post-card'
+import { ActiveBar, ScoreLabel, CaptionPreview } from '@/components/posts/post-list-parts'
+import type { PostData, ValidationData } from '@/types/post'
 
 type GeneratedPost = { post: PostData } & ValidationData
 
@@ -88,61 +89,15 @@ function PostListItem({
       }}
     >
       {isActive && <ActiveBar />}
-      <PillarRow pillar={post.pillar} pillarHex={pillarColor?.hex} score={score} />
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '5px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', fontWeight: 500, color: 'var(--color-text-1)' }}>
+          {pillarColor && <div style={{ width: '7px', height: '7px', borderRadius: '50%', background: pillarColor.hex, flexShrink: 0 }} />}
+          {post.pillar ?? 'General'}
+        </div>
+        <ScoreLabel score={score} />
+      </div>
       <CaptionPreview caption={post.caption} />
       <StatusBadge status={post.status} />
-    </div>
-  )
-}
-
-function ActiveBar() {
-  return (
-    <div
-      style={{
-        position: 'absolute',
-        left: 0,
-        top: '10%',
-        bottom: '10%',
-        width: '2.5px',
-        background: 'var(--color-terracotta)',
-        borderRadius: '0 3px 3px 0',
-      }}
-    />
-  )
-}
-
-function PillarRow({ pillar, pillarHex, score }: { pillar?: string | null; pillarHex?: string; score: number }) {
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '5px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', fontWeight: 500, color: 'var(--color-text-1)' }}>
-        {pillarHex && <div style={{ width: '7px', height: '7px', borderRadius: '50%', background: pillarHex, flexShrink: 0 }} />}
-        {pillar ?? 'General'}
-      </div>
-      <ScoreLabel score={score} />
-    </div>
-  )
-}
-
-function ScoreLabel({ score }: { score: number }) {
-  const color = score >= 9 ? 'var(--status-ok)' : score >= 7 ? 'var(--color-terracotta)' : '#E05A3A'
-  return <span style={{ fontSize: '11px', fontWeight: 500, color }}>{score}/10</span>
-}
-
-function CaptionPreview({ caption }: { caption: string | null }) {
-  return (
-    <div
-      style={{
-        fontSize: '11px',
-        color: 'var(--color-muted)',
-        lineHeight: 1.45,
-        display: '-webkit-box',
-        WebkitLineClamp: 2,
-        WebkitBoxOrient: 'vertical',
-        overflow: 'hidden',
-        marginBottom: '7px',
-      }}
-    >
-      {caption ?? ''}
     </div>
   )
 }
@@ -150,9 +105,9 @@ function CaptionPreview({ caption }: { caption: string | null }) {
 function StatusBadge({ status }: { status: string }) {
   const config =
     status === 'approved'
-      ? { bg: 'rgba(90,138,74,0.10)', color: 'var(--status-ok)', label: 'Approved', icon: '✓' }
+      ? { bg: 'rgba(90,138,74,0.10)', color: 'var(--status-ok)', label: 'Approved', icon: '\u2713' }
       : status === 'discarded'
-        ? { bg: 'rgba(192,123,85,0.10)', color: 'var(--color-terracotta)', label: 'Discarded', icon: '✕' }
+        ? { bg: 'rgba(192,123,85,0.10)', color: 'var(--color-terracotta)', label: 'Discarded', icon: '\u2715' }
         : { bg: 'rgba(44,62,80,0.06)', color: 'var(--color-muted)', label: 'Pending review', icon: null }
 
   return (

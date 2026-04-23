@@ -2,7 +2,6 @@ import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { requireSessionUser } from '@/lib/auth/session'
 import { getCachedAgencyClients } from '@/lib/queries/cache'
 import { POST_COLUMNS } from '@/lib/queries/select-columns'
-import { Topbar } from '@/components/layout/topbar'
 import { ReviewQueue } from '@/features/review/components/review-queue'
 import type { ReviewPost } from '@/lib/review/filter-review-posts'
 import type { BestTimePlatform } from '@/types/api'
@@ -102,11 +101,8 @@ export default async function ReviewPage() {
   })
 
   return (
-    <>
-      <Topbar />
-      <div className="p-6">
-        <ReviewQueue initialPosts={posts} clients={clients} bestTimeMap={bestTimeMap} />
-      </div>
-    </>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      <ReviewQueue initialPosts={posts} clients={clients} bestTimeMap={bestTimeMap} />
+    </div>
   )
 }

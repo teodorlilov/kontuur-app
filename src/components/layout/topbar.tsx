@@ -1,16 +1,7 @@
 'use client'
 
 import { NotificationsBell } from '@/components/layout/notifications-bell'
-
-/** Formats today's date as "Mon, 21 April 2026". */
-function formatDateChip(): string {
-  const now = new Date()
-  const day = now.toLocaleDateString('en-GB', { weekday: 'short' })
-  const date = now.getDate()
-  const month = now.toLocaleDateString('en-GB', { month: 'long' })
-  const year = now.getFullYear()
-  return `${day}, ${date} ${month} ${year}`
-}
+import { formatDateChip } from '@/utils/format-date-chip'
 
 export function Topbar() {
   return (
