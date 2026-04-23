@@ -1,15 +1,31 @@
 import { redirect } from 'next/navigation'
+import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { requireSessionUser } from '@/lib/auth/session'
 import { getCachedAgency } from '@/lib/queries/cache'
+import { fetchAgencyById, fetchTeamMembersByAgency } from '@/lib/queries/db'
+import { SettingsView } from '@/features/settings/components/settings-view'
 
 export default async function SettingsPage() {
-  const { agencyId } = await requireSessionUser()
+  const { user, agencyId, role } = await requireSessionUser()
+  const supabase = await createServerSupabaseClient()
 
-  const agencyData = await getCachedAgency(agencyId)
+  const [agencyData, agency, members] = await Promise.all([
+    getCachedAgency(agencyId),
+    fetchAgencyById(supabase, agencyId),
+    fetchTeamMembersByAgency(supabase, agencyId),
+  ])
 
-  if (agencyData?.mode === 'solo') {
-    redirect('/settings/account')
-  }
+  if (!agency) redirect('/login')
 
-  redirect('/settings/team')
+  const agencyMode: 'agency' | 'solo' = agencyData?.mode === 'solo' ? 'solo' : 'agency'
+
+  return (
+    <SettingsView
+      agency={{ ...agency, timezone: agency.timezone ?? 'UTC' }}
+      members={members}
+      currentUserRole={role}
+      currentUserId={user.id}
+      agencyMode={agencyMode}
+    />
+  )
 }

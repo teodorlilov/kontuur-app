@@ -195,6 +195,19 @@ export interface TeamMember {
   created_at: string
 }
 
+export interface AgencyInfo {
+  id: string
+  name: string
+  plan: string
+  mode: string
+  subscription_status: string
+  trial_ends_at: string
+  plan_client_limit: number
+  timezone: string
+}
+
+export type SettingsTab = 'team' | 'account' | 'profile'
+
 export interface InviteTeamMemberRequest {
   email: string
 }
