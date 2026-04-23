@@ -2,9 +2,8 @@ import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { requireSessionUser } from '@/lib/auth/session'
 import { getCachedAgencyClients } from '@/lib/queries/cache'
 import { POST_COLUMNS } from '@/lib/queries/select-columns'
-import { Topbar } from '@/components/layout/topbar'
 import { CalendarView } from '@/features/calendar/components/calendar-view'
-import type { CalendarPost, BestTimePlatform } from '@/types/api'
+import type { CalendarPost } from '@/types/api'
 
 export default async function CalendarPage() {
   const { agencyId } = await requireSessionUser()
@@ -18,14 +17,12 @@ export default async function CalendarPage() {
     id: string
     name: string
     contact_email: string | null
-    brand_profiles: { best_time_json: unknown } | null
   }
 
-  // Fetch clients+brand_profiles and posts in parallel — clientIds from cache (no extra round-trip)
   const [{ data: clientRows }, { data: postRows }] = await Promise.all([
     supabase
       .from('clients')
-      .select('id, name, contact_email, brand_profiles(best_time_json)')
+      .select('id, name, contact_email')
       .eq('agency_id', agencyId),
     clientIds.length > 0
       ? supabase
@@ -43,15 +40,6 @@ export default async function CalendarPage() {
     name: c.name,
     contact_email: c.contact_email ?? null,
   }))
-
-  // Build best-time lookup
-  const bestTimeMap: Record<string, BestTimePlatform[]> = {}
-  for (const c of clientList) {
-    const btj = c.brand_profiles?.best_time_json
-    if (Array.isArray(btj)) {
-      bestTimeMap[c.id] = btj as BestTimePlatform[]
-    }
-  }
 
   type ApprovalTokenRow = { status: string; client_note: string | null; created_at: string }
 
@@ -95,11 +83,6 @@ export default async function CalendarPage() {
   })
 
   return (
-    <>
-      <Topbar />
-      <div className="p-6">
-        <CalendarView initialPosts={posts} clients={clients} bestTimeMap={bestTimeMap} />
-      </div>
-    </>
+    <CalendarView initialPosts={posts} clients={clients} />
   )
 }

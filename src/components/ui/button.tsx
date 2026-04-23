@@ -15,6 +15,7 @@ export function Button({
   className,
   children,
   disabled,
+  style,
   ...props
 }: ButtonProps) {
   return (
@@ -64,6 +65,7 @@ export function Button({
                     borderStyle: 'solid',
                   }
                 : {}),
+        ...style,
       }}
       onMouseEnter={(e) => {
         const el = e.currentTarget

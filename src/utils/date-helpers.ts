@@ -6,9 +6,9 @@ export function getTodayWeekday(timezone = 'UTC'): string {
     .toLowerCase()
 }
 
-/** Returns the ISO date string (YYYY-MM-DD) of the Monday of the current week. */
-export function getMondayISO(): string {
-  const d = new Date()
+/** Returns the ISO date string (YYYY-MM-DD) of the Monday of the week containing the given date. */
+export function getMondayISO(date?: Date): string {
+  const d = date ? new Date(date) : new Date()
   const day = d.getDay()
   const diff = day === 0 ? -6 : 1 - day
   d.setDate(d.getDate() + diff)

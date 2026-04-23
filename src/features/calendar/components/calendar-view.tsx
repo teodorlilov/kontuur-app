@@ -1,40 +1,23 @@
 'use client'
 
-import { useState, useMemo } from 'react'
-import { ChevronLeft, ChevronRight, Link, Mail } from 'lucide-react'
+import { useState, useMemo, useCallback } from 'react'
+import { Link, Mail } from 'lucide-react'
 import { useCalendar } from '@/features/calendar/hooks/use-calendar'
-import { getClientColorMap } from '@/components/ui/colors/client-colors'
+import { useApproval, type ClientEntry } from '@/features/calendar/hooks/use-approval'
 import { toast } from '@/components/ui/toast'
-import { UnscheduledStrip } from './unscheduled-strip'
-import { CalendarGrid } from './calendar-grid'
-import { PostSidePanel } from './post-side-panel'
-import type { CalendarPost, BestTimePlatform } from '@/types/api'
+import { deletePost } from '@/lib/actions/post-actions'
+import { CalendarTopbar } from './calendar-topbar'
+import { MonthGrid } from './month-grid'
+import { ScheduleFab } from './schedule-fab'
+import { UnscheduledPanel } from './unscheduled-panel'
+import { ScheduleCard } from './schedule-card'
+import type { CalendarPost } from '@/types/api'
 
-const MONTH_NAMES = [
-  'January',
-  'February',
-  'March',
-  'April',
-  'May',
-  'June',
-  'July',
-  'August',
-  'September',
-  'October',
-  'November',
-  'December',
-]
-
-interface ClientEntry {
-  id: string
-  name: string
-  contact_email: string | null
-}
+const noop = () => {}
 
 interface CalendarViewProps {
   initialPosts: CalendarPost[]
   clients: ClientEntry[]
-  bestTimeMap: Record<string, BestTimePlatform[]>
 }
 
 interface ApprovalButtonProps {
@@ -42,6 +25,8 @@ interface ApprovalButtonProps {
   label: string
   loadingLabel: string
   loading: boolean
+  disabled?: boolean
+  disabledReason?: string
   clients: ClientEntry[]
   pickerOpen: boolean
   onTogglePicker: () => void
@@ -53,40 +38,86 @@ function ApprovalButton({
   label,
   loadingLabel,
   loading,
+  disabled,
+  disabledReason,
   clients,
   pickerOpen,
   onTogglePicker,
   onSelectClient,
 }: ApprovalButtonProps) {
+  const isDisabled = disabled || loading
   return (
-    <div className="relative">
+    <div style={{ position: 'relative' }}>
       <button
         type="button"
         onClick={() => {
+          if (isDisabled) return
           if (clients.length === 1) {
             onSelectClient(clients[0]!.id)
           } else {
             onTogglePicker()
           }
         }}
-        disabled={loading}
-        className="flex items-center gap-1.5 text-xs font-medium text-brand-purple border border-brand-purple-light bg-brand-purple-light rounded-lg px-3 py-2 hover:bg-brand-purple hover:text-white transition-colors disabled:opacity-50"
+        disabled={isDisabled}
+        title={disabled ? disabledReason : undefined}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 5,
+          fontSize: 10,
+          fontWeight: 500,
+          color: isDisabled ? 'var(--color-muted)' : 'var(--color-terracotta)',
+          background: isDisabled ? 'rgba(44,62,80,0.05)' : 'rgba(192,123,85,0.10)',
+          border: isDisabled ? '0.5px solid var(--color-border-2)' : '0.5px solid rgba(192,123,85,0.25)',
+          borderRadius: 6,
+          padding: '5px 10px',
+          cursor: isDisabled ? 'not-allowed' : 'pointer',
+          fontFamily: 'inherit',
+          transition: 'all 0.15s',
+          opacity: isDisabled ? 0.5 : 1,
+        }}
       >
-        <Icon className="h-3.5 w-3.5" />
+        <Icon style={{ width: 12, height: 12 }} />
         {loading ? loadingLabel : label}
       </button>
 
       {pickerOpen && clients.length > 1 && (
-        <div className="absolute right-0 top-10 bg-white rounded-lg border border-gray-200 shadow-lg z-30 py-1 min-w-[180px]">
-          <p className="px-3 py-1.5 text-xs text-gray-400 font-medium">Select client</p>
+        <div
+          style={{
+            position: 'absolute',
+            right: 0,
+            top: 32,
+            background: '#fff',
+            borderRadius: 8,
+            border: '0.5px solid var(--color-border-1)',
+            boxShadow: '0 8px 24px rgba(44,62,80,0.12)',
+            zIndex: 30,
+            padding: '4px 0',
+            minWidth: 180,
+          }}
+        >
+          <p style={{ padding: '6px 12px', fontSize: 10, color: 'var(--color-muted)', fontWeight: 500 }}>
+            Select client
+          </p>
           {clients.map((c) => (
             <button
               key={c.id}
               type="button"
-              onClick={() => {
-                onSelectClient(c.id)
+              onClick={() => onSelectClient(c.id)}
+              style={{
+                width: '100%',
+                textAlign: 'left',
+                padding: '8px 12px',
+                fontSize: 12,
+                color: 'var(--color-text-1)',
+                background: 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+                transition: 'background 0.1s',
               }}
-              className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+              onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--color-overlay)' }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
             >
               {c.name}
             </button>
@@ -97,257 +128,228 @@ function ApprovalButton({
   )
 }
 
-export function CalendarView({ initialPosts, clients, bestTimeMap }: CalendarViewProps) {
+export function CalendarView({ initialPosts, clients }: CalendarViewProps) {
   const now = new Date()
   const [year, setYear] = useState(now.getFullYear())
   const [month, setMonth] = useState(now.getMonth())
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null)
-  const [copyLinkSending, setCopyLinkSending] = useState(false)
-  const [copyLinkPicker, setCopyLinkPicker] = useState(false)
-  const [emailSending, setEmailSending] = useState(false)
-  const [emailPicker, setEmailPicker] = useState(false)
+  const [panelOpen, setPanelOpen] = useState(false)
+  const [cardOpen, setCardOpen] = useState(false)
+  const [activePostId, setActivePostId] = useState<string | null>(null)
 
   const {
+    posts: allPosts,
     unscheduledPosts,
     scheduledPosts,
-    selectedPost,
-    selectPost,
-    clearSelection,
     schedulePost,
     unschedulePost,
-    savePostContent,
     handleDrop,
     saving,
   } = useCalendar(initialPosts)
 
-  const colorMap = useMemo(() => getClientColorMap(clients.map((c) => c.id)), [clients])
-
-  // Filter by client
-  const filteredUnscheduled = selectedClientId
-    ? unscheduledPosts.filter((p) => p.client_id === selectedClientId)
-    : unscheduledPosts
-  const filteredScheduled = selectedClientId
-    ? scheduledPosts.filter((p) => p.client_id === selectedClientId)
-    : scheduledPosts
-
-  function prevMonth() {
-    if (month === 0) {
-      setMonth(11)
-      setYear((y) => y - 1)
-    } else {
-      setMonth((m) => m - 1)
-    }
-  }
-
-  function nextMonth() {
-    if (month === 11) {
-      setMonth(0)
-      setYear((y) => y + 1)
-    } else {
-      setMonth((m) => m + 1)
-    }
-  }
-
-  function handleSidebarSave(
-    postId: string,
-    updates: { scheduled_at?: string; platform?: string; caption?: string; slides_json?: unknown }
-  ) {
-    const contentUpdates =
-      updates.caption !== undefined || updates.slides_json !== undefined
-        ? { caption: updates.caption, slides_json: updates.slides_json }
-        : undefined
-
-    if (updates.scheduled_at) {
-      void schedulePost(postId, updates.scheduled_at, updates.platform, contentUpdates)
-    } else if (contentUpdates) {
-      void savePostContent(postId, contentUpdates)
-    }
-  }
-
-  function handleUnschedule(postId: string) {
-    void unschedulePost(postId)
-    clearSelection()
-  }
-
-  // Best time data for selected post
-  const selectedBestTime = selectedPost ? (bestTimeMap[selectedPost.client_id] ?? null) : null
-
-  // Clients that have scheduled posts in the visible month
-  const clientsWithScheduledPosts = useMemo(() => {
-    const ids = new Set(filteredScheduled.map((p) => p.client_id))
-    return clients.filter((c) => ids.has(c.id))
-  }, [filteredScheduled, clients])
-
-  // Subset of above that also have a contact_email (email button)
-  const clientsWithEmail = useMemo(
-    () => clientsWithScheduledPosts.filter((c) => c.contact_email !== null),
-    [clientsWithScheduledPosts]
+  const filteredUnscheduled = useMemo(
+    () => selectedClientId
+      ? unscheduledPosts.filter((p) => p.client_id === selectedClientId)
+      : unscheduledPosts,
+    [unscheduledPosts, selectedClientId],
+  )
+  const filteredScheduled = useMemo(
+    () => selectedClientId
+      ? scheduledPosts.filter((p) => p.client_id === selectedClientId)
+      : scheduledPosts,
+    [scheduledPosts, selectedClientId],
   )
 
-  // Get the Monday of the current week for approval
-  function getCurrentWeekStart(): string {
-    const d = new Date()
-    const day = d.getDay()
-    const diff = d.getDate() - day + (day === 0 ? -6 : 1) // Monday
-    const monday = new Date(d.setDate(diff))
-    return monday.toISOString().slice(0, 10)
+  // Active post — search all posts so both grid and panel clicks work
+  const activePost = allPosts.find((p) => p.id === activePostId) ?? null
+  const activeIndex = filteredUnscheduled.findIndex((p) => p.id === activePostId)
+
+  const prevMonth = useCallback(() => {
+    setMonth((m) => {
+      if (m === 0) { setYear((y) => y - 1); return 11 }
+      return m - 1
+    })
+  }, [])
+
+  const nextMonth = useCallback(() => {
+    setMonth((m) => {
+      if (m === 11) { setYear((y) => y + 1); return 0 }
+      return m + 1
+    })
+  }, [])
+
+  const goToToday = useCallback(() => {
+    const t = new Date()
+    setYear(t.getFullYear())
+    setMonth(t.getMonth())
+  }, [])
+
+  const handlePanelPostClick = useCallback((post: CalendarPost) => {
+    setActivePostId(post.id)
+    setCardOpen(true)
+  }, [])
+
+  const handleGridPostClick = useCallback((postId: string) => {
+    setActivePostId(postId)
+    setCardOpen(true)
+  }, [])
+
+  const handleUnschedule = useCallback((postId: string) => {
+    void unschedulePost(postId)
+    setCardOpen(false)
+    setActivePostId(null)
+  }, [unschedulePost])
+
+  const closeCard = useCallback(() => setCardOpen(false), [])
+  const closePanel = useCallback(() => setPanelOpen(false), [])
+  const togglePanel = useCallback(() => setPanelOpen((v) => !v), [])
+
+  function handleNavPost(dir: 1 | -1) {
+    const next = filteredUnscheduled[activeIndex + dir]
+    if (next) setActivePostId(next.id)
   }
 
-  async function handleCopyLink(clientId: string) {
-    setCopyLinkSending(true)
-    setCopyLinkPicker(false)
-    try {
-      const weekStart = getCurrentWeekStart()
-      const res = await fetch('/api/approval/send', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ clientId, weekStart }),
-      })
+  async function handleSchedule(postId: string, scheduledAt: string, platform: string) {
+    const idx = filteredUnscheduled.findIndex((p) => p.id === postId)
+    await schedulePost(postId, scheduledAt, platform)
+    setCardOpen(false)
+    const nextPost = filteredUnscheduled[idx + 1]
+    setActivePostId(nextPost?.id ?? null)
+  }
 
-      if (!res.ok) {
-        const err = (await res.json()) as { error: string }
-        toast.error(err.error || 'Failed to generate approval link')
-        return
-      }
+  function handleSkip(postId: string) {
+    setCardOpen(false)
+    const idx = filteredUnscheduled.findIndex((p) => p.id === postId)
+    const nextPost = filteredUnscheduled[idx + 1]
+    if (nextPost) setActivePostId(nextPost.id)
+  }
 
-      const data = (await res.json()) as { url: string; postCount: number }
-      await navigator.clipboard.writeText(data.url)
-      toast.success(
-        `Approval link copied! (${data.postCount} post${data.postCount === 1 ? '' : 's'})`
-      )
-    } catch {
-      toast.error('Failed to generate approval link')
-    } finally {
-      setCopyLinkSending(false)
+  async function handleDeletePost(postId: string) {
+    const result = await deletePost(postId)
+    if (result.ok) {
+      toast.success('Post deleted')
+      setCardOpen(false)
+      setActivePostId(null)
+    } else {
+      toast.error('Failed to delete post')
     }
   }
 
-  async function handleEmailClient(clientId: string) {
-    setEmailSending(true)
-    setEmailPicker(false)
-    try {
-      const weekStart = getCurrentWeekStart()
-      const res = await fetch('/api/approval/email', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ clientId, weekStart }),
-      })
-
-      if (!res.ok) {
-        const err = (await res.json()) as { error: string }
-        toast.error(err.error || 'Failed to send approval email')
-        return
-      }
-
-      const data = (await res.json()) as { postCount: number }
-      toast.success(
-        `Approval email sent! (${data.postCount} post${data.postCount === 1 ? '' : 's'})`
-      )
-    } catch {
-      toast.error('Failed to send approval email')
-    } finally {
-      setEmailSending(false)
-    }
-  }
+  const {
+    copyLinkSending,
+    copyLinkPicker,
+    setCopyLinkPicker,
+    emailSending,
+    emailPicker,
+    setEmailPicker,
+    approvalSending,
+    currentWeekClients,
+    noPostsThisWeek,
+    handleCopyLink,
+    handleEmailClient,
+    handleSendApproval,
+  } = useApproval({ clients, filteredScheduled, allPosts })
 
   return (
-    <div className="flex flex-col gap-4">
-      {/* Header: month nav + client filter */}
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={prevMonth}
-            className="p-1.5 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors"
-            aria-label="Previous month"
-          >
-            <ChevronLeft className="h-5 w-5" />
-          </button>
-          <h2 className="text-base font-semibold text-gray-900 min-w-[160px] text-center">
-            {MONTH_NAMES[month]} {year}
-          </h2>
-          <button
-            onClick={nextMonth}
-            className="p-1.5 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors"
-            aria-label="Next month"
-          >
-            <ChevronRight className="h-5 w-5" />
-          </button>
-        </div>
-
-        <div className="flex items-center gap-2">
-          {clients.length > 1 && (
-            <select
-              value={selectedClientId ?? ''}
-              onChange={(e) => setSelectedClientId(e.target.value || null)}
-              className="text-xs border border-gray-200 rounded-lg px-3 py-2 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-brand-purple focus:border-transparent"
-            >
-              <option value="">All clients</option>
-              {clients.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-          )}
-
-          {/* Copy approval link */}
-          {clientsWithScheduledPosts.length > 0 && (
-            <ApprovalButton
-              icon={Link}
-              label="Copy link"
-              loadingLabel="Generating..."
-              loading={copyLinkSending}
-              clients={clientsWithScheduledPosts}
-              pickerOpen={copyLinkPicker}
-              onTogglePicker={() => setCopyLinkPicker((v) => !v)}
-              onSelectClient={(id) => {
-                void handleCopyLink(id)
-              }}
-            />
-          )}
-
-          {/* Email client — only shown when ≥1 scheduled client has a contact_email */}
-          {clientsWithEmail.length > 0 && (
-            <ApprovalButton
-              icon={Mail}
-              label="Email client"
-              loadingLabel="Sending..."
-              loading={emailSending}
-              clients={clientsWithEmail}
-              pickerOpen={emailPicker}
-              onTogglePicker={() => setEmailPicker((v) => !v)}
-              onSelectClient={(id) => {
-                void handleEmailClient(id)
-              }}
-            />
-          )}
-        </div>
-      </div>
-
-      {/* Unscheduled strip */}
-      <UnscheduledStrip posts={filteredUnscheduled} colorMap={colorMap} onPostClick={selectPost} />
-
-      {/* Calendar grid */}
-      <CalendarGrid
+    <div
+      style={{
+        height: '100vh',
+        display: 'flex',
+        flexDirection: 'column',
+        background: 'var(--color-page)',
+        overflow: 'hidden',
+        position: 'relative',
+      }}
+    >
+      <CalendarTopbar
         year={year}
         month={month}
-        posts={filteredScheduled}
-        colorMap={colorMap}
-        onPostClick={selectPost}
+        onPrevMonth={prevMonth}
+        onNextMonth={nextMonth}
+        onToday={goToToday}
+        selectedClientId={selectedClientId}
+        clients={clients}
+        onClientChange={setSelectedClientId}
+      />
+
+      {/* Approval buttons row — always visible when clients exist */}
+      {clients.length > 0 && (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'flex-end',
+            gap: 6,
+            padding: '8px 22px 0',
+            flexShrink: 0,
+          }}
+        >
+          <ApprovalButton
+            icon={Link}
+            label="Copy link"
+            loadingLabel="Generating..."
+            loading={copyLinkSending}
+            disabled={noPostsThisWeek}
+            disabledReason="No posts scheduled this week"
+            clients={currentWeekClients}
+            pickerOpen={copyLinkPicker}
+            onTogglePicker={() => setCopyLinkPicker((v: boolean) => !v)}
+            onSelectClient={(id) => { void handleCopyLink(id) }}
+          />
+          <ApprovalButton
+            icon={Mail}
+            label="Email client"
+            loadingLabel="Sending..."
+            loading={emailSending}
+            disabled={noPostsThisWeek}
+            disabledReason="No posts scheduled this week"
+            clients={currentWeekClients}
+            pickerOpen={emailPicker}
+            onTogglePicker={() => setEmailPicker((v: boolean) => !v)}
+            onSelectClient={(id) => { void handleEmailClient(id) }}
+          />
+        </div>
+      )}
+
+      <MonthGrid
+        year={year}
+        month={month}
+        scheduledPosts={filteredScheduled}
+        onPostClick={handleGridPostClick}
+        onDayClick={noop}
         onDrop={handleDrop}
       />
 
-      {/* Side panel */}
-      {selectedPost && (
-        <PostSidePanel
-          post={selectedPost}
-          onClose={clearSelection}
-          onSave={handleSidebarSave}
-          onUnschedule={handleUnschedule}
-          bestTimeData={selectedBestTime}
-          saving={saving}
-        />
-      )}
+      <ScheduleFab
+        unscheduledCount={filteredUnscheduled.length}
+        isOpen={panelOpen}
+        onClick={togglePanel}
+      />
+
+      <UnscheduledPanel
+        posts={filteredUnscheduled}
+        isOpen={panelOpen}
+        activePostId={activePostId}
+        onPostClick={handlePanelPostClick}
+        onClose={closePanel}
+      />
+
+      <ScheduleCard
+        post={activePost}
+        postIndex={activeIndex}
+        totalPosts={filteredUnscheduled.length}
+        isOpen={cardOpen}
+        onClose={closeCard}
+        onPrev={() => handleNavPost(-1)}
+        onNext={() => handleNavPost(1)}
+        onSchedule={handleSchedule}
+        onUnschedule={handleUnschedule}
+        onSkip={handleSkip}
+        onDelete={(id) => { void handleDeletePost(id) }}
+        onSendApproval={(id) => { void handleSendApproval(id) }}
+        approvalSending={approvalSending}
+        isScheduling={saving}
+      />
     </div>
   )
 }

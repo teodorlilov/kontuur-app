@@ -55,13 +55,9 @@ export function groupPostsByDate(posts: CalendarPost[]): Map<string, CalendarPos
   return map
 }
 
-export function isToday(date: Date): boolean {
-  const now = new Date()
-  return (
-    date.getFullYear() === now.getFullYear() &&
-    date.getMonth() === now.getMonth() &&
-    date.getDate() === now.getDate()
-  )
+/** Returns today's date as a 'YYYY-MM-DD' key. */
+export function getTodayKey(): string {
+  return toDateKey(new Date())
 }
 
 export function isSameMonth(date: Date, month: number, year: number): boolean {
