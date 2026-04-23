@@ -105,7 +105,7 @@ export default async function DashboardPage() {
 
   return (
     <>
-      <Topbar />
+      <Topbar title="Dashboard" />
       <DashboardView
         isSolo={isSolo}
         clientCount={clients.length}

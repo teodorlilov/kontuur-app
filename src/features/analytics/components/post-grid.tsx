@@ -1,5 +1,5 @@
 import type { AnalyticsMetrics, IGPost } from '@/types/api'
-import { typeColor, formatType } from '../utils/media-type'
+import { typeColorStyle, formatType } from '../utils/media-type'
 
 interface PostGridProps {
   metrics: AnalyticsMetrics
@@ -32,7 +32,8 @@ export function PostGrid({ metrics }: PostGridProps) {
                 <img src={post.thumbnail_url} alt="" className="w-full h-full object-cover" />
               ) : (
                 <div
-                  className={`w-full h-full flex items-center justify-center text-xs font-semibold text-white ${typeColor(post.media_type)}`}
+                  className="w-full h-full flex items-center justify-center text-xs font-semibold text-white"
+                  style={typeColorStyle(post.media_type)}
                 >
                   {formatType(post.media_type)}
                 </div>

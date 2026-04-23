@@ -1,20 +1,17 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
-import { Select } from '@/components/ui/select'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
+import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
-import { Spinner } from '@/components/ui/spinner'
 import { toast } from '@/components/ui/toast'
-import { MetricCards } from './metric-cards'
-import { AnalyticsCharts } from './analytics-charts'
-import { TopPostsTable } from './top-posts-table'
-import { AudienceSection } from './audience-section'
-import { MediaTypeBreakdown } from './media-type-breakdown'
-import { PostGrid } from './post-grid'
-import { PostDayBreakdown } from './post-day-breakdown'
-import { FollowerTrend } from './follower-trend'
 import { ReportHistory } from './report-history'
-import type { AnalyticsReport, AnalyticsMetrics, MetaConnection, IGPost, FBPost } from '@/types/api'
+import { AnalyticsLoading } from './analytics-loading'
+import { EmptyStateAnalytics } from './empty-state-analytics'
+import { OverviewTab } from './overview-tab'
+import { PostsTab } from './posts-tab'
+import { AudienceTab } from './audience-tab'
+import { capitalizePlatform } from '../utils/metrics'
+import type { AnalyticsReport, AnalyticsMetrics, MetaConnection } from '@/types/api'
 
 interface AnalyticsViewProps {
   clients: Array<{ id: string; name: string }>
@@ -34,10 +31,14 @@ function getDateRange(preset: Preset): { start: string; end: string } {
   }
 }
 
+/** Top-level analytics page: controls bar, tab bar, and report content. */
 export function AnalyticsView({ clients, initialConnections }: AnalyticsViewProps) {
+  const router = useRouter()
   const [selectedClientId, setSelectedClientId] = useState(clients[0]?.id ?? '')
+  // Platform type is only 'instagram' | 'facebook' in practice but the DB
+  // column is a plain string, so we assert after reading from the connection.
   const [platform, setPlatform] = useState<'instagram' | 'facebook'>(
-    (initialConnections[0]?.platform as 'instagram' | 'facebook') ?? 'instagram'
+    (initialConnections[0]?.platform as 'instagram' | 'facebook') ?? 'instagram',
   )
   const [preset, setPreset] = useState<Preset>('30d')
   const [activeTab, setActiveTab] = useState<Tab>('overview')
@@ -47,17 +48,17 @@ export function AnalyticsView({ clients, initialConnections }: AnalyticsViewProp
   const [report, setReport] = useState<AnalyticsReport | null>(null)
 
   // Tracks the (clientId, platform) pair that ReportHistory should fetch for.
-  // Updated atomically after connections resolve so ReportHistory never fires with a mismatched pair.
+  // Updated atomically after connections resolve so ReportHistory never fires
+  // with a mismatched pair.
   const [historyClientId, setHistoryClientId] = useState(clients[0]?.id ?? '')
   const [historyPlatform, setHistoryPlatform] = useState<'instagram' | 'facebook'>(
-    (initialConnections[0]?.platform as 'instagram' | 'facebook') ?? 'instagram'
+    (initialConnections[0]?.platform as 'instagram' | 'facebook') ?? 'instagram',
   )
 
-  const isInitialMount = useRef(true)
-
-  // Fetch connections when the selected client changes.
   // Skip initial mount — connections for the first client are passed as props
   // from the server component, so no client-side fetch is needed on load.
+  const isInitialMount = useRef(true)
+
   useEffect(() => {
     if (isInitialMount.current) {
       isInitialMount.current = false
@@ -74,7 +75,6 @@ export function AnalyticsView({ clients, initialConnections }: AnalyticsViewProp
         if (firstConn) {
           const resolvedPlatform = firstConn.platform as 'instagram' | 'facebook'
           setPlatform(resolvedPlatform)
-          // Update history fetch key atomically — both clientId and platform are now settled
           setHistoryClientId(selectedClientId)
           setHistoryPlatform(resolvedPlatform)
         } else {
@@ -84,9 +84,10 @@ export function AnalyticsView({ clients, initialConnections }: AnalyticsViewProp
       .catch(() => setConnections([]))
   }, [selectedClientId])
 
-  const connectedPlatforms = new Set(connections.map((c) => c.platform))
+  const connectedPlatforms = useMemo(() => new Set(connections.map((c) => c.platform)), [connections])
+  const currentClientName = useMemo(() => clients.find((c) => c.id === selectedClientId)?.name ?? '', [clients, selectedClientId])
 
-  async function handleGenerateReport() {
+  const handleGenerateReport = useCallback(async () => {
     if (!selectedClientId) return
     setGenerating(true)
     setReport(null)
@@ -96,36 +97,25 @@ export function AnalyticsView({ clients, initialConnections }: AnalyticsViewProp
       const res = await fetch('/api/analytics/report', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          client_id: selectedClientId,
-          platform,
-          period_start: start,
-          period_end: end,
-        }),
+        body: JSON.stringify({ client_id: selectedClientId, platform, period_start: start, period_end: end }),
       })
       const data = (await res.json()) as { report?: AnalyticsReport; error?: string }
-      if (!res.ok || !data.report) {
-        throw new Error(data.error ?? 'Failed to generate report')
-      }
+      if (!res.ok || !data.report) throw new Error(data.error ?? 'Failed to generate report')
       setReport(data.report)
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to generate report')
     } finally {
       setGenerating(false)
     }
-  }
+  }, [selectedClientId, platform, preset])
 
   const handleLoadReport = useCallback((loaded: AnalyticsReport) => {
     setReport(loaded)
+    // DB stores platform as a plain string — assert to the known union
     setPlatform(loaded.platform as 'instagram' | 'facebook')
     setHistoryPlatform(loaded.platform as 'instagram' | 'facebook')
     setActiveTab('overview')
   }, [])
-
-  function handleExportPDF() {
-    if (!report) return
-    window.print()
-  }
 
   if (clients.length === 0) {
     return (
@@ -135,269 +125,258 @@ export function AnalyticsView({ clients, initialConnections }: AnalyticsViewProp
     )
   }
 
+  // metrics_json is stored as JSONB — the API guarantees the shape matches
+  // AnalyticsMetrics but TypeScript sees it as Json, so we assert.
   const metrics = report?.metrics_json as AnalyticsMetrics | undefined
 
   return (
-    <div className="space-y-6">
-      {/* Controls */}
-      <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-4">
-        <div className="flex flex-wrap gap-3 items-end">
-          {clients.length > 1 && (
-            <div className="w-48">
-              <Select
-                label="Client"
-                value={selectedClientId}
-                onChange={(e) => setSelectedClientId(e.target.value)}
-                options={clients.map((c) => ({ value: c.id, label: c.name }))}
-              />
+    <div>
+      <ControlsBar
+        clients={clients}
+        selectedClientId={selectedClientId}
+        onSelectClient={setSelectedClientId}
+        connectedPlatforms={connectedPlatforms}
+        platform={platform}
+        onSelectPlatform={(p) => { setPlatform(p); setHistoryPlatform(p) }}
+        preset={preset}
+        onSelectPreset={setPreset}
+        generating={generating}
+        hasReport={!!report}
+        onGenerate={handleGenerateReport}
+        onExportPDF={() => { if (report) window.print() }}
+      />
+
+      {/* Tab bar — visible only when a report is loaded */}
+      {!generating && report && metrics && (
+        <TabBar activeTab={activeTab} onSelectTab={setActiveTab} />
+      )}
+
+      <div className="p-6 space-y-6">
+        {connectedPlatforms.size === 0 && !generating && (
+          <EmptyStateAnalytics
+            variant="no-accounts"
+            clientName={currentClientName}
+            onConnect={() => router.push(`/clients/${selectedClientId}/edit`)}
+          />
+        )}
+
+        {connectedPlatforms.size > 0 && !generating && !report && (
+          <EmptyStateAnalytics
+            variant="ready"
+            clientName={currentClientName}
+            platform={platform}
+            range={preset}
+            onGenerate={handleGenerateReport}
+          />
+        )}
+
+        {generating && (
+          <AnalyticsLoading platform={platform} clientName={currentClientName} range={preset} />
+        )}
+
+        {!generating && report && metrics && (
+          <div id="analytics-print-area" className="space-y-6">
+            <div className="hidden print:block mb-6">
+              <h1 className="text-2xl font-bold text-gray-900">
+                {currentClientName} — {capitalizePlatform(report.platform)} Report
+              </h1>
+              <p className="text-sm text-gray-500 mt-1">
+                Period: {report.period_start} to {report.period_end}
+              </p>
             </div>
-          )}
 
-          {/* Platform pills */}
-          {connectedPlatforms.size > 0 && (
-            <div className="flex gap-1.5">
-              {(['instagram', 'facebook'] as const).map((p) => {
-                if (!connectedPlatforms.has(p)) return null
-                return (
-                  <button
-                    key={p}
-                    type="button"
-                    onClick={() => { setPlatform(p); setHistoryPlatform(p) }}
-                    className={`px-3 py-2 rounded-lg text-sm font-medium border transition-colors ${
-                      platform === p
-                        ? 'bg-[#534AB7] text-white border-[#534AB7]'
-                        : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'
-                    }`}
-                  >
-                    {p === 'instagram' ? 'Instagram' : 'Facebook'}
-                  </button>
-                )
-              })}
-            </div>
-          )}
-
-          {/* Period presets */}
-          <div className="flex gap-1 bg-gray-100 rounded-lg p-1">
-            {(['7d', '30d', '90d'] as const).map((p) => (
-              <button
-                key={p}
-                type="button"
-                onClick={() => setPreset(p)}
-                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                  preset === p
-                    ? 'bg-white text-gray-900 shadow-sm'
-                    : 'text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                {p}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {connectedPlatforms.size === 0 ? (
-          <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3">
-            <p className="text-sm text-amber-800">
-              No accounts connected for this client.{' '}
-              <a href={`/clients/${selectedClientId}/edit`} className="font-medium underline">
-                Connect Instagram or Facebook
-              </a>{' '}
-              to generate analytics reports.
-            </p>
-          </div>
-        ) : (
-          <div className="flex gap-3">
-            <Button
-              onClick={handleGenerateReport}
-              loading={generating}
-              disabled={generating || !connectedPlatforms.has(platform)}
-            >
-              Generate report
-            </Button>
-            {report && (
-              <Button variant="ghost" onClick={handleExportPDF}>
-                Export PDF
-              </Button>
+            {activeTab === 'overview' && (
+              <OverviewTab metrics={metrics} aiSummary={report.ai_summary} onViewAllPosts={() => setActiveTab('posts')} />
             )}
+            {activeTab === 'posts' && <PostsTab metrics={metrics} aiSummary={report.ai_summary} />}
+            {activeTab === 'audience' && <AudienceTab metrics={metrics} />}
+          </div>
+        )}
+
+        {historyClientId && (
+          <div className="print-hide">
+            <ReportHistory clientId={historyClientId} platform={historyPlatform} onLoad={handleLoadReport} />
           </div>
         )}
       </div>
+    </div>
+  )
+}
 
-      {/* Generating state */}
-      {generating && (
-        <div className="bg-white rounded-xl border border-gray-200 p-8 flex items-center justify-center gap-3">
-          <Spinner />
-          <p className="text-sm text-gray-500">Fetching data from {platform}…</p>
-        </div>
-      )}
+/* ── Sub-components (only used by AnalyticsView) ────────────────────────── */
 
-      {/* Report */}
-      {!generating && report && metrics && (
-        <div id="analytics-print-area" className="space-y-6">
-          {/* Print header */}
-          <div className="hidden print:block mb-6">
-            <h1 className="text-2xl font-bold text-gray-900">
-              {clients.find((c) => c.id === selectedClientId)?.name} —{' '}
-              {report.platform.charAt(0).toUpperCase() + report.platform.slice(1)} Report
-            </h1>
-            <p className="text-sm text-gray-500 mt-1">
-              Period: {report.period_start} to {report.period_end}
-            </p>
-          </div>
+interface ControlsBarProps {
+  clients: Array<{ id: string; name: string }>
+  selectedClientId: string
+  onSelectClient: (id: string) => void
+  connectedPlatforms: Set<string>
+  platform: 'instagram' | 'facebook'
+  onSelectPlatform: (p: 'instagram' | 'facebook') => void
+  preset: Preset
+  onSelectPreset: (p: Preset) => void
+  generating: boolean
+  hasReport: boolean
+  onGenerate: () => void
+  onExportPDF: () => void
+}
 
-          {/* Tab bar */}
-          <div className="flex gap-1 border-b border-gray-200">
-            {(['overview', 'posts', 'audience'] as const).map((tab) => (
-              <button
-                key={tab}
-                type="button"
-                onClick={() => setActiveTab(tab)}
-                className={`px-4 py-2.5 text-sm font-medium capitalize border-b-2 -mb-px transition-colors ${
-                  activeTab === tab
-                    ? 'border-[#534AB7] text-[#534AB7]'
-                    : 'border-transparent text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                {tab}
-              </button>
+function ControlsBar({
+  clients, selectedClientId, onSelectClient,
+  connectedPlatforms, platform, onSelectPlatform,
+  preset, onSelectPreset,
+  generating, hasReport, onGenerate, onExportPDF,
+}: ControlsBarProps) {
+  return (
+    <div
+      className="print-hide"
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 10,
+        height: 52,
+        padding: '0 22px',
+        background: '#fff',
+        borderBottom: '0.5px solid var(--color-border-1)',
+        boxShadow: '0 1px 0 rgba(44,62,80,0.05)',
+        flexShrink: 0,
+      }}
+    >
+      {clients.length > 1 && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: 9, fontWeight: 500, color: 'var(--color-muted)', letterSpacing: '1.1px', textTransform: 'uppercase' as const }}>
+            CLIENT
+          </span>
+          <select
+            value={selectedClientId}
+            onChange={(e) => onSelectClient(e.target.value)}
+            style={{
+              padding: '7px 12px',
+              border: '0.5px solid var(--color-border-2)',
+              borderRadius: 7,
+              fontSize: 12,
+              fontFamily: 'inherit',
+              fontWeight: 500,
+              color: 'var(--color-text-1)',
+              background: '#fff',
+              outline: 'none',
+              cursor: 'pointer',
+            }}
+          >
+            {clients.map((c) => (
+              <option key={c.id} value={c.id}>{c.name}</option>
             ))}
-          </div>
-
-          {/* AI Summary (all tabs) */}
-          <div className="bg-[#534AB7]/5 border border-[#534AB7]/20 rounded-xl p-5">
-            <p className="text-xs font-semibold text-[#534AB7] uppercase tracking-wide mb-2">
-              AI Summary
-            </p>
-            <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">
-              {report.ai_summary
-                .replace(/^#+\s.+\n?/gm, '')
-                .replace(/\*\*([^*]+)\*\*/g, '$1')
-                .replace(/\*([^*]+)\*/g, '$1')
-                .trim()}
-            </p>
-          </div>
-
-          {/* Overview tab */}
-          {activeTab === 'overview' && (
-            <div className="space-y-6">
-              <MetricCards metrics={metrics} />
-              <AnalyticsCharts metrics={metrics} />
-              <MediaTypeBreakdown metrics={metrics} />
-              <TopPostsTable metrics={metrics} limit={3} />
-            </div>
-          )}
-
-          {/* Posts tab */}
-          {activeTab === 'posts' &&
-            (() => {
-              const igPosts = metrics.platform === 'instagram' ? (metrics.posts as IGPost[]) : []
-              const fbPosts = metrics.platform === 'facebook' ? (metrics.posts as FBPost[]) : []
-              const totalLikes =
-                metrics.platform === 'instagram'
-                  ? igPosts.reduce((s, p) => s + p.like_count, 0)
-                  : fbPosts.reduce((s, p) => s + p.reactions, 0)
-              const totalComments =
-                metrics.platform === 'instagram'
-                  ? igPosts.reduce((s, p) => s + p.comments_count, 0)
-                  : fbPosts.reduce((s, p) => s + p.comments, 0)
-              const totalReachFromPosts =
-                metrics.platform === 'instagram'
-                  ? igPosts.reduce((s, p) => s + (p.reach ?? 0), 0)
-                  : fbPosts.reduce((s, p) => s + (p.reach ?? 0), 0)
-              const avgReachPerPost =
-                metrics.summary.posts_published > 0
-                  ? Math.round(totalReachFromPosts / metrics.summary.posts_published)
-                  : 0
-              return (
-                <div className="space-y-6">
-                  {/* Post-level summary cards */}
-                  <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-                    <div className="bg-white rounded-xl border border-gray-200 p-5">
-                      <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
-                        Avg engagement rate
-                      </p>
-                      <p className="text-2xl font-semibold text-gray-900 mt-1">
-                        {metrics.summary.avg_engagement_rate}%
-                      </p>
-                      <p className="text-xs text-gray-400 mt-0.5">
-                        across {metrics.summary.posts_published} posts
-                      </p>
-                    </div>
-                    {metrics.summary.avg_save_rate > 0 && (
-                      <div className="bg-white rounded-xl border border-gray-200 p-5">
-                        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
-                          Avg save rate
-                        </p>
-                        <p className="text-2xl font-semibold text-gray-900 mt-1">
-                          {metrics.summary.avg_save_rate}%
-                        </p>
-                        <p className="text-xs text-gray-400 mt-0.5">saves / reach per post</p>
-                      </div>
-                    )}
-                    {metrics.summary.total_shares > 0 && (
-                      <div className="bg-white rounded-xl border border-gray-200 p-5">
-                        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
-                          Total shares
-                        </p>
-                        <p className="text-2xl font-semibold text-gray-900 mt-1">
-                          {metrics.summary.total_shares.toLocaleString()}
-                        </p>
-                        <p className="text-xs text-gray-400 mt-0.5">in selected period</p>
-                      </div>
-                    )}
-                    <div className="bg-white rounded-xl border border-gray-200 p-5">
-                      <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
-                        Total likes
-                      </p>
-                      <p className="text-2xl font-semibold text-gray-900 mt-1">
-                        {totalLikes.toLocaleString()}
-                      </p>
-                      <p className="text-xs text-gray-400 mt-0.5">in selected period</p>
-                    </div>
-                    <div className="bg-white rounded-xl border border-gray-200 p-5">
-                      <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
-                        Total comments
-                      </p>
-                      <p className="text-2xl font-semibold text-gray-900 mt-1">
-                        {totalComments.toLocaleString()}
-                      </p>
-                      <p className="text-xs text-gray-400 mt-0.5">in selected period</p>
-                    </div>
-                    {avgReachPerPost > 0 && (
-                      <div className="bg-white rounded-xl border border-gray-200 p-5">
-                        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
-                          Avg reach per post
-                        </p>
-                        <p className="text-2xl font-semibold text-gray-900 mt-1">
-                          {avgReachPerPost.toLocaleString()}
-                        </p>
-                        <p className="text-xs text-gray-400 mt-0.5">
-                          across {metrics.summary.posts_published} posts
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                  <PostDayBreakdown metrics={metrics} />
-                  <TopPostsTable metrics={metrics} limit={5} />
-                  <PostGrid metrics={metrics} />
-                </div>
-              )
-            })()}
-
-          {/* Audience tab */}
-          {activeTab === 'audience' && (
-            <div className="space-y-6">
-              <FollowerTrend metrics={metrics} />
-              <AudienceSection metrics={metrics} />
-            </div>
-          )}
+          </select>
         </div>
       )}
 
-      {/* Report history */}
-      {historyClientId && (
-        <ReportHistory clientId={historyClientId} platform={historyPlatform} onLoad={handleLoadReport} />
+      {connectedPlatforms.size > 0 && (
+        <PillGroup
+          items={(['instagram', 'facebook'] as const).filter((p) => connectedPlatforms.has(p))}
+          active={platform}
+          onSelect={onSelectPlatform}
+          label={(p) => (p === 'instagram' ? 'Instagram' : 'Facebook')}
+        />
       )}
+
+      <PillGroup
+        items={['7d', '30d', '90d'] as Preset[]}
+        active={preset}
+        onSelect={onSelectPreset}
+        label={(p) => p}
+      />
+
+      <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
+        <Button
+          onClick={onGenerate}
+          loading={generating}
+          disabled={generating || connectedPlatforms.size === 0 || !connectedPlatforms.has(platform)}
+        >
+          {hasReport ? 'Regenerate' : 'Generate report'}
+        </Button>
+        {hasReport && (
+          <Button variant="ghost" onClick={onExportPDF}>
+            Export PDF
+          </Button>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function PillGroup<T extends string>({
+  items, active, onSelect, label,
+}: {
+  items: T[]
+  active: T
+  onSelect: (item: T) => void
+  label: (item: T) => string
+}) {
+  return (
+    <div style={{ display: 'flex', gap: 4 }}>
+      {items.map((item) => {
+        const isActive = active === item
+        return (
+          <button
+            key={item}
+            type="button"
+            onClick={() => onSelect(item)}
+            style={{
+              padding: '6px 14px',
+              borderRadius: 7,
+              fontSize: 12,
+              fontWeight: 500,
+              border: '0.5px solid',
+              cursor: 'pointer',
+              fontFamily: 'inherit',
+              transition: 'all 0.15s',
+              background: isActive ? 'var(--color-brand)' : '#fff',
+              color: isActive ? '#fff' : 'var(--color-muted)',
+              borderColor: isActive ? 'var(--color-brand)' : 'var(--color-border-2)',
+            }}
+          >
+            {label(item)}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+function TabBar({ activeTab, onSelectTab }: { activeTab: Tab; onSelectTab: (t: Tab) => void }) {
+  return (
+    <div
+      className="print-hide"
+      style={{
+        display: 'flex',
+        gap: 4,
+        padding: '0 22px',
+        background: '#fff',
+        borderBottom: '0.5px solid var(--color-border-1)',
+        boxShadow: '0 1px 0 rgba(44,62,80,0.05)',
+      }}
+    >
+      {(['overview', 'posts', 'audience'] as const).map((tab) => (
+        <button
+          key={tab}
+          type="button"
+          onClick={() => onSelectTab(tab)}
+          className="text-sm font-medium capitalize transition-colors"
+          style={{
+            padding: '12px 16px',
+            marginBottom: -0.5,
+            background: 'none',
+            border: 'none',
+            borderBottomStyle: 'solid',
+            borderBottomWidth: 2,
+            borderBottomColor: activeTab === tab ? 'var(--color-terracotta)' : 'transparent',
+            color: activeTab === tab ? 'var(--color-text-1)' : 'var(--color-text-3)',
+            cursor: 'pointer',
+            fontFamily: 'inherit',
+          }}
+        >
+          {tab}
+        </button>
+      ))}
     </div>
   )
 }

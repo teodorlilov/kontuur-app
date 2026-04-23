@@ -11,7 +11,7 @@ export default async function SettingsLayout({ children }: { children: React.Rea
 
   return (
     <>
-      <Topbar />
+      <Topbar title="Settings" />
       <div className="p-6 space-y-6">
         <SettingsTabs agencyMode={agencyMode} />
         {children}

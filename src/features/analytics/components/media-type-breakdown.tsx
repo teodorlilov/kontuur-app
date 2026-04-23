@@ -1,21 +1,15 @@
 import type { AnalyticsMetrics } from '@/types/api'
+import { formatType } from '../utils/media-type'
 
 interface MediaTypeBreakdownProps {
   metrics: AnalyticsMetrics
 }
 
-function formatType(type: string): string {
-  if (type === 'CAROUSEL_ALBUM') return 'Carousel'
-  if (type === 'VIDEO') return 'Video'
-  if (type === 'IMAGE') return 'Image'
-  return type
-}
-
 const TYPE_COLORS: Record<string, string> = {
-  CAROUSEL_ALBUM: '#534AB7',
-  VIDEO: '#9b8fe0',
-  IMAGE: '#c4bff0',
-  Post: '#534AB7',
+  CAROUSEL_ALBUM: '#c07b55',
+  VIDEO: '#2c5f8a',
+  IMAGE: '#5a8a4a',
+  Post: '#c07b55',
 }
 
 export function MediaTypeBreakdown({ metrics }: MediaTypeBreakdownProps) {
@@ -32,7 +26,7 @@ export function MediaTypeBreakdown({ metrics }: MediaTypeBreakdownProps) {
       </div>
       <div className="space-y-3">
         {breakdown.map((item) => {
-          const color = TYPE_COLORS[item.type] ?? '#534AB7'
+          const color = TYPE_COLORS[item.type] ?? '#2c3e50'
           const widthPct = Math.round((item.avg_engagement_rate / maxRate) * 100)
           return (
             <div key={item.type} className="flex items-center gap-3">

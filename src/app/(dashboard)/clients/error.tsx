@@ -6,7 +6,7 @@ import { Topbar } from '@/components/layout/topbar'
 export default function ClientsError({ reset }: { error: Error; reset: () => void }) {
   return (
     <>
-      <Topbar />
+      <Topbar title="Clients" />
       <div className="p-6">
         <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
           <p className="text-gray-900 font-medium">Failed to load clients</p>

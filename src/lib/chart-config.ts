@@ -2,6 +2,8 @@ export const CHART_COLORS = {
   primary: '#4A6FA5',
   secondary: '#1D9E75',
   tertiary: '#BA7517',
+  reach: '#c07b55',
+  follower: '#2c5f8a',
   grid: '#EAE8E3',
   label: '#9C9890',
 }

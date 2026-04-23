@@ -51,21 +51,8 @@ export default async function ClientsPage() {
 
   return (
     <>
-      <Topbar />
-      <div style={{ padding: '0 32px 40px' }}>
-        <div style={{ padding: '24px 0 0', marginBottom: 28 }}>
-          <h1
-            style={{
-              fontFamily: 'var(--font-display, Georgia, serif)',
-              fontSize: 28,
-              fontWeight: 400,
-              color: 'var(--color-text-1)',
-              margin: 0,
-            }}
-          >
-            Clients
-          </h1>
-        </div>
+      <Topbar title="Clients" />
+      <div style={{ padding: '24px 32px 40px' }}>
         <ClientsGrid clients={cardData} />
       </div>
     </>

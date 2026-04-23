@@ -57,7 +57,21 @@ export function PostDayBreakdown({ metrics }: PostDayBreakdownProps) {
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-5">
-      <p className="text-sm font-medium text-gray-700 mb-4">Best day to post</p>
+      <div className="flex items-center justify-between mb-4">
+        <p className="text-sm font-medium text-gray-700">Best day to post</p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          {[
+            { label: 'High', color: '#c07b55' },
+            { label: 'Medium', color: 'rgba(192,123,85,0.30)' },
+            { label: 'Low', color: 'rgba(44,62,80,0.09)' },
+          ].map((l) => (
+            <span key={l.label} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: '#9C9890' }}>
+              <span style={{ width: 8, height: 8, borderRadius: '50%', background: l.color }} />
+              {l.label}
+            </span>
+          ))}
+        </div>
+      </div>
       <ResponsiveContainer width="100%" height={160}>
         <BarChart data={chartData} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
@@ -81,12 +95,11 @@ export function PostDayBreakdown({ metrics }: PostDayBreakdownProps) {
             }}
           />
           <Bar dataKey="er" radius={[3, 3, 0, 0]}>
-            {chartData.map((entry) => (
-              <Cell
-                key={entry.day}
-                fill={entry.er === maxER && maxER > 0 ? '#534AB7' : '#c4bff0'}
-              />
-            ))}
+            {chartData.map((entry) => {
+              const ratio = maxER > 0 ? entry.er / maxER : 0
+              const fill = ratio >= 0.8 ? '#c07b55' : ratio >= 0.45 ? 'rgba(192,123,85,0.30)' : 'rgba(44,62,80,0.09)'
+              return <Cell key={entry.day} fill={fill} />
+            })}
           </Bar>
         </BarChart>
       </ResponsiveContainer>

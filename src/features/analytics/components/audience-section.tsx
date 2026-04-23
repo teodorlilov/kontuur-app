@@ -24,9 +24,9 @@ export function AudienceSection({ metrics }: AudienceSectionProps) {
 
   const totalGender = Object.values(genderTotals).reduce((s, v) => s + v, 0) || 1
   const genderItems = [
-    { label: 'Male', value: genderTotals['M'] ?? 0, color: '#534AB7' },
-    { label: 'Female', value: genderTotals['F'] ?? 0, color: '#7c6fd0' },
-    { label: 'Other', value: genderTotals['U'] ?? 0, color: '#c4bff0' },
+    { label: 'Male', value: genderTotals['M'] ?? 0, color: 'var(--color-brand)' },
+    { label: 'Female', value: genderTotals['F'] ?? 0, color: 'var(--color-brand-hover)' },
+    { label: 'Other', value: genderTotals['U'] ?? 0, color: 'var(--color-border-2)' },
   ].filter((g) => g.value > 0)
 
   // Sort age buckets chronologically
@@ -87,9 +87,9 @@ export function AudienceSection({ metrics }: AudienceSectionProps) {
                 />
                 <Tooltip
                   contentStyle={{ fontSize: 11, borderRadius: 8, border: '1px solid #e5e7eb' }}
-                  cursor={{ fill: '#f5f3ff' }}
+                  cursor={{ fill: 'var(--color-overlay)' }}
                 />
-                <Bar dataKey="value" fill="#534AB7" radius={[3, 3, 0, 0]} />
+                <Bar dataKey="value" fill="var(--color-brand)" radius={[3, 3, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           ) : (

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { deleteReport } from '@/lib/actions/report-actions'
+import { capitalizePlatform } from '../utils/metrics'
 import type { AnalyticsReport } from '@/types/api'
 import { createModuleCache } from '@/utils/module-cache'
 
@@ -94,7 +95,7 @@ export function ReportHistory({ clientId, platform, onLoad }: ReportHistoryProps
           >
             <div>
               <p className="text-sm text-gray-800">
-                {r.platform.charAt(0).toUpperCase() + r.platform.slice(1)} · {r.period_start} to{' '}
+                {capitalizePlatform(r.platform)} · {r.period_start} to{' '}
                 {r.period_end}
               </p>
               {r.ai_summary && (
@@ -106,7 +107,8 @@ export function ReportHistory({ clientId, platform, onLoad }: ReportHistoryProps
                 type="button"
                 onClick={() => handleView(r.id)}
                 disabled={loadingId === r.id}
-                className="text-xs font-medium text-[#534AB7] hover:underline disabled:opacity-50"
+                className="text-xs font-medium hover:underline disabled:opacity-50"
+                style={{ color: 'var(--color-terracotta)' }}
               >
                 {loadingId === r.id ? 'Loading…' : 'View'}
               </button>

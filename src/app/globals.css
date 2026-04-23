@@ -225,23 +225,38 @@ body {
 
 /* ─── Print styles ─── */
 @media print {
-  body > * {
+  html, body {
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  /* Flatten layout, remove sidebar */
+  .flex.h-screen {
+    display: block !important;
+    height: auto !important;
+    overflow: visible !important;
+    background: white !important;
+  }
+
+  aside {
     display: none !important;
   }
-  #analytics-print-area {
-    display: block !important;
+
+  main {
+    overflow: visible !important;
+    overflow-y: visible !important;
+    height: auto !important;
   }
 
-  #analytics-print-area {
-    position: fixed;
-    inset: 0;
-    padding: 32px;
-    background: white;
-    color: black;
-    font-size: 12pt;
-  }
-
+  /* Hide topbar, controls bar, tab bar, report history */
+  main > header,
   .print-hide {
     display: none !important;
+  }
+
+  #analytics-print-area {
+    background: white !important;
+    color: black !important;
+    font-size: 12pt;
   }
 }

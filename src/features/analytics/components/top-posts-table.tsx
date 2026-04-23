@@ -1,5 +1,5 @@
 import type { AnalyticsMetrics, IGPost, FBPost } from '@/types/api'
-import { typeColor, formatType } from '../utils/media-type'
+import { typeColorStyle, formatType } from '../utils/media-type'
 
 interface TopPostsTableProps {
   metrics: AnalyticsMetrics
@@ -42,23 +42,26 @@ export function TopPostsTable({ metrics, limit = 5 }: TopPostsTableProps) {
                   />
                 ) : (
                   <div
-                    className={`w-10 h-10 rounded shrink-0 flex items-center justify-center text-[9px] font-semibold text-white ${typeColor(post.media_type)}`}
+                    className="w-10 h-10 rounded shrink-0 flex items-center justify-center text-[9px] font-semibold text-white"
+                    style={typeColorStyle(post.media_type)}
                   >
                     {formatType(post.media_type).slice(0, 3).toUpperCase()}
                   </div>
                 )}
-                <div className="flex-1 min-w-0">
+                <div className="flex-1 min-w-0 overflow-hidden">
                   {post.permalink ? (
                     <a
                       href={post.permalink}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-sm text-gray-800 line-clamp-1 hover:text-[#534AB7] hover:underline block"
+                      className="text-sm text-gray-800 truncate hover:underline block"
+                      onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--color-terracotta)' }}
+                      onMouseLeave={(e) => { e.currentTarget.style.color = '' }}
                     >
                       {post.caption ?? '(no caption)'}
                     </a>
                   ) : (
-                    <p className="text-sm text-gray-800 line-clamp-1">
+                    <p className="text-sm text-gray-800 truncate">
                       {post.caption ?? '(no caption)'}
                     </p>
                   )}
@@ -121,8 +124,8 @@ export function TopPostsTable({ metrics, limit = 5 }: TopPostsTableProps) {
               <div className="w-10 h-10 rounded shrink-0 flex items-center justify-center text-[9px] font-semibold text-white bg-blue-400">
                 POST
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm text-gray-800 line-clamp-1">{post.message ?? '(no text)'}</p>
+              <div className="flex-1 min-w-0 overflow-hidden">
+                <p className="text-sm text-gray-800 truncate">{post.message ?? '(no text)'}</p>
                 <p className="text-xs text-gray-400 mt-0.5">
                   {new Date(post.created_time).toLocaleDateString()}
                 </p>

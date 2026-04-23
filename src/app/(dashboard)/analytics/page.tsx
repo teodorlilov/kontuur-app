@@ -22,10 +22,8 @@ export default async function AnalyticsPage() {
 
   return (
     <>
-      <Topbar />
-      <div className="p-6">
-        <AnalyticsView clients={clients} initialConnections={initialConnections} />
-      </div>
+      <Topbar title="Analytics" />
+      <AnalyticsView clients={clients} initialConnections={initialConnections} />
     </>
   )
 }

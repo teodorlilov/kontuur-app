@@ -1,7 +1,10 @@
-export function typeColor(mediaType: string): string {
-  if (mediaType === 'VIDEO') return 'bg-purple-400'
-  if (mediaType === 'CAROUSEL_ALBUM') return 'bg-indigo-400'
-  return 'bg-blue-400'
+import type React from 'react'
+
+/** Returns inline background style for a media type thumbnail. */
+export function typeColorStyle(mediaType: string): React.CSSProperties {
+  if (mediaType === 'VIDEO') return { backgroundColor: 'var(--accent-m2)' }
+  if (mediaType === 'CAROUSEL_ALBUM') return { backgroundColor: 'var(--accent-m1)' }
+  return { backgroundColor: 'var(--color-brand-accent)' }
 }
 
 export function formatType(mediaType: string): string {
