@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { Search, SlidersHorizontal, Plus } from 'lucide-react'
+import { Search, Plus } from 'lucide-react'
 
 interface ClientsToolbarProps {
   clientCount: number
@@ -12,8 +12,8 @@ interface ClientsToolbarProps {
 /** Toolbar with client count, search input, filter button, and add-client link. */
 export function ClientsToolbar({ clientCount, searchValue, onSearchChange }: ClientsToolbarProps) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap', gap: 10 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 0 }}>
         <span style={{ fontSize: 13, color: 'var(--color-muted)' }}>
           {clientCount} {clientCount === 1 ? 'client' : 'clients'}
         </span>
@@ -41,29 +41,11 @@ export function ClientsToolbar({ clientCount, searchValue, onSearchChange }: Cli
               background: 'var(--color-surface)',
               color: 'var(--color-text-1)',
               outline: 'none',
-              width: 220,
+              width: '100%',
+              maxWidth: 220,
             }}
           />
         </div>
-
-        <button
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 6,
-            padding: '8px 12px',
-            border: '0.5px solid var(--color-border-1)',
-            borderRadius: 8,
-            fontSize: 12,
-            color: 'var(--color-muted)',
-            background: 'var(--color-surface)',
-            cursor: 'pointer',
-            fontFamily: 'inherit',
-          }}
-        >
-          <SlidersHorizontal size={12} />
-          Filter
-        </button>
       </div>
 
       <Link
@@ -88,7 +70,7 @@ export function ClientsToolbar({ clientCount, searchValue, onSearchChange }: Cli
         onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--sidebar-bg)' }}
       >
         <Plus size={13} strokeWidth={2} />
-        Add client
+        <span className="hidden sm:inline">Add client</span>
       </Link>
     </div>
   )

@@ -31,7 +31,7 @@ export function SettingsView({
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       <SettingsTabBar activeTab={activeTab} onSelectTab={setActiveTab} agencyMode={agencyMode} />
 
-      <div style={{ flex: 1, overflowY: 'auto', padding: '28px 32px 48px', background: '#F4EFE6' }}>
+      <div className="px-4 md:px-8 pt-7 pb-12" style={{ flex: 1, overflowY: 'auto', background: '#F4EFE6' }}>
         {activeTab === 'team' && (
           <TeamTab
             workspaceName={agency.name}

@@ -30,18 +30,18 @@ export function WizardTopbar({ currentStep, onStepClick, onCancel }: WizardTopba
 
   return (
     <div
+      className="px-4 md:px-7"
       style={{
         height: '54px',
         background: '#fff',
         borderBottom: '0.5px solid rgba(44,62,80,0.10)',
         display: 'flex',
         alignItems: 'center',
-        padding: '0 28px',
         flexShrink: 0,
         boxShadow: '0 1px 0 rgba(44,62,80,0.05)',
       }}
     >
-      <LogoMark />
+      <div className="hidden md:block"><LogoMark /></div>
       <StepStrip steps={STEPS} currentIndex={currentIndex} onStepClick={onStepClick} />
       <CancelButton onClick={onCancel} />
     </div>
@@ -117,13 +117,13 @@ function StepItem({
         gap: '8px',
         padding: '6px 14px',
         borderRadius: '7px',
-        flexShrink: 0,
         cursor: onClick ? 'pointer' : 'default',
         transition: 'all 0.15s',
       }}
     >
       <StepCircle state={state} number={number} />
       <span
+        className="hidden sm:inline"
         style={{
           fontSize: '12px',
           fontWeight: 500,

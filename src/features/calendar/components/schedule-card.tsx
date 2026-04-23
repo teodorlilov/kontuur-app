@@ -117,7 +117,7 @@ export const ScheduleCard = memo(function ScheduleCard({
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: 28,
+        padding: 12,
         background: 'rgba(26,38,48,0.32)',
         backdropFilter: 'blur(4px)',
         WebkitBackdropFilter: 'blur(4px)',
@@ -127,7 +127,8 @@ export const ScheduleCard = memo(function ScheduleCard({
         style={{
           background: '#fff',
           borderRadius: 20,
-          width: 780,
+          width: '100%',
+          maxWidth: 780,
           maxHeight: '85vh',
           display: 'flex',
           flexDirection: 'column',
@@ -230,18 +231,17 @@ export const ScheduleCard = memo(function ScheduleCard({
           </div>
         </div>
 
-        {/* Card body — two columns */}
-        <div style={{ flex: 1, overflow: 'hidden', display: 'flex', minHeight: 0 }}>
+        {/* Card body — two columns on desktop, stacked & scrollable on mobile */}
+        <div className="flex flex-col md:flex-row overflow-y-auto md:overflow-hidden" style={{ flex: 1, minHeight: 0 }}>
           {/* Left: caption + slides + schedule form */}
           <div
+            className="md:border-r md:border-[rgba(44,62,80,0.07)] md:overflow-y-auto"
             style={{
               flex: 1,
               padding: '18px 22px',
-              borderRight: '0.5px solid rgba(44,62,80,0.07)',
               display: 'flex',
               flexDirection: 'column',
               gap: 14,
-              overflowY: 'auto',
             }}
           >
             {/* Caption */}
@@ -407,14 +407,13 @@ export const ScheduleCard = memo(function ScheduleCard({
 
           {/* Right: quality + source */}
           <div
+            className="w-full md:w-[260px] border-t md:border-t-0 border-[rgba(44,62,80,0.07)] md:overflow-y-auto"
             style={{
-              width: 260,
               flexShrink: 0,
               padding: 18,
               display: 'flex',
               flexDirection: 'column',
               gap: 14,
-              overflowY: 'auto',
             }}
           >
             {/* Overall score */}
@@ -534,6 +533,7 @@ export const ScheduleCard = memo(function ScheduleCard({
             padding: '14px 24px',
             borderTop: '0.5px solid rgba(44,62,80,0.07)',
             display: 'flex',
+            flexWrap: 'wrap',
             gap: 8,
             flexShrink: 0,
           }}

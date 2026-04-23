@@ -16,8 +16,8 @@ interface PostListProps {
 export function PostList({ posts, selectedPostId, onSelect }: PostListProps) {
   return (
     <div
+      className="w-full md:w-[280px]"
       style={{
-        width: '280px',
         flexShrink: 0,
         background: 'var(--color-surface)',
         borderRight: '0.5px solid var(--color-border-1)',

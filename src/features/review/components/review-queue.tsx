@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { ChevronLeft } from 'lucide-react'
 import { BatchScheduleModal } from '@/components/scheduling/batch-schedule-modal'
 import { ReviewHeader } from './review-header'
 import { ReviewPostList } from './review-post-list'
@@ -26,6 +27,7 @@ export function ReviewQueue({ initialPosts, clients, bestTimeMap }: ReviewQueueP
   const [approvedPosts, setApprovedPosts] = useState<ReviewPost[]>([])
   const [batchPosts, setBatchPosts] = useState<ReviewPost[]>([])
   const [batchOpen, setBatchOpen] = useState(false)
+  const [mobileView, setMobileView] = useState<'list' | 'detail'>('list')
 
   const filteredPosts = filterReviewPosts(posts, activeTab, selectedClientId)
   const selectedPost = filteredPosts.find((p) => p.id === selectedPostId)
@@ -77,45 +79,79 @@ export function ReviewQueue({ initialPosts, clients, bestTimeMap }: ReviewQueueP
         onApproveAll={handleApproveAll}
       />
       <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
-        <ReviewPostList
-          posts={filteredPosts}
-          allPosts={posts}
-          clients={clients}
-          selectedPostId={selectedPostId}
-          activeTab={activeTab}
-          selectedClientId={selectedClientId}
-          approvedCount={approvedPosts.length}
-          onSelectPost={setSelectedPostId}
-          onTabChange={setActiveTab}
-          onClientChange={setSelectedClientId}
-          onOpenBatch={() => {
-            setBatchPosts(approvedPosts)
-            setBatchOpen(true)
-          }}
-        />
-
-        {selectedPost ? (
-          <ReviewPostView
-            key={selectedPost.id}
-            post={selectedPost}
-            bestTimeData={bestTimeMap[selectedPost.client_id] ?? null}
-            onApprove={handleApprove}
-            onDelete={handleDelete}
+        <div className={`${mobileView === 'list' ? 'flex' : 'hidden'} md:flex`} style={{ flexShrink: 0 }}>
+          <ReviewPostList
+            posts={filteredPosts}
+            allPosts={posts}
+            clients={clients}
+            selectedPostId={selectedPostId}
+            activeTab={activeTab}
+            selectedClientId={selectedClientId}
+            approvedCount={approvedPosts.length}
+            onSelectPost={(id: string) => {
+              setSelectedPostId(id)
+              setMobileView('detail')
+            }}
+            onTabChange={setActiveTab}
+            onClientChange={setSelectedClientId}
+            onOpenBatch={() => {
+              setBatchPosts(approvedPosts)
+              setBatchOpen(true)
+            }}
           />
-        ) : (
-          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <div style={{ textAlign: 'center' }}>
-              <p style={{ fontSize: '13px', fontWeight: 500, color: 'var(--color-muted)' }}>
-                {posts.length === 0 ? 'No posts to review' : 'Select a post to review'}
-              </p>
-              {posts.length === 0 && (
-                <p style={{ fontSize: '11px', color: 'var(--color-muted)', marginTop: '4px', opacity: 0.7 }}>
-                  Posts will appear here when autonomous generation is enabled.
-                </p>
-              )}
-            </div>
+        </div>
+
+        <div className={`${mobileView === 'detail' ? 'flex' : 'hidden'} md:flex`} style={{ flex: 1, flexDirection: 'column', overflow: 'hidden' }}>
+          {/* Mobile back button */}
+          <button
+            type="button"
+            className="md:hidden"
+            onClick={() => setMobileView('list')}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 4,
+              padding: '8px 12px',
+              fontSize: 12,
+              fontWeight: 500,
+              color: 'var(--color-muted)',
+              background: 'var(--color-surface)',
+              border: 'none',
+              borderBottom: '0.5px solid var(--color-border-1)',
+              cursor: 'pointer',
+              fontFamily: 'inherit',
+              flexShrink: 0,
+            }}
+          >
+            <ChevronLeft size={14} />
+            Back to list
+          </button>
+
+          <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+            {selectedPost ? (
+              <ReviewPostView
+                key={selectedPost.id}
+                post={selectedPost}
+                bestTimeData={bestTimeMap[selectedPost.client_id] ?? null}
+                onApprove={handleApprove}
+                onDelete={handleDelete}
+              />
+            ) : (
+              <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div style={{ textAlign: 'center' }}>
+                  <p style={{ fontSize: '13px', fontWeight: 500, color: 'var(--color-muted)' }}>
+                    {posts.length === 0 ? 'No posts to review' : 'Select a post to review'}
+                  </p>
+                  {posts.length === 0 && (
+                    <p style={{ fontSize: '11px', color: 'var(--color-muted)', marginTop: '4px', opacity: 0.7 }}>
+                      Posts will appear here when autonomous generation is enabled.
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
-        )}
+        </div>
       </div>
 
       <BatchScheduleModal

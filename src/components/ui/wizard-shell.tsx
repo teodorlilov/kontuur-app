@@ -57,19 +57,21 @@ function Topbar({
 }) {
   return (
     <div
+      className="px-4 md:px-8"
       style={{
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        padding: '0 32px',
-        height: '52px',
+        minHeight: '52px',
         background: 'var(--color-surface)',
         borderBottom: '0.5px solid var(--color-border-1)',
         flexShrink: 0,
+        gap: 8,
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '16px', minWidth: 0, flexShrink: 1 }}>
         <div
+          className="hidden md:block"
           style={{
             fontFamily: 'var(--font-display)',
             fontSize: '15px',
@@ -83,10 +85,10 @@ function Topbar({
         >
           KONTUUR
         </div>
-        <span style={{ fontSize: '12px', color: 'var(--color-muted)' }}>{subtitle}</span>
+        <span style={{ fontSize: '12px', color: 'var(--color-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{subtitle}</span>
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0, overflow: 'hidden' }}>
         <StepIndicator steps={steps} activeIndex={activeIndex} />
         <button
           type="button"
@@ -118,6 +120,7 @@ function StepIndicator({ steps, activeIndex }: { steps: WizardStep[]; activeInde
           <div key={step.key} style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
             <StepDot isDone={isDone} isActive={isActive} index={i} />
             <span
+              className="hidden sm:inline"
               style={{
                 fontSize: '11px',
                 fontWeight: isActive ? 500 : 400,

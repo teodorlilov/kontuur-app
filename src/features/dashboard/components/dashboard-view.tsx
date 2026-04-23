@@ -175,7 +175,7 @@ export function DashboardView({
   }
 
   return (
-    <div style={{ padding: '20px 32px 32px' }}>
+    <div className="px-4 md:px-8 pt-5 pb-8">
       {/* Metric cards — 4 column grid */}
       <div
         className="grid grid-cols-2 lg:grid-cols-4"
@@ -322,7 +322,7 @@ function SoloDashboard({
   const coachingPoints = briefing?.coaching_points
 
   return (
-    <div style={{ padding: '20px 32px 32px' }}>
+    <div className="px-4 md:px-8 pt-5 pb-8">
       {coachingPoints && coachingPoints.length > 0 && (
         <div
           style={{
@@ -352,7 +352,7 @@ function SoloDashboard({
         </div>
       )}
 
-      <div className="grid grid-cols-3" style={{ gap: 12, marginBottom: 24 }}>
+      <div className="grid grid-cols-1 sm:grid-cols-3" style={{ gap: 12, marginBottom: 24 }}>
         <MetricCard
           label="Content ready"
           value={pendingCount}

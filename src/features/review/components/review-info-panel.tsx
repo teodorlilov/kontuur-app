@@ -22,14 +22,12 @@ export function ReviewInfoPanel({ post, validationJson, slopResult, slopLoading 
 
   return (
     <div
+      className="hidden md:flex md:flex-col w-full md:w-[400px]"
       style={{
-        width: '400px',
         flexShrink: 0,
         background: 'var(--color-surface)',
         borderLeft: '0.5px solid var(--color-border-1)',
         overflowY: 'auto',
-        display: 'flex',
-        flexDirection: 'column',
       }}
     >
       {qualityData && (

@@ -130,7 +130,7 @@ export function AnalyticsView({ clients, initialConnections }: AnalyticsViewProp
   const metrics = report?.metrics_json as AnalyticsMetrics | undefined
 
   return (
-    <div>
+    <div style={{ overflow: 'hidden' }}>
       <ControlsBar
         clients={clients}
         selectedClientId={selectedClientId}
@@ -228,13 +228,15 @@ function ControlsBar({
 }: ControlsBarProps) {
   return (
     <div
-      className="print-hide"
+      className="print-hide pl-14 md:pl-[22px] pr-[22px]"
       style={{
         display: 'flex',
         alignItems: 'center',
+        flexWrap: 'wrap',
         gap: 10,
-        height: 52,
-        padding: '0 22px',
+        minHeight: 52,
+        paddingTop: 8,
+        paddingBottom: 8,
         background: '#fff',
         borderBottom: '0.5px solid var(--color-border-1)',
         boxShadow: '0 1px 0 rgba(44,62,80,0.05)',
@@ -242,8 +244,8 @@ function ControlsBar({
       }}
     >
       {clients.length > 1 && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontSize: 9, fontWeight: 500, color: 'var(--color-muted)', letterSpacing: '1.1px', textTransform: 'uppercase' as const }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, flex: '1 1 0' }} className="max-w-full md:max-w-none md:flex-none">
+          <span className="hidden md:inline" style={{ fontSize: 9, fontWeight: 500, color: 'var(--color-muted)', letterSpacing: '1.1px', textTransform: 'uppercase' as const }}>
             CLIENT
           </span>
           <select
@@ -260,6 +262,9 @@ function ControlsBar({
               background: '#fff',
               outline: 'none',
               cursor: 'pointer',
+              minWidth: 0,
+              maxWidth: '100%',
+              textOverflow: 'ellipsis',
             }}
           >
             {clients.map((c) => (
@@ -285,7 +290,7 @@ function ControlsBar({
         label={(p) => p}
       />
 
-      <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
+      <div className="ml-0 md:ml-auto" style={{ display: 'flex', gap: 8 }}>
         <Button
           onClick={onGenerate}
           loading={generating}

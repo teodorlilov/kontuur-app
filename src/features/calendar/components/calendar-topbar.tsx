@@ -34,13 +34,14 @@ export const CalendarTopbar = memo(function CalendarTopbar({
 }: CalendarTopbarProps) {
   return (
     <div
+      className="pl-14 md:pl-[22px]"
       style={{
         height: 52,
         background: '#fff',
         borderBottom: '0.5px solid var(--color-border-1)',
         display: 'flex',
         alignItems: 'center',
-        padding: '0 22px',
+        paddingRight: 22,
         gap: 14,
         flexShrink: 0,
         boxShadow: '0 1px 0 rgba(44,62,80,0.05)',
@@ -48,8 +49,9 @@ export const CalendarTopbar = memo(function CalendarTopbar({
         zIndex: 5,
       }}
     >
-      {/* Logo wordmark */}
+      {/* Logo wordmark — hidden on mobile where sidebar logo is used */}
       <div
+        className="hidden md:block"
         style={{
           fontFamily: 'var(--font-display, Georgia, serif)',
           fontSize: 13,
@@ -141,8 +143,9 @@ export const CalendarTopbar = memo(function CalendarTopbar({
           </select>
         )}
 
-        {/* Date chip */}
+        {/* Date chip — hidden on mobile to save space */}
         <span
+          className="hidden md:inline"
           style={{
             fontSize: 11,
             color: 'var(--color-muted)',

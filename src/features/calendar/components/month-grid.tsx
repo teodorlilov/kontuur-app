@@ -59,9 +59,11 @@ export const MonthGrid = memo(function MonthGrid({
 
   return (
     <div
+      className="px-2 md:px-[18px]"
       style={{
         flex: 1,
-        padding: '10px 18px 18px',
+        paddingTop: 10,
+        paddingBottom: 18,
         display: 'flex',
         flexDirection: 'column',
         overflow: 'hidden',

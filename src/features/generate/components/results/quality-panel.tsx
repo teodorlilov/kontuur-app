@@ -23,14 +23,13 @@ export function QualityPanel({ post, validationData, runSummary }: QualityPanelP
 
   return (
     <div
+      className="hidden md:flex md:flex-col"
       style={{
         width: '350px',
         flexShrink: 0,
         background: 'var(--color-surface)',
         borderLeft: '0.5px solid var(--color-border-1)',
         overflowY: 'auto',
-        display: 'flex',
-        flexDirection: 'column',
       }}
     >
       <QualitySection score={scores.overall_score} criteria={criteria} scores={scores} />

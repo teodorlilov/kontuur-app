@@ -55,8 +55,8 @@ export function InviteForm({ onInviteSent }: InviteFormProps) {
 
   return (
     <div style={{ padding: '20px 22px' }}>
-      <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
-        <div style={{ flex: 1 }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'flex-start' }}>
+        <div style={{ flex: '1 1 200px', minWidth: 0 }}>
           <Input
             type="email"
             value={email}

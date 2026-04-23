@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { ChevronLeft, ChevronRight, AlertTriangle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { PostList } from './post-list'
@@ -38,6 +38,7 @@ export function ResultsView({
   onApproveAll,
 }: ResultsViewProps) {
   const [selectedPostId, setSelectedPostId] = useState(posts[0]?.post.id ?? '')
+  const [mobilePanel, setMobilePanel] = useState<'list' | 'detail'>('list')
   const prevPostIdsRef = useRef<string[]>([])
 
   // When posts array changes (post removed), auto-select the next valid post
@@ -65,6 +66,11 @@ export function ResultsView({
     if (selectedIndex < posts.length - 1) setSelectedPostId(posts[selectedIndex + 1]!.post.id)
   }
 
+  const handleSelectPost = useCallback((id: string) => {
+    setSelectedPostId(id)
+    setMobilePanel('detail')
+  }, [])
+
   if (posts.length === 0) return null
 
   return (
@@ -82,42 +88,76 @@ export function ResultsView({
       />
       {skippedPillars.length > 0 && <SkippedBanner pillars={skippedPillars} />}
       <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
-        <PostList posts={posts} selectedPostId={selectedPostId} onSelect={setSelectedPostId} />
-        {selectedPost && (
-          <PostDetail
-            key={selectedPost.post.id}
-            post={selectedPost.post}
-            validationData={{
-              language: selectedPost.language,
-              slop: selectedPost.slop,
-              sourceGrounding: selectedPost.sourceGrounding,
-              criteria: selectedPost.criteria,
-              scores: selectedPost.scores,
+        {/* Post list — full width on mobile, fixed 280px on desktop */}
+        <div className={`${mobilePanel === 'list' ? 'flex' : 'hidden'} md:flex`} style={{ flexShrink: 0 }}>
+          <PostList posts={posts} selectedPostId={selectedPostId} onSelect={handleSelectPost} />
+        </div>
+
+        {/* Detail + quality panels — hidden on mobile when viewing list */}
+        <div className={`${mobilePanel === 'detail' ? 'flex' : 'hidden'} md:flex`} style={{ flex: 1, overflow: 'hidden', flexDirection: 'column' }}>
+          {/* Mobile back button */}
+          <button
+            type="button"
+            className="md:hidden"
+            onClick={() => setMobilePanel('list')}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 4,
+              padding: '8px 12px',
+              fontSize: 12,
+              fontWeight: 500,
+              color: 'var(--color-muted)',
+              background: 'var(--color-surface)',
+              border: 'none',
+              borderBottom: '0.5px solid var(--color-border-1)',
+              cursor: 'pointer',
+              fontFamily: 'inherit',
+              flexShrink: 0,
             }}
-            onApprove={onApprove}
-            onDiscard={onDiscard}
-            onRegenerate={onRegenerate}
-          />
-        )}
-        {selectedPost && (
-          <QualityPanel
-            key={`quality-${selectedPost.post.id}`}
-            post={selectedPost.post}
-            validationData={{
-              language: selectedPost.language,
-              slop: selectedPost.slop,
-              sourceGrounding: selectedPost.sourceGrounding,
-              criteria: selectedPost.criteria,
-              scores: selectedPost.scores,
-            }}
-            runSummary={{
-              clientName,
-              platform,
-              postsCount: posts.length,
-              skippedCount: skippedPillars.length,
-            }}
-          />
-        )}
+          >
+            <ChevronLeft size={14} />
+            Back to list
+          </button>
+
+          <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+            {selectedPost && (
+              <PostDetail
+                key={selectedPost.post.id}
+                post={selectedPost.post}
+                validationData={{
+                  language: selectedPost.language,
+                  slop: selectedPost.slop,
+                  sourceGrounding: selectedPost.sourceGrounding,
+                  criteria: selectedPost.criteria,
+                  scores: selectedPost.scores,
+                }}
+                onApprove={onApprove}
+                onDiscard={onDiscard}
+                onRegenerate={onRegenerate}
+              />
+            )}
+            {selectedPost && (
+              <QualityPanel
+                key={`quality-${selectedPost.post.id}`}
+                post={selectedPost.post}
+                validationData={{
+                  language: selectedPost.language,
+                  slop: selectedPost.slop,
+                  sourceGrounding: selectedPost.sourceGrounding,
+                  criteria: selectedPost.criteria,
+                  scores: selectedPost.scores,
+                }}
+                runSummary={{
+                  clientName,
+                  platform,
+                  postsCount: posts.length,
+                  skippedCount: skippedPillars.length,
+                }}
+              />
+            )}
+          </div>
+        </div>
       </div>
     </div>
   )
@@ -147,13 +187,14 @@ function ResultsTopbar({
   return (
     <div
       style={{
-        height: '46px',
+        minHeight: '46px',
         background: 'var(--color-surface)',
         borderBottom: '0.5px solid var(--color-border-1)',
         display: 'flex',
         alignItems: 'center',
-        padding: '0 18px',
-        gap: '14px',
+        flexWrap: 'wrap',
+        padding: '6px 18px',
+        gap: '8px',
         flexShrink: 0,
         boxShadow: '0 1px 0 rgba(44,62,80,0.05)',
       }}
@@ -161,7 +202,7 @@ function ResultsTopbar({
       <span style={{ fontSize: '13px', fontWeight: 500, color: 'var(--color-text-1)' }}>
         {postsCount} posts generated
       </span>
-      <span style={{ fontSize: '11px', color: 'var(--color-muted)' }}>
+      <span className="hidden sm:inline" style={{ fontSize: '11px', color: 'var(--color-muted)' }}>
         {clientName} · {platform} · {postType === 'carousel' ? 'Carousel' : 'Single image'}
       </span>
       <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '8px' }}>

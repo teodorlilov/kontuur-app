@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { ChevronLeft } from 'lucide-react'
 import { parsePillars, serializePillars, type WeightedPillar } from '@/lib/clients/content-pillars'
 import { updateClient } from '@/lib/actions/client-actions'
 import { Button } from '@/components/ui/button'
@@ -43,6 +44,12 @@ export function ClientSettingsForm({
   const searchParams = useSearchParams()
   const [activeTab, setActiveTab] = useState<SettingsTab>('basic')
   const [saving, setSaving] = useState(false)
+  const [mobileView, setMobileView] = useState<'nav' | 'form'>('nav')
+
+  const handleTabChange = useCallback((tab: SettingsTab) => {
+    setActiveTab(tab)
+    setMobileView('form')
+  }, [])
 
   // ── Client fields ──
   const [name, setName] = useState(client.name)
@@ -155,13 +162,12 @@ export function ClientSettingsForm({
       />
 
       {/* Body: sidebar + content panel */}
-      <div style={{ display: 'flex', gap: 16, padding: '0 28px 32px', flex: 1, minHeight: 0 }}>
-        {/* Left sidebar */}
+      <div className="px-4 md:px-7" style={{ display: 'flex', gap: 16, paddingBottom: 32, flex: 1, minHeight: 0 }}>
+        {/* Left sidebar — full width on mobile, fixed on desktop */}
         <div
+          className={`${mobileView === 'nav' ? 'flex' : 'hidden'} md:flex w-full md:w-[240px]`}
           style={{
-            width: 240,
             flexShrink: 0,
-            display: 'flex',
             flexDirection: 'column',
           }}
         >
@@ -172,22 +178,46 @@ export function ClientSettingsForm({
             publishedCount={publishedCount}
             sourcesHref={`/clients/${clientId}/sources`}
           />
-          <SettingsNav activeTab={activeTab} onTabChange={setActiveTab} />
+          <SettingsNav activeTab={activeTab} onTabChange={handleTabChange} />
         </div>
 
-        {/* Right content panel */}
+        {/* Right content panel — hidden on mobile when viewing nav */}
         <div
+          className={`${mobileView === 'form' ? 'flex' : 'hidden'} md:flex`}
           style={{
             flex: 1,
             background: 'var(--color-surface)',
             border: '0.5px solid var(--color-border-1)',
             borderRadius: 12,
             overflow: 'hidden',
-            display: 'flex',
             flexDirection: 'column',
             minWidth: 0,
           }}
         >
+          {/* Mobile back to settings nav */}
+          <button
+            type="button"
+            className="md:hidden"
+            onClick={() => setMobileView('nav')}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 4,
+              padding: '8px 12px',
+              fontSize: 12,
+              fontWeight: 500,
+              color: 'var(--color-muted)',
+              background: 'var(--color-surface)',
+              border: 'none',
+              borderBottom: '0.5px solid var(--color-border-1)',
+              cursor: 'pointer',
+              fontFamily: 'inherit',
+              flexShrink: 0,
+            }}
+          >
+            <ChevronLeft size={14} />
+            Back to settings
+          </button>
           {activeTab === 'basic' && (
             <BasicInfoTab
               name={name}
@@ -271,12 +301,15 @@ function SettingsTopbar({
 }) {
   return (
     <div
+      className="px-4 md:px-7"
       style={{
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        padding: '20px 28px 0',
+        paddingTop: 20,
         marginBottom: 20,
+        flexWrap: 'wrap',
+        gap: 8,
       }}
     >
       {/* Left: back link + client chip */}

@@ -14,13 +14,14 @@ interface ReviewHeaderProps {
 export function ReviewHeader({ pendingCount, approvedCount, onApproveAll }: ReviewHeaderProps) {
   return (
     <div
+      className="pl-16 md:pl-[18px]"
       style={{
         height: '48px',
         background: 'var(--color-surface)',
         borderBottom: '0.5px solid var(--color-border-1)',
         display: 'flex',
         alignItems: 'center',
-        padding: '0 18px',
+        paddingRight: '18px',
         gap: '14px',
         flexShrink: 0,
         boxShadow: '0 1px 0 rgba(44,62,80,0.05)',
@@ -60,6 +61,7 @@ export function ReviewHeader({ pendingCount, approvedCount, onApproveAll }: Revi
 
       <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '10px' }}>
         <span
+          className="hidden sm:inline"
           style={{
             fontSize: 11,
             color: 'var(--color-muted)',

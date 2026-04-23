@@ -29,9 +29,8 @@ export function AudienceSummary({ total, newCount, unfollows, netGrowth, followe
 
   return (
     <div
+      className="grid grid-cols-2 md:grid-cols-4"
       style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(4, 1fr)',
         border: '0.5px solid var(--color-border-1)',
         borderRadius: 'var(--radius-lg)',
         background: 'var(--color-surface)',
@@ -42,6 +41,10 @@ export function AudienceSummary({ total, newCount, unfollows, netGrowth, followe
       {cells.map((cell, i) => (
         <div
           key={cell.label}
+          className={[
+            i % 2 === 0 ? '' : 'max-md:!border-r-0',
+            i < 2 ? 'max-md:border-b max-md:border-b-[rgba(44,62,80,0.06)]' : '',
+          ].join(' ')}
           style={{
             padding: '18px 20px',
             borderRight: i < 3 ? '0.5px solid rgba(44,62,80,0.06)' : 'none',

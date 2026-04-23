@@ -87,12 +87,12 @@ function resolveChips(
 function InterviewSidebar({ currentQ }: { currentQ: number }) {
   return (
     <div
+      className="hidden md:flex"
       style={{
         width: '260px',
         flexShrink: 0,
         background: 'var(--sidebar-bg)',
         padding: '28px 24px',
-        display: 'flex',
         flexDirection: 'column',
         position: 'relative',
         overflow: 'hidden',

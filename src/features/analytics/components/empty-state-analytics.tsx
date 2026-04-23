@@ -34,7 +34,7 @@ export function EmptyStateAnalytics({
         alignItems: 'center',
         justifyContent: 'center',
         background: 'var(--color-page)',
-        padding: 40,
+        padding: '40px 20px',
         borderRadius: 'var(--radius-lg)',
       }}
     >
