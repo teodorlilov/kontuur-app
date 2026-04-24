@@ -6,16 +6,24 @@ import { cn } from '@/utils/cn'
 import { toast } from '@/components/ui/toast'
 import { getPillarColor } from '@/components/ui/colors/pillar-colors'
 import { decodeUrlsInText } from '@/utils/decode-url'
+import { formatRelativeTime, parseTimestamp } from '@/utils/format'
 import { PLATFORMS } from '@/utils/constants'
 import { CarouselSlides } from '@/components/posts/carousel-slides'
 import { QualityScores } from '@/components/posts/quality-scores'
+import { ClientResponseCard } from '@/components/calendar/client-response-card'
 import { Button } from '@/components/ui/button'
+import { extractAllFlaggedSlides } from '@/utils/extract-flagged-slides'
 import type {
   CalendarPost,
   CarouselSlide,
   ValidationCriteria,
   ValidationScores,
 } from '@/types/api'
+
+interface ContentUpdates {
+  caption?: string
+  slides_json?: unknown
+}
 
 interface ScheduleCardProps {
   post: CalendarPost | null
@@ -32,6 +40,10 @@ interface ScheduleCardProps {
   onSendApproval?: (postId: string) => void
   approvalSending?: boolean
   isScheduling: boolean
+  editMode?: boolean
+  onExitEditMode?: () => void
+  onSaveContent?: (postId: string, updates: ContentUpdates) => Promise<boolean>
+  onSaveAndResend?: (postId: string, updates: ContentUpdates) => Promise<void>
 }
 
 interface ParsedValidation {
@@ -46,6 +58,52 @@ function parseValidation(json: unknown): ParsedValidation | null {
     return { criteria: obj.criteria as ValidationCriteria, scores: obj.scores as ValidationScores }
   }
   return null
+}
+
+const CAPTION_CONTAINER_STYLE = {
+  fontSize: 13,
+  color: 'var(--color-text-1)',
+  lineHeight: 1.6,
+  background: 'rgba(44,62,80,0.025)',
+  borderRadius: 10,
+  padding: '12px 14px',
+  border: '0.5px solid var(--color-border-1)',
+} as const
+
+/** Footer buttons shown when the modal is in edit mode. */
+function EditModeFooter({
+  onSave,
+  onSaveAndResend,
+  onCancel,
+  saving,
+}: {
+  onSave: () => void
+  onSaveAndResend: () => void
+  onCancel: () => void
+  saving: boolean
+}) {
+  return (
+    <div
+      style={{
+        padding: '14px 24px',
+        borderTop: '0.5px solid rgba(44,62,80,0.07)',
+        display: 'flex',
+        flexWrap: 'wrap',
+        gap: 8,
+        flexShrink: 0,
+      }}
+    >
+      <Button variant="secondary" onClick={onSave} disabled={saving} loading={saving}>
+        Save changes
+      </Button>
+      <Button onClick={onSaveAndResend} disabled={saving} loading={saving} style={{ flex: 1 }}>
+        Save &amp; re-send for approval
+      </Button>
+      <Button variant="secondary" onClick={onCancel}>
+        Cancel
+      </Button>
+    </div>
+  )
 }
 
 /** Centred floating card modal for post detail and scheduling. */
@@ -64,10 +122,17 @@ export const ScheduleCard = memo(function ScheduleCard({
   onSendApproval,
   approvalSending,
   isScheduling,
+  editMode,
+  onExitEditMode,
+  onSaveContent,
+  onSaveAndResend,
 }: ScheduleCardProps) {
   const [date, setDate] = useState('')
   const [time, setTime] = useState('09:00')
   const [platform, setPlatform] = useState('')
+  const [draftCaption, setDraftCaption] = useState('')
+  const [draftSlides, setDraftSlides] = useState<CarouselSlide[]>([])
+  const [savingContent, setSavingContent] = useState(false)
 
   // Reset / pre-fill when post changes
   useEffect(() => {
@@ -80,7 +145,9 @@ export const ScheduleCard = memo(function ScheduleCard({
       setTime('09:00')
     }
     setPlatform(post?.platform ?? 'Instagram')
-  }, [post?.id, post?.platform, post?.scheduled_at])
+    setDraftCaption(post?.caption ?? '')
+    setDraftSlides(Array.isArray(post?.slides_json) ? (post.slides_json as CarouselSlide[]) : [])
+  }, [post?.id, post?.platform, post?.scheduled_at, post?.caption, post?.slides_json])
 
   if (!isOpen || !post) return null
 
@@ -103,6 +170,33 @@ export const ScheduleCard = memo(function ScheduleCard({
     if (!currentPost.caption) return
     void navigator.clipboard.writeText(currentPost.caption)
     toast.success('Copied to clipboard')
+  }
+
+  const flaggedSlideNumbers = editMode
+    ? extractAllFlaggedSlides(currentPost.approval_client_note)
+    : undefined
+
+  function buildContentUpdates(): ContentUpdates {
+    return {
+      caption: draftCaption,
+      ...(draftSlides.length > 0 ? { slides_json: draftSlides } : {}),
+    }
+  }
+
+  async function handleSaveOnly() {
+    if (!onSaveContent) return
+    setSavingContent(true)
+    const ok = await onSaveContent(currentPost.id, buildContentUpdates())
+    setSavingContent(false)
+    if (ok) onExitEditMode?.()
+  }
+
+  async function handleSaveAndResendApproval() {
+    if (!onSaveAndResend) return
+    setSavingContent(true)
+    await onSaveAndResend(currentPost.id, buildContentUpdates())
+    setSavingContent(false)
+    onExitEditMode?.()
   }
 
   return (
@@ -228,6 +322,23 @@ export const ScheduleCard = memo(function ScheduleCard({
             >
               {score}/10
             </TagPill>
+            {currentPost.approval_status === 'approved' && (
+              <TagPill bg="rgba(90,138,74,0.12)" color="#2A5A1A">
+                ✓ Client approved
+                {currentPost.approval_responded_at && ` · ${formatRelativeTime(parseTimestamp(currentPost.approval_responded_at))}`}
+              </TagPill>
+            )}
+            {currentPost.approval_status === 'changes_requested' && (
+              <TagPill bg="rgba(44,94,138,0.10)" color="#2C5F8A">
+                ◻ Changes requested
+                {currentPost.approval_responded_at && ` · ${formatRelativeTime(parseTimestamp(currentPost.approval_responded_at))}`}
+              </TagPill>
+            )}
+            {editMode && (
+              <TagPill bg="rgba(44,94,138,0.12)" color="#2C5F8A">
+                ✏ Editing
+              </TagPill>
+            )}
           </div>
         </div>
 
@@ -244,6 +355,16 @@ export const ScheduleCard = memo(function ScheduleCard({
               gap: 14,
             }}
           >
+            {/* Client response */}
+            {(currentPost.approval_status === 'approved' || currentPost.approval_status === 'changes_requested') && (
+              <ClientResponseCard
+                approvalStatus={currentPost.approval_status}
+                clientNote={currentPost.approval_client_note}
+                respondedAt={currentPost.approval_responded_at}
+                clientName={currentPost.client_name}
+              />
+            )}
+
             {/* Caption */}
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
@@ -277,20 +398,25 @@ export const ScheduleCard = memo(function ScheduleCard({
                   Copy
                 </button>
               </div>
-              <div
-                style={{
-                  fontSize: 13,
-                  color: 'var(--color-text-1)',
-                  lineHeight: 1.6,
-                  whiteSpace: 'pre-wrap',
-                  background: 'rgba(44,62,80,0.025)',
-                  borderRadius: 10,
-                  padding: '12px 14px',
-                  border: '0.5px solid var(--color-border-1)',
-                }}
-              >
-                {currentPost.caption ? decodeUrlsInText(currentPost.caption) : 'No caption'}
-              </div>
+              {editMode ? (
+                <textarea
+                  value={draftCaption}
+                  onChange={(e) => setDraftCaption(e.target.value)}
+                  style={{
+                    ...CAPTION_CONTAINER_STYLE,
+                    whiteSpace: 'pre-wrap',
+                    width: '100%',
+                    minHeight: 120,
+                    resize: 'vertical',
+                    outline: 'none',
+                    fontFamily: 'inherit',
+                  }}
+                />
+              ) : (
+                <div style={{ ...CAPTION_CONTAINER_STYLE, whiteSpace: 'pre-wrap' }}>
+                  {currentPost.caption ? decodeUrlsInText(currentPost.caption) : 'No caption'}
+                </div>
+              )}
             </div>
 
             {/* Carousel slides */}
@@ -309,100 +435,107 @@ export const ScheduleCard = memo(function ScheduleCard({
                 >
                   Carousel slides
                 </span>
-                <CarouselSlides slides={slides} />
+                <CarouselSlides
+                  slides={editMode ? draftSlides : slides}
+                  editable={editMode}
+                  onSlidesChange={editMode ? setDraftSlides : undefined}
+                  flaggedSlides={flaggedSlideNumbers}
+                />
               </div>
             )}
 
-            {/* Schedule form */}
-            <div
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 10,
-                borderTop: '0.5px solid rgba(44,62,80,0.07)',
-                paddingTop: 14,
-              }}
-            >
-              <div style={{ display: 'flex', gap: 10 }}>
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  <label
-                    htmlFor="card-date"
-                    style={{ fontSize: 10, fontWeight: 500, color: 'var(--color-muted)' }}
-                  >
-                    Date
-                  </label>
-                  <input
-                    id="card-date"
-                    type="date"
-                    value={date}
-                    onChange={(e) => setDate(e.target.value)}
-                    min={new Date().toISOString().slice(0, 10)}
-                    style={{
-                      fontSize: 12,
-                      border: '0.5px solid var(--color-border-2)',
-                      borderRadius: 7,
-                      padding: '7px 10px',
-                      fontFamily: 'inherit',
-                      outline: 'none',
-                      color: 'var(--color-text-1)',
-                    }}
-                  />
-                </div>
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  <label
-                    htmlFor="card-time"
-                    style={{ fontSize: 10, fontWeight: 500, color: 'var(--color-muted)' }}
-                  >
-                    Time
-                  </label>
-                  <input
-                    id="card-time"
-                    type="time"
-                    value={time}
-                    onChange={(e) => setTime(e.target.value)}
-                    style={{
-                      fontSize: 12,
-                      border: '0.5px solid var(--color-border-2)',
-                      borderRadius: 7,
-                      padding: '7px 10px',
-                      fontFamily: 'inherit',
-                      outline: 'none',
-                      color: 'var(--color-text-1)',
-                    }}
-                  />
-                </div>
-              </div>
-
-              {/* Platform selector */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <span style={{ fontSize: 10, fontWeight: 500, color: 'var(--color-muted)' }}>
-                  Platform
-                </span>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
-                  {PLATFORMS.map((p) => (
-                    <button
-                      key={p}
-                      type="button"
-                      onClick={() => setPlatform(p)}
-                      style={{
-                        fontSize: 10,
-                        padding: '5px 10px',
-                        borderRadius: 5,
-                        border: platform === p ? 'none' : '0.5px solid var(--color-border-2)',
-                        background: platform === p ? 'var(--color-brand)' : '#fff',
-                        color: platform === p ? '#ECE8E1' : 'var(--color-muted)',
-                        cursor: 'pointer',
-                        fontFamily: 'inherit',
-                        fontWeight: 500,
-                        transition: 'all 0.15s',
-                      }}
+            {/* Schedule form — hidden in edit mode */}
+            {!editMode && (
+              <div
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 10,
+                  borderTop: '0.5px solid rgba(44,62,80,0.07)',
+                  paddingTop: 14,
+                }}
+              >
+                <div style={{ display: 'flex', gap: 10 }}>
+                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    <label
+                      htmlFor="card-date"
+                      style={{ fontSize: 10, fontWeight: 500, color: 'var(--color-muted)' }}
                     >
-                      {p}
-                    </button>
-                  ))}
+                      Date
+                    </label>
+                    <input
+                      id="card-date"
+                      type="date"
+                      value={date}
+                      onChange={(e) => setDate(e.target.value)}
+                      min={new Date().toISOString().slice(0, 10)}
+                      style={{
+                        fontSize: 12,
+                        border: '0.5px solid var(--color-border-2)',
+                        borderRadius: 7,
+                        padding: '7px 10px',
+                        fontFamily: 'inherit',
+                        outline: 'none',
+                        color: 'var(--color-text-1)',
+                      }}
+                    />
+                  </div>
+                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    <label
+                      htmlFor="card-time"
+                      style={{ fontSize: 10, fontWeight: 500, color: 'var(--color-muted)' }}
+                    >
+                      Time
+                    </label>
+                    <input
+                      id="card-time"
+                      type="time"
+                      value={time}
+                      onChange={(e) => setTime(e.target.value)}
+                      style={{
+                        fontSize: 12,
+                        border: '0.5px solid var(--color-border-2)',
+                        borderRadius: 7,
+                        padding: '7px 10px',
+                        fontFamily: 'inherit',
+                        outline: 'none',
+                        color: 'var(--color-text-1)',
+                      }}
+                    />
+                  </div>
+                </div>
+
+                {/* Platform selector */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  <span style={{ fontSize: 10, fontWeight: 500, color: 'var(--color-muted)' }}>
+                    Platform
+                  </span>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+                    {PLATFORMS.map((p) => (
+                      <button
+                        key={p}
+                        type="button"
+                        onClick={() => setPlatform(p)}
+                        style={{
+                          fontSize: 10,
+                          padding: '5px 10px',
+                          borderRadius: 5,
+                          border: platform === p ? 'none' : '0.5px solid var(--color-border-2)',
+                          background: platform === p ? 'var(--color-brand)' : '#fff',
+                          color: platform === p ? '#ECE8E1' : 'var(--color-muted)',
+                          cursor: 'pointer',
+                          fontFamily: 'inherit',
+                          fontWeight: 500,
+                          transition: 'all 0.15s',
+                        }}
+                      >
+                        {p}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
           </div>
 
           {/* Right: quality + source */}
@@ -527,58 +660,67 @@ export const ScheduleCard = memo(function ScheduleCard({
           </div>
         </div>
 
-        {/* Card footer */}
-        <div
-          style={{
-            padding: '14px 24px',
-            borderTop: '0.5px solid rgba(44,62,80,0.07)',
-            display: 'flex',
-            flexWrap: 'wrap',
-            gap: 8,
-            flexShrink: 0,
-          }}
-        >
-          <Button
-            onClick={handleSchedule}
-            disabled={!date || isScheduling}
-            loading={isScheduling}
-            style={{ flex: 1 }}
+        {/* Card footer — edit mode vs normal */}
+        {editMode ? (
+          <EditModeFooter
+            onSave={() => { void handleSaveOnly() }}
+            onSaveAndResend={() => { void handleSaveAndResendApproval() }}
+            onCancel={() => onExitEditMode?.()}
+            saving={savingContent}
+          />
+        ) : (
+          <div
+            style={{
+              padding: '14px 24px',
+              borderTop: '0.5px solid rgba(44,62,80,0.07)',
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: 8,
+              flexShrink: 0,
+            }}
           >
-            {isScheduled ? 'Update schedule' : 'Schedule to calendar'}
-          </Button>
-          {isScheduled ? (
             <Button
-              variant="secondary"
-              onClick={() => onUnschedule(currentPost.id)}
+              onClick={handleSchedule}
+              disabled={!date || isScheduling}
+              loading={isScheduling}
+              style={{ flex: 1 }}
             >
-              Unschedule
+              {isScheduled ? 'Update schedule' : 'Schedule to calendar'}
             </Button>
-          ) : (
+            {isScheduled ? (
+              <Button
+                variant="secondary"
+                onClick={() => onUnschedule(currentPost.id)}
+              >
+                Unschedule
+              </Button>
+            ) : (
+              <Button
+                variant="secondary"
+                onClick={() => onSkip(currentPost.id)}
+              >
+                Skip for now
+              </Button>
+            )}
+            {isScheduled && onSendApproval && (
+              <Button
+                variant="secondary"
+                onClick={() => onSendApproval(currentPost.id)}
+                disabled={approvalSending}
+                loading={approvalSending}
+              >
+                <Mail style={{ width: 12, height: 12 }} />
+                Send for approval
+              </Button>
+            )}
             <Button
-              variant="secondary"
-              onClick={() => onSkip(currentPost.id)}
+              variant="danger"
+              onClick={() => onDelete(currentPost.id)}
             >
-              Skip for now
+              Delete post
             </Button>
-          )}
-          {isScheduled && onSendApproval && (
-            <Button
-              variant="secondary"
-              onClick={() => onSendApproval(currentPost.id)}
-              disabled={approvalSending}
-              loading={approvalSending}
-            >
-              <Mail style={{ width: 12, height: 12 }} />
-              Send for approval
-            </Button>
-          )}
-          <Button
-            variant="danger"
-            onClick={() => onDelete(currentPost.id)}
-          >
-            Delete post
-          </Button>
-        </div>
+          </div>
+        )}
       </div>
     </div>
   )

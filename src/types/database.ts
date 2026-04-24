@@ -360,6 +360,7 @@ export interface Database {
           client_note: string | null
           expires_at: string
           created_at: string
+          responded_at: string | null
         }
         Insert: {
           id?: string
@@ -371,6 +372,7 @@ export interface Database {
           client_note?: string | null
           expires_at?: string
           created_at?: string
+          responded_at?: string | null
         }
         Update: {
           id?: string
@@ -382,6 +384,7 @@ export interface Database {
           client_note?: string | null
           expires_at?: string
           created_at?: string
+          responded_at?: string | null
         }
         Relationships: []
       }
@@ -461,6 +464,11 @@ export interface Database {
           message: string | null
           is_read: boolean
           created_at: string
+          type: string | null
+          client_id: string | null
+          post_id: string | null
+          feedback_text: string | null
+          review_token: string | null
         }
         Insert: {
           id?: string
@@ -468,6 +476,11 @@ export interface Database {
           message?: string | null
           is_read?: boolean
           created_at?: string
+          type?: string | null
+          client_id?: string | null
+          post_id?: string | null
+          feedback_text?: string | null
+          review_token?: string | null
         }
         Update: {
           id?: string
@@ -475,6 +488,11 @@ export interface Database {
           message?: string | null
           is_read?: boolean
           created_at?: string
+          type?: string | null
+          client_id?: string | null
+          post_id?: string | null
+          feedback_text?: string | null
+          review_token?: string | null
         }
         Relationships: []
       }

@@ -27,7 +27,7 @@ export default async function CalendarPage() {
     clientIds.length > 0
       ? supabase
           .from('posts')
-          .select(`${POST_COLUMNS}, post_approval_tokens(status, client_note, created_at)`)
+          .select(`${POST_COLUMNS}, post_approval_tokens(status, client_note, created_at, responded_at)`)
           .in('client_id', clientIds)
           .in('status', ['approved', 'scheduled'])
           .order('created_at', { ascending: false })
@@ -41,7 +41,7 @@ export default async function CalendarPage() {
     contact_email: c.contact_email ?? null,
   }))
 
-  type ApprovalTokenRow = { status: string; client_note: string | null; created_at: string }
+  type ApprovalTokenRow = { status: string; client_note: string | null; created_at: string; responded_at: string | null }
 
   type PostRow = {
     id: string
@@ -79,6 +79,7 @@ export default async function CalendarPage() {
       client_name: clientNameMap.get(p.client_id) ?? 'Unknown',
       approval_status: latestToken?.status ?? null,
       approval_client_note: latestToken?.client_note ?? null,
+      approval_responded_at: latestToken?.responded_at ?? null,
     }
   })
 

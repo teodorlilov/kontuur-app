@@ -4,6 +4,82 @@ import { getCachedAgency, getCachedAgencyClients, getCachedPendingRows } from '@
 import { BRIEFING_COLUMNS } from '@/lib/queries/select-columns'
 import { Topbar } from '@/components/layout/topbar'
 import { DashboardView } from '@/features/dashboard/components/dashboard-view'
+import type { DashboardChangeRequest, CarouselSlide } from '@/types/api'
+
+type ChangeRequestRow = {
+  id: string
+  client_id: string
+  caption: string | null
+  platform: string | null
+  post_type: string
+  slides_json: unknown
+  scheduled_at: string | null
+  post_approval_tokens: Array<{
+    status: string
+    client_note: string | null
+    responded_at: string | null
+    batch_id: string
+  }>
+}
+
+/** Fetch all tokens in the given batches and return a map of postId → 1-indexed position. */
+async function computeBatchPositions(
+  supabase: Awaited<ReturnType<typeof createServerSupabaseClient>>,
+  batchIds: string[],
+): Promise<Map<string, number>> {
+  if (batchIds.length === 0) return new Map()
+  const { data: batchTokens } = await supabase
+    .from('post_approval_tokens')
+    .select('batch_id, post_id')
+    .in('batch_id', batchIds)
+    .order('created_at', { ascending: true })
+
+  const positions = new Map<string, number>()
+  const batchOrder = new Map<string, string[]>()
+  for (const t of batchTokens ?? []) {
+    if (!t.batch_id || !t.post_id) continue
+    const arr = batchOrder.get(t.batch_id) ?? []
+    arr.push(t.post_id)
+    batchOrder.set(t.batch_id, arr)
+  }
+  for (const [, postIds] of batchOrder) {
+    postIds.forEach((pid, i) => positions.set(pid, i + 1))
+  }
+  return positions
+}
+
+/** Map raw change request rows to DashboardChangeRequest[] with batch positions. */
+async function buildChangeRequests(
+  supabase: Awaited<ReturnType<typeof createServerSupabaseClient>>,
+  rows: ChangeRequestRow[] | null,
+  clientNameMap: Record<string, string>,
+): Promise<DashboardChangeRequest[]> {
+  const crRows = rows ?? []
+  if (crRows.length === 0) return []
+
+  const batchIds = [...new Set(
+    crRows.flatMap((r) => r.post_approval_tokens.map((t) => t.batch_id)).filter(Boolean)
+  )]
+  const positions = await computeBatchPositions(supabase, batchIds)
+
+  return crRows.map((row) => {
+    const token = row.post_approval_tokens[0]!
+    return {
+      id: row.id,
+      clientId: row.client_id,
+      clientName: clientNameMap[row.client_id] ?? 'Unknown',
+      caption: row.caption,
+      platform: row.platform,
+      postType: row.post_type,
+      // Supabase REST returns untyped JSON — slides_json matches CarouselSlide[] by schema
+      slidesJson: row.slides_json as CarouselSlide[] | null,
+      scheduledAt: row.scheduled_at,
+      clientNote: token.client_note,
+      respondedAt: token.responded_at,
+      postNumber: positions.get(row.id) ?? 1,
+    }
+  })
+}
 
 export default async function DashboardPage() {
   const { agencyId } = await requireSessionUser()
@@ -47,6 +123,16 @@ export default async function DashboardPage() {
         .limit(3)
     : Promise.resolve({ data: [] as { id: string; caption: string; platform: string; pillar: string | null; created_at: string; client_id: string }[] })
 
+  const changeRequestsQuery = clientIds.length > 0
+    ? supabase
+        .from('posts')
+        .select('id, client_id, caption, platform, post_type, slides_json, scheduled_at, post_approval_tokens!inner(status, client_note, responded_at, batch_id)')
+        .in('client_id', clientIds)
+        .eq('post_approval_tokens.status', 'changes_requested')
+        .order('scheduled_at', { ascending: false })
+        .limit(5)
+    : Promise.resolve({ data: [] as unknown[] })
+
   if (clientIds.length > 0) {
     // getCachedPendingRows is a React cache hit — layout already populated it for this request
     const [scheduledRes, publishedRes, pendingRows] = await Promise.all([
@@ -73,10 +159,11 @@ export default async function DashboardPage() {
     }
   }
 
-  // Collect briefing + pending posts — have been running while stats ran
-  const [{ data: rawBriefing }, { data: rawPendingPosts }] = await Promise.all([
+  // Collect briefing + pending posts + change requests — have been running while stats ran
+  const [{ data: rawBriefing }, { data: rawPendingPosts }, { data: rawChangeRequests }] = await Promise.all([
     briefingQuery,
     pendingPostsQuery,
+    changeRequestsQuery,
   ])
 
   const briefing = rawBriefing as {
@@ -103,6 +190,11 @@ export default async function DashboardPage() {
     clientName: clientNameMap[p.client_id as string] ?? 'Unknown',
   }))
 
+  // Process change requests + compute post numbers within batches
+  const changeRequests = await buildChangeRequests(
+    supabase, rawChangeRequests as ChangeRequestRow[] | null, clientNameMap
+  )
+
   return (
     <>
       <Topbar title="Dashboard" />
@@ -116,6 +208,7 @@ export default async function DashboardPage() {
         clientPendingMap={clientPendingMap}
         briefing={briefing}
         pendingPosts={pendingPosts}
+        changeRequests={changeRequests}
       />
     </>
   )

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
+import { createApprovalNotification } from '@/lib/notifications/create-approval-notification'
 import type { ApprovalResponse, ApprovalPostData, ApprovalBatchData } from '@/types/api'
 
 export async function GET(_request: Request, { params }: { params: Promise<{ token: string }> }) {
@@ -121,7 +122,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
   // Update all token rows with the batch status
   const { error: updateError } = await supabase
     .from('post_approval_tokens')
-    .update({ status: body.status })
+    .update({ status: body.status, responded_at: new Date().toISOString() })
     .eq('batch_id', token)
 
   if (updateError) {
@@ -142,21 +143,25 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
   // Post status stays as 'scheduled' — approval is tracked in post_approval_tokens
   const postIds = tokenRows.map((r) => r.post_id)
 
-  // Create notification for the agency — join post→client in one query instead of two
+  // Create notification for the agency
   const { data: postWithClient } = await supabase
     .from('posts')
-    .select('clients!inner(name, agency_id)')
+    .select('client_id, clients!inner(name, agency_id)')
     .eq('id', postIds[0]!)
-    .single() as { data: { clients: { name: string; agency_id: string } } | null }
+    .single() as { data: { client_id: string; clients: { name: string; agency_id: string } } | null }
 
   if (postWithClient) {
-    const { name, agency_id } = postWithClient.clients
-    const message =
-      body.status === 'approved'
-        ? `${name} approved weekly calendar (${postIds.length} post${postIds.length === 1 ? '' : 's'})`
-        : `${name} requested changes on weekly calendar`
-
-    await supabase.from('notifications').insert({ agency_id, message })
+    const firstNote = body.postNotes?.[0]?.note ?? null
+    await createApprovalNotification(supabase, {
+      agencyId: postWithClient.clients.agency_id,
+      clientName: postWithClient.clients.name,
+      clientId: postWithClient.client_id,
+      postCount: postIds.length,
+      status: body.status,
+      feedbackText: body.status === 'changes_requested' ? firstNote : null,
+      reviewToken: token,
+      postId: postIds[0] ?? null,
+    })
   }
 
   return NextResponse.json({ success: true })

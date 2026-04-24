@@ -184,6 +184,11 @@ body {
   }
 }
 
+@keyframes notif-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(180, 50, 50, 0.4); }
+  50%      { box-shadow: 0 0 0 4px rgba(180, 50, 50, 0); }
+}
+
 /* ─── Stagger utilities ─── */
 .stagger > *:nth-child(1) {
   animation-delay: 0ms;

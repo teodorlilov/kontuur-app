@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
+import { useSearchParams, useRouter } from 'next/navigation'
 import { Link, Mail } from 'lucide-react'
 import { useCalendar } from '@/features/calendar/hooks/use-calendar'
 import { useApproval, type ClientEntry } from '@/features/calendar/hooks/use-approval'
@@ -130,12 +131,16 @@ function ApprovalButton({
 
 export function CalendarView({ initialPosts, clients }: CalendarViewProps) {
   const now = new Date()
+  const router = useRouter()
+  const searchParams = useSearchParams()
   const [year, setYear] = useState(now.getFullYear())
   const [month, setMonth] = useState(now.getMonth())
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null)
   const [panelOpen, setPanelOpen] = useState(false)
   const [cardOpen, setCardOpen] = useState(false)
   const [activePostId, setActivePostId] = useState<string | null>(null)
+  const [editMode, setEditMode] = useState(false)
+  const editParamProcessed = useRef(false)
 
   const {
     posts: allPosts,
@@ -143,9 +148,22 @@ export function CalendarView({ initialPosts, clients }: CalendarViewProps) {
     scheduledPosts,
     schedulePost,
     unschedulePost,
+    updatePostContent,
     handleDrop,
     saving,
   } = useCalendar(initialPosts)
+
+  // Auto-open modal in edit mode when navigated from dashboard with ?editPost=<id>
+  useEffect(() => {
+    if (editParamProcessed.current) return
+    const editPostId = searchParams.get('editPost')
+    if (!editPostId) return
+    editParamProcessed.current = true
+    setActivePostId(editPostId)
+    setCardOpen(true)
+    setEditMode(true)
+    router.replace('/calendar', { scroll: false })
+  }, [searchParams, router])
 
   const filteredUnscheduled = useMemo(
     () => selectedClientId
@@ -200,7 +218,10 @@ export function CalendarView({ initialPosts, clients }: CalendarViewProps) {
     setActivePostId(null)
   }, [unschedulePost])
 
-  const closeCard = useCallback(() => setCardOpen(false), [])
+  const closeCard = useCallback(() => {
+    setCardOpen(false)
+    setEditMode(false)
+  }, [])
   const closePanel = useCallback(() => setPanelOpen(false), [])
   const togglePanel = useCallback(() => setPanelOpen((v) => !v), [])
 
@@ -222,6 +243,13 @@ export function CalendarView({ initialPosts, clients }: CalendarViewProps) {
     const idx = filteredUnscheduled.findIndex((p) => p.id === postId)
     const nextPost = filteredUnscheduled[idx + 1]
     if (nextPost) setActivePostId(nextPost.id)
+  }
+
+  async function handleSaveContent(
+    postId: string,
+    updates: { caption?: string; slides_json?: unknown }
+  ): Promise<boolean> {
+    return updatePostContent(postId, updates)
   }
 
   async function handleDeletePost(postId: string) {
@@ -249,6 +277,16 @@ export function CalendarView({ initialPosts, clients }: CalendarViewProps) {
     handleEmailClient,
     handleSendApproval,
   } = useApproval({ clients, filteredScheduled, allPosts })
+
+  async function handleSaveAndResend(
+    postId: string,
+    updates: { caption?: string; slides_json?: unknown }
+  ) {
+    const ok = await updatePostContent(postId, updates)
+    if (!ok) return
+    void handleSendApproval(postId)
+    setEditMode(false)
+  }
 
   return (
     <div
@@ -349,6 +387,10 @@ export function CalendarView({ initialPosts, clients }: CalendarViewProps) {
         onSendApproval={(id) => { void handleSendApproval(id) }}
         approvalSending={approvalSending}
         isScheduling={saving}
+        editMode={editMode}
+        onExitEditMode={() => setEditMode(false)}
+        onSaveContent={handleSaveContent}
+        onSaveAndResend={handleSaveAndResend}
       />
     </div>
   )

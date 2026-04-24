@@ -2,13 +2,15 @@
 
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Sparkles, Users, CheckCircle, BarChart2 } from 'lucide-react'
+import { Sparkles, Users, CheckCircle, BarChart2, MessageCircle } from 'lucide-react'
 import { MetricCard } from '@/components/dashboard/metric-card'
 import { ClientRow } from '@/components/dashboard/client-row'
 import { PostPreviewRow } from '@/components/dashboard/post-preview-row'
+import { ChangeRequestCard } from '@/components/dashboard/change-request-card'
 import { BriefingItem } from '@/components/dashboard/briefing-item'
 import { QuickActionBtn } from '@/components/dashboard/quick-action-btn'
 import { BriefingActions } from './briefing-actions'
+import type { DashboardChangeRequest } from '@/types/api'
 
 function stripCiteTags(text: string): string {
   return text.replace(/<cite[^>]*>([\s\S]*?)<\/cite>/g, '$1')
@@ -42,16 +44,21 @@ export interface DashboardViewProps {
   clientPendingMap: Record<string, number>
   briefing: Briefing | null
   pendingPosts: PendingPost[]
+  changeRequests: DashboardChangeRequest[]
 }
 
 function SectionCard({
   title,
+  badge,
+  icon,
   action,
   actionHref,
   onActionClick,
   children,
 }: {
   title: string
+  badge?: string
+  icon?: React.ReactNode
   action?: string
   actionHref?: string
   onActionClick?: () => void
@@ -75,7 +82,24 @@ function SectionCard({
           borderBottom: '0.5px solid rgba(44,62,80,0.07)',
         }}
       >
-        <span style={{ fontSize: 13, fontWeight: 500, color: '#1A2630' }}>{title}</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {icon}
+          <span style={{ fontSize: 13, fontWeight: 500, color: '#1A2630' }}>{title}</span>
+          {badge && (
+            <span
+              style={{
+                fontSize: 11,
+                fontWeight: 500,
+                color: 'var(--color-terracotta)',
+                background: 'rgba(192,123,85,0.10)',
+                padding: '2px 8px',
+                borderRadius: 10,
+              }}
+            >
+              {badge}
+            </span>
+          )}
+        </div>
         {action && (
           <Link
             href={actionHref ?? '#'}
@@ -158,6 +182,7 @@ export function DashboardView({
   clientPendingMap,
   briefing,
   pendingPosts,
+  changeRequests,
 }: DashboardViewProps) {
   const router = useRouter()
   const briefingItems = buildBriefingItems(briefing)
@@ -210,6 +235,25 @@ export function DashboardView({
           accentColor="var(--accent-m4)"
         />
       </div>
+
+      {/* Change requests — full width, only shown when there are pending changes */}
+      {changeRequests.length > 0 && (
+        <div style={{ marginBottom: 16 }}>
+          <SectionCard
+            title="Change requests"
+            badge={`${changeRequests.length} ${changeRequests.length === 1 ? 'post' : 'posts'}`}
+            icon={<MessageCircle size={14} color="#2C5F8A" />}
+            action="View all"
+            actionHref="/calendar"
+          >
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {changeRequests.map((cr) => (
+                <ChangeRequestCard key={cr.id} changeRequest={cr} />
+              ))}
+            </div>
+          </SectionCard>
+        </div>
+      )}
 
       {/* Row 2 — Clients + Pending review */}
       <div

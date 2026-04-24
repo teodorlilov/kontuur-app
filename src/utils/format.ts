@@ -1,3 +1,9 @@
+/** Parse a Supabase timestamp string as UTC (appends Z if no timezone info). */
+export function parseTimestamp(ts: string): Date {
+  if (/[Zz]$/.test(ts) || /[+-]\d{2}:\d{2}$/.test(ts)) return new Date(ts)
+  return new Date(ts + 'Z')
+}
+
 export function formatDate(date: Date): string {
   return date.toLocaleDateString('en-GB', {
     day: '2-digit',
@@ -24,6 +30,11 @@ export function formatRelativeTime(date: Date): string {
 export function truncateText(text: string, maxLength: number): string {
   if (text.length <= maxLength) return text
   return text.slice(0, maxLength).trimEnd() + '…'
+}
+
+/** Formats a date as "Mon, Apr 28" — short weekday + month + day. */
+export function formatScheduleDate(date: Date): string {
+  return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
 }
 
 /** Extracts up to 2-letter initials from a name string, supporting non-Latin scripts. */

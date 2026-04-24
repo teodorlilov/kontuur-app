@@ -9,6 +9,7 @@ interface CarouselSlidesProps {
   slides: CarouselSlide[]
   editable?: boolean
   onSlidesChange?: (slides: CarouselSlide[]) => void
+  flaggedSlides?: number[]
 }
 
 /** Inline text field that switches between display and edit on click */
@@ -108,9 +109,16 @@ function EditableField({
   )
 }
 
-export function CarouselSlides({ slides, editable, onSlidesChange }: CarouselSlidesProps) {
+export function CarouselSlides({ slides, editable, onSlidesChange, flaggedSlides }: CarouselSlidesProps) {
   const [activeIndex, setActiveIndex] = useState(0)
   const activeSlide = slides[activeIndex]
+
+  // Auto-expand the first flagged slide when flaggedSlides is provided
+  useEffect(() => {
+    if (!flaggedSlides?.length) return
+    const idx = slides.findIndex((s) => flaggedSlides.includes(s.slide_number ?? 0))
+    if (idx >= 0) setActiveIndex(idx)
+  }, [flaggedSlides]) // eslint-disable-line react-hooks/exhaustive-deps
 
   function handleCopyAll() {
     const text = slides
@@ -144,13 +152,26 @@ export function CarouselSlides({ slides, editable, onSlidesChange }: CarouselSli
             key={i}
             onClick={() => setActiveIndex(i)}
             className={cn(
-              'px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors',
+              'px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors inline-flex items-center gap-1',
               activeIndex === i
                 ? 'bg-[rgba(44,62,80,0.08)] text-[var(--color-text-1)]'
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
             )}
           >
             {slide.slide_number ?? i + 1}
+            {flaggedSlides?.includes(slide.slide_number ?? i + 1) && (
+              <span
+                style={{
+                  fontSize: 9,
+                  color: '#2C5F8A',
+                  background: 'rgba(44,94,138,0.10)',
+                  padding: '1px 5px',
+                  borderRadius: 3,
+                }}
+              >
+                Needs update
+              </span>
+            )}
           </button>
         ))}
       </div>
@@ -198,6 +219,13 @@ export function CarouselSlides({ slides, editable, onSlidesChange }: CarouselSli
               {activeSlide.design_note}
             </p>
           )}
+        </div>
+      )}
+
+      {flaggedSlides && flaggedSlides.length > 0 && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 10, color: '#8A8070' }}>
+          <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#2C5F8A', flexShrink: 0 }} />
+          Flagged slides are expanded
         </div>
       )}
     </div>

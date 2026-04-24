@@ -66,3 +66,7 @@ export const POST_HISTORY_COLUMNS = 'topic_summary'
 
 // posts (top performing)
 export const TOP_POSTS_COLUMNS = 'caption'
+
+// notifications
+export const NOTIFICATION_COLUMNS =
+  'id, agency_id, message, is_read, created_at, type, client_id, post_id, feedback_text, review_token'

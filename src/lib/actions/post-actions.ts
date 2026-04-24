@@ -51,6 +51,25 @@ export async function updatePost(
   return { ok: true, data: undefined }
 }
 
+/** Clear any active change request on a post by setting token status to 'resolved'. */
+export async function resolveChangeRequest(postId: string): Promise<ActionResult> {
+  const auth = await resolveActionAuth()
+  if (!auth.ok) return { ok: false, error: auth.error }
+  const { supabase, agencyId } = auth
+
+  const post = await verifyPostOwnership(supabase, postId, agencyId)
+  if (!post) return { ok: false, error: 'Post not found' }
+
+  await supabase
+    .from('post_approval_tokens')
+    .update({ status: 'resolved' })
+    .eq('post_id', postId)
+    .eq('status', 'changes_requested')
+
+  revalidateTag('client-post-stats', 'max')
+  return { ok: true, data: undefined }
+}
+
 /** Delete a post by ID. */
 export async function deletePost(postId: string): Promise<ActionResult> {
   const auth = await resolveActionAuth()

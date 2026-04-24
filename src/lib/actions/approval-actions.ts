@@ -2,6 +2,7 @@
 
 import { revalidateTag } from 'next/cache'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
+import { createApprovalNotification } from '@/lib/notifications/create-approval-notification'
 import type { ActionResult } from './types'
 
 /** Submit an approval/changes-requested response for a batch of posts. */
@@ -36,7 +37,7 @@ export async function submitApproval(
 
   const { error: updateError } = await supabase
     .from('post_approval_tokens')
-    .update({ status })
+    .update({ status, responded_at: new Date().toISOString() })
     .eq('batch_id', token)
 
   if (updateError) return { ok: false, error: updateError.message }
@@ -55,18 +56,22 @@ export async function submitApproval(
 
   const { data: postWithClient } = await supabase
     .from('posts')
-    .select('clients!inner(name, agency_id)')
+    .select('client_id, clients!inner(name, agency_id)')
     .eq('id', postIds[0]!)
-    .single() as { data: { clients: { name: string; agency_id: string } } | null }
+    .single() as { data: { client_id: string; clients: { name: string; agency_id: string } } | null }
 
   if (postWithClient) {
-    const { name, agency_id } = postWithClient.clients
-    const message =
-      status === 'approved'
-        ? `${name} approved weekly calendar (${postIds.length} post${postIds.length === 1 ? '' : 's'})`
-        : `${name} requested changes on weekly calendar`
-
-    await supabase.from('notifications').insert({ agency_id, message })
+    const firstNote = postNotes?.[0]?.note ?? null
+    await createApprovalNotification(supabase, {
+      agencyId: postWithClient.clients.agency_id,
+      clientName: postWithClient.clients.name,
+      clientId: postWithClient.client_id,
+      postCount: postIds.length,
+      status,
+      feedbackText: status === 'changes_requested' ? firstNote : null,
+      reviewToken: token,
+      postId: postIds[0] ?? null,
+    })
   }
 
   revalidateTag('client-post-stats', 'max')

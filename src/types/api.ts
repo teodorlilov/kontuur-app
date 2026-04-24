@@ -184,6 +184,40 @@ export interface CalendarPost {
   created_at: string
   approval_status: string | null
   approval_client_note: string | null
+  approval_responded_at: string | null
+}
+
+// ---- Dashboard Change Requests ----
+
+export interface DashboardChangeRequest {
+  id: string
+  clientId: string
+  clientName: string
+  caption: string | null
+  platform: string | null
+  postType: string
+  slidesJson: CarouselSlide[] | null
+  scheduledAt: string | null
+  clientNote: string | null
+  respondedAt: string | null
+  postNumber: number
+}
+
+// ---- Notifications ----
+
+export type NotificationType = 'client_approved_all' | 'client_feedback'
+
+export interface EnrichedNotification {
+  id: string
+  agency_id: string
+  message: string | null
+  is_read: boolean
+  created_at: string
+  type: NotificationType | null
+  client_id: string | null
+  post_id: string | null
+  feedback_text: string | null
+  review_token: string | null
 }
 
 // ---- Settings / Team ----
