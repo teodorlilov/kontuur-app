@@ -1,142 +1,246 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useParams } from 'next/navigation'
 import { Spinner } from '@/components/ui/spinner'
 import { submitApproval } from '@/lib/actions/approval-actions'
-import type { ApprovalBatchData, ApprovalPostData, CarouselSlide } from '@/types/api'
+import { ReviewHeader } from '@/components/approval-page/review-header'
+import { PostList } from '@/components/approval-page/post-list'
+import { PostDetail } from '@/components/approval-page/post-detail'
+import type { ApprovalBatchData, ApprovalPostData } from '@/types/api'
+import type { ApprovalPostStatus, ApprovalFilter } from '@/components/approval-page/types'
 
 type PageState = 'loading' | 'error' | 'review' | 'submitted'
 
+/** Format a date range string from the posts' scheduled_at values. */
+function formatWeekRange(posts: ApprovalPostData[]): string {
+  const dates = posts
+    .map((p) => p.scheduled_at)
+    .filter((d): d is string => d !== null)
+    .map((d) => new Date(d))
+    .sort((a, b) => a.getTime() - b.getTime())
+
+  if (dates.length === 0) return ''
+  const opts: Intl.DateTimeFormatOptions = { month: 'long', day: 'numeric', year: 'numeric' }
+  return `${dates[0]!.toLocaleDateString('en-US', opts)} – ${dates[dates.length - 1]!.toLocaleDateString('en-US', opts)}`
+}
+
+/** Derive the dominant platform from posts (most common). */
+function derivePlatform(posts: ApprovalPostData[]): string {
+  const platforms = posts.map((p) => p.platform).filter(Boolean)
+  return platforms[0] ?? 'Social'
+}
+
+/** Count posts with a given status. */
+function countByStatus(statuses: Map<string, ApprovalPostStatus>, target: ApprovalPostStatus): number {
+  let count = 0
+  statuses.forEach((s) => { if (s === target) count++ })
+  return count
+}
+
+/** Initialize post statuses — all pending for fresh batches, or restored for already-submitted. */
+function initStatuses(posts: ApprovalPostData[], batchStatus: string): Map<string, ApprovalPostStatus> {
+  const map = new Map<string, ApprovalPostStatus>()
+  const status: ApprovalPostStatus =
+    batchStatus === 'approved' ? 'approved'
+    : batchStatus === 'changes_requested' ? 'changes_requested'
+    : 'pending'
+  posts.forEach((p) => map.set(p.id, status))
+  return map
+}
+
+/** Initialize feedbacks from existing client notes. */
+function initFeedbacks(posts: ApprovalPostData[]): Record<string, string> {
+  const result: Record<string, string> = {}
+  posts.forEach((p) => { result[p.id] = p.client_note ?? '' })
+  return result
+}
+
 export default function ApprovalPage() {
   const { token } = useParams<{ token: string }>()
-  const [state, setState] = useState<PageState>('loading')
+  const [pageState, setPageState] = useState<PageState>('loading')
   const [data, setData] = useState<ApprovalBatchData | null>(null)
   const [errorMessage, setErrorMessage] = useState('')
-  const [postNotes, setPostNotes] = useState<Record<string, string>>({})
-  const [expandedNotes, setExpandedNotes] = useState<Set<string>>(new Set())
-  const [submitting, setSubmitting] = useState(false)
-  const [submittedStatus, setSubmittedStatus] = useState<'approved' | 'changes_requested' | null>(
-    null
-  )
+  const [submittedStatus, setSubmittedStatus] = useState<'approved' | 'changes_requested' | null>(null)
 
+  // Two-panel state
+  const [selectedPostId, setSelectedPostId] = useState<string | null>(null)
+  const [activeFilter, setActiveFilter] = useState<ApprovalFilter>('all')
+  const [postStatuses, setPostStatuses] = useState<Map<string, ApprovalPostStatus>>(new Map())
+  const [feedbacks, setFeedbacks] = useState<Record<string, string>>({})
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  // Load data
   useEffect(() => {
     async function load() {
       try {
         const res = await fetch(`/api/approval/${token}`)
         if (res.status === 410) {
           setErrorMessage('This approval link has expired. Please ask your agency for a new one.')
-          setState('error')
+          setPageState('error')
           return
         }
         if (!res.ok) {
           setErrorMessage('This link is invalid or has expired.')
-          setState('error')
+          setPageState('error')
           return
         }
         const result = (await res.json()) as ApprovalBatchData
         setData(result)
+        setPostStatuses(initStatuses(result.posts, result.status))
+        setFeedbacks(initFeedbacks(result.posts))
+
+        if (result.posts.length > 0) {
+          setSelectedPostId(result.posts[0]!.id)
+        }
 
         if (result.status !== 'pending') {
           setSubmittedStatus(result.status as 'approved' | 'changes_requested')
-          setState('submitted')
+          setPageState('submitted')
         } else {
-          setState('review')
+          setPageState('review')
         }
       } catch {
         setErrorMessage('Something went wrong. Please try again later.')
-        setState('error')
+        setPageState('error')
       }
     }
     load()
   }, [token])
 
-  async function handleSubmit(status: 'approved' | 'changes_requested') {
-    setSubmitting(true)
+  // Derived values
+  const posts = data?.posts ?? []
+  const filteredPosts = posts.filter((p) => {
+    if (activeFilter === 'all') return true
+    return postStatuses.get(p.id) === activeFilter
+  })
+  const selectedPost = filteredPosts.find((p) => p.id === selectedPostId) ?? filteredPosts[0] ?? null
+  const selectedIndex = selectedPost ? filteredPosts.findIndex((p) => p.id === selectedPost.id) : -1
+  const totalPending = countByStatus(postStatuses, 'pending')
+
+  /** Submit the batch to the server. */
+  const submitBatch = useCallback(async (statuses: Map<string, ApprovalPostStatus>, fb: Record<string, string>) => {
+    setIsSubmitting(true)
     try {
-      const notes = Object.entries(postNotes)
+      const hasChanges = Array.from(statuses.values()).some((s) => s === 'changes_requested')
+      const status: 'approved' | 'changes_requested' = hasChanges ? 'changes_requested' : 'approved'
+
+      const notes = Object.entries(fb)
         .filter(([, note]) => note.trim().length > 0)
         .map(([postId, note]) => ({ postId, note: note.trim() }))
 
-      const result = await submitApproval(
-        token,
-        status,
-        notes.length > 0 ? notes : undefined
-      )
-
+      const result = await submitApproval(token, status, notes.length > 0 ? notes : undefined)
       if (!result.ok) {
         setErrorMessage(result.error || 'Failed to submit response')
-        setState('error')
+        setPageState('error')
         return
       }
-
       setSubmittedStatus(status)
-      setState('submitted')
+      setPageState('submitted')
     } catch {
       setErrorMessage('Something went wrong. Please try again.')
-      setState('error')
+      setPageState('error')
     } finally {
-      setSubmitting(false)
+      setIsSubmitting(false)
     }
+  }, [token])
+
+  /** Approve a single post locally, auto-submit if it was the last pending. */
+  function handleApprovePost() {
+    if (!selectedPost) return
+    const next = new Map(postStatuses)
+    next.set(selectedPost.id, 'approved')
+    setPostStatuses(next)
+
+    const remainingPending = countByStatus(next, 'pending')
+    if (remainingPending === 0) {
+      void submitBatch(next, feedbacks)
+      return
+    }
+
+    // Auto-advance to next pending post
+    const nextPending = filteredPosts.find((p) => p.id !== selectedPost.id && next.get(p.id) === 'pending')
+    if (nextPending) setSelectedPostId(nextPending.id)
   }
 
-  function toggleNote(postId: string) {
-    setExpandedNotes((prev) => {
-      const next = new Set(prev)
-      if (next.has(postId)) {
-        next.delete(postId)
-      } else {
-        next.add(postId)
-      }
-      return next
+  /** Mark a post as changes_requested with its feedback. */
+  function handleRequestChanges() {
+    if (!selectedPost) return
+    const fb = feedbacks[selectedPost.id] ?? ''
+    if (!fb.trim()) return // feedback required
+
+    const next = new Map(postStatuses)
+    next.set(selectedPost.id, 'changes_requested')
+    setPostStatuses(next)
+
+    const remainingPending = countByStatus(next, 'pending')
+    if (remainingPending === 0) {
+      void submitBatch(next, feedbacks)
+      return
+    }
+
+    const nextPending = filteredPosts.find((p) => p.id !== selectedPost.id && next.get(p.id) === 'pending')
+    if (nextPending) setSelectedPostId(nextPending.id)
+  }
+
+  /** Approve all remaining pending posts and submit the batch. */
+  function handleApproveAll() {
+    const next = new Map(postStatuses)
+    posts.forEach((p) => {
+      if (next.get(p.id) === 'pending') next.set(p.id, 'approved')
     })
+    setPostStatuses(next)
+    void submitBatch(next, feedbacks)
   }
 
-  // Format week range
-  function formatWeekRange(posts: ApprovalPostData[]): string {
-    const dates = posts
-      .map((p) => p.scheduled_at)
-      .filter((d): d is string => d !== null)
-      .map((d) => new Date(d))
-      .sort((a, b) => a.getTime() - b.getTime())
-
-    if (dates.length === 0) return ''
-    const first = dates[0]!
-    const last = dates[dates.length - 1]!
-    const opts: Intl.DateTimeFormatOptions = { month: 'long', day: 'numeric', year: 'numeric' }
-    return `${first.toLocaleDateString('en-US', opts)} – ${last.toLocaleDateString('en-US', opts)}`
+  /** Navigate to prev/next post in the filtered list. */
+  function handleNavigate(dir: 1 | -1) {
+    const nextIdx = selectedIndex + dir
+    const next = filteredPosts[nextIdx]
+    if (next) setSelectedPostId(next.id)
   }
 
-  if (state === 'loading') {
+  /** Handle filter change with auto-select. */
+  function handleFilterChange(f: ApprovalFilter) {
+    setActiveFilter(f)
+    const firstMatch = posts.find((p) =>
+      f === 'all' ? true : postStatuses.get(p.id) === f
+    )
+    if (firstMatch) setSelectedPostId(firstMatch.id)
+  }
+
+  // --- Render states ---
+
+  if (pageState === 'loading') {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F4EFE6' }}>
         <Spinner size="lg" />
       </div>
     )
   }
 
-  if (state === 'error') {
+  if (pageState === 'error') {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="bg-white rounded-xl border border-gray-200 p-8 max-w-md text-center">
-          <div className="text-3xl mb-3">⚠️</div>
-          <p className="text-gray-700 font-medium">{errorMessage}</p>
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F4EFE6' }}>
+        <div style={{ background: '#fff', borderRadius: 12, border: '0.5px solid rgba(44,62,80,0.10)', padding: 32, maxWidth: 420, textAlign: 'center' }}>
+          <div style={{ fontSize: 28, marginBottom: 12 }}>⚠️</div>
+          <p style={{ fontSize: 14, color: '#1A2630', fontWeight: 500 }}>{errorMessage}</p>
         </div>
       </div>
     )
   }
 
-  if (state === 'submitted') {
+  if (pageState === 'submitted') {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="bg-white rounded-xl border border-gray-200 p-8 max-w-md text-center">
-          <div className="text-3xl mb-3">{submittedStatus === 'approved' ? '✅' : '📝'}</div>
-          <h2 className="text-lg font-semibold text-gray-900 mb-2">
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F4EFE6' }}>
+        <div style={{ background: '#fff', borderRadius: 12, border: '0.5px solid rgba(44,62,80,0.10)', padding: 32, maxWidth: 420, textAlign: 'center' }}>
+          <div style={{ fontSize: 28, marginBottom: 12 }}>{submittedStatus === 'approved' ? '✅' : '📝'}</div>
+          <h2 style={{ fontFamily: 'var(--font-display, Georgia, serif)', fontSize: 20, fontWeight: 400, color: '#1A2630', marginBottom: 8 }}>
             {submittedStatus === 'approved'
               ? 'Thank you! Your posts are confirmed.'
               : 'Your feedback has been sent to the team.'}
           </h2>
-          <p className="text-sm text-gray-500">You can close this page.</p>
+          <p style={{ fontSize: 13, color: '#8A8070' }}>You can close this page.</p>
         </div>
       </div>
     )
@@ -145,162 +249,80 @@ export default function ApprovalPage() {
   if (!data) return null
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200">
-        <div className="max-w-3xl mx-auto px-4 py-6">
-          {data.agencyName && (
-            <p className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">
-              {data.agencyName}
-            </p>
-          )}
-          <h1 className="text-xl font-semibold text-gray-900">Posts for review</h1>
-          <p className="text-sm text-gray-500 mt-1">
-            {data.clientName} · {formatWeekRange(data.posts)} · {data.posts.length} post
-            {data.posts.length === 1 ? '' : 's'}
-          </p>
-        </div>
-      </div>
+    <div
+      style={{
+        height: '100vh',
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden',
+        background: '#F4EFE6',
+      }}
+    >
+      <ReviewHeader
+        agencyName={data.agencyName}
+        clientName={data.clientName}
+        dateRange={formatWeekRange(posts)}
+        platform={derivePlatform(posts)}
+        totalCount={posts.length}
+        pendingCount={countByStatus(postStatuses, 'pending')}
+        approvedCount={countByStatus(postStatuses, 'approved')}
+        changesCount={countByStatus(postStatuses, 'changes_requested')}
+      />
 
-      {/* Post list */}
-      <div className="max-w-3xl mx-auto px-4 py-6 flex flex-col gap-4 pb-28">
-        {data.posts.map((post, index) => (
-          <PostPreviewCard
-            key={post.id}
-            post={post}
-            index={index + 1}
-            noteExpanded={expandedNotes.has(post.id)}
-            noteValue={postNotes[post.id] ?? ''}
-            onToggleNote={() => toggleNote(post.id)}
-            onNoteChange={(val) => setPostNotes((prev) => ({ ...prev, [post.id]: val }))}
+      <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+        <PostList
+          posts={posts}
+          postStatuses={postStatuses}
+          selectedPostId={selectedPost?.id ?? null}
+          activeFilter={activeFilter}
+          onSelectPost={(id) => setSelectedPostId(id)}
+          onFilterChange={handleFilterChange}
+        />
+
+        {selectedPost ? (
+          <PostDetail
+            post={selectedPost}
+            postIndex={selectedIndex}
+            totalPosts={filteredPosts.length}
+            status={postStatuses.get(selectedPost.id) ?? 'pending'}
+            feedback={feedbacks[selectedPost.id] ?? ''}
+            onFeedbackChange={(v) => setFeedbacks((prev) => ({ ...prev, [selectedPost.id]: v }))}
+            onNavigate={handleNavigate}
+            onApprove={handleApprovePost}
+            onRequestChanges={handleRequestChanges}
+            onApproveAll={handleApproveAll}
+            totalPending={totalPending}
+            isSubmitting={isSubmitting}
           />
-        ))}
-      </div>
-
-      {/* Sticky action bar */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg">
-        <div className="max-w-3xl mx-auto px-4 py-4 flex gap-3 justify-end">
-          <button
-            onClick={() => {
-              void handleSubmit('changes_requested')
+        ) : (
+          <div
+            style={{
+              flex: 1,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexDirection: 'column',
+              gap: 12,
+              padding: 40,
+              background: '#F4EFE6',
             }}
-            disabled={submitting}
-            className="px-5 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
           >
-            Request changes
-          </button>
-          <button
-            onClick={() => {
-              void handleSubmit('approved')
-            }}
-            disabled={submitting}
-            className="px-5 py-2.5 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
-          >
-            {submitting ? 'Submitting...' : 'Approve all'}
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// ---------- Post preview card ----------
-
-interface PostPreviewCardProps {
-  post: ApprovalPostData
-  index: number
-  noteExpanded: boolean
-  noteValue: string
-  onToggleNote: () => void
-  onNoteChange: (val: string) => void
-}
-
-function PostPreviewCard({
-  post,
-  index,
-  noteExpanded,
-  noteValue,
-  onToggleNote,
-  onNoteChange,
-}: PostPreviewCardProps) {
-  const isCarousel = post.post_type === 'carousel'
-  const slides =
-    isCarousel && Array.isArray(post.slides_json) ? (post.slides_json as CarouselSlide[]) : []
-
-  const scheduledDate = post.scheduled_at
-    ? new Date(post.scheduled_at).toLocaleDateString('en-US', {
-        weekday: 'short',
-        month: 'short',
-        day: 'numeric',
-      })
-    : null
-
-  return (
-    <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-      {/* Header */}
-      <div className="px-5 py-3 border-b border-gray-100 flex items-center gap-2 flex-wrap">
-        <span className="text-xs font-medium text-gray-400">#{index}</span>
-        {scheduledDate && (
-          <span className="text-xs font-medium text-gray-700">{scheduledDate}</span>
-        )}
-        {post.platform && (
-          <span className="text-xs px-2 py-0.5 rounded-full bg-blue-50 text-blue-700">
-            {post.platform}
-          </span>
-        )}
-        <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">
-          {isCarousel ? `Carousel · ${slides.length} slides` : 'Single image'}
-        </span>
-        {post.pillar && (
-          <span className="text-xs px-2 py-0.5 rounded-full bg-purple-50 text-purple-700">
-            {post.pillar}
-          </span>
-        )}
-      </div>
-
-      {/* Content */}
-      <div className="p-5 flex flex-col gap-4">
-        {/* Caption */}
-        {post.caption && (
-          <p className="text-sm text-gray-900 whitespace-pre-wrap leading-relaxed">
-            {post.caption}
-          </p>
-        )}
-
-        {/* Carousel slides */}
-        {isCarousel && slides.length > 0 && (
-          <div className="flex flex-col gap-2">
-            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Slides</p>
-            <div className="flex flex-col gap-2">
-              {slides.map((slide, i) => (
-                <div key={i} className="bg-gray-50 rounded-lg p-3">
-                  <p className="text-xs text-gray-400 mb-1">Slide {i + 1}</p>
-                  <p className="text-sm font-medium text-gray-900">{slide.headline}</p>
-                  <p className="text-sm text-gray-700 mt-1">{slide.body}</p>
-                </div>
-              ))}
+            <div
+              style={{
+                fontFamily: 'var(--font-display, Georgia, serif)',
+                fontSize: 20,
+                fontWeight: 400,
+                color: '#1A2630',
+                marginBottom: 6,
+              }}
+            >
+              All done
+            </div>
+            <div style={{ fontSize: 13, color: '#8A8070', textAlign: 'center' }}>
+              All posts have been reviewed. The agency will be notified.
             </div>
           </div>
         )}
-
-        {/* Per-post note */}
-        <div className="border-t border-gray-100 pt-3">
-          <button
-            onClick={onToggleNote}
-            className="text-xs text-brand-purple hover:underline font-medium"
-          >
-            {noteExpanded ? 'Hide note' : 'Add a note'}
-          </button>
-          {noteExpanded && (
-            <textarea
-              value={noteValue}
-              onChange={(e) => onNoteChange(e.target.value)}
-              placeholder="Leave feedback on this post (optional)..."
-              rows={2}
-              className="mt-2 w-full text-sm text-gray-900 border border-gray-300 rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-brand-purple focus:border-transparent resize-y"
-            />
-          )}
-        </div>
       </div>
     </div>
   )
