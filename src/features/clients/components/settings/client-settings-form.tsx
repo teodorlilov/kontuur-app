@@ -15,6 +15,7 @@ import { BrandProfileTab } from './brand-profile-tab'
 import { ScheduleTab } from './schedule-tab'
 import { ConnectedAccountsTab, bustConnectionsCache } from './connected-accounts-tab'
 import { ContentInsightsTab, type ContentInsights } from './content-insights-tab'
+import { IdeaFormTab } from '@/components/ideas/idea-form-tab'
 
 interface ClientSettingsFormProps {
   clientId: string
@@ -148,7 +149,7 @@ export function ClientSettingsForm({
     }
   }
 
-  const isInsightsTab = activeTab === 'insights'
+  const isInsightsTab = activeTab === 'insights' || activeTab === 'ideas'
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
@@ -277,6 +278,9 @@ export function ClientSettingsForm({
               sourceCount={sourceCount}
               clientId={clientId}
             />
+          )}
+          {activeTab === 'ideas' && (
+            <IdeaFormTab clientId={clientId} clientName={client.name} />
           )}
         </div>
       </div>

@@ -130,6 +130,25 @@ export interface BestTimeResponse {
   upgrade_note: string
 }
 
+// ---- Client Ideas ----
+
+export type IdeaStatus = 'new' | 'generating' | 'generated' | 'dismissed'
+
+export interface ClientIdea {
+  id: string
+  clientId: string
+  clientName: string
+  clientNiche: string | null
+  ideaText: string
+  extraNotes: string | null
+  platform: string | null
+  targetDate: string | null
+  status: IdeaStatus
+  generatedPostId: string | null
+  submittedAt: string
+  readAt: string | null
+}
+
 // ---- Approval ----
 
 export interface SendApprovalRequest {

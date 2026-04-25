@@ -20,6 +20,7 @@ import type { PriorityPost, PostType } from '@/types/api'
 import type { GenerationResult } from '@/ai/generation/types'
 import type { SkippedPillar } from '@/ai/research/types'
 import type { PostData, ValidationData } from '@/types/post'
+import type { ClientIdea } from '@/types/api'
 
 type Client = Pick<ClientRow, 'id' | 'name' | 'niche' | 'language' | 'posts_per_week'>
 
@@ -36,26 +37,38 @@ interface GenerateWizardProps {
   initialClients: Client[]
   initialClientData: ClientData | null
   initialTargetPostCount: number
+  initialIdea?: ClientIdea
 }
 
 export function GenerateWizard({
   initialClients,
   initialClientData,
   initialTargetPostCount,
+  initialIdea,
 }: GenerateWizardProps) {
   const router = useRouter()
-  const [step, setStep] = useState<GenerateStep>('client')
+  const [step, setStep] = useState<GenerateStep>(initialIdea ? 'type' : 'client')
+  const [sourceIdea] = useState<ClientIdea | undefined>(initialIdea)
 
   // Step 1
   const [clients] = useState<Client[]>(initialClients)
-  const [clientId, setClientId] = useState(initialClients[0]?.id ?? '')
-  const [platform, setPlatform] = useState('Instagram')
+  const [clientId, setClientId] = useState(initialIdea?.clientId ?? initialClients[0]?.id ?? '')
+  const [platform, setPlatform] = useState(initialIdea?.platform ?? 'Instagram')
   const [brandProfileLoading, setBrandProfileLoading] = useState(false)
-  const [targetPostCount, setTargetPostCount] = useState(initialTargetPostCount)
+  const [targetPostCount, setTargetPostCount] = useState(initialIdea ? 0 : initialTargetPostCount)
   const [preloadedClientData, setPreloadedClientData] = useState<ClientData | null>(initialClientData)
 
   // Step 2
-  const [priorityPosts, setPriorityPosts] = useState<PriorityPost[]>([])
+  const [priorityPosts, setPriorityPosts] = useState<PriorityPost[]>(
+    initialIdea
+      ? [{
+          title: initialIdea.ideaText.slice(0, 60),
+          brief: initialIdea.ideaText,
+          platform: initialIdea.platform ?? 'Instagram',
+          targetDate: initialIdea.targetDate ?? '',
+        }]
+      : []
+  )
 
   // Step 3
   const [postType, setPostType] = useState<PostType>(
@@ -112,19 +125,16 @@ export function GenerateWizard({
     setIsGenerating(true)
 
     try {
-      const res = await fetch('/api/ai/generate-stream', {
+      const endpoint = sourceIdea ? '/api/ai/generate-from-idea' : '/api/ai/generate-stream'
+      const payload = sourceIdea
+        ? { ideaId: sourceIdea.id, postType, slideCount, preloadedClientData: preloadedClientData ?? undefined }
+        : { clientId, platform, postType, slideCount, priorityPosts, targetPostCount, preloadedClientData: preloadedClientData ?? undefined }
+
+      const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         signal: controller.signal,
-        body: JSON.stringify({
-          clientId,
-          platform,
-          postType,
-          slideCount,
-          priorityPosts,
-          targetPostCount,
-          preloadedClientData: preloadedClientData ?? undefined,
-        }),
+        body: JSON.stringify(payload),
       })
 
       if (!res.ok) {
@@ -165,12 +175,30 @@ export function GenerateWizard({
   function handlePostRemoved(postId: string) {
     setGeneratedPosts((prev) => prev.filter((p) => p.post.id !== postId))
     setStreamTotal((t) => t - 1)
+
+    // Reset idea back to "new" when the generated post is discarded
+    if (sourceIdea) {
+      void fetch('/api/ideas', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ideaId: sourceIdea.id, status: 'new' }),
+      })
+    }
   }
 
   function handlePostApproved(postId: string) {
     setGeneratedPosts((prev) => prev.filter((p) => p.post.id !== postId))
     setApprovedCount((c) => c + 1)
     setStreamTotal((t) => t - 1)
+
+    // Link the approved post to the idea (status already set to 'generated' by the route)
+    if (sourceIdea && approvedCount === 0) {
+      void fetch('/api/ideas', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ideaId: sourceIdea.id, postId }),
+      })
+    }
   }
 
   function handlePostRegenerated(postId: string, updatedPost: PostData, updatedValidation: ValidationData) {
@@ -244,7 +272,7 @@ export function GenerateWizard({
       : 'Optional'
 
   return (
-    <GenerateShell currentStep={step} onCancel={() => router.push('/dashboard')} onStepClick={handleStepClick}>
+    <GenerateShell currentStep={step} onCancel={() => router.push('/dashboard')} onStepClick={handleStepClick} sourceIdea={sourceIdea}>
       {step === 'client' && (
         <WizardCard title="Client & platform" subtitle="Choose which client and platform to generate for">
           <StepClient
@@ -294,6 +322,7 @@ export function GenerateWizard({
           streamTotal={streamTotal}
           generatedCount={generatedPosts.length}
           researchPhase={researchPhase}
+          isIdeaFlow={!!sourceIdea}
         />
       )}
 

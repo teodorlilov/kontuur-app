@@ -4,7 +4,7 @@ import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { createUserRecord } from '@/lib/auth/create-user-record'
 import { getAuthUser, getCachedUserRecord } from '@/lib/auth/session'
-import { getCachedAgency, getCachedAgencyClients, getCachedPendingRows } from '@/lib/queries/cache'
+import { getCachedAgency, getCachedAgencyClients, getCachedPendingRows, getCachedNewIdeasCount } from '@/lib/queries/cache'
 import { USER_AUTH_COLUMNS } from '@/lib/queries/select-columns'
 import { AuthProvider } from '@/components/providers/auth-provider'
 import { Sidebar } from '@/components/layout/sidebar'
@@ -43,6 +43,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   let agencyMode: 'agency' | 'solo' = 'agency'
   let pendingCount = 0
+  let ideasCount = 0
   let agencyName = ''
 
   if (userData) {
@@ -57,6 +58,9 @@ export default async function DashboardLayout({ children }: { children: React.Re
     // Pending review count for badge — React cache deduplicates with clients/dashboard pages
     const pendingRows = await getCachedPendingRows(userData.agency_id)
     pendingCount = pendingRows.length
+
+    // New ideas count for sidebar badge
+    ideasCount = await getCachedNewIdeasCount(userData.agency_id)
   }
 
   return (
@@ -64,7 +68,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
       <NextTopLoader color="#2C3E50" height={2} showSpinner={false} />
       <AuthProvider>
         <div className="flex h-screen overflow-hidden" style={{ background: 'var(--color-page)' }}>
-          <Sidebar agencyMode={agencyMode} pendingCount={pendingCount} agencyName={agencyName} />
+          <Sidebar agencyMode={agencyMode} pendingCount={pendingCount} ideasCount={ideasCount} agencyName={agencyName} />
           <main className="flex-1 overflow-y-auto">{children}</main>
         </div>
       </AuthProvider>

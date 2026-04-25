@@ -10,16 +10,24 @@ const STAGE_LABELS = [
   'Quality validation',
 ]
 
+const IDEA_STAGE_LABELS = [
+  'Searching for sources',
+  'Enriching idea',
+  'Writing post',
+  'Quality validation',
+]
+
 interface StepLoadingProps {
   clientName: string
   stage: number
   streamTotal: number
   generatedCount: number
   researchPhase: string
+  isIdeaFlow?: boolean
 }
 
 /** Step 4: centered loading view with 4 named stages. */
-export function StepLoading({ clientName, stage, streamTotal, generatedCount, researchPhase }: StepLoadingProps) {
+export function StepLoading({ clientName, stage, streamTotal, generatedCount, researchPhase, isIdeaFlow }: StepLoadingProps) {
   return (
     <div
       style={{
@@ -44,13 +52,13 @@ export function StepLoading({ clientName, stage, streamTotal, generatedCount, re
           marginBottom: '5px',
         }}
       >
-        Generating posts for {clientName}
+        {isIdeaFlow ? `Generating post for ${clientName}` : `Generating posts for ${clientName}`}
       </h2>
       <p style={{ fontSize: '13px', color: 'var(--color-muted)', textAlign: 'center', marginBottom: '28px' }}>
-        Fetching sources, researching content, writing captions
+        {isIdeaFlow ? 'Searching sources, enriching idea, writing post' : 'Fetching sources, researching content, writing captions'}
       </p>
 
-      <StageList stage={stage} researchPhase={researchPhase} />
+      <StageList stage={stage} researchPhase={researchPhase} labels={isIdeaFlow ? IDEA_STAGE_LABELS : STAGE_LABELS} />
 
       {streamTotal > 0 && <ProgressBar current={generatedCount} total={streamTotal} />}
 
@@ -79,10 +87,10 @@ function FrameIcon() {
   )
 }
 
-function StageList({ stage, researchPhase }: { stage: number; researchPhase: string }) {
+function StageList({ stage, researchPhase, labels }: { stage: number; researchPhase: string; labels: string[] }) {
   return (
     <div style={{ width: '100%', maxWidth: '320px', marginBottom: '24px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-      {STAGE_LABELS.map((label, i) => {
+      {labels.map((label, i) => {
         const isDone = i < stage
         const isActive = i === stage
         const displayLabel = isActive && researchPhase ? researchPhase : label

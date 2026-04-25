@@ -622,6 +622,75 @@ export interface Database {
         }
         Relationships: []
       }
+      idea_form_tokens: {
+        Row: {
+          id: string
+          agency_id: string
+          client_id: string
+          token: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          agency_id: string
+          client_id: string
+          token: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          agency_id?: string
+          client_id?: string
+          token?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
+      client_ideas: {
+        Row: {
+          id: string
+          agency_id: string
+          client_id: string
+          token_id: string
+          idea_text: string
+          extra_notes: string | null
+          platform: string | null
+          target_date: string | null
+          status: string
+          generated_post_id: string | null
+          submitted_at: string
+          read_at: string | null
+        }
+        Insert: {
+          id?: string
+          agency_id: string
+          client_id: string
+          token_id: string
+          idea_text: string
+          extra_notes?: string | null
+          platform?: string | null
+          target_date?: string | null
+          status?: string
+          generated_post_id?: string | null
+          submitted_at?: string
+          read_at?: string | null
+        }
+        Update: {
+          id?: string
+          agency_id?: string
+          client_id?: string
+          token_id?: string
+          idea_text?: string
+          extra_notes?: string | null
+          platform?: string | null
+          target_date?: string | null
+          status?: string
+          generated_post_id?: string | null
+          submitted_at?: string
+          read_at?: string | null
+        }
+        Relationships: []
+      }
     }
   }
 }
@@ -631,3 +700,5 @@ export type ClientRow = Database['public']['Tables']['clients']['Row']
 export type BrandProfileRow = Database['public']['Tables']['brand_profiles']['Row']
 export type PostingScheduleRow = Database['public']['Tables']['posting_schedules']['Row']
 export type LanguageRuleRow = Database['public']['Tables']['language_rules']['Row']
+export type IdeaFormTokenRow = Database['public']['Tables']['idea_form_tokens']['Row']
+export type ClientIdeaRow = Database['public']['Tables']['client_ideas']['Row']

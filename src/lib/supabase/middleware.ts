@@ -40,6 +40,8 @@ export async function updateSession(request: NextRequest) {
     pathname.startsWith('/setup-password') ||
     pathname.startsWith('/approve') ||
     pathname.startsWith('/api/approval') ||
+    pathname.startsWith('/ideas') ||
+    pathname.startsWith('/api/ideas/submit') ||
     pathname.startsWith('/privacy') ||
     pathname.startsWith('/terms') ||
     pathname.startsWith('/_next') ||

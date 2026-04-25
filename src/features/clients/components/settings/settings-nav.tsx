@@ -1,11 +1,11 @@
 'use client'
 
 import { useState } from 'react'
-import { User, Pencil, Calendar, Link2, BarChart2 } from 'lucide-react'
+import { User, Pencil, Calendar, Link2, BarChart2, Lightbulb } from 'lucide-react'
 import { formatRelativeTime } from '@/utils/format'
 import type { LucideIcon } from 'lucide-react'
 
-export type SettingsTab = 'basic' | 'brand' | 'schedule' | 'accounts' | 'insights'
+export type SettingsTab = 'basic' | 'brand' | 'schedule' | 'accounts' | 'insights' | 'ideas'
 
 interface NavItem {
   id: SettingsTab
@@ -19,6 +19,7 @@ const NAV_ITEMS: NavItem[] = [
   { id: 'schedule', label: 'Schedule', icon: Calendar },
   { id: 'accounts', label: 'Connected accounts', icon: Link2 },
   { id: 'insights', label: 'Content insights', icon: BarChart2 },
+  { id: 'ideas', label: 'Idea link', icon: Lightbulb },
 ]
 
 // ── Status Card ──────────────────────────────────────────────

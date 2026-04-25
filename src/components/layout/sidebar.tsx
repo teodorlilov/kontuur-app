@@ -9,6 +9,7 @@ import {
   Sparkles,
   ClipboardList,
   Calendar,
+  MessageSquare,
   BarChart2,
   Settings,
   X,
@@ -30,6 +31,7 @@ interface NavItem {
 interface SidebarProps {
   agencyMode: 'agency' | 'solo'
   pendingCount?: number
+  ideasCount?: number
   agencyName?: string
 }
 
@@ -232,7 +234,7 @@ function DecorativeRings() {
   )
 }
 
-export function Sidebar({ agencyMode, pendingCount = 0, agencyName = '' }: SidebarProps) {
+export function Sidebar({ agencyMode, pendingCount = 0, ideasCount = 0, agencyName = '' }: SidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -243,6 +245,7 @@ export function Sidebar({ agencyMode, pendingCount = 0, agencyName = '' }: Sideb
     { label: 'Generate posts', href: '/generate', icon: <Sparkles size={15} /> },
     { label: 'Review queue', href: '/review', icon: <ClipboardList size={15} />, badge: pendingCount },
     { label: 'Calendar', href: '/calendar', icon: <Calendar size={15} /> },
+    { label: 'Client ideas', href: '/ideas', icon: <MessageSquare size={15} />, badge: ideasCount },
     { label: 'Analytics', href: '/analytics', icon: <BarChart2 size={15} /> },
   ]
 
