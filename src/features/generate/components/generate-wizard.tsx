@@ -2,8 +2,9 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Button } from '@/components/ui/button'
+import { Sparkles, Calendar, Send } from 'lucide-react'
 import { toast } from '@/components/ui/toast'
+import { getMondayISO } from '@/utils/date-helpers'
 import { readNDJSONStream } from '@/utils/stream'
 import { GenerateShell, type GenerateStep } from './generate-shell'
 import { STEP_ORDER } from './wizard-topbar'
@@ -84,6 +85,7 @@ export function GenerateWizard({
   const [loadingStage, setLoadingStage] = useState(0)
   const [skippedPillars, setSkippedPillars] = useState<SkippedPillar[]>([])
   const [approvedCount, setApprovedCount] = useState(0)
+  const [discardedCount, setDiscardedCount] = useState(0)
   const abortControllerRef = useRef<AbortController | null>(null)
   const isInitialMount = useRef(true)
 
@@ -175,6 +177,7 @@ export function GenerateWizard({
   function handlePostRemoved(postId: string) {
     setGeneratedPosts((prev) => prev.filter((p) => p.post.id !== postId))
     setStreamTotal((t) => t - 1)
+    setDiscardedCount((c) => c + 1)
 
     // Reset idea back to "new" when the generated post is discarded
     if (sourceIdea) {
@@ -250,6 +253,7 @@ export function GenerateWizard({
   function handleNewRun() {
     setGeneratedPosts([])
     setApprovedCount(0)
+    setDiscardedCount(0)
     setStreamTotal(0)
     setLoadingStage(0)
     setStep('client')
@@ -272,7 +276,7 @@ export function GenerateWizard({
       : 'Optional'
 
   return (
-    <GenerateShell currentStep={step} onCancel={() => router.push('/dashboard')} onStepClick={handleStepClick} sourceIdea={sourceIdea}>
+    <GenerateShell currentStep={step} onCancel={() => router.push('/dashboard')} onStepClick={handleStepClick} sourceIdea={sourceIdea} showTopbar={step !== 'results' || generatedPosts.length === 0}>
       {step === 'client' && (
         <WizardCard title="Client & platform" subtitle="Choose which client and platform to generate for">
           <StepClient
@@ -344,7 +348,10 @@ export function GenerateWizard({
           ) : (
             <AllReviewedState
               approvedCount={approvedCount}
-              onGenerateMore={() => { setApprovedCount(0); setStep('type') }}
+              discardedCount={discardedCount}
+              clientName={clientName}
+              clientId={clientId}
+              onGenerateMore={() => { setApprovedCount(0); setDiscardedCount(0); setStep('type') }}
             />
           )}
         </>
@@ -424,32 +431,147 @@ function NoClientsState() {
 
 function AllReviewedState({
   approvedCount,
+  discardedCount,
+  clientName,
+  clientId,
   onGenerateMore,
 }: {
   approvedCount: number
+  discardedCount: number
+  clientName: string
+  clientId: string
   onGenerateMore: () => void
 }) {
+  const router = useRouter()
+  const [sending, setSending] = useState(false)
+
+  async function handleSendApproval() {
+    setSending(true)
+    try {
+      const res = await fetch('/api/approval/email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clientId, weekStart: getMondayISO() }),
+      })
+      if (!res.ok) {
+        const err = (await res.json()) as { error: string }
+        throw new Error(err.error || 'Failed to send approval email')
+      }
+      const data = (await res.json()) as { postCount: number }
+      toast.success(`Approval sent — ${data.postCount} post${data.postCount !== 1 ? 's' : ''}`)
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Failed to send approval email')
+    } finally {
+      setSending(false)
+    }
+  }
+
+  const stats = [
+    { value: approvedCount, label: 'APPROVED', color: '#5A8A4A' },
+    { value: discardedCount, label: 'DISCARDED', color: '#C07B55' },
+    { value: approvedCount, label: 'ON CALENDAR', color: '#8A8070' },
+  ]
+
   return (
-    <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 text-center">
-      <div className="h-16 w-16 rounded-full bg-green-50 flex items-center justify-center">
-        <svg className="h-8 w-8 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-        </svg>
-      </div>
-      <div>
-        <p className="text-lg font-semibold text-gray-900">All posts reviewed</p>
-        <p className="text-base text-gray-500 mt-1">
+    <div className="flex flex-1 items-center justify-center p-6">
+      <div
+        style={{
+          background: '#fff',
+          borderRadius: 16,
+          boxShadow: '0 2px 16px rgba(44,62,80,0.07)',
+          padding: '48px 40px 40px',
+          maxWidth: 520,
+          width: '100%',
+          textAlign: 'center',
+        }}
+      >
+        {/* Checkmark */}
+        <div
+          style={{
+            width: 56,
+            height: 56,
+            borderRadius: '50%',
+            background: 'rgba(90,138,74,0.10)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            margin: '0 auto 20px',
+          }}
+        >
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#5A8A4A" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+            <path d="M4.5 12.75l6 6 9-13.5" />
+          </svg>
+        </div>
+
+        {/* Heading */}
+        <h2 style={{ fontSize: 22, fontWeight: 600, color: '#1A2630', margin: '0 0 6px' }}>
+          All posts reviewed
+        </h2>
+        <p style={{ fontSize: 14, color: '#8A8070', margin: '0 0 28px' }}>
           {approvedCount > 0
-            ? `${approvedCount} post${approvedCount !== 1 ? 's' : ''} approved and saved.`
+            ? `${approvedCount} post${approvedCount !== 1 ? 's' : ''} approved and saved to calendar for ${clientName}`
             : 'All posts were discarded.'}
         </p>
-      </div>
-      <div className="flex items-center gap-3 mt-2">
-        <Button size="sm" onClick={onGenerateMore}>Generate more</Button>
-        {approvedCount > 0 && (
-          <a href="/calendar" className="text-sm text-gray-500 hover:text-gray-700">View approved posts</a>
-        )}
+
+        {/* Stats */}
+        <div
+          style={{
+            display: 'flex',
+            borderTop: '1px solid rgba(44,62,80,0.08)',
+            borderBottom: '1px solid rgba(44,62,80,0.08)',
+            padding: '20px 0',
+            marginBottom: 28,
+          }}
+        >
+          {stats.map((s) => (
+            <div key={s.label} style={{ flex: 1 }}>
+              <div style={{ fontSize: 28, fontWeight: 600, color: s.color }}>{s.value}</div>
+              <div style={{ fontSize: 11, fontWeight: 500, color: '#8A8070', letterSpacing: 0.5, marginTop: 4 }}>
+                {s.label}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Actions */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <button onClick={onGenerateMore} style={actionBtnStyle}>
+            <Sparkles size={14} />
+            Generate more posts
+          </button>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button onClick={() => router.push('/calendar')} style={{ ...actionBtnStyle, flex: 1 }}>
+              <Calendar size={14} />
+              View in calendar
+            </button>
+            <button
+              onClick={handleSendApproval}
+              disabled={sending || approvedCount === 0}
+              style={{ ...actionBtnStyle, flex: 1, opacity: sending || approvedCount === 0 ? 0.5 : 1 }}
+            >
+              <Send size={14} />
+              {sending ? 'Sending...' : 'Send for approval'}
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   )
+}
+
+const actionBtnStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  gap: 8,
+  padding: '10px 16px',
+  fontSize: 13,
+  fontWeight: 500,
+  color: '#8A8070',
+  background: 'none',
+  border: '1px solid rgba(44,62,80,0.12)',
+  borderRadius: 10,
+  cursor: 'pointer',
+  fontFamily: 'inherit',
+  transition: 'all 0.15s',
 }

@@ -11,17 +11,18 @@ interface GenerateShellProps {
   onCancel: () => void
   onStepClick: (step: GenerateStep) => void
   sourceIdea?: ClientIdea
+  showTopbar?: boolean
   children: React.ReactNode
 }
 
-/** Topbar chrome with step indicators for the generate flow. Hidden on results step. */
-export function GenerateShell({ currentStep, onCancel, onStepClick, sourceIdea, children }: GenerateShellProps) {
+/** Topbar chrome with step indicators for the generate flow. */
+export function GenerateShell({ currentStep, onCancel, onStepClick, sourceIdea, showTopbar = true, children }: GenerateShellProps) {
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-      {currentStep !== 'results' && (
+      {showTopbar && (
         <WizardTopbar currentStep={currentStep} onStepClick={onStepClick} onCancel={onCancel} />
       )}
-      {sourceIdea && currentStep !== 'results' && (
+      {sourceIdea && showTopbar && (
         <IdeaBanner idea={sourceIdea} onEdit={() => onStepClick('client')} />
       )}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>{children}</div>
