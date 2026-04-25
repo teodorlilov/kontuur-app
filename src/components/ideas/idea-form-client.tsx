@@ -246,10 +246,9 @@ function BriefCard({
 
         <FieldGroup label="Target date">
           <input
-            type="text"
+            type="date"
             value={brief.targetDate}
             onChange={(e) => onUpdate('targetDate', e.target.value)}
-            placeholder="dd / mm / yyyy"
             style={inputStyle}
           />
         </FieldGroup>
