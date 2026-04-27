@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { ManualAddInModal } from '@/features/sources/components/manual-add-modal'
 import { cn } from '@/utils/cn'
 import { toast } from '@/components/ui/toast'
-import { createSource } from '@/lib/actions/source-actions'
+import { createSource } from '@/features/sources/actions/source-actions'
 import type { SourceSuggestion } from '@/types/api'
 
 interface RssStepProps {

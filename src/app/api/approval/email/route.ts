@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
 import { verifyClientOwnership } from '@/lib/auth/helpers'
-import { createApprovalBatch } from '@/lib/approval/batch'
+import { createApprovalBatch } from '@/features/review/lib/approval-batch'
 import { sendApprovalEmail } from '@/lib/email/resend'
 
 export async function POST(request: Request) {

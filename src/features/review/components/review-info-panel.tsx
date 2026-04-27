@@ -5,8 +5,8 @@ import { formatRelativeTime } from '@/utils/format'
 import { PanelSection } from '@/components/posts/panel-section'
 import { SlopDetector } from '@/components/posts/slop-detector'
 import { QualitySection, SourceInfoSection, MetadataRow } from '@/components/posts/info-panel-sections'
-import { parseValidationJson } from '@/lib/review/parse-validation-json'
-import type { ReviewPost } from '@/lib/review/filter-review-posts'
+import { parseValidationJson } from '@/features/review/lib/parse-validation-json'
+import type { ReviewPost } from '@/features/review/lib/filter-review-posts'
 import type { SlopDetection } from '@/types/api'
 
 interface ReviewInfoPanelProps {

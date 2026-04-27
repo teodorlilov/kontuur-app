@@ -7,7 +7,7 @@ import { createBrowserSupabaseClient } from '@/lib/supabase/client'
 import { validateEmail, validatePassword } from '@/lib/validation'
 import { Input } from '@/components/ui/input'
 import { toast } from '@/components/ui/toast'
-import { AuthLayout } from '@/components/auth/auth-layout'
+import { AuthLayout } from '@/features/auth/components/auth-layout'
 
 type Mode = 'agency' | 'solo'
 

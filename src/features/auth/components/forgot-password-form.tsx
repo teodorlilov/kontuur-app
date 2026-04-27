@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { validateEmail } from '@/lib/validation'
 import { Input } from '@/components/ui/input'
 import { toast } from '@/components/ui/toast'
-import { AuthLayout } from '@/components/auth/auth-layout'
+import { AuthLayout } from '@/features/auth/components/auth-layout'
 
 const FORM_COPY = {
   headline: 'Back in your account in minutes.',

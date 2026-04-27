@@ -1,7 +1,7 @@
 'use client'
 
 import type { AnalyticsMetrics, IGPost, FBPost } from '@/types/api'
-import { MetricCard } from '@/components/dashboard/metric-card'
+import { MetricCard } from '@/components/ui/metric-card'
 import { AiSummaryStrip } from './ai-summary-strip'
 import { PostDayBreakdown } from './post-day-breakdown'
 import { TopPostsTable } from './top-posts-table'

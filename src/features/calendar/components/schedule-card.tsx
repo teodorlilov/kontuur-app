@@ -10,7 +10,7 @@ import { formatRelativeTime, parseTimestamp } from '@/utils/format'
 import { PLATFORMS } from '@/utils/constants'
 import { CarouselSlides } from '@/components/posts/carousel-slides'
 import { QualityScores } from '@/components/posts/quality-scores'
-import { ClientResponseCard } from '@/components/calendar/client-response-card'
+import { ClientResponseCard } from '@/features/calendar/components/client-response-card'
 import { Button } from '@/components/ui/button'
 import { extractAllFlaggedSlides } from '@/utils/extract-flagged-slides'
 import type {

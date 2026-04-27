@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
-import { fetchIdeasForAgency, updateIdeaStatus, markIdeasRead, fetchIdeaById } from '@/lib/ideas'
+import { fetchIdeasForAgency, updateIdeaStatus, markIdeasRead, fetchIdeaById } from '@/features/ideas/lib/ideas'
 import type { IdeaStatus } from '@/types/api'
 
 /** GET — list ideas for the authenticated agency. */

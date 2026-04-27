@@ -1,7 +1,7 @@
 'use client'
 
 import { WizardShell } from '@/components/ui/wizard-shell'
-import type { OnboardingStep } from '@/types/onboarding'
+import type { OnboardingStep } from '@/features/onboarding/types'
 
 interface OnboardingShellProps {
   currentStep: OnboardingStep

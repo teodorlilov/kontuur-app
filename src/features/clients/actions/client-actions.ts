@@ -5,7 +5,7 @@ import { resolveActionAuth, verifyClientOwnership, type SupabaseServerClient } f
 import { parsePillars } from '@/lib/clients/content-pillars'
 import { removeDeletedPillarIds } from '@/lib/clients/sync-source-pillars'
 import type { SourceStrategy } from '@/types/sources'
-import type { ActionResult } from './types'
+import type { ActionResult } from '@/lib/actions/types'
 
 interface UpdateClientInput {
   name?: string

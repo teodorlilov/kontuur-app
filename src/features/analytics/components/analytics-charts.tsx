@@ -12,7 +12,7 @@ import {
   ReferenceDot,
 } from 'recharts'
 import type { AnalyticsMetrics } from '@/types/api'
-import { CHART_COLORS, CHART_AXIS_PROPS, CHART_TOOLTIP_STYLE, LINE_PROPS } from '@/lib/chart-config'
+import { CHART_COLORS, CHART_AXIS_PROPS, CHART_TOOLTIP_STYLE, LINE_PROPS } from '@/features/analytics/lib/chart-config'
 
 interface AnalyticsChartsProps {
   metrics: AnalyticsMetrics

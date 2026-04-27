@@ -3,7 +3,7 @@
 import { useState, useMemo, useCallback } from 'react'
 import { Modal } from '@/components/ui/modal'
 import type { WeightedPillar } from '@/lib/clients/content-pillars'
-import type { StepperState, StepperPhase } from '@/types/pillar-sources'
+import type { StepperState, StepperPhase } from '@/features/sources/types'
 import { buildStepSequence } from './build-step-sequence'
 import { AssignPillarsStep } from './pillar-map-step'
 import { WebsiteUrlStep } from './website-url-step'

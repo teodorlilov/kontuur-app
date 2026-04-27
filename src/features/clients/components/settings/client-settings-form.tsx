@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { ChevronLeft } from 'lucide-react'
 import { parsePillars, serializePillars, type WeightedPillar } from '@/lib/clients/content-pillars'
-import { updateClient } from '@/lib/actions/client-actions'
+import { updateClient } from '@/features/clients/actions/client-actions'
 import { Button } from '@/components/ui/button'
 import { Avatar } from '@/components/ui/avatar'
 import { toast } from '@/components/ui/toast'
@@ -15,7 +15,7 @@ import { BrandProfileTab } from './brand-profile-tab'
 import { ScheduleTab } from './schedule-tab'
 import { ConnectedAccountsTab, bustConnectionsCache } from './connected-accounts-tab'
 import { ContentInsightsTab, type ContentInsights } from './content-insights-tab'
-import { IdeaFormTab } from '@/components/ideas/idea-form-tab'
+import { IdeaFormTab } from '@/features/ideas/components/idea-form-tab'
 
 interface ClientSettingsFormProps {
   clientId: string

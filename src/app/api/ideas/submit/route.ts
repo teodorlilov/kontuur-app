@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { fetchTokenByValue, submitIdeas } from '@/lib/ideas'
+import { fetchTokenByValue, submitIdeas } from '@/features/ideas/lib/ideas'
 
 interface IdeaPayload {
   ideaText: string

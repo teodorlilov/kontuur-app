@@ -1,7 +1,7 @@
 'use client'
 
 import type { AnalyticsMetrics, IGDailyInsight } from '@/types/api'
-import { MetricCard } from '@/components/dashboard/metric-card'
+import { MetricCard } from '@/components/ui/metric-card'
 import { getFollowerCount, calcFollowerGrowthRate } from '../utils/metrics'
 import { AudienceSummary } from './audience-summary'
 import { FollowerTrend } from './follower-trend'

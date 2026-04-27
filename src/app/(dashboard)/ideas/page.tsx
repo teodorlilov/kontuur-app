@@ -1,7 +1,7 @@
 import { requireSessionUser } from '@/lib/auth/session'
 import { getCachedAgencyClients } from '@/lib/queries/cache'
-import { fetchIdeasForAgency } from '@/lib/ideas'
-import { IdeasView } from '@/components/ideas/ideas-view'
+import { fetchIdeasForAgency } from '@/features/ideas/lib/ideas'
+import { IdeasView } from '@/features/ideas/components/ideas-view'
 
 export default async function IdeasPage() {
   const { agencyId } = await requireSessionUser()

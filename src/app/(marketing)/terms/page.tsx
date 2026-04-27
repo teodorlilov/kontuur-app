@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { Footer } from '@/components/marketing/Footer'
+import { Footer } from '@/features/marketing/components/Footer'
 
 export const metadata: Metadata = {
   title: 'Terms of Service — Kontuur',

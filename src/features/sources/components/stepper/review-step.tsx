@@ -1,7 +1,7 @@
 'use client'
 
 import { Button } from '@/components/ui/button'
-import type { StepperState } from '@/types/pillar-sources'
+import type { StepperState } from '@/features/sources/types'
 
 interface ReviewStepProps {
   state: StepperState

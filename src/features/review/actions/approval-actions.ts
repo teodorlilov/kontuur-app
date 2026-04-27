@@ -2,8 +2,8 @@
 
 import { revalidateTag } from 'next/cache'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
-import { createApprovalNotification } from '@/lib/notifications/create-approval-notification'
-import type { ActionResult } from './types'
+import { createApprovalNotification } from '@/features/review/lib/create-approval-notification'
+import type { ActionResult } from '@/lib/actions/types'
 
 /** Submit an approval/changes-requested response for a batch of posts. */
 export async function submitApproval(
@@ -43,13 +43,15 @@ export async function submitApproval(
   if (updateError) return { ok: false, error: updateError.message }
 
   if (postNotes && postNotes.length > 0) {
-    for (const { postId, note } of postNotes) {
-      await supabase
-        .from('post_approval_tokens')
-        .update({ client_note: note })
-        .eq('batch_id', token)
-        .eq('post_id', postId)
-    }
+    await Promise.all(
+      postNotes.map(({ postId, note }) =>
+        supabase
+          .from('post_approval_tokens')
+          .update({ client_note: note })
+          .eq('batch_id', token)
+          .eq('post_id', postId)
+      )
+    )
   }
 
   const postIds = tokenRows.map((r) => r.post_id)

@@ -3,12 +3,12 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useParams } from 'next/navigation'
 import { Spinner } from '@/components/ui/spinner'
-import { submitApproval } from '@/lib/actions/approval-actions'
-import { ReviewHeader } from '@/components/approval-page/review-header'
-import { PostList } from '@/components/approval-page/post-list'
-import { PostDetail } from '@/components/approval-page/post-detail'
+import { submitApproval } from '@/features/review/actions/approval-actions'
+import { ReviewHeader } from '@/features/review/components/approval-header'
+import { PostList } from '@/features/review/components/post-list'
+import { PostDetail } from '@/features/review/components/post-detail'
 import type { ApprovalBatchData, ApprovalPostData } from '@/types/api'
-import type { ApprovalPostStatus, ApprovalFilter } from '@/components/approval-page/types'
+import type { ApprovalPostStatus, ApprovalFilter } from '@/features/review/components/types'
 
 type PageState = 'loading' | 'error' | 'review' | 'submitted'
 

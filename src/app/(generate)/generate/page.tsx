@@ -2,7 +2,7 @@ import { requireSessionUser } from '@/lib/auth/session'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { getCachedAgencyClients } from '@/lib/queries/cache'
 import { fetchClientData, type ClientData } from '@/lib/clients/fetch-client-data'
-import { fetchIdeaById } from '@/lib/ideas'
+import { fetchIdeaById } from '@/features/ideas/lib/ideas'
 import { GenerateWizard } from '@/features/generate/components/generate-wizard'
 import type { ClientIdea } from '@/types/api'
 

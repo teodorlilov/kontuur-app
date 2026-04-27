@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { toast } from '@/components/ui/toast'
-import { createSource } from '@/lib/actions/source-actions'
+import { createSource } from '@/features/sources/actions/source-actions'
 
 interface WebsiteConfirmStepProps {
   clientId: string

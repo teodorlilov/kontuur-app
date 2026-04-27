@@ -3,8 +3,8 @@ import { getCachedClientCards, getCachedClientPostStats, getCachedPendingRows } 
 import { parsePillars } from '@/lib/clients/content-pillars'
 import { getPillarColor } from '@/components/ui/colors/pillar-colors'
 import { Topbar } from '@/components/layout/topbar'
-import { ClientsGrid } from '@/components/clients/clients-grid'
-import type { ClientCardData } from '@/types/clients'
+import { ClientsGrid } from '@/features/clients/components/clients-grid'
+import type { ClientCardData } from '@/features/clients/types'
 
 function deriveStatus(pillars: { name: string; hex: string }[]): ClientCardData['status'] {
   return pillars.length > 0 ? 'active' : 'setup'

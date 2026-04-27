@@ -7,7 +7,7 @@ import { generateBriefing as generateBriefingAI } from '@/ai/intelligence/genera
 import { getAgencyNiche } from '@/lib/clients/fetch-client-data'
 import { getMondayISO } from '@/utils/date-helpers'
 import type { Json } from '@/types/database'
-import type { ActionResult } from './types'
+import type { ActionResult } from '@/lib/actions/types'
 
 /** Generate (or refresh) this week's intelligence briefing. */
 export async function generateBriefing(): Promise<ActionResult> {

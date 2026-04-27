@@ -11,7 +11,7 @@ import {
   ReferenceDot,
 } from 'recharts'
 import type { AnalyticsMetrics, InstagramMetrics, IGDailyInsight } from '@/types/api'
-import { CHART_COLORS, CHART_AXIS_PROPS, CHART_TOOLTIP_STYLE } from '@/lib/chart-config'
+import { CHART_COLORS, CHART_AXIS_PROPS, CHART_TOOLTIP_STYLE } from '@/features/analytics/lib/chart-config'
 
 interface FollowerTrendProps {
   metrics: AnalyticsMetrics

@@ -1,10 +1,10 @@
 'use client'
 
 import { useState } from 'react'
-import { ClientCard } from '@/components/clients/client-card'
-import { AddClientCard } from '@/components/clients/add-client-card'
-import { ClientsToolbar } from '@/components/clients/clients-toolbar'
-import type { ClientCardData } from '@/types/clients'
+import { ClientCard } from '@/features/clients/components/client-card'
+import { AddClientCard } from '@/features/clients/components/add-client-card'
+import { ClientsToolbar } from '@/features/clients/components/clients-toolbar'
+import type { ClientCardData } from '@/features/clients/types'
 
 interface ClientsGridProps {
   clients: ClientCardData[]

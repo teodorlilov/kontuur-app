@@ -4,8 +4,8 @@ import { useRef, useEffect } from 'react'
 import { Pencil } from 'lucide-react'
 import { cn } from '@/utils/cn'
 import { Button } from '@/components/ui/button'
-import { QUESTIONS } from '@/lib/onboarding/questions'
-import type { Message } from '@/types/onboarding'
+import { QUESTIONS } from '@/features/onboarding/lib/questions'
+import type { Message } from '@/features/onboarding/types'
 
 interface StepInterviewProps {
   messages: Message[]

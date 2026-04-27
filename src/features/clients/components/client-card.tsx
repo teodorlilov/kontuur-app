@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { AlertTriangle, Info, ChevronRight } from 'lucide-react'
 import { extractInitials, formatRelativeTime } from '@/utils/format'
 import { AVATAR_GRADIENTS, TOP_BAR_GRADIENTS, SETUP_TOP_BAR_GRADIENT } from '@/utils/constants'
-import type { ClientCardData } from '@/types/clients'
+import type { ClientCardData } from '@/features/clients/types'
 
 const STATUS_STYLES = {
   active: { bg: 'rgba(122,154,106,0.12)', color: '#5A8A4A', label: 'Active' },

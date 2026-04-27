@@ -10,7 +10,7 @@ import {
   filterReviewPosts,
   type ReviewPost,
   type ReviewTab,
-} from '@/lib/review/filter-review-posts'
+} from '@/features/review/lib/filter-review-posts'
 import type { BestTimePlatform } from '@/types/api'
 
 interface ReviewQueueProps {

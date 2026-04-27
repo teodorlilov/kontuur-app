@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Copy, ExternalLink } from 'lucide-react'
 import { toast } from '@/components/ui/toast'
-import { SectionCard } from '@/features/settings/components/section-card'
+import { SectionCard } from '@/components/ui/section-card'
 import type { ClientIdea } from '@/types/api'
 
 interface IdeaFormTabProps {

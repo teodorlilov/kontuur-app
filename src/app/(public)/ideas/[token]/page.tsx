@@ -1,5 +1,5 @@
-import { fetchFormContext } from '@/lib/ideas'
-import { IdeaFormClient } from '@/components/ideas/idea-form-client'
+import { fetchFormContext } from '@/features/ideas/lib/ideas'
+import { IdeaFormClient } from '@/features/ideas/components/idea-form-client'
 
 interface PageProps {
   params: Promise<{ token: string }>

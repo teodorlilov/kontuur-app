@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { generateBriefing } from '@/lib/actions/briefing-actions'
+import { generateBriefing } from '@/features/dashboard/actions/briefing-actions'
 
 export function BriefingActions() {
   const [generating, setGenerating] = useState(false)

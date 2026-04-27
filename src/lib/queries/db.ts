@@ -25,7 +25,7 @@ import {
 } from '@/lib/queries/select-columns'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import type { TeamMember, MetaConnection } from '@/types/api'
-import type { ClientRow, BrandProfileRow, PostingScheduleRow } from '@/types/database'
+import type { ClientRow, BrandProfileRow, PostingScheduleRow, Json } from '@/types/database'
 
 type SupabaseClient = Awaited<ReturnType<typeof createServerSupabaseClient>>
 
@@ -179,8 +179,8 @@ export async function fetchConnectionsByClient(
 // ---------- language_rules ----------
 
 export type LanguageRulesRow = {
-  native_cta_phrases: unknown | null
-  formality_rules: unknown | null
+  native_cta_phrases: Json | null
+  formality_rules: Json | null
   language_instructions: string | null
 }
 
@@ -232,8 +232,6 @@ export async function fetchPostHistoryByClient(
       .filter((s): s is string => s !== null) ?? []
   )
 }
-
-// ---------- posts ----------
 
 /**
  * Fetches captions of top-performing approved posts for a client (quality_score_avg >= 7.5).
@@ -340,27 +338,6 @@ export async function fetchThemeDescriptions(
   return (rows ?? []).flatMap((run) =>
     run.generation_themes.map((t) => t.theme_description).filter((t): t is string => t !== null)
   )
-}
-
-/**
- * Fetches combined research history for a client: post_history summaries +
- * recent generation_runs theme descriptions. Used by the DB-fallback path of
- * the research pipeline to build the exclusion list passed to the LLM.
- *
- * Used in:
- *   src/ai/research/research-orchestrator.ts
- */
-export async function fetchResearchHistory(
-  supabase: SupabaseClient,
-  clientId: string,
-  historyLimit = 30,
-  runsLimit = 10
-): Promise<string[]> {
-  const [postTopics, themeDescriptions] = await Promise.all([
-    fetchPostHistoryByClient(supabase, clientId, historyLimit),
-    fetchThemeDescriptions(supabase, clientId, runsLimit),
-  ])
-  return [...postTopics, ...themeDescriptions]
 }
 
 /**

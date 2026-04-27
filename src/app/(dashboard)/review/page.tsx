@@ -3,7 +3,7 @@ import { requireSessionUser } from '@/lib/auth/session'
 import { getCachedAgencyClients } from '@/lib/queries/cache'
 import { POST_COLUMNS } from '@/lib/queries/select-columns'
 import { ReviewQueue } from '@/features/review/components/review-queue'
-import type { ReviewPost } from '@/lib/review/filter-review-posts'
+import type { ReviewPost } from '@/features/review/lib/filter-review-posts'
 import type { BestTimePlatform } from '@/types/api'
 
 export default async function ReviewPage() {

@@ -1,10 +1,15 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
+import {
+  fetchBrandProfileByClient,
+  fetchLanguageRulesByLanguage,
+  fetchPostHistoryByClient,
+  fetchTopPostsByClient,
+} from '@/lib/queries/db'
 import { toCarouselSwipeCues, toFormalityRulesData } from '@/lib/clients/language-rules'
 import type { LanguageConfig } from '@/lib/clients/language-rules'
 import { parsePillars, type WeightedPillar } from '@/lib/clients/content-pillars'
 import type { SourceStrategy } from '@/types/api'
 import { MAX_POST_HISTORY_COUNT } from '@/utils/constants'
-import type { Json } from '@/types/database'
 
 export interface ClientData {
   // from clients table
@@ -68,64 +73,12 @@ export async function fetchClientData(
 
   if (preloaded) return { data: preloaded }
 
-  const [profileResult, langRulesResult, historyResult, topPostsResult] = await Promise.all([
-    supabase
-      .from('brand_profiles')
-      .select(
-        'tone, target_audience, content_pillars, avoid_topics, client_testimonial_voice, language_formality, default_post_type, default_carousel_slides, source_strategy, is_health_niche, language_notes'
-      )
-      .eq('client_id', clientId)
-      .single(),
-    supabase
-      .from('language_rules')
-      .select('native_cta_phrases, formality_rules, language_instructions')
-      .eq('language', client.language)
-      .single(),
-    supabase
-      .from('post_history')
-      .select('topic_summary')
-      .eq('client_id', clientId)
-      .order('created_at', { ascending: false })
-      .limit(MAX_POST_HISTORY_COUNT),
-    supabase
-      .from('posts')
-      .select('caption')
-      .eq('client_id', clientId)
-      .eq('status', 'approved')
-      .gte('quality_score_avg', 7.5)
-      .order('quality_score_avg', { ascending: false })
-      .limit(20),
+  const [profile, langRules, postHistory, topPerformingPosts] = await Promise.all([
+    fetchBrandProfileByClient(supabase, clientId),
+    fetchLanguageRulesByLanguage(supabase, client.language),
+    fetchPostHistoryByClient(supabase, clientId, MAX_POST_HISTORY_COUNT),
+    fetchTopPostsByClient(supabase, clientId),
   ])
-
-  const profile = profileResult.data as {
-    tone: string | null
-    target_audience: string | null
-    content_pillars: string | null
-    avoid_topics: string | null
-    client_testimonial_voice: string | null
-    language_formality: string | null
-    default_post_type: string | null
-    default_carousel_slides: number | null
-    source_strategy: { require_source_grounding?: boolean } | null
-    is_health_niche: boolean | null
-    language_notes: string | null
-  } | null
-
-  const langRules = langRulesResult.data as {
-    native_cta_phrases: Json | null
-    formality_rules: Json | null
-    language_instructions: string | null
-  } | null
-
-  const postHistory =
-    (historyResult.data as Array<{ topic_summary: string | null }> | null)
-      ?.map((h) => h.topic_summary)
-      .filter((s): s is string => s !== null) ?? []
-
-  const topPerformingPosts =
-    (topPostsResult.data as Array<{ caption: string | null }> | null)
-      ?.map((p) => (p.caption ?? '').slice(0, 120))
-      .filter(Boolean) ?? []
 
   return {
     data: {

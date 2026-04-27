@@ -1,7 +1,7 @@
 'use client'
 
 import type { AnalyticsMetrics } from '@/types/api'
-import { MetricCard } from '@/components/dashboard/metric-card'
+import { MetricCard } from '@/components/ui/metric-card'
 import { calcFollowerGrowthRate } from '../utils/metrics'
 
 interface MetricCardsProps {

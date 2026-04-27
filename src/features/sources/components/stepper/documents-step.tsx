@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { toast } from '@/components/ui/toast'
-import { uploadSource } from '@/lib/actions/source-actions'
+import { uploadSource } from '@/features/sources/actions/source-actions'
 
 interface DocumentsStepProps {
   clientId: string

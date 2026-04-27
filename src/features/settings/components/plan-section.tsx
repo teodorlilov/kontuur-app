@@ -3,7 +3,7 @@
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { toast } from '@/components/ui/toast'
-import { SectionCard } from './section-card'
+import { SectionCard } from '@/components/ui/section-card'
 import type { AgencyInfo } from '@/types/api'
 
 interface PlanSectionProps {

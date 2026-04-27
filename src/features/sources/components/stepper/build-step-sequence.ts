@@ -1,4 +1,4 @@
-import type { StepperPhase } from '@/types/pillar-sources'
+import type { StepperPhase } from '@/features/sources/types'
 
 /**
  * Build the ordered step sequence.

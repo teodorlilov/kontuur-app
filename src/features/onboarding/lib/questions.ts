@@ -1,4 +1,4 @@
-import type { Question } from '@/types/onboarding'
+import type { Question } from '@/features/onboarding/types'
 import type { UrlAnalysisResponse } from '@/types/api'
 
 export const QUESTIONS: Question[] = [

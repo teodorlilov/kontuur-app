@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
-import { createApprovalNotification } from '@/lib/notifications/create-approval-notification'
+import { createApprovalNotification } from '@/features/review/lib/create-approval-notification'
 import type { ApprovalResponse, ApprovalPostData, ApprovalBatchData } from '@/types/api'
 
 export async function GET(_request: Request, { params }: { params: Promise<{ token: string }> }) {

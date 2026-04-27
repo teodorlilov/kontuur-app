@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
-import { getOrCreateToken } from '@/lib/ideas'
+import { getOrCreateToken } from '@/features/ideas/lib/ideas'
 
 /** POST — get or create an idea form token for a client. */
 export async function POST(req: Request) {

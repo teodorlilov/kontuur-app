@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { toast } from '@/components/ui/toast'
-import { upsertTavilySource } from '@/lib/actions/source-actions'
+import { upsertTavilySource } from '@/features/sources/actions/source-actions'
 import type { ClientSource } from '@/types/api'
 import type { TavilyConfig } from '@/types/sources'
 

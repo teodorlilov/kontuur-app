@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { getPillarColor } from '@/components/ui/colors/pillar-colors'
-import { updateSource } from '@/lib/actions/source-actions'
+import { updateSource } from '@/features/sources/actions/source-actions'
 import type { WeightedPillar } from '@/lib/clients/content-pillars'
 import type { ClientSource } from '@/types/api'
 

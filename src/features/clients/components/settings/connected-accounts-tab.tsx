@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { cn } from '@/utils/cn'
 import { toast } from '@/components/ui/toast'
-import { disconnectConnection } from '@/lib/actions/connection-actions'
+import { disconnectConnection } from '@/features/clients/actions/connection-actions'
 import { createModuleCache } from '@/utils/module-cache'
 import { PanelHeader } from './basic-info-tab'
 

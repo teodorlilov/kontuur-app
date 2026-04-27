@@ -5,7 +5,7 @@ import { formatRelativeTime } from '@/utils/format'
 import { getPillarColor } from '@/components/ui/colors/pillar-colors'
 import { Button } from '@/components/ui/button'
 import { ActiveBar, ScoreLabel } from '@/components/posts/post-list-parts'
-import type { ReviewPost, ReviewTab } from '@/lib/review/filter-review-posts'
+import type { ReviewPost, ReviewTab } from '@/features/review/lib/filter-review-posts'
 
 interface ReviewPostListProps {
   posts: ReviewPost[]

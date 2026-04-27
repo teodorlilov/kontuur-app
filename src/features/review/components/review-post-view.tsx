@@ -8,12 +8,12 @@ import { ScheduleModal } from '@/components/scheduling/schedule-modal'
 import { PostDetailLayout } from '@/components/posts/post-detail-layout'
 import { RewriteButton } from '@/components/posts/rewrite-button'
 import { ReviewInfoPanel } from './review-info-panel'
-import { parseValidationJson, deriveSlopFromValidation } from '@/lib/review/parse-validation-json'
+import { parseValidationJson, deriveSlopFromValidation } from '@/features/review/lib/parse-validation-json'
 import {
   REWRITE_SCORE_THRESHOLD,
   AUTHENTICITY_URGENT_THRESHOLD,
 } from '@/lib/content-rules/constants'
-import type { ReviewPost } from '@/lib/review/filter-review-posts'
+import type { ReviewPost } from '@/features/review/lib/filter-review-posts'
 import type { CarouselSlide, BestTimePlatform } from '@/types/api'
 
 interface ReviewPostViewProps {

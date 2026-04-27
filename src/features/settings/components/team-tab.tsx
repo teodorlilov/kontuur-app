@@ -1,6 +1,6 @@
 'use client'
 
-import { SectionCard } from './section-card'
+import { SectionCard } from '@/components/ui/section-card'
 import { InviteForm } from './invite-form'
 import { MemberRow } from './member-row'
 import { toast } from '@/components/ui/toast'

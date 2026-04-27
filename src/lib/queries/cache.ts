@@ -2,7 +2,6 @@ import { cache } from 'react'
 import { unstable_cache } from 'next/cache'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { AGENCY_COLUMNS, CLIENT_CARD_COLUMNS, CLIENT_LIST_COLUMNS } from '@/lib/queries/select-columns'
-import { countNewIdeas } from '@/lib/ideas'
 import type { Database } from '@/types/database'
 
 type Agency = Database['public']['Tables']['agencies']['Row']
@@ -142,10 +141,3 @@ export const getCachedPendingRows = cache(async (agencyId: string): Promise<{ cl
   return (data as { client_id: string }[] | null) ?? []
 })
 
-/**
- * Returns count of new (unread) client ideas for the sidebar badge.
- * - React cache(): deduplicates within a single SSR request
- */
-export const getCachedNewIdeasCount = cache(async (agencyId: string): Promise<number> => {
-  return countNewIdeas(agencyId)
-})

@@ -2,7 +2,7 @@
 
 import { revalidateTag } from 'next/cache'
 import { resolveActionAuth } from '@/lib/auth/helpers'
-import type { ActionResult } from './types'
+import type { ActionResult } from '@/lib/actions/types'
 
 /** Disconnect a social connection by ID. */
 export async function disconnectConnection(connectionId: string): Promise<ActionResult> {

@@ -6,7 +6,7 @@ import { createBrowserSupabaseClient } from '@/lib/supabase/client'
 import { validateEmail } from '@/lib/validation'
 import { Input } from '@/components/ui/input'
 import { toast } from '@/components/ui/toast'
-import { AuthLayout } from '@/components/auth/auth-layout'
+import { AuthLayout } from '@/features/auth/components/auth-layout'
 
 const INPUT_STYLE: React.CSSProperties = {
   background: '#fff',

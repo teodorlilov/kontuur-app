@@ -13,7 +13,7 @@ import { validateUpload, getFileExtension } from '@/lib/sources/validate-upload'
 import type { ClientSource } from '@/types/api'
 import type { TavilyConfig } from '@/types/sources'
 import type { Json } from '@/types/database'
-import type { ActionResult } from './types'
+import type { ActionResult } from '@/lib/actions/types'
 
 interface CreateSourceInput {
   type: 'rss' | 'website'

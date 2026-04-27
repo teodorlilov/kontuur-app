@@ -5,6 +5,7 @@ import {
   getAgencyNiche,
   extractPlatformFromMix,
 } from '@/lib/clients/fetch-client-data'
+import { countPendingPostsByClients } from '@/lib/queries/db'
 import { runGenerationBatch } from '@/ai/generation/generation-orchestrator'
 import { performResearch } from '@/ai/research/research-orchestrator'
 import { generateBriefing } from '@/ai/intelligence/generate-briefing'
@@ -277,15 +278,7 @@ export async function GET(request: NextRequest) {
               (c) => c.id
             )
 
-            let pendingCount = 0
-            if (agencyClientIds.length > 0) {
-              const { count } = await supabase
-                .from('posts')
-                .select('id', { count: 'exact', head: true })
-                .eq('status', 'pending_review')
-                .in('client_id', agencyClientIds)
-              pendingCount = count ?? 0
-            }
+            const pendingCount = await countPendingPostsByClients(supabase, agencyClientIds)
 
             const coaching = await generateSoloCoaching({
               niche: agencyNiche ?? 'general',

@@ -2,8 +2,8 @@
 
 import { useState } from 'react'
 import { toast } from '@/components/ui/toast'
-import { updateClient } from '@/lib/actions/client-actions'
-import { createSource, uploadSource, updateSource, deleteSource } from '@/lib/actions/source-actions'
+import { updateClient } from '@/features/clients/actions/client-actions'
+import { createSource, uploadSource, updateSource, deleteSource } from '@/features/sources/actions/source-actions'
 import type { ActionResult } from '@/lib/actions/types'
 import type { ClientSource, SourceSuggestion, SourceStrategy } from '@/types/api'
 

@@ -8,7 +8,7 @@ import { Select } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
 import { PillarEditor } from '@/components/ui/pillar-editor'
 import { WEEKDAY_OPTIONS } from '@/utils/constants'
-import type { OnboardProfile } from '@/types/onboarding'
+import type { OnboardProfile } from '@/features/onboarding/types'
 import type { WeightedPillar } from '@/lib/clients/content-pillars'
 
 interface StepReviewProps {

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { deleteReport } from '@/lib/actions/report-actions'
+import { deleteReport } from '@/features/analytics/actions/report-actions'
 import { capitalizePlatform } from '../utils/metrics'
 import type { AnalyticsReport } from '@/types/api'
 import { createModuleCache } from '@/utils/module-cache'

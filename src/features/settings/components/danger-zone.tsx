@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { toast } from '@/components/ui/toast'
-import { SectionCard } from './section-card'
+import { SectionCard } from '@/components/ui/section-card'
 
 interface DangerZoneProps {
   workspaceName: string
