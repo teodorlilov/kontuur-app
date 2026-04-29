@@ -29,78 +29,83 @@ export async function createSource(
   clientId: string,
   input: CreateSourceInput
 ): Promise<ActionResult<{ source: ClientSource; fetchStatus: string; fetchError?: string }>> {
-  const auth = await resolveActionAuth()
-  if (!auth.ok) return { ok: false, error: auth.error }
-  const { supabase, agencyId } = auth
+  try {
+    const auth = await resolveActionAuth()
+    if (!auth.ok) return { ok: false, error: auth.error }
+    const { supabase, agencyId } = auth
 
-  const owned = await verifyClientOwnership(supabase, clientId, agencyId)
-  if (!owned) return { ok: false, error: 'Not found' }
+    const owned = await verifyClientOwnership(supabase, clientId, agencyId)
+    if (!owned) return { ok: false, error: 'Not found' }
 
-  if (!input.type || !input.label?.trim() || !input.url?.trim()) {
-    return { ok: false, error: 'type, label, and url are required' }
-  }
-
-  if (!['rss', 'website'].includes(input.type)) {
-    return { ok: false, error: 'type must be rss or website' }
-  }
-
-  if (!validateSourceUrl(input.url)) {
-    return { ok: false, error: 'Invalid URL — must be a public http/https URL' }
-  }
-
-  // Test the URL before saving
-  let fetchStatus = 'ok'
-  let fetchError: string | undefined
-
-  if (input.type === 'rss') {
-    const valid = await isValidRssUrl(input.url)
-    if (!valid) {
-      fetchStatus = 'error'
-      fetchError = 'URL did not return a valid RSS or Atom feed'
+    if (!input.type || !input.label?.trim() || !input.url?.trim()) {
+      return { ok: false, error: 'type, label, and url are required' }
     }
-  } else {
-    const result = await fetchWebsiteSource(input.url)
-    if (result.error) {
-      fetchStatus = 'error'
-      fetchError = result.error
+
+    if (!['rss', 'website'].includes(input.type)) {
+      return { ok: false, error: 'type must be rss or website' }
     }
-  }
 
-  const sourceConfig = { ...(input.config ?? {}) }
-  if (input.type === 'website') {
-    if (input.focusInstructions?.trim()) {
-      sourceConfig.focus_instructions = input.focusInstructions.trim()
+    if (!validateSourceUrl(input.url)) {
+      return { ok: false, error: 'Invalid URL — must be a public http/https URL' }
     }
-    if (input.selectedPages && input.selectedPages.length > 0) {
-      sourceConfig.selected_pages = input.selectedPages
+
+    // Test the URL before saving
+    let fetchStatus = 'ok'
+    let fetchError: string | undefined
+
+    if (input.type === 'rss') {
+      const valid = await isValidRssUrl(input.url)
+      if (!valid) {
+        fetchStatus = 'error'
+        fetchError = 'URL did not return a valid RSS or Atom feed'
+      }
+    } else {
+      const result = await fetchWebsiteSource(input.url)
+      if (result.error) {
+        fetchStatus = 'error'
+        fetchError = result.error
+      }
     }
-  }
 
-  const { data: insertedRow, error: insertError } = await supabase
-    .from('client_sources')
-    .insert({
-      client_id: clientId,
-      type: input.type,
-      label: input.label.trim(),
-      url: input.url.trim(),
-      config: sourceConfig as Json,
-      last_fetched_at: new Date().toISOString(),
-      last_fetch_status: fetchStatus,
-      last_fetch_error: fetchError ?? null,
-    })
-    .select(CLIENT_SOURCE_COLUMNS)
-    .single()
+    const sourceConfig = { ...(input.config ?? {}) }
+    if (input.type === 'website') {
+      if (input.focusInstructions?.trim()) {
+        sourceConfig.focus_instructions = input.focusInstructions.trim()
+      }
+      if (input.selectedPages && input.selectedPages.length > 0) {
+        sourceConfig.selected_pages = input.selectedPages
+      }
+    }
 
-  if (insertError) return { ok: false, error: insertError.message }
+    const { data: insertedRow, error: insertError } = await supabase
+      .from('client_sources')
+      .insert({
+        client_id: clientId,
+        type: input.type,
+        label: input.label.trim(),
+        url: input.url.trim(),
+        config: sourceConfig as Json,
+        last_fetched_at: new Date().toISOString(),
+        last_fetch_status: fetchStatus,
+        last_fetch_error: fetchError ?? null,
+      })
+      .select(CLIENT_SOURCE_COLUMNS)
+      .single()
 
-  revalidateTag('agency-clients', 'max')
-  return {
-    ok: true,
-    data: {
-      source: insertedRow as unknown as ClientSource,
-      fetchStatus,
-      fetchError,
-    },
+    if (insertError) return { ok: false, error: insertError.message }
+
+    revalidateTag('agency-clients', 'max')
+    return {
+      ok: true,
+      data: {
+        source: insertedRow as unknown as ClientSource,
+        fetchStatus,
+        fetchError,
+      },
+    }
+  } catch (err) {
+    console.error('[createSource]', err)
+    return { ok: false, error: 'Failed to create source' }
   }
 }
 
