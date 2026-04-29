@@ -27,13 +27,10 @@ export async function fetchWebsiteSource(
 
   try {
     const res = await fetch(url, { signal: controller.signal, headers: FETCH_HEADERS })
+    clearTimeout(timer)
     if (!res.ok) return { markdown: '', error: `HTTP ${res.status}` }
 
-    // Keep the timeout active during body reading — don't clearTimeout
-    // until we have the full HTML (or the timeout fires and aborts).
     const rawHtml = await readLimitedText(res, MAX_HTML_BYTES)
-    clearTimeout(timer)
-
     const { document } = parseHTML(rawHtml)
     const article = new Readability(document as unknown as Document).parse()
 
