@@ -50,6 +50,15 @@ export function PostsTab({ metrics, aiSummary }: PostsTabProps) {
           deltaType="neutral"
           accentColor="var(--accent-m4)"
         />
+        {summary.total_shares > 0 && (
+          <MetricCard
+            label="Total shares"
+            value={summary.total_shares.toLocaleString()}
+            delta="in selected period"
+            deltaType="neutral"
+            accentColor="var(--accent-m1)"
+          />
+        )}
       </div>
 
       <PostDayBreakdown metrics={metrics} />

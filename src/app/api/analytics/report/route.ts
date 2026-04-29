@@ -48,122 +48,153 @@ function buildAudienceDemographics(
   }
 }
 
-// ---- Instagram fetching ----
+// ---- Instagram helpers ----
 
-async function fetchInstagramMetrics(
-  accountId: string,
-  accessToken: string,
-  since: string,
-  until: string
-): Promise<InstagramMetrics> {
-  const token = `access_token=${accessToken}`
-  const igBase = IG_GRAPH_BASE
+const IG_INSIGHT_METRICS =
+  'reach,views,profile_views,follower_count,accounts_engaged,website_clicks,follows_and_unfollows'
 
-  // Convert ISO dates to Unix timestamps (required by Insights API)
-  const sinceTs = Math.floor(new Date(since).getTime() / 1000)
-  const untilTs = Math.floor(new Date(until).getTime() / 1000)
+// IG Business Login API uses 'views' where we store 'impressions'
+const IG_METRIC_KEY_MAP: Record<string, string> = { views: 'impressions' }
 
-  // Account summary
-  const acctRes = await fetch(
-    `${igBase}/${accountId}?fields=followers_count,follows_count,media_count&${token}`
-  )
-  if (!acctRes.ok) throw new Error('Failed to fetch Instagram account data')
-  const account = (await acctRes.json()) as {
-    followers_count: number
-    follows_count: number
-    media_count: number
-  }
+interface IGRawMedia {
+  id: string
+  caption?: string
+  timestamp: string
+  media_type: string
+  like_count: number
+  comments_count: number
+  permalink?: string
+  thumbnail_url?: string
+  media_url?: string
+}
 
-  // Daily insights (uses Unix timestamps)
-  // Instagram Business Login API (graph.instagram.com) uses 'views' for impressions at account level
-  const insightMetrics = 'reach,views,profile_views,follower_count'
-  const insightRes = await fetch(
-    `${igBase}/${accountId}/insights?metric=${insightMetrics}&period=day&since=${sinceTs}&until=${untilTs}&${token}`
-  )
-  let insightData: {
-    data: Array<{ name: string; values: Array<{ value: number; end_time: string }> }>
-  } = { data: [] }
-  if (insightRes.ok) {
-    insightData = (await insightRes.json()) as typeof insightData
-    console.log(
-      '[IG insights] metrics returned:',
-      insightData.data.map((d) => `${d.name}(${d.values.length} days)`)
-    )
-  } else {
-    const errText = await insightRes.text()
-    console.error('[IG insights] fetch failed:', insightRes.status, errText)
-  }
+type IGInsightValue = number | { follow?: number; unfollow?: number }
+type IGInsightData = Array<{ name: string; values: Array<{ value: IGInsightValue; end_time: string }> }>
 
-  // Pivot insights into daily map
-  // Map 'views' (Instagram Business Login API name) → 'impressions' (our internal type)
-  const igMetricKeyMap: Record<string, string> = { views: 'impressions' }
+interface IGPrevPeriodDeltas {
+  reach: number
+  impressions: number
+  profileViews: number
+  newFollowers: number
+  unfollowers: number
+  accountsEngaged: number
+  websiteClicks: number
+}
+
+/** Pivots raw IG insight API data into daily insight records. */
+function pivotIGInsights(data: IGInsightData): IGDailyInsight[] {
   const dailyMap: Record<string, Record<string, unknown>> = {}
-  for (const metric of insightData.data) {
-    const key = igMetricKeyMap[metric.name] ?? metric.name
+  for (const metric of data) {
     for (const entry of metric.values) {
       const date = entry.end_time.split('T')[0]!
       if (!dailyMap[date]) dailyMap[date] = { date }
-      dailyMap[date]![key] = entry.value
+      // follows_and_unfollows returns {follow, unfollow} — split into separate fields
+      if (metric.name === 'follows_and_unfollows') {
+        if (entry.value != null && typeof entry.value === 'object') {
+          const obj = entry.value as Record<string, number>
+          dailyMap[date]!.follows = obj.follow ?? obj.follows ?? 0
+          dailyMap[date]!.unfollows = obj.unfollow ?? obj.unfollows ?? 0
+        }
+      } else {
+        const key = IG_METRIC_KEY_MAP[metric.name] ?? metric.name
+        dailyMap[date]![key] = entry.value
+      }
     }
   }
-  const dailyInsights = Object.values(dailyMap)
+  // Dynamic keys from API — assert to our typed interface
+  return Object.values(dailyMap)
     .map((d) => d as unknown as IGDailyInsight)
     .sort((a, b) => a.date.localeCompare(b.date))
+}
 
-  // Fetch recent media and filter client-side by timestamp
-  // (since/until on /media endpoint are pagination cursors, not date filters)
-  const mediaRes = await fetch(
-    `${igBase}/${accountId}/media?fields=id,caption,timestamp,media_type,like_count,comments_count,permalink,thumbnail_url,media_url&limit=50&${token}`
+/** Fetches basic IG account info. */
+async function fetchIGAccount(
+  accountId: string,
+  token: string
+): Promise<{ followers_count: number; follows_count: number; media_count: number }> {
+  const res = await fetch(
+    `${IG_GRAPH_BASE}/${accountId}?fields=followers_count,follows_count,media_count&${token}`
   )
-  const mediaData = mediaRes.ok
-    ? ((await mediaRes.json()) as {
-        data: Array<{
-          id: string
-          caption?: string
-          timestamp: string
-          media_type: string
-          like_count: number
-          comments_count: number
-          permalink?: string
-          thumbnail_url?: string
-          media_url?: string
-        }>
-      })
-    : { data: [] }
+  if (!res.ok) throw new Error('Failed to fetch Instagram account data')
+  return res.json() as Promise<{ followers_count: number; follows_count: number; media_count: number }>
+}
 
-  // Filter to posts within the selected date range
+/** Fetches daily IG insights for a date range (unix timestamps). */
+async function fetchIGDailyInsights(
+  accountId: string,
+  token: string,
+  sinceTs: number,
+  untilTs: number
+): Promise<IGDailyInsight[]> {
+  const res = await fetch(
+    `${IG_GRAPH_BASE}/${accountId}/insights?metric=${IG_INSIGHT_METRICS}&period=day&since=${sinceTs}&until=${untilTs}&${token}`
+  )
+  if (!res.ok) return []
+  const body = (await res.json()) as { data: IGInsightData }
+  // Debug: log which metrics the API actually returned
+  const metricNames = body.data.map((m) => m.name)
+  console.log('[IG Insights] Metrics returned:', metricNames)
+  if (!metricNames.includes('follows_and_unfollows')) {
+    console.log('[IG Insights] follows_and_unfollows NOT in response — will use follower_count snapshots')
+  }
+  return pivotIGInsights(body.data)
+}
+
+/** Fetches recent media and filters to the given date range. */
+async function fetchIGMediaInRange(
+  accountId: string,
+  token: string,
+  since: string,
+  until: string
+): Promise<IGRawMedia[]> {
+  const res = await fetch(
+    `${IG_GRAPH_BASE}/${accountId}/media?fields=id,caption,timestamp,media_type,like_count,comments_count,permalink,thumbnail_url,media_url&limit=50&${token}`
+  )
+  if (!res.ok) return []
+  const body = (await res.json()) as { data: IGRawMedia[] }
   const sinceDate = new Date(since)
   const untilDate = new Date(until)
   untilDate.setHours(23, 59, 59, 999)
-  const filteredMedia = mediaData.data.filter((m) => {
+  return body.data.filter((m) => {
     const t = new Date(m.timestamp)
     return t >= sinceDate && t <= untilDate
   })
+}
 
-  // Per-post insights (max 20) — all fetches run in parallel
-  const posts: IGPost[] = await Promise.all(
-    filteredMedia.slice(0, 20).map(async (media) => {
-      let saved = 0
-      let reach = 0
-      let impressions = 0
-      try {
-        const postInsightRes = await fetch(
-          `${igBase}/${media.id}/insights?metric=saved,reach,views&${token}`
-        )
-        if (postInsightRes.ok) {
-          const postInsight = (await postInsightRes.json()) as {
-            data: Array<{ name: string; values: Array<{ value: number }> }>
-          }
-          for (const m of postInsight.data) {
-            const val = m.values[0]?.value ?? 0
-            if (m.name === 'saved') saved = val
-            if (m.name === 'reach') reach = val
-            if (m.name === 'views') impressions = val // 'views' = impressions in new API
-          }
-        }
-      } catch {
-        /* ignore individual post errors */
-      }
+/** Fetches insight metrics for a single IG post. */
+async function fetchSingleIGPostInsights(
+  mediaId: string,
+  token: string
+): Promise<{ saved: number; reach: number; impressions: number; shares: number; totalInteractions: number }> {
+  const zero = { saved: 0, reach: 0, impressions: 0, shares: 0, totalInteractions: 0 }
+  try {
+    const res = await fetch(
+      `${IG_GRAPH_BASE}/${mediaId}/insights?metric=saved,reach,views,shares,total_interactions&${token}`
+    )
+    if (!res.ok) return zero
+    const body = (await res.json()) as {
+      data: Array<{ name: string; values: Array<{ value: number }> }>
+    }
+    const result = { ...zero }
+    for (const m of body.data) {
+      const val = m.values[0]?.value ?? 0
+      if (m.name === 'saved') result.saved = val
+      if (m.name === 'reach') result.reach = val
+      if (m.name === 'views') result.impressions = val
+      if (m.name === 'shares') result.shares = val
+      if (m.name === 'total_interactions') result.totalInteractions = val
+    }
+    return result
+  } catch {
+    return zero
+  }
+}
+
+/** Fetches per-post insights for up to 20 media items in parallel. */
+async function fetchIGPostInsights(mediaList: IGRawMedia[], token: string): Promise<IGPost[]> {
+  return Promise.all(
+    mediaList.slice(0, 20).map(async (media) => {
+      const ins = await fetchSingleIGPostInsights(media.id, token)
       return {
         id: media.id,
         caption: media.caption ?? null,
@@ -171,151 +202,185 @@ async function fetchInstagramMetrics(
         media_type: media.media_type,
         like_count: media.like_count,
         comments_count: media.comments_count,
-        saved,
-        reach,
-        impressions,
+        saved: ins.saved,
+        reach: ins.reach,
+        impressions: ins.impressions,
+        shares: ins.shares,
+        total_interactions: ins.totalInteractions,
         permalink: media.permalink,
         thumbnail_url: media.thumbnail_url ?? media.media_url ?? null,
       }
     })
   )
+}
 
-  // Compute summary
-  const totalReach = dailyInsights.reduce((sum, d) => sum + (d.reach ?? 0), 0)
-  const totalImpressions = dailyInsights.reduce((sum, d) => sum + (d.impressions ?? 0), 0)
-  const totalProfileViews = dailyInsights.reduce((sum, d) => sum + (d.profile_views ?? 0), 0)
+/** Sums daily IG insight values into period totals. */
+function sumIGDailyInsights(dailyInsights: IGDailyInsight[]) {
+  return {
+    totalReach: dailyInsights.reduce((s, d) => s + (d.reach ?? 0), 0),
+    totalImpressions: dailyInsights.reduce((s, d) => s + (d.impressions ?? 0), 0),
+    totalProfileViews: dailyInsights.reduce((s, d) => s + (d.profile_views ?? 0), 0),
+    totalAccountsEngaged: dailyInsights.reduce((s, d) => s + (d.accounts_engaged ?? 0), 0),
+    totalWebsiteClicks: dailyInsights.reduce((s, d) => s + (d.website_clicks ?? 0), 0),
+    totalFollows: dailyInsights.reduce((s, d) => s + (d.follows ?? 0), 0),
+    totalUnfollows: dailyInsights.reduce((s, d) => s + (d.unfollows ?? 0), 0),
+  }
+}
 
-  const followers = account.followers_count || 1
-  const totalEngagements = posts.reduce((sum, p) => sum + p.like_count + p.comments_count, 0)
+/** Fallback: derives net follower change from first/last follower_count daily snapshots. */
+function computeNetChangeFromSnapshots(dailyInsights: IGDailyInsight[]): number {
+  const withCount = dailyInsights.filter((d) => d.follower_count != null && d.follower_count > 0)
+  if (withCount.length < 2) return 0
+  return withCount[withCount.length - 1]!.follower_count! - withCount[0]!.follower_count!
+}
+
+/** Computes post-level aggregate metrics. */
+function computeIGPostAggregates(posts: IGPost[], followers: number) {
+  const totalEngagements = posts.reduce((s, p) => s + p.like_count + p.comments_count, 0)
   const avgEngagementRate =
     posts.length > 0 ? Math.round((totalEngagements / posts.length / followers) * 1000) / 10 : 0
+  const totalSaved = posts.reduce((s, p) => s + (p.saved ?? 0), 0)
+  const totalPostReach = posts.reduce((s, p) => s + (p.reach ?? 0), 0)
+  const avgSaveRate =
+    totalPostReach > 0 ? Math.round((totalSaved / totalPostReach) * 1000) / 10 : 0
+  const totalShares = posts.reduce((s, p) => s + (p.shares ?? 0), 0)
+  return { avgEngagementRate, totalSaved, avgSaveRate, totalShares }
+}
 
-  // Compute new followers / unfollowers from daily follower_count snapshots
-  const followerSeries = dailyInsights
-    .filter((d) => d.follower_count != null)
-    .sort((a, b) => a.date.localeCompare(b.date))
-  let newFollowers = 0
-  let unfollowersCount = 0
-  for (let i = 1; i < followerSeries.length; i++) {
-    const curr = followerSeries[i]?.follower_count ?? 0
-    const prev = followerSeries[i - 1]?.follower_count ?? 0
-    const delta = curr - prev
-    if (delta > 0) newFollowers += delta
-    else unfollowersCount += Math.abs(delta)
-  }
-
-  // Fetch previous period for delta computation
-  const periodMs = new Date(until).getTime() - new Date(since).getTime()
-  const prevSinceTsIg = Math.floor((new Date(since).getTime() - periodMs) / 1000)
-  const prevUntilTsIg = sinceTs
-  let prevTotalReach = 0
-  let prevTotalImpressions = 0
-  let prevTotalProfileViews = 0
-  let prevNewFollowers = 0
-  try {
-    const prevInsightRes = await fetch(
-      `${igBase}/${accountId}/insights?metric=${insightMetrics}&period=day&since=${prevSinceTsIg}&until=${prevUntilTsIg}&${token}`
-    )
-    if (prevInsightRes.ok) {
-      const prevInsightData = (await prevInsightRes.json()) as {
-        data: Array<{ name: string; values: Array<{ value: number; end_time: string }> }>
-      }
-      const prevDailyMap: Record<string, Record<string, unknown>> = {}
-      for (const metric of prevInsightData.data) {
-        const key = igMetricKeyMap[metric.name] ?? metric.name
-        for (const entry of metric.values) {
-          const date = entry.end_time.split('T')[0]!
-          if (!prevDailyMap[date]) prevDailyMap[date] = { date }
-          prevDailyMap[date]![key] = entry.value
-        }
-      }
-      const prevInsights = Object.values(prevDailyMap).map((d) => d as unknown as IGDailyInsight)
-      prevTotalReach = prevInsights.reduce((s, d) => s + (d.reach ?? 0), 0)
-      prevTotalImpressions = prevInsights.reduce((s, d) => s + (d.impressions ?? 0), 0)
-      prevTotalProfileViews = prevInsights.reduce((s, d) => s + (d.profile_views ?? 0), 0)
-      const prevFollowerSeries = prevInsights
-        .filter((d) => d.follower_count != null)
-        .sort((a, b) => a.date.localeCompare(b.date))
-      for (let i = 1; i < prevFollowerSeries.length; i++) {
-        const c = prevFollowerSeries[i]?.follower_count ?? 0
-        const p = prevFollowerSeries[i - 1]?.follower_count ?? 0
-        if (c - p > 0) prevNewFollowers += c - p
-      }
-    }
-  } catch {
-    /* delta is optional */
-  }
-
-  // Media type breakdown (no extra API call)
-  const mediaTypeMap: Record<string, { totalER: number; count: number }> = {}
+/** Computes media type breakdown by engagement rate. */
+function computeIGMediaTypeBreakdown(posts: IGPost[], followers: number): MediaTypeBreakdownItem[] {
+  const map: Record<string, { totalER: number; count: number }> = {}
   for (const post of posts) {
     const denominator = post.reach && post.reach > 0 ? post.reach : followers
     const er = ((post.like_count + post.comments_count) / denominator) * 100
-    if (!mediaTypeMap[post.media_type]) mediaTypeMap[post.media_type] = { totalER: 0, count: 0 }
-    mediaTypeMap[post.media_type]!.totalER += er
-    mediaTypeMap[post.media_type]!.count++
+    if (!map[post.media_type]) map[post.media_type] = { totalER: 0, count: 0 }
+    map[post.media_type]!.totalER += er
+    map[post.media_type]!.count++
   }
-  const media_type_breakdown: MediaTypeBreakdownItem[] = Object.entries(mediaTypeMap)
+  return Object.entries(map)
     .map(([type, d]) => ({
       type,
       avg_engagement_rate: Math.round((d.totalER / d.count) * 10) / 10,
       count: d.count,
     }))
     .sort((a, b) => b.avg_engagement_rate - a.avg_engagement_rate)
+}
 
-  const totalSaved = posts.reduce((s, p) => s + (p.saved ?? 0), 0)
-  const totalReachForSR = posts.reduce((s, p) => s + (p.reach ?? 0), 0)
-  const avg_save_rate =
-    totalReachForSR > 0 ? Math.round((totalSaved / totalReachForSR) * 1000) / 10 : 0
-
-  // Audience demographics (optional — may fail for small/non-business accounts)
-  let audience: AudienceDemographics | null = null
+/** Fetches IG audience demographics (optional — may fail for small accounts). */
+async function fetchIGAudienceDemographics(
+  accountId: string,
+  token: string
+): Promise<AudienceDemographics | null> {
   try {
-    const audienceRes = await fetch(
-      `${igBase}/${accountId}/insights?metric=audience_gender_age,audience_city,audience_country&period=lifetime&${token}`
+    const res = await fetch(
+      `${IG_GRAPH_BASE}/${accountId}/insights?metric=audience_gender_age,audience_city,audience_country&period=lifetime&${token}`
     )
-    if (audienceRes.ok) {
-      const { data } = (await audienceRes.json()) as { data: AudienceApiData }
-      audience = buildAudienceDemographics(
-        data,
-        'audience_gender_age',
-        'audience_city',
-        'audience_country'
-      )
+    if (!res.ok) return null
+    const { data } = (await res.json()) as { data: AudienceApiData }
+    return buildAudienceDemographics(data, 'audience_gender_age', 'audience_city', 'audience_country')
+  } catch {
+    return null
+  }
+}
+
+/** Fetches equivalent previous period and returns sums for delta computation. */
+async function fetchIGPrevPeriodDeltas(
+  accountId: string,
+  token: string,
+  sinceTs: number,
+  untilTs: number
+): Promise<IGPrevPeriodDeltas> {
+  const zero: IGPrevPeriodDeltas = {
+    reach: 0, impressions: 0, profileViews: 0,
+    newFollowers: 0, unfollowers: 0, accountsEngaged: 0, websiteClicks: 0,
+  }
+  try {
+    const periodS = untilTs - sinceTs
+    const prevInsights = await fetchIGDailyInsights(accountId, token, sinceTs - periodS, sinceTs)
+    const sums = sumIGDailyInsights(prevInsights)
+    return {
+      reach: sums.totalReach,
+      impressions: sums.totalImpressions,
+      profileViews: sums.totalProfileViews,
+      newFollowers: sums.totalFollows,
+      unfollowers: sums.totalUnfollows,
+      accountsEngaged: sums.totalAccountsEngaged,
+      websiteClicks: sums.totalWebsiteClicks,
     }
   } catch {
-    /* audience data is optional */
+    return zero
   }
+}
+
+/** Assembles the IG summary from computed values and previous-period deltas. */
+function buildIGSummary(
+  sums: ReturnType<typeof sumIGDailyInsights>,
+  postAgg: ReturnType<typeof computeIGPostAggregates>,
+  postsCount: number,
+  deltas: IGPrevPeriodDeltas,
+  dailyInsights: IGDailyInsight[]
+): InstagramMetrics['summary'] {
+  const followsAvailable = sums.totalFollows > 0 || sums.totalUnfollows > 0
+  const netFollowerChange = followsAvailable
+    ? sums.totalFollows - sums.totalUnfollows
+    : computeNetChangeFromSnapshots(dailyInsights)
+  return {
+    total_reach: sums.totalReach,
+    total_impressions: sums.totalImpressions,
+    total_profile_views: sums.totalProfileViews,
+    avg_engagement_rate: postAgg.avgEngagementRate,
+    posts_published: postsCount,
+    new_followers: sums.totalFollows,
+    unfollowers: sums.totalUnfollows,
+    net_follower_change: netFollowerChange,
+    organic_reach_pct: null,
+    paid_reach_pct: null,
+    reach_delta_pct: deltaPct(sums.totalReach, deltas.reach),
+    views_delta_pct: deltaPct(sums.totalImpressions, deltas.impressions),
+    profile_views_delta_pct: deltaPct(sums.totalProfileViews, deltas.profileViews),
+    net_followers_delta_pct: deltaPct(netFollowerChange, deltas.newFollowers - deltas.unfollowers),
+    avg_save_rate: postAgg.avgSaveRate,
+    total_saved: postAgg.totalSaved,
+    total_shares: postAgg.totalShares,
+    total_accounts_engaged: sums.totalAccountsEngaged,
+    total_website_clicks: sums.totalWebsiteClicks,
+    accounts_engaged_delta_pct: deltaPct(sums.totalAccountsEngaged, deltas.accountsEngaged),
+    website_clicks_delta_pct: deltaPct(sums.totalWebsiteClicks, deltas.websiteClicks),
+  }
+}
+
+// ---- Instagram fetching ----
+
+/** Fetches all Instagram metrics for a client account and date range. */
+async function fetchInstagramMetrics(
+  accountId: string,
+  accessToken: string,
+  since: string,
+  until: string
+): Promise<InstagramMetrics> {
+  const token = `access_token=${accessToken}`
+  const sinceTs = Math.floor(new Date(since).getTime() / 1000)
+  const untilTs = Math.floor(new Date(until).getTime() / 1000)
+
+  const account = await fetchIGAccount(accountId, token)
+  const dailyInsights = await fetchIGDailyInsights(accountId, token, sinceTs, untilTs)
+  const media = await fetchIGMediaInRange(accountId, token, since, until)
+  const posts = await fetchIGPostInsights(media, token)
+  const audience = await fetchIGAudienceDemographics(accountId, token)
+
+  const followers = account.followers_count || 1
+  const sums = sumIGDailyInsights(dailyInsights)
+  const postAgg = computeIGPostAggregates(posts, followers)
+  const deltas = await fetchIGPrevPeriodDeltas(accountId, token, sinceTs, untilTs)
 
   return {
     platform: 'instagram',
-    account: {
-      followers_count: account.followers_count,
-      follows_count: account.follows_count,
-      media_count: account.media_count,
-    },
-    summary: {
-      total_reach: totalReach,
-      total_impressions: totalImpressions,
-      total_profile_views: totalProfileViews,
-      avg_engagement_rate: avgEngagementRate,
-      posts_published: posts.length,
-      new_followers: newFollowers,
-      unfollowers: unfollowersCount,
-      organic_reach_pct: null,
-      paid_reach_pct: null,
-      reach_delta_pct: deltaPct(totalReach, prevTotalReach),
-      views_delta_pct: deltaPct(totalImpressions, prevTotalImpressions),
-      profile_views_delta_pct: deltaPct(totalProfileViews, prevTotalProfileViews),
-      followers_delta_pct: deltaPct(newFollowers, prevNewFollowers),
-      avg_save_rate,
-      total_saved: totalSaved,
-      total_shares: 0,
-    },
+    account,
+    summary: buildIGSummary(sums, postAgg, posts.length, deltas, dailyInsights),
     daily_insights: dailyInsights,
     posts,
     audience,
-    media_type_breakdown,
+    media_type_breakdown: computeIGMediaTypeBreakdown(posts, followers),
   }
 }
 

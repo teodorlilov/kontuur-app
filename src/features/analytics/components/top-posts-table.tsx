@@ -86,6 +86,14 @@ export function TopPostsTable({ metrics, limit = 5 }: TopPostsTableProps) {
                     </p>
                     <p className="text-xs text-gray-400">reach</p>
                   </div>
+                  {(post.shares ?? 0) > 0 && (
+                    <div>
+                      <p className="text-xs font-medium text-gray-700">
+                        {(post.shares ?? 0).toLocaleString()}
+                      </p>
+                      <p className="text-xs text-gray-400">shares</p>
+                    </div>
+                  )}
                 </div>
               </div>
             )

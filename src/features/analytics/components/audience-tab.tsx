@@ -1,8 +1,8 @@
 'use client'
 
-import type { AnalyticsMetrics, IGDailyInsight } from '@/types/api'
+import type { AnalyticsMetrics, InstagramMetrics, FacebookMetrics, IGDailyInsight } from '@/types/api'
 import { MetricCard } from '@/components/ui/metric-card'
-import { getFollowerCount, calcFollowerGrowthRate } from '../utils/metrics'
+import { getFollowerCount, getNetFollowerChange, calcFollowerGrowthRate } from '../utils/metrics'
 import { AudienceSummary } from './audience-summary'
 import { FollowerTrend } from './follower-trend'
 import { AudienceSection } from './audience-section'
@@ -11,11 +11,17 @@ interface AudienceTabProps {
   metrics: AnalyticsMetrics
 }
 
+function getDeltaPct(metrics: AnalyticsMetrics): number | null {
+  return metrics.platform === 'instagram'
+    ? (metrics as InstagramMetrics).summary.net_followers_delta_pct
+    : (metrics as FacebookMetrics).summary.followers_delta_pct
+}
+
 /** Audience tab — follower summary, trend chart, growth metrics, demographics. */
 export function AudienceTab({ metrics }: AudienceTabProps) {
   const { summary } = metrics
   const totalFollowers = getFollowerCount(metrics)
-  const netGrowth = summary.new_followers - summary.unfollowers
+  const netChange = getNetFollowerChange(metrics)
   const days = metrics.daily_insights.length || 1
   const avgDailyNew = Math.round((summary.new_followers / days) * 10) / 10
   const peakDay = findPeakAcquisitionDay(metrics)
@@ -27,8 +33,8 @@ export function AudienceTab({ metrics }: AudienceTabProps) {
         total={totalFollowers}
         newCount={summary.new_followers}
         unfollows={summary.unfollowers}
-        netGrowth={netGrowth}
-        followersDeltaPct={summary.followers_delta_pct}
+        netGrowth={netChange}
+        followersDeltaPct={getDeltaPct(metrics)}
       />
       <FollowerTrend metrics={metrics} />
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
@@ -49,7 +55,7 @@ export function AudienceTab({ metrics }: AudienceTabProps) {
         <MetricCard
           label="Growth rate"
           value={growthRate !== null ? `+${growthRate}%` : '—'}
-          delta={growthRate !== null && growthRate >= 2 ? '↑ Strong month' : 'vs starting count'}
+          delta={growthRate !== null && growthRate >= 2 ? '↑ Strong period' : 'vs starting count'}
           deltaType={growthRate !== null && growthRate > 0 ? 'positive' : 'neutral'}
           accentColor="var(--accent-m3)"
         />

@@ -301,6 +301,10 @@ export interface IGDailyInsight {
   impressions?: number
   profile_views?: number
   follower_count?: number
+  accounts_engaged?: number
+  website_clicks?: number
+  follows?: number
+  unfollows?: number
 }
 
 export interface IGPost {
@@ -314,7 +318,8 @@ export interface IGPost {
   reach?: number
   impressions?: number
   permalink?: string
-  shares?: number | null
+  shares?: number
+  total_interactions?: number
   thumbnail_url?: string | null
 }
 
@@ -339,15 +344,20 @@ export interface InstagramMetrics {
     posts_published: number
     new_followers: number
     unfollowers: number
+    net_follower_change: number
     organic_reach_pct: null
     paid_reach_pct: null
     reach_delta_pct: number | null
     views_delta_pct: number | null
     profile_views_delta_pct: number | null
-    followers_delta_pct: number | null
+    net_followers_delta_pct: number | null
     avg_save_rate: number
     total_saved: number
     total_shares: number
+    total_accounts_engaged: number
+    total_website_clicks: number
+    accounts_engaged_delta_pct: number | null
+    website_clicks_delta_pct: number | null
   }
   daily_insights: IGDailyInsight[]
   posts: IGPost[]

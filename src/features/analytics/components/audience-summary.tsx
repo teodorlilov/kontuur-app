@@ -8,7 +8,7 @@ interface AudienceSummaryProps {
   followersDeltaPct: number | null
 }
 
-/** Unified 4-cell follower summary card for the audience tab. */
+/** 4-cell follower summary card for the audience tab. */
 export function AudienceSummary({ total, newCount, unfollows, netGrowth, followersDeltaPct }: AudienceSummaryProps) {
   const today = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
   const deltaLabel = followersDeltaPct != null
