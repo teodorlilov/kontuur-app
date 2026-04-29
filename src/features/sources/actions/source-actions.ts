@@ -8,7 +8,6 @@ import { CLIENT_SOURCE_COLUMNS, CLIENT_SOURCE_FULL_COLUMNS } from '@/lib/queries
 import { validateSourceUrl } from '@/lib/sources/validate-url'
 import { isValidRssUrl } from '@/lib/sources/fetch-rss'
 import { fetchWebsiteSource } from '@/lib/sources/fetch-website'
-import { extractText } from '@/lib/sources/extract-text'
 import { validateUpload, getFileExtension } from '@/lib/sources/validate-upload'
 import type { ClientSource } from '@/types/api'
 import type { TavilyConfig } from '@/types/sources'
@@ -131,6 +130,7 @@ export async function uploadSource(
   const validLabel = label!
 
   const buffer = Buffer.from(await validFile.arrayBuffer())
+  const { extractText } = await import('@/lib/sources/extract-text')
   const { text: extractedText, error: extractionError } = await extractText(buffer, validFile.type)
 
   if (extractionError && !extractedText) {
