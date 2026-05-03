@@ -148,6 +148,7 @@ ${webSearchSection}
 - If a pillar has no available source items, omit that pillar entirely — do NOT fabricate.
 - Never return a topic with source_url null unless source_type is "file".
 - Maximize source diversity: use each available source URL at least once before reusing any URL for a second topic. Each topic from the same URL must cover a genuinely different angle.
+- source_excerpt MUST only contain information that is explicitly present in the source material. Do NOT add facts, mechanisms, claims, or details from your own knowledge — even if they are technically correct. If the source doesn't mention something, it must not appear in the excerpt.
 
 ### TASK: Identify up to ${count} unique post theme${count > 1 ? 's' : ''}. Return only topics grounded in the provided source material — fewer than ${count} is acceptable if sources don't fully cover all pillars.
 [{
@@ -157,7 +158,7 @@ ${webSearchSection}
   "source_url": "url or null",
   "source_title": "title or null",
   "source_type": "rss | website | file | web_search | null",
-  "source_excerpt": "Write in ${this.languageConfig.language}. 5-8 sentences covering: (1) who this is for and what specific problems or conditions it addresses, (2) how it works — name the exact mechanism, technology, or clinical approach, (3) what measurable result or outcome it delivers. Use correct professional terminology as a practitioner in ${this.languageConfig.language} would write it — do NOT transliterate or literally translate terms from the source language. This text will be used directly as the primary grounding context for post generation, so it must be accurate, specific, and written in the client's register. Replace all double-quotes with single-quotes."
+  "source_excerpt": "Write in ${this.languageConfig.language}. 5-8 sentences faithfully summarizing what the source actually says. Include only facts, claims, and details that are explicitly stated in the source — do NOT add information from your own knowledge, even if relevant to the client's niche. Cover the main points the source makes: what topic it addresses, what key facts or advice it presents, and what conclusions it draws. Translate naturally into ${this.languageConfig.language} — do NOT transliterate terms from the source language. Replace all double-quotes with single-quotes."
 }]`
   }
 
