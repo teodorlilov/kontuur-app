@@ -27,9 +27,9 @@ export default async function CalendarPage() {
     clientIds.length > 0
       ? supabase
           .from('posts')
-          .select(`${POST_COLUMNS}, post_approval_tokens(status, client_note, created_at, responded_at)`)
+          .select(`${POST_COLUMNS}, post_approval_tokens(status, client_note, created_at, responded_at), post_images(id)`)
           .in('client_id', clientIds)
-          .in('status', ['approved', 'scheduled'])
+          .in('status', ['approved', 'scheduled', 'publishing', 'published', 'failed'])
           .order('created_at', { ascending: false })
       : Promise.resolve({ data: [] as unknown[] }),
   ])
@@ -62,6 +62,7 @@ export default async function CalendarPage() {
     source_excerpt: string | null
     created_at: string
     post_approval_tokens: ApprovalTokenRow[]
+    post_images: { id: string }[]
   }
 
   const clientNameMap = new Map(clientList.map((c) => [c.id, c.name]))
@@ -72,11 +73,13 @@ export default async function CalendarPage() {
     const latestToken = p.post_approval_tokens
       .slice()
       .sort((a, b) => b.created_at.localeCompare(a.created_at))[0]
+    const { post_approval_tokens: _tokens, post_images: _images, ...rest } = p
     return {
-      ...p,
+      ...rest,
       slides_json: p.slides_json as CalendarPost['slides_json'],
       validation_json: p.validation_json as CalendarPost['validation_json'],
       client_name: clientNameMap.get(p.client_id) ?? 'Unknown',
+      image_count: p.post_images?.length ?? 0,
       approval_status: latestToken?.status ?? null,
       approval_client_note: latestToken?.client_note ?? null,
       approval_responded_at: latestToken?.responded_at ?? null,

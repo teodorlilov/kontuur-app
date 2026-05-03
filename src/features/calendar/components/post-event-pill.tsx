@@ -13,6 +13,12 @@ interface PostEventPillProps {
 
 /** Compact pill shown inside a day cell for a scheduled post. */
 export const PostEventPill = memo(function PostEventPill({ post, onClick, dotColor, bgColor, textColor }: PostEventPillProps) {
+  const statusDotColor =
+    post.status === 'published' ? '#5A8A4A' :
+    post.status === 'failed' ? '#A32D2D' :
+    post.status === 'publishing' ? '#C07B55' :
+    dotColor
+
   return (
     <button
       type="button"
@@ -43,7 +49,7 @@ export const PostEventPill = memo(function PostEventPill({ post, onClick, dotCol
           width: 5,
           height: 5,
           borderRadius: '50%',
-          background: dotColor,
+          background: statusDotColor,
           flexShrink: 0,
         }}
       />

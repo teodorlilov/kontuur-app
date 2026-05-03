@@ -2,6 +2,16 @@
 
 export type PostType = 'single' | 'carousel'
 
+export interface PostImage {
+  id: string
+  publicUrl: string
+  storagePath: string
+  position: number
+  fileName: string | null
+  fileSize: number | null
+  contentType: string | null
+}
+
 // ---- Generate ----
 
 export interface PriorityPost {
@@ -201,6 +211,7 @@ export interface CalendarPost {
   pillar: string | null
   source_excerpt: string | null
   created_at: string
+  image_count: number
   approval_status: string | null
   approval_client_note: string | null
   approval_responded_at: string | null

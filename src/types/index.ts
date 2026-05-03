@@ -46,6 +46,7 @@ export type {
   SendApprovalRequest,
   ApprovalResponse,
   CalendarPost,
+  PostImage,
   TeamMember,
   InviteTeamMemberRequest,
   UpdateAgencyRequest,

@@ -21,7 +21,9 @@ export function useCalendar(initialPosts: CalendarPost[]) {
   )
 
   const scheduledPosts = useMemo(
-    () => posts.filter((p) => p.status === 'scheduled' && p.scheduled_at),
+    () => posts.filter((p) =>
+      ['scheduled', 'publishing', 'published', 'failed'].includes(p.status) && p.scheduled_at
+    ),
     [posts]
   )
 
@@ -155,6 +157,19 @@ export function useCalendar(initialPosts: CalendarPost[]) {
     }
   }, [posts])
 
+  /** Mark a post as published in local state (called after successful manual publish). */
+  const markPostPublished = useCallback((postId: string) => {
+    const now = new Date().toISOString()
+    setPosts((prev) =>
+      prev.map((p) =>
+        p.id === postId
+          ? { ...p, status: 'published', scheduled_at: p.scheduled_at ?? now }
+          : p
+      )
+    )
+    toast.success('Post published to Instagram')
+  }, [])
+
   return {
     posts,
     unscheduledPosts,
@@ -163,6 +178,7 @@ export function useCalendar(initialPosts: CalendarPost[]) {
     unschedulePost,
     updatePostContent,
     handleDrop,
+    markPostPublished,
     saving,
   }
 }

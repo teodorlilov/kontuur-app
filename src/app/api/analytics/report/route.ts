@@ -14,8 +14,7 @@ import type {
   MediaTypeBreakdownItem,
 } from '@/types/api'
 
-const GRAPH_BASE = 'https://graph.facebook.com/v21.0'
-const IG_GRAPH_BASE = 'https://graph.instagram.com/v21.0'
+import { META_GRAPH_BASE as GRAPH_BASE, IG_GRAPH_BASE } from '@/app/api/meta/meta-constants'
 
 // ---- Shared helpers ----
 

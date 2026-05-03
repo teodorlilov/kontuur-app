@@ -150,6 +150,7 @@ export function CalendarView({ initialPosts, clients }: CalendarViewProps) {
     unschedulePost,
     updatePostContent,
     handleDrop,
+    markPostPublished,
     saving,
   } = useCalendar(initialPosts)
 
@@ -391,6 +392,7 @@ export function CalendarView({ initialPosts, clients }: CalendarViewProps) {
         onExitEditMode={() => setEditMode(false)}
         onSaveContent={handleSaveContent}
         onSaveAndResend={handleSaveAndResend}
+        onPublished={markPostPublished}
       />
     </div>
   )

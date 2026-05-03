@@ -3,13 +3,18 @@
 import { useState, useRef, useEffect } from 'react'
 import { cn } from '@/utils/cn'
 import { toast } from '@/components/ui/toast'
-import type { CarouselSlide } from '@/types/api'
+import { ImageSlot } from '@/features/publishing/components/image-slot'
+import type { CarouselSlide, PostImage } from '@/types/api'
 
 interface CarouselSlidesProps {
   slides: CarouselSlide[]
   editable?: boolean
   onSlidesChange?: (slides: CarouselSlide[]) => void
   flaggedSlides?: number[]
+  postId?: string
+  images?: PostImage[]
+  onImageUploaded?: (image: PostImage) => void
+  onImageDeleted?: (imageId: string) => void
 }
 
 /** Inline text field that switches between display and edit on click */
@@ -109,7 +114,7 @@ function EditableField({
   )
 }
 
-export function CarouselSlides({ slides, editable, onSlidesChange, flaggedSlides }: CarouselSlidesProps) {
+export function CarouselSlides({ slides, editable, onSlidesChange, flaggedSlides, postId, images, onImageUploaded, onImageDeleted }: CarouselSlidesProps) {
   const [activeIndex, setActiveIndex] = useState(0)
   const activeSlide = slides[activeIndex]
 
@@ -218,6 +223,16 @@ export function CarouselSlides({ slides, editable, onSlidesChange, flaggedSlides
             <p className="text-xs text-gray-400 italic border-l-2 border-gray-200 pl-2">
               {activeSlide.design_note}
             </p>
+          )}
+
+          {postId && onImageUploaded && onImageDeleted && (
+            <ImageSlot
+              postId={postId}
+              position={activeIndex}
+              image={images?.find((img) => img.position === activeIndex) ?? null}
+              onUploaded={onImageUploaded}
+              onDeleted={onImageDeleted}
+            />
           )}
         </div>
       )}

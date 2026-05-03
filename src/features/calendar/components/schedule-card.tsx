@@ -1,6 +1,6 @@
 'use client'
 
-import { memo, useState, useEffect } from 'react'
+import { memo, useState, useEffect, useCallback } from 'react'
 import { X, ChevronLeft, ChevronRight, Copy, Mail } from 'lucide-react'
 import { cn } from '@/utils/cn'
 import { toast } from '@/components/ui/toast'
@@ -12,10 +12,13 @@ import { CarouselSlides } from '@/components/posts/carousel-slides'
 import { QualityScores } from '@/components/posts/quality-scores'
 import { ClientResponseCard } from '@/features/calendar/components/client-response-card'
 import { Button } from '@/components/ui/button'
+import { ImageSlot } from '@/features/publishing/components/image-slot'
+import { mapImageRow } from '@/features/publishing/lib/map-image-row'
 import { extractAllFlaggedSlides } from '@/utils/extract-flagged-slides'
 import type {
   CalendarPost,
   CarouselSlide,
+  PostImage,
   ValidationCriteria,
   ValidationScores,
 } from '@/types/api'
@@ -44,6 +47,7 @@ interface ScheduleCardProps {
   onExitEditMode?: () => void
   onSaveContent?: (postId: string, updates: ContentUpdates) => Promise<boolean>
   onSaveAndResend?: (postId: string, updates: ContentUpdates) => Promise<void>
+  onPublished?: (postId: string) => void
 }
 
 interface ParsedValidation {
@@ -58,6 +62,16 @@ function parseValidation(json: unknown): ParsedValidation | null {
     return { criteria: obj.criteria as ValidationCriteria, scores: obj.scores as ValidationScores }
   }
   return null
+}
+
+const SECTION_LABEL_STYLE: React.CSSProperties = {
+  fontSize: 9,
+  fontWeight: 500,
+  color: 'var(--color-muted)',
+  letterSpacing: '1px',
+  textTransform: 'uppercase',
+  display: 'block',
+  marginBottom: 6,
 }
 
 const CAPTION_CONTAINER_STYLE = {
@@ -126,6 +140,7 @@ export const ScheduleCard = memo(function ScheduleCard({
   onExitEditMode,
   onSaveContent,
   onSaveAndResend,
+  onPublished,
 }: ScheduleCardProps) {
   const [date, setDate] = useState('')
   const [time, setTime] = useState('09:00')
@@ -133,6 +148,9 @@ export const ScheduleCard = memo(function ScheduleCard({
   const [draftCaption, setDraftCaption] = useState('')
   const [draftSlides, setDraftSlides] = useState<CarouselSlide[]>([])
   const [savingContent, setSavingContent] = useState(false)
+  const [images, setImages] = useState<PostImage[]>([])
+  const [publishing, setPublishing] = useState(false)
+  const [publishError, setPublishError] = useState<string | null>(null)
 
   // Reset / pre-fill when post changes
   useEffect(() => {
@@ -147,15 +165,46 @@ export const ScheduleCard = memo(function ScheduleCard({
     setPlatform(post?.platform ?? 'Instagram')
     setDraftCaption(post?.caption ?? '')
     setDraftSlides(Array.isArray(post?.slides_json) ? (post.slides_json as CarouselSlide[]) : [])
+    setImages([])
+    setPublishError(null)
   }, [post?.id, post?.platform, post?.scheduled_at, post?.caption, post?.slides_json])
+
+  // Fetch images for the current post
+  useEffect(() => {
+    if (!post?.id) return
+    void fetchImages(post.id)
+  }, [post?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function fetchImages(postId: string) {
+    const res = await fetch(`/api/posts/${postId}/images`)
+    if (!res.ok) return
+    const data = await res.json()
+    if (Array.isArray(data.images)) {
+      setImages(data.images.map(mapImageRow))
+    }
+  }
+
+  const handleImageUploaded = useCallback((image: PostImage) => {
+    setImages((prev) => {
+      const filtered = prev.filter((img) => img.position !== image.position)
+      return [...filtered, image].sort((a, b) => a.position - b.position)
+    })
+  }, [])
+
+  const handleImageDeleted = useCallback((imageId: string) => {
+    setImages((prev) => prev.filter((img) => img.id !== imageId))
+  }, [])
 
   if (!isOpen || !post) return null
 
   // Capture for use in closures after null check
   const currentPost = post
   const isScheduled = currentPost.status === 'scheduled'
+  const isPublished = currentPost.status === 'published'
+  const isFailed = currentPost.status === 'failed'
   const slides = Array.isArray(currentPost.slides_json) ? (currentPost.slides_json as CarouselSlide[]) : []
   const isCarousel = currentPost.post_type === 'carousel'
+  const totalImageSlots = isCarousel ? slides.length : 1
   const pillarColor = currentPost.pillar ? getPillarColor(currentPost.pillar) : null
   const score = currentPost.quality_score_avg ?? 0
   const validation = parseValidation(currentPost.validation_json)
@@ -170,6 +219,20 @@ export const ScheduleCard = memo(function ScheduleCard({
     if (!currentPost.caption) return
     void navigator.clipboard.writeText(currentPost.caption)
     toast.success('Copied to clipboard')
+  }
+
+  async function handlePublishNow() {
+    setPublishing(true)
+    setPublishError(null)
+    const res = await fetch(`/api/posts/${currentPost.id}/publish`, { method: 'POST' })
+    const data = await res.json()
+    if (res.ok) {
+      onPublished?.(currentPost.id)
+      onClose()
+    } else {
+      setPublishError(data.error ?? 'Publish failed')
+      setPublishing(false)
+    }
   }
 
   const flaggedSlideNumbers = editMode
@@ -295,10 +358,10 @@ export const ScheduleCard = memo(function ScheduleCard({
           {/* Tag pills */}
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
             <TagPill
-              bg={isScheduled ? 'var(--color-scheduled-bg)' : 'rgba(44,62,80,0.06)'}
-              color={isScheduled ? 'var(--color-scheduled-fg)' : '#4A5060'}
+              bg={isPublished ? 'rgba(90,138,74,0.12)' : isFailed ? 'rgba(180,50,50,0.12)' : isScheduled ? 'var(--color-scheduled-bg)' : 'rgba(44,62,80,0.06)'}
+              color={isPublished ? '#2A5A1A' : isFailed ? '#B43232' : isScheduled ? 'var(--color-scheduled-fg)' : '#4A5060'}
             >
-              {isScheduled ? 'Scheduled' : 'Unscheduled'}
+              {isPublished ? 'Published' : isFailed ? 'Failed' : currentPost.status === 'publishing' ? 'Publishing' : isScheduled ? 'Scheduled' : 'Unscheduled'}
             </TagPill>
             {currentPost.priority && (
               <TagPill bg="rgba(192,123,85,0.14)" color="var(--color-terracotta)">
@@ -322,6 +385,11 @@ export const ScheduleCard = memo(function ScheduleCard({
             >
               {score}/10
             </TagPill>
+            {images.length > 0 && (
+              <TagPill bg="rgba(44,62,80,0.06)" color="#4A5060">
+                {images.length} of {totalImageSlots} images
+              </TagPill>
+            )}
             {currentPost.approval_status === 'approved' && (
               <TagPill bg="rgba(90,138,74,0.12)" color="#2A5A1A">
                 ✓ Client approved
@@ -368,15 +436,7 @@ export const ScheduleCard = memo(function ScheduleCard({
             {/* Caption */}
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                <span
-                  style={{
-                    fontSize: 9,
-                    fontWeight: 500,
-                    color: 'var(--color-muted)',
-                    letterSpacing: '1px',
-                    textTransform: 'uppercase',
-                  }}
-                >
+                <span style={{ ...SECTION_LABEL_STYLE, display: undefined, marginBottom: undefined }}>
                   Caption
                 </span>
                 <button
@@ -422,242 +482,49 @@ export const ScheduleCard = memo(function ScheduleCard({
             {/* Carousel slides */}
             {isCarousel && slides.length > 0 && (
               <div>
-                <span
-                  style={{
-                    fontSize: 9,
-                    fontWeight: 500,
-                    color: 'var(--color-muted)',
-                    letterSpacing: '1px',
-                    textTransform: 'uppercase',
-                    display: 'block',
-                    marginBottom: 6,
-                  }}
-                >
-                  Carousel slides
-                </span>
+                <span style={SECTION_LABEL_STYLE}>Carousel slides</span>
                 <CarouselSlides
                   slides={editMode ? draftSlides : slides}
                   editable={editMode}
                   onSlidesChange={editMode ? setDraftSlides : undefined}
                   flaggedSlides={flaggedSlideNumbers}
+                  postId={currentPost.id}
+                  images={images}
+                  onImageUploaded={handleImageUploaded}
+                  onImageDeleted={handleImageDeleted}
+                />
+              </div>
+            )}
+
+            {/* Single post image slot */}
+            {!isCarousel && (
+              <div>
+                <span style={SECTION_LABEL_STYLE}>Image</span>
+                <ImageSlot
+                  postId={currentPost.id}
+                  position={0}
+                  image={images.find((img) => img.position === 0) ?? null}
+                  onUploaded={handleImageUploaded}
+                  onDeleted={handleImageDeleted}
                 />
               </div>
             )}
 
             {/* Schedule form — hidden in edit mode */}
             {!editMode && (
-              <div
-                style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: 10,
-                  borderTop: '0.5px solid rgba(44,62,80,0.07)',
-                  paddingTop: 14,
-                }}
-              >
-                <div style={{ display: 'flex', gap: 10 }}>
-                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
-                    <label
-                      htmlFor="card-date"
-                      style={{ fontSize: 10, fontWeight: 500, color: 'var(--color-muted)' }}
-                    >
-                      Date
-                    </label>
-                    <input
-                      id="card-date"
-                      type="date"
-                      value={date}
-                      onChange={(e) => setDate(e.target.value)}
-                      min={new Date().toISOString().slice(0, 10)}
-                      style={{
-                        fontSize: 12,
-                        border: '0.5px solid var(--color-border-2)',
-                        borderRadius: 7,
-                        padding: '7px 10px',
-                        fontFamily: 'inherit',
-                        outline: 'none',
-                        color: 'var(--color-text-1)',
-                      }}
-                    />
-                  </div>
-                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
-                    <label
-                      htmlFor="card-time"
-                      style={{ fontSize: 10, fontWeight: 500, color: 'var(--color-muted)' }}
-                    >
-                      Time
-                    </label>
-                    <input
-                      id="card-time"
-                      type="time"
-                      value={time}
-                      onChange={(e) => setTime(e.target.value)}
-                      style={{
-                        fontSize: 12,
-                        border: '0.5px solid var(--color-border-2)',
-                        borderRadius: 7,
-                        padding: '7px 10px',
-                        fontFamily: 'inherit',
-                        outline: 'none',
-                        color: 'var(--color-text-1)',
-                      }}
-                    />
-                  </div>
-                </div>
-
-                {/* Platform selector */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  <span style={{ fontSize: 10, fontWeight: 500, color: 'var(--color-muted)' }}>
-                    Platform
-                  </span>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
-                    {PLATFORMS.map((p) => (
-                      <button
-                        key={p}
-                        type="button"
-                        onClick={() => setPlatform(p)}
-                        style={{
-                          fontSize: 10,
-                          padding: '5px 10px',
-                          borderRadius: 5,
-                          border: platform === p ? 'none' : '0.5px solid var(--color-border-2)',
-                          background: platform === p ? 'var(--color-brand)' : '#fff',
-                          color: platform === p ? '#ECE8E1' : 'var(--color-muted)',
-                          cursor: 'pointer',
-                          fontFamily: 'inherit',
-                          fontWeight: 500,
-                          transition: 'all 0.15s',
-                        }}
-                      >
-                        {p}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
+              <ScheduleForm
+                date={date}
+                time={time}
+                platform={platform}
+                onDateChange={setDate}
+                onTimeChange={setTime}
+                onPlatformChange={setPlatform}
+              />
             )}
           </div>
 
           {/* Right: quality + source */}
-          <div
-            className="w-full md:w-[260px] border-t md:border-t-0 border-[rgba(44,62,80,0.07)] md:overflow-y-auto"
-            style={{
-              flexShrink: 0,
-              padding: 18,
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 14,
-            }}
-          >
-            {/* Overall score */}
-            <div style={{ textAlign: 'center' }}>
-              <span
-                style={{
-                  fontSize: 9,
-                  fontWeight: 500,
-                  color: 'var(--color-muted)',
-                  letterSpacing: '1px',
-                  textTransform: 'uppercase',
-                  display: 'block',
-                  marginBottom: 4,
-                }}
-              >
-                Quality
-              </span>
-              <span
-                style={{
-                  fontSize: 28,
-                  fontWeight: 600,
-                  color: score >= 9 ? '#5A8A4A' : score >= 7 ? '#C07B55' : '#B43232',
-                }}
-              >
-                {score}
-              </span>
-            </div>
-
-            {/* Detailed quality breakdown */}
-            {validation && (
-              <QualityScores criteria={validation.criteria} scores={validation.scores} />
-            )}
-
-            {/* Quality issues */}
-            {validation?.criteria.issues && validation.criteria.issues.length > 0 && (
-              <div
-                style={{
-                  background: 'rgba(192,123,85,0.08)',
-                  borderRadius: 8,
-                  padding: '10px 12px',
-                }}
-              >
-                {validation.criteria.issues.map((issue, i) => (
-                  <p
-                    key={i}
-                    style={{
-                      fontSize: 11,
-                      color: '#C07B55',
-                      lineHeight: 1.5,
-                      marginBottom: i < validation.criteria.issues.length - 1 ? 6 : 0,
-                    }}
-                  >
-                    &ldquo;{issue.description}&rdquo;
-                  </p>
-                ))}
-              </div>
-            )}
-
-            {/* Source */}
-            {currentPost.source_title && (
-              <div>
-                <span
-                  style={{
-                    fontSize: 9,
-                    fontWeight: 500,
-                    color: 'var(--color-muted)',
-                    letterSpacing: '1px',
-                    textTransform: 'uppercase',
-                    display: 'block',
-                    marginBottom: 6,
-                  }}
-                >
-                  Source
-                </span>
-                <p style={{ fontSize: 11, fontWeight: 500, color: 'var(--color-text-1)', marginBottom: 4 }}>
-                  {currentPost.source_type ? `${currentPost.source_type} \u00B7 ` : ''}
-                  {currentPost.source_title}
-                </p>
-                {currentPost.source_excerpt && (
-                  <p
-                    style={{
-                      fontSize: 11,
-                      color: 'var(--color-muted)',
-                      lineHeight: 1.45,
-                      display: '-webkit-box',
-                      WebkitLineClamp: 3,
-                      WebkitBoxOrient: 'vertical',
-                      overflow: 'hidden',
-                      marginBottom: 6,
-                    }}
-                  >
-                    {currentPost.source_excerpt}
-                  </p>
-                )}
-                {currentPost.source_url && (
-                  <a
-                    href={currentPost.source_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{
-                      fontSize: 11,
-                      color: 'var(--color-terracotta)',
-                      textDecoration: 'none',
-                    }}
-                  >
-                    Verify on Google &rarr;
-                  </a>
-                )}
-              </div>
-            )}
-          </div>
+          <QualitySidebar score={score} validation={validation} currentPost={currentPost} />
         </div>
 
         {/* Card footer — edit mode vs normal */}
@@ -669,57 +536,23 @@ export const ScheduleCard = memo(function ScheduleCard({
             saving={savingContent}
           />
         ) : (
-          <div
-            style={{
-              padding: '14px 24px',
-              borderTop: '0.5px solid rgba(44,62,80,0.07)',
-              display: 'flex',
-              flexWrap: 'wrap',
-              gap: 8,
-              flexShrink: 0,
-            }}
-          >
-            <Button
-              onClick={handleSchedule}
-              disabled={!date || isScheduling}
-              loading={isScheduling}
-              style={{ flex: 1 }}
-            >
-              {isScheduled ? 'Update schedule' : 'Schedule to calendar'}
-            </Button>
-            {isScheduled ? (
-              <Button
-                variant="secondary"
-                onClick={() => onUnschedule(currentPost.id)}
-              >
-                Unschedule
-              </Button>
-            ) : (
-              <Button
-                variant="secondary"
-                onClick={() => onSkip(currentPost.id)}
-              >
-                Skip for now
-              </Button>
-            )}
-            {isScheduled && onSendApproval && (
-              <Button
-                variant="secondary"
-                onClick={() => onSendApproval(currentPost.id)}
-                disabled={approvalSending}
-                loading={approvalSending}
-              >
-                <Mail style={{ width: 12, height: 12 }} />
-                Send for approval
-              </Button>
-            )}
-            <Button
-              variant="danger"
-              onClick={() => onDelete(currentPost.id)}
-            >
-              Delete post
-            </Button>
-          </div>
+          <NormalFooter
+            date={date}
+            isScheduled={isScheduled}
+            isPublished={isPublished}
+            isScheduling={isScheduling}
+            currentPost={currentPost}
+            images={images}
+            publishing={publishing}
+            publishError={publishError}
+            approvalSending={approvalSending}
+            onSchedule={handleSchedule}
+            onUnschedule={onUnschedule}
+            onSkip={onSkip}
+            onSendApproval={onSendApproval}
+            onDelete={onDelete}
+            onPublishNow={() => { void handlePublishNow() }}
+          />
         )}
       </div>
     </div>
@@ -794,5 +627,163 @@ function TagPill({
       )}
       {children}
     </span>
+  )
+}
+
+/** Date/time/platform scheduling form. */
+function ScheduleForm({
+  date, time, platform, onDateChange, onTimeChange, onPlatformChange,
+}: {
+  date: string; time: string; platform: string
+  onDateChange: (v: string) => void; onTimeChange: (v: string) => void; onPlatformChange: (v: string) => void
+}) {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 10,
+        borderTop: '0.5px solid rgba(44,62,80,0.07)',
+        paddingTop: 14,
+      }}
+    >
+      <div style={{ display: 'flex', gap: 10 }}>
+        <ScheduleInput id="card-date" label="Date" type="date" value={date} onChange={onDateChange} min={new Date().toISOString().slice(0, 10)} />
+        <ScheduleInput id="card-time" label="Time" type="time" value={time} onChange={onTimeChange} />
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+        <span style={{ fontSize: 10, fontWeight: 500, color: 'var(--color-muted)' }}>Platform</span>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+          {PLATFORMS.map((p) => (
+            <button
+              key={p}
+              type="button"
+              onClick={() => onPlatformChange(p)}
+              style={{
+                fontSize: 10, padding: '5px 10px', borderRadius: 5,
+                border: platform === p ? 'none' : '0.5px solid var(--color-border-2)',
+                background: platform === p ? 'var(--color-brand)' : '#fff',
+                color: platform === p ? '#ECE8E1' : 'var(--color-muted)',
+                cursor: 'pointer', fontFamily: 'inherit', fontWeight: 500, transition: 'all 0.15s',
+              }}
+            >
+              {p}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function ScheduleInput({ id, label, type, value, onChange, min }: {
+  id: string; label: string; type: string; value: string; onChange: (v: string) => void; min?: string
+}) {
+  return (
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
+      <label htmlFor={id} style={{ fontSize: 10, fontWeight: 500, color: 'var(--color-muted)' }}>{label}</label>
+      <input
+        id={id} type={type} value={value} min={min}
+        onChange={(e) => onChange(e.target.value)}
+        style={{
+          fontSize: 12, border: '0.5px solid var(--color-border-2)', borderRadius: 7,
+          padding: '7px 10px', fontFamily: 'inherit', outline: 'none', color: 'var(--color-text-1)',
+        }}
+      />
+    </div>
+  )
+}
+
+/** Right-hand sidebar with quality scores and source info. */
+function QualitySidebar({ score, validation, currentPost }: {
+  score: number; validation: ParsedValidation | null; currentPost: CalendarPost
+}) {
+  return (
+    <div
+      className="w-full md:w-[260px] border-t md:border-t-0 border-[rgba(44,62,80,0.07)] md:overflow-y-auto"
+      style={{ flexShrink: 0, padding: 18, display: 'flex', flexDirection: 'column', gap: 14 }}
+    >
+      <div style={{ textAlign: 'center' }}>
+        <span style={{ ...SECTION_LABEL_STYLE, marginBottom: 4 }}>Quality</span>
+        <span style={{ fontSize: 28, fontWeight: 600, color: score >= 9 ? '#5A8A4A' : score >= 7 ? '#C07B55' : '#B43232' }}>
+          {score}
+        </span>
+      </div>
+
+      {validation && <QualityScores criteria={validation.criteria} scores={validation.scores} />}
+
+      {validation?.criteria.issues && validation.criteria.issues.length > 0 && (
+        <div style={{ background: 'rgba(192,123,85,0.08)', borderRadius: 8, padding: '10px 12px' }}>
+          {validation.criteria.issues.map((issue, i) => (
+            <p key={i} style={{ fontSize: 11, color: '#C07B55', lineHeight: 1.5, marginBottom: i < validation.criteria.issues.length - 1 ? 6 : 0 }}>
+              &ldquo;{issue.description}&rdquo;
+            </p>
+          ))}
+        </div>
+      )}
+
+      {currentPost.source_title && (
+        <div>
+          <span style={SECTION_LABEL_STYLE}>Source</span>
+          <p style={{ fontSize: 11, fontWeight: 500, color: 'var(--color-text-1)', marginBottom: 4 }}>
+            {currentPost.source_type ? `${currentPost.source_type} \u00B7 ` : ''}{currentPost.source_title}
+          </p>
+          {currentPost.source_excerpt && (
+            <p style={{ fontSize: 11, color: 'var(--color-muted)', lineHeight: 1.45, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden', marginBottom: 6 }}>
+              {currentPost.source_excerpt}
+            </p>
+          )}
+          {currentPost.source_url && (
+            <a href={currentPost.source_url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: 'var(--color-terracotta)', textDecoration: 'none' }}>
+              Verify on Google &rarr;
+            </a>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+/** Footer buttons for the normal (non-edit) mode. */
+function NormalFooter({
+  date, isScheduled, isPublished, isScheduling, currentPost, images, publishing, publishError,
+  approvalSending, onSchedule, onUnschedule, onSkip, onSendApproval, onDelete, onPublishNow,
+}: {
+  date: string; isScheduled: boolean; isPublished: boolean; isScheduling: boolean
+  currentPost: CalendarPost; images: PostImage[]; publishing: boolean; publishError: string | null
+  approvalSending?: boolean; onSchedule: () => void; onUnschedule: (id: string) => void
+  onSkip: (id: string) => void; onSendApproval?: (id: string) => void; onDelete: (id: string) => void
+  onPublishNow: () => void
+}) {
+  return (
+    <div
+      style={{
+        padding: '14px 24px', borderTop: '0.5px solid rgba(44,62,80,0.07)',
+        display: 'flex', flexWrap: 'wrap', gap: 8, flexShrink: 0,
+      }}
+    >
+      <Button onClick={onSchedule} disabled={!date || isScheduling} loading={isScheduling} style={{ flex: 1 }}>
+        {isScheduled ? 'Update schedule' : 'Schedule to calendar'}
+      </Button>
+      {isScheduled ? (
+        <Button variant="secondary" onClick={() => onUnschedule(currentPost.id)}>Unschedule</Button>
+      ) : (
+        <Button variant="secondary" onClick={() => onSkip(currentPost.id)}>Skip for now</Button>
+      )}
+      {isScheduled && onSendApproval && (
+        <Button variant="secondary" onClick={() => onSendApproval(currentPost.id)} disabled={approvalSending} loading={approvalSending}>
+          <Mail style={{ width: 12, height: 12 }} /> Send for approval
+        </Button>
+      )}
+      {images.length > 0 && !isPublished && currentPost.status !== 'publishing' && currentPost.platform === 'Instagram' && (
+        <Button onClick={onPublishNow} disabled={publishing} loading={publishing}>Publish to Instagram</Button>
+      )}
+      <Button variant="danger" onClick={() => onDelete(currentPost.id)}>Delete post</Button>
+      {publishError && (
+        <div style={{ width: '100%', fontSize: 11, color: '#A32D2D', background: '#FCEBEB', padding: '8px 10px', borderRadius: 6 }}>
+          {publishError}
+        </div>
+      )}
+    </div>
   )
 }

@@ -226,6 +226,10 @@ export interface Database {
           source_type: string | null
           pillar: string | null
           source_excerpt: string | null
+          ig_creation_id: string | null
+          ig_media_id: string | null
+          publish_error: string | null
+          publish_attempts: number
           created_at: string
         }
         Insert: {
@@ -248,6 +252,10 @@ export interface Database {
           source_type?: string | null
           pillar?: string | null
           source_excerpt?: string | null
+          ig_creation_id?: string | null
+          ig_media_id?: string | null
+          publish_error?: string | null
+          publish_attempts?: number
           created_at?: string
         }
         Update: {
@@ -270,6 +278,46 @@ export interface Database {
           source_type?: string | null
           pillar?: string | null
           source_excerpt?: string | null
+          ig_creation_id?: string | null
+          ig_media_id?: string | null
+          publish_error?: string | null
+          publish_attempts?: number
+          created_at?: string
+        }
+        Relationships: []
+      }
+      post_images: {
+        Row: {
+          id: string
+          post_id: string
+          public_url: string
+          storage_path: string
+          position: number
+          file_name: string | null
+          file_size: number | null
+          content_type: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          post_id: string
+          public_url: string
+          storage_path: string
+          position?: number
+          file_name?: string | null
+          file_size?: number | null
+          content_type?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          post_id?: string
+          public_url?: string
+          storage_path?: string
+          position?: number
+          file_name?: string | null
+          file_size?: number | null
+          content_type?: string | null
           created_at?: string
         }
         Relationships: []
@@ -702,3 +750,4 @@ export type PostingScheduleRow = Database['public']['Tables']['posting_schedules
 export type LanguageRuleRow = Database['public']['Tables']['language_rules']['Row']
 export type IdeaFormTokenRow = Database['public']['Tables']['idea_form_tokens']['Row']
 export type ClientIdeaRow = Database['public']['Tables']['client_ideas']['Row']
+export type PostImageRow = Database['public']['Tables']['post_images']['Row']
