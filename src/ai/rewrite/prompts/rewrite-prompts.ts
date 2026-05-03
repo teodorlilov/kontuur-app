@@ -1,6 +1,7 @@
 import { callAnthropic } from '@/utils/ai-client'
 import { extractTextFromMessage, extractToolInput } from '@/utils/ai'
 import { buildGenerateSystemPrompt } from '@/ai/generation/prompts/prompt-builder'
+import { buildAiTells } from '@/ai/shared/build-prompt-sections'
 import { formatHistory } from '@/ai/utils/prompt-helpers'
 import type { RewriteCaptionInput, RewriteCarouselInput, RewriteCarouselResult } from '../types'
 
@@ -9,7 +10,7 @@ export async function rewriteCaption(input: RewriteCaptionInput): Promise<string
   const lc = client.languageConfig
 
   const message = await callAnthropic({
-    systemPrompt: buildGenerateSystemPrompt(client, input.platform),
+    systemPrompt: buildGenerateSystemPrompt(client, input.platform) + '\n\n' + buildAiTells(lc.language),
     userMessage: `Recent topics already covered — do not drift into: ${formatHistory(client.postHistory, { limit: 15 })}
 
 ORIGINAL POST:
@@ -22,7 +23,7 @@ ${input.aiTells.map((t) => `- ${t}`).join('\n')}
 ${input.qualityIssues?.length ? `\nQUALITY ISSUES TO ADDRESS:\n${input.qualityIssues.map((i) => `- ${i}`).join('\n')}` : ''}
 
 YOUR TASK:
-Rewrite this post so it reads as written by a real person who knows this business deeply. Keep the same topic, facts, key message, and hashtags. Completely change the writing structure.
+Rewrite this post so it reads as written by a real person who knows this business deeply. Keep the same topic, facts, and key message. Completely change the writing structure.
 - Keep the same language (${lc.language}) and formality level (${lc.formality})
 - Keep the same tone: ${client.tone}
 - Fix every AI tell listed above${input.qualityIssues?.length ? '\n- Address every quality issue listed above' : ''}
@@ -45,20 +46,15 @@ Return ONLY the rewritten post text. No explanations, no commentary.`,
 
 export async function rewriteCarousel(input: RewriteCarouselInput): Promise<RewriteCarouselResult> {
   const slidesText = input.slides
-    .map((s, i) => {
-      const role = (s as Record<string, unknown>).slide_role
-      const cta = (s as Record<string, unknown>).cta_text
-      let text = `Slide ${i + 1}${role ? ` (${role})` : ''}:\nHeadline: ${s.headline}\nBody: ${s.body}`
-      if (cta) text += `\nCTA: ${cta}`
-      return text
-    })
+    .map((s, i) => `Slide ${i + 1}:\nHeadline: ${s.headline}\nBody: ${s.body}`)
+
     .join('\n\n')
 
   const { client } = input
   const lc = client.languageConfig
 
   const message = await callAnthropic({
-    systemPrompt: buildGenerateSystemPrompt(client, input.platform),
+    systemPrompt: buildGenerateSystemPrompt(client, input.platform) + '\n\n' + buildAiTells(lc.language),
     userMessage: `Recent topics already covered — do not drift into: ${formatHistory(client.postHistory, { limit: 15 })}
 
 MAIN CAPTION:

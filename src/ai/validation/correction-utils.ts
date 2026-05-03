@@ -22,7 +22,7 @@ export function applyTextCorrections(original: string, validation: PostValidatio
 /**
  * Apply slide-level corrections from language validation.
  * Merges corrected headline/body into existing slides, preserving
- * other slide fields (slide_number, slide_role, design_note, etc.).
+ * other slide fields (slide_number, slide_role, etc.).
  */
 export function applySlideCorrections<T extends { headline: string; body: string }>(
   slides: T[],

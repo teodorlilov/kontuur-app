@@ -293,41 +293,11 @@ describe('computeQualityScores', () => {
 })
 
 // ---------------------------------------------------------------------------
-// CTA exemption
+// CTA scoring
 // ---------------------------------------------------------------------------
 
-describe('CTA exemption for no-CTA structures', () => {
-  it('gives cta_score 10 for MYTH-BREAKER with missing CTA', () => {
-    const result = computeQualityScores(
-      baseDetections({
-        cta_verdict: 'missing',
-        structure_used: 'MYTH-BREAKER',
-      })
-    )
-    expect(result.cta_score).toBe(10)
-  })
-
-  it('gives cta_score 10 for CONFESSION with missing CTA', () => {
-    const result = computeQualityScores(
-      baseDetections({
-        cta_verdict: 'missing',
-        structure_used: 'CONFESSION',
-      })
-    )
-    expect(result.cta_score).toBe(10)
-  })
-
-  it('still penalizes missing CTA for non-exempt structures', () => {
-    const result = computeQualityScores(
-      baseDetections({
-        cta_verdict: 'missing',
-        structure_used: 'OBSERVATION',
-      })
-    )
-    expect(result.cta_score).toBe(1)
-  })
-
-  it('still penalizes missing CTA when no structure_used provided', () => {
+describe('CTA scoring', () => {
+  it('penalizes missing CTA', () => {
     const result = computeQualityScores(
       baseDetections({
         cta_verdict: 'missing',
@@ -343,7 +313,6 @@ describe('CTA exemption for no-CTA structures', () => {
 
 function baseCriteriaDetections(overrides?: Partial<CriteriaDetections>): CriteriaDetections {
   return {
-    structure_is_predictable: false,
     formality_consistent: true,
     source_fidelity_ok: null,
     health_compliant: null,
@@ -354,10 +323,6 @@ function baseCriteriaDetections(overrides?: Partial<CriteriaDetections>): Criter
 describe('computeCriteriaScore', () => {
   it('returns 10 with all passing', () => {
     expect(computeCriteriaScore(baseCriteriaDetections())).toBe(10)
-  })
-
-  it('penalizes predictable structure (-1.5)', () => {
-    expect(computeCriteriaScore(baseCriteriaDetections({ structure_is_predictable: true }))).toBe(9)
   })
 
   it('penalizes formality violation (-1.5)', () => {
@@ -384,8 +349,8 @@ describe('computeCriteriaScore', () => {
     expect(
       computeCriteriaScore(
         baseCriteriaDetections({
-          structure_is_predictable: true, // -1.5
           formality_consistent: false, // -1.5
+          source_fidelity_ok: false, // -1.5
         })
       )
     ).toBe(7) // 10 - 3.0 = 7
@@ -395,13 +360,12 @@ describe('computeCriteriaScore', () => {
     expect(
       computeCriteriaScore(
         baseCriteriaDetections({
-          structure_is_predictable: true, // -1.5
           formality_consistent: false, // -1.5
           health_compliant: false, // -2.0
           source_fidelity_ok: false, // -1.5
         })
       )
-    ).toBe(4) // 10 - 6.5 = 3.5 → Math.round(3.5) = 4
+    ).toBe(5) // 10 - 5.0 = 5
   })
 })
 

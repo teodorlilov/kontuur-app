@@ -150,8 +150,6 @@ export interface ComputedQualityScores {
 // ---------------------------------------------------------------------------
 
 export interface CriteriaDetections {
-  // From LLM (semantic understanding required)
-  structure_is_predictable: boolean
   formality_consistent: boolean
   source_fidelity_ok: boolean | null
   health_compliant: boolean | null
@@ -159,7 +157,6 @@ export interface CriteriaDetections {
 
 export function computeCriteriaScore(d: CriteriaDetections): number {
   let penalty = 0
-  if (d.structure_is_predictable) penalty += CRITERIA_PENALTIES.STRUCTURE_PREDICTABLE
   if (!d.formality_consistent) penalty += CRITERIA_PENALTIES.FORMALITY_VIOLATION
   if (d.source_fidelity_ok === false) penalty += CRITERIA_PENALTIES.SOURCE_FIDELITY_FAIL
   if (d.health_compliant === false) penalty += CRITERIA_PENALTIES.HEALTH_CONTENT_VIOLATION
@@ -303,8 +300,7 @@ export function computeBriefScore(c: ValidationCriteria, hasPillar: boolean): nu
 }
 
 /**
- * Craft score: average of hook, CTA, structure compliance, and authenticity components.
- * When no structure was declared (single post only), structure component is excluded.
+ * Craft score: average of hook, CTA, and authenticity components.
  */
 export function computeCraftScore(c: ValidationCriteria): number {
   const hookScore = HOOK_VERDICT_SCORES[c.hook.verdict] ?? 5
@@ -317,16 +313,7 @@ export function computeCraftScore(c: ValidationCriteria): number {
 
   const authenticity = Math.max(6, 10 - c.ai_tells.length * 1.0)
 
-  if (c.structure_followed === null) {
-    // No declared structure — average of 3 components
-    return Math.max(1, Math.round((hook + cta + authenticity) / 3))
-  }
-
-  const totalChecks = c.structure_followed.checks.length
-  const passesCount = c.structure_followed.checks.filter((ch) => ch.passes).length
-  const structure = totalChecks > 0 ? (passesCount / totalChecks) * 10 : 10
-
-  return Math.max(1, Math.round((hook + cta + structure + authenticity) / 4))
+  return Math.max(1, Math.round((hook + cta + authenticity) / 3))
 }
 
 /**

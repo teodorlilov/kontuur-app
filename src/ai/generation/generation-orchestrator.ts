@@ -195,7 +195,7 @@ export class GenerationPipeline {
 
     // Validate all generated posts, then pick the best
     const results = await Promise.all(
-      posts.map(async ({ caption, declaredStructure }) => {
+      posts.map(async ({ caption }) => {
         const validation = await validatePost({
           caption,
           client: this.ctx.client,
@@ -203,7 +203,6 @@ export class GenerationPipeline {
           sourceContext: this.buildGroundingContext(theme),
           theme: theme.description,
           targetPillar: theme.pillar,
-          declaredStructure: declaredStructure ?? undefined,
           label: 'single',
         })
         return {

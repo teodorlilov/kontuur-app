@@ -13,18 +13,27 @@ const CAROUSEL_OUTPUT_SCHEMA = {
       items: {
         type: 'object',
         properties: {
-          slide_number: { type: 'number' },
-          slide_role: { type: 'string' },
           headline: { type: 'string' },
           body: { type: 'string' },
-          cta_text: { type: ['string', 'null'] },
-          design_note: { type: 'string' },
         },
-        required: ['slide_number', 'slide_role', 'headline', 'body', 'cta_text', 'design_note'],
+        required: ['headline', 'body'],
       },
     },
   },
   required: ['main_caption', 'slides'],
+}
+
+/** Assign slide_number and slide_role from array position. */
+function enrichSlides(slides: Array<{ headline: string; body: string }>): CarouselResult['slides'] {
+  const roles: Array<'cover' | 'content' | 'cta'> = slides.map((_, i) =>
+    i === 0 ? 'cover' : i === slides.length - 1 ? 'cta' : 'content'
+  )
+  return slides.map((s, i) => ({
+    slide_number: i + 1,
+    slide_role: roles[i],
+    headline: s.headline,
+    body: s.body,
+  }))
 }
 
 export async function generateCarousel(
@@ -40,7 +49,8 @@ export async function generateCarousel(
     onToken,
     model: DEFAULT_MODEL,
     outputSchema: CAROUSEL_OUTPUT_SCHEMA,
-    maxTokens: 2048,
+    maxTokens: 4096,
   })
-  return extractToolInput<CarouselResult>(message, CAROUSEL_OUTPUT_SCHEMA)
+  const raw = extractToolInput<{ main_caption: string; slides: Array<{ headline: string; body: string }> }>(message, CAROUSEL_OUTPUT_SCHEMA)
+  return { main_caption: raw.main_caption, slides: enrichSlides(raw.slides) }
 }

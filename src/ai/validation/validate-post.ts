@@ -34,7 +34,6 @@ export interface ValidatePostInput {
   sourceContext?: SourceContext
   theme?: string
   targetPillar?: string
-  declaredStructure?: string
   label: string
 }
 
@@ -57,7 +56,6 @@ export async function validatePost(input: ValidatePostInput): Promise<PostValida
       platform: input.platform,
       theme: input.theme,
       targetPillar: input.targetPillar,
-      declaredStructure: input.declaredStructure,
       sourceContext: input.sourceContext,
     }).catch((err) => {
       console.error(`[${input.label ?? 'validate'}] quality validation failed:`, err)

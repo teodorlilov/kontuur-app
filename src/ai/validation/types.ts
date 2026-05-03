@@ -48,7 +48,7 @@ export interface ValidationCriteria {
   theme_adherence: CriterionResult
   hook: { verdict: HookVerdict; note: string | null }
   cta: { verdict: CtaVerdict; note: string | null }
-  /** null only for single posts with no declaredStructure; carousels always have this */
+  /** null for single posts; carousels have checklist evaluation */
   structure_followed: { checks: StructureCheck[]; passes: boolean } | null
   ai_tells: string[]
   worst_offending_phrase: string | null

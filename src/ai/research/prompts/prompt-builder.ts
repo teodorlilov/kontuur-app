@@ -2,7 +2,7 @@ import { allocateByWeight, type WeightedPillar } from '@/lib/clients/content-pil
 import type { LanguageConfig } from '@/lib/clients/language-rules'
 import type { SourceContext } from '../types'
 import { todayDateString } from '@/ai/utils/prompt-helpers'
-import { buildLanguageRulesSection } from '@/ai/shared/build-client-profile'
+import { buildLanguageRules } from '@/ai/shared/build-prompt-sections'
 
 function buildPromptSection(title: string, tag: string, content: string): string {
   if (!content.trim()) return ''
@@ -54,7 +54,7 @@ You read raw business data and extract post themes that are specific, factual, a
 - NEVER: comparison frames ("X vs Y", "X срещу Y"), category summaries ("ползите от...", "видове..."), article-title endings ("...разликите", "...предимствата").
 - Must be specific to this client — not writeable by any clinic in the niche.
 `,
-      buildLanguageRulesSection(this.languageConfig),
+      buildLanguageRules(this.languageConfig),
     ]
     return parts.filter(Boolean).join('\n\n')
   }

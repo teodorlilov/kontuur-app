@@ -93,35 +93,6 @@ export const CAROUSEL_STRUCTURE_CHECKLIST: readonly string[] = [
 ] as const
 
 
-// ---- Single-post structure checklists ----
-
-export const STRUCTURE_CHECKLISTS: Record<string, readonly string[]> = {
-  'THE COUNTER-INTUITIVE TRUTH': [
-    'Opens by stating a common belief held in this niche as if it is fact',
-    'Introduces the counter-intuitive truth with a specific fact from the source, or a well-established industry pattern if no source is available',
-    'Closes by explaining the concrete benefit of adopting the new way of thinking',
-  ],
-  'SENSORY SNAPSHOT': [
-    'Focuses entirely on one physical or visual detail of the work (not a summary)',
-    'Describes it with precise, sensory vocabulary — not abstract quality adjectives',
-    'Connects the specific detail to the quality of the overall result',
-  ],
-  'PROFESSIONAL PERSPECTIVE': [
-    'Opens by stating a pattern commonly observed in this field',
-    'Offers one deep, specific expert solution — not a list',
-    'Tone is Expert Peer: knowledgeable but not preachy',
-  ],
-  'THE TRANSPARENT PROCESS': [
-    'Reveals one specific part of the job that clients do not normally see',
-    'Explains the concrete reason why this hidden step creates the final value',
-    'Contains at least one specific technical detail (material name, duration, technique)',
-  ],
-  'THE CONTRAST': [
-    'Compares exactly two states (before/after, with/without)',
-    'Uses only factual, descriptive language — no hype words (amazing, life-changing, incredible)',
-    'Evidence speaks for itself without a summarizing claim at the end',
-  ],
-} as const
 
 // ---- Issue type definitions (objective, grounded in structure rules) ----
 
@@ -176,10 +147,8 @@ export const HUMAN_SCORE_PENALTIES = {
 } as const
 
 export const CRITERIA_PENALTIES = {
-  STRUCTURE_PREDICTABLE: 1.5,
   SENTENCE_VARIETY_FAIL: 1.0,
   WORD_COUNT_VIOLATION: 0.75,
-  HASHTAG_VIOLATION: 0.5,
   BANNED_PHRASE_FOUND: 1.0,
   BANNED_PHRASE_CAP: 3.0,
   FORMALITY_VIOLATION: 1.5,

@@ -10,6 +10,7 @@ interface CarouselSlidesProps {
   slides: CarouselSlide[]
   editable?: boolean
   onSlidesChange?: (slides: CarouselSlide[]) => void
+  onBlur?: () => void
   flaggedSlides?: number[]
   postId?: string
   images?: PostImage[]
@@ -21,12 +22,14 @@ interface CarouselSlidesProps {
 function EditableField({
   value,
   onChange,
+  onBlur: onFieldBlur,
   multiline,
   className,
   editClassName,
 }: {
   value: string
   onChange: (v: string) => void
+  onBlur?: () => void
   multiline?: boolean
   className?: string
   editClassName?: string
@@ -52,6 +55,7 @@ function EditableField({
   function commit() {
     setEditing(false)
     if (draft !== value) onChange(draft)
+    onFieldBlur?.()
   }
 
   if (!editing) {
@@ -114,7 +118,7 @@ function EditableField({
   )
 }
 
-export function CarouselSlides({ slides, editable, onSlidesChange, flaggedSlides, postId, images, onImageUploaded, onImageDeleted }: CarouselSlidesProps) {
+export function CarouselSlides({ slides, editable, onSlidesChange, onBlur, flaggedSlides, postId, images, onImageUploaded, onImageDeleted }: CarouselSlidesProps) {
   const [activeIndex, setActiveIndex] = useState(0)
   const activeSlide = slides[activeIndex]
 
@@ -129,7 +133,7 @@ export function CarouselSlides({ slides, editable, onSlidesChange, flaggedSlides
     const text = slides
       .map(
         (s, i) =>
-          `Slide ${s.slide_number ?? i + 1}\n${s.headline}${s.body ? `\n${s.body}` : ''}${s.cta_text ? `\n${s.cta_text}` : ''}`
+          `Slide ${s.slide_number ?? i + 1}\n${s.headline}${s.body ? `\n${s.body}` : ''}`
       )
       .join('\n---\n')
     void navigator.clipboard.writeText(text)
@@ -196,6 +200,7 @@ export function CarouselSlides({ slides, editable, onSlidesChange, flaggedSlides
             <EditableField
               value={activeSlide.headline}
               onChange={(v) => updateSlideField('headline', v)}
+              onBlur={onBlur}
               className="text-sm font-semibold text-gray-900"
             />
           ) : (
@@ -206,6 +211,7 @@ export function CarouselSlides({ slides, editable, onSlidesChange, flaggedSlides
             <EditableField
               value={activeSlide.body}
               onChange={(v) => updateSlideField('body', v)}
+              onBlur={onBlur}
               multiline
               className="text-sm text-gray-700 whitespace-pre-wrap"
             />
@@ -215,15 +221,6 @@ export function CarouselSlides({ slides, editable, onSlidesChange, flaggedSlides
             )
           )}
 
-          {activeSlide.cta_text && (
-            <p className="text-xs font-medium text-[var(--color-terracotta)]">→ {activeSlide.cta_text}</p>
-          )}
-
-          {activeSlide.design_note && (
-            <p className="text-xs text-gray-400 italic border-l-2 border-gray-200 pl-2">
-              {activeSlide.design_note}
-            </p>
-          )}
 
           {postId && onImageUploaded && onImageDeleted && (
             <ImageSlot

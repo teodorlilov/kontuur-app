@@ -1,15 +1,11 @@
 import { callAnthropic, LIGHT_MODEL } from '@/utils/ai-client'
 import { extractToolInput } from '@/utils/ai'
-import { buildClientProfileSection } from '@/ai/shared/build-client-profile'
-import { buildAiTellsSection } from '@/ai/shared/build-client-profile'
-import { buildLanguageRulesSection } from '@/ai/shared/build-client-profile'
-import { buildHealthRulesSection } from '@/ai/shared/build-client-profile'
+import { buildClientProfile, buildAiTells, buildLanguageRules, buildHealthRules } from '@/ai/shared/build-prompt-sections'
 import { buildContentSection } from '@/ai/validation/prompts/shared/content-section'
 import {
   HOOK_VERDICTS,
   CTA_VERDICTS,
   CAROUSEL_STRUCTURE_CHECKLIST,
-  STRUCTURE_CHECKLISTS,
   ISSUE_TYPE_DEFINITIONS,
 } from '@/ai/validation/criteria'
 import type { ClientData } from '@/lib/clients/fetch-client-data'
@@ -25,7 +21,6 @@ export interface ValidateQualityInput {
   platform?: string
   theme?: string
   targetPillar?: string
-  declaredStructure?: string
   sourceContext?: { excerpt: string; url?: string | null }
 }
 
@@ -88,24 +83,10 @@ theme_adherence: Does the post substantively address the requested theme, or dri
 brand_voice: Does the post match the tone and testimonial voice described in the client profile?
 formality: Is the address register consistent throughout? (pronoun choice and formal constructions only — vocabulary anglicisms go in issues)`
 }
-
-function buildStructureChecklistsSection(declaredStructure?: string, isCarousel?: boolean): string {
-  if (isCarousel) {
-    const rules = CAROUSEL_STRUCTURE_CHECKLIST.map((r, i) => `  ${i + 1}. ${r}`).join('\n')
-    return `STRUCTURE CHECKLIST (carousel):\n${rules}`
-  }
-  if (!declaredStructure) {
-    return 'STRUCTURE CHECKLIST: No declared structure — set structure_checks to null.'
-  }
-  // Case-insensitive lookup — LLM may produce title-case or mixed-case variants
-  const key = Object.keys(STRUCTURE_CHECKLISTS).find(
-    (k) => k.toUpperCase() === declaredStructure.toUpperCase()
-  )
-  const rules = key ? STRUCTURE_CHECKLISTS[key] : undefined
-  if (!rules) {
-    return `STRUCTURE CHECKLIST: Unknown structure "${declaredStructure}" — set structure_checks to null.`
-  }
-  return `STRUCTURE CHECKLIST [${key}]:\n${rules.map((r, i) => `  ${i + 1}. ${r}`).join('\n')}`
+ 
+function buildCarouselChecklistSection(): string {
+  const rules = CAROUSEL_STRUCTURE_CHECKLIST.map((r, i) => `  ${i + 1}. ${r}`).join('\n')
+  return `STRUCTURE CHECKLIST (carousel):\n${rules}`
 }
 
 function buildIssueTypesSection(): string {
@@ -128,7 +109,7 @@ If no source material is provided, return flagged_claims as an empty array and c
 
 // ---- System prompt builder ----
 
-function buildSystemPrompt(client?: ClientData, platform?: string, targetPillar?: string): string {
+function buildValidationSystemPrompt(client?: ClientData, platform?: string, targetPillar?: string): string {
   const language = client?.languageConfig?.language ?? 'English'
 
   const sections: string[] = [
@@ -136,10 +117,10 @@ function buildSystemPrompt(client?: ClientData, platform?: string, targetPillar?
   ]
 
   if (client) {
-    sections.push(buildClientProfileSection(client, platform ?? 'Instagram', targetPillar))
+    sections.push(buildClientProfile(client, platform ?? 'Instagram', targetPillar))
   }
 
-  sections.push(buildAiTellsSection(language))
+  sections.push(buildAiTells(language))
 
   if (client?.languageConfig) {
     const lc = client.languageConfig
@@ -157,7 +138,7 @@ function buildSystemPrompt(client?: ClientData, platform?: string, targetPillar?
       }${lc.languageNotes ? `\n${lc.languageNotes}` : ''}`
     )
 
-    sections.push(buildLanguageRulesSection(lc))
+    sections.push(buildLanguageRules(lc))
   }
 
   sections.push(buildHookVerdictSection())
@@ -167,7 +148,7 @@ function buildSystemPrompt(client?: ClientData, platform?: string, targetPillar?
   sections.push(buildSourceGroundingSection())
 
   if (client?.isHealthNiche) {
-    sections.push(buildHealthRulesSection())
+    sections.push(buildHealthRules())
   }
 
   return sections.join('\n\n')
@@ -175,7 +156,7 @@ function buildSystemPrompt(client?: ClientData, platform?: string, targetPillar?
 
 // ---- User turn builder ----
 
-function buildUserTurn(
+function buildValidationUserPrompt(
   input: ValidateQualityInput,
   isCarousel: boolean
 ): string {
@@ -185,7 +166,8 @@ function buildUserTurn(
   if (input.targetPillar) parts.push(`Pillar: ${input.targetPillar}`)
   if (isCarousel) parts.push('Is carousel: yes')
 
-  parts.push(buildStructureChecklistsSection(input.declaredStructure, isCarousel))
+  if (isCarousel) parts.push(buildCarouselChecklistSection())
+  else parts.push('STRUCTURE CHECKLIST: set structure_checks to null.')
 
   if (input.sourceContext?.excerpt) {
     parts.push(`SOURCE MATERIAL to verify claims against:\n<source_excerpt>\n${input.sourceContext.excerpt}\n</source_excerpt>`)
@@ -264,8 +246,8 @@ const QUALITY_OUTPUT_SCHEMA = {
 export async function validateQuality(input: ValidateQualityInput): Promise<LlmQualityResponse> {
   const isCarousel = !!(input.slides && input.slides.length > 0)
 
-  const systemPrompt = buildSystemPrompt(input.client, input.platform, input.targetPillar)
-  const userMessage = buildUserTurn(input, isCarousel)
+  const systemPrompt = buildValidationSystemPrompt(input.client, input.platform, input.targetPillar)
+  const userMessage = buildValidationUserPrompt(input, isCarousel)
 
   const message = await callAnthropic({
     systemPrompt,

@@ -23,11 +23,9 @@ export interface PriorityPost {
 
 export interface CarouselSlide {
   slide_number?: number
-  slide_role?: 'cover' | 'content' | 'value' | 'cta'
+  slide_role?: 'cover' | 'content' | 'cta'
   headline: string
   body: string
-  cta_text?: string | null
-  design_note?: string
 }
 
 

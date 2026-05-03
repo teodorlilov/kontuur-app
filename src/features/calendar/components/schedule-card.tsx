@@ -5,7 +5,6 @@ import { X, ChevronLeft, ChevronRight, Copy, Mail } from 'lucide-react'
 import { cn } from '@/utils/cn'
 import { toast } from '@/components/ui/toast'
 import { getPillarColor } from '@/components/ui/colors/pillar-colors'
-import { decodeUrlsInText } from '@/utils/decode-url'
 import { formatRelativeTime, parseTimestamp } from '@/utils/format'
 import { PLATFORMS } from '@/utils/constants'
 import { CarouselSlides } from '@/components/posts/carousel-slides'
@@ -458,25 +457,24 @@ export const ScheduleCard = memo(function ScheduleCard({
                   Copy
                 </button>
               </div>
-              {editMode ? (
-                <textarea
-                  value={draftCaption}
-                  onChange={(e) => setDraftCaption(e.target.value)}
-                  style={{
-                    ...CAPTION_CONTAINER_STYLE,
-                    whiteSpace: 'pre-wrap',
-                    width: '100%',
-                    minHeight: 120,
-                    resize: 'vertical',
-                    outline: 'none',
-                    fontFamily: 'inherit',
-                  }}
-                />
-              ) : (
-                <div style={{ ...CAPTION_CONTAINER_STYLE, whiteSpace: 'pre-wrap' }}>
-                  {currentPost.caption ? decodeUrlsInText(currentPost.caption) : 'No caption'}
-                </div>
-              )}
+              <textarea
+                value={draftCaption}
+                onChange={(e) => setDraftCaption(e.target.value)}
+                onBlur={() => {
+                  if (draftCaption !== (currentPost.caption ?? '') && onSaveContent) {
+                    void onSaveContent(currentPost.id, { caption: draftCaption })
+                  }
+                }}
+                style={{
+                  ...CAPTION_CONTAINER_STYLE,
+                  whiteSpace: 'pre-wrap',
+                  width: '100%',
+                  minHeight: 120,
+                  resize: 'vertical',
+                  outline: 'none',
+                  fontFamily: 'inherit',
+                }}
+              />
             </div>
 
             {/* Carousel slides */}
@@ -484,9 +482,14 @@ export const ScheduleCard = memo(function ScheduleCard({
               <div>
                 <span style={SECTION_LABEL_STYLE}>Carousel slides</span>
                 <CarouselSlides
-                  slides={editMode ? draftSlides : slides}
-                  editable={editMode}
-                  onSlidesChange={editMode ? setDraftSlides : undefined}
+                  slides={draftSlides.length > 0 ? draftSlides : slides}
+                  editable
+                  onSlidesChange={setDraftSlides}
+                  onBlur={() => {
+                    if (onSaveContent && draftSlides.length > 0) {
+                      void onSaveContent(currentPost.id, { slides_json: draftSlides })
+                    }
+                  }}
                   flaggedSlides={flaggedSlideNumbers}
                   postId={currentPost.id}
                   images={images}
