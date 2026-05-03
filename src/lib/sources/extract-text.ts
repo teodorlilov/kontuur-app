@@ -1,5 +1,3 @@
-import { PDFParse } from 'pdf-parse'
-
 const MAX_CHARS = 8000
 
 /**
@@ -15,6 +13,7 @@ export async function extractText(
     let text: string
 
     if (mimeType === 'application/pdf') {
+      const { PDFParse } = await import('pdf-parse')
       const parser = new PDFParse({ data: new Uint8Array(buffer) })
       const result = await parser.getText()
       text = result.text
