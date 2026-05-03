@@ -92,20 +92,13 @@ export const CAROUSEL_STRUCTURE_CHECKLIST: readonly string[] = [
   'Main caption: 40-60 words. Teases the core insight without revealing all slides.',
 ] as const
 
+
 // ---- Single-post structure checklists ----
-// Testable rules per structure — separate from STRUCTURE_DESCRIPTIONS in content-criteria.ts
-// which serves generation (narrative descriptions vs. these boolean-checkable rules).
 
 export const STRUCTURE_CHECKLISTS: Record<string, readonly string[]> = {
-  'THE SPECIFIC ENCOUNTER': [
-    'Opens mid-action with a specific client interaction, question, or realization (not "Many clients ask me...")',
-    'Describes exactly one concrete, niche-specific detail (not a summary of the encounter)',
-    'Ends with a professional insight that reframes how the reader sees the service',
-    'Contains no generic endings ("We are here to help", "Contact us for expert advice")',
-  ],
   'THE COUNTER-INTUITIVE TRUTH': [
     'Opens by stating a common belief held in this niche as if it is fact',
-    'Introduces the counter-intuitive truth with a specific number or technical fact from the source or client knowledge',
+    'Introduces the counter-intuitive truth with a specific fact from the source, or a well-established industry pattern if no source is available',
     'Closes by explaining the concrete benefit of adopting the new way of thinking',
   ],
   'SENSORY SNAPSHOT': [
@@ -114,7 +107,7 @@ export const STRUCTURE_CHECKLISTS: Record<string, readonly string[]> = {
     'Connects the specific detail to the quality of the overall result',
   ],
   'PROFESSIONAL PERSPECTIVE': [
-    'Opens by stating a pattern observed after repeated professional experience',
+    'Opens by stating a pattern commonly observed in this field',
     'Offers one deep, specific expert solution — not a list',
     'Tone is Expert Peer: knowledgeable but not preachy',
   ],

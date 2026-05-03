@@ -158,7 +158,7 @@ ${webSearchSection}
   "source_url": "url or null",
   "source_title": "title or null",
   "source_type": "rss | website | file | web_search | null",
-  "source_excerpt": "Write in ${this.languageConfig.language}. 5-8 sentences faithfully summarizing what the source actually says. Include only facts, claims, and details that are explicitly stated in the source — do NOT add information from your own knowledge, even if relevant to the client's niche. Cover the main points the source makes: what topic it addresses, what key facts or advice it presents, and what conclusions it draws. Translate naturally into ${this.languageConfig.language} — do NOT transliterate terms from the source language. Replace all double-quotes with single-quotes."
+  "source_excerpt": "Write in ${this.languageConfig.language}. 5-8 sentences extracting the key facts from the source. Each sentence must correspond to a specific passage in the source — do not infer, interpret, or connect facts that the source does not explicitly connect. Include only facts, claims, and details that are explicitly stated — do NOT add information from your own knowledge, even if technically correct. For technical or medical terms, use the established term in ${this.languageConfig.language}. If no established term exists, keep the original English term — do NOT create hybrid transliterations mixing Latin and Cyrillic characters. Replace all double-quotes with single-quotes."
 }]`
   }
 

@@ -8,32 +8,29 @@ import {
 } from '@/ai/shared/content-criteria'
 
 describe('ALL_POST_STRUCTURES', () => {
-  it('includes all 6 structures', () => {
-    expect(ALL_POST_STRUCTURES).toHaveLength(6)
-    expect(ALL_POST_STRUCTURES).toContain('STORY-FIRST')
-    expect(ALL_POST_STRUCTURES).toContain('MYTH-BREAKER')
-    expect(ALL_POST_STRUCTURES).toContain('CONFESSION')
+  it('includes all 5 structures', () => {
+    expect(ALL_POST_STRUCTURES).toHaveLength(5)
+    expect(ALL_POST_STRUCTURES).toContain('THE COUNTER-INTUITIVE TRUTH')
+    expect(ALL_POST_STRUCTURES).toContain('SENSORY SNAPSHOT')
+    expect(ALL_POST_STRUCTURES).toContain('THE CONTRAST')
   })
 })
 
 describe('formatStructures', () => {
   it('returns all structure names', () => {
     const output = formatStructures()
-    expect(output).toContain('CONFESSION')
-    expect(output).toContain('STORY-FIRST')
-    expect(output).toContain('MYTH-BREAKER')
+    expect(output).toContain('THE COUNTER-INTUITIVE TRUTH')
+    expect(output).toContain('SENSORY SNAPSHOT')
+    expect(output).toContain('THE CONTRAST')
   })
 })
 
 describe('formatStructureDescriptions', () => {
   it('returns numbered descriptions for all structures', () => {
     const output = formatStructureDescriptions()
-    expect(output).toContain('1. STORY-FIRST')
-    expect(output).toContain('MYTH-BREAKER')
-    expect(output).toContain('CONFESSION')
-    expect(output).not.toContain('Works at any register')
-    expect(output).not.toContain('FORMAL:')
-    expect(output).not.toContain('CASUAL:')
+    expect(output).toContain('1. THE COUNTER-INTUITIVE TRUTH')
+    expect(output).toContain('SENSORY SNAPSHOT')
+    expect(output).toContain('THE CONTRAST')
   })
 })
 

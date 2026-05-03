@@ -29,10 +29,11 @@ export function buildGenerateSystemPrompt(
     `You are a senior social media copywriter.`,
 
     `WRITING RULES:
-1. Language register rules below are non-negotiable 
+1. Language register rules below are non-negotiable.
+2. Every claim must be grounded in what this specific business does.
+3. Do NOT invent specific facts, statistics, or results not provided in the source material or client profile.`,
 
-  ${buildLanguageRulesSection(lc)}
-2. Every claim must be grounded in what this specific business does.`,
+    buildLanguageRulesSection(lc),
 
     //Post Structure
     buildPostStructuresSection(),
@@ -85,9 +86,9 @@ export function buildGenerateUserPrompt(input: SinglePostInput): string {
     `Today's date: ${todayDateString()}`,
 
     `Before writing, verify:
-- Does the opener stop scrolling for this specific theme? If not, rewrite it.
-- Could this post be for any ${sanitizePromptField(input.client.niche)} business? If yes, add a specific detail only ${sanitizePromptField(input.client.name)} could claim.
+- Could this post be for any ${sanitizePromptField(input.client.niche)} business? If yes, make it specific through angle, voice, or source-grounded detail.
 - Does it focus on ONE angle, not a summary?
+- REGISTER: Does the post maintain ${input.client.languageConfig.formality} address throughout?
 
 Write ${input.count} post(s) for theme '${sanitizePromptField(input.theme)}'.
 Declare the structure: [STRUCTURE: name]
@@ -121,11 +122,9 @@ export function buildGenerateUserCarouselPrompt(input: CarouselInput): string {
     `Today's date: ${todayDateString()}`,
 
     `Before writing, verify:
-- Does the opener stop scrolling for this specific theme? If not, rewrite it.
-- Could this post be for any ${sanitizePromptField(input.client.niche)} business? If yes, add a specific detail only ${sanitizePromptField(input.client.name)} could claim.
+- Could this post be for any ${sanitizePromptField(input.client.niche)} business? If yes, make it specific through angle, voice, or source-grounded detail.
 - Does the content cover a meaningful aspect of what the source says about who this helps, how it works, or what result it delivers — rather than drilling into mechanism sub-details across every slide?
-- REGISTER: Does every slide maintain ${input.client.languageConfig.formality} address? Scan each slide body for first-person plural verbs ("we treat", "we help", "we use"). Replace with the patient's direct experience ("you feel", "your body"), the process impersonally ("the therapy", "this method"), or an impersonal result statement.
-- BRAND VOICE: Does every slide match the declared tone? Generic industry phrases that any competitor in this niche could use will fail validation if the client's voice is evidence-based or authoritative. Replace with specific mechanisms, concrete results, data points, or observations unique to this client.
+- REGISTER: Does every slide maintain ${input.client.languageConfig.formality} address? Scan each slide body for first-person plural verbs ("we treat", "we help", "we use"). Replace with ${input.client.isHealthNiche ? `the patient's direct experience ("you feel", "your body"), the process impersonally ("the therapy", "this method")` : `the customer's direct experience ("you notice", "your result"), the process impersonally ("the service", "this approach")`}, or an impersonal result statement.
 
 CAROUSEL-SPECIFIC RULES:
 SLIDE STRUCTURE:
@@ -142,9 +141,6 @@ SLIDE BODY RULES:
 Body text must add NEW information beyond the headline. Never explain the headline — extend it.
 Minimum 2 sentences per content slide.
 Each slide covers a DISTINCT idea — check all prior slides before writing the next.
-
-REGISTER CONSISTENCY (${input.client.languageConfig.formality.toUpperCase()} throughout):
-Language register rules from the system prompt apply to every individual slide. When describing what the service or treatment does, do NOT use first-person plural ("we", "our team", "we treat"). Use impersonal constructions ("the therapy", "this method", "the treatment") or direct address ("you feel", "your body recovers") instead.
 
 MAIN CAPTION: 40–60 words. One sharp hook sentence + one bridging sentence + hashtags. Tease the core insight without revealing all slides.
 

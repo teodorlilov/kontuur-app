@@ -12,8 +12,13 @@ export function buildGroundingPrompt(opts: {
   contentLabel?: string
 }): string {
   const { sourceExcerpt, sourceFullText, sourceUrl, requireSourceGrounding, contentLabel = 'caption' } = opts
-  const sourceText = sourceExcerpt || sourceFullText
-  if (!requireSourceGrounding || !sourceText) return ''
+  const sourceText = sourceFullText || sourceExcerpt
+  if (!requireSourceGrounding || !sourceText) {
+    return `FACTUAL GROUNDING (no source material available):
+- Do NOT invent specific statistics, case studies, customer quotes, or measurable results.
+- You may describe common patterns and well-established knowledge in this field.
+- Prefer fewer claims that are defensible over vivid but fabricated details.`
+  }
 
   const urlLine = sourceUrl
     ? `${decodeUrl(sourceUrl)}`

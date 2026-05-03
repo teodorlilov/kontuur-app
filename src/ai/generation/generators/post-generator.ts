@@ -44,7 +44,7 @@ export async function generatePost(
   const systemPrompt = buildGenerateSystemPrompt(input.client, input.platform, input.targetPillar)
   const userMessage = buildGenerateUserPrompt(input)
 
-  const message = await callAnthropic({ systemPrompt, userMessage, onToken, model: DEFAULT_MODEL, maxTokens: 800 })
+  const message = await callAnthropic({ systemPrompt, userMessage, onToken, model: DEFAULT_MODEL, maxTokens: 1200 })
   const text = message.content[0]?.type === 'text' ? message.content[0].text : ''
   return text
     .split('---')

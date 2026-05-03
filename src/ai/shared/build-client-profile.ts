@@ -32,8 +32,8 @@ Content pillars: ${client.contentPillars.map((p) => `${sanitizePromptField(p.pil
 Topics to avoid: ${sanitizePromptField(client.avoidTopics)}
 
 SPECIFICITY REQUIREMENT:
-The post must contain at least one detail that could only come from ${sanitizePromptField(client.name)} — not any similar business in the same field.
-Generic niche observations any competitor could post will score poorly.
+Differentiate this post through the client's declared tone, content angle, and source-grounded details — not through invented specifics.
+Generic observations any competitor could post will score poorly — stand out through voice and angle, not fabricated facts.
 
 BRAND VOICE:
 This brand sounds: ${sanitizePromptField(client.tone)}.${
@@ -113,38 +113,8 @@ ${themeList}
 
 You MUST take a completely different angle from ALL of the above:
 - If past posts were informational → try emotional or storytelling
-- If past posts focused on features → try a customer experience or behind-the-scenes angle
+- If past posts focused on features → try framing around the customer's perspective or a behind-the-scenes angle
 - If past posts were broad → go ultra-specific on one vivid detail
 - If past posts were serious → try a lighter, conversational tone (within the brand voice)
 - NEVER repeat the same hook style, structure, or CTA as the similar posts above`
-}
-
-/**
- * Convenience assembler for generation — calls all sections in the right order.
- * Validation imports the individual section builders above directly.
- */
-export function buildClientSection(
-  client: ClientData,
-  platform: string,
-  targetPillar?: string
-): string {
-  const lc = client.languageConfig
-  const sections = [
-    buildClientProfileSection(client, platform, targetPillar),
-    buildLanguageRulesSection(lc),
-    buildAiTellsSection(lc.language),
-    buildPostStructuresSection(),
-    buildPlatformLimitsSection(platform)
-  ]
-
-  if ((client.topPerformingPosts?.length ?? 0) > 0) {
-    sections.push(
-      `PERFORMANCE REFERENCE\nThese recently approved posts scored above 7.5/10. Study their tone, specificity, and structure as a quality benchmark. Do not copy them — match their standard.\n\n<reference_posts>\n${sanitizePromptArray(client.topPerformingPosts!).map((p) => `<post>${p}</post>`).join('\n')}\n</reference_posts>`
-    )
-  }
-  if (client.isHealthNiche) {
-    sections.push(buildHealthRulesSection())
-  }
-
-  return sections.join('\n\n')
 }
