@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { ChevronLeft } from 'lucide-react'
 import { BatchScheduleModal } from '@/components/scheduling/batch-schedule-modal'
 import { ReviewHeader } from './review-header'
@@ -29,7 +29,10 @@ export function ReviewQueue({ initialPosts, clients, bestTimeMap }: ReviewQueueP
   const [batchOpen, setBatchOpen] = useState(false)
   const [mobileView, setMobileView] = useState<'list' | 'detail'>('list')
 
-  const filteredPosts = filterReviewPosts(posts, activeTab, selectedClientId)
+  const filteredPosts = useMemo(
+    () => filterReviewPosts(posts, activeTab, selectedClientId),
+    [posts, activeTab, selectedClientId]
+  )
   const selectedPost = filteredPosts.find((p) => p.id === selectedPostId)
 
   function selectNextAfterRemoval(removedId: string) {

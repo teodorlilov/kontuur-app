@@ -127,7 +127,7 @@ export const DayCell = memo(function DayCell({
           <PostEventPill
             key={post.id}
             post={post}
-            onClick={() => onPostClick(post.id)}
+            onPostClick={onPostClick}
             {...style}
           />
         )

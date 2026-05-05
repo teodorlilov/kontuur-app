@@ -1,753 +1,1084 @@
-export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[]
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[]
 
-export interface Database {
+export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "14.4"
+  }
   public: {
-    Views: Record<string, never>
-    Functions: Record<string, never>
-    Enums: Record<string, never>
-    CompositeTypes: Record<string, never>
     Tables: {
       agencies: {
         Row: {
-          id: string
-          name: string
-          plan: string
-          mode: string
           agency_logo: string | null
+          created_at: string | null
+          id: string
+          mode: string | null
+          name: string
+          plan: string | null
+          plan_client_limit: number | null
           stripe_customer_id: string | null
           stripe_subscription_id: string | null
-          subscription_status: string
-          trial_ends_at: string
-          plan_client_limit: number
+          subscription_status: string | null
           timezone: string | null
-          created_at: string
+          trial_ends_at: string | null
         }
         Insert: {
-          id?: string
-          name: string
-          plan?: string
-          mode?: string
           agency_logo?: string | null
+          created_at?: string | null
+          id?: string
+          mode?: string | null
+          name: string
+          plan?: string | null
+          plan_client_limit?: number | null
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
-          subscription_status?: string
-          trial_ends_at?: string
-          plan_client_limit?: number
+          subscription_status?: string | null
           timezone?: string | null
-          created_at?: string
+          trial_ends_at?: string | null
         }
         Update: {
-          id?: string
-          name?: string
-          plan?: string
-          mode?: string
           agency_logo?: string | null
+          created_at?: string | null
+          id?: string
+          mode?: string | null
+          name?: string
+          plan?: string | null
+          plan_client_limit?: number | null
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
-          subscription_status?: string
-          trial_ends_at?: string
-          plan_client_limit?: number
+          subscription_status?: string | null
           timezone?: string | null
-          created_at?: string
-        }
-        Relationships: []
-      }
-      users: {
-        Row: {
-          id: string
-          agency_id: string
-          email: string
-          role: string
-          created_at: string
-        }
-        Insert: {
-          id: string
-          agency_id: string
-          email: string
-          role?: string
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          agency_id?: string
-          email?: string
-          role?: string
-          created_at?: string
-        }
-        Relationships: []
-      }
-      clients: {
-        Row: {
-          id: string
-          agency_id: string
-          name: string
-          niche: string | null
-          posts_per_week: number
-          language: string
-          website_url: string | null
-          contact_email: string | null
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          agency_id: string
-          name: string
-          niche?: string | null
-          posts_per_week?: number
-          language?: string
-          website_url?: string | null
-          contact_email?: string | null
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          agency_id?: string
-          name?: string
-          niche?: string | null
-          posts_per_week?: number
-          language?: string
-          website_url?: string | null
-          contact_email?: string | null
-          created_at?: string
-        }
-        Relationships: []
-      }
-      brand_profiles: {
-        Row: {
-          id: string
-          client_id: string
-          tone: string | null
-          target_audience: string | null
-          content_pillars: string | null
-          avoid_topics: string | null
-          client_testimonial_voice: string | null
-          default_post_type: string
-          default_carousel_slides: number
-          weekly_mix_json: Json
-          language_formality: string
-          secondary_language: string | null
-          is_health_niche: boolean
-          best_time_json: Json | null
-          best_time_updated_at: string | null
-          source_strategy: Json
-          language_notes: string | null
-        }
-        Insert: {
-          id?: string
-          client_id: string
-          tone?: string | null
-          target_audience?: string | null
-          content_pillars?: string | null
-          avoid_topics?: string | null
-          client_testimonial_voice?: string | null
-          default_post_type?: string
-          default_carousel_slides?: number
-          weekly_mix_json?: Json
-          language_formality?: string
-          secondary_language?: string | null
-          is_health_niche?: boolean
-          best_time_json?: Json | null
-          best_time_updated_at?: string | null
-          source_strategy?: Json
-          language_notes?: string | null
-        }
-        Update: {
-          id?: string
-          client_id?: string
-          tone?: string | null
-          target_audience?: string | null
-          content_pillars?: string | null
-          avoid_topics?: string | null
-          client_testimonial_voice?: string | null
-          default_post_type?: string
-          default_carousel_slides?: number
-          weekly_mix_json?: Json
-          language_formality?: string
-          secondary_language?: string | null
-          is_health_niche?: boolean
-          best_time_json?: Json | null
-          best_time_updated_at?: string | null
-          source_strategy?: Json
-          language_notes?: string | null
-        }
-        Relationships: []
-      }
-      posting_schedules: {
-        Row: {
-          id: string
-          client_id: string
-          is_active: boolean
-          frequency_type: string
-          frequency_value: number
-          auto_generate_day: string
-          auto_generate_time: string
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          client_id: string
-          is_active?: boolean
-          frequency_type?: string
-          frequency_value?: number
-          auto_generate_day?: string
-          auto_generate_time?: string
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          client_id?: string
-          is_active?: boolean
-          frequency_type?: string
-          frequency_value?: number
-          auto_generate_day?: string
-          auto_generate_time?: string
-          created_at?: string
-        }
-        Relationships: []
-      }
-      posts: {
-        Row: {
-          id: string
-          client_id: string
-          caption: string | null
-          platform: string | null
-          post_type: string
-          slides_json: Json | null
-          validation_json: Json | null
-          status: string
-          priority: boolean
-          scheduled_at: string | null
-          published_at: string | null
-          quality_score_avg: number | null
-          was_rewritten: boolean
-          rewrite_count: number
-          source_url: string | null
-          source_title: string | null
-          source_type: string | null
-          pillar: string | null
-          source_excerpt: string | null
-          ig_creation_id: string | null
-          ig_media_id: string | null
-          publish_error: string | null
-          publish_attempts: number
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          client_id: string
-          caption?: string | null
-          platform?: string | null
-          post_type?: string
-          slides_json?: Json | null
-          validation_json?: Json | null
-          status?: string
-          priority?: boolean
-          scheduled_at?: string | null
-          published_at?: string | null
-          quality_score_avg?: number | null
-          was_rewritten?: boolean
-          rewrite_count?: number
-          source_url?: string | null
-          source_title?: string | null
-          source_type?: string | null
-          pillar?: string | null
-          source_excerpt?: string | null
-          ig_creation_id?: string | null
-          ig_media_id?: string | null
-          publish_error?: string | null
-          publish_attempts?: number
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          client_id?: string
-          caption?: string | null
-          platform?: string | null
-          post_type?: string
-          slides_json?: Json | null
-          validation_json?: Json | null
-          status?: string
-          priority?: boolean
-          scheduled_at?: string | null
-          published_at?: string | null
-          quality_score_avg?: number | null
-          was_rewritten?: boolean
-          rewrite_count?: number
-          source_url?: string | null
-          source_title?: string | null
-          source_type?: string | null
-          pillar?: string | null
-          source_excerpt?: string | null
-          ig_creation_id?: string | null
-          ig_media_id?: string | null
-          publish_error?: string | null
-          publish_attempts?: number
-          created_at?: string
-        }
-        Relationships: []
-      }
-      post_images: {
-        Row: {
-          id: string
-          post_id: string
-          public_url: string
-          storage_path: string
-          position: number
-          file_name: string | null
-          file_size: number | null
-          content_type: string | null
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          post_id: string
-          public_url: string
-          storage_path: string
-          position?: number
-          file_name?: string | null
-          file_size?: number | null
-          content_type?: string | null
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          post_id?: string
-          public_url?: string
-          storage_path?: string
-          position?: number
-          file_name?: string | null
-          file_size?: number | null
-          content_type?: string | null
-          created_at?: string
-        }
-        Relationships: []
-      }
-      post_history: {
-        Row: {
-          id: string
-          client_id: string
-          topic_summary: string | null
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          client_id: string
-          topic_summary?: string | null
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          client_id?: string
-          topic_summary?: string | null
-          created_at?: string
-        }
-        Relationships: []
-      }
-      generation_runs: {
-        Row: {
-          id: string
-          client_id: string
-          platform: string | null
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          client_id: string
-          platform?: string | null
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          client_id?: string
-          platform?: string | null
-          created_at?: string
-        }
-        Relationships: []
-      }
-      generation_themes: {
-        Row: {
-          id: string
-          run_id: string
-          theme_description: string | null
-          post_count: number
-          is_priority: boolean
-          priority_brief: string | null
-          target_date: string | null
-          research_used: boolean
-        }
-        Insert: {
-          id?: string
-          run_id: string
-          theme_description?: string | null
-          post_count?: number
-          is_priority?: boolean
-          priority_brief?: string | null
-          target_date?: string | null
-          research_used?: boolean
-        }
-        Update: {
-          id?: string
-          run_id?: string
-          theme_description?: string | null
-          post_count?: number
-          is_priority?: boolean
-          priority_brief?: string | null
-          target_date?: string | null
-          research_used?: boolean
-        }
-        Relationships: []
-      }
-      post_approval_tokens: {
-        Row: {
-          id: string
-          post_id: string
-          token: string
-          client_email: string | null
-          batch_id: string | null
-          status: string
-          client_note: string | null
-          expires_at: string
-          created_at: string
-          responded_at: string | null
-        }
-        Insert: {
-          id?: string
-          post_id: string
-          token?: string
-          client_email?: string | null
-          batch_id?: string | null
-          status?: string
-          client_note?: string | null
-          expires_at?: string
-          created_at?: string
-          responded_at?: string | null
-        }
-        Update: {
-          id?: string
-          post_id?: string
-          token?: string
-          client_email?: string | null
-          batch_id?: string | null
-          status?: string
-          client_note?: string | null
-          expires_at?: string
-          created_at?: string
-          responded_at?: string | null
-        }
-        Relationships: []
-      }
-      social_connections: {
-        Row: {
-          id: string
-          client_id: string
-          platform: string | null
-          account_id: string | null
-          account_name: string | null
-          access_token: string | null
-          token_expires_at: string | null
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          client_id: string
-          platform?: string | null
-          account_id?: string | null
-          account_name?: string | null
-          access_token?: string | null
-          token_expires_at?: string | null
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          client_id?: string
-          platform?: string | null
-          account_id?: string | null
-          account_name?: string | null
-          access_token?: string | null
-          token_expires_at?: string | null
-          created_at?: string
+          trial_ends_at?: string | null
         }
         Relationships: []
       }
       analytics_reports: {
         Row: {
-          id: string
-          client_id: string
-          platform: string | null
-          period_start: string | null
-          period_end: string | null
-          metrics_json: Json | null
           ai_summary: string | null
-          report_type: string
+          client_id: string | null
+          created_at: string | null
+          id: string
+          metrics_json: Json | null
+          period_end: string | null
+          period_start: string | null
+          platform: string | null
+          report_type: string | null
+        }
+        Insert: {
+          ai_summary?: string | null
+          client_id?: string | null
+          created_at?: string | null
+          id?: string
+          metrics_json?: Json | null
+          period_end?: string | null
+          period_start?: string | null
+          platform?: string | null
+          report_type?: string | null
+        }
+        Update: {
+          ai_summary?: string | null
+          client_id?: string | null
+          created_at?: string | null
+          id?: string
+          metrics_json?: Json | null
+          period_end?: string | null
+          period_start?: string | null
+          platform?: string | null
+          report_type?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "analytics_reports_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      brand_profiles: {
+        Row: {
+          avoid_topics: string | null
+          best_time_json: Json | null
+          best_time_updated_at: string | null
+          client_id: string | null
+          client_testimonial_voice: string | null
+          content_pillars: string | null
+          default_carousel_slides: number | null
+          default_post_type: string | null
+          id: string
+          is_health_niche: boolean | null
+          language_formality: string | null
+          language_notes: string | null
+          secondary_language: string | null
+          source_strategy: Json
+          target_audience: string | null
+          tone: string | null
+          weekly_mix_json: Json | null
+        }
+        Insert: {
+          avoid_topics?: string | null
+          best_time_json?: Json | null
+          best_time_updated_at?: string | null
+          client_id?: string | null
+          client_testimonial_voice?: string | null
+          content_pillars?: string | null
+          default_carousel_slides?: number | null
+          default_post_type?: string | null
+          id?: string
+          is_health_niche?: boolean | null
+          language_formality?: string | null
+          language_notes?: string | null
+          secondary_language?: string | null
+          source_strategy?: Json
+          target_audience?: string | null
+          tone?: string | null
+          weekly_mix_json?: Json | null
+        }
+        Update: {
+          avoid_topics?: string | null
+          best_time_json?: Json | null
+          best_time_updated_at?: string | null
+          client_id?: string | null
+          client_testimonial_voice?: string | null
+          content_pillars?: string | null
+          default_carousel_slides?: number | null
+          default_post_type?: string | null
+          id?: string
+          is_health_niche?: boolean | null
+          language_formality?: string | null
+          language_notes?: string | null
+          secondary_language?: string | null
+          source_strategy?: Json
+          target_audience?: string | null
+          tone?: string | null
+          weekly_mix_json?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "brand_profiles_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: true
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_ideas: {
+        Row: {
+          agency_id: string
+          client_id: string
+          extra_notes: string | null
+          generated_post_id: string | null
+          id: string
+          idea_text: string
+          platform: string | null
+          read_at: string | null
+          status: string
+          submitted_at: string | null
+          target_date: string | null
+          token_id: string
+        }
+        Insert: {
+          agency_id: string
+          client_id: string
+          extra_notes?: string | null
+          generated_post_id?: string | null
+          id?: string
+          idea_text: string
+          platform?: string | null
+          read_at?: string | null
+          status?: string
+          submitted_at?: string | null
+          target_date?: string | null
+          token_id: string
+        }
+        Update: {
+          agency_id?: string
+          client_id?: string
+          extra_notes?: string | null
+          generated_post_id?: string | null
+          id?: string
+          idea_text?: string
+          platform?: string | null
+          read_at?: string | null
+          status?: string
+          submitted_at?: string | null
+          target_date?: string | null
+          token_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_ideas_agency_id_fkey"
+            columns: ["agency_id"]
+            isOneToOne: false
+            referencedRelation: "agencies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_ideas_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_ideas_generated_post_id_fkey"
+            columns: ["generated_post_id"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_ideas_token_id_fkey"
+            columns: ["token_id"]
+            isOneToOne: false
+            referencedRelation: "idea_form_tokens"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_sources: {
+        Row: {
+          client_id: string
+          config: Json
           created_at: string
+          extracted_text: string | null
+          file_path: string | null
+          id: string
+          is_active: boolean
+          label: string
+          last_fetch_error: string | null
+          last_fetch_status: string | null
+          last_fetched_at: string | null
+          pillar_ids: Json
+          source_summary: string | null
+          source_summary_at: string | null
+          type: string
+          url: string
+        }
+        Insert: {
+          client_id: string
+          config?: Json
+          created_at?: string
+          extracted_text?: string | null
+          file_path?: string | null
+          id?: string
+          is_active?: boolean
+          label: string
+          last_fetch_error?: string | null
+          last_fetch_status?: string | null
+          last_fetched_at?: string | null
+          pillar_ids?: Json
+          source_summary?: string | null
+          source_summary_at?: string | null
+          type: string
+          url: string
+        }
+        Update: {
+          client_id?: string
+          config?: Json
+          created_at?: string
+          extracted_text?: string | null
+          file_path?: string | null
+          id?: string
+          is_active?: boolean
+          label?: string
+          last_fetch_error?: string | null
+          last_fetch_status?: string | null
+          last_fetched_at?: string | null
+          pillar_ids?: Json
+          source_summary?: string | null
+          source_summary_at?: string | null
+          type?: string
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_sources_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      clients: {
+        Row: {
+          agency_id: string | null
+          contact_email: string | null
+          created_at: string | null
+          id: string
+          language: string | null
+          name: string
+          niche: string | null
+          posts_per_week: number | null
+          website_url: string | null
+        }
+        Insert: {
+          agency_id?: string | null
+          contact_email?: string | null
+          created_at?: string | null
+          id?: string
+          language?: string | null
+          name: string
+          niche?: string | null
+          posts_per_week?: number | null
+          website_url?: string | null
+        }
+        Update: {
+          agency_id?: string | null
+          contact_email?: string | null
+          created_at?: string | null
+          id?: string
+          language?: string | null
+          name?: string
+          niche?: string | null
+          posts_per_week?: number | null
+          website_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clients_agency_id_fkey"
+            columns: ["agency_id"]
+            isOneToOne: false
+            referencedRelation: "agencies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      generation_runs: {
+        Row: {
+          client_id: string | null
+          created_at: string | null
+          id: string
+          platform: string | null
+        }
+        Insert: {
+          client_id?: string | null
+          created_at?: string | null
+          id?: string
+          platform?: string | null
+        }
+        Update: {
+          client_id?: string | null
+          created_at?: string | null
+          id?: string
+          platform?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "generation_runs_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      generation_themes: {
+        Row: {
+          id: string
+          is_priority: boolean | null
+          post_count: number | null
+          priority_brief: string | null
+          research_used: boolean | null
+          run_id: string | null
+          target_date: string | null
+          theme_description: string | null
         }
         Insert: {
           id?: string
-          client_id: string
-          platform?: string | null
-          period_start?: string | null
-          period_end?: string | null
-          metrics_json?: Json | null
-          ai_summary?: string | null
-          report_type?: string
-          created_at?: string
+          is_priority?: boolean | null
+          post_count?: number | null
+          priority_brief?: string | null
+          research_used?: boolean | null
+          run_id?: string | null
+          target_date?: string | null
+          theme_description?: string | null
         }
         Update: {
           id?: string
+          is_priority?: boolean | null
+          post_count?: number | null
+          priority_brief?: string | null
+          research_used?: boolean | null
+          run_id?: string | null
+          target_date?: string | null
+          theme_description?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "generation_themes_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "generation_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      idea_form_tokens: {
+        Row: {
+          agency_id: string
+          client_id: string
+          created_at: string | null
+          id: string
+          token: string
+        }
+        Insert: {
+          agency_id: string
+          client_id: string
+          created_at?: string | null
+          id?: string
+          token: string
+        }
+        Update: {
+          agency_id?: string
           client_id?: string
-          platform?: string | null
-          period_start?: string | null
-          period_end?: string | null
-          metrics_json?: Json | null
-          ai_summary?: string | null
-          report_type?: string
-          created_at?: string
+          created_at?: string | null
+          id?: string
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "idea_form_tokens_agency_id_fkey"
+            columns: ["agency_id"]
+            isOneToOne: false
+            referencedRelation: "agencies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "idea_form_tokens_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      intelligence_briefings: {
+        Row: {
+          action_nudge: string | null
+          agency_id: string | null
+          briefing_text: string | null
+          coaching_points: Json | null
+          created_at: string | null
+          id: string
+          platform_updates: string[] | null
+          sources: string[] | null
+          trending_topics: Json | null
+          week_start: string | null
+          weekly_tip: string | null
+        }
+        Insert: {
+          action_nudge?: string | null
+          agency_id?: string | null
+          briefing_text?: string | null
+          coaching_points?: Json | null
+          created_at?: string | null
+          id?: string
+          platform_updates?: string[] | null
+          sources?: string[] | null
+          trending_topics?: Json | null
+          week_start?: string | null
+          weekly_tip?: string | null
+        }
+        Update: {
+          action_nudge?: string | null
+          agency_id?: string | null
+          briefing_text?: string | null
+          coaching_points?: Json | null
+          created_at?: string | null
+          id?: string
+          platform_updates?: string[] | null
+          sources?: string[] | null
+          trending_topics?: Json | null
+          week_start?: string | null
+          weekly_tip?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "intelligence_briefings_agency_id_fkey"
+            columns: ["agency_id"]
+            isOneToOne: false
+            referencedRelation: "agencies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      language_rules: {
+        Row: {
+          banned_anglicisms: Json | null
+          banned_calques: Json | null
+          formality_default: string | null
+          formality_rules: Json | null
+          id: string
+          language: string
+          language_instructions: string | null
+          native_cta_phrases: Json | null
+          opener_examples: Json | null
+        }
+        Insert: {
+          banned_anglicisms?: Json | null
+          banned_calques?: Json | null
+          formality_default?: string | null
+          formality_rules?: Json | null
+          id?: string
+          language: string
+          language_instructions?: string | null
+          native_cta_phrases?: Json | null
+          opener_examples?: Json | null
+        }
+        Update: {
+          banned_anglicisms?: Json | null
+          banned_calques?: Json | null
+          formality_default?: string | null
+          formality_rules?: Json | null
+          id?: string
+          language?: string
+          language_instructions?: string | null
+          native_cta_phrases?: Json | null
+          opener_examples?: Json | null
         }
         Relationships: []
       }
       notifications: {
         Row: {
-          id: string
-          agency_id: string
-          message: string | null
-          is_read: boolean
-          created_at: string
-          type: string | null
+          agency_id: string | null
           client_id: string | null
-          post_id: string | null
+          created_at: string | null
           feedback_text: string | null
+          id: string
+          is_read: boolean | null
+          message: string | null
+          post_id: string | null
           review_token: string | null
+          type: string | null
         }
         Insert: {
-          id?: string
-          agency_id: string
-          message?: string | null
-          is_read?: boolean
-          created_at?: string
-          type?: string | null
+          agency_id?: string | null
           client_id?: string | null
-          post_id?: string | null
+          created_at?: string | null
           feedback_text?: string | null
-          review_token?: string | null
-        }
-        Update: {
           id?: string
-          agency_id?: string
+          is_read?: boolean | null
           message?: string | null
-          is_read?: boolean
-          created_at?: string
-          type?: string | null
-          client_id?: string | null
           post_id?: string | null
-          feedback_text?: string | null
           review_token?: string | null
-        }
-        Relationships: []
-      }
-      language_rules: {
-        Row: {
-          id: string
-          language: string
-          banned_anglicisms: Json | null
-          banned_calques: Json | null
-          native_cta_phrases: Json | null
-          formality_default: string
-          formality_rules: Json | null
-          language_instructions: string | null
-          opener_examples: Json | null
-        }
-        Insert: {
-          id?: string
-          language: string
-          banned_anglicisms?: Json | null
-          banned_calques?: Json | null
-          native_cta_phrases?: Json | null
-          formality_default?: string
-          formality_rules?: Json | null
-          language_instructions?: string | null
-          opener_examples?: Json | null
+          type?: string | null
         }
         Update: {
+          agency_id?: string | null
+          client_id?: string | null
+          created_at?: string | null
+          feedback_text?: string | null
           id?: string
-          language?: string
-          banned_anglicisms?: Json | null
-          banned_calques?: Json | null
-          native_cta_phrases?: Json | null
-          formality_default?: string
-          formality_rules?: Json | null
-          language_instructions?: string | null
-          opener_examples?: Json | null
+          is_read?: boolean | null
+          message?: string | null
+          post_id?: string | null
+          review_token?: string | null
+          type?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "notifications_agency_id_fkey"
+            columns: ["agency_id"]
+            isOneToOne: false
+            referencedRelation: "agencies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+        ]
       }
-      client_sources: {
+      post_approval_tokens: {
         Row: {
+          batch_id: string | null
+          client_email: string | null
+          client_note: string | null
+          created_at: string | null
+          expires_at: string | null
           id: string
-          client_id: string
-          type: string
-          label: string
-          url: string
-          is_active: boolean
-          last_fetched_at: string | null
-          last_fetch_status: string | null
-          last_fetch_error: string | null
-          config: Json
-          file_path: string | null
-          extracted_text: string | null
-          created_at: string
+          post_id: string | null
+          responded_at: string | null
+          status: string | null
+          token: string | null
         }
         Insert: {
+          batch_id?: string | null
+          client_email?: string | null
+          client_note?: string | null
+          created_at?: string | null
+          expires_at?: string | null
           id?: string
-          client_id: string
-          type: string
-          label: string
-          url: string
-          is_active?: boolean
-          last_fetched_at?: string | null
-          last_fetch_status?: string | null
-          last_fetch_error?: string | null
-          config?: Json
-          file_path?: string | null
-          extracted_text?: string | null
-          created_at?: string
+          post_id?: string | null
+          responded_at?: string | null
+          status?: string | null
+          token?: string | null
         }
         Update: {
+          batch_id?: string | null
+          client_email?: string | null
+          client_note?: string | null
+          created_at?: string | null
+          expires_at?: string | null
           id?: string
-          client_id?: string
-          type?: string
-          label?: string
-          url?: string
-          is_active?: boolean
-          last_fetched_at?: string | null
-          last_fetch_status?: string | null
-          last_fetch_error?: string | null
-          config?: Json
-          file_path?: string | null
-          extracted_text?: string | null
-          created_at?: string
+          post_id?: string | null
+          responded_at?: string | null
+          status?: string | null
+          token?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "post_approval_tokens_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+        ]
       }
-      intelligence_briefings: {
+      post_history: {
         Row: {
+          client_id: string | null
+          created_at: string | null
           id: string
-          agency_id: string
-          briefing_text: string | null
-          platform_updates: string[] | null
-          trending_topics: Json | null
-          action_nudge: string | null
-          weekly_tip: string | null
-          sources: string[] | null
-          week_start: string | null
-          coaching_points: Json | null
-          created_at: string
+          topic_summary: string | null
         }
         Insert: {
+          client_id?: string | null
+          created_at?: string | null
           id?: string
-          agency_id: string
-          briefing_text?: string | null
-          platform_updates?: string[] | null
-          trending_topics?: Json | null
-          action_nudge?: string | null
-          weekly_tip?: string | null
-          sources?: string[] | null
-          week_start?: string | null
-          coaching_points?: Json | null
-          created_at?: string
+          topic_summary?: string | null
         }
         Update: {
+          client_id?: string | null
+          created_at?: string | null
           id?: string
-          agency_id?: string
-          briefing_text?: string | null
-          platform_updates?: string[] | null
-          trending_topics?: Json | null
-          action_nudge?: string | null
-          weekly_tip?: string | null
-          sources?: string[] | null
-          week_start?: string | null
-          coaching_points?: Json | null
-          created_at?: string
+          topic_summary?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "post_history_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
       }
-      idea_form_tokens: {
+      post_images: {
         Row: {
+          content_type: string | null
+          created_at: string | null
+          file_name: string | null
+          file_size: number | null
           id: string
-          agency_id: string
-          client_id: string
-          token: string
-          created_at: string
+          position: number
+          post_id: string
+          public_url: string
+          storage_path: string
         }
         Insert: {
+          content_type?: string | null
+          created_at?: string | null
+          file_name?: string | null
+          file_size?: number | null
           id?: string
-          agency_id: string
-          client_id: string
-          token: string
-          created_at?: string
+          position?: number
+          post_id: string
+          public_url: string
+          storage_path: string
         }
         Update: {
+          content_type?: string | null
+          created_at?: string | null
+          file_name?: string | null
+          file_size?: number | null
           id?: string
-          agency_id?: string
-          client_id?: string
-          token?: string
-          created_at?: string
+          position?: number
+          post_id?: string
+          public_url?: string
+          storage_path?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "post_images_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+        ]
       }
-      client_ideas: {
+      posting_schedules: {
         Row: {
+          auto_generate_day: string | null
+          auto_generate_time: string | null
+          client_id: string | null
+          created_at: string | null
+          frequency_type: string | null
+          frequency_value: number | null
           id: string
-          agency_id: string
-          client_id: string
-          token_id: string
-          idea_text: string
-          extra_notes: string | null
+          is_active: boolean | null
+        }
+        Insert: {
+          auto_generate_day?: string | null
+          auto_generate_time?: string | null
+          client_id?: string | null
+          created_at?: string | null
+          frequency_type?: string | null
+          frequency_value?: number | null
+          id?: string
+          is_active?: boolean | null
+        }
+        Update: {
+          auto_generate_day?: string | null
+          auto_generate_time?: string | null
+          client_id?: string | null
+          created_at?: string | null
+          frequency_type?: string | null
+          frequency_value?: number | null
+          id?: string
+          is_active?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "posting_schedules_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      posts: {
+        Row: {
+          caption: string | null
+          client_id: string | null
+          created_at: string | null
+          id: string
+          ig_creation_id: string | null
+          ig_media_id: string | null
+          image_url: string | null
+          pillar: string | null
           platform: string | null
-          target_date: string | null
-          status: string
-          generated_post_id: string | null
-          submitted_at: string
-          read_at: string | null
+          post_type: string | null
+          priority: boolean | null
+          publish_attempts: number | null
+          publish_error: string | null
+          published_at: string | null
+          quality_score_avg: number | null
+          rewrite_count: number | null
+          scheduled_at: string | null
+          slides_json: Json | null
+          source_excerpt: string | null
+          source_title: string | null
+          source_type: string | null
+          source_url: string | null
+          status: string | null
+          validation_json: Json | null
+          was_rewritten: boolean | null
         }
         Insert: {
+          caption?: string | null
+          client_id?: string | null
+          created_at?: string | null
           id?: string
-          agency_id: string
-          client_id: string
-          token_id: string
-          idea_text: string
-          extra_notes?: string | null
+          ig_creation_id?: string | null
+          ig_media_id?: string | null
+          image_url?: string | null
+          pillar?: string | null
           platform?: string | null
-          target_date?: string | null
-          status?: string
-          generated_post_id?: string | null
-          submitted_at?: string
-          read_at?: string | null
+          post_type?: string | null
+          priority?: boolean | null
+          publish_attempts?: number | null
+          publish_error?: string | null
+          published_at?: string | null
+          quality_score_avg?: number | null
+          rewrite_count?: number | null
+          scheduled_at?: string | null
+          slides_json?: Json | null
+          source_excerpt?: string | null
+          source_title?: string | null
+          source_type?: string | null
+          source_url?: string | null
+          status?: string | null
+          validation_json?: Json | null
+          was_rewritten?: boolean | null
         }
         Update: {
+          caption?: string | null
+          client_id?: string | null
+          created_at?: string | null
           id?: string
-          agency_id?: string
-          client_id?: string
-          token_id?: string
-          idea_text?: string
-          extra_notes?: string | null
+          ig_creation_id?: string | null
+          ig_media_id?: string | null
+          image_url?: string | null
+          pillar?: string | null
           platform?: string | null
-          target_date?: string | null
-          status?: string
-          generated_post_id?: string | null
-          submitted_at?: string
-          read_at?: string | null
+          post_type?: string | null
+          priority?: boolean | null
+          publish_attempts?: number | null
+          publish_error?: string | null
+          published_at?: string | null
+          quality_score_avg?: number | null
+          rewrite_count?: number | null
+          scheduled_at?: string | null
+          slides_json?: Json | null
+          source_excerpt?: string | null
+          source_title?: string | null
+          source_type?: string | null
+          source_url?: string | null
+          status?: string | null
+          validation_json?: Json | null
+          was_rewritten?: boolean | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "posts_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
       }
+      social_connections: {
+        Row: {
+          access_token: string | null
+          account_id: string | null
+          account_name: string | null
+          client_id: string | null
+          created_at: string | null
+          id: string
+          platform: string | null
+          token_expires_at: string | null
+        }
+        Insert: {
+          access_token?: string | null
+          account_id?: string | null
+          account_name?: string | null
+          client_id?: string | null
+          created_at?: string | null
+          id?: string
+          platform?: string | null
+          token_expires_at?: string | null
+        }
+        Update: {
+          access_token?: string | null
+          account_id?: string | null
+          account_name?: string | null
+          client_id?: string | null
+          created_at?: string | null
+          id?: string
+          platform?: string | null
+          token_expires_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_connections_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      users: {
+        Row: {
+          agency_id: string | null
+          created_at: string | null
+          email: string
+          id: string
+          role: string | null
+        }
+        Insert: {
+          agency_id?: string | null
+          created_at?: string | null
+          email: string
+          id: string
+          role?: string | null
+        }
+        Update: {
+          agency_id?: string | null
+          created_at?: string | null
+          email?: string
+          id?: string
+          role?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "users_agency_id_fkey"
+            columns: ["agency_id"]
+            isOneToOne: false
+            referencedRelation: "agencies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      client_post_stats: {
+        Args: { p_agency_id: string }
+        Returns: {
+          client_id: string
+          last_generated_at: string
+          published_count: number
+          total_count: number
+        }[]
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
     }
   }
 }
 
-// ---- Row type aliases ----
-export type ClientRow = Database['public']['Tables']['clients']['Row']
-export type BrandProfileRow = Database['public']['Tables']['brand_profiles']['Row']
-export type PostingScheduleRow = Database['public']['Tables']['posting_schedules']['Row']
-export type LanguageRuleRow = Database['public']['Tables']['language_rules']['Row']
-export type IdeaFormTokenRow = Database['public']['Tables']['idea_form_tokens']['Row']
-export type ClientIdeaRow = Database['public']['Tables']['client_ideas']['Row']
-export type PostImageRow = Database['public']['Tables']['post_images']['Row']
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
+
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
+
+export type Tables<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      Row: infer R
+    }
+    ? R
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R
+      }
+      ? R
+      : never
+    : never
+
+export type TablesInsert<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Insert: infer I
+    }
+    ? I
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I
+      }
+      ? I
+      : never
+    : never
+
+export type TablesUpdate<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Update: infer U
+    }
+    ? U
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U
+      }
+      ? U
+      : never
+    : never
+
+export type Enums<
+  DefaultSchemaEnumNameOrOptions extends
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
+  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    : never = never,
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+    : never
+
+export type CompositeTypes<
+  PublicCompositeTypeNameOrOptions extends
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
+  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never = never,
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never
+
+export const Constants = {
+  public: {
+    Enums: {},
+  },
+} as const

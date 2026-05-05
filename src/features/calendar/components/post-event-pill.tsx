@@ -5,14 +5,14 @@ import type { CalendarPost } from '@/types/api'
 
 interface PostEventPillProps {
   post: CalendarPost
-  onClick: () => void
+  onPostClick: (postId: string) => void
   dotColor: string
   bgColor: string
   textColor: string
 }
 
 /** Compact pill shown inside a day cell for a scheduled post. */
-export const PostEventPill = memo(function PostEventPill({ post, onClick, dotColor, bgColor, textColor }: PostEventPillProps) {
+export const PostEventPill = memo(function PostEventPill({ post, onPostClick, dotColor, bgColor, textColor }: PostEventPillProps) {
   const statusDotColor =
     post.status === 'published' ? '#5A8A4A' :
     post.status === 'failed' ? '#A32D2D' :
@@ -24,7 +24,7 @@ export const PostEventPill = memo(function PostEventPill({ post, onClick, dotCol
       type="button"
       onClick={(e) => {
         e.stopPropagation()
-        onClick()
+        onPostClick(post.id)
       }}
       style={{
         display: 'flex',

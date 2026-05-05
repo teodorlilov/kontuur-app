@@ -113,6 +113,26 @@ export async function verifySourceOwnership(
 }
 
 /**
+ * Verify multiple posts belong to the user's agency in a single query.
+ * Returns the set of verified post IDs.
+ */
+export async function verifyPostsOwnership(
+  supabase: SupabaseServerClient,
+  postIds: string[],
+  agencyId: string
+): Promise<Set<string>> {
+  if (postIds.length === 0) return new Set()
+  const { data } = await supabase
+    .from('posts')
+    .select('id, clients!inner(agency_id)')
+    .in('id', postIds)
+    .eq('clients.agency_id', agencyId)
+  // Type assertion required: Supabase types cannot resolve the !inner join shape
+  const rows = (data ?? []) as unknown as Array<{ id: string }>
+  return new Set(rows.map((r) => r.id))
+}
+
+/**
  * Like verifyClientOwnership, but returns the client row on success.
  * Use when you need client data immediately after ownership verification
  * to avoid a second round-trip to the database.

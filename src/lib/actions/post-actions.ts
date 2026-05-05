@@ -1,7 +1,7 @@
 'use server'
 
 import { revalidateTag } from 'next/cache'
-import { resolveActionAuth, verifyPostOwnership } from '@/lib/auth/helpers'
+import { resolveActionAuth, verifyPostOwnership, verifyPostsOwnership } from '@/lib/auth/helpers'
 import type { ActionResult } from './types'
 
 interface UpdatePostInput {
@@ -94,16 +94,24 @@ export async function batchSchedulePosts(
   if (!auth.ok) return { ok: false, error: auth.error }
   const { supabase, agencyId } = auth
 
-  let succeeded = 0
-  for (const item of items) {
-    const post = await verifyPostOwnership(supabase, item.postId, agencyId)
-    if (!post) continue
+  const allIds = items.map((i) => i.postId)
+  const verifiedIds = await verifyPostsOwnership(supabase, allIds, agencyId)
 
+  const byTime = new Map<string, string[]>()
+  for (const item of items) {
+    if (!verifiedIds.has(item.postId)) continue
+    const group = byTime.get(item.scheduledAt) ?? []
+    group.push(item.postId)
+    byTime.set(item.scheduledAt, group)
+  }
+
+  let succeeded = 0
+  for (const [scheduledAt, ids] of byTime) {
     const { error } = await supabase
       .from('posts')
-      .update({ status: 'scheduled', scheduled_at: item.scheduledAt })
-      .eq('id', item.postId)
-    if (!error) succeeded++
+      .update({ status: 'scheduled', scheduled_at: scheduledAt })
+      .in('id', ids)
+    if (!error) succeeded += ids.length
   }
 
   revalidateTag('client-post-stats', 'max')

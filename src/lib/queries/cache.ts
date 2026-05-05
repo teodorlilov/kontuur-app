@@ -98,24 +98,20 @@ export interface ClientPostStats {
 }
 
 /**
- * Returns post statistics per client for an agency.
+ * Returns post statistics per client for an agency via server-side SQL aggregation.
  * Call revalidateTag('client-post-stats') after post mutations.
  */
 const _fetchClientPostStats = unstable_cache(
   async (agencyId: string): Promise<Record<string, ClientPostStats>> => {
     const supabase = createAdminSupabaseClient()
-    const { data } = await supabase
-      .from('posts')
-      .select('client_id, status, created_at, clients!inner(agency_id)')
-      .eq('clients.agency_id', agencyId)
+    const { data } = await supabase.rpc('client_post_stats', { p_agency_id: agencyId })
 
     const stats: Record<string, ClientPostStats> = {}
-    for (const row of (data ?? []) as { client_id: string; status: string; created_at: string }[]) {
-      const entry = (stats[row.client_id] ??= { publishedCount: 0, totalCount: 0, lastGeneratedAt: null })
-      entry.totalCount++
-      if (row.status === 'published') entry.publishedCount++
-      if (!entry.lastGeneratedAt || row.created_at > entry.lastGeneratedAt) {
-        entry.lastGeneratedAt = row.created_at
+    for (const row of data ?? []) {
+      stats[row.client_id] = {
+        publishedCount: Number(row.published_count),
+        totalCount: Number(row.total_count),
+        lastGeneratedAt: row.last_generated_at,
       }
     }
     return stats
@@ -128,16 +124,23 @@ export const getCachedClientPostStats = cache(_fetchClientPostStats)
 
 /**
  * Returns pending-review post rows (client_id only) for all clients of the given agency.
+ * - unstable_cache: persists in Next.js Data Cache across requests (30s TTL, 'client-post-stats' tag)
  * - React cache(): deduplicates within a single SSR request so layout + page share one result
  * Keyed by agencyId so the cache key is a primitive — no array reference issues.
  */
-export const getCachedPendingRows = cache(async (agencyId: string): Promise<{ client_id: string }[]> => {
-  const supabase = createAdminSupabaseClient()
-  const { data } = await supabase
-    .from('posts')
-    .select('client_id, clients!inner(agency_id)')
-    .eq('status', 'pending_review')
-    .eq('clients.agency_id', agencyId)
-  return (data as { client_id: string }[] | null) ?? []
-})
+const _fetchPendingRows = unstable_cache(
+  async (agencyId: string): Promise<{ client_id: string }[]> => {
+    const supabase = createAdminSupabaseClient()
+    const { data } = await supabase
+      .from('posts')
+      .select('client_id, clients!inner(agency_id)')
+      .eq('status', 'pending_review')
+      .eq('clients.agency_id', agencyId)
+    return (data as { client_id: string }[] | null) ?? []
+  },
+  ['pending-rows'],
+  { revalidate: 30, tags: ['client-post-stats'] }
+)
+
+export const getCachedPendingRows = cache(_fetchPendingRows)
 

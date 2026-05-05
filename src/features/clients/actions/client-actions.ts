@@ -57,15 +57,12 @@ export async function updateClient(
   const clientError = await updateClientFields(supabase, clientId, data)
   if (clientError) return { ok: false, error: clientError }
 
-  if (data.brand_profile) {
-    const profileError = await updateBrandProfile(supabase, clientId, data.brand_profile)
-    if (profileError) return { ok: false, error: profileError }
-  }
-
-  if (data.posting_schedule) {
-    const scheduleError = await updateSchedule(supabase, clientId, data.posting_schedule)
-    if (scheduleError) return { ok: false, error: scheduleError }
-  }
+  const [profileError, scheduleError] = await Promise.all([
+    data.brand_profile ? updateBrandProfile(supabase, clientId, data.brand_profile) : null,
+    data.posting_schedule ? updateSchedule(supabase, clientId, data.posting_schedule) : null,
+  ])
+  if (profileError) return { ok: false, error: profileError }
+  if (scheduleError) return { ok: false, error: scheduleError }
 
   revalidateTag('agency-clients', 'max')
   revalidatePath('/generate')

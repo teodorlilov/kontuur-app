@@ -4,7 +4,7 @@ const nextConfig: NextConfig = {
   serverExternalPackages: ['pdf-parse', 'pdfjs-dist'],
   experimental: {
     staleTimes: {
-      dynamic: 30, // cache dynamic RSC pages for 30s (default: 0 → immediate revalidation on every nav)
+      dynamic: 0,
     },
   },
   async headers() {

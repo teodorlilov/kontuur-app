@@ -32,20 +32,37 @@ export async function publishDuePosts(): Promise<PublishSchedulerResult> {
   )
 
   const result: PublishSchedulerResult = { processed: 0, published: 0, failed: 0 }
+  const grouped = groupByClientId(duePosts)
 
-  for (const post of duePosts) {
-    result.processed++
-    const ok = await attemptPublish(admin, post)
-    if (ok) result.published++
-    else result.failed++
+  for (const [clientId, clientPosts] of grouped) {
+    const connection = await fetchInstagramConnection(admin, clientId)
+    for (const post of clientPosts) {
+      result.processed++
+      const ok = await attemptPublish(admin, post, connection)
+      if (ok) result.published++
+      else result.failed++
+    }
   }
 
   return result
 }
 
+function groupByClientId(posts: DuePost[]): Map<string, DuePost[]> {
+  const map = new Map<string, DuePost[]>()
+  for (const post of posts) {
+    const group = map.get(post.client_id) ?? []
+    group.push(post)
+    map.set(post.client_id, group)
+  }
+  return map
+}
+
 /** Attempt to publish a single post to Instagram. */
-async function attemptPublish(admin: SupabaseClient, post: DuePost): Promise<boolean> {
-  const connection = await fetchInstagramConnection(admin, post.client_id)
+async function attemptPublish(
+  admin: SupabaseClient,
+  post: DuePost,
+  connection: InstagramConnection | null
+): Promise<boolean> {
   if (!connection) {
     await markFailed(admin, post.id, 'No Instagram account connected', post.publish_attempts)
     return false
@@ -55,11 +72,6 @@ async function attemptPublish(admin: SupabaseClient, post: DuePost): Promise<boo
     await markFailed(admin, post.id, 'Instagram token expired', post.publish_attempts)
     return false
   }
-
-  await admin
-    .from('posts')
-    .update({ status: 'publishing', publish_attempts: post.publish_attempts + 1 })
-    .eq('id', post.id)
 
   const imageUrls = post.post_images
     .sort((a, b) => a.position - b.position)

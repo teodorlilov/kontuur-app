@@ -48,20 +48,17 @@ export default async function DashboardLayout({ children }: { children: React.Re
   let agencyName = ''
 
   if (userData) {
-    const [agencyData] = await Promise.all([
+    const [agencyData, , pendingRows, ideas] = await Promise.all([
       getCachedAgency(userData.agency_id),
       getCachedAgencyClients(userData.agency_id),
+      getCachedPendingRows(userData.agency_id),
+      getCachedNewIdeasCount(userData.agency_id),
     ])
 
     if (agencyData?.mode === 'solo') agencyMode = 'solo'
     agencyName = agencyData?.name ?? ''
-
-    // Pending review count for badge — React cache deduplicates with clients/dashboard pages
-    const pendingRows = await getCachedPendingRows(userData.agency_id)
     pendingCount = pendingRows.length
-
-    // New ideas count for sidebar badge
-    ideasCount = await getCachedNewIdeasCount(userData.agency_id)
+    ideasCount = ideas
   }
 
   return (

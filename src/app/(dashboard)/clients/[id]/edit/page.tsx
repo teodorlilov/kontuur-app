@@ -8,7 +8,6 @@ import {
   fetchBrandProfileByClient,
   fetchPostingScheduleByClient,
 } from '@/lib/queries/db'
-import { getCachedClientPostStats, getCachedPendingRows } from '@/lib/queries/cache'
 
 export default async function EditClientPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -18,7 +17,7 @@ export default async function EditClientPage({ params }: { params: Promise<{ id:
   const client = await fetchClientById(supabase, id, agencyId)
   if (!client) notFound()
 
-  const [profile, schedule, { count: sourceCount }, recentPostsRes, allPostsRes, postStats, pendingRows] =
+  const [profile, schedule, { count: sourceCount }, recentPostsRes, allPostsRes, { count: pendingCount }, clientStatsRes] =
     await Promise.all([
       fetchBrandProfileByClient(supabase, id),
       fetchPostingScheduleByClient(supabase, id),
@@ -38,16 +37,25 @@ export default async function EditClientPage({ params }: { params: Promise<{ id:
         .from('posts')
         .select('pillar, status, rewrite_count')
         .eq('client_id', id)
-        .not('pillar', 'is', null),
-      getCachedClientPostStats(agencyId),
-      getCachedPendingRows(agencyId),
+        .not('pillar', 'is', null)
+        .limit(500),
+      supabase
+        .from('posts')
+        .select('id', { count: 'exact', head: true })
+        .eq('client_id', id)
+        .eq('status', 'pending_review'),
+      supabase
+        .from('posts')
+        .select('status, created_at')
+        .eq('client_id', id),
     ])
 
-  // Status card data
-  const clientStats = postStats[id]
-  const publishedCount = clientStats?.publishedCount ?? 0
-  const lastGeneratedAt = clientStats?.lastGeneratedAt ?? null
-  const pendingCount = pendingRows.filter((r) => r.client_id === id).length
+  // Status card data — computed from per-client query instead of agency-wide cache
+  const clientStatRows = (clientStatsRes.data ?? []) as Array<{ status: string; created_at: string }>
+  const publishedCount = clientStatRows.filter((r) => r.status === 'published').length
+  const lastGeneratedAt = clientStatRows.length > 0
+    ? clientStatRows.reduce((max, r) => r.created_at > max ? r.created_at : max, clientStatRows[0]!.created_at)
+    : null
 
   // Compute content insights server-side
   const scores = (recentPostsRes.data as Array<{ quality_score_avg: number }> | null) ?? []
@@ -110,7 +118,7 @@ export default async function EditClientPage({ params }: { params: Promise<{ id:
       schedule={schedule}
       insights={insights}
       publishedCount={publishedCount}
-      pendingCount={pendingCount}
+      pendingCount={pendingCount ?? 0}
       lastGeneratedAt={lastGeneratedAt}
     />
   )

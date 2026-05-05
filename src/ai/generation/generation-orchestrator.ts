@@ -60,15 +60,12 @@ export class GenerationPipeline {
   }
 
   private attachSimilarThemes(themes: EnrichedTheme[]): void {
+    const cache = Deduplicator.buildCache(
+      this.ctx.client.postHistory,
+      this.ctx.client.languageConfig.language
+    )
     for (const theme of themes) {
-      const similar = this.ctx.client.postHistory.filter(
-        (topic) =>
-          Deduplicator.ngramSimilarity(
-            theme.description,
-            topic,
-            this.ctx.client.languageConfig.language
-          ) > ANGLE_SIMILARITY_THRESHOLD
-      )
+      const similar = Deduplicator.findSimilar(theme.description, cache, ANGLE_SIMILARITY_THRESHOLD)
       if (similar.length > 0) {
         theme.similarPastThemes = similar.slice(0, 3)
       }

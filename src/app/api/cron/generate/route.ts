@@ -11,8 +11,9 @@ import { performResearch } from '@/ai/research/research-orchestrator'
 import { generateBriefing } from '@/ai/intelligence/generate-briefing'
 import { generateSoloCoaching } from '@/ai/solo-coaching/generate-coaching'
 import { generateBestTime } from '@/ai/best-time/generate-best-time'
-import { getTodayWeekday, getMondayISO } from '@/utils/date-helpers'
+import { getMondayISO } from '@/utils/date-helpers'
 import { BEST_TIME_REFRESH_DAYS, DEFAULT_CAROUSEL_SLIDES } from '@/utils/constants'
+import { fetchScheduleContext, shouldGenerateToday } from './helpers'
 import type { PostType } from '@/types/api'
 import type { Theme } from '@/ai/generation/types'
 import type { Json } from '@/types/database'
@@ -20,7 +21,6 @@ import type { Json } from '@/types/database'
 export const maxDuration = 300
 
 export async function GET(request: NextRequest) {
-  // 1. Auth gate — must have CRON_SECRET set and match
   const authHeader = request.headers.get('authorization')
   if (!process.env.CRON_SECRET || authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -33,61 +33,27 @@ export async function GET(request: NextRequest) {
     errors: [] as Array<{ clientId: string; error: string }>,
   }
   const processedAgencyIds = new Set<string>()
-  const agencyTimezoneCache = new Map<string, string>()
 
-  // 2. Fetch all active schedules
+  // Fetch all active schedules + batch-load context (clients, profiles, timezones)
   const { data: schedules } = await supabase
     .from('posting_schedules')
     .select('id, client_id, is_active, frequency_value, auto_generate_day')
     .eq('is_active', true)
 
+  const ctx = await fetchScheduleContext(supabase, schedules ?? [])
+
   for (const schedule of schedules ?? []) {
     try {
-      // 3. Fetch client row (need agency_id for timezone lookup + admin scoping)
-      const { data: clientRow } = await supabase
-        .from('clients')
-        .select('id, agency_id, name, niche, language')
-        .eq('id', schedule.client_id)
-        .single()
+      const clientRow = ctx.clients.get(schedule.client_id)
       if (!clientRow) continue
 
-      const { id: clientId, agency_id: agencyId } = clientRow as {
-        id: string
-        agency_id: string
-        name: string
-        niche: string | null
-        language: string
-      }
+      const { id: clientId, agency_id: agencyId } = clientRow
+      const agencyTimezone = ctx.agencyTimezones.get(agencyId) ?? 'UTC'
+      if (!shouldGenerateToday(schedule, agencyTimezone)) continue
 
-      // 4. Resolve agency timezone (cached) and check if today matches the configured day
-      let agencyTimezone = agencyTimezoneCache.get(agencyId)
-      if (!agencyTimezone) {
-        const { data: tzData } = await supabase
-          .from('agencies')
-          .select('timezone')
-          .eq('id', agencyId)
-          .single()
-        agencyTimezone = (tzData as { timezone: string | null } | null)?.timezone ?? 'UTC'
-        agencyTimezoneCache.set(agencyId, agencyTimezone)
-      }
-      const todayWeekday = getTodayWeekday(agencyTimezone)
-      if (schedule.auto_generate_day.toLowerCase() !== todayWeekday) continue
+      const brandProfile = ctx.brandProfiles.get(clientId) ?? null
 
-      // 5. Fetch brand profile
-      const { data: rawBrandProfile } = await supabase
-        .from('brand_profiles')
-        .select('weekly_mix_json, default_post_type, default_carousel_slides, best_time_updated_at')
-        .eq('client_id', clientId)
-        .single()
-
-      const brandProfile = rawBrandProfile as {
-        weekly_mix_json: unknown
-        default_post_type: string | null
-        default_carousel_slides: number | null
-        best_time_updated_at: string | null
-      } | null
-
-      // 6. Fetch full ClientData (includes top-performing posts)
+      // Fetch full ClientData (includes top-performing posts, language config)
       const clientResult = await fetchClientData(supabase, clientId, agencyId)
       if ('error' in clientResult) continue
       const client = clientResult.data
@@ -195,7 +161,7 @@ export async function GET(request: NextRequest) {
       // 12. Notify agency
       await supabase.from('notifications').insert({
         agency_id: agencyId,
-        message: `${generationResults.length} post${generationResults.length === 1 ? '' : 's'} ready to review for ${(clientRow as { name: string }).name}`,
+        message: `${generationResults.length} post${generationResults.length === 1 ? '' : 's'} ready to review for ${clientRow.name}`,
       })
 
       // 13. Refresh best-time if stale
@@ -205,7 +171,7 @@ export async function GET(request: NextRequest) {
         Date.now() - new Date(updatedAt).getTime() > BEST_TIME_REFRESH_DAYS * 86_400_000
       if (isStale) {
         const bestTime = await generateBestTime({
-          niche: (clientRow as { niche: string | null }).niche ?? 'General',
+          niche: clientRow.niche ?? 'General',
           targetAudience: client.targetAudience,
           language: client.language,
           platforms: platform,

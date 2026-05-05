@@ -1,5 +1,6 @@
 'use client'
 
+import { useMemo } from 'react'
 import {
   BarChart,
   Bar,
@@ -19,41 +20,46 @@ interface PostDayBreakdownProps {
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
 export function PostDayBreakdown({ metrics }: PostDayBreakdownProps) {
-  const followers =
-    metrics.platform === 'instagram'
-      ? metrics.account.followers_count || 1
-      : metrics.account.fan_count || 1
+  const { chartData, maxER, hasSufficientDays } = useMemo(() => {
+    const followers =
+      metrics.platform === 'instagram'
+        ? metrics.account.followers_count || 1
+        : metrics.account.fan_count || 1
 
-  const dayMap: Record<number, { totalER: number; count: number }> = {}
+    const dayMap: Record<number, { totalER: number; count: number }> = {}
 
-  if (metrics.platform === 'instagram') {
-    for (const post of metrics.posts as IGPost[]) {
-      const day = new Date(post.timestamp).getDay()
-      const er = ((post.like_count + post.comments_count) / followers) * 100
-      if (!dayMap[day]) dayMap[day] = { totalER: 0, count: 0 }
-      dayMap[day]!.totalER += er
-      dayMap[day]!.count++
+    if (metrics.platform === 'instagram') {
+      for (const post of metrics.posts as IGPost[]) {
+        const day = new Date(post.timestamp).getDay()
+        const er = ((post.like_count + post.comments_count) / followers) * 100
+        if (!dayMap[day]) dayMap[day] = { totalER: 0, count: 0 }
+        dayMap[day]!.totalER += er
+        dayMap[day]!.count++
+      }
+    } else {
+      for (const post of metrics.posts as FBPost[]) {
+        const day = new Date(post.created_time).getDay()
+        const er = ((post.reactions + post.comments + post.shares) / followers) * 100
+        if (!dayMap[day]) dayMap[day] = { totalER: 0, count: 0 }
+        dayMap[day]!.totalER += er
+        dayMap[day]!.count++
+      }
     }
-  } else {
-    for (const post of metrics.posts as FBPost[]) {
-      const day = new Date(post.created_time).getDay()
-      const er = ((post.reactions + post.comments + post.shares) / followers) * 100
-      if (!dayMap[day]) dayMap[day] = { totalER: 0, count: 0 }
-      dayMap[day]!.totalER += er
-      dayMap[day]!.count++
+
+    const data = DAY_NAMES.map((name, idx) => ({
+      day: name,
+      er: dayMap[idx] ? Math.round((dayMap[idx]!.totalER / dayMap[idx]!.count) * 10) / 10 : 0,
+      count: dayMap[idx]?.count ?? 0,
+    }))
+
+    return {
+      chartData: data,
+      maxER: Math.max(...data.map((d) => d.er)),
+      hasSufficientDays: Object.keys(dayMap).length >= 3,
     }
-  }
+  }, [metrics])
 
-  // Need at least 3 different days to make the chart meaningful
-  if (Object.keys(dayMap).length < 3) return null
-
-  const chartData = DAY_NAMES.map((name, idx) => ({
-    day: name,
-    er: dayMap[idx] ? Math.round((dayMap[idx]!.totalER / dayMap[idx]!.count) * 10) / 10 : 0,
-    count: dayMap[idx]?.count ?? 0,
-  }))
-
-  const maxER = Math.max(...chartData.map((d) => d.er))
+  if (!hasSufficientDays) return null
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-5">

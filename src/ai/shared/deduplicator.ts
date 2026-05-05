@@ -107,6 +107,12 @@ const LANGUAGE_CONFIGS: Record<string, LanguageConfig> = {
 
 const DEFAULT_CONFIG: LanguageConfig = { stopWords: EN_STOP_WORDS, minWordLength: 4 }
 
+/** Pre-computed n-gram sets for a corpus of strings. */
+export interface NgramCache {
+  entries: Array<{ text: string; ngrams: Set<string> }>
+  config: LanguageConfig
+}
+
 /**
  * Static utility for n-gram similarity scoring between research themes.
  * Used by the generation pipeline to detect near-duplicate angles.
@@ -125,6 +131,26 @@ export class Deduplicator {
       Deduplicator.generateNgrams(wordsA),
       Deduplicator.generateNgrams(wordsB)
     )
+  }
+
+  /** Pre-compute n-grams for a corpus so repeated comparisons reuse them. */
+  static buildCache(texts: string[], language?: string): NgramCache {
+    const config = Deduplicator.resolveConfig(language)
+    const entries = texts.map((text) => {
+      const joined = Deduplicator.extractWords(text, config).join('')
+      return { text, ngrams: joined.length > 0 ? Deduplicator.generateNgrams(joined) : new Set<string>() }
+    })
+    return { entries, config }
+  }
+
+  /** Find texts from a pre-built cache that exceed the similarity threshold. */
+  static findSimilar(query: string, cache: NgramCache, threshold: number): string[] {
+    const joined = Deduplicator.extractWords(query, cache.config).join('')
+    if (joined.length === 0) return []
+    const queryNgrams = Deduplicator.generateNgrams(joined)
+    return cache.entries
+      .filter((e) => e.ngrams.size > 0 && Deduplicator.jaccardSimilarity(queryNgrams, e.ngrams) > threshold)
+      .map((e) => e.text)
   }
 
   private static resolveConfig(language?: string): LanguageConfig {

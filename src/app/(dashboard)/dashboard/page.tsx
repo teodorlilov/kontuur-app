@@ -104,38 +104,19 @@ export default async function DashboardPage() {
   let publishedCount = 0
   const clientPendingMap: Record<string, number> = {}
 
-  // Start briefing + pending post previews immediately — independent of stats
-  const briefingQuery = supabase
-    .from('intelligence_briefings')
-    .select(BRIEFING_COLUMNS)
-    .eq('agency_id', agencyId)
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .single()
+  // Build client name lookup for pending post previews
+  const clientNameMap: Record<string, string> = {}
+  for (const c of clients) {
+    clientNameMap[c.id] = c.name
+  }
 
-  const pendingPostsQuery = clientIds.length > 0
-    ? supabase
-        .from('posts')
-        .select('id, caption, platform, pillar, created_at, client_id')
-        .in('client_id', clientIds)
-        .eq('status', 'pending_review')
-        .order('created_at', { ascending: false })
-        .limit(3)
-    : Promise.resolve({ data: [] as { id: string; caption: string; platform: string; pillar: string | null; created_at: string; client_id: string }[] })
-
-  const changeRequestsQuery = clientIds.length > 0
-    ? supabase
-        .from('posts')
-        .select('id, client_id, caption, platform, post_type, slides_json, scheduled_at, post_approval_tokens!inner(status, client_note, responded_at, batch_id)')
-        .in('client_id', clientIds)
-        .eq('post_approval_tokens.status', 'changes_requested')
-        .order('scheduled_at', { ascending: false })
-        .limit(5)
-    : Promise.resolve({ data: [] as unknown[] })
+  let rawBriefing: unknown = null
+  let rawPendingPosts: unknown[] = []
+  let rawChangeRequests: unknown[] = []
 
   if (clientIds.length > 0) {
-    // getCachedPendingRows is a React cache hit — layout already populated it for this request
-    const [scheduledRes, publishedRes, pendingRows] = await Promise.all([
+    // Run all queries in a single parallel block
+    const [scheduledRes, publishedRes, pendingRows, briefingRes, pendingPostsRes, changeRequestsRes] = await Promise.all([
       supabase
         .from('posts')
         .select('id', { count: 'exact', head: true })
@@ -148,6 +129,27 @@ export default async function DashboardPage() {
         .eq('status', 'published')
         .in('client_id', clientIds),
       getCachedPendingRows(agencyId),
+      supabase
+        .from('intelligence_briefings')
+        .select(BRIEFING_COLUMNS)
+        .eq('agency_id', agencyId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single(),
+      supabase
+        .from('posts')
+        .select('id, caption, platform, pillar, created_at, client_id')
+        .in('client_id', clientIds)
+        .eq('status', 'pending_review')
+        .order('created_at', { ascending: false })
+        .limit(3),
+      supabase
+        .from('posts')
+        .select('id, client_id, caption, platform, post_type, slides_json, scheduled_at, post_approval_tokens!inner(status, client_note, responded_at, batch_id)')
+        .in('client_id', clientIds)
+        .eq('post_approval_tokens.status', 'changes_requested')
+        .order('scheduled_at', { ascending: false })
+        .limit(5),
     ])
 
     scheduledCount = scheduledRes.count ?? 0
@@ -157,14 +159,11 @@ export default async function DashboardPage() {
     for (const row of pendingRows) {
       clientPendingMap[row.client_id] = (clientPendingMap[row.client_id] ?? 0) + 1
     }
-  }
 
-  // Collect briefing + pending posts + change requests — have been running while stats ran
-  const [{ data: rawBriefing }, { data: rawPendingPosts }, { data: rawChangeRequests }] = await Promise.all([
-    briefingQuery,
-    pendingPostsQuery,
-    changeRequestsQuery,
-  ])
+    rawBriefing = briefingRes.data
+    rawPendingPosts = pendingPostsRes.data ?? []
+    rawChangeRequests = changeRequestsRes.data ?? []
+  }
 
   const briefing = rawBriefing as {
     briefing_text: string | null
@@ -175,19 +174,13 @@ export default async function DashboardPage() {
     coaching_points: string[] | null
   } | null
 
-  // Build client name lookup for pending post previews
-  const clientNameMap: Record<string, string> = {}
-  for (const c of clients) {
-    clientNameMap[c.id] = c.name
-  }
-
-  const pendingPosts = (rawPendingPosts ?? []).map((p) => ({
-    id: p.id as string,
-    caption: p.caption as string,
-    platform: p.platform as string,
-    pillar: (p.pillar as string) ?? '',
-    createdAt: p.created_at as string,
-    clientName: clientNameMap[p.client_id as string] ?? 'Unknown',
+  const pendingPosts = (rawPendingPosts as Array<{ id: string; caption: string; platform: string; pillar: string | null; created_at: string; client_id: string }>).map((p) => ({
+    id: p.id,
+    caption: p.caption,
+    platform: p.platform,
+    pillar: p.pillar ?? '',
+    createdAt: p.created_at,
+    clientName: clientNameMap[p.client_id] ?? 'Unknown',
   }))
 
   // Process change requests + compute post numbers within batches
