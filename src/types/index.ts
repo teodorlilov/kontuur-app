@@ -1,11 +1,11 @@
-export type {
-  Database,
-  Json,
-  ClientRow,
-  BrandProfileRow,
-  PostingScheduleRow,
-  LanguageRuleRow,
-} from './database'
+import type { Tables } from './database'
+
+export type { Database, Json, Tables } from './database'
+
+// Convenience row-type aliases (defined here so `supabase gen types` doesn't wipe them)
+export type ClientRow = Tables<'clients'>
+export type BrandProfileRow = Tables<'brand_profiles'>
+export type PostingScheduleRow = Tables<'posting_schedules'>
 
 export type {
   HookVerdict,
