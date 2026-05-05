@@ -157,6 +157,11 @@ export function useCalendar(initialPosts: CalendarPost[]) {
     }
   }, [posts])
 
+  /** Remove a post from local state (called after successful deletion). */
+  const removePost = useCallback((postId: string) => {
+    setPosts((prev) => prev.filter((p) => p.id !== postId))
+  }, [])
+
   /** Mark a post as published in local state (called after successful manual publish). */
   const markPostPublished = useCallback((postId: string) => {
     const now = new Date().toISOString()
@@ -178,6 +183,7 @@ export function useCalendar(initialPosts: CalendarPost[]) {
     unschedulePost,
     updatePostContent,
     handleDrop,
+    removePost,
     markPostPublished,
     saving,
   }

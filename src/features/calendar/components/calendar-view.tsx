@@ -150,6 +150,7 @@ export function CalendarView({ initialPosts, clients }: CalendarViewProps) {
     unschedulePost,
     updatePostContent,
     handleDrop,
+    removePost,
     markPostPublished,
     saving,
   } = useCalendar(initialPosts)
@@ -256,6 +257,7 @@ export function CalendarView({ initialPosts, clients }: CalendarViewProps) {
   async function handleDeletePost(postId: string) {
     const result = await deletePost(postId)
     if (result.ok) {
+      removePost(postId)
       toast.success('Post deleted')
       setCardOpen(false)
       setActivePostId(null)
