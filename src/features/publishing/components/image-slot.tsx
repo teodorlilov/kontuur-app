@@ -1,8 +1,9 @@
 'use client'
 
 import { useState, useRef } from 'react'
-import { X, Upload, Check } from 'lucide-react'
+import { X, Upload, Check, Download } from 'lucide-react'
 import { mapImageRow } from '@/features/publishing/lib/map-image-row'
+import { CanvaDesignPicker } from './canva-design-picker'
 import type { PostImage } from '@/types/api'
 
 interface ImageSlotProps {
@@ -11,13 +12,16 @@ interface ImageSlotProps {
   image: PostImage | null
   onUploaded: (image: PostImage) => void
   onDeleted: (imageId: string) => void
+  /** Whether the current user has Canva connected. */
+  canvaConnected?: boolean
 }
 
 /** Single-image upload/display slot for a carousel slide or single post. */
-export function ImageSlot({ postId, position, image, onUploaded, onDeleted }: ImageSlotProps) {
+export function ImageSlot({ postId, position, image, onUploaded, onDeleted, canvaConnected }: ImageSlotProps) {
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [dragOver, setDragOver] = useState(false)
+  const [pickerOpen, setPickerOpen] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
   if (image) {
@@ -41,7 +45,52 @@ export function ImageSlot({ postId, position, image, onUploaded, onDeleted }: Im
         style={{ display: 'none' }}
         onChange={(e) => { if (e.target.files?.length) void handleFile(e.target.files[0]!) }}
       />
+
+      {canvaConnected && (
+        <button
+          type="button"
+          onClick={() => setPickerOpen(true)}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 5,
+            padding: '7px 8px',
+            border: '1px solid var(--color-border-2)',
+            borderRadius: 8,
+            background: 'rgba(0, 195, 204, 0.04)',
+            cursor: 'pointer',
+            fontFamily: 'inherit',
+            fontSize: 10,
+            fontWeight: 500,
+            color: '#00C3CC',
+            transition: 'background 120ms ease, border-color 120ms ease',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = 'rgba(0, 195, 204, 0.10)'
+            e.currentTarget.style.borderColor = '#00C3CC'
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = 'rgba(0, 195, 204, 0.04)'
+            e.currentTarget.style.borderColor = 'var(--color-border-2)'
+          }}
+        >
+          <Download style={{ width: 12, height: 12 }} />
+          Import from Canva
+        </button>
+      )}
+
       {error && <ErrorMessage message={error} />}
+
+      {canvaConnected && (
+        <CanvaDesignPicker
+          open={pickerOpen}
+          onClose={() => setPickerOpen(false)}
+          postId={postId}
+          position={position}
+          onImported={onUploaded}
+        />
+      )}
     </div>
   )
 
@@ -242,4 +291,3 @@ function ErrorMessage({ message }: { message: string }) {
     </div>
   )
 }
-

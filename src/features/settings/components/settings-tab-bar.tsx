@@ -12,6 +12,7 @@ interface SettingsTabBarProps {
 const TAB_ITEMS: Array<{ key: SettingsTab; label: string; soloOnly?: boolean }> = [
   { key: 'team', label: 'Team' },
   { key: 'account', label: 'Account' },
+  { key: 'integrations', label: 'Integrations' },
   { key: 'profile', label: 'Profile' },
 ]
 

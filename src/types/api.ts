@@ -268,7 +268,7 @@ export interface AgencyInfo {
   timezone: string
 }
 
-export type SettingsTab = 'team' | 'account' | 'profile'
+export type SettingsTab = 'team' | 'account' | 'integrations' | 'profile'
 
 export interface InviteTeamMemberRequest {
   email: string

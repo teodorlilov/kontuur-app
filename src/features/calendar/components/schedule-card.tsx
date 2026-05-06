@@ -13,6 +13,7 @@ import { ClientResponseCard } from '@/features/calendar/components/client-respon
 import { Button } from '@/components/ui/button'
 import { ImageSlot } from '@/features/publishing/components/image-slot'
 import { mapImageRow } from '@/features/publishing/lib/map-image-row'
+import { useCanvaStatus } from '@/features/publishing/hooks/use-canva-status'
 import { extractAllFlaggedSlides } from '@/utils/extract-flagged-slides'
 import type {
   CalendarPost,
@@ -150,6 +151,7 @@ export const ScheduleCard = memo(function ScheduleCard({
   const [images, setImages] = useState<PostImage[]>([])
   const [publishing, setPublishing] = useState(false)
   const [publishError, setPublishError] = useState<string | null>(null)
+  const canvaConnected = useCanvaStatus()
 
   // Reset / pre-fill when post changes
   useEffect(() => {
@@ -495,6 +497,7 @@ export const ScheduleCard = memo(function ScheduleCard({
                   images={images}
                   onImageUploaded={handleImageUploaded}
                   onImageDeleted={handleImageDeleted}
+                  canvaConnected={canvaConnected}
                 />
               </div>
             )}
@@ -509,6 +512,7 @@ export const ScheduleCard = memo(function ScheduleCard({
                   image={images.find((img) => img.position === 0) ?? null}
                   onUploaded={handleImageUploaded}
                   onDeleted={handleImageDeleted}
+                  canvaConnected={canvaConnected}
                 />
               </div>
             )}

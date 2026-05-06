@@ -872,7 +872,9 @@ export type Database = {
           created_at: string | null
           id: string
           platform: string | null
+          refresh_token: string | null
           token_expires_at: string | null
+          user_id: string | null
         }
         Insert: {
           access_token?: string | null
@@ -882,7 +884,9 @@ export type Database = {
           created_at?: string | null
           id?: string
           platform?: string | null
+          refresh_token?: string | null
           token_expires_at?: string | null
+          user_id?: string | null
         }
         Update: {
           access_token?: string | null
@@ -892,7 +896,9 @@ export type Database = {
           created_at?: string | null
           id?: string
           platform?: string | null
+          refresh_token?: string | null
           token_expires_at?: string | null
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -900,6 +906,13 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "social_connections_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]

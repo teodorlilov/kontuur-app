@@ -16,6 +16,7 @@ interface CarouselSlidesProps {
   images?: PostImage[]
   onImageUploaded?: (image: PostImage) => void
   onImageDeleted?: (imageId: string) => void
+  canvaConnected?: boolean
 }
 
 /** Inline text field that switches between display and edit on click */
@@ -118,7 +119,7 @@ function EditableField({
   )
 }
 
-export function CarouselSlides({ slides, editable, onSlidesChange, onBlur, flaggedSlides, postId, images, onImageUploaded, onImageDeleted }: CarouselSlidesProps) {
+export function CarouselSlides({ slides, editable, onSlidesChange, onBlur, flaggedSlides, postId, images, onImageUploaded, onImageDeleted, canvaConnected }: CarouselSlidesProps) {
   const [activeIndex, setActiveIndex] = useState(0)
   const activeSlide = slides[activeIndex]
 
@@ -229,6 +230,7 @@ export function CarouselSlides({ slides, editable, onSlidesChange, onBlur, flagg
               image={images?.find((img) => img.position === activeIndex) ?? null}
               onUploaded={onImageUploaded}
               onDeleted={onImageDeleted}
+              canvaConnected={canvaConnected}
             />
           )}
         </div>

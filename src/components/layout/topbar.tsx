@@ -1,6 +1,7 @@
 'use client'
 
 import { NotificationsBell } from '@/components/layout/notifications-bell'
+import { DesignInCanvaButton } from '@/components/layout/design-in-canva-button'
 import { formatDateChip } from '@/utils/format-date-chip'
 
 interface TopbarProps {
@@ -55,6 +56,7 @@ export function Topbar({ title }: TopbarProps) {
 
       {/* Right side */}
       <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 10 }}>
+        <DesignInCanvaButton />
         <span
           style={{
             fontSize: 11,

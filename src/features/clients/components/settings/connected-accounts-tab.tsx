@@ -133,7 +133,9 @@ function ConnectionCard({
   const isExpired = connection.token_expires_at
     ? new Date(connection.token_expires_at) < new Date()
     : false
-  const platformLabel = connection.platform === 'instagram' ? 'Instagram' : 'Facebook'
+  const platformLabel =
+    connection.platform === 'instagram' ? 'Instagram' :
+    'Facebook'
 
   return (
     <div

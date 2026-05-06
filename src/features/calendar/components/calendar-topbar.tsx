@@ -4,6 +4,7 @@ import { memo } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { formatDateChip } from '@/utils/format-date-chip'
 import { NotificationsBell } from '@/components/layout/notifications-bell'
+import { DesignInCanvaButton } from '@/components/layout/design-in-canva-button'
 
 const MONTH_NAMES = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -117,6 +118,8 @@ export const CalendarTopbar = memo(function CalendarTopbar({
 
       {/* Right side controls */}
       <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
+        <DesignInCanvaButton />
+
         {/* Client selector */}
         {clients.length > 1 && (
           <select
