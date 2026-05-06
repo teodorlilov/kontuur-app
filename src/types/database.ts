@@ -316,10 +316,10 @@ export type Database = {
           contact_email: string | null
           created_at: string | null
           id: string
-          language: string | null
+          language: string
           name: string
           niche: string | null
-          posts_per_week: number | null
+          posts_per_week: number
           website_url: string | null
         }
         Insert: {
@@ -327,10 +327,10 @@ export type Database = {
           contact_email?: string | null
           created_at?: string | null
           id?: string
-          language?: string | null
+          language?: string
           name: string
           niche?: string | null
-          posts_per_week?: number | null
+          posts_per_week?: number
           website_url?: string | null
         }
         Update: {
@@ -338,10 +338,10 @@ export type Database = {
           contact_email?: string | null
           created_at?: string | null
           id?: string
-          language?: string | null
+          language?: string
           name?: string
           niche?: string | null
-          posts_per_week?: number | null
+          posts_per_week?: number
           website_url?: string | null
         }
         Relationships: [
@@ -616,11 +616,11 @@ export type Database = {
           client_email: string | null
           client_note: string | null
           created_at: string | null
-          expires_at: string | null
+          expires_at: string
           id: string
-          post_id: string | null
+          post_id: string
           responded_at: string | null
-          status: string | null
+          status: string
           token: string | null
         }
         Insert: {
@@ -628,11 +628,11 @@ export type Database = {
           client_email?: string | null
           client_note?: string | null
           created_at?: string | null
-          expires_at?: string | null
+          expires_at?: string
           id?: string
-          post_id?: string | null
+          post_id: string
           responded_at?: string | null
-          status?: string | null
+          status?: string
           token?: string | null
         }
         Update: {
@@ -640,11 +640,11 @@ export type Database = {
           client_email?: string | null
           client_note?: string | null
           created_at?: string | null
-          expires_at?: string | null
+          expires_at?: string
           id?: string
-          post_id?: string | null
+          post_id?: string
           responded_at?: string | null
-          status?: string | null
+          status?: string
           token?: string | null
         }
         Relationships: [
@@ -732,34 +732,34 @@ export type Database = {
       }
       posting_schedules: {
         Row: {
-          auto_generate_day: string | null
+          auto_generate_day: string
           auto_generate_time: string | null
-          client_id: string | null
+          client_id: string
           created_at: string | null
           frequency_type: string | null
-          frequency_value: number | null
+          frequency_value: number
           id: string
-          is_active: boolean | null
+          is_active: boolean
         }
         Insert: {
-          auto_generate_day?: string | null
+          auto_generate_day?: string
           auto_generate_time?: string | null
-          client_id?: string | null
+          client_id: string
           created_at?: string | null
           frequency_type?: string | null
-          frequency_value?: number | null
+          frequency_value?: number
           id?: string
-          is_active?: boolean | null
+          is_active?: boolean
         }
         Update: {
-          auto_generate_day?: string | null
+          auto_generate_day?: string
           auto_generate_time?: string | null
-          client_id?: string | null
+          client_id?: string
           created_at?: string | null
           frequency_type?: string | null
-          frequency_value?: number | null
+          frequency_value?: number
           id?: string
-          is_active?: boolean | null
+          is_active?: boolean
         }
         Relationships: [
           {
@@ -774,15 +774,15 @@ export type Database = {
       posts: {
         Row: {
           caption: string | null
-          client_id: string | null
+          client_id: string
           created_at: string | null
           id: string
           ig_creation_id: string | null
           ig_media_id: string | null
           image_url: string | null
           pillar: string | null
-          platform: string | null
-          post_type: string | null
+          platform: string
+          post_type: string
           priority: boolean | null
           publish_attempts: number | null
           publish_error: string | null
@@ -801,15 +801,15 @@ export type Database = {
         }
         Insert: {
           caption?: string | null
-          client_id?: string | null
+          client_id: string
           created_at?: string | null
           id?: string
           ig_creation_id?: string | null
           ig_media_id?: string | null
           image_url?: string | null
           pillar?: string | null
-          platform?: string | null
-          post_type?: string | null
+          platform: string
+          post_type?: string
           priority?: boolean | null
           publish_attempts?: number | null
           publish_error?: string | null
@@ -828,15 +828,15 @@ export type Database = {
         }
         Update: {
           caption?: string | null
-          client_id?: string | null
+          client_id?: string
           created_at?: string | null
           id?: string
           ig_creation_id?: string | null
           ig_media_id?: string | null
           image_url?: string | null
           pillar?: string | null
-          platform?: string | null
-          post_type?: string | null
+          platform?: string
+          post_type?: string
           priority?: boolean | null
           publish_attempts?: number | null
           publish_error?: string | null
@@ -919,25 +919,25 @@ export type Database = {
       }
       users: {
         Row: {
-          agency_id: string | null
+          agency_id: string
           created_at: string | null
           email: string
           id: string
-          role: string | null
+          role: string
         }
         Insert: {
-          agency_id?: string | null
+          agency_id: string
           created_at?: string | null
           email: string
           id: string
-          role?: string | null
+          role?: string
         }
         Update: {
-          agency_id?: string | null
+          agency_id?: string
           created_at?: string | null
           email?: string
           id?: string
-          role?: string | null
+          role?: string
         }
         Relationships: [
           {
@@ -1095,4 +1095,3 @@ export const Constants = {
     Enums: {},
   },
 } as const
-

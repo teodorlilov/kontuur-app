@@ -116,7 +116,7 @@ export async function POST(request: Request) {
     .insert({
       client_id: body.client_id,
       caption: body.caption ?? null,
-      platform: body.platform ?? null,
+      platform: body.platform ?? 'instagram',
       post_type: body.post_type ?? 'single',
       slides_json: (body.slides_json as Json) ?? null,
       validation_json: (body.validation_json as Json) ?? null,

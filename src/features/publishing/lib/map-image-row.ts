@@ -1,4 +1,4 @@
-import type { PostImageRow } from '@/types/database'
+import type { PostImageRow } from '@/types'
 import type { PostImage } from '@/types/api'
 
 /** Map a DB row (snake_case) to the PostImage interface (camelCase). */

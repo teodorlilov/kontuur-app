@@ -6,6 +6,7 @@ export type { Database, Json, Tables } from './database'
 export type ClientRow = Tables<'clients'>
 export type BrandProfileRow = Tables<'brand_profiles'>
 export type PostingScheduleRow = Tables<'posting_schedules'>
+export type PostImageRow = Tables<'post_images'>
 
 export type {
   HookVerdict,

@@ -25,7 +25,7 @@ import {
 } from '@/lib/queries/select-columns'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import type { TeamMember, MetaConnection } from '@/types/api'
-import type { ClientRow, BrandProfileRow, PostingScheduleRow, Json } from '@/types/database'
+import type { ClientRow, BrandProfileRow, PostingScheduleRow, Json } from '@/types'
 
 type SupabaseClient = Awaited<ReturnType<typeof createServerSupabaseClient>>
 
