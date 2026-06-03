@@ -14,9 +14,25 @@ export const metadata: Metadata = {
   description:
     'Generate, review, schedule and analyse Instagram content for all your clients from one place. Built for marketing agencies.',
   openGraph: {
+    type: 'website',
     title: 'Kontuur',
     description: 'AI-powered social media management for agencies.',
     url: 'https://kontuur.app',
+    siteName: 'kontuur',
+    images: [
+      {
+        url: '/dashboard.png',
+        width: 1200,
+        height: 630,
+        alt: 'kontuur — AI-powered social media management for agencies',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Kontuur',
+    description: 'AI-powered social media management for agencies.',
+    images: ['/dashboard.png'],
   },
 }
 
