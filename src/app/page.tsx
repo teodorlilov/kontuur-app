@@ -6,7 +6,6 @@ import { Features } from '@/features/marketing/components/Features'
 import { HowItWorks } from '@/features/marketing/components/HowItWorks'
 import { DashboardPreview } from '@/features/marketing/components/DashboardPreview'
 import { FeaturesDeepDive } from '@/features/marketing/components/FeaturesDeepDive'
-import { Pricing } from '@/features/marketing/components/Pricing'
 import { CtaSection } from '@/features/marketing/components/CtaSection'
 import { Footer } from '@/features/marketing/components/Footer'
 
@@ -31,7 +30,6 @@ export default function LandingPage() {
       <HowItWorks />
       <DashboardPreview />
       <FeaturesDeepDive />
-      <Pricing />
       <CtaSection />
       <Footer />
     </div>

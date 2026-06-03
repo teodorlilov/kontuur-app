@@ -20,8 +20,30 @@ const playfair = Playfair_Display({
 })
 
 export const metadata: Metadata = {
+  metadataBase: new URL('https://kontuur.app'),
   title: 'kontuur',
   description: 'AI-powered social media management for agencies',
+  openGraph: {
+    type: 'website',
+    url: 'https://kontuur.app',
+    siteName: 'kontuur',
+    title: 'kontuur',
+    description: 'AI-powered social media management for agencies',
+    images: [
+      {
+        url: '/dashboard.png',
+        width: 1200,
+        height: 630,
+        alt: 'kontuur — AI-powered social media management for agencies',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'kontuur',
+    description: 'AI-powered social media management for agencies',
+    images: ['/dashboard.png'],
+  },
 }
 
 export default function RootLayout({
