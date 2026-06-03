@@ -44,10 +44,12 @@ export const metadata: Metadata = {
     description: 'AI-powered social media management for agencies',
     images: ['/dashboard.png'],
   },
-  other: {
-    'fb:app_id': process.env.META_APP_ID ?? '',
-  },
 }
+
+// Facebook only recognizes fb:app_id via the `property` attribute, which the
+// Next.js Metadata `other` field can't emit (it always uses `name`). Render it
+// directly so React 19 hoists it into <head> with the correct attribute.
+const FB_APP_ID = process.env.META_APP_ID ?? ''
 
 export default function RootLayout({
   children,
@@ -61,6 +63,7 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <body className="min-h-full">
+        {FB_APP_ID && <meta property="fb:app_id" content={FB_APP_ID} />}
         {children}
         <Toaster
           position="bottom-right"
