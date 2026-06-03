@@ -44,6 +44,9 @@ export async function updateSession(request: NextRequest) {
     pathname.startsWith('/api/ideas/submit') ||
     pathname.startsWith('/privacy') ||
     pathname.startsWith('/terms') ||
+    pathname.startsWith('/data-deletion') ||
+    pathname === '/sitemap.xml' ||
+    pathname === '/robots.txt' ||
     pathname.startsWith('/_next') ||
     pathname.startsWith('/favicon')
 
