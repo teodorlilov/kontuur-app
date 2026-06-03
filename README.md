@@ -1,4 +1,4 @@
-# PostFlow
+# Kontuur.app 
 
 AI-powered social media content platform for marketing agencies. Generate, review, schedule, and publish posts across platforms — with built-in quality validation, client approval portals, and multi-client management.
 
