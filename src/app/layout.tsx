@@ -44,6 +44,9 @@ export const metadata: Metadata = {
     description: 'AI-powered social media management for agencies',
     images: ['/dashboard.png'],
   },
+  other: {
+    'fb:app_id': process.env.META_APP_ID ?? '',
+  },
 }
 
 export default function RootLayout({
