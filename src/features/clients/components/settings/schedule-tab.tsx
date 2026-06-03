@@ -26,11 +26,13 @@ interface ScheduleTabProps {
   defaultCarouselSlides: string
   freqValue: string
   autoDay: string
+  isActive: boolean
   onActivePlatformChange: (v: string) => void
   onDefaultPostTypeChange: (v: string) => void
   onDefaultCarouselSlidesChange: (v: string) => void
   onFreqValueChange: (v: string) => void
   onAutoDayChange: (v: string) => void
+  onIsActiveChange: (v: boolean) => void
 }
 
 /** Schedule tab: platform, post type, and autonomous generation settings. */
@@ -40,11 +42,13 @@ export function ScheduleTab({
   defaultCarouselSlides,
   freqValue,
   autoDay,
+  isActive,
   onActivePlatformChange,
   onDefaultPostTypeChange,
   onDefaultCarouselSlidesChange,
   onFreqValueChange,
   onAutoDayChange,
+  onIsActiveChange,
 }: ScheduleTabProps) {
   return (
     <>
@@ -134,11 +138,57 @@ export function ScheduleTab({
           >
             Autonomous schedule
           </div>
+
+          {/* Enable/disable toggle */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 16,
+              marginBottom: 16,
+            }}
+          >
+            <div>
+              <div
+                style={{
+                  fontSize: 13,
+                  fontWeight: 500,
+                  color: 'var(--color-text-1)',
+                  marginBottom: 2,
+                }}
+              >
+                Autonomous generation
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--color-muted)' }}>
+                Automatically generate posts on the schedule below
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => onIsActiveChange(!isActive)}
+              className={cn(
+                'relative inline-flex h-6 w-11 items-center rounded-full transition-colors',
+                isActive ? 'bg-[#1A2630]' : 'bg-gray-200'
+              )}
+              style={{ flexShrink: 0 }}
+            >
+              <span
+                className={cn(
+                  'inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform',
+                  isActive ? 'translate-x-6' : 'translate-x-1'
+                )}
+              />
+            </button>
+          </div>
+
           <div
             style={{
               display: 'grid',
               gridTemplateColumns: '1fr 1fr',
               gap: 12,
+              opacity: isActive ? 1 : 0.45,
+              pointerEvents: isActive ? 'auto' : 'none',
             }}
           >
             <Select

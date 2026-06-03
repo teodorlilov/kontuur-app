@@ -91,6 +91,7 @@ export function ClientSettingsForm({
   // ── Schedule ──
   const [freqValue, setFreqValue] = useState(String(schedule?.frequency_value ?? 3))
   const [autoDay, setAutoDay] = useState(schedule?.auto_generate_day ?? 'monday')
+  const [isActive, setIsActive] = useState(schedule?.is_active ?? true)
 
   // ── OAuth redirect toast ──
   useEffect(() => {
@@ -136,6 +137,7 @@ export function ClientSettingsForm({
         weekly_mix_json: { [activePlatform]: 1 },
       },
       posting_schedule: {
+        is_active: isActive,
         frequency_value: parseInt(freqValue, 10),
         auto_generate_day: autoDay,
       },
@@ -264,11 +266,13 @@ export function ClientSettingsForm({
               defaultCarouselSlides={defaultCarouselSlides}
               freqValue={freqValue}
               autoDay={autoDay}
+              isActive={isActive}
               onActivePlatformChange={setActivePlatform}
               onDefaultPostTypeChange={setDefaultPostType}
               onDefaultCarouselSlidesChange={setDefaultCarouselSlides}
               onFreqValueChange={setFreqValue}
               onAutoDayChange={setAutoDay}
+              onIsActiveChange={setIsActive}
             />
           )}
           {activeTab === 'accounts' && <ConnectedAccountsTab clientId={clientId} />}
