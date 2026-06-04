@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef } from 'react'
+import Image from 'next/image'
 import { X, Upload, Check, Download } from 'lucide-react'
 import { mapImageRow } from '@/features/publishing/lib/map-image-row'
 import { CanvaDesignPicker } from './canva-design-picker'
@@ -223,9 +224,11 @@ function ImageCard({ image, onDelete }: { image: PostImage; onDelete: () => void
           background: 'rgba(44,62,80,0.08)',
         }}
       >
-        <img
+        <Image
           src={image.publicUrl}
           alt={image.fileName ?? 'Post image'}
+          width={80}
+          height={80}
           style={{ width: '100%', height: '100%', objectFit: 'cover' }}
         />
       </div>

@@ -209,7 +209,7 @@ export interface CalendarPost {
   pillar: string | null
   source_excerpt: string | null
   created_at: string
-  image_count: number
+  images: PostImage[]
   approval_status: string | null
   approval_client_note: string | null
   approval_responded_at: string | null

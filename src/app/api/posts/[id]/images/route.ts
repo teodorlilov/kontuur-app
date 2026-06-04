@@ -3,6 +3,7 @@ import { resolveAuth } from '@/lib/auth/resolve-auth'
 import { verifyPostOwnership } from '@/lib/auth/helpers'
 import { uploadPostImage, deletePostImage } from '@/features/publishing/lib/storage'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
+import { POST_IMAGE_COLUMNS } from '@/lib/queries/select-columns'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 const MAX_SIZE_BYTES = 8 * 1024 * 1024
@@ -31,28 +32,6 @@ async function replaceExistingImage(
     await deletePostImage(existing.storage_path)
     await admin.from('post_images').delete().eq('id', existing.id)
   }
-}
-
-/** Fetch all images for a post. */
-export async function GET(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const { id: postId } = await params
-  const auth = await resolveAuth()
-  if (!auth.ok) return auth.response
-
-  const post = await verifyPostOwnership(auth.supabase, postId, auth.agencyId)
-  if (!post) return NextResponse.json({ error: 'Post not found' }, { status: 404 })
-
-  const admin = createAdminSupabaseClient()
-  const { data: images } = await admin
-    .from('post_images')
-    .select('id, public_url, storage_path, position, file_name, file_size, content_type')
-    .eq('post_id', postId)
-    .order('position', { ascending: true })
-
-  return NextResponse.json({ images: images ?? [] })
 }
 
 /** Upload an image for a post (linked to a carousel slide position or single post). */
@@ -84,7 +63,7 @@ export async function POST(
   const { data: image, error } = await admin
     .from('post_images')
     .insert({ post_id: postId, public_url: publicUrl, storage_path: storagePath, position, file_name: file.name, file_size: file.size, content_type: file.type })
-    .select('id, public_url, storage_path, position, file_name, file_size, content_type')
+    .select(POST_IMAGE_COLUMNS)
     .single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })

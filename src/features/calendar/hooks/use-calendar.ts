@@ -3,7 +3,7 @@
 import { useState, useMemo, useCallback } from 'react'
 import { toast } from '@/components/ui/toast'
 import { updatePost, resolveChangeRequest } from '@/lib/actions/post-actions'
-import type { CalendarPost } from '@/types/api'
+import type { CalendarPost, PostImage } from '@/types/api'
 
 const CLEARED_APPROVAL = {
   approval_status: null,
@@ -162,6 +162,11 @@ export function useCalendar(initialPosts: CalendarPost[]) {
     setPosts((prev) => prev.filter((p) => p.id !== postId))
   }, [])
 
+  /** Replace the images array for a single post in local state. */
+  const updatePostImages = useCallback((postId: string, images: PostImage[]) => {
+    setPosts((prev) => prev.map((p) => (p.id === postId ? { ...p, images } : p)))
+  }, [])
+
   /** Mark a post as published in local state (called after successful manual publish). */
   const markPostPublished = useCallback((postId: string) => {
     const now = new Date().toISOString()
@@ -184,6 +189,7 @@ export function useCalendar(initialPosts: CalendarPost[]) {
     updatePostContent,
     handleDrop,
     removePost,
+    updatePostImages,
     markPostPublished,
     saving,
   }

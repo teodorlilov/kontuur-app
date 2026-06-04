@@ -5,6 +5,7 @@ import { canvaFetch, CanvaAuthError } from '../../../canva-auth'
 import { CANVA_API_BASE } from '../../../canva-constants'
 import { uploadPostImage, deletePostImage } from '@/features/publishing/lib/storage'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
+import { POST_IMAGE_COLUMNS } from '@/lib/queries/select-columns'
 
 interface CanvaExportJob {
   job: { id: string; status: string }
@@ -152,7 +153,7 @@ export async function POST(
       file_size: imageBuffer.byteLength,
       content_type: 'image/png',
     })
-    .select('id, public_url, storage_path, position, file_name, file_size, content_type')
+    .select(POST_IMAGE_COLUMNS)
     .single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })

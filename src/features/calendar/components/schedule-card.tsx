@@ -12,7 +12,6 @@ import { QualityScores } from '@/components/posts/quality-scores'
 import { ClientResponseCard } from '@/features/calendar/components/client-response-card'
 import { Button } from '@/components/ui/button'
 import { ImageSlot } from '@/features/publishing/components/image-slot'
-import { mapImageRow } from '@/features/publishing/lib/map-image-row'
 import { useCanvaStatus } from '@/features/publishing/hooks/use-canva-status'
 import { extractAllFlaggedSlides } from '@/utils/extract-flagged-slides'
 import type {
@@ -48,6 +47,7 @@ interface ScheduleCardProps {
   onSaveContent?: (postId: string, updates: ContentUpdates) => Promise<boolean>
   onSaveAndResend?: (postId: string, updates: ContentUpdates) => Promise<void>
   onPublished?: (postId: string) => void
+  onImagesChange: (postId: string, images: PostImage[]) => void
 }
 
 interface ParsedValidation {
@@ -141,6 +141,7 @@ export const ScheduleCard = memo(function ScheduleCard({
   onSaveContent,
   onSaveAndResend,
   onPublished,
+  onImagesChange,
 }: ScheduleCardProps) {
   const [date, setDate] = useState('')
   const [time, setTime] = useState('09:00')
@@ -148,7 +149,6 @@ export const ScheduleCard = memo(function ScheduleCard({
   const [draftCaption, setDraftCaption] = useState('')
   const [draftSlides, setDraftSlides] = useState<CarouselSlide[]>([])
   const [savingContent, setSavingContent] = useState(false)
-  const [images, setImages] = useState<PostImage[]>([])
   const [publishing, setPublishing] = useState(false)
   const [publishError, setPublishError] = useState<string | null>(null)
   const canvaConnected = useCanvaStatus()
@@ -166,40 +166,26 @@ export const ScheduleCard = memo(function ScheduleCard({
     setPlatform(post?.platform ?? 'Instagram')
     setDraftCaption(post?.caption ?? '')
     setDraftSlides(Array.isArray(post?.slides_json) ? (post.slides_json as CarouselSlide[]) : [])
-    setImages([])
     setPublishError(null)
   }, [post?.id, post?.platform, post?.scheduled_at, post?.caption, post?.slides_json])
 
-  // Fetch images for the current post
-  useEffect(() => {
-    if (!post?.id) return
-    void fetchImages(post.id)
-  }, [post?.id]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  async function fetchImages(postId: string) {
-    const res = await fetch(`/api/posts/${postId}/images`)
-    if (!res.ok) return
-    const data = await res.json()
-    if (Array.isArray(data.images)) {
-      setImages(data.images.map(mapImageRow))
-    }
-  }
-
   const handleImageUploaded = useCallback((image: PostImage) => {
-    setImages((prev) => {
-      const filtered = prev.filter((img) => img.position !== image.position)
-      return [...filtered, image].sort((a, b) => a.position - b.position)
-    })
-  }, [])
+    if (!post) return
+    const next = [...(post.images ?? []).filter((img) => img.position !== image.position), image]
+      .sort((a, b) => a.position - b.position)
+    onImagesChange(post.id, next)
+  }, [post, onImagesChange])
 
   const handleImageDeleted = useCallback((imageId: string) => {
-    setImages((prev) => prev.filter((img) => img.id !== imageId))
-  }, [])
+    if (!post) return
+    onImagesChange(post.id, (post.images ?? []).filter((img) => img.id !== imageId))
+  }, [post, onImagesChange])
 
   if (!isOpen || !post) return null
 
   // Capture for use in closures after null check
   const currentPost = post
+  const images = currentPost.images ?? []
   const isScheduled = currentPost.status === 'scheduled'
   const isPublished = currentPost.status === 'published'
   const isFailed = currentPost.status === 'failed'

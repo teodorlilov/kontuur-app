@@ -1,9 +1,12 @@
 import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { requireSessionUser } from '@/lib/auth/session'
 import { getCachedAgencyClients } from '@/lib/queries/cache'
-import { POST_COLUMNS } from '@/lib/queries/select-columns'
+import { POST_COLUMNS, POST_IMAGE_COLUMNS } from '@/lib/queries/select-columns'
+import { mapImageRow } from '@/features/publishing/lib/map-image-row'
 import { CalendarView } from '@/features/calendar/components/calendar-view'
-import type { CalendarPost } from '@/types/api'
+import type { CalendarPost, PostImage } from '@/types/api'
+import type { PostImageRow } from '@/types'
 
 export default async function CalendarPage() {
   const { agencyId } = await requireSessionUser()
@@ -27,7 +30,7 @@ export default async function CalendarPage() {
     clientIds.length > 0
       ? supabase
           .from('posts')
-          .select(`${POST_COLUMNS}, post_approval_tokens(status, client_note, created_at, responded_at), post_images(id)`)
+          .select(`${POST_COLUMNS}, post_approval_tokens(status, client_note, created_at, responded_at)`)
           .in('client_id', clientIds)
           .in('status', ['approved', 'scheduled', 'publishing', 'published', 'failed'])
           .order('created_at', { ascending: false })
@@ -62,24 +65,40 @@ export default async function CalendarPage() {
     source_excerpt: string | null
     created_at: string
     post_approval_tokens: ApprovalTokenRow[]
-    post_images: { id: string }[]
   }
 
   const clientNameMap = new Map(clientList.map((c) => [c.id, c.name]))
   const typedPostRows = (postRows as PostRow[] | null) ?? []
+
+  // post_images has RLS that blocks the user-scoped client, so fetch via the
+  // admin client — safe because we only query images for already-authorized posts.
+  const imagesByPost = new Map<string, PostImage[]>()
+  if (typedPostRows.length > 0) {
+    const admin = createAdminSupabaseClient()
+    const { data: imageRows } = await admin
+      .from('post_images')
+      .select(POST_IMAGE_COLUMNS)
+      .in('post_id', typedPostRows.map((p) => p.id))
+      .order('position', { ascending: true })
+    for (const row of (imageRows as PostImageRow[] | null) ?? []) {
+      const list = imagesByPost.get(row.post_id) ?? []
+      list.push(mapImageRow(row))
+      imagesByPost.set(row.post_id, list)
+    }
+  }
 
   const posts: CalendarPost[] = typedPostRows.map((p) => {
     // Sort tokens by created_at desc and take the latest
     const latestToken = p.post_approval_tokens
       .slice()
       .sort((a, b) => b.created_at.localeCompare(a.created_at))[0]
-    const { post_approval_tokens: _tokens, post_images: _images, ...rest } = p
+    const { post_approval_tokens: _tokens, ...rest } = p
     return {
       ...rest,
       slides_json: p.slides_json as CalendarPost['slides_json'],
       validation_json: p.validation_json as CalendarPost['validation_json'],
       client_name: clientNameMap.get(p.client_id) ?? 'Unknown',
-      image_count: p.post_images?.length ?? 0,
+      images: imagesByPost.get(p.id) ?? [],
       approval_status: latestToken?.status ?? null,
       approval_client_note: latestToken?.client_note ?? null,
       approval_responded_at: latestToken?.responded_at ?? null,
