@@ -121,6 +121,45 @@ export function ConnectedAccountsTab({ clientId }: ConnectedAccountsTabProps) {
   )
 }
 
+/** Circular avatar showing the account's live profile picture, with an initial fallback. */
+function ConnectionAvatar({ connection }: { connection: MetaConnection }) {
+  const [failed, setFailed] = useState(false)
+  const initial = (connection.account_name || connection.platform || '?').charAt(0).toUpperCase()
+
+  return (
+    <div
+      style={{
+        width: 40,
+        height: 40,
+        borderRadius: '50%',
+        overflow: 'hidden',
+        flexShrink: 0,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'rgba(122,154,106,0.1)',
+        border: '0.5px solid rgba(122,154,106,0.25)',
+        fontSize: 15,
+        fontWeight: 600,
+        color: 'var(--color-text-2)',
+      }}
+    >
+      {failed ? (
+        initial
+      ) : (
+        <img
+          src={`/api/meta/profile-picture?connection_id=${connection.id}`}
+          alt=""
+          width={40}
+          height={40}
+          onError={() => setFailed(true)}
+          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+        />
+      )}
+    </div>
+  )
+}
+
 function ConnectionCard({
   connection,
   isDisconnecting,
@@ -149,6 +188,7 @@ function ConnectionCard({
         borderRadius: 10,
       }}
     >
+      <ConnectionAvatar connection={connection} />
       <div style={{ flex: 1 }}>
         <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--color-text-1)', marginBottom: 2 }}>
           {platformLabel} connected
