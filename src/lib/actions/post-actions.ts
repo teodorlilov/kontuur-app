@@ -2,6 +2,7 @@
 
 import { revalidateTag } from 'next/cache'
 import { resolveActionAuth, verifyPostOwnership, verifyPostsOwnership } from '@/lib/auth/helpers'
+import { isUserSettablePostStatus, isValidPostPlatform } from '@/lib/validation'
 import type { ActionResult } from './types'
 
 interface UpdatePostInput {
@@ -29,6 +30,13 @@ export async function updatePost(
 
   const post = await verifyPostOwnership(supabase, postId, agencyId)
   if (!post) return { ok: false, error: 'Post not found' }
+
+  if (fields.status !== undefined && !isUserSettablePostStatus(fields.status)) {
+    return { ok: false, error: `Invalid status: ${fields.status}` }
+  }
+  if (fields.platform !== undefined && !isValidPostPlatform(fields.platform)) {
+    return { ok: false, error: `Invalid platform: ${fields.platform}` }
+  }
 
   const updates: Record<string, unknown> = {}
   if (fields.status !== undefined) updates.status = fields.status

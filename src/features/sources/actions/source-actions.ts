@@ -43,7 +43,7 @@ export async function createSource(
     return { ok: false, error: 'type must be rss or website' }
   }
 
-  if (!validateSourceUrl(input.url)) {
+  if (!(await validateSourceUrl(input.url))) {
     return { ok: false, error: 'Invalid URL — must be a public http/https URL' }
   }
 

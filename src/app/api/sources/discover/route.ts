@@ -22,13 +22,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'url is required' }, { status: 400 })
   }
 
-  if (!validateSourceUrl(body.url)) {
+  if (!(await validateSourceUrl(body.url))) {
     return NextResponse.json({ error: 'Invalid URL' }, { status: 400 })
   }
 
   // If a specific sitemap URL is provided, fetch its pages directly
   if (body.sitemapUrl?.trim()) {
-    if (!validateSourceUrl(body.sitemapUrl)) {
+    if (!(await validateSourceUrl(body.sitemapUrl))) {
       return NextResponse.json({ error: 'Invalid sitemap URL' }, { status: 400 })
     }
 

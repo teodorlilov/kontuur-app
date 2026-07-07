@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 vi.mock('@/utils/ai-client')
 
-import { mockClaudeResponse } from '@/utils/__mocks__/ai-client'
+import { mockClaudeToolResponse } from '@/utils/__mocks__/ai-client'
 import { validateLanguage } from '../validate-language'
 import type { LanguageConfig } from '@/lib/clients/language-rules'
 
@@ -24,12 +24,7 @@ function makeLanguageConfig(overrides: Partial<LanguageConfig> = {}): LanguageCo
 
 describe('validateLanguage', () => {
   it('returns passing result for clean text', async () => {
-    mockClaudeResponse(
-      JSON.stringify({
-        issues: [],
-        corrected_text: null,
-      })
-    )
+    mockClaudeToolResponse({ issues: [], corrected_text: null })
     const result = await validateLanguage(
       { text: 'Чудесен ден за разходка.' },
       makeLanguageConfig({ formality: 'casual' })
@@ -41,25 +36,23 @@ describe('validateLanguage', () => {
   })
 
   it('returns issues with corrections', async () => {
-    mockClaudeResponse(
-      JSON.stringify({
-        issues: [
-          {
-            type: 'anglicism',
-            original_text: 'тренд',
-            issue_description: 'English loanword used unnecessarily',
-            suggested_fix: 'тенденция',
-          },
-          {
-            type: 'calque',
-            original_text: 'направи разлика',
-            issue_description: 'Calque from "make a difference"',
-            suggested_fix: 'повлияй',
-          },
-        ],
-        corrected_text: 'Следвайте новите тенденции и повлияйте на живота си.',
-      })
-    )
+    mockClaudeToolResponse({
+      issues: [
+        {
+          type: 'anglicism',
+          original_text: 'тренд',
+          issue_description: 'English loanword used unnecessarily',
+          suggested_fix: 'тенденция',
+        },
+        {
+          type: 'calque',
+          original_text: 'направи разлика',
+          issue_description: 'Calque from "make a difference"',
+          suggested_fix: 'повлияй',
+        },
+      ],
+      corrected_text: 'Следвайте новите тенденции и повлияйте на живота си.',
+    })
     const result = await validateLanguage(
       { text: 'Следвайте новите тренд и направете разлика.' },
       makeLanguageConfig()
@@ -75,12 +68,7 @@ describe('validateLanguage', () => {
 
   it('includes language and formality in the prompt', async () => {
     const { callAnthropic } = await import('@/utils/__mocks__/ai-client')
-    mockClaudeResponse(
-      JSON.stringify({
-        issues: [],
-        corrected_text: null,
-      })
-    )
+    mockClaudeToolResponse({ issues: [], corrected_text: null })
     await validateLanguage(
       { text: 'Test text' },
       makeLanguageConfig({ language: 'Spanish', formality: 'formal' })
@@ -92,8 +80,8 @@ describe('validateLanguage', () => {
     expect(prompt).toContain('formal')
   })
 
-  it('handles JSON in markdown code block', async () => {
-    mockClaudeResponse('```json\n{"issues":[],"corrected_text":null}\n```')
+  it('treats a non-array issues field as no issues', async () => {
+    mockClaudeToolResponse({ issues: null, corrected_text: null })
     const result = await validateLanguage(
       { text: 'Text' },
       makeLanguageConfig({ language: 'English', formality: 'casual' })
@@ -104,12 +92,7 @@ describe('validateLanguage', () => {
 
   it('includes language instructions in the system prompt when provided', async () => {
     const { callAnthropic } = await import('@/utils/__mocks__/ai-client')
-    mockClaudeResponse(
-      JSON.stringify({
-        issues: [],
-        corrected_text: null,
-      })
-    )
+    mockClaudeToolResponse({ issues: [], corrected_text: null })
     await validateLanguage(
       { text: 'Test text' },
       makeLanguageConfig({
@@ -125,12 +108,7 @@ describe('validateLanguage', () => {
 
   it('includes language-specific checks when languageInstructions provided', async () => {
     const { callAnthropic } = await import('@/utils/__mocks__/ai-client')
-    mockClaudeResponse(
-      JSON.stringify({
-        issues: [],
-        corrected_text: null,
-      })
-    )
+    mockClaudeToolResponse({ issues: [], corrected_text: null })
     await validateLanguage(
       { text: 'Test text' },
       makeLanguageConfig({
@@ -147,12 +125,7 @@ describe('validateLanguage', () => {
 
   it('includes client language notes in the system prompt', async () => {
     const { callAnthropic } = await import('@/utils/__mocks__/ai-client')
-    mockClaudeResponse(
-      JSON.stringify({
-        issues: [],
-        corrected_text: null,
-      })
-    )
+    mockClaudeToolResponse({ issues: [], corrected_text: null })
     await validateLanguage(
       { text: 'Test text' },
       makeLanguageConfig({
@@ -167,12 +140,7 @@ describe('validateLanguage', () => {
 
   it('does not include language instructions when empty', async () => {
     const { callAnthropic } = await import('@/utils/__mocks__/ai-client')
-    mockClaudeResponse(
-      JSON.stringify({
-        issues: [],
-        corrected_text: null,
-      })
-    )
+    mockClaudeToolResponse({ issues: [], corrected_text: null })
     await validateLanguage(
       { text: 'Test text' },
       makeLanguageConfig({ language: 'English', languageInstructions: '' })

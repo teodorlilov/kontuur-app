@@ -41,6 +41,6 @@ export async function generateTopics(
     outputSchema: TOPICS_OUTPUT_SCHEMA,
   })
 
-  const { topics } = extractToolInput<{ topics: ResearchTopic[] }>(message)
+  const { topics } = extractToolInput<{ topics: ResearchTopic[] }>(message, TOPICS_OUTPUT_SCHEMA)
   return topics
 }

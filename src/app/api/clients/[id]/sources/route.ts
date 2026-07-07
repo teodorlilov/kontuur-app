@@ -61,7 +61,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: 'type must be rss or website' }, { status: 400 })
   }
 
-  if (!validateSourceUrl(body.url)) {
+  if (!(await validateSourceUrl(body.url))) {
     return NextResponse.json(
       { error: 'Invalid URL — must be a public http/https URL' },
       { status: 400 }

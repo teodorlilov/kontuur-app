@@ -38,8 +38,12 @@ export interface CallAnthropicOptions {
 const MAX_RETRIES = 3
 const RETRY_BASE_DELAY_MS = 1000
 
-function isOverloaded(err: unknown): boolean {
-  if (err instanceof Anthropic.APIError) return err.status === 529
+/** Transient failures worth retrying: rate limits, server errors, overload, network drops. */
+function isRetryable(err: unknown): boolean {
+  if (err instanceof Anthropic.APIConnectionError) return true
+  if (err instanceof Anthropic.APIError) {
+    return err.status === 429 || (typeof err.status === 'number' && err.status >= 500)
+  }
   if (err && typeof err === 'object' && 'error' in err) {
     const inner = (err as { error?: { error?: { type?: string } } }).error
     return inner?.error?.type === 'overloaded_error'
@@ -81,14 +85,22 @@ export async function callAnthropic(opts: CallAnthropicOptions): Promise<Message
   }
 
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    // Once tokens have reached the caller a retry would replay the text from
+    // the start (duplicated output in streaming UIs) — fail instead.
+    let emittedTokens = false
     try {
       const stream = anthropic.messages.stream(requestParams)
-      if (onToken) stream.on('text', onToken)
+      if (onToken) {
+        stream.on('text', (text) => {
+          emittedTokens = true
+          onToken(text)
+        })
+      }
       return await stream.finalMessage()
     } catch (err) {
-      if (isOverloaded(err) && attempt < MAX_RETRIES) {
+      if (isRetryable(err) && !emittedTokens && attempt < MAX_RETRIES) {
         const delay = RETRY_BASE_DELAY_MS * 2 ** attempt
-        console.warn(`[ai-client] overloaded, retrying in ${delay}ms (attempt ${attempt + 1}/${MAX_RETRIES})`)
+        console.warn(`[ai-client] transient API error, retrying in ${delay}ms (attempt ${attempt + 1}/${MAX_RETRIES})`, err)
         await new Promise((r) => setTimeout(r, delay))
         continue
       }

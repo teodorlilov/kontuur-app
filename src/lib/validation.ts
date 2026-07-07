@@ -1,3 +1,25 @@
+/**
+ * Statuses a user may set through generic post updates. Pipeline-owned statuses
+ * ('publishing', 'published', 'failed') are excluded — those must only be set by
+ * the publish flow, otherwise stats and the scheduler can be corrupted.
+ */
+export const USER_SETTABLE_POST_STATUSES = [
+  'draft',
+  'pending_review',
+  'approved',
+  'scheduled',
+] as const
+
+export const POST_PLATFORMS = ['instagram', 'facebook'] as const
+
+export function isUserSettablePostStatus(value: string): boolean {
+  return (USER_SETTABLE_POST_STATUSES as readonly string[]).includes(value)
+}
+
+export function isValidPostPlatform(value: string): boolean {
+  return (POST_PLATFORMS as readonly string[]).includes(value)
+}
+
 export function validatePassword(password: string): string | null {
   if (!password) return 'Password is required'
   if (password.length < 10) return 'Password must be at least 10 characters'

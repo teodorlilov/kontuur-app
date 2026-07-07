@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
 import { verifyPostOwnership } from '@/lib/auth/helpers'
+import { isUserSettablePostStatus, isValidPostPlatform } from '@/lib/validation'
 import { POST_COLUMNS } from '@/lib/queries/select-columns'
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -46,6 +47,13 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
     body = await request.json()
   } catch {
     return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
+  }
+
+  if (body.status !== undefined && !isUserSettablePostStatus(String(body.status))) {
+    return NextResponse.json({ error: `Invalid status: ${String(body.status)}` }, { status: 400 })
+  }
+  if (body.platform !== undefined && !isValidPostPlatform(String(body.platform))) {
+    return NextResponse.json({ error: `Invalid platform: ${String(body.platform)}` }, { status: 400 })
   }
 
   const updatePayload: Record<string, unknown> = {}

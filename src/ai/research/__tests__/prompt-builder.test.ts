@@ -2,7 +2,11 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 vi.mock('@/utils/ai-client')
 
-import { callAnthropic, mockClaudeResponse } from '@/utils/__mocks__/ai-client'
+import {
+  callAnthropic,
+  mockClaudeResponse,
+  mockClaudeToolResponse,
+} from '@/utils/__mocks__/ai-client'
 import { ResearchPromptBuilder } from '../prompts/prompt-builder'
 import { generateTopics } from '../generators/topic-generator'
 import type { SourceContext } from '../types'
@@ -11,14 +15,14 @@ beforeEach(() => {
   vi.clearAllMocks()
 })
 
-// Claude's response body after the '[' assistantPrefill — excludes the leading '[' character
-const VALID_RESPONSE = JSON.stringify([
+// Structured tool_use output matching TOPICS_OUTPUT_SCHEMA in topic-generator
+const VALID_TOPICS = [
   { finding: 'Article about HIIT workouts', suggested_theme: 'Share latest HIIT research' },
   { finding: 'Trending meal prep videos', suggested_theme: 'Weekly meal prep guide' },
   { finding: 'Mental health awareness', suggested_theme: 'Mindfulness for athletes' },
   { finding: 'Recovery techniques post', suggested_theme: 'Post-workout recovery tips' },
   { finding: 'New supplement study', suggested_theme: 'Science-backed supplements' },
-]).slice(1)
+]
 
 import type { LanguageConfig } from '@/lib/clients/language-rules'
 
@@ -52,7 +56,7 @@ function createBuilder(
 
 describe('ResearchPromptBuilder', () => {
   it('returns parsed research topics from Claude response', async () => {
-    mockClaudeResponse(VALID_RESPONSE)
+    mockClaudeToolResponse({ topics: VALID_TOPICS })
     const builder = createBuilder()
     const topics = await generateTopics(builder,5)
     expect(topics).toHaveLength(5)
@@ -61,7 +65,7 @@ describe('ResearchPromptBuilder', () => {
   })
 
   it('uses source-grounded prompt when sourceContext has RSS items', async () => {
-    mockClaudeResponse(VALID_RESPONSE)
+    mockClaudeToolResponse({ topics: VALID_TOPICS })
     const sourceContext: SourceContext = {
       rssItems: [
         {
@@ -86,7 +90,7 @@ describe('ResearchPromptBuilder', () => {
   })
 
   it('uses source-grounded prompt when sourceContext has website excerpts', async () => {
-    mockClaudeResponse(VALID_RESPONSE)
+    mockClaudeToolResponse({ topics: VALID_TOPICS })
     const sourceContext: SourceContext = {
       rssItems: [],
       websiteExcerpts: [
@@ -107,7 +111,7 @@ describe('ResearchPromptBuilder', () => {
   })
 
   it('uses source-grounded prompt when sourceContext has file excerpts', async () => {
-    mockClaudeResponse(VALID_RESPONSE)
+    mockClaudeToolResponse({ topics: VALID_TOPICS })
     const sourceContext: SourceContext = {
       rssItems: [],
       websiteExcerpts: [],
@@ -128,7 +132,7 @@ describe('ResearchPromptBuilder', () => {
   })
 
   it('includes content pillars in prompt when provided', async () => {
-    mockClaudeResponse(VALID_RESPONSE)
+    mockClaudeToolResponse({ topics: VALID_TOPICS })
     const builder = createBuilder({
       contentPillars: [
         { id: 'p1', pillar: 'Nutrition', weight: 40 },
@@ -146,7 +150,7 @@ describe('ResearchPromptBuilder', () => {
   })
 
   it('includes language in prompt', async () => {
-    mockClaudeResponse(VALID_RESPONSE)
+    mockClaudeToolResponse({ topics: VALID_TOPICS })
     const builder = createBuilder({ languageConfig: makeLanguageConfig('Bulgarian') })
     await generateTopics(builder,5)
 
@@ -155,33 +159,32 @@ describe('ResearchPromptBuilder', () => {
     expect(prompt).toContain('Bulgarian')
   })
 
-  it('handles JSON wrapped in markdown code block', async () => {
-    mockClaudeResponse('```json\n' + VALID_RESPONSE + '\n```')
+  it('parses topics returned as a JSON-encoded string (schema coercion)', async () => {
+    mockClaudeToolResponse({ topics: JSON.stringify(VALID_TOPICS) })
     const builder = createBuilder()
     const topics = await generateTopics(builder,5)
     expect(topics).toHaveLength(5)
   })
 
-  it('returns empty array when Claude returns no JSON', async () => {
+  it('throws when the response has no tool_use block', async () => {
     mockClaudeResponse('I could not find any trends.')
     const builder = createBuilder()
-    const topics = await generateTopics(builder,5)
-    expect(topics).toEqual([])
+    await expect(generateTopics(builder,5)).rejects.toThrow('No tool_use block')
   })
 
   it('uses custom count in fallback prompt', async () => {
-    mockClaudeResponse(VALID_RESPONSE)
+    mockClaudeToolResponse({ topics: VALID_TOPICS })
     const builder = createBuilder()
     await generateTopics(builder,3)
 
     const callArgs = callAnthropic.mock.calls[0]![0]
     const prompt = callArgs.userMessage as string
-    expect(prompt).toContain('Identify exactly 3')
-    expect(prompt).not.toContain('Identify exactly 5')
+    expect(prompt).toContain('Identify up to 3')
+    expect(prompt).not.toContain('Identify up to 5')
   })
 
   it('uses custom count in source-grounded prompt', async () => {
-    mockClaudeResponse(VALID_RESPONSE)
+    mockClaudeToolResponse({ topics: VALID_TOPICS })
     const sourceContext: SourceContext = {
       rssItems: [{ title: 'Article', description: 'Desc', link: 'https://x.com/1', pubDate: null }],
       websiteExcerpts: [],
@@ -192,21 +195,21 @@ describe('ResearchPromptBuilder', () => {
 
     const callArgs = callAnthropic.mock.calls[0]![0]
     const prompt = callArgs.userMessage as string
-    expect(prompt).toContain('Identify exactly 7')
+    expect(prompt).toContain('Identify up to 7')
   })
 
   it('defaults count works correctly', async () => {
-    mockClaudeResponse(VALID_RESPONSE)
+    mockClaudeToolResponse({ topics: VALID_TOPICS })
     const builder = createBuilder()
     await generateTopics(builder,5)
 
     const callArgs = callAnthropic.mock.calls[0]![0]
     const prompt = callArgs.userMessage as string
-    expect(prompt).toContain('Identify exactly 5')
+    expect(prompt).toContain('Identify up to 5')
   })
 
   it('includes post history in prompt when provided', async () => {
-    mockClaudeResponse(VALID_RESPONSE)
+    mockClaudeToolResponse({ topics: VALID_TOPICS })
     const builder = createBuilder({ postHistory: ['HIIT benefits', 'Protein myths'] })
     await generateTopics(builder,5)
 
@@ -218,7 +221,7 @@ describe('ResearchPromptBuilder', () => {
   })
 
   it('includes sourcing protocol in source-grounded prompt', async () => {
-    mockClaudeResponse(VALID_RESPONSE)
+    mockClaudeToolResponse({ topics: VALID_TOPICS })
     const sourceContext: SourceContext = {
       rssItems: [{ title: 'Article', description: 'Desc', link: 'https://x.com/1', pubDate: null }],
       websiteExcerpts: [],
@@ -238,17 +241,18 @@ describe('ResearchPromptBuilder', () => {
     expect(prompt).toContain('fitness')
   })
 
-  it('uses assistantPrefill [ for JSON array responses', async () => {
-    mockClaudeResponse(VALID_RESPONSE)
+  it('requests structured output via outputSchema', async () => {
+    mockClaudeToolResponse({ topics: VALID_TOPICS })
     const builder = createBuilder()
     await generateTopics(builder,5)
 
     const callArgs = callAnthropic.mock.calls[0]![0]
-    expect(callArgs.assistantPrefill).toBe('[')
+    expect(callArgs.outputSchema).toBeDefined()
+    expect(callArgs.assistantPrefill).toBeUndefined()
   })
 
   it('returns parsed topics array', async () => {
-    mockClaudeResponse(VALID_RESPONSE)
+    mockClaudeToolResponse({ topics: VALID_TOPICS })
     const builder = createBuilder()
     const topics = await generateTopics(builder,5)
     expect(topics).toHaveLength(5)
