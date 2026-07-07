@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
 import { verifyClientOwnership } from '@/lib/auth/helpers'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
-import { IG_GRAPH_BASE, META_GRAPH_BASE } from '../meta-constants'
+import { IG_GRAPH_BASE, META_GRAPH_BASE } from '@/lib/meta/constants'
 
 /**
  * Resolves the live profile picture for a connected social account and

@@ -20,17 +20,23 @@ import type { Json } from '@/types/database'
 
 export const maxDuration = 300
 
+// Stop starting new clients past this point so in-flight work finishes cleanly
+// instead of Vercel killing the function at maxDuration (300s) mid-client.
+const TIME_BUDGET_MS = 240_000
+
 export async function GET(request: NextRequest) {
   const authHeader = request.headers.get('authorization')
   if (!process.env.CRON_SECRET || authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
+  const startedAt = Date.now()
   const supabase = createAdminSupabaseClient()
   const results = {
     processed: 0,
     posts_created: 0,
     errors: [] as Array<{ clientId: string; error: string }>,
+    skipped_for_time: [] as string[],
   }
   const processedAgencyIds = new Set<string>()
 
@@ -64,6 +70,13 @@ export async function GET(request: NextRequest) {
       if (!shouldGenerateToday(schedule, agencyTimezone)) continue
       if (recentlyGenerated.has(clientId)) continue
 
+      if (Date.now() - startedAt > TIME_BUDGET_MS) {
+        results.skipped_for_time.push(clientId)
+        console.error(`[cron] Time budget exceeded — skipping client ${clientId} this run`)
+        continue
+      }
+      const clientStartedAt = Date.now()
+
       const brandProfile = ctx.brandProfiles.get(clientId) ?? null
 
       // Fetch full ClientData (includes top-performing posts, language config)
@@ -89,6 +102,7 @@ export async function GET(request: NextRequest) {
       const runId = (runData as { id: string } | null)?.id
 
       // 9. Research themes via Tavily + LLM (same pipeline as wizard)
+      const researchStartedAt = Date.now()
       const total = (schedule as { frequency_value: number }).frequency_value || 1
       const researchTopics = await performResearch({
         supabase,
@@ -117,6 +131,8 @@ export async function GET(request: NextRequest) {
       }))
 
       // 10. Run generation pipeline (with trackTheme wired up, same as wizard)
+      const researchMs = Date.now() - researchStartedAt
+      const generationStartedAt = Date.now()
       const generationResults = await runGenerationBatch({
         client,
         platform,
@@ -138,6 +154,7 @@ export async function GET(request: NextRequest) {
           })
         },
       })
+      const generationMs = Date.now() - generationStartedAt
 
       // 11. Save posts to DB as pending_review — batch insert to avoid N serial round-trips
       if (generationResults.length > 0) {
@@ -208,6 +225,11 @@ export async function GET(request: NextRequest) {
 
       processedAgencyIds.add(agencyId)
       results.processed++
+      console.info(
+        `[cron] client=${clientId} done in ${Math.round((Date.now() - clientStartedAt) / 1000)}s ` +
+          `(research ${Math.round(researchMs / 1000)}s, generation ${Math.round(generationMs / 1000)}s), ` +
+          `${generationResults.length} posts`
+      )
     } catch (err) {
       results.errors.push({
         clientId: schedule.client_id,
@@ -283,6 +305,13 @@ export async function GET(request: NextRequest) {
       console.error('[cron] Briefing generation failed for agency', agencyId, err)
     }
   }
+
+  const elapsedS = Math.round((Date.now() - startedAt) / 1000)
+  console.info(
+    `[cron] run complete: ${results.processed} clients, ${results.posts_created} posts, ` +
+      `${results.errors.length} errors, ${results.skipped_for_time.length} skipped for time — ` +
+      `${elapsedS}s of ${maxDuration}s budget`
+  )
 
   return NextResponse.json(results)
 }

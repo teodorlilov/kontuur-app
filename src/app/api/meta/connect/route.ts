@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
 import { verifyClientOwnership } from '@/lib/auth/helpers'
-import { META_GRAPH_VERSION } from '../meta-constants'
+import { META_GRAPH_VERSION } from '@/lib/meta/constants'
 import { encodeOAuthState } from '../oauth-state'
 
 // Instagram Business Login — direct instagram.com OAuth (no Facebook Page required)

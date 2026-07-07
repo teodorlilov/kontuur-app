@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
 import { verifyClientOwnership } from '@/lib/auth/helpers'
-import { META_GRAPH_VERSION, META_GRAPH_BASE as GRAPH_BASE } from '../meta-constants'
+import { META_GRAPH_VERSION, META_GRAPH_BASE as GRAPH_BASE } from '@/lib/meta/constants'
 import { decodeOAuthState } from '../oauth-state'
 
 // ---- Instagram Business Login token exchange ----

@@ -1,4 +1,4 @@
-import { IG_GRAPH_BASE } from '@/app/api/meta/meta-constants'
+import { IG_GRAPH_BASE } from '@/lib/meta/constants'
 
 export interface PublishResult {
   success: boolean
