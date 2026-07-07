@@ -2,6 +2,10 @@
 
 AI-powered social media content platform for marketing agencies. Generate, review, schedule, and publish posts across platforms — with built-in quality validation, client approval portals, and multi-client management.
 
+> **Full documentation:** see [docs/OVERVIEW.md](docs/OVERVIEW.md) for the complete product,
+> architecture, data model, and feature catalog. The [docs/](docs/) folder is indexed in
+> [docs/README.md](docs/README.md).
+
 ## Tech Stack
 
 - **Framework:** Next.js 16 (App Router), React 19, TypeScript (strict)
@@ -106,7 +110,7 @@ npm run test:watch   # Vitest watch mode
 
 Uses Supabase with Row Level Security on all tables. Migrations live in `supabase/migrations/`.
 
-Core tables: `agencies`, `users`, `clients`, `brand_profiles`, `posts`, `post_history`, `client_sources`, `source_excerpts`, `research_findings`, `approval_tokens`, `posting_schedules`.
+Core tables: `agencies`, `users`, `clients`, `brand_profiles`, `client_sources`, `language_rules`, `generation_runs`, `generation_themes`, `posts`, `post_images`, `post_history`, `post_approval_tokens`, `posting_schedules`, `social_connections`, `notifications`, `client_ideas`, `idea_form_tokens`, `intelligence_briefings`, `analytics_reports`. See [docs/OVERVIEW.md](docs/OVERVIEW.md#5-data-model) for the full data model.
 
 ## Deployment
 
