@@ -7,10 +7,6 @@
     {
       "path": "/api/cron/publish",
       "schedule": "0 9 * * *"
-    },
-    {
-      "path": "/api/cron/refresh-tokens",
-      "schedule": "0 8 * * *"
     }
   ],
   "headers": [
