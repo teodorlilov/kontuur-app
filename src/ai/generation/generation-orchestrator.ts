@@ -172,8 +172,7 @@ export class GenerationPipeline {
       label: 'carousel',
     })
 
-  
-    void this.ctx.trackTheme(theme, 1)
+    await this.trackThemeSafe(theme, 1)
     this.collectResult(
       validation,
       this.buildDraftRecord(theme, {
@@ -186,8 +185,17 @@ export class GenerationPipeline {
     )
   }
 
+  /** Theme tracking is best-effort — a failed insert must not sink the generation batch. */
+  private async trackThemeSafe(theme: EnrichedTheme, postCount: number): Promise<void> {
+    try {
+      await this.ctx.trackTheme(theme, postCount)
+    } catch (err) {
+      console.error(`[generate] failed to track theme "${theme.description}":`, err)
+    }
+  }
+
   private async collectSinglePosts(theme: EnrichedTheme, posts: ParsedPost[]): Promise<void> {
-    void this.ctx.trackTheme(theme, posts.length)
+    await this.trackThemeSafe(theme, posts.length)
     const requested = theme.count || 1
 
     // Validate all generated posts, then pick the best

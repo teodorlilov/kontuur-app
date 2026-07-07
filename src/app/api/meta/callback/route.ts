@@ -165,8 +165,6 @@ async function connectFacebook(
       'No Facebook Pages found. Please connect a Facebook Page managed directly by your account.'
     )
   }
-  const expiresAt = new Date()
-  expiresAt.setDate(expiresAt.getDate() + 60)
 
   const { error } = await admin.from('social_connections').upsert(
     {
@@ -175,7 +173,8 @@ async function connectFacebook(
       account_id: page.id,
       account_name: page.name,
       access_token: page.access_token,
-      token_expires_at: expiresAt.toISOString(),
+      // Page tokens derived from a long-lived user token do not expire
+      token_expires_at: null,
     },
     { onConflict: 'client_id,platform' }
   )

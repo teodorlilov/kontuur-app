@@ -42,6 +42,18 @@ export async function GET(request: NextRequest) {
 
   const ctx = await fetchScheduleContext(supabase, schedules ?? [])
 
+  // Idempotency guard: skip clients that already had a generation run in the
+  // last 20h, so a retried/duplicate cron fire can't create a second batch.
+  const recentCutoff = new Date(Date.now() - 20 * 3_600_000).toISOString()
+  const { data: recentRuns } = await supabase
+    .from('generation_runs')
+    .select('client_id')
+    .in('client_id', (schedules ?? []).map((s) => s.client_id))
+    .gte('created_at', recentCutoff)
+  const recentlyGenerated = new Set(
+    ((recentRuns as Array<{ client_id: string | null }> | null) ?? []).map((r) => r.client_id)
+  )
+
   for (const schedule of schedules ?? []) {
     try {
       const clientRow = ctx.clients.get(schedule.client_id)
@@ -50,6 +62,7 @@ export async function GET(request: NextRequest) {
       const { id: clientId, agency_id: agencyId } = clientRow
       const agencyTimezone = ctx.agencyTimezones.get(agencyId) ?? 'UTC'
       if (!shouldGenerateToday(schedule, agencyTimezone)) continue
+      if (recentlyGenerated.has(clientId)) continue
 
       const brandProfile = ctx.brandProfiles.get(clientId) ?? null
 
@@ -65,11 +78,14 @@ export async function GET(request: NextRequest) {
       const slideCount = brandProfile?.default_carousel_slides ?? DEFAULT_CAROUSEL_SLIDES
 
       // 8. Create generation run (mirrors the wizard flow for dedup tracking)
-      const { data: runData } = await supabase
+      const { data: runData, error: runError } = await supabase
         .from('generation_runs')
         .insert({ client_id: clientId, platform })
         .select('id')
         .single()
+      if (runError) {
+        console.error(`[cron] Failed to create generation run for client ${clientId}:`, runError.message)
+      }
       const runId = (runData as { id: string } | null)?.id
 
       // 9. Research themes via Tavily + LLM (same pipeline as wizard)
@@ -125,7 +141,7 @@ export async function GET(request: NextRequest) {
 
       // 11. Save posts to DB as pending_review — batch insert to avoid N serial round-trips
       if (generationResults.length > 0) {
-        const { data: savedPosts } = await supabase
+        const { data: savedPosts, error: saveError } = await supabase
           .from('posts')
           .insert(
             generationResults.map(({ post }) => ({
@@ -146,6 +162,11 @@ export async function GET(request: NextRequest) {
             }))
           )
           .select('id')
+
+        // Generated posts are expensive — a silent insert failure loses the whole batch
+        if (saveError) {
+          throw new Error(`Failed to save generated posts: ${saveError.message}`)
+        }
 
         if (savedPosts && savedPosts.length > 0) {
           await supabase.from('post_history').insert(
