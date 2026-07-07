@@ -63,7 +63,16 @@ export async function POST(
       return NextResponse.json({ error: 'Instagram token expired' }, { status: 400 })
     }
 
-    await admin.from('posts').update({ status: 'publishing', publish_attempts: post.publish_attempts + 1 }).eq('id', postId)
+    // Conditional claim — skips if the cron scheduler (or another request) is mid-publish
+    const { data: claimed } = await admin
+      .from('posts')
+      .update({ status: 'publishing', publish_attempts: post.publish_attempts + 1 })
+      .eq('id', postId)
+      .neq('status', 'publishing')
+      .select('id')
+    if (!claimed || claimed.length === 0) {
+      return NextResponse.json({ error: 'Post is already being published' }, { status: 409 })
+    }
 
     const imageUrls = post.post_images.sort((a, b) => a.position - b.position).map((img) => img.public_url)
     const caption = post.caption ?? ''

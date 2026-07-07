@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
 import { verifyClientOwnership } from '@/lib/auth/helpers'
 import { META_GRAPH_VERSION } from '../meta-constants'
+import { encodeOAuthState } from '../oauth-state'
 
 // Instagram Business Login — direct instagram.com OAuth (no Facebook Page required)
 const INSTAGRAM_BUSINESS_SCOPES = [
@@ -43,11 +44,14 @@ export async function GET(request: NextRequest) {
   const fbAppId = process.env.META_APP_ID
   const igAppId = process.env.META_INSTAGRAM_APP_ID
   const redirectUri = process.env.META_REDIRECT_URI
-  if (!fbAppId || !igAppId || !redirectUri) {
+  if (!fbAppId || !igAppId || !redirectUri || !process.env.META_APP_SECRET) {
     return NextResponse.json({ error: 'Meta app not configured' }, { status: 500 })
   }
 
-  const state = Buffer.from(JSON.stringify({ clientId, platform })).toString('base64url')
+  const state = encodeOAuthState({
+    clientId,
+    platform: platform as 'instagram' | 'facebook',
+  })
 
   let oauthUrl: URL
   if (platform === 'instagram') {

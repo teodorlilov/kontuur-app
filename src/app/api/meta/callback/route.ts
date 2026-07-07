@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
+import { resolveAuth } from '@/lib/auth/resolve-auth'
+import { verifyClientOwnership } from '@/lib/auth/helpers'
 import { META_GRAPH_VERSION, META_GRAPH_BASE as GRAPH_BASE } from '../meta-constants'
+import { decodeOAuthState } from '../oauth-state'
 
 // ---- Instagram Business Login token exchange ----
 
@@ -201,18 +204,27 @@ export async function GET(request: NextRequest) {
     )
   }
 
-  let clientId: string
-  let platform: string
-  try {
-    const decoded = JSON.parse(Buffer.from(state, 'base64url').toString('utf8')) as {
-      clientId: string
-      platform: string
-    }
-    clientId = decoded.clientId
-    platform = decoded.platform
-  } catch {
+  // State is HMAC-signed by /api/meta/connect — reject anything we didn't issue
+  const decoded = decodeOAuthState(state)
+  if (!decoded) {
     return NextResponse.redirect(
       `${process.env.NEXT_PUBLIC_APP_URL}/clients?meta_error=invalid_state`
+    )
+  }
+  const { clientId, platform } = decoded
+
+  // The callback runs in the user's browser session — require login and
+  // verify the client belongs to their agency before saving any connection
+  const auth = await resolveAuth()
+  if (!auth.ok) {
+    return NextResponse.redirect(
+      `${process.env.NEXT_PUBLIC_APP_URL}/clients?meta_error=not_authenticated`
+    )
+  }
+  const owned = await verifyClientOwnership(auth.supabase, clientId, auth.agencyId)
+  if (!owned) {
+    return NextResponse.redirect(
+      `${process.env.NEXT_PUBLIC_APP_URL}/clients?meta_error=not_authorized`
     )
   }
 

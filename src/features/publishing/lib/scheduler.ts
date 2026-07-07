@@ -3,7 +3,13 @@ import { publishSingleImage, publishCarousel } from './publish-to-instagram'
 import type { PostForPublish, InstagramConnection } from './types'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
-type DuePost = PostForPublish & { scheduled_at: string }
+type DuePost = PostForPublish & { scheduled_at: string; platform: string; status: string }
+
+const MAX_ATTEMPTS = 3
+/** How far back a due post is still worth publishing. Older posts are marked failed so they surface. */
+const PUBLISH_WINDOW_MS = 24 * 60 * 60 * 1000
+/** A post stuck in 'publishing' this long past its slot is a killed run — safe to reclaim. */
+const STALE_CLAIM_MS = 30 * 60 * 1000
 
 export interface PublishSchedulerResult {
   processed: number
@@ -15,15 +21,25 @@ export interface PublishSchedulerResult {
 export async function publishDuePosts(): Promise<PublishSchedulerResult> {
   const admin = createAdminSupabaseClient()
   const now = new Date()
-  const fiveMinutesAgo = new Date(now.getTime() - 5 * 60 * 1000).toISOString()
+  const windowStart = new Date(now.getTime() - PUBLISH_WINDOW_MS).toISOString()
+  const staleClaimCutoff = new Date(now.getTime() - STALE_CLAIM_MS).toISOString()
 
+  // Surface posts that missed the window entirely (cron outage, repeated timeouts)
+  // instead of leaving them stranded in 'scheduled' forever.
+  await admin
+    .from('posts')
+    .update({ status: 'failed', publish_error: 'Missed publish window' })
+    .in('status', ['scheduled', 'publishing'])
+    .lt('scheduled_at', windowStart)
+
+  // Due posts, plus 'publishing' posts stuck long enough that their run must have died.
   const { data: posts } = await admin
     .from('posts')
-    .select('id, caption, post_type, scheduled_at, publish_attempts, client_id, post_images(public_url, position)')
-    .eq('status', 'scheduled')
+    .select('id, caption, post_type, platform, status, scheduled_at, publish_attempts, client_id, post_images(public_url, position)')
     .lte('scheduled_at', now.toISOString())
-    .gte('scheduled_at', fiveMinutesAgo)
-    .lt('publish_attempts', 3)
+    .gte('scheduled_at', windowStart)
+    .lt('publish_attempts', MAX_ATTEMPTS)
+    .or(`status.eq.scheduled,and(status.eq.publishing,scheduled_at.lt.${staleClaimCutoff})`)
     .limit(10)
 
   // Supabase cannot infer the joined post_images shape; cast to our known query projection
@@ -57,19 +73,45 @@ function groupByClientId(posts: DuePost[]): Map<string, DuePost[]> {
   return map
 }
 
+/**
+ * Atomically claim a post for publishing (compare-and-swap on status + attempt count).
+ * Returns false if another run already claimed it — prevents double-publishing when
+ * cron invocations overlap or a manual publish races the scheduler.
+ */
+async function claimPost(admin: SupabaseClient, post: DuePost): Promise<boolean> {
+  const { data } = await admin
+    .from('posts')
+    .update({ status: 'publishing', publish_attempts: post.publish_attempts + 1 })
+    .eq('id', post.id)
+    .eq('status', post.status)
+    .eq('publish_attempts', post.publish_attempts)
+    .select('id')
+  return !!data && data.length > 0
+}
+
 /** Attempt to publish a single post to Instagram. */
 async function attemptPublish(
   admin: SupabaseClient,
   post: DuePost,
   connection: InstagramConnection | null
 ): Promise<boolean> {
+  // Only Instagram publishing is implemented — fail other platforms loudly
+  // rather than posting them to the wrong account.
+  if (post.platform !== 'instagram') {
+    await markFailedFinal(admin, post.id, `Publishing to ${post.platform} is not supported yet`)
+    return false
+  }
+
+  if (!(await claimPost(admin, post))) return false
+  const attempts = post.publish_attempts + 1
+
   if (!connection) {
-    await markFailed(admin, post.id, 'No Instagram account connected', post.publish_attempts)
+    await markFailed(admin, post.id, 'No Instagram account connected', attempts)
     return false
   }
 
   if (isTokenExpired(connection.token_expires_at)) {
-    await markFailed(admin, post.id, 'Instagram token expired', post.publish_attempts)
+    await markFailed(admin, post.id, 'Instagram token expired', attempts)
     return false
   }
 
@@ -87,7 +129,7 @@ async function attemptPublish(
     return true
   }
 
-  await markFailed(admin, post.id, result.error ?? 'Unknown error', post.publish_attempts)
+  await markFailed(admin, post.id, result.error ?? 'Unknown error', attempts)
   return false
 }
 
@@ -122,19 +164,27 @@ async function markPublished(admin: SupabaseClient, postId: string, mediaId: str
     .eq('id', postId)
 }
 
+/** Record a failed attempt; back to 'scheduled' for retry until attempts run out. */
 async function markFailed(
   admin: SupabaseClient,
   postId: string,
   error: string,
-  currentAttempts: number
+  attempts: number
 ): Promise<void> {
-  const attempts = currentAttempts + 1
   await admin
     .from('posts')
     .update({
-      status: attempts >= 3 ? 'failed' : 'scheduled',
+      status: attempts >= MAX_ATTEMPTS ? 'failed' : 'scheduled',
       publish_error: error,
       publish_attempts: attempts,
     })
+    .eq('id', postId)
+}
+
+/** Fail immediately with no retries — for errors that cannot resolve on their own. */
+async function markFailedFinal(admin: SupabaseClient, postId: string, error: string): Promise<void> {
+  await admin
+    .from('posts')
+    .update({ status: 'failed', publish_error: error })
     .eq('id', postId)
 }

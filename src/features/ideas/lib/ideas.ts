@@ -1,3 +1,4 @@
+import { randomBytes } from 'crypto'
 import type { ClientIdea, IdeaStatus } from '@/types/api'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { CLIENT_IDEA_COLUMNS } from '@/lib/queries/select-columns'
@@ -16,8 +17,8 @@ export async function getOrCreateToken(agencyId: string, clientId: string): Prom
 
   if (existing) return existing.token
 
-  const random = Math.random().toString(36).slice(2, 8)
-  const token = `${clientId.slice(0, 8)}-${random}`
+  // URL-safe, cryptographically random — the token is the only guard on the public form
+  const token = randomBytes(16).toString('base64url')
 
   const { error } = await supabase.from('idea_form_tokens').insert({
     agency_id: agencyId,
