@@ -34,9 +34,9 @@ export async function extractBrandKitFromWebsite(url: string): Promise<Extractio
     await page.evaluate(() => document.fonts?.ready).catch(() => undefined)
 
     const measurement = await measurePage(page)
-    const bodyHandle = await page.$('body')
-    const shot = bodyHandle ? await bodyHandle.screenshot({ type: 'png' }) : await page.screenshot({ type: 'png' })
-    const screenshot = Buffer.from(shot)
+    // Viewport screenshot only — a full-body screenshot of a tall page exceeds Claude's 8000px image
+    // limit. The above-the-fold view carries the brand signal (hero colours, display type, mood).
+    const screenshot = Buffer.from(await page.screenshot({ type: 'png' }))
 
     const roles = deriveColorRoles(measurement.colors)
     const { scale, baseSize } = fitTypeScale(measurement.fontSizes)
