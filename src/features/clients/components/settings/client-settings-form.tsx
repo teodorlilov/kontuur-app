@@ -5,6 +5,8 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { ChevronLeft } from 'lucide-react'
 import { parsePillars, serializePillars, type WeightedPillar } from '@/lib/clients/content-pillars'
 import { updateClient } from '@/features/clients/actions/client-actions'
+import { saveBrandKit } from '@/features/clients/actions/brand-kit-actions'
+import type { BrandTokens } from '@/lib/scene-graph'
 import { Button } from '@/components/ui/button'
 import { Avatar } from '@/components/ui/avatar'
 import { toast } from '@/components/ui/toast'
@@ -15,6 +17,8 @@ import { BrandProfileTab } from './brand-profile-tab'
 import { ScheduleTab } from './schedule-tab'
 import { ConnectedAccountsTab, bustConnectionsCache } from './connected-accounts-tab'
 import { ContentInsightsTab, type ContentInsights } from './content-insights-tab'
+import { VisualSystemTab } from './visual-system-tab'
+import type { FeedSystemOption } from '../visual-system/feed-system-picker'
 import { IdeaFormTab } from '@/features/ideas/components/idea-form-tab'
 
 interface ClientSettingsFormProps {
@@ -27,6 +31,9 @@ interface ClientSettingsFormProps {
   publishedCount: number
   pendingCount: number
   lastGeneratedAt: string | null
+  brandTokens: BrandTokens
+  feedSystems: FeedSystemOption[]
+  selectedFeedSystemSlug: string | null
 }
 
 /** Top-level client settings form with tabbed layout. */
@@ -40,6 +47,9 @@ export function ClientSettingsForm({
   publishedCount,
   pendingCount,
   lastGeneratedAt,
+  brandTokens,
+  feedSystems,
+  selectedFeedSystemSlug,
 }: ClientSettingsFormProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -93,6 +103,10 @@ export function ClientSettingsForm({
   const [autoDay, setAutoDay] = useState(schedule?.auto_generate_day ?? 'monday')
   const [isActive, setIsActive] = useState(schedule?.is_active ?? true)
 
+  // ── Visual system ──
+  const [tokens, setTokens] = useState<BrandTokens>(brandTokens)
+  const [feedSystemSlug, setFeedSystemSlug] = useState<string | null>(selectedFeedSystemSlug)
+
   // ── OAuth redirect toast ──
   useEffect(() => {
     const connected = searchParams.get('meta_connected')
@@ -142,13 +156,27 @@ export function ClientSettingsForm({
         auto_generate_day: autoDay,
       },
     })
-    if (result.ok) {
-      toast.success('Client updated')
-      router.push('/clients')
-    } else {
+    if (!result.ok) {
       toast.error('Failed to save changes. Please try again.')
       setSaving(false)
+      return
     }
+
+    // Persist the visual system only when it actually changed — a save otherwise bumps the kit version
+    // (and dirties render hashes) for nothing.
+    const visualChanged =
+      JSON.stringify(tokens) !== JSON.stringify(brandTokens) || feedSystemSlug !== selectedFeedSystemSlug
+    if (visualChanged) {
+      const kitResult = await saveBrandKit(clientId, tokens, feedSystemSlug)
+      if (!kitResult.ok) {
+        toast.error(kitResult.error ?? 'Failed to save the visual system.')
+        setSaving(false)
+        return
+      }
+    }
+
+    toast.success('Client updated')
+    router.push('/clients')
   }
 
   const isInsightsTab = activeTab === 'insights' || activeTab === 'ideas'
@@ -273,6 +301,17 @@ export function ClientSettingsForm({
               onFreqValueChange={setFreqValue}
               onAutoDayChange={setAutoDay}
               onIsActiveChange={setIsActive}
+            />
+          )}
+          {activeTab === 'visual' && (
+            <VisualSystemTab
+              tokens={tokens}
+              feedSystems={feedSystems}
+              selectedFeedSystemSlug={feedSystemSlug}
+              primaryLanguage={language}
+              secondaryLanguage={secondaryLanguage}
+              onTokensChange={setTokens}
+              onFeedSystemChange={setFeedSystemSlug}
             />
           )}
           {activeTab === 'accounts' && <ConnectedAccountsTab clientId={clientId} />}
