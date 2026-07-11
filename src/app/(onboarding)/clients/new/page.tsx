@@ -52,12 +52,14 @@ export default function NewClientPage() {
   const [savedClientId, setSavedClientId] = useState<string | null>(null)
   const [savedPillars, setSavedPillars] = useState<WeightedPillar[]>([])
 
-  // Visual system state (§2.4) — the default kit until extraction (§2.3) proposes one. `visualReport`
-  // is a placeholder const until §2.3 populates it from the extraction via realtime.
+  // Visual system state (§2.4) — the default kit until extraction (§2.3) hydrates it.
+  const [onboardingSessionId] = useState(() => crypto.randomUUID())
   const [visualTokens, setVisualTokens] = useState<BrandTokens>(DEFAULT_TOKENS)
-  const visualReport: ExtractionReport | null = null
+  const [visualReport, setVisualReport] = useState<ExtractionReport | null>(null)
   const [selectedFeedSystemSlug, setSelectedFeedSystemSlug] = useState<string | null>(null)
   const [fontsConfirmed, setFontsConfirmed] = useState(false)
+  const [extractionStarted, setExtractionStarted] = useState(false)
+  const [visualTouched, setVisualTouched] = useState(false)
 
   // Schedule state
   const [scheduleFreqType, setScheduleFreqType] = useState('per_week')
@@ -70,6 +72,46 @@ export default function NewClientPage() {
     if (confirmed) router.push('/clients')
   }
 
+  // Poll the async extraction (§2.3) and hydrate the Review in place. Never overwrites operator edits.
+  useEffect(() => {
+    if (!extractionStarted) return
+    let cancelled = false
+    let attempts = 0
+    const timer = setInterval(() => {
+      void (async () => {
+        attempts += 1
+        if (attempts > 72) {
+          clearInterval(timer)
+          return
+        }
+        try {
+          const res = await fetch(`/api/extract/status?session=${onboardingSessionId}`)
+          if (!res.ok) return
+          const data = (await res.json()) as {
+            status: string
+            tokens: BrandTokens | null
+            report: ExtractionReport | null
+          }
+          if (data.status === 'pending') return
+          clearInterval(timer)
+          if (cancelled) return
+          setVisualReport(data.report)
+          if (!visualTouched && data.status === 'ready' && data.tokens) {
+            setVisualTokens(data.tokens)
+            const recommended = data.report?.feedSystemRecommendation?.slug ?? null
+            if (recommended) setSelectedFeedSystemSlug(recommended)
+          }
+        } catch {
+          // transient — keep polling until resolved or capped
+        }
+      })()
+    }, 2500)
+    return () => {
+      cancelled = true
+      clearInterval(timer)
+    }
+  }, [extractionStarted, onboardingSessionId, visualTouched])
+
   async function handleAnalyzeUrl() {
     if (!websiteUrl.trim() && !instagramHandle.trim()) {
       toast.error('Please enter a website URL or Instagram handle')
@@ -78,6 +120,16 @@ export default function NewClientPage() {
 
     setStep('loading')
     setAnalysisComplete(false)
+
+    // Kick visual extraction in the background (§2.3) — fire-and-forget; the Review polls for it.
+    if (websiteUrl.trim()) {
+      setExtractionStarted(true)
+      void fetch('/api/extract/start', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ onboardingSessionId, url: websiteUrl.trim() }),
+      }).catch(() => undefined)
+    }
 
     try {
       const res = await fetch('/api/ai/analyze-url', {
@@ -341,8 +393,14 @@ export default function NewClientPage() {
               fontsConfirmed,
               primaryLanguage: profile.language,
               secondaryLanguage: '',
-              onTokensChange: setVisualTokens,
-              onFeedSystemChange: (slug) => setSelectedFeedSystemSlug(slug),
+              onTokensChange: (next) => {
+                setVisualTokens(next)
+                setVisualTouched(true)
+              },
+              onFeedSystemChange: (slug) => {
+                setSelectedFeedSystemSlug(slug)
+                setVisualTouched(true)
+              },
               onFontsConfirmedChange: setFontsConfirmed,
             }}
           />
