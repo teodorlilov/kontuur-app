@@ -27,9 +27,10 @@ export type RenderParams = {
 export async function renderComposition(params: RenderParams): Promise<RenderResult> {
   const { postVisualId, token, hash, baseUrl, lang } = params
   const browser = await getBrowser()
-  const context = await browser.createBrowserContext()
+  // Default context + newPage (not createBrowserContext) — @sparticuz runs --single-process, where
+  // separate browser contexts aren't supported. Token-gated URLs need no cookie isolation anyway.
+  const page = await browser.newPage()
   try {
-    const page = await context.newPage()
     await page.setViewport({ width: SLIDE_W, height: SLIDE_H, deviceScaleFactor: 1 })
     const target = new URL(`/render/${postVisualId}`, baseUrl)
     target.searchParams.set('token', token)
@@ -48,7 +49,7 @@ export async function renderComposition(params: RenderParams): Promise<RenderRes
     const url = await uploadRender(postVisualId, hash, png)
     return { url, hash, fit }
   } finally {
-    await context.close()
+    await page.close()
   }
 }
 

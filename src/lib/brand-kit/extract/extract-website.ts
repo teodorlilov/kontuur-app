@@ -23,9 +23,8 @@ function familyFor(category: ReturnType<typeof familyCategory>, fallback: string
  */
 export async function extractBrandKitFromWebsite(url: string): Promise<ExtractionResult> {
   const browser = await getBrowser()
-  const context = await browser.createBrowserContext()
+  const page = await browser.newPage()
   try {
-    const page = await context.newPage()
     await page.setViewport({ ...VIEWPORT, deviceScaleFactor: 1 })
     // Tolerate a bare host — page.goto needs a scheme, same as the verbal fetcher.
     const target = /^https?:\/\//i.test(url) ? url : `https://${url}`
@@ -76,6 +75,6 @@ export async function extractBrandKitFromWebsite(url: string): Promise<Extractio
 
     return { tokens, report, subjects: { photographic: vision.photographicSubjects, motifs: vision.motifs } }
   } finally {
-    await context.close()
+    await page.close()
   }
 }

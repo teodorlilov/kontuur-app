@@ -54,9 +54,8 @@ async function samplePalette(page: Page, dataUrl: string): Promise<WeightedColor
  */
 export async function extractBrandKitFromImage(base64: string, mediaType: 'image/png' | 'image/jpeg'): Promise<ExtractionResult> {
   const browser = await getBrowser()
-  const context = await browser.createBrowserContext()
+  const page = await browser.newPage()
   try {
-    const page = await context.newPage()
     const palette = await samplePalette(page, `data:${mediaType};base64,${base64}`)
     const roles = paletteToRoles(kmeans(palette, PALETTE_K))
 
@@ -90,6 +89,6 @@ export async function extractBrandKitFromImage(base64: string, mediaType: 'image
 
     return { tokens, report, subjects: { photographic: vision.photographicSubjects, motifs: vision.motifs } }
   } finally {
-    await context.close()
+    await page.close()
   }
 }
