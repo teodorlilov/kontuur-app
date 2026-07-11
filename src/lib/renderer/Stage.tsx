@@ -5,6 +5,7 @@ import type { CSSProperties, ReactNode } from 'react'
 import type { BrandTokens } from '@/lib/scene-graph'
 import { tokenVars } from './token-vars'
 import { SLIDE_H, SLIDE_W } from './layer-style'
+import { runAutoFitPass } from './autofit'
 
 declare global {
   interface Window {
@@ -25,6 +26,10 @@ export function Stage({ tokens, lang, children }: { tokens: BrandTokens; lang: s
         if (document.fonts?.ready) await document.fonts.ready
         const images = Array.from(document.querySelectorAll<HTMLImageElement>('#stage img'))
         await Promise.all(images.map((img) => (img.decode ? img.decode().catch(() => undefined) : Promise.resolve())))
+        // Shrink autoFit text only after fonts settle (metrics depend on the real font) and before
+        // signalling ready, so the screenshot captures the fitted size.
+        const stage = document.getElementById('stage')
+        if (stage && !cancelled) runAutoFitPass(stage, tokens.type.scale)
       } finally {
         if (!cancelled) window.__stageReady = true
       }
@@ -33,7 +38,7 @@ export function Stage({ tokens, lang, children }: { tokens: BrandTokens; lang: s
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [tokens.type.scale])
 
   // The `--role-*` custom properties are merged in here; cast because they aren't part of the
   // base CSSProperties key set across React type versions.

@@ -74,9 +74,14 @@ export function TextView({ layer, tokens }: { layer: TextLayer; tokens: BrandTok
     textTransform: role === 'display' && tokens.type.display.case === 'upper' ? 'uppercase' : undefined,
     whiteSpace: 'pre-wrap',
   }
-  // autoFit (measure-and-shrink) is Task 2.4; here we render at `size` and mark the fit hook.
+  // autoFit is measured in the browser by <Stage>'s pass (§2.4): elements marked `data-autofit`
+  // are shrunk to fit their box before `__stageReady`. `data-fit` starts "ok" and is overwritten
+  // with the outcome (`shrunk:N` | `overflow`); non-autoFit layers stay "ok".
+  const autoFitProps = layer.autoFit
+    ? { 'data-autofit': '', 'data-fit-min': layer.autoFit.min }
+    : undefined
   return (
-    <div lang={layer.lang} data-slot={layer.slot} data-fit="ok" style={style}>
+    <div lang={layer.lang} data-slot={layer.slot} data-fit="ok" {...autoFitProps} style={style}>
       {layer.content}
     </div>
   )
