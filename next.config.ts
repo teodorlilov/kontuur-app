@@ -2,6 +2,13 @@ import type { NextConfig } from 'next'
 
 const nextConfig: NextConfig = {
   serverExternalPackages: ['pdf-parse', 'pdfjs-dist', '@sparticuz/chromium', 'playwright-core'],
+  // Vercel's file tracer copies playwright-core's JS but misses its data files (browsers.json), which
+  // the runtime loads by a computed path. Force-include the whole package for the Chromium routes.
+  outputFileTracingIncludes: {
+    '/api/render': ['./node_modules/playwright-core/**/*'],
+    '/api/extract': ['./node_modules/playwright-core/**/*'],
+    '/api/extract/start': ['./node_modules/playwright-core/**/*'],
+  },
   images: {
     remotePatterns: [
       { protocol: 'https', hostname: '*.supabase.co', pathname: '/storage/v1/object/public/**' },
