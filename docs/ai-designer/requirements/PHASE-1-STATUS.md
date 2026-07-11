@@ -15,6 +15,12 @@ sound but unverified until the app runs. **Three migrations to apply** (`post_vi
 persisted kit has no subjects/negative field yet (subjects storage is a Phase-3 imagery concern per the
 §1 scope note). The propagation *copy* and version bump (the §3.3 done-when) are done.
 
+**Two §3.1 affordances not wired** (editor + save shipped; these triggers didn't): the Visual system
+tab's **"Re-analyze from website" / "Upload reference image"** buttons, and an **image path in
+onboarding**. The image extractor (2.2) works via the direct API but no UI sends it an image yet.
+
+**E2E verification:** [PHASE-1-TEST-PLAN.md](PHASE-1-TEST-PLAN.md) (run [PHASE-0-TEST-PLAN.md](PHASE-0-TEST-PLAN.md) first).
+
 ## The landscape (what's verifiable locally vs on deploy)
 
 Phase 1 splits sharply. **Verifiable locally:** the data model, and the deterministic "code clusters"
