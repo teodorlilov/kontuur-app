@@ -38,6 +38,7 @@ export async function updateSession(request: NextRequest) {
     pathname.startsWith('/api/auth/forgot-password') ||
     pathname.startsWith('/auth/callback') ||
     pathname.startsWith('/setup-password') ||
+    pathname.startsWith('/render') || // token-gated render surface for the screenshot service
     pathname.startsWith('/approve') ||
     pathname.startsWith('/api/approval') ||
     pathname.startsWith('/ideas') ||
