@@ -1,7 +1,6 @@
 import { after, type NextRequest, NextResponse } from 'next/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { requireSessionUser } from '@/lib/auth/session'
-import { extractBrandKitFromWebsite } from '@/lib/brand-kit/extract/extract-website'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 
 // Carries Chromium (like /api/extract) because it runs the extractor in-process — see the after() note.
@@ -37,17 +36,23 @@ export async function POST(request: NextRequest) {
   const url = body.url
 
   const admin = adminClient()
-  await admin
+  const { error: upsertError } = await admin
     .from('brand_kit_extractions')
     .upsert(
       { onboarding_session_id: onboardingSessionId, agency_id: agencyId, status: 'pending', tokens: null, report: null, updated_at: new Date().toISOString() },
       { onConflict: 'onboarding_session_id' }
     )
+  if (upsertError) {
+    return NextResponse.json({ error: `could not create extraction row: ${upsertError.message}` }, { status: 500 })
+  }
 
   after(async () => {
     const finish = (fields: Record<string, unknown>) =>
       admin.from('brand_kit_extractions').update({ ...fields, updated_at: new Date().toISOString() }).eq('onboarding_session_id', onboardingSessionId)
     try {
+      // Import Chromium lazily so a launch/binary failure surfaces as a `failed` reason on the row,
+      // not a silent 500 at module load that would leave the row unwritten.
+      const { extractBrandKitFromWebsite } = await import('@/lib/brand-kit/extract/extract-website')
       const result = await extractBrandKitFromWebsite(url)
       await finish({ status: result.report?.fallback?.toDefaultKit ? 'fallback' : 'ready', tokens: result.tokens, report: result.report })
     } catch (err) {
