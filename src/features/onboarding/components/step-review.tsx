@@ -1,15 +1,36 @@
 'use client'
 
 import { useState } from 'react'
-import { AlertTriangle, User, Users, Target, Pencil, XCircle, Quote, Share2, Calendar } from 'lucide-react'
+import { AlertTriangle, User, Users, Target, Pencil, Palette, XCircle, Quote, Share2, Calendar } from 'lucide-react'
 import { cn } from '@/utils/cn'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
 import { PillarEditor } from '@/components/ui/pillar-editor'
 import { WEEKDAY_OPTIONS } from '@/utils/constants'
+import { TokenEditor } from '@/features/clients/components/visual-system/token-editor'
+import { PreviewGrid } from '@/features/clients/components/visual-system/preview-grid'
+import { FeedSystemPicker } from '@/features/clients/components/visual-system/feed-system-picker'
+import type { FeedSystemOption } from '@/lib/brand-kit/feed-systems'
+import type { ExtractionReport } from '@/lib/brand-kit/extract/report'
+import type { BrandTokens } from '@/lib/scene-graph'
 import type { OnboardProfile } from '@/features/onboarding/types'
 import type { WeightedPillar } from '@/lib/clients/content-pillars'
+
+/** The visual-system slice of the Review step (§2.4) — proposed tokens (or the default kit), a live
+ *  preview, and the feed-system choice, plus a confirm-fonts gate. */
+export interface VisualReviewData {
+  tokens: BrandTokens
+  report: ExtractionReport | null
+  feedSystems: FeedSystemOption[]
+  selectedFeedSystemSlug: string | null
+  fontsConfirmed: boolean
+  primaryLanguage: string
+  secondaryLanguage: string
+  onTokensChange: (tokens: BrandTokens) => void
+  onFeedSystemChange: (slug: string) => void
+  onFontsConfirmedChange: (confirmed: boolean) => void
+}
 
 interface StepReviewProps {
   profile: OnboardProfile
@@ -30,6 +51,7 @@ interface StepReviewProps {
   onSave: () => void
   onRedo: () => void
   websiteUrl: string
+  visual: VisualReviewData
 }
 
 const SECTIONS = [
@@ -38,6 +60,7 @@ const SECTIONS = [
   { id: 'goals', label: 'Social media goals', icon: Target },
   { id: 'brand', label: 'Brand tone', icon: Pencil },
   { id: 'pillars', label: 'Content pillars', icon: Pencil },
+  { id: 'visual', label: 'Visual system', icon: Palette },
   { id: 'platforms', label: 'Platforms', icon: Share2 },
   { id: 'schedule', label: 'Schedule', icon: Calendar },
 ] as const
@@ -260,6 +283,8 @@ function hasSectionData(sectionId: string, profile: OnboardProfile): boolean {
       return Boolean(profile.tone)
     case 'pillars':
       return profile.content_pillars.length > 0
+    case 'visual':
+      return true
     case 'platforms':
       return profile.recommended_platforms.length > 0
     case 'schedule':
@@ -355,6 +380,8 @@ function ReviewContent(props: StepReviewProps) {
           &ldquo;{props.profile.client_testimonial_voice}&rdquo;
         </p>
       </EditableCard>
+
+      <VisualSystemSection visual={props.visual} />
 
       <PlatformsCard profile={props.profile} />
 
@@ -488,6 +515,71 @@ function BrandToneCard({
           Content pillars
         </div>
         <PillarEditor pillars={profile.content_pillars} onChange={onPillarsChange} />
+      </div>
+    </ReviewCard>
+  )
+}
+
+function VisualSystemSection({ visual }: { visual: VisualReviewData }) {
+  const fontsGuessed = visual.report?.confidence.fonts === 'guessed'
+  return (
+    <ReviewCard id="visual" title="Visual system" icon={<Palette size={10} color="var(--color-muted)" />}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(260px, 1fr) auto', gap: 20, alignItems: 'start' }}>
+          <TokenEditor
+            tokens={visual.tokens}
+            onChange={visual.onTokensChange}
+            primaryLanguage={visual.primaryLanguage}
+            secondaryLanguage={visual.secondaryLanguage}
+            report={visual.report ?? undefined}
+          />
+          <PreviewGrid tokens={visual.tokens} columns={3} cellWidth={92} />
+        </div>
+
+        <div>
+          <div
+            style={{
+              fontSize: 9,
+              fontWeight: 500,
+              color: 'var(--color-terracotta)',
+              letterSpacing: 1.5,
+              textTransform: 'uppercase',
+              marginBottom: 8,
+            }}
+          >
+            Feed system
+          </div>
+          <FeedSystemPicker
+            systems={visual.feedSystems}
+            selectedSlug={visual.selectedFeedSystemSlug}
+            recommendedSlug={visual.report?.feedSystemRecommendation?.slug}
+            recommendationReason={visual.report?.feedSystemRecommendation?.reason}
+            onSelect={visual.onFeedSystemChange}
+            tokens={visual.tokens}
+          />
+        </div>
+
+        {fontsGuessed && (
+          <label
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              fontSize: 12,
+              color: 'var(--color-text-1)',
+              padding: '10px 12px',
+              borderRadius: 8,
+              background: 'var(--color-pending-bg)',
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={visual.fontsConfirmed}
+              onChange={(e) => visual.onFontsConfirmedChange(e.target.checked)}
+            />
+            The fonts were guessed from an image — I&rsquo;ve confirmed they look right in the preview.
+          </label>
+        )}
       </div>
     </ReviewCard>
   )

@@ -5,6 +5,10 @@ import { useRouter } from 'next/navigation'
 import { toast } from '@/components/ui/toast'
 import { serializePillars } from '@/lib/clients/content-pillars'
 import type { WeightedPillar } from '@/lib/clients/content-pillars'
+import { saveBrandKit } from '@/features/clients/actions/brand-kit-actions'
+import { STARTER_FEED_SYSTEMS } from '@/lib/brand-kit/feed-systems'
+import type { ExtractionReport } from '@/lib/brand-kit/extract/report'
+import { DEFAULT_TOKENS, type BrandTokens } from '@/lib/scene-graph'
 import type { UrlAnalysisResponse } from '@/types/api'
 import type { OnboardingStep, OnboardProfile, Message } from '@/features/onboarding/types'
 import { QUESTIONS, getDetectedAnswer } from '@/features/onboarding/lib/questions'
@@ -47,6 +51,13 @@ export default function NewClientPage() {
   const [showStepper, setShowStepper] = useState(false)
   const [savedClientId, setSavedClientId] = useState<string | null>(null)
   const [savedPillars, setSavedPillars] = useState<WeightedPillar[]>([])
+
+  // Visual system state (§2.4) — the default kit until extraction (§2.3) proposes one. `visualReport`
+  // is a placeholder const until §2.3 populates it from the extraction via realtime.
+  const [visualTokens, setVisualTokens] = useState<BrandTokens>(DEFAULT_TOKENS)
+  const visualReport: ExtractionReport | null = null
+  const [selectedFeedSystemSlug, setSelectedFeedSystemSlug] = useState<string | null>(null)
+  const [fontsConfirmed, setFontsConfirmed] = useState(false)
 
   // Schedule state
   const [scheduleFreqType, setScheduleFreqType] = useState('per_week')
@@ -182,6 +193,10 @@ export default function NewClientPage() {
       return
     }
     if (!profile) return
+    if (visualReport?.confidence.fonts === 'guessed' && !fontsConfirmed) {
+      toast.error('Please confirm the fonts in the Visual system section before saving.')
+      return
+    }
 
     setSaving(true)
     const pillarsWithIds: WeightedPillar[] = profile.content_pillars.map((p) => ({
@@ -220,6 +235,11 @@ export default function NewClientPage() {
       if (!res.ok) throw new Error('Failed to save client')
 
       const data = (await res.json()) as { client_id: string }
+
+      // Persist the reviewed visual system for the new client (§2.4). Non-fatal — Phase 0 still renders
+      // on the default kit if this fails.
+      const kitResult = await saveBrandKit(data.client_id, visualTokens, selectedFeedSystemSlug)
+      if (!kitResult.ok) toast.error('Client saved, but the visual system could not be saved.')
 
       // Trigger best-time generation in background
       fetch('/api/ai/best-time', {
@@ -313,6 +333,18 @@ export default function NewClientPage() {
             onSave={() => void handleSave()}
             onRedo={handleRedo}
             websiteUrl={websiteUrl}
+            visual={{
+              tokens: visualTokens,
+              report: visualReport,
+              feedSystems: STARTER_FEED_SYSTEMS,
+              selectedFeedSystemSlug,
+              fontsConfirmed,
+              primaryLanguage: profile.language,
+              secondaryLanguage: '',
+              onTokensChange: setVisualTokens,
+              onFeedSystemChange: (slug) => setSelectedFeedSystemSlug(slug),
+              onFontsConfirmedChange: setFontsConfirmed,
+            }}
           />
         )}
       </OnboardingShell>

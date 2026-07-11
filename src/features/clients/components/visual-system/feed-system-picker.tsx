@@ -3,13 +3,10 @@
 import type { BrandTokens } from '@/lib/scene-graph'
 import { kitFontsHref } from '@/lib/render/google-fonts'
 import { REFERENCE_COMPOSITIONS } from '@/lib/renderer/reference-compositions'
+import type { FeedSystemOption } from '@/lib/brand-kit/feed-systems'
 import { PreviewCell } from './preview-cell'
 
-export type FeedSystemOption = {
-  slug: string
-  name: string
-  description: string
-}
+export type { FeedSystemOption }
 
 /**
  * The three feed-system cards (F-3): same headline, same palette, different system, each with a live
