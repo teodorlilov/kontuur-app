@@ -70,6 +70,15 @@ export default async function EditClientPage({ params }: { params: Promise<{ id:
   // Status card data — computed from per-client query instead of agency-wide cache
   const clientStatRows = (clientStatsRes.data ?? []) as Array<{ status: string; created_at: string }>
   const publishedCount = clientStatRows.filter((r) => r.status === 'published').length
+
+  // Propagation buckets for the Visual system tab (§3.3): drafts auto-re-render, scheduled ask first,
+  // published never change.
+  const DRAFT_STATUSES = new Set(['draft', 'pending', 'pending_review', 'approved'])
+  const propagation = {
+    draftCount: clientStatRows.filter((r) => DRAFT_STATUSES.has(r.status)).length,
+    scheduledCount: clientStatRows.filter((r) => r.status === 'scheduled').length,
+    publishedCount,
+  }
   const lastGeneratedAt = clientStatRows.length > 0
     ? clientStatRows.reduce((max, r) => r.created_at > max ? r.created_at : max, clientStatRows[0]!.created_at)
     : null
@@ -140,6 +149,7 @@ export default async function EditClientPage({ params }: { params: Promise<{ id:
       brandTokens={brandTokens}
       feedSystems={feedSystems}
       selectedFeedSystemSlug={selectedFeedSystemSlug}
+      propagation={propagation}
     />
   )
 }

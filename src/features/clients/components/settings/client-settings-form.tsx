@@ -17,7 +17,7 @@ import { BrandProfileTab } from './brand-profile-tab'
 import { ScheduleTab } from './schedule-tab'
 import { ConnectedAccountsTab, bustConnectionsCache } from './connected-accounts-tab'
 import { ContentInsightsTab, type ContentInsights } from './content-insights-tab'
-import { VisualSystemTab } from './visual-system-tab'
+import { VisualSystemTab, type PropagationCounts } from './visual-system-tab'
 import type { FeedSystemOption } from '../visual-system/feed-system-picker'
 import { IdeaFormTab } from '@/features/ideas/components/idea-form-tab'
 
@@ -34,6 +34,7 @@ interface ClientSettingsFormProps {
   brandTokens: BrandTokens
   feedSystems: FeedSystemOption[]
   selectedFeedSystemSlug: string | null
+  propagation: PropagationCounts
 }
 
 /** Top-level client settings form with tabbed layout. */
@@ -50,6 +51,7 @@ export function ClientSettingsForm({
   brandTokens,
   feedSystems,
   selectedFeedSystemSlug,
+  propagation,
 }: ClientSettingsFormProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -310,6 +312,7 @@ export function ClientSettingsForm({
               selectedFeedSystemSlug={feedSystemSlug}
               primaryLanguage={language}
               secondaryLanguage={secondaryLanguage}
+              propagation={propagation}
               onTokensChange={setTokens}
               onFeedSystemChange={setFeedSystemSlug}
             />

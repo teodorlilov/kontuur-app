@@ -15,14 +15,34 @@ const sectionLabel: React.CSSProperties = {
   marginBottom: 10,
 }
 
+/** Dependent-post counts for the propagation note (§3.3), bucketed by what a rebrand does to each. */
+export type PropagationCounts = { draftCount: number; scheduledCount: number; publishedCount: number }
+
 interface VisualSystemTabProps {
   tokens: BrandTokens
   feedSystems: FeedSystemOption[]
   selectedFeedSystemSlug: string | null
   primaryLanguage: string
   secondaryLanguage: string
+  propagation: PropagationCounts
   onTokensChange: (next: BrandTokens) => void
   onFeedSystemChange: (slug: string) => void
+}
+
+const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`
+
+/** The honest consequence of saving (§3.3). The re-render engine is Phase 7; the promise is accurate. */
+function PropagationNote({ draftCount, scheduledCount, publishedCount }: PropagationCounts) {
+  if (draftCount + scheduledCount + publishedCount === 0) {
+    return <>No posts use this visual system yet — saving just updates the kit.</>
+  }
+  return (
+    <>
+      Saving will re-render {plural(draftCount, 'draft')} automatically.
+      {scheduledCount > 0 && ` ${plural(scheduledCount, 'scheduled post')} will ask first.`}
+      {publishedCount > 0 && ' Published posts are never changed.'}
+    </>
+  )
 }
 
 /**
@@ -36,6 +56,7 @@ export function VisualSystemTab({
   selectedFeedSystemSlug,
   primaryLanguage,
   secondaryLanguage,
+  propagation,
   onTokensChange,
   onFeedSystemChange,
 }: VisualSystemTabProps) {
@@ -65,6 +86,21 @@ export function VisualSystemTab({
             tokens={tokens}
           />
         </div>
+
+        <p
+          style={{
+            fontSize: 11,
+            lineHeight: 1.6,
+            color: 'var(--color-text-2)',
+            background: 'var(--color-sunken)',
+            border: '0.5px solid var(--color-border-1)',
+            borderRadius: 8,
+            padding: '10px 12px',
+            margin: 0,
+          }}
+        >
+          <PropagationNote {...propagation} />
+        </p>
       </div>
     </>
   )

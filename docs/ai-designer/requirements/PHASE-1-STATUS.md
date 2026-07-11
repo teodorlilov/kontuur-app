@@ -1,7 +1,19 @@
 # Phase 1 — Implementation status
 
-> Living tracker for [PHASE-1.md](PHASE-1.md). Update as tasks land. Last updated **2026-07-11** (Task 1).
-> Phase 0 status: [PHASE-0-STATUS.md](PHASE-0-STATUS.md). Branch: `feat/composition-engine-phase0`.
+> Living tracker for [PHASE-1.md](PHASE-1.md). Update as tasks land. Last updated **2026-07-11**
+> (all tasks code-complete). Phase 0 status: [PHASE-0-STATUS.md](PHASE-0-STATUS.md). Branch:
+> `feat/composition-engine-phase0`.
+
+## Status: all Phase-1 tasks are code-complete
+
+Every task (1, 2.1–2.4, 3.1–3.3) is built, tsc-clean, build-green, and unit-tested where the logic is
+pure. Everything from the extract routes and the React UIs onward is **deploy-gated** — structurally
+sound but unverified until the app runs. **Three migrations to apply** (`post_visuals`,
+`brand_kits/feed_systems`, `brand_kit_extractions`) + the `renders` bucket.
+
+**One sub-item deferred:** §3.3's "thread `is_health_niche` into the photographic `negative`" — the
+persisted kit has no subjects/negative field yet (subjects storage is a Phase-3 imagery concern per the
+§1 scope note). The propagation *copy* and version bump (the §3.3 done-when) are done.
 
 ## The landscape (what's verifiable locally vs on deploy)
 
@@ -23,6 +35,7 @@ you run the app. Same contract as Phase 0.
 | 3.1 Visual system tab | **Built (deploy-gated)** — `settings/visual-system-tab.tsx` composes the §5 components; wired into `settings-nav` (Palette tab), `client-settings-form` (state + Save), and the edit page loader (fetches kit + feed systems). `actions/brand-kit-actions.ts` `saveBrandKit` (zod-validated, agency-scoped, bumps `version`). tsc+build green; needs the migration applied + a deploy to exercise. **§3.3 propagation copy (dependent-post counts) is the remaining slice.** |
 | 2.4 Review UI | **Built (deploy-gated)** — a Visual system section in the onboarding Review (`step-review.tsx` → `VisualSystemSection`): TokenEditor with confidence badges + live PreviewGrid + FeedSystemPicker (recommendation as a sentence) + a confirm-fonts gate. `new/page.tsx` holds the visual state, blocks save when guessed fonts are unconfirmed, and calls `saveBrandKit` on client creation so a new client gets a kit + feed system. `STARTER_FEED_SYSTEMS` is the client-side catalog. |
 | 2.3 async wiring | **Built (deploy-gated)** — `20260713_create_brand_kit_extractions.sql`; `/api/extract/start` inserts a `pending` row and runs the extractor in a Next `after()` callback (fetches the isolated `/api/extract`, writes `ready`/`fallback`/`failed`), returning instantly. Onboarding mints a session id, kicks extraction on URL submit, and polls `/api/extract/status` from the Review to hydrate tokens/report in place — never overwriting operator edits. **Uses polling, not realtime** (no publication config; realtime is a drop-in upgrade). **New migration to apply.** |
+| 3.3 propagation copy | **Built (deploy-gated)** — the edit-page loader buckets the client's posts (drafts / scheduled / published) from already-loaded rows; the Visual system tab shows the honest consequence: *"Saving will re-render N drafts automatically. M scheduled posts will ask first. Published posts are never changed."* Version bump ships in `saveBrandKit`; no re-render fires (Phase 7). |
 
 ## Decisions taken (deviations / notable choices)
 
