@@ -39,6 +39,8 @@ export async function updateSession(request: NextRequest) {
     pathname.startsWith('/auth/callback') ||
     pathname.startsWith('/setup-password') ||
     pathname.startsWith('/render') || // token-gated render surface for the screenshot service
+    pathname.startsWith('/api/render') || // CRON_SECRET-gated render function (server-to-server, no cookie)
+    pathname.startsWith('/api/extract') || // extraction functions (own CRON_SECRET / session auth)
     pathname.startsWith('/approve') ||
     pathname.startsWith('/api/approval') ||
     pathname.startsWith('/ideas') ||

@@ -56,6 +56,10 @@ export async function POST(request: NextRequest) {
         headers: { 'content-type': 'application/json', authorization: `Bearer ${secret}` },
         body: JSON.stringify({ url }),
       })
+      if (!response.ok || !response.headers.get('content-type')?.includes('application/json')) {
+        const snippet = (await response.text()).slice(0, 120)
+        throw new Error(`extract returned ${response.status} (${response.headers.get('content-type') ?? 'no content-type'}): ${snippet}`)
+      }
       const result = (await response.json()) as ExtractionResult
       await finish({ status: result.report?.fallback?.toDefaultKit ? 'fallback' : 'ready', tokens: result.tokens, report: result.report })
     } catch (err) {
