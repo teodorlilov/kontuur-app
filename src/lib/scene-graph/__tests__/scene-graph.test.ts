@@ -34,7 +34,7 @@ function composition(layers: Composition['layers']): Composition {
 describe('resolve', () => {
   it('returns a bound token value by dot-path', () => {
     expect(resolve<string>({ mode: 'bound', token: 'color.accent' }, DEFAULT_TOKENS)).toBe('#2563EB')
-    expect(resolve<string>({ mode: 'bound', token: 'type.display.family' }, DEFAULT_TOKENS)).toBe('Inter')
+    expect(resolve<string>({ mode: 'bound', token: 'type.display.family' }, DEFAULT_TOKENS)).toBe('Source Serif 4')
   })
 
   it('returns a literal value unchanged', () => {

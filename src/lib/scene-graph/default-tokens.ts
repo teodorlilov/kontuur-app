@@ -14,8 +14,8 @@ export const DEFAULT_TOKENS: BrandTokens = {
     line: '#E5E5E5',
   },
   type: {
-    display: { family: 'Inter', weights: [600, 700], tracking: -0.01, case: 'none', lineHeight: 1.1 },
-    body: { family: 'Inter', weights: [400, 500], tracking: 0, lineHeight: 1.5 },
+    display: { family: 'Source Serif 4', weights: [600, 700], tracking: -0.01, case: 'none', lineHeight: 1.1 },
+    body: { family: 'Source Sans 3', weights: [400, 600], tracking: 0, lineHeight: 1.5 },
     scale: 1.25,
     baseSize: 32,
   },

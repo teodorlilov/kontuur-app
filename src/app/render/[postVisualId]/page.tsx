@@ -6,6 +6,7 @@ import { getTokensForRender } from '@/lib/render/tokens-for-render'
 import { verifyRenderToken } from '@/lib/render/token'
 import { Composition, Stage } from '@/lib/renderer'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
+import './baked-fonts.css'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -42,9 +43,12 @@ export default async function RenderPage({ params, searchParams }: RenderPagePro
   // composition_json is validated on write (§2.1); it is this slide's scene graph.
   const composition = (data as { composition_json: unknown }).composition_json as CompositionType
 
+  // Baked families load from baked-fonts.css; only non-baked kit families need a Google fetch.
+  const fontsHref = googleFontsHref(tokens)
+
   return (
     <>
-      <link rel="stylesheet" href={googleFontsHref(tokens)} />
+      {fontsHref && <link rel="stylesheet" href={fontsHref} />}
       <Stage tokens={tokens} lang={lang ?? 'en'}>
         <Composition composition={composition} tokens={tokens} />
       </Stage>
