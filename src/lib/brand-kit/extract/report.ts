@@ -1,3 +1,5 @@
+import type { BrandTokens } from '@/lib/scene-graph'
+
 /**
  * How a given extracted field was arrived at, surfaced as a badge in the Review step (§2.4):
  * `measured` = read off the live page, `inferred` = judged by vision, `guessed` = proposed from a
@@ -13,4 +15,11 @@ export type ExtractionReport = {
   confidence: Partial<Record<ExtractionField, Confidence>>
   feedSystemRecommendation?: { slug: string; reason: string }
   fallback?: { toDefaultKit: boolean; reason: string }
+}
+
+/** What an extractor returns: a renderable kit, its confidence report, and the subject vocabularies. */
+export type ExtractionResult = {
+  tokens: BrandTokens
+  report: ExtractionReport
+  subjects: { photographic: string[]; motifs: string[] }
 }

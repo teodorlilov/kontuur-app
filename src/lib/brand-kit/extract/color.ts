@@ -14,6 +14,19 @@ export function parseHex(input: string): Rgb | null {
   }
 }
 
+/** Parse any CSS colour `getComputedStyle` returns — hex, `rgb(...)`, or `rgba(...)` (commas or the
+ *  modern space/slash syntax) — to RGB. Alpha is dropped; returns null if it isn't parseable. */
+export function parseCssColor(input: string): Rgb | null {
+  const s = input.trim()
+  if (s.startsWith('#')) return parseHex(s)
+  const match = s.match(/^rgba?\(([^)]+)\)$/i)
+  if (!match?.[1]) return null
+  const [r, g, b] = match[1].split(/[\s,/]+/).filter(Boolean)
+  if (r === undefined || g === undefined || b === undefined) return null
+  const rgb = { r: Number(r), g: Number(g), b: Number(b) }
+  return Number.isFinite(rgb.r) && Number.isFinite(rgb.g) && Number.isFinite(rgb.b) ? rgb : null
+}
+
 /** RGB → uppercase `#rrggbb`. */
 export function toHex({ r, g, b }: Rgb): string {
   const h = (n: number) => Math.round(clamp(n, 0, 255)).toString(16).padStart(2, '0')
