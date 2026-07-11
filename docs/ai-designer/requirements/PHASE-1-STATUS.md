@@ -16,6 +16,7 @@ you run the app. Same contract as Phase 0.
 | Task | State |
 | --- | --- |
 | 1 data model | Done — `supabase/migrations/20260712_create_brand_kits_feed_systems.sql`: `brand_kits` (unique client_id), `feed_systems` (seeded Editorial/Bold blocks/Quiet grid from product §3), `client_feed_systems` (partial-unique default), `post_visuals.feed_system_id` FK, default-kit backfill. `src/lib/brand-kit/tokens-schema.ts` (zod + parity guard), `queries.ts` (agency-scoped read). **Not yet applied.** |
+| 2.1 extraction core | **Deterministic core done** — `src/lib/brand-kit/extract/`: `color.ts` (hex/luminance/saturation/contrast), `color-roles.ts` (`deriveColorRoles` → the 5 roles from categorised page colours), `type-scale.ts` (`fitTypeScale` → ratio+base from observed sizes), `report.ts` (`ExtractionReport` confidence contract). Unit-tested. **Remaining (deploy-gated): the Chromium `getComputedStyle` measurement pass, Claude vision re-pick, `analyze-url` verbal wiring, report assembly — the `/api/extract` route.** |
 
 ## Decisions taken (deviations / notable choices)
 
