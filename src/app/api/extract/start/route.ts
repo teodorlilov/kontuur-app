@@ -1,7 +1,6 @@
 import { after, type NextRequest, NextResponse } from 'next/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { requireSessionUser } from '@/lib/auth/session'
-import { getAppBaseUrl } from '@/lib/render/app-url'
 import type { ExtractionResult } from '@/lib/brand-kit/extract/report'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 
@@ -45,13 +44,16 @@ export async function POST(request: NextRequest) {
       { onConflict: 'onboarding_session_id' }
     )
 
+  // Call our own /api/extract on the SAME deployment. Use the incoming request's origin, not a fixed
+  // env URL — NEXT_PUBLIC_APP_URL points at production, which does not have preview-branch routes.
+  const origin = request.nextUrl.origin
   const secret = process.env.CRON_SECRET
   after(async () => {
     const finish = (fields: Record<string, unknown>) =>
       admin.from('brand_kit_extractions').update({ ...fields, updated_at: new Date().toISOString() }).eq('onboarding_session_id', onboardingSessionId)
     try {
       if (!secret) throw new Error('CRON_SECRET is not set')
-      const response = await fetch(new URL('/api/extract', getAppBaseUrl()), {
+      const response = await fetch(new URL('/api/extract', origin), {
         method: 'POST',
         headers: { 'content-type': 'application/json', authorization: `Bearer ${secret}` },
         body: JSON.stringify({ url }),
