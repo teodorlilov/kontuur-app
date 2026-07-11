@@ -22,11 +22,13 @@ const FETCH_HEADERS = {
 export async function fetchWebsiteSource(
   url: string
 ): Promise<{ markdown: string; error?: string }> {
+  // Tolerate a bare host ("example.com") — fetch() throws "Failed to parse URL" without a scheme.
+  const target = /^https?:\/\//i.test(url) ? url : `https://${url}`
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT)
 
   try {
-    const res = await fetch(url, { signal: controller.signal, headers: FETCH_HEADERS })
+    const res = await fetch(target, { signal: controller.signal, headers: FETCH_HEADERS })
     clearTimeout(timer)
     if (!res.ok) return { markdown: '', error: `HTTP ${res.status}` }
 

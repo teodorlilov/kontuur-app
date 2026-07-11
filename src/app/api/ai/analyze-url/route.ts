@@ -54,20 +54,28 @@ export async function POST(request: Request) {
   const results = await Promise.allSettled(fetches)
   let websiteContent = ''
   let instagramContent = ''
+  const details: string[] = []
 
   for (const result of results) {
-    if (result.status !== 'fulfilled') continue
-    if (result.value.source === 'website' && result.value.markdown) {
-      websiteContent = result.value.markdown
+    if (result.status !== 'fulfilled') {
+      details.push('fetch rejected')
+      continue
     }
-    if (result.value.source === 'instagram' && result.value.markdown) {
-      instagramContent = result.value.markdown
+    const { source, markdown, error } = result.value
+    if (source === 'website') {
+      if (markdown) websiteContent = markdown
+      else if (error) details.push(`website: ${error}`)
+    }
+    if (source === 'instagram') {
+      if (markdown) instagramContent = markdown
+      else if (error) details.push(`instagram: ${error}`)
     }
   }
 
   if (!websiteContent && !instagramContent) {
+    // Surface the real reason (HTTP 403, JS-only site, parse error, …) instead of a blank 422.
     return NextResponse.json(
-      { error: 'Could not fetch content from the provided URLs' },
+      { error: 'Could not fetch content from the provided URLs', details },
       { status: 422 }
     )
   }

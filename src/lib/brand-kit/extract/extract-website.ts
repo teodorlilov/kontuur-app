@@ -26,7 +26,9 @@ export async function extractBrandKitFromWebsite(url: string): Promise<Extractio
   const context = await browser.newContext({ viewport: VIEWPORT, deviceScaleFactor: 1 })
   try {
     const page = await context.newPage()
-    await page.goto(url, { waitUntil: 'networkidle', timeout: NAV_TIMEOUT_MS })
+    // Tolerate a bare host — page.goto needs a scheme, same as the verbal fetcher.
+    const target = /^https?:\/\//i.test(url) ? url : `https://${url}`
+    await page.goto(target, { waitUntil: 'networkidle', timeout: NAV_TIMEOUT_MS })
     await page.evaluate(() => document.fonts?.ready).catch(() => undefined)
 
     const measurement = await measurePage(page)
