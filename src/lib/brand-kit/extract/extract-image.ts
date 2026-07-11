@@ -1,4 +1,4 @@
-import type { Page } from 'playwright-core'
+import type { Page } from 'puppeteer-core'
 import { getBrowser } from '@/lib/render/browser'
 import { proposeFamilies } from '@/lib/render/font-filter'
 import { DEFAULT_TOKENS, type BrandTokens } from '@/lib/scene-graph'
@@ -54,7 +54,7 @@ async function samplePalette(page: Page, dataUrl: string): Promise<WeightedColor
  */
 export async function extractBrandKitFromImage(base64: string, mediaType: 'image/png' | 'image/jpeg'): Promise<ExtractionResult> {
   const browser = await getBrowser()
-  const context = await browser.newContext()
+  const context = await browser.createBrowserContext()
   try {
     const page = await context.newPage()
     const palette = await samplePalette(page, `data:${mediaType};base64,${base64}`)

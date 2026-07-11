@@ -1,4 +1,4 @@
-import type { Page } from 'playwright-core'
+import type { Page } from 'puppeteer-core'
 import { parseCssColor, toHex } from './color'
 import type { ColorObservations, ColorSample } from './color-roles'
 

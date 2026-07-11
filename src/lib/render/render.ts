@@ -27,12 +27,10 @@ export type RenderParams = {
 export async function renderComposition(params: RenderParams): Promise<RenderResult> {
   const { postVisualId, token, hash, baseUrl, lang } = params
   const browser = await getBrowser()
-  const context = await browser.newContext({
-    viewport: { width: SLIDE_W, height: SLIDE_H },
-    deviceScaleFactor: 1,
-  })
+  const context = await browser.createBrowserContext()
   try {
     const page = await context.newPage()
+    await page.setViewport({ width: SLIDE_W, height: SLIDE_H, deviceScaleFactor: 1 })
     const target = new URL(`/render/${postVisualId}`, baseUrl)
     target.searchParams.set('token', token)
     if (lang) target.searchParams.set('lang', lang)
@@ -40,10 +38,12 @@ export async function renderComposition(params: RenderParams): Promise<RenderRes
     await page.goto(target.toString(), { waitUntil: 'load' })
     await page.waitForFunction(() => window.__stageReady === true, { timeout: STAGE_READY_TIMEOUT_MS })
 
-    const png = await page.locator('#stage').screenshot({ type: 'png' })
-    const fit = await page
-      .locator('#stage [data-fit]')
-      .evaluateAll((nodes) => nodes.map((node) => ({ fit: node.getAttribute('data-fit') ?? 'ok' })))
+    const stage = await page.$('#stage')
+    if (!stage) throw new Error('stage element not found')
+    const png = Buffer.from(await stage.screenshot({ type: 'png' }))
+    const fit = await page.$$eval('#stage [data-fit]', (nodes) =>
+      nodes.map((node) => ({ fit: node.getAttribute('data-fit') ?? 'ok' }))
+    )
 
     const url = await uploadRender(postVisualId, hash, png)
     return { url, hash, fit }

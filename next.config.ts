@@ -1,14 +1,13 @@
 import type { NextConfig } from 'next'
 
 const nextConfig: NextConfig = {
-  serverExternalPackages: ['pdf-parse', 'pdfjs-dist', '@sparticuz/chromium', 'playwright-core'],
-  // Vercel's file tracer copies the JS of playwright-core / @sparticuz/chromium but misses their data
-  // and binary assets (playwright's browsers.json, chromium's bin/*.br), which the runtime loads by a
-  // computed path. Force-include both packages whole for the Chromium routes.
+  serverExternalPackages: ['pdf-parse', 'pdfjs-dist', '@sparticuz/chromium', 'puppeteer-core'],
+  // Vercel's file tracer misses @sparticuz/chromium's binary assets (bin/*.br), loaded by a computed
+  // path. Force-include the package whole for the Chromium routes.
   outputFileTracingIncludes: {
-    '/api/render': ['./node_modules/playwright-core/**/*', './node_modules/@sparticuz/chromium/**/*'],
-    '/api/extract': ['./node_modules/playwright-core/**/*', './node_modules/@sparticuz/chromium/**/*'],
-    '/api/extract/start': ['./node_modules/playwright-core/**/*', './node_modules/@sparticuz/chromium/**/*'],
+    '/api/render': ['./node_modules/@sparticuz/chromium/**/*'],
+    '/api/extract': ['./node_modules/@sparticuz/chromium/**/*'],
+    '/api/extract/start': ['./node_modules/@sparticuz/chromium/**/*'],
   },
   images: {
     remotePatterns: [

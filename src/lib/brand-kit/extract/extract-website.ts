@@ -23,16 +23,19 @@ function familyFor(category: ReturnType<typeof familyCategory>, fallback: string
  */
 export async function extractBrandKitFromWebsite(url: string): Promise<ExtractionResult> {
   const browser = await getBrowser()
-  const context = await browser.newContext({ viewport: VIEWPORT, deviceScaleFactor: 1 })
+  const context = await browser.createBrowserContext()
   try {
     const page = await context.newPage()
+    await page.setViewport({ ...VIEWPORT, deviceScaleFactor: 1 })
     // Tolerate a bare host — page.goto needs a scheme, same as the verbal fetcher.
     const target = /^https?:\/\//i.test(url) ? url : `https://${url}`
-    await page.goto(target, { waitUntil: 'networkidle', timeout: NAV_TIMEOUT_MS })
+    await page.goto(target, { waitUntil: 'networkidle0', timeout: NAV_TIMEOUT_MS })
     await page.evaluate(() => document.fonts?.ready).catch(() => undefined)
 
     const measurement = await measurePage(page)
-    const screenshot = await page.locator('body').screenshot({ type: 'png' }).catch(() => page.screenshot({ type: 'png' }))
+    const bodyHandle = await page.$('body')
+    const shot = bodyHandle ? await bodyHandle.screenshot({ type: 'png' }) : await page.screenshot({ type: 'png' })
+    const screenshot = Buffer.from(shot)
 
     const roles = deriveColorRoles(measurement.colors)
     const { scale, baseSize } = fitTypeScale(measurement.fontSizes)
