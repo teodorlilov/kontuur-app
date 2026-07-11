@@ -8,7 +8,7 @@ import type { ExtractionReport, ExtractionResult } from './report'
 import { fitTypeScale } from './type-scale'
 import { visionRefine } from './vision'
 
-const NAV_TIMEOUT_MS = 20_000
+const NAV_TIMEOUT_MS = 30_000
 const VIEWPORT = { width: 1440, height: 2400 }
 
 function familyFor(category: ReturnType<typeof familyCategory>, fallback: string): string {
@@ -28,7 +28,9 @@ export async function extractBrandKitFromWebsite(url: string): Promise<Extractio
     await page.setViewport({ ...VIEWPORT, deviceScaleFactor: 1 })
     // Tolerate a bare host — page.goto needs a scheme, same as the verbal fetcher.
     const target = /^https?:\/\//i.test(url) ? url : `https://${url}`
-    await page.goto(target, { waitUntil: 'networkidle0', timeout: NAV_TIMEOUT_MS })
+    // Wait for `load`, not `networkidle0` — many sites never go network-idle (analytics, ads, sockets).
+    // Don't fail on a slow load: swallow the timeout and measure whatever has rendered.
+    await page.goto(target, { waitUntil: 'load', timeout: NAV_TIMEOUT_MS }).catch(() => undefined)
     await page.evaluate(() => document.fonts?.ready).catch(() => undefined)
 
     const measurement = await measurePage(page)
