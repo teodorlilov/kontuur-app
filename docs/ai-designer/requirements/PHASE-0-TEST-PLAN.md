@@ -203,11 +203,13 @@ Run in order — TC-03 must succeed before the cache tests (it populates the cac
     where id = '<PV>';
   ```
   Render (or pass `lang=bg` to the page URL).
-- **Expect now:** Cyrillic renders (Google Fonts serves the Cyrillic subset). **BG-localised
-  letterforms (`locl`) are NOT guaranteed** — the default kit is Inter, and baked verified-`locl` fonts
-  are a deferred sub-task. Record the specimen; treat wrong Bulgarian letterforms as **a known open
-  item, not a Phase-0 failure** (see PHASE-0-STATUS.md → "Baked fonts").
-- **DoD:** the Bulgarian line of §0 is **explicitly deferred**; this TC documents current state.
+- **Expect now:** the default kit is **Source Serif 4 / Source Sans 3**, baked with the cyrillic subset
+  that carries Bulgarian `locl`, and `<Stage lang="bg">` triggers it. So Bulgarian **should** show the
+  localised forms (`г т п` upright, `д л` straight legs). Compare the rendered PNG against the
+  bg-column of the specimen page for the same font. If they match → pass; if they look Russian-style →
+  the `locl` didn't survive subsetting (re-check `scripts/bake-fonts.mjs` output).
+- **DoD:** Bulgarian `lang="bg"` localised letterforms render (§0). This is now a real pass/fail, not
+  a deferral.
 
 ### TC-13 — autoFit shrink & overflow  ⭐ 2.4
 - **Setup (shrink):** give the headline `autoFit` and content too tall for its 320 px box at 96 px:
