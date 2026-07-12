@@ -290,7 +290,7 @@ export default function NewClientPage() {
 
       // Persist the reviewed visual system for the new client (§2.4). Non-fatal — Phase 0 still renders
       // on the default kit if this fails.
-      const kitResult = await saveBrandKit(data.client_id, visualTokens, selectedFeedSystemSlug)
+      const kitResult = await saveBrandKit(data.client_id, visualTokens, selectedFeedSystemSlug, visualReport?.brief ?? null)
       if (!kitResult.ok) toast.error('Client saved, but the visual system could not be saved.')
 
       // Trigger best-time generation in background

@@ -85,6 +85,7 @@ export async function extractBrandKitFromImage(base64: string, mediaType: 'image
         subjects: 'inferred',
       },
       feedSystemRecommendation: vision.feedSystem,
+      brief: { photographicSubjects: vision.photographicSubjects, motifs: vision.motifs, mood: vision.mood },
     }
 
     return { tokens, report, subjects: { photographic: vision.photographicSubjects, motifs: vision.motifs } }

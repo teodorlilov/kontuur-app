@@ -3,6 +3,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { requireSessionUser } from '@/lib/auth/session'
 import { safeParseBrandTokens } from '@/lib/brand-kit/tokens-schema'
+import type { BrandBrief } from '@/lib/brand-kit/extract/report'
 import type { BrandTokens } from '@/lib/scene-graph'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 
@@ -21,7 +22,8 @@ function adminClient(): SupabaseClient {
 export async function saveBrandKit(
   clientId: string,
   tokens: BrandTokens,
-  feedSystemSlug: string | null
+  feedSystemSlug: string | null,
+  brief?: BrandBrief | null
 ): Promise<{ ok: boolean; error?: string }> {
   const { agencyId } = await requireSessionUser()
 
@@ -40,10 +42,18 @@ export async function saveBrandKit(
   const { data: existing } = await admin.from('brand_kits').select('version').eq('client_id', clientId).maybeSingle()
   const version = ((existing as { version?: number } | null)?.version ?? 0) + 1
 
-  const { error: kitError } = await admin.from('brand_kits').upsert(
-    { client_id: clientId, tokens: parsed.tokens, version, source_kind: 'manual', updated_at: new Date().toISOString() },
-    { onConflict: 'client_id' }
-  )
+  // Only touch `brief` when the caller passes one (onboarding after extraction). A manual token save
+  // omits it, so the upsert leaves the existing brief untouched rather than wiping the image brief.
+  const kitRow: Record<string, unknown> = {
+    client_id: clientId,
+    tokens: parsed.tokens,
+    version,
+    source_kind: 'manual',
+    updated_at: new Date().toISOString(),
+  }
+  if (brief !== undefined) kitRow.brief = brief
+
+  const { error: kitError } = await admin.from('brand_kits').upsert(kitRow, { onConflict: 'client_id' })
   if (kitError) return { ok: false, error: kitError.message }
 
   if (feedSystemSlug) {

@@ -81,6 +81,7 @@ export async function extractBrandKitFromWebsite(url: string): Promise<Extractio
         subjects: 'inferred',
       },
       feedSystemRecommendation: vision.feedSystem,
+      brief: { photographicSubjects: vision.photographicSubjects, motifs: vision.motifs, mood: vision.mood },
     }
 
     return { tokens, report, subjects: { photographic: vision.photographicSubjects, motifs: vision.motifs } }

@@ -9,11 +9,24 @@ export type Confidence = 'measured' | 'inferred' | 'guessed'
 
 export type ExtractionField = 'colors' | 'accent' | 'fonts' | 'typeScale' | 'mood' | 'subjects'
 
-/** The per-field confidence map plus the feed-system recommendation and any soft-fallback reason. */
+/**
+ * The art-direction brief vision infers from the brand — the persisted input to image generation
+ * (Phase 4): what to photograph, which motifs fit, and the overall mood. Rides on the report so it
+ * flows through the existing extract → `brand_kit_extractions` → status → onboarding plumbing, then is
+ * saved to `brand_kits.brief`.
+ */
+export type BrandBrief = {
+  photographicSubjects: string[]
+  motifs: string[]
+  mood: string
+}
+
+/** The per-field confidence map plus the feed-system recommendation, art-direction brief, and any soft-fallback reason. */
 export type ExtractionReport = {
   source: 'website' | 'image'
   confidence: Partial<Record<ExtractionField, Confidence>>
   feedSystemRecommendation?: { slug: string; reason: string }
+  brief?: BrandBrief
   fallback?: { toDefaultKit: boolean; reason: string }
 }
 
