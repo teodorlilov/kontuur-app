@@ -47,10 +47,13 @@ export function deriveColorRoles(obs: ColorObservations): Record<ColorRole, stri
   const surface = pick(backgrounds, (w) => w.weight) ?? { r: 255, g: 255, b: 255 }
   const ink = pick(texts, (w) => w.weight) ?? { r: 26, g: 26, b: 26 }
 
-  const accentPool = accents.length
-    ? accents
-    : [...backgrounds, ...texts].filter((w) => saturation(w.rgb) > NEUTRAL_MAX_SATURATION)
-  const accent = pick(accentPool, (w) => saturation(w.rgb) * w.weight) ?? { r: 37, g: 99, b: 235 }
+  // The accent is a *chromatic* colour, so drop near-neutral candidates first — a grey link or a
+  // black button is not an accent (the old code let neutral link colours win the role). Weight by
+  // √frequency so a hue used across many buttons/links beats a single saturated stray, without a
+  // high-count neutral swamping a genuinely branded colour.
+  const chromatic = (list: Weighted[]) => list.filter((w) => saturation(w.rgb) > NEUTRAL_MAX_SATURATION)
+  const accentPool = chromatic(accents.length ? accents : [...backgrounds, ...texts])
+  const accent = pick(accentPool, (w) => saturation(w.rgb) * Math.sqrt(w.weight)) ?? { r: 37, g: 99, b: 235 }
 
   const accentDeep = darken(accent, 0.35)
   const line = pick(borders, (w) => w.weight) ?? mix(ink, surface, 0.85)

@@ -9,16 +9,16 @@ export const STARTER_FEED_SYSTEMS: FeedSystemOption[] = [
   {
     slug: 'editorial',
     name: 'Editorial',
-    description: 'High-contrast serif, wide margins, one hairline rule. Photography every third post.',
+    description: 'Serif display, wide margins, a single hairline rule. Calm and photographic — one image every third post.',
   },
   {
     slug: 'bold-blocks',
     name: 'Bold blocks',
-    description: 'Heavy uppercase grotesk, solid colour blocks, no chrome. Cover photo only.',
+    description: 'Heavy uppercase type on solid colour blocks. No chrome, maximum contrast — cover photo only.',
   },
   {
     slug: 'quiet-grid',
     name: 'Quiet grid',
-    description: 'Light grotesk, generous whitespace, frames and dot grids. Never generates a photograph.',
+    description: 'Light type on white, thin frames and dot grids, generous whitespace. Never generates a photo.',
   },
 ]

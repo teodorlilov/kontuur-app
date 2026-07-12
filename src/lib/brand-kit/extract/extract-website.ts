@@ -1,8 +1,7 @@
 import { getBrowser } from '@/lib/render/browser'
-import { proposeFamilies } from '@/lib/render/font-filter'
 import { DEFAULT_TOKENS, type BrandTokens } from '@/lib/scene-graph'
 import { applyVisionAccent, deriveColorRoles } from './color-roles'
-import { familyCategory } from './font-detect'
+import { matchDisplayAndBody } from './font-match'
 import { measurePage } from './measure'
 import type { ExtractionReport, ExtractionResult } from './report'
 import { fitTypeScale } from './type-scale'
@@ -12,10 +11,6 @@ const NAV_TIMEOUT_MS = 30_000
 const VIEWPORT = { width: 1440, height: 2400 }
 // Longest screenshot edge fed to Claude vision (its hard limit is 8000px; leave headroom).
 const MAX_SCREENSHOT_EDGE = 7800
-
-function familyFor(category: ReturnType<typeof familyCategory>, fallback: string): string {
-  return proposeFamilies(category)[0]?.family ?? fallback
-}
 
 /**
  * The website extractor (§2.1): measure resolved styles in Chromium, cluster colours + fit a type
@@ -58,11 +53,15 @@ export async function extractBrandKitFromWebsite(url: string): Promise<Extractio
     })
 
     const color = applyVisionAccent(roles, vision.accent)
+    const fonts = matchDisplayAndBody(measurement.headingStack, measurement.bodyStack, {
+      display: DEFAULT_TOKENS.type.display.family,
+      body: DEFAULT_TOKENS.type.body.family,
+    })
     const tokens: BrandTokens = {
       color,
       type: {
-        display: { ...DEFAULT_TOKENS.type.display, family: familyFor(familyCategory(measurement.headingStack), DEFAULT_TOKENS.type.display.family) },
-        body: { ...DEFAULT_TOKENS.type.body, family: familyFor(familyCategory(measurement.bodyStack), DEFAULT_TOKENS.type.body.family) },
+        display: { ...DEFAULT_TOKENS.type.display, family: fonts.display.family },
+        body: { ...DEFAULT_TOKENS.type.body, family: fonts.body.family },
         scale,
         baseSize: Math.round(baseSize),
       },
@@ -75,7 +74,8 @@ export async function extractBrandKitFromWebsite(url: string): Promise<Extractio
       confidence: {
         colors: 'measured',
         accent: vision.accent ? 'inferred' : 'measured',
-        fonts: 'measured',
+        // `measured` only when the site's own faces are in the library; a category fallback is a guess.
+        fonts: fonts.display.exact && fonts.body.exact ? 'measured' : 'guessed',
         typeScale: 'measured',
         mood: 'inferred',
         subjects: 'inferred',

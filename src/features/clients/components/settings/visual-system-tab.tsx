@@ -73,7 +73,7 @@ export function VisualSystemTab({
           />
           <div>
             <div style={sectionLabel}>Live preview</div>
-            <PreviewGrid tokens={tokens} columns={3} cellWidth={104} />
+            <PreviewGrid tokens={tokens} feedSystemSlug={selectedFeedSystemSlug} columns={3} cellWidth={104} />
           </div>
         </div>
 

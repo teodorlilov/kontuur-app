@@ -2,16 +2,16 @@
 
 import type { BrandTokens } from '@/lib/scene-graph'
 import { kitFontsHref } from '@/lib/render/google-fonts'
-import { REFERENCE_COMPOSITIONS } from '@/lib/renderer/reference-compositions'
+import { feedSystemPack, feedSystemTokens } from '@/lib/renderer/feed-system-compositions'
 import type { FeedSystemOption } from '@/lib/brand-kit/feed-systems'
 import { PreviewCell } from './preview-cell'
 
 export type { FeedSystemOption }
 
 /**
- * The three feed-system cards (F-3): same headline, same palette, different system, each with a live
- * cover preview in the client's colours. The recommendation is stated as a sentence, not a badge. No
- * price on any card. Colours never differ between systems — only type, chrome, and cadence.
+ * The three feed-system cards (F-3): same palette, different system, each with a live cover preview of
+ * *that* system's cover composition in the client's colours. The recommendation is stated as a sentence,
+ * not a badge. No price on any card. Colours never differ between systems — only type, chrome, and layout.
  */
 export function FeedSystemPicker({
   systems,
@@ -30,11 +30,14 @@ export function FeedSystemPicker({
 }) {
   return (
     <>
-      <link rel="stylesheet" href={kitFontsHref(tokens)} />
+      {systems.map((system) => (
+        <link key={system.slug} rel="stylesheet" href={kitFontsHref(feedSystemTokens(system.slug, tokens))} />
+      ))}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 12 }}>
         {systems.map((system) => {
           const isSelected = system.slug === selectedSlug
           const isRecommended = system.slug === recommendedSlug
+          const cardTokens = feedSystemTokens(system.slug, tokens)
           return (
             <button
               key={system.slug}
@@ -53,7 +56,7 @@ export function FeedSystemPicker({
                 fontFamily: 'inherit',
               }}
             >
-              <PreviewCell composition={REFERENCE_COMPOSITIONS.cover} tokens={tokens} width={166} />
+              <PreviewCell composition={feedSystemPack(system.slug).cover} tokens={cardTokens} width={166} />
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text-1)' }}>{system.name}</span>
                 {isSelected && <span style={{ fontSize: 12, color: 'var(--color-terracotta)' }}>✓</span>}

@@ -533,7 +533,7 @@ function VisualSystemSection({ visual }: { visual: VisualReviewData }) {
             secondaryLanguage={visual.secondaryLanguage}
             report={visual.report ?? undefined}
           />
-          <PreviewGrid tokens={visual.tokens} columns={3} cellWidth={92} />
+          <PreviewGrid tokens={visual.tokens} feedSystemSlug={visual.selectedFeedSystemSlug} columns={3} cellWidth={92} />
         </div>
 
         <div>
