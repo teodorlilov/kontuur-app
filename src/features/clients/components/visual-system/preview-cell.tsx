@@ -1,35 +1,38 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { BrandTokens, Composition as CompositionType } from '@/lib/scene-graph'
 import { renderCompositionToDataURL } from '@/lib/renderer/konva'
+import { RATIO_SIZES, resolveComposition, type AspectRatio } from '@/lib/renderer/layout/anchor'
 import { REFERENCE_MARKS } from '@/lib/renderer/reference-compositions'
 
 /**
- * One reference composition rasterised to a static image via the Konva renderer — the same node tree
- * the export uses, so a preview matches a rendered slide exactly. Re-rasters (debounced) when the tokens
- * change, so editing a colour recolours the grid without spinning up a live canvas per cell.
- * Fonts are assumed loaded by an ancestor (PreviewGrid / the tab injects the `<link>`).
+ * One composition rasterised to a static image via the Konva renderer — the same node tree the export
+ * uses, so a preview matches a rendered slide exactly. Resolves the composition to the chosen aspect
+ * ratio first (anchored layout), then re-rasters (debounced) when tokens/ratio change. Fonts are
+ * assumed loaded by an ancestor (PreviewGrid / the tab injects the `<link>`).
  */
 export function PreviewCell({
   composition,
   tokens,
   width,
+  ratio = '4:5',
 }: {
   composition: CompositionType
   tokens: BrandTokens
   width: number
+  ratio?: AspectRatio
   /** Retained for API parity; canvas has no per-run language (Bulgarian forms come from the baked fonts). */
   lang?: string
 }) {
-  const { w, h } = composition.size
-  const height = width * (h / w)
+  const resolved = useMemo(() => resolveComposition(composition, RATIO_SIZES[ratio]), [composition, ratio])
+  const height = width * (resolved.size.h / resolved.size.w)
   const [src, setSrc] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
     const timer = setTimeout(() => {
-      void renderCompositionToDataURL(composition, tokens, { marks: REFERENCE_MARKS, targetWidth: width }).then((url) => {
+      void renderCompositionToDataURL(resolved, tokens, { marks: REFERENCE_MARKS, targetWidth: width }).then((url) => {
         if (!cancelled && url) setSrc(url)
       })
     }, 120)
@@ -37,7 +40,7 @@ export function PreviewCell({
       cancelled = true
       clearTimeout(timer)
     }
-  }, [composition, tokens, width])
+  }, [resolved, tokens, width])
 
   return (
     <div

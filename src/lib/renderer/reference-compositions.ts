@@ -1,4 +1,5 @@
-import type { BlendMode, Binding, Clip, Composition, Rect } from '@/lib/scene-graph'
+import type { BlendMode, Binding, Clip, Composition, Rect, VAnchor } from '@/lib/scene-graph'
+import { applyVAnchors } from './layout/anchor'
 
 /**
  * The Phase-0 reference compositions (§2.7) — five roles covering a spread of layer types. They prove
@@ -14,6 +15,7 @@ function base(a: {
   id: string
   name: string
   rect: Rect
+  vAnchor?: VAnchor
   opacity?: number
   blendMode?: BlendMode
   clip?: Clip
@@ -24,6 +26,7 @@ function base(a: {
     locked: false,
     hidden: false,
     rect: a.rect,
+    ...(a.vAnchor ? { vAnchor: a.vAnchor } : {}),
     opacity: lit(a.opacity ?? 1),
     blendMode: lit<BlendMode>(a.blendMode ?? 'normal'),
     clip: a.clip ?? { kind: 'none' as const },
@@ -107,4 +110,12 @@ const cta: Composition = {
 
 export type ReferenceRole = 'cover' | 'statement' | 'list' | 'quote' | 'cta'
 
-export const REFERENCE_COMPOSITIONS: Record<ReferenceRole, Composition> = { cover, statement, list, quote, cta }
+// Vertical anchors so one 4:5 definition adapts to 1:1 / 4:3 (backgrounds fill, centred statements
+// stay centred, bottom chrome/headlines ride the bottom edge). Layers not listed keep the default `top`.
+export const REFERENCE_COMPOSITIONS: Record<ReferenceRole, Composition> = {
+  cover: applyVAnchors(cover, { bg: 'fill', scrim: 'fill', headline: 'bottom', dots: 'bottom' }),
+  statement: applyVAnchors(statement, { bg: 'fill', blend: 'center', stmt: 'center' }),
+  list: applyVAnchors(list, { bg: 'fill' }),
+  quote: applyVAnchors(quote, { bg: 'fill', quote: 'center', attr: 'bottom' }),
+  cta: applyVAnchors(cta, { bg: 'fill', headline: 'center', cta: 'center' }),
+}

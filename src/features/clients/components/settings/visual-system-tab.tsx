@@ -1,6 +1,8 @@
 'use client'
 
+import { useState } from 'react'
 import type { BrandTokens } from '@/lib/scene-graph'
+import { ASPECT_RATIOS, type AspectRatio } from '@/lib/renderer/layout/anchor'
 import { FeedSystemPicker, type FeedSystemOption } from '../visual-system/feed-system-picker'
 import { PreviewGrid } from '../visual-system/preview-grid'
 import { TokenEditor } from '../visual-system/token-editor'
@@ -60,6 +62,7 @@ export function VisualSystemTab({
   onTokensChange,
   onFeedSystemChange,
 }: VisualSystemTabProps) {
+  const [ratio, setRatio] = useState<AspectRatio>('4:5')
   return (
     <>
       <PanelHeader title="Visual system" subtitle="Colours, type, and the feed system for this client's posts" />
@@ -72,8 +75,32 @@ export function VisualSystemTab({
             secondaryLanguage={secondaryLanguage}
           />
           <div>
-            <div style={sectionLabel}>Live preview</div>
-            <PreviewGrid tokens={tokens} feedSystemSlug={selectedFeedSystemSlug} columns={3} cellWidth={104} />
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+              <div style={{ ...sectionLabel, marginBottom: 0 }}>Live preview</div>
+              <div style={{ display: 'flex', gap: 4 }}>
+                {ASPECT_RATIOS.map((r) => (
+                  <button
+                    key={r}
+                    type="button"
+                    onClick={() => setRatio(r)}
+                    style={{
+                      fontSize: 10,
+                      fontWeight: 500,
+                      padding: '3px 7px',
+                      borderRadius: 6,
+                      cursor: 'pointer',
+                      fontFamily: 'inherit',
+                      border: r === ratio ? '1px solid var(--color-terracotta)' : '0.5px solid var(--color-border-1)',
+                      background: r === ratio ? 'var(--color-terracotta)' : 'transparent',
+                      color: r === ratio ? '#fff' : 'var(--color-text-2)',
+                    }}
+                  >
+                    {r}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <PreviewGrid tokens={tokens} feedSystemSlug={selectedFeedSystemSlug} ratio={ratio} columns={3} cellWidth={104} />
           </div>
         </div>
 

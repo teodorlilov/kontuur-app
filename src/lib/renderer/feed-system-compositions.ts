@@ -1,4 +1,5 @@
 import type { BlendMode, Binding, BrandTokens, Clip, Composition, Rect } from '@/lib/scene-graph'
+import { applyVAnchors } from './layout/anchor'
 import { REFERENCE_COMPOSITIONS, type ReferenceRole } from './reference-compositions'
 
 /**
@@ -128,8 +129,22 @@ const qgCta = comp('qg-cta', 'quiet-grid', [
 
 export type FeedSystemSlug = 'editorial' | 'bold-blocks' | 'quiet-grid'
 
-const boldBlocks: Record<ReferenceRole, Composition> = { cover: bbCover, statement: bbStatement, list: bbList, quote: bbQuote, cta: bbCta }
-const quietGrid: Record<ReferenceRole, Composition> = { cover: qgCover, statement: qgStatement, list: qgList, quote: qgQuote, cta: qgCta }
+// Vertical anchors so one 4:5 definition adapts to 1:1 / 4:3 — backgrounds fill, the bold colour
+// blocks + centred statements ride the right edge, quiet-grid's inset frame stretches. (See applyVAnchors.)
+const boldBlocks: Record<ReferenceRole, Composition> = {
+  cover: applyVAnchors(bbCover, { bg: 'fill', block: 'bottom', headline: 'bottom' }),
+  statement: applyVAnchors(bbStatement, { bg: 'fill', stmt: 'center' }),
+  list: applyVAnchors(bbList, { bg: 'fill' }),
+  quote: applyVAnchors(bbQuote, { bg: 'fill', quote: 'center', attr: 'bottom' }),
+  cta: applyVAnchors(bbCta, { bg: 'fill', headline: 'center', cta: 'center' }),
+}
+const quietGrid: Record<ReferenceRole, Composition> = {
+  cover: applyVAnchors(qgCover, { bg: 'fill', frame: 'stretch', headline: 'center', dots: 'bottom' }),
+  statement: applyVAnchors(qgStatement, { bg: 'fill', rule: 'center', stmt: 'center' }),
+  list: applyVAnchors(qgList, { bg: 'fill', frame: 'stretch' }),
+  quote: applyVAnchors(qgQuote, { bg: 'fill', frame: 'stretch', quote: 'center', attr: 'bottom' }),
+  cta: applyVAnchors(qgCta, { bg: 'fill', frame: 'stretch', headline: 'center', cta: 'center', dots: 'bottom' }),
+}
 
 /** editorial reuses the Phase-0 reference set — it was authored in this exact language. */
 export const FEED_SYSTEM_PACKS: Record<FeedSystemSlug, Record<ReferenceRole, Composition>> = {

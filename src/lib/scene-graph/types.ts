@@ -21,12 +21,22 @@ export type BlendMode = 'normal' | 'multiply' | 'screen' | 'overlay' | 'soft-lig
 
 export type Treatment = 'none' | 'duotone' | 'tint' | 'grain' | 'mono'
 
+/**
+ * How a layer repositions when the canvas height changes across aspect ratios. Instagram sizes are all
+ * 1080 wide, so only the height varies (4:5 = 1350, 1:1 = 1080, 4:3 = 810) — a layer keeps its distance
+ * from the `top` (default), from the `bottom`, stays `center`ed, `fill`s the whole canvas
+ * (backgrounds/plates), or `stretch`es keeping both insets (an inset frame). Resolved by
+ * `resolveComposition` (renderer/layout/anchor.ts).
+ */
+export type VAnchor = 'top' | 'bottom' | 'center' | 'fill' | 'stretch'
+
 export type LayerBase = {
   id: string
   name: string
   locked: boolean
   hidden: boolean
   rect: Rect
+  vAnchor?: VAnchor // default 'top'
   opacity: Binding<number>
   blendMode: Binding<BlendMode>
   clip: Clip
@@ -97,7 +107,7 @@ export type Composition = {
   id: string
   feedSystemId: string
   brandKitVersion: number
-  size: { w: 1080; h: 1350 }
+  size: { w: number; h: number } // 1080-wide; height per aspect ratio (4:5 = 1350, 1:1 = 1080, 4:3 = 810)
   layers: Layer[]
 }
 

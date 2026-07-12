@@ -3,6 +3,7 @@
 import type { BrandTokens } from '@/lib/scene-graph'
 import { kitFontsHref } from '@/lib/render/google-fonts'
 import { feedSystemCompositions, feedSystemTokens } from '@/lib/renderer/feed-system-compositions'
+import type { AspectRatio } from '@/lib/renderer/layout/anchor'
 import { PreviewCell } from './preview-cell'
 
 /**
@@ -14,12 +15,14 @@ import { PreviewCell } from './preview-cell'
 export function PreviewGrid({
   tokens,
   feedSystemSlug = null,
+  ratio = '4:5',
   columns = 3,
   cellWidth = 150,
   lang = 'bg',
 }: {
   tokens: BrandTokens
   feedSystemSlug?: string | null
+  ratio?: AspectRatio
   columns?: number
   cellWidth?: number
   lang?: string
@@ -31,10 +34,10 @@ export function PreviewGrid({
   return (
     <>
       <link rel="stylesheet" href={kitFontsHref(rendered)} />
-      <div style={{ display: 'grid', gridTemplateColumns: `repeat(${columns}, ${cellWidth}px)`, gap: 8 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: `repeat(${columns}, ${cellWidth}px)`, gap: 8, alignItems: 'start' }}>
         {cells.map((composition, i) =>
           composition ? (
-            <PreviewCell key={i} composition={composition} tokens={rendered} width={cellWidth} lang={lang} />
+            <PreviewCell key={i} composition={composition} tokens={rendered} width={cellWidth} ratio={ratio} lang={lang} />
           ) : null
         )}
       </div>
