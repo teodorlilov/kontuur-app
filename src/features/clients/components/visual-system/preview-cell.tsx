@@ -1,51 +1,60 @@
-import type { CSSProperties } from 'react'
+'use client'
+
+import { useEffect, useState } from 'react'
 import type { BrandTokens, Composition as CompositionType } from '@/lib/scene-graph'
-import { Composition, SLIDE_H, SLIDE_W, tokenVars } from '@/lib/renderer'
+import { renderCompositionToDataURL } from '@/lib/renderer/konva'
 import { REFERENCE_MARKS } from '@/lib/renderer/reference-compositions'
 
 /**
- * One reference composition rendered at the given tokens, scaled to `width`. Reuses the Phase-0
- * `<Composition/>` so the preview is the same tree the render service screenshots. Colours are CSS
- * variables, so re-rendering with new tokens recolours instantly, client-side, with no request.
+ * One reference composition rasterised to a static image via the Konva renderer — the same node tree
+ * the export uses, so a preview matches a rendered slide exactly. Re-rasters (debounced) when the tokens
+ * change, so editing a colour recolours the grid without spinning up a live canvas per cell.
  * Fonts are assumed loaded by an ancestor (PreviewGrid / the tab injects the `<link>`).
  */
 export function PreviewCell({
   composition,
   tokens,
   width,
-  lang = 'bg',
 }: {
   composition: CompositionType
   tokens: BrandTokens
   width: number
+  /** Retained for API parity; canvas has no per-run language (Bulgarian forms come from the baked fonts). */
   lang?: string
 }) {
-  const scale = width / SLIDE_W
-  const stageStyle = {
-    width: SLIDE_W,
-    height: SLIDE_H,
-    position: 'relative',
-    overflow: 'hidden',
-    background: 'var(--role-surface)',
-    transform: `scale(${scale})`,
-    transformOrigin: 'top left',
-    ...tokenVars(tokens),
-  } as CSSProperties
+  const { w, h } = composition.size
+  const height = width * (h / w)
+  const [src, setSrc] = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    const timer = setTimeout(() => {
+      void renderCompositionToDataURL(composition, tokens, { marks: REFERENCE_MARKS, targetWidth: width }).then((url) => {
+        if (!cancelled && url) setSrc(url)
+      })
+    }, 120)
+    return () => {
+      cancelled = true
+      clearTimeout(timer)
+    }
+  }, [composition, tokens, width])
 
   return (
     <div
       style={{
         width,
-        height: SLIDE_H * scale,
+        height,
         borderRadius: 8,
         overflow: 'hidden',
         border: '0.5px solid var(--color-border-1)',
+        background: tokens.color.surface,
         flexShrink: 0,
       }}
     >
-      <div lang={lang} style={stageStyle}>
-        <Composition composition={composition} tokens={tokens} marks={REFERENCE_MARKS} />
-      </div>
+      {src && (
+        // eslint-disable-next-line @next/next/no-img-element -- a client-generated data URL, not a remote asset
+        <img src={src} alt="" width={width} height={height} style={{ display: 'block', width: '100%', height: '100%' }} />
+      )}
     </div>
   )
 }
