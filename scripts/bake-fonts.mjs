@@ -10,7 +10,7 @@ import { join } from 'node:path'
  */
 const REPO = fileURLToPath(new URL('..', import.meta.url))
 const FONTS_DIR = join(REPO, 'public/fonts')
-const CSS_OUT = join(REPO, 'src/app/render/[postVisualId]/baked-fonts.css')
+const CSS_OUT = join(REPO, 'src/lib/renderer/baked-fonts.css')
 const UA =
   'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36'
 const CSS_URL =

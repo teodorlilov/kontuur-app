@@ -3,9 +3,8 @@ import type { NextConfig } from 'next'
 const nextConfig: NextConfig = {
   serverExternalPackages: ['pdf-parse', 'pdfjs-dist', '@sparticuz/chromium', 'puppeteer-core'],
   // Vercel's file tracer misses @sparticuz/chromium's binary assets (bin/*.br), loaded by a computed
-  // path. Force-include the package whole for the Chromium routes.
+  // path. Force-include the package whole for the Chromium-bearing extraction routes.
   outputFileTracingIncludes: {
-    '/api/render': ['./node_modules/@sparticuz/chromium/**/*'],
     '/api/extract': ['./node_modules/@sparticuz/chromium/**/*'],
     '/api/extract/start': ['./node_modules/@sparticuz/chromium/**/*'],
   },

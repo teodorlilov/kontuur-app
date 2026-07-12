@@ -53,7 +53,7 @@ export const FONT_LIBRARY: readonly FontEntry[] = [
 const BAKED_FAMILIES = new Set(FONT_LIBRARY.filter((f) => f.baked).map((f) => f.family))
 const LIBRARY_FAMILIES = new Set(FONT_LIBRARY.map((f) => f.family))
 
-/** True when a family is self-hosted — the render page loads it from baked-fonts.css, not Google. */
+/** True when a family is self-hosted — loaded from baked-fonts.css (the Konva editor/export surface), not Google. */
 export function isBakedFamily(family: string): boolean {
   return BAKED_FAMILIES.has(family)
 }

@@ -1,9 +1,5 @@
-import { createElement } from 'react'
-import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
 import { DEFAULT_TOKENS, validateShareableComposition } from '@/lib/scene-graph'
-import { Composition } from '../Composition'
-import { REFERENCE_MARKS } from '../reference-compositions'
 import {
   FEED_SYSTEM_PACKS,
   feedSystemCompositions,
@@ -25,12 +21,6 @@ describe('feed-system composition packs', () => {
 
   it.each(allCompositions)('%s is a valid shareable composition (no hex, no literal family)', (_id, composition) => {
     expect(validateShareableComposition(composition)).toEqual([])
-  })
-
-  it.each(allCompositions)('%s renders without throwing — every token binding resolves', (_id, composition) => {
-    expect(() =>
-      renderToStaticMarkup(createElement(Composition, { composition, tokens: DEFAULT_TOKENS, marks: REFERENCE_MARKS }))
-    ).not.toThrow()
   })
 
   it('every layer id within a composition is unique', () => {
