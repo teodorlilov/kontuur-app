@@ -36,7 +36,12 @@ function buildPrompt(input: VisionInput): string {
   const candidates = input.accentCandidates.length
     ? `The page measured these candidate accent colours: ${input.accentCandidates.join(', ')}. Pick the one that reads as the true brand accent, or a better hex if none fit.`
     : `Read the dominant accent colour directly as a hex value.`
+  const scope =
+    input.source === 'website'
+      ? `This is a full-page screenshot. Judge the brand from the LOGO and the colour that recurs across buttons, links, headings and section accents — NOT the hero/banner photo (often a stock image whose colours are not the brand's).`
+      : ''
   return `You are judging the visual identity in this ${input.source === 'website' ? 'website screenshot' : 'reference image'}.
+${scope}
 ${candidates}
 
 Then describe: the mood; the photographic subjects this brand should shoot; abstract motifs that fit; the display-type category; and recommend ONE feed system with a one-sentence reason:

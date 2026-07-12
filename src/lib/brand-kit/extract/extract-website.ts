@@ -10,6 +10,8 @@ import { visionRefine } from './vision'
 
 const NAV_TIMEOUT_MS = 30_000
 const VIEWPORT = { width: 1440, height: 2400 }
+// Longest screenshot edge fed to Claude vision (its hard limit is 8000px; leave headroom).
+const MAX_SCREENSHOT_EDGE = 7800
 
 function familyFor(category: ReturnType<typeof familyCategory>, fallback: string): string {
   return proposeFamilies(category)[0]?.family ?? fallback
@@ -34,9 +36,15 @@ export async function extractBrandKitFromWebsite(url: string): Promise<Extractio
     await page.evaluate(() => document.fonts?.ready).catch(() => undefined)
 
     const measurement = await measurePage(page)
-    // Viewport screenshot only — a full-body screenshot of a tall page exceeds Claude's 8000px image
-    // limit. The above-the-fold view carries the brand signal (hero colours, display type, mood).
-    const screenshot = Buffer.from(await page.screenshot({ type: 'png' }))
+
+    // Screenshot the WHOLE page, not just the hero — the banner is often a stock photo, and the real
+    // brand design (buttons, section colours, type) lives below the fold. Downscale via deviceScaleFactor
+    // so even a long page stays under Claude's 8000px image limit; the viewport stays normal so a 100vh
+    // hero doesn't balloon.
+    const scrollHeight = await page.evaluate(() => document.documentElement.scrollHeight)
+    const shotScale = Math.min(1, MAX_SCREENSHOT_EDGE / Math.max(scrollHeight, VIEWPORT.height))
+    if (shotScale < 1) await page.setViewport({ ...VIEWPORT, deviceScaleFactor: shotScale })
+    const screenshot = Buffer.from(await page.screenshot({ type: 'png', fullPage: true }))
 
     const roles = deriveColorRoles(measurement.colors)
     const { scale, baseSize } = fitTypeScale(measurement.fontSizes)
