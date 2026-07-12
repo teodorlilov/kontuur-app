@@ -1,11 +1,13 @@
 import { notFound } from 'next/navigation'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { requireSessionUser } from '@/lib/auth/session'
+import { getBrandKitForClient } from '@/lib/brand-kit/queries'
 import { ClientSettingsForm } from '@/features/clients/components/settings/client-settings-form'
 import type { ContentInsights } from '@/features/clients/components/settings/content-insights-tab'
 import type { FeedSystemOption } from '@/features/clients/components/visual-system/feed-system-picker'
-import { DEFAULT_TOKENS, type BrandTokens } from '@/lib/scene-graph'
+import { DEFAULT_TOKENS } from '@/lib/scene-graph'
 import {
   fetchClientById,
   fetchBrandProfileByClient,
@@ -20,15 +22,17 @@ export default async function EditClientPage({ params }: { params: Promise<{ id:
   const client = await fetchClientById(supabase, id, agencyId)
   if (!client) notFound()
 
-  // brand_kits / feed_systems are not in the generated types yet (new migration); cast until
-  // `supabase gen types`. Access is app-level; ownership was verified by fetchClientById above.
-  const untyped = supabase as unknown as SupabaseClient
-  const [kitRes, feedSystemsRes, selectionRes] = await Promise.all([
-    untyped.from('brand_kits').select('tokens').eq('client_id', id).maybeSingle(),
-    untyped.from('feed_systems').select('id, slug, name, description').order('slug'),
-    untyped.from('client_feed_systems').select('feed_system_id').eq('client_id', id).eq('is_default', true).maybeSingle(),
+  // The composition-engine tables have no RLS — access is app-level via the service-role client + an
+  // agency_id filter (see the migration). Reading them with the user-session client returns nothing,
+  // so the kit silently fell back to DEFAULT_TOKENS. Use the admin client; ownership was verified by
+  // fetchClientById above, and getBrandKitForClient re-scopes the kit to this agency.
+  const admin = createAdminSupabaseClient() as unknown as SupabaseClient
+  const [kit, feedSystemsRes, selectionRes] = await Promise.all([
+    getBrandKitForClient(id, agencyId),
+    admin.from('feed_systems').select('id, slug, name, description').order('slug'),
+    admin.from('client_feed_systems').select('feed_system_id').eq('client_id', id).eq('is_default', true).maybeSingle(),
   ])
-  const brandTokens = ((kitRes.data as { tokens?: BrandTokens } | null)?.tokens) ?? DEFAULT_TOKENS
+  const brandTokens = kit?.tokens ?? DEFAULT_TOKENS
   const feedSystemRows = (feedSystemsRes.data as (FeedSystemOption & { id: string })[] | null) ?? []
   const feedSystems: FeedSystemOption[] = feedSystemRows.map(({ slug, name, description }) => ({ slug, name, description }))
   const selectedFeedSystemId = (selectionRes.data as { feed_system_id?: string } | null)?.feed_system_id ?? null
