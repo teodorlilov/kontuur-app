@@ -35,3 +35,22 @@ export async function getBrandKitForClient(clientId: string, agencyId: string): 
   const { data } = await supabase.from('brand_kits').select(KIT_COLUMNS).eq('client_id', clientId).maybeSingle()
   return (data as BrandKitRow | null) ?? null
 }
+
+/**
+ * The client's default feed system (slug + id), falling back to editorial. Shared by the visuals
+ * generate + GET endpoints so the slug is resolved one way. No agency check — callers verify the post
+ * ownership first.
+ */
+export async function getClientFeedSystem(clientId: string): Promise<{ slug: string; id: string | null }> {
+  const supabase = adminClient()
+  const { data: sel } = await supabase
+    .from('client_feed_systems')
+    .select('feed_system_id')
+    .eq('client_id', clientId)
+    .eq('is_default', true)
+    .maybeSingle()
+  const id = (sel as { feed_system_id?: string } | null)?.feed_system_id ?? null
+  if (!id) return { slug: 'editorial', id: null }
+  const { data: fs } = await supabase.from('feed_systems').select('slug').eq('id', id).maybeSingle()
+  return { slug: (fs as { slug?: string } | null)?.slug ?? 'editorial', id }
+}

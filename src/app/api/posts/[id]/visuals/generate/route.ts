@@ -2,7 +2,7 @@ import { after, NextResponse } from 'next/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
 import { verifyPostOwnership } from '@/lib/auth/helpers'
-import { getBrandKitForClient } from '@/lib/brand-kit/queries'
+import { getBrandKitForClient, getClientFeedSystem } from '@/lib/brand-kit/queries'
 import { composeSlides } from '@/lib/renderer/compose'
 import { DEFAULT_RATIO } from '@/lib/renderer/layout/anchor'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
@@ -43,19 +43,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
   const kicker = (clientRow as { name?: string } | null)?.name ?? ''
   const brandKitVersion = kit?.version ?? 1
 
-  // The client's default feed system (fall back to editorial).
-  const { data: sel } = await db
-    .from('client_feed_systems')
-    .select('feed_system_id')
-    .eq('client_id', owned.client_id)
-    .eq('is_default', true)
-    .maybeSingle()
-  const feedSystemId = (sel as { feed_system_id?: string } | null)?.feed_system_id ?? null
-  let feedSystemSlug = 'editorial'
-  if (feedSystemId) {
-    const { data: fs } = await db.from('feed_systems').select('slug').eq('id', feedSystemId).maybeSingle()
-    feedSystemSlug = (fs as { slug?: string } | null)?.slug ?? 'editorial'
-  }
+  const { slug: feedSystemSlug, id: feedSystemId } = await getClientFeedSystem(owned.client_id)
 
   await db.from('posts').update({ visuals_status: 'generating', visuals_error: null }).eq('id', id)
 

@@ -8,6 +8,7 @@ import { ScheduleModal } from '@/components/scheduling/schedule-modal'
 import { PostDetailLayout } from '@/components/posts/post-detail-layout'
 import { RewriteButton } from '@/components/posts/rewrite-button'
 import { ReviewInfoPanel } from './review-info-panel'
+import { PostVisuals } from './post-visuals'
 import { parseValidationJson, deriveSlopFromValidation } from '@/features/review/lib/parse-validation-json'
 import {
   REWRITE_SCORE_THRESHOLD,
@@ -89,6 +90,7 @@ export function ReviewPostView({ post, bestTimeData, onApprove, onDelete }: Revi
         onCaptionChange={(c) => { void saveCaption(c) }}
         onSlidesChange={(s) => { void saveSlidesJson(s) }}
       >
+        {post.post_type === 'carousel' && <PostVisuals postId={post.id} />}
         {showRewrite && (
           <RewriteButton
             hasLowAuthenticity={hasLowAuthenticity}
