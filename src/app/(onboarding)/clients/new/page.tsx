@@ -57,7 +57,6 @@ export default function NewClientPage() {
   const [visualTokens, setVisualTokens] = useState<BrandTokens>(DEFAULT_TOKENS)
   const [visualReport, setVisualReport] = useState<ExtractionReport | null>(null)
   const [selectedFeedSystemSlug, setSelectedFeedSystemSlug] = useState<string | null>(null)
-  const [fontsConfirmed, setFontsConfirmed] = useState(false)
   const [extractionStarted, setExtractionStarted] = useState(false)
   const [visualTouched, setVisualTouched] = useState(false)
 
@@ -245,10 +244,6 @@ export default function NewClientPage() {
       return
     }
     if (!profile) return
-    if (visualReport?.confidence.fonts === 'guessed' && !fontsConfirmed) {
-      toast.error('Please confirm the fonts in the Visual system section before saving.')
-      return
-    }
 
     setSaving(true)
     const pillarsWithIds: WeightedPillar[] = profile.content_pillars.map((p) => ({
@@ -390,7 +385,6 @@ export default function NewClientPage() {
               report: visualReport,
               feedSystems: STARTER_FEED_SYSTEMS,
               selectedFeedSystemSlug,
-              fontsConfirmed,
               primaryLanguage: profile.language,
               secondaryLanguage: '',
               onTokensChange: (next) => {
@@ -401,7 +395,6 @@ export default function NewClientPage() {
                 setSelectedFeedSystemSlug(slug)
                 setVisualTouched(true)
               },
-              onFontsConfirmedChange: setFontsConfirmed,
             }}
           />
         )}

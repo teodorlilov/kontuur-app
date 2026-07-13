@@ -20,18 +20,16 @@ import type { OnboardProfile } from '@/features/onboarding/types'
 import type { WeightedPillar } from '@/lib/clients/content-pillars'
 
 /** The visual-system slice of the Review step (§2.4) — proposed tokens (or the default kit), a live
- *  preview, and the feed-system choice, plus a confirm-fonts gate. */
+ *  preview, and the feed-system choice. */
 export interface VisualReviewData {
   tokens: BrandTokens
   report: ExtractionReport | null
   feedSystems: FeedSystemOption[]
   selectedFeedSystemSlug: string | null
-  fontsConfirmed: boolean
   primaryLanguage: string
   secondaryLanguage: string
   onTokensChange: (tokens: BrandTokens) => void
   onFeedSystemChange: (slug: string) => void
-  onFontsConfirmedChange: (confirmed: boolean) => void
 }
 
 interface StepReviewProps {
@@ -523,7 +521,6 @@ function BrandToneCard({
 }
 
 function VisualSystemSection({ visual }: { visual: VisualReviewData }) {
-  const fontsGuessed = visual.report?.confidence.fonts === 'guessed'
   const [ratio, setRatio] = useState<AspectRatio>('4:5')
   return (
     <ReviewCard id="visual" title="Visual system" icon={<Palette size={10} color="var(--color-muted)" />}>
@@ -566,28 +563,6 @@ function VisualSystemSection({ visual }: { visual: VisualReviewData }) {
             tokens={visual.tokens}
           />
         </div>
-
-        {fontsGuessed && (
-          <label
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8,
-              fontSize: 12,
-              color: 'var(--color-text-1)',
-              padding: '10px 12px',
-              borderRadius: 8,
-              background: 'var(--color-pending-bg)',
-            }}
-          >
-            <input
-              type="checkbox"
-              checked={visual.fontsConfirmed}
-              onChange={(e) => visual.onFontsConfirmedChange(e.target.checked)}
-            />
-            The fonts were guessed from an image — I&rsquo;ve confirmed they look right in the preview.
-          </label>
-        )}
       </div>
     </ReviewCard>
   )
