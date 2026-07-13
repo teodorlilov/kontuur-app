@@ -3,8 +3,7 @@
 import { useMemo } from 'react'
 import { PreviewCell } from '@/features/clients/components/visual-system/preview-cell'
 import { kitFontsHref } from '@/lib/render/google-fonts'
-import { composeSlides } from '@/lib/renderer/compose'
-import { DEFAULT_RATIO } from '@/lib/renderer/layout/anchor'
+import { composePostSlides } from '@/lib/renderer/compose'
 import type { BrandTokens } from '@/lib/scene-graph'
 import type { CarouselSlide } from '@/types/api'
 
@@ -29,7 +28,7 @@ export function ComposedSlides({
 }) {
   const compositions = useMemo(() => {
     if (slides.length === 0) return []
-    return composeSlides(slides, { feedSystemSlug, ratio: DEFAULT_RATIO, postId: 'preview', kicker: clientName ?? '' })
+    return composePostSlides(slides, { feedSystemSlug, postId: 'preview', clientName })
   }, [slides, feedSystemSlug, clientName])
 
   if (compositions.length === 0) return null

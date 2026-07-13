@@ -1,7 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { getBrandKitForClient, getClientFeedSystem } from '@/lib/brand-kit/queries'
-import { composeSlides } from '@/lib/renderer/compose'
-import { DEFAULT_RATIO } from '@/lib/renderer/layout/anchor'
+import { composePostSlides } from '@/lib/renderer/compose'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import type { CarouselSlide } from '@/types/api'
 
@@ -31,9 +30,9 @@ export async function composePostVisuals(params: {
     getClientFeedSystem(clientId),
     db.from('clients').select('name').eq('id', clientId).single(),
   ])
-  const kicker = (clientRow as { name?: string } | null)?.name ?? ''
+  const clientName = (clientRow as { name?: string } | null)?.name ?? ''
 
-  const compositions = composeSlides(slides, { feedSystemSlug: feedSystem.slug, ratio: DEFAULT_RATIO, postId, kicker })
+  const compositions = composePostSlides(slides, { feedSystemSlug: feedSystem.slug, postId, clientName })
   const rows = compositions.map((composition, slideIndex) => ({
     post_id: postId,
     slide_index: slideIndex,

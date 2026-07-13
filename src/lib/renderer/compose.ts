@@ -1,7 +1,7 @@
 import type { Composition, Layer, TextSlot } from '@/lib/scene-graph'
 import type { CarouselSlide } from '@/types/api'
 import { feedSystemPack } from './feed-system-compositions'
-import { RATIO_SIZES, resolveComposition, type AspectRatio } from './layout/anchor'
+import { DEFAULT_RATIO, RATIO_SIZES, resolveComposition, type AspectRatio } from './layout/anchor'
 import type { ReferenceRole } from './reference-compositions'
 
 // Interior (non-cover, non-cta) slides rotate through these editorial roles for visual variety.
@@ -58,4 +58,18 @@ export function composeSlides(slides: CarouselSlide[], { feedSystemSlug, ratio, 
     const resolved = resolveComposition(injected, size)
     return { ...resolved, id: `${postId}-slide-${slide.slide_number ?? index}`, feedSystemId: feedSystemSlug ?? 'editorial' }
   })
+}
+
+/**
+ * Compose a *post's* carousel copy with the shared convention every surface must agree on: the standard
+ * post ratio and the client name as the decorative kicker. The one home for that convention — used by
+ * stored generation (`composePostVisuals`), the on-demand review/calendar endpoint, and the client-side
+ * wizard/approval preview — so every path renders identical slides. (When per-post ratios land, thread
+ * the post's ratio here and all callers follow.)
+ */
+export function composePostSlides(
+  slides: CarouselSlide[],
+  { feedSystemSlug, postId, clientName }: { feedSystemSlug: string | null; postId: string; clientName?: string | null }
+): Composition[] {
+  return composeSlides(slides, { feedSystemSlug, ratio: DEFAULT_RATIO, postId, kicker: clientName ?? '' })
 }

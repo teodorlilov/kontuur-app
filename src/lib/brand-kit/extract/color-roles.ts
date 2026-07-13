@@ -1,5 +1,5 @@
 import type { ColorRole } from '@/lib/scene-graph'
-import { contrastRatio, darken, mix, parseHex, relativeLuminance, saturation, toHex, type Rgb } from './color'
+import { contrastRatio, darken, mix, parseHex, saturation, toHex, type Rgb } from './color'
 
 /** One observed colour with a weight (painted area proportion or occurrence count). */
 export type ColorSample = { hex: string; weight: number }
@@ -35,15 +35,19 @@ const NEUTRAL_MAX_SATURATION = 0.25
 // WCAG AA for normal text. `ink` carries body/heading copy, so it must clear this against `surface`.
 const MIN_TEXT_CONTRAST = 4.5
 
-const lighten = (c: Rgb, amount: number): Rgb => mix(c, { r: 255, g: 255, b: 255 }, amount)
+const WHITE: Rgb = { r: 255, g: 255, b: 255 }
+const BLACK: Rgb = { r: 0, g: 0, b: 0 }
+const lighten = (c: Rgb, amount: number): Rgb => mix(c, WHITE, amount)
 
-/** Nudge `fg` away from `bg`'s luminance (darker on a light ground, lighter on a dark one) — keeping its
- *  hue — until it clears `min`. Converges to a black/white pole in the worst case, so it always returns. */
+/** Push `fg` toward whichever pole (black or white) the surface contrasts with better — one of them
+ *  always clears the WCAG bar for any surface — in small steps that keep `fg`'s hue as long as possible,
+ *  until it clears `min`. Deciding by the better pole (not a fixed luminance pivot) is what makes it
+ *  correct for mid-tone surfaces, where the crossover sits near luminance 0.18, not 0.5. */
 function ensureContrast(fg: Rgb, bg: Rgb, min: number): Rgb {
-  const darkenIt = relativeLuminance(bg) > 0.5
+  const towardWhite = contrastRatio(WHITE, bg) > contrastRatio(BLACK, bg)
   let c = fg
   for (let i = 0; i < 24 && contrastRatio(c, bg) < min; i++) {
-    c = darkenIt ? darken(c, 0.12) : lighten(c, 0.12)
+    c = towardWhite ? lighten(c, 0.12) : darken(c, 0.12)
   }
   return c
 }

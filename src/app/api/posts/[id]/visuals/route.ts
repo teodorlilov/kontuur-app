@@ -3,9 +3,8 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
 import { verifyPostOwnership } from '@/lib/auth/helpers'
 import { getBrandKitForClient, getClientFeedSystem } from '@/lib/brand-kit/queries'
-import { composeSlides } from '@/lib/renderer/compose'
+import { composePostSlides } from '@/lib/renderer/compose'
 import { feedSystemTokens } from '@/lib/renderer/feed-system-compositions'
-import { DEFAULT_RATIO } from '@/lib/renderer/layout/anchor'
 import { DEFAULT_TOKENS } from '@/lib/scene-graph'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import type { CarouselSlide } from '@/types/api'
@@ -15,9 +14,10 @@ function adminClient(): SupabaseClient {
 }
 
 /**
- * The post's generated slide compositions + the job status + the client's kit tokens — polled by the
- * review after kicking `POST …/visuals/generate`. The compositions are token-bound bindings (no baked
- * colours), so the review needs the tokens to render them client-side via Konva.
+ * The post's designed slide compositions + the job status + the client's kit tokens — read by the review
+ * and calendar (and polled after `POST …/visuals/generate`). Returns stored `post_visuals` when present,
+ * else composes them on the fly from the copy so the slides always show. The compositions are token-bound
+ * bindings (no baked colours), so the caller needs the tokens to render them client-side via Konva.
  */
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -43,23 +43,22 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
     slides_json?: unknown
   } | null
 
-  let slides = ((rows as Array<{ slide_index: number; composition_json: unknown }> | null) ?? []).map((r) => ({
-    slideIndex: r.slide_index,
-    composition: r.composition_json as unknown,
-  }))
+  let slides: Array<{ slideIndex: number; composition: unknown }> =
+    ((rows as Array<{ slide_index: number; composition_json: unknown }> | null) ?? []).map((r) => ({
+      slideIndex: r.slide_index,
+      composition: r.composition_json,
+    }))
 
   // No stored visuals yet (the post predates composition, or a job is still pending) — compose the
   // designed slides on the fly from the copy so review/calendar always show them, matching the client
   // approval page. Stored rows take precedence (they carry the Phase 4 imagery once generated).
   if (slides.length === 0 && post?.post_type === 'carousel' && Array.isArray(post.slides_json)) {
-    const kicker = (clientRow as { name?: string } | null)?.name ?? ''
-    const compositions = composeSlides(post.slides_json as CarouselSlide[], {
+    const clientName = (clientRow as { name?: string } | null)?.name ?? ''
+    slides = composePostSlides(post.slides_json as CarouselSlide[], {
       feedSystemSlug: feedSystem.slug,
-      ratio: DEFAULT_RATIO,
       postId: id,
-      kicker,
-    })
-    slides = compositions.map((composition, slideIndex) => ({ slideIndex, composition: composition as unknown }))
+      clientName,
+    }).map((composition, slideIndex) => ({ slideIndex, composition }))
   }
 
   return NextResponse.json({

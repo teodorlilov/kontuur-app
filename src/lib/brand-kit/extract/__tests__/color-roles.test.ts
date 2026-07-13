@@ -66,6 +66,13 @@ describe('ensureLegibleColors', () => {
     expect(contrastRatio(parseHex(fixed.ink)!, parseHex(fixed.surface)!)).toBeGreaterThanOrEqual(4.5)
   })
 
+  it('darkens (not lightens) ink on a mid-tone surface — the crossover is ~0.18, not 0.5', () => {
+    // On #808080, white text tops out at 3.95 (< 4.5); black reaches 5.32. A luminance>0.5 pivot would
+    // wrongly lighten and never clear the bar — so this guards the pole-choice, not just "any change".
+    const fixed = ensureLegibleColors({ ink: '#808080', surface: '#808080', accent: '#5B7BFB', 'accent-deep': '#3B50A3', line: '#B0B0B0' })
+    expect(contrastRatio(parseHex(fixed.ink)!, parseHex('#808080')!)).toBeGreaterThanOrEqual(4.5)
+  })
+
   it('leaves a well-contrasted kit untouched', () => {
     const ok = { ink: '#1A1A1A', surface: '#FFFFFF', accent: '#2563EB', 'accent-deep': '#1E3A8A', line: '#E5E5E5' }
     expect(ensureLegibleColors(ok)).toEqual(ok)
