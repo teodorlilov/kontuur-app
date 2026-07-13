@@ -537,7 +537,7 @@ function VisualSystemSection({ visual }: { visual: VisualReviewData }) {
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
               <RatioToggle value={ratio} onChange={setRatio} />
             </div>
-            <PreviewGrid tokens={visual.tokens} feedSystemSlug={visual.selectedFeedSystemSlug} ratio={ratio} columns={3} cellWidth={92} />
+            <PreviewGrid tokens={visual.tokens} feedSystemSlug={visual.selectedFeedSystemSlug} ratio={ratio} language={visual.primaryLanguage} columns={3} cellWidth={92} />
           </div>
         </div>
 
@@ -561,6 +561,7 @@ function VisualSystemSection({ visual }: { visual: VisualReviewData }) {
             recommendationReason={visual.report?.feedSystemRecommendation?.reason}
             onSelect={visual.onFeedSystemChange}
             tokens={visual.tokens}
+            language={visual.primaryLanguage}
           />
         </div>
       </div>

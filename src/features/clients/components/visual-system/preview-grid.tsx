@@ -18,14 +18,15 @@ export function PreviewGrid({
   ratio = '4:5',
   columns = 3,
   cellWidth = 150,
-  lang = 'bg',
+  language,
 }: {
   tokens: BrandTokens
   feedSystemSlug?: string | null
   ratio?: AspectRatio
   columns?: number
   cellWidth?: number
-  lang?: string
+  /** The client's language — localizes the placeholder demo copy (English for non-Bulgarian). */
+  language?: string
 }) {
   const rendered = feedSystemTokens(feedSystemSlug, tokens)
   const compositions = feedSystemCompositions(feedSystemSlug)
@@ -37,7 +38,7 @@ export function PreviewGrid({
       <div style={{ display: 'grid', gridTemplateColumns: `repeat(${columns}, ${cellWidth}px)`, gap: 8, alignItems: 'start' }}>
         {cells.map((composition, i) =>
           composition ? (
-            <PreviewCell key={i} composition={composition} tokens={rendered} width={cellWidth} ratio={ratio} lang={lang} />
+            <PreviewCell key={i} composition={composition} tokens={rendered} width={cellWidth} ratio={ratio} language={language} />
           ) : null
         )}
       </div>

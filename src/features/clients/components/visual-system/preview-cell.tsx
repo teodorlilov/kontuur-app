@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import type { BrandTokens, Composition as CompositionType } from '@/lib/scene-graph'
 import { renderCompositionToDataURL } from '@/lib/renderer/konva'
 import { RATIO_SIZES, resolveComposition, type AspectRatio } from '@/lib/renderer/layout/anchor'
+import { localizeComposition } from '@/lib/renderer/preview-copy'
 import { REFERENCE_MARKS } from '@/lib/renderer/reference-compositions'
 
 /**
@@ -17,15 +18,19 @@ export function PreviewCell({
   tokens,
   width,
   ratio = '4:5',
+  language,
 }: {
   composition: CompositionType
   tokens: BrandTokens
   width: number
   ratio?: AspectRatio
-  /** Retained for API parity; canvas has no per-run language (Bulgarian forms come from the baked fonts). */
-  lang?: string
+  /** The client's language — swaps the placeholder demo copy to English for non-Bulgarian clients. */
+  language?: string
 }) {
-  const resolved = useMemo(() => resolveComposition(composition, RATIO_SIZES[ratio]), [composition, ratio])
+  const resolved = useMemo(
+    () => resolveComposition(localizeComposition(composition, language), RATIO_SIZES[ratio]),
+    [composition, language, ratio]
+  )
   const height = width * (resolved.size.h / resolved.size.w)
   const [src, setSrc] = useState<string | null>(null)
 

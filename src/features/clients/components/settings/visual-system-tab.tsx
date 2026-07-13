@@ -80,7 +80,7 @@ export function VisualSystemTab({
               <div style={{ ...sectionLabel, marginBottom: 0 }}>Live preview</div>
               <RatioToggle value={ratio} onChange={setRatio} />
             </div>
-            <PreviewGrid tokens={tokens} feedSystemSlug={selectedFeedSystemSlug} ratio={ratio} columns={3} cellWidth={104} />
+            <PreviewGrid tokens={tokens} feedSystemSlug={selectedFeedSystemSlug} ratio={ratio} language={primaryLanguage} columns={3} cellWidth={104} />
           </div>
         </div>
 
@@ -91,6 +91,7 @@ export function VisualSystemTab({
             selectedSlug={selectedFeedSystemSlug}
             onSelect={onFeedSystemChange}
             tokens={tokens}
+            language={primaryLanguage}
           />
         </div>
 

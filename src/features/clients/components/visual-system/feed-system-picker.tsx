@@ -20,6 +20,7 @@ export function FeedSystemPicker({
   recommendationReason,
   onSelect,
   tokens,
+  language,
 }: {
   systems: FeedSystemOption[]
   selectedSlug: string | null
@@ -27,6 +28,8 @@ export function FeedSystemPicker({
   recommendationReason?: string
   onSelect: (slug: string) => void
   tokens: BrandTokens
+  /** The client's language — localizes the placeholder demo copy on the card previews. */
+  language?: string
 }) {
   return (
     <>
@@ -56,7 +59,7 @@ export function FeedSystemPicker({
                 fontFamily: 'inherit',
               }}
             >
-              <PreviewCell composition={feedSystemPack(system.slug).cover} tokens={cardTokens} width={166} />
+              <PreviewCell composition={feedSystemPack(system.slug).cover} tokens={cardTokens} width={166} language={language} />
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text-1)' }}>{system.name}</span>
                 {isSelected && <span style={{ fontSize: 12, color: 'var(--color-terracotta)' }}>✓</span>}
