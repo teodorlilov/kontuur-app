@@ -7,10 +7,12 @@ import { useBestTime } from '@/components/posts/use-best-time'
 import { ScheduleModal } from '@/components/scheduling/schedule-modal'
 import { PostDetailLayout } from '@/components/posts/post-detail-layout'
 import { RewriteButton } from '@/components/posts/rewrite-button'
+import { PostVisualsPreview } from './post-visuals-preview'
 import {
   REWRITE_SCORE_THRESHOLD,
   AUTHENTICITY_URGENT_THRESHOLD,
 } from '@/lib/content-rules/constants'
+import type { CarouselSlide } from '@/types/api'
 import type { PostData, ValidationData } from '@/types/post'
 
 interface PostDetailProps {
@@ -61,6 +63,9 @@ export function PostDetail({ post, validationData, onApprove, onDiscard, onRegen
         onCaptionChange={setCaption}
         onSlidesChange={(slides) => setSlidesJson(slides)}
       >
+        {post.post_type === 'carousel' && (
+          <PostVisualsPreview clientId={post.client_id} slides={(slidesJson as CarouselSlide[] | null) ?? []} />
+        )}
         {showRewrite && (
           <RewriteButton
             hasLowAuthenticity={hasLowAuthenticity}
