@@ -1,4 +1,5 @@
 import type { BlendMode, Binding, BrandTokens, Clip, Composition, Rect } from '@/lib/scene-graph'
+import { ensureLegibleColors } from '@/lib/brand-kit/extract/color-roles'
 import { applyVAnchors } from './layout/anchor'
 import { REFERENCE_COMPOSITIONS, type ReferenceRole } from './reference-compositions'
 
@@ -182,14 +183,17 @@ const SYSTEM_WEIGHTS: Record<FeedSystemSlug, { display: number[]; body: number[]
 const mergeWeights = (a: number[], b: number[]): number[] => [...new Set([...a, ...b])].sort((x, y) => x - y)
 
 /**
- * The kit tokens a feed system renders with: identical colours + families, but with the weight arrays
- * widened to cover the weights this system's compositions ask for (so `kitFontsHref` loads them and no
- * weight falls back to a synthesized face).
+ * The kit tokens a feed system renders with: same families, the weight arrays widened to cover the
+ * weights this system's compositions ask for (so `kitFontsHref` loads them and no weight falls back to a
+ * synthesized face), and the colours passed through `ensureLegibleColors` so a low-contrast extraction
+ * (e.g. `ink === surface`) never renders invisible text. This is the choke point every render surface
+ * funnels through, so the fix reaches stored kits without a re-extraction.
  */
 export function feedSystemTokens(slug: string | null | undefined, tokens: BrandTokens): BrandTokens {
   const need = isSlug(slug) ? SYSTEM_WEIGHTS[slug] : SYSTEM_WEIGHTS.editorial
   return {
     ...tokens,
+    color: ensureLegibleColors(tokens.color),
     type: {
       ...tokens.type,
       display: { ...tokens.type.display, weights: mergeWeights(tokens.type.display.weights, need.display) },

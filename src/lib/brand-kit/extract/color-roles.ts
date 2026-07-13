@@ -1,5 +1,5 @@
 import type { ColorRole } from '@/lib/scene-graph'
-import { darken, mix, parseHex, saturation, toHex, type Rgb } from './color'
+import { contrastRatio, darken, mix, parseHex, relativeLuminance, saturation, toHex, type Rgb } from './color'
 
 /** One observed colour with a weight (painted area proportion or occurrence count). */
 export type ColorSample = { hex: string; weight: number }
@@ -32,6 +32,38 @@ function pick(list: Weighted[], score: (w: Weighted) => number): Rgb | null {
 
 const NEUTRAL_MAX_SATURATION = 0.25
 
+// WCAG AA for normal text. `ink` carries body/heading copy, so it must clear this against `surface`.
+const MIN_TEXT_CONTRAST = 4.5
+
+const lighten = (c: Rgb, amount: number): Rgb => mix(c, { r: 255, g: 255, b: 255 }, amount)
+
+/** Nudge `fg` away from `bg`'s luminance (darker on a light ground, lighter on a dark one) — keeping its
+ *  hue — until it clears `min`. Converges to a black/white pole in the worst case, so it always returns. */
+function ensureContrast(fg: Rgb, bg: Rgb, min: number): Rgb {
+  const darkenIt = relativeLuminance(bg) > 0.5
+  let c = fg
+  for (let i = 0; i < 24 && contrastRatio(c, bg) < min; i++) {
+    c = darkenIt ? darken(c, 0.12) : lighten(c, 0.12)
+  }
+  return c
+}
+
+/**
+ * Guarantee the kit's text is legible: `ink` (body + headings) must clear the WCAG contrast bar against
+ * `surface`. `deriveColorRoles` picks the two independently — the dominant background vs the dominant
+ * text — so a site with light text on coloured buttons can yield `ink === surface` (white on white); the
+ * text then vanishes on any `ink`-on-`surface` slide (the editorial `list`/`quote` roles, the bold block
+ * panels). This corrects `ink` in place, keeping its hue where it can, and leaves a well-contrasted kit
+ * untouched. Applied at extraction *and* at the render boundary (`feedSystemTokens`) so already-stored
+ * low-contrast kits self-heal without a re-extraction.
+ */
+export function ensureLegibleColors(colors: Record<ColorRole, string>): Record<ColorRole, string> {
+  const surface = parseHex(colors.surface)
+  const ink = parseHex(colors.ink)
+  if (!surface || !ink || contrastRatio(ink, surface) >= MIN_TEXT_CONTRAST) return colors
+  return { ...colors, ink: toHex(ensureContrast(ink, surface, MIN_TEXT_CONTRAST)) }
+}
+
 /**
  * Derive the five colour roles from categorised page measurements — the deterministic "measured" pass.
  * `surface`/`ink` are the dominant background/text; `accent` is the most saturated call-to-action
@@ -58,13 +90,13 @@ export function deriveColorRoles(obs: ColorObservations): Record<ColorRole, stri
   const accentDeep = darken(accent, 0.35)
   const line = pick(borders, (w) => w.weight) ?? mix(ink, surface, 0.85)
 
-  return {
+  return ensureLegibleColors({
     surface: toHex(surface),
     ink: toHex(ink),
     accent: toHex(accent),
     'accent-deep': toHex(accentDeep),
     line: toHex(line),
-  }
+  })
 }
 
 /**

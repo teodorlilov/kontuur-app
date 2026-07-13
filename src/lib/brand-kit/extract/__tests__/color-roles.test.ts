@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { deriveColorRoles } from '../color-roles'
+import { deriveColorRoles, ensureLegibleColors } from '../color-roles'
+import { contrastRatio, parseHex } from '../color'
 import { missingColorRoles } from '@/lib/scene-graph'
 
 describe('deriveColorRoles', () => {
@@ -40,5 +41,33 @@ describe('deriveColorRoles', () => {
     // mix(ink=black, surface=white, 0.85) → light grey, not pure black or white.
     expect(roles.line).not.toBe('#000000')
     expect(roles.line).not.toBe('#FFFFFF')
+  })
+
+  it('rescues an invisible ink: light text measured on a light surface still clears contrast', () => {
+    // A site with white text on coloured buttons dominating the text samples → ink === surface.
+    const roles = deriveColorRoles({
+      backgrounds: [{ hex: '#FFFFFF', weight: 1 }],
+      texts: [{ hex: '#FFFFFF', weight: 1 }],
+      accents: [{ hex: '#5B7BFB', weight: 1 }],
+    })
+    expect(contrastRatio(parseHex(roles.ink)!, parseHex(roles.surface)!)).toBeGreaterThanOrEqual(4.5)
+  })
+})
+
+describe('ensureLegibleColors', () => {
+  it('darkens ink to clear WCAG contrast when ink === surface (AbSM: white on white)', () => {
+    const fixed = ensureLegibleColors({ ink: '#FFFFFF', surface: '#FFFFFF', accent: '#5B7BFB', 'accent-deep': '#3B50A3', line: '#00A0D2' })
+    expect(fixed.ink).not.toBe('#FFFFFF')
+    expect(contrastRatio(parseHex(fixed.ink)!, parseHex(fixed.surface)!)).toBeGreaterThanOrEqual(4.5)
+  })
+
+  it('lightens ink when both are dark (ink on a dark surface)', () => {
+    const fixed = ensureLegibleColors({ ink: '#111111', surface: '#000000', accent: '#5B7BFB', 'accent-deep': '#3B50A3', line: '#333333' })
+    expect(contrastRatio(parseHex(fixed.ink)!, parseHex(fixed.surface)!)).toBeGreaterThanOrEqual(4.5)
+  })
+
+  it('leaves a well-contrasted kit untouched', () => {
+    const ok = { ink: '#1A1A1A', surface: '#FFFFFF', accent: '#2563EB', 'accent-deep': '#1E3A8A', line: '#E5E5E5' }
+    expect(ensureLegibleColors(ok)).toEqual(ok)
   })
 })
