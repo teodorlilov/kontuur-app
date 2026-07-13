@@ -1,15 +1,9 @@
 import { type NextRequest, NextResponse } from 'next/server'
-import type { SupabaseClient } from '@supabase/supabase-js'
 import { requireSessionUser } from '@/lib/auth/session'
-import { createAdminSupabaseClient } from '@/lib/supabase/admin'
+import { createUntypedAdminClient } from '@/lib/supabase/admin'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
-
-// brand_kit_extractions is not in the generated types yet (new migration); cast until `supabase gen types`.
-function adminClient(): SupabaseClient {
-  return createAdminSupabaseClient() as unknown as SupabaseClient
-}
 
 /** Poll target for the Review step (§2.3): the extraction status + tokens/report for a session, scoped
  *  to the caller's agency. Returns `pending` until the `after()` extractor finishes. */
@@ -18,7 +12,7 @@ export async function GET(request: NextRequest) {
   const session = request.nextUrl.searchParams.get('session')
   if (!session) return NextResponse.json({ error: 'session required' }, { status: 400 })
 
-  const admin = adminClient()
+  const admin = createUntypedAdminClient()
   const { data } = await admin
     .from('brand_kit_extractions')
     .select('status, tokens, report, agency_id')

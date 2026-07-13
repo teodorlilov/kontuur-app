@@ -1,17 +1,10 @@
 'use server'
 
-import type { SupabaseClient } from '@supabase/supabase-js'
 import { requireSessionUser } from '@/lib/auth/session'
 import { safeParseBrandTokens } from '@/lib/brand-kit/tokens-schema'
 import type { BrandBrief } from '@/lib/brand-kit/extract/report'
 import type { BrandTokens } from '@/lib/scene-graph'
-import { createAdminSupabaseClient } from '@/lib/supabase/admin'
-
-// brand_kits / feed_systems / client_feed_systems are not in the generated types yet (new migration);
-// cast until `supabase gen types` regenerates them, then drop the cast.
-function adminClient(): SupabaseClient {
-  return createAdminSupabaseClient() as unknown as SupabaseClient
-}
+import { createUntypedAdminClient } from '@/lib/supabase/admin'
 
 /**
  * Persist a client's brand kit + feed-system choice (§3.1/§3.3). Validates the tokens (zod), verifies
@@ -30,7 +23,7 @@ export async function saveBrandKit(
   const parsed = safeParseBrandTokens(tokens)
   if (!parsed.success) return { ok: false, error: parsed.issues.join('; ') }
 
-  const admin = adminClient()
+  const admin = createUntypedAdminClient()
   const { data: owned } = await admin
     .from('clients')
     .select('id')

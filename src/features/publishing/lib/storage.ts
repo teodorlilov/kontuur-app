@@ -7,7 +7,22 @@ export interface UploadResult {
   storagePath: string
 }
 
-/** Upload a post image to the public storage bucket. */
+/** Upload bytes to a public storage bucket and return the public URL — the one place that touches
+ *  `storage.upload` + `getPublicUrl`, shared by post images and generated plates. Throws on failure. */
+export async function uploadToBucket(
+  bucket: string,
+  storagePath: string,
+  file: Buffer,
+  contentType: string
+): Promise<UploadResult> {
+  const admin = createAdminSupabaseClient()
+  const { error } = await admin.storage.from(bucket).upload(storagePath, file, { contentType, upsert: false })
+  if (error) throw new Error(`Storage upload failed: ${error.message}`)
+  const { data } = admin.storage.from(bucket).getPublicUrl(storagePath)
+  return { publicUrl: data.publicUrl, storagePath }
+}
+
+/** Upload a post image to the public post-images bucket. */
 export async function uploadPostImage(
   file: Buffer,
   fileName: string,
@@ -15,17 +30,7 @@ export async function uploadPostImage(
   clientId: string,
   postId: string
 ): Promise<UploadResult> {
-  const admin = createAdminSupabaseClient()
-  const storagePath = `${clientId}/${postId}/${Date.now()}-${fileName}`
-
-  const { error } = await admin.storage
-    .from(BUCKET)
-    .upload(storagePath, file, { contentType, upsert: false })
-
-  if (error) throw new Error(`Storage upload failed: ${error.message}`)
-
-  const { data } = admin.storage.from(BUCKET).getPublicUrl(storagePath)
-  return { publicUrl: data.publicUrl, storagePath }
+  return uploadToBucket(BUCKET, `${clientId}/${postId}/${Date.now()}-${fileName}`, file, contentType)
 }
 
 /** Delete a post image from storage. Logs on failure but does not throw. */

@@ -1,14 +1,9 @@
 import { NextResponse } from 'next/server'
-import type { SupabaseClient } from '@supabase/supabase-js'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
 import { getBrandKitForClient, getClientFeedSystem } from '@/lib/brand-kit/queries'
 import { feedSystemTokens } from '@/lib/renderer/feed-system-compositions'
 import { DEFAULT_TOKENS } from '@/lib/scene-graph'
-import { createAdminSupabaseClient } from '@/lib/supabase/admin'
-
-function adminClient(): SupabaseClient {
-  return createAdminSupabaseClient() as unknown as SupabaseClient
-}
+import { createUntypedAdminClient } from '@/lib/supabase/admin'
 
 /**
  * A client's visual kit for client-side rendering — the tokens (weight-augmented for the feed system),
@@ -20,7 +15,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   const auth = await resolveAuth()
   if (!auth.ok) return auth.response
 
-  const db = adminClient()
+  const db = createUntypedAdminClient()
   const { data: clientRow } = await db.from('clients').select('name, agency_id').eq('id', id).maybeSingle()
   const client = clientRow as { name?: string; agency_id?: string } | null
   if (!client || client.agency_id !== auth.agencyId) return NextResponse.json({ error: 'Client not found' }, { status: 404 })

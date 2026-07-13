@@ -42,17 +42,30 @@ export function relativeLuminance({ r, g, b }: Rgb): number {
   return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b)
 }
 
-/** HSL saturation (0 = grey, 1 = fully saturated). The signal for "is this an accent colour". */
-export function saturation({ r, g, b }: Rgb): number {
+/** RGB → HSL (h in degrees 0–360, s and l in 0–1). The single hue/saturation/lightness source. */
+export function toHsl({ r, g, b }: Rgb): { h: number; s: number; l: number } {
   const R = r / 255
   const G = g / 255
   const B = b / 255
   const max = Math.max(R, G, B)
   const min = Math.min(R, G, B)
-  if (max === min) return 0
-  const l = (max + min) / 2
   const d = max - min
-  return l > 0.5 ? d / (2 - max - min) : d / (max + min)
+  let h = 0
+  if (d !== 0) {
+    if (max === R) h = ((G - B) / d) % 6
+    else if (max === G) h = (B - R) / d + 2
+    else h = (R - G) / d + 4
+    h *= 60
+    if (h < 0) h += 360
+  }
+  const l = (max + min) / 2
+  const s = d === 0 ? 0 : d / (1 - Math.abs(2 * l - 1))
+  return { h, s, l }
+}
+
+/** HSL saturation (0 = grey, 1 = fully saturated). The signal for "is this an accent colour". */
+export function saturation(rgb: Rgb): number {
+  return toHsl(rgb).s
 }
 
 /** Linear blend from `a` to `b` (t=0 → a, t=1 → b). */

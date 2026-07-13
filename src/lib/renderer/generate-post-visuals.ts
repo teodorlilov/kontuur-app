@@ -1,15 +1,10 @@
-import type { SupabaseClient } from '@supabase/supabase-js'
 import { getBrandKitForClient, getClientFeedSystem } from '@/lib/brand-kit/queries'
 import { composePostSlides } from '@/lib/renderer/compose'
 import { DEFAULT_RATIO } from '@/lib/renderer/layout/anchor'
 import { fillPlates } from '@/lib/images/generate-plates'
 import { DEFAULT_TOKENS } from '@/lib/scene-graph'
-import { createAdminSupabaseClient } from '@/lib/supabase/admin'
+import { createUntypedAdminClient } from '@/lib/supabase/admin'
 import type { CarouselSlide } from '@/types/api'
-
-function adminClient(): SupabaseClient {
-  return createAdminSupabaseClient() as unknown as SupabaseClient
-}
 
 /**
  * Compose a post's carousel copy into per-slide scene graphs, store them in `post_visuals`, and mark the
@@ -32,7 +27,7 @@ export async function composePostVisuals(params: {
   const { postId, clientId, agencyId, slides, withImagery = false } = params
   if (slides.length === 0) return
 
-  const db = adminClient()
+  const db = createUntypedAdminClient()
   const [kit, feedSystem, { data: clientRow }] = await Promise.all([
     getBrandKitForClient(clientId, agencyId),
     getClientFeedSystem(clientId),

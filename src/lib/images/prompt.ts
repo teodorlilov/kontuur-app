@@ -1,5 +1,5 @@
 import type { BrandBrief } from '@/lib/brand-kit/extract/report'
-import { parseHex, type Rgb } from '@/lib/brand-kit/extract/color'
+import { parseHex, toHsl } from '@/lib/brand-kit/extract/color'
 import type { AspectRatio } from '@/lib/renderer/layout/anchor'
 import type { BrandTokens } from '@/lib/scene-graph'
 
@@ -22,26 +22,7 @@ import type { BrandTokens } from '@/lib/scene-graph'
 
 // ── Colour words ────────────────────────────────────────────────────────────
 // Models take colour direction as words, not hex — so map each palette hex to a plain-language name.
-
-function toHsl({ r, g, b }: Rgb): { h: number; s: number; l: number } {
-  const R = r / 255
-  const G = g / 255
-  const B = b / 255
-  const max = Math.max(R, G, B)
-  const min = Math.min(R, G, B)
-  const d = max - min
-  let h = 0
-  if (d !== 0) {
-    if (max === R) h = ((G - B) / d) % 6
-    else if (max === G) h = (B - R) / d + 2
-    else h = (R - G) / d + 4
-    h *= 60
-    if (h < 0) h += 360
-  }
-  const l = (max + min) / 2
-  const s = d === 0 ? 0 : d / (1 - Math.abs(2 * l - 1))
-  return { h, s, l }
-}
+// (`toHsl` is the shared implementation in extract/color.ts.)
 
 // Hue buckets by upper bound (degrees) → colour word.
 const HUE_NAMES: readonly [number, string][] = [

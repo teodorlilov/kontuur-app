@@ -1,5 +1,5 @@
-import type { SupabaseClient } from '@supabase/supabase-js'
-import { createAdminSupabaseClient } from '@/lib/supabase/admin'
+import { createUntypedAdminClient } from '@/lib/supabase/admin'
+import { uploadToBucket, type UploadResult } from '@/features/publishing/lib/storage'
 import type { BrandBrief } from '@/lib/brand-kit/extract/report'
 import type { AspectRatio } from '@/lib/renderer/layout/anchor'
 import type { BrandTokens } from '@/lib/scene-graph'
@@ -20,10 +20,6 @@ import { composeScene } from './scene'
 
 const BUCKET = 'plates'
 
-function admin(): SupabaseClient {
-  return createAdminSupabaseClient() as unknown as SupabaseClient
-}
-
 export type ResolvePlateParams = {
   clientId: string
   role: PlateRole
@@ -36,7 +32,7 @@ export type ResolvePlateParams = {
 }
 
 export async function resolvePlate(params: ResolvePlateParams): Promise<string | null> {
-  const db = admin()
+  const db = createUntypedAdminClient()
   const hash = promptHash({
     headline: params.slide.headline,
     body: params.slide.body,
@@ -73,7 +69,7 @@ export async function resolvePlate(params: ResolvePlateParams): Promise<string |
   const generated = await generatePlate({ prompt, ratio: params.ratio, seed: params.seed })
   if (!generated) return null
 
-  const stored = await storePlate(db, params.clientId, generated.url)
+  const stored = await uploadPlate(params.clientId, generated.url)
   if (!stored) return null // don't persist an ephemeral fal URL into post_visuals — keep the gradient
 
   // Index it for reuse. A concurrent generate of the same hash can lose the unique-index race; that's
@@ -89,28 +85,22 @@ export async function resolvePlate(params: ResolvePlateParams): Promise<string |
   return stored.publicUrl
 }
 
-/** Copy a generated image into our own public bucket, so the URL is durable (fal's is ephemeral). */
-async function storePlate(
-  db: SupabaseClient,
-  clientId: string,
-  url: string
-): Promise<{ publicUrl: string; storagePath: string } | null> {
+/**
+ * Copy a generated image (fal's URL is ephemeral) into our durable public `plates` bucket under `prefix`
+ * — a client id for posts, `onboarding/<nonce>` for the onboarding design system. Shared by `resolvePlate`
+ * and the onboarding endpoint. Fail-soft → null (caller keeps the gradient).
+ */
+export async function uploadPlate(prefix: string, url: string): Promise<UploadResult | null> {
   try {
     const res = await fetch(url)
     if (!res.ok) return null
     const contentType = res.headers.get('content-type') ?? 'image/jpeg'
     const bytes = Buffer.from(await res.arrayBuffer())
     const ext = contentType.includes('png') ? 'png' : 'jpg'
-    const storagePath = `${clientId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`
-    const { error } = await db.storage.from(BUCKET).upload(storagePath, bytes, { contentType, upsert: false })
-    if (error) {
-      console.error('[images/bank] plate upload failed:', error.message)
-      return null
-    }
-    const { data } = db.storage.from(BUCKET).getPublicUrl(storagePath)
-    return { publicUrl: data.publicUrl, storagePath }
+    const storagePath = `${prefix}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`
+    return await uploadToBucket(BUCKET, storagePath, bytes, contentType)
   } catch (err) {
-    console.error('[images/bank] storePlate failed:', err)
+    console.error('[images/bank] uploadPlate failed:', err)
     return null
   }
 }

@@ -1,7 +1,6 @@
 import { after, type NextRequest, NextResponse } from 'next/server'
-import type { SupabaseClient } from '@supabase/supabase-js'
 import { requireSessionUser } from '@/lib/auth/session'
-import { createAdminSupabaseClient } from '@/lib/supabase/admin'
+import { createUntypedAdminClient } from '@/lib/supabase/admin'
 
 // Carries Chromium (like /api/extract) because it runs the extractor in-process — see the after() note.
 export const runtime = 'nodejs'
@@ -9,10 +8,6 @@ export const maxDuration = 300
 
 type StartBody = { onboardingSessionId?: unknown; url?: unknown }
 
-// brand_kit_extractions is not in the generated types yet (new migration); cast until `supabase gen types`.
-function adminClient(): SupabaseClient {
-  return createAdminSupabaseClient() as unknown as SupabaseClient
-}
 
 /**
  * Kick off brand-kit extraction for an onboarding session (§2.3). Inserts a `pending` row, returns
@@ -35,7 +30,7 @@ export async function POST(request: NextRequest) {
   const onboardingSessionId = body.onboardingSessionId
   const url = body.url
 
-  const admin = adminClient()
+  const admin = createUntypedAdminClient()
   const { error: upsertError } = await admin
     .from('brand_kit_extractions')
     .upsert(

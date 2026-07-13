@@ -4,7 +4,7 @@ import { extractBrandKitFromWebsite } from '@/lib/brand-kit/extract/extract-webs
 import type { ExtractionResult } from '@/lib/brand-kit/extract/report'
 import { DEFAULT_TOKENS } from '@/lib/scene-graph'
 
-// Second Chromium-bearing function (isolated like /api/render). Pro gives the memory + maxDuration.
+// Chromium-bearing function (the extractor runs a headless browser). Pro gives the memory + maxDuration.
 export const runtime = 'nodejs'
 export const maxDuration = 300
 
@@ -20,9 +20,9 @@ function defaultResult(source: 'website' | 'image', reason: string): ExtractionR
 }
 
 /**
- * Extract a brand kit from a website URL or a reference image. Internal, server-to-server (the same
- * `CRON_SECRET` bearer as /api/render); onboarding calls it via `waitUntil` (§2.3). Always returns a
- * usable kit — extraction failures degrade to the default kit rather than erroring.
+ * Extract a brand kit from a website URL or a reference image. Internal, server-to-server (a
+ * `CRON_SECRET` bearer); onboarding calls it via `waitUntil` (§2.3). Always returns a usable kit —
+ * extraction failures degrade to the default kit rather than erroring.
  */
 export async function POST(request: NextRequest) {
   const authHeader = request.headers.get('authorization')

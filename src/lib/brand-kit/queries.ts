@@ -1,13 +1,6 @@
-import type { SupabaseClient } from '@supabase/supabase-js'
 import type { BrandTokens } from '@/lib/scene-graph'
 import type { BrandBrief } from '@/lib/brand-kit/extract/report'
-import { createAdminSupabaseClient } from '@/lib/supabase/admin'
-
-// brand_kits is not in the generated Database types yet (new migration); cast the admin client until
-// `supabase gen types` regenerates them, then drop the cast. Same pattern as post_visuals.
-function adminClient(): SupabaseClient {
-  return createAdminSupabaseClient() as unknown as SupabaseClient
-}
+import { createUntypedAdminClient } from '@/lib/supabase/admin'
 
 export type BrandKitRow = {
   id: string
@@ -27,7 +20,7 @@ const KIT_COLUMNS = 'id, client_id, tokens, version, source_kind, brief'
  * must belong to `agencyId` or this returns null — a client from another agency can never leak a kit.
  */
 export async function getBrandKitForClient(clientId: string, agencyId: string): Promise<BrandKitRow | null> {
-  const supabase = adminClient()
+  const supabase = createUntypedAdminClient()
   const { data: owned } = await supabase
     .from('clients')
     .select('id')
@@ -46,7 +39,7 @@ export async function getBrandKitForClient(clientId: string, agencyId: string): 
  * ownership first.
  */
 export async function getClientFeedSystem(clientId: string): Promise<{ slug: string; id: string | null }> {
-  const supabase = adminClient()
+  const supabase = createUntypedAdminClient()
   const { data: sel } = await supabase
     .from('client_feed_systems')
     .select('feed_system_id')
