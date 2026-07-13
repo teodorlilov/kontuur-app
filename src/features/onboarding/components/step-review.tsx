@@ -10,7 +10,9 @@ import { PillarEditor } from '@/components/ui/pillar-editor'
 import { WEEKDAY_OPTIONS } from '@/utils/constants'
 import { TokenEditor } from '@/features/clients/components/visual-system/token-editor'
 import { PreviewGrid } from '@/features/clients/components/visual-system/preview-grid'
+import { RatioToggle } from '@/features/clients/components/visual-system/ratio-toggle'
 import { FeedSystemPicker } from '@/features/clients/components/visual-system/feed-system-picker'
+import type { AspectRatio } from '@/lib/renderer/layout/anchor'
 import type { FeedSystemOption } from '@/lib/brand-kit/feed-systems'
 import type { ExtractionReport } from '@/lib/brand-kit/extract/report'
 import type { BrandTokens } from '@/lib/scene-graph'
@@ -522,6 +524,7 @@ function BrandToneCard({
 
 function VisualSystemSection({ visual }: { visual: VisualReviewData }) {
   const fontsGuessed = visual.report?.confidence.fonts === 'guessed'
+  const [ratio, setRatio] = useState<AspectRatio>('4:5')
   return (
     <ReviewCard id="visual" title="Visual system" icon={<Palette size={10} color="var(--color-muted)" />}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
@@ -533,7 +536,12 @@ function VisualSystemSection({ visual }: { visual: VisualReviewData }) {
             secondaryLanguage={visual.secondaryLanguage}
             report={visual.report ?? undefined}
           />
-          <PreviewGrid tokens={visual.tokens} feedSystemSlug={visual.selectedFeedSystemSlug} columns={3} cellWidth={92} />
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
+              <RatioToggle value={ratio} onChange={setRatio} />
+            </div>
+            <PreviewGrid tokens={visual.tokens} feedSystemSlug={visual.selectedFeedSystemSlug} ratio={ratio} columns={3} cellWidth={92} />
+          </div>
         </div>
 
         <div>
