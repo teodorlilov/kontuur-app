@@ -48,7 +48,7 @@ const cover: Composition = {
   brandKitVersion: 1,
   size: SIZE,
   layers: [
-    { ...base({ id: 'bg', name: 'plate', rect: rect(0, 0, 1080, 1350) }), type: 'plate', source: 'generated', editHeadId: null, src: '', treatment: lit('none') },
+    { ...base({ id: 'bg', name: 'plate', rect: rect(0, 0, 1080, 1350) }), type: 'plate', source: 'generated', editHeadId: null, src: '', treatment: lit('duotone') },
     { ...base({ id: 'scrim', name: 'scrim', rect: rect(0, 0, 1080, 1350), opacity: 0.4 }), type: 'shape', shape: 'rect', fill: bound('color.ink') },
     { ...base({ id: 'kicker', name: 'kicker', rect: rect(96, 128, 888, 60) }), type: 'text', slot: 'kicker', content: 'ЗА СОЦИАЛНИТЕ МРЕЖИ', lang: 'bg', family: bound('type.display.family'), size: lit(30), weight: lit(600), color: bound('color.surface'), align: lit('left'), autoFit: null },
     { ...base({ id: 'headline', name: 'headline', rect: rect(96, 720, 888, 470) }), type: 'text', slot: 'headline', content: 'Съдържание, което\nхората помнят', lang: 'bg', family: bound('type.display.family'), size: lit(108), weight: lit(700), color: bound('color.surface'), align: lit('left'), autoFit: { min: 64, max: 120 } },
@@ -62,7 +62,7 @@ const statement: Composition = {
   brandKitVersion: 1,
   size: SIZE,
   layers: [
-    { ...base({ id: 'bg', name: 'plate', rect: rect(0, 0, 1080, 1350) }), type: 'plate', source: 'generated', editHeadId: null, src: '', treatment: lit('none') },
+    { ...base({ id: 'bg', name: 'plate', rect: rect(0, 0, 1080, 1350) }), type: 'plate', source: 'generated', editHeadId: null, src: '', treatment: lit('duotone') },
     { ...base({ id: 'blend', name: 'blend', rect: rect(140, 300, 800, 750), blendMode: 'multiply', clip: { kind: 'rect', radius: 32 } }), type: 'shape', shape: 'rect', fill: bound('color.accent-deep') },
     { ...base({ id: 'stmt', name: 'statement', rect: rect(140, 470, 800, 410) }), type: 'text', slot: 'headline', content: 'По-малко шум.\nПовече смисъл.', lang: 'bg', family: bound('type.display.family'), size: lit(92), weight: lit(700), color: bound('color.surface'), align: lit('center'), autoFit: { min: 56, max: 104 } },
   ],
@@ -101,7 +101,7 @@ const cta: Composition = {
   brandKitVersion: 1,
   size: SIZE,
   layers: [
-    { ...base({ id: 'bg', name: 'plate', rect: rect(0, 0, 1080, 1350) }), type: 'plate', source: 'generated', editHeadId: null, src: '', treatment: lit('none') },
+    { ...base({ id: 'bg', name: 'plate', rect: rect(0, 0, 1080, 1350) }), type: 'plate', source: 'generated', editHeadId: null, src: '', treatment: lit('duotone') },
     { ...base({ id: 'headline', name: 'headline', rect: rect(96, 430, 888, 360) }), type: 'text', slot: 'headline', content: 'Готови ли сте\nда започнем?', lang: 'bg', family: bound('type.display.family'), size: lit(96), weight: lit(700), color: bound('color.surface'), align: lit('center'), autoFit: { min: 56, max: 108 } },
     { ...base({ id: 'cta', name: 'cta', rect: rect(96, 820, 888, 80) }), type: 'text', slot: 'cta', content: 'Свържете се с нас →', lang: 'bg', family: bound('type.display.family'), size: lit(44), weight: lit(600), color: bound('color.surface'), align: lit('center'), autoFit: null },
     { ...base({ id: 'arc', name: 'arc', rect: rect(760, 120, 224, 224) }), type: 'chrome', component: 'arc', params: { strokeWidth: lit(3) } },

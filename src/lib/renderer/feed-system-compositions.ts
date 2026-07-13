@@ -49,7 +49,7 @@ const comp = (id: string, feedSystemId: string, layers: Composition['layers']): 
 // Heavy uppercase type on solid colour blocks. No hairlines, no dots, no arcs — contrast is the system.
 
 const bbCover = comp('bb-cover', 'bold-blocks', [
-  { ...base({ id: 'bg', name: 'plate', rect: rect(0, 0, 1080, 1350) }), type: 'plate', source: 'generated', editHeadId: null, src: '', treatment: lit('none') },
+  { ...base({ id: 'bg', name: 'plate', rect: rect(0, 0, 1080, 1350) }), type: 'plate', source: 'generated', editHeadId: null, src: '', treatment: lit('duotone') },
   { ...base({ id: 'block', name: 'block', rect: rect(0, 760, 1080, 590) }), type: 'shape', shape: 'rect', fill: bound('color.accent') },
   { ...base({ id: 'kicker', name: 'kicker', rect: rect(80, 110, 920, 50) }), type: 'text', slot: 'kicker', content: 'ЗА СОЦИАЛНИТЕ МРЕЖИ', lang: 'bg', family: bound('type.display.family'), size: lit(30), weight: lit(700), color: bound('color.surface'), align: lit('left'), autoFit: null },
   { ...base({ id: 'headline', name: 'headline', rect: rect(80, 820, 920, 470) }), type: 'text', slot: 'headline', content: 'СЪДЪРЖАНИЕ, КОЕТО\nХОРАТА ПОМНЯТ', lang: 'bg', family: bound('type.display.family'), size: lit(126), weight: lit(800), color: bound('color.surface'), align: lit('left'), autoFit: { min: 72, max: 148 } },

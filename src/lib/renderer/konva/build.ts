@@ -13,7 +13,12 @@ import type {
   Treatment,
 } from '@/lib/scene-graph'
 import { resolve } from '@/lib/scene-graph'
+import { parseHex, type Rgb } from '@/lib/brand-kit/extract/color'
 import { roleColor } from './colors'
+import { duotoneFilter, grainFilter, tintFilter, type ImageFilter } from './treatments'
+
+// Konva's exported filter type (it isn't surfaced as `Konva.Filter`); our ImageFilters cast to it.
+type KonvaFilter = typeof Konva.Filters.Grayscale
 import { fittedFontSize, textContent, textStyle } from './measure-text'
 
 export type BuildContext = { tokens: BrandTokens; images: Map<string, HTMLImageElement> }
@@ -100,13 +105,27 @@ function coverCrop(iw: number, ih: number, w: number, h: number) {
   return { x: (iw - cw) / 2, y: (ih - ch) / 2, width: cw, height: ch }
 }
 
-function applyTreatment(node: Konva.Image, treatment: Treatment): void {
-  // Grayscale covers mono/duotone (cached so the filter runs once). Richer grades (duotone tinting,
-  // tint) land with the editor in Phase 5; previews use gradient plates and never hit this path.
-  if (treatment === 'mono' || treatment === 'duotone') {
-    node.filters([Konva.Filters.Grayscale])
-    node.cache()
-  }
+/** Grade a plate image per its `treatment`, using the brand palette so photos cohere on-brand. Filters
+ *  run once on the cached node. */
+function applyTreatment(node: Konva.Image, treatment: Treatment, tokens: BrandTokens): void {
+  if (treatment === 'none') return
+  const rgb = (role: Parameters<typeof roleColor>[1], fallback: Rgb): Rgb =>
+    parseHex(roleColor(tokens, role)) ?? fallback
+  const surface = rgb('surface', { r: 255, g: 255, b: 255 })
+  const accent = rgb('accent', { r: 37, g: 99, b: 235 })
+  const accentDeep = rgb('accent-deep', { r: 20, g: 30, b: 60 })
+
+  // Shadows → the deep brand tone, highlights → surface: a branded editorial duotone. `tint`/`grain` are
+  // softer grades. Our pure `ImageFilter`s are assignable to Konva's filter type (cast at the boundary).
+  const filter: ImageFilter | KonvaFilter | null =
+    treatment === 'mono' ? Konva.Filters.Grayscale
+    : treatment === 'duotone' ? duotoneFilter(accentDeep, surface)
+    : treatment === 'tint' ? tintFilter(accent, 0.22)
+    : treatment === 'grain' ? grainFilter(26)
+    : null
+  if (!filter) return
+  node.filters([filter as KonvaFilter])
+  node.cache()
 }
 
 function buildPlate(layer: PlateLayer, ctx: BuildContext, w: number, h: number): (Konva.Group | Konva.Shape)[] {
@@ -125,7 +144,7 @@ function buildPlate(layer: PlateLayer, ctx: BuildContext, w: number, h: number):
   const img = ctx.images.get(layer.id)
   if (!img) return []
   const node = new Konva.Image({ image: img, width: w, height: h, crop: coverCrop(img.width, img.height, w, h) })
-  applyTreatment(node, resolve(layer.treatment, ctx.tokens))
+  applyTreatment(node, resolve(layer.treatment, ctx.tokens), ctx.tokens)
   return [node]
 }
 
