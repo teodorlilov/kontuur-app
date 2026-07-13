@@ -1,6 +1,9 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { getBrandKitForClient, getClientFeedSystem } from '@/lib/brand-kit/queries'
 import { composePostSlides } from '@/lib/renderer/compose'
+import { DEFAULT_RATIO } from '@/lib/renderer/layout/anchor'
+import { fillPlates } from '@/lib/images/generate-plates'
+import { DEFAULT_TOKENS } from '@/lib/scene-graph'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import type { CarouselSlide } from '@/types/api'
 
@@ -12,16 +15,21 @@ function adminClient(): SupabaseClient {
  * Compose a post's carousel copy into per-slide scene graphs, store them in `post_visuals`, and mark the
  * post `visuals_status = 'ready'`. The single implementation behind every trigger — the generation flows
  * (autonomous cron + the manual wizard) call it so posts arrive designed, and the on-demand review
- * endpoint calls it to (re)generate. Phase 4 imagery slots in before the upsert. Throws on failure — the
- * caller decides how to surface it (the generators treat it as best-effort; the endpoint marks 'failed').
+ * endpoint calls it to (re)generate.
+ *
+ * `withImagery` gates the paid fal.ai plate generation: only the operator's on-demand "Generate visuals"
+ * click passes it, so nothing auto-spends (cron/wizard stay copy-only, a documented Phase 4 limitation).
+ * Imagery is fail-soft — a failure leaves the token gradient, so this never throws on an image problem.
+ * Throws only on the DB write — the caller surfaces it (generators best-effort, endpoint marks 'failed').
  */
 export async function composePostVisuals(params: {
   postId: string
   clientId: string
   agencyId: string
   slides: CarouselSlide[]
+  withImagery?: boolean
 }): Promise<void> {
-  const { postId, clientId, agencyId, slides } = params
+  const { postId, clientId, agencyId, slides, withImagery = false } = params
   if (slides.length === 0) return
 
   const db = adminClient()
@@ -32,7 +40,17 @@ export async function composePostVisuals(params: {
   ])
   const clientName = (clientRow as { name?: string } | null)?.name ?? ''
 
-  const compositions = composePostSlides(slides, { feedSystemSlug: feedSystem.slug, postId, clientName })
+  let compositions = composePostSlides(slides, { feedSystemSlug: feedSystem.slug, postId, clientName })
+  if (withImagery) {
+    compositions = await fillPlates(compositions, slides, {
+      clientId,
+      brief: kit?.brief ?? null,
+      colors: (kit?.tokens ?? DEFAULT_TOKENS).color,
+      feedSystemSlug: feedSystem.slug,
+      ratio: DEFAULT_RATIO,
+    })
+  }
+
   const rows = compositions.map((composition, slideIndex) => ({
     post_id: postId,
     slide_index: slideIndex,

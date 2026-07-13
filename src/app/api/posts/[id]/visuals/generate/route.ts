@@ -37,7 +37,8 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
 
   after(async () => {
     try {
-      await composePostVisuals({ postId: id, clientId: owned.client_id, agencyId: auth.agencyId, slides })
+      // On-demand → generate fal imagery (the only path that spends; cron/wizard stay copy-only).
+      await composePostVisuals({ postId: id, clientId: owned.client_id, agencyId: auth.agencyId, slides, withImagery: true })
     } catch (err) {
       await db
         .from('posts')
