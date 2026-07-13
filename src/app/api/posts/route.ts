@@ -5,6 +5,11 @@ import { POST_COLUMNS } from '@/lib/queries/select-columns'
 import type { CarouselSlide } from '@/types/api'
 import type { Json } from '@/types/database'
 
+// The POST handler generates fal imagery in `after()` (background); give it headroom so the paid work
+// isn't cut off at the platform default (~10s). Matches `posts/[id]/visuals/generate/route.ts`.
+export const runtime = 'nodejs'
+export const maxDuration = 300
+
 export async function GET(request: Request) {
   const auth = await resolveAuth()
   if (!auth.ok) return auth.response
@@ -144,14 +149,16 @@ export async function POST(request: Request) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  // Compose designed slides so a carousel post arrives already visual (manual/wizard flow). Best-effort
-  // in the background — a compose failure must never fail the post save; the review can regenerate.
+  // Compose designed slides so a carousel post arrives already visual, WITH fal imagery — this is the
+  // manual (wizard) generation flow, which is operator-initiated so the spend is intended. (The cron
+  // inserts posts directly, not through this route, so it stays copy-only.) Best-effort in the
+  // background — a failure must never fail the post save; imagery is fail-soft to the token gradient.
   const created = post as { id: string; client_id: string; post_type: string; slides_json: unknown } | null
   if (created && created.post_type === 'carousel') {
     const slides = (created.slides_json as CarouselSlide[] | null) ?? []
     after(async () => {
       try {
-        await composePostVisuals({ postId: created.id, clientId: created.client_id, agencyId, slides })
+        await composePostVisuals({ postId: created.id, clientId: created.client_id, agencyId, slides, withImagery: true })
       } catch (e) {
         console.error('[posts] visual compose failed for', created.id, e)
       }

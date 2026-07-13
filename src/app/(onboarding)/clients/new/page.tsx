@@ -59,6 +59,10 @@ export default function NewClientPage() {
   const [selectedFeedSystemSlug, setSelectedFeedSystemSlug] = useState<string | null>(null)
   const [extractionStarted, setExtractionStarted] = useState(false)
   const [visualTouched, setVisualTouched] = useState(false)
+  // Generated design-system plates by role (from /api/onboarding/design-system): the real imagery shown
+  // under the live token layer, seeded into the client's bank on save.
+  const [designPlates, setDesignPlates] = useState<Record<string, { publicUrl: string; storagePath: string }> | null>(null)
+  const [generatingDesign, setGeneratingDesign] = useState(false)
 
   // Schedule state
   const [scheduleFreqType, setScheduleFreqType] = useState('per_week')
@@ -285,7 +289,7 @@ export default function NewClientPage() {
 
       // Persist the reviewed visual system for the new client (§2.4). Non-fatal — Phase 0 still renders
       // on the default kit if this fails.
-      const kitResult = await saveBrandKit(data.client_id, visualTokens, selectedFeedSystemSlug, visualReport?.brief ?? null)
+      const kitResult = await saveBrandKit(data.client_id, visualTokens, selectedFeedSystemSlug, visualReport?.brief ?? null, designPlates ?? undefined)
       if (!kitResult.ok) toast.error('Client saved, but the visual system could not be saved.')
 
       // Trigger best-time generation in background
@@ -318,6 +322,35 @@ export default function NewClientPage() {
     setWebsiteUrl('')
     setInstagramHandle('')
     setMultiSelectAnswers([])
+  }
+
+  /** Generate the real design-system imagery from the current tokens + brief (§ Part B). Fills the
+   *  preview's plate layer; the type keeps updating live on top. Seeded into the bank on save. */
+  async function handleGenerateDesignSystem() {
+    setGeneratingDesign(true)
+    try {
+      const res = await fetch('/api/onboarding/design-system', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tokens: visualTokens,
+          feedSystemSlug: selectedFeedSystemSlug,
+          brief: visualReport?.brief ?? null,
+        }),
+      })
+      const data = (await res.json().catch(() => ({}))) as {
+        plates?: Record<string, { publicUrl: string; storagePath: string }>
+      }
+      if (res.ok && data.plates && Object.keys(data.plates).length > 0) {
+        setDesignPlates(data.plates)
+      } else {
+        toast.error('No design images were generated. Please try again.')
+      }
+    } catch {
+      toast.error('Could not generate the design system.')
+    } finally {
+      setGeneratingDesign(false)
+    }
   }
 
   const currentQuestion = QUESTIONS[currentQ]
@@ -395,6 +428,11 @@ export default function NewClientPage() {
                 setSelectedFeedSystemSlug(slug)
                 setVisualTouched(true)
               },
+              designPlates: designPlates
+                ? Object.fromEntries(Object.entries(designPlates).map(([role, p]) => [role, p.publicUrl]))
+                : undefined,
+              generatingDesign,
+              onGenerateDesignSystem: handleGenerateDesignSystem,
             }}
           />
         )}

@@ -3,6 +3,7 @@
 import { requireSessionUser } from '@/lib/auth/session'
 import { safeParseBrandTokens } from '@/lib/brand-kit/tokens-schema'
 import type { BrandBrief } from '@/lib/brand-kit/extract/report'
+import { seedImageBank, type SeedPlate } from '@/lib/images/design-system'
 import type { BrandTokens } from '@/lib/scene-graph'
 import { createUntypedAdminClient } from '@/lib/supabase/admin'
 
@@ -16,7 +17,8 @@ export async function saveBrandKit(
   clientId: string,
   tokens: BrandTokens,
   feedSystemSlug: string | null,
-  brief?: BrandBrief | null
+  brief?: BrandBrief | null,
+  seedPlates?: Record<string, SeedPlate>
 ): Promise<{ ok: boolean; error?: string }> {
   const { agencyId } = await requireSessionUser()
 
@@ -59,6 +61,11 @@ export async function saveBrandKit(
         .insert({ client_id: clientId, feed_system_id: feedSystemId, is_default: true })
       if (linkError) return { ok: false, error: linkError.message }
     }
+  }
+
+  // Seed the brand's image bank with the onboarding design-system plates (non-fatal).
+  if (seedPlates && Object.keys(seedPlates).length > 0) {
+    await seedImageBank(clientId, seedPlates)
   }
 
   return { ok: true }

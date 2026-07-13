@@ -30,6 +30,10 @@ export interface VisualReviewData {
   secondaryLanguage: string
   onTokensChange: (tokens: BrandTokens) => void
   onFeedSystemChange: (slug: string) => void
+  /** Generated design-system plates by role — filled into the preview under the live token type. */
+  designPlates?: Record<string, string>
+  generatingDesign?: boolean
+  onGenerateDesignSystem?: () => void
 }
 
 interface StepReviewProps {
@@ -534,10 +538,20 @@ function VisualSystemSection({ visual }: { visual: VisualReviewData }) {
             report={visual.report ?? undefined}
           />
           <div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+              {visual.onGenerateDesignSystem && (
+                <Button
+                  size="sm"
+                  variant={visual.designPlates ? 'secondary' : undefined}
+                  loading={visual.generatingDesign}
+                  onClick={visual.onGenerateDesignSystem}
+                >
+                  {visual.generatingDesign ? 'Generating…' : visual.designPlates ? 'Regenerate' : 'Generate design system'}
+                </Button>
+              )}
               <RatioToggle value={ratio} onChange={setRatio} />
             </div>
-            <PreviewGrid tokens={visual.tokens} feedSystemSlug={visual.selectedFeedSystemSlug} ratio={ratio} language={visual.primaryLanguage} columns={3} cellWidth={92} />
+            <PreviewGrid tokens={visual.tokens} feedSystemSlug={visual.selectedFeedSystemSlug} ratio={ratio} language={visual.primaryLanguage} columns={3} cellWidth={92} plates={visual.designPlates} />
           </div>
         </div>
 

@@ -154,7 +154,7 @@ export const FEED_SYSTEM_PACKS: Record<FeedSystemSlug, Record<ReferenceRole, Com
   'quiet-grid': quietGrid,
 }
 
-const ROLE_ORDER: readonly ReferenceRole[] = ['cover', 'statement', 'list', 'quote', 'cta']
+export const ROLE_ORDER: readonly ReferenceRole[] = ['cover', 'statement', 'list', 'quote', 'cta']
 
 function isSlug(slug: string | null | undefined): slug is FeedSystemSlug {
   return slug === 'editorial' || slug === 'bold-blocks' || slug === 'quiet-grid'

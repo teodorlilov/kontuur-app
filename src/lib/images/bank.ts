@@ -1,5 +1,4 @@
 import { createUntypedAdminClient } from '@/lib/supabase/admin'
-import { uploadToBucket, type UploadResult } from '@/features/publishing/lib/storage'
 import type { BrandBrief } from '@/lib/brand-kit/extract/report'
 import type { AspectRatio } from '@/lib/renderer/layout/anchor'
 import type { BrandTokens } from '@/lib/scene-graph'
@@ -7,6 +6,7 @@ import { generatePlate } from './fal'
 import { promptHash } from './hash'
 import { buildImagePrompt, formatForModel, paletteWords, type PlateRole } from './prompt'
 import { composeScene } from './scene'
+import { uploadPlate } from './storage'
 
 /**
  * The per-brand plate bank: a durable image URL for a slide, cached by a *deterministic* key (slide copy
@@ -17,8 +17,6 @@ import { composeScene } from './scene'
  *
  * App-level access (no RLS on `brand_image_bank`), same as the other composition-engine tables.
  */
-
-const BUCKET = 'plates'
 
 export type ResolvePlateParams = {
   clientId: string
@@ -83,24 +81,4 @@ export async function resolvePlate(params: ResolvePlateParams): Promise<string |
   })
   if (error) console.warn('[images/bank] bank insert skipped:', error.message)
   return stored.publicUrl
-}
-
-/**
- * Copy a generated image (fal's URL is ephemeral) into our durable public `plates` bucket under `prefix`
- * — a client id for posts, `onboarding/<nonce>` for the onboarding design system. Shared by `resolvePlate`
- * and the onboarding endpoint. Fail-soft → null (caller keeps the gradient).
- */
-export async function uploadPlate(prefix: string, url: string): Promise<UploadResult | null> {
-  try {
-    const res = await fetch(url)
-    if (!res.ok) return null
-    const contentType = res.headers.get('content-type') ?? 'image/jpeg'
-    const bytes = Buffer.from(await res.arrayBuffer())
-    const ext = contentType.includes('png') ? 'png' : 'jpg'
-    const storagePath = `${prefix}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`
-    return await uploadToBucket(BUCKET, storagePath, bytes, contentType)
-  } catch (err) {
-    console.error('[images/bank] uploadPlate failed:', err)
-    return null
-  }
 }
