@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { BrandTokens } from '@/lib/scene-graph'
+import type { BrandBrief } from '@/lib/brand-kit/extract/report'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 
 // brand_kits is not in the generated Database types yet (new migration); cast the admin client until
@@ -14,9 +15,12 @@ export type BrandKitRow = {
   tokens: BrandTokens
   version: number
   source_kind: string
+  /** The art-direction brief (subjects/motifs/mood) — the input to Phase 4 image prompts. Null on kits
+   *  extracted before the brief was persisted, or on the default kit. */
+  brief: BrandBrief | null
 }
 
-const KIT_COLUMNS = 'id, client_id, tokens, version, source_kind'
+const KIT_COLUMNS = 'id, client_id, tokens, version, source_kind, brief'
 
 /**
  * Read a client's brand kit, scoped to the caller's agency. Access is app-level (no RLS): the client
