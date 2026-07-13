@@ -13,8 +13,9 @@ import { generateSoloCoaching } from '@/ai/solo-coaching/generate-coaching'
 import { generateBestTime } from '@/ai/best-time/generate-best-time'
 import { getMondayISO } from '@/utils/date-helpers'
 import { BEST_TIME_REFRESH_DAYS, DEFAULT_CAROUSEL_SLIDES } from '@/utils/constants'
+import { composePostVisuals } from '@/lib/renderer/generate-post-visuals'
 import { fetchScheduleContext, shouldGenerateToday } from './helpers'
-import type { PostType } from '@/types/api'
+import type { CarouselSlide, PostType } from '@/types/api'
 import type { Theme } from '@/ai/generation/types'
 import type { Json } from '@/types/database'
 
@@ -193,6 +194,21 @@ export async function GET(request: NextRequest) {
             }))
           )
           results.posts_created += savedPosts.length
+
+          // Compose designed slides for the new carousel posts so they arrive visual (best-effort — a
+          // compose failure never fails the batch). Insert order matches generationResults.
+          await Promise.allSettled(
+            (savedPosts as Array<{ id: string }>).map((saved, i) => {
+              const gp = generationResults[i]?.post
+              if (!gp || gp.post_type !== 'carousel') return Promise.resolve()
+              return composePostVisuals({
+                postId: saved.id,
+                clientId,
+                agencyId,
+                slides: (gp.slides_json as CarouselSlide[] | null) ?? [],
+              })
+            })
+          )
         }
       }
 

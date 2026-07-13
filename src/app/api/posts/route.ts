@@ -1,6 +1,8 @@
-import { NextResponse } from 'next/server'
+import { after, NextResponse } from 'next/server'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
+import { composePostVisuals } from '@/lib/renderer/generate-post-visuals'
 import { POST_COLUMNS } from '@/lib/queries/select-columns'
+import type { CarouselSlide } from '@/types/api'
 import type { Json } from '@/types/database'
 
 export async function GET(request: Request) {
@@ -141,6 +143,20 @@ export async function POST(request: Request) {
     .single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  // Compose designed slides so a carousel post arrives already visual (manual/wizard flow). Best-effort
+  // in the background — a compose failure must never fail the post save; the review can regenerate.
+  const created = post as { id: string; client_id: string; post_type: string; slides_json: unknown } | null
+  if (created && created.post_type === 'carousel') {
+    const slides = (created.slides_json as CarouselSlide[] | null) ?? []
+    after(async () => {
+      try {
+        await composePostVisuals({ postId: created.id, clientId: created.client_id, agencyId, slides })
+      } catch (e) {
+        console.error('[posts] visual compose failed for', created.id, e)
+      }
+    })
+  }
 
   // Record in post history to avoid duplicate themes in future generations
   if (body.topic_summary) {
