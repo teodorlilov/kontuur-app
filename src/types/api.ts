@@ -1,3 +1,5 @@
+import type { BrandTokens } from '@/lib/scene-graph'
+
 // ---- Shared enums / unions ----
 
 export type PostType = 'single' | 'carousel'
@@ -186,6 +188,8 @@ export interface ApprovalBatchData {
   agencyName: string
   status: string
   expiresAt: string
+  /** The client's visual kit so the approval page renders the designed slides read-only. */
+  visualKit?: { tokens: BrandTokens; feedSystemSlug: string; clientName: string }
 }
 
 // ---- Calendar ----

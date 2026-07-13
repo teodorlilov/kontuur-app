@@ -8,7 +8,7 @@ import { ScheduleModal } from '@/components/scheduling/schedule-modal'
 import { PostDetailLayout } from '@/components/posts/post-detail-layout'
 import { RewriteButton } from '@/components/posts/rewrite-button'
 import { ReviewInfoPanel } from './review-info-panel'
-import { PostVisuals } from './post-visuals'
+import { PostVisuals } from '@/components/posts/post-visuals'
 import { parseValidationJson, deriveSlopFromValidation } from '@/features/review/lib/parse-validation-json'
 import {
   REWRITE_SCORE_THRESHOLD,

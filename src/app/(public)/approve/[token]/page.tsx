@@ -282,6 +282,7 @@ export default function ApprovalPage() {
         {selectedPost ? (
           <PostDetail
             post={selectedPost}
+            visualKit={data?.visualKit}
             postIndex={selectedIndex}
             totalPosts={filteredPosts.length}
             status={postStatuses.get(selectedPost.id) ?? 'pending'}

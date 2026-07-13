@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server'
+import type { SupabaseClient } from '@supabase/supabase-js'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { createApprovalNotification } from '@/features/review/lib/create-approval-notification'
+import { getClientFeedSystem } from '@/lib/brand-kit/queries'
+import { feedSystemTokens } from '@/lib/renderer/feed-system-compositions'
+import { DEFAULT_TOKENS, type BrandTokens } from '@/lib/scene-graph'
 import type { ApprovalResponse, ApprovalPostData, ApprovalBatchData } from '@/types/api'
 
 export async function GET(_request: Request, { params }: { params: Promise<{ token: string }> }) {
@@ -55,6 +59,21 @@ export async function GET(_request: Request, { params }: { params: Promise<{ tok
 
   const agencyName = (client?.agencies as { name: string } | null)?.name ?? ''
 
+  // The client's visual kit, so the approval page can render the designed slides read-only (the token
+  // authorizes this client, so no agency check — load the kit directly).
+  // brand_kits is not in the generated Database types yet — cast to an untyped client (same pattern as
+  // the other composition-engine reads) until `supabase gen types`.
+  const untyped = supabase as unknown as SupabaseClient
+  const [{ data: kitRow }, feedSystem] = await Promise.all([
+    untyped.from('brand_kits').select('tokens').eq('client_id', clientId).maybeSingle(),
+    getClientFeedSystem(clientId),
+  ])
+  const visualKit = {
+    tokens: feedSystemTokens(feedSystem.slug, ((kitRow as { tokens?: BrandTokens } | null)?.tokens) ?? DEFAULT_TOKENS),
+    feedSystemSlug: feedSystem.slug,
+    clientName: client?.name ?? '',
+  }
+
   const approvalPosts: ApprovalPostData[] = posts.map((p) => ({
     id: p.id,
     caption: p.caption,
@@ -72,6 +91,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ tok
     agencyName,
     status: batchStatus,
     expiresAt: firstRow.expires_at,
+    visualKit,
   }
 
   return NextResponse.json(result)

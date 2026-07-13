@@ -2,7 +2,8 @@
 
 import { Copy, ChevronLeft, ChevronRight } from 'lucide-react'
 import { getPillarColor } from '@/components/ui/colors/pillar-colors'
-import type { ApprovalPostData } from '@/types/api'
+import { ComposedSlides } from '@/components/posts/composed-slides'
+import type { ApprovalBatchData, ApprovalPostData, CarouselSlide } from '@/types/api'
 import { SlidesSection } from './slides-section'
 import { FeedbackBox } from './feedback-box'
 import { ActionBar } from './action-bar'
@@ -10,6 +11,7 @@ import { APPROVAL_STATUS_STYLES, type ApprovalPostStatus } from './types'
 
 interface PostDetailProps {
   post: ApprovalPostData
+  visualKit?: ApprovalBatchData['visualKit']
   postIndex: number
   totalPosts: number
   status: ApprovalPostStatus
@@ -227,6 +229,7 @@ function CaptionCard({ caption }: { caption: string | null }) {
 /** Right panel showing full post detail with caption, slides, feedback, and actions. */
 export function PostDetail({
   post,
+  visualKit,
   postIndex,
   totalPosts,
   status,
@@ -271,6 +274,27 @@ export function PostDetail({
       >
         <CaptionCard caption={post.caption} />
         <SlidesSection slidesJson={post.slides_json} postType={post.post_type} />
+        {post.post_type === 'carousel' && visualKit && Array.isArray(post.slides_json) && (
+          <div
+            style={{
+              background: 'var(--color-surface)',
+              border: '0.5px solid var(--color-border-1)',
+              borderRadius: 12,
+              padding: '16px 18px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 12,
+            }}
+          >
+            <div style={{ fontSize: 9, fontWeight: 500, letterSpacing: 1.2, textTransform: 'uppercase', color: '#8A8070' }}>Designed slides</div>
+            <ComposedSlides
+              slides={post.slides_json as CarouselSlide[]}
+              tokens={visualKit.tokens}
+              feedSystemSlug={visualKit.feedSystemSlug}
+              clientName={visualKit.clientName}
+            />
+          </div>
+        )}
         {status !== 'approved' && (
           <FeedbackBox
             mode={status === 'changes_requested' ? 'read-only' : 'input'}

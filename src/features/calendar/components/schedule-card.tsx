@@ -8,6 +8,7 @@ import { getPillarColor } from '@/components/ui/colors/pillar-colors'
 import { formatRelativeTime, parseTimestamp } from '@/utils/format'
 import { PLATFORMS } from '@/utils/constants'
 import { CarouselSlides } from '@/components/posts/carousel-slides'
+import { PostVisuals } from '@/components/posts/post-visuals'
 import { QualityScores } from '@/components/posts/quality-scores'
 import { ClientResponseCard } from '@/features/calendar/components/client-response-card'
 import { Button } from '@/components/ui/button'
@@ -487,6 +488,9 @@ export const ScheduleCard = memo(function ScheduleCard({
                 />
               </div>
             )}
+
+            {/* Designed slide visuals (composition engine) */}
+            {isCarousel && slides.length > 0 && <PostVisuals postId={currentPost.id} />}
 
             {/* Single post image slot */}
             {!isCarousel && (
