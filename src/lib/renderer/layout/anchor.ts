@@ -1,12 +1,15 @@
 import type { Composition, Layer, Rect, VAnchor } from '@/lib/scene-graph'
 
-/** The Instagram carousel ratios we support — all 1080 wide, differing only in height. */
-export type AspectRatio = '1:1' | '4:5' | '4:3'
+/**
+ * The Instagram carousel ratios we support — both 1080 wide, differing only in height. (4:3 landscape
+ * was dropped: portrait-composed templates crowd badly in a landscape frame; revisit via per-ratio
+ * variants or the editor.)
+ */
+export type AspectRatio = '4:5' | '1:1'
 
 export const RATIO_SIZES: Record<AspectRatio, { w: number; h: number }> = {
-  '1:1': { w: 1080, h: 1080 },
   '4:5': { w: 1080, h: 1350 },
-  '4:3': { w: 1080, h: 810 },
+  '1:1': { w: 1080, h: 1080 },
 }
 
 export const ASPECT_RATIOS = Object.keys(RATIO_SIZES) as AspectRatio[]

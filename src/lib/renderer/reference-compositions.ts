@@ -110,8 +110,8 @@ const cta: Composition = {
 
 export type ReferenceRole = 'cover' | 'statement' | 'list' | 'quote' | 'cta'
 
-// Vertical anchors so one 4:5 definition adapts to 1:1 / 4:3 (backgrounds fill, centred statements
-// stay centred, bottom chrome/headlines ride the bottom edge). Layers not listed keep the default `top`.
+// Vertical anchors so one 4:5 definition adapts to 1:1 (backgrounds fill, centred statements stay
+// centred, bottom chrome/headlines ride the bottom edge). Layers not listed keep the default `top`.
 export const REFERENCE_COMPOSITIONS: Record<ReferenceRole, Composition> = {
   cover: applyVAnchors(cover, { bg: 'fill', scrim: 'fill', headline: 'bottom', dots: 'bottom' }),
   statement: applyVAnchors(statement, { bg: 'fill', blend: 'center', stmt: 'center' }),

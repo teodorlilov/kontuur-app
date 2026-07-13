@@ -65,10 +65,10 @@ describe('applyVAnchors', () => {
 })
 
 describe('RATIO_SIZES', () => {
-  it('are all 1080 wide', () => {
+  it('are all 1080 wide (4:5 + 1:1; 4:3 dropped)', () => {
     for (const s of Object.values(RATIO_SIZES)) expect(s.w).toBe(1080)
     expect(RATIO_SIZES['4:5'].h).toBe(1350)
     expect(RATIO_SIZES['1:1'].h).toBe(1080)
-    expect(RATIO_SIZES['4:3'].h).toBe(810)
+    expect(Object.keys(RATIO_SIZES)).toEqual(['4:5', '1:1'])
   })
 })

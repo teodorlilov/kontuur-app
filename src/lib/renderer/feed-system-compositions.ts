@@ -129,8 +129,8 @@ const qgCta = comp('qg-cta', 'quiet-grid', [
 
 export type FeedSystemSlug = 'editorial' | 'bold-blocks' | 'quiet-grid'
 
-// Vertical anchors so one 4:5 definition adapts to 1:1 / 4:3 — backgrounds fill, the bold colour
-// blocks + centred statements ride the right edge, quiet-grid's inset frame stretches. (See applyVAnchors.)
+// Vertical anchors so one 4:5 definition adapts to 1:1 — backgrounds fill, the bold colour blocks +
+// centred statements ride the bottom edge, quiet-grid's inset frame stretches. (See applyVAnchors.)
 const boldBlocks: Record<ReferenceRole, Composition> = {
   cover: applyVAnchors(bbCover, { bg: 'fill', block: 'bottom', headline: 'bottom' }),
   statement: applyVAnchors(bbStatement, { bg: 'fill', stmt: 'center' }),

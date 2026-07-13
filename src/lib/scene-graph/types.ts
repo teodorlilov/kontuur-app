@@ -23,7 +23,7 @@ export type Treatment = 'none' | 'duotone' | 'tint' | 'grain' | 'mono'
 
 /**
  * How a layer repositions when the canvas height changes across aspect ratios. Instagram sizes are all
- * 1080 wide, so only the height varies (4:5 = 1350, 1:1 = 1080, 4:3 = 810) — a layer keeps its distance
+ * 1080 wide, so only the height varies (4:5 = 1350, 1:1 = 1080) — a layer keeps its distance
  * from the `top` (default), from the `bottom`, stays `center`ed, `fill`s the whole canvas
  * (backgrounds/plates), or `stretch`es keeping both insets (an inset frame). Resolved by
  * `resolveComposition` (renderer/layout/anchor.ts).
@@ -107,7 +107,7 @@ export type Composition = {
   id: string
   feedSystemId: string
   brandKitVersion: number
-  size: { w: number; h: number } // 1080-wide; height per aspect ratio (4:5 = 1350, 1:1 = 1080, 4:3 = 810)
+  size: { w: number; h: number } // 1080-wide; height per aspect ratio (4:5 = 1350, 1:1 = 1080)
   layers: Layer[]
 }
 
