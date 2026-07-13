@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { PreviewCell } from '@/features/clients/components/visual-system/preview-cell'
 import { kitFontsHref } from '@/lib/render/google-fonts'
+import { useKitFonts } from '@/lib/render/use-kit-fonts'
 import type { BrandTokens, Composition } from '@/lib/scene-graph'
 
 type VisualsData = {
@@ -80,6 +81,8 @@ export function PostVisuals({ postId }: { postId: string }) {
     }
   }, [load, poll])
 
+  useKitFonts(data?.tokens ? kitFontsHref(data.tokens) : null)
+
   const slides = data?.slides ?? []
   const hasVisuals = slides.length > 0
 
@@ -105,14 +108,11 @@ export function PostVisuals({ postId }: { postId: string }) {
       </div>
 
       {hasVisuals && data ? (
-        <>
-          <link rel="stylesheet" href={kitFontsHref(data.tokens)} />
-          <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4 }}>
-            {slides.map((s) => (
-              <PreviewCell key={s.slideIndex} composition={s.composition} tokens={data.tokens} width={128} />
-            ))}
-          </div>
-        </>
+        <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4 }}>
+          {slides.map((s) => (
+            <PreviewCell key={s.slideIndex} composition={s.composition} tokens={data.tokens} width={128} />
+          ))}
+        </div>
       ) : (
         !busy && (
           <div style={{ fontSize: 12, color: 'var(--color-text-2)' }}>

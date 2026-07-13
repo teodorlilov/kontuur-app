@@ -63,6 +63,19 @@ export default function NewClientPage() {
   // under the live token layer, seeded into the client's bank on save.
   const [designPlates, setDesignPlates] = useState<Record<string, { publicUrl: string; storagePath: string }> | null>(null)
   const [generatingDesign, setGeneratingDesign] = useState(false)
+  const designAutoFiredRef = useRef(false)
+
+  // Auto-generate the design system once the operator reaches the review step (after extraction) — the
+  // imagery is part of the onboarding pipeline, not a manual gate. The ref guards against re-firing on
+  // navigation; a full "Redo" resets it (see handleRedo).
+  useEffect(() => {
+    if (step === 'review' && !designAutoFiredRef.current && !generatingDesign && !designPlates) {
+      designAutoFiredRef.current = true
+      void handleGenerateDesignSystem()
+    }
+    // handleGenerateDesignSystem is a stable function declaration; fire only on step change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step])
 
   // Schedule state
   const [scheduleFreqType, setScheduleFreqType] = useState('per_week')
@@ -322,6 +335,8 @@ export default function NewClientPage() {
     setWebsiteUrl('')
     setInstagramHandle('')
     setMultiSelectAnswers([])
+    setDesignPlates(null)
+    designAutoFiredRef.current = false
   }
 
   /** Generate the real design-system imagery from the current tokens + brief (§ Part B). Fills the

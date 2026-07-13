@@ -21,8 +21,11 @@ describe('visual-system components render without throwing', () => {
   })
 
   it('PreviewGrid — a 3×3 grid of reference compositions in the tokens', () => {
+    // 9 cells (3×3). Kit fonts load client-side via useKitFonts (imperative, out of the render tree, to
+    // avoid React 19's hoistable-stylesheet hydration error #418), so no <link> in the SSR markup.
     const html = renderToStaticMarkup(createElement(PreviewGrid, { tokens: DEFAULT_TOKENS }))
-    expect(html).toContain('fonts.googleapis.com')
+    expect(html).not.toContain('<link')
+    expect((html.match(/border-radius:8px/g) ?? []).length).toBe(9)
   })
 
   it('TokenEditor — five colour inputs + language-filtered type', () => {

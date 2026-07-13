@@ -2,6 +2,7 @@
 
 import type { BrandTokens, Composition } from '@/lib/scene-graph'
 import { kitFontsHref } from '@/lib/render/google-fonts'
+import { useKitFonts } from '@/lib/render/use-kit-fonts'
 import { feedSystemCompositions, feedSystemTokens, ROLE_ORDER } from '@/lib/renderer/feed-system-compositions'
 import type { AspectRatio } from '@/lib/renderer/layout/anchor'
 import { PreviewCell } from './preview-cell'
@@ -40,20 +41,18 @@ export function PreviewGrid({
   plates?: Record<string, string>
 }) {
   const rendered = feedSystemTokens(feedSystemSlug, tokens)
+  useKitFonts(kitFontsHref(rendered))
   const base = feedSystemCompositions(feedSystemSlug)
   const compositions = plates ? base.map((c, i) => withPlateSrc(c, plates[ROLE_ORDER[i] ?? ''])) : base
   const cells = Array.from({ length: columns * columns }, (_, i) => compositions[i % compositions.length])
 
   return (
-    <>
-      <link rel="stylesheet" href={kitFontsHref(rendered)} />
-      <div style={{ display: 'grid', gridTemplateColumns: `repeat(${columns}, ${cellWidth}px)`, gap: 8, alignItems: 'start' }}>
-        {cells.map((composition, i) =>
-          composition ? (
-            <PreviewCell key={i} composition={composition} tokens={rendered} width={cellWidth} ratio={ratio} language={language} />
-          ) : null
-        )}
-      </div>
-    </>
+    <div style={{ display: 'grid', gridTemplateColumns: `repeat(${columns}, ${cellWidth}px)`, gap: 8, alignItems: 'start' }}>
+      {cells.map((composition, i) =>
+        composition ? (
+          <PreviewCell key={i} composition={composition} tokens={rendered} width={cellWidth} ratio={ratio} language={language} />
+        ) : null
+      )}
+    </div>
   )
 }

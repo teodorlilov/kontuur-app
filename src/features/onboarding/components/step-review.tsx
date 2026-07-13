@@ -551,7 +551,27 @@ function VisualSystemSection({ visual }: { visual: VisualReviewData }) {
               )}
               <RatioToggle value={ratio} onChange={setRatio} />
             </div>
-            <PreviewGrid tokens={visual.tokens} feedSystemSlug={visual.selectedFeedSystemSlug} ratio={ratio} language={visual.primaryLanguage} columns={3} cellWidth={92} plates={visual.designPlates} />
+            <div style={{ position: 'relative' }}>
+              <PreviewGrid tokens={visual.tokens} feedSystemSlug={visual.selectedFeedSystemSlug} ratio={ratio} language={visual.primaryLanguage} columns={3} cellWidth={92} plates={visual.designPlates} />
+              {visual.generatingDesign && !visual.designPlates && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    inset: 0,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    borderRadius: 8,
+                    background: 'rgba(244,239,230,0.55)',
+                    fontSize: 11,
+                    fontWeight: 500,
+                    color: 'var(--color-muted)',
+                  }}
+                >
+                  Generating imagery…
+                </div>
+              )}
+            </div>
           </div>
         </div>
 

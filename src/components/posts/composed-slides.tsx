@@ -3,6 +3,7 @@
 import { useMemo } from 'react'
 import { PreviewCell } from '@/features/clients/components/visual-system/preview-cell'
 import { kitFontsHref } from '@/lib/render/google-fonts'
+import { useKitFonts } from '@/lib/render/use-kit-fonts'
 import { composePostSlides } from '@/lib/renderer/compose'
 import type { BrandTokens } from '@/lib/scene-graph'
 import type { CarouselSlide } from '@/types/api'
@@ -31,16 +32,15 @@ export function ComposedSlides({
     return composePostSlides(slides, { feedSystemSlug, postId: 'preview', clientName })
   }, [slides, feedSystemSlug, clientName])
 
+  useKitFonts(kitFontsHref(tokens))
+
   if (compositions.length === 0) return null
 
   return (
-    <>
-      <link rel="stylesheet" href={kitFontsHref(tokens)} />
-      <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4 }}>
-        {compositions.map((composition, i) => (
-          <PreviewCell key={i} composition={composition} tokens={tokens} width={width} />
-        ))}
-      </div>
-    </>
+    <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4 }}>
+      {compositions.map((composition, i) => (
+        <PreviewCell key={i} composition={composition} tokens={tokens} width={width} />
+      ))}
+    </div>
   )
 }

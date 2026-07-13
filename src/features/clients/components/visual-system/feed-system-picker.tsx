@@ -2,6 +2,7 @@
 
 import type { BrandTokens } from '@/lib/scene-graph'
 import { kitFontsHref } from '@/lib/render/google-fonts'
+import { useKitFonts } from '@/lib/render/use-kit-fonts'
 import { feedSystemPack, feedSystemTokens } from '@/lib/renderer/feed-system-compositions'
 import type { FeedSystemOption } from '@/lib/brand-kit/feed-systems'
 import { PreviewCell } from './preview-cell'
@@ -31,12 +32,9 @@ export function FeedSystemPicker({
   /** The client's language — localizes the placeholder demo copy on the card previews. */
   language?: string
 }) {
+  useKitFonts(systems.map((system) => kitFontsHref(feedSystemTokens(system.slug, tokens))))
   return (
-    <>
-      {systems.map((system) => (
-        <link key={system.slug} rel="stylesheet" href={kitFontsHref(feedSystemTokens(system.slug, tokens))} />
-      ))}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 12 }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 12 }}>
         {systems.map((system) => {
           const isSelected = system.slug === selectedSlug
           const isRecommended = system.slug === recommendedSlug
@@ -73,7 +71,6 @@ export function FeedSystemPicker({
             </button>
           )
         })}
-      </div>
-    </>
+    </div>
   )
 }
