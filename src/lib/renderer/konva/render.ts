@@ -12,15 +12,17 @@ export type RasterOptions = {
   pixelRatio?: number
 }
 
-/** Ensure the kit's display + body faces are actually loaded before we measure/raster — otherwise
- *  canvas text falls back to a system face (the Konva equivalent of the DOM `display=block` gate). */
+/** Ensure the kit's display + body faces are actually loaded — at every weight the compositions use —
+ *  before we measure/raster, otherwise canvas text falls back to a system face at unloaded weights (the
+ *  Konva equivalent of the DOM `display=block` gate). */
 async function ensureFontsReady(tokens: BrandTokens): Promise<void> {
   if (typeof document === 'undefined' || !document.fonts) return
+  const specs = [
+    ...tokens.type.display.weights.map((w) => `${w} 48px "${tokens.type.display.family}"`),
+    ...tokens.type.body.weights.map((w) => `${w} 48px "${tokens.type.body.family}"`),
+  ]
   try {
-    await Promise.all([
-      document.fonts.load(`700 48px "${tokens.type.display.family}"`),
-      document.fonts.load(`400 48px "${tokens.type.body.family}"`),
-    ])
+    await Promise.all(specs.map((spec) => document.fonts.load(spec).catch(() => undefined)))
     await document.fonts.ready
   } catch {
     /* a missing face falls back gracefully; never block the raster */
