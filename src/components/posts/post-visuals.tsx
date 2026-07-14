@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { PreviewCell } from '@/features/clients/components/visual-system/preview-cell'
+import { PostVisualEditor } from '@/features/visual-editor/components/post-visual-editor'
 import { kitFontsHref } from '@/lib/render/google-fonts'
 import { useKitFonts } from '@/lib/render/use-kit-fonts'
 import type { BrandTokens, Composition } from '@/lib/scene-graph'
@@ -26,6 +27,7 @@ export function PostVisuals({ postId }: { postId: string }) {
   const [data, setData] = useState<VisualsData | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [editing, setEditing] = useState(false)
 
   const load = useCallback(async (): Promise<VisualsData | null> => {
     try {
@@ -107,10 +109,24 @@ export function PostVisuals({ postId }: { postId: string }) {
         <div style={{ fontSize: 10, fontWeight: 500, letterSpacing: 1.5, textTransform: 'uppercase', color: 'var(--color-muted)' }}>
           Visuals
         </div>
-        <Button size="sm" variant={hasImagery ? 'secondary' : undefined} loading={busy} onClick={() => void generate()}>
-          {busy ? 'Generating…' : hasImagery ? 'Regenerate' : 'Generate visuals'}
-        </Button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          {hasVisuals && (
+            <Button size="sm" variant="secondary" onClick={() => setEditing(true)}>
+              Edit
+            </Button>
+          )}
+          <Button size="sm" variant={hasImagery ? 'secondary' : undefined} loading={busy} onClick={() => void generate()}>
+            {busy ? 'Generating…' : hasImagery ? 'Regenerate' : 'Generate visuals'}
+          </Button>
+        </div>
       </div>
+
+      <PostVisualEditor
+        postId={postId}
+        open={editing}
+        onClose={() => setEditing(false)}
+        onSaved={() => void load().then((d) => d && setData(d))}
+      />
 
       {hasVisuals && data ? (
         <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4 }}>

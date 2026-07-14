@@ -71,10 +71,12 @@ function applyClip(group: Konva.Group, clip: Clip, w: number, h: number): void {
 }
 
 /** The per-layer group: positioned box, rotation around centre (matching CSS `rotate` origin), opacity,
- *  blend, and clip. Children draw in local coords 0..w, 0..h. */
-function layerGroup(layer: Layer, tokens: BrandTokens): Konva.Group {
+ *  blend, and clip. Children draw in local coords 0..w, 0..h. Tagged with `name = layer.id` so the editor
+ *  can address it; `interactive` makes an unlocked layer selectable + draggable (the editor's hit surface). */
+function layerGroup(layer: Layer, tokens: BrandTokens, interactive = false): Konva.Group {
   const { x, y, w, h, rotate } = layer.rect
   const group = new Konva.Group({
+    name: layer.id,
     x: x + w / 2,
     y: y + h / 2,
     offsetX: w / 2,
@@ -82,6 +84,7 @@ function layerGroup(layer: Layer, tokens: BrandTokens): Konva.Group {
     rotation: rotate ?? 0,
     opacity: resolve<number>(layer.opacity, tokens),
     globalCompositeOperation: BLEND[resolve(layer.blendMode, tokens)] ?? 'source-over',
+    ...(interactive ? { listening: !layer.locked, draggable: !layer.locked } : {}),
   })
   applyClip(group, layer.clip, w, h)
   return group
@@ -325,13 +328,21 @@ function buildChildren(layer: Layer, ctx: BuildContext): (Konva.Group | Konva.Sh
 }
 
 /** Build a composition's layers into one Konva.Group (paint order = array order). Colours/fonts are
- *  resolved to concrete values here — the canvas has no CSS variables. */
-export function buildComposition(composition: Composition, tokens: BrandTokens, images: Map<string, HTMLImageElement>): Konva.Group {
-  const root = new Konva.Group({ listening: false })
+ *  resolved to concrete values here — the canvas has no CSS variables. The single node builder for every
+ *  surface: static raster/export (default) and the interactive editor (`interactive` → hit-testable,
+ *  draggable layer groups), so preview == editor == export. */
+export function buildComposition(
+  composition: Composition,
+  tokens: BrandTokens,
+  images: Map<string, HTMLImageElement>,
+  opts: { interactive?: boolean } = {}
+): Konva.Group {
+  const interactive = opts.interactive ?? false
+  const root = new Konva.Group({ listening: interactive })
   const ctx: BuildContext = { tokens, images }
   for (const layer of composition.layers) {
     if (layer.hidden) continue
-    const group = layerGroup(layer, tokens)
+    const group = layerGroup(layer, tokens, interactive)
     buildChildren(layer, ctx).forEach((node) => group.add(node))
     root.add(group)
   }

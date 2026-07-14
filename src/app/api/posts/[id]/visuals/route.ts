@@ -65,3 +65,42 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
     tokens: feedSystemTokens(feedSystem.slug, kit?.tokens ?? DEFAULT_TOKENS),
   })
 }
+
+/**
+ * Persist the operator's edited slide compositions from the visual editor — upserts one `post_visuals`
+ * row per slide (creating rows for slides that were only composed on the fly). Agency-scoped. These are
+ * *instances*, so they may carry literal overrides (colours/fonts) and are stored as-is. Marks the post
+ * `visuals_status = 'ready'`. The rendered PNGs that publish are written separately at export (Phase 5b).
+ */
+export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
+  const auth = await resolveAuth()
+  if (!auth.ok) return auth.response
+
+  const owned = await verifyPostOwnership(auth.supabase, id, auth.agencyId)
+  if (!owned) return NextResponse.json({ error: 'Post not found' }, { status: 404 })
+
+  let body: { slides?: Array<{ slideIndex?: number; composition?: unknown }> }
+  try {
+    body = (await request.json()) as typeof body
+  } catch {
+    return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
+  }
+
+  const rows = (Array.isArray(body.slides) ? body.slides : [])
+    .filter((s) => typeof s.slideIndex === 'number' && s.composition !== null && typeof s.composition === 'object')
+    .map((s) => ({
+      post_id: id,
+      slide_index: s.slideIndex as number,
+      composition_json: s.composition as unknown,
+      updated_at: new Date().toISOString(),
+    }))
+  if (rows.length === 0) return NextResponse.json({ error: 'No slides to save' }, { status: 400 })
+
+  const db = createUntypedAdminClient()
+  const { error } = await db.from('post_visuals').upsert(rows, { onConflict: 'post_id,slide_index' })
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  await db.from('posts').update({ visuals_status: 'ready' }).eq('id', id)
+
+  return NextResponse.json({ ok: true })
+}
