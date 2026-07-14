@@ -15,23 +15,32 @@ type VisualsResponse = { slides: SlideData[]; tokens: BrandTokens }
 const MAX_CANVAS_W = 460
 
 /**
- * The full-screen visual editor (Phase 5a). Loads a post's designed slides, mounts an *interactive* Konva
- * stage — built by the same `buildComposition` the previews and export use, so what you edit is what
- * renders — and lets the operator select a layer and drag it to reposition. Save (PUT `…/visuals`) writes
- * the edited `composition_json` back. Text editing, resize, property panels, image/vector/treatment
- * actions, and PNG export land in later 5x slices. Interactions map through the pure `scene-graph/edit`
- * model, so the canvas here is thin glue over tested logic.
+ * The full-screen visual editor (Phase 5a). Mounts an *interactive* Konva stage — built by the same
+ * `buildComposition` the previews and export use, so what you edit is what renders — and lets the operator
+ * select a layer and drag it to reposition. Interactions map through the pure `scene-graph/edit` model, so
+ * the canvas here is thin glue over tested logic.
+ *
+ * Two modes, so it's reusable on every surface:
+ *  - **Persisted** (review, calendar): pass `postId`; it fetches the stored slides and Save PUTs them back.
+ *  - **Draft** (generation wizard, before the post exists): pass `initial` slides + tokens; Save hands the
+ *    edited slides back via `onSaveDraft`, and the wizard persists them on approve.
+ *
+ * Text editing, resize, property panels, image/vector/treatment actions, and PNG export land in later 5x.
  */
 export function PostVisualEditor({
   postId,
   open,
   onClose,
   onSaved,
+  initial,
+  onSaveDraft,
 }: {
-  postId: string
   open: boolean
   onClose: () => void
+  postId?: string
   onSaved?: () => void
+  initial?: { slides: SlideData[]; tokens: BrandTokens }
+  onSaveDraft?: (slides: SlideData[]) => void
 }) {
   const [slides, setSlides] = useState<SlideData[] | null>(null)
   const [tokens, setTokens] = useState<BrandTokens | null>(null)
@@ -48,14 +57,20 @@ export function PostVisualEditor({
 
   const composition = slides?.[current]?.composition ?? null
 
-  // Load the post's slides + kit tokens when the editor opens.
+  // Load the slides when the editor opens: provided directly (draft mode) or fetched by post id.
   useEffect(() => {
     if (!open) return
     let cancelled = false
-    setSlides(null)
     setSelectedId(null)
     setCurrent(0)
     setDirty(false)
+    if (initial) {
+      setSlides(initial.slides)
+      setTokens(initial.tokens)
+      return
+    }
+    setSlides(null)
+    if (!postId) return
     void fetch(`/api/posts/${postId}/visuals`)
       .then((r) => (r.ok ? (r.json() as Promise<VisualsResponse>) : null))
       .then((d) => {
@@ -67,6 +82,7 @@ export function PostVisualEditor({
     return () => {
       cancelled = true
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `initial` is captured on open; re-open to reset
   }, [open, postId])
 
   const updateComposition = useCallback(
@@ -177,6 +193,14 @@ export function PostVisualEditor({
 
   const save = useCallback(async () => {
     if (!slides) return
+    // Draft mode: hand the edited slides back; the wizard persists them on approve.
+    if (onSaveDraft) {
+      onSaveDraft(slides)
+      setDirty(false)
+      onClose()
+      return
+    }
+    if (!postId) return
     setSaving(true)
     try {
       const res = await fetch(`/api/posts/${postId}/visuals`, {
@@ -192,7 +216,7 @@ export function PostVisualEditor({
     } finally {
       setSaving(false)
     }
-  }, [slides, postId, onSaved, onClose])
+  }, [slides, postId, onSaved, onClose, onSaveDraft])
 
   if (!open) return null
 

@@ -10,9 +10,13 @@ interface UsePostActionsOptions {
   onRegenerate?: (postId: string, updatedPost: PostData, updatedValidation: ValidationData) => void
 }
 
+/** Operator-edited slide compositions from the wizard visual editor, sent with approve so they persist. */
+type EditedVisuals = Array<{ slideIndex: number; composition: unknown }>
+
 export function usePostActions({ post, onApprove, onRegenerate }: UsePostActionsOptions) {
   const [caption, setCaption] = useState(post.caption ?? '')
   const [slidesJson, setSlidesJson] = useState(post.slides_json)
+  const [visuals, setVisuals] = useState<EditedVisuals | null>(null)
   const [approving, setApproving] = useState(false)
   const [regenerating, setRegenerating] = useState(false)
 
@@ -46,6 +50,7 @@ export function usePostActions({ post, onApprove, onRegenerate }: UsePostActions
           source_type: post.source_type ?? null,
           source_excerpt: post.source_excerpt ?? null,
           pillar: post.pillar ?? null,
+          ...(visuals && visuals.length > 0 ? { visuals } : {}),
         }),
       })
       if (res.ok) {
@@ -129,6 +134,8 @@ export function usePostActions({ post, onApprove, onRegenerate }: UsePostActions
     setCaption,
     slidesJson,
     setSlidesJson,
+    visuals,
+    setVisuals,
     approving,
     regenerating,
     copyCaption,

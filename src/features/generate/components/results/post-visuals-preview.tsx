@@ -1,23 +1,37 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { ComposedSlides } from '@/components/posts/composed-slides'
-import type { BrandTokens } from '@/lib/scene-graph'
+import { ComposedSlides, withPlateSrc } from '@/components/posts/composed-slides'
+import { PostVisualEditor } from '@/features/visual-editor/components/post-visual-editor'
+import { composePostSlides } from '@/lib/renderer/compose'
+import type { BrandTokens, Composition } from '@/lib/scene-graph'
 import type { CarouselSlide } from '@/types/api'
 
 type VisualKit = { tokens: BrandTokens; feedSystemSlug: string; clientName: string }
+type SlideData = { slideIndex: number; composition: Composition }
 
 /**
- * The designed slides for a wizard-results post. The copy composes in-browser via `ComposedSlides`; the
- * real fal imagery is generated automatically (this is the manual generation flow, so the spend is
- * intended) and shown under the type. Images are cached by slide-copy hash, so when the post is approved
- * and saved, `composePostVisuals` reuses them — no double spend. "Regenerate" re-runs after copy edits.
+ * The designed slides for a wizard-results post (pre-save). The copy composes in-browser; the real fal
+ * imagery is generated automatically (this is the manual generation flow, so the spend is intended) and
+ * shown under the type — cached by slide-copy hash so a save reuses it. "Regenerate" re-runs after copy
+ * edits. "Edit" opens the full visual editor in *draft* mode (no post row yet); edits reflect in the
+ * preview and are handed up via `onVisualsChange` so `approve` persists them as `post_visuals`.
  */
-export function PostVisualsPreview({ clientId, slides }: { clientId: string; slides: CarouselSlide[] }) {
+export function PostVisualsPreview({
+  clientId,
+  slides,
+  onVisualsChange,
+}: {
+  clientId: string
+  slides: CarouselSlide[]
+  onVisualsChange?: (visuals: Array<{ slideIndex: number; composition: unknown }> | null) => void
+}) {
   const [kit, setKit] = useState<VisualKit | null>(null)
   const [plates, setPlates] = useState<Record<number, string> | null>(null)
   const [generating, setGenerating] = useState(false)
+  const [edited, setEdited] = useState<Composition[] | null>(null)
+  const [editing, setEditing] = useState(false)
   const firedRef = useRef(false)
 
   useEffect(() => {
@@ -58,6 +72,43 @@ export function PostVisualsPreview({ clientId, slides }: { clientId: string; sli
     }
   }, [kit, slides, generate])
 
+  // Copy changed → the previous layout edit is stale; drop it so the preview recomposes and approve
+  // doesn't persist visuals built from old copy.
+  useEffect(() => {
+    setEdited(null)
+    onVisualsChange?.(null)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- reset only when the copy itself changes
+  }, [slides])
+
+  // The base compositions (copy + imagery), the source for both the preview and the editor's initial state.
+  const baseCompositions = useMemo<Composition[] | null>(() => {
+    if (!kit || slides.length === 0) return null
+    const composed = composePostSlides(slides, {
+      feedSystemSlug: kit.feedSystemSlug,
+      postId: 'preview',
+      clientName: kit.clientName,
+    })
+    return composed.map((c, i) => (plates?.[i] ? withPlateSrc(c, plates[i]) : c))
+  }, [kit, slides, plates])
+
+  const displayCompositions = edited ?? baseCompositions
+
+  const editorInitial = useMemo(() => {
+    if (!kit || !displayCompositions) return null
+    return {
+      slides: displayCompositions.map<SlideData>((composition, slideIndex) => ({ slideIndex, composition })),
+      tokens: kit.tokens,
+    }
+  }, [kit, displayCompositions])
+
+  const handleSaveDraft = useCallback(
+    (next: SlideData[]) => {
+      setEdited(next.map((s) => s.composition))
+      onVisualsChange?.(next.map((s) => ({ slideIndex: s.slideIndex, composition: s.composition })))
+    },
+    [onVisualsChange]
+  )
+
   if (!kit || slides.length === 0) return null
 
   return (
@@ -76,12 +127,26 @@ export function PostVisualsPreview({ clientId, slides }: { clientId: string; sli
         <div style={{ fontSize: 10, fontWeight: 500, letterSpacing: 1.5, textTransform: 'uppercase', color: 'var(--color-muted)' }}>
           Visuals
         </div>
-        <Button size="sm" variant="secondary" loading={generating} onClick={() => void generate()}>
-          {generating ? 'Generating…' : plates ? 'Regenerate' : 'Generate visuals'}
-        </Button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          {displayCompositions && (
+            <Button size="sm" variant="secondary" onClick={() => setEditing(true)}>
+              Edit
+            </Button>
+          )}
+          <Button size="sm" variant="secondary" loading={generating} onClick={() => void generate()}>
+            {generating ? 'Generating…' : plates ? 'Regenerate' : 'Generate visuals'}
+          </Button>
+        </div>
       </div>
       <div style={{ position: 'relative' }}>
-        <ComposedSlides slides={slides} tokens={kit.tokens} feedSystemSlug={kit.feedSystemSlug} clientName={kit.clientName} plates={plates ?? undefined} />
+        <ComposedSlides
+          slides={slides}
+          tokens={kit.tokens}
+          feedSystemSlug={kit.feedSystemSlug}
+          clientName={kit.clientName}
+          plates={plates ?? undefined}
+          compositions={displayCompositions ?? undefined}
+        />
         {generating && !plates && (
           <div
             style={{
@@ -101,6 +166,10 @@ export function PostVisualsPreview({ clientId, slides }: { clientId: string; sli
           </div>
         )}
       </div>
+
+      {editorInitial && (
+        <PostVisualEditor open={editing} onClose={() => setEditing(false)} initial={editorInitial} onSaveDraft={handleSaveDraft} />
+      )}
     </div>
   )
 }

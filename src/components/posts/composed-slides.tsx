@@ -9,7 +9,7 @@ import type { BrandTokens, Composition } from '@/lib/scene-graph'
 import type { CarouselSlide } from '@/types/api'
 
 /** Fill a composition's plate layer(s) with a generated image (absent → the gradient plate, unchanged). */
-function withPlateSrc(composition: Composition, src: string | undefined): Composition {
+export function withPlateSrc(composition: Composition, src: string | undefined): Composition {
   if (!src) return composition
   return { ...composition, layers: composition.layers.map((l) => (l.type === 'plate' ? { ...l, src } : l)) }
 }
@@ -27,6 +27,7 @@ export function ComposedSlides({
   clientName,
   width = 128,
   plates,
+  compositions,
 }: {
   slides: CarouselSlide[]
   tokens: BrandTokens
@@ -35,20 +36,24 @@ export function ComposedSlides({
   width?: number
   /** Generated plate images by slide index (the wizard's on-the-fly imagery). Absent → gradient plates. */
   plates?: Record<number, string>
+  /** Pre-composed slides to render as-is (e.g. the wizard editor's edited layout). When given, `slides`/
+   *  `plates` are ignored — the caller already resolved the compositions. */
+  compositions?: Composition[]
 }) {
-  const compositions = useMemo(() => {
+  const resolved = useMemo(() => {
+    if (compositions) return compositions
     if (slides.length === 0) return []
     const composed = composePostSlides(slides, { feedSystemSlug, postId: 'preview', clientName })
     return plates ? composed.map((c, i) => withPlateSrc(c, plates[i])) : composed
-  }, [slides, feedSystemSlug, clientName, plates])
+  }, [compositions, slides, feedSystemSlug, clientName, plates])
 
   useKitFonts(kitFontsHref(tokens))
 
-  if (compositions.length === 0) return null
+  if (resolved.length === 0) return null
 
   return (
     <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4 }}>
-      {compositions.map((composition, i) => (
+      {resolved.map((composition, i) => (
         <PreviewCell key={i} composition={composition} tokens={tokens} width={width} />
       ))}
     </div>

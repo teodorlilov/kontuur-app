@@ -2,6 +2,7 @@ import { after, NextResponse } from 'next/server'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
 import { composePostVisuals } from '@/lib/renderer/generate-post-visuals'
 import { POST_COLUMNS } from '@/lib/queries/select-columns'
+import { createUntypedAdminClient } from '@/lib/supabase/admin'
 import type { CarouselSlide } from '@/types/api'
 import type { Json } from '@/types/database'
 
@@ -90,6 +91,9 @@ interface CreatePostBody {
   source_type?: string | null
   source_excerpt?: string | null
   pillar?: string | null
+  /** Operator-edited slide compositions from the wizard visual editor. When present, they're persisted
+   *  as-is (imagery already baked in) and the background compose is skipped so edits aren't clobbered. */
+  visuals?: Array<{ slideIndex?: number; composition?: unknown }>
 }
 
 export async function POST(request: Request) {
@@ -155,14 +159,32 @@ export async function POST(request: Request) {
   // background — a failure must never fail the post save; imagery is fail-soft to the token gradient.
   const created = post as { id: string; client_id: string; post_type: string; slides_json: unknown } | null
   if (created && created.post_type === 'carousel') {
-    const slides = (created.slides_json as CarouselSlide[] | null) ?? []
-    after(async () => {
-      try {
-        await composePostVisuals({ postId: created.id, clientId: created.client_id, agencyId, slides, withImagery: true })
-      } catch (e) {
-        console.error('[posts] visual compose failed for', created.id, e)
-      }
-    })
+    const editedVisuals = (Array.isArray(body.visuals) ? body.visuals : []).filter(
+      (s) => typeof s.slideIndex === 'number' && s.composition !== null && typeof s.composition === 'object'
+    )
+    if (editedVisuals.length > 0) {
+      // The operator edited the visuals in the wizard editor — persist them as-is and skip the compose,
+      // which would re-derive from copy and clobber the edits. Imagery is already baked into the rows.
+      const db = createUntypedAdminClient()
+      const rows = editedVisuals.map((s) => ({
+        post_id: created.id,
+        slide_index: s.slideIndex as number,
+        composition_json: s.composition as unknown,
+        updated_at: new Date().toISOString(),
+      }))
+      const { error: visualsError } = await db.from('post_visuals').insert(rows)
+      if (visualsError) console.error('[posts] persisting edited visuals failed for', created.id, visualsError.message)
+      else await db.from('posts').update({ visuals_status: 'ready' }).eq('id', created.id)
+    } else {
+      const slides = (created.slides_json as CarouselSlide[] | null) ?? []
+      after(async () => {
+        try {
+          await composePostVisuals({ postId: created.id, clientId: created.client_id, agencyId, slides, withImagery: true })
+        } catch (e) {
+          console.error('[posts] visual compose failed for', created.id, e)
+        }
+      })
+    }
   }
 
   // Record in post history to avoid duplicate themes in future generations

@@ -30,6 +30,7 @@ export function PostDetail({ post, validationData, onApprove, onDiscard, onRegen
     setCaption,
     slidesJson,
     setSlidesJson,
+    setVisuals,
     approving,
     regenerating,
     approve,
@@ -64,7 +65,11 @@ export function PostDetail({ post, validationData, onApprove, onDiscard, onRegen
         onSlidesChange={(slides) => setSlidesJson(slides)}
       >
         {post.post_type === 'carousel' && (
-          <PostVisualsPreview clientId={post.client_id} slides={(slidesJson as CarouselSlide[] | null) ?? []} />
+          <PostVisualsPreview
+            clientId={post.client_id}
+            slides={(slidesJson as CarouselSlide[] | null) ?? []}
+            onVisualsChange={setVisuals}
+          />
         )}
         {showRewrite && (
           <RewriteButton
