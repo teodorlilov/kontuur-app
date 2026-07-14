@@ -85,6 +85,11 @@ export function PostVisuals({ postId }: { postId: string }) {
 
   const slides = data?.slides ?? []
   const hasVisuals = slides.length > 0
+  // Distinguish "has real imagery" (a plate with a src) from copy-only on-the-fly slides, so an
+  // auto-generated (cron) post reads "Generate visuals" rather than "Regenerate".
+  const hasImagery = slides.some((s) =>
+    (s.composition as Composition).layers.some((l) => l.type === 'plate' && Boolean((l as { src?: string }).src))
+  )
 
   return (
     <div
@@ -102,8 +107,8 @@ export function PostVisuals({ postId }: { postId: string }) {
         <div style={{ fontSize: 10, fontWeight: 500, letterSpacing: 1.5, textTransform: 'uppercase', color: 'var(--color-muted)' }}>
           Visuals
         </div>
-        <Button size="sm" variant={hasVisuals ? 'secondary' : undefined} loading={busy} onClick={() => void generate()}>
-          {busy ? 'Generating…' : hasVisuals ? 'Regenerate' : 'Generate visuals'}
+        <Button size="sm" variant={hasImagery ? 'secondary' : undefined} loading={busy} onClick={() => void generate()}>
+          {busy ? 'Generating…' : hasImagery ? 'Regenerate' : 'Generate visuals'}
         </Button>
       </div>
 

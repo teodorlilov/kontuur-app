@@ -1,10 +1,33 @@
 import { getBrandKitForClient, getClientFeedSystem } from '@/lib/brand-kit/queries'
 import { composePostSlides } from '@/lib/renderer/compose'
 import { DEFAULT_RATIO } from '@/lib/renderer/layout/anchor'
-import { fillPlates } from '@/lib/images/generate-plates'
+import { fillPlates, type FillPlatesContext } from '@/lib/images/generate-plates'
 import { DEFAULT_TOKENS } from '@/lib/scene-graph'
 import { createUntypedAdminClient } from '@/lib/supabase/admin'
 import type { CarouselSlide } from '@/types/api'
+
+/** Load the shared compose context (kit + feed system + client name) once — used by both the stored
+ *  compose and the wizard preview so the two paths agree. */
+async function loadComposeContext(clientId: string, agencyId: string) {
+  const db = createUntypedAdminClient()
+  const [kit, feedSystem, { data: clientRow }] = await Promise.all([
+    getBrandKitForClient(clientId, agencyId),
+    getClientFeedSystem(clientId),
+    db.from('clients').select('name').eq('id', clientId).single(),
+  ])
+  return { db, kit, feedSystem, clientName: (clientRow as { name?: string } | null)?.name ?? '' }
+}
+
+/** The fal-imagery context for a client, from its kit. */
+function imageryContext(clientId: string, kit: Awaited<ReturnType<typeof getBrandKitForClient>>, feedSystemSlug: string | null): FillPlatesContext {
+  return {
+    clientId,
+    brief: kit?.brief ?? null,
+    colors: (kit?.tokens ?? DEFAULT_TOKENS).color,
+    feedSystemSlug,
+    ratio: DEFAULT_RATIO,
+  }
+}
 
 /**
  * Compose a post's carousel copy into per-slide scene graphs, store them in `post_visuals`, and mark the
@@ -27,23 +50,11 @@ export async function composePostVisuals(params: {
   const { postId, clientId, agencyId, slides, withImagery = false } = params
   if (slides.length === 0) return
 
-  const db = createUntypedAdminClient()
-  const [kit, feedSystem, { data: clientRow }] = await Promise.all([
-    getBrandKitForClient(clientId, agencyId),
-    getClientFeedSystem(clientId),
-    db.from('clients').select('name').eq('id', clientId).single(),
-  ])
-  const clientName = (clientRow as { name?: string } | null)?.name ?? ''
+  const { db, kit, feedSystem, clientName } = await loadComposeContext(clientId, agencyId)
 
   let compositions = composePostSlides(slides, { feedSystemSlug: feedSystem.slug, postId, clientName })
   if (withImagery) {
-    compositions = await fillPlates(compositions, slides, {
-      clientId,
-      brief: kit?.brief ?? null,
-      colors: (kit?.tokens ?? DEFAULT_TOKENS).color,
-      feedSystemSlug: feedSystem.slug,
-      ratio: DEFAULT_RATIO,
-    })
+    compositions = await fillPlates(compositions, slides, imageryContext(clientId, kit, feedSystem.slug))
   }
 
   const rows = compositions.map((composition, slideIndex) => ({
@@ -59,4 +70,31 @@ export async function composePostVisuals(params: {
   const { error } = await db.from('post_visuals').insert(rows)
   if (error) throw new Error(error.message)
   await db.from('posts').update({ visuals_status: 'ready' }).eq('id', postId)
+}
+
+/**
+ * Generate the plate images for a post's slides WITHOUT storing anything — used by the manual generation
+ * wizard so the pre-save preview shows real photos, not just the copy. The images are cached in
+ * `brand_image_bank` by the deterministic slide-copy hash, so when the operator approves and the post is
+ * saved, `composePostVisuals({ withImagery: true })` hits that cache and reuses them — no double spend.
+ * Returns slide index → plate URL (only plate-bearing slides get one); fail-soft, so failures are absent.
+ */
+export async function generatePostPlates(params: {
+  clientId: string
+  agencyId: string
+  slides: CarouselSlide[]
+}): Promise<Record<number, string>> {
+  const { clientId, agencyId, slides } = params
+  if (slides.length === 0) return {}
+
+  const { kit, feedSystem, clientName } = await loadComposeContext(clientId, agencyId)
+  const compositions = composePostSlides(slides, { feedSystemSlug: feedSystem.slug, postId: 'preview', clientName })
+  const filled = await fillPlates(compositions, slides, imageryContext(clientId, kit, feedSystem.slug))
+
+  const plates: Record<number, string> = {}
+  filled.forEach((composition, i) => {
+    const src = composition.layers.find((l): l is typeof l & { src: string } => l.type === 'plate' && Boolean((l as { src?: string }).src))?.src
+    if (src) plates[i] = src
+  })
+  return plates
 }

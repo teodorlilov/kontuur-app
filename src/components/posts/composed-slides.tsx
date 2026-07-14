@@ -5,8 +5,14 @@ import { PreviewCell } from '@/features/clients/components/visual-system/preview
 import { kitFontsHref } from '@/lib/render/google-fonts'
 import { useKitFonts } from '@/lib/render/use-kit-fonts'
 import { composePostSlides } from '@/lib/renderer/compose'
-import type { BrandTokens } from '@/lib/scene-graph'
+import type { BrandTokens, Composition } from '@/lib/scene-graph'
 import type { CarouselSlide } from '@/types/api'
+
+/** Fill a composition's plate layer(s) with a generated image (absent → the gradient plate, unchanged). */
+function withPlateSrc(composition: Composition, src: string | undefined): Composition {
+  if (!src) return composition
+  return { ...composition, layers: composition.layers.map((l) => (l.type === 'plate' ? { ...l, src } : l)) }
+}
 
 /**
  * Render a carousel's designed slides by composing the copy in-browser against a kit — the shared,
@@ -20,17 +26,21 @@ export function ComposedSlides({
   feedSystemSlug,
   clientName,
   width = 128,
+  plates,
 }: {
   slides: CarouselSlide[]
   tokens: BrandTokens
   feedSystemSlug: string
   clientName?: string
   width?: number
+  /** Generated plate images by slide index (the wizard's on-the-fly imagery). Absent → gradient plates. */
+  plates?: Record<number, string>
 }) {
   const compositions = useMemo(() => {
     if (slides.length === 0) return []
-    return composePostSlides(slides, { feedSystemSlug, postId: 'preview', clientName })
-  }, [slides, feedSystemSlug, clientName])
+    const composed = composePostSlides(slides, { feedSystemSlug, postId: 'preview', clientName })
+    return plates ? composed.map((c, i) => withPlateSrc(c, plates[i])) : composed
+  }, [slides, feedSystemSlug, clientName, plates])
 
   useKitFonts(kitFontsHref(tokens))
 
