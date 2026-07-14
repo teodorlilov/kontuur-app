@@ -78,7 +78,7 @@ const list: Composition = {
     { ...base({ id: 'kicker', name: 'kicker', rect: rect(96, 128, 888, 50) }), type: 'text', slot: 'kicker', content: 'СТЪПКИ', lang: 'bg', family: bound('type.display.family'), size: lit(28), weight: lit(600), color: bound('color.accent'), align: lit('left'), autoFit: null },
     { ...base({ id: 'headline', name: 'headline', rect: rect(96, 190, 888, 140) }), type: 'text', slot: 'headline', content: 'Как започваме', lang: 'bg', family: bound('type.display.family'), size: lit(72), weight: lit(700), color: bound('color.ink'), align: lit('left'), autoFit: null },
     { ...base({ id: 'rule', name: 'rule', rect: rect(96, 360, 888, 20) }), type: 'chrome', component: 'rule', params: { strokeWidth: lit(2) } },
-    { ...base({ id: 'body', name: 'list', rect: rect(96, 430, 888, 760) }), type: 'text', slot: 'body', content: '01  Проучваме марката\n02  Събираме идеи\n03  Проектираме визия\n04  Публикуваме', lang: 'bg', family: bound('type.body.family'), size: lit(46), weight: lit(400), color: bound('color.ink'), align: lit('left'), autoFit: null },
+    { ...base({ id: 'body', name: 'list', rect: rect(96, 430, 888, 760) }), type: 'text', slot: 'body', content: '01  Проучваме марката\n02  Събираме идеи\n03  Проектираме визия\n04  Публикуваме', lang: 'bg', family: bound('type.body.family'), size: lit(46), weight: lit(400), color: bound('color.ink'), align: lit('left'), autoFit: null, listStyle: 'numbered' },
   ],
 }
 

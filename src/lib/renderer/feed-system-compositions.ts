@@ -65,7 +65,7 @@ const bbList = comp('bb-list', 'bold-blocks', [
   { ...base({ id: 'block', name: 'block', rect: rect(0, 0, 1080, 430) }), type: 'shape', shape: 'rect', fill: bound('color.ink') },
   { ...base({ id: 'kicker', name: 'kicker', rect: rect(80, 120, 920, 44) }), type: 'text', slot: 'kicker', content: 'СТЪПКИ', lang: 'bg', family: bound('type.display.family'), size: lit(28), weight: lit(700), color: bound('color.surface'), align: lit('left'), autoFit: null },
   { ...base({ id: 'headline', name: 'headline', rect: rect(80, 180, 920, 200) }), type: 'text', slot: 'headline', content: 'КАК ЗАПОЧВАМЕ', lang: 'bg', family: bound('type.display.family'), size: lit(92), weight: lit(800), color: bound('color.surface'), align: lit('left'), autoFit: { min: 56, max: 104 } },
-  { ...base({ id: 'body', name: 'list', rect: rect(80, 520, 920, 760) }), type: 'text', slot: 'body', content: '01  ПРОУЧВАМЕ МАРКАТА\n02  СЪБИРАМЕ ИДЕИ\n03  ПРОЕКТИРАМЕ ВИЗИЯ\n04  ПУБЛИКУВАМЕ', lang: 'bg', family: bound('type.body.family'), size: lit(50), weight: lit(700), color: bound('color.ink'), align: lit('left'), autoFit: null },
+  { ...base({ id: 'body', name: 'list', rect: rect(80, 520, 920, 760) }), type: 'text', slot: 'body', content: '01  ПРОУЧВАМЕ МАРКАТА\n02  СЪБИРАМЕ ИДЕИ\n03  ПРОЕКТИРАМЕ ВИЗИЯ\n04  ПУБЛИКУВАМЕ', lang: 'bg', family: bound('type.body.family'), size: lit(50), weight: lit(700), color: bound('color.ink'), align: lit('left'), autoFit: null, listStyle: 'numbered' },
 ])
 
 const bbQuote = comp('bb-quote', 'bold-blocks', [
@@ -108,7 +108,7 @@ const qgList = comp('qg-list', 'quiet-grid', [
   { ...base({ id: 'kicker', name: 'kicker', rect: rect(112, 150, 856, 44) }), type: 'text', slot: 'kicker', content: 'Стъпки', lang: 'bg', family: bound('type.display.family'), size: lit(26), weight: lit(500), color: bound('color.accent'), align: lit('left'), autoFit: null },
   { ...base({ id: 'headline', name: 'headline', rect: rect(112, 214, 856, 120) }), type: 'text', slot: 'headline', content: 'Как започваме', lang: 'bg', family: bound('type.display.family'), size: lit(60), weight: lit(500), color: bound('color.ink'), align: lit('left'), autoFit: null },
   { ...base({ id: 'divider', name: 'dot-divider', rect: rect(112, 372, 856, 32) }), type: 'chrome', component: 'dot-grid', params: { cols: lit(28), rows: lit(1), strokeWidth: lit(2) } },
-  { ...base({ id: 'body', name: 'list', rect: rect(112, 450, 856, 780) }), type: 'text', slot: 'body', content: '01  Проучваме марката\n02  Събираме идеи\n03  Проектираме визия\n04  Публикуваме', lang: 'bg', family: bound('type.body.family'), size: lit(44), weight: lit(300), color: bound('color.ink'), align: lit('left'), autoFit: null },
+  { ...base({ id: 'body', name: 'list', rect: rect(112, 450, 856, 780) }), type: 'text', slot: 'body', content: '01  Проучваме марката\n02  Събираме идеи\n03  Проектираме визия\n04  Публикуваме', lang: 'bg', family: bound('type.body.family'), size: lit(44), weight: lit(300), color: bound('color.ink'), align: lit('left'), autoFit: null, listStyle: 'numbered' },
 ])
 
 const qgQuote = comp('qg-quote', 'quiet-grid', [
