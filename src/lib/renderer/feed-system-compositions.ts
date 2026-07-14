@@ -70,6 +70,7 @@ const bbList = comp('bb-list', 'bold-blocks', [
 
 const bbQuote = comp('bb-quote', 'bold-blocks', [
   { ...base({ id: 'bg', name: 'bg', rect: rect(0, 0, 1080, 1350) }), type: 'shape', shape: 'rect', fill: bound('color.ink') },
+  { ...base({ id: 'qmark', name: 'quote-mark', rect: rect(80, 170, 220, 176) }), type: 'mark', packElementId: 'ref-quote-mark', roleOverrides: {} },
   { ...base({ id: 'quote', name: 'quote', rect: rect(80, 360, 920, 540) }), type: 'text', slot: 'headline', content: 'ДИЗАЙНЪТ Е\nМЪЛЧАЛИВ ПОСЛАНИК.', lang: 'bg', family: bound('type.display.family'), size: lit(96), weight: lit(800), color: bound('color.surface'), align: lit('left'), autoFit: { min: 56, max: 110 } },
   { ...base({ id: 'attr', name: 'attribution', rect: rect(80, 960, 920, 60) }), type: 'text', slot: 'caption', content: '— ПОЛ РАНД', lang: 'bg', family: bound('type.body.family'), size: lit(34), weight: lit(700), color: bound('color.accent'), align: lit('left'), autoFit: null },
 ])
@@ -114,6 +115,7 @@ const qgList = comp('qg-list', 'quiet-grid', [
 const qgQuote = comp('qg-quote', 'quiet-grid', [
   qgBg(),
   frameLayer(),
+  { ...base({ id: 'qmark', name: 'quote-mark', rect: rect(112, 214, 190, 152) }), type: 'mark', packElementId: 'ref-quote-mark-accent', roleOverrides: {} },
   { ...base({ id: 'quote', name: 'quote', rect: rect(112, 400, 856, 480) }), type: 'text', slot: 'headline', content: 'Дизайнът е\nмълчалив посланик.', lang: 'bg', family: bound('type.display.family'), size: lit(76), weight: lit(400), color: bound('color.ink'), align: lit('left'), autoFit: { min: 48, max: 88 } },
   { ...base({ id: 'attr', name: 'attribution', rect: rect(112, 940, 856, 60) }), type: 'text', slot: 'caption', content: '— Пол Ранд', lang: 'bg', family: bound('type.body.family'), size: lit(32), weight: lit(500), color: bound('color.accent'), align: lit('left'), autoFit: null },
 ])
