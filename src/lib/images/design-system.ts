@@ -5,8 +5,8 @@ import type { ReferenceRole } from '@/lib/renderer/reference-compositions'
 import { DEFAULT_RATIO } from '@/lib/renderer/layout/anchor'
 import type { BrandTokens, Composition } from '@/lib/scene-graph'
 import { createUntypedAdminClient } from '@/lib/supabase/admin'
-import { generatePlate } from './fal'
-import { buildImagePrompt, formatForModel, type PlateRole } from './prompt'
+import { generatePlate, generateVector } from './fal'
+import { buildImagePrompt, buildVectorPrompt, formatForModel, type PlateRole } from './prompt'
 import { uploadPlate } from './storage'
 
 /** One generated design-system plate: what to render (public_url) + where it lives (storage_path). This
@@ -72,4 +72,53 @@ export async function seedImageBank(clientId: string, plates: Record<string, See
   const db = createUntypedAdminClient()
   const { error } = await db.from('brand_image_bank').insert(rows)
   if (error) console.error('[images/design-system] seedImageBank failed:', error.message)
+}
+
+/** One generated brand vector: the SVG source + the motif it came from (operator-facing label). */
+export type SeedVector = { svg: string; label: string }
+
+// A brand's starter vector count — a small, on-brand set from the brief's motifs. Bounded for cost.
+const MAX_STARTER_VECTORS = 3
+
+/**
+ * Generate the onboarding **starter vector set**: a few on-brand marks from the brief's motifs (or one
+ * abstract fallback when the brief has none), via Recraft text-to-vector. Returns them for the review to
+ * display; on "save" they seed the new client's `brand_vector_bank` (`seedVectorBank`) as a reusable asset
+ * set the editor draws from later. Fail-soft per motif — a failure just omits that mark.
+ */
+export async function generateDesignSystemVectors(params: {
+  colors: BrandTokens['color']
+  brief: BrandBrief | null
+  feedSystemSlug: string | null
+}): Promise<SeedVector[]> {
+  const motifs = (params.brief?.motifs ?? []).map((m) => m.trim()).filter(Boolean).slice(0, MAX_STARTER_VECTORS)
+  const seeds = motifs.length > 0 ? motifs : ['an abstract geometric brand mark']
+
+  const out: SeedVector[] = []
+  await Promise.all(
+    seeds.map(async (motif) => {
+      const prompt = buildVectorPrompt({ motif, colors: params.colors, feedSystemSlug: params.feedSystemSlug })
+      const vector = await generateVector(prompt)
+      if (vector) out.push({ svg: vector.svg, label: motif })
+    })
+  )
+  return out
+}
+
+/**
+ * Seed the brand's vector bank with the onboarding starter marks — keyed by a brand-level `onboarding:<n>`
+ * marker (never collides with a later copy/motif hash). Non-fatal: logs and returns on failure so it never
+ * blocks client creation. Mirrors `seedImageBank`.
+ */
+export async function seedVectorBank(clientId: string, vectors: SeedVector[]): Promise<void> {
+  const rows = vectors.map((v, i) => ({
+    client_id: clientId,
+    label: v.label,
+    prompt_hash: `onboarding:${i}`,
+    svg: v.svg,
+  }))
+  if (rows.length === 0) return
+  const db = createUntypedAdminClient()
+  const { error } = await db.from('brand_vector_bank').insert(rows)
+  if (error) console.error('[images/design-system] seedVectorBank failed:', error.message)
 }

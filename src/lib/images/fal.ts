@@ -1,5 +1,6 @@
 import { fal } from '@fal-ai/client'
 import { RATIO_SIZES, type AspectRatio } from '@/lib/renderer/layout/anchor'
+import { isSvg, sanitizeSvg } from './svg'
 
 /**
  * The fal.ai provider seam. `generatePlate` produces one background image via a Flux model server-side
@@ -13,6 +14,10 @@ const DEFAULT_MODEL = 'fal-ai/flux/schnell'
 
 // BiRefNet — state-of-the-art subject/background segmentation, returns a transparent PNG. Swap via env.
 const DEFAULT_BG_REMOVAL_MODEL = 'fal-ai/birefnet'
+
+// Recraft text-to-vector — returns true SVG (scalable, recolourable). Swap/pin via env. NOTE: verify the
+// exact model id against the fal dashboard on first live run (mirrors the BiRefNet flag).
+const DEFAULT_VECTOR_MODEL = 'fal-ai/recraft/v3/text-to-vector'
 
 let configured = false
 function ensureConfigured(): boolean {
@@ -73,6 +78,29 @@ export async function removeBackground(imageUrl: string): Promise<{ url: string 
     return url ? { url } : null
   } catch (err) {
     console.error('[images/fal] removeBackground failed:', err)
+    return null
+  }
+}
+
+/**
+ * Generate one on-brand vector graphic, returning sanitised SVG source (Recraft hosts the .svg; we fetch
+ * + sanitise the text so it can be stored and rasterised). Fail-soft: no key, a failed call, a non-SVG
+ * body, or a fetch error all return null. Model overridable via `FAL_VECTOR_MODEL`.
+ */
+export async function generateVector(prompt: string): Promise<{ svg: string } | null> {
+  if (!ensureConfigured()) return null
+  const model = process.env.FAL_VECTOR_MODEL ?? DEFAULT_VECTOR_MODEL
+  try {
+    const result = await fal.subscribe(model, { input: { prompt } })
+    const data = result?.data as { images?: Array<{ url?: string }>; image?: { url?: string } } | undefined
+    const url = data?.images?.[0]?.url ?? data?.image?.url
+    if (!url) return null
+    const res = await fetch(url)
+    if (!res.ok) return null
+    const svg = sanitizeSvg(await res.text())
+    return isSvg(svg) ? { svg } : null
+  } catch (err) {
+    console.error('[images/fal] generateVector failed:', err)
     return null
   }
 }

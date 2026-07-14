@@ -62,6 +62,9 @@ export default function NewClientPage() {
   // Generated design-system plates by role (from /api/onboarding/design-system): the real imagery shown
   // under the live token layer, seeded into the client's bank on save.
   const [designPlates, setDesignPlates] = useState<Record<string, { publicUrl: string; storagePath: string }> | null>(null)
+  // Generated starter vector marks (from the same endpoint): shown in the review, seeded into the client's
+  // vector bank on save.
+  const [designVectors, setDesignVectors] = useState<{ svg: string; label: string }[] | null>(null)
   const [generatingDesign, setGeneratingDesign] = useState(false)
   const designAutoFiredRef = useRef(false)
 
@@ -302,7 +305,7 @@ export default function NewClientPage() {
 
       // Persist the reviewed visual system for the new client (§2.4). Non-fatal — Phase 0 still renders
       // on the default kit if this fails.
-      const kitResult = await saveBrandKit(data.client_id, visualTokens, selectedFeedSystemSlug, visualReport?.brief ?? null, designPlates ?? undefined)
+      const kitResult = await saveBrandKit(data.client_id, visualTokens, selectedFeedSystemSlug, visualReport?.brief ?? null, designPlates ?? undefined, designVectors ?? undefined)
       if (!kitResult.ok) toast.error('Client saved, but the visual system could not be saved.')
 
       // Trigger best-time generation in background
@@ -336,6 +339,7 @@ export default function NewClientPage() {
     setInstagramHandle('')
     setMultiSelectAnswers([])
     setDesignPlates(null)
+    setDesignVectors(null)
     designAutoFiredRef.current = false
   }
 
@@ -355,12 +359,15 @@ export default function NewClientPage() {
       })
       const data = (await res.json().catch(() => ({}))) as {
         plates?: Record<string, { publicUrl: string; storagePath: string }>
+        vectors?: { svg: string; label: string }[]
       }
       if (res.ok && data.plates && Object.keys(data.plates).length > 0) {
         setDesignPlates(data.plates)
       } else {
         toast.error('No design images were generated. Please try again.')
       }
+      // Vector marks are a bonus layer — set them independently of the plate result.
+      if (data.vectors && data.vectors.length > 0) setDesignVectors(data.vectors)
     } catch {
       toast.error('Could not generate the design system.')
     } finally {
@@ -446,6 +453,7 @@ export default function NewClientPage() {
               designPlates: designPlates
                 ? Object.fromEntries(Object.entries(designPlates).map(([role, p]) => [role, p.publicUrl]))
                 : undefined,
+              designVectors: designVectors?.map((v) => v.svg),
               generatingDesign,
               onGenerateDesignSystem: handleGenerateDesignSystem,
             }}

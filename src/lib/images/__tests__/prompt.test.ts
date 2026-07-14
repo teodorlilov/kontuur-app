@@ -3,6 +3,7 @@ import { DEFAULT_TOKENS } from '@/lib/scene-graph'
 import type { BrandBrief } from '@/lib/brand-kit/extract/report'
 import {
   buildImagePrompt,
+  buildVectorPrompt,
   formatForModel,
   hexToColorName,
   NEGATIVE_PROMPT,
@@ -86,6 +87,25 @@ describe('buildImagePrompt', () => {
     // Framing is the removal-friendly directive, not the ratio negative-space one.
     expect(p.framing).toContain('background removal')
     expect(p.framing).not.toContain('4:5')
+  })
+})
+
+describe('buildVectorPrompt', () => {
+  it('describes a flat, on-brand, text-free mark from the motif + palette + feed style', () => {
+    const p = buildVectorPrompt({
+      motif: 'a stylised coffee bean', colors: DEFAULT_TOKENS.color, feedSystemSlug: 'bold-blocks',
+    })
+    expect(p).toContain('a stylised coffee bean')
+    expect(p).toContain('bold geometric') // bold-blocks vector style
+    expect(p).toContain('colour palette of')
+    expect(p).toMatch(/no text/i)
+    expect(p).toMatch(/no gradients/i)
+  })
+
+  it('falls back to an abstract mark and editorial style with no motif / unknown system', () => {
+    const p = buildVectorPrompt({ motif: '  ', colors: DEFAULT_TOKENS.color, feedSystemSlug: null })
+    expect(p).toContain('abstract geometric brand mark')
+    expect(p).toContain('minimal line-art') // editorial default
   })
 })
 

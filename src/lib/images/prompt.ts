@@ -137,6 +137,32 @@ export function buildImagePrompt(input: ImagePromptInput): StructuredPrompt {
   }
 }
 
+// ── Vector prompts (Recraft text-to-vector) ────────────────────────────────────
+// A brand vector is a flat, iconic, on-brand mark — never a photo and never text (we set our own type).
+// The per-feed-system style keeps a brand's vector set coherent with its photographic look.
+
+const VECTOR_STYLE: Record<string, string> = {
+  editorial: 'refined minimal line-art, elegant and restrained',
+  'bold-blocks': 'bold geometric high-contrast flat shapes',
+  'quiet-grid': 'delicate precise thin-line',
+}
+const DEFAULT_VECTOR_STYLE = VECTOR_STYLE.editorial!
+
+/** A Recraft text-to-vector prompt for one brand mark from a motif + palette + feed-system style. */
+export function buildVectorPrompt(input: {
+  motif: string
+  colors: BrandTokens['color']
+  feedSystemSlug: string | null
+}): string {
+  const style = VECTOR_STYLE[input.feedSystemSlug ?? ''] ?? DEFAULT_VECTOR_STYLE
+  const motif = input.motif.trim() || 'an abstract geometric brand mark'
+  return (
+    `A single ${style} vector graphic of ${motif}. Flat solid shapes in a colour palette of ` +
+    `${paletteWords(input.colors)}, centred on a transparent background. Simple and iconic — ` +
+    'no text, no words, no lettering, no photorealism, no gradients.'
+  )
+}
+
 const capitalize = (s: string): string => (s ? s[0]!.toUpperCase() + s.slice(1) : s)
 
 /**
