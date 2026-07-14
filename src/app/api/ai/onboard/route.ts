@@ -36,7 +36,11 @@ export async function POST(request: Request) {
   try {
     const profile = await generateProfile({ answers, analysisData })
     return NextResponse.json({ profile })
-  } catch {
-    return NextResponse.json({ error: 'Failed to parse AI response' }, { status: 500 })
+  } catch (err) {
+    // Surface the real cause (was swallowed as a generic message) — logged for Vercel + returned so the
+    // client/console shows what actually failed (API key, timeout, or a JSON parse of the AI response).
+    console.error('[onboard] generateProfile failed:', err)
+    const message = err instanceof Error ? err.message : 'Failed to generate profile'
+    return NextResponse.json({ error: `Onboarding generation failed: ${message}` }, { status: 500 })
   }
 }
