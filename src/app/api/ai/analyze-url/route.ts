@@ -83,7 +83,11 @@ export async function POST(request: Request) {
   try {
     const analysis = await analyzeUrl({ websiteContent, instagramContent })
     return NextResponse.json(analysis)
-  } catch {
-    return NextResponse.json({ error: 'Failed to parse analysis response' }, { status: 500 })
+  } catch (err) {
+    // Surface the real cause (was masked as "Failed to parse") — an Anthropic API error (e.g. a missing
+    // key) throws here and looks identical to a genuine JSON-parse failure. Logged for Vercel too.
+    console.error('[analyze-url] analyzeUrl failed:', err)
+    const message = err instanceof Error ? err.message : 'Failed to analyze the provided URLs'
+    return NextResponse.json({ error: `URL analysis failed: ${message}` }, { status: 500 })
   }
 }
