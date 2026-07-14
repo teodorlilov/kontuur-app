@@ -106,6 +106,15 @@ function coverCrop(iw: number, ih: number, w: number, h: number) {
   return { x: (iw - cw) / 2, y: (ih - ch) / 2, width: cw, height: ch }
 }
 
+// Contain-fit rect (destination px within the box) so a subject cutout sits whole and centred, never
+// cropped — the whole image scaled down to fit w×h, keeping its aspect.
+function containFit(iw: number, ih: number, w: number, h: number) {
+  const scale = Math.min(w / iw, h / ih)
+  const dw = iw * scale
+  const dh = ih * scale
+  return { x: (w - dw) / 2, y: (h - dh) / 2, width: dw, height: dh }
+}
+
 /** Grade a plate image per its `treatment`, using the brand palette so photos cohere on-brand. Filters
  *  run once on the cached node. */
 function applyTreatment(node: Konva.Image, treatment: Treatment, tokens: BrandTokens): void {
@@ -131,6 +140,9 @@ function applyTreatment(node: Konva.Image, treatment: Treatment, tokens: BrandTo
 
 function buildPlate(layer: PlateLayer, ctx: BuildContext, w: number, h: number): (Konva.Group | Konva.Shape)[] {
   if (!layer.src) {
+    // A cutout with no image renders nothing — the colour block below stands alone (no gradient rectangle
+    // floating in the subject's box). A full-bleed plate falls back to the token gradient.
+    if (layer.cutout) return []
     const { start, end } = gradientPoints(160, w, h)
     return [
       new Konva.Rect({
@@ -144,6 +156,11 @@ function buildPlate(layer: PlateLayer, ctx: BuildContext, w: number, h: number):
   }
   const img = ctx.images.get(layer.id)
   if (!img) return []
+  // A cutout sits whole and transparent-edged over the block below — contain-fit, no crop, no treatment.
+  if (layer.cutout) {
+    const fit = containFit(img.width, img.height, w, h)
+    return [new Konva.Image({ image: img, x: fit.x, y: fit.y, width: fit.width, height: fit.height })]
+  }
   const node = new Konva.Image({ image: img, width: w, height: h, crop: coverCrop(img.width, img.height, w, h) })
   applyTreatment(node, resolve(layer.treatment, ctx.tokens), ctx.tokens)
   return [node]

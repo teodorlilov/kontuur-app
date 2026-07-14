@@ -1,6 +1,6 @@
 import type { BrandBrief } from '@/lib/brand-kit/extract/report'
 import type { AspectRatio } from '@/lib/renderer/layout/anchor'
-import type { BrandTokens, Composition } from '@/lib/scene-graph'
+import type { BrandTokens, Composition, PlateLayer } from '@/lib/scene-graph'
 import type { CarouselSlide } from '@/types/api'
 import { seedFromClient } from './hash'
 import type { PlateRole } from './prompt'
@@ -18,10 +18,16 @@ export function plateRole(index: number): PlateRole {
   return index === 0 ? 'cover' : 'interior'
 }
 
-/** Only some compositions carry a plate (cover/statement/cta in editorial, cover in bold-blocks); the
- *  rest are solid designs that take no imagery. */
+/** The composition's plate layer, if any — its `cutout` flag decides whether imagery is a full-bleed
+ *  photo or a background-removed subject. The single plate-finder the module (and its tests) share. */
+export function plateLayer(composition: Composition): PlateLayer | undefined {
+  return composition.layers.find((l): l is PlateLayer => l.type === 'plate')
+}
+
+/** Only some compositions carry a plate (cover/statement/cta in editorial, cover/statement in bold-blocks);
+ *  the rest are solid designs that take no imagery. */
 export function hasPlateLayer(composition: Composition): boolean {
-  return composition.layers.some((l) => l.type === 'plate')
+  return plateLayer(composition) !== undefined
 }
 
 function withPlateSrc(composition: Composition, src: string): Composition {
@@ -52,7 +58,8 @@ export async function fillPlates(
   return Promise.all(
     compositions.map(async (composition, index) => {
       const slide = slides[index]
-      if (!slide || !hasPlateLayer(composition)) return composition
+      const plate = plateLayer(composition)
+      if (!slide || !plate) return composition
       try {
         const url = await resolvePlate({
           clientId: ctx.clientId,
@@ -63,6 +70,7 @@ export async function fillPlates(
           feedSystemSlug: ctx.feedSystemSlug,
           ratio: ctx.ratio,
           seed,
+          cutout: Boolean(plate.cutout),
         })
         return url ? withPlateSrc(composition, url) : composition
       } catch (err) {

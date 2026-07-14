@@ -96,6 +96,9 @@ export type ImagePromptInput = {
   ratio: AspectRatio
   /** The LLM-composed, text-free scene for this slide. Falls back to a brief subject when absent. */
   scene?: string | null
+  /** When true, prompt for an isolated subject on a plain seamless background, so `removeBackground`
+   *  produces a clean cutout — no environment, centred, whole subject in frame. */
+  cutout?: boolean
 }
 
 export type StructuredPrompt = {
@@ -114,17 +117,22 @@ function fallbackScene(brief: BrandBrief | null): string {
   return subject || motif || 'an abstract, minimal branded background'
 }
 
+// A cutout wants one isolated subject on a plain ground (clean segmentation), not an environmental scene.
+const CUTOUT_FRAMING =
+  'the entire subject centred and fully within frame with even margins, on a plain seamless neutral ' +
+  'studio background, evenly lit, sharp clean edges for background removal'
+
 /** Assemble the structured prompt from the per-slide scene and the deterministic brand scaffold. */
 export function buildImagePrompt(input: ImagePromptInput): StructuredPrompt {
-  const { role, brief, colors, feedSystemSlug, ratio } = input
+  const { role, brief, colors, feedSystemSlug, ratio, cutout } = input
   const scene = input.scene?.trim() || fallbackScene(brief)
   const art = FEED_SYSTEM_ART_DIRECTION[feedSystemSlug ?? ''] ?? DEFAULT_ART_DIRECTION
   const mood = brief?.mood?.trim()
   return {
-    subject: `${ROLE_DIRECTIVE[role]}: ${scene}`,
+    subject: cutout ? `a single isolated subject: ${scene}` : `${ROLE_DIRECTIVE[role]}: ${scene}`,
     style: mood ? `${art}, ${mood}` : art,
     palette: `colour palette of ${paletteWords(colors)}`,
-    framing: RATIO_DIRECTIVE[ratio],
+    framing: cutout ? CUTOUT_FRAMING : RATIO_DIRECTIVE[ratio],
     negative: NEGATIVE_PROMPT,
   }
 }

@@ -1,4 +1,4 @@
-import type { BlendMode, Binding, BrandTokens, Clip, Composition, Rect } from '@/lib/scene-graph'
+import type { BlendMode, Binding, BrandTokens, Clip, Composition, Rect, Treatment } from '@/lib/scene-graph'
 import { ensureLegibleColors } from '@/lib/brand-kit/extract/color-roles'
 import { applyVAnchors } from './layout/anchor'
 import { REFERENCE_COMPOSITIONS, type ReferenceRole } from './reference-compositions'
@@ -55,9 +55,12 @@ const bbCover = comp('bb-cover', 'bold-blocks', [
   { ...base({ id: 'headline', name: 'headline', rect: rect(80, 820, 920, 470) }), type: 'text', slot: 'headline', content: 'СЪДЪРЖАНИЕ, КОЕТО\nХОРАТА ПОМНЯТ', lang: 'bg', family: bound('type.display.family'), size: lit(126), weight: lit(800), color: bound('color.surface'), align: lit('left'), autoFit: { min: 72, max: 148 } },
 ])
 
+// Subject cutout (background-removed) floating on a solid accent block — the collage look, in bold-blocks'
+// graphic language. The statement rides the bottom; the cutout fills the upper two-thirds.
 const bbStatement = comp('bb-statement', 'bold-blocks', [
   { ...base({ id: 'bg', name: 'bg', rect: rect(0, 0, 1080, 1350) }), type: 'shape', shape: 'rect', fill: bound('color.accent') },
-  { ...base({ id: 'stmt', name: 'statement', rect: rect(90, 440, 900, 470) }), type: 'text', slot: 'headline', content: 'ПО-МАЛКО ШУМ.\nПОВЕЧЕ СМИСЪЛ.', lang: 'bg', family: bound('type.display.family'), size: lit(118), weight: lit(900), color: bound('color.surface'), align: lit('center'), autoFit: { min: 64, max: 140 } },
+  { ...base({ id: 'cutout', name: 'subject', rect: rect(140, 130, 800, 760) }), type: 'plate', source: 'generated', editHeadId: null, src: '', treatment: lit<Treatment>('none'), cutout: true },
+  { ...base({ id: 'stmt', name: 'statement', rect: rect(80, 960, 920, 300) }), type: 'text', slot: 'headline', content: 'ПО-МАЛКО ШУМ.\nПОВЕЧЕ СМИСЪЛ.', lang: 'bg', family: bound('type.display.family'), size: lit(100), weight: lit(900), color: bound('color.surface'), align: lit('center'), autoFit: { min: 60, max: 118 } },
 ])
 
 const bbList = comp('bb-list', 'bold-blocks', [
@@ -136,7 +139,7 @@ export type FeedSystemSlug = 'editorial' | 'bold-blocks' | 'quiet-grid'
 // centred statements ride the bottom edge, quiet-grid's inset frame stretches. (See applyVAnchors.)
 const boldBlocks: Record<ReferenceRole, Composition> = {
   cover: applyVAnchors(bbCover, { bg: 'fill', block: 'bottom', headline: 'bottom' }),
-  statement: applyVAnchors(bbStatement, { bg: 'fill', stmt: 'center' }),
+  statement: applyVAnchors(bbStatement, { bg: 'fill', cutout: 'center', stmt: 'bottom' }),
   list: applyVAnchors(bbList, { bg: 'fill' }),
   quote: applyVAnchors(bbQuote, { bg: 'fill', quote: 'center', attr: 'bottom' }),
   cta: applyVAnchors(bbCta, { bg: 'fill', headline: 'center', cta: 'center' }),

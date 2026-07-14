@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { feedSystemPack } from '@/lib/renderer/feed-system-compositions'
 import { promptHash, seedFromClient } from '../hash'
-import { hasPlateLayer, plateRole } from '../generate-plates'
+import { hasPlateLayer, plateLayer, plateRole } from '../generate-plates'
 
 describe('hash', () => {
   it('promptHash is stable for equal inputs regardless of key order', () => {
@@ -38,5 +38,18 @@ describe('hasPlateLayer', () => {
   it('quiet-grid never takes a photo', () => {
     const quiet = feedSystemPack('quiet-grid')
     expect(hasPlateLayer(quiet.cover)).toBe(false)
+  })
+})
+
+describe('cutout motif', () => {
+  it('bold-blocks statement carries a background-removed subject cutout', () => {
+    const bold = feedSystemPack('bold-blocks')
+    expect(hasPlateLayer(bold.statement)).toBe(true)
+    expect(plateLayer(bold.statement)?.cutout).toBe(true)
+  })
+
+  it('full-bleed plates (editorial cover) are not cutouts', () => {
+    const editorial = feedSystemPack('editorial')
+    expect(plateLayer(editorial.cover)?.cutout).toBeFalsy()
   })
 })

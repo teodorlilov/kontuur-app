@@ -11,6 +11,9 @@ import { RATIO_SIZES, type AspectRatio } from '@/lib/renderer/layout/anchor'
 // FLUX.1 [schnell] — fast + cheap (~1-4 steps), good for backgrounds. The default; swap via env.
 const DEFAULT_MODEL = 'fal-ai/flux/schnell'
 
+// BiRefNet — state-of-the-art subject/background segmentation, returns a transparent PNG. Swap via env.
+const DEFAULT_BG_REMOVAL_MODEL = 'fal-ai/birefnet'
+
 let configured = false
 function ensureConfigured(): boolean {
   const key = process.env.FAL_API_KEY
@@ -50,6 +53,26 @@ export async function generatePlate(input: GeneratePlateInput): Promise<{ url: s
     return url ? { url } : null
   } catch (err) {
     console.error('[images/fal] generatePlate failed:', err)
+    return null
+  }
+}
+
+/**
+ * Remove the background from a generated image, returning a hosted transparent PNG (the subject cutout)
+ * — the collage look's core seam. Fail-soft: no key or any error returns null, and the caller keeps the
+ * colour block alone. Model overridable via `FAL_BG_REMOVAL_MODEL`.
+ */
+export async function removeBackground(imageUrl: string): Promise<{ url: string } | null> {
+  if (!ensureConfigured()) return null
+  const model = process.env.FAL_BG_REMOVAL_MODEL ?? DEFAULT_BG_REMOVAL_MODEL
+  try {
+    const result = await fal.subscribe(model, { input: { image_url: imageUrl } })
+    // BiRefNet returns `image`; some segmentation models return `images[0]` — accept either.
+    const data = result?.data as { image?: { url?: string }; images?: Array<{ url?: string }> } | undefined
+    const url = data?.image?.url ?? data?.images?.[0]?.url
+    return url ? { url } : null
+  } catch (err) {
+    console.error('[images/fal] removeBackground failed:', err)
     return null
   }
 }

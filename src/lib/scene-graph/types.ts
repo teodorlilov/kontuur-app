@@ -49,6 +49,13 @@ export type PlateLayer = LayerBase & {
   src: string
   treatment: Binding<Treatment>
   focalZone?: Rect
+  /**
+   * When true, this plate is a background-removed *subject cutout*, not a full-bleed photo: the renderer
+   * draws it contain-fit (whole subject visible, transparent around it, no treatment) over whatever sits
+   * below — the colour-block collage look. The imagery pipeline runs `removeBackground` after generation
+   * and prompts for an isolated subject. Absent/false → the full-bleed cover-crop behaviour.
+   */
+  cutout?: boolean
 }
 
 export type MarkLayer = LayerBase & {

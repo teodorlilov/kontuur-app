@@ -2,7 +2,7 @@ import { createUntypedAdminClient } from '@/lib/supabase/admin'
 import type { BrandBrief } from '@/lib/brand-kit/extract/report'
 import type { AspectRatio } from '@/lib/renderer/layout/anchor'
 import type { BrandTokens } from '@/lib/scene-graph'
-import { generatePlate } from './fal'
+import { generatePlate, removeBackground } from './fal'
 import { promptHash } from './hash'
 import { buildImagePrompt, formatForModel, paletteWords, type PlateRole } from './prompt'
 import { composeScene } from './scene'
@@ -27,6 +27,8 @@ export type ResolvePlateParams = {
   feedSystemSlug: string | null
   ratio: AspectRatio
   seed?: number
+  /** When true, generate an isolated subject and background-remove it into a transparent cutout PNG. */
+  cutout?: boolean
 }
 
 export async function resolvePlate(params: ResolvePlateParams): Promise<string | null> {
@@ -40,6 +42,7 @@ export async function resolvePlate(params: ResolvePlateParams): Promise<string |
     feedSystemSlug: params.feedSystemSlug ?? 'editorial',
     ratio: params.ratio,
     role: params.role,
+    cutout: params.cutout ?? false,
   })
 
   // Cache hit — reuse an image already generated for this brand + prompt.
@@ -52,8 +55,12 @@ export async function resolvePlate(params: ResolvePlateParams): Promise<string |
   const cached = (existing as { public_url?: string } | null)?.public_url
   if (cached) return cached
 
-  // Miss — compose a per-slide scene (fail-soft to a brief subject), build + format the prompt, generate.
-  const scene = await composeScene({ headline: params.slide.headline, body: params.slide.body, brief: params.brief })
+  // Miss — build the prompt and generate. A cutout wants an isolated subject (the brief subject, framed
+  // for clean removal), so it skips the environmental scene call; a full-bleed plate composes a per-slide
+  // scene (fail-soft to a brief subject).
+  const scene = params.cutout
+    ? null
+    : await composeScene({ headline: params.slide.headline, body: params.slide.body, brief: params.brief })
   const structured = buildImagePrompt({
     role: params.role,
     brief: params.brief,
@@ -61,13 +68,19 @@ export async function resolvePlate(params: ResolvePlateParams): Promise<string |
     feedSystemSlug: params.feedSystemSlug,
     ratio: params.ratio,
     scene,
+    cutout: params.cutout,
   })
   const { prompt } = formatForModel(structured, 'flux')
 
   const generated = await generatePlate({ prompt, ratio: params.ratio, seed: params.seed })
   if (!generated) return null
 
-  const stored = await uploadPlate(params.clientId, generated.url)
+  // A cutout is background-removed into a transparent PNG before storage; failure keeps the colour block
+  // alone (return null → no src).
+  const source = params.cutout ? await removeBackground(generated.url) : generated
+  if (!source) return null
+
+  const stored = await uploadPlate(params.clientId, source.url)
   if (!stored) return null // don't persist an ephemeral fal URL into post_visuals — keep the gradient
 
   // Index it for reuse. A concurrent generate of the same hash can lose the unique-index race; that's

@@ -75,6 +75,18 @@ describe('buildImagePrompt', () => {
     expect(p.style).toContain('editorial')
     expect(p.negative).toBe(NEGATIVE_PROMPT)
   })
+
+  it('cutout mode → isolated subject on a plain ground, framed for clean removal', () => {
+    const p = buildImagePrompt({
+      role: 'interior', brief, colors: DEFAULT_TOKENS.color, feedSystemSlug: 'bold-blocks', ratio: '4:5',
+      scene: 'a ceramic pour-over coffee dripper', cutout: true,
+    })
+    expect(p.subject).toContain('isolated subject')
+    expect(p.subject).toContain('a ceramic pour-over coffee dripper')
+    // Framing is the removal-friendly directive, not the ratio negative-space one.
+    expect(p.framing).toContain('background removal')
+    expect(p.framing).not.toContain('4:5')
+  })
 })
 
 describe('formatForModel', () => {
