@@ -1,0 +1,212 @@
+'use client'
+
+import {
+  resolve,
+  setLayerRotation,
+  setLayerSize,
+  setPlateTreatment,
+  setShapeFillRole,
+  setTextContent,
+  updateTextStyle,
+  type Binding,
+  type BrandTokens,
+  type ColorRole,
+  type Composition,
+  type Layer,
+  type Treatment,
+} from '@/lib/scene-graph'
+
+const ROLES: ColorRole[] = ['surface', 'ink', 'accent', 'accent-deep', 'line']
+const WEIGHTS = [300, 400, 500, 600, 700, 800, 900]
+const TREATMENTS: Treatment[] = ['none', 'duotone', 'tint', 'grain', 'mono']
+const ALIGNS: Array<'left' | 'center' | 'right'> = ['left', 'center', 'right']
+
+type Edit = (mutate: (c: Composition) => Composition) => void
+
+const label: React.CSSProperties = {
+  fontSize: 9,
+  fontWeight: 500,
+  letterSpacing: 1.2,
+  textTransform: 'uppercase',
+  color: 'var(--color-muted)',
+  marginBottom: 5,
+}
+const row: React.CSSProperties = { display: 'flex', flexDirection: 'column', gap: 4 }
+const num: React.CSSProperties = {
+  width: '100%',
+  fontSize: 12,
+  padding: '5px 7px',
+  borderRadius: 7,
+  border: '0.5px solid var(--color-border-1)',
+  background: 'var(--color-surface)',
+  color: 'var(--color-text-1)',
+}
+
+/** The active brand role a colour binding points at, or null when it's a literal override. */
+function boundRole(binding: Binding<string>): ColorRole | null {
+  return binding.mode === 'bound' && binding.token.startsWith('color.')
+    ? (binding.token.slice('color.'.length) as ColorRole)
+    : null
+}
+
+function Chip({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        fontSize: 11,
+        padding: '4px 9px',
+        borderRadius: 7,
+        border: `0.5px solid ${active ? 'var(--color-ink)' : 'var(--color-border-1)'}`,
+        background: active ? 'var(--color-ink)' : 'transparent',
+        color: active ? 'var(--color-surface)' : 'var(--color-text-2)',
+        cursor: 'pointer',
+      }}
+    >
+      {children}
+    </button>
+  )
+}
+
+function RoleSwatches({ tokens, active, onPick }: { tokens: BrandTokens; active: ColorRole | null; onPick: (r: ColorRole) => void }) {
+  return (
+    <div style={{ display: 'flex', gap: 6 }}>
+      {ROLES.map((role) => (
+        <button
+          key={role}
+          title={role}
+          onClick={() => onPick(role)}
+          style={{
+            width: 22,
+            height: 22,
+            borderRadius: 6,
+            background: tokens.color[role],
+            border: `2px solid ${active === role ? 'var(--color-ink)' : 'var(--color-border-1)'}`,
+            cursor: 'pointer',
+            flexShrink: 0,
+          }}
+        />
+      ))}
+    </div>
+  )
+}
+
+function TextControls({ layer, tokens, onEdit }: { layer: Extract<Layer, { type: 'text' }>; tokens: BrandTokens; onEdit: Edit }) {
+  const size = Math.round(resolve<number>(layer.size, tokens))
+  const weight = resolve<number>(layer.weight, tokens)
+  const align = resolve<'left' | 'center' | 'right'>(layer.align, tokens)
+  return (
+    <>
+      <div style={row}>
+        <div style={label}>Text</div>
+        <textarea
+          value={layer.content}
+          onChange={(e) => onEdit((c) => setTextContent(c, layer.id, e.target.value))}
+          rows={2}
+          style={{ ...num, resize: 'vertical', lineHeight: 1.3 }}
+        />
+      </div>
+      <div style={row}>
+        <div style={label}>Size</div>
+        <input type="number" value={size} min={1} onChange={(e) => onEdit((c) => updateTextStyle(c, layer.id, { size: Number(e.target.value) }))} style={num} />
+      </div>
+      <div style={row}>
+        <div style={label}>Weight</div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+          {WEIGHTS.map((w) => (
+            <Chip key={w} active={weight === w} onClick={() => onEdit((c) => updateTextStyle(c, layer.id, { weight: w }))}>
+              {w}
+            </Chip>
+          ))}
+        </div>
+      </div>
+      <div style={row}>
+        <div style={label}>Align</div>
+        <div style={{ display: 'flex', gap: 5 }}>
+          {ALIGNS.map((a) => (
+            <Chip key={a} active={align === a} onClick={() => onEdit((c) => updateTextStyle(c, layer.id, { align: a }))}>
+              {a}
+            </Chip>
+          ))}
+        </div>
+      </div>
+      <div style={row}>
+        <div style={label}>Colour</div>
+        <RoleSwatches tokens={tokens} active={boundRole(layer.color)} onPick={(role) => onEdit((c) => updateTextStyle(c, layer.id, { colorRole: role }))} />
+      </div>
+    </>
+  )
+}
+
+function PlateControls({ layer, tokens, onEdit }: { layer: Extract<Layer, { type: 'plate' }>; tokens: BrandTokens; onEdit: Edit }) {
+  const treatment = resolve<Treatment>(layer.treatment, tokens)
+  if (layer.cutout) return <div style={{ fontSize: 11, color: 'var(--color-muted)' }}>Subject cutout — treatment fixed.</div>
+  return (
+    <div style={row}>
+      <div style={label}>Treatment</div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+        {TREATMENTS.map((t) => (
+          <Chip key={t} active={treatment === t} onClick={() => onEdit((c) => setPlateTreatment(c, layer.id, t))}>
+            {t}
+          </Chip>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function ShapeControls({ layer, tokens, onEdit }: { layer: Extract<Layer, { type: 'shape' }>; tokens: BrandTokens; onEdit: Edit }) {
+  return (
+    <div style={row}>
+      <div style={label}>Fill</div>
+      <RoleSwatches tokens={tokens} active={boundRole(layer.fill)} onPick={(role) => onEdit((c) => setShapeFillRole(c, layer.id, role))} />
+    </div>
+  )
+}
+
+function TransformControls({ layer, onEdit }: { layer: Layer; onEdit: Edit }) {
+  const { w, h, rotate } = layer.rect
+  return (
+    <>
+      <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ ...row, flex: 1 }}>
+          <div style={label}>Width</div>
+          <input type="number" value={Math.round(w)} min={1} onChange={(e) => onEdit((c) => setLayerSize(c, layer.id, Number(e.target.value), h))} style={num} />
+        </div>
+        <div style={{ ...row, flex: 1 }}>
+          <div style={label}>Height</div>
+          <input type="number" value={Math.round(h)} min={1} onChange={(e) => onEdit((c) => setLayerSize(c, layer.id, w, Number(e.target.value)))} style={num} />
+        </div>
+      </div>
+      <div style={row}>
+        <div style={label}>Rotation {Math.round(rotate)}°</div>
+        <input
+          type="range"
+          min={-180}
+          max={180}
+          value={rotate}
+          onChange={(e) => onEdit((c) => setLayerRotation(c, layer.id, Number(e.target.value)))}
+          style={{ width: '100%' }}
+        />
+      </div>
+    </>
+  )
+}
+
+/**
+ * The visual editor's property panel: controls for the selected layer, all routed through the pure
+ * `scene-graph/edit` model (tested), so this is thin presentational glue. Text gets content/size/weight/
+ * align/colour; plate gets a treatment; shape gets a fill; every layer gets width/height/rotation. Colours
+ * bind to brand roles so edits stay on-brand and recolour with the kit.
+ */
+export function LayerPropertyPanel({ layer, tokens, onEdit }: { layer: Layer; tokens: BrandTokens; onEdit: Edit }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'capitalize' }}>{layer.name || layer.type}</div>
+      {layer.type === 'text' && <TextControls layer={layer} tokens={tokens} onEdit={onEdit} />}
+      {layer.type === 'plate' && <PlateControls layer={layer} tokens={tokens} onEdit={onEdit} />}
+      {layer.type === 'shape' && <ShapeControls layer={layer} tokens={tokens} onEdit={onEdit} />}
+      <TransformControls layer={layer} onEdit={onEdit} />
+    </div>
+  )
+}

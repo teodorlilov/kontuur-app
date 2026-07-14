@@ -8,6 +8,7 @@ import { REFERENCE_MARKS } from '@/lib/renderer/reference-compositions'
 import { kitFontsHref } from '@/lib/render/google-fonts'
 import { useKitFonts } from '@/lib/render/use-kit-fonts'
 import { clampRectToCanvas, findLayer, setLayerRect, type BrandTokens, type Composition } from '@/lib/scene-graph'
+import { LayerPropertyPanel } from './layer-property-panel'
 
 type SlideData = { slideIndex: number; composition: Composition }
 type VisualsResponse = { slides: SlideData[]; tokens: BrandTokens }
@@ -186,6 +187,14 @@ export function PostVisualEditor({
     }
   }, [open, composition, tokens, selectedId, redrawTick, updateComposition])
 
+  const selectedLayer = selectedId && composition ? findLayer(composition, selectedId) ?? null : null
+  const onEdit = useCallback(
+    (mutate: (c: Composition) => Composition) => {
+      if (composition) updateComposition(mutate(composition))
+    },
+    [composition, updateComposition]
+  )
+
   const handleClose = useCallback(() => {
     if (dirty && !window.confirm('Discard unsaved changes to the visuals?')) return
     onClose()
@@ -240,11 +249,11 @@ export function PostVisualEditor({
           background: 'var(--color-surface)',
           borderRadius: 16,
           border: '0.5px solid var(--color-border-1)',
-          width: 'min(760px, 100%)',
+          width: 'min(860px, 100%)',
           maxHeight: '100%',
           display: 'flex',
           flexDirection: 'column',
-          overflow: 'hidden',
+          overflow: 'auto',
         }}
       >
         <div
@@ -292,16 +301,28 @@ export function PostVisualEditor({
           </div>
         )}
 
-        <div style={{ padding: 18, display: 'flex', justifyContent: 'center', minHeight: 200 }}>
+        <div style={{ padding: 18, display: 'flex', gap: 16, minHeight: 220, alignItems: 'flex-start' }}>
           {slides ? (
-            <div ref={containerRef} style={{ width: MAX_CANVAS_W, maxWidth: '100%' }} />
+            <>
+              <div style={{ flex: '0 0 auto' }}>
+                <div ref={containerRef} style={{ width: MAX_CANVAS_W, maxWidth: '100%' }} />
+                <div style={{ marginTop: 8, fontSize: 11, color: 'var(--color-muted)', textAlign: 'center' }}>
+                  {selectedLayer ? 'Drag to reposition — or edit properties →' : 'Click an element to select it.'}
+                </div>
+              </div>
+              <div style={{ flex: 1, minWidth: 190, borderLeft: '0.5px solid var(--color-border-1)', paddingLeft: 16 }}>
+                {selectedLayer && tokens ? (
+                  <LayerPropertyPanel layer={selectedLayer} tokens={tokens} onEdit={onEdit} />
+                ) : (
+                  <div style={{ fontSize: 11, color: 'var(--color-muted)' }}>
+                    Select an element to edit its text, colour, size, and position.
+                  </div>
+                )}
+              </div>
+            </>
           ) : (
-            <div style={{ fontSize: 12, color: 'var(--color-muted)', alignSelf: 'center' }}>Loading…</div>
+            <div style={{ fontSize: 12, color: 'var(--color-muted)', margin: 'auto' }}>Loading…</div>
           )}
-        </div>
-
-        <div style={{ padding: '0 18px 14px', fontSize: 11, color: 'var(--color-muted)', textAlign: 'center' }}>
-          {selectedId ? 'Drag the selected element to reposition it.' : 'Click an element to select it.'}
         </div>
       </div>
     </div>

@@ -1,4 +1,7 @@
-import type { Composition, Layer, Rect } from './types'
+import type { Binding, ColorRole, Composition, Layer, Rect, Treatment } from './types'
+
+const lit = <T>(value: T): Binding<T> => ({ mode: 'literal', value })
+const boundColor = (role: ColorRole): Binding<string> => ({ mode: 'bound', token: `color.${role}` })
 
 /**
  * Pure, immutable edits to a composition — the model the visual editor's canvas interactions map onto
@@ -40,4 +43,46 @@ export function clampRectToCanvas(rect: Rect, size: { w: number; h: number }, ma
 /** Set a text layer's content (a no-op on non-text layers). */
 export function setTextContent(composition: Composition, layerId: string, content: string): Composition {
   return updateLayer(composition, layerId, (l) => (l.type === 'text' ? { ...l, content } : l))
+}
+
+/** Rotate a layer (degrees), around its centre — matching the renderer's rotation origin. */
+export function setLayerRotation(composition: Composition, layerId: string, rotate: number): Composition {
+  return updateLayer(composition, layerId, (l) => ({ ...l, rect: { ...l.rect, rotate } }))
+}
+
+/** Resize a layer's box (min 1px each side); position and rotation are untouched. */
+export function setLayerSize(composition: Composition, layerId: string, w: number, h: number): Composition {
+  return updateLayer(composition, layerId, (l) => ({ ...l, rect: { ...l.rect, w: Math.max(1, w), h: Math.max(1, h) } }))
+}
+
+/**
+ * Patch a text layer's type properties from the property panel: literal size/weight/align overrides, and
+ * colour re-bound to a brand role (so text stays on-brand and recolours with the kit). No-op elsewhere.
+ */
+export function updateTextStyle(
+  composition: Composition,
+  layerId: string,
+  patch: { size?: number; weight?: number; align?: 'left' | 'center' | 'right'; colorRole?: ColorRole }
+): Composition {
+  return updateLayer(composition, layerId, (l) =>
+    l.type !== 'text'
+      ? l
+      : {
+          ...l,
+          ...(patch.size !== undefined ? { size: lit(Math.max(1, patch.size)) } : {}),
+          ...(patch.weight !== undefined ? { weight: lit(patch.weight) } : {}),
+          ...(patch.align !== undefined ? { align: lit(patch.align) } : {}),
+          ...(patch.colorRole !== undefined ? { color: boundColor(patch.colorRole) } : {}),
+        }
+  )
+}
+
+/** Set a plate layer's photo treatment (duotone/tint/grain/mono/none). No-op on non-plate layers. */
+export function setPlateTreatment(composition: Composition, layerId: string, treatment: Treatment): Composition {
+  return updateLayer(composition, layerId, (l) => (l.type === 'plate' ? { ...l, treatment: lit(treatment) } : l))
+}
+
+/** Re-bind a shape layer's fill to a brand colour role. No-op on non-shape layers. */
+export function setShapeFillRole(composition: Composition, layerId: string, role: ColorRole): Composition {
+  return updateLayer(composition, layerId, (l) => (l.type === 'shape' ? { ...l, fill: boundColor(role) } : l))
 }

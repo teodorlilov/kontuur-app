@@ -1,6 +1,18 @@
 import { describe, expect, it } from 'vitest'
-import type { Composition, Rect, TextLayer } from '../types'
-import { clampRectToCanvas, findLayer, selectableLayers, setLayerRect, setTextContent, updateLayer } from '../edit'
+import type { Composition, PlateLayer, Rect, ShapeLayer, TextLayer } from '../types'
+import {
+  clampRectToCanvas,
+  findLayer,
+  selectableLayers,
+  setLayerRect,
+  setLayerRotation,
+  setLayerSize,
+  setPlateTreatment,
+  setShapeFillRole,
+  setTextContent,
+  updateLayer,
+  updateTextStyle,
+} from '../edit'
 
 const rect = (x: number, y: number, w: number, h: number): Rect => ({ x, y, w, h, rotate: 0 })
 const lit = <T>(value: T) => ({ mode: 'literal' as const, value })
@@ -74,12 +86,66 @@ describe('setTextContent', () => {
   })
 
   it('is a no-op on a non-text layer', () => {
-    const shape: Composition['layers'][number] = {
-      id: 's', name: 's', locked: false, hidden: false, rect: rect(0, 0, 10, 10),
-      opacity: lit(1), blendMode: lit('normal'), clip: { kind: 'none' },
-      type: 'shape', shape: 'rect', fill: { mode: 'bound', token: 'color.accent' },
-    }
-    const c = comp([shape])
-    expect(setTextContent(c, 's', 'x').layers[0]).toEqual(shape)
+    const c = comp([shapeLayer('s')])
+    expect(setTextContent(c, 's', 'x').layers[0]).toEqual(shapeLayer('s'))
+  })
+})
+
+const shapeLayer = (id: string): ShapeLayer => ({
+  id, name: id, locked: false, hidden: false, rect: rect(0, 0, 10, 10),
+  opacity: lit(1), blendMode: lit('normal'), clip: { kind: 'none' },
+  type: 'shape', shape: 'rect', fill: { mode: 'bound', token: 'color.accent' },
+})
+
+const plateLayer = (id: string): PlateLayer => ({
+  id, name: id, locked: false, hidden: false, rect: rect(0, 0, 100, 100),
+  opacity: lit(1), blendMode: lit('normal'), clip: { kind: 'none' },
+  type: 'plate', source: 'generated', editHeadId: null, src: '', treatment: lit('duotone'),
+})
+
+describe('setLayerRotation / setLayerSize', () => {
+  it('rotates around the layer, keeping position and size', () => {
+    const next = setLayerRotation(comp([textLayer('a')]), 'a', 15)
+    expect(findLayer(next, 'a')?.rect).toEqual({ x: 0, y: 0, w: 100, h: 40, rotate: 15 })
+  })
+
+  it('resizes with a 1px floor, keeping position', () => {
+    const next = setLayerSize(comp([textLayer('a', { rect: rect(10, 20, 100, 40) })]), 'a', 250, 0)
+    expect(findLayer(next, 'a')?.rect).toEqual({ x: 10, y: 20, w: 250, h: 1, rotate: 0 })
+  })
+})
+
+describe('updateTextStyle', () => {
+  it('sets literal size/weight/align and binds colour to a brand role', () => {
+    const next = updateTextStyle(comp([textLayer('a')]), 'a', { size: 72, weight: 900, align: 'center', colorRole: 'accent' })
+    const t = findLayer(next, 'a') as TextLayer
+    expect(t.size).toEqual({ mode: 'literal', value: 72 })
+    expect(t.weight).toEqual({ mode: 'literal', value: 900 })
+    expect(t.align).toEqual({ mode: 'literal', value: 'center' })
+    expect(t.color).toEqual({ mode: 'bound', token: 'color.accent' })
+  })
+
+  it('only patches the fields given, floors size at 1, and no-ops off text', () => {
+    const t = findLayer(updateTextStyle(comp([textLayer('a')]), 'a', { size: 0 }), 'a') as TextLayer
+    expect(t.size).toEqual({ mode: 'literal', value: 1 })
+    expect(t.weight).toEqual({ mode: 'literal', value: 700 }) // untouched
+    expect(updateTextStyle(comp([shapeLayer('s')]), 's', { size: 40 }).layers[0]).toEqual(shapeLayer('s'))
+  })
+})
+
+describe('setPlateTreatment / setShapeFillRole', () => {
+  it('sets a plate treatment', () => {
+    const p = findLayer(setPlateTreatment(comp([plateLayer('p')]), 'p', 'mono'), 'p') as PlateLayer
+    expect(p.treatment).toEqual({ mode: 'literal', value: 'mono' })
+  })
+
+  it('binds a shape fill to a role', () => {
+    const s = findLayer(setShapeFillRole(comp([shapeLayer('s')]), 's', 'ink'), 's') as ShapeLayer
+    expect(s.fill).toEqual({ mode: 'bound', token: 'color.ink' })
+  })
+
+  it('each is a no-op on the wrong layer type', () => {
+    expect(setPlateTreatment(comp([shapeLayer('s')]), 's', 'mono').layers[0]).toEqual(shapeLayer('s'))
+    expect(setShapeFillRole(comp([plateLayer('p')]), 'p', 'ink').layers[0]).toEqual(plateLayer('p'))
   })
 })
