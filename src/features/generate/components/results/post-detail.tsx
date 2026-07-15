@@ -31,6 +31,7 @@ export function PostDetail({ post, validationData, onApprove, onDiscard, onRegen
     slidesJson,
     setSlidesJson,
     setVisuals,
+    setRenderBundle,
     approving,
     regenerating,
     approve,
@@ -69,6 +70,7 @@ export function PostDetail({ post, validationData, onApprove, onDiscard, onRegen
             clientId={post.client_id}
             slides={(slidesJson as CarouselSlide[] | null) ?? []}
             onVisualsChange={setVisuals}
+            onRenderable={setRenderBundle}
           />
         )}
         {showRewrite && (

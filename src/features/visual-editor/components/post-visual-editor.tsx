@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Konva from 'konva'
 import { Button } from '@/components/ui/button'
-import { buildComposition, loadCompositionImages, renderCompositionToDataURL } from '@/lib/renderer/konva'
+import { buildComposition, loadCompositionImages } from '@/lib/renderer/konva'
+import { exportSlidesToPostImages } from '@/lib/renderer/export-slides'
 import { REFERENCE_MARKS } from '@/lib/renderer/reference-compositions'
 import { kitFontsHref } from '@/lib/render/google-fonts'
 import { useKitFonts } from '@/lib/render/use-kit-fonts'
@@ -278,34 +279,6 @@ export function PostVisualEditor({
     onClose()
   }, [dirty, onClose])
 
-  // Render each slide to a PNG and upload it to post_images at its position — the publishable render.
-  // Sequential (dispose each stage before the next) to avoid an N-slide memory spike. Per-slide fail-soft.
-  const exportImages = useCallback(
-    async (id: string, list: SlideData[], kit: BrandTokens) => {
-      for (let i = 0; i < list.length; i++) {
-        setStatusMsg(`Exporting ${i + 1}/${list.length}…`)
-        try {
-          // JPEG (opaque slides) keeps files well under the 8 MB upload cap that a 2× PNG can breach.
-          const dataUrl = await renderCompositionToDataURL(list[i]!.composition, kit, {
-            marks: REFERENCE_MARKS,
-            pixelRatio: 2,
-            mimeType: 'image/jpeg',
-            quality: 0.92,
-          })
-          if (!dataUrl) continue
-          const blob = await (await fetch(dataUrl)).blob()
-          const form = new FormData()
-          form.append('file', new File([blob], `slide-${list[i]!.slideIndex + 1}.jpg`, { type: 'image/jpeg' }))
-          form.append('position', String(list[i]!.slideIndex))
-          await fetch(`/api/posts/${id}/images`, { method: 'POST', body: form })
-        } catch (e) {
-          console.error('[visual-editor] export failed for slide', i, e)
-        }
-      }
-    },
-    []
-  )
-
   const save = useCallback(async () => {
     if (!slides) return
     // Draft mode: hand the edited slides back; the wizard persists them (and imagery) on approve.
@@ -324,8 +297,10 @@ export function PostVisualEditor({
         body: JSON.stringify({ slides: slides.map((s) => ({ slideIndex: s.slideIndex, composition: s.composition })) }),
       })
       if (!res.ok) return
-      // Persist done — now export the publishable PNGs so the edits reach the published post.
-      if (tokens) await exportImages(postId, slides, tokens)
+      // Persist done — now export the publishable images so the edits reach the published post.
+      if (tokens) {
+        await exportSlidesToPostImages(postId, slides, tokens, (done, total) => setStatusMsg(`Exporting ${done + 1}/${total}…`))
+      }
       setDirty(false)
       onSaved?.()
       onClose()
@@ -333,7 +308,7 @@ export function PostVisualEditor({
       setSaving(false)
       setStatusMsg(null)
     }
-  }, [slides, postId, tokens, onSaved, onClose, onSaveDraft, exportImages])
+  }, [slides, postId, tokens, onSaved, onClose, onSaveDraft])
 
   if (!open) return null
 

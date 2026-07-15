@@ -2,6 +2,8 @@
 
 import { useState } from 'react'
 import { toast } from '@/components/ui/toast'
+import { exportSlidesToPostImages, type ExportSlide } from '@/lib/renderer/export-slides'
+import type { BrandTokens } from '@/lib/scene-graph'
 import type { PostData, ValidationData } from '@/types/post'
 
 interface UsePostActionsOptions {
@@ -12,11 +14,15 @@ interface UsePostActionsOptions {
 
 /** Operator-edited slide compositions from the wizard visual editor, sent with approve so they persist. */
 type EditedVisuals = Array<{ slideIndex: number; composition: unknown }>
+/** The currently-displayed slide compositions + tokens — rendered to post_images on approve so the post
+ *  publishes with visuals, whether or not the operator opened the editor. */
+type RenderBundle = { slides: ExportSlide[]; tokens: BrandTokens }
 
 export function usePostActions({ post, onApprove, onRegenerate }: UsePostActionsOptions) {
   const [caption, setCaption] = useState(post.caption ?? '')
   const [slidesJson, setSlidesJson] = useState(post.slides_json)
   const [visuals, setVisuals] = useState<EditedVisuals | null>(null)
+  const [renderBundle, setRenderBundle] = useState<RenderBundle | null>(null)
   const [approving, setApproving] = useState(false)
   const [regenerating, setRegenerating] = useState(false)
 
@@ -54,6 +60,13 @@ export function usePostActions({ post, onApprove, onRegenerate }: UsePostActions
         }),
       })
       if (res.ok) {
+        // Render the designed slides to post_images on the new post, so it publishes with visuals even
+        // if the operator never opened the editor. Best-effort — a render failure never blocks approval.
+        const data = (await res.json().catch(() => ({}))) as { post?: { id?: string } }
+        const newId = data.post?.id
+        if (newId && renderBundle && renderBundle.slides.length > 0) {
+          await exportSlidesToPostImages(newId, renderBundle.slides, renderBundle.tokens)
+        }
         toast.success('Post approved')
         onApprove(post.id)
       } else {
@@ -136,6 +149,7 @@ export function usePostActions({ post, onApprove, onRegenerate }: UsePostActions
     setSlidesJson,
     visuals,
     setVisuals,
+    setRenderBundle,
     approving,
     regenerating,
     copyCaption,

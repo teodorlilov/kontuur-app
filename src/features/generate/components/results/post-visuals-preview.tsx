@@ -22,10 +22,13 @@ export function PostVisualsPreview({
   clientId,
   slides,
   onVisualsChange,
+  onRenderable,
 }: {
   clientId: string
   slides: CarouselSlide[]
   onVisualsChange?: (visuals: Array<{ slideIndex: number; composition: unknown }> | null) => void
+  /** Reports the currently-displayed slides + tokens so approve can render them to post_images. */
+  onRenderable?: (bundle: { slides: SlideData[]; tokens: BrandTokens } | null) => void
 }) {
   const [kit, setKit] = useState<VisualKit | null>(null)
   const [plates, setPlates] = useState<Record<number, string> | null>(null)
@@ -92,6 +95,17 @@ export function PostVisualsPreview({
   }, [kit, slides, plates])
 
   const displayCompositions = edited ?? baseCompositions
+
+  // Report the current slides + tokens up so approve can render them to post_images (publishable images),
+  // whether or not the operator opened the editor.
+  useEffect(() => {
+    if (!onRenderable) return
+    if (kit && displayCompositions) {
+      onRenderable({ slides: displayCompositions.map((composition, slideIndex) => ({ slideIndex, composition })), tokens: kit.tokens })
+    } else {
+      onRenderable(null)
+    }
+  }, [kit, displayCompositions, onRenderable])
 
   const editorInitial = useMemo(() => {
     if (!kit || !displayCompositions) return null
