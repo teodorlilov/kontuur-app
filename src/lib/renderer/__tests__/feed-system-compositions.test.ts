@@ -5,6 +5,8 @@ import {
   feedSystemCompositions,
   feedSystemPack,
   feedSystemTokens,
+  filmstripFrames,
+  styleShowcase,
   type FeedSystemSlug,
 } from '../feed-system-compositions'
 
@@ -56,5 +58,40 @@ describe('feed-system composition packs', () => {
 
     const quiet = feedSystemTokens('quiet-grid', DEFAULT_TOKENS)
     expect(quiet.type.body.weights).toContain(300)
+  })
+})
+
+describe('styleShowcase', () => {
+  it('opens on an opener and ends on a closer, for every style', () => {
+    for (const slug of ['editorial', 'bold-blocks', 'quiet-grid', 'illustrative']) {
+      const s = styleShowcase(slug)
+      expect(s.length, slug).toBeGreaterThanOrEqual(3)
+      expect(s[0]!.kind, slug).toBe('opener')
+      expect(s[s.length - 1]!.kind, slug).toBe('closer')
+    }
+  })
+
+  it('illustrative shows its own vector/graphic layouts, never editorial ones', () => {
+    const ids = styleShowcase('illustrative').map((a) => a.id)
+    expect(ids).toContain('vector-cover')
+    expect(ids.some((id) => id.startsWith('editorial-'))).toBe(false)
+  })
+
+  it('falls back to editorial for an unknown slug', () => {
+    expect(styleShowcase('nope').map((a) => a.id)).toEqual(styleShowcase('editorial').map((a) => a.id))
+  })
+})
+
+describe('filmstripFrames', () => {
+  it('picks n evenly-spaced frames including the first and last', () => {
+    const s = styleShowcase('editorial')
+    const f = filmstripFrames(s, 3)
+    expect(f).toHaveLength(3)
+    expect(f[0]).toBe(s[0])
+    expect(f[2]).toBe(s[s.length - 1])
+  })
+
+  it('returns all frames when the showcase is shorter than n', () => {
+    expect(filmstripFrames(styleShowcase('editorial').slice(0, 2), 3)).toHaveLength(2)
   })
 })

@@ -21,4 +21,9 @@ export const STARTER_FEED_SYSTEMS: FeedSystemOption[] = [
     name: 'Quiet grid',
     description: 'Light type on white, thin frames and dot grids, generous whitespace. Never generates a photo.',
   },
+  {
+    slug: 'illustrative',
+    name: 'Illustrative',
+    description: 'Vector illustration and colour blocks instead of photography. Generated brand marks, no photos.',
+  },
 ]

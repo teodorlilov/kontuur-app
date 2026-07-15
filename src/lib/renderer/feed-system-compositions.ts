@@ -1,6 +1,6 @@
 import type { BrandTokens, Composition } from '@/lib/scene-graph'
 import { ensureLegibleColors } from '@/lib/brand-kit/extract/color-roles'
-import { getArchetype } from './archetypes'
+import { getArchetype, type Archetype } from './archetypes'
 import { getStyle } from './styles'
 
 /**
@@ -12,7 +12,7 @@ import { getStyle } from './styles'
  */
 
 export type ReferenceRole = 'cover' | 'statement' | 'list' | 'quote' | 'cta'
-export const ROLE_ORDER: readonly ReferenceRole[] = ['cover', 'statement', 'list', 'quote', 'cta']
+const ROLE_ORDER: readonly ReferenceRole[] = ['cover', 'statement', 'list', 'quote', 'cta']
 
 export type FeedSystemSlug = 'editorial' | 'bold-blocks' | 'quiet-grid'
 
@@ -51,6 +51,26 @@ export function feedSystemPack(slug: string | null | undefined): Record<Referenc
 export function feedSystemCompositions(slug: string | null | undefined): Composition[] {
   const pack = feedSystemPack(slug)
   return ROLE_ORDER.map((role) => pack[role])
+}
+
+/**
+ * A style's **archetype showcase** — its actual range of layouts (opener → content → closer), drawn from
+ * the registry so it works for *every* style, including new ones like `illustrative` that have no 5-role
+ * pack. This is what the picker filmstrip and the preview grid render, so a style's variety (and a
+ * no-photo/vector style's true look) is visible rather than falling back to the editorial five.
+ */
+export function styleShowcase(slug: string | null | undefined): Archetype[] {
+  const style = getStyle(slug)
+  const resolved = style.archetypes.map(getArchetype).filter((a): a is Archetype => Boolean(a))
+  const byKind = (k: Archetype['kind']) => resolved.filter((a) => a.kind === k)
+  return [...byKind('opener'), ...byKind('content'), ...byKind('closer')]
+}
+
+/** Pick `n` evenly-spaced frames across a showcase — the filmstrip thumbnails for a picker card (opener …
+ *  a content layout … closer), so a card shows the style's range at a glance rather than one cover. */
+export function filmstripFrames(showcase: Archetype[], n = 3): Archetype[] {
+  if (showcase.length <= n) return showcase
+  return Array.from({ length: n }, (_, i) => showcase[Math.round((i * (showcase.length - 1)) / (n - 1))]!)
 }
 
 const mergeWeights = (a: number[], b: number[]): number[] => [...new Set([...a, ...b])].sort((x, y) => x - y)

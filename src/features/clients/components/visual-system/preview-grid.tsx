@@ -3,7 +3,7 @@
 import type { BrandTokens, Composition } from '@/lib/scene-graph'
 import { kitFontsHref } from '@/lib/render/google-fonts'
 import { useKitFonts } from '@/lib/render/use-kit-fonts'
-import { feedSystemCompositions, feedSystemTokens, ROLE_ORDER } from '@/lib/renderer/feed-system-compositions'
+import { feedSystemTokens, styleShowcase } from '@/lib/renderer/feed-system-compositions'
 import type { AspectRatio } from '@/lib/renderer/layout/anchor'
 import { PreviewCell } from './preview-cell'
 
@@ -16,9 +16,10 @@ function withPlateSrc(composition: Composition, src: string | undefined): Compos
 
 /**
  * A live grid of real compositions in the proposed tokens (§2.4/§3.1). Editing a colour re-renders all
- * cells instantly, client-side, with no request. Renders the *selected* feed system's five compositions
- * (cycled to fill the grid), so switching systems visibly changes the whole preview. Loads the kit's
- * fonts — at the weights that system needs — once, so the preview matches an exported render.
+ * cells instantly, client-side, with no request. Renders the *selected* style's **archetype showcase**
+ * (its actual range of layouts, cycled to fill the grid), so switching styles visibly changes the whole
+ * preview and a no-photo/vector style reads correctly. Loads the kit's fonts — at the weights that style
+ * needs — once, so the preview matches an exported render.
  */
 export function PreviewGrid({
   tokens,
@@ -36,14 +37,13 @@ export function PreviewGrid({
   cellWidth?: number
   /** The client's language — localizes the placeholder demo copy (English for non-Bulgarian). */
   language?: string
-  /** Generated design-system plates by role (onboarding). Filled into the plate layer under the live
-   *  token type; absent → the gradient plate (unchanged behaviour). */
+  /** Generated design-system plates keyed by showcase archetype id. Filled into that archetype's plate
+   *  layer under the live token type; absent → the gradient plate (unchanged behaviour). */
   plates?: Record<string, string>
 }) {
   const rendered = feedSystemTokens(feedSystemSlug, tokens)
   useKitFonts(kitFontsHref(rendered))
-  const base = feedSystemCompositions(feedSystemSlug)
-  const compositions = plates ? base.map((c, i) => withPlateSrc(c, plates[ROLE_ORDER[i] ?? ''])) : base
+  const compositions = styleShowcase(feedSystemSlug).map((a) => withPlateSrc(a.composition, plates?.[a.id]))
   const cells = Array.from({ length: columns * columns }, (_, i) => compositions[i % compositions.length])
 
   return (

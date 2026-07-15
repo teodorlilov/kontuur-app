@@ -3,16 +3,19 @@
 import type { BrandTokens } from '@/lib/scene-graph'
 import { kitFontsHref } from '@/lib/render/google-fonts'
 import { useKitFonts } from '@/lib/render/use-kit-fonts'
-import { feedSystemPack, feedSystemTokens } from '@/lib/renderer/feed-system-compositions'
+import { feedSystemTokens, filmstripFrames, styleShowcase } from '@/lib/renderer/feed-system-compositions'
+import { getStyle } from '@/lib/renderer/styles'
 import type { FeedSystemOption } from '@/lib/brand-kit/feed-systems'
 import { PreviewCell } from './preview-cell'
 
 export type { FeedSystemOption }
 
 /**
- * The three feed-system cards (F-3): same palette, different system, each with a live cover preview of
- * *that* system's cover composition in the client's colours. The recommendation is stated as a sentence,
- * not a badge. No price on any card. Colours never differ between systems — only type, chrome, and layout.
+ * The feed-system cards (F-3): same palette, different system, each with a live **filmstrip** of three of
+ * *that* style's actual layouts (opener → a content layout → closer) in the client's colours — so a card
+ * shows the style's range, not one cover (and a no-photo/vector style reads correctly instead of falling
+ * back to editorial). A crisp one-line character sits under the name; the recommendation is a sentence,
+ * not a badge. Colours never differ between systems — only type, chrome, and layout.
  */
 export function FeedSystemPicker({
   systems,
@@ -39,6 +42,7 @@ export function FeedSystemPicker({
           const isSelected = system.slug === selectedSlug
           const isRecommended = system.slug === recommendedSlug
           const cardTokens = feedSystemTokens(system.slug, tokens)
+          const frames = filmstripFrames(styleShowcase(system.slug), 3)
           return (
             <button
               key={system.slug}
@@ -57,12 +61,16 @@ export function FeedSystemPicker({
                 fontFamily: 'inherit',
               }}
             >
-              <PreviewCell composition={feedSystemPack(system.slug).cover} tokens={cardTokens} width={166} language={language} />
+              <div style={{ display: 'flex', gap: 6 }}>
+                {frames.map((arch) => (
+                  <PreviewCell key={arch.id} composition={arch.composition} tokens={cardTokens} width={51} language={language} />
+                ))}
+              </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text-1)' }}>{system.name}</span>
                 {isSelected && <span style={{ fontSize: 12, color: 'var(--color-terracotta)' }}>✓</span>}
               </div>
-              <p style={{ fontSize: 11, lineHeight: 1.5, color: 'var(--color-text-2)', margin: 0 }}>{system.description}</p>
+              <p style={{ fontSize: 11, lineHeight: 1.5, color: 'var(--color-text-2)', margin: 0 }}>{getStyle(system.slug).character}</p>
               {isRecommended && recommendationReason && (
                 <p style={{ fontSize: 11, lineHeight: 1.4, color: 'var(--color-terracotta)', margin: 0, fontStyle: 'italic' }}>
                   Recommended — {recommendationReason}

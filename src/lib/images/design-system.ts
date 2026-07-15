@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import type { BrandBrief } from '@/lib/brand-kit/extract/report'
-import { feedSystemPack, type ReferenceRole } from '@/lib/renderer/feed-system-compositions'
+import { styleShowcase } from '@/lib/renderer/feed-system-compositions'
 import { DEFAULT_RATIO } from '@/lib/renderer/layout/anchor'
 import type { BrandTokens, Composition } from '@/lib/scene-graph'
 import { createUntypedAdminClient } from '@/lib/supabase/admin'
@@ -16,11 +16,13 @@ export type SeedPlate = { publicUrl: string; storagePath: string }
 const hasPlate = (c: Composition): boolean => c.layers.some((l) => l.type === 'plate')
 
 /**
- * Generate the onboarding **design system**: one background plate per plate-bearing role of the chosen
- * feed system, from the brand brief. There are no posts yet, so `buildImagePrompt` uses its brief-driven
- * fallback scene (no per-slide LLM call — cheaper). Plates are stored under a temp `onboarding/<nonce>`
- * prefix and returned by role; the review previews them under the live token layer, and on "save" they
- * seed the new client's bank (`seedImageBank`). Fail-soft per role — a failure just omits that role.
+ * Generate the onboarding **design system**: one background plate per plate-bearing archetype of the
+ * chosen style's showcase, from the brand brief. There are no posts yet, so `buildImagePrompt` uses its
+ * brief-driven fallback scene (no per-slide LLM call — cheaper). Plates are stored under a temp
+ * `onboarding/<nonce>` prefix and returned **keyed by archetype id** (the preview injects each into the
+ * matching showcase cell); on "save" they seed the new client's bank. A no-photo/vector style yields no
+ * plates (its showcase has no plate archetypes) — its design system is the vector marks instead. Fail-soft
+ * per archetype — a failure just omits it.
  */
 export async function generateDesignSystemPlates(params: {
   colors: BrandTokens['color']
@@ -28,13 +30,12 @@ export async function generateDesignSystemPlates(params: {
   feedSystemSlug: string | null
 }): Promise<Record<string, SeedPlate>> {
   const prefix = `onboarding/${randomUUID()}`
-  const pack = feedSystemPack(params.feedSystemSlug)
-  const roles = (Object.keys(pack) as ReferenceRole[]).filter((r) => hasPlate(pack[r]))
+  const plateArchetypes = styleShowcase(params.feedSystemSlug).filter((a) => hasPlate(a.composition))
 
   const out: Record<string, SeedPlate> = {}
   await Promise.all(
-    roles.map(async (role) => {
-      const plateRole: PlateRole = role === 'cover' ? 'cover' : 'interior'
+    plateArchetypes.map(async (arch) => {
+      const plateRole: PlateRole = arch.kind === 'opener' ? 'cover' : 'interior'
       const structured = buildImagePrompt({
         role: plateRole,
         brief: params.brief,
@@ -47,7 +48,7 @@ export async function generateDesignSystemPlates(params: {
       const generated = await generatePlate({ prompt, ratio: DEFAULT_RATIO })
       if (!generated) return
       const stored = await uploadPlate(prefix, generated.url)
-      if (stored) out[role] = { publicUrl: stored.publicUrl, storagePath: stored.storagePath }
+      if (stored) out[arch.id] = { publicUrl: stored.publicUrl, storagePath: stored.storagePath }
     })
   )
   return out
