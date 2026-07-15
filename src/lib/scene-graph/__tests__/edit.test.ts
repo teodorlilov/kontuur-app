@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import type { Composition, PlateLayer, Rect, ShapeLayer, TextLayer } from '../types'
 import {
+  addLayer,
   clampRectToCanvas,
   findLayer,
+  removeLayer,
   selectableLayers,
   setLayerRect,
   setLayerRotation,
@@ -101,6 +103,17 @@ const plateLayer = (id: string): PlateLayer => ({
   id, name: id, locked: false, hidden: false, rect: rect(0, 0, 100, 100),
   opacity: lit(1), blendMode: lit('normal'), clip: { kind: 'none' },
   type: 'plate', source: 'generated', editHeadId: null, src: '', treatment: lit('duotone'),
+})
+
+describe('addLayer / removeLayer', () => {
+  it('appends on top and removes by id, immutably', () => {
+    const c = comp([textLayer('a')])
+    const added = addLayer(c, shapeLayer('b'))
+    expect(added.layers.map((l) => l.id)).toEqual(['a', 'b']) // b on top (painted last)
+    expect(c.layers).toHaveLength(1) // original untouched
+    expect(removeLayer(added, 'a').layers.map((l) => l.id)).toEqual(['b'])
+    expect(removeLayer(added, 'zzz').layers).toHaveLength(2) // unknown id: no-op
+  })
 })
 
 describe('setLayerRotation / setLayerSize', () => {

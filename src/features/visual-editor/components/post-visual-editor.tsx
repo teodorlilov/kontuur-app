@@ -1,17 +1,47 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Konva from 'konva'
 import { Button } from '@/components/ui/button'
 import { buildComposition, loadCompositionImages } from '@/lib/renderer/konva'
 import { REFERENCE_MARKS } from '@/lib/renderer/reference-compositions'
 import { kitFontsHref } from '@/lib/render/google-fonts'
 import { useKitFonts } from '@/lib/render/use-kit-fonts'
-import { clampRectToCanvas, findLayer, setLayerRect, type BrandTokens, type Composition } from '@/lib/scene-graph'
+import {
+  addLayer,
+  clampRectToCanvas,
+  findLayer,
+  removeLayer,
+  setLayerRect,
+  type BrandTokens,
+  type Composition,
+  type MarkLayer,
+} from '@/lib/scene-graph'
 import { LayerPropertyPanel } from './layer-property-panel'
+import { ElementPicker, type BrandVector } from './element-picker'
+
+/** A centred mark layer for an inserted brand vector — ~a third of the canvas, draggable/resizable. */
+function createMarkLayer(svg: string, size: { w: number; h: number }): MarkLayer {
+  const dim = Math.round(Math.min(size.w, size.h) * 0.32)
+  return {
+    id: `mark-${crypto.randomUUID()}`,
+    name: 'element',
+    locked: false,
+    hidden: false,
+    rect: { x: Math.round((size.w - dim) / 2), y: Math.round((size.h - dim) / 2), w: dim, h: dim, rotate: 0 },
+    vAnchor: 'center',
+    opacity: { mode: 'literal', value: 1 },
+    blendMode: { mode: 'literal', value: 'normal' },
+    clip: { kind: 'none' },
+    type: 'mark',
+    packElementId: '',
+    roleOverrides: {},
+    svg,
+  }
+}
 
 type SlideData = { slideIndex: number; composition: Composition }
-type VisualsResponse = { slides: SlideData[]; tokens: BrandTokens }
+type VisualsResponse = { slides: SlideData[]; tokens: BrandTokens; clientId?: string }
 
 const MAX_CANVAS_W = 460
 
@@ -35,6 +65,7 @@ export function PostVisualEditor({
   onSaved,
   initial,
   onSaveDraft,
+  clientId: clientIdProp,
 }: {
   open: boolean
   onClose: () => void
@@ -42,9 +73,13 @@ export function PostVisualEditor({
   onSaved?: () => void
   initial?: { slides: SlideData[]; tokens: BrandTokens }
   onSaveDraft?: (slides: SlideData[]) => void
+  /** The client, for the brand vector library. Passed directly in draft mode; else read from the fetch. */
+  clientId?: string
 }) {
   const [slides, setSlides] = useState<SlideData[] | null>(null)
   const [tokens, setTokens] = useState<BrandTokens | null>(null)
+  const [clientId, setClientId] = useState<string | null>(clientIdProp ?? null)
+  const [vectors, setVectors] = useState<BrandVector[]>([])
   const [current, setCurrent] = useState(0)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [dirty, setDirty] = useState(false)
@@ -65,6 +100,7 @@ export function PostVisualEditor({
     setSelectedId(null)
     setCurrent(0)
     setDirty(false)
+    setClientId(clientIdProp ?? null)
     if (initial) {
       setSlides(initial.slides)
       setTokens(initial.tokens)
@@ -78,6 +114,7 @@ export function PostVisualEditor({
         if (cancelled || !d) return
         setSlides(d.slides)
         setTokens(d.tokens)
+        if (d.clientId) setClientId(d.clientId)
       })
       .catch(() => {})
     return () => {
@@ -85,6 +122,21 @@ export function PostVisualEditor({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- `initial` is captured on open; re-open to reset
   }, [open, postId])
+
+  // Load the brand vector library (Elements picker) once the client is known.
+  useEffect(() => {
+    if (!open || !clientId) return
+    let cancelled = false
+    void fetch(`/api/clients/${clientId}/vectors`)
+      .then((r) => (r.ok ? (r.json() as Promise<{ vectors: BrandVector[] }>) : null))
+      .then((d) => {
+        if (!cancelled && d) setVectors(d.vectors)
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [open, clientId])
 
   const updateComposition = useCallback(
     (next: Composition) => {
@@ -94,8 +146,17 @@ export function PostVisualEditor({
     [current]
   )
 
-  // Load the current slide's images (plate srcs + mark SVGs) — only on slide switch; the srcs don't change
-  // while dragging, so edits rebuild synchronously against this cache.
+  // A signature of the slide's image-bearing content (plate srcs + mark svgs) — changes on a slide switch
+  // or a mark insert, but NOT on a drag/resize, so images reload only when the sources actually change.
+  const imageSignature = useMemo(() => {
+    if (!composition) return ''
+    return composition.layers
+      .map((l) => (l.type === 'plate' ? `p:${l.id}:${l.src}` : l.type === 'mark' ? `m:${l.id}:${l.svg ?? l.packElementId}` : ''))
+      .join('|')
+  }, [composition])
+
+  // Load the slide's images (plate srcs + mark SVGs) when they change; edits rebuild synchronously against
+  // this cache.
   useEffect(() => {
     if (!open || !composition || !tokens) return
     let cancelled = false
@@ -107,8 +168,8 @@ export function PostVisualEditor({
     return () => {
       cancelled = true
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- reload images on slide switch, not per drag
-  }, [open, current, tokens])
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- reload keyed on image content, not every edit
+  }, [open, tokens, imageSignature])
 
   // Redraw once the kit fonts are ready, so text doesn't render in a fallback face.
   useEffect(() => {
@@ -194,6 +255,22 @@ export function PostVisualEditor({
     },
     [composition, updateComposition]
   )
+
+  const insertVector = useCallback(
+    (svg: string) => {
+      if (!composition) return
+      const mark = createMarkLayer(svg, composition.size)
+      updateComposition(addLayer(composition, mark))
+      setSelectedId(mark.id)
+    },
+    [composition, updateComposition]
+  )
+
+  const deleteSelected = useCallback(() => {
+    if (!composition || !selectedId) return
+    updateComposition(removeLayer(composition, selectedId))
+    setSelectedId(null)
+  }, [composition, selectedId, updateComposition])
 
   const handleClose = useCallback(() => {
     if (dirty && !window.confirm('Discard unsaved changes to the visuals?')) return
@@ -310,9 +387,25 @@ export function PostVisualEditor({
                   {selectedLayer ? 'Drag to reposition — or edit properties →' : 'Click an element to select it.'}
                 </div>
               </div>
-              <div style={{ flex: 1, minWidth: 190, borderLeft: '0.5px solid var(--color-border-1)', paddingLeft: 16 }}>
+              <div
+                style={{
+                  flex: 1,
+                  minWidth: 190,
+                  borderLeft: '0.5px solid var(--color-border-1)',
+                  paddingLeft: 16,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 16,
+                }}
+              >
+                <ElementPicker vectors={vectors} onInsert={insertVector} />
                 {selectedLayer && tokens ? (
-                  <LayerPropertyPanel layer={selectedLayer} tokens={tokens} onEdit={onEdit} />
+                  <>
+                    <LayerPropertyPanel layer={selectedLayer} tokens={tokens} onEdit={onEdit} />
+                    <Button size="sm" variant="ghost" onClick={deleteSelected}>
+                      Delete element
+                    </Button>
+                  </>
                 ) : (
                   <div style={{ fontSize: 11, color: 'var(--color-muted)' }}>
                     Select an element to edit its text, colour, size, and position.

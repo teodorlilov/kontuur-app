@@ -30,7 +30,8 @@ export async function loadCompositionImages(
     if (layer.type === 'plate' && layer.src) {
       tasks.push(loadImage(layer.src).then((img) => { if (img) out.set(layer.id, img) }))
     } else if (layer.type === 'mark') {
-      const svg = marks?.[layer.packElementId]
+      // An operator-inserted vector carries its SVG inline; a pack mark is looked up by id.
+      const svg = layer.svg ?? marks?.[layer.packElementId]
       if (svg) tasks.push(loadImage(svgDataUrl(substituteRoleVars(svg, tokens))).then((img) => { if (img) out.set(layer.id, img) }))
     }
   }

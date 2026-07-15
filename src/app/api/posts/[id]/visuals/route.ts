@@ -59,6 +59,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   return NextResponse.json({
     status: post?.visuals_status ?? null,
     error: post?.visuals_error ?? null,
+    clientId: owned.client_id, // the editor uses it to load the brand vector library
     slides,
     // Augment the weight arrays for the post's feed system so canvas loads the exact weights the
     // compositions use (bold 800/900, quiet 300/500) — otherwise those render in a fallback.

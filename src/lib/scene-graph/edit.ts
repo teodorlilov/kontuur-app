@@ -24,6 +24,16 @@ export function updateLayer(composition: Composition, layerId: string, patch: (l
   return { ...composition, layers: composition.layers.map((l) => (l.id === layerId ? patch(l) : l)) }
 }
 
+/** Append a layer (paint order = last = on top) — the editor's insert (e.g. a brand vector mark). */
+export function addLayer(composition: Composition, layer: Layer): Composition {
+  return { ...composition, layers: [...composition.layers, layer] }
+}
+
+/** Remove a layer by id. */
+export function removeLayer(composition: Composition, layerId: string): Composition {
+  return { ...composition, layers: composition.layers.filter((l) => l.id !== layerId) }
+}
+
 /** Set a layer's rect — the drag/resize sink. */
 export function setLayerRect(composition: Composition, layerId: string, rect: Rect): Composition {
   return updateLayer(composition, layerId, (l) => ({ ...l, rect }))

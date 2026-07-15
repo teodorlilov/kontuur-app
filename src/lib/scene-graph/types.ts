@@ -62,6 +62,12 @@ export type MarkLayer = LayerBase & {
   type: 'mark'
   packElementId: string
   roleOverrides: Record<string, { fill?: Binding<string>; stroke?: Binding<string> }>
+  /**
+   * Inline SVG source for a vector the operator inserted from the brand's library (Recraft output, already
+   * on-brand). When present the renderer rasterises it directly; absent → the `packElementId` is looked up
+   * in the shared marks pack (the static quote marks). Editor-inserted marks always carry `svg`.
+   */
+  svg?: string
 }
 
 /** kicker/headline drive the display family; body/caption/label drive the body family. */

@@ -168,7 +168,13 @@ export function PostVisualsPreview({
       </div>
 
       {editorInitial && (
-        <PostVisualEditor open={editing} onClose={() => setEditing(false)} initial={editorInitial} onSaveDraft={handleSaveDraft} />
+        <PostVisualEditor
+          open={editing}
+          onClose={() => setEditing(false)}
+          initial={editorInitial}
+          onSaveDraft={handleSaveDraft}
+          clientId={clientId}
+        />
       )}
     </div>
   )
