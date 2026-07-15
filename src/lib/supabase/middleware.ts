@@ -39,6 +39,7 @@ export async function updateSession(request: NextRequest) {
     pathname.startsWith('/auth/callback') ||
     pathname.startsWith('/setup-password') ||
     pathname.startsWith('/api/extract') || // extraction functions (own CRON_SECRET / session auth)
+    pathname.startsWith('/render-slide') || // internal server-render surface (serves no data; injected by Chromium)
     pathname.startsWith('/approve') ||
     pathname.startsWith('/api/approval') ||
     pathname.startsWith('/ideas') ||

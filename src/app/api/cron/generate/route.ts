@@ -206,6 +206,10 @@ export async function GET(request: NextRequest) {
                 clientId,
                 agencyId,
                 slides: (gp.slides_json as CarouselSlide[] | null) ?? [],
+                // Copy-only imagery (cron never spends on fal), but optionally raster the copy slides to
+                // post_images server-side so autonomous posts still publish with visuals (opt-in, off by
+                // default until validated in the deploy).
+                renderImages: process.env.ENABLE_SERVER_RENDER === '1',
               })
             })
           )

@@ -1,5 +1,6 @@
 import { getBrandKitForClient, getClientFeedSystem } from '@/lib/brand-kit/queries'
 import { composePostSlides } from '@/lib/renderer/compose'
+import { feedSystemTokens } from '@/lib/renderer/feed-system-compositions'
 import { DEFAULT_RATIO } from '@/lib/renderer/layout/anchor'
 import { fillPlates, type FillPlatesContext } from '@/lib/images/generate-plates'
 import { DEFAULT_TOKENS } from '@/lib/scene-graph'
@@ -46,8 +47,11 @@ export async function composePostVisuals(params: {
   agencyId: string
   slides: CarouselSlide[]
   withImagery?: boolean
+  /** Autonomously raster the composed slides to `post_images` (headless server render, Phase 6). Off by
+   *  default; the cron opts in via `ENABLE_SERVER_RENDER`, so a post with no operator still publishes. */
+  renderImages?: boolean
 }): Promise<void> {
-  const { postId, clientId, agencyId, slides, withImagery = false } = params
+  const { postId, clientId, agencyId, slides, withImagery = false, renderImages = false } = params
   if (slides.length === 0) return
 
   const { db, kit, feedSystem, clientName } = await loadComposeContext(clientId, agencyId)
@@ -70,6 +74,23 @@ export async function composePostVisuals(params: {
   const { error } = await db.from('post_visuals').insert(rows)
   if (error) throw new Error(error.message)
   await db.from('posts').update({ visuals_status: 'ready' }).eq('id', postId)
+
+  // Autonomous publish render (Phase 6) — lazy-loaded so the puppeteer path never touches the common
+  // flows. Fail-soft: a render failure leaves the post image-less, exactly as before.
+  if (renderImages) {
+    try {
+      const { renderAndUploadPostImages } = await import('./server-export')
+      const tokens = feedSystemTokens(feedSystem.slug, kit?.tokens ?? DEFAULT_TOKENS)
+      await renderAndUploadPostImages({
+        postId,
+        clientId,
+        slides: compositions.map((composition, slideIndex) => ({ slideIndex, composition })),
+        tokens,
+      })
+    } catch (e) {
+      console.error('[compose] server render failed for', postId, e)
+    }
+  }
 }
 
 /**
