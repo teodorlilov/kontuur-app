@@ -19,6 +19,14 @@ const DEFAULT_BG_REMOVAL_MODEL = 'fal-ai/birefnet'
 // exact model id against the fal dashboard on first live run (mirrors the BiRefNet flag).
 const DEFAULT_VECTOR_MODEL = 'fal-ai/recraft/v4.1/text-to-vector'
 
+// Reference-conditioned (image-to-image) + region inpaint. Env-overridable; verify ids on first live run.
+const DEFAULT_IMG2IMG_MODEL = 'fal-ai/flux/dev/image-to-image'
+const DEFAULT_INPAINT_MODEL = 'fal-ai/flux/dev/inpainting'
+
+const firstImageUrl = (data: unknown): string | undefined =>
+  (data as { images?: Array<{ url?: string }>; image?: { url?: string } } | undefined)?.images?.[0]?.url ??
+  (data as { image?: { url?: string } } | undefined)?.image?.url
+
 let configured = false
 function ensureConfigured(): boolean {
   const key = process.env.FAL_API_KEY
@@ -78,6 +86,72 @@ export async function removeBackground(imageUrl: string): Promise<{ url: string 
     return url ? { url } : null
   } catch (err) {
     console.error('[images/fal] removeBackground failed:', err)
+    return null
+  }
+}
+
+/**
+ * Reference-conditioned generation (Phase 6): produce a new image guided by a reference (img2img), so an
+ * operator can seed a plate from an image they like. `strength` (0..1) is how far to move from the
+ * reference. Fail-soft. Model overridable via `FAL_IMG2IMG_MODEL`.
+ */
+export async function imageToImage(input: {
+  imageUrl: string
+  prompt: string
+  ratio: AspectRatio
+  strength?: number
+  seed?: number
+}): Promise<{ url: string } | null> {
+  if (!ensureConfigured()) return null
+  const size = RATIO_SIZES[input.ratio]
+  const model = process.env.FAL_IMG2IMG_MODEL ?? DEFAULT_IMG2IMG_MODEL
+  try {
+    const result = await fal.subscribe(model, {
+      input: {
+        prompt: input.prompt,
+        image_url: input.imageUrl,
+        strength: input.strength ?? 0.8,
+        image_size: { width: size.w, height: size.h },
+        num_images: 1,
+        enable_safety_checker: true,
+        ...(input.seed !== undefined ? { seed: input.seed } : {}),
+      },
+    })
+    const url = firstImageUrl(result?.data)
+    return url ? { url } : null
+  } catch (err) {
+    console.error('[images/fal] imageToImage failed:', err)
+    return null
+  }
+}
+
+/**
+ * Region inpaint (Phase 6): repaint the masked area of an image from a prompt (white mask = repaint).
+ * Fail-soft. Model overridable via `FAL_INPAINT_MODEL`.
+ */
+export async function inpaintImage(input: {
+  imageUrl: string
+  maskUrl: string
+  prompt: string
+  seed?: number
+}): Promise<{ url: string } | null> {
+  if (!ensureConfigured()) return null
+  const model = process.env.FAL_INPAINT_MODEL ?? DEFAULT_INPAINT_MODEL
+  try {
+    const result = await fal.subscribe(model, {
+      input: {
+        prompt: input.prompt,
+        image_url: input.imageUrl,
+        mask_url: input.maskUrl,
+        num_images: 1,
+        enable_safety_checker: true,
+        ...(input.seed !== undefined ? { seed: input.seed } : {}),
+      },
+    })
+    const url = firstImageUrl(result?.data)
+    return url ? { url } : null
+  } catch (err) {
+    console.error('[images/fal] inpaintImage failed:', err)
     return null
   }
 }

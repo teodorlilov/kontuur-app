@@ -407,7 +407,7 @@ export function PostVisualEditor({
                 <ElementPicker vectors={vectors} onInsert={insertVector} />
                 {selectedLayer && tokens ? (
                   <>
-                    <LayerPropertyPanel layer={selectedLayer} tokens={tokens} onEdit={onEdit} />
+                    <LayerPropertyPanel layer={selectedLayer} tokens={tokens} onEdit={onEdit} clientId={clientId ?? undefined} />
                     <Button size="sm" variant="ghost" onClick={deleteSelected}>
                       Delete element
                     </Button>

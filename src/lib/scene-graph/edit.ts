@@ -92,6 +92,11 @@ export function setPlateTreatment(composition: Composition, layerId: string, tre
   return updateLayer(composition, layerId, (l) => (l.type === 'plate' ? { ...l, treatment: lit(treatment) } : l))
 }
 
+/** Point a plate layer at a new image (editor AI regenerate / reference / inpaint). No-op elsewhere. */
+export function setPlateSrc(composition: Composition, layerId: string, src: string): Composition {
+  return updateLayer(composition, layerId, (l) => (l.type === 'plate' ? { ...l, src } : l))
+}
+
 /** Re-bind a shape layer's fill to a brand colour role. No-op on non-shape layers. */
 export function setShapeFillRole(composition: Composition, layerId: string, role: ColorRole): Composition {
   return updateLayer(composition, layerId, (l) => (l.type === 'shape' ? { ...l, fill: boundColor(role) } : l))

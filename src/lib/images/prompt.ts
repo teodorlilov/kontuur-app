@@ -163,6 +163,19 @@ export function buildVectorPrompt(input: {
   )
 }
 
+/**
+ * An on-brand image prompt from an operator's free-text description (editor "regenerate/reference"). Keeps
+ * the palette + negative-space + no-text directives so a hand-typed prompt still fits the composite. Falls
+ * back to an abstract branded background when the text is empty.
+ */
+export function buildOperatorPrompt(text: string, colors: BrandTokens['color']): string {
+  const subject = text.trim() || 'an abstract, minimal branded background'
+  return (
+    `${capitalize(subject)}. Colour palette of ${paletteWords(colors)}. Generous calm negative space for ` +
+    'overlaid text. Absolutely no text, letters, or logos anywhere in the image.'
+  )
+}
+
 const capitalize = (s: string): string => (s ? s[0]!.toUpperCase() + s.slice(1) : s)
 
 /**

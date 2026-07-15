@@ -1,9 +1,11 @@
 'use client'
 
+import { useRef, useState } from 'react'
 import {
   resolve,
   setLayerRotation,
   setLayerSize,
+  setPlateSrc,
   setPlateTreatment,
   setShapeFillRole,
   setTextContent,
@@ -138,20 +140,88 @@ function TextControls({ layer, tokens, onEdit }: { layer: Extract<Layer, { type:
   )
 }
 
-function PlateControls({ layer, tokens, onEdit }: { layer: Extract<Layer, { type: 'plate' }>; tokens: BrandTokens; onEdit: Edit }) {
-  const treatment = resolve<Treatment>(layer.treatment, tokens)
-  if (layer.cutout) return <div style={{ fontSize: 11, color: 'var(--color-muted)' }}>Subject cutout — treatment fixed.</div>
+/** AI image actions for a plate (Phase 6): regenerate from a prompt, or seed from a reference image. */
+function PlateAiControls({ clientId, layerId, onEdit }: { clientId: string; layerId: string; onEdit: Edit }) {
+  const [prompt, setPrompt] = useState('')
+  const [busy, setBusy] = useState(false)
+  const fileRef = useRef<HTMLInputElement>(null)
+
+  const run = async (payload: Record<string, unknown>) => {
+    if (busy) return
+    setBusy(true)
+    try {
+      const res = await fetch(`/api/clients/${clientId}/plate-edit`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+      const data = (await res.json().catch(() => ({}))) as { url?: string | null }
+      if (data.url) onEdit((c) => setPlateSrc(c, layerId, data.url as string))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const onFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    e.target.value = '' // allow re-picking the same file
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = () => void run({ mode: 'reference', prompt, referenceDataUrl: reader.result })
+    reader.readAsDataURL(file)
+  }
+
   return (
     <div style={row}>
-      <div style={label}>Treatment</div>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
-        {TREATMENTS.map((t) => (
-          <Chip key={t} active={treatment === t} onClick={() => onEdit((c) => setPlateTreatment(c, layer.id, t))}>
-            {t}
-          </Chip>
-        ))}
+      <div style={label}>AI image</div>
+      <textarea
+        value={prompt}
+        onChange={(e) => setPrompt(e.target.value)}
+        placeholder="Describe the image…"
+        rows={2}
+        style={{ ...num, resize: 'vertical', lineHeight: 1.3 }}
+      />
+      <div style={{ display: 'flex', gap: 6 }}>
+        <Chip active={false} onClick={() => void run({ mode: 'regenerate', prompt })}>
+          {busy ? 'Working…' : 'Regenerate'}
+        </Chip>
+        <Chip active={false} onClick={() => fileRef.current?.click()}>
+          Reference…
+        </Chip>
+        <input ref={fileRef} type="file" accept="image/*" onChange={onFile} style={{ display: 'none' }} />
       </div>
     </div>
+  )
+}
+
+function PlateControls({
+  layer,
+  tokens,
+  onEdit,
+  clientId,
+}: {
+  layer: Extract<Layer, { type: 'plate' }>
+  tokens: BrandTokens
+  onEdit: Edit
+  clientId?: string
+}) {
+  const treatment = resolve<Treatment>(layer.treatment, tokens)
+  return (
+    <>
+      {!layer.cutout && (
+        <div style={row}>
+          <div style={label}>Treatment</div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+            {TREATMENTS.map((t) => (
+              <Chip key={t} active={treatment === t} onClick={() => onEdit((c) => setPlateTreatment(c, layer.id, t))}>
+                {t}
+              </Chip>
+            ))}
+          </div>
+        </div>
+      )}
+      {clientId && <PlateAiControls clientId={clientId} layerId={layer.id} onEdit={onEdit} />}
+    </>
   )
 }
 
@@ -199,12 +269,22 @@ function TransformControls({ layer, onEdit }: { layer: Layer; onEdit: Edit }) {
  * align/colour; plate gets a treatment; shape gets a fill; every layer gets width/height/rotation. Colours
  * bind to brand roles so edits stay on-brand and recolour with the kit.
  */
-export function LayerPropertyPanel({ layer, tokens, onEdit }: { layer: Layer; tokens: BrandTokens; onEdit: Edit }) {
+export function LayerPropertyPanel({
+  layer,
+  tokens,
+  onEdit,
+  clientId,
+}: {
+  layer: Layer
+  tokens: BrandTokens
+  onEdit: Edit
+  clientId?: string
+}) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'capitalize' }}>{layer.name || layer.type}</div>
       {layer.type === 'text' && <TextControls layer={layer} tokens={tokens} onEdit={onEdit} />}
-      {layer.type === 'plate' && <PlateControls layer={layer} tokens={tokens} onEdit={onEdit} />}
+      {layer.type === 'plate' && <PlateControls layer={layer} tokens={tokens} onEdit={onEdit} clientId={clientId} />}
       {layer.type === 'shape' && <ShapeControls layer={layer} tokens={tokens} onEdit={onEdit} />}
       <TransformControls layer={layer} onEdit={onEdit} />
     </div>

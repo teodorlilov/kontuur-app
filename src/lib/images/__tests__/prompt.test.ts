@@ -3,6 +3,7 @@ import { DEFAULT_TOKENS } from '@/lib/scene-graph'
 import type { BrandBrief } from '@/lib/brand-kit/extract/report'
 import {
   buildImagePrompt,
+  buildOperatorPrompt,
   buildVectorPrompt,
   formatForModel,
   hexToColorName,
@@ -106,6 +107,19 @@ describe('buildVectorPrompt', () => {
     const p = buildVectorPrompt({ motif: '  ', colors: DEFAULT_TOKENS.color, feedSystemSlug: null })
     expect(p).toContain('abstract geometric brand mark')
     expect(p).toContain('minimal line-art') // editorial default
+  })
+})
+
+describe('buildOperatorPrompt', () => {
+  it('wraps free text with palette + negative-space + no-text directives', () => {
+    const p = buildOperatorPrompt('a marble kitchen counter', DEFAULT_TOKENS.color)
+    expect(p).toContain('A marble kitchen counter')
+    expect(p).toMatch(/colour palette of/i)
+    expect(p).toMatch(/no text/i)
+  })
+
+  it('falls back to an abstract background on empty text', () => {
+    expect(buildOperatorPrompt('   ', DEFAULT_TOKENS.color)).toContain('abstract, minimal branded background')
   })
 })
 

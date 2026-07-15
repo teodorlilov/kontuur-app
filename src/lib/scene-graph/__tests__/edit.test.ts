@@ -9,6 +9,7 @@ import {
   setLayerRect,
   setLayerRotation,
   setLayerSize,
+  setPlateSrc,
   setPlateTreatment,
   setShapeFillRole,
   setTextContent,
@@ -155,6 +156,12 @@ describe('setPlateTreatment / setShapeFillRole', () => {
   it('binds a shape fill to a role', () => {
     const s = findLayer(setShapeFillRole(comp([shapeLayer('s')]), 's', 'ink'), 's') as ShapeLayer
     expect(s.fill).toEqual({ mode: 'bound', token: 'color.ink' })
+  })
+
+  it('setPlateSrc points a plate at a new image, no-op off plate', () => {
+    const p = findLayer(setPlateSrc(comp([plateLayer('p')]), 'p', 'https://x/y.jpg'), 'p') as PlateLayer
+    expect(p.src).toBe('https://x/y.jpg')
+    expect(setPlateSrc(comp([shapeLayer('s')]), 's', 'x').layers[0]).toEqual(shapeLayer('s'))
   })
 
   it('each is a no-op on the wrong layer type', () => {
