@@ -50,9 +50,17 @@ const tileGrid: Composition = comp('tile-grid', 'graphic', [
   { ...base({ id: 'body', name: 'body', rect: rect(80, 1160, 920, 120), vAnchor: 'bottom' }), type: 'text', slot: 'body', content: 'Всеки пост на своето място.', lang: 'bg', family: bound('type.body.family'), size: lit(34), weight: lit(400), color: bound('color.surface'), align: lit('left'), autoFit: null },
 ])
 
+// A closing call-to-action on an accent ground — a no-photo closer any style can end on.
+const ctaGraphic: Composition = comp('cta-graphic', 'graphic', [
+  { ...base({ id: 'bg', name: 'bg', rect: rect(0, 0, 1080, 1350), vAnchor: 'fill' }), type: 'shape', shape: 'rect', fill: bound('color.accent') },
+  { ...base({ id: 'headline', name: 'headline', rect: rect(96, 470, 888, 360), vAnchor: 'center' }), type: 'text', slot: 'headline', content: 'Готови ли сте\nда започнем?', lang: 'bg', family: bound('type.display.family'), size: lit(96), weight: lit(800), color: bound('color.surface'), align: lit('center'), autoFit: { min: 56, max: 108 } },
+  { ...base({ id: 'cta', name: 'cta', rect: rect(96, 880, 888, 80), vAnchor: 'center' }), type: 'text', slot: 'cta', content: 'Свържете се с нас →', lang: 'bg', family: bound('type.display.family'), size: lit(44), weight: lit(700), color: bound('color.surface'), align: lit('center'), autoFit: null },
+])
+
 export const GRAPHIC_ARCHETYPES: Archetype[] = [
   archetype('split', 'content', 'none', ['headline', 'body'], split),
   archetype('stat', 'content', 'none', ['headline', 'body'], stat),
   archetype('annotated-type', 'content', 'none', ['kicker', 'headline', 'body'], annotatedType),
   archetype('tile-grid', 'content', 'none', ['headline', 'body'], applyVAnchors(tileGrid, { bg: 'fill' })),
+  archetype('cta-graphic', 'closer', 'none', ['headline', 'cta'], ctaGraphic),
 ]

@@ -68,6 +68,12 @@ export type MarkLayer = LayerBase & {
    * in the shared marks pack (the static quote marks). Editor-inserted marks always carry `svg`.
    */
   svg?: string
+  /**
+   * `'generated'` marks a template mark the imagery layer fills with a Recraft-generated brand vector
+   * (from the brief's motifs, banked + reused) — the vector equivalent of a `'generated'` plate. Absent →
+   * a static/operator mark. `fillImagery` (`images/generate-plates.ts`) sets `svg` on these.
+   */
+  source?: 'generated'
 }
 
 /** kicker/headline drive the display family; body/caption/label drive the body family. */

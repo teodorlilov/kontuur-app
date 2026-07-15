@@ -2,9 +2,9 @@ import { createUntypedAdminClient } from '@/lib/supabase/admin'
 import type { BrandBrief } from '@/lib/brand-kit/extract/report'
 import type { AspectRatio } from '@/lib/renderer/layout/anchor'
 import type { BrandTokens } from '@/lib/scene-graph'
-import { generatePlate, removeBackground } from './fal'
+import { generatePlate, generateVector, removeBackground } from './fal'
 import { promptHash } from './hash'
-import { buildImagePrompt, formatForModel, paletteWords, type PlateRole } from './prompt'
+import { buildImagePrompt, buildVectorPrompt, formatForModel, paletteWords, type PlateRole } from './prompt'
 import { composeScene } from './scene'
 import { uploadPlate } from './storage'
 
@@ -29,6 +29,8 @@ export type ResolvePlateParams = {
   seed?: number
   /** When true, generate an isolated subject and background-remove it into a transparent cutout PNG. */
   cutout?: boolean
+  /** fal model id override (from the style's `imageModel.photo`); undefined → the provider default. */
+  model?: string
 }
 
 export async function resolvePlate(params: ResolvePlateParams): Promise<string | null> {
@@ -72,7 +74,7 @@ export async function resolvePlate(params: ResolvePlateParams): Promise<string |
   })
   const { prompt } = formatForModel(structured, 'flux')
 
-  const generated = await generatePlate({ prompt, ratio: params.ratio, seed: params.seed })
+  const generated = await generatePlate({ prompt, ratio: params.ratio, seed: params.seed, model: params.model })
   if (!generated) return null
 
   // A cutout is background-removed into a transparent PNG before storage; failure keeps the colour block
@@ -94,4 +96,54 @@ export async function resolvePlate(params: ResolvePlateParams): Promise<string |
   })
   if (error) console.warn('[images/bank] bank insert skipped:', error.message)
   return stored.publicUrl
+}
+
+export type ResolveVectorParams = {
+  clientId: string
+  /** The motif to illustrate (a brief motif, or an abstract fallback). */
+  motif: string
+  colors: BrandTokens['color']
+  feedSystemSlug: string | null
+  /** fal model id override (from the style's `imageModel.vector`); undefined → the Recraft default. */
+  model?: string
+}
+
+/**
+ * The per-brand **vector bank**: a durable SVG for a brand mark, cached by a deterministic key (motif +
+ * palette + style) so a vector archetype reuses the brand's marks across posts instead of paying Recraft
+ * each time — the vector analogue of `resolvePlate`. On a miss it builds the Recraft prompt, generates,
+ * and stores the SVG. Fail-soft: null → the caller leaves the mark empty (the colour ground stands alone).
+ * Depends on `brand_vector_bank` (migration `20260718`); until applied the select/insert error → still
+ * fail-soft (a failed select just misses; a failed insert still returns the generated svg).
+ */
+export async function resolveVector(params: ResolveVectorParams): Promise<string | null> {
+  const db = createUntypedAdminClient()
+  const hash = promptHash({
+    motif: params.motif,
+    palette: paletteWords(params.colors),
+    feedSystemSlug: params.feedSystemSlug ?? 'editorial',
+    kind: 'vector',
+  })
+
+  const { data: existing } = await db
+    .from('brand_vector_bank')
+    .select('svg')
+    .eq('client_id', params.clientId)
+    .eq('prompt_hash', hash)
+    .maybeSingle()
+  const cached = (existing as { svg?: string } | null)?.svg
+  if (cached) return cached
+
+  const prompt = buildVectorPrompt({ motif: params.motif, colors: params.colors, feedSystemSlug: params.feedSystemSlug })
+  const generated = await generateVector(prompt, params.model)
+  if (!generated) return null
+
+  const { error } = await db.from('brand_vector_bank').insert({
+    client_id: params.clientId,
+    label: params.motif,
+    prompt_hash: hash,
+    svg: generated.svg,
+  })
+  if (error) console.warn('[images/bank] vector bank insert skipped:', error.message)
+  return generated.svg
 }

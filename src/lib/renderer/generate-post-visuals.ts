@@ -2,7 +2,7 @@ import { getBrandKitForClient, getClientFeedSystem } from '@/lib/brand-kit/queri
 import { composePostSlides } from '@/lib/renderer/compose'
 import { feedSystemTokens } from '@/lib/renderer/feed-system-compositions'
 import { DEFAULT_RATIO } from '@/lib/renderer/layout/anchor'
-import { fillPlates, type FillPlatesContext } from '@/lib/images/generate-plates'
+import { fillImagery, type FillImageryContext } from '@/lib/images/generate-plates'
 import { DEFAULT_TOKENS } from '@/lib/scene-graph'
 import { createUntypedAdminClient } from '@/lib/supabase/admin'
 import type { CarouselSlide } from '@/types/api'
@@ -20,7 +20,7 @@ async function loadComposeContext(clientId: string, agencyId: string) {
 }
 
 /** The fal-imagery context for a client, from its kit. */
-function imageryContext(clientId: string, kit: Awaited<ReturnType<typeof getBrandKitForClient>>, feedSystemSlug: string | null): FillPlatesContext {
+function imageryContext(clientId: string, kit: Awaited<ReturnType<typeof getBrandKitForClient>>, feedSystemSlug: string | null): FillImageryContext {
   return {
     clientId,
     brief: kit?.brief ?? null,
@@ -58,7 +58,7 @@ export async function composePostVisuals(params: {
 
   let compositions = composePostSlides(slides, { feedSystemSlug: feedSystem.slug, postId, clientName })
   if (withImagery) {
-    compositions = await fillPlates(compositions, slides, imageryContext(clientId, kit, feedSystem.slug))
+    compositions = await fillImagery(compositions, slides, imageryContext(clientId, kit, feedSystem.slug))
   }
 
   const rows = compositions.map((composition, slideIndex) => ({
@@ -110,7 +110,7 @@ export async function generatePostPlates(params: {
 
   const { kit, feedSystem, clientName } = await loadComposeContext(clientId, agencyId)
   const compositions = composePostSlides(slides, { feedSystemSlug: feedSystem.slug, postId: 'preview', clientName })
-  const filled = await fillPlates(compositions, slides, imageryContext(clientId, kit, feedSystem.slug))
+  const filled = await fillImagery(compositions, slides, imageryContext(clientId, kit, feedSystem.slug))
 
   const plates: Record<number, string> = {}
   filled.forEach((composition, i) => {

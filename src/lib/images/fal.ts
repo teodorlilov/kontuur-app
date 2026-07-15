@@ -161,9 +161,9 @@ export async function inpaintImage(input: {
  * + sanitise the text so it can be stored and rasterised). Fail-soft: no key, a failed call, a non-SVG
  * body, or a fetch error all return null. Model overridable via `FAL_VECTOR_MODEL`.
  */
-export async function generateVector(prompt: string): Promise<{ svg: string } | null> {
+export async function generateVector(prompt: string, modelId?: string): Promise<{ svg: string } | null> {
   if (!ensureConfigured()) return null
-  const model = process.env.FAL_VECTOR_MODEL ?? DEFAULT_VECTOR_MODEL
+  const model = modelId ?? process.env.FAL_VECTOR_MODEL ?? DEFAULT_VECTOR_MODEL
   try {
     const result = await fal.subscribe(model, { input: { prompt } })
     const data = result?.data as { images?: Array<{ url?: string }>; image?: { url?: string } } | undefined

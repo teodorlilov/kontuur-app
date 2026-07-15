@@ -49,10 +49,23 @@ const QUIET_GRID: Style = {
   weights: { display: [400, 500, 600], body: [300, 400, 500] },
 }
 
+// Illustrative: Recraft-generated vector marks + colour graphics instead of photography. Routes vectors to
+// the Recraft default (imageModel.vector left empty); its content pool leans on the no-photo archetypes.
+const ILLUSTRATIVE: Style = {
+  slug: 'illustrative',
+  name: 'Illustrative',
+  character: 'Vector illustration and colour blocks instead of photography — graphic and modern.',
+  archetypes: ['vector-cover', 'vector-hero', 'split', 'stat', 'annotated-type', 'tile-grid', 'cta-graphic'],
+  imageModel: {},
+  treatment: 'none',
+  weights: { display: [500, 700, 800], body: [400, 500] },
+}
+
 const STYLES: Record<string, Style> = {
   editorial: EDITORIAL,
   'bold-blocks': BOLD_BLOCKS,
   'quiet-grid': QUIET_GRID,
+  illustrative: ILLUSTRATIVE,
 }
 
 /** The style for a slug, falling back to editorial (the default) for unknown/null. */

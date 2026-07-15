@@ -3,6 +3,7 @@ import { EDITORIAL_ARCHETYPES } from './editorial'
 import { BOLD_BLOCKS_ARCHETYPES } from './bold-blocks'
 import { QUIET_GRID_ARCHETYPES } from './quiet-grid'
 import { GRAPHIC_ARCHETYPES } from './graphic'
+import { VECTOR_ARCHETYPES } from './vector'
 
 /**
  * The archetype **registry** — the single source of every layout, consumed by `compose` (sampling), the
@@ -11,7 +12,13 @@ import { GRAPHIC_ARCHETYPES } from './graphic'
  */
 export type { Archetype } from './types'
 
-const ALL: Archetype[] = [...EDITORIAL_ARCHETYPES, ...BOLD_BLOCKS_ARCHETYPES, ...QUIET_GRID_ARCHETYPES, ...GRAPHIC_ARCHETYPES]
+const ALL: Archetype[] = [
+  ...EDITORIAL_ARCHETYPES,
+  ...BOLD_BLOCKS_ARCHETYPES,
+  ...QUIET_GRID_ARCHETYPES,
+  ...GRAPHIC_ARCHETYPES,
+  ...VECTOR_ARCHETYPES,
+]
 
 export const ARCHETYPES: Record<string, Archetype> = Object.fromEntries(ALL.map((a) => [a.id, a]))
 
