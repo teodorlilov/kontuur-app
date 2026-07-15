@@ -1,17 +1,43 @@
 import type { Composition, Layer, TextSlot } from '@/lib/scene-graph'
 import type { CarouselSlide } from '@/types/api'
-import { feedSystemPack } from './feed-system-compositions'
 import { DEFAULT_RATIO, RATIO_SIZES, resolveComposition, type AspectRatio } from './layout/anchor'
-import type { ReferenceRole } from './reference-compositions'
+import { getArchetype, type Archetype } from './archetypes'
+import { getStyle, type Style } from './styles'
 
-// Interior (non-cover, non-cta) slides rotate through these editorial roles for visual variety.
-const CONTENT_ROLES: readonly ReferenceRole[] = ['statement', 'list', 'quote']
+/**
+ * djb2 string hash → a stable per-post seed. Browser-safe (no `node:crypto`), because compose runs
+ * client-side in the wizard/approval preview as well as server-side. Seeds the archetype sampling so a
+ * post's interior layouts vary yet stay deterministic (same post → same design on every surface).
+ */
+function hashSeed(s: string): number {
+  let h = 5381
+  for (let i = 0; i < s.length; i++) h = ((h * 33) ^ s.charCodeAt(i)) >>> 0
+  return h
+}
 
-/** Pick the composition role for a slide: cover first, cta last, interior slides cycle for variety. */
-export function roleForSlide(slide: CarouselSlide, index: number, total: number): ReferenceRole {
-  if (slide.slide_role === 'cover' || index === 0) return 'cover'
-  if (slide.slide_role === 'cta' || (total > 1 && index === total - 1)) return 'cta'
-  return CONTENT_ROLES[(index - 1) % CONTENT_ROLES.length]!
+/** The style's archetypes of a given kind, in declared order (skips ids that don't resolve). */
+function pool(style: Style, kind: Archetype['kind']): Archetype[] {
+  return style.archetypes.map(getArchetype).filter((a): a is Archetype => Boolean(a) && a!.kind === kind)
+}
+
+/** Any resolvable archetype for the style — the last-resort fallback so a slide always composes. */
+function fallbackArchetype(style: Style): Archetype {
+  const first = style.archetypes.map(getArchetype).find((a): a is Archetype => Boolean(a))
+  return first ?? getArchetype('editorial-cover')!
+}
+
+/**
+ * Pick the archetype for a slide: the style's **opener** for the cover (slide 0 or `slide_role: 'cover'`),
+ * its **closer** for the CTA (last slide or `slide_role: 'cta'`), and a **content** archetype otherwise —
+ * sampled from the pool by `(seed + index)`, so interior layouts vary across a carousel and differ between
+ * posts (the seed) while staying deterministic for a given post. Replaces the old fixed role cycle.
+ */
+export function archetypeForSlide(style: Style, slide: CarouselSlide, index: number, total: number, seed: number): Archetype {
+  if (slide.slide_role === 'cover' || index === 0) return pool(style, 'opener')[0] ?? fallbackArchetype(style)
+  if (slide.slide_role === 'cta' || (total > 1 && index === total - 1)) return pool(style, 'closer')[0] ?? fallbackArchetype(style)
+  const content = pool(style, 'content')
+  if (content.length === 0) return fallbackArchetype(style)
+  return content[(seed + index - 1) % content.length]!
 }
 
 /** Set the content of the first text layer whose slot is in `slots` (paint order). */
@@ -26,13 +52,14 @@ function setSlot(layers: Layer[], slots: readonly TextSlot[], content: string): 
   })
 }
 
-// The secondary text slot varies by role: list → body, cta → cta, quote → caption.
+// The secondary text slot varies by layout: list → body, cta → cta, quote → caption.
 const SECONDARY_SLOTS: readonly TextSlot[] = ['body', 'cta', 'caption']
 
 /**
- * Inject a slide's copy into a template composition: headline → the `headline` slot, body → the first
+ * Inject a slide's copy into an archetype composition: headline → the `headline` slot, body → the first
  * secondary slot (body/cta/caption). An optional `kicker` overrides the decorative eyebrow (else the
- * template's authored label stays). Empty fields leave the template text untouched.
+ * template's authored label stays). Empty fields leave the template text untouched. Immutable — the shared
+ * registry composition is never mutated.
  */
 export function injectCopy(composition: Composition, slide: CarouselSlide, kicker?: string): Composition {
   let layers = composition.layers
@@ -45,16 +72,17 @@ export function injectCopy(composition: Composition, slide: CarouselSlide, kicke
 export type ComposeOptions = { feedSystemSlug: string | null; ratio: AspectRatio; postId: string; kicker?: string }
 
 /**
- * Turn a post's carousel copy into renderable scene graphs — one per slide — using the client's feed
- * system, at the chosen ratio. Pure and Konva-free, so the generation endpoint can run it server-side;
- * the imagery layer (Phase 4) fills each composition's plate afterwards.
+ * Turn a post's carousel copy into renderable scene graphs — one per slide — by sampling archetypes from
+ * the client's style, at the chosen ratio. Pure and Konva-free, so the generation endpoint can run it
+ * server-side; the imagery layer (Phase B) fills each composition's plate/vector afterwards.
  */
 export function composeSlides(slides: CarouselSlide[], { feedSystemSlug, ratio, postId, kicker }: ComposeOptions): Composition[] {
-  const pack = feedSystemPack(feedSystemSlug)
+  const style = getStyle(feedSystemSlug)
   const size = RATIO_SIZES[ratio]
+  const seed = hashSeed(postId)
   return slides.map((slide, index) => {
-    const role = roleForSlide(slide, index, slides.length)
-    const injected = injectCopy(pack[role], slide, kicker)
+    const arch = archetypeForSlide(style, slide, index, slides.length, seed)
+    const injected = injectCopy(arch.composition, slide, kicker)
     const resolved = resolveComposition(injected, size)
     return { ...resolved, id: `${postId}-slide-${slide.slide_number ?? index}`, feedSystemId: feedSystemSlug ?? 'editorial' }
   })

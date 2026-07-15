@@ -1,7 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import type { BrandBrief } from '@/lib/brand-kit/extract/report'
-import { feedSystemPack } from '@/lib/renderer/feed-system-compositions'
-import type { ReferenceRole } from '@/lib/renderer/reference-compositions'
+import { feedSystemPack, type ReferenceRole } from '@/lib/renderer/feed-system-compositions'
 import { DEFAULT_RATIO } from '@/lib/renderer/layout/anchor'
 import type { BrandTokens, Composition } from '@/lib/scene-graph'
 import { createUntypedAdminClient } from '@/lib/supabase/admin'

@@ -1,26 +1,34 @@
 import { describe, expect, it } from 'vitest'
 import type { TextLayer } from '@/lib/scene-graph'
 import type { CarouselSlide } from '@/types/api'
-import { composeSlides, injectCopy, roleForSlide } from '../compose'
+import { archetypeForSlide, composeSlides, injectCopy } from '../compose'
 import { feedSystemPack } from '../feed-system-compositions'
+import { getStyle } from '../styles'
 
 const slide = (over: Partial<CarouselSlide> = {}): CarouselSlide => ({ headline: 'H', body: 'B', ...over })
 const textBySlot = (layers: readonly { type: string }[], slot: string) =>
   (layers as TextLayer[]).find((l) => l.type === 'text' && l.slot === slot)
 
-describe('roleForSlide', () => {
-  it('cover first, cta last, interior slides cycle statement/list/quote', () => {
-    const total = 6
-    expect(roleForSlide(slide(), 0, total)).toBe('cover')
-    expect(roleForSlide(slide(), 1, total)).toBe('statement')
-    expect(roleForSlide(slide(), 2, total)).toBe('list')
-    expect(roleForSlide(slide(), 3, total)).toBe('quote')
-    expect(roleForSlide(slide(), 4, total)).toBe('statement')
-    expect(roleForSlide(slide(), 5, total)).toBe('cta')
+describe('archetypeForSlide', () => {
+  const style = getStyle('editorial')
+
+  it('opens on an opener and closes on a closer', () => {
+    expect(archetypeForSlide(style, slide(), 0, 6, 1).kind).toBe('opener')
+    expect(archetypeForSlide(style, slide(), 5, 6, 1).kind).toBe('closer')
   })
+
+  it('draws interior slides from the content pool', () => {
+    for (let i = 1; i <= 4; i++) expect(archetypeForSlide(style, slide(), i, 6, 1).kind).toBe('content')
+  })
+
   it('honours an explicit slide_role', () => {
-    expect(roleForSlide(slide({ slide_role: 'cta' }), 2, 6)).toBe('cta')
-    expect(roleForSlide(slide({ slide_role: 'cover' }), 3, 6)).toBe('cover')
+    expect(archetypeForSlide(style, slide({ slide_role: 'cta' }), 2, 6, 1).kind).toBe('closer')
+    expect(archetypeForSlide(style, slide({ slide_role: 'cover' }), 3, 6, 1).kind).toBe('opener')
+  })
+
+  it('is deterministic for a seed and does not repeat consecutive interior layouts', () => {
+    expect(archetypeForSlide(style, slide(), 1, 6, 7).id).toBe(archetypeForSlide(style, slide(), 1, 6, 7).id)
+    expect(archetypeForSlide(style, slide(), 1, 6, 7).id).not.toBe(archetypeForSlide(style, slide(), 2, 6, 7).id)
   })
 })
 
@@ -58,6 +66,6 @@ describe('composeSlides', () => {
   it('injects each slide headline and defaults unknown feed systems to editorial', () => {
     const out = composeSlides(slides, { feedSystemSlug: 'nope', ratio: '4:5', postId: 'p2' })
     expect(textBySlot(out[0]!.layers, 'headline')!.content).toBe('Cover')
-    expect(out[0]!.feedSystemId).toBe('nope') // stored slug is preserved even when the pack falls back
+    expect(out[0]!.feedSystemId).toBe('nope') // stored slug is preserved even when the style falls back
   })
 })
