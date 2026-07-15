@@ -17,7 +17,7 @@ const DEFAULT_BG_REMOVAL_MODEL = 'fal-ai/birefnet'
 
 // Recraft text-to-vector — returns true SVG (scalable, recolourable). Swap/pin via env. NOTE: verify the
 // exact model id against the fal dashboard on first live run (mirrors the BiRefNet flag).
-const DEFAULT_VECTOR_MODEL = 'fal-ai/recraft/v3/text-to-vector'
+const DEFAULT_VECTOR_MODEL = 'fal-ai/recraft/v4.1/text-to-vector'
 
 let configured = false
 function ensureConfigured(): boolean {

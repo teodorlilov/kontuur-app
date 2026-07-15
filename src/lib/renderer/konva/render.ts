@@ -10,6 +10,9 @@ export type RasterOptions = {
   targetWidth?: number
   /** Device pixel ratio for crispness (default 2). */
   pixelRatio?: number
+  /** Output encoding — default PNG (previews); `image/jpeg` + quality for the smaller publish export. */
+  mimeType?: string
+  quality?: number
 }
 
 /** Ensure the kit's display + body faces are actually loaded — at every weight the compositions use —
@@ -55,7 +58,7 @@ export async function renderCompositionToDataURL(
   stage.add(layer)
   layer.draw()
   try {
-    return stage.toDataURL({ pixelRatio: opts.pixelRatio ?? 2 })
+    return stage.toDataURL({ pixelRatio: opts.pixelRatio ?? 2, mimeType: opts.mimeType, quality: opts.quality })
   } finally {
     stage.destroy()
   }

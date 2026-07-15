@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Konva from 'konva'
 import { Button } from '@/components/ui/button'
-import { buildComposition, loadCompositionImages } from '@/lib/renderer/konva'
+import { buildComposition, loadCompositionImages, renderCompositionToDataURL } from '@/lib/renderer/konva'
 import { REFERENCE_MARKS } from '@/lib/renderer/reference-compositions'
 import { kitFontsHref } from '@/lib/render/google-fonts'
 import { useKitFonts } from '@/lib/render/use-kit-fonts'
@@ -84,6 +84,7 @@ export function PostVisualEditor({
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [dirty, setDirty] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [statusMsg, setStatusMsg] = useState<string | null>(null)
   const [redrawTick, setRedrawTick] = useState(0)
 
   const containerRef = useRef<HTMLDivElement>(null)
@@ -277,9 +278,37 @@ export function PostVisualEditor({
     onClose()
   }, [dirty, onClose])
 
+  // Render each slide to a PNG and upload it to post_images at its position — the publishable render.
+  // Sequential (dispose each stage before the next) to avoid an N-slide memory spike. Per-slide fail-soft.
+  const exportImages = useCallback(
+    async (id: string, list: SlideData[], kit: BrandTokens) => {
+      for (let i = 0; i < list.length; i++) {
+        setStatusMsg(`Exporting ${i + 1}/${list.length}…`)
+        try {
+          // JPEG (opaque slides) keeps files well under the 8 MB upload cap that a 2× PNG can breach.
+          const dataUrl = await renderCompositionToDataURL(list[i]!.composition, kit, {
+            marks: REFERENCE_MARKS,
+            pixelRatio: 2,
+            mimeType: 'image/jpeg',
+            quality: 0.92,
+          })
+          if (!dataUrl) continue
+          const blob = await (await fetch(dataUrl)).blob()
+          const form = new FormData()
+          form.append('file', new File([blob], `slide-${list[i]!.slideIndex + 1}.jpg`, { type: 'image/jpeg' }))
+          form.append('position', String(list[i]!.slideIndex))
+          await fetch(`/api/posts/${id}/images`, { method: 'POST', body: form })
+        } catch (e) {
+          console.error('[visual-editor] export failed for slide', i, e)
+        }
+      }
+    },
+    []
+  )
+
   const save = useCallback(async () => {
     if (!slides) return
-    // Draft mode: hand the edited slides back; the wizard persists them on approve.
+    // Draft mode: hand the edited slides back; the wizard persists them (and imagery) on approve.
     if (onSaveDraft) {
       onSaveDraft(slides)
       setDirty(false)
@@ -294,15 +323,17 @@ export function PostVisualEditor({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ slides: slides.map((s) => ({ slideIndex: s.slideIndex, composition: s.composition })) }),
       })
-      if (res.ok) {
-        setDirty(false)
-        onSaved?.()
-        onClose()
-      }
+      if (!res.ok) return
+      // Persist done — now export the publishable PNGs so the edits reach the published post.
+      if (tokens) await exportImages(postId, slides, tokens)
+      setDirty(false)
+      onSaved?.()
+      onClose()
     } finally {
       setSaving(false)
+      setStatusMsg(null)
     }
-  }, [slides, postId, onSaved, onClose, onSaveDraft])
+  }, [slides, postId, tokens, onSaved, onClose, onSaveDraft, exportImages])
 
   if (!open) return null
 
@@ -348,7 +379,7 @@ export function PostVisualEditor({
               Close
             </Button>
             <Button size="sm" loading={saving} disabled={!dirty} onClick={() => void save()}>
-              {saving ? 'Saving…' : 'Save'}
+              {saving ? statusMsg ?? 'Saving…' : postId ? 'Save & export' : 'Save'}
             </Button>
           </div>
         </div>
