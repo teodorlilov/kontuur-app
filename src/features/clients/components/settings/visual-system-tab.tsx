@@ -3,10 +3,12 @@
 import { useState } from 'react'
 import type { BrandTokens } from '@/lib/scene-graph'
 import type { AspectRatio } from '@/lib/renderer/layout/anchor'
+import { Button } from '@/components/ui/button'
 import { FeedSystemPicker, type FeedSystemOption } from '../visual-system/feed-system-picker'
 import { PreviewGrid } from '../visual-system/preview-grid'
 import { RatioToggle } from '../visual-system/ratio-toggle'
 import { TokenEditor } from '../visual-system/token-editor'
+import { BrandMarks } from '../visual-system/brand-marks'
 import { PanelHeader } from './basic-info-tab'
 
 const sectionLabel: React.CSSProperties = {
@@ -30,6 +32,13 @@ interface VisualSystemTabProps {
   propagation: PropagationCounts
   onTokensChange: (next: BrandTokens) => void
   onFeedSystemChange: (slug: string) => void
+  /** Design-system imagery (real plates by role) shown under the live token type; absent → gradients. */
+  designPlates?: Record<string, string>
+  /** Generated brand vector marks (SVG) shown below the preview. */
+  designVectors?: string[]
+  generatingDesign?: boolean
+  /** Present → renders the Generate/Regenerate design-system button (settings; onboarding has its own). */
+  onGenerateDesignSystem?: () => void
 }
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`
@@ -62,6 +71,10 @@ export function VisualSystemTab({
   propagation,
   onTokensChange,
   onFeedSystemChange,
+  designPlates,
+  designVectors,
+  generatingDesign,
+  onGenerateDesignSystem,
 }: VisualSystemTabProps) {
   const [ratio, setRatio] = useState<AspectRatio>('4:5')
   return (
@@ -76,11 +89,48 @@ export function VisualSystemTab({
             secondaryLanguage={secondaryLanguage}
           />
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 10 }}>
               <div style={{ ...sectionLabel, marginBottom: 0 }}>Live preview</div>
-              <RatioToggle value={ratio} onChange={setRatio} />
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                {onGenerateDesignSystem && (
+                  <Button
+                    size="sm"
+                    variant={designPlates ? 'secondary' : undefined}
+                    loading={generatingDesign}
+                    onClick={onGenerateDesignSystem}
+                  >
+                    {generatingDesign ? 'Generating…' : designPlates ? 'Regenerate' : 'Generate design system'}
+                  </Button>
+                )}
+                <RatioToggle value={ratio} onChange={setRatio} />
+              </div>
             </div>
-            <PreviewGrid tokens={tokens} feedSystemSlug={selectedFeedSystemSlug} ratio={ratio} language={primaryLanguage} columns={3} cellWidth={104} />
+            <div style={{ position: 'relative' }}>
+              <PreviewGrid tokens={tokens} feedSystemSlug={selectedFeedSystemSlug} ratio={ratio} language={primaryLanguage} columns={3} cellWidth={104} plates={designPlates} />
+              {generatingDesign && !designPlates && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    inset: 0,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    borderRadius: 8,
+                    background: 'rgba(244,239,230,0.55)',
+                    fontSize: 11,
+                    fontWeight: 500,
+                    color: 'var(--color-muted)',
+                  }}
+                >
+                  Generating imagery…
+                </div>
+              )}
+            </div>
+            {designVectors && designVectors.length > 0 && (
+              <div style={{ marginTop: 14 }}>
+                <BrandMarks svgs={designVectors} />
+              </div>
+            )}
           </div>
         </div>
 

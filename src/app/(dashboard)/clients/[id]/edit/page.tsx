@@ -27,16 +27,27 @@ export default async function EditClientPage({ params }: { params: Promise<{ id:
   // so the kit silently fell back to DEFAULT_TOKENS. Use the admin client; ownership was verified by
   // fetchClientById above, and getBrandKitForClient re-scopes the kit to this agency.
   const admin = createAdminSupabaseClient() as unknown as SupabaseClient
-  const [kit, feedSystemsRes, selectionRes] = await Promise.all([
+  const [kit, feedSystemsRes, selectionRes, imageBankRes, vectorBankRes] = await Promise.all([
     getBrandKitForClient(id, agencyId),
     admin.from('feed_systems').select('id, slug, name, description').order('slug'),
     admin.from('client_feed_systems').select('feed_system_id').eq('client_id', id).eq('is_default', true).maybeSingle(),
+    admin.from('brand_image_bank').select('role, public_url, storage_path').eq('client_id', id).like('prompt_hash', 'onboarding:%'),
+    admin.from('brand_vector_bank').select('svg, label').eq('client_id', id).like('prompt_hash', 'onboarding:%'),
   ])
   const brandTokens = kit?.tokens ?? DEFAULT_TOKENS
   const feedSystemRows = (feedSystemsRes.data as (FeedSystemOption & { id: string })[] | null) ?? []
   const feedSystems: FeedSystemOption[] = feedSystemRows.map(({ slug, name, description }) => ({ slug, name, description }))
   const selectedFeedSystemId = (selectionRes.data as { feed_system_id?: string } | null)?.feed_system_id ?? null
   const selectedFeedSystemSlug = feedSystemRows.find((f) => f.id === selectedFeedSystemId)?.slug ?? null
+
+  // The client's already-generated design system (image + vector banks), shown in the Visual system tab on
+  // open. The vector-bank query is fail-soft: if that table isn't migrated yet, `.data` is null → undefined.
+  const imageBankRows = (imageBankRes.data as Array<{ role: string; public_url: string; storage_path: string }> | null) ?? []
+  const initialDesignPlates = imageBankRows.length
+    ? Object.fromEntries(imageBankRows.map((r) => [r.role, { publicUrl: r.public_url, storagePath: r.storage_path }]))
+    : undefined
+  const vectorBankRows = (vectorBankRes.data as Array<{ svg: string; label: string }> | null) ?? []
+  const initialDesignVectors = vectorBankRows.length ? vectorBankRows.map((r) => ({ svg: r.svg, label: r.label })) : undefined
 
   const [profile, schedule, { count: sourceCount }, recentPostsRes, allPostsRes, { count: pendingCount }, clientStatsRes] =
     await Promise.all([
@@ -154,6 +165,9 @@ export default async function EditClientPage({ params }: { params: Promise<{ id:
       feedSystems={feedSystems}
       selectedFeedSystemSlug={selectedFeedSystemSlug}
       propagation={propagation}
+      brief={kit?.brief ?? null}
+      initialDesignPlates={initialDesignPlates}
+      initialDesignVectors={initialDesignVectors}
     />
   )
 }

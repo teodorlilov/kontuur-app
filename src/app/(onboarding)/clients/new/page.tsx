@@ -6,6 +6,7 @@ import { toast } from '@/components/ui/toast'
 import { serializePillars } from '@/lib/clients/content-pillars'
 import type { WeightedPillar } from '@/lib/clients/content-pillars'
 import { saveBrandKit } from '@/features/clients/actions/brand-kit-actions'
+import { requestDesignSystem } from '@/features/clients/lib/design-system-client'
 import { STARTER_FEED_SYSTEMS } from '@/lib/brand-kit/feed-systems'
 import type { ExtractionReport } from '@/lib/brand-kit/extract/report'
 import { DEFAULT_TOKENS, type BrandTokens } from '@/lib/scene-graph'
@@ -348,28 +349,15 @@ export default function NewClientPage() {
   async function handleGenerateDesignSystem() {
     setGeneratingDesign(true)
     try {
-      const res = await fetch('/api/onboarding/design-system', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          tokens: visualTokens,
-          feedSystemSlug: selectedFeedSystemSlug,
-          brief: visualReport?.brief ?? null,
-        }),
+      const { plates, vectors } = await requestDesignSystem({
+        tokens: visualTokens,
+        feedSystemSlug: selectedFeedSystemSlug,
+        brief: visualReport?.brief ?? null,
       })
-      const data = (await res.json().catch(() => ({}))) as {
-        plates?: Record<string, { publicUrl: string; storagePath: string }>
-        vectors?: { svg: string; label: string }[]
-      }
-      if (res.ok && data.plates && Object.keys(data.plates).length > 0) {
-        setDesignPlates(data.plates)
-      } else {
-        toast.error('No design images were generated. Please try again.')
-      }
+      if (Object.keys(plates).length > 0) setDesignPlates(plates)
+      else toast.error('No design images were generated. Please try again.')
       // Vector marks are a bonus layer — set them independently of the plate result.
-      if (data.vectors && data.vectors.length > 0) setDesignVectors(data.vectors)
-    } catch {
-      toast.error('Could not generate the design system.')
+      if (vectors.length > 0) setDesignVectors(vectors)
     } finally {
       setGeneratingDesign(false)
     }

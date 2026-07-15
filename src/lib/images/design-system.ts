@@ -69,6 +69,9 @@ export async function seedImageBank(clientId: string, plates: Record<string, See
   }))
   if (rows.length === 0) return
   const db = createUntypedAdminClient()
+  // Replace-in-place: drop any prior design-system rows for this client so re-generating from the settings
+  // Visual system tab refreshes the bank instead of accumulating duplicate `onboarding:<role>` rows.
+  await db.from('brand_image_bank').delete().eq('client_id', clientId).like('prompt_hash', 'onboarding:%')
   const { error } = await db.from('brand_image_bank').insert(rows)
   if (error) console.error('[images/design-system] seedImageBank failed:', error.message)
 }
@@ -118,6 +121,8 @@ export async function seedVectorBank(clientId: string, vectors: SeedVector[]): P
   }))
   if (rows.length === 0) return
   const db = createUntypedAdminClient()
+  // Replace-in-place, mirroring seedImageBank — a re-generated starter set refreshes rather than piles up.
+  await db.from('brand_vector_bank').delete().eq('client_id', clientId).like('prompt_hash', 'onboarding:%')
   const { error } = await db.from('brand_vector_bank').insert(rows)
   if (error) console.error('[images/design-system] seedVectorBank failed:', error.message)
 }

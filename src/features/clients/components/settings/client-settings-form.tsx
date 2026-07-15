@@ -6,6 +6,8 @@ import { ChevronLeft } from 'lucide-react'
 import { parsePillars, serializePillars, type WeightedPillar } from '@/lib/clients/content-pillars'
 import { updateClient } from '@/features/clients/actions/client-actions'
 import { saveBrandKit } from '@/features/clients/actions/brand-kit-actions'
+import { requestDesignSystem, type DesignPlate, type DesignVector } from '@/features/clients/lib/design-system-client'
+import type { BrandBrief } from '@/lib/brand-kit/extract/report'
 import type { BrandTokens } from '@/lib/scene-graph'
 import { Button } from '@/components/ui/button'
 import { Avatar } from '@/components/ui/avatar'
@@ -35,6 +37,11 @@ interface ClientSettingsFormProps {
   feedSystems: FeedSystemOption[]
   selectedFeedSystemSlug: string | null
   propagation: PropagationCounts
+  /** The client's art-direction brief — drives on-brand design-system prompts. */
+  brief: BrandBrief | null
+  /** The client's already-generated design system (from the bank), shown on open. */
+  initialDesignPlates?: Record<string, DesignPlate>
+  initialDesignVectors?: DesignVector[]
 }
 
 /** Top-level client settings form with tabbed layout. */
@@ -52,6 +59,9 @@ export function ClientSettingsForm({
   feedSystems,
   selectedFeedSystemSlug,
   propagation,
+  brief,
+  initialDesignPlates,
+  initialDesignVectors,
 }: ClientSettingsFormProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -108,6 +118,33 @@ export function ClientSettingsForm({
   // ── Visual system ──
   const [tokens, setTokens] = useState<BrandTokens>(brandTokens)
   const [feedSystemSlug, setFeedSystemSlug] = useState<string | null>(selectedFeedSystemSlug)
+  // Design system: seeded from the client's bank on open; `designDirty` marks a fresh generation so a
+  // plain settings save doesn't needlessly re-seed the bank with the already-persisted set.
+  const [designPlates, setDesignPlates] = useState<Record<string, DesignPlate> | null>(initialDesignPlates ?? null)
+  const [designVectors, setDesignVectors] = useState<DesignVector[] | null>(initialDesignVectors ?? null)
+  const [generatingDesign, setGeneratingDesign] = useState(false)
+  const [designDirty, setDesignDirty] = useState(false)
+
+  /** Generate the real design-system imagery + marks from the current tokens/brief. Shown live under the
+   *  token type; persisted to the client's bank on Save (`designDirty`). */
+  async function handleGenerateDesignSystem() {
+    setGeneratingDesign(true)
+    try {
+      const { plates, vectors } = await requestDesignSystem({ tokens, feedSystemSlug, brief })
+      if (Object.keys(plates).length > 0) {
+        setDesignPlates(plates)
+        setDesignDirty(true)
+      } else {
+        toast.error('No design images were generated. Please try again.')
+      }
+      if (vectors.length > 0) {
+        setDesignVectors(vectors)
+        setDesignDirty(true)
+      }
+    } finally {
+      setGeneratingDesign(false)
+    }
+  }
 
   // ── OAuth redirect toast ──
   useEffect(() => {
@@ -168,8 +205,16 @@ export function ClientSettingsForm({
     // (and dirties render hashes) for nothing.
     const visualChanged =
       JSON.stringify(tokens) !== JSON.stringify(brandTokens) || feedSystemSlug !== selectedFeedSystemSlug
-    if (visualChanged) {
-      const kitResult = await saveBrandKit(clientId, tokens, feedSystemSlug)
+    if (visualChanged || designDirty) {
+      // Seed the bank only with a freshly generated design system; leave `brief` untouched (undefined).
+      const kitResult = await saveBrandKit(
+        clientId,
+        tokens,
+        feedSystemSlug,
+        undefined,
+        designDirty && designPlates ? designPlates : undefined,
+        designDirty && designVectors ? designVectors : undefined
+      )
       if (!kitResult.ok) {
         toast.error(kitResult.error ?? 'Failed to save the visual system.')
         setSaving(false)
@@ -315,6 +360,10 @@ export function ClientSettingsForm({
               propagation={propagation}
               onTokensChange={setTokens}
               onFeedSystemChange={setFeedSystemSlug}
+              designPlates={designPlates ? Object.fromEntries(Object.entries(designPlates).map(([role, p]) => [role, p.publicUrl])) : undefined}
+              designVectors={designVectors?.map((v) => v.svg)}
+              generatingDesign={generatingDesign}
+              onGenerateDesignSystem={handleGenerateDesignSystem}
             />
           )}
           {activeTab === 'accounts' && <ConnectedAccountsTab clientId={clientId} />}
