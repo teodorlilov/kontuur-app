@@ -118,33 +118,34 @@ export async function composePostVisuals(params: {
 }
 
 /**
- * Generate the plate images for a post's slides WITHOUT storing anything — used by the manual generation
- * wizard so the pre-save preview shows real photos, not just the copy. The images are cached in
- * `brand_image_bank` by the deterministic slide-copy hash, so when the operator approves and the post is
- * saved, `composePostVisuals({ withImagery: true })` hits that cache and reuses them — no double spend.
- * Returns slide index → plate URL (only plate-bearing slides get one); fail-soft, so failures are absent.
+ * Compose + fill a post's slides WITHOUT storing anything — the manual generation wizard's pre-save
+ * preview. Returns the **fully imagery-filled compositions** (photo plates AND generated vector marks), so
+ * a vector/illustrative style shows its marks and a photo style shows its photos — not just plates. Runs
+ * through the same art-direction-driven compose + `fillImagery` as the stored path, and the results are
+ * cached by slide-copy hash, so approve → `composePostVisuals({ withImagery: true })` reuses them (no
+ * double spend). Fail-soft — a slide with no imagery keeps its gradient/colour ground.
  */
-export async function generatePostPlates(params: {
+export async function generatePreviewVisuals(params: {
   clientId: string
   agencyId: string
   slides: CarouselSlide[]
-}): Promise<Record<number, string>> {
+}): Promise<Array<{ slideIndex: number; composition: Composition }>> {
   const { clientId, agencyId, slides } = params
-  if (slides.length === 0) return {}
+  if (slides.length === 0) return []
 
   const { kit, feedSystem, clientName } = await loadComposeContext(clientId, agencyId)
   const direction = kit?.art_direction ? resolveArtDirection(clampArtDirection(kit.art_direction)) : null
   const effectiveSlug = direction?.styleSlug ?? feedSystem.slug
-  const compositions = composePostSlides(slides, { feedSystemSlug: effectiveSlug, postId: 'preview', clientName })
+  let compositions = composePostSlides(slides, { feedSystemSlug: effectiveSlug, postId: 'preview', clientName })
+  if (direction) compositions = compositions.map((c) => withTreatment(c, direction.treatment))
   const filled = await fillImagery(compositions, slides, imageryContext(clientId, kit, effectiveSlug, direction?.ornamentBrief))
 
-  const plates: Record<number, string> = {}
-  filled.forEach((composition, i) => {
-    const src = composition.layers.find((l): l is typeof l & { src: string } => l.type === 'plate' && Boolean((l as { src?: string }).src))?.src
-    if (src) plates[i] = src
-  })
-  // Diagnostic: how many slides actually got imagery. 0 → generate/upload failed (see the [images/fal] /
-  // [images/bank] logs above for the reason); >0 but bare in the UI → the plate URL isn't loading.
-  console.log(`[images] generatePostPlates: ${Object.keys(plates).length}/${slides.length} slides got a plate (style "${effectiveSlug}")`, Object.values(plates)[0] ?? '')
-  return plates
+  const withImagery = filled.filter((c) =>
+    c.layers.some((l) => (l.type === 'plate' && Boolean(l.src)) || (l.type === 'mark' && Boolean(l.svg)))
+  ).length
+  // Diagnostic: how many slides got imagery (plate OR generated vector). 0 → generate/upload failed (see
+  // the [images/fal] / [images/bank] logs above); a no-photo style with 0 is only correct if it has no
+  // vector archetypes either.
+  console.log(`[images] generatePreviewVisuals: style "${effectiveSlug}", ${withImagery}/${filled.length} slides got imagery`)
+  return filled.map((composition, slideIndex) => ({ slideIndex, composition }))
 }

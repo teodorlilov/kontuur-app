@@ -9,7 +9,7 @@ import type { BrandTokens, Composition } from '@/lib/scene-graph'
 import type { CarouselSlide } from '@/types/api'
 
 /** Fill a composition's plate layer(s) with a generated image (absent → the gradient plate, unchanged). */
-export function withPlateSrc(composition: Composition, src: string | undefined): Composition {
+function withPlateSrc(composition: Composition, src: string | undefined): Composition {
   if (!src) return composition
   return { ...composition, layers: composition.layers.map((l) => (l.type === 'plate' ? { ...l, src } : l)) }
 }

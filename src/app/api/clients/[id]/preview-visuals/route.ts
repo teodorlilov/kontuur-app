@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
-import { generatePostPlates } from '@/lib/renderer/generate-post-visuals'
+import { generatePreviewVisuals } from '@/lib/renderer/generate-post-visuals'
 import { createUntypedAdminClient } from '@/lib/supabase/admin'
 import type { CarouselSlide } from '@/types/api'
 
@@ -9,10 +9,10 @@ export const runtime = 'nodejs'
 export const maxDuration = 300
 
 /**
- * Generate the plate images for an *unsaved* wizard post's slides — the manual generation flow's imagery.
- * Returns slide index → plate URL. The images are cached by slide-copy hash, so when the operator approves
- * and the post is saved, `composePostVisuals` reuses them (no double spend). Operator-initiated (the
- * wizard is a manual flow), so the spend is intended.
+ * Generate the imagery for an *unsaved* wizard post's slides — the manual generation flow's visuals.
+ * Returns the fully filled compositions (photo plates AND generated vector marks). Cached by slide-copy
+ * hash, so when the operator approves and the post is saved, `composePostVisuals` reuses them (no double
+ * spend). Operator-initiated (the wizard is a manual flow), so the spend is intended.
  */
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -33,8 +33,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
   }
   const slides = Array.isArray(body.slides) ? body.slides : []
-  if (slides.length === 0) return NextResponse.json({ plates: {} })
+  if (slides.length === 0) return NextResponse.json({ slides: [] })
 
-  const plates = await generatePostPlates({ clientId: id, agencyId: auth.agencyId, slides })
-  return NextResponse.json({ plates })
+  const composed = await generatePreviewVisuals({ clientId: id, agencyId: auth.agencyId, slides })
+  return NextResponse.json({ slides: composed })
 }

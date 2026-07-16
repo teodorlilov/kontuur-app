@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { ComposedSlides, withPlateSrc } from '@/components/posts/composed-slides'
+import { ComposedSlides } from '@/components/posts/composed-slides'
 import { PostVisualEditor } from '@/features/visual-editor/components/post-visual-editor'
 import { composePostSlides } from '@/lib/renderer/compose'
 import type { BrandTokens, Composition } from '@/lib/scene-graph'
@@ -31,7 +31,7 @@ export function PostVisualsPreview({
   onRenderable?: (bundle: { slides: SlideData[]; tokens: BrandTokens } | null) => void
 }) {
   const [kit, setKit] = useState<VisualKit | null>(null)
-  const [plates, setPlates] = useState<Record<number, string> | null>(null)
+  const [serverSlides, setServerSlides] = useState<SlideData[] | null>(null)
   const [generating, setGenerating] = useState(false)
   const [edited, setEdited] = useState<Composition[] | null>(null)
   const [editing, setEditing] = useState(false)
@@ -40,11 +40,15 @@ export function PostVisualsPreview({
   useEffect(() => {
     let cancelled = false
     void fetch(`/api/clients/${clientId}/visual-kit`)
-      .then((r) => (r.ok ? (r.json() as Promise<VisualKit>) : null))
+      .then((r) => (r.ok ? (r.json() as Promise<VisualKit>) : Promise.reject(new Error(`visual-kit ${r.status}`))))
       .then((k) => {
-        if (!cancelled && k) setKit(k)
+        if (!cancelled) setKit(k)
       })
-      .catch(() => {})
+      .catch((e) => {
+        // No kit → imagery can't auto-generate (this is the "nothing triggered" case). Surfaced so a
+        // client with a missing/failed kit is diagnosable instead of silently bare.
+        if (!cancelled) console.error(`[visuals] visual-kit failed for client ${clientId} — imagery will not generate:`, e)
+      })
     return () => {
       cancelled = true
     }
@@ -58,10 +62,10 @@ export function PostVisualsPreview({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ slides }),
       })
-      const data = (await res.json().catch(() => ({}))) as { plates?: Record<number, string> }
-      if (res.ok) setPlates(data.plates ?? {})
+      const data = (await res.json().catch(() => ({}))) as { slides?: SlideData[] }
+      if (res.ok) setServerSlides(data.slides ?? [])
     } catch {
-      // fail-soft: leave the gradient plates
+      // fail-soft: leave the copy-only compositions (gradients / colour grounds)
     } finally {
       setGenerating(false)
     }
@@ -75,26 +79,24 @@ export function PostVisualsPreview({
     }
   }, [kit, slides, generate])
 
-  // Copy changed → the previous layout edit is stale; drop it so the preview recomposes and approve
-  // doesn't persist visuals built from old copy.
+  // Copy changed → the previous edit and generated imagery are stale (built from old copy); drop them so
+  // the preview recomposes copy-only and approve doesn't persist visuals from old copy. The operator
+  // clicks Regenerate for fresh imagery.
   useEffect(() => {
     setEdited(null)
+    setServerSlides(null)
     onVisualsChange?.(null)
     // eslint-disable-next-line react-hooks/exhaustive-deps -- reset only when the copy itself changes
   }, [slides])
 
-  // The base compositions (copy + imagery), the source for both the preview and the editor's initial state.
+  // The copy-only compositions — the placeholder shown before imagery arrives (and the fallback if it
+  // fails). Once generated, the server's fully-filled compositions (plates + vector marks) take over.
   const baseCompositions = useMemo<Composition[] | null>(() => {
     if (!kit || slides.length === 0) return null
-    const composed = composePostSlides(slides, {
-      feedSystemSlug: kit.feedSystemSlug,
-      postId: 'preview',
-      clientName: kit.clientName,
-    })
-    return composed.map((c, i) => (plates?.[i] ? withPlateSrc(c, plates[i]) : c))
-  }, [kit, slides, plates])
+    return composePostSlides(slides, { feedSystemSlug: kit.feedSystemSlug, postId: 'preview', clientName: kit.clientName })
+  }, [kit, slides])
 
-  const displayCompositions = edited ?? baseCompositions
+  const displayCompositions = edited ?? (serverSlides ? serverSlides.map((s) => s.composition) : baseCompositions)
 
   // Report the current slides + tokens up so approve can render them to post_images (publishable images),
   // whether or not the operator opened the editor.
@@ -148,7 +150,7 @@ export function PostVisualsPreview({
             </Button>
           )}
           <Button size="sm" variant="secondary" loading={generating} onClick={() => void generate()}>
-            {generating ? 'Generating…' : plates ? 'Regenerate' : 'Generate visuals'}
+            {generating ? 'Generating…' : serverSlides ? 'Regenerate' : 'Generate visuals'}
           </Button>
         </div>
       </div>
@@ -158,10 +160,9 @@ export function PostVisualsPreview({
           tokens={kit.tokens}
           feedSystemSlug={kit.feedSystemSlug}
           clientName={kit.clientName}
-          plates={plates ?? undefined}
           compositions={displayCompositions ?? undefined}
         />
-        {generating && !plates && (
+        {generating && !serverSlides && (
           <div
             style={{
               position: 'absolute',
