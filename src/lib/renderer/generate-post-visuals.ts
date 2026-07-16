@@ -89,8 +89,6 @@ export async function composePostVisuals(params: {
     post_id: postId,
     slide_index: slideIndex,
     composition_json: composition as unknown,
-    brand_kit_version: kit?.version ?? 1,
-    feed_system_id: feedSystem.id,
     updated_at: new Date().toISOString(),
   }))
 

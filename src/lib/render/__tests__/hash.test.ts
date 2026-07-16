@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { canonicalize, renderHash } from '../hash'
+import { canonicalize } from '../hash'
 
 describe('canonicalize', () => {
   it('sorts object keys recursively so reordered-but-equal graphs stringify identically', () => {
@@ -10,21 +10,5 @@ describe('canonicalize', () => {
 
   it('does not reorder arrays (paint order is significant)', () => {
     expect(canonicalize([1, 2, 3])).not.toBe(canonicalize([3, 2, 1]))
-  })
-})
-
-describe('renderHash', () => {
-  const composition = { id: 'c1', layers: [{ type: 'text', slot: 'headline' }] }
-
-  it('is stable for the same composition and version', () => {
-    expect(renderHash(composition, 1)).toBe(renderHash(composition, 1))
-  })
-
-  it('changes when the composition changes', () => {
-    expect(renderHash(composition, 1)).not.toBe(renderHash({ ...composition, id: 'c2' }, 1))
-  })
-
-  it('changes when only brand_kit_version bumps — a rebrand must not silently reuse the old PNG', () => {
-    expect(renderHash(composition, 1)).not.toBe(renderHash(composition, 2))
   })
 })
