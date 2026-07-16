@@ -1,11 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import type { Composition, PlateLayer, Rect, ShapeLayer, TextLayer } from '../types'
+import type { ChromeLayer, Composition, PlateLayer, Rect, ShapeLayer, TextLayer } from '../types'
 import {
   addLayer,
   clampRectToCanvas,
   findLayer,
   removeLayer,
   selectableLayers,
+  setChromeParam,
   setLayerRect,
   setLayerRotation,
   setLayerSize,
@@ -167,5 +168,23 @@ describe('setPlateTreatment / setShapeFillRole', () => {
   it('each is a no-op on the wrong layer type', () => {
     expect(setPlateTreatment(comp([shapeLayer('s')]), 's', 'mono').layers[0]).toEqual(shapeLayer('s'))
     expect(setShapeFillRole(comp([plateLayer('p')]), 'p', 'ink').layers[0]).toEqual(plateLayer('p'))
+  })
+})
+
+const chromeLayer = (id: string): ChromeLayer => ({
+  id, name: id, locked: false, hidden: false, rect: rect(0, 0, 100, 20),
+  opacity: lit(1), blendMode: lit('normal'), clip: { kind: 'none' },
+  type: 'chrome', component: 'rule', params: { strokeWidth: lit(2) },
+})
+
+describe('setChromeParam', () => {
+  it('sets a numeric chrome param as a literal', () => {
+    const out = setChromeParam(comp([chromeLayer('r')]), 'r', 'strokeWidth', 6)
+    const params = (findLayer(out, 'r') as unknown as { params: Record<string, unknown> }).params
+    expect(params.strokeWidth).toEqual({ mode: 'literal', value: 6 })
+  })
+
+  it('is a no-op on a non-chrome layer', () => {
+    expect(setChromeParam(comp([shapeLayer('s')]), 's', 'strokeWidth', 6).layers[0]).toEqual(shapeLayer('s'))
   })
 })

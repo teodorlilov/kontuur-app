@@ -3,6 +3,7 @@
 import { useRef, useState } from 'react'
 import {
   resolve,
+  setChromeParam,
   setLayerRotation,
   setLayerSize,
   setPlateSrc,
@@ -234,6 +235,19 @@ function ShapeControls({ layer, tokens, onEdit }: { layer: Extract<Layer, { type
   )
 }
 
+/** Chrome decorations (rules, frames, dot grids, annotations…) — the common numeric knob is the stroke
+ *  width; position/size come from TransformControls. */
+function ChromeControls({ layer, tokens, onEdit }: { layer: Extract<Layer, { type: 'chrome' }>; tokens: BrandTokens; onEdit: Edit }) {
+  const raw = layer.params.strokeWidth ? resolve(layer.params.strokeWidth as Binding<number>, tokens) : 2
+  const sw = typeof raw === 'number' ? Math.round(raw) : 2
+  return (
+    <div style={row}>
+      <div style={label}>Stroke width</div>
+      <input type="number" min={1} value={sw} onChange={(e) => onEdit((c) => setChromeParam(c, layer.id, 'strokeWidth', Number(e.target.value)))} style={num} />
+    </div>
+  )
+}
+
 function TransformControls({ layer, onEdit }: { layer: Layer; onEdit: Edit }) {
   const { w, h, rotate } = layer.rect
   return (
@@ -286,6 +300,7 @@ export function LayerPropertyPanel({
       {layer.type === 'text' && <TextControls layer={layer} tokens={tokens} onEdit={onEdit} />}
       {layer.type === 'plate' && <PlateControls layer={layer} tokens={tokens} onEdit={onEdit} clientId={clientId} />}
       {layer.type === 'shape' && <ShapeControls layer={layer} tokens={tokens} onEdit={onEdit} />}
+      {layer.type === 'chrome' && <ChromeControls layer={layer} tokens={tokens} onEdit={onEdit} />}
       <TransformControls layer={layer} onEdit={onEdit} />
     </div>
   )

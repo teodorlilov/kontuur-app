@@ -394,6 +394,10 @@ export function ClientSettingsForm({
               artDirection={artDirection}
               recomposingDirection={recomposingDirection}
               onRecomposeDirection={handleRecomposeDirection}
+              onArtDirectionChange={(next) => {
+                setArtDirection(next)
+                setDirectionDirty(true)
+              }}
             />
           )}
           {activeTab === 'accounts' && <ConnectedAccountsTab clientId={clientId} />}

@@ -64,6 +64,8 @@ export type FillImageryContext = {
   colors: BrandTokens['color']
   feedSystemSlug: string | null
   ratio: AspectRatio
+  /** The art direction's ornament directive — conditions generated brand marks. */
+  ornamentBrief?: string
 }
 
 /**
@@ -117,6 +119,7 @@ export async function fillImagery(
             colors: ctx.colors,
             feedSystemSlug: ctx.feedSystemSlug,
             model: style.imageModel.vector,
+            ornament: ctx.ornamentBrief,
           })
           return svg ? withMarkSvg(composition, mark.id, svg) : composition
         } catch (err) {

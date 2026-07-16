@@ -101,3 +101,8 @@ export function setPlateSrc(composition: Composition, layerId: string, src: stri
 export function setShapeFillRole(composition: Composition, layerId: string, role: ColorRole): Composition {
   return updateLayer(composition, layerId, (l) => (l.type === 'shape' ? { ...l, fill: boundColor(role) } : l))
 }
+
+/** Set a numeric chrome param (e.g. strokeWidth, count, cols) as a literal. No-op on non-chrome layers. */
+export function setChromeParam(composition: Composition, layerId: string, key: string, value: number): Composition {
+  return updateLayer(composition, layerId, (l) => (l.type === 'chrome' ? { ...l, params: { ...l.params, [key]: lit(value) } } : l))
+}

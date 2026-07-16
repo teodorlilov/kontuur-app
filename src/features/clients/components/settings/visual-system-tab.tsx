@@ -41,10 +41,11 @@ interface VisualSystemTabProps {
   generatingDesign?: boolean
   /** Present → renders the Generate/Regenerate design-system button (settings; onboarding has its own). */
   onGenerateDesignSystem?: () => void
-  /** The brand's AI art direction (drives every post's design) + its Recompose action. */
+  /** The brand's AI art direction (drives every post's design) + its Recompose / per-axis edit actions. */
   artDirection?: ArtDirection | null
   recomposingDirection?: boolean
   onRecomposeDirection?: () => void
+  onArtDirectionChange?: (next: ArtDirection) => void
 }
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`
@@ -84,6 +85,7 @@ export function VisualSystemTab({
   artDirection,
   recomposingDirection,
   onRecomposeDirection,
+  onArtDirectionChange,
 }: VisualSystemTabProps) {
   const [ratio, setRatio] = useState<AspectRatio>('4:5')
   return (
@@ -144,7 +146,7 @@ export function VisualSystemTab({
         </div>
 
         <div style={{ borderTop: '0.5px solid var(--color-border-1)', paddingTop: 18 }}>
-          <ArtDirectionPanel artDirection={artDirection ?? null} recomposing={recomposingDirection} onRecompose={onRecomposeDirection} />
+          <ArtDirectionPanel artDirection={artDirection ?? null} recomposing={recomposingDirection} onRecompose={onRecomposeDirection} onChange={onArtDirectionChange} />
         </div>
 
         <div style={{ borderTop: '0.5px solid var(--color-border-1)', paddingTop: 18 }}>

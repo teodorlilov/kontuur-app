@@ -148,18 +148,22 @@ const VECTOR_STYLE: Record<string, string> = {
 }
 const DEFAULT_VECTOR_STYLE = VECTOR_STYLE.editorial!
 
-/** A Recraft text-to-vector prompt for one brand mark from a motif + palette + feed-system style. */
+/** A Recraft text-to-vector prompt for one brand mark from a motif + palette + feed-system style. An
+ *  optional `ornament` directive (the art director's `ornamentBrief`) folds the brand's ornament character
+ *  in, so generated marks reflect that brand — the "decoration is generated, not enumerated" path. */
 export function buildVectorPrompt(input: {
   motif: string
   colors: BrandTokens['color']
   feedSystemSlug: string | null
+  ornament?: string
 }): string {
   const style = VECTOR_STYLE[input.feedSystemSlug ?? ''] ?? DEFAULT_VECTOR_STYLE
   const motif = input.motif.trim() || 'an abstract geometric brand mark'
+  const character = input.ornament?.trim() ? ` The mark's character: ${input.ornament.trim()}.` : ''
   return (
     `A single ${style} vector graphic of ${motif}. Flat solid shapes in a colour palette of ` +
     `${paletteWords(input.colors)}, centred on a transparent background. Simple and iconic — ` +
-    'no text, no words, no lettering, no photorealism, no gradients.'
+    `no text, no words, no lettering, no photorealism, no gradients.${character}`
   )
 }
 

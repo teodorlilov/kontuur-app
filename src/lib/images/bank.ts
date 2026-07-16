@@ -106,6 +106,8 @@ export type ResolveVectorParams = {
   feedSystemSlug: string | null
   /** fal model id override (from the style's `imageModel.vector`); undefined → the Recraft default. */
   model?: string
+  /** The art director's ornament directive — folds the brand's ornament character into the mark. */
+  ornament?: string
 }
 
 /**
@@ -122,6 +124,7 @@ export async function resolveVector(params: ResolveVectorParams): Promise<string
     motif: params.motif,
     palette: paletteWords(params.colors),
     feedSystemSlug: params.feedSystemSlug ?? 'editorial',
+    ornament: params.ornament ?? '',
     kind: 'vector',
   })
 
@@ -134,7 +137,7 @@ export async function resolveVector(params: ResolveVectorParams): Promise<string
   const cached = (existing as { svg?: string } | null)?.svg
   if (cached) return cached
 
-  const prompt = buildVectorPrompt({ motif: params.motif, colors: params.colors, feedSystemSlug: params.feedSystemSlug })
+  const prompt = buildVectorPrompt({ motif: params.motif, colors: params.colors, feedSystemSlug: params.feedSystemSlug, ornament: params.ornament })
   const generated = await generateVector(prompt, params.model)
   if (!generated) return null
 

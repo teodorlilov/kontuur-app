@@ -31,14 +31,20 @@ async function loadComposeContext(clientId: string, agencyId: string) {
   return { db, kit, feedSystem, clientName: (clientRow as { name?: string } | null)?.name ?? '' }
 }
 
-/** The fal-imagery context for a client, from its kit. */
-function imageryContext(clientId: string, kit: Awaited<ReturnType<typeof getBrandKitForClient>>, feedSystemSlug: string | null): FillImageryContext {
+/** The fal-imagery context for a client, from its kit + the resolved art direction (ornament). */
+function imageryContext(
+  clientId: string,
+  kit: Awaited<ReturnType<typeof getBrandKitForClient>>,
+  feedSystemSlug: string | null,
+  ornamentBrief?: string
+): FillImageryContext {
   return {
     clientId,
     brief: kit?.brief ?? null,
     colors: (kit?.tokens ?? DEFAULT_TOKENS).color,
     feedSystemSlug,
     ratio: DEFAULT_RATIO,
+    ornamentBrief,
   }
 }
 
@@ -76,7 +82,7 @@ export async function composePostVisuals(params: {
   let compositions = composePostSlides(slides, { feedSystemSlug: effectiveSlug, postId, clientName })
   if (direction) compositions = compositions.map((c) => withTreatment(c, direction.treatment))
   if (withImagery) {
-    compositions = await fillImagery(compositions, slides, imageryContext(clientId, kit, effectiveSlug))
+    compositions = await fillImagery(compositions, slides, imageryContext(clientId, kit, effectiveSlug, direction?.ornamentBrief))
   }
 
   const rows = compositions.map((composition, slideIndex) => ({
@@ -130,7 +136,7 @@ export async function generatePostPlates(params: {
   const direction = kit?.art_direction ? resolveArtDirection(clampArtDirection(kit.art_direction)) : null
   const effectiveSlug = direction?.styleSlug ?? feedSystem.slug
   const compositions = composePostSlides(slides, { feedSystemSlug: effectiveSlug, postId: 'preview', clientName })
-  const filled = await fillImagery(compositions, slides, imageryContext(clientId, kit, effectiveSlug))
+  const filled = await fillImagery(compositions, slides, imageryContext(clientId, kit, effectiveSlug, direction?.ornamentBrief))
 
   const plates: Record<number, string> = {}
   filled.forEach((composition, i) => {

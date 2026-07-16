@@ -27,8 +27,10 @@ export type ResolvedDirection = {
   styleSlug: string
   /** The photo grade applied to every plate (overrides the archetype's authored treatment). */
   treatment: Treatment
+  /** The ornament directive that conditions generated brand marks. */
+  ornamentBrief: string
 }
 
 export function resolveArtDirection(ad: ArtDirection): ResolvedDirection {
-  return { styleSlug: directionToStyleSlug(ad), treatment: ad.treatment }
+  return { styleSlug: directionToStyleSlug(ad), treatment: ad.treatment, ornamentBrief: ad.ornamentBrief }
 }

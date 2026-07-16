@@ -108,6 +108,15 @@ describe('buildVectorPrompt', () => {
     expect(p).toContain('abstract geometric brand mark')
     expect(p).toContain('minimal line-art') // editorial default
   })
+
+  it('folds the art-director ornament directive into the mark character when given', () => {
+    const p = buildVectorPrompt({ motif: 'a leaf', colors: DEFAULT_TOKENS.color, feedSystemSlug: 'editorial', ornament: 'soft organic rounded forms' })
+    expect(p).toContain("mark's character: soft organic rounded forms")
+  })
+
+  it('omits the character clause when no ornament is given', () => {
+    expect(buildVectorPrompt({ motif: 'a leaf', colors: DEFAULT_TOKENS.color, feedSystemSlug: 'editorial' })).not.toContain('character:')
+  })
 })
 
 describe('buildOperatorPrompt', () => {
