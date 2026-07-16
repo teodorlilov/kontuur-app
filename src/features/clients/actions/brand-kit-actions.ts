@@ -3,6 +3,7 @@
 import { requireSessionUser } from '@/lib/auth/session'
 import { safeParseBrandTokens } from '@/lib/brand-kit/tokens-schema'
 import type { BrandBrief } from '@/lib/brand-kit/extract/report'
+import { clampArtDirection, type ArtDirection } from '@/lib/brand-kit/art-direction'
 import { seedImageBank, seedVectorBank, type SeedPlate, type SeedVector } from '@/lib/images/design-system'
 import type { BrandTokens } from '@/lib/scene-graph'
 import { createUntypedAdminClient } from '@/lib/supabase/admin'
@@ -19,7 +20,8 @@ export async function saveBrandKit(
   feedSystemSlug: string | null,
   brief?: BrandBrief | null,
   seedPlates?: Record<string, SeedPlate>,
-  seedVectors?: SeedVector[]
+  seedVectors?: SeedVector[],
+  artDirection?: ArtDirection | null
 ): Promise<{ ok: boolean; error?: string }> {
   const { agencyId } = await requireSessionUser()
 
@@ -48,6 +50,9 @@ export async function saveBrandKit(
     updated_at: new Date().toISOString(),
   }
   if (brief !== undefined) kitRow.brief = brief
+  // Only touch art_direction when the caller passes one (onboarding/recompose); a plain token save omits
+  // it, leaving the persisted direction intact. Clamp so a malformed spec can never corrupt the row.
+  if (artDirection !== undefined) kitRow.art_direction = artDirection === null ? null : clampArtDirection(artDirection)
 
   const { error: kitError } = await admin.from('brand_kits').upsert(kitRow, { onConflict: 'client_id' })
   if (kitError) return { ok: false, error: kitError.message }

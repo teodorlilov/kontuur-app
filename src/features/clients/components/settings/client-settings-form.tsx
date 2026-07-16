@@ -8,6 +8,7 @@ import { updateClient } from '@/features/clients/actions/client-actions'
 import { saveBrandKit } from '@/features/clients/actions/brand-kit-actions'
 import { requestDesignSystem, type DesignPlate, type DesignVector } from '@/features/clients/lib/design-system-client'
 import type { BrandBrief } from '@/lib/brand-kit/extract/report'
+import type { ArtDirection } from '@/lib/brand-kit/art-direction'
 import type { BrandTokens } from '@/lib/scene-graph'
 import { Button } from '@/components/ui/button'
 import { Avatar } from '@/components/ui/avatar'
@@ -42,6 +43,8 @@ interface ClientSettingsFormProps {
   /** The client's already-generated design system (from the bank), shown on open. */
   initialDesignPlates?: Record<string, DesignPlate>
   initialDesignVectors?: DesignVector[]
+  /** The client's persisted AI art direction (drives every post's design). */
+  artDirection: ArtDirection | null
 }
 
 /** Top-level client settings form with tabbed layout. */
@@ -62,6 +65,7 @@ export function ClientSettingsForm({
   brief,
   initialDesignPlates,
   initialDesignVectors,
+  artDirection: initialArtDirection,
 }: ClientSettingsFormProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -124,6 +128,27 @@ export function ClientSettingsForm({
   const [designVectors, setDesignVectors] = useState<DesignVector[] | null>(initialDesignVectors ?? null)
   const [generatingDesign, setGeneratingDesign] = useState(false)
   const [designDirty, setDesignDirty] = useState(false)
+  // Art direction: shown from the persisted kit; recompose regenerates it, persisted on Save (dirty flag).
+  const [artDirection, setArtDirection] = useState<ArtDirection | null>(initialArtDirection)
+  const [recomposingDirection, setRecomposingDirection] = useState(false)
+  const [directionDirty, setDirectionDirty] = useState(false)
+
+  /** Recompose the art direction from the client's persisted business + visual identity; persisted on Save. */
+  async function handleRecomposeDirection() {
+    setRecomposingDirection(true)
+    try {
+      const res = await fetch(`/api/clients/${clientId}/art-direction`, { method: 'POST' })
+      const data = (await res.json().catch(() => ({}))) as { artDirection?: ArtDirection }
+      if (data.artDirection) {
+        setArtDirection(data.artDirection)
+        setDirectionDirty(true)
+      } else {
+        toast.error('Could not recompose the art direction.')
+      }
+    } finally {
+      setRecomposingDirection(false)
+    }
+  }
 
   /** Generate the real design-system imagery + marks from the current tokens/brief. Shown live under the
    *  token type; persisted to the client's bank on Save (`designDirty`). */
@@ -205,15 +230,17 @@ export function ClientSettingsForm({
     // (and dirties render hashes) for nothing.
     const visualChanged =
       JSON.stringify(tokens) !== JSON.stringify(brandTokens) || feedSystemSlug !== selectedFeedSystemSlug
-    if (visualChanged || designDirty) {
+    if (visualChanged || designDirty || directionDirty) {
       // Seed the bank only with a freshly generated design system; leave `brief` untouched (undefined).
+      // Persist a freshly recomposed art direction only when it changed (directionDirty).
       const kitResult = await saveBrandKit(
         clientId,
         tokens,
         feedSystemSlug,
         undefined,
         designDirty && designPlates ? designPlates : undefined,
-        designDirty && designVectors ? designVectors : undefined
+        designDirty && designVectors ? designVectors : undefined,
+        directionDirty ? artDirection : undefined
       )
       if (!kitResult.ok) {
         toast.error(kitResult.error ?? 'Failed to save the visual system.')
@@ -364,6 +391,9 @@ export function ClientSettingsForm({
               designVectors={designVectors?.map((v) => v.svg)}
               generatingDesign={generatingDesign}
               onGenerateDesignSystem={handleGenerateDesignSystem}
+              artDirection={artDirection}
+              recomposingDirection={recomposingDirection}
+              onRecomposeDirection={handleRecomposeDirection}
             />
           )}
           {activeTab === 'accounts' && <ConnectedAccountsTab clientId={clientId} />}

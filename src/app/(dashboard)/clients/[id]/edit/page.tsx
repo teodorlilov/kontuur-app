@@ -168,6 +168,7 @@ export default async function EditClientPage({ params }: { params: Promise<{ id:
       brief={kit?.brief ?? null}
       initialDesignPlates={initialDesignPlates}
       initialDesignVectors={initialDesignVectors}
+      artDirection={kit?.art_direction ?? null}
     />
   )
 }

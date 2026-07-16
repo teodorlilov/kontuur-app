@@ -1,5 +1,6 @@
 import type { BrandTokens } from '@/lib/scene-graph'
 import type { BrandBrief } from '@/lib/brand-kit/extract/report'
+import type { ArtDirection } from '@/lib/brand-kit/art-direction'
 import { createUntypedAdminClient } from '@/lib/supabase/admin'
 
 export type BrandKitRow = {
@@ -11,9 +12,12 @@ export type BrandKitRow = {
   /** The art-direction brief (subjects/motifs/mood) — the input to Phase 4 image prompts. Null on kits
    *  extracted before the brief was persisted, or on the default kit. */
   brief: BrandBrief | null
+  /** The AI art director's spec — drives layout/treatment/model per post. Null on older/default kits →
+   *  the resolver falls back to DEFAULT_ART_DIRECTION. */
+  art_direction: ArtDirection | null
 }
 
-const KIT_COLUMNS = 'id, client_id, tokens, version, source_kind, brief'
+const KIT_COLUMNS = 'id, client_id, tokens, version, source_kind, brief, art_direction'
 
 /**
  * Read a client's brand kit, scoped to the caller's agency. Access is app-level (no RLS): the client

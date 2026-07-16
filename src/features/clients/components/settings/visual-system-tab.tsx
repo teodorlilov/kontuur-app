@@ -3,12 +3,14 @@
 import { useState } from 'react'
 import type { BrandTokens } from '@/lib/scene-graph'
 import type { AspectRatio } from '@/lib/renderer/layout/anchor'
+import type { ArtDirection } from '@/lib/brand-kit/art-direction'
 import { Button } from '@/components/ui/button'
 import { FeedSystemPicker, type FeedSystemOption } from '../visual-system/feed-system-picker'
 import { PreviewGrid } from '../visual-system/preview-grid'
 import { RatioToggle } from '../visual-system/ratio-toggle'
 import { TokenEditor } from '../visual-system/token-editor'
 import { BrandMarks } from '../visual-system/brand-marks'
+import { ArtDirectionPanel } from '../visual-system/art-direction-panel'
 import { PanelHeader } from './basic-info-tab'
 
 const sectionLabel: React.CSSProperties = {
@@ -39,6 +41,10 @@ interface VisualSystemTabProps {
   generatingDesign?: boolean
   /** Present → renders the Generate/Regenerate design-system button (settings; onboarding has its own). */
   onGenerateDesignSystem?: () => void
+  /** The brand's AI art direction (drives every post's design) + its Recompose action. */
+  artDirection?: ArtDirection | null
+  recomposingDirection?: boolean
+  onRecomposeDirection?: () => void
 }
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`
@@ -75,6 +81,9 @@ export function VisualSystemTab({
   designVectors,
   generatingDesign,
   onGenerateDesignSystem,
+  artDirection,
+  recomposingDirection,
+  onRecomposeDirection,
 }: VisualSystemTabProps) {
   const [ratio, setRatio] = useState<AspectRatio>('4:5')
   return (
@@ -132,6 +141,10 @@ export function VisualSystemTab({
               </div>
             )}
           </div>
+        </div>
+
+        <div style={{ borderTop: '0.5px solid var(--color-border-1)', paddingTop: 18 }}>
+          <ArtDirectionPanel artDirection={artDirection ?? null} recomposing={recomposingDirection} onRecompose={onRecomposeDirection} />
         </div>
 
         <div style={{ borderTop: '0.5px solid var(--color-border-1)', paddingTop: 18 }}>

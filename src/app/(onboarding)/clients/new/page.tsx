@@ -7,6 +7,7 @@ import { serializePillars } from '@/lib/clients/content-pillars'
 import type { WeightedPillar } from '@/lib/clients/content-pillars'
 import { saveBrandKit } from '@/features/clients/actions/brand-kit-actions'
 import { requestDesignSystem } from '@/features/clients/lib/design-system-client'
+import type { ArtDirection } from '@/lib/brand-kit/art-direction'
 import { STARTER_FEED_SYSTEMS } from '@/lib/brand-kit/feed-systems'
 import type { ExtractionReport } from '@/lib/brand-kit/extract/report'
 import { DEFAULT_TOKENS, type BrandTokens } from '@/lib/scene-graph'
@@ -68,6 +69,10 @@ export default function NewClientPage() {
   const [designVectors, setDesignVectors] = useState<{ svg: string; label: string }[] | null>(null)
   const [generatingDesign, setGeneratingDesign] = useState(false)
   const designAutoFiredRef = useRef(false)
+  // The AI art direction, composed at review from the visual identity + the interview business context;
+  // persisted to the new client's kit on save (drives every later post's design).
+  const [artDirection, setArtDirection] = useState<ArtDirection | null>(null)
+  const directionAutoFiredRef = useRef(false)
 
   // Auto-generate the design system once the operator reaches the review step (after extraction) — the
   // imagery is part of the onboarding pipeline, not a manual gate. The ref guards against re-firing on
@@ -80,6 +85,16 @@ export default function NewClientPage() {
     // handleGenerateDesignSystem is a stable function declaration; fire only on step change.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step])
+
+  // Compose the art direction once the operator reaches review and the profile exists (it needs the
+  // business answers, not just the screenshot). Ref-guarded; a Redo resets it.
+  useEffect(() => {
+    if (step === 'review' && profile && !directionAutoFiredRef.current) {
+      directionAutoFiredRef.current = true
+      void handleComposeArtDirection()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, profile])
 
   // Schedule state
   const [scheduleFreqType, setScheduleFreqType] = useState('per_week')
@@ -306,7 +321,7 @@ export default function NewClientPage() {
 
       // Persist the reviewed visual system for the new client (§2.4). Non-fatal — Phase 0 still renders
       // on the default kit if this fails.
-      const kitResult = await saveBrandKit(data.client_id, visualTokens, selectedFeedSystemSlug, visualReport?.brief ?? null, designPlates ?? undefined, designVectors ?? undefined)
+      const kitResult = await saveBrandKit(data.client_id, visualTokens, selectedFeedSystemSlug, visualReport?.brief ?? null, designPlates ?? undefined, designVectors ?? undefined, artDirection ?? undefined)
       if (!kitResult.ok) toast.error('Client saved, but the visual system could not be saved.')
 
       // Trigger best-time generation in background
@@ -342,6 +357,8 @@ export default function NewClientPage() {
     setDesignPlates(null)
     setDesignVectors(null)
     designAutoFiredRef.current = false
+    setArtDirection(null)
+    directionAutoFiredRef.current = false
   }
 
   /** Generate the real design-system imagery from the current tokens + brief (§ Part B). Fills the
@@ -360,6 +377,36 @@ export default function NewClientPage() {
       if (vectors.length > 0) setDesignVectors(vectors)
     } finally {
       setGeneratingDesign(false)
+    }
+  }
+
+  /** Compose the AI art direction from the visual read + the interview business context. Auto-fired at
+   *  review, persisted on save. Fail-soft — the endpoint always returns a usable direction. */
+  async function handleComposeArtDirection() {
+    if (!profile) return
+    try {
+      const res = await fetch('/api/onboarding/art-direction', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          mood: visualReport?.brief?.mood ?? '',
+          motifs: visualReport?.brief?.motifs ?? [],
+          photographicSubjects: visualReport?.brief?.photographicSubjects ?? [],
+          palette: Object.values(visualTokens.color),
+          fontCategory: visualTokens.type.display.family,
+          niche: profile.niche,
+          audience: profile.target_audience.join(', '),
+          goal: answers.q3 ?? '',
+          tone: profile.tone,
+          formalityNote: profile.language_formality,
+          pillars: profile.content_pillars.map((p) => p.pillar),
+          references: answers.q8 ?? '',
+        }),
+      })
+      const data = (await res.json().catch(() => ({}))) as { artDirection?: ArtDirection }
+      if (data.artDirection) setArtDirection(data.artDirection)
+    } catch {
+      // fail-soft: no art direction → generation falls back to the feed-system default
     }
   }
 

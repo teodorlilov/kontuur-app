@@ -93,6 +93,17 @@ export const QUESTIONS: Question[] = [
     ],
     multiSelect: true,
   },
+  {
+    id: 'q8',
+    text: 'Any brands, accounts, or visual styles you admire? Type a name or link, or pick a direction.',
+    chips: [
+      'No strong preference',
+      'Clean & minimal',
+      'Bold & colourful',
+      'Elegant & premium',
+      'Playful & friendly',
+    ],
+  },
 ]
 
 /** Maps analysis fields to a detected answer for the given question. */

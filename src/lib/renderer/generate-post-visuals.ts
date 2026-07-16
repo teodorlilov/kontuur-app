@@ -1,11 +1,23 @@
 import { getBrandKitForClient, getClientFeedSystem } from '@/lib/brand-kit/queries'
+import { clampArtDirection } from '@/lib/brand-kit/art-direction'
 import { composePostSlides } from '@/lib/renderer/compose'
+import { resolveArtDirection } from '@/lib/renderer/art-direction'
 import { feedSystemTokens } from '@/lib/renderer/feed-system-compositions'
 import { DEFAULT_RATIO } from '@/lib/renderer/layout/anchor'
 import { fillImagery, type FillImageryContext } from '@/lib/images/generate-plates'
-import { DEFAULT_TOKENS } from '@/lib/scene-graph'
+import { DEFAULT_TOKENS, type Composition, type Treatment } from '@/lib/scene-graph'
 import { createUntypedAdminClient } from '@/lib/supabase/admin'
 import type { CarouselSlide } from '@/types/api'
+
+/** Override every full-bleed plate's grade with the art direction's treatment (cutouts stay ungraded). */
+function withTreatment(composition: Composition, treatment: Treatment): Composition {
+  return {
+    ...composition,
+    layers: composition.layers.map((l) =>
+      l.type === 'plate' && !l.cutout ? { ...l, treatment: { mode: 'literal', value: treatment } } : l
+    ),
+  }
+}
 
 /** Load the shared compose context (kit + feed system + client name) once — used by both the stored
  *  compose and the wizard preview so the two paths agree. */
@@ -56,9 +68,15 @@ export async function composePostVisuals(params: {
 
   const { db, kit, feedSystem, clientName } = await loadComposeContext(clientId, agencyId)
 
-  let compositions = composePostSlides(slides, { feedSystemSlug: feedSystem.slug, postId, clientName })
+  // The persisted art direction (when present) drives the layout pool + photo grade; otherwise the
+  // client's chosen feed system, unchanged (backward-compatible).
+  const direction = kit?.art_direction ? resolveArtDirection(clampArtDirection(kit.art_direction)) : null
+  const effectiveSlug = direction?.styleSlug ?? feedSystem.slug
+
+  let compositions = composePostSlides(slides, { feedSystemSlug: effectiveSlug, postId, clientName })
+  if (direction) compositions = compositions.map((c) => withTreatment(c, direction.treatment))
   if (withImagery) {
-    compositions = await fillImagery(compositions, slides, imageryContext(clientId, kit, feedSystem.slug))
+    compositions = await fillImagery(compositions, slides, imageryContext(clientId, kit, effectiveSlug))
   }
 
   const rows = compositions.map((composition, slideIndex) => ({
@@ -109,8 +127,10 @@ export async function generatePostPlates(params: {
   if (slides.length === 0) return {}
 
   const { kit, feedSystem, clientName } = await loadComposeContext(clientId, agencyId)
-  const compositions = composePostSlides(slides, { feedSystemSlug: feedSystem.slug, postId: 'preview', clientName })
-  const filled = await fillImagery(compositions, slides, imageryContext(clientId, kit, feedSystem.slug))
+  const direction = kit?.art_direction ? resolveArtDirection(clampArtDirection(kit.art_direction)) : null
+  const effectiveSlug = direction?.styleSlug ?? feedSystem.slug
+  const compositions = composePostSlides(slides, { feedSystemSlug: effectiveSlug, postId: 'preview', clientName })
+  const filled = await fillImagery(compositions, slides, imageryContext(clientId, kit, effectiveSlug))
 
   const plates: Record<number, string> = {}
   filled.forEach((composition, i) => {
