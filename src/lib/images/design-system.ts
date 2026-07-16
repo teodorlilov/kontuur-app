@@ -7,11 +7,7 @@ import { createUntypedAdminClient } from '@/lib/supabase/admin'
 import { generateDesign, generateVector } from './fal'
 import { buildDesignPrompt, buildVectorPrompt, type PlateRole } from './prompt'
 import { uploadPlate } from './storage'
-
-/** One generated design-system plate: what to render (public_url) + where it lives (storage_path). This
- *  module stays free of the LLM/provider chain, so the `saveBrandKit` server action can seed the bank
- *  without dragging the AI client. */
-export type SeedPlate = { publicUrl: string; storagePath: string }
+import type { DesignPlate, DesignVector } from '@/types/api'
 
 // How many sample slide designs to generate as the brand's reference set (cover + a couple of interiors).
 // Bounded for cost; the same designs seed the reference-image conditioning for every future post.
@@ -35,12 +31,12 @@ export async function generateDesignSystemPlates(params: {
   /** The brand's real Instagram grid images (from `fetchInstagramImages`) — conditions the samples on the
    *  look the brand already has, so the generated design system matches their grid. Empty → pure text-to-image. */
   referenceImageUrls?: string[]
-}): Promise<Record<string, SeedPlate>> {
+}): Promise<Record<string, DesignPlate>> {
   const style = getStyle(params.feedSystemSlug)
   if (!style.generative) return {} // quiet-grid: no imagery — its design system is the colour ground
 
   const prefix = `onboarding/${randomUUID()}`
-  const out: Record<string, SeedPlate> = {}
+  const out: Record<string, DesignPlate> = {}
   await Promise.all(
     SAMPLE_ROLES.map(async (role, index) => {
       const prompt = buildDesignPrompt({
@@ -67,7 +63,7 @@ export async function generateDesignSystemPlates(params: {
  * posts still generate their own slide-relevant images). Non-fatal: logs and returns on failure so it
  * never blocks client creation.
  */
-export async function seedImageBank(clientId: string, plates: Record<string, SeedPlate>): Promise<void> {
+export async function seedImageBank(clientId: string, plates: Record<string, DesignPlate>): Promise<void> {
   const rows = Object.entries(plates).map(([role, plate]) => ({
     client_id: clientId,
     role,
@@ -84,9 +80,6 @@ export async function seedImageBank(clientId: string, plates: Record<string, See
   if (error) console.error('[images/design-system] seedImageBank failed:', error.message)
 }
 
-/** One generated brand vector: the SVG source + the motif it came from (operator-facing label). */
-export type SeedVector = { svg: string; label: string }
-
 // A brand's starter vector count — a small, on-brand set from the brief's motifs. Bounded for cost.
 const MAX_STARTER_VECTORS = 3
 
@@ -100,11 +93,11 @@ export async function generateDesignSystemVectors(params: {
   colors: BrandTokens['color']
   brief: BrandBrief | null
   feedSystemSlug: string | null
-}): Promise<SeedVector[]> {
+}): Promise<DesignVector[]> {
   const motifs = (params.brief?.motifs ?? []).map((m) => m.trim()).filter(Boolean).slice(0, MAX_STARTER_VECTORS)
   const seeds = motifs.length > 0 ? motifs : ['an abstract geometric brand mark']
 
-  const out: SeedVector[] = []
+  const out: DesignVector[] = []
   await Promise.all(
     seeds.map(async (motif) => {
       const prompt = buildVectorPrompt({ motif, colors: params.colors, feedSystemSlug: params.feedSystemSlug })
@@ -120,7 +113,7 @@ export async function generateDesignSystemVectors(params: {
  * marker (never collides with a later copy/motif hash). Non-fatal: logs and returns on failure so it never
  * blocks client creation. Mirrors `seedImageBank`.
  */
-export async function seedVectorBank(clientId: string, vectors: SeedVector[]): Promise<void> {
+export async function seedVectorBank(clientId: string, vectors: DesignVector[]): Promise<void> {
   const rows = vectors.map((v, i) => ({
     client_id: clientId,
     label: v.label,

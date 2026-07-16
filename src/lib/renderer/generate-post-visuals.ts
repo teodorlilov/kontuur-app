@@ -7,7 +7,7 @@ import { DEFAULT_RATIO } from '@/lib/renderer/layout/anchor'
 import { fillImagery, type FillImageryContext } from '@/lib/images/generate-plates'
 import { DEFAULT_TOKENS, lit, type Composition, type Treatment } from '@/lib/scene-graph'
 import { createUntypedAdminClient } from '@/lib/supabase/admin'
-import type { CarouselSlide } from '@/types/api'
+import type { CarouselSlide, PostSlide } from '@/types/api'
 
 /** Override every full-bleed plate's grade with the art direction's treatment (cutouts stay ungraded). */
 function withTreatment(composition: Composition, treatment: Treatment): Composition {
@@ -129,7 +129,7 @@ export async function generatePreviewVisuals(params: {
   clientId: string
   agencyId: string
   slides: CarouselSlide[]
-}): Promise<Array<{ slideIndex: number; composition: Composition }>> {
+}): Promise<PostSlide[]> {
   const { clientId, agencyId, slides } = params
   if (slides.length === 0) return []
 

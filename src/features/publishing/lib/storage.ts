@@ -1,11 +1,10 @@
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
+import type { DesignPlate } from '@/types/api'
 
 const BUCKET = 'post-images'
 
-export interface UploadResult {
-  publicUrl: string
-  storagePath: string
-}
+/** A bucket upload's result — the same `{ publicUrl, storagePath }` shape a design plate carries. */
+export type UploadResult = DesignPlate
 
 /** Upload bytes to a public storage bucket and return the public URL — the one place that touches
  *  `storage.upload` + `getPublicUrl`, shared by post images and generated plates. Throws on failure. */

@@ -6,10 +6,9 @@ import { ComposedSlides } from '@/components/posts/composed-slides'
 import { PostVisualEditor } from '@/features/visual-editor/components/post-visual-editor'
 import { composePostSlides } from '@/lib/renderer/compose'
 import type { BrandTokens, Composition } from '@/lib/scene-graph'
-import type { CarouselSlide } from '@/types/api'
+import type { CarouselSlide, PostSlide } from '@/types/api'
 
 type VisualKit = { tokens: BrandTokens; feedSystemSlug: string; clientName: string }
-type SlideData = { slideIndex: number; composition: Composition }
 
 /**
  * The designed slides for a wizard-results post (pre-save). The copy composes in-browser; the real fal
@@ -28,10 +27,10 @@ export function PostVisualsPreview({
   slides: CarouselSlide[]
   onVisualsChange?: (visuals: Array<{ slideIndex: number; composition: unknown }> | null) => void
   /** Reports the currently-displayed slides + tokens so approve can render them to post_images. */
-  onRenderable?: (bundle: { slides: SlideData[]; tokens: BrandTokens } | null) => void
+  onRenderable?: (bundle: { slides: PostSlide[]; tokens: BrandTokens } | null) => void
 }) {
   const [kit, setKit] = useState<VisualKit | null>(null)
-  const [serverSlides, setServerSlides] = useState<SlideData[] | null>(null)
+  const [serverSlides, setServerSlides] = useState<PostSlide[] | null>(null)
   const [generating, setGenerating] = useState(false)
   const [edited, setEdited] = useState<Composition[] | null>(null)
   const [editing, setEditing] = useState(false)
@@ -62,7 +61,7 @@ export function PostVisualsPreview({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ slides }),
       })
-      const data = (await res.json().catch(() => ({}))) as { slides?: SlideData[] }
+      const data = (await res.json().catch(() => ({}))) as { slides?: PostSlide[] }
       if (res.ok) setServerSlides(data.slides ?? [])
     } catch {
       // fail-soft: leave the copy-only compositions (gradients / colour grounds)
@@ -112,13 +111,13 @@ export function PostVisualsPreview({
   const editorInitial = useMemo(() => {
     if (!kit || !displayCompositions) return null
     return {
-      slides: displayCompositions.map<SlideData>((composition, slideIndex) => ({ slideIndex, composition })),
+      slides: displayCompositions.map<PostSlide>((composition, slideIndex) => ({ slideIndex, composition })),
       tokens: kit.tokens,
     }
   }, [kit, displayCompositions])
 
   const handleSaveDraft = useCallback(
-    (next: SlideData[]) => {
+    (next: PostSlide[]) => {
       setEdited(next.map((s) => s.composition))
       onVisualsChange?.(next.map((s) => ({ slideIndex: s.slideIndex, composition: s.composition })))
     },

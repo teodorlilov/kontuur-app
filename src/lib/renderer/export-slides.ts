@@ -1,7 +1,6 @@
 import { renderCompositionToDataURL } from '@/lib/renderer/konva'
-import type { BrandTokens, Composition } from '@/lib/scene-graph'
-
-export type ExportSlide = { slideIndex: number; composition: Composition }
+import type { BrandTokens } from '@/lib/scene-graph'
+import type { PostSlide } from '@/types/api'
 
 /**
  * Render each slide to a publishable image and upload it to `post_images` at its position — the bridge
@@ -15,7 +14,7 @@ export type ExportSlide = { slideIndex: number; composition: Composition }
  */
 export async function exportSlidesToPostImages(
   postId: string,
-  slides: ExportSlide[],
+  slides: PostSlide[],
   tokens: BrandTokens,
   onProgress?: (done: number, total: number) => void
 ): Promise<void> {

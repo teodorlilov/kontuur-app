@@ -1,8 +1,29 @@
-import type { BrandTokens } from '@/lib/scene-graph'
+import type { BrandTokens, Composition } from '@/lib/scene-graph'
 
 // ---- Shared enums / unions ----
 
 export type PostType = 'single' | 'carousel'
+
+// ---- Design system + visuals (shared shapes; one definition, imported everywhere) ----
+
+/** A generated design-system plate: its public URL + durable storage path. */
+export interface DesignPlate {
+  publicUrl: string
+  storagePath: string
+}
+
+/** A generated on-brand vector mark: sanitised SVG source + an operator-facing label. */
+export interface DesignVector {
+  svg: string
+  label: string
+}
+
+/** One carousel slide's designed scene graph, keyed by its index — the unit passed between the composer,
+ *  the editor, and the export/render paths. */
+export interface PostSlide {
+  slideIndex: number
+  composition: Composition
+}
 
 export interface PostImage {
   id: string

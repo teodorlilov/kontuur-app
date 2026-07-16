@@ -11,7 +11,7 @@ import type { ArtDirection } from '@/lib/brand-kit/art-direction'
 import { STARTER_FEED_SYSTEMS } from '@/lib/brand-kit/feed-systems'
 import type { ExtractionReport } from '@/lib/brand-kit/extract/report'
 import { DEFAULT_TOKENS, type BrandTokens } from '@/lib/scene-graph'
-import type { UrlAnalysisResponse } from '@/types/api'
+import type { DesignPlate, DesignVector, UrlAnalysisResponse } from '@/types/api'
 import type { OnboardingStep, OnboardProfile, Message } from '@/features/onboarding/types'
 import { QUESTIONS, getDetectedAnswer } from '@/features/onboarding/lib/questions'
 import { PillarSourceStepper } from '@/features/sources/components/stepper/pillar-source-stepper'
@@ -63,10 +63,10 @@ export default function NewClientPage() {
   const [visualTouched, setVisualTouched] = useState(false)
   // Generated design-system plates by role (from /api/onboarding/design-system): the real imagery shown
   // under the live token layer, seeded into the client's bank on save.
-  const [designPlates, setDesignPlates] = useState<Record<string, { publicUrl: string; storagePath: string }> | null>(null)
+  const [designPlates, setDesignPlates] = useState<Record<string, DesignPlate> | null>(null)
   // Generated starter vector marks (from the same endpoint): shown in the review, seeded into the client's
   // vector bank on save.
-  const [designVectors, setDesignVectors] = useState<{ svg: string; label: string }[] | null>(null)
+  const [designVectors, setDesignVectors] = useState<DesignVector[] | null>(null)
   const [generatingDesign, setGeneratingDesign] = useState(false)
   const designAutoFiredRef = useRef(false)
   // The AI art direction, composed at review from the visual identity + the interview business context;

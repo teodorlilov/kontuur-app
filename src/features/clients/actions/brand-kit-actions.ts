@@ -4,8 +4,9 @@ import { requireSessionUser } from '@/lib/auth/session'
 import { safeParseBrandTokens } from '@/lib/brand-kit/tokens-schema'
 import type { BrandBrief } from '@/lib/brand-kit/extract/report'
 import { clampArtDirection, type ArtDirection } from '@/lib/brand-kit/art-direction'
-import { seedImageBank, seedVectorBank, type SeedPlate, type SeedVector } from '@/lib/images/design-system'
+import { seedImageBank, seedVectorBank } from '@/lib/images/design-system'
 import type { BrandTokens } from '@/lib/scene-graph'
+import type { DesignPlate, DesignVector } from '@/types/api'
 import { createUntypedAdminClient } from '@/lib/supabase/admin'
 
 /**
@@ -19,8 +20,8 @@ export async function saveBrandKit(
   tokens: BrandTokens,
   feedSystemSlug: string | null,
   brief?: BrandBrief | null,
-  seedPlates?: Record<string, SeedPlate>,
-  seedVectors?: SeedVector[],
+  seedPlates?: Record<string, DesignPlate>,
+  seedVectors?: DesignVector[],
   artDirection?: ArtDirection | null
 ): Promise<{ ok: boolean; error?: string }> {
   const { agencyId } = await requireSessionUser()

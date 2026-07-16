@@ -1,7 +1,8 @@
 import 'server-only'
 import { getBrowser } from '@/lib/render/browser'
 import { kitFontsHref } from '@/lib/render/google-fonts'
-import type { BrandTokens, Composition } from '@/lib/scene-graph'
+import type { BrandTokens } from '@/lib/scene-graph'
+import type { PostSlide } from '@/types/api'
 
 /**
  * Autonomous server-side raster (Phase 6). Drives the retained headless Chromium to the public
@@ -20,10 +21,7 @@ function renderBaseUrl(): string {
   return 'http://localhost:3000'
 }
 
-export async function renderSlidesServerSide(
-  slides: Array<{ slideIndex: number; composition: Composition }>,
-  tokens: BrandTokens
-): Promise<RenderedSlide[]> {
+export async function renderSlidesServerSide(slides: PostSlide[], tokens: BrandTokens): Promise<RenderedSlide[]> {
   if (slides.length === 0) return []
   let page: Awaited<ReturnType<Awaited<ReturnType<typeof getBrowser>>['newPage']>> | null = null
   try {

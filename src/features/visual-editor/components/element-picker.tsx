@@ -1,8 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-
-export type BrandVector = { svg: string; label: string }
+import type { DesignVector } from '@/types/api'
 
 /**
  * The editor's Elements picker: the brand's vector library as clickable thumbnails, plus an on-demand
@@ -15,7 +14,7 @@ export function ElementPicker({
   onInsert,
   clientId,
 }: {
-  vectors: BrandVector[]
+  vectors: DesignVector[]
   onInsert: (svg: string) => void
   /** The client, for the on-demand generate endpoint. Absent → the prompt input is hidden. */
   clientId?: string

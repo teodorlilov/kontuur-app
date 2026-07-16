@@ -1,7 +1,8 @@
 import 'server-only'
 import { uploadPostImage } from '@/features/publishing/lib/storage'
 import { createUntypedAdminClient } from '@/lib/supabase/admin'
-import type { BrandTokens, Composition } from '@/lib/scene-graph'
+import type { BrandTokens } from '@/lib/scene-graph'
+import type { PostSlide } from '@/types/api'
 import { renderSlidesServerSide } from './server-render'
 
 /**
@@ -12,7 +13,7 @@ import { renderSlidesServerSide } from './server-render'
 export async function renderAndUploadPostImages(params: {
   postId: string
   clientId: string
-  slides: Array<{ slideIndex: number; composition: Composition }>
+  slides: PostSlide[]
   tokens: BrandTokens
 }): Promise<void> {
   const rendered = await renderSlidesServerSide(params.slides, params.tokens)

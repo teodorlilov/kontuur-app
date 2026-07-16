@@ -1,9 +1,7 @@
 import type { BrandBrief } from '@/lib/brand-kit/extract/report'
 import type { BrandTokens } from '@/lib/scene-graph'
+import type { DesignPlate, DesignVector } from '@/types/api'
 
-/** One generated design-system plate (public URL + storage path), mirroring `SeedPlate` for persistence. */
-export type DesignPlate = { publicUrl: string; storagePath: string }
-export type DesignVector = { svg: string; label: string }
 export type DesignSystemResult = { plates: Record<string, DesignPlate>; vectors: DesignVector[] }
 
 /**

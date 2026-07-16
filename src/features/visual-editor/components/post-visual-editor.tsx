@@ -19,8 +19,9 @@ import {
   type Composition,
   type MarkLayer,
 } from '@/lib/scene-graph'
+import type { DesignVector, PostSlide } from '@/types/api'
 import { LayerPropertyPanel } from './layer-property-panel'
-import { ElementPicker, type BrandVector } from './element-picker'
+import { ElementPicker } from './element-picker'
 
 /** A centred mark layer for an inserted brand vector — ~a third of the canvas, draggable/resizable. */
 function createMarkLayer(svg: string, size: { w: number; h: number }): MarkLayer {
@@ -42,8 +43,7 @@ function createMarkLayer(svg: string, size: { w: number; h: number }): MarkLayer
   }
 }
 
-type SlideData = { slideIndex: number; composition: Composition }
-type VisualsResponse = { slides: SlideData[]; tokens: BrandTokens; clientId?: string }
+type VisualsResponse = { slides: PostSlide[]; tokens: BrandTokens; clientId?: string }
 
 const MAX_CANVAS_W = 460
 
@@ -73,15 +73,15 @@ export function PostVisualEditor({
   onClose: () => void
   postId?: string
   onSaved?: () => void
-  initial?: { slides: SlideData[]; tokens: BrandTokens }
-  onSaveDraft?: (slides: SlideData[]) => void
+  initial?: { slides: PostSlide[]; tokens: BrandTokens }
+  onSaveDraft?: (slides: PostSlide[]) => void
   /** The client, for the brand vector library. Passed directly in draft mode; else read from the fetch. */
   clientId?: string
 }) {
-  const [slides, setSlides] = useState<SlideData[] | null>(null)
+  const [slides, setSlides] = useState<PostSlide[] | null>(null)
   const [tokens, setTokens] = useState<BrandTokens | null>(null)
   const [clientId, setClientId] = useState<string | null>(clientIdProp ?? null)
-  const [vectors, setVectors] = useState<BrandVector[]>([])
+  const [vectors, setVectors] = useState<DesignVector[]>([])
   const [current, setCurrent] = useState(0)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [dirty, setDirty] = useState(false)
@@ -131,7 +131,7 @@ export function PostVisualEditor({
     if (!open || !clientId) return
     let cancelled = false
     void fetch(`/api/clients/${clientId}/vectors`)
-      .then((r) => (r.ok ? (r.json() as Promise<{ vectors: BrandVector[] }>) : null))
+      .then((r) => (r.ok ? (r.json() as Promise<{ vectors: DesignVector[] }>) : null))
       .then((d) => {
         if (!cancelled && d) setVectors(d.vectors)
       })

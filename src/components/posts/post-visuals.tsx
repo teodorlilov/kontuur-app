@@ -7,11 +7,12 @@ import { PostVisualEditor } from '@/features/visual-editor/components/post-visua
 import { kitFontsHref } from '@/lib/render/google-fonts'
 import { useKitFonts } from '@/lib/render/use-kit-fonts'
 import type { BrandTokens, Composition } from '@/lib/scene-graph'
+import type { PostSlide } from '@/types/api'
 
 type VisualsData = {
   status: 'generating' | 'ready' | 'failed' | null
   error: string | null
-  slides: { slideIndex: number; composition: Composition }[]
+  slides: PostSlide[]
   tokens: BrandTokens
 }
 

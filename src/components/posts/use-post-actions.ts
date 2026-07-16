@@ -2,8 +2,9 @@
 
 import { useState } from 'react'
 import { toast } from '@/components/ui/toast'
-import { exportSlidesToPostImages, type ExportSlide } from '@/lib/renderer/export-slides'
+import { exportSlidesToPostImages } from '@/lib/renderer/export-slides'
 import type { BrandTokens } from '@/lib/scene-graph'
+import type { PostSlide } from '@/types/api'
 import type { PostData, ValidationData } from '@/types/post'
 
 interface UsePostActionsOptions {
@@ -16,7 +17,7 @@ interface UsePostActionsOptions {
 type EditedVisuals = Array<{ slideIndex: number; composition: unknown }>
 /** The currently-displayed slide compositions + tokens — rendered to post_images on approve so the post
  *  publishes with visuals, whether or not the operator opened the editor. */
-type RenderBundle = { slides: ExportSlide[]; tokens: BrandTokens }
+type RenderBundle = { slides: PostSlide[]; tokens: BrandTokens }
 
 export function usePostActions({ post, onApprove, onRegenerate }: UsePostActionsOptions) {
   const [caption, setCaption] = useState(post.caption ?? '')
