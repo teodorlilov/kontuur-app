@@ -2,7 +2,7 @@ import type { BrandBrief } from '@/lib/brand-kit/extract/report'
 import type { AspectRatio } from '@/lib/renderer/layout/anchor'
 import type { BrandTokens, Composition, PlateLayer } from '@/lib/scene-graph'
 import { getStyle } from '@/lib/renderer/styles'
-import { withPlateSrc } from '@/lib/renderer/compose'
+import { slideRole, withPlateSrc, type SlideRole } from '@/lib/renderer/compose'
 import type { CarouselSlide } from '@/types/api'
 import type { PlateRole } from './prompt'
 
@@ -14,9 +14,10 @@ import type { PlateRole } from './prompt'
  * hero; interior slides continue the same visual world; all are banked + reused per brand.
  */
 
-/** Cover is the first slide; the rest are interior. Drives the design prompt's role emphasis. */
-export function plateRole(index: number): PlateRole {
-  return index === 0 ? 'cover' : 'interior'
+/** The design-prompt emphasis for a slide's carousel role: the cover is the hero; content + CTA are
+ *  supporting/interior. Derived from the shared `slideRole` so layout and imagery never disagree. */
+export function plateRole(role: SlideRole): PlateRole {
+  return role === 'cover' ? 'cover' : 'interior'
 }
 
 /** The composition's full-bleed design plate, if any. Generative styles carry one; `quiet-grid`'s colour
@@ -74,7 +75,7 @@ export async function fillImagery(
       try {
         const url = await resolveDesign({
           clientId: ctx.clientId,
-          role: plateRole(index),
+          role: plateRole(slideRole(slide, index, slides.length)),
           slide: { headline: slide.headline, body: slide.body },
           brief: ctx.brief,
           colors: ctx.colors,

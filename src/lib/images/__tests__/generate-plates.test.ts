@@ -25,10 +25,10 @@ describe('hash', () => {
 })
 
 describe('plateRole', () => {
-  it('cover is first, the rest interior', () => {
-    expect(plateRole(0)).toBe('cover')
-    expect(plateRole(1)).toBe('interior')
-    expect(plateRole(5)).toBe('interior')
+  it('the cover is the hero; content + CTA are interior/supporting', () => {
+    expect(plateRole('cover')).toBe('cover')
+    expect(plateRole('content')).toBe('interior')
+    expect(plateRole('cta')).toBe('interior')
   })
 })
 

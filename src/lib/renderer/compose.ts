@@ -56,7 +56,7 @@ function base(a: { id: string; name: string; rect: Rect; vAnchor?: VAnchor; opac
 // Where the brand text block sits on the slide (and where generation reserves negative space). Each returns
 // the scrim band + the kicker/headline/subtext boxes, anchored so they hold position across the 4:5 / 1:1 ratios.
 
-type SlideRole = 'cover' | 'content' | 'cta'
+export type SlideRole = 'cover' | 'content' | 'cta'
 
 type ZoneGeom = {
   scrim: { rect: Rect; vAnchor: VAnchor }
@@ -147,8 +147,12 @@ function textLayer(a: {
   }
 }
 
-function roleFor(slide: CarouselSlide, index: number, total: number): SlideRole {
-  // An explicit slide_role wins over position; otherwise the first slide is the cover and the last the CTA.
+/**
+ * The single source of a slide's carousel role — the cover, the closing CTA, or interior content. An explicit
+ * `slide_role` wins over position; otherwise the first slide is the cover and the last the CTA. Drives both the
+ * text layout (here) and the design-prompt emphasis (`plateRole` in images/generate-plates.ts derives from it).
+ */
+export function slideRole(slide: CarouselSlide, index: number, total: number): SlideRole {
   if (slide.slide_role === 'cta') return 'cta'
   if (slide.slide_role === 'cover') return 'cover'
   if (index === 0) return 'cover'
@@ -185,7 +189,7 @@ function composeSlide(slide: CarouselSlide, index: number, total: number, style:
   const geom = ZONES[style.textZone]
   const layers: Layer[] = [backgroundLayer(style)]
   if (style.generative) layers.push(scrimLayer(geom))
-  layers.push(...textZoneLayers(roleFor(slide, index, total), geom, style, slide, kicker))
+  layers.push(...textZoneLayers(slideRole(slide, index, total), geom, style, slide, kicker))
   return { id: `slide-${index}`, feedSystemId: style.slug, brandKitVersion: 1, size: { w: W, h: H }, layers }
 }
 
