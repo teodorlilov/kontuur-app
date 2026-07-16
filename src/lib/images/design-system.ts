@@ -1,11 +1,11 @@
 import { randomUUID } from 'node:crypto'
 import type { BrandBrief } from '@/lib/brand-kit/extract/report'
-import { styleShowcase } from '@/lib/renderer/feed-system-compositions'
 import { DEFAULT_RATIO } from '@/lib/renderer/layout/anchor'
-import type { BrandTokens, Composition } from '@/lib/scene-graph'
+import { getStyle } from '@/lib/renderer/styles'
+import type { BrandTokens } from '@/lib/scene-graph'
 import { createUntypedAdminClient } from '@/lib/supabase/admin'
-import { generatePlate, generateVector } from './fal'
-import { buildImagePrompt, buildVectorPrompt, formatForModel, type PlateRole } from './prompt'
+import { generateDesign, generateVector } from './fal'
+import { buildDesignPrompt, buildVectorPrompt, type PlateRole } from './prompt'
 import { uploadPlate } from './storage'
 
 /** One generated design-system plate: what to render (public_url) + where it lives (storage_path). This
@@ -13,42 +13,49 @@ import { uploadPlate } from './storage'
  *  without dragging the AI client. */
 export type SeedPlate = { publicUrl: string; storagePath: string }
 
-const hasPlate = (c: Composition): boolean => c.layers.some((l) => l.type === 'plate')
+// How many sample slide designs to generate as the brand's reference set (cover + a couple of interiors).
+// Bounded for cost; the same designs seed the reference-image conditioning for every future post.
+const SAMPLE_ROLES: PlateRole[] = ['cover', 'interior', 'interior']
 
 /**
- * Generate the onboarding **design system**: one background plate per plate-bearing archetype of the
- * chosen style's showcase, from the brand brief. There are no posts yet, so `buildImagePrompt` uses its
- * brief-driven fallback scene (no per-slide LLM call — cheaper). Plates are stored under a temp
- * `onboarding/<nonce>` prefix and returned **keyed by archetype id** (the preview injects each into the
- * matching showcase cell); on "save" they seed the new client's bank. A no-photo/vector style yields no
- * plates (its showcase has no plate archetypes) — its design system is the vector marks instead. Fail-soft
- * per archetype — a failure just omits it.
+ * Generate the onboarding **design system**: a few sample slide designs in the chosen style, rendered by the
+ * capable design model from the brand brief. There are no posts yet, so `buildDesignPrompt` uses its
+ * brief-driven fallback scene (no per-slide LLM call — cheaper). Designs are stored under a temp
+ * `onboarding/<nonce>` prefix and returned **keyed by sample index** (the preview injects each into the
+ * matching sample cell); on "save" they seed the new client's bank as the **reference set** every future
+ * post is conditioned on. A compositor-only style (`quiet-grid`) yields none — its design system is the clean
+ * colour ground + type. Fail-soft per sample — a failure just omits it.
  */
 export async function generateDesignSystemPlates(params: {
   colors: BrandTokens['color']
   brief: BrandBrief | null
   feedSystemSlug: string | null
+  /** Optional art-direction conditioning phrase, when the direction is already known at onboarding. */
+  conditioning?: string
+  /** The brand's real Instagram grid images (from `fetchInstagramImages`) — conditions the samples on the
+   *  look the brand already has, so the generated design system matches their grid. Empty → pure text-to-image. */
+  referenceImageUrls?: string[]
 }): Promise<Record<string, SeedPlate>> {
-  const prefix = `onboarding/${randomUUID()}`
-  const plateArchetypes = styleShowcase(params.feedSystemSlug).filter((a) => hasPlate(a.composition))
+  const style = getStyle(params.feedSystemSlug)
+  if (!style.generative) return {} // quiet-grid: no imagery — its design system is the colour ground
 
+  const prefix = `onboarding/${randomUUID()}`
   const out: Record<string, SeedPlate> = {}
   await Promise.all(
-    plateArchetypes.map(async (arch) => {
-      const plateRole: PlateRole = arch.kind === 'opener' ? 'cover' : 'interior'
-      const structured = buildImagePrompt({
-        role: plateRole,
-        brief: params.brief,
-        colors: params.colors,
-        feedSystemSlug: params.feedSystemSlug,
-        ratio: DEFAULT_RATIO,
+    SAMPLE_ROLES.map(async (role, index) => {
+      const prompt = buildDesignPrompt({
+        role,
         scene: null,
+        scaffold: style.scaffold,
+        colors: params.colors,
+        brief: params.brief,
+        negativeSpace: style.textZone,
+        conditioning: params.conditioning,
       })
-      const { prompt } = formatForModel(structured, 'flux')
-      const generated = await generatePlate({ prompt, ratio: DEFAULT_RATIO })
+      const generated = await generateDesign({ prompt, ratio: DEFAULT_RATIO, referenceImageUrls: params.referenceImageUrls })
       if (!generated) return
       const stored = await uploadPlate(prefix, generated.url)
-      if (stored) out[arch.id] = { publicUrl: stored.publicUrl, storagePath: stored.storagePath }
+      if (stored) out[String(index)] = { publicUrl: stored.publicUrl, storagePath: stored.storagePath }
     })
   )
   return out

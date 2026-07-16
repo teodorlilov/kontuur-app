@@ -16,8 +16,6 @@ export type Clip =
   | { kind: 'rect'; radius: number }
   | { kind: 'ellipse' }
   | { kind: 'mark'; packElementId: string }
-  /** A seeded torn-paper edge — the collage ripped-block look (deterministic per `seed` so preview == export). */
-  | { kind: 'torn'; seed?: number }
 
 export type BlendMode = 'normal' | 'multiply' | 'screen' | 'overlay' | 'soft-light' | 'luminosity'
 
@@ -92,12 +90,6 @@ export type TextLayer = LayerBase & {
   color: Binding<string>
   align: Binding<'left' | 'center' | 'right'>
   autoFit: { min: number; max: number } | null
-  /**
-   * When `'numbered'`, a body layer renders its newline-separated lines as an editorial numbered list —
-   * a large accent numeral + hairline dividers per row — instead of one flat text block. Needs ≥2 lines;
-   * a single line (prose injected into a list role) falls back to plain text so it still reads well.
-   */
-  listStyle?: 'numbered'
 }
 
 /** Declared by a composition template; resolved to a concrete MarkLayer at generation. */

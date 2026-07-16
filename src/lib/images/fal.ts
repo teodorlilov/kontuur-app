@@ -1,16 +1,14 @@
 import { fal } from '@fal-ai/client'
-import { RATIO_SIZES, type AspectRatio } from '@/lib/renderer/layout/anchor'
+import type { AspectRatio } from '@/lib/renderer/layout/anchor'
 import { isSvg, sanitizeSvg } from './svg'
 
 /**
- * The fal.ai provider seam. `generatePlate` produces one background image via a Flux model server-side
- * (key `FAL_API_KEY`, never `NEXT_PUBLIC_`). It is deliberately fail-soft: no key or any error returns
- * null, and the caller falls back to the composition's token gradient — a slide never hard-fails on an
- * imagery problem. Model is overridable via `FAL_IMAGE_MODEL` for easy A/B without a code change.
+ * The fal.ai provider seam (key `FAL_API_KEY`, never `NEXT_PUBLIC_`). Every call is deliberately fail-soft:
+ * no key or any error returns null, and the caller falls back to the composition's token gradient — a slide
+ * never hard-fails on an imagery problem. `generateDesign`/`editDesign` render + edit the rich, text-free
+ * slide visual (we composite the brand text on top); `removeBackground` cuts a subject out; `generateVector`
+ * makes an on-brand vector mark. Model ids are env-overridable for easy A/B without a code change.
  */
-
-// FLUX.1 [schnell] — fast + cheap (~1-4 steps), good for backgrounds. The default; swap via env.
-const DEFAULT_MODEL = 'fal-ai/flux/schnell'
 
 // BiRefNet — state-of-the-art subject/background segmentation, returns a transparent PNG. Swap via env.
 const DEFAULT_BG_REMOVAL_MODEL = 'fal-ai/birefnet'
@@ -19,9 +17,16 @@ const DEFAULT_BG_REMOVAL_MODEL = 'fal-ai/birefnet'
 // exact model id against the fal dashboard on first live run (mirrors the BiRefNet flag).
 const DEFAULT_VECTOR_MODEL = 'fal-ai/recraft/v4.1/text-to-vector'
 
-// Reference-conditioned (image-to-image) + region inpaint. Env-overridable; verify ids on first live run.
-const DEFAULT_IMG2IMG_MODEL = 'fal-ai/flux/dev/image-to-image'
-const DEFAULT_INPAINT_MODEL = 'fal-ai/flux/dev/inpainting'
+// The capable *design* model that renders the whole rich, text-free slide visual (we composite the brand
+// text on top). Nano Banana (Gemini 2.5 Flash Image) — fast, cheap, and strongest at reference conditioning
+// (our brand-consistency backbone). The base endpoint is text-to-image; the `/edit` endpoint takes
+// `image_urls` (brand references / the image being edited). Env-overridable; verify the ids on the first run.
+const DEFAULT_DESIGN_MODEL = 'fal-ai/nano-banana'
+const DEFAULT_DESIGN_EDIT_MODEL = 'fal-ai/nano-banana/edit'
+
+// Nano Banana sizes the output via an `aspect_ratio` enum (no custom width/height). We render at the exact
+// brand ratio; the plate is cover-fit into the 1080-wide canvas at render, so any minor rounding is cropped.
+const DESIGN_ASPECT: Record<AspectRatio, string> = { '4:5': '4:5', '1:1': '1:1' }
 
 const firstImageUrl = (data: unknown): string | undefined =>
   (data as { images?: Array<{ url?: string }>; image?: { url?: string } } | undefined)?.images?.[0]?.url ??
@@ -38,35 +43,79 @@ function ensureConfigured(): boolean {
   return true
 }
 
-export type GeneratePlateInput = {
-  /** The full positive prompt. We fold the "no text" instruction into it (Flux has no negative-prompt
-   *  param), because we composite our own typography. */
+type GenerateDesignInput = {
+  /** The full positive prompt — the design brief. "No text/letters" is folded in by `buildDesignPrompt`,
+   *  because we composite the brand typography ourselves (and Cyrillic would misspell). */
   prompt: string
   ratio: AspectRatio
-  seed?: number
+  /** Brand reference image(s) the model conditions on — the strongest brand-consistency lever. When present
+   *  we route through the `/edit` endpoint (which takes `image_urls`), so the brand's real look guides the
+   *  from-scratch design. */
+  referenceImageUrls?: string[]
+  /** Base text-to-image model override; undefined → the provider default (`FAL_DESIGN_MODEL`). */
   model?: string
 }
 
-/** Generate one plate. Returns the hosted image URL, or null when imagery is unavailable/failed. */
-export async function generatePlate(input: GeneratePlateInput): Promise<{ url: string } | null> {
+/**
+ * Generate one full **design** slide via Nano Banana — a rich, text-free composition with reserved negative
+ * space for the brand text we composite on top. Fail-soft: no key or any error → null → the caller keeps the
+ * token gradient. With brand references it routes through the `/edit` endpoint (that's where `image_urls` —
+ * the reference conditioning — lives), so the brand's real look guides the design.
+ */
+export async function generateDesign(input: GenerateDesignInput): Promise<{ url: string } | null> {
   if (!ensureConfigured()) return null
-  const size = RATIO_SIZES[input.ratio]
-  const model = input.model ?? process.env.FAL_IMAGE_MODEL ?? DEFAULT_MODEL
+  const aspect_ratio = DESIGN_ASPECT[input.ratio]
+  const refs = (input.referenceImageUrls ?? []).filter(Boolean)
   try {
-    const result = await fal.subscribe(model, {
-      input: {
-        prompt: input.prompt,
-        image_size: { width: size.w, height: size.h },
-        num_images: 1,
-        enable_safety_checker: true,
-        ...(input.seed !== undefined ? { seed: input.seed } : {}),
-      },
-    })
-    const url = (result?.data as { images?: Array<{ url?: string }> } | undefined)?.images?.[0]?.url
-    if (!url) console.error(`[images/fal] generatePlate: no image url in "${model}" response:`, JSON.stringify(result?.data)?.slice(0, 400))
+    const result =
+      refs.length > 0
+        ? await fal.subscribe(process.env.FAL_DESIGN_EDIT_MODEL ?? DEFAULT_DESIGN_EDIT_MODEL, {
+            input: { prompt: input.prompt, image_urls: refs, aspect_ratio, num_images: 1 },
+          })
+        : await fal.subscribe(input.model ?? process.env.FAL_DESIGN_MODEL ?? DEFAULT_DESIGN_MODEL, {
+            input: { prompt: input.prompt, aspect_ratio, num_images: 1 },
+          })
+    const url = firstImageUrl(result?.data)
+    if (!url) console.error('[images/fal] generateDesign: no image url in response:', JSON.stringify(result?.data)?.slice(0, 400))
     return url ? { url } : null
   } catch (err) {
-    console.error('[images/fal] generatePlate failed:', err)
+    console.error('[images/fal] generateDesign failed:', err)
+    return null
+  }
+}
+
+type EditDesignInput = {
+  /** The image being edited (the slide's current design plate). */
+  imageUrl: string
+  /** The edit instruction — what to change ("swap the background to a calm studio", "add a small arrow"). */
+  prompt: string
+  /** Extra brand reference(s) passed alongside the edited image to keep the result on-brand. */
+  referenceImageUrls?: string[]
+  ratio: AspectRatio
+  /** Edit model override; undefined → the provider default (`FAL_DESIGN_EDIT_MODEL`). */
+  model?: string
+}
+
+/**
+ * Edit an existing design via Nano Banana edit — the editor's instruction-based edit / reference seam. The
+ * edited image (plus any brand references) is passed as `image_urls`, and the whole image is re-rendered from
+ * the instruction (Nano Banana edits regions from natural language; it has no mask parameter). Fail-soft →
+ * null keeps the plate.
+ */
+export async function editDesign(input: EditDesignInput): Promise<{ url: string } | null> {
+  if (!ensureConfigured()) return null
+  const aspect_ratio = DESIGN_ASPECT[input.ratio]
+  const refs = (input.referenceImageUrls ?? []).filter(Boolean)
+  const model = input.model ?? process.env.FAL_DESIGN_EDIT_MODEL ?? DEFAULT_DESIGN_EDIT_MODEL
+  try {
+    const result = await fal.subscribe(model, {
+      input: { prompt: input.prompt, image_urls: [input.imageUrl, ...refs], aspect_ratio, num_images: 1 },
+    })
+    const url = firstImageUrl(result?.data)
+    if (!url) console.error('[images/fal] editDesign: no image url in response:', JSON.stringify(result?.data)?.slice(0, 400))
+    return url ? { url } : null
+  } catch (err) {
+    console.error('[images/fal] editDesign failed:', err)
     return null
   }
 }
@@ -87,72 +136,6 @@ export async function removeBackground(imageUrl: string): Promise<{ url: string 
     return url ? { url } : null
   } catch (err) {
     console.error('[images/fal] removeBackground failed:', err)
-    return null
-  }
-}
-
-/**
- * Reference-conditioned generation (Phase 6): produce a new image guided by a reference (img2img), so an
- * operator can seed a plate from an image they like. `strength` (0..1) is how far to move from the
- * reference. Fail-soft. Model overridable via `FAL_IMG2IMG_MODEL`.
- */
-export async function imageToImage(input: {
-  imageUrl: string
-  prompt: string
-  ratio: AspectRatio
-  strength?: number
-  seed?: number
-}): Promise<{ url: string } | null> {
-  if (!ensureConfigured()) return null
-  const size = RATIO_SIZES[input.ratio]
-  const model = process.env.FAL_IMG2IMG_MODEL ?? DEFAULT_IMG2IMG_MODEL
-  try {
-    const result = await fal.subscribe(model, {
-      input: {
-        prompt: input.prompt,
-        image_url: input.imageUrl,
-        strength: input.strength ?? 0.8,
-        image_size: { width: size.w, height: size.h },
-        num_images: 1,
-        enable_safety_checker: true,
-        ...(input.seed !== undefined ? { seed: input.seed } : {}),
-      },
-    })
-    const url = firstImageUrl(result?.data)
-    return url ? { url } : null
-  } catch (err) {
-    console.error('[images/fal] imageToImage failed:', err)
-    return null
-  }
-}
-
-/**
- * Region inpaint (Phase 6): repaint the masked area of an image from a prompt (white mask = repaint).
- * Fail-soft. Model overridable via `FAL_INPAINT_MODEL`.
- */
-export async function inpaintImage(input: {
-  imageUrl: string
-  maskUrl: string
-  prompt: string
-  seed?: number
-}): Promise<{ url: string } | null> {
-  if (!ensureConfigured()) return null
-  const model = process.env.FAL_INPAINT_MODEL ?? DEFAULT_INPAINT_MODEL
-  try {
-    const result = await fal.subscribe(model, {
-      input: {
-        prompt: input.prompt,
-        image_url: input.imageUrl,
-        mask_url: input.maskUrl,
-        num_images: 1,
-        enable_safety_checker: true,
-        ...(input.seed !== undefined ? { seed: input.seed } : {}),
-      },
-    })
-    const url = firstImageUrl(result?.data)
-    return url ? { url } : null
-  } catch (err) {
-    console.error('[images/fal] inpaintImage failed:', err)
     return null
   }
 }

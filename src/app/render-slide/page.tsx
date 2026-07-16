@@ -2,7 +2,6 @@
 
 import { useEffect } from 'react'
 import { renderCompositionToDataURL } from '@/lib/renderer/konva'
-import { REFERENCE_MARKS } from '@/lib/renderer/reference-compositions'
 import type { BrandTokens, Composition } from '@/lib/scene-graph'
 
 /**
@@ -29,7 +28,6 @@ export default function RenderSlidePage() {
         document.head.appendChild(link)
       }
       return renderCompositionToDataURL(composition, tokens, {
-        marks: REFERENCE_MARKS,
         pixelRatio: 2,
         mimeType: 'image/jpeg',
         quality: 0.92,

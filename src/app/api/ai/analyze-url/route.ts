@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
 import { fetchWebsiteSource } from '@/lib/sources/fetch-website'
-import { fetchInstagramProfile } from '@/lib/sources/fetch-instagram'
+import { fetchInstagramProfile, fetchInstagramImages } from '@/lib/sources/fetch-instagram'
 import { analyzeUrl } from '@/utils/ai'
 
 interface AnalyzeUrlBody {
@@ -40,8 +40,10 @@ export async function POST(request: Request) {
     )
   }
 
-  if (body.instagramHandle?.trim()) {
-    const handle = body.instagramHandle.trim().replace(/^@/, '')
+  // Instagram (when given): the profile text for business analysis + the grid images as the brand's real
+  // design system (the generation reference). Both fail-soft, in parallel.
+  const handle = body.instagramHandle?.trim() ? body.instagramHandle.trim().replace(/^@/, '') : null
+  if (handle) {
     fetches.push(
       fetchInstagramProfile(handle).then((r) => ({
         source: 'instagram',
@@ -50,8 +52,9 @@ export async function POST(request: Request) {
       }))
     )
   }
+  const imagesPromise = handle ? fetchInstagramImages(handle) : Promise.resolve({ imageUrls: [] as string[] })
 
-  const results = await Promise.allSettled(fetches)
+  const [results, images] = await Promise.all([Promise.allSettled(fetches), imagesPromise])
   let websiteContent = ''
   let instagramContent = ''
   const details: string[] = []
@@ -82,7 +85,9 @@ export async function POST(request: Request) {
 
   try {
     const analysis = await analyzeUrl({ websiteContent, instagramContent })
-    return NextResponse.json(analysis)
+    // Surface the grid images so onboarding can condition the generated design system on the brand's real
+    // Instagram look (the "copy the grid's design system" path). Empty when no handle / a fetch miss.
+    return NextResponse.json({ ...analysis, instagramImages: images.imageUrls })
   } catch (err) {
     // Surface the real cause (was masked as "Failed to parse") — an Anthropic API error (e.g. a missing
     // key) throws here and looks identical to a genuine JSON-parse failure. Logged for Vercel too.

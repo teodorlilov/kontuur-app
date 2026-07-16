@@ -18,12 +18,19 @@ export async function requestDesignSystem(input: {
   tokens: BrandTokens
   feedSystemSlug: string | null
   brief: BrandBrief | null
+  /** The brand's Instagram grid images (from analyze-url) — conditions the generated samples on the real look. */
+  referenceImageUrls?: string[]
 }): Promise<DesignSystemResult> {
   try {
     const res = await fetch('/api/onboarding/design-system', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ tokens: input.tokens, feedSystemSlug: input.feedSystemSlug, brief: input.brief }),
+      body: JSON.stringify({
+        tokens: input.tokens,
+        feedSystemSlug: input.feedSystemSlug,
+        brief: input.brief,
+        referenceImageUrls: input.referenceImageUrls,
+      }),
     })
     if (!res.ok) return { plates: {}, vectors: [] }
     const data = (await res.json().catch(() => ({}))) as Partial<DesignSystemResult>

@@ -1,64 +1,84 @@
 import type { Treatment } from '@/lib/scene-graph'
+import type { NegativeSpace } from '@/lib/images/prompt'
 
 /**
- * A **style** (the enriched feed system — same DB slug, no new entity) is an art-direction bundle: the
- * pool of archetypes it draws from, the fal model routing per imagery kind (Phase B fills this), a default
- * photo treatment, and the type-weight profile it needs loaded. Compose samples layouts from `archetypes`;
- * `feedSystemTokens` reads `weights`. The pool mixes each style's own ported archetypes with the shared
- * no-photo graphic archetypes, so every style ships genuine layout variety.
+ * A **style** (the enriched feed system — same DB slug, no new entity) is a **generation direction**: the
+ * prompt scaffold that distinguishes the look, where the composited text sits, the default photo grade, and
+ * the type-weight profile it needs loaded. Three styles are *generative* — a capable design model renders a
+ * rich, text-free slide from the `scaffold` and we composite the brand text into `textZone`. One (`quiet-grid`)
+ * is *compositor-only* — a plain brand colour ground + type, no model call, the clean zero-cost option.
+ *
+ * The pool/archetype machinery is gone: design variety now comes from the model, not hand-authored layouts.
  */
+export type TextZone = NegativeSpace // 'bottom' | 'center' | 'top' — where the text block sits on the slide
+
 export type Style = {
   slug: string
   name: string
-  /** One-line character shown on the picker card (Phase D). */
+  /** One-line character shown on the picker card. */
   character: string
-  archetypes: string[]
-  /** fal model ids per imagery kind — Phase B routes on these; empty = provider defaults. */
-  imageModel: { photo?: string; vector?: string; illustration?: string }
+  /** True → the design model renders the slide visual; false → compositor-only colour ground (quiet-grid). */
+  generative: boolean
+  /** The design-model prompt scaffold — the aesthetic directives that make this look distinct. */
+  scaffold: string
+  /** Where the composited brand text sits (and where generation reserves negative space). */
+  textZone: TextZone
+  /** The photo grade applied to a generated plate (the art direction can override it per brand). */
   treatment: Treatment
+  /** Type weights this style renders with, so `kitFontsHref` loads them (no synthesized fallback). */
   weights: { display: number[]; body: number[] }
 }
 
 const EDITORIAL: Style = {
   slug: 'editorial',
   name: 'Editorial',
-  character: 'Serif display, wide margins, restraint — photography under type.',
-  archetypes: ['editorial-cover', 'editorial-statement', 'editorial-list', 'editorial-quote', 'editorial-cta', 'annotated-type', 'stat'],
-  imageModel: {},
-  treatment: 'duotone',
+  character: 'Clean editorial photography under restrained serif type — generous whitespace.',
+  generative: true,
+  scaffold:
+    'A clean, refined editorial magazine composition: elegant real photography, generous whitespace, ' +
+    'understated and premium, soft natural light, restrained and sophisticated',
+  textZone: 'bottom',
+  treatment: 'none',
   weights: { display: [400, 600, 700], body: [400, 600] },
 }
 
 const BOLD_BLOCKS: Style = {
   slug: 'bold-blocks',
-  name: 'Bold Blocks',
-  character: 'Heavy uppercase on solid colour blocks, maximum contrast, cutouts.',
-  archetypes: ['bold-blocks-cover', 'bold-blocks-statement', 'bold-blocks-list', 'bold-blocks-quote', 'bold-blocks-cta', 'tile-grid', 'split', 'stat'],
-  imageModel: {},
-  treatment: 'duotone',
+  name: 'Bold',
+  character: 'High-contrast graphic poster — punchy colour blocks and heavy type.',
+  generative: true,
+  scaffold:
+    'A bold, high-contrast graphic poster composition: strong solid colour blocks, punchy and geometric, ' +
+    'dramatic directional light, confident and modern',
+  textZone: 'center',
+  treatment: 'none',
   weights: { display: [700, 800, 900], body: [700, 800] },
 }
 
-const QUIET_GRID: Style = {
-  slug: 'quiet-grid',
-  name: 'Quiet Grid',
-  character: 'Light type on white, thin frames, generous whitespace — no photos.',
-  archetypes: ['quiet-grid-cover', 'quiet-grid-statement', 'quiet-grid-list', 'quiet-grid-quote', 'quiet-grid-cta', 'annotated-type', 'tile-grid'],
-  imageModel: {},
-  treatment: 'tint',
-  weights: { display: [400, 500, 600], body: [300, 400, 500] },
-}
-
-// Illustrative: Recraft-generated vector marks + colour graphics instead of photography. Routes vectors to
-// the Recraft default (imageModel.vector left empty); its content pool leans on the no-photo archetypes.
 const ILLUSTRATIVE: Style = {
   slug: 'illustrative',
   name: 'Illustrative',
-  character: 'Vector illustration and colour blocks instead of photography — graphic and modern.',
-  archetypes: ['vector-cover', 'vector-hero', 'split', 'stat', 'annotated-type', 'tile-grid', 'cta-graphic'],
-  imageModel: {},
+  character: 'Artistic collage and layered illustration — textured and expressive.',
+  generative: true,
+  scaffold:
+    'An artistic, expressive collage composition: mixed-media, textured, layered illustration and cut-paper ' +
+    'shapes, hand-crafted and characterful, rich and tactile',
+  textZone: 'bottom',
   treatment: 'none',
   weights: { display: [500, 700, 800], body: [400, 500] },
+}
+
+// Quiet grid: no model call at all — a plain brand colour ground + clean type. The zero-cost, always-crisp
+// option; distinguished from the others by `generative: false`.
+const QUIET_GRID: Style = {
+  slug: 'quiet-grid',
+  name: 'Quiet Grid',
+  character: 'Light type on a clean colour ground — calm, precise, no imagery.',
+  generative: false,
+  scaffold: '',
+  textZone: 'center',
+  treatment: 'none',
+  weights: { display: [400, 500, 600], body: [300, 400, 500] },
 }
 
 const STYLES: Record<string, Style> = {

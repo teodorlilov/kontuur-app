@@ -31,12 +31,12 @@ async function loadComposeContext(clientId: string, agencyId: string) {
   return { db, kit, feedSystem, clientName: (clientRow as { name?: string } | null)?.name ?? '' }
 }
 
-/** The fal-imagery context for a client, from its kit + the resolved art direction (ornament). */
+/** The fal-imagery context for a client, from its kit + the resolved art-direction conditioning phrase. */
 function imageryContext(
   clientId: string,
   kit: Awaited<ReturnType<typeof getBrandKitForClient>>,
   feedSystemSlug: string | null,
-  ornamentBrief?: string
+  conditioning?: string
 ): FillImageryContext {
   return {
     clientId,
@@ -44,7 +44,7 @@ function imageryContext(
     colors: (kit?.tokens ?? DEFAULT_TOKENS).color,
     feedSystemSlug,
     ratio: DEFAULT_RATIO,
-    ornamentBrief,
+    conditioning,
   }
 }
 
@@ -74,15 +74,15 @@ export async function composePostVisuals(params: {
 
   const { db, kit, feedSystem, clientName } = await loadComposeContext(clientId, agencyId)
 
-  // The persisted art direction (when present) drives the layout pool + photo grade; otherwise the
-  // client's chosen feed system, unchanged (backward-compatible).
+  // The operator's chosen feed system is the style; the persisted art direction (when present) only
+  // *conditions* generation — the plate photo grade + the design-prompt phrasing. Backward-compatible.
   const direction = kit?.art_direction ? resolveArtDirection(clampArtDirection(kit.art_direction)) : null
-  const effectiveSlug = direction?.styleSlug ?? feedSystem.slug
+  const slug = feedSystem.slug
 
-  let compositions = composePostSlides(slides, { feedSystemSlug: effectiveSlug, postId, clientName })
+  let compositions = composePostSlides(slides, { feedSystemSlug: slug, postId, clientName })
   if (direction) compositions = compositions.map((c) => withTreatment(c, direction.treatment))
   if (withImagery) {
-    compositions = await fillImagery(compositions, slides, imageryContext(clientId, kit, effectiveSlug, direction?.ornamentBrief))
+    compositions = await fillImagery(compositions, slides, imageryContext(clientId, kit, slug, direction?.conditioning))
   }
 
   const rows = compositions.map((composition, slideIndex) => ({
@@ -135,17 +135,14 @@ export async function generatePreviewVisuals(params: {
 
   const { kit, feedSystem, clientName } = await loadComposeContext(clientId, agencyId)
   const direction = kit?.art_direction ? resolveArtDirection(clampArtDirection(kit.art_direction)) : null
-  const effectiveSlug = direction?.styleSlug ?? feedSystem.slug
-  let compositions = composePostSlides(slides, { feedSystemSlug: effectiveSlug, postId: 'preview', clientName })
+  const slug = feedSystem.slug
+  let compositions = composePostSlides(slides, { feedSystemSlug: slug, postId: 'preview', clientName })
   if (direction) compositions = compositions.map((c) => withTreatment(c, direction.treatment))
-  const filled = await fillImagery(compositions, slides, imageryContext(clientId, kit, effectiveSlug, direction?.ornamentBrief))
+  const filled = await fillImagery(compositions, slides, imageryContext(clientId, kit, slug, direction?.conditioning))
 
-  const withImagery = filled.filter((c) =>
-    c.layers.some((l) => (l.type === 'plate' && Boolean(l.src)) || (l.type === 'mark' && Boolean(l.svg)))
-  ).length
-  // Diagnostic: how many slides got imagery (plate OR generated vector). 0 → generate/upload failed (see
-  // the [images/fal] / [images/bank] logs above); a no-photo style with 0 is only correct if it has no
-  // vector archetypes either.
-  console.log(`[images] generatePreviewVisuals: style "${effectiveSlug}", ${withImagery}/${filled.length} slides got imagery`)
+  const withImagery = filled.filter((c) => c.layers.some((l) => l.type === 'plate' && Boolean(l.src))).length
+  // Diagnostic: how many slides got a generated design. 0 for a generative style → generate/upload failed
+  // (see the [images/fal] / [images/bank] logs above); a compositor-only style (quiet-grid) is correct at 0.
+  console.log(`[images] generatePreviewVisuals: style "${slug}", ${withImagery}/${filled.length} slides got a generated design`)
   return filled.map((composition, slideIndex) => ({ slideIndex, composition }))
 }

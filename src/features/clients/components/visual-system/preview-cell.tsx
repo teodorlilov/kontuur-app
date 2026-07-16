@@ -5,7 +5,6 @@ import type { BrandTokens, Composition as CompositionType } from '@/lib/scene-gr
 import { renderCompositionToDataURL } from '@/lib/renderer/konva'
 import { RATIO_SIZES, resolveComposition, type AspectRatio } from '@/lib/renderer/layout/anchor'
 import { localizeComposition } from '@/lib/renderer/preview-copy'
-import { REFERENCE_MARKS } from '@/lib/renderer/reference-compositions'
 
 /**
  * One composition rasterised to a static image via the Konva renderer — the same node tree the export
@@ -37,7 +36,7 @@ export function PreviewCell({
   useEffect(() => {
     let cancelled = false
     const timer = setTimeout(() => {
-      void renderCompositionToDataURL(resolved, tokens, { marks: REFERENCE_MARKS, targetWidth: width }).then((url) => {
+      void renderCompositionToDataURL(resolved, tokens, { targetWidth: width }).then((url) => {
         if (!cancelled && url) setSrc(url)
       })
     }, 120)

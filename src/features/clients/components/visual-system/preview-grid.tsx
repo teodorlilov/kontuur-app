@@ -3,17 +3,18 @@
 import type { BrandTokens } from '@/lib/scene-graph'
 import { kitFontsHref } from '@/lib/render/google-fonts'
 import { useKitFonts } from '@/lib/render/use-kit-fonts'
-import { feedSystemTokens, styleShowcase } from '@/lib/renderer/feed-system-compositions'
-import { withPlateSrc } from '@/lib/renderer/compose'
+import { feedSystemTokens } from '@/lib/renderer/feed-system-compositions'
+import { sampleCompositions, withPlateSrc } from '@/lib/renderer/compose'
 import type { AspectRatio } from '@/lib/renderer/layout/anchor'
 import { PreviewCell } from './preview-cell'
 
 /**
  * A live grid of real compositions in the proposed tokens (§2.4/§3.1). Editing a colour re-renders all
- * cells instantly, client-side, with no request. Renders the *selected* style's **archetype showcase**
- * (its actual range of layouts, cycled to fill the grid), so switching styles visibly changes the whole
- * preview and a no-photo/vector style reads correctly. Loads the kit's fonts — at the weights that style
- * needs — once, so the preview matches an exported render.
+ * cells instantly, client-side, with no request. Renders the *selected* style's **sample slides** (the exact
+ * compose path real posts use, cycled to fill the grid), so switching styles visibly changes the whole
+ * preview. When the operator has generated the design system, each sample shows its model-generated design;
+ * otherwise the token gradient. Loads the kit's fonts — at the weights that style needs — once, so the
+ * preview matches an exported render.
  */
 export function PreviewGrid({
   tokens,
@@ -31,13 +32,13 @@ export function PreviewGrid({
   cellWidth?: number
   /** The client's language — localizes the placeholder demo copy (English for non-Bulgarian). */
   language?: string
-  /** Generated design-system plates keyed by showcase archetype id. Filled into that archetype's plate
-   *  layer under the live token type; absent → the gradient plate (unchanged behaviour). */
+  /** Generated design-system plates keyed by sample index. Filled into that sample's design plate under the
+   *  live token type; absent → the gradient plate (unchanged behaviour). */
   plates?: Record<string, string>
 }) {
   const rendered = feedSystemTokens(feedSystemSlug, tokens)
   useKitFonts(kitFontsHref(rendered))
-  const compositions = styleShowcase(feedSystemSlug).map((a) => withPlateSrc(a.composition, plates?.[a.id]))
+  const compositions = sampleCompositions(feedSystemSlug).map((c, i) => withPlateSrc(c, plates?.[String(i)]))
   const cells = Array.from({ length: columns * columns }, (_, i) => compositions[i % compositions.length])
 
   return (

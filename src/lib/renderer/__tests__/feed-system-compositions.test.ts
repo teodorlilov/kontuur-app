@@ -1,56 +1,14 @@
 import { describe, expect, it } from 'vitest'
-import { DEFAULT_TOKENS, validateShareableComposition } from '@/lib/scene-graph'
-import {
-  FEED_SYSTEM_PACKS,
-  feedSystemCompositions,
-  feedSystemPack,
-  feedSystemTokens,
-  filmstripFrames,
-  styleShowcase,
-  type FeedSystemSlug,
-} from '../feed-system-compositions'
+import { DEFAULT_TOKENS } from '@/lib/scene-graph'
+import { feedSystemTokens } from '../feed-system-compositions'
 
-const packs = Object.entries(FEED_SYSTEM_PACKS) as [FeedSystemSlug, Record<string, import('@/lib/scene-graph').Composition>][]
-const allCompositions = packs.flatMap(([slug, pack]) => Object.entries(pack).map(([role, c]) => [`${slug}/${role}`, c] as const))
-
-describe('feed-system composition packs', () => {
-  it('has all three systems, each covering the five roles', () => {
-    expect(Object.keys(FEED_SYSTEM_PACKS).sort()).toEqual(['bold-blocks', 'editorial', 'quiet-grid'])
-    for (const [, pack] of packs) {
-      expect(Object.keys(pack).sort()).toEqual(['cover', 'cta', 'list', 'quote', 'statement'])
-    }
-  })
-
-  it.each(allCompositions)('%s is a valid shareable composition (no hex, no literal family)', (_id, composition) => {
-    expect(validateShareableComposition(composition)).toEqual([])
-  })
-
-  it('every layer id within a composition is unique', () => {
-    for (const [id, composition] of allCompositions) {
-      const ids = composition.layers.map((l) => l.id)
-      expect(new Set(ids).size, `${id} has duplicate layer ids`).toBe(ids.length)
-    }
-  })
-
-  it('the systems are visually distinct — bold-blocks/quiet-grid do not clone editorial', () => {
-    const editorial = JSON.stringify(feedSystemPack('editorial'))
-    expect(JSON.stringify(feedSystemPack('bold-blocks'))).not.toBe(editorial)
-    expect(JSON.stringify(feedSystemPack('quiet-grid'))).not.toBe(editorial)
-  })
-
-  it('falls back to editorial for an unknown or null slug', () => {
-    expect(feedSystemPack('nope')).toBe(FEED_SYSTEM_PACKS.editorial)
-    expect(feedSystemPack(null)).toBe(FEED_SYSTEM_PACKS.editorial)
-    expect(feedSystemCompositions('nope').map((c) => c.id)).toEqual(feedSystemCompositions('editorial').map((c) => c.id))
-  })
-
-  it('feedSystemTokens merges the needed weights without dropping the kit weights or changing colour/family', () => {
+describe('feedSystemTokens', () => {
+  it('merges the needed weights without dropping the kit weights or changing colour/family', () => {
     const bold = feedSystemTokens('bold-blocks', DEFAULT_TOKENS)
-    expect(bold.color).toEqual(DEFAULT_TOKENS.color)
     expect(bold.type.display.family).toBe(DEFAULT_TOKENS.type.display.family)
     // keeps the kit's own weights…
     expect(bold.type.display.weights).toEqual(expect.arrayContaining(DEFAULT_TOKENS.type.display.weights))
-    // …and adds the heavy weights bold-blocks reaches for, sorted + de-duped
+    // …and adds the heavy weights bold reaches for, sorted + de-duped
     expect(bold.type.display.weights).toContain(800)
     expect(bold.type.display.weights).toContain(900)
     expect([...bold.type.display.weights]).toEqual([...bold.type.display.weights].sort((a, b) => a - b))
@@ -59,39 +17,14 @@ describe('feed-system composition packs', () => {
     const quiet = feedSystemTokens('quiet-grid', DEFAULT_TOKENS)
     expect(quiet.type.body.weights).toContain(300)
   })
-})
 
-describe('styleShowcase', () => {
-  it('opens on an opener and ends on a closer, for every style', () => {
-    for (const slug of ['editorial', 'bold-blocks', 'quiet-grid', 'illustrative']) {
-      const s = styleShowcase(slug)
-      expect(s.length, slug).toBeGreaterThanOrEqual(3)
-      expect(s[0]!.kind, slug).toBe('opener')
-      expect(s[s.length - 1]!.kind, slug).toBe('closer')
+  it('runs colours through the legibility guard (never returns invisible text) and falls back to editorial', () => {
+    const unknown = feedSystemTokens('nope', DEFAULT_TOKENS)
+    // Editorial weights (the fallback) are covered.
+    expect(unknown.type.display.weights).toEqual(expect.arrayContaining([400, 600, 700]))
+    // ensureLegibleColors always yields the five roles.
+    for (const role of ['surface', 'ink', 'accent', 'accent-deep', 'line'] as const) {
+      expect(unknown.color[role]).toBeTruthy()
     }
-  })
-
-  it('illustrative shows its own vector/graphic layouts, never editorial ones', () => {
-    const ids = styleShowcase('illustrative').map((a) => a.id)
-    expect(ids).toContain('vector-cover')
-    expect(ids.some((id) => id.startsWith('editorial-'))).toBe(false)
-  })
-
-  it('falls back to editorial for an unknown slug', () => {
-    expect(styleShowcase('nope').map((a) => a.id)).toEqual(styleShowcase('editorial').map((a) => a.id))
-  })
-})
-
-describe('filmstripFrames', () => {
-  it('picks n evenly-spaced frames including the first and last', () => {
-    const s = styleShowcase('editorial')
-    const f = filmstripFrames(s, 3)
-    expect(f).toHaveLength(3)
-    expect(f[0]).toBe(s[0])
-    expect(f[2]).toBe(s[s.length - 1])
-  })
-
-  it('returns all frames when the showcase is shorter than n', () => {
-    expect(filmstripFrames(styleShowcase('editorial').slice(0, 2), 3)).toHaveLength(2)
   })
 })

@@ -15,9 +15,7 @@ import type {
 import { resolve } from '@/lib/scene-graph'
 import { parseHex, type Rgb } from '@/lib/brand-kit/extract/color'
 import { roleColor } from './colors'
-import { parseListItems } from '../list-items'
 import { duotoneFilter, grainFilter, halftoneFilter, tintFilter, type ImageFilter } from './treatments'
-import { tornRectPoints } from './torn'
 
 // Konva's exported filter type (it isn't surfaced as `Konva.Filter`); our ImageFilters cast to it.
 type KonvaFilter = typeof Konva.Filters.Grayscale
@@ -67,16 +65,8 @@ function applyClip(group: Konva.Group, clip: Clip, w: number, h: number): void {
       ctx.ellipse(w / 2, h / 2, w / 2, h / 2, 0, 0, Math.PI * 2, false)
       ctx.closePath()
     })
-  } else if (clip.kind === 'torn') {
-    const pts = tornRectPoints(w, h, clip.seed ?? 1)
-    group.clipFunc((ctx) => {
-      ctx.beginPath()
-      ctx.moveTo(pts[0]!, pts[1]!)
-      for (let i = 2; i < pts.length; i += 2) ctx.lineTo(pts[i]!, pts[i + 1]!)
-      ctx.closePath()
-    })
   }
-  // clip.kind === 'mark' is Phase 5 (per-path SVG clip).
+  // clip.kind === 'mark' is a per-path SVG clip (unused by the current composer).
 }
 
 /** The per-layer group: positioned box, rotation around centre (matching CSS `rotate` origin), opacity,
@@ -205,57 +195,6 @@ function buildText(layer: TextLayer, ctx: BuildContext, w: number): (Konva.Group
   ]
 }
 
-/**
- * An editorial numbered list: each line becomes a row — a large accent numeral in the gutter, the item
- * text beside it, a hairline divider between rows. The "steps"/list slide's signature structure, in place
- * of a flat text block. Prose (a single line) falls back to plain text, so a non-list body injected into a
- * list role still reads well. Rows share the box height evenly; item text wraps within its column.
- */
-function buildNumberedList(layer: TextLayer, ctx: BuildContext, w: number, h: number): (Konva.Group | Konva.Shape)[] {
-  const items = parseListItems(textContent(layer, ctx.tokens))
-  if (items.length < 2) return buildText(layer, ctx, w)
-
-  const style = textStyle(layer, ctx.tokens)
-  const size = resolve<number>(layer.size, ctx.tokens)
-  const accent = roleColor(ctx.tokens, 'accent')
-  const line = roleColor(ctx.tokens, 'line')
-  const hairline = ctx.tokens.space.hairline || 1
-  const numeralSize = Math.round(size * 1.15)
-  const gutter = Math.round(numeralSize * 2)
-  const rowH = h / items.length
-  const nodes: (Konva.Group | Konva.Shape)[] = []
-
-  items.forEach((item, i) => {
-    const top = i * rowH
-    if (i > 0) nodes.push(new Konva.Line({ points: [0, top, w, top], stroke: line, strokeWidth: hairline }))
-    nodes.push(
-      new Konva.Text({
-        x: 0,
-        y: top + (rowH - numeralSize * style.lineHeight) / 2,
-        text: String(i + 1).padStart(2, '0'),
-        fontFamily: ctx.tokens.type.display.family,
-        fontStyle: '700',
-        fontSize: numeralSize,
-        fill: accent,
-      }),
-      new Konva.Text({
-        x: gutter,
-        y: top + (rowH - size * style.lineHeight) / 2,
-        width: w - gutter,
-        text: item,
-        fontFamily: style.fontFamily,
-        fontStyle: style.fontStyle,
-        fontSize: size,
-        fill: style.fill,
-        lineHeight: style.lineHeight,
-        letterSpacing: style.letterSpacingEm * size,
-        wrap: 'word',
-      })
-    )
-  })
-  return nodes
-}
-
 function buildChrome(layer: ChromeLayer, ctx: BuildContext, w: number, h: number): (Konva.Group | Konva.Shape)[] {
   const line = roleColor(ctx.tokens, 'line')
   const accent = roleColor(ctx.tokens, 'accent')
@@ -328,7 +267,7 @@ function buildChildren(layer: Layer, ctx: BuildContext): (Konva.Group | Konva.Sh
     case 'shape':
       return buildShape(layer, ctx, w, h)
     case 'text':
-      return layer.listStyle === 'numbered' ? buildNumberedList(layer, ctx, w, h) : buildText(layer, ctx, w)
+      return buildText(layer, ctx, w)
     case 'chrome':
       return buildChrome(layer, ctx, w, h)
     case 'mark':

@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { feedSystemPack } from '@/lib/renderer/feed-system-compositions'
+import { composeSlides } from '@/lib/renderer/compose'
+import type { CarouselSlide } from '@/types/api'
 import { promptHash, seedFromClient } from '../hash'
 import { hasPlateLayer, plateLayer, plateRole } from '../generate-plates'
+
+const slide = (o: Partial<CarouselSlide> = {}): CarouselSlide => ({ headline: 'H', body: 'B', ...o })
+const compOf = (slug: string) => composeSlides([slide()], { feedSystemSlug: slug, ratio: '4:5', postId: 'p' })[0]!
 
 describe('hash', () => {
   it('promptHash is stable for equal inputs regardless of key order', () => {
@@ -28,28 +32,15 @@ describe('plateRole', () => {
   })
 })
 
-describe('hasPlateLayer', () => {
-  const editorial = feedSystemPack('editorial')
-  it('true for plate-bearing roles (cover), false for solid designs (list)', () => {
-    expect(hasPlateLayer(editorial.cover)).toBe(true) // plate background
-    expect(hasPlateLayer(editorial.list)).toBe(false) // solid surface, no photo
+describe('plate detection', () => {
+  it('a generative style carries a full-bleed design plate', () => {
+    expect(hasPlateLayer(compOf('editorial'))).toBe(true)
+    expect(plateLayer(compOf('editorial'))?.type).toBe('plate')
+    expect(plateLayer(compOf('editorial'))?.cutout).toBeFalsy()
   })
 
-  it('quiet-grid never takes a photo', () => {
-    const quiet = feedSystemPack('quiet-grid')
-    expect(hasPlateLayer(quiet.cover)).toBe(false)
-  })
-})
-
-describe('cutout motif', () => {
-  it('bold-blocks statement carries a background-removed subject cutout', () => {
-    const bold = feedSystemPack('bold-blocks')
-    expect(hasPlateLayer(bold.statement)).toBe(true)
-    expect(plateLayer(bold.statement)?.cutout).toBe(true)
-  })
-
-  it('full-bleed plates (editorial cover) are not cutouts', () => {
-    const editorial = feedSystemPack('editorial')
-    expect(plateLayer(editorial.cover)?.cutout).toBeFalsy()
+  it('quiet-grid is a solid colour ground, not a plate (no imagery, no spend)', () => {
+    expect(hasPlateLayer(compOf('quiet-grid'))).toBe(false)
+    expect(plateLayer(compOf('quiet-grid'))).toBeUndefined()
   })
 })

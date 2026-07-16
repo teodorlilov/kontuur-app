@@ -97,6 +97,12 @@ export function setPlateSrc(composition: Composition, layerId: string, src: stri
   return updateLayer(composition, layerId, (l) => (l.type === 'plate' ? { ...l, src } : l))
 }
 
+/** Mark a plate as a background-removed subject cutout (contain-fit, ungraded) or a full-bleed photo, and
+ *  optionally repoint its image in the same edit (the editor's "cut out subject" action). No-op elsewhere. */
+export function setPlateCutout(composition: Composition, layerId: string, cutout: boolean, src?: string): Composition {
+  return updateLayer(composition, layerId, (l) => (l.type === 'plate' ? { ...l, cutout, ...(src ? { src } : {}) } : l))
+}
+
 /** Re-bind a shape layer's fill to a brand colour role. No-op on non-shape layers. */
 export function setShapeFillRole(composition: Composition, layerId: string, role: ColorRole): Composition {
   return updateLayer(composition, layerId, (l) => (l.type === 'shape' ? { ...l, fill: boundColor(role) } : l))

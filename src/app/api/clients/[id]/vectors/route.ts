@@ -1,6 +1,21 @@
 import { NextResponse } from 'next/server'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
+import { getBrandKitForClient, getClientFeedSystem } from '@/lib/brand-kit/queries'
+import { clampArtDirection } from '@/lib/brand-kit/art-direction'
+import { resolveVector } from '@/lib/images/bank'
+import { DEFAULT_TOKENS } from '@/lib/scene-graph'
 import { createUntypedAdminClient } from '@/lib/supabase/admin'
+
+// Generating an on-demand vector calls Recraft in-request; give it headroom.
+export const runtime = 'nodejs'
+export const maxDuration = 120
+
+/** Confirm the client belongs to the caller's agency; returns the agency id or null. */
+async function authorizeClient(id: string, agencyId: string): Promise<boolean> {
+  const db = createUntypedAdminClient()
+  const { data } = await db.from('clients').select('agency_id').eq('id', id).maybeSingle()
+  return (data as { agency_id?: string } | null)?.agency_id === agencyId
+}
 
 /**
  * The client's brand vector library (`brand_vector_bank`) — the on-brand marks generated at onboarding
@@ -11,14 +26,9 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   const { id } = await params
   const auth = await resolveAuth()
   if (!auth.ok) return auth.response
+  if (!(await authorizeClient(id, auth.agencyId))) return NextResponse.json({ error: 'Client not found' }, { status: 404 })
 
   const db = createUntypedAdminClient()
-  const { data: clientRow } = await db.from('clients').select('agency_id').eq('id', id).maybeSingle()
-  const client = clientRow as { agency_id?: string } | null
-  if (!client || client.agency_id !== auth.agencyId) {
-    return NextResponse.json({ error: 'Client not found' }, { status: 404 })
-  }
-
   const { data } = await db
     .from('brand_vector_bank')
     .select('svg, label')
@@ -30,4 +40,31 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
     label: v.label ?? '',
   }))
   return NextResponse.json({ vectors })
+}
+
+/**
+ * Generate one on-demand brand vector from an operator prompt (the editor's "add an element" tool) — an
+ * on-brand mark via Recraft, banked for reuse and returned to insert as a mark layer. Session-authed,
+ * agency-scoped. Fail-soft: `{ svg: null }` so the editor just does nothing.
+ */
+export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
+  const auth = await resolveAuth()
+  if (!auth.ok) return auth.response
+  if (!(await authorizeClient(id, auth.agencyId))) return NextResponse.json({ error: 'Client not found' }, { status: 404 })
+
+  let body: { prompt?: string }
+  try {
+    body = (await request.json()) as { prompt?: string }
+  } catch {
+    return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
+  }
+  const motif = (body.prompt ?? '').trim()
+  if (!motif) return NextResponse.json({ error: 'A prompt is required' }, { status: 400 })
+
+  const [kit, feedSystem] = await Promise.all([getBrandKitForClient(id, auth.agencyId), getClientFeedSystem(id)])
+  const colors = (kit?.tokens ?? DEFAULT_TOKENS).color
+  const ornament = kit?.art_direction ? clampArtDirection(kit.art_direction).ornamentBrief : ''
+  const svg = await resolveVector({ clientId: id, motif, colors, feedSystemSlug: feedSystem.slug, ornament })
+  return NextResponse.json({ svg })
 }

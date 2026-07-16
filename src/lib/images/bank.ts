@@ -2,23 +2,37 @@ import { createUntypedAdminClient } from '@/lib/supabase/admin'
 import type { BrandBrief } from '@/lib/brand-kit/extract/report'
 import type { AspectRatio } from '@/lib/renderer/layout/anchor'
 import type { BrandTokens } from '@/lib/scene-graph'
-import { generatePlate, generateVector, removeBackground } from './fal'
+import { generateDesign, generateVector } from './fal'
 import { promptHash } from './hash'
-import { buildImagePrompt, buildVectorPrompt, formatForModel, paletteWords, type PlateRole } from './prompt'
+import { buildDesignPrompt, buildVectorPrompt, paletteWords, type NegativeSpace, type PlateRole } from './prompt'
 import { composeScene } from './scene'
 import { uploadPlate } from './storage'
 
 /**
- * The per-brand plate bank: a durable image URL for a slide, cached by a *deterministic* key (slide copy
- * + brand art-direction) so a regenerate or a second post with the same copy reuses the image instead of
- * paying for the LLM scene + fal call again. On a miss it composes the scene, builds the prompt,
- * generates, and stores the result in the `plates` bucket. Fail-soft throughout: null → caller keeps the
- * token gradient (no key, generation failure, or storage failure all degrade to no image, never a crash).
+ * The per-brand **design bank**: a durable image URL for a slide's generated design, cached by a
+ * *deterministic* key (slide copy + brand direction) so a regenerate or a second post with the same copy
+ * reuses the design instead of paying for the LLM scene + design-model call again. On a miss it composes the
+ * scene, builds the design prompt, generates via the capable design model (conditioned on the brand's
+ * reference images), and stores the result in the `plates` bucket. Fail-soft throughout: null → caller keeps
+ * the token gradient (no key, generation failure, or storage failure all degrade to no image, never a crash).
  *
  * App-level access (no RLS on `brand_image_bank`), same as the other composition-engine tables.
  */
 
-export type ResolvePlateParams = {
+/** The brand's design-system reference images (seeded at onboarding, keyed `onboarding:*`) — the strongest
+ *  brand-consistency lever, conditioning every slide so a carousel shares one visual DNA. Fetched once per
+ *  post by the imagery filler and threaded into each `resolveDesign` call. Empty on a miss (fail-soft). */
+export async function getBrandReferenceImages(clientId: string): Promise<string[]> {
+  const db = createUntypedAdminClient()
+  const { data } = await db
+    .from('brand_image_bank')
+    .select('public_url')
+    .eq('client_id', clientId)
+    .like('prompt_hash', 'onboarding:%')
+  return ((data as Array<{ public_url?: string }> | null) ?? []).map((r) => r.public_url).filter((u): u is string => Boolean(u))
+}
+
+export type ResolveDesignParams = {
   clientId: string
   role: PlateRole
   slide: { headline: string; body: string }
@@ -26,14 +40,21 @@ export type ResolvePlateParams = {
   colors: BrandTokens['color']
   feedSystemSlug: string | null
   ratio: AspectRatio
-  seed?: number
-  /** When true, generate an isolated subject and background-remove it into a transparent cutout PNG. */
-  cutout?: boolean
-  /** fal model id override (from the style's `imageModel.photo`); undefined → the provider default. */
+  /** The style's prompt scaffold (aesthetic directives) — passed in so the bank stays decoupled from styles. */
+  scaffold: string
+  /** Where the style reserves negative space for the composited text. */
+  negativeSpace: NegativeSpace
+  /** The art-direction conditioning phrase (formality / density / palette discipline / personality). */
+  conditioning?: string
+  /** Pre-composed carousel-aware scene for this slide; null → `resolveDesign` composes a per-slide scene. */
+  scene?: string | null
+  /** Brand reference images the design model conditions on (from `getBrandReferenceImages`). */
+  referenceImageUrls?: string[]
+  /** fal design-model id override; undefined → the provider default (`FAL_DESIGN_MODEL`). */
   model?: string
 }
 
-export async function resolvePlate(params: ResolvePlateParams): Promise<string | null> {
+export async function resolveDesign(params: ResolveDesignParams): Promise<string | null> {
   const db = createUntypedAdminClient()
   const hash = promptHash({
     headline: params.slide.headline,
@@ -44,10 +65,10 @@ export async function resolvePlate(params: ResolvePlateParams): Promise<string |
     feedSystemSlug: params.feedSystemSlug ?? 'editorial',
     ratio: params.ratio,
     role: params.role,
-    cutout: params.cutout ?? false,
+    conditioning: params.conditioning ?? '',
   })
 
-  // Cache hit — reuse an image already generated for this brand + prompt.
+  // Cache hit — reuse a design already generated for this brand + prompt.
   const { data: existing } = await db
     .from('brand_image_bank')
     .select('public_url')
@@ -57,39 +78,36 @@ export async function resolvePlate(params: ResolvePlateParams): Promise<string |
   const cached = (existing as { public_url?: string } | null)?.public_url
   if (cached) return cached
 
-  // Miss — build the prompt and generate. A cutout wants an isolated subject (the brief subject, framed
-  // for clean removal), so it skips the environmental scene call; a full-bleed plate composes a per-slide
-  // scene (fail-soft to a brief subject).
-  const scene = params.cutout
-    ? null
-    : await composeScene({ headline: params.slide.headline, body: params.slide.body, brief: params.brief })
-  const structured = buildImagePrompt({
+  // Miss — compose the per-slide scene (unless one was planned carousel-aware), build the design prompt, and
+  // generate. Fail-soft to a brief subject when the scene call returns nothing.
+  const scene =
+    params.scene ?? (await composeScene({ headline: params.slide.headline, body: params.slide.body, brief: params.brief }))
+  const prompt = buildDesignPrompt({
     role: params.role,
-    brief: params.brief,
-    colors: params.colors,
-    feedSystemSlug: params.feedSystemSlug,
-    ratio: params.ratio,
     scene,
-    cutout: params.cutout,
+    scaffold: params.scaffold,
+    colors: params.colors,
+    brief: params.brief,
+    negativeSpace: params.negativeSpace,
+    conditioning: params.conditioning,
   })
-  const { prompt } = formatForModel(structured, 'flux')
 
-  const generated = await generatePlate({ prompt, ratio: params.ratio, seed: params.seed, model: params.model })
+  const generated = await generateDesign({
+    prompt,
+    ratio: params.ratio,
+    referenceImageUrls: params.referenceImageUrls,
+    model: params.model,
+  })
   if (!generated) return null
 
-  // A cutout is background-removed into a transparent PNG before storage; failure keeps the colour block
-  // alone (return null → no src).
-  const source = params.cutout ? await removeBackground(generated.url) : generated
-  if (!source) return null
-
-  const stored = await uploadPlate(params.clientId, source.url)
+  const stored = await uploadPlate(params.clientId, generated.url)
   if (!stored) {
-    console.error('[images/bank] resolvePlate: fal generated the image but the copy to the "plates" bucket failed (bucket missing / storage perms). Keeping the gradient.')
+    console.error('[images/bank] resolveDesign: the design model generated the image but the copy to the "plates" bucket failed (bucket missing / storage perms). Keeping the gradient.')
     return null // don't persist an ephemeral fal URL into post_visuals — keep the gradient
   }
 
-  // Index it for reuse. A concurrent generate of the same hash can lose the unique-index race; that's
-  // fine — we still return the image we uploaded rather than discard a paid generation.
+  // Index it for reuse. A concurrent generate of the same hash can lose the unique-index race; that's fine —
+  // we still return the image we uploaded rather than discard a paid generation.
   const { error } = await db.from('brand_image_bank').insert({
     client_id: params.clientId,
     role: params.role,
@@ -115,10 +133,10 @@ export type ResolveVectorParams = {
 
 /**
  * The per-brand **vector bank**: a durable SVG for a brand mark, cached by a deterministic key (motif +
- * palette + style) so a vector archetype reuses the brand's marks across posts instead of paying Recraft
- * each time — the vector analogue of `resolvePlate`. On a miss it builds the Recraft prompt, generates,
- * and stores the SVG. Fail-soft: null → the caller leaves the mark empty (the colour ground stands alone).
- * Depends on `brand_vector_bank` (migration `20260718`); until applied the select/insert error → still
+ * palette + style) so the editor's on-demand marks + the onboarding starter set reuse a brand's vectors
+ * across posts instead of paying Recraft each time — the vector analogue of `resolveDesign`. On a miss it
+ * builds the Recraft prompt, generates, and stores the SVG. Fail-soft: null → the caller leaves the mark
+ * empty. Depends on `brand_vector_bank` (migration `20260718`); until applied the select/insert error → still
  * fail-soft (a failed select just misses; a failed insert still returns the generated svg).
  */
 export async function resolveVector(params: ResolveVectorParams): Promise<string | null> {

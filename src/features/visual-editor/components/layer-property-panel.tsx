@@ -6,6 +6,7 @@ import {
   setChromeParam,
   setLayerRotation,
   setLayerSize,
+  setPlateCutout,
   setPlateSrc,
   setPlateTreatment,
   setShapeFillRole,
@@ -141,13 +142,26 @@ function TextControls({ layer, tokens, onEdit }: { layer: Extract<Layer, { type:
   )
 }
 
-/** AI image actions for a plate (Phase 6): regenerate from a prompt, or seed from a reference image. */
-function PlateAiControls({ clientId, layerId, onEdit }: { clientId: string; layerId: string; onEdit: Edit }) {
+/**
+ * AI design actions for a plate: regenerate from a prompt, seed from a reference image, or cut out the
+ * subject (background removal). All hit `plate-edit` and stay on-brand via the brand reference images.
+ */
+function PlateAiControls({
+  clientId,
+  layerId,
+  plateSrc,
+  onEdit,
+}: {
+  clientId: string
+  layerId: string
+  plateSrc: string
+  onEdit: Edit
+}) {
   const [prompt, setPrompt] = useState('')
   const [busy, setBusy] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
 
-  const run = async (payload: Record<string, unknown>) => {
+  const run = async (payload: Record<string, unknown>, apply: (c: Composition, url: string) => Composition) => {
     if (busy) return
     setBusy(true)
     try {
@@ -157,38 +171,48 @@ function PlateAiControls({ clientId, layerId, onEdit }: { clientId: string; laye
         body: JSON.stringify(payload),
       })
       const data = (await res.json().catch(() => ({}))) as { url?: string | null }
-      if (data.url) onEdit((c) => setPlateSrc(c, layerId, data.url as string))
+      if (data.url) onEdit((c) => apply(c, data.url as string))
     } finally {
       setBusy(false)
     }
   }
+
+  const toSrc = (c: Composition, url: string) => setPlateSrc(c, layerId, url)
 
   const onFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     e.target.value = '' // allow re-picking the same file
     if (!file) return
     const reader = new FileReader()
-    reader.onload = () => void run({ mode: 'reference', prompt, referenceDataUrl: reader.result })
+    reader.onload = () => void run({ mode: 'reference', prompt, referenceDataUrl: reader.result }, toSrc)
     reader.readAsDataURL(file)
   }
 
   return (
     <div style={row}>
-      <div style={label}>AI image</div>
+      <div style={label}>AI design</div>
       <textarea
         value={prompt}
         onChange={(e) => setPrompt(e.target.value)}
-        placeholder="Describe the image…"
+        placeholder="Describe the design…"
         rows={2}
         style={{ ...num, resize: 'vertical', lineHeight: 1.3 }}
       />
-      <div style={{ display: 'flex', gap: 6 }}>
-        <Chip active={false} onClick={() => void run({ mode: 'regenerate', prompt })}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+        <Chip active={false} onClick={() => void run({ mode: 'regenerate', prompt }, toSrc)}>
           {busy ? 'Working…' : 'Regenerate'}
         </Chip>
         <Chip active={false} onClick={() => fileRef.current?.click()}>
           Reference…
         </Chip>
+        {plateSrc && (
+          <Chip
+            active={false}
+            onClick={() => void run({ mode: 'cutout', imageUrl: plateSrc }, (c, url) => setPlateCutout(c, layerId, true, url))}
+          >
+            Cut out
+          </Chip>
+        )}
         <input ref={fileRef} type="file" accept="image/*" onChange={onFile} style={{ display: 'none' }} />
       </div>
     </div>
@@ -221,7 +245,7 @@ function PlateControls({
           </div>
         </div>
       )}
-      {clientId && <PlateAiControls clientId={clientId} layerId={layer.id} onEdit={onEdit} />}
+      {clientId && <PlateAiControls clientId={clientId} layerId={layer.id} plateSrc={layer.src} onEdit={onEdit} />}
     </>
   )
 }

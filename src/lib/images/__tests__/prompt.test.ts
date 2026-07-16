@@ -1,21 +1,15 @@
 import { describe, expect, it } from 'vitest'
 import { DEFAULT_TOKENS } from '@/lib/scene-graph'
 import type { BrandBrief } from '@/lib/brand-kit/extract/report'
-import {
-  buildImagePrompt,
-  buildOperatorPrompt,
-  buildVectorPrompt,
-  formatForModel,
-  hexToColorName,
-  NEGATIVE_PROMPT,
-  paletteWords,
-} from '../prompt'
+import { buildDesignPrompt, buildOperatorPrompt, buildVectorPrompt, hexToColorName, paletteWords } from '../prompt'
 
 const brief: BrandBrief = {
   photographicSubjects: ['a sunlit modern apartment interior'],
   motifs: ['clean geometric lines'],
   mood: 'calm and aspirational',
 }
+
+const EDITORIAL_SCAFFOLD = 'A clean, refined editorial magazine composition'
 
 describe('hexToColorName', () => {
   it('names neutrals by lightness', () => {
@@ -40,62 +34,65 @@ describe('paletteWords', () => {
     const words = paletteWords(DEFAULT_TOKENS.color)
     expect(words).toContain('blue')
     expect(words).toContain('white')
-    // No duplicate colour words.
     const parts = words.split(', ')
     expect(new Set(parts).size).toBe(parts.length)
   })
 })
 
-describe('buildImagePrompt', () => {
-  it('uses the provided scene and marks a cover as the hero', () => {
-    const p = buildImagePrompt({
-      role: 'cover', brief, colors: DEFAULT_TOKENS.color, feedSystemSlug: 'editorial', ratio: '4:5',
+describe('buildDesignPrompt', () => {
+  it('folds in the scaffold, the scene, the palette (with hex), and always forbids text', () => {
+    const p = buildDesignPrompt({
+      role: 'cover',
       scene: 'a barista pouring latte art',
+      scaffold: EDITORIAL_SCAFFOLD,
+      colors: DEFAULT_TOKENS.color,
+      brief,
+      negativeSpace: 'bottom',
     })
-    expect(p.subject).toContain('hero image')
-    expect(p.subject).toContain('a barista pouring latte art')
-    expect(p.style).toContain('editorial')
-    expect(p.style).toContain('calm and aspirational') // mood folded in
-    expect(p.framing).toContain('4:5')
+    expect(p).toContain(EDITORIAL_SCAFFOLD)
+    expect(p).toContain('a barista pouring latte art')
+    expect(p).toContain('cover slide') // role directive
+    expect(p).toMatch(/#[0-9A-Fa-f]{6}/) // palette hex present
+    expect(p).toMatch(/no text/i)
+    expect(p).toMatch(/lower third/i) // bottom text zone → reserved negative space
+    expect(p).toContain('calm and aspirational') // brief mood folded in
   })
 
-  it('falls back to a brief subject + motif when no scene is given', () => {
-    const p = buildImagePrompt({
-      role: 'interior', brief, colors: DEFAULT_TOKENS.color, feedSystemSlug: 'quiet-grid', ratio: '1:1',
+  it('marks an interior slide and reserves centre space for a centred zone', () => {
+    const p = buildDesignPrompt({
+      role: 'interior',
+      scene: null,
+      scaffold: EDITORIAL_SCAFFOLD,
+      colors: DEFAULT_TOKENS.color,
+      brief,
+      negativeSpace: 'center',
     })
-    expect(p.subject).toContain('a sunlit modern apartment interior')
-    expect(p.subject).toContain('clean geometric lines')
-    expect(p.subject).toContain('textural') // interior directive
-    expect(p.style).toContain('minimal and airy') // quiet-grid art direction
+    expect(p).toContain('interior slide')
+    // No scene → the brief subject + motif fallback.
+    expect(p).toContain('a sunlit modern apartment interior')
+    expect(p).toContain('clean geometric lines')
+    expect(p).toMatch(/central band/i)
   })
 
-  it('degrades gracefully with a null brief (unknown feed system → editorial)', () => {
-    const p = buildImagePrompt({
-      role: 'cover', brief: null, colors: DEFAULT_TOKENS.color, feedSystemSlug: null, ratio: '4:5',
+  it('degrades gracefully with a null brief and folds in the art-direction conditioning', () => {
+    const p = buildDesignPrompt({
+      role: 'cover',
+      scene: null,
+      scaffold: EDITORIAL_SCAFFOLD,
+      colors: DEFAULT_TOKENS.color,
+      brief: null,
+      negativeSpace: 'top',
+      conditioning: 'clinical, precise and restrained',
     })
-    expect(p.subject).toContain('abstract')
-    expect(p.style).toContain('editorial')
-    expect(p.negative).toBe(NEGATIVE_PROMPT)
-  })
-
-  it('cutout mode → isolated subject on a plain ground, framed for clean removal', () => {
-    const p = buildImagePrompt({
-      role: 'interior', brief, colors: DEFAULT_TOKENS.color, feedSystemSlug: 'bold-blocks', ratio: '4:5',
-      scene: 'a ceramic pour-over coffee dripper', cutout: true,
-    })
-    expect(p.subject).toContain('isolated subject')
-    expect(p.subject).toContain('a ceramic pour-over coffee dripper')
-    // Framing is the removal-friendly directive, not the ratio negative-space one.
-    expect(p.framing).toContain('background removal')
-    expect(p.framing).not.toContain('4:5')
+    expect(p).toContain('abstract')
+    expect(p).toContain('Clinical, precise and restrained')
+    expect(p).toMatch(/upper third/i)
   })
 })
 
 describe('buildVectorPrompt', () => {
-  it('describes a flat, on-brand, text-free mark from the motif + palette + feed style', () => {
-    const p = buildVectorPrompt({
-      motif: 'a stylised coffee bean', colors: DEFAULT_TOKENS.color, feedSystemSlug: 'bold-blocks',
-    })
+  it('describes a flat, on-brand, text-free mark from the motif + palette + style', () => {
+    const p = buildVectorPrompt({ motif: 'a stylised coffee bean', colors: DEFAULT_TOKENS.color, feedSystemSlug: 'bold-blocks' })
     expect(p).toContain('a stylised coffee bean')
     expect(p).toContain('bold geometric') // bold-blocks vector style
     expect(p).toContain('colour palette of')
@@ -127,36 +124,7 @@ describe('buildOperatorPrompt', () => {
     expect(p).toMatch(/no text/i)
   })
 
-  it('falls back to an abstract background on empty text', () => {
-    expect(buildOperatorPrompt('   ', DEFAULT_TOKENS.color)).toContain('abstract, minimal branded background')
-  })
-})
-
-describe('formatForModel', () => {
-  const structured = buildImagePrompt({
-    role: 'cover', brief, colors: DEFAULT_TOKENS.color, feedSystemSlug: 'editorial', ratio: '4:5',
-    scene: 'a barista pouring latte art',
-  })
-
-  it('flux → prose that forbids text; negative prompt carried', () => {
-    const { prompt, negativePrompt } = formatForModel(structured, 'flux')
-    expect(prompt).toMatch(/no text/i)
-    expect(prompt).toContain('.')
-    expect(negativePrompt).toBe(NEGATIVE_PROMPT)
-  })
-
-  it('sdxl → comma-separated tags', () => {
-    const { prompt } = formatForModel(structured, 'sdxl')
-    expect(prompt.split(', ').length).toBeGreaterThan(3)
-    expect(prompt).toContain('no text')
-  })
-
-  it('defaults to flux', () => {
-    expect(formatForModel(structured)).toEqual(formatForModel(structured, 'flux'))
-  })
-
-  it('the negative prompt always forbids text and logos', () => {
-    expect(NEGATIVE_PROMPT).toContain('text')
-    expect(NEGATIVE_PROMPT).toContain('logo')
+  it('falls back to an abstract composition on empty text', () => {
+    expect(buildOperatorPrompt('   ', DEFAULT_TOKENS.color)).toContain('abstract, minimal branded composition')
   })
 })

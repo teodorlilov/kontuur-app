@@ -1,68 +1,56 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
-import type { PlateLayer, MarkLayer } from '@/lib/scene-graph'
-import { getArchetype } from '@/lib/renderer/archetypes'
-import type { CarouselSlide } from '@/types/api'
+import type { PlateLayer } from '@/lib/scene-graph'
 import { DEFAULT_TOKENS } from '@/lib/scene-graph'
+import { composeSlides } from '@/lib/renderer/compose'
+import type { CarouselSlide } from '@/types/api'
 
 // Mock the paid provider chain (dynamically imported inside fillImagery) so we test the routing, not fal.
-// vi.hoisted so the factory can reference the fns without the mock-hoisting out-of-scope error.
-const { resolvePlate, resolveVector } = vi.hoisted(() => ({
-  resolvePlate: vi.fn(async (_p: { role: string }) => 'https://cdn.example/plate.jpg'),
-  resolveVector: vi.fn(async (_p: { motif: string }) => '<svg xmlns="http://www.w3.org/2000/svg"/>'),
+// vi.hoisted so the factories can reference the fns without the mock-hoisting out-of-scope error.
+const { resolveDesign, getBrandReferenceImages } = vi.hoisted(() => ({
+  resolveDesign: vi.fn(async (_p: { role: string }) => 'https://cdn.example/design.jpg'),
+  getBrandReferenceImages: vi.fn(async () => ['https://cdn.example/ref-1.jpg']),
 }))
-vi.mock('../bank', () => ({ resolvePlate, resolveVector }))
+vi.mock('../bank', () => ({ resolveDesign, getBrandReferenceImages }))
 
-import { fillImagery, generatedMarkLayer } from '../generate-plates'
+const { composeCarouselScenes } = vi.hoisted(() => ({
+  composeCarouselScenes: vi.fn(async ({ slides }: { slides: unknown[] }) => slides.map(() => null)),
+}))
+vi.mock('../scene', () => ({ composeCarouselScenes }))
+
+import { fillImagery } from '../generate-plates'
 
 const slide = (over: Partial<CarouselSlide> = {}): CarouselSlide => ({ headline: 'H', body: 'B', ...over })
-const ctx = {
-  clientId: 'c1',
-  brief: { motifs: ['a coffee bean', 'a leaf'] } as never,
-  colors: DEFAULT_TOKENS.color,
-  feedSystemSlug: 'illustrative',
-  ratio: '4:5' as const,
-}
-
+const ctx = (feedSystemSlug: string) => ({ clientId: 'c1', brief: null, colors: DEFAULT_TOKENS.color, feedSystemSlug, ratio: '4:5' as const })
+const compose = (slides: CarouselSlide[], slug: string) => composeSlides(slides, { feedSystemSlug: slug, ratio: '4:5', postId: 'p', kicker: 'Brand' })
 const plateOf = (c: { layers: unknown[] }) => (c.layers as PlateLayer[]).find((l) => l.type === 'plate')
-const markOf = (c: { layers: unknown[] }) => (c.layers as MarkLayer[]).find((l) => l.type === 'mark')
 
 describe('fillImagery routing', () => {
   beforeEach(() => {
-    resolvePlate.mockClear()
-    resolveVector.mockClear()
+    resolveDesign.mockClear()
+    getBrandReferenceImages.mockClear()
+    composeCarouselScenes.mockClear()
   })
 
-  it('fills a plate archetype via resolvePlate and a generated-mark archetype via resolveVector', async () => {
-    const photo = getArchetype('editorial-cover')!.composition // has a plate
-    const vector = getArchetype('vector-hero')!.composition // has a generated mark
-    const [outPhoto, outVector] = await fillImagery([photo, vector], [slide(), slide()], ctx)
-
-    expect(resolvePlate).toHaveBeenCalledTimes(1)
-    expect(resolveVector).toHaveBeenCalledTimes(1)
-    expect(plateOf(outPhoto!)?.src).toBe('https://cdn.example/plate.jpg')
-    expect(markOf(outVector!)?.svg).toContain('<svg')
+  it('fills every generative slide plate via resolveDesign, fetching references + scenes once', async () => {
+    const slides = [slide({ slide_role: 'cover' }), slide()]
+    const out = await fillImagery(compose(slides, 'editorial'), slides, ctx('editorial'))
+    expect(resolveDesign).toHaveBeenCalledTimes(2)
+    expect(getBrandReferenceImages).toHaveBeenCalledTimes(1)
+    expect(composeCarouselScenes).toHaveBeenCalledTimes(1)
+    expect(plateOf(out[0]!)?.src).toBe('https://cdn.example/design.jpg')
   })
 
-  it('leaves a no-imagery archetype untouched (no spend)', async () => {
-    const none = getArchetype('tile-grid')!.composition
-    const [out] = await fillImagery([none], [slide()], ctx)
-    expect(resolvePlate).not.toHaveBeenCalled()
-    expect(resolveVector).not.toHaveBeenCalled()
-    expect(out).toEqual(none)
+  it('passes cover role for slide 0 and interior after', async () => {
+    const slides = [slide({ slide_role: 'cover' }), slide()]
+    await fillImagery(compose(slides, 'editorial'), slides, ctx('editorial'))
+    expect(resolveDesign.mock.calls.map((c) => c[0].role)).toEqual(['cover', 'interior'])
   })
 
-  it('cycles the brief motifs across generated-vector slides', async () => {
-    const vector = getArchetype('vector-hero')!.composition
-    await fillImagery([vector, vector], [slide(), slide()], ctx)
-    const motifs = resolveVector.mock.calls.map((c) => c[0].motif)
-    expect(motifs).toEqual(['a coffee bean', 'a leaf']) // index 0, 1 → motifs[0], motifs[1]
-  })
-})
-
-describe('generatedMarkLayer', () => {
-  it('finds only source=generated marks', () => {
-    expect(generatedMarkLayer(getArchetype('vector-hero')!.composition)?.source).toBe('generated')
-    expect(generatedMarkLayer(getArchetype('editorial-quote')!.composition)).toBeUndefined() // static quote mark
-    expect(generatedMarkLayer(getArchetype('tile-grid')!.composition)).toBeUndefined()
+  it('skips a compositor-only style (quiet-grid) entirely — no spend', async () => {
+    const comps = compose([slide()], 'quiet-grid')
+    const out = await fillImagery(comps, [slide()], ctx('quiet-grid'))
+    expect(resolveDesign).not.toHaveBeenCalled()
+    expect(getBrandReferenceImages).not.toHaveBeenCalled()
+    expect(out).toEqual(comps)
   })
 })

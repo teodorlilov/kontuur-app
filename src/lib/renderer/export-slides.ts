@@ -1,5 +1,4 @@
 import { renderCompositionToDataURL } from '@/lib/renderer/konva'
-import { REFERENCE_MARKS } from '@/lib/renderer/reference-compositions'
 import type { BrandTokens, Composition } from '@/lib/scene-graph'
 
 export type ExportSlide = { slideIndex: number; composition: Composition }
@@ -24,7 +23,6 @@ export async function exportSlidesToPostImages(
     onProgress?.(i, slides.length)
     try {
       const dataUrl = await renderCompositionToDataURL(slides[i]!.composition, tokens, {
-        marks: REFERENCE_MARKS,
         pixelRatio: 2,
         mimeType: 'image/jpeg',
         quality: 0.92,

@@ -5,7 +5,6 @@ import Konva from 'konva'
 import { Button } from '@/components/ui/button'
 import { buildComposition, loadCompositionImages } from '@/lib/renderer/konva'
 import { exportSlidesToPostImages } from '@/lib/renderer/export-slides'
-import { REFERENCE_MARKS } from '@/lib/renderer/reference-compositions'
 import { kitFontsHref } from '@/lib/render/google-fonts'
 import { useKitFonts } from '@/lib/render/use-kit-fonts'
 import {
@@ -162,7 +161,7 @@ export function PostVisualEditor({
   useEffect(() => {
     if (!open || !composition || !tokens) return
     let cancelled = false
-    void loadCompositionImages(composition, tokens, REFERENCE_MARKS).then((imgs) => {
+    void loadCompositionImages(composition, tokens).then((imgs) => {
       if (cancelled) return
       imagesRef.current = imgs
       setRedrawTick((t) => t + 1)
@@ -404,7 +403,7 @@ export function PostVisualEditor({
                   gap: 16,
                 }}
               >
-                <ElementPicker vectors={vectors} onInsert={insertVector} />
+                <ElementPicker vectors={vectors} onInsert={insertVector} clientId={clientId ?? undefined} />
                 {selectedLayer && tokens ? (
                   <>
                     <LayerPropertyPanel layer={selectedLayer} tokens={tokens} onEdit={onEdit} clientId={clientId ?? undefined} />

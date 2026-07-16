@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
 import { getBrandKitForClient } from '@/lib/brand-kit/queries'
-import { generatePlate, imageToImage, inpaintImage } from '@/lib/images/fal'
+import { generateDesign, editDesign, removeBackground } from '@/lib/images/fal'
+import { getBrandReferenceImages } from '@/lib/images/bank'
 import { buildOperatorPrompt } from '@/lib/images/prompt'
 import { uploadPlate } from '@/lib/images/storage'
 import { uploadToBucket } from '@/features/publishing/lib/storage'
@@ -9,16 +10,15 @@ import { DEFAULT_RATIO } from '@/lib/renderer/layout/anchor'
 import { DEFAULT_TOKENS } from '@/lib/scene-graph'
 import { createUntypedAdminClient } from '@/lib/supabase/admin'
 
-// Calls fal in-request; give it headroom (matches the other imagery routes).
+// Calls the design model in-request; give it headroom (matches the other imagery routes).
 export const runtime = 'nodejs'
 export const maxDuration = 300
 
 type Body = {
-  mode?: 'regenerate' | 'reference' | 'inpaint'
+  mode?: 'regenerate' | 'reference' | 'cutout'
   prompt?: string
   referenceDataUrl?: string
   imageUrl?: string
-  maskUrl?: string
 }
 
 /** Parse a `data:<type>;base64,<data>` URL into bytes (Node fetch doesn't take data: URLs). */
@@ -28,11 +28,21 @@ function parseDataUrl(dataUrl: string): { buffer: Buffer; contentType: string } 
   return { contentType: match[1]!, buffer: Buffer.from(match[2]!.replace(/\s/g, ''), 'base64') }
 }
 
+/** Upload a data-URL image to the plates bucket, returning its durable public URL (or null). */
+async function uploadDataUrl(clientId: string, tag: string, dataUrl: string): Promise<string | null> {
+  const parsed = parseDataUrl(dataUrl)
+  if (!parsed) return null
+  const ext = parsed.contentType.includes('png') ? 'png' : 'jpg'
+  const stored = await uploadToBucket('plates', `${clientId}/${tag}-${Date.now()}.${ext}`, parsed.buffer, parsed.contentType)
+  return stored.publicUrl
+}
+
 /**
- * Editor plate AI (Phase 6): (re)generate a plate image for the selected layer and return a durable URL.
- *   - `regenerate` — a fresh on-brand image from the operator's prompt (random seed, so it varies).
- *   - `reference`  — condition on an uploaded reference image (img2img seeding).
- *   - `inpaint`    — repaint a masked region of the current image from the prompt.
+ * Editor design AI: (re)generate or edit the selected slide's design via the design model, returning a
+ * durable URL. All modes condition on the brand's reference images so an edit stays on-brand.
+ *   - `regenerate` — a fresh on-brand design from the operator's prompt.
+ *   - `reference`  — condition on an uploaded reference image the operator likes.
+ *   - `cutout`     — background-remove the current image into a transparent subject cutout.
  * Session-authed, agency-scoped. Fail-soft: returns `{ url: null }` so the editor just keeps the image.
  */
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -54,32 +64,30 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
   }
 
+  const mode = body.mode ?? 'regenerate'
+
+  // A cutout is a pure background removal of the current image — no prompt/brand needed.
+  if (mode === 'cutout') {
+    if (!body.imageUrl) return NextResponse.json({ error: 'imageUrl is required for cutout' }, { status: 400 })
+    const cut = await removeBackground(body.imageUrl)
+    if (!cut) return NextResponse.json({ url: null })
+    const stored = await uploadPlate(id, cut.url)
+    return NextResponse.json({ url: stored?.publicUrl ?? null })
+  }
+
   const kit = await getBrandKitForClient(id, auth.agencyId)
   const colors = (kit?.tokens ?? DEFAULT_TOKENS).color
   const prompt = buildOperatorPrompt(body.prompt ?? '', colors)
-  const mode = body.mode ?? 'regenerate'
+  const references = await getBrandReferenceImages(id)
 
   let generated: { url: string } | null = null
   try {
     if (mode === 'reference') {
-      let refUrl = body.imageUrl
-      if (!refUrl && body.referenceDataUrl) {
-        const parsed = parseDataUrl(body.referenceDataUrl)
-        if (parsed) {
-          const ext = parsed.contentType.includes('png') ? 'png' : 'jpg'
-          const stored = await uploadToBucket('plates', `${id}/ref-${Date.now()}.${ext}`, parsed.buffer, parsed.contentType)
-          refUrl = stored.publicUrl
-        }
-      }
+      const refUrl = body.imageUrl ?? (body.referenceDataUrl ? await uploadDataUrl(id, 'ref', body.referenceDataUrl) : null)
       if (!refUrl) return NextResponse.json({ error: 'No reference image provided' }, { status: 400 })
-      generated = await imageToImage({ imageUrl: refUrl, prompt, ratio: DEFAULT_RATIO })
-    } else if (mode === 'inpaint') {
-      if (!body.imageUrl || !body.maskUrl) {
-        return NextResponse.json({ error: 'imageUrl and maskUrl are required for inpaint' }, { status: 400 })
-      }
-      generated = await inpaintImage({ imageUrl: body.imageUrl, maskUrl: body.maskUrl, prompt })
+      generated = await editDesign({ imageUrl: refUrl, prompt, ratio: DEFAULT_RATIO, referenceImageUrls: references })
     } else {
-      generated = await generatePlate({ prompt, ratio: DEFAULT_RATIO, seed: Math.floor(Math.random() * 1e9) })
+      generated = await generateDesign({ prompt, ratio: DEFAULT_RATIO, referenceImageUrls: references })
     }
   } catch (err) {
     console.error('[plate-edit] generation failed:', err)

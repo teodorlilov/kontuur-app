@@ -2,35 +2,53 @@ import type { ArtDirection } from '@/lib/brand-kit/art-direction'
 import type { Treatment } from '@/lib/scene-graph'
 
 /**
- * Turn an art direction into the effective composition parameters that drive a post: which layout **pool**
- * to draw from, and the photo **treatment** applied to every plate. Stage 1 maps the direction to the
- * closest preset style for the pool (reusing the archetype pools); Stage 2 replaces the mapping with
- * per-archetype trait scoring. Treatment comes straight from the spec, so a clinical brand's photos are
- * graded restrained (tint/none) and an expressive brand's are bold (duotone/halftone) — regardless of pool.
+ * Turn an art direction into the per-brand levers that **condition** generation — no longer a layout pool.
+ * The style (Editorial / Bold / Illustrative / Quiet grid) is the operator's choice; the art direction rides
+ * on top of it, contributing (1) the photo **treatment** graded onto every generated plate, (2) an
+ * **ornament** directive for editor-generated marks, and (3) a **conditioning phrase** folded into the design
+ * prompt so a clinical brand reads restrained and an expressive one reads bold — regardless of style.
  */
 
-/**
- * Map an art direction to the closest preset style slug (the layout language). `formality` + `imagery`
- * pick it: minimal → quiet-grid (no photos); vector/illustrative → illustrative; clinical → editorial when
- * photographic, else quiet-grid; expressive → bold-blocks; otherwise editorial.
- */
-export function directionToStyleSlug(ad: ArtDirection): string {
-  if (ad.imagery === 'minimal') return 'quiet-grid'
-  if (ad.imagery === 'vector' || ad.imagery === 'illustrative') return 'illustrative'
-  if (ad.formality === 'clinical') return ad.imagery === 'photographic' ? 'editorial' : 'quiet-grid'
-  if (ad.formality === 'expressive') return 'bold-blocks'
-  return 'editorial'
+const FORMALITY_PHRASE: Record<ArtDirection['formality'], string> = {
+  clinical: 'clinical, precise and restrained',
+  corporate: 'professional, polished and trustworthy',
+  editorial: 'editorial, refined and considered',
+  expressive: 'expressive, bold and characterful',
+}
+
+const DENSITY_PHRASE: Record<ArtDirection['density'], string> = {
+  airy: 'with generous spacing and calm negative space',
+  balanced: 'with balanced, comfortable spacing',
+  dense: 'rich and layered',
+}
+
+const PALETTE_PHRASE: Record<ArtDirection['paletteDiscipline'], string> = {
+  'mono-accent': 'a disciplined single-accent palette',
+  multi: 'a full, confident use of the brand palette',
+}
+
+/** Compose the art-direction conditioning sentence folded into every design prompt for this brand. */
+export function artDirectionConditioning(ad: ArtDirection): string {
+  const personality = ad.personality.trim()
+  return [
+    FORMALITY_PHRASE[ad.formality],
+    DENSITY_PHRASE[ad.density],
+    `honouring ${PALETTE_PHRASE[ad.paletteDiscipline]}`,
+    personality ? `overall feel: ${personality}` : '',
+  ]
+    .filter(Boolean)
+    .join(', ')
 }
 
 export type ResolvedDirection = {
-  /** The preset style slug whose archetype pool this brand composes from. */
-  styleSlug: string
-  /** The photo grade applied to every plate (overrides the archetype's authored treatment). */
+  /** The photo grade applied to every generated plate (overrides the style's default treatment). */
   treatment: Treatment
-  /** The ornament directive that conditions generated brand marks. */
+  /** The ornament directive that conditions editor-generated brand marks. */
   ornamentBrief: string
+  /** The conditioning phrase folded into the design prompt. */
+  conditioning: string
 }
 
 export function resolveArtDirection(ad: ArtDirection): ResolvedDirection {
-  return { styleSlug: directionToStyleSlug(ad), treatment: ad.treatment, ornamentBrief: ad.ornamentBrief }
+  return { treatment: ad.treatment, ornamentBrief: ad.ornamentBrief, conditioning: artDirectionConditioning(ad) }
 }

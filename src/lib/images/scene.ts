@@ -50,3 +50,64 @@ Describe the scene.`
     return null
   }
 }
+
+// ── Carousel-aware scene planning ─────────────────────────────────────────────
+// Planning all slides in one call lets the scenes share a through-line — cover establishes the subject, inner
+// slides continue it, the CTA closes it — so a carousel reads as ONE story rather than N unrelated pictures.
+
+const CAROUSEL_SYSTEM = `You are an art director planning the background visuals for one social-media carousel.
+Given every slide's copy in order and the brand's photographic subjects, describe ONE concrete, literal, text-free scene to shoot for EACH slide.
+Rules:
+- Plan the set as a coherent story: the first slide establishes the subject/setting; the middle slides continue it (same world, subject or motif, progressing); the last slide closes it. They must clearly belong together.
+- Each scene relates to that slide's own message, but leaves calm, uncluttered negative space for text placed on top later.
+- Text-free: no signs, labels, screens, posters, or written words in any scene.
+- One or two sentences each — a specific subject, setting, and light. Concrete, not abstract. Physical only: no colours, camera brands, or art-style words.
+- Return exactly one scene per slide, in order.`
+
+const CAROUSEL_SCHEMA = {
+  type: 'object' as const,
+  properties: { scenes: { type: 'array', items: { type: 'string' } } },
+  required: ['scenes'],
+}
+
+/**
+ * Plan one text-free scene per slide in a single call so the carousel tells one story (see `CAROUSEL_SYSTEM`).
+ * Returns an array aligned to `slides` (each entry is the scene, or `null` where the model gave nothing).
+ * Fail-soft: on any error returns all-null, and each caller falls back to a per-slide/brief scene — so the
+ * pipeline never blocks on scene planning.
+ */
+export async function composeCarouselScenes(params: {
+  slides: Array<{ headline: string; body: string }>
+  brief: BrandBrief | null
+}): Promise<Array<string | null>> {
+  const nulls = params.slides.map(() => null as string | null)
+  if (params.slides.length === 0) return nulls
+  const subjects = (params.brief?.photographicSubjects ?? []).map((s) => sanitizePromptField(s))
+  const copy = params.slides
+    .map((s, i) => `Slide ${i + 1}\nHeadline: ${sanitizePromptField(s.headline)}\nBody: ${sanitizePromptField(s.body)}`)
+    .join('\n\n')
+  const userMessage = `Brand photographic subjects: ${subjects.join(', ') || 'none provided'}
+
+${copy}
+
+Describe one scene per slide, in order.`
+
+  try {
+    const message = await callAnthropic({
+      model: LIGHT_MODEL,
+      systemPrompt: CAROUSEL_SYSTEM,
+      userMessage,
+      maxTokens: 140 * params.slides.length + 200,
+      outputSchema: CAROUSEL_SCHEMA,
+    })
+    const { scenes } = extractToolInput<{ scenes?: unknown }>(message, CAROUSEL_SCHEMA)
+    if (!Array.isArray(scenes)) return nulls
+    return params.slides.map((_, i) => {
+      const scene = scenes[i]
+      return typeof scene === 'string' && scene.trim() ? scene.trim() : null
+    })
+  } catch (err) {
+    console.error('[images/scene] composeCarouselScenes failed:', err)
+    return nulls
+  }
+}

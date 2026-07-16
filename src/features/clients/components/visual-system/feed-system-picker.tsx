@@ -3,7 +3,8 @@
 import type { BrandTokens } from '@/lib/scene-graph'
 import { kitFontsHref } from '@/lib/render/google-fonts'
 import { useKitFonts } from '@/lib/render/use-kit-fonts'
-import { feedSystemTokens, filmstripFrames, styleShowcase } from '@/lib/renderer/feed-system-compositions'
+import { feedSystemTokens } from '@/lib/renderer/feed-system-compositions'
+import { sampleCompositions } from '@/lib/renderer/compose'
 import { getStyle } from '@/lib/renderer/styles'
 import type { FeedSystemOption } from '@/lib/brand-kit/feed-systems'
 import { PreviewCell } from './preview-cell'
@@ -42,7 +43,7 @@ export function FeedSystemPicker({
           const isSelected = system.slug === selectedSlug
           const isRecommended = system.slug === recommendedSlug
           const cardTokens = feedSystemTokens(system.slug, tokens)
-          const frames = filmstripFrames(styleShowcase(system.slug), 3)
+          const frames = sampleCompositions(system.slug)
           return (
             <button
               key={system.slug}
@@ -62,8 +63,8 @@ export function FeedSystemPicker({
               }}
             >
               <div style={{ display: 'flex', gap: 6 }}>
-                {frames.map((arch) => (
-                  <PreviewCell key={arch.id} composition={arch.composition} tokens={cardTokens} width={51} language={language} />
+                {frames.map((composition) => (
+                  <PreviewCell key={composition.id} composition={composition} tokens={cardTokens} width={51} language={language} />
                 ))}
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>

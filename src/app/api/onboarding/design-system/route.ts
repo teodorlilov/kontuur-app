@@ -8,7 +8,13 @@ import type { BrandTokens } from '@/lib/scene-graph'
 export const runtime = 'nodejs'
 export const maxDuration = 300
 
-type Body = { tokens?: BrandTokens; feedSystemSlug?: string | null; brief?: BrandBrief | null }
+type Body = {
+  tokens?: BrandTokens
+  feedSystemSlug?: string | null
+  brief?: BrandBrief | null
+  /** The brand's Instagram grid images (from analyze-url) — conditions the samples on the real look. */
+  referenceImageUrls?: string[]
+}
 
 /**
  * Onboarding "Generate design system": generate the brand-level design system before any client/post
@@ -32,7 +38,7 @@ export async function POST(request: Request) {
 
   const ctx = { colors, brief: body.brief ?? null, feedSystemSlug: body.feedSystemSlug ?? null }
   const [plates, vectors] = await Promise.all([
-    generateDesignSystemPlates(ctx),
+    generateDesignSystemPlates({ ...ctx, referenceImageUrls: body.referenceImageUrls }),
     generateDesignSystemVectors(ctx),
   ])
   return NextResponse.json({ plates, vectors })
