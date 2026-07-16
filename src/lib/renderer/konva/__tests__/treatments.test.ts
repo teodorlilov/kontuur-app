@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { duotoneFilter, grainFilter, tintFilter } from '../treatments'
+import { duotoneFilter, grainFilter, halftoneFilter, tintFilter } from '../treatments'
 
 /** A minimal ImageData stand-in (the filters only touch `.data`). */
 function img(pixels: number[]): ImageData {
@@ -50,5 +50,27 @@ describe('grainFilter', () => {
     grainFilter(20)(d)
     expect(d.data[3]).toBe(255)
     expect(Math.abs(d.data[0]! - 128)).toBeLessThanOrEqual(10)
+  })
+})
+
+describe('halftoneFilter', () => {
+  const SHADOW = { r: 10, g: 20, b: 30 }
+
+  it('snaps every pixel to one of the two brand tones (dithered two-tone)', () => {
+    const d = img([0, 0, 0, 255, 128, 128, 128, 255, 255, 255, 255, 255, 60, 60, 60, 255])
+    halftoneFilter(SHADOW, WHITE)(d)
+    for (let i = 0; i < d.data.length; i += 4) {
+      const isShadow = d.data[i] === SHADOW.r && d.data[i + 1] === SHADOW.g && d.data[i + 2] === SHADOW.b
+      const isHigh = d.data[i] === 255 && d.data[i + 1] === 255 && d.data[i + 2] === 255
+      expect(isShadow || isHigh).toBe(true)
+    }
+  })
+
+  it('black → shadow, white → highlight, alpha untouched', () => {
+    const d = img([0, 0, 0, 255, 255, 255, 255, 200])
+    halftoneFilter(SHADOW, WHITE)(d)
+    expect([d.data[0], d.data[1], d.data[2]]).toEqual([10, 20, 30])
+    expect([d.data[4], d.data[5], d.data[6]]).toEqual([255, 255, 255])
+    expect(d.data[7]).toBe(200)
   })
 })

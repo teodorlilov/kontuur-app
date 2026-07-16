@@ -16,10 +16,12 @@ export type Clip =
   | { kind: 'rect'; radius: number }
   | { kind: 'ellipse' }
   | { kind: 'mark'; packElementId: string }
+  /** A seeded torn-paper edge — the collage ripped-block look (deterministic per `seed` so preview == export). */
+  | { kind: 'torn'; seed?: number }
 
 export type BlendMode = 'normal' | 'multiply' | 'screen' | 'overlay' | 'soft-light' | 'luminosity'
 
-export type Treatment = 'none' | 'duotone' | 'tint' | 'grain' | 'mono'
+export type Treatment = 'none' | 'duotone' | 'tint' | 'grain' | 'mono' | 'halftone'
 
 /**
  * How a layer repositions when the canvas height changes across aspect ratios. Instagram sizes are all
@@ -109,6 +111,7 @@ export type ChromeComponent =
   | 'badge'
   | 'numeral'
   | 'index-dots'
+  | 'annotation' // a leader line + dot pointing at a spot (the editorial annotation look)
 
 export type ChromeLayer = LayerBase & {
   type: 'chrome'

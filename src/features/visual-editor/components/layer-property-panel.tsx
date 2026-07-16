@@ -20,7 +20,7 @@ import {
 
 const ROLES: ColorRole[] = ['surface', 'ink', 'accent', 'accent-deep', 'line']
 const WEIGHTS = [300, 400, 500, 600, 700, 800, 900]
-const TREATMENTS: Treatment[] = ['none', 'duotone', 'tint', 'grain', 'mono']
+const TREATMENTS: Treatment[] = ['none', 'duotone', 'tint', 'grain', 'mono', 'halftone']
 const ALIGNS: Array<'left' | 'center' | 'right'> = ['left', 'center', 'right']
 
 type Edit = (mutate: (c: Composition) => Composition) => void

@@ -32,7 +32,7 @@ const annotatedType: Composition = comp('annotated-type', 'graphic', [
   { ...base({ id: 'bg', name: 'bg', rect: rect(0, 0, 1080, 1350), vAnchor: 'fill' }), type: 'shape', shape: 'rect', fill: bound('color.surface') },
   { ...base({ id: 'kicker', name: 'kicker', rect: rect(96, 150, 888, 50) }), type: 'text', slot: 'kicker', content: 'Бележка', lang: 'bg', family: bound('type.display.family'), size: lit(28), weight: lit(600), color: bound('color.accent'), align: lit('left'), autoFit: null },
   { ...base({ id: 'headline', name: 'headline', rect: rect(96, 300, 888, 540) }), type: 'text', slot: 'headline', content: 'Всяка дума\nноси тежест.', lang: 'bg', family: bound('type.display.family'), size: lit(100), weight: lit(700), color: bound('color.ink'), align: lit('left'), autoFit: { min: 56, max: 112 } },
-  { ...base({ id: 'annot-rule', name: 'leader', rect: rect(96, 990, 180, 20) }), type: 'chrome', component: 'rule', params: { strokeWidth: lit(3) } },
+  { ...base({ id: 'annot-rule', name: 'leader', rect: rect(96, 990, 190, 20) }), type: 'chrome', component: 'annotation', params: { strokeWidth: lit(2), dot: lit(6) } },
   { ...base({ id: 'body', name: 'annotation', rect: rect(300, 950, 684, 220) }), type: 'text', slot: 'body', content: 'затова я подбираме внимателно, преди да я публикуваме.', lang: 'bg', family: bound('type.body.family'), size: lit(38), weight: lit(400), color: bound('color.accent'), align: lit('left'), autoFit: null },
 ])
 

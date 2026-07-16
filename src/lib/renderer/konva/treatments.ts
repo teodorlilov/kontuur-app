@@ -47,6 +47,35 @@ export function tintFilter(color: Rgb, amount: number, desaturate = 0.4): ImageF
   }
 }
 
+// Bayer 4×4 ordered-dither thresholds, normalised to 0..1 — the classic halftone matrix.
+const BAYER_4 = [
+  [0, 8, 2, 10],
+  [12, 4, 14, 6],
+  [3, 11, 1, 9],
+  [15, 7, 13, 5],
+].map((row) => row.map((v) => (v + 0.5) / 16))
+
+/**
+ * Halftone: a two-tone ordered-dither print look — each pixel snaps to `shadow` or `highlight` by
+ * comparing its luminance to a Bayer threshold, so mid-tones resolve into a dot pattern (the editorial
+ * newsprint feel). Two brand colours, so any photo prints on-brand. Deterministic (no randomness), so a
+ * preview matches the export exactly.
+ */
+export function halftoneFilter(shadow: Rgb, highlight: Rgb): ImageFilter {
+  return function (imageData: ImageData) {
+    const d = imageData.data
+    const w = imageData.width || 1
+    for (let i = 0; i < d.length; i += 4) {
+      const p = i / 4
+      const threshold = BAYER_4[Math.floor(p / w) % 4]![p % w % 4]!
+      const on = luminance(d[i]!, d[i + 1]!, d[i + 2]!) > threshold
+      d[i] = on ? highlight.r : shadow.r
+      d[i + 1] = on ? highlight.g : shadow.g
+      d[i + 2] = on ? highlight.b : shadow.b
+    }
+  }
+}
+
 /** Grain: monochrome noise for a printed, editorial texture. `amount` is the ± pixel range. */
 export function grainFilter(amount: number): ImageFilter {
   return function (imageData: ImageData) {

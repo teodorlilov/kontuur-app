@@ -16,13 +16,14 @@ import { resolve } from '@/lib/scene-graph'
 import { parseHex, type Rgb } from '@/lib/brand-kit/extract/color'
 import { roleColor } from './colors'
 import { parseListItems } from '../list-items'
-import { duotoneFilter, grainFilter, tintFilter, type ImageFilter } from './treatments'
+import { duotoneFilter, grainFilter, halftoneFilter, tintFilter, type ImageFilter } from './treatments'
+import { tornRectPoints } from './torn'
 
 // Konva's exported filter type (it isn't surfaced as `Konva.Filter`); our ImageFilters cast to it.
 type KonvaFilter = typeof Konva.Filters.Grayscale
 import { fittedFontSize, textContent, textStyle } from './measure-text'
 
-export type BuildContext = { tokens: BrandTokens; images: Map<string, HTMLImageElement> }
+type BuildContext = { tokens: BrandTokens; images: Map<string, HTMLImageElement> }
 
 // mixBlendMode (DOM) → canvas globalCompositeOperation (Konva).
 const BLEND: Record<string, GlobalCompositeOperation> = {
@@ -64,6 +65,14 @@ function applyClip(group: Konva.Group, clip: Clip, w: number, h: number): void {
     group.clipFunc((ctx) => {
       ctx.beginPath()
       ctx.ellipse(w / 2, h / 2, w / 2, h / 2, 0, 0, Math.PI * 2, false)
+      ctx.closePath()
+    })
+  } else if (clip.kind === 'torn') {
+    const pts = tornRectPoints(w, h, clip.seed ?? 1)
+    group.clipFunc((ctx) => {
+      ctx.beginPath()
+      ctx.moveTo(pts[0]!, pts[1]!)
+      for (let i = 2; i < pts.length; i += 2) ctx.lineTo(pts[i]!, pts[i + 1]!)
       ctx.closePath()
     })
   }
@@ -135,6 +144,7 @@ function applyTreatment(node: Konva.Image, treatment: Treatment, tokens: BrandTo
     : treatment === 'duotone' ? duotoneFilter(accentDeep, surface)
     : treatment === 'tint' ? tintFilter(accent, 0.22)
     : treatment === 'grain' ? grainFilter(26)
+    : treatment === 'halftone' ? halftoneFilter(accentDeep, surface)
     : null
   if (!filter) return
   node.filters([filter as KonvaFilter])
@@ -291,6 +301,14 @@ function buildChrome(layer: ChromeLayer, ctx: BuildContext, w: number, h: number
         dots.push(new Konva.Circle({ x: gap * (i + 0.5), y: h / 2, radius: Math.min(gap, h) * 0.15, fill: i === active ? accent : line }))
       }
       return dots
+    }
+    case 'annotation': {
+      // A leader line with a dot at the target end — the small hand-annotation pointing at a spot.
+      const dot = paramNum(layer.params.dot, ctx.tokens, 6)
+      return [
+        new Konva.Line({ points: [0, h / 2, Math.max(0, w - dot * 2), h / 2], stroke: accent, strokeWidth: sw }),
+        new Konva.Circle({ x: Math.max(dot, w - dot), y: h / 2, radius: dot, fill: accent }),
+      ]
     }
     default:
       return []
