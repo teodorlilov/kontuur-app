@@ -40,6 +40,13 @@ export function archetypeForSlide(style: Style, slide: CarouselSlide, index: num
   return content[(seed + index - 1) % content.length]!
 }
 
+/** Set every plate layer's `src` to a generated image; absent `src` → unchanged (the gradient plate).
+ *  The one shared implementation for the preview grid, the wizard slides, and the imagery filler. */
+export function withPlateSrc(composition: Composition, src: string | undefined): Composition {
+  if (!src) return composition
+  return { ...composition, layers: composition.layers.map((l) => (l.type === 'plate' ? { ...l, src } : l)) }
+}
+
 /** Set the content of the first text layer whose slot is in `slots` (paint order). */
 function setSlot(layers: Layer[], slots: readonly TextSlot[], content: string): Layer[] {
   let done = false

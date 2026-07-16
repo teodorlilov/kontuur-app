@@ -1,18 +1,12 @@
 'use client'
 
-import type { BrandTokens, Composition } from '@/lib/scene-graph'
+import type { BrandTokens } from '@/lib/scene-graph'
 import { kitFontsHref } from '@/lib/render/google-fonts'
 import { useKitFonts } from '@/lib/render/use-kit-fonts'
 import { feedSystemTokens, styleShowcase } from '@/lib/renderer/feed-system-compositions'
+import { withPlateSrc } from '@/lib/renderer/compose'
 import type { AspectRatio } from '@/lib/renderer/layout/anchor'
 import { PreviewCell } from './preview-cell'
-
-/** Set a composition's plate layer(s) to a generated image — the onboarding design-system preview fills
- *  the plate under the live token layer. Absent url → unchanged (the gradient plate). */
-function withPlateSrc(composition: Composition, src: string | undefined): Composition {
-  if (!src) return composition
-  return { ...composition, layers: composition.layers.map((l) => (l.type === 'plate' ? { ...l, src } : l)) }
-}
 
 /**
  * A live grid of real compositions in the proposed tokens (§2.4/§3.1). Editing a colour re-renders all

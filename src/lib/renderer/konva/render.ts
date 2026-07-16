@@ -4,7 +4,7 @@ import { roleColor } from './colors'
 import { buildComposition } from './build'
 import { loadCompositionImages } from './images'
 
-export type RasterOptions = {
+type RasterOptions = {
   marks?: Record<string, string>
   /** Output width in CSS px; the composition is scaled to fit (default: native composition width). */
   targetWidth?: number

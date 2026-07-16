@@ -4,15 +4,9 @@ import { useMemo } from 'react'
 import { PreviewCell } from '@/features/clients/components/visual-system/preview-cell'
 import { kitFontsHref } from '@/lib/render/google-fonts'
 import { useKitFonts } from '@/lib/render/use-kit-fonts'
-import { composePostSlides } from '@/lib/renderer/compose'
+import { composePostSlides, withPlateSrc } from '@/lib/renderer/compose'
 import type { BrandTokens, Composition } from '@/lib/scene-graph'
 import type { CarouselSlide } from '@/types/api'
-
-/** Fill a composition's plate layer(s) with a generated image (absent → the gradient plate, unchanged). */
-function withPlateSrc(composition: Composition, src: string | undefined): Composition {
-  if (!src) return composition
-  return { ...composition, layers: composition.layers.map((l) => (l.type === 'plate' ? { ...l, src } : l)) }
-}
 
 /**
  * Render a carousel's designed slides by composing the copy in-browser against a kit — the shared,

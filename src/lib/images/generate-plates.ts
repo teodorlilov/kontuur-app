@@ -2,6 +2,7 @@ import type { BrandBrief } from '@/lib/brand-kit/extract/report'
 import type { AspectRatio } from '@/lib/renderer/layout/anchor'
 import type { BrandTokens, Composition, MarkLayer, PlateLayer } from '@/lib/scene-graph'
 import { getStyle } from '@/lib/renderer/styles'
+import { withPlateSrc } from '@/lib/renderer/compose'
 import type { CarouselSlide } from '@/types/api'
 import { seedFromClient } from './hash'
 import type { PlateRole } from './prompt'
@@ -35,13 +36,6 @@ export function hasPlateLayer(composition: Composition): boolean {
  *  Recraft brand vector (the illustrative archetypes). Static/operator marks (`source` absent) are skipped. */
 export function generatedMarkLayer(composition: Composition): MarkLayer | undefined {
   return composition.layers.find((l): l is MarkLayer => l.type === 'mark' && l.source === 'generated')
-}
-
-function withPlateSrc(composition: Composition, src: string): Composition {
-  return {
-    ...composition,
-    layers: composition.layers.map((l) => (l.type === 'plate' ? { ...l, src } : l)),
-  }
 }
 
 function withMarkSvg(composition: Composition, layerId: string, svg: string): Composition {
