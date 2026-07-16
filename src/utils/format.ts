@@ -32,6 +32,11 @@ export function truncateText(text: string, maxLength: number): string {
   return text.slice(0, maxLength).trimEnd() + '…'
 }
 
+/** Capitalize the first character of a string (empty stays empty). */
+export function capitalize(s: string): string {
+  return s ? s.charAt(0).toUpperCase() + s.slice(1) : s
+}
+
 /** Formats a date as "Mon, Apr 28" — short weekday + month + day. */
 export function formatScheduleDate(date: Date): string {
   return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })

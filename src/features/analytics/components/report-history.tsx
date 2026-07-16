@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { deleteReport } from '@/features/analytics/actions/report-actions'
-import { capitalizePlatform } from '../utils/metrics'
+import { capitalize } from '@/utils/format'
 import type { AnalyticsReport } from '@/types/api'
 import { createModuleCache } from '@/utils/module-cache'
 
@@ -95,7 +95,7 @@ export function ReportHistory({ clientId, platform, onLoad }: ReportHistoryProps
           >
             <div>
               <p className="text-sm text-gray-800">
-                {capitalizePlatform(r.platform)} · {r.period_start} to{' '}
+                {capitalize(r.platform)} · {r.period_start} to{' '}
                 {r.period_end}
               </p>
               {r.ai_summary && (

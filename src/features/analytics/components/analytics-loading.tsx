@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { BarChart3, Check } from 'lucide-react'
 import { Spinner } from '@/components/ui/spinner'
-import { capitalizePlatform } from '../utils/metrics'
+import { capitalize } from '@/utils/format'
 
 interface AnalyticsLoadingProps {
   platform: string
@@ -14,7 +14,7 @@ interface AnalyticsLoadingProps {
 const STAGE_DURATIONS = [2000, 4000, 5000, 8000]
 
 function buildStageLabels(platform: string): string[] {
-  const name = capitalizePlatform(platform)
+  const name = capitalize(platform)
   return [
     `Connected to ${name} API`,
     'Fetching post metrics',
@@ -64,7 +64,7 @@ export function AnalyticsLoading({ platform, clientName, range }: AnalyticsLoadi
         Building your report
       </h2>
       <p style={{ fontSize: 13, color: 'var(--color-muted)', textAlign: 'center', marginBottom: 28 }}>
-        {clientName} · {capitalizePlatform(platform)} · Last {range}
+        {clientName} · {capitalize(platform)} · Last {range}
       </p>
 
       <div style={{ width: '100%', maxWidth: 320, display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 24 }}>

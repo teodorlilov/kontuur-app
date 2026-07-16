@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { toast } from '@/components/ui/toast'
 import { SectionCard } from '@/components/ui/section-card'
+import { capitalize } from '@/utils/format'
 import type { AgencyInfo } from '@/types/api'
 
 interface PlanSectionProps {
@@ -18,9 +19,6 @@ function formatPlanDate(dateStr: string): string {
   })
 }
 
-function capitalize(str: string): string {
-  return str.charAt(0).toUpperCase() + str.slice(1)
-}
 
 /** Plan info table with optional upgrade banner. */
 export function PlanSection({ agency }: PlanSectionProps) {

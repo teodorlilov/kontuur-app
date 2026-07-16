@@ -1,10 +1,5 @@
 import type { AnalyticsMetrics, InstagramMetrics, FacebookMetrics } from '@/types/api'
 
-/** Capitalizes the first letter of a platform name (e.g. "instagram" → "Instagram"). */
-export function capitalizePlatform(platform: string): string {
-  return platform.charAt(0).toUpperCase() + platform.slice(1)
-}
-
 /** Returns the follower/fan count from the account object regardless of platform. */
 export function getFollowerCount(metrics: AnalyticsMetrics): number {
   // Discriminated union doesn't narrow via property access alone

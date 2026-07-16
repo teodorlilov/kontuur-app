@@ -10,7 +10,7 @@ import { EmptyStateAnalytics } from './empty-state-analytics'
 import { OverviewTab } from './overview-tab'
 import { PostsTab } from './posts-tab'
 import { AudienceTab } from './audience-tab'
-import { capitalizePlatform } from '../utils/metrics'
+import { capitalize } from '@/utils/format'
 import type { AnalyticsReport, AnalyticsMetrics, MetaConnection } from '@/types/api'
 
 interface AnalyticsViewProps {
@@ -178,7 +178,7 @@ export function AnalyticsView({ clients, initialConnections }: AnalyticsViewProp
           <div id="analytics-print-area" className="space-y-6">
             <div className="hidden print:block mb-6">
               <h1 className="text-2xl font-bold text-gray-900">
-                {currentClientName} — {capitalizePlatform(report.platform)} Report
+                {currentClientName} — {capitalize(report.platform)} Report
               </h1>
               <p className="text-sm text-gray-500 mt-1">
                 Period: {report.period_start} to {report.period_end}

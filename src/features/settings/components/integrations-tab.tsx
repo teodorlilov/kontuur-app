@@ -6,6 +6,7 @@ import { Avatar } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { toast } from '@/components/ui/toast'
 import { disconnectCanvaConnection } from '@/features/settings/actions/canva-actions'
+import { capitalize } from '@/utils/format'
 
 interface CanvaMember {
   id: string
@@ -212,8 +213,6 @@ function CanvaMemberRow({
   onDisconnect: () => void
   isLast: boolean
 }) {
-  const formatRole = (role: string) => role.charAt(0).toUpperCase() + role.slice(1)
-
   return (
     <div
       style={{
@@ -249,7 +248,7 @@ function CanvaMemberRow({
       </div>
 
       <Badge variant={member.role === 'admin' ? 'info' : 'default'}>
-        {formatRole(member.role)}
+        {capitalize(member.role)}
       </Badge>
 
       {member.canvaConnected ? (

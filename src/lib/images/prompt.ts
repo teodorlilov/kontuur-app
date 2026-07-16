@@ -1,6 +1,7 @@
 import type { BrandBrief } from '@/lib/brand-kit/extract/report'
 import { parseHex, toHsl } from '@/lib/brand-kit/extract/color'
 import type { BrandTokens } from '@/lib/scene-graph'
+import { capitalize } from '@/utils/format'
 
 /**
  * Image-prompt construction for the generative design pipeline. A slide's visual is a full, rich, *text-free*
@@ -97,8 +98,6 @@ function fallbackScene(brief: BrandBrief | null): string {
   if (subject && motif) return `${subject}, with ${motif}`
   return subject || motif || 'an abstract, minimal branded composition'
 }
-
-const capitalize = (s: string): string => (s ? s[0]!.toUpperCase() + s.slice(1) : s)
 
 export type DesignPromptInput = {
   role: PlateRole

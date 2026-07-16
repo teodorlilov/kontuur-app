@@ -2,6 +2,7 @@
 
 import { Avatar } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
+import { capitalize } from '@/utils/format'
 import type { TeamMember } from '@/types/api'
 
 interface MemberRowProps {
@@ -18,10 +19,6 @@ function formatJoinDate(dateStr: string): string {
     day: 'numeric',
     year: 'numeric',
   })
-}
-
-function formatRole(role: string): string {
-  return role.charAt(0).toUpperCase() + role.slice(1)
 }
 
 /** Single member row in the team members list. */
@@ -60,7 +57,7 @@ export function MemberRow({ member, isCurrentUser, canRemove, onRemove, isLast }
         </div>
       </div>
 
-      <Badge variant={member.role === 'admin' ? 'info' : 'default'}>{formatRole(member.role)}</Badge>
+      <Badge variant={member.role === 'admin' ? 'info' : 'default'}>{capitalize(member.role)}</Badge>
 
       {canRemove && !isCurrentUser && (
         <button

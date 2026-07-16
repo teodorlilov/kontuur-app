@@ -1,7 +1,7 @@
 'use client'
 
 import { AlertTriangle, BarChart3 } from 'lucide-react'
-import { capitalizePlatform } from '../utils/metrics'
+import { capitalize } from '@/utils/format'
 
 interface EmptyStateAnalyticsProps {
   variant: 'no-accounts' | 'ready'
@@ -70,7 +70,7 @@ export function EmptyStateAnalytics({
         }}
       >
         {isTerra
-          ? `${platform ? capitalizePlatform(platform) : 'Platform'} is connected for ${clientName}. Choose a time range and generate a performance report for the last ${range ?? '30 days'}.`
+          ? `${platform ? capitalize(platform) : 'Platform'} is connected for ${clientName}. Choose a time range and generate a performance report for the last ${range ?? '30 days'}.`
           : `Connect an Instagram or Facebook account for ${clientName} to start generating analytics reports.`}
       </p>
 
@@ -114,7 +114,7 @@ export function EmptyStateAnalytics({
 
       {isTerra && platform && followerCount != null && (
         <p style={{ fontSize: 12, color: 'var(--color-muted)', marginTop: 14 }}>
-          {clientName} · {capitalizePlatform(platform)} · {followerCount.toLocaleString()} followers
+          {clientName} · {capitalize(platform)} · {followerCount.toLocaleString()} followers
         </p>
       )}
     </div>
