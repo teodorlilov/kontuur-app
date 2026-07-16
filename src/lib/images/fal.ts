@@ -126,9 +126,8 @@ export async function removeBackground(imageUrl: string): Promise<{ url: string 
   const model = process.env.FAL_BG_REMOVAL_MODEL ?? DEFAULT_BG_REMOVAL_MODEL
   try {
     const result = await fal.subscribe(model, { input: { image_url: imageUrl } })
-    // BiRefNet returns `image`; some segmentation models return `images[0]` — accept either.
-    const data = result?.data as { image?: { url?: string }; images?: Array<{ url?: string }> } | undefined
-    const url = data?.image?.url ?? data?.images?.[0]?.url
+    // BiRefNet returns `image`; some segmentation models return `images[0]` — `firstImageUrl` accepts either.
+    const url = firstImageUrl(result?.data)
     return url ? { url } : null
   } catch (err) {
     console.error('[images/fal] removeBackground failed:', err)
@@ -146,8 +145,7 @@ export async function generateVector(prompt: string): Promise<{ svg: string } | 
   const model = process.env.FAL_VECTOR_MODEL ?? DEFAULT_VECTOR_MODEL
   try {
     const result = await fal.subscribe(model, { input: { prompt } })
-    const data = result?.data as { images?: Array<{ url?: string }>; image?: { url?: string } } | undefined
-    const url = data?.images?.[0]?.url ?? data?.image?.url
+    const url = firstImageUrl(result?.data)
     if (!url) {
       console.error(`[images/fal] generateVector: no asset url in "${model}" response:`, JSON.stringify(result?.data)?.slice(0, 400))
       return null

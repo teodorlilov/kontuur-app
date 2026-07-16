@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
+import { verifyClientOwnership } from '@/lib/auth/helpers'
 import { getBrandKitForClient, getClientFeedSystem } from '@/lib/brand-kit/queries'
 import { clampArtDirection } from '@/lib/brand-kit/art-direction'
 import { resolveVector } from '@/lib/images/bank'
@@ -10,13 +11,6 @@ import { createUntypedAdminClient } from '@/lib/supabase/admin'
 export const runtime = 'nodejs'
 export const maxDuration = 120
 
-/** Confirm the client belongs to the caller's agency; returns the agency id or null. */
-async function authorizeClient(id: string, agencyId: string): Promise<boolean> {
-  const db = createUntypedAdminClient()
-  const { data } = await db.from('clients').select('agency_id').eq('id', id).maybeSingle()
-  return (data as { agency_id?: string } | null)?.agency_id === agencyId
-}
-
 /**
  * The client's brand vector library (`brand_vector_bank`) — the on-brand marks generated at onboarding
  * (and later in the editor). Read by the visual editor's Elements picker so an operator can drop a brand
@@ -26,7 +20,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   const { id } = await params
   const auth = await resolveAuth()
   if (!auth.ok) return auth.response
-  if (!(await authorizeClient(id, auth.agencyId))) return NextResponse.json({ error: 'Client not found' }, { status: 404 })
+  if (!(await verifyClientOwnership(auth.supabase, id, auth.agencyId))) return NextResponse.json({ error: 'Client not found' }, { status: 404 })
 
   const db = createUntypedAdminClient()
   const { data } = await db
@@ -51,7 +45,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const { id } = await params
   const auth = await resolveAuth()
   if (!auth.ok) return auth.response
-  if (!(await authorizeClient(id, auth.agencyId))) return NextResponse.json({ error: 'Client not found' }, { status: 404 })
+  if (!(await verifyClientOwnership(auth.supabase, id, auth.agencyId))) return NextResponse.json({ error: 'Client not found' }, { status: 404 })
 
   let body: { prompt?: string }
   try {

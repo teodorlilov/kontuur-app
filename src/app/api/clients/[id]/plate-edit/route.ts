@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
+import { verifyClientOwnership } from '@/lib/auth/helpers'
 import { getBrandKitForClient } from '@/lib/brand-kit/queries'
 import { generateDesign, editDesign, removeBackground } from '@/lib/images/fal'
 import { getBrandReferenceImages } from '@/lib/images/bank'
@@ -8,7 +9,6 @@ import { uploadPlate } from '@/lib/images/storage'
 import { uploadToBucket } from '@/features/publishing/lib/storage'
 import { DEFAULT_RATIO } from '@/lib/renderer/layout/anchor'
 import { DEFAULT_TOKENS } from '@/lib/scene-graph'
-import { createUntypedAdminClient } from '@/lib/supabase/admin'
 
 // Calls the design model in-request; give it headroom (matches the other imagery routes).
 export const runtime = 'nodejs'
@@ -50,10 +50,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const auth = await resolveAuth()
   if (!auth.ok) return auth.response
 
-  const db = createUntypedAdminClient()
-  const { data: clientRow } = await db.from('clients').select('agency_id').eq('id', id).maybeSingle()
-  const client = clientRow as { agency_id?: string } | null
-  if (!client || client.agency_id !== auth.agencyId) {
+  if (!(await verifyClientOwnership(auth.supabase, id, auth.agencyId))) {
     return NextResponse.json({ error: 'Client not found' }, { status: 404 })
   }
 
