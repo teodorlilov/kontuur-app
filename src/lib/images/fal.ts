@@ -52,8 +52,6 @@ type GenerateDesignInput = {
    *  we route through the `/edit` endpoint (which takes `image_urls`), so the brand's real look guides the
    *  from-scratch design. */
   referenceImageUrls?: string[]
-  /** Base text-to-image model override; undefined → the provider default (`FAL_DESIGN_MODEL`). */
-  model?: string
 }
 
 /**
@@ -72,7 +70,7 @@ export async function generateDesign(input: GenerateDesignInput): Promise<{ url:
         ? await fal.subscribe(process.env.FAL_DESIGN_EDIT_MODEL ?? DEFAULT_DESIGN_EDIT_MODEL, {
             input: { prompt: input.prompt, image_urls: refs, aspect_ratio, num_images: 1 },
           })
-        : await fal.subscribe(input.model ?? process.env.FAL_DESIGN_MODEL ?? DEFAULT_DESIGN_MODEL, {
+        : await fal.subscribe(process.env.FAL_DESIGN_MODEL ?? DEFAULT_DESIGN_MODEL, {
             input: { prompt: input.prompt, aspect_ratio, num_images: 1 },
           })
     const url = firstImageUrl(result?.data)
@@ -92,8 +90,6 @@ type EditDesignInput = {
   /** Extra brand reference(s) passed alongside the edited image to keep the result on-brand. */
   referenceImageUrls?: string[]
   ratio: AspectRatio
-  /** Edit model override; undefined → the provider default (`FAL_DESIGN_EDIT_MODEL`). */
-  model?: string
 }
 
 /**
@@ -106,7 +102,7 @@ export async function editDesign(input: EditDesignInput): Promise<{ url: string 
   if (!ensureConfigured()) return null
   const aspect_ratio = DESIGN_ASPECT[input.ratio]
   const refs = (input.referenceImageUrls ?? []).filter(Boolean)
-  const model = input.model ?? process.env.FAL_DESIGN_EDIT_MODEL ?? DEFAULT_DESIGN_EDIT_MODEL
+  const model = process.env.FAL_DESIGN_EDIT_MODEL ?? DEFAULT_DESIGN_EDIT_MODEL
   try {
     const result = await fal.subscribe(model, {
       input: { prompt: input.prompt, image_urls: [input.imageUrl, ...refs], aspect_ratio, num_images: 1 },
@@ -145,9 +141,9 @@ export async function removeBackground(imageUrl: string): Promise<{ url: string 
  * + sanitise the text so it can be stored and rasterised). Fail-soft: no key, a failed call, a non-SVG
  * body, or a fetch error all return null. Model overridable via `FAL_VECTOR_MODEL`.
  */
-export async function generateVector(prompt: string, modelId?: string): Promise<{ svg: string } | null> {
+export async function generateVector(prompt: string): Promise<{ svg: string } | null> {
   if (!ensureConfigured()) return null
-  const model = modelId ?? process.env.FAL_VECTOR_MODEL ?? DEFAULT_VECTOR_MODEL
+  const model = process.env.FAL_VECTOR_MODEL ?? DEFAULT_VECTOR_MODEL
   try {
     const result = await fal.subscribe(model, { input: { prompt } })
     const data = result?.data as { images?: Array<{ url?: string }>; image?: { url?: string } } | undefined

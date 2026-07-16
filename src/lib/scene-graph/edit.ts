@@ -1,7 +1,7 @@
 import type { Binding, ColorRole, Composition, Layer, Rect, Treatment } from './types'
+import { bound, lit } from './binding'
 
-const lit = <T>(value: T): Binding<T> => ({ mode: 'literal', value })
-const boundColor = (role: ColorRole): Binding<string> => ({ mode: 'bound', token: `color.${role}` })
+const boundColor = (role: ColorRole): Binding<string> => bound(`color.${role}`)
 
 /**
  * Pure, immutable edits to a composition — the model the visual editor's canvas interactions map onto

@@ -1,5 +1,11 @@
 import type { Binding, BrandTokens } from './types'
 
+/** A literal binding — the value is used as-is (the single authoring helper for `{ mode: 'literal' }`). */
+export const lit = <T>(value: T): Binding<T> => ({ mode: 'literal', value })
+
+/** A token binding — resolved against the kit at render (the single helper for `{ mode: 'bound' }`). */
+export const bound = <T>(token: string): Binding<T> => ({ mode: 'bound', token })
+
 /**
  * Resolve a binding against a brand kit's tokens.
  * `literal` returns its value; `bound` looks up a dot-path (e.g. 'color.accent',

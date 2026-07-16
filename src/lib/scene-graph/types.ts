@@ -92,9 +92,6 @@ export type TextLayer = LayerBase & {
   autoFit: { min: number; max: number } | null
 }
 
-/** Declared by a composition template; resolved to a concrete MarkLayer at generation. */
-export type MarkSlot = { markSource: 'style' | 'motif' }
-
 export type ChromeComponent =
   | 'rule'
   | 'corner-frame'
@@ -120,8 +117,6 @@ export type ShapeLayer = LayerBase & {
 export type GroupLayer = LayerBase & { type: 'group'; children: Layer[] }
 
 export type Layer = PlateLayer | MarkLayer | TextLayer | ChromeLayer | ShapeLayer | GroupLayer
-
-export type CompositionRole = 'cover' | 'statement' | 'list' | 'quote' | 'cta' | 'single'
 
 export type Composition = {
   id: string

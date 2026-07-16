@@ -23,13 +23,18 @@ import { uploadPlate } from './storage'
  *  brand-consistency lever, conditioning every slide so a carousel shares one visual DNA. Fetched once per
  *  post by the imagery filler and threaded into each `resolveDesign` call. Empty on a miss (fail-soft). */
 export async function getBrandReferenceImages(clientId: string): Promise<string[]> {
-  const db = createUntypedAdminClient()
-  const { data } = await db
-    .from('brand_image_bank')
-    .select('public_url')
-    .eq('client_id', clientId)
-    .like('prompt_hash', 'onboarding:%')
-  return ((data as Array<{ public_url?: string }> | null) ?? []).map((r) => r.public_url).filter((u): u is string => Boolean(u))
+  try {
+    const db = createUntypedAdminClient()
+    const { data } = await db
+      .from('brand_image_bank')
+      .select('public_url')
+      .eq('client_id', clientId)
+      .like('prompt_hash', 'onboarding:%')
+    return ((data as Array<{ public_url?: string }> | null) ?? []).map((r) => r.public_url).filter((u): u is string => Boolean(u))
+  } catch (err) {
+    console.error('[images/bank] getBrandReferenceImages failed:', err)
+    return [] // fail-soft: generation falls back to text-to-image (no reference conditioning)
+  }
 }
 
 export type ResolveDesignParams = {
@@ -50,8 +55,6 @@ export type ResolveDesignParams = {
   scene?: string | null
   /** Brand reference images the design model conditions on (from `getBrandReferenceImages`). */
   referenceImageUrls?: string[]
-  /** fal design-model id override; undefined → the provider default (`FAL_DESIGN_MODEL`). */
-  model?: string
 }
 
 export async function resolveDesign(params: ResolveDesignParams): Promise<string | null> {
@@ -96,7 +99,6 @@ export async function resolveDesign(params: ResolveDesignParams): Promise<string
     prompt,
     ratio: params.ratio,
     referenceImageUrls: params.referenceImageUrls,
-    model: params.model,
   })
   if (!generated) return null
 
@@ -125,8 +127,6 @@ export type ResolveVectorParams = {
   motif: string
   colors: BrandTokens['color']
   feedSystemSlug: string | null
-  /** fal model id override (from the style's `imageModel.vector`); undefined → the Recraft default. */
-  model?: string
   /** The art director's ornament directive — folds the brand's ornament character into the mark. */
   ornament?: string
 }
@@ -159,7 +159,7 @@ export async function resolveVector(params: ResolveVectorParams): Promise<string
   if (cached) return cached
 
   const prompt = buildVectorPrompt({ motif: params.motif, colors: params.colors, feedSystemSlug: params.feedSystemSlug, ornament: params.ornament })
-  const generated = await generateVector(prompt, params.model)
+  const generated = await generateVector(prompt)
   if (!generated) return null
 
   const { error } = await db.from('brand_vector_bank').insert({

@@ -5,7 +5,7 @@ import { resolveArtDirection } from '@/lib/renderer/art-direction'
 import { feedSystemTokens } from '@/lib/renderer/feed-system-compositions'
 import { DEFAULT_RATIO } from '@/lib/renderer/layout/anchor'
 import { fillImagery, type FillImageryContext } from '@/lib/images/generate-plates'
-import { DEFAULT_TOKENS, type Composition, type Treatment } from '@/lib/scene-graph'
+import { DEFAULT_TOKENS, lit, type Composition, type Treatment } from '@/lib/scene-graph'
 import { createUntypedAdminClient } from '@/lib/supabase/admin'
 import type { CarouselSlide } from '@/types/api'
 
@@ -14,7 +14,7 @@ function withTreatment(composition: Composition, treatment: Treatment): Composit
   return {
     ...composition,
     layers: composition.layers.map((l) =>
-      l.type === 'plate' && !l.cutout ? { ...l, treatment: { mode: 'literal', value: treatment } } : l
+      l.type === 'plate' && !l.cutout ? { ...l, treatment: lit(treatment) } : l
     ),
   }
 }
@@ -139,10 +139,5 @@ export async function generatePreviewVisuals(params: {
   let compositions = composePostSlides(slides, { feedSystemSlug: slug, postId: 'preview', clientName })
   if (direction) compositions = compositions.map((c) => withTreatment(c, direction.treatment))
   const filled = await fillImagery(compositions, slides, imageryContext(clientId, kit, slug, direction?.conditioning))
-
-  const withImagery = filled.filter((c) => c.layers.some((l) => l.type === 'plate' && Boolean(l.src))).length
-  // Diagnostic: how many slides got a generated design. 0 for a generative style → generate/upload failed
-  // (see the [images/fal] / [images/bank] logs above); a compositor-only style (quiet-grid) is correct at 0.
-  console.log(`[images] generatePreviewVisuals: style "${slug}", ${withImagery}/${filled.length} slides got a generated design`)
   return filled.map((composition, slideIndex) => ({ slideIndex, composition }))
 }

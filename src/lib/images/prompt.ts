@@ -49,18 +49,20 @@ export function hexToColorName(hex: string): string {
   return `${lightness}${muted}${hue}`.trim()
 }
 
-/** The brand's colour direction as a short phrase — accent, its deep sibling, and the surface, deduped
- *  (ink is text, not imagery). */
+/** The brand's imagery colours — accent, its deep sibling, and the surface (ink is text, not imagery). The
+ *  single source both palette phrasings draw from. */
+const brandPaletteHexes = (colors: BrandTokens['color']): string[] => [colors.accent, colors['accent-deep'], colors.surface]
+
+/** The brand's colour direction as a short phrase — the palette colours as words, deduped by name. */
 export function paletteWords(colors: BrandTokens['color']): string {
-  const names = [colors.accent, colors['accent-deep'], colors.surface].map(hexToColorName)
-  return [...new Set(names)].join(', ')
+  return [...new Set(brandPaletteHexes(colors).map(hexToColorName))].join(', ')
 }
 
-/** The palette as name + hex pairs — the precise brand direction a design model honours best. */
+/** The palette as name + hex pairs (deduped by hex) — the precise brand direction a design model honours best. */
 function paletteDetail(colors: BrandTokens['color']): string {
   const seen = new Set<string>()
   const parts: string[] = []
-  for (const hex of [colors.accent, colors['accent-deep'], colors.surface]) {
+  for (const hex of brandPaletteHexes(colors)) {
     const key = hex.toLowerCase()
     if (seen.has(key)) continue
     seen.add(key)

@@ -1,16 +1,17 @@
-import type {
-  BlendMode,
-  Binding,
-  Clip,
-  Composition,
-  Layer,
-  PlateLayer,
-  Rect,
-  ShapeLayer,
-  TextLayer,
-  TextSlot,
-  Treatment,
-  VAnchor,
+import {
+  bound,
+  lit,
+  type BlendMode,
+  type Clip,
+  type Composition,
+  type Layer,
+  type PlateLayer,
+  type Rect,
+  type ShapeLayer,
+  type TextLayer,
+  type TextSlot,
+  type Treatment,
+  type VAnchor,
 } from '@/lib/scene-graph'
 import type { CarouselSlide } from '@/types/api'
 import { DEFAULT_RATIO, RATIO_SIZES, resolveComposition, type AspectRatio } from './layout/anchor'
@@ -34,9 +35,7 @@ const H = 1350
 const MX = 96
 const TW = W - MX * 2 // text column width
 
-// ── Scene-graph authoring primitives (the only home now that archetypes are gone) ──
-const lit = <T>(value: T): Binding<T> => ({ mode: 'literal', value })
-const bound = <T>(token: string): Binding<T> => ({ mode: 'bound', token })
+// ── Scene-graph authoring primitives (`lit`/`bound` are the shared helpers from scene-graph) ──
 const rect = (x: number, y: number, w: number, h: number, rotate = 0): Rect => ({ x, y, w, h, rotate })
 
 function base(a: { id: string; name: string; rect: Rect; vAnchor?: VAnchor; opacity?: number; blendMode?: BlendMode; clip?: Clip }) {
@@ -160,50 +159,33 @@ function roleFor(slide: CarouselSlide, index: number, total: number): SlideRole 
 const HEADLINE_WEIGHT: Record<string, number> = { 'bold-blocks': 800, 'quiet-grid': 500, editorial: 700, illustrative: 700 }
 
 /**
- * Build one slide's composition from its copy: background + scrim + the kicker/headline/subtext text block in
- * the style's zone. Text colours flip with the ground — light type over a (dark-scrimmed) generated plate, ink
- * type on the clean colour ground. The kicker (client name / eyebrow) shows on the cover and CTA only.
+ * The kicker/headline/subtext text layers for a slide, placed in the style's zone. Text colours flip with the
+ * ground — light type over a (dark-scrimmed) generated plate, ink type on the clean colour ground. The kicker
+ * (client name / eyebrow) shows on the cover and CTA only; each layer is omitted when its copy is empty.
  */
-function composeSlide(slide: CarouselSlide, index: number, total: number, style: Style, kicker: string): Composition {
-  const role = roleFor(slide, index, total)
-  const geom = ZONES[style.textZone]
-  const onPlate = style.generative // light text over a scrimmed image vs ink text on the colour ground
+function textZoneLayers(role: SlideRole, geom: ZoneGeom, style: Style, slide: CarouselSlide, kicker: string): TextLayer[] {
+  const onPlate = style.generative
   const textColor = onPlate ? 'color.surface' : 'color.ink'
-  const kickerColor = onPlate ? 'color.surface' : 'color.accent'
-  const headWeight = HEADLINE_WEIGHT[style.slug] ?? 700
-
-  const layers: Layer[] = [backgroundLayer(style)]
-  if (onPlate) layers.push(scrimLayer(geom))
-
-  const showKicker = role !== 'content' && kicker.trim().length > 0
-  if (showKicker) {
-    layers.push(
-      textLayer({
-        id: 'kicker', slot: 'kicker', content: kicker, rect: geom.kicker.rect, vAnchor: geom.kicker.vAnchor,
-        family: 'type.display.family', size: 30, weight: 600, color: kickerColor, align: geom.align,
-      })
-    )
+  const isCta = role === 'cta'
+  const layers: TextLayer[] = []
+  if (role !== 'content' && kicker.trim()) {
+    layers.push(textLayer({ id: 'kicker', slot: 'kicker', content: kicker, ...geom.kicker, family: 'type.display.family', size: 30, weight: 600, color: onPlate ? 'color.surface' : 'color.accent', align: geom.align }))
   }
   if (slide.headline?.trim()) {
-    layers.push(
-      textLayer({
-        id: 'headline', slot: 'headline', content: slide.headline, rect: geom.headline.rect, vAnchor: geom.headline.vAnchor,
-        family: 'type.display.family', size: geom.headline.autoFit.max, weight: headWeight, color: textColor,
-        align: geom.align, autoFit: geom.headline.autoFit,
-      })
-    )
+    layers.push(textLayer({ id: 'headline', slot: 'headline', content: slide.headline, ...geom.headline, family: 'type.display.family', size: geom.headline.autoFit.max, weight: HEADLINE_WEIGHT[style.slug] ?? 700, color: textColor, align: geom.align }))
   }
   if (slide.body?.trim()) {
-    const isCta = role === 'cta'
-    layers.push(
-      textLayer({
-        id: 'subtext', slot: isCta ? 'cta' : 'body', content: slide.body, rect: geom.subtext.rect, vAnchor: geom.subtext.vAnchor,
-        family: isCta ? 'type.display.family' : 'type.body.family', size: isCta ? 40 : 36,
-        weight: isCta ? 600 : 400, color: textColor, align: geom.align,
-      })
-    )
+    layers.push(textLayer({ id: 'subtext', slot: isCta ? 'cta' : 'body', content: slide.body, ...geom.subtext, family: isCta ? 'type.display.family' : 'type.body.family', size: isCta ? 40 : 36, weight: isCta ? 600 : 400, color: textColor, align: geom.align }))
   }
+  return layers
+}
 
+/** Build one slide's composition: background (design plate or colour ground) + optional scrim + the text zone. */
+function composeSlide(slide: CarouselSlide, index: number, total: number, style: Style, kicker: string): Composition {
+  const geom = ZONES[style.textZone]
+  const layers: Layer[] = [backgroundLayer(style)]
+  if (style.generative) layers.push(scrimLayer(geom))
+  layers.push(...textZoneLayers(roleFor(slide, index, total), geom, style, slide, kicker))
   return { id: `slide-${index}`, feedSystemId: style.slug, brandKitVersion: 1, size: { w: W, h: H }, layers }
 }
 
