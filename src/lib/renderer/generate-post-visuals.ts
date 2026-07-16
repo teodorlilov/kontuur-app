@@ -143,5 +143,8 @@ export async function generatePostPlates(params: {
     const src = composition.layers.find((l): l is typeof l & { src: string } => l.type === 'plate' && Boolean((l as { src?: string }).src))?.src
     if (src) plates[i] = src
   })
+  // Diagnostic: how many slides actually got imagery. 0 → generate/upload failed (see the [images/fal] /
+  // [images/bank] logs above for the reason); >0 but bare in the UI → the plate URL isn't loading.
+  console.log(`[images] generatePostPlates: ${Object.keys(plates).length}/${slides.length} slides got a plate (style "${effectiveSlug}")`, Object.values(plates)[0] ?? '')
   return plates
 }
