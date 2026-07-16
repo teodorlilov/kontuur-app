@@ -112,7 +112,6 @@ export async function resolveDesign(params: ResolveDesignParams): Promise<string
   // we still return the image we uploaded rather than discard a paid generation.
   const { error } = await db.from('brand_image_bank').insert({
     client_id: params.clientId,
-    role: params.role,
     prompt_hash: hash,
     storage_path: stored.storagePath,
     public_url: stored.publicUrl,

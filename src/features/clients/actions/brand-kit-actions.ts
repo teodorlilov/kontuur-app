@@ -47,7 +47,6 @@ export async function saveBrandKit(
     client_id: clientId,
     tokens: parsed.tokens,
     version,
-    source_kind: 'manual',
     updated_at: new Date().toISOString(),
   }
   if (brief !== undefined) kitRow.brief = brief

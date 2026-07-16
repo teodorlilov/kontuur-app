@@ -30,3 +30,11 @@ alter table post_visuals drop constraint if exists post_visuals_feed_system_id_f
 alter table post_visuals
   drop column if exists brand_kit_version,
   drop column if exists feed_system_id;
+
+-- ── Tier 3: redundant value columns (a matching code change ships alongside) ────────────────────────
+-- brand_kits.source_kind: written ('manual'/'default') but never read (queries.ts drops it from KIT_COLUMNS).
+alter table brand_kits drop column if exists source_kind;
+
+-- brand_image_bank.role: duplicated the `onboarding:<index>` suffix already in prompt_hash. The edit page
+-- now derives the sample key from prompt_hash; resolveDesign / seedImageBank stop writing role.
+alter table brand_image_bank drop column if exists role;

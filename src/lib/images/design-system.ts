@@ -64,10 +64,9 @@ export async function generateDesignSystemPlates(params: {
  * never blocks client creation.
  */
 export async function seedImageBank(clientId: string, plates: Record<string, DesignPlate>): Promise<void> {
-  const rows = Object.entries(plates).map(([role, plate]) => ({
+  const rows = Object.entries(plates).map(([key, plate]) => ({
     client_id: clientId,
-    role,
-    prompt_hash: `onboarding:${role}`,
+    prompt_hash: `onboarding:${key}`,
     storage_path: plate.storagePath,
     public_url: plate.publicUrl,
   }))

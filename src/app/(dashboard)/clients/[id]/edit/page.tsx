@@ -31,7 +31,7 @@ export default async function EditClientPage({ params }: { params: Promise<{ id:
     getBrandKitForClient(id, agencyId),
     admin.from('feed_systems').select('id, slug, name, description').order('slug'),
     admin.from('client_feed_systems').select('feed_system_id').eq('client_id', id).eq('is_default', true).maybeSingle(),
-    admin.from('brand_image_bank').select('role, public_url, storage_path').eq('client_id', id).like('prompt_hash', 'onboarding:%'),
+    admin.from('brand_image_bank').select('prompt_hash, public_url, storage_path').eq('client_id', id).like('prompt_hash', 'onboarding:%'),
     admin.from('brand_vector_bank').select('svg, label').eq('client_id', id).like('prompt_hash', 'onboarding:%'),
   ])
   const brandTokens = kit?.tokens ?? DEFAULT_TOKENS
@@ -42,9 +42,10 @@ export default async function EditClientPage({ params }: { params: Promise<{ id:
 
   // The client's already-generated design system (image + vector banks), shown in the Visual system tab on
   // open. The vector-bank query is fail-soft: if that table isn't migrated yet, `.data` is null → undefined.
-  const imageBankRows = (imageBankRes.data as Array<{ role: string; public_url: string; storage_path: string }> | null) ?? []
+  // The sample index is the `onboarding:<index>` suffix of the prompt_hash — the key the preview grid injects by.
+  const imageBankRows = (imageBankRes.data as Array<{ prompt_hash: string; public_url: string; storage_path: string }> | null) ?? []
   const initialDesignPlates = imageBankRows.length
-    ? Object.fromEntries(imageBankRows.map((r) => [r.role, { publicUrl: r.public_url, storagePath: r.storage_path }]))
+    ? Object.fromEntries(imageBankRows.map((r) => [r.prompt_hash.replace('onboarding:', ''), { publicUrl: r.public_url, storagePath: r.storage_path }]))
     : undefined
   const vectorBankRows = (vectorBankRes.data as Array<{ svg: string; label: string }> | null) ?? []
   const initialDesignVectors = vectorBankRows.length ? vectorBankRows.map((r) => ({ svg: r.svg, label: r.label })) : undefined

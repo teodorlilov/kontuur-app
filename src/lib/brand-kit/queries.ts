@@ -8,7 +8,6 @@ export type BrandKitRow = {
   client_id: string
   tokens: BrandTokens
   version: number
-  source_kind: string
   /** The art-direction brief (subjects/motifs/mood) — the input to Phase 4 image prompts. Null on kits
    *  extracted before the brief was persisted, or on the default kit. */
   brief: BrandBrief | null
@@ -17,7 +16,7 @@ export type BrandKitRow = {
   art_direction: ArtDirection | null
 }
 
-const KIT_COLUMNS = 'id, client_id, tokens, version, source_kind, brief, art_direction'
+const KIT_COLUMNS = 'id, client_id, tokens, version, brief, art_direction'
 
 /**
  * Read a client's brand kit, scoped to the caller's agency. Access is app-level (no RLS): the client
