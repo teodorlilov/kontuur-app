@@ -83,7 +83,10 @@ export async function resolvePlate(params: ResolvePlateParams): Promise<string |
   if (!source) return null
 
   const stored = await uploadPlate(params.clientId, source.url)
-  if (!stored) return null // don't persist an ephemeral fal URL into post_visuals — keep the gradient
+  if (!stored) {
+    console.error('[images/bank] resolvePlate: fal generated the image but the copy to the "plates" bucket failed (bucket missing / storage perms). Keeping the gradient.')
+    return null // don't persist an ephemeral fal URL into post_visuals — keep the gradient
+  }
 
   // Index it for reuse. A concurrent generate of the same hash can lose the unique-index race; that's
   // fine — we still return the image we uploaded rather than discard a paid generation.

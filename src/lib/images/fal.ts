@@ -63,6 +63,7 @@ export async function generatePlate(input: GeneratePlateInput): Promise<{ url: s
       },
     })
     const url = (result?.data as { images?: Array<{ url?: string }> } | undefined)?.images?.[0]?.url
+    if (!url) console.error(`[images/fal] generatePlate: no image url in "${model}" response:`, JSON.stringify(result?.data)?.slice(0, 400))
     return url ? { url } : null
   } catch (err) {
     console.error('[images/fal] generatePlate failed:', err)
@@ -168,11 +169,25 @@ export async function generateVector(prompt: string, modelId?: string): Promise<
     const result = await fal.subscribe(model, { input: { prompt } })
     const data = result?.data as { images?: Array<{ url?: string }>; image?: { url?: string } } | undefined
     const url = data?.images?.[0]?.url ?? data?.image?.url
-    if (!url) return null
+    if (!url) {
+      console.error(`[images/fal] generateVector: no asset url in "${model}" response:`, JSON.stringify(result?.data)?.slice(0, 400))
+      return null
+    }
     const res = await fetch(url)
-    if (!res.ok) return null
-    const svg = sanitizeSvg(await res.text())
-    return isSvg(svg) ? { svg } : null
+    if (!res.ok) {
+      console.error('[images/fal] generateVector: asset fetch failed', res.status, url)
+      return null
+    }
+    const body = await res.text()
+    const svg = sanitizeSvg(body)
+    if (!isSvg(svg)) {
+      console.error(
+        `[images/fal] generateVector: "${model}" returned a non-SVG asset (content-type ${res.headers.get('content-type')}) — this model likely produces raster, not vector. Point FAL_VECTOR_MODEL at a real text-to-vector endpoint.`,
+        body.slice(0, 120)
+      )
+      return null
+    }
+    return { svg }
   } catch (err) {
     console.error('[images/fal] generateVector failed:', err)
     return null
