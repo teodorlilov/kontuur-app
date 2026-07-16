@@ -7,11 +7,9 @@ import type { CarouselSlide } from '@/types/api'
 import type { PlateRole } from './prompt'
 
 /**
- * Fill each slide's background plate with a generated **design** (the capable design model), running after
- * `composePostSlides` inside the on-demand generate job so it only spends when an operator asks. Every step
- * is fail-soft: a compositor-only style (`quiet-grid`, no plate) is left untouched, and any generation or
- * storage failure leaves the plate's gradient — the carousel always renders. The cover generates a striking
- * hero; interior slides continue the same visual world; all are banked + reused per brand.
+ * Fill each slide's background plate with a generated design, after `composePostSlides` inside the on-demand
+ * generate job (so it only spends when an operator asks). Fail-soft: a compositor-only style (quiet-grid) is
+ * left untouched, and any generation/storage failure leaves the gradient — the carousel always renders.
  */
 
 /** The design-prompt emphasis for a slide's carousel role: the cover is the hero; content + CTA are
@@ -41,12 +39,9 @@ export type FillImageryContext = {
   conditioning?: string
 }
 
-/**
- * Fill each slide's design plate from the client's style + brand. A generative style's plate → a design-model
- * render via `resolveDesign`, conditioned on the brand's reference images (consistency) and a carousel-aware
- * per-slide scene (relevancy); a compositor-only style → untouched (no spend). Slides map 1:1 to compositions;
- * every step is fail-soft, so a failure leaves the token gradient.
- */
+/** Fill each slide's plate: a generative style → a design-model render via `resolveDesign`, conditioned on the
+ *  brand references (consistency) + a carousel-aware scene (relevancy); a compositor-only style → untouched.
+ *  Fail-soft — a failure leaves the token gradient. */
 export async function fillImagery(
   compositions: Composition[],
   slides: CarouselSlide[],

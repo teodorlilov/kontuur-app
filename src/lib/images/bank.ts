@@ -9,19 +9,14 @@ import { composeScene } from './scene'
 import { uploadPlate } from './storage'
 
 /**
- * The per-brand **design bank**: a durable image URL for a slide's generated design, cached by a
- * *deterministic* key (slide copy + brand direction) so a regenerate or a second post with the same copy
- * reuses the design instead of paying for the LLM scene + design-model call again. On a miss it composes the
- * scene, builds the design prompt, generates via the capable design model (conditioned on the brand's
- * reference images), and stores the result in the `plates` bucket. Fail-soft throughout: null → caller keeps
- * the token gradient (no key, generation failure, or storage failure all degrade to no image, never a crash).
- *
- * App-level access (no RLS on `brand_image_bank`), same as the other composition-engine tables.
+ * Per-brand **design bank**: a durable image URL for a slide's design, cached by a deterministic key (slide
+ * copy + brand direction) so a regenerate or a repeat reuses it instead of paying for the LLM scene +
+ * design-model call again. Fail-soft throughout — any failure → null → the caller keeps the token gradient.
+ * App-level access (no RLS), like the other composition-engine tables.
  */
 
 /** The brand's design-system reference images (seeded at onboarding, keyed `onboarding:*`) — the strongest
- *  brand-consistency lever, conditioning every slide so a carousel shares one visual DNA. Fetched once per
- *  post by the imagery filler and threaded into each `resolveDesign` call. Empty on a miss (fail-soft). */
+ *  consistency lever, threaded into every `resolveDesign` call. Empty on a miss (fail-soft). */
 export async function getBrandReferenceImages(clientId: string): Promise<string[]> {
   try {
     const db = createUntypedAdminClient()
@@ -130,14 +125,9 @@ export type ResolveVectorParams = {
   ornament?: string
 }
 
-/**
- * The per-brand **vector bank**: a durable SVG for a brand mark, cached by a deterministic key (motif +
- * palette + style) so the editor's on-demand marks + the onboarding starter set reuse a brand's vectors
- * across posts instead of paying Recraft each time — the vector analogue of `resolveDesign`. On a miss it
- * builds the Recraft prompt, generates, and stores the SVG. Fail-soft: null → the caller leaves the mark
- * empty. Depends on `brand_vector_bank` (migration `20260718`); until applied the select/insert error → still
- * fail-soft (a failed select just misses; a failed insert still returns the generated svg).
- */
+/** Per-brand **vector bank** — the vector analogue of `resolveDesign`: a durable SVG cached by (motif +
+ *  palette + style) so the editor's marks + the onboarding starter set reuse a brand's vectors. Fail-soft:
+ *  null → the caller leaves the mark empty. */
 export async function resolveVector(params: ResolveVectorParams): Promise<string | null> {
   const db = createUntypedAdminClient()
   const hash = promptHash({

@@ -18,15 +18,13 @@ import { DEFAULT_RATIO, RATIO_SIZES, resolveComposition, type AspectRatio } from
 import { getStyle, type Style, type TextZone } from './styles'
 
 /**
- * Compose a post's carousel copy into renderable scene graphs — one per slide — the **single, uniform** path
- * that replaced the archetype/template engine. Every slide is the same shape:
+ * Compose a post's carousel copy into renderable scene graphs — one per slide. Every slide is the same shape:
  *
- *   design plate (full-bleed) ─ optional scrim ─ text block placed in the style's text zone
+ *   design plate (full-bleed) ─ optional scrim ─ text block in the style's text zone
  *
- * The plate's `src` is filled later by the design model (`images/generate-plates.ts`) for a generative style,
- * or left as a plain brand colour ground for the compositor-only `quiet-grid`. Design variety comes from the
- * model, not hand-authored layouts — so this file only owns geometry + copy placement + brand text styling.
- * Pure and Konva-free, so it runs server-side (stored generation) and client-side (wizard/approval preview).
+ * The plate's `src` is filled later by the design model (generative styles) or left as a brand colour ground
+ * (quiet-grid). This file owns only geometry + copy placement + brand text styling. Pure and Konva-free, so it
+ * runs server-side (stored generation) and client-side (wizard/approval preview).
  */
 
 // The 4:5 authoring canvas (1080-wide; height adapts per ratio at render). Text sits inside a horizontal margin.
@@ -147,11 +145,8 @@ function textLayer(a: {
   }
 }
 
-/**
- * The single source of a slide's carousel role — the cover, the closing CTA, or interior content. An explicit
- * `slide_role` wins over position; otherwise the first slide is the cover and the last the CTA. Drives both the
- * text layout (here) and the design-prompt emphasis (`plateRole` in images/generate-plates.ts derives from it).
- */
+/** The single source of a slide's carousel role. An explicit `slide_role` wins over position; else the first
+ *  slide is the cover, the last the CTA. Drives text layout here + design emphasis (`plateRole`). */
 export function slideRole(slide: CarouselSlide, index: number, total: number): SlideRole {
   if (slide.slide_role === 'cta') return 'cta'
   if (slide.slide_role === 'cover') return 'cover'
@@ -202,11 +197,8 @@ export function withPlateSrc(composition: Composition, src: string | undefined):
 
 export type ComposeOptions = { feedSystemSlug: string | null; ratio: AspectRatio; postId: string; kicker?: string }
 
-/**
- * Turn a post's carousel copy into renderable scene graphs — one uniform design-plate + text-zone composition
- * per slide, at the chosen ratio, in the client's style. Pure and Konva-free, so the generation endpoint runs
- * it server-side; the imagery layer fills each plate's `src` afterwards (generative styles only).
- */
+/** Turn a post's carousel copy into scene graphs — one design-plate + text-zone composition per slide, at the
+ *  chosen ratio + style. Pure/Konva-free (runs server-side); the imagery layer fills each plate's `src` after. */
 export function composeSlides(slides: CarouselSlide[], { feedSystemSlug, ratio, postId, kicker }: ComposeOptions): Composition[] {
   const style = getStyle(feedSystemSlug)
   const size = RATIO_SIZES[ratio]
@@ -217,12 +209,8 @@ export function composeSlides(slides: CarouselSlide[], { feedSystemSlug, ratio, 
   })
 }
 
-/**
- * Compose a *post's* carousel copy with the shared convention every surface must agree on: the standard post
- * ratio and the client name as the eyebrow kicker. The one home for that convention — used by stored
- * generation (`composePostVisuals`), the on-demand review/calendar endpoint, and the client-side
- * wizard/approval preview — so every path renders identical slides.
- */
+/** Compose a post's slides with the shared convention every surface agrees on — standard ratio + the client
+ *  name as the kicker — so stored generation, the review/calendar endpoint, and the preview all match. */
 export function composePostSlides(
   slides: CarouselSlide[],
   { feedSystemSlug, postId, clientName }: { feedSystemSlug: string | null; postId: string; clientName?: string | null }
@@ -240,11 +228,8 @@ const SAMPLE_SLIDES: CarouselSlide[] = [
   { slide_role: 'cta', headline: 'Готови ли сте\nда започнем?', body: 'Свържете се с нас →' },
 ]
 
-/**
- * A few sample slide compositions in a style — the design-system preview grid + the style picker filmstrip
- * render these. Replaces the old archetype showcase: the samples share the exact compose path real posts use,
- * so what the operator previews is what they get. (`PreviewCell` localizes the placeholder copy.)
- */
+/** A few sample slide compositions in a style — rendered by the design-system preview grid + the style picker.
+ *  They share the exact compose path real posts use, so the preview matches the output. */
 export function sampleCompositions(feedSystemSlug: string | null | undefined): Composition[] {
   return composeSlides(SAMPLE_SLIDES, { feedSystemSlug: feedSystemSlug ?? null, ratio: DEFAULT_RATIO, postId: 'sample', kicker: 'За социалните мрежи' })
 }

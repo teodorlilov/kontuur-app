@@ -2,13 +2,10 @@ import type { Treatment } from '@/lib/scene-graph'
 import type { NegativeSpace } from '@/lib/images/prompt'
 
 /**
- * A **style** (the enriched feed system — same DB slug, no new entity) is a **generation direction**: the
- * prompt scaffold that distinguishes the look, where the composited text sits, the default photo grade, and
- * the type-weight profile it needs loaded. Three styles are *generative* — a capable design model renders a
- * rich, text-free slide from the `scaffold` and we composite the brand text into `textZone`. One (`quiet-grid`)
- * is *compositor-only* — a plain brand colour ground + type, no model call, the clean zero-cost option.
- *
- * The pool/archetype machinery is gone: design variety now comes from the model, not hand-authored layouts.
+ * A **style** (same DB slug as the feed system) is a **generation direction**: the prompt `scaffold` that
+ * distinguishes the look, the `textZone` where composited text sits, the default photo grade, and the type
+ * weights to load. Three styles are generative (the design model renders from `scaffold`); `quiet-grid` is
+ * compositor-only — a plain colour ground + type, no model call.
  */
 export type TextZone = NegativeSpace // 'bottom' | 'center' | 'top' — where the text block sits on the slide
 

@@ -40,20 +40,17 @@ export async function fetchInstagramProfile(
   }
 }
 
-// The most images we take from a grid — enough to read the brand's visual system as a generation reference,
-// bounded so a busy profile doesn't flood the prompt. The grid thumbnails are the brand's real design DNA.
+// Cap the grid images we take — enough to read the brand's design DNA, bounded so a busy profile doesn't flood.
 const MAX_GRID_IMAGES = 9
 
-// Instagram post images are served from the Facebook/Instagram CDN — the reliable host signal for the grid.
+// Instagram post images come from the FB/Instagram CDN — the reliable host signal for the grid.
 const IG_CDN = /https?:\/\/[^\s"')]+\.(?:cdninstagram\.com|fbcdn\.net)\/[^\s"')]+\.(?:jpe?g|png|webp)[^\s"')]*/gi
 
 /**
- * Pull the Instagram grid's **post images** via Jina AI Reader (image-summary mode) — the brand's *real*
- * design system, used as the reference image(s) that condition generation so a new client's designs match the
- * look they already have. Jina renders the JS page and lists the images; we extract the post-image URLs from
- * the Instagram CDN. Grid-thumbnail resolution — enough as a style reference. Fail-soft: an empty list on any
- * error, so onboarding falls back to the website / generated samples. The caller stores its own copies (IG
- * CDN URLs expire).
+ * Pull the Instagram grid's **post images** via Jina AI Reader (image-summary mode) — the brand's real design
+ * system, used as reference images so a new client's designs match their existing look. Grid-thumbnail res.
+ * Fail-soft: empty on any error → onboarding falls back to website / generated samples. (Caller stores its own
+ * copies; IG CDN URLs expire.)
  */
 export async function fetchInstagramImages(handle: string): Promise<{ imageUrls: string[]; error?: string }> {
   const url = `https://www.instagram.com/${handle}/`

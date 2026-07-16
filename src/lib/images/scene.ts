@@ -4,9 +4,9 @@ import { callAnthropic, LIGHT_MODEL } from '@/utils/ai-client'
 import { extractToolInput } from '@/utils/ai'
 
 /**
- * Turn a slide's copy + the brand's photographic subjects into ONE concrete, text-free scene to shoot as
- * that slide's background — so each image relates to its slide's message. A cheap Haiku call; fail-soft
- * (null on error), letting the prompt builder fall back to a deterministic brief subject.
+ * Turn a slide's copy + the brand's photographic subjects into ONE concrete, text-free scene to shoot as its
+ * background, so each image relates to its message. Cheap Haiku call; fail-soft (null → the prompt builder
+ * falls back to a brief subject).
  */
 
 const SYSTEM = `You are an art director choosing the background photo for one social-media slide.
@@ -52,8 +52,8 @@ Describe the scene.`
 }
 
 // ── Carousel-aware scene planning ─────────────────────────────────────────────
-// Planning all slides in one call lets the scenes share a through-line — cover establishes the subject, inner
-// slides continue it, the CTA closes it — so a carousel reads as ONE story rather than N unrelated pictures.
+// Planning all slides at once gives the scenes a through-line (cover → inner → CTA), so a carousel reads as
+// one story, not N unrelated pictures.
 
 const CAROUSEL_SYSTEM = `You are an art director planning the background visuals for one social-media carousel.
 Given every slide's copy in order and the brand's photographic subjects, describe ONE concrete, literal, text-free scene to shoot for EACH slide.
@@ -70,12 +70,8 @@ const CAROUSEL_SCHEMA = {
   required: ['scenes'],
 }
 
-/**
- * Plan one text-free scene per slide in a single call so the carousel tells one story (see `CAROUSEL_SYSTEM`).
- * Returns an array aligned to `slides` (each entry is the scene, or `null` where the model gave nothing).
- * Fail-soft: on any error returns all-null, and each caller falls back to a per-slide/brief scene — so the
- * pipeline never blocks on scene planning.
- */
+/** Plan one text-free scene per slide in one call so the carousel tells one story. Returns an array aligned to
+ *  `slides` (null where the model gave nothing). Fail-soft: all-null on error → callers fall back per-slide. */
 export async function composeCarouselScenes(params: {
   slides: Array<{ headline: string; body: string }>
   brief: BrandBrief | null

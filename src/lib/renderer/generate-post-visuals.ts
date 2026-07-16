@@ -49,15 +49,10 @@ function imageryContext(
 }
 
 /**
- * Compose a post's carousel copy into per-slide scene graphs, store them in `post_visuals`, and mark the
- * post `visuals_status = 'ready'`. The single implementation behind every trigger — the generation flows
- * (autonomous cron + the manual wizard) call it so posts arrive designed, and the on-demand review
- * endpoint calls it to (re)generate.
- *
- * `withImagery` gates the paid fal.ai plate generation: only the operator's on-demand "Generate visuals"
- * click passes it, so nothing auto-spends (cron/wizard stay copy-only, a documented Phase 4 limitation).
- * Imagery is fail-soft — a failure leaves the token gradient, so this never throws on an image problem.
- * Throws only on the DB write — the caller surfaces it (generators best-effort, endpoint marks 'failed').
+ * Compose a post's copy into per-slide scene graphs, store them in `post_visuals`, mark the post
+ * `visuals_status = 'ready'`. The single implementation behind every trigger (cron, wizard, on-demand
+ * regenerate). `withImagery` gates the paid generation (only the operator's "Generate visuals" click passes
+ * it); imagery is fail-soft, so this throws only on the DB write (the caller surfaces it).
  */
 export async function composePostVisuals(params: {
   postId: string
@@ -116,12 +111,9 @@ export async function composePostVisuals(params: {
 }
 
 /**
- * Compose + fill a post's slides WITHOUT storing anything — the manual generation wizard's pre-save
- * preview. Returns the **fully imagery-filled compositions** (photo plates AND generated vector marks), so
- * a vector/illustrative style shows its marks and a photo style shows its photos — not just plates. Runs
- * through the same art-direction-driven compose + `fillImagery` as the stored path, and the results are
- * cached by slide-copy hash, so approve → `composePostVisuals({ withImagery: true })` reuses them (no
- * double spend). Fail-soft — a slide with no imagery keeps its gradient/colour ground.
+ * Compose + fill a post's slides WITHOUT storing — the wizard's pre-save preview. Same compose + `fillImagery`
+ * as the stored path, cached by slide-copy hash so approve reuses them (no double spend). Fail-soft — a slide
+ * with no imagery keeps its gradient/colour ground.
  */
 export async function generatePreviewVisuals(params: {
   clientId: string

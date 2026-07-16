@@ -14,13 +14,10 @@ import type { DesignPlate, DesignVector } from '@/types/api'
 const SAMPLE_ROLES: PlateRole[] = ['cover', 'interior', 'interior']
 
 /**
- * Generate the onboarding **design system**: a few sample slide designs in the chosen style, rendered by the
- * capable design model from the brand brief. There are no posts yet, so `buildDesignPrompt` uses its
- * brief-driven fallback scene (no per-slide LLM call — cheaper). Designs are stored under a temp
- * `onboarding/<nonce>` prefix and returned **keyed by sample index** (the preview injects each into the
- * matching sample cell); on "save" they seed the new client's bank as the **reference set** every future
- * post is conditioned on. A compositor-only style (`quiet-grid`) yields none — its design system is the clean
- * colour ground + type. Fail-soft per sample — a failure just omits it.
+ * Generate the onboarding **design system**: a few sample slide designs in the chosen style (brief-driven, no
+ * per-slide LLM call). Stored under a temp `onboarding/<nonce>` prefix, keyed by sample index; on save they
+ * seed the client's bank as the **reference set** every future post is conditioned on. Compositor-only styles
+ * (quiet-grid) yield none. Fail-soft per sample.
  */
 export async function generateDesignSystemPlates(params: {
   colors: BrandTokens['color']
@@ -58,10 +55,8 @@ export async function generateDesignSystemPlates(params: {
 }
 
 /**
- * Seed the brand's image bank with the design-system plates generated at onboarding — the brand's
- * reference set, keyed by a brand-level `onboarding:<role>` marker (never matches a post's copy hash, so
- * posts still generate their own slide-relevant images). Non-fatal: logs and returns on failure so it
- * never blocks client creation.
+ * Seed the brand's image bank with the onboarding plates (the reference set), keyed `onboarding:<index>` —
+ * never matches a post's copy hash. Non-fatal: logs on failure, never blocks client creation.
  */
 export async function seedImageBank(clientId: string, plates: Record<string, DesignPlate>): Promise<void> {
   const rows = Object.entries(plates).map(([key, plate]) => ({
@@ -72,8 +67,7 @@ export async function seedImageBank(clientId: string, plates: Record<string, Des
   }))
   if (rows.length === 0) return
   const db = createUntypedAdminClient()
-  // Replace-in-place: drop any prior design-system rows for this client so re-generating from the settings
-  // Visual system tab refreshes the bank instead of accumulating duplicate `onboarding:<role>` rows.
+  // Replace-in-place: drop prior onboarding rows so re-generating refreshes the bank instead of piling up.
   await db.from('brand_image_bank').delete().eq('client_id', clientId).like('prompt_hash', 'onboarding:%')
   const { error } = await db.from('brand_image_bank').insert(rows)
   if (error) console.error('[images/design-system] seedImageBank failed:', error.message)
@@ -82,12 +76,9 @@ export async function seedImageBank(clientId: string, plates: Record<string, Des
 // A brand's starter vector count — a small, on-brand set from the brief's motifs. Bounded for cost.
 const MAX_STARTER_VECTORS = 3
 
-/**
- * Generate the onboarding **starter vector set**: a few on-brand marks from the brief's motifs (or one
- * abstract fallback when the brief has none), via Recraft text-to-vector. Returns them for the review to
- * display; on "save" they seed the new client's `brand_vector_bank` (`seedVectorBank`) as a reusable asset
- * set the editor draws from later. Fail-soft per motif — a failure just omits that mark.
- */
+/** Generate the onboarding **starter vector set** — a few on-brand marks from the brief's motifs (or one
+ *  abstract fallback), via Recraft. Seeded into `brand_vector_bank` on save; the editor draws from it. Fail-soft
+ *  per motif. */
 export async function generateDesignSystemVectors(params: {
   colors: BrandTokens['color']
   brief: BrandBrief | null
@@ -107,11 +98,8 @@ export async function generateDesignSystemVectors(params: {
   return out
 }
 
-/**
- * Seed the brand's vector bank with the onboarding starter marks — keyed by a brand-level `onboarding:<n>`
- * marker (never collides with a later copy/motif hash). Non-fatal: logs and returns on failure so it never
- * blocks client creation. Mirrors `seedImageBank`.
- */
+/** Seed the brand's vector bank with the onboarding starter marks (`onboarding:<n>`). Non-fatal; mirrors
+ *  `seedImageBank`. */
 export async function seedVectorBank(clientId: string, vectors: DesignVector[]): Promise<void> {
   const rows = vectors.map((v, i) => ({
     client_id: clientId,

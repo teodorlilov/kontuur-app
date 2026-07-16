@@ -4,26 +4,15 @@ import type { BrandTokens } from '@/lib/scene-graph'
 import { capitalize } from '@/utils/format'
 
 /**
- * Image-prompt construction for the generative design pipeline. A slide's visual is a full, rich, *text-free*
- * design rendered by a capable design model; we composite the exact brand text on top (Cyrillic-safe, brand
- * fonts, editable). This module builds the design brief from four ingredients, kept separate so the look
- * stays consistent across a carousel while each slide still relates to its message:
- *
- *  1. **Scene** — one concrete, text-free subject for this slide (composed from the copy by a cheap LLM in
- *     `images/scene.ts`); arrives here as `scene`, with a deterministic fallback to a brief subject.
- *  2. **Style scaffold** — the aesthetic directives that distinguish the look (editorial / bold / illustrative),
- *     passed in by the caller from the active style (`renderer/styles.ts`).
- *  3. **Brand palette** — the exact colours as words + hex, so the design comes out on-brand.
- *  4. **Negative space + no-text** — reserve open space where the text zone will sit, and forbid any drawn
- *     letters (we render type ourselves).
- *
- * Pure and dependency-free (colour maths + string assembly) so it is fully unit-tested without any API.
+ * Design-prompt construction. A slide's visual is a rich, *text-free* design rendered by the design model; we
+ * composite the exact brand text on top (Cyrillic-safe, brand fonts, editable). The prompt combines four
+ * ingredients kept separate so a carousel stays consistent while each slide relates to its message: the
+ * per-slide scene (`images/scene.ts`), the style scaffold (`renderer/styles.ts`), the brand palette, and a
+ * negative-space + no-text directive. Pure string/colour maths → fully unit-tested without an API.
  */
 
 // ── Colour words ────────────────────────────────────────────────────────────
-// Models take colour direction as words + hex — map each palette hex to a plain-language name.
-// (`toHsl` is the shared implementation in extract/color.ts.)
-
+// Models take colour as words + hex — map each palette hex to a plain-language name.
 // Hue buckets by upper bound (degrees) → colour word.
 const HUE_NAMES: readonly [number, string][] = [
   [15, 'red'], [45, 'orange'], [65, 'amber'], [80, 'yellow'], [160, 'green'],
@@ -81,8 +70,7 @@ const ROLE_DIRECTIVE: Record<PlateRole, string> = {
   interior: 'This is an interior slide — a supporting composition that continues the same visual world.',
 }
 
-/** Where on the slide open space must be reserved for the composited text — the biggest lever on whether the
- *  generated negative space and our text zone agree. Callers map their style's text zone to one of these. */
+/** Where to reserve open space for the composited text — callers map their style's text zone to one of these. */
 export type NegativeSpace = 'bottom' | 'center' | 'top'
 
 const NEGATIVE_SPACE_DIRECTIVE: Record<NegativeSpace, string> = {
@@ -113,11 +101,8 @@ export type DesignPromptInput = {
   conditioning?: string
 }
 
-/**
- * Assemble the full design-model prompt: the style scaffold + this slide's subject + the exact palette +
- * the art-direction conditioning + the reserved negative space + an emphatic no-text rule (we composite the
- * brand type separately). One prompt string; reference images are passed to `generateDesign` alongside.
- */
+/** Assemble the design-model prompt: scaffold + slide subject + palette + conditioning + reserved negative
+ *  space + an emphatic no-text rule (we composite type). Reference images go to `generateDesign` alongside. */
 export function buildDesignPrompt(input: DesignPromptInput): string {
   const scene = input.scene?.trim() || fallbackScene(input.brief)
   const mood = input.brief?.mood?.trim()
@@ -138,8 +123,8 @@ export function buildDesignPrompt(input: DesignPromptInput): string {
 }
 
 // ── Vector prompts (Recraft text-to-vector) ────────────────────────────────────
-// A brand vector is a flat, iconic, on-brand mark — never a photo and never text (we set our own type). Used
-// by the onboarding starter set and the editor's on-demand "add an element" tool.
+// A flat, iconic, on-brand mark — never a photo, never text. Used by the onboarding starter set + the
+// editor's "add an element" tool.
 
 const VECTOR_STYLE: Record<string, string> = {
   editorial: 'refined minimal line-art, elegant and restrained',
@@ -149,9 +134,8 @@ const VECTOR_STYLE: Record<string, string> = {
 }
 const DEFAULT_VECTOR_STYLE = VECTOR_STYLE.editorial!
 
-/** A Recraft text-to-vector prompt for one brand mark from a motif + palette + style. An optional `ornament`
- *  directive (the art director's `ornamentBrief`) folds the brand's ornament character in, so generated marks
- *  reflect that brand — the "decoration is generated, not enumerated" path. */
+/** A Recraft prompt for one brand mark from motif + palette + style. `ornament` folds in the brand's ornament
+ *  character (decoration is generated, not enumerated). */
 export function buildVectorPrompt(input: {
   motif: string
   colors: BrandTokens['color']
@@ -168,11 +152,8 @@ export function buildVectorPrompt(input: {
   )
 }
 
-/**
- * An on-brand design prompt from an operator's free-text description (editor "regenerate/reference"). Keeps
- * the palette + negative-space + no-text directives so a hand-typed prompt still fits the composite. Falls
- * back to an abstract branded background when the text is empty.
- */
+/** An on-brand prompt from operator free-text (editor regenerate/reference) — keeps palette + negative-space
+ *  + no-text so a hand-typed prompt still fits the composite. Empty → an abstract branded background. */
 export function buildOperatorPrompt(text: string, colors: BrandTokens['color']): string {
   const subject = text.trim() || 'an abstract, minimal branded composition'
   return (
