@@ -79,22 +79,24 @@ export type ExtractionPatch = {
   report?: ExtractionReport | null
 }
 
-/** Upsert an onboarding extraction session row (1:1 on onboarding_session_id). */
+/** Upsert an onboarding extraction session row (1:1 on onboarding_session_id). Only sends the columns
+ *  actually being written — a status-only "pending" write never references `identity`/`report`. */
 export async function writeExtraction(
   supabase: Db,
   sessionId: string,
   patch: ExtractionPatch
 ): Promise<{ error?: string }> {
-  const { error } = await supabase.from('brand_kit_extractions').upsert(
-    {
-      onboarding_session_id: sessionId,
-      agency_id: patch.agencyId ?? null,
-      status: patch.status,
-      identity: patch.identity ? asJson(patch.identity) : null,
-      report: patch.report ? asJson(patch.report) : null,
-      updated_at: new Date().toISOString(),
-    },
-    { onConflict: 'onboarding_session_id' }
-  )
+  const row: Database['public']['Tables']['brand_kit_extractions']['Insert'] = {
+    onboarding_session_id: sessionId,
+    agency_id: patch.agencyId ?? null,
+    status: patch.status,
+    updated_at: new Date().toISOString(),
+  }
+  if (patch.identity != null) row.identity = asJson(patch.identity)
+  if (patch.report != null) row.report = asJson(patch.report)
+
+  const { error } = await supabase
+    .from('brand_kit_extractions')
+    .upsert(row, { onConflict: 'onboarding_session_id' })
   return error ? { error: error.message } : {}
 }
