@@ -6,8 +6,12 @@ import { toast } from '@/components/ui/toast'
 import { serializePillars } from '@/lib/clients/content-pillars'
 import type { WeightedPillar } from '@/lib/clients/content-pillars'
 import type { UrlAnalysisResponse } from '@/types/api'
+import type { SourceKind, VisualIdentity } from '@/types/visual'
 import type { OnboardingStep, OnboardProfile, Message } from '@/features/onboarding/types'
 import { QUESTIONS, getDetectedAnswer } from '@/features/onboarding/lib/questions'
+import { buildDefaultIdentity } from '@/lib/visual/identity'
+import { DEFAULT_VIBE_PRESET_ID } from '@/lib/visual/vibe-presets'
+import { useExtractionStatus } from '@/features/visual-identity/hooks/use-extraction-status'
 import { PillarSourceStepper } from '@/features/sources/components/stepper/pillar-source-stepper'
 import { OnboardingShell } from '@/features/onboarding/components/onboarding-shell'
 import { StepEntry } from '@/features/onboarding/components/step-entry'
@@ -37,6 +41,19 @@ export default function NewClientPage() {
   const [instagramHandle, setInstagramHandle] = useState('')
   const [analysisData, setAnalysisData] = useState<UrlAnalysisResponse | null>(null)
   const [analysisComplete, setAnalysisComplete] = useState(false)
+
+  // Visual identity state (async extraction hides behind the interview; Review upgrades it in place)
+  const [sessionId] = useState(() => crypto.randomUUID())
+  const [visualIdentity, setVisualIdentity] = useState<VisualIdentity | null>(null)
+  const [identityEdited, setIdentityEdited] = useState(false)
+  const [extractionStarted, setExtractionStarted] = useState(false)
+  const { status: extractionStatus } = useExtractionStatus({
+    sessionId,
+    enabled: extractionStarted,
+    onResolved: (identity) => {
+      if (!identityEdited) setVisualIdentity(identity)
+    },
+  })
 
   // Review edit state
   const [editSection, setEditSection] = useState<string | null>(null)
@@ -81,6 +98,8 @@ export default function NewClientPage() {
       if (res.ok) {
         const data = (await res.json()) as UrlAnalysisResponse
         setAnalysisData(data)
+        setVisualIdentity(buildDefaultIdentity(data.detected_vibe_preset))
+        void startExtraction(data.detected_vibe_preset)
         toast.success('Brand analysis complete')
       } else {
         toast.error('Could not analyze the provided URLs — continuing manually')
@@ -90,6 +109,30 @@ export default function NewClientPage() {
     }
 
     setAnalysisComplete(true)
+  }
+
+  // Kick off async brand-visual extraction; it runs during the interview and lands by Review.
+  function startExtraction(fallbackPresetId: VisualIdentity['vibe_preset']) {
+    setExtractionStarted(true)
+    fetch('/api/extract/start', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        onboardingSessionId: sessionId,
+        websiteUrl: websiteUrl.trim() || undefined,
+        fallbackPresetId,
+      }),
+    }).catch(() => null)
+  }
+
+  function handleVisualIdentityChange(identity: VisualIdentity) {
+    setVisualIdentity(identity)
+    setIdentityEdited(true)
+  }
+
+  function resolveIdentitySource(): SourceKind {
+    if (identityEdited) return 'manual'
+    return extractionStatus === 'ready' ? 'website' : 'default'
   }
 
   function handleLoadingComplete() {
@@ -214,6 +257,8 @@ export default function NewClientPage() {
             auto_generate_day: scheduleDay,
             auto_generate_time: scheduleTime,
           },
+          visual_identity: visualIdentity ?? buildDefaultIdentity(DEFAULT_VIBE_PRESET_ID),
+          visual_identity_source: resolveIdentitySource(),
         }),
       })
 
@@ -251,6 +296,9 @@ export default function NewClientPage() {
     setWebsiteUrl('')
     setInstagramHandle('')
     setMultiSelectAnswers([])
+    setVisualIdentity(null)
+    setIdentityEdited(false)
+    setExtractionStarted(false)
   }
 
   const currentQuestion = QUESTIONS[currentQ]
@@ -313,6 +361,9 @@ export default function NewClientPage() {
             onSave={() => void handleSave()}
             onRedo={handleRedo}
             websiteUrl={websiteUrl}
+            visualIdentity={visualIdentity ?? buildDefaultIdentity(DEFAULT_VIBE_PRESET_ID)}
+            onVisualIdentityChange={handleVisualIdentityChange}
+            extractionStatus={extractionStatus}
           />
         )}
       </OnboardingShell>

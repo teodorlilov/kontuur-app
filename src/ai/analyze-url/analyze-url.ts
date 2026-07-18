@@ -33,10 +33,17 @@ Based on this content, return a JSON object with these fields:
   "detected_language_formality": "formal" | "casual" | "neutral",
   "detected_is_health_niche": boolean,
   "detected_testimonial_voice": string | null (if you can infer how a happy customer would describe them, write one sentence — otherwise null),
-  "detected_avoid_topics": string | null (any topics that seem off-brand or risky for this business)
+  "detected_avoid_topics": string | null (any topics that seem off-brand or risky for this business),
+  "detected_vibe_preset": "luxury-minimalist" | "modern-tech" | "creative-edgy" | "polished-photo" (the best-fit visual vibe — see guide below)
 }
 
-For content pillars, identify the main themes/topics this business should post about based on their services and content. Assign weights reflecting how much emphasis each pillar should get (must sum to 100). 
+For content pillars, identify the main themes/topics this business should post about based on their services and content. Assign weights reflecting how much emphasis each pillar should get (must sum to 100).
+
+For the vibe preset, pick the ONE visual language that best fits this brand:
+- "luxury-minimalist": soft lighting, neutral/beige palettes, editorial negative space — aesthetic clinics, skincare, premium real estate, high-end coaching.
+- "modern-tech": 3D isometric shapes, flat vibrant vectors, geometric — SaaS, marketing/finance/crypto agencies, B2B.
+- "creative-edgy": risograph texture, halftone, neon, bold retro-modern — freelancers, Gen-Z brands, streetwear, media.
+- "polished-photo": realistic lifestyle photography, natural sunlight, product close-ups — e-commerce, lifestyle, restaurants, fitness.
 
 Return JSON only, no markdown wrapper.`
 }

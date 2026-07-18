@@ -8,6 +8,7 @@ import {
   fetchBrandProfileByClient,
   fetchPostingScheduleByClient,
 } from '@/lib/queries/db'
+import { fetchVisualIdentity } from '@/lib/visual/queries'
 
 export default async function EditClientPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -16,6 +17,8 @@ export default async function EditClientPage({ params }: { params: Promise<{ id:
 
   const client = await fetchClientById(supabase, id, agencyId)
   if (!client) notFound()
+
+  const visualIdentity = await fetchVisualIdentity(supabase, id)
 
   const [profile, schedule, { count: sourceCount }, recentPostsRes, allPostsRes, { count: pendingCount }, clientStatsRes] =
     await Promise.all([
@@ -120,6 +123,7 @@ export default async function EditClientPage({ params }: { params: Promise<{ id:
       publishedCount={publishedCount}
       pendingCount={pendingCount ?? 0}
       lastGeneratedAt={lastGeneratedAt}
+      visualIdentity={visualIdentity}
     />
   )
 }

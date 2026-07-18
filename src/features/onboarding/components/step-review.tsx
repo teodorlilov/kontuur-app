@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { AlertTriangle, User, Users, Target, Pencil, XCircle, Quote, Share2, Calendar } from 'lucide-react'
+import { AlertTriangle, User, Users, Target, Pencil, XCircle, Quote, Share2, Calendar, Palette as PaletteIcon } from 'lucide-react'
 import { cn } from '@/utils/cn'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
@@ -10,6 +10,9 @@ import { PillarEditor } from '@/components/ui/pillar-editor'
 import { WEEKDAY_OPTIONS } from '@/utils/constants'
 import type { OnboardProfile } from '@/features/onboarding/types'
 import type { WeightedPillar } from '@/lib/clients/content-pillars'
+import type { VisualIdentity } from '@/types/visual'
+import { VisualIdentityPanel } from '@/features/visual-identity/components/visual-identity-panel'
+import type { ExtractionStatus } from '@/features/visual-identity/hooks/use-extraction-status'
 
 interface StepReviewProps {
   profile: OnboardProfile
@@ -30,6 +33,9 @@ interface StepReviewProps {
   onSave: () => void
   onRedo: () => void
   websiteUrl: string
+  visualIdentity: VisualIdentity
+  onVisualIdentityChange: (identity: VisualIdentity) => void
+  extractionStatus: ExtractionStatus
 }
 
 const SECTIONS = [
@@ -38,6 +44,7 @@ const SECTIONS = [
   { id: 'goals', label: 'Social media goals', icon: Target },
   { id: 'brand', label: 'Brand tone', icon: Pencil },
   { id: 'pillars', label: 'Content pillars', icon: Pencil },
+  { id: 'visual', label: 'Visual identity', icon: PaletteIcon },
   { id: 'platforms', label: 'Platforms', icon: Share2 },
   { id: 'schedule', label: 'Schedule', icon: Calendar },
 ] as const
@@ -260,6 +267,8 @@ function hasSectionData(sectionId: string, profile: OnboardProfile): boolean {
       return Boolean(profile.tone)
     case 'pillars':
       return profile.content_pillars.length > 0
+    case 'visual':
+      return true
     case 'platforms':
       return profile.recommended_platforms.length > 0
     case 'schedule':
@@ -323,6 +332,14 @@ function ReviewContent(props: StepReviewProps) {
         onFieldSave={props.onFieldSave}
         onPillarsChange={props.onPillarsChange}
       />
+
+      <ReviewCard id="visual" title="Visual identity" icon={<PaletteIcon size={10} color="var(--color-muted)" />}>
+        <VisualIdentityPanel
+          identity={props.visualIdentity}
+          onChange={props.onVisualIdentityChange}
+          status={props.extractionStatus}
+        />
+      </ReviewCard>
 
       <EditableCard
         id="avoid"

@@ -4,7 +4,9 @@ import { revalidateTag, revalidatePath } from 'next/cache'
 import { resolveActionAuth, verifyClientOwnership, type SupabaseServerClient } from '@/lib/auth/helpers'
 import { parsePillars } from '@/lib/clients/content-pillars'
 import { removeDeletedPillarIds } from '@/lib/clients/sync-source-pillars'
+import { upsertVisualIdentity } from '@/lib/visual/queries'
 import type { SourceStrategy } from '@/types/sources'
+import type { VisualIdentity } from '@/types/visual'
 import type { ActionResult } from '@/lib/actions/types'
 
 interface UpdateClientInput {
@@ -16,6 +18,7 @@ interface UpdateClientInput {
   contact_email?: string | null
   brand_profile?: BrandProfileInput
   posting_schedule?: ScheduleInput
+  visual_identity?: VisualIdentity
 }
 
 interface BrandProfileInput {
@@ -57,12 +60,16 @@ export async function updateClient(
   const clientError = await updateClientFields(supabase, clientId, data)
   if (clientError) return { ok: false, error: clientError }
 
-  const [profileError, scheduleError] = await Promise.all([
+  const [profileError, scheduleError, identityError] = await Promise.all([
     data.brand_profile ? updateBrandProfile(supabase, clientId, data.brand_profile) : null,
     data.posting_schedule ? updateSchedule(supabase, clientId, data.posting_schedule) : null,
+    data.visual_identity
+      ? upsertVisualIdentity(supabase, clientId, data.visual_identity, 'manual').then((r) => r.error ?? null)
+      : null,
   ])
   if (profileError) return { ok: false, error: profileError }
   if (scheduleError) return { ok: false, error: scheduleError }
+  if (identityError) return { ok: false, error: identityError }
 
   revalidateTag('agency-clients', 'max')
   revalidatePath('/generate')

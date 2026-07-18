@@ -2,6 +2,10 @@ import { NextResponse } from 'next/server'
 import { revalidateTag } from 'next/cache'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
 import { CLIENT_LIST_COLUMNS } from '@/lib/queries/select-columns'
+import { upsertVisualIdentity } from '@/lib/visual/queries'
+import { buildDefaultIdentity } from '@/lib/visual/identity'
+import { DEFAULT_VIBE_PRESET_ID } from '@/lib/visual/vibe-presets'
+import type { SourceKind, VisualIdentity } from '@/types/visual'
 
 export async function GET() {
   const auth = await resolveAuth()
@@ -46,6 +50,8 @@ interface CreateClientBody {
     auto_generate_day?: string
     auto_generate_time?: string
   }
+  visual_identity?: VisualIdentity
+  visual_identity_source?: SourceKind
 }
 
 export async function POST(request: Request) {
@@ -123,6 +129,19 @@ export async function POST(request: Request) {
   if (scheduleError) {
     return NextResponse.json({ error: 'Failed to create posting schedule' }, { status: 500 })
   }
+
+  // Create the brand visual identity (Phase 1) — non-fatal: a visuals hiccup must not block the client.
+  const identity = body.visual_identity ?? buildDefaultIdentity(DEFAULT_VIBE_PRESET_ID)
+  const identitySource: SourceKind = body.visual_identity
+    ? (body.visual_identity_source ?? 'manual')
+    : 'default'
+  const { error: identityError } = await upsertVisualIdentity(
+    supabase,
+    clientId,
+    identity,
+    identitySource
+  )
+  if (identityError) console.error('[clients:create] visual identity insert failed:', identityError)
 
   revalidateTag('agency-clients', 'max')
   return NextResponse.json({ client_id: clientId }, { status: 201 })

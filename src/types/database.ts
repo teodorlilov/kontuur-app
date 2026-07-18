@@ -171,6 +171,85 @@ export type Database = {
           },
         ]
       }
+      brand_kit_extractions: {
+        Row: {
+          agency_id: string | null
+          created_at: string
+          id: string
+          identity: Json | null
+          onboarding_session_id: string
+          report: Json | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          agency_id?: string | null
+          created_at?: string
+          id?: string
+          identity?: Json | null
+          onboarding_session_id: string
+          report?: Json | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          agency_id?: string | null
+          created_at?: string
+          id?: string
+          identity?: Json | null
+          onboarding_session_id?: string
+          report?: Json | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "brand_kit_extractions_agency_id_fkey"
+            columns: ["agency_id"]
+            isOneToOne: false
+            referencedRelation: "agencies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      brand_visual_identity: {
+        Row: {
+          client_id: string
+          created_at: string
+          id: string
+          identity: Json
+          report: Json | null
+          source_kind: string
+          updated_at: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          id?: string
+          identity: Json
+          report?: Json | null
+          source_kind?: string
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          id?: string
+          identity?: Json
+          report?: Json | null
+          source_kind?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "brand_visual_identity_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: true
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_ideas: {
         Row: {
           agency_id: string

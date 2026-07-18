@@ -24,6 +24,14 @@ export const CLIENT_CARD_COLUMNS = 'id, name, niche, posts_per_week, language, c
 export const BRAND_PROFILE_COLUMNS =
   'id, tone, target_audience, content_pillars, avoid_topics, client_testimonial_voice, default_post_type, default_carousel_slides, weekly_mix_json, language_formality, secondary_language, is_health_niche, best_time_json, best_time_updated_at, source_strategy, language_notes'
 
+// brand_visual_identity
+export const BRAND_VISUAL_IDENTITY_COLUMNS =
+  'id, client_id, identity, source_kind, report, created_at, updated_at'
+
+// brand_kit_extractions
+export const BRAND_KIT_EXTRACTION_COLUMNS =
+  'id, onboarding_session_id, agency_id, status, identity, report, created_at, updated_at'
+
 // posting_schedules
 export const POSTING_SCHEDULE_COLUMNS =
   'id, is_active, frequency_type, frequency_value, auto_generate_day, auto_generate_time'

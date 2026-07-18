@@ -5,13 +5,17 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { ChevronLeft } from 'lucide-react'
 import { parsePillars, serializePillars, type WeightedPillar } from '@/lib/clients/content-pillars'
 import { updateClient } from '@/features/clients/actions/client-actions'
+import { buildDefaultIdentity } from '@/lib/visual/identity'
+import { DEFAULT_VIBE_PRESET_ID } from '@/lib/visual/vibe-presets'
 import { Button } from '@/components/ui/button'
 import { Avatar } from '@/components/ui/avatar'
 import { toast } from '@/components/ui/toast'
 import type { ClientRow, BrandProfileRow, PostingScheduleRow } from '@/types'
+import type { VisualIdentity } from '@/types/visual'
 import { StatusCard, SettingsNav, type SettingsTab } from './settings-nav'
 import { BasicInfoTab } from './basic-info-tab'
 import { BrandProfileTab } from './brand-profile-tab'
+import { VisualIdentityTab } from './visual-identity-tab'
 import { ScheduleTab } from './schedule-tab'
 import { ConnectedAccountsTab, bustConnectionsCache } from './connected-accounts-tab'
 import { ContentInsightsTab, type ContentInsights } from './content-insights-tab'
@@ -27,6 +31,7 @@ interface ClientSettingsFormProps {
   publishedCount: number
   pendingCount: number
   lastGeneratedAt: string | null
+  visualIdentity: VisualIdentity | null
 }
 
 /** Top-level client settings form with tabbed layout. */
@@ -40,6 +45,7 @@ export function ClientSettingsForm({
   publishedCount,
   pendingCount,
   lastGeneratedAt,
+  visualIdentity: initialVisualIdentity,
 }: ClientSettingsFormProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -93,6 +99,27 @@ export function ClientSettingsForm({
   const [autoDay, setAutoDay] = useState(schedule?.auto_generate_day ?? 'monday')
   const [isActive, setIsActive] = useState(schedule?.is_active ?? true)
 
+  // ── Visual identity ──
+  const [visualIdentity, setVisualIdentity] = useState<VisualIdentity>(
+    initialVisualIdentity ?? buildDefaultIdentity(DEFAULT_VIBE_PRESET_ID)
+  )
+  const [reanalyzing, setReanalyzing] = useState(false)
+
+  async function handleReanalyze() {
+    setReanalyzing(true)
+    try {
+      const res = await fetch(`/api/clients/${clientId}/visual-identity/reanalyze`, { method: 'POST' })
+      if (!res.ok) throw new Error('reanalyze failed')
+      const data = (await res.json()) as { identity: VisualIdentity }
+      setVisualIdentity(data.identity)
+      toast.success('Visual identity refreshed from website')
+    } catch {
+      toast.error('Could not re-analyze the website. Please try again.')
+    } finally {
+      setReanalyzing(false)
+    }
+  }
+
   // ── OAuth redirect toast ──
   useEffect(() => {
     const connected = searchParams.get('meta_connected')
@@ -141,6 +168,7 @@ export function ClientSettingsForm({
         frequency_value: parseInt(freqValue, 10),
         auto_generate_day: autoDay,
       },
+      visual_identity: visualIdentity,
     })
     if (result.ok) {
       toast.success('Client updated')
@@ -257,6 +285,14 @@ export function ClientSettingsForm({
               onAvoidTopicsChange={setAvoidTopics}
               onTestimonialVoiceChange={setTestimonialVoice}
               onLanguageNotesChange={setLanguageNotes}
+            />
+          )}
+          {activeTab === 'visual' && (
+            <VisualIdentityTab
+              identity={visualIdentity}
+              onChange={setVisualIdentity}
+              onReanalyze={handleReanalyze}
+              reanalyzing={reanalyzing}
             />
           )}
           {activeTab === 'schedule' && (

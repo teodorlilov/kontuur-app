@@ -53,3 +53,17 @@ export type {
   UpdateAgencyRequest,
   ApiError,
 } from './api'
+
+export type {
+  ColorRole,
+  Palette,
+  VibePresetId,
+  SourceKind,
+  Typography,
+  BrandBrief,
+  VisualIdentity,
+  Confidence,
+  ExtractionField,
+  ExtractionReport,
+  ExtractionResult,
+} from './visual'

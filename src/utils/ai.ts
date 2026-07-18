@@ -1,6 +1,10 @@
 import { jsonrepair } from 'jsonrepair'
 import type Anthropic from '@anthropic-ai/sdk'
 import type { ToolUseBlock } from '@anthropic-ai/sdk/resources'
+import type { UrlAnalysisResponse } from '@/types/api'
+import { callAnthropic, LIGHT_MODEL } from '@/utils/ai-client'
+import { buildAnalyzeUrlPrompt, type AnalyzeUrlInput } from '@/ai/analyze-url/analyze-url'
+import { toVibePresetId } from '@/lib/visual/vibe-presets'
 
 /**
  * Extracts the structured input from a tool_use response block.
@@ -23,9 +27,6 @@ export function extractToolInput<T>(
   }
   return input as T
 }
-import type { UrlAnalysisResponse } from '@/types/api'
-import { callAnthropic, LIGHT_MODEL } from '@/utils/ai-client'
-import { buildAnalyzeUrlPrompt, type AnalyzeUrlInput } from '@/ai/analyze-url/analyze-url'
 
 export function extractTextFromMessage(message: Anthropic.Message): string {
   const block = message.content[0]
@@ -104,5 +105,7 @@ export async function analyzeUrl(input: AnalyzeUrlInput): Promise<UrlAnalysisRes
     userMessage: buildAnalyzeUrlPrompt(input),
   })
 
-  return parseJsonResponse<UrlAnalysisResponse>(message)
+  const parsed = parseJsonResponse<UrlAnalysisResponse>(message)
+  // Normalise the preset to a known id so a missing/typo'd value can't propagate downstream.
+  return { ...parsed, detected_vibe_preset: toVibePresetId(parsed.detected_vibe_preset) }
 }
