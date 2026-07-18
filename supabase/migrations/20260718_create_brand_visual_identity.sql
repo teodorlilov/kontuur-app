@@ -36,6 +36,13 @@ create table if not exists brand_kit_extractions (
 create index if not exists brand_kit_extractions_session_idx
   on brand_kit_extractions (onboarding_session_id);
 
+-- An earlier branch created brand_kit_extractions with a `tokens` column instead of `identity`; when
+-- that table pre-exists, the `create table if not exists` above is a no-op, so ensure the columns this
+-- feature needs are present regardless of which version of the table is there.
+alter table brand_kit_extractions add column if not exists identity jsonb;
+alter table brand_kit_extractions add column if not exists report jsonb;
+alter table brand_kit_extractions add column if not exists agency_id uuid references agencies(id) on delete cascade;
+
 -- Backfill: every existing client gets the neutral DEFAULT preset identity (luxury-minimalist) so no
 -- surface sits blank. Per-client extraction upgrades it on demand. Idempotent via unique(client_id).
 insert into brand_visual_identity (client_id, identity, source_kind)
@@ -49,3 +56,7 @@ select c.id,
   'default'
 from clients c
 on conflict (client_id) do nothing;
+
+-- Refresh PostgREST's schema cache so the new table/columns are queryable immediately (otherwise the
+-- API can 500 with "Could not find the 'identity' column ... in the schema cache" until it reloads).
+notify pgrst, 'reload schema';
