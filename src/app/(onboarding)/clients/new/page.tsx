@@ -112,17 +112,22 @@ export default function NewClientPage() {
   }
 
   // Kick off async brand-visual extraction; it runs during the interview and lands by Review.
-  function startExtraction(fallbackPresetId: VisualIdentity['vibe_preset']) {
-    setExtractionStarted(true)
-    fetch('/api/extract/start', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        onboardingSessionId: sessionId,
-        websiteUrl: websiteUrl.trim() || undefined,
-        fallbackPresetId,
-      }),
-    }).catch(() => null)
+  // Only begin polling if the server accepted the job — otherwise the placeholder identity stands.
+  async function startExtraction(fallbackPresetId: VisualIdentity['vibe_preset']) {
+    try {
+      const res = await fetch('/api/extract/start', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          onboardingSessionId: sessionId,
+          websiteUrl: websiteUrl.trim() || undefined,
+          fallbackPresetId,
+        }),
+      })
+      if (res.ok) setExtractionStarted(true)
+    } catch {
+      // Keep the preset-default placeholder; the user can still edit and save.
+    }
   }
 
   function handleVisualIdentityChange(identity: VisualIdentity) {

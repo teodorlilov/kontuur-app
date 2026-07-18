@@ -50,7 +50,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ status: 'fallback' }, { status: 202 })
   }
 
-  await writeExtraction(admin, sessionId, { status: 'pending', agencyId })
+  const pending = await writeExtraction(admin, sessionId, { status: 'pending', agencyId })
+  if (pending.error) {
+    // Most likely the migration hasn't been run — fail fast so the client falls back immediately
+    // instead of polling a status that will never resolve.
+    console.error('[extract:start] could not write pending status:', pending.error)
+    return NextResponse.json({ error: 'extraction unavailable' }, { status: 503 })
+  }
 
   after(async () => {
     try {

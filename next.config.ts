@@ -1,7 +1,9 @@
 import type { NextConfig } from 'next'
 
 const nextConfig: NextConfig = {
-  serverExternalPackages: ['pdf-parse', 'pdfjs-dist'],
+  // puppeteer-core + @sparticuz/chromium must stay external — bundling breaks @sparticuz's runtime
+  // binary extraction on Vercel (the headless Chrome used for brand visual-identity extraction).
+  serverExternalPackages: ['pdf-parse', 'pdfjs-dist', 'puppeteer-core', '@sparticuz/chromium'],
   images: {
     remotePatterns: [
       { protocol: 'https', hostname: '*.supabase.co', pathname: '/storage/v1/object/public/**' },

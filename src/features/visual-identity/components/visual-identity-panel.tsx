@@ -41,9 +41,9 @@ export function VisualIdentityPanel({ identity, onChange, status, onReanalyze, r
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
       {status && status !== 'ready' && status !== 'idle' && (
         <div style={{ fontSize: '11px', color: 'var(--color-text-2)', lineHeight: 1.5 }}>
-          {status === 'pending'
-            ? 'Analyzing your website for colours and style… you can keep editing; results will appear here.'
-            : 'Used your vibe preset defaults — no site colours could be read. Adjust below.'}
+          {status === 'pending' && 'Analyzing your website for colours and style… you can keep editing; results will appear here.'}
+          {status === 'failed' && 'Analysis took too long — using your vibe preset defaults. Adjust anything below.'}
+          {status === 'fallback' && 'Used your vibe preset defaults — no site colours could be read. Adjust below.'}
         </div>
       )}
 

@@ -7,6 +7,48 @@ Enterprise AI Carousel Creator & Automated Brand Engine
 This platform transforms raw business data (websites/social accounts) into highly engaging, consistent, multi-slide social media carousels. It eliminates the need for manual design skills. By combining brand data extraction with context-aware AI design, the application solves the "blank canvas" problem while ensuring every post looks professional, on-brand, and completely unique.
 
 
+—————
+
+## Implementation Status
+
+**Phase 1 — Brand Visual-Identity Foundation — SHIPPED 2026-07-18** (branch `feat/ai-visual-flow`, commit `ef575e8`).
+This is the data foundation the rest of the PRD stands on: extract and store a per-client visual
+identity. No editor and no image generation yet.
+
+✅ **Implemented**
+- **Phase 1 Brand Extraction (§2):** onboarding now extracts a **Color Palette** (5 colour roles, WCAG-AA
+  guaranteed) and **Typography**, and recommends a **Vibe Preset** — on top of the pre-existing text
+  extraction (name, niche, tone, pillars). Stored per client in a new `brand_visual_identity` table.
+- **Our own site capturer (not a 3rd-party API):** hardened headless Chromium
+  (`src/lib/visual/capture/capture-site.ts`) — consent-overlay dismissal, tracker blocking, settle
+  waits, bot-wall detection, retry, concurrency cap. `getComputedStyle` colour measurement + a **Claude
+  vision** pass that picks the true brand accent and recommends the preset.
+- **3-tier fallback** so onboarding never blocks/errors: measured site → LLM-recommended preset +
+  default palette → hard default. Runs **async during the interview** (`/api/extract/start` via
+  `after()`, Review polls `/api/extract/status`).
+- **The 4 Vibe Presets (§3):** `luxury-minimalist` / `modern-tech` / `creative-edgy` / `polished-photo`
+  as the single source of truth (`src/lib/visual/vibe-presets.ts`) — each carries its hardcoded
+  `promptModifiers` + `negativePrompt` (ready for the fal.ai phase), an **auto-paired typography** set
+  (`src/lib/visual/fonts.ts`, Google-Fonts registry, §3/§5), and a default palette.
+- **UI (§3 "How to Implement"):** preset picker + palette swatches + in-typeface font preview in the
+  onboarding Review step and a new Settings → Visual identity tab (with "Re-analyze from website").
+  Shared `VisualIdentityPanel` powers both surfaces.
+
+🔜 **Deferred to later phases (specified below, not yet built)**
+- **Phase 3 Visual Handshake / Phase 4 Workspace (§2):** fal.ai backdrop generation (will consume each
+  preset's `promptModifiers`), and the Konva canvas editor.
+- **§4 Advanced Canvas:** Recraft SVGs-on-demand, DIS object isolation, the 4-layer canvas — and the
+  entire "Isolate Object" user-flow spec at the end of this doc.
+- **§5 Editor guardrails:** proportion protection, the contrast safety mesh, the AI inpaint brush, and
+  platform safe-zone overlays. (Palette-level WCAG-AA legibility *is* enforced at extraction.)
+- **§6:** first-vs-middle-slide prompt distribution and the text-overflow boundary guard.
+
+**Setup for the shipped phase:** run migration `supabase/migrations/20260718_create_brand_visual_identity.sql`;
+deps `@sparticuz/chromium` + `puppeteer-core` + `zod`; set `CHROME_EXECUTABLE_PATH` locally (the
+`@sparticuz` binary is Vercel/Linux-only). Requires Vercel Pro (`maxDuration=60` on the extract routes).
+
+—————
+
 2. The End-to-End User Journey
 
 
