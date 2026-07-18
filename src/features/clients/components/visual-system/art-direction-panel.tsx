@@ -38,10 +38,8 @@ const field: React.CSSProperties = {
 
 const AXES: { key: keyof ArtDirection; label: string; options: string[] }[] = [
   { key: 'formality', label: 'Feel', options: ['clinical', 'corporate', 'editorial', 'expressive'] },
-  { key: 'imagery', label: 'Imagery', options: ['photographic', 'vector', 'illustrative', 'mixed', 'minimal'] },
   { key: 'treatment', label: 'Photo grade', options: ['none', 'duotone', 'tint', 'grain', 'mono', 'halftone'] },
   { key: 'density', label: 'Density', options: ['airy', 'balanced', 'dense'] },
-  { key: 'typeCase', label: 'Type case', options: ['mixed', 'upper'] },
   { key: 'paletteDiscipline', label: 'Palette', options: ['mono-accent', 'multi'] },
 ]
 

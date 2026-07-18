@@ -15,7 +15,6 @@ export type Clip =
   | { kind: 'none' }
   | { kind: 'rect'; radius: number }
   | { kind: 'ellipse' }
-  | { kind: 'mark'; packElementId: string }
 
 export type BlendMode = 'normal' | 'multiply' | 'screen' | 'overlay' | 'soft-light' | 'luminosity'
 
@@ -30,7 +29,7 @@ export type Treatment = 'none' | 'duotone' | 'tint' | 'grain' | 'mono' | 'halfto
  */
 export type VAnchor = 'top' | 'bottom' | 'center' | 'fill' | 'stretch'
 
-export type LayerBase = {
+type LayerBase = {
   id: string
   name: string
   locked: boolean
@@ -45,10 +44,8 @@ export type LayerBase = {
 export type PlateLayer = LayerBase & {
   type: 'plate'
   source: 'generated' | 'uploaded'
-  editHeadId: string | null
   src: string
   treatment: Binding<Treatment>
-  focalZone?: Rect
   /**
    * When true, this plate is a background-removed *subject cutout*, not a full-bleed photo: the renderer
    * draws it contain-fit (whole subject visible, transparent around it, no treatment) over whatever sits
@@ -61,7 +58,6 @@ export type PlateLayer = LayerBase & {
 export type MarkLayer = LayerBase & {
   type: 'mark'
   packElementId: string
-  roleOverrides: Record<string, { fill?: Binding<string>; stroke?: Binding<string> }>
   /**
    * Inline SVG source for a vector the operator inserted from the brand's library (Recraft output, already
    * on-brand). When present the renderer rasterises it directly; absent → the `packElementId` is looked up
@@ -92,7 +88,7 @@ export type TextLayer = LayerBase & {
   autoFit: { min: number; max: number } | null
 }
 
-export type ChromeComponent =
+type ChromeComponent =
   | 'rule'
   | 'corner-frame'
   | 'dot-grid'
@@ -114,7 +110,7 @@ export type ShapeLayer = LayerBase & {
   fill: Binding<string>
 }
 
-export type GroupLayer = LayerBase & { type: 'group'; children: Layer[] }
+type GroupLayer = LayerBase & { type: 'group'; children: Layer[] }
 
 export type Layer = PlateLayer | MarkLayer | TextLayer | ChromeLayer | ShapeLayer | GroupLayer
 
@@ -130,7 +126,7 @@ export type Composition = {
 
 export type ColorRole = 'surface' | 'ink' | 'accent' | 'accent-deep' | 'line'
 
-export type DisplayType = {
+type DisplayType = {
   family: string
   weights: number[]
   tracking: number
@@ -138,7 +134,7 @@ export type DisplayType = {
   lineHeight: number
 }
 
-export type BodyType = {
+type BodyType = {
   family: string
   weights: number[]
   tracking: number

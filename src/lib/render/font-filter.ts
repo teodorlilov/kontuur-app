@@ -37,11 +37,8 @@ export function filterFamiliesForLanguages(
 
 /**
  * Propose up to `count` families in a category — used by the image extractor (§2.2) to turn a vision
- * "font category" into concrete, Bulgarian-capable suggestions (badged `guessed`). Baked defaults
- * lead so a proposal always renders instantly.
+ * "font category" into concrete, Bulgarian-capable suggestions (badged `guessed`), in library order.
  */
 export function proposeFamilies(category: FontCategory, count = 3): FontEntry[] {
-  const inCategory = FONT_LIBRARY.filter((entry) => entry.category === category)
-  const ranked = [...inCategory].sort((a, b) => Number(b.baked) - Number(a.baked))
-  return ranked.slice(0, count)
+  return FONT_LIBRARY.filter((entry) => entry.category === category).slice(0, count)
 }

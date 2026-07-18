@@ -6,7 +6,7 @@ import { computeFit } from '../autofit'
 const DISPLAY_SLOTS: readonly TextSlot[] = ['kicker', 'headline', 'cta']
 
 /** kicker/headline/cta take the display face + tracking/leading; the rest take the body face. */
-export function typeRoleForSlot(slot: TextSlot): 'display' | 'body' {
+function typeRoleForSlot(slot: TextSlot): 'display' | 'body' {
   return DISPLAY_SLOTS.includes(slot) ? 'display' : 'body'
 }
 

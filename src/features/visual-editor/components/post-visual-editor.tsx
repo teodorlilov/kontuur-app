@@ -38,7 +38,6 @@ function createMarkLayer(svg: string, size: { w: number; h: number }): MarkLayer
     clip: { kind: 'none' },
     type: 'mark',
     packElementId: '',
-    roleOverrides: {},
     svg,
   }
 }

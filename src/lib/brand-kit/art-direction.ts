@@ -10,18 +10,14 @@ import type { Treatment } from '@/lib/scene-graph'
  */
 
 type Formality = 'clinical' | 'corporate' | 'editorial' | 'expressive'
-type ImageryApproach = 'photographic' | 'vector' | 'illustrative' | 'mixed' | 'minimal'
 type Density = 'airy' | 'balanced' | 'dense'
-type TypeCase = 'mixed' | 'upper'
 type PaletteDiscipline = 'mono-accent' | 'multi'
 
 export type ArtDirection = {
   /** Free text — the brand character; shown to the operator and folded into generation prompts. */
   personality: string
   formality: Formality
-  imagery: ImageryApproach
   density: Density
-  typeCase: TypeCase
   paletteDiscipline: PaletteDiscipline
   /** The finite photo-grade capability, chosen per brand (not a device — a grade). */
   treatment: Treatment
@@ -34,18 +30,14 @@ export type ArtDirection = {
 export const DEFAULT_ART_DIRECTION: ArtDirection = {
   personality: 'clean, modern, trustworthy',
   formality: 'corporate',
-  imagery: 'photographic',
   density: 'balanced',
-  typeCase: 'mixed',
   paletteDiscipline: 'mono-accent',
   treatment: 'tint',
   ornamentBrief: '',
 }
 
 const FORMALITY: readonly Formality[] = ['clinical', 'corporate', 'editorial', 'expressive']
-const IMAGERY: readonly ImageryApproach[] = ['photographic', 'vector', 'illustrative', 'mixed', 'minimal']
 const DENSITY: readonly Density[] = ['airy', 'balanced', 'dense']
-const TYPE_CASE: readonly TypeCase[] = ['mixed', 'upper']
 const PALETTE: readonly PaletteDiscipline[] = ['mono-accent', 'multi']
 const TREATMENTS: readonly Treatment[] = ['none', 'duotone', 'tint', 'grain', 'mono', 'halftone']
 
@@ -62,9 +54,7 @@ export function clampArtDirection(raw: unknown): ArtDirection {
   return {
     personality: text(r.personality, DEFAULT_ART_DIRECTION.personality),
     formality: oneOf(FORMALITY, r.formality, DEFAULT_ART_DIRECTION.formality),
-    imagery: oneOf(IMAGERY, r.imagery, DEFAULT_ART_DIRECTION.imagery),
     density: oneOf(DENSITY, r.density, DEFAULT_ART_DIRECTION.density),
-    typeCase: oneOf(TYPE_CASE, r.typeCase, DEFAULT_ART_DIRECTION.typeCase),
     paletteDiscipline: oneOf(PALETTE, r.paletteDiscipline, DEFAULT_ART_DIRECTION.paletteDiscipline),
     treatment: oneOf(TREATMENTS, r.treatment, DEFAULT_ART_DIRECTION.treatment),
     ornamentBrief: text(r.ornamentBrief, ''),

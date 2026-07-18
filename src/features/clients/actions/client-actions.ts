@@ -69,23 +69,6 @@ export async function updateClient(
   return { ok: true, data: undefined }
 }
 
-/** Delete a client by ID. */
-export async function deleteClient(clientId: string): Promise<ActionResult> {
-  const auth = await resolveActionAuth()
-  if (!auth.ok) return { ok: false, error: auth.error }
-  const { supabase, agencyId } = auth
-
-  const owned = await verifyClientOwnership(supabase, clientId, agencyId)
-  if (!owned) return { ok: false, error: 'Not found' }
-
-  const { error } = await supabase.from('clients').delete().eq('id', clientId)
-  if (error) return { ok: false, error: error.message }
-
-  revalidateTag('agency-clients', 'max')
-  revalidatePath('/generate')
-  return { ok: true, data: undefined }
-}
-
 // ── Internal helpers ──
 
 async function updateClientFields(

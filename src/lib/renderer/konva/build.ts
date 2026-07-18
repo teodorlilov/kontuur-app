@@ -66,7 +66,6 @@ function applyClip(group: Konva.Group, clip: Clip, w: number, h: number): void {
       ctx.closePath()
     })
   }
-  // clip.kind === 'mark' is a per-path SVG clip (unused by the current composer).
 }
 
 /** The per-layer group: positioned box, rotation around centre (matching CSS `rotate` origin), opacity,

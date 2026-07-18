@@ -99,7 +99,6 @@ function backgroundLayer(style: Style): PlateLayer | ShapeLayer {
     ...base({ id: 'design', name: 'design', rect: rect(0, 0, W, H), vAnchor: 'fill' }),
     type: 'plate',
     source: 'generated',
-    editHeadId: null,
     src: '',
     treatment: lit<Treatment>(style.treatment),
   }

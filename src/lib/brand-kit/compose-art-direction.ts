@@ -41,14 +41,12 @@ const SCHEMA = {
   properties: {
     personality: { type: 'string', description: '3-6 words: the brand character.' },
     formality: { type: 'string', enum: ['clinical', 'corporate', 'editorial', 'expressive'] },
-    imagery: { type: 'string', enum: ['photographic', 'vector', 'illustrative', 'mixed', 'minimal'] },
     density: { type: 'string', enum: ['airy', 'balanced', 'dense'] },
-    typeCase: { type: 'string', enum: ['mixed', 'upper'] },
     paletteDiscipline: { type: 'string', enum: ['mono-accent', 'multi'] },
     treatment: { type: 'string', enum: ['none', 'duotone', 'tint', 'grain', 'mono', 'halftone'] },
     ornamentBrief: { type: 'string', description: 'Brand-specific ornament to generate, or empty. Character only, no named gimmicks.' },
   },
-  required: ['personality', 'formality', 'imagery', 'density', 'typeCase', 'paletteDiscipline', 'treatment', 'ornamentBrief'],
+  required: ['personality', 'formality', 'density', 'paletteDiscipline', 'treatment', 'ornamentBrief'],
 }
 
 export async function composeArtDirection(input: ArtDirectionInput): Promise<ArtDirection> {

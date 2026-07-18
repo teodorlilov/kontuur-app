@@ -104,7 +104,7 @@ const shapeLayer = (id: string): ShapeLayer => ({
 const plateLayer = (id: string): PlateLayer => ({
   id, name: id, locked: false, hidden: false, rect: rect(0, 0, 100, 100),
   opacity: lit(1), blendMode: lit('normal'), clip: { kind: 'none' },
-  type: 'plate', source: 'generated', editHeadId: null, src: '', treatment: lit('duotone'),
+  type: 'plate', source: 'generated', src: '', treatment: lit('duotone'),
 })
 
 describe('addLayer / removeLayer', () => {

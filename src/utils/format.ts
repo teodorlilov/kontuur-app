@@ -52,9 +52,3 @@ export function extractInitials(name: string): string {
   if (!second) return first.slice(0, 2).toUpperCase()
   return (first.charAt(0) + second.charAt(0)).toUpperCase()
 }
-
-/** Formats a number compactly: 1200 → "1.2K", 50 → "50". */
-export function formatCompactNumber(n: number): string {
-  if (n >= 1000) return `${(n / 1000).toFixed(1)}K`
-  return String(n)
-}

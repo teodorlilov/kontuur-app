@@ -30,17 +30,16 @@ describe('filterFamiliesForLanguages', () => {
   })
 
   it('excludes a hypothetical Latin-only face for a Bulgarian client', () => {
-    const latinOnly: FontEntry = { family: 'Latin Only', category: 'sans', bulgarian: 'verify', baked: false, subsets: ['latin'] }
+    const latinOnly: FontEntry = { family: 'Latin Only', category: 'sans', bulgarian: 'verify', subsets: ['latin'] }
     expect(familyCoversSubsets(latinOnly, requiredSubsets('Bulgarian'))).toBe(false)
     expect(familyCoversSubsets(latinOnly, requiredSubsets('English'))).toBe(true)
   })
 })
 
 describe('proposeFamilies', () => {
-  it('returns families in the requested category, baked defaults first', () => {
+  it('returns families in the requested category', () => {
     const serifs = proposeFamilies('serif', 3)
     expect(serifs.length).toBeGreaterThan(0)
     expect(serifs.every((f) => f.category === 'serif')).toBe(true)
-    expect(serifs[0]!.baked).toBe(true) // Source Serif 4 leads
   })
 })

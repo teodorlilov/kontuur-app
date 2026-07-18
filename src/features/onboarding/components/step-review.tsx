@@ -22,7 +22,7 @@ import type { WeightedPillar } from '@/lib/clients/content-pillars'
 
 /** The visual-system slice of the Review step (§2.4) — proposed tokens (or the default kit), a live
  *  preview, and the feed-system choice. */
-export interface VisualReviewData {
+interface VisualReviewData {
   tokens: BrandTokens
   report: ExtractionReport | null
   feedSystems: FeedSystemOption[]
