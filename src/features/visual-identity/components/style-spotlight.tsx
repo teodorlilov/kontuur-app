@@ -63,6 +63,8 @@ export function StyleSpotlight({
       <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
         <div style={{ width: '200px', flexShrink: 0 }}>
           <StyleBackdrop palette={palette}>
+            {/* A mock carousel slide that exercises every palette role so editing any swatch shows an
+                effect: surface (backdrop), accent-deep (mark), ink (type), accent (rule), line (footer). */}
             <div
               style={{
                 position: 'absolute',
@@ -70,15 +72,22 @@ export function StyleSpotlight({
                 padding: '16px',
                 display: 'flex',
                 flexDirection: 'column',
-                alignItems: 'flex-start',
+                justifyContent: 'space-between',
               }}
             >
-              <div style={{ fontFamily: displayStack, color: palette.ink, fontSize: '22px', lineHeight: 1.05 }}>
-                {preset.uiLabel}
+              <div style={{ width: '12px', height: '12px', borderRadius: '3px', background: palette['accent-deep'] }} />
+              <div>
+                <div style={{ fontFamily: displayStack, color: palette.ink, fontSize: '22px', lineHeight: 1.05 }}>
+                  {preset.uiLabel}
+                </div>
+                <div style={{ width: '32px', height: '3px', borderRadius: '2px', background: palette.accent, margin: '8px 0' }} />
+                <div style={{ fontFamily: bodyStack, color: palette.ink, opacity: 0.72, fontSize: '11px', lineHeight: 1.35 }}>
+                  The quick brown fox jumps over the lazy dog.
+                </div>
               </div>
-              <div style={{ width: '32px', height: '3px', borderRadius: '2px', background: palette.accent, margin: '9px 0' }} />
-              <div style={{ fontFamily: bodyStack, color: palette.ink, opacity: 0.72, fontSize: '11px', lineHeight: 1.35 }}>
-                The quick brown fox jumps over the lazy dog.
+              <div>
+                <div style={{ height: '1px', background: palette.line, marginBottom: '6px' }} />
+                <div style={{ fontFamily: bodyStack, color: palette.ink, opacity: 0.5, fontSize: '9px' }}>@yourbrand · 1 / 5</div>
               </div>
             </div>
           </StyleBackdrop>
