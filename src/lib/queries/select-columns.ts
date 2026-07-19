@@ -10,7 +10,11 @@
 
 // posts
 export const POST_COLUMNS =
-  'id, client_id, caption, platform, post_type, slides_json, validation_json, status, priority, scheduled_at, published_at, quality_score_avg, was_rewritten, rewrite_count, source_url, source_title, source_type, pillar, source_excerpt, created_at'
+  'id, client_id, caption, platform, post_type, slides_json, image_url, validation_json, status, priority, scheduled_at, published_at, quality_score_avg, was_rewritten, rewrite_count, source_url, source_title, source_type, pillar, source_excerpt, created_at'
+
+// brand_image_bank (per-brand generated-backdrop cache; keyed by client_id + prompt_hash)
+export const BRAND_IMAGE_BANK_COLUMNS =
+  'id, client_id, prompt_hash, storage_path, public_url, created_at'
 
 // clients
 export const CLIENT_COLUMNS =

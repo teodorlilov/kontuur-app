@@ -171,6 +171,41 @@ export type Database = {
           },
         ]
       }
+      brand_image_bank: {
+        Row: {
+          client_id: string
+          created_at: string
+          id: string
+          prompt_hash: string
+          public_url: string
+          storage_path: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          id?: string
+          prompt_hash: string
+          public_url: string
+          storage_path: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          id?: string
+          prompt_hash?: string
+          public_url?: string
+          storage_path?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "brand_image_bank_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       brand_kit_extractions: {
         Row: {
           agency_id: string | null

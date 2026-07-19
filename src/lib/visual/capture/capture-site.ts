@@ -5,7 +5,7 @@ import { blockTrackers } from './block-trackers'
 import { dismissConsent } from './consent'
 import { waitForSettle } from './settle'
 import { isBotWall, hasEnoughSignal } from './bot-wall'
-import { createSemaphore } from './semaphore'
+import { createSemaphore } from '@/lib/concurrency'
 
 /** The result of a single site capture. `ok:false` means the caller should fall back, not error. */
 export type CaptureResult = {

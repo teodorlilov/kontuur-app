@@ -28,6 +28,10 @@ export interface CarouselSlide {
   slide_role?: 'cover' | 'content' | 'cta'
   headline: string
   body: string
+  /** AI-generated backdrop image URL (durable `plates` bucket). Text is composited over it, not baked in. */
+  backdrop_url?: string
+  /** The text-free scene the backdrop was generated from (advisory / debugging). */
+  scene?: string
 }
 
 

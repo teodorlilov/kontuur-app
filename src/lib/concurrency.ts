@@ -1,7 +1,6 @@
 /**
  * A minimal FIFO concurrency limiter: at most `max` holders run at once; the rest await a slot.
- * Module-scoped in the capturer so concurrent onboardings on one warm instance can't exhaust memory
- * by launching many page renders at once.
+ * Shared by the brand-extraction capturer and the backdrop-generation batch to bound in-flight work.
  */
 export function createSemaphore(max: number): { acquire: () => Promise<() => void> } {
   let active = 0

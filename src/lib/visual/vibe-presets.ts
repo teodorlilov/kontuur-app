@@ -10,6 +10,10 @@ import type { FontKey } from './fonts'
  * - `defaultPalette` is the fallback palette when extraction is thin, and the base a measured accent
  *   is merged onto.
  */
+/** How this preset generates backdrop imagery — the fal model + style, declared per preset so routing is
+ *  data-driven and new presets need no code branches. `model`s are the cheap preview tier (premium at export). */
+export type ImageConfig = { model: string; style?: string; ratio?: '4:5' | '1:1' }
+
 export type VibePreset = {
   id: VibePresetId
   /** The label shown to non-technical users (PRD §"How to Implement"). */
@@ -22,6 +26,7 @@ export type VibePreset = {
   negativePrompt: string
   fontPairing: { display: FontKey; body: FontKey }
   defaultPalette: Palette
+  image: ImageConfig
 }
 
 const NO_TEXT_NEGATIVE =
@@ -45,6 +50,7 @@ export const VIBE_PRESETS: Record<VibePresetId, VibePreset> = {
       'accent-deep': '#6E5836',
       line: '#E4DBD0',
     },
+    image: { model: 'fal-ai/flux/schnell', ratio: '4:5' },
   },
   'modern-tech': {
     id: 'modern-tech',
@@ -63,6 +69,7 @@ export const VIBE_PRESETS: Record<VibePresetId, VibePreset> = {
       'accent-deep': '#1E3A8A',
       line: '#DDE3EE',
     },
+    image: { model: 'fal-ai/recraft/v3/text-to-image', style: 'vector_illustration', ratio: '4:5' },
   },
   'creative-edgy': {
     id: 'creative-edgy',
@@ -81,6 +88,7 @@ export const VIBE_PRESETS: Record<VibePresetId, VibePreset> = {
       'accent-deep': '#C7351C',
       line: '#3A3A3A',
     },
+    image: { model: 'fal-ai/recraft/v3/text-to-image', style: 'digital_illustration', ratio: '4:5' },
   },
   'polished-photo': {
     id: 'polished-photo',
@@ -99,6 +107,7 @@ export const VIBE_PRESETS: Record<VibePresetId, VibePreset> = {
       'accent-deep': '#8A4832',
       line: '#ECE7E1',
     },
+    image: { model: 'fal-ai/flux/schnell', ratio: '4:5' },
   },
 }
 
