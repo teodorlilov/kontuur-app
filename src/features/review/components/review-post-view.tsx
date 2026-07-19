@@ -7,6 +7,7 @@ import { useScheduleModal } from '@/components/scheduling/use-schedule-modal'
 import { ScheduleModal } from '@/components/scheduling/schedule-modal'
 import { PostDetailLayout } from '@/components/posts/post-detail-layout'
 import { RewriteButton } from '@/components/posts/rewrite-button'
+import { PostVisuals } from '@/features/visual-editor/components/post-visuals'
 import { ReviewInfoPanel } from './review-info-panel'
 import { parseValidationJson, deriveSlopFromValidation } from '@/features/review/lib/parse-validation-json'
 import {
@@ -89,6 +90,13 @@ export function ReviewPostView({ post, bestTimeData, onApprove, onDelete }: Revi
         onCaptionChange={(c) => { void saveCaption(c) }}
         onSlidesChange={(s) => { void saveSlidesJson(s) }}
       >
+        <PostVisuals
+          postId={post.id}
+          clientId={post.client_id}
+          slides={Array.isArray(slidesJson) ? (slidesJson as CarouselSlide[]) : []}
+          postType={post.post_type}
+          caption={caption}
+        />
         {showRewrite && (
           <RewriteButton
             hasLowAuthenticity={hasLowAuthenticity}
