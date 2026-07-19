@@ -5,8 +5,8 @@
  * renderer glyph loading here; that grows into the renderer's font library in a later phase.
  */
 
-/** Broad display-type category (also used by the extractor's `familyCategory` heuristic). */
-export type FontCategory = 'serif' | 'slab' | 'sans' | 'geometric' | 'grotesk' | 'humanist' | 'mono'
+/** Broad display-type category (internal to the registry). */
+type FontCategory = 'serif' | 'slab' | 'sans' | 'geometric' | 'grotesk' | 'humanist' | 'mono'
 
 export type FontEntry = {
   family: string
