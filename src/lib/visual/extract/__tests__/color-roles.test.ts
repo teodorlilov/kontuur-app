@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { contrastRatio, parseHex } from '../color'
+import { contrastRatio, parseHex, saturation } from '../color'
 import { deriveColorRoles, ensureLegibleColors } from '../color-roles'
 
 describe('deriveColorRoles', () => {
@@ -19,6 +19,15 @@ describe('deriveColorRoles', () => {
       accents: [{ hex: '#777777', weight: 20 }, { hex: '#2563EB', weight: 8 }],
     })
     expect(roles.accent).toBe('#2563EB')
+  })
+
+  it('keeps dividers (line) a subtle neutral, never a saturated brand colour', () => {
+    const roles = deriveColorRoles({
+      backgrounds: [{ hex: '#FFFFFF', weight: 100 }],
+      texts: [{ hex: '#111111', weight: 50 }],
+      borders: [{ hex: '#0BDA51', weight: 30 }], // a saturated green border must NOT become the divider
+    })
+    expect(saturation(parseHex(roles.line)!)).toBeLessThanOrEqual(0.25)
   })
 
   it('guarantees legible ink against surface (WCAG AA)', () => {

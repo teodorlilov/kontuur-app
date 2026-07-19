@@ -90,7 +90,11 @@ export function deriveColorRoles(obs: ColorObservations): Palette {
   const accent = pick(accentPool, (w) => saturation(w.rgb) * Math.sqrt(w.weight)) ?? { r: 37, g: 99, b: 235 }
 
   const accentDeep = darken(accent, 0.35)
-  const line = pick(borders, (w) => w.weight) ?? mix(ink, surface, 0.85)
+  // Dividers must read as a subtle neutral hairline, never a saturated brand colour (a green-bordered
+  // site would otherwise make the divider bright green). Prefer the most common *low-saturation* border;
+  // otherwise a faint tint of ink on surface.
+  const neutralBorders = borders.filter((w) => saturation(w.rgb) <= NEUTRAL_MAX_SATURATION)
+  const line = pick(neutralBorders, (w) => w.weight) ?? mix(ink, surface, 0.85)
 
   return ensureLegibleColors({
     surface: toHex(surface),
