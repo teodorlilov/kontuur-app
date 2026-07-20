@@ -16,7 +16,7 @@ Rules:
 - Ground every scene in the brand's real world (its niche + photographic subjects) AND that slide's message — relevant to both.
 - Plan the set as a coherent story: the cover establishes; the closing/CTA slide resolves. They belong together.
 - Text-free: no signs, labels, screens, posters, or written words in any scene.
-- One or two sentences each — a specific subject, setting, and light. Concrete and physical only: no colours, camera brands, or art-style words.
+- ONE concise sentence each (about 25-30 words, under 200 characters) — a specific subject, setting, and light. Concrete and physical only: no colours, camera brands, or art-style words.
 - Leave calm, uncluttered negative space for text placed on top later.
 - Return exactly one scene per slide, in the given order.`
 

@@ -1,6 +1,9 @@
 import { describe, it, expect } from 'vitest'
 import type { Palette } from '@/types/visual'
-import { buildBackdropPrompt, hexToColorName, paletteWords } from '../prompt'
+import { buildBackdropPrompt, hexToColorName, paletteWords, MAX_PROMPT_CHARS } from '../prompt'
+import { VIBE_PRESETS } from '@/lib/visual/vibe-presets'
+import { TEXT_ZONES } from '../text-zones'
+import type { BackdropRole } from '../text-zones'
 import { promptHash } from '../hash'
 
 const palette: Palette = {
@@ -33,6 +36,31 @@ describe('buildBackdropPrompt', () => {
     const prompt = buildBackdropPrompt({ role: 'interior', scene: 'a nurse visiting a patient', ...base })
     expect(prompt.toLowerCase()).toContain('abstract')
     expect(prompt.toLowerCase()).not.toContain('nurse')
+  })
+
+  it('stays within fal’s 1000-char limit for every preset/role, even with a long scene + mood', () => {
+    const longScene =
+      'A sleek architectural pod nestled in a misty forest clearing at dusk, its geometric glass surfaces reflecting soft amber light from within, with organic tree branches and layered mist filling the foreground and edges, establishing the intersection of technology and natural beauty across the whole frame.'
+    const longMood = 'Futuristic organic innovation, tech-meets-nature, aspirational and calm and premium and editorial'
+    const roles = Object.keys(TEXT_ZONES) as BackdropRole[]
+    for (const preset of Object.values(VIBE_PRESETS)) {
+      for (const role of roles) {
+        const prompt = buildBackdropPrompt({
+          role,
+          scene: longScene,
+          palette: preset.defaultPalette,
+          mood: longMood,
+          promptModifiers: preset.promptModifiers,
+          negativePrompt: preset.negativePrompt,
+        })
+        expect(prompt.length).toBeLessThanOrEqual(MAX_PROMPT_CHARS)
+      }
+    }
+  })
+
+  it('collapses a scene’s trailing period so the subject never reads “..”', () => {
+    const prompt = buildBackdropPrompt({ role: 'cover', scene: 'a nurse visiting a patient at home.', ...base })
+    expect(prompt).not.toContain('home..')
   })
 })
 

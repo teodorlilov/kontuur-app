@@ -22,15 +22,17 @@ export type VibePreset = {
   description: string
   /** Hardcoded fal.ai style modifiers injected verbatim into the backdrop prompt. */
   promptModifiers: string
-  /** What the image model must never render (text/logos etc. — the overlay owns typography). */
+  /** Craft/quality avoid terms folded into the backdrop prompt. The text/logo prohibition lives in the
+   *  positive prompt (`buildBackdropPrompt`), so it isn't duplicated here. */
   negativePrompt: string
   fontPairing: { display: FontKey; body: FontKey }
   defaultPalette: Palette
   image: ImageConfig
 }
 
-const NO_TEXT_NEGATIVE =
-  'text, words, letters, typography, captions, watermark, logo, signature, ui elements, low quality, blurry, distorted, extra fingers, deformed'
+// Craft/quality negatives shared by every preset. The no-text/logo rule is in the positive prompt, so it
+// is deliberately absent here (keeps the folded-in prompt concise, under fal's 1000-char limit).
+const CRAFT_NEGATIVE = 'low quality, blurry, distorted, deformed, extra fingers'
 
 export const VIBE_PRESETS: Record<VibePresetId, VibePreset> = {
   'luxury-minimalist': {
@@ -41,7 +43,7 @@ export const VIBE_PRESETS: Record<VibePresetId, VibePreset> = {
       'Soft lighting, beige/neutral palettes, marble or satin textures, heavy negative space — editorial lookbook feel that reads as trustworthy and premium.',
     promptModifiers:
       'minimalist studio lighting, neutral muted tones, editorial composition, soft focus, vast negative space for text, high-end luxury aesthetic, clean lines',
-    negativePrompt: NO_TEXT_NEGATIVE + ', clutter, harsh lighting, saturated colors, busy background',
+    negativePrompt: CRAFT_NEGATIVE + ', clutter, harsh lighting, saturated colors, busy background',
     fontPairing: { display: 'cormorant-garamond', body: 'montserrat' },
     defaultPalette: {
       surface: '#F7F3EE',
@@ -60,7 +62,7 @@ export const VIBE_PRESETS: Record<VibePresetId, VibePreset> = {
       'Clean 3D isometric shapes, vibrant flat vectors, glassmorphism and sharp geometric layouts — makes data and frameworks look accessible and shareable.',
     promptModifiers:
       '3D minimalist vector illustration, flat vibrant colors, isometric view, tech corporate design style, isolated on solid background, clean corporate memphis',
-    negativePrompt: NO_TEXT_NEGATIVE + ', photorealistic, grunge, vintage, noise',
+    negativePrompt: CRAFT_NEGATIVE + ', photorealistic, grunge, vintage, noise',
     fontPairing: { display: 'space-grotesk', body: 'inter' },
     defaultPalette: {
       surface: '#F4F6FB',
@@ -79,7 +81,7 @@ export const VIBE_PRESETS: Record<VibePresetId, VibePreset> = {
       'Risograph textures, halftone dots, cyberpunk neon accents and 90s vaporwave — designed to break the scroll and read as a forward-thinking trendsetter.',
     promptModifiers:
       'risograph texture print style, high contrast, vibrant ink overlay, retro-modern graphic design, gritty halftone, bold aesthetic',
-    negativePrompt: NO_TEXT_NEGATIVE + ', corporate stock photo, muted colors, minimal',
+    negativePrompt: CRAFT_NEGATIVE + ', corporate stock photo, muted colors, minimal',
     fontPairing: { display: 'archivo-black', body: 'space-grotesk' },
     defaultPalette: {
       surface: '#141414',
@@ -98,7 +100,7 @@ export const VIBE_PRESETS: Record<VibePresetId, VibePreset> = {
       'Crisp, realistic lifestyle photography with real people, product close-ups and natural sunlight — ideal for seamless multi-slide photo backgrounds.',
     promptModifiers:
       'photorealistic candid photography, natural sunlight, organic textures, commercial lifestyle shoot, crisp details, neutral background',
-    negativePrompt: NO_TEXT_NEGATIVE + ', illustration, 3d render, cartoon, oversaturated, cgi',
+    negativePrompt: CRAFT_NEGATIVE + ', illustration, 3d render, cartoon, oversaturated, cgi',
     fontPairing: { display: 'fraunces', body: 'libre-franklin' },
     defaultPalette: {
       surface: '#FFFFFF',
