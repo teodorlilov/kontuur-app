@@ -64,7 +64,7 @@ export async function updateClient(
     data.brand_profile ? updateBrandProfile(supabase, clientId, data.brand_profile) : null,
     data.posting_schedule ? updateSchedule(supabase, clientId, data.posting_schedule) : null,
     data.visual_identity
-      ? upsertVisualIdentity(supabase, clientId, data.visual_identity, 'manual').then((r) => r.error ?? null)
+      ? upsertVisualIdentity(clientId, data.visual_identity, 'manual').then((r) => r.error ?? null)
       : null,
   ])
   if (profileError) return { ok: false, error: profileError }

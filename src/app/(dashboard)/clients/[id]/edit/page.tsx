@@ -18,7 +18,7 @@ export default async function EditClientPage({ params }: { params: Promise<{ id:
   const client = await fetchClientById(supabase, id, agencyId)
   if (!client) notFound()
 
-  const visualIdentity = await fetchVisualIdentity(supabase, id)
+  const visualIdentity = await fetchVisualIdentity(id)
 
   const [profile, schedule, { count: sourceCount }, recentPostsRes, allPostsRes, { count: pendingCount }, clientStatsRes] =
     await Promise.all([

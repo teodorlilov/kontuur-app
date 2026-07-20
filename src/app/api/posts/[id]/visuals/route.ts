@@ -61,7 +61,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
   const clientRes = await fetchClientData(supabase, post.client_id, agencyId)
   if ('error' in clientRes) return NextResponse.json({ error: clientRes.error }, { status: 500 })
-  const identity = await fetchVisualIdentity(supabase, post.client_id)
+  const identity = await fetchVisualIdentity(post.client_id)
   if (!identity) return NextResponse.json({ error: 'This client has no visual identity yet.' }, { status: 400 })
 
   const regenParam = new URL(request.url).searchParams.get('unit')

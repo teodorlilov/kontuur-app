@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database, Json } from '@/types/database'
 import type { ExtractionReport, SourceKind, VisualIdentity } from '@/types/visual'
+import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import {
   BRAND_KIT_EXTRACTION_COLUMNS,
   BRAND_VISUAL_IDENTITY_COLUMNS,
@@ -13,9 +14,13 @@ type Db = SupabaseClient<Database>
 // cast at the single write boundary (identity is zod-validated before this; report is app-produced).
 const asJson = (v: unknown): Json => v as Json
 
-/** Fetch a client's stored visual identity, or null when absent/invalid. */
-export async function fetchVisualIdentity(supabase: Db, clientId: string): Promise<VisualIdentity | null> {
-  const { data, error } = await supabase
+/**
+ * Fetch a client's stored visual identity, or null when absent/invalid. Uses the admin client because
+ * `brand_visual_identity` has RLS (like `post_images`) — callers verify agency ownership first.
+ */
+export async function fetchVisualIdentity(clientId: string): Promise<VisualIdentity | null> {
+  const admin = createAdminSupabaseClient()
+  const { data, error } = await admin
     .from('brand_visual_identity')
     .select(BRAND_VISUAL_IDENTITY_COLUMNS)
     .eq('client_id', clientId)
@@ -25,9 +30,9 @@ export async function fetchVisualIdentity(supabase: Db, clientId: string): Promi
   return parsed.success ? parsed.identity : null
 }
 
-/** Validate then upsert a client's visual identity (1:1 on client_id). Returns an error string on failure. */
+/** Validate then upsert a client's visual identity (1:1 on client_id). Admin client (RLS); callers verify
+ *  ownership first. Returns an error string on failure. */
 export async function upsertVisualIdentity(
-  supabase: Db,
   clientId: string,
   identity: VisualIdentity,
   sourceKind: SourceKind,
@@ -36,7 +41,8 @@ export async function upsertVisualIdentity(
   const parsed = safeParseVisualIdentity(identity)
   if (!parsed.success) return { error: `Invalid visual identity: ${parsed.issues.join('; ')}` }
 
-  const { error } = await supabase.from('brand_visual_identity').upsert(
+  const admin = createAdminSupabaseClient()
+  const { error } = await admin.from('brand_visual_identity').upsert(
     {
       client_id: clientId,
       identity: asJson(parsed.identity),

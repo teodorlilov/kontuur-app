@@ -25,14 +25,14 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
     return NextResponse.json({ error: 'No website on file for this client' }, { status: 400 })
   }
 
-  const current = await fetchVisualIdentity(supabase, id)
+  const current = await fetchVisualIdentity(id)
   const result = await extractIdentity({
     url: client.website_url,
     fallbackPresetId: current?.vibe_preset ?? DEFAULT_VIBE_PRESET_ID,
   })
 
   const source = result.report.source === 'website' ? 'website' : 'default'
-  const { error } = await upsertVisualIdentity(supabase, id, result.identity, source, result.report)
+  const { error } = await upsertVisualIdentity(id, result.identity, source, result.report)
   if (error) return NextResponse.json({ error }, { status: 500 })
 
   return NextResponse.json({ identity: result.identity, report: result.report })

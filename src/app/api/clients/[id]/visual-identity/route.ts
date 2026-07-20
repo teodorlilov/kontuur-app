@@ -18,6 +18,6 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
     .single()
   if (!client) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  const identity = await fetchVisualIdentity(supabase, id)
+  const identity = await fetchVisualIdentity(id)
   return NextResponse.json({ identity })
 }

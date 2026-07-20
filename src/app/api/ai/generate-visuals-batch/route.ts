@@ -54,7 +54,7 @@ export async function POST(request: Request) {
 
   const clientRes = await fetchClientData(supabase, body.clientId, agencyId)
   if ('error' in clientRes) return NextResponse.json({ error: clientRes.error }, { status: 404 })
-  const identity = await fetchVisualIdentity(supabase, body.clientId)
+  const identity = await fetchVisualIdentity(body.clientId)
   if (!identity) return NextResponse.json({ error: 'This client has no visual identity yet.' }, { status: 400 })
 
   const limiter = createSemaphore(MAX_CONCURRENT_POSTS)

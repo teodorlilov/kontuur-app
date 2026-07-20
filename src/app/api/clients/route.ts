@@ -135,12 +135,7 @@ export async function POST(request: Request) {
   const identitySource: SourceKind = body.visual_identity
     ? (body.visual_identity_source ?? 'manual')
     : 'default'
-  const { error: identityError } = await upsertVisualIdentity(
-    supabase,
-    clientId,
-    identity,
-    identitySource
-  )
+  const { error: identityError } = await upsertVisualIdentity(clientId, identity, identitySource)
   if (identityError) console.error('[clients:create] visual identity insert failed:', identityError)
 
   revalidateTag('agency-clients', 'max')
