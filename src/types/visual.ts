@@ -21,24 +21,17 @@ export type SourceKind = 'default' | 'website' | 'manual'
 /** The resolved typography pairing (family names, driven by the preset). */
 export type Typography = { display_family: string; body_family: string }
 
-/**
- * The art-direction brief vision infers from the brand — the persisted input to later image
- * generation (what to photograph, which motifs fit, and the overall mood).
- */
-export type BrandBrief = { mood: string; photographicSubjects: string[]; motifs: string[] }
-
 /** The full stored visual identity for a client. */
 export type VisualIdentity = {
   palette: Palette
   typography: Typography
   vibe_preset: VibePresetId
-  brief: BrandBrief
 }
 
 /** How a given extracted field was arrived at, surfaced as a confidence badge in Review. */
 export type Confidence = 'measured' | 'inferred' | 'guessed'
 
-export type ExtractionField = 'colors' | 'accent' | 'fonts' | 'typeScale' | 'mood' | 'subjects' | 'preset'
+export type ExtractionField = 'colors' | 'accent' | 'fonts' | 'typeScale' | 'preset'
 
 /** Per-field confidence map plus the preset recommendation and any soft-fallback reason. */
 export type ExtractionReport = {

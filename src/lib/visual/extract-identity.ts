@@ -37,15 +37,12 @@ export async function extractIdentity({ url, fallbackPresetId }: ExtractIdentity
     palette: applyVisionAccent(measured, vision.accent),
     typography: presetTypography(vision.vibePreset),
     vibe_preset: vision.vibePreset,
-    brief: { mood: vision.mood, photographicSubjects: vision.photographicSubjects, motifs: vision.motifs },
   }
   const report: ExtractionReport = {
     source: 'website',
     confidence: {
       colors: 'measured',
       accent: vision.accent ? 'inferred' : 'measured',
-      mood: 'inferred',
-      subjects: 'inferred',
       preset: 'inferred',
     },
     presetRecommendation: { id: vision.vibePreset, reason: vision.presetReason },

@@ -60,7 +60,6 @@ export type {
   VibePresetId,
   SourceKind,
   Typography,
-  BrandBrief,
   VisualIdentity,
   Confidence,
   ExtractionField,

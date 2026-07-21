@@ -17,7 +17,7 @@ import { StepLoading, mapPhaseToStage } from './step-loading'
 import { ResultsView } from './results/results-view'
 import type { ClientRow } from '@/types'
 import type { ClientData } from '@/lib/clients/fetch-client-data'
-import type { PriorityPost, PostType, CarouselSlide } from '@/types/api'
+import type { PriorityPost, PostType } from '@/types/api'
 import type { GenerationResult } from '@/ai/generation/types'
 import type { SkippedPillar } from '@/ai/research/types'
 import type { PostData, ValidationData } from '@/types/post'
@@ -88,7 +88,6 @@ export function GenerateWizard({
   const [discardedCount, setDiscardedCount] = useState(0)
   const abortControllerRef = useRef<AbortController | null>(null)
   const isInitialMount = useRef(true)
-  const visualsBatchRef = useRef(false)
 
   const selectedClient = clients.find((c) => c.id === clientId)
   const clientName = selectedClient?.name ?? 'Client'
@@ -115,49 +114,6 @@ export function GenerateWizard({
     return () => { abortControllerRef.current?.abort() }
   }, [step])
 
-  // Auto-generate visuals once copy is done: fill each draft's slides with backdrops as they stream in.
-  useEffect(() => {
-    if (step !== 'results' || generatedPosts.length === 0 || visualsBatchRef.current) return
-    visualsBatchRef.current = true
-    void startVisualsBatch(generatedPosts)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step, generatedPosts])
-
-  async function startVisualsBatch(posts: GeneratedPost[]) {
-    try {
-      const body = {
-        clientId,
-        posts: posts.map((p) => ({
-          id: p.post.id,
-          post_type: p.post.post_type,
-          slides: Array.isArray(p.post.slides_json) ? (p.post.slides_json as CarouselSlide[]) : undefined,
-          caption: p.post.caption ?? undefined,
-          topic: p.post.pillar ?? p.post.topic_summary ?? undefined,
-        })),
-      }
-      const res = await fetch('/api/ai/generate-visuals-batch', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      })
-      if (!res.ok) return
-      await readNDJSONStream<{ type: string; postId?: string; index?: number; url?: string | null }>(res, (e) => {
-        if (e.type !== 'unit' || !e.postId || !e.url || typeof e.index !== 'number') return
-        setGeneratedPosts((prev) =>
-          prev.map((p) => {
-            if (p.post.id !== e.postId) return p
-            const slides = (Array.isArray(p.post.slides_json) ? (p.post.slides_json as CarouselSlide[]) : []).map((s, i) =>
-              i === e.index && e.url ? { ...s, backdrop_url: e.url } : s
-            )
-            return { ...p, post: { ...p.post, slides_json: slides } }
-          })
-        )
-      })
-    } catch {
-      // fail-soft — drafts keep their gradient
-    }
-  }
-
   async function startGeneration() {
     abortControllerRef.current?.abort()
     const controller = new AbortController()
@@ -169,7 +125,6 @@ export function GenerateWizard({
     setLoadingStage(0)
     setSkippedPillars([])
     setIsGenerating(true)
-    visualsBatchRef.current = false
 
     try {
       const endpoint = sourceIdea ? '/api/ai/generate-from-idea' : '/api/ai/generate-stream'

@@ -18,6 +18,5 @@ export function buildDefaultIdentity(presetId: VibePresetId): VisualIdentity {
     palette: preset.defaultPalette,
     typography: presetTypography(presetId),
     vibe_preset: presetId,
-    brief: { mood: '', photographicSubjects: [], motifs: [] },
   }
 }

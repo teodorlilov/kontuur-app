@@ -17,12 +17,6 @@ const typographySchema = z.object({
   body_family: z.string().min(1),
 })
 
-const briefSchema = z.object({
-  mood: z.string(),
-  photographicSubjects: z.array(z.string()),
-  motifs: z.array(z.string()),
-})
-
 /**
  * Runtime validator for a `VisualIdentity` blob before it is written to `brand_visual_identity.identity`
  * — the single write-gate. Rejects a kit missing a colour role, a non-hex value, or an unknown preset.
@@ -32,7 +26,6 @@ export const visualIdentitySchema = z.object({
   palette: paletteSchema,
   typography: typographySchema,
   vibe_preset: z.enum(['luxury-minimalist', 'modern-tech', 'creative-edgy', 'polished-photo']),
-  brief: briefSchema,
 })
 
 type SchemaIdentity = z.infer<typeof visualIdentitySchema>

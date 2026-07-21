@@ -4,35 +4,20 @@ import type { FontKey } from './fonts'
 /**
  * The four "vibe presets" (PRD §3) — the single source of truth for the app's visual languages.
  *
- * A preset is the join key between brand identity, AI image generation, and typography:
- * - `promptModifiers` + `negativePrompt` feed the fal.ai backdrop prompt (later phase),
+ * A preset is the join key between brand identity and typography:
  * - `fontPairing` (keys into the font registry) auto-locks the carousel typography,
  * - `defaultPalette` is the fallback palette when extraction is thin, and the base a measured accent
  *   is merged onto.
  */
-/** How this preset generates backdrop imagery — the fal model + style, declared per preset so routing is
- *  data-driven and new presets need no code branches. `model`s are the cheap preview tier (premium at export). */
-export type ImageConfig = { model: string; style?: string; ratio?: '4:5' | '1:1' }
-
 export type VibePreset = {
   id: VibePresetId
   /** The label shown to non-technical users (PRD §"How to Implement"). */
   uiLabel: string
   targetClients: string
   description: string
-  /** Hardcoded fal.ai style modifiers injected verbatim into the backdrop prompt. */
-  promptModifiers: string
-  /** Craft/quality avoid terms folded into the backdrop prompt. The text/logo prohibition lives in the
-   *  positive prompt (`buildBackdropPrompt`), so it isn't duplicated here. */
-  negativePrompt: string
   fontPairing: { display: FontKey; body: FontKey }
   defaultPalette: Palette
-  image: ImageConfig
 }
-
-// Craft/quality negatives shared by every preset. The no-text/logo rule is in the positive prompt, so it
-// is deliberately absent here (keeps the folded-in prompt concise, under fal's 1000-char limit).
-const CRAFT_NEGATIVE = 'low quality, blurry, distorted, deformed, extra fingers'
 
 export const VIBE_PRESETS: Record<VibePresetId, VibePreset> = {
   'luxury-minimalist': {
@@ -41,9 +26,6 @@ export const VIBE_PRESETS: Record<VibePresetId, VibePreset> = {
     targetClients: 'Aesthetic clinics, skincare brands, premium real estate, high-end coaching',
     description:
       'Soft lighting, beige/neutral palettes, marble or satin textures, heavy negative space — editorial lookbook feel that reads as trustworthy and premium.',
-    promptModifiers:
-      'minimalist studio lighting, neutral muted tones, editorial composition, soft focus, vast negative space for text, high-end luxury aesthetic, clean lines',
-    negativePrompt: CRAFT_NEGATIVE + ', clutter, harsh lighting, saturated colors, busy background',
     fontPairing: { display: 'cormorant-garamond', body: 'montserrat' },
     defaultPalette: {
       surface: '#F7F3EE',
@@ -52,7 +34,6 @@ export const VIBE_PRESETS: Record<VibePresetId, VibePreset> = {
       'accent-deep': '#6E5836',
       line: '#E4DBD0',
     },
-    image: { model: 'fal-ai/flux/schnell', ratio: '4:5' },
   },
   'modern-tech': {
     id: 'modern-tech',
@@ -60,9 +41,6 @@ export const VIBE_PRESETS: Record<VibePresetId, VibePreset> = {
     targetClients: 'Digital marketing agencies, SaaS companies, crypto/finance startups, B2B creators',
     description:
       'Clean 3D isometric shapes, vibrant flat vectors, glassmorphism and sharp geometric layouts — makes data and frameworks look accessible and shareable.',
-    promptModifiers:
-      '3D minimalist vector illustration, flat vibrant colors, isometric view, tech corporate design style, isolated on solid background, clean corporate memphis',
-    negativePrompt: CRAFT_NEGATIVE + ', photorealistic, grunge, vintage, noise',
     fontPairing: { display: 'space-grotesk', body: 'inter' },
     defaultPalette: {
       surface: '#F4F6FB',
@@ -71,7 +49,6 @@ export const VIBE_PRESETS: Record<VibePresetId, VibePreset> = {
       'accent-deep': '#1E3A8A',
       line: '#DDE3EE',
     },
-    image: { model: 'fal-ai/recraft/v3/text-to-image', style: 'vector_illustration', ratio: '4:5' },
   },
   'creative-edgy': {
     id: 'creative-edgy',
@@ -79,9 +56,6 @@ export const VIBE_PRESETS: Record<VibePresetId, VibePreset> = {
     targetClients: 'Freelance designers, video editors, Gen-Z brands, streetwear, modern media agencies',
     description:
       'Risograph textures, halftone dots, cyberpunk neon accents and 90s vaporwave — designed to break the scroll and read as a forward-thinking trendsetter.',
-    promptModifiers:
-      'risograph texture print style, high contrast, vibrant ink overlay, retro-modern graphic design, gritty halftone, bold aesthetic',
-    negativePrompt: CRAFT_NEGATIVE + ', corporate stock photo, muted colors, minimal',
     fontPairing: { display: 'archivo-black', body: 'space-grotesk' },
     defaultPalette: {
       surface: '#141414',
@@ -90,7 +64,6 @@ export const VIBE_PRESETS: Record<VibePresetId, VibePreset> = {
       'accent-deep': '#C7351C',
       line: '#3A3A3A',
     },
-    image: { model: 'fal-ai/recraft/v3/text-to-image', style: 'digital_illustration', ratio: '4:5' },
   },
   'polished-photo': {
     id: 'polished-photo',
@@ -98,9 +71,6 @@ export const VIBE_PRESETS: Record<VibePresetId, VibePreset> = {
     targetClients: 'E-commerce stores, lifestyle influencers, restaurants, fitness trainers',
     description:
       'Crisp, realistic lifestyle photography with real people, product close-ups and natural sunlight — ideal for seamless multi-slide photo backgrounds.',
-    promptModifiers:
-      'photorealistic candid photography, natural sunlight, organic textures, commercial lifestyle shoot, crisp details, neutral background',
-    negativePrompt: CRAFT_NEGATIVE + ', illustration, 3d render, cartoon, oversaturated, cgi',
     fontPairing: { display: 'fraunces', body: 'libre-franklin' },
     defaultPalette: {
       surface: '#FFFFFF',
@@ -109,7 +79,6 @@ export const VIBE_PRESETS: Record<VibePresetId, VibePreset> = {
       'accent-deep': '#8A4832',
       line: '#ECE7E1',
     },
-    image: { model: 'fal-ai/flux/schnell', ratio: '4:5' },
   },
 }
 
