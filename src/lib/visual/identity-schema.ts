@@ -12,20 +12,13 @@ const paletteSchema = z.object({
   line: hex,
 })
 
-const typographySchema = z.object({
-  display_family: z.string().min(1),
-  body_family: z.string().min(1),
-})
-
 /**
  * Runtime validator for a `VisualIdentity` blob before it is written to `brand_visual_identity.identity`
- * — the single write-gate. Rejects a kit missing a colour role, a non-hex value, or an unknown preset.
- * The parity guards below fail the build if this schema and the `VisualIdentity` type drift apart.
+ * — the single write-gate. Rejects a kit missing a colour role or a non-hex value. The parity guards below
+ * fail the build if this schema and the `VisualIdentity` type drift apart.
  */
 export const visualIdentitySchema = z.object({
   palette: paletteSchema,
-  typography: typographySchema,
-  vibe_preset: z.enum(['luxury-minimalist', 'modern-tech', 'creative-edgy', 'polished-photo']),
 })
 
 type SchemaIdentity = z.infer<typeof visualIdentitySchema>

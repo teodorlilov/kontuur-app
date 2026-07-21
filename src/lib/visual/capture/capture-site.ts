@@ -1,4 +1,4 @@
-import type { Browser, Page } from 'puppeteer-core'
+import type { Browser } from 'puppeteer-core'
 import { getBrowser } from '@/lib/render/browser'
 import { measurePage, type PageMeasurement } from '@/lib/visual/extract/measure'
 import { blockTrackers } from './block-trackers'
@@ -11,32 +11,21 @@ import { createSemaphore } from '@/lib/concurrency'
 export type CaptureResult = {
   ok: boolean
   reason?: string
-  screenshot: Buffer | null
   measured: PageMeasurement | null
 }
 
 const REALISTIC_UA =
   'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
 const VIEWPORT = { width: 1440, height: 2400 }
-// Longest screenshot edge fed to Claude vision (its hard limit is 8000px; leave headroom).
-const MAX_SCREENSHOT_EDGE = 7800
 const NAV_TIMEOUT_MS = 20_000
 const SETTLE_BUDGET_MS = 6_000
 const MAX_CONCURRENT = 2
 
 const limiter = createSemaphore(MAX_CONCURRENT)
 
-const fail = (reason: string): CaptureResult => ({ ok: false, reason, screenshot: null, measured: null })
+const fail = (reason: string): CaptureResult => ({ ok: false, reason, measured: null })
 
-/** Full-page screenshot, downscaled via deviceScaleFactor so even a long page stays under the vision limit. */
-async function screenshotPage(page: Page): Promise<Buffer> {
-  const scrollHeight = await page.evaluate(() => document.documentElement.scrollHeight)
-  const scale = Math.min(1, MAX_SCREENSHOT_EDGE / Math.max(scrollHeight, VIEWPORT.height))
-  if (scale < 1) await page.setViewport({ ...VIEWPORT, deviceScaleFactor: scale })
-  return Buffer.from(await page.screenshot({ type: 'png', fullPage: true }))
-}
-
-/** One hardened navigation + measurement + screenshot. Never throws — returns `ok:false` on any failure. */
+/** One hardened navigation + colour measurement. Never throws — returns `ok:false` on any failure. */
 async function captureOnce(browser: Browser, url: string, navTimeout: number): Promise<CaptureResult> {
   const page = await browser.newPage()
   try {
@@ -67,7 +56,7 @@ async function captureOnce(browser: Browser, url: string, navTimeout: number): P
     const measured = await measurePage(page)
     if (!hasEnoughSignal(measured)) return fail('not enough measurable content')
 
-    return { ok: true, screenshot: await screenshotPage(page), measured }
+    return { ok: true, measured }
   } catch (err) {
     return fail(err instanceof Error ? err.message : 'capture error')
   } finally {

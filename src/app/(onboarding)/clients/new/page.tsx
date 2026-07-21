@@ -10,7 +10,6 @@ import type { SourceKind, VisualIdentity } from '@/types/visual'
 import type { OnboardingStep, OnboardProfile, Message } from '@/features/onboarding/types'
 import { QUESTIONS, getDetectedAnswer } from '@/features/onboarding/lib/questions'
 import { buildDefaultIdentity } from '@/lib/visual/identity'
-import { DEFAULT_VIBE_PRESET_ID } from '@/lib/visual/vibe-presets'
 import { useExtractionStatus } from '@/features/visual-identity/hooks/use-extraction-status'
 import { PillarSourceStepper } from '@/features/sources/components/stepper/pillar-source-stepper'
 import { OnboardingShell } from '@/features/onboarding/components/onboarding-shell'
@@ -98,8 +97,8 @@ export default function NewClientPage() {
       if (res.ok) {
         const data = (await res.json()) as UrlAnalysisResponse
         setAnalysisData(data)
-        setVisualIdentity(buildDefaultIdentity(data.detected_vibe_preset))
-        void startExtraction(data.detected_vibe_preset)
+        setVisualIdentity(buildDefaultIdentity())
+        void startExtraction()
         toast.success('Brand analysis complete')
       } else {
         toast.error('Could not analyze the provided URLs — continuing manually')
@@ -113,7 +112,7 @@ export default function NewClientPage() {
 
   // Kick off async brand-visual extraction; it runs during the interview and lands by Review.
   // Only begin polling if the server accepted the job — otherwise the placeholder identity stands.
-  async function startExtraction(fallbackPresetId: VisualIdentity['vibe_preset']) {
+  async function startExtraction() {
     try {
       const res = await fetch('/api/extract/start', {
         method: 'POST',
@@ -121,12 +120,11 @@ export default function NewClientPage() {
         body: JSON.stringify({
           onboardingSessionId: sessionId,
           websiteUrl: websiteUrl.trim() || undefined,
-          fallbackPresetId,
         }),
       })
       if (res.ok) setExtractionStarted(true)
     } catch {
-      // Keep the preset-default placeholder; the user can still edit and save.
+      // Keep the default-palette placeholder; the user can still edit and save.
     }
   }
 
@@ -262,7 +260,7 @@ export default function NewClientPage() {
             auto_generate_day: scheduleDay,
             auto_generate_time: scheduleTime,
           },
-          visual_identity: visualIdentity ?? buildDefaultIdentity(DEFAULT_VIBE_PRESET_ID),
+          visual_identity: visualIdentity ?? buildDefaultIdentity(),
           visual_identity_source: resolveIdentitySource(),
         }),
       })
@@ -366,7 +364,7 @@ export default function NewClientPage() {
             onSave={() => void handleSave()}
             onRedo={handleRedo}
             websiteUrl={websiteUrl}
-            visualIdentity={visualIdentity ?? buildDefaultIdentity(DEFAULT_VIBE_PRESET_ID)}
+            visualIdentity={visualIdentity ?? buildDefaultIdentity()}
             onVisualIdentityChange={handleVisualIdentityChange}
             extractionStatus={extractionStatus}
           />

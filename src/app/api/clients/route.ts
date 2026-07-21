@@ -4,7 +4,6 @@ import { resolveAuth } from '@/lib/auth/resolve-auth'
 import { CLIENT_LIST_COLUMNS } from '@/lib/queries/select-columns'
 import { upsertVisualIdentity } from '@/lib/visual/queries'
 import { buildDefaultIdentity } from '@/lib/visual/identity'
-import { DEFAULT_VIBE_PRESET_ID } from '@/lib/visual/vibe-presets'
 import type { SourceKind, VisualIdentity } from '@/types/visual'
 
 export async function GET() {
@@ -131,7 +130,7 @@ export async function POST(request: Request) {
   }
 
   // Create the brand visual identity (Phase 1) — non-fatal: a visuals hiccup must not block the client.
-  const identity = body.visual_identity ?? buildDefaultIdentity(DEFAULT_VIBE_PRESET_ID)
+  const identity = body.visual_identity ?? buildDefaultIdentity()
   const identitySource: SourceKind = body.visual_identity
     ? (body.visual_identity_source ?? 'manual')
     : 'default'

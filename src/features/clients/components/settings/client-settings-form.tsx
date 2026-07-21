@@ -6,7 +6,6 @@ import { ChevronLeft } from 'lucide-react'
 import { parsePillars, serializePillars, type WeightedPillar } from '@/lib/clients/content-pillars'
 import { updateClient } from '@/features/clients/actions/client-actions'
 import { buildDefaultIdentity } from '@/lib/visual/identity'
-import { DEFAULT_VIBE_PRESET_ID } from '@/lib/visual/vibe-presets'
 import { Button } from '@/components/ui/button'
 import { Avatar } from '@/components/ui/avatar'
 import { toast } from '@/components/ui/toast'
@@ -101,7 +100,7 @@ export function ClientSettingsForm({
 
   // ── Visual identity ──
   const [visualIdentity, setVisualIdentity] = useState<VisualIdentity>(
-    initialVisualIdentity ?? buildDefaultIdentity(DEFAULT_VIBE_PRESET_ID)
+    initialVisualIdentity ?? buildDefaultIdentity()
   )
   const [reanalyzing, setReanalyzing] = useState(false)
 

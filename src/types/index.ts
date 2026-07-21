@@ -57,9 +57,7 @@ export type {
 export type {
   ColorRole,
   Palette,
-  VibePresetId,
   SourceKind,
-  Typography,
   VisualIdentity,
   Confidence,
   ExtractionField,

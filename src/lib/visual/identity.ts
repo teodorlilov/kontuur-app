@@ -1,22 +1,15 @@
-import type { Typography, VibePresetId, VisualIdentity } from '@/types/visual'
-import { getVibePreset } from './vibe-presets'
-import { getFont } from './fonts'
+import type { Palette, VisualIdentity } from '@/types/visual'
 
-/** The resolved typography pairing for a preset (family names — the authoritative Phase-1 typography). */
-export function presetTypography(presetId: VibePresetId): Typography {
-  const preset = getVibePreset(presetId)
-  return {
-    display_family: getFont(preset.fontPairing.display).family,
-    body_family: getFont(preset.fontPairing.body).family,
-  }
+/** Neutral fallback palette when a site can't be measured (no website, capture failed). The user edits it. */
+export const DEFAULT_PALETTE: Palette = {
+  surface: '#FFFFFF',
+  ink: '#1A1A1A',
+  accent: '#2563EB',
+  'accent-deep': '#1E3A8A',
+  line: '#E5E5E5',
 }
 
-/** A valid identity built entirely from a preset's defaults — the neutral starting point / fallback. */
-export function buildDefaultIdentity(presetId: VibePresetId): VisualIdentity {
-  const preset = getVibePreset(presetId)
-  return {
-    palette: preset.defaultPalette,
-    typography: presetTypography(presetId),
-    vibe_preset: presetId,
-  }
+/** A valid identity from the neutral default palette — the starting point when nothing was measured. */
+export function buildDefaultIdentity(): VisualIdentity {
+  return { palette: DEFAULT_PALETTE }
 }

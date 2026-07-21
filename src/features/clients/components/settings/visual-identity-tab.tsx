@@ -3,7 +3,7 @@
 import type { VisualIdentity } from '@/types/visual'
 import { VisualIdentityPanel } from '@/features/visual-identity/components/visual-identity-panel'
 
-/** Settings tab wrapper for the shared visual-identity editor (palette, preset, typography, re-analyze). */
+/** Settings tab wrapper for the shared visual-identity editor (brand palette + re-analyze). */
 export function VisualIdentityTab({
   identity,
   onChange,

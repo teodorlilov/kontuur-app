@@ -104,13 +104,3 @@ export function deriveColorRoles(obs: ColorObservations): Palette {
     line: toHex(line),
   })
 }
-
-/**
- * Override the accent with vision's pick (if it's a valid hex) and recompute `accent-deep` from it, so
- * a re-picked accent stays internally consistent. Falls back to the measured accent when vision gives
- * nothing usable.
- */
-export function applyVisionAccent(roles: Palette, accentHex: string | null): Palette {
-  const base = (accentHex ? parseHex(accentHex) : null) ?? parseHex(roles.accent) ?? { r: 37, g: 99, b: 235 }
-  return { ...roles, accent: toHex(base), 'accent-deep': toHex(darken(base, 0.35)) }
-}

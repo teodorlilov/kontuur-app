@@ -12,32 +12,23 @@ export type ColorRole = 'surface' | 'ink' | 'accent' | 'accent-deep' | 'line'
 /** A resolved brand palette, one hex per role. */
 export type Palette = Record<ColorRole, string>
 
-/** The four "vibe presets" (PRD §3) — the visual-language selector every downstream phase keys off. */
-export type VibePresetId = 'luxury-minimalist' | 'modern-tech' | 'creative-edgy' | 'polished-photo'
-
 /** How a stored identity was produced. */
 export type SourceKind = 'default' | 'website' | 'manual'
 
-/** The resolved typography pairing (family names, driven by the preset). */
-export type Typography = { display_family: string; body_family: string }
-
-/** The full stored visual identity for a client. */
+/** The full stored visual identity for a client — the brand colours measured from its site. */
 export type VisualIdentity = {
   palette: Palette
-  typography: Typography
-  vibe_preset: VibePresetId
 }
 
 /** How a given extracted field was arrived at, surfaced as a confidence badge in Review. */
 export type Confidence = 'measured' | 'inferred' | 'guessed'
 
-export type ExtractionField = 'colors' | 'accent' | 'fonts' | 'typeScale' | 'preset'
+export type ExtractionField = 'colors' | 'accent'
 
-/** Per-field confidence map plus the preset recommendation and any soft-fallback reason. */
+/** Per-field confidence map plus any soft-fallback reason. */
 export type ExtractionReport = {
   source: 'website' | 'fallback'
   confidence: Partial<Record<ExtractionField, Confidence>>
-  presetRecommendation?: { id: VibePresetId; reason: string }
   fallback?: { reason: string }
 }
 

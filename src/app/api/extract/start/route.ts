@@ -4,7 +4,6 @@ import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { extractIdentity } from '@/lib/visual/extract-identity'
 import { buildDefaultIdentity } from '@/lib/visual/identity'
 import { writeExtraction } from '@/lib/visual/queries'
-import { toVibePresetId } from '@/lib/visual/vibe-presets'
 
 // Hardened Chromium capture + a vision call runs after the response (Next `after`); allow headroom.
 export const maxDuration = 60
@@ -12,7 +11,6 @@ export const maxDuration = 60
 interface StartBody {
   onboardingSessionId?: string
   websiteUrl?: string
-  fallbackPresetId?: string
 }
 
 /**
@@ -36,16 +34,15 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'onboardingSessionId is required' }, { status: 400 })
   }
   const websiteUrl = body.websiteUrl?.trim()
-  const fallbackPresetId = toVibePresetId(body.fallbackPresetId)
   const admin = createAdminSupabaseClient()
 
-  // No website → nothing to capture; store the preset-default identity immediately.
+  // No website → nothing to capture; store the default-palette identity immediately.
   if (!websiteUrl) {
     await writeExtraction(admin, sessionId, {
       status: 'fallback',
       agencyId,
-      identity: buildDefaultIdentity(fallbackPresetId),
-      report: { source: 'fallback', confidence: { preset: 'inferred' }, fallback: { reason: 'no website provided' } },
+      identity: buildDefaultIdentity(),
+      report: { source: 'fallback', confidence: {}, fallback: { reason: 'no website provided' } },
     })
     return NextResponse.json({ status: 'fallback' }, { status: 202 })
   }
@@ -60,7 +57,7 @@ export async function POST(request: Request) {
 
   after(async () => {
     try {
-      const result = await extractIdentity({ url: websiteUrl, fallbackPresetId })
+      const result = await extractIdentity({ url: websiteUrl })
       await writeExtraction(admin, sessionId, {
         status: result.report.source === 'website' ? 'ready' : 'fallback',
         agencyId,
@@ -72,8 +69,8 @@ export async function POST(request: Request) {
       await writeExtraction(admin, sessionId, {
         status: 'fallback',
         agencyId,
-        identity: buildDefaultIdentity(fallbackPresetId),
-        report: { source: 'fallback', confidence: { preset: 'inferred' }, fallback: { reason: 'extraction error' } },
+        identity: buildDefaultIdentity(),
+        report: { source: 'fallback', confidence: {}, fallback: { reason: 'extraction error' } },
       }).catch(() => undefined)
     }
   })

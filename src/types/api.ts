@@ -1,5 +1,3 @@
-import type { VibePresetId } from './visual'
-
 // ---- Shared enums / unions ----
 
 export type PostType = 'single' | 'carousel'
@@ -85,7 +83,6 @@ export interface UrlAnalysisResponse {
   detected_is_health_niche: boolean
   detected_testimonial_voice: string | null
   detected_avoid_topics: string | null
-  detected_vibe_preset: VibePresetId
 }
 
 // ---- Research ----

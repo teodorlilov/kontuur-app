@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
 import { extractIdentity } from '@/lib/visual/extract-identity'
-import { fetchVisualIdentity, upsertVisualIdentity } from '@/lib/visual/queries'
-import { DEFAULT_VIBE_PRESET_ID } from '@/lib/visual/vibe-presets'
+import { upsertVisualIdentity } from '@/lib/visual/queries'
 
 // Synchronous hardened capture + vision; allow headroom.
 export const maxDuration = 60
@@ -25,11 +24,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
     return NextResponse.json({ error: 'No website on file for this client' }, { status: 400 })
   }
 
-  const current = await fetchVisualIdentity(id)
-  const result = await extractIdentity({
-    url: client.website_url,
-    fallbackPresetId: current?.vibe_preset ?? DEFAULT_VIBE_PRESET_ID,
-  })
+  const result = await extractIdentity({ url: client.website_url })
 
   const source = result.report.source === 'website' ? 'website' : 'default'
   const { error } = await upsertVisualIdentity(id, result.identity, source, result.report)
