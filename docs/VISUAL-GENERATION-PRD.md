@@ -17,7 +17,9 @@ This platform transforms raw business data (websites/social accounts) into highl
 ✅ **Implemented (current state)**
 - **Brand extraction (§2):** onboarding extracts a **Color Palette** (5 colour roles: surface / ink /
   accent / accent-deep / line, WCAG-AA guaranteed) — on top of the pre-existing text extraction (name,
-  niche, tone, pillars). Stored per client in `brand_visual_identity` (`identity = { palette }`).
+  niche, tone, pillars). Stored per client in `brand_visual_identity`; since Phase 3 the identity is
+  `{ palette, style, palette_description? }` (style = user-chosen brand style, description = Haiku-written
+  palette prose for image prompts).
 - **Our own site capturer (not a 3rd-party API):** hardened headless Chromium
   (`src/lib/visual/capture/capture-site.ts`) — consent-overlay dismissal, tracker blocking, settle
   waits, bot-wall detection, retry, concurrency cap. Colours are **measured** via `getComputedStyle`
@@ -38,29 +40,37 @@ This platform transforms raw business data (websites/social accounts) into highl
 
 —————
 
-## Phase 3 — Visual Generation via `fal-ai/gpt-image-2` — SHIPPED 2026-07-21
+## Phase 3 — Visual Generation via `fal-ai/gpt-image-2` — SHIPPED 2026-07-22 (commit `357ca7b`)
 
 **Core idea:** one short, conscious prompt per slide with exactly **three variables** — the slide TEXT,
 the COLOR PALETTE (human-readable), and a STYLE paragraph — and an explicit "don't add text"
 instruction. The image model reads the slide copy directly; no concept planner, no negative prompts,
-no per-preset prompt matrices.
+no per-preset prompt matrices. One 1024² jpeg per slide, stored as a regular `post_images` row —
+publishing needed **zero changes**.
 
 **Shipped surfaces:**
-- **Generation tab:** visuals **auto-generate** as each post's copy streams (concurrency 6 — a full
-  carousel completes in one ~60s wave; per-slide progress, per-slide retry/regenerate); approve is
-  never blocked — finished visuals attach to the new
-  post row (`POST /api/posts` `images[]`), discard deletes the draft files. Drafts stay in-memory;
-  images are stateless (`/api/ai/generate-visual`) until approve.
-- **/review tab:** images load with the page, "✨ Generate visuals (N)" button + per-slot AI
-  generate/regenerate/upload, visuals counter badge in the post list.
-- **Calendar:** per-slot generate/regenerate + "Generate visuals (N)" for carousels; publishing reads
-  `post_images` unchanged.
-- **Client approval page:** read-only visual previews per slide/single post.
-- **Client details → Visual identity:** Brand style picker (portrait preview cards + lightbox), palette
-  editor; palette edits invalidate the stored palette description (regenerated on next use).
+- **Generation tab (wizard):** visuals **auto-generate** as each post's copy streams (concurrency 6 —
+  a full carousel completes in one ~60s wave; per-slide progress, retry, regenerate; run-level
+  "Generating visuals x/y" counter). Approve is never blocked — finished visuals attach to the new
+  post row (`POST /api/posts` `images[]`), pending ones are aborted (add later in Calendar); discard
+  deletes the draft files. Drafts stay in-memory; images upload statelessly to
+  `post-images/{clientId}/drafts/` until approve.
+- **/review tab:** images load server-side with the page (one indexed `post_images` query),
+  "✨ Generate visuals (N)" button (stays visible with a spinner while running, N counts down),
+  per-slot AI generate/regenerate/upload, N/M visuals badge in the post list.
+- **Calendar:** per-slot generate/regenerate + bulk "Generate visuals (N)" for carousels; hidden for
+  published/publishing posts. Image state uses functional upserts so concurrent completions never
+  clobber each other.
+- **Client approval page:** read-only visual previews per slide and for single posts — clients see
+  what they approve.
+- **Client details → Visual identity:** Brand style picker (portrait preview cards + full-size
+  lightbox), palette editor; palette edits invalidate the stored palette description (regenerated on
+  next use).
+- **Everywhere an image exists:** full-width preview card (uncropped, ≤280px) with corner
+  regenerate/delete actions and click-to-enlarge (`ImageLightbox`).
 - Copy sanitization for prompts (URLs/#hashtags/@mentions stripped, word-boundary clamp); style prompts
   are colour-free — the measured palette is the only colour source. Cron posts get visuals manually via
-  /review. Rewrites never auto-regenerate visuals.
+  /review. Rewrites and copy edits never auto-regenerate visuals.
 
 ### The prompt contract (`buildVisualPrompt`, pure function)
 
@@ -96,34 +106,54 @@ Use the palette as the visual color foundation. Don't add text, just illustratio
 ### 2. Brand Styles — scalable registry, user-selected per client (replaces §3 presets)
 `src/lib/visual/brand-styles.ts`: `BrandStyle = { id, name, description, prompt, previewSrc }`.
 **Adding a style = one registry entry + one preview jpg** (`public/brand-styles/<id>.jpg`).
-First style: `bold-editorial` — "Bold contemporary editorial design, oversized condensed typography,
-elegant serif accents, asymmetrical Swiss-inspired grid, provocative magazine art direction, candid
-documentary photography, analog collage, subtle paper grain and photocopy texture, experimental
-typography, graphic blocks, editorial annotations, anti-corporate Gen-Z branding, sophisticated, human,
-rebellious, intelligent, premium social campaign aesthetic."
-Selection stored as `identity.style` (zod enum + default → existing `{ palette }` rows parse with no
-migration).
+Two launch styles (prompts deliberately **stripped of all colour words** — the client palette is the
+only colour source):
+- **`graphic-editorial` (default):** contemporary editorial graphic design — modernist campaign,
+  experimental magazine art direction, condensed sans + editorial serif contrast, asymmetric modular
+  grid, analog collage/photocopy/halftone texture, editorial annotations, premium studio aesthetic.
+- **`clinical-luxury`:** premium beauty-editorial — high-end close-up photography, minimalist
+  Swiss layouts, generous negative space, refined editorial metadata; sensual, clinical, aspirational.
 
-**Style picker UI (client details → Visual identity tab):** a "Brand style" card grid — each card shows
-the style's curated preview image (generated once with the real pipeline, checked in), name, one-line
-description, selected ring. Scales with the registry; onboarding silently applies the default.
+Selection stored as `identity.style` (zod enum + default → pre-Phase-3 `{ palette }` rows parse with no
+migration). Preview images are user-curated references in `docs/desing-system-preview/`, copied to
+`public/brand-styles/`.
+
+**Style picker UI (client details → Visual identity tab):** a "Brand style" card grid — portrait
+preview, name, one-liner, selected ring, zoom-to-lightbox. Scales with the registry; onboarding
+silently applies the default.
 
 ### 3. fal adapter
 `src/lib/visual/fal.ts` (`@fal-ai/client`, already a dep): `fal-ai/gpt-image-2`, 1024×1024, quality
 medium, jpeg, 1 image. Credentials passed explicitly from `FAL_API_KEY` (lib default is `FAL_KEY`).
 ~52s/image. No auto-retry — regenerate is one click.
 
-### 4. API — one image per request
-`POST /api/posts/[id]/visuals` `{ position }` (`maxDuration = 120`): auth + ownership → load post +
-identity → self-heal `palette_description` → `buildVisualPrompt` → fal → download → `uploadPostImage`
-→ replace-at-position insert into `post_images` → return `{ image }` (same shape as the upload route).
-Publishing needs **zero changes** — the scheduler already reads `post_images(public_url, position)`.
-A batch route would blow serverless limits at ~52s/image, so **the client orchestrates** multi-slide
-runs (concurrency 2, per-slot progress, per-slide retry for free).
+### 4. API — one image per request (as built)
+Both routes share one pipeline (`src/lib/visual/generate-visual.ts`: identity → prompt → fal →
+downloaded bytes) and are **rate-limited** (`VISUALS_RATE_LIMIT`, 60 per 10 min per user — above real
+throughput at concurrency 6, stops runaway spend):
+- **`POST /api/posts/[id]/visuals` `{ position }`** (`maxDuration = 120`) — persisted posts (review +
+  calendar): auth + ownership → derive the TEXT block from the actual `slides_json`/caption →
+  generate → `uploadPostImage` → replace-at-position → insert `post_images` → return `{ image }` in
+  the upload route's shape. **Replace happens only after a successful generation + upload**, so a
+  failure never loses the current image.
+- **`POST /api/ai/generate-visual`** — wizard drafts (no `posts` row yet): client-ownership check →
+  generate → upload under `{clientId}/drafts/{draftId}/` → return `{ position, publicUrl,
+  storagePath }`. `DELETE` on the same route removes a discarded draft's files (paths must live under
+  the client's drafts prefix).
+- **`POST /api/posts`** accepts `images[]` and inserts the `post_images` rows atomically with post
+  creation (attach-on-approve; only draft-prefix paths of that client are accepted).
 
-### 5. Generation UI (calendar `schedule-card`, where ImageSlots live)
-- "✨ Generate visuals" fills all **empty** slots (single: position 0; carousel: one per slide).
-- Per-slot "Regenerate" on filled slots (same endpoint; replaces at position).
+A batch route would blow serverless limits at ~52s/image, so **the client orchestrates** multi-slide
+runs (shared concurrency-6 semaphore, per-slot progress, per-slide retry for free). A unique index on
+`post_images(post_id, position)` (migration `20260722`) makes overlapping same-slot inserts a clean
+error instead of a duplicate carousel slide.
+
+### 5. Carousel copy structure (fixed alongside — feeds the visuals their TEXT)
+The requested slide count is now honoured: count-aware `carouselStructureRules(n)` (a 3-slide request
+collapses to cover → core insight → CTA instead of contradicting the 4-role checklist), "EXACTLY N
+slides" prompt wording, `minItems`/`maxItems` pinned on the generator's output schema, and a ~30-word
+slide-body bound (keeps slides design-fit and image prompts tight). The validator grades against the
+same count-aware rules.
 
 🔜 **Still deferred (specified below, not yet planned)**
 - **§4 Advanced Canvas:** SVGs-on-demand, DIS object isolation, layer architecture, "Isolate Object" flow.
@@ -133,10 +163,14 @@ runs (concurrency 2, per-slot progress, per-slide retry for free).
   text-overlay/canvas phase, with per-style default pairings.
 
 **Setup:** migrations `20260718_create_brand_visual_identity.sql` +
-`20260721_strip_legacy_visual_identity_fields.sql`; deps `@sparticuz/chromium` + `puppeteer-core` +
-`zod` + `@fal-ai/client`; env `CHROME_EXECUTABLE_PATH` (local) + `FAL_API_KEY` (local ✓, add to Vercel).
-Requires Vercel Pro (`maxDuration=60` extract routes, `120` visuals routes). ~52s + ~$0.04–0.07 per
-image; abandoned wizard tabs can leave orphan files under `post-images/{clientId}/drafts/` (accepted).
+`20260721_strip_legacy_visual_identity_fields.sql` + `20260722_post_images_unique_position.sql`;
+deps `@sparticuz/chromium` + `puppeteer-core` + `zod` + `@fal-ai/client`; env `CHROME_EXECUTABLE_PATH`
+(local) + `FAL_API_KEY` (local ✓, add to Vercel). Requires Vercel Pro (`maxDuration=60` extract routes,
+`120` visuals routes). ~52s + ~$0.04–0.07 per image.
+
+**Known trade-offs & deferred issues:** catalogued in `docs/TECH-DEBT.md` (orphan draft files from
+abandoned tabs, palette-description race on a client's first generation — mitigated by "Re-analyze",
+no cross-surface live sync, structure/layering cleanups).
 
 —————
 
