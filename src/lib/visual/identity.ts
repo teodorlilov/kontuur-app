@@ -1,4 +1,5 @@
 import type { Palette, VisualIdentity } from '@/types/visual'
+import { DEFAULT_BRAND_STYLE_ID } from './brand-styles'
 
 /** Neutral fallback palette when a site can't be measured (no website, capture failed). The user edits it. */
 export const DEFAULT_PALETTE: Palette = {
@@ -9,7 +10,7 @@ export const DEFAULT_PALETTE: Palette = {
   line: '#E5E5E5',
 }
 
-/** A valid identity from the neutral default palette — the starting point when nothing was measured. */
+/** A valid identity from the neutral default palette + default style — the starting point when nothing was measured. */
 export function buildDefaultIdentity(): VisualIdentity {
-  return { palette: DEFAULT_PALETTE }
+  return { palette: DEFAULT_PALETTE, style: DEFAULT_BRAND_STYLE_ID }
 }

@@ -3,6 +3,7 @@
 import { useState, useMemo, useCallback } from 'react'
 import { toast } from '@/components/ui/toast'
 import { updatePost, resolveChangeRequest } from '@/lib/actions/post-actions'
+import { upsertImageAtPosition } from '@/features/publishing/lib/image-list'
 import type { CalendarPost, PostImage } from '@/types/api'
 
 const CLEARED_APPROVAL = {
@@ -162,9 +163,19 @@ export function useCalendar(initialPosts: CalendarPost[]) {
     setPosts((prev) => prev.filter((p) => p.id !== postId))
   }, [])
 
-  /** Replace the images array for a single post in local state. */
-  const updatePostImages = useCallback((postId: string, images: PostImage[]) => {
-    setPosts((prev) => prev.map((p) => (p.id === postId ? { ...p, images } : p)))
+  /** Merge one uploaded/generated image into a post's images. Functional update so concurrent
+   *  completions (bulk visual generation) never clobber each other via stale snapshots. */
+  const upsertPostImage = useCallback((postId: string, image: PostImage) => {
+    setPosts((prev) =>
+      prev.map((p) => (p.id === postId ? { ...p, images: upsertImageAtPosition(p.images, image) } : p))
+    )
+  }, [])
+
+  /** Remove one image from a post's images in local state. */
+  const removePostImage = useCallback((postId: string, imageId: string) => {
+    setPosts((prev) =>
+      prev.map((p) => (p.id === postId ? { ...p, images: p.images.filter((img) => img.id !== imageId) } : p))
+    )
   }, [])
 
   /** Mark a post as published in local state (called after successful manual publish). */
@@ -189,7 +200,8 @@ export function useCalendar(initialPosts: CalendarPost[]) {
     updatePostContent,
     handleDrop,
     removePost,
-    updatePostImages,
+    upsertPostImage,
+    removePostImage,
     markPostPublished,
     saving,
   }

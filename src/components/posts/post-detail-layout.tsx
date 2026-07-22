@@ -2,8 +2,9 @@ import type { ReactNode } from 'react'
 import { SourceTile } from '@/components/posts/source-tile'
 import { PostContentDisplay } from '@/components/posts/post-content-display'
 import type { CarouselSlide } from '@/types/api'
+import type { PostVisualsProps } from '@/components/posts/visuals-props'
 
-interface PostDetailLayoutProps {
+interface PostDetailLayoutProps extends PostVisualsProps {
   caption: string
   platform: string | null
   postType: string
@@ -37,6 +38,14 @@ export function PostDetailLayout({
   editable,
   onCaptionChange,
   onSlidesChange,
+  postId,
+  images,
+  onImageUploaded,
+  onImageDeleted,
+  canvaConnected,
+  onGenerateImage,
+  generatingPositions,
+  renderImageSlot,
   children,
 }: PostDetailLayoutProps) {
   return (
@@ -68,6 +77,14 @@ export function PostDetailLayout({
             editable={editable}
             onCaptionChange={onCaptionChange}
             onSlidesChange={onSlidesChange}
+            postId={postId}
+            images={images}
+            onImageUploaded={onImageUploaded}
+            onImageDeleted={onImageDeleted}
+            canvaConnected={canvaConnected}
+            onGenerateImage={onGenerateImage}
+            generatingPositions={generatingPositions}
+            renderImageSlot={renderImageSlot}
           />
         </div>
         {children}

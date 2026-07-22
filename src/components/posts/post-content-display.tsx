@@ -6,10 +6,13 @@ import { toast } from '@/components/ui/toast'
 import { getPillarColor } from '@/components/ui/colors/pillar-colors'
 import { decodeUrlsInText } from '@/utils/decode-url'
 import { CarouselSlides } from './carousel-slides'
+import { ImageSlot } from '@/features/publishing/components/image-slot'
+import { parseSlides } from './parse-slides'
 import type { CarouselSlide, ValidationCriteria, ValidationScores } from '@/types/api'
+import type { PostVisualsProps } from './visuals-props'
 import { QualityScores } from './quality-scores'
 
-export interface PostContentDisplayProps {
+export interface PostContentDisplayProps extends PostVisualsProps {
   caption: string | null
   platform: string | null
   postType: string
@@ -116,10 +119,18 @@ export function PostContentDisplay({
   editable,
   onCaptionChange,
   onSlidesChange,
+  postId,
+  images,
+  onImageUploaded,
+  onImageDeleted,
+  canvaConnected,
+  onGenerateImage,
+  generatingPositions,
+  renderImageSlot,
 }: PostContentDisplayProps) {
   const isCarousel = postType === 'carousel'
 
-  const slides = Array.isArray(slidesJson) ? (slidesJson as CarouselSlide[]) : []
+  const slides = parseSlides(slidesJson)
 
   const pillarColor = pillar ? getPillarColor(pillar) : null
 
@@ -175,8 +186,37 @@ export function PostContentDisplay({
 
       {/* Carousel slides */}
       {isCarousel && slides.length > 0 && (
-        <CarouselSlides slides={slides} editable={editable} onSlidesChange={onSlidesChange} />
+        <CarouselSlides
+          slides={slides}
+          editable={editable}
+          onSlidesChange={onSlidesChange}
+          postId={postId}
+          images={images}
+          onImageUploaded={onImageUploaded}
+          onImageDeleted={onImageDeleted}
+          canvaConnected={canvaConnected}
+          onGenerateImage={onGenerateImage}
+          generatingPositions={generatingPositions}
+          renderImageSlot={renderImageSlot}
+        />
       )}
+
+      {/* Single-post visual */}
+      {!isCarousel &&
+        (renderImageSlot
+          ? renderImageSlot(0)
+          : postId && onImageUploaded && onImageDeleted && (
+              <ImageSlot
+                postId={postId}
+                position={0}
+                image={images?.find((img) => img.position === 0) ?? null}
+                onUploaded={onImageUploaded}
+                onDeleted={onImageDeleted}
+                canvaConnected={canvaConnected}
+                onGenerate={onGenerateImage ? () => onGenerateImage(0) : undefined}
+                generating={generatingPositions?.includes(0)}
+              />
+            ))}
 
       {/* Quality scores (generation flow only) */}
       {criteria && scores && (

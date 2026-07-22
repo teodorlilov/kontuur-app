@@ -4,19 +4,15 @@ import { useState, useRef, useEffect } from 'react'
 import { cn } from '@/utils/cn'
 import { toast } from '@/components/ui/toast'
 import { ImageSlot } from '@/features/publishing/components/image-slot'
-import type { CarouselSlide, PostImage } from '@/types/api'
+import type { CarouselSlide } from '@/types/api'
+import type { PostVisualsProps } from './visuals-props'
 
-interface CarouselSlidesProps {
+interface CarouselSlidesProps extends PostVisualsProps {
   slides: CarouselSlide[]
   editable?: boolean
   onSlidesChange?: (slides: CarouselSlide[]) => void
   onBlur?: () => void
   flaggedSlides?: number[]
-  postId?: string
-  images?: PostImage[]
-  onImageUploaded?: (image: PostImage) => void
-  onImageDeleted?: (imageId: string) => void
-  canvaConnected?: boolean
 }
 
 /** Inline text field that switches between display and edit on click */
@@ -119,7 +115,7 @@ function EditableField({
   )
 }
 
-export function CarouselSlides({ slides, editable, onSlidesChange, onBlur, flaggedSlides, postId, images, onImageUploaded, onImageDeleted, canvaConnected }: CarouselSlidesProps) {
+export function CarouselSlides({ slides, editable, onSlidesChange, onBlur, flaggedSlides, postId, images, onImageUploaded, onImageDeleted, canvaConnected, onGenerateImage, generatingPositions, renderImageSlot }: CarouselSlidesProps) {
   const [activeIndex, setActiveIndex] = useState(0)
   const activeSlide = slides[activeIndex]
 
@@ -223,16 +219,20 @@ export function CarouselSlides({ slides, editable, onSlidesChange, onBlur, flagg
           )}
 
 
-          {postId && onImageUploaded && onImageDeleted && (
-            <ImageSlot
-              postId={postId}
-              position={activeIndex}
-              image={images?.find((img) => img.position === activeIndex) ?? null}
-              onUploaded={onImageUploaded}
-              onDeleted={onImageDeleted}
-              canvaConnected={canvaConnected}
-            />
-          )}
+          {renderImageSlot
+            ? renderImageSlot(activeIndex)
+            : postId && onImageUploaded && onImageDeleted && (
+                <ImageSlot
+                  postId={postId}
+                  position={activeIndex}
+                  image={images?.find((img) => img.position === activeIndex) ?? null}
+                  onUploaded={onImageUploaded}
+                  onDeleted={onImageDeleted}
+                  canvaConnected={canvaConnected}
+                  onGenerate={onGenerateImage ? () => onGenerateImage(activeIndex) : undefined}
+                  generating={generatingPositions?.includes(activeIndex)}
+                />
+              )}
         </div>
       )}
 

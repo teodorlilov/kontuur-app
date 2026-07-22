@@ -2,6 +2,7 @@ import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { requireSessionUser } from '@/lib/auth/session'
 import { getCachedAgencyClients } from '@/lib/queries/cache'
 import { POST_COLUMNS } from '@/lib/queries/select-columns'
+import { fetchImagesByPost } from '@/features/publishing/lib/fetch-post-images'
 import { ReviewQueue } from '@/features/review/components/review-queue'
 import type { ReviewPost } from '@/features/review/lib/filter-review-posts'
 import type { BestTimePlatform } from '@/types/api'
@@ -74,7 +75,10 @@ export default async function ReviewPage() {
     created_at: string
   }
 
-  const posts: ReviewPost[] = ((postRows as PostRow[] | null) ?? []).map((p) => {
+  const typedPostRows = (postRows as PostRow[] | null) ?? []
+  const imagesByPost = await fetchImagesByPost(typedPostRows.map((p) => p.id))
+
+  const posts: ReviewPost[] = typedPostRows.map((p) => {
     const client = clientMap.get(p.client_id)
     return {
       id: p.id,
@@ -97,6 +101,7 @@ export default async function ReviewPage() {
       created_at: p.created_at,
       client_name: client?.name ?? 'Unknown',
       is_health_niche: client?.is_health_niche ?? false,
+      images: imagesByPost.get(p.id) ?? [],
     }
   })
 

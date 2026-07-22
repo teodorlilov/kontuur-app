@@ -178,6 +178,7 @@ export interface ApprovalPostData {
   scheduled_at: string | null
   pillar: string | null
   client_note: string | null
+  images: PostImage[]
 }
 
 export interface ApprovalBatchData {

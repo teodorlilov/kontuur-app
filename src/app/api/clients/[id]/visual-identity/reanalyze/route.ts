@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
 import { extractIdentity } from '@/lib/visual/extract-identity'
-import { upsertVisualIdentity } from '@/lib/visual/queries'
+import { fetchVisualIdentity, upsertVisualIdentity } from '@/lib/visual/queries'
 
-// Synchronous hardened capture + vision; allow headroom.
+// Synchronous hardened capture; allow headroom.
 export const maxDuration = 60
 
 /** Re-run brand-visual extraction from the client's website and persist the fresh identity. */
@@ -24,7 +24,9 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
     return NextResponse.json({ error: 'No website on file for this client' }, { status: 400 })
   }
 
-  const result = await extractIdentity({ url: client.website_url })
+  // Re-analysis refreshes measured colours but must not reset the user's chosen brand style.
+  const stored = await fetchVisualIdentity(id)
+  const result = await extractIdentity({ url: client.website_url, currentStyle: stored?.style })
 
   const source = result.report.source === 'website' ? 'website' : 'default'
   const { error } = await upsertVisualIdentity(id, result.identity, source, result.report)

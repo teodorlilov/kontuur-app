@@ -1,3 +1,5 @@
+import type { PostImage } from '@/types/api'
+
 export type ReviewTab = 'all' | 'priority' | 'health'
 
 export interface ReviewPost {
@@ -21,6 +23,7 @@ export interface ReviewPost {
   created_at: string
   client_name: string
   is_health_niche: boolean
+  images: PostImage[]
 }
 
 export function filterReviewPosts(

@@ -6,6 +6,8 @@
  * stay co-located in their modules — this file holds only the shared/persisted domain shapes.
  */
 
+import type { BrandStyleId } from '@/lib/visual/brand-styles'
+
 /** The five colour roles a kit is reduced to. `surface`/`ink` carry legible text; `accent` is the brand pop. */
 export type ColorRole = 'surface' | 'ink' | 'accent' | 'accent-deep' | 'line'
 
@@ -15,9 +17,12 @@ export type Palette = Record<ColorRole, string>
 /** How a stored identity was produced. */
 export type SourceKind = 'default' | 'website' | 'manual'
 
-/** The full stored visual identity for a client — the brand colours measured from its site. */
+/** The full stored visual identity for a client: measured brand colours, the user-chosen brand style,
+ *  and the Haiku-written palette description injected into image prompts (absent until first computed). */
 export type VisualIdentity = {
   palette: Palette
+  style: BrandStyleId
+  palette_description?: string
 }
 
 /** How a given extracted field was arrived at, surfaced as a confidence badge in Review. */

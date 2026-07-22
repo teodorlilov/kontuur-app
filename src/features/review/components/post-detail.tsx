@@ -4,6 +4,7 @@ import { Copy, ChevronLeft, ChevronRight } from 'lucide-react'
 import { getPillarColor } from '@/components/ui/colors/pillar-colors'
 import type { ApprovalPostData } from '@/types/api'
 import { SlidesSection } from './slides-section'
+import { PostImagePreview } from './post-image-preview'
 import { FeedbackBox } from './feedback-box'
 import { ActionBar } from './action-bar'
 import { APPROVAL_STATUS_STYLES, type ApprovalPostStatus } from './types'
@@ -270,7 +271,13 @@ export function PostDetail({
         }}
       >
         <CaptionCard caption={post.caption} />
-        <SlidesSection slidesJson={post.slides_json} postType={post.post_type} />
+        {post.post_type !== 'carousel' && (
+          <PostImagePreview
+            image={post.images.find((img) => img.position === 0) ?? null}
+            altText={post.caption?.slice(0, 80) ?? 'Post visual'}
+          />
+        )}
+        <SlidesSection slidesJson={post.slides_json} postType={post.post_type} images={post.images} />
         {status !== 'approved' && (
           <FeedbackBox
             mode={status === 'changes_requested' ? 'read-only' : 'input'}

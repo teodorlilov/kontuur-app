@@ -11,41 +11,132 @@ This platform transforms raw business data (websites/social accounts) into highl
 
 ## Implementation Status
 
-**Phase 1 — Brand Visual-Identity Foundation — SHIPPED 2026-07-18** (branch `feat/ai-visual-flow`, commit `ef575e8`).
-This is the data foundation the rest of the PRD stands on: extract and store a per-client visual
-identity. No editor and no image generation yet.
+**Phase 1 — Brand Visual-Identity Foundation — SHIPPED, then SLIMMED 2026-07-21** (branch
+`feat/ai-visual-flow`, commits `ef575e8` → `bf27e38` → `71eb9e0`).
 
-✅ **Implemented**
-- **Phase 1 Brand Extraction (§2):** onboarding now extracts a **Color Palette** (5 colour roles, WCAG-AA
-  guaranteed) and **Typography**, and recommends a **Vibe Preset** — on top of the pre-existing text
-  extraction (name, niche, tone, pillars). Stored per client in a new `brand_visual_identity` table.
+✅ **Implemented (current state)**
+- **Brand extraction (§2):** onboarding extracts a **Color Palette** (5 colour roles: surface / ink /
+  accent / accent-deep / line, WCAG-AA guaranteed) — on top of the pre-existing text extraction (name,
+  niche, tone, pillars). Stored per client in `brand_visual_identity` (`identity = { palette }`).
 - **Our own site capturer (not a 3rd-party API):** hardened headless Chromium
   (`src/lib/visual/capture/capture-site.ts`) — consent-overlay dismissal, tracker blocking, settle
-  waits, bot-wall detection, retry, concurrency cap. `getComputedStyle` colour measurement + a **Claude
-  vision** pass that picks the true brand accent and recommends the preset.
-- **3-tier fallback** so onboarding never blocks/errors: measured site → LLM-recommended preset +
-  default palette → hard default. Runs **async during the interview** (`/api/extract/start` via
-  `after()`, Review polls `/api/extract/status`).
-- **The 4 Vibe Presets (§3):** `luxury-minimalist` / `modern-tech` / `creative-edgy` / `polished-photo`
-  as the single source of truth (`src/lib/visual/vibe-presets.ts`) — each carries its hardcoded
-  `promptModifiers` + `negativePrompt` (ready for the fal.ai phase), an **auto-paired typography** set
-  (`src/lib/visual/fonts.ts`, Google-Fonts registry, §3/§5), and a default palette.
-- **UI (§3 "How to Implement"):** preset picker + palette swatches + in-typeface font preview in the
-  onboarding Review step and a new Settings → Visual identity tab (with "Re-analyze from website").
-  Shared `VisualIdentityPanel` powers both surfaces.
+  waits, bot-wall detection, retry, concurrency cap. Colours are **measured** via `getComputedStyle`
+  and mapped deterministically by `deriveColorRoles`.
+- **Fallback** so onboarding never blocks/errors: measured site → neutral default palette. Runs
+  **async during the interview** (`/api/extract/start` via `after()`, Review polls `/api/extract/status`).
+- **UI:** palette swatches + "Re-analyze from website" in the onboarding Review step and the
+  Settings → Visual identity tab. Shared `VisualIdentityPanel` powers both surfaces.
 
-🔜 **Deferred to later phases (specified below, not yet built)**
-- **Phase 3 Visual Handshake / Phase 4 Workspace (§2):** fal.ai backdrop generation (will consume each
-  preset's `promptModifiers`), and the Konva canvas editor.
-- **§4 Advanced Canvas:** Recraft SVGs-on-demand, DIS object isolation, the 4-layer canvas — and the
-  entire "Isolate Object" user-flow spec at the end of this doc.
-- **§5 Editor guardrails:** proportion protection, the contrast safety mesh, the AI inpaint brush, and
-  platform safe-zone overlays. (Palette-level WCAG-AA legibility *is* enforced at extraction.)
+⚠️ **Retired 2026-07-21 (supersedes parts of this PRD below)**
+- **The 4 Vibe Presets (§3) are gone** — prompt-modifier matrices, negative prompts, guessed typography
+  pairings, preset picker. Replaced by the **Brand Style registry** in the Phase 3 plan below.
+- **The Claude-vision screenshot pass is gone** — the identity keeps only what is measured.
+- **The first Phase-3 build (Recraft/FLUX backdrops + Konva compose) was removed** — over-prompted,
+  produced off-topic visuals. Superseded by the `gpt-image-2` plan below (validated by hand).
+- Migration `supabase/migrations/20260721_strip_legacy_visual_identity_fields.sql` strips the retired
+  keys from stored rows.
+
+—————
+
+## Phase 3 — Visual Generation via `fal-ai/gpt-image-2` — SHIPPED 2026-07-21
+
+**Core idea:** one short, conscious prompt per slide with exactly **three variables** — the slide TEXT,
+the COLOR PALETTE (human-readable), and a STYLE paragraph — and an explicit "don't add text"
+instruction. The image model reads the slide copy directly; no concept planner, no negative prompts,
+no per-preset prompt matrices.
+
+**Shipped surfaces:**
+- **Generation tab:** visuals **auto-generate** as each post's copy streams (concurrency 6 — a full
+  carousel completes in one ~60s wave; per-slide progress, per-slide retry/regenerate); approve is
+  never blocked — finished visuals attach to the new
+  post row (`POST /api/posts` `images[]`), discard deletes the draft files. Drafts stay in-memory;
+  images are stateless (`/api/ai/generate-visual`) until approve.
+- **/review tab:** images load with the page, "✨ Generate visuals (N)" button + per-slot AI
+  generate/regenerate/upload, visuals counter badge in the post list.
+- **Calendar:** per-slot generate/regenerate + "Generate visuals (N)" for carousels; publishing reads
+  `post_images` unchanged.
+- **Client approval page:** read-only visual previews per slide/single post.
+- **Client details → Visual identity:** Brand style picker (portrait preview cards + lightbox), palette
+  editor; palette edits invalidate the stored palette description (regenerated on next use).
+- Copy sanitization for prompts (URLs/#hashtags/@mentions stripped, word-boundary clamp); style prompts
+  are colour-free — the measured palette is the only colour source. Cron posts get visuals manually via
+  /review. Rewrites never auto-regenerate visuals.
+
+### The prompt contract (`buildVisualPrompt`, pure function)
+
+```
+create a visual for social media for this slide
+TEXT - Slide {n} of {total}
+
+Headline: {headline}
+Body: {body}
+
+COLOR PALETTE
+
+{palette_description}
+
+STYLE
+
+{style.prompt}
+
+Use the palette as the visual color foundation. Don't add text, just illustration relevant to the data the visual is for
+```
+
+- **Carousel:** one prompt (→ one image) per `slides_json` entry.
+- **Single post:** `TEXT - Single image post` + the post caption (clamped ~500 chars).
+
+### 1. Palette → human-readable description (Haiku)
+`describePalette(palette)` (`src/lib/visual/describe-palette.ts`): one Haiku call (`callAnthropic` +
+`LIGHT_MODEL`, tool-use schema) turns the 5 hexes into the validated block
+("Dominant background: white … Palette character: cool, clean, modern…"). Stored as
+`identity.palette_description`:
+- generated eagerly at extraction; palette edits strip it; generation self-heals if missing;
+- Haiku failure fallback: deterministic `role: hex` lines (gpt-image-2 reads hex fine).
+
+### 2. Brand Styles — scalable registry, user-selected per client (replaces §3 presets)
+`src/lib/visual/brand-styles.ts`: `BrandStyle = { id, name, description, prompt, previewSrc }`.
+**Adding a style = one registry entry + one preview jpg** (`public/brand-styles/<id>.jpg`).
+First style: `bold-editorial` — "Bold contemporary editorial design, oversized condensed typography,
+elegant serif accents, asymmetrical Swiss-inspired grid, provocative magazine art direction, candid
+documentary photography, analog collage, subtle paper grain and photocopy texture, experimental
+typography, graphic blocks, editorial annotations, anti-corporate Gen-Z branding, sophisticated, human,
+rebellious, intelligent, premium social campaign aesthetic."
+Selection stored as `identity.style` (zod enum + default → existing `{ palette }` rows parse with no
+migration).
+
+**Style picker UI (client details → Visual identity tab):** a "Brand style" card grid — each card shows
+the style's curated preview image (generated once with the real pipeline, checked in), name, one-line
+description, selected ring. Scales with the registry; onboarding silently applies the default.
+
+### 3. fal adapter
+`src/lib/visual/fal.ts` (`@fal-ai/client`, already a dep): `fal-ai/gpt-image-2`, 1024×1024, quality
+medium, jpeg, 1 image. Credentials passed explicitly from `FAL_API_KEY` (lib default is `FAL_KEY`).
+~52s/image. No auto-retry — regenerate is one click.
+
+### 4. API — one image per request
+`POST /api/posts/[id]/visuals` `{ position }` (`maxDuration = 120`): auth + ownership → load post +
+identity → self-heal `palette_description` → `buildVisualPrompt` → fal → download → `uploadPostImage`
+→ replace-at-position insert into `post_images` → return `{ image }` (same shape as the upload route).
+Publishing needs **zero changes** — the scheduler already reads `post_images(public_url, position)`.
+A batch route would blow serverless limits at ~52s/image, so **the client orchestrates** multi-slide
+runs (concurrency 2, per-slot progress, per-slide retry for free).
+
+### 5. Generation UI (calendar `schedule-card`, where ImageSlots live)
+- "✨ Generate visuals" fills all **empty** slots (single: position 0; carousel: one per slide).
+- Per-slot "Regenerate" on filled slots (same endpoint; replaces at position).
+
+🔜 **Still deferred (specified below, not yet planned)**
+- **§4 Advanced Canvas:** SVGs-on-demand, DIS object isolation, layer architecture, "Isolate Object" flow.
+- **§5 Editor guardrails** and the Phase-4 canvas workspace.
 - **§6:** first-vs-middle-slide prompt distribution and the text-overflow boundary guard.
+- **Fonts** (user decision 2026-07-21): visuals are text-free, so the font library lands with the
+  text-overlay/canvas phase, with per-style default pairings.
 
-**Setup for the shipped phase:** run migration `supabase/migrations/20260718_create_brand_visual_identity.sql`;
-deps `@sparticuz/chromium` + `puppeteer-core` + `zod`; set `CHROME_EXECUTABLE_PATH` locally (the
-`@sparticuz` binary is Vercel/Linux-only). Requires Vercel Pro (`maxDuration=60` on the extract routes).
+**Setup:** migrations `20260718_create_brand_visual_identity.sql` +
+`20260721_strip_legacy_visual_identity_fields.sql`; deps `@sparticuz/chromium` + `puppeteer-core` +
+`zod` + `@fal-ai/client`; env `CHROME_EXECUTABLE_PATH` (local) + `FAL_API_KEY` (local ✓, add to Vercel).
+Requires Vercel Pro (`maxDuration=60` extract routes, `120` visuals routes). ~52s + ~$0.04–0.07 per
+image; abandoned wizard tabs can leave orphan files under `post-images/{clientId}/drafts/` (accepted).
 
 —————
 

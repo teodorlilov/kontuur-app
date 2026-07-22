@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import type { VisualIdentity } from '@/types/visual'
+import { BRAND_STYLE_IDS, DEFAULT_BRAND_STYLE_ID } from './brand-styles'
 
 const HEX = /^#[0-9a-fA-F]{6}$/
 const hex = z.string().regex(HEX, 'must be a #rrggbb hex colour')
@@ -14,11 +15,14 @@ const paletteSchema = z.object({
 
 /**
  * Runtime validator for a `VisualIdentity` blob before it is written to `brand_visual_identity.identity`
- * — the single write-gate. Rejects a kit missing a colour role or a non-hex value. The parity guards below
- * fail the build if this schema and the `VisualIdentity` type drift apart.
+ * — the single write-gate. Rejects a kit missing a colour role or a non-hex value. `style` defaults so
+ * pre-style `{ palette }` rows keep parsing. The parity guards below fail the build if this schema and
+ * the `VisualIdentity` type drift apart.
  */
 export const visualIdentitySchema = z.object({
   palette: paletteSchema,
+  style: z.enum(BRAND_STYLE_IDS).default(DEFAULT_BRAND_STYLE_ID),
+  palette_description: z.string().min(1).optional(),
 })
 
 type SchemaIdentity = z.infer<typeof visualIdentitySchema>

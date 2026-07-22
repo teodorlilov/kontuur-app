@@ -11,7 +11,8 @@ import {
   type ReviewPost,
   type ReviewTab,
 } from '@/features/review/lib/filter-review-posts'
-import type { BestTimePlatform } from '@/types/api'
+import { upsertImageAtPosition } from '@/features/publishing/lib/image-list'
+import type { BestTimePlatform, PostImage } from '@/types/api'
 
 interface ReviewQueueProps {
   initialPosts: ReviewPost[]
@@ -56,6 +57,18 @@ export function ReviewQueue({ initialPosts, clients, bestTimeMap }: ReviewQueueP
   function handleDelete(postId: string) {
     setPosts((prev) => prev.filter((p) => p.id !== postId))
     selectNextAfterRemoval(postId)
+  }
+
+  function handleImageUpserted(postId: string, image: PostImage) {
+    setPosts((prev) =>
+      prev.map((p) => (p.id === postId ? { ...p, images: upsertImageAtPosition(p.images, image) } : p))
+    )
+  }
+
+  function handleImageDeleted(postId: string, imageId: string) {
+    setPosts((prev) =>
+      prev.map((p) => (p.id === postId ? { ...p, images: p.images.filter((img) => img.id !== imageId) } : p))
+    )
   }
 
   function handleApproveAll() {
@@ -138,6 +151,8 @@ export function ReviewQueue({ initialPosts, clients, bestTimeMap }: ReviewQueueP
                 bestTimeData={bestTimeMap[selectedPost.client_id] ?? null}
                 onApprove={handleApprove}
                 onDelete={handleDelete}
+                onImageUpserted={handleImageUpserted}
+                onImageDeleted={handleImageDeleted}
               />
             ) : (
               <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>

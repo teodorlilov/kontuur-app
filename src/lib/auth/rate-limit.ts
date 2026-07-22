@@ -55,3 +55,7 @@ export function checkRateLimit(key: string, config: RateLimitConfig): RateLimitR
 
 /** Default config for AI endpoints: 20 requests per minute per user */
 export const AI_RATE_LIMIT: RateLimitConfig = { max: 20, windowMs: 60_000 }
+
+/** Image generation (paid ~52s gpt-image-2 calls): legitimate max throughput is ~6-7/min at
+ *  concurrency 6, so 60 per 10 minutes never throttles real use but stops runaway loops. */
+export const VISUALS_RATE_LIMIT: RateLimitConfig = { max: 60, windowMs: 10 * 60_000 }

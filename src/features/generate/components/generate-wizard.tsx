@@ -15,6 +15,8 @@ import { StepPriority } from './step-priority'
 import { PostTypeSelector } from './post-type-selector'
 import { StepLoading, mapPhaseToStage } from './step-loading'
 import { ResultsView } from './results/results-view'
+import { useDraftVisuals } from '@/features/generate/hooks/use-draft-visuals'
+import { completedDraftImages } from '@/features/generate/lib/draft-visuals'
 import type { ClientRow } from '@/types'
 import type { ClientData } from '@/lib/clients/fetch-client-data'
 import type { PriorityPost, PostType } from '@/types/api'
@@ -88,6 +90,7 @@ export function GenerateWizard({
   const [discardedCount, setDiscardedCount] = useState(0)
   const abortControllerRef = useRef<AbortController | null>(null)
   const isInitialMount = useRef(true)
+  const draftVisuals = useDraftVisuals()
 
   const selectedClient = clients.find((c) => c.id === clientId)
   const clientName = selectedClient?.name ?? 'Client'
@@ -125,6 +128,7 @@ export function GenerateWizard({
     setLoadingStage(0)
     setSkippedPillars([])
     setIsGenerating(true)
+    draftVisuals.resetAll()
 
     try {
       const endpoint = sourceIdea ? '/api/ai/generate-from-idea' : '/api/ai/generate-stream'
@@ -155,7 +159,10 @@ export function GenerateWizard({
         } else if (event.type === 'result') {
           setResearchPhase('')
           setLoadingStage((prev) => Math.max(prev, 2))
-          setGeneratedPosts((prev) => [...prev, event.data as unknown as GeneratedPost])
+          const generated = event.data as unknown as GeneratedPost
+          setGeneratedPosts((prev) => [...prev, generated])
+          // Kick off visuals as each post's copy streams — images overlap the rest of the run.
+          draftVisuals.enqueuePost(generated.post)
         } else if (event.type === 'skipped_pillars') {
           setSkippedPillars(event.pillars)
         } else if (event.type === 'error') {
@@ -175,6 +182,8 @@ export function GenerateWizard({
   }
 
   function handlePostRemoved(postId: string) {
+    const removed = generatedPosts.find((p) => p.post.id === postId)
+    if (removed) draftVisuals.discardDraft(postId, removed.post.client_id)
     setGeneratedPosts((prev) => prev.filter((p) => p.post.id !== postId))
     setStreamTotal((t) => t - 1)
     setDiscardedCount((c) => c + 1)
@@ -190,6 +199,8 @@ export function GenerateWizard({
   }
 
   function handlePostApproved(postId: string) {
+    // Completed visuals were attached by POST /api/posts; stop any still-pending jobs for this draft.
+    draftVisuals.abandonDraft(postId)
     setGeneratedPosts((prev) => prev.filter((p) => p.post.id !== postId))
     setApprovedCount((c) => c + 1)
     setStreamTotal((t) => t - 1)
@@ -236,6 +247,7 @@ export function GenerateWizard({
             source_type: item.post.source_type ?? null,
             source_excerpt: item.post.source_excerpt ?? null,
             pillar: item.post.pillar ?? null,
+            images: completedDraftImages(draftVisuals.visualsByDraft[item.post.id]),
           }),
         })
         if (res.ok) {
@@ -251,6 +263,8 @@ export function GenerateWizard({
   }
 
   function handleNewRun() {
+    // Remaining drafts are implicitly discarded — clean their stored visuals up too.
+    for (const item of generatedPosts) draftVisuals.discardDraft(item.post.id, item.post.client_id)
     setGeneratedPosts([])
     setApprovedCount(0)
     setDiscardedCount(0)
@@ -339,6 +353,8 @@ export function GenerateWizard({
               platform={platform}
               postType={postType}
               skippedPillars={skippedPillars}
+              visualsByPost={draftVisuals.visualsByDraft}
+              onRegenerateVisual={(post, position) => draftVisuals.regenerate(post, position)}
               onApprove={handlePostApproved}
               onDiscard={handlePostRemoved}
               onRegenerate={handlePostRegenerated}

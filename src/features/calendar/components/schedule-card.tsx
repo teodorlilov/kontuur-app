@@ -13,6 +13,8 @@ import { ClientResponseCard } from '@/features/calendar/components/client-respon
 import { Button } from '@/components/ui/button'
 import { ImageSlot } from '@/features/publishing/components/image-slot'
 import { useCanvaStatus } from '@/features/publishing/hooks/use-canva-status'
+import { useGenerateVisuals } from '@/features/publishing/hooks/use-generate-visuals'
+import { missingImagePositions } from '@/features/publishing/lib/image-list'
 import { extractAllFlaggedSlides } from '@/utils/extract-flagged-slides'
 import type {
   CalendarPost,
@@ -47,7 +49,8 @@ interface ScheduleCardProps {
   onSaveContent?: (postId: string, updates: ContentUpdates) => Promise<boolean>
   onSaveAndResend?: (postId: string, updates: ContentUpdates) => Promise<void>
   onPublished?: (postId: string) => void
-  onImagesChange: (postId: string, images: PostImage[]) => void
+  onImageUpserted: (postId: string, image: PostImage) => void
+  onImageDeleted: (postId: string, imageId: string) => void
 }
 
 interface ParsedValidation {
@@ -141,7 +144,8 @@ export const ScheduleCard = memo(function ScheduleCard({
   onSaveContent,
   onSaveAndResend,
   onPublished,
-  onImagesChange,
+  onImageUpserted,
+  onImageDeleted,
 }: ScheduleCardProps) {
   const [date, setDate] = useState('')
   const [time, setTime] = useState('09:00')
@@ -169,17 +173,19 @@ export const ScheduleCard = memo(function ScheduleCard({
     setPublishError(null)
   }, [post?.id, post?.platform, post?.scheduled_at, post?.caption, post?.slides_json])
 
+  // Delegate merging to the calendar state hook (functional updates) — computing the merged array
+  // here from a captured `post` snapshot loses images when concurrent generations complete.
   const handleImageUploaded = useCallback((image: PostImage) => {
     if (!post) return
-    const next = [...(post.images ?? []).filter((img) => img.position !== image.position), image]
-      .sort((a, b) => a.position - b.position)
-    onImagesChange(post.id, next)
-  }, [post, onImagesChange])
+    onImageUpserted(post.id, image)
+  }, [post, onImageUpserted])
 
   const handleImageDeleted = useCallback((imageId: string) => {
     if (!post) return
-    onImagesChange(post.id, (post.images ?? []).filter((img) => img.id !== imageId))
-  }, [post, onImagesChange])
+    onImageDeleted(post.id, imageId)
+  }, [post, onImageDeleted])
+
+  const { generatingPositions, generate } = useGenerateVisuals(post?.id ?? '', handleImageUploaded)
 
   if (!isOpen || !post) return null
 
@@ -192,6 +198,10 @@ export const ScheduleCard = memo(function ScheduleCard({
   const slides = Array.isArray(currentPost.slides_json) ? (currentPost.slides_json as CarouselSlide[]) : []
   const isCarousel = currentPost.post_type === 'carousel'
   const totalImageSlots = isCarousel ? slides.length : 1
+  const missingPositions = missingImagePositions(images, totalImageSlots, generatingPositions)
+  const slotsWithoutImage = totalImageSlots - images.length
+  // No point generating visuals for content that is already (or currently being) published.
+  const canGenerateVisuals = !isPublished && currentPost.status !== 'publishing'
   const pillarColor = currentPost.pillar ? getPillarColor(currentPost.pillar) : null
   const score = currentPost.quality_score_avg ?? 0
   const validation = parseValidation(currentPost.validation_json)
@@ -468,7 +478,31 @@ export const ScheduleCard = memo(function ScheduleCard({
             {/* Carousel slides */}
             {isCarousel && slides.length > 0 && (
               <div>
-                <span style={SECTION_LABEL_STYLE}>Carousel slides</span>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span style={SECTION_LABEL_STYLE}>Carousel slides</span>
+                  {canGenerateVisuals && slotsWithoutImage > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => { void generate(missingPositions) }}
+                      disabled={missingPositions.length === 0}
+                      style={{
+                        fontSize: 10,
+                        fontWeight: 500,
+                        color: '#C07B55',
+                        background: 'none',
+                        border: 'none',
+                        cursor: missingPositions.length === 0 ? 'default' : 'pointer',
+                        opacity: missingPositions.length === 0 ? 0.6 : 1,
+                        fontFamily: 'inherit',
+                        padding: 0,
+                      }}
+                    >
+                      {missingPositions.length === 0
+                        ? '✨ Generating visuals…'
+                        : `✨ Generate visuals (${slotsWithoutImage})`}
+                    </button>
+                  )}
+                </div>
                 <CarouselSlides
                   slides={draftSlides.length > 0 ? draftSlides : slides}
                   editable
@@ -484,6 +518,8 @@ export const ScheduleCard = memo(function ScheduleCard({
                   onImageUploaded={handleImageUploaded}
                   onImageDeleted={handleImageDeleted}
                   canvaConnected={canvaConnected}
+                  onGenerateImage={canGenerateVisuals ? (position) => { void generate([position]) } : undefined}
+                  generatingPositions={generatingPositions}
                 />
               </div>
             )}
@@ -499,6 +535,8 @@ export const ScheduleCard = memo(function ScheduleCard({
                   onUploaded={handleImageUploaded}
                   onDeleted={handleImageDeleted}
                   canvaConnected={canvaConnected}
+                  onGenerate={canGenerateVisuals ? () => { void generate([0]) } : undefined}
+                  generating={generatingPositions.includes(0)}
                 />
               </div>
             )}

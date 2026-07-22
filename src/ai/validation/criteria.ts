@@ -80,17 +80,49 @@ export const CTA_VERDICTS: readonly VerdictDefinition[] = [
 ] as const
 
 // ---- Carousel structure checklist ----
-// Derived from buildGenerateUserCarouselPrompt rules.
+// Single source for BOTH the generation prompt and the validator, so posts are graded
+// against exactly what the generator was asked to produce.
 
-export const CAROUSEL_STRUCTURE_CHECKLIST: readonly string[] = [
-  'Cover slide (slide 1): Headline only — no body text. Opens a loop the reader must swipe to resolve.',
-  'Content slides (2 to N-2): One distinct idea per slide. Body adds NEW information beyond the headline — does not explain/repeat it.',
-  'Value/payoff slide (N-1): Emotional or informational peak — not another content slide.',
-  'CTA slide (last): The slide body contains an actionable directive with a verb (e.g. "Book a consultation", "Send us a message"). The headline may provide framing ("Recover properly") — evaluate the BODY for the CTA, not the headline. Never missing.',
+const CAROUSEL_COVER_RULE =
+  'Cover slide (slide 1): Headline only — no body text. Opens a loop the reader must swipe to resolve.'
+
+const CAROUSEL_COMMON_RULES: readonly string[] = [
   'Each slide covers a DISTINCT idea — no two slides repeat the same point.',
   'Every headline names a specific mechanism, condition, technology, or result — not a topic label or empty positive.',
+  'Slide bodies are tight: at most ~30 words (1–2 short sentences), never a paragraph.',
   'Main caption: 40-60 words. Teases the core insight without revealing all slides.',
 ] as const
+
+function carouselCtaRule(slideCount: number): string {
+  return `CTA slide (slide ${slideCount}, the last): The slide body contains an actionable directive with a verb (e.g. "Book a consultation", "Send us a message"). The headline may provide framing ("Recover properly") — evaluate the BODY for the CTA, not the headline. Never missing.`
+}
+
+/**
+ * Count-aware carousel structure rules. The classic cover/content/payoff/CTA split needs at least
+ * 4 slides — at 3 the middle roles collapse into a single core-insight slide, so a 3-slide request
+ * no longer contradicts the structure (the model used to add a 4th slide to satisfy all roles).
+ */
+export function carouselStructureRules(slideCount: number): string[] {
+  if (slideCount <= 3) {
+    return [
+      CAROUSEL_COVER_RULE,
+      'Middle slide (slide 2): The single core insight — the informational peak of the carousel. Body adds NEW information beyond the headline — does not explain/repeat it.',
+      carouselCtaRule(3),
+      ...CAROUSEL_COMMON_RULES,
+    ]
+  }
+  const contentRange =
+    slideCount === 4
+      ? 'Content slide (slide 2): One distinct idea.'
+      : `Content slides (slides 2–${slideCount - 2}): One distinct idea per slide.`
+  return [
+    CAROUSEL_COVER_RULE,
+    `${contentRange} Body adds NEW information beyond the headline — does not explain/repeat it.`,
+    `Value/payoff slide (slide ${slideCount - 1}): Emotional or informational peak — not another content slide.`,
+    carouselCtaRule(slideCount),
+    ...CAROUSEL_COMMON_RULES,
+  ]
+}
 
 
 

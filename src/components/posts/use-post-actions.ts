@@ -8,9 +8,11 @@ interface UsePostActionsOptions {
   post: PostData
   onApprove: (postId: string) => void
   onRegenerate?: (postId: string, updatedPost: PostData, updatedValidation: ValidationData) => void
+  /** Completed draft visuals persisted as post_images rows when the post row is created. */
+  images?: Array<{ position: number; publicUrl: string; storagePath: string }>
 }
 
-export function usePostActions({ post, onApprove, onRegenerate }: UsePostActionsOptions) {
+export function usePostActions({ post, onApprove, onRegenerate, images }: UsePostActionsOptions) {
   const [caption, setCaption] = useState(post.caption ?? '')
   const [slidesJson, setSlidesJson] = useState(post.slides_json)
   const [approving, setApproving] = useState(false)
@@ -46,6 +48,7 @@ export function usePostActions({ post, onApprove, onRegenerate }: UsePostActions
           source_type: post.source_type ?? null,
           source_excerpt: post.source_excerpt ?? null,
           pillar: post.pillar ?? null,
+          ...(images && images.length > 0 ? { images } : {}),
         }),
       })
       if (res.ok) {

@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { PostList } from './post-list'
 import { PostDetail } from './post-detail'
 import { QualityPanel } from './quality-panel'
+import type { DraftVisual } from '@/features/generate/lib/draft-visuals'
 import type { PostData, ValidationData } from '@/types/post'
 import type { SkippedPillar } from '@/ai/research/types'
 
@@ -17,6 +18,8 @@ interface ResultsViewProps {
   platform: string
   postType: string
   skippedPillars: SkippedPillar[]
+  visualsByPost: Record<string, DraftVisual[]>
+  onRegenerateVisual: (post: PostData, position: number) => void
   onApprove: (postId: string) => void
   onDiscard: (postId: string) => void
   onRegenerate: (postId: string, updatedPost: PostData, updatedValidation: ValidationData) => void
@@ -31,6 +34,8 @@ export function ResultsView({
   platform,
   postType,
   skippedPillars,
+  visualsByPost,
+  onRegenerateVisual,
   onApprove,
   onDiscard,
   onRegenerate,
@@ -73,6 +78,10 @@ export function ResultsView({
 
   if (posts.length === 0) return null
 
+  const allVisuals = Object.values(visualsByPost).flat()
+  const doneVisuals = allVisuals.filter((v) => v.status === 'done').length
+  const generatingVisuals = allVisuals.some((v) => v.status === 'generating')
+
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       <ResultsTopbar
@@ -81,6 +90,7 @@ export function ResultsView({
         platform={platform}
         postType={postType}
         currentIndex={selectedIndex}
+        visualsProgress={generatingVisuals ? `Generating visuals ${doneVisuals}/${allVisuals.length}…` : null}
         onPrev={navigatePrev}
         onNext={navigateNext}
         onNewRun={onNewRun}
@@ -90,7 +100,7 @@ export function ResultsView({
       <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
         {/* Post list — full width on mobile, fixed 280px on desktop */}
         <div className={`${mobilePanel === 'list' ? 'flex' : 'hidden'} md:flex`} style={{ flexShrink: 0 }}>
-          <PostList posts={posts} selectedPostId={selectedPostId} onSelect={handleSelectPost} />
+          <PostList posts={posts} selectedPostId={selectedPostId} visualsByPost={visualsByPost} onSelect={handleSelectPost} />
         </div>
 
         {/* Detail + quality panels — hidden on mobile when viewing list */}
@@ -132,6 +142,8 @@ export function ResultsView({
                   criteria: selectedPost.criteria,
                   scores: selectedPost.scores,
                 }}
+                visuals={visualsByPost[selectedPost.post.id]}
+                onRegenerateVisual={(position) => onRegenerateVisual(selectedPost.post, position)}
                 onApprove={onApprove}
                 onDiscard={onDiscard}
                 onRegenerate={onRegenerate}
@@ -169,6 +181,7 @@ function ResultsTopbar({
   platform,
   postType,
   currentIndex,
+  visualsProgress,
   onPrev,
   onNext,
   onNewRun,
@@ -179,6 +192,7 @@ function ResultsTopbar({
   platform: string
   postType: string
   currentIndex: number
+  visualsProgress: string | null
   onPrev: () => void
   onNext: () => void
   onNewRun: () => void
@@ -205,6 +219,11 @@ function ResultsTopbar({
       <span className="hidden sm:inline" style={{ fontSize: '11px', color: 'var(--color-muted)' }}>
         {clientName} · {platform} · {postType === 'carousel' ? 'Carousel' : 'Single image'}
       </span>
+      {visualsProgress && (
+        <span style={{ fontSize: '11px', fontWeight: 500, color: '#C07B55' }} className="animate-pulse">
+          ✨ {visualsProgress}
+        </span>
+      )}
       <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '8px' }}>
         <PostNavigator current={currentIndex + 1} total={postsCount} onPrev={onPrev} onNext={onNext} />
         <Button variant="ghost" size="sm" onClick={onNewRun}>

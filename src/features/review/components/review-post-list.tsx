@@ -1,10 +1,12 @@
 'use client'
 
+import { Image as ImageIcon } from 'lucide-react'
 import { cn } from '@/utils/cn'
 import { formatRelativeTime } from '@/utils/format'
 import { getPillarColor } from '@/components/ui/colors/pillar-colors'
 import { Button } from '@/components/ui/button'
 import { ActiveBar, ScoreLabel } from '@/components/posts/post-list-parts'
+import { parseSlides } from '@/components/posts/parse-slides'
 import type { ReviewPost, ReviewTab } from '@/features/review/lib/filter-review-posts'
 
 interface ReviewPostListProps {
@@ -216,12 +218,40 @@ function ReviewPostListItem({
 
       {/* Status + time */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <StatusBadge post={post} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <StatusBadge post={post} />
+          <VisualsBadge post={post} />
+        </div>
         <span style={{ fontSize: '10px', color: 'var(--color-muted)', opacity: 0.7 }}>
           {formatRelativeTime(new Date(post.created_at))}
         </span>
       </div>
     </div>
+  )
+}
+
+/** "N/M" visuals counter so it's obvious which pending posts still need images. */
+function VisualsBadge({ post }: { post: ReviewPost }) {
+  const totalSlots = post.post_type === 'carousel' ? parseSlides(post.slides_json).length : 1
+  if (totalSlots === 0) return null
+  const complete = post.images.length >= totalSlots
+  return (
+    <span
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: '3px',
+        fontSize: '10px',
+        fontWeight: 500,
+        padding: '3px 7px',
+        borderRadius: '4px',
+        background: complete ? 'rgba(90,138,74,0.10)' : 'rgba(44,62,80,0.06)',
+        color: complete ? '#5A8A4A' : 'var(--color-muted)',
+      }}
+    >
+      <ImageIcon style={{ width: 10, height: 10 }} />
+      {post.images.length}/{totalSlots}
+    </span>
   )
 }
 

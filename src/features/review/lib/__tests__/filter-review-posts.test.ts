@@ -18,6 +18,7 @@ function makePost(overrides: Partial<ReviewPost> = {}): ReviewPost {
     created_at: overrides.created_at ?? '2026-03-20T10:00:00Z',
     client_name: overrides.client_name ?? 'Test Client',
     is_health_niche: overrides.is_health_niche ?? false,
+    images: overrides.images ?? [],
   }
 }
 

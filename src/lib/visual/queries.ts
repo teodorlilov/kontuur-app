@@ -55,6 +55,23 @@ export async function upsertVisualIdentity(
   return error ? { error: error.message } : {}
 }
 
+/** Validate then update ONLY the identity blob for a client, leaving `source_kind`/`report` untouched
+ *  (used by the palette-description self-heal). No-op when the client has no identity row yet. */
+export async function updateVisualIdentityBlob(
+  clientId: string,
+  identity: VisualIdentity
+): Promise<{ error?: string }> {
+  const parsed = safeParseVisualIdentity(identity)
+  if (!parsed.success) return { error: `Invalid visual identity: ${parsed.issues.join('; ')}` }
+
+  const admin = createAdminSupabaseClient()
+  const { error } = await admin
+    .from('brand_visual_identity')
+    .update({ identity: asJson(parsed.identity), updated_at: new Date().toISOString() })
+    .eq('client_id', clientId)
+  return error ? { error: error.message } : {}
+}
+
 export type ExtractionSession = {
   status: string
   identity: VisualIdentity | null

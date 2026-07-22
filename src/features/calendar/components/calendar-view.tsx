@@ -151,7 +151,8 @@ export function CalendarView({ initialPosts, clients }: CalendarViewProps) {
     updatePostContent,
     handleDrop,
     removePost,
-    updatePostImages,
+    upsertPostImage,
+    removePostImage,
     markPostPublished,
     saving,
   } = useCalendar(initialPosts)
@@ -396,7 +397,8 @@ export function CalendarView({ initialPosts, clients }: CalendarViewProps) {
         onSaveContent={handleSaveContent}
         onSaveAndResend={handleSaveAndResend}
         onPublished={markPostPublished}
-        onImagesChange={updatePostImages}
+        onImageUpserted={upsertPostImage}
+        onImageDeleted={removePostImage}
       />
     </div>
   )

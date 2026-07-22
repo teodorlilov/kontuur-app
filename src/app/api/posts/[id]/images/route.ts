@@ -1,10 +1,9 @@
 import { NextResponse } from 'next/server'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
 import { verifyPostOwnership } from '@/lib/auth/helpers'
-import { uploadPostImage, deletePostImage } from '@/features/publishing/lib/storage'
+import { uploadPostImage, deletePostImage, replaceExistingImage } from '@/features/publishing/lib/storage'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { POST_IMAGE_COLUMNS } from '@/lib/queries/select-columns'
-import type { SupabaseClient } from '@supabase/supabase-js'
 
 const MAX_SIZE_BYTES = 8 * 1024 * 1024
 const ALLOWED_TYPES = new Set(['image/jpeg', 'image/jpg', 'image/png'])
@@ -14,24 +13,6 @@ function validateFile(file: File): string | null {
   if (!ALLOWED_TYPES.has(file.type)) return 'Only JPEG and PNG files are accepted'
   if (file.size > MAX_SIZE_BYTES) return 'File must be under 8 MB'
   return null
-}
-
-/** Replace an existing image at the given position, if any. */
-async function replaceExistingImage(
-  admin: SupabaseClient,
-  postId: string,
-  position: number
-): Promise<void> {
-  const { data: existing } = await admin
-    .from('post_images')
-    .select('id, storage_path')
-    .eq('post_id', postId)
-    .eq('position', position)
-    .single()
-  if (existing) {
-    await deletePostImage(existing.storage_path)
-    await admin.from('post_images').delete().eq('id', existing.id)
-  }
 }
 
 /** Upload an image for a post (linked to a carousel slide position or single post). */

@@ -1,12 +1,16 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import { Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useReviewActions } from '@/features/review/hooks/use-review-actions'
 import { useScheduleModal } from '@/components/scheduling/use-schedule-modal'
 import { ScheduleModal } from '@/components/scheduling/schedule-modal'
 import { PostDetailLayout } from '@/components/posts/post-detail-layout'
 import { RewriteButton } from '@/components/posts/rewrite-button'
+import { parseSlides } from '@/components/posts/parse-slides'
+import { useGenerateVisuals } from '@/features/publishing/hooks/use-generate-visuals'
+import { missingImagePositions } from '@/features/publishing/lib/image-list'
 import { ReviewInfoPanel } from './review-info-panel'
 import { parseValidationJson, deriveSlopFromValidation } from '@/features/review/lib/parse-validation-json'
 import {
@@ -14,17 +18,19 @@ import {
   AUTHENTICITY_URGENT_THRESHOLD,
 } from '@/lib/content-rules/constants'
 import type { ReviewPost } from '@/features/review/lib/filter-review-posts'
-import type { CarouselSlide, BestTimePlatform } from '@/types/api'
+import type { BestTimePlatform, PostImage } from '@/types/api'
 
 interface ReviewPostViewProps {
   post: ReviewPost
   bestTimeData: BestTimePlatform[] | null
   onApprove: (postId: string) => void
   onDelete: (postId: string) => void
+  onImageUpserted: (postId: string, image: PostImage) => void
+  onImageDeleted: (postId: string, imageId: string) => void
 }
 
 /** Wrapper that owns useReviewActions and renders center + right panels. */
-export function ReviewPostView({ post, bestTimeData, onApprove, onDelete }: ReviewPostViewProps) {
+export function ReviewPostView({ post, bestTimeData, onApprove, onDelete, onImageUpserted, onImageDeleted }: ReviewPostViewProps) {
   const {
     caption,
     slidesJson,
@@ -54,10 +60,21 @@ export function ReviewPostView({ post, bestTimeData, onApprove, onDelete }: Revi
   const scheduleModal = useScheduleModal()
   const [confirmDelete, setConfirmDelete] = useState(false)
 
+  const images = post.images
+  const mergeImage = useCallback(
+    (image: PostImage) => onImageUpserted(post.id, image),
+    [onImageUpserted, post.id]
+  )
+  const { generatingPositions, generate } = useGenerateVisuals(post.id, mergeImage)
+
+  const slides = parseSlides(slidesJson)
+  const totalSlots = post.post_type === 'carousel' ? slides.length : 1
+  const missingPositions = missingImagePositions(images, totalSlots, generatingPositions)
+  const slotsWithoutImage = totalSlots - images.length
+
   // Run slop detection on mount
   useEffect(() => {
     const isCarousel = post.post_type === 'carousel'
-    const slides = Array.isArray(slidesJson) ? (slidesJson as CarouselSlide[]) : []
     const textForSlop = isCarousel
       ? `${caption}\n\n${slides.map((s) => `${s.headline}\n${s.body}`).join('\n\n')}`
       : caption
@@ -88,6 +105,12 @@ export function ReviewPostView({ post, bestTimeData, onApprove, onDelete }: Revi
         editable
         onCaptionChange={(c) => { void saveCaption(c) }}
         onSlidesChange={(s) => { void saveSlidesJson(s) }}
+        postId={post.id}
+        images={images}
+        onImageUploaded={mergeImage}
+        onImageDeleted={(imageId) => onImageDeleted(post.id, imageId)}
+        onGenerateImage={(position) => { void generate([position]) }}
+        generatingPositions={generatingPositions}
       >
         {showRewrite && (
           <RewriteButton
@@ -96,6 +119,17 @@ export function ReviewPostView({ post, bestTimeData, onApprove, onDelete }: Revi
             regenerating={rewriting}
             onClick={() => { void rewrite() }}
           />
+        )}
+        {slotsWithoutImage > 0 && (
+          <Button
+            onClick={() => { void generate(missingPositions) }}
+            loading={generatingPositions.length > 0}
+            variant="secondary"
+            size="sm"
+          >
+            <Sparkles style={{ width: 13, height: 13, marginRight: 5 }} />
+            Generate visuals ({slotsWithoutImage})
+          </Button>
         )}
         <div style={{ display: 'flex', gap: '8px' }}>
           <Button onClick={() => scheduleModal.openModal()} loading={approving} className="flex-1" size="sm">

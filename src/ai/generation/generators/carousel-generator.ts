@@ -4,23 +4,28 @@ import { buildGenerateSystemPrompt, buildGenerateUserCarouselPrompt } from '@/ai
 
 import type { CarouselInput, CarouselResult } from '../types'
 
-const CAROUSEL_OUTPUT_SCHEMA = {
-  type: 'object' as const,
-  properties: {
-    main_caption: { type: 'string' },
-    slides: {
-      type: 'array',
-      items: {
-        type: 'object',
-        properties: {
-          headline: { type: 'string' },
-          body: { type: 'string' },
+/** Output schema pinned to the requested slide count — the prompt asks for N, this enforces it. */
+function buildCarouselOutputSchema(slideCount: number) {
+  return {
+    type: 'object' as const,
+    properties: {
+      main_caption: { type: 'string' },
+      slides: {
+        type: 'array',
+        minItems: slideCount,
+        maxItems: slideCount,
+        items: {
+          type: 'object',
+          properties: {
+            headline: { type: 'string' },
+            body: { type: 'string' },
+          },
+          required: ['headline', 'body'],
         },
-        required: ['headline', 'body'],
       },
     },
-  },
-  required: ['main_caption', 'slides'],
+    required: ['main_caption', 'slides'],
+  }
 }
 
 /** Assign slide_number and slide_role from array position. */
@@ -42,15 +47,16 @@ export async function generateCarousel(
 ): Promise<CarouselResult> {
   const systemPrompt = buildGenerateSystemPrompt(input.client, input.platform, input.targetPillar)
   const userMessage = buildGenerateUserCarouselPrompt(input)
+  const outputSchema = buildCarouselOutputSchema(input.slideCount)
 
   const message = await callAnthropic({
     systemPrompt,
     userMessage,
     onToken,
     model: DEFAULT_MODEL,
-    outputSchema: CAROUSEL_OUTPUT_SCHEMA,
+    outputSchema,
     maxTokens: 4096,
   })
-  const raw = extractToolInput<{ main_caption: string; slides: Array<{ headline: string; body: string }> }>(message, CAROUSEL_OUTPUT_SCHEMA)
+  const raw = extractToolInput<{ main_caption: string; slides: Array<{ headline: string; body: string }> }>(message, outputSchema)
   return { main_caption: raw.main_caption, slides: enrichSlides(raw.slides) }
 }

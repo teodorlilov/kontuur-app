@@ -5,7 +5,7 @@ import { buildContentSection } from '@/ai/validation/prompts/shared/content-sect
 import {
   HOOK_VERDICTS,
   CTA_VERDICTS,
-  CAROUSEL_STRUCTURE_CHECKLIST,
+  carouselStructureRules,
   ISSUE_TYPE_DEFINITIONS,
 } from '@/ai/validation/criteria'
 import type { ClientData } from '@/lib/clients/fetch-client-data'
@@ -84,8 +84,8 @@ brand_voice: Does the post match the tone and testimonial voice described in the
 formality: Is the address register consistent throughout? (pronoun choice and formal constructions only — vocabulary anglicisms go in issues)`
 }
  
-function buildCarouselChecklistSection(): string {
-  const rules = CAROUSEL_STRUCTURE_CHECKLIST.map((r, i) => `  ${i + 1}. ${r}`).join('\n')
+function buildCarouselChecklistSection(slideCount: number): string {
+  const rules = carouselStructureRules(slideCount).map((r, i) => `  ${i + 1}. ${r}`).join('\n')
   return `STRUCTURE CHECKLIST (carousel):\n${rules}`
 }
 
@@ -166,7 +166,8 @@ function buildValidationUserPrompt(
   if (input.targetPillar) parts.push(`Pillar: ${input.targetPillar}`)
   if (isCarousel) parts.push('Is carousel: yes')
 
-  if (isCarousel) parts.push(buildCarouselChecklistSection())
+  // Validate against the actual slide count produced — structure roles are positional.
+  if (isCarousel) parts.push(buildCarouselChecklistSection(input.slides?.length ?? 0))
   else parts.push('STRUCTURE CHECKLIST: set structure_checks to null.')
 
   if (input.sourceContext?.excerpt) {

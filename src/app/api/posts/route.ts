@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
+import { createAdminSupabaseClient } from '@/lib/supabase/admin'
+import { draftVisualPrefix } from '@/features/publishing/lib/storage'
 import { POST_COLUMNS } from '@/lib/queries/select-columns'
 import type { Json } from '@/types/database'
 
@@ -83,6 +85,37 @@ interface CreatePostBody {
   source_type?: string | null
   source_excerpt?: string | null
   pillar?: string | null
+  /** Draft visuals generated in the wizard, attached as post_images rows on approve. */
+  images?: Array<{ position: number; publicUrl: string; storagePath: string }>
+}
+
+/** Attach wizard-draft visuals to a freshly created post. Only paths under the client's drafts prefix
+ *  are accepted so a caller can't claim foreign storage objects. Failure logs but never fails the post. */
+async function attachDraftImages(
+  postId: string,
+  clientId: string,
+  images: CreatePostBody['images']
+): Promise<void> {
+  const prefix = draftVisualPrefix(clientId)
+  const rows = (images ?? [])
+    .filter(
+      (img) =>
+        Number.isInteger(img?.position) && img.position >= 0 &&
+        typeof img.publicUrl === 'string' &&
+        typeof img.storagePath === 'string' && img.storagePath.startsWith(prefix)
+    )
+    .map((img) => ({
+      post_id: postId,
+      position: img.position,
+      public_url: img.publicUrl,
+      storage_path: img.storagePath,
+      content_type: 'image/jpeg',
+    }))
+  if (rows.length === 0) return
+
+  const admin = createAdminSupabaseClient()
+  const { error } = await admin.from('post_images').insert(rows)
+  if (error) console.error('[posts] failed to attach draft visuals:', error.message)
 }
 
 export async function POST(request: Request) {
@@ -141,6 +174,8 @@ export async function POST(request: Request) {
     .single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  await attachDraftImages(post.id, body.client_id, body.images)
 
   // Record in post history to avoid duplicate themes in future generations
   if (body.topic_summary) {

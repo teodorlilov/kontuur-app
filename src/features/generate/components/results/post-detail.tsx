@@ -7,6 +7,9 @@ import { useBestTime } from '@/components/posts/use-best-time'
 import { ScheduleModal } from '@/components/scheduling/schedule-modal'
 import { PostDetailLayout } from '@/components/posts/post-detail-layout'
 import { RewriteButton } from '@/components/posts/rewrite-button'
+import { parseSlides } from '@/components/posts/parse-slides'
+import { DraftVisualSlot } from './draft-visual-slot'
+import { completedDraftImages, type DraftVisual } from '@/features/generate/lib/draft-visuals'
 import {
   REWRITE_SCORE_THRESHOLD,
   AUTHENTICITY_URGENT_THRESHOLD,
@@ -16,13 +19,15 @@ import type { PostData, ValidationData } from '@/types/post'
 interface PostDetailProps {
   post: PostData
   validationData: ValidationData
+  visuals: DraftVisual[] | undefined
+  onRegenerateVisual: (position: number) => void
   onApprove: (postId: string) => void
   onDiscard: (postId: string) => void
   onRegenerate: (postId: string, updatedPost: PostData, updatedValidation: ValidationData) => void
 }
 
 /** Middle panel: post content with scrollable body and fixed action bar. */
-export function PostDetail({ post, validationData, onApprove, onDiscard, onRegenerate }: PostDetailProps) {
+export function PostDetail({ post, validationData, visuals, onRegenerateVisual, onApprove, onDiscard, onRegenerate }: PostDetailProps) {
   const {
     caption,
     setCaption,
@@ -32,7 +37,10 @@ export function PostDetail({ post, validationData, onApprove, onDiscard, onRegen
     regenerating,
     approve,
     regenerate,
-  } = usePostActions({ post, onApprove, onRegenerate })
+  } = usePostActions({ post, onApprove, onRegenerate, images: completedDraftImages(visuals) })
+
+  const slides = parseSlides(slidesJson)
+  const pendingVisualCount = (visuals ?? []).filter((v) => v.status === 'generating').length
 
   const scheduleModal = useScheduleModal()
   const { bestTimeData } = useBestTime(post.client_id)
@@ -59,7 +67,18 @@ export function PostDetail({ post, validationData, onApprove, onDiscard, onRegen
         sourceExcerpt={post.source_excerpt}
         editable
         onCaptionChange={setCaption}
-        onSlidesChange={(slides) => setSlidesJson(slides)}
+        onSlidesChange={(updated) => setSlidesJson(updated)}
+        renderImageSlot={(activeIndex) => (
+          <DraftVisualSlot
+            visual={visuals?.find((v) => v.position === activeIndex)}
+            altText={
+              post.post_type === 'carousel'
+                ? slides[activeIndex]?.headline ?? 'Slide visual'
+                : caption.slice(0, 80) || 'Post visual'
+            }
+            onRegenerate={() => onRegenerateVisual(activeIndex)}
+          />
+        )}
       >
         {showRewrite && (
           <RewriteButton
@@ -81,6 +100,12 @@ export function PostDetail({ post, validationData, onApprove, onDiscard, onRegen
             Discard
           </Button>
         </div>
+        {pendingVisualCount > 0 && (
+          <p style={{ fontSize: 11, color: '#C07B55', margin: '6px 0 0', textAlign: 'center' }}>
+            {pendingVisualCount} visual{pendingVisualCount > 1 ? 's' : ''} still generating — approving now attaches
+            the finished ones; add the rest later in Calendar.
+          </p>
+        )}
       </PostDetailLayout>
       <ScheduleModal
         open={scheduleModal.isOpen}

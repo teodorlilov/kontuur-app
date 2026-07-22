@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { createApprovalNotification } from '@/features/review/lib/create-approval-notification'
+import { fetchImagesByPost } from '@/features/publishing/lib/fetch-post-images'
 import type { ApprovalResponse, ApprovalPostData, ApprovalBatchData } from '@/types/api'
 
 export async function GET(_request: Request, { params }: { params: Promise<{ token: string }> }) {
@@ -45,6 +46,8 @@ export async function GET(_request: Request, { params }: { params: Promise<{ tok
   // Build client note lookup from token rows
   const noteMap = new Map(tokenRows.map((r) => [r.post_id, r.client_note]))
 
+  const imagesByPost = await fetchImagesByPost(posts.map((p) => p.id))
+
   // Fetch client name + agency name in one join — saves one round-trip
   const clientId = posts[0]!.client_id
   const { data: client } = await supabase
@@ -64,6 +67,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ tok
     scheduled_at: p.scheduled_at,
     pillar: p.pillar,
     client_note: noteMap.get(p.id) ?? null,
+    images: imagesByPost.get(p.id) ?? [],
   }))
 
   const result: ApprovalBatchData = {

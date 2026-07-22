@@ -1,12 +1,10 @@
 import { createServerSupabaseClient } from '@/lib/supabase/server'
-import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { requireSessionUser } from '@/lib/auth/session'
 import { getCachedAgencyClients } from '@/lib/queries/cache'
-import { POST_COLUMNS, POST_IMAGE_COLUMNS } from '@/lib/queries/select-columns'
-import { mapImageRow } from '@/features/publishing/lib/map-image-row'
+import { POST_COLUMNS } from '@/lib/queries/select-columns'
+import { fetchImagesByPost } from '@/features/publishing/lib/fetch-post-images'
 import { CalendarView } from '@/features/calendar/components/calendar-view'
-import type { CalendarPost, PostImage } from '@/types/api'
-import type { PostImageRow } from '@/types'
+import type { CalendarPost } from '@/types/api'
 
 export default async function CalendarPage() {
   const { agencyId } = await requireSessionUser()
@@ -70,22 +68,7 @@ export default async function CalendarPage() {
   const clientNameMap = new Map(clientList.map((c) => [c.id, c.name]))
   const typedPostRows = (postRows as PostRow[] | null) ?? []
 
-  // post_images has RLS that blocks the user-scoped client, so fetch via the
-  // admin client — safe because we only query images for already-authorized posts.
-  const imagesByPost = new Map<string, PostImage[]>()
-  if (typedPostRows.length > 0) {
-    const admin = createAdminSupabaseClient()
-    const { data: imageRows } = await admin
-      .from('post_images')
-      .select(POST_IMAGE_COLUMNS)
-      .in('post_id', typedPostRows.map((p) => p.id))
-      .order('position', { ascending: true })
-    for (const row of (imageRows as PostImageRow[] | null) ?? []) {
-      const list = imagesByPost.get(row.post_id) ?? []
-      list.push(mapImageRow(row))
-      imagesByPost.set(row.post_id, list)
-    }
-  }
+  const imagesByPost = await fetchImagesByPost(typedPostRows.map((p) => p.id))
 
   const posts: CalendarPost[] = typedPostRows.map((p) => {
     // Sort tokens by created_at desc and take the latest

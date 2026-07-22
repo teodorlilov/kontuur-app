@@ -2,8 +2,9 @@
 
 import { useState, useRef } from 'react'
 import Image from 'next/image'
-import { X, Upload, Check, Download } from 'lucide-react'
+import { X, Upload, Check, Download, Sparkles } from 'lucide-react'
 import { mapImageRow } from '@/features/publishing/lib/map-image-row'
+import { ImageLightbox } from '@/components/ui/image-lightbox'
 import { CanvaDesignPicker } from './canva-design-picker'
 import type { PostImage } from '@/types/api'
 
@@ -15,18 +16,26 @@ interface ImageSlotProps {
   onDeleted: (imageId: string) => void
   /** Whether the current user has Canva connected. */
   canvaConnected?: boolean
+  /** When provided, the slot offers AI generation (empty slot) / regeneration (filled slot). */
+  onGenerate?: () => void
+  /** True while this position's visual is being generated — renders the progress state. */
+  generating?: boolean
 }
 
 /** Single-image upload/display slot for a carousel slide or single post. */
-export function ImageSlot({ postId, position, image, onUploaded, onDeleted, canvaConnected }: ImageSlotProps) {
+export function ImageSlot({ postId, position, image, onUploaded, onDeleted, canvaConnected, onGenerate, generating }: ImageSlotProps) {
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [dragOver, setDragOver] = useState(false)
   const [pickerOpen, setPickerOpen] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
+  if (generating) {
+    return <GeneratingCard replacing={!!image} />
+  }
+
   if (image) {
-    return <ImageCard image={image} onDelete={() => handleDelete(image.id)} />
+    return <ImageCard image={image} onDelete={() => handleDelete(image.id)} onRegenerate={onGenerate} />
   }
 
   return (
@@ -46,6 +55,40 @@ export function ImageSlot({ postId, position, image, onUploaded, onDeleted, canv
         style={{ display: 'none' }}
         onChange={(e) => { if (e.target.files?.length) void handleFile(e.target.files[0]!) }}
       />
+
+      {onGenerate && (
+        <button
+          type="button"
+          onClick={onGenerate}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 5,
+            padding: '7px 8px',
+            border: '1px solid var(--color-border-2)',
+            borderRadius: 8,
+            background: 'rgba(192,123,85,0.04)',
+            cursor: 'pointer',
+            fontFamily: 'inherit',
+            fontSize: 10,
+            fontWeight: 500,
+            color: '#C07B55',
+            transition: 'background 120ms ease, border-color 120ms ease',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = 'rgba(192,123,85,0.10)'
+            e.currentTarget.style.borderColor = '#C07B55'
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = 'rgba(192,123,85,0.04)'
+            e.currentTarget.style.borderColor = 'var(--color-border-2)'
+          }}
+        >
+          <Sparkles style={{ width: 12, height: 12 }} />
+          Generate with AI
+        </button>
+      )}
 
       {canvaConnected && (
         <button
@@ -198,83 +241,124 @@ function DropZone({
   )
 }
 
-function ImageCard({ image, onDelete }: { image: PostImage; onDelete: () => void }) {
-  const sizeMB = image.fileSize ? (image.fileSize / (1024 * 1024)).toFixed(1) : null
-
+function GeneratingCard({ replacing }: { replacing: boolean }) {
   return (
     <div
       style={{
         display: 'flex',
         alignItems: 'center',
-        gap: 10,
-        padding: '8px 10px',
-        borderRadius: 8,
-        border: '0.5px solid var(--color-border-1)',
-        background: 'rgba(44,62,80,0.02)',
+        justifyContent: 'center',
+        gap: 8,
+        padding: '16px 12px',
+        border: '1.5px dashed rgba(192,123,85,0.45)',
+        borderRadius: 10,
+        background: 'rgba(192,123,85,0.04)',
       }}
     >
-      {/* Thumbnail */}
+      <Sparkles style={{ width: 14, height: 14, color: '#C07B55' }} className="animate-pulse" />
+      <span style={{ fontSize: 11, color: '#C07B55' }}>
+        {replacing ? 'Regenerating visual…' : 'Generating visual…'}
+      </span>
+    </div>
+  )
+}
+
+/** Corner overlay action on the image preview (regenerate / delete). */
+function OverlayAction({
+  title,
+  color,
+  onClick,
+  children,
+}: {
+  title: string
+  color: string
+  onClick: () => void
+  children: React.ReactNode
+}) {
+  return (
+    <button
+      type="button"
+      title={title}
+      onClick={(e) => {
+        e.stopPropagation()
+        onClick()
+      }}
+      style={{
+        width: 26,
+        height: 26,
+        borderRadius: 7,
+        border: 'none',
+        background: 'rgba(255,255,255,0.88)',
+        boxShadow: '0 1px 4px rgba(20,28,34,0.18)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        cursor: 'pointer',
+        color,
+      }}
+    >
+      {children}
+    </button>
+  )
+}
+
+function ImageCard({ image, onDelete, onRegenerate }: { image: PostImage; onDelete: () => void; onRegenerate?: () => void }) {
+  const sizeMB = image.fileSize ? (image.fileSize / (1024 * 1024)).toFixed(1) : null
+  const [viewing, setViewing] = useState(false)
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      {/* Uncropped preview (capped width so a 1:1 visual stays ~280px tall); click for full size */}
       <div
         style={{
-          width: 40,
-          height: 40,
-          borderRadius: 6,
+          position: 'relative',
+          maxWidth: 280,
+          borderRadius: 10,
           overflow: 'hidden',
-          flexShrink: 0,
-          background: 'rgba(44,62,80,0.08)',
+          border: '0.5px solid var(--color-border-1)',
         }}
       >
-        <Image
+        <button
+          type="button"
+          title="View full size"
+          onClick={() => setViewing(true)}
+          style={{ display: 'block', width: '100%', padding: 0, border: 'none', background: 'none', cursor: 'zoom-in' }}
+        >
+          <Image
+            src={image.publicUrl}
+            alt={image.fileName ?? 'Post image'}
+            width={512}
+            height={512}
+            style={{ width: '100%', height: 'auto', display: 'block' }}
+          />
+        </button>
+
+        <div style={{ position: 'absolute', top: 8, right: 8, display: 'flex', gap: 6 }}>
+          {onRegenerate && (
+            <OverlayAction title="Regenerate with AI" color="#C07B55" onClick={onRegenerate}>
+              <Sparkles style={{ width: 13, height: 13 }} />
+            </OverlayAction>
+          )}
+          <OverlayAction title="Remove image" color="#3A4A54" onClick={onDelete}>
+            <X style={{ width: 13, height: 13 }} />
+          </OverlayAction>
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+        <Check style={{ width: 10, height: 10, color: '#5A8A4A' }} />
+        <span style={{ fontSize: 10, color: '#5A8A4A' }}>
+          Uploaded{sizeMB ? ` · ${sizeMB} MB` : ''}
+        </span>
+      </div>
+
+      {viewing && (
+        <ImageLightbox
           src={image.publicUrl}
           alt={image.fileName ?? 'Post image'}
-          width={80}
-          height={80}
-          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+          onClose={() => setViewing(false)}
         />
-      </div>
-
-      {/* File info */}
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div
-          style={{
-            fontSize: 12,
-            fontWeight: 500,
-            color: 'var(--color-text-1)',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-          }}
-        >
-          {image.fileName ?? 'image'}
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
-          <Check style={{ width: 10, height: 10, color: '#5A8A4A' }} />
-          <span style={{ fontSize: 10, color: '#5A8A4A' }}>
-            Uploaded{sizeMB ? ` · ${sizeMB} MB` : ''}
-          </span>
-        </div>
-      </div>
-
-      {/* Delete */}
-      <button
-        type="button"
-        onClick={onDelete}
-        style={{
-          width: 24,
-          height: 24,
-          borderRadius: 6,
-          border: 'none',
-          background: 'rgba(44,62,80,0.06)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          cursor: 'pointer',
-          color: 'var(--color-muted)',
-          flexShrink: 0,
-        }}
-      >
-        <X style={{ width: 12, height: 12 }} />
-      </button>
+      )}
     </div>
   )
 }

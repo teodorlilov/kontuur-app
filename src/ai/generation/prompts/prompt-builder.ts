@@ -6,7 +6,7 @@ import {
   buildPlatformLimits,
   buildHealthRules,
 } from '@/ai/shared/build-prompt-sections'
-import { CAROUSEL_STRUCTURE_CHECKLIST } from '@/ai/validation/criteria'
+import { carouselStructureRules } from '@/ai/validation/criteria'
 import { buildGroundingPrompt } from './source-grounding'
 import { sanitizePromptField } from '@/ai/utils/sanitize'
 import { formatHistory, todayDateString } from '@/ai/utils/prompt-helpers'
@@ -69,7 +69,7 @@ Separate multiple posts with ---.`,
  */
 export function buildGenerateUserCarouselPrompt(input: CarouselInput): string {
   const historyText = formatHistory(input.client.postHistory)
-  const rules = CAROUSEL_STRUCTURE_CHECKLIST.map((r: string, i: number) => `${i + 1}. ${r}`).join('\n')
+  const rules = carouselStructureRules(input.slideCount).map((r: string, i: number) => `${i + 1}. ${r}`).join('\n')
 
   return [
     buildGroundingPrompt({
@@ -92,7 +92,7 @@ export function buildGenerateUserCarouselPrompt(input: CarouselInput): string {
 
     `Today's date: ${todayDateString()}`,
 
-    `Write a ${input.slideCount}-slide carousel for theme "${sanitizePromptField(input.theme)}".
+    `Write a carousel with EXACTLY ${input.slideCount} slides for theme "${sanitizePromptField(input.theme)}".
 
 CAROUSEL RULES:
 ${rules}

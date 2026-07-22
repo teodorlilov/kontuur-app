@@ -1,7 +1,9 @@
 'use client'
 
+import { Image as ImageIcon } from 'lucide-react'
 import { getPillarColor } from '@/components/ui/colors/pillar-colors'
 import { ActiveBar, ScoreLabel, CaptionPreview } from '@/components/posts/post-list-parts'
+import type { DraftVisual } from '@/features/generate/lib/draft-visuals'
 import type { PostData, ValidationData } from '@/types/post'
 
 type GeneratedPost = { post: PostData } & ValidationData
@@ -9,11 +11,12 @@ type GeneratedPost = { post: PostData } & ValidationData
 interface PostListProps {
   posts: GeneratedPost[]
   selectedPostId: string
+  visualsByPost: Record<string, DraftVisual[]>
   onSelect: (id: string) => void
 }
 
 /** Left panel: scrollable list of generated posts. */
-export function PostList({ posts, selectedPostId, onSelect }: PostListProps) {
+export function PostList({ posts, selectedPostId, visualsByPost, onSelect }: PostListProps) {
   return (
     <div
       className="w-full md:w-[280px]"
@@ -33,6 +36,7 @@ export function PostList({ posts, selectedPostId, onSelect }: PostListProps) {
             key={item.post.id}
             post={item.post}
             score={item.scores.overall_score}
+            visuals={visualsByPost[item.post.id]}
             isActive={item.post.id === selectedPostId}
             onClick={() => onSelect(item.post.id)}
           />
@@ -65,11 +69,13 @@ function ListHeader({ count }: { count: number }) {
 function PostListItem({
   post,
   score,
+  visuals,
   isActive,
   onClick,
 }: {
   post: PostData
   score: number
+  visuals: DraftVisual[] | undefined
   isActive: boolean
   onClick: () => void
 }) {
@@ -97,8 +103,36 @@ function PostListItem({
         <ScoreLabel score={score} />
       </div>
       <CaptionPreview caption={post.caption} />
-      <StatusBadge status={post.status} />
+      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+        <StatusBadge status={post.status} />
+        <VisualsCounter visuals={visuals} />
+      </div>
     </div>
+  )
+}
+
+/** "N/M" per-post visuals progress while drafts stream in. */
+function VisualsCounter({ visuals }: { visuals: DraftVisual[] | undefined }) {
+  if (!visuals || visuals.length === 0) return null
+  const done = visuals.filter((v) => v.status === 'done').length
+  const complete = done === visuals.length
+  return (
+    <span
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: '3px',
+        fontSize: '10px',
+        fontWeight: 500,
+        padding: '3px 7px',
+        borderRadius: '4px',
+        background: complete ? 'rgba(90,138,74,0.10)' : 'rgba(192,123,85,0.08)',
+        color: complete ? 'var(--status-ok)' : '#C07B55',
+      }}
+    >
+      <ImageIcon style={{ width: 10, height: 10 }} />
+      {done}/{visuals.length}
+    </span>
   )
 }
 
