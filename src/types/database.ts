@@ -771,6 +771,41 @@ export type Database = {
           },
         ]
       }
+      post_canvas_docs: {
+        Row: {
+          created_at: string
+          doc: Json
+          id: string
+          position: number
+          post_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          doc: Json
+          id?: string
+          position?: number
+          post_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          doc?: Json
+          id?: string
+          position?: number
+          post_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "post_canvas_docs_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       post_history: {
         Row: {
           client_id: string | null

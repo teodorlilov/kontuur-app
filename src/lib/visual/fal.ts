@@ -1,8 +1,10 @@
 import { fal } from '@fal-ai/client'
 
 const FAL_MODEL = 'fal-ai/gpt-image-2'
-/** IG-safe square for both single posts and carousel slides. */
-const IMAGE_SIZE = { width: 1024, height: 1024 }
+/** 4:5 portrait — IG's tallest publishable feed ratio (the Graph API rejects anything below 4:5).
+ *  gpt-image-2 requires dimensions in multiples of 16; 1088×1360 is the exact-4:5 size nearest the
+ *  1080×1350 canvas the editor authors at. */
+export const FAL_IMAGE_SIZE = { width: 1088, height: 1360 }
 
 let configured = false
 
@@ -34,7 +36,7 @@ export async function generateSlideImage(prompt: string): Promise<string> {
   const result = await fal.subscribe(FAL_MODEL, {
     input: {
       prompt,
-      image_size: IMAGE_SIZE,
+      image_size: FAL_IMAGE_SIZE,
       quality: 'medium',
       output_format: 'jpeg',
       num_images: 1,

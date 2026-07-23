@@ -2,8 +2,9 @@
 
 import { useState, useRef } from 'react'
 import Image from 'next/image'
-import { X, Upload, Check, Download, Sparkles } from 'lucide-react'
+import { X, Upload, Check, Download, Sparkles, Pencil } from 'lucide-react'
 import { mapImageRow } from '@/features/publishing/lib/map-image-row'
+import { validateImageFile } from '@/features/publishing/lib/validate-image-file'
 import { ImageLightbox } from '@/components/ui/image-lightbox'
 import { CanvaDesignPicker } from './canva-design-picker'
 import type { PostImage } from '@/types/api'
@@ -20,22 +21,26 @@ interface ImageSlotProps {
   onGenerate?: () => void
   /** True while this position's visual is being generated — renders the progress state. */
   generating?: boolean
+  /** True while the fresh AI image is being auto-composed with text. */
+  composing?: boolean
+  /** When provided, the filled slot offers the canvas text-overlay editor. */
+  onEdit?: () => void
 }
 
 /** Single-image upload/display slot for a carousel slide or single post. */
-export function ImageSlot({ postId, position, image, onUploaded, onDeleted, canvaConnected, onGenerate, generating }: ImageSlotProps) {
+export function ImageSlot({ postId, position, image, onUploaded, onDeleted, canvaConnected, onGenerate, generating, composing, onEdit }: ImageSlotProps) {
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [dragOver, setDragOver] = useState(false)
   const [pickerOpen, setPickerOpen] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
-  if (generating) {
-    return <GeneratingCard replacing={!!image} />
+  if (generating || composing) {
+    return <GeneratingCard label={composing ? 'Adding text…' : image ? 'Regenerating visual…' : 'Generating visual…'} />
   }
 
   if (image) {
-    return <ImageCard image={image} onDelete={() => handleDelete(image.id)} onRegenerate={onGenerate} />
+    return <ImageCard image={image} onDelete={() => handleDelete(image.id)} onRegenerate={onGenerate} onEdit={onEdit} />
   }
 
   return (
@@ -139,12 +144,9 @@ export function ImageSlot({ postId, position, image, onUploaded, onDeleted, canv
   )
 
   async function handleFile(file: File) {
-    if (!['image/jpeg', 'image/jpg', 'image/png'].includes(file.type)) {
-      setError('Only JPEG and PNG files are accepted')
-      return
-    }
-    if (file.size > 8 * 1024 * 1024) {
-      setError('File must be under 8 MB')
+    const fileError = validateImageFile(file)
+    if (fileError) {
+      setError(fileError)
       return
     }
 
@@ -241,7 +243,7 @@ function DropZone({
   )
 }
 
-function GeneratingCard({ replacing }: { replacing: boolean }) {
+function GeneratingCard({ label }: { label: string }) {
   return (
     <div
       style={{
@@ -256,9 +258,7 @@ function GeneratingCard({ replacing }: { replacing: boolean }) {
       }}
     >
       <Sparkles style={{ width: 14, height: 14, color: '#C07B55' }} className="animate-pulse" />
-      <span style={{ fontSize: 11, color: '#C07B55' }}>
-        {replacing ? 'Regenerating visual…' : 'Generating visual…'}
-      </span>
+      <span style={{ fontSize: 11, color: '#C07B55' }}>{label}</span>
     </div>
   )
 }
@@ -302,7 +302,17 @@ function OverlayAction({
   )
 }
 
-function ImageCard({ image, onDelete, onRegenerate }: { image: PostImage; onDelete: () => void; onRegenerate?: () => void }) {
+function ImageCard({
+  image,
+  onDelete,
+  onRegenerate,
+  onEdit,
+}: {
+  image: PostImage
+  onDelete: () => void
+  onRegenerate?: () => void
+  onEdit?: () => void
+}) {
   const sizeMB = image.fileSize ? (image.fileSize / (1024 * 1024)).toFixed(1) : null
   const [viewing, setViewing] = useState(false)
 
@@ -337,6 +347,11 @@ function ImageCard({ image, onDelete, onRegenerate }: { image: PostImage; onDele
           {onRegenerate && (
             <OverlayAction title="Regenerate with AI" color="#C07B55" onClick={onRegenerate}>
               <Sparkles style={{ width: 13, height: 13 }} />
+            </OverlayAction>
+          )}
+          {onEdit && (
+            <OverlayAction title="Edit text overlay" color="#3A4A54" onClick={onEdit}>
+              <Pencil style={{ width: 13, height: 13 }} />
             </OverlayAction>
           )}
           <OverlayAction title="Remove image" color="#3A4A54" onClick={onDelete}>

@@ -18,7 +18,8 @@ export function sanitizePromptText(text: string): string {
     .trim()
 }
 
-function clampAtWordBoundary(text: string, maxChars: number): string {
+/** Clamp text at the last word boundary before `maxChars`, appending an ellipsis when cut. */
+export function clampAtWordBoundary(text: string, maxChars: number): string {
   if (text.length <= maxChars) return text
   const cut = text.slice(0, maxChars)
   const lastSpace = cut.lastIndexOf(' ')

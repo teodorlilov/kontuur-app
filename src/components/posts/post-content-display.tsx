@@ -126,6 +126,8 @@ export function PostContentDisplay({
   canvaConnected,
   onGenerateImage,
   generatingPositions,
+  composingPositions,
+  onEditImage,
   renderImageSlot,
 }: PostContentDisplayProps) {
   const isCarousel = postType === 'carousel'
@@ -197,6 +199,8 @@ export function PostContentDisplay({
           canvaConnected={canvaConnected}
           onGenerateImage={onGenerateImage}
           generatingPositions={generatingPositions}
+          composingPositions={composingPositions}
+          onEditImage={onEditImage}
           renderImageSlot={renderImageSlot}
         />
       )}
@@ -215,6 +219,8 @@ export function PostContentDisplay({
                 canvaConnected={canvaConnected}
                 onGenerate={onGenerateImage ? () => onGenerateImage(0) : undefined}
                 generating={generatingPositions?.includes(0)}
+                composing={composingPositions?.includes(0)}
+                onEdit={onEditImage ? () => onEditImage(0) : undefined}
               />
             ))}
 

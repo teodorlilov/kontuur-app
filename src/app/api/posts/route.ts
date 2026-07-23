@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
-import { draftVisualPrefix } from '@/features/publishing/lib/storage'
+import { draftVisualPrefix, movePostImageObject } from '@/features/publishing/lib/storage'
+import { safeParseCanvasDoc } from '@/lib/canvas/doc-schema'
 import { POST_COLUMNS } from '@/lib/queries/select-columns'
 import type { Json } from '@/types/database'
 
@@ -85,8 +86,9 @@ interface CreatePostBody {
   source_type?: string | null
   source_excerpt?: string | null
   pillar?: string | null
-  /** Draft visuals generated in the wizard, attached as post_images rows on approve. */
-  images?: Array<{ position: number; publicUrl: string; storagePath: string }>
+  /** Draft visuals generated in the wizard, attached as post_images rows on approve.
+   *  `canvasDoc` (when present) becomes the slide's post_canvas_docs row so edits stay editable. */
+  images?: Array<{ position: number; publicUrl: string; storagePath: string; canvasDoc?: unknown }>
 }
 
 /** Attach wizard-draft visuals to a freshly created post. Only paths under the client's drafts prefix
@@ -116,6 +118,37 @@ async function attachDraftImages(
   const admin = createAdminSupabaseClient()
   const { error } = await admin.from('post_images').insert(rows)
   if (error) console.error('[posts] failed to attach draft visuals:', error.message)
+}
+
+/** Attach the drafts' canvas docs to a freshly created post. The clean background files move out of
+ *  `drafts/` into the post's folder (a future drafts cleanup must not orphan re-edit state); a failed
+ *  move keeps the drafts path, which still serves. Failure logs but never fails the post. */
+async function attachDraftCanvasDocs(
+  postId: string,
+  clientId: string,
+  images: CreatePostBody['images']
+): Promise<void> {
+  const prefix = draftVisualPrefix(clientId)
+  const candidates = (images ?? []).filter(
+    (img) => img?.canvasDoc !== undefined && Number.isInteger(img?.position) && img.position >= 0
+  )
+  if (candidates.length === 0) return
+
+  const rows = await Promise.all(
+    candidates.map(async (img) => {
+      const parsed = safeParseCanvasDoc(img.canvasDoc)
+      if (!parsed.success || !parsed.doc.background.storagePath.startsWith(prefix)) return null
+      const moved = await movePostImageObject(parsed.doc.background.storagePath, clientId, postId)
+      const doc = moved ? { ...parsed.doc, background: moved } : parsed.doc
+      return { post_id: postId, position: img.position, doc: doc as unknown as Json }
+    })
+  )
+
+  const inserts = rows.filter((row) => row !== null)
+  if (inserts.length === 0) return
+  const admin = createAdminSupabaseClient()
+  const { error } = await admin.from('post_canvas_docs').insert(inserts)
+  if (error) console.error('[posts] failed to attach draft canvas docs:', error.message)
 }
 
 export async function POST(request: Request) {
@@ -176,6 +209,7 @@ export async function POST(request: Request) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
   await attachDraftImages(post.id, body.client_id, body.images)
+  await attachDraftCanvasDocs(post.id, body.client_id, body.images)
 
   // Record in post history to avoid duplicate themes in future generations
   if (body.topic_summary) {

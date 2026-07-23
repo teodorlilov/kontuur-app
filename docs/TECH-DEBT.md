@@ -52,6 +52,9 @@ None of these block shipping; each entry says what it is, why it was deferred, a
 - **Impact:** storage pennies; no data-integrity issue (`post_images` rows are the source of truth).
 - **Fix if it ever matters:** periodic cleanup of `drafts/` objects older than N days (piggyback on an
   existing cron — Vercel cron slots are limited).
+- **Phase-4 caveat:** approve MOVES each canvas doc's clean background out of `drafts/` into the
+  post's folder, but a failed move keeps the drafts path (log-only). Any future drafts-cleanup job
+  must skip paths referenced by `post_canvas_docs.doc->background->>storagePath`.
 
 ### 2.3 No cross-surface live sync for generated images
 - **What:** generation triggered in one tab/surface doesn't live-update another already-open surface;
@@ -60,8 +63,30 @@ None of these block shipping; each entry says what it is, why it was deferred, a
 
 ### 2.4 Approve attaches images best-effort
 - **What:** in `POST /api/posts`, a failed `post_images` batch insert only logs — the post is created,
-  the user sees "approved", images silently missing (regenerate later in calendar).
+  the user sees "approved", images silently missing (regenerate later in calendar). Same posture for
+  `post_canvas_docs` (`attachDraftCanvasDocs`): a failed doc insert leaves a composed image without
+  re-edit state — the editor gracefully reseeds on next open.
 - **Fix option:** surface a partial-success warning in the response + toast.
+
+### 2.5 Persisted-post copy edits don't auto-recompose baked text (Phase-4 fast-follow)
+- **What:** wizard rewrites re-flatten composed drafts automatically, but a rewrite/copy-edit in
+  /review or calendar only shows a "text on visuals may be outdated" nudge — the user refreshes
+  via the editor (open → Save). The nudge also fires on any post WITH images (it can't cheaply
+  know whether canvas docs exist client-side).
+- **Fix:** reuse the wizard recompose path — fetch docs for doc'd positions after a copy save,
+  `applyCopyToDoc` + re-flatten + canvas PUT (browser is right there). ~30 lines per surface.
+
+### 2.6 No "apply text style to all slides" (Phase-4 fast-follow)
+- **What:** editor tweaks are per-slide; a 6-slide carousel needs 6 rounds of manual styling if the
+  user deviates from the seeded brand-style defaults (which DO keep slides consistent by default).
+- **Fix:** an "Apply to all slides" action that copies the selected layer's font/size/color/scrim
+  onto the other positions' docs and re-flattens them serially.
+
+### 2.7 Clean-background orphans (accepted)
+- **What:** regenerating over an edited slide, then saving, best-effort deletes the doc's previous
+  clean file — but a regenerate never followed by a save strands the old clean background in
+  storage (the doc rebinds on next editor open/save).
+- **Impact:** storage pennies; bounded (one stale file per abandoned rebind).
 
 ---
 

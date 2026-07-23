@@ -20,6 +20,7 @@ interface ResultsViewProps {
   skippedPillars: SkippedPillar[]
   visualsByPost: Record<string, DraftVisual[]>
   onRegenerateVisual: (post: PostData, position: number) => void
+  onEditedVisual: (draftId: string, visual: DraftVisual) => void
   onApprove: (postId: string) => void
   onDiscard: (postId: string) => void
   onRegenerate: (postId: string, updatedPost: PostData, updatedValidation: ValidationData) => void
@@ -36,6 +37,7 @@ export function ResultsView({
   skippedPillars,
   visualsByPost,
   onRegenerateVisual,
+  onEditedVisual,
   onApprove,
   onDiscard,
   onRegenerate,
@@ -144,6 +146,7 @@ export function ResultsView({
                 }}
                 visuals={visualsByPost[selectedPost.post.id]}
                 onRegenerateVisual={(position) => onRegenerateVisual(selectedPost.post, position)}
+                onEditedVisual={onEditedVisual}
                 onApprove={onApprove}
                 onDiscard={onDiscard}
                 onRegenerate={onRegenerate}

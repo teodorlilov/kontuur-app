@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { usePostActions } from '@/components/posts/use-post-actions'
 import { useScheduleModal } from '@/components/scheduling/use-schedule-modal'
@@ -8,6 +9,8 @@ import { ScheduleModal } from '@/components/scheduling/schedule-modal'
 import { PostDetailLayout } from '@/components/posts/post-detail-layout'
 import { RewriteButton } from '@/components/posts/rewrite-button'
 import { parseSlides } from '@/components/posts/parse-slides'
+import { CanvasEditor } from '@/features/canvas-editor/components/canvas-editor'
+import { slideCopyAt } from '@/features/canvas-editor/lib/slide-copy'
 import { DraftVisualSlot } from './draft-visual-slot'
 import { completedDraftImages, type DraftVisual } from '@/features/generate/lib/draft-visuals'
 import {
@@ -21,13 +24,14 @@ interface PostDetailProps {
   validationData: ValidationData
   visuals: DraftVisual[] | undefined
   onRegenerateVisual: (position: number) => void
+  onEditedVisual: (draftId: string, visual: DraftVisual) => void
   onApprove: (postId: string) => void
   onDiscard: (postId: string) => void
   onRegenerate: (postId: string, updatedPost: PostData, updatedValidation: ValidationData) => void
 }
 
 /** Middle panel: post content with scrollable body and fixed action bar. */
-export function PostDetail({ post, validationData, visuals, onRegenerateVisual, onApprove, onDiscard, onRegenerate }: PostDetailProps) {
+export function PostDetail({ post, validationData, visuals, onRegenerateVisual, onEditedVisual, onApprove, onDiscard, onRegenerate }: PostDetailProps) {
   const {
     caption,
     setCaption,
@@ -39,8 +43,18 @@ export function PostDetail({ post, validationData, visuals, onRegenerateVisual, 
     regenerate,
   } = usePostActions({ post, onApprove, onRegenerate, images: completedDraftImages(visuals) })
 
+  const [editingPosition, setEditingPosition] = useState<number | null>(null)
   const slides = parseSlides(slidesJson)
   const pendingVisualCount = (visuals ?? []).filter((v) => v.status === 'generating').length
+
+  const isCarousel = post.post_type === 'carousel'
+  const editingVisual =
+    editingPosition !== null
+      ? visuals?.find((v) => v.position === editingPosition && v.status === 'done' && !!v.publicUrl && !!v.storagePath)
+      : undefined
+
+  const getSlideCopy = (position: number) =>
+    slideCopyAt({ post_type: post.post_type, slides_json: slidesJson, caption }, position)
 
   const scheduleModal = useScheduleModal()
   const { bestTimeData } = useBestTime(post.client_id)
@@ -68,17 +82,22 @@ export function PostDetail({ post, validationData, visuals, onRegenerateVisual, 
         editable
         onCaptionChange={setCaption}
         onSlidesChange={(updated) => setSlidesJson(updated)}
-        renderImageSlot={(activeIndex) => (
-          <DraftVisualSlot
-            visual={visuals?.find((v) => v.position === activeIndex)}
-            altText={
-              post.post_type === 'carousel'
-                ? slides[activeIndex]?.headline ?? 'Slide visual'
-                : caption.slice(0, 80) || 'Post visual'
-            }
-            onRegenerate={() => onRegenerateVisual(activeIndex)}
-          />
-        )}
+        renderImageSlot={(activeIndex) => {
+          const visual = visuals?.find((v) => v.position === activeIndex)
+          const editable = visual?.status === 'done' && !!visual.publicUrl && !!visual.storagePath
+          return (
+            <DraftVisualSlot
+              visual={visual}
+              altText={
+                isCarousel
+                  ? slides[activeIndex]?.headline ?? 'Slide visual'
+                  : caption.slice(0, 80) || 'Post visual'
+              }
+              onRegenerate={() => onRegenerateVisual(activeIndex)}
+              onEdit={editable ? () => setEditingPosition(activeIndex) : undefined}
+            />
+          )
+        }}
       >
         {showRewrite && (
           <RewriteButton
@@ -107,6 +126,24 @@ export function PostDetail({ post, validationData, visuals, onRegenerateVisual, 
           </p>
         )}
       </PostDetailLayout>
+      {editingPosition !== null && editingVisual?.publicUrl && editingVisual.storagePath && (
+        <CanvasEditor
+          target={{
+            kind: 'draft',
+            clientId: post.client_id,
+            draftId: post.id,
+            position: editingPosition,
+            doc: editingVisual.canvasDoc ?? null,
+          }}
+          image={{ publicUrl: editingVisual.publicUrl, storagePath: editingVisual.storagePath }}
+          slideCopy={getSlideCopy(editingPosition)}
+          slideLabel={isCarousel ? `Slide ${editingPosition + 1} of ${slides.length}` : 'Post visual'}
+          onClose={() => setEditingPosition(null)}
+          onSavedDraft={(visual, doc) =>
+            onEditedVisual(post.id, { position: visual.position, status: 'done', publicUrl: visual.publicUrl, storagePath: visual.storagePath, canvasDoc: doc })
+          }
+        />
+      )}
       <ScheduleModal
         open={scheduleModal.isOpen}
         onClose={scheduleModal.closeModal}

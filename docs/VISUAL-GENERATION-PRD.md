@@ -155,18 +155,83 @@ slides" prompt wording, `minItems`/`maxItems` pinned on the generator's output s
 slide-body bound (keeps slides design-fit and image prompts tight). The validator grades against the
 same count-aware rules.
 
+—————
+
+## Phase 4 — Konva Canvas Text-Overlay Editor + Auto-Compose — SHIPPED 2026-07-23
+
+**Core idea:** the editable source of truth per slide is a small **canvas doc** (`post_canvas_docs`,
+one row per `(post_id, position)`): text layers + a contrast scrim over the CLEAN (text-free) AI
+image. The flattened 1080×1350 jpeg in `post_images` stays the publish artifact — publishing needed
+zero changes again. Every visual now ships **with copy baked in automatically** ("auto-compose");
+the editor is for refinement, not a mandatory step.
+
+**Format change:** generation moved from 1024² to **1088×1360 (exact 4:5**, gpt-image-2 needs
+multiples of 16); the canvas authors/exports at IG-recommended **1080×1350**. 3:4 was rejected —
+the IG Graph API (our auto-publish path) hard-rejects anything taller than 4:5. Legacy squares
+cover-crop in the editor.
+
+**Auto-compose (all surfaces):**
+- **Wizard:** as each draft visual generates, the browser seeds headline/body layers in the brand
+  style's font pairing, autofits, flattens offscreen and uploads — previews show text-on-image with
+  no editor visit. Single posts seed the **caption hook** (first sentence, sanitized, ~90 chars).
+  Serial compose queue (one offscreen canvas at a time); any failure degrades to the clean image.
+- **Review/calendar:** `useGenerateVisuals` gained a compose tail — after each generate/regenerate
+  the browser reuses the position's existing doc (custom layouts survive regenerates: new art, same
+  text, auto re-baked) or seeds from the post copy, then saves via the canvas PUT. Slot shows
+  "Adding text…" after "Generating…". Cron posts get composed visuals via the /review bulk button.
+- **Copy-change staleness:** wizard rewrites auto-RE-compose (layers the user hand-edited keep
+  their wording via `textOverridden`; AI art is never re-rolled). Review/calendar copy edits show
+  a "text on visuals may be outdated" nudge (auto-refresh is a fast-follow, TECH-DEBT).
+
+**The editor** (Pencil action on every filled image slot; wizard drafts, /review and calendar —
+gated off for published/publishing): full-screen overlay, fit-to-viewport stage, right properties
+panel. Editable: text content (dblclick inline), drag position, width with re-wrap (side handles
+only, no rotate), font family/size/weight/color(palette + custom)/align/line-height, add/delete
+layers, scrim (on/off, bottom-band/full, color, opacity), undo/redo (Cmd+Z, 50 snapshots),
+autofit + overflow warning badge (§6.2 shipped). Background is fixed (regenerate stays on the
+Sparkles action). Desktop-only (<768px shows a notice); dirty-guard on Escape/backdrop/Cancel.
+
+**Fonts** (§ "fonts deferred" resolved): curated two-tier library in `src/lib/canvas/font-library.ts`
+— 15 Cyrillic-safe families (incl. Sofia Sans Condensed with true Bulgarian forms, Unbounded,
+Prata, Caveat) + 5 Latin-only crowd-pleasers (Bebas Neue, Poppins, Anton, Abril Fatface, Space
+Grotesk) hidden by the picker when a layer's text contains Cyrillic. Per-style pairings on the
+brand-style registry: graphic-editorial → Oswald/Source Sans 3 (+ auto-UPPERCASE headlines),
+clinical-luxury → Playfair Display/Commissioner. Google Fonts stylesheet injected imperatively
+(React-19 hoistable-link hydration workaround); `document.fonts.load` gates first draw AND export.
+
+**Architecture / API (as built):**
+- **Clean-background model:** the doc stores `background` (the clean image ref) +
+  `flattenedStoragePath` (its own last export). Reopen renders layers over the CLEAN image (never
+  doubled text); if the image changed underneath (regenerate/re-upload) the doc rebinds to it.
+  `replaceExistingImage` gained `preserveStoragePath` so the clean file survives its row being
+  replaced by the flattened export.
+- **`GET/PUT /api/posts/[id]/canvas`** — GET returns `{ doc | null, identity }` (one round trip;
+  malformed docs read as null → reseed). PUT is ONE multipart request (flattened jpeg + doc JSON +
+  `baseImagePath`): **409 when the image changed since the editor opened** (stale-save guard, also
+  covers two tabs), then upload → doc upsert → replace-at-position → `{ image }`. Doc and image
+  can never drift.
+- **Drafts:** docs live in wizard memory; flattened files upload via
+  `POST /api/ai/generate-visual/upload`; `POST /api/posts` `images[]` entries carry `canvasDoc` —
+  on approve the docs are inserted and each clean background is **moved out of `drafts/`** into
+  the post's folder. Discard cleans flattened + clean files. Approve mid-compose attaches the
+  clean image (never blocks, never loses a slide).
+- Zod write-gate `src/lib/canvas/doc-schema.ts` (same parity-guard pattern as the identity schema);
+  versioned doc (`version: 1`); layers capped at 20.
+- All Konva code sits behind one `next/dynamic` ssr:false boundary — page navigation never pays
+  for it; export runs on an offscreen stage at native size (`toBlob`, no selection chrome).
+
 🔜 **Still deferred (specified below, not yet planned)**
-- **§4 Advanced Canvas:** SVGs-on-demand, DIS object isolation, layer architecture, "Isolate Object" flow.
-- **§5 Editor guardrails** and the Phase-4 canvas workspace.
-- **§6:** first-vs-middle-slide prompt distribution and the text-overflow boundary guard.
-- **Fonts** (user decision 2026-07-21): visuals are text-free, so the font library lands with the
-  text-overlay/canvas phase, with per-style default pairings.
+- **§4 Advanced Canvas:** SVGs-on-demand, DIS object isolation, free layer architecture,
+  "Isolate Object" flow, inpainting, background crop/pan/filters, text rotation.
+- **§6.1:** first-vs-middle-slide prompt distribution.
+- "Apply text style to all slides" + auto-recompose on persisted-post copy edits (TECH-DEBT).
 
 **Setup:** migrations `20260718_create_brand_visual_identity.sql` +
-`20260721_strip_legacy_visual_identity_fields.sql` + `20260722_post_images_unique_position.sql`;
-deps `@sparticuz/chromium` + `puppeteer-core` + `zod` + `@fal-ai/client`; env `CHROME_EXECUTABLE_PATH`
-(local) + `FAL_API_KEY` (local ✓, add to Vercel). Requires Vercel Pro (`maxDuration=60` extract routes,
-`120` visuals routes). ~52s + ~$0.04–0.07 per image.
+`20260721_strip_legacy_visual_identity_fields.sql` + `20260722_post_images_unique_position.sql` +
+`20260723_create_post_canvas_docs.sql`;
+deps `@sparticuz/chromium` + `puppeteer-core` + `zod` + `@fal-ai/client` + `konva` + `react-konva`;
+env `CHROME_EXECUTABLE_PATH` (local) + `FAL_API_KEY`. Requires Vercel Pro (`maxDuration=60` extract
+routes, `120` visuals routes). ~52s + ~$0.04–0.07 per image; compose adds ~100–300ms client-side.
 
 **Known trade-offs & deferred issues:** catalogued in `docs/TECH-DEBT.md` (orphan draft files from
 abandoned tabs, palette-description race on a client's first generation — mitigated by "Re-analyze",

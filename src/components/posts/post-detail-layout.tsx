@@ -45,6 +45,8 @@ export function PostDetailLayout({
   canvaConnected,
   onGenerateImage,
   generatingPositions,
+  composingPositions,
+  onEditImage,
   renderImageSlot,
   children,
 }: PostDetailLayoutProps) {
@@ -84,6 +86,8 @@ export function PostDetailLayout({
             canvaConnected={canvaConnected}
             onGenerateImage={onGenerateImage}
             generatingPositions={generatingPositions}
+            composingPositions={composingPositions}
+            onEditImage={onEditImage}
             renderImageSlot={renderImageSlot}
           />
         </div>

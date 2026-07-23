@@ -1,7 +1,9 @@
 'use client'
 
+import { useState } from 'react'
 import Image from 'next/image'
-import { Sparkles, RefreshCw } from 'lucide-react'
+import { Sparkles, RefreshCw, Pencil } from 'lucide-react'
+import { ImageLightbox } from '@/components/ui/image-lightbox'
 import type { DraftVisual } from '@/features/generate/lib/draft-visuals'
 
 /**
@@ -12,11 +14,14 @@ export function DraftVisualSlot({
   visual,
   altText,
   onRegenerate,
+  onEdit,
 }: {
   visual: DraftVisual | undefined
   /** Slide headline (or caption excerpt) used as the preview's alt text. */
   altText: string
   onRegenerate: () => void
+  /** Opens the canvas text-overlay editor for this draft slide. */
+  onEdit?: () => void
 }) {
   if (!visual) {
     return (
@@ -44,40 +49,96 @@ export function DraftVisualSlot({
     )
   }
 
+  return <DraftVisualPreview publicUrl={visual.publicUrl} altText={altText} onRegenerate={onRegenerate} onEdit={onEdit} />
+}
+
+/** Compact preview matching ImageCard's dimensions (≤280px, uncropped, click to enlarge). */
+function DraftVisualPreview({
+  publicUrl,
+  altText,
+  onRegenerate,
+  onEdit,
+}: {
+  publicUrl: string
+  altText: string
+  onRegenerate: () => void
+  onEdit?: () => void
+}) {
+  const [viewing, setViewing] = useState(false)
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-      <div style={{ borderRadius: 10, overflow: 'hidden', border: '0.5px solid var(--color-border-1)' }}>
-        <Image
-          src={visual.publicUrl}
-          alt={altText}
-          width={512}
-          height={512}
-          style={{ width: '100%', height: 'auto', display: 'block' }}
-        />
-      </div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxWidth: 280 }}>
       <button
         type="button"
-        onClick={onRegenerate}
+        title="View full size"
+        onClick={() => setViewing(true)}
         style={{
-          alignSelf: 'flex-end',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 5,
-          padding: '5px 8px',
-          border: 'none',
-          borderRadius: 6,
-          background: 'rgba(192,123,85,0.08)',
-          cursor: 'pointer',
-          fontFamily: 'inherit',
-          fontSize: 10,
-          fontWeight: 500,
-          color: '#C07B55',
+          display: 'block',
+          width: '100%',
+          padding: 0,
+          border: '0.5px solid var(--color-border-1)',
+          borderRadius: 10,
+          overflow: 'hidden',
+          background: 'none',
+          cursor: 'zoom-in',
         }}
       >
-        <Sparkles style={{ width: 11, height: 11 }} />
-        Regenerate
+        <Image
+          src={publicUrl}
+          alt={altText}
+          width={512}
+          height={640}
+          style={{ width: '100%', height: 'auto', display: 'block' }}
+        />
       </button>
+      <div style={{ alignSelf: 'flex-end', display: 'flex', gap: 6 }}>
+        {onEdit && (
+          <FooterAction onClick={onEdit} color="#3A4A54" background="rgba(58,74,84,0.08)">
+            <Pencil style={{ width: 11, height: 11 }} />
+            Edit text
+          </FooterAction>
+        )}
+        <FooterAction onClick={onRegenerate} color="#C07B55" background="rgba(192,123,85,0.08)">
+          <Sparkles style={{ width: 11, height: 11 }} />
+          Regenerate
+        </FooterAction>
+      </div>
+      {viewing && <ImageLightbox src={publicUrl} alt={altText} onClose={() => setViewing(false)} />}
     </div>
+  )
+}
+
+function FooterAction({
+  onClick,
+  color,
+  background,
+  children,
+}: {
+  onClick: () => void
+  color: string
+  background: string
+  children: React.ReactNode
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 5,
+        padding: '5px 8px',
+        border: 'none',
+        borderRadius: 6,
+        background,
+        cursor: 'pointer',
+        fontFamily: 'inherit',
+        fontSize: 10,
+        fontWeight: 500,
+        color,
+      }}
+    >
+      {children}
+    </button>
   )
 }
 

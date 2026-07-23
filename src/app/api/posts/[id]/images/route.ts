@@ -2,18 +2,9 @@ import { NextResponse } from 'next/server'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
 import { verifyPostOwnership } from '@/lib/auth/helpers'
 import { uploadPostImage, deletePostImage, replaceExistingImage } from '@/features/publishing/lib/storage'
+import { validateImageFile } from '@/features/publishing/lib/validate-image-file'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { POST_IMAGE_COLUMNS } from '@/lib/queries/select-columns'
-
-const MAX_SIZE_BYTES = 8 * 1024 * 1024
-const ALLOWED_TYPES = new Set(['image/jpeg', 'image/jpg', 'image/png'])
-
-/** Validate the uploaded file type and size. */
-function validateFile(file: File): string | null {
-  if (!ALLOWED_TYPES.has(file.type)) return 'Only JPEG and PNG files are accepted'
-  if (file.size > MAX_SIZE_BYTES) return 'File must be under 8 MB'
-  return null
-}
 
 /** Upload an image for a post (linked to a carousel slide position or single post). */
 export async function POST(
@@ -32,7 +23,7 @@ export async function POST(
   const position = Number(formData.get('position') ?? 0)
 
   if (!file) return NextResponse.json({ error: 'No file provided' }, { status: 400 })
-  const fileError = validateFile(file)
+  const fileError = validateImageFile(file)
   if (fileError) return NextResponse.json({ error: fileError }, { status: 400 })
 
   const buffer = Buffer.from(await file.arrayBuffer())

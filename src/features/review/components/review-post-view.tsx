@@ -3,6 +3,9 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { CanvasEditor } from '@/features/canvas-editor/components/canvas-editor'
+import { slideCopyAt } from '@/features/canvas-editor/lib/slide-copy'
+import { nudgeStaleBakedText } from '@/features/canvas-editor/lib/stale-text-nudge'
 import { useReviewActions } from '@/features/review/hooks/use-review-actions'
 import { useScheduleModal } from '@/components/scheduling/use-schedule-modal'
 import { ScheduleModal } from '@/components/scheduling/schedule-modal'
@@ -59,18 +62,33 @@ export function ReviewPostView({ post, bestTimeData, onApprove, onDelete, onImag
 
   const scheduleModal = useScheduleModal()
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [editingPosition, setEditingPosition] = useState<number | null>(null)
 
   const images = post.images
   const mergeImage = useCallback(
     (image: PostImage) => onImageUpserted(post.id, image),
     [onImageUpserted, post.id]
   )
-  const { generatingPositions, generate } = useGenerateVisuals(post.id, mergeImage)
 
   const slides = parseSlides(slidesJson)
-  const totalSlots = post.post_type === 'carousel' ? slides.length : 1
+  const isCarousel = post.post_type === 'carousel'
+  const getSlideCopy = useCallback(
+    (position: number) =>
+      slideCopyAt({ post_type: post.post_type, slides_json: slidesJson, caption }, position),
+    [post.post_type, slidesJson, caption]
+  )
+  const { generatingPositions, composingPositions, generate } = useGenerateVisuals(post.id, mergeImage, getSlideCopy)
+
+  const totalSlots = isCarousel ? slides.length : 1
   const missingPositions = missingImagePositions(images, totalSlots, generatingPositions)
   const slotsWithoutImage = totalSlots - images.length
+  const editingImage = editingPosition !== null ? images.find((img) => img.position === editingPosition) : undefined
+
+  // Rewrites never regenerate visuals — but baked text can go stale; nudge instead (v1 policy).
+  const handleRewrite = useCallback(async () => {
+    await rewrite()
+    nudgeStaleBakedText(images.length)
+  }, [rewrite, images.length])
 
   // Run slop detection on mount
   useEffect(() => {
@@ -111,13 +129,15 @@ export function ReviewPostView({ post, bestTimeData, onApprove, onDelete, onImag
         onImageDeleted={(imageId) => onImageDeleted(post.id, imageId)}
         onGenerateImage={(position) => { void generate([position]) }}
         generatingPositions={generatingPositions}
+        composingPositions={composingPositions}
+        onEditImage={setEditingPosition}
       >
         {showRewrite && (
           <RewriteButton
             hasLowAuthenticity={hasLowAuthenticity}
             hasLowQuality={hasLowQuality}
             regenerating={rewriting}
-            onClick={() => { void rewrite() }}
+            onClick={() => { void handleRewrite() }}
           />
         )}
         {slotsWithoutImage > 0 && (
@@ -135,7 +155,7 @@ export function ReviewPostView({ post, bestTimeData, onApprove, onDelete, onImag
           <Button onClick={() => scheduleModal.openModal()} loading={approving} className="flex-1" size="sm">
             Approve
           </Button>
-          <Button onClick={() => { void rewrite() }} loading={rewriting} variant="secondary" size="sm">
+          <Button onClick={() => { void handleRewrite() }} loading={rewriting} variant="secondary" size="sm">
             Rewrite
           </Button>
           {confirmDelete ? (
@@ -166,6 +186,16 @@ export function ReviewPostView({ post, bestTimeData, onApprove, onDelete, onImag
         slopResult={slopResult}
         slopLoading={slopLoading}
       />
+      {editingPosition !== null && editingImage && (
+        <CanvasEditor
+          target={{ kind: 'post', postId: post.id, position: editingPosition }}
+          image={{ publicUrl: editingImage.publicUrl, storagePath: editingImage.storagePath }}
+          slideCopy={getSlideCopy(editingPosition)}
+          slideLabel={isCarousel ? `Slide ${editingPosition + 1} of ${totalSlots}` : 'Post visual'}
+          onClose={() => setEditingPosition(null)}
+          onSaved={mergeImage}
+        />
+      )}
       <ScheduleModal
         open={scheduleModal.isOpen}
         onClose={scheduleModal.closeModal}

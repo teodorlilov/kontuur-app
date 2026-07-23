@@ -7,6 +7,7 @@ import {
   BRAND_VISUAL_IDENTITY_COLUMNS,
 } from '@/lib/queries/select-columns'
 import { safeParseVisualIdentity } from './identity-schema'
+import { buildDefaultIdentity } from './identity'
 
 type Db = SupabaseClient<Database>
 
@@ -28,6 +29,11 @@ export async function fetchVisualIdentity(clientId: string): Promise<VisualIdent
   if (error || !data) return null
   const parsed = safeParseVisualIdentity(data.identity)
   return parsed.success ? parsed.identity : null
+}
+
+/** A client's identity with the neutral default as fallback — for read paths that must never fail. */
+export async function fetchVisualIdentityOrDefault(clientId: string): Promise<VisualIdentity> {
+  return (await fetchVisualIdentity(clientId)) ?? buildDefaultIdentity()
 }
 
 /** Validate then upsert a client's visual identity (1:1 on client_id). Admin client (RLS); callers verify

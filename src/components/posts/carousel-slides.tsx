@@ -115,7 +115,7 @@ function EditableField({
   )
 }
 
-export function CarouselSlides({ slides, editable, onSlidesChange, onBlur, flaggedSlides, postId, images, onImageUploaded, onImageDeleted, canvaConnected, onGenerateImage, generatingPositions, renderImageSlot }: CarouselSlidesProps) {
+export function CarouselSlides({ slides, editable, onSlidesChange, onBlur, flaggedSlides, postId, images, onImageUploaded, onImageDeleted, canvaConnected, onGenerateImage, generatingPositions, composingPositions, onEditImage, renderImageSlot }: CarouselSlidesProps) {
   const [activeIndex, setActiveIndex] = useState(0)
   const activeSlide = slides[activeIndex]
 
@@ -231,6 +231,8 @@ export function CarouselSlides({ slides, editable, onSlidesChange, onBlur, flagg
                   canvaConnected={canvaConnected}
                   onGenerate={onGenerateImage ? () => onGenerateImage(activeIndex) : undefined}
                   generating={generatingPositions?.includes(activeIndex)}
+                  composing={composingPositions?.includes(activeIndex)}
+                  onEdit={onEditImage ? () => onEditImage(activeIndex) : undefined}
                 />
               )}
         </div>

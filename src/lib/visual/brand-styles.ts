@@ -6,7 +6,17 @@
  * visual color foundation"). Adding a style = one entry here + one preview jpg in /public/brand-styles.
  */
 
+import type { FontFamilyName } from '@/lib/canvas/font-library'
+
 export type BrandStyleId = 'graphic-editorial' | 'clinical-luxury'
+
+/** The style's typography pairing for text overlays (canvas editor + auto-compose seeding). */
+export interface BrandStyleFonts {
+  display: FontFamilyName
+  body: FontFamilyName
+  /** Seeded headlines are upper-cased when the style's signature is condensed caps. */
+  headlineUppercase?: boolean
+}
 
 export interface BrandStyle {
   id: BrandStyleId
@@ -17,6 +27,7 @@ export interface BrandStyle {
   prompt: string
   /** Public path of the portrait preview image shown on the picker card. */
   previewSrc: string
+  fonts: BrandStyleFonts
 }
 
 export const BRAND_STYLES: Record<BrandStyleId, BrandStyle> = {
@@ -27,6 +38,7 @@ export const BRAND_STYLES: Record<BrandStyleId, BrandStyle> = {
     prompt:
       'Contemporary editorial graphic design, bold modernist social media campaign, experimental magazine art direction, anti-corporate Gen-Z branding aesthetic, high-contrast palette, oversized condensed bold sans-serif typography, elegant editorial serif typography as contrast, dramatic typographic hierarchy, asymmetrical modular grid, Swiss modernist influence, provocative visual manifesto, candid documentary photography, imperfect human moments, analog collage, subtle photocopy grain, paper texture, halftone printing artifacts, slightly distressed ink, geometric shapes, graphic blocks, editorial annotations, tiny captions, hand-drawn lines, aggressive image cropping, typography integrated directly into photography, sophisticated but rebellious, intelligent, playful, tactile, contemporary art direction, premium graphic design studio aesthetic, visually striking Instagram editorial poster.',
     previewSrc: '/brand-styles/graphic-editorial.jpg',
+    fonts: { display: 'Oswald', body: 'Source Sans 3', headlineUppercase: true },
   },
   'clinical-luxury': {
     id: 'clinical-luxury',
@@ -35,6 +47,7 @@ export const BRAND_STYLES: Record<BrandStyleId, BrandStyle> = {
     prompt:
       'A premium luxury skincare editorial aesthetic combining high-end beauty photography, minimalist Swiss-inspired layouts, oversized bold sans-serif typography, elegant handwritten script accents, and refined editorial metadata. The visual language balances intimate close-up skin photography and tactile product imagery with generous negative space, soft muted backgrounds, subtle paper grain, and restrained graphic elements. The overall mood is sensual, clinical, sophisticated, modern, and aspirational, inspired by luxury cosmetics campaigns, fashion editorials, and premium beauty magazines.',
     previewSrc: '/brand-styles/clinical-luxury.jpg',
+    fonts: { display: 'Playfair Display', body: 'Commissioner' },
   },
 }
 

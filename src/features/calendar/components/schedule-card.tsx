@@ -11,6 +11,9 @@ import { CarouselSlides } from '@/components/posts/carousel-slides'
 import { QualityScores } from '@/components/posts/quality-scores'
 import { ClientResponseCard } from '@/features/calendar/components/client-response-card'
 import { Button } from '@/components/ui/button'
+import { CanvasEditor } from '@/features/canvas-editor/components/canvas-editor'
+import { slideCopyAt } from '@/features/canvas-editor/lib/slide-copy'
+import { nudgeStaleBakedText } from '@/features/canvas-editor/lib/stale-text-nudge'
 import { ImageSlot } from '@/features/publishing/components/image-slot'
 import { useCanvaStatus } from '@/features/publishing/hooks/use-canva-status'
 import { useGenerateVisuals } from '@/features/publishing/hooks/use-generate-visuals'
@@ -185,7 +188,23 @@ export const ScheduleCard = memo(function ScheduleCard({
     onImageDeleted(post.id, imageId)
   }, [post, onImageDeleted])
 
-  const { generatingPositions, generate } = useGenerateVisuals(post?.id ?? '', handleImageUploaded)
+  const getSlideCopy = useCallback(
+    (position: number) =>
+      post
+        ? slideCopyAt(
+            { post_type: post.post_type, slides_json: post.slides_json, caption: post.caption ?? null },
+            position
+          )
+        : null,
+    [post]
+  )
+
+  const { generatingPositions, composingPositions, generate } = useGenerateVisuals(
+    post?.id ?? '',
+    handleImageUploaded,
+    getSlideCopy
+  )
+  const [editingPosition, setEditingPosition] = useState<number | null>(null)
 
   if (!isOpen || !post) return null
 
@@ -258,6 +277,13 @@ export const ScheduleCard = memo(function ScheduleCard({
     setSavingContent(false)
     onExitEditMode?.()
   }
+
+  // Copy edits never regenerate visuals — but baked text can go stale; nudge instead (v1 policy).
+  function nudgeStaleVisuals() {
+    nudgeStaleBakedText(images.length)
+  }
+
+  const editingImage = editingPosition !== null ? images.find((img) => img.position === editingPosition) : undefined
 
   return (
     <div
@@ -461,6 +487,7 @@ export const ScheduleCard = memo(function ScheduleCard({
                 onBlur={() => {
                   if (draftCaption !== (currentPost.caption ?? '') && onSaveContent) {
                     void onSaveContent(currentPost.id, { caption: draftCaption })
+                    nudgeStaleVisuals()
                   }
                 }}
                 style={{
@@ -510,6 +537,7 @@ export const ScheduleCard = memo(function ScheduleCard({
                   onBlur={() => {
                     if (onSaveContent && draftSlides.length > 0) {
                       void onSaveContent(currentPost.id, { slides_json: draftSlides })
+                      if (JSON.stringify(draftSlides) !== JSON.stringify(slides)) nudgeStaleVisuals()
                     }
                   }}
                   flaggedSlides={flaggedSlideNumbers}
@@ -520,6 +548,8 @@ export const ScheduleCard = memo(function ScheduleCard({
                   canvaConnected={canvaConnected}
                   onGenerateImage={canGenerateVisuals ? (position) => { void generate([position]) } : undefined}
                   generatingPositions={generatingPositions}
+                  composingPositions={composingPositions}
+                  onEditImage={canGenerateVisuals ? setEditingPosition : undefined}
                 />
               </div>
             )}
@@ -537,6 +567,8 @@ export const ScheduleCard = memo(function ScheduleCard({
                   canvaConnected={canvaConnected}
                   onGenerate={canGenerateVisuals ? () => { void generate([0]) } : undefined}
                   generating={generatingPositions.includes(0)}
+                  composing={composingPositions.includes(0)}
+                  onEdit={canGenerateVisuals ? () => setEditingPosition(0) : undefined}
                 />
               </div>
             )}
@@ -586,6 +618,16 @@ export const ScheduleCard = memo(function ScheduleCard({
           />
         )}
       </div>
+      {editingPosition !== null && editingImage && (
+        <CanvasEditor
+          target={{ kind: 'post', postId: currentPost.id, position: editingPosition }}
+          image={{ publicUrl: editingImage.publicUrl, storagePath: editingImage.storagePath }}
+          slideCopy={getSlideCopy(editingPosition)}
+          slideLabel={isCarousel ? `Slide ${editingPosition + 1} of ${totalImageSlots}` : 'Post visual'}
+          onClose={() => setEditingPosition(null)}
+          onSaved={handleImageUploaded}
+        />
+      )}
     </div>
   )
 })

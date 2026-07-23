@@ -219,6 +219,8 @@ export function GenerateWizard({
     setGeneratedPosts((prev) =>
       prev.map((p) => (p.post.id === postId ? { post: updatedPost, ...updatedValidation } : p))
     )
+    // Rewrites never re-roll the AI art — composed slides re-flatten with the new copy instead.
+    draftVisuals.recomposeDraft(updatedPost)
   }
 
   async function handleApproveAll() {
@@ -355,6 +357,7 @@ export function GenerateWizard({
               skippedPillars={skippedPillars}
               visualsByPost={draftVisuals.visualsByDraft}
               onRegenerateVisual={(post, position) => draftVisuals.regenerate(post, position)}
+              onEditedVisual={draftVisuals.applyEditedVisual}
               onApprove={handlePostApproved}
               onDiscard={handlePostRemoved}
               onRegenerate={handlePostRegenerated}

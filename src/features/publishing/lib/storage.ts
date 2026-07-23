@@ -69,11 +69,14 @@ export async function deletePostImage(storagePath: string): Promise<void> {
   }
 }
 
-/** Remove any existing image at a post position (storage file + row) so a new one can take its place. */
+/** Remove any existing image at a post position (storage file + row) so a new one can take its place.
+ *  `preserveStoragePath` keeps that one file alive (the row still goes) — the canvas editor's clean
+ *  background must survive its own row being replaced by the flattened export. */
 export async function replaceExistingImage(
   admin: SupabaseClient,
   postId: string,
-  position: number
+  position: number,
+  preserveStoragePath?: string
 ): Promise<void> {
   const { data: existing } = await admin
     .from('post_images')
@@ -82,7 +85,27 @@ export async function replaceExistingImage(
     .eq('position', position)
     .single()
   if (existing) {
-    await deletePostImage(existing.storage_path)
+    if (existing.storage_path !== preserveStoragePath) {
+      await deletePostImage(existing.storage_path)
+    }
     await admin.from('post_images').delete().eq('id', existing.id)
   }
+}
+
+/** Move a storage object into a post's folder (drafts → post relocation on approve).
+ *  Returns the new location, or null on failure (logged; the caller keeps the old path). */
+export async function movePostImageObject(
+  fromPath: string,
+  clientId: string,
+  postId: string
+): Promise<UploadResult | null> {
+  const admin = createAdminSupabaseClient()
+  const toPath = `${clientId}/${postId}/${Date.now()}-${fromPath.split('/').pop()}`
+  const { error } = await admin.storage.from(BUCKET).move(fromPath, toPath)
+  if (error) {
+    console.error(`Failed to move ${fromPath} to ${toPath}:`, error.message)
+    return null
+  }
+  const { data } = admin.storage.from(BUCKET).getPublicUrl(toPath)
+  return { publicUrl: data.publicUrl, storagePath: toPath }
 }

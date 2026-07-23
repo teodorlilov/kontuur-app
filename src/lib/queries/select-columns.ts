@@ -72,6 +72,9 @@ export const LANGUAGE_RULES_COLUMNS = 'native_cta_phrases, formality_rules, lang
 // post_history
 export const POST_HISTORY_COLUMNS = 'topic_summary'
 
+// post_canvas_docs
+export const POST_CANVAS_DOC_COLUMNS = 'id, post_id, position, doc, created_at, updated_at'
+
 // post_images
 export const POST_IMAGE_COLUMNS =
   'id, post_id, public_url, storage_path, position, file_name, file_size, content_type, created_at'
