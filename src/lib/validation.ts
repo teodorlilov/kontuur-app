@@ -16,8 +16,9 @@ export function isUserSettablePostStatus(value: string): boolean {
   return (USER_SETTABLE_POST_STATUSES as readonly string[]).includes(value)
 }
 
+/** Case-insensitive: the UI and stored rows use display case ('Instagram'), older rows lowercase. */
 export function isValidPostPlatform(value: string): boolean {
-  return (POST_PLATFORMS as readonly string[]).includes(value)
+  return (POST_PLATFORMS as readonly string[]).includes(value.toLowerCase())
 }
 
 export function validatePassword(password: string): string | null {
