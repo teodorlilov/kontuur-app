@@ -70,13 +70,15 @@ publishing needed **zero changes**.
   regenerate/delete actions and click-to-enlarge (`ImageLightbox`).
 - Copy sanitization for prompts (URLs/#hashtags/@mentions stripped, word-boundary clamp); style prompts
   are colour-free — the measured palette is the only colour source. Cron posts get visuals manually via
-  /review. Rewrites and copy edits never auto-regenerate visuals.
+  /review. Rewrites and copy edits never auto-regenerate visuals (the AI art is never re-rolled; since
+  2026-07-24 they DO auto-re-bake the overlaid text — Phase 4 §6).
 
 ### The prompt contract (`buildVisualPrompt`, pure function)
 
 ```
 create a visual for social media for this slide
 TEXT - Slide {n} of {total}
+{slide-role hint — cover / rich middle / quiet middle / CTA, see below}
 
 Headline: {headline}
 Body: {body}
@@ -434,9 +436,10 @@ Instagram.
 - **§4 Advanced Canvas:** SVGs-on-demand, DIS object isolation, free layer architecture,
   "Isolate Object" flow, inpainting, background crop/pan/filters, text rotation.
 
-✅ **Quick wins shipped 2026-07-24:** §6.1 slide-role prompt hints (see Phase 3 prompt contract),
-auto-recompose on persisted-post copy edits (ex-TECH-DEBT 2.5) and "Save & apply to all"
-(ex-TECH-DEBT 2.6) — details woven into the sections above.
+✅ **Quick wins shipped 2026-07-24 (commit `a04f1f9`):** §6.1 slide-role prompt hints with the
+alternating rich/quiet rhythm (see Phase 3 prompt contract), auto-recompose on persisted-post
+copy edits (ex-TECH-DEBT 2.5) and "Save & apply to all" (ex-TECH-DEBT 2.6) — details woven into
+the sections above.
 
 **Setup:** migrations `20260718_create_brand_visual_identity.sql` +
 `20260721_strip_legacy_visual_identity_fields.sql` + `20260722_post_images_unique_position.sql` +
@@ -589,9 +592,14 @@ To keep the design tool approachable for non-technical users, the editing canvas
 * Visual Warning Alerts: Warns users instantly if text or vital visual elements drift into platform interface dead-zones.
 
 6. Other Considerations 
-6.1 The "First Slide vs. Middle Slide" Visual Hierarchy Problem
+6.1 The "First Slide vs. Middle Slide" Visual Hierarchy Problem — ✅ SHIPPED 2026-07-24 (as-built above)
 * The Gap: Inpainting, SVGs, treat all slides with equal weight. In reality, Slide 1 (The Hook) must have massive visual impact, while Slide 2 to 9 need high legibility for data, and the Final Slide requires a high-contrast Call to Action (CTA).
 * The Solution: Adjust the Fal.ai prompt distribution. Instead of generating an identical texture density across the entire ribbon, the prompt must explicitly inject a heavy visual anchor on the far left (Slide 1) and a structured frame on the far right (Final Slide), keeping the center panels clean for body text.
+* As built (deviation from the spec above): interior slides are NOT uniformly clean — after a
+  prod run showed all-quiet middles reading flat, the shipped rhythm ALTERNATES rich/quiet
+  interior slides by position parity (cover rich → quiet → rich → … → plain structured CTA).
+  Every slide's hint also reserves the text-overlay zones (top quarter + lower half) since
+  Phase 4 bakes copy onto every slide. See the Phase 3 prompt-contract section for wording.
 6.2. Text Box Overflow Handling
 * The Gap: The LLM generates text copy, and the app places it. However, if the LLM generates a paragraph that is too long for a single slide, the text will overflow past the grid boundary line into the next slide, ruining the user's layout.
 * The Solution: Implement a Text-Overflow Boundary Guard. If a generated text block exceeds the bounding height limit of a single slide zone, Konva must automatically truncate the text, create a "Continued on next slide..." node, or alert the user with a highlight box.
