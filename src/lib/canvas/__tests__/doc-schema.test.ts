@@ -42,6 +42,28 @@ describe('canvasDocSchema', () => {
     expect(parseCanvasDoc(doc)).toEqual(doc)
   })
 
+  it('accepts optional rotation and backgroundTransform (and docs without them keep parsing)', () => {
+    const doc = validDoc()
+    expect(parseCanvasDoc(doc)).toEqual(doc) // pre-reposition doc: neither field present
+    doc.layers[0]!.rotation = -12
+    doc.backgroundTransform = { zoom: 1.6, offsetX: 0.2, offsetY: 1 }
+    expect(parseCanvasDoc(doc)).toEqual(doc)
+  })
+
+  it('rejects out-of-range rotation and background transforms', () => {
+    const rotated = validDoc()
+    rotated.layers[0]!.rotation = 200
+    expect(safeParseCanvasDoc(rotated).success).toBe(false)
+
+    const zoomed = validDoc()
+    zoomed.backgroundTransform = { zoom: 4, offsetX: 0.5, offsetY: 0.5 }
+    expect(safeParseCanvasDoc(zoomed).success).toBe(false)
+
+    const panned = validDoc()
+    panned.backgroundTransform = { zoom: 2, offsetX: 1.2, offsetY: 0.5 }
+    expect(safeParseCanvasDoc(panned).success).toBe(false)
+  })
+
   it('rejects a non-hex fill', () => {
     const doc = validDoc()
     doc.layers[0]!.fill = 'red'

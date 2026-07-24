@@ -66,8 +66,9 @@ function resolveDoc(
 ): { doc: CanvasDoc; seeded: boolean } {
   if (rawDoc) {
     if (rawDoc.flattenedStoragePath === image.storagePath) return { doc: rawDoc, seeded: false }
-    // The image changed underneath (regenerate / re-upload) — it becomes the new clean background.
-    return { doc: { ...rawDoc, background: { ...image } }, seeded: false }
+    // The image changed underneath (regenerate / re-upload) — it becomes the new clean background;
+    // the stored pan/zoom belonged to the old art, so it resets to the centered cover fit.
+    return { doc: { ...rawDoc, background: { ...image }, backgroundTransform: undefined }, seeded: false }
   }
   const doc = seedCanvasDoc({
     identity,

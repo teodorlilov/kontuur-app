@@ -25,6 +25,8 @@ export interface CanvasTextLayer {
   fill: string
   align: CanvasTextAlign
   lineHeight: number
+  /** Degrees around the layer's top-left pivot; absent = 0 (never rotated). */
+  rotation?: number
   /** Set when the user hand-edits the text in the editor; recompose then keeps their wording. */
   textOverridden?: boolean
 }
@@ -45,10 +47,22 @@ export interface CanvasBackgroundRef {
   storagePath: string
 }
 
+/**
+ * Pan/zoom of the clean background inside the canvas; absent = centered cover fit. Offsets are
+ * fractions of the crop slack (0.5 = centered), so the transform is valid for any source size.
+ */
+export interface CanvasBackgroundTransform {
+  /** 1 = exact cover fit, up to 3. */
+  zoom: number
+  offsetX: number
+  offsetY: number
+}
+
 export interface CanvasDoc {
   version: 1
   canvas: { w: number; h: number }
   background: CanvasBackgroundRef
+  backgroundTransform?: CanvasBackgroundTransform
   /** The artifact the last save produced — lets the editor detect its own baked output on reopen. */
   flattenedStoragePath: string | null
   scrim: CanvasScrim

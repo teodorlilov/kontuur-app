@@ -1,4 +1,9 @@
-import type { CanvasScrim, CanvasTextAlign, CanvasTextLayer } from '@/types/canvas'
+import type {
+  CanvasBackgroundTransform,
+  CanvasScrim,
+  CanvasTextAlign,
+  CanvasTextLayer,
+} from '@/types/canvas'
 import { coverCrop, type CropAttrs } from './cover-crop'
 
 /** The lower share of the canvas the 'bottom' scrim band covers. */
@@ -8,6 +13,8 @@ export interface TextNodeAttrs {
   x: number
   y: number
   width: number
+  /** Degrees around the node's top-left origin (Konva default pivot). */
+  rotation: number
   text: string
   fontFamily: string
   fontSize: number
@@ -25,6 +32,7 @@ export function textNodeAttrs(layer: CanvasTextLayer): TextNodeAttrs {
     x: layer.x,
     y: layer.y,
     width: layer.width,
+    rotation: layer.rotation ?? 0,
     text: layer.text,
     fontFamily: layer.fontFamily,
     fontSize: layer.fontSize,
@@ -66,16 +74,17 @@ export interface BackgroundNodeAttrs extends CropAttrs {
   height: number
 }
 
-/** Konva attrs for the background image: canvas-filling with a centered cover-crop. */
+/** Konva attrs for the background image: canvas-filling cover-crop, panned/zoomed when set. */
 export function backgroundNodeAttrs(
   src: { width: number; height: number },
-  canvas: { w: number; h: number }
+  canvas: { w: number; h: number },
+  transform?: CanvasBackgroundTransform
 ): BackgroundNodeAttrs {
   return {
     x: 0,
     y: 0,
     width: canvas.w,
     height: canvas.h,
-    ...coverCrop(src.width, src.height, canvas.w, canvas.h),
+    ...coverCrop(src.width, src.height, canvas.w, canvas.h, transform),
   }
 }

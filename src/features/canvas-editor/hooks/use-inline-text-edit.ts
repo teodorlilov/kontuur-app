@@ -22,10 +22,12 @@ export function useInlineTextEdit(onCommit: (id: string, text: string) => void) 
       if (!stage) return
 
       const containerRect = stage.container().getBoundingClientRect()
-      const rect = node.getClientRect()
+      // Anchor at the node's top-left PIVOT (rotation-independent), not getClientRect() — that
+      // returns the rotation-expanded bounding box and would misplace a rotated overlay.
+      const pivot = node.absolutePosition()
       const textarea = document.createElement('textarea')
       textarea.value = layer.text
-      applyTextareaStyle(textarea, layer, rect, containerRect, scale)
+      applyTextareaStyle(textarea, layer, pivot, node.height() * scale, containerRect, scale)
       document.body.appendChild(textarea)
       setEditingId(layer.id)
 
@@ -55,16 +57,20 @@ export function useInlineTextEdit(onCommit: (id: string, text: string) => void) 
 function applyTextareaStyle(
   textarea: HTMLTextAreaElement,
   layer: CanvasTextLayer,
-  rect: { x: number; y: number; width: number; height: number },
+  pivot: { x: number; y: number },
+  nodeHeight: number,
   containerRect: DOMRect,
   scale: number
 ): void {
   Object.assign(textarea.style, {
     position: 'absolute',
-    top: `${containerRect.top + window.scrollY + rect.y}px`,
-    left: `${containerRect.left + window.scrollX + rect.x}px`,
+    top: `${containerRect.top + window.scrollY + pivot.y}px`,
+    left: `${containerRect.left + window.scrollX + pivot.x}px`,
     width: `${layer.width * scale}px`,
-    minHeight: `${rect.height + 8}px`,
+    minHeight: `${nodeHeight + 8}px`,
+    // Mirror the node's rotation around the same top-left pivot so the overlay sits ON the text.
+    transform: `rotate(${layer.rotation ?? 0}deg)`,
+    transformOrigin: 'left top',
     fontFamily: `"${layer.fontFamily}", sans-serif`,
     fontSize: `${layer.fontSize * scale}px`,
     fontWeight: String(layer.fontWeight),

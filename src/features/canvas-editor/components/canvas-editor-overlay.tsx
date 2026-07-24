@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
 import { toast } from '@/components/ui/toast'
 import { useIsMobile } from '@/hooks/useIsMobile'
+import { DEFAULT_BACKGROUND_TRANSFORM, zoomBackgroundTo } from '@/lib/canvas/reposition'
 import { createTextLayer } from '@/lib/canvas/seed-doc'
 import { getBrandStyle } from '@/lib/visual/brand-styles'
 import type { CanvasTextLayer } from '@/types/canvas'
@@ -35,6 +36,7 @@ export function CanvasEditorOverlay(props: CanvasEditorProps) {
   const data = useEditorData(target, image, slideCopy)
   const docState = useCanvasDoc()
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [repositionMode, setRepositionMode] = useState(false)
   // Which save mode is in flight — 'all' = Save & apply to all (both buttons share the guard).
   const [saving, setSaving] = useState<'save' | 'all' | false>(false)
 
@@ -66,10 +68,37 @@ export function CanvasEditorOverlay(props: CanvasEditorProps) {
     docState.initDoc(data.seeded ? autofitDocLayers(data.doc) : data.doc)
   }, [fontsReady, data, docState])
 
+  // Escape/Cancel/backdrop step OUT of reposition mode first; only the next attempt closes.
   const attemptClose = useCallback(() => {
+    if (repositionMode) {
+      setRepositionMode(false)
+      return
+    }
     if (docState.dirty && !window.confirm('Discard unsaved changes?')) return
     onClose()
-  }, [docState.dirty, onClose])
+  }, [repositionMode, docState.dirty, onClose])
+
+  const toggleReposition = useCallback(() => {
+    setSelectedId(null)
+    setRepositionMode((mode) => !mode)
+  }, [])
+
+  const backgroundZoom = useCallback(
+    (zoom: number) => {
+      if (!docState.doc || !backgroundImage) return
+      const canvas = docState.doc.canvas
+      docState.setBackgroundTransform(
+        zoomBackgroundTo(
+          docState.doc.backgroundTransform ?? DEFAULT_BACKGROUND_TRANSFORM,
+          zoom,
+          { x: canvas.w / 2, y: canvas.h / 2 },
+          { width: backgroundImage.naturalWidth, height: backgroundImage.naturalHeight },
+          canvas
+        )
+      )
+    },
+    [docState, backgroundImage]
+  )
 
   useEditorShortcuts({
     onClose: attemptClose,
@@ -138,7 +167,7 @@ export function CanvasEditorOverlay(props: CanvasEditorProps) {
         redo={docState.redo}
         saving={saving === 'save'}
         applying={saving === 'all'}
-        canSave={Boolean(ready) && !saving}
+        canSave={Boolean(ready) && !saving && !repositionMode}
         onCancel={attemptClose}
         onSave={() => { void performSave(false) }}
         onApplyToAll={props.onApplyToAll ? () => { void performSave(true) } : undefined}
@@ -169,9 +198,11 @@ export function CanvasEditorOverlay(props: CanvasEditorProps) {
                 scale={scale}
                 selectedId={selectedId}
                 editingId={editingId}
+                repositionMode={repositionMode}
                 onSelect={setSelectedId}
                 onLayerChange={docState.updateLayer}
                 onStartEdit={(layer: CanvasTextLayer, node: Konva.Text) => startEdit(layer, node, scale)}
+                onBackgroundTransform={docState.setBackgroundTransform}
               />
             </div>
           )}
@@ -190,6 +221,10 @@ export function CanvasEditorOverlay(props: CanvasEditorProps) {
               doc={docState.doc!}
               palette={data.identity.palette}
               selectedId={selectedId}
+              repositionMode={repositionMode}
+              onToggleReposition={toggleReposition}
+              onBackgroundZoom={backgroundZoom}
+              onBackgroundReset={() => docState.setBackgroundTransform(undefined)}
               onSelect={setSelectedId}
               onLayerChange={docState.updateLayer}
               onAddLayer={() => {

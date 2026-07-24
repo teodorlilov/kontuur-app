@@ -3,6 +3,7 @@
 import type { CanvasDoc, CanvasFontWeight, CanvasScrim, CanvasTextLayer } from '@/types/canvas'
 import type { Palette } from '@/types/visual'
 import { getFontEntry } from '@/lib/canvas/font-library'
+import { BackgroundControls } from './background-controls'
 import { ColorSwatches } from './color-swatches'
 import { FontSelect } from './font-select'
 import { LayerList } from './layer-list'
@@ -16,14 +17,18 @@ interface PropertiesPanelProps {
   doc: CanvasDoc
   palette: Palette
   selectedId: string | null
+  repositionMode: boolean
   onSelect: (id: string) => void
   onLayerChange: (id: string, patch: Partial<CanvasTextLayer>) => void
   onAddLayer: () => void
   onRemoveLayer: (id: string) => void
   onScrimChange: (patch: Partial<CanvasScrim>) => void
+  onToggleReposition: () => void
+  onBackgroundZoom: (zoom: number) => void
+  onBackgroundReset: () => void
 }
 
-/** The editor's right-hand controls: layers, selected-layer typography and colour, scrim. */
+/** The editor's right-hand controls: layers, selected-layer typography and colour, scrim, background. */
 export function PropertiesPanel(props: PropertiesPanelProps) {
   const { doc, palette, selectedId, onSelect, onLayerChange, onAddLayer, onRemoveLayer, onScrimChange } = props
   const selected = doc.layers.find((layer) => layer.id === selectedId) ?? null
@@ -33,6 +38,13 @@ export function PropertiesPanel(props: PropertiesPanelProps) {
       <LayerList layers={doc.layers} selectedId={selectedId} onSelect={onSelect} onAdd={onAddLayer} onRemove={onRemoveLayer} />
       {selected && <TextControls layer={selected} palette={palette} onChange={(patch) => onLayerChange(selected.id, patch)} />}
       <ScrimControls scrim={doc.scrim} palette={palette} onChange={onScrimChange} />
+      <BackgroundControls
+        transform={doc.backgroundTransform}
+        repositionMode={props.repositionMode}
+        onToggleReposition={props.onToggleReposition}
+        onZoom={props.onBackgroundZoom}
+        onReset={props.onBackgroundReset}
+      />
     </div>
   )
 }
@@ -107,6 +119,18 @@ function TextControls({
             step={0.05}
             value={layer.lineHeight}
             onChange={(event) => onChange({ lineHeight: clampNumber(event.target.value, 0.8, 3, layer.lineHeight) })}
+            style={PANEL_CONTROL}
+          />
+        </div>
+        <div>
+          <div style={PANEL_LABEL}>Rotation °</div>
+          <input
+            type="number"
+            min={-180}
+            max={180}
+            step={1}
+            value={Math.round(layer.rotation ?? 0)}
+            onChange={(event) => onChange({ rotation: clampNumber(event.target.value, -180, 180, layer.rotation ?? 0) })}
             style={PANEL_CONTROL}
           />
         </div>

@@ -44,7 +44,12 @@ export function TextNode({ layer, canvas, stageScale, hidden, onSelect, onChange
       }}
       onTransformEnd={(event) => {
         const node = event.target as Konva.Text
-        onChange({ x: node.x(), y: node.y(), width: node.width() })
+        onChange({
+          x: node.x(),
+          y: node.y(),
+          width: node.width(),
+          rotation: clamp(Math.round(node.rotation()), -180, 180),
+        })
       }}
       onDblClick={(event) => onStartEdit(event.target as Konva.Text)}
       onDblTap={(event) => onStartEdit(event.target as Konva.Text)}

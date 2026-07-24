@@ -215,6 +215,9 @@ CanvasDoc {
   version: 1
   canvas: { w, h }                       // 1080×1350
   background: { publicUrl, storagePath } // the CLEAN (text-free) image the doc composes over
+  backgroundTransform?: { zoom, offsetX, offsetY }  // reposition (2026-07-24): pan/zoom of the
+                                         // cover-crop window; zoom 1–3, offsets = fractions of
+                                         // the crop slack (0.5 = centered); absent = cover fit
   flattenedStoragePath: string | null    // the artifact the last save produced
   scrim: { enabled, color, opacity, mode: 'full' | 'bottom' }
   layers: CanvasTextLayer[]              // capped at 20
@@ -224,6 +227,7 @@ CanvasTextLayer {
   x, y, width                            // text wraps inside width; height derived
   fontFamily                             // FREE string, not a library enum — docs outlive library edits
   fontSize, fontWeight: 400|500|600|700, fill (hex), align, lineHeight
+  rotation?: number                      // degrees around the top-left pivot (2026-07-24); absent = 0
   textOverridden?: boolean               // user hand-edited text → recompose keeps their wording
 }
 ```
@@ -244,7 +248,10 @@ reopen would show every text twice. So the doc tracks TWO storage references (se
   CURRENT image is treated as the new clean background; the next save rebinds `doc.background`
   to it and best-effort deletes the orphaned old clean file (only when it isn't the incoming
   background, isn't the current image, and lives under `{clientId}/` — never outside the client's
-  space).
+  space). A stored `backgroundTransform` RESETS on every rebind (a pan/zoom belongs to the old
+  art) — enforced at all three rebind sites: the editor's `resolveDoc`, the auto-compose reuse
+  path, and the apply-to-all sibling path. Recompose after copy edits never rebinds, so the crop
+  survives text refreshes.
 - **`replaceExistingImage` gained `preserveStoragePath?`** (`features/publishing/lib/storage.ts`):
   the row is always deleted, the storage object kept when its path matches — so the clean file
   survives its own row being replaced by the flattened export. Existing callers unchanged.
@@ -346,6 +353,20 @@ siblings through `useGenerateVisuals.applyStyle` (review/calendar) or
 degrade-to-current-image failure posture as auto-compose. Doc-less siblings are seeded, styled
 and composed in one pass.
 
+**Background reposition + text rotation (2026-07-24):** the background is no longer fixed. A
+"Background" panel section enters **Reposition mode** — text/scrim dim to 35% and lock, dragging
+pans the art (pinned-drag Konva trick: the gesture surface never moves, only the crop window),
+the wheel zooms toward the pointer, a panel slider zooms about the canvas center (1–3×), Reset
+returns to the centered cover fit. Previews mutate the background node's crop attrs directly;
+the doc gets ONE commit per gesture (drag end / settled wheel burst) so a whole drag is one undo
+step. Escape/Cancel/backdrop step OUT of the mode before closing; Save is disabled while active.
+The pure pan/zoom math lives in `src/lib/canvas/reposition.ts` (slack-normalized offsets,
+focus-invariant zoom — node-tested). Text layers rotate via the transformer's **rotate handle**
+(snaps at 0/±45/±90/180, tolerance 6°) or an exact degrees input in the panel; the inline-edit
+textarea anchors at the unrotated pivot and mirrors the tilt via CSS `rotate()`. Rotation
+propagates through "Save & apply to all" (part of the look — an unrotated source un-tilts
+siblings); the background crop does NOT (each slide's crop belongs to its own art).
+
 **Editing target** is a discriminated union: `{ kind:'post', postId, position }` (GET on open, PUT
 on save) | `{ kind:'draft', clientId, draftId, position, doc? }` (identity GET, draft upload on
 save, doc handed back to wizard memory).
@@ -359,9 +380,11 @@ save, doc handed back to wizard memory).
 - Pure `doc → Konva attrs` builders in `src/lib/canvas/node-attrs.ts` are shared by the
   react-konva JSX AND the exporter (no dual mapping). Konva expresses weight via `fontStyle`
   strings (`'bold'`, `'500'`) — mapped once there, never inline.
-- Transformer: `middle-left`/`middle-right` anchors only, no rotate; `scaleX` folds into `width`
-  DURING transform (not just transformend — else squished glyphs). Drag/transform sync React on
-  end-events only — never per-frame through React.
+- Transformer: `middle-left`/`middle-right` anchors + the rotate handle (snaps 0/±45/±90/180);
+  `scaleX` folds into `width` DURING transform (not just transformend — else squished glyphs;
+  the fold is rotation-agnostic, scaleX is local). Drag/transform sync React on end-events only
+  — never per-frame through React; reposition previews follow the same rule via direct
+  crop-attr mutation.
 - Inline edit = textarea overlay positioned at `node.absolutePosition()` × stage scale, commit on
   blur/Esc, sets `textOverridden: true`.
 - Background images load with `crossOrigin='anonymous'` from the RAW Supabase publicUrl (never a
@@ -434,12 +457,16 @@ Instagram.
 
 🔜 **Still deferred (specified below, not yet planned)**
 - **§4 Advanced Canvas:** SVGs-on-demand, DIS object isolation, free layer architecture,
-  "Isolate Object" flow, inpainting, background crop/pan/filters, text rotation.
+  "Isolate Object" flow, inpainting, background filters.
 
 ✅ **Quick wins shipped 2026-07-24 (commit `a04f1f9`):** §6.1 slide-role prompt hints with the
 alternating rich/quiet rhythm (see Phase 3 prompt contract), auto-recompose on persisted-post
 copy edits (ex-TECH-DEBT 2.5) and "Save & apply to all" (ex-TECH-DEBT 2.6) — details woven into
 the sections above.
+
+✅ **Background reposition (crop/pan/zoom) + text rotation shipped 2026-07-24** — the two
+cheapest §4 items, no layer architecture needed; as-built details in §2 (doc shape), §3
+(rebind resets) and §7 (editor) above. Background *filters* stay deferred with §4.
 
 **Setup:** migrations `20260718_create_brand_visual_identity.sql` +
 `20260721_strip_legacy_visual_identity_fields.sql` + `20260722_post_images_unique_position.sql` +

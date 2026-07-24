@@ -40,8 +40,9 @@ export async function composePersistedPosition(input: {
   if (!body.identity) return null
 
   const background = { publicUrl: input.image.publicUrl, storagePath: input.image.storagePath }
+  // Fresh art becomes the new clean background; the stored pan/zoom belonged to the old art.
   const doc = body.doc
-    ? { ...body.doc, background }
+    ? { ...body.doc, background, backgroundTransform: undefined }
     : input.slideCopy && seedFromCopy(body.identity, background, input.slideCopy)
   if (!doc || doc.layers.length === 0) return null
 
@@ -124,11 +125,12 @@ export async function applyStyleToPostSibling(input: {
 
   const background = { publicUrl: input.image.publicUrl, storagePath: input.image.storagePath }
   // Same rebind rule as the editor: our own baked output → compose over the doc's clean
-  // background; image changed underneath → the current image IS the new clean background.
+  // background (pan/zoom kept); image changed underneath → the current image IS the new clean
+  // background and the stored pan/zoom resets with it.
   const doc = body.doc
     ? body.doc.flattenedStoragePath === input.image.storagePath
       ? body.doc
-      : { ...body.doc, background }
+      : { ...body.doc, background, backgroundTransform: undefined }
     : input.slideCopy && seedFromCopy(body.identity, background, input.slideCopy)
   if (!doc || doc.layers.length === 0) return null
 

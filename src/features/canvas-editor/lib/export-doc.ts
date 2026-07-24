@@ -26,7 +26,11 @@ export async function exportDocToJpegBlob(
     layer.add(
       new Konva.Image({
         image: backgroundImage,
-        ...backgroundNodeAttrs({ width: backgroundImage.naturalWidth, height: backgroundImage.naturalHeight }, doc.canvas),
+        ...backgroundNodeAttrs(
+          { width: backgroundImage.naturalWidth, height: backgroundImage.naturalHeight },
+          doc.canvas,
+          doc.backgroundTransform
+        ),
       })
     )
     const scrim = scrimNodeAttrs(doc.scrim, doc.canvas)

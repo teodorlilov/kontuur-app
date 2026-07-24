@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useState } from 'react'
-import type { CanvasDoc, CanvasScrim, CanvasTextLayer } from '@/types/canvas'
+import type { CanvasBackgroundTransform, CanvasDoc, CanvasScrim, CanvasTextLayer } from '@/types/canvas'
 
 const UNDO_CAP = 50
 
@@ -57,6 +57,12 @@ export function useCanvasDoc() {
     [commit]
   )
 
+  const setBackgroundTransform = useCallback(
+    (transform: CanvasBackgroundTransform | undefined) =>
+      commit((doc) => ({ ...doc, backgroundTransform: transform })),
+    [commit]
+  )
+
   const undo = useCallback(() => {
     setHistory((h) => {
       const previous = h.past[h.past.length - 1]
@@ -80,6 +86,7 @@ export function useCanvasDoc() {
     addLayer,
     removeLayer,
     setScrim,
+    setBackgroundTransform,
     undo,
     redo,
     canUndo: history.past.length > 0,

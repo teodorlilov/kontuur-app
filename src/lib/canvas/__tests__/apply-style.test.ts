@@ -86,6 +86,24 @@ describe('applyStyleToDoc', () => {
     expect(result.layers[1]).toEqual(target.layers[1])
   })
 
+  it('copies rotation as part of the look, and an unrotated source un-tilts the target', () => {
+    const tiltedSource = makeDoc([makeLayer({ id: 's-h', role: 'headline', text: 'Head', rotation: -6 })])
+    const target = makeDoc([makeLayer({ id: 't-h', role: 'headline', text: 'T head', rotation: 45 })])
+    expect(applyStyleToDoc(target, tiltedSource).layers[0]?.rotation).toBe(-6)
+    const straightSource = makeDoc([makeLayer({ id: 's-h', role: 'headline', text: 'Head' })])
+    expect(applyStyleToDoc(target, straightSource).layers[0]?.rotation).toBeUndefined()
+  })
+
+  it('never copies the background transform — the crop belongs to each slide', () => {
+    const source = makeDoc([makeLayer({ id: 's-h', role: 'headline', text: 'Head' })], {
+      backgroundTransform: { zoom: 2, offsetX: 0.1, offsetY: 0.9 },
+    })
+    const target = makeDoc([makeLayer({ id: 't-h', role: 'headline', text: 'T head' })], {
+      backgroundTransform: { zoom: 1.5, offsetX: 0.7, offsetY: 0.3 },
+    })
+    expect(applyStyleToDoc(target, source).backgroundTransform).toEqual({ zoom: 1.5, offsetX: 0.7, offsetY: 0.3 })
+  })
+
   it('leaves a target role alone when the source lacks it', () => {
     const sourceHeadlineOnly = makeDoc([makeLayer({ id: 's-h', role: 'headline', text: 'Head', fill: '#00ff00' })])
     const target = makeDoc([

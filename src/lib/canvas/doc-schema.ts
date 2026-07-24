@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import type { CanvasDoc } from '@/types/canvas'
-import { CANVAS_DOC_VERSION } from './constants'
+import { CANVAS_DOC_VERSION, MAX_BACKGROUND_ZOOM } from './constants'
 
 const HEX = /^#[0-9a-fA-F]{6}$/
 const hex = z.string().regex(HEX, 'must be a #rrggbb hex colour')
@@ -18,6 +18,7 @@ const textLayerSchema = z.object({
   fill: hex,
   align: z.enum(['left', 'center', 'right']),
   lineHeight: z.number().min(0.8).max(3),
+  rotation: z.number().min(-180).max(180).optional(),
   textOverridden: z.boolean().optional(),
 })
 
@@ -33,6 +34,12 @@ const backgroundSchema = z.object({
   storagePath: z.string().min(1),
 })
 
+const backgroundTransformSchema = z.object({
+  zoom: z.number().min(1).max(MAX_BACKGROUND_ZOOM),
+  offsetX: z.number().min(0).max(1),
+  offsetY: z.number().min(0).max(1),
+})
+
 /**
  * Runtime validator for a `CanvasDoc` before it is written to `post_canvas_docs.doc` — the single
  * write-gate. Readers safeParse and treat failures as "no doc" (reseed), never a hard error. The
@@ -42,6 +49,7 @@ export const canvasDocSchema = z.object({
   version: z.literal(CANVAS_DOC_VERSION),
   canvas: z.object({ w: z.number().int().positive(), h: z.number().int().positive() }),
   background: backgroundSchema,
+  backgroundTransform: backgroundTransformSchema.optional(),
   flattenedStoragePath: z.string().min(1).nullable(),
   scrim: scrimSchema,
   layers: z.array(textLayerSchema).max(20),

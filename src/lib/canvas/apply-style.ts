@@ -2,12 +2,14 @@ import type { CanvasDoc, CanvasTextLayer } from '@/types/canvas'
 
 // The "look" of a layer — everything except identity (id/role) and content (text/textOverridden).
 // Copying an oversized fontSize is fine: compose autofits each slide's own text downstream.
+// `rotation` rides along deliberately even when undefined — an unrotated source un-tilts targets.
 function styledLayer(target: CanvasTextLayer, source: CanvasTextLayer): CanvasTextLayer {
   return {
     ...target,
     x: source.x,
     y: source.y,
     width: source.width,
+    rotation: source.rotation,
     fontFamily: source.fontFamily,
     fontSize: source.fontSize,
     fontWeight: source.fontWeight,

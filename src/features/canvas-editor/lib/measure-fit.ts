@@ -32,7 +32,9 @@ function fittedFontSize(layer: CanvasTextLayer, canvasH: number): number {
   return Math.round(outcome.size)
 }
 
-// True when the layer's text exceeds its slot even at the current size.
+// True when the layer's text exceeds its slot even at the current size. Deliberately ignores
+// rotation (unrotated y + height): seeded layers are never rotated, and a hand-tilted layer's
+// exact extent isn't worth the math for a cosmetic badge.
 function layerOverflows(layer: CanvasTextLayer, canvasH: number): boolean {
   return measuredHeight(layer, layer.fontSize) > availableHeight(layer, canvasH)
 }
