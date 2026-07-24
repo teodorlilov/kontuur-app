@@ -35,7 +35,8 @@ export function CanvasEditorOverlay(props: CanvasEditorProps) {
   const data = useEditorData(target, image, slideCopy)
   const docState = useCanvasDoc()
   const [selectedId, setSelectedId] = useState<string | null>(null)
-  const [saving, setSaving] = useState(false)
+  // Which save mode is in flight — 'all' = Save & apply to all (both buttons share the guard).
+  const [saving, setSaving] = useState<'save' | 'all' | false>(false)
 
   const families = useMemo(() => {
     if (data.status !== 'ready') return []
@@ -82,9 +83,9 @@ export function CanvasEditorOverlay(props: CanvasEditorProps) {
     },
   })
 
-  const save = useCallback(async () => {
+  const performSave = useCallback(async (applyToAll: boolean) => {
     if (!docState.doc || !backgroundImage || saving) return
-    setSaving(true)
+    setSaving(applyToAll ? 'all' : 'save')
     try {
       const blob = await exportDocToJpegBlob(docState.doc, backgroundImage)
       if (target.kind === 'post') {
@@ -95,6 +96,8 @@ export function CanvasEditorOverlay(props: CanvasEditorProps) {
         const { visual, doc } = await saveDraftCanvas(target, docState.doc, blob, previousPath)
         props.onSavedDraft?.(visual, doc)
       }
+      // Siblings restyle AFTER this slide saved — the surface orchestrates them with its own state.
+      if (applyToAll) props.onApplyToAll?.(docState.doc)
       onClose()
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Saving the design failed')
@@ -133,10 +136,12 @@ export function CanvasEditorOverlay(props: CanvasEditorProps) {
         canRedo={docState.canRedo}
         undo={docState.undo}
         redo={docState.redo}
-        saving={saving}
-        canSave={Boolean(ready)}
+        saving={saving === 'save'}
+        applying={saving === 'all'}
+        canSave={Boolean(ready) && !saving}
         onCancel={attemptClose}
-        onSave={save}
+        onSave={() => { void performSave(false) }}
+        onApplyToAll={props.onApplyToAll ? () => { void performSave(true) } : undefined}
       />
       <div style={{ display: 'flex', height: `calc(100% - ${TOP_BAR_HEIGHT}px)` }}>
         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
@@ -250,9 +255,11 @@ interface TopBarProps {
   undo: () => void
   redo: () => void
   saving: boolean
+  applying: boolean
   canSave: boolean
   onCancel: () => void
   onSave: () => void
+  onApplyToAll?: () => void
 }
 
 function TopBar(props: TopBarProps) {
@@ -289,6 +296,18 @@ function TopBar(props: TopBarProps) {
       <Button variant="secondary" size="sm" onClick={props.onCancel}>
         Cancel
       </Button>
+      {props.onApplyToAll && (
+        <Button
+          variant="secondary"
+          size="sm"
+          loading={props.applying}
+          disabled={!props.canSave}
+          onClick={props.onApplyToAll}
+          title="Save this slide and carry its style onto every other slide (each keeps its own text)"
+        >
+          Save &amp; apply to all
+        </Button>
+      )}
       <Button size="sm" loading={props.saving} disabled={!props.canSave} onClick={props.onSave}>
         Save
       </Button>

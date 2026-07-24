@@ -7,6 +7,7 @@ import { PostList } from './post-list'
 import { PostDetail } from './post-detail'
 import { QualityPanel } from './quality-panel'
 import type { DraftVisual } from '@/features/generate/lib/draft-visuals'
+import type { CanvasDoc } from '@/types/canvas'
 import type { PostData, ValidationData } from '@/types/post'
 import type { SkippedPillar } from '@/ai/research/types'
 
@@ -21,6 +22,7 @@ interface ResultsViewProps {
   visualsByPost: Record<string, DraftVisual[]>
   onRegenerateVisual: (post: PostData, position: number) => void
   onEditedVisual: (draftId: string, visual: DraftVisual) => void
+  onApplyStyleToAll: (post: PostData, sourcePosition: number, doc: CanvasDoc) => void
   onApprove: (postId: string) => void
   onDiscard: (postId: string) => void
   onRegenerate: (postId: string, updatedPost: PostData, updatedValidation: ValidationData) => void
@@ -38,6 +40,7 @@ export function ResultsView({
   visualsByPost,
   onRegenerateVisual,
   onEditedVisual,
+  onApplyStyleToAll,
   onApprove,
   onDiscard,
   onRegenerate,
@@ -147,6 +150,7 @@ export function ResultsView({
                 visuals={visualsByPost[selectedPost.post.id]}
                 onRegenerateVisual={(position) => onRegenerateVisual(selectedPost.post, position)}
                 onEditedVisual={onEditedVisual}
+                onApplyStyleToAll={onApplyStyleToAll}
                 onApprove={onApprove}
                 onDiscard={onDiscard}
                 onRegenerate={onRegenerate}

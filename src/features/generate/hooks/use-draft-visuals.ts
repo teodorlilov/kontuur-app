@@ -6,8 +6,10 @@ import { createSemaphore } from '@/lib/concurrency'
 import { parseSlides } from '@/components/posts/parse-slides'
 import { MAX_CONCURRENT_VISUAL_REQUESTS } from '@/lib/visual/limits'
 import type { SeedIdentity } from '@/lib/canvas/seed-doc'
+import type { CanvasDoc } from '@/types/canvas'
 import { fetchClientIdentity } from '@/features/canvas-editor/lib/identity-client'
 import { slideCopyAt } from '@/features/canvas-editor/lib/slide-copy'
+import type { DraftVisualResult } from '@/features/canvas-editor/types'
 import { draftStoragePaths, type DraftVisual } from '@/features/generate/lib/draft-visuals'
 
 /** The draft fields visual generation needs — satisfied by both `PostData` and `DraftPost`. */
@@ -190,6 +192,31 @@ export function useDraftVisuals() {
     [setVisual]
   )
 
+  // Shared per-slide skeleton for the post-hoc compose passes (rewrite recompose, apply-style-to-
+  // all): mark generating, run serially, swap in the result or restore the prior visual.
+  const runDraftComposeTask = useCallback(
+    (
+      post: DraftPostInput,
+      visual: DraftVisual,
+      signal: AbortSignal,
+      task: () => Promise<{ visual: DraftVisualResult; doc: CanvasDoc } | null>
+    ) => {
+      setVisual(post.id, { ...visual, status: 'generating' })
+      void enqueueCompose(async () => {
+        if (signal.aborted) return
+        try {
+          const result = await task()
+          if (signal.aborted) return
+          setVisual(post.id, result ? { ...result.visual, status: 'done', canvasDoc: result.doc } : visual)
+        } catch (err) {
+          console.error(`[draft-visuals] compose pass for draft ${post.id} position ${visual.position} failed:`, err)
+          if (!signal.aborted) setVisual(post.id, visual)
+        }
+      })
+    },
+    [setVisual, enqueueCompose]
+  )
+
   /** Re-compose a rewritten draft's composed slides with the new copy (art untouched, D3e). */
   const recomposeDraft = useCallback(
     (post: DraftPostInput) => {
@@ -200,32 +227,55 @@ export function useDraftVisuals() {
         const { canvasDoc, storagePath } = visual
         const slideCopy = slideCopyAt(post, visual.position)
         if (!slideCopy) continue
-        setVisual(post.id, { ...visual, status: 'generating' })
-        void enqueueCompose(async () => {
-          if (signal.aborted) return
-          try {
-            const { recomposeDraftVisual } = await import('@/features/canvas-editor/lib/auto-compose')
-            const identity = await clientIdentity(post.client_id)
-            const result = await recomposeDraftVisual({
-              clientId: post.client_id,
-              draftId: post.id,
-              position: visual.position,
-              identity,
-              slideCopy,
-              doc: canvasDoc,
-              previousFlattenedPath: storagePath,
-            })
-            if (!signal.aborted) {
-              setVisual(post.id, { ...result.visual, status: 'done', canvasDoc: result.doc })
-            }
-          } catch (err) {
-            console.error(`[draft-visuals] recompose for draft ${post.id} position ${visual.position} failed:`, err)
-            if (!signal.aborted) setVisual(post.id, visual)
-          }
+        runDraftComposeTask(post, visual, signal, async () => {
+          const { recomposeDraftVisual } = await import('@/features/canvas-editor/lib/auto-compose')
+          const identity = await clientIdentity(post.client_id)
+          return recomposeDraftVisual({
+            clientId: post.client_id,
+            draftId: post.id,
+            position: visual.position,
+            identity,
+            slideCopy,
+            doc: canvasDoc,
+            previousFlattenedPath: storagePath,
+          })
         })
       }
     },
-    [visualsByDraft, draftController, setVisual, enqueueCompose, clientIdentity]
+    [visualsByDraft, draftController, runDraftComposeTask, clientIdentity]
+  )
+
+  /** "Save & apply to all" from the draft editor: restyle every other slide with the source's look. */
+  const applyStyleAcrossDraft = useCallback(
+    (post: DraftPostInput, sourcePosition: number, sourceDoc: CanvasDoc) => {
+      const visuals = visualsByDraft[post.id] ?? []
+      const { signal } = draftController(post.id)
+      for (const visual of visuals) {
+        if (visual.position === sourcePosition) continue
+        if (visual.status !== 'done' || !visual.publicUrl || !visual.storagePath) continue
+        const { canvasDoc, publicUrl, storagePath } = visual
+        const slideCopy = slideCopyAt(post, visual.position)
+        if (!slideCopy) continue
+        runDraftComposeTask(post, visual, signal, async () => {
+          const { applyStyleToDraftSibling } = await import('@/features/canvas-editor/lib/auto-compose')
+          const identity = await clientIdentity(post.client_id)
+          return applyStyleToDraftSibling({
+            clientId: post.client_id,
+            draftId: post.id,
+            position: visual.position,
+            identity,
+            slideCopy,
+            doc: canvasDoc ?? null,
+            // No doc = compose never ran, so the shown file IS the clean background (keep it);
+            // with a doc the shown file is a flattened artifact and gets replaced.
+            clean: canvasDoc ? canvasDoc.background : { publicUrl, storagePath },
+            source: sourceDoc,
+            previousFlattenedPath: canvasDoc ? storagePath : undefined,
+          })
+        })
+      }
+    },
+    [visualsByDraft, draftController, runDraftComposeTask, clientIdentity]
   )
 
   /** Stop pending jobs and drop tracking, keeping stored files (approve path — images were attached). */
@@ -270,6 +320,7 @@ export function useDraftVisuals() {
     regenerate,
     applyEditedVisual,
     recomposeDraft,
+    applyStyleAcrossDraft,
     abandonDraft,
     discardDraft,
     resetAll,

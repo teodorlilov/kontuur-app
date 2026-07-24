@@ -29,4 +29,9 @@ export interface CanvasEditorProps {
   onSaved?: (image: PostImage) => void
   /** Draft save result: the flattened upload + the doc to hold in wizard memory. */
   onSavedDraft?: (visual: DraftVisualResult, doc: CanvasDoc) => void
+  /**
+   * Enables "Save & apply to all": after the normal save, the surface receives the saved doc and
+   * carries its look onto the sibling slides (the editor itself stays single-position).
+   */
+  onApplyToAll?: (doc: CanvasDoc) => void
 }

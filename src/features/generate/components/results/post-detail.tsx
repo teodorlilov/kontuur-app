@@ -17,6 +17,7 @@ import {
   REWRITE_SCORE_THRESHOLD,
   AUTHENTICITY_URGENT_THRESHOLD,
 } from '@/lib/content-rules/constants'
+import type { CanvasDoc } from '@/types/canvas'
 import type { PostData, ValidationData } from '@/types/post'
 
 interface PostDetailProps {
@@ -25,13 +26,15 @@ interface PostDetailProps {
   visuals: DraftVisual[] | undefined
   onRegenerateVisual: (position: number) => void
   onEditedVisual: (draftId: string, visual: DraftVisual) => void
+  /** "Save & apply to all": restyle the post's other slides with the saved doc's look. */
+  onApplyStyleToAll: (post: PostData, sourcePosition: number, doc: CanvasDoc) => void
   onApprove: (postId: string) => void
   onDiscard: (postId: string) => void
   onRegenerate: (postId: string, updatedPost: PostData, updatedValidation: ValidationData) => void
 }
 
 /** Middle panel: post content with scrollable body and fixed action bar. */
-export function PostDetail({ post, validationData, visuals, onRegenerateVisual, onEditedVisual, onApprove, onDiscard, onRegenerate }: PostDetailProps) {
+export function PostDetail({ post, validationData, visuals, onRegenerateVisual, onEditedVisual, onApplyStyleToAll, onApprove, onDiscard, onRegenerate }: PostDetailProps) {
   const {
     caption,
     setCaption,
@@ -46,6 +49,7 @@ export function PostDetail({ post, validationData, visuals, onRegenerateVisual, 
   const [editingPosition, setEditingPosition] = useState<number | null>(null)
   const slides = parseSlides(slidesJson)
   const pendingVisualCount = (visuals ?? []).filter((v) => v.status === 'generating').length
+  const doneVisualCount = (visuals ?? []).filter((v) => v.status === 'done' && !!v.publicUrl && !!v.storagePath).length
 
   const isCarousel = post.post_type === 'carousel'
   const editingVisual =
@@ -141,6 +145,12 @@ export function PostDetail({ post, validationData, visuals, onRegenerateVisual, 
           onClose={() => setEditingPosition(null)}
           onSavedDraft={(visual, doc) =>
             onEditedVisual(post.id, { position: visual.position, status: 'done', publicUrl: visual.publicUrl, storagePath: visual.storagePath, canvasDoc: doc })
+          }
+          onApplyToAll={
+            isCarousel && doneVisualCount > 1
+              ? // Local caption/slide edits ride along so doc-less siblings seed from fresh copy.
+                (doc) => onApplyStyleToAll({ ...post, caption, slides_json: slidesJson }, editingPosition, doc)
+              : undefined
           }
         />
       )}

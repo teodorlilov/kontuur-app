@@ -13,7 +13,6 @@ import { ClientResponseCard } from '@/features/calendar/components/client-respon
 import { Button } from '@/components/ui/button'
 import { CanvasEditor } from '@/features/canvas-editor/components/canvas-editor'
 import { slideCopyAt } from '@/features/canvas-editor/lib/slide-copy'
-import { nudgeStaleBakedText } from '@/features/canvas-editor/lib/stale-text-nudge'
 import { ImageSlot } from '@/features/publishing/components/image-slot'
 import { useCanvaStatus } from '@/features/publishing/hooks/use-canva-status'
 import { useGenerateVisuals } from '@/features/publishing/hooks/use-generate-visuals'
@@ -199,7 +198,7 @@ export const ScheduleCard = memo(function ScheduleCard({
     [post]
   )
 
-  const { generatingPositions, composingPositions, generate } = useGenerateVisuals(
+  const { generatingPositions, composingPositions, generate, recompose, applyStyle } = useGenerateVisuals(
     post?.id ?? '',
     handleImageUploaded,
     getSlideCopy
@@ -267,7 +266,10 @@ export const ScheduleCard = memo(function ScheduleCard({
     setSavingContent(true)
     const ok = await onSaveContent(currentPost.id, buildContentUpdates())
     setSavingContent(false)
-    if (ok) onExitEditMode?.()
+    if (ok) {
+      recomposeBakedText(buildContentUpdates())
+      onExitEditMode?.()
+    }
   }
 
   async function handleSaveAndResendApproval() {
@@ -275,12 +277,21 @@ export const ScheduleCard = memo(function ScheduleCard({
     setSavingContent(true)
     await onSaveAndResend(currentPost.id, buildContentUpdates())
     setSavingContent(false)
+    recomposeBakedText(buildContentUpdates())
     onExitEditMode?.()
   }
 
-  // Copy edits never regenerate visuals — but baked text can go stale; nudge instead (v1 policy).
-  function nudgeStaleVisuals() {
-    nudgeStaleBakedText(images.length)
+  // Copy edits never regenerate the AI art — but baked text re-composes from the fresh values
+  // (the `post` prop lags the optimistic save, so the just-saved fields come in explicitly).
+  function recomposeBakedText(updates: ContentUpdates) {
+    void recompose(
+      {
+        post_type: currentPost.post_type,
+        slides_json: updates.slides_json ?? currentPost.slides_json,
+        caption: updates.caption ?? currentPost.caption ?? null,
+      },
+      images
+    )
   }
 
   const editingImage = editingPosition !== null ? images.find((img) => img.position === editingPosition) : undefined
@@ -487,7 +498,7 @@ export const ScheduleCard = memo(function ScheduleCard({
                 onBlur={() => {
                   if (draftCaption !== (currentPost.caption ?? '') && onSaveContent) {
                     void onSaveContent(currentPost.id, { caption: draftCaption })
-                    nudgeStaleVisuals()
+                    recomposeBakedText({ caption: draftCaption })
                   }
                 }}
                 style={{
@@ -537,7 +548,9 @@ export const ScheduleCard = memo(function ScheduleCard({
                   onBlur={() => {
                     if (onSaveContent && draftSlides.length > 0) {
                       void onSaveContent(currentPost.id, { slides_json: draftSlides })
-                      if (JSON.stringify(draftSlides) !== JSON.stringify(slides)) nudgeStaleVisuals()
+                      if (JSON.stringify(draftSlides) !== JSON.stringify(slides)) {
+                        recomposeBakedText({ slides_json: draftSlides })
+                      }
                     }
                   }}
                   flaggedSlides={flaggedSlideNumbers}
@@ -626,6 +639,22 @@ export const ScheduleCard = memo(function ScheduleCard({
           slideLabel={isCarousel ? `Slide ${editingPosition + 1} of ${totalImageSlots}` : 'Post visual'}
           onClose={() => setEditingPosition(null)}
           onSaved={handleImageUploaded}
+          onApplyToAll={
+            images.length > 1
+              ? (doc) => {
+                  void applyStyle(
+                    doc,
+                    editingPosition,
+                    {
+                      post_type: currentPost.post_type,
+                      slides_json: currentPost.slides_json,
+                      caption: currentPost.caption ?? null,
+                    },
+                    images
+                  )
+                }
+              : undefined
+          }
         />
       )}
     </div>

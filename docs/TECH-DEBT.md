@@ -68,19 +68,17 @@ None of these block shipping; each entry says what it is, why it was deferred, a
   re-edit state — the editor gracefully reseeds on next open.
 - **Fix option:** surface a partial-success warning in the response + toast.
 
-### 2.5 Persisted-post copy edits don't auto-recompose baked text (Phase-4 fast-follow)
-- **What:** wizard rewrites re-flatten composed drafts automatically, but a rewrite/copy-edit in
-  /review or calendar only shows a "text on visuals may be outdated" nudge — the user refreshes
-  via the editor (open → Save). The nudge also fires on any post WITH images (it can't cheaply
-  know whether canvas docs exist client-side).
-- **Fix:** reuse the wizard recompose path — fetch docs for doc'd positions after a copy save,
-  `applyCopyToDoc` + re-flatten + canvas PUT (browser is right there). ~30 lines per surface.
+### 2.5 Persisted-post copy edits don't auto-recompose baked text — RESOLVED 2026-07-24
+- Rewrites AND manual caption/slide edits in /review + calendar now re-bake doc'd positions
+  automatically (`recomposePersistedPosition` + `useGenerateVisuals.recompose`; the stale-text
+  nudge was deleted — its message survives only as the recompose-failure toast). Positions
+  without a doc are never touched; unchanged copy is a no-op (text comparison before flatten).
 
-### 2.6 No "apply text style to all slides" (Phase-4 fast-follow)
-- **What:** editor tweaks are per-slide; a 6-slide carousel needs 6 rounds of manual styling if the
-  user deviates from the seeded brand-style defaults (which DO keep slides consistent by default).
-- **Fix:** an "Apply to all slides" action that copies the selected layer's font/size/color/scrim
-  onto the other positions' docs and re-flattens them serially.
+### 2.6 No "apply text style to all slides" — RESOLVED 2026-07-24
+- The editor's "Save & apply to all" button saves the slide, then carries its full look
+  (role-matched layer position/width/font/size/weight/color/align/line-height + scrim) onto
+  every sibling on all three surfaces (`applyStyleToDoc` + per-surface orchestrators). Each
+  slide keeps its own text; doc-less siblings are seeded, styled and composed in one pass.
 
 ### 2.7 Clean-background orphans (accepted)
 - **What:** regenerating over an edited slide, then saving, best-effort deletes the doc's previous

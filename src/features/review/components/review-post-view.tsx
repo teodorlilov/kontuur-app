@@ -5,7 +5,6 @@ import { Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { CanvasEditor } from '@/features/canvas-editor/components/canvas-editor'
 import { slideCopyAt } from '@/features/canvas-editor/lib/slide-copy'
-import { nudgeStaleBakedText } from '@/features/canvas-editor/lib/stale-text-nudge'
 import { useReviewActions } from '@/features/review/hooks/use-review-actions'
 import { useScheduleModal } from '@/components/scheduling/use-schedule-modal'
 import { ScheduleModal } from '@/components/scheduling/schedule-modal'
@@ -77,18 +76,32 @@ export function ReviewPostView({ post, bestTimeData, onApprove, onDelete, onImag
       slideCopyAt({ post_type: post.post_type, slides_json: slidesJson, caption }, position),
     [post.post_type, slidesJson, caption]
   )
-  const { generatingPositions, composingPositions, generate } = useGenerateVisuals(post.id, mergeImage, getSlideCopy)
+  const { generatingPositions, composingPositions, generate, recompose, applyStyle } = useGenerateVisuals(post.id, mergeImage, getSlideCopy)
 
   const totalSlots = isCarousel ? slides.length : 1
   const missingPositions = missingImagePositions(images, totalSlots, generatingPositions)
   const slotsWithoutImage = totalSlots - images.length
   const editingImage = editingPosition !== null ? images.find((img) => img.position === editingPosition) : undefined
 
-  // Rewrites never regenerate visuals — but baked text can go stale; nudge instead (v1 policy).
+  // Copy changes never regenerate the AI art — but baked text re-composes from the fresh copy.
   const handleRewrite = useCallback(async () => {
-    await rewrite()
-    nudgeStaleBakedText(images.length)
-  }, [rewrite, images.length])
+    const rewritten = await rewrite()
+    if (rewritten) {
+      void recompose({ post_type: post.post_type, slides_json: rewritten.slidesJson, caption: rewritten.caption }, images)
+    }
+  }, [rewrite, recompose, post.post_type, images])
+
+  const handleCaptionSave = useCallback(async (newCaption: string) => {
+    if (await saveCaption(newCaption)) {
+      void recompose({ post_type: post.post_type, slides_json: slidesJson, caption: newCaption }, images)
+    }
+  }, [saveCaption, recompose, post.post_type, slidesJson, images])
+
+  const handleSlidesSave = useCallback(async (newSlides: unknown) => {
+    if (await saveSlidesJson(newSlides)) {
+      void recompose({ post_type: post.post_type, slides_json: newSlides, caption }, images)
+    }
+  }, [saveSlidesJson, recompose, post.post_type, caption, images])
 
   // Run slop detection on mount
   useEffect(() => {
@@ -121,8 +134,8 @@ export function ReviewPostView({ post, bestTimeData, onApprove, onDelete, onImag
         sourceType={post.source_type}
         sourceExcerpt={post.source_excerpt}
         editable
-        onCaptionChange={(c) => { void saveCaption(c) }}
-        onSlidesChange={(s) => { void saveSlidesJson(s) }}
+        onCaptionChange={(c) => { void handleCaptionSave(c) }}
+        onSlidesChange={(s) => { void handleSlidesSave(s) }}
         postId={post.id}
         images={images}
         onImageUploaded={mergeImage}
@@ -194,6 +207,13 @@ export function ReviewPostView({ post, bestTimeData, onApprove, onDelete, onImag
           slideLabel={isCarousel ? `Slide ${editingPosition + 1} of ${totalSlots}` : 'Post visual'}
           onClose={() => setEditingPosition(null)}
           onSaved={mergeImage}
+          onApplyToAll={
+            images.length > 1
+              ? (doc) => {
+                  void applyStyle(doc, editingPosition, { post_type: post.post_type, slides_json: slidesJson, caption }, images)
+                }
+              : undefined
+          }
         />
       )}
       <ScheduleModal

@@ -9,14 +9,48 @@ describe('sanitizePromptText', () => {
 })
 
 describe('carouselSlideText', () => {
-  it('formats the slide position, headline, and body', () => {
-    const text = carouselSlideText({ headline: 'Layer 2: Connect GA4', body: 'GA4 shows where users go.' }, 2, 8)
-    expect(text).toBe('Slide 3 of 8\n\nHeadline: Layer 2: Connect GA4\nBody: GA4 shows where users go.')
+  it('formats the slide position, role hint, headline, and body', () => {
+    const text = carouselSlideText({ headline: 'Layer 2: Connect GA4', body: 'GA4 shows where users go.' }, 3, 8)
+    expect(text).toBe(
+      'Slide 4 of 8\n' +
+        'This is a quiet middle slide: a restrained, minimal take on the style — ONE small supporting subject only, sparse elements, most of the canvas plain calm background; keep the top quarter and the lower half of the canvas calm and uncluttered, text will be overlaid there.\n' +
+        '\nHeadline: Layer 2: Connect GA4\nBody: GA4 shows where users go.'
+    )
+  })
+
+  it('alternates quiet and rich middle slides by position', () => {
+    const slide = { headline: 'H', body: 'B' }
+    expect(carouselSlideText(slide, 1, 6)).toContain('quiet middle slide')
+    expect(carouselSlideText(slide, 2, 6)).toContain('richly detailed middle slide')
+    expect(carouselSlideText(slide, 3, 6)).toContain('quiet middle slide')
+    expect(carouselSlideText(slide, 4, 6)).toContain('richly detailed middle slide')
   })
 
   it('omits an empty body line instead of leaving a dangling label', () => {
     const text = carouselSlideText({ headline: 'Save this', body: '' }, 7, 8)
-    expect(text).toBe('Slide 8 of 8\n\nHeadline: Save this')
+    expect(text).toContain('Slide 8 of 8\n')
+    expect(text).toContain('\n\nHeadline: Save this')
+    expect(text).not.toContain('Body:')
+  })
+
+  it('marks the first slide as the cover anchor', () => {
+    const text = carouselSlideText({ headline: 'Hook', body: 'Why.' }, 0, 6)
+    expect(text).toContain('cover slide')
+    expect(text).toContain('dominant focal subject')
+  })
+
+  it('marks the last slide as the call-to-action', () => {
+    const text = carouselSlideText({ headline: 'Do it', body: 'Now.' }, 5, 6)
+    expect(text).toContain('call-to-action slide')
+  })
+
+  it('a two-slide carousel gets cover then CTA, never a middle hint', () => {
+    expect(carouselSlideText({ headline: 'A', body: 'a' }, 0, 2)).toContain('cover slide')
+    expect(carouselSlideText({ headline: 'B', body: 'b' }, 1, 2)).toContain('call-to-action slide')
+  })
+
+  it('a one-slide carousel is a cover, not a CTA', () => {
+    expect(carouselSlideText({ headline: 'Solo', body: '' }, 0, 1)).toContain('cover slide')
   })
 
   it('returns null when the slide has no usable copy', () => {

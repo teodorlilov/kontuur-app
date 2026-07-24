@@ -137,7 +137,8 @@ export function useReviewActions({
     }
   }
 
-  async function rewrite() {
+  /** Rewrite + persist; returns the fresh copy so callers can re-bake visuals, null on failure. */
+  async function rewrite(): Promise<{ caption: string; slidesJson: unknown } | null> {
     setRewriting(true)
     try {
       const res = await fetch('/api/ai/rewrite', {
@@ -154,7 +155,7 @@ export function useReviewActions({
       })
       if (!res.ok) {
         toast.error('Failed to rewrite post')
-        return
+        return null
       }
       const data = (await res.json()) as {
         caption: string
@@ -182,8 +183,10 @@ export function useReviewActions({
       })
 
       toast.success('Post rewritten')
+      return { caption: data.caption, slidesJson: data.slides_json }
     } catch {
       toast.error('Failed to rewrite post')
+      return null
     } finally {
       setRewriting(false)
     }

@@ -26,6 +26,25 @@ export function clampAtWordBoundary(text: string, maxChars: number): string {
   return `${lastSpace > 0 ? cut.slice(0, lastSpace) : cut}…`
 }
 
+// §6.1 visual hierarchy: an alternating rhythm — cover rich, then interior slides swing
+// minimal/rich by parity (user decision 2026-07-24) so the carousel breathes instead of every
+// slide being equally dense; the last slide always reads as a plain, structured CTA. Deliberately
+// colour-free — the palette stays the only colour source. Wording is spatial and quantitative
+// (ONE subject, named canvas zones): soft adjectives lose to the maximalist style paragraph, and
+// the calm zones must match where text gets baked on EVERY slide (headline top, body lower half).
+function slideRoleHint(position: number, total: number): string {
+  if (position === 0) {
+    return 'This is the cover slide: one bold dominant focal subject with maximum scroll-stopping impact — but keep the top quarter of the canvas calm and uncluttered, a large headline will be overlaid there.'
+  }
+  if (position === total - 1) {
+    return 'This is the final call-to-action slide: one simple structured element on a mostly plain background with strong contrast — keep the top quarter and the lower half of the canvas calm and uncluttered, text will be overlaid there.'
+  }
+  if (position % 2 === 0) {
+    return 'This is a richly detailed middle slide: embrace the full style with layered textures and elements around one strong focal subject — but keep the top quarter and the lower half of the canvas calm and uncluttered, text will be overlaid there.'
+  }
+  return 'This is a quiet middle slide: a restrained, minimal take on the style — ONE small supporting subject only, sparse elements, most of the canvas plain calm background; keep the top quarter and the lower half of the canvas calm and uncluttered, text will be overlaid there.'
+}
+
 /** TEXT block for one carousel slide; empty headline/body lines are omitted. Null when the slide has no copy. */
 export function carouselSlideText(slide: CarouselSlide, position: number, total: number): string | null {
   const headline = sanitizePromptText(slide.headline ?? '')
@@ -35,7 +54,7 @@ export function carouselSlideText(slide: CarouselSlide, position: number, total:
     ...(headline ? [`Headline: ${headline}`] : []),
     ...(body ? [`Body: ${body}`] : []),
   ]
-  return `Slide ${position + 1} of ${total}\n\n${lines.join('\n')}`
+  return `Slide ${position + 1} of ${total}\n${slideRoleHint(position, total)}\n\n${lines.join('\n')}`
 }
 
 /** TEXT block for a single-image post, built from its caption. Null when the caption is empty. */

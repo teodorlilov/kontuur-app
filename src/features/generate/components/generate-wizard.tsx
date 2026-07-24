@@ -358,6 +358,7 @@ export function GenerateWizard({
               visualsByPost={draftVisuals.visualsByDraft}
               onRegenerateVisual={(post, position) => draftVisuals.regenerate(post, position)}
               onEditedVisual={draftVisuals.applyEditedVisual}
+              onApplyStyleToAll={draftVisuals.applyStyleAcrossDraft}
               onApprove={handlePostApproved}
               onDiscard={handlePostRemoved}
               onRegenerate={handlePostRegenerated}
