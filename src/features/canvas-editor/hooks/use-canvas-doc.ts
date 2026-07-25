@@ -1,7 +1,14 @@
 'use client'
 
 import { useCallback, useState } from 'react'
-import type { CanvasBackgroundTransform, CanvasDoc, CanvasScrim, CanvasTextLayer } from '@/types/canvas'
+import type {
+  CanvasBackgroundRef,
+  CanvasBackgroundTransform,
+  CanvasDoc,
+  CanvasElement,
+  CanvasScrim,
+  CanvasTextLayer,
+} from '@/types/canvas'
 
 const UNDO_CAP = 50
 
@@ -63,6 +70,49 @@ export function useCanvasDoc() {
     [commit]
   )
 
+  // Inpaint rebinds the clean background in place; the crop stays valid (same dimensions).
+  const setBackground = useCallback(
+    (background: CanvasBackgroundRef) => commit((doc) => ({ ...doc, background })),
+    [commit]
+  )
+
+  const updateElement = useCallback(
+    (id: string, patch: Partial<CanvasElement>) =>
+      commit((doc) => ({
+        ...doc,
+        elements: (doc.elements ?? []).map((element) => (element.id === id ? { ...element, ...patch } : element)),
+      })),
+    [commit]
+  )
+
+  const addElement = useCallback(
+    (element: CanvasElement) =>
+      commit((doc) => ({ ...doc, elements: [...(doc.elements ?? []), element] })),
+    [commit]
+  )
+
+  const removeElement = useCallback(
+    (id: string) =>
+      commit((doc) => ({ ...doc, elements: (doc.elements ?? []).filter((element) => element.id !== id) })),
+    [commit]
+  )
+
+  // Swap with the neighbour — array order IS the z-order within the element band.
+  const moveElement = useCallback(
+    (id: string, direction: 'up' | 'down') =>
+      commit((doc) => {
+        const elements = [...(doc.elements ?? [])]
+        const index = elements.findIndex((element) => element.id === id)
+        const target = direction === 'up' ? index + 1 : index - 1
+        if (index < 0 || target < 0 || target >= elements.length) return doc
+        const a = elements[index]!
+        elements[index] = elements[target]!
+        elements[target] = a
+        return { ...doc, elements }
+      }),
+    [commit]
+  )
+
   const undo = useCallback(() => {
     setHistory((h) => {
       const previous = h.past[h.past.length - 1]
@@ -85,8 +135,13 @@ export function useCanvasDoc() {
     updateLayer,
     addLayer,
     removeLayer,
+    updateElement,
+    addElement,
+    removeElement,
+    moveElement,
     setScrim,
     setBackgroundTransform,
+    setBackground,
     undo,
     redo,
     canUndo: history.past.length > 0,

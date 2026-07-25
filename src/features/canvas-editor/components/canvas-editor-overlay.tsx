@@ -7,10 +7,27 @@ import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
 import { toast } from '@/components/ui/toast'
 import { useIsMobile } from '@/hooks/useIsMobile'
-import { DEFAULT_BACKGROUND_TRANSFORM, zoomBackgroundTo } from '@/lib/canvas/reposition'
+import { createCenteredElement, createElementAtRect } from '@/lib/canvas/elements'
+import {
+  DEFAULT_BACKGROUND_TRANSFORM,
+  sourceRectToCanvas,
+  zoomBackgroundTo,
+} from '@/lib/canvas/reposition'
 import { createTextLayer } from '@/lib/canvas/seed-doc'
 import { getBrandStyle } from '@/lib/visual/brand-styles'
+import { validateImageFile } from '@/features/publishing/lib/validate-image-file'
 import type { CanvasTextLayer } from '@/types/canvas'
+import { generateSvgAsset, inpaintBackgroundAsset, isolateSubjectAsset, uploadElementAsset } from '../lib/asset-client'
+import { buildInpaintMask, compositeInpaintResult } from '../lib/build-inpaint-mask'
+import {
+  cutoutFromLasso,
+  cutoutFromLassoDetect,
+  eraseStrokesFromElement,
+  removeElementBackground,
+  trimTransparentEdges,
+} from '../lib/cutout'
+import { loadCrossOriginImage, naturalSize } from '../lib/load-image'
+import type { BrushStroke, EditorMode } from '../types'
 import { useCanvasDoc } from '../hooks/use-canvas-doc'
 import { useCrossOriginImage } from '../hooks/use-cross-origin-image'
 import { useEditorData } from '../hooks/use-editor-data'
@@ -27,6 +44,9 @@ const PANEL_WIDTH = 300
 const TOP_BAR_HEIGHT = 56
 const STAGE_PADDING = 48
 const MIN_VIEWPORT_WIDTH = 768
+/** The "Remove object" brush preset — removal is an inpaint with a fixed, well-tested prompt. */
+const REMOVE_OBJECT_PROMPT =
+  'remove the marked object completely and seamlessly continue the surrounding background'
 
 /** The full-screen canvas editor. Mounted per position; all Konva code lives beneath this file. */
 export function CanvasEditorOverlay(props: CanvasEditorProps) {
@@ -36,7 +56,18 @@ export function CanvasEditorOverlay(props: CanvasEditorProps) {
   const data = useEditorData(target, image, slideCopy)
   const docState = useCanvasDoc()
   const [selectedId, setSelectedId] = useState<string | null>(null)
-  const [repositionMode, setRepositionMode] = useState(false)
+  const [mode, setMode] = useState<EditorMode>('edit')
+  const [strokes, setStrokes] = useState<BrushStroke[]>([])
+  const [brushSize, setBrushSize] = useState(60)
+  const [inpaintPrompt, setInpaintPrompt] = useState('')
+  const [inpainting, setInpainting] = useState(false)
+  const [uploadingAsset, setUploadingAsset] = useState(false)
+  const [isolating, setIsolating] = useState(false)
+  const [generatingSvg, setGeneratingSvg] = useState(false)
+  const [removingBackground, setRemovingBackground] = useState(false)
+  const [lassoCutting, setLassoCutting] = useState(false)
+  const [lassoDetect, setLassoDetect] = useState(true)
+  const [erasing, setErasing] = useState(false)
   // Which save mode is in flight — 'all' = Save & apply to all (both buttons share the guard).
   const [saving, setSaving] = useState<'save' | 'all' | false>(false)
 
@@ -68,20 +99,217 @@ export function CanvasEditorOverlay(props: CanvasEditorProps) {
     docState.initDoc(data.seeded ? autofitDocLayers(data.doc) : data.doc)
   }, [fontsReady, data, docState])
 
-  // Escape/Cancel/backdrop step OUT of reposition mode first; only the next attempt closes.
+  // Escape/Cancel/backdrop step OUT of reposition/inpaint mode first; the next attempt closes.
   const attemptClose = useCallback(() => {
-    if (repositionMode) {
-      setRepositionMode(false)
+    if (mode !== 'edit') {
+      setMode('edit')
+      setStrokes([])
       return
     }
     if (docState.dirty && !window.confirm('Discard unsaved changes?')) return
     onClose()
-  }, [repositionMode, docState.dirty, onClose])
+  }, [mode, docState.dirty, onClose])
 
-  const toggleReposition = useCallback(() => {
-    setSelectedId(null)
-    setRepositionMode((mode) => !mode)
+  // Modes are exclusive: entering one deselects and drops any brush strokes. The eraser is the
+  // exception — it operates ON the current selection, so it keeps it.
+  const switchMode = useCallback((next: Exclude<EditorMode, 'edit'>) => {
+    if (next !== 'erase') setSelectedId(null)
+    setStrokes([])
+    setMode((current) => (current === next ? 'edit' : next))
   }, [])
+
+  const uploadElement = useCallback(
+    async (file: File) => {
+      if (!docState.doc) return
+      const fileError = validateImageFile(file)
+      if (fileError) {
+        toast.error(fileError)
+        return
+      }
+      setUploadingAsset(true)
+      try {
+        const src = await uploadElementAsset(target, file)
+        const asset = await loadCrossOriginImage(src.publicUrl)
+        const element = createCenteredElement('image', src, naturalSize(asset), docState.doc.canvas)
+        docState.addElement(element)
+        setSelectedId(element.id)
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : 'Asset upload failed')
+      } finally {
+        setUploadingAsset(false)
+      }
+    },
+    [docState, target]
+  )
+
+  const removeElement = useCallback(
+    (id: string) => {
+      docState.removeElement(id)
+      setSelectedId((current) => (current === id ? null : current))
+    },
+    [docState]
+  )
+
+  const applyInpaint = useCallback(async (promptOverride?: string) => {
+    const prompt = (promptOverride ?? inpaintPrompt).trim()
+    if (!docState.doc || !backgroundImage || strokes.length === 0 || !prompt || inpainting) return
+    const { background, backgroundTransform, canvas } = docState.doc
+    const src = naturalSize(backgroundImage)
+    setInpainting(true)
+    try {
+      const mask = await buildInpaintMask(strokes, src, canvas, backgroundTransform)
+      const rawRef = await inpaintBackgroundAsset({
+        target,
+        storagePath: background.storagePath,
+        prompt,
+        mask,
+        width: src.width,
+        height: src.height,
+      })
+      // The model regenerates globally — composite its output back into the original so only
+      // the painted region actually changes, then store THAT as the new clean background.
+      const edited = await loadCrossOriginImage(rawRef.publicUrl)
+      const composite = await compositeInpaintResult(backgroundImage, edited, strokes, src, canvas, backgroundTransform)
+      const ref = await uploadElementAsset(target, new File([composite], 'inpainted.jpg', { type: 'image/jpeg' }))
+      // Rebind the clean background in place; undo brings the previous one back (its file
+      // survives until save, when the PUT's stale-background cleanup collects it).
+      docState.setBackground(ref)
+      setStrokes([])
+      toast.success('Backdrop updated')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Inpainting failed')
+    } finally {
+      setInpainting(false)
+    }
+  }, [docState, backgroundImage, strokes, inpaintPrompt, inpainting, target])
+
+  const lassoCut = useCallback(async (loopPoints: number[]) => {
+    if (!docState.doc || !backgroundImage || lassoCutting) return
+    const { backgroundTransform, canvas } = docState.doc
+    const src = naturalSize(backgroundImage)
+    setLassoCutting(true)
+    try {
+      // AI-detect: matte the loop's cropped region with the existing BiRefNet, clipped by the
+      // loop. Any failure (or an empty matte) falls back to the pure geometric cut.
+      let cut = lassoDetect
+        ? await cutoutFromLassoDetect(backgroundImage, loopPoints, src, canvas, backgroundTransform, async (regionBlob) => {
+            const regionRef = await uploadElementAsset(target, new File([regionBlob], 'lasso-region.png', { type: 'image/png' }))
+            const matteRef = await isolateSubjectAsset(target, regionRef.storagePath)
+            return loadCrossOriginImage(matteRef.publicUrl)
+          }).catch(() => null)
+        : null
+      cut ??= await cutoutFromLasso(backgroundImage, loopPoints, src, canvas, backgroundTransform)
+      if (!cut) {
+        toast.error('Draw a bigger loop around the object')
+        return
+      }
+      const ref = await uploadElementAsset(target, new File([cut.blob], 'lasso-cutout.png', { type: 'image/png' }))
+      const element = createElementAtRect(ref, sourceRectToCanvas(cut.bbox, src, canvas, backgroundTransform))
+      docState.addElement(element)
+      setMode('edit')
+      setSelectedId(element.id)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Lasso cut failed')
+    } finally {
+      setLassoCutting(false)
+    }
+  }, [docState, backgroundImage, lassoCutting, lassoDetect, target])
+
+  // The element the erase/remove-background actions operate on (they require a selection).
+  const selectedElement = useCallback(
+    () => (docState.doc?.elements ?? []).find((candidate) => candidate.id === selectedId),
+    [docState.doc, selectedId]
+  )
+
+  const applyErase = useCallback(async () => {
+    if (!docState.doc || strokes.length === 0 || erasing) return
+    const element = selectedElement()
+    if (!element) return
+    setErasing(true)
+    try {
+      const bitmap = await loadCrossOriginImage(element.src.publicUrl)
+      const blob = await eraseStrokesFromElement(bitmap, strokes, element)
+      const ref = await uploadElementAsset(target, new File([blob], 'erased.png', { type: 'image/png' }))
+      // Geometry stays (holes, not a re-trim) — one undo step brings the previous bitmap back.
+      docState.updateElement(element.id, { src: ref })
+      setStrokes([])
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Erase failed')
+    } finally {
+      setErasing(false)
+    }
+  }, [docState, strokes, erasing, selectedElement, target])
+
+  const removeSelectedElementBackground = useCallback(async () => {
+    if (!docState.doc || removingBackground) return
+    const element = selectedElement()
+    if (!element) return
+    setRemovingBackground(true)
+    try {
+      const bitmap = await loadCrossOriginImage(element.src.publicUrl)
+      const blob = await removeElementBackground(bitmap)
+      if (!blob) {
+        toast.error('No flat background detected on this element')
+        return
+      }
+      const ref = await uploadElementAsset(target, new File([blob], 'keyed.png', { type: 'image/png' }))
+      // An SVG that needed rasterized keying is a bitmap from here on.
+      docState.updateElement(element.id, { src: ref, kind: 'image' })
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Background removal failed')
+    } finally {
+      setRemovingBackground(false)
+    }
+  }, [docState, removingBackground, selectedElement, target])
+
+  const generateSvg = useCallback(async (prompt: string) => {
+    if (!docState.doc || generatingSvg) return
+    const { canvas } = docState.doc
+    setGeneratingSvg(true)
+    try {
+      const asset = await generateSvgAsset(target, prompt)
+      const element = createCenteredElement(
+        'svg',
+        { publicUrl: asset.publicUrl, storagePath: asset.storagePath },
+        { width: asset.width, height: asset.height },
+        canvas
+      )
+      docState.addElement(element)
+      setSelectedId(element.id)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Vector generation failed')
+    } finally {
+      setGeneratingSvg(false)
+    }
+  }, [docState, generatingSvg, target])
+
+  const isolateSubject = useCallback(async () => {
+    if (!docState.doc || isolating) return
+    const { background, backgroundTransform, canvas } = docState.doc
+    setIsolating(true)
+    try {
+      const fullRef = await isolateSubjectAsset(target, background.storagePath)
+      const fullCutout = await loadCrossOriginImage(fullRef.publicUrl)
+      // Trim to the subject so the element (and its resize handles) hugs the object instead of
+      // spanning the whole frame; the bbox then lands pixel-exact through the inverse crop.
+      const trimmed = await trimTransparentEdges(fullCutout)
+      if (!trimmed) {
+        toast.error('No subject found in this image')
+        return
+      }
+      const ref = await uploadElementAsset(target, new File([trimmed.blob], 'cutout.png', { type: 'image/png' }))
+      const element = createElementAtRect(
+        ref,
+        sourceRectToCanvas(trimmed.bbox, naturalSize(fullCutout), canvas, backgroundTransform)
+      )
+      docState.addElement(element)
+      setSelectedId(element.id)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Subject isolation failed')
+    } finally {
+      setIsolating(false)
+    }
+  }, [docState, target, isolating])
 
   const backgroundZoom = useCallback(
     (zoom: number) => {
@@ -92,7 +320,7 @@ export function CanvasEditorOverlay(props: CanvasEditorProps) {
           docState.doc.backgroundTransform ?? DEFAULT_BACKGROUND_TRANSFORM,
           zoom,
           { x: canvas.w / 2, y: canvas.h / 2 },
-          { width: backgroundImage.naturalWidth, height: backgroundImage.naturalHeight },
+          naturalSize(backgroundImage),
           canvas
         )
       )
@@ -167,7 +395,7 @@ export function CanvasEditorOverlay(props: CanvasEditorProps) {
         redo={docState.redo}
         saving={saving === 'save'}
         applying={saving === 'all'}
-        canSave={Boolean(ready) && !saving && !repositionMode}
+        canSave={Boolean(ready) && !saving && mode === 'edit'}
         onCancel={attemptClose}
         onSave={() => { void performSave(false) }}
         onApplyToAll={props.onApplyToAll ? () => { void performSave(true) } : undefined}
@@ -198,11 +426,18 @@ export function CanvasEditorOverlay(props: CanvasEditorProps) {
                 scale={scale}
                 selectedId={selectedId}
                 editingId={editingId}
-                repositionMode={repositionMode}
+                mode={mode}
+                brushSize={brushSize}
+                strokes={strokes}
                 onSelect={setSelectedId}
                 onLayerChange={docState.updateLayer}
+                onElementChange={docState.updateElement}
                 onStartEdit={(layer: CanvasTextLayer, node: Konva.Text) => startEdit(layer, node, scale)}
                 onBackgroundTransform={docState.setBackgroundTransform}
+                onStrokeEnd={(stroke) => {
+                  if (mode === 'lasso') void lassoCut(stroke.points)
+                  else setStrokes((current) => [...current, stroke])
+                }}
               />
             </div>
           )}
@@ -221,10 +456,53 @@ export function CanvasEditorOverlay(props: CanvasEditorProps) {
               doc={docState.doc!}
               palette={data.identity.palette}
               selectedId={selectedId}
-              repositionMode={repositionMode}
-              onToggleReposition={toggleReposition}
+              repositionMode={mode === 'reposition'}
+              uploadingAsset={uploadingAsset}
+              isolating={isolating}
+              onToggleReposition={() => switchMode('reposition')}
               onBackgroundZoom={backgroundZoom}
               onBackgroundReset={() => docState.setBackgroundTransform(undefined)}
+              inpaint={{
+                active: mode === 'inpaint',
+                applying: inpainting,
+                prompt: inpaintPrompt,
+                brushSize,
+                hasStrokes: strokes.length > 0,
+                onToggle: () => switchMode('inpaint'),
+                onPromptChange: setInpaintPrompt,
+                onBrushSizeChange: setBrushSize,
+                onClearStrokes: () => setStrokes([]),
+                onApply: () => { void applyInpaint() },
+                onRemoveObject: () => { void applyInpaint(REMOVE_OBJECT_PROMPT) },
+              }}
+              lasso={{
+                active: mode === 'lasso',
+                cutting: lassoCutting,
+                detectObject: lassoDetect,
+                onDetectObjectChange: setLassoDetect,
+                onToggle: () => switchMode('lasso'),
+              }}
+              erase={{
+                active: mode === 'erase',
+                applying: erasing,
+                brushSize,
+                hasStrokes: strokes.length > 0,
+                onBrushSizeChange: setBrushSize,
+                onClearStrokes: () => setStrokes([]),
+                onApply: () => { void applyErase() },
+                onToggle: () => switchMode('erase'),
+              }}
+              onLassoCut={() => switchMode('lasso')}
+              onEraseSelected={() => switchMode('erase')}
+              generatingSvg={generatingSvg}
+              onGenerateSvg={(prompt) => { void generateSvg(prompt) }}
+              removingBackground={removingBackground}
+              onRemoveElementBackground={() => { void removeSelectedElementBackground() }}
+              onElementChange={docState.updateElement}
+              onMoveElement={docState.moveElement}
+              onRemoveElement={removeElement}
+              onUploadElement={(file) => { void uploadElement(file) }}
+              onIsolateSubject={() => { void isolateSubject() }}
               onSelect={setSelectedId}
               onLayerChange={docState.updateLayer}
               onAddLayer={() => {

@@ -71,6 +71,8 @@ function applyTextareaStyle(
     // Mirror the node's rotation around the same top-left pivot so the overlay sits ON the text.
     transform: `rotate(${layer.rotation ?? 0}deg)`,
     transformOrigin: 'left top',
+    // Display-only capitals, exactly like the node — the committed text keeps its casing.
+    textTransform: layer.uppercase ? 'uppercase' : 'none',
     fontFamily: `"${layer.fontFamily}", sans-serif`,
     fontSize: `${layer.fontSize * scale}px`,
     fontWeight: String(layer.fontWeight),

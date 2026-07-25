@@ -27,12 +27,17 @@ export function completedDraftImages(
     }))
 }
 
-/** Every storage path a draft owns (flattened files + docs' clean backgrounds) — discard cleanup. */
+/** Every storage path a draft owns (flattened files, docs' clean backgrounds, element assets) —
+ *  discard cleanup. */
 export function draftStoragePaths(visuals: DraftVisual[] | undefined): string[] {
   const paths = new Set<string>()
   for (const visual of visuals ?? []) {
     if (visual.storagePath) paths.add(visual.storagePath)
-    if (visual.canvasDoc) paths.add(visual.canvasDoc.background.storagePath)
+    if (!visual.canvasDoc) continue
+    paths.add(visual.canvasDoc.background.storagePath)
+    for (const element of visual.canvasDoc.elements ?? []) {
+      paths.add(element.src.storagePath)
+    }
   }
   return [...paths]
 }

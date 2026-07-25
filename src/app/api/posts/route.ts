@@ -4,6 +4,7 @@ import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { draftVisualPrefix, movePostImageObject } from '@/features/publishing/lib/storage'
 import { safeParseCanvasDoc } from '@/lib/canvas/doc-schema'
 import { POST_COLUMNS } from '@/lib/queries/select-columns'
+import type { CanvasDoc } from '@/types/canvas'
 import type { Json } from '@/types/database'
 
 export async function GET(request: Request) {
@@ -120,6 +121,29 @@ async function attachDraftImages(
   if (error) console.error('[posts] failed to attach draft visuals:', error.message)
 }
 
+/** Move a draft doc's stored files (clean background + element assets) into the post's folder.
+ *  Only the client's own drafts-prefixed element files may attach — others are dropped; a failed
+ *  move keeps the drafts path, which still serves. */
+async function relocateDraftDoc(
+  doc: CanvasDoc,
+  prefix: string,
+  clientId: string,
+  postId: string
+): Promise<CanvasDoc> {
+  const background = (await movePostImageObject(doc.background.storagePath, clientId, postId)) ?? doc.background
+  if (!doc.elements) return { ...doc, background }
+  const elements = (
+    await Promise.all(
+      doc.elements.map(async (element) => {
+        if (!element.src.storagePath.startsWith(prefix)) return null
+        const moved = await movePostImageObject(element.src.storagePath, clientId, postId)
+        return moved ? { ...element, src: moved } : element
+      })
+    )
+  ).filter((element) => element !== null)
+  return { ...doc, background, elements }
+}
+
 /** Attach the drafts' canvas docs to a freshly created post. The clean background files move out of
  *  `drafts/` into the post's folder (a future drafts cleanup must not orphan re-edit state); a failed
  *  move keeps the drafts path, which still serves. Failure logs but never fails the post. */
@@ -138,8 +162,7 @@ async function attachDraftCanvasDocs(
     candidates.map(async (img) => {
       const parsed = safeParseCanvasDoc(img.canvasDoc)
       if (!parsed.success || !parsed.doc.background.storagePath.startsWith(prefix)) return null
-      const moved = await movePostImageObject(parsed.doc.background.storagePath, clientId, postId)
-      const doc = moved ? { ...parsed.doc, background: moved } : parsed.doc
+      const doc = await relocateDraftDoc(parsed.doc, prefix, clientId, postId)
       return { post_id: postId, position: img.position, doc: doc as unknown as Json }
     })
   )

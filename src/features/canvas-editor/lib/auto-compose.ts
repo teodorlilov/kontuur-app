@@ -67,7 +67,7 @@ export async function recomposePersistedPosition(input: {
   if (!body.doc || !body.identity) return null
 
   const doc = body.doc
-  const updated = applyCopyToDoc(doc, { identity: body.identity, ...copyFields(input.slideCopy) })
+  const updated = applyCopyToDoc(doc, copyFields(input.slideCopy))
   if (updated.layers.every((layer, index) => layer.text === doc.layers[index]?.text)) return null
 
   const { doc: fitted, blob } = await composeDoc(updated)
@@ -102,7 +102,7 @@ export async function recomposeDraftVisual(input: {
   doc: CanvasDoc
   previousFlattenedPath?: string
 }): Promise<{ visual: DraftVisualResult; doc: CanvasDoc }> {
-  const updated = applyCopyToDoc(input.doc, { identity: input.identity, ...copyFields(input.slideCopy) })
+  const updated = applyCopyToDoc(input.doc, copyFields(input.slideCopy))
   const { doc: fitted, blob } = await composeDoc(updated)
   return saveDraftCanvas(input, fitted, blob, input.previousFlattenedPath)
 }

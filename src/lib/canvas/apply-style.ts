@@ -10,6 +10,7 @@ function styledLayer(target: CanvasTextLayer, source: CanvasTextLayer): CanvasTe
     y: source.y,
     width: source.width,
     rotation: source.rotation,
+    uppercase: source.uppercase,
     fontFamily: source.fontFamily,
     fontSize: source.fontSize,
     fontWeight: source.fontWeight,

@@ -5,9 +5,7 @@ import type Konva from 'konva'
 import type { CanvasTextLayer } from '@/types/canvas'
 import { MIN_TEXT_LAYER_WIDTH } from '@/lib/canvas/constants'
 import { textNodeAttrs } from '@/lib/canvas/node-attrs'
-
-/** Keep at least this many canvas px of a dragged layer inside the frame so it can't get lost. */
-const DRAG_KEEP = 40
+import { dragBoundFor, persistedRotation } from '../lib/node-interaction'
 
 interface TextNodeProps {
   layer: CanvasTextLayer
@@ -27,10 +25,7 @@ export function TextNode({ layer, canvas, stageScale, hidden, onSelect, onChange
       id={layer.id}
       visible={!hidden}
       draggable
-      dragBoundFunc={(pos) => ({
-        x: clamp(pos.x, (DRAG_KEEP - layer.width) * stageScale, (canvas.w - DRAG_KEEP) * stageScale),
-        y: clamp(pos.y, 0, (canvas.h - DRAG_KEEP) * stageScale),
-      })}
+      dragBoundFunc={dragBoundFor(layer, canvas, stageScale)}
       onClick={onSelect}
       onTap={onSelect}
       onDragStart={onSelect}
@@ -48,15 +43,11 @@ export function TextNode({ layer, canvas, stageScale, hidden, onSelect, onChange
           x: node.x(),
           y: node.y(),
           width: node.width(),
-          rotation: clamp(Math.round(node.rotation()), -180, 180),
+          rotation: persistedRotation(node.rotation()),
         })
       }}
       onDblClick={(event) => onStartEdit(event.target as Konva.Text)}
       onDblTap={(event) => onStartEdit(event.target as Konva.Text)}
     />
   )
-}
-
-function clamp(value: number, min: number, max: number): number {
-  return Math.min(Math.max(value, min), max)
 }

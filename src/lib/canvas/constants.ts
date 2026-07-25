@@ -11,3 +11,6 @@ export const MIN_TEXT_LAYER_WIDTH = 80
 
 /** Upper background-reposition zoom (1 = cover fit) — the doc schema and zoom controls agree. */
 export const MAX_BACKGROUND_ZOOM = 3
+
+/** Smallest an element can be resized to (authoring-space px) — transform fold and Transformer agree. */
+export const MIN_ELEMENT_SIZE = 40

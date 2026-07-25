@@ -13,3 +13,8 @@ export function loadCrossOriginImage(src: string): Promise<HTMLImageElement> {
     img.src = src
   })
 }
+
+/** A loaded image's source dimensions in the `{ width, height }` shape the canvas math takes. */
+export function naturalSize(image: HTMLImageElement): { width: number; height: number } {
+  return { width: image.naturalWidth, height: image.naturalHeight }
+}

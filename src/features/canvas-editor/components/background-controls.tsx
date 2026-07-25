@@ -8,15 +8,17 @@ interface BackgroundControlsProps {
   transform: CanvasBackgroundTransform | undefined
   repositionMode: boolean
   onToggleReposition: () => void
+  onEnterInpaint: () => void
   onZoom: (zoom: number) => void
   onReset: () => void
 }
 
-/** Background section: enter/leave reposition mode, zoom slider, reset to the centered cover fit. */
+/** Background section: reposition mode, AI repair entry, zoom slider, reset to the cover fit. */
 export function BackgroundControls({
   transform,
   repositionMode,
   onToggleReposition,
+  onEnterInpaint,
   onZoom,
   onReset,
 }: BackgroundControlsProps) {
@@ -35,6 +37,14 @@ export function BackgroundControls({
           }}
         >
           {repositionMode ? 'Done repositioning' : 'Reposition'}
+        </button>
+        <button
+          type="button"
+          onClick={onEnterInpaint}
+          title="Paint over a zone and describe what should replace it"
+          style={{ ...PANEL_CONTROL, marginTop: '8px', cursor: 'pointer' }}
+        >
+          AI repair (brush)
         </button>
       </div>
       <div>

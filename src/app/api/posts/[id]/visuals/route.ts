@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
-import { checkRateLimit, VISUALS_RATE_LIMIT } from '@/lib/auth/rate-limit'
+import { visualsRateLimitResponse } from '@/lib/auth/rate-limit'
 import { verifyPostOwnership } from '@/lib/auth/helpers'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { POST_IMAGE_COLUMNS } from '@/lib/queries/select-columns'
@@ -21,10 +21,8 @@ export async function POST(
   const auth = await resolveAuth()
   if (!auth.ok) return auth.response
 
-  const rl = checkRateLimit(`visuals:${auth.userId}`, VISUALS_RATE_LIMIT)
-  if (!rl.allowed) {
-    return NextResponse.json({ error: 'Too many visual generations. Please wait a few minutes.' }, { status: 429 })
-  }
+  const limited = visualsRateLimitResponse(auth.userId)
+  if (limited) return limited
 
   const post = await verifyPostOwnership(auth.supabase, postId, auth.agencyId)
   if (!post) return NextResponse.json({ error: 'Post not found' }, { status: 404 })

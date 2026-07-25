@@ -29,6 +29,12 @@ export async function uploadToBucket(
   return { publicUrl: data.publicUrl, storagePath }
 }
 
+/** Public URL for an object in the `post-images` bucket (public bucket — the URL is durable). */
+export function publicPostImageUrl(storagePath: string): string {
+  const admin = createAdminSupabaseClient()
+  return admin.storage.from(BUCKET).getPublicUrl(storagePath).data.publicUrl
+}
+
 /** Upload a post image to the public `post-images` bucket. */
 export async function uploadPostImage(
   file: Buffer,
@@ -48,6 +54,17 @@ export async function uploadDraftVisual(
   position: number
 ): Promise<UploadResult> {
   return uploadToBucket(BUCKET, `${draftVisualPrefix(clientId)}${draftId}/${position}-${Date.now()}.jpg`, file, 'image/jpeg')
+}
+
+/** Upload a canvas-element asset for an in-memory wizard draft (logo, cutout, generated vector). */
+export async function uploadDraftAsset(
+  file: Buffer,
+  contentType: string,
+  clientId: string,
+  draftId: string,
+  fileName: string
+): Promise<UploadResult> {
+  return uploadToBucket(BUCKET, `${draftVisualPrefix(clientId)}${draftId}/assets/${Date.now()}-${fileName}`, file, contentType)
 }
 
 /** Batch-delete draft visuals from storage (discarded wizard drafts). Logs on failure but does not throw. */

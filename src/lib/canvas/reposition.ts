@@ -37,6 +37,35 @@ export function panBackground(
   }
 }
 
+export interface SourceRect {
+  x: number
+  y: number
+  width: number
+  height: number
+}
+
+/**
+ * Map a source-pixel rect (e.g. a cutout's bounding box) onto the canvas so it lands pixel-exact
+ * over the current cover-cropped view — the inverse of the crop mapping. Crop preserves the
+ * destination aspect, so one scale factor covers both axes.
+ */
+export function sourceRectToCanvas(
+  rect: SourceRect,
+  src: { width: number; height: number },
+  canvas: { w: number; h: number },
+  transform?: CanvasBackgroundTransform
+): SourceRect {
+  const crop = coverCrop(src.width, src.height, canvas.w, canvas.h, transform)
+  const scale = canvas.w / crop.cropWidth
+  // `+ 0` folds negative zero back to plain 0 before it lands in a doc.
+  return {
+    x: (rect.x - crop.cropX) * scale + 0,
+    y: (rect.y - crop.cropY) * scale + 0,
+    width: rect.width * scale,
+    height: rect.height * scale,
+  }
+}
+
 /**
  * Zoom to a target level toward a canvas-space focus point: the source pixel under the focus
  * stays put (until the crop window hits a source edge and the offset clamps).

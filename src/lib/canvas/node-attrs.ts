@@ -1,5 +1,6 @@
 import type {
   CanvasBackgroundTransform,
+  CanvasElement,
   CanvasScrim,
   CanvasTextAlign,
   CanvasTextLayer,
@@ -33,7 +34,8 @@ export function textNodeAttrs(layer: CanvasTextLayer): TextNodeAttrs {
     y: layer.y,
     width: layer.width,
     rotation: layer.rotation ?? 0,
-    text: layer.text,
+    // Konva has no textTransform — capitals are applied to the drawn string, not the stored one.
+    text: layer.uppercase ? layer.text.toUpperCase() : layer.text,
     fontFamily: layer.fontFamily,
     fontSize: layer.fontSize,
     fontStyle: layer.fontWeight === 400 ? 'normal' : layer.fontWeight === 700 ? 'bold' : String(layer.fontWeight),
@@ -41,6 +43,27 @@ export function textNodeAttrs(layer: CanvasTextLayer): TextNodeAttrs {
     align: layer.align,
     lineHeight: layer.lineHeight,
     wrap: 'word',
+  }
+}
+
+export interface ElementNodeAttrs {
+  x: number
+  y: number
+  width: number
+  height: number
+  rotation: number
+  opacity: number
+}
+
+/** Konva attrs for one element — shared by the editor stage JSX and the offscreen exporter. */
+export function elementNodeAttrs(element: CanvasElement): ElementNodeAttrs {
+  return {
+    x: element.x,
+    y: element.y,
+    width: element.width,
+    height: element.height,
+    rotation: element.rotation ?? 0,
+    opacity: element.opacity ?? 1,
   }
 }
 

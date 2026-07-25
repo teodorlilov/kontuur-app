@@ -1,6 +1,15 @@
 import type { CanvasDoc } from '@/types/canvas'
 import type { PostImage } from '@/types/api'
 
+/** The editor's exclusive interaction modes; 'edit' is normal layer editing. */
+export type EditorMode = 'edit' | 'reposition' | 'inpaint' | 'lasso' | 'erase'
+
+/** One committed brush stroke in canvas space (flat x,y pairs, Konva Line convention). */
+export interface BrushStroke {
+  points: number[]
+  size: number
+}
+
 /** What the editor saves against: a persisted post row, or an in-memory wizard draft. */
 export type EditorTarget =
   | { kind: 'post'; postId: string; position: number }

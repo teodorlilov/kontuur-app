@@ -27,6 +27,8 @@ export interface CanvasTextLayer {
   lineHeight: number
   /** Degrees around the layer's top-left pivot; absent = 0 (never rotated). */
   rotation?: number
+  /** Render the text in capitals (applied at draw time — the stored text keeps its casing). */
+  uppercase?: boolean
   /** Set when the user hand-edits the text in the editor; recompose then keeps their wording. */
   textOverridden?: boolean
 }
@@ -58,6 +60,27 @@ export interface CanvasBackgroundTransform {
   offsetY: number
 }
 
+/**
+ * A placed asset in the band between the scrim and the text layers (cutouts, logos, generated
+ * vectors). z-order = array order; typography always renders above by construction.
+ */
+export interface CanvasElement {
+  id: string
+  /** Rendering is identical for both; 'svg' stays distinct for future palette recolouring. */
+  kind: 'image' | 'svg'
+  src: { publicUrl: string; storagePath: string }
+  x: number
+  y: number
+  width: number
+  height: number
+  /** Degrees around the element's top-left pivot; absent = 0. */
+  rotation?: number
+  /** 0..1; absent = 1. */
+  opacity?: number
+  /** Renders in FRONT of the text band (opt-in per element — the subject-overlaps-headline effect). */
+  aboveText?: boolean
+}
+
 export interface CanvasDoc {
   version: 1
   canvas: { w: number; h: number }
@@ -66,5 +89,6 @@ export interface CanvasDoc {
   /** The artifact the last save produced — lets the editor detect its own baked output on reopen. */
   flattenedStoragePath: string | null
   scrim: CanvasScrim
+  elements?: CanvasElement[]
   layers: CanvasTextLayer[]
 }

@@ -59,7 +59,8 @@ export function seedCanvasDoc(input: SeedInput): CanvasDoc {
     layers.push({
       id: crypto.randomUUID(),
       role: 'headline',
-      text: style.fonts.headlineUppercase ? headlineText.toUpperCase() : headlineText,
+      text: headlineText,
+      ...(style.fonts.headlineUppercase ? { uppercase: true } : {}),
       x: TEXT_X,
       y: HEADLINE_Y,
       width: TEXT_WIDTH,
@@ -104,16 +105,14 @@ export function seedCanvasDoc(input: SeedInput): CanvasDoc {
  */
 export function applyCopyToDoc(
   doc: CanvasDoc,
-  input: Pick<SeedInput, 'identity' | 'slide' | 'caption'>
+  input: Pick<SeedInput, 'slide' | 'caption'>
 ): CanvasDoc {
-  const style = getBrandStyle(input.identity.style)
   const headline = input.slide ? sanitizePromptText(input.slide.headline) : captionHook(input.caption)
   const body = input.slide ? sanitizePromptText(input.slide.body) : ''
   const layers = doc.layers.map((layer) => {
     if (layer.textOverridden) return layer
-    if (layer.role === 'headline' && headline) {
-      return { ...layer, text: style.fonts.headlineUppercase ? headline.toUpperCase() : headline }
-    }
+    // Case is a render-time layer flag, so refreshed copy stays raw here.
+    if (layer.role === 'headline' && headline) return { ...layer, text: headline }
     if (layer.role === 'body' && body) return { ...layer, text: body }
     return layer
   })

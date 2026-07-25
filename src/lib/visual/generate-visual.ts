@@ -4,7 +4,7 @@ import { buildDefaultIdentity } from './identity'
 import { getBrandStyle } from './brand-styles'
 import { describePalette } from './describe-palette'
 import { buildVisualPrompt } from './prompt'
-import { generateSlideImage } from './fal'
+import { downloadFalFile, generateSlideImage } from './fal'
 
 export type GeneratedVisual = { buffer: Buffer; contentType: 'image/jpeg' }
 
@@ -36,7 +36,5 @@ export async function generateVisual(input: { clientId: string; textBlock: strin
   })
 
   const imageUrl = await generateSlideImage(prompt)
-  const response = await fetch(imageUrl)
-  if (!response.ok) throw new Error(`Failed to download generated image (${response.status})`)
-  return { buffer: Buffer.from(await response.arrayBuffer()), contentType: 'image/jpeg' }
+  return { buffer: await downloadFalFile(imageUrl), contentType: 'image/jpeg' }
 }

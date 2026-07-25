@@ -17,8 +17,9 @@ describe('seedCanvasDoc', () => {
     const [headline, body] = doc.layers
     expect(headline!.role).toBe('headline')
     expect(headline!.fontFamily).toBe('Oswald')
-    // graphic-editorial's signature is condensed caps
-    expect(headline!.text).toBe('ЗАЩО КОЖАТА ВИ ИМА НУЖДА ОТ SPF')
+    // graphic-editorial's signature is condensed caps — a render flag, the stored text stays raw
+    expect(headline!.text).toBe('Защо кожата ви има нужда от SPF')
+    expect(headline!.uppercase).toBe(true)
     expect(body!.fontFamily).toBe('Source Sans 3')
     expect(body!.text).toBe('Слънцето уврежда кожата целогодишно.')
     expect(doc.scrim).toEqual({ enabled: true, color: '#FFFFFF', opacity: 0.35, mode: 'bottom' })
@@ -34,6 +35,7 @@ describe('seedCanvasDoc', () => {
     })
     expect(doc.layers).toHaveLength(1)
     expect(doc.layers[0]!.text).toBe('Ритуалът на спокойствието')
+    expect(doc.layers[0]!.uppercase).toBeUndefined()
     expect(doc.layers[0]!.fontFamily).toBe('Playfair Display')
   })
 
@@ -50,7 +52,8 @@ describe('seedCanvasDoc', () => {
     })
     expect(doc.layers).toHaveLength(1)
     expect(doc.layers[0]!.role).toBe('headline')
-    expect(doc.layers[0]!.text).toBe('ЛЯТОТО ИДВА!')
+    expect(doc.layers[0]!.text).toBe('Лятото идва!')
+    expect(doc.layers[0]!.uppercase).toBe(true)
   })
 })
 
@@ -85,26 +88,26 @@ describe('applyCopyToDoc', () => {
     })
   }
 
-  it('refreshes role layers from new copy (headline keeps the style transform)', () => {
+  it('refreshes role layers from new copy (the uppercase flag persists on the layer)', () => {
     const updated = applyCopyToDoc(seededDoc(), {
-      identity,
       slide: { headline: 'New headline', body: 'New body.' },
     })
-    expect(updated.layers[0]!.text).toBe('NEW HEADLINE') // graphic-editorial upper-cases
+    expect(updated.layers[0]!.text).toBe('New headline')
+    expect(updated.layers[0]!.uppercase).toBe(true) // seeded flag survives the refresh
     expect(updated.layers[1]!.text).toBe('New body.')
   })
 
   it('keeps a hand-edited layer untouched', () => {
     const doc = seededDoc()
     doc.layers[0] = { ...doc.layers[0]!, text: 'My custom wording', textOverridden: true }
-    const updated = applyCopyToDoc(doc, { identity, slide: { headline: 'New headline', body: 'New body.' } })
+    const updated = applyCopyToDoc(doc, { slide: { headline: 'New headline', body: 'New body.' } })
     expect(updated.layers[0]!.text).toBe('My custom wording')
     expect(updated.layers[1]!.text).toBe('New body.')
   })
 
   it('leaves layers alone when the new copy is empty', () => {
     const doc = seededDoc()
-    const updated = applyCopyToDoc(doc, { identity, slide: { headline: '', body: '' } })
+    const updated = applyCopyToDoc(doc, { slide: { headline: '', body: '' } })
     expect(updated.layers.map((l) => l.text)).toEqual(doc.layers.map((l) => l.text))
   })
 })

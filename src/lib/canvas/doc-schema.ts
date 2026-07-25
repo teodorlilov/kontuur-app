@@ -19,6 +19,7 @@ const textLayerSchema = z.object({
   align: z.enum(['left', 'center', 'right']),
   lineHeight: z.number().min(0.8).max(3),
   rotation: z.number().min(-180).max(180).optional(),
+  uppercase: z.boolean().optional(),
   textOverridden: z.boolean().optional(),
 })
 
@@ -40,6 +41,19 @@ const backgroundTransformSchema = z.object({
   offsetY: z.number().min(0).max(1),
 })
 
+const elementSchema = z.object({
+  id: z.string().min(1),
+  kind: z.enum(['image', 'svg']),
+  src: z.object({ publicUrl: z.string().min(1), storagePath: z.string().min(1) }),
+  x: z.number(),
+  y: z.number(),
+  width: z.number().positive(),
+  height: z.number().positive(),
+  rotation: z.number().min(-180).max(180).optional(),
+  opacity: z.number().min(0).max(1).optional(),
+  aboveText: z.boolean().optional(),
+})
+
 /**
  * Runtime validator for a `CanvasDoc` before it is written to `post_canvas_docs.doc` — the single
  * write-gate. Readers safeParse and treat failures as "no doc" (reseed), never a hard error. The
@@ -52,6 +66,7 @@ export const canvasDocSchema = z.object({
   backgroundTransform: backgroundTransformSchema.optional(),
   flattenedStoragePath: z.string().min(1).nullable(),
   scrim: scrimSchema,
+  elements: z.array(elementSchema).max(20).optional(),
   layers: z.array(textLayerSchema).max(20),
 })
 

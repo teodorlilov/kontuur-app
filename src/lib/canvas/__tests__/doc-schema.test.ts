@@ -50,6 +50,33 @@ describe('canvasDocSchema', () => {
     expect(parseCanvasDoc(doc)).toEqual(doc)
   })
 
+  it('accepts optional elements and rejects out-of-range element values', () => {
+    const doc = validDoc()
+    doc.elements = [
+      {
+        id: 'e1',
+        kind: 'svg',
+        src: { publicUrl: 'https://x.test/a.svg', storagePath: 'c1/p1/a.svg' },
+        x: 100,
+        y: 200,
+        width: 420,
+        height: 300,
+        rotation: -12,
+        opacity: 0.8,
+        aboveText: true,
+      },
+    ]
+    expect(parseCanvasDoc(doc)).toEqual(doc)
+
+    const badOpacity = validDoc()
+    badOpacity.elements = [{ ...doc.elements[0]!, opacity: 1.5 }]
+    expect(safeParseCanvasDoc(badOpacity).success).toBe(false)
+
+    const badSize = validDoc()
+    badSize.elements = [{ ...doc.elements[0]!, width: 0 }]
+    expect(safeParseCanvasDoc(badSize).success).toBe(false)
+  })
+
   it('rejects out-of-range rotation and background transforms', () => {
     const rotated = validDoc()
     rotated.layers[0]!.rotation = 200

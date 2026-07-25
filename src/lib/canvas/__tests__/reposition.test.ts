@@ -1,7 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import { CANVAS_HEIGHT, CANVAS_WIDTH } from '../constants'
 import { coverCrop } from '../cover-crop'
-import { DEFAULT_BACKGROUND_TRANSFORM, panBackground, zoomBackgroundTo } from '../reposition'
+import {
+  DEFAULT_BACKGROUND_TRANSFORM,
+  panBackground,
+  sourceRectToCanvas,
+  zoomBackgroundTo,
+} from '../reposition'
 
 const CANVAS = { w: CANVAS_WIDTH, h: CANVAS_HEIGHT }
 const SQUARE = { width: 1024, height: 1024 }
@@ -57,5 +62,50 @@ describe('zoomBackgroundTo', () => {
     const start = { zoom: 2, offsetX: 0.1, offsetY: 0.9 }
     const next = zoomBackgroundTo(start, 1, { x: 0, y: 0 }, PORTRAIT, CANVAS)
     expect(next).toEqual({ zoom: 1, offsetX: 0.5, offsetY: 0.5 })
+  })
+})
+
+describe('sourceRectToCanvas', () => {
+  const fullRect = (src: { width: number; height: number }) => ({ x: 0, y: 0, width: src.width, height: src.height })
+
+  it('an aspect-matched full source with no transform covers the canvas exactly', () => {
+    expect(sourceRectToCanvas(fullRect(PORTRAIT), PORTRAIT, CANVAS)).toEqual({
+      x: 0,
+      y: 0,
+      width: CANVAS_WIDTH,
+      height: CANVAS_HEIGHT,
+    })
+  })
+
+  it('the crop window itself maps exactly onto the canvas at any transform', () => {
+    const transform = { zoom: 1.7, offsetX: 0.3, offsetY: 0.8 }
+    const crop = coverCrop(SQUARE.width, SQUARE.height, CANVAS.w, CANVAS.h, transform)
+    const mapped = sourceRectToCanvas(
+      { x: crop.cropX, y: crop.cropY, width: crop.cropWidth, height: crop.cropHeight },
+      SQUARE,
+      CANVAS,
+      transform
+    )
+    expect(mapped.x).toBeCloseTo(0, 6)
+    expect(mapped.y).toBeCloseTo(0, 6)
+    expect(mapped.width).toBeCloseTo(CANVAS_WIDTH, 6)
+    expect(mapped.height).toBeCloseTo(CANVAS_HEIGHT, 6)
+  })
+
+  it('a full legacy square overhangs the 4:5 canvas equally left and right', () => {
+    const placement = sourceRectToCanvas(fullRect(SQUARE), SQUARE, CANVAS)
+    expect(placement.height).toBeCloseTo(CANVAS_HEIGHT, 6)
+    expect(placement.x).toBeLessThan(0)
+    expect(placement.x + placement.width).toBeCloseTo(CANVAS_WIDTH - placement.x, 6)
+  })
+
+  it('a subject bbox lands proportionally inside the canvas', () => {
+    // Center quarter of an aspect-matched source → center quarter of the canvas.
+    const rect = { x: PORTRAIT.width / 4, y: PORTRAIT.height / 4, width: PORTRAIT.width / 2, height: PORTRAIT.height / 2 }
+    const mapped = sourceRectToCanvas(rect, PORTRAIT, CANVAS)
+    expect(mapped.x).toBeCloseTo(CANVAS_WIDTH / 4, 6)
+    expect(mapped.y).toBeCloseTo(CANVAS_HEIGHT / 4, 6)
+    expect(mapped.width).toBeCloseTo(CANVAS_WIDTH / 2, 6)
+    expect(mapped.height).toBeCloseTo(CANVAS_HEIGHT / 2, 6)
   })
 })

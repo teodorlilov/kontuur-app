@@ -1,11 +1,15 @@
 'use client'
 
-import type { CanvasDoc, CanvasFontWeight, CanvasScrim, CanvasTextLayer } from '@/types/canvas'
+import type { CanvasDoc, CanvasElement, CanvasFontWeight, CanvasScrim, CanvasTextLayer } from '@/types/canvas'
 import type { Palette } from '@/types/visual'
 import { getFontEntry } from '@/lib/canvas/font-library'
 import { BackgroundControls } from './background-controls'
 import { ColorSwatches } from './color-swatches'
+import { ElementsSection } from './elements-section'
 import { FontSelect } from './font-select'
+import { EraseControls, type ErasePanelState } from './erase-controls'
+import { InpaintControls, type InpaintPanelState } from './inpaint-controls'
+import { LassoControls, type LassoPanelState } from './lasso-controls'
 import { LayerList } from './layer-list'
 import { PANEL_CONTROL, PANEL_LABEL } from './panel-styles'
 import { ScrimControls } from './scrim-controls'
@@ -18,30 +22,77 @@ interface PropertiesPanelProps {
   palette: Palette
   selectedId: string | null
   repositionMode: boolean
+  uploadingAsset: boolean
+  isolating: boolean
   onSelect: (id: string) => void
   onLayerChange: (id: string, patch: Partial<CanvasTextLayer>) => void
   onAddLayer: () => void
   onRemoveLayer: (id: string) => void
+  onElementChange: (id: string, patch: Partial<CanvasElement>) => void
+  onMoveElement: (id: string, direction: 'up' | 'down') => void
+  onRemoveElement: (id: string) => void
+  onUploadElement: (file: File) => void
+  onIsolateSubject: () => void
   onScrimChange: (patch: Partial<CanvasScrim>) => void
   onToggleReposition: () => void
   onBackgroundZoom: (zoom: number) => void
   onBackgroundReset: () => void
+  inpaint: InpaintPanelState
+  lasso: LassoPanelState
+  erase: ErasePanelState
+  onLassoCut: () => void
+  onEraseSelected: () => void
+  generatingSvg: boolean
+  onGenerateSvg: (prompt: string) => void
+  removingBackground: boolean
+  onRemoveElementBackground: () => void
 }
 
-/** The editor's right-hand controls: layers, selected-layer typography and colour, scrim, background. */
+/** The editor's right-hand controls: text layers, elements, scrim, background. */
 export function PropertiesPanel(props: PropertiesPanelProps) {
   const { doc, palette, selectedId, onSelect, onLayerChange, onAddLayer, onRemoveLayer, onScrimChange } = props
   const selected = doc.layers.find((layer) => layer.id === selectedId) ?? null
+
+  // Focused modes take the panel over — one task, one set of controls.
+  if (props.inpaint.active || props.lasso.active || props.erase.active) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', padding: '16px', overflowY: 'auto' }}>
+        {props.inpaint.active && <InpaintControls inpaint={props.inpaint} />}
+        {props.lasso.active && <LassoControls lasso={props.lasso} />}
+        {props.erase.active && <EraseControls erase={props.erase} />}
+      </div>
+    )
+  }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', padding: '16px', overflowY: 'auto' }}>
       <LayerList layers={doc.layers} selectedId={selectedId} onSelect={onSelect} onAdd={onAddLayer} onRemove={onRemoveLayer} />
       {selected && <TextControls layer={selected} palette={palette} onChange={(patch) => onLayerChange(selected.id, patch)} />}
+      <ElementsSection
+        elements={doc.elements ?? []}
+        selectedId={selectedId}
+        uploading={props.uploadingAsset}
+        isolating={props.isolating}
+        onSelect={onSelect}
+        onMove={props.onMoveElement}
+        onRemove={props.onRemoveElement}
+        onOpacityChange={(id, opacity) => props.onElementChange(id, { opacity })}
+        onAboveTextChange={(id, aboveText) => props.onElementChange(id, { aboveText: aboveText || undefined })}
+        onUpload={props.onUploadElement}
+        onIsolate={props.onIsolateSubject}
+        onLassoCut={props.onLassoCut}
+        onEraseSelected={props.onEraseSelected}
+        generatingSvg={props.generatingSvg}
+        onGenerateSvg={props.onGenerateSvg}
+        removingBackground={props.removingBackground}
+        onRemoveBackground={props.onRemoveElementBackground}
+      />
       <ScrimControls scrim={doc.scrim} palette={palette} onChange={onScrimChange} />
       <BackgroundControls
         transform={doc.backgroundTransform}
         repositionMode={props.repositionMode}
         onToggleReposition={props.onToggleReposition}
+        onEnterInpaint={props.inpaint.onToggle}
         onZoom={props.onBackgroundZoom}
         onReset={props.onBackgroundReset}
       />
@@ -135,6 +186,14 @@ function TextControls({
           />
         </div>
       </div>
+      <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: 'var(--color-text-1)', cursor: 'pointer' }}>
+        <input
+          type="checkbox"
+          checked={layer.uppercase ?? false}
+          onChange={(event) => onChange({ uppercase: event.target.checked || undefined })}
+        />
+        UPPERCASE letters
+      </label>
       <ColorSwatches label="Text colour" palette={palette} value={layer.fill} onChange={(fill) => onChange({ fill })} />
     </div>
   )

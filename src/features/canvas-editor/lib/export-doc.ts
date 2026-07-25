@@ -1,18 +1,23 @@
 import Konva from 'konva'
 import type { CanvasDoc } from '@/types/canvas'
-import { backgroundNodeAttrs, scrimNodeAttrs, textNodeAttrs } from '@/lib/canvas/node-attrs'
+import { backgroundNodeAttrs, elementNodeAttrs, scrimNodeAttrs, textNodeAttrs } from '@/lib/canvas/node-attrs'
 import { ensureFontsReady } from './fonts'
+import { loadCrossOriginImage } from './load-image'
 
 /**
  * Flatten a canvas doc to a jpeg Blob on an offscreen vanilla-Konva stage at native doc size
  * (pixelRatio 1 — a viewport-scaled stage would round to 1079/1081px). No selection chrome is
- * ever exported; fonts are re-awaited here so a freshly picked family can't bake as a system face.
+ * ever exported; fonts are re-awaited here so a freshly picked family can't bake as a system
+ * face. A missing element asset THROWS — a save must never silently bake a hole.
  */
 export async function exportDocToJpegBlob(
   doc: CanvasDoc,
   backgroundImage: HTMLImageElement
 ): Promise<Blob> {
-  await ensureFontsReady(doc.layers.map((layer) => layer.fontFamily))
+  const [elementImages] = await Promise.all([
+    Promise.all((doc.elements ?? []).map((element) => loadCrossOriginImage(element.src.publicUrl))),
+    ensureFontsReady(doc.layers.map((layer) => layer.fontFamily)),
+  ])
 
   const stage = new Konva.Stage({
     container: document.createElement('div'),
@@ -35,9 +40,17 @@ export async function exportDocToJpegBlob(
     )
     const scrim = scrimNodeAttrs(doc.scrim, doc.canvas)
     if (scrim) layer.add(new Konva.Rect(scrim))
+    const drawElements = (aboveText: boolean) => {
+      ;(doc.elements ?? []).forEach((element, index) => {
+        if (Boolean(element.aboveText) !== aboveText) return
+        layer.add(new Konva.Image({ image: elementImages[index], ...elementNodeAttrs(element) }))
+      })
+    }
+    drawElements(false)
     for (const textLayer of doc.layers) {
       layer.add(new Konva.Text(textNodeAttrs(textLayer)))
     }
+    drawElements(true)
     layer.draw()
 
     return await new Promise<Blob>((resolve, reject) => {

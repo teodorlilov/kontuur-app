@@ -3,6 +3,7 @@
  * Tracks request counts per key (typically userId) with a sliding window.
  * Suitable for single-instance deployments.
  */
+import { NextResponse } from 'next/server'
 
 interface RateLimitEntry {
   count: number
@@ -57,5 +58,14 @@ export function checkRateLimit(key: string, config: RateLimitConfig): RateLimitR
 export const AI_RATE_LIMIT: RateLimitConfig = { max: 20, windowMs: 60_000 }
 
 /** Image generation (paid ~52s gpt-image-2 calls): legitimate max throughput is ~6-7/min at
- *  concurrency 6, so 60 per 10 minutes never throttles real use but stops runaway loops. */
-export const VISUALS_RATE_LIMIT: RateLimitConfig = { max: 60, windowMs: 10 * 60_000 }
+ *  concurrency 6, so 60 per 10 minutes never throttles real use but stops runaway loops.
+ *  Private — every route consumes the pool through visualsRateLimitResponse. */
+const VISUALS_RATE_LIMIT: RateLimitConfig = { max: 60, windowMs: 10 * 60_000 }
+
+/** The 429 for a user who exhausted the shared visuals budget, or null when allowed — every
+ *  paid-generation route (generate, cutout, inpaint, vector) consumes this one pool. */
+export function visualsRateLimitResponse(userId: string): NextResponse | null {
+  const rl = checkRateLimit(`visuals:${userId}`, VISUALS_RATE_LIMIT)
+  if (rl.allowed) return null
+  return NextResponse.json({ error: 'Too many visual generations. Please wait a few minutes.' }, { status: 429 })
+}

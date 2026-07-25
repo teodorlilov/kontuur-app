@@ -1,10 +1,10 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Group, Image as KonvaImage, Layer, Rect, Stage, Transformer } from 'react-konva'
 import type Konva from 'konva'
-import type { CanvasBackgroundTransform, CanvasDoc, CanvasTextLayer } from '@/types/canvas'
-import { MIN_TEXT_LAYER_WIDTH } from '@/lib/canvas/constants'
+import type { CanvasBackgroundTransform, CanvasDoc, CanvasElement, CanvasTextLayer } from '@/types/canvas'
+import { MIN_ELEMENT_SIZE, MIN_TEXT_LAYER_WIDTH } from '@/lib/canvas/constants'
 import { coverCrop } from '@/lib/canvas/cover-crop'
 import { backgroundNodeAttrs, scrimNodeAttrs } from '@/lib/canvas/node-attrs'
 import {
@@ -12,6 +12,16 @@ import {
   panBackground,
   zoomBackgroundTo,
 } from '@/lib/canvas/reposition'
+import type { BrushStroke, EditorMode } from '../types'
+import { naturalSize } from '../lib/load-image'
+import {
+  BrushSurface,
+  ERASE_STROKE_COLOR,
+  INPAINT_STROKE_COLOR,
+  LASSO_PREVIEW_WIDTH,
+  LASSO_STROKE_COLOR,
+} from './brush-surface'
+import { ElementNode } from './element-node'
 import { TextNode } from './text-node'
 
 /** Wheel-to-zoom feel: ~1 full zoom step per ~460px of wheel travel. */
@@ -25,11 +35,42 @@ interface EditorStageProps {
   scale: number
   selectedId: string | null
   editingId: string | null
-  repositionMode: boolean
+  mode: EditorMode
+  brushSize: number
+  strokes: BrushStroke[]
   onSelect: (id: string | null) => void
   onLayerChange: (id: string, patch: Partial<CanvasTextLayer>) => void
+  onElementChange: (id: string, patch: Partial<CanvasElement>) => void
   onStartEdit: (layer: CanvasTextLayer, node: Konva.Text) => void
   onBackgroundTransform: (transform: CanvasBackgroundTransform) => void
+  onStrokeEnd: (stroke: BrushStroke) => void
+}
+
+// Konva's Transformer box shape (screen space).
+interface TransformerBox {
+  x: number
+  y: number
+  width: number
+  height: number
+  rotation: number
+}
+
+// Text resizes by width only (re-wrap); elements resize by corners with the aspect locked.
+function transformerConfigFor(selectedKind: 'text' | 'element', scale: number) {
+  if (selectedKind === 'element') {
+    return {
+      enabledAnchors: ['top-left', 'top-right', 'bottom-left', 'bottom-right'],
+      keepRatio: true,
+      boundBoxFunc: (oldBox: TransformerBox, newBox: TransformerBox) =>
+        newBox.width < MIN_ELEMENT_SIZE * scale || newBox.height < MIN_ELEMENT_SIZE * scale ? oldBox : newBox,
+    }
+  }
+  return {
+    enabledAnchors: ['middle-left', 'middle-right'],
+    keepRatio: false,
+    boundBoxFunc: (oldBox: TransformerBox, newBox: TransformerBox) =>
+      newBox.width < MIN_TEXT_LAYER_WIDTH * scale ? oldBox : newBox,
+  }
 }
 
 /** The live canvas: background (cover-cropped) → scrim → text layers → selection Transformer. */
@@ -39,26 +80,57 @@ export function EditorStage({
   scale,
   selectedId,
   editingId,
-  repositionMode,
+  mode,
+  brushSize,
+  strokes,
   onSelect,
   onLayerChange,
+  onElementChange,
   onStartEdit,
   onBackgroundTransform,
+  onStrokeEnd,
 }: EditorStageProps) {
   const stageRef = useRef<Konva.Stage>(null)
   const transformerRef = useRef<Konva.Transformer>(null)
   const backgroundRef = useRef<Konva.Image>(null)
+  // Bumped when an element's asset finishes loading — its Konva node appears AFTER selection,
+  // so the attach effect must re-run then or a freshly added element never gets its frame.
+  const [nodesReady, setNodesReady] = useState(0)
+  const handleNodeReady = useCallback(() => setNodesReady((count) => count + 1), [])
 
   useEffect(() => {
     const transformer = transformerRef.current
     const stage = stageRef.current
     if (!transformer || !stage) return
-    const node = selectedId && selectedId !== editingId ? stage.findOne(`#${CSS.escape(selectedId)}`) : null
+    // Match by predicate, never by '#id' selector: Konva compares selector strings verbatim (no
+    // CSS unescaping), so an escaped uuid that starts with a digit silently matches nothing and
+    // the selected node loses its Transformer frame.
+    const node =
+      selectedId && selectedId !== editingId
+        ? stage.findOne((candidate: Konva.Node) => candidate.id() === selectedId)
+        : null
     transformer.nodes(node ? [node] : [])
-  }, [selectedId, editingId, doc.layers])
+  }, [selectedId, editingId, doc.layers, doc.elements, nodesReady])
 
   const scrim = scrimNodeAttrs(doc.scrim, doc.canvas)
-  const src = { width: backgroundImage.naturalWidth, height: backgroundImage.naturalHeight }
+  const src = naturalSize(backgroundImage)
+  const elements = doc.elements ?? []
+  const selectedKind = elements.some((element) => element.id === selectedId) ? 'element' : 'text'
+
+  const deselectOnEmpty = (event: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
+    if (event.target === event.target.getStage()) onSelect(null)
+  }
+  const renderElement = (element: CanvasElement) => (
+    <ElementNode
+      key={element.id}
+      element={element}
+      canvas={doc.canvas}
+      stageScale={scale}
+      onSelect={() => onSelect(element.id)}
+      onChange={(patch) => onElementChange(element.id, patch)}
+      onNodeReady={handleNodeReady}
+    />
+  )
 
   return (
     <Stage
@@ -67,12 +139,8 @@ export function EditorStage({
       height={doc.canvas.h * scale}
       scaleX={scale}
       scaleY={scale}
-      onMouseDown={(event) => {
-        if (event.target === event.target.getStage()) onSelect(null)
-      }}
-      onTouchStart={(event) => {
-        if (event.target === event.target.getStage()) onSelect(null)
-      }}
+      onMouseDown={deselectOnEmpty}
+      onTouchStart={deselectOnEmpty}
     >
       <Layer>
         <KonvaImage
@@ -81,9 +149,11 @@ export function EditorStage({
           listening={false}
           {...backgroundNodeAttrs(src, doc.canvas, doc.backgroundTransform)}
         />
-        {/* Dim + lock everything above the background while it is being repositioned. */}
-        <Group opacity={repositionMode ? 0.35 : 1} listening={!repositionMode}>
+        {/* Dim + lock the composition during background modes; the eraser needs full visibility. */}
+        <Group opacity={mode === 'edit' || mode === 'erase' ? 1 : 0.35} listening={mode === 'edit'}>
           {scrim && <Rect listening={false} {...scrim} />}
+          {/* Elements render below text by default; promoted ones come after the text band. */}
+          {elements.filter((element) => !element.aboveText).map(renderElement)}
           {doc.layers.map((layer) => (
             <TextNode
               key={layer.id}
@@ -96,17 +166,16 @@ export function EditorStage({
               onStartEdit={(node) => onStartEdit(layer, node)}
             />
           ))}
+          {elements.filter((element) => element.aboveText).map(renderElement)}
         </Group>
         <Transformer
           ref={transformerRef}
-          enabledAnchors={['middle-left', 'middle-right']}
           rotateEnabled
           rotationSnaps={[-90, -45, 0, 45, 90, 180]}
           rotationSnapTolerance={6}
-          keepRatio={false}
-          boundBoxFunc={(oldBox, newBox) => (newBox.width < MIN_TEXT_LAYER_WIDTH * scale ? oldBox : newBox)}
+          {...transformerConfigFor(selectedKind, scale)}
         />
-        {repositionMode && (
+        {mode === 'reposition' && (
           <RepositionSurface
             transform={doc.backgroundTransform}
             src={src}
@@ -114,6 +183,27 @@ export function EditorStage({
             scale={scale}
             backgroundRef={backgroundRef}
             onCommit={onBackgroundTransform}
+          />
+        )}
+        {(mode === 'inpaint' || mode === 'erase') && (
+          <BrushSurface
+            canvas={doc.canvas}
+            scale={scale}
+            brushSize={brushSize}
+            strokes={strokes}
+            strokeColor={mode === 'inpaint' ? INPAINT_STROKE_COLOR : ERASE_STROKE_COLOR}
+            onStrokeEnd={onStrokeEnd}
+          />
+        )}
+        {mode === 'lasso' && (
+          <BrushSurface
+            canvas={doc.canvas}
+            scale={scale}
+            brushSize={LASSO_PREVIEW_WIDTH}
+            strokes={[]}
+            strokeColor={LASSO_STROKE_COLOR}
+            closedPreview
+            onStrokeEnd={onStrokeEnd}
           />
         )}
       </Layer>

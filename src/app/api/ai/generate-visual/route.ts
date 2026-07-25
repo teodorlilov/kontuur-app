@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
-import { checkRateLimit, VISUALS_RATE_LIMIT } from '@/lib/auth/rate-limit'
+import { visualsRateLimitResponse } from '@/lib/auth/rate-limit'
 import { fetchClientById } from '@/lib/queries/db'
 import { uploadDraftVisual, deleteDraftVisuals, draftVisualPrefix } from '@/features/publishing/lib/storage'
 import { carouselSlideText, singlePostText } from '@/lib/visual/prompt'
@@ -34,10 +34,8 @@ export async function POST(request: Request) {
   const auth = await resolveAuth()
   if (!auth.ok) return auth.response
 
-  const rl = checkRateLimit(`visuals:${auth.userId}`, VISUALS_RATE_LIMIT)
-  if (!rl.allowed) {
-    return NextResponse.json({ error: 'Too many visual generations. Please wait a few minutes.' }, { status: 429 })
-  }
+  const limited = visualsRateLimitResponse(auth.userId)
+  if (limited) return limited
 
   let body: GenerateDraftVisualBody
   try {

@@ -41,4 +41,22 @@ describe('draftStoragePaths', () => {
       'c1/drafts/d1/flat.jpg',
     ])
   })
+
+  it('collects element asset paths from docs', () => {
+    const withElements: DraftVisual[] = [
+      {
+        position: 0,
+        status: 'done',
+        publicUrl: 'https://x.test/flat.jpg',
+        storagePath: 'c1/drafts/d1/flat.jpg',
+        canvasDoc: {
+          ...doc,
+          elements: [
+            { id: 'e1', kind: 'image', src: { publicUrl: 'https://x.test/logo.png', storagePath: 'c1/drafts/d1/assets/logo.png' }, x: 0, y: 0, width: 100, height: 100 },
+          ],
+        },
+      },
+    ]
+    expect(draftStoragePaths(withElements)).toContain('c1/drafts/d1/assets/logo.png')
+  })
 })

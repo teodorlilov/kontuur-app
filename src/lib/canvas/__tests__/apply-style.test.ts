@@ -94,6 +94,22 @@ describe('applyStyleToDoc', () => {
     expect(applyStyleToDoc(target, straightSource).layers[0]?.rotation).toBeUndefined()
   })
 
+  it('never touches elements — they are content, not style', () => {
+    const element = {
+      id: 'el-1',
+      kind: 'image' as const,
+      src: { publicUrl: 'https://cdn/logo.png', storagePath: 'client/post/logo.png' },
+      x: 50,
+      y: 60,
+      width: 200,
+      height: 100,
+    }
+    const source = makeDoc([makeLayer({ id: 's-h', role: 'headline', text: 'Head' })])
+    const target = makeDoc([makeLayer({ id: 't-h', role: 'headline', text: 'T head' })], { elements: [element] })
+    expect(applyStyleToDoc(target, source).elements).toEqual([element])
+    expect(applyStyleToDoc(source, target).elements).toBeUndefined()
+  })
+
   it('never copies the background transform — the crop belongs to each slide', () => {
     const source = makeDoc([makeLayer({ id: 's-h', role: 'headline', text: 'Head' })], {
       backgroundTransform: { zoom: 2, offsetX: 0.1, offsetY: 0.9 },
