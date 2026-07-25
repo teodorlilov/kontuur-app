@@ -13,33 +13,35 @@ interface FontFaceSpec {
   cyrillic: boolean
   /** Weights actually hosted by Google Fonts for this family (many display faces are 400-only). */
   weights: readonly number[]
+  /** True = Google hosts an italic face at every listed weight (never synthesize obliques). */
+  italic: boolean
 }
 
 const FONT_FAMILIES = {
   // display
-  Unbounded: { category: 'display', cyrillic: true, weights: [400, 700] },
-  'Sofia Sans Condensed': { category: 'display', cyrillic: true, weights: [400, 700] },
-  Oswald: { category: 'display', cyrillic: true, weights: [400, 500, 700] },
-  'Russo One': { category: 'display', cyrillic: true, weights: [400] },
-  'Bebas Neue': { category: 'display', cyrillic: false, weights: [400] },
-  Anton: { category: 'display', cyrillic: false, weights: [400] },
-  'Abril Fatface': { category: 'display', cyrillic: false, weights: [400] },
+  Unbounded: { category: 'display', cyrillic: true, weights: [400, 700], italic: false },
+  'Sofia Sans Condensed': { category: 'display', cyrillic: true, weights: [400, 700], italic: true },
+  Oswald: { category: 'display', cyrillic: true, weights: [400, 500, 700], italic: false },
+  'Russo One': { category: 'display', cyrillic: true, weights: [400], italic: false },
+  'Bebas Neue': { category: 'display', cyrillic: false, weights: [400], italic: false },
+  Anton: { category: 'display', cyrillic: false, weights: [400], italic: false },
+  'Abril Fatface': { category: 'display', cyrillic: false, weights: [400], italic: false },
   // serif
-  'Playfair Display': { category: 'serif', cyrillic: true, weights: [400, 500, 700] },
-  Prata: { category: 'serif', cyrillic: true, weights: [400] },
-  'Cormorant Garamond': { category: 'serif', cyrillic: true, weights: [400, 700] },
-  Lora: { category: 'serif', cyrillic: true, weights: [400, 700] },
+  'Playfair Display': { category: 'serif', cyrillic: true, weights: [400, 500, 700], italic: true },
+  Prata: { category: 'serif', cyrillic: true, weights: [400], italic: false },
+  'Cormorant Garamond': { category: 'serif', cyrillic: true, weights: [400, 700], italic: true },
+  Lora: { category: 'serif', cyrillic: true, weights: [400, 700], italic: true },
   // sans
-  Manrope: { category: 'sans', cyrillic: true, weights: [400, 700] },
-  Commissioner: { category: 'sans', cyrillic: true, weights: [400, 700] },
-  'Source Sans 3': { category: 'sans', cyrillic: true, weights: [400, 700] },
-  'Golos Text': { category: 'sans', cyrillic: true, weights: [400, 700] },
-  Montserrat: { category: 'sans', cyrillic: true, weights: [400, 700] },
-  Poppins: { category: 'sans', cyrillic: false, weights: [400, 700] },
-  'Space Grotesk': { category: 'sans', cyrillic: false, weights: [400, 700] },
+  Manrope: { category: 'sans', cyrillic: true, weights: [400, 700], italic: false },
+  Commissioner: { category: 'sans', cyrillic: true, weights: [400, 700], italic: false },
+  'Source Sans 3': { category: 'sans', cyrillic: true, weights: [400, 700], italic: true },
+  'Golos Text': { category: 'sans', cyrillic: true, weights: [400, 700], italic: false },
+  Montserrat: { category: 'sans', cyrillic: true, weights: [400, 700], italic: true },
+  Poppins: { category: 'sans', cyrillic: false, weights: [400, 700], italic: true },
+  'Space Grotesk': { category: 'sans', cyrillic: false, weights: [400, 700], italic: false },
   // script
-  Caveat: { category: 'script', cyrillic: true, weights: [400, 700] },
-  'Marck Script': { category: 'script', cyrillic: true, weights: [400] },
+  Caveat: { category: 'script', cyrillic: true, weights: [400, 700], italic: false },
+  'Marck Script': { category: 'script', cyrillic: true, weights: [400], italic: false },
 } as const satisfies Record<string, FontFaceSpec>
 
 export type FontFamilyName = keyof typeof FONT_FAMILIES

@@ -11,6 +11,8 @@ function styledLayer(target: CanvasTextLayer, source: CanvasTextLayer): CanvasTe
     width: source.width,
     rotation: source.rotation,
     uppercase: source.uppercase,
+    italic: source.italic,
+    highlight: source.highlight,
     fontFamily: source.fontFamily,
     fontSize: source.fontSize,
     fontWeight: source.fontWeight,

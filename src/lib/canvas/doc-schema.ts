@@ -20,6 +20,8 @@ const textLayerSchema = z.object({
   lineHeight: z.number().min(0.8).max(3),
   rotation: z.number().min(-180).max(180).optional(),
   uppercase: z.boolean().optional(),
+  italic: z.boolean().optional(),
+  highlight: hex.optional(),
   textOverridden: z.boolean().optional(),
 })
 

@@ -1,8 +1,15 @@
 import Konva from 'konva'
 import type { CanvasDoc } from '@/types/canvas'
-import { backgroundNodeAttrs, elementNodeAttrs, scrimNodeAttrs, textNodeAttrs } from '@/lib/canvas/node-attrs'
+import {
+  backgroundNodeAttrs,
+  elementNodeAttrs,
+  scrimNodeAttrs,
+  textGroupAttrs,
+  textNodeAttrs,
+} from '@/lib/canvas/node-attrs'
 import { ensureFontsReady } from './fonts'
-import { loadCrossOriginImage } from './load-image'
+import { loadCrossOriginImage, naturalSize } from './load-image'
+import { highlightBands } from './measure-fit'
 
 /**
  * Flatten a canvas doc to a jpeg Blob on an offscreen vanilla-Konva stage at native doc size
@@ -31,11 +38,7 @@ export async function exportDocToJpegBlob(
     layer.add(
       new Konva.Image({
         image: backgroundImage,
-        ...backgroundNodeAttrs(
-          { width: backgroundImage.naturalWidth, height: backgroundImage.naturalHeight },
-          doc.canvas,
-          doc.backgroundTransform
-        ),
+        ...backgroundNodeAttrs(naturalSize(backgroundImage), doc.canvas, doc.backgroundTransform),
       })
     )
     const scrim = scrimNodeAttrs(doc.scrim, doc.canvas)
@@ -48,7 +51,11 @@ export async function exportDocToJpegBlob(
     }
     drawElements(false)
     for (const textLayer of doc.layers) {
-      layer.add(new Konva.Text(textNodeAttrs(textLayer)))
+      // Mirror of the editor's TextNode structure: group owns position, bands under glyphs.
+      const group = new Konva.Group(textGroupAttrs(textLayer))
+      for (const band of highlightBands(textLayer)) group.add(new Konva.Rect(band))
+      group.add(new Konva.Text(textNodeAttrs(textLayer)))
+      layer.add(group)
     }
     drawElements(true)
     layer.draw()

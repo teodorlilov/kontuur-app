@@ -29,6 +29,10 @@ export interface CanvasTextLayer {
   rotation?: number
   /** Render the text in capitals (applied at draw time — the stored text keeps its casing). */
   uppercase?: boolean
+  /** Render in the family's italic face (the panel only offers it for families hosting one). */
+  italic?: boolean
+  /** Marker-highlight band colour (hex) drawn behind each line; absent = no highlight. */
+  highlight?: string
   /** Set when the user hand-edits the text in the editor; recompose then keeps their wording. */
   textOverridden?: boolean
 }

@@ -1,6 +1,7 @@
 import Konva from 'konva'
 import type { CanvasDoc, CanvasTextLayer } from '@/types/canvas'
 import { computeFit } from '@/lib/canvas/autofit'
+import { markerBands, type MarkerBandAttrs } from '@/lib/canvas/highlight'
 import { textNodeAttrs } from '@/lib/canvas/node-attrs'
 
 /** Breathing room kept below the lowest text line in the authoring space. */
@@ -11,10 +12,21 @@ const FIT_SCALE = 1.15
 // One detached Konva.Text reused for all measurements (fonts must be ready before measuring).
 let measurer: Konva.Text | null = null
 
-function measuredHeight(layer: CanvasTextLayer, fontSize: number): number {
+// The measurer configured for a layer — Konva recomputes its wrap synchronously on setAttrs.
+function measureLayer(layer: CanvasTextLayer, fontSize: number): Konva.Text {
   if (!measurer) measurer = new Konva.Text({ listening: false })
   measurer.setAttrs({ ...textNodeAttrs(layer), fontSize, height: undefined })
-  return measurer.height()
+  return measurer
+}
+
+function measuredHeight(layer: CanvasTextLayer, fontSize: number): number {
+  return measureLayer(layer, fontSize).height()
+}
+
+/** Marker-band rects for the layer's current wrap; [] when the layer has no highlight. */
+export function highlightBands(layer: CanvasTextLayer): MarkerBandAttrs[] {
+  if (!layer.highlight) return []
+  return markerBands(measureLayer(layer, layer.fontSize).textArr, layer)
 }
 
 function availableHeight(layer: CanvasTextLayer, canvasH: number): number {

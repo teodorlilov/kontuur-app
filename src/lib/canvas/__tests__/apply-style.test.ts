@@ -94,6 +94,19 @@ describe('applyStyleToDoc', () => {
     expect(applyStyleToDoc(target, straightSource).layers[0]?.rotation).toBeUndefined()
   })
 
+  it('copies italic + highlight as part of the look, and their absence clears the target', () => {
+    const source = makeDoc([makeLayer({ id: 's-h', role: 'headline', text: 'Head', italic: true, highlight: '#D6FF4B' })])
+    const target = makeDoc([makeLayer({ id: 't-h', role: 'headline', text: 'T head' })])
+    const styled = applyStyleToDoc(target, source).layers[0]!
+    expect(styled.italic).toBe(true)
+    expect(styled.highlight).toBe('#D6FF4B')
+    const plainSource = makeDoc([makeLayer({ id: 's-h', role: 'headline', text: 'Head' })])
+    const decorated = makeDoc([makeLayer({ id: 't-h', role: 'headline', text: 'T', italic: true, highlight: '#D6FF4B' })])
+    const cleared = applyStyleToDoc(decorated, plainSource).layers[0]!
+    expect(cleared.italic).toBeUndefined()
+    expect(cleared.highlight).toBeUndefined()
+  })
+
   it('never touches elements — they are content, not style', () => {
     const element = {
       id: 'el-1',

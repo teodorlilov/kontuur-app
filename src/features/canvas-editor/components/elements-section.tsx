@@ -5,6 +5,7 @@ import { ChevronDown, ChevronUp, Eraser, Image as ImageIcon, Lasso, Scissors, Sh
 import { Spinner } from '@/components/ui/spinner'
 import type { CanvasElement } from '@/types/canvas'
 import { PanelButton } from './panel-button'
+import { PanelCheckbox } from './panel-checkbox'
 import { PANEL_CONTROL, PANEL_LABEL } from './panel-styles'
 
 const KIND_ICONS = { image: ImageIcon, svg: Shapes } as const
@@ -129,16 +130,13 @@ export function ElementsSection(props: ElementsSectionProps) {
             onChange={(event) => onOpacityChange(selected.id, Number(event.target.value))}
             style={{ width: '100%' }}
           />
-          <label
-            style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '8px', fontSize: '12px', color: 'var(--color-text-1)', cursor: 'pointer' }}
-          >
-            <input
-              type="checkbox"
+          <div style={{ marginTop: '8px' }}>
+            <PanelCheckbox
+              label="In front of text"
               checked={selected.aboveText ?? false}
-              onChange={(event) => props.onAboveTextChange(selected.id, event.target.checked)}
+              onChange={(checked) => props.onAboveTextChange(selected.id, checked)}
             />
-            In front of text
-          </label>
+          </div>
           <PanelButton
             onClick={props.onRemoveBackground}
             busy={props.removingBackground}

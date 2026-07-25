@@ -50,6 +50,15 @@ describe('canvasDocSchema', () => {
     expect(parseCanvasDoc(doc)).toEqual(doc)
   })
 
+  it('accepts optional italic + highlight and rejects a non-hex highlight', () => {
+    const doc = validDoc()
+    doc.layers[0]!.italic = true
+    doc.layers[0]!.highlight = '#D6FF4B'
+    expect(parseCanvasDoc(doc)).toEqual(doc)
+    doc.layers[0]!.highlight = 'lime'
+    expect(() => parseCanvasDoc(doc)).toThrow()
+  })
+
   it('accepts optional elements and rejects out-of-range element values', () => {
     const doc = validDoc()
     doc.elements = [

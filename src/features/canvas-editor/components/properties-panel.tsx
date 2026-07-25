@@ -11,6 +11,7 @@ import { EraseControls, type ErasePanelState } from './erase-controls'
 import { InpaintControls, type InpaintPanelState } from './inpaint-controls'
 import { LassoControls, type LassoPanelState } from './lasso-controls'
 import { LayerList } from './layer-list'
+import { PanelCheckbox } from './panel-checkbox'
 import { PANEL_CONTROL, PANEL_LABEL } from './panel-styles'
 import { ScrimControls } from './scrim-controls'
 
@@ -110,6 +111,7 @@ function TextControls({
   onChange: (patch: Partial<CanvasTextLayer>) => void
 }) {
   const weights = weightOptions(layer.fontFamily)
+  const italicAvailable = getFontEntry(layer.fontFamily)?.italic ?? false
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
       <FontSelect value={layer.fontFamily} text={layer.text} onChange={(fontFamily) => onChange({ fontFamily })} />
@@ -186,14 +188,32 @@ function TextControls({
           />
         </div>
       </div>
-      <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: 'var(--color-text-1)', cursor: 'pointer' }}>
-        <input
-          type="checkbox"
-          checked={layer.uppercase ?? false}
-          onChange={(event) => onChange({ uppercase: event.target.checked || undefined })}
+      <PanelCheckbox
+        label="UPPERCASE letters"
+        checked={layer.uppercase ?? false}
+        onChange={(checked) => onChange({ uppercase: checked || undefined })}
+      />
+      <PanelCheckbox
+        label="Italic"
+        checked={layer.italic ?? false}
+        // Never disable an ON checkbox — a family switch must not trap the flag.
+        disabled={!italicAvailable && !layer.italic}
+        title={italicAvailable ? undefined : 'This font family has no italic face'}
+        onChange={(checked) => onChange({ italic: checked || undefined })}
+      />
+      <PanelCheckbox
+        label="Marker highlight"
+        checked={Boolean(layer.highlight)}
+        onChange={(checked) => onChange({ highlight: checked ? palette.accent : undefined })}
+      />
+      {layer.highlight && (
+        <ColorSwatches
+          label="Highlight colour"
+          palette={palette}
+          value={layer.highlight}
+          onChange={(highlight) => onChange({ highlight })}
         />
-        UPPERCASE letters
-      </label>
+      )}
       <ColorSwatches label="Text colour" palette={palette} value={layer.fill} onChange={(fill) => onChange({ fill })} />
     </div>
   )

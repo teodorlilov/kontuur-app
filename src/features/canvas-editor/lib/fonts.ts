@@ -23,22 +23,29 @@ export function injectLibraryStylesheet(): void {
   document.head.appendChild(link)
 }
 
-// document.fonts.load is idempotent but not free; memoize per "weight family" load key.
+// document.fonts.load is idempotent but not free; memoize per "style weight family" load key.
 const loaded = new Map<string, Promise<unknown>>()
 
+// Every face the family serves: each weight upright, plus italic where the library hosts one.
+function faceLoadKeys(family: string): string[] {
+  const entry = getFontEntry(family)
+  if (!entry) return []
+  return entry.weights.flatMap((weight) => [
+    `${weight} 48px "${family}"`,
+    ...(entry.italic ? [`italic ${weight} 48px "${family}"`] : []),
+  ])
+}
+
 /**
- * Resolve when every given family (library weights; unknown families skipped — they render with a
- * system fallback) is ready to measure and rasterize. Must be awaited before the first stage draw
- * AND inside the exporter, or a system face gets baked silently.
+ * Resolve when every given family (library weights + italics; unknown families skipped — they
+ * render with a system fallback) is ready to measure and rasterize. Must be awaited before the
+ * first stage draw AND inside the exporter, or a system face gets baked silently.
  */
 export async function ensureFontsReady(families: string[]): Promise<void> {
   if (typeof document === 'undefined' || !('fonts' in document)) return
   const loads: Promise<unknown>[] = []
   for (const family of new Set(families)) {
-    const entry = getFontEntry(family)
-    if (!entry) continue
-    for (const weight of entry.weights) {
-      const key = `${weight} 48px "${family}"`
+    for (const key of faceLoadKeys(family)) {
       let promise = loaded.get(key)
       if (!promise) {
         promise = document.fonts.load(key).catch(() => undefined)

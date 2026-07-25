@@ -75,6 +75,7 @@ function applyTextareaStyle(
     textTransform: layer.uppercase ? 'uppercase' : 'none',
     fontFamily: `"${layer.fontFamily}", sans-serif`,
     fontSize: `${layer.fontSize * scale}px`,
+    fontStyle: layer.italic ? 'italic' : 'normal',
     fontWeight: String(layer.fontWeight),
     lineHeight: String(layer.lineHeight),
     textAlign: layer.align,
