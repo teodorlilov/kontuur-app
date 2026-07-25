@@ -86,6 +86,31 @@ None of these block shipping; each entry says what it is, why it was deferred, a
   storage (the doc rebinds on next editor open/save).
 - **Impact:** storage pennies; bounded (one stale file per abandoned rebind).
 
+### 2.8 Element & intermediate asset orphans (Phase 5, accepted)
+- **What:** the advanced-canvas tools upload files that can outlive their usefulness: deleting an
+  element strands its file; erase / "Remove background" upload a NEW bitmap and strand the old
+  one; the lasso AI-detect uploads a transient crop region per attempt; every inpaint stores the
+  RAW model output which the client immediately supersedes with its composite; closing the
+  editor without saving strands everything created that session.
+- **Impact:** storage pennies (same posture as 2.2/2.7); `post_canvas_docs` + `post_images` stay
+  the source of truth. Discard cleanup DOES cover element srcs referenced by draft docs
+  (`draftStoragePaths`); approve moves referenced element files out of `drafts/`.
+- **Fix if it ever matters:** the same periodic cleanup job as 2.2, extended to skip every path
+  referenced by any doc's `elements[].src.storagePath`.
+
+### 2.9 Supabase bucket MIME allowlist must include `image/svg+xml` (manual step)
+- **What:** generated vectors upload with `contentType: 'image/svg+xml'`; a bucket MIME
+  allowlist that omits it makes `/api/ai/generate-svg` fail at the upload step (500 with a
+  storage error) — config lives in the Supabase dashboard, invisible to code and migrations.
+- **Action:** verify once per environment (dashboard → storage → `post-images` → allowed MIME
+  types). No code fix possible.
+
+### 2.10 Inpaint dimensions round to multiples of 16 (accepted)
+- **What:** gpt-image-2/edit only accepts dims in multiples of 16. Our pipeline sizes comply
+  (1088×1360, legacy 1024²), but inpainting a manually-uploaded image with non-conforming dims
+  resamples it to the nearest valid size (`roundTo16`) — a marginal, invisible quality cost.
+- **Action:** none; noted so a future "why is this 1 px off" bug hunt starts here.
+
 ---
 
 ## 3. Cost/perf watch-list (no action needed yet)
@@ -99,6 +124,13 @@ None of these block shipping; each entry says what it is, why it was deferred, a
   16) in `lib/visual/fal.ts` if pixel-exactness is wanted.
 - **Visuals route does two sequential DB reads** (ownership check + post fields) — could be one query;
   micro-optimization, not worth the coupling today.
+- **Recraft palette adherence unverified in prod** — the first generated vector came out
+  black-and-white despite the `colors` input. If it repeats, reinforce the palette in the
+  prompt text as well (route-side, one line).
+- **Editor opens with many elements:** each element fetches its bitmap in parallel and pops in
+  progressively (readiness gates on background+fonts only); the 20-element cap bounds memory
+  (~5.7MB decoded per full-frame cutout). Fine today — profile before adding per-element
+  caching.
 
 ---
 
@@ -110,5 +142,11 @@ Verified identical on `HEAD` before the branch's changes:
   `post-content-display.tsx` / `carousel-slides.tsx` (editable-field effects).
 - `react-hooks/preserve-manual-memoization` in `calendar-view.tsx` (month nav callbacks).
 - `@next/next/no-img-element` in `canva-design-picker.tsx`.
+
+Additional finds from the 2026-07-25 performance sweep (same posture): a malformed
+`eslint-disable` comment in `notifications-bell.tsx` (parsed as an unknown rule name),
+`react/no-unescaped-entities` in `language-panel.tsx`, `react-hooks/set-state-in-effect` in
+`post-content-display.tsx`. (The raw `<img>`s in `post-grid`/`top-posts-table` are deliberate —
+Instagram CDN thumbnails aren't in `next/image` remotePatterns.)
 
 Fix as a dedicated lint-cleanup pass, not opportunistically.

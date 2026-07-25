@@ -456,8 +456,10 @@ Cyrillic font filtering, overflow badge, the 409 stale-save guard, and a 4:5 pub
 Instagram.
 
 🔜 **Still deferred (specified below, not yet planned)**
-- **§4 Advanced Canvas:** SVGs-on-demand, DIS object isolation, free layer architecture,
-  "Isolate Object" flow, inpainting, background filters.
+- **Background filters** (brightness/contrast/saturation/blur — Stage E of the Phase-5 plan;
+  everything else from §4/§5-inpaint shipped 2026-07-25, see the Phase 5 section below).
+- **§5 Safe zones / platform overlays**; §6.2 overflow handling beyond the warning badge.
+- **§4.1 in-editor SVG recolor** (the shipped path injects the palette at generation instead).
 
 ✅ **Quick wins shipped 2026-07-24 (commit `a04f1f9`):** §6.1 slide-role prompt hints with the
 alternating rich/quiet rhythm (see Phase 3 prompt contract), auto-recompose on persisted-post
@@ -466,7 +468,126 @@ the sections above.
 
 ✅ **Background reposition (crop/pan/zoom) + text rotation shipped 2026-07-24** — the two
 cheapest §4 items, no layer architecture needed; as-built details in §2 (doc shape), §3
-(rebind resets) and §7 (editor) above. Background *filters* stay deferred with §4.
+(rebind resets) and §7 (editor) above.
+
+—————
+
+## Phase 5 — Advanced Canvas: Element Band + Cutout Toolkit + Inpaint Brush + Brand SVGs — SHIPPED 2026-07-25 (commit `bf9154f`)
+
+Implements §4.1 / §4.2 / §4.3 and §5's AI Brush Repair, with deliberate deviations noted per
+subsection. Publishing untouched — the flattened 1080×1350 jpeg stays the only artifact;
+everything here changes what gets baked into it.
+
+### 1. Element band (§4.3 as-built, simplified)
+
+- `CanvasElement { id, kind: 'image' | 'svg', src { publicUrl, storagePath }, x, y, width,
+  height, rotation?, opacity?, aboveText? }`; `doc.elements` (max 20) — additive-optional, no
+  migration. Render order: **background → scrim → elements → text → aboveText elements**.
+- **Deviation from §4.3's "typography locked on top":** per-element **"In front of text"**
+  opt-in (the subject-overlaps-headline swipe-bait effect) — typography is protected by
+  default, promotable per element. The spec's separate "Branding & Extras" layer folded into
+  elements (a logo is just an uploaded element).
+- Editor: `ElementsSection` (upload jpeg/png, topmost-first list, z reorder = array order,
+  opacity, delete); corner-resize with aspect lock + rotate through the shared Transformer
+  (selection-aware config: text = side handles, element = corners). Export loads every element
+  and **throws on a missing asset** — a save never silently bakes a hole.
+- Asset lifecycle: ONE ownership/destination decision for all asset routes
+  (`resolveAssetDestination` — post vs in-memory wizard draft, returns the verified clientId +
+  a bound uploader). Draft assets live under `{clientId}/drafts/{draftId}/assets/`; approve
+  MOVES element files out of `drafts/` alongside the clean background (`relocateDraftDoc`;
+  foreign-prefix element refs are dropped); discard cleanup includes element srcs
+  (`draftStoragePaths`).
+
+### 2. Cutout toolkit (§4.2 as-built — object PRESERVATION, not removal)
+
+- Locked product concept: a cutout **keeps** the object so the backdrop behind it can be
+  restyled/inpainted; object *removal* is the inpaint brush's job. (The spec's click-to-target
+  DIS flow — and its 4-state UX below — is superseded: SAM2 click-targeting was built and
+  REVERTED in dev; targeting is the lasso's job.)
+- **"Cut out subject"** (one click): `fal-ai/birefnet/v2` on DEFAULT params — the
+  Heavy/2048/refine variant was tried and REGRESSED on stylized art (grabbed icons/EKG lines
+  instead of the subject; selection quality beats edge finesse). The client trims the returned
+  matte to its opaque bounding box and places it pixel-exact over its source spot through the
+  inverse crop (`sourceRectToCanvas`) — visible handles even for large subjects.
+- **Lasso cut**: smoothed loop (jitter decimation + one Chaikin pass) → cut with a feathered
+  loop mask → boundary-colour keying (the loop boundary is background by definition; bails out
+  when keying would erase >92% — the loop WAS the object). **"Detect object in the loop"**
+  (default ON): the loop's padded crop region goes through the same BiRefNet, the matte is
+  intersected with the loop, trimmed and placed; any failure falls back to the pure geometric
+  cut. No new AI models anywhere — BiRefNet + gpt-image-2 only (user decision).
+- Per-element repair: **eraser brush** (destination-out strokes mapped through the element's
+  rotation into bitmap pixels — geometry unchanged, holes not re-trims) and **"Remove
+  background"** (border-colour keying; an SVG that needed rasterized keying becomes a bitmap).
+
+### 3. Inpaint brush (§5 "AI Brush Repair" as-built)
+
+- `openai/gpt-image-2/edit` (same family as generation — fills stay style-continuous): mask
+  uploaded as a transient fal file (`mask_url` — NOT `mask_image_url`), the OpenAI **alpha
+  convention** (transparent = repaint), output dims = the source's rounded to multiples of 16.
+- The model regenerates globally, so the client **composites its output back into the original
+  under the strokes only** (6px feathered edge) — pixel preservation outside the mask is
+  enforced client-side, never trusted to the model. The composite becomes the NEW clean
+  background (undo restores the old ref; the save's stale-background cleanup collects the file).
+  A **"Remove object"** preset runs the same flow with a fixed prompt.
+- Editor modes became one union (`edit | reposition | inpaint | lasso | erase`) with shared
+  enter/exit rules (Escape leaves the mode before closing; Save disabled outside `edit`;
+  entering a mode deselects except the eraser, which operates ON the selection). All stroke
+  capture goes through one `BrushSurface` (pinned-drag Rect, points accumulate in a ref, the
+  active Konva.Line mutates imperatively — ONE React commit per stroke).
+
+### 4. Brand SVGs (§4.1 as-built)
+
+- `fal-ai/recraft/v4/text-to-vector` (~$0.08/try), the client's measured palette injected AT
+  GENERATION (`colors: Rgb[]` from the stored hexes). **Deviation:** §4.1's in-editor
+  per-channel recolor is deferred — palette adherence comes from generation itself.
+- Safety gate is **rejection, not stripping** (`svgRejectionReason`: scripts, event handlers,
+  `javascript:`, foreignObject, embedded documents, external refs ⇒ 502, regenerate for cents);
+  the generator's full-canvas background `<rect>` is stripped so vectors sit on transparency;
+  natural size read from width/height attrs or the viewBox. Files render via `<img>` (inert)
+  and scale vector-crisp at export. ⚠️ The `post-images` bucket must allow `image/svg+xml`
+  (manual dashboard step — TECH-DEBT 2.9).
+
+### 5. Routes & guards
+
+Four routes under `/api/ai/`: `canvas-asset` (element upload), `isolate-subject`, `inpaint`
+(`maxDuration 120`), `generate-svg` (60). All share: `resolveAssetDestination` ownership, the
+one visuals rate-limit pool (`visualsRateLimitResponse`), a source-path prefix guard where a
+stored file is read (`foreignStoragePathResponse`), and `downloadFalFile` for transient fal
+outputs. Also shipped inside `bf9154f`: **Konva matches `#id` selectors verbatim** (no CSS
+unescaping) — `CSS.escape`d uuids starting with a digit (62.5% of v4 uuids) had silently lost
+their Transformer frame since Phase 4; the lookup is now a predicate.
+
+### 6. Uppercase as a render flag
+
+`layer.uppercase` applies capitals at draw time (Konva has no textTransform); the stored text
+keeps its casing. graphic-editorial seeds the FLAG with raw text, so copy rewrites keep the
+user's case choice; the inline-edit textarea mirrors via CSS.
+
+—————
+
+## Text Decoration Pack — Marker Highlights + Real Italics — SHIPPED 2026-07-26 (commit `a2a842b`)
+
+Reproduces the highlighter-reference aesthetic (bold sans + italic serif per phrase, hand-swiped
+bands, doodles): the workflow is **phrase-per-layer** — Konva has no rich text, so decoration is
+per-layer by design; doodles were already covered by generated SVG elements.
+
+- **`layer.highlight`** (hex, palette swatches, default = brand `accent`): one marker pill per
+  wrapped line — 0.3 em overshoot past the glyphs, fully rounded ends, deterministic ±1.5°
+  wobble cycling per line (no randomness: editor, re-renders and export draw identical bands).
+  Geometry is pure (`lib/canvas/highlight.ts`, node-tested); line widths come from
+  measure-fit's single detached measurer.
+- **`layer.italic`**: real faces only, never synthetic obliques. The font library declares which
+  families host italics (7: Playfair Display, Lora, Cormorant Garamond, Source Sans 3 —
+  Cyrillic-safe — plus Sofia Sans Condensed, Montserrat, Poppins); the css2 URL switches those
+  to `ital,wght` tuples. ⚠️ **One wrong italic claim 400s the ENTIRE stylesheet** — always curl
+  the generated URL when touching the library. The panel disables the toggle for non-hosting
+  families (but never traps an already-on flag after a family switch).
+- **Structural change:** each text layer is now a Konva **Group** (bands + glyphs) that owns
+  position/rotation and the Transformer frame, so decoration tracks drag/rotate live;
+  `textGroupAttrs` carries position, `textNodeAttrs` is glyph-only — editor and exporter mirror
+  the same structure. Width-resize folds scale into the text child mid-gesture; bands snap to
+  the new wrap on release (one doc commit per gesture). Both flags copy with
+  "Save & apply to all"; `PanelCheckbox` now backs every panel checkbox row.
 
 **Setup:** migrations `20260718_create_brand_visual_identity.sql` +
 `20260721_strip_legacy_visual_identity_fields.sql` + `20260722_post_images_unique_position.sql` +
@@ -476,8 +597,10 @@ env `CHROME_EXECUTABLE_PATH` (local) + `FAL_API_KEY`. Requires Vercel Pro (`maxD
 routes, `120` visuals routes). ~52s + ~$0.04–0.07 per image; compose adds ~100–300ms client-side.
 
 **Known trade-offs & deferred issues:** catalogued in `docs/TECH-DEBT.md` (orphan draft files from
-abandoned tabs, palette-description race on a client's first generation — mitigated by "Re-analyze",
-no cross-surface live sync, structure/layering cleanups).
+abandoned tabs, element/intermediate asset orphans from the Phase-5 tools, the manual
+`image/svg+xml` bucket-MIME step, the multiples-of-16 inpaint resample, palette-description race
+on a client's first generation — mitigated by "Re-analyze", no cross-surface live sync,
+structure/layering cleanups).
 
 —————
 
@@ -568,7 +691,8 @@ To deliver a true "multipurpose" experience without overwhelming a plastic surge
 
 
 
-4. Advanced Canvas Customization & Intelligence
+4. Advanced Canvas Customization & Intelligence — ✅ SHIPPED 2026-07-25 (as-built in the "Phase 5"
+section above; deviations flagged inline below; only background FILTERS remain deferred)
 To step beyond static templates, the workspace includes on-demand asset generation and precise background interaction tools.
 
   ✨ SVGs-on-Demand (Recraft)                     ✂️ Smart Separation (DIS Model)
@@ -584,12 +708,19 @@ Users can inject unique supporting graphics mid-edit via a "Generate SVG" sideba
 * Workflow: A user types a quick prompt (e.g., "Flat icon of an arrow" or "Minimalist line art leaf").
 * Canvas Behavior: The asset drops onto the active canvas as an editable vector graphic. It can be resized infinitely 
 * Brand Injection: The editor parses the SVG code paths, allowing users to map the asset's individual color channels directly to their onboarding brand color palette.
+* ✅ As built (2026-07-25): Recraft **V4** text-to-vector; the palette is injected AT GENERATION
+  (`colors` input) — in-editor channel recolor is deferred. Generated SVGs pass a
+  rejection-not-stripping safety gate and lose their full-canvas background rect.
 
 4.2 Intelligent Object Isolation (Dichotomous Image Segmentation - DIS)
 To remove the limitation of a flat background image, users can extract elements directly out of the generated visual using an advanced DIS model.
 * Workflow: A user toggles "Isolate Object" and clicks an element inside the generated background (e.g., a serum bottle or a geometric tech block).
 * Canvas Behavior: The DIS model runs a high-precision boundary cut. The original background is preserved intact underneath, while the selected element is duplicated into a transparent cutout layer.
 * Swipe-Bait Mechanics: Users can drag this newly isolated cutout directly on top of the slide boundaries, creating visual continuity that encourages scrolling.
+* ✅ As built (2026-07-25, deviation): no click-to-target — one-click "Cut out subject"
+  (BiRefNet, bbox-trimmed, lands pixel-exact through the crop) plus a LASSO with optional
+  AI-detect for choosing WHICH object; SAM2 click-targeting was built and reverted in dev.
+  Cutouts can render in front of the typography per element ("In front of text").
 
 4.3 Interactive Canvas Layer Architecture
 The multi-slide canvas manages elements across four strict depth layers to optimize editing speed:
@@ -597,6 +728,9 @@ The multi-slide canvas manages elements across four strict depth layers to optim
 2. Layer 2: Custom Elements (Middle) – Holds on-demand generated Recraft SVGs and objects isolated via DIS, allowing users to layer decorative components freely.
 3. Layer 3: Branding & Extras – Houses transparent brand logos, custom geometric layout borders, and structural frames.
 4. Layer 4: Interactive Typography (Top) – Locked at the top to ensure font headlines and text calls-to-action (CTAs) never get buried or obscured by images.
+* ✅ As built (2026-07-25, simplified): background → scrim → elements → text → aboveText
+  elements. Layers 2+3 merged into one element band (a logo is an uploaded element); the
+  typography lock is the DEFAULT but individual elements can opt in front of the text.
 
 
 
@@ -608,11 +742,16 @@ To keep the design tool approachable for non-technical users, the editing canvas
 * Social Media Font Pairings: Includes pre-configured typography sets optimized for conversion rates (e.g., Cormorant Garamond paired with Montserrat for Luxury, Space Grotesk paired with Inter for Tech).
 * Proportion Protection: Text bounding boxes only permit width expansion. Font sizes wrap lines automatically rather than stretching letters unevenly.
 * Contrast Safety Mesh: The editor monitors background chaos. If an AI background is too cluttered, a semi-transparent brand-colored overlay drops behind the text to guarantee contrast.
+* ✅ As built: pairings + width-only resize + scrim shipped with Phase 4; the Text Decoration
+  Pack (2026-07-26) added per-layer marker highlights and real italics on top.
 
 🖌️ AI Brush Repair (Inpainting Mode)
 * The Brush Tool: Users can enter an edit mode and paint a mask over any specific zone on their generated canvas.
 * Text Commands: Users type what they want to change in that spot (e.g., "replace this vase with a skincare bottle" or "remove this abstract shape").
 * Visual Blending: The background-repair engine swaps the item seamlessly without altering the rest of the layout or background texture.
+* ✅ As built (2026-07-25): gpt-image-2/edit with the OpenAI alpha-mask convention; because the
+  model regenerates globally, the client composites its output back under the strokes only —
+  pixels outside the brush are guaranteed, not trusted. Includes a "Remove object" preset.
 
 🛡️ Platform Guardrails & Overlays
 * Safe Zone Toggles: Visual overlays simulate target social platforms (e.g., where Instagram profile badges, UI counters, or LinkedIn navigation arrows live).
@@ -636,6 +775,10 @@ To keep the design tool approachable for non-technical users, the editing canvas
 —————
 
 User Flow Specification: "Isolate Object" (DIS Model Integration)
+⚠️ SUPERSEDED as-built (2026-07-25): dev testing killed click-to-target — users couldn't control
+WHAT got cut and the duplicate-on-top confused move/delete intent. Shipped instead: one-click
+"Cut out subject" (whole-frame BiRefNet) + lasso with optional AI-detect for targeted cuts, no
+hover edge-detection, no confetti. Kept below for the original UX reasoning only.
 This module defines the user experience, interaction states, and feedback loops for the Dichotomous Image Segmentation (DIS) tool within the editing workspace. The goal is to make a complex backend machine-learning process feel instantaneous, predictable, and foolproof for non-technical users.
 
 
