@@ -1,11 +1,14 @@
 'use client'
 
+import dynamic from 'next/dynamic'
 import type { AnalyticsMetrics, IGPost, FBPost } from '@/types/api'
 import { MetricCard } from '@/components/ui/metric-card'
 import { AiSummaryStrip } from './ai-summary-strip'
-import { PostDayBreakdown } from './post-day-breakdown'
 import { TopPostsTable } from './top-posts-table'
 import { PostGrid } from './post-grid'
+
+// Lazy through the shared './charts' boundary — keeps recharts out of the route's initial JS.
+const PostDayBreakdown = dynamic(() => import('./charts').then((m) => m.PostDayBreakdown))
 
 interface PostsTabProps {
   metrics: AnalyticsMetrics

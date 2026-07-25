@@ -1,8 +1,13 @@
 'use client'
+import Image, { type StaticImageData } from 'next/image'
 import { Sparkles, CheckSquare, Send, BarChart2 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { AnimateIn } from './AnimateIn'
 import { useIsMobile } from '@/hooks/useIsMobile'
+import calendarShot from '../../../../public/calendar.png'
+import generationShot from '../../../../public/generation.png'
+import reportShot from '../../../../public/report.png'
+import reviewShot from '../../../../public/review.png'
 
 interface Feature {
   icon: LucideIcon
@@ -10,7 +15,7 @@ interface Feature {
   body: string
   tags: string[]
   imageAlt: string
-  imageSrc: string
+  imageSrc: StaticImageData
   reversed: boolean
 }
 
@@ -21,7 +26,7 @@ const features: Feature[] = [
     body: "Kontuur reads your client's website, documents, and previous posts to generate on-brand Instagram content in Bulgarian or English. Single images, carousels — all with one click.",
     tags: ['AI', 'Content generation'],
     imageAlt: 'Generate posts page',
-    imageSrc: '/generation.png',
+    imageSrc: generationShot,
     reversed: false,
   },
   {
@@ -30,7 +35,7 @@ const features: Feature[] = [
     body: 'Every generated post goes into a review queue. Read the caption, check the source grounding, approve or reject. Schedule directly to Instagram from the same screen.',
     tags: ['Review', 'Approval workflow'],
     imageAlt: 'Review queue',
-    imageSrc: '/review.png',
+    imageSrc: reviewShot,
     reversed: true,
   },
   {
@@ -39,7 +44,7 @@ const features: Feature[] = [
     body: "Connect your clients' Instagram accounts once. Kontuur handles publishing — single images, carousels, and scheduled posts — using the official Meta API.",
     tags: ['Publishing', 'Scheduling'],
     imageAlt: 'Calendar / scheduling view',
-    imageSrc: '/calendar.png',
+    imageSrc: calendarShot,
     reversed: false,
   },
   {
@@ -48,7 +53,7 @@ const features: Feature[] = [
     body: 'Analytics pulled directly from the Instagram API — reach, saves, engagement rate, follower growth, and post-level performance for every client account.',
     tags: ['Analytics', 'Instagram insights'],
     imageAlt: 'Analytics page',
-    imageSrc: '/report.png',
+    imageSrc: reportShot,
     reversed: true,
   },
 ]
@@ -124,13 +129,14 @@ export function FeaturesDeepDive() {
                 </div>
               </div>
 
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
+              <Image
                 src={f.imageSrc}
                 alt={f.imageAlt}
+                sizes="(max-width: 768px) 100vw, 518px"
                 style={{
                   order: isMobile ? 2 : f.reversed ? 1 : 2,
                   width: '100%',
+                  height: 'auto',
                   borderRadius: 12,
                   border: '0.5px solid var(--color-border-1)',
                   display: 'block',

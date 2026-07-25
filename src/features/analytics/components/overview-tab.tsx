@@ -1,11 +1,14 @@
 'use client'
 
+import dynamic from 'next/dynamic'
 import type { AnalyticsMetrics } from '@/types/api'
 import { AiSummaryStrip } from './ai-summary-strip'
 import { MetricCards } from './metric-cards'
-import { AnalyticsCharts } from './analytics-charts'
 import { MediaTypeBreakdown } from './media-type-breakdown'
 import { TopPostsTable } from './top-posts-table'
+
+// Lazy through the shared './charts' boundary — keeps recharts out of the route's initial JS.
+const AnalyticsCharts = dynamic(() => import('./charts').then((m) => m.AnalyticsCharts))
 
 interface OverviewTabProps {
   metrics: AnalyticsMetrics

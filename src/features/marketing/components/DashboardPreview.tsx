@@ -1,4 +1,6 @@
+import Image from 'next/image'
 import { AnimateIn } from './AnimateIn'
+import dashboardShot from '../../../../public/dashboard.png'
 
 export function DashboardPreview() {
   return (
@@ -51,14 +53,15 @@ export function DashboardPreview() {
         </p>
       </AnimateIn>
 
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src="/dashboard.png"
+      <Image
+        src={dashboardShot}
         alt="Kontuur dashboard"
+        sizes="(max-width: 1200px) 100vw, 1200px"
         style={{
           borderRadius: '16px 16px 0 0',
           border: '0.5px solid rgba(255,255,255,0.12)',
           width: '100%',
+          height: 'auto',
           maxWidth: 1200,
           margin: '0 auto',
           display: 'block',

@@ -1,11 +1,15 @@
 'use client'
 
+import dynamic from 'next/dynamic'
 import type { AnalyticsMetrics, InstagramMetrics, FacebookMetrics, IGDailyInsight } from '@/types/api'
 import { MetricCard } from '@/components/ui/metric-card'
 import { getFollowerCount, getNetFollowerChange, calcFollowerGrowthRate } from '../utils/metrics'
 import { AudienceSummary } from './audience-summary'
-import { FollowerTrend } from './follower-trend'
-import { AudienceSection } from './audience-section'
+
+// Charts load lazily through the shared './charts' boundary (recharts bundles once, arrives
+// only when a report actually renders).
+const FollowerTrend = dynamic(() => import('./charts').then((m) => m.FollowerTrend))
+const AudienceSection = dynamic(() => import('./charts').then((m) => m.AudienceSection))
 
 interface AudienceTabProps {
   metrics: AnalyticsMetrics
