@@ -3,6 +3,8 @@
 import type { CanvasScrim } from '@/types/canvas'
 import type { Palette } from '@/types/visual'
 import { ColorSwatches } from './color-swatches'
+import { PanelCheckbox } from './panel-checkbox'
+import { PanelSlider } from './panel-slider'
 import { PANEL_CONTROL, PANEL_LABEL } from './panel-styles'
 
 interface ScrimControlsProps {
@@ -15,14 +17,11 @@ interface ScrimControlsProps {
 export function ScrimControls({ scrim, palette, onChange }: ScrimControlsProps) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-      <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: 'var(--color-text-1)', cursor: 'pointer' }}>
-        <input
-          type="checkbox"
-          checked={scrim.enabled}
-          onChange={(event) => onChange({ enabled: event.target.checked })}
-        />
-        Contrast scrim behind text
-      </label>
+      <PanelCheckbox
+        label="Contrast scrim behind text"
+        checked={scrim.enabled}
+        onChange={(enabled) => onChange({ enabled })}
+      />
       {scrim.enabled && (
         <>
           <div>
@@ -37,18 +36,14 @@ export function ScrimControls({ scrim, palette, onChange }: ScrimControlsProps) 
             </select>
           </div>
           <ColorSwatches label="Scrim colour" palette={palette} value={scrim.color} onChange={(color) => onChange({ color })} />
-          <div>
-            <div style={PANEL_LABEL}>Opacity · {Math.round(scrim.opacity * 100)}%</div>
-            <input
-              type="range"
-              min={0}
-              max={1}
-              step={0.05}
-              value={scrim.opacity}
-              onChange={(event) => onChange({ opacity: Number(event.target.value) })}
-              style={{ width: '100%' }}
-            />
-          </div>
+          <PanelSlider
+            label={`Opacity · ${Math.round(scrim.opacity * 100)}%`}
+            min={0}
+            max={1}
+            step={0.05}
+            value={scrim.opacity}
+            onChange={(opacity) => onChange({ opacity })}
+          />
         </>
       )}
     </div>

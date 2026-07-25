@@ -1,11 +1,9 @@
 /** Shared stage-interaction helpers for text layers and elements (drag clamp, rotation persist). */
 
+import { clamp } from '@/lib/canvas/clamp'
+
 /** Keep at least this many canvas px of a dragged node inside the frame so it can't get lost. */
 const DRAG_KEEP = 40
-
-function clamp(value: number, min: number, max: number): number {
-  return Math.min(Math.max(value, min), max)
-}
 
 /** A Konva dragBoundFunc (screen space) that keeps a sliver of the node inside the canvas. */
 export function dragBoundFor(

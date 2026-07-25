@@ -1,4 +1,5 @@
 import type { CanvasBackgroundTransform } from '@/types/canvas'
+import { clamp } from './clamp'
 import { MAX_BACKGROUND_ZOOM } from './constants'
 import { coverCrop } from './cover-crop'
 
@@ -10,11 +11,11 @@ export const DEFAULT_BACKGROUND_TRANSFORM: CanvasBackgroundTransform = {
 }
 
 function clamp01(value: number): number {
-  return Math.min(Math.max(value, 0), 1)
+  return clamp(value, 0, 1)
 }
 
 function clampZoom(zoom: number): number {
-  return Math.min(Math.max(zoom, 1), MAX_BACKGROUND_ZOOM)
+  return clamp(zoom, 1, MAX_BACKGROUND_ZOOM)
 }
 
 /**

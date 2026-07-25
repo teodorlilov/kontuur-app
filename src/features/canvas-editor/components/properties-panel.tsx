@@ -2,6 +2,7 @@
 
 import type { CanvasDoc, CanvasElement, CanvasFontWeight, CanvasScrim, CanvasTextLayer } from '@/types/canvas'
 import type { Palette } from '@/types/visual'
+import { clamp } from '@/lib/canvas/clamp'
 import { getFontEntry } from '@/lib/canvas/font-library'
 import { BackgroundControls } from './background-controls'
 import { ColorSwatches } from './color-swatches'
@@ -231,5 +232,5 @@ function weightOptions(fontFamily: string): CanvasFontWeight[] {
 function clampNumber(raw: string, min: number, max: number, fallback: number): number {
   const value = Number(raw)
   if (Number.isNaN(value)) return fallback
-  return Math.min(Math.max(value, min), max)
+  return clamp(value, min, max)
 }

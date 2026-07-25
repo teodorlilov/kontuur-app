@@ -456,10 +456,17 @@ Cyrillic font filtering, overflow badge, the 409 stale-save guard, and a 4:5 pub
 Instagram.
 
 🔜 **Still deferred (specified below, not yet planned)**
-- **Background filters** (brightness/contrast/saturation/blur — Stage E of the Phase-5 plan;
-  everything else from §4/§5-inpaint shipped 2026-07-25, see the Phase 5 section below).
 - **§5 Safe zones / platform overlays**; §6.2 overflow handling beyond the warning badge.
 - **§4.1 in-editor SVG recolor** (the shipped path injects the palette at generation instead).
+
+❌ **Background filters — BUILT AND REJECTED 2026-07-26** (Stage E of the Phase-5 plan; the last
+§4/§5 item). Brightness/contrast/saturation/blur sliders were fully implemented (rAF-coalesced
+Konva cache pipeline) and killed in dev testing: any meaningful tone change ruins the generated
+brand art — too bright/too dark, details erased — and legibility is already the scrim's + the
+slide-role prompt hints' job. The product stays opinionated: no raw photo knobs. Revisit ONLY as
+curated one-click treatments or a blur-only "soften behind cutouts" control if a real need
+appears. (The stage's dedup by-products stayed: shared `lib/canvas/clamp.ts` and the
+`PanelSlider` component now backing every panel range row.)
 
 ✅ **Quick wins shipped 2026-07-24 (commit `a04f1f9`):** §6.1 slide-role prompt hints with the
 alternating rich/quiet rhythm (see Phase 3 prompt contract), auto-recompose on persisted-post

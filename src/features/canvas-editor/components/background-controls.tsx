@@ -2,6 +2,7 @@
 
 import type { CanvasBackgroundTransform } from '@/types/canvas'
 import { MAX_BACKGROUND_ZOOM } from '@/lib/canvas/constants'
+import { PanelSlider } from './panel-slider'
 import { PANEL_CONTROL, PANEL_LABEL } from './panel-styles'
 
 interface BackgroundControlsProps {
@@ -47,18 +48,14 @@ export function BackgroundControls({
           AI repair (brush)
         </button>
       </div>
-      <div>
-        <div style={PANEL_LABEL}>Zoom · {zoom.toFixed(2)}×</div>
-        <input
-          type="range"
-          min={1}
-          max={MAX_BACKGROUND_ZOOM}
-          step={0.05}
-          value={zoom}
-          onChange={(event) => onZoom(Number(event.target.value))}
-          style={{ width: '100%' }}
-        />
-      </div>
+      <PanelSlider
+        label={`Zoom · ${zoom.toFixed(2)}×`}
+        min={1}
+        max={MAX_BACKGROUND_ZOOM}
+        step={0.05}
+        value={zoom}
+        onChange={onZoom}
+      />
       {transform && (
         <button type="button" onClick={onReset} style={{ ...PANEL_CONTROL, cursor: 'pointer' }}>
           Reset crop

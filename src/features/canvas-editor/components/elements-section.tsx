@@ -6,6 +6,7 @@ import { Spinner } from '@/components/ui/spinner'
 import type { CanvasElement } from '@/types/canvas'
 import { PanelButton } from './panel-button'
 import { PanelCheckbox } from './panel-checkbox'
+import { PanelSlider } from './panel-slider'
 import { PANEL_CONTROL, PANEL_LABEL } from './panel-styles'
 
 const KIND_ICONS = { image: ImageIcon, svg: Shapes } as const
@@ -120,15 +121,13 @@ export function ElementsSection(props: ElementsSectionProps) {
       </div>
       {selected && (
         <div style={{ marginTop: '10px' }}>
-          <div style={PANEL_LABEL}>Opacity · {Math.round((selected.opacity ?? 1) * 100)}%</div>
-          <input
-            type="range"
+          <PanelSlider
+            label={`Opacity · ${Math.round((selected.opacity ?? 1) * 100)}%`}
             min={0.05}
             max={1}
             step={0.05}
             value={selected.opacity ?? 1}
-            onChange={(event) => onOpacityChange(selected.id, Number(event.target.value))}
-            style={{ width: '100%' }}
+            onChange={(opacity) => onOpacityChange(selected.id, opacity)}
           />
           <div style={{ marginTop: '8px' }}>
             <PanelCheckbox
