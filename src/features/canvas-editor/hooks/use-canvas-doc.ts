@@ -97,6 +97,24 @@ export function useCanvasDoc() {
     [commit]
   )
 
+  // Promote a placed element to the slide background: reuse its stored image as the background ref,
+  // clear the crop so the new image cover-fits fresh, and drop the now-redundant element — one undo
+  // step. The displaced background file is collected by the save PUT's stale-background cleanup.
+  const setElementAsBackground = useCallback(
+    (id: string) =>
+      commit((doc) => {
+        const element = (doc.elements ?? []).find((candidate) => candidate.id === id)
+        if (!element) return doc
+        return {
+          ...doc,
+          background: element.src,
+          backgroundTransform: undefined,
+          elements: (doc.elements ?? []).filter((candidate) => candidate.id !== id),
+        }
+      }),
+    [commit]
+  )
+
   // Swap with the neighbour — array order IS the z-order within the element band.
   const moveElement = useCallback(
     (id: string, direction: 'up' | 'down') =>
@@ -138,6 +156,7 @@ export function useCanvasDoc() {
     updateElement,
     addElement,
     removeElement,
+    setElementAsBackground,
     moveElement,
     setScrim,
     setBackgroundTransform,

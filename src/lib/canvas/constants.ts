@@ -14,3 +14,6 @@ export const MAX_BACKGROUND_ZOOM = 3
 
 /** Smallest an element can be resized to (authoring-space px) — transform fold and Transformer agree. */
 export const MIN_ELEMENT_SIZE = 40
+
+/** Max placed elements per doc — the schema write-gate and the editor's add guards agree. */
+export const MAX_ELEMENTS = 20

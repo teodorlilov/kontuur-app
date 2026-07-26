@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import type { CanvasDoc } from '@/types/canvas'
-import { CANVAS_DOC_VERSION, MAX_BACKGROUND_ZOOM } from './constants'
+import { CANVAS_DOC_VERSION, MAX_BACKGROUND_ZOOM, MAX_ELEMENTS } from './constants'
 
 const HEX = /^#[0-9a-fA-F]{6}$/
 const hex = z.string().regex(HEX, 'must be a #rrggbb hex colour')
@@ -68,7 +68,7 @@ export const canvasDocSchema = z.object({
   backgroundTransform: backgroundTransformSchema.optional(),
   flattenedStoragePath: z.string().min(1).nullable(),
   scrim: scrimSchema,
-  elements: z.array(elementSchema).max(20).optional(),
+  elements: z.array(elementSchema).max(MAX_ELEMENTS).optional(),
   layers: z.array(textLayerSchema).max(20),
 })
 

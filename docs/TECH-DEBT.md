@@ -104,6 +104,9 @@ None of these block shipping; each entry says what it is, why it was deferred, a
   storage error) — config lives in the Supabase dashboard, invisible to code and migrations.
 - **Action:** verify once per environment (dashboard → storage → `post-images` → allowed MIME
   types). No code fix possible.
+- **Also `image/webp`:** paste-from-web (`/api/ai/paste-from-url`) re-hosts pasted/dropped images
+  and Pinterest commonly serves WebP, so the same `post-images` allowlist must include `image/webp`
+  or those uploads 500 at the storage step. Same manual dashboard step, same per-environment check.
 
 ### 2.10 Inpaint dimensions round to multiples of 16 (accepted)
 - **What:** gpt-image-2/edit only accepts dims in multiples of 16. Our pipeline sizes comply

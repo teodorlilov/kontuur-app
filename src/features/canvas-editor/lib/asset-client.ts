@@ -36,6 +36,16 @@ export async function uploadElementAsset(target: EditorTarget, file: File): Prom
   return parseAssetResponse(res, 'Asset upload failed')
 }
 
+/** Re-host an image pasted/dropped from an external URL for the editor's target; returns the ref. */
+export async function pasteFromUrlAsset(target: EditorTarget, url: string): Promise<AssetRef> {
+  const res = await fetch('/api/ai/paste-from-url', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ...targetIds(target), url }),
+  })
+  return parseAssetResponse(res, 'Paste failed')
+}
+
 /** Cut the main subject out of the doc's clean background; returns the stored cutout ref. */
 export async function isolateSubjectAsset(target: EditorTarget, storagePath: string): Promise<AssetRef> {
   const res = await fetch('/api/ai/isolate-subject', {

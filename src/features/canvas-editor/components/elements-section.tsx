@@ -1,7 +1,7 @@
 'use client'
 
 import { useRef, useState } from 'react'
-import { ChevronDown, ChevronUp, Eraser, Image as ImageIcon, Lasso, Scissors, Shapes, Sparkles, Trash2, Upload } from 'lucide-react'
+import { ChevronDown, ChevronUp, Eraser, Image as ImageIcon, Lasso, Scissors, Shapes, Sparkles, Trash2, Upload, Wallpaper } from 'lucide-react'
 import { Spinner } from '@/components/ui/spinner'
 import type { CanvasElement } from '@/types/canvas'
 import { PanelButton } from './panel-button'
@@ -29,6 +29,7 @@ interface ElementsSectionProps {
   onEraseSelected: () => void
   onGenerateSvg: (prompt: string) => void
   onRemoveBackground: () => void
+  onSetAsBackground: () => void
 }
 
 /** Element band controls: list (z-order = list order, topmost first), opacity, asset actions. */
@@ -136,6 +137,16 @@ export function ElementsSection(props: ElementsSectionProps) {
               onChange={(checked) => props.onAboveTextChange(selected.id, checked)}
             />
           </div>
+          {selected.kind === 'image' && (
+            <PanelButton
+              onClick={props.onSetAsBackground}
+              icon={<Wallpaper size={12} />}
+              title="Fill the whole slide with this image (replaces the background and removes it as an element)"
+              style={{ marginTop: '8px' }}
+            >
+              Set as background
+            </PanelButton>
+          )}
           <PanelButton
             onClick={props.onRemoveBackground}
             busy={props.removingBackground}

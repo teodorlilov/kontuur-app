@@ -20,3 +20,32 @@ export async function readLimitedText(res: Response, maxBytes: number): Promise<
 
   return chunks.join('').slice(0, maxBytes)
 }
+
+/**
+ * Read a fetch Response body into a Buffer, rejecting once it exceeds maxBytes. Unlike
+ * readLimitedText, truncating image bytes would corrupt the file, so an oversize body throws.
+ */
+export async function readLimitedBytes(res: Response, maxBytes: number): Promise<Buffer> {
+  const reader = res.body?.getReader()
+  if (!reader) {
+    const buffer = Buffer.from(await res.arrayBuffer())
+    if (buffer.byteLength > maxBytes) throw new Error('Image exceeds the size limit')
+    return buffer
+  }
+
+  const chunks: Buffer[] = []
+  let totalBytes = 0
+  try {
+    for (;;) {
+      const { done, value } = await reader.read()
+      if (done) break
+      totalBytes += value.byteLength
+      if (totalBytes > maxBytes) throw new Error('Image exceeds the size limit')
+      chunks.push(Buffer.from(value))
+    }
+  } finally {
+    reader.cancel()
+  }
+
+  return Buffer.concat(chunks)
+}

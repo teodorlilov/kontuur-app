@@ -48,6 +48,7 @@ interface PropertiesPanelProps {
   onGenerateSvg: (prompt: string) => void
   removingBackground: boolean
   onRemoveElementBackground: () => void
+  onSetElementAsBackground: () => void
 }
 
 /** The editor's right-hand controls: text layers, elements, scrim, background. */
@@ -88,6 +89,7 @@ export function PropertiesPanel(props: PropertiesPanelProps) {
         onGenerateSvg={props.onGenerateSvg}
         removingBackground={props.removingBackground}
         onRemoveBackground={props.onRemoveElementBackground}
+        onSetAsBackground={props.onSetElementAsBackground}
       />
       <ScrimControls scrim={doc.scrim} palette={palette} onChange={onScrimChange} />
       <BackgroundControls

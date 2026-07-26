@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
 import { toast } from '@/components/ui/toast'
 import { useIsMobile } from '@/hooks/useIsMobile'
+import { MAX_ELEMENTS } from '@/lib/canvas/constants'
 import { createCenteredElement, createElementAtRect } from '@/lib/canvas/elements'
 import {
   DEFAULT_BACKGROUND_TRANSFORM,
@@ -17,7 +18,9 @@ import { createTextLayer } from '@/lib/canvas/seed-doc'
 import { getBrandStyle } from '@/lib/visual/brand-styles'
 import { validateImageFile } from '@/features/publishing/lib/validate-image-file'
 import type { CanvasTextLayer } from '@/types/canvas'
-import { generateSvgAsset, inpaintBackgroundAsset, isolateSubjectAsset, uploadElementAsset } from '../lib/asset-client'
+import type { AssetRef } from '../lib/asset-client'
+import { generateSvgAsset, inpaintBackgroundAsset, isolateSubjectAsset, pasteFromUrlAsset, uploadElementAsset } from '../lib/asset-client'
+import { imageFileFromTransfer, imageUrlFromTransfer } from '../lib/clipboard-image'
 import { buildInpaintMask, compositeInpaintResult } from '../lib/build-inpaint-mask'
 import {
   cutoutFromLasso,
@@ -33,6 +36,7 @@ import { useCrossOriginImage } from '../hooks/use-cross-origin-image'
 import { useEditorData } from '../hooks/use-editor-data'
 import { useEditorFonts } from '../hooks/use-editor-fonts'
 import { useInlineTextEdit } from '../hooks/use-inline-text-edit'
+import { usePasteImage } from '../hooks/use-paste-image'
 import { exportDocToJpegBlob } from '../lib/export-doc'
 import { autofitDocLayers, docOverflows } from '../lib/measure-fit'
 import { saveDraftCanvas, savePostCanvas } from '../lib/save-canvas'
@@ -118,29 +122,70 @@ export function CanvasEditorOverlay(props: CanvasEditorProps) {
     setMode((current) => (current === next ? 'edit' : next))
   }, [])
 
-  const uploadElement = useCallback(
-    async (file: File) => {
+  // Guard before any upload work so we never store bytes we can't place (no doc yet, or the schema's
+  // element cap is reached).
+  const canAddElement = useCallback(() => {
+    if (!docState.doc) return false
+    if ((docState.doc.elements?.length ?? 0) < MAX_ELEMENTS) return true
+    toast.error(`You can add up to ${MAX_ELEMENTS} elements`)
+    return false
+  }, [docState.doc])
+
+  // Shared tail for every "add an image element" path: place it (at dropPoint if given, else
+  // centered) and select it.
+  const insertImageElement = useCallback(
+    async (src: AssetRef, dropPoint?: { x: number; y: number }) => {
       if (!docState.doc) return
+      const asset = await loadCrossOriginImage(src.publicUrl)
+      const element = createCenteredElement('image', src, naturalSize(asset), docState.doc.canvas)
+      const placed = dropPoint
+        ? { ...element, x: dropPoint.x - element.width / 2, y: dropPoint.y - element.height / 2 }
+        : element
+      docState.addElement(placed)
+      setSelectedId(placed.id)
+    },
+    [docState]
+  )
+
+  const addImageFromFile = useCallback(
+    async (file: File, dropPoint?: { x: number; y: number }) => {
       const fileError = validateImageFile(file)
       if (fileError) {
         toast.error(fileError)
         return
       }
+      if (!canAddElement()) return
       setUploadingAsset(true)
       try {
-        const src = await uploadElementAsset(target, file)
-        const asset = await loadCrossOriginImage(src.publicUrl)
-        const element = createCenteredElement('image', src, naturalSize(asset), docState.doc.canvas)
-        docState.addElement(element)
-        setSelectedId(element.id)
+        await insertImageElement(await uploadElementAsset(target, file), dropPoint)
       } catch (err) {
         toast.error(err instanceof Error ? err.message : 'Asset upload failed')
       } finally {
         setUploadingAsset(false)
       }
     },
-    [docState, target]
+    [target, canAddElement, insertImageElement]
   )
+
+  const addImageFromUrl = useCallback(
+    async (url: string, dropPoint?: { x: number; y: number }) => {
+      if (!canAddElement()) return
+      setUploadingAsset(true)
+      try {
+        await insertImageElement(await pasteFromUrlAsset(target, url), dropPoint)
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : 'Paste failed')
+      } finally {
+        setUploadingAsset(false)
+      }
+    },
+    [target, canAddElement, insertImageElement]
+  )
+
+  usePasteImage({
+    onFile: (file) => { void addImageFromFile(file) },
+    onUrl: (url) => { void addImageFromUrl(url) },
+  })
 
   const removeElement = useCallback(
     (id: string) => {
@@ -261,6 +306,13 @@ export function CanvasEditorOverlay(props: CanvasEditorProps) {
       setRemovingBackground(false)
     }
   }, [docState, removingBackground, selectedElement, target])
+
+  const setSelectedElementAsBackground = useCallback(() => {
+    if (!selectedId) return
+    docState.setElementAsBackground(selectedId)
+    setSelectedId(null)
+    toast.success('Background updated')
+  }, [docState, selectedId])
 
   const generateSvg = useCallback(async (prompt: string) => {
     if (!docState.doc || generatingSvg) return
@@ -411,6 +463,16 @@ export function CanvasEditorOverlay(props: CanvasEditorProps) {
           )}
           {ready && (
             <div
+              onDragOver={(event) => event.preventDefault()}
+              onDrop={(event) => {
+                event.preventDefault()
+                const rect = event.currentTarget.getBoundingClientRect()
+                const point = { x: (event.clientX - rect.left) / scale, y: (event.clientY - rect.top) / scale }
+                const file = imageFileFromTransfer(event.dataTransfer)
+                if (file) return void addImageFromFile(file, point)
+                const url = imageUrlFromTransfer(event.dataTransfer)
+                if (url) void addImageFromUrl(url, point)
+              }}
               style={{
                 lineHeight: 0,
                 border: '0.5px solid var(--color-border-2)',
@@ -498,10 +560,11 @@ export function CanvasEditorOverlay(props: CanvasEditorProps) {
               onGenerateSvg={(prompt) => { void generateSvg(prompt) }}
               removingBackground={removingBackground}
               onRemoveElementBackground={() => { void removeSelectedElementBackground() }}
+              onSetElementAsBackground={setSelectedElementAsBackground}
               onElementChange={docState.updateElement}
               onMoveElement={docState.moveElement}
               onRemoveElement={removeElement}
-              onUploadElement={(file) => { void uploadElement(file) }}
+              onUploadElement={(file) => { void addImageFromFile(file) }}
               onIsolateSubject={() => { void isolateSubject() }}
               onSelect={setSelectedId}
               onLayerChange={docState.updateLayer}
