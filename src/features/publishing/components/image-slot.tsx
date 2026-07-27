@@ -4,6 +4,7 @@ import { useState, useRef } from 'react'
 import Image from 'next/image'
 import { X, Upload, Check, Download, Sparkles, Pencil } from 'lucide-react'
 import { mapImageRow } from '@/features/publishing/lib/map-image-row'
+import { downloadImageFile } from '@/lib/download-image'
 import { validateImageFile } from '@/features/publishing/lib/validate-image-file'
 import { ImageLightbox } from '@/components/ui/image-lightbox'
 import { CanvaDesignPicker } from './canva-design-picker'
@@ -354,6 +355,13 @@ function ImageCard({
               <Pencil style={{ width: 13, height: 13 }} />
             </OverlayAction>
           )}
+          <OverlayAction
+            title="Download image"
+            color="#3A4A54"
+            onClick={() => void downloadImageFile(image.publicUrl, image.fileName ?? undefined)}
+          >
+            <Download style={{ width: 13, height: 13 }} />
+          </OverlayAction>
           <OverlayAction title="Remove image" color="#3A4A54" onClick={onDelete}>
             <X style={{ width: 13, height: 13 }} />
           </OverlayAction>
