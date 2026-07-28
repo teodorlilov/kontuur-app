@@ -147,7 +147,7 @@ function SourceUsageSection({ sourceCount, clientId }: { sourceCount: number; cl
             href={`/clients/${clientId}/sources`}
             style={{ color: 'var(--color-terracotta)', textDecoration: 'none' }}
           >
-            Add RSS feeds or website URLs
+            Add news feeds or website URLs
           </a>{' '}
           to ground research in real content.
         </p>

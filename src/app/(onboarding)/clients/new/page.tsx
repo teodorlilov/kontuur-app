@@ -12,7 +12,9 @@ import { QUESTIONS, getDetectedAnswer } from '@/features/onboarding/lib/question
 import { buildDefaultIdentity } from '@/lib/visual/identity'
 import { useExtractionStatus } from '@/features/visual-identity/hooks/use-extraction-status'
 import { PillarSourceStepper } from '@/features/sources/components/stepper/pillar-source-stepper'
+import type { StepperSummary } from '@/features/sources/types'
 import { OnboardingShell } from '@/features/onboarding/components/onboarding-shell'
+import { OnboardingSuccess } from '@/features/onboarding/components/onboarding-success'
 import { StepEntry } from '@/features/onboarding/components/step-entry'
 import { StepLoading } from '@/features/onboarding/components/step-loading'
 import { StepInterview } from '@/features/onboarding/components/step-interview'
@@ -63,6 +65,7 @@ export default function NewClientPage() {
   const [showStepper, setShowStepper] = useState(false)
   const [savedClientId, setSavedClientId] = useState<string | null>(null)
   const [savedPillars, setSavedPillars] = useState<WeightedPillar[]>([])
+  const [stepperSummary, setStepperSummary] = useState<StepperSummary | null>(null)
 
   // Schedule state
   const [scheduleFreqType, setScheduleFreqType] = useState('per_week')
@@ -378,8 +381,19 @@ export default function NewClientPage() {
           niche={profile.niche}
           websiteUrl={websiteUrl}
           pillars={savedPillars}
-          onComplete={() => router.push(`/clients/${savedClientId}/sources`)}
+          onFinished={(summary) => {
+            setShowStepper(false)
+            setStepperSummary(summary)
+          }}
           onDismiss={() => router.push(`/clients/${savedClientId}/sources`)}
+        />
+      )}
+      {stepperSummary && savedClientId && (
+        <OnboardingSuccess
+          clientName={clientName}
+          summary={stepperSummary}
+          onGenerate={() => router.push(`/generate?client=${savedClientId}`)}
+          onViewSources={() => router.push(`/clients/${savedClientId}/sources`)}
         />
       )}
     </>

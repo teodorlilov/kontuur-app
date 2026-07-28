@@ -128,9 +128,9 @@ export function WebSearchStep({
   return (
     <div className="space-y-5">
       <div>
-        <h3 className="text-lg font-medium text-gray-900">Web Search</h3>
+        <h3 className="text-lg font-medium text-gray-900">Web research</h3>
         <p className="text-sm text-gray-500 mt-1">
-          Search the web for trending content and industry news.
+          Let the AI search the web for trends and news in your industry.
         </p>
       </div>
 
@@ -141,7 +141,7 @@ export function WebSearchStep({
           onChange={(e) => setIsEnabled(e.target.checked)}
           className="h-4 w-4 rounded border-gray-300 text-brand-purple focus:ring-brand-purple"
         />
-        <span className="text-sm font-medium text-gray-900">Enable web search</span>
+        <span className="text-sm font-medium text-gray-900">Enable web research</span>
       </label>
 
       {isEnabled && (
@@ -149,10 +149,10 @@ export function WebSearchStep({
           {/* Include domains */}
           <div className="space-y-1.5">
             <label className="text-xs font-medium text-gray-500">
-              Preferred domains <span className="text-gray-400">(optional)</span>
+              Prefer these sites <span className="text-gray-400">(optional)</span>
             </label>
             <p className="text-xs text-gray-400">
-              Only return results from these domains.
+              Only return results from these sites.
             </p>
             <div className="flex gap-2">
               <input
@@ -201,10 +201,10 @@ export function WebSearchStep({
           {/* Exclude domains */}
           <div className="space-y-1.5">
             <label className="text-xs font-medium text-gray-500">
-              Excluded domains <span className="text-gray-400">(optional)</span>
+              Never use these sites <span className="text-gray-400">(optional)</span>
             </label>
             <p className="text-xs text-gray-400">
-              Never return results from these domains.
+              Never return results from these sites.
             </p>
             <div className="flex gap-2">
               <input

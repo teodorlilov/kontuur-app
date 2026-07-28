@@ -7,14 +7,14 @@ import { GenerateWizard } from '@/features/generate/components/generate-wizard'
 import type { ClientIdea } from '@/types/api'
 
 interface PageProps {
-  searchParams: Promise<{ ideaId?: string }>
+  searchParams: Promise<{ ideaId?: string; client?: string }>
 }
 
 export default async function GeneratePage({ searchParams }: PageProps) {
   const { agencyId } = await requireSessionUser()
   const supabase = await createServerSupabaseClient()
   const clients = await getCachedAgencyClients(agencyId)
-  const { ideaId } = await searchParams
+  const { ideaId, client } = await searchParams
 
   let initialClientData: ClientData | null = null
   let initialTargetPostCount = 3
@@ -25,8 +25,12 @@ export default async function GeneratePage({ searchParams }: PageProps) {
     initialIdea = await fetchIdeaById(ideaId, agencyId)
   }
 
-  // Pre-load client data for either the idea's client or the first client
-  const targetClientId = initialIdea?.clientId ?? clients[0]?.id
+  // ?client= preselects a client; ignore ids that don't belong to this agency
+  const requestedClientId =
+    client && clients.some((c) => c.id === client) ? client : undefined
+
+  // Pre-load client data for the idea's client, the requested client, or the first client
+  const targetClientId = initialIdea?.clientId ?? requestedClientId ?? clients[0]?.id
   if (targetClientId) {
     const targetClient = clients.find((c) => c.id === targetClientId)
     if (targetClient && targetClient.posts_per_week > 0) {
@@ -42,6 +46,7 @@ export default async function GeneratePage({ searchParams }: PageProps) {
       initialClientData={initialClientData}
       initialTargetPostCount={initialTargetPostCount}
       initialIdea={initialIdea ?? undefined}
+      initialClientId={requestedClientId}
     />
   )
 }

@@ -285,7 +285,7 @@ export async function upsertTavilySource(
     .insert({
       client_id: clientId,
       type: 'tavily',
-      label: 'Web Search',
+      label: 'Web research',
       url: '',
       is_active: input.is_active,
       config: config as unknown as Json,

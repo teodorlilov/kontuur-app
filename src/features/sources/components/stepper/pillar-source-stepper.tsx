@@ -3,9 +3,8 @@
 import { useState, useMemo, useCallback } from 'react'
 import { Modal } from '@/components/ui/modal'
 import type { WeightedPillar } from '@/lib/clients/content-pillars'
-import type { StepperState, StepperPhase } from '@/features/sources/types'
+import type { StepperState, StepperPhase, StepperSummary } from '@/features/sources/types'
 import { buildStepSequence } from './build-step-sequence'
-import { AssignPillarsStep } from './pillar-map-step'
 import { WebsiteUrlStep } from './website-url-step'
 import { WebsiteSitemapStep } from './website-sitemap-step'
 import { WebsitePagesStep } from './website-pages-step'
@@ -14,7 +13,6 @@ import { RssStep } from './rss-step'
 import { DocumentsStep } from './documents-step'
 import { WebSearchStep } from './web-search-step'
 import { ReviewStep } from './review-step'
-import { DoneStep } from './done-step'
 
 interface PillarSourceStepperProps {
   open: boolean
@@ -23,7 +21,7 @@ interface PillarSourceStepperProps {
   niche: string
   websiteUrl: string
   pillars: WeightedPillar[]
-  onComplete: () => void
+  onFinished: (summary: StepperSummary) => void
   onDismiss: () => void
 }
 
@@ -35,17 +33,13 @@ function stepTitle(phase: StepperPhase): string {
     case 'website-confirm':
       return 'Website setup'
     case 'rss':
-      return 'RSS feeds'
+      return 'News & blogs'
     case 'documents':
       return 'Documents'
     case 'web-search':
-      return 'Web Search'
-    case 'assign-pillars':
-      return 'Assign pillars'
+      return 'Web research'
     case 'review':
       return 'Review'
-    case 'done':
-      return 'Complete'
   }
 }
 
@@ -55,14 +49,12 @@ export function PillarSourceStepper({
   clientName,
   niche,
   websiteUrl: initialWebsiteUrl,
-  pillars,
-  onComplete,
+  onFinished,
   onDismiss,
 }: PillarSourceStepperProps) {
   const [state, setState] = useState<StepperState>(() => ({
     websiteUrl: initialWebsiteUrl,
     discoveredSitemaps: [],
-    selectedSitemapUrl: null,
     discoveredPages: [],
     selectedPages: [],
     selectedRssFeeds: [],
@@ -72,11 +64,12 @@ export function PillarSourceStepper({
     webSearchIncludeDomains: [],
     webSearchExcludeDomains: [],
   }))
+  const [websiteSaved, setWebsiteSaved] = useState(false)
 
   const [currentIndex, setCurrentIndex] = useState(0)
 
   const sequence = useMemo(() => buildStepSequence(), [])
-  const currentPhase = sequence[currentIndex] ?? { type: 'done' as const }
+  const currentPhase = sequence[currentIndex] ?? { type: 'review' as const }
 
   const goNext = useCallback(() => {
     setCurrentIndex((i) => Math.min(i + 1, sequence.length - 1))
@@ -123,10 +116,9 @@ export function PillarSourceStepper({
     goNext()
   }
 
-  function handleSitemapSelected(sitemapUrl: string, pages: string[]) {
+  function handleSitemapSelected(_sitemapUrl: string, pages: string[]) {
     setState((prev) => ({
       ...prev,
-      selectedSitemapUrl: sitemapUrl,
       discoveredPages: pages,
     }))
     goNext()
@@ -174,7 +166,6 @@ export function PillarSourceStepper({
             initialUrl={state.websiteUrl}
             onScanned={handleWebsiteScanned}
             onSkip={handleSkipWebsite}
-            onBack={goBack}
           />
         )
 
@@ -207,7 +198,10 @@ export function PillarSourceStepper({
             clientId={clientId}
             websiteUrl={state.websiteUrl}
             selectedPages={state.selectedPages}
-            onSaved={goNext}
+            onSaved={() => {
+              setWebsiteSaved(true)
+              goNext()
+            }}
             onSourceCreated={handleSourceCreated}
             onBack={goBack}
           />
@@ -222,7 +216,6 @@ export function PillarSourceStepper({
             onSaved={goNext}
             onSourceCreated={handleSourceCreated}
             onRssFeedAdded={handleRssFeedAdded}
-            onSkip={goNext}
             onBack={goBack}
           />
         )
@@ -232,7 +225,6 @@ export function PillarSourceStepper({
           <DocumentsStep
             clientId={clientId}
             onUploaded={handleDocumentUploaded}
-            onSkip={goNext}
             onNext={goNext}
             onBack={goBack}
           />
@@ -252,28 +244,22 @@ export function PillarSourceStepper({
           />
         )
 
-      case 'assign-pillars':
-        return (
-          <AssignPillarsStep
-            clientId={clientId}
-            pillars={pillars}
-            createdSourceIds={state.createdSourceIds}
-            onNext={goNext}
-            onBack={goBack}
-          />
-        )
-
       case 'review':
         return (
           <ReviewStep
             state={state}
-            onSave={goNext}
+            onSave={() =>
+              onFinished({
+                hasWebsite: websiteSaved,
+                pageCount: state.selectedPages.length,
+                feedCount: state.selectedRssFeeds.length,
+                documentCount: state.uploadedDocumentIds.length,
+                webSearchEnabled: state.webSearchEnabled,
+              })
+            }
             onBack={goBack}
           />
         )
-
-      case 'done':
-        return <DoneStep onComplete={onComplete} />
 
       default:
         return null

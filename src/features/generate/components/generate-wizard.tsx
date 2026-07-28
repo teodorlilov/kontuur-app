@@ -41,6 +41,7 @@ interface GenerateWizardProps {
   initialClientData: ClientData | null
   initialTargetPostCount: number
   initialIdea?: ClientIdea
+  initialClientId?: string
 }
 
 export function GenerateWizard({
@@ -48,6 +49,7 @@ export function GenerateWizard({
   initialClientData,
   initialTargetPostCount,
   initialIdea,
+  initialClientId,
 }: GenerateWizardProps) {
   const router = useRouter()
   const [step, setStep] = useState<GenerateStep>(initialIdea ? 'type' : 'client')
@@ -55,7 +57,9 @@ export function GenerateWizard({
 
   // Step 1
   const [clients] = useState<Client[]>(initialClients)
-  const [clientId, setClientId] = useState(initialIdea?.clientId ?? initialClients[0]?.id ?? '')
+  const [clientId, setClientId] = useState(
+    initialIdea?.clientId ?? initialClientId ?? initialClients[0]?.id ?? ''
+  )
   const [platform, setPlatform] = useState(initialIdea?.platform ?? 'Instagram')
   const [brandProfileLoading, setBrandProfileLoading] = useState(false)
   const [targetPostCount, setTargetPostCount] = useState(initialIdea ? 0 : initialTargetPostCount)
@@ -351,6 +355,7 @@ export function GenerateWizard({
           {generatedPosts.length > 0 ? (
             <ResultsView
               posts={generatedPosts}
+              clientId={clientId}
               clientName={clientName}
               platform={platform}
               postType={postType}

@@ -49,9 +49,9 @@ export function SourceTile({ sourceUrl, sourceTitle, sourceType, sourceExcerpt }
 
 /** Map source_type DB value to a human-readable label. */
 export function sourceTypeLabel(type: string | null | undefined): string {
-  if (type === 'rss') return 'RSS Feed'
+  if (type === 'rss') return 'News feed'
   if (type === 'website') return 'Website'
   if (type === 'file') return 'Document'
-  if (type === 'web_search') return 'Web Search'
+  if (type === 'web_search') return 'Web research'
   return 'Source'
 }

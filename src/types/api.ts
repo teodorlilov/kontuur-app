@@ -464,8 +464,6 @@ export type {
 
 export type {
   ClientSource,
-  AddSourceRequest,
-  AddSourceResponse,
   SourceSuggestion,
   SuggestSourcesRequest,
   SuggestSourcesResponse,

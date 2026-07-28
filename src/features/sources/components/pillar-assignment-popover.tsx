@@ -32,7 +32,7 @@ export function PillarAssignmentPopover({
           type="button"
           className="text-xs text-brand-purple hover:underline font-medium whitespace-nowrap"
         >
-          {assignedPillarIds.length > 0 ? 'Edit pillars' : 'Assign pillars'}
+          {assignedPillarIds.length > 0 ? `Topics: ${assignedPillarIds.length}` : 'Limit topics'}
         </button>
       </Popover.Trigger>
       <Popover.Portal>
@@ -41,8 +41,11 @@ export function PillarAssignmentPopover({
           sideOffset={4}
           align="start"
         >
+          <p className="text-xs font-medium text-gray-500 px-2 pb-1">
+            Limit to specific topics (optional)
+          </p>
           {pillars.length === 0 ? (
-            <p className="text-xs text-gray-400 px-2 py-1">No pillars configured</p>
+            <p className="text-xs text-gray-400 px-2 py-1">No topics configured</p>
           ) : (
             <div className="space-y-1">
               {pillars.map((p) => {
@@ -71,7 +74,7 @@ export function PillarAssignmentPopover({
           )}
           {assignedPillarIds.length === 0 && pillars.length > 0 && (
             <p className="text-xs text-gray-400 px-2 pt-1 border-t border-gray-100 mt-1">
-              No pillars assigned — feeds all pillars
+              Feeds all topics (default)
             </p>
           )}
         </Popover.Content>

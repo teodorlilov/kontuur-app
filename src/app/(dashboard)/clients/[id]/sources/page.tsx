@@ -53,6 +53,7 @@ export default async function ClientSourcesPage({
           .eq('client_id', id)
       : null
 
+  // Intentional: every client gets a web-research row so the toggle is always visible on this page
   const needsTavily = !initialSources.some((s) => s.type === 'tavily')
   const tavilyWrite = needsTavily
     ? supabase
@@ -60,7 +61,7 @@ export default async function ClientSourcesPage({
         .insert({
           client_id: id,
           type: 'tavily',
-          label: 'Web Search',
+          label: 'Web research',
           url: '',
           is_active: true,
         })

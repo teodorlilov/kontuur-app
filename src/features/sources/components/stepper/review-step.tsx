@@ -31,7 +31,7 @@ export function ReviewStep({ state, onSave, onBack }: ReviewStepProps) {
           )}
           {state.selectedRssFeeds.length > 0 && (
             <span className="text-xs px-2 py-1 rounded-lg bg-white border border-gray-200 text-gray-700">
-              {state.selectedRssFeeds.length} RSS feeds
+              {state.selectedRssFeeds.length} news &amp; blog feeds
             </span>
           )}
           {state.uploadedDocumentIds.length > 0 && (
@@ -40,7 +40,7 @@ export function ReviewStep({ state, onSave, onBack }: ReviewStepProps) {
             </span>
           )}
           <span className="text-xs px-2 py-1 rounded-lg bg-white border border-gray-200 text-gray-700">
-            Web search {state.webSearchEnabled ? 'on' : 'off'}
+            Web research {state.webSearchEnabled ? 'on' : 'off'}
             {state.webSearchEnabled && state.webSearchIncludeDomains.length > 0 &&
               ` · ${state.webSearchIncludeDomains.length} preferred`}
             {state.webSearchEnabled && state.webSearchExcludeDomains.length > 0 &&

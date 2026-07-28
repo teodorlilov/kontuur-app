@@ -173,6 +173,23 @@ body {
   }
 }
 
+@keyframes draw-check {
+  from {
+    stroke-dashoffset: 48;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* Success overlay renders statically for users who prefer reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .onboarding-success-overlay,
+  .onboarding-success-overlay * {
+    animation: none !important;
+  }
+}
+
 @keyframes fadein {
   from {
     opacity: 0;

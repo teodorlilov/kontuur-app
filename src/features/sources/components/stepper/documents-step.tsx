@@ -8,7 +8,6 @@ import { uploadSource } from '@/features/sources/actions/source-actions'
 interface DocumentsStepProps {
   clientId: string
   onUploaded: (docId: string) => void
-  onSkip: () => void
   onNext: () => void
   onBack: () => void
 }
@@ -16,7 +15,6 @@ interface DocumentsStepProps {
 export function DocumentsStep({
   clientId,
   onUploaded,
-  onSkip,
   onNext,
   onBack,
 }: DocumentsStepProps) {
@@ -102,18 +100,9 @@ export function DocumentsStep({
         <Button variant="ghost" size="sm" onClick={onBack}>
           Back
         </Button>
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={onSkip}
-            className="text-sm text-gray-500 hover:text-gray-700"
-          >
-            Skip for now
-          </button>
-          <Button size="sm" onClick={onNext}>
-            Continue
-          </Button>
-        </div>
+        <Button size="sm" onClick={onNext}>
+          {uploadedCount > 0 ? 'Continue' : 'Skip for now'}
+        </Button>
       </div>
     </div>
   )

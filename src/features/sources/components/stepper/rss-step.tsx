@@ -15,11 +15,10 @@ interface RssStepProps {
   onSaved: () => void
   onSourceCreated?: (id: string) => void
   onRssFeedAdded?: (label: string, url: string) => void
-  onSkip: () => void
   onBack: () => void
 }
 
-export function RssStep({ clientId, niche, clientName, onSaved, onSourceCreated, onRssFeedAdded, onSkip, onBack }: RssStepProps) {
+export function RssStep({ clientId, niche, clientName, onSaved, onSourceCreated, onRssFeedAdded, onBack }: RssStepProps) {
   const [suggestions, setSuggestions] = useState<SourceSuggestion[]>([])
   const [loading, setLoading] = useState(true)
   const [addingUrl, setAddingUrl] = useState<string | null>(null)
@@ -87,22 +86,22 @@ export function RssStep({ clientId, niche, clientName, onSaved, onSourceCreated,
   return (
     <div className="space-y-5">
       <div>
-        <h3 className="text-lg font-medium text-gray-900">RSS feeds</h3>
+        <h3 className="text-lg font-medium text-gray-900">News &amp; blogs</h3>
         <p className="text-sm text-gray-500 mt-1">
-          Add RSS feeds for industry news and blog content.
+          We&apos;ll watch these feeds for fresh articles to inspire post ideas.
         </p>
       </div>
 
       {loading ? (
         <div className="flex flex-col gap-3 py-4">
-          <p className="text-sm text-gray-500">Finding relevant feeds...</p>
+          <p className="text-sm text-gray-500">Finding news sites and blogs for your niche...</p>
           {[...Array(4)].map((_, i) => (
             <div key={i} className="h-14 rounded-lg bg-gray-100 animate-pulse" />
           ))}
         </div>
       ) : suggestions.length === 0 && addedCount === 0 ? (
         <p className="text-sm text-gray-500 py-4">
-          No suggestions found. Add a feed URL manually below.
+          Nothing found automatically. Paste a feed URL below.
         </p>
       ) : (
         <div className="flex flex-col gap-3 max-h-[35vh] overflow-y-auto">
@@ -151,7 +150,7 @@ export function RssStep({ clientId, niche, clientName, onSaved, onSourceCreated,
       )}
 
       <div className="border-t border-gray-100 pt-4">
-        <p className="text-xs text-gray-500 mb-2">Add a feed URL manually:</p>
+        <p className="text-xs text-gray-500 mb-2">Add a feed manually:</p>
         <ManualAddInModal onAdd={handleManualAdd} isSaving={manualSaving} />
       </div>
 
@@ -159,18 +158,9 @@ export function RssStep({ clientId, niche, clientName, onSaved, onSourceCreated,
         <Button variant="ghost" size="sm" onClick={onBack}>
           Back
         </Button>
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={onSkip}
-            className="text-sm text-gray-500 hover:text-gray-700"
-          >
-            Skip for now
-          </button>
-          <Button size="sm" onClick={onSaved}>
-            {addedCount > 0 ? 'Continue' : 'Skip'}
-          </Button>
-        </div>
+        <Button size="sm" onClick={onSaved}>
+          {addedCount > 0 ? 'Continue' : 'Skip for now'}
+        </Button>
       </div>
     </div>
   )

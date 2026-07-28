@@ -163,7 +163,7 @@ export function SourcesManager({
       return <span className="text-xs text-green-600">Uploaded</span>
     }
     if (source.type === 'tavily') {
-      return <span className="text-xs text-gray-400">Web search</span>
+      return <span className="text-xs text-gray-400">Web research</span>
     }
     if (!source.last_fetch_status) {
       return <span className="text-xs text-gray-400">Never fetched</span>
@@ -280,20 +280,20 @@ export function SourcesManager({
             margin: '12px 0 0',
           }}
         >
-          Research Sources
+          Content sources
         </h1>
         <p className="text-sm text-gray-500 mt-1">
-          Sources are fetched during the research step to suggest post themes grounded in real
+          We pull from these sources when generating post ideas, so drafts are grounded in real
           content.
         </p>
       </div>
 
-      {/* Research settings */}
+      {/* Source settings */}
       <section className="mb-6 bg-white rounded-xl border border-gray-200 p-5">
-        <p className="text-sm font-medium text-gray-700 mb-3">Research settings</p>
+        <p className="text-sm font-medium text-gray-700 mb-3">Source settings</p>
         <StrategyToggle
-          label="Require source grounding"
-          description="Posts will only use facts from your sources. Ungrounded claims are flagged."
+          label="Strict mode: only use facts from these sources"
+          description="When on, posts stick to facts found in your sources. Anything unverified gets flagged."
           enabled={requireGrounding}
           onChange={(v) => {
             void handleToggleGrounding(v)
@@ -301,13 +301,13 @@ export function SourcesManager({
         />
       </section>
 
-      {/* Uncovered pillar warnings */}
-      {uncoveredPillars.length > 0 && (
+      {/* Topic-filter gaps (only meaningful once sources exist) */}
+      {activeSourceCount > 0 && uncoveredPillars.length > 0 && (
         <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 space-y-1">
           {uncoveredPillars.map((p) => (
             <p key={p.id} className="text-xs text-amber-700">
-              <span className="font-medium">&quot;{p.pillar}&quot;</span> has no sources assigned.
-              Assign sources to generate content for this pillar.
+              No sources feed <span className="font-medium">&quot;{p.pillar}&quot;</span> right
+              now. Ideas for this topic will come from web research and general knowledge instead.
             </p>
           ))}
         </div>
@@ -331,10 +331,10 @@ export function SourcesManager({
         )}
       </div>
 
-      {/* Web Search (Tavily) section */}
+      {/* Web research (Tavily) section */}
       {tavilySource && (
         <section className="mb-8">
-          <h2 className="text-sm font-semibold text-gray-700 mb-3">Web Search</h2>
+          <h2 className="text-sm font-semibold text-gray-700 mb-3">Web research</h2>
           <SourceRow
             source={tavilySource}
             statusBadge={getStatusBadge(tavilySource)}
@@ -355,10 +355,10 @@ export function SourcesManager({
         </section>
       )}
 
-      {/* RSS Feeds section */}
+      {/* News & blogs section */}
       <section className="mb-8">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-sm font-semibold text-gray-700">RSS Feeds</h2>
+          <h2 className="text-sm font-semibold text-gray-700">News &amp; blogs</h2>
           <div className="flex items-center gap-2">
             <Button
               variant="ghost"
@@ -378,7 +378,7 @@ export function SourcesManager({
                 setAddForm({ label: '', url: '', focusInstructions: '' })
               }}
             >
-              + Add RSS feed
+              + Add feed
             </Button>
           </div>
         </div>
@@ -388,7 +388,7 @@ export function SourcesManager({
           <div className="mb-3 p-4 rounded-xl border border-brand-purple/30 bg-brand-purple-light/30 flex flex-col gap-3">
             {renderLabelInput('e.g. Health News Daily')}
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium text-gray-600">RSS Feed URL</label>
+              <label className="text-xs font-medium text-gray-600">Feed URL (RSS)</label>
               <input
                 type="url"
                 value={addForm.url}
@@ -420,7 +420,7 @@ export function SourcesManager({
 
         {renderSourceList(
           rssSources,
-          'No RSS feeds yet. Add a feed URL to pull recent articles into your research.',
+          'No feeds yet. Add a blog or news feed to pull fresh articles into your research.',
           'rss'
         )}
       </section>
@@ -616,7 +616,7 @@ export function SourcesManager({
       <Modal
         open={showModal}
         onClose={() => setShowModal(false)}
-        title={`Suggested RSS feeds for ${niche || clientName}`}
+        title={`Suggested news & blogs for ${niche || clientName}`}
         className="max-w-xl"
       >
         {suggesting ? (

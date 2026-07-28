@@ -2,7 +2,7 @@ import type { StepperPhase } from '@/features/sources/types'
 
 /**
  * Build the ordered step sequence.
- * Always includes all source type steps, then assign-pillars, review, and done.
+ * Always includes all source type steps, then the final review.
  */
 export function buildStepSequence(): StepperPhase[] {
   return [
@@ -13,8 +13,6 @@ export function buildStepSequence(): StepperPhase[] {
     { type: 'rss' },
     { type: 'documents' },
     { type: 'web-search' },
-    { type: 'assign-pillars' },
     { type: 'review' },
-    { type: 'done' },
   ]
 }

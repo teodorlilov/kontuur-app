@@ -15,19 +15,6 @@ export interface ClientSource {
   created_at: string
 }
 
-export interface AddSourceRequest {
-  type: 'rss' | 'website'
-  label: string
-  url: string
-  config?: Record<string, unknown>
-}
-
-export interface AddSourceResponse {
-  source: ClientSource
-  fetch_status: 'ok' | 'error'
-  fetch_error?: string
-}
-
 export interface SourceSuggestion {
   url: string
   label: string

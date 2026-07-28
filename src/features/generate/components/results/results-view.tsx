@@ -15,6 +15,7 @@ type GeneratedPost = { post: PostData } & ValidationData
 
 interface ResultsViewProps {
   posts: GeneratedPost[]
+  clientId: string
   clientName: string
   platform: string
   postType: string
@@ -33,6 +34,7 @@ interface ResultsViewProps {
 /** Step 5: three-panel results view with topbar. */
 export function ResultsView({
   posts,
+  clientId,
   clientName,
   platform,
   postType,
@@ -101,7 +103,7 @@ export function ResultsView({
         onNewRun={onNewRun}
         onApproveAll={onApproveAll}
       />
-      {skippedPillars.length > 0 && <SkippedBanner pillars={skippedPillars} />}
+      {skippedPillars.length > 0 && <SkippedBanner pillars={skippedPillars} clientId={clientId} />}
       <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
         {/* Post list — full width on mobile, fixed 280px on desktop */}
         <div className={`${mobilePanel === 'list' ? 'flex' : 'hidden'} md:flex`} style={{ flexShrink: 0 }}>
@@ -296,7 +298,7 @@ function PostNavigator({
   )
 }
 
-function SkippedBanner({ pillars }: { pillars: SkippedPillar[] }) {
+function SkippedBanner({ pillars, clientId }: { pillars: SkippedPillar[]; clientId: string }) {
   return (
     <div
       style={{
@@ -313,13 +315,13 @@ function SkippedBanner({ pillars }: { pillars: SkippedPillar[] }) {
     >
       <AlertTriangle size={13} />
       {pillars.length === 1
-        ? `1 pillar skipped — ${pillars[0]!.name} has no sources assigned.`
-        : `${pillars.length} pillars skipped — no sources assigned.`}
+        ? `1 topic skipped — no sources feed ${pillars[0]!.name}.`
+        : `${pillars.length} topics skipped — no sources feed them.`}
       <a
-        href="/sources"
+        href={`/clients/${clientId}/sources`}
         style={{ color: 'var(--color-terracotta)', fontWeight: 500, marginLeft: '3px', textDecoration: 'none' }}
       >
-        Fix in Research Sources →
+        Fix in Content sources →
       </a>
     </div>
   )

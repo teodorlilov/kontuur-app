@@ -9,10 +9,9 @@ interface WebsiteUrlStepProps {
   initialUrl: string
   onScanned: (url: string, sitemaps: string[], pages: string[]) => void
   onSkip: () => void
-  onBack: () => void
 }
 
-export function WebsiteUrlStep({ initialUrl, onScanned, onSkip, onBack }: WebsiteUrlStepProps) {
+export function WebsiteUrlStep({ initialUrl, onScanned, onSkip }: WebsiteUrlStepProps) {
   const [url, setUrl] = useState(initialUrl)
   const [scanning, setScanning] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -64,26 +63,21 @@ export function WebsiteUrlStep({ initialUrl, onScanned, onSkip, onBack }: Websit
 
       {error && <p className="text-sm text-red-500">{error}</p>}
 
-      <div className="flex items-center justify-between pt-2">
-        <Button variant="ghost" size="sm" onClick={onBack}>
-          Back
+      <div className="flex items-center justify-end gap-2 pt-2">
+        <button
+          type="button"
+          onClick={onSkip}
+          className="text-sm text-gray-500 hover:text-gray-700"
+        >
+          Skip for now
+        </button>
+        <Button
+          size="sm"
+          onClick={() => { void handleScan() }}
+          disabled={!url.trim() || scanning}
+        >
+          Scan website
         </Button>
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={onSkip}
-            className="text-sm text-gray-500 hover:text-gray-700"
-          >
-            Skip for now
-          </button>
-          <Button
-            size="sm"
-            onClick={() => { void handleScan() }}
-            disabled={!url.trim() || scanning}
-          >
-            Scan website
-          </Button>
-        </div>
       </div>
     </div>
   )
