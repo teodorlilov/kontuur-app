@@ -7,7 +7,7 @@ import { Spinner } from '@/components/ui/spinner'
 
 interface WebsiteUrlStepProps {
   initialUrl: string
-  onScanned: (url: string, sitemaps: string[], pages: string[]) => void
+  onScanned: (url: string, pages: string[]) => void
   onSkip: () => void
 }
 
@@ -27,8 +27,8 @@ export function WebsiteUrlStep({ initialUrl, onScanned, onSkip }: WebsiteUrlStep
         body: JSON.stringify({ url: url.trim() }),
       })
       if (!res.ok) throw new Error('Failed to scan')
-      const data = (await res.json()) as { pages?: string[]; sitemaps?: string[] }
-      onScanned(url.trim(), data.sitemaps ?? [], data.pages ?? [])
+      const data = (await res.json()) as { pages?: string[] }
+      onScanned(url.trim(), data.pages ?? [])
     } catch {
       setError('Could not scan website. Check the URL and try again.')
     } finally {
@@ -57,7 +57,7 @@ export function WebsiteUrlStep({ initialUrl, onScanned, onSkip }: WebsiteUrlStep
       {scanning && (
         <div className="flex items-center gap-3 py-4">
           <Spinner size="sm" />
-          <p className="text-sm text-gray-500">Scanning website for sitemaps...</p>
+          <p className="text-sm text-gray-500">Scanning website for pages...</p>
         </div>
       )}
 

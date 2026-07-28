@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
 import { validateSourceUrl } from '@/lib/sources/validate-url'
-import { discoverSitemapUrls, fetchSingleSitemap } from '@/lib/sources/discover-sitemap'
+import { discoverSitemapUrls } from '@/lib/sources/discover-sitemap'
 import { extractLinksFromHtml } from '@/lib/sources/crawl-subpages'
 import { USER_AGENT_BROWSER } from '@/utils/constants'
 import { readLimitedText } from '@/lib/sources/read-limited-text'
@@ -26,36 +26,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Invalid URL' }, { status: 400 })
   }
 
-  // If a specific sitemap URL is provided, fetch its pages directly
-  if (body.sitemapUrl?.trim()) {
-    if (!(await validateSourceUrl(body.sitemapUrl))) {
-      return NextResponse.json({ error: 'Invalid sitemap URL' }, { status: 400 })
-    }
-
-    const pages = await fetchSingleSitemap(body.sitemapUrl)
-    return NextResponse.json({
-      pages,
-      sitemaps: [],
-      source: 'sitemap',
-    } satisfies DiscoverPagesResponse)
-  }
-
-  // Strategy 1: Try sitemap discovery
+  // Strategy 1: Sitemap discovery (index children are merged server-side)
   const sitemapResult = await discoverSitemapUrls(body.url)
-
-  // If sub-sitemaps were found, return them for user selection
-  if (sitemapResult.sitemapRefs.length > 0) {
-    return NextResponse.json({
-      pages: [],
-      sitemaps: sitemapResult.sitemapRefs,
-      source: 'sitemap_index',
-    } satisfies DiscoverPagesResponse)
-  }
 
   if (sitemapResult.urls.length > 0) {
     return NextResponse.json({
       pages: sitemapResult.urls,
-      sitemaps: [],
       source: 'sitemap',
     } satisfies DiscoverPagesResponse)
   }
@@ -74,7 +50,6 @@ export async function POST(request: Request) {
       if (links.length > 0) {
         return NextResponse.json({
           pages: links,
-          sitemaps: [],
           source: 'link_extraction',
         } satisfies DiscoverPagesResponse)
       }
@@ -85,7 +60,6 @@ export async function POST(request: Request) {
 
   return NextResponse.json({
     pages: [],
-    sitemaps: [],
     source: 'none',
   } satisfies DiscoverPagesResponse)
 }

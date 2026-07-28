@@ -6,12 +6,10 @@ import type { WeightedPillar } from '@/lib/clients/content-pillars'
 import type { StepperState, StepperPhase, StepperSummary } from '@/features/sources/types'
 import { buildStepSequence } from './build-step-sequence'
 import { WebsiteUrlStep } from './website-url-step'
-import { WebsiteSitemapStep } from './website-sitemap-step'
 import { WebsitePagesStep } from './website-pages-step'
 import { WebsiteConfirmStep } from './website-confirm-step'
 import { RssStep } from './rss-step'
-import { DocumentsStep } from './documents-step'
-import { WebSearchStep } from './web-search-step'
+import { ExtrasStep } from './extras-step'
 import { ReviewStep } from './review-step'
 
 interface PillarSourceStepperProps {
@@ -28,16 +26,13 @@ interface PillarSourceStepperProps {
 function stepTitle(phase: StepperPhase): string {
   switch (phase.type) {
     case 'website-url':
-    case 'website-sitemap':
     case 'website-pages':
     case 'website-confirm':
       return 'Website setup'
     case 'rss':
       return 'News & blogs'
-    case 'documents':
-      return 'Documents'
-    case 'web-search':
-      return 'Web research'
+    case 'extras':
+      return 'Extras'
     case 'review':
       return 'Review'
   }
@@ -54,7 +49,6 @@ export function PillarSourceStepper({
 }: PillarSourceStepperProps) {
   const [state, setState] = useState<StepperState>(() => ({
     websiteUrl: initialWebsiteUrl,
-    discoveredSitemaps: [],
     discoveredPages: [],
     selectedPages: [],
     selectedRssFeeds: [],
@@ -84,7 +78,6 @@ export function PillarSourceStepper({
       (s, i) =>
         i > currentIndex &&
         s.type !== 'website-url' &&
-        s.type !== 'website-sitemap' &&
         s.type !== 'website-pages' &&
         s.type !== 'website-confirm'
     )
@@ -106,19 +99,10 @@ export function PillarSourceStepper({
     }))
   }
 
-  function handleWebsiteScanned(url: string, sitemaps: string[], pages: string[]) {
+  function handleWebsiteScanned(url: string, pages: string[]) {
     setState((prev) => ({
       ...prev,
       websiteUrl: url,
-      discoveredSitemaps: sitemaps,
-      discoveredPages: pages,
-    }))
-    goNext()
-  }
-
-  function handleSitemapSelected(_sitemapUrl: string, pages: string[]) {
-    setState((prev) => ({
-      ...prev,
       discoveredPages: pages,
     }))
     goNext()
@@ -169,17 +153,6 @@ export function PillarSourceStepper({
           />
         )
 
-      case 'website-sitemap':
-        return (
-          <WebsiteSitemapStep
-            sitemaps={state.discoveredSitemaps}
-            websiteUrl={state.websiteUrl}
-            onSelect={handleSitemapSelected}
-            onSkipToPages={goNext}
-            onBack={goBack}
-          />
-        )
-
       case 'website-pages':
         return (
           <WebsitePagesStep
@@ -198,6 +171,7 @@ export function PillarSourceStepper({
             clientId={clientId}
             websiteUrl={state.websiteUrl}
             selectedPages={state.selectedPages}
+            discoveredPages={state.discoveredPages}
             onSaved={() => {
               setWebsiteSaved(true)
               goNext()
@@ -220,24 +194,15 @@ export function PillarSourceStepper({
           />
         )
 
-      case 'documents':
+      case 'extras':
         return (
-          <DocumentsStep
+          <ExtrasStep
             clientId={clientId}
-            onUploaded={handleDocumentUploaded}
-            onNext={goNext}
-            onBack={goBack}
-          />
-        )
-
-      case 'web-search':
-        return (
-          <WebSearchStep
-            clientId={clientId}
-            enabled={state.webSearchEnabled}
-            includeDomains={state.webSearchIncludeDomains}
-            excludeDomains={state.webSearchExcludeDomains}
-            onConfigChange={handleWebSearchConfigChange}
+            webSearchEnabled={state.webSearchEnabled}
+            webSearchIncludeDomains={state.webSearchIncludeDomains}
+            webSearchExcludeDomains={state.webSearchExcludeDomains}
+            onWebSearchConfigChange={handleWebSearchConfigChange}
+            onDocumentUploaded={handleDocumentUploaded}
             onSourceCreated={handleSourceCreated}
             onNext={goNext}
             onBack={goBack}

@@ -43,11 +43,9 @@ export interface TavilyConfig {
 
 export interface DiscoverPagesRequest {
   url: string
-  sitemapUrl?: string
 }
 
 export interface DiscoverPagesResponse {
   pages: string[]
-  sitemaps: string[]
-  source: 'sitemap' | 'sitemap_index' | 'link_extraction' | 'none'
+  source: 'sitemap' | 'link_extraction' | 'none'
 }

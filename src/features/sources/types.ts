@@ -1,6 +1,5 @@
 export interface StepperState {
   websiteUrl: string
-  discoveredSitemaps: string[]
   discoveredPages: string[]
   selectedPages: string[]
   selectedRssFeeds: { label: string; url: string }[]
@@ -22,10 +21,8 @@ export interface StepperSummary {
 
 export type StepperPhase =
   | { type: 'website-url' }
-  | { type: 'website-sitemap' }
   | { type: 'website-pages' }
   | { type: 'website-confirm' }
   | { type: 'rss' }
-  | { type: 'documents' }
-  | { type: 'web-search' }
+  | { type: 'extras' }
   | { type: 'review' }

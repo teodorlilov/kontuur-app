@@ -10,6 +10,7 @@ import { ManualAddInModal } from '@/features/sources/components/manual-add-modal
 import { cn } from '@/utils/cn'
 import { formatRelativeTime } from '@/utils/format'
 import { useSources } from '@/features/sources/hooks/use-sources'
+import { WHOLE_SITE_PAGE_CAP } from '@/features/sources/constants'
 import { pillarHasSources, getSourcePillarIds } from '@/lib/clients/content-pillars'
 import { toast } from '@/components/ui/toast'
 import type { ClientSource, SourceStrategy } from '@/types/api'
@@ -70,19 +71,12 @@ export function SourcesManager({
   // Page picker state (shared between add + edit flows)
   const [pagePickerFor, setPagePickerFor] = useState<'add' | string | null>(null)
   const [discoveredPages, setDiscoveredPages] = useState<string[]>([])
-  const [discoveredSitemaps, setDiscoveredSitemaps] = useState<string[]>([])
   const [discoverLoading, setDiscoverLoading] = useState(false)
-  const [sitemapLoading, setSitemapLoading] = useState(false)
   const [addSelectedPages, setAddSelectedPages] = useState<string[]>([])
 
-  async function handleDiscoverPages(
-    url: string,
-    target: 'add' | string,
-    initialSelected: string[] = []
-  ) {
+  async function handleDiscoverPages(url: string, target: 'add' | string) {
     setDiscoverLoading(true)
     setDiscoveredPages([])
-    setDiscoveredSitemaps([])
     setPagePickerFor(target)
     try {
       const res = await fetch('/api/sources/discover', {
@@ -90,42 +84,13 @@ export function SourcesManager({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url }),
       })
-      const data = (await res.json()) as { pages: string[]; sitemaps?: string[] }
-      if (data.sitemaps && data.sitemaps.length > 0) {
-        setDiscoveredSitemaps(data.sitemaps)
-        setDiscoveredPages([])
-      } else {
-        setDiscoveredPages(data.pages ?? [])
-        setDiscoveredSitemaps([])
-      }
-    } catch {
-      toast.error('Failed to scan website')
-      setDiscoveredPages([])
-      setDiscoveredSitemaps([])
-    } finally {
-      setDiscoverLoading(false)
-    }
-  }
-
-  async function handleSelectSitemap(sitemapUrl: string) {
-    const url =
-      pagePickerFor === 'add' ? addForm.url : sources.find((s) => s.id === pagePickerFor)?.url
-    if (!url) return
-
-    setSitemapLoading(true)
-    try {
-      const res = await fetch('/api/sources/discover', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url, sitemapUrl }),
-      })
       const data = (await res.json()) as { pages: string[] }
       setDiscoveredPages(data.pages ?? [])
     } catch {
-      toast.error('Failed to load sitemap pages')
+      toast.error('Failed to scan website')
       setDiscoveredPages([])
     } finally {
-      setSitemapLoading(false)
+      setDiscoverLoading(false)
     }
   }
 
@@ -477,7 +442,7 @@ export function SourcesManager({
                   size="sm"
                   disabled={!addForm.url.trim()}
                   onClick={() => {
-                    void handleDiscoverPages(addForm.url, 'add', addSelectedPages)
+                    void handleDiscoverPages(addForm.url, 'add')
                   }}
                 >
                   Scan for pages
@@ -515,7 +480,7 @@ export function SourcesManager({
           "No websites yet. Add your client's website URL to use their content as research material.",
           'website',
           (url, sourceId, currentSelected) => {
-            void handleDiscoverPages(url, sourceId, currentSelected)
+            void handleDiscoverPages(url, sourceId)
           }
         )}
       </section>
@@ -587,29 +552,31 @@ export function SourcesManager({
       {/* Page Picker Modal */}
       <PagePickerModal
         open={pagePickerFor !== null}
-        onClose={() => {
-          setPagePickerFor(null)
-          setDiscoveredSitemaps([])
-        }}
+        onClose={() => setPagePickerFor(null)}
         pages={discoveredPages}
-        sitemaps={discoveredSitemaps}
         loading={discoverLoading}
-        sitemapLoading={sitemapLoading}
         initialSelected={pagePickerInitialSelected}
         siteOrigin={pagePickerSiteOrigin}
         onSave={(selected) => {
+          // "Whole site" (nothing ticked) persists the discovered list, capped —
+          // an empty selection would make research fetch only the homepage
+          const pagesToSave =
+            selected.length > 0 ? selected : discoveredPages.slice(0, WHOLE_SITE_PAGE_CAP)
           if (pagePickerFor === 'add') {
-            setAddSelectedPages(selected)
+            setAddSelectedPages(pagesToSave)
           } else if (pagePickerFor) {
             const source = sources.find((s) => s.id === pagePickerFor)
-            const currentConfig = (source?.config as Record<string, unknown> | null) ?? {}
+            const { selected_pages: _cleared, ...restConfig } =
+              (source?.config as Record<string, unknown> | null) ?? {}
             void handleEditSource(pagePickerFor, {
-              config: { ...currentConfig, selected_pages: selected },
+              config:
+                pagesToSave.length > 0
+                  ? { ...restConfig, selected_pages: pagesToSave }
+                  : restConfig,
             })
           }
           setPagePickerFor(null)
         }}
-        onSelectSitemap={handleSelectSitemap}
       />
 
       {/* Suggestion Modal */}

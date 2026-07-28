@@ -7,12 +7,10 @@ import type { StepperPhase } from '@/features/sources/types'
 export function buildStepSequence(): StepperPhase[] {
   return [
     { type: 'website-url' },
-    { type: 'website-sitemap' },
     { type: 'website-pages' },
     { type: 'website-confirm' },
     { type: 'rss' },
-    { type: 'documents' },
-    { type: 'web-search' },
+    { type: 'extras' },
     { type: 'review' },
   ]
 }

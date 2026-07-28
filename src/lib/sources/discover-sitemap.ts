@@ -6,29 +6,27 @@
 import { USER_AGENT_BOT } from '@/utils/constants'
 
 const MAX_URLS = 5000
-const MAX_SUB_SITEMAPS = 5
+const MAX_SUB_SITEMAPS = 15
 const FETCH_TIMEOUT = 5000
 const MAX_BODY_BYTES = 1_000_000 // 1MB
 
 export interface SitemapDiscoveryResult {
   urls: string[]
-  sitemapRefs: string[]
   source: 'sitemap' | 'none'
 }
 
 /**
- * Discover content URLs or sub-sitemap references from a website's sitemap.
+ * Discover content URLs from a website's sitemap, following index children automatically.
  * Tries: robots.txt → /sitemap.xml → /wp-sitemap.xml → /sitemap_index.xml
- *
- * When a sitemap index with sub-sitemap refs is found, returns the refs
- * directly instead of auto-following — the caller decides which to drill into.
+ * Sitemap-index children are fetched in parallel and merged, so callers
+ * always receive one flat page list — never raw sitemap references.
  */
 export async function discoverSitemapUrls(siteUrl: string): Promise<SitemapDiscoveryResult> {
   let origin: string
   try {
     origin = new URL(siteUrl).origin
   } catch {
-    return { urls: [], sitemapRefs: [], source: 'none' }
+    return { urls: [], source: 'none' }
   }
 
   // Step 1: Try robots.txt for Sitemap: directives
@@ -54,48 +52,38 @@ export async function discoverSitemapUrls(siteUrl: string): Promise<SitemapDisco
 
     const { urls, sitemapRefs } = parseSitemapXml(xml)
     for (const url of urls) allUrls.add(url)
-
-    // Return sub-sitemap refs to the caller instead of auto-following
     for (const ref of sitemapRefs) allSitemapRefs.add(ref)
 
     // For fallback candidates, stop at the first working sitemap
     if (useFallbacks) break
   }
 
-  if (allUrls.size === 0 && allSitemapRefs.size === 0) {
-    return { urls: [], sitemapRefs: [], source: 'none' }
+  if (allSitemapRefs.size > 0) {
+    for (const url of await followSitemapRefs([...allSitemapRefs])) allUrls.add(url)
+  }
+
+  if (allUrls.size === 0) {
+    return { urls: [], source: 'none' }
   }
 
   return {
     urls: [...allUrls].slice(0, MAX_URLS),
-    sitemapRefs: [...allSitemapRefs],
     source: 'sitemap',
   }
 }
 
-/**
- * Fetch and parse a single sitemap URL, returning its content URLs.
- * If the sitemap itself is an index, follows sub-refs one level deep.
- */
-export async function fetchSingleSitemap(sitemapUrl: string): Promise<string[]> {
-  const xml = await fetchXml(sitemapUrl)
-  if (!xml) return []
+/** Fetch sitemap-index children in parallel and merge their content URLs; failed children are skipped. */
+async function followSitemapRefs(refs: string[]): Promise<string[]> {
+  const toFollow = refs.slice(0, MAX_SUB_SITEMAPS)
+  const results = await Promise.allSettled(toFollow.map((ref) => fetchXml(ref)))
 
-  const { urls, sitemapRefs } = parseSitemapXml(xml)
-  const allUrls = new Set(urls)
-
-  // Follow sub-refs one level deep (handles nested sitemap indexes)
-  if (sitemapRefs.length > 0) {
-    const toFollow = sitemapRefs.slice(0, MAX_SUB_SITEMAPS)
-    const subResults = await Promise.allSettled(toFollow.map((ref) => fetchXml(ref)))
-    for (const result of subResults) {
-      if (result.status !== 'fulfilled' || !result.value) continue
-      const sub = parseSitemapXml(result.value)
-      for (const url of sub.urls) allUrls.add(url)
-    }
+  const urls = new Set<string>()
+  for (const result of results) {
+    if (result.status !== 'fulfilled' || !result.value) continue
+    const sub = parseSitemapXml(result.value)
+    for (const url of sub.urls) urls.add(url)
   }
-
-  return [...allUrls].slice(0, MAX_URLS)
+  return [...urls].slice(0, MAX_URLS)
 }
 
 /**

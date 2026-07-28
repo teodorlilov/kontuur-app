@@ -4,11 +4,13 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { toast } from '@/components/ui/toast'
 import { createSource } from '@/features/sources/actions/source-actions'
+import { WHOLE_SITE_PAGE_CAP } from '@/features/sources/constants'
 
 interface WebsiteConfirmStepProps {
   clientId: string
   websiteUrl: string
   selectedPages: string[]
+  discoveredPages: string[]
   onSaved: () => void
   onSourceCreated?: (id: string) => void
   onBack: () => void
@@ -18,11 +20,17 @@ export function WebsiteConfirmStep({
   clientId,
   websiteUrl,
   selectedPages,
+  discoveredPages,
   onSaved,
   onSourceCreated,
   onBack,
 }: WebsiteConfirmStepProps) {
   const [saving, setSaving] = useState(false)
+
+  // "Whole site" persists the discovered list (capped) so research samples
+  // across the site — an empty selection would fetch only the homepage.
+  const pagesToSave =
+    selectedPages.length > 0 ? selectedPages : discoveredPages.slice(0, WHOLE_SITE_PAGE_CAP)
 
   async function handleSave() {
     setSaving(true)
@@ -31,7 +39,7 @@ export function WebsiteConfirmStep({
         type: 'website',
         label: new URL(websiteUrl).hostname,
         url: websiteUrl,
-        selectedPages: selectedPages.length > 0 ? selectedPages : undefined,
+        selectedPages: pagesToSave.length > 0 ? pagesToSave : undefined,
       })
       if (!result.ok) {
         toast.error(result.error)
@@ -57,7 +65,7 @@ export function WebsiteConfirmStep({
   return (
     <div className="space-y-5">
       <div>
-        <h3 className="text-lg font-medium text-gray-900">Confirm website source</h3>
+        <h3 className="text-lg font-medium text-gray-900">Your website</h3>
         <p className="text-sm text-gray-500 mt-1">Review your selection before saving.</p>
       </div>
 
@@ -70,7 +78,11 @@ export function WebsiteConfirmStep({
         <div>
           <p className="text-xs text-gray-500 uppercase tracking-wide">Pages selected</p>
           <p className="text-sm font-medium text-gray-900 mt-0.5">
-            {selectedPages.length === 0 ? 'All pages (no filter)' : `${selectedPages.length} pages`}
+            {selectedPages.length > 0
+              ? `${selectedPages.length} pages`
+              : pagesToSave.length > 0
+                ? `Whole site (${pagesToSave.length} pages)`
+                : 'Homepage'}
           </p>
         </div>
       </div>

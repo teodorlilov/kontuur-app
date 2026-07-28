@@ -3,7 +3,6 @@ import {
   parseSitemapXml,
   parseSitemapFromRobotsTxt,
   discoverSitemapUrls,
-  fetchSingleSitemap,
 } from '../discover-sitemap'
 
 // Mock global fetch for discoverSitemapUrls tests
@@ -163,7 +162,6 @@ describe('discoverSitemapUrls', () => {
     const result = await discoverSitemapUrls('https://example.com')
     expect(result.source).toBe('sitemap')
     expect(result.urls).toEqual(['https://example.com/page-1', 'https://example.com/page-2'])
-    expect(result.sitemapRefs).toEqual([])
   })
 
   it('falls back to /sitemap.xml when robots.txt has no directives', async () => {
@@ -197,7 +195,7 @@ describe('discoverSitemapUrls', () => {
     expect(result.urls).toEqual(['https://example.com/property/a'])
   })
 
-  it('returns sub-sitemap refs instead of auto-following them', async () => {
+  it('follows sitemap-index children and merges their pages', async () => {
     mockFetch
       .mockImplementationOnce(() => mock404()) // robots.txt
       .mockImplementationOnce(() =>
@@ -206,16 +204,74 @@ describe('discoverSitemapUrls', () => {
         <sitemap><loc>https://example.com/sitemap-pages.xml</loc></sitemap>
       </sitemapindex>`)
       ) // /sitemap.xml (index)
+      .mockImplementationOnce(() =>
+        mockResponse(`<urlset>
+        <url><loc>https://example.com/post/1</loc></url>
+      </urlset>`)
+      ) // sitemap-posts.xml
+      .mockImplementationOnce(() =>
+        mockResponse(`<urlset>
+        <url><loc>https://example.com/about</loc></url>
+      </urlset>`)
+      ) // sitemap-pages.xml
 
     const result = await discoverSitemapUrls('https://example.com')
     expect(result.source).toBe('sitemap')
+    expect(result.urls).toContain('https://example.com/post/1')
+    expect(result.urls).toContain('https://example.com/about')
+    // robots.txt + index + 2 children
+    expect(mockFetch).toHaveBeenCalledTimes(4)
+  })
+
+  it('follows at most 15 index children', async () => {
+    const refs = Array.from(
+      { length: 18 },
+      (_, i) => `<sitemap><loc>https://example.com/sub-${i}.xml</loc></sitemap>`
+    ).join('')
+    mockFetch
+      .mockImplementationOnce(() => mock404()) // robots.txt
+      .mockImplementationOnce(() => mockResponse(`<sitemapindex>${refs}</sitemapindex>`))
+      .mockImplementation(() =>
+        mockResponse(`<urlset><url><loc>https://example.com/a</loc></url></urlset>`)
+      )
+
+    await discoverSitemapUrls('https://example.com')
+    // robots.txt + index + 15 children (18 refs capped)
+    expect(mockFetch).toHaveBeenCalledTimes(17)
+  })
+
+  it('tolerates failing index children and merges the rest', async () => {
+    mockFetch
+      .mockImplementationOnce(() => mock404()) // robots.txt
+      .mockImplementationOnce(() =>
+        mockResponse(`<sitemapindex>
+        <sitemap><loc>https://example.com/broken.xml</loc></sitemap>
+        <sitemap><loc>https://example.com/ok.xml</loc></sitemap>
+      </sitemapindex>`)
+      )
+      .mockImplementationOnce(() => Promise.reject(new Error('Network error'))) // broken.xml
+      .mockImplementationOnce(() =>
+        mockResponse(`<urlset><url><loc>https://example.com/works</loc></url></urlset>`)
+      ) // ok.xml
+
+    const result = await discoverSitemapUrls('https://example.com')
+    expect(result.source).toBe('sitemap')
+    expect(result.urls).toEqual(['https://example.com/works'])
+  })
+
+  it('returns none when an index has only unreachable children', async () => {
+    mockFetch
+      .mockImplementationOnce(() => mock404()) // robots.txt
+      .mockImplementationOnce(() =>
+        mockResponse(`<sitemapindex>
+        <sitemap><loc>https://example.com/gone.xml</loc></sitemap>
+      </sitemapindex>`)
+      )
+      .mockImplementationOnce(() => mock404()) // gone.xml
+
+    const result = await discoverSitemapUrls('https://example.com')
+    expect(result.source).toBe('none')
     expect(result.urls).toEqual([])
-    expect(result.sitemapRefs).toEqual([
-      'https://example.com/sitemap-posts.xml',
-      'https://example.com/sitemap-pages.xml',
-    ])
-    // Should NOT have followed sub-sitemaps — only robots.txt + sitemap.xml
-    expect(mockFetch).toHaveBeenCalledTimes(2)
   })
 
   it('returns none when no sitemap found anywhere', async () => {
@@ -224,7 +280,6 @@ describe('discoverSitemapUrls', () => {
     const result = await discoverSitemapUrls('https://example.com')
     expect(result.source).toBe('none')
     expect(result.urls).toEqual([])
-    expect(result.sitemapRefs).toEqual([])
     // robots.txt + 3 fallback paths
     expect(mockFetch).toHaveBeenCalledTimes(4)
   })
@@ -235,14 +290,12 @@ describe('discoverSitemapUrls', () => {
     const result = await discoverSitemapUrls('https://example.com')
     expect(result.source).toBe('none')
     expect(result.urls).toEqual([])
-    expect(result.sitemapRefs).toEqual([])
   })
 
   it('handles invalid siteUrl gracefully', async () => {
     const result = await discoverSitemapUrls('not-a-url')
     expect(result.source).toBe('none')
     expect(result.urls).toEqual([])
-    expect(result.sitemapRefs).toEqual([])
   })
 
   it('processes all sitemaps from robots.txt (not just first)', async () => {
@@ -268,7 +321,7 @@ describe('discoverSitemapUrls', () => {
     expect(result.urls).toContain('https://example.com/b')
   })
 
-  it('collects sub-sitemap refs across multiple robots.txt sitemaps', async () => {
+  it('merges index children collected across multiple robots.txt sitemaps', async () => {
     mockFetch
       .mockImplementationOnce(() =>
         mockResponse(
@@ -285,78 +338,21 @@ describe('discoverSitemapUrls', () => {
         <sitemap><loc>https://example.com/pages.xml</loc></sitemap>
       </sitemapindex>`)
       )
+      .mockImplementationOnce(() =>
+        mockResponse(`<urlset><url><loc>https://example.com/post/1</loc></url></urlset>`)
+      ) // posts.xml
+      .mockImplementationOnce(() =>
+        mockResponse(`<urlset><url><loc>https://example.com/about</loc></url></urlset>`)
+      ) // pages.xml
 
     const result = await discoverSitemapUrls('https://example.com')
-    expect(result.sitemapRefs).toContain('https://example.com/posts.xml')
-    expect(result.sitemapRefs).toContain('https://example.com/pages.xml')
-    expect(result.urls).toEqual([])
-  })
-})
-
-describe('fetchSingleSitemap', () => {
-  function mockResponse(body: string, ok = true) {
-    return Promise.resolve({
-      ok,
-      text: () => Promise.resolve(body),
-    })
-  }
-
-  function mock404() {
-    return Promise.resolve({ ok: false, text: () => Promise.resolve('') })
-  }
-
-  it('returns content URLs from a flat sitemap', async () => {
-    mockFetch.mockImplementationOnce(() =>
-      mockResponse(`<urlset>
-      <url><loc>https://example.com/post/1</loc></url>
-      <url><loc>https://example.com/post/2</loc></url>
-    </urlset>`)
-    )
-
-    const urls = await fetchSingleSitemap('https://example.com/post-sitemap.xml')
-    expect(urls).toEqual(['https://example.com/post/1', 'https://example.com/post/2'])
+    expect(result.urls).toContain('https://example.com/post/1')
+    expect(result.urls).toContain('https://example.com/about')
   })
 
-  it('follows sub-refs one level deep', async () => {
+  it('deduplicates URLs merged from index children', async () => {
     mockFetch
-      .mockImplementationOnce(() =>
-        mockResponse(`<sitemapindex>
-        <sitemap><loc>https://example.com/sub1.xml</loc></sitemap>
-        <sitemap><loc>https://example.com/sub2.xml</loc></sitemap>
-      </sitemapindex>`)
-      )
-      .mockImplementationOnce(() =>
-        mockResponse(`<urlset>
-        <url><loc>https://example.com/a</loc></url>
-      </urlset>`)
-      )
-      .mockImplementationOnce(() =>
-        mockResponse(`<urlset>
-        <url><loc>https://example.com/b</loc></url>
-      </urlset>`)
-      )
-
-    const urls = await fetchSingleSitemap('https://example.com/sitemap.xml')
-    expect(urls).toContain('https://example.com/a')
-    expect(urls).toContain('https://example.com/b')
-  })
-
-  it('returns empty array when sitemap is unreachable', async () => {
-    mockFetch.mockImplementationOnce(() => mock404())
-
-    const urls = await fetchSingleSitemap('https://example.com/missing.xml')
-    expect(urls).toEqual([])
-  })
-
-  it('returns empty array on fetch error', async () => {
-    mockFetch.mockImplementationOnce(() => Promise.reject(new Error('Network error')))
-
-    const urls = await fetchSingleSitemap('https://example.com/broken.xml')
-    expect(urls).toEqual([])
-  })
-
-  it('deduplicates URLs from sub-sitemaps', async () => {
-    mockFetch
+      .mockImplementationOnce(() => mock404()) // robots.txt
       .mockImplementationOnce(() =>
         mockResponse(`<sitemapindex>
         <sitemap><loc>https://example.com/s1.xml</loc></sitemap>
@@ -376,10 +372,10 @@ describe('fetchSingleSitemap', () => {
       </urlset>`)
       )
 
-    const urls = await fetchSingleSitemap('https://example.com/sitemap.xml')
-    expect(urls).toHaveLength(3)
-    expect(urls).toContain('https://example.com/shared')
-    expect(urls).toContain('https://example.com/unique-1')
-    expect(urls).toContain('https://example.com/unique-2')
+    const result = await discoverSitemapUrls('https://example.com')
+    expect(result.urls).toHaveLength(3)
+    expect(result.urls).toContain('https://example.com/shared')
+    expect(result.urls).toContain('https://example.com/unique-1')
+    expect(result.urls).toContain('https://example.com/unique-2')
   })
 })
