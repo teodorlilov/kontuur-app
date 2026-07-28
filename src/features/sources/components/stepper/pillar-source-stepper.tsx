@@ -2,54 +2,66 @@
 
 import { useState, useMemo, useCallback } from 'react'
 import { Modal } from '@/components/ui/modal'
-import type { WeightedPillar } from '@/lib/clients/content-pillars'
-import type { StepperState, StepperPhase, StepperSummary } from '@/features/sources/types'
+import type {
+  StepperState,
+  StepperPhase,
+  StepperSummary,
+  FetchStatus,
+} from '@/features/sources/types'
+import type { SourceSuggestion } from '@/types/api'
 import { buildStepSequence } from './build-step-sequence'
-import { WebsiteUrlStep } from './website-url-step'
+import { ScanStep } from './scan-step'
 import { WebsitePagesStep } from './website-pages-step'
-import { WebsiteConfirmStep } from './website-confirm-step'
 import { RssStep } from './rss-step'
 import { ExtrasStep } from './extras-step'
-import { ReviewStep } from './review-step'
+import { SummaryStep } from './summary-step'
 
 interface PillarSourceStepperProps {
   open: boolean
   clientId: string
-  clientName: string
-  niche: string
   websiteUrl: string
-  pillars: WeightedPillar[]
+  prescanStatus: FetchStatus
+  prescannedPages: string[]
+  onScanRequested: (url: string) => void
+  feedSuggestions: SourceSuggestion[]
+  feedStatus: FetchStatus
+  onRetryFeedSuggestions: () => void
   onFinished: (summary: StepperSummary) => void
   onDismiss: () => void
 }
 
 function stepTitle(phase: StepperPhase): string {
   switch (phase.type) {
-    case 'website-url':
+    case 'scan':
     case 'website-pages':
-    case 'website-confirm':
-      return 'Website setup'
+      return 'Your website'
     case 'rss':
       return 'News & blogs'
     case 'extras':
       return 'Extras'
-    case 'review':
-      return 'Review'
+    case 'summary':
+      return 'Summary'
   }
 }
 
 export function PillarSourceStepper({
   open,
   clientId,
-  clientName,
-  niche,
   websiteUrl: initialWebsiteUrl,
+  prescanStatus,
+  prescannedPages,
+  onScanRequested,
+  feedSuggestions,
+  feedStatus,
+  onRetryFeedSuggestions,
   onFinished,
   onDismiss,
 }: PillarSourceStepperProps) {
+  // Seed from the pre-scan that ran during the interview so the scan step
+  // never paints when results are already in hand
   const [state, setState] = useState<StepperState>(() => ({
     websiteUrl: initialWebsiteUrl,
-    discoveredPages: [],
+    discoveredPages: prescanStatus === 'done' ? prescannedPages : [],
     selectedPages: [],
     selectedRssFeeds: [],
     uploadedDocumentIds: [],
@@ -59,11 +71,14 @@ export function PillarSourceStepper({
     webSearchExcludeDomains: [],
   }))
   const [websiteSaved, setWebsiteSaved] = useState(false)
+  const [websiteSkipped, setWebsiteSkipped] = useState(false)
 
-  const [currentIndex, setCurrentIndex] = useState(0)
+  const [currentIndex, setCurrentIndex] = useState(() =>
+    prescanStatus === 'done' && initialWebsiteUrl.trim() ? 1 : 0
+  )
 
   const sequence = useMemo(() => buildStepSequence(), [])
-  const currentPhase = sequence[currentIndex] ?? { type: 'review' as const }
+  const currentPhase = sequence[currentIndex] ?? { type: 'summary' as const }
 
   const goNext = useCallback(() => {
     setCurrentIndex((i) => Math.min(i + 1, sequence.length - 1))
@@ -74,12 +89,9 @@ export function PillarSourceStepper({
   }, [])
 
   function handleSkipWebsite() {
+    setWebsiteSkipped(true)
     const nextNonWebsite = sequence.findIndex(
-      (s, i) =>
-        i > currentIndex &&
-        s.type !== 'website-url' &&
-        s.type !== 'website-pages' &&
-        s.type !== 'website-confirm'
+      (s, i) => i > currentIndex && s.type !== 'scan' && s.type !== 'website-pages'
     )
     if (nextNonWebsite !== -1) setCurrentIndex(nextNonWebsite)
     else goNext()
@@ -100,6 +112,7 @@ export function PillarSourceStepper({
   }
 
   function handleWebsiteScanned(url: string, pages: string[]) {
+    setWebsiteSkipped(false)
     setState((prev) => ({
       ...prev,
       websiteUrl: url,
@@ -144,10 +157,14 @@ export function PillarSourceStepper({
 
   function renderStep() {
     switch (currentPhase.type) {
-      case 'website-url':
+      case 'scan':
         return (
-          <WebsiteUrlStep
+          <ScanStep
             initialUrl={state.websiteUrl}
+            prescanStatus={prescanStatus}
+            prescannedPages={prescannedPages}
+            alreadyScanned={state.discoveredPages.length > 0}
+            onScanRequested={onScanRequested}
             onScanned={handleWebsiteScanned}
             onSkip={handleSkipWebsite}
           />
@@ -165,28 +182,13 @@ export function PillarSourceStepper({
           />
         )
 
-      case 'website-confirm':
-        return (
-          <WebsiteConfirmStep
-            clientId={clientId}
-            websiteUrl={state.websiteUrl}
-            selectedPages={state.selectedPages}
-            discoveredPages={state.discoveredPages}
-            onSaved={() => {
-              setWebsiteSaved(true)
-              goNext()
-            }}
-            onSourceCreated={handleSourceCreated}
-            onBack={goBack}
-          />
-        )
-
       case 'rss':
         return (
           <RssStep
             clientId={clientId}
-            niche={niche}
-            clientName={clientName}
+            suggestions={feedSuggestions}
+            suggestionsStatus={feedStatus}
+            onRetrySuggestions={onRetryFeedSuggestions}
             onSaved={goNext}
             onSourceCreated={handleSourceCreated}
             onRssFeedAdded={handleRssFeedAdded}
@@ -209,19 +211,18 @@ export function PillarSourceStepper({
           />
         )
 
-      case 'review':
+      case 'summary':
         return (
-          <ReviewStep
+          <SummaryStep
+            clientId={clientId}
             state={state}
-            onSave={() =>
-              onFinished({
-                hasWebsite: websiteSaved,
-                pageCount: state.selectedPages.length,
-                feedCount: state.selectedRssFeeds.length,
-                documentCount: state.uploadedDocumentIds.length,
-                webSearchEnabled: state.webSearchEnabled,
-              })
-            }
+            websiteSkipped={websiteSkipped}
+            websiteAlreadySaved={websiteSaved}
+            onWebsiteSaved={(sourceId) => {
+              setWebsiteSaved(true)
+              handleSourceCreated(sourceId)
+            }}
+            onFinished={onFinished}
             onBack={goBack}
           />
         )
@@ -241,8 +242,8 @@ export function PillarSourceStepper({
       <div className="mb-5">
         <div className="w-full bg-gray-100 rounded-full h-1.5">
           <div
-            className="bg-brand-purple h-1.5 rounded-full transition-all duration-300"
-            style={{ width: `${progressPct}%` }}
+            className="h-1.5 rounded-full transition-all duration-300"
+            style={{ width: `${progressPct}%`, background: 'var(--color-brand)' }}
           />
         </div>
         <p className="text-xs text-gray-400 mt-1.5 text-right">

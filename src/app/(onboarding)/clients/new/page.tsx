@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from '@/components/ui/toast'
 import { serializePillars } from '@/lib/clients/content-pillars'
@@ -12,7 +12,8 @@ import { QUESTIONS, getDetectedAnswer } from '@/features/onboarding/lib/question
 import { buildDefaultIdentity } from '@/lib/visual/identity'
 import { useExtractionStatus } from '@/features/visual-identity/hooks/use-extraction-status'
 import { PillarSourceStepper } from '@/features/sources/components/stepper/pillar-source-stepper'
-import type { StepperSummary } from '@/features/sources/types'
+import type { StepperSummary, FetchStatus } from '@/features/sources/types'
+import type { SourceSuggestion } from '@/types/api'
 import { OnboardingShell } from '@/features/onboarding/components/onboarding-shell'
 import { OnboardingSuccess } from '@/features/onboarding/components/onboarding-success'
 import { StepEntry } from '@/features/onboarding/components/step-entry'
@@ -64,8 +65,14 @@ export default function NewClientPage() {
   const [saving, setSaving] = useState(false)
   const [showStepper, setShowStepper] = useState(false)
   const [savedClientId, setSavedClientId] = useState<string | null>(null)
-  const [savedPillars, setSavedPillars] = useState<WeightedPillar[]>([])
   const [stepperSummary, setStepperSummary] = useState<StepperSummary | null>(null)
+
+  // Background source discovery — runs during the interview so the stepper
+  // opens with results in hand (mirrors the visual-identity extraction pattern)
+  const [prescanStatus, setPrescanStatus] = useState<FetchStatus>('idle')
+  const [prescannedPages, setPrescannedPages] = useState<string[]>([])
+  const [feedStatus, setFeedStatus] = useState<FetchStatus>('idle')
+  const [feedSuggestions, setFeedSuggestions] = useState<SourceSuggestion[]>([])
 
   // Schedule state
   const [scheduleFreqType, setScheduleFreqType] = useState('per_week')
@@ -78,6 +85,51 @@ export default function NewClientPage() {
     if (confirmed) router.push('/clients')
   }
 
+  /** Scan the website for pages in the background; the stepper reflects the status. */
+  async function runSourcePrescan(url: string) {
+    const trimmed = url.trim()
+    if (!trimmed) return
+    setPrescanStatus('running')
+    setPrescannedPages([])
+    try {
+      const res = await fetch('/api/sources/discover', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: trimmed }),
+      })
+      if (!res.ok) throw new Error('scan failed')
+      const data = (await res.json()) as { pages?: string[] }
+      setPrescannedPages(data.pages ?? [])
+      setPrescanStatus('done')
+    } catch {
+      setPrescanStatus('failed')
+    }
+  }
+
+  /** Prefetch feed suggestions once the profile (niche + pillars) is known. */
+  async function runFeedPrefetch(source: Omit<OnboardProfile, 'contact_email'>, name: string) {
+    setFeedStatus('running')
+    try {
+      const res = await fetch('/api/ai/suggest-sources', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          niche: source.niche,
+          clientName: name || undefined,
+          pillars: source.content_pillars.map((p) => p.pillar),
+          targetAudience: source.target_audience.join(', '),
+          language: source.language,
+        }),
+      })
+      if (!res.ok) throw new Error('prefetch failed')
+      const data = (await res.json()) as { suggestions?: SourceSuggestion[] }
+      setFeedSuggestions(data.suggestions ?? [])
+      setFeedStatus('done')
+    } catch {
+      setFeedStatus('failed')
+    }
+  }
+
   async function handleAnalyzeUrl() {
     if (!websiteUrl.trim() && !instagramHandle.trim()) {
       toast.error('Please enter a website URL or Instagram handle')
@@ -86,6 +138,7 @@ export default function NewClientPage() {
 
     setStep('loading')
     setAnalysisComplete(false)
+    if (websiteUrl.trim()) void runSourcePrescan(websiteUrl)
 
     try {
       const res = await fetch('/api/ai/analyze-url', {
@@ -146,6 +199,7 @@ export default function NewClientPage() {
   }
 
   function handleSkipToInterview() {
+    if (websiteUrl.trim() && prescanStatus === 'idle') void runSourcePrescan(websiteUrl)
     setStep('interview')
   }
 
@@ -205,6 +259,7 @@ export default function NewClientPage() {
       const data = (await res.json()) as { profile: Omit<OnboardProfile, 'contact_email'> }
       setProfile({ ...data.profile, contact_email: '' })
       if (answersMap.q0) setClientName(answersMap.q0)
+      void runFeedPrefetch(data.profile, answersMap.q0 ?? clientName)
       setStep('review')
     } catch {
       toast.error('Failed to generate profile. Please try again.')
@@ -282,7 +337,6 @@ export default function NewClientPage() {
       toast.success('Client saved!')
       setSaving(false)
       setSavedClientId(data.client_id)
-      setSavedPillars(pillarsWithIds)
       setShowStepper(true)
     } catch {
       toast.error('Failed to save client. Please try again.')
@@ -305,6 +359,10 @@ export default function NewClientPage() {
     setVisualIdentity(null)
     setIdentityEdited(false)
     setExtractionStarted(false)
+    setPrescanStatus('idle')
+    setPrescannedPages([])
+    setFeedStatus('idle')
+    setFeedSuggestions([])
   }
 
   const currentQuestion = QUESTIONS[currentQ]
@@ -377,10 +435,18 @@ export default function NewClientPage() {
         <PillarSourceStepper
           open={showStepper}
           clientId={savedClientId}
-          clientName={clientName}
-          niche={profile.niche}
           websiteUrl={websiteUrl}
-          pillars={savedPillars}
+          prescanStatus={prescanStatus}
+          prescannedPages={prescannedPages}
+          onScanRequested={(url) => {
+            setWebsiteUrl(url)
+            void runSourcePrescan(url)
+          }}
+          feedSuggestions={feedSuggestions}
+          feedStatus={feedStatus}
+          onRetryFeedSuggestions={() => {
+            if (profile) void runFeedPrefetch(profile, clientName)
+          }}
           onFinished={(summary) => {
             setShowStepper(false)
             setStepperSummary(summary)

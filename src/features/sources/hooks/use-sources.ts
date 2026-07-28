@@ -32,6 +32,7 @@ interface UseSourcesOptions {
   clientId: string
   clientName: string
   niche: string
+  pillarNames?: string[]
   initialSources: ClientSource[]
   initialSourceStrategy?: SourceStrategy
 }
@@ -40,6 +41,7 @@ export function useSources({
   clientId,
   clientName,
   niche,
+  pillarNames,
   initialSources,
   initialSourceStrategy,
 }: UseSourcesOptions) {
@@ -70,8 +72,9 @@ export function useSources({
       const res = await fetch('/api/ai/suggest-sources', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ niche, clientName }),
+        body: JSON.stringify({ niche, clientName, pillars: pillarNames }),
       })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const data = (await res.json()) as { suggestions: SourceSuggestion[] }
       setSuggestions(data.suggestions ?? [])
     } catch {

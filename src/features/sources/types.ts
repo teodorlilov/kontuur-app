@@ -10,6 +10,9 @@ export interface StepperState {
   webSearchExcludeDomains: string[]
 }
 
+/** Lifecycle of a parent-owned background fetch (website pre-scan, feed prefetch). */
+export type FetchStatus = 'idle' | 'running' | 'done' | 'failed'
+
 /** Counts shown on the onboarding success overlay after the stepper finishes. */
 export interface StepperSummary {
   hasWebsite: boolean
@@ -20,9 +23,8 @@ export interface StepperSummary {
 }
 
 export type StepperPhase =
-  | { type: 'website-url' }
+  | { type: 'scan' }
   | { type: 'website-pages' }
-  | { type: 'website-confirm' }
   | { type: 'rss' }
   | { type: 'extras' }
-  | { type: 'review' }
+  | { type: 'summary' }

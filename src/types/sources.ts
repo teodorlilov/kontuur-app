@@ -19,13 +19,14 @@ export interface SourceSuggestion {
   url: string
   label: string
   reason: string
-  valid: boolean
-  error?: string
 }
 
 export interface SuggestSourcesRequest {
   niche: string
   clientName?: string
+  pillars?: string[]
+  targetAudience?: string
+  language?: string
 }
 
 export interface SuggestSourcesResponse {

@@ -15,7 +15,7 @@ interface SourceRowProps {
   onToggle: () => void
   onEdit: (updates: { label?: string; url?: string; config?: Record<string, unknown> }) => void
   onDelete: () => void
-  onScanPages?: (url: string, sourceId: string, currentSelected: string[]) => void
+  onScanPages?: (url: string, sourceId: string) => void
   pillars?: WeightedPillar[]
   onPillarIdsChange?: (pillarIds: string[]) => void
 }
@@ -105,7 +105,7 @@ export function SourceRow({
                 <Button
                   variant="secondary"
                   size="sm"
-                  onClick={() => onScanPages(editUrl || source.url, source.id, selectedPages)}
+                  onClick={() => onScanPages(editUrl || source.url, source.id)}
                 >
                   {selectedPages.length > 0 ? 'Rescan pages' : 'Scan for pages'}
                 </Button>

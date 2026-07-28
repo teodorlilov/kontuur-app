@@ -2,15 +2,14 @@ import type { StepperPhase } from '@/features/sources/types'
 
 /**
  * Build the ordered step sequence.
- * Always includes all source type steps, then the final review.
+ * Scan and pages cover the website; the summary persists it and finishes.
  */
 export function buildStepSequence(): StepperPhase[] {
   return [
-    { type: 'website-url' },
+    { type: 'scan' },
     { type: 'website-pages' },
-    { type: 'website-confirm' },
     { type: 'rss' },
     { type: 'extras' },
-    { type: 'review' },
+    { type: 'summary' },
   ]
 }

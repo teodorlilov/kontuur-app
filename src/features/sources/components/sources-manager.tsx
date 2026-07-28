@@ -7,7 +7,6 @@ import { PagePickerModal } from '@/features/sources/components/page-picker-modal
 import { StrategyToggle } from '@/features/sources/components/strategy-toggle'
 import { SourceRow } from '@/features/sources/components/source-row'
 import { ManualAddInModal } from '@/features/sources/components/manual-add-modal'
-import { cn } from '@/utils/cn'
 import { formatRelativeTime } from '@/utils/format'
 import { useSources } from '@/features/sources/hooks/use-sources'
 import { WHOLE_SITE_PAGE_CAP } from '@/features/sources/constants'
@@ -60,6 +59,7 @@ export function SourcesManager({
     clientId,
     clientName,
     niche,
+    pillarNames: pillars.map((p) => p.pillar),
     initialSources,
     initialSourceStrategy,
   })
@@ -165,7 +165,7 @@ export function SourcesManager({
     sourcesOfType: ClientSource[],
     emptyMessage: string,
     sourceType: 'rss' | 'website' | 'file',
-    onScanPages?: (url: string, sourceId: string, selected: string[]) => void
+    onScanPages?: (url: string, sourceId: string) => void
   ) {
     if (sourcesOfType.length === 0) {
       return adding === sourceType ? null : <p className="text-sm text-gray-400 py-4">{emptyMessage}</p>
@@ -479,7 +479,7 @@ export function SourcesManager({
           websiteSources,
           "No websites yet. Add your client's website URL to use their content as research material.",
           'website',
-          (url, sourceId, currentSelected) => {
+          (url, sourceId) => {
             void handleDiscoverPages(url, sourceId)
           }
         )}
@@ -566,14 +566,10 @@ export function SourcesManager({
             setAddSelectedPages(pagesToSave)
           } else if (pagePickerFor) {
             const source = sources.find((s) => s.id === pagePickerFor)
-            const { selected_pages: _cleared, ...restConfig } =
-              (source?.config as Record<string, unknown> | null) ?? {}
-            void handleEditSource(pagePickerFor, {
-              config:
-                pagesToSave.length > 0
-                  ? { ...restConfig, selected_pages: pagesToSave }
-                  : restConfig,
-            })
+            const config = { ...((source?.config as Record<string, unknown> | null) ?? {}) }
+            delete config.selected_pages
+            if (pagesToSave.length > 0) config.selected_pages = pagesToSave
+            void handleEditSource(pagePickerFor, { config })
           }
           setPagePickerFor(null)
         }}
@@ -602,38 +598,24 @@ export function SourcesManager({
             {suggestions.map((s) => (
               <div
                 key={s.url}
-                className={cn(
-                  'p-3 rounded-lg border flex items-start justify-between gap-3',
-                  s.valid ? 'border-gray-200' : 'border-gray-100 bg-gray-50 opacity-60'
-                )}
+                className="p-3 rounded-lg border border-gray-200 flex items-start justify-between gap-3"
               >
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <p className="text-sm font-medium text-gray-900 truncate">{s.label}</p>
-                    {s.valid ? (
-                      <span className="text-xs text-green-600 shrink-0">✓ Valid</span>
-                    ) : (
-                      <span className="text-xs text-gray-400 shrink-0" title={s.error}>
-                        ✗ Unreachable
-                      </span>
-                    )}
-                  </div>
+                  <p className="text-sm font-medium text-gray-900 truncate">{s.label}</p>
                   <p className="text-xs text-gray-500 truncate mt-0.5">{s.url}</p>
                   <p className="text-xs text-gray-400 mt-1">{s.reason}</p>
                 </div>
-                {s.valid && (
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    loading={addingFromSuggestion === s.url}
-                    onClick={() => {
-                      void handleAddFromSuggestion(s)
-                    }}
-                    className="shrink-0"
-                  >
-                    Add
-                  </Button>
-                )}
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  loading={addingFromSuggestion === s.url}
+                  onClick={() => {
+                    void handleAddFromSuggestion(s)
+                  }}
+                  className="shrink-0"
+                >
+                  Add
+                </Button>
               </div>
             ))}
           </div>
