@@ -129,7 +129,12 @@ export function ClientSettingsForm({
         `${connected === 'instagram' ? 'Instagram' : 'Facebook'} account connected successfully`
       )
     } else if (error) {
-      toast.error('Failed to connect account. Please try again.')
+      // Callback puts the real failure reason in meta_error_detail — show it,
+      // a generic message makes OAuth failures undebuggable
+      const detail = searchParams.get('meta_error_detail')
+      toast.error(
+        detail ? `Failed to connect account: ${detail.slice(0, 300)}` : 'Failed to connect account. Please try again.'
+      )
     }
   }, [searchParams, clientId])
 
