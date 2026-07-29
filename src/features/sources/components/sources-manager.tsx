@@ -14,6 +14,7 @@ import { pillarHasSources, getSourcePillarIds } from '@/lib/clients/content-pill
 import { toast } from '@/components/ui/toast'
 import type { ClientSource, SourceStrategy } from '@/types/api'
 import type { WeightedPillar } from '@/lib/clients/content-pillars'
+import type { SourceUsageStats } from '@/lib/queries/db'
 
 interface SourcesManagerProps {
   clientId: string
@@ -22,6 +23,7 @@ interface SourcesManagerProps {
   initialSources: ClientSource[]
   initialSourceStrategy?: SourceStrategy
   pillars: WeightedPillar[]
+  usageStats?: SourceUsageStats[]
 }
 
 interface AddForm {
@@ -37,6 +39,7 @@ export function SourcesManager({
   initialSources,
   initialSourceStrategy,
   pillars,
+  usageStats,
 }: SourcesManagerProps) {
   const {
     sources,
@@ -148,6 +151,8 @@ export function SourcesManager({
     )
   }
 
+  const usageBySourceId = new Map((usageStats ?? []).map((u) => [u.clientSourceId, u]))
+
   const rssSources = sources.filter((s) => s.type === 'rss')
   const websiteSources = sources.filter((s) => s.type === 'website')
   const fileSources = sources.filter((s) => s.type === 'file')
@@ -177,6 +182,7 @@ export function SourcesManager({
             key={source.id}
             source={source}
             statusBadge={getStatusBadge(source)}
+            usage={usageBySourceId.get(source.id)}
             pillars={pillars}
             onPillarIdsChange={(ids) => {
               void handleEditSource(source.id, { pillar_ids: ids })
@@ -303,6 +309,7 @@ export function SourcesManager({
           <SourceRow
             source={tavilySource}
             statusBadge={getStatusBadge(tavilySource)}
+            usage={usageBySourceId.get(tavilySource.id)}
             pillars={pillars}
             onPillarIdsChange={(ids) => {
               void handleEditSource(tavilySource.id, { pillar_ids: ids })

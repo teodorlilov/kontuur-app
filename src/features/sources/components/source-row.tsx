@@ -8,6 +8,7 @@ import { getPillarColor } from '@/components/ui/colors/pillar-colors'
 import { PillarAssignmentPopover } from './pillar-assignment-popover'
 import type { ClientSource } from '@/types/api'
 import type { WeightedPillar } from '@/lib/clients/content-pillars'
+import type { SourceUsageStats } from '@/lib/queries/db'
 
 interface SourceRowProps {
   source: ClientSource
@@ -18,6 +19,8 @@ interface SourceRowProps {
   onScanPages?: (url: string, sourceId: string) => void
   pillars?: WeightedPillar[]
   onPillarIdsChange?: (pillarIds: string[]) => void
+  /** Outcome telemetry — renders "Fueled N posts" when this source has history. */
+  usage?: SourceUsageStats
 }
 
 export function SourceRow({
@@ -29,6 +32,7 @@ export function SourceRow({
   onScanPages,
   pillars,
   onPillarIdsChange,
+  usage,
 }: SourceRowProps) {
   const [editing, setEditing] = useState(false)
   const [editLabel, setEditLabel] = useState(source.label)
@@ -177,7 +181,17 @@ export function SourceRow({
         {pillars && pillarNames.length === 0 && (
           <p className="text-[10px] text-gray-400 mt-0.5">All pillars</p>
         )}
-        <div className="mt-0.5">{statusBadge}</div>
+        <div className="mt-0.5 flex items-center gap-2">
+          {statusBadge}
+          {usage && usage.approvedCount + usage.discardedCount > 0 && (
+            <span
+              className="text-xs text-gray-500"
+              title={`${usage.approvedCount} approved · ${usage.discardedCount} discarded`}
+            >
+              · Fueled {usage.approvedCount} post{usage.approvedCount === 1 ? '' : 's'}
+            </span>
+          )}
+        </div>
       </div>
       {pillars && onPillarIdsChange && (
         <div className="shrink-0">

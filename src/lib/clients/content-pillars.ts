@@ -75,8 +75,18 @@ export function equalizeWeights(pillars: WeightedPillar[]): WeightedPillar[] {
  * Allocate N items proportionally by pillar weight.
  * Ensures at least 1 allocation for any pillar with weight > 0 when total allows.
  * Returns a Map<pillarName, count>.
+ *
+ * When `recentPillarCounts` is provided (counts of the client's recent posts
+ * per pillar), the marginal items go to the most UNDER-SERVED pillars instead
+ * of always the heaviest — so small batches rotate through pillars over time
+ * rather than permanently starving low-weight ones. Without it, behavior is
+ * identical to the memoryless largest-remainder allocation.
  */
-export function allocateByWeight(pillars: WeightedPillar[], total: number): Map<string, number> {
+export function allocateByWeight(
+  pillars: WeightedPillar[],
+  total: number,
+  recentPillarCounts?: Map<string, number>
+): Map<string, number> {
   const result = new Map<string, number>()
   if (pillars.length === 0 || total <= 0) return result
 
@@ -98,10 +108,22 @@ export function allocateByWeight(pillars: WeightedPillar[], total: number): Map<
   const floored = rawAllocs.map((a) => Math.floor(a.exact))
   let remaining = total - floored.reduce((s, v) => s + v, 0)
 
-  // Sort by fractional remainder (descending) to assign extras
-  const indices = rawAllocs
-    .map((a, i) => ({ i, frac: a.exact - floored[i]! }))
-    .sort((a, b) => b.frac - a.frac)
+  // Assign extras by history deficit when available (weight share of recent
+  // posts minus actual recent posts — most under-served first), otherwise by
+  // fractional remainder
+  const recentTotal = recentPillarCounts
+    ? [...recentPillarCounts.values()].reduce((s, v) => s + v, 0)
+    : 0
+  const rank =
+    recentPillarCounts && recentTotal > 0
+      ? pillars.map((p, i) => ({
+          i,
+          key:
+            (p.weight / totalWeight) * recentTotal - (recentPillarCounts.get(p.pillar) ?? 0),
+        }))
+      : rawAllocs.map((a, i) => ({ i, key: a.exact - floored[i]! }))
+
+  const indices = rank.sort((a, b) => b.key - a.key)
 
   for (const { i } of indices) {
     if (remaining <= 0) break

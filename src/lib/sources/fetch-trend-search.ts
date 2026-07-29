@@ -89,6 +89,8 @@ export interface TrendSearchResult {
   url: string
   score: number
   eligiblePillars?: string[]
+  /** The tavily client_sources row id — feeds the rank-stage approval boost. */
+  clientSourceId?: string
 }
 
 const TIME_RANGES = ['week', 'month', '3months'] as const

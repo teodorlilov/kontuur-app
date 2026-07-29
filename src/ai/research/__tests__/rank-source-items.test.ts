@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 vi.mock('@/utils/ai-client')
 
 import { callAnthropic } from '@/utils/__mocks__/ai-client'
-import { rankSourceItems, RANK_MIN_ITEMS, RANKED_RSS_CAP } from '../rank-source-items'
+import { rankSourceItems, computeSourceBoost, RANK_MIN_ITEMS, RANKED_RSS_CAP } from '../rank-source-items'
 import type { SourceContext } from '../types'
 import type { RssItem } from '@/lib/sources/fetch-rss'
 import type { TrendSearchResult } from '@/lib/sources/fetch-trend-search'
@@ -156,5 +156,46 @@ describe('rankSourceItems', () => {
 
   it('exposes a sane minimum-items constant', () => {
     expect(RANK_MIN_ITEMS).toBeGreaterThan(0)
+  })
+})
+
+describe('computeSourceBoost', () => {
+  it('returns 0 with no history', () => {
+    expect(computeSourceBoost(undefined)).toBe(0)
+    expect(computeSourceBoost({ clientSourceId: 's', approvedCount: 0, discardedCount: 0 })).toBe(0)
+  })
+
+  it('boosts approved sources and sinks discarded ones symmetrically', () => {
+    const approved = computeSourceBoost({ clientSourceId: 's', approvedCount: 3, discardedCount: 0 })
+    const discarded = computeSourceBoost({ clientSourceId: 's', approvedCount: 0, discardedCount: 3 })
+    expect(approved).toBeGreaterThan(0)
+    expect(discarded).toBe(-approved)
+  })
+
+  it('clamps at ±2 no matter how lopsided the history', () => {
+    expect(
+      computeSourceBoost({ clientSourceId: 's', approvedCount: 1000, discardedCount: 0 })
+    ).toBe(2)
+    expect(
+      computeSourceBoost({ clientSourceId: 's', approvedCount: 0, discardedCount: 1000 })
+    ).toBe(-2)
+  })
+
+  it('lifts a borderline item over the threshold when its source has approvals', async () => {
+    const context = makeContext(8, 0)
+    context.rssItems.forEach((item) => {
+      ;(item as { clientSourceId?: string }).clientSourceId = 'feed-1'
+    })
+    // All items score 3 (below threshold 4) — history boost must rescue them
+    mockRankings(Array.from({ length: 8 }, (_, i) => ({ index: i + 1, score: 3 })))
+
+    const boosted = await rankSourceItems(context, {
+      ...OPTS,
+      sourceStats: [{ clientSourceId: 'feed-1', approvedCount: 7, discardedCount: 0 }],
+    })
+    expect(boosted.rssItems.length).toBeGreaterThan(0)
+
+    const unboosted = await rankSourceItems(context, OPTS)
+    expect(unboosted).toBe(context) // all filtered -> passthrough guard
   })
 })

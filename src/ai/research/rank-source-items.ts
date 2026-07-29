@@ -2,10 +2,13 @@ import { callAnthropic, LIGHT_MODEL } from '@/utils/ai-client'
 import { extractToolInput } from '@/utils/ai'
 import type { WeightedPillar } from '@/lib/clients/content-pillars'
 import type { SourceContext } from './types'
+import type { SourceUsageStats } from '@/lib/queries/db'
 import type { RssItem } from '@/lib/sources/fetch-rss'
 import type { TrendSearchResult } from '@/lib/sources/fetch-trend-search'
 
 export const RANK_SCORE_THRESHOLD = 4
+/** Historical approval/discard boost is clamped to ± this many score points. */
+export const RANK_BOOST_CLAMP = 2
 export const RANK_PER_PILLAR_CAP = 4
 export const RANKED_RSS_CAP = 12
 export const RANKED_WEB_CAP = 8
@@ -18,6 +21,8 @@ export interface RankOptions {
   niche: string
   targetAudience?: string
   contentPillars: WeightedPillar[]
+  /** Per-source outcome history — sources that fueled approved posts get a bounded score boost. */
+  sourceStats?: SourceUsageStats[]
 }
 
 interface Ranking {
@@ -73,26 +78,47 @@ function toItemLine(index: number, title: string, snippet: string): string {
   return `${index}. ${title}: ${snippet.slice(0, SNIPPET_MAX_CHARS)}`
 }
 
-/** Score >= threshold, at most RANK_PER_PILLAR_CAP per bestPillar, then the global cap — original order breaks ties. */
-function selectTop<T>(
+/**
+ * Deterministic history boost: sources whose items get approved rank higher,
+ * heavily-discarded sources sink — bounded so history can never fully
+ * override the relevance judgment.
+ */
+export function computeSourceBoost(
+  stats: SourceUsageStats | undefined
+): number {
+  if (!stats) return 0
+  const raw = Math.log2(stats.approvedCount + 1) - Math.log2(stats.discardedCount + 1)
+  return Math.max(-RANK_BOOST_CLAMP, Math.min(RANK_BOOST_CLAMP, raw))
+}
+
+/** Score+boost >= threshold, at most RANK_PER_PILLAR_CAP per bestPillar, then the global cap — original order breaks ties. */
+function selectTop<T extends { clientSourceId?: string }>(
   items: T[],
   rankings: Map<number, Ranking>,
   offset: number,
-  globalCap: number
+  globalCap: number,
+  statsBySource: Map<string, SourceUsageStats>
 ): T[] {
   const scored = items
-    .map((item, i) => ({ item, ranking: rankings.get(offset + i + 1) }))
+    .map((item, i) => {
+      const ranking = rankings.get(offset + i + 1)
+      if (!ranking) return null
+      const boost = computeSourceBoost(
+        item.clientSourceId ? statsBySource.get(item.clientSourceId) : undefined
+      )
+      return { item, adjusted: ranking.score + boost, bestPillar: ranking.bestPillar }
+    })
     .filter(
-      (entry): entry is { item: T; ranking: Ranking } =>
-        entry.ranking !== undefined && entry.ranking.score >= RANK_SCORE_THRESHOLD
+      (entry): entry is { item: T; adjusted: number; bestPillar: string | null } =>
+        entry !== null && entry.adjusted >= RANK_SCORE_THRESHOLD
     )
-    .sort((a, b) => b.ranking.score - a.ranking.score)
+    .sort((a, b) => b.adjusted - a.adjusted)
 
   const perPillar = new Map<string, number>()
   const selected: T[] = []
-  for (const { item, ranking } of scored) {
+  for (const { item, bestPillar } of scored) {
     if (selected.length >= globalCap) break
-    const pillarKey = ranking.bestPillar ?? ''
+    const pillarKey = bestPillar ?? ''
     if (pillarKey) {
       const used = perPillar.get(pillarKey) ?? 0
       if (used >= RANK_PER_PILLAR_CAP) continue
@@ -141,8 +167,11 @@ export async function rankSourceItems(
       if (typeof ranking.index === 'number') byIndex.set(ranking.index, ranking)
     }
 
-    const rankedRss = selectTop(rssItems, byIndex, 0, RANKED_RSS_CAP)
-    const rankedWeb = selectTop(webItems, byIndex, rssItems.length, RANKED_WEB_CAP)
+    const statsBySource = new Map(
+      (opts.sourceStats ?? []).map((stat) => [stat.clientSourceId, stat])
+    )
+    const rankedRss = selectTop(rssItems, byIndex, 0, RANKED_RSS_CAP, statsBySource)
+    const rankedWeb = selectTop(webItems, byIndex, rssItems.length, RANKED_WEB_CAP, statsBySource)
 
     // Everything filtered = the ranker is wrong, not the sources — keep the run alive
     if (rankedRss.length + rankedWeb.length === 0) {

@@ -364,3 +364,90 @@ export async function fetchUsedSourceUrls(
     ?.map((r) => r.source_url)
     .filter((u): u is string => u !== null) ?? []
 }
+
+// ---------- source usage stats (outcome telemetry) ----------
+
+export interface SourceUsageStats {
+  clientSourceId: string
+  approvedCount: number
+  discardedCount: number
+}
+
+/**
+ * Per-source outcome counts for a client: posts fueled (any post row past
+ * pending_review) and drafts discarded. Powers the "Fueled N posts" surface
+ * and the rank-stage approval boost.
+ *
+ * Used in:
+ *   src/app/(dashboard)/clients/[id]/sources/page.tsx
+ *   src/ai/research/research-orchestrator.ts
+ */
+export async function fetchSourceUsageStats(
+  supabase: SupabaseClient,
+  clientId: string
+): Promise<SourceUsageStats[]> {
+  // Cast to untyped client — client_source_id/discarded_drafts added by
+  // migration 20260729, not yet in generated Supabase types
+  const untyped = supabase as unknown as import('@supabase/supabase-js').SupabaseClient
+  const [postsRes, discardsRes] = await Promise.all([
+    untyped
+      .from('posts')
+      .select('client_source_id, status')
+      .eq('client_id', clientId)
+      .not('client_source_id', 'is', null),
+    untyped.from('discarded_drafts').select('client_source_id').eq('client_id', clientId),
+  ])
+
+  const stats = new Map<string, SourceUsageStats>()
+  const get = (id: string): SourceUsageStats => {
+    const existing = stats.get(id)
+    if (existing) return existing
+    const fresh = { clientSourceId: id, approvedCount: 0, discardedCount: 0 }
+    stats.set(id, fresh)
+    return fresh
+  }
+
+  const postRows =
+    (postsRes.data as unknown as Array<{ client_source_id: string | null; status: string }> | null) ?? []
+  for (const row of postRows) {
+    // pending_review cron drafts are not yet a human signal
+    if (row.client_source_id && row.status !== 'pending_review') {
+      get(row.client_source_id).approvedCount++
+    }
+  }
+
+  const discardRows =
+    (discardsRes.data as unknown as Array<{ client_source_id: string | null }> | null) ?? []
+  for (const row of discardRows) {
+    if (row.client_source_id) get(row.client_source_id).discardedCount++
+  }
+
+  return [...stats.values()]
+}
+
+/**
+ * Counts the client's recent posts per pillar — feeds deficit-aware pillar
+ * allocation so small generation batches rotate through pillars over time.
+ *
+ * Used in:
+ *   src/ai/research/research-orchestrator.ts
+ */
+export async function fetchRecentPillarCounts(
+  supabase: SupabaseClient,
+  clientId: string,
+  limit = 30
+): Promise<Map<string, number>> {
+  const { data } = await supabase
+    .from('posts')
+    .select('pillar')
+    .eq('client_id', clientId)
+    .not('pillar', 'is', null)
+    .order('created_at', { ascending: false })
+    .limit(limit)
+
+  const counts = new Map<string, number>()
+  for (const row of (data as Array<{ pillar: string | null }> | null) ?? []) {
+    if (row.pillar) counts.set(row.pillar, (counts.get(row.pillar) ?? 0) + 1)
+  }
+  return counts
+}

@@ -1,8 +1,9 @@
 import { notFound } from 'next/navigation'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { requireSessionUser } from '@/lib/auth/session'
 import { SourcesManager } from '@/features/sources/components/sources-manager'
-import { fetchClientById } from '@/lib/queries/db'
+import { fetchClientById, fetchSourceUsageStats } from '@/lib/queries/db'
 import { parsePillarsWithMeta, serializePillars } from '@/lib/clients/content-pillars'
 import { CLIENT_SOURCE_FULL_COLUMNS } from '@/lib/queries/select-columns'
 import type { ClientSource, SourceStrategy } from '@/types/api'
@@ -21,8 +22,11 @@ export default async function ClientSourcesPage({
   const client = await fetchClientById(supabase, id, agencyId)
   if (!client) notFound()
 
-  // Load existing sources, source strategy, and content pillars in parallel
-  const [sourcesResult, profileResult] = await Promise.all([
+  // Load existing sources, source strategy, content pillars, and outcome
+  // stats in parallel. Stats use the admin client — posts-adjacent tables
+  // block user-scoped reads (post_images RLS precedent), ownership is
+  // already verified above.
+  const [sourcesResult, profileResult, usageStats] = await Promise.all([
     supabase
       .from('client_sources')
       .select(CLIENT_SOURCE_FULL_COLUMNS)
@@ -33,6 +37,7 @@ export default async function ClientSourcesPage({
       .select('source_strategy, content_pillars')
       .eq('client_id', id)
       .single(),
+    fetchSourceUsageStats(createAdminSupabaseClient(), id).catch(() => []),
   ])
 
   // Cast through unknown — pillar_ids column added by migration, not yet in generated Supabase types
@@ -83,6 +88,7 @@ export default async function ClientSourcesPage({
       initialSources={initialSources}
       initialSourceStrategy={sourceStrategy}
       pillars={pillars}
+      usageStats={usageStats}
     />
   )
 }

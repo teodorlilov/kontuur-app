@@ -1,4 +1,11 @@
-import { fetchClientSources, fetchThemeDescriptions, fetchUsedSourceUrls } from '@/lib/queries/db'
+import {
+  fetchClientSources,
+  fetchThemeDescriptions,
+  fetchUsedSourceUrls,
+  fetchSourceUsageStats,
+  fetchRecentPillarCounts,
+  type SourceUsageStats,
+} from '@/lib/queries/db'
 import { searchTrends } from '@/lib/sources/fetch-trend-search'
 import {
   allocateByWeight,
@@ -31,6 +38,8 @@ interface ResearchClientData extends ClientData {
   sources: ClientSourceRow[]
   history: string[]
   usedUrls: string[]
+  sourceStats: SourceUsageStats[]
+  recentPillarCounts: Map<string, number>
 }
 
 /** Round-robin interleave: one item per list per pass, until the cap is reached. */
@@ -118,9 +127,11 @@ export class ResearchPipeline {
       ? resolvePillarNames(getSourcePillarIds(tavilyRow.pillar_ids), pillars)
       : []
     const webSearchItems = shouldSearchWeb
-      ? tavilyPillarNames.length > 0
-        ? allWebSearchItems.map((r) => ({ ...r, eligiblePillars: tavilyPillarNames }))
-        : allWebSearchItems
+      ? allWebSearchItems.map((r) => ({
+          ...r,
+          ...(tavilyPillarNames.length > 0 ? { eligiblePillars: tavilyPillarNames } : {}),
+          ...(tavilyRow ? { clientSourceId: tavilyRow.id } : {}),
+        }))
       : []
 
     const clientSourceContext = this.buildSourceContext(sourceObjects, limits, pillarNamesById)
@@ -153,6 +164,7 @@ export class ResearchPipeline {
       niche: this.ctx.niche,
       targetAudience: clientData.targetAudience,
       contentPillars: effectivePillars,
+      sourceStats: clientData.sourceStats,
     })
 
     this.ctx.onPhase?.('Generating theme ideas...')
@@ -162,6 +174,7 @@ export class ResearchPipeline {
       contentPillars: effectivePillars,
       postHistory: clientData.history,
       excludedUrls: clientData.usedUrls,
+      recentPillarCounts: clientData.recentPillarCounts,
     })
 
     const topics = await generateTopics(builder, requestedCount, effectiveContext)
@@ -230,7 +243,7 @@ export class ResearchPipeline {
     // Preloaded path — wizard always passes ClientData with full context
     if (this.ctx.preloadedClientData) {
       const data: ClientData = this.ctx.preloadedClientData
-      const [sources, themeHistory, usedUrls] = await Promise.all([
+      const [sources, themeHistory, usedUrls, sourceStats, recentPillarCounts] = await Promise.all([
         this.ctx.clientId
           ? fetchClientSources(this.ctx.supabase, this.ctx.clientId)
           : Promise.resolve([]),
@@ -240,6 +253,16 @@ export class ResearchPipeline {
         this.ctx.clientId
           ? fetchUsedSourceUrls(this.ctx.supabase, this.ctx.clientId)
           : Promise.resolve([]),
+        this.ctx.clientId
+          ? fetchSourceUsageStats(this.ctx.supabase, this.ctx.clientId).catch((err) => {
+              // Learn-loop input is optional — never block research on it
+              console.warn('[research] source usage stats unavailable:', err)
+              return []
+            })
+          : Promise.resolve([]),
+        this.ctx.clientId
+          ? fetchRecentPillarCounts(this.ctx.supabase, this.ctx.clientId).catch(() => new Map<string, number>())
+          : Promise.resolve(new Map<string, number>()),
       ])
 
       return {
@@ -247,6 +270,8 @@ export class ResearchPipeline {
         sources,
         history: [...data.postHistory, ...themeHistory],
         usedUrls,
+        sourceStats,
+        recentPillarCounts,
       }
     }
 
@@ -284,9 +309,11 @@ export class ResearchPipeline {
     // global cap — a flat concat let DB insertion order decide who fills it
     const rssItemsPerSource = sources.map((s) => {
       const names = pillarNamesById.get(s.id) ?? []
-      return s.getRssItems().map((item) =>
-        names.length > 0 ? { ...item, eligiblePillars: names } : item
-      )
+      return s.getRssItems().map((item) => ({
+        ...item,
+        ...(names.length > 0 ? { eligiblePillars: names } : {}),
+        clientSourceId: s.id,
+      }))
     })
     const cappedRssItems = interleaveRoundRobin(rssItemsPerSource, limits.rssGlobalCap)
 

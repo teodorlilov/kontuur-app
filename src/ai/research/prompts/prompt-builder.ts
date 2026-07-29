@@ -15,6 +15,7 @@ export class ResearchPromptBuilder {
   private readonly contentPillars: WeightedPillar[]
   private postHistory: string[]
   private readonly excludedUrls: string[]
+  private readonly recentPillarCounts?: Map<string, number>
   readonly systemPrompt: string
 
   constructor(opts: {
@@ -23,12 +24,15 @@ export class ResearchPromptBuilder {
     contentPillars: WeightedPillar[]
     postHistory: string[]
     excludedUrls?: string[]
+    /** Recent posts per pillar — enables deficit-aware allocation (small batches rotate pillars). */
+    recentPillarCounts?: Map<string, number>
   }) {
     this.niche = opts.niche
     this.languageConfig = opts.languageConfig
     this.contentPillars = opts.contentPillars
     this.postHistory = opts.postHistory
     this.excludedUrls = opts.excludedUrls ?? []
+    this.recentPillarCounts = opts.recentPillarCounts
     this.systemPrompt = this.buildResearchSystemPrompt()
   }
 
@@ -183,7 +187,7 @@ ${performanceSection}
 
   private buildPillarAllocationBlock(count: number): string {
     if (this.contentPillars.length === 0) return ''
-    const allocation = allocateByWeight(this.contentPillars, count)
+    const allocation = allocateByWeight(this.contentPillars, count, this.recentPillarCounts)
     const pillarInstructions = this.contentPillars
       .map((p) => {
         const n = allocation.get(p.pillar) ?? 0

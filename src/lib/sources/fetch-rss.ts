@@ -10,6 +10,8 @@ export interface RssItem {
   link: string
   pubDate: string | null
   eligiblePillars?: string[]
+  /** client_sources row that fetched this item — feeds the rank-stage approval boost. */
+  clientSourceId?: string
 }
 
 /**
