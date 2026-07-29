@@ -349,12 +349,26 @@ export async function GET(request: NextRequest) {
             `https://graph.instagram.com/${META_GRAPH_VERSION}`,
             'https://graph.instagram.com',
           ]) {
-            const probe = await fetch(`${base}/me?fields=id&access_token=${accessToken}`)
-            if (probe.ok) {
+            // Newer Instagram Login examples authenticate via Bearer header —
+            // try both query-param and header auth
+            const queryProbe = await fetch(`${base}/me?fields=id&access_token=${accessToken}`)
+            if (queryProbe.ok) {
               probeOk = true
               break
             }
-            probeResults.push(`${base}/me -> ${probe.status}: ${(await probe.text()).slice(0, 150)}`)
+            probeResults.push(
+              `${base}/me?access_token -> ${queryProbe.status}: ${(await queryProbe.text()).slice(0, 120)}`
+            )
+            const bearerProbe = await fetch(`${base}/me?fields=id`, {
+              headers: { Authorization: `Bearer ${accessToken}` },
+            })
+            if (bearerProbe.ok) {
+              probeOk = true
+              break
+            }
+            probeResults.push(
+              `${base}/me Bearer -> ${bearerProbe.status}: ${(await bearerProbe.text()).slice(0, 120)}`
+            )
           }
 
           if (!probeOk) {
