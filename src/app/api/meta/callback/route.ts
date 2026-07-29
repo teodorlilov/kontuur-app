@@ -125,6 +125,27 @@ async function exchangeInstagramForLongLived(shortLivedToken: string): Promise<I
   )
 }
 
+/** Ask Meta's debug_token what a token actually is (validity, app, type, expiry) — diagnostics only. */
+async function inspectTokenForDiagnostics(token: string): Promise<string> {
+  try {
+    const appToken = `${process.env.META_APP_ID}|${process.env.META_APP_SECRET}`
+    const res = await fetch(
+      `${GRAPH_BASE}/debug_token?input_token=${encodeURIComponent(token)}&access_token=${encodeURIComponent(appToken)}`
+    )
+    const body = (await res.json()) as {
+      data?: { is_valid?: boolean; type?: string; app_id?: string; expires_at?: number; scopes?: string[] }
+      error?: { message?: string }
+    }
+    if (body.data) {
+      const d = body.data
+      return `is_valid=${d.is_valid} type=${d.type} app_id=${d.app_id} expires_at=${d.expires_at} scopes=${d.scopes?.join(',')}`
+    }
+    return `inspection failed: ${body.error?.message ?? res.status}`
+  } catch (err) {
+    return `inspection threw: ${err instanceof Error ? err.message : String(err)}`
+  }
+}
+
 // ---- Facebook token exchange ----
 
 interface FBTokenResponse {
@@ -319,12 +340,33 @@ export async function GET(request: NextRequest) {
           expiresIn = longLived.expires_in
         } catch (exchangeErr) {
           // The exchange edge rejects already-long-lived tokens with a
-          // misleading "Unsupported request". Probe the token with a real
-          // call: if it works, keep it and assume the 60-day lifetime.
-          const probe = await fetch(
-            `https://graph.instagram.com/${META_GRAPH_VERSION}/me?fields=id&access_token=${accessToken}`
-          )
-          if (!probe.ok) throw exchangeErr
+          // misleading "Unsupported request". Probe the token with real
+          // calls (versioned + unversioned): if either works, keep it and
+          // assume the 60-day Business Login lifetime.
+          const probeResults: string[] = []
+          let probeOk = false
+          for (const base of [
+            `https://graph.instagram.com/${META_GRAPH_VERSION}`,
+            'https://graph.instagram.com',
+          ]) {
+            const probe = await fetch(`${base}/me?fields=id&access_token=${accessToken}`)
+            if (probe.ok) {
+              probeOk = true
+              break
+            }
+            probeResults.push(`${base}/me -> ${probe.status}: ${(await probe.text()).slice(0, 150)}`)
+          }
+
+          if (!probeOk) {
+            // Decisive diagnostics: ask Meta itself what this token is
+            const inspection = await inspectTokenForDiagnostics(accessToken)
+            const exchangeMessage =
+              exchangeErr instanceof Error ? exchangeErr.message : String(exchangeErr)
+            throw new Error(
+              `${exchangeMessage} || /me probes: ${probeResults.join(' | ')} || debug_token: ${inspection}`
+            )
+          }
+
           console.warn(
             '[meta] long-lived exchange rejected but token is valid — assuming 60-day Business Login token:',
             exchangeErr instanceof Error ? exchangeErr.message.slice(0, 200) : String(exchangeErr)
