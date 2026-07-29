@@ -1,76 +1,121 @@
-## Code Quality Rules (non-negotiable)
+# Kontuur — CLAUDE.md
+
+## Project
+AI-powered social media management SaaS for agencies (kontuur.app).
+Stack: Next.js 14 App Router · TypeScript (strict) · Supabase (Postgres, Auth, Storage) · Tailwind.
+
+## Commands
+- Dev: `npm run dev`
+- Typecheck: `npx tsc --noEmit`
+- Lint: `npm run lint`
+- Regenerate DB types: `npx supabase gen types typescript --local > src/types/database.ts`
+
+## Where things live (check here BEFORE creating anything new)
+- `src/app/` — routes, layouts, route handlers, server actions entry points.
+  Route files stay thin: they compose, they do not implement.
+- `src/features/<feature>/` — everything specific to one feature: components,
+  hooks, server actions, queries, zod schemas. Default location for new code.
+- `src/components/` — shared, feature-agnostic UI only (buttons, dialogs,
+  inputs, layout primitives). If a component knows about a specific feature's
+  data or types, it does NOT belong here.
+- `src/lib/` — shared non-UI logic: Supabase clients, utils, external API wrappers.
+- `src/lib/constants.ts` — all shared constants. Never define the same value twice.
+- `src/lib/select-columns.ts` — all DB column select strings. Use them.
+- `src/types/` — shared types. `database.ts` is generated — never hand-edit it.
+
+**components/ vs features/ rule:** feature-aware → `features/<feature>/components/`.
+Generic and dumb → `components/`. When in doubt, start in `features/` and promote
+to `components/` only on the second consumer. Never the other way around.
+
+## Next.js rules
+- Server Components by default. Add `'use client'` only for interactivity,
+  and push it to the smallest possible leaf component.
+- Data is fetched in Server Components or server actions. Never fetch in
+  `useEffect`. Never build client-side data-loading waterfalls.
+- Mutations go through server actions with zod-validated input.
+- Never import server-only code (admin Supabase client, secret env vars)
+  into a client component. Use the `server-only` package guard in those files.
+- `NEXT_PUBLIC_` env vars are the only env vars a client component may touch.
+
+## Supabase rules
+- Two clients only: the browser client (anon key) and the server client.
+  Never instantiate ad-hoc clients. Service-role key is server-only, always.
+- RLS is the security boundary. Never rely on client-side checks for access
+  control; assume every query runs against RLS.
+- All queries use generated types from `src/types/database.ts` and select
+  strings from `select-columns.ts`.
+- Schema changed? Regenerate types before writing code against it.
+
+## Validation
+- Every boundary input is zod-validated: form data, server action args,
+  route handler bodies, third-party API responses. Schemas live in the
+  feature's `schemas.ts` and types are inferred from them (`z.infer`),
+  never duplicated by hand.
+
+## Tailwind
+- Use the semantic design tokens. No raw hex values, no arbitrary values
+  (`w-[347px]`) unless no token exists — and then leave a WHY comment.
+- Conditional classes go through `cn()`. No inline `style=` except for
+  truly dynamic values (e.g. computed transforms).
+
+## Code quality (non-negotiable)
 
 ### No duplication
-- Before writing any function, search the codebase for existing functions
-  that do the same thing. Use the existing one. Do not create a second version.
-- If the same logic appears in two places, extract it before adding a third.
-- If you find duplication while working on something else, note it but do not
-  fix it unless it is in scope. Do not refactor things not asked for.
-
-### Single source of truth
-- Constants belong in one file and are imported everywhere else.
-  Never define the same string, number, or config value twice.
-- Type definitions belong in one place. Never redefine a type that already exists.
-- DB column select strings belong in select-columns.ts. Use them.
+- Before writing a function, check the canonical locations above and grep:
+  `grep -r "conceptName" src/`. If it exists, import it.
+- Same logic in two places → extract before adding a third.
+- Found duplication outside the current scope? Note it, don't fix it.
 
 ### Functions
-- Every function does one thing. If you need "and" to describe it, split it.
-- If a function is called from more than one place, it lives in a shared file.
-- If a function is only called from one place, it lives in that file.
-- No function longer than 40 lines. If it is longer, decompose it.
+- One responsibility per function. If describing it needs "and", split it.
+- Called from more than one place → shared file. One place → local.
+- Keep functions to roughly one screen (~40 lines). Split by responsibility,
+  not by line count — never create artificial fragments just to hit a number.
 
 ### Naming
-- Function names are verbs: fetchClient, buildPrompt, validatePost.
-- Boolean variables and functions are questions: isLoading, hasError, canPublish.
+- Functions are verbs: `fetchClient`, `buildPrompt`, `validatePost`.
+- Variables, types, and components are nouns describing what the thing is.
+- Booleans are questions: `isLoading`, `hasError`, `canPublish`.
 - No abbreviations except: id, url, db, api, ctx, err, res, req.
-- Names describe what the thing IS, not what it does for the caller.
-
-### Imports
-- No unused imports. Remove them.
-- No circular imports. If you need to create one to make something work,
-  the abstraction is wrong — stop and ask.
 
 ### Error handling
-- Every async function that touches the DB or an external API has a try/catch
-  or propagates the error explicitly. No silent failures.
-- Errors are logged once at the boundary where they are caught.
-  Do not log and rethrow — pick one.
+- Boundary = route handler, server action, or job entry point. Errors are
+  caught and logged (with context) exactly once, at the boundary.
+- Below the boundary: throw or propagate. Do not log-and-rethrow.
+- No silent failures. No empty catch blocks.
 
 ### Comments
-- No comments that describe WHAT the code does. The code describes that.
-- Comments only explain WHY — non-obvious decisions, workarounds, constraints.
-- Every exported function has a one-line JSDoc describing its purpose.
+- Comments explain WHY (decisions, workarounds, constraints), never WHAT.
+- Every exported function gets a one-line JSDoc.
 
 ### TypeScript
-- No `any`. If you do not know the type, use `unknown` and narrow it.
-- No type assertions (`as SomeType`) unless you can explain why in a comment.
-- Prefer type inference over explicit annotation where the type is obvious.
+- No `any`. Unknown shape → `unknown`, then narrow.
+- No `as` assertions without a WHY comment.
+- Prefer inference where the type is obvious; annotate public boundaries.
 
-### Before making any change:
-1. Search for existing implementations of what you are about to write.
-   If one exists, use it. Do not create a duplicate.
-2. If a change requires the same logic in more than one place, extract it
-   to a shared utility first, then use it in both places.
-3. After each fix, check the file you just modified for any remaining
-   duplication or dead code introduced by the change and remove it.
+### Imports
+- No unused imports. No circular imports — if one seems necessary,
+  the abstraction is wrong: stop and ask.
 
-### After completing each fix:
-- Run: npx tsc --noEmit
-- Run: grep -r "console.log" src/ --include="*.ts" --include="*.tsx"
-  and remove any console.log you added or uncovered.
-- State which files were modified and why each modification was necessary.
-- If you had to make a decision (e.g. where to put a shared function),
-  state what the decision was and why.
+## Workflow
 
-### Do not:
-- Rename things that are not broken
-- Refactor files not mentioned in the current step
-- Add abstractions "for future flexibility" — only abstract what is
-  needed right now
-- Leave TODO comments — either fix it or do not touch it
+Before any change:
+1. Check the "where things live" map, then grep for existing implementations.
+2. If a change needs the same logic in two places, extract to a shared
+   utility first, then use it in both.
 
-### Before writing any new function or utility, run:
-grep -r "functionNameOrConcept" src/
-to check if it already exists somewhere in the codebase.
-If it does, import and use it. Only create something new if nothing
-suitable exists.
+After each change:
+1. `npx tsc --noEmit`
+2. `npm run lint`
+3. Remove any dead code or duplication the change introduced.
+4. State which files were modified and why. If you made a judgment call
+   (e.g. where a shared function lives), state the decision and reasoning.
+
+## Do not
+- Rename things that are not broken.
+- Refactor files outside the current task.
+- Add abstractions for hypothetical future needs — abstract only what is
+  needed now.
+- Leave TODO comments — fix it or don't touch it.
+- Add `console.log` (enforced via ESLint `no-console`; use the logger at
+  the boundary instead).
