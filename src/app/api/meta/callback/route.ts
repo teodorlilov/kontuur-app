@@ -55,23 +55,68 @@ async function exchangeInstagramCode(
   return { access_token: token.access_token, user_id: String(token.user_id) }
 }
 
+function longLivedParams(shortLivedToken: string): URLSearchParams {
+  const params = new URLSearchParams()
+  params.set('grant_type', 'ig_exchange_token')
+  params.set('client_secret', process.env.META_INSTAGRAM_APP_SECRET!)
+  params.set('access_token', shortLivedToken)
+  return params
+}
+
+async function tryLongLivedExchange(
+  endpoint: string,
+  method: 'GET' | 'POST',
+  shortLivedToken: string
+): Promise<IGLongLivedToken | { failed: string }> {
+  const params = longLivedParams(shortLivedToken)
+  const res =
+    method === 'GET'
+      ? await fetch(`${endpoint}?${params.toString()}`)
+      : await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: params.toString(),
+        })
+  if (!res.ok) return { failed: await res.text() }
+  const parsed = (await res.json()) as IGLongLivedToken
+  if (!parsed?.access_token) return { failed: `no access_token in response` }
+  return parsed
+}
+
 async function exchangeInstagramForLongLived(shortLivedToken: string): Promise<IGLongLivedToken> {
   // Guard: an empty token turns this GET into an unroutable request and Graph
   // answers with the misleading "Unsupported request - method type: get"
   if (!shortLivedToken) {
     throw new Error('Instagram long-lived exchange called without a short-lived token')
   }
-  const url = new URL('https://graph.instagram.com/access_token')
-  url.searchParams.set('grant_type', 'ig_exchange_token')
-  url.searchParams.set('client_secret', process.env.META_INSTAGRAM_APP_SECRET!)
-  url.searchParams.set('access_token', shortLivedToken)
 
-  const res = await fetch(url.toString())
-  if (!res.ok) {
-    const err = await res.text()
-    throw new Error(`Instagram long-lived token exchange failed: ${err}`)
+  // Meta has been inconsistent about this endpoint since the Business Login
+  // rollout: the documented unversioned GET intermittently answers
+  // "Unsupported request - method type: get" while versioned/POST variants
+  // succeed. Try all three before failing.
+  const attempts: Array<{ endpoint: string; method: 'GET' | 'POST' }> = [
+    { endpoint: 'https://graph.instagram.com/access_token', method: 'GET' },
+    { endpoint: `https://graph.instagram.com/${META_GRAPH_VERSION}/access_token`, method: 'GET' },
+    { endpoint: 'https://graph.instagram.com/access_token', method: 'POST' },
+  ]
+
+  const failures: string[] = []
+  for (const attempt of attempts) {
+    const result = await tryLongLivedExchange(attempt.endpoint, attempt.method, shortLivedToken)
+    if ('failed' in result) {
+      failures.push(`${attempt.method} ${attempt.endpoint}: ${result.failed.slice(0, 200)}`)
+      continue
+    }
+    if (failures.length > 0) {
+      console.warn(`[meta] long-lived exchange needed fallback (${attempt.method} ${attempt.endpoint})`)
+    }
+    return result
   }
-  return res.json() as Promise<IGLongLivedToken>
+
+  // Token diagnostics (prefix + length only — never the token) make the next report conclusive
+  throw new Error(
+    `Instagram long-lived token exchange failed (token len=${shortLivedToken.length}, prefix=${shortLivedToken.slice(0, 4)}): ${failures.join(' | ')}`
+  )
 }
 
 // ---- Facebook token exchange ----
