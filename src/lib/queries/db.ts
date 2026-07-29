@@ -386,16 +386,13 @@ export async function fetchSourceUsageStats(
   supabase: SupabaseClient,
   clientId: string
 ): Promise<SourceUsageStats[]> {
-  // Cast to untyped client — client_source_id/discarded_drafts added by
-  // migration 20260729, not yet in generated Supabase types
-  const untyped = supabase as unknown as import('@supabase/supabase-js').SupabaseClient
   const [postsRes, discardsRes] = await Promise.all([
-    untyped
+    supabase
       .from('posts')
       .select('client_source_id, status')
       .eq('client_id', clientId)
       .not('client_source_id', 'is', null),
-    untyped.from('discarded_drafts').select('client_source_id').eq('client_id', clientId),
+    supabase.from('discarded_drafts').select('client_source_id').eq('client_id', clientId),
   ])
 
   const stats = new Map<string, SourceUsageStats>()
@@ -407,18 +404,14 @@ export async function fetchSourceUsageStats(
     return fresh
   }
 
-  const postRows =
-    (postsRes.data as unknown as Array<{ client_source_id: string | null; status: string }> | null) ?? []
-  for (const row of postRows) {
+  for (const row of postsRes.data ?? []) {
     // pending_review cron drafts are not yet a human signal
     if (row.client_source_id && row.status !== 'pending_review') {
       get(row.client_source_id).approvedCount++
     }
   }
 
-  const discardRows =
-    (discardsRes.data as unknown as Array<{ client_source_id: string | null }> | null) ?? []
-  for (const row of discardRows) {
+  for (const row of discardsRes.data ?? []) {
     if (row.client_source_id) get(row.client_source_id).discardedCount++
   }
 

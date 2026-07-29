@@ -1,6 +1,5 @@
 'use server'
 
-import type { SupabaseClient } from '@supabase/supabase-js'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { resolveActionAuth, verifyClientOwnership } from '@/lib/auth/helpers'
 import { discardedDraftSchema, type DiscardedDraftInput } from '@/features/generate/schemas'
@@ -22,9 +21,7 @@ export async function logDiscardedDraft(input: DiscardedDraftInput): Promise<Act
   const owned = await verifyClientOwnership(supabase, parsed.data.clientId, agencyId)
   if (!owned) return { ok: false, error: 'Not found' }
 
-  // Cast to untyped client — discarded_drafts added by migration 20260729,
-  // not yet in generated Supabase types
-  const admin = createAdminSupabaseClient() as unknown as SupabaseClient
+  const admin = createAdminSupabaseClient()
   const { error } = await admin.from('discarded_drafts').insert({
     client_id: parsed.data.clientId,
     client_source_id: parsed.data.clientSourceId,

@@ -103,74 +103,6 @@ export type Database = {
           },
         ]
       }
-      brand_profiles: {
-        Row: {
-          avoid_topics: string | null
-          best_time_json: Json | null
-          best_time_updated_at: string | null
-          client_id: string | null
-          client_testimonial_voice: string | null
-          content_pillars: string | null
-          default_carousel_slides: number | null
-          default_post_type: string | null
-          id: string
-          is_health_niche: boolean | null
-          language_formality: string | null
-          language_notes: string | null
-          secondary_language: string | null
-          source_strategy: Json
-          target_audience: string | null
-          tone: string | null
-          weekly_mix_json: Json | null
-        }
-        Insert: {
-          avoid_topics?: string | null
-          best_time_json?: Json | null
-          best_time_updated_at?: string | null
-          client_id?: string | null
-          client_testimonial_voice?: string | null
-          content_pillars?: string | null
-          default_carousel_slides?: number | null
-          default_post_type?: string | null
-          id?: string
-          is_health_niche?: boolean | null
-          language_formality?: string | null
-          language_notes?: string | null
-          secondary_language?: string | null
-          source_strategy?: Json
-          target_audience?: string | null
-          tone?: string | null
-          weekly_mix_json?: Json | null
-        }
-        Update: {
-          avoid_topics?: string | null
-          best_time_json?: Json | null
-          best_time_updated_at?: string | null
-          client_id?: string | null
-          client_testimonial_voice?: string | null
-          content_pillars?: string | null
-          default_carousel_slides?: number | null
-          default_post_type?: string | null
-          id?: string
-          is_health_niche?: boolean | null
-          language_formality?: string | null
-          language_notes?: string | null
-          secondary_language?: string | null
-          source_strategy?: Json
-          target_audience?: string | null
-          tone?: string | null
-          weekly_mix_json?: Json | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "brand_profiles_client_id_fkey"
-            columns: ["client_id"]
-            isOneToOne: true
-            referencedRelation: "clients"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       brand_image_bank: {
         Row: {
           client_id: string
@@ -247,6 +179,109 @@ export type Database = {
           },
         ]
       }
+      brand_profiles: {
+        Row: {
+          avoid_topics: string | null
+          best_time_json: Json | null
+          best_time_updated_at: string | null
+          client_id: string | null
+          client_testimonial_voice: string | null
+          content_pillars: string | null
+          default_carousel_slides: number | null
+          default_post_type: string | null
+          id: string
+          is_health_niche: boolean | null
+          language_formality: string | null
+          language_notes: string | null
+          secondary_language: string | null
+          source_strategy: Json
+          target_audience: string | null
+          tone: string | null
+          weekly_mix_json: Json | null
+        }
+        Insert: {
+          avoid_topics?: string | null
+          best_time_json?: Json | null
+          best_time_updated_at?: string | null
+          client_id?: string | null
+          client_testimonial_voice?: string | null
+          content_pillars?: string | null
+          default_carousel_slides?: number | null
+          default_post_type?: string | null
+          id?: string
+          is_health_niche?: boolean | null
+          language_formality?: string | null
+          language_notes?: string | null
+          secondary_language?: string | null
+          source_strategy?: Json
+          target_audience?: string | null
+          tone?: string | null
+          weekly_mix_json?: Json | null
+        }
+        Update: {
+          avoid_topics?: string | null
+          best_time_json?: Json | null
+          best_time_updated_at?: string | null
+          client_id?: string | null
+          client_testimonial_voice?: string | null
+          content_pillars?: string | null
+          default_carousel_slides?: number | null
+          default_post_type?: string | null
+          id?: string
+          is_health_niche?: boolean | null
+          language_formality?: string | null
+          language_notes?: string | null
+          secondary_language?: string | null
+          source_strategy?: Json
+          target_audience?: string | null
+          tone?: string | null
+          weekly_mix_json?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "brand_profiles_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: true
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      brand_vector_bank: {
+        Row: {
+          client_id: string
+          created_at: string
+          id: string
+          label: string | null
+          prompt_hash: string
+          svg: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          id?: string
+          label?: string | null
+          prompt_hash: string
+          svg: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          id?: string
+          label?: string | null
+          prompt_hash?: string
+          svg?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "brand_vector_bank_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       brand_visual_identity: {
         Row: {
           client_id: string
@@ -280,6 +315,44 @@ export type Database = {
             foreignKeyName: "brand_visual_identity_client_id_fkey"
             columns: ["client_id"]
             isOneToOne: true
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_assets: {
+        Row: {
+          client_id: string
+          created_at: string
+          id: string
+          kind: string
+          label: string | null
+          public_url: string
+          storage_path: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          id?: string
+          kind?: string
+          label?: string | null
+          public_url: string
+          storage_path: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          id?: string
+          kind?: string
+          label?: string | null
+          public_url?: string
+          storage_path?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_assets_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
             referencedRelation: "clients"
             referencedColumns: ["id"]
           },
@@ -468,6 +541,57 @@ export type Database = {
           },
         ]
       }
+      discarded_drafts: {
+        Row: {
+          client_id: string
+          client_source_id: string | null
+          created_at: string
+          discarded_from: string
+          id: string
+          pillar: string | null
+          platform: string | null
+          source_type: string | null
+          source_url: string | null
+        }
+        Insert: {
+          client_id: string
+          client_source_id?: string | null
+          created_at?: string
+          discarded_from: string
+          id?: string
+          pillar?: string | null
+          platform?: string | null
+          source_type?: string | null
+          source_url?: string | null
+        }
+        Update: {
+          client_id?: string
+          client_source_id?: string | null
+          created_at?: string
+          discarded_from?: string
+          id?: string
+          pillar?: string | null
+          platform?: string | null
+          source_type?: string | null
+          source_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "discarded_drafts_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "discarded_drafts_client_source_id_fkey"
+            columns: ["client_source_id"]
+            isOneToOne: false
+            referencedRelation: "client_sources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       generation_runs: {
         Row: {
           client_id: string | null
@@ -573,6 +697,32 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      image_generation_usage: {
+        Row: {
+          agency_id: string
+          count: number
+          month: string
+        }
+        Insert: {
+          agency_id: string
+          count?: number
+          month: string
+        }
+        Update: {
+          agency_id?: string
+          count?: number
+          month?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "image_generation_usage_agency_id_fkey"
+            columns: ["agency_id"]
+            isOneToOne: false
+            referencedRelation: "agencies"
             referencedColumns: ["id"]
           },
         ]
@@ -845,6 +995,7 @@ export type Database = {
           position: number
           post_id: string
           public_url: string
+          source: string
           storage_path: string
         }
         Insert: {
@@ -856,6 +1007,7 @@ export type Database = {
           position?: number
           post_id: string
           public_url: string
+          source?: string
           storage_path: string
         }
         Update: {
@@ -867,6 +1019,7 @@ export type Database = {
           position?: number
           post_id?: string
           public_url?: string
+          source?: string
           storage_path?: string
         }
         Relationships: [
@@ -922,9 +1075,14 @@ export type Database = {
       }
       posts: {
         Row: {
+          brand_kit_version: number | null
           caption: string | null
           client_id: string
+          client_source_id: string | null
           created_at: string | null
+          design_json: Json | null
+          design_overrides: Json | null
+          format: string
           id: string
           ig_creation_id: string | null
           ig_media_id: string | null
@@ -946,12 +1104,18 @@ export type Database = {
           source_url: string | null
           status: string | null
           validation_json: Json | null
+          visuals_attempts: number
           was_rewritten: boolean | null
         }
         Insert: {
+          brand_kit_version?: number | null
           caption?: string | null
           client_id: string
+          client_source_id?: string | null
           created_at?: string | null
+          design_json?: Json | null
+          design_overrides?: Json | null
+          format?: string
           id?: string
           ig_creation_id?: string | null
           ig_media_id?: string | null
@@ -973,12 +1137,18 @@ export type Database = {
           source_url?: string | null
           status?: string | null
           validation_json?: Json | null
+          visuals_attempts?: number
           was_rewritten?: boolean | null
         }
         Update: {
+          brand_kit_version?: number | null
           caption?: string | null
           client_id?: string
+          client_source_id?: string | null
           created_at?: string | null
+          design_json?: Json | null
+          design_overrides?: Json | null
+          format?: string
           id?: string
           ig_creation_id?: string | null
           ig_media_id?: string | null
@@ -1000,6 +1170,7 @@ export type Database = {
           source_url?: string | null
           status?: string | null
           validation_json?: Json | null
+          visuals_attempts?: number
           was_rewritten?: boolean | null
         }
         Relationships: [
@@ -1008,6 +1179,13 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "posts_client_source_id_fkey"
+            columns: ["client_source_id"]
+            isOneToOne: false
+            referencedRelation: "client_sources"
             referencedColumns: ["id"]
           },
         ]
@@ -1111,6 +1289,26 @@ export type Database = {
           published_count: number
           total_count: number
         }[]
+      }
+      consume_image_credits: {
+        Args: {
+          p_agency_id: string
+          p_cost: number
+          p_month: string
+          p_quota: number
+        }
+        Returns: {
+          allowed: boolean
+          used: number
+        }[]
+      }
+      refund_image_credits: {
+        Args: { p_agency_id: string; p_cost: number; p_month: string }
+        Returns: undefined
+      }
+      swap_rendered_post_images: {
+        Args: { p_post_id: string; p_rows: Json }
+        Returns: string[]
       }
     }
     Enums: {

@@ -5,7 +5,7 @@ import { draftVisualPrefix, movePostImageObject } from '@/features/publishing/li
 import { safeParseCanvasDoc } from '@/lib/canvas/doc-schema'
 import { POST_COLUMNS } from '@/lib/queries/select-columns'
 import type { CanvasDoc } from '@/types/canvas'
-import type { Database, Json } from '@/types/database'
+import type { Json } from '@/types/database'
 
 export async function GET(request: Request) {
   const auth = await resolveAuth()
@@ -244,8 +244,7 @@ export async function POST(request: Request) {
 
   const { data: post, error } = await supabase
     .from('posts')
-    // Cast through unknown — client_source_id added by migration 20260729, not yet in generated Supabase types
-    .insert(insertRow as unknown as Database['public']['Tables']['posts']['Insert'])
+    .insert(insertRow)
     .select(POST_COLUMNS)
     .single()
 

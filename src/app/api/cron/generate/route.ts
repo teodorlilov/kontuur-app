@@ -16,7 +16,7 @@ import { BEST_TIME_REFRESH_DAYS, DEFAULT_CAROUSEL_SLIDES } from '@/utils/constan
 import { fetchScheduleContext, shouldGenerateToday } from './helpers'
 import type { PostType } from '@/types/api'
 import type { Theme } from '@/ai/generation/types'
-import type { Database, Json } from '@/types/database'
+import type { Json } from '@/types/database'
 
 export const maxDuration = 300
 
@@ -178,8 +178,7 @@ export async function GET(request: NextRequest) {
               source_excerpt: post.source_excerpt,
               client_source_id: post.client_source_id,
               pillar: post.pillar,
-              // Cast through unknown — client_source_id added by migration 20260729, not yet in generated Supabase types
-            })) as unknown as Database['public']['Tables']['posts']['Insert'][]
+            }))
           )
           .select('id')
 
