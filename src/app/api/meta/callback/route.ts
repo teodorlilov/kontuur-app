@@ -10,6 +10,8 @@ import { decodeOAuthState } from '../oauth-state'
 interface IGShortLivedToken {
   access_token: string
   user_id: string
+  /** Present when Business Login already issued a long-lived token at code exchange. */
+  expires_in?: number
 }
 
 interface IGLongLivedToken {
@@ -52,7 +54,11 @@ async function exchangeInstagramCode(
       `Instagram token exchange returned no access_token: ${JSON.stringify(parsed).slice(0, 300)}`
     )
   }
-  return { access_token: token.access_token, user_id: String(token.user_id) }
+  return {
+    access_token: token.access_token,
+    user_id: String(token.user_id),
+    ...(typeof token.expires_in === 'number' ? { expires_in: token.expires_in } : {}),
+  }
 }
 
 function longLivedParams(shortLivedToken: string): URLSearchParams {
@@ -299,14 +305,35 @@ export async function GET(request: NextRequest) {
     if (platform === 'instagram') {
       // Instagram Business Login flow
       const shortLived = await exchangeInstagramCode(code, redirectUri)
-      const longLived = await exchangeInstagramForLongLived(shortLived.access_token)
-      await connectInstagram(
-        longLived.access_token,
-        shortLived.user_id,
-        longLived.expires_in,
-        clientId,
-        admin
-      )
+      let accessToken = shortLived.access_token
+      let expiresIn = shortLived.expires_in ?? 0
+
+      // Business Login often issues a 60-day token directly at code exchange;
+      // ig_exchange_token on such a token gets rejected. Only exchange when
+      // the token is genuinely short-lived.
+      const DAY_S = 24 * 3600
+      if (expiresIn <= DAY_S) {
+        try {
+          const longLived = await exchangeInstagramForLongLived(accessToken)
+          accessToken = longLived.access_token
+          expiresIn = longLived.expires_in
+        } catch (exchangeErr) {
+          // The exchange edge rejects already-long-lived tokens with a
+          // misleading "Unsupported request". Probe the token with a real
+          // call: if it works, keep it and assume the 60-day lifetime.
+          const probe = await fetch(
+            `https://graph.instagram.com/${META_GRAPH_VERSION}/me?fields=id&access_token=${accessToken}`
+          )
+          if (!probe.ok) throw exchangeErr
+          console.warn(
+            '[meta] long-lived exchange rejected but token is valid — assuming 60-day Business Login token:',
+            exchangeErr instanceof Error ? exchangeErr.message.slice(0, 200) : String(exchangeErr)
+          )
+          expiresIn = 60 * DAY_S
+        }
+      }
+
+      await connectInstagram(accessToken, shortLived.user_id, expiresIn, clientId, admin)
     } else if (platform === 'facebook') {
       // Facebook Pages flow
       const shortLived = await exchangeFacebookCode(code, redirectUri)
