@@ -44,3 +44,35 @@ export async function generateTopics(
   const { topics } = extractToolInput<{ topics: ResearchTopic[] }>(message, TOPICS_OUTPUT_SCHEMA)
   return topics
 }
+
+/**
+ * Ask for replacement topics when the grounding filter rejected part of the
+ * first response — continues the original conversation so the (cached) system
+ * prompt and source material are reused instead of re-sent as a fresh prompt.
+ */
+export async function generateTopUpTopics(
+  builder: ResearchPromptBuilder,
+  count: number,
+  shortfall: number,
+  sourceContext: SourceContext | undefined,
+  firstResponseTopics: ResearchTopic[],
+  keptThemes: string[]
+): Promise<ResearchTopic[]> {
+  const originalUserPrompt = builder.buildResearchUserPrompt(count, sourceContext)
+
+  const message = await callAnthropic({
+    systemPrompt: builder.systemPrompt,
+    conversationHistory: [
+      { role: 'user', content: originalUserPrompt },
+      { role: 'assistant', content: JSON.stringify({ topics: firstResponseTopics }) },
+    ],
+    userMessage: `${shortfall} of your topics were rejected because they lacked a valid source_url from the SOURCE MATERIAL above.
+Provide exactly ${shortfall} additional topic(s), each grounded in the source material with a valid source_url.
+Do not repeat any of these themes: ${keptThemes.map((t) => `"${t}"`).join(', ') || '(none kept)'}`,
+    model: DEFAULT_MODEL,
+    outputSchema: TOPICS_OUTPUT_SCHEMA,
+  })
+
+  const { topics } = extractToolInput<{ topics: ResearchTopic[] }>(message, TOPICS_OUTPUT_SCHEMA)
+  return topics
+}

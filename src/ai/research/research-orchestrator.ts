@@ -10,7 +10,7 @@ import type { TavilyConfig } from '@/types/sources'
 import { createAllSources } from './sources/source-factory'
 import { ResearchSource } from './sources/research-source'
 import { ResearchPromptBuilder } from './prompts/prompt-builder'
-import { generateTopics } from './generators/topic-generator'
+import { generateTopics, generateTopUpTopics } from './generators/topic-generator'
 import { computeFetchLimits, SOURCE_FULL_TEXT_CAP } from './fetch-limits'
 import type {
   ResearchRunContext,
@@ -19,6 +19,7 @@ import type {
   ClientSourceRow,
   FetchLimits,
   SourceFullTextIndex,
+  SourceAttributionIndex,
   SkippedPillar,
   FileExcerpt,
 } from './types'
@@ -28,6 +29,21 @@ interface ResearchClientData extends ClientData {
   sources: ClientSourceRow[]
   history: string[]
   usedUrls: string[]
+}
+
+/** Round-robin interleave: one item per list per pass, until the cap is reached. */
+export function interleaveRoundRobin<T>(lists: T[][], cap: number): T[] {
+  const result: T[] = []
+  const maxLength = Math.max(0, ...lists.map((list) => list.length))
+
+  for (let pass = 0; pass < maxLength && result.length < cap; pass++) {
+    for (const list of lists) {
+      if (result.length >= cap) break
+      const item = list[pass]
+      if (item !== undefined) result.push(item)
+    }
+  }
+  return result
 }
 
 /**
@@ -129,9 +145,35 @@ export class ResearchPipeline {
     const topics = await generateTopics(builder, requestedCount, effectiveContext)
 
     // Filter LLM-hallucinated topics (no source URL except file type)
-    const groundedTopics = topics.filter(
-      (t) => t.suggested_theme?.trim() && (t.source_url || t.source_type === 'file')
-    )
+    const isGrounded = (t: ResearchTopic) =>
+      !!t.suggested_theme?.trim() && (!!t.source_url || t.source_type === 'file')
+    const groundedTopics = topics.filter(isGrounded)
+
+    // One top-up round recovers grounding-filter losses instead of silently
+    // delivering fewer posts than requested
+    if (groundedTopics.length < requestedCount) {
+      const shortfall = requestedCount - groundedTopics.length
+      this.ctx.onPhase?.('Replacing ungrounded topics...')
+      try {
+        const extraTopics = await generateTopUpTopics(
+          builder,
+          requestedCount,
+          shortfall,
+          effectiveContext,
+          topics,
+          groundedTopics.map((t) => t.suggested_theme)
+        )
+        const seen = new Set(groundedTopics.map((t) => `${t.suggested_theme}|${t.source_url ?? ''}`))
+        for (const topic of extraTopics.filter(isGrounded)) {
+          const key = `${topic.suggested_theme}|${topic.source_url ?? ''}`
+          if (seen.has(key)) continue
+          seen.add(key)
+          groundedTopics.push(topic)
+        }
+      } catch (err) {
+        console.warn('[research] topic top-up failed, continuing with fewer topics:', err)
+      }
+    }
 
     // Detect skipped pillars (pillars with no returned topics — includes pre-skipped + post-LLM)
     const coveredPillars = new Set(groundedTopics.map((t) => t.pillar).filter(Boolean))
@@ -150,6 +192,10 @@ export class ResearchPipeline {
     }
 
     this.attachSourceFullText(groundedTopics, this.buildSourceFullTextIndex(sourceObjects))
+    this.attachSourceAttribution(
+      groundedTopics,
+      this.buildSourceAttributionIndex(sourceObjects, tavilyRow ?? null)
+    )
     const finalTopics = groundedTopics.slice(0, requestedCount)
     for (const topic of finalTopics) this.ctx.onTopic?.(topic)
     return finalTopics
@@ -210,15 +256,15 @@ export class ResearchPipeline {
     limits: FetchLimits,
     pillarNamesById: Map<string, string[]>
   ): SourceContext {
-    // RSS: aggregate all items across sources, tag with eligible pillars, cap at global limit
-    const cappedRssItems = sources
-      .flatMap((s) => {
-        const names = pillarNamesById.get(s.id) ?? []
-        return s.getRssItems().map((item) =>
-          names.length > 0 ? { ...item, eligiblePillars: names } : item
-        )
-      })
-      .slice(0, limits.rssGlobalCap)
+    // RSS: round-robin across sources so every feed gets a fair share of the
+    // global cap — a flat concat let DB insertion order decide who fills it
+    const rssItemsPerSource = sources.map((s) => {
+      const names = pillarNamesById.get(s.id) ?? []
+      return s.getRssItems().map((item) =>
+        names.length > 0 ? { ...item, eligiblePillars: names } : item
+      )
+    })
+    const cappedRssItems = interleaveRoundRobin(rssItemsPerSource, limits.rssGlobalCap)
 
     // Website: distribute scaled web budget, tag with eligible pillars
     const allWebExcerpts = sources.flatMap((s) => {
@@ -272,6 +318,36 @@ export class ResearchPipeline {
         topic.source_full_text = index.byUrl.get(topic.source_url)
       } else if (topic.source_type === 'file' && topic.source_title) {
         topic.source_full_text = index.byLabel.get(topic.source_title)
+      }
+    }
+  }
+
+  /** Build url/label → client_sources id maps for outcome attribution. */
+  private buildSourceAttributionIndex(
+    sources: ResearchSource[],
+    tavilyRow: ClientSourceRow | null
+  ): SourceAttributionIndex {
+    const byUrl = new Map<string, string>()
+    const byLabel = new Map<string, string>()
+
+    for (const source of sources) {
+      source.addToAttributionIndex(byUrl, byLabel)
+    }
+
+    return { byUrl, byLabel, tavilySourceId: tavilyRow?.id ?? null }
+  }
+
+  /** Resolve each topic's client_source_id server-side; unresolvable topics stay null. */
+  private attachSourceAttribution(topics: ResearchTopic[], index: SourceAttributionIndex): void {
+    for (const topic of topics) {
+      if (topic.source_url && index.byUrl.has(topic.source_url)) {
+        topic.client_source_id = index.byUrl.get(topic.source_url) ?? null
+      } else if (topic.source_type === 'file' && topic.source_title) {
+        topic.client_source_id = index.byLabel.get(topic.source_title) ?? null
+      } else if (topic.source_type === 'web_search') {
+        topic.client_source_id = index.tavilySourceId
+      } else {
+        topic.client_source_id = null
       }
     }
   }

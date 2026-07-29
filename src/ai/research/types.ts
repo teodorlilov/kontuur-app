@@ -15,6 +15,8 @@ export interface ResearchTopic {
   source_excerpt?: string
   /** Full source text attached after LLM research, from the fetched source map. Not LLM-generated. */
   source_full_text?: string
+  /** client_sources row that produced this topic — attached server-side, never LLM-generated. */
+  client_source_id?: string | null
 }
 
 export interface WebsiteExcerpt {
@@ -72,6 +74,12 @@ export interface SourceFetchResult {
 export interface SourceFullTextIndex {
   byUrl: Map<string, string>
   byLabel: Map<string, string>
+}
+
+export interface SourceAttributionIndex {
+  byUrl: Map<string, string>
+  byLabel: Map<string, string>
+  tavilySourceId: string | null
 }
 
 export interface FetchLimits {

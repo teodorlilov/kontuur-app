@@ -27,6 +27,8 @@ export interface CallAnthropicOptions {
   conversationHistory?: MessageParam[]
   /** Called for each text token as it streams from the API. */
   onToken?: (text: string) => void
+  /** Sampling temperature. Judging/validation calls run at 0 for consistent verdicts. */
+  temperature?: number
   /**
    * When provided, forces tool use with this JSON Schema as the output schema.
    * The API guarantees the response is valid JSON matching the schema — no parsing required.
@@ -62,6 +64,7 @@ export async function callAnthropic(opts: CallAnthropicOptions): Promise<Message
     conversationHistory = [],
     onToken,
     outputSchema,
+    temperature,
   } = opts
 
   const messages: MessageParam[] = [...conversationHistory, { role: 'user', content: userMessage }]
@@ -72,6 +75,7 @@ export async function callAnthropic(opts: CallAnthropicOptions): Promise<Message
   const requestParams = {
     model,
     max_tokens: maxTokens,
+    ...(temperature !== undefined && { temperature }),
     ...(systemPrompt && {
       system: cacheSystemPrompt
         ? [{ type: 'text' as const, text: systemPrompt, cache_control: { type: 'ephemeral' as const } }]

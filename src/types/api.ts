@@ -450,16 +450,12 @@ export interface ApiError {
 
 // Re-export validation types so consumers import from '@/types/api'
 export type {
-  HookVerdict,
-  CtaVerdict,
   LanguageIssueType,
   LanguageValidationResult as LanguageResult,
   SlopDetection,
   SourceGroundingResult,
   ValidationCriteria,
   ValidationScores,
-  CriterionResult,
-  StructureCheck,
 } from '@/ai/validation/types'
 
 export type {

@@ -9,8 +9,6 @@ export type PostingScheduleRow = Tables<'posting_schedules'>
 export type PostImageRow = Tables<'post_images'>
 
 export type {
-  HookVerdict,
-  CtaVerdict,
   LanguageIssueType,
   SlopDetection,
   SourceGroundingResult,

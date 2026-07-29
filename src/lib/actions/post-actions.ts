@@ -1,6 +1,7 @@
 'use server'
 
 import { revalidateTag } from 'next/cache'
+import type { SupabaseClient } from '@supabase/supabase-js'
 import { resolveActionAuth, verifyPostOwnership, verifyPostsOwnership } from '@/lib/auth/helpers'
 import { isUserSettablePostStatus, isValidPostPlatform } from '@/lib/validation'
 import type { ActionResult } from './types'
@@ -78,7 +79,7 @@ export async function resolveChangeRequest(postId: string): Promise<ActionResult
   return { ok: true, data: undefined }
 }
 
-/** Delete a post by ID. */
+/** Delete a post by ID, recording its outcome as a review discard first. */
 export async function deletePost(postId: string): Promise<ActionResult> {
   const auth = await resolveActionAuth()
   if (!auth.ok) return { ok: false, error: auth.error }
@@ -86,6 +87,31 @@ export async function deletePost(postId: string): Promise<ActionResult> {
 
   const post = await verifyPostOwnership(supabase, postId, agencyId)
   if (!post) return { ok: false, error: 'Post not found' }
+
+  // Outcome telemetry: best-effort — a failed log must never block the delete.
+  // Cast to untyped client — client_source_id / discarded_drafts added by
+  // migration 20260729, not yet in generated Supabase types.
+  try {
+    const untyped = supabase as unknown as SupabaseClient
+    const { data: row } = await untyped
+      .from('posts')
+      .select('client_id, client_source_id, pillar, source_url, source_type, platform')
+      .eq('id', postId)
+      .single()
+    if (row?.client_id) {
+      await untyped.from('discarded_drafts').insert({
+        client_id: row.client_id,
+        client_source_id: row.client_source_id ?? null,
+        pillar: row.pillar ?? null,
+        source_url: row.source_url ?? null,
+        source_type: row.source_type ?? null,
+        platform: row.platform ?? null,
+        discarded_from: 'review',
+      })
+    }
+  } catch (err) {
+    console.error('[posts] failed to log review discard:', err)
+  }
 
   const { error } = await supabase.from('posts').delete().eq('id', postId)
   if (error) return { ok: false, error: error.message }

@@ -37,4 +37,10 @@ export class RssResearchSource extends ResearchSource {
       }
     }
   }
+
+  addToAttributionIndex(byUrl: Map<string, string>, _byLabel: Map<string, string>): void {
+    for (const item of this.items) {
+      if (item.link) byUrl.set(item.link, this.id)
+    }
+  }
 }

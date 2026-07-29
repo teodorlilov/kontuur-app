@@ -11,7 +11,7 @@ import type {
   EnrichedTheme,
   GenerationRunContext,
 } from '@/ai/generation/types'
-import { validatePost } from '@/ai/validation/validate-post'
+import { validatePost, validatePostsBatch } from '@/ai/validation/validate-post'
 import type { PostValidationResult } from '@/ai/validation/validate-post'
 import { applyTextCorrections, applySlideCorrections } from '@/ai/validation/correction-utils'
 import { Deduplicator } from '@/ai/shared/deduplicator'
@@ -133,6 +133,7 @@ export class GenerationPipeline {
       source_title: theme.sourceTitle ?? null,
       source_type: theme.sourceType ?? null,
       source_excerpt: theme.sourceExcerpt ?? null,
+      client_source_id: theme.clientSourceId ?? null,
       pillar: theme.pillar ?? null,
       validation_json: null,
       created_at: new Date().toISOString(),
@@ -198,25 +199,24 @@ export class GenerationPipeline {
     await this.trackThemeSafe(theme, posts.length)
     const requested = theme.count || 1
 
-    // Validate all generated posts, then pick the best
-    const results = await Promise.all(
-      posts.map(async ({ caption }) => {
-        const validation = await validatePost({
-          caption,
-          client: this.ctx.client,
-          platform: this.ctx.platform,
-          sourceContext: this.buildGroundingContext(theme),
-          theme: theme.description,
-          targetPillar: theme.pillar,
-          label: 'single',
-        })
-        return {
-          validation,
-          caption: applyTextCorrections(caption, validation),
-          score: validation.qualityScore,
-        }
-      })
-    )
+    // Validate all variants of this theme in one batched pass (2 LLM calls), then pick the best
+    const validations = await validatePostsBatch({
+      captions: posts.map(({ caption }) => caption),
+      client: this.ctx.client,
+      platform: this.ctx.platform,
+      sourceContext: this.buildGroundingContext(theme),
+      theme: theme.description,
+      targetPillar: theme.pillar,
+      label: 'single',
+    })
+    const results = posts.map(({ caption }, i) => {
+      const validation = validations[i]!
+      return {
+        validation,
+        caption: applyTextCorrections(caption, validation),
+        score: validation.qualityScore,
+      }
+    })
 
     const qualified = results
       .filter((r) => r.score >= QUALITY_FLOOR)

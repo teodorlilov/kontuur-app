@@ -45,7 +45,7 @@ export async function generateCarousel(
   input: CarouselInput,
   onToken?: (text: string) => void
 ): Promise<CarouselResult> {
-  const systemPrompt = buildGenerateSystemPrompt(input.client, input.platform, input.targetPillar)
+  const systemPrompt = buildGenerateSystemPrompt(input.client, input.platform)
   const userMessage = buildGenerateUserCarouselPrompt(input)
   const outputSchema = buildCarouselOutputSchema(input.slideCount)
 

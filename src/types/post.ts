@@ -33,6 +33,7 @@ export interface PostData {
   source_type?: string | null
   pillar?: string | null
   source_excerpt?: string | null
+  client_source_id?: string | null
   ig_creation_id?: string | null
   ig_media_id?: string | null
   publish_error?: string | null

@@ -1,94 +1,31 @@
 /**
- * All validation constants — single source of truth for penalty values,
- * verdict definitions, structure checklists, issue definitions, and dimension mapping.
- * No logic here — pure data.
+ * All validation constants — single source of truth for structure checklists,
+ * issue definitions, and language issue weights. No logic here — pure data.
  */
 
 import type { LanguageIssueType } from '@/ai/validation/types'
-
-// ---- Hook verdict definitions ----
-
-export interface VerdictDefinition {
-  readonly id: string
-  readonly score: number
-  readonly description: string
-}
-
-export const HOOK_VERDICTS: readonly VerdictDefinition[] = [
-  {
-    id: 'stops_scroll',
-    score: 10,
-    description:
-      'References a specific result, named person/client, or concrete observation unique to this niche AND cannot be predicted by the reader after the first clause',
-  },
-  {
-    id: 'clear_value',
-    score: 8,
-    description:
-      'States a clear benefit or insight relevant to the target audience; no surprises but genuinely useful',
-  },
-  {
-    id: 'generic',
-    score: 5,
-    description:
-      'Could open any post in this industry — no niche-specific detail, no specific person, no concrete data point',
-  },
-  {
-    id: 'buries_lead',
-    score: 3,
-    description:
-      'The most compelling detail appears in line 2+ while line 1 is setup, context-setting, or filler',
-  },
-  {
-    id: 'no_hook',
-    score: 1,
-    description:
-      'First line is a brand announcement, greeting, or topic label with no reader benefit',
-  },
-] as const
-
-// ---- CTA verdict definitions ----
-
-export const CTA_VERDICTS: readonly VerdictDefinition[] = [
-  {
-    id: 'natural_specific',
-    score: 10,
-    description:
-      "Contains an action verb + the specific outcome/destination (e.g. 'Book a 30-min assessment at [link]', 'DM us AUDIT to get the checklist')",
-  },
-  {
-    id: 'clear_relevant',
-    score: 8,
-    description:
-      "Clear action + relevant but not hyper-specific ('Learn more on our website', 'Send us a message')",
-  },
-  {
-    id: 'generic',
-    score: 5,
-    description: "'Contact us', 'Follow for more', 'Like and share' — no specific action tied to post content",
-  },
-  {
-    id: 'weak_mismatched',
-    score: 3,
-    description: 'CTA exists but contradicts post tone or asks for something the post did not earn',
-  },
-  {
-    id: 'missing',
-    score: 1,
-    description: 'No CTA present',
-  },
-] as const
 
 // ---- Carousel structure checklist ----
 // Single source for BOTH the generation prompt and the validator, so posts are graded
 // against exactly what the generator was asked to produce.
 
 const CAROUSEL_COVER_RULE =
-  'Cover slide (slide 1): Headline only — no body text. Opens a loop the reader must swipe to resolve.'
+  'Cover slide (slide 1): Headline only — no body text. The headline opens a loop the reader must swipe to resolve — a claim, tension, or number that demands the next slide.'
 
-const CAROUSEL_COMMON_RULES: readonly string[] = [
+const CAROUSEL_COVER_RULE_SEMANTIC =
+  'Cover slide (slide 1): The headline opens a loop the reader must swipe to resolve — a claim, tension, or number that demands the next slide.'
+
+// Semantic rules need judgment — the LLM evaluates these on both sides.
+// The headline rule is phrased as a decidable test so the generator and
+// validator can't interpret "specific" differently.
+const CAROUSEL_SEMANTIC_COMMON: readonly string[] = [
   'Each slide covers a DISTINCT idea — no two slides repeat the same point.',
-  'Every headline names a specific mechanism, condition, technology, or result — not a topic label or empty positive.',
+  'Every headline states a claim someone could disagree with, OR contains a number/named entity tied to a consequence. If it could work as a textbook chapter title, it fails.',
+] as const
+
+// Mechanical rules are counted in code (check-structure.ts) — they guide the
+// generator but are NEVER given to the validator LLM, which miscounts.
+const CAROUSEL_MECHANICAL_COMMON: readonly string[] = [
   'Slide bodies are tight: at most ~30 words (1–2 short sentences), never a paragraph.',
   'Main caption: 40-60 words. Teases the core insight without revealing all slides.',
 ] as const
@@ -98,17 +35,16 @@ function carouselCtaRule(slideCount: number): string {
 }
 
 /**
- * Count-aware carousel structure rules. The classic cover/content/payoff/CTA split needs at least
+ * Count-aware slide-role rules. The classic cover/content/payoff/CTA split needs at least
  * 4 slides — at 3 the middle roles collapse into a single core-insight slide, so a 3-slide request
  * no longer contradicts the structure (the model used to add a 4th slide to satisfy all roles).
  */
-export function carouselStructureRules(slideCount: number): string[] {
+function carouselRoleRules(slideCount: number, coverRule: string): string[] {
   if (slideCount <= 3) {
     return [
-      CAROUSEL_COVER_RULE,
+      coverRule,
       'Middle slide (slide 2): The single core insight — the informational peak of the carousel. Body adds NEW information beyond the headline — does not explain/repeat it.',
       carouselCtaRule(3),
-      ...CAROUSEL_COMMON_RULES,
     ]
   }
   const contentRange =
@@ -116,12 +52,25 @@ export function carouselStructureRules(slideCount: number): string[] {
       ? 'Content slide (slide 2): One distinct idea.'
       : `Content slides (slides 2–${slideCount - 2}): One distinct idea per slide.`
   return [
-    CAROUSEL_COVER_RULE,
+    coverRule,
     `${contentRange} Body adds NEW information beyond the headline — does not explain/repeat it.`,
     `Value/payoff slide (slide ${slideCount - 1}): Emotional or informational peak — not another content slide.`,
     carouselCtaRule(slideCount),
-    ...CAROUSEL_COMMON_RULES,
   ]
+}
+
+/** Full rule set for the GENERATION prompt — the writer needs the mechanical bounds too. */
+export function carouselStructureRules(slideCount: number): string[] {
+  return [
+    ...carouselRoleRules(slideCount, CAROUSEL_COVER_RULE),
+    ...CAROUSEL_SEMANTIC_COMMON,
+    ...CAROUSEL_MECHANICAL_COMMON,
+  ]
+}
+
+/** Judgment-only rule set for the VALIDATION prompt — mechanical rules are checked in code. */
+export function carouselSemanticRules(slideCount: number): string[] {
+  return [...carouselRoleRules(slideCount, CAROUSEL_COVER_RULE_SEMANTIC), ...CAROUSEL_SEMANTIC_COMMON]
 }
 
 
@@ -148,45 +97,6 @@ export const ISSUE_TYPE_DEFINITIONS: Record<string, string> = {
   wrong_audience:
     'Post addresses pain points, aspirations, or vocabulary belonging to a different audience segment than declared',
 }
-
-// ---- Language dimension mapping (static — no LLM classification) ----
-
-export const DIMENSION_BY_ISSUE_TYPE: Record<LanguageIssueType, 'naturalness' | 'register'> = {
-  anglicism: 'naturalness',
-  calque: 'naturalness',
-  mixed_script: 'naturalness',
-  vocabulary: 'naturalness',
-  grammar: 'naturalness',
-  formality: 'register',
-  register: 'register',
-  instructions: 'register',
-}
-
-// ---- Penalty weights ----
-
-export const HUMAN_SCORE_PENALTIES = {
-  AI_TELL: 1.0,
-  AI_TELL_CAP: 4.0,
-  BRAND_VOICE_MISMATCH: 1.5,
-  NICHE_NOT_SPECIFIC: 1.5,
-  AUDIENCE_NOT_TARGETED: 1.0,
-  NO_PERSONALITY: 1.5,
-  TOO_POLISHED: 1.0,
-  FILLER_CONTENT: 0.75,
-  REPETITIVE: 0.75,
-  OFF_BRAND: 1.5,
-  WRONG_AUDIENCE: 1.0,
-} as const
-
-export const CRITERIA_PENALTIES = {
-  SENTENCE_VARIETY_FAIL: 1.0,
-  WORD_COUNT_VIOLATION: 0.75,
-  BANNED_PHRASE_FOUND: 1.0,
-  BANNED_PHRASE_CAP: 3.0,
-  FORMALITY_VIOLATION: 1.5,
-  SOURCE_FIDELITY_FAIL: 1.5,
-  HEALTH_CONTENT_VIOLATION: 2.0,
-} as const
 
 /** Penalty per language issue type (deducted from 10). */
 export const LANGUAGE_ISSUE_WEIGHTS: Record<LanguageIssueType, number> = {

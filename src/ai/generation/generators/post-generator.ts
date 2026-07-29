@@ -10,7 +10,7 @@ export async function generatePost(
   input: SinglePostInput,
   onToken?: (text: string) => void
 ): Promise<ParsedPost[]> {
-  const systemPrompt = buildGenerateSystemPrompt(input.client, input.platform, input.targetPillar)
+  const systemPrompt = buildGenerateSystemPrompt(input.client, input.platform)
   const userMessage = buildGenerateUserPrompt(input)
 
   const message = await callAnthropic({ systemPrompt, userMessage, onToken, model: DEFAULT_MODEL, maxTokens: 1200 })

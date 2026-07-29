@@ -5,6 +5,7 @@ import {
   buildLanguageRules,
   buildPlatformLimits,
   buildHealthRules,
+  buildQualityBar,
 } from '@/ai/shared/build-prompt-sections'
 import { carouselStructureRules } from '@/ai/validation/criteria'
 import { buildGroundingPrompt } from './source-grounding'
@@ -13,20 +14,23 @@ import { formatHistory, todayDateString } from '@/ai/utils/prompt-helpers'
 
 /**
  * System prompt for single-post and carousel generation.
+ * Run-invariant per client+platform so concurrent calls share one cached prefix.
  */
-export function buildGenerateSystemPrompt(
-  client: ClientData,
-  platform: string,
-  targetPillar?: string,
-): string {
+export function buildGenerateSystemPrompt(client: ClientData, platform: string): string {
   const sections = [
     `You are a social media copywriter writing for ${sanitizePromptField(client.name)}.`,
-    buildClientBrief(client, platform, targetPillar),
+    buildClientBrief(client, platform),
     buildLanguageRules(client.languageConfig),
     buildPlatformLimits(platform),
+    buildQualityBar(),
     client.isHealthNiche ? buildHealthRules() : '',
   ]
   return sections.filter(Boolean).join('\n\n')
+}
+
+/** Per-theme pillar line — lives in the user turn to keep the system prefix cacheable. */
+function buildPillarLine(targetPillar?: string): string {
+  return targetPillar ? `This post targets pillar: ${sanitizePromptField(targetPillar)}` : ''
 }
 
 /**
@@ -53,6 +57,8 @@ export function buildGenerateUserPrompt(input: SinglePostInput): string {
     input.similarPastThemes?.length
       ? `Similar posts exist on: ${input.similarPastThemes.join(', ')}. Take a different angle.`
       : '',
+
+    buildPillarLine(input.targetPillar),
 
     `Today's date: ${todayDateString()}`,
 
@@ -90,13 +96,15 @@ export function buildGenerateUserCarouselPrompt(input: CarouselInput): string {
       ? `Similar posts exist on: ${input.similarPastThemes.join(', ')}. Take a different angle.`
       : '',
 
+    buildPillarLine(input.targetPillar),
+
     `Today's date: ${todayDateString()}`,
 
     `Write a carousel with EXACTLY ${input.slideCount} slides for theme "${sanitizePromptField(input.theme)}".
 
 CAROUSEL RULES:
 ${rules}
-${input.client.languageConfig.carouselSwipeCues ? `- For the cover slide headline, use a swipe cue from: ${input.client.languageConfig.carouselSwipeCues}` : ''}
+${input.client.languageConfig.carouselSwipeCues ? `- Cover slide: work a swipe cue from (${input.client.languageConfig.carouselSwipeCues}) INTO THE HEADLINE — the cover slide never has body text.` : ''}
 
 Base content on the source material. Each slide should teach something specific from the source.`,
   ]

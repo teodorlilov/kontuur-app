@@ -47,6 +47,7 @@ export function usePostActions({ post, onApprove, onRegenerate, images }: UsePos
           source_title: post.source_title ?? null,
           source_type: post.source_type ?? null,
           source_excerpt: post.source_excerpt ?? null,
+          client_source_id: post.client_source_id ?? null,
           pillar: post.pillar ?? null,
           ...(images && images.length > 0 ? { images } : {}),
         }),

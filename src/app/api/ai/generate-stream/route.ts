@@ -110,6 +110,7 @@ export async function POST(request: Request) {
           sourceType: t.source_type ?? undefined,
           sourceExcerpt: t.source_excerpt,
           sourceFullText: t.source_full_text,
+          clientSourceId: t.client_source_id ?? null,
         }))
 
         await runGenerationBatch({

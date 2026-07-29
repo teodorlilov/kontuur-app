@@ -31,4 +31,8 @@ export class FileResearchSource extends ResearchSource {
       byLabel.set(this.label, this.extractedText.slice(0, cap))
     }
   }
+
+  addToAttributionIndex(_byUrl: Map<string, string>, byLabel: Map<string, string>): void {
+    if (this.extractedText) byLabel.set(this.label, this.id)
+  }
 }

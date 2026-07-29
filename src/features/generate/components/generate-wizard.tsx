@@ -17,6 +17,7 @@ import { StepLoading, mapPhaseToStage } from './step-loading'
 import { ResultsView } from './results/results-view'
 import { useDraftVisuals } from '@/features/generate/hooks/use-draft-visuals'
 import { completedDraftImages } from '@/features/generate/lib/draft-visuals'
+import { logDiscardedDraft } from '@/features/generate/actions/discard-actions'
 import type { ClientRow } from '@/types'
 import type { ClientData } from '@/lib/clients/fetch-client-data'
 import type { PriorityPost, PostType } from '@/types/api'
@@ -187,7 +188,18 @@ export function GenerateWizard({
 
   function handlePostRemoved(postId: string) {
     const removed = generatedPosts.find((p) => p.post.id === postId)
-    if (removed) draftVisuals.discardDraft(postId, removed.post.client_id)
+    if (removed) {
+      draftVisuals.discardDraft(postId, removed.post.client_id)
+      // Outcome telemetry: explicit discards feed per-source usefulness stats
+      void logDiscardedDraft({
+        clientId: removed.post.client_id,
+        clientSourceId: removed.post.client_source_id ?? null,
+        pillar: removed.post.pillar ?? null,
+        sourceUrl: removed.post.source_url ?? null,
+        sourceType: removed.post.source_type ?? null,
+        platform: removed.post.platform ?? null,
+      })
+    }
     setGeneratedPosts((prev) => prev.filter((p) => p.post.id !== postId))
     setStreamTotal((t) => t - 1)
     setDiscardedCount((c) => c + 1)
@@ -252,6 +264,7 @@ export function GenerateWizard({
             source_title: item.post.source_title ?? null,
             source_type: item.post.source_type ?? null,
             source_excerpt: item.post.source_excerpt ?? null,
+            client_source_id: item.post.client_source_id ?? null,
             pillar: item.post.pillar ?? null,
             images: completedDraftImages(draftVisuals.visualsByDraft[item.post.id]),
           }),

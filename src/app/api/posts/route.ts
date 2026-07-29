@@ -5,7 +5,7 @@ import { draftVisualPrefix, movePostImageObject } from '@/features/publishing/li
 import { safeParseCanvasDoc } from '@/lib/canvas/doc-schema'
 import { POST_COLUMNS } from '@/lib/queries/select-columns'
 import type { CanvasDoc } from '@/types/canvas'
-import type { Json } from '@/types/database'
+import type { Database, Json } from '@/types/database'
 
 export async function GET(request: Request) {
   const auth = await resolveAuth()
@@ -86,6 +86,7 @@ interface CreatePostBody {
   source_title?: string | null
   source_type?: string | null
   source_excerpt?: string | null
+  client_source_id?: string | null
   pillar?: string | null
   /** Draft visuals generated in the wizard, attached as post_images rows on approve.
    *  `canvasDoc` (when present) becomes the slide's post_canvas_docs row so edits stay editable. */
@@ -200,32 +201,51 @@ export async function POST(request: Request) {
 
   if (!client) return NextResponse.json({ error: 'Client not found' }, { status: 404 })
 
+  // Attribution guard: never persist a source id that belongs to another client
+  let clientSourceId = body.client_source_id ?? null
+  if (clientSourceId) {
+    const { data: ownedSource } = await supabase
+      .from('client_sources')
+      .select('id')
+      .eq('id', clientSourceId)
+      .eq('client_id', body.client_id)
+      .maybeSingle()
+    if (!ownedSource) {
+      console.warn('[posts] client_source_id does not belong to client — dropping attribution')
+      clientSourceId = null
+    }
+  }
+
+  const insertRow = {
+    client_id: body.client_id,
+    caption: body.caption ?? null,
+    platform: body.platform ?? 'instagram',
+    post_type: body.post_type ?? 'single',
+    slides_json: (body.slides_json as Json) ?? null,
+    validation_json: (body.validation_json as Json) ?? null,
+    status:
+      body.status === 'pending_review'
+        ? 'pending_review'
+        : body.status === 'scheduled'
+          ? 'scheduled'
+          : 'approved',
+    scheduled_at: body.scheduled_at ?? null,
+    priority: body.priority ?? false,
+    quality_score_avg: body.quality_score_avg ?? null,
+    was_rewritten: body.was_rewritten ?? false,
+    rewrite_count: body.rewrite_count ?? 0,
+    source_url: body.source_url ?? null,
+    source_title: body.source_title ?? null,
+    source_type: body.source_type ?? null,
+    source_excerpt: body.source_excerpt ?? null,
+    client_source_id: clientSourceId,
+    pillar: body.pillar ?? null,
+  }
+
   const { data: post, error } = await supabase
     .from('posts')
-    .insert({
-      client_id: body.client_id,
-      caption: body.caption ?? null,
-      platform: body.platform ?? 'instagram',
-      post_type: body.post_type ?? 'single',
-      slides_json: (body.slides_json as Json) ?? null,
-      validation_json: (body.validation_json as Json) ?? null,
-      status:
-        body.status === 'pending_review'
-          ? 'pending_review'
-          : body.status === 'scheduled'
-            ? 'scheduled'
-            : 'approved',
-      scheduled_at: body.scheduled_at ?? null,
-      priority: body.priority ?? false,
-      quality_score_avg: body.quality_score_avg ?? null,
-      was_rewritten: body.was_rewritten ?? false,
-      rewrite_count: body.rewrite_count ?? 0,
-      source_url: body.source_url ?? null,
-      source_title: body.source_title ?? null,
-      source_type: body.source_type ?? null,
-      source_excerpt: body.source_excerpt ?? null,
-      pillar: body.pillar ?? null,
-    })
+    // Cast through unknown — client_source_id added by migration 20260729, not yet in generated Supabase types
+    .insert(insertRow as unknown as Database['public']['Tables']['posts']['Insert'])
     .select(POST_COLUMNS)
     .single()
 

@@ -1,17 +1,12 @@
 /**
  * All validation types — single source of truth.
  * Import shared types from their existing locations; do NOT redefine them.
+ *
+ * Lean shape (2026-07): scores come from the model, per-criterion pass/fail
+ * rows were retired — failures surface as actionable `issues` entries instead.
  */
 
-// ---- Verdicts ----
-
-export type HookVerdict = 'stops_scroll' | 'clear_value' | 'generic' | 'buries_lead' | 'no_hook'
-export type CtaVerdict =
-  | 'natural_specific'
-  | 'clear_relevant'
-  | 'generic'
-  | 'weak_mismatched'
-  | 'missing'
+// ---- Issue taxonomy ----
 
 export type LanguageIssueType =
   | 'anglicism'
@@ -25,35 +20,19 @@ export type LanguageIssueType =
 
 export type ClaimStatus = 'grounded' | 'ungrounded' | 'partially_grounded'
 
-// ---- Criterion-level results ----
+// ---- Criterion results ----
 
-export interface CriterionResult {
+/** Collapsed carousel structure verdict — per-rule checklists were retired. */
+export interface StructureResult {
   passes: boolean
-  gap: string | null
+  notes: string[]
 }
-
-export interface StructureCheck {
-  rule: string
-  passes: boolean
-  note: string | null
-}
-
-// ---- Criterion breakdown ----
 
 export interface ValidationCriteria {
-  niche_fit: CriterionResult
-  audience_match: CriterionResult
-  /** null when no targetPillar was provided */
-  pillar_match: CriterionResult | null
-  theme_adherence: CriterionResult
-  hook: { verdict: HookVerdict; note: string | null }
-  cta: { verdict: CtaVerdict; note: string | null }
-  /** null for single posts; carousels have checklist evaluation */
-  structure_followed: { checks: StructureCheck[]; passes: boolean } | null
   ai_tells: string[]
   worst_offending_phrase: string | null
-  brand_voice: CriterionResult
-  formality: CriterionResult
+  /** null for single posts; carousels get a collapsed pass/fail with failure notes */
+  structure_followed: StructureResult | null
   /** null when no source present */
   source_claims: SourceGroundingIssue[] | null
   health_compliant: boolean | null
@@ -63,16 +42,11 @@ export interface ValidationCriteria {
 // ---- Score dimensions ----
 
 export interface ValidationScores {
-  brief_score: number
-  craft_score: number
-  voice_score: number
-  language_score: number
-  language_naturalness_score: number
-  language_register_score: number
+  overall_score: number
   /** Authenticity score — used for slop detection threshold */
   human_score: number
+  language_score: number
   source_score: number | null
-  overall_score: number
 }
 
 export interface QualityIssue {
@@ -93,10 +67,7 @@ export interface LanguageValidationResult {
   issues: LanguageIssue[]
   corrected_text: string | null
   corrected_slides?: Array<{ headline: string; body: string }> | null
-  language_naturalness_score?: number
-  language_register_score?: number
 }
-
 
 export interface SlopDetection {
   reads_as_human: boolean

@@ -16,7 +16,7 @@ import { BEST_TIME_REFRESH_DAYS, DEFAULT_CAROUSEL_SLIDES } from '@/utils/constan
 import { fetchScheduleContext, shouldGenerateToday } from './helpers'
 import type { PostType } from '@/types/api'
 import type { Theme } from '@/ai/generation/types'
-import type { Json } from '@/types/database'
+import type { Database, Json } from '@/types/database'
 
 export const maxDuration = 300
 
@@ -128,6 +128,7 @@ export async function GET(request: NextRequest) {
         sourceType: t.source_type ?? undefined,
         sourceExcerpt: t.source_excerpt,
         sourceFullText: t.source_full_text,
+        clientSourceId: t.client_source_id ?? null,
       }))
 
       // 10. Run generation pipeline (with trackTheme wired up, same as wizard)
@@ -175,8 +176,10 @@ export async function GET(request: NextRequest) {
               source_title: post.source_title,
               source_type: post.source_type,
               source_excerpt: post.source_excerpt,
+              client_source_id: post.client_source_id,
               pillar: post.pillar,
-            }))
+              // Cast through unknown — client_source_id added by migration 20260729, not yet in generated Supabase types
+            })) as unknown as Database['public']['Tables']['posts']['Insert'][]
           )
           .select('id')
 

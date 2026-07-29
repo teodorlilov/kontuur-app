@@ -46,6 +46,13 @@ export abstract class ResearchSource {
     cap: number
   ): void
 
+  /**
+   * Write this source's fetched-item keys → client_sources row id into the
+   * attribution maps, so topics can be resolved back to the source that
+   * produced them (server-side — ids are never round-tripped through the LLM).
+   */
+  abstract addToAttributionIndex(byUrl: Map<string, string>, byLabel: Map<string, string>): void
+
   // ---- Content accessors (Null Object defaults — override only what applies) ----
 
   /** Whether this source requires a network fetch. File sources return false. */

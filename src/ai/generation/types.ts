@@ -57,6 +57,8 @@ export interface DraftPost {
   source_title: string | null
   source_type: 'rss' | 'website' | 'file' | 'web_search' | null
   source_excerpt: string | null
+  /** client_sources row that fueled this draft — resolved server-side during research. */
+  client_source_id: string | null
   pillar: string | null
   created_at: string
 }
@@ -80,6 +82,7 @@ export interface Theme {
   sourceType?: 'rss' | 'website' | 'file' | 'web_search'
   sourceExcerpt?: string
   sourceFullText?: string
+  clientSourceId?: string | null
 }
 
 export interface EnrichedTheme extends Theme {

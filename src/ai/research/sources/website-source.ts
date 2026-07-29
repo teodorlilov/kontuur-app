@@ -37,4 +37,8 @@ export class WebsiteResearchSource extends ResearchSource {
       byUrl.set(w.url, w.text.slice(0, cap))
     }
   }
+
+  addToAttributionIndex(byUrl: Map<string, string>, _byLabel: Map<string, string>): void {
+    for (const w of this.excerpts) byUrl.set(w.url, this.id)
+  }
 }
