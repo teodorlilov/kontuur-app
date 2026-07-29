@@ -257,6 +257,8 @@ export default function PrivacyPage() {
           <p style={pStyle}>
             <strong>Chelling Ltd</strong>
             <br />
+            UIC 206770508, Sofia, Bulgaria
+            <br />
             Email:{' '}
             <a href="mailto:privacy@kontuur.io" style={{ color: 'var(--color-brand-accent)' }}>
               privacy@kontuur.io

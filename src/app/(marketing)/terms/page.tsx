@@ -230,8 +230,8 @@ export default function TermsPage() {
           {/* 11. Governing law */}
           <h2 style={h2Style}>11. Governing Law</h2>
           <p style={pStyle}>
-            These Terms are governed by the laws of the jurisdiction in which Chelling Ltd is
-            incorporated. Any disputes will be resolved in the courts of that jurisdiction.
+            These Terms are governed by the laws of the Republic of Bulgaria and applicable
+            European Union law. Any disputes will be resolved in the courts of Sofia, Bulgaria.
           </p>
 
           {/* 12. Changes */}
@@ -249,6 +249,8 @@ export default function TermsPage() {
           </p>
           <p style={pStyle}>
             <strong>Chelling Ltd</strong>
+            <br />
+            UIC 206770508, Sofia, Bulgaria
             <br />
             Email:{' '}
             <a href="mailto:legal@kontuur.io" style={{ color: 'var(--color-brand-accent)' }}>
