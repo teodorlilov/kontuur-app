@@ -1,0 +1,162 @@
+import { callAnthropic, LIGHT_MODEL } from '@/utils/ai-client'
+import { extractToolInput } from '@/utils/ai'
+import type { WeightedPillar } from '@/lib/clients/content-pillars'
+import type { SourceContext } from './types'
+import type { RssItem } from '@/lib/sources/fetch-rss'
+import type { TrendSearchResult } from '@/lib/sources/fetch-trend-search'
+
+export const RANK_SCORE_THRESHOLD = 4
+export const RANK_PER_PILLAR_CAP = 4
+export const RANKED_RSS_CAP = 12
+export const RANKED_WEB_CAP = 8
+/** Below this many rankable items the call costs more than it saves. */
+export const RANK_MIN_ITEMS = 8
+
+const SNIPPET_MAX_CHARS = 200
+
+export interface RankOptions {
+  niche: string
+  targetAudience?: string
+  contentPillars: WeightedPillar[]
+}
+
+interface Ranking {
+  index: number
+  score: number
+  bestPillar: string | null
+}
+
+const RANK_OUTPUT_SCHEMA = {
+  type: 'object' as const,
+  properties: {
+    rankings: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          index: { type: 'integer' },
+          score: { type: 'integer', minimum: 0, maximum: 10 },
+          bestPillar: { type: ['string', 'null'] },
+        },
+        required: ['index', 'score', 'bestPillar'],
+      },
+    },
+  },
+  required: ['rankings'],
+}
+
+const RANK_SYSTEM_PROMPT = `You score content items for a social media research pipeline.
+For each numbered item, judge ONE question: could a strong, specific social media post for THIS business be built from this item?
+- 8-10: directly usable — concrete, current, and squarely in the business's territory
+- 5-7: usable with work — relevant but generic or tangential
+- 0-4: noise — off-topic, too generic, or irrelevant to this audience
+bestPillar: the single content pillar this item serves best, or null if none fits.
+Score every item. Be strict — the pipeline only keeps the strongest items.`
+
+function buildRankUserPrompt(
+  lines: string[],
+  opts: RankOptions
+): string {
+  const pillarsText = opts.contentPillars.map((p) => `- ${p.pillar}`).join('\n')
+
+  return `Business: ${opts.niche}
+Audience: ${opts.targetAudience ?? 'general'}
+Content pillars:
+${pillarsText}
+
+Items:
+${lines.join('\n')}`
+}
+
+/** One compact line per item; the model sees just enough to judge relevance. */
+function toItemLine(index: number, title: string, snippet: string): string {
+  return `${index}. ${title}: ${snippet.slice(0, SNIPPET_MAX_CHARS)}`
+}
+
+/** Score >= threshold, at most RANK_PER_PILLAR_CAP per bestPillar, then the global cap — original order breaks ties. */
+function selectTop<T>(
+  items: T[],
+  rankings: Map<number, Ranking>,
+  offset: number,
+  globalCap: number
+): T[] {
+  const scored = items
+    .map((item, i) => ({ item, ranking: rankings.get(offset + i + 1) }))
+    .filter(
+      (entry): entry is { item: T; ranking: Ranking } =>
+        entry.ranking !== undefined && entry.ranking.score >= RANK_SCORE_THRESHOLD
+    )
+    .sort((a, b) => b.ranking.score - a.ranking.score)
+
+  const perPillar = new Map<string, number>()
+  const selected: T[] = []
+  for (const { item, ranking } of scored) {
+    if (selected.length >= globalCap) break
+    const pillarKey = ranking.bestPillar ?? ''
+    if (pillarKey) {
+      const used = perPillar.get(pillarKey) ?? 0
+      if (used >= RANK_PER_PILLAR_CAP) continue
+      perPillar.set(pillarKey, used + 1)
+    }
+    selected.push(item)
+  }
+  return selected
+}
+
+/**
+ * Rank rss + web-search items by business relevance in one cold Haiku call and
+ * keep only the strongest, so topic generation reads a curated shortlist.
+ * Website/file excerpts pass through untouched (few, large, already curated).
+ * Any failure or empty selection returns the input unchanged — ranking must
+ * never lose a run.
+ */
+export async function rankSourceItems(
+  context: SourceContext,
+  opts: RankOptions
+): Promise<SourceContext> {
+  const rssItems: RssItem[] = context.rssItems
+  const webItems: TrendSearchResult[] = context.webSearchItems ?? []
+  const totalItems = rssItems.length + webItems.length
+
+  if (totalItems < RANK_MIN_ITEMS) return context
+
+  const lines = [
+    ...rssItems.map((item, i) => toItemLine(i + 1, item.title, item.description)),
+    ...webItems.map((item, i) => toItemLine(rssItems.length + i + 1, item.title, item.snippet)),
+  ]
+
+  try {
+    const message = await callAnthropic({
+      systemPrompt: RANK_SYSTEM_PROMPT,
+      userMessage: buildRankUserPrompt(lines, opts),
+      model: LIGHT_MODEL,
+      maxTokens: 2048,
+      outputSchema: RANK_OUTPUT_SCHEMA,
+      temperature: 0,
+    })
+
+    const { rankings } = extractToolInput<{ rankings: Ranking[] }>(message)
+    const byIndex = new Map<number, Ranking>()
+    for (const ranking of rankings ?? []) {
+      if (typeof ranking.index === 'number') byIndex.set(ranking.index, ranking)
+    }
+
+    const rankedRss = selectTop(rssItems, byIndex, 0, RANKED_RSS_CAP)
+    const rankedWeb = selectTop(webItems, byIndex, rssItems.length, RANKED_WEB_CAP)
+
+    // Everything filtered = the ranker is wrong, not the sources — keep the run alive
+    if (rankedRss.length + rankedWeb.length === 0) {
+      console.warn('[research] rank stage filtered every item — using unranked context')
+      return context
+    }
+
+    return {
+      ...context,
+      rssItems: rankedRss,
+      ...(context.webSearchItems ? { webSearchItems: rankedWeb } : {}),
+    }
+  } catch (err) {
+    console.warn('[research] rank stage failed, using unranked context:', err)
+    return context
+  }
+}

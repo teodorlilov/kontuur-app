@@ -9,6 +9,7 @@ import {
 import type { TavilyConfig } from '@/types/sources'
 import { createAllSources } from './sources/source-factory'
 import { ResearchSource } from './sources/research-source'
+import { rankSourceItems } from './rank-source-items'
 import { ResearchPromptBuilder } from './prompts/prompt-builder'
 import { generateTopics, generateTopUpTopics } from './generators/topic-generator'
 import { computeFetchLimits, SOURCE_FULL_TEXT_CAP } from './fetch-limits'
@@ -81,15 +82,18 @@ export class ResearchPipeline {
     const shouldSearchWeb = !!tavilyRow
     const tavilyConfig = (tavilyRow?.config ?? {}) as TavilyConfig
 
-    // Skip pillars with no eligible sources
-    const allSourcePillarIds = [
-      ...sourceObjects.map((s) => getSourcePillarIds(s.pillarIds)),
-      ...(tavilyRow ? [getSourcePillarIds(tavilyRow.pillar_ids)] : []),
-    ]
-    const effectivePillars = pillars.filter((p) => pillarHasSources(p.id, allSourcePillarIds))
-    const preSkippedPillars: SkippedPillar[] = pillars
-      .filter((p) => !pillarHasSources(p.id, allSourcePillarIds))
-      .map((p) => ({ name: p.pillar }))
+    // Soft-skip: with web research active, no pillar is skipped upfront — search
+    // can serve any topic. Pre-skip only applies when tavily is off AND a
+    // pillar has no eligible sources at all.
+    let effectivePillars = pillars
+    let preSkippedPillars: SkippedPillar[] = []
+    if (!tavilyRow) {
+      const allSourcePillarIds = sourceObjects.map((s) => getSourcePillarIds(s.pillarIds))
+      effectivePillars = pillars.filter((p) => pillarHasSources(p.id, allSourcePillarIds))
+      preSkippedPillars = pillars
+        .filter((p) => !pillarHasSources(p.id, allSourcePillarIds))
+        .map((p) => ({ name: p.pillar }))
+    }
 
     const [, allWebSearchItems] = await Promise.all([
       this.fetchAllSources(sourceObjects, limits),
@@ -128,10 +132,17 @@ export class ResearchPipeline {
       return []
     }
 
-    const effectiveContext: SourceContext = {
+    const gatheredContext: SourceContext = {
       ...clientSourceContext,
       webSearchItems: webSearchItems.length > 0 ? webSearchItems : undefined,
     }
+
+    this.ctx.onPhase?.('Ranking source material...')
+    const effectiveContext = await rankSourceItems(gatheredContext, {
+      niche: this.ctx.niche,
+      targetAudience: clientData.targetAudience,
+      contentPillars: effectivePillars,
+    })
 
     this.ctx.onPhase?.('Generating theme ideas...')
     const builder = new ResearchPromptBuilder({
