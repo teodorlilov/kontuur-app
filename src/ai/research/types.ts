@@ -11,12 +11,21 @@ export interface ResearchTopic {
   pillar?: string
   source_url?: string | null
   source_title?: string | null
-  source_type?: 'rss' | 'website' | 'file' | 'web_search' | null
+  source_type?: 'rss' | 'website' | 'file' | 'web_search' | 'performance' | null
   source_excerpt?: string
   /** Full source text attached after LLM research, from the fetched source map. Not LLM-generated. */
   source_full_text?: string
   /** client_sources row that produced this topic — attached server-side, never LLM-generated. */
   client_source_id?: string | null
+}
+
+/** One of the client's own top-performing recent posts — audience-proven material for follow-up angles. */
+export interface PerformanceItem {
+  caption: string
+  /** Recovered via posts.ig_media_id join; absent for organic posts Postflow didn't publish. */
+  pillar?: string
+  engagementSummary: string
+  permalink?: string
 }
 
 export interface WebsiteExcerpt {
@@ -37,6 +46,7 @@ export interface SourceContext {
   websiteExcerpts: WebsiteExcerpt[]
   fileExcerpts: FileExcerpt[]
   webSearchItems?: import('@/lib/sources/fetch-trend-search').TrendSearchResult[]
+  performanceItems?: PerformanceItem[]
 }
 
 export interface SkippedPillar {

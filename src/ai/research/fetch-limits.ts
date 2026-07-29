@@ -8,7 +8,7 @@ import type { FetchLimits } from './types'
 export const SOURCE_FULL_TEXT_CAP = 4000
 
 const BASE_COUNT = 5
-const RSS_ITEMS_PER_SOURCE_MAX = 4
+const RSS_ITEMS_PER_SOURCE_MAX = 6
 const RSS_BUDGET_MAX = 4000
 const WEB_BUDGET_MAX = 8000
 const FILE_BUDGET_MAX = 6000

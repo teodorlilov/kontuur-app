@@ -104,10 +104,14 @@ async function fetchSingleIGPostInsights(
   }
 }
 
-/** Fetches per-post insights for up to 20 media items in parallel. */
-async function fetchIGPostInsights(mediaList: IGRawMedia[], token: string): Promise<IGPost[]> {
+/** Fetches per-post insights for up to `limit` media items in parallel. */
+async function fetchIGPostInsights(
+  mediaList: IGRawMedia[],
+  token: string,
+  limit = 20
+): Promise<IGPost[]> {
   return Promise.all(
-    mediaList.slice(0, 20).map(async (media) => {
+    mediaList.slice(0, limit).map(async (media) => {
       const ins = await fetchSingleIGPostInsights(media.id, token)
       return {
         id: media.id,
@@ -205,4 +209,35 @@ export async function fetchInstagramMetrics(
     audience,
     media_type_breakdown: computeIGMediaTypeBreakdown(posts, followers),
   }
+}
+
+// Insights cap for the research performance source — the report path keeps its
+// pre-approval 20; with instagram_business_manage_insights granted, this path
+// can rank a wider recent pool before picking the top performers.
+const PERFORMANCE_INSIGHTS_CAP = 30
+
+/** Engagement key: platform insights first, public counts as fallback for media types without insights. */
+function engagementOf(post: IGPost): number {
+  if (post.total_interactions && post.total_interactions > 0) return post.total_interactions
+  return post.like_count + post.comments_count + (post.saved ?? 0)
+}
+
+/**
+ * Fetches the client's top recent IG posts by engagement — lean subset of
+ * fetchInstagramMetrics (media + per-post insights only; no account, daily,
+ * audience, or prev-period calls). Used by the research performance source.
+ */
+export async function fetchTopPerformingPosts(
+  accountId: string,
+  accessToken: string,
+  since: string,
+  until: string,
+  limit: number
+): Promise<IGPost[]> {
+  const token = `access_token=${accessToken}`
+  const media = await fetchIGMediaInRange(accountId, token, since, until)
+  if (media.length === 0) return []
+
+  const posts = await fetchIGPostInsights(media, token, PERFORMANCE_INSIGHTS_CAP)
+  return posts.sort((a, b) => engagementOf(b) - engagementOf(a)).slice(0, limit)
 }

@@ -123,6 +123,22 @@ You read raw business data and extract post themes that are specific, factual, a
           )
         : ''
 
+    const performanceSection =
+      sourceContext.performanceItems && sourceContext.performanceItems.length > 0
+        ? buildPromptSection(
+            'TOP_PERFORMING_RECENT_POSTS',
+            'performance_content',
+            `This client's best recent posts — angles their audience has PROVEN to respond to. Propose FOLLOW-UP angles (a deeper dive, the next step, the question the post raised). Never repeat the same content.\n` +
+              sourceContext.performanceItems
+                .map((p) => {
+                  const pillarTag = p.pillar ? `[${p.pillar}] ` : ''
+                  const link = p.permalink ? ` (${p.permalink})` : ''
+                  return `- ${pillarTag}"${p.caption}" — ${p.engagementSummary}${link}`
+                })
+                .join('\n')
+          )
+        : ''
+
     return `Date: ${todayDateString()}
 ### NICHE: ${this.niche}
 
@@ -137,6 +153,7 @@ ${rssSection}
 ${webSection}
 ${fileSection}
 ${webSearchSection}
+${performanceSection}
 
 ### SOURCING RULES:
 - Every topic MUST be grounded in the provided source material. Never use your own knowledge.
@@ -145,8 +162,10 @@ ${webSearchSection}
 - Website pages → source_type "website", source_url = page URL.
 - Documents → source_type "file", source_url = null.
 - Web search → source_type "web_search", source_url = result URL.
+- Top performing posts → source_type "performance", source_url = the post's permalink or null.
+- Prefer source items tied to seasonal moments, holidays, or occasions relevant to this niche and the ${this.languageConfig.language} market in the next 4-6 weeks — but ONLY when the source material itself supports the topic; never invent seasonal content without a source.
 - If a pillar has no available source items, omit that pillar entirely — do NOT fabricate.
-- Never return a topic with source_url null unless source_type is "file".
+- Never return a topic with source_url null unless source_type is "file" or "performance".
 - Maximize source diversity: use each available source URL at least once before reusing any URL for a second topic. Each topic from the same URL must cover a genuinely different angle.
 - source_excerpt MUST only contain information that is explicitly present in the source material. Do NOT add facts, mechanisms, claims, or details from your own knowledge — even if they are technically correct. If the source doesn't mention something, it must not appear in the excerpt.
 
@@ -157,7 +176,7 @@ ${webSearchSection}
   "pillar": "pillar name",
   "source_url": "url or null",
   "source_title": "title or null",
-  "source_type": "rss | website | file | web_search | null",
+  "source_type": "rss | website | file | web_search | performance | null",
   "source_excerpt": "Write in ${this.languageConfig.language}. 5-8 sentences extracting the key facts from the source. Each sentence must correspond to a specific passage in the source — do not infer, interpret, or connect facts that the source does not explicitly connect. Include only facts, claims, and details that are explicitly stated — do NOT add information from your own knowledge, even if technically correct. For technical or medical terms, use the established term in ${this.languageConfig.language}. If no established term exists, keep the original English term — do NOT create hybrid transliterations mixing Latin and Cyrillic characters. Replace all double-quotes with single-quotes."
 }]`
   }

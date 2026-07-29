@@ -10,6 +10,7 @@ import type { TavilyConfig } from '@/types/sources'
 import { createAllSources } from './sources/source-factory'
 import { ResearchSource } from './sources/research-source'
 import { rankSourceItems } from './rank-source-items'
+import { fetchPerformanceItems } from './performance-source'
 import { ResearchPromptBuilder } from './prompts/prompt-builder'
 import { generateTopics, generateTopUpTopics } from './generators/topic-generator'
 import { computeFetchLimits, SOURCE_FULL_TEXT_CAP } from './fetch-limits'
@@ -95,7 +96,7 @@ export class ResearchPipeline {
         .map((p) => ({ name: p.pillar }))
     }
 
-    const [, allWebSearchItems] = await Promise.all([
+    const [, allWebSearchItems, performanceItems] = await Promise.all([
       this.fetchAllSources(sourceObjects, limits),
       shouldSearchWeb
         ? searchTrends(this.ctx.niche, requestedCount + 2, {
@@ -106,6 +107,9 @@ export class ResearchPipeline {
             excludedUrls: clientData.usedUrls,
             tavilyConfig,
           })
+        : Promise.resolve([]),
+      this.ctx.clientId
+        ? fetchPerformanceItems(this.ctx.supabase, this.ctx.clientId)
         : Promise.resolve([]),
     ])
 
@@ -132,11 +136,18 @@ export class ResearchPipeline {
       return []
     }
 
+    // Visible proof the performance source fired — streams to the wizard's loading UI
+    if (performanceItems.length > 0) {
+      this.ctx.onPhase?.(`Analyzing ${performanceItems.length} top Instagram posts...`)
+    }
+
     const gatheredContext: SourceContext = {
       ...clientSourceContext,
       webSearchItems: webSearchItems.length > 0 ? webSearchItems : undefined,
+      performanceItems: performanceItems.length > 0 ? performanceItems : undefined,
     }
 
+    // Performance items bypass the ranker: <=5 curated, audience-proven entries
     this.ctx.onPhase?.('Ranking source material...')
     const effectiveContext = await rankSourceItems(gatheredContext, {
       niche: this.ctx.niche,
@@ -155,9 +166,11 @@ export class ResearchPipeline {
 
     const topics = await generateTopics(builder, requestedCount, effectiveContext)
 
-    // Filter LLM-hallucinated topics (no source URL except file type)
+    // Filter LLM-hallucinated topics (no source URL except file/performance,
+    // which legitimately may lack one — docs have no URL, IG permalinks can be absent)
     const isGrounded = (t: ResearchTopic) =>
-      !!t.suggested_theme?.trim() && (!!t.source_url || t.source_type === 'file')
+      !!t.suggested_theme?.trim() &&
+      (!!t.source_url || t.source_type === 'file' || t.source_type === 'performance')
     const groundedTopics = topics.filter(isGrounded)
 
     // One top-up round recovers grounding-filter losses instead of silently

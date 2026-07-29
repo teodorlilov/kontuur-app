@@ -55,7 +55,7 @@ export interface DraftPost {
   quality_score_avg: number
   source_url: string | null
   source_title: string | null
-  source_type: 'rss' | 'website' | 'file' | 'web_search' | null
+  source_type: 'rss' | 'website' | 'file' | 'web_search' | 'performance' | null
   source_excerpt: string | null
   /** client_sources row that fueled this draft — resolved server-side during research. */
   client_source_id: string | null
@@ -79,7 +79,7 @@ export interface Theme {
   pillar?: string
   sourceUrl?: string | null
   sourceTitle?: string | null
-  sourceType?: 'rss' | 'website' | 'file' | 'web_search'
+  sourceType?: 'rss' | 'website' | 'file' | 'web_search' | 'performance'
   sourceExcerpt?: string
   sourceFullText?: string
   clientSourceId?: string | null
