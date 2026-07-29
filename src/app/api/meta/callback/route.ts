@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
 import { verifyClientOwnership } from '@/lib/auth/helpers'
-import { META_GRAPH_VERSION, META_GRAPH_BASE as GRAPH_BASE } from '@/lib/meta/constants'
+import { META_GRAPH_BASE as GRAPH_BASE, IG_GRAPH_BASE } from '@/lib/meta/constants'
 import { decodeOAuthState } from '../oauth-state'
 
 // ---- Instagram Business Login token exchange ----
@@ -10,8 +10,6 @@ import { decodeOAuthState } from '../oauth-state'
 interface IGShortLivedToken {
   access_token: string
   user_id: string
-  /** Present when Business Login already issued a long-lived token at code exchange. */
-  expires_in?: number
 }
 
 interface IGLongLivedToken {
@@ -54,39 +52,7 @@ async function exchangeInstagramCode(
       `Instagram token exchange returned no access_token: ${JSON.stringify(parsed).slice(0, 300)}`
     )
   }
-  return {
-    access_token: token.access_token,
-    user_id: String(token.user_id),
-    ...(typeof token.expires_in === 'number' ? { expires_in: token.expires_in } : {}),
-  }
-}
-
-function longLivedParams(shortLivedToken: string): URLSearchParams {
-  const params = new URLSearchParams()
-  params.set('grant_type', 'ig_exchange_token')
-  params.set('client_secret', process.env.META_INSTAGRAM_APP_SECRET!)
-  params.set('access_token', shortLivedToken)
-  return params
-}
-
-async function tryLongLivedExchange(
-  endpoint: string,
-  method: 'GET' | 'POST',
-  shortLivedToken: string
-): Promise<IGLongLivedToken | { failed: string }> {
-  const params = longLivedParams(shortLivedToken)
-  const res =
-    method === 'GET'
-      ? await fetch(`${endpoint}?${params.toString()}`)
-      : await fetch(endpoint, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-          body: params.toString(),
-        })
-  if (!res.ok) return { failed: await res.text() }
-  const parsed = (await res.json()) as IGLongLivedToken
-  if (!parsed?.access_token) return { failed: `no access_token in response` }
-  return parsed
+  return { access_token: token.access_token, user_id: String(token.user_id) }
 }
 
 async function exchangeInstagramForLongLived(shortLivedToken: string): Promise<IGLongLivedToken> {
@@ -96,54 +62,28 @@ async function exchangeInstagramForLongLived(shortLivedToken: string): Promise<I
     throw new Error('Instagram long-lived exchange called without a short-lived token')
   }
 
-  // Meta has been inconsistent about this endpoint since the Business Login
-  // rollout: the documented unversioned GET intermittently answers
-  // "Unsupported request - method type: get" while versioned/POST variants
-  // succeed. Try all three before failing.
-  const attempts: Array<{ endpoint: string; method: 'GET' | 'POST' }> = [
-    { endpoint: 'https://graph.instagram.com/access_token', method: 'GET' },
-    { endpoint: `https://graph.instagram.com/${META_GRAPH_VERSION}/access_token`, method: 'GET' },
-    { endpoint: 'https://graph.instagram.com/access_token', method: 'POST' },
-  ]
+  const params = new URLSearchParams()
+  params.set('grant_type', 'ig_exchange_token')
+  params.set('client_secret', process.env.META_INSTAGRAM_APP_SECRET!)
+  params.set('access_token', shortLivedToken)
 
-  const failures: string[] = []
-  for (const attempt of attempts) {
-    const result = await tryLongLivedExchange(attempt.endpoint, attempt.method, shortLivedToken)
-    if ('failed' in result) {
-      failures.push(`${attempt.method} ${attempt.endpoint}: ${result.failed.slice(0, 200)}`)
-      continue
-    }
-    if (failures.length > 0) {
-      console.warn(`[meta] long-lived exchange needed fallback (${attempt.method} ${attempt.endpoint})`)
-    }
-    return result
-  }
-
-  // Token diagnostics (prefix + length only — never the token) make the next report conclusive
-  throw new Error(
-    `Instagram long-lived token exchange failed (token len=${shortLivedToken.length}, prefix=${shortLivedToken.slice(0, 4)}): ${failures.join(' | ')}`
-  )
-}
-
-/** Ask Meta's debug_token what a token actually is (validity, app, type, expiry) — diagnostics only. */
-async function inspectTokenForDiagnostics(token: string): Promise<string> {
-  try {
-    const appToken = `${process.env.META_APP_ID}|${process.env.META_APP_SECRET}`
-    const res = await fetch(
-      `${GRAPH_BASE}/debug_token?input_token=${encodeURIComponent(token)}&access_token=${encodeURIComponent(appToken)}`
+  // Documented form: unversioned GET only. Note: this call is refused with
+  // "Unsupported request" for tokens minted off grants the app is not yet
+  // entitled to serve (e.g. other businesses' accounts before Meta Access
+  // Verification) — that is an entitlement problem, not a request-shape one.
+  const res = await fetch(`https://graph.instagram.com/access_token?${params.toString()}`)
+  if (!res.ok) {
+    const err = await res.text()
+    // Token length/prefix only — never the token itself
+    throw new Error(
+      `Instagram long-lived token exchange failed (token len=${shortLivedToken.length}, prefix=${shortLivedToken.slice(0, 4)}): ${err.slice(0, 300)}`
     )
-    const body = (await res.json()) as {
-      data?: { is_valid?: boolean; type?: string; app_id?: string; expires_at?: number; scopes?: string[] }
-      error?: { message?: string }
-    }
-    if (body.data) {
-      const d = body.data
-      return `is_valid=${d.is_valid} type=${d.type} app_id=${d.app_id} expires_at=${d.expires_at} scopes=${d.scopes?.join(',')}`
-    }
-    return `inspection failed: ${body.error?.message ?? res.status}`
-  } catch (err) {
-    return `inspection threw: ${err instanceof Error ? err.message : String(err)}`
   }
+  const parsed = (await res.json()) as IGLongLivedToken
+  if (!parsed?.access_token) {
+    throw new Error('Instagram long-lived token exchange returned no access_token')
+  }
+  return parsed
 }
 
 // ---- Facebook token exchange ----
@@ -195,7 +135,7 @@ async function connectInstagram(
 ): Promise<void> {
   // Get IG account details using the Instagram Graph API
   const igRes = await fetch(
-    `https://graph.instagram.com/${META_GRAPH_VERSION}/me?fields=id,username,name&access_token=${longLivedToken}`
+    `${IG_GRAPH_BASE}/me?fields=id,username,name&access_token=${longLivedToken}`
   )
   if (!igRes.ok) throw new Error('Failed to fetch Instagram account details')
   const igUser = (await igRes.json()) as { id: string; username?: string; name?: string }
@@ -326,70 +266,14 @@ export async function GET(request: NextRequest) {
     if (platform === 'instagram') {
       // Instagram Business Login flow
       const shortLived = await exchangeInstagramCode(code, redirectUri)
-      let accessToken = shortLived.access_token
-      let expiresIn = shortLived.expires_in ?? 0
-
-      // Business Login often issues a 60-day token directly at code exchange;
-      // ig_exchange_token on such a token gets rejected. Only exchange when
-      // the token is genuinely short-lived.
-      const DAY_S = 24 * 3600
-      if (expiresIn <= DAY_S) {
-        try {
-          const longLived = await exchangeInstagramForLongLived(accessToken)
-          accessToken = longLived.access_token
-          expiresIn = longLived.expires_in
-        } catch (exchangeErr) {
-          // The exchange edge rejects already-long-lived tokens with a
-          // misleading "Unsupported request". Probe the token with real
-          // calls (versioned + unversioned): if either works, keep it and
-          // assume the 60-day Business Login lifetime.
-          const probeResults: string[] = []
-          let probeOk = false
-          for (const base of [
-            `https://graph.instagram.com/${META_GRAPH_VERSION}`,
-            'https://graph.instagram.com',
-          ]) {
-            // Newer Instagram Login examples authenticate via Bearer header —
-            // try both query-param and header auth
-            const queryProbe = await fetch(`${base}/me?fields=id&access_token=${accessToken}`)
-            if (queryProbe.ok) {
-              probeOk = true
-              break
-            }
-            probeResults.push(
-              `${base}/me?access_token -> ${queryProbe.status}: ${(await queryProbe.text()).slice(0, 120)}`
-            )
-            const bearerProbe = await fetch(`${base}/me?fields=id`, {
-              headers: { Authorization: `Bearer ${accessToken}` },
-            })
-            if (bearerProbe.ok) {
-              probeOk = true
-              break
-            }
-            probeResults.push(
-              `${base}/me Bearer -> ${bearerProbe.status}: ${(await bearerProbe.text()).slice(0, 120)}`
-            )
-          }
-
-          if (!probeOk) {
-            // Decisive diagnostics: ask Meta itself what this token is
-            const inspection = await inspectTokenForDiagnostics(accessToken)
-            const exchangeMessage =
-              exchangeErr instanceof Error ? exchangeErr.message : String(exchangeErr)
-            throw new Error(
-              `${exchangeMessage} || /me probes: ${probeResults.join(' | ')} || debug_token: ${inspection}`
-            )
-          }
-
-          console.warn(
-            '[meta] long-lived exchange rejected but token is valid — assuming 60-day Business Login token:',
-            exchangeErr instanceof Error ? exchangeErr.message.slice(0, 200) : String(exchangeErr)
-          )
-          expiresIn = 60 * DAY_S
-        }
-      }
-
-      await connectInstagram(accessToken, shortLived.user_id, expiresIn, clientId, admin)
+      const longLived = await exchangeInstagramForLongLived(shortLived.access_token)
+      await connectInstagram(
+        longLived.access_token,
+        shortLived.user_id,
+        longLived.expires_in,
+        clientId,
+        admin
+      )
     } else if (platform === 'facebook') {
       // Facebook Pages flow
       const shortLived = await exchangeFacebookCode(code, redirectUri)
