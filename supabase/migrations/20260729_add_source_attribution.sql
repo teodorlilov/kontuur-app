@@ -1,7 +1,9 @@
 -- Source attribution: which client_source fueled each post, and which drafts were
 -- rejected — the outcome signal for per-source usefulness and rank boosting.
--- Access is app-level (admin client + agency ownership via client), matching
--- post_canvas_docs — no RLS. Idempotent: safe to re-run.
+-- Access is app-level: all reads/writes go through the admin (service-role)
+-- client after agency-ownership checks. RLS is enabled with NO policies so the
+-- anon/authenticated PostgREST roles get zero rows — the table is never exposed
+-- cross-tenant. Idempotent: safe to re-run.
 
 alter table posts
   add column if not exists client_source_id uuid
@@ -18,6 +20,9 @@ create table if not exists discarded_drafts (
   discarded_from   text not null check (discarded_from in ('wizard', 'review')),
   created_at       timestamptz not null default now()
 );
+
+-- Service-role bypasses RLS; with no policies defined, every other role is denied.
+alter table discarded_drafts enable row level security;
 
 -- Usefulness stats aggregate by source and by client.
 create index if not exists posts_client_source_idx

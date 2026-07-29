@@ -3,6 +3,7 @@ import { extractToolInput } from '@/utils/ai'
 import { buildClientProfile, buildAiTells, buildLanguageRules, buildHealthRules } from '@/ai/shared/build-prompt-sections'
 import { buildContentSection } from '@/ai/validation/prompts/shared/content-section'
 import { carouselSemanticRules, ISSUE_TYPE_DEFINITIONS } from '@/ai/validation/criteria'
+import { NEUTRAL_FALLBACK_SCORE } from '@/lib/content-rules/constants'
 import type { ClientData } from '@/lib/clients/fetch-client-data'
 import type { QualityIssue, ClaimStatus } from '@/ai/validation/types'
 
@@ -283,8 +284,8 @@ const QUALITY_BATCH_OUTPUT_SCHEMA = {
 
 function normalizeQualityResponse(parsed: Partial<LlmQualityResponse>): LlmQualityResponse {
   return {
-    overall_score: typeof parsed.overall_score === 'number' ? parsed.overall_score : 7,
-    human_score: typeof parsed.human_score === 'number' ? parsed.human_score : 7,
+    overall_score: typeof parsed.overall_score === 'number' ? parsed.overall_score : NEUTRAL_FALLBACK_SCORE,
+    human_score: typeof parsed.human_score === 'number' ? parsed.human_score : NEUTRAL_FALLBACK_SCORE,
     ai_tells: Array.isArray(parsed.ai_tells) ? parsed.ai_tells : [],
     worst_offending_phrase: parsed.worst_offending_phrase ?? null,
     structure_passes: parsed.structure_passes ?? null,

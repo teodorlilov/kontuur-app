@@ -108,12 +108,14 @@ describe('rankSourceItems', () => {
 
   it('caps items per pillar', async () => {
     const context = makeContext(8, 0)
+    // All 8 items land on the same pillar with passing scores; the per-pillar
+    // cap (4) must keep the survivor count at or below it.
     mockRankings(
       Array.from({ length: 8 }, (_, i) => ({
         index: i + 1,
-        score: 9 - i * 0.0, // all 9
+        score: 9 - (i % 3),
         bestPillar: 'Educational',
-      })).map((r, i) => ({ ...r, score: 9 - (i % 3) }))
+      }))
     )
 
     const result = await rankSourceItems(context, OPTS)

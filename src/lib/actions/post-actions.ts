@@ -89,16 +89,19 @@ export async function deletePost(postId: string): Promise<ActionResult> {
   if (!post) return { ok: false, error: 'Post not found' }
 
   // Outcome telemetry: best-effort — a failed log must never block the delete.
+  // Only pending_review drafts count as a discard — deleting an already-approved
+  // or published post is housekeeping, not a rejection of its source (and it
+  // already counted as an approval, so logging a discard would double-skew stats).
   // Cast to untyped client — client_source_id / discarded_drafts added by
   // migration 20260729, not yet in generated Supabase types.
   try {
     const untyped = supabase as unknown as SupabaseClient
     const { data: row } = await untyped
       .from('posts')
-      .select('client_id, client_source_id, pillar, source_url, source_type, platform')
+      .select('client_id, client_source_id, pillar, source_url, source_type, platform, status')
       .eq('id', postId)
       .single()
-    if (row?.client_id) {
+    if (row?.client_id && row.status === 'pending_review') {
       await untyped.from('discarded_drafts').insert({
         client_id: row.client_id,
         client_source_id: row.client_source_id ?? null,

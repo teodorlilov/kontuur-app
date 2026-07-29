@@ -13,6 +13,7 @@ import {
 } from '@/ai/validation/content-rules/compute-scores'
 import { checkCarouselStructure } from '@/ai/validation/content-rules/check-structure'
 import { deriveSourceGroundingResult } from '@/ai/validation/correction-utils'
+import { NEUTRAL_FALLBACK_SCORE } from '@/lib/content-rules/constants'
 import type { ClientData } from '@/lib/clients/fetch-client-data'
 import type {
   ValidationCriteria,
@@ -49,10 +50,6 @@ export interface ValidatePostsBatchInput {
 
 // Re-export for consumers that import PostValidationResult from here
 export type { PostValidationResult }
-
-// Neutral fallback when the quality call fails — above the quality floor,
-// below "great", so degraded posts neither get dropped nor look polished
-const FALLBACK_SCORE = 7
 
 const LANGUAGE_FALLBACK: LanguageValidationResult = {
   passes: true,
@@ -119,8 +116,8 @@ function assemblePostValidation(
     : lang
 
   const scores: ValidationScores = {
-    overall_score: qualityRaw?.overall_score ?? FALLBACK_SCORE,
-    human_score: qualityRaw?.human_score ?? FALLBACK_SCORE,
+    overall_score: qualityRaw?.overall_score ?? NEUTRAL_FALLBACK_SCORE,
+    human_score: qualityRaw?.human_score ?? NEUTRAL_FALLBACK_SCORE,
     language_score: language.language_score,
     source_score: computeSourceScore(criteria.source_claims),
   }
@@ -169,7 +166,7 @@ export async function validatePost(input: ValidatePostInput): Promise<PostValida
       targetPillar: input.targetPillar,
       sourceContext: input.sourceContext,
     }).catch((err) => {
-      console.error(`[${input.label ?? 'validate'}] quality validation failed:`, err)
+      console.error(`[${input.label}] quality validation failed:`, err)
       validationWarnings.push('quality')
       return null
     }),
@@ -177,7 +174,7 @@ export async function validatePost(input: ValidatePostInput): Promise<PostValida
       isCarousel ? { text: input.caption, slides: input.slides } : { text: input.caption },
       input.client.languageConfig
     ).catch((err) => {
-      console.error(`[${input.label ?? 'validate'}] language validation failed:`, err)
+      console.error(`[${input.label}] language validation failed:`, err)
       validationWarnings.push('language')
       return LANGUAGE_FALLBACK
     }),
@@ -213,12 +210,12 @@ export async function validatePostsBatch(
       targetPillar: input.targetPillar,
       sourceContext: input.sourceContext,
     }).catch((err) => {
-      console.error(`[${input.label ?? 'validate'}] quality batch failed:`, err)
+      console.error(`[${input.label}] quality batch failed:`, err)
       batchWarnings.push('quality')
       return input.captions.map(() => null)
     }),
     validateLanguageBatch(input.captions, input.client.languageConfig).catch((err) => {
-      console.error(`[${input.label ?? 'validate'}] language batch failed:`, err)
+      console.error(`[${input.label}] language batch failed:`, err)
       batchWarnings.push('language')
       return input.captions.map(() => LANGUAGE_FALLBACK)
     }),

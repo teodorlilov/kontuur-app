@@ -16,7 +16,8 @@ import {
 import type { TavilyConfig } from '@/types/sources'
 import { createAllSources } from './sources/source-factory'
 import { ResearchSource } from './sources/research-source'
-import { rankSourceItems } from './rank-source-items'
+import { rankSourceItems, RANK_MIN_ITEMS } from './rank-source-items'
+import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { fetchPerformanceItems } from './performance-source'
 import { ResearchPromptBuilder } from './prompts/prompt-builder'
 import { generateTopics, generateTopUpTopics } from './generators/topic-generator'
@@ -158,8 +159,14 @@ export class ResearchPipeline {
       performanceItems: performanceItems.length > 0 ? performanceItems : undefined,
     }
 
-    // Performance items bypass the ranker: <=5 curated, audience-proven entries
-    this.ctx.onPhase?.('Ranking source material...')
+    // Performance items bypass the ranker: <=5 curated, audience-proven entries.
+    // Only announce ranking when it will actually run (rankSourceItems skips
+    // below RANK_MIN_ITEMS) so the phase message never flashes on a no-op.
+    const rankableCount =
+      gatheredContext.rssItems.length + (gatheredContext.webSearchItems?.length ?? 0)
+    if (rankableCount >= RANK_MIN_ITEMS) {
+      this.ctx.onPhase?.('Ranking source material...')
+    }
     const effectiveContext = await rankSourceItems(gatheredContext, {
       niche: this.ctx.niche,
       targetAudience: clientData.targetAudience,
@@ -254,14 +261,20 @@ export class ResearchPipeline {
           ? fetchUsedSourceUrls(this.ctx.supabase, this.ctx.clientId)
           : Promise.resolve([]),
         this.ctx.clientId
-          ? fetchSourceUsageStats(this.ctx.supabase, this.ctx.clientId).catch((err) => {
+          ? // discarded_drafts is RLS-locked with no policies (admin-only); the
+            // user-scoped client would read zero discards, so stats go through
+            // the admin client — ownership is already verified by the caller.
+            fetchSourceUsageStats(createAdminSupabaseClient(), this.ctx.clientId).catch((err) => {
               // Learn-loop input is optional — never block research on it
               console.warn('[research] source usage stats unavailable:', err)
               return []
             })
           : Promise.resolve([]),
         this.ctx.clientId
-          ? fetchRecentPillarCounts(this.ctx.supabase, this.ctx.clientId).catch(() => new Map<string, number>())
+          ? fetchRecentPillarCounts(this.ctx.supabase, this.ctx.clientId).catch((err) => {
+              console.warn('[research] recent pillar counts unavailable:', err)
+              return new Map<string, number>()
+            })
           : Promise.resolve(new Map<string, number>()),
       ])
 
