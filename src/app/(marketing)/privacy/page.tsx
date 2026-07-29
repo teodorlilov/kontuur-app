@@ -66,11 +66,11 @@ export default function PrivacyPage() {
             ← Back
           </Link>
           <p style={{ fontSize: 13, color: 'var(--color-text-3)', marginBottom: 16 }}>
-            Last updated: April 16, 2025
+            Last updated: July 29, 2026
           </p>
           <h1 style={h1Style}>Privacy Policy</h1>
           <p style={{ ...pStyle, fontSize: 16, marginTop: 16 }}>
-            This Privacy Policy explains how Kontuur, operated by About Social Media (&quot;we&quot;,
+            This Privacy Policy explains how Kontuur, operated by Chelling Ltd (&quot;we&quot;,
             &quot;us&quot;, &quot;our&quot;), collects, uses, and protects your information when you use our
             platform at kontuur.io.
           </p>
@@ -255,7 +255,7 @@ export default function PrivacyPage() {
             For privacy-related questions or requests, please contact:
           </p>
           <p style={pStyle}>
-            <strong>About Social Media</strong>
+            <strong>Chelling Ltd</strong>
             <br />
             Email:{' '}
             <a href="mailto:privacy@kontuur.io" style={{ color: 'var(--color-brand-accent)' }}>

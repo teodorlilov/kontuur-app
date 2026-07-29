@@ -66,12 +66,12 @@ export default function TermsPage() {
             ← Back
           </Link>
           <p style={{ fontSize: 13, color: 'var(--color-text-3)', marginBottom: 16 }}>
-            Last updated: April 16, 2025
+            Last updated: July 29, 2026
           </p>
           <h1 style={h1Style}>Terms of Service</h1>
           <p style={{ ...pStyle, fontSize: 16, marginTop: 16 }}>
             These Terms of Service (&quot;Terms&quot;) govern your access to and use of Kontuur,
-            operated by About Social Media (&quot;we&quot;, &quot;us&quot;, &quot;our&quot;). By
+            operated by Chelling Ltd (&quot;we&quot;, &quot;us&quot;, &quot;our&quot;). By
             creating an account or using the platform, you agree to these Terms.
           </p>
 
@@ -191,8 +191,8 @@ export default function TermsPage() {
             service.
           </p>
           <p style={pStyle}>
-            The Kontuur platform, including its software, design, and trademarks, is owned by About
-            Social Media. You may not copy, modify, or distribute any part of the platform without
+            The Kontuur platform, including its software, design, and trademarks, is owned by
+            Chelling Ltd. You may not copy, modify, or distribute any part of the platform without
             our written consent.
           </p>
 
@@ -208,7 +208,7 @@ export default function TermsPage() {
           {/* 9. Limitation of liability */}
           <h2 style={h2Style}>9. Limitation of Liability</h2>
           <p style={pStyle}>
-            To the maximum extent permitted by law, About Social Media shall not be liable for any
+            To the maximum extent permitted by law, Chelling Ltd shall not be liable for any
             indirect, incidental, special, consequential, or punitive damages arising from your use
             of Kontuur, including but not limited to lost profits, lost data, or social media account
             actions taken on your behalf.
@@ -230,9 +230,8 @@ export default function TermsPage() {
           {/* 11. Governing law */}
           <h2 style={h2Style}>11. Governing Law</h2>
           <p style={pStyle}>
-            These Terms are governed by the laws of the European Union and the jurisdiction where
-            About Social Media is incorporated. Any disputes will be resolved in the courts of that
-            jurisdiction.
+            These Terms are governed by the laws of the jurisdiction in which Chelling Ltd is
+            incorporated. Any disputes will be resolved in the courts of that jurisdiction.
           </p>
 
           {/* 12. Changes */}
@@ -249,7 +248,7 @@ export default function TermsPage() {
             Questions about these Terms? Contact us at:
           </p>
           <p style={pStyle}>
-            <strong>About Social Media</strong>
+            <strong>Chelling Ltd</strong>
             <br />
             Email:{' '}
             <a href="mailto:legal@kontuur.io" style={{ color: 'var(--color-brand-accent)' }}>

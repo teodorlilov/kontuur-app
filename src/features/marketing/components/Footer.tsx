@@ -116,7 +116,7 @@ export function Footer() {
         }}
       >
         <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.35)', margin: 0 }}>
-          © {new Date().getFullYear()} Kontuur. All rights reserved.
+          © {new Date().getFullYear()} Kontuur — operated by Chelling Ltd. All rights reserved.
         </p>
         <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.35)', margin: 0 }}>
           Built by About Social Media
