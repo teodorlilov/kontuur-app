@@ -38,10 +38,29 @@ async function exchangeInstagramCode(
     const err = await res.text()
     throw new Error(`Instagram token exchange failed: ${err}`)
   }
-  return res.json() as Promise<IGShortLivedToken>
+
+  // Business Login wraps the token in a data array ({"data":[{access_token,...}]});
+  // the legacy flat shape ({access_token,...}) still appears on some responses —
+  // accept both, and fail loudly with the raw body so shape drift is debuggable
+  const parsed = (await res.json()) as
+    | IGShortLivedToken
+    | { data?: IGShortLivedToken[] }
+  const token =
+    'data' in parsed && Array.isArray(parsed.data) ? parsed.data[0] : (parsed as IGShortLivedToken)
+  if (!token?.access_token) {
+    throw new Error(
+      `Instagram token exchange returned no access_token: ${JSON.stringify(parsed).slice(0, 300)}`
+    )
+  }
+  return { access_token: token.access_token, user_id: String(token.user_id) }
 }
 
 async function exchangeInstagramForLongLived(shortLivedToken: string): Promise<IGLongLivedToken> {
+  // Guard: an empty token turns this GET into an unroutable request and Graph
+  // answers with the misleading "Unsupported request - method type: get"
+  if (!shortLivedToken) {
+    throw new Error('Instagram long-lived exchange called without a short-lived token')
+  }
   const url = new URL('https://graph.instagram.com/access_token')
   url.searchParams.set('grant_type', 'ig_exchange_token')
   url.searchParams.set('client_secret', process.env.META_INSTAGRAM_APP_SECRET!)
