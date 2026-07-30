@@ -83,12 +83,12 @@ export function PendingReviewList({ posts, totalPending }: PendingReviewListProp
   return (
     <div className="rounded-card border border-ink/[0.05] bg-[image:var(--raised)] px-5 py-[18px] shadow-card">
       <div className="flex items-center justify-between gap-3">
-        <span className="flex items-center gap-2.5 text-[14.5px] font-semibold tracking-[-0.01em] text-ink">
+        <h2 className="flex items-center gap-2.5 text-[14.5px] font-semibold tracking-[-0.01em] text-ink">
           <span className="grid size-[27px] place-items-center rounded-sm bg-wash text-forest">
             <CircleCheck size={14} />
           </span>
           Pending review
-        </span>
+        </h2>
         <span className="rounded-full bg-wash px-2.5 py-[3px] text-[11.5px] font-semibold text-forest">
           {remaining} in queue
         </span>

@@ -123,12 +123,12 @@ export default async function DashboardPage() {
       {data.changeRequests.length > 0 && (
         <section className="rv mt-4 [--d:280ms]">
           <div className="flex items-center justify-between gap-3">
-            <span className="flex items-center gap-2.5 text-[14.5px] font-semibold tracking-[-0.01em] text-ink">
+            <h2 className="flex items-center gap-2.5 text-[14.5px] font-semibold tracking-[-0.01em] text-ink">
               <span className="grid size-[27px] place-items-center rounded-sm bg-marker text-forest-deep">
                 <BarChart2 size={14} />
               </span>
               Change requests
-            </span>
+            </h2>
             <span className="rounded-full bg-marker px-2.5 py-[3px] text-[11.5px] font-semibold text-forest-deep">
               {data.changeRequests.length} {data.changeRequests.length === 1 ? 'post' : 'posts'}
             </span>

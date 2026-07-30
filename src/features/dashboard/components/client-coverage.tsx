@@ -32,12 +32,12 @@ export function ClientCoverage({ clients, coverage, clientPendingMap }: ClientCo
   return (
     <section>
       <div className="flex items-center justify-between gap-3">
-        <span className="flex items-center gap-2.5 text-[14.5px] font-semibold tracking-[-0.01em] text-ink">
+        <h2 className="flex items-center gap-2.5 text-[14.5px] font-semibold tracking-[-0.01em] text-ink">
           <span className="grid size-[27px] place-items-center rounded-sm bg-wash text-forest">
             <Users size={14} />
           </span>
           Client coverage
-        </span>
+        </h2>
         <span className="flex items-center gap-3 text-[10.5px] text-text3">
           <span className="flex items-center gap-1.5">
             <i className="size-2.5 rounded-[3.5px] bg-forest" />
