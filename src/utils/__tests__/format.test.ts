@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { formatDate, formatRelativeTime, truncateText } from '../format'
+import { formatDate, formatRelativeTime, toPreviewLine, truncateText } from '../format'
 
 describe('formatDate', () => {
   it('formats a date in en-GB style', () => {
@@ -93,5 +93,45 @@ describe('truncateText', () => {
 
   it('handles maxLength of 0', () => {
     expect(truncateText('hello', 0)).toBe('…')
+  })
+})
+
+describe('toPreviewLine', () => {
+  it('strips the generator scaffold the dashboard was showing as a headline', () => {
+    expect(toPreviewLine('# POST 1 Д-р Пресиян Василев е специалист гастроентеролог')).toBe(
+      'Д-р Пресиян Василев е специалист гастроентеролог'
+    )
+  })
+
+  it('strips a bare heading marker', () => {
+    expect(toPreviewLine('# Липопротеин(а) — защо този тест може да е важен')).toBe(
+      'Липопротеин(а) — защо този тест може да е важен'
+    )
+  })
+
+  it('keeps a leading hashtag, which is content and not a heading', () => {
+    expect(toPreviewLine('#мотивация започва днес')).toBe('#мотивация започва днес')
+  })
+
+  it('collapses newlines so a two-line clamp shows two lines of prose', () => {
+    expect(toPreviewLine('First line\n\nSecond line')).toBe('First line Second line')
+  })
+
+  it('handles deeper headings and a numbered label with punctuation', () => {
+    expect(toPreviewLine('### POST 12: Ready to ship')).toBe('Ready to ship')
+  })
+
+  it('never blanks a caption that is only a marker', () => {
+    expect(toPreviewLine('###')).toBe('###')
+  })
+
+  it('leaves ordinary captions untouched', () => {
+    expect(toPreviewLine('Three things we learned this week')).toBe(
+      'Three things we learned this week'
+    )
+  })
+
+  it('does not mistake a mid-caption hash for scaffold', () => {
+    expect(toPreviewLine('Call us # 5 today')).toBe('Call us # 5 today')
   })
 })

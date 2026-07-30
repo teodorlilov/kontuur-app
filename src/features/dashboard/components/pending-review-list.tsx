@@ -6,7 +6,8 @@ import Link from 'next/link'
 import { Check, CircleCheck } from 'lucide-react'
 import { toast } from 'sonner'
 import { updatePost } from '@/lib/actions/post-actions'
-import { formatRelativeTime, parseTimestamp } from '@/utils/format'
+import { formatRelativeTime, parseTimestamp, toPreviewLine } from '@/utils/format'
+import { hasCyrillic } from '@/lib/canvas/font-library'
 import { cn } from '@/utils/cn'
 import { COVERAGE_LIST_HEIGHT } from '@/features/dashboard/lib/layout'
 import type { PendingPostPreview } from '@/features/dashboard/queries'
@@ -35,7 +36,12 @@ export function PendingReviewList({ posts, totalPending }: PendingReviewListProp
   const remaining = Math.max(totalPending - approvedCount, 0)
   const deeperInQueue = Math.max(remaining - queue.length, 0)
 
-  function handleApprove(post: PendingPostPreview) {
+  /**
+   * Approving queues the post for the publish cron under the client's name, so
+   * it is the most consequential click on the dashboard. It stays one click —
+   * but it is now reversible, and the toast holds the exit.
+   */
+  function handleApprove(post: PendingPostPreview, index: number) {
     setApprovingId(post.id)
     startTransition(async () => {
       const result = await updatePost(post.id, { status: 'approved' })
@@ -44,10 +50,33 @@ export function PendingReviewList({ posts, totalPending }: PendingReviewListProp
         toast.error(result.error)
         return
       }
-      toast.success(`Approved — added to ${post.clientName}'s schedule`)
       setApprovedCount((count) => count + 1)
       setQueue((prev) => prev.filter((item) => item.id !== post.id))
       setApprovingId(null)
+      toast.success(`Approved — added to ${post.clientName}'s schedule`, {
+        // Long enough to notice the row leave and change your mind.
+        duration: 8000,
+        action: { label: 'Undo', onClick: () => handleUndo(post, index) },
+      })
+    })
+  }
+
+  function handleUndo(post: PendingPostPreview, index: number) {
+    startTransition(async () => {
+      const result = await updatePost(post.id, { status: 'pending_review' })
+      if (!result.ok) {
+        toast.error(`Could not undo — ${result.error}`)
+        return
+      }
+      setApprovedCount((count) => Math.max(count - 1, 0))
+      // Back where it was, not on top: the queue is ordered, and a restored
+      // post jumping to the front would misrepresent how long it has waited.
+      setQueue((prev) =>
+        prev.some((item) => item.id === post.id)
+          ? prev
+          : [...prev.slice(0, index), post, ...prev.slice(index)]
+      )
+      toast.success('Moved back to the review queue')
     })
   }
 
@@ -79,12 +108,12 @@ export function PendingReviewList({ posts, totalPending }: PendingReviewListProp
             </span>
           </div>
         ) : (
-          queue.map((post) => (
+          queue.map((post, index) => (
             <PendingRow
               key={post.id}
               post={post}
               isApproving={approvingId === post.id}
-              onApprove={() => handleApprove(post)}
+              onApprove={() => handleApprove(post, index)}
             />
           ))
         )}
@@ -114,6 +143,11 @@ function PendingRow({
   isApproving: boolean
   onApprove: () => void
 }) {
+  // Spread, not slice(0,1): an emoji or any astral character is two code units,
+  // and slicing one of them yields a broken glyph.
+  const initial = [...post.clientName.trim()][0]?.toUpperCase() ?? '?'
+  const preview = toPreviewLine(post.caption) || 'Untitled draft'
+
   return (
     <article
       className={cn(
@@ -131,13 +165,22 @@ function PendingRow({
           className="size-[44px] shrink-0 rounded-sm object-cover"
         />
       ) : (
-        <span className="grid h-[44px] w-[44px] shrink-0 place-items-center rounded-sm bg-wash font-display text-[15px] italic text-forest">
-          {post.clientName.slice(0, 1)}
+        <span
+          className={cn(
+            'grid h-[44px] w-[44px] shrink-0 place-items-center rounded-sm bg-wash text-[15px] text-forest',
+            // Instrument Serif ships no Cyrillic, so a Bulgarian client's
+            // initial would silently fall back to a mismatched system face.
+            hasCyrillic(initial) ? 'font-sans font-medium not-italic' : 'font-display italic'
+          )}
+        >
+          {initial}
         </span>
       )}
 
       <div className="min-w-0 flex-1">
-        <p className="line-clamp-2 text-[13px] font-medium leading-[1.4] text-ink">{post.caption}</p>
+        <p className="line-clamp-2 break-words text-[13px] font-medium leading-[1.4] text-ink">
+          {preview}
+        </p>
         <p className="mt-[3px] truncate text-[11.5px] text-text3">
           {[post.clientName, post.pillar || null, formatRelativeTime(parseTimestamp(post.createdAt))]
             .filter(Boolean)
@@ -150,12 +193,17 @@ function PendingRow({
           type="button"
           onClick={onApprove}
           disabled={isApproving}
+          aria-busy={isApproving}
+          // Every row's button reads "Approve"; without this a screen-reader
+          // user tabbing the queue cannot tell which post they are approving.
+          aria-label={`Approve post for ${post.clientName}`}
           className="rounded-full bg-forest px-3 py-1.5 text-[12px] font-medium text-white transition-colors hover:bg-forest-deep disabled:opacity-50"
         >
           Approve
         </button>
         <Link
           href="/review"
+          aria-label={`Open the review queue for ${post.clientName}`}
           className="rounded-full px-3 py-1 text-center text-[11.5px] font-medium text-text2 no-underline transition-colors hover:text-forest"
         >
           Open

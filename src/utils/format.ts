@@ -32,6 +32,26 @@ export function truncateText(text: string, maxLength: number): string {
   return text.slice(0, maxLength).trimEnd() + '…'
 }
 
+/**
+ * A caption reduced to a preview line.
+ *
+ * Generation leaves markdown scaffold at the head of the text — "# POST 1 …" —
+ * so a reviewer approving from a preview would otherwise judge the post by its
+ * scaffolding rather than its opening sentence. Strips only the leading heading
+ * marker and generator label: a caption's own content is never rewritten, and
+ * "#hashtag" survives because a markdown heading requires trailing whitespace.
+ */
+export function toPreviewLine(caption: string): string {
+  const cleaned = caption
+    .replace(/^﻿/, '')
+    .replace(/^\s*#{1,6}[ \t]+/, '')
+    .replace(/^\s*POST\s*\d+\s*[:.–—-]?[ \t]*/i, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+  // Never trade real content for a blank line.
+  return cleaned || caption.trim()
+}
+
 /** Formats a date as "Mon, Apr 28" — short weekday + month + day. */
 export function formatScheduleDate(date: Date): string {
   return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
