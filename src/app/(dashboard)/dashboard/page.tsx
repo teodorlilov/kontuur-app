@@ -147,7 +147,9 @@ export default async function DashboardPage() {
         </section>
       )}
 
-      <div className="mt-4 grid grid-cols-1 items-start gap-4 lg:grid-cols-[1fr_1.15fr]">
+      {/* minmax(0,…): a bare 1fr track is min-content-floored, so a long client
+          name or an extra Generate button would resize the columns per page. */}
+      <div className="mt-4 grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]">
         <div className="rv [--d:300ms]">
           <ClientCoverage
             clients={clients}

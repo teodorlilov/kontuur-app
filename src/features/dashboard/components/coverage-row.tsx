@@ -37,7 +37,7 @@ export function CoverageRow({ clientId, name, week, pendingCount, tier }: Covera
   return (
     <div
       className={cn(
-        'mt-3 flex items-center gap-3.5 rounded-[18px] px-4 py-3.5',
+        'flex items-center gap-3.5 rounded-[18px] px-4 py-3.5',
         'transition-[transform,box-shadow] duration-150 ease-contour hover:-translate-y-0.5 hover:shadow-pop',
         TIER_CLASSES[Math.min(tier, DARK_TIER_INDEX)]
       )}

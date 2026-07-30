@@ -12,6 +12,13 @@ const EMPTY_WEEK: DayState[] = Array<DayState>(DAYS_PER_WEEK).fill('open')
 /** Keeps the block roughly the height of the review stack beside it. */
 const ROWS_PER_PAGE = 3
 
+/** A row is its 44px badge plus 14px padding top and bottom. */
+const ROW_HEIGHT = 72
+const ROW_GAP = 12
+
+/** Reserved so a part-full last page keeps the section exactly as tall. */
+const LIST_HEIGHT = ROWS_PER_PAGE * ROW_HEIGHT + (ROWS_PER_PAGE - 1) * ROW_GAP
+
 interface ClientCoverageProps {
   clients: Array<{ id: string; name: string }>
   coverage: Record<string, DayState[]>
@@ -62,18 +69,20 @@ export function ClientCoverage({ clients, coverage, clientPendingMap }: ClientCo
         </p>
       ) : (
         <>
-          {visible.map((client, index) => (
-            <CoverageRow
-              key={client.id}
-              clientId={client.id}
-              name={client.name}
-              week={coverage[client.id] ?? EMPTY_WEEK}
-              pendingCount={clientPendingMap[client.id] ?? 0}
-              // Tier follows position on the page, so every page keeps the
-              // lime → sage → dark rhythm.
-              tier={index}
-            />
-          ))}
+          <div className="mt-3 flex flex-col gap-3" style={{ minHeight: LIST_HEIGHT }}>
+            {visible.map((client, index) => (
+              <CoverageRow
+                key={client.id}
+                clientId={client.id}
+                name={client.name}
+                week={coverage[client.id] ?? EMPTY_WEEK}
+                pendingCount={clientPendingMap[client.id] ?? 0}
+                // Tier follows position on the page, so every page keeps the
+                // lime → sage → dark rhythm.
+                tier={index}
+              />
+            ))}
+          </div>
 
           {pageCount > 1 && (
             <div className="mt-3 flex items-center justify-between px-1">
