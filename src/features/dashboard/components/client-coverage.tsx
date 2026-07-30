@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { ChevronLeft, ChevronRight, Users } from 'lucide-react'
-import { CoverageRow } from '@/features/dashboard/components/coverage-row'
+import { CoverageRow, TIER_COUNT } from '@/features/dashboard/components/coverage-row'
 import {
   COVERAGE_LIST_HEIGHT,
   COVERAGE_ROWS_PER_PAGE,
@@ -64,13 +64,17 @@ export function ClientCoverage({ clients, coverage, clientPendingMap }: ClientCo
       ) : (
         <>
           <div className="mt-3 flex flex-col gap-3" style={{ minHeight: COVERAGE_LIST_HEIGHT }}>
-            {visible.map((client) => (
+            {visible.map((client, index) => (
               <CoverageRow
                 key={client.id}
                 clientId={client.id}
                 name={client.name}
                 week={coverage[client.id] ?? EMPTY_WEEK}
                 pendingCount={clientPendingMap[client.id] ?? 0}
+                // Tier follows the client's place in the whole roster, so each
+                // page still reads lime → sage → dark while a given client
+                // keeps its capsule no matter which page it lands on.
+                tier={(firstIndex + index) % TIER_COUNT}
               />
             ))}
           </div>

@@ -267,6 +267,11 @@
         "section": "colors"
       },
       {
+        "name": "The Stable Rhythm Rule",
+        "body": "Repeating surfaces may carry a decorative cycle — the coverage capsules run Surface Lime → Sage → Pine Deep — but the cycle must key to something that belongs to the item, not to where it currently sits. Keyed to a row's position on a paginated page, the same client wears three different capsules in three minutes and decoration starts reading as data. Audit test: paginate, and every visible item must keep the surface it had.",
+        "section": "colors"
+      },
+      {
         "name": "The Latin-Only Serif Rule",
         "body": "Instrument Serif ships no Cyrillic glyphs, and half this product's audience is Bulgarian. Any interpolated user string set in font-display must gate on hasCyrillic() and fall back to the sans face. Audit test: if a string comes from the database and is set in the serif, it needs the gate.",
         "section": "typography"
@@ -314,7 +319,8 @@
       "Don't use font-weight: 700.",
       "Don't set body text, labels, or buttons in Instrument Serif.",
       "Don't let a tinted surface (Surface Lime, Sage) encode data. They are surfaces; if a colour must carry meaning, it belongs to a status token with a legend.",
-      "Don't assign colour, emphasis, or the dark treatment by position in a list. Visual weight follows state, never index.",
+      "Don't let a state signal be carried by position. A row that means 'needs you' must look that way wherever it sits.",
+      "Don't let a decorative tier change under the same item — key the coverage capsule cycle to the client's place in the whole roster, never its row on the current page.",
       "Don't animate width, height, padding, or margin; transition transform and opacity.",
       "Don't ship an interactive element without a visible :focus-visible ring.",
       "Don't put a 1px border on a card.",

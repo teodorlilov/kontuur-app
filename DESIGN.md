@@ -172,7 +172,7 @@ A botanical ramp on warm paper: greens carry all brand meaning, and the two stat
 
 - **Wash** (`#eef4ef`): Tinted fill behind Deep Pine text — published chips, quiet emphasis panels.
 - **Marker** (`#d9eddd`): The highlighter fill. Scheduled status, marker-highlight text treatments.
-- **Surface Lime** (`#e6eeae`) and **Sage** (`#cfe4d4`): Tinted row and capsule surfaces. These are *surfaces*, not semantics — they must never be asked to encode data on their own.
+- **Surface Lime** (`#e6eeae`) and **Sage** (`#cfe4d4`): Tinted row and capsule surfaces. These are *surfaces*, not semantics — they must never be asked to encode data on their own. With Pine Deep they form the coverage-row rhythm (see The Stable Rhythm Rule).
 
 ### Neutral
 
@@ -200,6 +200,8 @@ A botanical ramp on warm paper: greens carry all brand meaning, and the two stat
 **The Botanical Closure Rule.** Every hue in this system is a green, a neutral, or one of the two earthen status colours. There are no blues. A blue link, a `blue-500`, or a fifth unrelated hue for a fourth chart series is out of system — the metric ramp deliberately runs Deep Pine → Living Green → `#7fa588` → Pine Deep rather than four unrelated colours.
 
 **The Muted Status Rule.** Status colour is earthen, never saturated. `green-500` and `red-500` are rejected on sight; a failure is Clay and a wait is Amber.
+
+**The Stable Rhythm Rule.** Repeating surfaces may carry a decorative cycle — the coverage capsules run Surface Lime → Sage → Pine Deep — but the cycle must key to something that belongs to the item, not to where it currently sits. Keyed to a row's position on a paginated page, the same client wears three different capsules in three minutes and decoration starts reading as data. *Audit test: paginate, and every visible item must keep the surface it had.*
 
 ## Typography
 
@@ -331,7 +333,8 @@ The same applies to any bar or chip height that encodes volume: **an empty state
 - **Don't** use `font-weight: 700`.
 - **Don't** set body text, labels, or buttons in Instrument Serif.
 - **Don't** let a tinted surface (Surface Lime, Sage) encode data. They are surfaces; if a colour must carry meaning, it belongs to a status token with a legend.
-- **Don't** assign colour, emphasis, or the dark treatment by position in a list. Visual weight follows state, never index.
+- **Don't** let a *state* signal be carried by position. A row that means "needs you" must look that way wherever it sits. Decorative rhythm is the exception below, and it is the only one.
+- **Don't** let a decorative tier change under the same item. The coverage capsules cycle lime → sage → dark, which is rhythm rather than data — so the cycle is keyed to the client's place in the whole roster, never its row on the current page. A client that changes colour when you paginate has turned decoration into a false signal.
 - **Don't** animate `width`, `height`, `padding`, or `margin`; transition `transform` and `opacity`.
 - **Don't** ship an interactive element without a visible `:focus-visible` ring.
 - **Don't** set green text on a light ground in Living Green (`#2e9e68`, 3.38:1) — that is Living Green Text's job (`#278658`).
