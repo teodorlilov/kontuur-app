@@ -1,0 +1,326 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-07-30T09:00:00Z",
+  "title": "Design System: Kontuur",
+  "extensions": {
+    "colorMeta": {
+      "deep-pine": {
+        "role": "primary",
+        "displayName": "Deep Pine",
+        "canonical": "#164430",
+        "tonalRamp": ["#050f0a", "#0a1f15", "#0f2e20", "#164430", "#1e5a41", "#2a7857", "#5aa484", "#a8d4bd"]
+      },
+      "living-green": {
+        "role": "secondary",
+        "displayName": "Living Green",
+        "canonical": "#2e9e68",
+        "note": "3.38:1 on white — clears 3:1 for non-text UI (dots, rings, strokes) but fails as text. Use living-green-text for words.",
+        "tonalRamp": ["#082517", "#0f4029", "#175c3c", "#217c51", "#2e9e68", "#4dbb85", "#7fd6a8", "#c2ecd6"]
+      },
+      "living-green-text": {
+        "role": "secondary",
+        "displayName": "Living Green Text",
+        "canonical": "#278658",
+        "note": "4.53:1 on white. The text-safe green: positive deltas, links, status labels on light grounds.",
+        "tonalRamp": ["#071e13", "#0d3524", "#134c33", "#1b6a45", "#278658", "#39a771", "#68c79b", "#b3e6cd"]
+      },
+      "ink-tertiary": {
+        "role": "neutral",
+        "displayName": "Ink Tertiary",
+        "canonical": "#667068",
+        "note": "Corrected from #8b958d (2.71:1 on paper). Holds 4.51:1 on Warm Paper at the same hue and chroma.",
+        "tonalRamp": ["#12150f", "#232722", "#353b35", "#4a524b", "#667068", "#8b958d", "#b4bcb5", "#dde2dd"]
+      },
+      "new-growth": {
+        "role": "tertiary",
+        "displayName": "New Growth",
+        "canonical": "#cfea45",
+        "tonalRamp": ["#232a05", "#3a460a", "#556611", "#72881a", "#93ac24", "#b4cd32", "#cfea45", "#e8f5a2"]
+      },
+      "warm-paper": {
+        "role": "neutral",
+        "displayName": "Warm Paper",
+        "canonical": "#f1f0ea",
+        "tonalRamp": ["#1a1a17", "#33322d", "#4d4c45", "#6b695f", "#8f8d81", "#b8b6ab", "#dcdad2", "#f1f0ea"]
+      },
+      "forest-ink": {
+        "role": "neutral",
+        "displayName": "Forest Ink",
+        "canonical": "#0f1512",
+        "tonalRamp": ["#0f1512", "#1c2620", "#2e3d35", "#44574c", "#5f7568", "#8b958d", "#bcc7be", "#e7ece7"]
+      },
+      "clay": {
+        "role": "error",
+        "displayName": "Clay",
+        "canonical": "#b04a38",
+        "tonalRamp": ["#2b0f0a", "#471a12", "#63271b", "#7f3527", "#9b4030", "#b04a38", "#d08573", "#fbefec"]
+      },
+      "amber": {
+        "role": "warning",
+        "displayName": "Amber",
+        "canonical": "#8a6116",
+        "tonalRamp": ["#221703", "#3a2707", "#52380c", "#6b4a11", "#8a6116", "#b08430", "#d4b06a", "#f7efdc"]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display — Instrument Serif italic",
+        "purpose": "Accents only: the wordmark, the greeting's agency name, editorial one-liners, empty states. Latin-only — gate interpolated user strings on hasCyrillic()."
+      },
+      "metric": {
+        "displayName": "Metric",
+        "purpose": "Stat values. Always tabular-nums with -0.02em tracking."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Dashboard greeting and page-level headings."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Section titles inside cards and panels."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Body text, navigation items, table cells."
+      },
+      "caption": {
+        "displayName": "Caption",
+        "purpose": "Hints, card sub-lines, timestamps."
+      },
+      "label": {
+        "displayName": "Micro Label",
+        "purpose": "Uppercase sidebar section labels at +0.16em."
+      }
+    },
+    "shadows": [
+      {
+        "name": "card",
+        "value": "0 1px 2px rgba(15, 21, 18, 0.03), 0 14px 36px -14px rgba(15, 21, 18, 0.1)",
+        "purpose": "Resting cards and panels. Ambient lift — a card resting on paper, not floating above it."
+      },
+      {
+        "name": "pop",
+        "value": "0 12px 32px rgba(15, 21, 18, 0.1)",
+        "purpose": "Dropdowns, popovers, tooltips — genuinely floating layers."
+      },
+      {
+        "name": "frame",
+        "value": "0 24px 60px rgba(15, 21, 18, 0.06)",
+        "purpose": "Modals and large framed compositions."
+      },
+      {
+        "name": "dark",
+        "value": "0 18px 44px -14px rgba(12, 46, 32, 0.55)",
+        "purpose": "Dark pine capsules and surfaces."
+      },
+      {
+        "name": "focus-ring",
+        "value": "0 0 0 3px rgba(46, 158, 104, 0.12)",
+        "purpose": "Input focus halo — a Living Green glow, not a hard outline."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease-contour",
+        "value": "cubic-bezier(0.22, 1, 0.36, 1)",
+        "purpose": "Default easing for state transitions. Deliberately NOT named --ease-out, so it never silently retimes Tailwind's ease-out utilities."
+      },
+      {
+        "name": "duration-state",
+        "value": "150ms",
+        "purpose": "Background and border-colour transitions on interactive elements."
+      },
+      {
+        "name": "duration-press",
+        "value": "100ms",
+        "purpose": "The 0.98 active-scale press."
+      }
+    ],
+    "textures": [
+      {
+        "name": "dot-grid",
+        "value": "radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1.5px)",
+        "purpose": "Overlaid on every dark surface at 13px 13px so large dark areas never read as dead ink."
+      },
+      {
+        "name": "hatch",
+        "value": "repeating-linear-gradient(45deg, rgba(15, 21, 18, 0.16) 0 2px, transparent 2px 5px)",
+        "purpose": "Marks absence — an unscheduled day, an empty slot. Never ornament."
+      }
+    ],
+    "breakpoints": [
+      { "name": "sm", "value": "640px" },
+      { "name": "md", "value": "768px" },
+      { "name": "lg", "value": "1024px" },
+      { "name": "xl", "value": "1280px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The single main action on a page. Deep Pine ground, white text.",
+      "html": "<button class=\"ds-btn ds-btn-primary\">Generate posts</button>",
+      "css": ".ds-btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: var(--radius-md, 10px); font-family: var(--font-sans), Arial, sans-serif; font-size: 13.5px; font-weight: 500; line-height: 1; border: none; white-space: nowrap; cursor: pointer; transition: background 150ms cubic-bezier(0.22,1,0.36,1), border-color 150ms cubic-bezier(0.22,1,0.36,1), transform 100ms cubic-bezier(0.22,1,0.36,1); } .ds-btn:active { transform: scale(0.98); } .ds-btn-primary { background: #164430; color: #ffffff; } .ds-btn-primary:hover { background: #0c2e20; } .ds-btn-primary:focus-visible { outline: 2px solid #2e9e68; outline-offset: 2px; }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Secondary actions and destructive confirmations. Hairline border, no fill.",
+      "html": "<button class=\"ds-btn ds-btn-secondary\">Add client</button>",
+      "css": ".ds-btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: var(--radius-md, 10px); font-family: var(--font-sans), Arial, sans-serif; font-size: 13.5px; font-weight: 500; line-height: 1; cursor: pointer; transition: background 150ms cubic-bezier(0.22,1,0.36,1), border-color 150ms cubic-bezier(0.22,1,0.36,1), transform 100ms cubic-bezier(0.22,1,0.36,1); } .ds-btn:active { transform: scale(0.98); } .ds-btn-secondary { background: transparent; color: #0f1512; border: 0.5px solid #d5ddd6; } .ds-btn-secondary:hover { background: rgba(15,21,18,0.04); border-color: #bcc7be; } .ds-btn-secondary:focus-visible { outline: 2px solid #2e9e68; outline-offset: 2px; }"
+    },
+    {
+      "name": "Ghost Button",
+      "kind": "button",
+      "refersTo": "button-ghost",
+      "description": "Tertiary actions and cancels. Tighter padding, secondary ink.",
+      "html": "<button class=\"ds-btn-ghost\">Cancel</button>",
+      "css": ".ds-btn-ghost { display: inline-flex; align-items: center; gap: 6px; padding: 8px 10px; border-radius: var(--radius-md, 10px); background: transparent; color: #57625a; border: none; font-family: var(--font-sans), Arial, sans-serif; font-size: 13.5px; font-weight: 500; line-height: 1; cursor: pointer; transition: background 150ms cubic-bezier(0.22,1,0.36,1), color 150ms cubic-bezier(0.22,1,0.36,1); } .ds-btn-ghost:hover { background: rgba(15,21,18,0.04); color: #0f1512; } .ds-btn-ghost:focus-visible { outline: 2px solid #2e9e68; outline-offset: 2px; }"
+    },
+    {
+      "name": "Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "The resting surface. 20px corners, 0.5px hairline, ambient lift only.",
+      "html": "<div class=\"ds-card\"><div class=\"ds-card-label\">Pending review</div><div class=\"ds-card-metric\">5</div><div class=\"ds-card-foot\">Oldest waiting since 2d ago</div></div>",
+      "css": ".ds-card { background: #ffffff; border: 0.5px solid #e7ece7; border-radius: 20px; padding: 20px 24px; box-shadow: 0 1px 2px rgba(15,21,18,0.03), 0 14px 36px -14px rgba(15,21,18,0.1); font-family: var(--font-sans), Arial, sans-serif; min-width: 200px; } .ds-card-label { font-size: 12.5px; font-weight: 500; color: #57625a; } .ds-card-metric { font-size: 31px; font-weight: 600; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; color: #0f1512; margin: 6px 0 4px; } .ds-card-foot { font-size: 11.5px; color: #57625a; }"
+    },
+    {
+      "name": "Dark Capsule Card",
+      "kind": "card",
+      "refersTo": "card-dark",
+      "description": "The single highest-authority surface. Pine gradient over a 13px dot grid — never a flat fill.",
+      "html": "<div class=\"ds-card-dark\"><div class=\"ds-card-dark-label\">Scheduled this week</div><div class=\"ds-card-dark-metric\">6</div></div>",
+      "css": ".ds-card-dark { background-image: radial-gradient(rgba(255,255,255,0.05) 1px, transparent 1.5px), linear-gradient(180deg, #10382a 0%, #0a2b1d 100%); background-size: 13px 13px, auto; border-radius: 20px; padding: 20px 24px; box-shadow: 0 18px 44px -14px rgba(12,46,32,0.55); font-family: var(--font-sans), Arial, sans-serif; min-width: 200px; } .ds-card-dark-label { font-size: 12.5px; font-weight: 500; color: rgba(242,245,241,0.72); } .ds-card-dark-metric { font-size: 31px; font-weight: 600; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; color: #ffffff; margin-top: 6px; }"
+    },
+    {
+      "name": "Text Input",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "The one element carrying a full 1px border, so form fields read as the interactive edge.",
+      "html": "<input class=\"ds-input\" type=\"text\" placeholder=\"Search\" />",
+      "css": ".ds-input { background: #ffffff; border: 1px solid #d5ddd6; border-radius: 10px; padding: 8px 12px; font-family: var(--font-sans), Arial, sans-serif; font-size: 13.5px; color: #0f1512; outline: none; transition: border-color 150ms cubic-bezier(0.22,1,0.36,1), box-shadow 150ms cubic-bezier(0.22,1,0.36,1); } .ds-input::placeholder { color: #8b958d; } .ds-input:focus { border-color: #2e9e68; box-shadow: 0 0 0 3px rgba(46,158,104,0.12); }"
+    },
+    {
+      "name": "Status Chip",
+      "kind": "chip",
+      "refersTo": "chip",
+      "description": "Fixed semantic pairs. Published shown; scheduled, pending, draft, and error follow the same shape.",
+      "html": "<span class=\"ds-chip ds-chip-published\">Published</span> <span class=\"ds-chip ds-chip-pending\">Needs attention</span>",
+      "css": ".ds-chip { display: inline-flex; align-items: center; border-radius: 10px; padding: 3px 8px; font-family: var(--font-sans), Arial, sans-serif; font-size: 11px; font-weight: 500; } .ds-chip-published { background: #eef4ef; color: #164430; } .ds-chip-pending { background: #f7efdc; color: #8a6116; }"
+    },
+    {
+      "name": "Sidebar Nav Item",
+      "kind": "nav",
+      "refersTo": null,
+      "description": "13px body type, Wash fill with Deep Pine text when active. Icons always paired with a label.",
+      "html": "<nav class=\"ds-nav\"><div class=\"ds-nav-label\">Workspace</div><a class=\"ds-nav-item ds-nav-item-active\" href=\"#\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\"><rect x=\"3\" y=\"3\" width=\"7\" height=\"7\"/><rect x=\"14\" y=\"3\" width=\"7\" height=\"7\"/><rect x=\"14\" y=\"14\" width=\"7\" height=\"7\"/><rect x=\"3\" y=\"14\" width=\"7\" height=\"7\"/></svg>Dashboard</a><a class=\"ds-nav-item\" href=\"#\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\"><path d=\"M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2\"/><circle cx=\"9\" cy=\"7\" r=\"4\"/></svg>Clients</a></nav>",
+      "css": ".ds-nav { width: 224px; font-family: var(--font-sans), Arial, sans-serif; } .ds-nav-label { font-size: 10px; font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase; color: #8b958d; padding: 0 12px; margin-bottom: 8px; } .ds-nav-item { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 10px; font-size: 13px; font-weight: 500; color: #57625a; text-decoration: none; transition: background 150ms cubic-bezier(0.22,1,0.36,1), color 150ms cubic-bezier(0.22,1,0.36,1); } .ds-nav-item:hover { background: rgba(15,21,18,0.04); color: #0f1512; } .ds-nav-item-active { background: #eef4ef; color: #164430; } .ds-nav-item:focus-visible { outline: 2px solid #2e9e68; outline-offset: 2px; }"
+    },
+    {
+      "name": "Coverage Strip",
+      "kind": "custom",
+      "refersTo": null,
+      "description": "The signature component. Seven chips, one per day: solid = published, outlined = scheduled, hatched = open. Always aria-hidden with an sr-only sentence restating the counts.",
+      "html": "<div class=\"ds-coverage\"><span class=\"ds-sr\">2 published, 1 scheduled, 4 open</span><div class=\"ds-coverage-strip\" aria-hidden=\"true\"><i class=\"ds-day ds-day-pub\"></i><i class=\"ds-day ds-day-pub\"></i><i class=\"ds-day ds-day-sch\"></i><i class=\"ds-day ds-day-open\"></i><i class=\"ds-day ds-day-open\"></i><i class=\"ds-day ds-day-open\"></i><i class=\"ds-day ds-day-open\"></i></div></div>",
+      "css": ".ds-coverage { font-family: var(--font-sans), Arial, sans-serif; } .ds-sr { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; } .ds-coverage-strip { display: inline-flex; gap: 4px; } .ds-day { width: 18px; height: 22px; border-radius: 4px; display: block; } .ds-day-pub { background: #164430; } .ds-day-sch { background: transparent; border: 1px solid #164430; } .ds-day-open { background-image: repeating-linear-gradient(45deg, rgba(15,21,18,0.16) 0 2px, transparent 2px 5px); border-radius: 4px; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "Contour Calm",
+    "overview": "Kontuur is a green editorial system. Warm paper instead of white, forest ink instead of black, and a serif used so sparingly that each appearance reads as an authored moment rather than a style. The interface is a workroom for other people's brands: every decision that makes Kontuur more visible makes it worse at its job. Content — posts, captions, client names, calendars — is the thing. Chrome recedes.\n\nDepth comes from tone before it comes from shadow. The system layers warm paper under white surfaces under deep pine, and separates them with 0.5px hairlines rather than heavy borders. Status colour is deliberately muted: a missed publish is clay, not red; a waiting draft is amber, not orange. Nothing in this interface shouts, because the work it manages is already urgent enough. Motion confirms and guides; it never decorates.\n\nThe one loud value in the palette is New Growth lime, and its power is entirely a function of its rarity. It marks the live present — today, in progress, happening now — and nothing else.",
+    "keyCharacteristics": [
+      "Warm paper ground (#f1f0ea), never pure white for page backgrounds",
+      "Forest ink and a botanical green ramp; no blues, no unrelated hues",
+      "Instrument Serif italic for accents only, and Latin-only by necessity",
+      "Hairline separation (0.5px) with tonal layering as the primary depth cue",
+      "Muted status colour; saturated defaults are rejected outright",
+      "Tabular numerals on every metric"
+    ],
+    "rules": [
+      {
+        "name": "The Living Present Rule",
+        "body": "New Growth lime marks now — today, in progress, publishing, live — and nothing else. It is never a category colour, never decorative, and never assigned by position in a list. At most one lime element per view. Audit test: if the lime element would still be lime tomorrow, it is wrong.",
+        "section": "colors"
+      },
+      {
+        "name": "The Fill-Only Lime Rule",
+        "body": "New Growth is a fill, a marker, or a dot — never a word on a light ground. It measures 1.35:1 on Surface, so lime text on white or paper is unreadable regardless of size. Lime type is legitimate only on Pine Deep, where the relationship inverts.",
+        "section": "colors"
+      },
+      {
+        "name": "The Legible Tint Rule",
+        "body": "Text on a tinted surface uses a solid ink token — Forest Ink or Ink Secondary — never an alpha-reduced ink. Measured: ink/55% lands at 4.10:1 on Surface Lime, 4.08:1 on Marker, and 3.74:1 on Sage, so the same line changes legibility depending on which tint sits under it.",
+        "section": "colors"
+      },
+      {
+        "name": "The Botanical Closure Rule",
+        "body": "Every hue in this system is a green, a neutral, or one of the two earthen status colours. There are no blues. A blue link, a blue-500, or a fifth unrelated hue for a fourth chart series is out of system.",
+        "section": "colors"
+      },
+      {
+        "name": "The Muted Status Rule",
+        "body": "Status colour is earthen, never saturated. green-500 and red-500 are rejected on sight; a failure is Clay and a wait is Amber.",
+        "section": "colors"
+      },
+      {
+        "name": "The Latin-Only Serif Rule",
+        "body": "Instrument Serif ships no Cyrillic glyphs, and half this product's audience is Bulgarian. Any interpolated user string set in font-display must gate on hasCyrillic() and fall back to the sans face. Audit test: if a string comes from the database and is set in the serif, it needs the gate.",
+        "section": "typography"
+      },
+      {
+        "name": "The Rationed Serif Rule",
+        "body": "The serif is for the wordmark, greetings, empty states, and editorial one-liners. Never body text, never labels, never buttons, never anything a user must read in volume.",
+        "section": "typography"
+      },
+      {
+        "name": "The Weight Ceiling Rule",
+        "body": "400 and 500 carry the interface; 600 is correct for titles, stat numbers, and section headings. 700 stays unused.",
+        "section": "typography"
+      },
+      {
+        "name": "The Two Facts Rule",
+        "body": "A day chip carries two independent facts — is it today, and is it covered — and one must never consume the other. Today is marked with a 2px New Growth rule beneath the chip; the chip's own fill continues to encode published / scheduled / open. The same applies to any bar height encoding volume: an empty state must never render larger than an occupied one.",
+        "section": "components"
+      },
+      {
+        "name": "The Resting Surface Rule",
+        "body": "Surfaces are at rest by default. Shadow answers state — floating, hovering, focused — never decoration. If two adjacent elements both cast shadow, at least one of them is wrong.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Hairline Rule",
+        "body": "Card borders are 0.5px, never 1px. A 1px border on a card is out of system and reads as a different product.",
+        "section": "shapes"
+      }
+    ],
+    "dos": [
+      "Do use Warm Paper (#f1f0ea) for page grounds and Surface white for cards.",
+      "Do use 0.5px hairlines on cards and dividers; 1px only on inputs.",
+      "Do set every metric in tabular numerals with -0.02em.",
+      "Do gate every interpolated user string set in the serif on hasCyrillic().",
+      "Do give every purely visual data encoding an sr-only sentence, as the coverage strip does.",
+      "Do use cubic-bezier(0.22, 1, 0.36, 1) (--ease-contour) for state transitions.",
+      "Do keep weight at 600 or below.",
+      "Do reserve New Growth lime for the live present."
+    ],
+    "donts": [
+      "Don't use pure white for a page background, or a cool grey anywhere.",
+      "Don't introduce a hue outside the botanical ramp — no blues, no blue-500 links, no unrelated fourth chart colour.",
+      "Don't use saturated status colours (green-500, red-500); status is Clay and Amber.",
+      "Don't use font-weight: 700.",
+      "Don't set body text, labels, or buttons in Instrument Serif.",
+      "Don't let a tinted surface (Surface Lime, Sage) encode data. They are surfaces; if a colour must carry meaning, it belongs to a status token with a legend.",
+      "Don't assign colour, emphasis, or the dark treatment by position in a list. Visual weight follows state, never index.",
+      "Don't animate width, height, padding, or margin; transition transform and opacity.",
+      "Don't ship an interactive element without a visible :focus-visible ring.",
+      "Don't put a 1px border on a card.",
+      "Don't set green text on a light ground in Living Green (#2e9e68, 3.38:1) — that is Living Green Text's job (#278658).",
+      "Don't put lime type on paper or white, at any size.",
+      "Don't use an alpha-reduced ink (ink/55, ink/60) for reading text on a tinted surface."
+    ]
+  }
+}

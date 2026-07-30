@@ -8,7 +8,9 @@ web
 
 ## Users
 
-Two audiences of **genuinely equal priority** — neither leads, and every surface must be checked against both:
+Two audiences intended to be of **equal priority** — neither leads, and every surface should eventually be checked against both.
+
+> **Current state (2026-07-30):** solo mode is **not yet developed** and is explicitly out of scope for near-term design work. Equal priority remains the intent, not a description of today's build. Do not scope design work to solo surfaces, and do not treat solo defects as blocking — but do not deepen the gap either: new shared surfaces should avoid hard-coding agency-only assumptions that solo would later have to unpick.
 
 - **Agency mode** — marketing agency teams managing social content for multiple client brands. They work across clients, in volume, and answer to the client for what ships. Their situation is throughput plus accountability: many brands, each with its own voice, each needing sign-off.
 - **Solo mode** — a single business owner running their own socials. One brand, no client to please, less time and less marketing expertise. Solo auto-creates one client for the business and simplifies navigation and language throughout.
@@ -67,7 +69,7 @@ Surfaces: Dashboard, Clients, Generate (full-screen wizard), Review queue, Calen
 
 **Open / undecided — do not invent answers:**
 
-- **Instagram self-serve OAuth is blocked externally.** As of 2026-07-29, Meta Access Verification is gated behind a restricted business portfolio, so clients cannot self-connect Instagram through the normal flow. The working interim path is adding the account from the dashboard first, after which Connect works fully. Any surface implying frictionless self-serve IG connection is currently untrue.
+- **Instagram self-serve OAuth works.** The Meta Access Verification block recorded on 2026-07-29 is resolved as of 2026-07-30; clients connect through the normal flow with no workaround. A low connected-client count is therefore an ordinary onboarding gap the user can fix themselves, not a structural dead end — surfaces should offer Connect directly rather than routing around a failure.
 - Billing and plan enforcement are scaffolding, not a shipped flow.
 - No confirmed accessibility standard has been set (see below).
 
@@ -90,7 +92,7 @@ Real assets that do exist: the product itself and its live data flows, the docum
 ## Product Principles
 
 1. **Ground every claim in a real source.** The product's core promise is that content traces back to something true — the same standard applies to the marketing surfaces describing it.
-2. **Serve both modes honestly.** Agency and solo are equal. A surface that only reads well with twelve clients, or only with one, is unfinished.
+2. **Serve both modes honestly.** Agency and solo are meant to be equal, and a surface that only reads well with twelve clients — or only with one — is eventually unfinished. Solo is undeveloped today (see Users), so this is a standard to build toward, not a gate on current work.
 3. **The client's voice outranks the product's voice.** Kontuur's personality must never leak into generated content or overshadow the brand being managed.
 4. **Approval is a relationship, not a transaction.** The end client meets the product through a token link with no account; that surface carries the agency's credibility.
 5. **Autonomy must stay legible.** When crons generate, schedule, and publish unattended, the interface's job is to make what happened — and what is about to happen — obvious and reversible.
