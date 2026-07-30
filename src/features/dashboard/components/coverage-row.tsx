@@ -8,7 +8,7 @@ import type { DayState } from '@/lib/queries/cache'
  * identity. Rows past the second share the dark tier (its background is applied
  * as an inline gradient, so only the text colour is a class here).
  */
-const TIER_CLASSES = ['bg-lime', 'bg-sage', 'text-white'] as const
+const TIER_CLASSES = ['bg-lime', 'bg-sage', 'surface-dark-capsule text-white'] as const
 const DARK_TIER_INDEX = 2
 
 interface CoverageRowProps {
@@ -41,14 +41,6 @@ export function CoverageRow({ clientId, name, week, pendingCount, tier }: Covera
         'transition-[transform,box-shadow] duration-150 ease-contour hover:-translate-y-0.5 hover:shadow-pop',
         TIER_CLASSES[Math.min(tier, DARK_TIER_INDEX)]
       )}
-      style={
-        isDark
-          ? {
-              background: 'var(--dot-grid), var(--surface-dark-capsule)',
-              backgroundSize: '13px 13px, 100% 100%',
-            }
-          : undefined
-      }
     >
       <span className="grid size-11 shrink-0 place-items-center rounded-panel bg-surface text-[11.5px] font-bold text-forest shadow-pop">
         {extractInitials(name)}
@@ -76,13 +68,9 @@ export function CoverageRow({ clientId, name, week, pendingCount, tier }: Covera
               day === 'scheduled' &&
                 (isDark
                   ? 'bg-transparent shadow-[inset_0_0_0_1.5px_rgba(255,255,255,0.65)]'
-                  : 'bg-surface shadow-[inset_0_0_0_1.5px_rgba(22,68,48,0.45)]')
+                  : 'bg-surface shadow-[inset_0_0_0_1.5px_rgba(22,68,48,0.45)]'),
+              day === 'open' && (isDark ? 'slot-open-inv' : 'slot-open')
             )}
-            style={
-              day === 'open'
-                ? { background: isDark ? 'var(--hatch-inv)' : 'var(--hatch)' }
-                : undefined
-            }
           />
         ))}
       </div>

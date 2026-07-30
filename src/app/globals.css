@@ -292,6 +292,40 @@ body {
   50%      { box-shadow: 0 0 0 4px rgba(46, 158, 104, 0); }
 }
 
+/* ─── Composed surfaces ───────────────────────────────────────────────
+   Real classes, not inline styles: a `background` shorthand built from custom
+   properties is invalidated wholesale if any one of them is missing, which
+   silently renders as "no background" rather than as an error. */
+.surface-dark {
+  background-image: var(--dot-grid), var(--surface-dark);
+  background-size: 13px 13px, 100% 100%;
+  background-color: var(--forest-deep);
+}
+
+.surface-dark-capsule {
+  background-image: var(--dot-grid), var(--surface-dark-capsule);
+  background-size: 13px 13px, 100% 100%;
+  background-color: var(--forest-deep);
+}
+
+.surface-live {
+  background-image: var(--surface-live);
+  background-color: var(--wash);
+}
+
+.surface-mark {
+  background-image: var(--mark-gradient);
+  background-color: var(--spring);
+}
+
+.slot-open {
+  background-image: var(--hatch);
+}
+
+.slot-open-inv {
+  background-image: var(--hatch-inv);
+}
+
 /* ─── App shell ───────────────────────────────────────────────────────
    Two faint spring glows behind the scroll area. Padding stays with each
    page, not the frame, so nothing double-pads. */

@@ -27,17 +27,9 @@ export function StatCard({ label, value, icon, pill, footer, dark, children }: S
       className={cn(
         'rounded-card px-[18px] py-4',
         dark
-          ? 'border-transparent text-white shadow-dark'
+          ? 'surface-dark border-transparent text-white shadow-dark'
           : 'border border-ink/[0.05] bg-[image:var(--raised)] shadow-card'
       )}
-      style={
-        dark
-          ? {
-              background: 'var(--dot-grid), var(--surface-dark)',
-              backgroundSize: '13px 13px, 100% 100%',
-            }
-          : undefined
-      }
     >
       <div className="mb-3.5 flex items-center justify-between">
         <span

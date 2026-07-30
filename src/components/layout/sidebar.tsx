@@ -65,11 +65,7 @@ function LogoMark({ collapsed }: { collapsed: boolean }) {
       )}
     >
       <span
-        className="grid size-7 shrink-0 place-items-center rounded-lg font-display text-[15px] italic text-white"
-        style={{
-          background: 'var(--mark-gradient)',
-          boxShadow: '0 4px 14px rgba(46,158,104,0.35)',
-        }}
+        className="surface-mark grid size-7 shrink-0 place-items-center rounded-lg font-display text-[15px] italic text-white shadow-[0_4px_14px_rgba(46,158,104,0.35)]"
       >
         k
       </span>
