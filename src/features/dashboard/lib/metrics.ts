@@ -1,7 +1,10 @@
 import { DAYS_PER_WEEK } from '@/utils/constants'
+import { toDateKey } from '@/utils/date-helpers'
 import type { DayState } from '@/lib/queries/cache'
-import type { StatPillTone } from '@/features/dashboard/types'
-import type { DashboardMetrics } from '@/features/dashboard/queries'
+
+/** Beyond this, a bare weekday stops being unambiguous and needs a date. */
+const WEEKDAY_HORIZON_DAYS = 6
+const MS_PER_DAY = 86_400_000
 
 /** Filled slots per weekday across every client, Monday first. */
 export function countFilledPerDay(coverage: Record<string, DayState[]>): number[] {
@@ -14,18 +17,37 @@ export function countFilledPerDay(coverage: Record<string, DayState[]>): number[
   return counts
 }
 
-/** Month-over-month movement, phrased only when there is something to compare. */
-export function describePublishedDelta(metrics: DashboardMetrics): {
-  text: string
-  tone: StatPillTone
-} {
-  const delta = metrics.publishedThisMonth - metrics.publishedLastMonth
-  if (metrics.publishedLastMonth === 0 && metrics.publishedThisMonth === 0) {
-    return { text: 'Nothing published yet', tone: 'muted' }
+/**
+ * A publish slot as the agency reads it: 24h time in the agency's zone, the
+ * weekday only when it is not today, and a date once "Mon" could mean either of
+ * two Mondays. Formatted on the server so the label never depends on the
+ * viewer's clock.
+ */
+export function formatPublishSlot(
+  iso: string,
+  timeZone: string,
+  now: Date = new Date()
+): { label: string; isToday: boolean } {
+  const date = new Date(iso)
+  const time = new Intl.DateTimeFormat('en-GB', {
+    timeZone,
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).format(date)
+
+  if (toDateKey(date, timeZone) === toDateKey(now, timeZone)) {
+    return { label: `Today ${time}`, isToday: true }
   }
-  if (delta === 0) return { text: 'Same as last month', tone: 'muted' }
+
+  const daysOut = (date.getTime() - now.getTime()) / MS_PER_DAY
+  const parts: Intl.DateTimeFormatOptions =
+    daysOut > WEEKDAY_HORIZON_DAYS
+      ? { timeZone, day: 'numeric', month: 'short' }
+      : { timeZone, weekday: 'short' }
+
   return {
-    text: `${delta > 0 ? '+' : ''}${delta} vs last month`,
-    tone: delta > 0 ? 'positive' : 'attention',
+    label: `${new Intl.DateTimeFormat('en-GB', parts).format(date)} ${time}`,
+    isToday: false,
   }
 }

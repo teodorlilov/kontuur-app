@@ -1,4 +1,4 @@
-import { BarChart2, Calendar, CircleCheck, Send, Users } from 'lucide-react'
+import { BarChart2, Calendar, CircleCheck, Users } from 'lucide-react'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { requireSessionUser } from '@/lib/auth/session'
 import {
@@ -9,7 +9,7 @@ import {
 import { getMondayISO, getWeekdayIndex } from '@/utils/date-helpers'
 import { formatRelativeTime, parseTimestamp } from '@/utils/format'
 import { fetchDashboardData } from '@/features/dashboard/queries'
-import { countFilledPerDay, describePublishedDelta } from '@/features/dashboard/lib/metrics'
+import { countFilledPerDay } from '@/features/dashboard/lib/metrics'
 import { DAYS_PER_WEEK } from '@/utils/constants'
 import { DashboardHeader } from '@/features/dashboard/components/dashboard-header'
 import { StatCard } from '@/features/dashboard/components/stat-card'
@@ -18,6 +18,7 @@ import { ClientCoverage } from '@/features/dashboard/components/client-coverage'
 import { PendingReviewList } from '@/features/dashboard/components/pending-review-list'
 import { BriefingBar } from '@/features/dashboard/components/briefing-bar'
 import { QuickActionsStrip } from '@/features/dashboard/components/quick-actions-strip'
+import { NextUpCard } from '@/features/dashboard/components/next-up-card'
 import { ChangeRequestCard } from '@/features/dashboard/components/change-request-card'
 
 export default async function DashboardPage() {
@@ -44,7 +45,6 @@ export default async function DashboardPage() {
   const { metrics } = data
   const filledPerDay = countFilledPerDay(coverage)
   const coveredDays = filledPerDay.filter((count) => count > 0).length
-  const publishedDelta = describePublishedDelta(metrics)
 
   return (
     <div className="@container px-4 pb-12 pt-10 md:px-8">
@@ -110,16 +110,12 @@ export default async function DashboardPage() {
         </div>
 
         <div className="rv [--d:240ms]">
-          <StatCard
-            label="Published this month"
-            value={metrics.publishedThisMonth}
-            icon={<Send size={16} />}
-            pill={publishedDelta}
-            footer={
-              metrics.publishedLastMonth > 0
-                ? `${metrics.publishedLastMonth} last month`
-                : 'First publishes are still ahead'
-            }
+          <NextUpCard
+            upcoming={data.upcomingPublishes}
+            failed={data.failedPublishes}
+            connectedClientCount={metrics.connectedClientCount}
+            clientCount={clients.length}
+            timezone={timezone}
           />
         </div>
       </div>

@@ -28,9 +28,8 @@ export interface PendingPostPreview {
 }
 
 export interface DashboardMetrics {
-  scheduledThisWeek: number
-  publishedThisMonth: number
-  publishedLastMonth: number
+  /** null means the query failed — the dashboard must not render that as 0. */
+  scheduledThisWeek: number | null
   pendingCount: number
   /** Oldest pending post's created_at, or null when the queue is empty. */
   oldestPendingAt: string | null
@@ -39,11 +38,29 @@ export interface DashboardMetrics {
   connectedClientCount: number
 }
 
+/** A publish the cron will attempt, soonest first. */
+export interface UpcomingPublish {
+  id: string
+  clientName: string
+  platform: string
+  scheduledAt: string
+}
+
+/** A publish the cron already attempted and lost. */
+export interface FailedPublish {
+  id: string
+  clientName: string
+  platform: string
+  scheduledAt: string | null
+}
+
 export interface DashboardData {
   metrics: DashboardMetrics
   briefing: DashboardBriefing | null
   pendingPosts: PendingPostPreview[]
   changeRequests: DashboardChangeRequest[]
+  upcomingPublishes: UpcomingPublish[]
+  failedPublishes: FailedPublish[]
 }
 
 interface ChangeRequestRow {
@@ -71,6 +88,13 @@ interface PendingPostRow {
   client_id: string
 }
 
+interface PublishRow {
+  id: string
+  client_id: string
+  platform: string | null
+  scheduled_at: string | null
+}
+
 interface ClientSummary {
   id: string
   name: string
@@ -80,20 +104,25 @@ interface ClientSummary {
 /** The dashboard queue scrolls, so it holds more than a glance's worth. */
 const PENDING_PREVIEW_LIMIT = 12
 const CHANGE_REQUEST_LIMIT = 5
+/** At 3–8 publishes a day, three rows answer "what's next" without becoming a feed. */
+const PUBLISH_PREVIEW_LIMIT = 3
 
 interface QueryOutcome {
   error: { message: string } | null
 }
 
 /**
- * A failed count is not zero. Logging here keeps the dashboard from presenting
- * an outage as a real figure — the boundary can still render, but the reason is
- * on record rather than lost.
+ * A failed count is not zero, so a failed query returns null and the card
+ * renders an explicit unknown. Returning 0 here would have presented an outage
+ * as a real figure — the exact thing the log line was meant to prevent.
  */
-function readCount(result: QueryOutcome & { count: number | null }, label: string): number {
+function readCount(
+  result: QueryOutcome & { count: number | null },
+  label: string
+): number | null {
   if (result.error) {
     console.error(`[dashboard] ${label} count failed:`, result.error.message)
-    return 0
+    return null
   }
   return result.count ?? 0
 }
@@ -194,8 +223,9 @@ export async function fetchDashboardData(
 
   // Every boundary below is the agency's, not the server's — the same range the
   // coverage grid is built from, so the two halves of a card always agree.
-  const { monthStart, lastMonthStart } = getMonthBoundaries(timeZone)
+  const { monthStart } = getMonthBoundaries(timeZone)
   const { from: weekStart, to: weekEnd } = getWeekRange(weekStartISO, timeZone)
+  const nowISO = new Date().toISOString()
 
   const clientsAddedThisMonth = clients.filter(
     (client) => client.created_at !== null && client.created_at >= monthStart
@@ -205,8 +235,6 @@ export async function fetchDashboardData(
     return {
       metrics: {
         scheduledThisWeek: 0,
-        publishedThisMonth: 0,
-        publishedLastMonth: 0,
         pendingCount: 0,
         oldestPendingAt: null,
         clientPendingMap: {},
@@ -216,13 +244,15 @@ export async function fetchDashboardData(
       briefing: null,
       pendingPosts: [],
       changeRequests: [],
+      upcomingPublishes: [],
+      failedPublishes: [],
     }
   }
 
   const [
     scheduledRes,
-    publishedThisMonthRes,
-    publishedLastMonthRes,
+    upcomingRes,
+    failedRes,
     pendingRows,
     connectionsRes,
     briefingRes,
@@ -238,19 +268,25 @@ export async function fetchDashboardData(
       .gte('scheduled_at', weekStart)
       .lt('scheduled_at', weekEnd)
       .in('client_id', clientIds),
+    // What the cron will attempt next. Unbounded forward on purpose — the
+    // question is "what is next", not "what is next inside this week".
     supabase
       .from('posts')
-      .select('id', { count: 'exact', head: true })
-      .eq('status', 'published')
-      .gte('published_at', monthStart)
-      .in('client_id', clientIds),
+      .select('id, client_id, platform, scheduled_at')
+      .in('status', SCHEDULED_STATUSES)
+      .gte('scheduled_at', nowISO)
+      .in('client_id', clientIds)
+      .order('scheduled_at', { ascending: true })
+      .limit(PUBLISH_PREVIEW_LIMIT),
+    // What the cron already lost. Newest first: a stale failure matters less
+    // than one from last night.
     supabase
       .from('posts')
-      .select('id', { count: 'exact', head: true })
-      .eq('status', 'published')
-      .gte('published_at', lastMonthStart)
-      .lt('published_at', monthStart)
-      .in('client_id', clientIds),
+      .select('id, client_id, platform, scheduled_at')
+      .eq('status', 'failed')
+      .in('client_id', clientIds)
+      .order('scheduled_at', { ascending: false })
+      .limit(PUBLISH_PREVIEW_LIMIT),
     getCachedPendingRows(agencyId),
     supabase.from('social_connections').select('client_id').in('client_id', clientIds),
     supabase
@@ -282,6 +318,8 @@ export async function fetchDashboardData(
   logIfFailed(briefingRes, 'briefing')
   logIfFailed(pendingPostsRes, 'pending posts')
   logIfFailed(changeRequestsRes, 'change requests')
+  logIfFailed(upcomingRes, 'upcoming publishes')
+  logIfFailed(failedRes, 'failed publishes')
 
   const { clientPendingMap, oldestPendingAt } = summarisePending(pendingRows)
   const connectedClients = new Set(
@@ -305,11 +343,23 @@ export async function fetchDashboardData(
     imageUrl: imagesByPost.get(post.id)?.[0]?.publicUrl ?? null,
   }))
 
+  const toPublish = (row: PublishRow) => ({
+    id: row.id,
+    clientName: clientNames.get(row.client_id) ?? 'Unknown',
+    platform: row.platform ?? 'instagram',
+    scheduledAt: row.scheduled_at,
+  })
+
+  const upcomingPublishes = ((upcomingRes.data as PublishRow[] | null) ?? [])
+    .map(toPublish)
+    // scheduled_at drives the whole card, so a null one has nothing to say.
+    .filter((row): row is UpcomingPublish => row.scheduledAt !== null)
+
+  const failedPublishes = ((failedRes.data as PublishRow[] | null) ?? []).map(toPublish)
+
   return {
     metrics: {
       scheduledThisWeek: readCount(scheduledRes, 'scheduled this week'),
-      publishedThisMonth: readCount(publishedThisMonthRes, 'published this month'),
-      publishedLastMonth: readCount(publishedLastMonthRes, 'published last month'),
       pendingCount: pendingRows.length,
       oldestPendingAt,
       clientPendingMap,
@@ -323,5 +373,7 @@ export async function fetchDashboardData(
       (changeRequestsRes.data as ChangeRequestRow[] | null) ?? [],
       clientNames
     ),
+    upcomingPublishes,
+    failedPublishes,
   }
 }

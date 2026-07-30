@@ -7,11 +7,18 @@ const PILL_CLASSES: Record<StatPillTone, string> = {
   attention: 'bg-pending-bg text-pending',
   muted: 'bg-sunken text-text3',
   accent: 'bg-accent/15 text-accent',
+  // A publish that did not ship is an error, and errors are clay.
+  danger: 'bg-danger-bg text-danger',
 }
 
 interface StatCardProps {
   label: string
-  value: number
+  /**
+   * Omit it when `children` carry the body instead of a figure. `null` means
+   * the query failed: the card shows an explicit unknown rather than a zero
+   * the user would read as real.
+   */
+  value?: number | null
   icon: React.ReactNode
   pill?: { text: string; tone: StatPillTone }
   footer?: React.ReactNode
@@ -56,9 +63,17 @@ export function StatCard({ label, value, icon, pill, footer, dark, children }: S
       <div className={cn('text-[12.5px] font-medium', dark ? 'text-white/60' : 'text-text3')}>
         {label}
       </div>
-      <div className="mt-[3px] text-[31px] font-semibold leading-tight tracking-[-0.02em] tabular-nums">
-        <CountUp value={value} />
-      </div>
+      {value !== undefined && (
+        <div className="mt-[3px] text-[31px] font-semibold leading-tight tracking-[-0.02em] tabular-nums">
+          {value === null ? (
+            <span aria-label="Unavailable" title="This figure could not be loaded">
+              &mdash;
+            </span>
+          ) : (
+            <CountUp value={value} />
+          )}
+        </div>
+      )}
 
       {children}
 
