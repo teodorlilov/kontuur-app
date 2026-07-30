@@ -1,9 +1,10 @@
 import Link from 'next/link'
 import { Users } from 'lucide-react'
 import { CoverageRow } from '@/features/dashboard/components/coverage-row'
+import { DAYS_PER_WEEK } from '@/utils/constants'
 import type { DayState } from '@/lib/queries/cache'
 
-const EMPTY_WEEK: DayState[] = ['open', 'open', 'open', 'open', 'open', 'open', 'open']
+const EMPTY_WEEK: DayState[] = Array<DayState>(DAYS_PER_WEEK).fill('open')
 
 interface ClientCoverageProps {
   clients: Array<{ id: string; name: string }>

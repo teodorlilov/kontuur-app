@@ -36,6 +36,12 @@
   --pending: #8a6116;
   --pending-bg: #f7efdc;
 
+  /* Composed surfaces. Dark ones are laid over --dot-grid at 13px 13px. */
+  --surface-dark: linear-gradient(180deg, #113429 0%, #0e2b21 100%);
+  --surface-dark-capsule: linear-gradient(180deg, #10382a 0%, #0a2b1d 100%);
+  --surface-live: linear-gradient(180deg, #f0f7f1 0%, #e9f3eb 100%);
+  --mark-gradient: linear-gradient(150deg, var(--spring), #16593c);
+
   /* Textures — dark surfaces pair the dot grid with 13px 13px sizing */
   --dot-grid: radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1.5px);
   --hatch: repeating-linear-gradient(45deg, rgba(15, 21, 18, 0.16) 0 2px, transparent 2px 5px);

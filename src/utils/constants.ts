@@ -1,4 +1,5 @@
 export const PROMPT_HISTORY_LIMIT = 10
+export const DAYS_PER_WEEK = 7
 
 /**
  * Minimum quality_score_avg for a post to enter the review queue.

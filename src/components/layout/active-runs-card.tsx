@@ -31,10 +31,17 @@ export function ActiveRunsCard({ initialRuns }: ActiveRunsCardProps) {
   }
 
   const refresh = useCallback(async () => {
-    const response = await fetch('/api/generation/active')
-    if (!response.ok) return
-    const payload: { runs?: ActiveRun[] } = await response.json()
-    const next = payload.runs ?? []
+    let next: ActiveRun[]
+    try {
+      const response = await fetch('/api/generation/active')
+      if (!response.ok) return
+      const payload: { runs?: ActiveRun[] } = await response.json()
+      next = payload.runs ?? []
+    } catch {
+      // A dropped poll is not worth surfacing — the next tick reconciles.
+      return
+    }
+
     setRuns(next)
 
     // A batch just finished: pull the server-rendered counts back in step.
@@ -71,7 +78,7 @@ export function ActiveRunsCard({ initialRuns }: ActiveRunsCardProps) {
   return (
     <div
       className="mx-2.5 mb-3 rounded-panel border border-spring/20 p-3"
-      style={{ background: 'linear-gradient(180deg, #F0F7F1, #E9F3EB)' }}
+      style={{ background: 'var(--surface-live)' }}
     >
       <div className="flex items-center gap-[7px] text-[12px] font-medium text-ink">
         <span className="live-dot size-1.5 shrink-0 rounded-full bg-spring" />

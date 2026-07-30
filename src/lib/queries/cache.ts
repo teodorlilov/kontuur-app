@@ -3,6 +3,7 @@ import { unstable_cache } from 'next/cache'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { AGENCY_COLUMNS, CLIENT_CARD_COLUMNS, CLIENT_LIST_COLUMNS } from '@/lib/queries/select-columns'
 import { toDateKey } from '@/utils/date-helpers'
+import { DAYS_PER_WEEK } from '@/utils/constants'
 import type { Database } from '@/types/database'
 
 type Agency = Database['public']['Tables']['agencies']['Row']
@@ -154,7 +155,6 @@ export const getCachedPendingRows = cache(_fetchPendingRows)
 /** Whether a given day of a client's week is published, scheduled, or still open. */
 export type DayState = 'published' | 'scheduled' | 'open'
 
-const DAYS_PER_WEEK = 7
 
 /** Statuses that mean a slot is filled but has not gone out yet. */
 const SCHEDULED_STATUSES = new Set(['approved', 'scheduled', 'publishing'])
@@ -184,7 +184,7 @@ const _fetchClientWeekCoverage = unstable_cache(
 
     // A post counts for this week by when it is due, or by when it actually went
     // out (posts published on demand carry no scheduled_at).
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('posts')
       .select('client_id, status, scheduled_at, published_at, clients!inner(agency_id)')
       .eq('clients.agency_id', agencyId)
@@ -192,6 +192,13 @@ const _fetchClientWeekCoverage = unstable_cache(
         `and(scheduled_at.gte.${from},scheduled_at.lt.${to}),` +
           `and(published_at.gte.${from},published_at.lt.${to})`
       )
+
+    // Without this the dashboard would quietly render every client's week as
+    // empty, which reads as real data rather than as a failure.
+    if (error) {
+      console.error('[cache] client week coverage query failed:', error.message)
+      return {}
+    }
 
     const dayKeys = Array.from({ length: DAYS_PER_WEEK }, (_, index) => {
       const day = new Date(weekStart)

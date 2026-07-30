@@ -27,7 +27,16 @@ export function ReviewStack({ posts, totalPending }: ReviewStackProps) {
   const [stack, setStack] = useState(posts)
   const [leavingId, setLeavingId] = useState<string | null>(null)
   const [approvedCount, setApprovedCount] = useState(0)
+  const [serverTotal, setServerTotal] = useState(totalPending)
   const [isPending, startTransition] = useTransition()
+
+  // Approving runs a server action, which re-renders the route with a fresh
+  // count. Adopt it and drop the optimistic offset, or the two subtract twice.
+  if (totalPending !== serverTotal) {
+    setServerTotal(totalPending)
+    setApprovedCount(0)
+    setStack(posts)
+  }
 
   const remaining = Math.max(totalPending - approvedCount, 0)
   const deeperInQueue = Math.max(remaining - stack.length, 0)

@@ -3,6 +3,9 @@ import { getCachedPendingRows, type PendingRow } from '@/lib/queries/cache'
 import { BRIEFING_COLUMNS } from '@/lib/queries/select-columns'
 import type { CarouselSlide, DashboardChangeRequest } from '@/types/api'
 
+// Supabase REST returns untyped rows for embedded/joined selects, so each result
+// below is narrowed with an `as` to the shape its select string produces.
+
 export interface DashboardBriefing {
   briefing_text: string | null
   action_nudge: string | null
@@ -124,7 +127,6 @@ async function buildChangeRequests(
       caption: row.caption,
       platform: row.platform,
       postType: row.post_type,
-      // Supabase REST returns untyped JSON — slides_json matches CarouselSlide[] by schema
       slidesJson: row.slides_json as CarouselSlide[] | null,
       scheduledAt: row.scheduled_at,
       clientNote: token.client_note,

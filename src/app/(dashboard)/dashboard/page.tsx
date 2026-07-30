@@ -5,54 +5,24 @@ import {
   getCachedAgency,
   getCachedAgencyClients,
   getCachedClientWeekCoverage,
-  type DayState,
 } from '@/lib/queries/cache'
 import { getMondayISO } from '@/utils/date-helpers'
 import { formatRelativeTime, parseTimestamp } from '@/utils/format'
-import { fetchDashboardData, type DashboardMetrics } from '@/features/dashboard/queries'
+import { fetchDashboardData } from '@/features/dashboard/queries'
+import {
+  countFilledPerDay,
+  describePublishedDelta,
+  resolveTodayIndex,
+} from '@/features/dashboard/lib/metrics'
+import { DAYS_PER_WEEK } from '@/utils/constants'
 import { DashboardHeader } from '@/features/dashboard/components/dashboard-header'
-import { StatCard, type StatPillTone } from '@/features/dashboard/components/stat-card'
+import { StatCard } from '@/features/dashboard/components/stat-card'
 import { MiniWeek } from '@/features/dashboard/components/mini-week'
 import { ClientCoverage } from '@/features/dashboard/components/client-coverage'
 import { ReviewStack } from '@/features/dashboard/components/review-stack'
 import { BriefingBar } from '@/features/dashboard/components/briefing-bar'
 import { QuickActionsStrip } from '@/features/dashboard/components/quick-actions-strip'
 import { ChangeRequestCard } from '@/features/dashboard/components/change-request-card'
-
-const DAYS_PER_WEEK = 7
-const WEEKDAY_ORDER = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
-
-/** Filled slots per weekday across every client, Monday first. */
-function countFilledPerDay(coverage: Record<string, DayState[]>): number[] {
-  const counts = Array<number>(DAYS_PER_WEEK).fill(0)
-  for (const week of Object.values(coverage)) {
-    week.forEach((day, index) => {
-      if (day !== 'open') counts[index] = (counts[index] ?? 0) + 1
-    })
-  }
-  return counts
-}
-
-/** Monday-first index of today in the agency's timezone. */
-function resolveTodayIndex(timezone: string): number {
-  const weekday = new Intl.DateTimeFormat('en-US', { weekday: 'long', timeZone: timezone }).format(
-    new Date()
-  )
-  return Math.max(WEEKDAY_ORDER.indexOf(weekday), 0)
-}
-
-/** Month-over-month movement, phrased only when there is something to compare. */
-function describePublishedDelta(metrics: DashboardMetrics): { text: string; tone: StatPillTone } {
-  const delta = metrics.publishedThisMonth - metrics.publishedLastMonth
-  if (metrics.publishedLastMonth === 0 && metrics.publishedThisMonth === 0) {
-    return { text: 'Nothing published yet', tone: 'muted' }
-  }
-  if (delta === 0) return { text: 'Same as last month', tone: 'muted' }
-  return {
-    text: `${delta > 0 ? '+' : ''}${delta} vs last month`,
-    tone: delta > 0 ? 'positive' : 'attention',
-  }
-}
 
 export default async function DashboardPage() {
   const { agencyId } = await requireSessionUser()

@@ -65,7 +65,7 @@ export async function fetchActiveRuns(
 ): Promise<ActiveRun[]> {
   const cutoff = new Date(Date.now() - ACTIVE_RUN_WINDOW_MS).toISOString()
 
-  const { data } = await (supabase as UntypedClient)
+  const { data, error } = await (supabase as UntypedClient)
     .from('generation_runs')
     .select('id, client_id, created_at, target_count, clients!inner(name, agency_id), generation_themes(post_count)')
     .eq('status', 'running')
@@ -73,7 +73,17 @@ export async function fetchActiveRuns(
     .gte('created_at', cutoff)
     .order('created_at', { ascending: false })
 
-  const rows = (data as ActiveRunRow[] | null) ?? []
+  // Most likely cause is 20260730_add_generation_run_progress.sql not being
+  // applied yet — worth a log rather than an indicator that silently never shows.
+  if (error) {
+    console.error('[generation] active runs query failed:', error.message)
+    return []
+  }
+
+  // Through `unknown`: without the Database generic the client infers embedded
+  // relations as arrays, but clients is many-to-one so PostgREST returns an
+  // object — the same shape approval-actions.ts asserts for this join.
+  const rows = (data as unknown as ActiveRunRow[] | null) ?? []
 
   return rows.map((row) => ({
     id: row.id,

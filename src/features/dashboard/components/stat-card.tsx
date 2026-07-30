@@ -33,7 +33,7 @@ export function StatCard({ label, value, icon, pill, footer, dark, children }: S
       style={
         dark
           ? {
-              background: 'var(--dot-grid), linear-gradient(180deg, #113429 0%, #0E2B21 100%)',
+              background: 'var(--dot-grid), var(--surface-dark)',
               backgroundSize: '13px 13px, 100% 100%',
             }
           : undefined
@@ -52,7 +52,9 @@ export function StatCard({ label, value, icon, pill, footer, dark, children }: S
           <span
             className={cn(
               'rounded-full px-2.5 py-1 text-[11px] font-semibold',
-              dark && pill.tone === 'positive' ? 'bg-accent/15 text-accent' : PILL_CLASSES[pill.tone]
+              // Wash-on-forest is unreadable, so the dark card promotes a
+              // positive pill to the lime accent.
+              PILL_CLASSES[dark && pill.tone === 'positive' ? 'accent' : pill.tone]
             )}
           >
             {pill.text}

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import * as Dialog from '@radix-ui/react-dialog'
-import { CornerDownLeft, Search, Sparkles, UserPlus, type LucideIcon } from 'lucide-react'
+import { CornerDownLeft, Search, Sparkles, UserPlus, Users, type LucideIcon } from 'lucide-react'
 import { cn } from '@/utils/cn'
 import { getNavItems } from '@/components/layout/nav-items'
 
@@ -69,7 +69,7 @@ function PaletteBody({
       label: client.name,
       hint: 'Client settings',
       href: `/clients/${client.id}/edit`,
-      icon: Search,
+      icon: Users,
     }))
     return [
       ...navEntries,

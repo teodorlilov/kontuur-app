@@ -14,13 +14,17 @@ export function getTodayWeekday(timezone = 'UTC'): string {
     .toLowerCase()
 }
 
-/** Returns the ISO date string (YYYY-MM-DD) of the Monday of the week containing the given date. */
+/**
+ * Returns the ISO date string (YYYY-MM-DD) of the Monday of the week containing
+ * the given date. Formatted in local time: getDay() is local, so serialising via
+ * toISOString() shifted the answer to Tuesday for anyone west of UTC late in the day.
+ */
 export function getMondayISO(date?: Date): string {
   const d = date ? new Date(date) : new Date()
   const day = d.getDay()
   const diff = day === 0 ? -6 : 1 - day
   d.setDate(d.getDate() + diff)
-  return d.toISOString().split('T')[0]!
+  return toDateKey(d)
 }
 
 /** Combine a date string (YYYY-MM-DD) and time string (HH:MM) into an ISO timestamp. */

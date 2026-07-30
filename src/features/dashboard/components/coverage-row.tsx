@@ -3,8 +3,13 @@ import { cn } from '@/utils/cn'
 import { extractInitials } from '@/utils/format'
 import type { DayState } from '@/lib/queries/cache'
 
-/** Capsule tiers, lightest first — position in the list, not client identity. */
+/**
+ * Capsule tiers, lightest first — driven by position in the list, not by client
+ * identity. Rows past the second share the dark tier (its background is applied
+ * as an inline gradient, so only the text colour is a class here).
+ */
 const TIER_CLASSES = ['bg-lime', 'bg-sage', 'text-white'] as const
+const DARK_TIER_INDEX = 2
 
 interface CoverageRowProps {
   clientId: string
@@ -17,7 +22,7 @@ interface CoverageRowProps {
 
 export function CoverageRow({ clientId, name, week, pendingCount, tier }: CoverageRowProps) {
   const scheduledCount = week.filter((day) => day !== 'open').length
-  const isDark = tier >= 2
+  const isDark = tier >= DARK_TIER_INDEX
   const isEmpty = scheduledCount === 0
 
   const summary = isEmpty
@@ -34,12 +39,12 @@ export function CoverageRow({ clientId, name, week, pendingCount, tier }: Covera
       className={cn(
         'mt-3 flex items-center gap-3.5 rounded-[18px] px-4 py-3.5',
         'transition-[transform,box-shadow] duration-150 ease-contour hover:-translate-y-0.5 hover:shadow-pop',
-        TIER_CLASSES[Math.min(tier, TIER_CLASSES.length - 1)]
+        TIER_CLASSES[Math.min(tier, DARK_TIER_INDEX)]
       )}
       style={
         isDark
           ? {
-              background: 'var(--dot-grid), linear-gradient(180deg, #10382A 0%, #0A2B1D 100%)',
+              background: 'var(--dot-grid), var(--surface-dark-capsule)',
               backgroundSize: '13px 13px, 100% 100%',
             }
           : undefined
