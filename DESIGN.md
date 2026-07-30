@@ -56,6 +56,12 @@ typography:
     fontWeight: 400
     lineHeight: 1.6
     letterSpacing: "normal"
+  label-stat:
+    fontFamily: "Geist, Arial, sans-serif"
+    fontSize: "12.5px"
+    fontWeight: 500
+    lineHeight: 1.3
+    letterSpacing: "normal"
   caption:
     fontFamily: "Geist, Arial, sans-serif"
     fontSize: "11.5px"
@@ -217,6 +223,7 @@ A botanical ramp on warm paper: greens carry all brand meaning, and the two stat
 - **Headline** (600, 23px, −0.02em): The dashboard greeting and page-level headings.
 - **Display** (Instrument Serif italic, 400, 15–17px): Editorial asides, empty-state lines, the agency name in the greeting, the wordmark. Accents only.
 - **Title** (600, 14.5px, −0.02em): Section titles.
+- **Stat Label** (500, 12.5px): The label above a metric. A real half-step between Body and Caption — a stat label must read as quieter than body text without dropping to caption size.
 - **Body** (400/500, 13–13.5px, 1.6): Body text, navigation items, table cells.
 - **Caption** (400, 11.5–12px): Hints, captions, card sub-lines.
 - **Micro** (500/600, 11px): Badges, pills, timestamps.
@@ -229,6 +236,8 @@ A botanical ramp on warm paper: greens carry all brand meaning, and the two stat
 **The Rationed Serif Rule.** The serif is for the wordmark, greetings, empty states, and editorial one-liners. Never body text, never labels, never buttons, never anything a user must read in volume.
 
 **The Weight Ceiling Rule.** 400 and 500 carry the interface; 600 is correct for titles, stat numbers, and section headings. **700 stays unused.**
+
+**The Closed Ramp Rule.** The eight roles above are the ramp. A literal size that is not one of them is drift, not a decision — the app currently carries nineteen distinct literal sizes, which is nineteen ad-hoc values with a ramp described over them. Add a step only when a role genuinely exists and recurs; snap one-offs to the nearest documented size instead.
 
 ## Layout
 

@@ -83,6 +83,10 @@
         "displayName": "Body",
         "purpose": "Body text, navigation items, table cells."
       },
+      "label-stat": {
+        "displayName": "Stat Label",
+        "purpose": "The label above a metric. A real half-step between Body and Caption — quieter than body text without dropping to caption size."
+      },
       "caption": {
         "displayName": "Caption",
         "purpose": "Hints, card sub-lines, timestamps."
@@ -279,6 +283,11 @@
       {
         "name": "The Rationed Serif Rule",
         "body": "The serif is for the wordmark, greetings, empty states, and editorial one-liners. Never body text, never labels, never buttons, never anything a user must read in volume.",
+        "section": "typography"
+      },
+      {
+        "name": "The Closed Ramp Rule",
+        "body": "The documented roles are the ramp. A literal size that is not one of them is drift, not a decision — the app currently carries nineteen distinct literal sizes, which is nineteen ad-hoc values with a ramp described over them. Add a step only when a role genuinely exists and recurs; snap one-offs to the nearest documented size instead.",
         "section": "typography"
       },
       {
