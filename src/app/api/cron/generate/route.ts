@@ -8,6 +8,7 @@ import {
 import { countPendingPostsByClients } from '@/lib/queries/db'
 import { runGenerationBatch } from '@/ai/generation/generation-orchestrator'
 import { performResearch } from '@/ai/research/research-orchestrator'
+import { finishGenerationRun, startGenerationRun } from '@/lib/generation/runs'
 import { generateBriefing } from '@/ai/intelligence/generate-briefing'
 import { generateSoloCoaching } from '@/ai/solo-coaching/generate-coaching'
 import { generateBestTime } from '@/ai/best-time/generate-best-time'
@@ -61,6 +62,8 @@ export async function GET(request: NextRequest) {
   )
 
   for (const schedule of schedules ?? []) {
+    // Declared outside the try so the catch can mark an interrupted run failed.
+    let runId: string | null = null
     try {
       const clientRow = ctx.clients.get(schedule.client_id)
       if (!clientRow) continue
@@ -91,19 +94,14 @@ export async function GET(request: NextRequest) {
       const slideCount = brandProfile?.default_carousel_slides ?? DEFAULT_CAROUSEL_SLIDES
 
       // 8. Create generation run (mirrors the wizard flow for dedup tracking)
-      const { data: runData, error: runError } = await supabase
-        .from('generation_runs')
-        .insert({ client_id: clientId, platform })
-        .select('id')
-        .single()
-      if (runError) {
-        console.error(`[cron] Failed to create generation run for client ${clientId}:`, runError.message)
+      const total = (schedule as { frequency_value: number }).frequency_value || 1
+      runId = await startGenerationRun(supabase, { clientId, platform, targetCount: total })
+      if (!runId) {
+        console.error(`[cron] Failed to create generation run for client ${clientId}`)
       }
-      const runId = (runData as { id: string } | null)?.id
 
       // 9. Research themes via Tavily + LLM (same pipeline as wizard)
       const researchStartedAt = Date.now()
-      const total = (schedule as { frequency_value: number }).frequency_value || 1
       const researchTopics = await performResearch({
         supabase,
         agencyId,
@@ -116,6 +114,7 @@ export async function GET(request: NextRequest) {
 
       if (researchTopics.length === 0) {
         console.error(`[cron] No research topics for client ${clientId} — skipping generation`)
+        if (runId) await finishGenerationRun(supabase, runId, 'failed')
         continue
       }
 
@@ -225,6 +224,8 @@ export async function GET(request: NextRequest) {
           .eq('client_id', clientId)
       }
 
+      if (runId) await finishGenerationRun(supabase, runId, 'complete')
+
       processedAgencyIds.add(agencyId)
       results.processed++
       console.info(
@@ -233,6 +234,7 @@ export async function GET(request: NextRequest) {
           `${generationResults.length} posts`
       )
     } catch (err) {
+      if (runId) await finishGenerationRun(supabase, runId, 'failed')
       results.errors.push({
         clientId: schedule.client_id,
         error: err instanceof Error ? err.message : 'Unknown error',

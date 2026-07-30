@@ -4,23 +4,24 @@ import { memo, useMemo } from 'react'
 import { DayCell } from './day-cell'
 import {
   getDaysInMonth,
-  toDateKey,
   groupPostsByDate,
   getTodayKey,
   isSameMonth,
 } from '@/features/calendar/helpers'
+import { toDateKey } from '@/utils/date-helpers'
 import type { CalendarPost } from '@/types/api'
 
 const DAY_HEADERS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
-/** Pill colour palette — cycles for unknown clients. */
+/** Pill colour palette — cycles for unknown clients. Contour ramp: clients are
+    told apart by lightness, so no pill fights the green chrome. */
 const PALETTE = [
-  { dotColor: '#C07B55', bgColor: 'rgba(192,123,85,0.12)', textColor: '#7A3A25' },
-  { dotColor: '#2C5F8A', bgColor: 'rgba(44,94,138,0.12)', textColor: '#1A3D5A' },
-  { dotColor: '#5A8A4A', bgColor: 'rgba(90,138,74,0.12)', textColor: '#2A5A1A' },
-  { dotColor: '#854F0B', bgColor: 'rgba(133,79,11,0.12)', textColor: '#5A2A00' },
-  { dotColor: '#7C3AED', bgColor: 'rgba(124,58,237,0.12)', textColor: '#4C1D95' },
-  { dotColor: '#0891B2', bgColor: 'rgba(8,145,178,0.12)', textColor: '#155E75' },
+  { dotColor: '#2E9E68', bgColor: 'rgba(46,158,104,0.12)', textColor: '#0C2E20' },
+  { dotColor: '#164430', bgColor: 'rgba(22,68,48,0.10)', textColor: '#0C2E20' },
+  { dotColor: '#7FA588', bgColor: 'rgba(127,165,136,0.16)', textColor: '#1F5A40' },
+  { dotColor: '#0C2E20', bgColor: 'rgba(12,46,32,0.10)', textColor: '#0C2E20' },
+  { dotColor: '#3E8E6E', bgColor: 'rgba(62,142,110,0.12)', textColor: '#164430' },
+  { dotColor: '#96BFA4', bgColor: 'rgba(150,191,164,0.18)', textColor: '#1F5A40' },
 ]
 
 interface MonthGridProps {

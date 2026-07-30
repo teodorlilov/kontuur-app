@@ -1,84 +1,57 @@
+import { BarChart2, Calendar, CircleCheck, Send, Users } from 'lucide-react'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { requireSessionUser } from '@/lib/auth/session'
-import { getCachedAgency, getCachedAgencyClients, getCachedPendingRows } from '@/lib/queries/cache'
-import { BRIEFING_COLUMNS } from '@/lib/queries/select-columns'
-import { Topbar } from '@/components/layout/topbar'
-import { DashboardView } from '@/features/dashboard/components/dashboard-view'
-import type { DashboardChangeRequest, CarouselSlide } from '@/types/api'
+import {
+  getCachedAgency,
+  getCachedAgencyClients,
+  getCachedClientWeekCoverage,
+  type DayState,
+} from '@/lib/queries/cache'
+import { getMondayISO } from '@/utils/date-helpers'
+import { formatRelativeTime, parseTimestamp } from '@/utils/format'
+import { fetchDashboardData, type DashboardMetrics } from '@/features/dashboard/queries'
+import { DashboardHeader } from '@/features/dashboard/components/dashboard-header'
+import { StatCard, type StatPillTone } from '@/features/dashboard/components/stat-card'
+import { MiniWeek } from '@/features/dashboard/components/mini-week'
+import { ClientCoverage } from '@/features/dashboard/components/client-coverage'
+import { ReviewStack } from '@/features/dashboard/components/review-stack'
+import { BriefingBar } from '@/features/dashboard/components/briefing-bar'
+import { QuickActionsStrip } from '@/features/dashboard/components/quick-actions-strip'
+import { ChangeRequestCard } from '@/features/dashboard/components/change-request-card'
 
-type ChangeRequestRow = {
-  id: string
-  client_id: string
-  caption: string | null
-  platform: string | null
-  post_type: string
-  slides_json: unknown
-  scheduled_at: string | null
-  post_approval_tokens: Array<{
-    status: string
-    client_note: string | null
-    responded_at: string | null
-    batch_id: string
-  }>
+const DAYS_PER_WEEK = 7
+const WEEKDAY_ORDER = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+
+/** Filled slots per weekday across every client, Monday first. */
+function countFilledPerDay(coverage: Record<string, DayState[]>): number[] {
+  const counts = Array<number>(DAYS_PER_WEEK).fill(0)
+  for (const week of Object.values(coverage)) {
+    week.forEach((day, index) => {
+      if (day !== 'open') counts[index] = (counts[index] ?? 0) + 1
+    })
+  }
+  return counts
 }
 
-/** Fetch all tokens in the given batches and return a map of postId → 1-indexed position. */
-async function computeBatchPositions(
-  supabase: Awaited<ReturnType<typeof createServerSupabaseClient>>,
-  batchIds: string[],
-): Promise<Map<string, number>> {
-  if (batchIds.length === 0) return new Map()
-  const { data: batchTokens } = await supabase
-    .from('post_approval_tokens')
-    .select('batch_id, post_id')
-    .in('batch_id', batchIds)
-    .order('created_at', { ascending: true })
-
-  const positions = new Map<string, number>()
-  const batchOrder = new Map<string, string[]>()
-  for (const t of batchTokens ?? []) {
-    if (!t.batch_id || !t.post_id) continue
-    const arr = batchOrder.get(t.batch_id) ?? []
-    arr.push(t.post_id)
-    batchOrder.set(t.batch_id, arr)
-  }
-  for (const [, postIds] of batchOrder) {
-    postIds.forEach((pid, i) => positions.set(pid, i + 1))
-  }
-  return positions
+/** Monday-first index of today in the agency's timezone. */
+function resolveTodayIndex(timezone: string): number {
+  const weekday = new Intl.DateTimeFormat('en-US', { weekday: 'long', timeZone: timezone }).format(
+    new Date()
+  )
+  return Math.max(WEEKDAY_ORDER.indexOf(weekday), 0)
 }
 
-/** Map raw change request rows to DashboardChangeRequest[] with batch positions. */
-async function buildChangeRequests(
-  supabase: Awaited<ReturnType<typeof createServerSupabaseClient>>,
-  rows: ChangeRequestRow[] | null,
-  clientNameMap: Record<string, string>,
-): Promise<DashboardChangeRequest[]> {
-  const crRows = rows ?? []
-  if (crRows.length === 0) return []
-
-  const batchIds = [...new Set(
-    crRows.flatMap((r) => r.post_approval_tokens.map((t) => t.batch_id)).filter(Boolean)
-  )]
-  const positions = await computeBatchPositions(supabase, batchIds)
-
-  return crRows.map((row) => {
-    const token = row.post_approval_tokens[0]!
-    return {
-      id: row.id,
-      clientId: row.client_id,
-      clientName: clientNameMap[row.client_id] ?? 'Unknown',
-      caption: row.caption,
-      platform: row.platform,
-      postType: row.post_type,
-      // Supabase REST returns untyped JSON — slides_json matches CarouselSlide[] by schema
-      slidesJson: row.slides_json as CarouselSlide[] | null,
-      scheduledAt: row.scheduled_at,
-      clientNote: token.client_note,
-      respondedAt: token.responded_at,
-      postNumber: positions.get(row.id) ?? 1,
-    }
-  })
+/** Month-over-month movement, phrased only when there is something to compare. */
+function describePublishedDelta(metrics: DashboardMetrics): { text: string; tone: StatPillTone } {
+  const delta = metrics.publishedThisMonth - metrics.publishedLastMonth
+  if (metrics.publishedLastMonth === 0 && metrics.publishedThisMonth === 0) {
+    return { text: 'Nothing published yet', tone: 'muted' }
+  }
+  if (delta === 0) return { text: 'Same as last month', tone: 'muted' }
+  return {
+    text: `${delta > 0 ? '+' : ''}${delta} vs last month`,
+    tone: delta > 0 ? 'positive' : 'attention',
+  }
 }
 
 export default async function DashboardPage() {
@@ -86,123 +59,144 @@ export default async function DashboardPage() {
   const supabase = await createServerSupabaseClient()
 
   // Both calls hit React cache() populated by the dashboard layout — zero extra DB queries
-  const [agencyData, clients] = await Promise.all([
+  const [agency, clients] = await Promise.all([
     getCachedAgency(agencyId),
     getCachedAgencyClients(agencyId),
   ])
 
-  const isSolo = agencyData?.mode === 'solo'
-  const clientIds = clients.map((c) => c.id)
+  const isSolo = agency?.mode === 'solo'
+  const timezone = agency?.timezone ?? 'UTC'
+  const weekStartISO = getMondayISO()
 
-  // Stats
-  const startOfWeek = new Date()
-  startOfWeek.setHours(0, 0, 0, 0)
-  startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay())
+  const [data, coverage] = await Promise.all([
+    fetchDashboardData(supabase, agencyId, clients, weekStartISO),
+    getCachedClientWeekCoverage(agencyId, weekStartISO),
+  ])
 
-  let pendingCount = 0
-  let scheduledCount = 0
-  let publishedCount = 0
-  const clientPendingMap: Record<string, number> = {}
-
-  // Build client name lookup for pending post previews
-  const clientNameMap: Record<string, string> = {}
-  for (const c of clients) {
-    clientNameMap[c.id] = c.name
-  }
-
-  let rawBriefing: unknown = null
-  let rawPendingPosts: unknown[] = []
-  let rawChangeRequests: unknown[] = []
-
-  if (clientIds.length > 0) {
-    // Run all queries in a single parallel block
-    const [scheduledRes, publishedRes, pendingRows, briefingRes, pendingPostsRes, changeRequestsRes] = await Promise.all([
-      supabase
-        .from('posts')
-        .select('id', { count: 'exact', head: true })
-        .eq('status', 'scheduled')
-        .gte('scheduled_at', startOfWeek.toISOString())
-        .in('client_id', clientIds),
-      supabase
-        .from('posts')
-        .select('id', { count: 'exact', head: true })
-        .eq('status', 'published')
-        .in('client_id', clientIds),
-      getCachedPendingRows(agencyId),
-      supabase
-        .from('intelligence_briefings')
-        .select(BRIEFING_COLUMNS)
-        .eq('agency_id', agencyId)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single(),
-      supabase
-        .from('posts')
-        .select('id, caption, platform, pillar, created_at, client_id')
-        .in('client_id', clientIds)
-        .eq('status', 'pending_review')
-        .order('created_at', { ascending: false })
-        .limit(3),
-      supabase
-        .from('posts')
-        .select('id, client_id, caption, platform, post_type, slides_json, scheduled_at, post_approval_tokens!inner(status, client_note, responded_at, batch_id)')
-        .in('client_id', clientIds)
-        .eq('post_approval_tokens.status', 'changes_requested')
-        .order('scheduled_at', { ascending: false })
-        .limit(5),
-    ])
-
-    scheduledCount = scheduledRes.count ?? 0
-    publishedCount = publishedRes.count ?? 0
-
-    pendingCount = pendingRows.length
-    for (const row of pendingRows) {
-      clientPendingMap[row.client_id] = (clientPendingMap[row.client_id] ?? 0) + 1
-    }
-
-    rawBriefing = briefingRes.data
-    rawPendingPosts = pendingPostsRes.data ?? []
-    rawChangeRequests = changeRequestsRes.data ?? []
-  }
-
-  const briefing = rawBriefing as {
-    briefing_text: string | null
-    action_nudge: string | null
-    weekly_tip: string | null
-    platform_updates: string[] | null
-    week_start: string | null
-    coaching_points: string[] | null
-  } | null
-
-  const pendingPosts = (rawPendingPosts as Array<{ id: string; caption: string; platform: string; pillar: string | null; created_at: string; client_id: string }>).map((p) => ({
-    id: p.id,
-    caption: p.caption,
-    platform: p.platform,
-    pillar: p.pillar ?? '',
-    createdAt: p.created_at,
-    clientName: clientNameMap[p.client_id] ?? 'Unknown',
-  }))
-
-  // Process change requests + compute post numbers within batches
-  const changeRequests = await buildChangeRequests(
-    supabase, rawChangeRequests as ChangeRequestRow[] | null, clientNameMap
-  )
+  const { metrics } = data
+  const filledPerDay = countFilledPerDay(coverage)
+  const coveredDays = filledPerDay.filter((count) => count > 0).length
+  const publishedDelta = describePublishedDelta(metrics)
 
   return (
-    <>
-      <Topbar title="Dashboard" />
-      <DashboardView
-        isSolo={isSolo}
-        clientCount={clients.length}
-        pendingCount={pendingCount}
-        scheduledCount={scheduledCount}
-        publishedCount={publishedCount}
-        clients={clients}
-        clientPendingMap={clientPendingMap}
-        briefing={briefing}
-        pendingPosts={pendingPosts}
-        changeRequests={changeRequests}
-      />
-    </>
+    <div className="px-4 pb-12 pt-1 md:px-8">
+      <div className="rv">
+        <DashboardHeader
+          agencyName={agency?.name ?? ''}
+          clientCount={clients.length}
+          isSolo={isSolo}
+          timezone={timezone}
+        />
+      </div>
+
+      <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="rv [--d:60ms]">
+          <StatCard
+            dark
+            label="Scheduled this week"
+            value={metrics.scheduledThisWeek}
+            icon={<Calendar size={16} />}
+            pill={{
+              text: `${coveredDays} of ${DAYS_PER_WEEK} days covered`,
+              tone: 'positive',
+            }}
+          >
+            <MiniWeek counts={filledPerDay} todayIndex={resolveTodayIndex(timezone)} />
+          </StatCard>
+        </div>
+
+        <div className="rv [--d:120ms]">
+          <StatCard
+            label={isSolo ? 'Drafts to review' : 'Pending review'}
+            value={metrics.pendingCount}
+            icon={<CircleCheck size={16} />}
+            pill={
+              metrics.pendingCount > 0
+                ? { text: 'Needs attention', tone: 'attention' }
+                : { text: 'All clear', tone: 'positive' }
+            }
+            footer={
+              metrics.oldestPendingAt
+                ? `Oldest waiting since ${formatRelativeTime(parseTimestamp(metrics.oldestPendingAt))}`
+                : 'Nothing waiting on you'
+            }
+          />
+        </div>
+
+        <div className="rv [--d:180ms]">
+          <StatCard
+            label={isSolo ? 'Platforms connected' : 'Active clients'}
+            value={isSolo ? metrics.connectedClientCount : clients.length}
+            icon={<Users size={16} />}
+            pill={
+              metrics.clientsAddedThisMonth > 0
+                ? { text: `+${metrics.clientsAddedThisMonth} this month`, tone: 'positive' }
+                : { text: 'No change this month', tone: 'muted' }
+            }
+            footer={
+              clients.length === 0
+                ? 'Add a client to get started'
+                : `${metrics.connectedClientCount} of ${clients.length} connected to a platform`
+            }
+          />
+        </div>
+
+        <div className="rv [--d:240ms]">
+          <StatCard
+            label="Published this month"
+            value={metrics.publishedThisMonth}
+            icon={<Send size={16} />}
+            pill={publishedDelta}
+            footer={
+              metrics.publishedLastMonth > 0
+                ? `${metrics.publishedLastMonth} last month`
+                : 'First publishes are still ahead'
+            }
+          />
+        </div>
+      </div>
+
+      {data.changeRequests.length > 0 && (
+        <section className="rv mt-4 [--d:280ms]">
+          <div className="flex items-center justify-between gap-3">
+            <span className="flex items-center gap-2.5 text-[14.5px] font-semibold tracking-[-0.01em] text-ink">
+              <span className="grid size-[27px] place-items-center rounded-sm bg-marker text-forest-deep">
+                <BarChart2 size={14} />
+              </span>
+              Change requests
+            </span>
+            <span className="rounded-full bg-marker px-2.5 py-[3px] text-[11.5px] font-semibold text-forest-deep">
+              {data.changeRequests.length} {data.changeRequests.length === 1 ? 'post' : 'posts'}
+            </span>
+          </div>
+          <div className="mt-3 flex flex-col gap-3">
+            {data.changeRequests.map((changeRequest) => (
+              <ChangeRequestCard key={changeRequest.id} changeRequest={changeRequest} />
+            ))}
+          </div>
+        </section>
+      )}
+
+      <div className="mt-4 grid grid-cols-1 items-start gap-4 lg:grid-cols-[1fr_1.15fr]">
+        <div className="rv [--d:300ms]">
+          <ClientCoverage
+            clients={clients}
+            coverage={coverage}
+            clientPendingMap={metrics.clientPendingMap}
+          />
+        </div>
+        <div className="rv [--d:360ms]">
+          <ReviewStack posts={data.pendingPosts} totalPending={metrics.pendingCount} />
+        </div>
+      </div>
+
+      <div className="rv mt-4 [--d:420ms]">
+        <BriefingBar briefing={data.briefing} />
+      </div>
+
+      <div className="rv mt-4 [--d:480ms]">
+        <QuickActionsStrip pendingCount={metrics.pendingCount} isSolo={isSolo} />
+      </div>
+    </div>
   )
 }

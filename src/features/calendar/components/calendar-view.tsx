@@ -7,7 +7,7 @@ import { useCalendar } from '@/features/calendar/hooks/use-calendar'
 import { useApproval, type ClientEntry } from '@/features/calendar/hooks/use-approval'
 import { toast } from '@/components/ui/toast'
 import { deletePost } from '@/lib/actions/post-actions'
-import { CalendarTopbar } from './calendar-topbar'
+import { CalendarControls } from './calendar-controls'
 import { MonthGrid } from './month-grid'
 import { ScheduleFab } from './schedule-fab'
 import { UnscheduledPanel } from './unscheduled-panel'
@@ -296,15 +296,13 @@ export function CalendarView({ initialPosts, clients }: CalendarViewProps) {
   return (
     <div
       style={{
-        height: '100vh',
+        minHeight: '100%',
         display: 'flex',
         flexDirection: 'column',
-        background: 'var(--color-page)',
-        overflow: 'hidden',
         position: 'relative',
       }}
     >
-      <CalendarTopbar
+      <CalendarControls
         year={year}
         month={month}
         onPrevMonth={prevMonth}

@@ -1,6 +1,7 @@
 'use client'
 
 import { PanelHeader } from './basic-info-tab'
+import { EmptyState } from '@/components/layout/empty-state'
 
 export interface ContentInsights {
   avgScore: number | null
@@ -25,7 +26,7 @@ export function ContentInsightsTab({ insights, sourceCount, clientId }: ContentI
       />
       <div style={{ padding: '20px 22px' }}>
         {!insights ? (
-          <EmptyState text="Not enough data to show insights yet. Approve and publish posts to see patterns here." />
+          <EmptyState title="Not enough data yet" description="Approve and publish posts to see patterns here." />
         ) : (
           <>
             {insights.avgScore !== null && <ScoreSection insights={insights} />}
@@ -169,18 +170,3 @@ function SourceUsageSection({ sourceCount, clientId }: { sourceCount: number; cl
   )
 }
 
-function EmptyState({ text }: { text: string }) {
-  return (
-    <div
-      style={{
-        padding: '24px 16px',
-        textAlign: 'center',
-        fontSize: 13,
-        color: 'var(--color-text-3)',
-        lineHeight: 1.7,
-      }}
-    >
-      {text}
-    </div>
-  )
-}

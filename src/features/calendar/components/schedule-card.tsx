@@ -343,11 +343,13 @@ export const ScheduleCard = memo(function ScheduleCard({
               marginBottom: 10,
             }}
           >
+            {/* Sans, not the display serif: client names may be Cyrillic and
+                Instrument Serif has no Cyrillic glyphs. */}
             <div
               style={{
-                fontFamily: 'var(--font-display, Georgia, serif)',
-                fontSize: 20,
-                fontWeight: 400,
+                fontSize: 19,
+                fontWeight: 600,
+                letterSpacing: '-0.01em',
                 color: 'var(--color-text-1)',
               }}
             >

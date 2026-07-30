@@ -7,8 +7,11 @@ import { getAuthUser, getCachedUserRecord } from '@/lib/auth/session'
 import { getCachedAgency, getCachedAgencyClients, getCachedPendingRows } from '@/lib/queries/cache'
 import { getCachedNewIdeasCount } from '@/features/ideas/lib/cache'
 import { USER_AUTH_COLUMNS } from '@/lib/queries/select-columns'
+import { fetchActiveRuns } from '@/lib/generation/runs'
 import { AuthProvider } from '@/components/providers/auth-provider'
 import { Sidebar } from '@/components/layout/sidebar'
+import { Topbar } from '@/components/layout/topbar'
+import type { ActiveRun } from '@/types/api'
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const user = await getAuthUser()
@@ -46,28 +49,43 @@ export default async function DashboardLayout({ children }: { children: React.Re
   let pendingCount = 0
   let ideasCount = 0
   let agencyName = ''
+  let clients: Array<{ id: string; name: string }> = []
+  let activeRuns: ActiveRun[] = []
 
   if (userData) {
-    const [agencyData, , pendingRows, ideas] = await Promise.all([
+    const [agencyData, agencyClients, pendingRows, ideas, runs] = await Promise.all([
       getCachedAgency(userData.agency_id),
       getCachedAgencyClients(userData.agency_id),
       getCachedPendingRows(userData.agency_id),
       getCachedNewIdeasCount(userData.agency_id),
+      fetchActiveRuns(supabase, userData.agency_id),
     ])
 
     if (agencyData?.mode === 'solo') agencyMode = 'solo'
     agencyName = agencyData?.name ?? ''
     pendingCount = pendingRows.length
     ideasCount = ideas
+    clients = agencyClients.map((client) => ({ id: client.id, name: client.name }))
+    activeRuns = runs
   }
 
   return (
     <>
-      <NextTopLoader color="#2C3E50" height={2} showSpinner={false} />
+      <NextTopLoader color="var(--forest)" height={2} showSpinner={false} />
       <AuthProvider>
-        <div className="flex h-screen overflow-hidden" style={{ background: 'var(--color-page)' }}>
-          <Sidebar agencyMode={agencyMode} pendingCount={pendingCount} ideasCount={ideasCount} agencyName={agencyName} />
-          <main className="flex-1 overflow-y-auto">{children}</main>
+        <div className="app-shell flex h-screen gap-3.5 overflow-hidden bg-paper p-3">
+          <Sidebar
+            agencyMode={agencyMode}
+            agencyName={agencyName}
+            pendingCount={pendingCount}
+            ideasCount={ideasCount}
+            clients={clients}
+            activeRuns={activeRuns}
+          />
+          <div className="flex min-w-0 flex-1 flex-col">
+            <Topbar agencyMode={agencyMode} agencyName={agencyName} />
+            <main className="app-content flex-1 overflow-y-auto">{children}</main>
+          </div>
         </div>
       </AuthProvider>
     </>

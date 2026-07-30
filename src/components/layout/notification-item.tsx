@@ -2,6 +2,7 @@
 
 import { Check, MessageCircle } from 'lucide-react'
 import { formatRelativeTime, parseTimestamp } from '@/utils/format'
+import { cn } from '@/utils/cn'
 import type { EnrichedNotification } from '@/types/api'
 
 interface NotificationItemProps {
@@ -53,87 +54,45 @@ export function NotificationItem({ notification: n, onMarkRead, onNavigate }: No
 
   return (
     <div
-      style={{
-        padding: '14px 16px',
-        cursor: 'pointer',
-        borderBottom: '0.5px solid rgba(44,62,80,0.05)',
-        background: n.is_read ? 'transparent' : '#FDFAF8',
-        borderLeft: n.is_read ? 'none' : '2px solid #C07B55',
-        transition: 'background 0.15s',
+      onClick={() => {
+        onMarkRead(n.id)
+        onNavigate()
       }}
-      onClick={() => { onMarkRead(n.id); onNavigate() }}
+      className={cn(
+        'cursor-pointer border-b border-line px-4 py-3.5 transition-colors hover:bg-wash/60',
+        n.is_read ? 'bg-transparent' : 'border-l-2 border-l-spring bg-wash/50'
+      )}
     >
-      <div style={{ display: 'flex', gap: 10 }}>
-        {/* Icon */}
+      <div className="flex gap-2.5">
         <div
-          style={{
-            width: 32,
-            height: 32,
-            borderRadius: '50%',
-            background: isApproval ? 'rgba(90,138,74,0.12)' : 'rgba(44,94,138,0.10)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            flexShrink: 0,
-            marginTop: 1,
-          }}
+          className={cn(
+            'mt-px grid size-8 shrink-0 place-items-center rounded-full',
+            isApproval ? 'bg-wash text-forest' : 'bg-marker text-forest-deep'
+          )}
         >
-          {isApproval
-            ? <Check size={14} color="#5A8A4A" />
-            : <MessageCircle size={14} color="#2C5F8A" />
-          }
+          {isApproval ? <Check size={14} /> : <MessageCircle size={14} />}
         </div>
 
-        {/* Content */}
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 13, color: '#1A2630', lineHeight: 1.4 }}>
-            <span style={{ fontWeight: 600 }}>{clientName}</span>{' '}
-            <span style={{ fontWeight: 400 }}>{title}</span>
+        <div className="min-w-0 flex-1">
+          <div className="text-[13px] leading-[1.4] text-ink">
+            <span className="font-semibold">{clientName}</span> {title}
           </div>
 
           {feedbackPreview && (
-            <div
-              style={{
-                fontSize: 12,
-                color: '#2C5F8A',
-                fontStyle: 'italic',
-                background: 'rgba(44,94,138,0.04)',
-                borderRadius: 6,
-                padding: '6px 9px',
-                marginTop: 6,
-                lineHeight: 1.45,
-              }}
-            >
+            <div className="mt-1.5 rounded-sm bg-marker/40 px-2.5 py-1.5 text-[12px] italic leading-[1.45] text-forest-deep">
               &ldquo;{feedbackPreview}&rdquo;
             </div>
           )}
 
           {!feedbackPreview && body && (
-            <div style={{ fontSize: 12, color: '#8A8070', marginTop: 2, lineHeight: 1.4 }}>
-              {body}
-            </div>
+            <div className="mt-0.5 text-[12px] leading-[1.4] text-text3">{body}</div>
           )}
 
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              marginTop: 6,
-            }}
-          >
-            <span style={{ fontSize: 11, color: '#B0A898' }}>
+          <div className="mt-1.5 flex items-center justify-between">
+            <span className="text-[11px] text-text3">
               {formatRelativeTime(parseTimestamp(n.created_at))}
             </span>
-            <span
-              style={{
-                fontSize: 11,
-                color: '#C07B55',
-                fontWeight: 500,
-              }}
-            >
-              Open in calendar →
-            </span>
+            <span className="text-[11px] font-medium text-forest">Open in calendar →</span>
           </div>
         </div>
       </div>

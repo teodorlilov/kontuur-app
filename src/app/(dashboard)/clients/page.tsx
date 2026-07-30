@@ -2,7 +2,6 @@ import { requireSessionUser } from '@/lib/auth/session'
 import { getCachedClientCards, getCachedClientPostStats, getCachedPendingRows } from '@/lib/queries/cache'
 import { parsePillars } from '@/lib/clients/content-pillars'
 import { getPillarColor } from '@/components/ui/colors/pillar-colors'
-import { Topbar } from '@/components/layout/topbar'
 import { ClientsGrid } from '@/features/clients/components/clients-grid'
 import type { ClientCardData } from '@/features/clients/types'
 
@@ -51,8 +50,7 @@ export default async function ClientsPage() {
 
   return (
     <>
-      <Topbar title="Clients" />
-      <div className="px-4 md:px-8 pt-6 pb-10">
+      <div className="px-4 pb-10 pt-2 md:px-8">
         <ClientsGrid clients={cardData} />
       </div>
     </>

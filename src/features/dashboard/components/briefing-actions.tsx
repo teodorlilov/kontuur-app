@@ -1,6 +1,8 @@
 'use client'
 
 import { useState } from 'react'
+import { toast } from 'sonner'
+import { Button } from '@/components/ui/button'
 import { generateBriefing } from '@/features/dashboard/actions/briefing-actions'
 
 export function BriefingActions() {
@@ -11,7 +13,8 @@ export function BriefingActions() {
   async function handleGenerate() {
     setGenerating(true)
     try {
-      await generateBriefing()
+      const result = await generateBriefing()
+      if (!result.ok) toast.error(result.error)
     } finally {
       setGenerating(false)
     }
@@ -24,36 +27,33 @@ export function BriefingActions() {
     }
     setFetchingTip(true)
     try {
-      const res = await fetch('/api/ai/intelligence/tip', { method: 'POST' })
-      if (res.ok) {
-        const data = (await res.json()) as { tip?: string }
-        setTip(data.tip ?? null)
+      const response = await fetch('/api/ai/intelligence/tip', { method: 'POST' })
+      if (!response.ok) {
+        toast.error('Could not fetch a tip right now.')
+        return
       }
+      const data = (await response.json()) as { tip?: string }
+      setTip(data.tip ?? null)
     } finally {
       setFetchingTip(false)
     }
   }
 
   return (
-    <div className="mt-3 space-y-2">
-      <div className="flex gap-2">
-        <button
-          onClick={handleGenerate}
-          disabled={generating}
-          className="text-xs font-medium rounded-lg px-3 py-1.5 transition-colors disabled:opacity-50"
-          style={{ color: 'var(--color-terracotta)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--color-terracotta)' }}
-        >
+    <div className="flex shrink-0 flex-col items-end gap-2">
+      <div className="flex gap-2.5">
+        <Button variant="secondary" size="sm" onClick={handleGenerate} loading={generating}>
           {generating ? 'Generating…' : 'Refresh briefing'}
-        </button>
-        <button
-          onClick={handleGetTip}
-          disabled={fetchingTip}
-          className="text-xs font-medium text-gray-600 border border-gray-200 rounded-lg px-3 py-1.5 hover:border-gray-300 transition-colors disabled:opacity-50"
-        >
+        </Button>
+        <Button variant="ghost" size="sm" onClick={handleGetTip} loading={fetchingTip}>
           {fetchingTip ? 'Getting tip…' : tip ? 'Hide tip' : 'Get a tip'}
-        </button>
+        </Button>
       </div>
-      {tip && <p className="text-sm text-gray-700 bg-gray-50 rounded-lg px-3 py-2">{tip}</p>}
+      {tip && (
+        <p className="max-w-[46ch] rounded-chip bg-wash px-3 py-2 text-right text-[13px] text-forest">
+          {tip}
+        </p>
+      )}
     </div>
   )
 }

@@ -1,3 +1,11 @@
+/** Format a Date as 'YYYY-MM-DD' in local time. */
+export function toDateKey(date: Date): string {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
 /** Returns today's weekday as lowercase string: 'monday', 'tuesday', etc.
  *  Accepts an optional IANA timezone (e.g. 'America/New_York'). Defaults to UTC. */
 export function getTodayWeekday(timezone = 'UTC'): string {
@@ -30,8 +38,5 @@ export function getNextDateForDay(dayName: string): string {
   const diff = (targetIdx - todayIdx + 7) % 7 || 7
   const target = new Date(today)
   target.setDate(today.getDate() + diff)
-  const y = target.getFullYear()
-  const m = String(target.getMonth() + 1).padStart(2, '0')
-  const d = String(target.getDate()).padStart(2, '0')
-  return `${y}-${m}-${d}`
+  return toDateKey(target)
 }

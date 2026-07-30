@@ -5,6 +5,7 @@ import { fetchClientById } from '@/lib/queries/db'
 import { checkRateLimit, AI_RATE_LIMIT } from '@/lib/auth/rate-limit'
 import { fetchIdeaById, updateIdeaStatus } from '@/features/ideas/lib/ideas'
 import { searchForIdea } from '@/ai/research/search-for-idea'
+import { finishGenerationRun, startGenerationRun } from '@/lib/generation/runs'
 import { runGenerationBatch } from '@/ai/generation/generation-orchestrator'
 import { DEFAULT_CAROUSEL_SLIDES } from '@/utils/constants'
 import type { ClientData } from '@/lib/clients/fetch-client-data'
@@ -56,7 +57,11 @@ export async function POST(request: Request) {
 
   await updateIdeaStatus(body.ideaId, agencyId, 'generating')
 
-  const runId = await createGenerationRun(supabase, idea.clientId, idea.platform ?? 'Instagram')
+  const runId = await startGenerationRun(supabase, {
+    clientId: idea.clientId,
+    platform: idea.platform ?? 'Instagram',
+    targetCount: 1,
+  })
 
   const encoder = new TextEncoder()
   let hasResult = false
@@ -74,6 +79,7 @@ export async function POST(request: Request) {
         send(controller, { type: 'error', message: err instanceof Error ? err.message : 'Generation failed' })
       } finally {
         await updateIdeaStatus(body.ideaId, agencyId, hasResult ? 'generated' : 'new').catch(() => {})
+        if (runId) await finishGenerationRun(supabase, runId, hasResult ? 'complete' : 'failed')
         controller.close()
       }
     },
@@ -82,16 +88,6 @@ export async function POST(request: Request) {
   return new Response(stream, {
     headers: { 'Content-Type': 'application/x-ndjson' },
   })
-}
-
-/** Creates a generation_runs row and returns its ID. */
-async function createGenerationRun(supabase: SupabaseClient, clientId: string, platform: string): Promise<string | null> {
-  const { data } = await supabase
-    .from('generation_runs')
-    .insert({ client_id: clientId, platform })
-    .select('id')
-    .single()
-  return (data as { id: string } | null)?.id ?? null
 }
 
 /** Searches for sources, builds the enriched theme, and runs generation. */

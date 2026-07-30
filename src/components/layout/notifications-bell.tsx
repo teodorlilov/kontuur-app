@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Bell } from 'lucide-react'
 import { createBrowserSupabaseClient } from '@/lib/supabase/client'
 import { toast } from '@/components/ui/toast'
+import { cn } from '@/utils/cn'
 import { Spinner } from '@/components/ui/spinner'
 import { NOTIFICATION_COLUMNS } from '@/lib/queries/select-columns'
 import { parseTimestamp } from '@/utils/format'
@@ -100,28 +101,12 @@ function NotificationPanel({
   const earlier = notifications.filter((n) => !isToday(parseTimestamp(n.created_at)))
 
   return (
-    <div
-      style={{
-        position: 'absolute',
-        right: 0,
-        top: 44,
-        width: 360,
-        background: '#fff',
-        borderRadius: 14,
-        boxShadow: '0 8px 32px rgba(44,62,80,0.14)',
-        border: '0.5px solid rgba(44,62,80,0.10)',
-        zIndex: 50,
-        overflow: 'hidden',
-        animation: 'dropdown-in 0.15s ease-out',
-      }}
-    >
+    <div className="absolute right-0 top-11 z-50 w-[360px] overflow-hidden rounded-panel border border-line bg-surface shadow-pop [animation:dropdown-in_150ms_ease-out]">
       <PanelHeader unreadCount={unreadCount} onMarkAllRead={onMarkAllRead} />
 
-      <div style={{ maxHeight: 420, overflowY: 'auto' }}>
+      <div className="max-h-[420px] overflow-y-auto">
         {notifications.length === 0 ? (
-          <div style={{ padding: 32, textAlign: 'center', fontSize: 13, color: '#B0A898' }}>
-            No notifications yet
-          </div>
+          <div className="p-8 text-center text-[13px] text-text3">No notifications yet</div>
         ) : (
           <>
             {today.length > 0 && (
@@ -148,45 +133,17 @@ function NotificationPanel({
 /** Panel header with title, unread count badge, and mark-all-read button. */
 function PanelHeader({ unreadCount, onMarkAllRead }: { unreadCount: number; onMarkAllRead: () => void }) {
   return (
-    <div
-      style={{
-        padding: '14px 16px',
-        borderBottom: '0.5px solid rgba(44,62,80,0.07)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-      }}
-    >
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <span style={{ fontSize: 15, fontWeight: 600, color: '#1A2630' }}>Notifications</span>
+    <div className="flex items-center justify-between border-b border-line px-4 py-3.5">
+      <div className="flex items-center gap-2">
+        <span className="text-[14px] font-semibold text-ink">Notifications</span>
         {unreadCount > 0 && (
-          <span
-            style={{
-              fontSize: 11,
-              fontWeight: 500,
-              color: '#C07B55',
-              background: 'rgba(192,123,85,0.10)',
-              padding: '2px 8px',
-              borderRadius: 10,
-            }}
-          >
+          <span className="rounded-full bg-wash px-2 py-0.5 text-[11px] font-medium text-forest">
             {unreadCount} new
           </span>
         )}
       </div>
       {unreadCount > 0 && (
-        <button
-          onClick={onMarkAllRead}
-          style={{
-            fontSize: 11,
-            fontWeight: 500,
-            color: '#8A8070',
-            background: 'none',
-            border: 'none',
-            cursor: 'pointer',
-            fontFamily: 'inherit',
-          }}
-        >
+        <button onClick={onMarkAllRead} className="text-[11px] font-medium text-text2 hover:text-forest">
           Mark all read
         </button>
       )}
@@ -197,16 +154,7 @@ function PanelHeader({ unreadCount, onMarkAllRead }: { unreadCount: number; onMa
 /** Section divider label (Today / Earlier). */
 function SectionHeader({ label }: { label: string }) {
   return (
-    <div
-      style={{
-        padding: '8px 16px 4px',
-        fontSize: 10,
-        fontWeight: 500,
-        color: '#8A8070',
-        letterSpacing: '1px',
-        textTransform: 'uppercase' as const,
-      }}
-    >
+    <div className="px-4 pb-1 pt-2 text-[10px] font-medium uppercase tracking-[0.1em] text-text3">
       {label}
     </div>
   )
@@ -215,25 +163,8 @@ function SectionHeader({ label }: { label: string }) {
 /** Panel footer with "Go to calendar" link. */
 function PanelFooter({ onNavigate }: { onNavigate: () => void }) {
   return (
-    <div
-      style={{
-        padding: '10px 16px',
-        borderTop: '0.5px solid rgba(44,62,80,0.07)',
-        textAlign: 'center',
-      }}
-    >
-      <button
-        onClick={onNavigate}
-        style={{
-          fontSize: 12,
-          fontWeight: 500,
-          color: '#C07B55',
-          background: 'none',
-          border: 'none',
-          cursor: 'pointer',
-          fontFamily: 'inherit',
-        }}
-      >
+    <div className="border-t border-line px-4 py-2.5 text-center">
+      <button onClick={onNavigate} className="text-[12px] font-medium text-forest hover:underline">
         Go to calendar →
       </button>
     </div>
@@ -269,7 +200,7 @@ export function NotificationsBell() {
     if (!open || unreadCount === 0) return
     const t = setTimeout(() => void markAllRead(), 1000)
     return () => clearTimeout(t)
-    // eslint-disable-next-line react-hooks/exhaustive-deps — only fire on open change, not unreadCount
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- fire on open change only, not on unreadCount
   }, [open])
 
   /** Mark all notifications as read (optimistic + DB). */
@@ -301,47 +232,22 @@ export function NotificationsBell() {
     router.push('/calendar')
   }
 
-  const badgeColor = hasFeedback ? '#B43232' : '#C07B55'
-  const badgeAnimation = hasFeedback ? 'notif-pulse 2s infinite' : 'none'
-
   return (
-    <div ref={ref} style={{ position: 'relative' }}>
+    <div ref={ref} className="relative">
       <button
         onClick={handleToggle}
-        style={{
-          position: 'relative',
-          padding: 8,
-          borderRadius: 8,
-          background: 'none',
-          border: 'none',
-          cursor: 'pointer',
-          color: '#6B7280',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          transition: 'color 0.15s',
-        }}
         aria-label="Notifications"
+        className="relative grid size-[38px] place-items-center rounded-sm border border-line2 text-text2 transition-colors hover:border-forest hover:bg-wash hover:text-forest"
       >
-        <Bell style={{ width: 20, height: 20 }} />
+        <Bell className="size-4" />
         {unreadCount > 0 && (
           <span
-            style={{
-              position: 'absolute',
-              top: 4,
-              right: 4,
-              width: 16,
-              height: 16,
-              borderRadius: '50%',
-              background: badgeColor,
-              color: '#fff',
-              fontSize: 10,
-              fontWeight: 700,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              animation: badgeAnimation,
-            }}
+            className={cn(
+              'absolute -right-1 -top-1 grid size-[17px] place-items-center rounded-full',
+              'border-2 border-paper text-[9.5px] font-bold text-white',
+              // Client feedback is the one notification that should nag.
+              hasFeedback ? 'bg-danger notif-pulse' : 'bg-spring'
+            )}
           >
             {unreadCount > 9 ? '9+' : unreadCount}
           </span>
@@ -350,24 +256,7 @@ export function NotificationsBell() {
 
       {open && (
         loading ? (
-          <div
-            style={{
-              position: 'absolute',
-              right: 0,
-              top: 44,
-              width: 360,
-              background: '#fff',
-              borderRadius: 14,
-              boxShadow: '0 8px 32px rgba(44,62,80,0.14)',
-              border: '0.5px solid rgba(44,62,80,0.10)',
-              zIndex: 50,
-              padding: 32,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              animation: 'dropdown-in 0.15s ease-out',
-            }}
-          >
+          <div className="absolute right-0 top-11 z-50 grid w-[360px] place-items-center rounded-panel border border-line bg-surface p-8 shadow-pop [animation:dropdown-in_150ms_ease-out]">
             <Spinner size="sm" />
           </div>
         ) : (

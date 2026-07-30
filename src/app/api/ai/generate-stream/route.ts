@@ -4,6 +4,7 @@ import { fetchClientById } from '@/lib/queries/db'
 import { DEFAULT_CAROUSEL_SLIDES } from '@/utils/constants'
 import { checkRateLimit, AI_RATE_LIMIT } from '@/lib/auth/rate-limit'
 import { performResearch } from '@/ai/research/research-orchestrator'
+import { finishGenerationRun, startGenerationRun } from '@/lib/generation/runs'
 import { runGenerationBatch } from '@/ai/generation/generation-orchestrator'
 import type { ResearchTopic, SkippedPillar } from '@/ai/research/types'
 import type { Theme } from '@/ai/generation/types'
@@ -62,13 +63,12 @@ export async function POST(request: Request) {
 
   const client = body.preloadedClientData
 
-  const { data: runData } = await supabase
-    .from('generation_runs')
-    .insert({ client_id: body.clientId, platform: body.platform })
-    .select('id')
-    .single()
-
-  const runId = (runData as { id: string } | null)?.id
+  const targetCount = body.targetPostCount + (body.priorityPosts?.length ?? 0)
+  const runId = await startGenerationRun(supabase, {
+    clientId: body.clientId,
+    platform: body.platform,
+    targetCount,
+  })
 
   const encoder = new TextEncoder()
   const stream = new ReadableStream<Uint8Array>({
@@ -76,9 +76,10 @@ export async function POST(request: Request) {
       const send = (event: UnifiedStreamEvent) =>
         controller.enqueue(encoder.encode(JSON.stringify(event) + '\n'))
 
+      let runFailed = false
       try {
         // Emit total upfront so the UI shows skeletons immediately
-        send({ type: 'total', count: body.targetPostCount + (body.priorityPosts?.length ?? 0) })
+        send({ type: 'total', count: targetCount })
 
         // Run research — phase messages stream; topics collected for generation
         const topics: ResearchTopic[] = []
@@ -97,6 +98,7 @@ export async function POST(request: Request) {
         })
 
         if (topics.length === 0 && (body.priorityPosts?.length ?? 0) === 0) {
+          runFailed = true
           send({ type: 'error', message: 'Research found no topics. Check your client sources or try again.' })
           return
         }
@@ -135,7 +137,11 @@ export async function POST(request: Request) {
           },
           onResult: (result) => send({ type: 'result', data: result }),
         })
+      } catch (err) {
+        runFailed = true
+        throw err
       } finally {
+        if (runId) await finishGenerationRun(supabase, runId, runFailed ? 'failed' : 'complete')
         controller.close()
       }
     },

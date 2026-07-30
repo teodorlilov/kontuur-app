@@ -2,6 +2,7 @@ import { cache } from 'react'
 import { unstable_cache } from 'next/cache'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { AGENCY_COLUMNS, CLIENT_CARD_COLUMNS, CLIENT_LIST_COLUMNS } from '@/lib/queries/select-columns'
+import { toDateKey } from '@/utils/date-helpers'
 import type { Database } from '@/types/database'
 
 type Agency = Database['public']['Tables']['agencies']['Row']
@@ -122,25 +123,106 @@ const _fetchClientPostStats = unstable_cache(
 
 export const getCachedClientPostStats = cache(_fetchClientPostStats)
 
+export interface PendingRow {
+  client_id: string
+  created_at: string
+}
+
 /**
- * Returns pending-review post rows (client_id only) for all clients of the given agency.
+ * Returns pending-review post rows for all clients of the given agency.
+ * created_at is included so callers can report how long the queue has been waiting.
  * - unstable_cache: persists in Next.js Data Cache across requests (30s TTL, 'client-post-stats' tag)
  * - React cache(): deduplicates within a single SSR request so layout + page share one result
  * Keyed by agencyId so the cache key is a primitive — no array reference issues.
  */
 const _fetchPendingRows = unstable_cache(
-  async (agencyId: string): Promise<{ client_id: string }[]> => {
+  async (agencyId: string): Promise<PendingRow[]> => {
     const supabase = createAdminSupabaseClient()
     const { data } = await supabase
       .from('posts')
-      .select('client_id, clients!inner(agency_id)')
+      .select('client_id, created_at, clients!inner(agency_id)')
       .eq('status', 'pending_review')
       .eq('clients.agency_id', agencyId)
-    return (data as { client_id: string }[] | null) ?? []
+    return (data as PendingRow[] | null) ?? []
   },
   ['pending-rows'],
   { revalidate: 30, tags: ['client-post-stats'] }
 )
 
 export const getCachedPendingRows = cache(_fetchPendingRows)
+
+/** Whether a given day of a client's week is published, scheduled, or still open. */
+export type DayState = 'published' | 'scheduled' | 'open'
+
+const DAYS_PER_WEEK = 7
+
+/** Statuses that mean a slot is filled but has not gone out yet. */
+const SCHEDULED_STATUSES = new Set(['approved', 'scheduled', 'publishing'])
+
+interface CoverageRow {
+  client_id: string
+  status: string
+  scheduled_at: string | null
+  published_at: string | null
+}
+
+/**
+ * Returns each client's week as seven day states, Monday first.
+ * weekStartISO must be a 'YYYY-MM-DD' Monday (see getMondayISO) — it is part of
+ * the cache key, so the entry rolls over naturally at the week boundary.
+ * Call revalidateTag('client-post-stats') after post mutations.
+ */
+const _fetchClientWeekCoverage = unstable_cache(
+  async (agencyId: string, weekStartISO: string): Promise<Record<string, DayState[]>> => {
+    const supabase = createAdminSupabaseClient()
+    const weekStart = new Date(`${weekStartISO}T00:00:00`)
+    const weekEnd = new Date(weekStart)
+    weekEnd.setDate(weekEnd.getDate() + DAYS_PER_WEEK)
+
+    const from = weekStart.toISOString()
+    const to = weekEnd.toISOString()
+
+    // A post counts for this week by when it is due, or by when it actually went
+    // out (posts published on demand carry no scheduled_at).
+    const { data } = await supabase
+      .from('posts')
+      .select('client_id, status, scheduled_at, published_at, clients!inner(agency_id)')
+      .eq('clients.agency_id', agencyId)
+      .or(
+        `and(scheduled_at.gte.${from},scheduled_at.lt.${to}),` +
+          `and(published_at.gte.${from},published_at.lt.${to})`
+      )
+
+    const dayKeys = Array.from({ length: DAYS_PER_WEEK }, (_, index) => {
+      const day = new Date(weekStart)
+      day.setDate(day.getDate() + index)
+      return toDateKey(day)
+    })
+
+    const coverage: Record<string, DayState[]> = {}
+
+    for (const row of (data as CoverageRow[] | null) ?? []) {
+      const stamp = row.scheduled_at ?? row.published_at
+      if (!stamp) continue
+
+      const dayIndex = dayKeys.indexOf(toDateKey(new Date(stamp)))
+      if (dayIndex === -1) continue
+
+      const week = (coverage[row.client_id] ??= Array<DayState>(DAYS_PER_WEEK).fill('open'))
+
+      // Published wins the slot — it is the stronger signal for the day.
+      if (row.status === 'published') {
+        week[dayIndex] = 'published'
+      } else if (SCHEDULED_STATUSES.has(row.status) && week[dayIndex] === 'open') {
+        week[dayIndex] = 'scheduled'
+      }
+    }
+
+    return coverage
+  },
+  ['client-week-coverage'],
+  { revalidate: 60, tags: ['client-post-stats'] }
+)
+
+export const getCachedClientWeekCoverage = cache(_fetchClientWeekCoverage)
 

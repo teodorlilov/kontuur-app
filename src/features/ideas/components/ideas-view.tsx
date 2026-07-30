@@ -3,7 +3,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { Lightbulb } from 'lucide-react'
-import { Topbar } from '@/components/layout/topbar'
 import { EmptyState } from '@/components/layout/empty-state'
 import { IdeaFilterBar, type IdeaStatusFilter } from './idea-filter-bar'
 import { IdeaCard } from './idea-card'
@@ -78,9 +77,7 @@ export function IdeasView({ initialIdeas, clients }: IdeasViewProps) {
   }
 
   return (
-    <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-      <Topbar title="Client ideas" />
-
+    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       <IdeaFilterBar
         clients={clientFilters}
         activeClient={activeClient}

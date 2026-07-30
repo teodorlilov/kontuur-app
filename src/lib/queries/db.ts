@@ -311,35 +311,6 @@ export async function fetchClientSources(
   return (data as ClientSourceRow[] | null) ?? []
 }
 
-// ---------- generation_runs / generation_themes ----------
-
-/**
- * Fetches theme descriptions from recent generation runs for a client.
- * Used to extend post history so the research pipeline avoids re-suggesting
- * themes that were already generated (but not yet in post_history).
- *
- * Used in:
- *   src/ai/research/research-orchestrator.ts
- */
-export async function fetchThemeDescriptions(
-  supabase: SupabaseClient,
-  clientId: string,
-  limit = 10
-): Promise<string[]> {
-  const { data } = await supabase
-    .from('generation_runs')
-    .select('generation_themes(theme_description)')
-    .eq('client_id', clientId)
-    .order('created_at', { ascending: false })
-    .limit(limit)
-  const rows = data as Array<{
-    generation_themes: Array<{ theme_description: string | null }>
-  }> | null
-  return (rows ?? []).flatMap((run) =>
-    run.generation_themes.map((t) => t.theme_description).filter((t): t is string => t !== null)
-  )
-}
-
 /**
  * Fetches source URLs from recent posts for a client.
  * Used to exclude already-used articles from Tavily search results

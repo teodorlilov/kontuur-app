@@ -8,7 +8,7 @@
 
 ## Philosophy
 
-**Warm precision.** Later.com's warmth × Linear's density × Playfair's editorial identity.
+**Contour calm.** A green editorial system: warm paper, forest ink, and serif accents used sparingly.
 
 - **Content first** — posts, data, and clients are the thing. UI recedes.
 - **Calm confidence** — status colours are muted, never alarming. No aggressive CTAs.
@@ -24,91 +24,93 @@
 - **Animation:** Framer Motion
 - **Charts:** Recharts
 - **Icons:** Lucide React (stroke icons, 16px default)
-- **Fonts:** Geist Sans (UI) + Playfair Display (display/titles only)
+- **Fonts:** Geist Sans (UI) + Instrument Serif (accents only — Latin, no Cyrillic)
 
 ---
 
 ## Colours
 
-### CSS Variables — add to `globals.css`
+The Contour palette. Raw values live in `globals.css` as prefix-free variables;
+Tailwind utilities are generated from them via `@theme inline`, so **components
+use classes (`bg-wash`, `text-forest`), not inline `style` objects**.
+
+### CSS variables — `src/app/globals.css`
 
 ```css
 :root {
-  /* Backgrounds */
-  --color-page: #f9f7f4; /* main page bg — never pure white */
-  --color-surface: #ffffff; /* card surfaces */
-  --color-sunken: #f2f0ec; /* inset areas, table headers, code blocks */
-  --color-overlay: rgba(26, 25, 24, 0.04); /* hover bg on white surfaces */
+  /* Surfaces */
+  --paper: #f1f0ea;      /* page background — never pure white */
+  --surface: #ffffff;    /* card surfaces */
+  --sunken: #f3f5f2;     /* inset areas, table headers, search fields */
+  --raised: linear-gradient(180deg, #ffffff 0%, #fbfaf6 100%);  /* raised cards */
 
-  /* Brand */
-  --color-brand: #2c3e50; /* sidebar, primary buttons */
-  --color-brand-hover: #3d5166; /* brand hover state */
-  --color-brand-accent: #4a6fa5; /* links, chart primary, mark blocks */
-  --color-brand-light: rgba(74, 111, 165, 0.12); /* focus ring fill */
+  /* Ink */
+  --ink: #0f1512;        /* primary — headings, values, body */
+  --text2: #57625a;      /* secondary — descriptions, form labels */
+  --text3: #8b958d;      /* tertiary — hints, timestamps, placeholders */
+  --line: #e7ece7;       /* default border — card edges, dividers */
+  --line2: #d5ddd6;      /* emphasis border — inputs */
 
-  /* Text */
-  --color-text-1: #1a1918; /* primary — headings, values, body */
-  --color-text-2: #6b6862; /* secondary — descriptions, form labels */
-  --color-text-3: #9c9890; /* tertiary — hints, timestamps, placeholders */
-  --color-text-inv: #ffffff; /* text on dark/brand backgrounds */
+  /* Greens */
+  --forest: #164430;       /* primary buttons, active nav, links */
+  --forest-deep: #0c2e20;  /* hover on forest, dark surfaces */
+  --spring: #2e9e68;       /* accent — focus rings, live dots, positive deltas */
+  --spring-lite: #7fd6a8;  /* spring on dark surfaces */
+  --wash: #eef4ef;         /* tinted fill behind forest text */
+  --marker: #d9eddd;       /* marker-highlight fill, scheduled status */
+  --surface-lime: #e6eeae;  /* capsule tier 1 */
+  --sage: #cfe4d4;          /* capsule tier 2 */
+  --accent: #cfea45;        /* RARE — dashboard = data highlights only */
 
-  /* Borders */
-  --color-border-1: #eae8e3; /* default — card edges, dividers, table rows */
-  --color-border-2: #d4d1ca; /* emphasis — input borders */
-  --color-border-3: #b8b5ae; /* strong — active/focused inputs */
+  /* Status */
+  --danger: #b04a38;  --danger-bg: #fbefec;  --danger-line: #e8cfc9;
+  --pending: #8a6116; --pending-bg: #f7efdc;
 
-  /* Status — intentionally muted */
-  --color-published-bg: #eaf3de;
-  --color-published-fg: #27500a;
-  --color-scheduled-bg: #eef2ff;
-  --color-scheduled-fg: #3c3489;
-  --color-pending-bg: #faeeda;
-  --color-pending-fg: #633806;
-  --color-draft-bg: #f2f0ec;
-  --color-draft-fg: #6b6862;
-  --color-error-bg: #fcebeb;
-  --color-error-fg: #791f1f;
-
-  /* Charts */
-  --color-chart-1: #4a6fa5; /* primary series */
-  --color-chart-2: #1d9e75; /* secondary series */
-  --color-chart-3: #ba7517; /* tertiary series */
-  --color-chart-grid: #eae8e3;
-  --color-chart-label: #9c9890;
-
-  /* Radius */
-  --radius-xs: 4px; /* badge corners */
-  --radius-sm: 6px; /* small buttons, dropdown items */
-  --radius-md: 8px; /* buttons, inputs, standard elements */
-  --radius-lg: 12px; /* cards */
-  --radius-xl: 16px; /* modals, large cards */
-  --radius-full: 9999px; /* pills, avatars, progress bars */
-
-  /* Sidebar (always dark) */
-  --sidebar-bg: #2c3e50;
-  --sidebar-text: rgba(255, 255, 255, 0.55);
-  --sidebar-text-hover: rgba(255, 255, 255, 0.85);
-  --sidebar-text-active: rgba(255, 255, 255, 1);
-  --sidebar-item-bg-hover: rgba(255, 255, 255, 0.07);
-  --sidebar-item-bg-active: rgba(255, 255, 255, 0.12);
-  --sidebar-border: rgba(255, 255, 255, 0.08);
-  --sidebar-badge-bg: rgba(255, 255, 255, 0.15);
-  --sidebar-badge-text: rgba(255, 255, 255, 0.8);
+  /* Textures, elevation, motion, radius */
+  --dot-grid / --hatch / --hatch-inv
+  --sh-card / --sh-pop / --sh-frame / --sh-dark
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --radius-xs 4 · sm 8 · md 10 · lg 14 · xl 20 · full
 }
 ```
 
+A second `:root` block aliases the pre-Contour `--color-*` / `--sidebar-*` names
+to these values so surfaces that have not been rebuilt still follow the palette.
+**Do not add new code against those aliases** — they are deleted surface by
+surface. `--sidebar-*` stays a dark ramp: it now serves the onboarding and
+client-settings rails, not the app sidebar, which is light.
+
+### Tailwind utilities
+
+`@theme inline` registers colours, radii and shadows under names that do not
+collide with Tailwind's defaults:
+
+| Utility | Token |
+| --- | --- |
+| `bg-paper` `bg-surface` `bg-sunken` | surfaces |
+| `text-ink` `text-text2` `text-text3` | text ramp |
+| `border-line` `border-line2` | borders |
+| `bg-forest` `bg-forest-deep` `bg-spring` `bg-wash` `bg-marker` | greens |
+| `bg-lime` `bg-sage` `text-accent` | capsule tiers + rare accent |
+| `bg-danger-bg` `text-danger` `bg-pending-bg` `text-pending` | status |
+| `rounded-chip` (10) `rounded-panel` (14) `rounded-card` (20) | radii |
+| `shadow-card` `shadow-pop` `shadow-frame` `shadow-dark` | elevation |
+| `ease-contour` | the house easing curve |
+| `font-display` | Instrument Serif |
+
 ### Colour usage rules
 
-| Use case        | Value     | Never use                        |
-| --------------- | --------- | -------------------------------- |
-| Page background | `#F9F7F4` | `#FFFFFF`, `gray-50`, `gray-100` |
-| Card surface    | `#FFFFFF` | `gray-50`                        |
-| Card border     | `#EAE8E3` | `gray-200`                       |
-| Primary button  | `#2C3E50` | `blue-500`, `blue-600`           |
-| Link / accent   | `#4A6FA5` | `blue-500`                       |
-| Body text       | `#1A1918` | `gray-900`, `black`              |
-| Muted text      | `#9C9890` | `gray-400`, `gray-500`           |
-| Sidebar         | `#2C3E50` | `gray-900`, `slate-800`          |
+| Use case        | Value            | Never use                        |
+| --------------- | ---------------- | -------------------------------- |
+| Page background | `--paper`        | `#FFFFFF`, `gray-50`, `gray-100` |
+| Card surface    | `--raised`       | `gray-50`                        |
+| Card border     | `--line`         | `gray-200`                       |
+| Primary button  | `--forest`       | `blue-500`, navy `#2C3E50`       |
+| Link / accent   | `--forest`       | terracotta `#C07B55`             |
+| Body text       | `--ink`          | `gray-900`, `black`              |
+| Muted text      | `--text3`        | `gray-400`, `gray-500`           |
+| App sidebar     | `--surface`      | a dark rail                      |
+| `--accent` lime | data highlights  | any surface tint (use `--surface-lime`) |
 
 ---
 
@@ -118,28 +120,33 @@
 
 ```typescript
 // app/layout.tsx
-import { Geist } from 'next/font/google'
-import { Playfair_Display } from 'next/font/google'
+import { Geist, Instrument_Serif } from 'next/font/google'
 
 const geist = Geist({
   subsets: ['latin'],
-  variable: '--font-sans',
+  variable: '--font-geist-sans',
 })
 
-const playfair = Playfair_Display({
-  subsets: ['latin', 'latin-ext', 'cyrillic'],  // cyrillic required for Bulgarian
-  variable: '--font-display',
-  weight: ['400', '500'],
+// Instrument Serif ships NO Cyrillic. Serif type is for Latin chrome only —
+// anything interpolating user data must gate on hasCyrillic()
+// (src/lib/canvas/font-library.ts) and fall back to the sans face.
+const instrumentSerif = Instrument_Serif({
+  subsets: ['latin'],
+  variable: '--font-instrument-serif',
+  weight: '400',
+  style: ['normal', 'italic'],
 })
 
 export default function RootLayout({ children }) {
   return (
-    <html className={`${geist.variable} ${playfair.variable}`}>
+    <html className={`${geist.variable} ${instrumentSerif.variable}`}>
       <body>{children}</body>
     </html>
   )
 }
 ```
+
+`--font-display` (the `font-display` utility) resolves to Instrument Serif.
 
 ### Base styles
 
@@ -149,8 +156,8 @@ body {
   font-family: var(--font-sans);
   font-size: 14px;
   line-height: 1.6;
-  color: var(--color-text-1);
-  background: var(--color-page);
+  color: var(--ink);
+  background: var(--paper);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -158,27 +165,27 @@ body {
 
 ### Type scale
 
-| Token          | Size    | Weight  | Font         | Use                                       |
-| -------------- | ------- | ------- | ------------ | ----------------------------------------- |
-| `text-2xs`     | 10px    | 500     | Geist        | Table column headers (uppercase, +0.07em) |
-| `text-xs`      | 11px    | 400/500 | Geist        | Badges, timestamps                        |
-| `text-sm`      | 12px    | 400     | Geist        | Hints, captions, secondary descriptions   |
-| `text-base`    | 13.5px  | 400     | Geist        | Body text, nav items, table cells         |
-| `text-md`      | 15px    | 500     | Geist        | Card titles, section headings             |
-| `text-lg`      | 18px    | 400     | Geist        | Sub-section headings                      |
-| `text-xl`      | 22px    | 400     | Geist        | Small stat numbers                        |
-| `text-2xl`     | 32px    | 400     | Geist        | Large stat numbers                        |
-| `text-display` | 28px    | 400     | **Playfair** | Page titles                               |
-| `text-hero`    | 52–64px | 400     | **Playfair** | Landing page hero                         |
+| Size    | Weight | Font              | Use                                        |
+| ------- | ------ | ----------------- | ------------------------------------------ |
+| 9.5–10px | 600   | Geist             | Sidebar section labels (uppercase, +0.16em) |
+| 11px    | 500/600 | Geist           | Badges, pills, timestamps, micro-labels    |
+| 11.5–12px | 400   | Geist             | Hints, captions, card sub-lines            |
+| 13–13.5px | 400/500 | Geist           | Body text, nav items, table cells          |
+| 14.5px  | 600    | Geist             | Section titles                             |
+| 23px    | 600    | Geist             | Dashboard greeting                         |
+| 31px    | 600    | Geist             | Stat numbers (tabular-nums, −0.02em)       |
+| 15–17px | 400    | **Instrument Serif** italic | Editorial asides, empty-state lines |
 
 ### Rules
 
-- **Playfair Display** is used ONLY for page titles and the landing page hero. Never for body text, labels, buttons, or UI elements.
-- **Never use font-weight 600 or 700.** Maximum weight is 500. Heavy weights look clunky.
-- **Letter spacing on page titles:** `-0.02em`
-- **Letter spacing on stat numbers:** `-0.02em`
-- **Letter spacing on uppercase labels:** `+0.07em`
-- Table column headers are always `10px`, `500 weight`, `uppercase`, `+0.07em`, `color: var(--color-text-3)`
+- **Instrument Serif** is for accents only — the wordmark, the greeting's agency
+  name, editorial one-liners, empty states. Never body text, labels or buttons.
+- Serif is Latin-only. Gate any interpolated user string on `hasCyrillic()`.
+- The old "never exceed weight 500" rule is retired: the Contour scale uses
+  **600** for titles, stat numbers and section headings; 700 stays unused.
+- Letter spacing: titles and stat numbers `-0.02em`; uppercase micro-labels
+  `+0.12em` to `+0.16em`.
+- Stat numbers always carry `tabular-nums`.
 
 ---
 
@@ -216,7 +223,7 @@ Use these values exclusively. Do not invent intermediate values.
 ┌─────────┬──────────────────────────────────────┐
 │ Sidebar │ Main content area                    │
 │ 224px   │ background: var(--color-page)         │
-│ #2C3E50 │ padding: 36px 40px                   │
+│ surface │ padding: 36px 40px                   │
 └─────────┴──────────────────────────────────────┘
 ```
 
@@ -235,79 +242,46 @@ Use these values exclusively. Do not invent intermediate values.
 
 ---
 
-## Sidebar
+## App shell
+
+The `(dashboard)` layout owns the whole frame — sidebar, topbar and the
+scrolling content area. **Pages render content only**; they never render their
+own topbar, and the topbar title comes from the route via
+`resolveNavTitle()` in `src/components/layout/nav-items.tsx`, the single source
+for nav entries (sidebar, topbar title, ⌘K palette).
 
 ```tsx
-// Structure
-<aside style={{ background: 'var(--sidebar-bg)', width: 224 }}>
-  <div className="logo-area">
-    {' '}
-    {/* padding: 26px 22px 18px */}
-    <KontuurLogo />
+<div className="app-shell flex h-screen gap-3.5 overflow-hidden bg-paper p-3">
+  <Sidebar … />                       {/* rounded-card, light, collapsible */}
+  <div className="flex min-w-0 flex-1 flex-col">
+    <Topbar … />                      {/* transparent, borderless */}
+    <main className="app-content flex-1 overflow-y-auto">{children}</main>
   </div>
-  <div className="divider" /> {/* 0.5px, rgba(255,255,255,0.08) */}
-  <nav>
-    <SectionLabel>Workspace</SectionLabel>
-    <NavItem href="/dashboard" active>
-      Dashboard
-    </NavItem>
-    <NavItem href="/clients">Clients</NavItem>
-    <NavItem href="/generate">Generate posts</NavItem>
-    <NavItem href="/review" badge={3}>
-      Review queue
-    </NavItem>
-    <SectionLabel>Insights</SectionLabel>
-    <NavItem href="/calendar">Calendar</NavItem>
-    <NavItem href="/analytics">Analytics</NavItem>
-  </nav>
-  <div className="sidebar-footer">
-    {' '}
-    {/* margin-top: auto */}
-    <UserRow />
-  </div>
-</aside>
+</div>
 ```
 
-```css
-.nav-section-label {
-  padding: 20px 22px 6px;
-  font-size: 10px;
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  color: rgba(255, 255, 255, 0.25);
-  font-family: var(--font-sans);
-}
+`.app-shell`, `.app-sidebar`, `.app-topbar` and `.app-content` are the only
+structural class hooks — the analytics print stylesheet targets them by name, so
+**keep the classes if you restructure the frame**.
 
-.nav-item {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  padding: 8px 22px;
-  font-size: 13.5px;
-  color: var(--sidebar-text);
-  cursor: pointer;
-  transition:
-    color 120ms ease,
-    background 120ms ease;
-}
-.nav-item:hover {
-  color: var(--sidebar-text-hover);
-  background: var(--sidebar-item-bg-hover);
-}
-.nav-item.active {
-  color: var(--sidebar-text-active);
-  background: var(--sidebar-item-bg-active);
-}
-.nav-badge {
-  margin-left: auto;
-  background: var(--sidebar-badge-bg);
-  color: var(--sidebar-badge-text);
-  font-size: 10px;
-  padding: 1px 6px;
-  border-radius: var(--radius-full);
-}
+### Sidebar
+
+Light card (`bg-surface`, `rounded-card`, `shadow-card`), 240px wide, collapsing
+to 78px. The collapsed flag lives in `localStorage` and is read through
+`useSyncExternalStore` so hydration stays consistent.
+
+```tsx
+// Nav item — active state
+'bg-wash font-medium text-forest shadow-[inset_0_0_0_1px_rgba(46,158,104,0.16)]'
+// Nav item — resting / hover
+'text-text2 hover:translate-x-0.5 hover:bg-ink/[0.04] hover:text-ink'
 ```
+
+Order: logomark → ⌘K search trigger → `WORKSPACE` label → nav → spacer →
+live generation card → Settings / Sign out → workspace chip.
+
+The dark `--sidebar-*` ramp is **not** used here; it belongs to the onboarding
+and client-settings rails.
 
 ---
 
@@ -847,7 +821,7 @@ export const LINE_PROPS = {
   color: #633806;
 }
 .avatar-brand {
-  background: #2c3e50;
+  background: var(--forest);
   color: #ffffff;
 }
 ```
@@ -1183,8 +1157,8 @@ Do not mix icon libraries. Do not use emoji as icons.
 | `border-radius: 12px` for cards | `rounded-md` (8px) for cards      |
 | `font-weight: 400` or `500`     | `font-weight: 600` or `700`       |
 | Geist for all UI text           | Inter, System UI defaults         |
-| Playfair for page titles only   | Playfair for body/labels/buttons  |
-| `#2C3E50` for primary button    | `bg-blue-500`, `bg-blue-600`      |
+| Instrument Serif for accents    | Serif for body/labels/buttons     |
+| `--forest` for primary button   | `bg-blue-500`, navy `#2C3E50`     |
 | `#4A6FA5` for links/accents     | `text-blue-500`                   |
 | Muted status colours            | Saturated `green-500`, `red-500`  |
 | `cubic-bezier(0.16,1,0.3,1)`    | `linear`, `ease-in`, `ease-out`   |
@@ -1199,14 +1173,14 @@ Do not mix icon libraries. Do not use emoji as icons.
 ### Sections
 
 1. **Nav** — sticky, transparent → frosted on scroll
-2. **Hero** — Playfair headline, short subheading, 2 CTAs, dashboard screenshot
+2. **Hero** — serif headline, short subheading, 2 CTAs, dashboard screenshot
 3. **Social proof bar** — "trusted by agencies across Europe" + logos
 4. **Features** — 3-column grid, icon + title + description
 5. **How it works** — 3 numbered steps with connecting line
 6. **Analytics preview** — screenshot or mockup with caption
 7. **Pricing** — 2 cards (Starter / Pro)
 8. **CTA section** — final push, email signup
-9. **Footer** — 4-column, dark background `#2C3E50`
+9. **Footer** — 4-column, dark background `--forest-deep`
 
 ### Hero typography
 

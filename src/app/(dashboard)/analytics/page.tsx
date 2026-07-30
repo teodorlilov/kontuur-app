@@ -2,7 +2,6 @@ import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { requireSessionUser } from '@/lib/auth/session'
 import { getCachedAgencyClients } from '@/lib/queries/cache'
 import { fetchConnectionsByClient } from '@/lib/queries/db'
-import { Topbar } from '@/components/layout/topbar'
 import { AnalyticsView } from '@/features/analytics/components/analytics-view'
 
 export default async function AnalyticsPage() {
@@ -22,7 +21,6 @@ export default async function AnalyticsPage() {
 
   return (
     <>
-      <Topbar title="Analytics" />
       <AnalyticsView clients={clients} initialConnections={initialConnections} />
     </>
   )

@@ -21,32 +21,36 @@ export const USER_AGENT_BOT = 'PostflowBot/1.0'
 
 export const PLATFORMS = ['Instagram', 'Facebook', 'LinkedIn', 'X / Twitter', 'TikTok'] as const
 
+/**
+ * Per-client identity colours. A single forest→sage ramp rather than a rainbow:
+ * clients stay distinguishable by lightness, not by competing hues.
+ */
 export const CLIENT_COLORS = [
-  '#4F46E5',
-  '#7C3AED',
-  '#DB2777',
-  '#EA580C',
-  '#D97706',
-  '#059669',
-  '#0891B2',
-  '#2563EB',
+  '#164430',
+  '#2E9E68',
+  '#7FA588',
+  '#0C2E20',
+  '#3E8E6E',
+  '#5C8A6E',
+  '#1F6B4A',
+  '#96BFA4',
 ] as const
 
 export const AVATAR_GRADIENTS = [
-  'linear-gradient(135deg, #2C5F4A, #1A3D2E)',
-  'linear-gradient(135deg, #8A3A5A, #5A2040)',
-  'linear-gradient(135deg, #5A4A2A, #3A2A10)',
-  'linear-gradient(135deg, #2C3E5F, #1A2A4A)',
+  'linear-gradient(135deg, #2E9E68, #16593C)',
+  'linear-gradient(135deg, #164430, #0C2E20)',
+  'linear-gradient(135deg, #7FA588, #3E6E56)',
+  'linear-gradient(135deg, #3E8E6E, #1F5A40)',
 ] as const
 
 export const TOP_BAR_GRADIENTS = [
-  'linear-gradient(90deg, #C07B55, #8B5A3A)',
-  'linear-gradient(90deg, #2C5F8A, #1A3D5A)',
-  'linear-gradient(90deg, #5A8A4A, #3A6A2A)',
-  'linear-gradient(90deg, #8A5A2A, #5A3A10)',
+  'linear-gradient(90deg, #2E9E68, #164430)',
+  'linear-gradient(90deg, #164430, #0C2E20)',
+  'linear-gradient(90deg, #7FA588, #3E6E56)',
+  'linear-gradient(90deg, #3E8E6E, #1F5A40)',
 ] as const
 
-export const SETUP_TOP_BAR_GRADIENT = 'linear-gradient(90deg, #C07B55, #E8A87C)'
+export const SETUP_TOP_BAR_GRADIENT = 'linear-gradient(90deg, #CFEA45, #2E9E68)'
 
 export const WEEKDAY_OPTIONS = [
   { value: 'monday', label: 'Monday' },

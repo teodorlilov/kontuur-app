@@ -1,76 +1,42 @@
 'use client'
 
+import { usePathname } from 'next/navigation'
 import { NotificationsBell } from '@/components/layout/notifications-bell'
 import { DesignInCanvaButton } from '@/components/layout/design-in-canva-button'
+import { resolveNavTitle } from '@/components/layout/nav-items'
 import { formatDateChip } from '@/utils/format-date-chip'
+import { extractInitials } from '@/utils/format'
 
 interface TopbarProps {
-  title?: string
+  agencyMode: 'agency' | 'solo'
+  agencyName: string
 }
 
-export function Topbar({ title }: TopbarProps) {
+/**
+ * Shell topbar. The title comes from the route, not from each page — the shell
+ * owns its chrome so pages only render content.
+ */
+export function Topbar({ agencyMode, agencyName }: TopbarProps) {
+  const pathname = usePathname()
+
   return (
-    <header
-      className="pl-14 md:pl-[22px]"
-      style={{
-        height: 52,
-        background: '#fff',
-        borderBottom: '0.5px solid var(--color-border-1)',
-        display: 'flex',
-        alignItems: 'center',
-        paddingRight: 22,
-        flexShrink: 0,
-        boxShadow: '0 1px 0 rgba(44,62,80,0.05)',
-      }}
-    >
-      {/* Logo wordmark — hidden on mobile where sidebar logo is used */}
-      <div
-        className="hidden md:block"
-        style={{
-          fontFamily: 'var(--font-display, Georgia, serif)',
-          fontSize: 13,
-          letterSpacing: '3.5px',
-          color: 'var(--color-text-1)',
-          paddingRight: 16,
-          borderRight: '0.5px solid var(--color-border-1)',
-          marginRight: 14,
-          flexShrink: 0,
-        }}
-      >
-        KONTUUR
-      </div>
+    <header className="app-topbar flex h-[54px] shrink-0 items-center pl-14 pr-1 md:pl-2">
+      <span className="text-[15px] font-semibold tracking-[-0.01em] text-ink">
+        {resolveNavTitle(pathname, agencyMode)}
+      </span>
 
-      {/* Page title */}
-      {title && (
-        <div
-          style={{
-            fontFamily: 'var(--font-display, Georgia, serif)',
-            fontSize: 18,
-            fontWeight: 400,
-            color: 'var(--color-text-1)',
-          }}
-        >
-          {title}
-        </div>
-      )}
-
-      {/* Right side */}
-      <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 10 }}>
+      <div className="ml-auto flex items-center gap-2.5">
         <DesignInCanvaButton />
-        <span
-          style={{
-            fontSize: 11,
-            color: 'var(--color-muted)',
-            background: '#fff',
-            border: '0.5px solid var(--color-border-1)',
-            padding: '6px 12px',
-            borderRadius: 7,
-            letterSpacing: '0.3px',
-          }}
-        >
+        <span className="hidden rounded-sm border border-line2 px-3 py-[7px] text-[12.5px] tabular-nums text-text2 sm:inline">
           {formatDateChip()}
         </span>
         <NotificationsBell />
+        <span
+          className="grid size-7 place-items-center rounded-full bg-wash text-[11px] font-semibold text-forest"
+          title={agencyName}
+        >
+          {extractInitials(agencyName || 'A')}
+        </span>
       </div>
     </header>
   )

@@ -8,7 +8,7 @@ export const metadata: Metadata = {
 }
 
 const h1Style: React.CSSProperties = {
-  fontFamily: 'var(--font-playfair)',
+  fontFamily: 'var(--font-display, Georgia, serif)',
   fontSize: 40,
   fontWeight: 700,
   color: 'var(--color-text-1)',

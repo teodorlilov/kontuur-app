@@ -1,11 +1,11 @@
 import {
   fetchClientSources,
-  fetchThemeDescriptions,
   fetchUsedSourceUrls,
   fetchSourceUsageStats,
   fetchRecentPillarCounts,
   type SourceUsageStats,
 } from '@/lib/queries/db'
+import { fetchThemeDescriptions } from '@/lib/generation/runs'
 import { searchTrends } from '@/lib/sources/fetch-trend-search'
 import {
   allocateByWeight,

@@ -10,18 +10,18 @@ export const APPROVAL_STATUS_STYLES: Record<
   { bg: string; color: string; label: string }
 > = {
   pending: {
-    bg: 'rgba(192,123,85,0.10)',
-    color: '#C07B55',
+    bg: 'var(--pending-bg)',
+    color: 'var(--pending)',
     label: 'Pending review',
   },
   approved: {
-    bg: 'rgba(90,138,74,0.10)',
-    color: '#5A8A4A',
+    bg: 'var(--wash)',
+    color: 'var(--forest)',
     label: 'Approved',
   },
   changes_requested: {
-    bg: 'rgba(44,94,138,0.10)',
-    color: '#2C5F8A',
+    bg: 'var(--marker)',
+    color: 'var(--forest-deep)',
     label: 'Feedback sent',
   },
 }

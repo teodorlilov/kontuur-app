@@ -1,92 +1,167 @@
 @import 'tailwindcss';
 
-/* ─── Kontuur Design System — CSS Custom Properties ─── */
+/* ─── Contour design system — source of truth ─────────────────────────
+   Naming follows docs/plans/LANDING-REDESIGN.md §2. Density rule:
+   landing = full contour field · auth = 2 lines · dashboard = data only,
+   so --accent is used here for data highlights only, never as a surface. */
 :root {
-  /* Backgrounds */
-  --color-page: #f9f7f4;
-  --color-surface: #ffffff;
-  --color-sunken: #f2f0ec;
-  --color-overlay: rgba(26, 25, 24, 0.04);
+  /* Surfaces */
+  --paper: #f1f0ea;
+  --surface: #ffffff;
+  --sunken: #f3f5f2;
+  --raised: linear-gradient(180deg, #ffffff 0%, #fbfaf6 100%);
 
-  /* Brand */
-  --color-brand: #2c3e50;
-  --color-brand-hover: #3d5166;
-  --color-brand-accent: #4a6fa5;
-  --color-brand-light: rgba(74, 111, 165, 0.12);
+  /* Ink */
+  --ink: #0f1512;
+  --text2: #57625a;
+  --text3: #8b958d;
+  --line: #e7ece7;
+  --line2: #d5ddd6;
 
-  /* Text */
-  --color-text-1: #1a1918;
-  --color-text-2: #6b6862;
-  --color-text-3: #9c9890;
-  --color-text-inv: #ffffff;
+  /* Greens */
+  --forest: #164430;
+  --forest-deep: #0c2e20;
+  --spring: #2e9e68;
+  --spring-lite: #7fd6a8; /* spring, legible on dark surfaces */
+  --wash: #eef4ef;
+  --marker: #d9eddd;
+  --surface-lime: #e6eeae;
+  --sage: #cfe4d4;
+  --accent: #cfea45;
 
-  /* Borders */
-  --color-border-1: #eae8e3;
-  --color-border-2: #d4d1ca;
-  --color-border-3: #b8b5ae;
+  /* Status */
+  --danger: #b04a38;
+  --danger-bg: #fbefec;
+  --danger-line: #e8cfc9;
+  --pending: #8a6116;
+  --pending-bg: #f7efdc;
 
-  /* Status — intentionally muted */
-  --color-published-bg: #eaf3de;
-  --color-published-fg: #27500a;
-  --color-scheduled-bg: #eef2ff;
-  --color-scheduled-fg: #3c3489;
-  --color-pending-bg: #faeeda;
-  --color-pending-fg: #633806;
-  --color-draft-bg: #f2f0ec;
-  --color-draft-fg: #6b6862;
-  --color-error-bg: #fcebeb;
-  --color-error-fg: #791f1f;
+  /* Textures — dark surfaces pair the dot grid with 13px 13px sizing */
+  --dot-grid: radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1.5px);
+  --hatch: repeating-linear-gradient(45deg, rgba(15, 21, 18, 0.16) 0 2px, transparent 2px 5px);
+  --hatch-inv: repeating-linear-gradient(45deg, rgba(242, 245, 241, 0.4) 0 2px, transparent 2px 5px);
 
-  /* Charts */
-  --color-chart-1: #4a6fa5;
-  --color-chart-2: #1d9e75;
-  --color-chart-3: #ba7517;
-  --color-chart-grid: #eae8e3;
-  --color-chart-label: #9c9890;
+  /* Elevation */
+  --sh-card: 0 1px 2px rgba(15, 21, 18, 0.03), 0 14px 36px -14px rgba(15, 21, 18, 0.1);
+  --sh-pop: 0 12px 32px rgba(15, 21, 18, 0.1);
+  --sh-frame: 0 24px 60px rgba(15, 21, 18, 0.06);
+  --sh-dark: 0 18px 44px -14px rgba(12, 46, 32, 0.55);
+
+  /* Motion */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
 
   /* Radius */
   --radius-xs: 4px;
-  --radius-sm: 6px;
-  --radius-md: 8px;
-  --radius-lg: 12px;
-  --radius-xl: 16px;
+  --radius-sm: 8px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
   --radius-full: 9999px;
-
-  /* Sidebar (always dark) */
-  --sidebar-bg: #1a2630;
-  --sidebar-text: rgba(236, 232, 225, 0.55);
-  --sidebar-text-hover: rgba(236, 232, 225, 0.85);
-  --sidebar-text-active: #ece8e1;
-  --sidebar-icon: rgba(236, 232, 225, 0.38);
-  --sidebar-icon-active: #c07b55;
-  --sidebar-item-bg-hover: rgba(236, 232, 225, 0.07);
-  --sidebar-item-bg-active: rgba(192, 123, 85, 0.15);
-  --sidebar-border: rgba(236, 232, 225, 0.10);
-  --sidebar-badge-bg: rgba(192, 123, 85, 0.25);
-  --sidebar-badge-text: #c07b55;
-  --sidebar-section-label: rgba(236, 232, 225, 0.30);
-
-  /* Terracotta accent */
-  --color-terracotta: #c07b55;
-
-  /* Metric accent colours (top borders) */
-  --accent-m1: #c07b55;
-  --accent-m2: #2c5f8a;
-  --accent-m3: #5a8a4a;
-  --accent-m4: #8a5a2a;
-
-  /* Status colours (dashboard) */
-  --status-ok: #7a9a6a;
-  --status-warn: #c07b55;
-
-  /* Muted text */
-  --color-muted: #8a8070;
 }
 
+/* ─── Legacy token compatibility ──────────────────────────────────────
+   WHY: ~135 files still reference the pre-Contour --color-* / --sidebar-*
+   names. Aliasing them to Contour values means surfaces that have not been
+   rebuilt yet follow the palette instead of stranding on the old navy.
+   Each alias is deleted as its surface is rebuilt. */
+:root {
+  --color-page: var(--paper);
+  --color-surface: var(--surface);
+  --color-sunken: var(--sunken);
+  --color-overlay: rgba(15, 21, 18, 0.04);
+
+  --color-brand: var(--forest);
+  --color-brand-hover: var(--forest-deep);
+  --color-brand-accent: var(--spring);
+  --color-brand-light: rgba(46, 158, 104, 0.12);
+
+  --color-text-1: var(--ink);
+  --color-text-2: var(--text2);
+  --color-text-3: var(--text3);
+  --color-text-inv: #ffffff;
+  --color-muted: var(--text2);
+
+  --color-border-1: var(--line);
+  --color-border-2: var(--line2);
+  --color-border-3: #bcc7be;
+
+  --color-published-bg: var(--wash);
+  --color-published-fg: var(--forest);
+  --color-scheduled-bg: var(--marker);
+  --color-scheduled-fg: var(--forest-deep);
+  --color-pending-bg: var(--pending-bg);
+  --color-pending-fg: var(--pending);
+  --color-draft-bg: var(--sunken);
+  --color-draft-fg: var(--text2);
+  --color-error-bg: var(--danger-bg);
+  --color-error-fg: var(--danger);
+
+  /* The terracotta accent is retired — its consumers now read as spring. */
+  --color-terracotta: var(--spring);
+  --status-ok: var(--spring);
+  --status-warn: var(--pending);
+
+  /* Metric accents: a forest ramp instead of four unrelated hues. */
+  --accent-m1: var(--forest);
+  --accent-m2: var(--spring);
+  --accent-m3: #7fa588;
+  --accent-m4: var(--forest-deep);
+
+  /* Dark rails outside the app shell (onboarding, client settings) */
+  --sidebar-bg: var(--forest-deep);
+  --sidebar-text: rgba(242, 245, 241, 0.55);
+  --sidebar-text-active: #f2f5f1;
+  --sidebar-icon: rgba(242, 245, 241, 0.38);
+  --sidebar-icon-active: var(--spring-lite);
+  --sidebar-item-bg-hover: rgba(242, 245, 241, 0.07);
+  --sidebar-item-bg-active: rgba(46, 158, 104, 0.18);
+  --sidebar-badge-bg: rgba(46, 158, 104, 0.25);
+  --sidebar-badge-text: var(--spring-lite);
+  --sidebar-section-label: rgba(242, 245, 241, 0.3);
+}
+
+/* Registered with Tailwind so components use utilities, not inline styles.
+   `inline` keeps these out of :root — no clash with the compat aliases above.
+   Names avoid Tailwind's defaults (rounded-lg, ease-out, shadow-lg) so
+   existing markup is untouched. */
 @theme inline {
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-  --font-display: var(--font-playfair);
+  --font-display: var(--font-instrument-serif);
+
+  --color-paper: var(--paper);
+  --color-surface: var(--surface);
+  --color-sunken: var(--sunken);
+  --color-ink: var(--ink);
+  --color-text2: var(--text2);
+  --color-text3: var(--text3);
+  --color-line: var(--line);
+  --color-line2: var(--line2);
+  --color-forest: var(--forest);
+  --color-forest-deep: var(--forest-deep);
+  --color-spring: var(--spring);
+  --color-spring-lite: var(--spring-lite);
+  --color-wash: var(--wash);
+  --color-marker: var(--marker);
+  --color-lime: var(--surface-lime);
+  --color-sage: var(--sage);
+  --color-accent: var(--accent);
+  --color-danger: var(--danger);
+  --color-danger-bg: var(--danger-bg);
+  --color-danger-line: var(--danger-line);
+  --color-pending: var(--pending);
+  --color-pending-bg: var(--pending-bg);
+
+  --radius-chip: var(--radius-md);
+  --radius-panel: var(--radius-lg);
+  --radius-card: var(--radius-xl);
+
+  --shadow-card: var(--sh-card);
+  --shadow-pop: var(--sh-pop);
+  --shadow-frame: var(--sh-frame);
+  --shadow-dark: var(--sh-dark);
+
+  --ease-contour: var(--ease-out);
 }
 
 /* ─── Scroll behaviour ─── */
@@ -99,10 +174,15 @@ body {
   font-family: var(--font-sans), Arial, Helvetica, sans-serif;
   font-size: 14px;
   line-height: 1.6;
-  color: var(--color-text-1);
-  background: var(--color-page);
+  color: var(--ink);
+  background: var(--paper);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+::selection {
+  background: var(--marker);
+  color: var(--forest-deep);
 }
 
 /* ─── Keyframes ─── */
@@ -202,8 +282,64 @@ body {
 }
 
 @keyframes notif-pulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(180, 50, 50, 0.4); }
-  50%      { box-shadow: 0 0 0 4px rgba(180, 50, 50, 0); }
+  0%, 100% { box-shadow: 0 0 0 0 rgba(46, 158, 104, 0.4); }
+  50%      { box-shadow: 0 0 0 4px rgba(46, 158, 104, 0); }
+}
+
+/* ─── App shell ───────────────────────────────────────────────────────
+   Two faint spring glows behind the scroll area. Padding stays with each
+   page, not the frame, so nothing double-pads. */
+.app-content {
+  background:
+    radial-gradient(640px 320px at 18% -6%, rgba(46, 158, 104, 0.06), transparent 70%),
+    radial-gradient(520px 300px at 95% 0%, rgba(46, 158, 104, 0.04), transparent 70%);
+}
+
+/* ─── Live generation indicator ─── */
+@keyframes live-pulse {
+  0%, 100% { opacity: 0.35; }
+  50% { opacity: 1; }
+}
+
+@keyframes live-sweep {
+  from { transform: translateX(-110%); }
+  to { transform: translateX(360%); }
+}
+
+.live-dot {
+  animation: live-pulse 1.1s ease-in-out infinite;
+}
+
+.live-sweep {
+  animation: live-sweep 1.8s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .live-dot,
+  .live-sweep {
+    animation: none;
+  }
+}
+
+/* ─── Mount reveal ───────────────────────────────────────────────────
+   Above-the-fold dashboard sections stagger in on mount via --d. CSS-only
+   on purpose: no observer, no route-transition animation (session-8 rule). */
+@keyframes rv-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+}
+
+.rv {
+  animation: rv-in 0.55s var(--ease-out) both;
+  animation-delay: var(--d, 0ms);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rv {
+    animation: none;
+  }
 }
 
 /* ─── Stagger utilities ─── */
@@ -227,9 +363,9 @@ body {
 .skeleton {
   background: linear-gradient(
     90deg,
-    var(--color-sunken) 25%,
-    var(--color-border-1) 50%,
-    var(--color-sunken) 75%
+    var(--sunken) 25%,
+    var(--line) 50%,
+    var(--sunken) 75%
   );
   background-size: 200% 100%;
   animation: shimmer 1.5s ease-in-out infinite;
@@ -246,34 +382,35 @@ body {
 }
 
 /* ─── Print styles ─── */
+/* Targets the shell by explicit class (.app-shell / .app-topbar) rather than
+   by structure — the analytics PDF export is the only consumer and would
+   break silently if these keyed off layout classnames or tag position. */
 @media print {
   html, body {
     height: auto !important;
     overflow: visible !important;
   }
 
-  /* Flatten layout, remove sidebar */
-  .flex.h-screen {
+  /* Flatten the shell, remove its chrome */
+  .app-shell {
     display: block !important;
     height: auto !important;
+    padding: 0 !important;
     overflow: visible !important;
     background: white !important;
   }
 
-  aside {
+  .app-sidebar,
+  .app-topbar,
+  .print-hide {
     display: none !important;
   }
 
-  main {
+  .app-shell main {
     overflow: visible !important;
     overflow-y: visible !important;
     height: auto !important;
-  }
-
-  /* Hide topbar, controls bar, tab bar, report history */
-  main > header,
-  .print-hide {
-    display: none !important;
+    background: white !important;
   }
 
   #analytics-print-area {

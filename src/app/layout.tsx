@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { Geist, Geist_Mono, Playfair_Display } from 'next/font/google'
+import { Geist, Geist_Mono, Instrument_Serif } from 'next/font/google'
 import { Toaster } from 'sonner'
 import './globals.css'
 
@@ -13,10 +13,13 @@ const geistMono = Geist_Mono({
   subsets: ['latin'],
 })
 
-const playfair = Playfair_Display({
-  variable: '--font-playfair',
-  subsets: ['latin', 'latin-ext', 'cyrillic'],
-  weight: ['400', '500'],
+// Instrument Serif ships no Cyrillic glyphs, so serif type is reserved for
+// Latin chrome. Anything interpolating user data gates on hasCyrillic().
+const instrumentSerif = Instrument_Serif({
+  variable: '--font-instrument-serif',
+  subsets: ['latin'],
+  weight: '400',
+  style: ['normal', 'italic'],
 })
 
 export const metadata: Metadata = {
@@ -59,7 +62,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} ${playfair.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} ${instrumentSerif.variable} h-full antialiased`}
       suppressHydrationWarning
     >
       <body className="min-h-full">
@@ -69,13 +72,13 @@ export default function RootLayout({
           position="bottom-right"
           toastOptions={{
             style: {
-              background: '#FFFFFF',
-              border: '0.5px solid #EAE8E3',
-              borderRadius: '10px',
-              color: '#1A1918',
+              background: 'var(--surface)',
+              border: '1px solid var(--line)',
+              borderRadius: 'var(--radius-md)',
+              color: 'var(--ink)',
               fontSize: '13.5px',
               fontFamily: 'var(--font-sans)',
-              boxShadow: '0 4px 24px rgba(26,25,24,0.10)',
+              boxShadow: 'var(--sh-pop)',
               padding: '12px 16px',
             },
           }}

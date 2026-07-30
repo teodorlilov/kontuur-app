@@ -154,12 +154,14 @@ function FormHeader({ agencyName, clientName }: { agencyName: string; clientName
           />
           {agencyName}
         </div>
+        {/* Sans, not the display serif: client names may be Cyrillic and
+            Instrument Serif has no Cyrillic glyphs. */}
         <div
           style={{
-            fontFamily: 'var(--font-display, Georgia, serif)',
-            fontSize: 22,
-            fontWeight: 400,
-            color: '#ECE8E1',
+            fontSize: 21,
+            fontWeight: 600,
+            letterSpacing: '-0.01em',
+            color: '#F2F5F1',
             marginBottom: 5,
           }}
         >

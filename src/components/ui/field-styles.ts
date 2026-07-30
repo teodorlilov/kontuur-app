@@ -14,8 +14,8 @@ export const fieldBaseStyle: React.CSSProperties = {
 }
 
 export const fieldErrorStyle: React.CSSProperties = {
-  borderColor: '#E24B4A',
-  boxShadow: '0 0 0 3px rgba(226,75,74,0.10)',
+  borderColor: 'var(--danger)',
+  boxShadow: '0 0 0 3px rgba(176,74,56,0.10)',
 }
 
 export const fieldLabelStyle: React.CSSProperties = {

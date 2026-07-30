@@ -1,263 +1,143 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useSyncExternalStore } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import {
-  LayoutDashboard,
-  Users,
-  Sparkles,
-  ClipboardList,
-  Calendar,
-  MessageSquare,
-  BarChart2,
-  Settings,
-  X,
-  Menu,
-  LogOut,
-} from 'lucide-react'
+import { ChevronLeft, LogOut, Menu, Search, X } from 'lucide-react'
+import { toast } from 'sonner'
 import { createBrowserSupabaseClient } from '@/lib/supabase/client'
 import { extractInitials } from '@/utils/format'
-import { LogoMark } from '@/components/ui/logo-mark'
-import { toast } from 'sonner'
+import { cn } from '@/utils/cn'
+import {
+  SETTINGS_NAV_ITEM,
+  getNavItems,
+  isNavItemActive,
+  type NavBadge,
+  type NavItem,
+} from '@/components/layout/nav-items'
+import { ActiveRunsCard } from '@/components/layout/active-runs-card'
+import { CommandPalette } from '@/components/layout/command-palette'
+import type { ActiveRun } from '@/types/api'
 
-interface NavItem {
-  label: string
-  href: string
-  icon: React.ReactNode
-  badge?: number
+/** Sidebar widths come from docs/redesign-mocks/dashboard.html (240 / 78). */
+const COLLAPSE_STORAGE_KEY = 'kontuur:sidebar-collapsed'
+const COLLAPSE_EVENT = 'kontuur:sidebar-collapsed-change'
+
+/**
+ * The collapsed flag lives in localStorage, so it is read through
+ * useSyncExternalStore: the server snapshot is "expanded", and the client
+ * re-renders with the stored value after hydration.
+ */
+function subscribeToCollapse(onStoreChange: () => void) {
+  window.addEventListener(COLLAPSE_EVENT, onStoreChange)
+  window.addEventListener('storage', onStoreChange)
+  return () => {
+    window.removeEventListener(COLLAPSE_EVENT, onStoreChange)
+    window.removeEventListener('storage', onStoreChange)
+  }
+}
+
+function readCollapsed(): boolean {
+  return window.localStorage.getItem(COLLAPSE_STORAGE_KEY) === '1'
+}
+
+function writeCollapsed(next: boolean) {
+  window.localStorage.setItem(COLLAPSE_STORAGE_KEY, next ? '1' : '0')
+  window.dispatchEvent(new Event(COLLAPSE_EVENT))
 }
 
 interface SidebarProps {
   agencyMode: 'agency' | 'solo'
-  pendingCount?: number
-  ideasCount?: number
-  agencyName?: string
+  agencyName: string
+  pendingCount: number
+  ideasCount: number
+  clients: Array<{ id: string; name: string }>
+  activeRuns: ActiveRun[]
 }
 
-function SectionLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <div
-      style={{
-        fontSize: 9,
-        fontWeight: 500,
-        color: 'var(--sidebar-section-label)',
-        letterSpacing: '2.5px',
-        textTransform: 'uppercase',
-        marginBottom: 8,
-        padding: '0 4px',
-      }}
-    >
-      {children}
-    </div>
-  )
-}
-
-function NavLink({
-  item,
-  pathname,
-  onClose,
-}: {
-  item: NavItem
-  pathname: string
-  onClose?: () => void
-}) {
-  const isActive = pathname === item.href || pathname.startsWith(item.href + '/')
+function LogoMark({ collapsed }: { collapsed: boolean }) {
   return (
     <Link
-      href={item.href}
-      onClick={onClose}
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 10,
-        padding: '9px 12px',
-        borderRadius: 7,
-        fontSize: 13,
-        fontWeight: isActive ? 500 : 400,
-        color: isActive ? 'var(--sidebar-text-active)' : 'var(--sidebar-text)',
-        background: isActive ? 'var(--sidebar-item-bg-active)' : 'transparent',
-        cursor: 'pointer',
-        transition: 'background 0.15s',
-        textDecoration: 'none',
-      }}
-      onMouseEnter={(e) => {
-        if (!isActive) {
-          e.currentTarget.style.background = 'var(--sidebar-item-bg-hover)'
-        }
-      }}
-      onMouseLeave={(e) => {
-        if (!isActive) {
-          e.currentTarget.style.background = 'transparent'
-        }
-      }}
+      href="/dashboard"
+      className={cn(
+        'flex items-center gap-2.5 px-2.5 pb-4 pt-0.5 text-[19px] text-ink no-underline',
+        collapsed && 'justify-center px-0'
+      )}
     >
-      <span style={{ color: isActive ? 'var(--sidebar-icon-active)' : 'var(--sidebar-icon)', display: 'flex' }}>
-        {item.icon}
+      <span
+        className="grid size-7 shrink-0 place-items-center rounded-lg font-display text-[15px] italic text-white"
+        style={{
+          background: 'linear-gradient(150deg, var(--spring), #16593C)',
+          boxShadow: '0 4px 14px rgba(46,158,104,0.35)',
+        }}
+      >
+        k
       </span>
-      <span style={{ flex: 1 }}>{item.label}</span>
-      {item.badge !== undefined && item.badge > 0 && (
-        <span
-          style={{
-            fontSize: 10,
-            fontWeight: 500,
-            background: 'var(--sidebar-badge-bg)',
-            color: 'var(--sidebar-badge-text)',
-            padding: '2px 6px',
-            borderRadius: 4,
-            lineHeight: 1.4,
-          }}
-        >
-          {item.badge}
+      {!collapsed && (
+        <span className="font-display leading-none">
+          kontuur<span className="text-spring">.</span>
         </span>
       )}
     </Link>
   )
 }
 
-function NavLinks({
-  items,
-  pathname,
-  onClose,
+function SidebarLink({
+  item,
+  badgeCount,
+  collapsed,
+  onNavigate,
 }: {
-  items: NavItem[]
-  pathname: string
-  onClose?: () => void
+  item: NavItem
+  badgeCount: number
+  collapsed: boolean
+  onNavigate?: () => void
 }) {
-  return (
-    <nav style={{ flex: 1, padding: '0 12px' }}>
-      <div style={{ marginBottom: 8 }}>
-        <SectionLabel>Workspace</SectionLabel>
-      </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-        {items.map((item) => (
-          <NavLink key={item.href} item={item} pathname={pathname} onClose={onClose} />
-        ))}
-      </div>
-    </nav>
-  )
-}
+  const pathname = usePathname()
+  const isActive = isNavItemActive(pathname, item.href)
+  const Icon = item.icon
 
-function SettingsLink({ pathname, onClose }: { pathname: string; onClose?: () => void }) {
-  const isActive = pathname === '/settings' || pathname.startsWith('/settings/')
   return (
     <Link
-      href="/settings"
-      onClick={onClose}
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 8,
-        padding: '8px 12px',
-        borderRadius: 7,
-        cursor: 'pointer',
-        textDecoration: 'none',
-        marginBottom: 6,
-        background: isActive ? 'var(--sidebar-item-bg-active)' : 'transparent',
-        transition: 'background 0.15s',
-      }}
-      onMouseEnter={(e) => {
-        if (!isActive) e.currentTarget.style.background = 'rgba(236,232,225,0.06)'
-      }}
-      onMouseLeave={(e) => {
-        if (!isActive) e.currentTarget.style.background = 'transparent'
-      }}
+      href={item.href}
+      onClick={onNavigate}
+      title={collapsed ? item.label : undefined}
+      className={cn(
+        'flex items-center gap-2.5 rounded-[9px] px-[11px] py-[9px] text-[13.5px] no-underline',
+        'transition-[color,background-color,transform] duration-150 ease-contour',
+        isActive
+          ? 'bg-wash font-medium text-forest shadow-[inset_0_0_0_1px_rgba(46,158,104,0.16)]'
+          : 'text-text2 hover:translate-x-0.5 hover:bg-ink/[0.04] hover:text-ink',
+        collapsed && 'justify-center px-0'
+      )}
     >
-      <Settings size={14} style={{ color: isActive ? 'var(--sidebar-icon-active)' : 'rgba(236,232,225,0.30)' }} />
-      <span style={{ fontSize: 12, color: isActive ? 'var(--sidebar-text-active)' : 'rgba(236,232,225,0.38)' }}>
-        Settings
-      </span>
+      <Icon size={15} className={cn('shrink-0', isActive ? 'text-forest' : 'text-text3')} />
+      {!collapsed && (
+        <>
+          <span className="flex-1 truncate">{item.label}</span>
+          {badgeCount > 0 && (
+            <span className="rounded-full bg-wash px-[7px] py-0.5 text-[10.5px] font-semibold text-forest">
+              {badgeCount}
+            </span>
+          )}
+        </>
+      )}
     </Link>
   )
 }
 
-function AgencyChip({ agencyName }: { agencyName: string }) {
-  const initials = extractInitials(agencyName || 'A')
-  return (
-    <div
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 10,
-        padding: '10px 12px',
-        borderRadius: 8,
-        background: 'rgba(236,232,225,0.06)',
-        border: '0.5px solid rgba(236,232,225,0.10)',
-      }}
-    >
-      <div
-        style={{
-          width: 28,
-          height: 28,
-          borderRadius: '50%',
-          background: 'linear-gradient(135deg, #C07B55, #8B5A3A)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          fontSize: 11,
-          fontWeight: 500,
-          color: '#fff',
-          flexShrink: 0,
-        }}
-      >
-        {initials}
-      </div>
-      <div style={{ minWidth: 0 }}>
-        <div
-          style={{
-            fontSize: 12,
-            color: 'rgba(236,232,225,0.70)',
-            fontWeight: 500,
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-          }}
-        >
-          {agencyName || 'Agency'}
-        </div>
-        <div style={{ fontSize: 10, color: 'rgba(236,232,225,0.30)' }}>Agency workspace</div>
-      </div>
-    </div>
-  )
-}
-
-function DecorativeRings() {
-  return (
-    <svg
-      style={{ position: 'absolute', inset: 0, pointerEvents: 'none', width: '100%', height: '100%' }}
-      viewBox="0 0 220 700"
-      fill="none"
-    >
-      <ellipse cx="200" cy="350" rx="180" ry="180" stroke="rgba(236,232,225,0.025)" strokeWidth="50" />
-      <ellipse cx="200" cy="350" rx="120" ry="120" stroke="rgba(192,123,85,0.035)" strokeWidth="30" />
-    </svg>
-  )
-}
-
-export function Sidebar({ agencyMode, pendingCount = 0, ideasCount = 0, agencyName = '' }: SidebarProps) {
-  const pathname = usePathname()
+export function Sidebar({
+  agencyMode,
+  agencyName,
+  pendingCount,
+  ideasCount,
+  clients,
+  activeRuns,
+}: SidebarProps) {
   const router = useRouter()
   const [mobileOpen, setMobileOpen] = useState(false)
-
-  const agencyNav: NavItem[] = [
-    { label: 'Dashboard', href: '/dashboard', icon: <LayoutDashboard size={15} /> },
-    { label: 'Clients', href: '/clients', icon: <Users size={15} /> },
-    { label: 'Generate posts', href: '/generate', icon: <Sparkles size={15} /> },
-    { label: 'Review queue', href: '/review', icon: <ClipboardList size={15} />, badge: pendingCount },
-    { label: 'Calendar', href: '/calendar', icon: <Calendar size={15} /> },
-    { label: 'Client ideas', href: '/ideas', icon: <MessageSquare size={15} />, badge: ideasCount },
-    { label: 'Analytics', href: '/analytics', icon: <BarChart2 size={15} /> },
-  ]
-
-  const soloNav: NavItem[] = [
-    { label: 'Dashboard', href: '/dashboard', icon: <LayoutDashboard size={15} /> },
-    { label: 'Create content', href: '/generate', icon: <Sparkles size={15} /> },
-    { label: 'My drafts', href: '/review', icon: <ClipboardList size={15} />, badge: pendingCount },
-    { label: 'My calendar', href: '/calendar', icon: <Calendar size={15} /> },
-    { label: 'My results', href: '/analytics', icon: <BarChart2 size={15} /> },
-  ]
-
-  const navItems = agencyMode === 'solo' ? soloNav : agencyNav
+  const [paletteOpen, setPaletteOpen] = useState(false)
+  const collapsed = useSyncExternalStore(subscribeToCollapse, readCollapsed, () => false)
 
   async function handleSignOut() {
     const supabase = createBrowserSupabaseClient()
@@ -267,112 +147,161 @@ export function Sidebar({ agencyMode, pendingCount = 0, ideasCount = 0, agencyNa
     router.refresh()
   }
 
-  const sidebarContent = (onClose?: () => void) => (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', position: 'relative', overflow: 'hidden' }}>
-      <DecorativeRings />
+  const badgeCounts: Record<NavBadge, number> = { pending: pendingCount, ideas: ideasCount }
 
-      {/* Logo */}
-      <div style={{ padding: '26px 22px 32px', position: 'relative', zIndex: 1 }}>
-        <Link href="/dashboard" style={{ display: 'inline-block', textDecoration: 'none' }}>
-          <LogoMark />
-        </Link>
-      </div>
-
-      {/* Nav */}
-      <div style={{ position: 'relative', zIndex: 1, flex: 1 }}>
-        <NavLinks items={navItems} pathname={pathname} onClose={onClose} />
-      </div>
-
-      {/* Footer */}
-      <div style={{ padding: '12px', position: 'relative', zIndex: 1 }}>
-        <SettingsLink pathname={pathname} onClose={onClose} />
+  function renderContent({ isCollapsed, onNavigate }: { isCollapsed: boolean; onNavigate?: () => void }) {
+    return (
+      <div className="flex h-full flex-col overflow-hidden pt-6">
+        <div className="px-2.5">
+          <LogoMark collapsed={isCollapsed} />
+        </div>
 
         <button
-          onClick={handleSignOut}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-            padding: '8px 12px',
-            borderRadius: 7,
-            fontSize: 12,
-            color: 'rgba(236,232,225,0.38)',
-            background: 'transparent',
-            cursor: 'pointer',
-            transition: 'background 0.15s',
-            border: 'none',
-            width: '100%',
-            textAlign: 'left',
-            fontFamily: 'var(--font-sans)',
-            marginBottom: 8,
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = 'rgba(236,232,225,0.06)'
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = 'transparent'
-          }}
+          type="button"
+          onClick={() => setPaletteOpen(true)}
+          className={cn(
+            'mx-2.5 mb-3 mt-0.5 flex items-center gap-2 rounded-[9px] bg-sunken px-3 py-2',
+            'text-[12.5px] text-text3 transition-colors hover:bg-line',
+            isCollapsed && 'mx-2 justify-center gap-0 px-0 py-2.5'
+          )}
         >
-          <LogOut size={14} style={{ color: 'rgba(236,232,225,0.30)' }} />
-          Sign out
+          <Search size={13} className="shrink-0" />
+          {!isCollapsed && (
+            <>
+              Search
+              <kbd className="ml-auto rounded-[5px] border border-line2 bg-surface px-1.5 py-px text-[9.5px] font-semibold text-text3">
+                ⌘K
+              </kbd>
+            </>
+          )}
         </button>
 
-        <AgencyChip agencyName={agencyName} />
+        {!isCollapsed && (
+          <div className="px-3 pb-2 pt-1 text-[9.5px] font-semibold uppercase tracking-[0.16em] text-text3">
+            Workspace
+          </div>
+        )}
+
+        <nav className="flex flex-col gap-0.5 px-2.5">
+          {getNavItems(agencyMode).map((item) => (
+            <SidebarLink
+              key={item.href}
+              item={item}
+              badgeCount={item.badge ? badgeCounts[item.badge] : 0}
+              collapsed={isCollapsed}
+              onNavigate={onNavigate}
+            />
+          ))}
+        </nav>
+
+        <div className="flex-1" />
+
+        {/* Always mounted (it renders nothing when idle) so a run started by cron
+            is picked up when the tab regains focus. */}
+        {!isCollapsed && <ActiveRunsCard initialRuns={activeRuns} />}
+
+        <div className="mx-2.5 mb-1 flex flex-col gap-0.5 border-t border-line pt-1.5">
+          <SidebarLink
+            item={SETTINGS_NAV_ITEM}
+            badgeCount={0}
+            collapsed={isCollapsed}
+            onNavigate={onNavigate}
+          />
+          <button
+            type="button"
+            onClick={handleSignOut}
+            className={cn(
+              'flex items-center gap-2.5 rounded-[9px] px-[11px] py-[9px] text-left text-[13.5px]',
+              'text-text2 transition-colors hover:bg-ink/[0.04] hover:text-ink',
+              isCollapsed && 'justify-center px-0'
+            )}
+          >
+            <LogOut size={15} className="shrink-0 text-text3" />
+            {!isCollapsed && 'Sign out'}
+          </button>
+        </div>
+
+        <div
+          className={cn(
+            'mx-1 mb-0.5 flex items-center gap-2.5 rounded-[11px] bg-[#F6F8F5] p-2.5',
+            isCollapsed && 'justify-center p-2'
+          )}
+        >
+          <span className="grid size-7 shrink-0 place-items-center rounded-full bg-wash text-[11px] font-semibold text-forest">
+            {extractInitials(agencyName || 'A')}
+          </span>
+          {!isCollapsed && (
+            <div className="min-w-0">
+              <div className="truncate text-[13px] text-ink">{agencyName || 'Agency'}</div>
+              <div className="text-[11px] text-text3">
+                {agencyMode === 'solo' ? 'Solo workspace' : 'Agency workspace'}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
-    </div>
-  )
+    )
+  }
 
   return (
     <>
-      {/* Desktop sidebar */}
       <aside
-        className="hidden md:block shrink-0 h-screen sticky top-0"
-        style={{ width: 224, background: 'var(--sidebar-bg)' }}
+        className={cn(
+          'app-sidebar relative hidden shrink-0 rounded-card border border-ink/[0.06] bg-surface',
+          'shadow-card transition-[width] duration-300 ease-contour md:block',
+          collapsed ? 'w-[78px]' : 'w-60'
+        )}
       >
-        {sidebarContent()}
+        <button
+          type="button"
+          onClick={() => writeCollapsed(!collapsed)}
+          aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          className="absolute -right-3 top-6 z-10 grid size-[26px] place-items-center rounded-full border border-line bg-surface text-text2 shadow-pop transition-colors hover:text-forest"
+        >
+          <ChevronLeft
+            size={12}
+            className={cn('transition-transform duration-300 ease-contour', collapsed && 'rotate-180')}
+          />
+        </button>
+        {renderContent({ isCollapsed: collapsed })}
       </aside>
 
-      {/* Mobile hamburger */}
       <button
-        className="md:hidden fixed top-3 left-3 z-40 p-2 rounded-lg border shadow-sm"
-        style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border-1)' }}
+        type="button"
+        className="app-topbar fixed left-3 top-3 z-40 rounded-chip border border-line bg-surface p-2 shadow-pop md:hidden"
         onClick={() => setMobileOpen(true)}
         aria-label="Open menu"
       >
-        <Menu size={16} style={{ color: 'var(--color-text-2)' }} />
+        <Menu size={16} className="text-text2" />
       </button>
 
-      {/* Mobile drawer */}
       {mobileOpen && (
-        <div className="md:hidden fixed inset-0 z-50 flex">
+        <div className="fixed inset-0 z-50 flex md:hidden">
           <div
-            className="absolute inset-0"
-            style={{ background: 'rgba(26,25,24,0.45)' }}
+            className="absolute inset-0 bg-ink/45"
             onClick={() => setMobileOpen(false)}
             aria-hidden="true"
           />
-          <aside
-            className="relative h-full shadow-xl"
-            style={{ width: 224, background: 'var(--sidebar-bg)' }}
-          >
+          <aside className="relative h-full w-60 bg-surface shadow-frame">
             <button
+              type="button"
               onClick={() => setMobileOpen(false)}
-              className="absolute top-4 right-4"
-              style={{
-                color: 'var(--sidebar-text)',
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                zIndex: 2,
-              }}
+              className="absolute right-4 top-4 z-10 text-text2"
               aria-label="Close menu"
             >
               <X size={16} />
             </button>
-            {sidebarContent(() => setMobileOpen(false))}
+            {renderContent({ isCollapsed: false, onNavigate: () => setMobileOpen(false) })}
           </aside>
         </div>
       )}
+
+      <CommandPalette
+        open={paletteOpen}
+        onOpenChange={setPaletteOpen}
+        agencyMode={agencyMode}
+        clients={clients}
+      />
     </>
   )
 }

@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react'
 import { ChevronLeft } from 'lucide-react'
 import { BatchScheduleModal } from '@/components/scheduling/batch-schedule-modal'
-import { ReviewHeader } from './review-header'
+import { ReviewControls } from './review-controls'
 import { ReviewPostList } from './review-post-list'
 import { ReviewPostView } from './review-post-view'
 import {
@@ -89,7 +89,7 @@ export function ReviewQueue({ initialPosts, clients, bestTimeMap }: ReviewQueueP
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
-      <ReviewHeader
+      <ReviewControls
         pendingCount={posts.length}
         approvedCount={approvedPosts.length}
         onApproveAll={handleApproveAll}

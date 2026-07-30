@@ -232,6 +232,17 @@ export interface DashboardChangeRequest {
   postNumber: number
 }
 
+// ---- Generation runs ----
+
+/** A generation batch currently composing, as surfaced by the app shell. */
+export interface ActiveRun {
+  id: string
+  clientName: string
+  targetCount: number
+  doneCount: number
+  startedAt: string
+}
+
 // ---- Notifications ----
 
 export type NotificationType = 'client_approved_all' | 'client_feedback'
