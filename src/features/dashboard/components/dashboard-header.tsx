@@ -38,7 +38,7 @@ export function DashboardHeader({ agencyName, clientCount, isSolo, timezone }: D
     : `${clientCount} ${clientCount === 1 ? 'client' : 'clients'} active`
 
   return (
-    <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
+    <div className="mb-10 flex flex-wrap items-end justify-between gap-4">
       <div>
         <h1 className="text-[23px] font-semibold tracking-[-0.02em] text-ink">
           {resolveGreeting(timezone)},{' '}
@@ -57,18 +57,18 @@ export function DashboardHeader({ agencyName, clientCount, isSolo, timezone }: D
         </p>
       </div>
 
-      <div className="flex gap-2.5">
+      <div className="flex gap-2">
         {!isSolo && (
           <Link
             href="/clients/new"
-            className="inline-flex items-center rounded-sm border border-line2 px-5 py-3 text-[14px] font-medium text-ink no-underline transition-colors hover:border-forest hover:bg-wash hover:text-forest"
+            className="inline-flex items-center rounded-sm border border-line2 px-3.5 py-2 text-[13px] font-medium text-ink no-underline transition-colors hover:border-forest hover:bg-wash hover:text-forest"
           >
             Add client
           </Link>
         )}
         <Link
           href="/generate"
-          className="inline-flex items-center gap-2 rounded-sm bg-forest px-5 py-3 text-[14px] font-medium text-white no-underline transition-[background-color,transform,box-shadow] duration-150 ease-contour hover:-translate-y-px hover:bg-forest-deep hover:shadow-pop"
+          className="inline-flex items-center gap-2 rounded-sm bg-forest px-3.5 py-2 text-[13px] font-medium text-white no-underline transition-[background-color,transform,box-shadow] duration-150 ease-contour hover:-translate-y-px hover:bg-forest-deep hover:shadow-pop"
         >
           {isSolo ? 'Create content' : 'Generate posts'} <span aria-hidden="true">→</span>
         </Link>
