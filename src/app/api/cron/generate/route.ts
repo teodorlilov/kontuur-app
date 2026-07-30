@@ -93,12 +93,11 @@ export async function GET(request: NextRequest) {
       const postType = (brandProfile?.default_post_type ?? 'single') as PostType
       const slideCount = brandProfile?.default_carousel_slides ?? DEFAULT_CAROUSEL_SLIDES
 
-      // 8. Create generation run (mirrors the wizard flow for dedup tracking)
+      // 8. Create generation run (mirrors the wizard flow for dedup tracking).
+      // A null runId means tracking failed — startGenerationRun has already
+      // logged why, and generation proceeds untracked rather than aborting.
       const total = (schedule as { frequency_value: number }).frequency_value || 1
       runId = await startGenerationRun(supabase, { clientId, platform, targetCount: total })
-      if (!runId) {
-        console.error(`[cron] Failed to create generation run for client ${clientId}`)
-      }
 
       // 9. Research themes via Tavily + LLM (same pipeline as wizard)
       const researchStartedAt = Date.now()

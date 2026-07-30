@@ -1,70 +1,16 @@
-'use client'
-
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { formatRelativeTime, parseTimestamp } from '@/utils/format'
 import type { ActiveRun } from '@/types/api'
 
-/** How often to re-check while something is composing. */
-const POLL_INTERVAL_MS = 8_000
-
 interface ActiveRunsCardProps {
-  initialRuns: ActiveRun[]
+  runs: ActiveRun[]
 }
 
 /**
- * "Composing drafts" indicator. Polls only while a run is in flight, so an idle
- * dashboard issues no requests; a run started elsewhere (cron) is picked up when
- * the tab regains focus.
+ * "Composing drafts" indicator. Presentational only — polling lives in
+ * useActiveRuns, so hiding or remounting this card cannot start, stop or
+ * duplicate it.
  */
-export function ActiveRunsCard({ initialRuns }: ActiveRunsCardProps) {
-  const router = useRouter()
-  const [runs, setRuns] = useState(initialRuns)
-  const [serverRuns, setServerRuns] = useState(initialRuns)
-  const hadRunsRef = useRef(initialRuns.length > 0)
-
-  // A fresh server render is authoritative — adopt it during render rather than
-  // syncing props into state from an effect.
-  if (initialRuns !== serverRuns) {
-    setServerRuns(initialRuns)
-    setRuns(initialRuns)
-  }
-
-  const refresh = useCallback(async () => {
-    let next: ActiveRun[]
-    try {
-      const response = await fetch('/api/generation/active')
-      if (!response.ok) return
-      const payload: { runs?: ActiveRun[] } = await response.json()
-      next = payload.runs ?? []
-    } catch {
-      // A dropped poll is not worth surfacing — the next tick reconciles.
-      return
-    }
-
-    setRuns(next)
-
-    // A batch just finished: pull the server-rendered counts back in step.
-    if (hadRunsRef.current && next.length === 0) router.refresh()
-    hadRunsRef.current = next.length > 0
-  }, [router])
-
-  useEffect(() => {
-    function handleFocus() {
-      void refresh()
-    }
-    window.addEventListener('focus', handleFocus)
-    return () => window.removeEventListener('focus', handleFocus)
-  }, [refresh])
-
-  useEffect(() => {
-    if (runs.length === 0) return
-    const timer = window.setInterval(() => void refresh(), POLL_INTERVAL_MS)
-    return () => window.clearInterval(timer)
-  }, [runs.length, refresh])
-
-  if (runs.length === 0) return null
-
+export function ActiveRunsCard({ runs }: ActiveRunsCardProps) {
   const [run] = runs
   if (!run) return null
 
@@ -76,8 +22,7 @@ export function ActiveRunsCard({ initialRuns }: ActiveRunsCardProps) {
       : `Researching for ${label}`
 
   return (
-    <div
-      className="surface-live mx-2.5 mb-3 rounded-panel border border-spring/20 p-3">
+    <div className="surface-live mx-2.5 mb-3 rounded-panel border border-spring/20 p-3">
       <div className="flex items-center gap-[7px] text-[12px] font-medium text-ink">
         <span className="live-dot size-1.5 shrink-0 rounded-full bg-spring" />
         Composing drafts

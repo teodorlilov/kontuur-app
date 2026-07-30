@@ -1,8 +1,7 @@
 export const CHART_COLORS = {
-  primary: '#164430',
-  secondary: '#2E9E68',
-  tertiary: '#8A6116',
-  reach: '#7FA588',
+  /** Engagement/reach series. */
+  reach: '#2E9E68',
+  /** Follower series — a distinct hue, the two are read side by side. */
   follower: '#164430',
   grid: '#E7ECE7',
   label: '#8B958D',

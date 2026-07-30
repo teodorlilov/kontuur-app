@@ -6,14 +6,10 @@ import {
   getCachedAgencyClients,
   getCachedClientWeekCoverage,
 } from '@/lib/queries/cache'
-import { getMondayISO } from '@/utils/date-helpers'
+import { getMondayISO, getWeekdayIndex } from '@/utils/date-helpers'
 import { formatRelativeTime, parseTimestamp } from '@/utils/format'
 import { fetchDashboardData } from '@/features/dashboard/queries'
-import {
-  countFilledPerDay,
-  describePublishedDelta,
-  resolveTodayIndex,
-} from '@/features/dashboard/lib/metrics'
+import { countFilledPerDay, describePublishedDelta } from '@/features/dashboard/lib/metrics'
 import { DAYS_PER_WEEK } from '@/utils/constants'
 import { DashboardHeader } from '@/features/dashboard/components/dashboard-header'
 import { StatCard } from '@/features/dashboard/components/stat-card'
@@ -36,11 +32,13 @@ export default async function DashboardPage() {
 
   const isSolo = agency?.mode === 'solo'
   const timezone = agency?.timezone ?? 'UTC'
-  const weekStartISO = getMondayISO()
+  // The week is the agency's, not the server's — otherwise the "today" marker
+  // can point at a day outside the week the data was fetched for.
+  const weekStartISO = getMondayISO(new Date(), timezone)
 
   const [data, coverage] = await Promise.all([
-    fetchDashboardData(supabase, agencyId, clients, weekStartISO),
-    getCachedClientWeekCoverage(agencyId, weekStartISO),
+    fetchDashboardData(supabase, agencyId, clients, weekStartISO, timezone),
+    getCachedClientWeekCoverage(agencyId, weekStartISO, timezone),
   ])
 
   const { metrics } = data
@@ -71,7 +69,7 @@ export default async function DashboardPage() {
               tone: 'positive',
             }}
           >
-            <MiniWeek counts={filledPerDay} todayIndex={resolveTodayIndex(timezone)} />
+            <MiniWeek counts={filledPerDay} todayIndex={getWeekdayIndex(new Date(), timezone)} />
           </StatCard>
         </div>
 

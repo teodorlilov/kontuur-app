@@ -21,6 +21,7 @@ interface CoverageRowProps {
 }
 
 export function CoverageRow({ clientId, name, week, pendingCount, tier }: CoverageRowProps) {
+  const publishedCount = week.filter((day) => day === 'published').length
   const scheduledCount = week.filter((day) => day !== 'open').length
   const isDark = tier >= DARK_TIER_INDEX
   const isEmpty = scheduledCount === 0
@@ -33,6 +34,12 @@ export function CoverageRow({ clientId, name, week, pendingCount, tier }: Covera
       ]
         .filter(Boolean)
         .join(' · ')
+
+  // The chips are a graphic, so they carry no text — this is the same week
+  // stated once for anyone who cannot see them.
+  const chipSummary =
+    `${publishedCount} published, ${scheduledCount - publishedCount} scheduled, ` +
+    `${week.length - scheduledCount} open`
 
   return (
     <div
@@ -59,6 +66,8 @@ export function CoverageRow({ clientId, name, week, pendingCount, tier }: Covera
           {summary}
         </div>
       </div>
+
+      <span className="sr-only">{chipSummary}</span>
 
       <div className="flex shrink-0 gap-1.5" aria-hidden="true">
         {week.map((day, index) => (

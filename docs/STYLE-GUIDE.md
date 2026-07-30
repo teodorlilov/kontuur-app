@@ -66,11 +66,9 @@ use classes (`bg-wash`, `text-forest`), not inline `style` objects**.
   --danger: #b04a38;  --danger-bg: #fbefec;  --danger-line: #e8cfc9;
   --pending: #8a6116; --pending-bg: #f7efdc;
 
-  /* Textures, elevation, motion, radius */
+  /* Textures, elevation */
   --dot-grid / --hatch / --hatch-inv
   --sh-card / --sh-pop / --sh-frame / --sh-dark
-  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
-  --radius-xs 4 · sm 8 · md 10 · lg 14 · xl 20 · full
 }
 ```
 
@@ -80,10 +78,44 @@ to these values so surfaces that have not been rebuilt still follow the palette.
 surface. `--sidebar-*` stays a dark ramp: it now serves the onboarding and
 client-settings rails, not the app sidebar, which is light.
 
+### Radius and easing
+
+These live in a `@theme` block (**not** `@theme inline`), because both need to
+exist as real custom properties — around twenty places read `var(--radius-*)`
+directly, and `.rv` reads `var(--ease-contour)`.
+
+```css
+@theme {
+  --radius-xs: 4px;  --radius-sm: 8px;  --radius-md: 10px;
+  --radius-lg: 14px; --radius-xl: 20px; --radius-full: 9999px;
+  --ease-contour: cubic-bezier(0.22, 1, 0.36, 1);
+}
+```
+
+**The radius names are Tailwind's own, so this replaces its scale app-wide.**
+That is deliberate, and it reaches surfaces that have not been rebuilt yet:
+
+| Utility | Tailwind default | Here |
+| --- | --- | --- |
+| `rounded-xs` | 2px | 4px |
+| `rounded-sm` | 4px | 8px |
+| `rounded-md` | 6px | 10px |
+| `rounded-lg` | 8px | 14px |
+| `rounded-xl` | 12px | 20px |
+
+Declaring them in `@theme` rather than a plain `:root` block matters: an
+unlayered `:root` would *shadow* Tailwind's `@layer theme` values rather than
+replace them, leaving two live declarations whose winner depends on cascade
+order. Keep them here.
+
+The easing is deliberately **not** called `--ease-out`. Overriding that name
+would silently retime every `ease-out` utility in the app; `ease-contour` is
+additive instead.
+
 ### Tailwind utilities
 
-`@theme inline` registers colours, radii and shadows under names that do not
-collide with Tailwind's defaults:
+`@theme inline` registers colours and shadows under names outside Tailwind's own
+namespaces, so no existing utility changes meaning:
 
 | Utility | Token |
 | --- | --- |
@@ -293,7 +325,7 @@ and client-settings rails.
 .card {
   background: var(--color-surface);
   border: 0.5px solid var(--color-border-1);
-  border-radius: var(--radius-lg); /* 12px */
+  border-radius: var(--radius-lg); /* 14px */
   padding: 20px 24px;
 }
 ```

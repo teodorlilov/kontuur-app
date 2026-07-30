@@ -1,7 +1,6 @@
 import { cn } from '@/utils/cn'
 import { CountUp } from '@/features/dashboard/components/count-up'
-
-export type StatPillTone = 'positive' | 'attention' | 'muted' | 'accent'
+import type { StatPillTone } from '@/features/dashboard/types'
 
 const PILL_CLASSES: Record<StatPillTone, string> = {
   positive: 'bg-wash text-forest',

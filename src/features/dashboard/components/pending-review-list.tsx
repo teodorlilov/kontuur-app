@@ -8,10 +8,8 @@ import { toast } from 'sonner'
 import { updatePost } from '@/lib/actions/post-actions'
 import { formatRelativeTime, parseTimestamp } from '@/utils/format'
 import { cn } from '@/utils/cn'
+import { COVERAGE_LIST_HEIGHT } from '@/features/dashboard/lib/layout'
 import type { PendingPostPreview } from '@/features/dashboard/queries'
-
-/** Matches the coverage block's row area so the two columns line up. */
-const SCROLL_HEIGHT = 240
 
 interface PendingReviewListProps {
   posts: PendingPostPreview[]
@@ -69,7 +67,7 @@ export function PendingReviewList({ posts, totalPending }: PendingReviewListProp
 
       <div
         className="mt-3 flex flex-col gap-2 overflow-y-auto pr-1"
-        style={{ height: SCROLL_HEIGHT }}
+        style={{ height: COVERAGE_LIST_HEIGHT }}
       >
         {queue.length === 0 ? (
           <div className="flex h-full flex-col items-center justify-center gap-2.5">

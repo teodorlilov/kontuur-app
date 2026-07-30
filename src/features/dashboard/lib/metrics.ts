@@ -1,9 +1,7 @@
 import { DAYS_PER_WEEK } from '@/utils/constants'
 import type { DayState } from '@/lib/queries/cache'
-import type { StatPillTone } from '@/features/dashboard/components/stat-card'
+import type { StatPillTone } from '@/features/dashboard/types'
 import type { DashboardMetrics } from '@/features/dashboard/queries'
-
-const WEEKDAY_ORDER = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 
 /** Filled slots per weekday across every client, Monday first. */
 export function countFilledPerDay(coverage: Record<string, DayState[]>): number[] {
@@ -14,14 +12,6 @@ export function countFilledPerDay(coverage: Record<string, DayState[]>): number[
     })
   }
   return counts
-}
-
-/** Monday-first index of today in the agency's timezone. */
-export function resolveTodayIndex(timezone: string): number {
-  const weekday = new Intl.DateTimeFormat('en-US', { weekday: 'long', timeZone: timezone }).format(
-    new Date()
-  )
-  return Math.max(WEEKDAY_ORDER.indexOf(weekday), 0)
 }
 
 /** Month-over-month movement, phrased only when there is something to compare. */

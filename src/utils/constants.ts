@@ -23,19 +23,33 @@ export const USER_AGENT_BOT = 'PostflowBot/1.0'
 export const PLATFORMS = ['Instagram', 'Facebook', 'LinkedIn', 'X / Twitter', 'TikTok'] as const
 
 /**
- * Per-client identity colours. A single forest→sage ramp rather than a rainbow:
- * clients stay distinguishable by lightness, not by competing hues.
+ * Per-client identity colours — the one job here is telling clients apart, so
+ * these step through hue AND lightness. A pure green ramp was tried and failed:
+ * at pill opacity, forest vs forest-deep and spring vs sea read as the same
+ * swatch. Kept desaturated so none of them competes with the green chrome.
+ * Consumed as dots/avatars directly, and as calendar pills via CLIENT_PILL_TONES.
  */
 export const CLIENT_COLORS = [
-  '#164430',
-  '#2E9E68',
-  '#7FA588',
-  '#0C2E20',
-  '#3E8E6E',
-  '#5C8A6E',
-  '#1F6B4A',
-  '#96BFA4',
+  '#164430', // forest
+  '#2E9E68', // spring
+  '#1F6B7A', // teal
+  '#8A6116', // ochre
+  '#6E7F52', // olive
+  '#5FA8B5', // sky
+  '#A2603F', // clay
+  '#7FA588', // sage
 ] as const
+
+/**
+ * Calendar pill tones, derived from CLIENT_COLORS rather than hand-listed a
+ * second time — the same client must read as the same colour on the dashboard
+ * dot and the calendar pill, and two literal tables would drift.
+ */
+export const CLIENT_PILL_TONES = CLIENT_COLORS.map((hex) => ({
+  dotColor: hex,
+  bgColor: `color-mix(in srgb, ${hex} 12%, transparent)`,
+  textColor: `color-mix(in srgb, ${hex} 72%, var(--ink))`,
+}))
 
 export const AVATAR_GRADIENTS = [
   'linear-gradient(135deg, #2E9E68, #16593C)',

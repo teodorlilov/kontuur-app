@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { getCachedPendingRows, type PendingRow } from '@/lib/queries/cache'
+import { getCachedPendingRows, SCHEDULED_STATUSES, type PendingRow } from '@/lib/queries/cache'
 import { BRIEFING_COLUMNS } from '@/lib/queries/select-columns'
+import { getMonthBoundaries, getWeekRange } from '@/utils/date-helpers'
 import { fetchImagesByPost } from '@/features/publishing/lib/fetch-post-images'
 import type { CarouselSlide, DashboardChangeRequest } from '@/types/api'
 
@@ -79,6 +80,28 @@ interface ClientSummary {
 /** The dashboard queue scrolls, so it holds more than a glance's worth. */
 const PENDING_PREVIEW_LIMIT = 12
 const CHANGE_REQUEST_LIMIT = 5
+
+interface QueryOutcome {
+  error: { message: string } | null
+}
+
+/**
+ * A failed count is not zero. Logging here keeps the dashboard from presenting
+ * an outage as a real figure — the boundary can still render, but the reason is
+ * on record rather than lost.
+ */
+function readCount(result: QueryOutcome & { count: number | null }, label: string): number {
+  if (result.error) {
+    console.error(`[dashboard] ${label} count failed:`, result.error.message)
+    return 0
+  }
+  return result.count ?? 0
+}
+
+/** Same contract for the list queries, which degrade to an empty section. */
+function logIfFailed(result: QueryOutcome, label: string): void {
+  if (result.error) console.error(`[dashboard] ${label} query failed:`, result.error.message)
+}
 
 /** Fetch all tokens in the given batches and return a map of postId → 1-indexed position. */
 async function fetchBatchPositions(
@@ -163,15 +186,16 @@ export async function fetchDashboardData(
   supabase: SupabaseClient,
   agencyId: string,
   clients: ClientSummary[],
-  weekStartISO: string
+  weekStartISO: string,
+  timeZone: string
 ): Promise<DashboardData> {
   const clientIds = clients.map((client) => client.id)
   const clientNames = new Map(clients.map((client) => [client.id, client.name]))
 
-  const now = new Date()
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
-  const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString()
-  const weekStart = new Date(`${weekStartISO}T00:00:00`).toISOString()
+  // Every boundary below is the agency's, not the server's — the same range the
+  // coverage grid is built from, so the two halves of a card always agree.
+  const { monthStart, lastMonthStart } = getMonthBoundaries(timeZone)
+  const { from: weekStart, to: weekEnd } = getWeekRange(weekStartISO, timeZone)
 
   const clientsAddedThisMonth = clients.filter(
     (client) => client.created_at !== null && client.created_at >= monthStart
@@ -208,8 +232,11 @@ export async function fetchDashboardData(
     supabase
       .from('posts')
       .select('id', { count: 'exact', head: true })
-      .eq('status', 'scheduled')
+      // Bounded at both ends: .gte alone counted every future post ever
+      // scheduled, under a label that says "this week".
+      .in('status', SCHEDULED_STATUSES)
       .gte('scheduled_at', weekStart)
+      .lt('scheduled_at', weekEnd)
       .in('client_id', clientIds),
     supabase
       .from('posts')
@@ -251,6 +278,11 @@ export async function fetchDashboardData(
       .limit(CHANGE_REQUEST_LIMIT),
   ])
 
+  logIfFailed(connectionsRes, 'connections')
+  logIfFailed(briefingRes, 'briefing')
+  logIfFailed(pendingPostsRes, 'pending posts')
+  logIfFailed(changeRequestsRes, 'change requests')
+
   const { clientPendingMap, oldestPendingAt } = summarisePending(pendingRows)
   const connectedClients = new Set(
     ((connectionsRes.data as Array<{ client_id: string | null }> | null) ?? [])
@@ -275,9 +307,9 @@ export async function fetchDashboardData(
 
   return {
     metrics: {
-      scheduledThisWeek: scheduledRes.count ?? 0,
-      publishedThisMonth: publishedThisMonthRes.count ?? 0,
-      publishedLastMonth: publishedLastMonthRes.count ?? 0,
+      scheduledThisWeek: readCount(scheduledRes, 'scheduled this week'),
+      publishedThisMonth: readCount(publishedThisMonthRes, 'published this month'),
+      publishedLastMonth: readCount(publishedLastMonthRes, 'published last month'),
       pendingCount: pendingRows.length,
       oldestPendingAt,
       clientPendingMap,

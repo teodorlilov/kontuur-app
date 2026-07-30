@@ -14,6 +14,7 @@ export function MiniWeek({ counts, todayIndex }: MiniWeekProps) {
     <div className="mt-3.5 flex h-9 items-end gap-1.5">
       {counts.map((count, index) => {
         const isFilled = count > 0
+        const isToday = index === todayIndex
         const height = isFilled ? 40 + (count / busiest) * 60 : 58
 
         return (
@@ -21,18 +22,14 @@ export function MiniWeek({ counts, todayIndex }: MiniWeekProps) {
             key={index}
             className={cn(
               'flex-1 rounded-full',
-              index === todayIndex ? 'bg-accent' : isFilled ? 'bg-white/85' : 'bg-transparent'
-            )}
-            style={{
-              height: `${height}%`,
+              isToday && 'bg-accent',
+              !isToday && isFilled && 'bg-white/85',
               // Hatching marks an open slot — nothing scheduled that day yet.
-              ...(isFilled || index === todayIndex
-                ? undefined
-                : {
-                    background:
-                      'repeating-linear-gradient(45deg, rgba(255,255,255,0.30) 0 2px, transparent 2px 5px)',
-                  }),
-            }}
+              // Same texture token the coverage chips use on dark surfaces.
+              !isToday && !isFilled && 'slot-open-inv'
+            )}
+            // Bar height is the datum, so it is the one thing that stays inline.
+            style={{ height: `${height}%` }}
           />
         )
       })}

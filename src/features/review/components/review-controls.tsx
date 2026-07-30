@@ -14,7 +14,7 @@ interface ReviewControlsProps {
  */
 export function ReviewControls({ pendingCount, approvedCount, onApproveAll }: ReviewControlsProps) {
   return (
-    <div className="flex shrink-0 items-center gap-2.5 px-4 pb-2 pt-1 md:px-[18px]">
+    <div className="flex shrink-0 items-center gap-2.5 px-4 pb-2 pt-2 md:px-[18px]">
       {pendingCount > 0 && (
         <span className="rounded-chip bg-pending-bg px-2 py-[3px] text-[10px] font-semibold text-pending">
           {pendingCount} pending

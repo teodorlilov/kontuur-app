@@ -1,5 +1,12 @@
 import Link from 'next/link'
-import { BarChart2, CircleCheck, Sparkles, UserPlus } from 'lucide-react'
+import { BarChart2, CircleCheck, Sparkles, UserPlus, type LucideIcon } from 'lucide-react'
+
+interface QuickAction {
+  href: string
+  icon: LucideIcon
+  title: string
+  subtitle: string
+}
 
 interface QuickActionsStripProps {
   pendingCount: number
@@ -7,7 +14,7 @@ interface QuickActionsStripProps {
 }
 
 export function QuickActionsStrip({ pendingCount, isSolo }: QuickActionsStripProps) {
-  const actions = [
+  const actions: Array<QuickAction | false> = [
     {
       href: '/generate',
       icon: Sparkles,
@@ -35,13 +42,11 @@ export function QuickActionsStrip({ pendingCount, isSolo }: QuickActionsStripPro
       title: isSolo ? 'My results' : 'Analytics',
       subtitle: 'View performance',
     },
-  ].filter((action): action is { href: string; icon: typeof Sparkles; title: string; subtitle: string } =>
-    Boolean(action)
-  )
+  ]
 
   return (
     <div className="grid grid-cols-2 gap-3 @2xl:grid-cols-4">
-      {actions.map((action) => {
+      {actions.filter((action): action is QuickAction => action !== false).map((action) => {
         const Icon = action.icon
         return (
           <Link

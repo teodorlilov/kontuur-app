@@ -24,7 +24,7 @@ export async function startGenerationRun(
   supabase: SupabaseClient,
   input: { clientId: string; platform: string; targetCount: number }
 ): Promise<string | null> {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('generation_runs')
     .insert({
       client_id: input.clientId,
@@ -35,6 +35,13 @@ export async function startGenerationRun(
     .select('id')
     .single()
 
+  // Generation itself still proceeds without a run row, so this is logged
+  // rather than thrown — but losing the reason would make it undiagnosable.
+  if (error) {
+    console.error(`[generation] could not open a run for client ${input.clientId}:`, error.message)
+    return null
+  }
+
   return (data as { id: string } | null)?.id ?? null
 }
 
@@ -44,10 +51,16 @@ export async function finishGenerationRun(
   runId: string,
   status: 'complete' | 'failed'
 ): Promise<void> {
-  await supabase
+  const { error } = await supabase
     .from('generation_runs')
     .update({ status, completed_at: new Date().toISOString() })
     .eq('id', runId)
+
+  // The staleness window hides this from the UI within minutes, which is
+  // exactly why it would otherwise never be noticed.
+  if (error) {
+    console.error(`[generation] could not close run ${runId} as ${status}:`, error.message)
+  }
 }
 
 /** Runs an agency has in flight right now, with how many posts have landed so far. */

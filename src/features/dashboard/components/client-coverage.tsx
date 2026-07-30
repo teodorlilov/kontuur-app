@@ -4,20 +4,14 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { ChevronLeft, ChevronRight, Users } from 'lucide-react'
 import { CoverageRow } from '@/features/dashboard/components/coverage-row'
+import {
+  COVERAGE_LIST_HEIGHT,
+  COVERAGE_ROWS_PER_PAGE,
+} from '@/features/dashboard/lib/layout'
 import { DAYS_PER_WEEK } from '@/utils/constants'
 import type { DayState } from '@/lib/queries/cache'
 
 const EMPTY_WEEK: DayState[] = Array<DayState>(DAYS_PER_WEEK).fill('open')
-
-/** Keeps the block roughly the height of the review stack beside it. */
-const ROWS_PER_PAGE = 3
-
-/** A row is its 44px badge plus 14px padding top and bottom. */
-const ROW_HEIGHT = 72
-const ROW_GAP = 12
-
-/** Reserved so a part-full last page keeps the section exactly as tall. */
-const LIST_HEIGHT = ROWS_PER_PAGE * ROW_HEIGHT + (ROWS_PER_PAGE - 1) * ROW_GAP
 
 interface ClientCoverageProps {
   clients: Array<{ id: string; name: string }>
@@ -29,11 +23,11 @@ interface ClientCoverageProps {
 export function ClientCoverage({ clients, coverage, clientPendingMap }: ClientCoverageProps) {
   const [page, setPage] = useState(0)
 
-  const pageCount = Math.max(Math.ceil(clients.length / ROWS_PER_PAGE), 1)
+  const pageCount = Math.max(Math.ceil(clients.length / COVERAGE_ROWS_PER_PAGE), 1)
   // Clamp during render — the list can shrink under us when a client is removed.
   const currentPage = Math.min(page, pageCount - 1)
-  const firstIndex = currentPage * ROWS_PER_PAGE
-  const visible = clients.slice(firstIndex, firstIndex + ROWS_PER_PAGE)
+  const firstIndex = currentPage * COVERAGE_ROWS_PER_PAGE
+  const visible = clients.slice(firstIndex, firstIndex + COVERAGE_ROWS_PER_PAGE)
 
   return (
     <section>
@@ -69,7 +63,7 @@ export function ClientCoverage({ clients, coverage, clientPendingMap }: ClientCo
         </p>
       ) : (
         <>
-          <div className="mt-3 flex flex-col gap-3" style={{ minHeight: LIST_HEIGHT }}>
+          <div className="mt-3 flex flex-col gap-3" style={{ minHeight: COVERAGE_LIST_HEIGHT }}>
             {visible.map((client, index) => (
               <CoverageRow
                 key={client.id}

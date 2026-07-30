@@ -9,20 +9,10 @@ import {
   isSameMonth,
 } from '@/features/calendar/helpers'
 import { toDateKey } from '@/utils/date-helpers'
+import { CLIENT_PILL_TONES } from '@/utils/constants'
 import type { CalendarPost } from '@/types/api'
 
 const DAY_HEADERS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-
-/** Pill colour palette — cycles for unknown clients. Contour ramp: clients are
-    told apart by lightness, so no pill fights the green chrome. */
-const PALETTE = [
-  { dotColor: '#2E9E68', bgColor: 'rgba(46,158,104,0.12)', textColor: '#0C2E20' },
-  { dotColor: '#164430', bgColor: 'rgba(22,68,48,0.10)', textColor: '#0C2E20' },
-  { dotColor: '#7FA588', bgColor: 'rgba(127,165,136,0.16)', textColor: '#1F5A40' },
-  { dotColor: '#0C2E20', bgColor: 'rgba(12,46,32,0.10)', textColor: '#0C2E20' },
-  { dotColor: '#3E8E6E', bgColor: 'rgba(62,142,110,0.12)', textColor: '#164430' },
-  { dotColor: '#96BFA4', bgColor: 'rgba(150,191,164,0.18)', textColor: '#1F5A40' },
-]
 
 interface MonthGridProps {
   year: number
@@ -55,7 +45,7 @@ export const MonthGrid = memo(function MonthGrid({
 
   function getClientStyle(clientId: string) {
     const idx = clientStyleMap.get(clientId) ?? 0
-    return PALETTE[idx % PALETTE.length]!
+    return CLIENT_PILL_TONES[idx % CLIENT_PILL_TONES.length]!
   }
 
   return (

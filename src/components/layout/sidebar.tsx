@@ -16,6 +16,7 @@ import {
   type NavItem,
 } from '@/components/layout/nav-items'
 import { ActiveRunsCard } from '@/components/layout/active-runs-card'
+import { useActiveRuns } from '@/components/layout/use-active-runs'
 import { CommandPalette } from '@/components/layout/command-palette'
 import type { ActiveRun } from '@/types/api'
 
@@ -190,9 +191,9 @@ function SidebarContent({
 
       <div className="flex-1" />
 
-      {/* Always mounted (it renders nothing when idle) so a run started by cron
-          is picked up when the tab regains focus. */}
-      {!collapsed && <ActiveRunsCard initialRuns={activeRuns} />}
+      {/* Hidden rather than dropped when collapsed — polling is owned by
+          useActiveRuns above, so this is purely what the rail has room for. */}
+      {!collapsed && <ActiveRunsCard runs={activeRuns} />}
 
       <div className="mx-2.5 mb-1 flex flex-col gap-0.5 border-t border-line pt-1.5">
         <SidebarLink
@@ -249,6 +250,9 @@ export function Sidebar({
   const [mobileOpen, setMobileOpen] = useState(false)
   const [paletteOpen, setPaletteOpen] = useState(false)
   const collapsed = useSyncExternalStore(subscribeToCollapse, readCollapsed, () => false)
+  // Polled once here, then handed to both the rail and the drawer as data —
+  // two SidebarContent instances must not mean two pollers.
+  const runs = useActiveRuns(activeRuns)
 
   async function handleSignOut() {
     const supabase = createBrowserSupabaseClient()
@@ -263,7 +267,7 @@ export function Sidebar({
     agencyMode,
     agencyName,
     badgeCounts,
-    activeRuns,
+    activeRuns: runs,
     onSearch: () => setPaletteOpen(true),
     onSignOut: handleSignOut,
   }

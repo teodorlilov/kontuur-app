@@ -34,7 +34,7 @@ export const CalendarControls = memo(function CalendarControls({
   onClientChange,
 }: CalendarControlsProps) {
   return (
-    <div className="relative z-[5] flex shrink-0 items-center gap-3 px-4 pb-2 pt-1 md:px-6">
+    <div className="relative z-[5] flex shrink-0 items-center gap-3 px-4 pb-2 pt-2 md:px-6">
       <div className="flex items-center gap-1">
         <MonthNavBtn onClick={onPrevMonth} direction="prev" />
         <div className="min-w-[120px] text-center text-[13px] font-medium text-ink">

@@ -50,12 +50,19 @@ export function isNavItemActive(pathname: string, href: string): boolean {
   return pathname === href || pathname.startsWith(href + '/')
 }
 
-/** Topbar title for the current route — the shell owns the title, not the page. */
-export function resolveNavTitle(pathname: string, agencyMode: 'agency' | 'solo'): string {
-  const candidates = [...getNavItems(agencyMode), SETTINGS_NAV_ITEM]
-  // Longest href wins so nested routes resolve to their own section, not a prefix.
-  const match = candidates
+/** Longest matching href wins, so nested routes resolve to their own section. */
+function findDeepestMatch(items: NavItem[], pathname: string): NavItem | undefined {
+  return items
     .filter((item) => isNavItemActive(pathname, item.href))
     .sort((a, b) => b.href.length - a.href.length)[0]
-  return match?.label ?? 'Kontuur'
+}
+
+/** Topbar title for the current route — the shell owns the title, not the page. */
+export function resolveNavTitle(pathname: string, agencyMode: 'agency' | 'solo'): string {
+  const inMode = findDeepestMatch([...getNavItems(agencyMode), SETTINGS_NAV_ITEM], pathname)
+  if (inMode) return inMode.label
+
+  // Solo mode has no Clients entry, but solo users still reach /clients/:id/edit
+  // from the palette. Fall back to the agency set so the title is never blank.
+  return findDeepestMatch(AGENCY_NAV, pathname)?.label ?? 'Kontuur'
 }

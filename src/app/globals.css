@@ -52,17 +52,29 @@
   --sh-pop: 0 12px 32px rgba(15, 21, 18, 0.1);
   --sh-frame: 0 24px 60px rgba(15, 21, 18, 0.06);
   --sh-dark: 0 18px 44px -14px rgba(12, 46, 32, 0.55);
+}
 
-  /* Motion */
-  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+/* ─── Radius + motion scale ───────────────────────────────────────────
+   Declared in @theme (not @theme inline) on purpose. These names are also
+   Tailwind's own, so this block REPLACES its defaults rather than shadowing
+   them from an unlayered :root — one declaration each, no cascade race.
 
-  /* Radius */
+   Deliberate app-wide consequence: rounded-xs/sm/md/lg/xl resolve to the
+   Contour scale everywhere, including surfaces not yet rebuilt
+   (xs 2→4px · sm 4→8 · md 6→10 · lg 8→14 · xl 12→20). Non-inline so the
+   ~21 places that read var(--radius-*) directly keep working.
+
+   The easing is NOT called --ease-out: overriding Tailwind's default curve
+   would silently retime every `ease-out` utility in the app. */
+@theme {
   --radius-xs: 4px;
   --radius-sm: 8px;
   --radius-md: 10px;
   --radius-lg: 14px;
   --radius-xl: 20px;
   --radius-full: 9999px;
+
+  --ease-contour: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 /* ─── Legacy token compatibility ──────────────────────────────────────
@@ -127,9 +139,10 @@
 }
 
 /* Registered with Tailwind so components use utilities, not inline styles.
-   `inline` keeps these out of :root — no clash with the compat aliases above.
-   Names avoid Tailwind's defaults (rounded-lg, ease-out, shadow-lg) so
-   existing markup is untouched. */
+   `inline` keeps these out of :root — no clash with the compat aliases above,
+   which declare --color-surface and friends for their own consumers.
+   These names sit outside Tailwind's own namespaces, so no existing utility
+   changes meaning. The radius scale, which does collide, is handled above. */
 @theme inline {
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
@@ -166,8 +179,6 @@
   --shadow-pop: var(--sh-pop);
   --shadow-frame: var(--sh-frame);
   --shadow-dark: var(--sh-dark);
-
-  --ease-contour: var(--ease-out);
 }
 
 /* ─── Scroll behaviour ─── */
@@ -372,7 +383,7 @@ body {
 }
 
 .rv {
-  animation: rv-in 0.55s var(--ease-out) both;
+  animation: rv-in 0.55s var(--ease-contour) both;
   animation-delay: var(--d, 0ms);
 }
 

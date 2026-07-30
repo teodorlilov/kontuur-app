@@ -2,7 +2,7 @@ import { cache } from 'react'
 import { unstable_cache } from 'next/cache'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { AGENCY_COLUMNS, CLIENT_CARD_COLUMNS, CLIENT_LIST_COLUMNS } from '@/lib/queries/select-columns'
-import { toDateKey } from '@/utils/date-helpers'
+import { getWeekDayKeys, getWeekRange, toDateKey } from '@/utils/date-helpers'
 import { DAYS_PER_WEEK } from '@/utils/constants'
 import type { Database } from '@/types/database'
 
@@ -156,8 +156,14 @@ export const getCachedPendingRows = cache(_fetchPendingRows)
 export type DayState = 'published' | 'scheduled' | 'open'
 
 
-/** Statuses that mean a slot is filled but has not gone out yet. */
-const SCHEDULED_STATUSES = new Set(['approved', 'scheduled', 'publishing'])
+/**
+ * Statuses that mean a slot is filled but has not gone out yet. Exported so the
+ * dashboard's "scheduled this week" count and this coverage grid can never
+ * measure different things while sitting on the same card.
+ */
+export const SCHEDULED_STATUSES = ['approved', 'scheduled', 'publishing'] as const
+
+const SCHEDULED_STATUS_SET = new Set<string>(SCHEDULED_STATUSES)
 
 interface CoverageRow {
   client_id: string
@@ -168,19 +174,19 @@ interface CoverageRow {
 
 /**
  * Returns each client's week as seven day states, Monday first.
- * weekStartISO must be a 'YYYY-MM-DD' Monday (see getMondayISO) — it is part of
- * the cache key, so the entry rolls over naturally at the week boundary.
+ * weekStartISO must be a 'YYYY-MM-DD' Monday (see getMondayISO) and timeZone the
+ * agency's IANA zone — both are part of the cache key, so the entry rolls over
+ * naturally at that agency's week boundary.
  * Call revalidateTag('client-post-stats') after post mutations.
  */
 const _fetchClientWeekCoverage = unstable_cache(
-  async (agencyId: string, weekStartISO: string): Promise<Record<string, DayState[]>> => {
+  async (
+    agencyId: string,
+    weekStartISO: string,
+    timeZone: string
+  ): Promise<Record<string, DayState[]>> => {
     const supabase = createAdminSupabaseClient()
-    const weekStart = new Date(`${weekStartISO}T00:00:00`)
-    const weekEnd = new Date(weekStart)
-    weekEnd.setDate(weekEnd.getDate() + DAYS_PER_WEEK)
-
-    const from = weekStart.toISOString()
-    const to = weekEnd.toISOString()
+    const { from, to } = getWeekRange(weekStartISO, timeZone)
 
     // A post counts for this week by when it is due, or by when it actually went
     // out (posts published on demand carry no scheduled_at).
@@ -200,19 +206,16 @@ const _fetchClientWeekCoverage = unstable_cache(
       return {}
     }
 
-    const dayKeys = Array.from({ length: DAYS_PER_WEEK }, (_, index) => {
-      const day = new Date(weekStart)
-      day.setDate(day.getDate() + index)
-      return toDateKey(day)
-    })
-
+    const dayKeys = getWeekDayKeys(weekStartISO)
     const coverage: Record<string, DayState[]> = {}
 
     for (const row of (data as CoverageRow[] | null) ?? []) {
       const stamp = row.scheduled_at ?? row.published_at
       if (!stamp) continue
 
-      const dayIndex = dayKeys.indexOf(toDateKey(new Date(stamp)))
+      // Bucket in the same zone the range was built from, or a post near
+      // midnight lands in a column the query never covered.
+      const dayIndex = dayKeys.indexOf(toDateKey(new Date(stamp), timeZone))
       if (dayIndex === -1) continue
 
       const week = (coverage[row.client_id] ??= Array<DayState>(DAYS_PER_WEEK).fill('open'))
@@ -220,7 +223,7 @@ const _fetchClientWeekCoverage = unstable_cache(
       // Published wins the slot — it is the stronger signal for the day.
       if (row.status === 'published') {
         week[dayIndex] = 'published'
-      } else if (SCHEDULED_STATUSES.has(row.status) && week[dayIndex] === 'open') {
+      } else if (SCHEDULED_STATUS_SET.has(row.status) && week[dayIndex] === 'open') {
         week[dayIndex] = 'scheduled'
       }
     }
