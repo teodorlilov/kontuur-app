@@ -595,21 +595,30 @@ export type Database = {
       generation_runs: {
         Row: {
           client_id: string | null
+          completed_at: string | null
           created_at: string | null
           id: string
           platform: string | null
+          status: string
+          target_count: number | null
         }
         Insert: {
           client_id?: string | null
+          completed_at?: string | null
           created_at?: string | null
           id?: string
           platform?: string | null
+          status?: string
+          target_count?: number | null
         }
         Update: {
           client_id?: string | null
+          completed_at?: string | null
           created_at?: string | null
           id?: string
           platform?: string | null
+          status?: string
+          target_count?: number | null
         }
         Relationships: [
           {

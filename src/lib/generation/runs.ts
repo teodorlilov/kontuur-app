@@ -10,14 +10,6 @@ import type { ActiveRun } from '@/types/api'
 /** A run is only shown as active this long — a crashed invocation cannot mark itself done. */
 const ACTIVE_RUN_WINDOW_MS = 6 * 60_000
 
-/**
- * The status/target_count/completed_at columns land in 20260730_add_generation_run_progress.sql.
- * WHY the cast: src/types/database.ts is generated and cannot be regenerated until that
- * migration is applied, so the typed client still describes the four-column table. Confined
- * to this module and dropped with the types regen (same pattern as commit 49c9bbf).
- */
-type UntypedClient = Pick<SupabaseClient, 'from'>
-
 interface ActiveRunRow {
   id: string
   client_id: string | null
@@ -32,7 +24,7 @@ export async function startGenerationRun(
   supabase: SupabaseClient,
   input: { clientId: string; platform: string; targetCount: number }
 ): Promise<string | null> {
-  const { data } = await (supabase as UntypedClient)
+  const { data } = await supabase
     .from('generation_runs')
     .insert({
       client_id: input.clientId,
@@ -52,7 +44,7 @@ export async function finishGenerationRun(
   runId: string,
   status: 'complete' | 'failed'
 ): Promise<void> {
-  await (supabase as UntypedClient)
+  await supabase
     .from('generation_runs')
     .update({ status, completed_at: new Date().toISOString() })
     .eq('id', runId)
@@ -65,7 +57,7 @@ export async function fetchActiveRuns(
 ): Promise<ActiveRun[]> {
   const cutoff = new Date(Date.now() - ACTIVE_RUN_WINDOW_MS).toISOString()
 
-  const { data, error } = await (supabase as UntypedClient)
+  const { data, error } = await supabase
     .from('generation_runs')
     .select('id, client_id, created_at, target_count, clients!inner(name, agency_id), generation_themes(post_count)')
     .eq('status', 'running')
@@ -73,16 +65,15 @@ export async function fetchActiveRuns(
     .gte('created_at', cutoff)
     .order('created_at', { ascending: false })
 
-  // Most likely cause is 20260730_add_generation_run_progress.sql not being
-  // applied yet — worth a log rather than an indicator that silently never shows.
+  // Surfacing this matters: a failure here would otherwise read as "nothing is
+  // generating" rather than as an error.
   if (error) {
     console.error('[generation] active runs query failed:', error.message)
     return []
   }
 
-  // Through `unknown`: without the Database generic the client infers embedded
-  // relations as arrays, but clients is many-to-one so PostgREST returns an
-  // object — the same shape approval-actions.ts asserts for this join.
+  // clients is many-to-one, so PostgREST returns an object where the generated
+  // types describe the generic embed — verified against the live schema.
   const rows = (data as unknown as ActiveRunRow[] | null) ?? []
 
   return rows.map((row) => ({
