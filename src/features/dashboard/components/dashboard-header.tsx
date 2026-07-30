@@ -38,7 +38,7 @@ export function DashboardHeader({ agencyName, clientCount, isSolo, timezone }: D
     : `${clientCount} ${clientCount === 1 ? 'client' : 'clients'} active`
 
   return (
-    <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
+    <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
       <div>
         <h1 className="text-[23px] font-semibold tracking-[-0.02em] text-ink">
           {resolveGreeting(timezone)},{' '}

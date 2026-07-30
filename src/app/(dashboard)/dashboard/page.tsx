@@ -49,7 +49,7 @@ export default async function DashboardPage() {
   const publishedDelta = describePublishedDelta(metrics)
 
   return (
-    <div className="@container px-4 pb-12 pt-1 md:px-8">
+    <div className="@container px-4 pb-12 pt-6 md:px-8">
       <div className="rv">
         <DashboardHeader
           agencyName={agency?.name ?? ''}
