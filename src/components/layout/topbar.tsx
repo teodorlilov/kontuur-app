@@ -5,18 +5,16 @@ import { NotificationsBell } from '@/components/layout/notifications-bell'
 import { DesignInCanvaButton } from '@/components/layout/design-in-canva-button'
 import { resolveNavTitle } from '@/components/layout/nav-items'
 import { formatDateChip } from '@/utils/format-date-chip'
-import { extractInitials } from '@/utils/format'
 
 interface TopbarProps {
   agencyMode: 'agency' | 'solo'
-  agencyName: string
 }
 
 /**
  * Shell topbar. The title comes from the route, not from each page — the shell
  * owns its chrome so pages only render content.
  */
-export function Topbar({ agencyMode, agencyName }: TopbarProps) {
+export function Topbar({ agencyMode }: TopbarProps) {
   const pathname = usePathname()
 
   return (
@@ -31,12 +29,6 @@ export function Topbar({ agencyMode, agencyName }: TopbarProps) {
           {formatDateChip()}
         </span>
         <NotificationsBell />
-        <span
-          className="grid size-7 place-items-center rounded-full bg-wash text-[11px] font-semibold text-forest"
-          title={agencyName}
-        >
-          {extractInitials(agencyName || 'A')}
-        </span>
       </div>
     </header>
   )

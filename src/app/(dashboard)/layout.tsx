@@ -83,7 +83,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
             activeRuns={activeRuns}
           />
           <div className="flex min-w-0 flex-1 flex-col">
-            <Topbar agencyMode={agencyMode} agencyName={agencyName} />
+            <Topbar agencyMode={agencyMode} />
             <main className="app-content flex-1 overflow-y-auto">{children}</main>
           </div>
         </div>
