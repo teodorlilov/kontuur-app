@@ -19,7 +19,7 @@ import { DashboardHeader } from '@/features/dashboard/components/dashboard-heade
 import { StatCard } from '@/features/dashboard/components/stat-card'
 import { MiniWeek } from '@/features/dashboard/components/mini-week'
 import { ClientCoverage } from '@/features/dashboard/components/client-coverage'
-import { ReviewStack } from '@/features/dashboard/components/review-stack'
+import { PendingReviewList } from '@/features/dashboard/components/pending-review-list'
 import { BriefingBar } from '@/features/dashboard/components/briefing-bar'
 import { QuickActionsStrip } from '@/features/dashboard/components/quick-actions-strip'
 import { ChangeRequestCard } from '@/features/dashboard/components/change-request-card'
@@ -49,7 +49,7 @@ export default async function DashboardPage() {
   const publishedDelta = describePublishedDelta(metrics)
 
   return (
-    <div className="px-4 pb-12 pt-1 md:px-8">
+    <div className="@container px-4 pb-12 pt-1 md:px-8">
       <div className="rv">
         <DashboardHeader
           agencyName={agency?.name ?? ''}
@@ -59,7 +59,7 @@ export default async function DashboardPage() {
         />
       </div>
 
-      <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3.5 @lg:grid-cols-2 @4xl:grid-cols-4">
         <div className="rv [--d:60ms]">
           <StatCard
             dark
@@ -147,9 +147,10 @@ export default async function DashboardPage() {
         </section>
       )}
 
-      {/* minmax(0,…): a bare 1fr track is min-content-floored, so a long client
-          name or an extra Generate button would resize the columns per page. */}
-      <div className="mt-4 grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]">
+      {/* Container queries, not viewport ones: the sidebar collapses, so how much
+          room these two sections actually have is not a function of window width.
+          minmax(0,…) keeps a long client name from resizing the tracks per page. */}
+      <div className="mt-4 grid grid-cols-1 items-start gap-4 @2xl:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]">
         <div className="rv [--d:300ms]">
           <ClientCoverage
             clients={clients}
@@ -158,7 +159,7 @@ export default async function DashboardPage() {
           />
         </div>
         <div className="rv [--d:360ms]">
-          <ReviewStack posts={data.pendingPosts} totalPending={metrics.pendingCount} />
+          <PendingReviewList posts={data.pendingPosts} totalPending={metrics.pendingCount} />
         </div>
       </div>
 

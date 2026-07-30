@@ -53,7 +53,9 @@ export function CoverageRow({ clientId, name, week, pendingCount, tier }: Covera
         >
           {name}
         </Link>
-        <div className={cn('mt-px text-[11.5px]', isDark ? 'text-white/55' : 'text-ink/55')}>
+        {/* truncate, not wrap: a second line would push the row past the height
+            the paginated list reserves for it. */}
+        <div className={cn('mt-px truncate text-[11.5px]', isDark ? 'text-white/55' : 'text-ink/55')}>
           {summary}
         </div>
       </div>

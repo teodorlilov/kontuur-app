@@ -40,7 +40,7 @@ export function QuickActionsStrip({ pendingCount, isSolo }: QuickActionsStripPro
   )
 
   return (
-    <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+    <div className="grid grid-cols-2 gap-3 @2xl:grid-cols-4">
       {actions.map((action) => {
         const Icon = action.icon
         return (

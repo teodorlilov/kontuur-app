@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { getCachedPendingRows, type PendingRow } from '@/lib/queries/cache'
 import { BRIEFING_COLUMNS } from '@/lib/queries/select-columns'
+import { fetchImagesByPost } from '@/features/publishing/lib/fetch-post-images'
 import type { CarouselSlide, DashboardChangeRequest } from '@/types/api'
 
 // Supabase REST returns untyped rows for embedded/joined selects, so each result
@@ -22,6 +23,7 @@ export interface PendingPostPreview {
   pillar: string
   createdAt: string
   clientName: string
+  imageUrl: string | null
 }
 
 export interface DashboardMetrics {
@@ -74,7 +76,8 @@ interface ClientSummary {
   created_at: string | null
 }
 
-const PENDING_PREVIEW_LIMIT = 3
+/** The dashboard queue scrolls, so it holds more than a glance's worth. */
+const PENDING_PREVIEW_LIMIT = 12
 const CHANGE_REQUEST_LIMIT = 5
 
 /** Fetch all tokens in the given batches and return a map of postId → 1-indexed position. */
@@ -255,13 +258,19 @@ export async function fetchDashboardData(
       .filter((id): id is string => id !== null)
   )
 
-  const pendingPosts = ((pendingPostsRes.data as PendingPostRow[] | null) ?? []).map((post) => ({
+  const pendingPostRows = (pendingPostsRes.data as PendingPostRow[] | null) ?? []
+  // Admin-client read: post_images RLS blocks the user-scoped client. Safe here
+  // because the ids come from posts already scoped to this agency's clients.
+  const imagesByPost = await fetchImagesByPost(pendingPostRows.map((post) => post.id))
+
+  const pendingPosts = pendingPostRows.map((post) => ({
     id: post.id,
     caption: post.caption,
     platform: post.platform,
     pillar: post.pillar ?? '',
     createdAt: post.created_at,
     clientName: clientNames.get(post.client_id) ?? 'Unknown',
+    imageUrl: imagesByPost.get(post.id)?.[0]?.publicUrl ?? null,
   }))
 
   return {
