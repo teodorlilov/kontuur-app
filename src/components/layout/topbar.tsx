@@ -8,13 +8,15 @@ import { formatDateChip } from '@/utils/format-date-chip'
 
 interface TopbarProps {
   agencyMode: 'agency' | 'solo'
+  /** Agency timezone — keeps the date chip identical on server and client. */
+  timezone: string
 }
 
 /**
  * Shell topbar. The title comes from the route, not from each page — the shell
  * owns its chrome so pages only render content.
  */
-export function Topbar({ agencyMode }: TopbarProps) {
+export function Topbar({ agencyMode, timezone }: TopbarProps) {
   const pathname = usePathname()
 
   return (
@@ -26,7 +28,7 @@ export function Topbar({ agencyMode }: TopbarProps) {
       <div className="ml-auto flex items-center gap-2.5">
         <DesignInCanvaButton />
         <span className="hidden rounded-sm border border-line2 px-3 py-[7px] text-[12.5px] tabular-nums text-text2 sm:inline">
-          {formatDateChip()}
+          {formatDateChip(timezone)}
         </span>
         <NotificationsBell />
       </div>

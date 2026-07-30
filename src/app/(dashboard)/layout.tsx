@@ -49,6 +49,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
   let pendingCount = 0
   let ideasCount = 0
   let agencyName = ''
+  let timezone = 'UTC'
   let clients: Array<{ id: string; name: string }> = []
   let activeRuns: ActiveRun[] = []
 
@@ -63,6 +64,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
     if (agencyData?.mode === 'solo') agencyMode = 'solo'
     agencyName = agencyData?.name ?? ''
+    timezone = agencyData?.timezone ?? 'UTC'
     pendingCount = pendingRows.length
     ideasCount = ideas
     clients = agencyClients.map((client) => ({ id: client.id, name: client.name }))
@@ -83,7 +85,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
             activeRuns={activeRuns}
           />
           <div className="flex min-w-0 flex-1 flex-col">
-            <Topbar agencyMode={agencyMode} />
+            <Topbar agencyMode={agencyMode} timezone={timezone} />
             <main className="app-content flex-1 overflow-y-auto">{children}</main>
           </div>
         </div>
