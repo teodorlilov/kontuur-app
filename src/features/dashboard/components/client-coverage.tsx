@@ -64,16 +64,13 @@ export function ClientCoverage({ clients, coverage, clientPendingMap }: ClientCo
       ) : (
         <>
           <div className="mt-3 flex flex-col gap-3" style={{ minHeight: COVERAGE_LIST_HEIGHT }}>
-            {visible.map((client, index) => (
+            {visible.map((client) => (
               <CoverageRow
                 key={client.id}
                 clientId={client.id}
                 name={client.name}
                 week={coverage[client.id] ?? EMPTY_WEEK}
                 pendingCount={clientPendingMap[client.id] ?? 0}
-                // Tier follows position on the page, so every page keeps the
-                // lime → sage → dark rhythm.
-                tier={index}
               />
             ))}
           </div>
