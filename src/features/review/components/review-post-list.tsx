@@ -1,51 +1,35 @@
 'use client'
 
 import { Image as ImageIcon } from 'lucide-react'
-import { cn } from '@/utils/cn'
 import { formatRelativeTime } from '@/utils/format'
 import { getPillarColor } from '@/components/ui/colors/pillar-colors'
 import { Button } from '@/components/ui/button'
 import { ActiveBar, ScoreLabel } from '@/components/posts/post-list-parts'
 import { parseSlides } from '@/components/posts/parse-slides'
-import type { ReviewPost, ReviewTab } from '@/features/review/lib/filter-review-posts'
+import type { ReviewPost } from '@/features/review/lib/filter-review-posts'
 
 interface ReviewPostListProps {
   posts: ReviewPost[]
-  allPosts: ReviewPost[]
-  clients: Array<{ id: string; name: string; is_health_niche: boolean }>
   selectedPostId: string | null
-  activeTab: ReviewTab
-  selectedClientId: string | null
   approvedCount: number
   onSelectPost: (id: string) => void
-  onTabChange: (tab: ReviewTab) => void
-  onClientChange: (clientId: string | null) => void
   onOpenBatch: () => void
 }
 
-const tabs: Array<{ key: ReviewTab; label: string }> = [
-  { key: 'all', label: 'All' },
-  { key: 'priority', label: 'Priority' },
-  { key: 'health', label: 'Health review' },
-]
-
-/** Left panel: filter tabs, client dropdown, and scrollable post list. */
+/**
+ * Left panel: the scrollable post list.
+ *
+ * The filter tabs and client dropdown that used to sit on top of it are now the
+ * page header's tab rail and scoping control — a list column is not where a
+ * page-level filter belongs.
+ */
 export function ReviewPostList({
   posts,
-  allPosts,
-  clients,
   selectedPostId,
-  activeTab,
-  selectedClientId,
   approvedCount,
   onSelectPost,
-  onTabChange,
-  onClientChange,
   onOpenBatch,
 }: ReviewPostListProps) {
-  const priorityCount = allPosts.filter((p) => p.priority).length
-  const healthCount = allPosts.filter((p) => p.is_health_niche).length
-
   return (
     <div
       className="w-full md:w-[280px]"
@@ -58,60 +42,7 @@ export function ReviewPostList({
         overflow: 'hidden',
       }}
     >
-      {/* Tabs */}
       <div style={{ padding: '10px 12px 0', flexShrink: 0 }}>
-        <div className="flex gap-1 rounded-lg p-1" style={{ background: 'rgba(44,62,80,0.04)' }}>
-          {tabs.map((tab) => (
-            <button
-              key={tab.key}
-              type="button"
-              onClick={() => onTabChange(tab.key)}
-              className={cn(
-                'px-2.5 py-1.5 text-[10px] font-medium rounded-md transition-colors flex-1',
-                activeTab === tab.key
-                  ? 'bg-white shadow-sm'
-                  : 'hover:bg-white/50'
-              )}
-              style={{
-                color: activeTab === tab.key ? 'var(--color-text-1)' : 'var(--color-muted)',
-              }}
-            >
-              {tab.label}
-              {tab.key === 'priority' && priorityCount > 0 && (
-                <span className="ml-1 bg-red-100 text-red-700 px-1 py-0.5 rounded-full text-[9px] font-semibold">
-                  {priorityCount}
-                </span>
-              )}
-              {tab.key === 'health' && healthCount > 0 && (
-                <span className="ml-1 bg-amber-100 text-amber-700 px-1 py-0.5 rounded-full text-[9px] font-semibold">
-                  {healthCount}
-                </span>
-              )}
-            </button>
-          ))}
-        </div>
-
-        {/* Client filter */}
-        {clients.length > 1 && (
-          <select
-            value={selectedClientId ?? ''}
-            onChange={(e) => onClientChange(e.target.value || null)}
-            className="w-full mt-2 text-[11px] border rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-[var(--color-border-3)]"
-            style={{
-              borderColor: 'var(--color-border-1)',
-              background: 'var(--color-surface)',
-              color: 'var(--color-text-1)',
-            }}
-          >
-            <option value="">All clients</option>
-            {clients.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-        )}
-
         {/* Stats row */}
         <div
           style={{

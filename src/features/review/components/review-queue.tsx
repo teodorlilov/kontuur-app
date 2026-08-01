@@ -3,7 +3,11 @@
 import { useState, useMemo } from 'react'
 import { ChevronLeft } from 'lucide-react'
 import { BatchScheduleModal } from '@/components/scheduling/batch-schedule-modal'
-import { ReviewControls } from './review-controls'
+import { Button } from '@/components/ui/button'
+import { HeaderMeta, MetaFlag, PageHeader } from '@/components/layout/page-header/page-header'
+import { SelectControl } from '@/components/layout/page-header/select-control'
+import { TabRail, type TabItem } from '@/components/layout/page-header/tab-rail'
+import { formatRelativeTime } from '@/utils/format'
 import { ReviewPostList } from './review-post-list'
 import { ReviewPostView } from './review-post-view'
 import {
@@ -18,9 +22,12 @@ interface ReviewQueueProps {
   initialPosts: ReviewPost[]
   clients: Array<{ id: string; name: string; is_health_niche: boolean }>
   bestTimeMap: Record<string, BestTimePlatform[] | null>
+  /** Oldest pending post, computed server-side. Shown in the rail. */
+  oldestPendingAt: string | null
 }
 
-export function ReviewQueue({ initialPosts, clients, bestTimeMap }: ReviewQueueProps) {
+/** Owns the page header: the tab rail and the list read the same filter state. */
+export function ReviewQueue({ initialPosts, clients, bestTimeMap, oldestPendingAt }: ReviewQueueProps) {
   const [posts, setPosts] = useState(initialPosts)
   const [activeTab, setActiveTab] = useState<ReviewTab>('all')
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null)
@@ -87,29 +94,76 @@ export function ReviewQueue({ initialPosts, clients, bestTimeMap }: ReviewQueueP
     setBatchPosts([])
   }
 
+  const priorityCount = posts.filter((p) => p.priority).length
+  const healthCount = posts.filter((p) => p.is_health_niche).length
+
+  const tabs: Array<TabItem<ReviewTab>> = [
+    { id: 'all', label: 'All', count: posts.length },
+    { id: 'priority', label: 'Priority', count: priorityCount, flag: priorityCount > 0 },
+    { id: 'health', label: 'Health review', count: healthCount, warn: healthCount > 0 },
+  ]
+
+  const clientOptions = [
+    { value: '', label: 'All clients' },
+    ...clients.map((c) => ({ value: c.id, label: c.name })),
+  ]
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
-      <ReviewControls
-        pendingCount={posts.length}
-        approvedCount={approvedPosts.length}
-        onApproveAll={handleApproveAll}
+    <div className="flex h-full flex-col overflow-hidden">
+      <PageHeader
+        crumb={[{ label: 'Review queue' }]}
+        title="Review"
+        count={posts.length}
+        railTools={
+          oldestPendingAt ? (
+            <span className="hidden text-xs text-text3 sm:block">
+              Oldest waiting {formatRelativeTime(new Date(oldestPendingAt))}
+            </span>
+          ) : null
+        }
+        meta={
+          <HeaderMeta
+            parts={[
+              posts.length === 0 ? 'Nothing waiting on you' : null,
+              healthCount > 0 && <MetaFlag>{healthCount} need a health check</MetaFlag>,
+              priorityCount > 0 && `${priorityCount} priority`,
+              approvedPosts.length > 0 && `${approvedPosts.length} approved this session`,
+            ]}
+          />
+        }
+        actions={
+          <>
+            {clients.length > 1 && (
+              <SelectControl
+                label="Client"
+                value={selectedClientId ?? ''}
+                options={clientOptions}
+                onChange={(id) => setSelectedClientId(id || null)}
+              />
+            )}
+            <Button
+              onClick={handleApproveAll}
+              disabled={posts.length === 0}
+              variant="secondary"
+              size="sm"
+            >
+              Approve all
+            </Button>
+          </>
+        }
+        tabs={<TabRail items={tabs} active={activeTab} onSelect={setActiveTab} label="Filter review queue" />}
       />
-      <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+
+      <div style={{ flex: 1, display: 'flex', overflow: 'hidden', minHeight: 0 }}>
         <div className={`${mobileView === 'list' ? 'flex' : 'hidden'} md:flex`} style={{ flexShrink: 0 }}>
           <ReviewPostList
             posts={filteredPosts}
-            allPosts={posts}
-            clients={clients}
             selectedPostId={selectedPostId}
-            activeTab={activeTab}
-            selectedClientId={selectedClientId}
             approvedCount={approvedPosts.length}
             onSelectPost={(id: string) => {
               setSelectedPostId(id)
               setMobileView('detail')
             }}
-            onTabChange={setActiveTab}
-            onClientChange={setSelectedClientId}
             onOpenBatch={() => {
               setBatchPosts(approvedPosts)
               setBatchOpen(true)

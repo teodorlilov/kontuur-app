@@ -105,9 +105,18 @@ export default async function ReviewPage() {
     }
   })
 
+  // Derived from rows already fetched above — no extra query for the rail.
+  const oldestPendingAt = posts.reduce<string | null>(
+    (oldest, post) => (oldest === null || post.created_at < oldest ? post.created_at : oldest),
+    null
+  )
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <ReviewQueue initialPosts={posts} clients={clients} bestTimeMap={bestTimeMap} />
-    </div>
+    <ReviewQueue
+      initialPosts={posts}
+      clients={clients}
+      bestTimeMap={bestTimeMap}
+      oldestPendingAt={oldestPendingAt}
+    />
   )
 }
