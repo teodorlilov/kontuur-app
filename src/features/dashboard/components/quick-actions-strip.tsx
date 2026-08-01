@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { BarChart2, CircleCheck, Sparkles, UserPlus, type LucideIcon } from 'lucide-react'
+import { IconChip } from '@/components/ui/icon-chip'
 
 interface QuickAction {
   href: string
@@ -57,9 +58,9 @@ export function QuickActionsStrip({ pendingCount, isSolo }: QuickActionsStripPro
             // lift and the border carry the affordance instead.
             className="flex items-center gap-3 rounded-panel border border-ink/[0.05] bg-surface px-3.5 py-3.5 no-underline transition-[transform,border-color] duration-150 ease-contour hover:-translate-y-0.5 hover:border-sage"
           >
-            <span className="grid size-[34px] shrink-0 place-items-center rounded-sm bg-wash text-forest">
+            <IconChip className="size-[34px] shrink-0 rounded-sm">
               <Icon size={15} />
-            </span>
+            </IconChip>
             <span className="min-w-0">
               <span className="block truncate text-[13px] font-semibold text-ink">{action.title}</span>
               <span className="block truncate text-[11.5px] text-text3">{action.subtitle}</span>

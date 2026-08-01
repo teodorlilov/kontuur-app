@@ -1,14 +1,22 @@
 import { cn } from '@/utils/cn'
+import { PILL_TONES } from '@/components/ui/status-pill'
 import { CountUp } from '@/features/dashboard/components/count-up'
 import type { StatPillTone } from '@/features/dashboard/types'
 
+/**
+ * This card's tone vocabulary resolved against the shared pill tones. Only the
+ * two that have no shared equivalent are stated here: `muted` takes the sunken
+ * fill rather than StatusPill's translucent ink, and `accent` exists solely for
+ * the dark card below.
+ */
 const PILL_CLASSES: Record<StatPillTone, string> = {
-  positive: 'bg-wash text-forest',
-  attention: 'bg-pending-bg text-pending',
+  positive: PILL_TONES.ok,
+  attention: PILL_TONES.warn,
+  danger: PILL_TONES.bad,
   muted: 'bg-sunken text-text3',
+  // Dark card only: lime at 15% keeps the pill subordinate to the figure it
+  // sits beside. StatusPill's solid `mark` would out-shout it.
   accent: 'bg-accent/15 text-accent',
-  // A publish that did not ship is an error, and errors are clay.
-  danger: 'bg-danger-bg text-danger',
 }
 
 interface StatCardProps {

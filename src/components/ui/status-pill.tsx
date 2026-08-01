@@ -1,9 +1,16 @@
 import type { ReactNode } from 'react'
 import { cn } from '@/utils/cn'
 
-const PILL_TONES = {
+/**
+ * The one definition of tone → token classes for pills. Exported because
+ * StatCard renders its own pill geometry but must not restate these pairings:
+ * three of them were duplicated verbatim there until the vocabularies
+ * (`ok`/`warn`/`bad` vs `positive`/`attention`/`danger`) hid it from a grep.
+ */
+export const PILL_TONES = {
   ok: 'bg-wash text-forest',
   warn: 'bg-pending-bg text-pending',
+  /** Clay, not signal-red — the status hues in this system are earthen. */
   bad: 'bg-danger-bg text-danger',
   mark: 'bg-accent text-forest-deep',
   /** No judgement — a label like "you" that states a fact rather than a status. */

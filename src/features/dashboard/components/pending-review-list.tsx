@@ -10,6 +10,7 @@ import { formatRelativeTime, parseTimestamp, toPreviewLine } from '@/utils/forma
 import { hasCyrillic } from '@/lib/canvas/font-library'
 import { cn } from '@/utils/cn'
 import { Card } from '@/components/ui/card'
+import { IconChip } from '@/components/ui/icon-chip'
 import { SectionHeading } from '@/components/ui/section-heading'
 import { COVERAGE_LIST_HEIGHT } from '@/features/dashboard/lib/layout'
 import type { PendingPostPreview } from '@/features/dashboard/types'
@@ -104,9 +105,9 @@ export function PendingReviewList({ posts, totalPending }: PendingReviewListProp
       >
         {queue.length === 0 ? (
           <div className="flex h-full flex-col items-center justify-center gap-2.5">
-            <span className="grid size-11 place-items-center rounded-full bg-wash text-forest">
+            <IconChip className="size-11 rounded-full">
               <Check size={18} />
-            </span>
+            </IconChip>
             <span className="text-center font-display text-[15.5px] italic text-text2">
               All caught up — nothing waiting on you.
             </span>

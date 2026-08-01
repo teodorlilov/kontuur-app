@@ -1,5 +1,6 @@
 import { Sparkles } from 'lucide-react'
 import { Card } from '@/components/ui/card'
+import { IconChip } from '@/components/ui/icon-chip'
 import { BriefingActions } from '@/features/dashboard/components/briefing-actions'
 import type { DashboardBriefing } from '@/features/dashboard/types'
 
@@ -23,12 +24,9 @@ export function BriefingBar({ briefing }: { briefing: DashboardBriefing | null }
 
   return (
     <Card className="flex flex-wrap items-center gap-3.5 px-5 py-[18px]">
-      <span
-        aria-hidden="true"
-        className="grid size-[27px] shrink-0 place-items-center rounded-sm bg-wash text-forest"
-      >
+      <IconChip className="size-[27px] shrink-0 rounded-sm">
         <Sparkles size={14} />
-      </span>
+      </IconChip>
 
       <div className="min-w-[220px] flex-1">
         <h2 className="text-[14px] font-semibold text-ink">Weekly intelligence briefing</h2>
