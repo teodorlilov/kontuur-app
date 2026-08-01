@@ -1,5 +1,4 @@
 import { BarChart2, Calendar, CircleCheck, Users } from 'lucide-react'
-import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { requireSessionUser } from '@/lib/auth/session'
 import {
   getCachedAgency,
@@ -8,7 +7,7 @@ import {
 } from '@/lib/queries/cache'
 import { getMondayISO, getWeekdayIndex } from '@/utils/date-helpers'
 import { formatRelativeTime, parseTimestamp } from '@/utils/format'
-import { fetchDashboardData } from '@/features/dashboard/queries'
+import { fetchDashboardData } from '@/features/dashboard/queries/dashboard-data'
 import { countFilledPerDay } from '@/features/dashboard/lib/metrics'
 import { DAYS_PER_WEEK } from '@/utils/constants'
 import { cn } from '@/utils/cn'
@@ -29,7 +28,6 @@ import { ChangeRequestCard } from '@/features/dashboard/components/change-reques
 
 export default async function DashboardPage() {
   const { agencyId } = await requireSessionUser()
-  const supabase = await createServerSupabaseClient()
 
   // Both calls hit React cache() populated by the dashboard layout — zero extra DB queries
   const [agency, clients] = await Promise.all([
@@ -44,7 +42,7 @@ export default async function DashboardPage() {
   const weekStartISO = getMondayISO(new Date(), timezone)
 
   const [data, coverage] = await Promise.all([
-    fetchDashboardData(supabase, agencyId, clients, weekStartISO, timezone),
+    fetchDashboardData(agencyId, clients, weekStartISO, timezone),
     getCachedClientWeekCoverage(agencyId, weekStartISO, timezone),
   ])
 

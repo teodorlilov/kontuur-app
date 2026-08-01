@@ -24,8 +24,12 @@ export function useExtractionStatus({ sessionId, enabled, onResolved }: UseExtra
   status: ExtractionStatus
 } {
   const [status, setStatus] = useState<ExtractionStatus>('idle')
+  // Kept current in an effect, not during render: a render React discards can still mutate a ref,
+  // leaving the committed tree holding a callback from an abandoned render.
   const onResolvedRef = useRef(onResolved)
-  onResolvedRef.current = onResolved
+  useEffect(() => {
+    onResolvedRef.current = onResolved
+  })
 
   useEffect(() => {
     if (!enabled || !sessionId) return

@@ -3,7 +3,12 @@ import NextTopLoader from 'nextjs-toploader'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { createUserRecord } from '@/lib/auth/create-user-record'
-import { getAuthUser, getCachedUserRecord } from '@/lib/auth/session'
+import {
+  getAuthDisplayName,
+  getAuthUser,
+  getAuthUserId,
+  getCachedUserRecord,
+} from '@/lib/auth/session'
 import { getCachedAgency, getCachedAgencyClients, getCachedPendingRows } from '@/lib/queries/cache'
 import { getCachedNewIdeasCount } from '@/features/ideas/lib/cache'
 import { USER_AUTH_COLUMNS } from '@/lib/queries/select-columns'
@@ -30,20 +35,25 @@ function formatToday(timezone: string): string {
 }
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const user = await getAuthUser()
+  const userId = await getAuthUserId()
 
-  if (!user) {
+  if (!userId) {
     redirect('/login')
   }
 
   const supabase = await createServerSupabaseClient()
 
   // Fetch agency mode for sidebar
-  let rawUserData = await getCachedUserRecord(user.id)
+  let rawUserData = await getCachedUserRecord(userId)
 
   // If no users record exists, auto-create from signup metadata (handles cases where
   // the /auth/callback was not reached after email confirmation)
   if (!rawUserData) {
+    // The one path that needs more than an id, so it pays for the full user here rather than
+    // making every navigation fetch email and metadata it will not read.
+    const user = await getAuthUser()
+    if (!user) redirect('/login')
+
     const admin = createAdminSupabaseClient()
     await createUserRecord(admin, {
       id: user.id,
@@ -54,7 +64,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
     const { data: freshUserData } = await supabase
       .from('users')
       .select(USER_AUTH_COLUMNS)
-      .eq('id', user.id)
+      .eq('id', userId)
       .single()
     rawUserData = freshUserData
   }
@@ -89,8 +99,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   // The rail avatar is the signed-in person, not the workspace — the sidebar
   // block already names the agency.
-  const displayName =
-    (user.user_metadata?.full_name as string | undefined) ?? user.email ?? 'You'
+  const displayName = (await getAuthDisplayName()) || 'You'
 
   return (
     <>
@@ -101,6 +110,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
           agencyMode={agencyMode}
           userInitials={extractInitials(displayName)}
           todayLabel={formatToday(timezone)}
+          timezone={timezone}
           clients={clients}
         >
           <div className="app-shell flex h-screen gap-3.5 overflow-hidden bg-paper p-3">

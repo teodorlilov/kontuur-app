@@ -1,7 +1,8 @@
 'use server'
 
-import { revalidatePath } from 'next/cache'
+import { revalidateTag } from 'next/cache'
 import { resolveActionAuth } from '@/lib/auth/helpers'
+import { DASHBOARD_BRIEFING_TAG } from '@/features/dashboard/queries/briefing'
 import { checkRateLimit, AI_RATE_LIMIT } from '@/lib/auth/rate-limit'
 import { generateBriefing as generateBriefingAI } from '@/ai/intelligence/generate-briefing'
 import { getAgencyNiche } from '@/lib/clients/fetch-client-data'
@@ -54,6 +55,8 @@ export async function generateBriefing(): Promise<ActionResult> {
     })
   }
 
-  revalidatePath('/dashboard')
+  // The tag, not revalidatePath: the briefing is read through unstable_cache, which a path
+  // revalidation does not clear — the new briefing would hide behind the old one for 5 minutes.
+  revalidateTag(DASHBOARD_BRIEFING_TAG, 'max')
   return { ok: true, data: undefined }
 }

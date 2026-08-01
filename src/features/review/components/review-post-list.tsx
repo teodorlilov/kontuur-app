@@ -19,9 +19,8 @@ interface ReviewPostListProps {
 /**
  * Left panel: the scrollable post list.
  *
- * The filter tabs and client dropdown that used to sit on top of it are now the
- * page header's tab rail and scoping control — a list column is not where a
- * page-level filter belongs.
+ * Filtering and client scoping live in the page header, not here: they narrow
+ * the whole page, and a list column is not where a page-level control belongs.
  */
 export function ReviewPostList({
   posts,

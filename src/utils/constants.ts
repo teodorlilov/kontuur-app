@@ -60,3 +60,27 @@ export const WEEKDAY_OPTIONS = [
   { value: 'saturday', label: 'Saturday' },
   { value: 'sunday', label: 'Sunday' },
 ] as const
+
+/** Languages a client's content can be written in. The one list — every language picker reads it. */
+export const CONTENT_LANGUAGE_OPTIONS = [
+  { value: 'Bulgarian', label: 'Bulgarian' },
+  { value: 'English', label: 'English' },
+  { value: 'French', label: 'French' },
+  { value: 'German', label: 'German' },
+  { value: 'Greek', label: 'Greek' },
+  { value: 'Italian', label: 'Italian' },
+  { value: 'Portuguese', label: 'Portuguese' },
+  { value: 'Spanish', label: 'Spanish' },
+] as const
+
+export const LANGUAGE_FORMALITY_OPTIONS = [
+  { value: 'formal', label: 'Formal' },
+  { value: 'neutral', label: 'Neutral' },
+  { value: 'casual', label: 'Casual' },
+] as const
+
+/** How many posts one generation run produces. */
+export const POSTS_PER_RUN_OPTIONS = [1, 2, 3, 4, 5, 6, 7].map((n) => ({
+  value: String(n),
+  label: String(n),
+}))

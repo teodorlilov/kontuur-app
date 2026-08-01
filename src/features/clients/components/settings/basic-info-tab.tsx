@@ -1,214 +1,114 @@
 'use client'
 
-import { cn } from '@/utils/cn'
+import { Field, FormSection, InputAffix, ToggleRow } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
-
-const LANGUAGE_OPTIONS = [
-  { value: 'Bulgarian', label: 'Bulgarian' },
-  { value: 'English', label: 'English' },
-  { value: 'French', label: 'French' },
-  { value: 'German', label: 'German' },
-  { value: 'Italian', label: 'Italian' },
-  { value: 'Portuguese', label: 'Portuguese' },
-  { value: 'Spanish', label: 'Spanish' },
-]
-
-const FORMALITY_OPTIONS = [
-  { value: 'formal', label: 'Formal' },
-  { value: 'neutral', label: 'Neutral' },
-  { value: 'casual', label: 'Casual' },
-]
-
-const POSTS_OPTIONS = [1, 2, 3, 4, 5, 6, 7].map((n) => ({
-  value: String(n),
-  label: String(n),
-}))
+import {
+  CONTENT_LANGUAGE_OPTIONS,
+  LANGUAGE_FORMALITY_OPTIONS,
+  POSTS_PER_RUN_OPTIONS,
+} from '@/utils/constants'
+import type { BrandDraft, ClientDraft } from '@/features/clients/lib/client-draft'
 
 interface BasicInfoTabProps {
-  name: string
-  niche: string
-  websiteUrl: string
-  contactEmail: string
-  language: string
-  languageFormality: string
-  postsPerWeek: string
-  secondaryLanguage: string
-  isHealthNiche: boolean
-  onNameChange: (v: string) => void
-  onNicheChange: (v: string) => void
-  onWebsiteUrlChange: (v: string) => void
-  onContactEmailChange: (v: string) => void
-  onLanguageChange: (v: string) => void
-  onLanguageFormalityChange: (v: string) => void
-  onPostsPerWeekChange: (v: string) => void
-  onSecondaryLanguageChange: (v: string) => void
-  onIsHealthNicheChange: (v: boolean) => void
+  client: ClientDraft
+  brand: BrandDraft
+  onClientChange: (patch: Partial<ClientDraft>) => void
+  onBrandChange: (patch: Partial<BrandDraft>) => void
 }
 
-/** Basic info tab: client identity, language, and contact details. */
-export function BasicInfoTab({
-  name,
-  niche,
-  websiteUrl,
-  contactEmail,
-  language,
-  languageFormality,
-  postsPerWeek,
-  secondaryLanguage,
-  isHealthNiche,
-  onNameChange,
-  onNicheChange,
-  onWebsiteUrlChange,
-  onContactEmailChange,
-  onLanguageChange,
-  onLanguageFormalityChange,
-  onPostsPerWeekChange,
-  onSecondaryLanguageChange,
-  onIsHealthNicheChange,
-}: BasicInfoTabProps) {
-  const languageOptions = LANGUAGE_OPTIONS.some(
-    (o) => o.value.toLowerCase() === language.toLowerCase()
-  )
-    ? LANGUAGE_OPTIONS
-    : [{ value: language, label: language }, ...LANGUAGE_OPTIONS]
+/** Identity and language: who the client is and how posts are written for them. */
+export function BasicInfoTab({ client, brand, onClientChange, onBrandChange }: BasicInfoTabProps) {
+  // A client saved before a language joined the list must still show its own value.
+  const languageOptions = CONTENT_LANGUAGE_OPTIONS.some((o) => o.value === client.language)
+    ? [...CONTENT_LANGUAGE_OPTIONS]
+    : [{ value: client.language, label: client.language }, ...CONTENT_LANGUAGE_OPTIONS]
 
   return (
     <>
-      <PanelHeader title="Basic info" subtitle="Client identity, language, and contact details" />
-      <div style={{ padding: '20px 22px', overflowY: 'auto' }}>
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: '1fr 1fr',
-            gap: 12,
-            marginBottom: 18,
-          }}
-        >
+      <FormSection>
+        <Field label="Client name" span={6} required>
           <Input
-            label="Client name"
-            value={name}
-            onChange={(e) => onNameChange(e.target.value)}
+            value={client.name}
+            onChange={(e) => onClientChange({ name: e.target.value })}
+            placeholder="Acme Studio"
           />
+        </Field>
+        <Field label="Niche" span={6} hint="Shapes the angle of every post.">
           <Input
-            label="Niche"
-            value={niche}
-            onChange={(e) => onNicheChange(e.target.value)}
+            value={client.niche}
+            onChange={(e) => onClientChange({ niche: e.target.value })}
             placeholder="e.g. Fitness coaching"
           />
+        </Field>
+        <Field label="Website" span={6}>
+          <InputAffix prefix="https://">
+            <Input
+              value={stripScheme(client.websiteUrl)}
+              onChange={(e) => onClientChange({ websiteUrl: withScheme(e.target.value) })}
+              placeholder="example.com"
+            />
+          </InputAffix>
+        </Field>
+        <Field label="Contact email" span={6} optional>
           <Input
-            label="Website URL"
-            value={websiteUrl}
-            onChange={(e) => onWebsiteUrlChange(e.target.value)}
-            placeholder="https://example.com"
-          />
-          <Input
-            label="Contact email"
             type="email"
-            value={contactEmail}
-            onChange={(e) => onContactEmailChange(e.target.value)}
+            value={client.contactEmail}
+            onChange={(e) => onClientChange({ contactEmail: e.target.value })}
             placeholder="client@example.com"
           />
+        </Field>
+      </FormSection>
+
+      <FormSection legend="Language" description="How posts are written for this client.">
+        <Field label="Primary" span={4}>
           <Select
-            label="Primary language"
-            value={language}
-            onChange={(e) => onLanguageChange(e.target.value)}
+            value={client.language}
+            onChange={(e) => onClientChange({ language: e.target.value })}
             options={languageOptions}
           />
+        </Field>
+        <Field label="Formality" span={4}>
           <Select
-            label="Language formality"
-            value={languageFormality}
-            onChange={(e) => onLanguageFormalityChange(e.target.value)}
-            options={FORMALITY_OPTIONS}
+            value={brand.languageFormality}
+            onChange={(e) => onBrandChange({ languageFormality: e.target.value })}
+            options={[...LANGUAGE_FORMALITY_OPTIONS]}
           />
-          <Select
-            label="Posts to generate"
-            value={postsPerWeek}
-            onChange={(e) => onPostsPerWeekChange(e.target.value)}
-            options={POSTS_OPTIONS}
-          />
+        </Field>
+        <Field label="Secondary" span={4} optional>
           <Input
-            label="Secondary language (optional)"
-            value={secondaryLanguage}
-            onChange={(e) => onSecondaryLanguageChange(e.target.value)}
+            value={brand.secondaryLanguage}
+            onChange={(e) => onBrandChange({ secondaryLanguage: e.target.value })}
             placeholder="e.g. English"
           />
-        </div>
+        </Field>
+        <Field label="Posts per run" span={3}>
+          <Select
+            value={client.postsPerWeek}
+            onChange={(e) => onClientChange({ postsPerWeek: e.target.value })}
+            options={POSTS_PER_RUN_OPTIONS}
+          />
+        </Field>
+      </FormSection>
 
-        <div
-          style={{
-            borderTop: '0.5px solid var(--color-border-1)',
-            paddingTop: 14,
-          }}
-        >
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              padding: '8px 0',
-            }}
-          >
-            <div>
-              <div
-                style={{
-                  fontSize: 13,
-                  fontWeight: 500,
-                  color: 'var(--color-text-1)',
-                  marginBottom: 2,
-                }}
-              >
-                Health-related client
-              </div>
-              <div style={{ fontSize: 11, color: 'var(--color-muted)' }}>
-                Applies medical content guidelines and disclaimer rules
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={() => onIsHealthNicheChange(!isHealthNiche)}
-              className={cn(
-                'relative inline-flex h-6 w-11 items-center rounded-full transition-colors',
-                isHealthNiche ? 'bg-[#1A2630]' : 'bg-gray-200'
-              )}
-              style={{ flexShrink: 0 }}
-            >
-              <span
-                className={cn(
-                  'inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform',
-                  isHealthNiche ? 'translate-x-6' : 'translate-x-1'
-                )}
-              />
-            </button>
-          </div>
-        </div>
-      </div>
+      <FormSection>
+        <ToggleRow
+          title="Health-related client"
+          description="Applies medical guidelines and appends disclaimers on publish."
+          checked={brand.isHealthNiche}
+          onChange={(v) => onBrandChange({ isHealthNiche: v })}
+        />
+      </FormSection>
     </>
   )
 }
 
-/** Panel header reused across all tab components. */
-export function PanelHeader({ title, subtitle }: { title: string; subtitle: string }) {
-  return (
-    <div
-      style={{
-        padding: '18px 22px 14px',
-        borderBottom: '0.5px solid var(--color-border-1)',
-        flexShrink: 0,
-      }}
-    >
-      <div
-        style={{
-          fontFamily: 'var(--font-display, Georgia, serif)',
-          fontSize: 20,
-          fontWeight: 400,
-          color: 'var(--color-text-1)',
-          marginBottom: 2,
-        }}
-      >
-        {title}
-      </div>
-      <div style={{ fontSize: 12, color: 'var(--color-muted)' }}>{subtitle}</div>
-    </div>
-  )
+/** The `https://` lives in the affix, so the field shows the bare host. */
+function stripScheme(url: string): string {
+  return url.replace(/^https?:\/\//, '')
+}
+
+function withScheme(host: string): string {
+  const bare = stripScheme(host).trim()
+  return bare ? `https://${bare}` : ''
 }

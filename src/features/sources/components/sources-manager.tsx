@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
 import { PagePickerModal } from '@/features/sources/components/page-picker-modal'
-import { StrategyToggle } from '@/features/sources/components/strategy-toggle'
+import { ToggleRow } from '@/components/ui/form'
 import { SourceRow } from '@/features/sources/components/source-row'
 import { ManualAddInModal } from '@/features/sources/components/manual-add-modal'
 import { extractInitials, formatRelativeTime } from '@/utils/format'
@@ -161,7 +161,6 @@ export function SourcesManager({
   const activeSourceCount = sources.filter((s) => s.is_active).length
   const requireGrounding = strategy.require_source_grounding ?? false
 
-  // Compute uncovered pillars
   const allSourcePillarIds = sources
     .filter((s) => s.is_active)
     .map((s) => getSourcePillarIds(s.pillar_ids))
@@ -236,7 +235,7 @@ export function SourcesManager({
     const rawUrl = pagePickerFor === 'add' ? addForm.url : pagePickerSource?.url
     if (rawUrl) pagePickerSiteOrigin = new URL(rawUrl).origin
   } catch {
-    // invalid URL
+    // A half-typed URL is normal here; the picker just opens without a site origin.
   }
 
   return (
@@ -271,10 +270,10 @@ export function SourcesManager({
         {/* Source settings */}
         <section className="mb-6 bg-white rounded-xl border border-gray-200 p-5">
           <p className="text-sm font-medium text-gray-700 mb-3">Source settings</p>
-          <StrategyToggle
-            label="Strict mode: only use facts from these sources"
+          <ToggleRow
+            title="Strict mode: only use facts from these sources"
             description="When on, posts stick to facts found in your sources. Anything unverified gets flagged."
-            enabled={requireGrounding}
+            checked={requireGrounding}
             onChange={(v) => {
               void handleToggleGrounding(v)
             }}

@@ -19,32 +19,6 @@ const SUCCESS_COPY = {
   body: 'The reset link is on its way. It expires in 60 minutes — use it before then.',
 }
 
-const INPUT_STYLE: React.CSSProperties = {
-  background: '#fff',
-  border: '1px solid rgba(44,62,80,0.14)',
-  borderRadius: 4,
-  padding: '12px 14px',
-  fontSize: 13,
-  height: 'auto',
-  color: '#1A2630',
-}
-
-const LABEL_STYLE: React.CSSProperties = {
-  fontSize: 10,
-  fontWeight: 500,
-  color: '#1A2630',
-  letterSpacing: '2px',
-  textTransform: 'uppercase',
-}
-
-function onFocus(e: React.FocusEvent<HTMLInputElement>) {
-  e.currentTarget.style.borderColor = '#C07B55'
-}
-
-function onBlur(e: React.FocusEvent<HTMLInputElement>) {
-  e.currentTarget.style.borderColor = 'rgba(44,62,80,0.14)'
-}
-
 interface FormPanelProps {
   email: string
   setEmail: (v: string) => void
@@ -76,10 +50,7 @@ function FormPanel({ email, setEmail, emailError, loading, onSubmit }: FormPanel
             error={emailError}
             autoComplete="email"
             autoFocus
-            style={INPUT_STYLE}
-            labelStyle={LABEL_STYLE}
-            onFocus={onFocus}
-            onBlur={onBlur}
+            labelVariant="caps"
           />
         </div>
         <button

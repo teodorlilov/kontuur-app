@@ -1,62 +1,66 @@
+import { cn } from '@/utils/cn'
+import { CLIENT_COLORS } from '@/utils/constants'
+
 type AvatarSize = 'sm' | 'md' | 'lg'
-type AvatarColor = 'blue' | 'green' | 'purple' | 'amber' | 'brand'
 
 interface AvatarProps {
   name: string
   size?: AvatarSize
-  color?: AvatarColor
+  /** Forces the Deep Pine mark instead of hashing — for the workspace itself, not a person. */
+  color?: 'brand'
   className?: string
 }
 
-const sizeStyles: Record<AvatarSize, { width: number; height: number; fontSize: number }> = {
-  sm: { width: 24, height: 24, fontSize: 10 },
-  md: { width: 32, height: 32, fontSize: 12 },
-  lg: { width: 44, height: 44, fontSize: 14 },
+const SIZE_CLASS: Record<AvatarSize, string> = {
+  sm: 'size-6 text-[10px]',
+  md: 'size-8 text-xs',
+  lg: 'size-11 text-sm',
 }
 
-const colorStyles: Record<AvatarColor, { background: string; color: string }> = {
-  blue: { background: '#E6F1FB', color: '#0C447C' },
-  green: { background: '#EAF3DE', color: '#27500A' },
-  purple: { background: '#EEEDFE', color: '#3C3489' },
-  amber: { background: '#FAEEDA', color: '#633806' },
-  brand: { background: '#2C3E50', color: '#FFFFFF' },
-}
-
-const colorKeys: AvatarColor[] = ['blue', 'green', 'purple', 'amber']
-
-function hashColor(name: string): AvatarColor {
-  let hash = 0
-  for (let i = 0; i < name.length; i++) {
-    hash = (hash * 31 + name.charCodeAt(i)) >>> 0
-  }
-  return colorKeys[hash % colorKeys.length]!
-}
-
+/**
+ * Initials in a coloured disc.
+ *
+ * Hashes onto `CLIENT_COLORS` rather than carrying its own palette: that constant already exists
+ * for exactly this job — telling people and clients apart — and documents why a pure green ramp
+ * failed there.
+ */
 export function Avatar({ name, size = 'md', color, className }: AvatarProps) {
-  const resolvedColor = color ?? hashColor(name)
   const initials = name
     .split(' ')
     .slice(0, 2)
-    .map((w) => w[0]?.toUpperCase() ?? '')
+    .map((word) => word[0]?.toUpperCase() ?? '')
     .join('')
+
+  const hue = color === 'brand' ? null : CLIENT_COLORS[hashIndex(name, CLIENT_COLORS.length)]!
 
   return (
     <div
-      className={className}
-      style={{
-        ...sizeStyles[size],
-        ...colorStyles[resolvedColor],
-        borderRadius: 'var(--radius-full)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        fontWeight: 500,
-        fontFamily: 'var(--font-sans)',
-        flexShrink: 0,
-        userSelect: 'none',
-      }}
+      className={cn(
+        'flex flex-none select-none items-center justify-center rounded-full font-sans font-medium',
+        SIZE_CLASS[size],
+        color === 'brand' && 'bg-forest-deep text-surface',
+        className
+      )}
+      // Computed from the hash — the palette is a token list, not a fixed pair of classes.
+      style={
+        hue
+          ? {
+              background: `color-mix(in srgb, ${hue} 14%, transparent)`,
+              color: `color-mix(in srgb, ${hue} 78%, var(--ink))`,
+            }
+          : undefined
+      }
     >
       {initials}
     </div>
   )
+}
+
+/** Stable index for a name, so the same person keeps the same colour everywhere. */
+function hashIndex(name: string, buckets: number): number {
+  let hash = 0
+  for (let i = 0; i < name.length; i++) {
+    hash = (hash * 31 + name.charCodeAt(i)) >>> 0
+  }
+  return hash % buckets
 }

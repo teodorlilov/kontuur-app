@@ -10,8 +10,8 @@ export type SettingsTab =
 /**
  * The client settings sections, in reading order.
  *
- * Data rather than a component: these used to render as a 240px left nav beside
- * the form, and now feed the page header's tab rail.
+ * Data rather than a component, so the page header's tab rail and the panel
+ * switch below it read one list instead of two.
  */
 export const SETTINGS_TABS: ReadonlyArray<{ id: SettingsTab; label: string }> = [
   { id: 'basic', label: 'Basic info' },

@@ -22,11 +22,7 @@ interface CommandPaletteProps {
   clients: Array<{ id: string; name: string }>
 }
 
-/**
- * ⌘K is owned by ShellProvider, not by this component: it is loaded on demand,
- * so a listener here would not exist until after the shortcut meant to summon
- * it had already been pressed.
- */
+/** Presentation only. ⌘K is bound in ShellProvider — see `usePaletteHotkey` for why. */
 export function CommandPalette({ open, onOpenChange, agencyMode, clients }: CommandPaletteProps) {
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>

@@ -38,6 +38,12 @@ interface ShellValue {
    * timezone instead of the agency's.
    */
   todayLabel: string
+  /**
+   * The agency's IANA zone. Any client component formatting a date must pass this, or it formats
+   * in the server's zone during SSR and the visitor's after hydration — a mismatch that also shows
+   * the wrong day near midnight.
+   */
+  timezone: string
   openPalette: () => void
   notifications: NotificationsValue
 }
@@ -163,9 +169,9 @@ function useNotifications(): NotificationsValue {
 }
 
 /**
- * Owns ⌘K. Deliberately not inside CommandPalette: that component is now loaded
- * on demand, so a listener living there would not exist until after the very
- * shortcut meant to summon it had already been pressed.
+ * Owns ⌘K. Deliberately not inside CommandPalette: that component is loaded on
+ * demand, so a listener living there would not exist until after the very
+ * shortcut meant to summon it had been pressed.
  */
 function usePaletteHotkey(onOpen: () => void): void {
   useEffect(() => {
@@ -185,6 +191,7 @@ interface ShellProviderProps {
   agencyMode: 'agency' | 'solo'
   userInitials: string
   todayLabel: string
+  timezone: string
   clients: Array<{ id: string; name: string }>
   children: ReactNode
 }
@@ -199,6 +206,7 @@ export function ShellProvider({
   agencyMode,
   userInitials,
   todayLabel,
+  timezone,
   clients,
   children,
 }: ShellProviderProps) {
@@ -209,8 +217,8 @@ export function ShellProvider({
   usePaletteHotkey(openPalette)
 
   const value = useMemo<ShellValue>(
-    () => ({ agencyName, userInitials, todayLabel, openPalette, notifications }),
-    [agencyName, userInitials, todayLabel, openPalette, notifications]
+    () => ({ agencyName, userInitials, todayLabel, timezone, openPalette, notifications }),
+    [agencyName, userInitials, todayLabel, timezone, openPalette, notifications]
   )
 
   return (

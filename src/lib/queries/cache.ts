@@ -5,6 +5,7 @@ import {
   AGENCY_COLUMNS,
   CLIENT_LIST_COLUMNS,
   CLIENT_ROSTER_COLUMNS,
+  UPCOMING_POST_COLUMNS,
 } from '@/lib/queries/select-columns'
 import { getWeekDayKeys, getWeekRange, toDateKey } from '@/utils/date-helpers'
 import { DAYS_PER_WEEK } from '@/utils/constants'
@@ -226,6 +227,11 @@ export const getCachedClientRoster = cache(_fetchClientRoster)
 /**
  * Upcoming posts across the agency, earliest first, so the roster can show each
  * client's next slot and how many are queued behind it.
+ *
+ * Read by two surfaces: the roster needs only the client and the time, while the
+ * dashboard's "going out next" card lists individual publishes from this same
+ * entry — so the select carries id and platform and is not free to shrink.
+ *
  * Call revalidateTag('client-post-stats') after post mutations.
  */
 const _fetchUpcomingByClient = unstable_cache(
@@ -235,7 +241,7 @@ const _fetchUpcomingByClient = unstable_cache(
     // and keeping it out of the arguments is what lets requests share the entry.
     const { data, error } = await supabase
       .from('posts')
-      .select('client_id, scheduled_at, clients!inner(agency_id)')
+      .select(UPCOMING_POST_COLUMNS)
       .in('status', SCHEDULED_STATUSES)
       .eq('clients.agency_id', agencyId)
       .gte('scheduled_at', new Date().toISOString())

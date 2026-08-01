@@ -1,3 +1,4 @@
+import Image from 'next/image'
 import type { AnalyticsMetrics, IGPost } from '@/types/api'
 import { typeColorStyle, formatType } from '../utils/media-type'
 
@@ -29,7 +30,15 @@ export function PostGrid({ metrics }: PostGridProps) {
               className="relative aspect-square rounded-lg overflow-hidden bg-gray-100 block group"
             >
               {post.thumbnail_url ? (
-                <img src={post.thumbnail_url} alt="" className="w-full h-full object-cover" />
+                <Image
+                  src={post.thumbnail_url}
+                  alt=""
+                  fill
+                  // A square grid that halves its columns twice on the way down; without this the
+                  // optimizer serves one full-width candidate for every tile.
+                  sizes="(max-width: 640px) 33vw, (max-width: 1024px) 25vw, 180px"
+                  className="object-cover"
+                />
               ) : (
                 <div
                   className="w-full h-full flex items-center justify-center text-xs font-semibold text-white"

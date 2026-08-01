@@ -1,67 +1,65 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { cn } from '@/utils/cn'
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { Button } from '@/components/ui/button'
+import { StatusPill } from '@/components/ui/status-pill'
+import { ConnectLink, ServiceTile } from '@/components/ui/service-row'
 import { toast } from '@/components/ui/toast'
 import { disconnectConnection } from '@/features/clients/actions/connection-actions'
 import { isTokenExpired } from '@/lib/meta/token-expiry'
-import { createModuleCache } from '@/utils/module-cache'
-import { PanelHeader } from './basic-info-tab'
+import { cn } from '@/utils/cn'
+import type { MetaConnection } from '@/types/api'
 
-interface MetaConnection {
+interface PlatformRow {
   id: string
-  platform: string
-  account_id: string
-  account_name: string
-  token_expires_at: string | null
+  label: string
+  initials: string
+  note: string
+  supported: boolean
 }
 
-// Module-level cache — prevents double-fetch from React Strict Mode (dev) and remounts
-const connectionsCache = createModuleCache<MetaConnection[]>(30_000)
-
-/** Bust the connections cache for a client (e.g. after OAuth redirect). */
-export function bustConnectionsCache(clientId: string) {
-  connectionsCache.delete(clientId)
-}
+const PLATFORM_ROWS: PlatformRow[] = [
+  {
+    id: 'instagram',
+    label: 'Instagram',
+    initials: 'IG',
+    note: 'Business or Creator account required',
+    supported: true,
+  },
+  {
+    id: 'facebook',
+    label: 'Facebook Page',
+    initials: 'FB',
+    note: 'Needed for Instagram publishing',
+    supported: true,
+  },
+  { id: 'linkedin', label: 'LinkedIn', initials: 'LI', note: 'Company pages', supported: false },
+]
 
 interface ConnectedAccountsTabProps {
   clientId: string
+  /** Resolved server-side by the page, which already needs them for the header pill. */
+  connections: MetaConnection[]
 }
 
-/** Connected accounts tab: Instagram and Facebook OAuth cards. */
-export function ConnectedAccountsTab({ clientId }: ConnectedAccountsTabProps) {
-  const [connections, setConnections] = useState<MetaConnection[]>([])
+/** Where posts publish: Instagram and Facebook OAuth links. */
+export function ConnectedAccountsTab({ clientId, connections }: ConnectedAccountsTabProps) {
+  const router = useRouter()
   const [disconnecting, setDisconnecting] = useState<string | null>(null)
-
-  useEffect(() => {
-    const cached = connectionsCache.get(clientId)
-    if (cached) {
-      setConnections(cached)
-      return
-    }
-    fetch(`/api/meta/connections?client_id=${clientId}`)
-      .then((r) => r.json())
-      .then((data: { connections?: MetaConnection[] }) => {
-        const result = data.connections ?? []
-        connectionsCache.set(clientId, result)
-        setConnections(result)
-      })
-      .catch(() => {
-        /* silently ignore — user can retry via connect buttons */
-      })
-  }, [clientId])
+  // Optimistic removal only. Derived from props rather than mirrored into state, so a server
+  // refresh is always the source of truth and there is no prop/state sync to get wrong.
+  const [removedIds, setRemovedIds] = useState<Set<string>>(new Set())
+  const visible = connections.filter((c) => !removedIds.has(c.id))
 
   async function handleDisconnect(connectionId: string) {
     setDisconnecting(connectionId)
     try {
       const result = await disconnectConnection(connectionId)
       if (!result.ok) throw new Error(result.error)
-      setConnections((prev) => {
-        const updated = prev.filter((c) => c.id !== connectionId)
-        connectionsCache.patch(clientId, updated)
-        return updated
-      })
+      setRemovedIds((prev) => new Set(prev).add(connectionId))
       toast.success('Account disconnected')
+      router.refresh()
     } catch {
       toast.error('Failed to disconnect account')
     } finally {
@@ -69,179 +67,83 @@ export function ConnectedAccountsTab({ clientId }: ConnectedAccountsTabProps) {
     }
   }
 
-  const connectedPlatforms = new Set(connections.map((c) => c.platform))
-
   return (
     <>
-      <PanelHeader
-        title="Connected accounts"
-        subtitle="Link social accounts for publishing and analytics"
-      />
-      <div style={{ padding: '20px 22px' }}>
-        {connections.length > 0 && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 12 }}>
-            {connections.map((conn) => (
-              <ConnectionCard
-                key={conn.id}
-                connection={conn}
-                isDisconnecting={disconnecting === conn.id}
-                onDisconnect={() => handleDisconnect(conn.id)}
-              />
-            ))}
-          </div>
-        )}
-
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
-          <ConnectButton
-            href={`/api/meta/connect?platform=instagram&client_id=${clientId}`}
-            label="Instagram"
-            isConnected={connectedPlatforms.has('instagram')}
-          />
-          <ConnectButton
-            href={`/api/meta/connect?platform=facebook&client_id=${clientId}`}
-            label="Facebook Page"
-            isConnected={connectedPlatforms.has('facebook')}
-          />
-        </div>
-
-        <div
-          style={{
-            fontSize: 11,
-            color: 'var(--color-muted)',
-            lineHeight: 1.65,
-            padding: '12px 14px',
-            background: 'var(--color-sunken)',
-            borderRadius: 8,
-          }}
-        >
-          Connected accounts enable real-time analytics on the Analytics page and allow
-          publishing approved posts directly to Instagram.
-        </div>
+      <div>
+        {PLATFORM_ROWS.map((platform) => {
+          const connection = visible.find((c) => c.platform === platform.id)
+          return (
+            <AccountRow
+              key={platform.id}
+              platform={platform}
+              connection={connection}
+              clientId={clientId}
+              isDisconnecting={!!connection && disconnecting === connection.id}
+              onDisconnect={() => connection && handleDisconnect(connection.id)}
+            />
+          )
+        })}
       </div>
+
+      <p className="mt-[18px] rounded-panel bg-wash px-4 py-3.5 text-[12.5px] leading-relaxed text-text2">
+        Connected accounts enable real-time analytics and let approved posts publish directly.
+        Without one, Kontuur can still draft and schedule — it just can&rsquo;t post.
+      </p>
     </>
   )
 }
 
-/** Circular avatar showing the account's live profile picture, with an initial fallback. */
-function ConnectionAvatar({ connection }: { connection: MetaConnection }) {
-  const [failed, setFailed] = useState(false)
-  const initial = (connection.account_name || connection.platform || '?').charAt(0).toUpperCase()
-
-  return (
-    <div
-      style={{
-        width: 40,
-        height: 40,
-        borderRadius: '50%',
-        overflow: 'hidden',
-        flexShrink: 0,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: 'rgba(122,154,106,0.1)',
-        border: '0.5px solid rgba(122,154,106,0.25)',
-        fontSize: 15,
-        fontWeight: 600,
-        color: 'var(--color-text-2)',
-      }}
-    >
-      {failed ? (
-        initial
-      ) : (
-        <img
-          src={`/api/meta/profile-picture?connection_id=${connection.id}`}
-          alt=""
-          width={40}
-          height={40}
-          onError={() => setFailed(true)}
-          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-        />
-      )}
-    </div>
-  )
-}
-
-function ConnectionCard({
+function AccountRow({
+  platform,
   connection,
+  clientId,
   isDisconnecting,
   onDisconnect,
 }: {
-  connection: MetaConnection
+  platform: PlatformRow
+  connection: MetaConnection | undefined
+  clientId: string
   isDisconnecting: boolean
   onDisconnect: () => void
 }) {
-  const isExpired = isTokenExpired(connection.token_expires_at)
-  const platformLabel =
-    connection.platform === 'instagram' ? 'Instagram' :
-    'Facebook'
+  const expired = connection ? isTokenExpired(connection.token_expires_at) : false
 
   return (
     <div
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 12,
-        padding: '12px 14px',
-        background: 'rgba(122,154,106,0.06)',
-        border: '0.5px solid rgba(122,154,106,0.25)',
-        borderRadius: 10,
-      }}
-    >
-      <ConnectionAvatar connection={connection} />
-      <div style={{ flex: 1 }}>
-        <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--color-text-1)', marginBottom: 2 }}>
-          {platformLabel} connected
-          <span style={{ fontWeight: 400, color: 'var(--color-text-2)', marginLeft: 6 }}>
-            {connection.account_name}
-          </span>
-        </div>
-        {isExpired && (
-          <div style={{ fontSize: 11, color: 'var(--color-error-fg)' }}>
-            Token expired — reconnect to refresh
-          </div>
-        )}
-      </div>
-      <button
-        type="button"
-        onClick={onDisconnect}
-        disabled={isDisconnecting}
-        style={{
-          fontSize: 11,
-          color: 'var(--color-terracotta)',
-          background: 'none',
-          border: 'none',
-          cursor: 'pointer',
-          fontFamily: 'inherit',
-          opacity: isDisconnecting ? 0.5 : 1,
-        }}
-      >
-        {isDisconnecting ? 'Disconnecting…' : 'Disconnect'}
-      </button>
-    </div>
-  )
-}
-
-function ConnectButton({
-  href,
-  label,
-  isConnected,
-}: {
-  href: string
-  label: string
-  isConnected: boolean
-}) {
-  return (
-    <a
-      href={href}
       className={cn(
-        'inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border text-sm font-medium transition-colors',
-        isConnected
-          ? 'border-[var(--color-brand)] text-[var(--color-brand)] hover:bg-[var(--color-overlay)]'
-          : 'border-[var(--color-border-2)] text-[var(--color-text-1)] hover:border-[var(--color-border-3)]'
+        'flex items-center gap-3.5 border-t border-line py-[15px] first:border-t-0',
+        !platform.supported && 'opacity-55'
       )}
-      style={{ textDecoration: 'none', fontFamily: 'inherit' }}
     >
-      {isConnected ? `Reconnect ${label}` : `Connect ${label}`}
-    </a>
+      <ServiceTile>{platform.initials}</ServiceTile>
+
+      <div className="min-w-0 flex-1">
+        <b className="block text-[13.5px] font-semibold text-ink">{platform.label}</b>
+        <span className="text-[12.5px] text-text3">
+          {connection ? connection.account_name : platform.note}
+        </span>
+      </div>
+
+      {!platform.supported ? (
+        <StatusPill tone="warn">Coming soon</StatusPill>
+      ) : expired ? (
+        <StatusPill tone="warn">Token expired</StatusPill>
+      ) : connection ? (
+        <StatusPill tone="ok">Connected</StatusPill>
+      ) : (
+        <StatusPill tone="bad">Not connected</StatusPill>
+      )}
+
+      {platform.supported &&
+        (connection && !expired ? (
+          <Button variant="ghost" size="sm" onClick={onDisconnect} loading={isDisconnecting}>
+            Disconnect
+          </Button>
+        ) : (
+          <ConnectLink href={`/api/meta/connect?platform=${platform.id}&client_id=${clientId}`}>
+            {expired ? 'Reconnect' : 'Connect'}
+          </ConnectLink>
+        ))}
+    </div>
   )
 }

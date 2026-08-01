@@ -48,9 +48,13 @@ function EditableCaption({
   const [draft, setDraft] = useState(caption ?? '')
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
-  useEffect(() => {
+  // Adjusted during render rather than in an effect: an effect renders the stale draft once,
+  // commits it, then re-renders — so a caption arriving from the server flashes the old text.
+  const [syncedCaption, setSyncedCaption] = useState(caption)
+  if (syncedCaption !== caption) {
+    setSyncedCaption(caption)
     setDraft(caption ?? '')
-  }, [caption])
+  }
 
   useEffect(() => {
     if (editing && textareaRef.current) {

@@ -4,26 +4,25 @@ import { getCachedAgencyClients } from '@/lib/queries/cache'
 import { fetchClientData, type ClientData } from '@/lib/clients/fetch-client-data'
 import { fetchIdeaById } from '@/features/ideas/lib/ideas'
 import { GenerateWizard } from '@/features/generate/components/generate-wizard'
-import type { ClientIdea } from '@/types/api'
 
 interface PageProps {
   searchParams: Promise<{ ideaId?: string; client?: string }>
 }
 
 export default async function GeneratePage({ searchParams }: PageProps) {
-  const { agencyId } = await requireSessionUser()
+  // The params do not depend on the session, and the idea does not depend on the client list, so
+  // each wave holds everything that can resolve at once. Only fetchClientData below is genuinely
+  // sequential: it needs whichever client the idea or the params resolved to.
+  const [{ agencyId }, { ideaId, client }] = await Promise.all([requireSessionUser(), searchParams])
   const supabase = await createServerSupabaseClient()
-  const clients = await getCachedAgencyClients(agencyId)
-  const { ideaId, client } = await searchParams
+
+  const [clients, initialIdea] = await Promise.all([
+    getCachedAgencyClients(agencyId),
+    ideaId ? fetchIdeaById(ideaId, agencyId) : null,
+  ])
 
   let initialClientData: ClientData | null = null
   let initialTargetPostCount = 3
-  let initialIdea: ClientIdea | null = null
-
-  // If ideaId is present, fetch the idea for pre-fill
-  if (ideaId) {
-    initialIdea = await fetchIdeaById(ideaId, agencyId)
-  }
 
   // ?client= preselects a client; ignore ids that don't belong to this agency
   const requestedClientId =

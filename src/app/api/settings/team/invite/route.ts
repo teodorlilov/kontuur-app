@@ -14,8 +14,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Only admins can invite team members' }, { status: 403 })
   }
 
-  // Parse and validate body
-  let body: { email?: string }
+  let body: { email?: string; role?: string }
   try {
     body = await request.json()
   } catch {
@@ -27,7 +26,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Valid email is required' }, { status: 400 })
   }
 
-  // Check if email already exists in this agency
+  // Only these two are meaningful: 'admin' is what every permission check in the app tests for,
+  // and anything else behaves as a plain member.
+  const role = body.role === 'admin' ? 'admin' : 'member'
+
   const admin = createAdminSupabaseClient()
   const { data: existingMembers } = await admin
     .from('users')
@@ -39,15 +41,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'This email is already a team member' }, { status: 409 })
   }
 
-  // Invite via Supabase Auth
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
+  // createUserRecord reads `role` out of this metadata when the invite is accepted.
   const { error: inviteError } = await admin.auth.admin.inviteUserByEmail(email, {
-    data: { invited_agency_id: agencyId, role: 'member' },
+    data: { invited_agency_id: agencyId, role },
     redirectTo: `${appUrl}/auth/callback`,
   })
 
   if (inviteError) {
-    // Handle common Supabase errors with friendly messages
     if (inviteError.message.includes('already been registered')) {
       return NextResponse.json(
         { error: 'This email already has an account. They cannot be invited again.' },

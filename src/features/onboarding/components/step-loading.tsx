@@ -22,8 +22,12 @@ const STAGE_INTERVAL_MS = 2000
 /** Step 2: analysis progress animation with four named stages. */
 export function StepLoading({ analysisComplete, onSkip, onComplete }: StepLoadingProps) {
   const [activeStage, setActiveStage] = useState(0)
+  // Kept current in an effect, not during render: a render React discards can still mutate a ref,
+  // leaving the committed tree holding a callback from an abandoned render.
   const onCompleteRef = useRef(onComplete)
-  onCompleteRef.current = onComplete
+  useEffect(() => {
+    onCompleteRef.current = onComplete
+  })
 
   // Advance stages on a timer
   useEffect(() => {
@@ -38,9 +42,18 @@ export function StepLoading({ analysisComplete, onSkip, onComplete }: StepLoadin
     onCompleteRef.current()
   }, [])
 
+  // Fast-forward to "done" during render rather than in the effect below: setting it there paints
+  // the half-finished stage list once more before correcting, which reads as a stutter right at
+  // the moment the step is meant to feel finished.
+  const [syncedComplete, setSyncedComplete] = useState(analysisComplete)
+  if (syncedComplete !== analysisComplete) {
+    setSyncedComplete(analysisComplete)
+    if (analysisComplete) setActiveStage(STAGES.length)
+  }
+
+  // The hand-off itself stays on a timer, so the completed state is visible before moving on.
   useEffect(() => {
     if (!analysisComplete) return
-    setActiveStage(STAGES.length)
     const timer = setTimeout(handleComplete, 500)
     return () => clearTimeout(timer)
   }, [analysisComplete, handleComplete])

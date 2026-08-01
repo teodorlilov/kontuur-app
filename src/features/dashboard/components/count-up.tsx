@@ -27,7 +27,7 @@ export function CountUp({ value }: { value: number }) {
     function step(timestamp: number) {
       startedAt ??= timestamp
       const progress = Math.min((timestamp - startedAt) / DURATION_MS, 1)
-      // Cubic ease-out, matching the mock's count-up curve.
+      // Cubic ease-out: the number decelerates into its final value rather than snapping.
       setDisplay(Math.round(value * (1 - Math.pow(1 - progress, 3))))
       if (progress < 1) frameRef.current = requestAnimationFrame(step)
     }

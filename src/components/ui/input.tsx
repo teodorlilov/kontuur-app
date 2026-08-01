@@ -1,36 +1,58 @@
 'use client'
 
-import { fieldBaseStyle, fieldErrorStyle, fieldLabelStyle, makeFieldHandlers } from './field-styles'
+import { cn } from '@/utils/cn'
+import { useFieldContext } from './form/field-context'
+import {
+  CONTROL_BASE,
+  CONTROL_DISABLED,
+  CONTROL_INVALID,
+  CONTROL_READONLY,
+  LABEL_CLASS,
+  type LabelVariant,
+} from './form/control-classes'
 
 interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
+  /** Standalone label. Inside a `Field`, omit this — the Field owns the label. */
   label?: string
+  labelVariant?: LabelVariant
   error?: string
-  labelStyle?: React.CSSProperties
 }
 
-export function Input({ label, error, style, labelStyle, id, ...props }: InputProps) {
-  const inputId = id ?? label?.toLowerCase().replace(/\s+/g, '-')
+/**
+ * A text input.
+ *
+ * Inside a `Field` it adopts that field's id, `aria-describedby` and invalid state and renders no
+ * label of its own. Outside one it still renders a label and error, for the forms that have not
+ * moved to the grid.
+ */
+export function Input({ label,
+  labelVariant = 'default', error, className, id, ...props }: InputProps) {
+  const field = useFieldContext()
+  const inputId = id ?? field?.controlId ?? label?.toLowerCase().replace(/\s+/g, '-')
+  const invalid = !!error || field?.invalid
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+    <div className="flex min-w-0 flex-col gap-1.5">
       {label && (
-        <label htmlFor={inputId} style={{ ...fieldLabelStyle, ...labelStyle }}>
+        <label htmlFor={inputId} className={LABEL_CLASS[labelVariant]}>
           {label}
         </label>
       )}
       <input
         id={inputId}
-        style={{
-          ...fieldBaseStyle,
-          height: 36,
-          ...(error ? fieldErrorStyle : {}),
-          ...style,
-        }}
-        {...makeFieldHandlers<HTMLInputElement>(error, props)}
+        aria-invalid={invalid || undefined}
+        aria-describedby={field?.describedBy}
+        className={cn(
+          CONTROL_BASE,
+          CONTROL_READONLY,
+          CONTROL_DISABLED,
+          CONTROL_INVALID,
+          className
+        )}
         {...props}
       />
       {error && (
-        <p style={{ fontSize: 12, color: 'var(--color-error-fg)' }} aria-live="polite">
+        <p className="text-xs text-danger" aria-live="polite">
           {error}
         </p>
       )}

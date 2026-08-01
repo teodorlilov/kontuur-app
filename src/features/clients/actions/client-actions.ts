@@ -5,51 +5,27 @@ import { resolveActionAuth, verifyClientOwnership, type SupabaseServerClient } f
 import { parsePillars } from '@/lib/clients/content-pillars'
 import { removeDeletedPillarIds } from '@/lib/clients/sync-source-pillars'
 import { upsertVisualIdentity } from '@/lib/visual/queries'
-import type { SourceStrategy } from '@/types/sources'
-import type { VisualIdentity } from '@/types/visual'
+import {
+  formatIssues,
+  updateClientSchema,
+  type BrandProfileInput,
+  type ScheduleInput,
+  type UpdateClientInput,
+} from '@/features/clients/schemas'
 import type { ActionResult } from '@/lib/actions/types'
 
-interface UpdateClientInput {
-  name?: string
-  niche?: string | null
-  posts_per_week?: number
-  language?: string
-  website_url?: string | null
-  contact_email?: string | null
-  brand_profile?: BrandProfileInput
-  posting_schedule?: ScheduleInput
-  visual_identity?: VisualIdentity
-}
-
-interface BrandProfileInput {
-  tone?: string | null
-  target_audience?: string | null
-  content_pillars?: string | null
-  avoid_topics?: string | null
-  client_testimonial_voice?: string | null
-  default_post_type?: string
-  default_carousel_slides?: number
-  weekly_mix_json?: Record<string, number>
-  language_formality?: string
-  secondary_language?: string | null
-  is_health_niche?: boolean
-  source_strategy?: SourceStrategy
-  language_notes?: string | null
-}
-
-interface ScheduleInput {
-  is_active?: boolean
-  frequency_type?: string
-  frequency_value?: number
-  auto_generate_day?: string
-  auto_generate_time?: string
-}
-
-/** Update a client's core fields, brand profile, and posting schedule. */
+/** Update a client's core fields, brand profile, posting schedule and visual identity. */
 export async function updateClient(
   clientId: string,
-  data: UpdateClientInput
+  input: UpdateClientInput
 ): Promise<ActionResult> {
+  const parsed = updateClientSchema.safeParse(input)
+  if (!parsed.success) {
+    console.error(`[clients:update] invalid input for ${clientId}:`, formatIssues(parsed.error))
+    return { ok: false, error: 'Invalid client data' }
+  }
+  const data = parsed.data
+
   const auth = await resolveActionAuth()
   if (!auth.ok) return { ok: false, error: auth.error }
   const { supabase, agencyId } = auth

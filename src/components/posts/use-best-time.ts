@@ -31,14 +31,28 @@ function fetchBestTime(clientId: string): Promise<BestTimePlatform[] | null> {
  */
 export function useBestTime(clientId: string) {
   const [bestTimeData, setBestTimeData] = useState<BestTimePlatform[] | null>(null)
-  const [loading, setLoading] = useState(false)
+  // Seeded from the argument rather than set to true inside the effect: a fetch is pending from
+  // the first render onward, so starting at false only to flip it in the effect renders one frame
+  // that claims otherwise and forces an immediate second pass.
+  const [loading, setLoading] = useState(() => Boolean(clientId))
 
   useEffect(() => {
     if (!clientId) return
-    setLoading(true)
+    let active = true
+
     void fetchBestTime(clientId)
-      .then(setBestTimeData)
-      .finally(() => setLoading(false))
+      .then((data) => {
+        // The cache is module-level and shared, so a resolution can arrive after this consumer
+        // switched clients or unmounted.
+        if (active) setBestTimeData(data)
+      })
+      .finally(() => {
+        if (active) setLoading(false)
+      })
+
+    return () => {
+      active = false
+    }
   }, [clientId])
 
   return { bestTimeData, loading }

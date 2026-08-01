@@ -14,7 +14,8 @@ import { parseSlides } from '@/components/posts/parse-slides'
 import { useGenerateVisuals } from '@/features/publishing/hooks/use-generate-visuals'
 import { missingImagePositions } from '@/features/publishing/lib/image-list'
 import { ReviewInfoPanel } from './review-info-panel'
-import { parseValidationJson, deriveSlopFromValidation } from '@/features/review/lib/parse-validation-json'
+import { deriveSlopFromValidation } from '@/features/review/lib/derive-slop'
+import { parseStoredValidation } from '@/lib/validation/stored-validation-schema'
 import {
   REWRITE_SCORE_THRESHOLD,
   AUTHENTICITY_URGENT_THRESHOLD,
@@ -113,7 +114,7 @@ export function ReviewPostView({ post, bestTimeData, onApprove, onDelete, onImag
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Compute rewrite visibility
-  const qualityData = parseValidationJson(validationJson)
+  const qualityData = parseStoredValidation(validationJson)
   const hasLowQuality = qualityData ? qualityData.scores.overall_score < REWRITE_SCORE_THRESHOLD : false
   const hasLowAuthenticity = slopResult ? slopResult.human_authenticity_score < AUTHENTICITY_URGENT_THRESHOLD : false
   const hasAiTells = (slopResult?.ai_tells_found.length ?? 0) > 0

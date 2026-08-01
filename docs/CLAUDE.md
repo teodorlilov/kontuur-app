@@ -61,9 +61,19 @@ to `components/` only on the second consumer. Never the other way around.
 ## Code quality (non-negotiable)
 
 ### No duplication
-- Before writing a function, check the canonical locations above and grep:
-  `grep -r "conceptName" src/`. If it exists, import it.
+Before creating anything in a shared location (`components/`, `lib/`, `utils/`,
+or a feature's `lib/`), do all three. A name grep alone does NOT satisfy this rule:
+
+1. `ls` the target directory and read the exports of anything adjacent.
+   A duplicate usually exists under a different name: an inventory finds it,
+   a grep for the name you picked does not.
+2. Grep by shape, not name — the type signature, the JSX structure, or the
+   distinctive classes (`rounded-full`, `inline-flex items-center`).
+3. Name three synonyms for what you are building and grep each.
+   (pill · badge · chip · tag / panel · card · box / rail · aside · sidebar)
+
 - Same logic in two places → extract before adding a third.
+- Superseding something? Delete the original in the same change.
 - Found duplication outside the current scope? Note it, don't fix it.
 
 ### Functions

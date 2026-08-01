@@ -8,17 +8,19 @@ import { useShell } from '@/components/layout/shell-context'
 import { TOOL_ROW } from '@/components/layout/page-header/shared'
 import { Spinner } from '@/components/ui/spinner'
 import { parseTimestamp } from '@/utils/format'
+import { toDateKey } from '@/utils/date-helpers'
 import { NotificationItem } from './notification-item'
 import type { EnrichedNotification } from '@/types/api'
 
-/** Check if a date is today. */
-function isToday(date: Date): boolean {
-  const now = new Date()
-  return (
-    date.getFullYear() === now.getFullYear() &&
-    date.getMonth() === now.getMonth() &&
-    date.getDate() === now.getDate()
-  )
+/**
+ * Whether a timestamp falls on today's date in the agency's zone.
+ *
+ * Compared as date keys rather than by calendar fields, which read the browser's zone — so a
+ * notification from late last night could group under Today for one member of the team and
+ * Earlier for another sitting in a different country.
+ */
+function isToday(date: Date, timeZone: string): boolean {
+  return toDateKey(date, timeZone) === toDateKey(new Date(), timeZone)
 }
 
 // ---- Panel Component ----
@@ -41,8 +43,9 @@ function NotificationPanel({
   onMarkRead: (id: string) => void
   onNavigate: () => void
 }) {
-  const today = notifications.filter((n) => isToday(parseTimestamp(n.created_at)))
-  const earlier = notifications.filter((n) => !isToday(parseTimestamp(n.created_at)))
+  const { timezone } = useShell()
+  const today = notifications.filter((n) => isToday(parseTimestamp(n.created_at), timezone))
+  const earlier = notifications.filter((n) => !isToday(parseTimestamp(n.created_at), timezone))
 
   return (
     <div className={PANEL}>

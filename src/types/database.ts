@@ -1290,13 +1290,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      client_post_stats: {
-        Args: { p_agency_id: string }
+      client_edit_stats: {
+        Args: { p_client_id: string }
         Returns: {
-          client_id: string
+          approved_unpublished_count: number
           last_generated_at: string
+          pending_count: number
           published_count: number
-          total_count: number
+          scheduled_count: number
         }[]
       }
       consume_image_credits: {

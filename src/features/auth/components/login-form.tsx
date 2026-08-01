@@ -8,35 +8,6 @@ import { Input } from '@/components/ui/input'
 import { toast } from '@/components/ui/toast'
 import { AuthLayout } from '@/features/auth/components/auth-layout'
 
-const INPUT_STYLE: React.CSSProperties = {
-  background: '#fff',
-  border: '1px solid rgba(44,62,80,0.14)',
-  borderRadius: 4,
-  padding: '12px 14px',
-  fontSize: 13,
-  height: 'auto',
-}
-
-const LABEL_STYLE: React.CSSProperties = {
-  fontSize: 10,
-  fontWeight: 500,
-  color: '#1A2630',
-  letterSpacing: '2px',
-  textTransform: 'uppercase',
-}
-
-function onLoginFocus(hasError: boolean) {
-  return (e: React.FocusEvent<HTMLInputElement>) => {
-    if (!hasError) e.currentTarget.style.borderColor = '#C07B55'
-  }
-}
-
-function onLoginBlur(hasError: boolean) {
-  return (e: React.FocusEvent<HTMLInputElement>) => {
-    if (!hasError) e.currentTarget.style.borderColor = 'rgba(44,62,80,0.14)'
-  }
-}
-
 interface LoginFormPanelProps {
   email: string
   setEmail: (v: string) => void
@@ -64,10 +35,7 @@ function LoginFormPanel({ email, setEmail, password, setPassword, errors, loadin
             onChange={(e) => setEmail(e.target.value)}
             error={errors.email}
             autoComplete="email"
-            style={INPUT_STYLE}
-            labelStyle={LABEL_STYLE}
-            onFocus={onLoginFocus(!!errors.email)}
-            onBlur={onLoginBlur(!!errors.email)}
+            labelVariant="caps"
           />
         </div>
         <div style={{ marginBottom: 6 }}>
@@ -79,10 +47,7 @@ function LoginFormPanel({ email, setEmail, password, setPassword, errors, loadin
             onChange={(e) => setPassword(e.target.value)}
             error={errors.password}
             autoComplete="current-password"
-            style={INPUT_STYLE}
-            labelStyle={LABEL_STYLE}
-            onFocus={onLoginFocus(!!errors.password)}
-            onBlur={onLoginBlur(!!errors.password)}
+            labelVariant="caps"
           />
         </div>
         <div style={{ textAlign: 'right', marginBottom: 18 }}>

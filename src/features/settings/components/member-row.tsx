@@ -1,89 +1,42 @@
 'use client'
 
 import { Avatar } from '@/components/ui/avatar'
-import { Badge } from '@/components/ui/badge'
+import { StatusPill } from '@/components/ui/status-pill'
+import { capitalize, formatLongDate } from '@/utils/format'
 import type { TeamMember } from '@/types/api'
 
 interface MemberRowProps {
   member: TeamMember
   isCurrentUser: boolean
   canRemove: boolean
-  onRemove: (memberId: string) => void
-  isLast?: boolean
+  onRemove: (member: TeamMember) => void
 }
 
-function formatJoinDate(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  })
-}
-
-function formatRole(role: string): string {
-  return role.charAt(0).toUpperCase() + role.slice(1)
-}
-
-/** Single member row in the team members list. */
-export function MemberRow({ member, isCurrentUser, canRemove, onRemove, isLast }: MemberRowProps) {
+/** One person in the team list. */
+export function MemberRow({ member, isCurrentUser, canRemove, onRemove }: MemberRowProps) {
   return (
-    <div
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 14,
-        padding: '13px 22px',
-        borderBottom: isLast ? 'none' : '0.5px solid rgba(44,62,80,0.055)',
-        transition: 'background 0.12s',
-      }}
-      onMouseEnter={(e) => (e.currentTarget.style.background = '#F9F6F2')}
-      onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
-    >
-      <Avatar name={member.email} size="md" color="brand" />
+    <div className="flex items-center gap-3 border-t border-line py-3.5 first:border-t-0">
+      <Avatar name={member.email} size="md" />
 
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div
-          style={{
-            fontSize: 12,
-            fontWeight: 500,
-            color: 'var(--color-text-1)',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 6,
-          }}
-        >
-          {member.email}
-          {isCurrentUser && <Badge variant="default">you</Badge>}
-        </div>
-        <div style={{ fontSize: 11, color: 'var(--color-muted)', marginTop: 2 }}>
-          Joined {formatJoinDate(member.created_at)}
-        </div>
+      <div className="min-w-0 flex-1">
+        <b className="block truncate text-[13.5px] font-semibold text-ink">{member.email}</b>
+        <span className="text-[12.5px] text-text3">
+          Joined {formatLongDate(new Date(member.created_at))}
+        </span>
       </div>
 
-      <Badge variant={member.role === 'admin' ? 'info' : 'default'}>{formatRole(member.role)}</Badge>
+      <StatusPill tone={member.role === 'admin' ? 'ok' : 'mark'}>
+        {capitalize(member.role)}
+      </StatusPill>
+      {isCurrentUser && (
+        <StatusPill tone="neutral">You</StatusPill>
+      )}
 
       {canRemove && !isCurrentUser && (
         <button
-          onClick={() => onRemove(member.id)}
-          style={{
-            padding: '5px 10px',
-            background: 'none',
-            border: '0.5px solid rgba(44,62,80,0.14)',
-            borderRadius: 6,
-            fontSize: 11,
-            color: 'var(--color-muted)',
-            cursor: 'pointer',
-            fontFamily: 'inherit',
-            transition: 'all 0.15s',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.borderColor = '#E8C4BB'
-            e.currentTarget.style.color = '#A04030'
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.borderColor = 'rgba(44,62,80,0.14)'
-            e.currentTarget.style.color = 'var(--color-muted)'
-          }}
+          type="button"
+          onClick={() => onRemove(member)}
+          className="rounded-md border border-line2 px-2.5 py-1 text-[11.5px] text-text2 transition-colors hover:border-danger-line hover:bg-danger-bg hover:text-danger"
         >
           Remove
         </button>

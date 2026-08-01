@@ -4,6 +4,28 @@ export interface WeightedPillar {
   weight: number
 }
 
+/** Whether an item already carries a usable id. The one definition of "has an id". */
+function hasPillarId(item: { id?: unknown }): boolean {
+  return typeof item.id === 'string' && item.id.length > 0
+}
+
+/**
+ * Stamps a stable id onto any pillar missing one.
+ *
+ * Both the generator and legacy rows produce `{ pillar, weight }` with no id, and the editor keys
+ * its rows by id — so ids must be assigned where that data enters the app, not when it is saved.
+ * Assigning them late leaves every row keyed `undefined` for the whole editing session.
+ */
+export function ensurePillarIds(
+  items: ReadonlyArray<{ id?: string; pillar: string; weight: number }>
+): WeightedPillar[] {
+  return items.map((item) => ({
+    id: hasPillarId(item) ? item.id! : crypto.randomUUID(),
+    pillar: item.pillar,
+    weight: item.weight,
+  }))
+}
+
 /**
  * Parse content_pillars JSON string into WeightedPillar[].
  * Returns [] if null/empty/invalid.
@@ -25,25 +47,16 @@ export function parsePillarsWithMeta(raw: string | null): {
   try {
     const parsed = JSON.parse(raw) as unknown
     if (!Array.isArray(parsed)) return { pillars: [], hadMissingIds: false }
-    let hadMissingIds = false
-    const pillars = parsed
-      .filter(
-        (item): item is Record<string, unknown> =>
-          typeof item === 'object' &&
-          item !== null &&
-          typeof (item as Record<string, unknown>).pillar === 'string' &&
-          typeof (item as Record<string, unknown>).weight === 'number'
-      )
-      .map((item) => {
-        const hasId = typeof item.id === 'string' && item.id.length > 0
-        if (!hasId) hadMissingIds = true
-        return {
-          id: hasId ? (item.id as string) : crypto.randomUUID(),
-          pillar: item.pillar as string,
-          weight: item.weight as number,
-        }
-      })
-    return { pillars, hadMissingIds }
+
+    const valid = parsed.filter(
+      (item): item is { id?: string; pillar: string; weight: number } =>
+        typeof item === 'object' &&
+        item !== null &&
+        typeof (item as Record<string, unknown>).pillar === 'string' &&
+        typeof (item as Record<string, unknown>).weight === 'number'
+    )
+
+    return { pillars: ensurePillarIds(valid), hadMissingIds: valid.some((i) => !hasPillarId(i)) }
   } catch {
     return { pillars: [], hadMissingIds: false }
   }

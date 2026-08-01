@@ -2,14 +2,27 @@ import { notFound } from 'next/navigation'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { requireSessionUser } from '@/lib/auth/session'
 import { ClientSettingsForm } from '@/features/clients/components/settings/client-settings-form'
-import type { ContentInsights } from '@/features/clients/components/settings/content-insights-tab'
+import { buildInsights, type PillarRow, type ScoreRow } from '@/features/clients/lib/insights'
+import { fetchClientPostStats } from '@/features/clients/lib/post-stats'
 import {
   fetchClientById,
   fetchBrandProfileByClient,
   fetchConnectionsByClient,
   fetchPostingScheduleByClient,
 } from '@/lib/queries/db'
+import {
+  fetchIdeaCounts,
+  fetchIdeasForAgency,
+  fetchTokenByClient,
+} from '@/features/ideas/lib/ideas'
 import { fetchVisualIdentity } from '@/lib/visual/queries'
+
+/** Pillar rows are capped so one prolific client can't pull an unbounded result set. */
+const PILLAR_SAMPLE_SIZE = 500
+/** Recent scored posts the quality average and trend are drawn from. */
+const SCORE_SAMPLE_SIZE = 20
+/** How many recent ideas the Idea link tab previews. */
+const IDEA_PREVIEW_LIMIT = 3
 
 export default async function EditClientPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -19,102 +32,58 @@ export default async function EditClientPage({ params }: { params: Promise<{ id:
   const client = await fetchClientById(supabase, id, agencyId)
   if (!client) notFound()
 
-  const visualIdentity = await fetchVisualIdentity(id)
+  const [
+    visualIdentity,
+    profile,
+    schedule,
+    { count: sourceCount },
+    recentPostsRes,
+    pillarPostsRes,
+    postStats,
+    connections,
+    ideaToken,
+    ideaCounts,
+    recentIdeas,
+  ] = await Promise.all([
+    // In the parallel block, not awaited above it: nothing below depends on the identity, so
+    // awaiting it first would cost a serial round trip before any of these started.
+    fetchVisualIdentity(id),
+    fetchBrandProfileByClient(supabase, id),
+    fetchPostingScheduleByClient(supabase, id),
+    supabase
+      .from('client_sources')
+      .select('*', { count: 'exact', head: true })
+      .eq('client_id', id)
+      .eq('is_active', true),
+    supabase
+      .from('posts')
+      .select('quality_score_avg')
+      .eq('client_id', id)
+      .not('quality_score_avg', 'is', null)
+      .order('created_at', { ascending: false })
+      .limit(SCORE_SAMPLE_SIZE)
+      // `.not(col, 'is', null)` narrows rows but not the generated column type, which stays
+      // nullable. The filter is the guarantee; this tells the compiler about it.
+      .overrideTypes<ScoreRow[]>(),
+    supabase
+      .from('posts')
+      .select('pillar, status, rewrite_count')
+      .eq('client_id', id)
+      .not('pillar', 'is', null)
+      .limit(PILLAR_SAMPLE_SIZE)
+      .overrideTypes<PillarRow[]>(),
+    // One aggregate rather than five status-filtered counts plus a last-generated lookup: they
+    // all read the same index, so the cost was six round trips for six numbers.
+    fetchClientPostStats(supabase, id),
+    // Resolved server-side: the header's connection pill must not flicker, and the accounts tab
+    // reads the same rows instead of re-fetching them over HTTP.
+    fetchConnectionsByClient(supabase, id),
+    fetchTokenByClient(id),
+    fetchIdeaCounts(id),
+    fetchIdeasForAgency(agencyId, { clientId: id, limit: IDEA_PREVIEW_LIMIT }),
+  ])
 
-  const [profile, schedule, { count: sourceCount }, recentPostsRes, allPostsRes, { count: pendingCount }, clientStatsRes, connections] =
-    await Promise.all([
-      fetchBrandProfileByClient(supabase, id),
-      fetchPostingScheduleByClient(supabase, id),
-      supabase
-        .from('client_sources')
-        .select('*', { count: 'exact', head: true })
-        .eq('client_id', id)
-        .eq('is_active', true),
-      supabase
-        .from('posts')
-        .select('quality_score_avg')
-        .eq('client_id', id)
-        .not('quality_score_avg', 'is', null)
-        .order('created_at', { ascending: false })
-        .limit(20),
-      supabase
-        .from('posts')
-        .select('pillar, status, rewrite_count')
-        .eq('client_id', id)
-        .not('pillar', 'is', null)
-        .limit(500),
-      supabase
-        .from('posts')
-        .select('id', { count: 'exact', head: true })
-        .eq('client_id', id)
-        .eq('status', 'pending_review'),
-      supabase
-        .from('posts')
-        .select('status, created_at')
-        .eq('client_id', id),
-      // Joins the existing parallel block — the header's connection pill must
-      // be resolved server-side or the title flickers on every load.
-      fetchConnectionsByClient(supabase, id),
-    ])
-
-  // Status card data — computed from per-client query instead of agency-wide cache
-  const clientStatRows = (clientStatsRes.data ?? []) as Array<{ status: string; created_at: string }>
-  const publishedCount = clientStatRows.filter((r) => r.status === 'published').length
-  const lastGeneratedAt = clientStatRows.length > 0
-    ? clientStatRows.reduce((max, r) => r.created_at > max ? r.created_at : max, clientStatRows[0]!.created_at)
-    : null
-
-  // Compute content insights server-side
-  const scores = (recentPostsRes.data as Array<{ quality_score_avg: number }> | null) ?? []
-  const avgScore =
-    scores.length > 0
-      ? Math.round((scores.reduce((s, r) => s + r.quality_score_avg, 0) / scores.length) * 10) / 10
-      : null
-
-  let trend: ContentInsights['trend'] = 'insufficient_data'
-  if (scores.length >= 10) {
-    const recentAvg = scores.slice(0, 10).reduce((s, r) => s + r.quality_score_avg, 0) / 10
-    const olderAvg =
-      scores.slice(10).reduce((s, r) => s + r.quality_score_avg, 0) /
-      Math.max(scores.slice(10).length, 1)
-    const diff = recentAvg - olderAvg
-    trend = diff > 1 ? 'improving' : diff < -1 ? 'declining' : 'stable'
-  }
-
-  const allPostRows =
-    (allPostsRes.data as Array<{ pillar: string; status: string; rewrite_count: number }> | null) ??
-    []
-
-  const pillarApproved = new Map<string, number>()
-  const pillarTotal = new Map<string, number>()
-  for (const row of allPostRows) {
-    pillarTotal.set(row.pillar, (pillarTotal.get(row.pillar) ?? 0) + 1)
-    if (row.status === 'approved') {
-      pillarApproved.set(row.pillar, (pillarApproved.get(row.pillar) ?? 0) + 1)
-    }
-  }
-  const topApprovedPillars = [...pillarTotal.keys()]
-    .sort((a, b) => {
-      const rateA = (pillarApproved.get(a) ?? 0) / (pillarTotal.get(a) ?? 1)
-      const rateB = (pillarApproved.get(b) ?? 0) / (pillarTotal.get(b) ?? 1)
-      return rateB - rateA
-    })
-    .slice(0, 3)
-
-  const pillarRewrites = new Map<string, number>()
-  for (const row of allPostRows) {
-    pillarRewrites.set(row.pillar, (pillarRewrites.get(row.pillar) ?? 0) + row.rewrite_count)
-  }
-  const topRewritePillars = [...pillarRewrites.entries()]
-    .filter(([, count]) => count > 0)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 3)
-    .map(([pillar]) => pillar)
-
-  const insights: ContentInsights | null =
-    avgScore !== null || topApprovedPillars.length > 0
-      ? { avgScore, trend, topApprovedPillars, topRewritePillars }
-      : null
+  const insights = buildInsights(recentPostsRes.data ?? [], pillarPostsRes.data ?? [])
 
   // The form renders the page header itself: the tab rail and the panel below
   // read the same activeTab state.
@@ -126,11 +95,18 @@ export default async function EditClientPage({ params }: { params: Promise<{ id:
       profile={profile}
       schedule={schedule}
       insights={insights}
-      publishedCount={publishedCount}
-      pendingCount={pendingCount ?? 0}
-      lastGeneratedAt={lastGeneratedAt}
+      publishedCount={postStats.publishedCount}
+      pendingCount={postStats.pendingCount}
+      scheduledCount={postStats.scheduledCount}
+      approvedUnpublishedCount={postStats.approvedUnpublishedCount}
+      lastGeneratedAt={postStats.lastGeneratedAt}
       visualIdentity={visualIdentity}
-      connectionCount={connections.length}
+      connections={connections}
+      ideaToken={ideaToken}
+      ideaNewCount={ideaCounts.newCount}
+      ideaUsedCount={ideaCounts.usedCount}
+      ideaTotalCount={ideaCounts.totalCount}
+      recentIdeas={recentIdeas}
     />
   )
 }

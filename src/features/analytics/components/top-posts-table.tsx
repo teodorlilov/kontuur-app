@@ -1,3 +1,4 @@
+import Image from 'next/image'
 import type { AnalyticsMetrics, IGPost, FBPost } from '@/types/api'
 import { typeColorStyle, formatType } from '../utils/media-type'
 
@@ -35,9 +36,11 @@ export function TopPostsTable({ metrics, limit = 5 }: TopPostsTableProps) {
               >
                 <span className="text-xs font-medium text-gray-400 w-4 shrink-0">{idx + 1}</span>
                 {post.thumbnail_url ? (
-                  <img
+                  <Image
                     src={post.thumbnail_url}
                     alt=""
+                    width={40}
+                    height={40}
                     className="w-10 h-10 rounded object-cover shrink-0"
                   />
                 ) : (

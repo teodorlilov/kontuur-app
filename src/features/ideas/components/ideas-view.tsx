@@ -114,8 +114,8 @@ export function IdeasView({ initialIdeas, clients }: IdeasViewProps) {
               ) : (
                 'Ideas your clients submit land here'
               ),
-              // The count bar under the old filter row said this; it belongs
-              // beside the title, not in a band of its own.
+              // Beside the title rather than in a band of its own: it scopes what the
+              // page is showing, which is what the header states.
               activeClient === 'all' &&
                 filteredIdeas.length > 0 &&
                 `${new Set(filteredIdeas.map((i) => i.clientId)).size} client${

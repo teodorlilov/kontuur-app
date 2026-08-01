@@ -6,11 +6,10 @@
  * long-lived user token do not expire — so reading NULL as expired would mark
  * every healthy Facebook connection as broken.
  *
- * This is the only definition. Five inline copies used to exist — in the publish
- * cron, the research pipeline, two API routes and the connected-accounts tab —
- * all behaviourally identical to this one, and all now import it. Anything that
- * needs to know whether a stored token is usable belongs here, so the publish
- * path and the UI can never disagree about what "expired" means.
+ * This is the only definition — the publish cron, the research pipeline, the API
+ * routes and the connected-accounts tab all import it. Anything that needs to
+ * know whether a stored token is usable belongs here, so the publish path and
+ * the UI can never disagree about what "expired" means.
  *
  * Canva is NOT a candidate for consolidation. src/app/api/canva/canva-auth.ts
  * inverts these semantics — Canva tokens genuinely expire and carry a

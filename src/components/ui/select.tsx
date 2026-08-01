@@ -1,33 +1,62 @@
 'use client'
 
-import { fieldBaseStyle, fieldErrorStyle, fieldLabelStyle, makeFieldHandlers } from './field-styles'
+import { cn } from '@/utils/cn'
+import { useFieldContext } from './form/field-context'
+import {
+  CONTROL_BASE,
+  CONTROL_DISABLED,
+  CONTROL_INVALID,
+  LABEL_CLASS,
+  type LabelVariant,
+} from './form/control-classes'
+
+/** Inline chevron, stroked in Ink Secondary. Inlined as a data URI so it needs no network fetch. */
+const CHEVRON =
+  "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 10 10' fill='none' stroke='%2357625A' stroke-width='1.4'%3E%3Cpath d='M2.5 4L5 6.5 7.5 4'/%3E%3C/svg%3E\")"
 
 interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
+  /** Standalone label. Inside a `Field`, omit this. */
   label?: string
+  labelVariant?: LabelVariant
   error?: string
   options: Array<{ value: string; label: string }>
   placeholder?: string
 }
 
-export function Select({ label, error, options, placeholder, style, id, ...props }: SelectProps) {
-  const inputId = id ?? label?.toLowerCase().replace(/\s+/g, '-')
+/** A native select, restyled to match the other controls. */
+export function Select({
+  label,
+  labelVariant = 'default',
+  error,
+  options,
+  placeholder,
+  className,
+  id,
+  ...props
+}: SelectProps) {
+  const field = useFieldContext()
+  const inputId = id ?? field?.controlId ?? label?.toLowerCase().replace(/\s+/g, '-')
+  const invalid = !!error || field?.invalid
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+    <div className="flex min-w-0 flex-col gap-1.5">
       {label && (
-        <label htmlFor={inputId} style={fieldLabelStyle}>
+        <label htmlFor={inputId} className={LABEL_CLASS[labelVariant]}>
           {label}
         </label>
       )}
       <select
         id={inputId}
-        style={{
-          ...fieldBaseStyle,
-          height: 36,
-          ...(error ? fieldErrorStyle : {}),
-          ...style,
-        }}
-        {...makeFieldHandlers<HTMLSelectElement>(error, props)}
+        aria-invalid={invalid || undefined}
+        aria-describedby={field?.describedBy}
+        className={cn(
+          CONTROL_BASE,
+          CONTROL_DISABLED,
+          CONTROL_INVALID,
+          'cursor-pointer appearance-none bg-[position:right_12px_center] bg-no-repeat pr-[34px]',
+          className
+        )}
+        style={{ backgroundImage: CHEVRON }}
         {...props}
       >
         {placeholder && (
@@ -42,7 +71,7 @@ export function Select({ label, error, options, placeholder, style, id, ...props
         ))}
       </select>
       {error && (
-        <p style={{ fontSize: 12, color: 'var(--color-error-fg)' }} aria-live="polite">
+        <p className="text-xs text-danger" aria-live="polite">
           {error}
         </p>
       )}

@@ -37,8 +37,8 @@ interface PageHeaderProps {
  * component that owns their tab state, and the other two stay fully server
  * rendered.
  *
- * Markup follows docs/redesign-mocks/archive/kontuur-headers-all-pages.html, with the
- * mock's off-ramp 26/16px title snapped to the Headline and Title steps.
+ * Title sizes are the Headline and Title steps of DESIGN.md's type ramp, never
+ * off-ramp values.
  */
 export function PageHeader({
   crumb,
@@ -203,29 +203,3 @@ export function MetaWarn({ children }: { children: ReactNode }) {
   return <span className="font-medium text-danger">{children}</span>
 }
 
-const PILL_TONES = {
-  ok: 'bg-wash text-forest',
-  warn: 'bg-pending-bg text-pending',
-  bad: 'bg-danger-bg text-danger',
-  mark: 'bg-accent text-forest-deep',
-} as const
-
-/** Status beside the title on a detail route — never the only signal. */
-export function HeaderPill({
-  tone,
-  children,
-}: {
-  tone: keyof typeof PILL_TONES
-  children: ReactNode
-}) {
-  return (
-    <span
-      className={cn(
-        'inline-flex h-[23px] flex-none items-center rounded-full px-2.5 text-[11px] font-semibold',
-        PILL_TONES[tone]
-      )}
-    >
-      {children}
-    </span>
-  )
-}

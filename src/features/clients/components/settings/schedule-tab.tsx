@@ -1,211 +1,183 @@
 'use client'
 
-import { cn } from '@/utils/cn'
+import { Chip, ChipGroup, Field, FormSection, ToggleRow } from '@/components/ui/form'
+import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
-import { PanelHeader } from './basic-info-tab'
-import { PLATFORMS, WEEKDAY_OPTIONS, CAROUSEL_SLIDE_OPTIONS } from '@/utils/constants'
+import { cn } from '@/utils/cn'
+import {
+  CAROUSEL_SLIDE_OPTIONS,
+  PLATFORMS,
+  POSTS_PER_RUN_OPTIONS,
+  WEEKDAY_OPTIONS,
+} from '@/utils/constants'
+import type { BrandDraft, ScheduleDraft } from '@/features/clients/lib/client-draft'
 
-const POSTS_OPTIONS = [1, 2, 3, 4, 5, 6, 7].map((n) => ({
-  value: String(n),
-  label: String(n),
-}))
+/** Only these two can publish today; the rest are shown so the roadmap is legible. */
+const LIVE_PLATFORMS = new Set(['Instagram', 'Facebook'])
 
+// No "Text only" option: nothing downstream generates it.
 const POST_TYPE_OPTIONS = [
   { value: 'single', label: 'Single image' },
   { value: 'carousel', label: 'Carousel' },
 ]
 
-const SLIDE_OPTIONS = CAROUSEL_SLIDE_OPTIONS.map((n) => ({
-  value: String(n),
-  label: `${n} slides`,
-}))
+const SLIDE_OPTIONS = CAROUSEL_SLIDE_OPTIONS.map((n) => ({ value: String(n), label: `${n} slides` }))
 
 interface ScheduleTabProps {
-  activePlatform: string
-  defaultPostType: string
-  defaultCarouselSlides: string
-  freqValue: string
-  autoDay: string
-  isActive: boolean
-  onActivePlatformChange: (v: string) => void
-  onDefaultPostTypeChange: (v: string) => void
-  onDefaultCarouselSlidesChange: (v: string) => void
-  onFreqValueChange: (v: string) => void
-  onAutoDayChange: (v: string) => void
-  onIsActiveChange: (v: boolean) => void
+  brand: BrandDraft
+  schedule: ScheduleDraft
+  /** Lower-cased platform names with a live connection, for the chip dots. */
+  connectedPlatforms: Set<string>
+  onBrandChange: (patch: Partial<BrandDraft>) => void
+  onScheduleChange: (patch: Partial<ScheduleDraft>) => void
 }
 
-/** Schedule tab: platform, post type, and autonomous generation settings. */
+/** Platform, format and autonomous generation. */
 export function ScheduleTab({
-  activePlatform,
-  defaultPostType,
-  defaultCarouselSlides,
-  freqValue,
-  autoDay,
-  isActive,
-  onActivePlatformChange,
-  onDefaultPostTypeChange,
-  onDefaultCarouselSlidesChange,
-  onFreqValueChange,
-  onAutoDayChange,
-  onIsActiveChange,
+  brand,
+  schedule,
+  connectedPlatforms,
+  onBrandChange,
+  onScheduleChange,
 }: ScheduleTabProps) {
   return (
     <>
-      <PanelHeader
-        title="Schedule"
-        subtitle="Platform, post type, and autonomous generation settings"
-      />
-      <div style={{ padding: '20px 22px' }}>
-        {/* Platform selector */}
-        <div style={{ marginBottom: 20 }}>
-          <div
-            style={{
-              fontSize: 12,
-              fontWeight: 500,
-              color: 'var(--color-text-2)',
-              letterSpacing: '0.01em',
-              marginBottom: 10,
-            }}
-          >
-            Active platform
-          </div>
-          <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap' }}>
-            {PLATFORMS.map((platform) => (
-              <button
-                key={platform}
-                type="button"
-                onClick={() => onActivePlatformChange(platform)}
-                className={cn(
-                  'px-4 py-2 rounded-full text-sm font-medium border transition-colors',
-                  activePlatform === platform
-                    ? 'bg-[var(--color-brand)] text-[var(--color-text-inv)] border-[var(--color-brand)]'
-                    : 'bg-[var(--color-surface)] text-[var(--color-muted)] border-[var(--color-border-2)] hover:border-[var(--color-border-3)]'
-                )}
-                style={{ fontFamily: 'inherit' }}
-              >
-                {platform}
-              </button>
-            ))}
-          </div>
+      <FormSection legend="Platform" description="Only connected platforms can publish.">
+        <div className="col-span-12">
+          <ChipGroup label="Publishing platform">
+            {PLATFORMS.map((platform) => {
+              const supported = LIVE_PLATFORMS.has(platform)
+              return (
+                <Chip
+                  key={platform}
+                  pressed={supported && brand.activePlatform === platform}
+                  disabled={!supported}
+                  live={supported ? connectedPlatforms.has(platform.toLowerCase()) : undefined}
+                  onClick={() => onBrandChange({ activePlatform: platform })}
+                >
+                  {supported ? platform : `${platform} · soon`}
+                </Chip>
+              )
+            })}
+          </ChipGroup>
         </div>
 
-        {/* Post defaults — only for Instagram */}
-        {activePlatform === 'Instagram' && (
-          <div style={{ marginBottom: 20 }}>
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: defaultPostType === 'carousel' ? '1fr 1fr' : '1fr',
-                gap: 12,
-                maxWidth: defaultPostType === 'carousel' ? undefined : 220,
-              }}
-            >
-              <Select
-                label="Default post type"
-                value={defaultPostType}
-                onChange={(e) => onDefaultPostTypeChange(e.target.value)}
-                options={POST_TYPE_OPTIONS}
-              />
-              {defaultPostType === 'carousel' && (
-                <Select
-                  label="Default carousel slides"
-                  value={defaultCarouselSlides}
-                  onChange={(e) => onDefaultCarouselSlidesChange(e.target.value)}
-                  options={SLIDE_OPTIONS}
-                />
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Autonomous schedule */}
-        <div
-          style={{
-            borderTop: '0.5px solid var(--color-border-1)',
-            paddingTop: 18,
-            marginTop: 4,
-          }}
-        >
-          <div
-            style={{
-              fontSize: 12,
-              fontWeight: 500,
-              color: 'var(--color-text-2)',
-              letterSpacing: '0.01em',
-              marginBottom: 12,
-            }}
-          >
-            Autonomous schedule
-          </div>
-
-          {/* Enable/disable toggle */}
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: 16,
-              marginBottom: 16,
-            }}
-          >
-            <div>
-              <div
-                style={{
-                  fontSize: 13,
-                  fontWeight: 500,
-                  color: 'var(--color-text-1)',
-                  marginBottom: 2,
-                }}
-              >
-                Autonomous generation
-              </div>
-              <div style={{ fontSize: 11, color: 'var(--color-muted)' }}>
-                Automatically generate posts on the schedule below
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={() => onIsActiveChange(!isActive)}
-              className={cn(
-                'relative inline-flex h-6 w-11 items-center rounded-full transition-colors',
-                isActive ? 'bg-[#1A2630]' : 'bg-gray-200'
-              )}
-              style={{ flexShrink: 0 }}
-            >
-              <span
-                className={cn(
-                  'inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform',
-                  isActive ? 'translate-x-6' : 'translate-x-1'
-                )}
-              />
-            </button>
-          </div>
-
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: '1fr 1fr',
-              gap: 12,
-              opacity: isActive ? 1 : 0.45,
-              pointerEvents: isActive ? 'auto' : 'none',
-            }}
-          >
+        <Field label="Default post type" span={4}>
+          <Select
+            value={brand.defaultPostType}
+            onChange={(e) => onBrandChange({ defaultPostType: e.target.value })}
+            options={POST_TYPE_OPTIONS}
+          />
+        </Field>
+        {brand.defaultPostType === 'carousel' && (
+          <Field label="Default slides" span={3}>
             <Select
-              label="How many posts"
-              value={freqValue}
-              onChange={(e) => onFreqValueChange(e.target.value)}
-              options={POSTS_OPTIONS}
+              value={brand.defaultCarouselSlides}
+              onChange={(e) => onBrandChange({ defaultCarouselSlides: e.target.value })}
+              options={SLIDE_OPTIONS}
             />
+          </Field>
+        )}
+      </FormSection>
+
+      <FormSection
+        legend="Autonomous generation"
+        description="Kontuur drafts posts on a schedule; they still need your approval."
+      >
+        <ToggleRow
+          title="Generate automatically"
+          description="Drafts land in the review queue — nothing publishes without you."
+          checked={schedule.isActive}
+          onChange={(v) => onScheduleChange({ isActive: v })}
+          className="pt-0"
+        />
+
+        <div
+          className={cn(
+            'col-span-12 grid grid-cols-12 gap-x-5 gap-y-[18px] transition-opacity duration-200',
+            !schedule.isActive && 'opacity-45'
+          )}
+          // `inert`, not `aria-hidden` + `pointer-events-none`: those dim the block visually but
+          // leave the selects in the tab order, so a keyboard user lands on fields that are not
+          // supposed to be reachable. `inert` removes them from both focus and the a11y tree.
+          inert={!schedule.isActive}
+        >
+          <Field label="How many" span={3}>
             <Select
-              label="Generate on"
-              value={autoDay}
-              onChange={(e) => onAutoDayChange(e.target.value)}
+              value={schedule.freqValue}
+              onChange={(e) => onScheduleChange({ freqValue: e.target.value })}
+              options={POSTS_PER_RUN_OPTIONS}
+            />
+          </Field>
+          <Field label="Generate on" span={4}>
+            <Select
+              value={schedule.autoDay}
+              onChange={(e) => onScheduleChange({ autoDay: e.target.value })}
               options={[...WEEKDAY_OPTIONS]}
             />
-          </div>
+          </Field>
+          <Field label="Time" span={4}>
+            {/* A native time input, matching onboarding. A fixed list of slots could not
+                represent a value already saved there. */}
+            <Input
+              type="time"
+              value={schedule.autoTime}
+              onChange={(e) => onScheduleChange({ autoTime: e.target.value })}
+            />
+          </Field>
+
+          <WeekPreview
+            day={schedule.autoDay}
+            count={schedule.isActive ? parseInt(schedule.freqValue, 10) || 0 : 0}
+          />
         </div>
-      </div>
+      </FormSection>
     </>
+  )
+}
+
+/**
+ * Seven day cells showing which one the run lands on.
+ *
+ * Purely visual, so it is `aria-hidden` with the same fact spelled out in a sentence beside it —
+ * the rule DESIGN.md sets for the coverage strip.
+ */
+function WeekPreview({ day, count }: { day: string; count: number }) {
+  const dayLabel = WEEKDAY_OPTIONS.find((w) => w.value === day)?.label ?? day
+
+  return (
+    <div className="col-span-12">
+      <div aria-hidden className="grid grid-cols-7 gap-1.5">
+        {WEEKDAY_OPTIONS.map((weekday) => {
+          const isRunDay = weekday.value === day
+          return (
+            <div
+              key={weekday.value}
+              className={cn(
+                'rounded-md border py-2 text-center text-[11px]',
+                isRunDay
+                  ? 'border-forest bg-forest text-surface/65'
+                  : 'border-line bg-surface text-text3'
+              )}
+            >
+              {weekday.label.slice(0, 3)}
+              <b
+                className={cn(
+                  'mt-0.5 block text-[12.5px] font-semibold',
+                  isRunDay ? 'text-surface' : 'text-ink'
+                )}
+              >
+                {isRunDay && count > 0 ? count : '—'}
+              </b>
+            </div>
+          )
+        })}
+      </div>
+      <p className="sr-only">
+        {count > 0
+          ? `${count} post${count === 1 ? '' : 's'} generated every ${dayLabel}.`
+          : 'Autonomous generation is off.'}
+      </p>
+    </div>
   )
 }

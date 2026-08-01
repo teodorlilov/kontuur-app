@@ -4,7 +4,8 @@ import { resolveAuth } from '@/lib/auth/resolve-auth'
 import { CLIENT_LIST_COLUMNS } from '@/lib/queries/select-columns'
 import { upsertVisualIdentity } from '@/lib/visual/queries'
 import { buildDefaultIdentity } from '@/lib/visual/identity'
-import type { SourceKind, VisualIdentity } from '@/types/visual'
+import { createClientSchema, formatIssues } from '@/features/clients/schemas'
+import type { SourceKind } from '@/types/visual'
 
 export async function GET() {
   const auth = await resolveAuth()
@@ -22,54 +23,25 @@ export async function GET() {
   return NextResponse.json({ clients })
 }
 
-interface CreateClientBody {
-  name: string
-  niche?: string
-  posts_per_week?: number
-  language?: string
-  website_url?: string
-  contact_email?: string | null
-  brand_profile?: {
-    tone?: string
-    target_audience?: string
-    content_pillars?: string
-    avoid_topics?: string
-    client_testimonial_voice?: string
-    default_post_type?: string
-    default_carousel_slides?: number
-    weekly_mix_json?: Record<string, number>
-    language_formality?: string
-    secondary_language?: string
-    is_health_niche?: boolean
-    language_notes?: string
-  }
-  posting_schedule?: {
-    frequency_type?: string
-    frequency_value?: number
-    auto_generate_day?: string
-    auto_generate_time?: string
-  }
-  visual_identity?: VisualIdentity
-  visual_identity_source?: SourceKind
-}
-
 export async function POST(request: Request) {
   const auth = await resolveAuth()
   if (!auth.ok) return auth.response
   const { supabase, agencyId } = auth
 
-  let body: CreateClientBody
+  let raw: unknown
   try {
-    body = await request.json()
+    raw = await request.json()
   } catch {
     return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
   }
 
-  if (!body.name || typeof body.name !== 'string') {
-    return NextResponse.json({ error: 'name is required' }, { status: 400 })
+  const parsed = createClientSchema.safeParse(raw)
+  if (!parsed.success) {
+    console.error('[clients:create] invalid body:', formatIssues(parsed.error))
+    return NextResponse.json({ error: 'Invalid client data' }, { status: 400 })
   }
+  const body = parsed.data
 
-  // Create client
   const { data: clientData, error: clientError } = await supabase
     .from('clients')
     .insert({
@@ -93,7 +65,6 @@ export async function POST(request: Request) {
 
   const clientId = clientData.id
 
-  // Create brand profile — explicitly pick allowed fields
   const bp = body.brand_profile
   const { error: profileError } = await supabase.from('brand_profiles').insert({
     client_id: clientId,
@@ -108,6 +79,7 @@ export async function POST(request: Request) {
     language_formality: bp?.language_formality,
     secondary_language: bp?.secondary_language,
     is_health_niche: bp?.is_health_niche,
+    source_strategy: bp?.source_strategy,
     language_notes: bp?.language_notes,
   })
 
@@ -115,10 +87,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Failed to create brand profile' }, { status: 500 })
   }
 
-  // Create posting schedule — explicitly pick allowed fields
   const ps = body.posting_schedule
   const { error: scheduleError } = await supabase.from('posting_schedules').insert({
     client_id: clientId,
+    is_active: ps?.is_active,
     frequency_type: ps?.frequency_type,
     frequency_value: ps?.frequency_value,
     auto_generate_day: ps?.auto_generate_day,

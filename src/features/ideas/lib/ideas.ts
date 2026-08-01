@@ -9,11 +9,13 @@ import { CLIENT_IDEA_COLUMNS } from '@/lib/queries/select-columns'
 export async function getOrCreateToken(agencyId: string, clientId: string): Promise<string> {
   const supabase = createAdminSupabaseClient()
 
+  // maybeSingle, not single: a client with no token yet is the normal first-run case, and
+  // single() turns it into an error that this function would have to discard.
   const { data: existing } = await supabase
     .from('idea_form_tokens')
     .select('token')
     .eq('client_id', clientId)
-    .single()
+    .maybeSingle()
 
   if (existing) return existing.token
 
@@ -29,6 +31,53 @@ export async function getOrCreateToken(agencyId: string, clientId: string): Prom
   if (error) throw new Error(`Failed to create idea token: ${error.message}`)
 
   return token
+}
+
+/**
+ * Reads a client's existing idea-form token, or null if it has none.
+ *
+ * Read-only counterpart to `getOrCreateToken`, so a Server Component can render the idea link
+ * without a write happening during render. Creating the token stays behind an explicit action.
+ */
+export async function fetchTokenByClient(clientId: string): Promise<string | null> {
+  const supabase = createAdminSupabaseClient()
+
+  const { data } = await supabase
+    .from('idea_form_tokens')
+    .select('token')
+    .eq('client_id', clientId)
+    .maybeSingle()
+
+  return data?.token ?? null
+}
+
+export interface IdeaCounts {
+  newCount: number
+  usedCount: number
+  totalCount: number
+}
+
+/**
+ * Counts a client's submitted ideas by lifecycle stage, for the settings rail.
+ *
+ * Counted over the whole set rather than derived from a fetched page: the settings tab previews
+ * only the three most recent, so a total taken from that array would under-report.
+ *
+ * One query tallied in memory rather than three `head: true` counts — the three differed only by
+ * status filter, so they cost three round trips to return three integers. A client's idea volume
+ * is small enough that transferring the status column is cheaper than the extra trips.
+ */
+export async function fetchIdeaCounts(clientId: string): Promise<IdeaCounts> {
+  const supabase = createAdminSupabaseClient()
+
+  const { data } = await supabase.from('client_ideas').select('status').eq('client_id', clientId)
+  const rows = (data ?? []) as Array<{ status: string }>
+
+  return {
+    newCount: rows.filter((row) => row.status === 'new').length,
+    usedCount: rows.filter((row) => row.status === 'generated').length,
+    totalCount: rows.length,
+  }
 }
 
 /** Looks up a token row by its public token string. */

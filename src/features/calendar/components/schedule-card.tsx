@@ -18,13 +18,11 @@ import { useCanvaStatus } from '@/features/publishing/hooks/use-canva-status'
 import { useGenerateVisuals } from '@/features/publishing/hooks/use-generate-visuals'
 import { missingImagePositions } from '@/features/publishing/lib/image-list'
 import { extractAllFlaggedSlides } from '@/utils/extract-flagged-slides'
-import type {
-  CalendarPost,
-  CarouselSlide,
-  PostImage,
-  ValidationCriteria,
-  ValidationScores,
-} from '@/types/api'
+import {
+  parseStoredValidation,
+  type StoredValidation,
+} from '@/lib/validation/stored-validation-schema'
+import type { CalendarPost, CarouselSlide, PostImage } from '@/types/api'
 
 interface ContentUpdates {
   caption?: string
@@ -53,20 +51,6 @@ interface ScheduleCardProps {
   onPublished?: (postId: string) => void
   onImageUpserted: (postId: string, image: PostImage) => void
   onImageDeleted: (postId: string, imageId: string) => void
-}
-
-interface ParsedValidation {
-  criteria: ValidationCriteria
-  scores: ValidationScores
-}
-
-function parseValidation(json: unknown): ParsedValidation | null {
-  if (!json || typeof json !== 'object') return null
-  const obj = json as Record<string, unknown>
-  if (obj.criteria && obj.scores) {
-    return { criteria: obj.criteria as ValidationCriteria, scores: obj.scores as ValidationScores }
-  }
-  return null
 }
 
 const SECTION_LABEL_STYLE: React.CSSProperties = {
@@ -159,7 +143,9 @@ export const ScheduleCard = memo(function ScheduleCard({
   const [publishError, setPublishError] = useState<string | null>(null)
   const canvaConnected = useCanvaStatus()
 
-  // Reset / pre-fill when post changes
+  // Reset / pre-fill when post changes.
+  // Left as an effect deliberately: it seeds seven independent fields from one prop, and the
+  // render-time adjustment pattern would mean seven paired comparisons for no behavioural gain.
   useEffect(() => {
     if (post?.scheduled_at) {
       const d = new Date(post.scheduled_at)
@@ -222,7 +208,7 @@ export const ScheduleCard = memo(function ScheduleCard({
   const canGenerateVisuals = !isPublished && currentPost.status !== 'publishing'
   const pillarColor = currentPost.pillar ? getPillarColor(currentPost.pillar) : null
   const score = currentPost.quality_score_avg ?? 0
-  const validation = parseValidation(currentPost.validation_json)
+  const validation = parseStoredValidation(currentPost.validation_json)
 
   function handleSchedule() {
     if (!date) return
@@ -800,7 +786,7 @@ function ScheduleInput({ id, label, type, value, onChange, min }: {
 
 /** Right-hand sidebar with quality scores and source info. */
 function QualitySidebar({ score, validation, currentPost }: {
-  score: number; validation: ParsedValidation | null; currentPost: CalendarPost
+  score: number; validation: StoredValidation | null; currentPost: CalendarPost
 }) {
   return (
     <div

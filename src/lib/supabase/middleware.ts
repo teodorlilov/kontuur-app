@@ -1,8 +1,14 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+import { AUTH_USER_ID_HEADER, AUTH_USER_NAME_HEADER } from '@/lib/auth/headers'
 import type { Database } from '@/types/database'
 
 export async function updateSession(request: NextRequest) {
+  // Deleted before anything else runs: these headers are a trust channel from this function to the
+  // render pass, so a client-supplied value must never survive to be read as a validated identity.
+  request.headers.delete(AUTH_USER_ID_HEADER)
+  request.headers.delete(AUTH_USER_NAME_HEADER)
+
   let supabaseResponse = NextResponse.next({ request })
 
   const supabase = createServerClient<Database>(
@@ -62,5 +68,17 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
-  return supabaseResponse
+  if (!user) return supabaseResponse
+
+  // Hand the validated identity to the render pass so it does not repeat this network round trip.
+  // The name rides along because the app shell shows it on every page, and fetching it separately
+  // would cost back the round trip this exists to remove.
+  // Rebuilt rather than mutated: `supabaseResponse` may have been reassigned by `setAll` above to
+  // carry refreshed auth cookies, and those must survive onto the response we return.
+  const displayName = (user.user_metadata?.full_name as string | undefined) ?? user.email ?? ''
+  request.headers.set(AUTH_USER_ID_HEADER, user.id)
+  request.headers.set(AUTH_USER_NAME_HEADER, encodeURIComponent(displayName))
+  const response = NextResponse.next({ request })
+  supabaseResponse.cookies.getAll().forEach((cookie) => response.cookies.set(cookie))
+  return response
 }

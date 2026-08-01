@@ -5,7 +5,7 @@ import { formatRelativeTime } from '@/utils/format'
 import { PanelSection } from '@/components/posts/panel-section'
 import { SlopDetector } from '@/components/posts/slop-detector'
 import { QualitySection, SourceInfoSection, MetadataRow } from '@/components/posts/info-panel-sections'
-import { parseValidationJson } from '@/features/review/lib/parse-validation-json'
+import { parseStoredValidation } from '@/lib/validation/stored-validation-schema'
 import type { ReviewPost } from '@/features/review/lib/filter-review-posts'
 import type { SlopDetection } from '@/types/api'
 
@@ -18,7 +18,7 @@ interface ReviewInfoPanelProps {
 
 /** Right panel: quality scores, health review, source context, and post info. */
 export function ReviewInfoPanel({ post, validationJson, slopResult, slopLoading }: ReviewInfoPanelProps) {
-  const qualityData = parseValidationJson(validationJson)
+  const qualityData = parseStoredValidation(validationJson)
 
   return (
     <div

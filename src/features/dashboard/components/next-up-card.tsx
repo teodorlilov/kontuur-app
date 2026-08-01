@@ -3,7 +3,7 @@ import { AlertTriangle, Send } from 'lucide-react'
 import { cn } from '@/utils/cn'
 import { StatCard } from '@/features/dashboard/components/stat-card'
 import { formatPublishSlot } from '@/features/dashboard/lib/metrics'
-import type { FailedPublish, UpcomingPublish } from '@/features/dashboard/queries'
+import type { FailedPublish, UpcomingPublish } from '@/features/dashboard/types'
 
 interface NextUpCardProps {
   upcoming: UpcomingPublish[]
@@ -52,8 +52,7 @@ function PublishRow({
  *
  * The card is state-driven with a strict precedence: a publish that did not
  * ship outranks one that will, because the first needs a human and the second
- * does not. It replaces a "published this month" figure that stated zero three
- * times and asked for nothing.
+ * does not.
  */
 export function NextUpCard({
   upcoming,

@@ -12,7 +12,7 @@ import { cn } from '@/utils/cn'
 import { Card } from '@/components/ui/card'
 import { SectionHeading } from '@/components/ui/section-heading'
 import { COVERAGE_LIST_HEIGHT } from '@/features/dashboard/lib/layout'
-import type { PendingPostPreview } from '@/features/dashboard/queries'
+import type { PendingPostPreview } from '@/features/dashboard/types'
 
 interface PendingReviewListProps {
   posts: PendingPostPreview[]

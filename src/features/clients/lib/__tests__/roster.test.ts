@@ -35,9 +35,19 @@ function client(over: Partial<RosterClientRow> = {}): RosterClientRow {
   }
 }
 
+/**
+ * An upcoming row as the roster reads it.
+ *
+ * `id` and `platform` exist on the shared type for the dashboard's next-up card and mean nothing
+ * here, so they are filled in once rather than repeated across every fixture.
+ */
+function up(clientId: string | null, scheduledAt: string): UpcomingPostRow {
+  return { id: `post-${clientId}-${scheduledAt}`, client_id: clientId, platform: 'instagram', scheduled_at: scheduledAt }
+}
+
 function entry(
   over: Partial<RosterClientRow> = {},
-  upcoming: UpcomingPostRow[] = [{ client_id: 'c1', scheduled_at: offset(1) }],
+  upcoming: UpcomingPostRow[] = [up('c1', offset(1))],
   approvals: PendingApprovalRow[] = []
 ) {
   return computeRosterEntry(client(over), upcoming, approvals, NOW)
@@ -139,9 +149,9 @@ describe('computeRosterEntry — channels', () => {
 describe('computeRosterEntry — aggregates', () => {
   it('takes the earliest scheduled post and counts the rest behind it', () => {
     const upcoming: UpcomingPostRow[] = [
-      { client_id: 'c1', scheduled_at: offset(5) },
-      { client_id: 'c1', scheduled_at: offset(2) },
-      { client_id: 'c1', scheduled_at: offset(9) },
+      up('c1', offset(5)),
+      up('c1', offset(2)),
+      up('c1', offset(9)),
     ]
     const result = entry({}, upcoming)
     expect(result.nextPostAt).toBe(offset(2))
@@ -165,9 +175,9 @@ describe('buildRoster', () => {
   it('joins each client to only its own rows', () => {
     const clients = [client(), client({ id: 'c2', name: 'FlexHome' })]
     const upcoming: UpcomingPostRow[] = [
-      { client_id: 'c1', scheduled_at: offset(1) },
-      { client_id: 'c2', scheduled_at: offset(3) },
-      { client_id: 'c2', scheduled_at: offset(4) },
+      up('c1', offset(1)),
+      up('c2', offset(3)),
+      up('c2', offset(4)),
     ]
     const approvals: PendingApprovalRow[] = [{ client_id: 'c1', created_at: offset(-4) }]
     const [first, second] = buildRoster(clients, upcoming, approvals, NOW)
@@ -179,7 +189,7 @@ describe('buildRoster', () => {
   })
 
   it('ignores rows whose foreign key came back null', () => {
-    const upcoming: UpcomingPostRow[] = [{ client_id: null, scheduled_at: offset(1) }]
+    const upcoming: UpcomingPostRow[] = [up(null, offset(1))]
     expect(buildRoster([client()], upcoming, [], NOW)[0]?.queuedCount).toBe(0)
   })
 })
@@ -197,9 +207,9 @@ describe('summariseRoster', () => {
       client({ id: 'd', name: 'Healthy' }),
     ],
     [
-      { client_id: 'a', scheduled_at: offset(1) },
-      { client_id: 'b', scheduled_at: offset(1) },
-      { client_id: 'd', scheduled_at: offset(1) },
+      up('a', offset(1)),
+      up('b', offset(1)),
+      up('d', offset(1)),
     ],
     [
       { client_id: 'a', created_at: offset(-4) },
@@ -215,7 +225,7 @@ describe('summariseRoster', () => {
   })
 
   it('counts CLIENTS in the chips but POSTS in the band', () => {
-    // Two posts are waiting, both on one client — the mock's "6" beside a "1".
+    // Two posts are waiting, both on one client: the two figures must not be conflated.
     expect(summary.approval).toBe(1)
     expect(summary.awaitingApprovalPosts).toBe(2)
   })
@@ -254,8 +264,8 @@ describe('sortRoster', () => {
       client({ id: 'm', name: 'Mona' }),
     ],
     [
-      { client_id: 'z', scheduled_at: offset(1) },
-      { client_id: 'm', scheduled_at: offset(1) },
+      up('z', offset(1)),
+      up('m', offset(1)),
     ],
     [],
     NOW

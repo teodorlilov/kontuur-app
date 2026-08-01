@@ -117,14 +117,20 @@ function EditableField({
 
 export function CarouselSlides({ slides, editable, onSlidesChange, onBlur, flaggedSlides, postId, images, onImageUploaded, onImageDeleted, canvaConnected, onGenerateImage, generatingPositions, composingPositions, onEditImage, renderImageSlot }: CarouselSlidesProps) {
   const [activeIndex, setActiveIndex] = useState(0)
-  const activeSlide = slides[activeIndex]
 
-  // Auto-expand the first flagged slide when flaggedSlides is provided
-  useEffect(() => {
-    if (!flaggedSlides?.length) return
-    const idx = slides.findIndex((s) => flaggedSlides.includes(s.slide_number ?? 0))
-    if (idx >= 0) setActiveIndex(idx)
-  }, [flaggedSlides]) // eslint-disable-line react-hooks/exhaustive-deps
+  // Auto-expand the first flagged slide. Adjusted during render rather than in an effect, which
+  // would paint the wrong slide once before correcting itself. Keyed on the identity of
+  // `flaggedSlides` so it opens when validation arrives and never fights a later manual click.
+  const [syncedFlagged, setSyncedFlagged] = useState(flaggedSlides)
+  if (syncedFlagged !== flaggedSlides) {
+    setSyncedFlagged(flaggedSlides)
+    const firstFlagged = flaggedSlides?.length
+      ? slides.findIndex((s) => flaggedSlides.includes(s.slide_number ?? 0))
+      : -1
+    if (firstFlagged >= 0) setActiveIndex(firstFlagged)
+  }
+
+  const activeSlide = slides[activeIndex]
 
   function handleCopyAll() {
     const text = slides

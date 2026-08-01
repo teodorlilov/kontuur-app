@@ -3,6 +3,7 @@
 import { Clock, Check, MessageCircle } from 'lucide-react'
 import { ActiveBar, CaptionPreview } from '@/components/posts/post-list-parts'
 import { getPillarColor } from '@/components/ui/colors/pillar-colors'
+import { formatScheduleDate } from '@/utils/format'
 import type { ApprovalPostData, CarouselSlide } from '@/types/api'
 import { APPROVAL_STATUS_STYLES, type ApprovalPostStatus } from './types'
 
@@ -15,14 +16,7 @@ interface PostListItemProps {
 }
 
 /** Format scheduled_at into a short date like "Sat, Apr 25". */
-function formatShortDate(iso: string | null): string | null {
-  if (!iso) return null
-  return new Date(iso).toLocaleDateString('en-US', {
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
-  })
-}
+
 
 /** Build a human-readable post type label. */
 function postTypeLabel(postType: string, slides: unknown): string {
@@ -59,7 +53,7 @@ function ApprovalStatusBadge({ status }: { status: ApprovalPostStatus }) {
 
 /** Single post row in the left-panel list. */
 export function PostListItem({ post, index, status, isActive, onClick }: PostListItemProps) {
-  const date = formatShortDate(post.scheduled_at)
+  const date = post.scheduled_at ? formatScheduleDate(new Date(post.scheduled_at)) : null
   const pillar = post.pillar ? getPillarColor(post.pillar) : null
 
   return (

@@ -95,3 +95,23 @@ export const CLIENT_IDEA_COLUMNS =
 // notifications
 export const NOTIFICATION_COLUMNS =
   'id, agency_id, message, is_read, created_at, type, client_id, post_id, feedback_text, review_token'
+
+// posts (dashboard + roster shared reads)
+
+/** Upcoming publishes, read by both the clients roster and the dashboard's next-up card. */
+export const UPCOMING_POST_COLUMNS = 'id, client_id, platform, scheduled_at, clients!inner(agency_id)'
+
+/** A publish row as the dashboard's next-up card renders it. */
+export const PUBLISH_ROW_COLUMNS = 'id, client_id, platform, scheduled_at, clients!inner(agency_id)'
+
+/** One row of the dashboard's review-queue preview. */
+export const PENDING_PREVIEW_COLUMNS =
+  'id, caption, platform, pillar, created_at, client_id, clients!inner(agency_id)'
+
+/** A post whose client asked for changes, with the token carrying the note. */
+export const CHANGE_REQUEST_COLUMNS =
+  'id, client_id, caption, platform, post_type, slides_json, scheduled_at, ' +
+  'clients!inner(agency_id), post_approval_tokens!inner(status, client_note, responded_at, batch_id)'
+
+/** Token rows used to work out a post's place within its approval batch. */
+export const BATCH_POSITION_COLUMNS = 'batch_id, post_id'

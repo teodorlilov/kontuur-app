@@ -1,130 +1,89 @@
 'use client'
 
-import { Textarea } from '@/components/ui/textarea'
+import { Field, FormSection } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 import { PillarEditor } from '@/components/ui/pillar-editor'
-import { PanelHeader } from './basic-info-tab'
-import type { WeightedPillar } from '@/lib/clients/content-pillars'
+import { cn } from '@/utils/cn'
+import type { BrandDraft } from '@/features/clients/lib/client-draft'
+
+/**
+ * Guidance length past which a prompt starts to dilute rather than sharpen.
+ *
+ * Advisory, not enforced: no `maxLength`, because existing profiles may already be longer and
+ * silently truncating someone's saved guidance to satisfy a new limit would be data loss.
+ */
+const GUIDANCE_SOFT_LIMIT = 600
 
 interface BrandProfileTabProps {
-  tone: string
-  targetAudience: string
-  contentPillars: WeightedPillar[]
-  avoidTopics: string
-  testimonialVoice: string
-  languageNotes: string
-  onToneChange: (v: string) => void
-  onTargetAudienceChange: (v: string) => void
-  onContentPillarsChange: (pillars: WeightedPillar[]) => void
-  onAvoidTopicsChange: (v: string) => void
-  onTestimonialVoiceChange: (v: string) => void
-  onLanguageNotesChange: (v: string) => void
+  brand: BrandDraft
+  onChange: (patch: Partial<BrandDraft>) => void
 }
 
-/** Brand profile tab: tone, audience, pillars, and language rules. */
-export function BrandProfileTab({
-  tone,
-  targetAudience,
-  contentPillars,
-  avoidTopics,
-  testimonialVoice,
-  languageNotes,
-  onToneChange,
-  onTargetAudienceChange,
-  onContentPillarsChange,
-  onAvoidTopicsChange,
-  onTestimonialVoiceChange,
-  onLanguageNotesChange,
-}: BrandProfileTabProps) {
+/** Tone, audience and the content mix the model follows. */
+export function BrandProfileTab({ brand, onChange }: BrandProfileTabProps) {
   return (
     <>
-      <PanelHeader
-        title="Brand profile"
-        subtitle="Tone, audience, content pillars, and language rules"
-      />
-      <div style={{ padding: '20px 22px', overflowY: 'auto' }}>
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: '1fr 1fr',
-            gap: 12,
-            marginBottom: 12,
-          }}
-        >
+      <FormSection>
+        <Field label="Brand tone" count={<SoftCount value={brand.tone} />}>
           <Textarea
-            label="Brand tone"
-            value={tone}
-            onChange={(e) => onToneChange(e.target.value)}
-            placeholder="e.g. Friendly, warm, and motivating"
-            rows={3}
-            style={{ minHeight: 80 }}
+            autoGrow
+            value={brand.tone}
+            onChange={(e) => onChange({ tone: e.target.value })}
+            placeholder="Professional yet approachable, informative without being technical…"
           />
+        </Field>
+        <Field label="Target audience" count={<SoftCount value={brand.targetAudience} />}>
           <Textarea
-            label="Target audience"
-            value={targetAudience}
-            onChange={(e) => onTargetAudienceChange(e.target.value)}
-            placeholder="e.g. Women 25–40, fitness enthusiasts"
-            rows={3}
-            style={{ minHeight: 80 }}
+            autoGrow
+            value={brand.targetAudience}
+            onChange={(e) => onChange({ targetAudience: e.target.value })}
+            placeholder="Small businesses looking to improve their social presence…"
           />
-        </div>
-
-        <div
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 12,
-            marginBottom: 18,
-          }}
-        >
+        </Field>
+        <Field label="Topics to avoid" hint="Comma-separated.">
           <Textarea
-            label="Topics to avoid"
-            value={avoidTopics}
-            onChange={(e) => onAvoidTopicsChange(e.target.value)}
-            placeholder="e.g. No diet culture messaging, no competitor mentions"
-            rows={2}
-            style={{ minHeight: 60 }}
+            autoGrow
+            value={brand.avoidTopics}
+            onChange={(e) => onChange({ avoidTopics: e.target.value })}
+            placeholder="Hard-sell messaging, competitor comparisons…"
           />
+        </Field>
+        <Field label="Client testimonial voice" span={6} optional>
           <Input
-            label="Client testimonial voice"
-            value={testimonialVoice}
-            onChange={(e) => onTestimonialVoiceChange(e.target.value)}
-            placeholder="e.g. They really get my style and always deliver on time"
+            value={brand.testimonialVoice}
+            onChange={(e) => onChange({ testimonialVoice: e.target.value })}
+            placeholder="How clients describe them"
           />
+        </Field>
+        <Field label="Language requirements" optional>
           <Textarea
-            label="Language requirements"
-            value={languageNotes}
-            onChange={(e) => onLanguageNotesChange(e.target.value)}
-            placeholder="e.g. Always use 'програма' not 'план', avoid English loan words..."
-            rows={2}
-            style={{ minHeight: 60 }}
+            autoGrow
+            value={brand.languageNotes}
+            onChange={(e) => onChange({ languageNotes: e.target.value })}
+            placeholder="e.g. Always use 'програма', never 'план'…"
           />
-        </div>
+        </Field>
+      </FormSection>
 
-        <div
-          style={{
-            borderTop: '0.5px solid var(--color-border-1)',
-            paddingTop: 16,
-          }}
-        >
-          <div
-            style={{
-              fontSize: 12,
-              fontWeight: 500,
-              color: 'var(--color-text-2)',
-              letterSpacing: '0.01em',
-              marginBottom: 10,
-            }}
-          >
-            Content pillars
-          </div>
+      <FormSection legend="Content pillars" description="How a batch of posts is divided.">
+        <div className="col-span-12">
           <PillarEditor
-            pillars={contentPillars}
-            onChange={onContentPillarsChange}
+            pillars={brand.contentPillars}
+            onChange={(contentPillars) => onChange({ contentPillars })}
             allowEmpty
           />
         </div>
-      </div>
+      </FormSection>
     </>
+  )
+}
+
+/** Character count that warns past the soft limit instead of blocking at it. */
+function SoftCount({ value }: { value: string }) {
+  return (
+    <span className={cn(value.length > GUIDANCE_SOFT_LIMIT && 'text-pending')}>
+      {value.length} / {GUIDANCE_SOFT_LIMIT}
+    </span>
   )
 }

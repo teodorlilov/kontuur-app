@@ -2,6 +2,7 @@
 
 import { memo } from 'react'
 import { getPillarColor } from '@/components/ui/colors/pillar-colors'
+import { formatDayMonth } from '@/utils/format'
 import type { CalendarPost } from '@/types/api'
 
 interface UnscheduledPostItemProps {
@@ -166,5 +167,5 @@ function timeAgo(dateStr: string): string {
   const diffD = Math.floor(diffH / 24)
   if (diffD === 1) return 'Yesterday'
   if (diffD < 7) return `${diffD}d ago`
-  return new Date(dateStr).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
+  return formatDayMonth(new Date(dateStr))
 }

@@ -17,32 +17,6 @@ interface FormErrors {
   businessName?: string
 }
 
-const INPUT_STYLE: React.CSSProperties = {
-  background: '#fff',
-  border: '1px solid rgba(44,62,80,0.14)',
-  borderRadius: 4,
-  padding: '12px 14px',
-  fontSize: 13,
-  height: 'auto',
-  color: '#1A2630',
-}
-
-const LABEL_STYLE: React.CSSProperties = {
-  fontSize: 10,
-  fontWeight: 500,
-  color: '#1A2630',
-  letterSpacing: '2px',
-  textTransform: 'uppercase',
-}
-
-function onFocus(e: React.FocusEvent<HTMLInputElement>) {
-  e.currentTarget.style.borderColor = '#C07B55'
-}
-
-function onBlur(e: React.FocusEvent<HTMLInputElement>) {
-  e.currentTarget.style.borderColor = 'rgba(44,62,80,0.14)'
-}
-
 interface ModeSelectorProps {
   mode: Mode
   setMode: (m: Mode) => void
@@ -167,11 +141,7 @@ export function SignupForm() {
             onChange={(e) => setBusinessName(e.target.value)}
             error={errors.businessName}
             autoComplete="organization"
-            style={INPUT_STYLE}
-            labelStyle={LABEL_STYLE}
-
-            onFocus={onFocus}
-            onBlur={onBlur}
+            labelVariant="caps"
           />
           <Input
             label="Email"
@@ -181,11 +151,7 @@ export function SignupForm() {
             onChange={(e) => setEmail(e.target.value)}
             error={errors.email}
             autoComplete="email"
-            style={INPUT_STYLE}
-            labelStyle={LABEL_STYLE}
-
-            onFocus={onFocus}
-            onBlur={onBlur}
+            labelVariant="caps"
           />
           <Input
             label="Password"
@@ -195,11 +161,7 @@ export function SignupForm() {
             onChange={(e) => setPassword(e.target.value)}
             error={errors.password}
             autoComplete="new-password"
-            style={INPUT_STYLE}
-            labelStyle={LABEL_STYLE}
-
-            onFocus={onFocus}
-            onBlur={onBlur}
+            labelVariant="caps"
           />
           <ModeSelector mode={mode} setMode={setMode} />
           <button

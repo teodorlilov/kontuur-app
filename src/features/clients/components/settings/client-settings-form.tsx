@@ -1,32 +1,89 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { parsePillars, serializePillars, type WeightedPillar } from '@/lib/clients/content-pillars'
 import { updateClient } from '@/features/clients/actions/client-actions'
+import {
+  buildDrafts,
+  buildUpdatePayload,
+  type BrandDraft,
+  type ClientDraft,
+  type ClientDrafts,
+  type DirtyGroups,
+  type ScheduleDraft,
+} from '@/features/clients/lib/client-draft'
 import { SETTINGS_TABS, type SettingsTab } from '@/features/clients/lib/settings-tabs'
-import { buildDefaultIdentity } from '@/lib/visual/identity'
-import { Button } from '@/components/ui/button'
+import { FormPanel, SaveBar } from '@/components/ui/form'
 import { toast } from '@/components/ui/toast'
 import {
   HeaderMeta,
-  HeaderPill,
   MetaFlag,
   PageHeader,
 } from '@/components/layout/page-header/page-header'
 import { TabRail, type TabItem } from '@/components/layout/page-header/tab-rail'
 import { PAGE_SHELL, TOOL_ROW } from '@/components/layout/page-header/shared'
-import { extractInitials, formatRelativeTime } from '@/utils/format'
+import { useTabParam } from '@/components/layout/page-header/use-tab-param'
+import { extractInitials, formatRelativeTime, parseTimestamp } from '@/utils/format'
+import { isEqual } from '@/utils/is-equal'
+import { clearQueryParams } from '@/utils/url'
+import { StatusPill } from '@/components/ui/status-pill'
 import { cn } from '@/utils/cn'
+import type { ContentInsights } from '@/features/clients/lib/insights'
+import type { ClientIdea, MetaConnection } from '@/types/api'
 import type { ClientRow, BrandProfileRow, PostingScheduleRow } from '@/types'
 import type { VisualIdentity } from '@/types/visual'
 import { BasicInfoTab } from './basic-info-tab'
 import { BrandProfileTab } from './brand-profile-tab'
 import { VisualIdentityTab } from './visual-identity-tab'
 import { ScheduleTab } from './schedule-tab'
-import { ConnectedAccountsTab, bustConnectionsCache } from './connected-accounts-tab'
-import { ContentInsightsTab, type ContentInsights } from './content-insights-tab'
+import { ConnectedAccountsTab } from './connected-accounts-tab'
+import { ContentInsightsTab } from './content-insights-tab'
 import { IdeaFormTab } from '@/features/ideas/components/idea-form-tab'
+import {
+  AccountsRail,
+  BrandProfileRail,
+  ClientStatusRail,
+  IdeasRail,
+  InsightsRail,
+  ScheduleRail,
+  VisualIdentityRail,
+} from './rails/client-rails'
+
+/** Title and subtitle for each panel, so the copy lives in one place. */
+const PANEL_COPY: Record<SettingsTab, { title: string; description: string }> = {
+  basic: {
+    title: 'Who this client is',
+    description: 'Identity and language used on every generated post.',
+  },
+  brand: {
+    title: 'How this client sounds',
+    description: 'Tone, audience and content mix the model follows.',
+  },
+  visual: {
+    title: 'How this client looks',
+    description: 'The design system AI visuals follow. Colours come from the palette.',
+  },
+  schedule: {
+    title: 'When posts get made',
+    description: 'Platform, format and autonomous generation.',
+  },
+  accounts: { title: 'Where posts publish', description: 'Link accounts for publishing and analytics.' },
+  insights: { title: "What's working", description: 'Patterns from approved and published posts.' },
+  ideas: { title: 'Let the client send ideas', description: 'A public link they can use without an account.' },
+}
+
+/**
+ * What the save bar calls each editable group.
+ *
+ * Keyed by draft group, not by tab, because the two do not line up: formality, secondary
+ * language and the health flag are brand-profile columns edited from the Basic info panel.
+ */
+const GROUP_LABEL: Record<keyof DirtyGroups, string> = {
+  client: 'Basic info',
+  brand: 'Brand profile',
+  schedule: 'Schedule',
+  identity: 'Visual identity',
+}
 
 interface ClientSettingsFormProps {
   clientId: string
@@ -37,85 +94,120 @@ interface ClientSettingsFormProps {
   insights: ContentInsights | null
   publishedCount: number
   pendingCount: number
+  scheduledCount: number
+  approvedUnpublishedCount: number
   lastGeneratedAt: string | null
   visualIdentity: VisualIdentity | null
-  /** Drives the connection pill. Resolved server-side so the title never flickers. */
-  connectionCount: number
+  /** Drives the connection pill and the accounts tab. Resolved server-side so the title never flickers. */
+  connections: MetaConnection[]
+  ideaToken: string | null
+  ideaNewCount: number
+  ideaUsedCount: number
+  ideaTotalCount: number
+  recentIdeas: ClientIdea[]
 }
 
 /** Top-level client settings form. Owns the header, because it owns the tab state. */
-export function ClientSettingsForm({
-  clientId,
-  sourceCount,
-  client,
-  profile,
-  schedule,
-  insights,
-  publishedCount,
-  pendingCount,
-  lastGeneratedAt,
-  visualIdentity: initialVisualIdentity,
-  connectionCount,
-}: ClientSettingsFormProps) {
+export function ClientSettingsForm(props: ClientSettingsFormProps) {
+  const {
+    clientId,
+    sourceCount,
+    client,
+    profile,
+    schedule,
+    insights,
+    publishedCount,
+    pendingCount,
+    scheduledCount,
+    approvedUnpublishedCount,
+    lastGeneratedAt,
+    connections,
+    ideaToken,
+    ideaNewCount,
+    ideaUsedCount,
+    ideaTotalCount,
+    recentIdeas,
+  } = props
+
   const router = useRouter()
   const searchParams = useSearchParams()
-  const [activeTab, setActiveTab] = useState<SettingsTab>('basic')
+  const [activeTab, selectTab] = useTabParam<SettingsTab>(SETTINGS_TABS, 'basic')
   const [saving, setSaving] = useState(false)
-
-  // ── Client fields ──
-  const [name, setName] = useState(client.name)
-  const [niche, setNiche] = useState(client.niche ?? '')
-  const [language, setLanguage] = useState(client.language)
-  const [websiteUrl, setWebsiteUrl] = useState(client.website_url ?? '')
-  const [contactEmail, setContactEmail] = useState(client.contact_email ?? '')
-  const [postsPerWeek, setPostsPerWeek] = useState(String(client.posts_per_week))
-
-  // ── Brand profile fields ──
-  const [tone, setTone] = useState(profile?.tone ?? '')
-  const [targetAudience, setTargetAudience] = useState(profile?.target_audience ?? '')
-  const [contentPillars, setContentPillars] = useState<WeightedPillar[]>(() =>
-    parsePillars(profile?.content_pillars ?? null)
-  )
-  const [avoidTopics, setAvoidTopics] = useState(profile?.avoid_topics ?? '')
-  const [testimonialVoice, setTestimonialVoice] = useState(
-    profile?.client_testimonial_voice ?? ''
-  )
-  const [languageFormality, setLanguageFormality] = useState(
-    profile?.language_formality ?? 'neutral'
-  )
-  const [secondaryLanguage, setSecondaryLanguage] = useState(profile?.secondary_language ?? '')
-  const [isHealthNiche, setIsHealthNiche] = useState(profile?.is_health_niche ?? false)
-  const [languageNotes, setLanguageNotes] = useState(profile?.language_notes ?? '')
-  const [defaultPostType, setDefaultPostType] = useState(profile?.default_post_type ?? 'single')
-  const [defaultCarouselSlides, setDefaultCarouselSlides] = useState(
-    String(profile?.default_carousel_slides ?? 6)
-  )
-
-  // ── Platform ──
-  const mixJson = profile?.weekly_mix_json as Record<string, unknown> | null
-  const firstPlatform = mixJson
-    ? (Object.keys(mixJson).find((k) => !['carousel', 'single'].includes(k)) ?? 'Instagram')
-    : 'Instagram'
-  const [activePlatform, setActivePlatform] = useState<string>(firstPlatform)
-
-  // ── Schedule ──
-  const [freqValue, setFreqValue] = useState(String(schedule?.frequency_value ?? 3))
-  const [autoDay, setAutoDay] = useState(schedule?.auto_generate_day ?? 'monday')
-  const [isActive, setIsActive] = useState(schedule?.is_active ?? true)
-
-  // ── Visual identity ──
-  const [visualIdentity, setVisualIdentity] = useState<VisualIdentity>(
-    initialVisualIdentity ?? buildDefaultIdentity()
-  )
   const [reanalyzing, setReanalyzing] = useState(false)
+
+  // The values the form loaded with. Everything dirty is measured against this, and Discard
+  // restores it. A ref, not state: changing the baseline must never itself trigger a render.
+  const initial = useMemo(
+    () => buildDrafts(client, profile, schedule, props.visualIdentity),
+    [client, profile, schedule, props.visualIdentity]
+  )
+  const baseline = useRef<ClientDrafts>(initial)
+  const [drafts, setDrafts] = useState<ClientDrafts>(initial)
+
+  // Recomputed only when a group's object identity changes — i.e. on an actual edit, not on
+  // every render.
+  const dirty: DirtyGroups = useMemo(
+    () => ({
+      client: !isEqual(drafts.client, baseline.current.client),
+      brand: !isEqual(drafts.brand, baseline.current.brand),
+      schedule: !isEqual(drafts.schedule, baseline.current.schedule),
+      identity: !isEqual(drafts.identity, baseline.current.identity),
+    }),
+    [drafts]
+  )
+  const isDirty = dirty.client || dirty.brand || dirty.schedule || dirty.identity
+
+  const patchClient = useCallback(
+    (patch: Partial<ClientDraft>) =>
+      setDrafts((d) => ({ ...d, client: { ...d.client, ...patch } })),
+    []
+  )
+  const patchBrand = useCallback(
+    (patch: Partial<BrandDraft>) => setDrafts((d) => ({ ...d, brand: { ...d.brand, ...patch } })),
+    []
+  )
+  const patchSchedule = useCallback(
+    (patch: Partial<ScheduleDraft>) =>
+      setDrafts((d) => ({ ...d, schedule: { ...d.schedule, ...patch } })),
+    []
+  )
+  const setIdentity = useCallback(
+    (identity: VisualIdentity) => setDrafts((d) => ({ ...d, identity })),
+    []
+  )
+
+  // ── OAuth redirect ──
+  useEffect(() => {
+    const connected = searchParams.get('meta_connected')
+    const error = searchParams.get('meta_error')
+    if (!connected && !error) return
+
+    if (connected) {
+      toast.success(
+        `${connected === 'instagram' ? 'Instagram' : 'Facebook'} account connected successfully`
+      )
+    } else {
+      // The callback puts the real reason in meta_error_detail — a generic message makes OAuth
+      // failures undebuggable.
+      const detail = searchParams.get('meta_error_detail')
+      toast.error(
+        detail
+          ? `Failed to connect account: ${detail.slice(0, 300)}`
+          : 'Failed to connect account. Please try again.'
+      )
+    }
+    clearQueryParams(['meta_connected', 'meta_error', 'meta_error_detail'])
+  }, [searchParams])
 
   async function handleReanalyze() {
     setReanalyzing(true)
     try {
-      const res = await fetch(`/api/clients/${clientId}/visual-identity/reanalyze`, { method: 'POST' })
+      const res = await fetch(`/api/clients/${clientId}/visual-identity/reanalyze`, {
+        method: 'POST',
+      })
       if (!res.ok) throw new Error('reanalyze failed')
       const data = (await res.json()) as { identity: VisualIdentity }
-      setVisualIdentity(data.identity)
+      setIdentity(data.identity)
       toast.success('Visual identity refreshed from website')
     } catch {
       toast.error('Could not re-analyze the website. Please try again.')
@@ -124,94 +216,61 @@ export function ClientSettingsForm({
     }
   }
 
-  // ── OAuth redirect toast ──
-  useEffect(() => {
-    const connected = searchParams.get('meta_connected')
-    const error = searchParams.get('meta_error')
-    if (connected) {
-      bustConnectionsCache(clientId)
-      toast.success(
-        `${connected === 'instagram' ? 'Instagram' : 'Facebook'} account connected successfully`
-      )
-    } else if (error) {
-      // Callback puts the real failure reason in meta_error_detail — show it,
-      // a generic message makes OAuth failures undebuggable
-      const detail = searchParams.get('meta_error_detail')
-      toast.error(
-        detail ? `Failed to connect account: ${detail.slice(0, 300)}` : 'Failed to connect account. Please try again.'
-      )
-    }
-  }, [searchParams, clientId])
+  function handleDiscard() {
+    setDrafts(baseline.current)
+  }
 
-  // ── Save ──
   async function handleSave() {
-    if (!name.trim()) {
+    if (!drafts.client.name.trim()) {
       toast.error('Client name is required')
       return
     }
     setSaving(true)
-    const result = await updateClient(clientId, {
-      name,
-      niche: niche || null,
-      language,
-      website_url: websiteUrl || null,
-      contact_email: contactEmail || null,
-      posts_per_week: parseInt(postsPerWeek, 10),
-      brand_profile: {
-        tone: tone || null,
-        target_audience: targetAudience || null,
-        content_pillars:
-          contentPillars.length > 0 ? serializePillars(contentPillars) : null,
-        avoid_topics: avoidTopics || null,
-        client_testimonial_voice: testimonialVoice || null,
-        language_formality: languageFormality,
-        secondary_language: secondaryLanguage || null,
-        is_health_niche: isHealthNiche,
-        language_notes: languageNotes || null,
-        default_post_type: defaultPostType,
-        default_carousel_slides: parseInt(defaultCarouselSlides, 10),
-        weekly_mix_json: { [activePlatform]: 1 },
-      },
-      posting_schedule: {
-        is_active: isActive,
-        frequency_value: parseInt(freqValue, 10),
-        auto_generate_day: autoDay,
-      },
-      visual_identity: visualIdentity,
-    })
+    const result = await updateClient(
+      clientId,
+      buildUpdatePayload(drafts, dirty, profile?.weekly_mix_json)
+    )
     if (result.ok) {
+      // Re-baseline so the bar retracts, and stay on the tab: saving a setting is not a reason
+      // to lose your place in the form.
+      baseline.current = drafts
+      setDrafts({ ...drafts })
       toast.success('Client updated')
-      router.push('/clients')
+      router.refresh()
     } else {
-      toast.error('Failed to save changes. Please try again.')
-      setSaving(false)
+      toast.error(result.error || 'Failed to save changes. Please try again.')
     }
+    setSaving(false)
   }
 
-  const isInsightsTab = activeTab === 'insights' || activeTab === 'ideas'
+  const connectionCount = connections.length
   const isConnected = connectionCount > 0
+  const connectedPlatforms = useMemo(
+    () => new Set(connections.map((c) => c.platform.toLowerCase())),
+    [connections]
+  )
+  const goToAccounts = useCallback(() => selectTab('accounts'), [selectTab])
 
   const tabs: Array<TabItem<SettingsTab>> = SETTINGS_TABS.map((tab) =>
-    tab.id === 'accounts'
-      ? { ...tab, count: connectionCount, warn: !isConnected }
-      : { ...tab }
+    tab.id === 'accounts' ? { ...tab, count: connectionCount, warn: !isConnected } : { ...tab }
   )
+
+  const panel = PANEL_COPY[activeTab]
+  const dirtyLabel = describeDirty(dirty)
 
   return (
     <div className="flex h-full flex-col">
       <PageHeader
-        crumb={[{ label: 'Clients', href: '/clients' }, { label: name || 'Client' }]}
+        crumb={[{ label: 'Clients', href: '/clients' }, { label: drafts.client.name || 'Client' }]}
         back="/clients"
-        badge={extractInitials(name || 'Client')}
+        badge={extractInitials(drafts.client.name || 'Client')}
         title={
           <>
-            <span className="truncate">{name || 'Untitled client'}</span>
+            <span className="truncate">{drafts.client.name || 'Untitled client'}</span>
             {isConnected ? (
-              <HeaderPill tone="ok">
-                {connectionCount} connected
-              </HeaderPill>
+              <StatusPill tone="ok">{connectionCount} connected</StatusPill>
             ) : (
-              <HeaderPill tone="bad">Not connected</HeaderPill>
+              <StatusPill tone="bad">Not connected</StatusPill>
             )}
           </>
         }
@@ -219,7 +278,7 @@ export function ClientSettingsForm({
           <>
             <span className="hidden text-xs text-text3 sm:block">
               {lastGeneratedAt
-                ? `Queue refreshed ${formatRelativeTime(new Date(lastGeneratedAt))}`
+                ? `Queue refreshed ${formatRelativeTime(parseTimestamp(lastGeneratedAt))}`
                 : 'Queue not yet refreshed'}
             </span>
             {/* Kept from the deleted status card: the only route to the sources screen. */}
@@ -231,106 +290,135 @@ export function ClientSettingsForm({
         meta={
           <HeaderMeta
             parts={[
-              niche || null,
-              languageFormality ? `${language} · ${languageFormality}` : language,
+              drafts.client.niche || null,
+              `${drafts.client.language} · ${drafts.brand.languageFormality}`,
               pendingCount > 0 && <MetaFlag>{pendingCount} pending review</MetaFlag>,
               publishedCount > 0 && `${publishedCount} published`,
             ]}
           />
         }
-        actions={
-          <>
-            <Button variant="ghost" size="sm" onClick={() => router.push('/clients')} disabled={saving}>
-              Cancel
-            </Button>
-            {!isInsightsTab && (
-              <Button size="sm" onClick={handleSave} loading={saving}>
-                Save changes
-              </Button>
-            )}
-          </>
+        tabs={
+          <TabRail items={tabs} active={activeTab} onSelect={selectTab} label="Client settings" />
         }
-        tabs={<TabRail items={tabs} active={activeTab} onSelect={setActiveTab} label="Client settings" />}
       />
 
-      {/* Full width: the 240px left nav is gone, so nothing competes with the form. */}
-      <div className={cn(PAGE_SHELL, 'min-h-0 flex-1 pb-8 pt-5')}>
-        <div className="flex h-full min-w-0 flex-col overflow-hidden rounded-card border border-line bg-surface">
-          {activeTab === 'basic' && (
-            <BasicInfoTab
-              name={name}
-              niche={niche}
-              websiteUrl={websiteUrl}
-              contactEmail={contactEmail}
-              language={language}
-              languageFormality={languageFormality}
-              postsPerWeek={postsPerWeek}
-              secondaryLanguage={secondaryLanguage}
-              isHealthNiche={isHealthNiche}
-              onNameChange={setName}
-              onNicheChange={setNiche}
-              onWebsiteUrlChange={setWebsiteUrl}
-              onContactEmailChange={setContactEmail}
-              onLanguageChange={setLanguage}
-              onLanguageFormalityChange={setLanguageFormality}
-              onPostsPerWeekChange={setPostsPerWeek}
-              onSecondaryLanguageChange={setSecondaryLanguage}
-              onIsHealthNicheChange={setIsHealthNiche}
+      <div className={cn(PAGE_SHELL, 'min-h-0 flex-1 overflow-y-auto pb-8 pt-5')}>
+        <FormPanel
+          title={panel.title}
+          description={panel.description}
+          rail={renderRail()}
+          saveBar={
+            // Rendered on every tab, including the read-only ones: edits live in one shared
+            // draft, so unsaved brand changes must stay saveable while you are looking at
+            // Insights — and the unload guard inside must not unmount with the panel.
+            <SaveBar
+              dirty={isDirty}
+              label={dirtyLabel}
+              saving={saving}
+              onSave={handleSave}
+              onDiscard={handleDiscard}
             />
-          )}
-          {activeTab === 'brand' && (
-            <BrandProfileTab
-              tone={tone}
-              targetAudience={targetAudience}
-              contentPillars={contentPillars}
-              avoidTopics={avoidTopics}
-              testimonialVoice={testimonialVoice}
-              languageNotes={languageNotes}
-              onToneChange={setTone}
-              onTargetAudienceChange={setTargetAudience}
-              onContentPillarsChange={setContentPillars}
-              onAvoidTopicsChange={setAvoidTopics}
-              onTestimonialVoiceChange={setTestimonialVoice}
-              onLanguageNotesChange={setLanguageNotes}
-            />
-          )}
-          {activeTab === 'visual' && (
-            <VisualIdentityTab
-              identity={visualIdentity}
-              onChange={setVisualIdentity}
-              onReanalyze={handleReanalyze}
-              reanalyzing={reanalyzing}
-            />
-          )}
-          {activeTab === 'schedule' && (
-            <ScheduleTab
-              activePlatform={activePlatform}
-              defaultPostType={defaultPostType}
-              defaultCarouselSlides={defaultCarouselSlides}
-              freqValue={freqValue}
-              autoDay={autoDay}
-              isActive={isActive}
-              onActivePlatformChange={setActivePlatform}
-              onDefaultPostTypeChange={setDefaultPostType}
-              onDefaultCarouselSlidesChange={setDefaultCarouselSlides}
-              onFreqValueChange={setFreqValue}
-              onAutoDayChange={setAutoDay}
-              onIsActiveChange={setIsActive}
-            />
-          )}
-          {activeTab === 'accounts' && <ConnectedAccountsTab clientId={clientId} />}
-          {activeTab === 'insights' && (
-            <ContentInsightsTab
-              insights={insights}
-              sourceCount={sourceCount}
-              clientId={clientId}
-            />
-          )}
-          {activeTab === 'ideas' && (
-            <IdeaFormTab clientId={clientId} clientName={client.name} />
-          )}
-        </div>
+          }
+        >
+          {renderPanel()}
+        </FormPanel>
       </div>
     </div>
   )
+
+  function renderPanel() {
+    switch (activeTab) {
+      case 'basic':
+        return (
+          <BasicInfoTab
+            client={drafts.client}
+            brand={drafts.brand}
+            onClientChange={patchClient}
+            onBrandChange={patchBrand}
+          />
+        )
+      case 'brand':
+        return <BrandProfileTab brand={drafts.brand} onChange={patchBrand} />
+      case 'visual':
+        return <VisualIdentityTab identity={drafts.identity} onChange={setIdentity} />
+      case 'schedule':
+        return (
+          <ScheduleTab
+            brand={drafts.brand}
+            schedule={drafts.schedule}
+            connectedPlatforms={connectedPlatforms}
+            onBrandChange={patchBrand}
+            onScheduleChange={patchSchedule}
+          />
+        )
+      case 'accounts':
+        return <ConnectedAccountsTab clientId={clientId} connections={connections} />
+      case 'insights':
+        return <ContentInsightsTab insights={insights} />
+      case 'ideas':
+        return (
+          <IdeaFormTab
+            clientId={clientId}
+            // Live draft, not the server value: a rename should show here before save.
+            clientName={drafts.client.name || client.name}
+            token={ideaToken}
+            totalCount={ideaTotalCount}
+            ideas={recentIdeas}
+          />
+        )
+    }
+  }
+
+  function renderRail() {
+    switch (activeTab) {
+      case 'basic':
+        return (
+          <ClientStatusRail
+            lastGeneratedAt={lastGeneratedAt}
+            pendingCount={pendingCount}
+            sourceCount={sourceCount}
+            publishedCount={publishedCount}
+            connectionCount={connectionCount}
+            onConnectClick={goToAccounts}
+          />
+        )
+      case 'brand':
+        return <BrandProfileRail pillarCount={drafts.brand.contentPillars.length} />
+      case 'visual':
+        return (
+          <VisualIdentityRail
+            palette={drafts.identity.palette}
+            onReanalyze={handleReanalyze}
+            reanalyzing={reanalyzing}
+          />
+        )
+      case 'schedule':
+        return (
+          <ScheduleRail
+            isActive={drafts.schedule.isActive}
+            connectionCount={connectionCount}
+            onConnectClick={goToAccounts}
+          />
+        )
+      case 'accounts':
+        return (
+          <AccountsRail
+            scheduledCount={scheduledCount}
+            approvedUnpublishedCount={approvedUnpublishedCount}
+            connectionCount={connectionCount}
+          />
+        )
+      case 'insights':
+        return <InsightsRail sourceCount={sourceCount} clientId={clientId} />
+      case 'ideas':
+        return <IdeasRail newCount={ideaNewCount} usedCount={ideaUsedCount} />
+    }
+  }
+}
+
+/** Names what is unsaved: the single changed section, or how many there are. */
+function describeDirty(dirty: DirtyGroups): string {
+  const changed = (Object.keys(GROUP_LABEL) as Array<keyof DirtyGroups>).filter((key) => dirty[key])
+  if (changed.length === 1) return GROUP_LABEL[changed[0]!]
+  return `${changed.length} sections`
 }

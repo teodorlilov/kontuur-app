@@ -1,172 +1,94 @@
 'use client'
 
-import { PanelHeader } from './basic-info-tab'
 import { EmptyState } from '@/components/layout/empty-state'
+import { cn } from '@/utils/cn'
+import type { ContentInsights, PillarRate } from '@/features/clients/lib/insights'
 
-export interface ContentInsights {
-  avgScore: number | null
-  trend: 'improving' | 'stable' | 'declining' | 'insufficient_data'
-  topApprovedPillars: string[]
-  topRewritePillars: string[]
+/** Below this, a pillar is being rewritten often enough to be worth calling out. */
+const LOW_APPROVAL = 50
+
+const TREND_LABEL: Record<ContentInsights['trend'], string> = {
+  improving: 'Improving over the last 30 days',
+  declining: 'Declining over the last 30 days',
+  stable: 'Stable over the last 30 days',
+  insufficient_data: 'Not enough history to show a trend yet',
 }
 
 interface ContentInsightsTabProps {
   insights: ContentInsights | null
-  sourceCount: number
-  clientId: string
 }
 
-/** Content insights tab: read-only stats from approved and published posts. */
-export function ContentInsightsTab({ insights, sourceCount, clientId }: ContentInsightsTabProps) {
+/** Read-only: what the approved and published posts say about the guidance. */
+export function ContentInsightsTab({ insights }: ContentInsightsTabProps) {
+  if (!insights) {
+    return (
+      <EmptyState
+        title="Not enough data yet"
+        description="Approve and publish posts to see patterns here."
+      />
+    )
+  }
+
+  const weakest = insights.pillarRates.find((p) => p.rate < LOW_APPROVAL)
+
   return (
     <>
-      <PanelHeader
-        title="Content insights"
-        subtitle="Performance patterns from approved and published posts"
-      />
-      <div style={{ padding: '20px 22px' }}>
-        {!insights ? (
-          <EmptyState title="Not enough data yet" description="Approve and publish posts to see patterns here." />
-        ) : (
-          <>
-            {insights.avgScore !== null && <ScoreSection insights={insights} />}
-            <PillarSection label="Top approved pillars" pillars={insights.topApprovedPillars} />
-            <PillarSection label="Most rewritten pillars" pillars={insights.topRewritePillars} />
-          </>
-        )}
+      {insights.avgScore !== null && (
+        <div className="flex items-baseline gap-3.5 rounded-panel bg-wash px-5 py-[18px]">
+          <span className="text-[31px] font-semibold leading-none tracking-[-0.02em] tabular-nums text-forest">
+            {insights.avgScore}
+          </span>
+          <span className="text-[12.5px] text-text2">
+            Average quality score
+            <br />
+            <span className="text-text3">{TREND_LABEL[insights.trend]}</span>
+          </span>
+        </div>
+      )}
 
-        <SourceUsageSection sourceCount={sourceCount} clientId={clientId} />
-      </div>
+      {insights.pillarRates.length > 0 && (
+        <div className="mt-[18px]">
+          <h4 className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-text3">
+            Approval rate by pillar
+          </h4>
+          <p className="mb-2.5 text-xs text-text3">
+            From the {insights.sampleSize} most recent posts with a pillar.
+          </p>
+          {insights.pillarRates.map((entry) => (
+            <PillarBar key={entry.pillar} entry={entry} />
+          ))}
+        </div>
+      )}
+
+      {weakest && (
+        <p className="mt-[18px] rounded-panel bg-wash px-4 py-3.5 text-[12.5px] leading-relaxed text-text2">
+          <b className="font-semibold text-ink">{weakest.pillar}</b> posts are rewritten most often.
+          Consider tightening that pillar&rsquo;s guidance in <b>Brand profile</b>, or lowering its
+          share.
+        </p>
+      )}
     </>
   )
 }
 
-function ScoreSection({ insights }: { insights: ContentInsights }) {
-  const trendLabel =
-    insights.trend === 'improving'
-      ? '↑ improving'
-      : insights.trend === 'declining'
-        ? '↓ declining'
-        : insights.trend === 'stable'
-          ? '→ stable'
-          : null
-
-  const trendColor =
-    insights.trend === 'improving'
-      ? 'var(--color-published-fg)'
-      : insights.trend === 'declining'
-        ? 'var(--color-error-fg)'
-        : 'var(--color-text-3)'
+function PillarBar({ entry }: { entry: PillarRate }) {
+  const low = entry.rate < LOW_APPROVAL
 
   return (
-    <div
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 10,
-        marginBottom: 18,
-        padding: '14px 16px',
-        background: 'var(--color-sunken)',
-        borderRadius: 10,
-      }}
-    >
-      <div>
-        <div style={{ fontSize: 24, fontWeight: 500, color: 'var(--color-text-1)' }}>
-          {insights.avgScore}/10
-        </div>
-        <div style={{ fontSize: 11, color: 'var(--color-muted)' }}>Avg quality score</div>
-      </div>
-      {trendLabel && (
-        <span style={{ fontSize: 12, color: trendColor, marginLeft: 8 }}>{trendLabel}</span>
-      )}
+    <div className="flex items-center gap-3 py-2">
+      <span className="w-[190px] flex-none truncate text-[13px]" title={entry.pillar}>
+        {entry.pillar}
+      </span>
+      <span aria-hidden className="h-[7px] flex-1 overflow-hidden rounded-full bg-line">
+        {/* Computed width: the one inline style DESIGN.md allows, because it encodes the value. */}
+        <span
+          className={cn('block h-full rounded-full', low ? 'bg-pending' : 'bg-forest')}
+          style={{ width: `${entry.rate}%` }}
+        />
+      </span>
+      <span className="w-11 flex-none text-right text-[12.5px] tabular-nums text-text3">
+        {entry.rate}%
+      </span>
     </div>
   )
 }
-
-function PillarSection({ label, pillars }: { label: string; pillars: string[] }) {
-  if (pillars.length === 0) return null
-
-  return (
-    <div style={{ marginBottom: 14 }}>
-      <div
-        style={{
-          fontSize: 10,
-          fontWeight: 500,
-          color: 'var(--color-muted)',
-          letterSpacing: 1.5,
-          textTransform: 'uppercase',
-          marginBottom: 6,
-        }}
-      >
-        {label}
-      </div>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-        {pillars.map((pillar) => (
-          <span
-            key={pillar}
-            style={{
-              fontSize: 12,
-              padding: '4px 10px',
-              background: 'var(--color-sunken)',
-              borderRadius: 6,
-              color: 'var(--color-text-1)',
-            }}
-          >
-            {pillar}
-          </span>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-function SourceUsageSection({ sourceCount, clientId }: { sourceCount: number; clientId: string }) {
-  return (
-    <div
-      style={{
-        borderTop: '0.5px solid var(--color-border-1)',
-        paddingTop: 16,
-        marginTop: 4,
-      }}
-    >
-      <div
-        style={{
-          fontSize: 10,
-          fontWeight: 500,
-          color: 'var(--color-muted)',
-          letterSpacing: 1.5,
-          textTransform: 'uppercase',
-          marginBottom: 8,
-        }}
-      >
-        Research sources
-      </div>
-      {sourceCount === 0 ? (
-        <p style={{ fontSize: 12, color: 'var(--color-text-3)', lineHeight: 1.7 }}>
-          No sources configured.{' '}
-          <a
-            href={`/clients/${clientId}/sources`}
-            style={{ color: 'var(--color-terracotta)', textDecoration: 'none' }}
-          >
-            Add news feeds or website URLs
-          </a>{' '}
-          to ground research in real content.
-        </p>
-      ) : (
-        <p style={{ fontSize: 12, color: 'var(--color-text-2)', lineHeight: 1.7 }}>
-          <strong style={{ color: 'var(--color-text-1)', fontWeight: 500 }}>
-            {sourceCount} active source{sourceCount !== 1 ? 's' : ''}
-          </strong>{' '}
-          configured.{' '}
-          <a
-            href={`/clients/${clientId}/sources`}
-            style={{ color: 'var(--color-terracotta)', textDecoration: 'none' }}
-          >
-            Manage →
-          </a>
-        </p>
-      )}
-    </div>
-  )
-}
-

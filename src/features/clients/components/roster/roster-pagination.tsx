@@ -11,9 +11,10 @@ interface RosterPaginationProps {
 }
 
 /**
- * The mock's footer: a plain count and one escape hatch. There are no page
- * numbers because the roster is sorted by urgency — page 2 is "everything
- * that is fine", which is a single destination rather than a sequence.
+ * A plain count and one escape hatch.
+ *
+ * No page numbers: the roster is sorted by urgency, so page 2 is "everything
+ * that is fine" — a single destination rather than a sequence.
  */
 export function RosterPagination({
   remaining,

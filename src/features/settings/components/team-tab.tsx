@@ -1,116 +1,107 @@
 'use client'
 
-import { SectionCard } from '@/components/ui/section-card'
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { Button } from '@/components/ui/button'
+import { FormSection, RailBox, RailText } from '@/components/ui/form'
+import { Modal } from '@/components/ui/modal'
+import { toast } from '@/components/ui/toast'
+import { removeTeamMember } from '@/features/settings/actions/team-actions'
 import { InviteForm } from './invite-form'
 import { MemberRow } from './member-row'
-import { toast } from '@/components/ui/toast'
 import type { TeamMember } from '@/types/api'
 
 interface TeamTabProps {
-  workspaceName: string
   members: TeamMember[]
   currentUserId: string
   currentUserRole: string
   agencyMode: 'agency' | 'solo'
 }
 
-/** Team tab: invite form, member list, pending invites. */
-export function TeamTab({
-  workspaceName,
-  members,
-  currentUserId,
-  currentUserRole,
-  agencyMode,
-}: TeamTabProps) {
+/**
+ * Who has access to the workspace.
+ *
+ * Members only — there is no invitations table, so a pending-invite count could report nothing
+ * but a fixed zero.
+ */
+export function TeamTab({ members, currentUserId, currentUserRole, agencyMode }: TeamTabProps) {
+  const router = useRouter()
   const isAdmin = currentUserRole === 'admin'
+  const [pendingRemoval, setPendingRemoval] = useState<TeamMember | null>(null)
+  const [removing, setRemoving] = useState(false)
 
-  if (agencyMode === 'solo') {
-    return (
-      <div style={{ textAlign: 'center', padding: '48px 0' }}>
-        <p style={{ fontSize: 13, color: 'var(--color-muted)' }}>
-          Team management is available in agency mode.
-        </p>
-      </div>
-    )
+  async function handleConfirmRemove() {
+    if (!pendingRemoval) return
+    setRemoving(true)
+    const result = await removeTeamMember(pendingRemoval.id)
+    if (result.ok) {
+      toast.success(`${pendingRemoval.email} removed from the workspace`)
+      setPendingRemoval(null)
+      router.refresh()
+    } else {
+      toast.error(result.error)
+    }
+    setRemoving(false)
   }
 
-  function handleRemoveMember(memberId: string) {
-    toast.error('Removing members is not yet available')
-    void memberId
+  if (agencyMode === 'solo') {
+    return <p className="py-6 text-[13px] text-text2">Team management is available in agency mode.</p>
   }
 
   return (
     <>
-      <PageHeader title="Team" subtitle={`Manage who has access to the ${workspaceName} workspace`} />
+      {isAdmin && <InviteForm />}
 
-      {isAdmin && (
-        <SectionCard
-          title="Invite a team member"
-          subtitle="They'll receive an email with a link to join your workspace"
-        >
-          <InviteForm />
-        </SectionCard>
-      )}
-
-      <SectionCard
-        title="Team members"
-        subtitle="People with access to this workspace and their roles"
-        headerAction={
-          <span style={{ fontSize: 11, color: 'var(--color-muted)', fontWeight: 400, alignSelf: 'center' }}>
-            {members.length} {members.length === 1 ? 'member' : 'members'}
-          </span>
-        }
+      <FormSection
+        legend="Team members"
+        description={`${members.length} member${members.length === 1 ? '' : 's'}`}
       >
-        {members.map((m, i) => (
-          <MemberRow
-            key={m.id}
-            member={m}
-            isCurrentUser={m.id === currentUserId}
-            canRemove={isAdmin}
-            onRemove={handleRemoveMember}
-            isLast={i === members.length - 1}
-          />
-        ))}
-      </SectionCard>
-
-      <SectionCard
-        title="Pending invites"
-        subtitle="Invitations sent but not yet accepted"
-        headerAction={
-          <span style={{ fontSize: 11, color: 'var(--color-muted)', fontWeight: 400 }}>0</span>
-        }
-      >
-        <div
-          style={{
-            padding: '28px 22px',
-            textAlign: 'center',
-            fontSize: 12,
-            color: 'var(--color-muted)',
-            fontStyle: 'italic',
-          }}
-        >
-          No pending invitations
+        <div className="col-span-12">
+          {members.map((member) => (
+            <MemberRow
+              key={member.id}
+              member={member}
+              isCurrentUser={member.id === currentUserId}
+              canRemove={isAdmin}
+              onRemove={setPendingRemoval}
+            />
+          ))}
         </div>
-      </SectionCard>
+      </FormSection>
+
+      <Modal
+        open={!!pendingRemoval}
+        onClose={() => setPendingRemoval(null)}
+        title="Remove team member"
+      >
+        <p className="text-[13px] leading-relaxed text-text2">
+          <b className="font-semibold text-ink">{pendingRemoval?.email}</b> will lose access to this
+          workspace and their account will be deleted. This cannot be undone.
+        </p>
+        <div className="mt-5 flex justify-end gap-2">
+          <Button variant="secondary" size="sm" onClick={() => setPendingRemoval(null)}>
+            Cancel
+          </Button>
+          <Button variant="danger" size="sm" onClick={handleConfirmRemove} loading={removing}>
+            Remove permanently
+          </Button>
+        </div>
+      </Modal>
     </>
   )
 }
 
-function PageHeader({ title, subtitle }: { title: string; subtitle: string }) {
+/** Context rail for the Team panel. */
+export function TeamRail() {
   return (
-    <div style={{ marginBottom: 22 }}>
-      <div
-        style={{
-          fontFamily: 'var(--font-display, Georgia, serif)',
-          fontSize: 22,
-          fontWeight: 400,
-          color: 'var(--color-text-1)',
-          marginBottom: 4,
-        }}
-      >
-        {title}
-      </div>
-      <div style={{ fontSize: 13, color: 'var(--color-muted)', lineHeight: 1.55 }}>{subtitle}</div>
-    </div>
+    <RailBox title="Roles">
+      <RailText>
+        <b className="font-semibold text-ink">Admin</b> — full access, including workspace settings
+        and the team.
+      </RailText>
+      <RailText>
+        <b className="font-semibold text-ink">Member</b> — clients, drafts and review only.
+      </RailText>
+    </RailBox>
   )
 }

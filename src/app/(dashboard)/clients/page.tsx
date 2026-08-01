@@ -77,8 +77,8 @@ export default async function ClientsPage({ searchParams }: ClientsPageProps) {
     sort
   )
 
-  // The tab rail replaced the dark band: every figure the band carried is a
-  // count here, so nothing is printed twice.
+  // Every roster figure is a count on one of these tabs, so no summary strip
+  // repeats them elsewhere on the page.
   const tabs: Array<TabItem<RosterFilter>> = [
     {
       id: 'attention',

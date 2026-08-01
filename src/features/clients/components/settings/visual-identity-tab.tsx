@@ -1,28 +1,19 @@
 'use client'
 
-import type { VisualIdentity } from '@/types/visual'
 import { VisualIdentityPanel } from '@/features/visual-identity/components/visual-identity-panel'
+import type { VisualIdentity } from '@/types/visual'
 
-/** Settings tab wrapper for the shared visual-identity editor (brand palette + re-analyze). */
-export function VisualIdentityTab({
-  identity,
-  onChange,
-  onReanalyze,
-  reanalyzing,
-}: {
+interface VisualIdentityTabProps {
   identity: VisualIdentity
   onChange: (identity: VisualIdentity) => void
-  onReanalyze: () => void
-  reanalyzing: boolean
-}) {
-  return (
-    <div style={{ padding: '20px 24px', overflowY: 'auto' }}>
-      <VisualIdentityPanel
-        identity={identity}
-        onChange={onChange}
-        onReanalyze={onReanalyze}
-        reanalyzing={reanalyzing}
-      />
-    </div>
-  )
+}
+
+/**
+ * Brand style and palette for AI visuals.
+ *
+ * A thin wrapper on purpose: `FormPanel` supplies the title and save bar, and re-analysis lives in
+ * the rail. `onReanalyze` is deliberately not forwarded, so the panel renders no button of its own.
+ */
+export function VisualIdentityTab({ identity, onChange }: VisualIdentityTabProps) {
+  return <VisualIdentityPanel identity={identity} onChange={onChange} />
 }

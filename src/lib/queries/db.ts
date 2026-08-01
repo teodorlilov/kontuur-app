@@ -45,11 +45,6 @@ export type AgencySettings = {
 /**
  * Fetches a single client by id, verifying agency ownership in the same query.
  * Returns null if not found or not owned by agencyId.
- *
- * Replaces inline queries in:
- *   src/app/api/clients/[id]/route.ts
- *   src/app/(dashboard)/clients/[id]/edit/page.tsx
- *   src/app/(dashboard)/clients/[id]/sources/page.tsx
  */
 export async function fetchClientById(
   supabase: SupabaseClient,
@@ -70,10 +65,6 @@ export async function fetchClientById(
 /**
  * Fetches the full brand profile for a client.
  * No ownership check — callers must have already verified client ownership.
- *
- * Replaces inline queries in:
- *   src/app/api/clients/[id]/route.ts
- *   src/app/(dashboard)/clients/[id]/edit/page.tsx
  */
 export async function fetchBrandProfileByClient(
   supabase: SupabaseClient,
@@ -92,10 +83,6 @@ export async function fetchBrandProfileByClient(
 /**
  * Fetches the posting schedule for a client.
  * No ownership check — callers must have already verified client ownership.
- *
- * Replaces inline queries in:
- *   src/app/api/clients/[id]/route.ts
- *   src/app/(dashboard)/clients/[id]/edit/page.tsx
  */
 export async function fetchPostingScheduleByClient(
   supabase: SupabaseClient,
@@ -116,10 +103,6 @@ export async function fetchPostingScheduleByClient(
  * Use getCachedAgency() from src/lib/queries/cache.ts for read-only pages
  * where a 60-second staleness window is acceptable.
  * Use this function in API routes that need fresh data after a PUT.
- *
- * Replaces inline queries in:
- *   src/app/api/settings/account/route.ts
- *   src/app/(dashboard)/settings/account/page.tsx
  */
 export async function fetchAgencyById(
   supabase: SupabaseClient,
@@ -135,13 +118,7 @@ export async function fetchAgencyById(
 
 // ---------- users ----------
 
-/**
- * Fetches all team members for the given agency, ordered by created_at ascending.
- *
- * Replaces inline queries in:
- *   src/app/api/settings/team/route.ts
- *   src/app/(dashboard)/settings/team/page.tsx
- */
+/** Fetches all team members for the given agency, ordered by created_at ascending. */
 export async function fetchTeamMembersByAgency(
   supabase: SupabaseClient,
   agencyId: string
@@ -159,10 +136,6 @@ export async function fetchTeamMembersByAgency(
 /**
  * Fetches all social connections for a client, ordered by created_at ascending.
  * No ownership check — callers must have already verified client ownership.
- *
- * Replaces inline queries in:
- *   src/app/api/meta/connections/route.ts
- *   src/app/(dashboard)/analytics/page.tsx
  */
 export async function fetchConnectionsByClient(
   supabase: SupabaseClient,
@@ -262,10 +235,6 @@ export async function fetchTopPostsByClient(
 /**
  * Counts posts with status='pending_review' across the given client ids.
  * Returns 0 immediately when clientIds is empty (avoids an unnecessary DB call).
- *
- * Replaces inline queries in:
- *   src/app/(dashboard)/layout.tsx
- *   src/app/(dashboard)/dashboard/page.tsx
  */
 export async function countPendingPostsByClients(
   supabase: SupabaseClient,

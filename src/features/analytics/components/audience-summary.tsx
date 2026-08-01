@@ -1,5 +1,8 @@
 'use client'
 
+import { useShell } from '@/components/layout/shell-context'
+import { formatDayMonth } from '@/utils/format'
+
 interface AudienceSummaryProps {
   total: number
   newCount: number
@@ -10,7 +13,9 @@ interface AudienceSummaryProps {
 
 /** 4-cell follower summary card for the audience tab. */
 export function AudienceSummary({ total, newCount, unfollows, netGrowth, followersDeltaPct }: AudienceSummaryProps) {
-  const today = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  const { timezone } = useShell()
+  // The agency's today, not the browser's: this renders on the server and again after hydration.
+  const today = formatDayMonth(new Date(), timezone)
   const deltaLabel = followersDeltaPct != null
     ? `${followersDeltaPct >= 0 ? '↑' : '↓'} ${followersDeltaPct > 0 ? '+' : ''}${followersDeltaPct}% vs last period`
     : 'in selected period'

@@ -1,7 +1,7 @@
 import { Sparkles } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { BriefingActions } from '@/features/dashboard/components/briefing-actions'
-import type { DashboardBriefing } from '@/features/dashboard/queries'
+import type { DashboardBriefing } from '@/features/dashboard/types'
 
 /** Strips <cite> wrappers left by web-search citations. */
 function stripCiteTags(text: string): string {

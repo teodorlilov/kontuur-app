@@ -12,6 +12,20 @@ export function formatDate(date: Date): string {
   })
 }
 
+/** Spelled-out date for one-off facts a page states rather than lists — "3 February 2026". */
+export function formatLongDate(date: Date): string {
+  return date.toLocaleDateString('en-GB', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  })
+}
+
+/** Uppercases the first letter, for stored lowercase enums shown as labels (roles, plans). */
+export function capitalize(value: string): string {
+  return value.charAt(0).toUpperCase() + value.slice(1)
+}
+
 export function formatRelativeTime(date: Date): string {
   const now = new Date()
   const diffMs = now.getTime() - date.getTime()
@@ -52,9 +66,25 @@ export function toPreviewLine(caption: string): string {
   return cleaned || caption.trim()
 }
 
-/** Formats a date as "Mon, Apr 28" — short weekday + month + day. */
-export function formatScheduleDate(date: Date): string {
-  return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+/**
+ * Formats a date as "Mon, Apr 28" — short weekday + month + day.
+ *
+ * Pass `timeZone` from anything rendered on both sides of hydration: without it the server formats
+ * in its own zone and the browser re-formats in the visitor's, so the text mismatches and the date
+ * can be a day out.
+ */
+export function formatScheduleDate(date: Date, timeZone?: string): string {
+  return date.toLocaleDateString('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    timeZone,
+  })
+}
+
+/** Formats a date as "28 Apr" — day + short month, for compact secondary labels. */
+export function formatDayMonth(date: Date, timeZone?: string): string {
+  return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone })
 }
 
 /** Extracts up to 2-letter initials from a name string, supporting non-Latin scripts. */

@@ -3,8 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from '@/components/ui/toast'
-import { serializePillars } from '@/lib/clients/content-pillars'
-import type { WeightedPillar } from '@/lib/clients/content-pillars'
+import { ensurePillarIds, serializePillars } from '@/lib/clients/content-pillars'
 import type { UrlAnalysisResponse } from '@/types/api'
 import type { SourceKind, VisualIdentity } from '@/types/visual'
 import type { OnboardingStep, OnboardProfile, Message } from '@/features/onboarding/types'
@@ -257,7 +256,14 @@ export default function NewClientPage() {
       if (!res.ok) throw new Error('Failed to generate profile')
 
       const data = (await res.json()) as { profile: Omit<OnboardProfile, 'contact_email'> }
-      setProfile({ ...data.profile, contact_email: '' })
+      setProfile({
+        ...data.profile,
+        // The generator returns pillars without ids. Stamped here, where the data enters, because
+        // the editor keys its rows by id — leaving it until save meant every row keyed `undefined`
+        // for the whole review step.
+        content_pillars: ensurePillarIds(data.profile.content_pillars),
+        contact_email: '',
+      })
       if (answersMap.q0) setClientName(answersMap.q0)
       void runFeedPrefetch(data.profile, answersMap.q0 ?? clientName)
       setStep('review')
@@ -288,11 +294,6 @@ export default function NewClientPage() {
     if (!profile) return
 
     setSaving(true)
-    const pillarsWithIds: WeightedPillar[] = profile.content_pillars.map((p) => ({
-      ...p,
-      id: crypto.randomUUID(),
-    }))
-
     try {
       const res = await fetch('/api/clients', {
         method: 'POST',
@@ -306,7 +307,7 @@ export default function NewClientPage() {
           brand_profile: {
             tone: profile.tone,
             target_audience: profile.target_audience.join(', '),
-            content_pillars: serializePillars(pillarsWithIds),
+            content_pillars: serializePillars(profile.content_pillars),
             avoid_topics: profile.avoid_topics,
             client_testimonial_voice: profile.client_testimonial_voice,
             language_formality: profile.language_formality,

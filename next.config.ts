@@ -14,12 +14,11 @@ const nextConfig: NextConfig = {
   images: {
     remotePatterns: [
       { protocol: 'https', hostname: '*.supabase.co', pathname: '/storage/v1/object/public/**' },
+      // Instagram media thumbnails in the analytics grid. Meta serves them from both CDNs and
+      // rotates the subdomain per request, so the host has to be matched by wildcard.
+      { protocol: 'https', hostname: '**.cdninstagram.com' },
+      { protocol: 'https', hostname: '**.fbcdn.net' },
     ],
-  },
-  experimental: {
-    staleTimes: {
-      dynamic: 0,
-    },
   },
   async headers() {
     return [

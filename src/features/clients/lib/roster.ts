@@ -13,7 +13,7 @@ import { extractInitials } from '@/utils/format'
 
 export type PostPlatform = (typeof POST_PLATFORMS)[number]
 
-/** How a single channel is doing. Mirrors the three chip states in the mock. */
+/** How a single channel is doing. */
 export type ChannelState = 'connected' | 'expiring' | 'missing'
 
 export interface RosterChannel {
@@ -64,8 +64,17 @@ export interface RosterClientRow {
   social_connections: RosterConnectionRow[] | null
 }
 
+/**
+ * An upcoming post, as both the roster and the dashboard read it.
+ *
+ * `id` and `platform` are surplus to the roster's own needs — it only counts rows and takes the
+ * earliest per client — but the dashboard's "going out next" card lists individual publishes from
+ * the same cached entry, so the shape has to satisfy both.
+ */
 export interface UpcomingPostRow {
+  id: string
   client_id: string | null
+  platform: string | null
   scheduled_at: string | null
 }
 
@@ -107,9 +116,9 @@ export interface RosterSummary {
   connection: number
   empty: number
   /**
-   * Band counts. `awaitingApprovalPosts` is POSTS, not clients: the mock's band
-   * reads "6" while the chip beside it reads "1", because six posts are waiting
-   * on one client. Conflating them silently makes both numbers wrong.
+   * Band counts. `awaitingApprovalPosts` is POSTS, not clients: six posts can be
+   * waiting on a single client, so the band reads "6" beside a client chip that
+   * reads "1". Conflating them silently makes both numbers wrong.
    */
   awaitingApprovalPosts: number
   oldestApprovalAt: string | null
@@ -281,7 +290,7 @@ export function summariseRoster(entries: ClientRosterEntry[]): RosterSummary {
 
 export type RosterSort = 'attention' | 'name'
 
-/** Sorted copy — the two orderings drawn in the mock. */
+/** Sorted copy. Urgency first by default; by name when the user asks for it. */
 export function sortRoster(entries: ClientRosterEntry[], sort: RosterSort): ClientRosterEntry[] {
   const byName = (a: ClientRosterEntry, b: ClientRosterEntry) => a.name.localeCompare(b.name)
   if (sort === 'name') return [...entries].sort(byName)

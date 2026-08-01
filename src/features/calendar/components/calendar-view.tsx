@@ -11,7 +11,9 @@ import { HeaderMeta, MetaFlag, PageHeader } from '@/components/layout/page-heade
 import { SelectControl } from '@/components/layout/page-header/select-control'
 import { TOOL_ROW } from '@/components/layout/page-header/shared'
 import { cn } from '@/utils/cn'
+import { useShell } from '@/components/layout/shell-context'
 import { deletePost } from '@/lib/actions/post-actions'
+import { monthViewIn, nextMonthView, prevMonthView, type MonthView } from '../helpers'
 import { MonthGrid } from './month-grid'
 import { ScheduleFab } from './schedule-fab'
 import { UnscheduledPanel } from './unscheduled-panel'
@@ -119,11 +121,14 @@ function MonthStepBtn({ onClick, direction }: { onClick: () => void; direction: 
 }
 
 export function CalendarView({ initialPosts, clients }: CalendarViewProps) {
-  const now = new Date()
+  const { timezone } = useShell()
   const router = useRouter()
   const searchParams = useSearchParams()
-  const [year, setYear] = useState(now.getFullYear())
-  const [month, setMonth] = useState(now.getMonth())
+  // One piece of state, not two: stepping across a year boundary changes both, and splitting them
+  // forced the month updater to call setYear from inside itself. Updaters must be pure — React
+  // double-invokes them under StrictMode, so that fired twice and skipped a whole year.
+  const [view, setView] = useState<MonthView>(() => monthViewIn(timezone))
+  const { year, month } = view
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null)
   const [panelOpen, setPanelOpen] = useState(false)
   const [cardOpen, setCardOpen] = useState(false)
@@ -146,7 +151,9 @@ export function CalendarView({ initialPosts, clients }: CalendarViewProps) {
     saving,
   } = useCalendar(initialPosts)
 
-  // Auto-open modal in edit mode when navigated from dashboard with ?editPost=<id>
+  // Auto-open modal in edit mode when navigated from dashboard with ?editPost=<id>.
+  // Genuinely an effect, not a render-time adjustment: it consumes a one-shot URL param and
+  // navigates to clear it, which is a side effect and must not run during render.
   useEffect(() => {
     if (editParamProcessed.current) return
     const editPostId = searchParams.get('editPost')
@@ -175,25 +182,10 @@ export function CalendarView({ initialPosts, clients }: CalendarViewProps) {
   const activePost = allPosts.find((p) => p.id === activePostId) ?? null
   const activeIndex = filteredUnscheduled.findIndex((p) => p.id === activePostId)
 
-  const prevMonth = useCallback(() => {
-    setMonth((m) => {
-      if (m === 0) { setYear((y) => y - 1); return 11 }
-      return m - 1
-    })
-  }, [])
+  const prevMonth = useCallback(() => setView(prevMonthView), [])
+  const nextMonth = useCallback(() => setView(nextMonthView), [])
 
-  const nextMonth = useCallback(() => {
-    setMonth((m) => {
-      if (m === 11) { setYear((y) => y + 1); return 0 }
-      return m + 1
-    })
-  }, [])
-
-  const goToToday = useCallback(() => {
-    const t = new Date()
-    setYear(t.getFullYear())
-    setMonth(t.getMonth())
-  }, [])
+  const goToToday = useCallback(() => setView(monthViewIn(timezone)), [timezone])
 
   const handlePanelPostClick = useCallback((post: CalendarPost) => {
     setActivePostId(post.id)

@@ -2,6 +2,7 @@
 
 import { Copy, ChevronLeft, ChevronRight } from 'lucide-react'
 import { getPillarColor } from '@/components/ui/colors/pillar-colors'
+import { formatScheduleDate } from '@/utils/format'
 import type { ApprovalPostData } from '@/types/api'
 import { SlidesSection } from './slides-section'
 import { PostImagePreview } from './post-image-preview'
@@ -92,14 +93,7 @@ function NavButton({
 }
 
 /** Format scheduled_at into a readable date string. */
-function formatDate(iso: string | null): string {
-  if (!iso) return ''
-  return new Date(iso).toLocaleDateString('en-US', {
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
-  })
-}
+
 
 /** Build a post type label from post_type and slides_json. */
 function postTypeLabel(postType: string, slides: unknown): string {
@@ -135,7 +129,7 @@ function MetaTopbar({ post, postIndex, totalPosts, status, onNavigate }: {
       }}
     >
       <MetaPill label={`#${postIndex + 1}`} />
-      <MetaPill label={formatDate(post.scheduled_at)} />
+      <MetaPill label={post.scheduled_at ? formatScheduleDate(new Date(post.scheduled_at)) : ''} />
       {post.platform && <MetaPill label={post.platform} />}
       <MetaPill label={postTypeLabel(post.post_type, post.slides_json)} />
       {post.pillar && <MetaPill label={post.pillar} dotColor={pillar?.hex} />}

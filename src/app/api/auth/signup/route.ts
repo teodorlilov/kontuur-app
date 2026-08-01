@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
+import { revalidateTag } from 'next/cache'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
+import { USER_RECORD_TAG } from '@/lib/auth/session'
 
 interface SignupBody {
   businessName: string
@@ -61,6 +63,9 @@ export async function POST(request: Request) {
   if (userError) {
     return NextResponse.json({ error: 'Failed to create user record' }, { status: 500 })
   }
+
+  // A page render may already have cached "no record" for this id while signup was in flight.
+  revalidateTag(USER_RECORD_TAG, 'max')
 
   if (mode === 'solo') {
     const { data: clientData, error: clientError } = await admin

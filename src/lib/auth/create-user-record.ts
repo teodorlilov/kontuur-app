@@ -22,12 +22,27 @@ interface CreateUserRecordResult {
  * - New signups: creates agency, inserts user as 'admin', creates
  *   default client/brand-profile/schedule for solo mode.
  *
+ * Idempotent: a second call for a user who already has a row returns that row's agency and writes
+ * nothing. Without this guard the new-signup path creates the agency *before* inserting the user,
+ * so a repeat call left an orphaned agency (plus, in solo mode, a client, brand profile and
+ * schedule) behind every time — and both callers can re-run for the same user.
+ *
  * Returns null if agency creation fails.
  */
 export async function createUserRecord(
   admin: AdminClient,
   user: UserInput
 ): Promise<CreateUserRecordResult | null> {
+  const { data: existing } = await admin
+    .from('users')
+    .select('agency_id')
+    .eq('id', user.id)
+    .maybeSingle()
+
+  if (existing) {
+    return { agencyId: (existing as { agency_id: string }).agency_id, isInvited: false }
+  }
+
   const meta = user.user_metadata as {
     businessName?: string
     mode?: 'agency' | 'solo'

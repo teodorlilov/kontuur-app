@@ -3,11 +3,11 @@
  * never drift out of alignment.
  *
  * Applied to <tr> rather than to a div stack: `display: grid` on a table row
- * reproduces the mock's column widths while keeping real <th scope="col">
+ * gives the column widths freely while keeping real <th scope="col">
  * association for screen readers.
  *
  * Below 1180px the Channels and Next-post columns are dropped rather than
- * squeezed — the mock's call, carried over deliberately.
+ * squeezed: a compressed channel strip reads as a different status.
  */
 export const ROSTER_GRID = [
   'grid gap-[18px]',
