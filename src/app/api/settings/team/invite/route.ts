@@ -1,8 +1,19 @@
 import { NextResponse } from 'next/server'
+import { z } from 'zod'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
 import { verifyAdminRole } from '@/lib/auth/helpers'
 import { validateEmail } from '@/lib/validation'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
+
+/**
+ * Only these two roles are meaningful: 'admin' is what every permission check in
+ * the app tests for, and anything else behaves as a plain member. The default
+ * keeps an omitted role from silently inviting an admin.
+ */
+const inviteSchema = z.object({
+  email: z.string(),
+  role: z.enum(['admin', 'member']).default('member'),
+})
 
 export async function POST(request: Request) {
   const auth = await resolveAuth()
@@ -14,21 +25,20 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Only admins can invite team members' }, { status: 403 })
   }
 
-  let body: { email?: string; role?: string }
+  let parsed: z.infer<typeof inviteSchema>
   try {
-    body = await request.json()
+    parsed = inviteSchema.parse(await request.json())
   } catch {
     return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
   }
 
-  const email = body.email?.trim().toLowerCase()
-  if (!email || validateEmail(email)) {
+  const email = parsed.email.trim().toLowerCase()
+  // validateEmail returns the reason it is invalid, or null when it is fine.
+  if (validateEmail(email)) {
     return NextResponse.json({ error: 'Valid email is required' }, { status: 400 })
   }
 
-  // Only these two are meaningful: 'admin' is what every permission check in the app tests for,
-  // and anything else behaves as a plain member.
-  const role = body.role === 'admin' ? 'admin' : 'member'
+  const role = parsed.role
 
   const admin = createAdminSupabaseClient()
   const { data: existingMembers } = await admin

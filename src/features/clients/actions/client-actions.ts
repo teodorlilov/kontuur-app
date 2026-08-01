@@ -19,16 +19,19 @@ export async function updateClient(
   clientId: string,
   input: UpdateClientInput
 ): Promise<ActionResult> {
+  // Auth before validation: parsing first let an unauthenticated caller reach the
+  // logging branch below and fill the log with issues from input we never intended
+  // to act on.
+  const auth = await resolveActionAuth()
+  if (!auth.ok) return { ok: false, error: auth.error }
+  const { supabase, agencyId } = auth
+
   const parsed = updateClientSchema.safeParse(input)
   if (!parsed.success) {
     console.error(`[clients:update] invalid input for ${clientId}:`, formatIssues(parsed.error))
     return { ok: false, error: 'Invalid client data' }
   }
   const data = parsed.data
-
-  const auth = await resolveActionAuth()
-  if (!auth.ok) return { ok: false, error: auth.error }
-  const { supabase, agencyId } = auth
 
   const owned = await verifyClientOwnership(supabase, clientId, agencyId)
   if (!owned) return { ok: false, error: 'Not found' }
