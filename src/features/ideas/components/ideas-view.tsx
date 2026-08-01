@@ -4,9 +4,14 @@ import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { Lightbulb } from 'lucide-react'
 import { EmptyState } from '@/components/layout/empty-state'
-import { IdeaFilterBar, type IdeaStatusFilter } from './idea-filter-bar'
+import { HeaderMeta, MetaFlag, PageHeader } from '@/components/layout/page-header/page-header'
+import { SelectControl } from '@/components/layout/page-header/select-control'
+import { TabRail, type TabItem } from '@/components/layout/page-header/tab-rail'
+import { PAGE_SHELL } from '@/components/layout/page-header/shared'
 import { IdeaCard } from './idea-card'
+import { IDEA_STATUS_TABS, type IdeaStatusFilter } from '@/features/ideas/lib/idea-filters'
 import { CLIENT_COLORS } from '@/utils/constants'
+import { cn } from '@/utils/cn'
 import type { ClientIdea } from '@/types/api'
 
 interface ClientInfo {
@@ -49,13 +54,24 @@ export function IdeasView({ initialIdeas, clients }: IdeasViewProps) {
     return matchClient && matchStatus
   }), [ideas, activeClient, activeStatus])
 
-  const { clientFilters, totalNewCount } = useMemo(() => {
-    const filters = clients.map((c) => ({
-      ...c,
-      newCount: ideas.filter((i) => i.clientId === c.id && i.status === 'new').length,
-    }))
-    return { clientFilters: filters, totalNewCount: ideas.filter((i) => i.status === 'new').length }
-  }, [ideas, clients])
+  const { clientOptions, totalNewCount, tabCounts } = useMemo(() => {
+    const scoped = activeClient === 'all' ? ideas : ideas.filter((i) => i.clientId === activeClient)
+    return {
+      clientOptions: [
+        { value: 'all', label: 'All clients' },
+        ...clients.map((c) => {
+          const newCount = ideas.filter((i) => i.clientId === c.id && i.status === 'new').length
+          return { value: c.id, label: newCount > 0 ? `${c.name} (${newCount} new)` : c.name }
+        }),
+      ],
+      totalNewCount: ideas.filter((i) => i.status === 'new').length,
+      tabCounts: {
+        new: scoped.filter((i) => i.status === 'new' || i.status === 'generating').length,
+        all: scoped.length,
+        used: scoped.filter((i) => i.status === 'generated' || i.status === 'dismissed').length,
+      },
+    }
+  }, [ideas, clients, activeClient])
 
   function handleGenerate(idea: ClientIdea) {
     router.push(`/generate?ideaId=${idea.id}`)
@@ -76,29 +92,52 @@ export function IdeasView({ initialIdeas, clients }: IdeasViewProps) {
     return CLIENT_COLORS[idx % CLIENT_COLORS.length] ?? CLIENT_COLORS[0]
   }
 
+  const tabs: Array<TabItem<IdeaStatusFilter>> = IDEA_STATUS_TABS.map((tab) => ({
+    ...tab,
+    count: tabCounts[tab.id],
+    flag: tab.id === 'new' && tabCounts.new > 0,
+  }))
+
   return (
-    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-      <IdeaFilterBar
-        clients={clientFilters}
-        activeClient={activeClient}
-        activeStatus={activeStatus}
-        totalNewCount={totalNewCount}
-        onClientChange={setActiveClient}
-        onStatusChange={setActiveStatus}
+    <div className="flex h-full flex-col overflow-hidden">
+      <PageHeader
+        crumb={[{ label: 'Client ideas' }]}
+        title="Client ideas"
+        count={totalNewCount}
+        meta={
+          <HeaderMeta
+            parts={[
+              totalNewCount > 0 ? (
+                <MetaFlag>
+                  {totalNewCount} new idea{totalNewCount === 1 ? '' : 's'}
+                </MetaFlag>
+              ) : (
+                'Ideas your clients submit land here'
+              ),
+              // The count bar under the old filter row said this; it belongs
+              // beside the title, not in a band of its own.
+              activeClient === 'all' &&
+                filteredIdeas.length > 0 &&
+                `${new Set(filteredIdeas.map((i) => i.clientId)).size} client${
+                  new Set(filteredIdeas.map((i) => i.clientId)).size === 1 ? '' : 's'
+                }`,
+            ]}
+          />
+        }
+        actions={
+          clients.length > 1 ? (
+            <SelectControl
+              label="Client"
+              value={activeClient}
+              options={clientOptions}
+              onChange={setActiveClient}
+            />
+          ) : null
+        }
+        tabs={<TabRail items={tabs} active={activeStatus} onSelect={setActiveStatus} label="Filter ideas" />}
       />
 
-      <CountBar count={filteredIdeas.length} activeStatus={activeStatus} activeClient={activeClient} clientCount={new Set(filteredIdeas.map((i) => i.clientId)).size} />
-
-      <div
-        style={{
-          flex: 1,
-          overflowY: 'auto',
-          padding: '18px 24px 32px',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 8,
-        }}
-      >
+      <div className={cn(PAGE_SHELL, 'flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto pb-8 pt-5')}>
         {filteredIdeas.length === 0 ? (
           <EmptyState
             icon={<Lightbulb size={28} />}
@@ -117,40 +156,6 @@ export function IdeasView({ initialIdeas, clients }: IdeasViewProps) {
           ))
         )}
       </div>
-    </div>
-  )
-}
-
-function CountBar({
-  count,
-  activeStatus,
-  activeClient,
-  clientCount,
-}: {
-  count: number
-  activeStatus: IdeaStatusFilter
-  activeClient: string
-  clientCount: number
-}) {
-  return (
-    <div
-      style={{
-        background: '#fff',
-        borderBottom: '0.5px solid rgba(44,62,80,0.07)',
-        padding: '8px 24px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        flexShrink: 0,
-      }}
-    >
-      <span style={{ fontSize: 12, color: '#8A8070' }}>
-        <strong style={{ color: '#1A2630' }}>
-          {count} {activeStatus === 'new' ? 'new ' : ''}
-          idea{count !== 1 ? 's' : ''}
-        </strong>
-        {activeClient === 'all' && clientCount > 0 ? ` · ${clientCount} clients` : ''}
-      </span>
     </div>
   )
 }

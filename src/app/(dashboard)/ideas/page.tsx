@@ -13,5 +13,7 @@ export default async function IdeasPage() {
 
   const clients = cachedClients.map((c) => ({ id: c.id, name: c.name }))
 
+  // The view renders the page header itself: the tab rail and the list read the
+  // same filter state.
   return <IdeasView initialIdeas={ideas} clients={clients} />
 }
