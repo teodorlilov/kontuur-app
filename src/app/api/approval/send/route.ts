@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { revalidateTag } from 'next/cache'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
 import { fetchClientWithOwnership } from '@/lib/auth/helpers'
 import { createApprovalBatch } from '@/features/review/lib/approval-batch'
@@ -38,6 +39,11 @@ export async function POST(request: Request) {
     agency_id: agencyId,
     message: `Approval link generated for ${client.name} — ${result.postCount} post${result.postCount === 1 ? '' : 's'}`,
   })
+
+  // Responding to an approval already invalidated this tag, but *sending* one
+  // never did — so the Clients roster would keep reporting nothing awaiting
+  // approval for up to 60s after a batch went out.
+  revalidateTag('client-post-stats', 'max')
 
   return NextResponse.json({
     success: true,

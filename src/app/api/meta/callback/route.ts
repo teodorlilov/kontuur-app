@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { revalidateTag } from 'next/cache'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
 import { verifyClientOwnership } from '@/lib/auth/helpers'
@@ -282,6 +283,11 @@ export async function GET(request: NextRequest) {
     } else {
       return NextResponse.redirect(errorRedirect)
     }
+
+    // Connecting was the one side of this that never invalidated — disconnect
+    // has always called it (connection-actions.ts). Without this the Clients
+    // roster shows a just-linked account as "not connected" for up to 60s.
+    revalidateTag('agency-clients', 'max')
 
     return NextResponse.redirect(
       `${process.env.NEXT_PUBLIC_APP_URL}/clients/${clientId}/edit?meta_connected=${platform}`
