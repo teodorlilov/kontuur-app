@@ -18,7 +18,13 @@ export const CLIENT_COLUMNS =
 
 export const CLIENT_LIST_COLUMNS = 'id, name, niche, posts_per_week, language, created_at'
 
-export const CLIENT_CARD_COLUMNS = 'id, name, niche, posts_per_week, language, created_at, brand_profiles(content_pillars)'
+/**
+ * Clients roster. The social_connections embed is a REVERSE relationship
+ * (social_connections holds client_id), so PostgREST returns an ARRAY here —
+ * unlike brand_profiles above, which is a forward FK and returns an object.
+ */
+export const CLIENT_ROSTER_COLUMNS =
+  'id, name, niche, social_connections(platform, account_name, token_expires_at)'
 
 // brand_profiles
 export const BRAND_PROFILE_COLUMNS =

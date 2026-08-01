@@ -1,10 +1,21 @@
 import { cache } from 'react'
 import { unstable_cache } from 'next/cache'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
-import { AGENCY_COLUMNS, CLIENT_CARD_COLUMNS, CLIENT_LIST_COLUMNS } from '@/lib/queries/select-columns'
+import {
+  AGENCY_COLUMNS,
+  CLIENT_LIST_COLUMNS,
+  CLIENT_ROSTER_COLUMNS,
+} from '@/lib/queries/select-columns'
 import { getWeekDayKeys, getWeekRange, toDateKey } from '@/utils/date-helpers'
 import { DAYS_PER_WEEK } from '@/utils/constants'
 import type { Database } from '@/types/database'
+// The roster owns its own input contract; this layer fills it rather than
+// exporting whatever shape PostgREST happened to return.
+import type {
+  PendingApprovalRow,
+  RosterClientRow,
+  UpcomingPostRow,
+} from '@/features/clients/lib/roster'
 
 type Agency = Database['public']['Tables']['agencies']['Row']
 type Client = Database['public']['Tables']['clients']['Row']
@@ -62,67 +73,6 @@ const _fetchAgencyClients = unstable_cache(
 )
 
 export const getCachedAgencyClients = cache(_fetchAgencyClients)
-
-interface ClientCardRow {
-  id: string
-  name: string
-  niche: string | null
-  posts_per_week: number
-  language: string
-  created_at: string
-  brand_profiles: { content_pillars: string | null } | null
-}
-
-/**
- * Returns all clients with joined brand_profiles for card grid display.
- * Call revalidateTag('agency-clients') after any client mutation.
- */
-const _fetchClientCards = unstable_cache(
-  async (agencyId: string): Promise<ClientCardRow[]> => {
-    const supabase = createAdminSupabaseClient()
-    const { data } = await supabase
-      .from('clients')
-      .select(CLIENT_CARD_COLUMNS)
-      .eq('agency_id', agencyId)
-      .order('created_at', { ascending: true })
-    return (data ?? []) as ClientCardRow[]
-  },
-  ['client-cards'],
-  { revalidate: 60, tags: ['agency-clients'] }
-)
-
-export const getCachedClientCards = cache(_fetchClientCards)
-
-export interface ClientPostStats {
-  publishedCount: number
-  totalCount: number
-  lastGeneratedAt: string | null
-}
-
-/**
- * Returns post statistics per client for an agency via server-side SQL aggregation.
- * Call revalidateTag('client-post-stats') after post mutations.
- */
-const _fetchClientPostStats = unstable_cache(
-  async (agencyId: string): Promise<Record<string, ClientPostStats>> => {
-    const supabase = createAdminSupabaseClient()
-    const { data } = await supabase.rpc('client_post_stats', { p_agency_id: agencyId })
-
-    const stats: Record<string, ClientPostStats> = {}
-    for (const row of data ?? []) {
-      stats[row.client_id] = {
-        publishedCount: Number(row.published_count),
-        totalCount: Number(row.total_count),
-        lastGeneratedAt: row.last_generated_at,
-      }
-    }
-    return stats
-  },
-  ['client-post-stats'],
-  { revalidate: 60, tags: ['client-post-stats'] }
-)
-
-export const getCachedClientPostStats = cache(_fetchClientPostStats)
 
 export interface PendingRow {
   client_id: string
@@ -235,4 +185,114 @@ const _fetchClientWeekCoverage = unstable_cache(
 )
 
 export const getCachedClientWeekCoverage = cache(_fetchClientWeekCoverage)
+
+/* ─── Clients roster ────────────────────────────────────────────────────────
+ * Three queries that the /clients page runs in parallel via Promise.all. None
+ * depends on another's result: each scopes itself to the agency directly, so
+ * this is one round trip rather than a fetch-clients-then-fetch-their-posts
+ * waterfall. features/clients/lib/roster.ts joins them in memory by client_id.
+ *
+ * Tags differ on purpose. The roster itself turns over on client and connection
+ * edits ('agency-clients'); the other two are post-derived and turn over on post
+ * and approval mutations ('client-post-stats').
+ */
+
+/**
+ * Every client in the agency with its social connections.
+ * Call revalidateTag('agency-clients') after any client or connection mutation.
+ */
+const _fetchClientRoster = unstable_cache(
+  async (agencyId: string): Promise<RosterClientRow[]> => {
+    const supabase = createAdminSupabaseClient()
+    const { data, error } = await supabase
+      .from('clients')
+      .select(CLIENT_ROSTER_COLUMNS)
+      .eq('agency_id', agencyId)
+      .order('created_at', { ascending: true })
+    if (error) {
+      console.error('[roster] client fetch failed:', error.message)
+      return []
+    }
+    // WHY as: the generated types cannot express an embedded select's shape, and
+    // social_connections is a reverse relationship so it arrives as an array.
+    return (data ?? []) as unknown as RosterClientRow[]
+  },
+  ['client-roster'],
+  { revalidate: 60, tags: ['agency-clients'] }
+)
+
+export const getCachedClientRoster = cache(_fetchClientRoster)
+
+/**
+ * Upcoming posts across the agency, earliest first, so the roster can show each
+ * client's next slot and how many are queued behind it.
+ * Call revalidateTag('client-post-stats') after post mutations.
+ */
+const _fetchUpcomingByClient = unstable_cache(
+  async (agencyId: string): Promise<UpcomingPostRow[]> => {
+    const supabase = createAdminSupabaseClient()
+    // Evaluated at cache-fill time, not per request — harmless over a 60s TTL,
+    // and keeping it out of the arguments is what lets requests share the entry.
+    const { data, error } = await supabase
+      .from('posts')
+      .select('client_id, scheduled_at, clients!inner(agency_id)')
+      .in('status', SCHEDULED_STATUSES)
+      .eq('clients.agency_id', agencyId)
+      .gte('scheduled_at', new Date().toISOString())
+      .order('scheduled_at', { ascending: true })
+    if (error) {
+      console.error('[roster] upcoming fetch failed:', error.message)
+      return []
+    }
+    // WHY as: the clients!inner join is a filter only; its column is not read.
+    return (data ?? []) as unknown as UpcomingPostRow[]
+  },
+  ['client-upcoming'],
+  { revalidate: 60, tags: ['client-post-stats'] }
+)
+
+export const getCachedUpcomingByClient = cache(_fetchUpcomingByClient)
+
+/** One row per post still awaiting a client's approval decision. */
+interface ApprovalJoinRow {
+  created_at: string | null
+  posts: { client_id: string | null } | null
+}
+
+/**
+ * Posts sent to a client for approval and still unanswered.
+ *
+ * The expires_at filter is load-bearing. Tokens lapse after
+ * APPROVAL_TOKEN_EXPIRY_HOURS but their status stays 'pending' forever and
+ * nothing sweeps them, so filtering on status alone would count every abandoned
+ * batch ever sent — inflating the summary band, the chip, and the row together.
+ *
+ * Call revalidateTag('client-post-stats') after approval mutations.
+ */
+const _fetchPendingApprovalsByClient = unstable_cache(
+  async (agencyId: string): Promise<PendingApprovalRow[]> => {
+    const supabase = createAdminSupabaseClient()
+    const { data, error } = await supabase
+      .from('post_approval_tokens')
+      .select('created_at, posts!inner(client_id, clients!inner(agency_id))')
+      .eq('status', 'pending')
+      .gt('expires_at', new Date().toISOString())
+      .eq('posts.clients.agency_id', agencyId)
+    if (error) {
+      console.error('[roster] approvals fetch failed:', error.message)
+      return []
+    }
+    // WHY as: both embeds follow a forward FK, so each arrives as an object
+    // rather than an array — the reverse of the social_connections case above.
+    const rows = (data ?? []) as unknown as ApprovalJoinRow[]
+    return rows.map((row) => ({
+      client_id: row.posts?.client_id ?? null,
+      created_at: row.created_at,
+    }))
+  },
+  ['client-pending-approvals'],
+  { revalidate: 60, tags: ['client-post-stats'] }
+)
+
+export const getCachedPendingApprovalsByClient = cache(_fetchPendingApprovalsByClient)
 

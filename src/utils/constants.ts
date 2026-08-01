@@ -51,22 +51,6 @@ export const CLIENT_PILL_TONES = CLIENT_COLORS.map((hex) => ({
   textColor: `color-mix(in srgb, ${hex} 72%, var(--ink))`,
 }))
 
-export const AVATAR_GRADIENTS = [
-  'linear-gradient(135deg, #2E9E68, #16593C)',
-  'linear-gradient(135deg, #164430, #0C2E20)',
-  'linear-gradient(135deg, #7FA588, #3E6E56)',
-  'linear-gradient(135deg, #3E8E6E, #1F5A40)',
-] as const
-
-export const TOP_BAR_GRADIENTS = [
-  'linear-gradient(90deg, #2E9E68, #164430)',
-  'linear-gradient(90deg, #164430, #0C2E20)',
-  'linear-gradient(90deg, #7FA588, #3E6E56)',
-  'linear-gradient(90deg, #3E8E6E, #1F5A40)',
-] as const
-
-export const SETUP_TOP_BAR_GRADIENT = 'linear-gradient(90deg, #CFEA45, #2E9E68)'
-
 export const WEEKDAY_OPTIONS = [
   { value: 'monday', label: 'Monday' },
   { value: 'tuesday', label: 'Tuesday' },
