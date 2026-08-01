@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Kontuur — headers across all pages</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#F1F0EA; --surface:#FFF; --ink:#0F1512; --text2:#57625A; --text3:#8B958D;
+    --line:#E7ECE7; --line2:#D5DDD6; --forest:#164430; --forest-deep:#0C2E20;
+    --spring:#2E9E68; --wash:#EEF4EF; --marker:#CFEA45;
+    --danger:#B04A38; --danger-bg:#FBEFEC; --pending:#8A6116; --pending-bg:#F7EFDC;
+    --serif:'Instrument Serif',Georgia,serif;
+    --sans:'Geist','Inter',-apple-system,sans-serif;
+    --page-max:1280px; --page-pad:30px;
+    --ease:cubic-bezier(.22,1,.36,1);
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:var(--sans);font-size:15px;line-height:1.6;color:var(--ink);background:#EAE9E2;-webkit-font-smoothing:antialiased}
+  :focus-visible{outline:2px solid var(--spring);outline-offset:2px;border-radius:4px}
+  button,select,input{font:inherit;color:inherit}
+
+  /* ══════════ PAGE HEADER ══════════ */
+  .pghead{
+    position:sticky;top:0;z-index:40;
+    background:rgba(241,240,234,.84);
+    backdrop-filter:blur(14px) saturate(1.3);-webkit-backdrop-filter:blur(14px) saturate(1.3);
+    border-bottom:1px solid transparent;
+    transition:border-color .2s ease,box-shadow .25s ease;
+  }
+  .pghead.is-stuck{border-bottom-color:var(--line2);box-shadow:0 10px 28px -22px rgba(15,21,18,.5)}
+  .pghead-in{max-width:var(--page-max);margin:0 auto;padding:0 var(--page-pad)}
+
+  /* row 1 — rail */
+  .rail{display:flex;align-items:center;justify-content:space-between;gap:20px;height:44px;overflow:hidden;transition:height .28s var(--ease),opacity .2s ease}
+  .pghead.is-stuck .rail{height:0;opacity:0}
+  .crumb{display:flex;align-items:center;gap:8px;font-size:12.5px;min-width:0}
+  .crumb a{color:var(--text3);text-decoration:none;white-space:nowrap}
+  .crumb a:hover{color:var(--forest)}
+  .crumb i{color:var(--line2);font-style:normal}
+  .crumb [aria-current]{color:var(--text2);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .rail-tools{display:flex;align-items:center;gap:6px;flex:none}
+  .rail-date{font-size:12.5px;color:var(--text3);padding-right:6px;white-space:nowrap;font-variant-numeric:tabular-nums}
+  .tool{height:29px;min-width:29px;padding:0 8px;border-radius:8px;background:none;border:none;cursor:pointer;color:var(--text2);display:inline-flex;align-items:center;gap:7px;position:relative;transition:background .12s ease,color .12s ease}
+  .tool:hover{background:rgba(15,21,18,.05);color:var(--ink)}
+  .tool kbd{font:inherit;font-size:10px;font-weight:600;color:var(--text3);border:1px solid var(--line2);border-radius:4px;padding:1px 4px}
+  .tool .dot{position:absolute;top:3px;right:3px;width:6px;height:6px;border-radius:50%;background:var(--spring);border:1.5px solid var(--paper)}
+  .rail-av{width:27px;height:27px;border-radius:50%;margin-left:4px;background:var(--wash);color:var(--forest);display:grid;place-items:center;font-size:10px;font-weight:700}
+
+  /* row 2 — identity */
+  .ident{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;padding:4px 0 18px;transition:padding .28s var(--ease)}
+  .pghead.is-stuck .ident{padding:10px 0;align-items:center}
+  .ident-lead{display:flex;align-items:center;gap:13px;min-width:0}
+  .ident-txt{min-width:0;display:flex;flex-direction:column;gap:5px}
+  .eyebrow{font-size:10.5px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--text3);max-height:20px;overflow:hidden;transition:opacity .2s ease,max-height .28s var(--ease)}
+  .pghead.is-stuck .eyebrow{opacity:0;max-height:0}
+  .ident h1{font-size:26px;font-weight:600;letter-spacing:-.025em;line-height:1.15;display:flex;align-items:center;gap:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:font-size .28s var(--ease)}
+  .pghead.is-stuck .ident h1{font-size:16px}
+  .ident h1 em{font-family:var(--serif);font-style:italic;font-weight:400;color:var(--forest)}
+  .ident h1 .count{font-size:.55em;font-weight:500;color:var(--text3);letter-spacing:0;font-variant-numeric:tabular-nums}
+  .ident-meta{display:flex;align-items:center;gap:9px;flex-wrap:wrap;font-size:13px;color:var(--text2);max-height:24px;overflow:hidden;transition:opacity .2s ease,max-height .28s var(--ease)}
+  .pghead.is-stuck .ident-meta{opacity:0;max-height:0}
+  .ident-meta .sep{color:var(--line2)}
+  .ident-meta .flag{display:inline-flex;align-items:center;gap:6px;color:var(--ink);font-weight:500}
+  .ident-meta .flag::before{content:'';width:7px;height:7px;border-radius:2px;background:var(--marker);flex:none}
+  .ident-meta .warn{color:var(--danger);font-weight:500}
+  .ident-act{display:flex;align-items:center;gap:9px;flex:none}
+  .ident-badge{width:42px;height:42px;border-radius:13px;flex:none;background:var(--forest-deep);color:#fff;display:grid;place-items:center;font-size:12px;font-weight:700;box-shadow:0 6px 16px -6px rgba(15,21,18,.4);transition:width .28s var(--ease),height .28s var(--ease)}
+  .pghead.is-stuck .ident-badge{width:29px;height:29px;font-size:10px}
+  .back{width:31px;height:31px;border-radius:9px;flex:none;border:1px solid var(--line2);background:rgba(255,255,255,.6);display:grid;place-items:center;cursor:pointer;color:var(--text2);transition:border-color .12s,color .12s}
+  .back:hover{border-color:var(--forest);color:var(--forest)}
+
+  /* row 3 — tab rail */
+  .tabrail{display:flex;align-items:center;gap:2px;border-bottom:1px solid var(--line2);margin-bottom:-1px;overflow-x:auto;scrollbar-width:none}
+  .tabrail::-webkit-scrollbar{display:none}
+  .tab{position:relative;background:none;border:none;cursor:pointer;padding:0 14px 11px;font-size:13.5px;color:var(--text2);display:inline-flex;align-items:center;gap:8px;white-space:nowrap;transition:color .12s ease}
+  .tab:first-child{padding-left:0}
+  .tab:hover{color:var(--ink)}
+  .tab .n{font-size:11.5px;font-weight:600;font-variant-numeric:tabular-nums;background:rgba(15,21,18,.06);color:var(--text2);border-radius:999px;padding:1px 7px}
+  .tab[aria-selected="true"]{color:var(--ink);font-weight:600}
+  .tab[aria-selected="true"]::after{content:'';position:absolute;left:0;right:0;bottom:-1px;height:2px;border-radius:2px 2px 0 0;background:var(--forest)}
+  .tab:first-child[aria-selected="true"]::after{right:14px}
+  .tab[data-flag="true"] .n{background:var(--marker);color:#2B3A16}
+  .tab[data-warn="true"] .n{background:var(--pending-bg);color:var(--pending)}
+
+  /* controls */
+  .btn{height:35px;padding:0 15px;border-radius:9px;display:inline-flex;align-items:center;gap:8px;font-size:13.5px;font-weight:500;line-height:1;border:1px solid transparent;cursor:pointer;white-space:nowrap;transition:background .12s,border-color .12s,transform .1s,box-shadow .15s}
+  .btn:active{transform:scale(.98)}
+  .btn .arr{transition:transform .16s var(--ease)}
+  .btn:hover .arr{transform:translateX(3px)}
+  .btn-primary{background:var(--forest);color:#fff}
+  .btn-primary:hover{background:var(--forest-deep);box-shadow:0 6px 16px -6px rgba(22,68,48,.5)}
+  .btn-secondary{border-color:var(--line2);background:rgba(255,255,255,.65)}
+  .btn-secondary:hover{border-color:var(--forest);color:var(--forest);background:#fff}
+  .btn-ghost{color:var(--text2)}
+  .btn-ghost:hover{background:rgba(15,21,18,.05);color:var(--ink)}
+  .btn-icon{padding:0;width:35px;justify-content:center}
+  .btn-mark{background:var(--marker);color:#2B3A16}
+  .btn-mark:hover{background:#DBF25E}
+
+  .ctl{height:35px;border-radius:9px;padding:0 2px 0 12px;border:1px dashed var(--line2);background:none;display:inline-flex;align-items:center;gap:3px;font-size:13px;color:var(--text2);cursor:pointer;transition:border-color .12s,background .12s}
+  .ctl:hover{border-color:var(--forest);background:rgba(255,255,255,.6)}
+  .ctl select{appearance:none;background:none;border:none;cursor:pointer;font-size:13px;font-weight:500;color:var(--ink);padding:0 22px 0 4px;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10' fill='none' stroke='%2357625A' stroke-width='1.4'%3E%3Cpath d='M2.5 4L5 6.5 7.5 4'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 8px center}
+
+  .seg{display:inline-flex;padding:3px;border-radius:10px;background:rgba(15,21,18,.05)}
+  .seg button{height:29px;padding:0 12px;border-radius:7px;border:none;background:none;font-size:12.5px;color:var(--text2);cursor:pointer;transition:background .14s,color .14s}
+  .seg button[aria-pressed="true"]{background:#fff;color:var(--ink);font-weight:500;box-shadow:0 1px 3px rgba(15,21,18,.1)}
+
+  .stepper{display:inline-flex;align-items:center;gap:2px}
+  .stepper button{width:28px;height:28px;border-radius:8px;border:none;background:none;cursor:pointer;color:var(--text2);display:grid;place-items:center;transition:background .12s,color .12s}
+  .stepper button:hover{background:rgba(15,21,18,.06);color:var(--ink)}
+
+  .pill{height:23px;padding:0 10px;border-radius:999px;display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:600}
+  .pill-ok{background:var(--wash);color:var(--forest)}
+  .pill-warn{background:var(--pending-bg);color:var(--pending)}
+  .pill-mark{background:var(--marker);color:#2B3A16}
+  .pill-bad{background:var(--danger-bg);color:var(--danger)}
+
+  /* ══════════ demo scaffolding ══════════ */
+  .doc{max-width:var(--page-max);margin:0 auto;padding:44px var(--page-pad) 10px}
+  .doc h2{font-size:19px;font-weight:600;letter-spacing:-.02em}
+  .doc h2 em{font-family:var(--serif);font-style:italic;font-weight:400;color:var(--forest)}
+  .doc p{color:var(--text2);font-size:14.5px;max-width:68ch;margin-top:8px}
+  .doc code{font-family:ui-monospace,'SF Mono',monospace;font-size:.86em;background:var(--wash);color:var(--forest);padding:1px 6px;border-radius:4px}
+  .label{display:flex;align-items:baseline;gap:10px;font-size:10.5px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--text3);margin-bottom:13px}
+  .label b{color:var(--forest)}
+  .note{font-size:13px;color:var(--text2);margin:-4px 0 34px;max-width:70ch;letter-spacing:0;text-transform:none;font-weight:400}
+  .note b{color:var(--ink);font-weight:600}
+  .frame{background:var(--paper);border:1px solid var(--line2);border-radius:16px;overflow:hidden;margin-bottom:14px}
+  .frame .pghead{position:static;background:transparent;backdrop-filter:none}
+  .fbody{padding:22px var(--page-pad) 26px}
+  .rowline{height:48px;border-bottom:1px solid var(--line);display:flex;align-items:center;color:var(--text3);font-size:13px}
+  .rowline:last-child{border-bottom:none}
+  .ghost{border:1px dashed var(--line2);border-radius:12px;height:86px;display:grid;place-items:center;color:var(--text3);font-size:13px}
+  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+
+  @media(max-width:900px){
+    :root{--page-pad:18px}
+    .ident{flex-direction:column;align-items:flex-start;gap:14px}
+    .rail-date{display:none}
+    .grid3{grid-template-columns:1fr}
+  }
+  @media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+<div class="doc">
+  <h2>One header, <em>seven pages</em></h2>
+  <p>
+    Same three rows everywhere: <b>rail</b> (context + utilities), <b>identity</b> (title + actions),
+    <b>tab rail</b> (filters or sub-nav). Pages differ only by which optional rows they omit.
+    Width is capped by <code>--page-max</code> so a title and its actions stay in one visual field.
+  </p>
+</div>
+
+<!-- ─── 1. DASHBOARD ─── -->
+<div class="doc">
+  <div class="label"><b>01</b> Dashboard</div>
+  <div class="note">Greeting keeps the serif, but the date moves up to the rail and the meta line now leads with the one thing that needs you.</div>
+</div>
+<div class="doc" style="padding-top:0">
+  <div class="frame">
+    <header class="pghead">
+      <div class="pghead-in">
+        <div class="rail">
+          <nav class="crumb"><span aria-current="page">Dashboard</span></nav>
+          <div class="rail-tools">
+            <span class="rail-date">Friday, 31 July</span>
+            <button class="tool"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="6" cy="6" r="4.2"/><path d="M9.4 9.4L12.5 12.5"/></svg><kbd>⌘K</kbd></button>
+            <button class="tool"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M8 2a4 4 0 00-4 4c0 3-1.2 4-1.2 4h10.4S12 9 12 6a4 4 0 00-4-4zM6.5 12.5a1.5 1.5 0 003 0"/></svg><span class="dot"></span></button>
+            <span class="rail-av">TL</span>
+          </div>
+        </div>
+        <div class="ident">
+          <div class="ident-txt">
+            <h1>Good afternoon, <em>Teodor</em></h1>
+            <div class="ident-meta">
+              <span class="flag">5 drafts waiting since Monday</span>
+              <span class="sep">·</span><span class="warn">3 failed to publish</span>
+              <span class="sep">·</span><span>8 clients active</span>
+            </div>
+          </div>
+          <div class="ident-act">
+            <button class="btn btn-secondary">Add client</button>
+            <button class="btn btn-primary">Generate posts <span class="arr">→</span></button>
+          </div>
+        </div>
+      </div>
+    </header>
+    <div class="fbody"><div class="grid3"><div class="ghost">Scheduled</div><div class="ghost">Pending review</div><div class="ghost">Failed to publish</div></div></div>
+  </div>
+</div>
+
+<!-- ─── 2. CLIENTS ─── -->
+<div class="doc">
+  <div class="label"><b>02</b> Clients</div>
+  <div class="note">Your filter chips become the tab rail, so they stop floating between the band and the table — the rail's hairline is now the boundary between chrome and content.</div>
+</div>
+<div class="doc" style="padding-top:0">
+  <div class="frame">
+    <header class="pghead">
+      <div class="pghead-in">
+        <div class="rail">
+          <nav class="crumb"><a href="#" onclick="return false">About Social Media</a><i>/</i><span aria-current="page">Clients</span></nav>
+          <div class="rail-tools">
+            <button class="tool"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="6" cy="6" r="4.2"/><path d="M9.4 9.4L12.5 12.5"/></svg><kbd>⌘K</kbd></button>
+            <button class="tool"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M8 2a4 4 0 00-4 4c0 3-1.2 4-1.2 4h10.4S12 9 12 6a4 4 0 00-4-4zM6.5 12.5a1.5 1.5 0 003 0"/></svg><span class="dot"></span></button>
+            <span class="rail-av">TL</span>
+          </div>
+        </div>
+        <div class="ident">
+          <div class="ident-txt">
+            <h1>Clients <span class="count">8</span></h1>
+            <div class="ident-meta">
+              <span class="flag">7 need connecting</span>
+              <span class="sep">·</span><span>1 queue empty</span>
+            </div>
+          </div>
+          <div class="ident-act">
+            <button class="ctl">Sort <select><option>Needs attention</option><option>Name A–Z</option><option>Last posted</option></select></button>
+            <button class="btn btn-primary">Add client <span class="arr">→</span></button>
+          </div>
+        </div>
+        <nav class="tabrail">
+          <button class="tab" aria-selected="true" data-flag="true">Needs attention <span class="n">8</span></button>
+          <button class="tab">Awaiting approval <span class="n">0</span></button>
+          <button class="tab">Never connected <span class="n">7</span></button>
+          <button class="tab">Queue empty <span class="n">1</span></button>
+          <button class="tab">All clients <span class="n">8</span></button>
+        </nav>
+      </div>
+    </header>
+    <div class="fbody">
+      <div class="rowline">About Social Media — no account connected</div>
+      <div class="rowline">Haelan — no account connected</div>
+      <div class="rowline">Физиомед — no account connected</div>
+    </div>
+  </div>
+</div>
+
+<!-- ─── 3. CLIENT DETAIL ─── -->
+<div class="doc">
+  <div class="label"><b>03</b> Client detail</div>
+  <div class="note">Currently the name prints twice — once as a title, again as a chip below with <b>Back to settings</b> as a third nav. Breadcrumb goes to the rail, the settings sections become tabs, and the in-page left nav disappears entirely.</div>
+</div>
+<div class="doc" style="padding-top:0">
+  <div class="frame">
+    <header class="pghead">
+      <div class="pghead-in">
+        <div class="rail">
+          <nav class="crumb"><a href="#" onclick="return false">About Social Media</a><i>/</i><a href="#" onclick="return false">Clients</a><i>/</i><span aria-current="page">Haelan</span></nav>
+          <div class="rail-tools">
+            <span class="rail-date">Queue refreshed 4d ago</span>
+            <button class="tool"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="7" cy="3" r="1"/><circle cx="7" cy="7" r="1"/><circle cx="7" cy="11" r="1"/></svg></button>
+          </div>
+        </div>
+        <div class="ident">
+          <div class="ident-lead">
+            <button class="back" aria-label="Back to clients"><svg width="13" height="13" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M7.5 2.5L4 6l-3.5 3.5" transform="translate(3.5)"/></svg></button>
+            <span class="ident-badge">HA</span>
+            <div class="ident-txt">
+              <h1>Haelan <span class="pill pill-bad">Not connected</span></h1>
+              <div class="ident-meta">
+                <span>Comprehensive healthcare services</span>
+                <span class="sep">·</span><span>Bulgarian · Formal</span>
+                <span class="sep">·</span><span class="flag">3 posts pending</span>
+              </div>
+            </div>
+          </div>
+          <div class="ident-act">
+            <button class="btn btn-ghost">Cancel</button>
+            <button class="btn btn-primary">Save changes</button>
+          </div>
+        </div>
+        <nav class="tabrail">
+          <button class="tab" aria-selected="true">Basic info</button>
+          <button class="tab">Brand profile</button>
+          <button class="tab">Visual identity</button>
+          <button class="tab">Schedule</button>
+          <button class="tab" data-warn="true">Connected accounts <span class="n">0</span></button>
+          <button class="tab">Content insights</button>
+          <button class="tab">Idea link</button>
+        </nav>
+      </div>
+    </header>
+    <div class="fbody"><div class="ghost">Basic info form — full width, no nested left nav</div></div>
+  </div>
+</div>
+
+<!-- ─── 4. REVIEW ─── -->
+<div class="doc">
+  <div class="label"><b>04</b> Review queue</div>
+  <div class="note">All / Priority / Health review were tabs buried inside the list column. They belong in the header, where they can also carry counts.</div>
+</div>
+<div class="doc" style="padding-top:0">
+  <div class="frame">
+    <header class="pghead">
+      <div class="pghead-in">
+        <div class="rail">
+          <nav class="crumb"><a href="#" onclick="return false">About Social Media</a><i>/</i><span aria-current="page">Review queue</span></nav>
+          <div class="rail-tools"><span class="rail-date">Oldest waiting 4 days</span><span class="rail-av">TL</span></div>
+        </div>
+        <div class="ident">
+          <div class="ident-txt">
+            <h1>Review <span class="count">5</span></h1>
+            <div class="ident-meta">
+              <span class="flag">3 need a health check</span>
+              <span class="sep">·</span><span>2 ready to approve</span>
+            </div>
+          </div>
+          <div class="ident-act">
+            <button class="ctl">Client <select><option>All clients</option><option>Haelan</option><option>About Social Media</option></select></button>
+            <button class="btn btn-secondary">Approve all</button>
+          </div>
+        </div>
+        <nav class="tabrail">
+          <button class="tab" aria-selected="true">All <span class="n">5</span></button>
+          <button class="tab">Priority <span class="n">2</span></button>
+          <button class="tab" data-warn="true">Health review <span class="n">3</span></button>
+          <button class="tab">Approved <span class="n">0</span></button>
+        </nav>
+      </div>
+    </header>
+    <div class="fbody"><div class="ghost">List column + post detail + quality panel</div></div>
+  </div>
+</div>
+
+<!-- ─── 5. CALENDAR ─── -->
+<div class="doc">
+  <div class="label"><b>05</b> Calendar</div>
+  <div class="note">This one collapses three control rows into one. The month becomes the title with steppers inline — the way every calendar you already use behaves — and <b>Calendar</b> demotes to the crumb.</div>
+</div>
+<div class="doc" style="padding-top:0">
+  <div class="frame">
+    <header class="pghead">
+      <div class="pghead-in">
+        <div class="rail">
+          <nav class="crumb"><a href="#" onclick="return false">About Social Media</a><i>/</i><span aria-current="page">Calendar</span></nav>
+          <div class="rail-tools">
+            <button class="tool">Copy link</button>
+            <button class="tool">Email client</button>
+            <span class="rail-av">TL</span>
+          </div>
+        </div>
+        <div class="ident">
+          <div class="ident-lead">
+            <div class="ident-txt">
+              <h1>
+                July 2026
+                <span class="stepper">
+                  <button aria-label="Previous month"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M7.5 2.5L4 6l3.5 3.5"/></svg></button>
+                  <button aria-label="Next month"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4.5 2.5L8 6l-3.5 3.5"/></svg></button>
+                </span>
+              </h1>
+              <div class="ident-meta"><span>9 posts scheduled</span><span class="sep">·</span><span class="flag">4 open days this week</span></div>
+            </div>
+          </div>
+          <div class="ident-act">
+            <button class="btn btn-secondary">Today</button>
+            <button class="ctl">Client <select><option>All clients</option><option>Haelan</option></select></button>
+            <div class="seg"><button aria-pressed="true">Month</button><button aria-pressed="false">Week</button><button aria-pressed="false">List</button></div>
+          </div>
+        </div>
+      </div>
+    </header>
+    <div class="fbody"><div class="ghost">Month grid</div></div>
+  </div>
+</div>
+
+<!-- ─── 6. CLIENT IDEAS ─── -->
+<div class="doc">
+  <div class="label"><b>06</b> Client ideas</div>
+  <div class="note">New / All / Used move to the tab rail; the count moves into the title, so the lone "0 new ideas" line disappears.</div>
+</div>
+<div class="doc" style="padding-top:0">
+  <div class="frame">
+    <header class="pghead">
+      <div class="pghead-in">
+        <div class="rail">
+          <nav class="crumb"><a href="#" onclick="return false">About Social Media</a><i>/</i><span aria-current="page">Client ideas</span></nav>
+          <div class="rail-tools"><span class="rail-av">TL</span></div>
+        </div>
+        <div class="ident">
+          <div class="ident-txt">
+            <h1>Client ideas <span class="count">0</span></h1>
+            <div class="ident-meta"><span>Ideas your clients submit land here</span></div>
+          </div>
+          <div class="ident-act">
+            <button class="ctl">Client <select><option>All clients</option><option>Haelan</option></select></button>
+            <button class="btn btn-secondary">Copy idea link</button>
+          </div>
+        </div>
+        <nav class="tabrail">
+          <button class="tab" aria-selected="true">New <span class="n">0</span></button>
+          <button class="tab">All <span class="n">0</span></button>
+          <button class="tab">Used <span class="n">0</span></button>
+        </nav>
+      </div>
+    </header>
+    <div class="fbody"><div class="ghost">Empty state</div></div>
+  </div>
+</div>
+
+<!-- ─── 7. ANALYTICS ─── -->
+<div class="doc">
+  <div class="label"><b>07</b> Analytics</div>
+  <div class="note">Client and platform become controls rather than a bare dropdown plus a dark button that looked like a primary action.</div>
+</div>
+<div class="doc" style="padding-top:0;padding-bottom:70px">
+  <div class="frame">
+    <header class="pghead">
+      <div class="pghead-in">
+        <div class="rail">
+          <nav class="crumb"><a href="#" onclick="return false">About Social Media</a><i>/</i><span aria-current="page">Analytics</span></nav>
+          <div class="rail-tools"><span class="rail-date">Updated 12 min ago</span><span class="rail-av">TL</span></div>
+        </div>
+        <div class="ident">
+          <div class="ident-txt">
+            <h1>Analytics</h1>
+            <div class="ident-meta"><span>About Social · Instagram</span><span class="sep">·</span><span class="warn">Reach down 97% vs previous 30d</span></div>
+          </div>
+          <div class="ident-act">
+            <button class="ctl">Client <select><option>About Social</option><option>Haelan</option></select></button>
+            <button class="ctl">Platform <select><option>Instagram</option><option>Facebook</option></select></button>
+            <div class="seg"><button aria-pressed="false">7d</button><button aria-pressed="true">30d</button><button aria-pressed="false">90d</button></div>
+            <button class="btn btn-primary">Generate report <span class="arr">→</span></button>
+          </div>
+        </div>
+      </div>
+    </header>
+    <div class="fbody"><div class="ghost">Ready to generate</div></div>
+  </div>
+</div>
+
+<script>
+  document.querySelectorAll('.tabrail').forEach(function(r){
+    r.addEventListener('click',function(e){
+      var t=e.target.closest('.tab'); if(!t) return;
+      r.querySelectorAll('.tab').forEach(function(x){x.setAttribute('aria-selected',x===t?'true':'false')});
+    });
+  });
+  document.querySelectorAll('.seg').forEach(function(s){
+    s.addEventListener('click',function(e){
+      var b=e.target.closest('button'); if(!b) return;
+      s.querySelectorAll('button').forEach(function(x){x.setAttribute('aria-pressed',x===b?'true':'false')});
+    });
+  });
+</script>
+</body>
+</html>
