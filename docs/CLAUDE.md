@@ -19,8 +19,8 @@ Stack: Next.js 14 App Router · TypeScript (strict) · Supabase (Postgres, Auth,
   inputs, layout primitives). If a component knows about a specific feature's
   data or types, it does NOT belong here.
 - `src/lib/` — shared non-UI logic: Supabase clients, utils, external API wrappers.
-- `src/lib/constants.ts` — all shared constants. Never define the same value twice.
-- `src/lib/select-columns.ts` — all DB column select strings. Use them.
+- `src/utils/constants.ts` — all shared constants. Never define the same value twice.
+- `src/lib/queries/select-columns.ts` — all DB column select strings. Use them.
 - `src/types/` — shared types. `database.ts` is generated — never hand-edit it.
 
 **components/ vs features/ rule:** feature-aware → `features/<feature>/components/`.
@@ -57,6 +57,11 @@ to `components/` only on the second consumer. Never the other way around.
   (`w-[347px]`) unless no token exists — and then leave a WHY comment.
 - Conditional classes go through `cn()`. No inline `style=` except for
   truly dynamic values (e.g. computed transforms).
+- `DESIGN.md` (repo root, not `docs/`) is the design system. Its **Closed Ramp
+  Rule** governs type: the roles are `--text-*` tokens in `globals.css`, so a
+  font size is `text-body` / `text-caption` / `text-metric`, never `text-[13px]`.
+  A size that is not a role is drift — snap it to the nearest one rather than
+  adding a step. Two shared primitives are still on literals; see TECH-DEBT §5.
 
 ## Code quality (non-negotiable)
 
