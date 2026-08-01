@@ -35,6 +35,7 @@ function describe(channel: RosterChannel): string {
   return `${name}: connected${channel.accountName ? ` as ${channel.accountName}` : ''}`
 }
 
+/** A client's connected platforms, each chip carrying its state in the title. */
 export function ChannelChips({ channels }: { channels: RosterChannel[] }) {
   return (
     <ul className="flex list-none gap-1.5">

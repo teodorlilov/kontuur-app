@@ -14,6 +14,7 @@ interface RosterTableProps {
 
 const HEADER_CELL = 'text-[10.5px] font-semibold uppercase tracking-[0.12em] text-text3'
 
+/** The roster itself: a real table, so the columns stay announced to a reader. */
 export function RosterTable({ entries, timezone, footer }: RosterTableProps) {
   return (
     <Card className="mt-4 px-[18px] pb-4 pt-2">

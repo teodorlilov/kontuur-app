@@ -56,6 +56,7 @@ function copyFor(entry: ClientRosterEntry, timezone: string): { headline: string
   }
 }
 
+/** The status column: what is true of this client, in words rather than colour. */
 export function RowStatus({ entry, timezone }: RowStatusProps) {
   const { headline, detail } = copyFor(entry, timezone)
   return (

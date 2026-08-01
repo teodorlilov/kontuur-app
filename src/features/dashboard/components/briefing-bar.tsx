@@ -19,6 +19,7 @@ function pickHeadline(briefing: DashboardBriefing | null): string | null {
   return candidate ? stripCiteTags(candidate) : null
 }
 
+/** This week's briefing reduced to its one actionable line. */
 export function BriefingBar({ briefing }: { briefing: DashboardBriefing | null }) {
   const headline = pickHeadline(briefing)
 

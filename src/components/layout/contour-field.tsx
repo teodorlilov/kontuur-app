@@ -136,6 +136,7 @@ function drawField(canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D): vo
   }
 }
 
+/** Draws the two-layer contour ground the app shell sits on. */
 export function ContourField() {
   const fieldRef = useRef<HTMLCanvasElement>(null)
   const peakRef = useRef<HTMLCanvasElement>(null)

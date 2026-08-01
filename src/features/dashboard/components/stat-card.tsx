@@ -35,6 +35,7 @@ interface StatCardProps {
   children?: React.ReactNode
 }
 
+/** One figure from the week, with the pill and footer that qualify it. */
 export function StatCard({ label, value, icon, pill, footer, dark, children }: StatCardProps) {
   return (
     <div

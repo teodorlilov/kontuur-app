@@ -14,6 +14,7 @@ interface QuickActionsStripProps {
   isSolo: boolean
 }
 
+/** The routes worth one click from the dashboard; a solo workspace drops "Add client". */
 export function QuickActionsStrip({ pendingCount, isSolo }: QuickActionsStripProps) {
   const actions: Array<QuickAction | false> = [
     {

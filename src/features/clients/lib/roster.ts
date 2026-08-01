@@ -189,6 +189,12 @@ function latest(a: string | null, b: string | null): string | null {
   return a > b ? a : b
 }
 
+/**
+ * Folds one client and its two related reads into the single row the roster
+ * renders — channel states, the status that ranks it, and the counts behind it.
+ * `now` is passed in rather than read here so a whole page derives from one
+ * instant and connection expiry cannot straddle a tick mid-render.
+ */
 export function computeRosterEntry(
   row: RosterClientRow,
   upcoming: UpcomingPostRow[],
@@ -272,6 +278,7 @@ export function matchesFilter(entry: ClientRosterEntry, filter: RosterFilter): b
   }
 }
 
+/** Totals behind the filter rail, counted from entries rather than re-queried. */
 export function summariseRoster(entries: ClientRosterEntry[]): RosterSummary {
   const count = (filter: RosterFilter) => entries.filter((e) => matchesFilter(e, filter)).length
   return {

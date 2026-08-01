@@ -11,6 +11,7 @@ interface RosterRowProps {
   timezone: string
 }
 
+/** One client in the roster table — identity, channels, status, and next slot. */
 export function RosterRow({ entry, timezone }: RosterRowProps) {
   const next = entry.nextPostAt ? formatPublishSlot(entry.nextPostAt, timezone) : null
 
