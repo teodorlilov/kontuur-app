@@ -19,6 +19,7 @@ export default async function SettingsPage() {
 
   const agencyMode: 'agency' | 'solo' = agencyData?.mode === 'solo' ? 'solo' : 'agency'
 
+  // The view renders the page header itself: the tab rail is its state.
   return (
     <SettingsView
       agency={{ ...agency, timezone: agency.timezone ?? 'UTC' }}

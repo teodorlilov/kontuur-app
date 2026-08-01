@@ -2,12 +2,15 @@
 
 import { useState, useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { SettingsTabBar } from './settings-tab-bar'
 import { TeamTab } from './team-tab'
 import { AccountTab } from './account-tab'
 import { ProfileTab } from './profile-tab'
 import { IntegrationsTab } from './integrations-tab'
 import { toast } from '@/components/ui/toast'
+import { HeaderMeta, PageHeader } from '@/components/layout/page-header/page-header'
+import { TabRail, type TabItem } from '@/components/layout/page-header/tab-rail'
+import { PAGE_SHELL } from '@/components/layout/page-header/shared'
+import { cn } from '@/utils/cn'
 import type { AgencyInfo, TeamMember, SettingsTab } from '@/types/api'
 
 interface SettingsViewProps {
@@ -18,7 +21,14 @@ interface SettingsViewProps {
   agencyMode: 'agency' | 'solo'
 }
 
-/** Settings page orchestrator: tab bar + conditional tab content. */
+const TAB_LABELS: ReadonlyArray<{ id: SettingsTab; label: string }> = [
+  { id: 'team', label: 'Team' },
+  { id: 'account', label: 'Account' },
+  { id: 'integrations', label: 'Integrations' },
+  { id: 'profile', label: 'Profile' },
+]
+
+/** Settings page orchestrator. Owns the header: the tab rail is its state. */
 export function SettingsView({
   agency,
   members,
@@ -44,11 +54,28 @@ export function SettingsView({
     }
   }, [searchParams])
 
-  return (
-    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-      <SettingsTabBar activeTab={activeTab} onSelectTab={setActiveTab} agencyMode={agencyMode} />
+  // Solo workspaces have no team to manage.
+  const tabs: Array<TabItem<SettingsTab>> = TAB_LABELS.filter(
+    (tab) => !(tab.id === 'team' && agencyMode === 'solo')
+  )
 
-      <div className="px-4 md:px-8 pt-7 pb-12" style={{ flex: 1, overflowY: 'auto', background: '#F4EFE6' }}>
+  return (
+    <div className="flex h-full flex-col overflow-hidden">
+      <PageHeader
+        crumb={[{ label: 'Settings' }]}
+        title="Settings"
+        meta={
+          <HeaderMeta
+            parts={[
+              agency.name,
+              agencyMode === 'solo' ? 'Solo workspace' : `${members.length} member${members.length === 1 ? '' : 's'}`,
+            ]}
+          />
+        }
+        tabs={<TabRail items={tabs} active={activeTab} onSelect={setActiveTab} label="Settings sections" />}
+      />
+
+      <div className={cn(PAGE_SHELL, 'min-h-0 flex-1 overflow-y-auto pb-12 pt-7')}>
         {activeTab === 'team' && (
           <TeamTab
             workspaceName={agency.name}
