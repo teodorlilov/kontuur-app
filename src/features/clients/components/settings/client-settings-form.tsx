@@ -1,17 +1,25 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { ChevronLeft } from 'lucide-react'
 import { parsePillars, serializePillars, type WeightedPillar } from '@/lib/clients/content-pillars'
 import { updateClient } from '@/features/clients/actions/client-actions'
+import { SETTINGS_TABS, type SettingsTab } from '@/features/clients/lib/settings-tabs'
 import { buildDefaultIdentity } from '@/lib/visual/identity'
 import { Button } from '@/components/ui/button'
-import { Avatar } from '@/components/ui/avatar'
 import { toast } from '@/components/ui/toast'
+import {
+  HeaderMeta,
+  HeaderPill,
+  MetaFlag,
+  PageHeader,
+} from '@/components/layout/page-header/page-header'
+import { TabRail, type TabItem } from '@/components/layout/page-header/tab-rail'
+import { PAGE_SHELL, TOOL_ROW } from '@/components/layout/page-header/shared'
+import { extractInitials, formatRelativeTime } from '@/utils/format'
+import { cn } from '@/utils/cn'
 import type { ClientRow, BrandProfileRow, PostingScheduleRow } from '@/types'
 import type { VisualIdentity } from '@/types/visual'
-import { StatusCard, SettingsNav, type SettingsTab } from './settings-nav'
 import { BasicInfoTab } from './basic-info-tab'
 import { BrandProfileTab } from './brand-profile-tab'
 import { VisualIdentityTab } from './visual-identity-tab'
@@ -31,9 +39,11 @@ interface ClientSettingsFormProps {
   pendingCount: number
   lastGeneratedAt: string | null
   visualIdentity: VisualIdentity | null
+  /** Drives the connection pill. Resolved server-side so the title never flickers. */
+  connectionCount: number
 }
 
-/** Top-level client settings form with tabbed layout. */
+/** Top-level client settings form. Owns the header, because it owns the tab state. */
 export function ClientSettingsForm({
   clientId,
   sourceCount,
@@ -45,17 +55,12 @@ export function ClientSettingsForm({
   pendingCount,
   lastGeneratedAt,
   visualIdentity: initialVisualIdentity,
+  connectionCount,
 }: ClientSettingsFormProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [activeTab, setActiveTab] = useState<SettingsTab>('basic')
   const [saving, setSaving] = useState(false)
-  const [mobileView, setMobileView] = useState<'nav' | 'form'>('nav')
-
-  const handleTabChange = useCallback((tab: SettingsTab) => {
-    setActiveTab(tab)
-    setMobileView('form')
-  }, [])
 
   // ── Client fields ──
   const [name, setName] = useState(client.name)
@@ -184,75 +189,73 @@ export function ClientSettingsForm({
   }
 
   const isInsightsTab = activeTab === 'insights' || activeTab === 'ideas'
+  const isConnected = connectionCount > 0
+
+  const tabs: Array<TabItem<SettingsTab>> = SETTINGS_TABS.map((tab) =>
+    tab.id === 'accounts'
+      ? { ...tab, count: connectionCount, warn: !isConnected }
+      : { ...tab }
+  )
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
-      {/* Topbar */}
-      <SettingsTopbar
-        clientName={client.name}
-        isInsightsTab={isInsightsTab}
-        saving={saving}
-        onSave={handleSave}
-        onCancel={() => router.push('/clients')}
+    <div className="flex h-full flex-col">
+      <PageHeader
+        crumb={[{ label: 'Clients', href: '/clients' }, { label: name || 'Client' }]}
+        back="/clients"
+        badge={extractInitials(name || 'Client')}
+        title={
+          <>
+            <span className="truncate">{name || 'Untitled client'}</span>
+            {isConnected ? (
+              <HeaderPill tone="ok">
+                {connectionCount} connected
+              </HeaderPill>
+            ) : (
+              <HeaderPill tone="bad">Not connected</HeaderPill>
+            )}
+          </>
+        }
+        railTools={
+          <>
+            <span className="hidden text-xs text-text3 sm:block">
+              {lastGeneratedAt
+                ? `Queue refreshed ${formatRelativeTime(new Date(lastGeneratedAt))}`
+                : 'Queue not yet refreshed'}
+            </span>
+            {/* Kept from the deleted status card: the only route to the sources screen. */}
+            <a href={`/clients/${clientId}/sources`} className={cn(TOOL_ROW, 'text-[12px]')}>
+              {sourceCount} source{sourceCount === 1 ? '' : 's'} &rarr;
+            </a>
+          </>
+        }
+        meta={
+          <HeaderMeta
+            parts={[
+              niche || null,
+              languageFormality ? `${language} · ${languageFormality}` : language,
+              pendingCount > 0 && <MetaFlag>{pendingCount} pending review</MetaFlag>,
+              publishedCount > 0 && `${publishedCount} published`,
+            ]}
+          />
+        }
+        actions={
+          <>
+            <Button variant="ghost" size="sm" onClick={() => router.push('/clients')} disabled={saving}>
+              Cancel
+            </Button>
+            {!isInsightsTab && (
+              <Button size="sm" onClick={handleSave} loading={saving}>
+                Save changes
+              </Button>
+            )}
+          </>
+        }
+        tabs={<TabRail items={tabs} active={activeTab} onSelect={setActiveTab} label="Client settings" />}
       />
 
-      {/* Body: sidebar + content panel */}
-      <div className="px-4 md:px-7" style={{ display: 'flex', gap: 16, paddingBottom: 32, flex: 1, minHeight: 0 }}>
-        {/* Left sidebar — full width on mobile, fixed on desktop */}
-        <div
-          className={`${mobileView === 'nav' ? 'flex' : 'hidden'} md:flex w-full md:w-[240px]`}
-          style={{
-            flexShrink: 0,
-            flexDirection: 'column',
-          }}
-        >
-          <StatusCard
-            lastGeneratedAt={lastGeneratedAt}
-            pendingCount={pendingCount}
-            activeSourceCount={sourceCount}
-            publishedCount={publishedCount}
-            sourcesHref={`/clients/${clientId}/sources`}
-          />
-          <SettingsNav activeTab={activeTab} onTabChange={handleTabChange} />
-        </div>
-
-        {/* Right content panel — hidden on mobile when viewing nav */}
-        <div
-          className={`${mobileView === 'form' ? 'flex' : 'hidden'} md:flex`}
-          style={{
-            flex: 1,
-            background: 'var(--color-surface)',
-            border: '0.5px solid var(--color-border-1)',
-            borderRadius: 12,
-            overflow: 'hidden',
-            flexDirection: 'column',
-            minWidth: 0,
-          }}
-        >
-          {/* Mobile back to settings nav */}
-          <button
-            type="button"
-            className="md:hidden"
-            onClick={() => setMobileView('nav')}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 4,
-              padding: '8px 12px',
-              fontSize: 12,
-              fontWeight: 500,
-              color: 'var(--color-muted)',
-              background: 'var(--color-surface)',
-              border: 'none',
-              borderBottom: '0.5px solid var(--color-border-1)',
-              cursor: 'pointer',
-              fontFamily: 'inherit',
-              flexShrink: 0,
-            }}
-          >
-            <ChevronLeft size={14} />
-            Back to settings
-          </button>
+      {/* Full width: the 240px left nav is gone, so nothing competes with the form. */}
+      <div className={cn(PAGE_SHELL, 'min-h-0 flex-1 pb-8 pt-5')}>
+        <div className="flex h-full min-w-0 flex-col overflow-hidden rounded-card border border-line bg-surface">
           {activeTab === 'basic' && (
             <BasicInfoTab
               name={name}
@@ -327,88 +330,6 @@ export function ClientSettingsForm({
             <IdeaFormTab clientId={clientId} clientName={client.name} />
           )}
         </div>
-      </div>
-    </div>
-  )
-}
-
-// ── Topbar ──
-
-function SettingsTopbar({
-  clientName,
-  isInsightsTab,
-  saving,
-  onSave,
-  onCancel,
-}: {
-  clientName: string
-  isInsightsTab: boolean
-  saving: boolean
-  onSave: () => void
-  onCancel: () => void
-}) {
-  return (
-    <div
-      className="px-4 md:px-7"
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingTop: 20,
-        marginBottom: 20,
-        flexWrap: 'wrap',
-        gap: 8,
-      }}
-    >
-      {/* Left: back link + client chip */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-        <a
-          href="/clients"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 6,
-            fontSize: 12,
-            color: 'var(--color-muted)',
-            textDecoration: 'none',
-          }}
-        >
-          ← Clients
-        </a>
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-            padding: '5px 11px',
-            background: 'var(--color-surface)',
-            border: '0.5px solid var(--color-border-1)',
-            borderRadius: 7,
-          }}
-        >
-          <Avatar name={clientName} size="sm" />
-          <span
-            style={{
-              fontSize: 12,
-              fontWeight: 500,
-              color: 'var(--color-text-1)',
-            }}
-          >
-            {clientName}
-          </span>
-        </div>
-      </div>
-
-      {/* Right: cancel + save */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <Button variant="secondary" size="sm" onClick={onCancel} disabled={saving}>
-          Cancel
-        </Button>
-        {!isInsightsTab && (
-          <Button size="sm" onClick={onSave} loading={saving}>
-            Save changes
-          </Button>
-        )}
       </div>
     </div>
   )

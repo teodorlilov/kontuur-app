@@ -6,6 +6,7 @@ import type { ContentInsights } from '@/features/clients/components/settings/con
 import {
   fetchClientById,
   fetchBrandProfileByClient,
+  fetchConnectionsByClient,
   fetchPostingScheduleByClient,
 } from '@/lib/queries/db'
 import { fetchVisualIdentity } from '@/lib/visual/queries'
@@ -20,7 +21,7 @@ export default async function EditClientPage({ params }: { params: Promise<{ id:
 
   const visualIdentity = await fetchVisualIdentity(id)
 
-  const [profile, schedule, { count: sourceCount }, recentPostsRes, allPostsRes, { count: pendingCount }, clientStatsRes] =
+  const [profile, schedule, { count: sourceCount }, recentPostsRes, allPostsRes, { count: pendingCount }, clientStatsRes, connections] =
     await Promise.all([
       fetchBrandProfileByClient(supabase, id),
       fetchPostingScheduleByClient(supabase, id),
@@ -51,6 +52,9 @@ export default async function EditClientPage({ params }: { params: Promise<{ id:
         .from('posts')
         .select('status, created_at')
         .eq('client_id', id),
+      // Joins the existing parallel block — the header's connection pill must
+      // be resolved server-side or the title flickers on every load.
+      fetchConnectionsByClient(supabase, id),
     ])
 
   // Status card data — computed from per-client query instead of agency-wide cache
@@ -112,6 +116,8 @@ export default async function EditClientPage({ params }: { params: Promise<{ id:
       ? { avgScore, trend, topApprovedPillars, topRewritePillars }
       : null
 
+  // The form renders the page header itself: the tab rail and the panel below
+  // read the same activeTab state.
   return (
     <ClientSettingsForm
       clientId={id}
@@ -124,6 +130,7 @@ export default async function EditClientPage({ params }: { params: Promise<{ id:
       pendingCount={pendingCount ?? 0}
       lastGeneratedAt={lastGeneratedAt}
       visualIdentity={visualIdentity}
+      connectionCount={connections.length}
     />
   )
 }
