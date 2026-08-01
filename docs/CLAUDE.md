@@ -117,5 +117,7 @@ After each change:
 - Add abstractions for hypothetical future needs — abstract only what is
   needed now.
 - Leave TODO comments — fix it or don't touch it.
-- Add `console.log` (enforced via ESLint `no-console`; use the logger at
-  the boundary instead).
+- Add `console.log`. Log at the boundary only, with context, using
+  `console.error` / `console.warn` — the convention the ~76 existing call sites
+  follow. NOTE: this is convention, not enforcement. There is no ESLint
+  `no-console` rule and no `src/lib/logger`; earlier wording here claimed both.
