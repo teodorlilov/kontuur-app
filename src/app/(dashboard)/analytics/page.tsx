@@ -19,9 +19,6 @@ export default async function AnalyticsPage() {
     ? await fetchConnectionsByClient(supabase, firstClientId)
     : []
 
-  return (
-    <>
-      <AnalyticsView clients={clients} initialConnections={initialConnections} />
-    </>
-  )
+  // The view renders the page header itself: the report tabs are its state.
+  return <AnalyticsView clients={clients} initialConnections={initialConnections} />
 }

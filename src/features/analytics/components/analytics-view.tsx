@@ -4,6 +4,13 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { toast } from '@/components/ui/toast'
+import { HeaderMeta, MetaWarn, PageHeader } from '@/components/layout/page-header/page-header'
+import { Segmented } from '@/components/layout/page-header/segmented'
+import { SelectControl } from '@/components/layout/page-header/select-control'
+import { TabRail, type TabItem } from '@/components/layout/page-header/tab-rail'
+import { PAGE_SHELL } from '@/components/layout/page-header/shared'
+import { formatRelativeTime } from '@/utils/format'
+import { cn } from '@/utils/cn'
 import { ReportHistory } from './report-history'
 import { AnalyticsLoading } from './analytics-loading'
 import { EmptyStateAnalytics } from './empty-state-analytics'
@@ -31,14 +38,14 @@ function getDateRange(preset: Preset): { start: string; end: string } {
   }
 }
 
-/** Top-level analytics page: controls bar, tab bar, and report content. */
+/** Top-level analytics page. Owns the header: the report tabs are its state. */
 export function AnalyticsView({ clients, initialConnections }: AnalyticsViewProps) {
   const router = useRouter()
   const [selectedClientId, setSelectedClientId] = useState(clients[0]?.id ?? '')
   // Platform type is only 'instagram' | 'facebook' in practice but the DB
   // column is a plain string, so we assert after reading from the connection.
   const [platform, setPlatform] = useState<'instagram' | 'facebook'>(
-    (initialConnections[0]?.platform as 'instagram' | 'facebook') ?? 'instagram',
+    (initialConnections[0]?.platform as 'instagram' | 'facebook') ?? 'instagram'
   )
   const [preset, setPreset] = useState<Preset>('30d')
   const [activeTab, setActiveTab] = useState<Tab>('overview')
@@ -52,7 +59,7 @@ export function AnalyticsView({ clients, initialConnections }: AnalyticsViewProp
   // with a mismatched pair.
   const [historyClientId, setHistoryClientId] = useState(clients[0]?.id ?? '')
   const [historyPlatform, setHistoryPlatform] = useState<'instagram' | 'facebook'>(
-    (initialConnections[0]?.platform as 'instagram' | 'facebook') ?? 'instagram',
+    (initialConnections[0]?.platform as 'instagram' | 'facebook') ?? 'instagram'
   )
 
   // Skip initial mount — connections for the first client are passed as props
@@ -84,8 +91,14 @@ export function AnalyticsView({ clients, initialConnections }: AnalyticsViewProp
       .catch(() => setConnections([]))
   }, [selectedClientId])
 
-  const connectedPlatforms = useMemo(() => new Set(connections.map((c) => c.platform)), [connections])
-  const currentClientName = useMemo(() => clients.find((c) => c.id === selectedClientId)?.name ?? '', [clients, selectedClientId])
+  const connectedPlatforms = useMemo(
+    () => new Set(connections.map((c) => c.platform)),
+    [connections]
+  )
+  const currentClientName = useMemo(
+    () => clients.find((c) => c.id === selectedClientId)?.name ?? '',
+    [clients, selectedClientId]
+  )
 
   const handleGenerateReport = useCallback(async () => {
     if (!selectedClientId) return
@@ -97,7 +110,12 @@ export function AnalyticsView({ clients, initialConnections }: AnalyticsViewProp
       const res = await fetch('/api/analytics/report', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ client_id: selectedClientId, platform, period_start: start, period_end: end }),
+        body: JSON.stringify({
+          client_id: selectedClientId,
+          platform,
+          period_start: start,
+          period_end: end,
+        }),
       })
       const data = (await res.json()) as { report?: AnalyticsReport; error?: string }
       if (!res.ok || !data.report) throw new Error(data.error ?? 'Failed to generate report')
@@ -129,29 +147,101 @@ export function AnalyticsView({ clients, initialConnections }: AnalyticsViewProp
   // AnalyticsMetrics but TypeScript sees it as Json, so we assert.
   const metrics = report?.metrics_json as AnalyticsMetrics | undefined
 
+  const platformOptions = (['instagram', 'facebook'] as const)
+    .filter((p) => connectedPlatforms.has(p))
+    .map((p) => ({ value: p, label: capitalizePlatform(p) }))
+
+  const reportTabs: Array<TabItem<Tab>> = [
+    { id: 'overview', label: 'Overview' },
+    { id: 'posts', label: 'Posts' },
+    { id: 'audience', label: 'Audience' },
+  ]
+
+  const showTabs = !generating && !!report && !!metrics
+
   return (
-    <div style={{ overflow: 'hidden' }}>
-      <ControlsBar
-        clients={clients}
-        selectedClientId={selectedClientId}
-        onSelectClient={setSelectedClientId}
-        connectedPlatforms={connectedPlatforms}
-        platform={platform}
-        onSelectPlatform={(p) => { setPlatform(p); setHistoryPlatform(p) }}
-        preset={preset}
-        onSelectPreset={setPreset}
-        generating={generating}
-        hasReport={!!report}
-        onGenerate={handleGenerateReport}
-        onExportPDF={() => { if (report) window.print() }}
+    <div className="flex h-full flex-col overflow-hidden">
+      <PageHeader
+        crumb={[{ label: 'Analytics' }]}
+        title="Analytics"
+        railTools={
+          report ? (
+            <span className="hidden text-xs text-text3 sm:block">
+              Updated {formatRelativeTime(new Date(report.created_at))}
+            </span>
+          ) : null
+        }
+        meta={
+          <HeaderMeta
+            parts={[
+              currentClientName || null,
+              connectedPlatforms.size > 0 ? capitalizePlatform(platform) : null,
+              connectedPlatforms.size === 0 && <MetaWarn>No account connected</MetaWarn>,
+            ]}
+          />
+        }
+        actions={
+          <>
+            {clients.length > 1 && (
+              <SelectControl
+                label="Client"
+                value={selectedClientId}
+                options={clients.map((c) => ({ value: c.id, label: c.name }))}
+                onChange={setSelectedClientId}
+              />
+            )}
+            {platformOptions.length > 1 && (
+              <SelectControl
+                label="Platform"
+                value={platform}
+                options={platformOptions}
+                onChange={(p) => {
+                  setPlatform(p)
+                  setHistoryPlatform(p)
+                }}
+              />
+            )}
+            <Segmented
+              label="Report range"
+              value={preset}
+              options={[
+                { value: '7d' as const, label: '7d' },
+                { value: '30d' as const, label: '30d' },
+                { value: '90d' as const, label: '90d' },
+              ]}
+              onChange={setPreset}
+            />
+            {report && (
+              <Button variant="ghost" size="sm" onClick={() => window.print()}>
+                Export PDF
+              </Button>
+            )}
+            <Button
+              size="sm"
+              onClick={handleGenerateReport}
+              loading={generating}
+              disabled={
+                generating || connectedPlatforms.size === 0 || !connectedPlatforms.has(platform)
+              }
+            >
+              {report ? 'Regenerate' : 'Generate report'}
+            </Button>
+          </>
+        }
+        // Only once a report exists — there is nothing to tab between before that.
+        tabs={
+          showTabs ? (
+            <TabRail
+              items={reportTabs}
+              active={activeTab}
+              onSelect={setActiveTab}
+              label="Report sections"
+            />
+          ) : undefined
+        }
       />
 
-      {/* Tab bar — visible only when a report is loaded */}
-      {!generating && report && metrics && (
-        <TabBar activeTab={activeTab} onSelectTab={setActiveTab} />
-      )}
-
-      <div className="p-6 space-y-6">
+      <div className={cn(PAGE_SHELL, 'min-h-0 flex-1 space-y-6 overflow-y-auto pb-8 pt-6')}>
         {connectedPlatforms.size === 0 && !generating && (
           <EmptyStateAnalytics
             variant="no-accounts"
@@ -186,7 +276,11 @@ export function AnalyticsView({ clients, initialConnections }: AnalyticsViewProp
             </div>
 
             {activeTab === 'overview' && (
-              <OverviewTab metrics={metrics} aiSummary={report.ai_summary} onViewAllPosts={() => setActiveTab('posts')} />
+              <OverviewTab
+                metrics={metrics}
+                aiSummary={report.ai_summary}
+                onViewAllPosts={() => setActiveTab('posts')}
+              />
             )}
             {activeTab === 'posts' && <PostsTab metrics={metrics} aiSummary={report.ai_summary} />}
             {activeTab === 'audience' && <AudienceTab metrics={metrics} />}
@@ -195,193 +289,14 @@ export function AnalyticsView({ clients, initialConnections }: AnalyticsViewProp
 
         {historyClientId && (
           <div className="print-hide">
-            <ReportHistory clientId={historyClientId} platform={historyPlatform} onLoad={handleLoadReport} />
+            <ReportHistory
+              clientId={historyClientId}
+              platform={historyPlatform}
+              onLoad={handleLoadReport}
+            />
           </div>
         )}
       </div>
-    </div>
-  )
-}
-
-/* ── Sub-components (only used by AnalyticsView) ────────────────────────── */
-
-interface ControlsBarProps {
-  clients: Array<{ id: string; name: string }>
-  selectedClientId: string
-  onSelectClient: (id: string) => void
-  connectedPlatforms: Set<string>
-  platform: 'instagram' | 'facebook'
-  onSelectPlatform: (p: 'instagram' | 'facebook') => void
-  preset: Preset
-  onSelectPreset: (p: Preset) => void
-  generating: boolean
-  hasReport: boolean
-  onGenerate: () => void
-  onExportPDF: () => void
-}
-
-function ControlsBar({
-  clients, selectedClientId, onSelectClient,
-  connectedPlatforms, platform, onSelectPlatform,
-  preset, onSelectPreset,
-  generating, hasReport, onGenerate, onExportPDF,
-}: ControlsBarProps) {
-  return (
-    <div
-      className="print-hide pl-14 md:pl-[22px] pr-[22px]"
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        flexWrap: 'wrap',
-        gap: 10,
-        minHeight: 52,
-        paddingTop: 8,
-        paddingBottom: 8,
-        background: '#fff',
-        borderBottom: '0.5px solid var(--color-border-1)',
-        boxShadow: '0 1px 0 rgba(44,62,80,0.05)',
-        flexShrink: 0,
-      }}
-    >
-      {clients.length > 1 && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, flex: '1 1 0' }} className="max-w-full md:max-w-none md:flex-none">
-          <span className="hidden md:inline" style={{ fontSize: 9, fontWeight: 500, color: 'var(--color-muted)', letterSpacing: '1.1px', textTransform: 'uppercase' as const }}>
-            CLIENT
-          </span>
-          <select
-            value={selectedClientId}
-            onChange={(e) => onSelectClient(e.target.value)}
-            style={{
-              padding: '7px 12px',
-              border: '0.5px solid var(--color-border-2)',
-              borderRadius: 7,
-              fontSize: 12,
-              fontFamily: 'inherit',
-              fontWeight: 500,
-              color: 'var(--color-text-1)',
-              background: '#fff',
-              outline: 'none',
-              cursor: 'pointer',
-              minWidth: 0,
-              maxWidth: '100%',
-              textOverflow: 'ellipsis',
-            }}
-          >
-            {clients.map((c) => (
-              <option key={c.id} value={c.id}>{c.name}</option>
-            ))}
-          </select>
-        </div>
-      )}
-
-      {connectedPlatforms.size > 0 && (
-        <PillGroup
-          items={(['instagram', 'facebook'] as const).filter((p) => connectedPlatforms.has(p))}
-          active={platform}
-          onSelect={onSelectPlatform}
-          label={(p) => (p === 'instagram' ? 'Instagram' : 'Facebook')}
-        />
-      )}
-
-      <PillGroup
-        items={['7d', '30d', '90d'] as Preset[]}
-        active={preset}
-        onSelect={onSelectPreset}
-        label={(p) => p}
-      />
-
-      <div className="ml-0 md:ml-auto" style={{ display: 'flex', gap: 8 }}>
-        <Button
-          onClick={onGenerate}
-          loading={generating}
-          disabled={generating || connectedPlatforms.size === 0 || !connectedPlatforms.has(platform)}
-        >
-          {hasReport ? 'Regenerate' : 'Generate report'}
-        </Button>
-        {hasReport && (
-          <Button variant="ghost" onClick={onExportPDF}>
-            Export PDF
-          </Button>
-        )}
-      </div>
-    </div>
-  )
-}
-
-function PillGroup<T extends string>({
-  items, active, onSelect, label,
-}: {
-  items: T[]
-  active: T
-  onSelect: (item: T) => void
-  label: (item: T) => string
-}) {
-  return (
-    <div style={{ display: 'flex', gap: 4 }}>
-      {items.map((item) => {
-        const isActive = active === item
-        return (
-          <button
-            key={item}
-            type="button"
-            onClick={() => onSelect(item)}
-            style={{
-              padding: '6px 14px',
-              borderRadius: 7,
-              fontSize: 12,
-              fontWeight: 500,
-              border: '0.5px solid',
-              cursor: 'pointer',
-              fontFamily: 'inherit',
-              transition: 'all 0.15s',
-              background: isActive ? 'var(--color-brand)' : '#fff',
-              color: isActive ? '#fff' : 'var(--color-muted)',
-              borderColor: isActive ? 'var(--color-brand)' : 'var(--color-border-2)',
-            }}
-          >
-            {label(item)}
-          </button>
-        )
-      })}
-    </div>
-  )
-}
-
-function TabBar({ activeTab, onSelectTab }: { activeTab: Tab; onSelectTab: (t: Tab) => void }) {
-  return (
-    <div
-      className="print-hide"
-      style={{
-        display: 'flex',
-        gap: 4,
-        padding: '0 22px',
-        background: '#fff',
-        borderBottom: '0.5px solid var(--color-border-1)',
-        boxShadow: '0 1px 0 rgba(44,62,80,0.05)',
-      }}
-    >
-      {(['overview', 'posts', 'audience'] as const).map((tab) => (
-        <button
-          key={tab}
-          type="button"
-          onClick={() => onSelectTab(tab)}
-          className="text-sm font-medium capitalize transition-colors"
-          style={{
-            padding: '12px 16px',
-            marginBottom: -0.5,
-            background: 'none',
-            border: 'none',
-            borderBottomStyle: 'solid',
-            borderBottomWidth: 2,
-            borderBottomColor: activeTab === tab ? 'var(--color-terracotta)' : 'transparent',
-            color: activeTab === tab ? 'var(--color-text-1)' : 'var(--color-text-3)',
-            cursor: 'pointer',
-            fontFamily: 'inherit',
-          }}
-        >
-          {tab}
-        </button>
-      ))}
     </div>
   )
 }
