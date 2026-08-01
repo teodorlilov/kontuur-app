@@ -8,7 +8,7 @@ is, how it's architected, and every feature in the codebase.
 | Doc | What it covers |
 | --- | -------------- |
 | [OVERVIEW.md](./OVERVIEW.md) | Product, architecture, data model, full feature catalog, integrations, cron, API surface |
-| [STYLE-GUIDE.md](./STYLE-GUIDE.md) | Kontuur design system — colours, typography, spacing, component patterns |
+| [DESIGN.md](../DESIGN.md) | Kontuur design system — the single design document. Colours, typography, spacing, named rules, and how they are spelled in code |
 | [CLAUDE.md](./CLAUDE.md) | Code-quality rules (DRY, single source of truth, function/naming limits) |
 | [CODING_SKILLS.md](./CODING_SKILLS.md) | LLM coding-behaviour guidelines |
 

@@ -470,7 +470,7 @@ Auth redirect URLs at the deployed domain, and the two cron jobs run automatical
 | Doc | What it is | Status |
 | --- | ---------- | ------ |
 | **OVERVIEW.md** (this file) | Product + architecture + full feature catalog | **Current — start here** |
-| [STYLE-GUIDE.md](./STYLE-GUIDE.md) | Kontuur design system (colours, type, spacing, components) | Current |
+| [DESIGN.md](../DESIGN.md) | Kontuur design system — the single design document (colours, type, spacing, named rules, implementation) | Current |
 | [CLAUDE.md](./CLAUDE.md) | Code-quality rules (DRY, single source of truth, function limits) | Current |
 | [CODING_SKILLS.md](./CODING_SKILLS.md) | LLM coding-behaviour guidelines | Current |
 | [plans/PUBLISHING.md](./plans/PUBLISHING.md) | Instagram publishing implementation plan | Shipped |

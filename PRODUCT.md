@@ -77,7 +77,7 @@ Surfaces: Dashboard, Clients, Generate (full-screen wizard), Review queue, Calen
 
 - **Name:** Kontuur / kontuur.app.
 - **Bilingual by design:** Bulgarian and English are both first-class. Bulgarian is not a translation afterthought — it is the language the authenticity layer was built for.
-- A visual style guide already exists at [docs/STYLE-GUIDE.md](docs/STYLE-GUIDE.md) and an incumbent implementation exists in code. This file deliberately does not restate or extend it; visual authority belongs in DESIGN.md.
+- Visual authority belongs in [DESIGN.md](DESIGN.md), which is the single design document. This file deliberately does not restate or extend it. (It previously pointed at `docs/STYLE-GUIDE.md`, which was folded into DESIGN.md and deleted on 2026-08-01.)
 
 ## Evidence on Hand
 

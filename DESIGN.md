@@ -8,7 +8,7 @@ colors:
   living-green-text: "#278658"
   living-green-lite: "#7fd6a8"
   new-growth: "#cfea45"
-  warm-paper: "#f1f0ea"
+  near-white-paper: "#fbfcfa"
   surface: "#ffffff"
   sunken: "#f3f5f2"
   forest-ink: "#0f1512"
@@ -141,6 +141,20 @@ components:
 
 # Design System: Kontuur
 
+> **The single design document.** Read this before writing any UI. It is design
+> authority for the whole app — tokens, rules, and how they are spelled in code.
+>
+> It absorbed `docs/STYLE-GUIDE.md`, which was deleted on 2026-08-01. That file
+> still specified the pre-Contour palette (`--paper: #f1f0ea`, `--text3: #8b958d`,
+> a `--raised` card gradient) — the exact three values this document says must
+> never be restored — while instructing readers to trust it over everything else.
+> Anything from it that was still true is in § Implementation.
+>
+> **Related, and deliberately not merged here:** [docs/CLAUDE.md](docs/CLAUDE.md)
+> owns code structure and conventions; [docs/plans/LANDING-REDESIGN.md](docs/plans/LANDING-REDESIGN.md)
+> is a locked-but-unimplemented plan that predates Contour and still carries the
+> old palette — reconcile it against this document before building it.
+
 ## Overview
 
 **Creative North Star: "Contour Calm"**
@@ -153,7 +167,7 @@ The one loud value in the palette is New Growth lime, and its power is entirely 
 
 **Key Characteristics:**
 
-- Warm paper ground (`#f1f0ea`), never pure white for page backgrounds
+- Near-white ground (`#fbfcfa`) carrying the contour field, never flat pure white
 - Forest ink and a botanical green ramp; no blues, no unrelated hues
 - Instrument Serif italic for accents only, and Latin-only by necessity
 - Hairline separation (0.5px) with tonal layering as the primary depth cue
@@ -182,12 +196,15 @@ A botanical ramp on warm paper: greens carry all brand meaning, and the two stat
 
 ### Neutral
 
-- **Warm Paper** (`#f1f0ea`): The page ground. Never `#ffffff`, never a cool grey.
+- **Near-White Paper** (`#fbfcfa`): The page ground, and the ground the contour field is drawn on.
+  Corrected from the incumbent warm `#f1f0ea`. This is deliberate and must not be "fixed" back: on a
+  near-white ground a white card separates by 1.05:1, so tone cannot carry depth and the terrain has
+  to — which is the whole premise of cards-as-clearings below. Never flat `#ffffff`.
 - **Surface** (`#ffffff`): Card and panel surfaces, sitting on warm paper.
 - **Sunken** (`#f3f5f2`): Inset areas — table headers, search fields, wells.
 - **Forest Ink** (`#0f1512`): Primary text. Headings, values, body.
 - **Ink Secondary** (`#57625a`): Descriptions, form labels.
-- **Ink Tertiary** (`#667068`): Hints, timestamps, placeholders. Corrected from the incumbent `#8b958d`, which measured 3.10:1 on Surface and 2.71:1 on Warm Paper — failing the 4.5:1 this system commits to, across roughly fifteen text roles. The replacement holds 4.51:1 on Warm Paper and 5.15:1 on Surface at the same hue and chroma, so it reads as the same grey, only legible.
+- **Ink Tertiary** (`#667068`): Hints, timestamps, placeholders. Corrected from the incumbent `#8b958d`, which measured 3.10:1 on Surface and 2.71:1 on Warm Paper — failing the 4.5:1 this system commits to, across roughly fifteen text roles. The replacement holds 5.00:1 on Near-White Paper and 5.15:1 on Surface at the same hue and chroma, so it reads as the same grey, only legible.
 - **Hairline** (`#e7ece7`) and **Hairline Strong** (`#d5ddd6`): Card edges and dividers; input borders respectively.
 
 ### Status
@@ -241,7 +258,11 @@ A botanical ramp on warm paper: greens carry all brand meaning, and the two stat
 
 ## Layout
 
-A fixed 224px sidebar beside a fluid content column, capped at 1280px and padded 40px horizontally. The spacing scale is closed — 4, 8, 12, 16, 20, 24, 32, 40, 48, 64 — and intermediate values are not invented. Cards are padded `20px 24px`.
+A 240px sidebar that collapses to 78px, beside a fluid content column capped at 1280px. The content column's horizontal padding is 16px, stepping to 32px at `md` — it is one constant, `PAGE_SHELL` in `src/components/layout/page-header/shared.ts`, applied to the header inner *and* every page body so a title and its actions stay in one visual field on a wide monitor.
+
+The spacing scale is closed — 4, 8, 12, 16, 20, 24, 32, 40, 48, 64 — and intermediate values are not invented.
+
+Card padding is `20px 24px` by default, but it is genuinely per-surface: the roster table, the review queue and the briefing bar each pad differently because they hold different things. `Card` therefore takes padding through `className` rather than baking one value in. That is variation, not drift — a shared padding would be false consistency.
 
 Density is moderate and deliberately uneven: metric rows and chip strips run tight, while editorial moments (greetings, empty states, briefings) are given conspicuous air. That contrast is the system's rhythm — compressing the breathing room around an empty state to fit more above the fold destroys it.
 
@@ -249,7 +270,7 @@ Content regions should be sized by what they contain rather than forced to a sha
 
 ## Elevation & Depth
 
-**Tonal-first; shadow is a whisper.** Depth is carried primarily by the tonal stack — Warm Paper beneath Surface white, with Sunken for inset wells and the dark pine capsule at the top of the range — and by 0.5px hairlines. Shadows exist, but as ambient lift rather than structural drop: `--sh-card` is a 36px blur at 10% opacity with a 1px contact shadow, which reads as a card resting on paper, not floating above it.
+**Figure and ground, not elevation.** Depth is carried by the contour field and by hairline edges — not by shadow. A card is a *clearing*: opaque Surface white, a hairline edge, and the contour lines simply stopping at its boundary. Nothing on the dashboard ground casts a resting shadow, and hover does not add one either, because resting and hover elevation make the same claim this system rejects. Sunken remains for inset wells and the dark pine capsule for the top of the range. `--sh-card` and `--sh-pop` survive only for genuinely floating chrome — popovers, dialogs, the sidebar panel beside the scroll area.
 
 Structural shadow is reserved for genuinely floating layers: popovers, dropdowns, modals, and dark surfaces.
 
@@ -270,13 +291,15 @@ Dark surfaces are never flat fills. They are a vertical gradient overlaid with `
 
 Corners are softly rounded on a deliberate scale: 4px for the smallest chrome, 8px for compact controls, 10px for buttons and chips, 14px for panels, and 20px for cards. The scale is declared in Tailwind's own `@theme` namespace so `rounded-lg` resolves to the Contour value everywhere in the app rather than Tailwind's default — this is intentional and must not be "fixed" back.
 
-Borders are hairlines. Cards, panels, and dividers take **0.5px**; only inputs take a full 1px, so form fields read as the one genuinely interactive edge on a surface. Pills and avatars go fully round.
+Borders are hairlines, achieved by **alpha, not by sub-pixel width**. A card edge is `border border-ink/[0.05]` — a full 1px at 5% ink. The pre-Contour system specified literal `0.5px`, and that was retired: sub-pixel borders round inconsistently across device pixel ratios, so the same card showed a crisp line on one display and nothing on another. 1px at very low alpha reads as the same hairline and renders identically everywhere. Inputs take `border-line2` at full strength, so form fields remain the one genuinely interactive edge on a surface. Pills and avatars go fully round.
+
+Literal `0.5px` borders survive only on surfaces that predate Contour — the public approval page and the settings tabs. Each one is a marker that the surface has not been rebuilt yet.
 
 Texture is part of the form language: `--hatch` (45° repeating lines) marks open or unfilled states, and its inverse marks the same on dark. Hatching means *absence* — an unscheduled day, an empty slot — and must not be used as ornament.
 
 ### Named Rules
 
-**The Hairline Rule.** Card borders are 0.5px, never 1px. A 1px border on a card is out of system and reads as a different product.
+**The Hairline Rule.** A card edge is carried by alpha, not weight: `border-ink/[0.05]`, or `border-line` where a divider needs to be slightly more present. A card border that reads as a *line* rather than as an edge is out of system. Never introduce a literal `0.5px` border in new work.
 
 ## Components
 
@@ -295,7 +318,7 @@ Components should feel **tactile and considered** — like well-made objects on 
 ### Cards / Containers
 
 - **Corner Style:** 20px.
-- **Background:** Surface white on Warm Paper; the dark variant is a pine gradient over the dot grid.
+- **Background:** Surface white on Near-White Paper, no shadow; the dark variant is a pine gradient over the dot grid.
 - **Shadow Strategy:** Ambient card lift only — see Elevation.
 - **Border:** 0.5px Hairline.
 - **Internal Padding:** `20px 24px`.
@@ -321,12 +344,62 @@ Seven chips in a row, one per day, encoding a client's week: solid for published
 
 The same applies to any bar or chip height that encodes volume: **an empty state must never render larger than an occupied one.** Height maps to count, with a small fixed floor for zero.
 
+## Implementation
+
+Everything above is the decision. This section is how it is spelled in the codebase.
+
+### Token plumbing
+
+Raw values live in `src/app/globals.css` as prefix-free custom properties (`--paper`, `--ink`, `--forest`). `@theme inline` registers them as Tailwind utilities under names outside Tailwind's own namespaces, so no existing utility changes meaning. **Components use classes, never inline `style` objects** — the exception is a genuinely computed value, such as a bar height that encodes a count.
+
+| Utility | Token |
+| --- | --- |
+| `bg-paper` `bg-surface` `bg-sunken` | surfaces |
+| `text-ink` `text-text2` `text-text3` | text ramp |
+| `border-line` `border-line2` | borders |
+| `bg-forest` `bg-forest-deep` `bg-spring` `bg-wash` `bg-marker` | greens |
+| `bg-lime` `bg-sage` `text-accent` | capsule tiers + the rare accent |
+| `bg-danger-bg` `text-danger` `bg-pending-bg` `text-pending` | status |
+| `rounded-chip` (10) `rounded-panel` (14) `rounded-card` (20) | radii |
+| `shadow-card` `shadow-pop` `shadow-frame` `shadow-dark` | elevation |
+| `ease-contour` | the house easing curve |
+| `font-display` | Instrument Serif |
+
+The radius scale is declared in plain `@theme` rather than `@theme inline`, because `--radius-*` are Tailwind's own names — this **replaces** its defaults app-wide instead of shadowing them, so `rounded-lg` resolves to 14px everywhere including surfaces not yet rebuilt. That is deliberate.
+
+A legacy compatibility block in `globals.css` aliases the pre-Contour `--color-*` and `--sidebar-*` names onto Contour values, so unmigrated surfaces follow the palette rather than stranding on the old navy. **Each alias is deleted as its surface is rebuilt** — an alias still in that block is a to-do list entry.
+
+### Structural class hooks
+
+`.app-shell`, `.app-sidebar` and `.app-content` are the only structural class hooks in the frame. The analytics print stylesheet (`globals.css`, `@media print`) targets them **by name**, so keep the classes if you restructure the layout. `.print-hide` marks anything that must not print.
+
+> `.app-topbar` is still referenced by that print block but nothing renders it any more — the shell topbar was removed in favour of each page's own `PageHeader`. Harmless, but it is dead weight.
+
+### Shared components
+
+Reach for these before writing a new one:
+
+| Component | Use |
+| --- | --- |
+| `components/ui/card.tsx` | A clearing. Padding comes from `className`. |
+| `components/ui/section-heading.tsx` | An `h2` with its icon chip; `tone="wash" \| "marker"`. |
+| `components/ui/action-link.tsx` | A `next/link` styled as an action. |
+| `components/ui/button.tsx` | A button that acts. Token choices mirror `ActionLink`. |
+| `components/ui/section-card.tsx` | A settings panel — titled, with a divider header. |
+| `components/layout/page-header/` | The header every dashboard page opens with. |
+
+`Card` and `SectionCard` are both current and are not duplicates: one is a bare container, the other owns a header structure.
+
+### Where the rest lives
+
+Component placement, data-fetching rules, validation and error handling are in [docs/CLAUDE.md](docs/CLAUDE.md). This file is design authority only; it does not restate them.
+
 ## Do's and Don'ts
 
 ### Do:
 
-- **Do** use Warm Paper (`#f1f0ea`) for page grounds and Surface white for cards.
-- **Do** use 0.5px hairlines on cards and dividers; 1px only on inputs.
+- **Do** use Near-White Paper (`#fbfcfa`) for page grounds and Surface white for cards.
+- **Do** carry card and divider edges with low-alpha ink (`border-ink/[0.05]`, `border-line`); reserve full-strength `border-line2` for inputs.
 - **Do** set every metric in tabular numerals with `-0.02em`.
 - **Do** gate every interpolated user string set in the serif on `hasCyrillic()`.
 - **Do** give every purely visual data encoding an `sr-only` sentence, as the coverage strip does.
@@ -349,4 +422,4 @@ The same applies to any bar or chip height that encodes volume: **an empty state
 - **Don't** set green text on a light ground in Living Green (`#2e9e68`, 3.38:1) — that is Living Green Text's job (`#278658`).
 - **Don't** put lime type on paper or white, at any size.
 - **Don't** use an alpha-reduced ink (`ink/55`, `ink/60`) for reading text on a tinted surface.
-- **Don't** put a 1px border on a card.
+- **Don't** write a literal `0.5px` border in new work — it renders inconsistently across DPRs, which is why Contour carries hairlines with alpha instead.
