@@ -2,12 +2,16 @@
 
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
-import { Link, Mail } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Link, Mail } from 'lucide-react'
 import { useCalendar } from '@/features/calendar/hooks/use-calendar'
 import { useApproval, type ClientEntry } from '@/features/calendar/hooks/use-approval'
 import { toast } from '@/components/ui/toast'
+import { Button } from '@/components/ui/button'
+import { HeaderMeta, MetaFlag, PageHeader } from '@/components/layout/page-header/page-header'
+import { SelectControl } from '@/components/layout/page-header/select-control'
+import { TOOL_ROW } from '@/components/layout/page-header/shared'
+import { cn } from '@/utils/cn'
 import { deletePost } from '@/lib/actions/post-actions'
-import { CalendarControls } from './calendar-controls'
 import { MonthGrid } from './month-grid'
 import { ScheduleFab } from './schedule-fab'
 import { UnscheduledPanel } from './unscheduled-panel'
@@ -34,6 +38,7 @@ interface ApprovalButtonProps {
   onSelectClient: (id: string) => void
 }
 
+/** A rail utility that sends the week to a client, with a picker when several qualify. */
 function ApprovalButton({
   icon: Icon,
   label,
@@ -47,8 +52,9 @@ function ApprovalButton({
   onSelectClient,
 }: ApprovalButtonProps) {
   const isDisabled = disabled || loading
+
   return (
-    <div style={{ position: 'relative' }}>
+    <div className="relative">
       <button
         type="button"
         onClick={() => {
@@ -61,43 +67,19 @@ function ApprovalButton({
         }}
         disabled={isDisabled}
         title={disabled ? disabledReason : undefined}
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 5,
-          fontSize: 10,
-          fontWeight: 500,
-          color: isDisabled ? 'var(--color-muted)' : 'var(--color-terracotta)',
-          background: isDisabled ? 'rgba(44,62,80,0.05)' : 'rgba(192,123,85,0.10)',
-          border: isDisabled ? '0.5px solid var(--color-border-2)' : '0.5px solid rgba(192,123,85,0.25)',
-          borderRadius: 6,
-          padding: '5px 10px',
-          cursor: isDisabled ? 'not-allowed' : 'pointer',
-          fontFamily: 'inherit',
-          transition: 'all 0.15s',
-          opacity: isDisabled ? 0.5 : 1,
-        }}
+        className={cn(
+          TOOL_ROW,
+          'text-[12px]',
+          isDisabled && 'cursor-not-allowed text-text3 opacity-60 hover:bg-transparent hover:text-text3'
+        )}
       >
-        <Icon style={{ width: 12, height: 12 }} />
+        <Icon className="size-3.5 shrink-0" />
         {loading ? loadingLabel : label}
       </button>
 
       {pickerOpen && clients.length > 1 && (
-        <div
-          style={{
-            position: 'absolute',
-            right: 0,
-            top: 32,
-            background: '#fff',
-            borderRadius: 8,
-            border: '0.5px solid var(--color-border-1)',
-            boxShadow: '0 8px 24px rgba(44,62,80,0.12)',
-            zIndex: 30,
-            padding: '4px 0',
-            minWidth: 180,
-          }}
-        >
-          <p style={{ padding: '6px 12px', fontSize: 10, color: 'var(--color-muted)', fontWeight: 500 }}>
+        <div className="absolute right-0 top-9 z-30 min-w-[180px] rounded-panel border border-line bg-surface py-1 shadow-pop">
+          <p className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-text3">
             Select client
           </p>
           {clients.map((c) => (
@@ -105,20 +87,7 @@ function ApprovalButton({
               key={c.id}
               type="button"
               onClick={() => onSelectClient(c.id)}
-              style={{
-                width: '100%',
-                textAlign: 'left',
-                padding: '8px 12px',
-                fontSize: 12,
-                color: 'var(--color-text-1)',
-                background: 'transparent',
-                border: 'none',
-                cursor: 'pointer',
-                fontFamily: 'inherit',
-                transition: 'background 0.1s',
-              }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--color-overlay)' }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
+              className="w-full px-3 py-2 text-left text-[13px] text-ink transition-colors hover:bg-wash"
             >
               {c.name}
             </button>
@@ -126,6 +95,26 @@ function ApprovalButton({
         </div>
       )}
     </div>
+  )
+}
+
+const MONTH_NAMES = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
+]
+
+/** Month navigation, inline with the title it moves. */
+function MonthStepBtn({ onClick, direction }: { onClick: () => void; direction: 'prev' | 'next' }) {
+  const Icon = direction === 'prev' ? ChevronLeft : ChevronRight
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={direction === 'prev' ? 'Previous month' : 'Next month'}
+      className="grid size-7 place-items-center rounded-sm text-text2 transition-colors duration-150 ease-contour hover:bg-ink/[0.06] hover:text-ink"
+    >
+      <Icon className="size-3" />
+    </button>
   )
 }
 
@@ -293,64 +282,87 @@ export function CalendarView({ initialPosts, clients }: CalendarViewProps) {
     setEditMode(false)
   }
 
-  return (
-    <div
-      style={{
-        minHeight: '100%',
-        display: 'flex',
-        flexDirection: 'column',
-        position: 'relative',
-      }}
-    >
-      <CalendarControls
-        year={year}
-        month={month}
-        onPrevMonth={prevMonth}
-        onNextMonth={nextMonth}
-        onToday={goToToday}
-        selectedClientId={selectedClientId}
-        clients={clients}
-        onClientChange={setSelectedClientId}
-      />
+  // Scoped to the month on screen, so the figure matches the grid beneath it.
+  const scheduledThisMonth = filteredScheduled.filter((post) => {
+    if (!post.scheduled_at) return false
+    const at = new Date(post.scheduled_at)
+    return at.getFullYear() === year && at.getMonth() === month
+  }).length
 
-      {/* Approval buttons row — always visible when clients exist */}
-      {clients.length > 0 && (
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'flex-end',
-            gap: 6,
-            padding: '8px 22px 0',
-            flexShrink: 0,
-          }}
-        >
-          <ApprovalButton
-            icon={Link}
-            label="Copy link"
-            loadingLabel="Generating..."
-            loading={copyLinkSending}
-            disabled={noPostsThisWeek}
-            disabledReason="No posts scheduled this week"
-            clients={currentWeekClients}
-            pickerOpen={copyLinkPicker}
-            onTogglePicker={() => setCopyLinkPicker((v: boolean) => !v)}
-            onSelectClient={(id) => { void handleCopyLink(id) }}
+  return (
+    <div className="relative flex min-h-full flex-col">
+      <PageHeader
+        crumb={[{ label: 'Calendar' }]}
+        // The month is the title and "Calendar" demotes to the crumb — the way
+        // every calendar already behaves.
+        title={
+          <>
+            {MONTH_NAMES[month]} {year}
+            <span className="inline-flex items-center gap-0.5">
+              <MonthStepBtn onClick={prevMonth} direction="prev" />
+              <MonthStepBtn onClick={nextMonth} direction="next" />
+            </span>
+          </>
+        }
+        railTools={
+          clients.length > 0 ? (
+            <>
+              <ApprovalButton
+                icon={Link}
+                label="Copy link"
+                loadingLabel="Generating..."
+                loading={copyLinkSending}
+                disabled={noPostsThisWeek}
+                disabledReason="No posts scheduled this week"
+                clients={currentWeekClients}
+                pickerOpen={copyLinkPicker}
+                onTogglePicker={() => setCopyLinkPicker((v: boolean) => !v)}
+                onSelectClient={(id) => { void handleCopyLink(id) }}
+              />
+              <ApprovalButton
+                icon={Mail}
+                label="Email client"
+                loadingLabel="Sending..."
+                loading={emailSending}
+                disabled={noPostsThisWeek}
+                disabledReason="No posts scheduled this week"
+                clients={currentWeekClients}
+                pickerOpen={emailPicker}
+                onTogglePicker={() => setEmailPicker((v: boolean) => !v)}
+                onSelectClient={(id) => { void handleEmailClient(id) }}
+              />
+            </>
+          ) : null
+        }
+        meta={
+          <HeaderMeta
+            parts={[
+              `${scheduledThisMonth} scheduled this month`,
+              filteredUnscheduled.length > 0 && (
+                <MetaFlag>{filteredUnscheduled.length} waiting to be scheduled</MetaFlag>
+              ),
+            ]}
           />
-          <ApprovalButton
-            icon={Mail}
-            label="Email client"
-            loadingLabel="Sending..."
-            loading={emailSending}
-            disabled={noPostsThisWeek}
-            disabledReason="No posts scheduled this week"
-            clients={currentWeekClients}
-            pickerOpen={emailPicker}
-            onTogglePicker={() => setEmailPicker((v: boolean) => !v)}
-            onSelectClient={(id) => { void handleEmailClient(id) }}
-          />
-        </div>
-      )}
+        }
+        actions={
+          <>
+            <Button variant="secondary" size="sm" onClick={goToToday}>
+              Today
+            </Button>
+            {clients.length > 1 && (
+              <SelectControl
+                label="Client"
+                value={selectedClientId ?? ''}
+                options={[
+                  { value: '', label: 'All clients' },
+                  ...clients.map((c) => ({ value: c.id, label: c.name })),
+                ]}
+                onChange={(id) => setSelectedClientId(id || null)}
+              />
+            )}
+          </>
+        }
+      />
 
       <MonthGrid
         year={year}

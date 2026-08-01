@@ -88,7 +88,7 @@ export default async function CalendarPage() {
     }
   })
 
-  return (
-    <CalendarView initialPosts={posts} clients={clients} />
-  )
+  // The view renders the page header itself: the month is the title, and the
+  // month lives in its state.
+  return <CalendarView initialPosts={posts} clients={clients} />
 }
