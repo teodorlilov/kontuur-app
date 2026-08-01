@@ -1,15 +1,20 @@
 'use client'
 
-import { ChevronUp } from 'lucide-react'
+import { ExternalLink } from 'lucide-react'
 import { cn } from '@/utils/cn'
+import { SIDEBAR_ROW, SIDEBAR_ROW_IDLE } from '@/components/layout/nav-items'
 import { useCanvaStatus } from '@/features/publishing/hooks/use-canva-status'
 
 /**
- * Global "Design in Canva" topbar button.
- * Opens Canva in a new tab when connected, otherwise sits disabled with a hint.
+ * "Design in Canva" — a sidebar row, not a page control.
+ *
+ * It opens canva.com in a new tab and belongs to the workspace rather than to
+ * any one page, which is why it sits with the other global chrome in the rail.
+ * Disabled until Canva is connected, with the hint pointing at Settings.
  */
-export function DesignInCanvaButton() {
+export function DesignInCanvaButton({ collapsed = false }: { collapsed?: boolean }) {
   const connected = useCanvaStatus()
+  const label = 'Design in Canva'
 
   return (
     <button
@@ -18,25 +23,28 @@ export function DesignInCanvaButton() {
         if (connected) window.open('https://www.canva.com/create/instagram-posts/', '_blank')
       }}
       disabled={!connected}
-      title={connected ? undefined : 'Connect Canva in Settings'}
+      title={connected ? (collapsed ? label : undefined) : 'Connect Canva in Settings'}
       className={cn(
-        'hidden items-center gap-2 rounded-sm py-[7px] pl-2.5 pr-3.5 text-[13px] font-semibold sm:flex',
-        'transition-colors duration-150',
-        connected
-          ? 'bg-forest text-white hover:bg-forest-deep'
-          : 'cursor-default bg-sunken text-text3'
+        SIDEBAR_ROW,
+        connected ? SIDEBAR_ROW_IDLE : 'cursor-default text-text3',
+        collapsed && 'justify-center px-0'
       )}
     >
       <span
+        aria-hidden="true"
         className={cn(
-          'grid size-[22px] shrink-0 place-items-center rounded-xs text-[12px] font-bold',
-          connected ? 'bg-white/20' : 'bg-ink/10'
+          'grid size-[15px] shrink-0 place-items-center rounded-xs text-[9.5px] font-bold',
+          connected ? 'bg-forest text-white' : 'bg-ink/10 text-text3'
         )}
       >
         C
       </span>
-      Design in Canva
-      <ChevronUp className="size-3.5 opacity-70" />
+      {!collapsed && (
+        <>
+          <span className="flex-1 truncate">{label}</span>
+          {connected && <ExternalLink size={13} className="shrink-0 text-text3" />}
+        </>
+      )}
     </button>
   )
 }

@@ -22,18 +22,12 @@ interface CommandPaletteProps {
   clients: Array<{ id: string; name: string }>
 }
 
+/**
+ * ⌘K is owned by ShellProvider, not by this component: it is loaded on demand,
+ * so a listener here would not exist until after the shortcut meant to summon
+ * it had already been pressed.
+ */
 export function CommandPalette({ open, onOpenChange, agencyMode, clients }: CommandPaletteProps) {
-  useEffect(() => {
-    function handleKeyDown(event: KeyboardEvent) {
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
-        event.preventDefault()
-        onOpenChange(true)
-      }
-    }
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [onOpenChange])
-
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>

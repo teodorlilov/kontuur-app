@@ -3,24 +3,26 @@
 import { useState, useSyncExternalStore } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { ChevronLeft, LogOut, Menu, Search, X } from 'lucide-react'
-import { toast } from 'sonner'
+import { ChevronLeft, LogOut, Menu, X } from 'lucide-react'
+import { toast } from '@/components/ui/toast'
 import { createBrowserSupabaseClient } from '@/lib/supabase/client'
 import { extractInitials } from '@/utils/format'
 import { cn } from '@/utils/cn'
 import {
   SETTINGS_NAV_ITEM,
+  SIDEBAR_ROW,
+  SIDEBAR_ROW_IDLE,
   getNavItems,
   isNavItemActive,
   type NavBadge,
   type NavItem,
 } from '@/components/layout/nav-items'
+import { DesignInCanvaButton } from '@/components/layout/design-in-canva-button'
 import { ActiveRunsCard } from '@/components/layout/active-runs-card'
 import { useActiveRuns } from '@/components/layout/use-active-runs'
-import { CommandPalette } from '@/components/layout/command-palette'
 import type { ActiveRun } from '@/types/api'
 
-/** Sidebar widths come from docs/redesign-mocks/dashboard.html (240 / 78). */
+/** Sidebar widths come from docs/redesign-mocks/archive/dashboard.html (240 / 78). */
 const COLLAPSE_STORAGE_KEY = 'kontuur:sidebar-collapsed'
 const COLLAPSE_EVENT = 'kontuur:sidebar-collapsed-change'
 
@@ -52,7 +54,6 @@ interface SidebarProps {
   agencyName: string
   pendingCount: number
   ideasCount: number
-  clients: Array<{ id: string; name: string }>
   activeRuns: ActiveRun[]
 }
 
@@ -129,7 +130,6 @@ interface SidebarContentProps {
   badgeCounts: Record<NavBadge, number>
   activeRuns: ActiveRun[]
   collapsed: boolean
-  onSearch: () => void
   onSignOut: () => void
   onNavigate?: () => void
 }
@@ -141,7 +141,6 @@ function SidebarContent({
   badgeCounts,
   activeRuns,
   collapsed,
-  onSearch,
   onSignOut,
   onNavigate,
 }: SidebarContentProps) {
@@ -151,26 +150,9 @@ function SidebarContent({
         <LogoMark collapsed={collapsed} />
       </div>
 
-      <button
-        type="button"
-        onClick={onSearch}
-        className={cn(
-          'mx-2.5 mb-3 mt-0.5 flex items-center gap-2 rounded-[9px] bg-sunken px-3 py-2',
-          'text-[12.5px] text-text3 transition-colors hover:bg-line',
-          collapsed && 'mx-2 justify-center gap-0 px-0 py-2.5'
-        )}
-      >
-        <Search size={13} className="shrink-0" />
-        {!collapsed && (
-          <>
-            Search
-            <kbd className="ml-auto rounded-[5px] border border-line2 bg-surface px-1.5 py-px text-[9.5px] font-semibold text-text3">
-              ⌘K
-            </kbd>
-          </>
-        )}
-      </button>
-
+      {/* No search row and no bell: both live in the page header's rail, where
+          the mock puts them and where they read as page chrome rather than
+          navigation. */}
       {!collapsed && (
         <div className="px-3 pb-2 pt-1 text-[9.5px] font-semibold uppercase tracking-[0.16em] text-text3">
           Workspace
@@ -195,7 +177,10 @@ function SidebarContent({
           useActiveRuns above, so this is purely what the rail has room for. */}
       {!collapsed && <ActiveRunsCard runs={activeRuns} />}
 
+      {/* Canva stays: it opens an external tool and belongs to the workspace,
+          and the header rail has no slot for it. */}
       <div className="mx-2.5 mb-1 flex flex-col gap-0.5 border-t border-line pt-1.5">
+        <DesignInCanvaButton collapsed={collapsed} />
         <SidebarLink
           item={SETTINGS_NAV_ITEM}
           badgeCount={0}
@@ -205,11 +190,7 @@ function SidebarContent({
         <button
           type="button"
           onClick={onSignOut}
-          className={cn(
-            'flex items-center gap-2.5 rounded-[9px] px-[11px] py-[9px] text-left text-[13.5px]',
-            'text-text2 transition-colors hover:bg-ink/[0.04] hover:text-ink',
-            collapsed && 'justify-center px-0'
-          )}
+          className={cn(SIDEBAR_ROW, SIDEBAR_ROW_IDLE, collapsed && 'justify-center px-0')}
         >
           <LogOut size={15} className="shrink-0 text-text3" />
           {!collapsed && 'Sign out'}
@@ -243,12 +224,10 @@ export function Sidebar({
   agencyName,
   pendingCount,
   ideasCount,
-  clients,
   activeRuns,
 }: SidebarProps) {
   const router = useRouter()
   const [mobileOpen, setMobileOpen] = useState(false)
-  const [paletteOpen, setPaletteOpen] = useState(false)
   const collapsed = useSyncExternalStore(subscribeToCollapse, readCollapsed, () => false)
   // Polled once here, then handed to both the rail and the drawer as data —
   // two SidebarContent instances must not mean two pollers.
@@ -268,7 +247,6 @@ export function Sidebar({
     agencyName,
     badgeCounts,
     activeRuns: runs,
-    onSearch: () => setPaletteOpen(true),
     onSignOut: handleSignOut,
   }
 
@@ -328,13 +306,6 @@ export function Sidebar({
           </aside>
         </div>
       )}
-
-      <CommandPalette
-        open={paletteOpen}
-        onOpenChange={setPaletteOpen}
-        agencyMode={agencyMode}
-        clients={clients}
-      />
     </>
   )
 }

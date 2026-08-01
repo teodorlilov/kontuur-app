@@ -19,7 +19,7 @@ const DELTA_CLASSES = {
 /** Metric card with a coloured top accent border. */
 export function MetricCard({ label, value, delta, deltaType = 'neutral', accentColor }: MetricCardProps) {
   return (
-    <div className="relative overflow-hidden rounded-panel border border-ink/[0.05] bg-[image:var(--raised)] px-5 py-[18px] shadow-card">
+    <div className="relative overflow-hidden rounded-panel border border-ink/[0.05] bg-surface px-5 py-[18px]">
       <div className="absolute inset-x-0 top-0 h-0.5" style={{ background: accentColor }} />
 
       <div className="mb-2.5 text-[11px] font-medium uppercase tracking-[0.12em] text-text3">

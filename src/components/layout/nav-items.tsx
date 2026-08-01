@@ -50,19 +50,12 @@ export function isNavItemActive(pathname: string, href: string): boolean {
   return pathname === href || pathname.startsWith(href + '/')
 }
 
-/** Longest matching href wins, so nested routes resolve to their own section. */
-function findDeepestMatch(items: NavItem[], pathname: string): NavItem | undefined {
-  return items
-    .filter((item) => isNavItemActive(pathname, item.href))
-    .sort((a, b) => b.href.length - a.href.length)[0]
-}
+/**
+ * Shared shape for every sidebar row, so the nav links, Notifications, Design
+ * in Canva, and Sign out cannot drift apart. `collapsed` narrows to the icon.
+ */
+export const SIDEBAR_ROW =
+  'flex w-full items-center gap-2.5 rounded-[9px] px-[11px] py-[9px] text-left text-[13.5px] ' +
+  'transition-[color,background-color] duration-150 ease-contour'
 
-/** Topbar title for the current route — the shell owns the title, not the page. */
-export function resolveNavTitle(pathname: string, agencyMode: 'agency' | 'solo'): string {
-  const inMode = findDeepestMatch([...getNavItems(agencyMode), SETTINGS_NAV_ITEM], pathname)
-  if (inMode) return inMode.label
-
-  // Solo mode has no Clients entry, but solo users still reach /clients/:id/edit
-  // from the palette. Fall back to the agency set so the title is never blank.
-  return findDeepestMatch(AGENCY_NAV, pathname)?.label ?? 'Kontuur'
-}
+export const SIDEBAR_ROW_IDLE = 'text-text2 hover:bg-ink/[0.04] hover:text-ink'

@@ -34,7 +34,7 @@ export function StatCard({ label, value, icon, pill, footer, dark, children }: S
         'rounded-card px-[18px] py-4',
         dark
           ? 'surface-dark border-transparent text-white shadow-dark'
-          : 'border border-ink/[0.05] bg-[image:var(--raised)] shadow-card'
+          : 'border border-ink/[0.05] bg-surface'
       )}
     >
       <div className="mb-3.5 flex items-center justify-between">

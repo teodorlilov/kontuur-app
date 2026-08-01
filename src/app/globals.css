@@ -2,19 +2,31 @@
 
 /* ─── Contour design system — source of truth ─────────────────────────
    Naming follows docs/plans/LANDING-REDESIGN.md §2. Density rule:
-   landing = full contour field · auth = 2 lines · dashboard = data only,
-   so --accent is used here for data highlights only, never as a surface. */
+   landing = full contour field · auth = 2 lines · dashboard = full field,
+   mounted once by components/layout/contour-field.tsx.
+
+   The dashboard was "data only" until the v2 ground landed. It now carries
+   the field too, because depth comes from interrupting the terrain rather
+   than from elevation: on this near-white ground a white card separates by
+   1.05:1, so tone cannot do the work. A card is a clearing — opaque, hairline
+   edge, contour lines stopping at its boundary, and NO shadow.
+
+   --accent stays a data highlight, never a surface. */
 :root {
-  /* Surfaces */
-  --paper: #f1f0ea;
+  /* Surfaces. There is no --raised: cards are flat clearings, not gradients. */
+  --paper: #fbfcfa;
   --surface: #ffffff;
   --sunken: #f3f5f2;
-  --raised: linear-gradient(180deg, #ffffff 0%, #fbfaf6 100%);
 
   /* Ink */
   --ink: #0f1512;
   --text2: #57625a;
-  --text3: #8b958d;
+  /* Corrected from #8b958d, which measured 2.71:1 and failed AA outright.
+     This holds 5.00:1 on the near-white ground (it was 4.51:1 on the old warm
+     paper, so the ground change helped). The contour field is what claws that
+     back — if small text ever muddies, lower the stroke alpha in
+     contour-field.tsx rather than darkening this. See DESIGN.md § Ink. */
+  --text3: #667068;
   --line: #e7ece7;
   --line2: #d5ddd6;
 
@@ -202,6 +214,15 @@ body {
   color: var(--forest-deep);
 }
 
+/* The dashboard tree had no focus ring at all — only ui/button.tsx carried one,
+   so every link, chip and row was unreachable-looking under keyboard use.
+   Matches the button's existing treatment, and outline follows each element's
+   own border-radius, so nothing here needs to restate corner shape. */
+:focus-visible {
+  outline: 2px solid var(--spring);
+  outline-offset: 2px;
+}
+
 /* ─── Keyframes ─── */
 @keyframes bounce-dot {
   0%, 80%, 100% { opacity: 0.3; }
@@ -338,13 +359,11 @@ body {
 }
 
 /* ─── App shell ───────────────────────────────────────────────────────
-   Two faint spring glows behind the scroll area. Padding stays with each
-   page, not the frame, so nothing double-pads. */
-.app-content {
-  background:
-    radial-gradient(640px 320px at 18% -6%, rgba(46, 158, 104, 0.06), transparent 70%),
-    radial-gradient(520px 300px at 95% 0%, rgba(46, 158, 104, 0.04), transparent 70%);
-}
+   The scroll area is deliberately transparent: the ground is drawn by
+   contour-field.tsx behind it, and the two spring glows that used to live
+   here were removed rather than layered under the terrain — running both
+   reads as noise. Padding stays with each page, not the frame, so nothing
+   double-pads. */
 
 /* ─── Live generation indicator ─── */
 @keyframes live-pulse {
@@ -391,23 +410,6 @@ body {
   .rv {
     animation: none;
   }
-}
-
-/* ─── Stagger utilities ─── */
-.stagger > *:nth-child(1) {
-  animation-delay: 0ms;
-}
-.stagger > *:nth-child(2) {
-  animation-delay: 40ms;
-}
-.stagger > *:nth-child(3) {
-  animation-delay: 80ms;
-}
-.stagger > *:nth-child(4) {
-  animation-delay: 120ms;
-}
-.stagger > *:nth-child(5) {
-  animation-delay: 160ms;
 }
 
 /* ─── Skeleton ─── */
