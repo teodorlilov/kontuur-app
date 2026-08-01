@@ -32,12 +32,12 @@ function PublishRow({
       <span className="flex min-w-0 items-baseline gap-1.5">
         {/* The lime marks the live present: today, and nothing else. */}
         {isToday && <span aria-hidden className="size-[5px] shrink-0 rounded-full bg-accent" />}
-        <span className="truncate text-[13px] font-medium text-ink">{clientName}</span>
-        <span className="shrink-0 text-[11.5px] capitalize text-text2">{platform}</span>
+        <span className="truncate text-body font-medium text-ink">{clientName}</span>
+        <span className="shrink-0 text-caption capitalize text-text2">{platform}</span>
       </span>
       <span
         className={cn(
-          'shrink-0 text-[11.5px] tabular-nums',
+          'shrink-0 text-caption tabular-nums',
           tone === 'danger' ? 'text-danger' : 'text-text2'
         )}
       >
@@ -135,7 +135,7 @@ export function NextUpCard({
           </Link>
         }
       >
-        <p className="mt-1.5 text-[13px] leading-relaxed text-text2">
+        <p className="mt-1.5 text-body leading-relaxed text-text2">
           {unconnected === 1
             ? '1 client has no account connected, so nothing can publish for them.'
             : `${unconnected} clients have no account connected, so nothing can publish for them.`}
@@ -155,7 +155,7 @@ export function NextUpCard({
         </Link>
       }
     >
-      <p className="mt-1.5 text-[13px] leading-relaxed text-text2">
+      <p className="mt-1.5 text-body leading-relaxed text-text2">
         Nothing is scheduled. Approved posts publish automatically once they have a date.
       </p>
     </StatCard>

@@ -67,7 +67,7 @@ function LogoMark({ collapsed }: { collapsed: boolean }) {
       )}
     >
       <span
-        className="surface-mark grid size-7 shrink-0 place-items-center rounded-lg font-display text-[15px] italic text-white shadow-[0_4px_14px_rgba(46,158,104,0.35)]"
+        className="surface-mark grid size-7 shrink-0 place-items-center rounded-lg font-display text-display-sm italic text-white shadow-[0_4px_14px_rgba(46,158,104,0.35)]"
       >
         k
       </span>
@@ -101,7 +101,7 @@ function SidebarLink({
       onClick={onNavigate}
       title={collapsed ? item.label : undefined}
       className={cn(
-        'flex items-center gap-2.5 rounded-[9px] px-[11px] py-[9px] text-[13.5px] no-underline',
+        'flex items-center gap-2.5 rounded-[9px] px-[11px] py-[9px] text-body-lg no-underline',
         'transition-[color,background-color,transform] duration-150 ease-contour',
         isActive
           ? 'bg-wash font-medium text-forest shadow-[inset_0_0_0_1px_rgba(46,158,104,0.16)]'
@@ -154,7 +154,7 @@ function SidebarContent({
           the mock puts them and where they read as page chrome rather than
           navigation. */}
       {!collapsed && (
-        <div className="px-3 pb-2 pt-1 text-[9.5px] font-semibold uppercase tracking-[0.16em] text-text3">
+        <div className="px-3 pb-2 pt-1 text-label font-semibold uppercase tracking-[0.16em] text-text3">
           Workspace
         </div>
       )}
@@ -203,13 +203,13 @@ function SidebarContent({
           collapsed && 'justify-center p-2'
         )}
       >
-        <span className="grid size-7 shrink-0 place-items-center rounded-full bg-wash text-[11px] font-semibold text-forest">
+        <span className="grid size-7 shrink-0 place-items-center rounded-full bg-wash text-micro font-semibold text-forest">
           {extractInitials(agencyName || 'A')}
         </span>
         {!collapsed && (
           <div className="min-w-0">
-            <div className="truncate text-[13px] text-ink">{agencyName || 'Agency'}</div>
-            <div className="text-[11px] text-text3">
+            <div className="truncate text-body text-ink">{agencyName || 'Agency'}</div>
+            <div className="text-micro text-text3">
               {agencyMode === 'solo' ? 'Solo workspace' : 'Agency workspace'}
             </div>
           </div>

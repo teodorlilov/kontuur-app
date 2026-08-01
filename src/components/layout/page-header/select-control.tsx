@@ -28,7 +28,7 @@ export function SelectControl<T extends string>({
     <label
       className={cn(
         'relative inline-flex h-[35px] cursor-pointer items-center gap-1 rounded-sm border border-dashed border-line2',
-        'pl-3 pr-0 text-[13px] text-text2 transition-colors duration-150 ease-contour',
+        'pl-3 pr-0 text-body text-text2 transition-colors duration-150 ease-contour',
         'hover:border-forest hover:bg-surface/60 focus-within:border-forest'
       )}
     >
@@ -38,7 +38,7 @@ export function SelectControl<T extends string>({
         // Safe because the <option> list below is the only source of values a
         // user can pick, and it is built from `options` — every one of them a T.
         onChange={(event) => onChange(event.target.value as T)}
-        className="cursor-pointer appearance-none bg-transparent py-0 pl-1 pr-[26px] text-[13px] font-medium text-ink outline-none"
+        className="cursor-pointer appearance-none bg-transparent py-0 pl-1 pr-[26px] text-body font-medium text-ink outline-none"
       >
         {options.map((option) => (
           <option key={option.value} value={option.value}>

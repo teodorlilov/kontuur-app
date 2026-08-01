@@ -41,7 +41,7 @@ export function RosterRow({ entry, timezone }: RosterRowProps) {
           aria-hidden="true"
           className={cn(
             'grid size-10 flex-none place-items-center rounded-panel bg-forest-deep',
-            'text-[11px] font-bold text-white',
+            'text-micro font-bold text-white',
             // Lifts the badge off the card; no token covers a mark this small.
             'shadow-[0_6px_16px_-6px_rgba(15,21,18,0.35)]'
           )}
@@ -59,7 +59,7 @@ export function RosterRow({ entry, timezone }: RosterRowProps) {
             {entry.name}
           </Link>
           {entry.niche && (
-            <span className="mt-0.5 block truncate text-[11.5px] text-text3">{entry.niche}</span>
+            <span className="mt-0.5 block truncate text-caption text-text3">{entry.niche}</span>
           )}
         </span>
       </td>
@@ -78,7 +78,7 @@ export function RosterRow({ entry, timezone }: RosterRowProps) {
         <RowStatus entry={entry} timezone={timezone} />
       </td>
 
-      <td className="hidden text-[13px] leading-snug min-[1180px]:block">
+      <td className="hidden text-body leading-snug min-[1180px]:block">
         {next ? (
           <span className="text-text2">{next.label}</span>
         ) : (
@@ -86,7 +86,7 @@ export function RosterRow({ entry, timezone }: RosterRowProps) {
             &mdash;
           </span>
         )}
-        <span className="mt-[3px] block text-[11.5px] text-text3">
+        <span className="mt-[3px] block text-caption text-text3">
           {entry.queuedCount} queued
         </span>
       </td>

@@ -45,7 +45,7 @@ export function TeamTab({ members, currentUserId, currentUserRole, agencyMode }:
   }
 
   if (agencyMode === 'solo') {
-    return <p className="py-6 text-[13px] text-text2">Team management is available in agency mode.</p>
+    return <p className="py-6 text-body text-text2">Team management is available in agency mode.</p>
   }
 
   return (
@@ -74,7 +74,7 @@ export function TeamTab({ members, currentUserId, currentUserRole, agencyMode }:
         onClose={() => setPendingRemoval(null)}
         title="Remove team member"
       >
-        <p className="text-[13px] leading-relaxed text-text2">
+        <p className="text-body leading-relaxed text-text2">
           <b className="font-semibold text-ink">{pendingRemoval?.email}</b> will lose access to this
           workspace and their account will be deleted. This cannot be undone.
         </p>

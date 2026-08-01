@@ -58,7 +58,7 @@ export function StatCard({ label, value, icon, pill, footer, dark, children }: S
         {pill && (
           <span
             className={cn(
-              'rounded-full px-2.5 py-1 text-[11px] font-semibold',
+              'rounded-full px-2.5 py-1 text-micro font-semibold',
               // Wash-on-forest is unreadable, so the dark card promotes a
               // positive pill to the lime accent.
               PILL_CLASSES[dark && pill.tone === 'positive' ? 'accent' : pill.tone]
@@ -69,11 +69,11 @@ export function StatCard({ label, value, icon, pill, footer, dark, children }: S
         )}
       </div>
 
-      <div className={cn('text-[12.5px] font-medium', dark ? 'text-white/60' : 'text-text3')}>
+      <div className={cn('text-stat-label font-medium', dark ? 'text-white/60' : 'text-text3')}>
         {label}
       </div>
       {value !== undefined && (
-        <div className="mt-[3px] text-[31px] font-semibold leading-tight tracking-[-0.02em] tabular-nums">
+        <div className="mt-[3px] text-metric font-semibold leading-tight tracking-[-0.02em] tabular-nums">
           {value === null ? (
             <span aria-label="Unavailable" title="This figure could not be loaded">
               &mdash;
@@ -89,7 +89,7 @@ export function StatCard({ label, value, icon, pill, footer, dark, children }: S
       {footer && (
         <div
           className={cn(
-            'mt-3 flex items-center gap-2 text-[11.5px]',
+            'mt-3 flex items-center gap-2 text-caption',
             dark ? 'text-white/60' : 'text-text3'
           )}
         >

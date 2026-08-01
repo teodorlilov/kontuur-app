@@ -19,8 +19,8 @@ export function MemberRow({ member, isCurrentUser, canRemove, onRemove }: Member
       <Avatar name={member.email} size="md" />
 
       <div className="min-w-0 flex-1">
-        <b className="block truncate text-[13.5px] font-semibold text-ink">{member.email}</b>
-        <span className="text-[12.5px] text-text3">
+        <b className="block truncate text-body-lg font-semibold text-ink">{member.email}</b>
+        <span className="text-stat-label text-text3">
           Joined {formatLongDate(new Date(member.created_at))}
         </span>
       </div>
@@ -36,7 +36,7 @@ export function MemberRow({ member, isCurrentUser, canRemove, onRemove }: Member
         <button
           type="button"
           onClick={() => onRemove(member)}
-          className="rounded-md border border-line2 px-2.5 py-1 text-[11.5px] text-text2 transition-colors hover:border-danger-line hover:bg-danger-bg hover:text-danger"
+          className="rounded-md border border-line2 px-2.5 py-1 text-caption text-text2 transition-colors hover:border-danger-line hover:bg-danger-bg hover:text-danger"
         >
           Remove
         </button>

@@ -53,8 +53,8 @@ export function IntegrationsTab({ currentUserId, members }: IntegrationsTabProps
         <div className="col-span-12 flex items-center gap-3.5 py-[15px]">
           <ServiceTile>C</ServiceTile>
           <div className="min-w-0 flex-1">
-            <b className="block text-[13.5px] font-semibold text-ink">Canva</b>
-            <span className="text-[12.5px] text-text3">
+            <b className="block text-body-lg font-semibold text-ink">Canva</b>
+            <span className="text-stat-label text-text3">
               Designs are created in your own Canva account and exported to Kontuur posts
             </span>
           </div>
@@ -81,10 +81,10 @@ export function IntegrationsTab({ currentUserId, members }: IntegrationsTabProps
             >
               <Avatar name={member.email} size="md" />
               <div className="min-w-0 flex-1">
-                <b className="block truncate text-[13.5px] font-semibold text-ink">
+                <b className="block truncate text-body-lg font-semibold text-ink">
                   {member.email}
                 </b>
-                <span className="text-[12.5px] text-text3">
+                <span className="text-stat-label text-text3">
                   {capitalize(member.role)}
                   {member.id === currentUserId && ' · you'}
                   {member.canvaAccountName && ` · ${member.canvaAccountName}`}
@@ -114,7 +114,7 @@ export function IntegrationsTab({ currentUserId, members }: IntegrationsTabProps
           ))}
         </div>
 
-        <p className="col-span-12 rounded-panel bg-wash px-4 py-3.5 text-[12.5px] leading-relaxed text-text2">
+        <p className="col-span-12 rounded-panel bg-wash px-4 py-3.5 text-stat-label leading-relaxed text-text2">
           The <b className="font-semibold text-ink">Design in Canva</b> button uses whichever
           account the logged-in manager has connected. Designs stay in that person&rsquo;s Canva
           library.

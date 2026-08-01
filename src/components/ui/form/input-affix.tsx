@@ -33,11 +33,11 @@ export function InputAffix({ prefix, suffix, className, children }: InputAffixPr
       )}
     >
       {prefix && (
-        <span className="whitespace-nowrap py-0 pl-3 pr-1 text-[13px] text-text3">{prefix}</span>
+        <span className="whitespace-nowrap py-0 pl-3 pr-1 text-body text-text3">{prefix}</span>
       )}
       {children}
       {suffix && (
-        <span className="flex items-center whitespace-nowrap py-0 pl-1 pr-3 text-[13px] text-text3">
+        <span className="flex items-center whitespace-nowrap py-0 pl-1 pr-3 text-body text-text3">
           {suffix}
         </span>
       )}

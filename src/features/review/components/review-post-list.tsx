@@ -57,7 +57,7 @@ export function ReviewPostList({
             {approvedCount > 0 && ` \u00b7 ${approvedCount} approved`}
           </span>
           {approvedCount > 0 && (
-            <Button onClick={onOpenBatch} size="sm" variant="secondary" className="text-[10px] px-2 py-0.5 h-auto">
+            <Button onClick={onOpenBatch} size="sm" variant="secondary" className="text-label-lg px-2 py-0.5 h-auto">
               Schedule
             </Button>
           )}

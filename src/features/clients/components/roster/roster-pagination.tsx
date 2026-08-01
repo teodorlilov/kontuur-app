@@ -26,12 +26,12 @@ export function RosterPagination({
 
   return (
     <div className="flex items-center justify-between gap-4 border-t border-line px-3 pb-1 pt-4">
-      <p className="text-[12.5px] text-text3">
+      <p className="text-stat-label text-text3">
         {remaining} more {remaining === 1 ? 'client' : 'clients'} on schedule
       </p>
       <Link
         href={showAllHref}
-        className="text-[13px] font-medium text-forest underline decoration-spring underline-offset-4 hover:text-forest-deep"
+        className="text-body font-medium text-forest underline decoration-spring underline-offset-4 hover:text-forest-deep"
       >
         Show all {total}
       </Link>

@@ -132,7 +132,7 @@ export default async function DashboardPage() {
               <SectionHeading icon={<BarChart2 size={14} />} tone="marker">
                 Change requests
               </SectionHeading>
-              <span className="rounded-full bg-marker px-2.5 py-[3px] text-[11.5px] font-semibold text-forest-deep">
+              <span className="rounded-full bg-marker px-2.5 py-[3px] text-caption font-semibold text-forest-deep">
                 {data.changeRequests.length} {data.changeRequests.length === 1 ? 'post' : 'posts'}
               </span>
             </div>

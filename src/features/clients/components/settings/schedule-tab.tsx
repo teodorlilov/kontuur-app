@@ -154,7 +154,7 @@ function WeekPreview({ day, count }: { day: string; count: number }) {
             <div
               key={weekday.value}
               className={cn(
-                'rounded-md border py-2 text-center text-[11px]',
+                'rounded-md border py-2 text-center text-micro',
                 isRunDay
                   ? 'border-forest bg-forest text-surface/65'
                   : 'border-line bg-surface text-text3'
@@ -163,7 +163,7 @@ function WeekPreview({ day, count }: { day: string; count: number }) {
               {weekday.label.slice(0, 3)}
               <b
                 className={cn(
-                  'mt-0.5 block text-[12.5px] font-semibold',
+                  'mt-0.5 block text-stat-label font-semibold',
                   isRunDay ? 'text-surface' : 'text-ink'
                 )}
               >

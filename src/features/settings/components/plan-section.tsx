@@ -36,7 +36,7 @@ export function PlanSection({ agency, clientCount }: PlanSectionProps) {
           <PlanRow label="Trial ends">
             <span
               className={cn(
-                'text-[13px] font-medium',
+                'text-body font-medium',
                 isExpired ? 'text-danger' : 'text-ink'
               )}
             >
@@ -51,7 +51,7 @@ export function PlanSection({ agency, clientCount }: PlanSectionProps) {
         </PlanRow>
 
         <PlanRow label="Mode" isLast>
-          <span className="text-[13px] font-medium text-ink">
+          <span className="text-body font-medium text-ink">
             {agency.mode === 'solo' ? 'Solo' : 'Agency'}
           </span>
         </PlanRow>
@@ -63,7 +63,7 @@ export function PlanSection({ agency, clientCount }: PlanSectionProps) {
 /** Usage against the plan's client allowance, with a meter once there is a finite limit. */
 function ClientUsage({ used, limit }: { used: number; limit: number }) {
   if (limit === -1) {
-    return <span className="text-[13px] font-medium tabular-nums text-ink">{used} of unlimited</span>
+    return <span className="text-body font-medium tabular-nums text-ink">{used} of unlimited</span>
   }
 
   const pct = limit > 0 ? Math.min(100, Math.round((used / limit) * 100)) : 0
@@ -73,7 +73,7 @@ function ClientUsage({ used, limit }: { used: number; limit: number }) {
     <span className="flex items-center gap-2.5">
       <span
         className={cn(
-          'text-[13px] font-medium tabular-nums',
+          'text-body font-medium tabular-nums',
           atLimit ? 'text-pending' : 'text-ink'
         )}
       >
@@ -109,8 +109,8 @@ function PlanRow({
       )}
     >
       <div>
-        <b className="block text-[13.5px] font-semibold text-ink">{label}</b>
-        {note && <span className="text-[12.5px] text-text3">{note}</span>}
+        <b className="block text-body-lg font-semibold text-ink">{label}</b>
+        {note && <span className="text-stat-label text-text3">{note}</span>}
       </div>
       {children}
     </div>
@@ -125,7 +125,7 @@ export function UpgradeRailAction() {
       <Button className="w-full" disabled>
         Upgrade plan
       </Button>
-      <p className="mt-2.5 text-center text-[12.5px] text-text3">
+      <p className="mt-2.5 text-center text-stat-label text-text3">
         Billing is not connected yet.
       </p>
     </>

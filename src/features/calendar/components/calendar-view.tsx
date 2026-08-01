@@ -71,7 +71,7 @@ function ApprovalButton({
         title={disabled ? disabledReason : undefined}
         className={cn(
           TOOL_ROW,
-          'text-[12px]',
+          'text-caption-lg',
           isDisabled && 'cursor-not-allowed text-text3 opacity-60 hover:bg-transparent hover:text-text3'
         )}
       >
@@ -81,7 +81,7 @@ function ApprovalButton({
 
       {pickerOpen && clients.length > 1 && (
         <div className="absolute right-0 top-9 z-30 min-w-[180px] rounded-panel border border-line bg-surface py-1 shadow-pop">
-          <p className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-text3">
+          <p className="px-3 py-1.5 text-label-lg font-semibold uppercase tracking-[0.16em] text-text3">
             Select client
           </p>
           {clients.map((c) => (
@@ -89,7 +89,7 @@ function ApprovalButton({
               key={c.id}
               type="button"
               onClick={() => onSelectClient(c.id)}
-              className="w-full px-3 py-2 text-left text-[13px] text-ink transition-colors hover:bg-wash"
+              className="w-full px-3 py-2 text-left text-body text-ink transition-colors hover:bg-wash"
             >
               {c.name}
             </button>

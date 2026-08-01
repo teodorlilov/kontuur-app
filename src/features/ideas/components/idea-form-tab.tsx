@@ -57,7 +57,7 @@ export function IdeaFormTab({
     return (
       <FormSection>
         <div className="col-span-12">
-          <p className="mb-3 text-[13px] text-text2">
+          <p className="mb-3 text-body text-text2">
             No link has been created for {clientName} yet. Creating one lets them submit ideas
             without an account.
           </p>
@@ -122,7 +122,7 @@ export function IdeaFormTab({
                 key={idea.id}
                 className="flex items-center gap-3 border-t border-line py-3 first:border-t-0"
               >
-                <p className="min-w-0 flex-1 truncate text-[12.5px] text-ink">
+                <p className="min-w-0 flex-1 truncate text-stat-label text-ink">
                   &ldquo;{idea.ideaText}&rdquo;
                 </p>
                 {idea.platform && <StatusPill tone="mark">{idea.platform}</StatusPill>}
@@ -131,7 +131,7 @@ export function IdeaFormTab({
             ))}
             <Link
               href="/ideas"
-              className="mt-3 inline-block text-[12.5px] font-medium text-forest hover:underline"
+              className="mt-3 inline-block text-stat-label font-medium text-forest hover:underline"
             >
               View all ideas &rarr;
             </Link>

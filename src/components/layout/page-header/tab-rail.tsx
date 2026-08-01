@@ -26,7 +26,7 @@ interface TabRailProps<T extends string> {
 
 const TAB =
   'relative inline-flex shrink-0 items-center gap-2 whitespace-nowrap px-3.5 pb-[11px] ' +
-  'text-[13.5px] no-underline transition-colors duration-150 ease-contour first:pl-0'
+  'text-body-lg no-underline transition-colors duration-150 ease-contour first:pl-0'
 
 const TAB_ACTIVE =
   'font-semibold text-ink after:absolute after:inset-x-0 after:-bottom-px after:h-0.5 ' +
@@ -56,7 +56,7 @@ export function TabRail<T extends string>({ items, active, onSelect, label }: Ta
             {item.count !== undefined && (
               <span
                 className={cn(
-                  'rounded-full px-[7px] py-px text-[11px] font-semibold tabular-nums',
+                  'rounded-full px-[7px] py-px text-micro font-semibold tabular-nums',
                   item.flag
                     ? 'bg-accent text-forest-deep'
                     : item.warn

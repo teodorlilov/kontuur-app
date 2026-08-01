@@ -23,7 +23,7 @@ export function ProfileTab() {
     <div>
       <div className="mb-4 flex items-center gap-2.5">
         <StatusPill tone="warn">Coming soon</StatusPill>
-        <span className="text-[13px] text-text2">
+        <span className="text-body text-text2">
           Personal settings are separate from the agency workspace.
         </span>
       </div>
@@ -32,7 +32,7 @@ export function ProfileTab() {
         {UPCOMING.map(({ label, Icon }) => (
           <li
             key={label}
-            className="flex items-center gap-3 border-t border-line py-3.5 text-[13.5px] text-text3 first:border-t-0"
+            className="flex items-center gap-3 border-t border-line py-3.5 text-body-lg text-text3 first:border-t-0"
           >
             <Icon size={16} aria-hidden className="flex-none" />
             {label}

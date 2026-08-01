@@ -57,7 +57,7 @@ export function CoverageRow({ clientId, name, week, pendingCount, tier }: Covera
         TIER_CLASSES[Math.min(tier, DARK_TIER_INDEX)]
       )}
     >
-      <span className="grid size-11 shrink-0 place-items-center rounded-panel bg-surface text-[11.5px] font-semibold text-forest shadow-pop">
+      <span className="grid size-11 shrink-0 place-items-center rounded-panel bg-surface text-caption font-semibold text-forest shadow-pop">
         {extractInitials(name)}
       </span>
 
@@ -71,7 +71,7 @@ export function CoverageRow({ clientId, name, week, pendingCount, tier }: Covera
         {/* truncate, not wrap: a second line would push the row past the height
             the paginated list reserves for it. Solid ink, not an alpha one:
             ink/55 measured 3.74:1 on sage, so legibility changed per tier. */}
-        <div className={cn('mt-px truncate text-[11.5px]', isDark ? 'text-white/70' : 'text-text2')}>
+        <div className={cn('mt-px truncate text-caption', isDark ? 'text-white/70' : 'text-text2')}>
           {summary}
         </div>
       </div>
@@ -98,7 +98,7 @@ export function CoverageRow({ clientId, name, week, pendingCount, tier }: Covera
       {isEmpty && (
         <Link
           href={`/generate?client=${clientId}`}
-          className="ml-1 shrink-0 rounded-sm bg-surface px-3.5 py-2 text-[13px] font-medium text-forest no-underline transition-colors hover:bg-wash"
+          className="ml-1 shrink-0 rounded-sm bg-surface px-3.5 py-2 text-body font-medium text-forest no-underline transition-colors hover:bg-wash"
         >
           Generate →
         </Link>

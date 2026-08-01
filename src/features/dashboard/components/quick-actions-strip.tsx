@@ -63,8 +63,8 @@ export function QuickActionsStrip({ pendingCount, isSolo }: QuickActionsStripPro
               <Icon size={15} />
             </IconChip>
             <span className="min-w-0">
-              <span className="block truncate text-[13px] font-semibold text-ink">{action.title}</span>
-              <span className="block truncate text-[11.5px] text-text3">{action.subtitle}</span>
+              <span className="block truncate text-body font-semibold text-ink">{action.title}</span>
+              <span className="block truncate text-caption text-text3">{action.subtitle}</span>
             </span>
           </Link>
         )

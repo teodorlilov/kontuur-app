@@ -39,10 +39,10 @@ export function FormSection({ legend, description, className, children }: FormSe
       )}
     >
       {legend && (
-        <legend className="col-span-12 float-left w-full p-0 text-[13px] font-semibold text-ink">
+        <legend className="col-span-12 float-left w-full p-0 text-body font-semibold text-ink">
           {legend}
           {description && (
-            <span className="mt-0.5 block text-[12.5px] font-normal text-text3">{description}</span>
+            <span className="mt-0.5 block text-stat-label font-normal text-text3">{description}</span>
           )}
         </legend>
       )}
@@ -101,9 +101,9 @@ export function Field({
             *
           </span>
         )}
-        {optional && <span className="text-[11.5px] font-normal text-text3">optional</span>}
+        {optional && <span className="text-caption font-normal text-text3">optional</span>}
         {count && (
-          <span className="ml-auto text-[11.5px] tabular-nums text-text3">{count}</span>
+          <span className="ml-auto text-caption tabular-nums text-text3">{count}</span>
         )}
       </div>
 

@@ -187,7 +187,7 @@ export function InsightsRail({
       </RailText>
       <Link
         href={`/clients/${clientId}/sources`}
-        className="mt-3 inline-block text-[12.5px] font-medium text-forest hover:underline"
+        className="mt-3 inline-block text-stat-label font-medium text-forest hover:underline"
       >
         Manage sources &rarr;
       </Link>

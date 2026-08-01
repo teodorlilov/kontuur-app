@@ -34,7 +34,7 @@ export function SaveBar({ dirty, label, saving, onSave, onDiscard }: SaveBarProp
         dirty ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0'
       )}
     >
-      <div className="flex flex-1 items-center gap-[9px] text-[13px]">
+      <div className="flex flex-1 items-center gap-[9px] text-body">
         <span aria-hidden className="size-2 rounded-xs bg-accent" />
         <span>
           <b className="font-semibold">Unsaved changes</b>{' '}

@@ -85,7 +85,7 @@ export function ConnectedAccountsTab({ clientId, connections }: ConnectedAccount
         })}
       </div>
 
-      <p className="mt-[18px] rounded-panel bg-wash px-4 py-3.5 text-[12.5px] leading-relaxed text-text2">
+      <p className="mt-[18px] rounded-panel bg-wash px-4 py-3.5 text-stat-label leading-relaxed text-text2">
         Connected accounts enable real-time analytics and let approved posts publish directly.
         Without one, Kontuur can still draft and schedule — it just can&rsquo;t post.
       </p>
@@ -118,8 +118,8 @@ function AccountRow({
       <ServiceTile>{platform.initials}</ServiceTile>
 
       <div className="min-w-0 flex-1">
-        <b className="block text-[13.5px] font-semibold text-ink">{platform.label}</b>
-        <span className="text-[12.5px] text-text3">
+        <b className="block text-body-lg font-semibold text-ink">{platform.label}</b>
+        <span className="text-stat-label text-text3">
           {connection ? connection.account_name : platform.note}
         </span>
       </div>

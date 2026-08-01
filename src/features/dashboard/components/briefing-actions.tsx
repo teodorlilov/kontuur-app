@@ -50,7 +50,7 @@ export function BriefingActions() {
         </Button>
       </div>
       {tip && (
-        <p className="max-w-[46ch] rounded-chip bg-wash px-3 py-2 text-right text-[13px] text-forest">
+        <p className="max-w-[46ch] rounded-chip bg-wash px-3 py-2 text-right text-body text-forest">
           {tip}
         </p>
       )}

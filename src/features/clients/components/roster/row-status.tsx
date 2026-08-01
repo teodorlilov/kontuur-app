@@ -60,9 +60,9 @@ function copyFor(entry: ClientRosterEntry, timezone: string): { headline: string
 export function RowStatus({ entry, timezone }: RowStatusProps) {
   const { headline, detail } = copyFor(entry, timezone)
   return (
-    <div className="text-[13px] leading-snug">
+    <div className="text-body leading-snug">
       <span className={cn(entry.needsAttention ? 'text-ink' : 'text-text2')}>{headline}</span>
-      {detail && <span className="mt-[3px] block text-[11.5px] text-text3">{detail}</span>}
+      {detail && <span className="mt-[3px] block text-caption text-text3">{detail}</span>}
     </div>
   )
 }

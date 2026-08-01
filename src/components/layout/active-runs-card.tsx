@@ -23,11 +23,11 @@ export function ActiveRunsCard({ runs }: ActiveRunsCardProps) {
 
   return (
     <div className="surface-live mx-2.5 mb-3 rounded-panel border border-spring/20 p-3">
-      <div className="flex items-center gap-[7px] text-[12px] font-medium text-ink">
+      <div className="flex items-center gap-[7px] text-caption-lg font-medium text-ink">
         <span className="live-dot size-1.5 shrink-0 rounded-full bg-spring" />
         Composing drafts
       </div>
-      <div className="mt-[3px] text-[11px] text-text3">
+      <div className="mt-[3px] text-micro text-text3">
         {detail} · {formatRelativeTime(parseTimestamp(run.startedAt))}
       </div>
       <div className="mt-2.5 h-[3px] overflow-hidden rounded-sm bg-forest/10">

@@ -104,7 +104,7 @@ export function PageHeader({
                   // Floating chrome, not a clearing — the one place a mark this
                   // small still earns a shadow.
                   'shadow-[0_6px_16px_-6px_rgba(15,21,18,0.4)]',
-                  'group-data-[stuck=true]/head:size-[29px] group-data-[stuck=true]/head:text-[10px]'
+                  'group-data-[stuck=true]/head:size-[29px] group-data-[stuck=true]/head:text-label-lg'
                 )}
               >
                 {badge}
@@ -115,7 +115,7 @@ export function PageHeader({
               {eyebrow && (
                 <div
                   className={cn(
-                    'max-h-5 overflow-hidden text-[10px] font-semibold uppercase tracking-[0.16em] text-text3',
+                    'max-h-5 overflow-hidden text-label-lg font-semibold uppercase tracking-[0.16em] text-text3',
                     'transition-[max-height,opacity] duration-300 ease-contour motion-reduce:transition-none',
                     'group-data-[stuck=true]/head:max-h-0 group-data-[stuck=true]/head:opacity-0'
                   )}
@@ -126,9 +126,9 @@ export function PageHeader({
 
               <h1
                 className={cn(
-                  'flex min-w-0 items-center gap-[11px] truncate text-[23px] font-semibold leading-tight',
+                  'flex min-w-0 items-center gap-[11px] truncate text-headline font-semibold leading-tight',
                   'tracking-[-0.02em] text-ink transition-[font-size] duration-300 ease-contour motion-reduce:transition-none',
-                  'group-data-[stuck=true]/head:text-[14.5px]'
+                  'group-data-[stuck=true]/head:text-title'
                 )}
               >
                 {title}
@@ -173,7 +173,7 @@ export function HeaderMeta({ parts }: { parts: Array<ReactNode | null | false> }
   if (visible.length === 0) return null
 
   return (
-    <div className="flex flex-wrap items-center gap-[9px] text-[13px] text-text2">
+    <div className="flex flex-wrap items-center gap-[9px] text-body text-text2">
       {visible.map((part, index) => (
         <Fragment key={index}>
           {index > 0 && (

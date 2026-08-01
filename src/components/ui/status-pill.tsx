@@ -30,7 +30,7 @@ export function StatusPill({ tone, children }: { tone: PillTone; children: React
   return (
     <span
       className={cn(
-        'inline-flex h-[23px] flex-none items-center rounded-full px-2.5 text-[11px] font-semibold',
+        'inline-flex h-[23px] flex-none items-center rounded-full px-2.5 text-micro font-semibold',
         PILL_TONES[tone]
       )}
     >

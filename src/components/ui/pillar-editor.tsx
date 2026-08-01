@@ -126,7 +126,7 @@ export function PillarEditor({ pillars, onChange, allowEmpty = false }: PillarEd
           <button
             type="button"
             onClick={handleAdd}
-            className="rounded-md border border-line2 px-3 py-1.5 text-[12.5px] font-medium text-text2 transition-colors hover:border-forest hover:text-forest"
+            className="rounded-md border border-line2 px-3 py-1.5 text-stat-label font-medium text-text2 transition-colors hover:border-forest hover:text-forest"
           >
             + Add pillar
           </button>
@@ -134,7 +134,7 @@ export function PillarEditor({ pillars, onChange, allowEmpty = false }: PillarEd
           <span />
         )}
         {pillars.length > 0 && (
-          <span className="text-[12.5px]">
+          <span className="text-stat-label">
             Total{' '}
             <b className={cn('font-semibold', balanced ? 'text-forest' : 'text-pending')}>
               {totalWeight}%

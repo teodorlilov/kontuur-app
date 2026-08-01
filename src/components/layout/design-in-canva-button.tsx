@@ -33,7 +33,7 @@ export function DesignInCanvaButton({ collapsed = false }: { collapsed?: boolean
       <span
         aria-hidden="true"
         className={cn(
-          'grid size-[15px] shrink-0 place-items-center rounded-xs text-[9.5px] font-bold',
+          'grid size-[15px] shrink-0 place-items-center rounded-xs text-label font-bold',
           connected ? 'bg-forest text-white' : 'bg-ink/10 text-text3'
         )}
       >

@@ -87,6 +87,37 @@
   --radius-full: 9999px;
 
   --ease-contour: cubic-bezier(0.22, 1, 0.36, 1);
+
+  /* The type ramp from DESIGN.md §Typography, which until now existed only as
+     prose — so every surface restated its sizes as literals and the Closed Ramp
+     Rule had nothing to enforce it.
+
+     Additive, unlike the radii above: none of these names is one of Tailwind's
+     (xs/sm/base/lg/…), so its default scale survives intact and nothing outside
+     this system is retyped.
+
+     Four roles are ranges in the doc rather than single steps, and the -sm/-lg
+     names carry those ends. They are not an invitation to add more: a size that
+     is not one of these is drift, and the fix is to snap it to the nearest of
+     them. Deliberately no --text-*--line-height pairs — leading stays with the
+     call sites that already set it.
+
+     `--text-display` is the size; `--font-display` is the serif family. Display
+     type usually wants both. */
+  --text-metric: 31px;
+  --text-headline: 23px;
+  --text-display-lg: 17px;
+  --text-display: 15.5px;
+  --text-display-sm: 15px;
+  --text-title: 14.5px;
+  --text-body-lg: 13.5px;
+  --text-body: 13px;
+  --text-stat-label: 12.5px;
+  --text-caption-lg: 12px;
+  --text-caption: 11.5px;
+  --text-micro: 11px;
+  --text-label-lg: 10px;
+  --text-label: 9.5px;
 }
 
 /* ─── Legacy token compatibility ──────────────────────────────────────

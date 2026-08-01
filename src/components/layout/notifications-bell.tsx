@@ -53,7 +53,7 @@ function NotificationPanel({
 
       <div className="max-h-[420px] overflow-y-auto">
         {notifications.length === 0 ? (
-          <div className="p-8 text-center text-[13px] text-text3">No notifications yet</div>
+          <div className="p-8 text-center text-body text-text3">No notifications yet</div>
         ) : (
           <>
             {today.length > 0 && <SectionHeader label="Today" />}
@@ -80,13 +80,13 @@ function PanelHeader({ unreadCount, onMarkAllRead }: { unreadCount: number; onMa
       <div className="flex items-center gap-2">
         <span className="text-[14px] font-semibold text-ink">Notifications</span>
         {unreadCount > 0 && (
-          <span className="rounded-full bg-wash px-2 py-0.5 text-[11px] font-medium text-forest">
+          <span className="rounded-full bg-wash px-2 py-0.5 text-micro font-medium text-forest">
             {unreadCount} new
           </span>
         )}
       </div>
       {unreadCount > 0 && (
-        <button onClick={onMarkAllRead} className="text-[11px] font-medium text-text2 hover:text-forest">
+        <button onClick={onMarkAllRead} className="text-micro font-medium text-text2 hover:text-forest">
           Mark all read
         </button>
       )}
@@ -97,7 +97,7 @@ function PanelHeader({ unreadCount, onMarkAllRead }: { unreadCount: number; onMa
 /** Section divider label (Today / Earlier). */
 function SectionHeader({ label }: { label: string }) {
   return (
-    <div className="px-4 pb-1 pt-2 text-[10px] font-medium uppercase tracking-[0.1em] text-text3">
+    <div className="px-4 pb-1 pt-2 text-label-lg font-medium uppercase tracking-[0.1em] text-text3">
       {label}
     </div>
   )
@@ -107,7 +107,7 @@ function SectionHeader({ label }: { label: string }) {
 function PanelFooter({ onNavigate }: { onNavigate: () => void }) {
   return (
     <div className="border-t border-line px-4 py-2.5 text-center">
-      <button onClick={onNavigate} className="text-[12px] font-medium text-forest hover:underline">
+      <button onClick={onNavigate} className="text-caption-lg font-medium text-forest hover:underline">
         Go to calendar →
       </button>
     </div>

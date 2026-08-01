@@ -26,18 +26,18 @@ function CardHeader({ cr }: { cr: DashboardChangeRequest }) {
 
   return (
     <div className="mb-2 flex flex-wrap items-center gap-1.5">
-      <span className="text-[13px] font-semibold text-ink">{cr.clientName}</span>
-      <span className="text-[12px] text-text3">· Post #{cr.postNumber}</span>
-      {scheduledLabel && <span className="text-[12px] text-text3">· {scheduledLabel}</span>}
+      <span className="text-body font-semibold text-ink">{cr.clientName}</span>
+      <span className="text-caption-lg text-text3">· Post #{cr.postNumber}</span>
+      {scheduledLabel && <span className="text-caption-lg text-text3">· {scheduledLabel}</span>}
 
-      <span className="ml-1 rounded-xs bg-wash px-2 py-0.5 text-[11px] font-medium text-forest">
+      <span className="ml-1 rounded-xs bg-wash px-2 py-0.5 text-micro font-medium text-forest">
         {PLATFORM_LABELS[platform] ?? platform}
       </span>
-      <span className="rounded-xs bg-sunken px-2 py-0.5 text-[11px] font-medium text-text2">
+      <span className="rounded-xs bg-sunken px-2 py-0.5 text-micro font-medium text-text2">
         {buildPostTypeLabel(cr.postType, slideCount)}
       </span>
 
-      {timeAgo && <span className="ml-auto shrink-0 text-[11px] text-text3">{timeAgo}</span>}
+      {timeAgo && <span className="ml-auto shrink-0 text-micro text-text3">{timeAgo}</span>}
     </div>
   )
 }
@@ -47,7 +47,7 @@ function FeedbackQuote({ note }: { note: string }) {
   return (
     <div className="mt-2 flex gap-2 rounded-sm border border-marker bg-marker/40 px-3 py-2.5">
       <MessageCircle size={14} className="mt-0.5 shrink-0 text-text2" />
-      <p className="text-[13px] italic leading-[1.5] text-ink">&ldquo;{note}&rdquo;</p>
+      <p className="text-body italic leading-[1.5] text-ink">&ldquo;{note}&rdquo;</p>
     </div>
   )
 }
@@ -61,7 +61,7 @@ export function ChangeRequestCard({ changeRequest: cr }: { changeRequest: Dashbo
       <CardHeader cr={cr} />
 
       {cr.caption && (
-        <p className="mb-1 text-[13px] leading-[1.45] text-ink">{truncateText(cr.caption, 120)}</p>
+        <p className="mb-1 text-body leading-[1.45] text-ink">{truncateText(cr.caption, 120)}</p>
       )}
 
       {cr.clientNote && <FeedbackQuote note={cr.clientNote} />}
@@ -73,7 +73,7 @@ export function ChangeRequestCard({ changeRequest: cr }: { changeRequest: Dashbo
         </ActionLink>
 
         {flaggedSlide && (
-          <span className="inline-flex items-center gap-1 rounded-xs bg-pending-bg px-2.5 py-1 text-[11px] font-medium text-pending">
+          <span className="inline-flex items-center gap-1 rounded-xs bg-pending-bg px-2.5 py-1 text-micro font-medium text-pending">
             <AlertTriangle size={11} />
             Slide {flaggedSlide} flagged
           </span>

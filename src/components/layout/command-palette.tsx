@@ -127,14 +127,14 @@ function PaletteBody({
               placeholder="Search clients, pages and actions…"
               className="w-full bg-transparent text-[14px] text-ink outline-none placeholder:text-text3"
             />
-            <kbd className="rounded-[5px] border border-line2 px-1.5 py-px text-[9.5px] font-semibold text-text3">
+            <kbd className="rounded-[5px] border border-line2 px-1.5 py-px text-label font-semibold text-text3">
               ESC
             </kbd>
           </div>
 
           <div ref={listRef} className="max-h-[320px] overflow-y-auto p-2">
             {results.length === 0 ? (
-              <p className="px-2 py-6 text-center text-[13px] text-text3">Nothing matches “{query}”.</p>
+              <p className="px-2 py-6 text-center text-body text-text3">Nothing matches “{query}”.</p>
             ) : (
               results.map((entry, index) => {
                 const Icon = entry.icon
@@ -152,8 +152,8 @@ function PaletteBody({
                     )}
                   >
                     <Icon size={14} className={cn('shrink-0', isActive ? 'text-forest' : 'text-text3')} />
-                    <span className="flex-1 truncate text-[13.5px] text-ink">{entry.label}</span>
-                    <span className="text-[11px] text-text3">{entry.hint}</span>
+                    <span className="flex-1 truncate text-body-lg text-ink">{entry.label}</span>
+                    <span className="text-micro text-text3">{entry.hint}</span>
                     {isActive && <CornerDownLeft size={12} className="text-text3" />}
                   </button>
                 )

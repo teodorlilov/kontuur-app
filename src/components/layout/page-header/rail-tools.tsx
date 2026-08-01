@@ -24,7 +24,7 @@ export function RailTools() {
 
       <button type="button" onClick={openPalette} className={TOOL_ROW} aria-label="Search">
         <Search size={14} className="shrink-0" />
-        <kbd className="rounded-xs border border-line2 px-1 py-px text-[10px] font-semibold not-italic text-text3">
+        <kbd className="rounded-xs border border-line2 px-1 py-px text-label-lg font-semibold not-italic text-text3">
           ⌘K
         </kbd>
       </button>
@@ -36,7 +36,7 @@ export function RailTools() {
         title="Your account"
         className={cn(
           'ml-1 grid size-[27px] shrink-0 place-items-center rounded-full bg-wash',
-          'text-[10px] font-semibold text-forest no-underline transition-colors hover:bg-sage'
+          'text-label-lg font-semibold text-forest no-underline transition-colors hover:bg-sage'
         )}
       >
         {userInitials}

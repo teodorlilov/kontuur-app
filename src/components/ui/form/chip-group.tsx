@@ -37,7 +37,7 @@ export function Chip({ pressed, onClick, disabled, live, children }: ChipProps) 
       disabled={disabled}
       onClick={onClick}
       className={cn(
-        'inline-flex h-[34px] items-center gap-[7px] rounded-full border px-3.5 text-[13px]',
+        'inline-flex h-[34px] items-center gap-[7px] rounded-full border px-3.5 text-body',
         'transition-colors duration-150 ease-contour',
         pressed
           ? 'border-forest bg-forest font-medium text-surface'

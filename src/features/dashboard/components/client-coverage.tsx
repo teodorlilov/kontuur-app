@@ -51,7 +51,7 @@ export function ClientCoverage({ clients, coverage, clientPendingMap }: ClientCo
       </div>
 
       {clients.length === 0 ? (
-        <p className="mt-4 rounded-card border border-line bg-surface px-5 py-8 text-center text-[13px] text-text2">
+        <p className="mt-4 rounded-card border border-line bg-surface px-5 py-8 text-center text-body text-text2">
           No clients yet.{' '}
           <Link href="/clients/new" className="font-medium text-forest underline-offset-2 hover:underline">
             Add your first client
@@ -77,7 +77,7 @@ export function ClientCoverage({ clients, coverage, clientPendingMap }: ClientCo
 
           {pageCount > 1 && (
             <div className="mt-3 flex items-center justify-between px-1">
-              <span className="text-[11.5px] tabular-nums text-text3">
+              <span className="text-caption tabular-nums text-text3">
                 {firstIndex + 1}–{firstIndex + visible.length} of {clients.length}
               </span>
               <div className="flex items-center gap-1.5">

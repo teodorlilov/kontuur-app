@@ -12,7 +12,7 @@ import { cn } from '@/utils/cn'
 /** The square initials mark for a service: IG, FB, C. */
 export function ServiceTile({ children }: { children: ReactNode }) {
   return (
-    <span className="grid size-[38px] flex-none place-items-center rounded-panel bg-wash text-[11px] font-bold text-forest">
+    <span className="grid size-[38px] flex-none place-items-center rounded-panel bg-wash text-micro font-bold text-forest">
       {children}
     </span>
   )
@@ -37,7 +37,7 @@ export function ConnectLink({
     <a
       href={href}
       className={cn(
-        'inline-flex h-8 items-center rounded-md bg-forest px-3 text-[12.5px] font-medium text-surface',
+        'inline-flex h-8 items-center rounded-md bg-forest px-3 text-stat-label font-medium text-surface',
         'transition-colors duration-150 ease-contour hover:bg-forest-deep',
         'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-spring',
         className

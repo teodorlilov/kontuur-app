@@ -74,25 +74,25 @@ export function NotificationItem({ notification: n, onMarkRead, onNavigate }: No
         </div>
 
         <div className="min-w-0 flex-1">
-          <div className="text-[13px] leading-[1.4] text-ink">
+          <div className="text-body leading-[1.4] text-ink">
             <span className="font-semibold">{clientName}</span> {title}
           </div>
 
           {feedbackPreview && (
-            <div className="mt-1.5 rounded-sm bg-marker/40 px-2.5 py-1.5 text-[12px] italic leading-[1.45] text-forest-deep">
+            <div className="mt-1.5 rounded-sm bg-marker/40 px-2.5 py-1.5 text-caption-lg italic leading-[1.45] text-forest-deep">
               &ldquo;{feedbackPreview}&rdquo;
             </div>
           )}
 
           {!feedbackPreview && body && (
-            <div className="mt-0.5 text-[12px] leading-[1.4] text-text3">{body}</div>
+            <div className="mt-0.5 text-caption-lg leading-[1.4] text-text3">{body}</div>
           )}
 
           <div className="mt-1.5 flex items-center justify-between">
-            <span className="text-[11px] text-text3">
+            <span className="text-micro text-text3">
               {formatRelativeTime(parseTimestamp(n.created_at))}
             </span>
-            <span className="text-[11px] font-medium text-forest">Open in calendar →</span>
+            <span className="text-micro font-medium text-forest">Open in calendar →</span>
           </div>
         </div>
       </div>

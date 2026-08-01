@@ -31,10 +31,10 @@ export function FormPanel({
       <div className="px-6 pt-[22px]">
         {/* The `display` role. Safe to leave un-gated by hasCyrillic: panel titles are authored
             English strings, never interpolated client data. */}
-        <h3 className="font-display text-[17px] font-normal italic leading-[1.4] text-ink">
+        <h3 className="font-display text-display-lg font-normal italic leading-[1.4] text-ink">
           {title}
         </h3>
-        {description && <p className="mt-1 text-[13px] text-text3">{description}</p>}
+        {description && <p className="mt-1 text-body text-text3">{description}</p>}
       </div>
 
       <div className="flex flex-col items-start gap-6 px-6 pb-[22px] pt-6 lg:flex-row lg:gap-[38px]">

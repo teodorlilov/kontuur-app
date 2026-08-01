@@ -94,7 +94,7 @@ export function PendingReviewList({ posts, totalPending }: PendingReviewListProp
     <Card className="px-5 py-[18px]">
       <div className="flex items-center justify-between gap-3">
         <SectionHeading icon={<CircleCheck size={14} />}>Pending review</SectionHeading>
-        <span className="rounded-full bg-wash px-2.5 py-[3px] text-[11.5px] font-semibold text-forest">
+        <span className="rounded-full bg-wash px-2.5 py-[3px] text-caption font-semibold text-forest">
           {remaining} in queue
         </span>
       </div>
@@ -108,7 +108,7 @@ export function PendingReviewList({ posts, totalPending }: PendingReviewListProp
             <IconChip className="size-11 rounded-full">
               <Check size={18} />
             </IconChip>
-            <span className="text-center font-display text-[15.5px] italic text-text2">
+            <span className="text-center font-display text-display italic text-text2">
               All caught up — nothing waiting on you.
             </span>
           </div>
@@ -125,12 +125,12 @@ export function PendingReviewList({ posts, totalPending }: PendingReviewListProp
       </div>
 
       <div className="mt-3 flex items-center justify-between">
-        <span className="text-[11.5px] text-text3">
+        <span className="text-caption text-text3">
           {deeperInQueue > 0 ? `${deeperInQueue} more in the full queue` : ' '}
         </span>
         <Link
           href="/review"
-          className="text-[12.5px] font-medium text-forest no-underline underline-offset-4 hover:underline"
+          className="text-stat-label font-medium text-forest no-underline underline-offset-4 hover:underline"
         >
           Open full queue
         </Link>
@@ -172,7 +172,7 @@ function PendingRow({
       ) : (
         <span
           className={cn(
-            'grid h-[44px] w-[44px] shrink-0 place-items-center rounded-sm bg-wash text-[15px] text-forest',
+            'grid h-[44px] w-[44px] shrink-0 place-items-center rounded-sm bg-wash text-display-sm text-forest',
             // Instrument Serif ships no Cyrillic, so a Bulgarian client's
             // initial would silently fall back to a mismatched system face.
             hasCyrillic(initial) ? 'font-sans font-medium not-italic' : 'font-display italic'
@@ -183,10 +183,10 @@ function PendingRow({
       )}
 
       <div className="min-w-0 flex-1">
-        <p className="line-clamp-2 break-words text-[13px] font-medium leading-[1.4] text-ink">
+        <p className="line-clamp-2 break-words text-body font-medium leading-[1.4] text-ink">
           {preview}
         </p>
-        <p className="mt-[3px] truncate text-[11.5px] text-text3">
+        <p className="mt-[3px] truncate text-caption text-text3">
           {[post.clientName, post.pillar || null, formatRelativeTime(parseTimestamp(post.createdAt))]
             .filter(Boolean)
             .join(' · ')}
@@ -202,14 +202,14 @@ function PendingRow({
           // Every row's button reads "Approve"; without this a screen-reader
           // user tabbing the queue cannot tell which post they are approving.
           aria-label={`Approve post for ${post.clientName}`}
-          className="rounded-full bg-forest px-3 py-1.5 text-[12px] font-medium text-white transition-colors hover:bg-forest-deep disabled:opacity-50"
+          className="rounded-full bg-forest px-3 py-1.5 text-caption-lg font-medium text-white transition-colors hover:bg-forest-deep disabled:opacity-50"
         >
           Approve
         </button>
         <Link
           href="/review"
           aria-label={`Open the review queue for ${post.clientName}`}
-          className="rounded-full px-3 py-1 text-center text-[11.5px] font-medium text-text2 no-underline transition-colors hover:text-forest"
+          className="rounded-full px-3 py-1 text-center text-caption font-medium text-text2 no-underline transition-colors hover:text-forest"
         >
           Open
         </Link>
