@@ -1,6 +1,13 @@
-import Link from 'next/link'
 import { hasCyrillic } from '@/lib/canvas/font-library'
+import { formatRelativeTime, parseTimestamp } from '@/utils/format'
 import { cn } from '@/utils/cn'
+import { ActionLink } from '@/components/ui/action-link'
+import {
+  HeaderMeta,
+  MetaFlag,
+  MetaWarn,
+  PageHeader,
+} from '@/components/layout/page-header/page-header'
 
 interface DashboardHeaderProps {
   agencyName: string
@@ -8,6 +15,9 @@ interface DashboardHeaderProps {
   isSolo: boolean
   /** IANA timezone of the agency — the greeting follows the reader's day, not the server's. */
   timezone: string
+  pendingCount: number
+  oldestPendingAt: string | null
+  failedCount: number
 }
 
 /** Time-of-day greeting in the agency's own timezone. */
@@ -22,25 +32,23 @@ function resolveGreeting(timezone: string): string {
   return 'Good evening'
 }
 
-function formatToday(timezone: string): string {
-  return new Intl.DateTimeFormat('en-GB', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-    timeZone: timezone,
-  }).format(new Date())
-}
-
-export function DashboardHeader({ agencyName, clientCount, isSolo, timezone }: DashboardHeaderProps) {
+/** The dashboard's greeting header. */
+export function DashboardHeader({
+  agencyName,
+  clientCount,
+  isSolo,
+  timezone,
+  pendingCount,
+  oldestPendingAt,
+  failedCount,
+}: DashboardHeaderProps) {
   const name = agencyName || 'there'
-  const clientLine = isSolo
-    ? 'Your workspace'
-    : `${clientCount} ${clientCount === 1 ? 'client' : 'clients'} active`
 
   return (
-    <div className="mb-10 flex flex-wrap items-end justify-between gap-4">
-      <div>
-        <h1 className="text-[23px] font-semibold tracking-[-0.02em] text-ink">
+    <PageHeader
+      crumb={[]}
+      title={
+        <>
           {resolveGreeting(timezone)},{' '}
           {/* Instrument Serif has no Cyrillic — Cyrillic names stay in the sans face. */}
           <em
@@ -51,28 +59,38 @@ export function DashboardHeader({ agencyName, clientCount, isSolo, timezone }: D
           >
             {name}
           </em>
-        </h1>
-        <p className="mt-[3px] text-[13px] text-text3">
-          {formatToday(timezone)} · {clientLine}
-        </p>
-      </div>
-
-      <div className="flex gap-2">
-        {!isSolo && (
-          <Link
-            href="/clients/new"
-            className="inline-flex items-center rounded-sm border border-line2 px-3.5 py-2 text-[13px] font-medium text-ink no-underline transition-colors hover:border-forest hover:bg-wash hover:text-forest"
-          >
-            Add client
-          </Link>
-        )}
-        <Link
-          href="/generate"
-          className="inline-flex items-center gap-2 rounded-sm bg-forest px-3.5 py-2 text-[13px] font-medium text-white no-underline transition-[background-color,transform,box-shadow] duration-150 ease-contour hover:-translate-y-px hover:bg-forest-deep hover:shadow-pop"
-        >
-          {isSolo ? 'Create content' : 'Generate posts'} <span aria-hidden="true">→</span>
-        </Link>
-      </div>
-    </div>
+        </>
+      }
+      meta={
+        <HeaderMeta
+          parts={[
+            // The date moved up to the rail, so this line leads with whatever
+            // actually needs the reader today rather than restating the day.
+            pendingCount > 0 && (
+              <MetaFlag>
+                {pendingCount} {pendingCount === 1 ? 'draft' : 'drafts'} waiting
+                {oldestPendingAt ? ` since ${formatRelativeTime(parseTimestamp(oldestPendingAt))}` : ''}
+              </MetaFlag>
+            ),
+            failedCount > 0 && <MetaWarn>{failedCount} failed to publish</MetaWarn>,
+            isSolo
+              ? 'Your workspace'
+              : `${clientCount} ${clientCount === 1 ? 'client' : 'clients'} active`,
+          ]}
+        />
+      }
+      actions={
+        <>
+          {!isSolo && (
+            <ActionLink href="/clients/new" variant="secondary">
+              Add client
+            </ActionLink>
+          )}
+          <ActionLink href="/generate">
+            {isSolo ? 'Create content' : 'Generate posts'} <span aria-hidden="true">→</span>
+          </ActionLink>
+        </>
+      }
+    />
   )
 }

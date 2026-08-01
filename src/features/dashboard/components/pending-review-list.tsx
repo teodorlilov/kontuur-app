@@ -4,11 +4,13 @@ import { useState, useTransition } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { Check, CircleCheck } from 'lucide-react'
-import { toast } from 'sonner'
+import { toast } from '@/components/ui/toast'
 import { updatePost } from '@/lib/actions/post-actions'
 import { formatRelativeTime, parseTimestamp, toPreviewLine } from '@/utils/format'
 import { hasCyrillic } from '@/lib/canvas/font-library'
 import { cn } from '@/utils/cn'
+import { Card } from '@/components/ui/card'
+import { SectionHeading } from '@/components/ui/section-heading'
 import { COVERAGE_LIST_HEIGHT } from '@/features/dashboard/lib/layout'
 import type { PendingPostPreview } from '@/features/dashboard/queries'
 
@@ -22,13 +24,18 @@ export function PendingReviewList({ posts, totalPending }: PendingReviewListProp
   const [queue, setQueue] = useState(posts)
   const [approvingId, setApprovingId] = useState<string | null>(null)
   const [approvedCount, setApprovedCount] = useState(0)
-  const [serverTotal, setServerTotal] = useState(totalPending)
+  const [serverPosts, setServerPosts] = useState(posts)
   const [, startTransition] = useTransition()
 
   // Approving runs a server action, which re-renders the route with a fresh
   // count. Adopt it and drop the optimistic offset, or the two subtract twice.
-  if (totalPending !== serverTotal) {
-    setServerTotal(totalPending)
+  //
+  // Keyed on the posts array identity, not on totalPending: a server render
+  // always produces a new array, but the count can come back unchanged when a
+  // new draft lands in the same window as an approval — and on that tick the
+  // stale offset would silently under-report the queue from then on.
+  if (posts !== serverPosts) {
+    setServerPosts(posts)
     setApprovedCount(0)
     setQueue(posts)
   }
@@ -41,7 +48,7 @@ export function PendingReviewList({ posts, totalPending }: PendingReviewListProp
    * it is the most consequential click on the dashboard. It stays one click —
    * but it is now reversible, and the toast holds the exit.
    */
-  function handleApprove(post: PendingPostPreview, index: number) {
+  function handleApprove(post: PendingPostPreview) {
     setApprovingId(post.id)
     startTransition(async () => {
       const result = await updatePost(post.id, { status: 'approved' })
@@ -56,12 +63,12 @@ export function PendingReviewList({ posts, totalPending }: PendingReviewListProp
       toast.success(`Approved — added to ${post.clientName}'s schedule`, {
         // Long enough to notice the row leave and change your mind.
         duration: 8000,
-        action: { label: 'Undo', onClick: () => handleUndo(post, index) },
+        action: { label: 'Undo', onClick: () => handleUndo(post) },
       })
     })
   }
 
-  function handleUndo(post: PendingPostPreview, index: number) {
+  function handleUndo(post: PendingPostPreview) {
     startTransition(async () => {
       const result = await updatePost(post.id, { status: 'pending_review' })
       if (!result.ok) {
@@ -69,26 +76,23 @@ export function PendingReviewList({ posts, totalPending }: PendingReviewListProp
         return
       }
       setApprovedCount((count) => Math.max(count - 1, 0))
-      // Back where it was, not on top: the queue is ordered, and a restored
-      // post jumping to the front would misrepresent how long it has waited.
-      setQueue((prev) =>
-        prev.some((item) => item.id === post.id)
-          ? prev
-          : [...prev.slice(0, index), post, ...prev.slice(index)]
-      )
+      // Back where it belongs, not on top: the queue is newest-first, so the
+      // slot is re-derived from createdAt rather than from an index captured at
+      // approve time — that index goes stale the moment a second row leaves.
+      setQueue((prev) => {
+        if (prev.some((item) => item.id === post.id)) return prev
+        const at = prev.findIndex((item) => item.createdAt < post.createdAt)
+        const slot = at === -1 ? prev.length : at
+        return [...prev.slice(0, slot), post, ...prev.slice(slot)]
+      })
       toast.success('Moved back to the review queue')
     })
   }
 
   return (
-    <div className="rounded-card border border-ink/[0.05] bg-[image:var(--raised)] px-5 py-[18px] shadow-card">
+    <Card className="px-5 py-[18px]">
       <div className="flex items-center justify-between gap-3">
-        <h2 className="flex items-center gap-2.5 text-[14.5px] font-semibold tracking-[-0.01em] text-ink">
-          <span className="grid size-[27px] place-items-center rounded-sm bg-wash text-forest">
-            <CircleCheck size={14} />
-          </span>
-          Pending review
-        </h2>
+        <SectionHeading icon={<CircleCheck size={14} />}>Pending review</SectionHeading>
         <span className="rounded-full bg-wash px-2.5 py-[3px] text-[11.5px] font-semibold text-forest">
           {remaining} in queue
         </span>
@@ -108,12 +112,12 @@ export function PendingReviewList({ posts, totalPending }: PendingReviewListProp
             </span>
           </div>
         ) : (
-          queue.map((post, index) => (
+          queue.map((post) => (
             <PendingRow
               key={post.id}
               post={post}
               isApproving={approvingId === post.id}
-              onApprove={() => handleApprove(post, index)}
+              onApprove={() => handleApprove(post)}
             />
           ))
         )}
@@ -130,7 +134,7 @@ export function PendingReviewList({ posts, totalPending }: PendingReviewListProp
           Open full queue
         </Link>
       </div>
-    </div>
+    </Card>
   )
 }
 

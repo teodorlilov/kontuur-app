@@ -1,4 +1,5 @@
 import { Sparkles } from 'lucide-react'
+import { Card } from '@/components/ui/card'
 import { BriefingActions } from '@/features/dashboard/components/briefing-actions'
 import type { DashboardBriefing } from '@/features/dashboard/queries'
 
@@ -21,8 +22,11 @@ export function BriefingBar({ briefing }: { briefing: DashboardBriefing | null }
   const headline = pickHeadline(briefing)
 
   return (
-    <div className="flex flex-wrap items-center gap-3.5 rounded-card border border-ink/[0.05] bg-[image:var(--raised)] px-5 py-[18px] shadow-card">
-      <span className="grid size-[27px] shrink-0 place-items-center rounded-sm bg-wash text-forest">
+    <Card className="flex flex-wrap items-center gap-3.5 px-5 py-[18px]">
+      <span
+        aria-hidden="true"
+        className="grid size-[27px] shrink-0 place-items-center rounded-sm bg-wash text-forest"
+      >
         <Sparkles size={14} />
       </span>
 
@@ -34,6 +38,6 @@ export function BriefingBar({ briefing }: { briefing: DashboardBriefing | null }
       </div>
 
       <BriefingActions />
-    </div>
+    </Card>
   )
 }

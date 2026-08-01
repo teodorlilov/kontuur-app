@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { ChevronLeft, ChevronRight, Users } from 'lucide-react'
+import { SectionHeading } from '@/components/ui/section-heading'
 import { CoverageRow, TIER_COUNT } from '@/features/dashboard/components/coverage-row'
 import {
   COVERAGE_LIST_HEIGHT,
@@ -32,12 +33,7 @@ export function ClientCoverage({ clients, coverage, clientPendingMap }: ClientCo
   return (
     <section>
       <div className="flex items-center justify-between gap-3">
-        <h2 className="flex items-center gap-2.5 text-[14.5px] font-semibold tracking-[-0.01em] text-ink">
-          <span className="grid size-[27px] place-items-center rounded-sm bg-wash text-forest">
-            <Users size={14} />
-          </span>
-          Client coverage
-        </h2>
+        <SectionHeading icon={<Users size={14} />}>Client coverage</SectionHeading>
         <span className="flex items-center gap-3 text-[10.5px] text-text3">
           <span className="flex items-center gap-1.5">
             <i className="size-2.5 rounded-[3.5px] bg-forest" />

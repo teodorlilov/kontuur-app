@@ -1,5 +1,5 @@
-import Link from 'next/link'
 import { AlertTriangle, MessageCircle, Pencil } from 'lucide-react'
+import { ActionLink } from '@/components/ui/action-link'
 import { formatRelativeTime, parseTimestamp, truncateText, formatScheduleDate } from '@/utils/format'
 import { extractFlaggedSlide } from '@/utils/extract-flagged-slides'
 import type { DashboardChangeRequest } from '@/types/api'
@@ -57,7 +57,7 @@ export function ChangeRequestCard({ changeRequest: cr }: { changeRequest: Dashbo
   const flaggedSlide = extractFlaggedSlide(cr.clientNote)
 
   return (
-    <div className="rounded-panel border border-ink/[0.05] bg-[image:var(--raised)] px-4 py-3.5 shadow-card">
+    <div className="rounded-panel border border-ink/[0.05] bg-surface px-4 py-3.5">
       <CardHeader cr={cr} />
 
       {cr.caption && (
@@ -67,13 +67,10 @@ export function ChangeRequestCard({ changeRequest: cr }: { changeRequest: Dashbo
       {cr.clientNote && <FeedbackQuote note={cr.clientNote} />}
 
       <div className="mt-2.5 flex items-center justify-between">
-        <Link
-          href={`/calendar?editPost=${cr.id}`}
-          className="inline-flex items-center gap-1.5 rounded-sm bg-forest px-3.5 py-1.5 text-[12px] font-medium text-white no-underline transition-colors hover:bg-forest-deep"
-        >
+        <ActionLink href={`/calendar?editPost=${cr.id}`} size="sm">
           <Pencil size={12} />
           Edit post
-        </Link>
+        </ActionLink>
 
         {flaggedSlide && (
           <span className="inline-flex items-center gap-1 rounded-xs bg-pending-bg px-2.5 py-1 text-[11px] font-medium text-pending">
