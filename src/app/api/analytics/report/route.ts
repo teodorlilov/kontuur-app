@@ -4,6 +4,7 @@ import { verifyClientOwnership, fetchClientWithOwnership } from '@/lib/auth/help
 import { generateAnalyticsSummary } from '@/ai/analytics/generate-summary'
 import { fetchInstagramMetrics } from '@/lib/meta/instagram-metrics'
 import { fetchFacebookMetrics } from '@/lib/meta/facebook-metrics'
+import { isTokenExpired } from '@/lib/meta/token-expiry'
 import type { AnalyticsReportRequest, InstagramMetrics, FacebookMetrics } from '@/types/api'
 
 export async function POST(request: NextRequest) {
@@ -49,7 +50,7 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  if (connection.token_expires_at && new Date(connection.token_expires_at) < new Date()) {
+  if (isTokenExpired(connection.token_expires_at)) {
     return NextResponse.json(
       { error: 'Access token expired. Please reconnect the account.' },
       { status: 422 }

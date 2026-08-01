@@ -1,15 +1,12 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { fetchTopPerformingPosts } from '@/lib/meta/instagram-metrics'
+import { isTokenExpired } from '@/lib/meta/token-expiry'
 import type { IGPost } from '@/types/api'
 import type { PerformanceItem } from './types'
 
 const PERFORMANCE_LOOKBACK_DAYS = 60
 const PERFORMANCE_TOP_N = 5
 const CAPTION_MAX_CHARS = 300
-
-function isTokenExpired(expiresAt: string | null): boolean {
-  return !!expiresAt && new Date(expiresAt).getTime() < Date.now()
-}
 
 function buildEngagementSummary(post: IGPost): string {
   const parts = [`${post.like_count} likes`, `${post.comments_count} comments`]

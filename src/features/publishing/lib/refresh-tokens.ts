@@ -1,7 +1,6 @@
+import { REFRESH_WINDOW_DAYS } from '@/lib/meta/token-expiry'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 
-/** Refresh Instagram tokens expiring within this window on each daily run. */
-const REFRESH_WINDOW_DAYS = 14
 /** Suppress duplicate reconnect notifications for this long. */
 const NOTIFY_COOLDOWN_DAYS = 7
 

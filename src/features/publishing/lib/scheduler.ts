@@ -1,4 +1,5 @@
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
+import { isTokenExpired } from '@/lib/meta/token-expiry'
 import { publishSingleImage, publishCarousel } from './publish-to-instagram'
 import type { PostForPublish, InstagramConnection } from './types'
 import type { SupabaseClient } from '@supabase/supabase-js'
@@ -145,11 +146,6 @@ async function fetchInstagramConnection(
     .single()
   // Supabase select returns the exact fields we project; narrow to InstagramConnection
   return data as InstagramConnection | null
-}
-
-function isTokenExpired(expiresAt: string | null): boolean {
-  if (!expiresAt) return false
-  return new Date(expiresAt) < new Date()
 }
 
 async function markPublished(admin: SupabaseClient, postId: string, mediaId: string | null): Promise<void> {

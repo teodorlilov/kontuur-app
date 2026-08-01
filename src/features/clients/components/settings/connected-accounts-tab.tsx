@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { cn } from '@/utils/cn'
 import { toast } from '@/components/ui/toast'
 import { disconnectConnection } from '@/features/clients/actions/connection-actions'
+import { isTokenExpired } from '@/lib/meta/token-expiry'
 import { createModuleCache } from '@/utils/module-cache'
 import { PanelHeader } from './basic-info-tab'
 
@@ -169,9 +170,7 @@ function ConnectionCard({
   isDisconnecting: boolean
   onDisconnect: () => void
 }) {
-  const isExpired = connection.token_expires_at
-    ? new Date(connection.token_expires_at) < new Date()
-    : false
+  const isExpired = isTokenExpired(connection.token_expires_at)
   const platformLabel =
     connection.platform === 'instagram' ? 'Instagram' :
     'Facebook'

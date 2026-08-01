@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
 import { verifyPostOwnership } from '@/lib/auth/helpers'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
+import { isTokenExpired } from '@/lib/meta/token-expiry'
 import { publishSingleImage, publishCarousel } from '@/features/publishing/lib/publish-to-instagram'
 import type { PostForPublish, InstagramConnection } from '@/features/publishing/lib/types'
 import type { SupabaseClient } from '@supabase/supabase-js'
@@ -59,7 +60,7 @@ export async function POST(
 
     const conn = await fetchConnection(admin, post.client_id)
     if (!conn) return NextResponse.json({ error: 'No Instagram account connected' }, { status: 400 })
-    if (conn.token_expires_at && new Date(conn.token_expires_at) < new Date()) {
+    if (isTokenExpired(conn.token_expires_at)) {
       return NextResponse.json({ error: 'Instagram token expired' }, { status: 400 })
     }
 
