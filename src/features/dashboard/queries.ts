@@ -329,9 +329,19 @@ export async function fetchDashboardData(
   )
 
   const pendingPostRows = (pendingPostsRes.data as PendingPostRow[] | null) ?? []
-  // Admin-client read: post_images RLS blocks the user-scoped client. Safe here
-  // because the ids come from posts already scoped to this agency's clients.
-  const imagesByPost = await fetchImagesByPost(pendingPostRows.map((post) => post.id))
+
+  // Neither depends on the other, so they share a wave rather than queueing —
+  // both only needed the ids the batch above already returned.
+  const [imagesByPost, changeRequests] = await Promise.all([
+    // Admin-client read: post_images RLS blocks the user-scoped client. Safe here
+    // because the ids come from posts already scoped to this agency's clients.
+    fetchImagesByPost(pendingPostRows.map((post) => post.id)),
+    buildChangeRequests(
+      supabase,
+      (changeRequestsRes.data as ChangeRequestRow[] | null) ?? [],
+      clientNames
+    ),
+  ])
 
   const pendingPosts = pendingPostRows.map((post) => ({
     id: post.id,
@@ -368,11 +378,7 @@ export async function fetchDashboardData(
     },
     briefing: briefingRes.data as DashboardBriefing | null,
     pendingPosts,
-    changeRequests: await buildChangeRequests(
-      supabase,
-      (changeRequestsRes.data as ChangeRequestRow[] | null) ?? [],
-      clientNames
-    ),
+    changeRequests,
     upcomingPublishes,
     failedPublishes,
   }
