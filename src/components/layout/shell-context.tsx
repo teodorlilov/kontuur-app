@@ -75,6 +75,10 @@ async function fetchNotifications(): Promise<EnrichedNotification[]> {
     .select(NOTIFICATION_COLUMNS)
     .order('created_at', { ascending: false })
     .limit(30)
+
+  // Narrows three columns the schema leaves wider than the app treats them:
+  // `type` is a free string in Postgres but only ever one of NotificationType,
+  // and `created_at`/`is_read` are nullable columns that every insert path sets.
   return (data ?? []) as EnrichedNotification[]
 }
 
@@ -103,8 +107,10 @@ function useNotifications(): NotificationsValue {
   const refetch = useCallback(async () => {
     try {
       setItems(await fetchNotifications())
-    } catch {
-      /* must never crash UI */
+    } catch (err) {
+      // Swallowed on purpose — the bell is ambient, and a failed poll must not
+      // take the shell down with it. Logged so it is not invisible.
+      console.warn('[notifications] could not load the list:', err)
     } finally {
       setLoading(false)
     }
@@ -136,8 +142,10 @@ function useNotifications(): NotificationsValue {
     try {
       const supabase = createBrowserSupabaseClient()
       await supabase.from('notifications').update({ is_read: true }).eq('is_read', false)
-    } catch {
-      /* next refetch reconciles */
+    } catch (err) {
+      // The optimistic update above stands: the next refetch reconciles it against
+      // the server, so rolling back here would only flicker the badge.
+      console.warn('[notifications] could not mark all read:', err)
     }
   }, [])
 
@@ -146,8 +154,9 @@ function useNotifications(): NotificationsValue {
     try {
       const supabase = createBrowserSupabaseClient()
       await supabase.from('notifications').update({ is_read: true }).eq('id', id)
-    } catch {
-      /* silent */
+    } catch (err) {
+      // As above: the optimistic read state survives, the next refetch reconciles.
+      console.warn(`[notifications] could not mark ${id} read:`, err)
     }
   }, [])
 

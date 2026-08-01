@@ -35,6 +35,8 @@ export function SelectControl<T extends string>({
       {label}
       <select
         value={value}
+        // Safe because the <option> list below is the only source of values a
+        // user can pick, and it is built from `options` — every one of them a T.
         onChange={(event) => onChange(event.target.value as T)}
         className="cursor-pointer appearance-none bg-transparent py-0 pl-1 pr-[26px] text-[13px] font-medium text-ink outline-none"
       >

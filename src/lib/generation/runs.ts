@@ -108,13 +108,23 @@ export async function fetchThemeDescriptions(
   clientId: string,
   limit = 10
 ): Promise<string[]> {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('generation_runs')
     .select('generation_themes(theme_description)')
     .eq('client_id', clientId)
     .order('created_at', { ascending: false })
     .limit(limit)
 
+  // Generation still runs on an empty history — it just loses the guard against
+  // re-suggesting a theme, which reads downstream as the model repeating itself
+  // rather than as a query that failed.
+  if (error) {
+    console.error(`[generation] theme history query failed for client ${clientId}:`, error.message)
+    return []
+  }
+
+  // Same embed shape as fetchActiveRuns above: PostgREST nests the themes, and the
+  // generated types describe the generic embed rather than this projection.
   const rows = data as Array<{
     generation_themes: Array<{ theme_description: string | null }>
   }> | null
