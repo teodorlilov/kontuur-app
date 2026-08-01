@@ -125,7 +125,7 @@ function PaletteBody({
                 setActiveIndex(0)
               }}
               placeholder="Search clients, pages and actions…"
-              className="w-full bg-transparent text-[14px] text-ink outline-none placeholder:text-text3"
+              className="w-full bg-transparent text-title text-ink outline-none placeholder:text-text3"
             />
             <kbd className="rounded-[5px] border border-line2 px-1.5 py-px text-label font-semibold text-text3">
               ESC

@@ -153,3 +153,22 @@ Additional finds from the 2026-07-25 performance sweep (same posture): a malform
 Instagram CDN thumbnails aren't in `next/image` remotePatterns.)
 
 Fix as a dedicated lint-cleanup pass, not opportunistically.
+
+---
+
+## 5. Two shared primitives still off the type ramp
+
+The redesign moved every surface it owns onto the `--text-*` role tokens
+(DESIGN.md §Typography). Two files were left on literals on purpose, because
+they render on surfaces the redesign never mocked — auth, onboarding, the
+generate wizard, publishing, marketing:
+
+- `src/components/ui/button.tsx` — `md: 14px`, `lg: 15px`. Neither is a role.
+  `md` snaps cleanly to Title (14.5px); `lg` has no target, since the ramp holds
+  nothing between Title 14.5 and Headline 23. Deciding `lg` is a design call, not
+  a mechanical one.
+- `src/components/ui/metric-card.tsx` — `30px` where Metric is 31px, plus two
+  `11px` labels that are already Micro and only need the token.
+
+Do these when those surfaces are next looked at by eye. Snapping them blind
+retypes every button in the app.

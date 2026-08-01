@@ -64,7 +64,7 @@ export function CoverageRow({ clientId, name, week, pendingCount, tier }: Covera
       <div className="min-w-0 flex-1">
         <Link
           href={`/clients/${clientId}/edit`}
-          className="block truncate text-[14px] font-semibold no-underline underline-offset-2 hover:underline"
+          className="block truncate text-title font-semibold no-underline underline-offset-2 hover:underline"
         >
           {name}
         </Link>

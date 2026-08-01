@@ -34,7 +34,7 @@ export function ClientCoverage({ clients, coverage, clientPendingMap }: ClientCo
     <section>
       <div className="flex items-center justify-between gap-3">
         <SectionHeading icon={<Users size={14} />}>Client coverage</SectionHeading>
-        <span className="flex items-center gap-3 text-[10.5px] text-text3">
+        <span className="flex items-center gap-3 text-micro text-text3">
           <span className="flex items-center gap-1.5">
             <i className="size-2.5 rounded-[3.5px] bg-forest" />
             Published

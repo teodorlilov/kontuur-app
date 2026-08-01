@@ -12,7 +12,7 @@ interface RosterTableProps {
   footer?: React.ReactNode
 }
 
-const HEADER_CELL = 'text-[10.5px] font-semibold uppercase tracking-[0.12em] text-text3'
+const HEADER_CELL = 'text-micro font-semibold uppercase tracking-[0.12em] text-text3'
 
 /** The roster itself: a real table, so the columns stay announced to a reader. */
 export function RosterTable({ entries, timezone, footer }: RosterTableProps) {

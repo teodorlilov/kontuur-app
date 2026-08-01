@@ -48,12 +48,12 @@ export function PostGrid({ metrics }: PostGridProps) {
                 </div>
               )}
               {/* Media type badge */}
-              <span className="absolute top-1.5 right-1.5 px-1.5 py-0.5 rounded text-[9px] font-medium bg-black/50 text-white leading-none">
+              <span className="absolute top-1.5 right-1.5 px-1.5 py-0.5 rounded text-label font-medium bg-black/50 text-white leading-none">
                 {formatType(post.media_type)}
               </span>
               {/* Save rate badge */}
               {saveRate !== null && (
-                <span className="absolute bottom-1.5 left-1.5 px-1 py-0.5 rounded text-[9px] font-medium bg-black/40 text-white leading-none">
+                <span className="absolute bottom-1.5 left-1.5 px-1 py-0.5 rounded text-label font-medium bg-black/40 text-white leading-none">
                   {saveRate}% saved
                 </span>
               )}

@@ -78,7 +78,7 @@ function PanelHeader({ unreadCount, onMarkAllRead }: { unreadCount: number; onMa
   return (
     <div className="flex items-center justify-between border-b border-line px-4 py-3.5">
       <div className="flex items-center gap-2">
-        <span className="text-[14px] font-semibold text-ink">Notifications</span>
+        <span className="text-title font-semibold text-ink">Notifications</span>
         {unreadCount > 0 && (
           <span className="rounded-full bg-wash px-2 py-0.5 text-micro font-medium text-forest">
             {unreadCount} new

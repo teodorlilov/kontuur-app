@@ -62,7 +62,7 @@ function LogoMark({ collapsed }: { collapsed: boolean }) {
     <Link
       href="/dashboard"
       className={cn(
-        'flex items-center gap-2.5 px-2.5 pb-4 pt-0.5 text-[19px] text-ink no-underline',
+        'flex items-center gap-2.5 px-2.5 pb-4 pt-0.5 text-display-lg text-ink no-underline',
         collapsed && 'justify-center px-0'
       )}
     >
@@ -114,7 +114,7 @@ function SidebarLink({
         <>
           <span className="flex-1 truncate">{item.label}</span>
           {badgeCount > 0 && (
-            <span className="rounded-full bg-wash px-[7px] py-0.5 text-[10.5px] font-semibold text-forest">
+            <span className="rounded-full bg-wash px-[7px] py-0.5 text-micro font-semibold text-forest">
               {badgeCount}
             </span>
           )}

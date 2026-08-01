@@ -45,7 +45,7 @@ export function TopPostsTable({ metrics, limit = 5 }: TopPostsTableProps) {
                   />
                 ) : (
                   <div
-                    className="w-10 h-10 rounded shrink-0 flex items-center justify-center text-[9px] font-semibold text-white"
+                    className="w-10 h-10 rounded shrink-0 flex items-center justify-center text-label font-semibold text-white"
                     style={typeColorStyle(post.media_type)}
                   >
                     {formatType(post.media_type).slice(0, 3).toUpperCase()}
@@ -132,7 +132,7 @@ export function TopPostsTable({ metrics, limit = 5 }: TopPostsTableProps) {
               className="flex items-center gap-3 py-2 border-b border-gray-100 last:border-0"
             >
               <span className="text-xs font-medium text-gray-400 w-4 shrink-0">{idx + 1}</span>
-              <div className="w-10 h-10 rounded shrink-0 flex items-center justify-center text-[9px] font-semibold text-white bg-blue-400">
+              <div className="w-10 h-10 rounded shrink-0 flex items-center justify-center text-label font-semibold text-white bg-blue-400">
                 POST
               </div>
               <div className="flex-1 min-w-0 overflow-hidden">
