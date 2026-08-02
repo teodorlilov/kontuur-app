@@ -1,0 +1,887 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Kontuur — new client · auto-draft</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Instrument+Serif:ital,wght@0,400;1,400&display=swap" rel="stylesheet">
+<style>
+  /* ═══ Contour tokens — mirrors src/app/globals.css ═══ */
+  :root{
+    --paper:#fbfcfa; --surface:#ffffff; --sunken:#f3f5f2;
+    --ink:#0f1512; --text2:#57625a; --text3:#667068;
+    --line:#e7ece7; --line2:#d5ddd6;
+    --forest:#164430; --forest-deep:#0c2e20;
+    --spring:#2e9e68; --spring-text:#278658; --spring-lite:#7fd6a8;
+    --wash:#eef4ef; --marker:#d9eddd; --surface-lime:#e6eeae; --sage:#cfe4d4;
+    --accent:#cfea45;
+    --danger:#b04a38; --danger-bg:#fbefec; --pending:#8a6116; --pending-bg:#f7efdc;
+    --m1:#164430; --m2:#2e9e68; --m3:#7fa588; --m4:#0c2e20;
+
+    --sh-pop:0 12px 32px rgba(15,21,18,.1);
+    --r-xs:4px; --r-sm:8px; --r-chip:10px; --r-panel:14px; --r-card:20px;
+    --serif:'Instrument Serif',Georgia,serif;
+    --sans:'Geist','Inter',-apple-system,BlinkMacSystemFont,Arial,sans-serif;
+    --ease:cubic-bezier(.22,1,.36,1);
+
+  }
+
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{min-height:100dvh;font-family:var(--sans);font-size:13.5px;line-height:1.6;color:var(--ink);
+    background:var(--paper);-webkit-font-smoothing:antialiased}
+  button,input,textarea{font:inherit;color:inherit}
+  button{background:none;border:none;cursor:pointer;text-align:left}
+  :focus-visible{outline:2px solid var(--spring);outline-offset:3px;border-radius:var(--r-xs)}
+  .sr{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;
+    clip:rect(0 0 0 0);white-space:nowrap;border:0}
+
+  .field{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:0}
+  .field path{fill:none;stroke:var(--forest);stroke-width:1;
+    stroke-dasharray:1;stroke-dashoffset:1;opacity:0;
+    transition:stroke-dashoffset 1.3s var(--ease),opacity .7s var(--ease)}
+  .field path.surveyed{stroke-dashoffset:0;opacity:var(--o)}
+
+  /* The column widens for review: the draft reads as one column while it is
+     being written, then opens to two so the whole profile fits without scrolling. */
+  .page{position:relative;z-index:1;max-width:840px;margin:0 auto;padding:22px 30px 130px}
+  /* Snaps rather than transitions: animating max-width on the container that holds
+     the whole document is the layout thrash DESIGN.md rules out, and the review
+     content fades in on its own, which already carries the change. */
+  .page.wide{max-width:1180px}
+
+  .top{display:flex;align-items:center;justify-content:space-between;height:44px;margin-bottom:10px}
+  .lg{font-family:var(--serif);font-size:17px}
+  .exit{font-size:12px;color:var(--text3);padding:6px 10px;border-radius:var(--r-sm);
+    transition:background .14s,color .14s}
+  .exit:hover{background:var(--sunken);color:var(--danger)}
+
+  /* ═══ 1 · The ask ═══ */
+  .ask{max-width:530px;margin:11vh auto 0;text-align:center;animation:up .45s var(--ease) both}
+  @keyframes up{from{opacity:0;transform:translateY(12px);filter:blur(6px)}}
+  .ask h1{font-family:var(--serif);font-size:30px;font-weight:400;line-height:1.2;
+    letter-spacing:-.01em;text-wrap:balance}
+  .ask>p{font-size:13.5px;color:var(--text2);margin-top:10px}
+  .field-in{display:flex;align-items:center;gap:8px;margin-top:26px;padding:6px 6px 6px 15px;
+    border-radius:var(--r-panel);background:var(--surface);border:1px solid var(--line2);
+    transition:border-color .14s,box-shadow .14s}
+  .field-in:focus-within{border-color:var(--spring);box-shadow:0 0 0 3px rgba(46,158,104,.12)}
+  .field-in .pre{font-size:14.5px;color:var(--text3);flex:none}
+  .field-in input{flex:1;min-width:0;border:none;background:none;outline:none;font-size:16px;padding:10px 0}
+  .field-in input::placeholder{color:var(--text3)}
+  .alt{font-size:12.5px;color:var(--text3);margin-top:14px}
+  .alt button{color:var(--spring-text);font-weight:500;font-size:12.5px;padding:3px 6px;
+    margin:-3px -6px;border-radius:var(--r-xs);transition:background .14s,color .14s}
+  /* Living Green Text is 4.53:1 on white but only 4.1:1 once Wash slides under it. */
+  .alt button:hover{background:var(--wash);color:var(--forest)}
+
+  /* ═══ 2 · The sheet ═══ */
+  .sheet{background:var(--surface);border:1px solid rgba(15,21,18,.05);border-radius:var(--r-card);
+    overflow:hidden;animation:up .45s var(--ease) both}
+
+  /* The identity zone. Wash separates "whose profile this is" from the form
+     below it, and gives the top of the sheet a region of colour rather than an
+     accent floating in white. */
+  .sh-h{display:flex;align-items:center;gap:14px;padding:18px 24px 16px;background:var(--wash)}
+  /* Colour comes from CLIENT_COLORS (src/utils/constants.ts), hashed on the name
+     exactly as components/ui/avatar.tsx does — so a client wears the same colour
+     here, on the roster dot and on the calendar pill. Tint-plus-darkened-ink
+     rather than a solid fill: the lighter members of that palette fail 4.5:1
+     under white text. */
+  .mono{width:44px;height:44px;border-radius:var(--r-chip);flex:none;display:grid;place-items:center;
+    font-size:14px;font-weight:600;letter-spacing:.02em;background:var(--sunken);color:var(--text3)}
+  .sh-t{flex:1;min-width:0}
+  .sh-t h1{font-family:var(--serif);font-size:30px;font-weight:400;line-height:1.15;letter-spacing:-.01em}
+  .sh-t h1.cyr{font-family:var(--sans);font-size:23px;font-weight:600;letter-spacing:-.02em}
+  .sh-t p{font-size:12px;color:var(--text3);margin-top:2px}
+  .sh-t p b{font-weight:500;color:var(--text2)}
+  .sh-a{flex:none}
+
+  .scan{height:2px;background:var(--line);position:relative;overflow:hidden}
+  .scan i{position:absolute;inset:0;background:var(--spring);transform-origin:left;
+    transform:scaleX(0);transition:transform .45s var(--ease)}
+  /* .off, not .done — .done is the completion screen, and sharing the class name
+     would hand this 2px bar that section's 9vh margin. */
+  .scan.off{opacity:0;transition:opacity .4s}
+
+  /* ── One layout, from the first frame. The shape of a client profile is known
+     before the scan starts, so the whole form is drawn immediately and the values
+     land in place. Nothing reflows when the scan finishes. ── */
+  .cols{display:grid;grid-template-columns:1fr 1fr;animation:up .4s var(--ease) both}
+  .cols>div+div{border-left:1px solid var(--line)}
+  .grp{padding:14px 22px 10px}
+  .grp h2{font-size:10px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;
+    color:var(--text3);margin-bottom:2px}
+
+  .crow{display:grid;grid-template-columns:108px 1fr auto;gap:10px;align-items:baseline;
+    padding:7px 0;border-top:1px solid var(--line);min-height:34px;position:relative}
+  .grp h2 + .crow{border-top:none}
+
+  /* Waiting for its value. Reserves the row's height so filling it moves nothing. */
+  .skel{display:inline-block;height:10px;border-radius:99px;background:var(--sunken)}
+  .crow.pending .cl{color:var(--line2)}
+  .crow.pending .cedit{display:none}
+  /* The live present: the one field being written right now. Nothing else is lime. */
+  .crow.live::before{content:'';position:absolute;left:-13px;top:15px;width:6px;height:6px;
+    border-radius:50%;background:var(--accent)}
+
+  /* Needs your call is Amber — lime never means "attention". Full-bleed to the
+     column edges, so it reads as a band rather than an indented box. */
+  .crow.ask-me{grid-template-columns:1fr;gap:6px;background:var(--pending-bg);
+    margin:0 -22px;padding:11px 22px 13px}
+  .crow.ask-me .cl{color:var(--pending)}
+  .crow.ask-me .cedit{display:none}
+  /* .cv is a baseline flex row in the read view; left as flex the question and its
+     choices would sit side by side instead of stacking. */
+  .crow.ask-me .cv{display:block}
+  .crow.ask-me .qq{font-size:12px;color:var(--text2);line-height:1.5;margin-bottom:9px}
+  .crow.ask-me .swr{margin-bottom:9px}
+  /* The ask row is full-bleed, so the marker moves inside its padding rather than
+     into the group gutter, where the sheet's overflow would clip it. */
+  .crow.ask-me.live::before{left:9px}
+  .cl{font-size:11px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--text3)}
+  .cv{display:flex;align-items:baseline;gap:7px;min-width:0}
+  .val{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+  .src{flex:none;font-size:11px;color:var(--text3)}
+  .src.low{color:var(--pending);font-weight:500}
+  .cedit{font-size:11.5px;color:var(--text3);padding:2px 6px;border-radius:var(--r-xs);
+    opacity:0;transition:opacity .14s,background .14s,color .14s}
+  .crow:hover .cedit,.crow:focus-within .cedit{opacity:1}
+  .cedit:hover{background:var(--sunken);color:var(--ink)}
+  /* Marker is the highlighter fill — the right tint for "you decided this",
+     and it makes your two choices findable in the finished profile. */
+  .crow.resolved{background:var(--marker);margin:0 -22px;padding-left:22px;padding-right:22px}
+  .crow.resolved .cl{color:var(--forest-deep)}
+  .crow.resolved .src{color:var(--forest)}
+
+  /* Editing expands one row in place; the rest of the review stays put. */
+  .crow.open{grid-template-columns:1fr;gap:8px;padding:11px 0 13px}
+  /* .cv is a baseline flex row in the read view; an editor with several children
+     (the content-mix pillars) would lay out sideways and overflow the column. */
+  .crow.open .cv{display:block}
+  .crow.open .cedit{opacity:1;justify-self:start;margin-left:0;border:1px solid var(--line2);
+    border-radius:var(--r-sm);padding:4px 11px;color:var(--ink);font-weight:500}
+  .crow.open .cedit:hover{border-color:var(--forest);color:var(--forest);background:none}
+  .minibar{display:inline-flex;width:64px;height:7px;border-radius:99px;overflow:hidden;
+    gap:1px;flex:none;align-self:center}
+  .minibar i{display:block}
+  .minisw{display:inline-flex;gap:3px;flex:none;align-self:center}
+  .minisw i{width:14px;height:14px;border-radius:var(--r-xs);border:1px solid var(--line2);display:block}
+
+  .tags{display:flex;flex-wrap:wrap;gap:6px}
+  .tag{font-size:11.5px;border-radius:var(--r-chip);padding:3px 9px;background:var(--wash);
+    color:var(--forest);border:1px solid transparent}
+  button.tag{transition:background .14s,border-color .14s,color .14s}
+  button.tag[aria-pressed="false"]{background:var(--surface);border-color:var(--line2);color:var(--text2)}
+  button.tag[aria-pressed="true"]{background:var(--forest);color:#fff}
+  .mixbar{height:9px;border-radius:99px;background:var(--sunken);display:flex;gap:2px;
+    overflow:hidden;margin-bottom:7px}
+  .mixbar i{display:block}
+  .swr{display:flex;gap:6px;flex-wrap:wrap}
+  .swr i,.swr input{width:26px;height:26px;border-radius:var(--r-sm);border:1px solid var(--line2);
+    display:block;padding:0;background:none;cursor:pointer}
+
+  .qz-o{display:flex;gap:7px;flex-wrap:wrap}
+  .qz-o button{height:31px;padding:0 12px;border-radius:var(--r-chip);border:1px solid var(--line2);
+    background:var(--surface);font-size:12.5px;transition:background .14s,border-color .14s,color .14s}
+  .qz-o button:hover{background:var(--sunken);border-color:#bfcbc2}
+  .qz-o button[aria-checked="true"]{background:var(--forest);border-color:var(--forest);color:#fff}
+
+  .f-in{width:100%;border:1px solid var(--line2);border-radius:var(--r-chip);background:var(--surface);
+    padding:8px 11px;font-size:13.5px;line-height:1.55;resize:none;font-family:inherit;
+    transition:border-color .14s,box-shadow .14s}
+  .f-in:focus{outline:none;border-color:var(--spring);box-shadow:0 0 0 3px rgba(46,158,104,.12)}
+  .arow{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+  .arow .sw{width:9px;height:9px;border-radius:var(--r-xs);flex:none}
+  .arow .nm{flex:1;min-width:0;height:32px;border:1px solid var(--line2);border-radius:var(--r-sm);
+    background:var(--surface);padding:0 10px;font-size:13px}
+  .arow .pc{width:64px;flex:none;display:flex;align-items:center;border:1px solid var(--line2);
+    border-radius:var(--r-sm);background:var(--surface)}
+  .arow .pc input{width:100%;border:none;height:30px;padding:0 2px 0 9px;font-size:13px;
+    text-align:right;background:none;font-variant-numeric:tabular-nums}
+  .arow .nm:focus,.arow .pc input:focus{outline:none}
+  .arow .pc span{font-size:11.5px;color:var(--text3);padding-right:9px}
+
+  /* ═══ Buttons ═══ */
+  .btn{height:38px;padding:0 17px;border-radius:var(--r-chip);display:inline-flex;align-items:center;
+    justify-content:center;gap:7px;font-size:13.5px;font-weight:500;line-height:1;
+    border:1px solid transparent;transition:background .15s,border-color .15s,color .15s,transform .1s}
+  .btn:active{transform:scale(.98)}
+  .btn-primary{background:var(--forest);color:#fff}
+  .btn-primary:hover{background:var(--forest-deep)}
+  .btn-sec{border-color:var(--line2);background:var(--surface);color:var(--ink)}
+  .btn-sec:hover{border-color:var(--forest);color:var(--forest)}
+  .btn-ghost{color:var(--text2);padding:0 11px}
+  .btn-ghost:hover{background:var(--sunken);color:var(--ink)}
+  .btn-sm{height:30px;font-size:12.5px;padding:0 12px;border-radius:var(--r-sm)}
+  .btn-lg{height:44px;font-size:14.5px;padding:0 22px}
+  .btn:disabled{opacity:.4;pointer-events:none}
+
+  /* ═══ Save bar — the one genuinely floating layer ═══ */
+  .bar{position:fixed;left:0;right:0;bottom:0;z-index:40;padding:0 30px 20px;
+    transform:translateY(140%);transition:transform .42s var(--ease)}
+  .bar.on{transform:none}
+  .bar-in{max-width:1180px;margin:0 auto;display:flex;align-items:center;gap:12px;
+    background:rgba(255,255,255,.92);backdrop-filter:blur(16px);border:1px solid rgba(15,21,18,.06);
+    border-radius:var(--r-panel);padding:10px 12px 10px 18px;box-shadow:var(--sh-pop)}
+  .bar-t{flex:1;min-width:0;font-size:12.5px;display:flex;align-items:center;gap:9px}
+  .bar-t .dot{width:7px;height:7px;border-radius:50%;flex:none;background:var(--pending)}
+  .bar-t.ok .dot{background:var(--spring)}
+  .bar-t b{font-weight:600}
+  .bar-t span{color:var(--text3)}
+  .jump{font-size:12px;font-weight:500;color:var(--pending);padding:5px 9px;
+    border-radius:var(--r-sm);flex:none;transition:background .14s}
+  .jump:hover{background:var(--pending-bg)}
+
+  /* ═══ Done ═══ */
+  .done{max-width:500px;margin:9vh auto 0;text-align:center;animation:up .45s var(--ease) both}
+  .ring{width:60px;height:60px;border-radius:50%;background:var(--forest);color:#fff;
+    display:grid;place-items:center;margin:0 auto 20px;animation:pop .55s var(--ease) .08s both}
+  @keyframes pop{from{transform:scale(.5);opacity:0}}
+  .done h1{font-family:var(--serif);font-size:30px;font-weight:400;line-height:1.2}
+  .done h1.cyr{font-family:var(--sans);font-size:23px;font-weight:600;letter-spacing:-.02em}
+  .done h1 em{font-style:italic;color:var(--forest)}
+  .done h1.cyr em{font-style:normal;color:var(--forest)}
+  .done>p{font-size:13.5px;color:var(--text2);margin-top:8px}
+  .nxs{display:grid;gap:8px;margin-top:26px;text-align:left}
+  .nx{display:flex;align-items:center;gap:13px;padding:14px 16px;width:100%;text-align:left;
+    border:1px solid var(--line2);border-radius:var(--r-panel);background:var(--surface);
+    transition:background .14s,border-color .14s}
+  .nx:hover{background:var(--sunken);border-color:var(--forest)}
+  .nx-ic{width:33px;height:33px;border-radius:var(--r-chip);flex:none;background:var(--wash);
+    color:var(--forest);display:grid;place-items:center}
+  .nx .tx{flex:1;min-width:0}
+  .nx b{font-size:13.5px;font-weight:600;display:block}
+  .nx span{font-size:12px;color:var(--text3)}
+  .nx .go{color:var(--text3);flex:none}
+  .nx.pri{background:var(--forest);border-color:var(--forest);color:#fff}
+  .nx.pri:hover{background:var(--forest-deep)}
+  .nx.pri .nx-ic{background:rgba(255,255,255,.14);color:var(--accent)}
+  .nx.pri span,.nx.pri .go{color:rgba(255,255,255,.62)}
+
+  .hide{display:none}
+
+  @media(max-width:900px){
+    .cols{grid-template-columns:1fr}
+    .cols>div+div{border-left:none;border-top:1px solid var(--line)}
+    .askg{grid-template-columns:1fr}
+  }
+  @media(max-width:720px){
+    .page{padding:16px 16px 140px}
+    .ask{margin-top:5vh}
+    .sh-h{padding:16px 16px 14px}
+    .grp{padding-left:16px;padding-right:16px}
+    /* Edit pairs with the label instead of taking a third line on every row. */
+    .crow{grid-template-columns:1fr auto;gap:3px 8px;padding:9px 0}
+    .cl{grid-column:1}
+    .cedit{grid-column:2;grid-row:1;opacity:1;align-self:center;margin:0}
+    .cv{grid-column:1/-1}
+    .crow.open .cv,.crow.open .cedit{grid-column:1/-1;grid-row:auto;justify-self:start}
+    .crow.ask-me{grid-template-columns:1fr;margin:0 -16px;padding:11px 16px 13px}
+    .crow.resolved{margin:0 -16px;padding-left:16px;padding-right:16px}
+    .crow.live::before{left:-9px}
+    .bar{padding:0 16px 14px}
+    .bar-in{flex-wrap:wrap}
+    .bar-t{flex-basis:100%}
+    .bar .btn{flex:1}
+    .f-in,.field-in input,.arow .nm,.arow .pc input{font-size:16px}
+    .field{opacity:.45}
+  }
+  @media (prefers-reduced-motion:reduce){
+    *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;
+      transition-duration:.01ms!important}
+    .field path{stroke-dashoffset:0}
+  }
+</style>
+</head>
+<body>
+
+<svg class="field" id="field" aria-hidden="true" preserveAspectRatio="xMidYMid slice"></svg>
+
+<div class="page" id="page">
+  <div class="top">
+    <span class="lg">Kontuur</span>
+    <button class="exit" id="exit">Cancel</button>
+  </div>
+
+  <section class="ask" id="s1">
+    <h1>Add a client</h1>
+    <p>Paste their website. Kontuur reads it and drafts the whole profile — name, audience,
+      tone, content mix, brand colours. You check what it couldn't work out.</p>
+    <div class="field-in">
+      <span class="pre">https://</span>
+      <input id="url" placeholder="everestimoti.com" autocomplete="off" aria-label="Client website">
+      <button class="btn btn-primary" id="go" disabled>Read the site →</button>
+    </div>
+    <p class="alt">No website? <button id="manual">Set them up by hand</button></p>
+  </section>
+
+  <section id="s2" class="hide">
+    <div class="sheet">
+      <div class="sh-h">
+        <span class="mono" id="mono" aria-hidden="true">··</span>
+        <div class="sh-t">
+          <h1 id="dName">Reading the site…</h1>
+          <p id="dSub"></p>
+        </div>
+        <div class="sh-a" id="dAct"></div>
+      </div>
+      <div class="scan" id="scan" role="progressbar" aria-valuemin="0" aria-valuemax="100"
+           aria-valuenow="0" aria-label="Reading the site"><i id="scanI"></i></div>
+      <div id="doc"></div>
+    </div>
+  </section>
+
+  <section id="s3" class="hide"></section>
+</div>
+
+<div class="bar" id="bar"><div class="bar-in">
+  <p class="bar-t" id="barT"><span class="dot"></span><span id="barTx"></span></p>
+  <button class="jump hide" id="jump">Take me there ↓</button>
+  <button class="btn btn-ghost" id="discard">Discard</button>
+  <button class="btn btn-primary btn-lg" id="save">Save client →</button>
+</div></div>
+
+<div class="sr" role="status" aria-live="polite" id="live"></div>
+
+<script>
+'use strict';
+
+/* ════ The draft.
+   Confidence and status are not invented: detected_niche_confidence is
+   'high' | 'medium' | 'low' in src/types/api.ts, and brand_kit_extractions
+   (migration 20260718) carries status 'pending' | 'ready' | 'fallback' | 'failed'
+   plus a confidence report and source_kind 'default' | 'website' | 'manual'. ════ */
+var GROUPS = [
+  { id:'basics', name:'The basics',     col:0 },
+  { id:'people', name:'Their people',   col:0 },
+  { id:'voice',  name:'How they sound', col:0 },
+  { id:'look',   name:'Content and look', col:1 },
+  { id:'pub',    name:'Publishing',     col:1 }
+];
+
+var ROWS = [
+  { id:'name', g:'basics', l:'Client name', v:'Недвижими имоти Витоша', src:'the page title', conf:'high' },
+  { id:'niche', g:'basics', l:'What they do', v:'Real estate agency', src:'their services page', conf:'high' },
+
+  { id:'aud', g:'people', l:'Audience', conf:'high', src:'services and about pages', kind:'tags',
+    v:['Property buyers','Property sellers','Investors','Valuation clients','Legal consultation'] },
+  { id:'goal', g:'people', l:'Post goal', ask:1,
+    q:"The site never says what a post should get someone to do.",
+    opts:['Book a viewing','Send an enquiry','Follow and engage','Build trust'] },
+
+  { id:'tone', g:'voice', l:'Tone', big:1, conf:'high', src:'their own copy',
+    v:'Professional and attentive. Clear and informative, never pushy. Speaks to people making a large, careful decision.' },
+  { id:'lang', g:'voice', l:'Language', v:'Bulgarian — formal (Вие)', src:'the site language', conf:'high' },
+  { id:'avoid', g:'voice', l:'Never post', big:1, conf:'low', src:'real-estate defaults',
+    v:'Political content, unverified property claims, financial advice beyond real estate, discriminatory housing language.' },
+
+  { id:'mix', g:'look', l:'Content mix', conf:'high', src:'what they publish', kind:'mix',
+    v:[['Property listings & market updates',40,'var(--m1)'],['Expert team & services',25,'var(--m2)'],
+       ['Real estate advice & tips',20,'var(--m3)'],['Client testimonials',15,'var(--m4)']] },
+  { id:'pal', g:'look', l:'Brand palette', ask:1, kind:'sw',
+    v:['#ffffff','#707070','#a886cd','#6d5785','#e0e0e0'],
+    q:'Purple is unusual for an estate agency — a cookie banner over the page can cause this.',
+    opts:['Looks right','Pick manually','Re-scan'] },
+  { id:'style', g:'look', l:'Visual style', v:'Graphic editorial', src:'bold grids, strong type', conf:'low' },
+
+  { id:'sched', g:'pub', l:'Schedule', v:'Mondays 09:00 · 3 a week', src:'a starting cadence', conf:'pend' },
+  { id:'plat', g:'pub', l:'Platform', v:'Instagram', src:'not connected yet', conf:'pend' }
+];
+
+var A = {}, resolved = {}, host = 'everestimoti.com', manualMode = false, reviewing = false;
+var doc  = document.getElementById('doc');
+var live = document.getElementById('live');
+var page = document.getElementById('page');
+
+/* One row carries the lime marker, handed over rather than cleared on a timer —
+   overlapping timers would put several on screen at once. */
+var liveEl = null;
+function setLive(el){
+  if(liveEl) liveEl.classList.remove('live');
+  liveEl = el;
+  if(el) el.classList.add('live');
+}
+
+function hasCyrillic(s){ return /[Ѐ-ӿ]/.test(String(s || '')); }
+function esc(s){ return String(s == null ? '' : s)
+  .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function initials(s){ return String(s).trim().split(/\s+/).slice(0,2)
+  .map(function(w){ return w[0]; }).join('').toUpperCase(); }
+
+/* CLIENT_COLORS, verbatim from src/utils/constants.ts. Its own note records that
+   a pure green ramp was tried here and failed — at pill opacity forest and
+   forest-deep read as one swatch — so these step through hue and lightness, kept
+   desaturated so none competes with the green chrome. The client's OWN detected
+   brand hex never lands here; it appears only in the Brand palette row, where it
+   is the data under review. */
+var CLIENT_COLORS = ['#164430','#2E9E68','#1F6B7A','#8A6116','#6E7F52','#5FA8B5','#A2603F','#7FA588'];
+function hashIndex(name, buckets){
+  var hash = 0;
+  for(var i=0; i<name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) >>> 0;
+  return hash % buckets;
+}
+function clientHue(name){ return CLIENT_COLORS[hashIndex(String(name), CLIENT_COLORS.length)]; }
+function rowById(id){ for(var i=0;i<ROWS.length;i++) if(ROWS[i].id===id) return ROWS[i]; return null; }
+
+function initA(){
+  ROWS.forEach(function(r){
+    if(r.ask && !r.kind) return;
+    A[r.id] = Array.isArray(r.v) ? r.v.map(function(x){ return Array.isArray(x) ? x.slice() : x; })
+                                 : (r.v || '');
+  });
+}
+initA();
+
+/* ════ Contour field ════ */
+function ringPath(cx, cy, r, rough, seed){
+  var pts = [], steps = 46;
+  for(var s=0; s<steps; s++){
+    var a = s/steps*Math.PI*2;
+    var wob = Math.sin(a*3+seed)*.16 + Math.sin(a*5-seed*1.7)*.09 + Math.sin(a*2+seed*.6)*.13;
+    var rr = r*(1+wob*rough);
+    pts.push(Math.round(cx+Math.cos(a)*rr*1.18)+' '+Math.round(cy+Math.sin(a)*rr));
+  }
+  return 'M'+pts.join('L')+'Z';
+}
+var fieldPaths = (function(){
+  var el = document.getElementById('field'), all = [];
+  el.setAttribute('viewBox','0 0 1300 900');
+  [{x:100,y:180,r0:34,step:27,rings:9},
+   {x:1200,y:700,r0:40,step:32,rings:9},
+   {x:1240,y:110,r0:26,step:22,rings:7}].forEach(function(p, pi){
+    for(var r=0; r<p.rings; r++)
+      all.push({ d:ringPath(p.x,p.y,p.r0+r*p.step,.10+r*.055,pi*2.4+r*.31),
+                 o:(0.30*(1-r/(p.rings+1.5))).toFixed(3), order:r+pi*.34 });
+  });
+  all.sort(function(a,b){ return a.order-b.order; });
+  el.innerHTML = all.map(function(p,n){
+    return '<path d="'+p.d+'" pathLength="1" style="--o:'+p.o+';transition-delay:'+(n*22)+'ms"/>';
+  }).join('');
+  return el.querySelectorAll('path');
+})();
+function surveyField(frac){
+  var shown = Math.round((0.30 + 0.70*frac) * fieldPaths.length);
+  for(var n=0; n<fieldPaths.length; n++)
+    fieldPaths[n].classList.toggle('surveyed', n < shown);
+}
+surveyField(0);
+
+/* ════ 1 · Ask ════ */
+var url = document.getElementById('url'), go = document.getElementById('go');
+url.addEventListener('input', function(){ go.disabled = !url.value.trim(); });
+url.addEventListener('keydown', function(e){ if(e.key === 'Enter' && url.value.trim()) start(false); });
+go.onclick = function(){ start(false); };
+document.getElementById('manual').onclick = function(){ start(true); };
+
+/* ════ 2 · The form draws first, then fills ════ */
+function start(isManual){
+  manualMode = isManual;
+  host = (url.value.trim() || 'everestimoti.com').replace(/^https?:\/\//,'').replace(/\/$/,'');
+  document.getElementById('s1').classList.add('hide');
+  document.getElementById('s2').classList.remove('hide');
+  page.classList.add('wide');
+  buildForm();
+  if(isManual) return startManual();
+
+  document.getElementById('dSub').innerHTML = 'Reading <b>'+esc(host)+'</b>…';
+  live.textContent = 'Reading ' + host + '. Drafting the client profile.';
+
+  var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var n = 0;
+  (function tick(){
+    if(n >= ROWS.length) return finish();
+    var r = ROWS[n];
+    fillRow(r);
+    setLive(doc.querySelector('.crow[data-id="'+r.id+'"]'));
+    n++;
+    setScan(n/ROWS.length);
+    surveyField(n/ROWS.length);
+    if(r.id === 'name') nameLanded(r.v);
+    setTimeout(tick, reduce ? 0 : (n < 3 ? 380 : 200));
+  })();
+}
+
+/* Every field, in its final position, waiting for a value. */
+function buildForm(){
+  doc.innerHTML = '<div class="cols">' + [0,1].map(function(col){
+    return '<div>' + GROUPS.filter(function(g){ return g.col === col; }).map(function(g){
+      var rows = ROWS.filter(function(r){ return r.g === g.id; });
+      return '<section class="grp"><h2>'+esc(g.name)+'</h2>'
+        + rows.map(pendingRow).join('') + '</section>';
+    }).join('') + '</div>';
+  }).join('') + '</div>';
+  setBar(0);
+}
+
+function pendingRow(r){
+  /* Placeholder width tracks the eventual value, so the row settles rather than jumps. */
+  var w = r.ask ? 55 : Math.max(35, Math.min(88, String(r.v || '').length * 2.4 + 30));
+  return '<div class="crow pending" data-id="'+esc(r.id)+'">'
+    + '<span class="cl">'+esc(r.l)+'</span>'
+    + '<div class="cv"><span class="skel" style="width:'+Math.round(w)+'%"></span></div>'
+    + '<button class="cedit" data-edit="'+esc(r.id)+'">Edit</button></div>';
+}
+
+function fillRow(r){
+  var row = doc.querySelector('.crow[data-id="'+r.id+'"]');
+  if(!row) return;
+  row.classList.remove('pending');
+  if(r.ask && !resolved[r.id]){
+    row.classList.add('ask-me');
+    row.querySelector('.cv').innerHTML = askBody(r);
+  } else {
+    row.querySelector('.cv').innerHTML = readValue(r);
+    if(resolved[r.id]) row.classList.add('resolved');
+  }
+}
+
+function askBody(r){
+  return (r.kind === 'sw'
+      ? '<div class="swr">' + (A[r.id]||[]).map(function(c){
+          return '<i style="background:'+esc(c)+'"></i>'; }).join('') + '</div>'
+        + '<p class="sr">Detected palette: white, mid grey, light purple, deep purple, pale grey.</p>'
+      : '')
+    + '<p class="qq">'+esc(r.q)+'</p>'
+    + '<div class="qz-o" role="radiogroup" aria-label="'+esc(r.l)+'">'
+    + r.opts.map(function(o,i){
+        return '<button role="radio" aria-checked="false" tabindex="'+(i?'-1':'0')+'" '
+          + 'data-opt="'+esc(o)+'">'+esc(o)+'</button>';
+      }).join('')
+    + '</div>';
+}
+
+function nameLanded(name){
+  var h = document.getElementById('dName');
+  h.textContent = name;
+  h.className = hasCyrillic(name) ? 'cyr' : '';
+  var m = document.getElementById('mono'), hue = clientHue(name);
+  m.textContent = initials(name);
+  /* 30%, not avatar.tsx's 14%: this is a 44px hero mark sitting on the Wash band
+     rather than a small disc on white, and at 14% it disappears into the tint. */
+  m.style.background = 'color-mix(in srgb, ' + hue + ' 30%, #ffffff)';
+  m.style.color = 'color-mix(in srgb, ' + hue + ' 78%, var(--ink))';
+}
+
+function setScan(frac){
+  document.getElementById('scanI').style.transform = 'scaleX(' + frac + ')';
+  document.getElementById('scan').setAttribute('aria-valuenow', Math.round(frac*100));
+}
+
+function finish(){
+  document.getElementById('scan').classList.add('off');
+  setLive(null);
+  setScan(1);
+  surveyField(1);
+  document.getElementById('dAct').innerHTML =
+    '<button class="btn btn-sec btn-sm" id="rescan">Read it again</button>';
+  reviewing = true;
+  updateHeader();
+  setBar(openAsks().length);
+  setTimeout(function(){ document.getElementById('bar').classList.add('on'); }, 200);
+  live.textContent = ROWS.length + ' details drafted from ' + host + '. '
+    + openAsks().length + ' need your call.';
+}
+
+/* No website: the same form, empty and yours to fill. Nothing is invented. */
+function startManual(){
+  document.getElementById('dName').textContent = 'New client';
+  document.getElementById('dSub').innerHTML = 'Nothing to read — fill this in yourself.';
+  document.getElementById('scan').classList.add('off');
+  surveyField(1);
+  ROWS.forEach(function(r){
+    if(r.kind === 'tags') A[r.id] = [];
+    else if(r.kind === 'mix') A[r.id] = [];
+    else if(r.kind === 'sw') A[r.id] = ['#ffffff','#ffffff','#ffffff','#ffffff','#ffffff'];
+    else A[r.id] = '';
+    r.conf = 'pend'; r.src = 'not set';
+    if(r.ask){ r.ask = 0; resolved[r.id] = 1; }
+    fillRow(r);
+  });
+  reviewing = true;
+  setBar(0);
+  document.getElementById('bar').classList.add('on');
+  live.textContent = 'Blank profile ready. Fill in what you know.';
+}
+
+function openAsks(){ return ROWS.filter(function(r){ return r.ask && !resolved[r.id]; }); }
+
+/* Read view — one line per row. The source stays visible; the value truncates. */
+function readValue(r){
+  var v = A[r.id];
+  if(r.kind === 'tags'){
+    var list = v || [];
+    var shown = list.slice(0,2).map(function(t){ return esc(t); }).join(', ');
+    return '<span class="val">' + (shown || '—')
+      + (list.length > 2 ? ' <span class="src">+'+(list.length-2)+' more</span>' : '') + '</span>'
+      + srcChip(r);
+  }
+  if(r.kind === 'mix'){
+    var mix = v || [];
+    if(!mix.length) return '<span class="val">—</span>' + srcChip(r);
+    return '<span class="minibar" aria-hidden="true">'
+      + mix.map(function(p){ return '<i style="flex-basis:'+p[1]+'%;background:'+p[2]+'"></i>'; }).join('')
+      + '</span><span class="val">'+mix.length+' pillars</span>'
+      + '<span class="sr">' + esc(mix.map(function(p){ return p[0]+' '+p[1]+' percent'; }).join(', ')) + '.</span>'
+      + srcChip(r);
+  }
+  if(r.kind === 'sw'){
+    return '<span class="minisw" aria-hidden="true">'
+      + (v||[]).map(function(c){ return '<i style="background:'+esc(c)+'"></i>'; }).join('')
+      + '</span>' + srcChip(r);
+  }
+  return '<span class="val">' + (esc(v) || '—') + '</span>' + srcChip(r);
+}
+
+function srcChip(r){
+  if(resolved[r.id]) return '<span class="src">your call</span>';
+  if(!r.src) return '';
+  return '<span class="src'+(r.conf === 'low' ? ' low' : '')+'">'+esc(r.src)+'</span>';
+}
+
+function updateHeader(){
+  if(manualMode) return;
+  var asks = openAsks().length;
+  document.getElementById('dSub').innerHTML = 'Read <b>'+esc(host)+'</b> · '
+    + ROWS.length + ' details drafted'
+    + (asks ? ' · <b>'+asks+'</b> need your call' : ' · all checked');
+}
+
+function setBar(n){
+  var t = document.getElementById('barT'), tx = document.getElementById('barTx');
+  var jump = document.getElementById('jump');
+  jump.classList.add('hide');
+  if(manualMode){
+    t.className = 'bar-t';
+    tx.innerHTML = '<b>Nothing detected</b> <span>· fill in what you know, edit the rest later</span>';
+    return;
+  }
+  if(!reviewing){
+    t.className = 'bar-t';
+    tx.innerHTML = '<b>Reading the site…</b>';
+    return;
+  }
+  if(n > 0){
+    t.className = 'bar-t';
+    tx.innerHTML = '<b>'+n+' thing'+(n>1?'s':'')+' need'+(n>1?'':'s')+' your call</b> '
+      + '<span>· everything else is drafted</span>';
+    jump.classList.remove('hide');
+  } else {
+    t.className = 'bar-t ok';
+    tx.innerHTML = '<b>All checked</b> <span>· ready to save</span>';
+  }
+}
+
+document.getElementById('jump').onclick = function(){
+  var next = doc.querySelector('.crow.ask-me');
+  if(!next) return;
+  next.scrollIntoView({ behavior:'smooth', block:'center' });
+  var b = next.querySelector('.qz-o button');
+  if(b) setTimeout(function(){ b.focus(); }, 420);
+};
+
+/* ════ Editing — expands one row in place ════ */
+function openEditor(id){
+  var row = doc.querySelector('.crow[data-id="'+id+'"]');
+  if(!row || row.classList.contains('open')) return;
+  var r = rowById(id);
+  row.classList.add('open');
+  row.querySelector('.cv').innerHTML = editorFor(r);
+  row.querySelector('.cedit').textContent = 'Done';
+  row.querySelector('.cedit').dataset.done = '1';
+  var first = row.querySelector('textarea,input,button.tag');
+  if(first && first.focus) first.focus();
+}
+
+function closeEditor(id){
+  var row = doc.querySelector('.crow[data-id="'+id+'"]');
+  if(!row) return;
+  var r = rowById(id);
+  row.classList.remove('open');
+  row.querySelector('.cv').innerHTML = readValue(r);
+  var b = row.querySelector('.cedit');
+  b.textContent = 'Edit';
+  delete b.dataset.done;
+}
+
+function editorFor(r){
+  var v = A[r.id];
+  if(r.kind === 'tags'){
+    return '<div class="tags">' + (r.v || []).map(function(t){
+      return '<button class="tag" aria-pressed="'+((v||[]).indexOf(t)>-1?'true':'false')+'" '
+        + 'data-tag="'+esc(t)+'" data-row="'+esc(r.id)+'">'+esc(t)+'</button>';
+    }).join('') + '</div>';
+  }
+  if(r.kind === 'mix'){
+    return (v||[]).map(function(p,n){
+      return '<div class="arow"><span class="sw" style="background:'+p[2]+'" aria-hidden="true"></span>'
+        + '<input class="nm" value="'+esc(p[0])+'" data-mix="'+n+'" data-k="0" aria-label="Pillar name">'
+        + '<span class="pc"><input type="number" min="0" max="100" value="'+p[1]+'" data-mix="'+n+'" '
+        + 'data-k="1" aria-label="'+esc(p[0])+' percent"><span aria-hidden="true">%</span></span></div>';
+    }).join('');
+  }
+  if(r.kind === 'sw'){
+    return '<div class="swr">' + (v||[]).map(function(c,n){
+      return '<input type="color" value="'+esc(c)+'" data-sw="'+n+'" aria-label="Brand colour '+(n+1)+'">';
+    }).join('') + '</div>';
+  }
+  return '<textarea class="f-in" rows="'+(r.big?3:1)+'" data-txt="'+esc(r.id)+'" '
+    + 'aria-label="'+esc(r.l)+'">'+esc(v)+'</textarea>';
+}
+
+/* ════ Exceptions — answered in place, in the row they belong to ════ */
+function chooseOpt(btn){
+  var card = btn.closest('.crow'), id = card.dataset.id, choice = btn.dataset.opt;
+  card.querySelectorAll('.qz-o button').forEach(function(x){
+    x.setAttribute('aria-checked', x === btn ? 'true' : 'false');
+    x.tabIndex = x === btn ? 0 : -1;
+  });
+
+  /* Neither of these resolves the row on its own, so the count must not drop. */
+  if(id === 'pal' && choice === 'Pick manually') return palManual(card);
+  if(id === 'pal' && choice === 'Re-scan')       return palRescan(card);
+
+  if(id !== 'pal') A[id] = choice;
+  resolved[id] = 1;
+  var r = rowById(id);
+  r.ask = 0;
+  card.classList.remove('ask-me');
+  card.classList.add('resolved');
+  card.querySelector('.cv').innerHTML = readValue(r);
+  updateHeader();
+  setBar(openAsks().length);
+  live.textContent = r.l + ' set to ' + choice + '.';
+}
+
+function palManual(card){
+  card.querySelector('.swr').innerHTML = A.pal.map(function(c,n){
+    return '<input type="color" value="'+esc(c)+'" data-sw="'+n+'" aria-label="Brand colour '+(n+1)+'">';
+  }).join('');
+  card.querySelector('.qq').textContent = 'Set the five brand colours yourself, then confirm.';
+  card.querySelector('.qz-o').innerHTML =
+    '<button class="btn btn-primary btn-sm" data-opt="Set by hand">Use these colours</button>';
+  live.textContent = 'Pick the five brand colours by hand.';
+}
+
+function palRescan(card){
+  var p = card.querySelector('.qq'), g = card.querySelector('.qz-o');
+  p.textContent = 'Reading the page again…';
+  g.style.opacity = '.4';
+  setTimeout(function(){
+    g.style.opacity = '';
+    /* Honest: re-reading the same page returns the same palette. It does not
+       invent a friendlier one — it tells you the purple is genuinely there. */
+    p.textContent = 'Read again — same result. The purple really is on the page, so it is '
+      + 'either their brand or a banner that covers every view.';
+    g.querySelectorAll('button').forEach(function(b){ b.setAttribute('aria-checked','false'); });
+    live.textContent = 'Re-read finished. Same palette.';
+  }, 1400);
+}
+
+/* ════ Events ════ */
+document.addEventListener('click', function(e){
+  var t = e.target;
+
+  var opt = t.closest('.qz-o button, .crow .btn-primary');
+  if(opt && opt.dataset.opt) return chooseOpt(opt);
+
+  var ed = t.closest('.cedit');
+  if(ed) return ed.dataset.done ? closeEditor(ed.dataset.edit) : openEditor(ed.dataset.edit);
+
+  var tg = t.closest('button.tag');
+  if(tg){
+    var listRow = tg.dataset.row, cur = A[listRow] || [], val = tg.dataset.tag;
+    var k = cur.indexOf(val);
+    if(k > -1) cur.splice(k,1); else cur.push(val);
+    A[listRow] = cur;
+    tg.setAttribute('aria-pressed', k > -1 ? 'false' : 'true');
+    return;
+  }
+
+  if(t.closest('#rescan')) return rescan();
+  if(t.closest('#save'))   return done();
+  if(t.closest('#discard') || t.closest('#exit') || t.closest('#again')) return location.reload();
+});
+
+document.addEventListener('input', function(e){
+  var t = e.target, d = t.dataset;
+  if(d.txt){ if(t.tagName === 'TEXTAREA'){ t.style.height='auto'; t.style.height=t.scrollHeight+'px'; }
+    A[d.txt] = t.value; return; }
+  if(d.mix !== undefined){
+    var row = t.closest('.crow'), id = row ? row.dataset.id : 'mix';
+    var p = A[id][+d.mix];
+    p[d.k === '1' ? 1 : 0] = d.k === '1' ? Math.max(0, Math.min(100, +t.value || 0)) : t.value;
+    return;
+  }
+  if(d.sw !== undefined){
+    var owner = t.closest('.crow');
+    if(owner) A[owner.dataset.id][+d.sw] = t.value;
+  }
+});
+
+document.addEventListener('keydown', function(e){
+  var el = document.activeElement;
+  if(el && el.closest && el.closest('.qz-o') && (e.key === 'ArrowRight' || e.key === 'ArrowLeft')){
+    var list = Array.prototype.slice.call(el.closest('.qz-o').querySelectorAll('button'));
+    var i = list.indexOf(el);
+    e.preventDefault();
+    list[(i + (e.key === 'ArrowRight' ? 1 : -1) + list.length) % list.length].focus();
+    return;
+  }
+  if(e.key === 'Escape' && el && el.closest){
+    var open = el.closest('.crow.open');
+    if(open) closeEditor(open.dataset.id);
+  }
+});
+
+function rescan(){
+  live.textContent = 'Reading ' + host + ' again.';
+  document.getElementById('dAct').innerHTML =
+    '<span class="src">Reading again…</span>';
+  setTimeout(function(){
+    document.getElementById('dAct').innerHTML =
+      '<button class="btn btn-sec btn-sm" id="rescan">Read it again</button>';
+    live.textContent = 'Re-read finished. Nothing changed.';
+  }, 1600);
+}
+
+/* ════ 3 · Done ════ */
+function done(){
+  var name = A.name || 'New client';
+  document.getElementById('s2').classList.add('hide');
+  document.getElementById('bar').classList.remove('on');
+  page.classList.remove('wide');
+  var s3 = document.getElementById('s3');
+  s3.classList.remove('hide');
+  s3.innerHTML = '<div class="done">'
+    + '<div class="ring"><svg width="25" height="25" viewBox="0 0 24 24" fill="none" '
+    + 'stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">'
+    + '<path d="M4 12.5l5.5 5.5L20 6.5"/></svg></div>'
+    + '<h1 class="'+(hasCyrillic(name)?'cyr':'')+'"><em>'+esc(name)+'</em> is ready</h1>'
+    + '<p>Profile saved. Everything stays editable in the client\'s settings.</p>'
+    + '<div class="nxs">'
+      + nx(1,'Generate the first 3 posts','Drafts land in your review queue',
+          '<path d="M7 1.5l1.2 3.3 3.3 1.2-3.3 1.2L7 10.5 5.8 7.2 2.5 6l3.3-1.2z"/>')
+      + nx(0,'Connect Instagram','Required before anything can publish',
+          '<path d="M5.5 8.5l3-3M6 3.5l1-1a2.5 2.5 0 013.5 3.5l-1 1M8 10.5l-1 1a2.5 2.5 0 01-3.5-3.5l1-1"/>')
+      + nx(0,'Add another client','Read another site','<path d="M2 7a5 5 0 118 4"/><path d="M2 4v3h3"/>','again')
+    + '</div></div>';
+  live.textContent = name + ' is ready.';
+}
+
+function nx(pri, title, sub, path, id){
+  return '<button class="nx'+(pri?' pri':'')+'"'+(id?' id="'+id+'"':'')+'>'
+    + '<span class="nx-ic"><svg width="16" height="16" viewBox="0 0 14 14" fill="none" '
+    + 'stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">'
+    + path + '</svg></span>'
+    + '<span class="tx"><b>'+title+'</b><span>'+sub+'</span></span>'
+    + '<svg class="go" width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" '
+    + 'stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 2.5L9.5 7 5 11.5"/>'
+    + '</svg></button>';
+}
+
+url.focus();
+</script>
+</body>
+</html>

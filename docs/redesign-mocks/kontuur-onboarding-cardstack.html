@@ -1,0 +1,1053 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Kontuur — onboarding · card stack</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Instrument+Serif:ital,wght@0,400;1,400&display=swap" rel="stylesheet">
+<style>
+  /* ═══ Contour tokens — mirrors src/app/globals.css ═══ */
+  :root{
+    /* Surfaces. Near-white paper, never flat #fff. */
+    --paper:#fbfcfa; --surface:#ffffff; --sunken:#f3f5f2;
+    /* Ink ramp. text3 is #667068 — the pre-Contour #8b958d failed 4.5:1. */
+    --ink:#0f1512; --text2:#57625a; --text3:#667068;
+    /* Hairlines. */
+    --line:#e7ece7; --line2:#d5ddd6;
+    /* The botanical ramp. */
+    --forest:#164430; --forest-deep:#0c2e20;
+    --spring:#2e9e68; --spring-text:#278658; --spring-lite:#7fd6a8;
+    --wash:#eef4ef; --marker:#d9eddd; --surface-lime:#e6eeae; --sage:#cfe4d4;
+    /* New Growth. A fill, never a word on light. The live present only. */
+    --accent:#cfea45;
+    /* Status — earthen, never signal-bright. */
+    --danger:#b04a38; --danger-bg:#fbefec; --pending:#8a6116; --pending-bg:#f7efdc;
+    /* Metric ramp — four greens, not four hues. */
+    --m1:#164430; --m2:#2e9e68; --m3:#7fa588; --m4:#0c2e20;
+
+    --dot-grid:radial-gradient(rgba(255,255,255,.05) 1px, transparent 1.5px);
+    --hatch:repeating-linear-gradient(45deg,rgba(15,21,18,.16) 0 2px,transparent 2px 5px);
+    --hatch-inv:repeating-linear-gradient(45deg,rgba(242,245,241,.4) 0 2px,transparent 2px 5px);
+    --surface-dark:linear-gradient(168deg,#123a29 0%,#0c2e20 55%,#09241a 100%);
+
+    --sh-pop:0 12px 32px rgba(15,21,18,.1);
+    --sh-frame:0 24px 60px rgba(15,21,18,.06);
+
+    --r-xs:4px; --r-sm:8px; --r-chip:10px; --r-panel:14px; --r-card:20px;
+    --serif:'Instrument Serif',Georgia,serif;
+    --sans:'Geist','Inter',-apple-system,BlinkMacSystemFont,Arial,sans-serif;
+    --ease:cubic-bezier(.22,1,.36,1);
+    --rail:296px;
+  }
+
+  *{margin:0;padding:0;box-sizing:border-box}
+  html{height:100%}
+  body{min-height:100dvh;height:100dvh;overflow:hidden;font-family:var(--sans);font-size:13.5px;
+    line-height:1.6;color:var(--ink);background:var(--paper);-webkit-font-smoothing:antialiased;
+    text-rendering:optimizeLegibility}
+  button,input,textarea{font:inherit;color:inherit}
+  button{background:none;border:none;cursor:pointer}
+  :focus-visible{outline:2px solid var(--spring);outline-offset:3px;border-radius:var(--r-xs)}
+  .sr{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;
+    clip:rect(0 0 0 0);white-space:nowrap;border:0}
+
+  /* ═══ Frame ═══ */
+  .app{display:grid;grid-template-columns:var(--rail) 1fr;height:100dvh}
+
+  /* ── The contour field. A terrain the card sits in as a clearing. ── */
+  .field{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:0}
+  .field path{fill:none;stroke:var(--forest);stroke-width:1;
+    stroke-dasharray:1;stroke-dashoffset:1;opacity:0;
+    transition:stroke-dashoffset 1.3s var(--ease),opacity .7s var(--ease)}
+  .field path.surveyed{stroke-dashoffset:0;opacity:var(--o)}
+
+  /* ═══ The rail — Pine Deep. Dark surfaces are gradient + dot grid, never flat. ═══ */
+  .rail{position:relative;background-color:var(--forest-deep);
+    background-image:var(--dot-grid),var(--surface-dark);background-size:13px 13px,auto;
+    color:#f2f5f1;display:flex;flex-direction:column;padding:26px 0 22px;overflow:hidden}
+  .rail-field{position:absolute;inset:0;pointer-events:none;opacity:.5}
+  .rail-field path{fill:none;stroke:#7fd6a8;stroke-width:1;opacity:.09}
+
+  .brand{position:relative;z-index:2;padding:0 24px 22px;display:flex;align-items:baseline;gap:9px}
+  .brand .wm{font-family:var(--serif);font-size:17px;letter-spacing:.01em;color:#f2f5f1}
+  .brand .ctx{font-size:11px;font-weight:500;color:rgba(242,245,241,.58)}
+
+  .stack{position:relative;z-index:2;flex:1;min-height:0;overflow-y:auto;padding:0 24px;
+    scrollbar-width:thin;scrollbar-color:rgba(242,245,241,.16) transparent}
+  .stack::-webkit-scrollbar{width:4px}
+  .stack::-webkit-scrollbar-thumb{background:rgba(242,245,241,.16);border-radius:99px}
+
+  .chap{display:flex;align-items:center;gap:8px;padding:16px 0 9px}
+  .chap:first-child{padding-top:2px}
+  .chap i{width:9px;height:9px;border-radius:var(--r-xs);flex:none}
+  .chap span{font-size:10px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;
+    color:rgba(242,245,241,.58)}
+
+  /* The spine: one continuous line the dots sit on. Travelled = spring. */
+  .steps{position:relative;padding-left:22px}
+  .steps::before{content:'';position:absolute;left:5px;top:8px;bottom:12px;width:1px;
+    background:rgba(242,245,241,.13)}
+  /* scaleY against the full track rather than an animated height — layout
+     properties are not transitioned in this system. */
+  .steps::after{content:'';position:absolute;left:5px;top:8px;bottom:12px;width:1px;
+    background:var(--spring-lite);opacity:.65;transform-origin:top;
+    transform:scaleY(var(--spine,0));transition:transform .5s var(--ease)}
+
+  /* Flex column, not block + text-align: Chrome centres a <button>'s anonymous
+     content box regardless of text-align, so the rows would read centred. */
+  .step{position:relative;display:flex;flex-direction:column;align-items:flex-start;
+    width:100%;text-align:left;padding:6px 8px 6px 0;
+    border-radius:var(--r-sm);transition:background .14s}
+  .step .dot{position:absolute;left:-22px;top:12px;width:11px;height:11px;border-radius:50%;
+    display:grid;place-items:center;background:var(--forest-deep);
+    box-shadow:0 0 0 3px var(--forest-deep)}
+  .step .dot i{width:5px;height:5px;border-radius:50%;background:rgba(242,245,241,.22);
+    transition:background .2s,transform .2s var(--ease)}
+  /* Muted ink on Pine Deep is still reading text, so every alpha here is set to
+     clear 4.5:1 against #0c2e20 — .55 ≈ 5.1:1, .72 ≈ 7.3:1. State is carried by
+     the dot colour and the echo, never by text alpha alone. */
+  /* Explicit on the children too — the button's UA text-align:center is inherited,
+     so aligning the flex boxes alone still leaves the text centred inside them. */
+  .step .lb,.step .ec{text-align:left}
+  .step .lb{font-size:12.5px;color:rgba(242,245,241,.55);transition:color .15s}
+  .step .ec{display:block;width:100%;font-size:11.5px;line-height:1.45;
+    color:rgba(242,245,241,.58);margin-top:1px;overflow:hidden;text-overflow:ellipsis;
+    white-space:nowrap}
+
+  .step.done{cursor:pointer}
+  .step.done:hover{background:rgba(242,245,241,.055)}
+  .step.done .dot i{background:var(--spring-lite)}
+  .step.done .lb{color:rgba(242,245,241,.72)}
+  .step.done:hover .lb{color:#f2f5f1}
+
+  /* The live present. Exactly one lime element in the view — the dot alone. */
+  .step.now .dot i{background:var(--accent);transform:scale(1.5)}
+  .step.now .lb{color:#f2f5f1;font-weight:500}
+
+  .step.skipped .dot i{background:rgba(242,245,241,.3)}
+  .step.skipped .ec{font-style:italic;color:rgba(242,245,241,.58)}
+
+  .justin{animation:echoIn .42s var(--ease) both}
+  @keyframes echoIn{from{opacity:0;transform:translateY(-3px)}}
+
+  .rail-foot{position:relative;z-index:2;padding:18px 24px 0;margin-top:14px;
+    border-top:1px solid rgba(242,245,241,.09)}
+  .prog{display:flex;align-items:center;gap:11px}
+  .prog .n{font-size:12.5px;font-weight:500;font-variant-numeric:tabular-nums;color:#f2f5f1}
+  .prog .tr{flex:1;height:3px;border-radius:99px;background:rgba(242,245,241,.14);overflow:hidden}
+  .prog .tr i{display:block;height:100%;width:100%;background:var(--spring-lite);border-radius:99px;
+    transform-origin:left;transform:scaleX(0);transition:transform .5s var(--ease)}
+  .rail-foot p{font-size:11.5px;line-height:1.5;color:rgba(242,245,241,.58);margin-top:12px}
+  .exit{margin-top:14px;font-size:12px;color:rgba(242,245,241,.58);padding:5px 9px;margin-left:-9px;
+    border-radius:var(--r-sm);transition:background .14s,color .14s}
+  .exit:hover{background:rgba(242,245,241,.07);color:#f2f5f1}
+
+  /* ═══ Stage ═══ */
+  .stage{position:relative;min-width:0;overflow-y:auto;display:grid;place-items:center;
+    padding:40px 40px 48px}
+  .stage-in{position:relative;z-index:1;width:100%;max-width:580px}
+
+  .card{background:var(--surface);border:1px solid rgba(15,21,18,.05);border-radius:var(--r-card);
+    padding:32px 34px 28px}
+  .card.enter{animation:cardIn .42s var(--ease) both}
+  .card.enter.back{animation-name:cardBack}
+  @keyframes cardIn{from{opacity:0;transform:translateY(12px);filter:blur(7px)}}
+  @keyframes cardBack{from{opacity:0;transform:translateY(-12px);filter:blur(7px)}}
+
+  .q{font-family:var(--serif);font-size:30px;font-weight:400;line-height:1.2;letter-spacing:-.01em;
+    text-wrap:balance;margin-bottom:8px}
+  .qsub{font-size:13px;color:var(--text3);margin-bottom:22px}
+
+  /* Provenance — grounding is the product's promise, so say where a value came from. */
+  .prov{display:inline-flex;align-items:center;gap:6px;background:var(--wash);color:var(--forest);
+    border-radius:var(--r-chip);padding:3px 9px;font-size:11px;font-weight:500;margin-bottom:14px}
+  .prov svg{flex:none}
+  .prov.warn{background:var(--pending-bg);color:var(--pending)}
+
+  /* ── Single select ── */
+  .opts{display:grid;gap:8px}
+  .opt{display:flex;align-items:center;gap:12px;padding:13px 15px;width:100%;text-align:left;
+    border:1px solid var(--line2);border-radius:var(--r-panel);background:var(--surface);
+    transition:background .14s,border-color .14s,color .14s}
+  .opt:hover{background:var(--sunken);border-color:#bfcbc2}
+  .opt[aria-checked="true"]{background:var(--wash);border-color:var(--forest);color:var(--forest)}
+  .opt .key{width:23px;height:23px;border-radius:var(--r-sm);border:1px solid var(--line2);flex:none;
+    display:grid;place-items:center;font-size:11px;font-weight:600;color:var(--text3);
+    font-variant-numeric:tabular-nums;transition:all .14s}
+  .opt:hover .key{border-color:#bfcbc2;color:var(--text2)}
+  .opt[aria-checked="true"] .key{background:var(--forest);border-color:var(--forest);color:#fff}
+  .opt .t{flex:1;font-size:14.5px}
+  .likely{font-size:11px;font-weight:500;background:var(--wash);color:var(--forest);
+    border-radius:var(--r-chip);padding:2px 8px;flex:none}
+  .opt[aria-checked="true"] .likely{background:rgba(22,68,48,.1)}
+
+  /* ── Free text ── */
+  .txt{width:100%;border:1px solid var(--line2);border-radius:var(--r-panel);background:var(--surface);
+    padding:13px 15px;font-size:14.5px;line-height:1.6;resize:none;font-family:inherit;
+    transition:border-color .14s,box-shadow .14s}
+  .txt:focus{outline:none;border-color:var(--spring);box-shadow:0 0 0 3px rgba(46,158,104,.12)}
+  .txt::placeholder{color:var(--text3)}
+  .alt{margin-top:16px}
+  .meta{display:flex;justify-content:space-between;align-items:center;gap:12px;
+    font-size:11.5px;color:var(--text3);margin-top:9px;min-height:24px}
+  .lnk{font-size:11.5px;color:var(--spring-text);font-weight:500;padding:3px 6px;margin:-3px -6px;
+    border-radius:var(--r-xs);transition:background .14s}
+  /* Living Green Text holds 4.53:1 on white but only 4.1:1 once Wash slides under
+     it, so the hover state darkens to Deep Pine rather than keeping the green. */
+  .lnk:hover{background:var(--wash);color:var(--forest)}
+
+  /* ── Multi select ── */
+  .tags{display:flex;flex-wrap:wrap;gap:8px}
+  .tag{display:inline-flex;align-items:center;gap:8px;min-height:35px;padding:0 13px;
+    border-radius:var(--r-chip);border:1px solid var(--line2);background:var(--surface);
+    font-size:13.5px;color:var(--text2);transition:all .14s}
+  .tag:hover{background:var(--sunken);border-color:#bfcbc2;color:var(--ink)}
+  .tag[aria-pressed="true"]{background:var(--forest);border-color:var(--forest);color:#fff}
+  .tag .k{font-size:10px;font-weight:600;opacity:.5;font-variant-numeric:tabular-nums}
+  .tag[aria-pressed="true"] .k{opacity:.62}
+  .tag.add{border-style:dashed;color:var(--text3);background:transparent}
+  .tag.add:hover{color:var(--forest);border-color:var(--forest);background:var(--wash)}
+  .tag.custom .k{display:none}
+  .tag.entry{padding:0 5px 0 12px;border-style:dashed;border-color:var(--spring);
+    box-shadow:0 0 0 3px rgba(46,158,104,.12)}
+  .tagin{border:none;background:none;outline:none;width:132px;font-size:13.5px;height:33px}
+  .tagin::placeholder{color:var(--text3)}
+  .meta kbd{font:inherit;font-size:10px;border:1px solid var(--line2);border-radius:var(--r-xs);
+    padding:1px 5px;background:var(--surface)}
+
+  /* ── Allocation ── */
+  .abar{height:10px;border-radius:99px;background:var(--sunken);display:flex;gap:2px;
+    overflow:hidden;margin-bottom:16px}
+  /* No transition: flex-basis is a layout property, and these segments update
+     from direct number entry, where an instant response beats a 340ms lag. */
+  .abar i{display:block;flex-grow:0;flex-shrink:0}
+  .abar i.rest{background:var(--sunken);background-image:var(--hatch);opacity:.5}
+  .arow{display:flex;align-items:center;gap:9px;margin-bottom:8px}
+  .arow .sw{width:9px;height:9px;border-radius:var(--r-xs);flex:none}
+  .arow .nm{flex:1;min-width:0;height:37px;border:1px solid var(--line2);border-radius:var(--r-chip);
+    background:var(--surface);padding:0 12px;font-size:13.5px;transition:border-color .14s,box-shadow .14s}
+  .arow .nm:focus{outline:none;border-color:var(--spring);box-shadow:0 0 0 3px rgba(46,158,104,.12)}
+  .arow .pc{width:74px;flex:none;display:flex;align-items:center;border:1px solid var(--line2);
+    border-radius:var(--r-chip);background:var(--surface);transition:border-color .14s,box-shadow .14s}
+  .arow .pc:focus-within{border-color:var(--spring);box-shadow:0 0 0 3px rgba(46,158,104,.12)}
+  .arow .pc input{width:100%;border:none;height:35px;padding:0 3px 0 11px;font-size:13.5px;
+    text-align:right;background:none;font-variant-numeric:tabular-nums;-moz-appearance:textfield}
+  .arow .pc input::-webkit-outer-spin-button,.arow .pc input::-webkit-inner-spin-button{
+    -webkit-appearance:none;margin:0}
+  .arow .pc input:focus{outline:none}
+  .arow .pc span{font-size:12px;color:var(--text3);padding-right:10px}
+  .del{width:28px;height:28px;flex:none;display:grid;place-items:center;border-radius:var(--r-sm);
+    color:var(--text3);transition:background .14s,color .14s}
+  .del:hover{background:var(--danger-bg);color:var(--danger)}
+  .atot{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:14px;
+    font-size:12.5px;color:var(--text2)}
+  .atot .v{font-weight:600;font-variant-numeric:tabular-nums}
+  .atot .v.ok{color:var(--forest)}
+  .atot .v.off{color:var(--pending)}
+
+  /* ── Buttons ── */
+  .btn{height:38px;padding:0 17px;border-radius:var(--r-chip);display:inline-flex;align-items:center;
+    justify-content:center;gap:7px;font-size:13.5px;font-weight:500;line-height:1;
+    border:1px solid transparent;transition:background .15s,border-color .15s,color .15s,transform .1s}
+  .btn:active{transform:scale(.98)}
+  .btn-primary{background:var(--forest);color:#fff}
+  .btn-primary:hover{background:var(--forest-deep)}
+  .btn-secondary{border-color:var(--line2);background:var(--surface);color:var(--ink)}
+  .btn-secondary:hover{border-color:var(--forest);color:var(--forest)}
+  .btn-ghost{color:var(--text2);padding:0 11px}
+  .btn-ghost:hover{background:var(--sunken);color:var(--ink)}
+  .btn-sm{height:31px;font-size:12.5px;padding:0 12px;border-radius:var(--r-sm)}
+  .btn:disabled{opacity:.4;pointer-events:none}
+
+  .nav{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-top:26px;
+    padding-top:20px;border-top:1px solid var(--line)}
+  .kb{font-size:11px;color:var(--text3);margin-top:14px;text-align:center}
+  .kb kbd{font:inherit;font-size:10px;font-variant-numeric:tabular-nums;border:1px solid var(--line2);
+    border-radius:var(--r-xs);padding:1px 5px;margin:0 1px;background:var(--surface)}
+
+  /* ═══ Review ═══ */
+  .sum-h{font-family:var(--serif);font-size:30px;font-weight:400;line-height:1.2;letter-spacing:-.01em}
+  .sum-h.cyr{font-family:var(--sans);font-size:23px;font-weight:600;letter-spacing:-.02em}
+  .sum-sub{font-size:13px;color:var(--text3);margin:6px 0 22px}
+  .grp{font-size:10px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--text3);
+    margin:22px 0 9px}
+  .grp:first-of-type{margin-top:0}
+  .srow{display:flex;align-items:flex-start;gap:14px;padding:12px 16px;background:var(--surface);
+    border:1px solid rgba(15,21,18,.05);border-radius:var(--r-panel);margin-bottom:7px;
+    transition:border-color .14s}
+  .srow:hover{border-color:var(--line2)}
+  .srow .sl{width:118px;flex:none;font-size:11px;font-weight:600;letter-spacing:.09em;
+    text-transform:uppercase;color:var(--text3);padding-top:3px}
+  .srow .sv{flex:1;min-width:0;font-size:13.5px}
+  .srow.skip .sv{color:var(--text3);font-style:italic}
+  .srow .se{flex:none;opacity:0;transition:opacity .14s}
+  .srow:hover .se,.srow:focus-within .se{opacity:1}
+  .mini{font-size:11px;font-weight:500;border-radius:var(--r-chip);padding:2px 8px;
+    display:inline-flex;align-items:center;gap:5px}
+  .mini.draft{background:var(--sunken);color:var(--text2)}
+  .mini.warn{background:var(--pending-bg);color:var(--pending)}
+  .swrow{display:flex;gap:5px;margin-top:7px}
+  .swrow i{width:22px;height:22px;border-radius:var(--r-xs);border:1px solid var(--line2);display:block}
+  .sbar{height:8px;border-radius:99px;background:var(--sunken);display:flex;gap:2px;overflow:hidden;
+    margin-bottom:7px}
+  .sbar i{display:block}
+  .sfoot{display:flex;align-items:center;gap:12px;margin-top:22px;padding-top:20px;
+    border-top:1px solid var(--line)}
+  .sfoot .sp{flex:1;font-size:12px;color:var(--text3)}
+
+  /* ═══ Done ═══ */
+  .done{text-align:center}
+  .ring{width:60px;height:60px;border-radius:50%;background:var(--forest);color:#fff;
+    display:grid;place-items:center;margin:0 auto 20px;animation:pop .55s var(--ease) both}
+  @keyframes pop{from{transform:scale(.6);opacity:0}}
+  .done h2{font-family:var(--serif);font-size:30px;font-weight:400;line-height:1.2}
+  .done h2.cyr{font-family:var(--sans);font-size:23px;font-weight:600;letter-spacing:-.02em}
+  .done h2 em{font-style:italic;color:var(--forest)}
+  .done h2.cyr em{font-style:normal;color:var(--forest)}
+  .done>p{font-size:13.5px;color:var(--text2);margin-top:8px}
+  .nxs{display:grid;gap:8px;margin-top:26px;text-align:left}
+  .nx{display:flex;align-items:center;gap:13px;padding:14px 16px;width:100%;text-align:left;
+    border:1px solid var(--line2);border-radius:var(--r-panel);background:var(--surface);
+    transition:background .14s,border-color .14s}
+  .nx:hover{background:var(--sunken);border-color:var(--forest)}
+  .nx-ic{width:33px;height:33px;border-radius:var(--r-chip);flex:none;background:var(--wash);
+    color:var(--forest);display:grid;place-items:center}
+  .nx .tx{flex:1;min-width:0}
+  .nx b{font-size:13.5px;font-weight:600;display:block}
+  .nx span{font-size:12px;color:var(--text3)}
+  .nx .go{color:var(--text3);flex:none}
+  .nx.pri{background:var(--forest);border-color:var(--forest);color:#fff}
+  .nx.pri:hover{background:var(--forest-deep)}
+  .nx.pri .nx-ic{background:rgba(255,255,255,.14);color:var(--accent)}
+  .nx.pri span,.nx.pri .go{color:rgba(255,255,255,.62)}
+
+  /* ═══ Exit dialog ═══ */
+  .sheet{position:fixed;inset:0;z-index:80;background:rgba(12,46,32,.42);display:grid;
+    place-items:center;padding:24px;opacity:0;pointer-events:none;transition:opacity .22s}
+  .sheet.on{opacity:1;pointer-events:auto}
+  .sheet-c{background:var(--surface);border-radius:var(--r-card);padding:24px 26px;max-width:400px;
+    width:100%;box-shadow:var(--sh-frame);transform:translateY(8px);transition:transform .24s var(--ease)}
+  .sheet.on .sheet-c{transform:none}
+  .sheet-c h4{font-family:var(--serif);font-size:17px;font-weight:400;line-height:1.3}
+  .sheet-c p{font-size:13px;color:var(--text2);margin-top:7px}
+  .sheet-b{display:flex;gap:8px;margin-top:20px}
+  .sheet-b .btn{flex:1}
+
+  /* ═══ Mobile ═══ */
+  .m-top{display:none}
+  @media (max-width:900px){
+    body{overflow:auto}
+    .app{grid-template-columns:1fr;height:auto;min-height:100dvh}
+    .rail{display:none}
+    .m-top{display:block;position:sticky;top:0;z-index:40;background-color:var(--forest-deep);
+      background-image:var(--dot-grid),var(--surface-dark);background-size:13px 13px,auto;color:#f2f5f1}
+    .m-bar{display:flex;align-items:center;gap:12px;padding:13px 18px}
+    .m-bar .wm{font-family:var(--serif);font-size:17px}
+    .m-bar .n{font-size:12px;font-weight:500;font-variant-numeric:tabular-nums;
+      color:rgba(242,245,241,.7);margin-left:auto}
+    .m-tr{height:3px;background:rgba(242,245,241,.14)}
+    .m-tr i{display:block;height:100%;background:var(--spring-lite);transform-origin:left;
+      transform:scaleX(0);transition:transform .5s var(--ease)}
+    .m-bar .exit{margin:0;padding:5px 8px}
+    .stage{padding:24px 18px 40px;place-items:start center}
+    .card{padding:24px 20px 22px;border-radius:var(--r-panel)}
+    .q{font-size:23px}
+    .srow{flex-direction:column;gap:6px}
+    .srow .sl{width:auto;padding-top:0}
+    .srow .se{opacity:1;align-self:flex-start;margin-left:-12px}
+    .sfoot{flex-wrap:wrap}
+    .sfoot .sp{flex-basis:100%;order:3}
+    .kb,.kbhint{display:none}
+    /* The field's viewBox is landscape; sliced into a narrow column it shows only
+       a fragment of one ring, which reads as a stray mark. Drop it to texture. */
+    .field{opacity:.45}
+    /* 16px is the iOS Safari floor — anything smaller auto-zooms the viewport on
+       focus. Off the type ramp on purpose; it is a platform constraint, not a
+       type decision, and it applies only to focusable fields at this breakpoint. */
+    .arow .nm,.arow .pc input,.txt,.tagin{font-size:16px}
+  }
+
+  @media (prefers-reduced-motion:reduce){
+    *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;
+      transition-duration:.01ms!important}
+    .field path{stroke-dashoffset:0}
+  }
+</style>
+</head>
+<body>
+
+<!-- ══ Mobile rail. Must precede .app: it is display:none on desktop, but as a
+     following sibling it would otherwise sticky-stick below the whole app. ══ -->
+<div class="m-top">
+  <div class="m-bar">
+    <span class="wm">Kontuur</span>
+    <span class="n" id="mCount">01 / 08</span>
+    <button class="exit" id="mExit">Exit</button>
+  </div>
+  <div class="m-tr"><i id="mTrack"></i></div>
+</div>
+
+<div class="app">
+  <!-- ══ Rail ══ -->
+  <aside class="rail">
+    <svg class="rail-field" id="railField" aria-hidden="true" preserveAspectRatio="xMidYMid slice"></svg>
+    <div class="brand">
+      <span class="wm">Kontuur</span>
+      <span class="ctx">New client</span>
+    </div>
+    <nav class="stack" id="stack" aria-label="Onboarding questions"></nav>
+    <div class="rail-foot">
+      <div class="prog">
+        <span class="n" id="count">01 / 08</span>
+        <span class="tr" role="progressbar" aria-valuemin="0" aria-valuemax="8" aria-valuenow="0"
+              aria-label="Questions answered" id="pbar"><i id="track"></i></span>
+      </div>
+      <p id="railHint">Answers detected from the client's website are pre-filled. Edit anything that doesn't fit.</p>
+      <button class="exit" id="exit">Save and exit</button>
+    </div>
+  </aside>
+
+  <!-- ══ Stage ══ -->
+  <main class="stage">
+    <svg class="field" id="field" aria-hidden="true" preserveAspectRatio="xMidYMid slice"></svg>
+    <div class="stage-in" id="stage"></div>
+  </main>
+</div>
+
+<!-- ══ Exit dialog ══ -->
+<div class="sheet" id="sheet">
+  <div class="sheet-c" role="dialog" aria-modal="true" aria-labelledby="shT" aria-describedby="shD">
+    <h4 id="shT">Keep this as a draft?</h4>
+    <p id="shD">You've answered <b id="ansN">3</b> of 8. We'll save a draft client so you can pick it
+      up where you left off.</p>
+    <div class="sheet-b">
+      <button class="btn btn-secondary" id="disc">Discard</button>
+      <button class="btn btn-primary" id="keep">Keep draft</button>
+    </div>
+  </div>
+</div>
+
+<div class="sr" role="status" aria-live="polite" id="live"></div>
+
+<script>
+'use strict';
+
+/* ════ Chapters. Tints are keyed to the chapter, never to list position — the
+   same question wears the same tint wherever it sits. A descending green ramp
+   rather than the Wash/Marker/Sage surface tints, which all collapse to the
+   same near-white against Pine Deep. Surface Lime is deliberately absent so
+   New Growth stays the only yellow-green mark in the rail. ════ */
+var CHAPTERS = [
+  { id:'basics', name:'The basics',      tint:'var(--wash)'        },
+  { id:'people', name:'Their people',    tint:'var(--sage)'        },
+  { id:'voice',  name:'How they sound',  tint:'var(--spring-lite)' },
+  { id:'mix',    name:'The content mix', tint:'var(--spring)'      }
+];
+
+/* ════ Cards — grounded in src/features/onboarding/lib/questions.ts ════ */
+var CARDS = [
+  { id:'name', chap:'basics', rail:'Client name', type:'text',
+    q:'What should we call this client?',
+    sub:'Taken from the title on their website.',
+    pre:'Недвижими имоти Витоша', detected:'Website title' },
+
+  { id:'niche', chap:'basics', rail:'What they do', type:'one',
+    q:'What do they actually do?',
+    sub:'Pick the closest — you can get specific later.',
+    opts:[['Real estate agency',1],['Property management',0],['Property development',0],
+          ['Valuation and appraisal',0]] },
+
+  { id:'aud', chap:'people', rail:'Audience', type:'multi',
+    q:'Who buys from them?',
+    sub:'Pick everything that applies.',
+    opts:['Property buyers','Property sellers','Investors','Valuation clients','Legal consultation'],
+    pre:[0,1,2], detected:'Site copy' },
+
+  { id:'goal', chap:'people', rail:'Post goal', type:'one',
+    q:'What should a good post make someone do?',
+    sub:"We couldn't work this one out from the site — your call.",
+    opts:[['Book a viewing or appointment',0],['Send an enquiry',0],['Follow and engage',0],
+          ['Learn something and trust the brand',0]] },
+
+  { id:'tone', chap:'voice', rail:'Tone', type:'text', big:1,
+    q:'How should they come across?',
+    sub:'Drafted from their own copy — rewrite it in your words.',
+    pre:'Professional and attentive. Clear and informative, never pushy. Speaks to people making a large, careful decision.',
+    detected:'Their website copy' },
+
+  { id:'lang', chap:'voice', rail:'Language', type:'one',
+    q:'Which language, and how formal?',
+    sub:'Detected from the language of the site.',
+    opts:[['Bulgarian — formal (Вие)',1],['Bulgarian — casual (ти)',0],
+          ['English — professional',0],['English — casual',0]] },
+
+  { id:'avoid', chap:'voice', rail:'Never post', type:'text', big:1, skip:1,
+    q:'Anything they should never post about?',
+    sub:'Industry defaults — trim or add as you like.',
+    pre:'Political content, unverified property claims, financial advice beyond real estate, discriminatory housing language.',
+    detected:'Real-estate defaults' },
+
+  { id:'pill', chap:'mix', rail:'Content mix', type:'alloc',
+    q:'How should we split their posts?',
+    sub:'Weights decide how many topics each pillar gets. Must total 100%.',
+    detected:'What they already publish',
+    pre:[['Property listings & market updates',40,'var(--m1)'],
+         ['Expert team & services',25,'var(--m2)'],
+         ['Real estate advice & tips',20,'var(--m3)'],
+         ['Client testimonials',15,'var(--m4)']] }
+];
+
+var i = 0, A = {}, dir = 'f', justAnswered = null;
+var stage   = document.getElementById('stage');
+var stackEl = document.getElementById('stack');
+var live    = document.getElementById('live');
+
+/* Instrument Serif ships no Cyrillic. Any interpolated user string set in the
+   serif must gate and fall back to the sans. DESIGN.md § Latin-Only Serif Rule. */
+function hasCyrillic(s){ return /[Ѐ-ӿ]/.test(String(s || '')); }
+function esc(s){ return String(s == null ? '' : s)
+  .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function chapOf(id){ for(var n=0;n<CHAPTERS.length;n++) if(CHAPTERS[n].id===id) return CHAPTERS[n];
+  return CHAPTERS[0]; }
+
+/* ════ The contour field. Concentric rings around a few peaks; rings resolve as
+       the profile fills in — the terrain being surveyed, not decoration. ════ */
+function ringPath(cx, cy, r, rough, seed){
+  var pts = [], steps = 46;
+  for(var s=0; s<steps; s++){
+    var a = s / steps * Math.PI * 2;
+    var wob = Math.sin(a*3 + seed) * .16 + Math.sin(a*5 - seed*1.7) * .09
+            + Math.sin(a*2 + seed*.6) * .13;
+    var rr = r * (1 + wob * rough);
+    pts.push(Math.round(cx + Math.cos(a)*rr*1.18) + ' ' + Math.round(cy + Math.sin(a)*rr));
+  }
+  return 'M' + pts.join('L') + 'Z';
+}
+function buildField(el, peaks, w, h, baseOpacity){
+  el.setAttribute('viewBox', '0 0 ' + w + ' ' + h);
+  var out = [], all = [];
+  peaks.forEach(function(p, pi){
+    for(var r=0; r<p.rings; r++){
+      all.push({ d: ringPath(p.x, p.y, p.r0 + r*p.step, .10 + r*.055, pi*2.4 + r*.31),
+                 o: (baseOpacity * (1 - r/(p.rings+1.5))).toFixed(3),
+                 order: r + pi*.34 });
+    }
+  });
+  all.sort(function(a,b){ return a.order - b.order; });
+  all.forEach(function(p, n){
+    out.push('<path d="'+p.d+'" pathLength="1" style="--o:'+p.o+';transition-delay:'+(n*22)+'ms"/>');
+  });
+  el.innerHTML = out.join('');
+  return el.querySelectorAll('path');
+}
+
+var fieldPaths = buildField(document.getElementById('field'),
+  [{ x:150, y:120, r0:34, step:26, rings:9 },
+   { x:1140, y:640, r0:40, step:31, rings:9 },
+   { x:820, y:80,  r0:28, step:23, rings:7 }], 1300, 860, .30);
+
+buildField(document.getElementById('railField'),
+  [{ x:250, y:520, r0:36, step:30, rings:8 }], 300, 700, 1);
+document.querySelectorAll('#railField path').forEach(function(p){
+  p.style.strokeDashoffset = 0; p.style.opacity = .09;
+});
+
+function surveyField(){
+  /* A floor of 28%: the terrain has to read as terrain from the first card, so
+     early progress thickens an existing contour rather than scattering loose rings. */
+  var frac  = (i >= CARDS.length ? CARDS.length : i) / CARDS.length;
+  var shown = Math.round((0.28 + 0.72 * frac) * fieldPaths.length);
+  for(var n=0; n<fieldPaths.length; n++)
+    fieldPaths[n].classList.toggle('surveyed', n < shown);
+}
+
+/* ════ Answer echo shown in the rail ════ */
+function echo(c){
+  var v = A[c.id];
+  if(c.type === 'multi') return (v && v.length) ? v.join(' · ') : '';
+  if(c.type === 'alloc') return (v || []).map(function(p){ return p[0] + ' ' + p[1] + '%'; }).join(' · ');
+  if(c.id === 'niche' || c.id === 'goal' || c.id === 'lang') return v || A[c.id + '_alt'] || '';
+  return v || '';
+}
+function answered(c){
+  if(c.type === 'multi') return !!(A[c.id] && A[c.id].length);
+  if(c.type === 'alloc') return !!A[c.id];
+  return A[c.id] !== undefined || !!A[c.id + '_alt'];
+}
+
+/* ════ Rail ════ */
+function drawRail(){
+  /* Grouped per chapter, because each chapter owns its own spine segment. A
+     single --spine on the whole stack would draw the same fraction four times. */
+  var groups = [];
+  CARDS.forEach(function(c, n){
+    var g = groups[groups.length - 1];
+    if(!g || g.chap !== c.chap) groups.push(g = { chap:c.chap, items:[] });
+    g.items.push({ card:c, n:n });
+  });
+
+  stackEl.innerHTML = groups.map(function(g){
+    var ch = chapOf(g.chap);
+    var passed = g.items.filter(function(it){ return it.n < i; }).length;
+    var rows = g.items.map(function(it){
+      var c = it.card, n = it.n;
+      var isDone = n < i && answered(c);
+      var isSkip = n < i && !answered(c);
+      var isNow  = n === i;
+      var cls = 'step' + (isDone ? ' done' : '')
+              + (isSkip ? ' done skipped' : '') + (isNow ? ' now' : '');
+      var body = isDone ? echo(c) : (isSkip ? 'Skipped' : '');
+      var tag  = (isDone || isSkip) ? 'button' : 'div';
+      return '<'+tag+' class="'+cls+'"'
+        + ((isDone||isSkip) ? ' data-jump="'+n+'"' : '')
+        + (isNow ? ' aria-current="step"' : '') + '>'
+        + '<span class="dot" aria-hidden="true"><i></i></span>'
+        + '<span class="lb">'+esc(c.rail)+'</span>'
+        + (body ? '<span class="ec'+(justAnswered===n?' justin':'')+'">'+esc(body)+'</span>' : '')
+        + '</'+tag+'>';
+    }).join('');
+    return '<div class="chap"><i style="background:'+ch.tint+'" aria-hidden="true"></i>'
+      + '<span>'+esc(ch.name)+'</span></div>'
+      + '<div class="steps" style="--spine:'
+      + (passed / g.items.length).toFixed(3) + '">' + rows + '</div>';
+  }).join('');
+
+  var pct   = Math.min(i, CARDS.length) / CARDS.length;
+  var label = (i >= CARDS.length ? 'Review' : String(i + 1).padStart(2, '0') + ' / 08');
+  document.getElementById('count').textContent  = label;
+  document.getElementById('mCount').textContent = label;
+  document.getElementById('track').style.transform  = 'scaleX(' + pct + ')';
+  document.getElementById('mTrack').style.transform = 'scaleX(' + pct + ')';
+  document.getElementById('pbar').setAttribute('aria-valuenow', Math.min(i, CARDS.length));
+  surveyField();
+  justAnswered = null;
+}
+
+/* ════ Card bodies ════ */
+function provChip(c){
+  if(!c.detected) return '';
+  return '<span class="prov">'
+    + '<svg width="11" height="11" viewBox="0 0 14 14" fill="none" stroke="currentColor" '
+    + 'stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">'
+    + '<path d="M7 1.6l1.4 3.5L12 6.5 8.4 7.9 7 11.4 5.6 7.9 2 6.5l3.6-1.4z"/></svg>'
+    + 'Detected · ' + esc(c.detected) + '</span>';
+}
+
+function bodyOne(c){
+  var chosen = A[c.id];
+  return '<div class="opts" role="radiogroup" aria-label="'+esc(c.q)+'">'
+    + c.opts.map(function(o, n){
+        var sel = chosen === o[0];
+        return '<button class="opt" role="radio" aria-checked="'+(sel?'true':'false')+'" '
+          + 'tabindex="'+(sel || (!chosen && n===0) ? '0' : '-1')+'" data-v="'+esc(o[0])+'">'
+          + '<span class="key" aria-hidden="true">'+(n+1)+'</span>'
+          + '<span class="t">'+esc(o[0])+'</span>'
+          + (o[1] ? '<span class="likely">Likely</span>' : '')
+          + '</button>';
+      }).join('')
+    + '</div>'
+    + '<div class="alt"><input class="txt" id="alt" placeholder="Or type your own…" '
+    + 'aria-label="Or type your own answer" value="'+esc(A[c.id+'_alt']||'')+'"></div>';
+}
+
+function tagsMarkup(c, entry){
+  var cur = A[c.id];
+  var extras = cur.filter(function(v){ return c.opts.indexOf(v) === -1; });
+  return '<div class="tags" id="tags">'
+    + c.opts.map(function(o, n){
+        return '<button class="tag" aria-pressed="'+(cur.indexOf(o)>-1?'true':'false')+'" '
+          + 'data-v="'+esc(o)+'"><span class="k" aria-hidden="true">'+(n+1)+'</span>'+esc(o)+'</button>';
+      }).join('')
+    + extras.map(function(o){
+        return '<button class="tag custom" aria-pressed="true" data-v="'+esc(o)+'">'
+          + '<span class="k"></span>'+esc(o)+'</button>';
+      }).join('')
+    + (entry
+        ? '<span class="tag entry"><input class="tagin" id="newTag" placeholder="Name it…" '
+          + 'aria-label="Add an audience"><button class="del" id="newTagX" '
+          + 'aria-label="Cancel"><svg width="12" height="12" viewBox="0 0 14 14" fill="none" '
+          + 'stroke="currentColor" stroke-width="1.5" stroke-linecap="round">'
+          + '<path d="M3 3l8 8M11 3l-8 8"/></svg></button></span>'
+        : '<button class="tag add" id="addTag">+ Add another</button>')
+    + '</div>';
+}
+
+function bodyMulti(c){
+  if(!A[c.id]) A[c.id] = c.opts.filter(function(_, n){ return (c.pre||[]).indexOf(n) > -1; });
+  return tagsMarkup(c, false)
+    + '<div class="meta"><span id="mcount">'+A[c.id].length+' selected</span>'
+    + '<span class="kbhint">Press <kbd>Enter</kbd> to continue</span></div>';
+}
+
+function redrawTags(entry){
+  var c = CARDS[i];
+  document.getElementById('tags').outerHTML = tagsMarkup(c, entry);
+  document.getElementById('mcount').textContent = A[c.id].length + ' selected';
+  if(entry) document.getElementById('newTag').focus();
+}
+
+function commitTag(){
+  var el = document.getElementById('newTag');
+  if(!el) return;
+  var v = el.value.trim(), list = A[CARDS[i].id];
+  if(v && list.indexOf(v) === -1){ list.push(v); live.textContent = v + ' added.'; }
+  redrawTags(false);
+}
+
+function bodyText(c){
+  var v = A[c.id] !== undefined ? A[c.id] : (c.pre || '');
+  var edited = c.pre && v !== c.pre;
+  return '<textarea class="txt" id="ta" rows="'+(c.big?3:1)+'" '
+    + 'aria-label="'+esc(c.q)+'" placeholder="Type here…">'+esc(v)+'</textarea>'
+    + '<div class="meta">'
+    + (edited ? '<button class="lnk" id="reset">Reset to detected</button>'
+              : '<span>'+(c.pre ? 'Pre-filled — edit or replace' : '&nbsp;')+'</span>')
+    + (c.skip ? '<button class="lnk" id="skip">Skip this</button>' : '<span></span>')
+    + '</div>';
+}
+
+function bodyAlloc(c){
+  if(!A[c.id]) A[c.id] = c.pre.map(function(p){ return p.slice(); });
+  return '<div class="abar" id="abar" aria-hidden="true"></div>'
+    + '<p class="sr" id="asr"></p>'
+    + '<div id="arows"></div>'
+    + '<div class="atot">'
+    + '<button class="btn btn-secondary btn-sm" id="aadd">+ Add pillar</button>'
+    + '<span id="atot"></span></div>';
+}
+
+/* ════ Render ════ */
+function render(){
+  drawRail();
+  if(i >= CARDS.length){ return summary(); }
+
+  var c = CARDS[i], body =
+      c.type === 'one'   ? bodyOne(c)
+    : c.type === 'multi' ? bodyMulti(c)
+    : c.type === 'text'  ? bodyText(c)
+    :                      bodyAlloc(c);
+
+  var isLast = i === CARDS.length - 1;
+  var numHint = (c.type === 'one' || c.type === 'multi');
+
+  stage.innerHTML =
+    '<section class="card enter'+(dir==='b'?' back':'')+'" aria-labelledby="qh">'
+    + provChip(c)
+    + '<h1 class="q" id="qh">'+esc(c.q)+'</h1>'
+    + (c.sub ? '<p class="qsub">'+esc(c.sub)+'</p>' : '')
+    + body
+    + '<div class="nav">'
+      + (i > 0 ? '<button class="btn btn-ghost btn-sm" id="back">← Back</button>'
+               : '<span></span>')
+      + '<button class="btn btn-primary" id="next">'
+      + (isLast ? 'Review answers →' : 'Next →') + '</button>'
+    + '</div></section>'
+    + '<p class="kb">'
+    + (numHint ? '<kbd>1</kbd>–<kbd>'+c.opts.length+'</kbd> select · ' : '')
+    + '<kbd>Enter</kbd> continue · <kbd>←</kbd> back · <kbd>Esc</kbd> exit</p>';
+
+  if(c.type === 'alloc') drawAlloc();
+  var ta = document.getElementById('ta');
+  if(ta){ grow(ta); ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); }
+  live.textContent = 'Question ' + (i+1) + ' of ' + CARDS.length + '. ' + c.q;
+}
+
+function grow(t){ t.style.height = 'auto'; t.style.height = Math.max(t.scrollHeight, 50) + 'px'; }
+
+/* ════ Allocation ════ */
+function allocTotal(){ return A.pill.reduce(function(a, p){ return a + (+p[1] || 0); }, 0); }
+
+function paintBar(){
+  var P = A.pill, s = allocTotal(), rest = Math.max(0, 100 - s);
+  document.getElementById('abar').innerHTML =
+    P.map(function(p){
+      return '<i style="flex-basis:'+(Math.max(0,+p[1]||0))+'%;background:'+p[2]+'"></i>';
+    }).join('')
+    + (rest > 0 ? '<i class="rest" style="flex-basis:'+rest+'%"></i>' : '');
+  document.getElementById('asr').textContent =
+    'Content mix: ' + P.map(function(p){ return p[0] + ' ' + p[1] + ' percent'; }).join(', ')
+    + '. Total ' + s + ' percent' + (s === 100 ? '.' : ', needs 100.');
+  document.getElementById('atot').innerHTML =
+    'Total <span class="v '+(s===100?'ok':'off')+'">'+s+'%</span>'
+    + (s === 100 ? '' : ' <button class="lnk" id="abal">Balance to 100%</button>');
+}
+
+function drawAlloc(){
+  document.getElementById('arows').innerHTML = A.pill.map(function(p, n){
+    return '<div class="arow">'
+      + '<span class="sw" style="background:'+p[2]+'" aria-hidden="true"></span>'
+      + '<input class="nm" value="'+esc(p[0])+'" data-n="'+n+'" data-k="0" aria-label="Pillar name">'
+      + '<span class="pc"><input type="number" min="0" max="100" value="'+p[1]+'" data-n="'+n+'" '
+      + 'data-k="1" aria-label="'+esc(p[0])+' weight, percent"><span aria-hidden="true">%</span></span>'
+      + '<button class="del" data-del="'+n+'" aria-label="Remove '+esc(p[0])+'">'
+      + '<svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" '
+      + 'stroke-width="1.5" stroke-linecap="round"><path d="M3 3l8 8M11 3l-8 8"/></svg></button>'
+      + '</div>';
+  }).join('');
+  paintBar();
+}
+
+function balance(){
+  var P = A.pill, s = allocTotal();
+  if(!P.length) return;
+  if(s === 0){ var even = Math.floor(100 / P.length);
+    P.forEach(function(p){ p[1] = even; });
+    P[0][1] += 100 - even * P.length; }
+  else {
+    var run = 0;
+    P.forEach(function(p, n){
+      if(n === P.length - 1) p[1] = 100 - run;
+      else { p[1] = Math.round((+p[1] || 0) / s * 100); run += p[1]; }
+    });
+  }
+  drawAlloc();
+  live.textContent = 'Balanced to 100 percent.';
+}
+
+/* ════ Review ════ */
+function summary(){
+  var name = A.name || 'this client';
+  var P = A.pill || [];
+  var asked = [
+    ['Client name', esc(A.name) || '—', 0],
+    ['What they do', esc(A.niche || A.niche_alt) || '—', 0],
+    ['Audience', esc((A.aud || []).join(' · ')) || '—', 0],
+    ['Post goal', esc(A.goal || A.goal_alt) || 'No preference set — we\'ll pick per post',
+      !(A.goal || A.goal_alt)],
+    ['Tone', esc(A.tone) || '—', 0],
+    ['Language', esc(A.lang || A.lang_alt) || '—', 0],
+    ['Never post', esc(A.avoid) || 'Skipped <span class="mini draft">Default rules apply</span>',
+      !A.avoid],
+    ['Content mix',
+      '<span class="sbar" aria-hidden="true">'
+      + P.map(function(p){ return '<i style="flex-basis:'+p[1]+'%;background:'+p[2]+'"></i>'; }).join('')
+      + '</span>' + esc(P.map(function(p){ return p[0] + ' ' + p[1] + '%'; }).join(' · ')), 0]
+  ];
+
+  stage.innerHTML = '<section class="card enter">'
+    + '<h2 class="sum-h'+(hasCyrillic(name)?' cyr':'')+'">Here\'s '+esc(name)+'</h2>'
+    + '<p class="sum-sub">Eight answers, plus two things we detected on our own. '
+    + 'Everything here stays editable in the client\'s settings.</p>'
+
+    + '<p class="grp">What you answered</p>'
+    + asked.map(function(r, n){
+        return '<div class="srow'+(r[2]?' skip':'')+'">'
+          + '<span class="sl">'+r[0]+'</span><span class="sv">'+r[1]+'</span>'
+          + '<button class="btn btn-ghost btn-sm se" data-jump="'+n+'" '
+          + 'aria-label="Edit '+r[0]+'">Edit</button></div>';
+      }).join('')
+
+    + '<p class="grp">Detected, not asked</p>'
+    /* These five swatches are the CLIENT's detected brand palette — content, not
+       Kontuur tokens. They are deliberately outside the botanical ramp: the whole
+       point of the row is that a purple palette is odd for real estate, which the
+       amber note says in words rather than leaving to colour alone. */
+    + '<div class="srow"><span class="sl">Visual style</span><span class="sv">Graphic editorial'
+    + '<span class="swrow" aria-hidden="true">'
+    + '<i style="background:#fff"></i><i style="background:#707070"></i>'
+    + '<i style="background:#a886cd"></i><i style="background:#6d5785"></i>'
+    + '<i style="background:#e0e0e0"></i></span>'
+    + '<span class="sr">Palette: white, grey, light purple, deep purple, pale grey.</span>'
+    + '<span class="mini warn" style="margin-top:7px">Purple is unusual for real estate — worth a check</span>'
+    + '</span><button class="btn btn-ghost btn-sm se">Edit</button></div>'
+    + '<div class="srow"><span class="sl">Schedule</span>'
+    + '<span class="sv">Mondays 09:00 · 3 posts a week · Instagram</span>'
+    + '<button class="btn btn-ghost btn-sm se">Edit</button></div>'
+
+    + '<div class="sfoot"><span class="sp">Nothing publishes until you connect an account.</span>'
+    + '<button class="btn btn-ghost" id="back">← Back</button>'
+    + '<button class="btn btn-primary" id="save">Save client →</button></div></section>';
+
+  live.textContent = 'Review your answers. Ten details captured.';
+}
+
+/* ════ Done ════ */
+function done(){
+  var name = A.name || 'Client';
+  document.getElementById('count').textContent  = 'Done';
+  document.getElementById('mCount').textContent = 'Done';
+  document.getElementById('railHint').textContent =
+    'You can rerun any of this from the client\'s settings.';
+
+  stage.innerHTML = '<section class="card enter done">'
+    + '<div class="ring"><svg width="25" height="25" viewBox="0 0 24 24" fill="none" '
+    + 'stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">'
+    + '<path d="M4 12.5l5.5 5.5L20 6.5"/></svg></div>'
+    + '<h2 class="'+(hasCyrillic(name)?'cyr':'')+'"><em>'+esc(name)+'</em> is ready</h2>'
+    + '<p>Profile saved. Kontuur can start drafting whenever you are.</p>'
+    + '<div class="nxs">'
+      + nx(1, 'Generate the first 3 posts', 'Drafts land in your review queue',
+          '<path d="M7 1.5l1.2 3.3 3.3 1.2-3.3 1.2L7 10.5 5.8 7.2 2.5 6l3.3-1.2z"/>')
+      + nx(0, 'Connect Instagram', 'Required before anything can publish',
+          '<path d="M5.5 8.5l3-3M6 3.5l1-1a2.5 2.5 0 013.5 3.5l-1 1M8 10.5l-1 1a2.5 2.5 0 01-3.5-3.5l1-1"/>')
+      + nx(0, 'Onboard another client', 'Run this again',
+          '<path d="M2 7a5 5 0 118 4"/><path d="M2 4v3h3"/>', 'restart')
+    + '</div></section>';
+  live.textContent = name + ' is ready. Choose what to do next.';
+}
+
+function nx(pri, title, sub, path, id){
+  return '<button class="nx'+(pri?' pri':'')+'"'+(id?' id="'+id+'"':'')+'>'
+    + '<span class="nx-ic"><svg width="16" height="16" viewBox="0 0 14 14" fill="none" '
+    + 'stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">'
+    + path + '</svg></span>'
+    + '<span class="tx"><b>'+title+'</b><span>'+sub+'</span></span>'
+    + '<svg class="go" width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" '
+    + 'stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 2.5L9.5 7 5 11.5"/>'
+    + '</svg></button>';
+}
+
+/* ════ Navigation ════ */
+function go(){ if(answered(CARDS[i])) justAnswered = i; dir = 'f'; i++; render(); }
+function goBack(){ if(i > 0){ dir = 'b'; i--; render(); } }
+function jump(n){ dir = 'b'; i = n; render(); }
+
+/* ════ Exit dialog ════ */
+var sheet = document.getElementById('sheet'), lastFocus = null;
+function openSheet(){
+  document.getElementById('ansN').textContent = CARDS.filter(answered).length;
+  lastFocus = document.activeElement;
+  sheet.classList.add('on');
+  document.getElementById('keep').focus();
+}
+function closeSheet(){
+  sheet.classList.remove('on');
+  if(lastFocus) lastFocus.focus();
+}
+sheet.addEventListener('keydown', function(e){
+  if(e.key === 'Escape'){ e.stopPropagation(); return closeSheet(); }
+  if(e.key !== 'Tab') return;
+  var f = sheet.querySelectorAll('button'), first = f[0], last = f[f.length-1];
+  if(e.shiftKey && document.activeElement === first){ e.preventDefault(); last.focus(); }
+  else if(!e.shiftKey && document.activeElement === last){ e.preventDefault(); first.focus(); }
+});
+sheet.addEventListener('mousedown', function(e){ if(e.target === sheet) closeSheet(); });
+
+/* ════ Events ════ */
+document.addEventListener('click', function(e){
+  var t = e.target;
+
+  var jumpEl = t.closest('[data-jump]');
+  if(jumpEl){ return jump(+jumpEl.dataset.jump); }
+
+  var o = t.closest('.opt');
+  if(o){
+    var c = CARDS[i];
+    stage.querySelectorAll('.opt').forEach(function(x){
+      x.setAttribute('aria-checked', x === o ? 'true' : 'false');
+      x.tabIndex = x === o ? 0 : -1;
+    });
+    A[c.id] = o.dataset.v; A[c.id + '_alt'] = '';
+    var alt = document.getElementById('alt'); if(alt) alt.value = '';
+    live.textContent = o.dataset.v + ' selected.';
+    setTimeout(go, 200);
+    return;
+  }
+
+  var g = t.closest('.tag');
+  if(g && g.id !== 'addTag'){
+    var c2 = CARDS[i], cur = A[c2.id], v = g.dataset.v, k = cur.indexOf(v);
+    if(k > -1) cur.splice(k, 1); else cur.push(v);
+    g.setAttribute('aria-pressed', k > -1 ? 'false' : 'true');
+    document.getElementById('mcount').textContent = cur.length + ' selected';
+    return;
+  }
+  if(t.closest('#addTag')) return redrawTags(true);
+  if(t.closest('#newTagX')) return redrawTags(false);
+
+  if(t.closest('#reset')){
+    var cr = CARDS[i]; delete A[cr.id];
+    var ta = document.getElementById('ta');
+    ta.value = cr.pre; grow(ta);
+    document.getElementById('reset').outerHTML = '<span>Pre-filled — edit or replace</span>';
+    live.textContent = 'Reset to the detected answer.';
+    return;
+  }
+  if(t.closest('#skip')){ A[CARDS[i].id] = ''; return go(); }
+
+  if(t.closest('#aadd')){
+    var ramp = ['var(--m1)','var(--m2)','var(--m3)','var(--m4)'];
+    A.pill.push(['New pillar', 0, ramp[A.pill.length % 4]]);
+    drawAlloc();
+    var rows = document.querySelectorAll('#arows .nm');
+    rows[rows.length - 1].focus(); rows[rows.length - 1].select();
+    return;
+  }
+  var d = t.closest('[data-del]');
+  if(d){ A.pill.splice(+d.dataset.del, 1); drawAlloc(); return; }
+  if(t.closest('#abal')) return balance();
+
+  if(t.closest('#next')) return go();
+  if(t.closest('#back')) return goBack();
+  if(t.closest('#save')) return done();
+  if(t.closest('#restart')){ i = 0; A = {}; dir = 'f';
+    document.getElementById('railHint').textContent =
+      "Answers detected from the client's website are pre-filled. Edit anything that doesn't fit.";
+    return render(); }
+
+  if(t.closest('#exit') || t.closest('#mExit')) return openSheet();
+  if(t.closest('#disc') || t.closest('#keep')) return closeSheet();
+});
+
+document.addEventListener('input', function(e){
+  var t = e.target;
+  if(t.id === 'ta'){ grow(t); A[CARDS[i].id] = t.value; }
+  if(t.id === 'alt'){
+    A[CARDS[i].id + '_alt'] = t.value;
+    if(t.value){
+      stage.querySelectorAll('.opt').forEach(function(x){ x.setAttribute('aria-checked','false'); });
+      A[CARDS[i].id] = '';
+    }
+  }
+  if(t.dataset && t.dataset.k !== undefined){
+    var p = A.pill[+t.dataset.n];
+    if(t.dataset.k === '1'){
+      p[1] = Math.max(0, Math.min(100, +t.value || 0));
+      paintBar();
+    } else {
+      p[0] = t.value;
+    }
+  }
+});
+
+document.addEventListener('keydown', function(e){
+  if(sheet.classList.contains('on')) return;
+
+  /* The inline "add another" field owns Enter and Escape while it is open. */
+  if(document.activeElement && document.activeElement.id === 'newTag'){
+    if(e.key === 'Enter'){ e.preventDefault(); return commitTag(); }
+    if(e.key === 'Escape'){ e.preventDefault(); return redrawTags(false); }
+    return;
+  }
+
+  if(e.key === 'Escape'){ e.preventDefault(); return openSheet(); }
+  if(i >= CARDS.length) return;
+
+  var c = CARDS[i], el = document.activeElement, tag = el ? el.tagName : '';
+  var typing = tag === 'TEXTAREA' || tag === 'INPUT';
+
+  if(/^[1-9]$/.test(e.key) && !typing){
+    var list = stage.querySelectorAll(c.type === 'multi' ? '.tag:not(.add)' : '.opt');
+    if(list[+e.key - 1]){ e.preventDefault(); list[+e.key - 1].click(); }
+    return;
+  }
+  if((e.key === 'ArrowDown' || e.key === 'ArrowUp') && c.type === 'one' && !typing){
+    var opts = Array.prototype.slice.call(stage.querySelectorAll('.opt'));
+    var at = opts.indexOf(el);
+    var nextI = (at + (e.key === 'ArrowDown' ? 1 : -1) + opts.length) % opts.length;
+    e.preventDefault(); opts[nextI < 0 ? 0 : nextI].focus();
+    return;
+  }
+  if(e.key === 'Enter' && !e.shiftKey){
+    if(tag === 'BUTTON') return;
+    e.preventDefault(); return go();
+  }
+  if(e.key === 'ArrowLeft' && !typing && i > 0) goBack();
+});
+
+render();
+</script>
+</body>
+</html>
