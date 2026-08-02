@@ -30,7 +30,7 @@ export function BatchScheduleModal({ open, onClose, posts, onComplete }: BatchSc
     <Modal open={open} onClose={onClose} title="Schedule approved posts" className="max-w-2xl">
       <div className="flex flex-col gap-4">
         {posts.length === 0 ? (
-          <p className="text-sm text-text3">No approved posts to schedule.</p>
+          <p className="text-body text-text3">No approved posts to schedule.</p>
         ) : (
           <>
             <div className="flex flex-col gap-3 max-h-[50vh] overflow-y-auto">
@@ -42,8 +42,8 @@ export function BatchScheduleModal({ open, onClose, posts, onComplete }: BatchSc
                     className="flex items-center gap-3 p-3 border border-line rounded-lg"
                   >
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs font-medium text-text2">{post.client_name}</p>
-                      <p className="text-xs text-text3 truncate">
+                      <p className="text-caption font-medium text-text2">{post.client_name}</p>
+                      <p className="text-caption text-text3 truncate">
                         {post.caption?.slice(0, 80) ?? 'No caption'}
                       </p>
                     </div>
@@ -52,13 +52,13 @@ export function BatchScheduleModal({ open, onClose, posts, onComplete }: BatchSc
                       value={a.date}
                       min={minDate}
                       onChange={(e) => setDate(post.id, e.target.value)}
-                      className="text-xs border border-line2 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-spring/12 focus:border-transparent"
+                      className="text-lead md:text-caption border border-line2 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-spring/12 focus:border-transparent"
                     />
                     <input
                       type="time"
                       value={a.time}
                       onChange={(e) => setTime(post.id, e.target.value)}
-                      className="text-xs border border-line2 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-spring/12 focus:border-transparent"
+                      className="text-lead md:text-caption border border-line2 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-spring/12 focus:border-transparent"
                     />
                   </div>
                 )
