@@ -2,153 +2,153 @@
 name: Kontuur
 description: A green editorial system — warm paper, forest ink, and serif accents used sparingly.
 colors:
-  deep-pine: "#164430"
-  pine-deep: "#0c2e20"
-  living-green: "#2e9e68"
-  living-green-text: "#278658"
-  living-green-lite: "#7fd6a8"
-  new-growth: "#cfea45"
-  near-white-paper: "#fbfcfa"
-  surface: "#ffffff"
-  sunken: "#f3f5f2"
-  forest-ink: "#0f1512"
-  ink-secondary: "#57625a"
-  ink-tertiary: "#667068"
-  hairline: "#e7ece7"
-  hairline-strong: "#d5ddd6"
-  wash: "#eef4ef"
-  marker: "#d9eddd"
-  surface-lime: "#e6eeae"
-  sage: "#cfe4d4"
-  clay: "#b04a38"
-  clay-bg: "#fbefec"
-  amber: "#8a6116"
-  amber-bg: "#f7efdc"
+  deep-pine: '#164430'
+  pine-deep: '#0c2e20'
+  living-green: '#2e9e68'
+  living-green-text: '#278658'
+  living-green-lite: '#7fd6a8'
+  new-growth: '#cfea45'
+  near-white-paper: '#fbfcfa'
+  surface: '#ffffff'
+  sunken: '#f3f5f2'
+  forest-ink: '#0f1512'
+  ink-secondary: '#57625a'
+  ink-tertiary: '#667068'
+  hairline: '#e7ece7'
+  hairline-strong: '#d5ddd6'
+  wash: '#eef4ef'
+  marker: '#d9eddd'
+  surface-lime: '#e6eeae'
+  sage: '#cfe4d4'
+  clay: '#b04a38'
+  clay-bg: '#fbefec'
+  amber: '#8a6116'
+  amber-bg: '#f7efdc'
 typography:
   prompt:
-    fontFamily: "Instrument Serif, Georgia, serif"
-    fontSize: "36px"
+    fontFamily: 'Instrument Serif, Georgia, serif'
+    fontSize: '36px'
     fontWeight: 400
     lineHeight: 1.15
-    letterSpacing: "-0.01em"
+    letterSpacing: '-0.01em'
   metric:
-    fontFamily: "Geist, Arial, sans-serif"
-    fontSize: "28px"
+    fontFamily: 'Geist, Arial, sans-serif'
+    fontSize: '28px'
     fontWeight: 600
     lineHeight: 1.1
-    letterSpacing: "-0.02em"
-    fontFeature: "tabular-nums"
+    letterSpacing: '-0.02em'
+    fontFeature: 'tabular-nums'
   headline:
-    fontFamily: "Geist, Arial, sans-serif"
-    fontSize: "22px"
+    fontFamily: 'Geist, Arial, sans-serif'
+    fontSize: '22px'
     fontWeight: 600
     lineHeight: 1.25
-    letterSpacing: "-0.02em"
+    letterSpacing: '-0.02em'
   display:
-    fontFamily: "Instrument Serif, Georgia, serif"
-    fontSize: "18px"
+    fontFamily: 'Instrument Serif, Georgia, serif'
+    fontSize: '18px'
     fontWeight: 400
     lineHeight: 1.35
-    letterSpacing: "normal"
+    letterSpacing: 'normal'
   lead:
-    fontFamily: "Geist, Arial, sans-serif"
-    fontSize: "16px"
+    fontFamily: 'Geist, Arial, sans-serif'
+    fontSize: '16px'
     fontWeight: 400
     lineHeight: 1.6
-    letterSpacing: "normal"
+    letterSpacing: 'normal'
   title:
-    fontFamily: "Geist, Arial, sans-serif"
-    fontSize: "15px"
+    fontFamily: 'Geist, Arial, sans-serif'
+    fontSize: '15px'
     fontWeight: 600
     lineHeight: 1.4
-    letterSpacing: "-0.01em"
+    letterSpacing: '-0.01em'
   body:
-    fontFamily: "Geist, Arial, sans-serif"
-    fontSize: "13px"
+    fontFamily: 'Geist, Arial, sans-serif'
+    fontSize: '13px'
     fontWeight: 400
     lineHeight: 1.6
-    letterSpacing: "normal"
+    letterSpacing: 'normal'
   caption:
-    fontFamily: "Geist, Arial, sans-serif"
-    fontSize: "12px"
+    fontFamily: 'Geist, Arial, sans-serif'
+    fontSize: '12px'
     fontWeight: 400
     lineHeight: 1.4
-    letterSpacing: "normal"
+    letterSpacing: 'normal'
   micro:
-    fontFamily: "Geist, Arial, sans-serif"
-    fontSize: "11px"
+    fontFamily: 'Geist, Arial, sans-serif'
+    fontSize: '11px'
     fontWeight: 500
     lineHeight: 1.35
-    letterSpacing: "normal"
+    letterSpacing: 'normal'
   label:
-    fontFamily: "Geist, Arial, sans-serif"
-    fontSize: "10px"
+    fontFamily: 'Geist, Arial, sans-serif'
+    fontSize: '10px'
     fontWeight: 600
     lineHeight: 1.2
-    letterSpacing: "0.16em"
+    letterSpacing: '0.16em'
 rounded:
-  xs: "4px"
-  sm: "8px"
-  md: "10px"
-  lg: "14px"
-  xl: "20px"
-  full: "9999px"
+  xs: '4px'
+  sm: '8px'
+  md: '10px'
+  lg: '14px'
+  xl: '20px'
+  full: '9999px'
 spacing:
-  xs: "4px"
-  sm: "8px"
-  md: "12px"
-  base: "16px"
-  card: "20px"
-  card-wide: "24px"
-  section: "32px"
-  page: "40px"
-  section-y: "48px"
-  major: "64px"
+  xs: '4px'
+  sm: '8px'
+  md: '12px'
+  base: '16px'
+  card: '20px'
+  card-wide: '24px'
+  section: '32px'
+  page: '40px'
+  section-y: '48px'
+  major: '64px'
 components:
   button-primary:
-    backgroundColor: "{colors.deep-pine}"
-    textColor: "#ffffff"
-    rounded: "{rounded.md}"
-    padding: "8px 16px"
-    typography: "{typography.body}"
+    backgroundColor: '{colors.deep-pine}'
+    textColor: '#ffffff'
+    rounded: '{rounded.md}'
+    padding: '8px 16px'
+    typography: '{typography.body}'
   button-primary-hover:
-    backgroundColor: "{colors.pine-deep}"
+    backgroundColor: '{colors.pine-deep}'
   button-secondary:
-    backgroundColor: "transparent"
-    textColor: "{colors.forest-ink}"
-    rounded: "{rounded.md}"
-    padding: "8px 16px"
+    backgroundColor: 'transparent'
+    textColor: '{colors.forest-ink}'
+    rounded: '{rounded.md}'
+    padding: '8px 16px'
   button-ghost:
-    backgroundColor: "transparent"
-    textColor: "{colors.ink-secondary}"
-    rounded: "{rounded.md}"
-    padding: "8px 10px"
+    backgroundColor: 'transparent'
+    textColor: '{colors.ink-secondary}'
+    rounded: '{rounded.md}'
+    padding: '8px 10px'
   button-danger:
-    backgroundColor: "transparent"
-    textColor: "{colors.clay}"
-    rounded: "{rounded.md}"
-    padding: "8px 16px"
+    backgroundColor: 'transparent'
+    textColor: '{colors.clay}'
+    rounded: '{rounded.md}'
+    padding: '8px 16px'
   card:
-    backgroundColor: "{colors.surface}"
-    textColor: "{colors.forest-ink}"
-    rounded: "{rounded.xl}"
-    padding: "20px 24px"
+    backgroundColor: '{colors.surface}'
+    textColor: '{colors.forest-ink}'
+    rounded: '{rounded.xl}'
+    padding: '20px 24px'
   card-dark:
-    backgroundColor: "{colors.pine-deep}"
-    textColor: "#ffffff"
-    rounded: "{rounded.xl}"
-    padding: "20px 24px"
+    backgroundColor: '{colors.pine-deep}'
+    textColor: '#ffffff'
+    rounded: '{rounded.xl}'
+    padding: '20px 24px'
   input:
-    backgroundColor: "{colors.surface}"
-    textColor: "{colors.forest-ink}"
-    rounded: "{rounded.md}"
-    padding: "8px 12px"
-    typography: "{typography.body}"
+    backgroundColor: '{colors.surface}'
+    textColor: '{colors.forest-ink}'
+    rounded: '{rounded.md}'
+    padding: '8px 12px'
+    typography: '{typography.body}'
   chip:
-    backgroundColor: "{colors.wash}"
-    textColor: "{colors.deep-pine}"
-    rounded: "{rounded.md}"
-    padding: "3px 8px"
+    backgroundColor: '{colors.wash}'
+    textColor: '{colors.deep-pine}'
+    rounded: '{rounded.md}'
+    padding: '3px 8px'
 ---
 
 # Design System: Kontuur
@@ -175,7 +175,7 @@ Kontuur is a green editorial system. Warm paper instead of white, forest ink ins
 
 Depth comes from tone before it comes from shadow. The system layers warm paper under white surfaces under deep pine, and separates them with 0.5px hairlines rather than heavy borders. Status colour is deliberately muted: a missed publish is clay, not red; a waiting draft is amber, not orange. Nothing in this interface shouts, because the work it manages is already urgent enough. Motion confirms and guides; it never decorates.
 
-The one loud value in the palette is New Growth lime, and its power is a function of its *inversion*, not its rarity. Lime is never ink and never a line; it is the ground the interface stands on — a filled plate carrying Forest Ink at 13.65:1, the loudest legible pairing in the system. It marks where you are standing: the route in the rail, the commitment in the header, the moment in the field. It appears on every page, and never more than once per band.
+The one loud value in the palette is New Growth lime, and its power is a function of its _inversion_, not its rarity. Lime is never ink and never a line; it is the ground the interface stands on — a filled plate carrying Forest Ink at 13.65:1, the loudest legible pairing in the system. It marks where you are standing: the route in the rail, the commitment in the header, the moment in the field. It appears on every page, and never more than once per band.
 
 **Key Characteristics:**
 
@@ -197,14 +197,14 @@ A botanical ramp on warm paper: greens carry all brand meaning, and the two stat
 
 ### Secondary
 
-- **Living Green** (`#2e9e68`): The signal of health and motion — focus rings, live dots, chart strokes, the "ok" status. At 3.38:1 on white it clears the 3:1 bar for non-text UI, **but it fails as text.** Use **Living Green Text** (`#278658`, 4.53:1 on white) for any green *word* on a light ground — positive deltas, links, status labels. Over dark surfaces use **Living Green Lite** (`#7fd6a8`).
+- **Living Green** (`#2e9e68`): The signal of health and motion — focus rings, live dots, chart strokes, the "ok" status. At 3.38:1 on white it clears the 3:1 bar for non-text UI, **but it fails as text.** Use **Living Green Text** (`#278658`, 4.53:1 on white) for any green _word_ on a light ground — positive deltas, links, status labels. Over dark surfaces use **Living Green Lite** (`#7fd6a8`).
 - **New Growth** (`#cfea45`): The lime, and the colour that says Kontuur. The ground the interface stands on — a filled plate carrying Forest Ink or Pine Deep, on every page. At **1.35:1 on white** it can never be ink, a line or a dot on a light surface. Hover/press is **New Growth Deep** (`#b4cd32`), one step down the same ramp. See The Fill-Only Lime Rule and The Standing Place Rule.
 
 ### Tertiary
 
 - **Wash** (`#eef4ef`): Tinted fill behind Deep Pine text — published chips, quiet emphasis panels.
 - **Marker** (`#d9eddd`): The highlighter fill. Scheduled status, marker-highlight text treatments.
-- **Surface Lime** (`#e6eeae`) and **Sage** (`#cfe4d4`): Tinted row and capsule surfaces. These are *surfaces*, not semantics — they must never be asked to encode data on their own. With Pine Deep they form the coverage-row rhythm (see The Stable Rhythm Rule).
+- **Surface Lime** (`#e6eeae`) and **Sage** (`#cfe4d4`): Tinted row and capsule surfaces. These are _surfaces_, not semantics — they must never be asked to encode data on their own. With Pine Deep they form the coverage-row rhythm (see The Stable Rhythm Rule).
 
 ### Neutral
 
@@ -228,20 +228,20 @@ A botanical ramp on warm paper: greens carry all brand meaning, and the two stat
 
 The one set of hues in this system that is **not** botanical, and the only sanctioned exception to the Botanical Closure Rule below. It exists because the product manages many brands at once and an agency has to tell them apart at a glance — a job the green ramp measurably cannot do.
 
-Eight colours, stepping through hue *and* lightness, all desaturated so none competes with the green chrome:
+Eight colours, stepping through hue _and_ lightness, all desaturated so none competes with the green chrome:
 
-| | Hex | | Hex |
-| --- | --- | --- | --- |
-| Forest | `#164430` | Olive | `#6e7f52` |
-| Living Green | `#2e9e68` | Sky | `#5fa8b5` |
-| Teal | `#1f6b7a` | Clay | `#a2603f` |
-| Ochre | `#8a6116` | Sage | `#7fa588` |
+|              | Hex       |       | Hex       |
+| ------------ | --------- | ----- | --------- |
+| Forest       | `#164430` | Olive | `#6e7f52` |
+| Living Green | `#2e9e68` | Sky   | `#5fa8b5` |
+| Teal         | `#1f6b7a` | Clay  | `#a2603f` |
+| Ochre        | `#8a6116` | Sage  | `#7fa588` |
 
 They live in `CLIENT_COLORS` (`src/utils/constants.ts`) and are **assigned by hashing the client's name**, never by list position — so a client wears the same colour on their avatar, their dashboard dot and their calendar pill, on every page, forever. `CLIENT_PILL_TONES` derives the calendar pill trio from the same array rather than restating it, because two literal tables would drift.
 
 **Never render one as a solid fill under white text.** The lighter members (Sky, Sage, Living Green) fail 4.5:1 that way. The sanctioned rendering is a tint of the hue with the ink darkened into it — `background: color-mix(in srgb, {hue} 14%, transparent)` and `color: color-mix(in srgb, {hue} 78%, var(--ink))`, as `components/ui/avatar.tsx` does. A hero-scale mark may raise the tint (the onboarding identity tile uses 30% on a Wash ground); the darkened-ink foreground does not change.
 
-**A client's own detected brand colour is not an identity colour.** Brand hexes pulled from a client's website (`brand_visual_identity.palette`) are *content* — they belong in a swatch row, a preview, or a generated post, and never in Kontuur's chrome. Using one to tint a button, an avatar or a surface puts an arbitrary foreign hue in the interface, and it is doubly wrong when the same screen is telling the user that the extraction looked unreliable.
+**A client's own detected brand colour is not an identity colour.** Brand hexes pulled from a client's website (`brand_visual_identity.palette`) are _content_ — they belong in a swatch row, a preview, or a generated post, and never in Kontuur's chrome. Using one to tint a button, an avatar or a surface puts an arbitrary foreign hue in the interface, and it is doubly wrong when the same screen is telling the user that the extraction looked unreliable.
 
 ### Named Rules
 
@@ -253,7 +253,7 @@ The inversion is the whole rule. On a light ground lime may only be the **ground
 
 **The Standing Place Rule.** New Growth marks where the user is standing: the route in the rail, the commitment in the header, the moment in the field. **One lime answer per band** — rail, header, field — and the wordmark, which is the constant, is exempt from the count. Lime never names a category, a client, a platform, a permanent property, or a position in a list.
 
-*Audit test: name the thing that would make this element stop being lime. "The user navigates away", "the user acts", and "the clock moves" are all valid answers. If the only answer is "a code change", it is wrong.*
+_Audit test: name the thing that would make this element stop being lime. "The user navigates away", "the user acts", and "the clock moves" are all valid answers. If the only answer is "a code change", it is wrong._
 
 **The Small Present Rule.** Below roughly 16px, and on anything thinner than 4px, the present tense on a light ground is **Living Green**, not lime. Living Green holds 3.38:1 on Surface, which clears the 3:1 non-text bar, and it is already this system's signal of motion. On dark grounds the relationship inverts and the small "now" mark is lime again — which is why MiniWeek's 2px today-rule stays lime on the dark stat card while NextUpCard's today-dot is Living Green on the light one.
 
@@ -261,15 +261,15 @@ So the split is: **lime = here** (and now, where there is room for a ground); **
 
 **The Legible Tint Rule.** Text on a tinted surface (Surface Lime, Sage, Marker, Wash, and the status backgrounds) uses a **solid** ink token — Forest Ink or Ink Secondary — never an alpha-reduced ink. Measured: `ink/55%` lands at 4.10:1 on Surface Lime, 4.08:1 on Marker, and 3.74:1 on Sage, so the same line changes legibility depending on which tint sits under it. Alpha inks are for hairlines and overlays, not for reading.
 
-**The Botanical Closure Rule.** Every hue in the *interface* is a green, a neutral, or one of the two earthen status colours. A blue link, a `blue-500`, or a fifth unrelated hue for a fourth chart series is out of system — the metric ramp deliberately runs Deep Pine → Living Green → `#7fa588` → Pine Deep rather than four unrelated colours.
+**The Botanical Closure Rule.** Every hue in the _interface_ is a green, a neutral, or one of the two earthen status colours. A blue link, a `blue-500`, or a fifth unrelated hue for a fourth chart series is out of system — the metric ramp deliberately runs Deep Pine → Living Green → `#7fa588` → Pine Deep rather than four unrelated colours.
 
-The rule governs chrome, not identity. **Client Identity above is its one exception**, and the exception is narrow: those eight hues may only encode *which client this is* or *which content pillar this is*, and only through the tint-plus-darkened-ink rendering. They are never borrowed for status, emphasis, chart series, or decoration. *Audit test: if the colour would survive renaming the client or the pillar, it is chrome and the rule applies.*
+The rule governs chrome, not identity. **Client Identity above is its one exception**, and the exception is narrow: those eight hues may only encode _which client this is_ or _which content pillar this is_, and only through the tint-plus-darkened-ink rendering. They are never borrowed for status, emphasis, chart series, or decoration. _Audit test: if the colour would survive renaming the client or the pillar, it is chrome and the rule applies._
 
 Read the exception as a correction, not a loophole. This rule previously read "there are no blues" while `CLIENT_COLORS` shipped a teal and a sky on every client avatar in the app — so the document forbade what the product did, and the first honest attempt to colour a client on a new surface reached for the client's own brand hex instead, because the system appeared to offer nothing.
 
 **The Muted Status Rule.** Status colour is earthen, never saturated. `green-500` and `red-500` are rejected on sight; a failure is Clay and a wait is Amber.
 
-**The Stable Rhythm Rule.** Repeating surfaces may carry a decorative cycle — the coverage capsules run Surface Lime → Sage → Pine Deep — but the cycle must key to something that belongs to the item, not to where it currently sits. Keyed to a row's position on a paginated page, the same client wears three different capsules in three minutes and decoration starts reading as data. *Audit test: paginate, and every visible item must keep the surface it had.*
+**The Stable Rhythm Rule.** Repeating surfaces may carry a decorative cycle — the coverage capsules run Surface Lime → Sage → Pine Deep — but the cycle must key to something that belongs to the item, not to where it currently sits. Keyed to a row's position on a paginated page, the same client wears three different capsules in three minutes and decoration starts reading as data. _Audit test: paginate, and every visible item must keep the surface it had._
 
 ## Typography
 
@@ -301,15 +301,15 @@ deliberately overriding the role and owes a WHY.
 
 ### Named Rules
 
-**The Latin-Only Serif Rule.** Instrument Serif ships no Cyrillic glyphs, and half this product's audience is Bulgarian. Any interpolated user string set in `font-display` **must** gate on `hasCyrillic()` and fall back to the sans face. This applies to agency names, client names, initials, and AI-generated copy alike — not just the greeting. *Audit test: if a string comes from the database and is set in the serif, it needs the gate.*
+**The Latin-Only Serif Rule.** Instrument Serif ships no Cyrillic glyphs, and half this product's audience is Bulgarian. Any interpolated user string set in `font-display` **must** gate on `hasCyrillic()` and fall back to the sans face. This applies to agency names, client names, initials, and AI-generated copy alike — not just the greeting. _Audit test: if a string comes from the database and is set in the serif, it needs the gate._
 
 **The Rationed Serif Rule.** The serif is for the wordmark, greetings, empty states, and editorial one-liners. Never body text, never labels, never buttons, never anything a user must read in volume.
 
 **The Weight Ceiling Rule.** 400 and 500 carry the interface; 600 is correct for titles, stat numbers, and section headings. **700 stays unused.**
 
-**The Closed Ramp Rule.** The ten roles above are the ramp, and they are `--text-*` tokens rather than prose — so a size is `text-body` or `text-caption`, never `text-[13px]` and never an inline `fontSize`. A literal that is not a role is drift, not a decision. Add a step only when a role genuinely exists and recurs; snap one-offs to the nearest documented size instead. `src/app/__tests__/type-ramp.test.ts` enforces this, and also asserts that `TYPE_RAMP` in `src/utils/cn.ts` matches the token set exactly — a step missing from that array is silently reclassified as a text *colour* and eats whatever colour precedes it.
+**The Closed Ramp Rule.** The ten roles above are the ramp, and they are `--text-*` tokens rather than prose — so a size is `text-body` or `text-caption`, never `text-[13px]` and never an inline `fontSize`. A literal that is not a role is drift, not a decision. Add a step only when a role genuinely exists and recurs; snap one-offs to the nearest documented size instead. `src/app/__tests__/type-ramp.test.ts` enforces this, and also asserts that `TYPE_RAMP` in `src/utils/cn.ts` matches the token set exactly — a step missing from that array is silently reclassified as a text _colour_ and eats whatever colour precedes it.
 
-*A ramp is only closed if its steps are distinguishable.* The previous version had fourteen roles with six inside a 2.5px band, and the predictable result was that call sites stopped believing it and wrote literals — 645 of them, across three parallel systems. Separation is the rule's precondition, not a nicety: these ratios widen from 1.09 at the dense end to 1.29 at the display end.
+_A ramp is only closed if its steps are distinguishable._ The previous version had fourteen roles with six inside a 2.5px band, and the predictable result was that call sites stopped believing it and wrote literals — 645 of them, across three parallel systems. Separation is the rule's precondition, not a nicety: these ratios widen from 1.09 at the dense end to 1.29 at the display end.
 
 The rule is enforced structurally, not by review. `globals.css` deletes Tailwind's own scale with `--text-*: initial`, so `text-sm` resolves to nothing at all; there is no second vocabulary to fall back into.
 
@@ -319,7 +319,7 @@ The rule is enforced structurally, not by review. `globals.css` deletes Tailwind
 
 ## Layout
 
-A 240px sidebar that collapses to 78px, beside a fluid content column capped at 1280px. The content column's horizontal padding is 16px, stepping to 32px at `md` — it is one constant, `PAGE_SHELL` in `src/components/layout/page-header/shared.ts`, applied to the header inner *and* every page body so a title and its actions stay in one visual field on a wide monitor.
+A 240px sidebar that collapses to 78px, beside a fluid content column capped at 1280px. The content column's horizontal padding is 16px, stepping to 32px at `md` — it is one constant, `PAGE_SHELL` in `src/components/layout/page-header/shared.ts`, applied to the header inner _and_ every page body so a title and its actions stay in one visual field on a wide monitor.
 
 The spacing scale is closed — 4, 8, 12, 16, 20, 24, 32, 40, 48, 64 — and intermediate values are not invented.
 
@@ -331,7 +331,7 @@ Content regions should be sized by what they contain rather than forced to a sha
 
 ## Elevation & Depth
 
-**Figure and ground, not elevation.** Depth is carried by the contour field and by hairline edges — not by shadow. A card is a *clearing*: opaque Surface white, a hairline edge, and the contour lines simply stopping at its boundary. Nothing on the dashboard ground casts a resting shadow, and hover does not add one either, because resting and hover elevation make the same claim this system rejects. Sunken remains for inset wells and the dark pine capsule for the top of the range. `--sh-card` and `--sh-pop` survive only for genuinely floating chrome — popovers, dialogs, the sidebar panel beside the scroll area.
+**Figure and ground, not elevation.** Depth is carried by the contour field and by hairline edges — not by shadow. A card is a _clearing_: opaque Surface white, a hairline edge, and the contour lines simply stopping at its boundary. Nothing on the dashboard ground casts a resting shadow, and hover does not add one either, because resting and hover elevation make the same claim this system rejects. Sunken remains for inset wells and the dark pine capsule for the top of the range. `--sh-card` and `--sh-pop` survive only for genuinely floating chrome — popovers, dialogs, the sidebar panel beside the scroll area.
 
 Structural shadow is reserved for genuinely floating layers: popovers, dropdowns, modals, and dark surfaces.
 
@@ -356,11 +356,11 @@ Borders are hairlines, achieved by **alpha, not by sub-pixel width**. A card edg
 
 Literal `0.5px` borders survive only on surfaces that predate Contour — the public approval page and the settings tabs. Each one is a marker that the surface has not been rebuilt yet.
 
-Texture is part of the form language: `--hatch` (45° repeating lines) marks open or unfilled states, and its inverse marks the same on dark. Hatching means *absence* — an unscheduled day, an empty slot — and must not be used as ornament.
+Texture is part of the form language: `--hatch` (45° repeating lines) marks open or unfilled states, and its inverse marks the same on dark. Hatching means _absence_ — an unscheduled day, an empty slot — and must not be used as ornament.
 
 ### Named Rules
 
-**The Hairline Rule.** A card edge is carried by alpha, not weight: `border-ink/[0.05]`, or `border-line` where a divider needs to be slightly more present. A card border that reads as a *line* rather than as an edge is out of system. Never introduce a literal `0.5px` border in new work.
+**The Hairline Rule.** A card edge is carried by alpha, not weight: `border-ink/[0.05]`, or `border-line` where a divider needs to be slightly more present. A card border that reads as a _line_ rather than as an edge is out of system. Never introduce a literal `0.5px` border in new work.
 
 ## Components
 
@@ -401,7 +401,7 @@ Components should feel **tactile and considered** — like well-made objects on 
 
 Seven chips in a row, one per day, encoding a client's week: solid for published, outlined for scheduled, hatched for open. It is the system's most distinctive object — a planting chart for content — and it carries real data in a purely visual form. Because of that, it must always be `aria-hidden` with an `sr-only` sentence restating the same counts in words. A coverage strip without its spoken equivalent is incomplete, not merely imperfect.
 
-**The Two Facts Rule.** A day chip carries two independent facts — *is it today* and *is it covered* — and one must never consume the other. On a light strip today is a New Growth **plate behind the day**, the date sitting on lime in Pine Deep ink; on a dark strip it is a 2px New Growth rule **beneath** the chip. Either way the chip's own fill continues to encode published / scheduled / open. A lime chip that hides whether today has anything scheduled has spent the loudest colour in the system erasing the answer the strip exists to give. *The 2px rule on a light ground was retired: it measured 1.35:1, so it erased the answer twice over.*
+**The Two Facts Rule.** A day chip carries two independent facts — _is it today_ and _is it covered_ — and one must never consume the other. On a light strip today is a New Growth **plate behind the day**, the date sitting on lime in Pine Deep ink; on a dark strip it is a 2px New Growth rule **beneath** the chip. Either way the chip's own fill continues to encode published / scheduled / open. A lime chip that hides whether today has anything scheduled has spent the loudest colour in the system erasing the answer the strip exists to give. _The 2px rule on a light ground was retired: it measured 1.35:1, so it erased the answer twice over._
 
 The same applies to any bar or chip height that encodes volume: **an empty state must never render larger than an occupied one.** Height maps to count, with a small fixed floor for zero.
 
@@ -413,22 +413,22 @@ Everything above is the decision. This section is how it is spelled in the codeb
 
 Raw values live in `src/app/globals.css` as prefix-free custom properties (`--paper`, `--ink`, `--forest`). `@theme inline` registers them as Tailwind utilities under names outside Tailwind's own namespaces, so no existing utility changes meaning. **Components use classes, never inline `style` objects** — the exception is a genuinely computed value, such as a bar height that encodes a count.
 
-| Utility | Token |
-| --- | --- |
-| `bg-paper` `bg-surface` `bg-sunken` | surfaces |
-| `text-ink` `text-text2` `text-text3` | text ramp |
-| `border-line` `border-line2` | borders |
-| `bg-forest` `bg-forest-deep` `bg-spring` `bg-wash` `bg-marker` | greens |
-| `bg-lime` `bg-sage` | capsule tiers (Surface Lime / Sage — *not* the accent) |
-| `bg-accent` + `text-forest-deep` | the lime plate, on light |
-| `text-accent` | lime as a figure, on Pine Deep only |
-| `bg-accent-deep` | lime hover/press |
-| `text-spring-text` | green as a word on light (4.53:1) |
-| `bg-danger-bg` `text-danger` `bg-pending-bg` `text-pending` | status |
-| `rounded-chip` (10) `rounded-panel` (14) `rounded-card` (20) | radii |
-| `shadow-card` `shadow-pop` `shadow-frame` `shadow-dark` | elevation |
-| `ease-contour` | the house easing curve |
-| `font-display` | Instrument Serif |
+| Utility                                                        | Token                                                  |
+| -------------------------------------------------------------- | ------------------------------------------------------ |
+| `bg-paper` `bg-surface` `bg-sunken`                            | surfaces                                               |
+| `text-ink` `text-text2` `text-text3`                           | text ramp                                              |
+| `border-line` `border-line2`                                   | borders                                                |
+| `bg-forest` `bg-forest-deep` `bg-spring` `bg-wash` `bg-marker` | greens                                                 |
+| `bg-lime` `bg-sage`                                            | capsule tiers (Surface Lime / Sage — _not_ the accent) |
+| `bg-accent` + `text-forest-deep`                               | the lime plate, on light                               |
+| `text-accent`                                                  | lime as a figure, on Pine Deep only                    |
+| `bg-accent-deep`                                               | lime hover/press                                       |
+| `text-spring-text`                                             | green as a word on light (4.53:1)                      |
+| `bg-danger-bg` `text-danger` `bg-pending-bg` `text-pending`    | status                                                 |
+| `rounded-chip` (10) `rounded-panel` (14) `rounded-card` (20)   | radii                                                  |
+| `shadow-card` `shadow-pop` `shadow-frame` `shadow-dark`        | elevation                                              |
+| `ease-contour`                                                 | the house easing curve                                 |
+| `font-display`                                                 | Instrument Serif                                       |
 
 The radius scale is declared in plain `@theme` rather than `@theme inline`, because `--radius-*` are Tailwind's own names — this **replaces** its defaults app-wide instead of shadowing them, so `rounded-lg` resolves to 14px everywhere including surfaces not yet rebuilt. That is deliberate.
 
@@ -444,15 +444,15 @@ The pre-Contour `--color-*` and `--sidebar-*` compatibility block is gone: all 4
 
 Reach for these before writing a new one:
 
-| Component | Use |
-| --- | --- |
-| `components/ui/card.tsx` | A clearing. Padding comes from `className`. |
-| `components/ui/section-heading.tsx` | An `h2` with its icon chip; `tone="wash" \| "marker"`. |
-| `components/ui/action-link.tsx` | A `next/link` styled as an action. |
-| `components/ui/button.tsx` | A button that acts. Sizes mirror `ActionLink`: caption / body / title. |
-| `components/ui/form/form-section.tsx` | A settings panel — titled, with a divider header. |
+| Component                               | Use                                                                                   |
+| --------------------------------------- | ------------------------------------------------------------------------------------- |
+| `components/ui/card.tsx`                | A clearing. Padding comes from `className`.                                           |
+| `components/ui/section-heading.tsx`     | An `h2` with its icon chip; `tone="wash" \| "marker"`.                                |
+| `components/ui/action-link.tsx`         | A `next/link` styled as an action.                                                    |
+| `components/ui/button.tsx`              | A button that acts. Sizes mirror `ActionLink`: caption / body / title.                |
+| `components/ui/form/form-section.tsx`   | A settings panel — titled, with a divider header.                                     |
 | `components/ui/form/control-classes.ts` | The one definition of how a form control looks, including the Mobile Input Exemption. |
-| `components/layout/page-header/` | The header every dashboard page opens with. |
+| `components/layout/page-header/`        | The header every dashboard page opens with.                                           |
 
 ### Where the rest lives
 
@@ -477,13 +477,13 @@ Component placement, data-fetching rules, validation and error handling are in [
 
 - **Don't** use pure white for a page background, or a cool grey anywhere.
 - **Don't** introduce a hue outside the botanical ramp — no `blue-500` links, no unrelated fourth chart colour. `CLIENT_COLORS` is the one exception, and only for identity.
-- **Don't** put a client's *own* detected brand colour into Kontuur's chrome. A brand hex from their website is content: it belongs in a swatch row or a generated post, never on a button, an avatar or a surface.
+- **Don't** put a client's _own_ detected brand colour into Kontuur's chrome. A brand hex from their website is content: it belongs in a swatch row or a generated post, never on a button, an avatar or a surface.
 - **Don't** render a `CLIENT_COLORS` hue as a solid fill under white text — Sky, Sage and Living Green fail 4.5:1 that way. Tint the ground, darken the ink.
 - **Don't** use saturated status colours (`green-500`, `red-500`); status is Clay and Amber.
 - **Don't** use `font-weight: 700`.
 - **Don't** set body text, labels, or buttons in Instrument Serif.
 - **Don't** let a tinted surface (Surface Lime, Sage) encode data. They are surfaces; if a colour must carry meaning, it belongs to a status token with a legend.
-- **Don't** let a *state* signal be carried by position. A row that means "needs you" must look that way wherever it sits. Decorative rhythm is the exception below, and it is the only one.
+- **Don't** let a _state_ signal be carried by position. A row that means "needs you" must look that way wherever it sits. Decorative rhythm is the exception below, and it is the only one.
 - **Don't** let a decorative tier change under the same item. The coverage capsules cycle lime → sage → dark, which is rhythm rather than data — so the cycle is keyed to the client's place in the whole roster, never its row on the current page. A client that changes colour when you paginate has turned decoration into a false signal.
 - **Don't** animate `width`, `height`, `padding`, or `margin`; transition `transform` and `opacity`.
 - **Don't** ship an interactive element without a visible `:focus-visible` ring.

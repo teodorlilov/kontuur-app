@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-08-02T18:36:49Z",
+  "generatedAt": "2026-08-02T19:10:06Z",
   "title": "Design System: Kontuur",
   "extensions": {
     "colorMeta": {
@@ -389,6 +389,11 @@
       {
         "name": "The Closed Ramp Rule",
         "body": "The ten roles above are the ramp, and they are `--text-*` tokens rather than prose — so a size is `text-body` or `text-caption`, never `text-[13px]` and never an inline `fontSize`. A literal that is not a role is drift, not a decision. Add a step only when a role genuinely exists and recurs; snap one-offs to the nearest documented size instead. `src/app/__tests__/type-ramp.test.ts` enforces this, and also asserts that `TYPE_RAMP` in `src/utils/cn.ts` matches the token set exactly — a step missing from that array is silently reclassified as a text *colour* and eats whatever colour precedes it.",
+        "section": "typography"
+      },
+      {
+        "name": "The Fluid Hero Exception",
+        "body": "Marketing section headings are `clamp()`, not ramp steps — `clamp(28px, 3vw, 40px)` for a section, `clamp(40px, 5vw, 64px)` for the landing hero. A heading that has to hold a 1440px viewport and a 375px one is doing something no fixed step can, and snapping it to Prompt would be a downgrade dressed as consistency. This is the only sanctioned off-ramp sizing in the system. It applies to marketing section and hero headings only, it never appears inside the app shell, and the lower bound of every clamp is still a ramp step so the mobile rendering lands on the system.",
         "section": "typography"
       },
       {
