@@ -140,10 +140,19 @@ describe('the type ramp', () => {
     const md = readFileSync(path.resolve(SRC, '../DESIGN.md'), 'utf8')
     const block = md.slice(md.indexOf('typography:'), md.indexOf('rounded:'))
     const documented = new Map<string, string>()
-    for (const m of block.matchAll(/^ {2}([a-z0-9-]+):\n(?:.*\n)*?\s*fontSize: "([^"]+)"/gm)) {
+    // Quote-agnostic: prettier normalises this frontmatter to single quotes, and
+    // a guard that only reads double quotes silently matches nothing and passes
+    // an empty set against an empty set.
+    for (const m of block.matchAll(
+      /^ {2}([a-z0-9-]+):\n(?:.*\n)*?\s*fontSize: ['"]([^'"]+)['"]/gm
+    )) {
       const [, role, size] = m
       if (role && size) documented.set(role, size)
     }
+    // Both sides are parsed, so an empty match on both would compare {} to {}
+    // and pass while checking nothing. Assert they found something first.
+    expect(documented.size).toBeGreaterThan(0)
+    expect(declaredSizes().size).toBeGreaterThan(0)
     expect(Object.fromEntries(documented)).toEqual(Object.fromEntries(declaredSizes()))
   })
 })
