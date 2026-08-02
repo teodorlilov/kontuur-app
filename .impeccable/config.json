@@ -8,6 +8,24 @@
         "value": "16px",
         "createdAt": "2026-08-02T07:03:49.931Z",
         "reason": "iOS Safari auto-zooms focusable fields below 16px; sanctioned as The Mobile Input Exemption in DESIGN.md"
+      },
+      {
+        "rule": "overused-font",
+        "value": "geist",
+        "createdAt": "2026-08-02T16:13:13.886Z",
+        "reason": "Kontuur's shipping body face; keeping Geist was an explicit user decision this session"
+      },
+      {
+        "rule": "overused-font",
+        "value": "instrument serif",
+        "createdAt": "2026-08-02T16:13:20.882Z",
+        "reason": "Kontuur's shipping display face; keeping Instrument Serif was an explicit user decision this session"
+      },
+      {
+        "rule": "undersized-ui-text",
+        "value": "10px",
+        "createdAt": "2026-08-02T18:19:59.010Z",
+        "reason": "text-label role: 10px uppercase +0.16em structural chrome. Kept at 10px by explicit user decision 2026-08-02; DESIGN.md documents Label at 9.5-10px and the migration raises the 9.5 floor to 10."
       }
     ]
   }

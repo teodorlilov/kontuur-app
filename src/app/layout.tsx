@@ -1,16 +1,16 @@
 import type { Metadata } from 'next'
-import { Geist, Geist_Mono, Instrument_Serif } from 'next/font/google'
+import { Geist, Instrument_Serif } from 'next/font/google'
 import { Toaster } from 'sonner'
 import './globals.css'
 
+// `subsets` does not decide which glyphs ship — next/font/google never sends a
+// subset param, so every subset is downloaded and self-hosted either way. It
+// decides which files get <link rel=preload>. Half this product's audience is
+// Bulgarian, and without cyrillic here their first paint falls back to
+// Geist Fallback (local Arial) for one fetch before swapping.
 const geistSans = Geist({
   variable: '--font-geist-sans',
-  subsets: ['latin'],
-})
-
-const geistMono = Geist_Mono({
-  variable: '--font-geist-mono',
-  subsets: ['latin'],
+  subsets: ['latin', 'cyrillic'],
 })
 
 // Instrument Serif ships no Cyrillic glyphs, so serif type is reserved for
@@ -62,7 +62,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} ${instrumentSerif.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${instrumentSerif.variable} h-full antialiased`}
       suppressHydrationWarning
     >
       <body className="min-h-full">
