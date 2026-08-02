@@ -55,12 +55,14 @@ export function useCanvasDoc() {
   )
 
   const removeLayer = useCallback(
-    (id: string) => commit((doc) => ({ ...doc, layers: doc.layers.filter((layer) => layer.id !== id) })),
+    (id: string) =>
+      commit((doc) => ({ ...doc, layers: doc.layers.filter((layer) => layer.id !== id) })),
     [commit]
   )
 
   const setScrim = useCallback(
-    (patch: Partial<CanvasScrim>) => commit((doc) => ({ ...doc, scrim: { ...doc.scrim, ...patch } })),
+    (patch: Partial<CanvasScrim>) =>
+      commit((doc) => ({ ...doc, scrim: { ...doc.scrim, ...patch } })),
     [commit]
   )
 
@@ -80,7 +82,9 @@ export function useCanvasDoc() {
     (id: string, patch: Partial<CanvasElement>) =>
       commit((doc) => ({
         ...doc,
-        elements: (doc.elements ?? []).map((element) => (element.id === id ? { ...element, ...patch } : element)),
+        elements: (doc.elements ?? []).map((element) =>
+          element.id === id ? { ...element, ...patch } : element
+        ),
       })),
     [commit]
   )
@@ -93,7 +97,10 @@ export function useCanvasDoc() {
 
   const removeElement = useCallback(
     (id: string) =>
-      commit((doc) => ({ ...doc, elements: (doc.elements ?? []).filter((element) => element.id !== id) })),
+      commit((doc) => ({
+        ...doc,
+        elements: (doc.elements ?? []).filter((element) => element.id !== id),
+      })),
     [commit]
   )
 

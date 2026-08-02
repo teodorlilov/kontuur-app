@@ -1,7 +1,7 @@
 /** Shared inline styles for the editor's properties panel (matches the app's settings panels). */
 
 export const PANEL_LABEL: React.CSSProperties = {
-  fontSize: '9px',
+  fontSize: 'var(--text-label)',
   fontWeight: 500,
   color: 'var(--spring-text)',
   letterSpacing: '1.5px',
@@ -16,6 +16,6 @@ export const PANEL_CONTROL: React.CSSProperties = {
   border: '1px solid var(--line)',
   background: 'var(--paper)',
   color: 'var(--ink)',
-  fontSize: '12px',
+  fontSize: 'var(--text-caption)',
   fontFamily: 'var(--font-sans)',
 }

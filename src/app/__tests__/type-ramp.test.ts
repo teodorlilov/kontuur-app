@@ -27,23 +27,6 @@ const INLINE_SIZE_EXEMPT = [
   'features/analytics/components/post-day-breakdown.tsx',
 ]
 
-/**
- * Phase 2 drift, ratcheting down.
- *
- * These three counts are the migration backlog: feature surfaces still on
- * Tailwind's default scale or on inline styles. A budget rather than `it.skip`,
- * because skipping protects nothing while Phase 2 runs -- this way the numbers
- * can only go down, and a new `text-sm` fails the moment someone writes it.
- *
- * Each surface commit lowers these. The commit that finishes Phase 2 sets all
- * three to zero and deletes this block along with the `expect(...length)` lines.
- */
-const DRIFT_BUDGET = {
-  legacyScale: 0,
-  bracketPx: 0,
-  inlineSize: 21,
-}
-
 function sourceFiles(): string[] {
   const out: string[] = []
   const walk = (dir: string) => {
@@ -118,7 +101,7 @@ describe('the type ramp', () => {
           if (m) bad.push(`${rel(f)}:${i + 1}  ${m[0]}`)
         })
     }
-    expect(bad.length, bad.slice(0, 20).join('\n')).toBeLessThanOrEqual(DRIFT_BUDGET.legacyScale)
+    expect(bad).toEqual([])
   })
 
   it('uses no bracket pixel literal', () => {
@@ -133,7 +116,7 @@ describe('the type ramp', () => {
           if (m) bad.push(`${rel(f)}:${i + 1}  ${m[0]}`)
         })
     }
-    expect(bad.length, bad.join('\n')).toBeLessThanOrEqual(DRIFT_BUDGET.bracketPx)
+    expect(bad).toEqual([])
   })
 
   it('sets no literal inline font size', () => {
@@ -148,7 +131,7 @@ describe('the type ramp', () => {
           if (m) bad.push(`${rel(f)}:${i + 1}`)
         })
     }
-    expect(bad.length, bad.slice(0, 20).join('\n')).toBeLessThanOrEqual(DRIFT_BUDGET.inlineSize)
+    expect(bad).toEqual([])
   })
 
   it('matches the sizes DESIGN.md publishes as the ramp', () => {

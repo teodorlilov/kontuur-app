@@ -17,7 +17,12 @@ async function parseAssetResponse(
     error?: string
   }
   if (!res.ok || !body.publicUrl || !body.storagePath) throw new Error(body.error ?? fallbackError)
-  return { publicUrl: body.publicUrl, storagePath: body.storagePath, width: body.width, height: body.height }
+  return {
+    publicUrl: body.publicUrl,
+    storagePath: body.storagePath,
+    width: body.width,
+    height: body.height,
+  }
 }
 
 // The asset routes address a persisted post by id, or an in-memory draft by client + draft ids.
@@ -47,7 +52,10 @@ export async function pasteFromUrlAsset(target: EditorTarget, url: string): Prom
 }
 
 /** Cut the main subject out of the doc's clean background; returns the stored cutout ref. */
-export async function isolateSubjectAsset(target: EditorTarget, storagePath: string): Promise<AssetRef> {
+export async function isolateSubjectAsset(
+  target: EditorTarget,
+  storagePath: string
+): Promise<AssetRef> {
   const res = await fetch('/api/ai/isolate-subject', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -68,7 +76,8 @@ export async function generateSvgAsset(
   })
   const asset = await parseAssetResponse(res, 'Vector generation failed')
   // The route always reports dimensions (with its own square fallback) — absence means a bad response.
-  if (asset.width === undefined || asset.height === undefined) throw new Error('Vector generation failed')
+  if (asset.width === undefined || asset.height === undefined)
+    throw new Error('Vector generation failed')
   return { ...asset, width: asset.width, height: asset.height }
 }
 

@@ -7,9 +7,15 @@ import { saveDraftCanvas, savePostCanvas } from './save-canvas'
 import type { DraftVisualResult, SlideCopy } from '../types'
 
 // SlideCopy union → the slide/caption fields seedCanvasDoc and applyCopyToDoc expect.
-function copyFields(slideCopy: SlideCopy): { slide?: { headline: string; body: string }; caption?: string | null } {
+function copyFields(slideCopy: SlideCopy): {
+  slide?: { headline: string; body: string }
+  caption?: string | null
+} {
   return {
-    slide: slideCopy.kind === 'slide' ? { headline: slideCopy.headline, body: slideCopy.body } : undefined,
+    slide:
+      slideCopy.kind === 'slide'
+        ? { headline: slideCopy.headline, body: slideCopy.body }
+        : undefined,
     caption: slideCopy.kind === 'caption' ? slideCopy.caption : undefined,
   }
 }

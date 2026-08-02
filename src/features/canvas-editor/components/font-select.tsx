@@ -53,7 +53,14 @@ export function FontSelect({ value, text, onChange }: FontSelectProps) {
         ))}
       </select>
       {currentUnsupported && (
-        <p style={{ fontSize: '10px', color: 'var(--danger)', margin: '6px 0 0', lineHeight: 1.4 }}>
+        <p
+          style={{
+            fontSize: 'var(--text-label)',
+            color: 'var(--danger)',
+            margin: '6px 0 0',
+            lineHeight: 1.4,
+          }}
+        >
           {value} has no Cyrillic support — this text will render in a system font.
         </p>
       )}

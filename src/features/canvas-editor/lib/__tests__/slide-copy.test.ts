@@ -20,11 +20,15 @@ describe('slideCopyAt', () => {
   })
 
   it('returns null for malformed slides_json on a carousel', () => {
-    expect(slideCopyAt({ post_type: 'carousel', slides_json: 'not-an-array', caption: null }, 0)).toBeNull()
+    expect(
+      slideCopyAt({ post_type: 'carousel', slides_json: 'not-an-array', caption: null }, 0)
+    ).toBeNull()
   })
 
   it('returns the caption for single posts', () => {
-    expect(slideCopyAt({ post_type: 'single', slides_json: null, caption: 'Big news!' }, 0)).toEqual({
+    expect(
+      slideCopyAt({ post_type: 'single', slides_json: null, caption: 'Big news!' }, 0)
+    ).toEqual({
       kind: 'caption',
       caption: 'Big news!',
     })

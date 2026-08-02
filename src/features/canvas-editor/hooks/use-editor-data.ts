@@ -34,7 +34,10 @@ export function useEditorData(
       })
       .catch((err: unknown) => {
         if (cancelled) return
-        setData({ status: 'error', message: err instanceof Error ? err.message : 'Failed to load the editor' })
+        setData({
+          status: 'error',
+          message: err instanceof Error ? err.message : 'Failed to load the editor',
+        })
       })
     return () => {
       cancelled = true
@@ -51,7 +54,11 @@ async function fetchDocAndIdentity(
 ): Promise<{ rawDoc: CanvasDoc | null; identity: SeedIdentity }> {
   if (target.kind === 'post') {
     const res = await fetch(`/api/posts/${target.postId}/canvas?position=${target.position}`)
-    const body = (await res.json()) as { doc?: CanvasDoc | null; identity?: SeedIdentity; error?: string }
+    const body = (await res.json()) as {
+      doc?: CanvasDoc | null
+      identity?: SeedIdentity
+      error?: string
+    }
     if (!res.ok || !body.identity) throw new Error(body.error ?? 'Failed to load the canvas')
     return { rawDoc: body.doc ?? null, identity: body.identity }
   }
@@ -68,12 +75,18 @@ function resolveDoc(
     if (rawDoc.flattenedStoragePath === image.storagePath) return { doc: rawDoc, seeded: false }
     // The image changed underneath (regenerate / re-upload) — it becomes the new clean background;
     // the stored pan/zoom belonged to the old art, so it resets to the centered cover fit.
-    return { doc: { ...rawDoc, background: { ...image }, backgroundTransform: undefined }, seeded: false }
+    return {
+      doc: { ...rawDoc, background: { ...image }, backgroundTransform: undefined },
+      seeded: false,
+    }
   }
   const doc = seedCanvasDoc({
     identity,
     background: { ...image },
-    slide: slideCopy?.kind === 'slide' ? { headline: slideCopy.headline, body: slideCopy.body } : undefined,
+    slide:
+      slideCopy?.kind === 'slide'
+        ? { headline: slideCopy.headline, body: slideCopy.body }
+        : undefined,
     caption: slideCopy?.kind === 'caption' ? slideCopy.caption : undefined,
   })
   return { doc, seeded: true }

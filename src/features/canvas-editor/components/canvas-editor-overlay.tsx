@@ -716,7 +716,7 @@ function CenterNotice({ children }: { children: React.ReactNode }) {
         height: '100%',
         width: '100%',
         color: 'var(--text2)',
-        fontSize: '13px',
+        fontSize: 'var(--text-body)',
         fontFamily: 'var(--font-sans)',
         textAlign: 'center',
         padding: 24,
@@ -757,7 +757,7 @@ function TopBar(props: TopBarProps) {
     >
       <span
         style={{
-          fontSize: '13px',
+          fontSize: 'var(--text-body)',
           fontWeight: 500,
           color: 'var(--ink)',
           fontFamily: 'var(--font-sans)',
@@ -772,7 +772,7 @@ function TopBar(props: TopBarProps) {
             display: 'inline-flex',
             alignItems: 'center',
             gap: 4,
-            fontSize: '11px',
+            fontSize: 'var(--text-micro)',
             color: 'var(--danger)',
           }}
         >

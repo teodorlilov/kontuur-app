@@ -3,7 +3,12 @@ import { canvasPointToElementLocal } from '@/lib/canvas/elements'
 import type { SourceRect } from '@/lib/canvas/reposition'
 import type { BrushStroke } from '../types'
 import { naturalSize } from './load-image'
-import { canvasToBlob, createDrawingCanvas, mapPointsToSource, sourceSpaceFor } from './source-space'
+import {
+  canvasToBlob,
+  createDrawingCanvas,
+  mapPointsToSource,
+  sourceSpaceFor,
+} from './source-space'
 
 /** Alpha above this counts as "object" when scanning for the trim box (0–255). */
 const ALPHA_THRESHOLD = 8
@@ -59,7 +64,17 @@ async function trimCanvas(source: HTMLCanvasElement): Promise<Trimmed | null> {
     height: Math.min(height, maxY + TRIM_PADDING) - y,
   }
   const [trimmed, trimmedCtx] = createDrawingCanvas(bbox)
-  trimmedCtx.drawImage(source, bbox.x, bbox.y, bbox.width, bbox.height, 0, 0, bbox.width, bbox.height)
+  trimmedCtx.drawImage(
+    source,
+    bbox.x,
+    bbox.y,
+    bbox.width,
+    bbox.height,
+    0,
+    0,
+    bbox.width,
+    bbox.height
+  )
   return { blob: await canvasToBlob(trimmed, 'image/png'), bbox }
 }
 
@@ -117,13 +132,22 @@ function smoothLoop(points: number[]): number[] {
     const y1 = kept[i + 1]!
     const x2 = kept[(i + 2) % kept.length]!
     const y2 = kept[(i + 3) % kept.length]!
-    out.push(0.75 * x1 + 0.25 * x2, 0.75 * y1 + 0.25 * y2, 0.25 * x1 + 0.75 * x2, 0.25 * y1 + 0.75 * y2)
+    out.push(
+      0.75 * x1 + 0.25 * x2,
+      0.75 * y1 + 0.25 * y2,
+      0.25 * x1 + 0.75 * x2,
+      0.25 * y1 + 0.75 * y2
+    )
   }
   return out
 }
 
 // The loop boundary IS background by definition — sample its colours (deduped) for the key.
-function sampleBoundaryColors(ctx: CanvasRenderingContext2D, srcPoints: number[], src: { width: number; height: number }): number[][] {
+function sampleBoundaryColors(
+  ctx: CanvasRenderingContext2D,
+  srcPoints: number[],
+  src: { width: number; height: number }
+): number[][] {
   const samples: number[][] = []
   for (let i = 0; i + 1 < srcPoints.length; i += 2 * BOUNDARY_SAMPLE_STEP) {
     const x = Math.min(src.width - 1, Math.max(0, Math.round(srcPoints[i]!)))
@@ -138,9 +162,18 @@ function sampleBoundaryColors(ctx: CanvasRenderingContext2D, srcPoints: number[]
 }
 
 // Erase boundary-similar colours inside the cut region; bail out when the loop was the object.
-function keyOutBackground(ctx: CanvasRenderingContext2D, bbox: SourceRect, samples: number[][]): void {
+function keyOutBackground(
+  ctx: CanvasRenderingContext2D,
+  bbox: SourceRect,
+  samples: number[][]
+): void {
   if (samples.length === 0) return
-  const region = ctx.getImageData(bbox.x, bbox.y, Math.max(1, Math.ceil(bbox.width)), Math.max(1, Math.ceil(bbox.height)))
+  const region = ctx.getImageData(
+    bbox.x,
+    bbox.y,
+    Math.max(1, Math.ceil(bbox.width)),
+    Math.max(1, Math.ceil(bbox.height))
+  )
   const { data } = region
   const removable: number[] = []
   let opaque = 0
@@ -148,7 +181,9 @@ function keyOutBackground(ctx: CanvasRenderingContext2D, bbox: SourceRect, sampl
     if (data[i + 3]! <= ALPHA_THRESHOLD) continue
     opaque += 1
     const matches = samples.some(
-      (sample) => Math.hypot(sample[0]! - data[i]!, sample[1]! - data[i + 1]!, sample[2]! - data[i + 2]!) <= KEY_TOLERANCE
+      (sample) =>
+        Math.hypot(sample[0]! - data[i]!, sample[1]! - data[i + 1]!, sample[2]! - data[i + 2]!) <=
+        KEY_TOLERANCE
     )
     if (matches) removable.push(i)
   }
@@ -161,7 +196,12 @@ function loopSourceBounds(srcPoints: number[], src: { width: number; height: num
   const bounds = pointBounds(srcPoints) ?? { minX: 0, minY: 0, maxX: 0, maxY: 0 }
   const x = Math.max(0, bounds.minX)
   const y = Math.max(0, bounds.minY)
-  return { x, y, width: Math.min(src.width, bounds.maxX) - x, height: Math.min(src.height, bounds.maxY) - y }
+  return {
+    x,
+    y,
+    width: Math.min(src.width, bounds.maxX) - x,
+    height: Math.min(src.height, bounds.maxY) - y,
+  }
 }
 
 interface LoopGeometry {
@@ -179,7 +219,10 @@ function analyzeLoop(
   transform?: CanvasBackgroundTransform
 ): LoopGeometry | null {
   const bounds = pointBounds(loopPoints)
-  if (!bounds || (bounds.maxX - bounds.minX < MIN_LASSO_SPAN && bounds.maxY - bounds.minY < MIN_LASSO_SPAN)) {
+  if (
+    !bounds ||
+    (bounds.maxX - bounds.minX < MIN_LASSO_SPAN && bounds.maxY - bounds.minY < MIN_LASSO_SPAN)
+  ) {
     return null
   }
   const space = sourceSpaceFor(src, canvas, transform)
@@ -224,7 +267,12 @@ export async function cutoutFromLasso(
   const loop = analyzeLoop(loopPoints, src, canvas, transform)
   if (!loop) return null
 
-  const shape = loopShapeCanvas(src, loop.srcPoints, { x: 0, y: 0 }, LASSO_FEATHER_CANVAS_PX * loop.scale)
+  const shape = loopShapeCanvas(
+    src,
+    loop.srcPoints,
+    { x: 0, y: 0 },
+    LASSO_FEATHER_CANVAS_PX * loop.scale
+  )
   const [cut, cutCtx] = createDrawingCanvas(src)
   cutCtx.drawImage(background, 0, 0, src.width, src.height)
   const boundaryColors = sampleBoundaryColors(cutCtx, loop.srcPoints, src)
@@ -266,21 +314,39 @@ export async function cutoutFromLassoDetect(
   if (crop.width < 8 || crop.height < 8) return null
 
   const [region, regionCtx] = createDrawingCanvas(crop)
-  regionCtx.drawImage(background, crop.x, crop.y, crop.width, crop.height, 0, 0, crop.width, crop.height)
+  regionCtx.drawImage(
+    background,
+    crop.x,
+    crop.y,
+    crop.width,
+    crop.height,
+    0,
+    0,
+    crop.width,
+    crop.height
+  )
   const matte = await matteProvider(await canvasToBlob(region, 'image/png'))
 
   const [cut, cutCtx] = createDrawingCanvas(crop)
   cutCtx.drawImage(matte, 0, 0, crop.width, crop.height)
   cutCtx.globalCompositeOperation = 'destination-in'
   cutCtx.drawImage(
-    loopShapeCanvas(crop, loop.srcPoints, { x: -crop.x, y: -crop.y }, LASSO_FEATHER_CANVAS_PX * loop.scale),
+    loopShapeCanvas(
+      crop,
+      loop.srcPoints,
+      { x: -crop.x, y: -crop.y },
+      LASSO_FEATHER_CANVAS_PX * loop.scale
+    ),
     0,
     0
   )
   const trimmed = await trimCanvas(cut)
   if (!trimmed) return null
   // The trim bbox is crop-local — shift it back into full-source coordinates for placement.
-  return { blob: trimmed.blob, bbox: { ...trimmed.bbox, x: trimmed.bbox.x + crop.x, y: trimmed.bbox.y + crop.y } }
+  return {
+    blob: trimmed.blob,
+    bbox: { ...trimmed.bbox, x: trimmed.bbox.x + crop.x, y: trimmed.bbox.y + crop.y },
+  }
 }
 
 /**
@@ -297,7 +363,9 @@ export async function removeElementBackground(bitmap: HTMLImageElement): Promise
   // Corners + edge midpoints — a border walk in point-list form so the loop sampler applies.
   const borderPoints = [0, 0, w / 2, 0, w, 0, w, h / 2, w, h, w / 2, h, 0, h, 0, h / 2]
   const samples = sampleBoundaryColors(ctx, borderPoints, natural)
-  const before = ctx.getImageData(0, 0, natural.width, natural.height).data.filter((_, i) => i % 4 === 3)
+  const before = ctx
+    .getImageData(0, 0, natural.width, natural.height)
+    .data.filter((_, i) => i % 4 === 3)
   keyOutBackground(ctx, { x: 0, y: 0, width: natural.width, height: natural.height }, samples)
   const after = ctx.getImageData(0, 0, natural.width, natural.height).data
   // keyOutBackground bails internally on near-total erasure; detect the true no-op case too.

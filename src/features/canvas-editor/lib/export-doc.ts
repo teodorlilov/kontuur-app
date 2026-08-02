@@ -65,7 +65,8 @@ export async function exportDocToJpegBlob(
         mimeType: 'image/jpeg',
         quality: 0.9,
         pixelRatio: 1,
-        callback: (blob) => (blob ? resolve(blob) : reject(new Error('Canvas export produced no blob'))),
+        callback: (blob) =>
+          blob ? resolve(blob) : reject(new Error('Canvas export produced no blob')),
       })
     })
   } finally {

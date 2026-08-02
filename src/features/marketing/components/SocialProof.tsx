@@ -20,7 +20,8 @@ export function SocialProof() {
         {agencies.map((name) => (
           <span
             key={name}
-            style={{ fontSize: 13, color: 'var(--text3)', opacity: 0.6, fontWeight: 500 }}
+            className="text-body font-medium"
+            style={{ color: 'var(--text3)', opacity: 0.6 }}
           >
             {name}
           </span>

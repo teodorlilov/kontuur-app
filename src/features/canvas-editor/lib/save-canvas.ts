@@ -51,7 +51,8 @@ export async function saveDraftCanvas(
   if (previousStoragePath) formData.set('previousStoragePath', previousStoragePath)
   const res = await fetch('/api/ai/generate-visual/upload', { method: 'POST', body: formData })
   const body = (await res.json()) as { publicUrl?: string; storagePath?: string; error?: string }
-  if (!res.ok || !body.publicUrl || !body.storagePath) throw new Error(body.error ?? 'Saving the design failed')
+  if (!res.ok || !body.publicUrl || !body.storagePath)
+    throw new Error(body.error ?? 'Saving the design failed')
   return {
     visual: { position: target.position, publicUrl: body.publicUrl, storagePath: body.storagePath },
     doc: { ...doc, flattenedStoragePath: body.storagePath },

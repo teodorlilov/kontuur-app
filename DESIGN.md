@@ -311,6 +311,10 @@ deliberately overriding the role and owes a WHY.
 
 *A ramp is only closed if its steps are distinguishable.* The previous version had fourteen roles with six inside a 2.5px band, and the predictable result was that call sites stopped believing it and wrote literals — 645 of them, across three parallel systems. Separation is the rule's precondition, not a nicety: these ratios widen from 1.09 at the dense end to 1.29 at the display end.
 
+The rule is enforced structurally, not by review. `globals.css` deletes Tailwind's own scale with `--text-*: initial`, so `text-sm` resolves to nothing at all; there is no second vocabulary to fall back into.
+
+**The Fluid Hero Exception.** Marketing section headings are `clamp()`, not ramp steps — `clamp(28px, 3vw, 40px)` for a section, `clamp(40px, 5vw, 64px)` for the landing hero. A heading that has to hold a 1440px viewport and a 375px one is doing something no fixed step can, and snapping it to Prompt would be a downgrade dressed as consistency. This is the only sanctioned off-ramp sizing in the system. It applies to marketing section and hero headings only, it never appears inside the app shell, and the lower bound of every clamp is still a ramp step so the mobile rendering lands on the system.
+
 **The Mobile Input Exemption.** Focusable fields below `md` are set to **16px**: any smaller and iOS Safari auto-zooms the viewport the moment a field takes focus, throwing the layout mid-entry with no way back but a pinch. This is no longer off-ramp — Lead is exactly 16px, so the exemption is expressed as `text-lead md:text-body` in `CONTROL_TEXT`, and it still applies to focusable fields only and never leaks to static text.
 
 ## Layout

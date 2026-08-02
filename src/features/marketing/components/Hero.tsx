@@ -38,7 +38,7 @@ export function Hero() {
         {...fadeUp(0.06)}
         style={{
           fontFamily: 'var(--font-display)',
-          fontSize: 'clamp(40px, 5vw, 64px)',
+          fontSize: 'clamp(36px, 5vw, 64px)',
           fontWeight: 400,
           letterSpacing: '-0.03em',
           lineHeight: 1.1,

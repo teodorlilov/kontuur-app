@@ -17,7 +17,7 @@ export function PanelCheckbox({ label, checked, onChange, disabled, title }: Pan
         display: 'flex',
         alignItems: 'center',
         gap: '8px',
-        fontSize: '12px',
+        fontSize: 'var(--text-caption)',
         color: 'var(--ink)',
         cursor: disabled ? 'default' : 'pointer',
         opacity: disabled ? 0.5 : 1,

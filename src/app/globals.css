@@ -118,11 +118,17 @@
      ratios widen from 1.09 at the dense end to 1.29 at the display end: small UI
      sizes need fine resolution, display sizes need separation.
 
-     Additive, still: none of these names is one of Tailwind's (xs/sm/base/lg/…),
-     so its default scale keeps resolving while the migration runs. It gets
-     deleted with `--text-*: initial` once nothing references it — doing that
-     early is unsafe, because an unmigrated `text-sm` would then emit no rule at
-     all rather than failing.
+     `--text-*: initial` deletes Tailwind's own scale, so text-xs/sm/base/lg/xl
+     no longer resolve to anything and these ten names are the only sizes in the
+     app. It must stay the FIRST declaration in this block: clearNamespace wipes
+     unconditionally, including tokens declared above it.
+
+     This landed only once src/ was clean, and the ordering was not optional. A
+     `text-sm` with the default scale deleted compiles to no rule at all — no
+     error, no warning, the element just inherits body — so doing this while any
+     call site remained would have scattered silent regressions instead of
+     failing. It is namespace-safe: --text-shadow-*, --text-color-*,
+     --text-indent and --text-underline-offset are excluded by Tailwind.
 
      letter-spacing is declared ONLY where it is not `normal`. Declaring
      `normal` emits letter-spacing on the utility, which resets inherited
@@ -138,6 +144,8 @@
 
      `--text-display` is the size; `--font-display` is the serif family. Display
      type usually wants both. */
+  --text-*: initial;
+
   --text-prompt: 36px;
   --text-prompt--line-height: 1.15;
   --text-prompt--letter-spacing: -0.01em;

@@ -42,7 +42,7 @@ export function LayerList({ layers, selectedId, onSelect, onAdd, onRemove }: Lay
             border: 'none',
             background: 'transparent',
             color: 'var(--text2)',
-            fontSize: '10px',
+            fontSize: 'var(--text-label)',
             cursor: 'pointer',
             padding: 0,
           }}
@@ -52,7 +52,7 @@ export function LayerList({ layers, selectedId, onSelect, onAdd, onRemove }: Lay
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
         {layers.length === 0 && (
-          <p style={{ fontSize: '11px', color: 'var(--text2)', margin: 0 }}>
+          <p style={{ fontSize: 'var(--text-micro)', color: 'var(--text2)', margin: 0 }}>
             No text yet — add a layer.
           </p>
         )}
@@ -74,7 +74,7 @@ export function LayerList({ layers, selectedId, onSelect, onAdd, onRemove }: Lay
           >
             <span
               style={{
-                fontSize: '12px',
+                fontSize: 'var(--text-caption)',
                 color: 'var(--ink)',
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
