@@ -13,10 +13,15 @@ const VARIANT_CLASSES: Record<NonNullable<ButtonProps['variant']>, string> = {
   danger: 'border border-danger-line text-danger hover:border-danger hover:bg-danger-bg',
 }
 
+/**
+ * Sizes mirror components/ui/action-link.tsx — see its header. `md` was 14px,
+ * which was never a role on any version of the ramp; `lg` had no clean target
+ * until the ramp gained a 15px Title step.
+ */
 const SIZE_CLASSES: Record<NonNullable<ButtonProps['size']>, string> = {
-  sm: 'px-3.5 py-2 text-[13px] rounded-sm',
-  md: 'px-5 py-3 text-[14px] rounded-sm',
-  lg: 'px-6 py-3.5 text-[15px] rounded-md',
+  sm: 'px-3.5 py-2 text-caption rounded-sm',
+  md: 'px-5 py-3 text-body rounded-sm',
+  lg: 'px-6 py-3.5 text-title rounded-md',
 }
 
 export function Button({
@@ -31,6 +36,9 @@ export function Button({
   return (
     <button
       className={cn(
+        // leading-none deliberately overrides the size token's paired
+        // line-height: a button centres its label against its own padding, so
+        // inherited leading would just add slack inside a fixed height.
         'inline-flex items-center justify-center gap-2 whitespace-nowrap font-sans font-medium leading-none',
         'transition-[background-color,border-color,color,transform,box-shadow] duration-150 ease-contour',
         'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-spring',
