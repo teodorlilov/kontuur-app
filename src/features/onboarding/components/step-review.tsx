@@ -1,7 +1,18 @@
 'use client'
 
 import { useState } from 'react'
-import { AlertTriangle, User, Users, Target, Pencil, XCircle, Quote, Share2, Calendar, Palette as PaletteIcon } from 'lucide-react'
+import {
+  AlertTriangle,
+  User,
+  Users,
+  Target,
+  Pencil,
+  XCircle,
+  Quote,
+  Share2,
+  Calendar,
+  Palette as PaletteIcon,
+} from 'lucide-react'
 import { cn } from '@/utils/cn'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
@@ -107,8 +118,8 @@ function ReviewSidebar({
       <SidebarBrand />
 
       <div
+        className="text-label"
         style={{
-          fontSize: '9px',
           fontWeight: 500,
           color: 'rgba(242,245,241,0.4)',
           letterSpacing: '2px',
@@ -133,7 +144,10 @@ function ReviewSidebar({
       </div>
 
       {websiteUrl && (
-        <div style={{ fontSize: '11px', color: 'rgba(242,245,241,0.3)', lineHeight: 1.6, marginBottom: '20px' }}>
+        <div
+          className="text-micro"
+          style={{ color: 'rgba(242,245,241,0.3)', lineHeight: 1.6, marginBottom: '20px' }}
+        >
           Profile auto-detected from{' '}
           <span style={{ color: '#f2f5f1', fontWeight: 500 }}>{websiteUrl}</span>
           <br />
@@ -142,6 +156,7 @@ function ReviewSidebar({
       )}
 
       <button
+        className="text-body"
         type="button"
         onClick={onConfirm}
         disabled={isSaving}
@@ -153,7 +168,6 @@ function ReviewSidebar({
           color: '#fff',
           border: 'none',
           borderRadius: '9px',
-          fontSize: '13px',
           fontWeight: 500,
           cursor: 'pointer',
           fontFamily: 'var(--font-sans)',
@@ -165,6 +179,7 @@ function ReviewSidebar({
         {isSaving ? 'Saving...' : 'Confirm & save client'}
       </button>
       <button
+        className="text-caption"
         type="button"
         onClick={onRedo}
         style={{
@@ -174,7 +189,6 @@ function ReviewSidebar({
           color: 'rgba(242,245,241,0.55)',
           border: 'none',
           borderRadius: '9px',
-          fontSize: '12px',
           cursor: 'pointer',
           fontFamily: 'var(--font-sans)',
         }}
@@ -189,9 +203,9 @@ function SidebarBrand() {
   return (
     <div style={{ marginBottom: '24px' }}>
       <div
+        className="text-title"
         style={{
           fontFamily: 'var(--font-display)',
-          fontSize: '15px',
           color: '#f2f5f1',
           letterSpacing: '3px',
           marginBottom: '3px',
@@ -201,7 +215,10 @@ function SidebarBrand() {
       </div>
       {/* Lime as a figure on the Pine Deep rail — 10.87:1, and part of the
           wordmark lockup, which is exempt from the one-per-band count. */}
-      <div style={{ fontSize: '7px', color: 'var(--accent)', letterSpacing: '5px' }}>
+      <div
+        className="text-label tracking-normal"
+        style={{ color: 'var(--accent)', letterSpacing: '5px' }}
+      >
         SOCIAL INTELLIGENCE
       </div>
     </div>
@@ -247,8 +264,8 @@ function SidebarNavItem({
         }}
       />
       <span
+        className="text-caption"
         style={{
-          fontSize: '12px',
           color: isActive ? '#f2f5f1' : 'rgba(242,245,241,0.65)',
           fontWeight: isActive ? 500 : 400,
         }}
@@ -337,7 +354,11 @@ function ReviewContent(props: StepReviewProps) {
         onPillarsChange={props.onPillarsChange}
       />
 
-      <ReviewCard id="visual" title="Visual identity" icon={<PaletteIcon size={10} color="var(--text2)" />}>
+      <ReviewCard
+        id="visual"
+        title="Visual identity"
+        icon={<PaletteIcon size={10} color="var(--text2)" />}
+      >
         <VisualIdentityPanel
           identity={props.visualIdentity}
           onChange={props.onVisualIdentityChange}
@@ -357,7 +378,9 @@ function ReviewContent(props: StepReviewProps) {
         onFieldSave={props.onFieldSave}
         initialValue={props.profile.avoid_topics}
       >
-        <p style={{ fontSize: '13px', color: 'var(--ink)' }}>{props.profile.avoid_topics}</p>
+        <p className="text-body" style={{ color: 'var(--ink)' }}>
+          {props.profile.avoid_topics}
+        </p>
       </EditableCard>
 
       <EditableCard
@@ -372,7 +395,7 @@ function ReviewContent(props: StepReviewProps) {
         onFieldSave={props.onFieldSave}
         initialValue={props.profile.client_testimonial_voice}
       >
-        <p style={{ fontSize: '13px', color: 'var(--ink)', fontStyle: 'italic' }}>
+        <p className="text-body" style={{ color: 'var(--ink)', fontStyle: 'italic' }}>
           &ldquo;{props.profile.client_testimonial_voice}&rdquo;
         </p>
       </EditableCard>
@@ -409,11 +432,19 @@ function HealthBanner() {
     >
       <AlertTriangle size={14} color="var(--pending)" style={{ flexShrink: 0, marginTop: '1px' }} />
       <div>
-        <div style={{ fontSize: 'var(--text-caption)', fontWeight: 500, color: 'var(--pending)', marginBottom: '2px' }}>
+        <div
+          style={{
+            fontSize: 'var(--text-caption)',
+            fontWeight: 500,
+            color: 'var(--pending)',
+            marginBottom: '2px',
+          }}
+        >
           Health-related client detected
         </div>
         <div style={{ fontSize: 'var(--text-micro)', color: 'var(--text2)', lineHeight: 1.55 }}>
-          All posts will include medical safety instructions. Human review is mandatory before publishing.
+          All posts will include medical safety instructions. Human review is mandatory before
+          publishing.
         </div>
       </div>
     </div>
@@ -436,12 +467,16 @@ function BasicInfoCard({
   return (
     <ReviewCard id="basic" title="Basic info" icon={<User size={10} color="var(--text2)" />}>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
-        <Input label="Client name" value={clientName} onChange={(e) => onClientNameChange(e.target.value)} />
+        <Input
+          label="Client name"
+          value={clientName}
+          onChange={(e) => onClientNameChange(e.target.value)}
+        />
         <div>
           <label
+            className="text-caption"
             style={{
               display: 'block',
-              fontSize: '12px',
               fontWeight: 500,
               color: 'var(--text2)',
               marginBottom: '4px',
@@ -449,7 +484,9 @@ function BasicInfoCard({
           >
             Niche
           </label>
-          <p style={{ fontSize: '13px', color: 'var(--ink)', paddingTop: '6px' }}>{niche}</p>
+          <p className="text-body" style={{ color: 'var(--ink)', paddingTop: '6px' }}>
+            {niche}
+          </p>
         </div>
       </div>
       <div style={{ marginTop: '14px' }}>
@@ -483,7 +520,11 @@ function BrandToneCard({
   onPillarsChange: (pillars: WeightedPillar[]) => void
 }) {
   return (
-    <ReviewCard id="brand" title="Brand tone & pillars" icon={<Pencil size={10} color="var(--text2)" />}>
+    <ReviewCard
+      id="brand"
+      title="Brand tone & pillars"
+      icon={<Pencil size={10} color="var(--text2)" />}
+    >
       <EditableField
         label="Tone"
         sectionKey="tone"
@@ -494,13 +535,15 @@ function BrandToneCard({
         onFieldSave={onFieldSave}
         initialValue={profile.tone}
       >
-        <p style={{ fontSize: '13px', color: 'var(--ink)' }}>{profile.tone}</p>
+        <p className="text-body" style={{ color: 'var(--ink)' }}>
+          {profile.tone}
+        </p>
       </EditableField>
 
       <div style={{ marginTop: '16px' }}>
         <div
+          className="text-label"
           style={{
-            fontSize: '9px',
             fontWeight: 500,
             color: 'var(--spring-text)',
             letterSpacing: '1.5px',
@@ -520,7 +563,11 @@ function PlatformsCard({ profile }: { profile: OnboardProfile }) {
   if (profile.recommended_platforms.length === 0) return null
 
   return (
-    <ReviewCard id="platforms" title="Recommended platforms" icon={<Share2 size={10} color="var(--text2)" />}>
+    <ReviewCard
+      id="platforms"
+      title="Recommended platforms"
+      icon={<Share2 size={10} color="var(--text2)" />}
+    >
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
         {profile.recommended_platforms.map((p) => (
           <div
@@ -532,10 +579,15 @@ function PlatformsCard({ profile }: { profile: OnboardProfile }) {
               border: '1px solid var(--line)',
             }}
           >
-            <div style={{ fontSize: '13px', fontWeight: 500, color: 'var(--ink)', marginBottom: '4px' }}>
+            <div
+              className="text-body"
+              style={{ fontWeight: 500, color: 'var(--ink)', marginBottom: '4px' }}
+            >
               {p.platform}
             </div>
-            <div style={{ fontSize: '11px', color: 'var(--text2)', lineHeight: 1.5 }}>{p.reason}</div>
+            <div className="text-micro" style={{ color: 'var(--text2)', lineHeight: 1.5 }}>
+              {p.reason}
+            </div>
           </div>
         ))}
       </div>
@@ -555,7 +607,11 @@ function ScheduleCard({
   onScheduleTimeChange: (v: string) => void
 }) {
   return (
-    <ReviewCard id="schedule" title="Autonomous schedule" icon={<Calendar size={10} color="var(--text2)" />}>
+    <ReviewCard
+      id="schedule"
+      title="Autonomous schedule"
+      icon={<Calendar size={10} color="var(--text2)" />}
+    >
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
         <Select
           label="Auto-generate day"
@@ -564,10 +620,19 @@ function ScheduleCard({
           options={[...WEEKDAY_OPTIONS]}
         />
         <div>
-          <label style={{ display: 'block', fontSize: '12px', fontWeight: 500, color: 'var(--text2)', marginBottom: '4px' }}>
+          <label
+            className="text-caption"
+            style={{
+              display: 'block',
+              fontWeight: 500,
+              color: 'var(--text2)',
+              marginBottom: '4px',
+            }}
+          >
             Auto-generate time
           </label>
           <input
+            className="text-body"
             type="time"
             value={scheduleTime}
             onChange={(e) => onScheduleTimeChange(e.target.value)}
@@ -576,7 +641,6 @@ function ScheduleCard({
               border: '1px solid var(--line)',
               borderRadius: '8px',
               padding: '8px 10px',
-              fontSize: '13px',
               fontFamily: 'var(--font-sans)',
               color: 'var(--ink)',
               outline: 'none',
@@ -624,8 +688,8 @@ function ReviewCard({
         }}
       >
         <div
+          className="text-label"
           style={{
-            fontSize: '10px',
             fontWeight: 500,
             color: 'var(--text2)',
             letterSpacing: '1.5px',
@@ -640,10 +704,10 @@ function ReviewCard({
         </div>
         {onEdit && (
           <button
+            className="text-micro"
             type="button"
             onClick={onEdit}
             style={{
-              fontSize: '11px',
               color: 'var(--spring-text)',
               fontWeight: 500,
               background: 'none',
@@ -693,13 +757,23 @@ function EditableCard({
       id={id}
       title={title}
       icon={icon}
-      onEdit={isEditing ? undefined : () => { onEditSection(sectionKey); onEditValueChange(initialValue) }}
+      onEdit={
+        isEditing
+          ? undefined
+          : () => {
+              onEditSection(sectionKey)
+              onEditValueChange(initialValue)
+            }
+      }
     >
       {isEditing ? (
         <EditForm
           editValue={editValue}
           onEditValueChange={onEditValueChange}
-          onSave={() => { onFieldSave(sectionKey, editValue); onEditSection(null) }}
+          onSave={() => {
+            onFieldSave(sectionKey, editValue)
+            onEditSection(null)
+          }}
           onCancel={() => onEditSection(null)}
         />
       ) : (
@@ -734,10 +808,17 @@ function EditableField({
 
   return (
     <div>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          marginBottom: '6px',
+        }}
+      >
         <div
+          className="text-label"
           style={{
-            fontSize: '9px',
             fontWeight: 500,
             color: 'var(--spring-text)',
             letterSpacing: '1.5px',
@@ -748,10 +829,13 @@ function EditableField({
         </div>
         {!isEditing && (
           <button
+            className="text-micro"
             type="button"
-            onClick={() => { onEditSection(sectionKey); onEditValueChange(initialValue) }}
+            onClick={() => {
+              onEditSection(sectionKey)
+              onEditValueChange(initialValue)
+            }}
             style={{
-              fontSize: '11px',
               color: 'var(--spring-text)',
               fontWeight: 500,
               background: 'none',
@@ -768,7 +852,10 @@ function EditableField({
         <EditForm
           editValue={editValue}
           onEditValueChange={onEditValueChange}
-          onSave={() => { onFieldSave(sectionKey, editValue); onEditSection(null) }}
+          onSave={() => {
+            onFieldSave(sectionKey, editValue)
+            onEditSection(null)
+          }}
           onCancel={() => onEditSection(null)}
         />
       ) : (
@@ -792,6 +879,7 @@ function EditForm({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
       <textarea
+        className="text-body"
         value={editValue}
         onChange={(e) => onEditValueChange(e.target.value)}
         rows={3}
@@ -800,7 +888,6 @@ function EditForm({
           border: '1px solid var(--line)',
           borderRadius: '8px',
           padding: '10px 12px',
-          fontSize: '13px',
           fontFamily: 'var(--font-sans)',
           color: 'var(--ink)',
           outline: 'none',
@@ -808,8 +895,12 @@ function EditForm({
         }}
       />
       <div style={{ display: 'flex', gap: '8px' }}>
-        <Button size="sm" onClick={onSave}>Save</Button>
-        <Button size="sm" variant="ghost" onClick={onCancel}>Cancel</Button>
+        <Button size="sm" onClick={onSave}>
+          Save
+        </Button>
+        <Button size="sm" variant="ghost" onClick={onCancel}>
+          Cancel
+        </Button>
       </div>
     </div>
   )
@@ -820,6 +911,7 @@ function ChipList({ items }: { items: string[] }) {
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
       {items.map((item) => (
         <span
+          className="text-caption"
           key={item}
           style={{
             display: 'inline-flex',
@@ -828,7 +920,6 @@ function ChipList({ items }: { items: string[] }) {
             borderRadius: '20px',
             background: 'rgba(46,158,104,0.08)',
             color: 'var(--ink)',
-            fontSize: '12px',
             border: '1px solid rgba(46,158,104,0.15)',
           }}
         >

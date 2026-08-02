@@ -37,9 +37,9 @@ export function StepEntry({
       <FrameIcon />
 
       <h1
+        className="text-prompt"
         style={{
           fontFamily: 'var(--font-display)',
-          fontSize: '26px',
           fontWeight: 400,
           color: 'var(--ink)',
           textAlign: 'center',
@@ -49,8 +49,8 @@ export function StepEntry({
         New client onboarding
       </h1>
       <p
+        className="text-body"
         style={{
-          fontSize: '14px',
           color: 'var(--text2)',
           textAlign: 'center',
           marginBottom: '32px',
@@ -58,8 +58,8 @@ export function StepEntry({
           lineHeight: 1.65,
         }}
       >
-        Share a website or Instagram handle — Kontuur will auto-detect the brand profile, tone,
-        and content pillars.
+        Share a website or Instagram handle — Kontuur will auto-detect the brand profile, tone, and
+        content pillars.
       </p>
 
       <InputCard
@@ -70,6 +70,7 @@ export function StepEntry({
       />
 
       <button
+        className="text-body"
         type="button"
         onClick={onAnalyze}
         disabled={!hasInput}
@@ -81,7 +82,6 @@ export function StepEntry({
           color: '#f2f5f1',
           border: 'none',
           borderRadius: '10px',
-          fontSize: '14px',
           fontWeight: 500,
           cursor: hasInput ? 'pointer' : 'not-allowed',
           fontFamily: 'var(--font-sans)',
@@ -93,10 +93,10 @@ export function StepEntry({
       </button>
 
       <button
+        className="text-caption"
         type="button"
         onClick={onSkip}
         style={{
-          fontSize: '12px',
           color: 'var(--text2)',
           background: 'none',
           border: 'none',

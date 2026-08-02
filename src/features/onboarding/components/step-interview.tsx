@@ -50,8 +50,20 @@ export function StepInterview({
     <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
       <InterviewSidebar currentQ={currentQ} />
 
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'var(--surface)', overflow: 'hidden' }}>
-        <ChatMessages messages={messages} isGenerating={isGenerating} messagesEndRef={messagesEndRef} />
+      <div
+        style={{
+          flex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          background: 'var(--surface)',
+          overflow: 'hidden',
+        }}
+      >
+        <ChatMessages
+          messages={messages}
+          isGenerating={isGenerating}
+          messagesEndRef={messagesEndRef}
+        />
 
         {!isGenerating && (
           <InputBar
@@ -103,8 +115,8 @@ function InterviewSidebar({ currentQ }: { currentQ: number }) {
 
       <div style={{ position: 'relative', zIndex: 2, flex: 1 }}>
         <div
+          className="text-label"
           style={{
-            fontSize: '9px',
             fontWeight: 500,
             color: 'rgba(242,245,241,0.4)',
             letterSpacing: '2px',
@@ -121,10 +133,10 @@ function InterviewSidebar({ currentQ }: { currentQ: number }) {
       </div>
 
       <div
+        className="text-micro"
         style={{
           position: 'relative',
           zIndex: 2,
-          fontSize: '11px',
           color: 'rgba(242,245,241,0.28)',
           lineHeight: 1.6,
           paddingTop: '20px',
@@ -140,9 +152,9 @@ function SidebarHeader() {
   return (
     <div style={{ position: 'relative', zIndex: 2, marginBottom: '28px' }}>
       <div
+        className="text-title"
         style={{
           fontFamily: 'var(--font-display)',
-          fontSize: '16px',
           color: '#f2f5f1',
           letterSpacing: '3px',
           marginBottom: '3px',
@@ -152,14 +164,25 @@ function SidebarHeader() {
       </div>
       {/* Lime as a figure on the Pine Deep rail — 10.87:1, and part of the
           wordmark lockup, which is exempt from the one-per-band count. */}
-      <div style={{ fontSize: '7px', color: 'var(--accent)', letterSpacing: '5px' }}>
+      <div
+        className="text-label tracking-normal"
+        style={{ color: 'var(--accent)', letterSpacing: '5px' }}
+      >
         SOCIAL INTELLIGENCE
       </div>
     </div>
   )
 }
 
-function SidebarQuestion({ label, index, currentQ }: { label: string; index: number; currentQ: number }) {
+function SidebarQuestion({
+  label,
+  index,
+  currentQ,
+}: {
+  label: string
+  index: number
+  currentQ: number
+}) {
   const isDone = index < currentQ
   const isActive = index === currentQ
 
@@ -201,8 +224,8 @@ function SidebarQuestion({ label, index, currentQ }: { label: string; index: num
         }}
       />
       <span
+        className="text-caption"
         style={{
-          fontSize: '12px',
           color: textColor,
           fontWeight: isActive ? 500 : 400,
         }}
@@ -216,12 +239,32 @@ function SidebarQuestion({ label, index, currentQ }: { label: string; index: num
 function DecorativeRings() {
   return (
     <svg
-      style={{ position: 'absolute', inset: 0, pointerEvents: 'none', width: '100%', height: '100%' }}
+      style={{
+        position: 'absolute',
+        inset: 0,
+        pointerEvents: 'none',
+        width: '100%',
+        height: '100%',
+      }}
       viewBox="0 0 260 620"
       fill="none"
     >
-      <ellipse cx="240" cy="310" rx="200" ry="200" stroke="rgba(242,245,241,0.025)" strokeWidth="60" />
-      <ellipse cx="240" cy="310" rx="130" ry="130" stroke="rgba(46,158,104,0.04)" strokeWidth="35" />
+      <ellipse
+        cx="240"
+        cy="310"
+        rx="200"
+        ry="200"
+        stroke="rgba(242,245,241,0.025)"
+        strokeWidth="60"
+      />
+      <ellipse
+        cx="240"
+        cy="310"
+        rx="130"
+        ry="130"
+        stroke="rgba(46,158,104,0.04)"
+        strokeWidth="35"
+      />
     </svg>
   )
 }
@@ -249,7 +292,11 @@ function ChatMessages({
       }}
     >
       {messages.map((msg, i) =>
-        msg.role === 'ai' ? <AiMessage key={i} text={msg.text} /> : <UserMessage key={i} text={msg.text} />
+        msg.role === 'ai' ? (
+          <AiMessage key={i} text={msg.text} />
+        ) : (
+          <UserMessage key={i} text={msg.text} />
+        )
       )}
       {isGenerating && <TypingIndicator />}
       <div ref={messagesEndRef} />
@@ -284,7 +331,10 @@ function AiMessage({ text }: { text: string }) {
           maxWidth: '480px',
         }}
       >
-        <p style={{ fontSize: '13px', color: 'var(--ink)', lineHeight: 1.6, whiteSpace: 'pre-line', margin: 0 }}>
+        <p
+          className="text-body"
+          style={{ color: 'var(--ink)', lineHeight: 1.6, whiteSpace: 'pre-line', margin: 0 }}
+        >
           {text}
         </p>
       </div>
@@ -296,13 +346,13 @@ function UserMessage({ text }: { text: string }) {
   return (
     <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
       <div
+        className="text-body"
         style={{
           background: 'var(--forest-deep)',
           color: '#f2f5f1',
           borderRadius: '10px 0 10px 10px',
           padding: '11px 14px',
           maxWidth: '440px',
-          fontSize: '13px',
           lineHeight: 1.55,
         }}
       >
@@ -387,8 +437,8 @@ function InputBar({
     >
       {hasAnalysisData && (
         <p
+          className="text-label tracking-normal"
           style={{
-            fontSize: '10px',
             color: 'var(--text2)',
             marginBottom: '8px',
             textAlign: 'center',
@@ -449,7 +499,7 @@ function ChipBar({
               type="button"
               onClick={() => onToggleMultiSelect(chip)}
               className={cn(
-                'text-xs px-3 py-1.5 rounded-full border transition-colors',
+                'text-caption px-3 py-1.5 rounded-full border transition-colors',
                 selected
                   ? 'border-[var(--forest)] text-[var(--forest)]'
                   : 'border-[var(--line)] text-[var(--ink)] hover:border-[var(--forest)] hover:text-[var(--forest)]'
@@ -470,7 +520,7 @@ function ChipBar({
             key={chip}
             type="button"
             onClick={() => onSubmitAnswer(chip)}
-            className="text-xs px-3 py-1.5 rounded-full border transition-colors"
+            className="text-caption px-3 py-1.5 rounded-full border transition-colors"
             style={{
               fontFamily: 'var(--font-sans)',
               cursor: 'pointer',
@@ -520,6 +570,7 @@ function TextInputRow({
   return (
     <div style={{ display: 'flex', gap: '10px' }}>
       <input
+        className="text-body"
         type="text"
         value={input}
         onChange={(e) => onInputChange(e.target.value)}
@@ -530,7 +581,6 @@ function TextInputRow({
           padding: '10px 13px',
           border: '1px solid var(--line)',
           borderRadius: '8px',
-          fontSize: '13px',
           fontFamily: 'var(--font-sans)',
           color: 'var(--ink)',
           background: 'var(--sunken)',

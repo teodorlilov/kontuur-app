@@ -66,13 +66,11 @@ export function OnboardingSuccess({
         </div>
 
         <h2
-          className="mt-6"
+          className="text-prompt mt-6"
           style={{
             fontFamily: 'var(--font-display)',
-            fontSize: 30,
             fontWeight: 400,
             color: 'var(--ink)',
-            letterSpacing: '-0.02em',
             animation: 'fade-up 350ms ease 150ms both',
           }}
         >
@@ -80,12 +78,10 @@ export function OnboardingSuccess({
         </h2>
 
         <p
-          className="mt-3 text-sm"
+          className="mt-3 text-body"
           style={{ color: 'var(--text2)', animation: 'fade-up 350ms ease 250ms both' }}
         >
-          {recap.length > 0
-            ? recap
-            : 'You can add sources anytime from Content sources.'}
+          {recap.length > 0 ? recap : 'You can add sources anytime from Content sources.'}
         </p>
 
         <div

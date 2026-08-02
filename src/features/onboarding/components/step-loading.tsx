@@ -86,9 +86,9 @@ export function StepLoading({ analysisComplete, onSkip, onComplete }: StepLoadin
       </div>
 
       <h2
+        className="text-headline"
         style={{
           fontFamily: 'var(--font-display)',
-          fontSize: '22px',
           fontWeight: 400,
           color: 'var(--ink)',
           marginBottom: '6px',
@@ -97,17 +97,20 @@ export function StepLoading({ analysisComplete, onSkip, onComplete }: StepLoadin
       >
         Analyzing brand presence
       </h2>
-      <p style={{ fontSize: '13px', color: 'var(--text2)', textAlign: 'center', marginBottom: '32px' }}>
+      <p
+        className="text-body"
+        style={{ color: 'var(--text2)', textAlign: 'center', marginBottom: '32px' }}
+      >
         Scanning website, detecting tone and content themes
       </p>
 
       <StageList activeStage={activeStage} />
 
       <button
+        className="text-caption"
         type="button"
         onClick={onSkip}
         style={{
-          fontSize: '12px',
           color: 'var(--text2)',
           background: 'none',
           border: 'none',
@@ -140,7 +143,15 @@ function StageList({ activeStage }: { activeStage: number }) {
   )
 }
 
-function StageRow({ label, index, activeStage }: { label: string; index: number; activeStage: number }) {
+function StageRow({
+  label,
+  index,
+  activeStage,
+}: {
+  label: string
+  index: number
+  activeStage: number
+}) {
   const isDone = index < activeStage
   const isActive = index === activeStage
 
@@ -152,18 +163,14 @@ function StageRow({ label, index, activeStage }: { label: string; index: number;
         gap: '10px',
         padding: '10px 14px',
         borderRadius: '8px',
-        background: isDone
-          ? 'var(--wash)'
-          : isActive
-            ? 'rgba(15,21,18,0.06)'
-            : 'var(--paper)',
+        background: isDone ? 'var(--wash)' : isActive ? 'rgba(15,21,18,0.06)' : 'var(--paper)',
         transition: 'background 0.3s',
       }}
     >
       <StageIcon isDone={isDone} isActive={isActive} />
       <span
+        className="text-caption"
         style={{
-          fontSize: '12px',
           fontWeight: 500,
           color: isDone ? 'var(--spring-text)' : isActive ? 'var(--ink)' : 'var(--text2)',
         }}
