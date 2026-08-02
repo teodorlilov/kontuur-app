@@ -57,12 +57,12 @@ export function SourceInfoSection({
   return (
     <PanelSection title="Source">
       {sourceTitle && (
-        <div style={{ fontSize: '11px', fontWeight: 500, color: 'var(--ink)', marginBottom: '5px' }}>
+        <div className="text-micro font-medium text-ink" style={{ marginBottom: '5px' }}>
           {typeLabel} · {sourceTitle}
         </div>
       )}
       {sourceExcerpt && (
-        <div style={{ fontSize: '11px', color: 'var(--text2)', lineHeight: 1.6, marginBottom: '7px' }}>
+        <div className="text-micro text-text2" style={{ lineHeight: 1.6, marginBottom: '7px' }}>
           {sourceExcerpt}
         </div>
       )}
@@ -71,7 +71,8 @@ export function SourceInfoSection({
           href={sourceUrl}
           target="_blank"
           rel="noopener noreferrer"
-          style={{ fontSize: '10px', color: 'var(--spring-text)', fontWeight: 500, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '4px' }}
+          className="text-micro font-medium text-spring-text"
+          style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '4px' }}
         >
           <ExternalLink size={10} /> Verify source
         </a>
@@ -80,7 +81,8 @@ export function SourceInfoSection({
           href={`https://www.google.com/search?q=${encodeURIComponent(sourceExcerpt.slice(0, 120))}`}
           target="_blank"
           rel="noopener noreferrer"
-          style={{ fontSize: '10px', color: 'var(--spring-text)', fontWeight: 500, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '4px' }}
+          className="text-micro font-medium text-spring-text"
+          style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '4px' }}
         >
           <ExternalLink size={10} /> Verify on Google
         </a>
@@ -90,11 +92,21 @@ export function SourceInfoSection({
 }
 
 /** Key-value row for metadata sections. */
-export function MetadataRow({ label, value, valueColor }: { label: string; value: string; valueColor?: string }) {
+export function MetadataRow({
+  label,
+  value,
+  valueColor,
+}: {
+  label: string
+  value: string
+  valueColor?: string
+}) {
   return (
     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
-      <span style={{ fontSize: '11px', color: 'var(--text2)' }}>{label}</span>
-      <span style={{ fontSize: '11px', fontWeight: 500, color: valueColor ?? 'var(--ink)' }}>{value}</span>
+      <span className="text-micro text-text2">{label}</span>
+      <span className="text-micro font-medium" style={{ color: valueColor ?? 'var(--ink)' }}>
+        {value}
+      </span>
     </div>
   )
 }

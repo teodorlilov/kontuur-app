@@ -115,7 +115,23 @@ function EditableField({
   )
 }
 
-export function CarouselSlides({ slides, editable, onSlidesChange, onBlur, flaggedSlides, postId, images, onImageUploaded, onImageDeleted, canvaConnected, onGenerateImage, generatingPositions, composingPositions, onEditImage, renderImageSlot }: CarouselSlidesProps) {
+export function CarouselSlides({
+  slides,
+  editable,
+  onSlidesChange,
+  onBlur,
+  flaggedSlides,
+  postId,
+  images,
+  onImageUploaded,
+  onImageDeleted,
+  canvaConnected,
+  onGenerateImage,
+  generatingPositions,
+  composingPositions,
+  onEditImage,
+  renderImageSlot,
+}: CarouselSlidesProps) {
   const [activeIndex, setActiveIndex] = useState(0)
 
   // Auto-expand the first flagged slide. Adjusted during render rather than in an effect, which
@@ -135,8 +151,7 @@ export function CarouselSlides({ slides, editable, onSlidesChange, onBlur, flagg
   function handleCopyAll() {
     const text = slides
       .map(
-        (s, i) =>
-          `Slide ${s.slide_number ?? i + 1}\n${s.headline}${s.body ? `\n${s.body}` : ''}`
+        (s, i) => `Slide ${s.slide_number ?? i + 1}\n${s.headline}${s.body ? `\n${s.body}` : ''}`
       )
       .join('\n---\n')
     void navigator.clipboard.writeText(text)
@@ -145,16 +160,19 @@ export function CarouselSlides({ slides, editable, onSlidesChange, onBlur, flagg
 
   function updateSlideField(field: 'headline' | 'body', value: string) {
     if (!onSlidesChange) return
-    const updated = slides.map((s, i) =>
-      i === activeIndex ? { ...s, [field]: value } : s
-    )
+    const updated = slides.map((s, i) => (i === activeIndex ? { ...s, [field]: value } : s))
     onSlidesChange(updated)
   }
 
   return (
     <div className="flex flex-col gap-3">
       <div className="flex justify-end">
-        <button onClick={handleCopyAll} className="text-xs text-text3 hover:text-text2 font-medium">Copy all slides</button>
+        <button
+          onClick={handleCopyAll}
+          className="text-caption text-text3 hover:text-text2 font-medium"
+        >
+          Copy all slides
+        </button>
       </div>
 
       {/* Tab bar */}
@@ -164,7 +182,7 @@ export function CarouselSlides({ slides, editable, onSlidesChange, onBlur, flagg
             key={i}
             onClick={() => setActiveIndex(i)}
             className={cn(
-              'px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors inline-flex items-center gap-1',
+              'px-2.5 py-1.5 rounded-md text-caption font-medium transition-colors inline-flex items-center gap-1',
               activeIndex === i
                 ? 'bg-[rgba(15,21,18,0.08)] text-[var(--ink)]'
                 : 'bg-sunken text-text2 hover:bg-line'
@@ -173,8 +191,8 @@ export function CarouselSlides({ slides, editable, onSlidesChange, onBlur, flagg
             {slide.slide_number ?? i + 1}
             {flaggedSlides?.includes(slide.slide_number ?? i + 1) && (
               <span
+                className="text-micro"
                 style={{
-                  fontSize: 9,
                   color: 'var(--forest)',
                   background: 'rgba(22,68,48,0.10)',
                   padding: '1px 5px',
@@ -193,7 +211,7 @@ export function CarouselSlides({ slides, editable, onSlidesChange, onBlur, flagg
         <div className="bg-sunken rounded-lg p-4 flex flex-col gap-3">
           {activeSlide.slide_role && (
             <div className="flex items-center gap-2">
-              <span className="text-xs font-medium text-text3 uppercase">
+              <span className="text-label font-semibold uppercase text-text3">
                 {activeSlide.slide_role}
               </span>
             </div>
@@ -204,10 +222,10 @@ export function CarouselSlides({ slides, editable, onSlidesChange, onBlur, flagg
               value={activeSlide.headline}
               onChange={(v) => updateSlideField('headline', v)}
               onBlur={onBlur}
-              className="text-sm font-semibold text-ink"
+              className="text-body font-semibold text-ink"
             />
           ) : (
-            <p className="text-sm font-semibold text-ink">{activeSlide.headline}</p>
+            <p className="text-body font-semibold text-ink">{activeSlide.headline}</p>
           )}
 
           {editable && onSlidesChange && activeSlide.body ? (
@@ -216,18 +234,19 @@ export function CarouselSlides({ slides, editable, onSlidesChange, onBlur, flagg
               onChange={(v) => updateSlideField('body', v)}
               onBlur={onBlur}
               multiline
-              className="text-sm text-text2 whitespace-pre-wrap"
+              className="text-body text-text2 whitespace-pre-wrap"
             />
           ) : (
             activeSlide.body && (
-              <p className="text-sm text-text2 whitespace-pre-wrap">{activeSlide.body}</p>
+              <p className="text-body text-text2 whitespace-pre-wrap">{activeSlide.body}</p>
             )
           )}
 
-
           {renderImageSlot
             ? renderImageSlot(activeIndex)
-            : postId && onImageUploaded && onImageDeleted && (
+            : postId &&
+              onImageUploaded &&
+              onImageDeleted && (
                 <ImageSlot
                   postId={postId}
                   position={activeIndex}
@@ -245,8 +264,19 @@ export function CarouselSlides({ slides, editable, onSlidesChange, onBlur, flagg
       )}
 
       {flaggedSlides && flaggedSlides.length > 0 && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 10, color: 'var(--text2)' }}>
-          <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--spring)', flexShrink: 0 }} />
+        <div
+          className="text-micro"
+          style={{ display: 'flex', alignItems: 'center', gap: 5, color: 'var(--text2)' }}
+        >
+          <span
+            style={{
+              width: 6,
+              height: 6,
+              borderRadius: '50%',
+              background: 'var(--spring)',
+              flexShrink: 0,
+            }}
+          />
           Flagged slides are expanded
         </div>
       )}

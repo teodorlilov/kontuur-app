@@ -18,22 +18,22 @@ export function SlopDetector({ result }: SlopDetectorProps) {
   return (
     <div className="flex flex-col gap-2">
       <div className="flex items-center justify-between">
-        <p className="text-xs font-medium text-text3 uppercase tracking-wide">Authenticity</p>
-        <span className={cn('text-xs font-semibold px-2 py-0.5 rounded-full', badgeClass)}>
+        <p className="text-label font-semibold uppercase text-text3">Authenticity</p>
+        <span className={cn('text-caption font-semibold px-2 py-0.5 rounded-full', badgeClass)}>
           {human_authenticity_score}/10
         </span>
       </div>
 
       {human_authenticity_score < 4 && (
-        <p className="text-xs text-danger">Reads as AI — rewrite recommended</p>
+        <p className="text-caption text-danger">Reads as AI — rewrite recommended</p>
       )}
       {human_authenticity_score >= 4 && human_authenticity_score < 6 && (
-        <p className="text-xs text-pending">May read as AI-generated</p>
+        <p className="text-caption text-pending">May read as AI-generated</p>
       )}
       {human_authenticity_score >= 6 &&
         human_authenticity_score < 8 &&
         ai_tells_found.length > 0 && (
-          <p className="text-xs text-text3">
+          <p className="text-caption text-text3">
             {ai_tells_found.length} AI pattern{ai_tells_found.length !== 1 ? 's' : ''} detected
           </p>
         )}
@@ -41,7 +41,7 @@ export function SlopDetector({ result }: SlopDetectorProps) {
       {ai_tells_found.length > 0 && (
         <button
           onClick={() => setExpanded((e) => !e)}
-          className="text-xs text-text3 hover:text-text2 text-left"
+          className="text-caption text-text3 hover:text-text2 text-left"
         >
           {expanded
             ? 'Hide'
@@ -52,12 +52,14 @@ export function SlopDetector({ result }: SlopDetectorProps) {
       {expanded && (
         <div className="flex flex-col gap-1">
           {ai_tells_found.map((tell, i) => (
-            <p key={i} className="text-xs text-text2">
+            <p key={i} className="text-caption text-text2">
               · {tell}
             </p>
           ))}
           {worst_offending_phrase && (
-            <p className="text-xs text-danger italic mt-1">Worst: "{worst_offending_phrase}"</p>
+            <p className="text-caption text-danger italic mt-1">
+              Worst: "{worst_offending_phrase}"
+            </p>
           )}
         </div>
       )}

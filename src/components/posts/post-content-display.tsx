@@ -74,12 +74,14 @@ function EditableCaption({
   return (
     <div className="flex flex-col gap-2">
       <div className="flex justify-end">
-        <button onClick={onCopy} className="text-xs text-text3 hover:text-text2 font-medium">Copy</button>
+        <button onClick={onCopy} className="text-caption text-text3 hover:text-text2 font-medium">
+          Copy
+        </button>
       </div>
       {editable && onCaptionChange && !editing ? (
         <p
           onClick={() => setEditing(true)}
-          className="text-sm text-ink whitespace-pre-wrap leading-relaxed cursor-text rounded px-1 -mx-1 hover:bg-sunken hover:ring-1 hover:ring-line2 transition-all"
+          className="text-body text-ink whitespace-pre-wrap leading-relaxed cursor-text rounded px-1 -mx-1 hover:bg-sunken hover:ring-1 hover:ring-line2 transition-all"
         >
           {caption ? decodeUrlsInText(caption) : caption}
         </p>
@@ -99,10 +101,10 @@ function EditableCaption({
               setEditing(false)
             }
           }}
-          className="w-full text-sm text-ink whitespace-pre-wrap leading-relaxed border border-line2 rounded-lg px-2 py-1 -mx-1 focus:outline-none focus:ring-2 focus:ring-[var(--line2)] focus:border-transparent resize-none"
+          className="w-full text-body text-ink whitespace-pre-wrap leading-relaxed border border-line2 rounded-lg px-2 py-1 -mx-1 focus:outline-none focus:ring-2 focus:ring-[var(--line2)] focus:border-transparent resize-none"
         />
       ) : (
-        <p className="text-sm text-ink whitespace-pre-wrap leading-relaxed">
+        <p className="text-body text-ink whitespace-pre-wrap leading-relaxed">
           {caption ? decodeUrlsInText(caption) : caption}
         </p>
       )}
@@ -151,31 +153,31 @@ export function PostContentDisplay({
       {/* Badge row */}
       <div className="flex items-center gap-2 flex-wrap">
         {priority && (
-          <span className="text-xs font-semibold bg-danger-bg text-danger px-2 py-0.5 rounded-full">
+          <span className="text-caption font-semibold bg-danger-bg text-danger px-2 py-0.5 rounded-full">
             Priority
           </span>
         )}
         {pillar && pillarColor && (
           <span
-            className="text-xs px-2 py-0.5 rounded-full"
+            className="text-caption px-2 py-0.5 rounded-full"
             style={{ background: pillarColor.bg, color: pillarColor.text }}
           >
             {pillar}
           </span>
         )}
         {theme && (
-          <span className="text-xs bg-sunken text-text2 px-2 py-0.5 rounded-full">
+          <span className="text-caption bg-sunken text-text2 px-2 py-0.5 rounded-full">
             {theme}
           </span>
         )}
         {platform && (
-          <span className="text-xs bg-wash text-forest px-2 py-0.5 rounded-full">
+          <span className="text-caption bg-wash text-forest px-2 py-0.5 rounded-full">
             {platform}
           </span>
         )}
         {/* Post type is a category, and colour does not name a category — the
             words do. Both states take the neutral draft pair. */}
-        <span className="text-xs px-2 py-0.5 rounded-full bg-sunken text-text2">
+        <span className="text-caption px-2 py-0.5 rounded-full bg-sunken text-text2">
           {isCarousel ? `🎠 Carousel · ${slides.length} slides` : 'Single image'}
         </span>
       </div>
@@ -211,7 +213,9 @@ export function PostContentDisplay({
       {!isCarousel &&
         (renderImageSlot
           ? renderImageSlot(0)
-          : postId && onImageUploaded && onImageDeleted && (
+          : postId &&
+            onImageUploaded &&
+            onImageDeleted && (
               <ImageSlot
                 postId={postId}
                 position={0}
@@ -227,9 +231,7 @@ export function PostContentDisplay({
             ))}
 
       {/* Quality scores (generation flow only) */}
-      {criteria && scores && (
-        <QualityScores criteria={criteria} scores={scores} />
-      )}
+      {criteria && scores && <QualityScores criteria={criteria} scores={scores} />}
     </div>
   )
 }
