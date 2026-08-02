@@ -97,7 +97,7 @@ function PanelHeader({ unreadCount, onMarkAllRead }: { unreadCount: number; onMa
 /** Section divider label (Today / Earlier). */
 function SectionHeader({ label }: { label: string }) {
   return (
-    <div className="px-4 pb-1 pt-2 text-label font-medium uppercase tracking-[0.1em] text-text3">
+    <div className="px-4 pb-1 pt-2 text-label font-semibold uppercase text-text3">
       {label}
     </div>
   )

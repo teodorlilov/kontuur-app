@@ -24,16 +24,14 @@ export function MetricCard({ label, value, delta, deltaType = 'neutral', accentC
     <div className="relative overflow-hidden rounded-panel border border-ink/[0.05] bg-surface px-5 py-[18px]">
       <div className="absolute inset-x-0 top-0 h-0.5" style={{ background: accentColor }} />
 
-      <div className="mb-2.5 text-micro font-medium uppercase tracking-[0.12em] text-text3">
-        {label}
-      </div>
+      <div className="mb-2.5 text-label font-semibold uppercase text-text3">{label}</div>
 
       <div className="text-metric font-semibold tabular-nums text-ink">
         {value}
       </div>
 
       {delta && (
-        <div className={cn('mt-1.5 flex items-center gap-1 text-[11px]', DELTA_CLASSES[deltaType])}>
+        <div className={cn('mt-1.5 flex items-center gap-1 text-micro', DELTA_CLASSES[deltaType])}>
           {deltaType === 'positive' && <TrendingUp size={10} />}
           {deltaType === 'negative' && <TrendingDown size={10} />}
           {delta}
