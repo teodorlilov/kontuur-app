@@ -52,14 +52,14 @@ export function Textarea({ label,
           CONTROL_READONLY,
           CONTROL_DISABLED,
           CONTROL_INVALID,
-          'min-h-[82px] px-3 py-2.5 leading-relaxed',
+          'min-h-[82px] px-3 py-2.5',
           autoGrow ? 'resize-none field-sizing-content' : 'resize-y',
           className
         )}
         {...props}
       />
       {error && (
-        <p className="text-xs text-danger" aria-live="polite">
+        <p className="text-caption text-danger" aria-live="polite">
           {error}
         </p>
       )}

@@ -17,8 +17,16 @@ export const CONTROL_FOCUS =
 export const CONTROL_FOCUS_WITHIN =
   'focus-within:border-spring focus-within:ring-[3px] focus-within:ring-spring/12'
 
-/** Type, size and padding shared by every control. */
-export const CONTROL_TEXT = 'w-full min-w-0 text-sm text-ink placeholder:text-text3'
+/**
+ * Type, size and padding shared by every control.
+ *
+ * The two sizes are DESIGN.md's Mobile Input Exemption, which until now the doc
+ * described and no code implemented: below `md` a focusable field must be 16px,
+ * because iOS Safari auto-zooms the viewport the moment a smaller field takes
+ * focus, throwing the layout mid-entry with no way back but a pinch. Lead is
+ * exactly 16px, so the exemption is a ramp step rather than a magic literal.
+ */
+export const CONTROL_TEXT = 'w-full min-w-0 text-lead md:text-body text-ink placeholder:text-text3'
 
 /** A single-line control: the full 40px treatment. */
 export const CONTROL_BASE = cx(CONTROL_SURFACE, CONTROL_FOCUS, CONTROL_TEXT, 'h-10 px-3')

@@ -52,7 +52,7 @@ export function Input({ label,
         {...props}
       />
       {error && (
-        <p className="text-xs text-danger" aria-live="polite">
+        <p className="text-caption text-danger" aria-live="polite">
           {error}
         </p>
       )}

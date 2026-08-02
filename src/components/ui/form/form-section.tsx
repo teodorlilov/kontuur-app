@@ -110,12 +110,12 @@ export function Field({
       <FieldProvider value={{ controlId, describedBy, invalid: !!error }}>{children}</FieldProvider>
 
       {hint && (
-        <p id={hintId} className="mt-1.5 text-xs text-text3">
+        <p id={hintId} className="mt-1.5 text-caption text-text3">
           {hint}
         </p>
       )}
       {error && (
-        <p id={errorId} className="mt-1.5 text-xs text-danger" aria-live="polite">
+        <p id={errorId} className="mt-1.5 text-caption text-danger" aria-live="polite">
           {error}
         </p>
       )}
