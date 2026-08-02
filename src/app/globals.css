@@ -251,8 +251,11 @@ html {
 /* ─── Base styles ─── */
 body {
   font-family: var(--font-sans), Arial, Helvetica, sans-serif;
-  font-size: 14px;
-  line-height: 1.6;
+  /* The inherited default is a ramp step like any other. It was 14px, which is
+     not a role — so every unclassed text node in the app was drift by the Closed
+     Ramp Rule's own definition, including the one it fell back to. */
+  font-size: var(--text-body);
+  line-height: var(--text-body--line-height);
   color: var(--ink);
   background: var(--paper);
   -webkit-font-smoothing: antialiased;
