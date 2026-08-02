@@ -13,7 +13,10 @@ import { cn } from '@/utils/cn'
  */
 export function IconChip({ className, children }: { className?: string; children: ReactNode }) {
   return (
-    <span aria-hidden="true" className={cn('grid place-items-center bg-wash text-forest', className)}>
+    <span
+      aria-hidden="true"
+      className={cn('grid place-items-center bg-wash text-forest', className)}
+    >
       {children}
     </span>
   )

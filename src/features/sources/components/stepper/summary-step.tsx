@@ -151,7 +151,13 @@ export function SummaryStep({
         <Button variant="ghost" size="sm" onClick={onBack}>
           Back
         </Button>
-        <Button size="sm" onClick={() => { void handleFinish() }} loading={saving}>
+        <Button
+          size="sm"
+          onClick={() => {
+            void handleFinish()
+          }}
+          loading={saving}
+        >
           Save and finish
         </Button>
       </div>

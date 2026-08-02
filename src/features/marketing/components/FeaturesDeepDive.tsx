@@ -62,7 +62,10 @@ export function FeaturesDeepDive() {
   const isMobile = useIsMobile()
 
   return (
-    <section className="mkt-pad" style={{ paddingTop: 80, paddingBottom: 80, background: 'var(--paper)' }}>
+    <section
+      className="mkt-pad"
+      style={{ paddingTop: 80, paddingBottom: 80, background: 'var(--paper)' }}
+    >
       <div
         style={{
           maxWidth: 1100,
@@ -99,8 +102,8 @@ export function FeaturesDeepDive() {
                   {f.title}
                 </h3>
                 <p
+                  className="text-title"
                   style={{
-                    fontSize: 15,
                     color: 'var(--text2)',
                     lineHeight: 1.7,
                     marginBottom: 20,
@@ -112,6 +115,7 @@ export function FeaturesDeepDive() {
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                   {f.tags.map((tag) => (
                     <span
+                      className="text-caption"
                       key={tag}
                       style={{
                         display: 'inline-block',
@@ -119,7 +123,6 @@ export function FeaturesDeepDive() {
                         background: 'var(--marker)',
                         color: 'var(--forest-deep)',
                         borderRadius: 6,
-                        fontSize: 12,
                         fontWeight: 500,
                       }}
                     >

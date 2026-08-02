@@ -50,7 +50,7 @@ export function InviteHandler() {
         {error ? (
           <>
             <p className="text-danger mb-4">{error}</p>
-            <a href="/login" className="text-forest hover:underline text-sm">
+            <a href="/login" className="text-forest hover:underline text-body">
               Back to login
             </a>
           </>

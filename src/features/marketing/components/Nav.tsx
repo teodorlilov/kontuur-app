@@ -43,10 +43,10 @@ export function Nav() {
             { label: 'How it works', href: '#how-it-works' },
           ].map(({ label, href }) => (
             <a
+              className="text-body"
               key={label}
               href={href}
               style={{
-                fontSize: 14,
                 color: 'var(--text2)',
                 textDecoration: 'none',
                 transition: 'color 120ms ease',
@@ -65,6 +65,7 @@ export function Nav() {
       )}
 
       <Link
+        className="text-body"
         href="/dashboard"
         style={{
           display: 'inline-flex',
@@ -73,7 +74,6 @@ export function Nav() {
           background: 'var(--forest)',
           color: '#fff',
           borderRadius: 8,
-          fontSize: 13.5,
           fontWeight: 500,
           textDecoration: 'none',
           lineHeight: 1,

@@ -279,7 +279,10 @@ export default function NewClientPage() {
     if (profileKey === 'target_audience' || profileKey === 'social_goals') {
       setProfile({
         ...profile,
-        [profileKey]: value.split(',').map((s) => s.trim()).filter(Boolean),
+        [profileKey]: value
+          .split(',')
+          .map((s) => s.trim())
+          .filter(Boolean),
       })
     } else {
       setProfile({ ...profile, [profileKey]: value })
@@ -368,7 +371,9 @@ export default function NewClientPage() {
 
   const currentQuestion = QUESTIONS[currentQ]
   const isMultiSelect = currentQuestion?.multiSelect ?? false
-  const detectedAnswer = currentQuestion ? getDetectedAnswer(currentQuestion.id, analysisData) : null
+  const detectedAnswer = currentQuestion
+    ? getDetectedAnswer(currentQuestion.id, analysisData)
+    : null
 
   return (
     <>

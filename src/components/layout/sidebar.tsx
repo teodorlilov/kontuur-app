@@ -264,7 +264,10 @@ export function Sidebar({
         >
           <ChevronLeft
             size={12}
-            className={cn('transition-transform duration-300 ease-contour', collapsed && 'rotate-180')}
+            className={cn(
+              'transition-transform duration-300 ease-contour',
+              collapsed && 'rotate-180'
+            )}
           />
         </button>
         <SidebarContent {...sharedProps} collapsed={collapsed} />

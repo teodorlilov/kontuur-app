@@ -51,7 +51,10 @@ export function InpaintControls({ inpaint }: { inpaint: InpaintPanelState }) {
       >
         Remove object
       </PanelButton>
-      <PanelButton onClick={inpaint.onClearStrokes} disabled={!inpaint.hasStrokes || inpaint.applying}>
+      <PanelButton
+        onClick={inpaint.onClearStrokes}
+        disabled={!inpaint.hasStrokes || inpaint.applying}
+      >
         Clear strokes
       </PanelButton>
       <PanelButton onClick={inpaint.onToggle}>Done</PanelButton>

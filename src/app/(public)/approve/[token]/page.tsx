@@ -32,19 +32,29 @@ function derivePlatform(posts: ApprovalPostData[]): string {
 }
 
 /** Count posts with a given status. */
-function countByStatus(statuses: Map<string, ApprovalPostStatus>, target: ApprovalPostStatus): number {
+function countByStatus(
+  statuses: Map<string, ApprovalPostStatus>,
+  target: ApprovalPostStatus
+): number {
   let count = 0
-  statuses.forEach((s) => { if (s === target) count++ })
+  statuses.forEach((s) => {
+    if (s === target) count++
+  })
   return count
 }
 
 /** Initialize post statuses — all pending for fresh batches, or restored for already-submitted. */
-function initStatuses(posts: ApprovalPostData[], batchStatus: string): Map<string, ApprovalPostStatus> {
+function initStatuses(
+  posts: ApprovalPostData[],
+  batchStatus: string
+): Map<string, ApprovalPostStatus> {
   const map = new Map<string, ApprovalPostStatus>()
   const status: ApprovalPostStatus =
-    batchStatus === 'approved' ? 'approved'
-    : batchStatus === 'changes_requested' ? 'changes_requested'
-    : 'pending'
+    batchStatus === 'approved'
+      ? 'approved'
+      : batchStatus === 'changes_requested'
+        ? 'changes_requested'
+        : 'pending'
   posts.forEach((p) => map.set(p.id, status))
   return map
 }
@@ -52,7 +62,9 @@ function initStatuses(posts: ApprovalPostData[], batchStatus: string): Map<strin
 /** Initialize feedbacks from existing client notes. */
 function initFeedbacks(posts: ApprovalPostData[]): Record<string, string> {
   const result: Record<string, string> = {}
-  posts.forEach((p) => { result[p.id] = p.client_note ?? '' })
+  posts.forEach((p) => {
+    result[p.id] = p.client_note ?? ''
+  })
   return result
 }
 
@@ -61,7 +73,9 @@ export default function ApprovalPage() {
   const [pageState, setPageState] = useState<PageState>('loading')
   const [data, setData] = useState<ApprovalBatchData | null>(null)
   const [errorMessage, setErrorMessage] = useState('')
-  const [submittedStatus, setSubmittedStatus] = useState<'approved' | 'changes_requested' | null>(null)
+  const [submittedStatus, setSubmittedStatus] = useState<'approved' | 'changes_requested' | null>(
+    null
+  )
 
   // Two-panel state
   const [selectedPostId, setSelectedPostId] = useState<string | null>(null)
@@ -114,36 +128,42 @@ export default function ApprovalPage() {
     if (activeFilter === 'all') return true
     return postStatuses.get(p.id) === activeFilter
   })
-  const selectedPost = filteredPosts.find((p) => p.id === selectedPostId) ?? filteredPosts[0] ?? null
+  const selectedPost =
+    filteredPosts.find((p) => p.id === selectedPostId) ?? filteredPosts[0] ?? null
   const selectedIndex = selectedPost ? filteredPosts.findIndex((p) => p.id === selectedPost.id) : -1
   const totalPending = countByStatus(postStatuses, 'pending')
 
   /** Submit the batch to the server. */
-  const submitBatch = useCallback(async (statuses: Map<string, ApprovalPostStatus>, fb: Record<string, string>) => {
-    setIsSubmitting(true)
-    try {
-      const hasChanges = Array.from(statuses.values()).some((s) => s === 'changes_requested')
-      const status: 'approved' | 'changes_requested' = hasChanges ? 'changes_requested' : 'approved'
+  const submitBatch = useCallback(
+    async (statuses: Map<string, ApprovalPostStatus>, fb: Record<string, string>) => {
+      setIsSubmitting(true)
+      try {
+        const hasChanges = Array.from(statuses.values()).some((s) => s === 'changes_requested')
+        const status: 'approved' | 'changes_requested' = hasChanges
+          ? 'changes_requested'
+          : 'approved'
 
-      const notes = Object.entries(fb)
-        .filter(([, note]) => note.trim().length > 0)
-        .map(([postId, note]) => ({ postId, note: note.trim() }))
+        const notes = Object.entries(fb)
+          .filter(([, note]) => note.trim().length > 0)
+          .map(([postId, note]) => ({ postId, note: note.trim() }))
 
-      const result = await submitApproval(token, status, notes.length > 0 ? notes : undefined)
-      if (!result.ok) {
-        setErrorMessage(result.error || 'Failed to submit response')
+        const result = await submitApproval(token, status, notes.length > 0 ? notes : undefined)
+        if (!result.ok) {
+          setErrorMessage(result.error || 'Failed to submit response')
+          setPageState('error')
+          return
+        }
+        setSubmittedStatus(status)
+        setPageState('submitted')
+      } catch {
+        setErrorMessage('Something went wrong. Please try again.')
         setPageState('error')
-        return
+      } finally {
+        setIsSubmitting(false)
       }
-      setSubmittedStatus(status)
-      setPageState('submitted')
-    } catch {
-      setErrorMessage('Something went wrong. Please try again.')
-      setPageState('error')
-    } finally {
-      setIsSubmitting(false)
-    }
-  }, [token])
+    },
+    [token]
+  )
 
   /** Approve a single post locally, auto-submit if it was the last pending. */
   function handleApprovePost() {
@@ -159,7 +179,9 @@ export default function ApprovalPage() {
     }
 
     // Auto-advance to next pending post
-    const nextPending = filteredPosts.find((p) => p.id !== selectedPost.id && next.get(p.id) === 'pending')
+    const nextPending = filteredPosts.find(
+      (p) => p.id !== selectedPost.id && next.get(p.id) === 'pending'
+    )
     if (nextPending) setSelectedPostId(nextPending.id)
   }
 
@@ -179,7 +201,9 @@ export default function ApprovalPage() {
       return
     }
 
-    const nextPending = filteredPosts.find((p) => p.id !== selectedPost.id && next.get(p.id) === 'pending')
+    const nextPending = filteredPosts.find(
+      (p) => p.id !== selectedPost.id && next.get(p.id) === 'pending'
+    )
     if (nextPending) setSelectedPostId(nextPending.id)
   }
 
@@ -203,9 +227,7 @@ export default function ApprovalPage() {
   /** Handle filter change with auto-select. */
   function handleFilterChange(f: ApprovalFilter) {
     setActiveFilter(f)
-    const firstMatch = posts.find((p) =>
-      f === 'all' ? true : postStatuses.get(p.id) === f
-    )
+    const firstMatch = posts.find((p) => (f === 'all' ? true : postStatuses.get(p.id) === f))
     if (firstMatch) setSelectedPostId(firstMatch.id)
   }
 
@@ -213,7 +235,15 @@ export default function ApprovalPage() {
 
   if (pageState === 'loading') {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--paper)' }}>
+      <div
+        style={{
+          minHeight: '100vh',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: 'var(--paper)',
+        }}
+      >
         <Spinner size="lg" />
       </div>
     )
@@ -221,10 +251,31 @@ export default function ApprovalPage() {
 
   if (pageState === 'error') {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--paper)' }}>
-        <div style={{ background: '#fff', borderRadius: 12, border: '1px solid rgba(15,21,18,0.10)', padding: 32, maxWidth: 420, textAlign: 'center' }}>
-          <div style={{ fontSize: 28, marginBottom: 12 }}>⚠️</div>
-          <p style={{ fontSize: 14, color: 'var(--ink)', fontWeight: 500 }}>{errorMessage}</p>
+      <div
+        style={{
+          minHeight: '100vh',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: 'var(--paper)',
+        }}
+      >
+        <div
+          style={{
+            background: '#fff',
+            borderRadius: 12,
+            border: '1px solid rgba(15,21,18,0.10)',
+            padding: 32,
+            maxWidth: 420,
+            textAlign: 'center',
+          }}
+        >
+          <div className="text-metric" style={{ marginBottom: 12 }}>
+            ⚠️
+          </div>
+          <p className="text-body" style={{ color: 'var(--ink)', fontWeight: 500 }}>
+            {errorMessage}
+          </p>
         </div>
       </div>
     )
@@ -232,15 +283,44 @@ export default function ApprovalPage() {
 
   if (pageState === 'submitted') {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--paper)' }}>
-        <div style={{ background: '#fff', borderRadius: 12, border: '1px solid rgba(15,21,18,0.10)', padding: 32, maxWidth: 420, textAlign: 'center' }}>
-          <div style={{ fontSize: 28, marginBottom: 12 }}>{submittedStatus === 'approved' ? '✅' : '📝'}</div>
-          <h2 style={{ fontFamily: 'var(--font-display, Georgia, serif)', fontSize: 20, fontWeight: 400, color: 'var(--ink)', marginBottom: 8 }}>
+      <div
+        style={{
+          minHeight: '100vh',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: 'var(--paper)',
+        }}
+      >
+        <div
+          style={{
+            background: '#fff',
+            borderRadius: 12,
+            border: '1px solid rgba(15,21,18,0.10)',
+            padding: 32,
+            maxWidth: 420,
+            textAlign: 'center',
+          }}
+        >
+          <div className="text-metric" style={{ marginBottom: 12 }}>
+            {submittedStatus === 'approved' ? '✅' : '📝'}
+          </div>
+          <h2
+            className="text-display"
+            style={{
+              fontFamily: 'var(--font-display, Georgia, serif)',
+              fontWeight: 400,
+              color: 'var(--ink)',
+              marginBottom: 8,
+            }}
+          >
             {submittedStatus === 'approved'
               ? 'Thank you! Your posts are confirmed.'
               : 'Your feedback has been sent to the team.'}
           </h2>
-          <p style={{ fontSize: 13, color: 'var(--text2)' }}>You can close this page.</p>
+          <p className="text-body" style={{ color: 'var(--text2)' }}>
+            You can close this page.
+          </p>
         </div>
       </div>
     )
@@ -308,9 +388,9 @@ export default function ApprovalPage() {
             }}
           >
             <div
+              className="text-display"
               style={{
                 fontFamily: 'var(--font-display, Georgia, serif)',
-                fontSize: 20,
                 fontWeight: 400,
                 color: 'var(--ink)',
                 marginBottom: 6,
@@ -318,7 +398,7 @@ export default function ApprovalPage() {
             >
               All done
             </div>
-            <div style={{ fontSize: 13, color: 'var(--text2)', textAlign: 'center' }}>
+            <div className="text-body" style={{ color: 'var(--text2)', textAlign: 'center' }}>
               All posts have been reviewed. The agency will be notified.
             </div>
           </div>

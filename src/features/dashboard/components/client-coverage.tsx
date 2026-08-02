@@ -5,10 +5,7 @@ import Link from 'next/link'
 import { ChevronLeft, ChevronRight, Users } from 'lucide-react'
 import { SectionHeading } from '@/components/ui/section-heading'
 import { CoverageRow, TIER_COUNT } from '@/features/dashboard/components/coverage-row'
-import {
-  COVERAGE_LIST_HEIGHT,
-  COVERAGE_ROWS_PER_PAGE,
-} from '@/features/dashboard/lib/layout'
+import { COVERAGE_LIST_HEIGHT, COVERAGE_ROWS_PER_PAGE } from '@/features/dashboard/lib/layout'
 import { DAYS_PER_WEEK } from '@/utils/constants'
 import type { DayState } from '@/lib/queries/cache'
 
@@ -53,7 +50,10 @@ export function ClientCoverage({ clients, coverage, clientPendingMap }: ClientCo
       {clients.length === 0 ? (
         <p className="mt-4 rounded-card border border-line bg-surface px-5 py-8 text-center text-body text-text2">
           No clients yet.{' '}
-          <Link href="/clients/new" className="font-medium text-forest underline-offset-2 hover:underline">
+          <Link
+            href="/clients/new"
+            className="font-medium text-forest underline-offset-2 hover:underline"
+          >
             Add your first client
           </Link>
         </p>

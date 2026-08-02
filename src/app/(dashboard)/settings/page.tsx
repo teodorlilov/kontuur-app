@@ -20,10 +20,7 @@ export default async function SettingsPage() {
     getCachedAgency(agencyId),
     fetchAgencyById(supabase, agencyId),
     fetchTeamMembersByAgency(supabase, agencyId),
-    supabase
-      .from('clients')
-      .select('id', { count: 'exact', head: true })
-      .eq('agency_id', agencyId),
+    supabase.from('clients').select('id', { count: 'exact', head: true }).eq('agency_id', agencyId),
     // Resolved here rather than fetched by the Integrations tab on mount, so the panel arrives
     // with its rows instead of rendering a loading state after SSR has finished.
     fetchCanvaTeamStatus(agencyId),

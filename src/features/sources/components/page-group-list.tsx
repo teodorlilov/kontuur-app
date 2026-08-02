@@ -103,7 +103,12 @@ export function PageGroupList({
   }
 
   return (
-    <div className={cn('overflow-y-auto border border-line rounded-lg divide-y divide-line', maxHeightClass)}>
+    <div
+      className={cn(
+        'overflow-y-auto border border-line rounded-lg divide-y divide-line',
+        maxHeightClass
+      )}
+    >
       {visibleGroups.map((group) => {
         const selectedCount = group.urls.filter((url) => selected.has(url)).length
         const allSelected = selectedCount === group.urls.length

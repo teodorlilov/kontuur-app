@@ -23,10 +23,9 @@ export function StickyShell({ children }: { children: ReactNode }) {
     const sentinel = sentinelRef.current
     if (!sentinel) return
 
-    const observer = new IntersectionObserver(
-      ([entry]) => setIsStuck(!entry?.isIntersecting),
-      { threshold: 0 }
-    )
+    const observer = new IntersectionObserver(([entry]) => setIsStuck(!entry?.isIntersecting), {
+      threshold: 0,
+    })
     observer.observe(sentinel)
     return () => observer.disconnect()
   }, [])

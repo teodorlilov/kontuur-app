@@ -12,7 +12,7 @@ import { cn } from '@/utils/cn'
 /** The square initials mark for a service: IG, FB, C. */
 export function ServiceTile({ children }: { children: ReactNode }) {
   return (
-    <span className="grid size-[38px] flex-none place-items-center rounded-panel bg-wash text-micro font-bold text-forest">
+    <span className="grid size-[38px] flex-none place-items-center rounded-panel bg-wash text-micro font-semibold text-forest">
       {children}
     </span>
   )

@@ -9,15 +9,15 @@ export const metadata: Metadata = {
 
 const h1Style: React.CSSProperties = {
   fontFamily: 'var(--font-display, Georgia, serif)',
-  fontSize: 40,
-  fontWeight: 700,
+  fontSize: 'var(--text-prompt)',
+  fontWeight: 600,
   color: 'var(--ink)',
   marginBottom: 8,
   lineHeight: 1.2,
 }
 
 const h2Style: React.CSSProperties = {
-  fontSize: 18,
+  fontSize: 'var(--text-display)',
   fontWeight: 600,
   color: 'var(--ink)',
   marginTop: 48,
@@ -25,7 +25,7 @@ const h2Style: React.CSSProperties = {
 }
 
 const pStyle: React.CSSProperties = {
-  fontSize: 15,
+  fontSize: 'var(--text-title)',
   color: 'var(--text2)',
   lineHeight: 1.75,
   marginBottom: 16,
@@ -49,12 +49,12 @@ export default async function DataDeletionPage({ searchParams }: PageProps) {
       <main style={{ background: 'var(--paper)', minHeight: '100vh' }}>
         <div style={{ maxWidth: 720, margin: '0 auto', padding: '80px 24px 100px' }}>
           <Link
+            className="text-body"
             href="/"
             style={{
               display: 'inline-flex',
               alignItems: 'center',
               gap: 6,
-              fontSize: 14,
               color: 'var(--text3)',
               textDecoration: 'none',
               marginBottom: 48,
@@ -62,14 +62,14 @@ export default async function DataDeletionPage({ searchParams }: PageProps) {
           >
             ← Back
           </Link>
-          <p style={{ fontSize: 13, color: 'var(--text3)', marginBottom: 16 }}>
+          <p className="text-body" style={{ color: 'var(--text3)', marginBottom: 16 }}>
             Data Deletion
           </p>
 
           {code ? (
             <>
               <h1 style={h1Style}>Deletion Request Received</h1>
-              <p style={{ ...pStyle, fontSize: 16, marginTop: 16 }}>
+              <p className="text-lead" style={{ ...pStyle, marginTop: 16 }}>
                 Your data deletion request has been processed. All data associated with your
                 Facebook or Instagram account has been removed from Kontuur&apos;s servers.
               </p>
@@ -88,7 +88,7 @@ export default async function DataDeletionPage({ searchParams }: PageProps) {
           ) : (
             <>
               <h1 style={h1Style}>Data Deletion Instructions</h1>
-              <p style={{ ...pStyle, fontSize: 16, marginTop: 16 }}>
+              <p className="text-lead" style={{ ...pStyle, marginTop: 16 }}>
                 You can request deletion of all data Kontuur holds about you at any time.
               </p>
 
@@ -105,10 +105,12 @@ export default async function DataDeletionPage({ searchParams }: PageProps) {
                   Navigate to <strong>Security and Login</strong> &rarr;{' '}
                   <strong>Apps and Websites</strong>.
                 </li>
-                <li>Find <strong>Kontuur</strong> in the list and click <strong>Remove</strong>.</li>
                 <li>
-                  Facebook will automatically notify Kontuur and your data will be deleted within
-                  24 hours.
+                  Find <strong>Kontuur</strong> in the list and click <strong>Remove</strong>.
+                </li>
+                <li>
+                  Facebook will automatically notify Kontuur and your data will be deleted within 24
+                  hours.
                 </li>
               </ol>
 
@@ -118,9 +120,9 @@ export default async function DataDeletionPage({ searchParams }: PageProps) {
                 <a href="mailto:privacy@kontuur.io" style={{ color: 'var(--spring)' }}>
                   privacy@kontuur.io
                 </a>{' '}
-                with the subject line <strong>&quot;Data Deletion Request&quot;</strong> and
-                include the email address associated with your account. We will process your
-                request within 30 days and send you a confirmation.
+                with the subject line <strong>&quot;Data Deletion Request&quot;</strong> and include
+                the email address associated with your account. We will process your request within
+                30 days and send you a confirmation.
               </p>
 
               <h2 style={h2Style}>What We Delete</h2>

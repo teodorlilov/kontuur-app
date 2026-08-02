@@ -19,7 +19,14 @@ interface ElementNodeProps {
 }
 
 /** One placed asset: draggable, corner-resizable (scale folds into size), rotatable. */
-export function ElementNode({ element, canvas, stageScale, onSelect, onChange, onNodeReady }: ElementNodeProps) {
+export function ElementNode({
+  element,
+  canvas,
+  stageScale,
+  onSelect,
+  onChange,
+  onNodeReady,
+}: ElementNodeProps) {
   // Progressive: the node appears when its asset loads; export loads its own copy and fails loud.
   const image = useCrossOriginImage(element.src.publicUrl)
 

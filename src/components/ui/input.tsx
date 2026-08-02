@@ -25,8 +25,14 @@ interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
  * label of its own. Outside one it still renders a label and error, for the forms that have not
  * moved to the grid.
  */
-export function Input({ label,
-  labelVariant = 'default', error, className, id, ...props }: InputProps) {
+export function Input({
+  label,
+  labelVariant = 'default',
+  error,
+  className,
+  id,
+  ...props
+}: InputProps) {
   const field = useFieldContext()
   const inputId = id ?? field?.controlId ?? label?.toLowerCase().replace(/\s+/g, '-')
   const invalid = !!error || field?.invalid
@@ -42,13 +48,7 @@ export function Input({ label,
         id={inputId}
         aria-invalid={invalid || undefined}
         aria-describedby={field?.describedBy}
-        className={cn(
-          CONTROL_BASE,
-          CONTROL_READONLY,
-          CONTROL_DISABLED,
-          CONTROL_INVALID,
-          className
-        )}
+        className={cn(CONTROL_BASE, CONTROL_READONLY, CONTROL_DISABLED, CONTROL_INVALID, className)}
         {...props}
       />
       {error && (

@@ -69,7 +69,9 @@ export function BrandProfileRail({ pillarCount }: { pillarCount: number }) {
           ? `The ${pillarCount} pillar${pillarCount === 1 ? '' : 's'} below decide the mix of a batch.`
           : 'Without pillars, a batch is not divided by topic.'}
       </RailText>
-      <RailText>Changes apply to the next run — drafts already in review keep the old profile.</RailText>
+      <RailText>
+        Changes apply to the next run — drafts already in review keep the old profile.
+      </RailText>
     </RailBox>
   )
 }
@@ -80,11 +82,7 @@ interface VisualIdentityRailProps {
   reanalyzing: boolean
 }
 
-export function VisualIdentityRail({
-  palette,
-  onReanalyze,
-  reanalyzing,
-}: VisualIdentityRailProps) {
+export function VisualIdentityRail({ palette, onReanalyze, reanalyzing }: VisualIdentityRailProps) {
   const contrast = checkPaletteContrast(palette)
 
   return (
@@ -142,8 +140,8 @@ export function ScheduleRail({
   return (
     <RailBox title="Heads up" tone="mark">
       <RailText>
-        Autonomous generation is on but no account is connected — drafts will pile up in review
-        with nowhere to publish.
+        Autonomous generation is on but no account is connected — drafts will pile up in review with
+        nowhere to publish.
       </RailText>
       <Button variant="secondary" size="sm" className="mt-3 w-full" onClick={onConnectClick}>
         Connect an account
@@ -170,13 +168,7 @@ export function AccountsRail({
   )
 }
 
-export function InsightsRail({
-  sourceCount,
-  clientId,
-}: {
-  sourceCount: number
-  clientId: string
-}) {
+export function InsightsRail({ sourceCount, clientId }: { sourceCount: number; clientId: string }) {
   return (
     <RailBox title="Research sources">
       <RailStat label="Active" value={sourceCount} />

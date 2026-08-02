@@ -4,21 +4,20 @@ import { Footer } from '@/features/marketing/components/Footer'
 
 export const metadata: Metadata = {
   title: 'Terms of Service — Kontuur',
-  description:
-    'Terms of Service for Kontuur — AI-powered social media management for agencies.',
+  description: 'Terms of Service for Kontuur — AI-powered social media management for agencies.',
 }
 
 const h1Style: React.CSSProperties = {
   fontFamily: 'var(--font-display, Georgia, serif)',
-  fontSize: 40,
-  fontWeight: 700,
+  fontSize: 'var(--text-prompt)',
+  fontWeight: 600,
   color: 'var(--ink)',
   marginBottom: 8,
   lineHeight: 1.2,
 }
 
 const h2Style: React.CSSProperties = {
-  fontSize: 18,
+  fontSize: 'var(--text-display)',
   fontWeight: 600,
   color: 'var(--ink)',
   marginTop: 48,
@@ -26,14 +25,14 @@ const h2Style: React.CSSProperties = {
 }
 
 const pStyle: React.CSSProperties = {
-  fontSize: 15,
+  fontSize: 'var(--text-title)',
   color: 'var(--text2)',
   lineHeight: 1.75,
   marginBottom: 16,
 }
 
 const ulStyle: React.CSSProperties = {
-  fontSize: 15,
+  fontSize: 'var(--text-title)',
   color: 'var(--text2)',
   lineHeight: 1.75,
   paddingLeft: 20,
@@ -52,12 +51,12 @@ export default function TermsPage() {
       <main style={{ background: 'var(--paper)', minHeight: '100vh' }}>
         <div style={{ maxWidth: 720, margin: '0 auto', padding: '80px 24px 100px' }}>
           <Link
+            className="text-body"
             href="/"
             style={{
               display: 'inline-flex',
               alignItems: 'center',
               gap: 6,
-              fontSize: 14,
               color: 'var(--text3)',
               textDecoration: 'none',
               marginBottom: 48,
@@ -65,14 +64,14 @@ export default function TermsPage() {
           >
             ← Back
           </Link>
-          <p style={{ fontSize: 13, color: 'var(--text3)', marginBottom: 16 }}>
+          <p className="text-body" style={{ color: 'var(--text3)', marginBottom: 16 }}>
             Last updated: July 29, 2026
           </p>
           <h1 style={h1Style}>Terms of Service</h1>
-          <p style={{ ...pStyle, fontSize: 16, marginTop: 16 }}>
+          <p className="text-lead" style={{ ...pStyle, marginTop: 16 }}>
             These Terms of Service (&quot;Terms&quot;) govern your access to and use of Kontuur,
-            operated by Chelling Ltd (&quot;we&quot;, &quot;us&quot;, &quot;our&quot;). By
-            creating an account or using the platform, you agree to these Terms.
+            operated by Chelling Ltd (&quot;we&quot;, &quot;us&quot;, &quot;our&quot;). By creating
+            an account or using the platform, you agree to these Terms.
           </p>
 
           <div style={dividerStyle} />
@@ -121,9 +120,7 @@ export default function TermsPage() {
               Attempt to reverse-engineer, scrape, or disrupt the platform or its underlying
               infrastructure.
             </li>
-            <li>
-              Use the platform in a way that violates any applicable law or regulation.
-            </li>
+            <li>Use the platform in a way that violates any applicable law or regulation.</li>
           </ul>
 
           {/* 5. Meta platform compliance */}
@@ -164,8 +161,8 @@ export default function TermsPage() {
             </li>
           </ul>
           <p style={pStyle}>
-            We reserve the right to suspend or terminate your account if we receive a report or
-            have reasonable grounds to believe you are violating Meta&apos;s policies.
+            We reserve the right to suspend or terminate your account if we receive a report or have
+            reasonable grounds to believe you are violating Meta&apos;s policies.
           </p>
 
           {/* 6. Subscription and billing */}
@@ -201,8 +198,8 @@ export default function TermsPage() {
           <p style={pStyle}>
             Kontuur is provided &quot;as is&quot; and &quot;as available&quot; without warranties of
             any kind, express or implied. We do not guarantee uninterrupted access, error-free
-            operation, or that AI-generated content will meet your expectations. You use the platform
-            at your own risk.
+            operation, or that AI-generated content will meet your expectations. You use the
+            platform at your own risk.
           </p>
 
           {/* 9. Limitation of liability */}
@@ -210,8 +207,8 @@ export default function TermsPage() {
           <p style={pStyle}>
             To the maximum extent permitted by law, Chelling Ltd shall not be liable for any
             indirect, incidental, special, consequential, or punitive damages arising from your use
-            of Kontuur, including but not limited to lost profits, lost data, or social media account
-            actions taken on your behalf.
+            of Kontuur, including but not limited to lost profits, lost data, or social media
+            account actions taken on your behalf.
           </p>
           <p style={pStyle}>
             Our total liability for direct damages shall not exceed the amount you paid us in the
@@ -230,8 +227,8 @@ export default function TermsPage() {
           {/* 11. Governing law */}
           <h2 style={h2Style}>11. Governing Law</h2>
           <p style={pStyle}>
-            These Terms are governed by the laws of the Republic of Bulgaria and applicable
-            European Union law. Any disputes will be resolved in the courts of Sofia, Bulgaria.
+            These Terms are governed by the laws of the Republic of Bulgaria and applicable European
+            Union law. Any disputes will be resolved in the courts of Sofia, Bulgaria.
           </p>
 
           {/* 12. Changes */}
@@ -244,9 +241,7 @@ export default function TermsPage() {
 
           {/* 13. Contact */}
           <h2 style={h2Style}>13. Contact</h2>
-          <p style={pStyle}>
-            Questions about these Terms? Contact us at:
-          </p>
+          <p style={pStyle}>Questions about these Terms? Contact us at:</p>
           <p style={pStyle}>
             <strong>Chelling Ltd</strong>
             <br />

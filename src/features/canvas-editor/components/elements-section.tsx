@@ -1,7 +1,19 @@
 'use client'
 
 import { useRef, useState } from 'react'
-import { ChevronDown, ChevronUp, Eraser, Image as ImageIcon, Lasso, Scissors, Shapes, Sparkles, Trash2, Upload, Wallpaper } from 'lucide-react'
+import {
+  ChevronDown,
+  ChevronUp,
+  Eraser,
+  Image as ImageIcon,
+  Lasso,
+  Scissors,
+  Shapes,
+  Sparkles,
+  Trash2,
+  Upload,
+  Wallpaper,
+} from 'lucide-react'
 import { Spinner } from '@/components/ui/spinner'
 import type { CanvasElement } from '@/types/canvas'
 import { PanelButton } from './panel-button'
@@ -34,7 +46,18 @@ interface ElementsSectionProps {
 
 /** Element band controls: list (z-order = list order, topmost first), opacity, asset actions. */
 export function ElementsSection(props: ElementsSectionProps) {
-  const { elements, selectedId, uploading, isolating, onSelect, onMove, onRemove, onOpacityChange, onUpload, onIsolate } = props
+  const {
+    elements,
+    selectedId,
+    uploading,
+    isolating,
+    onSelect,
+    onMove,
+    onRemove,
+    onOpacityChange,
+    onUpload,
+    onIsolate,
+  } = props
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [svgPrompt, setSvgPrompt] = useState('')
   const selected = elements.find((element) => element.id === selectedId) ?? null
@@ -43,14 +66,31 @@ export function ElementsSection(props: ElementsSectionProps) {
 
   return (
     <div>
-      <div style={{ ...PANEL_LABEL, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div
+        style={{
+          ...PANEL_LABEL,
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+        }}
+      >
         <span>Elements</span>
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
           title="Upload an image element (logo, graphic)"
           disabled={uploading}
-          style={{ display: 'inline-flex', alignItems: 'center', gap: 4, border: 'none', background: 'transparent', color: 'var(--text2)', fontSize: '10px', cursor: uploading ? 'default' : 'pointer', padding: 0 }}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 4,
+            border: 'none',
+            background: 'transparent',
+            color: 'var(--text2)',
+            fontSize: '10px',
+            cursor: uploading ? 'default' : 'pointer',
+            padding: 0,
+          }}
         >
           {uploading ? <Spinner size="sm" /> : <Upload size={12} />} Upload
         </button>
@@ -201,7 +241,16 @@ function ElementRow({
       }}
     >
       <Icon size={13} style={{ color: 'var(--text2)', flexShrink: 0 }} />
-      <span style={{ flex: 1, fontSize: '12px', color: 'var(--ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+      <span
+        style={{
+          flex: 1,
+          fontSize: '12px',
+          color: 'var(--ink)',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
+        }}
+      >
         {element.kind === 'svg' ? 'Vector' : 'Image'}
       </span>
       <RowButton title="Bring forward" onClick={() => onMove('up')}>
@@ -217,7 +266,15 @@ function ElementRow({
   )
 }
 
-function RowButton({ title, onClick, children }: { title: string; onClick: () => void; children: React.ReactNode }) {
+function RowButton({
+  title,
+  onClick,
+  children,
+}: {
+  title: string
+  onClick: () => void
+  children: React.ReactNode
+}) {
   return (
     <button
       type="button"
@@ -226,7 +283,14 @@ function RowButton({ title, onClick, children }: { title: string; onClick: () =>
         event.stopPropagation()
         onClick()
       }}
-      style={{ border: 'none', background: 'transparent', color: 'var(--text2)', cursor: 'pointer', padding: 2, display: 'inline-flex' }}
+      style={{
+        border: 'none',
+        background: 'transparent',
+        color: 'var(--text2)',
+        cursor: 'pointer',
+        padding: 2,
+        display: 'inline-flex',
+      }}
     >
       {children}
     </button>

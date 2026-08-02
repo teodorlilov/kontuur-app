@@ -59,8 +59,8 @@ export function WebsitePagesStep({
       <div>
         <h3 className="font-sans text-display font-medium text-ink">Choose what we read</h3>
         <p className="text-body text-text3 mt-1">
-          Found {pages.length} pages on {siteOrigin.replace(/^https?:\/\//, '')}. Pick the
-          sections worth reading — or use the whole site.
+          Found {pages.length} pages on {siteOrigin.replace(/^https?:\/\//, '')}. Pick the sections
+          worth reading — or use the whole site.
         </p>
       </div>
 

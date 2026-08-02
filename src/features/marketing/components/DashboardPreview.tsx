@@ -16,8 +16,8 @@ export function DashboardPreview() {
     >
       <AnimateIn>
         <p
+          className="text-micro"
           style={{
-            fontSize: 11,
             textTransform: 'uppercase',
             letterSpacing: '0.1em',
             color: 'rgba(255,255,255,0.4)',
@@ -40,8 +40,8 @@ export function DashboardPreview() {
           Everything in one place
         </h2>
         <p
+          className="text-lead"
           style={{
-            fontSize: 16,
             color: 'rgba(255,255,255,0.55)',
             maxWidth: 480,
             margin: '0 auto 48px',

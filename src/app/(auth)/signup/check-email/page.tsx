@@ -33,23 +33,19 @@ function CheckEmailContent() {
             </svg>
           </div>
 
-          <h1 className="text-lg font-semibold text-ink mb-2">Check your email</h1>
-          <p className="text-sm text-text3">
+          <h1 className="text-display font-sans font-semibold text-ink mb-2">Check your email</h1>
+          <p className="text-body text-text3">
             We sent a confirmation link to{' '}
-            {email ? (
-              <span className="font-medium text-text2">{email}</span>
-            ) : (
-              'your email address'
-            )}
+            {email ? <span className="font-medium text-text2">{email}</span> : 'your email address'}
             . Click the link to activate your account.
           </p>
 
-          <p className="text-xs text-text3 mt-4">
+          <p className="text-caption text-text3 mt-4">
             Didn&apos;t receive it? Check your spam folder.
           </p>
         </div>
 
-        <p className="text-center text-sm text-text3 mt-4">
+        <p className="text-center text-body text-text3 mt-4">
           Already confirmed?{' '}
           <Link href="/login" className="text-forest font-medium hover:underline">
             Sign in

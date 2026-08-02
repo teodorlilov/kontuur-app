@@ -8,7 +8,13 @@ const BRUSH_MAX = 120
 const BRUSH_STEP = 4
 
 /** The brush-size slider shared by the panels of the stroke-based modes. */
-export function BrushSizeSlider({ size, onChange }: { size: number; onChange: (size: number) => void }) {
+export function BrushSizeSlider({
+  size,
+  onChange,
+}: {
+  size: number
+  onChange: (size: number) => void
+}) {
   return (
     <PanelSlider
       label={`Brush size · ${size}px`}

@@ -256,7 +256,9 @@ export function ExtrasStep({
           </p>
           <Button
             size="sm"
-            onClick={() => { void handleUpload() }}
+            onClick={() => {
+              void handleUpload()
+            }}
             loading={uploading}
             disabled={!file || !label.trim()}
           >
@@ -274,7 +276,13 @@ export function ExtrasStep({
         <Button variant="ghost" size="sm" onClick={onBack}>
           Back
         </Button>
-        <Button size="sm" onClick={() => { void handleContinue() }} loading={saving}>
+        <Button
+          size="sm"
+          onClick={() => {
+            void handleContinue()
+          }}
+          loading={saving}
+        >
           Continue
         </Button>
       </div>

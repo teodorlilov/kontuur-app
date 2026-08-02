@@ -1,6 +1,11 @@
 'use client'
 
-import { availableFonts, getFontEntry, hasCyrillic, type FontCategory } from '@/lib/canvas/font-library'
+import {
+  availableFonts,
+  getFontEntry,
+  hasCyrillic,
+  type FontCategory,
+} from '@/lib/canvas/font-library'
 import { PANEL_CONTROL, PANEL_LABEL } from './panel-styles'
 
 const CATEGORY_LABELS: Record<FontCategory, string> = {
@@ -28,7 +33,11 @@ export function FontSelect({ value, text, onChange }: FontSelectProps) {
   return (
     <div>
       <div style={PANEL_LABEL}>Font</div>
-      <select value={value} onChange={(event) => onChange(event.target.value)} style={PANEL_CONTROL}>
+      <select
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        style={PANEL_CONTROL}
+      >
         {/* A doc can reference a font outside the offered list (unknown or Cyrillic-filtered); keep it selectable. */}
         {!currentEntry && <option value={value}>{value}</option>}
         {(Object.keys(CATEGORY_LABELS) as FontCategory[]).map((category) => (

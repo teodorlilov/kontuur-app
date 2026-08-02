@@ -15,11 +15,7 @@ import {
 import { SETTINGS_TABS, type SettingsTab } from '@/features/clients/lib/settings-tabs'
 import { FormPanel, SaveBar } from '@/components/ui/form'
 import { toast } from '@/components/ui/toast'
-import {
-  HeaderMeta,
-  MetaFlag,
-  PageHeader,
-} from '@/components/layout/page-header/page-header'
+import { HeaderMeta, MetaFlag, PageHeader } from '@/components/layout/page-header/page-header'
 import { TabRail, type TabItem } from '@/components/layout/page-header/tab-rail'
 import { PAGE_SHELL, TOOL_ROW } from '@/components/layout/page-header/shared'
 import { useTabParam } from '@/components/layout/page-header/use-tab-param'
@@ -67,9 +63,15 @@ const PANEL_COPY: Record<SettingsTab, { title: string; description: string }> = 
     title: 'When posts get made',
     description: 'Platform, format and autonomous generation.',
   },
-  accounts: { title: 'Where posts publish', description: 'Link accounts for publishing and analytics.' },
+  accounts: {
+    title: 'Where posts publish',
+    description: 'Link accounts for publishing and analytics.',
+  },
   insights: { title: "What's working", description: 'Patterns from approved and published posts.' },
-  ideas: { title: 'Let the client send ideas', description: 'A public link they can use without an account.' },
+  ideas: {
+    title: 'Let the client send ideas',
+    description: 'A public link they can use without an account.',
+  },
 }
 
 /**
@@ -276,7 +278,7 @@ export function ClientSettingsForm(props: ClientSettingsFormProps) {
         }
         railTools={
           <>
-            <span className="hidden text-xs text-text3 sm:block">
+            <span className="hidden text-caption text-text3 sm:block">
               {lastGeneratedAt
                 ? `Queue refreshed ${formatRelativeTime(parseTimestamp(lastGeneratedAt))}`
                 : 'Queue not yet refreshed'}

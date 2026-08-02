@@ -27,7 +27,15 @@ interface BrushSurfaceProps {
  * props; the ACTIVE stroke mutates one Line node imperatively per pointer move — React commits
  * once per finished stroke.
  */
-export function BrushSurface({ canvas, scale, brushSize, strokes, strokeColor, closedPreview, onStrokeEnd }: BrushSurfaceProps) {
+export function BrushSurface({
+  canvas,
+  scale,
+  brushSize,
+  strokes,
+  strokeColor,
+  closedPreview,
+  onStrokeEnd,
+}: BrushSurfaceProps) {
   const rectRef = useRef<Konva.Rect>(null)
   const activeLineRef = useRef<Konva.Line>(null)
   const pointsRef = useRef<number[]>([])

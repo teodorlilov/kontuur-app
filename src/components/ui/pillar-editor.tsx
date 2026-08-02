@@ -40,9 +40,7 @@ export function PillarEditor({ pillars, onChange, allowEmpty = false }: PillarEd
   }
 
   function handleAdd() {
-    onChange(
-      equalizeWeights([...pillars, { id: crypto.randomUUID(), pillar: '', weight: 0 }])
-    )
+    onChange(equalizeWeights([...pillars, { id: crypto.randomUUID(), pillar: '', weight: 0 }]))
   }
 
   function handleRemove(index: number) {
@@ -55,9 +53,7 @@ export function PillarEditor({ pillars, onChange, allowEmpty = false }: PillarEd
     const removedWeight = pillars[index]!.weight
     const extra = Math.floor(removedWeight / updated.length)
     const remainder = removedWeight - extra * updated.length
-    onChange(
-      updated.map((p, i) => ({ ...p, weight: p.weight + extra + (i < remainder ? 1 : 0) }))
-    )
+    onChange(updated.map((p, i) => ({ ...p, weight: p.weight + extra + (i < remainder ? 1 : 0) })))
   }
 
   const canRemove = allowEmpty || pillars.length > 1
@@ -65,10 +61,7 @@ export function PillarEditor({ pillars, onChange, allowEmpty = false }: PillarEd
   return (
     <div>
       {pillars.length > 0 && (
-        <div
-          aria-hidden
-          className="mb-3.5 flex h-2 gap-0.5 overflow-hidden rounded-full bg-line"
-        >
+        <div aria-hidden className="mb-3.5 flex h-2 gap-0.5 overflow-hidden rounded-full bg-line">
           {pillars.map((pillar, i) => (
             <span
               key={pillar.id}

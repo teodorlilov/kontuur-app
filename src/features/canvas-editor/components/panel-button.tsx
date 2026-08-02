@@ -16,7 +16,15 @@ interface PanelButtonProps {
 }
 
 /** The properties panel's standard action button: PANEL_CONTROL chrome + icon/spinner slot. */
-export function PanelButton({ onClick, busy, disabled, title, icon, style, children }: PanelButtonProps) {
+export function PanelButton({
+  onClick,
+  busy,
+  disabled,
+  title,
+  icon,
+  style,
+  children,
+}: PanelButtonProps) {
   const inactive = Boolean(busy || disabled)
   return (
     <button

@@ -36,11 +36,7 @@ export function CommandPalette({ open, onOpenChange, agencyMode, clients }: Comm
   )
 }
 
-function PaletteBody({
-  onOpenChange,
-  agencyMode,
-  clients,
-}: Omit<CommandPaletteProps, 'open'>) {
+function PaletteBody({ onOpenChange, agencyMode, clients }: Omit<CommandPaletteProps, 'open'>) {
   const router = useRouter()
   const [query, setQuery] = useState('')
   const [activeIndex, setActiveIndex] = useState(0)
@@ -64,8 +60,20 @@ function PaletteBody({
     return [
       ...navEntries,
       ...clientEntries,
-      { id: 'action:generate', label: 'Generate posts', hint: 'Action', href: '/generate', icon: Sparkles },
-      { id: 'action:add-client', label: 'Add client', hint: 'Action', href: '/clients/new', icon: UserPlus },
+      {
+        id: 'action:generate',
+        label: 'Generate posts',
+        hint: 'Action',
+        href: '/generate',
+        icon: Sparkles,
+      },
+      {
+        id: 'action:add-client',
+        label: 'Add client',
+        hint: 'Action',
+        href: '/clients/new',
+        icon: UserPlus,
+      },
     ]
   }, [agencyMode, clients])
 
@@ -92,7 +100,9 @@ function PaletteBody({
     }
     if (event.key === 'ArrowUp') {
       event.preventDefault()
-      setActiveIndex((prev) => (results.length === 0 ? 0 : (prev - 1 + results.length) % results.length))
+      setActiveIndex((prev) =>
+        results.length === 0 ? 0 : (prev - 1 + results.length) % results.length
+      )
       return
     }
     if (event.key === 'Enter') {
@@ -110,56 +120,59 @@ function PaletteBody({
 
   return (
     <Dialog.Content
-          aria-describedby={undefined}
-          onKeyDown={handleKeyDown}
-          className="fixed left-1/2 top-[18vh] z-[201] w-[92vw] max-w-[520px] -translate-x-1/2 overflow-hidden rounded-card border border-line bg-surface shadow-frame outline-none [animation:scale-in_180ms_cubic-bezier(0.16,1,0.3,1)]"
-        >
-          <Dialog.Title className="sr-only">Search Kontuur</Dialog.Title>
-          <div className="flex items-center gap-2.5 border-b border-line px-4 py-3.5">
-            <Search size={15} className="shrink-0 text-text3" />
-            <input
-              autoFocus
-              value={query}
-              onChange={(event) => {
-                setQuery(event.target.value)
-                setActiveIndex(0)
-              }}
-              placeholder="Search clients, pages and actions…"
-              className="w-full bg-transparent text-title text-ink outline-none placeholder:text-text3"
-            />
-            <kbd className="rounded-[5px] border border-line2 px-1.5 py-px text-label font-semibold text-text3">
-              ESC
-            </kbd>
-          </div>
+      aria-describedby={undefined}
+      onKeyDown={handleKeyDown}
+      className="fixed left-1/2 top-[18vh] z-[201] w-[92vw] max-w-[520px] -translate-x-1/2 overflow-hidden rounded-card border border-line bg-surface shadow-frame outline-none [animation:scale-in_180ms_cubic-bezier(0.16,1,0.3,1)]"
+    >
+      <Dialog.Title className="sr-only">Search Kontuur</Dialog.Title>
+      <div className="flex items-center gap-2.5 border-b border-line px-4 py-3.5">
+        <Search size={15} className="shrink-0 text-text3" />
+        <input
+          autoFocus
+          value={query}
+          onChange={(event) => {
+            setQuery(event.target.value)
+            setActiveIndex(0)
+          }}
+          placeholder="Search clients, pages and actions…"
+          className="w-full bg-transparent text-title text-ink outline-none placeholder:text-text3"
+        />
+        <kbd className="rounded-[5px] border border-line2 px-1.5 py-px text-label font-semibold text-text3">
+          ESC
+        </kbd>
+      </div>
 
-          <div ref={listRef} className="max-h-[320px] overflow-y-auto p-2">
-            {results.length === 0 ? (
-              <p className="px-2 py-6 text-center text-body text-text3">Nothing matches “{query}”.</p>
-            ) : (
-              results.map((entry, index) => {
-                const Icon = entry.icon
-                const isActive = index === highlighted
-                return (
-                  <button
-                    key={entry.id}
-                    type="button"
-                    data-active={isActive}
-                    onMouseEnter={() => setActiveIndex(index)}
-                    onClick={() => navigateTo(entry.href)}
-                    className={cn(
-                      'flex w-full items-center gap-2.5 rounded-chip px-2.5 py-2 text-left transition-colors',
-                      isActive ? 'bg-wash' : 'bg-transparent'
-                    )}
-                  >
-                    <Icon size={14} className={cn('shrink-0', isActive ? 'text-forest' : 'text-text3')} />
-                    <span className="flex-1 truncate text-body text-ink">{entry.label}</span>
-                    <span className="text-micro text-text3">{entry.hint}</span>
-                    {isActive && <CornerDownLeft size={12} className="text-text3" />}
-                  </button>
-                )
-              })
-            )}
-          </div>
+      <div ref={listRef} className="max-h-[320px] overflow-y-auto p-2">
+        {results.length === 0 ? (
+          <p className="px-2 py-6 text-center text-body text-text3">Nothing matches “{query}”.</p>
+        ) : (
+          results.map((entry, index) => {
+            const Icon = entry.icon
+            const isActive = index === highlighted
+            return (
+              <button
+                key={entry.id}
+                type="button"
+                data-active={isActive}
+                onMouseEnter={() => setActiveIndex(index)}
+                onClick={() => navigateTo(entry.href)}
+                className={cn(
+                  'flex w-full items-center gap-2.5 rounded-chip px-2.5 py-2 text-left transition-colors',
+                  isActive ? 'bg-wash' : 'bg-transparent'
+                )}
+              >
+                <Icon
+                  size={14}
+                  className={cn('shrink-0', isActive ? 'text-forest' : 'text-text3')}
+                />
+                <span className="flex-1 truncate text-body text-ink">{entry.label}</span>
+                <span className="text-micro text-text3">{entry.hint}</span>
+                {isActive && <CornerDownLeft size={12} className="text-text3" />}
+              </button>
+            )
+          })
+        )}
+      </div>
     </Dialog.Content>
   )
 }

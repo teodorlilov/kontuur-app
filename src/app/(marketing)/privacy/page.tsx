@@ -10,15 +10,15 @@ export const metadata: Metadata = {
 
 const h1Style: React.CSSProperties = {
   fontFamily: 'var(--font-display, Georgia, serif)',
-  fontSize: 40,
-  fontWeight: 700,
+  fontSize: 'var(--text-prompt)',
+  fontWeight: 600,
   color: 'var(--ink)',
   marginBottom: 8,
   lineHeight: 1.2,
 }
 
 const h2Style: React.CSSProperties = {
-  fontSize: 18,
+  fontSize: 'var(--text-display)',
   fontWeight: 600,
   color: 'var(--ink)',
   marginTop: 48,
@@ -26,14 +26,14 @@ const h2Style: React.CSSProperties = {
 }
 
 const pStyle: React.CSSProperties = {
-  fontSize: 15,
+  fontSize: 'var(--text-title)',
   color: 'var(--text2)',
   lineHeight: 1.75,
   marginBottom: 16,
 }
 
 const ulStyle: React.CSSProperties = {
-  fontSize: 15,
+  fontSize: 'var(--text-title)',
   color: 'var(--text2)',
   lineHeight: 1.75,
   paddingLeft: 20,
@@ -52,12 +52,12 @@ export default function PrivacyPage() {
       <main style={{ background: 'var(--paper)', minHeight: '100vh' }}>
         <div style={{ maxWidth: 720, margin: '0 auto', padding: '80px 24px 100px' }}>
           <Link
+            className="text-body"
             href="/"
             style={{
               display: 'inline-flex',
               alignItems: 'center',
               gap: 6,
-              fontSize: 14,
               color: 'var(--text3)',
               textDecoration: 'none',
               marginBottom: 48,
@@ -65,14 +65,14 @@ export default function PrivacyPage() {
           >
             ← Back
           </Link>
-          <p style={{ fontSize: 13, color: 'var(--text3)', marginBottom: 16 }}>
+          <p className="text-body" style={{ color: 'var(--text3)', marginBottom: 16 }}>
             Last updated: July 29, 2026
           </p>
           <h1 style={h1Style}>Privacy Policy</h1>
-          <p style={{ ...pStyle, fontSize: 16, marginTop: 16 }}>
+          <p className="text-lead" style={{ ...pStyle, marginTop: 16 }}>
             This Privacy Policy explains how Kontuur, operated by Chelling Ltd (&quot;we&quot;,
-            &quot;us&quot;, &quot;our&quot;), collects, uses, and protects your information when you use our
-            platform at kontuur.io.
+            &quot;us&quot;, &quot;our&quot;), collects, uses, and protects your information when you
+            use our platform at kontuur.io.
           </p>
 
           <div style={dividerStyle} />
@@ -95,8 +95,8 @@ export default function PrivacyPage() {
               schedule, and retrieve analytics for content you manage through the platform.
             </li>
             <li>
-              <strong>Generated content:</strong> captions, images, and post data created or
-              managed within the platform.
+              <strong>Generated content:</strong> captions, images, and post data created or managed
+              within the platform.
             </li>
             <li>
               <strong>Usage data:</strong> pages visited, features used, browser type, IP address,
@@ -203,8 +203,8 @@ export default function PrivacyPage() {
           {/* 7. GDPR rights */}
           <h2 style={h2Style}>7. Your Rights (GDPR)</h2>
           <p style={pStyle}>
-            If you are located in the European Economic Area, you have the following rights regarding
-            your personal data:
+            If you are located in the European Economic Area, you have the following rights
+            regarding your personal data:
           </p>
           <ul style={ulStyle}>
             <li>
@@ -251,9 +251,7 @@ export default function PrivacyPage() {
 
           {/* 10. Contact */}
           <h2 style={h2Style}>10. Contact</h2>
-          <p style={pStyle}>
-            For privacy-related questions or requests, please contact:
-          </p>
+          <p style={pStyle}>For privacy-related questions or requests, please contact:</p>
           <p style={pStyle}>
             <strong>Chelling Ltd</strong>
             <br />

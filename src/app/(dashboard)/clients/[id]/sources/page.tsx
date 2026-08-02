@@ -8,11 +8,7 @@ import { parsePillarsWithMeta, serializePillars } from '@/lib/clients/content-pi
 import { CLIENT_SOURCE_FULL_COLUMNS } from '@/lib/queries/select-columns'
 import type { ClientSource, SourceStrategy } from '@/types/api'
 
-export default async function ClientSourcesPage({
-  params,
-}: {
-  params: Promise<{ id: string }>
-}) {
+export default async function ClientSourcesPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
 
   const { agencyId } = await requireSessionUser()

@@ -21,9 +21,9 @@ export function Hero() {
       }}
     >
       <motion.p
+        className="text-micro"
         {...fadeUp(0)}
         style={{
-          fontSize: 11,
           textTransform: 'uppercase',
           letterSpacing: '0.1em',
           color: 'var(--spring)',
@@ -53,9 +53,9 @@ export function Hero() {
       </motion.h1>
 
       <motion.p
+        className="text-display"
         {...fadeUp(0.12)}
         style={{
-          fontSize: 18,
           color: 'var(--text2)',
           maxWidth: 480,
           margin: '0 auto 40px',
@@ -77,6 +77,7 @@ export function Hero() {
         }}
       >
         <Link
+          className="text-title"
           href="/dashboard"
           style={{
             display: 'inline-flex',
@@ -86,7 +87,6 @@ export function Hero() {
             background: 'var(--forest)',
             color: '#fff',
             borderRadius: 10,
-            fontSize: 15,
             fontWeight: 500,
             textDecoration: 'none',
             lineHeight: 1,
@@ -102,6 +102,7 @@ export function Hero() {
           Get started free →
         </Link>
         <a
+          className="text-title"
           href="#how-it-works"
           style={{
             display: 'inline-flex',
@@ -111,7 +112,6 @@ export function Hero() {
             color: 'var(--ink)',
             border: '1px solid var(--line2)',
             borderRadius: 10,
-            fontSize: 15,
             fontWeight: 500,
             textDecoration: 'none',
             lineHeight: 1,

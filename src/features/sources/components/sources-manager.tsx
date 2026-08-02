@@ -142,7 +142,9 @@ export function SourcesManager({
         ? formatRelativeTime(new Date(source.last_fetched_at))
         : ''
       return (
-        <span className="text-caption text-spring-text">✓ Working{timeAgo ? ` · ${timeAgo}` : ''}</span>
+        <span className="text-caption text-spring-text">
+          ✓ Working{timeAgo ? ` · ${timeAgo}` : ''}
+        </span>
       )
     }
     return (

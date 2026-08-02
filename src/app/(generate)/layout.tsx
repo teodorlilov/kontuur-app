@@ -8,7 +8,15 @@ export default async function GenerateLayout({ children }: { children: React.Rea
 
   return (
     <AuthProvider>
-      <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'var(--paper)' }}>
+      <div
+        style={{
+          height: '100vh',
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden',
+          background: 'var(--paper)',
+        }}
+      >
         {children}
       </div>
     </AuthProvider>

@@ -74,8 +74,8 @@ export function SetupPasswordForm() {
           <div className="inline-flex mb-6">
             <KontuurLogo />
           </div>
-          <h1 className="text-xl font-semibold text-ink">Set your password</h1>
-          <p className="text-sm text-text3 mt-1">
+          <h1 className="text-headline font-semibold text-ink">Set your password</h1>
+          <p className="text-body text-text3 mt-1">
             Choose a password to complete your account setup
           </p>
         </div>

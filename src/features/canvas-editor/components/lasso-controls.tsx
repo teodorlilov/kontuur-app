@@ -30,7 +30,15 @@ export function LassoControls({ lasso }: { lasso: LassoPanelState }) {
         onChange={lasso.onDetectObjectChange}
       />
       {lasso.cutting && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '12px', color: 'var(--text2)' }}>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            fontSize: '12px',
+            color: 'var(--text2)',
+          }}
+        >
           <Spinner size="sm" /> Cutting…
         </div>
       )}

@@ -25,7 +25,15 @@ interface TextNodeProps {
  * the group origin. Side handles resize by width (scaleX folds into the CHILD's width mid-
  * gesture); dblclick on the glyphs opens the inline editor.
  */
-export function TextNode({ layer, canvas, stageScale, hidden, onSelect, onChange, onStartEdit }: TextNodeProps) {
+export function TextNode({
+  layer,
+  canvas,
+  stageScale,
+  hidden,
+  onSelect,
+  onChange,
+  onStartEdit,
+}: TextNodeProps) {
   const textRef = useRef<Konva.Text>(null)
   return (
     <Group

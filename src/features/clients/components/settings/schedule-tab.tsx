@@ -21,7 +21,10 @@ const POST_TYPE_OPTIONS = [
   { value: 'carousel', label: 'Carousel' },
 ]
 
-const SLIDE_OPTIONS = CAROUSEL_SLIDE_OPTIONS.map((n) => ({ value: String(n), label: `${n} slides` }))
+const SLIDE_OPTIONS = CAROUSEL_SLIDE_OPTIONS.map((n) => ({
+  value: String(n),
+  label: `${n} slides`,
+}))
 
 interface ScheduleTabProps {
   brand: BrandDraft

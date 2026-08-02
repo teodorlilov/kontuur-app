@@ -22,11 +22,15 @@ const features = [
 
 export function Features() {
   return (
-    <section id="features" className="mkt-pad" style={{ paddingTop: 96, paddingBottom: 96, background: 'var(--paper)' }}>
+    <section
+      id="features"
+      className="mkt-pad"
+      style={{ paddingTop: 96, paddingBottom: 96, background: 'var(--paper)' }}
+    >
       <AnimateIn>
         <p
+          className="text-micro"
           style={{
-            fontSize: 11,
             textTransform: 'uppercase',
             letterSpacing: '0.1em',
             color: 'var(--spring)',
@@ -83,8 +87,8 @@ export function Features() {
             >
               <f.icon size={32} color="var(--spring)" style={{ marginBottom: 20 }} />
               <h3
+                className="text-lead"
                 style={{
-                  fontSize: 16,
                   fontWeight: 500,
                   marginBottom: 10,
                   color: 'var(--ink)',
@@ -93,8 +97,8 @@ export function Features() {
                 {f.title}
               </h3>
               <p
+                className="text-body"
                 style={{
-                  fontSize: 13.5,
                   color: 'var(--text2)',
                   lineHeight: 1.65,
                   margin: 0,

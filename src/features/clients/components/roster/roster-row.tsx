@@ -45,7 +45,7 @@ export function RosterRow({ entry, timezone }: RosterRowProps) {
           aria-hidden="true"
           className={cn(
             'grid size-10 flex-none place-items-center rounded-panel bg-forest-deep',
-            'text-micro font-bold text-white',
+            'text-micro font-semibold text-white',
             // Lifts the badge off the card; no token covers a mark this small.
             'shadow-[0_6px_16px_-6px_rgba(15,21,18,0.35)]'
           )}
@@ -58,7 +58,7 @@ export function RosterRow({ entry, timezone }: RosterRowProps) {
               client rather than a column of identical chevrons. */}
           <Link
             href={`/clients/${entry.id}/edit`}
-            className="block truncate text-sm font-semibold text-ink after:absolute after:inset-0 after:content-['']"
+            className="block truncate text-body font-semibold text-ink after:absolute after:inset-0 after:content-['']"
           >
             {entry.name}
           </Link>
@@ -90,9 +90,7 @@ export function RosterRow({ entry, timezone }: RosterRowProps) {
             &mdash;
           </span>
         )}
-        <span className="mt-[3px] block text-caption text-text3">
-          {entry.queuedCount} queued
-        </span>
+        <span className="mt-[3px] block text-caption text-text3">{entry.queuedCount} queued</span>
       </td>
 
       <td className="justify-self-end">
@@ -103,7 +101,14 @@ export function RosterRow({ entry, timezone }: RosterRowProps) {
             'group-hover:opacity-100 group-focus-within:opacity-100'
           )}
         >
-          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5">
+          <svg
+            width="12"
+            height="12"
+            viewBox="0 0 12 12"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+          >
             <path d="M4.5 2.5L8 6l-3.5 3.5" />
           </svg>
         </span>

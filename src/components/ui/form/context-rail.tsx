@@ -24,9 +24,7 @@ export function RailBox({ title, tone = 'default', className, children }: RailBo
         className
       )}
     >
-      <h4 className="mb-2.5 text-label font-semibold uppercase text-text3">
-        {title}
-      </h4>
+      <h4 className="mb-2.5 text-label font-semibold uppercase text-text3">{title}</h4>
       {children}
     </div>
   )

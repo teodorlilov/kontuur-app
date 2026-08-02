@@ -58,11 +58,21 @@ function NotificationPanel({
           <>
             {today.length > 0 && <SectionHeader label="Today" />}
             {today.map((n) => (
-              <NotificationItem key={n.id} notification={n} onMarkRead={onMarkRead} onNavigate={onNavigate} />
+              <NotificationItem
+                key={n.id}
+                notification={n}
+                onMarkRead={onMarkRead}
+                onNavigate={onNavigate}
+              />
             ))}
             {earlier.length > 0 && <SectionHeader label="Earlier" />}
             {earlier.map((n) => (
-              <NotificationItem key={n.id} notification={n} onMarkRead={onMarkRead} onNavigate={onNavigate} />
+              <NotificationItem
+                key={n.id}
+                notification={n}
+                onMarkRead={onMarkRead}
+                onNavigate={onNavigate}
+              />
             ))}
           </>
         )}
@@ -74,7 +84,13 @@ function NotificationPanel({
 }
 
 /** Panel header with title, unread count badge, and mark-all-read button. */
-function PanelHeader({ unreadCount, onMarkAllRead }: { unreadCount: number; onMarkAllRead: () => void }) {
+function PanelHeader({
+  unreadCount,
+  onMarkAllRead,
+}: {
+  unreadCount: number
+  onMarkAllRead: () => void
+}) {
   return (
     <div className="flex items-center justify-between border-b border-line px-4 py-3.5">
       <div className="flex items-center gap-2">
@@ -86,7 +102,10 @@ function PanelHeader({ unreadCount, onMarkAllRead }: { unreadCount: number; onMa
         )}
       </div>
       {unreadCount > 0 && (
-        <button onClick={onMarkAllRead} className="text-micro font-medium text-text2 hover:text-forest">
+        <button
+          onClick={onMarkAllRead}
+          className="text-micro font-medium text-text2 hover:text-forest"
+        >
           Mark all read
         </button>
       )}
@@ -96,11 +115,7 @@ function PanelHeader({ unreadCount, onMarkAllRead }: { unreadCount: number; onMa
 
 /** Section divider label (Today / Earlier). */
 function SectionHeader({ label }: { label: string }) {
-  return (
-    <div className="px-4 pb-1 pt-2 text-label font-semibold uppercase text-text3">
-      {label}
-    </div>
-  )
+  return <div className="px-4 pb-1 pt-2 text-label font-semibold uppercase text-text3">{label}</div>
 }
 
 /** Panel footer with "Go to calendar" link. */
@@ -126,7 +141,8 @@ function PanelFooter({ onNavigate }: { onNavigate: () => void }) {
 export function NotificationsBell() {
   const router = useRouter()
   const { notifications } = useShell()
-  const { items, loading, unreadCount, hasFeedback, refetch, markAllRead, markOneRead } = notifications
+  const { items, loading, unreadCount, hasFeedback, refetch, markAllRead, markOneRead } =
+    notifications
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 

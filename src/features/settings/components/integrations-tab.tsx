@@ -81,9 +81,7 @@ export function IntegrationsTab({ currentUserId, members }: IntegrationsTabProps
             >
               <Avatar name={member.email} size="md" />
               <div className="min-w-0 flex-1">
-                <b className="block truncate text-body font-semibold text-ink">
-                  {member.email}
-                </b>
+                <b className="block truncate text-body font-semibold text-ink">{member.email}</b>
                 <span className="text-caption text-text3">
                   {capitalize(member.role)}
                   {member.id === currentUserId && ' · you'}
@@ -129,8 +127,8 @@ export function IntegrationsRail() {
   return (
     <RailBox title="Why connect">
       <RailText>
-        Send a post straight into a Canva design with the brand palette pre-applied, then export
-        the result back into the post.
+        Send a post straight into a Canva design with the brand palette pre-applied, then export the
+        result back into the post.
       </RailText>
     </RailBox>
   )

@@ -28,8 +28,15 @@ interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement
 }
 
 /** A multi-line text input. */
-export function Textarea({ label,
-  labelVariant = 'default', error, autoGrow, className, id, ...props }: TextareaProps) {
+export function Textarea({
+  label,
+  labelVariant = 'default',
+  error,
+  autoGrow,
+  className,
+  id,
+  ...props
+}: TextareaProps) {
   const field = useFieldContext()
   const inputId = id ?? field?.controlId ?? label?.toLowerCase().replace(/\s+/g, '-')
   const invalid = !!error || field?.invalid

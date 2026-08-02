@@ -3,7 +3,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Group, Image as KonvaImage, Layer, Rect, Stage, Transformer } from 'react-konva'
 import type Konva from 'konva'
-import type { CanvasBackgroundTransform, CanvasDoc, CanvasElement, CanvasTextLayer } from '@/types/canvas'
+import type {
+  CanvasBackgroundTransform,
+  CanvasDoc,
+  CanvasElement,
+  CanvasTextLayer,
+} from '@/types/canvas'
 import { MIN_ELEMENT_SIZE, MIN_TEXT_LAYER_WIDTH } from '@/lib/canvas/constants'
 import { coverCrop } from '@/lib/canvas/cover-crop'
 import { backgroundNodeAttrs, scrimNodeAttrs } from '@/lib/canvas/node-attrs'
@@ -62,7 +67,9 @@ function transformerConfigFor(selectedKind: 'text' | 'element', scale: number) {
       enabledAnchors: ['top-left', 'top-right', 'bottom-left', 'bottom-right'],
       keepRatio: true,
       boundBoxFunc: (oldBox: TransformerBox, newBox: TransformerBox) =>
-        newBox.width < MIN_ELEMENT_SIZE * scale || newBox.height < MIN_ELEMENT_SIZE * scale ? oldBox : newBox,
+        newBox.width < MIN_ELEMENT_SIZE * scale || newBox.height < MIN_ELEMENT_SIZE * scale
+          ? oldBox
+          : newBox,
     }
   }
   return {
@@ -225,9 +232,20 @@ interface RepositionSurfaceProps {
  * Previews mutate the background node's crop attrs directly (never per-frame React state); the
  * doc gets ONE commit per gesture — drag end, or a settled wheel burst — so undo steps stay sane.
  */
-function RepositionSurface({ transform, src, canvas, scale, backgroundRef, onCommit }: RepositionSurfaceProps) {
+function RepositionSurface({
+  transform,
+  src,
+  canvas,
+  scale,
+  backgroundRef,
+  onCommit,
+}: RepositionSurfaceProps) {
   const rectRef = useRef<Konva.Rect>(null)
-  const gestureRef = useRef<{ startX: number; startY: number; base: CanvasBackgroundTransform } | null>(null)
+  const gestureRef = useRef<{
+    startX: number
+    startY: number
+    base: CanvasBackgroundTransform
+  } | null>(null)
   const pendingRef = useRef<CanvasBackgroundTransform | null>(null)
   const wheelTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const propsRef = useRef({ transform, onCommit })
@@ -253,7 +271,8 @@ function RepositionSurface({ transform, src, canvas, scale, backgroundRef, onCom
     }
   }, [])
 
-  const current = () => pendingRef.current ?? propsRef.current.transform ?? DEFAULT_BACKGROUND_TRANSFORM
+  const current = () =>
+    pendingRef.current ?? propsRef.current.transform ?? DEFAULT_BACKGROUND_TRANSFORM
 
   const preview = (next: CanvasBackgroundTransform) => {
     pendingRef.current = next
@@ -285,7 +304,10 @@ function RepositionSurface({ transform, src, canvas, scale, backgroundRef, onCom
         const gesture = gestureRef.current
         const pointer = event.target.getStage()?.getPointerPosition()
         if (!gesture || !pointer) return
-        const delta = { dx: (pointer.x - gesture.startX) / scale, dy: (pointer.y - gesture.startY) / scale }
+        const delta = {
+          dx: (pointer.x - gesture.startX) / scale,
+          dy: (pointer.y - gesture.startY) / scale,
+        }
         preview(panBackground(gesture.base, delta, src, canvas))
       }}
       onDragEnd={() => {
@@ -298,7 +320,15 @@ function RepositionSurface({ transform, src, canvas, scale, backgroundRef, onCom
         if (!pointer) return
         const base = current()
         const target = base.zoom * Math.exp(-event.evt.deltaY * WHEEL_ZOOM_RATE)
-        preview(zoomBackgroundTo(base, target, { x: pointer.x / scale, y: pointer.y / scale }, src, canvas))
+        preview(
+          zoomBackgroundTo(
+            base,
+            target,
+            { x: pointer.x / scale, y: pointer.y / scale },
+            src,
+            canvas
+          )
+        )
         if (wheelTimerRef.current) clearTimeout(wheelTimerRef.current)
         wheelTimerRef.current = setTimeout(flushPending, WHEEL_COMMIT_DELAY_MS)
       }}

@@ -187,7 +187,11 @@ function PendingRow({
           {preview}
         </p>
         <p className="mt-[3px] truncate text-caption text-text3">
-          {[post.clientName, post.pillar || null, formatRelativeTime(parseTimestamp(post.createdAt))]
+          {[
+            post.clientName,
+            post.pillar || null,
+            formatRelativeTime(parseTimestamp(post.createdAt)),
+          ]
             .filter(Boolean)
             .join(' · ')}
         </p>

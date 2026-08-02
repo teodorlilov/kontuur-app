@@ -124,7 +124,9 @@ export function RssStep({
                 size="sm"
                 variant="secondary"
                 loading={addingUrl === s.url}
-                onClick={() => { void handleAdd(s) }}
+                onClick={() => {
+                  void handleAdd(s)
+                }}
                 className="shrink-0"
               >
                 Add

@@ -19,7 +19,15 @@ interface PanelSliderProps {
  * (zoom, opacity, brush size) pass only onChange; preview-then-commit consumers (background
  * filters) additionally pass onCommit — the semantics stay at the call site.
  */
-export function PanelSlider({ label, min, max, step, value, onChange, onCommit }: PanelSliderProps) {
+export function PanelSlider({
+  label,
+  min,
+  max,
+  step,
+  value,
+  onChange,
+  onCommit,
+}: PanelSliderProps) {
   return (
     <div>
       <div style={PANEL_LABEL}>{label}</div>

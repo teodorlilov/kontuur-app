@@ -33,8 +33,8 @@ export function HowItWorks() {
     >
       <AnimateIn>
         <p
+          className="text-micro"
           style={{
-            fontSize: 11,
             textTransform: 'uppercase',
             letterSpacing: '0.1em',
             color: 'var(--spring)',
@@ -73,6 +73,7 @@ export function HowItWorks() {
           <AnimateIn key={step.num} delay={i * 0.06}>
             <div style={{ textAlign: 'center' }}>
               <div
+                className="text-title"
                 style={{
                   width: 36,
                   height: 36,
@@ -82,7 +83,6 @@ export function HowItWorks() {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  fontSize: 15,
                   fontWeight: 600,
                   margin: '0 auto 20px',
                   lineHeight: 1,
@@ -91,8 +91,8 @@ export function HowItWorks() {
                 {step.num}
               </div>
               <h3
+                className="text-title"
                 style={{
-                  fontSize: 15,
                   fontWeight: 500,
                   marginBottom: 10,
                   color: 'var(--ink)',
@@ -102,8 +102,8 @@ export function HowItWorks() {
                 {step.title}
               </h3>
               <p
+                className="text-body"
                 style={{
-                  fontSize: 13.5,
                   color: 'var(--text2)',
                   lineHeight: 1.65,
                   margin: 0,

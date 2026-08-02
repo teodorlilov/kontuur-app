@@ -35,7 +35,12 @@ export function ScrimControls({ scrim, palette, onChange }: ScrimControlsProps) 
               <option value="full">Full canvas</option>
             </select>
           </div>
-          <ColorSwatches label="Scrim colour" palette={palette} value={scrim.color} onChange={(color) => onChange({ color })} />
+          <ColorSwatches
+            label="Scrim colour"
+            palette={palette}
+            value={scrim.color}
+            onChange={(color) => onChange({ color })}
+          />
           <PanelSlider
             label={`Opacity · ${Math.round(scrim.opacity * 100)}%`}
             min={0}

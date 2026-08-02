@@ -80,11 +80,7 @@ export function AccountTab({ agency, currentUserRole }: AccountTabProps) {
       </FormSection>
 
       <FormSection legend="Defaults" description="Applied to every client in this workspace.">
-        <Field
-          label="Timezone"
-          span={6}
-          hint="Decides the correct day for scheduled generation."
-        >
+        <Field label="Timezone" span={6} hint="Decides the correct day for scheduled generation.">
           <Select
             value={timezone}
             onChange={(e) => setTimezone(e.target.value)}
@@ -125,7 +121,7 @@ export function AccountRail({ clientCount, isAdmin }: { clientCount: number; isA
           <Button variant="danger" size="sm" className="mt-3 w-full" disabled>
             Delete workspace
           </Button>
-          <p className="mt-2 text-center text-xs text-text3">Coming soon</p>
+          <p className="mt-2 text-center text-caption text-text3">Coming soon</p>
         </RailBox>
       )}
     </>

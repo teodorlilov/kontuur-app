@@ -32,10 +32,28 @@ type Segment = readonly [number, number]
 
 /** Marching-squares segment table, indexed by the four-corner bitmask. */
 const CASES: readonly Segment[][] = [
-  [], [[3, 2]], [[2, 1]], [[3, 1]],
-  [[0, 1]], [[3, 0], [2, 1]], [[0, 2]], [[3, 0]],
-  [[3, 0]], [[0, 2]], [[3, 2], [0, 1]], [[0, 1]],
-  [[3, 1]], [[2, 1]], [[3, 2]], [],
+  [],
+  [[3, 2]],
+  [[2, 1]],
+  [[3, 1]],
+  [[0, 1]],
+  [
+    [3, 0],
+    [2, 1],
+  ],
+  [[0, 2]],
+  [[3, 0]],
+  [[3, 0]],
+  [[0, 2]],
+  [
+    [3, 2],
+    [0, 1],
+  ],
+  [[0, 1]],
+  [[3, 1]],
+  [[2, 1]],
+  [[3, 2]],
+  [],
 ]
 
 const GRID_STEP = 9
@@ -107,7 +125,10 @@ function drawField(canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D): vo
         const br = grid[i0 + cols + 2]!
 
         const idx =
-          (tl >= level ? 8 : 0) | (tr >= level ? 4 : 0) | (br >= level ? 2 : 0) | (bl >= level ? 1 : 0)
+          (tl >= level ? 8 : 0) |
+          (tr >= level ? 4 : 0) |
+          (br >= level ? 2 : 0) |
+          (bl >= level ? 1 : 0)
         const segs = CASES[idx]!
         if (segs.length === 0) continue
 

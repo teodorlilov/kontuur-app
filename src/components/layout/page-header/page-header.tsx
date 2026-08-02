@@ -90,7 +90,14 @@ export function PageHeader({
                   'hover:border-forest hover:text-forest'
                 )}
               >
-                <svg width="13" height="13" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.6">
+                <svg
+                  width="13"
+                  height="13"
+                  viewBox="0 0 12 12"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.6"
+                >
                   <path d="M7.5 2.5L4 6l3.5 3.5" />
                 </svg>
               </Link>
@@ -216,4 +223,3 @@ export function MetaFlag({ children }: { children: ReactNode }) {
 export function MetaWarn({ children }: { children: ReactNode }) {
   return <span className="font-medium text-danger">{children}</span>
 }
-

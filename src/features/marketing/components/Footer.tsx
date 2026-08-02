@@ -56,8 +56,8 @@ export function Footer() {
         {columns.map((col) => (
           <div key={col.title}>
             <p
+              className="text-label"
               style={{
-                fontSize: 10,
                 textTransform: 'uppercase',
                 letterSpacing: '0.1em',
                 color: 'rgba(255,255,255,0.25)',
@@ -80,9 +80,9 @@ export function Footer() {
               {col.links.map((link) => (
                 <li key={link.label}>
                   <Link
+                    className="text-body"
                     href={link.href}
                     style={{
-                      fontSize: 13.5,
                       color: 'rgba(255,255,255,0.55)',
                       textDecoration: 'none',
                       transition: 'color 120ms ease',
@@ -115,11 +115,11 @@ export function Footer() {
           gap: 8,
         }}
       >
-        <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.35)', margin: 0 }}>
+        <p className="text-body" style={{ color: 'rgba(255,255,255,0.35)', margin: 0 }}>
           © {new Date().getFullYear()} Kontuur. Operated by Chelling Ltd, UIC 206770508, Sofia,
           Bulgaria.
         </p>
-        <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.35)', margin: 0 }}>
+        <p className="text-body" style={{ color: 'rgba(255,255,255,0.35)', margin: 0 }}>
           Built by About Social Media
         </p>
       </div>

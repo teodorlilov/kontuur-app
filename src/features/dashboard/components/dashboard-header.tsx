@@ -69,7 +69,9 @@ export function DashboardHeader({
             pendingCount > 0 && (
               <MetaFlag>
                 {pendingCount} {pendingCount === 1 ? 'draft' : 'drafts'} waiting
-                {oldestPendingAt ? ` since ${formatRelativeTime(parseTimestamp(oldestPendingAt))}` : ''}
+                {oldestPendingAt
+                  ? ` since ${formatRelativeTime(parseTimestamp(oldestPendingAt))}`
+                  : ''}
               </MetaFlag>
             ),
             failedCount > 0 && <MetaWarn>{failedCount} failed to publish</MetaWarn>,

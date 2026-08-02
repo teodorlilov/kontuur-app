@@ -10,13 +10,7 @@ import { cn } from '@/utils/cn'
  * Padding is deliberately not baked in — the three consumers genuinely differ,
  * and forcing one value would trade real variation for false consistency.
  */
-export function Card({
-  className,
-  children,
-}: {
-  className?: string
-  children: React.ReactNode
-}) {
+export function Card({ className, children }: { className?: string; children: React.ReactNode }) {
   return (
     <div className={cn('rounded-card border border-ink/[0.05] bg-surface', className)}>
       {children}

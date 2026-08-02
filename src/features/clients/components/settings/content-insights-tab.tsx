@@ -51,7 +51,7 @@ export function ContentInsightsTab({ insights }: ContentInsightsTabProps) {
           <h4 className="mb-1.5 text-label font-semibold uppercase text-text3">
             Approval rate by pillar
           </h4>
-          <p className="mb-2.5 text-xs text-text3">
+          <p className="mb-2.5 text-caption text-text3">
             From the {insights.sampleSize} most recent posts with a pillar.
           </p>
           {insights.pillarRates.map((entry) => (

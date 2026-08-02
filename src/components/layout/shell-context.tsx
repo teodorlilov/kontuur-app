@@ -84,7 +84,8 @@ async function fetchNotifications(): Promise<EnrichedNotification[]> {
 
 function buildToastMessage(n: EnrichedNotification): string {
   if (n.type === 'client_feedback' && n.feedback_text) {
-    const preview = n.feedback_text.length > 80 ? `${n.feedback_text.slice(0, 80)}…` : n.feedback_text
+    const preview =
+      n.feedback_text.length > 80 ? `${n.feedback_text.slice(0, 80)}…` : n.feedback_text
     return `"${preview}"`
   }
   return n.message ?? 'New client response'

@@ -19,12 +19,18 @@ function plural(count: number, word: string): string {
  * a state we cannot see — a healthy row reports how far its schedule reaches
  * rather than claiming everything is approved.
  */
-function copyFor(entry: ClientRosterEntry, timezone: string): { headline: string; detail: string | null } {
+function copyFor(
+  entry: ClientRosterEntry,
+  timezone: string
+): { headline: string; detail: string | null } {
   switch (entry.status) {
     case 'connection_missing':
       return {
         headline: 'No account connected',
-        detail: entry.queuedCount > 0 ? `${plural(entry.queuedCount, 'post')} will fail` : 'Nothing can publish',
+        detail:
+          entry.queuedCount > 0
+            ? `${plural(entry.queuedCount, 'post')} will fail`
+            : 'Nothing can publish',
       }
 
     case 'awaiting_approval':

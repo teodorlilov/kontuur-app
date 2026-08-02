@@ -25,8 +25,7 @@ export default async function GeneratePage({ searchParams }: PageProps) {
   let initialTargetPostCount = 3
 
   // ?client= preselects a client; ignore ids that don't belong to this agency
-  const requestedClientId =
-    client && clients.some((c) => c.id === client) ? client : undefined
+  const requestedClientId = client && clients.some((c) => c.id === client) ? client : undefined
 
   // Pre-load client data for the idea's client, the requested client, or the first client
   const targetClientId = initialIdea?.clientId ?? requestedClientId ?? clients[0]?.id

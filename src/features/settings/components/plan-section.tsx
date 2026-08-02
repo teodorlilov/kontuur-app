@@ -34,12 +34,7 @@ export function PlanSection({ agency, clientCount }: PlanSectionProps) {
 
         {(isTrial || isExpired) && agency.trial_ends_at && (
           <PlanRow label="Trial ends">
-            <span
-              className={cn(
-                'text-body font-medium',
-                isExpired ? 'text-danger' : 'text-ink'
-              )}
-            >
+            <span className={cn('text-body font-medium', isExpired ? 'text-danger' : 'text-ink')}>
               {formatLongDate(new Date(agency.trial_ends_at))}
               {isExpired ? ' · expired' : ''}
             </span>
@@ -72,10 +67,7 @@ function ClientUsage({ used, limit }: { used: number; limit: number }) {
   return (
     <span className="flex items-center gap-2.5">
       <span
-        className={cn(
-          'text-body font-medium tabular-nums',
-          atLimit ? 'text-pending' : 'text-ink'
-        )}
+        className={cn('text-body font-medium tabular-nums', atLimit ? 'text-pending' : 'text-ink')}
       >
         {used} of {limit} used
       </span>
@@ -125,9 +117,7 @@ export function UpgradeRailAction() {
       <Button className="w-full" disabled>
         Upgrade plan
       </Button>
-      <p className="mt-2.5 text-center text-caption text-text3">
-        Billing is not connected yet.
-      </p>
+      <p className="mt-2.5 text-center text-caption text-text3">Billing is not connected yet.</p>
     </>
   )
 }

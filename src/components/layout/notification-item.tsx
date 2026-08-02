@@ -43,13 +43,20 @@ function clientNameFor(n: EnrichedNotification): string {
 }
 
 /** Single notification row in the panel. */
-export function NotificationItem({ notification: n, onMarkRead, onNavigate }: NotificationItemProps) {
-  const isApproval = n.type === 'client_approved_all' || (!n.type && n.message?.includes('approved'))
+export function NotificationItem({
+  notification: n,
+  onMarkRead,
+  onNavigate,
+}: NotificationItemProps) {
+  const isApproval =
+    n.type === 'client_approved_all' || (!n.type && n.message?.includes('approved'))
   const clientName = clientNameFor(n)
   const title = titleForNotification(n)
   const body = bodyForNotification(n)
   const feedbackPreview = n.feedback_text
-    ? n.feedback_text.length > 120 ? n.feedback_text.slice(0, 120) + '…' : n.feedback_text
+    ? n.feedback_text.length > 120
+      ? n.feedback_text.slice(0, 120) + '…'
+      : n.feedback_text
     : null
 
   return (
@@ -84,9 +91,7 @@ export function NotificationItem({ notification: n, onMarkRead, onNavigate }: No
             </div>
           )}
 
-          {!feedbackPreview && body && (
-            <div className="mt-0.5 text-caption text-text3">{body}</div>
-          )}
+          {!feedbackPreview && body && <div className="mt-0.5 text-caption text-text3">{body}</div>}
 
           <div className="mt-1.5 flex items-center justify-between">
             <span className="text-micro text-text3">

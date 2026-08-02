@@ -20,7 +20,9 @@ export function RailTools() {
   return (
     <div className="flex flex-none items-center gap-1.5">
       {/* Hidden on narrow screens first — it is the least load-bearing item here. */}
-      <span className="hidden pr-1.5 text-caption tabular-nums text-text3 sm:block">{todayLabel}</span>
+      <span className="hidden pr-1.5 text-caption tabular-nums text-text3 sm:block">
+        {todayLabel}
+      </span>
 
       <button type="button" onClick={openPalette} className={TOOL_ROW} aria-label="Search">
         <Search size={14} className="shrink-0" />

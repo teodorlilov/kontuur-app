@@ -233,12 +233,7 @@ export function PillarSourceStepper({
   }
 
   return (
-    <Modal
-      open={open}
-      onClose={onDismiss}
-      title={stepTitle(currentPhase)}
-      maxWidth={672}
-    >
+    <Modal open={open} onClose={onDismiss} title={stepTitle(currentPhase)} maxWidth={672}>
       <div className="mb-5">
         <div className="w-full bg-sunken rounded-full h-1.5">
           <div

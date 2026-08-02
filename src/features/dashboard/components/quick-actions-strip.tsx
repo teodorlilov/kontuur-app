@@ -48,27 +48,31 @@ export function QuickActionsStrip({ pendingCount, isSolo }: QuickActionsStripPro
 
   return (
     <div className="grid grid-cols-2 gap-3 @2xl:grid-cols-4">
-      {actions.filter((action): action is QuickAction => action !== false).map((action) => {
-        const Icon = action.icon
-        return (
-          <Link
-            key={action.href}
-            href={action.href}
-            // No hover shadow: resting and hover elevation make the same claim,
-            // and this ground replaces elevation with interrupted terrain. The
-            // lift and the border carry the affordance instead.
-            className="flex items-center gap-3 rounded-panel border border-ink/[0.05] bg-surface px-3.5 py-3.5 no-underline transition-[transform,border-color] duration-150 ease-contour hover:-translate-y-0.5 hover:border-sage"
-          >
-            <IconChip className="size-[34px] shrink-0 rounded-sm">
-              <Icon size={15} />
-            </IconChip>
-            <span className="min-w-0">
-              <span className="block truncate text-body font-semibold text-ink">{action.title}</span>
-              <span className="block truncate text-caption text-text3">{action.subtitle}</span>
-            </span>
-          </Link>
-        )
-      })}
+      {actions
+        .filter((action): action is QuickAction => action !== false)
+        .map((action) => {
+          const Icon = action.icon
+          return (
+            <Link
+              key={action.href}
+              href={action.href}
+              // No hover shadow: resting and hover elevation make the same claim,
+              // and this ground replaces elevation with interrupted terrain. The
+              // lift and the border carry the affordance instead.
+              className="flex items-center gap-3 rounded-panel border border-ink/[0.05] bg-surface px-3.5 py-3.5 no-underline transition-[transform,border-color] duration-150 ease-contour hover:-translate-y-0.5 hover:border-sage"
+            >
+              <IconChip className="size-[34px] shrink-0 rounded-sm">
+                <Icon size={15} />
+              </IconChip>
+              <span className="min-w-0">
+                <span className="block truncate text-body font-semibold text-ink">
+                  {action.title}
+                </span>
+                <span className="block truncate text-caption text-text3">{action.subtitle}</span>
+              </span>
+            </Link>
+          )
+        })}
     </div>
   )
 }

@@ -21,14 +21,13 @@ export default async function CalendarPage() {
   }
 
   const [{ data: clientRows }, { data: postRows }] = await Promise.all([
-    supabase
-      .from('clients')
-      .select('id, name, contact_email')
-      .eq('agency_id', agencyId),
+    supabase.from('clients').select('id, name, contact_email').eq('agency_id', agencyId),
     clientIds.length > 0
       ? supabase
           .from('posts')
-          .select(`${POST_COLUMNS}, post_approval_tokens(status, client_note, created_at, responded_at)`)
+          .select(
+            `${POST_COLUMNS}, post_approval_tokens(status, client_note, created_at, responded_at)`
+          )
           .in('client_id', clientIds)
           .in('status', ['approved', 'scheduled', 'publishing', 'published', 'failed'])
           .order('created_at', { ascending: false })
@@ -42,7 +41,12 @@ export default async function CalendarPage() {
     contact_email: c.contact_email ?? null,
   }))
 
-  type ApprovalTokenRow = { status: string; client_note: string | null; created_at: string; responded_at: string | null }
+  type ApprovalTokenRow = {
+    status: string
+    client_note: string | null
+    created_at: string
+    responded_at: string | null
+  }
 
   type PostRow = {
     id: string

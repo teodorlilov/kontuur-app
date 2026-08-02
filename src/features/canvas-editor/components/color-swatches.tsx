@@ -41,7 +41,14 @@ export function ColorSwatches({ label, palette, value, onChange }: ColorSwatches
           value={value}
           onChange={(event) => onChange(event.target.value)}
           title="Custom colour"
-          style={{ width: 28, height: 28, border: 'none', background: 'transparent', cursor: 'pointer', padding: 0 }}
+          style={{
+            width: 28,
+            height: 28,
+            border: 'none',
+            background: 'transparent',
+            cursor: 'pointer',
+            padding: 0,
+          }}
         />
       </div>
     </div>

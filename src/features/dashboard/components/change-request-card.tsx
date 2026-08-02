@@ -1,6 +1,11 @@
 import { AlertTriangle, MessageCircle, Pencil } from 'lucide-react'
 import { ActionLink } from '@/components/ui/action-link'
-import { formatRelativeTime, parseTimestamp, truncateText, formatScheduleDate } from '@/utils/format'
+import {
+  formatRelativeTime,
+  parseTimestamp,
+  truncateText,
+  formatScheduleDate,
+} from '@/utils/format'
 import { extractFlaggedSlide } from '@/utils/extract-flagged-slides'
 import type { DashboardChangeRequest } from '@/types/api'
 
@@ -53,7 +58,11 @@ function FeedbackQuote({ note }: { note: string }) {
 }
 
 /** Single change request card for the dashboard section. */
-export function ChangeRequestCard({ changeRequest: cr }: { changeRequest: DashboardChangeRequest }) {
+export function ChangeRequestCard({
+  changeRequest: cr,
+}: {
+  changeRequest: DashboardChangeRequest
+}) {
   const flaggedSlide = extractFlaggedSlide(cr.clientNote)
 
   return (

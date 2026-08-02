@@ -125,7 +125,10 @@ export function SourceRow({
         <div className="flex items-center gap-2">
           <Button
             size="sm"
-            disabled={!editLabel.trim() || (source.type !== 'file' && source.type !== 'tavily' && !editUrl.trim())}
+            disabled={
+              !editLabel.trim() ||
+              (source.type !== 'file' && source.type !== 'tavily' && !editUrl.trim())
+            }
             onClick={handleSave}
           >
             Save
@@ -139,7 +142,9 @@ export function SourceRow({
   }
 
   return (
-    <div className={`flex items-center gap-3 px-4 py-3 rounded-xl border bg-surface transition-opacity ${source.is_active ? 'border-line' : 'border-line opacity-50'}`}>
+    <div
+      className={`flex items-center gap-3 px-4 py-3 rounded-xl border bg-surface transition-opacity ${source.is_active ? 'border-line' : 'border-line opacity-50'}`}
+    >
       <input
         type="checkbox"
         checked={source.is_active}

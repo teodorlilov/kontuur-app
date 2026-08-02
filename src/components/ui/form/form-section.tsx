@@ -102,9 +102,7 @@ export function Field({
           </span>
         )}
         {optional && <span className="text-caption font-normal text-text3">optional</span>}
-        {count && (
-          <span className="ml-auto text-caption tabular-nums text-text3">{count}</span>
-        )}
+        {count && <span className="ml-auto text-caption tabular-nums text-text3">{count}</span>}
       </div>
 
       <FieldProvider value={{ controlId, describedBy, invalid: !!error }}>{children}</FieldProvider>

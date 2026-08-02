@@ -13,7 +13,7 @@ export function SocialProof() {
         textAlign: 'center',
       }}
     >
-      <p style={{ fontSize: 12, color: 'var(--text3)', marginBottom: 12 }}>
+      <p className="text-caption" style={{ color: 'var(--text3)', marginBottom: 12 }}>
         Trusted by agencies in Bulgaria and across Europe
       </p>
       <div style={{ display: 'flex', gap: 32, justifyContent: 'center', flexWrap: 'wrap' }}>

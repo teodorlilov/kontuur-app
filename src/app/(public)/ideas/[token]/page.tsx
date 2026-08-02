@@ -23,8 +23,8 @@ export default async function IdeaFormPage({ params }: PageProps) {
       >
         <div style={{ textAlign: 'center', maxWidth: 400 }}>
           <div
+            className="text-lead"
             style={{
-              fontSize: 16,
               fontWeight: 500,
               color: 'var(--ink)',
               marginBottom: 8,
@@ -32,7 +32,7 @@ export default async function IdeaFormPage({ params }: PageProps) {
           >
             This link is invalid or has expired.
           </div>
-          <div style={{ fontSize: 13, color: 'var(--text2)', lineHeight: 1.6 }}>
+          <div className="text-body" style={{ color: 'var(--text2)', lineHeight: 1.6 }}>
             Please contact your agency for a new link.
           </div>
         </div>
@@ -41,10 +41,6 @@ export default async function IdeaFormPage({ params }: PageProps) {
   }
 
   return (
-    <IdeaFormClient
-      token={token}
-      clientName={context.clientName}
-      agencyName={context.agencyName}
-    />
+    <IdeaFormClient token={token} clientName={context.clientName} agencyName={context.agencyName} />
   )
 }

@@ -70,7 +70,9 @@ function Topbar({
         gap: 8,
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', gap: '16px', minWidth: 0, flexShrink: 1 }}>
+      <div
+        style={{ display: 'flex', alignItems: 'center', gap: '16px', minWidth: 0, flexShrink: 1 }}
+      >
         <div
           className="hidden font-display text-title font-normal text-ink md:block"
           style={{
@@ -84,15 +86,20 @@ function Topbar({
         >
           KONTUUR
         </div>
-        <span
-          className="min-w-0 truncate text-caption text-text2"
-          style={{ whiteSpace: 'nowrap' }}
-        >
+        <span className="min-w-0 truncate text-caption text-text2" style={{ whiteSpace: 'nowrap' }}>
           {subtitle}
         </span>
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0, overflow: 'hidden' }}>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
+          minWidth: 0,
+          overflow: 'hidden',
+        }}
+      >
         <StepIndicator steps={steps} activeIndex={activeIndex} />
         <button
           type="button"

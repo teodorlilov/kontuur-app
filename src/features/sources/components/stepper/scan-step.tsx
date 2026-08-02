@@ -63,11 +63,7 @@ export function ScanStep({
           <p className="text-body text-text3">Scanning {hostname} for pages...</p>
         </div>
         <div className="flex justify-end">
-          <button
-            type="button"
-            onClick={onSkip}
-            className="text-body text-text3 hover:text-text2"
-          >
+          <button type="button" onClick={onSkip} className="text-body text-text3 hover:text-text2">
             Skip website
           </button>
         </div>
@@ -99,11 +95,7 @@ export function ScanStep({
       )}
 
       <div className="flex items-center justify-end gap-2 pt-2">
-        <button
-          type="button"
-          onClick={onSkip}
-          className="text-body text-text3 hover:text-text2"
-        >
+        <button type="button" onClick={onSkip} className="text-body text-text3 hover:text-text2">
           Skip for now
         </button>
         <Button size="sm" onClick={handleScan} disabled={!url.trim()}>

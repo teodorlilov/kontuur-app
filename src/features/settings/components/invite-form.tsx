@@ -55,10 +55,7 @@ export function InviteForm() {
   }
 
   return (
-    <FormSection
-      legend="Invite a team member"
-      description="They'll get an email with a join link."
-    >
+    <FormSection legend="Invite a team member" description="They'll get an email with a join link.">
       <Field label="Email" span={6} error={emailError ?? undefined}>
         <Input
           type="email"
@@ -79,7 +76,7 @@ export function InviteForm() {
           Send invite
         </Button>
       </div>
-      <p className="col-span-12 -mt-1.5 text-xs text-text3">
+      <p className="col-span-12 -mt-1.5 text-caption text-text3">
         Members can draft and review. Admins can also change workspace settings and remove people.
       </p>
     </FormSection>

@@ -76,7 +76,7 @@ export default function RootLayout({
               border: '1px solid var(--line)',
               borderRadius: 'var(--radius-md)',
               color: 'var(--ink)',
-              fontSize: '13.5px',
+              fontSize: 'var(--text-body)',
               fontFamily: 'var(--font-sans)',
               boxShadow: 'var(--sh-pop)',
               padding: '12px 16px',

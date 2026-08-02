@@ -28,9 +28,7 @@ export function MemberRow({ member, isCurrentUser, canRemove, onRemove }: Member
       <StatusPill tone={member.role === 'admin' ? 'ok' : 'mark'}>
         {capitalize(member.role)}
       </StatusPill>
-      {isCurrentUser && (
-        <StatusPill tone="neutral">You</StatusPill>
-      )}
+      {isCurrentUser && <StatusPill tone="neutral">You</StatusPill>}
 
       {canRemove && !isCurrentUser && (
         <button

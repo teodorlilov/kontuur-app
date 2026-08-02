@@ -29,8 +29,8 @@ export function CtaSection() {
           Start managing your clients&apos; Instagram today.
         </h2>
         <p
+          className="text-lead"
           style={{
-            fontSize: 16,
             color: 'var(--text2)',
             maxWidth: 480,
             margin: '0 auto 36px',
@@ -40,6 +40,7 @@ export function CtaSection() {
           Join agencies using Kontuur to save time, deliver better results, and grow their business.
         </p>
         <Link
+          className="text-title"
           href="/dashboard"
           style={{
             display: 'inline-flex',
@@ -49,7 +50,6 @@ export function CtaSection() {
             background: 'var(--forest)',
             color: '#fff',
             borderRadius: 10,
-            fontSize: 15,
             fontWeight: 500,
             textDecoration: 'none',
             lineHeight: 1,
@@ -57,7 +57,7 @@ export function CtaSection() {
         >
           Get started free →
         </Link>
-        <p style={{ fontSize: 13, color: 'var(--text3)', marginTop: 14 }}>
+        <p className="text-body" style={{ color: 'var(--text3)', marginTop: 14 }}>
           No credit card required · 14-day free trial
         </p>
       </AnimateIn>
