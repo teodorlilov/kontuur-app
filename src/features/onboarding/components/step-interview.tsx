@@ -50,7 +50,7 @@ export function StepInterview({
     <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
       <InterviewSidebar currentQ={currentQ} />
 
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'var(--color-surface)', overflow: 'hidden' }}>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'var(--surface)', overflow: 'hidden' }}>
         <ChatMessages messages={messages} isGenerating={isGenerating} messagesEndRef={messagesEndRef} />
 
         {!isGenerating && (
@@ -91,7 +91,7 @@ function InterviewSidebar({ currentQ }: { currentQ: number }) {
       style={{
         width: '260px',
         flexShrink: 0,
-        background: 'var(--sidebar-bg)',
+        background: 'var(--forest-deep)',
         padding: '28px 24px',
         flexDirection: 'column',
         position: 'relative',
@@ -106,7 +106,7 @@ function InterviewSidebar({ currentQ }: { currentQ: number }) {
           style={{
             fontSize: '9px',
             fontWeight: 500,
-            color: 'rgba(236,232,225,0.4)',
+            color: 'rgba(242,245,241,0.4)',
             letterSpacing: '2px',
             textTransform: 'uppercase',
             marginBottom: '12px',
@@ -125,7 +125,7 @@ function InterviewSidebar({ currentQ }: { currentQ: number }) {
           position: 'relative',
           zIndex: 2,
           fontSize: '11px',
-          color: 'rgba(236,232,225,0.28)',
+          color: 'rgba(242,245,241,0.28)',
           lineHeight: 1.6,
           paddingTop: '20px',
         }}
@@ -143,14 +143,16 @@ function SidebarHeader() {
         style={{
           fontFamily: 'var(--font-display)',
           fontSize: '16px',
-          color: '#ECE8E1',
+          color: '#f2f5f1',
           letterSpacing: '3px',
           marginBottom: '3px',
         }}
       >
         KONTUUR
       </div>
-      <div style={{ fontSize: '7px', color: 'var(--color-terracotta)', letterSpacing: '5px' }}>
+      {/* Lime as a figure on the Pine Deep rail — 10.87:1, and part of the
+          wordmark lockup, which is exempt from the one-per-band count. */}
+      <div style={{ fontSize: '7px', color: 'var(--accent)', letterSpacing: '5px' }}>
         SOCIAL INTELLIGENCE
       </div>
     </div>
@@ -161,17 +163,20 @@ function SidebarQuestion({ label, index, currentQ }: { label: string; index: num
   const isDone = index < currentQ
   const isActive = index === currentQ
 
+  // On the Pine Deep rail the relationship inverts: lime is the figure, and the
+  // question you are on is the rail's one lime answer (10.87:1). Done steps take
+  // Living Green Lite, which is the spring that stays legible on dark.
   const dotColor = isDone
-    ? 'var(--status-ok)'
+    ? 'var(--spring-lite)'
     : isActive
-      ? 'var(--color-terracotta)'
-      : 'rgba(236,232,225,0.18)'
+      ? 'var(--accent)'
+      : 'rgba(242,245,241,0.18)'
 
   const textColor = isDone
-    ? 'rgba(236,232,225,0.75)'
+    ? 'rgba(242,245,241,0.75)'
     : isActive
-      ? '#ECE8E1'
-      : 'rgba(236,232,225,0.35)'
+      ? '#f2f5f1'
+      : 'rgba(242,245,241,0.35)'
 
   // Truncate long question labels for the sidebar
   const shortLabel = label.length > 40 ? `${label.slice(0, 40)}…` : label
@@ -183,7 +188,7 @@ function SidebarQuestion({ label, index, currentQ }: { label: string; index: num
         alignItems: 'center',
         gap: '9px',
         padding: '7px 0',
-        borderBottom: '0.5px solid rgba(236,232,225,0.07)',
+        borderBottom: '1px solid rgba(242,245,241,0.07)',
       }}
     >
       <div
@@ -215,8 +220,8 @@ function DecorativeRings() {
       viewBox="0 0 260 620"
       fill="none"
     >
-      <ellipse cx="240" cy="310" rx="200" ry="200" stroke="rgba(236,232,225,0.025)" strokeWidth="60" />
-      <ellipse cx="240" cy="310" rx="130" ry="130" stroke="rgba(192,123,85,0.04)" strokeWidth="35" />
+      <ellipse cx="240" cy="310" rx="200" ry="200" stroke="rgba(242,245,241,0.025)" strokeWidth="60" />
+      <ellipse cx="240" cy="310" rx="130" ry="130" stroke="rgba(46,158,104,0.04)" strokeWidth="35" />
     </svg>
   )
 }
@@ -260,7 +265,7 @@ function AiMessage({ text }: { text: string }) {
           width: '28px',
           height: '28px',
           borderRadius: '7px',
-          background: 'var(--sidebar-bg)',
+          background: 'var(--forest-deep)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -268,18 +273,18 @@ function AiMessage({ text }: { text: string }) {
           marginTop: '2px',
         }}
       >
-        <Pencil size={11} color="var(--color-terracotta)" strokeWidth={1.5} />
+        <Pencil size={11} color="var(--forest)" strokeWidth={1.5} />
       </div>
       <div
         style={{
-          background: '#F9F6F2',
-          border: '0.5px solid var(--color-border-1)',
+          background: 'var(--sunken)',
+          border: '1px solid var(--line)',
           borderRadius: '0 10px 10px 10px',
           padding: '12px 14px',
           maxWidth: '480px',
         }}
       >
-        <p style={{ fontSize: '13px', color: 'var(--color-text-1)', lineHeight: 1.6, whiteSpace: 'pre-line', margin: 0 }}>
+        <p style={{ fontSize: '13px', color: 'var(--ink)', lineHeight: 1.6, whiteSpace: 'pre-line', margin: 0 }}>
           {text}
         </p>
       </div>
@@ -292,8 +297,8 @@ function UserMessage({ text }: { text: string }) {
     <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
       <div
         style={{
-          background: 'var(--sidebar-bg)',
-          color: '#ECE8E1',
+          background: 'var(--forest-deep)',
+          color: '#f2f5f1',
           borderRadius: '10px 0 10px 10px',
           padding: '11px 14px',
           maxWidth: '440px',
@@ -315,14 +320,14 @@ function TypingIndicator() {
           width: '28px',
           height: '28px',
           borderRadius: '7px',
-          background: 'var(--sidebar-bg)',
+          background: 'var(--forest-deep)',
           flexShrink: 0,
         }}
       />
       <div
         style={{
-          background: '#F9F6F2',
-          border: '0.5px solid var(--color-border-1)',
+          background: 'var(--sunken)',
+          border: '1px solid var(--line)',
           borderRadius: '0 10px 10px 10px',
           padding: '12px 16px',
         }}
@@ -335,8 +340,8 @@ function TypingIndicator() {
                 width: '5px',
                 height: '5px',
                 borderRadius: '50%',
-                background: 'var(--color-muted)',
-                animation: `bounce-dot 1.2s ease-in-out ${i * 0.2}s infinite`,
+                background: 'var(--text2)',
+                animation: `pulse-dot 1.2s ease-in-out ${i * 0.2}s infinite`,
               }}
             />
           ))}
@@ -374,9 +379,9 @@ function InputBar({
   return (
     <div
       style={{
-        borderTop: '0.5px solid var(--color-border-1)',
+        borderTop: '1px solid var(--line)',
         padding: '14px 20px',
-        background: 'var(--color-surface)',
+        background: 'var(--surface)',
         flexShrink: 0,
       }}
     >
@@ -384,7 +389,7 @@ function InputBar({
         <p
           style={{
             fontSize: '10px',
-            color: 'var(--color-muted)',
+            color: 'var(--text2)',
             marginBottom: '8px',
             textAlign: 'center',
             letterSpacing: '0.3px',
@@ -446,13 +451,13 @@ function ChipBar({
               className={cn(
                 'text-xs px-3 py-1.5 rounded-full border transition-colors',
                 selected
-                  ? 'border-[var(--color-terracotta)] text-[var(--color-terracotta)]'
-                  : 'border-[var(--color-border-1)] text-[var(--color-text-1)] hover:border-[var(--color-terracotta)] hover:text-[var(--color-terracotta)]'
+                  ? 'border-[var(--forest)] text-[var(--forest)]'
+                  : 'border-[var(--line)] text-[var(--ink)] hover:border-[var(--forest)] hover:text-[var(--forest)]'
               )}
               style={{
                 fontFamily: 'var(--font-sans)',
                 cursor: 'pointer',
-                background: selected ? 'rgba(192,123,85,0.08)' : 'transparent',
+                background: selected ? 'rgba(46,158,104,0.08)' : 'transparent',
               }}
             >
               {chip}
@@ -469,9 +474,9 @@ function ChipBar({
             style={{
               fontFamily: 'var(--font-sans)',
               cursor: 'pointer',
-              borderColor: detectedAnswer ? 'var(--color-terracotta)' : 'var(--color-border-1)',
-              color: detectedAnswer ? 'var(--color-terracotta)' : 'var(--color-text-1)',
-              background: detectedAnswer ? 'rgba(192,123,85,0.08)' : 'transparent',
+              borderColor: detectedAnswer ? 'var(--forest)' : 'var(--line)',
+              color: detectedAnswer ? 'var(--forest)' : 'var(--ink)',
+              background: detectedAnswer ? 'rgba(46,158,104,0.08)' : 'transparent',
             }}
           >
             {chip}
@@ -523,12 +528,12 @@ function TextInputRow({
         style={{
           flex: 1,
           padding: '10px 13px',
-          border: '0.5px solid var(--color-border-1)',
+          border: '1px solid var(--line)',
           borderRadius: '8px',
           fontSize: '13px',
           fontFamily: 'var(--font-sans)',
-          color: 'var(--color-text-1)',
-          background: '#F9F6F2',
+          color: 'var(--ink)',
+          background: 'var(--sunken)',
           outline: 'none',
         }}
       />

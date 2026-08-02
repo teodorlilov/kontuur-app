@@ -39,7 +39,7 @@ function IdeaBanner({ idea, onEdit }: { idea: ClientIdea; onEdit: () => void }) 
     <div
       style={{
         background: '#fff',
-        borderBottom: '0.5px solid rgba(44,62,80,0.10)',
+        borderBottom: '1px solid rgba(15,21,18,0.10)',
         padding: '10px 28px',
         display: 'flex',
         alignItems: 'center',
@@ -51,7 +51,7 @@ function IdeaBanner({ idea, onEdit }: { idea: ClientIdea; onEdit: () => void }) 
         style={{
           fontSize: 10,
           fontWeight: 500,
-          color: '#8A8070',
+          color: 'var(--text2)',
           letterSpacing: 0.5,
           textTransform: 'uppercase',
           flexShrink: 0,
@@ -84,8 +84,8 @@ const clientPillStyle: React.CSSProperties = {
   fontWeight: 500,
   padding: '3px 9px',
   borderRadius: 5,
-  background: 'rgba(44,62,80,0.07)',
-  color: '#1A2630',
+  background: 'rgba(15,21,18,0.07)',
+  color: 'var(--ink)',
   display: 'inline-flex',
   alignItems: 'center',
   gap: 5,
@@ -96,8 +96,8 @@ const platformPillStyle: React.CSSProperties = {
   fontWeight: 500,
   padding: '3px 9px',
   borderRadius: 5,
-  background: 'rgba(192,123,85,0.12)',
-  color: '#C07B55',
+  background: 'rgba(46,158,104,0.12)',
+  color: 'var(--spring-text)',
 }
 
 const ideaPillStyle: React.CSSProperties = {
@@ -105,8 +105,8 @@ const ideaPillStyle: React.CSSProperties = {
   fontWeight: 500,
   padding: '3px 9px',
   borderRadius: 5,
-  background: 'rgba(44,94,138,0.08)',
-  color: '#2C5F8A',
+  background: 'rgba(22,68,48,0.08)',
+  color: 'var(--forest)',
   flex: 1,
   overflow: 'hidden',
   textOverflow: 'ellipsis',
@@ -121,9 +121,9 @@ const editButtonStyle: React.CSSProperties = {
   marginLeft: 'auto',
   fontSize: 11,
   fontWeight: 500,
-  color: '#8A8070',
+  color: 'var(--text2)',
   background: 'none',
-  border: '0.5px solid rgba(44,62,80,0.14)',
+  border: '1px solid rgba(15,21,18,0.14)',
   borderRadius: 6,
   padding: '4px 10px',
   cursor: 'pointer',

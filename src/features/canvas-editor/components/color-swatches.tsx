@@ -31,8 +31,8 @@ export function ColorSwatches({ label, palette, value, onChange }: ColorSwatches
               cursor: 'pointer',
               border:
                 value.toLowerCase() === hex.toLowerCase()
-                  ? '2px solid var(--color-terracotta)'
-                  : '0.5px solid var(--color-border-2)',
+                  ? '2px solid var(--forest)'
+                  : '1px solid var(--line2)',
             }}
           />
         ))}

@@ -51,19 +51,19 @@ export function ScheduleModal({
         {/* Best time recommendations */}
         {platformData && (
           <div className="flex flex-col gap-3">
-            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+            <p className="text-xs font-medium text-text3 uppercase tracking-wide">
               Best times for {platformData.platform}
             </p>
             {platformData.best_days.length > 0 && (
               <div className="flex flex-col gap-1.5">
-                <p className="text-xs text-gray-500">Best days</p>
+                <p className="text-xs text-text3">Best days</p>
                 <div className="flex flex-wrap gap-1.5">
                   {platformData.best_days.map((day) => (
                     <button
                       key={day}
                       type="button"
                       onClick={() => setSelectedDate(getNextDateForDay(day))}
-                      className="text-xs px-2.5 py-1 rounded-full bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition-colors"
+                      className="text-xs px-2.5 py-1 rounded-full bg-wash text-forest hover:bg-wash transition-colors"
                     >
                       {day}
                     </button>
@@ -73,14 +73,14 @@ export function ScheduleModal({
             )}
             {platformData.best_time_windows.length > 0 && (
               <div className="flex flex-col gap-1.5">
-                <p className="text-xs text-gray-500">Best times</p>
+                <p className="text-xs text-text3">Best times</p>
                 <div className="flex flex-wrap gap-1.5">
                   {platformData.best_time_windows.map((tw) => (
                     <button
                       key={tw.time}
                       type="button"
                       onClick={() => setSelectedTime(tw.time)}
-                      className="text-xs px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors"
+                      className="text-xs px-2.5 py-1 rounded-full bg-wash text-spring-text hover:bg-wash transition-colors"
                       title={tw.reason}
                     >
                       {tw.label || tw.time}
@@ -90,7 +90,7 @@ export function ScheduleModal({
               </div>
             )}
             {platformData.reasoning_summary && (
-              <p className="text-xs text-gray-400 italic">{platformData.reasoning_summary}</p>
+              <p className="text-xs text-text3 italic">{platformData.reasoning_summary}</p>
             )}
           </div>
         )}
@@ -98,7 +98,7 @@ export function ScheduleModal({
         {/* Date + Time pickers */}
         <div className="flex gap-3">
           <div className="flex flex-col gap-1.5 flex-1">
-            <label htmlFor="schedule-date" className="text-xs font-medium text-gray-600">
+            <label htmlFor="schedule-date" className="text-xs font-medium text-text2">
               Date
             </label>
             <input
@@ -107,11 +107,11 @@ export function ScheduleModal({
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
               min={new Date().toISOString().slice(0, 10)}
-              className="text-sm text-gray-900 border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-purple focus:border-transparent"
+              className="text-sm text-ink border border-line2 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-spring/12 focus:border-transparent"
             />
           </div>
           <div className="flex flex-col gap-1.5 flex-1">
-            <label htmlFor="schedule-time" className="text-xs font-medium text-gray-600">
+            <label htmlFor="schedule-time" className="text-xs font-medium text-text2">
               Time
             </label>
             <input
@@ -119,7 +119,7 @@ export function ScheduleModal({
               type="time"
               value={selectedTime}
               onChange={(e) => setSelectedTime(e.target.value)}
-              className="text-sm text-gray-900 border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-purple focus:border-transparent"
+              className="text-sm text-ink border border-line2 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-spring/12 focus:border-transparent"
             />
           </div>
         </div>

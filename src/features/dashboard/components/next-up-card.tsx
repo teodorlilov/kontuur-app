@@ -30,8 +30,9 @@ function PublishRow({
   return (
     <li className="flex items-baseline justify-between gap-3 py-[5px]">
       <span className="flex min-w-0 items-baseline gap-1.5">
-        {/* The lime marks the live present: today, and nothing else. */}
-        {isToday && <span aria-hidden className="size-[5px] shrink-0 rounded-full bg-accent" />}
+        {/* Today. Living Green, not lime — this card is light, and at 5px lime
+            measures 1.35:1 and is simply not there. See The Small Present Rule. */}
+        {isToday && <span aria-hidden className="size-[5px] shrink-0 rounded-full bg-spring" />}
         <span className="truncate text-body font-medium text-ink">{clientName}</span>
         <span className="shrink-0 text-caption capitalize text-text2">{platform}</span>
       </span>

@@ -27,8 +27,8 @@ export function QualityPanel({ post, validationData, runSummary }: QualityPanelP
       style={{
         width: '350px',
         flexShrink: 0,
-        background: 'var(--color-surface)',
-        borderLeft: '0.5px solid var(--color-border-1)',
+        background: 'var(--surface)',
+        borderLeft: '1px solid var(--line)',
         overflowY: 'auto',
       }}
     >
@@ -53,7 +53,9 @@ function RunSummarySection({ summary }: { summary: RunSummary }) {
       <MetadataRow
         label="Skipped"
         value={summary.skippedCount > 0 ? `${summary.skippedCount} pillar` : 'None'}
-        valueColor={summary.skippedCount > 0 ? 'var(--color-terracotta)' : 'var(--status-ok)'}
+        // Was terracotta vs status-ok — both aliased to --spring, so the two
+        // branches rendered identically. A skipped pillar is a wait, not an ok.
+        valueColor={summary.skippedCount > 0 ? 'var(--pending)' : 'var(--spring-text)'}
       />
     </PanelSection>
   )

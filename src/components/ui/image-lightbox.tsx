@@ -28,7 +28,7 @@ export function ImageLightbox({
         position: 'fixed',
         inset: 0,
         zIndex: 200,
-        background: 'rgba(20,28,34,0.72)',
+        background: 'rgba(15,21,18,0.72)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -63,12 +63,12 @@ export function ImageLightbox({
               borderRadius: 8,
               border: 'none',
               background: 'rgba(255,255,255,0.88)',
-              boxShadow: '0 1px 4px rgba(20,28,34,0.18)',
+              boxShadow: '0 1px 4px rgba(15,21,18,0.18)',
               cursor: 'pointer',
               fontFamily: 'inherit',
               fontSize: 11,
               fontWeight: 500,
-              color: '#3A4A54',
+              color: 'var(--text2)',
             }}
           >
             <Download style={{ width: 13, height: 13 }} />

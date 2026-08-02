@@ -451,16 +451,16 @@ function useLoadClientData({
 function NoClientsState() {
   return (
     <div className="flex flex-col items-center justify-center min-h-[calc(100vh-4rem)] gap-4 text-center">
-      <div className="h-12 w-12 rounded-full bg-gray-100 flex items-center justify-center">
-        <svg className="h-6 w-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <div className="h-12 w-12 rounded-full bg-sunken flex items-center justify-center">
+        <svg className="h-6 w-6 text-text3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
         </svg>
       </div>
       <div>
-        <p className="text-sm font-medium text-gray-900">No clients yet</p>
-        <p className="text-sm text-gray-500 mt-1">Add your first client before generating posts.</p>
+        <p className="text-sm font-medium text-ink">No clients yet</p>
+        <p className="text-sm text-text3 mt-1">Add your first client before generating posts.</p>
       </div>
-      <a href="/clients/new" className="inline-flex items-center gap-1.5 text-sm font-medium text-[var(--color-terracotta)] hover:underline">
+      <a href="/clients/new" className="inline-flex items-center gap-1.5 text-sm font-medium text-[var(--spring-text)] hover:underline">
         + Add your first client
       </a>
     </div>
@@ -505,9 +505,9 @@ function AllReviewedState({
   }
 
   const stats = [
-    { value: approvedCount, label: 'APPROVED', color: '#5A8A4A' },
-    { value: discardedCount, label: 'DISCARDED', color: '#C07B55' },
-    { value: approvedCount, label: 'ON CALENDAR', color: '#8A8070' },
+    { value: approvedCount, label: 'APPROVED', color: 'var(--spring-text)' },
+    { value: discardedCount, label: 'DISCARDED', color: 'var(--spring-text)' },
+    { value: approvedCount, label: 'ON CALENDAR', color: 'var(--text2)' },
   ]
 
   return (
@@ -516,7 +516,7 @@ function AllReviewedState({
         style={{
           background: '#fff',
           borderRadius: 16,
-          boxShadow: '0 2px 16px rgba(44,62,80,0.07)',
+          boxShadow: '0 2px 16px rgba(15,21,18,0.07)',
           padding: '48px 40px 40px',
           maxWidth: 520,
           width: '100%',
@@ -529,23 +529,23 @@ function AllReviewedState({
             width: 56,
             height: 56,
             borderRadius: '50%',
-            background: 'rgba(90,138,74,0.10)',
+            background: 'rgba(46,158,104,0.10)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             margin: '0 auto 20px',
           }}
         >
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#5A8A4A" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--spring-text)" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
             <path d="M4.5 12.75l6 6 9-13.5" />
           </svg>
         </div>
 
         {/* Heading */}
-        <h2 style={{ fontSize: 22, fontWeight: 600, color: '#1A2630', margin: '0 0 6px' }}>
+        <h2 style={{ fontSize: 22, fontWeight: 600, color: 'var(--ink)', margin: '0 0 6px' }}>
           All posts reviewed
         </h2>
-        <p style={{ fontSize: 14, color: '#8A8070', margin: '0 0 28px' }}>
+        <p style={{ fontSize: 14, color: 'var(--text2)', margin: '0 0 28px' }}>
           {approvedCount > 0
             ? `${approvedCount} post${approvedCount !== 1 ? 's' : ''} approved and saved to calendar for ${clientName}`
             : 'All posts were discarded.'}
@@ -555,8 +555,8 @@ function AllReviewedState({
         <div
           style={{
             display: 'flex',
-            borderTop: '1px solid rgba(44,62,80,0.08)',
-            borderBottom: '1px solid rgba(44,62,80,0.08)',
+            borderTop: '1px solid rgba(15,21,18,0.08)',
+            borderBottom: '1px solid rgba(15,21,18,0.08)',
             padding: '20px 0',
             marginBottom: 28,
           }}
@@ -564,7 +564,7 @@ function AllReviewedState({
           {stats.map((s) => (
             <div key={s.label} style={{ flex: 1 }}>
               <div style={{ fontSize: 28, fontWeight: 600, color: s.color }}>{s.value}</div>
-              <div style={{ fontSize: 11, fontWeight: 500, color: '#8A8070', letterSpacing: 0.5, marginTop: 4 }}>
+              <div style={{ fontSize: 11, fontWeight: 500, color: 'var(--text2)', letterSpacing: 0.5, marginTop: 4 }}>
                 {s.label}
               </div>
             </div>
@@ -605,9 +605,9 @@ const actionBtnStyle: React.CSSProperties = {
   padding: '10px 16px',
   fontSize: 13,
   fontWeight: 500,
-  color: '#8A8070',
+  color: 'var(--text2)',
   background: 'none',
-  border: '1px solid rgba(44,62,80,0.12)',
+  border: '1px solid rgba(15,21,18,0.12)',
   borderRadius: 10,
   cursor: 'pointer',
   fontFamily: 'inherit',

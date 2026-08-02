@@ -6,11 +6,11 @@ export function CtaSection() {
     <section
       className="mkt-pad"
       style={{
-        background: 'var(--color-sunken)',
+        background: 'var(--sunken)',
         paddingTop: 96,
         paddingBottom: 96,
         textAlign: 'center',
-        borderTop: '0.5px solid var(--color-border-1)',
+        borderTop: '1px solid var(--line)',
       }}
     >
       <AnimateIn>
@@ -20,7 +20,7 @@ export function CtaSection() {
             fontSize: 'clamp(26px, 3vw, 36px)',
             fontWeight: 400,
             letterSpacing: '-0.02em',
-            color: 'var(--color-text-1)',
+            color: 'var(--ink)',
             maxWidth: 640,
             margin: '0 auto 20px',
             lineHeight: 1.25,
@@ -31,7 +31,7 @@ export function CtaSection() {
         <p
           style={{
             fontSize: 16,
-            color: 'var(--color-text-2)',
+            color: 'var(--text2)',
             maxWidth: 480,
             margin: '0 auto 36px',
             lineHeight: 1.6,
@@ -46,7 +46,7 @@ export function CtaSection() {
             alignItems: 'center',
             gap: 6,
             padding: '12px 28px',
-            background: 'var(--color-brand)',
+            background: 'var(--forest)',
             color: '#fff',
             borderRadius: 10,
             fontSize: 15,
@@ -57,7 +57,7 @@ export function CtaSection() {
         >
           Get started free →
         </Link>
-        <p style={{ fontSize: 13, color: 'var(--color-text-3)', marginTop: 14 }}>
+        <p style={{ fontSize: 13, color: 'var(--text3)', marginTop: 14 }}>
           No credit card required · 14-day free trial
         </p>
       </AnimateIn>

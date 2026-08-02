@@ -13,8 +13,8 @@ function ReadOnlyFeedback({ value }: { value: string }) {
   return (
     <div
       style={{
-        background: 'rgba(44,94,138,0.04)',
-        border: '0.5px solid rgba(44,94,138,0.20)',
+        background: 'rgba(22,68,48,0.04)',
+        border: '1px solid rgba(22,68,48,0.20)',
         borderRadius: 12,
         padding: '14px 16px',
       }}
@@ -23,7 +23,7 @@ function ReadOnlyFeedback({ value }: { value: string }) {
         style={{
           fontSize: 10,
           fontWeight: 500,
-          color: '#2C5F8A',
+          color: 'var(--forest)',
           marginBottom: 8,
           display: 'flex',
           alignItems: 'center',
@@ -33,7 +33,7 @@ function ReadOnlyFeedback({ value }: { value: string }) {
         <MessageCircle size={11} />
         Feedback you sent
       </div>
-      <div style={{ fontSize: 13, color: '#1A2630', lineHeight: 1.6 }}>{value}</div>
+      <div style={{ fontSize: 13, color: 'var(--ink)', lineHeight: 1.6 }}>{value}</div>
     </div>
   )
 }
@@ -44,12 +44,12 @@ function FeedbackInput({ value, onChange }: { value: string; onChange?: (v: stri
     <div
       style={{
         background: '#fff',
-        border: '0.5px solid rgba(44,62,80,0.10)',
+        border: '1px solid rgba(15,21,18,0.10)',
         borderRadius: 12,
         padding: '14px 16px',
       }}
     >
-      <div style={{ fontSize: 10, fontWeight: 500, color: '#8A8070', marginBottom: 8 }}>
+      <div style={{ fontSize: 10, fontWeight: 500, color: 'var(--text2)', marginBottom: 8 }}>
         Leave feedback (optional)
       </div>
       <textarea
@@ -60,11 +60,11 @@ function FeedbackInput({ value, onChange }: { value: string; onChange?: (v: stri
         style={{
           width: '100%',
           padding: '9px 12px',
-          border: '1px solid rgba(44,62,80,0.16)',
+          border: '1px solid rgba(15,21,18,0.16)',
           borderRadius: 8,
           fontSize: 13,
           fontFamily: 'inherit',
-          color: '#1A2630',
+          color: 'var(--ink)',
           background: '#fff',
           outline: 'none',
           resize: 'none',

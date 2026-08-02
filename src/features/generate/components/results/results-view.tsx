@@ -124,10 +124,10 @@ export function ResultsView({
               padding: '8px 12px',
               fontSize: 12,
               fontWeight: 500,
-              color: 'var(--color-muted)',
-              background: 'var(--color-surface)',
+              color: 'var(--text2)',
+              background: 'var(--surface)',
               border: 'none',
-              borderBottom: '0.5px solid var(--color-border-1)',
+              borderBottom: '1px solid var(--line)',
               cursor: 'pointer',
               fontFamily: 'inherit',
               flexShrink: 0,
@@ -211,25 +211,25 @@ function ResultsTopbar({
     <div
       style={{
         minHeight: '46px',
-        background: 'var(--color-surface)',
-        borderBottom: '0.5px solid var(--color-border-1)',
+        background: 'var(--surface)',
+        borderBottom: '1px solid var(--line)',
         display: 'flex',
         alignItems: 'center',
         flexWrap: 'wrap',
         padding: '6px 18px',
         gap: '8px',
         flexShrink: 0,
-        boxShadow: '0 1px 0 rgba(44,62,80,0.05)',
+        boxShadow: '0 1px 0 rgba(15,21,18,0.05)',
       }}
     >
-      <span style={{ fontSize: '13px', fontWeight: 500, color: 'var(--color-text-1)' }}>
+      <span style={{ fontSize: '13px', fontWeight: 500, color: 'var(--ink)' }}>
         {postsCount} posts generated
       </span>
-      <span className="hidden sm:inline" style={{ fontSize: '11px', color: 'var(--color-muted)' }}>
+      <span className="hidden sm:inline" style={{ fontSize: '11px', color: 'var(--text2)' }}>
         {clientName} · {platform} · {postType === 'carousel' ? 'Carousel' : 'Single image'}
       </span>
       {visualsProgress && (
-        <span style={{ fontSize: '11px', fontWeight: 500, color: '#C07B55' }} className="animate-pulse">
+        <span style={{ fontSize: '11px', fontWeight: 500, color: 'var(--spring-text)' }} className="animate-pulse">
           ✨ {visualsProgress}
         </span>
       )}
@@ -271,12 +271,12 @@ function PostNavigator({
           border: 'none',
           cursor: current <= 1 ? 'not-allowed' : 'pointer',
           opacity: current <= 1 ? 0.3 : 1,
-          color: 'var(--color-text-2)',
+          color: 'var(--text2)',
         }}
       >
         <ChevronLeft size={14} />
       </button>
-      <span style={{ fontSize: '11px', color: 'var(--color-muted)', minWidth: '60px', textAlign: 'center' }}>
+      <span style={{ fontSize: '11px', color: 'var(--text2)', minWidth: '60px', textAlign: 'center' }}>
         Post {current} of {total}
       </span>
       <button
@@ -289,7 +289,7 @@ function PostNavigator({
           border: 'none',
           cursor: current >= total ? 'not-allowed' : 'pointer',
           opacity: current >= total ? 0.3 : 1,
-          color: 'var(--color-text-2)',
+          color: 'var(--text2)',
         }}
       >
         <ChevronRight size={14} />
@@ -306,10 +306,10 @@ function SkippedBanner({ pillars, clientId }: { pillars: SkippedPillar[]; client
         alignItems: 'center',
         gap: '8px',
         padding: '7px 18px',
-        background: 'rgba(192,123,85,0.07)',
-        borderBottom: '1px solid rgba(192,123,85,0.12)',
+        background: 'rgba(46,158,104,0.07)',
+        borderBottom: '1px solid rgba(46,158,104,0.12)',
         fontSize: '11px',
-        color: '#8A4A2A',
+        color: 'var(--spring-text)',
         flexShrink: 0,
       }}
     >
@@ -319,7 +319,7 @@ function SkippedBanner({ pillars, clientId }: { pillars: SkippedPillar[]; client
         : `${pillars.length} topics skipped — no sources feed them.`}
       <a
         href={`/clients/${clientId}/sources`}
-        style={{ color: 'var(--color-terracotta)', fontWeight: 500, marginLeft: '3px', textDecoration: 'none' }}
+        style={{ color: 'var(--spring-text)', fontWeight: 500, marginLeft: '3px', textDecoration: 'none' }}
       >
         Fix in Content sources →
       </a>

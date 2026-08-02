@@ -475,11 +475,11 @@ export function CanvasEditorOverlay(props: CanvasEditorProps) {
               }}
               style={{
                 lineHeight: 0,
-                border: '0.5px solid var(--color-border-2)',
+                border: '1px solid var(--line2)',
                 borderRadius: 4,
                 overflow: 'hidden',
-                boxShadow: '0 4px 24px rgba(44,62,80,0.12)',
-                background: 'var(--color-surface)',
+                boxShadow: '0 4px 24px rgba(15,21,18,0.12)',
+                background: 'var(--surface)',
               }}
             >
               <EditorStage
@@ -508,8 +508,8 @@ export function CanvasEditorOverlay(props: CanvasEditorProps) {
           style={{
             width: PANEL_WIDTH,
             flexShrink: 0,
-            background: 'var(--color-page)',
-            borderLeft: '0.5px solid var(--color-border-1)',
+            background: 'var(--paper)',
+            borderLeft: '1px solid var(--line)',
             overflowY: 'auto',
           }}
         >
@@ -594,7 +594,7 @@ function Backdrop({ children, onClose }: { children: React.ReactNode; onClose: (
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) onClose()
       }}
-      style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'var(--color-sunken)' }}
+      style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'var(--sunken)' }}
     >
       {children}
     </div>
@@ -611,7 +611,7 @@ function CenterNotice({ children }: { children: React.ReactNode }) {
         justifyContent: 'center',
         height: '100%',
         width: '100%',
-        color: 'var(--color-text-2)',
+        color: 'var(--text2)',
         fontSize: '13px',
         fontFamily: 'var(--font-sans)',
         textAlign: 'center',
@@ -647,17 +647,17 @@ function TopBar(props: TopBarProps) {
         alignItems: 'center',
         gap: 12,
         padding: '0 16px',
-        borderBottom: '0.5px solid var(--color-border-1)',
-        background: 'var(--color-page)',
+        borderBottom: '1px solid var(--line)',
+        background: 'var(--paper)',
       }}
     >
-      <span style={{ fontSize: '13px', fontWeight: 500, color: 'var(--color-text-1)', fontFamily: 'var(--font-sans)' }}>
+      <span style={{ fontSize: '13px', fontWeight: 500, color: 'var(--ink)', fontFamily: 'var(--font-sans)' }}>
         {props.slideLabel}
       </span>
       {props.overflows && (
         <span
           title="Some text does not fit its slot — shorten it or reduce the font size."
-          style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: '11px', color: 'var(--color-error-fg)' }}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: '11px', color: 'var(--danger)' }}
         >
           <AlertTriangle size={13} /> Text overflows
         </span>
@@ -715,9 +715,9 @@ function IconButton({
         width: 28,
         height: 28,
         borderRadius: 6,
-        border: '0.5px solid var(--color-border-1)',
+        border: '1px solid var(--line)',
         background: 'transparent',
-        color: 'var(--color-text-2)',
+        color: 'var(--text2)',
         cursor: disabled ? 'default' : 'pointer',
         opacity: disabled ? 0.4 : 1,
       }}

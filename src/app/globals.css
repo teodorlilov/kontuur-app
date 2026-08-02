@@ -1,5 +1,14 @@
 @import 'tailwindcss';
 
+/* Tailwind's scanner walks the whole repo, so class names quoted in prose get
+   compiled. A review note under `.impeccable/critique/` mentioned a stock
+   palette utility, and the detector's own source carries a lookup table of
+   them — enough to ship stock-palette variables in the stylesheet long after
+   every such class had been removed from the app. Docs are not source. */
+@source not "../../.impeccable";
+@source not "../../docs";
+@source not "../../.claude";
+
 /* ─── Contour design system — source of truth ─────────────────────────
    Naming follows docs/plans/LANDING-REDESIGN.md §2. Density rule:
    landing = full contour field · auth = 2 lines · dashboard = full field,
@@ -11,7 +20,12 @@
    1.05:1, so tone cannot do the work. A card is a clearing — opaque, hairline
    edge, contour lines stopping at its boundary, and NO shadow.
 
-   --accent stays a data highlight, never a surface. */
+   --accent is a SURFACE, never ink on light. It is the ground the interface
+   stands on: a filled plate carrying Forest Ink (13.65:1) or Pine Deep
+   (10.87:1) — never a line, a dot, or a word on paper, where it measures
+   1.35:1 and fails even the 3:1 non-text bar. On dark grounds the relationship
+   inverts and lime becomes the figure. See DESIGN.md § The Fill-Only Lime Rule
+   and § The Standing Place Rule. */
 :root {
   /* Surfaces. There is no --raised: cards are flat clearings, not gradients. */
   --paper: #fbfcfa;
@@ -35,11 +49,18 @@
   --forest-deep: #0c2e20;
   --spring: #2e9e68;
   --spring-lite: #7fd6a8; /* spring, legible on dark surfaces */
+  /* Living Green as a WORD on light. --spring is 3.38:1 and fails as text;
+     this holds 4.53:1 at the same hue. DESIGN.md named it long before this
+     declaration existed, which is why green text kept landing on --spring. */
+  --spring-text: #278658;
   --wash: #eef4ef;
   --marker: #d9eddd;
   --surface-lime: #e6eeae;
   --sage: #cfe4d4;
   --accent: #cfea45;
+  /* Hover/press for the interactive lime plates. One step down the documented
+     New Growth ramp, so hover shifts tone and never hue. Pine Deep on it = 8.21:1. */
+  --accent-deep: #b4cd32;
 
   /* Status */
   --danger: #b04a38;
@@ -52,7 +73,6 @@
   --surface-dark: linear-gradient(180deg, #113429 0%, #0e2b21 100%);
   --surface-dark-capsule: linear-gradient(180deg, #10382a 0%, #0a2b1d 100%);
   --surface-live: linear-gradient(180deg, #f0f7f1 0%, #e9f3eb 100%);
-  --mark-gradient: linear-gradient(150deg, var(--spring), #16593c);
 
   /* Textures — dark surfaces pair the dot grid with 13px 13px sizing */
   --dot-grid: radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1.5px);
@@ -120,65 +140,20 @@
   --text-label: 9.5px;
 }
 
-/* ─── Legacy token compatibility ──────────────────────────────────────
-   WHY: ~135 files still reference the pre-Contour --color-* / --sidebar-*
-   names. Aliasing them to Contour values means surfaces that have not been
-   rebuilt yet follow the palette instead of stranding on the old navy.
-   Each alias is deleted as its surface is rebuilt. */
+/* ─── Metric ramp ─────────────────────────────────────────────────────
+   Four greens for four chart series, deliberately not four unrelated hues —
+   see DESIGN.md § The Botanical Closure Rule. Named for the job rather than
+   for a position, so a fifth series is a conversation, not a `--metric-5`.
+
+   This is all that remains of the pre-Contour --color-* / --sidebar-* compat
+   layer: 43 aliases, ~540 references across 96 files, now resolved to their
+   Contour tokens and deleted. Nothing should reintroduce an alias here — the
+   tokens above are the vocabulary. */
 :root {
-  --color-page: var(--paper);
-  --color-surface: var(--surface);
-  --color-sunken: var(--sunken);
-  --color-overlay: rgba(15, 21, 18, 0.04);
-
-  --color-brand: var(--forest);
-  --color-brand-hover: var(--forest-deep);
-  --color-brand-accent: var(--spring);
-  --color-brand-light: rgba(46, 158, 104, 0.12);
-
-  --color-text-1: var(--ink);
-  --color-text-2: var(--text2);
-  --color-text-3: var(--text3);
-  --color-text-inv: #ffffff;
-  --color-muted: var(--text2);
-
-  --color-border-1: var(--line);
-  --color-border-2: var(--line2);
-  --color-border-3: #bcc7be;
-
-  --color-published-bg: var(--wash);
-  --color-published-fg: var(--forest);
-  --color-scheduled-bg: var(--marker);
-  --color-scheduled-fg: var(--forest-deep);
-  --color-pending-bg: var(--pending-bg);
-  --color-pending-fg: var(--pending);
-  --color-draft-bg: var(--sunken);
-  --color-draft-fg: var(--text2);
-  --color-error-bg: var(--danger-bg);
-  --color-error-fg: var(--danger);
-
-  /* The terracotta accent is retired — its consumers now read as spring. */
-  --color-terracotta: var(--spring);
-  --status-ok: var(--spring);
-  --status-warn: var(--pending);
-
-  /* Metric accents: a forest ramp instead of four unrelated hues. */
-  --accent-m1: var(--forest);
-  --accent-m2: var(--spring);
-  --accent-m3: #7fa588;
-  --accent-m4: var(--forest-deep);
-
-  /* Dark rails outside the app shell (onboarding, client settings) */
-  --sidebar-bg: var(--forest-deep);
-  --sidebar-text: rgba(242, 245, 241, 0.55);
-  --sidebar-text-active: #f2f5f1;
-  --sidebar-icon: rgba(242, 245, 241, 0.38);
-  --sidebar-icon-active: var(--spring-lite);
-  --sidebar-item-bg-hover: rgba(242, 245, 241, 0.07);
-  --sidebar-item-bg-active: rgba(46, 158, 104, 0.18);
-  --sidebar-badge-bg: rgba(46, 158, 104, 0.25);
-  --sidebar-badge-text: var(--spring-lite);
-  --sidebar-section-label: rgba(242, 245, 241, 0.3);
+  --metric-1: var(--forest);
+  --metric-2: var(--spring);
+  --metric-3: #7fa588;
+  --metric-4: var(--forest-deep);
 }
 
 /* Registered with Tailwind so components use utilities, not inline styles.
@@ -203,11 +178,13 @@
   --color-forest-deep: var(--forest-deep);
   --color-spring: var(--spring);
   --color-spring-lite: var(--spring-lite);
+  --color-spring-text: var(--spring-text);
   --color-wash: var(--wash);
   --color-marker: var(--marker);
   --color-lime: var(--surface-lime);
   --color-sage: var(--sage);
   --color-accent: var(--accent);
+  --color-accent-deep: var(--accent-deep);
   --color-danger: var(--danger);
   --color-danger-bg: var(--danger-bg);
   --color-danger-line: var(--danger-line);
@@ -255,7 +232,9 @@ body {
 }
 
 /* ─── Keyframes ─── */
-@keyframes bounce-dot {
+/* Named for what it does. It was `bounce-dot`, which described a motion this
+   system does not use — nothing here bounces, and the keyframe only fades. */
+@keyframes pulse-dot {
   0%, 80%, 100% { opacity: 0.3; }
   40% { opacity: 1; }
 }
@@ -376,11 +355,6 @@ body {
   background-color: var(--wash);
 }
 
-.surface-mark {
-  background-image: var(--mark-gradient);
-  background-color: var(--spring);
-}
-
 .slot-open {
   background-image: var(--hatch);
 }
@@ -466,9 +440,12 @@ body {
 }
 
 /* ─── Print styles ─── */
-/* Targets the shell by explicit class (.app-shell / .app-topbar) rather than
+/* Targets the shell by explicit class (.app-shell / .app-sidebar) rather than
    by structure — the analytics PDF export is the only consumer and would
-   break silently if these keyed off layout classnames or tag position. */
+   break silently if these keyed off layout classnames or tag position.
+
+   .app-sidebar being hidden here is also why the lime active-nav plate never
+   reaches paper: there is no print override to maintain. */
 @media print {
   html, body {
     height: auto !important;
@@ -485,7 +462,6 @@ body {
   }
 
   .app-sidebar,
-  .app-topbar,
   .print-hide {
     display: none !important;
   }

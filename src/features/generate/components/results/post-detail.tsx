@@ -119,12 +119,12 @@ export function PostDetail({ post, validationData, visuals, onRegenerateVisual, 
           <Button onClick={() => scheduleModal.openModal()} loading={approving} className="flex-1" size="sm">
             Approve
           </Button>
-          <Button onClick={() => onDiscard(post.id)} variant="ghost" size="sm" className="text-gray-500 hover:text-red-600">
+          <Button onClick={() => onDiscard(post.id)} variant="ghost" size="sm" className="text-text3 hover:text-danger">
             Discard
           </Button>
         </div>
         {pendingVisualCount > 0 && (
-          <p style={{ fontSize: 11, color: '#C07B55', margin: '6px 0 0', textAlign: 'center' }}>
+          <p style={{ fontSize: 11, color: 'var(--spring-text)', margin: '6px 0 0', textAlign: 'center' }}>
             {pendingVisualCount} visual{pendingVisualCount > 1 ? 's' : ''} still generating — approving now attaches
             the finished ones; add the rest later in Calendar.
           </p>

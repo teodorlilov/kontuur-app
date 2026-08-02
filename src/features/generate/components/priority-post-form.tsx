@@ -28,10 +28,10 @@ export function PriorityPostForm({ posts, onChange }: PriorityPostFormProps) {
         <div
           key={i}
           style={{
-            border: '0.5px solid rgba(44,62,80,0.10)',
+            border: '1px solid rgba(15,21,18,0.10)',
             borderRadius: '12px',
             padding: '18px 20px',
-            background: '#F9F6F2',
+            background: 'var(--sunken)',
           }}
         >
           <div className="flex items-center justify-between mb-3">
@@ -39,7 +39,7 @@ export function PriorityPostForm({ posts, onChange }: PriorityPostFormProps) {
               style={{
                 fontSize: '9px',
                 fontWeight: 500,
-                color: 'var(--color-terracotta)',
+                color: 'var(--spring-text)',
                 letterSpacing: '1.2px',
                 textTransform: 'uppercase',
               }}
@@ -48,7 +48,7 @@ export function PriorityPostForm({ posts, onChange }: PriorityPostFormProps) {
             </span>
             <button
               onClick={() => removeRow(i)}
-              className="text-sm text-gray-400 hover:text-red-600"
+              className="text-sm text-text3 hover:text-danger"
             >
               Remove
             </button>
@@ -60,22 +60,22 @@ export function PriorityPostForm({ posts, onChange }: PriorityPostFormProps) {
             placeholder="e.g. Summer skin care campaign announcement"
           />
           <div className="flex flex-col gap-1.5 mt-3">
-            <label style={{ fontSize: '12px', fontWeight: 500, color: 'var(--color-text-2)' }}>Brief</label>
+            <label style={{ fontSize: '12px', fontWeight: 500, color: 'var(--text2)' }}>Brief</label>
             <textarea
               value={post.brief}
               onChange={(e) => updateRow(i, 'brief', e.target.value)}
               placeholder="Key messages to include, specific products or services to mention..."
               rows={2}
-              className="w-full rounded-lg border border-gray-300 px-4 py-3 text-base text-gray-900 placeholder:text-gray-400 focus:border-[var(--color-border-3)] focus:outline-none focus:ring-1 focus:ring-[var(--color-border-3)] resize-none"
+              className="w-full rounded-lg border border-line2 px-4 py-3 text-base text-ink placeholder:text-text3 focus:border-[var(--line2)] focus:outline-none focus:ring-1 focus:ring-[var(--line2)] resize-none"
             />
           </div>
           <div className="grid grid-cols-2 gap-4 mt-3">
             <div className="flex flex-col gap-1.5">
-              <label style={{ fontSize: '12px', fontWeight: 500, color: 'var(--color-text-2)' }}>Platform</label>
+              <label style={{ fontSize: '12px', fontWeight: 500, color: 'var(--text2)' }}>Platform</label>
               <select
                 value={post.platform}
                 onChange={(e) => updateRow(i, 'platform', e.target.value)}
-                className="rounded-lg border border-gray-300 px-4 py-3 text-base text-gray-900 focus:border-[var(--color-border-3)] focus:outline-none focus:ring-1 focus:ring-[var(--color-border-3)]"
+                className="rounded-lg border border-line2 px-4 py-3 text-base text-ink focus:border-[var(--line2)] focus:outline-none focus:ring-1 focus:ring-[var(--line2)]"
               >
                 {PLATFORMS.map((p) => (
                   <option key={p} value={p}>
@@ -101,9 +101,9 @@ export function PriorityPostForm({ posts, onChange }: PriorityPostFormProps) {
           padding: '12px',
           fontSize: '12px',
           fontWeight: 500,
-          color: '#8A8070',
+          color: 'var(--text2)',
           background: 'none',
-          border: '1px dashed rgba(44,62,80,0.22)',
+          border: '1px dashed rgba(15,21,18,0.22)',
           borderRadius: '10px',
           cursor: 'pointer',
           fontFamily: 'inherit',

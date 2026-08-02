@@ -158,7 +158,7 @@ function TextControls({
                   flex: 1,
                   cursor: 'pointer',
                   textTransform: 'capitalize',
-                  background: layer.align === align ? 'var(--color-overlay)' : 'var(--color-page)',
+                  background: layer.align === align ? 'rgba(15,21,18,0.04)' : 'var(--paper)',
                 }}
               >
                 {align[0]?.toUpperCase()}

@@ -67,7 +67,7 @@ export function StepLoading({ analysisComplete, onSkip, onComplete }: StepLoadin
         alignItems: 'center',
         justifyContent: 'center',
         padding: '40px',
-        background: 'var(--color-surface)',
+        background: 'var(--surface)',
       }}
     >
       <div
@@ -75,14 +75,14 @@ export function StepLoading({ analysisComplete, onSkip, onComplete }: StepLoadin
           width: '56px',
           height: '56px',
           borderRadius: '14px',
-          background: 'var(--sidebar-bg)',
+          background: 'var(--forest-deep)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           marginBottom: '20px',
         }}
       >
-        <Search size={22} color="var(--color-terracotta)" strokeWidth={1.5} />
+        <Search size={22} color="var(--spring)" strokeWidth={1.5} />
       </div>
 
       <h2
@@ -90,14 +90,14 @@ export function StepLoading({ analysisComplete, onSkip, onComplete }: StepLoadin
           fontFamily: 'var(--font-display)',
           fontSize: '22px',
           fontWeight: 400,
-          color: 'var(--color-text-1)',
+          color: 'var(--ink)',
           marginBottom: '6px',
           textAlign: 'center',
         }}
       >
         Analyzing brand presence
       </h2>
-      <p style={{ fontSize: '13px', color: 'var(--color-muted)', textAlign: 'center', marginBottom: '32px' }}>
+      <p style={{ fontSize: '13px', color: 'var(--text2)', textAlign: 'center', marginBottom: '32px' }}>
         Scanning website, detecting tone and content themes
       </p>
 
@@ -108,7 +108,7 @@ export function StepLoading({ analysisComplete, onSkip, onComplete }: StepLoadin
         onClick={onSkip}
         style={{
           fontSize: '12px',
-          color: 'var(--color-muted)',
+          color: 'var(--text2)',
           background: 'none',
           border: 'none',
           cursor: 'pointer',
@@ -153,10 +153,10 @@ function StageRow({ label, index, activeStage }: { label: string; index: number;
         padding: '10px 14px',
         borderRadius: '8px',
         background: isDone
-          ? 'rgba(122,154,106,0.08)'
+          ? 'var(--wash)'
           : isActive
-            ? 'rgba(44,62,80,0.06)'
-            : 'var(--color-page)',
+            ? 'rgba(15,21,18,0.06)'
+            : 'var(--paper)',
         transition: 'background 0.3s',
       }}
     >
@@ -165,7 +165,7 @@ function StageRow({ label, index, activeStage }: { label: string; index: number;
         style={{
           fontSize: '12px',
           fontWeight: 500,
-          color: isDone ? 'var(--status-ok)' : isActive ? 'var(--color-text-1)' : 'var(--color-muted)',
+          color: isDone ? 'var(--spring-text)' : isActive ? 'var(--ink)' : 'var(--text2)',
         }}
       >
         {label}
@@ -182,7 +182,7 @@ function StageIcon({ isDone, isActive }: { isDone: boolean; isActive: boolean })
           width: '20px',
           height: '20px',
           borderRadius: '50%',
-          background: 'var(--status-ok)',
+          background: 'var(--spring)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -201,7 +201,7 @@ function StageIcon({ isDone, isActive }: { isDone: boolean; isActive: boolean })
           width: '20px',
           height: '20px',
           borderRadius: '50%',
-          background: 'var(--sidebar-bg)',
+          background: 'var(--forest-deep)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -219,7 +219,7 @@ function StageIcon({ isDone, isActive }: { isDone: boolean; isActive: boolean })
         width: '20px',
         height: '20px',
         borderRadius: '50%',
-        background: 'rgba(44,62,80,0.12)',
+        background: 'rgba(15,21,18,0.12)',
         flexShrink: 0,
       }}
     />

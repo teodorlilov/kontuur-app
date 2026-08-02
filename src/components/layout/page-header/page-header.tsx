@@ -4,6 +4,7 @@ import { CrumbTrail, type CrumbItem } from '@/components/layout/page-header/crum
 import { RailTools } from '@/components/layout/page-header/rail-tools'
 import { StickyShell } from '@/components/layout/page-header/sticky-shell'
 import { PAGE_SHELL } from '@/components/layout/page-header/shared'
+import { StatusPill } from '@/components/ui/status-pill'
 import { cn } from '@/utils/cn'
 
 interface PageHeaderProps {
@@ -100,7 +101,9 @@ export function PageHeader({
                 aria-hidden="true"
                 className={cn(
                   'grid size-[42px] flex-none place-items-center rounded-lg bg-forest-deep',
-                  'text-xs font-bold text-white transition-[width,height] duration-300 ease-contour motion-reduce:transition-none',
+                  // Lime as the figure on Pine Deep, 10.87:1 — the inverse of the
+                  // sidebar plate, and the header's lime on the two detail routes.
+                  'text-xs font-bold text-accent transition-[width,height] duration-300 ease-contour motion-reduce:transition-none',
                   // Floating chrome, not a clearing — the one place a mark this
                   // small still earns a shadow.
                   'shadow-[0_6px_16px_-6px_rgba(15,21,18,0.4)]',
@@ -188,14 +191,15 @@ export function HeaderMeta({ parts }: { parts: Array<ReactNode | null | false> }
   )
 }
 
-/** The one clause in the meta line that needs you. At most one per page. */
+/**
+ * The one clause in the meta line that needs you — the header band's lime.
+ *
+ * Delegates to StatusPill rather than carrying its own colour: `mark` is already
+ * lime-with-Pine-Deep, and two copies of that pairing would drift. It replaced a
+ * 7px lime square, which measured 1.35:1 on paper and was not visible at all.
+ */
 export function MetaFlag({ children }: { children: ReactNode }) {
-  return (
-    <span className="inline-flex items-center gap-1.5 font-medium text-ink">
-      <span aria-hidden="true" className="size-[7px] flex-none rounded-xs bg-accent" />
-      {children}
-    </span>
-  )
+  return <StatusPill tone="mark">{children}</StatusPill>
 }
 
 /** A clause reporting something already wrong, rather than something waiting. */

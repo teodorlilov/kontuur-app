@@ -69,11 +69,11 @@ export const UnscheduledPanel = memo(function UnscheduledPanel({
         width: '100%',
         maxWidth: 360,
         background: '#fff',
-        borderLeft: '0.5px solid var(--color-border-1)',
+        borderLeft: '1px solid var(--line)',
         display: 'flex',
         flexDirection: 'column',
         zIndex: 15,
-        boxShadow: '-6px 0 30px rgba(44,62,80,0.12)',
+        boxShadow: '-6px 0 30px rgba(15,21,18,0.12)',
         transform: isOpen ? 'translateX(0)' : 'translateX(100%)',
         transition: 'transform 0.28s cubic-bezier(.4,0,.2,1)',
       }}
@@ -82,7 +82,7 @@ export const UnscheduledPanel = memo(function UnscheduledPanel({
       <div
         style={{
           padding: '16px 18px 12px',
-          borderBottom: '0.5px solid rgba(44,62,80,0.07)',
+          borderBottom: '1px solid rgba(15,21,18,0.07)',
           flexShrink: 0,
         }}
       >
@@ -99,7 +99,7 @@ export const UnscheduledPanel = memo(function UnscheduledPanel({
             style={{
               fontSize: 14,
               fontWeight: 500,
-              color: 'var(--color-text-1)',
+              color: 'var(--ink)',
               display: 'flex',
               alignItems: 'center',
               gap: 8,
@@ -110,8 +110,8 @@ export const UnscheduledPanel = memo(function UnscheduledPanel({
               style={{
                 fontSize: 11,
                 fontWeight: 500,
-                color: 'var(--color-terracotta)',
-                background: 'rgba(192,123,85,0.12)',
+                color: 'var(--spring-text)',
+                background: 'rgba(46,158,104,0.12)',
                 padding: '2px 8px',
                 borderRadius: 5,
               }}
@@ -131,7 +131,7 @@ export const UnscheduledPanel = memo(function UnscheduledPanel({
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              color: 'var(--color-muted)',
+              color: 'var(--text2)',
               borderRadius: 4,
             }}
           >
@@ -148,12 +148,12 @@ export const UnscheduledPanel = memo(function UnscheduledPanel({
               alignItems: 'center',
               gap: 6,
               padding: '5px 8px',
-              border: '0.5px solid var(--color-border-2)',
+              border: '1px solid var(--line2)',
               borderRadius: 6,
               background: '#fff',
             }}
           >
-            <Search style={{ width: 12, height: 12, color: 'var(--color-muted)', flexShrink: 0 }} />
+            <Search style={{ width: 12, height: 12, color: 'var(--text2)', flexShrink: 0 }} />
             <input
               type="text"
               value={search}
@@ -163,7 +163,7 @@ export const UnscheduledPanel = memo(function UnscheduledPanel({
                 border: 'none',
                 outline: 'none',
                 fontSize: 11,
-                color: 'var(--color-text-1)',
+                color: 'var(--ink)',
                 background: 'transparent',
                 width: '100%',
                 fontFamily: 'inherit',
@@ -197,7 +197,7 @@ export const UnscheduledPanel = memo(function UnscheduledPanel({
           style={{
             fontSize: 9,
             fontWeight: 500,
-            color: 'var(--color-muted)',
+            color: 'var(--text2)',
             letterSpacing: '1px',
             textTransform: 'uppercase',
           }}
@@ -209,7 +209,7 @@ export const UnscheduledPanel = memo(function UnscheduledPanel({
           onChange={(e) => setSort(e.target.value as PanelSort)}
           style={{
             fontSize: 10,
-            color: 'var(--color-muted)',
+            color: 'var(--text2)',
             background: 'none',
             border: 'none',
             outline: 'none',
@@ -258,7 +258,7 @@ export const UnscheduledPanel = memo(function UnscheduledPanel({
               padding: '40px 20px',
               textAlign: 'center',
               fontSize: 13,
-              color: 'var(--color-muted)',
+              color: 'var(--text2)',
               fontStyle: 'italic',
             }}
           >
@@ -271,15 +271,15 @@ export const UnscheduledPanel = memo(function UnscheduledPanel({
       <div
         style={{
           padding: '12px 18px',
-          borderTop: '0.5px solid rgba(44,62,80,0.07)',
+          borderTop: '1px solid rgba(15,21,18,0.07)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          background: '#FDFAF8',
+          background: 'var(--sunken)',
           flexShrink: 0,
         }}
       >
-        <span style={{ fontSize: 11, color: 'var(--color-muted)' }}>
+        <span style={{ fontSize: 11, color: 'var(--text2)' }}>
           Select a post to schedule it
         </span>
       </div>
@@ -294,11 +294,11 @@ function SectionLabel({ label }: { label: string }) {
         padding: '8px 18px 4px',
         fontSize: 9,
         fontWeight: 500,
-        color: 'var(--color-muted)',
+        color: 'var(--text2)',
         letterSpacing: '1.2px',
         textTransform: 'uppercase',
-        background: '#FDFAF8',
-        borderBottom: '0.5px solid rgba(44,62,80,0.07)',
+        background: 'var(--sunken)',
+        borderBottom: '1px solid rgba(15,21,18,0.07)',
       }}
     >
       {label}
@@ -323,10 +323,10 @@ function FilterBtn({
         padding: '5px 10px',
         fontSize: 10,
         fontWeight: 500,
-        border: active ? 'none' : '0.5px solid var(--color-border-2)',
+        border: active ? 'none' : '1px solid var(--line2)',
         borderRadius: 5,
-        background: active ? 'var(--color-brand)' : '#fff',
-        color: active ? '#ECE8E1' : 'var(--color-muted)',
+        background: active ? 'var(--forest)' : '#fff',
+        color: active ? '#f2f5f1' : 'var(--text2)',
         cursor: 'pointer',
         fontFamily: 'inherit',
         transition: 'all 0.15s',

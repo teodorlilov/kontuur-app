@@ -22,8 +22,8 @@ export function PostList({ posts, selectedPostId, visualsByPost, onSelect }: Pos
       className="w-full md:w-[280px]"
       style={{
         flexShrink: 0,
-        background: 'var(--color-surface)',
-        borderRight: '0.5px solid var(--color-border-1)',
+        background: 'var(--surface)',
+        borderRight: '1px solid var(--line)',
         display: 'flex',
         flexDirection: 'column',
         overflow: 'hidden',
@@ -51,17 +51,17 @@ function ListHeader({ count }: { count: number }) {
     <div
       style={{
         padding: '10px 16px',
-        borderBottom: '0.5px solid var(--color-border-1)',
+        borderBottom: '1px solid var(--line)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
         flexShrink: 0,
       }}
     >
-      <span style={{ fontSize: '9px', fontWeight: 500, color: 'var(--color-muted)', letterSpacing: '1.5px', textTransform: 'uppercase' }}>
+      <span style={{ fontSize: 'var(--text-label)', fontWeight: 500, color: 'var(--text2)', letterSpacing: '1.5px', textTransform: 'uppercase' }}>
         Posts
       </span>
-      <span style={{ fontSize: '10px', color: 'var(--color-muted)' }}>{count} generated</span>
+      <span style={{ fontSize: '10px', color: 'var(--text2)' }}>{count} generated</span>
     </div>
   )
 }
@@ -86,17 +86,17 @@ function PostListItem({
       onClick={onClick}
       style={{
         padding: '12px 16px',
-        borderBottom: '0.5px solid rgba(44,62,80,0.055)',
+        borderBottom: '1px solid rgba(15,21,18,0.055)',
         cursor: 'pointer',
         position: 'relative',
         overflow: 'hidden',
-        background: isActive ? 'rgba(44,62,80,0.035)' : 'transparent',
+        background: isActive ? 'rgba(15,21,18,0.035)' : 'transparent',
         transition: 'background 0.12s',
       }}
     >
       {isActive && <ActiveBar />}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '5px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', fontWeight: 500, color: 'var(--color-text-1)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', fontWeight: 500, color: 'var(--ink)' }}>
           {pillarColor && <div style={{ width: '7px', height: '7px', borderRadius: '50%', background: pillarColor.hex, flexShrink: 0 }} />}
           {post.pillar ?? 'General'}
         </div>
@@ -126,8 +126,9 @@ function VisualsCounter({ visuals }: { visuals: DraftVisual[] | undefined }) {
         fontWeight: 500,
         padding: '3px 7px',
         borderRadius: '4px',
-        background: complete ? 'rgba(90,138,74,0.10)' : 'rgba(192,123,85,0.08)',
-        color: complete ? 'var(--status-ok)' : '#C07B55',
+        // Complete = published pair; incomplete is a wait, so Amber.
+        background: complete ? 'var(--wash)' : 'var(--pending-bg)',
+        color: complete ? 'var(--forest)' : 'var(--pending)',
       }}
     >
       <ImageIcon style={{ width: 10, height: 10 }} />
@@ -138,11 +139,14 @@ function VisualsCounter({ visuals }: { visuals: DraftVisual[] | undefined }) {
 
 function StatusBadge({ status }: { status: string }) {
   const config =
+    // Three documented chip pairs, three distinct states. Approved and Discarded
+    // used to render the same green: --status-ok and --color-terracotta are both
+    // aliases of --spring.
     status === 'approved'
-      ? { bg: 'rgba(90,138,74,0.10)', color: 'var(--status-ok)', label: 'Approved', icon: '\u2713' }
+      ? { bg: 'var(--wash)', color: 'var(--forest)', label: 'Approved', icon: '\u2713' }
       : status === 'discarded'
-        ? { bg: 'rgba(192,123,85,0.10)', color: 'var(--color-terracotta)', label: 'Discarded', icon: '\u2715' }
-        : { bg: 'rgba(44,62,80,0.06)', color: 'var(--color-muted)', label: 'Pending review', icon: null }
+        ? { bg: 'var(--danger-bg)', color: 'var(--danger)', label: 'Discarded', icon: '\u2715' }
+        : { bg: 'var(--sunken)', color: 'var(--text2)', label: 'Pending review', icon: null }
 
   return (
     <span

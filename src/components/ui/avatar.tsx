@@ -1,5 +1,6 @@
 import { cn } from '@/utils/cn'
 import { CLIENT_COLORS } from '@/utils/constants'
+import { hashIndex } from '@/utils/hash-index'
 
 type AvatarSize = 'sm' | 'md' | 'lg'
 
@@ -56,11 +57,3 @@ export function Avatar({ name, size = 'md', color, className }: AvatarProps) {
   )
 }
 
-/** Stable index for a name, so the same person keeps the same colour everywhere. */
-function hashIndex(name: string, buckets: number): number {
-  let hash = 0
-  for (let i = 0; i < name.length; i++) {
-    hash = (hash * 31 + name.charCodeAt(i)) >>> 0
-  }
-  return hash % buckets
-}

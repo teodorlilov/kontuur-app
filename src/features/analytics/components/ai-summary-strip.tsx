@@ -25,8 +25,8 @@ export function AiSummaryStrip({ summary }: AiSummaryStripProps) {
     <div
       onClick={() => setExpanded((prev) => !prev)}
       style={{
-        background: 'var(--color-surface)',
-        border: '0.5px solid var(--color-border-1)',
+        background: 'var(--surface)',
+        border: '1px solid var(--line)',
         borderRadius: 'var(--radius-lg)',
         padding: '13px 16px',
         marginBottom: 18,
@@ -43,7 +43,7 @@ export function AiSummaryStrip({ summary }: AiSummaryStripProps) {
             gap: 5,
             fontSize: 9,
             fontWeight: 500,
-            color: 'var(--color-terracotta)',
+            color: 'var(--spring-text)',
             letterSpacing: '1.2px',
             textTransform: 'uppercase',
             flexShrink: 0,
@@ -61,7 +61,7 @@ export function AiSummaryStrip({ summary }: AiSummaryStripProps) {
           <span
             style={{
               fontSize: 12,
-              color: 'var(--color-muted)',
+              color: 'var(--text2)',
               flex: 1,
               overflow: 'hidden',
               textOverflow: 'ellipsis',
@@ -73,7 +73,7 @@ export function AiSummaryStrip({ summary }: AiSummaryStripProps) {
         )}
 
         {/* Toggle */}
-        <span style={{ fontSize: 10, color: 'var(--color-terracotta)', fontWeight: 500, flexShrink: 0, whiteSpace: 'nowrap' }}>
+        <span style={{ fontSize: 10, color: 'var(--spring-text)', fontWeight: 500, flexShrink: 0, whiteSpace: 'nowrap' }}>
           {expanded ? '← Collapse' : 'Expand →'}
         </span>
       </div>
@@ -83,11 +83,11 @@ export function AiSummaryStrip({ summary }: AiSummaryStripProps) {
         <div
           style={{
             fontSize: 12,
-            color: 'var(--color-text-2)',
+            color: 'var(--text2)',
             lineHeight: 1.72,
             marginTop: 10,
             paddingTop: 10,
-            borderTop: '0.5px solid rgba(44,62,80,0.06)',
+            borderTop: '1px solid rgba(15,21,18,0.06)',
           }}
         >
           {clean}

@@ -17,6 +17,7 @@ import {
   type NavBadge,
   type NavItem,
 } from '@/components/layout/nav-items'
+import { Wordmark } from '@/components/layout/wordmark'
 import { DesignInCanvaButton } from '@/components/layout/design-in-canva-button'
 import { ActiveRunsCard } from '@/components/layout/active-runs-card'
 import { useActiveRuns } from '@/components/layout/use-active-runs'
@@ -59,24 +60,11 @@ interface SidebarProps {
 
 function LogoMark({ collapsed }: { collapsed: boolean }) {
   return (
-    <Link
+    <Wordmark
       href="/dashboard"
-      className={cn(
-        'flex items-center gap-2.5 px-2.5 pb-4 pt-0.5 text-display-lg text-ink no-underline',
-        collapsed && 'justify-center px-0'
-      )}
-    >
-      <span
-        className="surface-mark grid size-7 shrink-0 place-items-center rounded-lg font-display text-display-sm italic text-white shadow-[0_4px_14px_rgba(46,158,104,0.35)]"
-      >
-        k
-      </span>
-      {!collapsed && (
-        <span className="font-display leading-none">
-          kontuur<span className="text-spring">.</span>
-        </span>
-      )}
-    </Link>
+      markOnly={collapsed}
+      className={cn('px-2.5 pb-4 pt-0.5', collapsed && 'px-0')}
+    />
   )
 }
 
@@ -104,17 +92,26 @@ function SidebarLink({
         'flex items-center gap-2.5 rounded-[9px] px-[11px] py-[9px] text-body-lg no-underline',
         'transition-[color,background-color,transform] duration-150 ease-contour',
         isActive
-          ? 'bg-wash font-medium text-forest shadow-[inset_0_0_0_1px_rgba(46,158,104,0.16)]'
+          ? // The rail's one lime answer: where you are standing. Pine Deep on
+            // lime is 10.87:1, and the inset Pine Deep edge at 45% gives the
+            // plate a boundary — a lime silhouette on paper is only 1.35:1.
+            'bg-accent font-semibold text-forest-deep shadow-[inset_0_0_0_1px_rgba(12,46,32,0.45)]'
           : 'text-text2 hover:translate-x-0.5 hover:bg-ink/[0.04] hover:text-ink',
         collapsed && 'justify-center px-0'
       )}
     >
-      <Icon size={15} className={cn('shrink-0', isActive ? 'text-forest' : 'text-text3')} />
+      <Icon size={15} className={cn('shrink-0', isActive ? 'text-forest-deep' : 'text-text3')} />
       {!collapsed && (
         <>
           <span className="flex-1 truncate">{item.label}</span>
           {badgeCount > 0 && (
-            <span className="rounded-full bg-wash px-[7px] py-0.5 text-micro font-semibold text-forest">
+            <span
+              className={cn(
+                'rounded-full px-[7px] py-0.5 text-micro font-semibold',
+                // Inverts on the active plate — Wash on lime is unreadable.
+                isActive ? 'bg-forest-deep text-accent' : 'bg-wash text-forest'
+              )}
+            >
               {badgeCount}
             </span>
           )}

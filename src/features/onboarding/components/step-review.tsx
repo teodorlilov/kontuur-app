@@ -98,7 +98,7 @@ function ReviewSidebar({
       style={{
         width: '260px',
         flexShrink: 0,
-        background: 'var(--sidebar-bg)',
+        background: 'var(--forest-deep)',
         padding: '24px',
         display: 'flex',
         flexDirection: 'column',
@@ -110,7 +110,7 @@ function ReviewSidebar({
         style={{
           fontSize: '9px',
           fontWeight: 500,
-          color: 'rgba(236,232,225,0.4)',
+          color: 'rgba(242,245,241,0.4)',
           letterSpacing: '2px',
           textTransform: 'uppercase',
           marginBottom: '8px',
@@ -133,11 +133,11 @@ function ReviewSidebar({
       </div>
 
       {websiteUrl && (
-        <div style={{ fontSize: '11px', color: 'rgba(236,232,225,0.3)', lineHeight: 1.6, marginBottom: '20px' }}>
+        <div style={{ fontSize: '11px', color: 'rgba(242,245,241,0.3)', lineHeight: 1.6, marginBottom: '20px' }}>
           Profile auto-detected from{' '}
-          <span style={{ color: '#ECE8E1', fontWeight: 500 }}>{websiteUrl}</span>
+          <span style={{ color: '#f2f5f1', fontWeight: 500 }}>{websiteUrl}</span>
           <br />
-          <span style={{ color: 'rgba(236,232,225,0.25)' }}>Edit any section before saving</span>
+          <span style={{ color: 'rgba(242,245,241,0.25)' }}>Edit any section before saving</span>
         </div>
       )}
 
@@ -148,7 +148,8 @@ function ReviewSidebar({
         style={{
           width: '100%',
           padding: '12px',
-          background: 'var(--color-terracotta)',
+          // The primary commit: Deep Pine ground, white ink at 11.03:1.
+          background: 'var(--forest)',
           color: '#fff',
           border: 'none',
           borderRadius: '9px',
@@ -169,8 +170,8 @@ function ReviewSidebar({
         style={{
           width: '100%',
           padding: '10px',
-          background: 'rgba(236,232,225,0.08)',
-          color: 'rgba(236,232,225,0.55)',
+          background: 'rgba(242,245,241,0.08)',
+          color: 'rgba(242,245,241,0.55)',
           border: 'none',
           borderRadius: '9px',
           fontSize: '12px',
@@ -191,14 +192,16 @@ function SidebarBrand() {
         style={{
           fontFamily: 'var(--font-display)',
           fontSize: '15px',
-          color: '#ECE8E1',
+          color: '#f2f5f1',
           letterSpacing: '3px',
           marginBottom: '3px',
         }}
       >
         KONTUUR
       </div>
-      <div style={{ fontSize: '7px', color: 'var(--color-terracotta)', letterSpacing: '5px' }}>
+      {/* Lime as a figure on the Pine Deep rail — 10.87:1, and part of the
+          wordmark lockup, which is exempt from the one-per-band count. */}
+      <div style={{ fontSize: '7px', color: 'var(--accent)', letterSpacing: '5px' }}>
         SOCIAL INTELLIGENCE
       </div>
     </div>
@@ -230,7 +233,7 @@ function SidebarNavItem({
         cursor: 'pointer',
         marginBottom: '2px',
         transition: 'background 0.15s',
-        background: isActive ? 'rgba(236,232,225,0.10)' : 'transparent',
+        background: isActive ? 'rgba(242,245,241,0.10)' : 'transparent',
       }}
     >
       <div
@@ -239,13 +242,14 @@ function SidebarNavItem({
           height: '5px',
           borderRadius: '50%',
           flexShrink: 0,
-          background: hasData ? 'var(--status-ok)' : 'rgba(236,232,225,0.2)',
+          // Living Green Lite — --spring is too dark to read on the pine rail.
+          background: hasData ? 'var(--spring-lite)' : 'rgba(242,245,241,0.2)',
         }}
       />
       <span
         style={{
           fontSize: '12px',
-          color: isActive ? '#ECE8E1' : 'rgba(236,232,225,0.65)',
+          color: isActive ? '#f2f5f1' : 'rgba(242,245,241,0.65)',
           fontWeight: isActive ? 500 : 400,
         }}
       >
@@ -282,7 +286,7 @@ function hasSectionData(sectionId: string, profile: OnboardProfile): boolean {
 
 function ReviewContent(props: StepReviewProps) {
   return (
-    <div style={{ flex: 1, overflowY: 'auto', padding: '28px 32px', background: 'var(--color-page)' }}>
+    <div style={{ flex: 1, overflowY: 'auto', padding: '28px 32px', background: 'var(--paper)' }}>
       {props.profile.is_health_niche && <HealthBanner />}
 
       <BasicInfoCard
@@ -296,7 +300,7 @@ function ReviewContent(props: StepReviewProps) {
       <EditableCard
         id="audience"
         title="Target audience"
-        icon={<Users size={10} color="var(--color-muted)" />}
+        icon={<Users size={10} color="var(--text2)" />}
         sectionKey="target_audience"
         editSection={props.editSection}
         onEditSection={props.onEditSection}
@@ -311,7 +315,7 @@ function ReviewContent(props: StepReviewProps) {
       <EditableCard
         id="goals"
         title="Social media goals"
-        icon={<Target size={10} color="var(--color-muted)" />}
+        icon={<Target size={10} color="var(--text2)" />}
         sectionKey="social_goals"
         editSection={props.editSection}
         onEditSection={props.onEditSection}
@@ -333,7 +337,7 @@ function ReviewContent(props: StepReviewProps) {
         onPillarsChange={props.onPillarsChange}
       />
 
-      <ReviewCard id="visual" title="Visual identity" icon={<PaletteIcon size={10} color="var(--color-muted)" />}>
+      <ReviewCard id="visual" title="Visual identity" icon={<PaletteIcon size={10} color="var(--text2)" />}>
         <VisualIdentityPanel
           identity={props.visualIdentity}
           onChange={props.onVisualIdentityChange}
@@ -344,7 +348,7 @@ function ReviewContent(props: StepReviewProps) {
       <EditableCard
         id="avoid"
         title="Topics to avoid"
-        icon={<XCircle size={10} color="var(--color-muted)" />}
+        icon={<XCircle size={10} color="var(--text2)" />}
         sectionKey="avoid_topics"
         editSection={props.editSection}
         onEditSection={props.onEditSection}
@@ -353,13 +357,13 @@ function ReviewContent(props: StepReviewProps) {
         onFieldSave={props.onFieldSave}
         initialValue={props.profile.avoid_topics}
       >
-        <p style={{ fontSize: '13px', color: 'var(--color-text-1)' }}>{props.profile.avoid_topics}</p>
+        <p style={{ fontSize: '13px', color: 'var(--ink)' }}>{props.profile.avoid_topics}</p>
       </EditableCard>
 
       <EditableCard
         id="testimonial"
         title="Client testimonial voice"
-        icon={<Quote size={10} color="var(--color-muted)" />}
+        icon={<Quote size={10} color="var(--text2)" />}
         sectionKey="client_testimonial_voice"
         editSection={props.editSection}
         onEditSection={props.onEditSection}
@@ -368,7 +372,7 @@ function ReviewContent(props: StepReviewProps) {
         onFieldSave={props.onFieldSave}
         initialValue={props.profile.client_testimonial_voice}
       >
-        <p style={{ fontSize: '13px', color: 'var(--color-text-1)', fontStyle: 'italic' }}>
+        <p style={{ fontSize: '13px', color: 'var(--ink)', fontStyle: 'italic' }}>
           &ldquo;{props.profile.client_testimonial_voice}&rdquo;
         </p>
       </EditableCard>
@@ -395,18 +399,20 @@ function HealthBanner() {
         alignItems: 'flex-start',
         gap: '10px',
         padding: '11px 14px',
-        background: 'rgba(192,123,85,0.07)',
-        borderLeft: '2px solid var(--color-terracotta)',
-        borderRadius: '0 8px 8px 0',
+        // A genuine warning, so Amber. It was terracotta — which aliased to
+        // green — making a health-safety notice read as an "all clear".
+        background: 'var(--pending-bg)',
+        borderLeft: '2px solid var(--pending)',
+        borderRadius: '0 var(--radius-sm) var(--radius-sm) 0',
         marginBottom: '14px',
       }}
     >
-      <AlertTriangle size={14} color="var(--color-terracotta)" style={{ flexShrink: 0, marginTop: '1px' }} />
+      <AlertTriangle size={14} color="var(--pending)" style={{ flexShrink: 0, marginTop: '1px' }} />
       <div>
-        <div style={{ fontSize: '12px', fontWeight: 500, color: '#A05A35', marginBottom: '2px' }}>
+        <div style={{ fontSize: 'var(--text-caption-lg)', fontWeight: 500, color: 'var(--pending)', marginBottom: '2px' }}>
           Health-related client detected
         </div>
-        <div style={{ fontSize: '11px', color: 'var(--color-terracotta)', lineHeight: 1.55 }}>
+        <div style={{ fontSize: 'var(--text-micro)', color: 'var(--text2)', lineHeight: 1.55 }}>
           All posts will include medical safety instructions. Human review is mandatory before publishing.
         </div>
       </div>
@@ -428,7 +434,7 @@ function BasicInfoCard({
   niche: string
 }) {
   return (
-    <ReviewCard id="basic" title="Basic info" icon={<User size={10} color="var(--color-muted)" />}>
+    <ReviewCard id="basic" title="Basic info" icon={<User size={10} color="var(--text2)" />}>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
         <Input label="Client name" value={clientName} onChange={(e) => onClientNameChange(e.target.value)} />
         <div>
@@ -437,13 +443,13 @@ function BasicInfoCard({
               display: 'block',
               fontSize: '12px',
               fontWeight: 500,
-              color: 'var(--color-text-2)',
+              color: 'var(--text2)',
               marginBottom: '4px',
             }}
           >
             Niche
           </label>
-          <p style={{ fontSize: '13px', color: 'var(--color-text-1)', paddingTop: '6px' }}>{niche}</p>
+          <p style={{ fontSize: '13px', color: 'var(--ink)', paddingTop: '6px' }}>{niche}</p>
         </div>
       </div>
       <div style={{ marginTop: '14px' }}>
@@ -477,7 +483,7 @@ function BrandToneCard({
   onPillarsChange: (pillars: WeightedPillar[]) => void
 }) {
   return (
-    <ReviewCard id="brand" title="Brand tone & pillars" icon={<Pencil size={10} color="var(--color-muted)" />}>
+    <ReviewCard id="brand" title="Brand tone & pillars" icon={<Pencil size={10} color="var(--text2)" />}>
       <EditableField
         label="Tone"
         sectionKey="tone"
@@ -488,7 +494,7 @@ function BrandToneCard({
         onFieldSave={onFieldSave}
         initialValue={profile.tone}
       >
-        <p style={{ fontSize: '13px', color: 'var(--color-text-1)' }}>{profile.tone}</p>
+        <p style={{ fontSize: '13px', color: 'var(--ink)' }}>{profile.tone}</p>
       </EditableField>
 
       <div style={{ marginTop: '16px' }}>
@@ -496,7 +502,7 @@ function BrandToneCard({
           style={{
             fontSize: '9px',
             fontWeight: 500,
-            color: 'var(--color-terracotta)',
+            color: 'var(--spring-text)',
             letterSpacing: '1.5px',
             textTransform: 'uppercase',
             marginBottom: '8px',
@@ -514,22 +520,22 @@ function PlatformsCard({ profile }: { profile: OnboardProfile }) {
   if (profile.recommended_platforms.length === 0) return null
 
   return (
-    <ReviewCard id="platforms" title="Recommended platforms" icon={<Share2 size={10} color="var(--color-muted)" />}>
+    <ReviewCard id="platforms" title="Recommended platforms" icon={<Share2 size={10} color="var(--text2)" />}>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
         {profile.recommended_platforms.map((p) => (
           <div
             key={p.platform}
             style={{
               padding: '12px 14px',
-              background: 'var(--color-page)',
+              background: 'var(--paper)',
               borderRadius: '8px',
-              border: '0.5px solid var(--color-border-1)',
+              border: '1px solid var(--line)',
             }}
           >
-            <div style={{ fontSize: '13px', fontWeight: 500, color: 'var(--color-text-1)', marginBottom: '4px' }}>
+            <div style={{ fontSize: '13px', fontWeight: 500, color: 'var(--ink)', marginBottom: '4px' }}>
               {p.platform}
             </div>
-            <div style={{ fontSize: '11px', color: 'var(--color-text-2)', lineHeight: 1.5 }}>{p.reason}</div>
+            <div style={{ fontSize: '11px', color: 'var(--text2)', lineHeight: 1.5 }}>{p.reason}</div>
           </div>
         ))}
       </div>
@@ -549,7 +555,7 @@ function ScheduleCard({
   onScheduleTimeChange: (v: string) => void
 }) {
   return (
-    <ReviewCard id="schedule" title="Autonomous schedule" icon={<Calendar size={10} color="var(--color-muted)" />}>
+    <ReviewCard id="schedule" title="Autonomous schedule" icon={<Calendar size={10} color="var(--text2)" />}>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
         <Select
           label="Auto-generate day"
@@ -558,7 +564,7 @@ function ScheduleCard({
           options={[...WEEKDAY_OPTIONS]}
         />
         <div>
-          <label style={{ display: 'block', fontSize: '12px', fontWeight: 500, color: 'var(--color-text-2)', marginBottom: '4px' }}>
+          <label style={{ display: 'block', fontSize: '12px', fontWeight: 500, color: 'var(--text2)', marginBottom: '4px' }}>
             Auto-generate time
           </label>
           <input
@@ -567,12 +573,12 @@ function ScheduleCard({
             onChange={(e) => onScheduleTimeChange(e.target.value)}
             style={{
               width: '100%',
-              border: '0.5px solid var(--color-border-1)',
+              border: '1px solid var(--line)',
               borderRadius: '8px',
               padding: '8px 10px',
               fontSize: '13px',
               fontFamily: 'var(--font-sans)',
-              color: 'var(--color-text-1)',
+              color: 'var(--ink)',
               outline: 'none',
             }}
           />
@@ -601,8 +607,8 @@ function ReviewCard({
     <div
       id={`section-${id}`}
       style={{
-        background: 'var(--color-surface)',
-        border: '0.5px solid var(--color-border-1)',
+        background: 'var(--surface)',
+        border: '1px solid var(--line)',
         borderRadius: '12px',
         overflow: 'hidden',
         marginBottom: '14px',
@@ -614,14 +620,14 @@ function ReviewCard({
           alignItems: 'center',
           justifyContent: 'space-between',
           padding: '13px 18px',
-          borderBottom: '0.5px solid rgba(44,62,80,0.07)',
+          borderBottom: '1px solid rgba(15,21,18,0.07)',
         }}
       >
         <div
           style={{
             fontSize: '10px',
             fontWeight: 500,
-            color: 'var(--color-muted)',
+            color: 'var(--text2)',
             letterSpacing: '1.5px',
             textTransform: 'uppercase',
             display: 'flex',
@@ -638,7 +644,7 @@ function ReviewCard({
             onClick={onEdit}
             style={{
               fontSize: '11px',
-              color: 'var(--color-terracotta)',
+              color: 'var(--spring-text)',
               fontWeight: 500,
               background: 'none',
               border: 'none',
@@ -733,7 +739,7 @@ function EditableField({
           style={{
             fontSize: '9px',
             fontWeight: 500,
-            color: 'var(--color-terracotta)',
+            color: 'var(--spring-text)',
             letterSpacing: '1.5px',
             textTransform: 'uppercase',
           }}
@@ -746,7 +752,7 @@ function EditableField({
             onClick={() => { onEditSection(sectionKey); onEditValueChange(initialValue) }}
             style={{
               fontSize: '11px',
-              color: 'var(--color-terracotta)',
+              color: 'var(--spring-text)',
               fontWeight: 500,
               background: 'none',
               border: 'none',
@@ -791,12 +797,12 @@ function EditForm({
         rows={3}
         style={{
           width: '100%',
-          border: '0.5px solid var(--color-border-1)',
+          border: '1px solid var(--line)',
           borderRadius: '8px',
           padding: '10px 12px',
           fontSize: '13px',
           fontFamily: 'var(--font-sans)',
-          color: 'var(--color-text-1)',
+          color: 'var(--ink)',
           outline: 'none',
           resize: 'none',
         }}
@@ -820,10 +826,10 @@ function ChipList({ items }: { items: string[] }) {
             alignItems: 'center',
             padding: '4px 12px',
             borderRadius: '20px',
-            background: 'rgba(192,123,85,0.08)',
-            color: 'var(--color-text-1)',
+            background: 'rgba(46,158,104,0.08)',
+            color: 'var(--ink)',
             fontSize: '12px',
-            border: '0.5px solid rgba(192,123,85,0.15)',
+            border: '1px solid rgba(46,158,104,0.15)',
           }}
         >
           {item}

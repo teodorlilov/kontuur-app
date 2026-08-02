@@ -1,45 +1,52 @@
 /**
  * Polymorphic score-to-color mappings used by quality, slop, and language UI.
  * Centralises the thresholds so every component stays consistent.
+ *
+ * Status colour here is earthen, per DESIGN.md § The Muted Status Rule: a pass
+ * is Deep Pine on Wash, a warning is Amber, a failure is Clay. The stock
+ * `green-500` / `amber-400` / `red-500` this used to return are the saturated
+ * defaults that rule rejects on sight, and they were the loudest colours in the
+ * app — louder than New Growth, on a surface that is meant to recede.
  */
 
 /** Score badge colors (bg + text) for 1-10 scores. */
 export function scoreBadgeClass(score: number): string {
-  if (score >= 8) return 'bg-green-100 text-green-700'
-  if (score >= 6) return 'bg-amber-100 text-amber-700'
-  return 'bg-red-100 text-red-700'
+  if (score >= 8) return 'bg-wash text-forest'
+  if (score >= 6) return 'bg-pending-bg text-pending'
+  return 'bg-danger-bg text-danger'
 }
 
 /** Progress-bar fill color for 1-10 scores. */
 export function scoreBarColor(score: number): string {
-  if (score >= 8) return 'bg-green-500'
-  if (score >= 6) return 'bg-amber-400'
-  return 'bg-red-500'
+  if (score >= 8) return 'bg-spring'
+  if (score >= 6) return 'bg-pending'
+  return 'bg-danger'
 }
 
 /** Text color for 1-10 scores. */
 export function scoreTextColor(score: number): string {
-  if (score >= 8) return 'text-green-700'
-  if (score >= 6) return 'text-amber-700'
-  return 'text-red-600'
+  // Living Green Text, not --spring: green as a word on light needs 4.53:1.
+  if (score >= 8) return 'text-spring-text'
+  if (score >= 6) return 'text-pending'
+  return 'text-danger'
 }
 
 /** Carousel slide status → dot color. */
 const STATUS_DOT_COLORS: Record<string, string> = {
-  pass: 'bg-green-500',
-  warn: 'bg-amber-400',
-  fail: 'bg-red-500',
+  pass: 'bg-spring',
+  warn: 'bg-pending',
+  fail: 'bg-danger',
 }
 
 export function statusDotColor(status?: string): string {
-  return (status && STATUS_DOT_COLORS[status]) ?? 'bg-gray-300'
+  return (status && STATUS_DOT_COLORS[status]) ?? 'bg-line2'
 }
 
 /** Quality score badge (0-10) for post cards using avg score.
  *  Uses lower thresholds than per-dimension scores because this is
  *  an average across multiple dimensions, which trends lower. */
 export function qualityScoreBadgeClass(score: number): string {
-  if (score >= 7) return 'bg-green-100 text-green-700'
-  if (score >= 5) return 'bg-amber-100 text-amber-700'
-  return 'bg-red-100 text-red-700'
+  if (score >= 7) return 'bg-wash text-forest'
+  if (score >= 5) return 'bg-pending-bg text-pending'
+  return 'bg-danger-bg text-danger'
 }

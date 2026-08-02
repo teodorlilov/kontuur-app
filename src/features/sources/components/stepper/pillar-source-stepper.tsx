@@ -240,13 +240,13 @@ export function PillarSourceStepper({
       maxWidth={672}
     >
       <div className="mb-5">
-        <div className="w-full bg-gray-100 rounded-full h-1.5">
+        <div className="w-full bg-sunken rounded-full h-1.5">
           <div
             className="h-1.5 rounded-full transition-all duration-300"
-            style={{ width: `${progressPct}%`, background: 'var(--color-brand)' }}
+            style={{ width: `${progressPct}%`, background: 'var(--forest)' }}
           />
         </div>
-        <p className="text-xs text-gray-400 mt-1.5 text-right">
+        <p className="text-xs text-text3 mt-1.5 text-right">
           Step {currentIndex + 1} of {sequence.length}
         </p>
       </div>

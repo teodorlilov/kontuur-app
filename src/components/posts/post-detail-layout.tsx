@@ -51,7 +51,7 @@ export function PostDetailLayout({
   children,
 }: PostDetailLayoutProps) {
   return (
-    <div style={{ flex: 1, overflowY: 'auto', background: 'var(--color-page)', minWidth: 0 }}>
+    <div style={{ flex: 1, overflowY: 'auto', background: 'var(--paper)', minWidth: 0 }}>
       <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
         <SourceTile
           sourceUrl={sourceUrl}
@@ -61,11 +61,11 @@ export function PostDetailLayout({
         />
         <div
           style={{
-            background: 'var(--color-surface)',
-            border: '0.5px solid var(--color-border-1)',
+            background: 'var(--surface)',
+            border: '1px solid var(--line)',
             borderRadius: '14px',
             padding: '24px',
-            boxShadow: '0 1px 8px rgba(44,62,80,0.05)',
+            boxShadow: '0 1px 8px rgba(15,21,18,0.05)',
           }}
         >
           <PostContentDisplay

@@ -27,6 +27,10 @@ export function RosterRow({ entry, timezone }: RosterRowProps) {
         {/* Marks the row as needing attention. Never the only signal — the status
             column always spells out why in words.
 
+            Amber, not lime, on two counts: attention is a permanent property of
+            the row rather than the present tense (The Standing Place Rule), and
+            a 3px lime bar on white is 1.35:1 — invisible (The Small Present Rule).
+
             It lives inside this cell because a <tr> may only contain <td>/<th>;
             as a direct child it tripped a hydration error. The cell is not
             positioned, so `absolute` still resolves against the row and the bar
@@ -34,7 +38,7 @@ export function RosterRow({ entry, timezone }: RosterRowProps) {
         {entry.needsAttention && (
           <span
             aria-hidden="true"
-            className="absolute inset-y-3.5 left-0.5 w-[3px] rounded-full bg-accent"
+            className="absolute inset-y-3.5 left-0.5 w-[3px] rounded-full bg-pending"
           />
         )}
         <span

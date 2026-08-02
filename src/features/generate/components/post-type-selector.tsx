@@ -39,13 +39,15 @@ export function PostTypeSelector({
       {isInstagram && (
         <div
           style={{
-            background: 'rgba(192,123,85,0.10)',
-            border: '1px solid rgba(192,123,85,0.20)',
-            borderRadius: '9px',
+            // A quiet emphasis panel — Wash is the documented tint behind Deep
+            // Pine text. It was a terracotta wash with terracotta-dark ink.
+            background: 'var(--wash)',
+            border: '1px solid var(--line)',
+            borderRadius: 'var(--radius-md)',
             padding: '10px 14px',
           }}
         >
-          <p style={{ fontSize: '12px', color: '#7A4A35', lineHeight: 1.55 }}>
+          <p style={{ fontSize: 'var(--text-caption-lg)', color: 'var(--forest)', lineHeight: 1.55 }}>
             Carousels drive the highest engagement in 2026. Recommended: 2 carousels + 1 single per
             week.
           </p>
@@ -60,9 +62,11 @@ export function PostTypeSelector({
             onClick={() => onChange(opt.type)}
             className={cn(
               'text-left px-5 py-4 rounded-lg border transition-colors flex items-start gap-4',
+              // Selected is an active state: Deep Pine edge on Wash. Not lime —
+              // a 4% tint cannot carry it, and the plate would need dark ink.
               value === opt.type
-                ? 'border-[var(--color-terracotta)] bg-[rgba(192,123,85,0.04)]'
-                : 'border-gray-200 hover:border-gray-300 bg-white'
+                ? 'border-forest bg-wash'
+                : 'border-line2 bg-surface hover:border-text3/45'
             )}
           >
             <span className="text-xl mt-0.5">{opt.icon}</span>
@@ -70,12 +74,12 @@ export function PostTypeSelector({
               <span
                 className={cn(
                   'text-base font-medium block',
-                  value === opt.type ? 'text-[var(--color-text-1)]' : 'text-gray-800'
+                  value === opt.type ? 'text-[var(--ink)]' : 'text-ink'
                 )}
               >
                 {opt.label}
               </span>
-              <span className="text-sm text-gray-400 mt-0.5 block">{opt.sub}</span>
+              <span className="text-sm text-text3 mt-0.5 block">{opt.sub}</span>
             </div>
           </button>
         ))}
@@ -83,16 +87,16 @@ export function PostTypeSelector({
 
       {value === 'carousel' && (
         <div className="flex items-center gap-3">
-          <label className="text-base font-medium text-gray-700">Slide count</label>
+          <label className="text-base font-medium text-text2">Slide count</label>
           <input
             type="number"
             min={3}
             max={10}
             value={slideCount}
             onChange={(e) => onSlideCountChange(parseInt(e.target.value, 10))}
-            className="w-20 rounded-lg border border-gray-300 px-4 py-3 text-base text-gray-900 focus:border-[var(--color-border-3)] focus:outline-none focus:ring-1 focus:ring-[var(--color-border-3)]"
+            className="w-20 rounded-lg border border-line2 px-4 py-3 text-base text-ink focus:border-[var(--line2)] focus:outline-none focus:ring-1 focus:ring-[var(--line2)]"
           />
-          <span className="text-sm text-gray-400">3–10 slides</span>
+          <span className="text-sm text-text3">3–10 slides</span>
         </div>
       )}
     </div>

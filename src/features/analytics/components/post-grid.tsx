@@ -13,8 +13,8 @@ export function PostGrid({ metrics }: PostGridProps) {
   if (posts.length === 0) return null
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-5">
-      <p className="text-sm font-medium text-gray-700 mb-4">All posts</p>
+    <div className="bg-surface rounded-xl border border-line p-5">
+      <p className="text-sm font-medium text-text2 mb-4">All posts</p>
       <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-2">
         {posts.map((post) => {
           const saveRate =
@@ -27,7 +27,7 @@ export function PostGrid({ metrics }: PostGridProps) {
               href={post.permalink ?? undefined}
               target="_blank"
               rel="noopener noreferrer"
-              className="relative aspect-square rounded-lg overflow-hidden bg-gray-100 block group"
+              className="relative aspect-square rounded-lg overflow-hidden bg-sunken block group"
             >
               {post.thumbnail_url ? (
                 <Image
@@ -48,12 +48,12 @@ export function PostGrid({ metrics }: PostGridProps) {
                 </div>
               )}
               {/* Media type badge */}
-              <span className="absolute top-1.5 right-1.5 px-1.5 py-0.5 rounded text-label font-medium bg-black/50 text-white leading-none">
+              <span className="absolute top-1.5 right-1.5 px-1.5 py-0.5 rounded text-label font-medium bg-ink/60 text-white leading-none">
                 {formatType(post.media_type)}
               </span>
               {/* Save rate badge */}
               {saveRate !== null && (
-                <span className="absolute bottom-1.5 left-1.5 px-1 py-0.5 rounded text-label font-medium bg-black/40 text-white leading-none">
+                <span className="absolute bottom-1.5 left-1.5 px-1 py-0.5 rounded text-label font-medium bg-ink/55 text-white leading-none">
                   {saveRate}% saved
                 </span>
               )}

@@ -68,7 +68,7 @@ export function AuthSlider() {
                 fontFamily: 'var(--font-display, Georgia, serif)',
                 fontSize: '40px',
                 fontWeight: 400,
-                color: '#ECE8E1',
+                color: '#f2f5f1',
               }}
             >
               {s.headline.map((line, li) => (
@@ -76,7 +76,7 @@ export function AuthSlider() {
                   {line.split(' ').map((word, wi) => (
                     <span key={wi}>
                       {word === s.italicWord
-                        ? <em style={{ fontStyle: 'italic', color: '#C07B55' }}>{word}</em>
+                        ? <em style={{ fontStyle: 'italic', color: 'var(--spring-text)' }}>{word}</em>
                         : word
                       }
                       {' '}
@@ -86,7 +86,7 @@ export function AuthSlider() {
                 </span>
               ))}
             </h2>
-            <p style={{ fontSize: '16px', color: 'rgba(236,232,225,0.42)', lineHeight: 1.75, maxWidth: '380px' }}>
+            <p style={{ fontSize: '16px', color: 'rgba(242,245,241,0.42)', lineHeight: 1.75, maxWidth: '380px' }}>
               {s.body}
             </p>
           </div>
@@ -106,7 +106,7 @@ export function AuthSlider() {
               border: 'none',
               cursor: 'pointer',
               transition: 'background 0.3s, transform 0.3s',
-              background: i === current ? '#C07B55' : 'rgba(236,232,225,0.2)',
+              background: i === current ? 'var(--spring-text)' : 'rgba(242,245,241,0.2)',
               transform: i === current ? 'scale(1.2)' : 'scale(1)',
               padding: 0,
             }}

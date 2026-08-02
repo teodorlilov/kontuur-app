@@ -30,22 +30,22 @@ export function PillarAssignmentPopover({
       <Popover.Trigger asChild>
         <button
           type="button"
-          className="text-xs text-brand-purple hover:underline font-medium whitespace-nowrap"
+          className="text-xs text-forest hover:underline font-medium whitespace-nowrap"
         >
           {assignedPillarIds.length > 0 ? `Topics: ${assignedPillarIds.length}` : 'Limit topics'}
         </button>
       </Popover.Trigger>
       <Popover.Portal>
         <Popover.Content
-          className="z-50 w-56 rounded-lg border border-gray-200 bg-white p-2 shadow-lg"
+          className="z-50 w-56 rounded-lg border border-line bg-surface p-2 shadow-lg"
           sideOffset={4}
           align="start"
         >
-          <p className="text-xs font-medium text-gray-500 px-2 pb-1">
+          <p className="text-xs font-medium text-text3 px-2 pb-1">
             Limit to specific topics (optional)
           </p>
           {pillars.length === 0 ? (
-            <p className="text-xs text-gray-400 px-2 py-1">No topics configured</p>
+            <p className="text-xs text-text3 px-2 py-1">No topics configured</p>
           ) : (
             <div className="space-y-1">
               {pillars.map((p) => {
@@ -54,26 +54,26 @@ export function PillarAssignmentPopover({
                 return (
                   <label
                     key={p.id}
-                    className="flex items-center gap-2 rounded px-2 py-1.5 text-sm cursor-pointer hover:bg-gray-50"
+                    className="flex items-center gap-2 rounded px-2 py-1.5 text-sm cursor-pointer hover:bg-sunken"
                   >
                     <input
                       type="checkbox"
                       checked={checked}
                       onChange={() => handleToggle(p.id)}
-                      className="rounded border-gray-300 text-brand-purple focus:ring-brand-purple/20"
+                      className="rounded border-line2 text-forest focus:ring-spring/12"
                     />
                     <span
                       className="w-2 h-2 rounded-full shrink-0"
                       style={{ backgroundColor: color.hex }}
                     />
-                    <span className="truncate text-gray-700">{p.pillar}</span>
+                    <span className="truncate text-text2">{p.pillar}</span>
                   </label>
                 )
               })}
             </div>
           )}
           {assignedPillarIds.length === 0 && pillars.length > 0 && (
-            <p className="text-xs text-gray-400 px-2 pt-1 border-t border-gray-100 mt-1">
+            <p className="text-xs text-text3 px-2 pt-1 border-t border-line mt-1">
               Feeds all topics (default)
             </p>
           )}

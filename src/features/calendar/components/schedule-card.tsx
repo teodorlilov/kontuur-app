@@ -56,7 +56,7 @@ interface ScheduleCardProps {
 const SECTION_LABEL_STYLE: React.CSSProperties = {
   fontSize: 9,
   fontWeight: 500,
-  color: 'var(--color-muted)',
+  color: 'var(--text2)',
   letterSpacing: '1px',
   textTransform: 'uppercase',
   display: 'block',
@@ -65,12 +65,12 @@ const SECTION_LABEL_STYLE: React.CSSProperties = {
 
 const CAPTION_CONTAINER_STYLE = {
   fontSize: 13,
-  color: 'var(--color-text-1)',
+  color: 'var(--ink)',
   lineHeight: 1.6,
-  background: 'rgba(44,62,80,0.025)',
+  background: 'rgba(15,21,18,0.025)',
   borderRadius: 10,
   padding: '12px 14px',
-  border: '0.5px solid var(--color-border-1)',
+  border: '1px solid var(--line)',
 } as const
 
 /** Footer buttons shown when the modal is in edit mode. */
@@ -89,7 +89,7 @@ function EditModeFooter({
     <div
       style={{
         padding: '14px 24px',
-        borderTop: '0.5px solid rgba(44,62,80,0.07)',
+        borderTop: '1px solid rgba(15,21,18,0.07)',
         display: 'flex',
         flexWrap: 'wrap',
         gap: 8,
@@ -295,7 +295,7 @@ export const ScheduleCard = memo(function ScheduleCard({
         alignItems: 'center',
         justifyContent: 'center',
         padding: 12,
-        background: 'rgba(26,38,48,0.32)',
+        background: 'rgba(12,46,32,0.32)',
         backdropFilter: 'blur(4px)',
         WebkitBackdropFilter: 'blur(4px)',
       }}
@@ -309,7 +309,7 @@ export const ScheduleCard = memo(function ScheduleCard({
           maxHeight: '85vh',
           display: 'flex',
           flexDirection: 'column',
-          boxShadow: '0 24px 64px rgba(26,38,48,0.28), 0 0 0 0.5px rgba(44,62,80,0.12)',
+          boxShadow: 'var(--sh-frame), 0 0 0 1px rgba(15,21,18,0.06)',
           overflow: 'hidden',
         }}
       >
@@ -317,7 +317,7 @@ export const ScheduleCard = memo(function ScheduleCard({
         <div
           style={{
             padding: '22px 24px 16px',
-            borderBottom: '0.5px solid rgba(44,62,80,0.07)',
+            borderBottom: '1px solid rgba(15,21,18,0.07)',
             flexShrink: 0,
           }}
         >
@@ -336,7 +336,7 @@ export const ScheduleCard = memo(function ScheduleCard({
                 fontSize: 19,
                 fontWeight: 600,
                 letterSpacing: '-0.01em',
-                color: 'var(--color-text-1)',
+                color: 'var(--ink)',
               }}
             >
               {currentPost.client_name}
@@ -348,7 +348,7 @@ export const ScheduleCard = memo(function ScheduleCard({
                   <NavBtn onClick={onPrev} disabled={postIndex === 0}>
                     <ChevronLeft style={{ width: 12, height: 12 }} />
                   </NavBtn>
-                  <span style={{ fontSize: 10, color: 'var(--color-muted)' }}>
+                  <span style={{ fontSize: 10, color: 'var(--text2)' }}>
                     {postIndex + 1} of {totalPosts}
                   </span>
                   <NavBtn onClick={onNext} disabled={postIndex === totalPosts - 1}>
@@ -362,14 +362,14 @@ export const ScheduleCard = memo(function ScheduleCard({
                 style={{
                   width: 28,
                   height: 28,
-                  border: '0.5px solid var(--color-border-2)',
+                  border: '1px solid var(--line2)',
                   borderRadius: 7,
                   background: '#fff',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   cursor: 'pointer',
-                  color: 'var(--color-muted)',
+                  color: 'var(--text2)',
                 }}
               >
                 <X style={{ width: 14, height: 14 }} />
@@ -380,13 +380,15 @@ export const ScheduleCard = memo(function ScheduleCard({
           {/* Tag pills */}
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
             <TagPill
-              bg={isPublished ? 'rgba(90,138,74,0.12)' : isFailed ? 'rgba(180,50,50,0.12)' : isScheduled ? 'var(--color-scheduled-bg)' : 'rgba(44,62,80,0.06)'}
-              color={isPublished ? '#2A5A1A' : isFailed ? '#B43232' : isScheduled ? 'var(--color-scheduled-fg)' : '#4A5060'}
+              bg={isPublished ? 'rgba(46,158,104,0.12)' : isFailed ? 'rgba(180,50,50,0.12)' : isScheduled ? 'var(--marker)' : 'rgba(15,21,18,0.06)'}
+              color={isPublished ? 'var(--forest)' : isFailed ? 'var(--danger)' : isScheduled ? 'var(--forest-deep)' : 'var(--text2)'}
             >
               {isPublished ? 'Published' : isFailed ? 'Failed' : currentPost.status === 'publishing' ? 'Publishing' : isScheduled ? 'Scheduled' : 'Unscheduled'}
             </TagPill>
+            {/* Priority is attention, so Amber — it was a terracotta wash under
+                green ink, because --color-terracotta aliased to --spring. */}
             {currentPost.priority && (
-              <TagPill bg="rgba(192,123,85,0.14)" color="var(--color-terracotta)">
+              <TagPill bg="var(--pending-bg)" color="var(--pending)">
                 Priority
               </TagPill>
             )}
@@ -396,36 +398,36 @@ export const ScheduleCard = memo(function ScheduleCard({
               </TagPill>
             )}
             {currentPost.platform && (
-              <TagPill bg="rgba(44,111,165,0.10)" color="#2C5F8A">{currentPost.platform}</TagPill>
+              <TagPill bg="rgba(44,111,165,0.10)" color="var(--forest)">{currentPost.platform}</TagPill>
             )}
-            <TagPill bg="rgba(44,62,80,0.06)" color="#4A5060">
+            <TagPill bg="rgba(15,21,18,0.06)" color="var(--text2)">
               {isCarousel ? `Carousel \u00B7 ${slides.length} slides` : 'Single image'}
             </TagPill>
             <TagPill
-              bg={score >= 9 ? 'rgba(90,138,74,0.12)' : score >= 7 ? 'rgba(192,123,85,0.12)' : 'rgba(180,50,50,0.12)'}
-              color={score >= 9 ? '#2A5A1A' : score >= 7 ? '#7A3A25' : '#B43232'}
+              bg={score >= 9 ? 'var(--wash)' : score >= 7 ? 'var(--pending-bg)' : 'var(--danger-bg)'}
+              color={score >= 9 ? 'var(--forest)' : score >= 7 ? 'var(--pending)' : 'var(--danger)'}
             >
               {score}/10
             </TagPill>
             {images.length > 0 && (
-              <TagPill bg="rgba(44,62,80,0.06)" color="#4A5060">
+              <TagPill bg="rgba(15,21,18,0.06)" color="var(--text2)">
                 {images.length} of {totalImageSlots} images
               </TagPill>
             )}
             {currentPost.approval_status === 'approved' && (
-              <TagPill bg="rgba(90,138,74,0.12)" color="#2A5A1A">
+              <TagPill bg="rgba(46,158,104,0.12)" color="var(--forest)">
                 ✓ Client approved
                 {currentPost.approval_responded_at && ` · ${formatRelativeTime(parseTimestamp(currentPost.approval_responded_at))}`}
               </TagPill>
             )}
             {currentPost.approval_status === 'changes_requested' && (
-              <TagPill bg="rgba(44,94,138,0.10)" color="#2C5F8A">
+              <TagPill bg="rgba(22,68,48,0.10)" color="var(--forest)">
                 ◻ Changes requested
                 {currentPost.approval_responded_at && ` · ${formatRelativeTime(parseTimestamp(currentPost.approval_responded_at))}`}
               </TagPill>
             )}
             {editMode && (
-              <TagPill bg="rgba(44,94,138,0.12)" color="#2C5F8A">
+              <TagPill bg="rgba(22,68,48,0.12)" color="var(--forest)">
                 ✏ Editing
               </TagPill>
             )}
@@ -436,7 +438,7 @@ export const ScheduleCard = memo(function ScheduleCard({
         <div className="flex flex-col md:flex-row overflow-y-auto md:overflow-hidden" style={{ flex: 1, minHeight: 0 }}>
           {/* Left: caption + slides + schedule form */}
           <div
-            className="md:border-r md:border-[rgba(44,62,80,0.07)] md:overflow-y-auto"
+            className="md:border-r md:border-[rgba(15,21,18,0.07)] md:overflow-y-auto"
             style={{
               flex: 1,
               padding: '18px 22px',
@@ -469,7 +471,7 @@ export const ScheduleCard = memo(function ScheduleCard({
                     alignItems: 'center',
                     gap: 3,
                     fontSize: 10,
-                    color: 'var(--color-muted)',
+                    color: 'var(--text2)',
                     background: 'none',
                     border: 'none',
                     cursor: 'pointer',
@@ -514,7 +516,7 @@ export const ScheduleCard = memo(function ScheduleCard({
                       style={{
                         fontSize: 10,
                         fontWeight: 500,
-                        color: '#C07B55',
+                        color: 'var(--spring-text)',
                         background: 'none',
                         border: 'none',
                         cursor: missingPositions.length === 0 ? 'default' : 'pointer',
@@ -666,14 +668,14 @@ function NavBtn({
       style={{
         width: 24,
         height: 24,
-        border: '0.5px solid var(--color-border-2)',
+        border: '1px solid var(--line2)',
         borderRadius: 5,
         background: '#fff',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         cursor: disabled ? 'default' : 'pointer',
-        color: 'var(--color-muted)',
+        color: 'var(--text2)',
         opacity: disabled ? 0.3 : 1,
         transition: 'opacity 0.15s',
       }}
@@ -694,7 +696,7 @@ function TagPill({
   dot?: string
   children: React.ReactNode
 }) {
-  // bg/color may be Tailwind classes (e.g. "bg-violet-50", "text-violet-700") or CSS values
+  // bg/color may be Tailwind classes (e.g. "bg-wash", "text-forest") or CSS values
   const isTwBg = bg.startsWith('bg-')
   const isTwText = color.startsWith('text-')
   return (
@@ -733,7 +735,7 @@ function ScheduleForm({
         display: 'flex',
         flexDirection: 'column',
         gap: 10,
-        borderTop: '0.5px solid rgba(44,62,80,0.07)',
+        borderTop: '1px solid rgba(15,21,18,0.07)',
         paddingTop: 14,
       }}
     >
@@ -742,7 +744,7 @@ function ScheduleForm({
         <ScheduleInput id="card-time" label="Time" type="time" value={time} onChange={onTimeChange} />
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-        <span style={{ fontSize: 10, fontWeight: 500, color: 'var(--color-muted)' }}>Platform</span>
+        <span style={{ fontSize: 10, fontWeight: 500, color: 'var(--text2)' }}>Platform</span>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
           {PLATFORMS.map((p) => (
             <button
@@ -751,9 +753,9 @@ function ScheduleForm({
               onClick={() => onPlatformChange(p)}
               style={{
                 fontSize: 10, padding: '5px 10px', borderRadius: 5,
-                border: platform === p ? 'none' : '0.5px solid var(--color-border-2)',
-                background: platform === p ? 'var(--color-brand)' : '#fff',
-                color: platform === p ? '#ECE8E1' : 'var(--color-muted)',
+                border: platform === p ? 'none' : '1px solid var(--line2)',
+                background: platform === p ? 'var(--forest)' : '#fff',
+                color: platform === p ? '#f2f5f1' : 'var(--text2)',
                 cursor: 'pointer', fontFamily: 'inherit', fontWeight: 500, transition: 'all 0.15s',
               }}
             >
@@ -771,13 +773,13 @@ function ScheduleInput({ id, label, type, value, onChange, min }: {
 }) {
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
-      <label htmlFor={id} style={{ fontSize: 10, fontWeight: 500, color: 'var(--color-muted)' }}>{label}</label>
+      <label htmlFor={id} style={{ fontSize: 10, fontWeight: 500, color: 'var(--text2)' }}>{label}</label>
       <input
         id={id} type={type} value={value} min={min}
         onChange={(e) => onChange(e.target.value)}
         style={{
-          fontSize: 12, border: '0.5px solid var(--color-border-2)', borderRadius: 7,
-          padding: '7px 10px', fontFamily: 'inherit', outline: 'none', color: 'var(--color-text-1)',
+          fontSize: 12, border: '1px solid var(--line2)', borderRadius: 7,
+          padding: '7px 10px', fontFamily: 'inherit', outline: 'none', color: 'var(--ink)',
         }}
       />
     </div>
@@ -790,12 +792,12 @@ function QualitySidebar({ score, validation, currentPost }: {
 }) {
   return (
     <div
-      className="w-full md:w-[260px] border-t md:border-t-0 border-[rgba(44,62,80,0.07)] md:overflow-y-auto"
+      className="w-full md:w-[260px] border-t md:border-t-0 border-[rgba(15,21,18,0.07)] md:overflow-y-auto"
       style={{ flexShrink: 0, padding: 18, display: 'flex', flexDirection: 'column', gap: 14 }}
     >
       <div style={{ textAlign: 'center' }}>
         <span style={{ ...SECTION_LABEL_STYLE, marginBottom: 4 }}>Quality</span>
-        <span style={{ fontSize: 28, fontWeight: 600, color: score >= 9 ? '#5A8A4A' : score >= 7 ? '#C07B55' : '#B43232' }}>
+        <span style={{ fontSize: 28, fontWeight: 600, color: score >= 9 ? 'var(--spring-text)' : score >= 7 ? 'var(--spring-text)' : 'var(--danger)' }}>
           {score}
         </span>
       </div>
@@ -803,9 +805,9 @@ function QualitySidebar({ score, validation, currentPost }: {
       {validation && <QualityScores criteria={validation.criteria} scores={validation.scores} />}
 
       {validation?.criteria.issues && validation.criteria.issues.length > 0 && (
-        <div style={{ background: 'rgba(192,123,85,0.08)', borderRadius: 8, padding: '10px 12px' }}>
+        <div style={{ background: 'rgba(46,158,104,0.08)', borderRadius: 8, padding: '10px 12px' }}>
           {validation.criteria.issues.map((issue, i) => (
-            <p key={i} style={{ fontSize: 11, color: '#C07B55', lineHeight: 1.5, marginBottom: i < validation.criteria.issues.length - 1 ? 6 : 0 }}>
+            <p key={i} style={{ fontSize: 11, color: 'var(--spring-text)', lineHeight: 1.5, marginBottom: i < validation.criteria.issues.length - 1 ? 6 : 0 }}>
               &ldquo;{issue.description}&rdquo;
             </p>
           ))}
@@ -815,16 +817,16 @@ function QualitySidebar({ score, validation, currentPost }: {
       {currentPost.source_title && (
         <div>
           <span style={SECTION_LABEL_STYLE}>Source</span>
-          <p style={{ fontSize: 11, fontWeight: 500, color: 'var(--color-text-1)', marginBottom: 4 }}>
+          <p style={{ fontSize: 11, fontWeight: 500, color: 'var(--ink)', marginBottom: 4 }}>
             {currentPost.source_type ? `${currentPost.source_type} \u00B7 ` : ''}{currentPost.source_title}
           </p>
           {currentPost.source_excerpt && (
-            <p style={{ fontSize: 11, color: 'var(--color-muted)', lineHeight: 1.45, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden', marginBottom: 6 }}>
+            <p style={{ fontSize: 11, color: 'var(--text2)', lineHeight: 1.45, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden', marginBottom: 6 }}>
               {currentPost.source_excerpt}
             </p>
           )}
           {currentPost.source_url && (
-            <a href={currentPost.source_url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: 'var(--color-terracotta)', textDecoration: 'none' }}>
+            <a href={currentPost.source_url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: 'var(--spring-text)', textDecoration: 'none' }}>
               Verify on Google &rarr;
             </a>
           )}
@@ -848,7 +850,7 @@ function NormalFooter({
   return (
     <div
       style={{
-        padding: '14px 24px', borderTop: '0.5px solid rgba(44,62,80,0.07)',
+        padding: '14px 24px', borderTop: '1px solid rgba(15,21,18,0.07)',
         display: 'flex', flexWrap: 'wrap', gap: 8, flexShrink: 0,
       }}
     >
@@ -870,7 +872,7 @@ function NormalFooter({
       )}
       <Button variant="danger" onClick={() => onDelete(currentPost.id)}>Delete post</Button>
       {publishError && (
-        <div style={{ width: '100%', fontSize: 11, color: '#A32D2D', background: '#FCEBEB', padding: '8px 10px', borderRadius: 6 }}>
+        <div style={{ width: '100%', fontSize: 11, color: 'var(--danger)', background: 'var(--danger-bg)', padding: '8px 10px', borderRadius: 6 }}>
           {publishError}
         </div>
       )}

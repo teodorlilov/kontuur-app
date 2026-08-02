@@ -24,7 +24,7 @@ function StatusMessage({ status }: { status: 'approved' | 'changes_requested' })
         gap: 8,
         fontSize: 12,
         fontWeight: 500,
-        color: isApproved ? '#5A8A4A' : '#2C5F8A',
+        color: isApproved ? 'var(--spring-text)' : 'var(--forest)',
       }}
     >
       {isApproved ? <Check size={14} /> : <MessageCircle size={14} />}
@@ -49,7 +49,7 @@ export function ActionBar({
       style={{
         padding: '12px 22px',
         background: '#fff',
-        borderTop: '0.5px solid rgba(44,62,80,0.07)',
+        borderTop: '1px solid rgba(15,21,18,0.07)',
         display: 'flex',
         gap: 8,
         alignItems: 'center',
@@ -65,12 +65,12 @@ export function ActionBar({
             disabled={isSubmitting}
             style={{
               padding: '10px 18px',
-              background: '#F0EDE8',
-              border: '1px solid #D4CEC7',
+              background: 'var(--sunken)',
+              border: '1px solid var(--line2)',
               borderRadius: 9,
               fontSize: 12,
               fontWeight: 500,
-              color: '#3A4A54',
+              color: 'var(--text2)',
               cursor: 'pointer',
               fontFamily: 'inherit',
               display: 'flex',
@@ -89,7 +89,7 @@ export function ActionBar({
             disabled={isSubmitting}
             style={{
               padding: '10px 20px',
-              background: '#5A8A4A',
+              background: 'var(--spring)',
               color: '#fff',
               border: 'none',
               borderRadius: 9,
@@ -116,8 +116,8 @@ export function ActionBar({
           disabled={isSubmitting}
           style={{
             padding: '10px 20px',
-            background: '#1A2630',
-            color: '#ECE8E1',
+            background: 'var(--forest-deep)',
+            color: '#f2f5f1',
             border: 'none',
             borderRadius: 9,
             fontSize: 12,

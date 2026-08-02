@@ -37,8 +37,8 @@ function MetaPill({ label, dotColor }: { label: string; dotColor?: string }) {
         fontWeight: 500,
         padding: '3px 9px',
         borderRadius: 6,
-        background: 'rgba(44,62,80,0.06)',
-        color: '#3A4A54',
+        background: 'rgba(15,21,18,0.06)',
+        color: 'var(--text2)',
         whiteSpace: 'nowrap',
       }}
     >
@@ -77,7 +77,7 @@ function NavButton({
         width: 28,
         height: 28,
         borderRadius: 6,
-        border: '0.5px solid rgba(44,62,80,0.12)',
+        border: '1px solid rgba(15,21,18,0.12)',
         background: '#fff',
         cursor: disabled ? 'default' : 'pointer',
         display: 'flex',
@@ -87,7 +87,7 @@ function NavButton({
         transition: 'opacity 0.12s',
       }}
     >
-      <Icon size={14} color="#3A4A54" />
+      <Icon size={14} color="var(--text2)" />
     </button>
   )
 }
@@ -120,7 +120,7 @@ function MetaTopbar({ post, postIndex, totalPosts, status, onNavigate }: {
       style={{
         padding: '10px 20px',
         background: '#fff',
-        borderBottom: '0.5px solid rgba(44,62,80,0.07)',
+        borderBottom: '1px solid rgba(15,21,18,0.07)',
         display: 'flex',
         alignItems: 'center',
         gap: 7,
@@ -167,7 +167,7 @@ function CaptionCard({ caption }: { caption: string | null }) {
     <div
       style={{
         background: '#fff',
-        border: '0.5px solid rgba(44,62,80,0.10)',
+        border: '1px solid rgba(15,21,18,0.10)',
         borderRadius: 12,
         padding: '16px 18px',
       }}
@@ -176,7 +176,7 @@ function CaptionCard({ caption }: { caption: string | null }) {
         style={{
           fontSize: 9,
           fontWeight: 500,
-          color: '#8A8070',
+          color: 'var(--text2)',
           letterSpacing: '1.2px',
           textTransform: 'uppercase' as const,
           marginBottom: 10,
@@ -190,7 +190,7 @@ function CaptionCard({ caption }: { caption: string | null }) {
           onClick={() => navigator.clipboard?.writeText(caption)}
           style={{
             fontSize: 10,
-            color: '#C07B55',
+            color: 'var(--spring-text)',
             fontWeight: 500,
             background: 'none',
             border: 'none',
@@ -208,7 +208,7 @@ function CaptionCard({ caption }: { caption: string | null }) {
       <div
         style={{
           fontSize: 14,
-          color: '#1A2630',
+          color: 'var(--ink)',
           lineHeight: 1.72,
           whiteSpace: 'pre-wrap',
         }}
@@ -261,7 +261,7 @@ export function PostDetail({
           display: 'flex',
           flexDirection: 'column',
           gap: 12,
-          background: '#F4EFE6',
+          background: 'var(--paper)',
         }}
       >
         <CaptionCard caption={post.caption} />

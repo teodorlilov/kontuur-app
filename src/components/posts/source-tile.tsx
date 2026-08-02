@@ -23,15 +23,15 @@ export function SourceTile({ sourceUrl, sourceTitle, sourceType, sourceExcerpt }
         justifyContent: 'space-between',
         gap: '12px',
         fontSize: '11px',
-        background: 'var(--color-surface)',
-        border: '0.5px solid var(--color-border-1)',
+        background: 'var(--surface)',
+        border: '1px solid var(--line)',
         borderRadius: '10px',
         padding: '10px 14px',
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--color-muted)', minWidth: 0 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text2)', minWidth: 0 }}>
         <span style={{ flexShrink: 0 }}>Source</span>
-        <span style={{ fontWeight: 500, color: 'var(--color-text-1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        <span style={{ fontWeight: 500, color: 'var(--ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {typeLabel}{sourceTitle ? ` · ${sourceTitle}` : ''}
         </span>
       </div>
@@ -39,7 +39,7 @@ export function SourceTile({ sourceUrl, sourceTitle, sourceType, sourceExcerpt }
         href={verifyUrl}
         target="_blank"
         rel="noopener noreferrer"
-        style={{ flexShrink: 0, color: 'var(--color-terracotta)', fontWeight: 500, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '3px' }}
+        style={{ flexShrink: 0, color: 'var(--spring-text)', fontWeight: 500, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '3px' }}
       >
         Verify <ExternalLink size={10} />
       </a>

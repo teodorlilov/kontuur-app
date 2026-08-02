@@ -30,12 +30,12 @@ export function WizardCard({
       <div
         style={{
           background: '#fff',
-          border: '0.5px solid rgba(44,62,80,0.10)',
+          border: '1px solid rgba(15,21,18,0.10)',
           borderRadius: '16px',
           width: '100%',
           maxWidth,
           padding: '40px',
-          boxShadow: '0 2px 16px rgba(44,62,80,0.06)',
+          boxShadow: '0 2px 16px rgba(15,21,18,0.06)',
         }}
       >
         <CardHeader title={title} subtitle={subtitle} badge={badge} />
@@ -53,7 +53,7 @@ function CardHeader({ title, subtitle, badge }: { title: string; subtitle: strin
           fontFamily: 'var(--font-display, Georgia, serif)',
           fontSize: '26px',
           fontWeight: 400,
-          color: '#1A2630',
+          color: 'var(--ink)',
           marginBottom: '6px',
         }}
       >
@@ -62,7 +62,7 @@ function CardHeader({ title, subtitle, badge }: { title: string; subtitle: strin
       <div
         style={{
           fontSize: '13px',
-          color: '#8A8070',
+          color: 'var(--text2)',
           lineHeight: 1.6,
           marginBottom: badge ? '8px' : '28px',
         }}
@@ -78,8 +78,8 @@ function CardHeader({ title, subtitle, badge }: { title: string; subtitle: strin
             fontWeight: 500,
             padding: '2px 8px',
             borderRadius: '10px',
-            background: 'rgba(44,62,80,0.06)',
-            color: '#8A8070',
+            background: 'rgba(15,21,18,0.06)',
+            color: 'var(--text2)',
             marginBottom: '24px',
           }}
         >

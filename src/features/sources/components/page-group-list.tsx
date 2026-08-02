@@ -99,11 +99,11 @@ export function PageGroupList({
     .filter((group) => group.urls.length > 0)
 
   if (visibleGroups.length === 0) {
-    return <p className="text-sm text-gray-400 py-4 text-center">No pages match your filter.</p>
+    return <p className="text-sm text-text3 py-4 text-center">No pages match your filter.</p>
   }
 
   return (
-    <div className={cn('overflow-y-auto border border-gray-100 rounded-lg divide-y divide-gray-50', maxHeightClass)}>
+    <div className={cn('overflow-y-auto border border-line rounded-lg divide-y divide-line', maxHeightClass)}>
       {visibleGroups.map((group) => {
         const selectedCount = group.urls.filter((url) => selected.has(url)).length
         const allSelected = selectedCount === group.urls.length
@@ -113,7 +113,7 @@ export function PageGroupList({
 
         return (
           <div key={group.key}>
-            <div className="flex items-center gap-2 px-3 py-2 bg-gray-50/60">
+            <div className="flex items-center gap-2 px-3 py-2 bg-sunken/60">
               <input
                 type="checkbox"
                 checked={allSelected}
@@ -121,21 +121,21 @@ export function PageGroupList({
                   if (el) el.indeterminate = partiallySelected
                 }}
                 onChange={() => onToggle(group.urls, !allSelected)}
-                className="h-4 w-4 rounded border-gray-300 cursor-pointer shrink-0"
+                className="h-4 w-4 rounded border-line2 cursor-pointer shrink-0"
               />
               <button
                 type="button"
                 onClick={() => toggleExpanded(group.key)}
                 className="flex items-center gap-2 flex-1 min-w-0 text-left"
               >
-                <span className="text-sm font-medium text-gray-800 truncate">{group.label}</span>
-                <span className="text-xs text-gray-400 shrink-0">
+                <span className="text-sm font-medium text-ink truncate">{group.label}</span>
+                <span className="text-xs text-text3 shrink-0">
                   {group.urls.length} page{group.urls.length === 1 ? '' : 's'}
                   {selectedCount > 0 ? ` · ${selectedCount} selected` : ''}
                 </span>
                 <svg
                   className={cn(
-                    'w-3.5 h-3.5 text-gray-400 ml-auto shrink-0 transition-transform',
+                    'w-3.5 h-3.5 text-text3 ml-auto shrink-0 transition-transform',
                     isExpanded && 'rotate-90'
                   )}
                   fill="none"
@@ -152,15 +152,15 @@ export function PageGroupList({
               group.urls.map((url) => (
                 <label
                   key={url}
-                  className="flex items-center gap-2 pl-8 pr-3 py-1.5 hover:bg-gray-50 cursor-pointer"
+                  className="flex items-center gap-2 pl-8 pr-3 py-1.5 hover:bg-sunken cursor-pointer"
                 >
                   <input
                     type="checkbox"
                     checked={selected.has(url)}
                     onChange={() => onToggle([url], !selected.has(url))}
-                    className="h-4 w-4 rounded border-gray-300 cursor-pointer shrink-0"
+                    className="h-4 w-4 rounded border-line2 cursor-pointer shrink-0"
                   />
-                  <span className="text-sm text-gray-900 truncate" title={url}>
+                  <span className="text-sm text-ink truncate" title={url}>
                     {displayPath(url)}
                   </span>
                 </label>

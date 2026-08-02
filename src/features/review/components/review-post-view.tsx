@@ -174,7 +174,7 @@ export function ReviewPostView({ post, bestTimeData, onApprove, onDelete, onImag
           </Button>
           {confirmDelete ? (
             <div className="flex items-center gap-2">
-              <span className="text-xs" style={{ color: 'var(--color-muted)' }}>Delete?</span>
+              <span className="text-xs" style={{ color: 'var(--text2)' }}>Delete?</span>
               <Button onClick={() => { void deletePost(() => onDelete(post.id)) }} loading={deleting} variant="danger" size="sm">
                 Confirm
               </Button>
@@ -187,7 +187,7 @@ export function ReviewPostView({ post, bestTimeData, onApprove, onDelete, onImag
               onClick={() => setConfirmDelete(true)}
               variant="ghost"
               size="sm"
-              className="text-gray-500 hover:text-red-600"
+              className="text-text3 hover:text-danger"
             >
               Delete
             </Button>

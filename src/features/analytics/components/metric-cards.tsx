@@ -32,21 +32,21 @@ function buildIGCards(metrics: InstagramMetrics): CardDef[] {
   const followerGrowthRate = calcFollowerGrowthRate(metrics)
 
   return [
-    { label: 'Reach', value: summary.total_reach.toLocaleString(), accentColor: 'var(--accent-m1)',
+    { label: 'Reach', value: summary.total_reach.toLocaleString(), accentColor: 'var(--metric-1)',
       delta: formatDelta(summary.reach_delta_pct).delta ?? 'sum of daily reach',
       deltaType: formatDelta(summary.reach_delta_pct).deltaType ?? 'neutral' },
-    { label: 'Views', value: summary.total_impressions.toLocaleString(), accentColor: 'var(--accent-m2)',
+    { label: 'Views', value: summary.total_impressions.toLocaleString(), accentColor: 'var(--metric-2)',
       ...formatDelta(summary.views_delta_pct) },
-    { label: 'Profile visits', value: summary.total_profile_views.toLocaleString(), accentColor: 'var(--accent-m3)',
+    { label: 'Profile visits', value: summary.total_profile_views.toLocaleString(), accentColor: 'var(--metric-3)',
       ...formatDelta(summary.profile_views_delta_pct) },
-    { label: 'Accounts engaged', value: summary.total_accounts_engaged.toLocaleString(), accentColor: 'var(--accent-m4)',
+    { label: 'Accounts engaged', value: summary.total_accounts_engaged.toLocaleString(), accentColor: 'var(--metric-4)',
       delta: formatDelta(summary.accounts_engaged_delta_pct).delta ?? 'sum of daily',
       deltaType: formatDelta(summary.accounts_engaged_delta_pct).deltaType ?? 'neutral' },
-    { label: 'New followers', value: `+${summary.new_followers.toLocaleString()}`, accentColor: 'var(--accent-m3)',
+    { label: 'New followers', value: `+${summary.new_followers.toLocaleString()}`, accentColor: 'var(--metric-3)',
       ...formatDelta(summary.net_followers_delta_pct) },
     { label: 'Follower growth rate', value: followerGrowthRate !== null ? `${formatSignedNumber(followerGrowthRate)}%` : '—',
-      accentColor: 'var(--accent-m1)' },
-    { label: 'External link taps', value: summary.total_website_clicks.toLocaleString(), accentColor: 'var(--accent-m2)',
+      accentColor: 'var(--metric-1)' },
+    { label: 'External link taps', value: summary.total_website_clicks.toLocaleString(), accentColor: 'var(--metric-2)',
       ...formatDelta(summary.website_clicks_delta_pct) },
   ]
 }
@@ -61,19 +61,19 @@ function buildFBCards(metrics: FacebookMetrics): CardDef[] {
       : null
 
   const cards: CardDef[] = [
-    { label: 'Reach', value: summary.total_reach.toLocaleString(), accentColor: 'var(--accent-m1)',
+    { label: 'Reach', value: summary.total_reach.toLocaleString(), accentColor: 'var(--metric-1)',
       ...formatDelta(summary.reach_delta_pct) },
-    { label: 'Views', value: summary.total_impressions.toLocaleString(), accentColor: 'var(--accent-m2)',
+    { label: 'Views', value: summary.total_impressions.toLocaleString(), accentColor: 'var(--metric-2)',
       ...formatDelta(summary.views_delta_pct) },
-    { label: 'Engaged users', value: summary.total_engaged_users.toLocaleString(), accentColor: 'var(--accent-m3)' },
-    { label: 'New followers', value: `+${summary.new_followers.toLocaleString()}`, accentColor: 'var(--accent-m3)',
+    { label: 'Engaged users', value: summary.total_engaged_users.toLocaleString(), accentColor: 'var(--metric-3)' },
+    { label: 'New followers', value: `+${summary.new_followers.toLocaleString()}`, accentColor: 'var(--metric-3)',
       ...formatDelta(summary.followers_delta_pct) },
     { label: 'Follower growth rate', value: followerGrowthRate !== null ? `+${followerGrowthRate}%` : '—',
-      accentColor: 'var(--accent-m4)' },
-    { label: 'Frequency', value: frequency !== null ? `${frequency}x` : '—', accentColor: 'var(--accent-m1)' },
+      accentColor: 'var(--metric-4)' },
+    { label: 'Frequency', value: frequency !== null ? `${frequency}x` : '—', accentColor: 'var(--metric-1)' },
   ]
   if (summary.organic_reach_pct != null) {
-    cards.push({ label: 'Organic reach', value: `${summary.organic_reach_pct}%`, accentColor: 'var(--accent-m3)' })
+    cards.push({ label: 'Organic reach', value: `${summary.organic_reach_pct}%`, accentColor: 'var(--metric-3)' })
   }
   return cards
 }

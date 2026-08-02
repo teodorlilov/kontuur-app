@@ -11,7 +11,7 @@ const h1Style: React.CSSProperties = {
   fontFamily: 'var(--font-display, Georgia, serif)',
   fontSize: 40,
   fontWeight: 700,
-  color: 'var(--color-text-1)',
+  color: 'var(--ink)',
   marginBottom: 8,
   lineHeight: 1.2,
 }
@@ -19,20 +19,20 @@ const h1Style: React.CSSProperties = {
 const h2Style: React.CSSProperties = {
   fontSize: 18,
   fontWeight: 600,
-  color: 'var(--color-text-1)',
+  color: 'var(--ink)',
   marginTop: 48,
   marginBottom: 12,
 }
 
 const pStyle: React.CSSProperties = {
   fontSize: 15,
-  color: 'var(--color-text-2)',
+  color: 'var(--text2)',
   lineHeight: 1.75,
   marginBottom: 16,
 }
 
 const dividerStyle: React.CSSProperties = {
-  borderTop: '1px solid var(--color-border-1)',
+  borderTop: '1px solid var(--line)',
   marginTop: 48,
   marginBottom: 48,
 }
@@ -46,7 +46,7 @@ export default async function DataDeletionPage({ searchParams }: PageProps) {
 
   return (
     <>
-      <main style={{ background: 'var(--color-page)', minHeight: '100vh' }}>
+      <main style={{ background: 'var(--paper)', minHeight: '100vh' }}>
         <div style={{ maxWidth: 720, margin: '0 auto', padding: '80px 24px 100px' }}>
           <Link
             href="/"
@@ -55,14 +55,14 @@ export default async function DataDeletionPage({ searchParams }: PageProps) {
               alignItems: 'center',
               gap: 6,
               fontSize: 14,
-              color: 'var(--color-text-3)',
+              color: 'var(--text3)',
               textDecoration: 'none',
               marginBottom: 48,
             }}
           >
             ← Back
           </Link>
-          <p style={{ fontSize: 13, color: 'var(--color-text-3)', marginBottom: 16 }}>
+          <p style={{ fontSize: 13, color: 'var(--text3)', marginBottom: 16 }}>
             Data Deletion
           </p>
 
@@ -79,7 +79,7 @@ export default async function DataDeletionPage({ searchParams }: PageProps) {
               </p>
               <p style={pStyle}>
                 If you have further questions, contact us at{' '}
-                <a href="mailto:privacy@kontuur.io" style={{ color: 'var(--color-brand-accent)' }}>
+                <a href="mailto:privacy@kontuur.io" style={{ color: 'var(--spring)' }}>
                   privacy@kontuur.io
                 </a>{' '}
                 and include this confirmation code.
@@ -115,7 +115,7 @@ export default async function DataDeletionPage({ searchParams }: PageProps) {
               <h2 style={h2Style}>Option 2 — Contact Us Directly</h2>
               <p style={pStyle}>
                 Email us at{' '}
-                <a href="mailto:privacy@kontuur.io" style={{ color: 'var(--color-brand-accent)' }}>
+                <a href="mailto:privacy@kontuur.io" style={{ color: 'var(--spring)' }}>
                   privacy@kontuur.io
                 </a>{' '}
                 with the subject line <strong>&quot;Data Deletion Request&quot;</strong> and

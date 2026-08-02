@@ -29,7 +29,7 @@ export function PaletteSwatches({
             style={{
               fontSize: '9px',
               fontWeight: 500,
-              color: 'var(--color-muted)',
+              color: 'var(--text2)',
               letterSpacing: '1px',
               textTransform: 'uppercase',
             }}
@@ -41,10 +41,10 @@ export function PaletteSwatches({
               display: 'flex',
               alignItems: 'center',
               gap: '7px',
-              border: '0.5px solid var(--color-border-1)',
+              border: '1px solid var(--line)',
               borderRadius: '8px',
               padding: '5px 7px',
-              background: 'var(--color-page)',
+              background: 'var(--paper)',
             }}
           >
             <input
@@ -61,7 +61,7 @@ export function PaletteSwatches({
                 cursor: 'pointer',
               }}
             />
-            <span style={{ fontSize: '11px', color: 'var(--color-text-1)', fontVariantNumeric: 'tabular-nums' }}>
+            <span style={{ fontSize: '11px', color: 'var(--ink)', fontVariantNumeric: 'tabular-nums' }}>
               {palette[role]}
             </span>
           </span>

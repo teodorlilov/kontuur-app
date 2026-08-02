@@ -61,15 +61,15 @@ export function PostListItem({ post, index, status, isActive, onClick }: PostLis
       onClick={onClick}
       style={{
         padding: '13px 16px',
-        borderBottom: '0.5px solid rgba(44,62,80,0.055)',
+        borderBottom: '1px solid rgba(15,21,18,0.055)',
         cursor: 'pointer',
-        background: isActive ? 'rgba(44,62,80,0.035)' : 'transparent',
+        background: isActive ? 'rgba(15,21,18,0.035)' : 'transparent',
         position: 'relative',
         overflow: 'hidden',
         transition: 'background 0.12s',
       }}
       onMouseEnter={(e) => {
-        if (!isActive) e.currentTarget.style.background = '#F9F6F2'
+        if (!isActive) e.currentTarget.style.background = 'var(--sunken)'
       }}
       onMouseLeave={(e) => {
         if (!isActive) e.currentTarget.style.background = 'transparent'
@@ -86,8 +86,8 @@ export function PostListItem({ post, index, status, isActive, onClick }: PostLis
           marginBottom: 4,
         }}
       >
-        <span style={{ fontSize: 10, fontWeight: 500, color: '#8A8070' }}>#{index}</span>
-        {date && <span style={{ fontSize: 10, color: '#8A8070' }}>{date}</span>}
+        <span style={{ fontSize: 10, fontWeight: 500, color: 'var(--text2)' }}>#{index}</span>
+        {date && <span style={{ fontSize: 10, color: 'var(--text2)' }}>{date}</span>}
         {post.platform && (
           <span
             style={{
@@ -95,8 +95,8 @@ export function PostListItem({ post, index, status, isActive, onClick }: PostLis
               fontWeight: 500,
               padding: '1px 7px',
               borderRadius: 3,
-              background: 'rgba(192,123,85,0.12)',
-              color: '#C07B55',
+              background: 'rgba(46,158,104,0.12)',
+              color: 'var(--spring-text)',
             }}
           >
             {post.platform}
@@ -122,7 +122,7 @@ export function PostListItem({ post, index, status, isActive, onClick }: PostLis
               gap: 4,
               fontSize: 11,
               fontWeight: 500,
-              color: '#1A2630',
+              color: 'var(--ink)',
             }}
           >
             <div
@@ -137,7 +137,7 @@ export function PostListItem({ post, index, status, isActive, onClick }: PostLis
             {post.pillar}
           </div>
         )}
-        <span style={{ fontSize: 10, color: '#8A8070' }}>
+        <span style={{ fontSize: 10, color: 'var(--text2)' }}>
           · {postTypeLabel(post.post_type, post.slides_json)}
         </span>
       </div>

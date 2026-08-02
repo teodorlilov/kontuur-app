@@ -85,21 +85,21 @@ export function ReportHistory({ clientId, platform, onLoad }: ReportHistoryProps
   if (reports.length === 0) return null
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-5">
-      <p className="text-sm font-medium text-gray-700 mb-3">Previous reports</p>
+    <div className="bg-surface rounded-xl border border-line p-5">
+      <p className="text-sm font-medium text-text2 mb-3">Previous reports</p>
       <div className="space-y-2">
         {reports.map((r) => (
           <div
             key={r.id}
-            className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0"
+            className="flex items-center justify-between py-2 border-b border-line last:border-0"
           >
             <div>
-              <p className="text-sm text-gray-800">
+              <p className="text-sm text-ink">
                 {capitalizePlatform(r.platform)} · {r.period_start} to{' '}
                 {r.period_end}
               </p>
               {r.ai_summary && (
-                <p className="text-xs text-gray-400 line-clamp-1 mt-0.5">{r.ai_summary}</p>
+                <p className="text-xs text-text3 line-clamp-1 mt-0.5">{r.ai_summary}</p>
               )}
             </div>
             <div className="flex items-center gap-3 shrink-0 ml-4">
@@ -108,7 +108,7 @@ export function ReportHistory({ clientId, platform, onLoad }: ReportHistoryProps
                 onClick={() => handleView(r.id)}
                 disabled={loadingId === r.id}
                 className="text-xs font-medium hover:underline disabled:opacity-50"
-                style={{ color: 'var(--color-terracotta)' }}
+                style={{ color: 'var(--spring-text)' }}
               >
                 {loadingId === r.id ? 'Loading…' : 'View'}
               </button>
@@ -116,7 +116,7 @@ export function ReportHistory({ clientId, platform, onLoad }: ReportHistoryProps
                 type="button"
                 onClick={() => handleDelete(r.id)}
                 disabled={deletingId === r.id}
-                className="text-xs font-medium text-red-400 hover:text-red-600 hover:underline disabled:opacity-50"
+                className="text-xs font-medium text-danger hover:text-danger hover:underline disabled:opacity-50"
               >
                 {deletingId === r.id ? 'Deleting…' : 'Delete'}
               </button>

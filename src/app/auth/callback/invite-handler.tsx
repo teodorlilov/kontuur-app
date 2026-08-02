@@ -45,17 +45,17 @@ export function InviteHandler() {
   }, [router])
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+    <div className="min-h-screen flex items-center justify-center bg-sunken px-4">
       <div className="text-center">
         {error ? (
           <>
-            <p className="text-red-600 mb-4">{error}</p>
-            <a href="/login" className="text-brand-purple hover:underline text-sm">
+            <p className="text-danger mb-4">{error}</p>
+            <a href="/login" className="text-forest hover:underline text-sm">
               Back to login
             </a>
           </>
         ) : (
-          <p className="text-gray-500">Setting up your account…</p>
+          <p className="text-text3">Setting up your account…</p>
         )}
       </div>
     </div>

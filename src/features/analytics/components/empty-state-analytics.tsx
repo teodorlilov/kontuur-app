@@ -33,16 +33,16 @@ export function EmptyStateAnalytics({
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        background: 'var(--color-page)',
+        background: 'var(--paper)',
         padding: '40px 20px',
         borderRadius: 'var(--radius-lg)',
       }}
     >
       <IconFrame terra={isTerra}>
         {isTerra ? (
-          <BarChart3 size={22} color="var(--color-terracotta)" strokeWidth={1.5} />
+          <BarChart3 size={22} color="var(--spring)" strokeWidth={1.5} />
         ) : (
-          <AlertTriangle size={22} color="rgba(44,62,80,0.22)" strokeWidth={1.5} />
+          <AlertTriangle size={22} color="rgba(15,21,18,0.22)" strokeWidth={1.5} />
         )}
       </IconFrame>
 
@@ -51,7 +51,7 @@ export function EmptyStateAnalytics({
           fontFamily: 'var(--font-display, Georgia, serif)',
           fontSize: 22,
           fontWeight: 400,
-          color: 'var(--color-text-1)',
+          color: 'var(--ink)',
           marginBottom: 8,
           textAlign: 'center',
         }}
@@ -62,7 +62,7 @@ export function EmptyStateAnalytics({
       <p
         style={{
           fontSize: 13,
-          color: 'var(--color-muted)',
+          color: 'var(--text2)',
           lineHeight: 1.65,
           textAlign: 'center',
           maxWidth: 380,
@@ -80,7 +80,7 @@ export function EmptyStateAnalytics({
           onClick={onGenerate}
           style={{
             padding: '10px 24px',
-            background: 'var(--color-terracotta)',
+            background: 'var(--spring)',
             color: '#fff',
             border: 'none',
             borderRadius: 9,
@@ -98,8 +98,8 @@ export function EmptyStateAnalytics({
           onClick={onConnect}
           style={{
             padding: '10px 24px',
-            background: 'var(--sidebar-bg)',
-            color: 'var(--sidebar-text-active)',
+            background: 'var(--forest-deep)',
+            color: '#f2f5f1',
             border: 'none',
             borderRadius: 9,
             fontSize: 13,
@@ -113,7 +113,7 @@ export function EmptyStateAnalytics({
       )}
 
       {isTerra && platform && followerCount != null && (
-        <p style={{ fontSize: 12, color: 'var(--color-muted)', marginTop: 14 }}>
+        <p style={{ fontSize: 12, color: 'var(--text2)', marginTop: 14 }}>
           {clientName} · {capitalizePlatform(platform)} · {followerCount.toLocaleString()} followers
         </p>
       )}
@@ -127,10 +127,10 @@ function IconFrame({ terra, children }: { terra: boolean; children: React.ReactN
       style={{
         width: 56,
         height: 56,
-        borderLeft: `1.5px solid ${terra ? 'rgba(192,123,85,0.35)' : 'rgba(44,62,80,0.18)'}`,
-        borderRight: `1.5px solid ${terra ? 'rgba(192,123,85,0.35)' : 'rgba(44,62,80,0.18)'}`,
-        borderTop: `0.5px solid ${terra ? 'rgba(192,123,85,0.15)' : 'rgba(44,62,80,0.09)'}`,
-        borderBottom: `0.5px solid ${terra ? 'rgba(192,123,85,0.15)' : 'rgba(44,62,80,0.09)'}`,
+        borderLeft: `1.5px solid ${terra ? 'rgba(46,158,104,0.35)' : 'rgba(15,21,18,0.18)'}`,
+        borderRight: `1.5px solid ${terra ? 'rgba(46,158,104,0.35)' : 'rgba(15,21,18,0.18)'}`,
+        borderTop: `1px solid ${terra ? 'rgba(46,158,104,0.15)' : 'rgba(15,21,18,0.09)'}`,
+        borderBottom: `1px solid ${terra ? 'rgba(46,158,104,0.15)' : 'rgba(15,21,18,0.09)'}`,
         borderRadius: 2,
         display: 'flex',
         alignItems: 'center',

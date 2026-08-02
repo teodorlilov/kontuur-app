@@ -26,9 +26,9 @@ export function HowItWorks() {
       style={{
         paddingTop: 96,
         paddingBottom: 96,
-        background: 'var(--color-sunken)',
-        borderTop: '0.5px solid var(--color-border-1)',
-        borderBottom: '0.5px solid var(--color-border-1)',
+        background: 'var(--sunken)',
+        borderTop: '1px solid var(--line)',
+        borderBottom: '1px solid var(--line)',
       }}
     >
       <AnimateIn>
@@ -37,7 +37,7 @@ export function HowItWorks() {
             fontSize: 11,
             textTransform: 'uppercase',
             letterSpacing: '0.1em',
-            color: 'var(--color-brand-accent)',
+            color: 'var(--spring)',
             fontWeight: 500,
             textAlign: 'center',
             marginBottom: 12,
@@ -53,7 +53,7 @@ export function HowItWorks() {
             letterSpacing: '-0.02em',
             textAlign: 'center',
             marginBottom: 64,
-            color: 'var(--color-text-1)',
+            color: 'var(--ink)',
           }}
         >
           Up and running in minutes
@@ -77,7 +77,7 @@ export function HowItWorks() {
                   width: 36,
                   height: 36,
                   borderRadius: '50%',
-                  background: 'var(--color-brand)',
+                  background: 'var(--forest)',
                   color: '#fff',
                   display: 'flex',
                   alignItems: 'center',
@@ -95,7 +95,7 @@ export function HowItWorks() {
                   fontSize: 15,
                   fontWeight: 500,
                   marginBottom: 10,
-                  color: 'var(--color-text-1)',
+                  color: 'var(--ink)',
                   lineHeight: 1.4,
                 }}
               >
@@ -104,7 +104,7 @@ export function HowItWorks() {
               <p
                 style={{
                   fontSize: 13.5,
-                  color: 'var(--color-text-2)',
+                  color: 'var(--text2)',
                   lineHeight: 1.65,
                   margin: 0,
                 }}

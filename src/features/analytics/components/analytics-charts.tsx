@@ -29,16 +29,16 @@ export function AnalyticsCharts({ metrics }: AnalyticsChartsProps) {
     return (
       <div
         style={{
-          background: 'var(--color-surface)',
-          border: '0.5px solid var(--color-border-1)',
+          background: 'var(--surface)',
+          border: '1px solid var(--line)',
           borderRadius: 'var(--radius-lg)',
           padding: '20px 24px',
         }}
       >
-        <p style={{ fontSize: 15, fontWeight: 500, color: 'var(--color-text-1)', marginBottom: 16 }}>
+        <p style={{ fontSize: 15, fontWeight: 500, color: 'var(--ink)', marginBottom: 16 }}>
           Daily reach over time
         </p>
-        <p style={{ fontSize: 13.5, color: 'var(--color-text-3)', textAlign: 'center', padding: '32px 0' }}>
+        <p style={{ fontSize: 13.5, color: 'var(--text3)', textAlign: 'center', padding: '32px 0' }}>
           No daily data available
         </p>
       </div>
@@ -50,14 +50,14 @@ export function AnalyticsCharts({ metrics }: AnalyticsChartsProps) {
   return (
     <div
       style={{
-        background: 'var(--color-surface)',
-        border: '0.5px solid var(--color-border-1)',
+        background: 'var(--surface)',
+        border: '1px solid var(--line)',
         borderRadius: 'var(--radius-lg)',
         padding: '20px 24px',
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-        <p style={{ fontSize: 15, fontWeight: 500, color: 'var(--color-text-1)' }}>
+        <p style={{ fontSize: 15, fontWeight: 500, color: 'var(--ink)' }}>
           Daily reach over time
         </p>
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
@@ -66,7 +66,7 @@ export function AnalyticsCharts({ metrics }: AnalyticsChartsProps) {
             Reach
           </span>
           <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, color: CHART_COLORS.label }}>
-            <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'rgba(44,94,138,0.35)' }} />
+            <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'rgba(22,68,48,0.35)' }} />
             Views
           </span>
         </div>
@@ -89,7 +89,7 @@ export function AnalyticsCharts({ metrics }: AnalyticsChartsProps) {
             {...CHART_TOOLTIP_STYLE}
             formatter={(value) => (typeof value === 'number' ? value.toLocaleString() : String(value))}
           />
-          <Line dataKey="views" stroke="rgba(44,94,138,0.35)" {...LINE_PROPS} />
+          <Line dataKey="views" stroke="rgba(22,68,48,0.35)" {...LINE_PROPS} />
           <Area
             dataKey="reach"
             stroke={CHART_COLORS.reach}

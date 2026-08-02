@@ -34,12 +34,12 @@ export function Modal({ open, onClose, title, children, className, maxWidth = 52
             top: '50%',
             left: '50%',
             transform: 'translate(-50%, -50%)',
-            background: 'var(--color-surface)',
+            background: 'var(--surface)',
             borderRadius: 'var(--radius-xl)',
             width: '90vw',
             maxWidth,
             maxHeight: '90vh',
-            border: '0.5px solid var(--color-border-1)',
+            border: '1px solid var(--line)',
             zIndex: 201,
             animation: 'scale-in 200ms cubic-bezier(0.16,1,0.3,1)',
             outline: 'none',
@@ -51,7 +51,7 @@ export function Modal({ open, onClose, title, children, className, maxWidth = 52
               alignItems: 'center',
               justifyContent: 'space-between',
               padding: '20px 28px 16px',
-              borderBottom: '0.5px solid var(--color-border-1)',
+              borderBottom: '1px solid var(--line)',
             }}
           >
             {title && (
@@ -60,7 +60,7 @@ export function Modal({ open, onClose, title, children, className, maxWidth = 52
                   fontFamily: 'var(--font-display)',
                   fontSize: 20,
                   fontWeight: 400,
-                  color: 'var(--color-text-1)',
+                  color: 'var(--ink)',
                   letterSpacing: '-0.02em',
                   margin: 0,
                 }}
@@ -80,17 +80,17 @@ export function Modal({ open, onClose, title, children, className, maxWidth = 52
                   borderRadius: 'var(--radius-sm)',
                   border: 'none',
                   background: 'transparent',
-                  color: 'var(--color-text-3)',
+                  color: 'var(--text3)',
                   cursor: 'pointer',
                   transition: 'background 120ms ease, color 120ms ease',
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.background = 'var(--color-overlay)'
-                  e.currentTarget.style.color = 'var(--color-text-1)'
+                  e.currentTarget.style.background = 'rgba(15,21,18,0.04)'
+                  e.currentTarget.style.color = 'var(--ink)'
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.background = 'transparent'
-                  e.currentTarget.style.color = 'var(--color-text-3)'
+                  e.currentTarget.style.color = 'var(--text3)'
                 }}
               >
                 <X size={16} />

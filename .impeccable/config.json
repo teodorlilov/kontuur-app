@@ -1,0 +1,14 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "design-system-font-size",
+        "value": "16px",
+        "createdAt": "2026-08-02T07:03:49.931Z",
+        "reason": "iOS Safari auto-zooms focusable fields below 16px; sanctioned as The Mobile Input Exemption in DESIGN.md"
+      }
+    ]
+  }
+}

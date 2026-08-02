@@ -12,8 +12,8 @@ interface QualityScoresProps {
 function ScoreBar({ label, score }: { label: string; score: number }) {
   return (
     <div className="flex items-center gap-3">
-      <span className="text-xs text-gray-500 w-16 shrink-0">{label}</span>
-      <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+      <span className="text-xs text-text3 w-16 shrink-0">{label}</span>
+      <div className="flex-1 h-1.5 bg-sunken rounded-full overflow-hidden">
         <div
           className={cn('h-full rounded-full transition-all', scoreBarColor(score))}
           style={{ width: `${score * 10}%` }}
@@ -40,11 +40,11 @@ export function QualityScores({ criteria, scores }: QualityScoresProps) {
 
       {criteria.issues.length > 0 && (
         <div className="flex flex-col gap-1.5">
-          <p className="text-xs font-semibold text-gray-600">Issues to fix</p>
+          <p className="text-xs font-semibold text-text2">Issues to fix</p>
           {criteria.issues.map((issue, i) => (
             <div key={i} className="flex items-start gap-2">
-              <span className="text-xs text-red-500 shrink-0 mt-0.5">✗</span>
-              <span className="text-xs text-gray-600">
+              <span className="text-xs text-danger shrink-0 mt-0.5">✗</span>
+              <span className="text-xs text-text2">
                 <span className="font-medium">{issue.type.replaceAll('_', ' ')}:</span>{' '}
                 {issue.description}
               </span>
@@ -55,11 +55,11 @@ export function QualityScores({ criteria, scores }: QualityScoresProps) {
 
       {structureFailed && criteria.structure_followed && (
         <div className="flex flex-col gap-1.5">
-          <p className="text-xs font-semibold text-gray-600">Carousel structure</p>
+          <p className="text-xs font-semibold text-text2">Carousel structure</p>
           {criteria.structure_followed.notes.map((note, i) => (
             <div key={i} className="flex items-start gap-2">
-              <span className="text-xs text-red-500 shrink-0 mt-0.5">✗</span>
-              <span className="text-xs text-gray-600">{note}</span>
+              <span className="text-xs text-danger shrink-0 mt-0.5">✗</span>
+              <span className="text-xs text-text2">{note}</span>
             </div>
           ))}
         </div>
@@ -67,11 +67,11 @@ export function QualityScores({ criteria, scores }: QualityScoresProps) {
 
       {criteria.ai_tells.length > 0 && (
         <div className="flex flex-col gap-1.5">
-          <p className="text-xs font-semibold text-gray-600">Sounds like AI</p>
+          <p className="text-xs font-semibold text-text2">Sounds like AI</p>
           {criteria.ai_tells.map((tell, i) => (
             <div key={i} className="flex items-start gap-2">
-              <span className="text-xs text-amber-500 shrink-0 mt-0.5">⚠</span>
-              <span className="text-xs text-gray-600">{tell}</span>
+              <span className="text-xs text-pending shrink-0 mt-0.5">⚠</span>
+              <span className="text-xs text-text2">{tell}</span>
             </div>
           ))}
         </div>

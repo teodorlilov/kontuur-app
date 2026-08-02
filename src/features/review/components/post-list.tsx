@@ -49,7 +49,7 @@ export function PostList({
         width: 300,
         flexShrink: 0,
         background: '#fff',
-        borderRight: '0.5px solid rgba(44,62,80,0.10)',
+        borderRight: '1px solid rgba(15,21,18,0.10)',
         display: 'flex',
         flexDirection: 'column',
         overflow: 'hidden',
@@ -58,7 +58,7 @@ export function PostList({
       {/* Filter bar */}
       <div
         style={{
-          borderBottom: '0.5px solid rgba(44,62,80,0.10)',
+          borderBottom: '1px solid rgba(15,21,18,0.10)',
           display: 'flex',
           alignItems: 'center',
           padding: '0 16px',
@@ -80,14 +80,14 @@ export function PostList({
               border: 'none',
               fontFamily: 'inherit',
               transition: 'all 0.15s',
-              background: activeFilter === f ? '#1A2630' : 'transparent',
-              color: activeFilter === f ? '#ECE8E1' : '#8A8070',
+              background: activeFilter === f ? 'var(--forest-deep)' : 'transparent',
+              color: activeFilter === f ? '#f2f5f1' : 'var(--text2)',
             }}
           >
             {FILTER_LABELS[f]}
           </button>
         ))}
-        <span style={{ marginLeft: 'auto', fontSize: 11, color: '#8A8070' }}>
+        <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--text2)' }}>
           {filtered.length} posts
         </span>
       </div>
@@ -96,10 +96,10 @@ export function PostList({
       <div
         style={{
           padding: '10px 16px',
-          borderBottom: '0.5px solid rgba(44,62,80,0.07)',
+          borderBottom: '1px solid rgba(15,21,18,0.07)',
           fontSize: 9,
           fontWeight: 500,
-          color: '#8A8070',
+          color: 'var(--text2)',
           letterSpacing: '1.5px',
           textTransform: 'uppercase' as const,
           display: 'flex',
@@ -130,7 +130,7 @@ export function PostList({
               padding: '40px 20px',
               textAlign: 'center',
               fontSize: 12,
-              color: '#8A8070',
+              color: 'var(--text2)',
               fontStyle: 'italic',
             }}
           >

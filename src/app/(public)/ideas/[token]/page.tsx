@@ -26,13 +26,13 @@ export default async function IdeaFormPage({ params }: PageProps) {
             style={{
               fontSize: 16,
               fontWeight: 500,
-              color: '#1A2630',
+              color: 'var(--ink)',
               marginBottom: 8,
             }}
           >
             This link is invalid or has expired.
           </div>
-          <div style={{ fontSize: 13, color: '#8A8070', lineHeight: 1.6 }}>
+          <div style={{ fontSize: 13, color: 'var(--text2)', lineHeight: 1.6 }}>
             Please contact your agency for a new link.
           </div>
         </div>

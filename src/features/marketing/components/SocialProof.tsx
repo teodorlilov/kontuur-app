@@ -5,22 +5,22 @@ export function SocialProof() {
     <section
       className="mkt-pad"
       style={{
-        background: 'var(--color-sunken)',
-        borderTop: '0.5px solid var(--color-border-1)',
-        borderBottom: '0.5px solid var(--color-border-1)',
+        background: 'var(--sunken)',
+        borderTop: '1px solid var(--line)',
+        borderBottom: '1px solid var(--line)',
         paddingTop: 20,
         paddingBottom: 20,
         textAlign: 'center',
       }}
     >
-      <p style={{ fontSize: 12, color: 'var(--color-text-3)', marginBottom: 12 }}>
+      <p style={{ fontSize: 12, color: 'var(--text3)', marginBottom: 12 }}>
         Trusted by agencies in Bulgaria and across Europe
       </p>
       <div style={{ display: 'flex', gap: 32, justifyContent: 'center', flexWrap: 'wrap' }}>
         {agencies.map((name) => (
           <span
             key={name}
-            style={{ fontSize: 13, color: 'var(--color-text-3)', opacity: 0.6, fontWeight: 500 }}
+            style={{ fontSize: 13, color: 'var(--text3)', opacity: 0.6, fontWeight: 500 }}
           >
             {name}
           </span>

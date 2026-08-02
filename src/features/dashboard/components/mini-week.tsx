@@ -53,7 +53,7 @@ export function MiniWeek({ counts, todayIndex }: MiniWeekProps) {
                     'w-full rounded-full',
                     // Hatching marks an open slot — nothing scheduled that day
                     // yet. Same texture token the coverage chips use on dark.
-                    isFilled ? 'bg-white/85' : 'slot-open-inv'
+                    isFilled ? 'bg-surface/85' : 'slot-open-inv'
                   )}
                   // Bar height is the datum, so it is the one thing inline.
                   style={{ height }}

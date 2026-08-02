@@ -63,8 +63,8 @@ function Topbar({
         alignItems: 'center',
         justifyContent: 'space-between',
         minHeight: '52px',
-        background: 'var(--color-surface)',
-        borderBottom: '0.5px solid var(--color-border-1)',
+        background: 'var(--surface)',
+        borderBottom: '1px solid var(--line)',
         flexShrink: 0,
         gap: 8,
       }}
@@ -76,16 +76,16 @@ function Topbar({
             fontFamily: 'var(--font-display)',
             fontSize: '15px',
             fontWeight: 400,
-            color: 'var(--color-text-1)',
+            color: 'var(--ink)',
             letterSpacing: '3px',
             paddingRight: '16px',
-            borderRight: '0.5px solid var(--color-border-1)',
+            borderRight: '1px solid var(--line)',
             marginRight: '8px',
           }}
         >
           KONTUUR
         </div>
-        <span style={{ fontSize: '12px', color: 'var(--color-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{subtitle}</span>
+        <span style={{ fontSize: '12px', color: 'var(--text2)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{subtitle}</span>
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0, overflow: 'hidden' }}>
@@ -95,7 +95,7 @@ function Topbar({
           onClick={onCancel}
           style={{
             fontSize: '12px',
-            color: 'var(--color-muted)',
+            color: 'var(--text2)',
             background: 'none',
             border: 'none',
             cursor: 'pointer',
@@ -124,7 +124,7 @@ function StepIndicator({ steps, activeIndex }: { steps: WizardStep[]; activeInde
               style={{
                 fontSize: '11px',
                 fontWeight: isActive ? 500 : 400,
-                color: isDone || isActive ? 'var(--color-text-1)' : 'var(--color-text-3)',
+                color: isDone || isActive ? 'var(--ink)' : 'var(--text3)',
               }}
             >
               {step.label}
@@ -133,8 +133,8 @@ function StepIndicator({ steps, activeIndex }: { steps: WizardStep[]; activeInde
               <div
                 style={{
                   width: '16px',
-                  height: '0.5px',
-                  background: isDone ? 'var(--status-ok)' : 'var(--color-border-1)',
+                  height: '1px',
+                  background: isDone ? 'var(--forest)' : 'var(--line)',
                   marginLeft: '2px',
                   marginRight: '2px',
                 }}
@@ -163,7 +163,8 @@ function StepDot({
           width: '16px',
           height: '16px',
           borderRadius: '50%',
-          background: 'var(--status-ok)',
+          // Deep Pine, not spring: white on spring is 3.38:1 and fails.
+          background: 'var(--forest)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -180,7 +181,9 @@ function StepDot({
         width: '16px',
         height: '16px',
         borderRadius: '50%',
-        background: isActive ? 'var(--color-terracotta)' : 'rgba(44,62,80,0.15)',
+        // The wizard's lime: the step you are standing on. This is how lime
+        // reaches /generate and /clients/new, which have no sidebar.
+        background: isActive ? 'var(--accent)' : 'var(--sunken)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -188,9 +191,9 @@ function StepDot({
     >
       <span
         style={{
-          fontSize: '9px',
+          fontSize: '9.5px',
           fontWeight: 600,
-          color: isActive ? '#fff' : 'var(--color-text-3)',
+          color: isActive ? 'var(--forest-deep)' : 'var(--text3)',
         }}
       >
         {index + 1}
@@ -201,13 +204,19 @@ function StepDot({
 
 function ProgressLine({ percent }: { percent: number }) {
   return (
-    <div style={{ height: '2px', background: 'var(--color-border-1)', flexShrink: 0 }}>
+    <div style={{ height: '2px', background: 'var(--line)', flexShrink: 0 }}>
       <div
         style={{
           height: '100%',
-          background: 'var(--color-terracotta)',
-          width: `${percent}%`,
-          transition: 'width 0.4s ease',
+          // Deep Pine, deliberately not lime: a 2px lime line on --line is ~1.3:1
+          // and would vanish. See DESIGN.md § Don't paint a lime rule on light.
+          background: 'var(--forest)',
+          // scaleX, not width — animating width lays out every frame, which
+          // DESIGN.md rules out. transform-origin pins the growth to the left.
+          width: '100%',
+          transformOrigin: 'left',
+          transform: `scaleX(${percent / 100})`,
+          transition: 'transform 0.4s var(--ease-contour)',
         }}
       />
     </div>

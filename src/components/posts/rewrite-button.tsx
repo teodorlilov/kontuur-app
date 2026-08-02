@@ -25,10 +25,10 @@ export function RewriteButton({
       size="sm"
       className={cn(
         hasLowAuthenticity
-          ? 'text-red-600 border-red-200 hover:bg-red-50'
+          ? 'text-danger border-danger-line hover:bg-danger-bg'
           : hasLowQuality
-            ? 'text-amber-600 border-amber-200 hover:bg-amber-50'
-            : 'text-gray-600 border-gray-200 hover:bg-gray-50'
+            ? 'text-pending border-pending hover:bg-pending-bg'
+            : 'text-text2 border-line hover:bg-sunken'
       )}
     >
       {regenerating

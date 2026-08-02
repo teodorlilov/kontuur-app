@@ -15,7 +15,7 @@ export function StepPriority({ posts, onChange }: StepPriorityProps) {
       <PriorityPostForm posts={posts} onChange={onChange} />
 
       {posts.length === 0 && (
-        <p style={{ fontSize: '12px', color: 'var(--color-muted)', marginTop: '8px' }}>
+        <p style={{ fontSize: '12px', color: 'var(--text2)', marginTop: '8px' }}>
           No priority posts — this step is optional.
         </p>
       )}

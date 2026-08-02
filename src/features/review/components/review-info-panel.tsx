@@ -25,8 +25,8 @@ export function ReviewInfoPanel({ post, validationJson, slopResult, slopLoading 
       className="hidden md:flex md:flex-col w-full md:w-[400px]"
       style={{
         flexShrink: 0,
-        background: 'var(--color-surface)',
-        borderLeft: '0.5px solid var(--color-border-1)',
+        background: 'var(--surface)',
+        borderLeft: '1px solid var(--line)',
         overflowY: 'auto',
       }}
     >
@@ -62,8 +62,8 @@ function AuthenticitySection({
   return (
     <PanelSection title="Authenticity">
       {slopLoading ? (
-        <div className="flex items-center gap-2 text-xs" style={{ color: 'var(--color-muted)' }}>
-          <div className="w-3 h-3 border-2 border-gray-300 border-t-transparent rounded-full animate-spin" />
+        <div className="flex items-center gap-2 text-xs" style={{ color: 'var(--text2)' }}>
+          <div className="w-3 h-3 border-2 border-line2 border-t-transparent rounded-full animate-spin" />
           Checking authenticity...
         </div>
       ) : slopResult ? (
@@ -82,13 +82,15 @@ function HealthReviewSection() {
           alignItems: 'flex-start',
           gap: '8px',
           padding: '10px 12px',
-          background: 'rgba(217,169,81,0.08)',
-          borderRadius: '8px',
-          border: '0.5px solid rgba(217,169,81,0.2)',
+          // Amber Background to match the Amber ink already on the icon and
+          // text; it was a legacy gold, the last non-Contour hue in review.
+          background: 'var(--pending-bg)',
+          borderRadius: 'var(--radius-sm)',
+          border: '1px solid rgba(138,97,22,0.25)',
         }}
       >
-        <AlertTriangle size={13} style={{ color: '#B8860B', flexShrink: 0, marginTop: '1px' }} />
-        <span style={{ fontSize: '11px', color: '#8A6914', lineHeight: 1.5 }}>
+        <AlertTriangle size={13} style={{ color: 'var(--pending)', flexShrink: 0, marginTop: '1px' }} />
+        <span style={{ fontSize: '11px', color: 'var(--pending)', lineHeight: 1.5 }}>
           Medical content — verify all clinical claims before approving. Medical safety instructions will be added on publish.
         </span>
       </div>

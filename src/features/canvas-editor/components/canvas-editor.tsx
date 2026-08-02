@@ -14,7 +14,7 @@ const CanvasEditorOverlay = dynamic(() => import('./canvas-editor-overlay'), {
         position: 'fixed',
         inset: 0,
         zIndex: 200,
-        background: 'var(--color-sunken)',
+        background: 'var(--sunken)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',

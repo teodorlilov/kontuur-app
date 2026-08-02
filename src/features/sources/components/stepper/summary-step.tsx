@@ -130,19 +130,19 @@ export function SummaryStep({
   return (
     <div className="space-y-5">
       <div>
-        <h3 className="text-lg font-medium text-gray-900">
+        <h3 className="text-lg font-medium text-ink">
           Where we&apos;ll look for post ideas
         </h3>
-        <p className="text-sm text-gray-500 mt-1">
+        <p className="text-sm text-text3 mt-1">
           You can change any of this later from Content sources.
         </p>
       </div>
 
-      <div className="bg-gray-50 rounded-xl divide-y divide-gray-100">
+      <div className="bg-sunken rounded-xl divide-y divide-line">
         {rows.map((row) => (
           <div key={row.label} className="flex items-center justify-between px-4 py-3">
-            <p className="text-xs text-gray-500 uppercase tracking-wide">{row.label}</p>
-            <p className="text-sm font-medium text-gray-900">{row.value}</p>
+            <p className="text-xs text-text3 uppercase tracking-wide">{row.label}</p>
+            <p className="text-sm font-medium text-ink">{row.value}</p>
           </div>
         ))}
       </div>

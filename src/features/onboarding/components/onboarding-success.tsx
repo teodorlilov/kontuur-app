@@ -37,7 +37,7 @@ export function OnboardingSuccess({
   return (
     <div
       className="onboarding-success-overlay fixed inset-0 z-50 flex items-center justify-center"
-      style={{ background: 'var(--color-page)', animation: 'fade-in 250ms ease' }}
+      style={{ background: 'var(--paper)', animation: 'fade-in 250ms ease' }}
       role="dialog"
       aria-label="Onboarding complete"
     >
@@ -47,14 +47,14 @@ export function OnboardingSuccess({
           style={{
             width: 72,
             height: 72,
-            background: 'var(--color-brand-light)',
+            background: 'rgba(46,158,104,0.12)',
             animation: 'scale-in 350ms ease both',
           }}
         >
           <svg width="34" height="34" viewBox="0 0 24 24" fill="none" aria-hidden="true">
             <path
               d="M4.5 12.5l5 5 10-11"
-              stroke="var(--color-brand)"
+              stroke="var(--forest)"
               strokeWidth="2.5"
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -71,7 +71,7 @@ export function OnboardingSuccess({
             fontFamily: 'var(--font-display)',
             fontSize: 30,
             fontWeight: 400,
-            color: 'var(--color-text-1)',
+            color: 'var(--ink)',
             letterSpacing: '-0.02em',
             animation: 'fade-up 350ms ease 150ms both',
           }}
@@ -81,7 +81,7 @@ export function OnboardingSuccess({
 
         <p
           className="mt-3 text-sm"
-          style={{ color: 'var(--color-text-2)', animation: 'fade-up 350ms ease 250ms both' }}
+          style={{ color: 'var(--text2)', animation: 'fade-up 350ms ease 250ms both' }}
         >
           {recap.length > 0
             ? recap

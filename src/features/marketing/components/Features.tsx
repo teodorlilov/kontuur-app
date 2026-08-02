@@ -22,14 +22,14 @@ const features = [
 
 export function Features() {
   return (
-    <section id="features" className="mkt-pad" style={{ paddingTop: 96, paddingBottom: 96, background: 'var(--color-page)' }}>
+    <section id="features" className="mkt-pad" style={{ paddingTop: 96, paddingBottom: 96, background: 'var(--paper)' }}>
       <AnimateIn>
         <p
           style={{
             fontSize: 11,
             textTransform: 'uppercase',
             letterSpacing: '0.1em',
-            color: 'var(--color-brand-accent)',
+            color: 'var(--spring)',
             fontWeight: 500,
             textAlign: 'center',
             marginBottom: 12,
@@ -45,7 +45,7 @@ export function Features() {
             letterSpacing: '-0.02em',
             textAlign: 'center',
             marginBottom: 56,
-            color: 'var(--color-text-1)',
+            color: 'var(--ink)',
           }}
         >
           Everything your agency needs
@@ -65,7 +65,7 @@ export function Features() {
           <AnimateIn key={f.title} delay={i * 0.08}>
             <div
               style={{
-                background: 'var(--color-sunken)',
+                background: 'var(--sunken)',
                 borderRadius: 16,
                 padding: '28px 28px',
                 transition: 'transform 200ms ease, background 200ms ease',
@@ -74,20 +74,20 @@ export function Features() {
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.transform = 'translateY(-2px)'
-                e.currentTarget.style.background = '#EEECEA'
+                e.currentTarget.style.background = 'var(--sunken)'
               }}
               onMouseLeave={(e) => {
                 e.currentTarget.style.transform = 'translateY(0)'
-                e.currentTarget.style.background = 'var(--color-sunken)'
+                e.currentTarget.style.background = 'var(--sunken)'
               }}
             >
-              <f.icon size={32} color="var(--color-brand-accent)" style={{ marginBottom: 20 }} />
+              <f.icon size={32} color="var(--spring)" style={{ marginBottom: 20 }} />
               <h3
                 style={{
                   fontSize: 16,
                   fontWeight: 500,
                   marginBottom: 10,
-                  color: 'var(--color-text-1)',
+                  color: 'var(--ink)',
                 }}
               >
                 {f.title}
@@ -95,7 +95,7 @@ export function Features() {
               <p
                 style={{
                   fontSize: 13.5,
-                  color: 'var(--color-text-2)',
+                  color: 'var(--text2)',
                   lineHeight: 1.65,
                   margin: 0,
                 }}

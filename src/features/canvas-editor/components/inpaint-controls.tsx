@@ -25,7 +25,7 @@ export function InpaintControls({ inpaint }: { inpaint: InpaintPanelState }) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
       <div>
         <div style={PANEL_LABEL}>AI repair</div>
-        <p style={{ fontSize: '11px', color: 'var(--color-muted)', margin: '0 0 8px' }}>
+        <p style={{ fontSize: '11px', color: 'var(--text2)', margin: '0 0 8px' }}>
           Paint over what should change, then describe what belongs there instead.
         </p>
         <input

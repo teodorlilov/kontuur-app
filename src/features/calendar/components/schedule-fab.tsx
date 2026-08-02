@@ -20,18 +20,20 @@ export const ScheduleFab = memo(function ScheduleFab({ unscheduledCount, isOpen,
           width: 52,
           height: 52,
           borderRadius: '50%',
-          background: isOpen ? 'var(--color-terracotta)' : 'var(--color-brand)',
+          // Open is the active state — Pine Deep, a tone shift from Deep Pine
+          // rather than a hue change. Both branches used to be green anyway.
+          background: isOpen ? 'var(--forest-deep)' : 'var(--forest)',
           border: 'none',
           cursor: 'pointer',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          boxShadow: '0 4px 18px rgba(26,38,48,0.28)',
+          boxShadow: '0 4px 18px rgba(12,46,32,0.28)',
           transition: 'all 0.2s',
           position: 'relative',
         }}
       >
-        <CalendarDays style={{ width: 20, height: 20, color: '#ECE8E1' }} />
+        <CalendarDays style={{ width: 20, height: 20, color: '#f2f5f1' }} />
 
         {/* Badge */}
         {unscheduledCount > 0 && (
@@ -43,8 +45,8 @@ export const ScheduleFab = memo(function ScheduleFab({ unscheduledCount, isOpen,
               width: 18,
               height: 18,
               borderRadius: '50%',
-              background: 'var(--color-terracotta)',
-              border: '2px solid #fff',
+              background: 'var(--pending)',
+              border: '2px solid var(--surface)',
               fontSize: 10,
               fontWeight: 500,
               color: '#fff',

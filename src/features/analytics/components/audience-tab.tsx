@@ -47,21 +47,21 @@ export function AudienceTab({ metrics }: AudienceTabProps) {
           value={String(avgDailyNew)}
           delta={avgDailyNew > 0 ? `~${avgDailyNew}/day this period` : 'no new followers'}
           deltaType={avgDailyNew > 0 ? 'positive' : 'neutral'}
-          accentColor="var(--accent-m2)"
+          accentColor="var(--metric-2)"
         />
         <MetricCard
           label="Peak acquisition day"
           value={peakDay.count > 0 ? String(peakDay.count) : '—'}
           delta={peakDay.label}
           deltaType="neutral"
-          accentColor="var(--accent-m1)"
+          accentColor="var(--metric-1)"
         />
         <MetricCard
           label="Growth rate"
           value={growthRate !== null ? `+${growthRate}%` : '—'}
           delta={growthRate !== null && growthRate >= 2 ? '↑ Strong period' : 'vs starting count'}
           deltaType={growthRate !== null && growthRate > 0 ? 'positive' : 'neutral'}
-          accentColor="var(--accent-m3)"
+          accentColor="var(--metric-3)"
         />
       </div>
       <AudienceSection metrics={metrics} />

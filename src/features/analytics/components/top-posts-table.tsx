@@ -18,8 +18,8 @@ export function TopPostsTable({ metrics, limit = 5 }: TopPostsTableProps) {
     const followers = metrics.account.followers_count || 1
 
     return (
-      <div className="bg-white rounded-xl border border-gray-200 p-5">
-        <p className="text-sm font-medium text-gray-700 mb-4">Top posts by reach</p>
+      <div className="bg-surface rounded-xl border border-line p-5">
+        <p className="text-sm font-medium text-text2 mb-4">Top posts by reach</p>
         <div className="space-y-3">
           {posts.map((post, idx) => {
             const engagements = post.like_count + post.comments_count
@@ -32,9 +32,9 @@ export function TopPostsTable({ metrics, limit = 5 }: TopPostsTableProps) {
             return (
               <div
                 key={post.id}
-                className="flex items-center gap-3 py-2 border-b border-gray-100 last:border-0"
+                className="flex items-center gap-3 py-2 border-b border-line last:border-0"
               >
-                <span className="text-xs font-medium text-gray-400 w-4 shrink-0">{idx + 1}</span>
+                <span className="text-xs font-medium text-text3 w-4 shrink-0">{idx + 1}</span>
                 {post.thumbnail_url ? (
                   <Image
                     src={post.thumbnail_url}
@@ -57,44 +57,44 @@ export function TopPostsTable({ metrics, limit = 5 }: TopPostsTableProps) {
                       href={post.permalink}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-sm text-gray-800 truncate hover:underline block"
-                      onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--color-terracotta)' }}
+                      className="text-sm text-ink truncate hover:underline block"
+                      onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--spring-text)' }}
                       onMouseLeave={(e) => { e.currentTarget.style.color = '' }}
                     >
                       {post.caption ?? '(no caption)'}
                     </a>
                   ) : (
-                    <p className="text-sm text-gray-800 truncate">
+                    <p className="text-sm text-ink truncate">
                       {post.caption ?? '(no caption)'}
                     </p>
                   )}
-                  <p className="text-xs text-gray-400 mt-0.5">
+                  <p className="text-xs text-text3 mt-0.5">
                     {new Date(post.timestamp).toLocaleDateString()} · {formatType(post.media_type)}
                   </p>
                 </div>
                 <div className="flex gap-4 text-right shrink-0">
                   {saveRate !== null && (
                     <div>
-                      <p className="text-xs font-semibold text-gray-800">{saveRate}%</p>
-                      <p className="text-xs text-gray-400">saved</p>
+                      <p className="text-xs font-semibold text-ink">{saveRate}%</p>
+                      <p className="text-xs text-text3">saved</p>
                     </div>
                   )}
                   <div>
-                    <p className="text-xs font-medium text-gray-700">{engagementRate}%</p>
-                    <p className="text-xs text-gray-400">eng.</p>
+                    <p className="text-xs font-medium text-text2">{engagementRate}%</p>
+                    <p className="text-xs text-text3">eng.</p>
                   </div>
                   <div>
-                    <p className="text-xs font-medium text-gray-700">
+                    <p className="text-xs font-medium text-text2">
                       {(post.reach ?? 0).toLocaleString()}
                     </p>
-                    <p className="text-xs text-gray-400">reach</p>
+                    <p className="text-xs text-text3">reach</p>
                   </div>
                   {(post.shares ?? 0) > 0 && (
                     <div>
-                      <p className="text-xs font-medium text-gray-700">
+                      <p className="text-xs font-medium text-text2">
                         {(post.shares ?? 0).toLocaleString()}
                       </p>
-                      <p className="text-xs text-gray-400">shares</p>
+                      <p className="text-xs text-text3">shares</p>
                     </div>
                   )}
                 </div>
@@ -120,8 +120,8 @@ export function TopPostsTable({ metrics, limit = 5 }: TopPostsTableProps) {
   const fans = metrics.account.fan_count || 1
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-5">
-      <p className="text-sm font-medium text-gray-700 mb-4">Top posts by engagement</p>
+    <div className="bg-surface rounded-xl border border-line p-5">
+      <p className="text-sm font-medium text-text2 mb-4">Top posts by engagement</p>
       <div className="space-y-3">
         {posts.map((post, idx) => {
           const engagements = post.reactions + post.comments + post.shares
@@ -129,34 +129,34 @@ export function TopPostsTable({ metrics, limit = 5 }: TopPostsTableProps) {
           return (
             <div
               key={post.id}
-              className="flex items-center gap-3 py-2 border-b border-gray-100 last:border-0"
+              className="flex items-center gap-3 py-2 border-b border-line last:border-0"
             >
-              <span className="text-xs font-medium text-gray-400 w-4 shrink-0">{idx + 1}</span>
-              <div className="w-10 h-10 rounded shrink-0 flex items-center justify-center text-label font-semibold text-white bg-blue-400">
+              <span className="text-xs font-medium text-text3 w-4 shrink-0">{idx + 1}</span>
+              <div className="w-10 h-10 rounded shrink-0 flex items-center justify-center text-label font-semibold text-white bg-spring">
                 POST
               </div>
               <div className="flex-1 min-w-0 overflow-hidden">
-                <p className="text-sm text-gray-800 truncate">{post.message ?? '(no text)'}</p>
-                <p className="text-xs text-gray-400 mt-0.5">
+                <p className="text-sm text-ink truncate">{post.message ?? '(no text)'}</p>
+                <p className="text-xs text-text3 mt-0.5">
                   {new Date(post.created_time).toLocaleDateString()}
                 </p>
               </div>
               <div className="flex gap-4 text-right shrink-0">
                 <div>
-                  <p className="text-xs font-semibold text-gray-800">{engagementRate}%</p>
-                  <p className="text-xs text-gray-400">eng.</p>
+                  <p className="text-xs font-semibold text-ink">{engagementRate}%</p>
+                  <p className="text-xs text-text3">eng.</p>
                 </div>
                 <div>
-                  <p className="text-xs font-medium text-gray-700">
+                  <p className="text-xs font-medium text-text2">
                     {(post.reach ?? 0).toLocaleString()}
                   </p>
-                  <p className="text-xs text-gray-400">reach</p>
+                  <p className="text-xs text-text3">reach</p>
                 </div>
                 <div>
-                  <p className="text-xs font-medium text-gray-700">
+                  <p className="text-xs font-medium text-text2">
                     {post.shares.toLocaleString()}
                   </p>
-                  <p className="text-xs text-gray-400">shares</p>
+                  <p className="text-xs text-text3">shares</p>
                 </div>
               </div>
             </div>

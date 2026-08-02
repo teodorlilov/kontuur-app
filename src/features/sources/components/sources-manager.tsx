@@ -129,24 +129,24 @@ export function SourcesManager({
 
   function getStatusBadge(source: ClientSource) {
     if (source.type === 'file') {
-      return <span className="text-xs text-green-600">Uploaded</span>
+      return <span className="text-xs text-spring-text">Uploaded</span>
     }
     if (source.type === 'tavily') {
-      return <span className="text-xs text-gray-400">Web research</span>
+      return <span className="text-xs text-text3">Web research</span>
     }
     if (!source.last_fetch_status) {
-      return <span className="text-xs text-gray-400">Never fetched</span>
+      return <span className="text-xs text-text3">Never fetched</span>
     }
     if (source.last_fetch_status === 'ok') {
       const timeAgo = source.last_fetched_at
         ? formatRelativeTime(new Date(source.last_fetched_at))
         : ''
       return (
-        <span className="text-xs text-green-600">✓ Working{timeAgo ? ` · ${timeAgo}` : ''}</span>
+        <span className="text-xs text-spring-text">✓ Working{timeAgo ? ` · ${timeAgo}` : ''}</span>
       )
     }
     return (
-      <span className="text-xs text-red-500" title={source.last_fetch_error ?? undefined}>
+      <span className="text-xs text-danger" title={source.last_fetch_error ?? undefined}>
         ⚠ Error
       </span>
     )
@@ -174,7 +174,7 @@ export function SourcesManager({
   ) {
     if (sourcesOfType.length === 0) {
       return adding === sourceType ? null : (
-        <p className="text-sm text-gray-400 py-4">{emptyMessage}</p>
+        <p className="text-sm text-text3 py-4">{emptyMessage}</p>
       )
     }
     return (
@@ -208,13 +208,13 @@ export function SourcesManager({
   function renderLabelInput(placeholder: string) {
     return (
       <div className="flex flex-col gap-1.5">
-        <label className="text-xs font-medium text-gray-600">Label</label>
+        <label className="text-xs font-medium text-text2">Label</label>
         <input
           type="text"
           value={addForm.label}
           onChange={(e) => setAddForm((f) => ({ ...f, label: e.target.value }))}
           placeholder={placeholder}
-          className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-brand-purple focus:outline-none focus:ring-1 focus:ring-brand-purple"
+          className="rounded-lg border border-line2 px-3 py-1.5 text-sm text-ink placeholder:text-text3 focus:border-spring focus:outline-none focus:ring-1 focus:ring-spring/12"
         />
       </div>
     )
@@ -268,8 +268,8 @@ export function SourcesManager({
 
       <div className="mx-auto max-w-2xl px-6 pb-10 pt-6">
         {/* Source settings */}
-        <section className="mb-6 bg-white rounded-xl border border-gray-200 p-5">
-          <p className="text-sm font-medium text-gray-700 mb-3">Source settings</p>
+        <section className="mb-6 bg-surface rounded-xl border border-line p-5">
+          <p className="text-sm font-medium text-text2 mb-3">Source settings</p>
           <ToggleRow
             title="Strict mode: only use facts from these sources"
             description="When on, posts stick to facts found in your sources. Anything unverified gets flagged."
@@ -282,9 +282,9 @@ export function SourcesManager({
 
         {/* Topic-filter gaps (only meaningful once sources exist) */}
         {activeSourceCount > 0 && uncoveredPillars.length > 0 && (
-          <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 space-y-1">
+          <div className="mb-6 rounded-lg border border-pending bg-pending-bg px-4 py-3 space-y-1">
             {uncoveredPillars.map((p) => (
-              <p key={p.id} className="text-xs text-amber-700">
+              <p key={p.id} className="text-xs text-pending">
                 No sources feed <span className="font-medium">&quot;{p.pillar}&quot;</span> right
                 now. Ideas for this topic will come from web research and general knowledge instead.
               </p>
@@ -295,16 +295,16 @@ export function SourcesManager({
         {/* Research status */}
         <div className="mb-6">
           {requireGrounding && activeSourceCount === 0 ? (
-            <p className="text-xs text-amber-600">
+            <p className="text-xs text-pending">
               Source grounding is on but no sources are active — disable grounding or activate a
               source.
             </p>
           ) : activeSourceCount === 0 ? (
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-text3">
               No active sources — generation will have no source material.
             </p>
           ) : (
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-text3">
               {activeSourceCount} {activeSourceCount === 1 ? 'source' : 'sources'} active
             </p>
           )}
@@ -313,7 +313,7 @@ export function SourcesManager({
         {/* Web research (Tavily) section */}
         {tavilySource && (
           <section className="mb-8">
-            <h2 className="text-sm font-semibold text-gray-700 mb-3">Web research</h2>
+            <h2 className="text-sm font-semibold text-text2 mb-3">Web research</h2>
             <SourceRow
               source={tavilySource}
               statusBadge={getStatusBadge(tavilySource)}
@@ -338,7 +338,7 @@ export function SourcesManager({
         {/* News & blogs section */}
         <section className="mb-8">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-semibold text-gray-700">News &amp; blogs</h2>
+            <h2 className="text-sm font-semibold text-text2">News &amp; blogs</h2>
             <div className="flex items-center gap-2">
               <Button
                 variant="ghost"
@@ -365,16 +365,16 @@ export function SourcesManager({
 
           {/* Inline add form */}
           {adding === 'rss' && (
-            <div className="mb-3 p-4 rounded-xl border border-brand-purple/30 bg-brand-purple-light/30 flex flex-col gap-3">
+            <div className="mb-3 p-4 rounded-xl border border-line2 bg-wash flex flex-col gap-3">
               {renderLabelInput('e.g. Health News Daily')}
               <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-medium text-gray-600">Feed URL (RSS)</label>
+                <label className="text-xs font-medium text-text2">Feed URL (RSS)</label>
                 <input
                   type="url"
                   value={addForm.url}
                   onChange={(e) => setAddForm((f) => ({ ...f, url: e.target.value }))}
                   placeholder="https://example.com/feed"
-                  className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-brand-purple focus:outline-none focus:ring-1 focus:ring-brand-purple"
+                  className="rounded-lg border border-line2 px-3 py-1.5 text-sm text-ink placeholder:text-text3 focus:border-spring focus:outline-none focus:ring-1 focus:ring-spring/12"
                 />
               </div>
               <div className="flex items-center gap-2">
@@ -390,7 +390,7 @@ export function SourcesManager({
                 </Button>
                 <button
                   onClick={() => setAdding(null)}
-                  className="text-sm text-gray-400 hover:text-gray-600"
+                  className="text-sm text-text3 hover:text-text2"
                 >
                   Cancel
                 </button>
@@ -408,7 +408,7 @@ export function SourcesManager({
         {/* Websites section */}
         <section className="mb-8">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-semibold text-gray-700">Websites</h2>
+            <h2 className="text-sm font-semibold text-text2">Websites</h2>
             <Button
               variant="secondary"
               size="sm"
@@ -423,20 +423,20 @@ export function SourcesManager({
 
           {/* Inline add form */}
           {adding === 'website' && (
-            <div className="mb-3 p-4 rounded-xl border border-brand-purple/30 bg-brand-purple-light/30 flex flex-col gap-3">
+            <div className="mb-3 p-4 rounded-xl border border-line2 bg-wash flex flex-col gap-3">
               {renderLabelInput('e.g. diagnosa.info')}
               <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-medium text-gray-600">Website URL</label>
+                <label className="text-xs font-medium text-text2">Website URL</label>
                 <input
                   type="url"
                   value={addForm.url}
                   onChange={(e) => setAddForm((f) => ({ ...f, url: e.target.value }))}
                   placeholder="https://example.com"
-                  className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-brand-purple focus:outline-none focus:ring-1 focus:ring-brand-purple"
+                  className="rounded-lg border border-line2 px-3 py-1.5 text-sm text-ink placeholder:text-text3 focus:border-spring focus:outline-none focus:ring-1 focus:ring-spring/12"
                 />
               </div>
               <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-medium text-gray-600">
+                <label className="text-xs font-medium text-text2">
                   Focus instructions (optional)
                 </label>
                 <textarea
@@ -444,9 +444,9 @@ export function SourcesManager({
                   onChange={(e) => setAddForm((f) => ({ ...f, focusInstructions: e.target.value }))}
                   placeholder="e.g. Property listings — prices, locations, sizes. Ignore navigation, filters, search forms."
                   rows={2}
-                  className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-brand-purple focus:outline-none focus:ring-1 focus:ring-brand-purple resize-none"
+                  className="rounded-lg border border-line2 px-3 py-1.5 text-sm text-ink placeholder:text-text3 focus:border-spring focus:outline-none focus:ring-1 focus:ring-spring/12 resize-none"
                 />
-                <p className="text-xs text-gray-400">
+                <p className="text-xs text-text3">
                   Tell the AI what to extract from this page. Leave empty to use all content.
                 </p>
               </div>
@@ -463,7 +463,7 @@ export function SourcesManager({
                     Scan for pages
                   </Button>
                   {addSelectedPages.length > 0 && (
-                    <span className="text-xs text-brand-purple font-medium">
+                    <span className="text-xs text-forest font-medium">
                       {addSelectedPages.length} pages selected
                     </span>
                   )}
@@ -482,7 +482,7 @@ export function SourcesManager({
                 </Button>
                 <button
                   onClick={() => setAdding(null)}
-                  className="text-sm text-gray-400 hover:text-gray-600"
+                  className="text-sm text-text3 hover:text-text2"
                 >
                   Cancel
                 </button>
@@ -503,7 +503,7 @@ export function SourcesManager({
         {/* Documents section */}
         <section className="mb-8">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-semibold text-gray-700">Documents</h2>
+            <h2 className="text-sm font-semibold text-text2">Documents</h2>
             <Button
               variant="secondary"
               size="sm"
@@ -519,18 +519,18 @@ export function SourcesManager({
 
           {/* Inline upload form */}
           {adding === 'file' && (
-            <div className="mb-3 p-4 rounded-xl border border-brand-purple/30 bg-brand-purple-light/30 flex flex-col gap-3">
+            <div className="mb-3 p-4 rounded-xl border border-line2 bg-wash flex flex-col gap-3">
               {renderLabelInput('e.g. Service descriptions')}
               <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-medium text-gray-600">File (PDF or TXT)</label>
+                <label className="text-xs font-medium text-text2">File (PDF or TXT)</label>
                 <input
                   type="file"
                   accept=".pdf,.txt"
                   onChange={(e) => setSelectedFile(e.target.files?.[0] ?? null)}
-                  className="text-sm text-gray-600 file:mr-3 file:rounded-lg file:border-0 file:bg-gray-100 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-gray-700 hover:file:bg-gray-200"
+                  className="text-sm text-text2 file:mr-3 file:rounded-lg file:border-0 file:bg-sunken file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-text2 hover:file:bg-line"
                 />
               </div>
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-text3">
                 Max 10MB. Text will be extracted and used as context for research and generation.
               </p>
               <div className="flex items-center gap-2">
@@ -549,7 +549,7 @@ export function SourcesManager({
                     setAdding(null)
                     setSelectedFile(null)
                   }}
-                  className="text-sm text-gray-400 hover:text-gray-600"
+                  className="text-sm text-text3 hover:text-text2"
                 >
                   Cancel
                 </button>
@@ -599,13 +599,13 @@ export function SourcesManager({
         >
           {suggesting ? (
             <div className="flex flex-col gap-3 py-4">
-              <p className="text-sm text-gray-500">Finding relevant feeds...</p>
+              <p className="text-sm text-text3">Finding relevant feeds...</p>
               {[...Array(4)].map((_, i) => (
-                <div key={i} className="h-14 rounded-lg bg-gray-100 animate-pulse" />
+                <div key={i} className="h-14 rounded-lg bg-sunken animate-pulse" />
               ))}
             </div>
           ) : suggestions.length === 0 ? (
-            <p className="text-sm text-gray-500 py-4">
+            <p className="text-sm text-text3 py-4">
               No suggestions found. Add a feed URL manually below.
             </p>
           ) : (
@@ -613,12 +613,12 @@ export function SourcesManager({
               {suggestions.map((s) => (
                 <div
                   key={s.url}
-                  className="p-3 rounded-lg border border-gray-200 flex items-start justify-between gap-3"
+                  className="p-3 rounded-lg border border-line flex items-start justify-between gap-3"
                 >
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900 truncate">{s.label}</p>
-                    <p className="text-xs text-gray-500 truncate mt-0.5">{s.url}</p>
-                    <p className="text-xs text-gray-400 mt-1">{s.reason}</p>
+                    <p className="text-sm font-medium text-ink truncate">{s.label}</p>
+                    <p className="text-xs text-text3 truncate mt-0.5">{s.url}</p>
+                    <p className="text-xs text-text3 mt-1">{s.reason}</p>
                   </div>
                   <Button
                     size="sm"
@@ -637,8 +637,8 @@ export function SourcesManager({
           )}
 
           {/* Manual add fallback */}
-          <div className="mt-4 pt-4 border-t border-gray-100">
-            <p className="text-xs text-gray-500 mb-2">Add a feed URL manually:</p>
+          <div className="mt-4 pt-4 border-t border-line">
+            <p className="text-xs text-text3 mb-2">Add a feed URL manually:</p>
             <ManualAddInModal
               onAdd={(label, url) => {
                 void handleAddSource('rss', label, url).then((ok) => {

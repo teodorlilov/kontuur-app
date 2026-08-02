@@ -50,7 +50,7 @@ export function StatCard({ label, value, icon, pill, footer, dark, children }: S
         <span
           className={cn(
             'grid size-[38px] place-items-center rounded-panel',
-            dark ? 'bg-white/10 text-white' : 'bg-sunken text-text2'
+            dark ? 'bg-surface/10 text-white' : 'bg-sunken text-text2'
           )}
         >
           {icon}

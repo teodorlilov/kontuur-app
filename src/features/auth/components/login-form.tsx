@@ -21,10 +21,10 @@ interface LoginFormPanelProps {
 function LoginFormPanel({ email, setEmail, password, setPassword, errors, loading, onSubmit }: LoginFormPanelProps) {
   return (
     <div>
-      <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 400, color: '#1A2630', marginBottom: 6 }}>
+      <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 400, color: 'var(--ink)', marginBottom: 6 }}>
         Welcome back
       </h3>
-      <p style={{ fontSize: 13, color: '#8A8070', marginBottom: 32 }}>Sign in to your account</p>
+      <p style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 32 }}>Sign in to your account</p>
       <form onSubmit={onSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
         <div style={{ marginBottom: 18 }}>
           <Input
@@ -51,7 +51,7 @@ function LoginFormPanel({ email, setEmail, password, setPassword, errors, loadin
           />
         </div>
         <div style={{ textAlign: 'right', marginBottom: 18 }}>
-          <Link href="/forgot-password" style={{ fontSize: 11, color: '#7A7060', textDecoration: 'none' }}>
+          <Link href="/forgot-password" style={{ fontSize: 11, color: 'var(--text2)', textDecoration: 'none' }}>
             Forgot password?
           </Link>
         </div>
@@ -65,8 +65,8 @@ function LoginFormPanel({ email, setEmail, password, setPassword, errors, loadin
             justifyContent: 'center',
             gap: 6,
             padding: '13px 0',
-            background: '#1A2630',
-            color: '#ECE8E1',
+            background: 'var(--forest-deep)',
+            color: '#f2f5f1',
             fontFamily: 'var(--font-sans)',
             fontSize: 10,
             fontWeight: 800,
@@ -78,8 +78,8 @@ function LoginFormPanel({ email, setEmail, password, setPassword, errors, loadin
             opacity: loading ? 0.5 : 1,
             marginTop: 8,
           }}
-          onMouseEnter={(e) => { if (!loading) e.currentTarget.style.background = '#C07B55' }}
-          onMouseLeave={(e) => { e.currentTarget.style.background = '#1A2630' }}
+          onMouseEnter={(e) => { if (!loading) e.currentTarget.style.background = 'var(--spring-text)' }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--forest-deep)' }}
         >
           {loading && (
             <svg style={{ width: 14, height: 14, animation: 'spin 1s linear infinite' }} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -90,9 +90,9 @@ function LoginFormPanel({ email, setEmail, password, setPassword, errors, loadin
           Sign in
         </button>
       </form>
-      <p style={{ textAlign: 'center', fontSize: 12, color: '#7A7060', marginTop: 20 }}>
+      <p style={{ textAlign: 'center', fontSize: 12, color: 'var(--text2)', marginTop: 20 }}>
         No account?{' '}
-        <Link href="/signup" style={{ color: '#C07B55', textDecoration: 'none' }}>
+        <Link href="/signup" style={{ color: 'var(--spring-text)', textDecoration: 'none' }}>
           Sign up
         </Link>
       </p>

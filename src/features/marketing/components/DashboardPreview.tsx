@@ -7,7 +7,7 @@ export function DashboardPreview() {
     <section
       className="mkt-pad"
       style={{
-        background: 'var(--color-brand)',
+        background: 'var(--forest)',
         paddingTop: 80,
         paddingBottom: 0,
         overflow: 'hidden',
@@ -59,7 +59,7 @@ export function DashboardPreview() {
         sizes="(max-width: 1200px) 100vw, 1200px"
         style={{
           borderRadius: '16px 16px 0 0',
-          border: '0.5px solid rgba(255,255,255,0.12)',
+          border: '1px solid rgba(255,255,255,0.12)',
           width: '100%',
           height: 'auto',
           maxWidth: 1200,

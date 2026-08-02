@@ -7,7 +7,7 @@ import type { PostImage } from '@/types/api'
 export function PostImagePreview({ image, altText }: { image: PostImage | null; altText: string }) {
   if (!image) return null
   return (
-    <div style={{ borderRadius: 10, overflow: 'hidden', border: '0.5px solid rgba(44,62,80,0.10)' }}>
+    <div style={{ borderRadius: 10, overflow: 'hidden', border: '1px solid rgba(15,21,18,0.10)' }}>
       <Image
         src={image.publicUrl}
         alt={altText}

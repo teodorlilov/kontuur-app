@@ -41,7 +41,7 @@ export function StepEntry({
           fontFamily: 'var(--font-display)',
           fontSize: '26px',
           fontWeight: 400,
-          color: 'var(--color-text-1)',
+          color: 'var(--ink)',
           textAlign: 'center',
           marginBottom: '8px',
         }}
@@ -51,7 +51,7 @@ export function StepEntry({
       <p
         style={{
           fontSize: '14px',
-          color: 'var(--color-muted)',
+          color: 'var(--text2)',
           textAlign: 'center',
           marginBottom: '32px',
           maxWidth: '420px',
@@ -77,8 +77,8 @@ export function StepEntry({
           width: '100%',
           maxWidth: '480px',
           padding: '13px',
-          background: hasInput ? 'var(--sidebar-bg)' : 'rgba(44,62,80,0.3)',
-          color: '#ECE8E1',
+          background: hasInput ? 'var(--forest-deep)' : 'rgba(15,21,18,0.3)',
+          color: '#f2f5f1',
           border: 'none',
           borderRadius: '10px',
           fontSize: '14px',
@@ -97,7 +97,7 @@ export function StepEntry({
         onClick={onSkip}
         style={{
           fontSize: '12px',
-          color: 'var(--color-muted)',
+          color: 'var(--text2)',
           background: 'none',
           border: 'none',
           cursor: 'pointer',
@@ -114,10 +114,10 @@ function FrameIcon() {
   return (
     <div
       style={{
-        borderLeft: '1.5px solid var(--color-terracotta)',
-        borderRight: '1.5px solid var(--color-terracotta)',
-        borderTop: '0.5px solid var(--color-border-2)',
-        borderBottom: '0.5px solid var(--color-border-2)',
+        borderLeft: '1.5px solid var(--spring)',
+        borderRight: '1.5px solid var(--spring)',
+        borderTop: '1px solid var(--line2)',
+        borderBottom: '1px solid var(--line2)',
         padding: '12px 14px',
         marginBottom: '20px',
         display: 'flex',
@@ -125,7 +125,7 @@ function FrameIcon() {
         justifyContent: 'center',
       }}
     >
-      <Pencil size={20} color="var(--color-terracotta)" strokeWidth={1.5} />
+      <Pencil size={20} color="var(--spring)" strokeWidth={1.5} />
     </div>
   )
 }
@@ -144,8 +144,8 @@ function InputCard({
   return (
     <div
       style={{
-        background: 'var(--color-surface)',
-        border: '0.5px solid var(--color-border-1)',
+        background: 'var(--surface)',
+        border: '1px solid var(--line)',
         borderRadius: '14px',
         padding: '24px',
         width: '100%',

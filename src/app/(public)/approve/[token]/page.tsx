@@ -213,7 +213,7 @@ export default function ApprovalPage() {
 
   if (pageState === 'loading') {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F4EFE6' }}>
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--paper)' }}>
         <Spinner size="lg" />
       </div>
     )
@@ -221,10 +221,10 @@ export default function ApprovalPage() {
 
   if (pageState === 'error') {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F4EFE6' }}>
-        <div style={{ background: '#fff', borderRadius: 12, border: '0.5px solid rgba(44,62,80,0.10)', padding: 32, maxWidth: 420, textAlign: 'center' }}>
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--paper)' }}>
+        <div style={{ background: '#fff', borderRadius: 12, border: '1px solid rgba(15,21,18,0.10)', padding: 32, maxWidth: 420, textAlign: 'center' }}>
           <div style={{ fontSize: 28, marginBottom: 12 }}>⚠️</div>
-          <p style={{ fontSize: 14, color: '#1A2630', fontWeight: 500 }}>{errorMessage}</p>
+          <p style={{ fontSize: 14, color: 'var(--ink)', fontWeight: 500 }}>{errorMessage}</p>
         </div>
       </div>
     )
@@ -232,15 +232,15 @@ export default function ApprovalPage() {
 
   if (pageState === 'submitted') {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F4EFE6' }}>
-        <div style={{ background: '#fff', borderRadius: 12, border: '0.5px solid rgba(44,62,80,0.10)', padding: 32, maxWidth: 420, textAlign: 'center' }}>
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--paper)' }}>
+        <div style={{ background: '#fff', borderRadius: 12, border: '1px solid rgba(15,21,18,0.10)', padding: 32, maxWidth: 420, textAlign: 'center' }}>
           <div style={{ fontSize: 28, marginBottom: 12 }}>{submittedStatus === 'approved' ? '✅' : '📝'}</div>
-          <h2 style={{ fontFamily: 'var(--font-display, Georgia, serif)', fontSize: 20, fontWeight: 400, color: '#1A2630', marginBottom: 8 }}>
+          <h2 style={{ fontFamily: 'var(--font-display, Georgia, serif)', fontSize: 20, fontWeight: 400, color: 'var(--ink)', marginBottom: 8 }}>
             {submittedStatus === 'approved'
               ? 'Thank you! Your posts are confirmed.'
               : 'Your feedback has been sent to the team.'}
           </h2>
-          <p style={{ fontSize: 13, color: '#8A8070' }}>You can close this page.</p>
+          <p style={{ fontSize: 13, color: 'var(--text2)' }}>You can close this page.</p>
         </div>
       </div>
     )
@@ -255,7 +255,7 @@ export default function ApprovalPage() {
         display: 'flex',
         flexDirection: 'column',
         overflow: 'hidden',
-        background: '#F4EFE6',
+        background: 'var(--paper)',
       }}
     >
       <ReviewHeader
@@ -304,7 +304,7 @@ export default function ApprovalPage() {
               flexDirection: 'column',
               gap: 12,
               padding: 40,
-              background: '#F4EFE6',
+              background: 'var(--paper)',
             }}
           >
             <div
@@ -312,13 +312,13 @@ export default function ApprovalPage() {
                 fontFamily: 'var(--font-display, Georgia, serif)',
                 fontSize: 20,
                 fontWeight: 400,
-                color: '#1A2630',
+                color: 'var(--ink)',
                 marginBottom: 6,
               }}
             >
               All done
             </div>
-            <div style={{ fontSize: 13, color: '#8A8070', textAlign: 'center' }}>
+            <div style={{ fontSize: 13, color: 'var(--text2)', textAlign: 'center' }}>
               All posts have been reviewed. The agency will be notified.
             </div>
           </div>

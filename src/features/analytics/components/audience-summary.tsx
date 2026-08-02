@@ -21,13 +21,13 @@ export function AudienceSummary({ total, newCount, unfollows, netGrowth, followe
     : 'in selected period'
 
   const cells = [
-    { label: 'Total followers', value: total.toLocaleString(), colour: 'var(--color-text-1)', sub: `as of ${today}` },
-    { label: 'New followers', value: `+${newCount}`, colour: 'var(--accent-m3)', sub: deltaLabel },
-    { label: 'Unfollowers', value: `−${unfollows}`, colour: 'var(--color-muted)', sub: 'in selected period' },
+    { label: 'Total followers', value: total.toLocaleString(), colour: 'var(--ink)', sub: `as of ${today}` },
+    { label: 'New followers', value: `+${newCount}`, colour: 'var(--metric-3)', sub: deltaLabel },
+    { label: 'Unfollowers', value: `−${unfollows}`, colour: 'var(--text2)', sub: 'in selected period' },
     {
       label: 'Net growth',
       value: netGrowth >= 0 ? `+${netGrowth}` : `−${Math.abs(netGrowth)}`,
-      colour: netGrowth >= 0 ? 'var(--accent-m3)' : '#B43232',
+      colour: netGrowth >= 0 ? 'var(--metric-3)' : 'var(--danger)',
       sub: 'total change',
     },
   ]
@@ -36,9 +36,9 @@ export function AudienceSummary({ total, newCount, unfollows, netGrowth, followe
     <div
       className="grid grid-cols-2 md:grid-cols-4"
       style={{
-        border: '0.5px solid var(--color-border-1)',
+        border: '1px solid var(--line)',
         borderRadius: 'var(--radius-lg)',
-        background: 'var(--color-surface)',
+        background: 'var(--surface)',
         overflow: 'hidden',
         marginBottom: 14,
       }}
@@ -48,18 +48,18 @@ export function AudienceSummary({ total, newCount, unfollows, netGrowth, followe
           key={cell.label}
           className={[
             i % 2 === 0 ? '' : 'max-md:!border-r-0',
-            i < 2 ? 'max-md:border-b max-md:border-b-[rgba(44,62,80,0.06)]' : '',
+            i < 2 ? 'max-md:border-b max-md:border-b-[rgba(15,21,18,0.06)]' : '',
           ].join(' ')}
           style={{
             padding: '18px 20px',
-            borderRight: i < 3 ? '0.5px solid rgba(44,62,80,0.06)' : 'none',
+            borderRight: i < 3 ? '1px solid rgba(15,21,18,0.06)' : 'none',
           }}
         >
           <div
             style={{
               fontSize: 9,
               fontWeight: 500,
-              color: 'var(--color-muted)',
+              color: 'var(--text2)',
               letterSpacing: '1.1px',
               textTransform: 'uppercase',
               marginBottom: 8,
@@ -79,7 +79,7 @@ export function AudienceSummary({ total, newCount, unfollows, netGrowth, followe
           >
             {cell.value}
           </div>
-          <div style={{ fontSize: 11, color: 'var(--color-muted)' }}>{cell.sub}</div>
+          <div style={{ fontSize: 11, color: 'var(--text2)' }}>{cell.sub}</div>
         </div>
       ))}
     </div>

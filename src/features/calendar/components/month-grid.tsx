@@ -76,7 +76,7 @@ export const MonthGrid = memo(function MonthGrid({
               textAlign: 'center',
               fontSize: 9,
               fontWeight: 500,
-              color: 'var(--color-muted)',
+              color: 'var(--text2)',
               letterSpacing: '0.5px',
               textTransform: 'uppercase',
             }}

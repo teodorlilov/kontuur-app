@@ -84,7 +84,7 @@ export function CoverageRow({ clientId, name, week, pendingCount, tier }: Covera
             key={index}
             className={cn(
               'size-[13px] rounded-[4.5px] box-border',
-              day === 'published' && (isDark ? 'bg-white' : 'bg-forest'),
+              day === 'published' && (isDark ? 'bg-surface' : 'bg-forest'),
               day === 'scheduled' &&
                 (isDark
                   ? 'bg-transparent shadow-[inset_0_0_0_1.5px_rgba(255,255,255,0.65)]'

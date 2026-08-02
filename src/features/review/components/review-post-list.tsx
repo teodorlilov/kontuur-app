@@ -34,8 +34,8 @@ export function ReviewPostList({
       className="w-full md:w-[280px]"
       style={{
         flexShrink: 0,
-        background: 'var(--color-surface)',
-        borderRight: '0.5px solid var(--color-border-1)',
+        background: 'var(--surface)',
+        borderRight: '1px solid var(--line)',
         display: 'flex',
         flexDirection: 'column',
         overflow: 'hidden',
@@ -49,10 +49,10 @@ export function ReviewPostList({
             alignItems: 'center',
             justifyContent: 'space-between',
             padding: '8px 0',
-            borderBottom: '0.5px solid var(--color-border-1)',
+            borderBottom: '1px solid var(--line)',
           }}
         >
-          <span style={{ fontSize: '10px', color: 'var(--color-muted)' }}>
+          <span style={{ fontSize: '10px', color: 'var(--text2)' }}>
             {posts.length} {posts.length === 1 ? 'post' : 'posts'}
             {approvedCount > 0 && ` \u00b7 ${approvedCount} approved`}
           </span>
@@ -68,8 +68,8 @@ export function ReviewPostList({
       <div style={{ flex: 1, overflowY: 'auto' }}>
         {posts.length === 0 ? (
           <div style={{ padding: '32px 16px', textAlign: 'center' }}>
-            <p style={{ fontSize: '12px', fontWeight: 500, color: 'var(--color-muted)' }}>No posts to review</p>
-            <p style={{ fontSize: '11px', color: 'var(--color-muted)', marginTop: '4px', opacity: 0.7 }}>
+            <p style={{ fontSize: '12px', fontWeight: 500, color: 'var(--text2)' }}>No posts to review</p>
+            <p style={{ fontSize: '11px', color: 'var(--text2)', marginTop: '4px', opacity: 0.7 }}>
               Posts appear here when generation is enabled.
             </p>
           </div>
@@ -104,11 +104,11 @@ function ReviewPostListItem({
       onClick={onClick}
       style={{
         padding: '12px 16px',
-        borderBottom: '0.5px solid rgba(44,62,80,0.055)',
+        borderBottom: '1px solid rgba(15,21,18,0.055)',
         cursor: 'pointer',
         position: 'relative',
         overflow: 'hidden',
-        background: isActive ? 'rgba(44,62,80,0.035)' : 'transparent',
+        background: isActive ? 'rgba(15,21,18,0.035)' : 'transparent',
         transition: 'background 0.12s',
       }}
     >
@@ -116,7 +116,7 @@ function ReviewPostListItem({
 
       {/* Pillar + score */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '2px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', fontWeight: 500, color: 'var(--color-text-1)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', fontWeight: 500, color: 'var(--ink)' }}>
           {pillarColor && (
             <div style={{ width: '7px', height: '7px', borderRadius: '50%', background: pillarColor.hex, flexShrink: 0 }} />
           )}
@@ -126,7 +126,7 @@ function ReviewPostListItem({
       </div>
 
       {/* Client name */}
-      <div style={{ fontSize: '10px', color: 'var(--color-muted)', marginBottom: '5px' }}>
+      <div style={{ fontSize: '10px', color: 'var(--text2)', marginBottom: '5px' }}>
         {post.client_name}
       </div>
 
@@ -134,7 +134,7 @@ function ReviewPostListItem({
       <div
         style={{
           fontSize: '11px',
-          color: 'var(--color-muted)',
+          color: 'var(--text2)',
           lineHeight: 1.45,
           display: '-webkit-box',
           WebkitLineClamp: 2,
@@ -152,7 +152,7 @@ function ReviewPostListItem({
           <StatusBadge post={post} />
           <VisualsBadge post={post} />
         </div>
-        <span style={{ fontSize: '10px', color: 'var(--color-muted)', opacity: 0.7 }}>
+        <span style={{ fontSize: '10px', color: 'var(--text2)', opacity: 0.7 }}>
           {formatRelativeTime(new Date(post.created_at))}
         </span>
       </div>
@@ -175,8 +175,8 @@ function VisualsBadge({ post }: { post: ReviewPost }) {
         fontWeight: 500,
         padding: '3px 7px',
         borderRadius: '4px',
-        background: complete ? 'rgba(90,138,74,0.10)' : 'rgba(44,62,80,0.06)',
-        color: complete ? '#5A8A4A' : 'var(--color-muted)',
+        background: complete ? 'var(--wash)' : 'var(--sunken)',
+        color: complete ? 'var(--forest)' : 'var(--text2)',
       }}
     >
       <ImageIcon style={{ width: 10, height: 10 }} />
@@ -186,9 +186,11 @@ function VisualsBadge({ post }: { post: ReviewPost }) {
 }
 
 function StatusBadge({ post }: { post: ReviewPost }) {
+  // Priority takes Amber (the exception); the default waiting state stays
+  // neutral, so a queue of pending posts does not read as a wall of warnings.
   const config = post.priority
-    ? { bg: 'rgba(192,123,85,0.10)', color: 'var(--color-terracotta)', label: 'Priority', icon: '\u25b8' }
-    : { bg: 'rgba(44,62,80,0.06)', color: 'var(--color-muted)', label: 'Pending review', icon: null }
+    ? { bg: 'var(--pending-bg)', color: 'var(--pending)', label: 'Priority', icon: '\u25b8' }
+    : { bg: 'var(--sunken)', color: 'var(--text2)', label: 'Pending review', icon: null }
 
   return (
     <span

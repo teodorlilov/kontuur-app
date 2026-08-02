@@ -34,11 +34,11 @@ export function WizardTopbar({ currentStep, onStepClick, onCancel }: WizardTopba
       style={{
         height: '54px',
         background: '#fff',
-        borderBottom: '0.5px solid rgba(44,62,80,0.10)',
+        borderBottom: '1px solid rgba(15,21,18,0.10)',
         display: 'flex',
         alignItems: 'center',
         flexShrink: 0,
-        boxShadow: '0 1px 0 rgba(44,62,80,0.05)',
+        boxShadow: '0 1px 0 rgba(15,21,18,0.05)',
       }}
     >
       <div className="hidden md:block"><LogoMark /></div>
@@ -55,9 +55,9 @@ function LogoMark() {
         fontFamily: 'var(--font-display, Georgia, serif)',
         fontSize: '13px',
         letterSpacing: '3px',
-        color: '#1A2630',
+        color: 'var(--ink)',
         paddingRight: '20px',
-        borderRight: '0.5px solid rgba(44,62,80,0.10)',
+        borderRight: '1px solid rgba(15,21,18,0.10)',
         marginRight: '20px',
         flexShrink: 0,
       }}
@@ -127,7 +127,7 @@ function StepItem({
         style={{
           fontSize: '12px',
           fontWeight: 500,
-          color: state === 'done' ? '#8A8070' : state === 'active' ? '#1A2630' : 'rgba(138,128,112,0.5)',
+          color: state === 'done' ? 'var(--text2)' : state === 'active' ? 'var(--forest-deep)' : 'rgba(15,21,18,0.5)',
         }}
       >
         {label}
@@ -150,8 +150,8 @@ function StepCircle({ state, number }: { state: 'done' | 'active' | 'idle'; numb
         fontWeight: 600,
         flexShrink: 0,
         background:
-          state === 'done' ? 'rgba(90,138,74,0.12)' : state === 'active' ? '#C07B55' : 'rgba(44,62,80,0.07)',
-        color: state === 'done' ? '#5A8A4A' : state === 'active' ? '#fff' : '#8A8070',
+          state === 'done' ? 'rgba(46,158,104,0.12)' : state === 'active' ? 'var(--spring-text)' : 'rgba(15,21,18,0.07)',
+        color: state === 'done' ? 'var(--spring-text)' : state === 'active' ? '#fff' : 'var(--text2)',
       }}
     >
       {state === 'done' ? '✓' : number}
@@ -168,7 +168,7 @@ function StepConnector({ isDone }: { isDone: boolean }) {
         margin: '0 4px',
         minWidth: '16px',
         maxWidth: '52px',
-        background: isDone ? 'rgba(90,138,74,0.25)' : 'rgba(44,62,80,0.10)',
+        background: isDone ? 'rgba(46,158,104,0.25)' : 'rgba(15,21,18,0.10)',
       }}
     />
   )
@@ -183,9 +183,9 @@ function CancelButton({ onClick }: { onClick: () => void }) {
         marginLeft: 'auto',
         fontSize: '12px',
         fontWeight: 500,
-        color: '#8A8070',
+        color: 'var(--text2)',
         background: 'none',
-        border: '0.5px solid rgba(44,62,80,0.14)',
+        border: '1px solid rgba(15,21,18,0.14)',
         borderRadius: '7px',
         cursor: 'pointer',
         padding: '6px 14px',

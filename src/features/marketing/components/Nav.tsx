@@ -28,7 +28,7 @@ export function Nav() {
         background: scrolled ? 'rgba(249,247,244,0.92)' : 'transparent',
         backdropFilter: scrolled ? 'blur(12px)' : 'none',
         WebkitBackdropFilter: scrolled ? 'blur(12px)' : 'none',
-        borderBottom: scrolled ? '0.5px solid var(--color-border-1)' : '0.5px solid transparent',
+        borderBottom: scrolled ? '1px solid var(--line)' : '1px solid transparent',
       }}
     >
       <Link href="/" style={{ display: 'flex', alignItems: 'center' }}>
@@ -47,15 +47,15 @@ export function Nav() {
               href={href}
               style={{
                 fontSize: 14,
-                color: 'var(--color-text-2)',
+                color: 'var(--text2)',
                 textDecoration: 'none',
                 transition: 'color 120ms ease',
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.color = 'var(--color-text-1)'
+                e.currentTarget.style.color = 'var(--ink)'
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.color = 'var(--color-text-2)'
+                e.currentTarget.style.color = 'var(--text2)'
               }}
             >
               {label}
@@ -70,7 +70,7 @@ export function Nav() {
           display: 'inline-flex',
           alignItems: 'center',
           padding: '7px 16px',
-          background: 'var(--color-brand)',
+          background: 'var(--forest)',
           color: '#fff',
           borderRadius: 8,
           fontSize: 13.5,
@@ -80,10 +80,10 @@ export function Nav() {
           transition: 'background 150ms ease',
         }}
         onMouseEnter={(e) => {
-          e.currentTarget.style.background = 'var(--color-brand-hover)'
+          e.currentTarget.style.background = 'var(--forest-deep)'
         }}
         onMouseLeave={(e) => {
-          e.currentTarget.style.background = 'var(--color-brand)'
+          e.currentTarget.style.background = 'var(--forest)'
         }}
       >
         Log in

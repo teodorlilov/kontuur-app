@@ -23,9 +23,10 @@ export function QualitySection({
         <span
           style={{
             fontFamily: 'var(--font-display)',
-            fontSize: '24px',
+            fontSize: 'var(--text-headline)',
             fontWeight: 400,
-            color: score >= 7 ? 'var(--status-ok)' : 'var(--color-terracotta)',
+            // Both branches used to alias to --spring and render the same green.
+            color: score >= 7 ? 'var(--spring-text)' : 'var(--pending)',
           }}
         >
           {score}
@@ -56,12 +57,12 @@ export function SourceInfoSection({
   return (
     <PanelSection title="Source">
       {sourceTitle && (
-        <div style={{ fontSize: '11px', fontWeight: 500, color: 'var(--color-text-1)', marginBottom: '5px' }}>
+        <div style={{ fontSize: '11px', fontWeight: 500, color: 'var(--ink)', marginBottom: '5px' }}>
           {typeLabel} · {sourceTitle}
         </div>
       )}
       {sourceExcerpt && (
-        <div style={{ fontSize: '11px', color: 'var(--color-muted)', lineHeight: 1.6, marginBottom: '7px' }}>
+        <div style={{ fontSize: '11px', color: 'var(--text2)', lineHeight: 1.6, marginBottom: '7px' }}>
           {sourceExcerpt}
         </div>
       )}
@@ -70,7 +71,7 @@ export function SourceInfoSection({
           href={sourceUrl}
           target="_blank"
           rel="noopener noreferrer"
-          style={{ fontSize: '10px', color: 'var(--color-terracotta)', fontWeight: 500, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '4px' }}
+          style={{ fontSize: '10px', color: 'var(--spring-text)', fontWeight: 500, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '4px' }}
         >
           <ExternalLink size={10} /> Verify source
         </a>
@@ -79,7 +80,7 @@ export function SourceInfoSection({
           href={`https://www.google.com/search?q=${encodeURIComponent(sourceExcerpt.slice(0, 120))}`}
           target="_blank"
           rel="noopener noreferrer"
-          style={{ fontSize: '10px', color: 'var(--color-terracotta)', fontWeight: 500, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '4px' }}
+          style={{ fontSize: '10px', color: 'var(--spring-text)', fontWeight: 500, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '4px' }}
         >
           <ExternalLink size={10} /> Verify on Google
         </a>
@@ -92,8 +93,8 @@ export function SourceInfoSection({
 export function MetadataRow({ label, value, valueColor }: { label: string; value: string; valueColor?: string }) {
   return (
     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
-      <span style={{ fontSize: '11px', color: 'var(--color-muted)' }}>{label}</span>
-      <span style={{ fontSize: '11px', fontWeight: 500, color: valueColor ?? 'var(--color-text-1)' }}>{value}</span>
+      <span style={{ fontSize: '11px', color: 'var(--text2)' }}>{label}</span>
+      <span style={{ fontSize: '11px', fontWeight: 500, color: valueColor ?? 'var(--ink)' }}>{value}</span>
     </div>
   )
 }

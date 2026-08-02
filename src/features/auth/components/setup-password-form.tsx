@@ -68,21 +68,21 @@ export function SetupPasswordForm() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+    <div className="min-h-screen flex items-center justify-center bg-sunken px-4">
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
           <div className="inline-flex mb-6">
             <KontuurLogo />
           </div>
-          <h1 className="text-xl font-semibold text-gray-900">Set your password</h1>
-          <p className="text-sm text-gray-500 mt-1">
+          <h1 className="text-xl font-semibold text-ink">Set your password</h1>
+          <p className="text-sm text-text3 mt-1">
             Choose a password to complete your account setup
           </p>
         </div>
 
         <form
           onSubmit={handleSubmit}
-          className="bg-white rounded-xl border border-gray-200 p-6 flex flex-col gap-4"
+          className="bg-surface rounded-xl border border-line p-6 flex flex-col gap-4"
         >
           <Input
             label="Password"

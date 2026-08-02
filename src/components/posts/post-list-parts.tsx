@@ -9,15 +9,20 @@ export function ActiveBar() {
         top: '10%',
         bottom: '10%',
         width: '2.5px',
-        background: 'var(--color-terracotta)',
-        borderRadius: '0 3px 3px 0',
+        // The selected row is "where you are standing", but a 2.5px lime bar on
+        // light is 1.35:1 and invisible — thin active marks are Deep Pine.
+        background: 'var(--forest)',
+        borderRadius: '0 var(--radius-xs) var(--radius-xs) 0',
       }}
     />
   )
 }
 
 export function ScoreLabel({ score }: { score: number }) {
-  const color = score >= 9 ? 'var(--status-ok)' : score >= 7 ? 'var(--color-terracotta)' : '#E05A3A'
+  // The 9+ and 7-8 bands were visually identical: --status-ok and
+  // --color-terracotta both aliased to --spring. Three bands, three colours now.
+  const color =
+    score >= 9 ? 'var(--spring-text)' : score >= 7 ? 'var(--pending)' : 'var(--danger)'
   return <span style={{ fontSize: '11px', fontWeight: 500, color }}>{score}/10</span>
 }
 
@@ -26,7 +31,7 @@ export function CaptionPreview({ caption }: { caption: string | null }) {
     <div
       style={{
         fontSize: '11px',
-        color: 'var(--color-muted)',
+        color: 'var(--text2)',
         lineHeight: 1.45,
         display: '-webkit-box',
         WebkitLineClamp: 2,

@@ -16,7 +16,7 @@ export function Hero() {
         paddingTop: 96,
         paddingBottom: 0,
         textAlign: 'center',
-        background: 'var(--color-page)',
+        background: 'var(--paper)',
         overflow: 'hidden',
       }}
     >
@@ -26,7 +26,7 @@ export function Hero() {
           fontSize: 11,
           textTransform: 'uppercase',
           letterSpacing: '0.1em',
-          color: 'var(--color-brand-accent)',
+          color: 'var(--spring)',
           fontWeight: 500,
           marginBottom: 20,
         }}
@@ -42,7 +42,7 @@ export function Hero() {
           fontWeight: 400,
           letterSpacing: '-0.03em',
           lineHeight: 1.1,
-          color: 'var(--color-text-1)',
+          color: 'var(--ink)',
           maxWidth: 700,
           margin: '0 auto 24px',
         }}
@@ -56,7 +56,7 @@ export function Hero() {
         {...fadeUp(0.12)}
         style={{
           fontSize: 18,
-          color: 'var(--color-text-2)',
+          color: 'var(--text2)',
           maxWidth: 480,
           margin: '0 auto 40px',
           lineHeight: 1.6,
@@ -83,7 +83,7 @@ export function Hero() {
             alignItems: 'center',
             gap: 6,
             padding: '12px 24px',
-            background: 'var(--color-brand)',
+            background: 'var(--forest)',
             color: '#fff',
             borderRadius: 10,
             fontSize: 15,
@@ -93,10 +93,10 @@ export function Hero() {
             transition: 'background 150ms ease',
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.background = 'var(--color-brand-hover)'
+            e.currentTarget.style.background = 'var(--forest-deep)'
           }}
           onMouseLeave={(e) => {
-            e.currentTarget.style.background = 'var(--color-brand)'
+            e.currentTarget.style.background = 'var(--forest)'
           }}
         >
           Get started free →
@@ -108,8 +108,8 @@ export function Hero() {
             alignItems: 'center',
             padding: '12px 24px',
             background: 'transparent',
-            color: 'var(--color-text-1)',
-            border: '0.5px solid var(--color-border-2)',
+            color: 'var(--ink)',
+            border: '1px solid var(--line2)',
             borderRadius: 10,
             fontSize: 15,
             fontWeight: 500,
@@ -118,7 +118,7 @@ export function Hero() {
             transition: 'background 150ms ease',
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.background = 'var(--color-overlay)'
+            e.currentTarget.style.background = 'rgba(15,21,18,0.04)'
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.background = 'transparent'
@@ -140,7 +140,7 @@ export function Hero() {
           width: '100%',
           margin: '0 auto',
           borderRadius: '16px 16px 0 0',
-          border: '0.5px solid var(--color-border-1)',
+          border: '1px solid var(--line)',
           borderBottom: 'none',
           boxShadow: '0 -8px 48px rgba(26,25,24,0.08)',
           display: 'block',

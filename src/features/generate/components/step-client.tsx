@@ -39,11 +39,11 @@ export function StepClient({
       {brandProfileLoading && (
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '8px' }}>
           <Spinner size="sm" />
-          <span style={{ fontSize: '12px', color: 'var(--color-muted)' }}>Loading brand profile...</span>
+          <span style={{ fontSize: '12px', color: 'var(--text2)' }}>Loading brand profile...</span>
         </div>
       )}
 
-      <hr style={{ border: 'none', borderTop: '0.5px solid var(--color-border-1)', margin: '20px 0' }} />
+      <hr style={{ border: 'none', borderTop: '1px solid var(--line)', margin: '20px 0' }} />
 
       <FieldLabel>Platform</FieldLabel>
       <div style={{ display: 'flex', gap: '7px', flexWrap: 'wrap' }}>
@@ -79,9 +79,9 @@ function PlatformPill({
         fontSize: '12px',
         fontWeight: 500,
         cursor: 'pointer',
-        border: isSelected ? '1.5px solid #1A2630' : '1.5px solid rgba(44,62,80,0.14)',
-        background: isSelected ? '#1A2630' : '#fff',
-        color: isSelected ? '#ECE8E1' : '#8A8070',
+        border: isSelected ? '1.5px solid var(--forest-deep)' : '1.5px solid rgba(15,21,18,0.14)',
+        background: isSelected ? 'var(--forest-deep)' : '#fff',
+        color: isSelected ? '#f2f5f1' : 'var(--text2)',
         fontFamily: 'inherit',
         transition: 'all 0.15s',
       }}
@@ -97,7 +97,7 @@ function FieldLabel({ children }: { children: React.ReactNode }) {
       style={{
         fontSize: '10px',
         fontWeight: 500,
-        color: 'var(--color-text-2)',
+        color: 'var(--text2)',
         letterSpacing: '0.8px',
         textTransform: 'uppercase',
         marginBottom: '7px',
@@ -111,12 +111,12 @@ function FieldLabel({ children }: { children: React.ReactNode }) {
 const SELECT_STYLE: React.CSSProperties = {
   width: '100%',
   padding: '10px 13px',
-  border: '0.5px solid var(--color-border-2)',
+  border: '1px solid var(--line2)',
   borderRadius: '8px',
   fontSize: '13px',
   fontFamily: 'inherit',
-  color: 'var(--color-text-1)',
-  background: 'var(--color-surface)',
+  color: 'var(--ink)',
+  background: 'var(--surface)',
   outline: 'none',
   cursor: 'pointer',
 }

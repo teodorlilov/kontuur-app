@@ -72,23 +72,23 @@ export function ImageSlot({ postId, position, image, onUploaded, onDeleted, canv
             justifyContent: 'center',
             gap: 5,
             padding: '7px 8px',
-            border: '1px solid var(--color-border-2)',
+            border: '1px solid var(--line2)',
             borderRadius: 8,
-            background: 'rgba(192,123,85,0.04)',
+            background: 'rgba(46,158,104,0.04)',
             cursor: 'pointer',
             fontFamily: 'inherit',
             fontSize: 10,
             fontWeight: 500,
-            color: '#C07B55',
+            color: 'var(--spring-text)',
             transition: 'background 120ms ease, border-color 120ms ease',
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.background = 'rgba(192,123,85,0.10)'
-            e.currentTarget.style.borderColor = '#C07B55'
+            e.currentTarget.style.background = 'rgba(46,158,104,0.10)'
+            e.currentTarget.style.borderColor = 'var(--spring-text)'
           }}
           onMouseLeave={(e) => {
-            e.currentTarget.style.background = 'rgba(192,123,85,0.04)'
-            e.currentTarget.style.borderColor = 'var(--color-border-2)'
+            e.currentTarget.style.background = 'rgba(46,158,104,0.04)'
+            e.currentTarget.style.borderColor = 'var(--line2)'
           }}
         >
           <Sparkles style={{ width: 12, height: 12 }} />
@@ -106,23 +106,23 @@ export function ImageSlot({ postId, position, image, onUploaded, onDeleted, canv
             justifyContent: 'center',
             gap: 5,
             padding: '7px 8px',
-            border: '1px solid var(--color-border-2)',
+            border: '1px solid var(--line2)',
             borderRadius: 8,
-            background: 'rgba(0, 195, 204, 0.04)',
+            background: 'var(--sunken)',
             cursor: 'pointer',
             fontFamily: 'inherit',
             fontSize: 10,
             fontWeight: 500,
-            color: '#00C3CC',
+            color: 'var(--forest)',
             transition: 'background 120ms ease, border-color 120ms ease',
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.background = 'rgba(0, 195, 204, 0.10)'
-            e.currentTarget.style.borderColor = '#00C3CC'
+            e.currentTarget.style.background = 'var(--wash)'
+            e.currentTarget.style.borderColor = 'var(--forest)'
           }}
           onMouseLeave={(e) => {
-            e.currentTarget.style.background = 'rgba(0, 195, 204, 0.04)'
-            e.currentTarget.style.borderColor = 'var(--color-border-2)'
+            e.currentTarget.style.background = 'var(--sunken)'
+            e.currentTarget.style.borderColor = 'var(--line2)'
           }}
         >
           <Download style={{ width: 12, height: 12 }} />
@@ -218,9 +218,9 @@ function DropZone({
         justifyContent: 'center',
         gap: 6,
         padding: '16px 12px',
-        border: `1.5px dashed ${dragOver ? '#C07B55' : 'rgba(44,62,80,0.20)'}`,
+        border: `1.5px dashed ${dragOver ? 'var(--spring-text)' : 'rgba(15,21,18,0.20)'}`,
         borderRadius: 10,
-        background: dragOver ? 'rgba(192,123,85,0.04)' : 'rgba(44,62,80,0.02)',
+        background: dragOver ? 'rgba(46,158,104,0.04)' : 'rgba(15,21,18,0.02)',
         cursor: uploading ? 'wait' : 'pointer',
         width: '100%',
         fontFamily: 'inherit',
@@ -228,14 +228,14 @@ function DropZone({
       }}
     >
       {uploading ? (
-        <span style={{ fontSize: 11, color: 'var(--color-muted)' }}>Uploading...</span>
+        <span style={{ fontSize: 11, color: 'var(--text2)' }}>Uploading...</span>
       ) : (
         <>
-          <Upload style={{ width: 16, height: 16, color: 'var(--color-muted)' }} />
-          <span style={{ fontSize: 11, color: 'var(--color-muted)' }}>
+          <Upload style={{ width: 16, height: 16, color: 'var(--text2)' }} />
+          <span style={{ fontSize: 11, color: 'var(--text2)' }}>
             Drop file here or click to upload
           </span>
-          <span style={{ fontSize: 10, color: 'rgba(44,62,80,0.35)' }}>
+          <span style={{ fontSize: 10, color: 'rgba(15,21,18,0.35)' }}>
             JPEG or PNG, ≤ 8 MB
           </span>
         </>
@@ -253,13 +253,13 @@ function GeneratingCard({ label }: { label: string }) {
         justifyContent: 'center',
         gap: 8,
         padding: '16px 12px',
-        border: '1.5px dashed rgba(192,123,85,0.45)',
+        border: '1.5px dashed rgba(46,158,104,0.45)',
         borderRadius: 10,
-        background: 'rgba(192,123,85,0.04)',
+        background: 'rgba(46,158,104,0.04)',
       }}
     >
-      <Sparkles style={{ width: 14, height: 14, color: '#C07B55' }} className="animate-pulse" />
-      <span style={{ fontSize: 11, color: '#C07B55' }}>{label}</span>
+      <Sparkles style={{ width: 14, height: 14, color: 'var(--spring-text)' }} className="animate-pulse" />
+      <span style={{ fontSize: 11, color: 'var(--spring-text)' }}>{label}</span>
     </div>
   )
 }
@@ -290,7 +290,7 @@ function OverlayAction({
         borderRadius: 7,
         border: 'none',
         background: 'rgba(255,255,255,0.88)',
-        boxShadow: '0 1px 4px rgba(20,28,34,0.18)',
+        boxShadow: '0 1px 4px rgba(15,21,18,0.18)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -326,7 +326,7 @@ function ImageCard({
           maxWidth: 280,
           borderRadius: 10,
           overflow: 'hidden',
-          border: '0.5px solid var(--color-border-1)',
+          border: '1px solid var(--line)',
         }}
       >
         <button
@@ -346,31 +346,31 @@ function ImageCard({
 
         <div style={{ position: 'absolute', top: 8, right: 8, display: 'flex', gap: 6 }}>
           {onRegenerate && (
-            <OverlayAction title="Regenerate with AI" color="#C07B55" onClick={onRegenerate}>
+            <OverlayAction title="Regenerate with AI" color="var(--spring-text)" onClick={onRegenerate}>
               <Sparkles style={{ width: 13, height: 13 }} />
             </OverlayAction>
           )}
           {onEdit && (
-            <OverlayAction title="Edit text overlay" color="#3A4A54" onClick={onEdit}>
+            <OverlayAction title="Edit text overlay" color="var(--text2)" onClick={onEdit}>
               <Pencil style={{ width: 13, height: 13 }} />
             </OverlayAction>
           )}
           <OverlayAction
             title="Download image"
-            color="#3A4A54"
+            color="var(--text2)"
             onClick={() => void downloadImageFile(image.publicUrl, image.fileName ?? undefined)}
           >
             <Download style={{ width: 13, height: 13 }} />
           </OverlayAction>
-          <OverlayAction title="Remove image" color="#3A4A54" onClick={onDelete}>
+          <OverlayAction title="Remove image" color="var(--text2)" onClick={onDelete}>
             <X style={{ width: 13, height: 13 }} />
           </OverlayAction>
         </div>
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-        <Check style={{ width: 10, height: 10, color: '#5A8A4A' }} />
-        <span style={{ fontSize: 10, color: '#5A8A4A' }}>
+        <Check style={{ width: 10, height: 10, color: 'var(--spring-text)' }} />
+        <span style={{ fontSize: 10, color: 'var(--spring-text)' }}>
           Uploaded{sizeMB ? ` · ${sizeMB} MB` : ''}
         </span>
       </div>
@@ -391,8 +391,8 @@ function ErrorMessage({ message }: { message: string }) {
     <div
       style={{
         fontSize: 11,
-        color: '#A32D2D',
-        background: '#FCEBEB',
+        color: 'var(--danger)',
+        background: 'var(--danger-bg)',
         padding: '7px 10px',
         borderRadius: 6,
       }}

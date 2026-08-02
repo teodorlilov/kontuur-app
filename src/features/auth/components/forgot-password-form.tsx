@@ -30,13 +30,13 @@ interface FormPanelProps {
 function FormPanel({ email, setEmail, emailError, loading, onSubmit }: FormPanelProps) {
   return (
     <div>
-      <Link href="/login" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#8A8070', textDecoration: 'none', letterSpacing: '0.3px', marginBottom: 32 }}>
+      <Link href="/login" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--text2)', textDecoration: 'none', letterSpacing: '0.3px', marginBottom: 32 }}>
         ← Back to sign in
       </Link>
-      <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 400, color: '#1A2630', marginBottom: 4 }}>
+      <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 400, color: 'var(--ink)', marginBottom: 4 }}>
         Reset your password
       </h3>
-      <p style={{ fontSize: 13, color: '#8A8070', marginBottom: 32, lineHeight: 1.6 }}>
+      <p style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 32, lineHeight: 1.6 }}>
         Enter your email and we'll send you a reset link.
       </p>
       <form onSubmit={onSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
@@ -56,9 +56,9 @@ function FormPanel({ email, setEmail, emailError, loading, onSubmit }: FormPanel
         <button
           type="submit"
           disabled={loading}
-          style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '13px 0', background: '#1A2630', color: '#ECE8E1', fontFamily: 'var(--font-sans)', fontSize: 10, fontWeight: 800, letterSpacing: '2.5px', textTransform: 'uppercase', border: 'none', borderRadius: 4, cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.5 : 1, marginTop: 4 }}
-          onMouseEnter={(e) => { if (!loading) e.currentTarget.style.background = '#C07B55' }}
-          onMouseLeave={(e) => { e.currentTarget.style.background = '#1A2630' }}
+          style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '13px 0', background: 'var(--forest-deep)', color: '#f2f5f1', fontFamily: 'var(--font-sans)', fontSize: 10, fontWeight: 800, letterSpacing: '2.5px', textTransform: 'uppercase', border: 'none', borderRadius: 4, cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.5 : 1, marginTop: 4 }}
+          onMouseEnter={(e) => { if (!loading) e.currentTarget.style.background = 'var(--spring-text)' }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--forest-deep)' }}
         >
           {loading && (
             <svg style={{ width: 14, height: 14, animation: 'spin 1s linear infinite' }} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -69,8 +69,8 @@ function FormPanel({ email, setEmail, emailError, loading, onSubmit }: FormPanel
           Send reset link
         </button>
       </form>
-      <div style={{ marginTop: 20, padding: 14, background: 'rgba(44,62,80,0.05)', borderLeft: '2px solid #C07B55', borderRadius: '0 4px 4px 0' }}>
-        <p style={{ fontSize: 11, color: '#8A8070', lineHeight: 1.65 }}>
+      <div style={{ marginTop: 20, padding: 14, background: 'rgba(15,21,18,0.05)', borderLeft: '2px solid var(--spring-text)', borderRadius: '0 4px 4px 0' }}>
+        <p style={{ fontSize: 11, color: 'var(--text2)', lineHeight: 1.65 }}>
           If you don't receive an email within a few minutes, check your spam folder or make sure you're using the address you signed up with.
         </p>
       </div>
@@ -86,32 +86,32 @@ interface SuccessPanelProps {
 function SuccessPanel({ email, onResend }: SuccessPanelProps) {
   return (
     <div style={{ textAlign: 'center' }}>
-      <div style={{ width: 56, height: 56, borderRadius: '50%', border: '1.5px solid #C07B55', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px' }}>
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#C07B55" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <div style={{ width: 56, height: 56, borderRadius: '50%', border: '1.5px solid var(--spring-text)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px' }}>
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--spring-text)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
           <path d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
         </svg>
       </div>
-      <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 400, color: '#1A2630', marginBottom: 8 }}>
+      <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 400, color: 'var(--ink)', marginBottom: 8 }}>
         Check your email
       </h3>
-      <p style={{ fontSize: 13, color: '#8A8070', lineHeight: 1.7, marginBottom: 8 }}>
+      <p style={{ fontSize: 13, color: 'var(--text2)', lineHeight: 1.7, marginBottom: 8 }}>
         We sent a password reset link to
       </p>
-      <div style={{ display: 'inline-block', background: '#ffffff', border: '1px solid rgba(44,62,80,0.14)', borderRadius: 4, padding: '6px 12px', fontSize: 12, color: '#1A2630', fontWeight: 500, marginBottom: 28 }}>
+      <div style={{ display: 'inline-block', background: '#ffffff', border: '1px solid rgba(15,21,18,0.14)', borderRadius: 4, padding: '6px 12px', fontSize: 12, color: 'var(--ink)', fontWeight: 500, marginBottom: 28 }}>
         {email}
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-        <div style={{ flex: 1, height: 1, background: 'rgba(44,62,80,0.1)' }} />
-        <span style={{ fontSize: 10, color: '#B4A898', letterSpacing: '1px' }}>OR</span>
-        <div style={{ flex: 1, height: 1, background: 'rgba(44,62,80,0.1)' }} />
+        <div style={{ flex: 1, height: 1, background: 'rgba(15,21,18,0.1)' }} />
+        <span style={{ fontSize: 10, color: 'var(--text3)', letterSpacing: '1px' }}>OR</span>
+        <div style={{ flex: 1, height: 1, background: 'rgba(15,21,18,0.1)' }} />
       </div>
-      <p style={{ fontSize: 11, color: '#8A8070', marginBottom: 16 }}>
+      <p style={{ fontSize: 11, color: 'var(--text2)', marginBottom: 16 }}>
         Didn't receive it?{' '}
-        <button onClick={onResend} style={{ color: '#C07B55', background: 'none', border: 'none', cursor: 'pointer', fontSize: 11, padding: 0 }}>
+        <button onClick={onResend} style={{ color: 'var(--spring-text)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 11, padding: 0 }}>
           Resend email
         </button>
       </p>
-      <Link href="/login" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 11, color: '#8A8070', textDecoration: 'none', width: '100%' }}>
+      <Link href="/login" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 11, color: 'var(--text2)', textDecoration: 'none', width: '100%' }}>
         ← Back to sign in
       </Link>
     </div>

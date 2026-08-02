@@ -4,7 +4,9 @@ export const CHART_COLORS = {
   /** Follower series — a distinct hue, the two are read side by side. */
   follower: '#164430',
   grid: '#E7ECE7',
-  label: '#8B958D',
+  /* Was #8B958D — the retired tertiary ink, 3.10:1 on white. Every axis tick in
+     analytics failed AA. #667068 is the Contour replacement at 5.15:1. */
+  label: '#667068',
 }
 
 export const CHART_AXIS_PROPS = {

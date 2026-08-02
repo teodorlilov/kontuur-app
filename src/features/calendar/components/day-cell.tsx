@@ -55,14 +55,10 @@ export const DayCell = memo(function DayCell({
         if (postId) onDrop(postId, dateKey)
       }}
       style={{
-        background: dragOver
-          ? 'rgba(192,123,85,0.08)'
-          : isOtherMonth
-            ? '#FDFBF8'
-            : '#fff',
-        border: today
-          ? '1.5px solid var(--color-terracotta)'
-          : '0.5px solid var(--color-border-1)',
+        background: dragOver ? 'var(--wash)' : isOtherMonth ? 'var(--sunken)' : 'var(--surface)',
+        // Today's ring is Living Green at 3.38:1 — it clears the 3:1 non-text
+        // bar, where lime would be 1.35:1. The lime lives in the day plate below.
+        border: today ? '1.5px solid var(--spring)' : '1px solid var(--line)',
         borderRadius: 10,
         padding: '8px 8px 6px',
         cursor: 'pointer',
@@ -75,13 +71,11 @@ export const DayCell = memo(function DayCell({
         transition: 'border-color 0.15s, box-shadow 0.15s',
       }}
       onMouseEnter={(e) => {
-        if (!today) e.currentTarget.style.borderColor = 'var(--color-border-3)'
-        e.currentTarget.style.boxShadow = '0 1px 6px rgba(44,62,80,0.06)'
+        if (!today) e.currentTarget.style.borderColor = 'var(--line2)'
+        e.currentTarget.style.boxShadow = '0 1px 6px rgba(15,21,18,0.06)'
       }}
       onMouseLeave={(e) => {
-        e.currentTarget.style.borderColor = today
-          ? 'var(--color-terracotta)'
-          : 'var(--color-border-1)'
+        e.currentTarget.style.borderColor = today ? 'var(--spring)' : 'var(--line)'
         e.currentTarget.style.boxShadow = 'none'
       }}
     >
@@ -92,8 +86,10 @@ export const DayCell = memo(function DayCell({
             width: 20,
             height: 20,
             borderRadius: '50%',
-            background: 'var(--color-terracotta)',
-            color: '#fff',
+            // The field's lime: today's plate, carrying Pine Deep at 10.87:1.
+            // Was spring under white text, which measured 3.38:1 and failed.
+            background: 'var(--accent)',
+            color: 'var(--forest-deep)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -110,7 +106,7 @@ export const DayCell = memo(function DayCell({
           style={{
             fontSize: 11,
             fontWeight: 500,
-            color: isOtherMonth ? 'rgba(44,62,80,0.22)' : 'var(--color-text-1)',
+            color: isOtherMonth ? 'var(--text3)' : 'var(--ink)',
             lineHeight: 1,
             flexShrink: 0,
             marginBottom: 2,
@@ -138,8 +134,8 @@ export const DayCell = memo(function DayCell({
         <div
           style={{
             fontSize: 9,
-            color: 'var(--color-muted)',
-            background: 'rgba(44,62,80,0.06)',
+            color: 'var(--text2)',
+            background: 'var(--sunken)',
             padding: '1px 4px',
             borderRadius: 3,
             alignSelf: 'flex-start',

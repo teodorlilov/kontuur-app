@@ -184,10 +184,10 @@ export function ReviewQueue({ initialPosts, clients, bestTimeMap, oldestPendingA
               padding: '8px 12px',
               fontSize: 12,
               fontWeight: 500,
-              color: 'var(--color-muted)',
-              background: 'var(--color-surface)',
+              color: 'var(--text2)',
+              background: 'var(--surface)',
               border: 'none',
-              borderBottom: '0.5px solid var(--color-border-1)',
+              borderBottom: '1px solid var(--line)',
               cursor: 'pointer',
               fontFamily: 'inherit',
               flexShrink: 0,
@@ -211,11 +211,11 @@ export function ReviewQueue({ initialPosts, clients, bestTimeMap, oldestPendingA
             ) : (
               <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <div style={{ textAlign: 'center' }}>
-                  <p style={{ fontSize: '13px', fontWeight: 500, color: 'var(--color-muted)' }}>
+                  <p style={{ fontSize: '13px', fontWeight: 500, color: 'var(--text2)' }}>
                     {posts.length === 0 ? 'No posts to review' : 'Select a post to review'}
                   </p>
                   {posts.length === 0 && (
-                    <p style={{ fontSize: '11px', color: 'var(--color-muted)', marginTop: '4px', opacity: 0.7 }}>
+                    <p style={{ fontSize: '11px', color: 'var(--text2)', marginTop: '4px', opacity: 0.7 }}>
                       Posts will appear here when autonomous generation is enabled.
                     </p>
                   )}

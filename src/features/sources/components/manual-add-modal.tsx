@@ -19,14 +19,14 @@ export function ManualAddInModal({ onAdd, isSaving }: ManualAddInModalProps) {
         value={label}
         onChange={(e) => setLabel(e.target.value)}
         placeholder="Label (e.g. Fitness News Weekly)"
-        className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-brand-purple focus:outline-none focus:ring-1 focus:ring-brand-purple"
+        className="rounded-lg border border-line2 px-3 py-1.5 text-sm text-ink placeholder:text-text3 focus:border-spring focus:outline-none focus:ring-1 focus:ring-spring/12"
       />
       <input
         type="url"
         value={url}
         onChange={(e) => setUrl(e.target.value)}
         placeholder="https://example.com/feed"
-        className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-brand-purple focus:outline-none focus:ring-1 focus:ring-brand-purple"
+        className="rounded-lg border border-line2 px-3 py-1.5 text-sm text-ink placeholder:text-text3 focus:border-spring focus:outline-none focus:ring-1 focus:ring-spring/12"
       />
       <Button
         size="sm"

@@ -34,7 +34,7 @@ export function BackgroundControls({
           style={{
             ...PANEL_CONTROL,
             cursor: 'pointer',
-            background: repositionMode ? 'var(--color-overlay)' : 'var(--color-page)',
+            background: repositionMode ? 'rgba(15,21,18,0.04)' : 'var(--paper)',
           }}
         >
           {repositionMode ? 'Done repositioning' : 'Reposition'}

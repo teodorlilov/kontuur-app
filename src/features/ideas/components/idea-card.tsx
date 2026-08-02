@@ -24,7 +24,7 @@ export function IdeaCard({ idea, clientDotColor, onGenerate, onDismiss }: IdeaCa
         isUnread={isUnread}
       />
 
-      <div style={{ padding: '13px 16px', fontSize: 13, color: '#1A2630', lineHeight: 1.68 }}>
+      <div style={{ padding: '13px 16px', fontSize: 13, color: 'var(--ink)', lineHeight: 1.68 }}>
         &ldquo;{idea.ideaText}&rdquo;
       </div>
 
@@ -33,7 +33,7 @@ export function IdeaCard({ idea, clientDotColor, onGenerate, onDismiss }: IdeaCa
           style={{
             padding: '0 16px 13px',
             fontSize: 12,
-            color: '#8A8070',
+            color: 'var(--text2)',
             lineHeight: 1.6,
           }}
         >
@@ -67,7 +67,7 @@ function CardHeader({
         alignItems: 'center',
         gap: 8,
         padding: '11px 16px',
-        borderBottom: '0.5px solid rgba(44,62,80,0.07)',
+        borderBottom: '1px solid rgba(15,21,18,0.07)',
         flexWrap: 'wrap',
       }}
     >
@@ -80,7 +80,7 @@ function CardHeader({
           gap: 6,
           fontSize: 12,
           fontWeight: 500,
-          color: '#1A2630',
+          color: 'var(--ink)',
         }}
       >
         <div
@@ -98,7 +98,7 @@ function CardHeader({
       {idea.clientNiche && (
         <>
           <Separator />
-          <span style={{ fontSize: 11, color: '#8A8070' }}>{idea.clientNiche}</span>
+          <span style={{ fontSize: 11, color: 'var(--text2)' }}>{idea.clientNiche}</span>
         </>
       )}
 
@@ -115,7 +115,7 @@ function CardHeader({
       <span
         style={{
           fontSize: 11,
-          color: 'rgba(138,128,112,0.7)',
+          color: 'rgba(15,21,18,0.7)',
           marginLeft: 'auto',
         }}
       >
@@ -139,11 +139,11 @@ function CardFooter({
   return (
     <div style={footerStyle}>
       {isGenerated ? (
-        <span style={{ fontSize: 11, color: '#8A8070' }}>Post generated</span>
+        <span style={{ fontSize: 11, color: 'var(--text2)' }}>Post generated</span>
       ) : idea.status === 'generating' ? (
-        <span style={{ fontSize: 11, color: '#C07B55' }}>Generating…</span>
+        <span style={{ fontSize: 11, color: 'var(--spring-text)' }}>Generating…</span>
       ) : idea.status === 'dismissed' ? (
-        <span style={{ fontSize: 11, color: 'rgba(138,128,112,0.5)' }}>Dismissed</span>
+        <span style={{ fontSize: 11, color: 'rgba(15,21,18,0.5)' }}>Dismissed</span>
       ) : (
         <>
           <button onClick={() => onGenerate(idea)} style={generateButtonStyle}>
@@ -166,7 +166,7 @@ function UnreadDot() {
         width: 7,
         height: 7,
         borderRadius: '50%',
-        background: '#C07B55',
+        background: 'var(--spring-text)',
         flexShrink: 0,
       }}
     />
@@ -174,7 +174,7 @@ function UnreadDot() {
 }
 
 function Separator() {
-  return <span style={{ color: 'rgba(44,62,80,0.20)', fontSize: 11 }}>·</span>
+  return <span style={{ color: 'rgba(15,21,18,0.20)', fontSize: 11 }}>·</span>
 }
 
 function PlatformPill({ label }: { label: string }) {
@@ -185,8 +185,8 @@ function PlatformPill({ label }: { label: string }) {
         fontWeight: 500,
         padding: '2px 8px',
         borderRadius: 4,
-        background: 'rgba(192,123,85,0.10)',
-        color: '#C07B55',
+        background: 'rgba(46,158,104,0.10)',
+        color: 'var(--spring-text)',
       }}
     >
       {label}
@@ -198,7 +198,7 @@ function PlatformPill({ label }: { label: string }) {
 
 const cardStyle: React.CSSProperties = {
   background: '#fff',
-  border: '0.5px solid rgba(44,62,80,0.12)',
+  border: '1px solid rgba(15,21,18,0.12)',
   borderRadius: 10,
   overflow: 'hidden',
   transition: 'box-shadow 0.15s',
@@ -209,8 +209,8 @@ const metaPillStyle: React.CSSProperties = {
   fontWeight: 500,
   padding: '2px 8px',
   borderRadius: 4,
-  background: 'rgba(44,62,80,0.06)',
-  color: '#8A8070',
+  background: 'rgba(15,21,18,0.06)',
+  color: 'var(--text2)',
 }
 
 const generatedBadgeStyle: React.CSSProperties = {
@@ -218,8 +218,8 @@ const generatedBadgeStyle: React.CSSProperties = {
   fontWeight: 500,
   padding: '2px 8px',
   borderRadius: 4,
-  background: 'rgba(90,138,74,0.10)',
-  color: '#5A8A4A',
+  background: 'rgba(46,158,104,0.10)',
+  color: 'var(--spring-text)',
   display: 'inline-flex',
   alignItems: 'center',
   gap: 3,
@@ -227,17 +227,17 @@ const generatedBadgeStyle: React.CSSProperties = {
 
 const footerStyle: React.CSSProperties = {
   padding: '10px 16px',
-  borderTop: '0.5px solid rgba(44,62,80,0.07)',
+  borderTop: '1px solid rgba(15,21,18,0.07)',
   display: 'flex',
   alignItems: 'center',
   gap: 8,
-  background: '#FDFAF8',
+  background: 'var(--sunken)',
 }
 
 const generateButtonStyle: React.CSSProperties = {
   padding: '7px 16px',
-  background: '#1A2630',
-  color: '#ECE8E1',
+  background: 'var(--forest-deep)',
+  color: '#f2f5f1',
   border: 'none',
   borderRadius: 7,
   fontSize: 11,
@@ -253,7 +253,7 @@ const generateButtonStyle: React.CSSProperties = {
 const dismissButtonStyle: React.CSSProperties = {
   fontSize: 11,
   fontWeight: 500,
-  color: 'rgba(138,128,112,0.7)',
+  color: 'rgba(15,21,18,0.7)',
   background: 'none',
   border: 'none',
   cursor: 'pointer',

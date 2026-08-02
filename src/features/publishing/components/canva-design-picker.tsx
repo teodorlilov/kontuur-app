@@ -116,12 +116,12 @@ export function CanvaDesignPicker({
             gap: 8,
             alignItems: 'center',
             padding: '8px 12px',
-            border: '1px solid var(--color-border-2)',
+            border: '1px solid var(--line2)',
             borderRadius: 8,
-            background: 'var(--color-sunken)',
+            background: 'var(--sunken)',
           }}
         >
-          <Search style={{ width: 14, height: 14, color: 'var(--color-muted)', flexShrink: 0 }} />
+          <Search style={{ width: 14, height: 14, color: 'var(--text2)', flexShrink: 0 }} />
           <input
             type="text"
             value={query}
@@ -133,7 +133,7 @@ export function CanvaDesignPicker({
               background: 'transparent',
               outline: 'none',
               fontSize: 13,
-              color: 'var(--color-text-1)',
+              color: 'var(--ink)',
               fontFamily: 'inherit',
             }}
           />
@@ -144,8 +144,8 @@ export function CanvaDesignPicker({
         <div
           style={{
             fontSize: 12,
-            color: '#A32D2D',
-            background: '#FCEBEB',
+            color: 'var(--danger)',
+            background: 'var(--danger-bg)',
             padding: '8px 12px',
             borderRadius: 6,
             marginBottom: 12,
@@ -182,7 +182,7 @@ export function CanvaDesignPicker({
             display: 'flex',
             justifyContent: 'center',
             padding: 24,
-            color: 'var(--color-muted)',
+            color: 'var(--text2)',
           }}
         >
           <Loader2 style={{ width: 20, height: 20, animation: 'spin 1s linear infinite' }} />
@@ -194,7 +194,7 @@ export function CanvaDesignPicker({
           style={{
             textAlign: 'center',
             padding: 32,
-            color: 'var(--color-muted)',
+            color: 'var(--text2)',
             fontSize: 13,
           }}
         >
@@ -210,7 +210,7 @@ export function CanvaDesignPicker({
             onClick={() => fetchDesigns(query, continuation)}
             style={{
               fontSize: 12,
-              color: 'var(--color-brand)',
+              color: 'var(--forest)',
               background: 'none',
               border: 'none',
               cursor: 'pointer',
@@ -245,10 +245,10 @@ function DesignCard({
       style={{
         display: 'flex',
         flexDirection: 'column',
-        border: '1px solid var(--color-border-1)',
+        border: '1px solid var(--line)',
         borderRadius: 8,
         overflow: 'hidden',
-        background: 'var(--color-surface)',
+        background: 'var(--surface)',
         cursor: disabled ? 'wait' : 'pointer',
         opacity: disabled && !isImporting ? 0.5 : 1,
         transition: 'border-color 150ms ease, box-shadow 150ms ease',
@@ -257,10 +257,10 @@ function DesignCard({
         textAlign: 'left',
       }}
       onMouseEnter={(e) => {
-        if (!disabled) e.currentTarget.style.borderColor = 'var(--color-brand)'
+        if (!disabled) e.currentTarget.style.borderColor = 'var(--forest)'
       }}
       onMouseLeave={(e) => {
-        e.currentTarget.style.borderColor = 'var(--color-border-1)'
+        e.currentTarget.style.borderColor = 'var(--line)'
       }}
     >
       {/* Thumbnail */}
@@ -268,7 +268,7 @@ function DesignCard({
         style={{
           width: '100%',
           aspectRatio: '4/5',
-          background: 'var(--color-sunken)',
+          background: 'var(--sunken)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -277,7 +277,7 @@ function DesignCard({
       >
         {isImporting ? (
           <Loader2
-            style={{ width: 20, height: 20, color: 'var(--color-brand)', animation: 'spin 1s linear infinite' }}
+            style={{ width: 20, height: 20, color: 'var(--forest)', animation: 'spin 1s linear infinite' }}
           />
         ) : design.thumbnailUrl ? (
           <img
@@ -286,7 +286,7 @@ function DesignCard({
             style={{ width: '100%', height: '100%', objectFit: 'cover' }}
           />
         ) : (
-          <ImageIcon style={{ width: 24, height: 24, color: 'var(--color-muted)' }} />
+          <ImageIcon style={{ width: 24, height: 24, color: 'var(--text2)' }} />
         )}
       </div>
 
@@ -296,7 +296,7 @@ function DesignCard({
           padding: '8px 10px',
           fontSize: 11,
           fontWeight: 500,
-          color: 'var(--color-text-1)',
+          color: 'var(--ink)',
           overflow: 'hidden',
           textOverflow: 'ellipsis',
           whiteSpace: 'nowrap',

@@ -8,7 +8,7 @@ export default async function OnboardingLayout({ children }: { children: React.R
 
   return (
     <AuthProvider>
-      <div style={{ minHeight: '100vh', background: 'var(--color-page)' }}>{children}</div>
+      <div style={{ minHeight: '100vh', background: 'var(--paper)' }}>{children}</div>
     </AuthProvider>
   )
 }

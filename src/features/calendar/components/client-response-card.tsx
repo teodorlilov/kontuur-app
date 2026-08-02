@@ -12,18 +12,18 @@ interface ClientResponseCardProps {
 
 const STYLES = {
   approved: {
-    border: 'rgba(90,138,74,0.25)',
-    headerBg: 'rgba(90,138,74,0.04)',
-    iconBg: 'rgba(90,138,74,0.12)',
-    iconColor: '#5A8A4A',
+    border: 'rgba(46,158,104,0.25)',
+    headerBg: 'rgba(46,158,104,0.04)',
+    iconBg: 'rgba(46,158,104,0.12)',
+    iconColor: 'var(--spring-text)',
     label: 'approved this post',
     fallback: 'Approved as-is — no changes requested',
   },
   changes_requested: {
-    border: 'rgba(44,94,138,0.20)',
-    headerBg: 'rgba(44,94,138,0.04)',
-    iconBg: 'rgba(44,94,138,0.10)',
-    iconColor: '#2C5F8A',
+    border: 'rgba(22,68,48,0.20)',
+    headerBg: 'rgba(22,68,48,0.04)',
+    iconBg: 'rgba(22,68,48,0.10)',
+    iconColor: 'var(--forest)',
     label: 'requested changes',
     fallback: 'No specific feedback provided',
   },
@@ -43,7 +43,7 @@ export function ClientResponseCard({
   return (
     <div
       style={{
-        border: `0.5px solid ${s.border}`,
+        border: `1px solid ${s.border}`,
         borderRadius: 12,
         overflow: 'hidden',
       }}
@@ -73,11 +73,11 @@ export function ClientResponseCard({
           <Icon size={13} color={s.iconColor} />
         </div>
         <div>
-          <div style={{ fontSize: 13, fontWeight: 500, color: '#1A2630' }}>
+          <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--ink)' }}>
             {clientName} {s.label}
           </div>
           {timeAgo && (
-            <div style={{ fontSize: 11, color: '#8A8070', marginTop: 1 }}>
+            <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 1 }}>
               {timeAgo} · via review link
             </div>
           )}
@@ -89,7 +89,7 @@ export function ClientResponseCard({
         <div
           style={{
             fontSize: 13,
-            color: '#1A2630',
+            color: 'var(--ink)',
             fontStyle: 'italic',
             lineHeight: 1.55,
           }}

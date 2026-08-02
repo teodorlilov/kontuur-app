@@ -50,7 +50,7 @@ export function ElementsSection(props: ElementsSectionProps) {
           onClick={() => fileInputRef.current?.click()}
           title="Upload an image element (logo, graphic)"
           disabled={uploading}
-          style={{ display: 'inline-flex', alignItems: 'center', gap: 4, border: 'none', background: 'transparent', color: 'var(--color-text-2)', fontSize: '10px', cursor: uploading ? 'default' : 'pointer', padding: 0 }}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 4, border: 'none', background: 'transparent', color: 'var(--text2)', fontSize: '10px', cursor: uploading ? 'default' : 'pointer', padding: 0 }}
         >
           {uploading ? <Spinner size="sm" /> : <Upload size={12} />} Upload
         </button>
@@ -68,7 +68,7 @@ export function ElementsSection(props: ElementsSectionProps) {
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
         {elements.length === 0 && (
-          <p style={{ fontSize: '11px', color: 'var(--color-muted)', margin: 0 }}>
+          <p style={{ fontSize: '11px', color: 'var(--text2)', margin: 0 }}>
             No elements yet — upload a logo or graphic.
           </p>
         )}
@@ -196,12 +196,12 @@ function ElementRow({
         padding: '6px 8px',
         borderRadius: '6px',
         cursor: 'pointer',
-        background: selected ? 'var(--color-overlay)' : 'transparent',
-        border: selected ? '0.5px solid var(--color-border-2)' : '0.5px solid transparent',
+        background: selected ? 'rgba(15,21,18,0.04)' : 'transparent',
+        border: selected ? '1px solid var(--line2)' : '1px solid transparent',
       }}
     >
-      <Icon size={13} style={{ color: 'var(--color-muted)', flexShrink: 0 }} />
-      <span style={{ flex: 1, fontSize: '12px', color: 'var(--color-text-1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+      <Icon size={13} style={{ color: 'var(--text2)', flexShrink: 0 }} />
+      <span style={{ flex: 1, fontSize: '12px', color: 'var(--ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
         {element.kind === 'svg' ? 'Vector' : 'Image'}
       </span>
       <RowButton title="Bring forward" onClick={() => onMove('up')}>
@@ -226,7 +226,7 @@ function RowButton({ title, onClick, children }: { title: string; onClick: () =>
         event.stopPropagation()
         onClick()
       }}
-      style={{ border: 'none', background: 'transparent', color: 'var(--color-muted)', cursor: 'pointer', padding: 2, display: 'inline-flex' }}
+      style={{ border: 'none', background: 'transparent', color: 'var(--text2)', cursor: 'pointer', padding: 2, display: 'inline-flex' }}
     >
       {children}
     </button>

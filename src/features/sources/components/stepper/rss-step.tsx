@@ -82,22 +82,22 @@ export function RssStep({
   return (
     <div className="space-y-5">
       <div>
-        <h3 className="text-lg font-medium text-gray-900">News &amp; blogs</h3>
-        <p className="text-sm text-gray-500 mt-1">
+        <h3 className="text-lg font-medium text-ink">News &amp; blogs</h3>
+        <p className="text-sm text-text3 mt-1">
           We&apos;ll watch these feeds for fresh articles to inspire post ideas.
         </p>
       </div>
 
       {loading ? (
         <div className="flex flex-col gap-3 py-4">
-          <p className="text-sm text-gray-500">Finding news sites and blogs for your niche...</p>
+          <p className="text-sm text-text3">Finding news sites and blogs for your niche...</p>
           {[...Array(4)].map((_, i) => (
-            <div key={i} className="h-14 rounded-lg bg-gray-100 animate-pulse" />
+            <div key={i} className="h-14 rounded-lg bg-sunken animate-pulse" />
           ))}
         </div>
       ) : suggestionsStatus === 'failed' ? (
-        <div className="flex items-center justify-between rounded-lg border border-gray-200 bg-gray-50 px-4 py-3">
-          <p className="text-sm text-gray-500">
+        <div className="flex items-center justify-between rounded-lg border border-line bg-sunken px-4 py-3">
+          <p className="text-sm text-text3">
             Couldn&apos;t find suggestions. Retry, or paste a feed URL below.
           </p>
           <Button variant="secondary" size="sm" onClick={onRetrySuggestions}>
@@ -105,7 +105,7 @@ export function RssStep({
           </Button>
         </div>
       ) : remaining.length === 0 && addedCount === 0 ? (
-        <p className="text-sm text-gray-500 py-4">
+        <p className="text-sm text-text3 py-4">
           Nothing found automatically. Paste a feed URL below.
         </p>
       ) : (
@@ -113,12 +113,12 @@ export function RssStep({
           {remaining.map((s) => (
             <div
               key={s.url}
-              className="p-3 rounded-lg border border-gray-200 flex items-start justify-between gap-3"
+              className="p-3 rounded-lg border border-line flex items-start justify-between gap-3"
             >
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900 truncate">{s.label}</p>
-                <p className="text-xs text-gray-500 truncate mt-0.5">{s.url}</p>
-                {s.reason && <p className="text-xs text-gray-400 mt-1">{s.reason}</p>}
+                <p className="text-sm font-medium text-ink truncate">{s.label}</p>
+                <p className="text-xs text-text3 truncate mt-0.5">{s.url}</p>
+                {s.reason && <p className="text-xs text-text3 mt-1">{s.reason}</p>}
               </div>
               <Button
                 size="sm"
@@ -135,13 +135,13 @@ export function RssStep({
       )}
 
       {addedCount > 0 && (
-        <p className="text-xs text-green-600 font-medium">
+        <p className="text-xs text-spring-text font-medium">
           {addedCount} feed{addedCount !== 1 ? 's' : ''} added
         </p>
       )}
 
-      <div className="border-t border-gray-100 pt-4">
-        <p className="text-xs text-gray-500 mb-2">Add a feed manually:</p>
+      <div className="border-t border-line pt-4">
+        <p className="text-xs text-text3 mb-2">Add a feed manually:</p>
         <ManualAddInModal onAdd={handleManualAdd} isSaving={manualSaving} />
       </div>
 

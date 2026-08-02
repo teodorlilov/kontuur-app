@@ -81,7 +81,7 @@ function applyTextareaStyle(
     textAlign: layer.align,
     color: layer.fill,
     background: 'rgba(255, 255, 255, 0.72)',
-    border: '1px dashed var(--color-border-3)',
+    border: '1px dashed var(--line2)',
     outline: 'none',
     resize: 'none',
     overflow: 'hidden',

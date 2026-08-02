@@ -21,7 +21,7 @@ type VisualIdentityPanelProps = {
 const LABEL_STYLE: React.CSSProperties = {
   fontSize: '9px',
   fontWeight: 500,
-  color: 'var(--color-terracotta)',
+  color: 'var(--spring-text)',
   letterSpacing: '1.5px',
   textTransform: 'uppercase',
   marginBottom: '8px',
@@ -40,7 +40,7 @@ export function VisualIdentityPanel({ identity, onChange, status, onReanalyze, r
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
       {status && status !== 'ready' && status !== 'idle' && (
-        <div style={{ fontSize: '11px', color: 'var(--color-text-2)', lineHeight: 1.5 }}>
+        <div style={{ fontSize: '11px', color: 'var(--text2)', lineHeight: 1.5 }}>
           {status === 'pending' && 'Analyzing your website for brand colours… you can keep editing; results will appear here.'}
           {status === 'failed' && 'Analysis took too long — using default colours. Adjust anything below.'}
           {status === 'fallback' && 'No site colours could be read — using defaults. Adjust below.'}
@@ -49,7 +49,7 @@ export function VisualIdentityPanel({ identity, onChange, status, onReanalyze, r
 
       <div>
         <div style={LABEL_STYLE}>Brand style</div>
-        <p style={{ fontSize: '11px', color: 'var(--color-muted)', margin: '0 0 10px', lineHeight: 1.5 }}>
+        <p style={{ fontSize: '11px', color: 'var(--text2)', margin: '0 0 10px', lineHeight: 1.5 }}>
           The design system AI visuals follow. Colours always come from the brand palette below.
         </p>
         <div
@@ -86,9 +86,9 @@ export function VisualIdentityPanel({ identity, onChange, status, onReanalyze, r
             alignSelf: 'flex-start',
             padding: '8px 14px',
             borderRadius: '8px',
-            border: '0.5px solid var(--color-border-1)',
-            background: 'var(--color-page)',
-            color: 'var(--color-text-1)',
+            border: '1px solid var(--line)',
+            background: 'var(--paper)',
+            color: 'var(--ink)',
             fontSize: '12px',
             cursor: reanalyzing ? 'default' : 'pointer',
             opacity: reanalyzing ? 0.7 : 1,

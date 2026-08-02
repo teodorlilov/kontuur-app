@@ -17,10 +17,13 @@ interface ReviewHeaderProps {
 type ChipColour = 'total' | 'pending' | 'approved' | 'changes'
 
 const CHIP_STYLES: Record<ChipColour, { bg: string; color: string }> = {
-  total: { bg: 'rgba(44,62,80,0.07)', color: '#1A2630' },
-  pending: { bg: 'rgba(192,123,85,0.10)', color: '#C07B55' },
-  approved: { bg: 'rgba(90,138,74,0.10)', color: '#5A8A4A' },
-  changes: { bg: 'rgba(44,94,138,0.10)', color: '#2C5F8A' },
+  total: { bg: 'var(--sunken)', color: 'var(--ink)' },
+  // Four chips, four states. Pending is a wait (Amber), approved is settled
+  // (Wash), changes-requested needs you (Clay). They were terracotta and green
+  // aliases of each other, so pending and approved read identically.
+  pending: { bg: 'var(--pending-bg)', color: 'var(--pending)' },
+  approved: { bg: 'var(--wash)', color: 'var(--forest)' },
+  changes: { bg: 'var(--danger-bg)', color: 'var(--danger)' },
 }
 
 const CHIP_ICONS: Record<ChipColour, typeof LayoutGrid> = {
@@ -69,7 +72,7 @@ export function ReviewHeader({
     <div
       style={{
         background: '#fff',
-        borderBottom: '0.5px solid rgba(44,62,80,0.10)',
+        borderBottom: '1px solid rgba(15,21,18,0.10)',
         padding: '18px 28px 16px',
         flexShrink: 0,
       }}
@@ -90,22 +93,22 @@ export function ReviewHeader({
             gap: 8,
             fontSize: 10,
             fontWeight: 500,
-            color: '#8A8070',
+            color: 'var(--text2)',
             letterSpacing: '2px',
             textTransform: 'uppercase' as const,
           }}
         >
           <div
-            style={{ width: 6, height: 6, borderRadius: '50%', background: '#C07B55' }}
+            style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--spring-text)' }}
           />
           {agencyName}
         </div>
         <div
           style={{
             fontSize: 11,
-            color: '#8A8070',
-            background: '#F4EFE6',
-            border: '0.5px solid rgba(44,62,80,0.12)',
+            color: 'var(--text2)',
+            background: 'var(--paper)',
+            border: '1px solid rgba(15,21,18,0.12)',
             padding: '4px 10px',
             borderRadius: 6,
           }}
@@ -120,7 +123,7 @@ export function ReviewHeader({
           fontFamily: 'var(--font-display, Georgia, serif)',
           fontSize: 24,
           fontWeight: 400,
-          color: '#1A2630',
+          color: 'var(--ink)',
           marginBottom: 6,
         }}
       >
@@ -131,7 +134,7 @@ export function ReviewHeader({
       <div
         style={{
           fontSize: 12,
-          color: '#8A8070',
+          color: 'var(--text2)',
           display: 'flex',
           alignItems: 'center',
           gap: 10,
@@ -139,9 +142,9 @@ export function ReviewHeader({
         }}
       >
         <span>{clientName}</span>
-        <span style={{ color: 'rgba(44,62,80,0.20)' }}>·</span>
+        <span style={{ color: 'rgba(15,21,18,0.20)' }}>·</span>
         <span>{dateRange}</span>
-        <span style={{ color: 'rgba(44,62,80,0.20)' }}>·</span>
+        <span style={{ color: 'rgba(15,21,18,0.20)' }}>·</span>
         <span>{platform}</span>
       </div>
 

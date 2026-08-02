@@ -163,12 +163,12 @@ Kontuur is a green editorial system. Warm paper instead of white, forest ink ins
 
 Depth comes from tone before it comes from shadow. The system layers warm paper under white surfaces under deep pine, and separates them with 0.5px hairlines rather than heavy borders. Status colour is deliberately muted: a missed publish is clay, not red; a waiting draft is amber, not orange. Nothing in this interface shouts, because the work it manages is already urgent enough. Motion confirms and guides; it never decorates.
 
-The one loud value in the palette is New Growth lime, and its power is entirely a function of its rarity. It marks the live present — today, in progress, happening now — and nothing else.
+The one loud value in the palette is New Growth lime, and its power is a function of its *inversion*, not its rarity. Lime is never ink and never a line; it is the ground the interface stands on — a filled plate carrying Forest Ink at 13.65:1, the loudest legible pairing in the system. It marks where you are standing: the route in the rail, the commitment in the header, the moment in the field. It appears on every page, and never more than once per band.
 
 **Key Characteristics:**
 
 - Near-white ground (`#fbfcfa`) carrying the contour field, never flat pure white
-- Forest ink and a botanical green ramp; no blues, no unrelated hues
+- Forest ink and a botanical green ramp for the whole interface; the eight Client Identity hues are the sole exception, and only ever to say which client this is
 - Instrument Serif italic for accents only, and Latin-only by necessity
 - Hairline separation (0.5px) with tonal layering as the primary depth cue
 - Muted status colour; saturated defaults are rejected outright
@@ -186,7 +186,7 @@ A botanical ramp on warm paper: greens carry all brand meaning, and the two stat
 ### Secondary
 
 - **Living Green** (`#2e9e68`): The signal of health and motion — focus rings, live dots, chart strokes, the "ok" status. At 3.38:1 on white it clears the 3:1 bar for non-text UI, **but it fails as text.** Use **Living Green Text** (`#278658`, 4.53:1 on white) for any green *word* on a light ground — positive deltas, links, status labels. Over dark surfaces use **Living Green Lite** (`#7fd6a8`).
-- **New Growth** (`#cfea45`): The lime. The loudest value in the system, the most governed, and — at **1.35:1 on white** — a fill, never a word. See The Living Present Rule.
+- **New Growth** (`#cfea45`): The lime, and the colour that says Kontuur. The ground the interface stands on — a filled plate carrying Forest Ink or Pine Deep, on every page. At **1.35:1 on white** it can never be ink, a line or a dot on a light surface. Hover/press is **New Growth Deep** (`#b4cd32`), one step down the same ramp. See The Fill-Only Lime Rule and The Standing Place Rule.
 
 ### Tertiary
 
@@ -212,15 +212,48 @@ A botanical ramp on warm paper: greens carry all brand meaning, and the two stat
 - **Clay** (`#b04a38`) on **Clay Background** (`#fbefec`): Errors and destructive actions.
 - **Amber** (`#8a6116`) on **Amber Background** (`#f7efdc`): Pending, waiting, needs attention.
 
+### Client Identity
+
+The one set of hues in this system that is **not** botanical, and the only sanctioned exception to the Botanical Closure Rule below. It exists because the product manages many brands at once and an agency has to tell them apart at a glance — a job the green ramp measurably cannot do.
+
+Eight colours, stepping through hue *and* lightness, all desaturated so none competes with the green chrome:
+
+| | Hex | | Hex |
+| --- | --- | --- | --- |
+| Forest | `#164430` | Olive | `#6e7f52` |
+| Living Green | `#2e9e68` | Sky | `#5fa8b5` |
+| Teal | `#1f6b7a` | Clay | `#a2603f` |
+| Ochre | `#8a6116` | Sage | `#7fa588` |
+
+They live in `CLIENT_COLORS` (`src/utils/constants.ts`) and are **assigned by hashing the client's name**, never by list position — so a client wears the same colour on their avatar, their dashboard dot and their calendar pill, on every page, forever. `CLIENT_PILL_TONES` derives the calendar pill trio from the same array rather than restating it, because two literal tables would drift.
+
+**Never render one as a solid fill under white text.** The lighter members (Sky, Sage, Living Green) fail 4.5:1 that way. The sanctioned rendering is a tint of the hue with the ink darkened into it — `background: color-mix(in srgb, {hue} 14%, transparent)` and `color: color-mix(in srgb, {hue} 78%, var(--ink))`, as `components/ui/avatar.tsx` does. A hero-scale mark may raise the tint (the onboarding identity tile uses 30% on a Wash ground); the darkened-ink foreground does not change.
+
+**A client's own detected brand colour is not an identity colour.** Brand hexes pulled from a client's website (`brand_visual_identity.palette`) are *content* — they belong in a swatch row, a preview, or a generated post, and never in Kontuur's chrome. Using one to tint a button, an avatar or a surface puts an arbitrary foreign hue in the interface, and it is doubly wrong when the same screen is telling the user that the extraction looked unreliable.
+
 ### Named Rules
 
-**The Living Present Rule.** New Growth lime marks *now* — today, in progress, publishing, live — and nothing else. It is never a category colour, never decorative, and never assigned by position in a list. At most one lime element per view. *Audit test: if the lime element would still be lime tomorrow, it is wrong.*
+**The Fill-Only Lime Rule.** New Growth is a ground, never a word on a light surface. It measures 1.35:1 on Surface, so lime text on white or paper is unreadable regardless of size. Lime type is legitimate only on Pine Deep, where the relationship inverts.
 
-**The Fill-Only Lime Rule.** New Growth is a fill, a marker, or a dot — never a word on a light ground. It measures 1.35:1 on Surface, so lime text on white or paper is unreadable regardless of size. Lime type is legitimate only on Pine Deep, where the relationship inverts.
+The inversion is the whole rule. On a light ground lime may only be the **ground**: a filled area carrying Forest Ink (13.65:1) or Pine Deep (10.87:1). On a dark ground lime becomes the **figure**: type, a rule, a dot, a chip fill, all at 10.87:1. Nowhere in this system may lime be a small figure on a light ground — a lime dot, hairline, underline or 3px bar on Surface measures 1.35:1, which fails even the 3:1 non-text bar. It is not subtle there; it is absent.
+
+**Lime is never empty.** Every lime area on a light ground carries dark content — a glyph, a numeral, a word, or a dark child. The lime plate's own silhouette against paper is 1.35:1, so an empty lime shape reads as nothing at all; its dark passenger is what makes it a shape. A lime area that is also a **control** takes a Pine Deep edge at 45% (`shadow-[inset_0_0_0_1px_rgba(12,46,32,0.45)]`, 3.33:1 on paper), so its boundary clears WCAG 1.4.11 rather than relying on hue.
+
+**The Standing Place Rule.** New Growth marks where the user is standing: the route in the rail, the commitment in the header, the moment in the field. **One lime answer per band** — rail, header, field — and the wordmark, which is the constant, is exempt from the count. Lime never names a category, a client, a platform, a permanent property, or a position in a list.
+
+*Audit test: name the thing that would make this element stop being lime. "The user navigates away", "the user acts", and "the clock moves" are all valid answers. If the only answer is "a code change", it is wrong.*
+
+**The Small Present Rule.** Below roughly 16px, and on anything thinner than 4px, the present tense on a light ground is **Living Green**, not lime. Living Green holds 3.38:1 on Surface, which clears the 3:1 non-text bar, and it is already this system's signal of motion. On dark grounds the relationship inverts and the small "now" mark is lime again — which is why MiniWeek's 2px today-rule stays lime on the dark stat card while NextUpCard's today-dot is Living Green on the light one.
+
+So the split is: **lime = here** (and now, where there is room for a ground); **Living Green = now, at dot scale, on light**. No signal is lost; the loud colour simply stops being spent on marks too small to carry it.
 
 **The Legible Tint Rule.** Text on a tinted surface (Surface Lime, Sage, Marker, Wash, and the status backgrounds) uses a **solid** ink token — Forest Ink or Ink Secondary — never an alpha-reduced ink. Measured: `ink/55%` lands at 4.10:1 on Surface Lime, 4.08:1 on Marker, and 3.74:1 on Sage, so the same line changes legibility depending on which tint sits under it. Alpha inks are for hairlines and overlays, not for reading.
 
-**The Botanical Closure Rule.** Every hue in this system is a green, a neutral, or one of the two earthen status colours. There are no blues. A blue link, a `blue-500`, or a fifth unrelated hue for a fourth chart series is out of system — the metric ramp deliberately runs Deep Pine → Living Green → `#7fa588` → Pine Deep rather than four unrelated colours.
+**The Botanical Closure Rule.** Every hue in the *interface* is a green, a neutral, or one of the two earthen status colours. A blue link, a `blue-500`, or a fifth unrelated hue for a fourth chart series is out of system — the metric ramp deliberately runs Deep Pine → Living Green → `#7fa588` → Pine Deep rather than four unrelated colours.
+
+The rule governs chrome, not identity. **Client Identity above is its one exception**, and the exception is narrow: those eight hues may only encode *which client this is* or *which content pillar this is*, and only through the tint-plus-darkened-ink rendering. They are never borrowed for status, emphasis, chart series, or decoration. *Audit test: if the colour would survive renaming the client or the pillar, it is chrome and the rule applies.*
+
+Read the exception as a correction, not a loophole. This rule previously read "there are no blues" while `CLIENT_COLORS` shipped a teal and a sky on every client avatar in the app — so the document forbade what the product did, and the first honest attempt to colour a client on a new surface reached for the client's own brand hex instead, because the system appeared to offer nothing.
 
 **The Muted Status Rule.** Status colour is earthen, never saturated. `green-500` and `red-500` are rejected on sight; a failure is Clay and a wait is Amber.
 
@@ -237,7 +270,8 @@ A botanical ramp on warm paper: greens carry all brand meaning, and the two stat
 ### Hierarchy
 
 - **Metric** (600, 31px, −0.02em, tabular-nums): Stat values. Always tabular.
-- **Headline** (600, 23px, −0.02em): The dashboard greeting and page-level headings.
+- **Prompt** (Instrument Serif, 400, 30px, −0.01em): The one thing a full-screen onboarding surface is asking — the question on an interview card, the client name on the auto-draft sheet. **One per view, and only on a surface that has nothing else competing for the eye.** It is not a dashboard heading: inside the app shell that job belongs to Headline. Subject to the Latin-Only Serif Rule like every other serif role, which in practice means Bulgarian client names render at Headline instead.
+- **Headline** (600, 23px, −0.02em): The dashboard greeting and page-level headings. Also the sans fallback for Prompt when the string carries Cyrillic.
 - **Display** (Instrument Serif italic, 400, 15–17px): Editorial asides, empty-state lines, the agency name in the greeting, the wordmark. Accents only.
 - **Title** (600, 14.5px, −0.02em): Section titles.
 - **Stat Label** (500, 12.5px): The label above a metric. A real half-step between Body and Caption — a stat label must read as quieter than body text without dropping to caption size.
@@ -254,7 +288,9 @@ A botanical ramp on warm paper: greens carry all brand meaning, and the two stat
 
 **The Weight Ceiling Rule.** 400 and 500 carry the interface; 600 is correct for titles, stat numbers, and section headings. **700 stays unused.**
 
-**The Closed Ramp Rule.** The eight roles above are the ramp. A literal size that is not one of them is drift, not a decision — the app currently carries nineteen distinct literal sizes, which is nineteen ad-hoc values with a ramp described over them. Add a step only when a role genuinely exists and recurs; snap one-offs to the nearest documented size instead.
+**The Closed Ramp Rule.** The nine roles above are the ramp. A literal size that is not one of them is drift, not a decision — the app currently carries nineteen distinct literal sizes, which is nineteen ad-hoc values with a ramp described over them. Add a step only when a role genuinely exists and recurs; snap one-offs to the nearest documented size instead. *Prompt is the one step added this way (2026-08-01): the onboarding surfaces needed a size for the single thing being asked, it recurred six times across two of them, and the ramp had nothing between Headline and Metric that a serif could carry.*
+
+**The Mobile Input Exemption.** Focusable fields at the mobile breakpoint are set to **16px**, off-ramp and deliberately so: below 16px iOS Safari auto-zooms the viewport the moment a field takes focus, which throws the layout mid-entry and cannot be dismissed without a pinch. This is the only sanctioned off-ramp size in the system, it applies to inputs and textareas only, and it never leaks to static text.
 
 ## Layout
 
@@ -330,7 +366,7 @@ Components should feel **tactile and considered** — like well-made objects on 
 
 ### Navigation
 
-- **Style:** 224px sidebar. Items at 13px body weight with Ink Secondary text; the active item takes Wash fill with Deep Pine text. Uppercase 10px `+0.16em` section labels above groups. Icons are 16px Lucide strokes, always paired with a text label.
+- **Style:** 224px sidebar. Items at 13px body weight with Ink Secondary text; **the active item takes New Growth fill with Pine Deep text and icon**, over an inset Pine Deep edge at 45% so the plate has a boundary. Its count badge inverts to Pine Deep fill with lime text, because Wash on a lime plate is unreadable. Uppercase 10px `+0.16em` section labels above groups. Icons are 16px Lucide strokes, always paired with a text label.
 
 ### Chips / Badges
 
@@ -340,7 +376,7 @@ Components should feel **tactile and considered** — like well-made objects on 
 
 Seven chips in a row, one per day, encoding a client's week: solid for published, outlined for scheduled, hatched for open. It is the system's most distinctive object — a planting chart for content — and it carries real data in a purely visual form. Because of that, it must always be `aria-hidden` with an `sr-only` sentence restating the same counts in words. A coverage strip without its spoken equivalent is incomplete, not merely imperfect.
 
-**The Two Facts Rule.** A day chip carries two independent facts — *is it today* and *is it covered* — and one must never consume the other. Today is marked with a 2px New Growth rule **beneath** the chip; the chip's own fill continues to encode published / scheduled / open. A lime chip that hides whether today has anything scheduled has spent the loudest colour in the system erasing the answer the strip exists to give.
+**The Two Facts Rule.** A day chip carries two independent facts — *is it today* and *is it covered* — and one must never consume the other. On a light strip today is a New Growth **plate behind the day**, the date sitting on lime in Pine Deep ink; on a dark strip it is a 2px New Growth rule **beneath** the chip. Either way the chip's own fill continues to encode published / scheduled / open. A lime chip that hides whether today has anything scheduled has spent the loudest colour in the system erasing the answer the strip exists to give. *The 2px rule on a light ground was retired: it measured 1.35:1, so it erased the answer twice over.*
 
 The same applies to any bar or chip height that encodes volume: **an empty state must never render larger than an occupied one.** Height maps to count, with a small fixed floor for zero.
 
@@ -358,7 +394,11 @@ Raw values live in `src/app/globals.css` as prefix-free custom properties (`--pa
 | `text-ink` `text-text2` `text-text3` | text ramp |
 | `border-line` `border-line2` | borders |
 | `bg-forest` `bg-forest-deep` `bg-spring` `bg-wash` `bg-marker` | greens |
-| `bg-lime` `bg-sage` `text-accent` | capsule tiers + the rare accent |
+| `bg-lime` `bg-sage` | capsule tiers (Surface Lime / Sage — *not* the accent) |
+| `bg-accent` + `text-forest-deep` | the lime plate, on light |
+| `text-accent` | lime as a figure, on Pine Deep only |
+| `bg-accent-deep` | lime hover/press |
+| `text-spring-text` | green as a word on light (4.53:1) |
 | `bg-danger-bg` `text-danger` `bg-pending-bg` `text-pending` | status |
 | `rounded-chip` (10) `rounded-panel` (14) `rounded-card` (20) | radii |
 | `shadow-card` `shadow-pop` `shadow-frame` `shadow-dark` | elevation |
@@ -405,12 +445,16 @@ Component placement, data-fetching rules, validation and error handling are in [
 - **Do** give every purely visual data encoding an `sr-only` sentence, as the coverage strip does.
 - **Do** use `cubic-bezier(0.22, 1, 0.36, 1)` (`--ease-contour`) for state transitions.
 - **Do** keep weight at 600 or below.
-- **Do** reserve New Growth lime for the live present.
+- **Do** give every lime area a dark passenger — a glyph, a numeral or a word in Forest Ink or Pine Deep.
+- **Do** keep lime to one answer per band: rail, header, field.
+- **Do** colour a client from `CLIENT_COLORS`, hashed on their name, rendered as a tint with the ink darkened into it — the same colour on their avatar, their dot and their calendar pill.
 
 ### Don't:
 
 - **Don't** use pure white for a page background, or a cool grey anywhere.
-- **Don't** introduce a hue outside the botanical ramp — no blues, no `blue-500` links, no unrelated fourth chart colour.
+- **Don't** introduce a hue outside the botanical ramp — no `blue-500` links, no unrelated fourth chart colour. `CLIENT_COLORS` is the one exception, and only for identity.
+- **Don't** put a client's *own* detected brand colour into Kontuur's chrome. A brand hex from their website is content: it belongs in a swatch row or a generated post, never on a button, an avatar or a surface.
+- **Don't** render a `CLIENT_COLORS` hue as a solid fill under white text — Sky, Sage and Living Green fail 4.5:1 that way. Tint the ground, darken the ink.
 - **Don't** use saturated status colours (`green-500`, `red-500`); status is Clay and Amber.
 - **Don't** use `font-weight: 700`.
 - **Don't** set body text, labels, or buttons in Instrument Serif.
@@ -421,5 +465,6 @@ Component placement, data-fetching rules, validation and error handling are in [
 - **Don't** ship an interactive element without a visible `:focus-visible` ring.
 - **Don't** set green text on a light ground in Living Green (`#2e9e68`, 3.38:1) — that is Living Green Text's job (`#278658`).
 - **Don't** put lime type on paper or white, at any size.
+- **Don't** paint a lime rule, border, dot or underline on a light ground — at 1.35:1 it fails even the 3:1 non-text bar, so it is invisible rather than quiet. Three tempting places this has been tried and rejected: the sticky header's bottom border, the tab rail's active underline, and the route-change progress bar. All three stay Deep Pine.
 - **Don't** use an alpha-reduced ink (`ink/55`, `ink/60`) for reading text on a tinted surface.
 - **Don't** write a literal `0.5px` border in new work — it renders inconsistently across DPRs, which is why Contour carries hairlines with alpha instead.

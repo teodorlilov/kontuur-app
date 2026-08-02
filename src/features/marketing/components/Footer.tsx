@@ -37,8 +37,8 @@ export function Footer() {
     <footer
       className="mkt-pad"
       style={{
-        background: 'var(--color-brand)',
-        borderTop: '0.5px solid rgba(255,255,255,0.08)',
+        background: 'var(--forest)',
+        borderTop: '1px solid rgba(255,255,255,0.08)',
         paddingTop: 64,
         paddingBottom: 40,
       }}
@@ -106,7 +106,7 @@ export function Footer() {
       {/* Bottom bar */}
       <div
         style={{
-          borderTop: '0.5px solid rgba(255,255,255,0.08)',
+          borderTop: '1px solid rgba(255,255,255,0.08)',
           paddingTop: 24,
           display: 'flex',
           justifyContent: 'space-between',

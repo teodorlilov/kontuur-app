@@ -62,7 +62,7 @@ export function FeaturesDeepDive() {
   const isMobile = useIsMobile()
 
   return (
-    <section className="mkt-pad" style={{ paddingTop: 80, paddingBottom: 80, background: 'var(--color-page)' }}>
+    <section className="mkt-pad" style={{ paddingTop: 80, paddingBottom: 80, background: 'var(--paper)' }}>
       <div
         style={{
           maxWidth: 1100,
@@ -84,14 +84,14 @@ export function FeaturesDeepDive() {
             >
               {/* Text column — always first on mobile */}
               <div style={{ order: isMobile ? 1 : f.reversed ? 2 : 1 }}>
-                <f.icon size={28} color="var(--color-brand-accent)" style={{ marginBottom: 16 }} />
+                <f.icon size={28} color="var(--spring)" style={{ marginBottom: 16 }} />
                 <h3
                   style={{
                     fontFamily: 'var(--font-display)',
                     fontSize: 'clamp(22px, 2.5vw, 28px)',
                     fontWeight: 400,
                     letterSpacing: '-0.02em',
-                    color: 'var(--color-text-1)',
+                    color: 'var(--ink)',
                     marginBottom: 16,
                     lineHeight: 1.2,
                   }}
@@ -101,7 +101,7 @@ export function FeaturesDeepDive() {
                 <p
                   style={{
                     fontSize: 15,
-                    color: 'var(--color-text-2)',
+                    color: 'var(--text2)',
                     lineHeight: 1.7,
                     marginBottom: 20,
                     maxWidth: 440,
@@ -116,8 +116,8 @@ export function FeaturesDeepDive() {
                       style={{
                         display: 'inline-block',
                         padding: '4px 10px',
-                        background: 'var(--color-scheduled-bg)',
-                        color: 'var(--color-scheduled-fg)',
+                        background: 'var(--marker)',
+                        color: 'var(--forest-deep)',
                         borderRadius: 6,
                         fontSize: 12,
                         fontWeight: 500,
@@ -138,7 +138,7 @@ export function FeaturesDeepDive() {
                   width: '100%',
                   height: 'auto',
                   borderRadius: 12,
-                  border: '0.5px solid var(--color-border-1)',
+                  border: '1px solid var(--line)',
                   display: 'block',
                   boxShadow: '0 4px 24px rgba(0,0,0,0.08)',
                 }}

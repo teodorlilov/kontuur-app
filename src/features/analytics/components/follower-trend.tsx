@@ -31,16 +31,16 @@ export function FollowerTrend({ metrics }: FollowerTrendProps) {
     return (
       <div
         style={{
-          background: 'var(--color-surface)',
-          border: '0.5px solid var(--color-border-1)',
+          background: 'var(--surface)',
+          border: '1px solid var(--line)',
           borderRadius: 'var(--radius-lg)',
           padding: '20px 24px',
         }}
       >
-        <p style={{ fontSize: 15, fontWeight: 500, color: 'var(--color-text-1)', marginBottom: 16 }}>
+        <p style={{ fontSize: 15, fontWeight: 500, color: 'var(--ink)', marginBottom: 16 }}>
           Follower count over time
         </p>
-        <p style={{ fontSize: 13.5, color: 'var(--color-text-3)', textAlign: 'center', padding: '32px 0' }}>
+        <p style={{ fontSize: 13.5, color: 'var(--text3)', textAlign: 'center', padding: '32px 0' }}>
           {isIG ? 'Not enough follower data available' : 'Follower trend is only available for Instagram'}
         </p>
       </div>
@@ -52,14 +52,14 @@ export function FollowerTrend({ metrics }: FollowerTrendProps) {
   return (
     <div
       style={{
-        background: 'var(--color-surface)',
-        border: '0.5px solid var(--color-border-1)',
+        background: 'var(--surface)',
+        border: '1px solid var(--line)',
         borderRadius: 'var(--radius-lg)',
         padding: '20px 24px',
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-        <p style={{ fontSize: 15, fontWeight: 500, color: 'var(--color-text-1)' }}>
+        <p style={{ fontSize: 15, fontWeight: 500, color: 'var(--ink)' }}>
           Follower count over time
         </p>
         <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, color: CHART_COLORS.label }}>

@@ -61,7 +61,7 @@ function EditableField({
         onClick={() => setEditing(true)}
         className={cn(
           className,
-          'cursor-text rounded px-1 -mx-1 hover:bg-white hover:ring-1 hover:ring-gray-200 transition-all'
+          'cursor-text rounded px-1 -mx-1 hover:bg-surface hover:ring-1 hover:ring-line2 transition-all'
         )}
       >
         {value}
@@ -88,7 +88,7 @@ function EditableField({
         }}
         className={cn(
           editClassName ?? className,
-          'w-full border border-gray-300 rounded-lg px-2 py-1 -mx-1 focus:outline-none focus:ring-2 focus:ring-[var(--color-border-3)] focus:border-transparent resize-none'
+          'w-full border border-line2 rounded-lg px-2 py-1 -mx-1 focus:outline-none focus:ring-2 focus:ring-[var(--line2)] focus:border-transparent resize-none'
         )}
       />
     )
@@ -109,7 +109,7 @@ function EditableField({
       }}
       className={cn(
         editClassName ?? className,
-        'w-full border border-gray-300 rounded-lg px-2 py-1 -mx-1 focus:outline-none focus:ring-2 focus:ring-[var(--color-border-3)] focus:border-transparent'
+        'w-full border border-line2 rounded-lg px-2 py-1 -mx-1 focus:outline-none focus:ring-2 focus:ring-[var(--line2)] focus:border-transparent'
       )}
     />
   )
@@ -154,7 +154,7 @@ export function CarouselSlides({ slides, editable, onSlidesChange, onBlur, flagg
   return (
     <div className="flex flex-col gap-3">
       <div className="flex justify-end">
-        <button onClick={handleCopyAll} className="text-xs text-gray-500 hover:text-gray-700 font-medium">Copy all slides</button>
+        <button onClick={handleCopyAll} className="text-xs text-text3 hover:text-text2 font-medium">Copy all slides</button>
       </div>
 
       {/* Tab bar */}
@@ -166,8 +166,8 @@ export function CarouselSlides({ slides, editable, onSlidesChange, onBlur, flagg
             className={cn(
               'px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors inline-flex items-center gap-1',
               activeIndex === i
-                ? 'bg-[rgba(44,62,80,0.08)] text-[var(--color-text-1)]'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                ? 'bg-[rgba(15,21,18,0.08)] text-[var(--ink)]'
+                : 'bg-sunken text-text2 hover:bg-line'
             )}
           >
             {slide.slide_number ?? i + 1}
@@ -175,8 +175,8 @@ export function CarouselSlides({ slides, editable, onSlidesChange, onBlur, flagg
               <span
                 style={{
                   fontSize: 9,
-                  color: '#2C5F8A',
-                  background: 'rgba(44,94,138,0.10)',
+                  color: 'var(--forest)',
+                  background: 'rgba(22,68,48,0.10)',
                   padding: '1px 5px',
                   borderRadius: 3,
                 }}
@@ -190,10 +190,10 @@ export function CarouselSlides({ slides, editable, onSlidesChange, onBlur, flagg
 
       {/* Active slide content */}
       {activeSlide && (
-        <div className="bg-gray-50 rounded-lg p-4 flex flex-col gap-3">
+        <div className="bg-sunken rounded-lg p-4 flex flex-col gap-3">
           {activeSlide.slide_role && (
             <div className="flex items-center gap-2">
-              <span className="text-xs font-medium text-gray-400 uppercase">
+              <span className="text-xs font-medium text-text3 uppercase">
                 {activeSlide.slide_role}
               </span>
             </div>
@@ -204,10 +204,10 @@ export function CarouselSlides({ slides, editable, onSlidesChange, onBlur, flagg
               value={activeSlide.headline}
               onChange={(v) => updateSlideField('headline', v)}
               onBlur={onBlur}
-              className="text-sm font-semibold text-gray-900"
+              className="text-sm font-semibold text-ink"
             />
           ) : (
-            <p className="text-sm font-semibold text-gray-900">{activeSlide.headline}</p>
+            <p className="text-sm font-semibold text-ink">{activeSlide.headline}</p>
           )}
 
           {editable && onSlidesChange && activeSlide.body ? (
@@ -216,11 +216,11 @@ export function CarouselSlides({ slides, editable, onSlidesChange, onBlur, flagg
               onChange={(v) => updateSlideField('body', v)}
               onBlur={onBlur}
               multiline
-              className="text-sm text-gray-700 whitespace-pre-wrap"
+              className="text-sm text-text2 whitespace-pre-wrap"
             />
           ) : (
             activeSlide.body && (
-              <p className="text-sm text-gray-700 whitespace-pre-wrap">{activeSlide.body}</p>
+              <p className="text-sm text-text2 whitespace-pre-wrap">{activeSlide.body}</p>
             )
           )}
 
@@ -245,8 +245,8 @@ export function CarouselSlides({ slides, editable, onSlidesChange, onBlur, flagg
       )}
 
       {flaggedSlides && flaggedSlides.length > 0 && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 10, color: '#8A8070' }}>
-          <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#2C5F8A', flexShrink: 0 }} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 10, color: 'var(--text2)' }}>
+          <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--spring)', flexShrink: 0 }} />
           Flagged slides are expanded
         </div>
       )}

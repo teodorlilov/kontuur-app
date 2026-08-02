@@ -37,7 +37,7 @@ export function StepLoading({ clientName, stage, streamTotal, generatedCount, re
         alignItems: 'center',
         justifyContent: 'center',
         padding: '40px',
-        background: 'var(--color-surface)',
+        background: 'var(--surface)',
       }}
     >
       <FrameIcon />
@@ -47,14 +47,14 @@ export function StepLoading({ clientName, stage, streamTotal, generatedCount, re
           fontFamily: 'var(--font-display)',
           fontSize: '22px',
           fontWeight: 400,
-          color: 'var(--color-text-1)',
+          color: 'var(--ink)',
           textAlign: 'center',
           marginBottom: '5px',
         }}
       >
         {isIdeaFlow ? `Generating post for ${clientName}` : `Generating posts for ${clientName}`}
       </h2>
-      <p style={{ fontSize: '13px', color: 'var(--color-muted)', textAlign: 'center', marginBottom: '28px' }}>
+      <p style={{ fontSize: '13px', color: 'var(--text2)', textAlign: 'center', marginBottom: '28px' }}>
         {isIdeaFlow ? 'Searching sources, enriching idea, writing post' : 'Fetching sources, researching content, writing captions'}
       </p>
 
@@ -71,10 +71,10 @@ function FrameIcon() {
   return (
     <div
       style={{
-        borderLeft: '2px solid var(--color-terracotta)',
-        borderRight: '2px solid var(--color-terracotta)',
-        borderTop: '0.5px solid var(--color-border-2)',
-        borderBottom: '0.5px solid var(--color-border-2)',
+        borderLeft: '2px solid var(--spring)',
+        borderRight: '2px solid var(--spring)',
+        borderTop: '1px solid var(--line2)',
+        borderBottom: '1px solid var(--line2)',
         padding: '14px 16px',
         display: 'flex',
         alignItems: 'center',
@@ -82,7 +82,7 @@ function FrameIcon() {
         marginBottom: '20px',
       }}
     >
-      <Pencil size={22} color="var(--color-terracotta)" strokeWidth={1.5} />
+      <Pencil size={22} color="var(--spring)" strokeWidth={1.5} />
     </div>
   )
 }
@@ -109,7 +109,7 @@ function StageRow({ isDone, isActive, label }: { isDone: boolean; isActive: bool
         gap: '10px',
         padding: '10px 14px',
         borderRadius: '8px',
-        background: isDone ? 'rgba(90,138,74,0.07)' : isActive ? 'rgba(44,62,80,0.06)' : 'var(--color-page)',
+        background: isDone ? 'rgba(46,158,104,0.07)' : isActive ? 'rgba(15,21,18,0.06)' : 'var(--paper)',
         transition: 'background 0.3s',
       }}
     >
@@ -118,7 +118,7 @@ function StageRow({ isDone, isActive, label }: { isDone: boolean; isActive: bool
         style={{
           fontSize: '12px',
           fontWeight: 500,
-          color: isDone ? 'var(--status-ok)' : isActive ? 'var(--color-text-1)' : 'var(--color-muted)',
+          color: isDone ? 'var(--spring-text)' : isActive ? 'var(--ink)' : 'var(--text2)',
         }}
       >
         {label}
@@ -135,7 +135,7 @@ function StageIcon({ isDone, isActive }: { isDone: boolean; isActive: boolean })
           width: '20px',
           height: '20px',
           borderRadius: '50%',
-          background: 'var(--status-ok)',
+          background: 'var(--spring)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -154,7 +154,7 @@ function StageIcon({ isDone, isActive }: { isDone: boolean; isActive: boolean })
           width: '20px',
           height: '20px',
           borderRadius: '50%',
-          background: 'var(--sidebar-bg)',
+          background: 'var(--forest-deep)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -167,7 +167,7 @@ function StageIcon({ isDone, isActive }: { isDone: boolean; isActive: boolean })
   }
 
   return (
-    <div style={{ width: '20px', height: '20px', borderRadius: '50%', background: 'rgba(44,62,80,0.12)', flexShrink: 0 }} />
+    <div style={{ width: '20px', height: '20px', borderRadius: '50%', background: 'rgba(15,21,18,0.12)', flexShrink: 0 }} />
   )
 }
 
@@ -175,18 +175,21 @@ function ProgressBar({ current, total }: { current: number; total: number }) {
   const percent = total > 0 ? Math.round((current / total) * 100) : 0
   return (
     <div style={{ width: '100%', maxWidth: '320px', marginBottom: '20px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: 'var(--color-muted)', marginBottom: '6px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: 'var(--text2)', marginBottom: '6px' }}>
         <span>Generating posts...</span>
         <span>{current} of {total} complete</span>
       </div>
-      <div style={{ height: '4px', background: 'rgba(44,62,80,0.08)', borderRadius: '2px', overflow: 'hidden' }}>
+      <div style={{ height: '4px', background: 'rgba(15,21,18,0.08)', borderRadius: '2px', overflow: 'hidden' }}>
         <div
           style={{
             height: '100%',
             borderRadius: '2px',
-            background: 'var(--color-terracotta)',
-            width: `${percent}%`,
-            transition: 'width 0.5s ease-out',
+            background: 'var(--spring)',
+            // scaleX, not width — animating width lays out every frame.
+            width: '100%',
+            transformOrigin: 'left',
+            transform: `scaleX(${percent / 100})`,
+            transition: 'transform 0.5s var(--ease-contour)',
           }}
         />
       </div>
@@ -200,7 +203,7 @@ function SkeletonCard() {
       style={{
         width: '100%',
         maxWidth: '320px',
-        background: 'var(--color-page)',
+        background: 'var(--paper)',
         borderRadius: '12px',
         padding: '20px',
         display: 'flex',
@@ -222,7 +225,7 @@ function SkeletonLine({ width }: { width: string }) {
       style={{
         height: '10px',
         borderRadius: '4px',
-        background: 'rgba(44,62,80,0.08)',
+        background: 'rgba(15,21,18,0.08)',
         width,
         animation: 'pulse 1.5s ease-in-out infinite',
       }}

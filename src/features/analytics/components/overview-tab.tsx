@@ -27,7 +27,7 @@ export function OverviewTab({ metrics, aiSummary, onViewAllPosts }: OverviewTabP
         <MediaTypeBreakdown metrics={metrics} />
         <div>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-            <p style={{ fontSize: 15, fontWeight: 500, color: 'var(--color-text-1)' }}>Top posts by reach</p>
+            <p style={{ fontSize: 15, fontWeight: 500, color: 'var(--ink)' }}>Top posts by reach</p>
             <button
               type="button"
               onClick={onViewAllPosts}
@@ -36,7 +36,7 @@ export function OverviewTab({ metrics, aiSummary, onViewAllPosts }: OverviewTabP
                 border: 'none',
                 fontSize: 12,
                 fontWeight: 500,
-                color: 'var(--color-terracotta)',
+                color: 'var(--spring-text)',
                 cursor: 'pointer',
                 fontFamily: 'inherit',
               }}

@@ -31,9 +31,9 @@ export function DraftVisualSlot({
 
   if (visual.status === 'generating') {
     return (
-      <div style={panelStyle('rgba(192,123,85,0.45)', 'rgba(192,123,85,0.04)')}>
-        <Sparkles style={{ width: 14, height: 14, color: '#C07B55' }} className="animate-pulse" />
-        <span style={{ fontSize: 11, color: '#C07B55' }}>Generating visual…</span>
+      <div style={panelStyle('rgba(46,158,104,0.45)', 'rgba(46,158,104,0.04)')}>
+        <Sparkles style={{ width: 14, height: 14, color: 'var(--spring-text)' }} className="animate-pulse" />
+        <span style={{ fontSize: 11, color: 'var(--spring-text)' }}>Generating visual…</span>
       </div>
     )
   }
@@ -75,7 +75,7 @@ function DraftVisualPreview({
           display: 'block',
           width: '100%',
           padding: 0,
-          border: '0.5px solid var(--color-border-1)',
+          border: '1px solid var(--line)',
           borderRadius: 10,
           overflow: 'hidden',
           background: 'none',
@@ -92,12 +92,12 @@ function DraftVisualPreview({
       </button>
       <div style={{ alignSelf: 'flex-end', display: 'flex', gap: 6 }}>
         {onEdit && (
-          <FooterAction onClick={onEdit} color="#3A4A54" background="rgba(58,74,84,0.08)">
+          <FooterAction onClick={onEdit} color="var(--text2)" background="rgba(58,74,84,0.08)">
             <Pencil style={{ width: 11, height: 11 }} />
             Edit text
           </FooterAction>
         )}
-        <FooterAction onClick={onRegenerate} color="#C07B55" background="rgba(192,123,85,0.08)">
+        <FooterAction onClick={onRegenerate} color="var(--spring-text)" background="rgba(46,158,104,0.08)">
           <Sparkles style={{ width: 11, height: 11 }} />
           Regenerate
         </FooterAction>
@@ -168,9 +168,9 @@ function ActionPanel({
   label: string
   tone?: 'error'
 }) {
-  const color = tone === 'error' ? '#A32D2D' : '#C07B55'
-  const border = tone === 'error' ? 'rgba(163,45,45,0.35)' : 'rgba(192,123,85,0.45)'
-  const background = tone === 'error' ? 'rgba(163,45,45,0.04)' : 'rgba(192,123,85,0.04)'
+  const color = tone === 'error' ? 'var(--danger)' : 'var(--spring-text)'
+  const border = tone === 'error' ? 'rgba(163,45,45,0.35)' : 'rgba(46,158,104,0.45)'
+  const background = tone === 'error' ? 'rgba(163,45,45,0.04)' : 'rgba(46,158,104,0.04)'
   return (
     <button type="button" onClick={onClick} style={{ ...panelStyle(border, background), cursor: 'pointer', color }}>
       {icon}

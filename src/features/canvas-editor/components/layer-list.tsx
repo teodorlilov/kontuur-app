@@ -28,14 +28,14 @@ export function LayerList({ layers, selectedId, onSelect, onAdd, onRemove }: Lay
           type="button"
           onClick={onAdd}
           title="Add text"
-          style={{ display: 'inline-flex', alignItems: 'center', gap: 4, border: 'none', background: 'transparent', color: 'var(--color-text-2)', fontSize: '10px', cursor: 'pointer', padding: 0 }}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 4, border: 'none', background: 'transparent', color: 'var(--text2)', fontSize: '10px', cursor: 'pointer', padding: 0 }}
         >
           <Plus size={12} /> Add
         </button>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
         {layers.length === 0 && (
-          <p style={{ fontSize: '11px', color: 'var(--color-muted)', margin: 0 }}>No text yet — add a layer.</p>
+          <p style={{ fontSize: '11px', color: 'var(--text2)', margin: 0 }}>No text yet — add a layer.</p>
         )}
         {layers.map((layer) => (
           <div
@@ -49,12 +49,12 @@ export function LayerList({ layers, selectedId, onSelect, onAdd, onRemove }: Lay
               padding: '6px 8px',
               borderRadius: '6px',
               cursor: 'pointer',
-              background: selectedId === layer.id ? 'var(--color-overlay)' : 'transparent',
-              border: selectedId === layer.id ? '0.5px solid var(--color-border-2)' : '0.5px solid transparent',
+              background: selectedId === layer.id ? 'rgba(15,21,18,0.04)' : 'transparent',
+              border: selectedId === layer.id ? '1px solid var(--line2)' : '1px solid transparent',
             }}
           >
-            <span style={{ fontSize: '12px', color: 'var(--color-text-1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              <span style={{ color: 'var(--color-muted)', marginRight: 6 }}>{ROLE_LABELS[layer.role]}</span>
+            <span style={{ fontSize: '12px', color: 'var(--ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <span style={{ color: 'var(--text2)', marginRight: 6 }}>{ROLE_LABELS[layer.role]}</span>
               {layer.text || '—'}
             </span>
             <button
@@ -64,7 +64,7 @@ export function LayerList({ layers, selectedId, onSelect, onAdd, onRemove }: Lay
                 event.stopPropagation()
                 onRemove(layer.id)
               }}
-              style={{ border: 'none', background: 'transparent', color: 'var(--color-muted)', cursor: 'pointer', padding: 2, display: 'inline-flex' }}
+              style={{ border: 'none', background: 'transparent', color: 'var(--text2)', cursor: 'pointer', padding: 2, display: 'inline-flex' }}
             >
               <Trash2 size={13} />
             </button>

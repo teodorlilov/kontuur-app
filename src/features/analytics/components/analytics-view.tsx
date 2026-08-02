@@ -137,8 +137,8 @@ export function AnalyticsView({ clients, initialConnections }: AnalyticsViewProp
 
   if (clients.length === 0) {
     return (
-      <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
-        <p className="text-sm text-gray-500">No clients yet. Add a client to get started.</p>
+      <div className="bg-surface rounded-xl border border-line p-8 text-center">
+        <p className="text-sm text-text3">No clients yet. Add a client to get started.</p>
       </div>
     )
   }
@@ -267,10 +267,10 @@ export function AnalyticsView({ clients, initialConnections }: AnalyticsViewProp
         {!generating && report && metrics && (
           <div id="analytics-print-area" className="space-y-6">
             <div className="hidden print:block mb-6">
-              <h1 className="text-2xl font-bold text-gray-900">
+              <h1 className="text-2xl font-bold text-ink">
                 {currentClientName} — {capitalizePlatform(report.platform)} Report
               </h1>
-              <p className="text-sm text-gray-500 mt-1">
+              <p className="text-sm text-text3 mt-1">
                 Period: {report.period_start} to {report.period_end}
               </p>
             </div>

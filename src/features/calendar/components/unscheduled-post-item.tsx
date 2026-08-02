@@ -13,7 +13,7 @@ interface UnscheduledPostItemProps {
 
 /** Single row in the unscheduled slide panel. */
 export const UnscheduledPostItem = memo(function UnscheduledPostItem({ post, isActive, onClick }: UnscheduledPostItemProps) {
-  const pillarColor = post.pillar ? getPillarColor(post.pillar).hex : '#8A8070'
+  const pillarColor = post.pillar ? getPillarColor(post.pillar).hex : 'var(--text2)'
   const score = post.quality_score_avg ?? 0
 
   return (
@@ -21,9 +21,9 @@ export const UnscheduledPostItem = memo(function UnscheduledPostItem({ post, isA
       onClick={onClick}
       style={{
         padding: '11px 18px',
-        borderBottom: '0.5px solid rgba(44,62,80,0.055)',
+        borderBottom: '1px solid rgba(15,21,18,0.055)',
         cursor: 'pointer',
-        background: isActive ? 'rgba(44,62,80,0.035)' : 'transparent',
+        background: isActive ? 'rgba(15,21,18,0.035)' : 'transparent',
         position: 'relative',
         transition: 'background 0.12s',
       }}
@@ -37,7 +37,7 @@ export const UnscheduledPostItem = memo(function UnscheduledPostItem({ post, isA
             top: '15%',
             bottom: '15%',
             width: 2.5,
-            background: 'var(--color-terracotta)',
+            background: 'var(--forest)',
             borderRadius: '0 2px 2px 0',
           }}
         />
@@ -62,7 +62,7 @@ export const UnscheduledPostItem = memo(function UnscheduledPostItem({ post, isA
               flexShrink: 0,
             }}
           />
-          <span style={{ fontSize: 11, fontWeight: 500, color: 'var(--color-text-1)' }}>
+          <span style={{ fontSize: 11, fontWeight: 500, color: 'var(--ink)' }}>
             {post.client_name}
           </span>
           {post.priority && (
@@ -75,8 +75,8 @@ export const UnscheduledPostItem = memo(function UnscheduledPostItem({ post, isA
                 fontWeight: 500,
                 padding: '1px 6px',
                 borderRadius: 3,
-                background: 'rgba(192,123,85,0.14)',
-                color: 'var(--color-terracotta)',
+                background: 'rgba(46,158,104,0.14)',
+                color: 'var(--forest)',
               }}
             >
               Priority
@@ -87,7 +87,7 @@ export const UnscheduledPostItem = memo(function UnscheduledPostItem({ post, isA
           style={{
             fontSize: 11,
             fontWeight: 500,
-            color: score >= 9 ? '#5A8A4A' : score >= 7 ? '#C07B55' : '#B43232',
+            color: score >= 9 ? 'var(--spring-text)' : score >= 7 ? 'var(--spring-text)' : 'var(--danger)',
           }}
         >
           {score}/10
@@ -95,7 +95,7 @@ export const UnscheduledPostItem = memo(function UnscheduledPostItem({ post, isA
       </div>
 
       {/* Row 2: pillar + type */}
-      <div style={{ fontSize: 10, color: 'var(--color-muted)', marginBottom: 4 }}>
+      <div style={{ fontSize: 10, color: 'var(--text2)', marginBottom: 4 }}>
         {post.pillar ?? 'No pillar'}
         {' · '}
         {post.post_type === 'carousel'
@@ -107,7 +107,7 @@ export const UnscheduledPostItem = memo(function UnscheduledPostItem({ post, isA
       <div
         style={{
           fontSize: 11,
-          color: 'var(--color-muted)',
+          color: 'var(--text2)',
           lineHeight: 1.45,
           display: '-webkit-box',
           WebkitLineClamp: 2,
@@ -128,8 +128,8 @@ export const UnscheduledPostItem = memo(function UnscheduledPostItem({ post, isA
               fontWeight: 500,
               padding: '2px 6px',
               borderRadius: 3,
-              background: 'rgba(192,123,85,0.12)',
-              color: 'var(--color-terracotta)',
+              background: 'rgba(46,158,104,0.12)',
+              color: 'var(--forest)',
             }}
           >
             {post.platform}
@@ -141,13 +141,13 @@ export const UnscheduledPostItem = memo(function UnscheduledPostItem({ post, isA
             fontWeight: 500,
             padding: '2px 6px',
             borderRadius: 3,
-            background: 'rgba(44,62,80,0.06)',
-            color: '#4A5060',
+            background: 'rgba(15,21,18,0.06)',
+            color: 'var(--text2)',
           }}
         >
           {post.post_type === 'carousel' ? 'Carousel' : 'Single'}
         </span>
-        <span style={{ fontSize: 10, color: '#C0B8B0', marginLeft: 'auto' }}>
+        <span style={{ fontSize: 10, color: 'var(--text3)', marginLeft: 'auto' }}>
           {timeAgo(post.created_at)}
         </span>
       </div>

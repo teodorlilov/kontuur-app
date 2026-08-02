@@ -35,7 +35,8 @@ export function SaveBar({ dirty, label, saving, onSave, onDiscard }: SaveBarProp
       )}
     >
       <div className="flex flex-1 items-center gap-[9px] text-body">
-        <span aria-hidden className="size-2 rounded-xs bg-accent" />
+        {/* Living Green: an 8px mark on a light bar. Lime would be 1.35:1 here. */}
+        <span aria-hidden className="size-2 rounded-xs bg-spring" />
         <span>
           <b className="font-semibold">Unsaved changes</b>{' '}
           <span className="text-text3">· {label}</span>

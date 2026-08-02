@@ -6,10 +6,10 @@ interface MediaTypeBreakdownProps {
 }
 
 const TYPE_COLORS: Record<string, string> = {
-  CAROUSEL_ALBUM: '#c07b55',
-  VIDEO: '#2c5f8a',
-  IMAGE: '#5a8a4a',
-  Post: '#c07b55',
+  CAROUSEL_ALBUM: 'var(--spring-text)',
+  VIDEO: 'var(--forest)',
+  IMAGE: 'var(--spring-text)',
+  Post: 'var(--spring-text)',
 }
 
 export function MediaTypeBreakdown({ metrics }: MediaTypeBreakdownProps) {
@@ -19,34 +19,34 @@ export function MediaTypeBreakdown({ metrics }: MediaTypeBreakdownProps) {
   const maxRate = Math.max(...breakdown.map((b) => b.avg_engagement_rate), 0.01)
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-5">
+    <div className="bg-surface rounded-xl border border-line p-5">
       <div className="flex items-center justify-between mb-4">
-        <p className="text-sm font-medium text-gray-700">Performance by media type</p>
-        <p className="text-xs text-gray-400">avg engagement rate</p>
+        <p className="text-sm font-medium text-text2">Performance by media type</p>
+        <p className="text-xs text-text3">avg engagement rate</p>
       </div>
       <div className="space-y-3">
         {breakdown.map((item) => {
-          const color = TYPE_COLORS[item.type] ?? '#2c3e50'
+          const color = TYPE_COLORS[item.type] ?? 'var(--ink)'
           const widthPct = Math.round((item.avg_engagement_rate / maxRate) * 100)
           return (
             <div key={item.type} className="flex items-center gap-3">
-              <span className="text-xs text-gray-600 w-16 shrink-0 text-right">
+              <span className="text-xs text-text2 w-16 shrink-0 text-right">
                 {formatType(item.type)}
               </span>
-              <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
+              <div className="flex-1 h-2 bg-sunken rounded-full overflow-hidden">
                 <div
                   className="h-full rounded-full transition-all"
                   style={{ width: `${widthPct}%`, backgroundColor: color }}
                 />
               </div>
-              <span className="text-xs font-medium text-gray-700 w-10 shrink-0">
+              <span className="text-xs font-medium text-text2 w-10 shrink-0">
                 {item.avg_engagement_rate}%
               </span>
             </div>
           )
         })}
       </div>
-      <p className="text-xs text-gray-400 mt-3">
+      <p className="text-xs text-text3 mt-3">
         {breakdown.reduce((s, b) => s + b.count, 0)} posts analysed
       </p>
     </div>

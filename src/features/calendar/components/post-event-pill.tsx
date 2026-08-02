@@ -14,9 +14,9 @@ interface PostEventPillProps {
 /** Compact pill shown inside a day cell for a scheduled post. */
 export const PostEventPill = memo(function PostEventPill({ post, onPostClick, dotColor, bgColor, textColor }: PostEventPillProps) {
   const statusDotColor =
-    post.status === 'published' ? '#5A8A4A' :
-    post.status === 'failed' ? '#A32D2D' :
-    post.status === 'publishing' ? '#C07B55' :
+    post.status === 'published' ? 'var(--spring-text)' :
+    post.status === 'failed' ? 'var(--danger)' :
+    post.status === 'publishing' ? 'var(--spring-text)' :
     dotColor
 
   return (

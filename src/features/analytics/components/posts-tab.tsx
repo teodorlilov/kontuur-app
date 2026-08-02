@@ -30,28 +30,28 @@ export function PostsTab({ metrics, aiSummary }: PostsTabProps) {
           value={`${summary.avg_engagement_rate}%`}
           delta={`across ${summary.posts_published} posts`}
           deltaType="neutral"
-          accentColor="var(--accent-m1)"
+          accentColor="var(--metric-1)"
         />
         <MetricCard
           label="Total likes"
           value={totalLikes.toLocaleString()}
           delta="↑ in selected period"
           deltaType="positive"
-          accentColor="var(--accent-m2)"
+          accentColor="var(--metric-2)"
         />
         <MetricCard
           label="Avg reach per post"
           value={avgReachPerPost > 0 ? avgReachPerPost.toLocaleString() : '—'}
           delta={`across ${summary.posts_published} posts`}
           deltaType="neutral"
-          accentColor="var(--accent-m3)"
+          accentColor="var(--metric-3)"
         />
         <MetricCard
           label="Avg save rate"
           value={summary.avg_save_rate > 0 ? `${summary.avg_save_rate}%` : '—'}
           delta="saves / reach per post"
           deltaType="neutral"
-          accentColor="var(--accent-m4)"
+          accentColor="var(--metric-4)"
         />
         {summary.total_shares > 0 && (
           <MetricCard
@@ -59,7 +59,7 @@ export function PostsTab({ metrics, aiSummary }: PostsTabProps) {
             value={summary.total_shares.toLocaleString()}
             delta="in selected period"
             deltaType="neutral"
-            accentColor="var(--accent-m1)"
+            accentColor="var(--metric-1)"
           />
         )}
       </div>

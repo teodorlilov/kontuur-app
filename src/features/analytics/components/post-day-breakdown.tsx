@@ -62,16 +62,16 @@ export function PostDayBreakdown({ metrics }: PostDayBreakdownProps) {
   if (!hasSufficientDays) return null
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-5">
+    <div className="bg-surface rounded-xl border border-line p-5">
       <div className="flex items-center justify-between mb-4">
-        <p className="text-sm font-medium text-gray-700">Best day to post</p>
+        <p className="text-sm font-medium text-text2">Best day to post</p>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           {[
-            { label: 'High', color: '#c07b55' },
-            { label: 'Medium', color: 'rgba(192,123,85,0.30)' },
-            { label: 'Low', color: 'rgba(44,62,80,0.09)' },
+            { label: 'High', color: 'var(--spring-text)' },
+            { label: 'Medium', color: 'rgba(46,158,104,0.30)' },
+            { label: 'Low', color: 'rgba(15,21,18,0.09)' },
           ].map((l) => (
-            <span key={l.label} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: '#9C9890' }}>
+            <span key={l.label} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: 'var(--text3)' }}>
               <span style={{ width: 8, height: 8, borderRadius: '50%', background: l.color }} />
               {l.label}
             </span>
@@ -83,12 +83,12 @@ export function PostDayBreakdown({ metrics }: PostDayBreakdownProps) {
           <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
           <XAxis
             dataKey="day"
-            tick={{ fontSize: 10, fill: '#9ca3af' }}
+            tick={{ fontSize: 10, fill: '#667068' }}
             tickLine={false}
             axisLine={false}
           />
           <YAxis
-            tick={{ fontSize: 10, fill: '#9ca3af' }}
+            tick={{ fontSize: 10, fill: '#667068' }}
             tickLine={false}
             axisLine={false}
             tickFormatter={(v: number) => `${v}%`}
@@ -103,7 +103,7 @@ export function PostDayBreakdown({ metrics }: PostDayBreakdownProps) {
           <Bar dataKey="er" radius={[3, 3, 0, 0]}>
             {chartData.map((entry) => {
               const ratio = maxER > 0 ? entry.er / maxER : 0
-              const fill = ratio >= 0.8 ? '#c07b55' : ratio >= 0.45 ? 'rgba(192,123,85,0.30)' : 'rgba(44,62,80,0.09)'
+              const fill = ratio >= 0.8 ? 'var(--spring-text)' : ratio >= 0.45 ? 'rgba(46,158,104,0.30)' : 'rgba(15,21,18,0.09)'
               return <Cell key={entry.day} fill={fill} />
             })}
           </Bar>

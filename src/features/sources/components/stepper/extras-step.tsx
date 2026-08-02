@@ -60,10 +60,10 @@ function DomainListEditor({
 
   return (
     <div className="space-y-1.5">
-      <label className="text-xs font-medium text-gray-500">
-        {label} <span className="text-gray-400">(optional)</span>
+      <label className="text-xs font-medium text-text3">
+        {label} <span className="text-text3">(optional)</span>
       </label>
-      <p className="text-xs text-gray-400">{helper}</p>
+      <p className="text-xs text-text3">{helper}</p>
       <div className="flex gap-2">
         <input
           type="text"
@@ -76,7 +76,7 @@ function DomainListEditor({
             }
           }}
           placeholder={placeholder}
-          className="flex-1 rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-300"
+          className="flex-1 rounded-lg border border-line2 px-3 py-1.5 text-sm text-ink placeholder:text-text3 focus:border-line2 focus:outline-none focus:ring-1 focus:ring-line2"
         />
         <Button variant="secondary" size="sm" onClick={addDomain} disabled={!input.trim()}>
           Add
@@ -181,8 +181,8 @@ export function ExtrasStep({
   return (
     <div className="space-y-5">
       <div>
-        <h3 className="text-lg font-medium text-gray-900">Extras (optional)</h3>
-        <p className="text-sm text-gray-500 mt-1">
+        <h3 className="text-lg font-medium text-ink">Extras (optional)</h3>
+        <p className="text-sm text-text3 mt-1">
           Fine-tune where ideas come from. Most people skip this.
         </p>
       </div>
@@ -192,16 +192,16 @@ export function ExtrasStep({
           type="checkbox"
           checked={isEnabled}
           onChange={(e) => setIsEnabled(e.target.checked)}
-          className="h-4 w-4 rounded border-gray-300"
+          className="h-4 w-4 rounded border-line2"
         />
-        <span className="text-sm font-medium text-gray-900">
+        <span className="text-sm font-medium text-ink">
           Web research — search the web for trends and news in your industry
         </span>
       </label>
 
       {isEnabled && (
-        <details className="rounded-lg border border-gray-200 px-4 py-3">
-          <summary className="text-sm text-gray-600 cursor-pointer select-none">
+        <details className="rounded-lg border border-line px-4 py-3">
+          <summary className="text-sm text-text2 cursor-pointer select-none">
             Advanced: prefer or block specific sites
           </summary>
           <div className="space-y-4 pt-3">
@@ -211,8 +211,8 @@ export function ExtrasStep({
               placeholder="e.g. example.com"
               domains={includes}
               onChange={setIncludes}
-              chipClass="bg-gray-100 text-gray-700"
-              removeClass="text-gray-400 hover:text-gray-600"
+              chipClass="bg-sunken text-text2"
+              removeClass="text-text3 hover:text-text2"
             />
             <DomainListEditor
               label="Never use these sites"
@@ -220,38 +220,38 @@ export function ExtrasStep({
               placeholder="e.g. competitor.com"
               domains={excludes}
               onChange={setExcludes}
-              chipClass="bg-red-50 text-red-700"
-              removeClass="text-red-400 hover:text-red-600"
+              chipClass="bg-danger-bg text-danger"
+              removeClass="text-danger hover:text-danger"
             />
           </div>
         </details>
       )}
 
-      <details className="rounded-lg border border-gray-200 px-4 py-3">
-        <summary className="text-sm text-gray-600 cursor-pointer select-none">
+      <details className="rounded-lg border border-line px-4 py-3">
+        <summary className="text-sm text-text2 cursor-pointer select-none">
           Upload reference documents (PDF or TXT)
         </summary>
         <div className="space-y-3 pt-3">
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-medium text-gray-600">Label</label>
+            <label className="text-xs font-medium text-text2">Label</label>
             <input
               type="text"
               value={label}
               onChange={(e) => setLabel(e.target.value)}
               placeholder="e.g. Service descriptions"
-              className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-300"
+              className="rounded-lg border border-line2 px-3 py-1.5 text-sm text-ink placeholder:text-text3 focus:border-line2 focus:outline-none focus:ring-1 focus:ring-line2"
             />
           </div>
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-medium text-gray-600">File (PDF or TXT)</label>
+            <label className="text-xs font-medium text-text2">File (PDF or TXT)</label>
             <input
               type="file"
               accept=".pdf,.txt"
               onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-              className="text-sm text-gray-600 file:mr-3 file:rounded-lg file:border-0 file:bg-gray-100 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-gray-700 hover:file:bg-gray-200"
+              className="text-sm text-text2 file:mr-3 file:rounded-lg file:border-0 file:bg-sunken file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-text2 hover:file:bg-line"
             />
           </div>
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-text3">
             Max 10MB. Text will be extracted and used as context for research and generation.
           </p>
           <Button
@@ -263,7 +263,7 @@ export function ExtrasStep({
             Upload &amp; extract
           </Button>
           {uploadedCount > 0 && (
-            <p className="text-xs text-green-600 font-medium">
+            <p className="text-xs text-spring-text font-medium">
               {uploadedCount} document{uploadedCount !== 1 ? 's' : ''} uploaded
             </p>
           )}

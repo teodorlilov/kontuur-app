@@ -7,7 +7,7 @@ import type { BrushStroke } from '../types'
 
 export const INPAINT_STROKE_COLOR = 'rgba(214, 69, 69, 0.55)'
 export const ERASE_STROKE_COLOR = 'rgba(37, 99, 235, 0.5)'
-export const LASSO_STROKE_COLOR = 'rgba(30, 30, 30, 0.9)'
+export const LASSO_STROKE_COLOR = 'rgba(15,21,18, 0.9)'
 /** The thin outline width of the lasso's closed preview — the loop is a path, not paint. */
 export const LASSO_PREVIEW_WIDTH = 2
 
@@ -65,7 +65,7 @@ export function BrushSurface({ canvas, scale, brushSize, strokes, strokeColor, c
         lineCap="round"
         lineJoin="round"
         listening={false}
-        {...(closedPreview ? { closed: true, dash: [10, 6], fill: 'rgba(30, 30, 30, 0.08)' } : {})}
+        {...(closedPreview ? { closed: true, dash: [10, 6], fill: 'rgba(15,21,18, 0.08)' } : {})}
       />
       <Rect
         ref={rectRef}
