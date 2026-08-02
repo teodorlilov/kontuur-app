@@ -47,7 +47,7 @@ export function PostTypeSelector({
             padding: '10px 14px',
           }}
         >
-          <p style={{ fontSize: 'var(--text-caption-lg)', color: 'var(--forest)', lineHeight: 1.55 }}>
+          <p style={{ fontSize: 'var(--text-caption)', color: 'var(--forest)', lineHeight: 1.55 }}>
             Carousels drive the highest engagement in 2026. Recommended: 2 carousels + 1 single per
             week.
           </p>

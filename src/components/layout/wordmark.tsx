@@ -26,7 +26,7 @@ export function Wordmark({ tone = 'light', markOnly = false, href, className }: 
       <span
         className={cn(
           'grid size-7 shrink-0 place-items-center rounded-lg bg-accent',
-          'font-display text-display-sm italic text-ink'
+          'font-display text-display italic text-ink'
         )}
       >
         k
@@ -42,7 +42,7 @@ export function Wordmark({ tone = 'light', markOnly = false, href, className }: 
   )
 
   const shell = cn(
-    'flex items-center gap-2.5 text-display-lg no-underline',
+    'flex items-center gap-2.5 text-display no-underline',
     tone === 'dark' ? 'text-[#f2f5f1]' : 'text-ink',
     markOnly && 'justify-center',
     className

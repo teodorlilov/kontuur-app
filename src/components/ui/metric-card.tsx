@@ -28,7 +28,7 @@ export function MetricCard({ label, value, delta, deltaType = 'neutral', accentC
         {label}
       </div>
 
-      <div className="text-metric font-semibold leading-none tracking-[-0.02em] tabular-nums text-ink">
+      <div className="text-metric font-semibold tabular-nums text-ink">
         {value}
       </div>
 

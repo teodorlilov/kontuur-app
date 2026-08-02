@@ -152,7 +152,7 @@ function PaletteBody({
                     )}
                   >
                     <Icon size={14} className={cn('shrink-0', isActive ? 'text-forest' : 'text-text3')} />
-                    <span className="flex-1 truncate text-body-lg text-ink">{entry.label}</span>
+                    <span className="flex-1 truncate text-body text-ink">{entry.label}</span>
                     <span className="text-micro text-text3">{entry.hint}</span>
                     {isActive && <CornerDownLeft size={12} className="text-text3" />}
                   </button>

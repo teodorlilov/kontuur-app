@@ -36,8 +36,8 @@ export const CONTROL_INVALID =
 /** The two label treatments, shared by `Field` and the standalone controls. `caps` is DESIGN.md's
  *  `label` type role. */
 export const LABEL_CLASS = {
-  default: 'text-stat-label font-medium text-ink',
-  caps: 'text-label-lg font-semibold uppercase tracking-[0.16em] text-text2',
+  default: 'text-caption font-medium text-ink',
+  caps: 'text-label font-semibold uppercase text-text2',
 } as const
 
 export type LabelVariant = keyof typeof LABEL_CLASS

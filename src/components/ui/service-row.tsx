@@ -37,7 +37,7 @@ export function ConnectLink({
     <a
       href={href}
       className={cn(
-        'inline-flex h-8 items-center rounded-md bg-forest px-3 text-stat-label font-medium text-surface',
+        'inline-flex h-8 items-center rounded-md bg-forest px-3 text-body font-medium text-surface',
         'transition-colors duration-150 ease-contour hover:bg-forest-deep',
         'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-spring',
         className

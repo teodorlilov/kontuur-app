@@ -69,11 +69,11 @@ export function StatCard({ label, value, icon, pill, footer, dark, children }: S
         )}
       </div>
 
-      <div className={cn('text-stat-label font-medium', dark ? 'text-white/60' : 'text-text3')}>
+      <div className={cn('text-caption font-medium', dark ? 'text-white/60' : 'text-text3')}>
         {label}
       </div>
       {value !== undefined && (
-        <div className="mt-[3px] text-metric font-semibold leading-tight tracking-[-0.02em] tabular-nums">
+        <div className="mt-[3px] text-metric font-semibold tabular-nums">
           {value === null ? (
             <span aria-label="Unavailable" title="This figure could not be loaded">
               &mdash;

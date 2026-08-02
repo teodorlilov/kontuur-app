@@ -15,7 +15,7 @@ export function EmptyState({ icon, title, description, action, className }: Empt
     >
       {icon && <div className="mb-1 text-line2">{icon}</div>}
       <p className="text-title font-medium text-ink">{title}</p>
-      {description && <p className="mb-2 text-body-lg text-text3">{description}</p>}
+      {description && <p className="mb-2 text-body text-text3">{description}</p>}
       {action}
     </div>
   )

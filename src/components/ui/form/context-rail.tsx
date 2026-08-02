@@ -24,7 +24,7 @@ export function RailBox({ title, tone = 'default', className, children }: RailBo
         className
       )}
     >
-      <h4 className="mb-2.5 text-label-lg font-semibold uppercase tracking-[0.16em] text-text3">
+      <h4 className="mb-2.5 text-label font-semibold uppercase text-text3">
         {title}
       </h4>
       {children}
@@ -35,7 +35,7 @@ export function RailBox({ title, tone = 'default', className, children }: RailBo
 /** One key/value line inside a `RailBox`. */
 export function RailStat({ label, value }: { label: string; value: ReactNode }) {
   return (
-    <div className="flex items-baseline justify-between gap-3 py-[5px] text-stat-label">
+    <div className="flex items-baseline justify-between gap-3 py-[5px] text-caption">
       <span className="text-text3">{label}</span>
       <span className="font-medium tabular-nums">{value}</span>
     </div>
@@ -44,5 +44,5 @@ export function RailStat({ label, value }: { label: string; value: ReactNode }) 
 
 /** Body copy inside a `RailBox`. */
 export function RailText({ children }: { children: ReactNode }) {
-  return <p className="text-stat-label leading-[1.55] text-text2 [&+&]:mt-2">{children}</p>
+  return <p className="text-caption leading-[1.55] text-text2 [&+&]:mt-2">{children}</p>
 }

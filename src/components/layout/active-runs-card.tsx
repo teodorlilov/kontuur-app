@@ -23,7 +23,7 @@ export function ActiveRunsCard({ runs }: ActiveRunsCardProps) {
 
   return (
     <div className="surface-live mx-2.5 mb-3 rounded-panel border border-spring/20 p-3">
-      <div className="flex items-center gap-[7px] text-caption-lg font-medium text-ink">
+      <div className="flex items-center gap-[7px] text-caption font-medium text-ink">
         <span className="live-dot size-1.5 shrink-0 rounded-full bg-spring" />
         Composing drafts
       </div>

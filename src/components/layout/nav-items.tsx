@@ -55,7 +55,7 @@ export function isNavItemActive(pathname: string, href: string): boolean {
  * in Canva, and Sign out cannot drift apart. `collapsed` narrows to the icon.
  */
 export const SIDEBAR_ROW =
-  'flex w-full items-center gap-2.5 rounded-[9px] px-[11px] py-[9px] text-left text-body-lg ' +
+  'flex w-full items-center gap-2.5 rounded-[9px] px-[11px] py-[9px] text-left text-body ' +
   'transition-[color,background-color] duration-150 ease-contour'
 
 export const SIDEBAR_ROW_IDLE = 'text-text2 hover:bg-ink/[0.04] hover:text-ink'

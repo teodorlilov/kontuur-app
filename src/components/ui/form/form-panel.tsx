@@ -31,7 +31,7 @@ export function FormPanel({
       <div className="px-6 pt-[22px]">
         {/* The `display` role. Safe to leave un-gated by hasCyrillic: panel titles are authored
             English strings, never interpolated client data. */}
-        <h3 className="font-display text-display-lg font-normal italic leading-[1.4] text-ink">
+        <h3 className="font-display text-display font-normal italic leading-[1.4] text-ink">
           {title}
         </h3>
         {description && <p className="mt-1 text-body text-text3">{description}</p>}

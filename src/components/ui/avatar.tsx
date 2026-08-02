@@ -13,7 +13,7 @@ interface AvatarProps {
 }
 
 const SIZE_CLASS: Record<AvatarSize, string> = {
-  sm: 'size-6 text-label-lg',
+  sm: 'size-6 text-label',
   md: 'size-8 text-xs',
   lg: 'size-11 text-sm',
 }

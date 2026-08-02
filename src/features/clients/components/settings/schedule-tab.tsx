@@ -163,7 +163,7 @@ function WeekPreview({ day, count }: { day: string; count: number }) {
               {weekday.label.slice(0, 3)}
               <b
                 className={cn(
-                  'mt-0.5 block text-stat-label font-semibold',
+                  'mt-0.5 block text-caption font-semibold',
                   isRunDay ? 'text-surface' : 'text-ink'
                 )}
               >

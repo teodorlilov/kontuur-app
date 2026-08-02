@@ -14,8 +14,8 @@ const VARIANT_CLASSES = {
 
 /** `md` is the header action; `sm` is the inline one inside a card. */
 const SIZE_CLASSES = {
-  md: 'h-[35px] gap-2 rounded-sm px-3.5 text-body-lg',
-  sm: 'gap-1.5 rounded-sm px-3.5 py-1.5 text-caption-lg',
+  md: 'h-[35px] gap-2 rounded-sm px-3.5 text-body',
+  sm: 'gap-1.5 rounded-sm px-3.5 py-1.5 text-caption',
 } as const
 
 interface ActionLinkProps extends Omit<React.ComponentProps<typeof Link>, 'className'> {

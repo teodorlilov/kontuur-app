@@ -32,7 +32,7 @@ export function ProfileTab() {
         {UPCOMING.map(({ label, Icon }) => (
           <li
             key={label}
-            className="flex items-center gap-3 border-t border-line py-3.5 text-body-lg text-text3 first:border-t-0"
+            className="flex items-center gap-3 border-t border-line py-3.5 text-body text-text3 first:border-t-0"
           >
             <Icon size={16} aria-hidden className="flex-none" />
             {label}

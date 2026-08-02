@@ -31,7 +31,7 @@ export function BriefingBar({ briefing }: { briefing: DashboardBriefing | null }
 
       <div className="min-w-[220px] flex-1">
         <h2 className="text-title font-semibold text-ink">Weekly intelligence briefing</h2>
-        <p className="mt-0.5 font-display text-display-lg italic text-text2">
+        <p className="mt-0.5 font-display text-display italic text-text2">
           {headline ?? 'Your Monday briefing lands here — trends, wins, and what to try next.'}
         </p>
       </div>

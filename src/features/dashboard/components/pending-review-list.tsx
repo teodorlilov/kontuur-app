@@ -130,7 +130,7 @@ export function PendingReviewList({ posts, totalPending }: PendingReviewListProp
         </span>
         <Link
           href="/review"
-          className="text-stat-label font-medium text-forest no-underline underline-offset-4 hover:underline"
+          className="text-body font-medium text-forest no-underline underline-offset-4 hover:underline"
         >
           Open full queue
         </Link>
@@ -172,7 +172,7 @@ function PendingRow({
       ) : (
         <span
           className={cn(
-            'grid h-[44px] w-[44px] shrink-0 place-items-center rounded-sm bg-wash text-display-sm text-forest',
+            'grid h-[44px] w-[44px] shrink-0 place-items-center rounded-sm bg-wash text-display text-forest',
             // Instrument Serif ships no Cyrillic, so a Bulgarian client's
             // initial would silently fall back to a mismatched system face.
             hasCyrillic(initial) ? 'font-sans font-medium not-italic' : 'font-display italic'
@@ -202,7 +202,7 @@ function PendingRow({
           // Every row's button reads "Approve"; without this a screen-reader
           // user tabbing the queue cannot tell which post they are approving.
           aria-label={`Approve post for ${post.clientName}`}
-          className="rounded-full bg-forest px-3 py-1.5 text-caption-lg font-medium text-white transition-colors hover:bg-forest-deep disabled:opacity-50"
+          className="rounded-full bg-forest px-3 py-1.5 text-caption font-medium text-white transition-colors hover:bg-forest-deep disabled:opacity-50"
         >
           Approve
         </button>

@@ -28,8 +28,8 @@ export function ToggleRow({
   return (
     <div className={cn('col-span-12 flex items-start gap-4 py-3', className)}>
       <div className="flex-1">
-        <b className="block text-body-lg font-semibold text-ink">{title}</b>
-        {description && <span className="text-stat-label text-text3">{description}</span>}
+        <b className="block text-body font-semibold text-ink">{title}</b>
+        {description && <span className="text-caption text-text3">{description}</span>}
       </div>
       <button
         type="button"

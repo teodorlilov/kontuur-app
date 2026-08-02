@@ -26,7 +26,7 @@ interface TabRailProps<T extends string> {
 
 const TAB =
   'relative inline-flex shrink-0 items-center gap-2 whitespace-nowrap px-3.5 pb-[11px] ' +
-  'text-body-lg no-underline transition-colors duration-150 ease-contour first:pl-0'
+  'text-body no-underline transition-colors duration-150 ease-contour first:pl-0'
 
 const TAB_ACTIVE =
   'font-semibold text-ink after:absolute after:inset-x-0 after:-bottom-px after:h-0.5 ' +

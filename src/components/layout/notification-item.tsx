@@ -79,13 +79,13 @@ export function NotificationItem({ notification: n, onMarkRead, onNavigate }: No
           </div>
 
           {feedbackPreview && (
-            <div className="mt-1.5 rounded-sm bg-marker/40 px-2.5 py-1.5 text-caption-lg italic leading-[1.45] text-forest-deep">
+            <div className="mt-1.5 rounded-sm bg-marker/40 px-2.5 py-1.5 text-caption italic leading-[1.45] text-forest-deep">
               &ldquo;{feedbackPreview}&rdquo;
             </div>
           )}
 
           {!feedbackPreview && body && (
-            <div className="mt-0.5 text-caption-lg leading-[1.4] text-text3">{body}</div>
+            <div className="mt-0.5 text-caption text-text3">{body}</div>
           )}
 
           <div className="mt-1.5 flex items-center justify-between">

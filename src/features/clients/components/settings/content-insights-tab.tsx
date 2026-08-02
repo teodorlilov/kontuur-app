@@ -35,10 +35,10 @@ export function ContentInsightsTab({ insights }: ContentInsightsTabProps) {
     <>
       {insights.avgScore !== null && (
         <div className="flex items-baseline gap-3.5 rounded-panel bg-wash px-5 py-[18px]">
-          <span className="text-metric font-semibold leading-none tracking-[-0.02em] tabular-nums text-forest">
+          <span className="text-metric font-semibold tabular-nums text-forest">
             {insights.avgScore}
           </span>
-          <span className="text-stat-label text-text2">
+          <span className="text-caption text-text2">
             Average quality score
             <br />
             <span className="text-text3">{TREND_LABEL[insights.trend]}</span>
@@ -48,7 +48,7 @@ export function ContentInsightsTab({ insights }: ContentInsightsTabProps) {
 
       {insights.pillarRates.length > 0 && (
         <div className="mt-[18px]">
-          <h4 className="mb-1.5 text-label-lg font-semibold uppercase tracking-[0.16em] text-text3">
+          <h4 className="mb-1.5 text-label font-semibold uppercase text-text3">
             Approval rate by pillar
           </h4>
           <p className="mb-2.5 text-xs text-text3">
@@ -61,7 +61,7 @@ export function ContentInsightsTab({ insights }: ContentInsightsTabProps) {
       )}
 
       {weakest && (
-        <p className="mt-[18px] rounded-panel bg-wash px-4 py-3.5 text-stat-label leading-relaxed text-text2">
+        <p className="mt-[18px] rounded-panel bg-wash px-4 py-3.5 text-caption leading-relaxed text-text2">
           <b className="font-semibold text-ink">{weakest.pillar}</b> posts are rewritten most often.
           Consider tightening that pillar&rsquo;s guidance in <b>Brand profile</b>, or lowering its
           share.
@@ -86,7 +86,7 @@ function PillarBar({ entry }: { entry: PillarRate }) {
           style={{ width: `${entry.rate}%` }}
         />
       </span>
-      <span className="w-11 flex-none text-right text-stat-label tabular-nums text-text3">
+      <span className="w-11 flex-none text-right text-caption tabular-nums text-text3">
         {entry.rate}%
       </span>
     </div>

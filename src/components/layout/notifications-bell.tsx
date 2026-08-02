@@ -97,7 +97,7 @@ function PanelHeader({ unreadCount, onMarkAllRead }: { unreadCount: number; onMa
 /** Section divider label (Today / Earlier). */
 function SectionHeader({ label }: { label: string }) {
   return (
-    <div className="px-4 pb-1 pt-2 text-label-lg font-medium uppercase tracking-[0.1em] text-text3">
+    <div className="px-4 pb-1 pt-2 text-label font-medium uppercase tracking-[0.1em] text-text3">
       {label}
     </div>
   )
@@ -107,7 +107,7 @@ function SectionHeader({ label }: { label: string }) {
 function PanelFooter({ onNavigate }: { onNavigate: () => void }) {
   return (
     <div className="border-t border-line px-4 py-2.5 text-center">
-      <button onClick={onNavigate} className="text-caption-lg font-medium text-forest hover:underline">
+      <button onClick={onNavigate} className="text-caption font-medium text-forest hover:underline">
         Go to calendar →
       </button>
     </div>

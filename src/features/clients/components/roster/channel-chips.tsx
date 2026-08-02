@@ -46,7 +46,7 @@ export function ChannelChips({ channels }: { channels: RosterChannel[] }) {
             title={describe(channel)}
             className={cn(
               'inline-flex h-[22px] min-w-[27px] items-center justify-center rounded-xs border px-[7px]',
-              'text-label-lg font-bold',
+              'text-label font-bold',
               STATE_CLASSES[channel.state]
             )}
           >

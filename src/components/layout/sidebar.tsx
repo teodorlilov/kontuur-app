@@ -89,7 +89,7 @@ function SidebarLink({
       onClick={onNavigate}
       title={collapsed ? item.label : undefined}
       className={cn(
-        'flex items-center gap-2.5 rounded-[9px] px-[11px] py-[9px] text-body-lg no-underline',
+        'flex items-center gap-2.5 rounded-[9px] px-[11px] py-[9px] text-body no-underline',
         'transition-[color,background-color,transform] duration-150 ease-contour',
         isActive
           ? // The rail's one lime answer: where you are standing. Pine Deep on
@@ -151,7 +151,7 @@ function SidebarContent({
           the mock puts them and where they read as page chrome rather than
           navigation. */}
       {!collapsed && (
-        <div className="px-3 pb-2 pt-1 text-label font-semibold uppercase tracking-[0.16em] text-text3">
+        <div className="px-3 pb-2 pt-1 text-label font-semibold uppercase text-text3">
           Workspace
         </div>
       )}

@@ -42,7 +42,7 @@ export function FormSection({ legend, description, className, children }: FormSe
         <legend className="col-span-12 float-left w-full p-0 text-body font-semibold text-ink">
           {legend}
           {description && (
-            <span className="mt-0.5 block text-stat-label font-normal text-text3">{description}</span>
+            <span className="mt-0.5 block text-caption font-normal text-text3">{description}</span>
           )}
         </legend>
       )}

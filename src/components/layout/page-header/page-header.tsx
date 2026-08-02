@@ -107,7 +107,11 @@ export function PageHeader({
                   // Floating chrome, not a clearing — the one place a mark this
                   // small still earns a shadow.
                   'shadow-[0_6px_16px_-6px_rgba(15,21,18,0.4)]',
-                  'group-data-[stuck=true]/head:size-[29px] group-data-[stuck=true]/head:text-label-lg'
+                  // tracking-normal because --text-label carries +0.16em for
+                  // multi-character uppercase labels; on a single centred glyph
+                  // that is pure trailing space, pushing it off centre.
+                  'group-data-[stuck=true]/head:size-[29px] group-data-[stuck=true]/head:text-label',
+                  'group-data-[stuck=true]/head:tracking-normal'
                 )}
               >
                 {badge}
@@ -118,7 +122,7 @@ export function PageHeader({
               {eyebrow && (
                 <div
                   className={cn(
-                    'max-h-5 overflow-hidden text-label-lg font-semibold uppercase tracking-[0.16em] text-text3',
+                    'max-h-5 overflow-hidden text-label font-semibold uppercase text-text3',
                     'transition-[max-height,opacity] duration-300 ease-contour motion-reduce:transition-none',
                     'group-data-[stuck=true]/head:max-h-0 group-data-[stuck=true]/head:opacity-0'
                   )}
@@ -129,6 +133,12 @@ export function PageHeader({
 
               <h1
                 className={cn(
+                  // leading and tracking are pinned here on purpose, even though
+                  // --text-headline now carries both. The stuck state swaps to
+                  // text-title, whose pairs differ (1.4 / -0.01em), and
+                  // transition-[font-size] names one property — so letting the
+                  // tokens supply them would snap line-height and letter-spacing
+                  // partway through the 300ms tween. Pinned, only the size moves.
                   'flex min-w-0 items-center gap-[11px] truncate text-headline font-semibold leading-tight',
                   'tracking-[-0.02em] text-ink transition-[font-size] duration-300 ease-contour motion-reduce:transition-none',
                   'group-data-[stuck=true]/head:text-title'

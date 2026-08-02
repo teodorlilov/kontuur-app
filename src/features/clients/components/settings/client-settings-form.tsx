@@ -282,7 +282,7 @@ export function ClientSettingsForm(props: ClientSettingsFormProps) {
                 : 'Queue not yet refreshed'}
             </span>
             {/* Kept from the deleted status card: the only route to the sources screen. */}
-            <a href={`/clients/${clientId}/sources`} className={cn(TOOL_ROW, 'text-caption-lg')}>
+            <a href={`/clients/${clientId}/sources`} className={cn(TOOL_ROW, 'text-caption')}>
               {sourceCount} source{sourceCount === 1 ? '' : 's'} &rarr;
             </a>
           </>

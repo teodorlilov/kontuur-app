@@ -109,8 +109,8 @@ function PlanRow({
       )}
     >
       <div>
-        <b className="block text-body-lg font-semibold text-ink">{label}</b>
-        {note && <span className="text-stat-label text-text3">{note}</span>}
+        <b className="block text-body font-semibold text-ink">{label}</b>
+        {note && <span className="text-caption text-text3">{note}</span>}
       </div>
       {children}
     </div>
@@ -125,7 +125,7 @@ export function UpgradeRailAction() {
       <Button className="w-full" disabled>
         Upgrade plan
       </Button>
-      <p className="mt-2.5 text-center text-stat-label text-text3">
+      <p className="mt-2.5 text-center text-caption text-text3">
         Billing is not connected yet.
       </p>
     </>

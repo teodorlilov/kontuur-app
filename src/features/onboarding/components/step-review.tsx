@@ -409,7 +409,7 @@ function HealthBanner() {
     >
       <AlertTriangle size={14} color="var(--pending)" style={{ flexShrink: 0, marginTop: '1px' }} />
       <div>
-        <div style={{ fontSize: 'var(--text-caption-lg)', fontWeight: 500, color: 'var(--pending)', marginBottom: '2px' }}>
+        <div style={{ fontSize: 'var(--text-caption)', fontWeight: 500, color: 'var(--pending)', marginBottom: '2px' }}>
           Health-related client detected
         </div>
         <div style={{ fontSize: 'var(--text-micro)', color: 'var(--text2)', lineHeight: 1.55 }}>

@@ -27,8 +27,8 @@ function CardHeader({ cr }: { cr: DashboardChangeRequest }) {
   return (
     <div className="mb-2 flex flex-wrap items-center gap-1.5">
       <span className="text-body font-semibold text-ink">{cr.clientName}</span>
-      <span className="text-caption-lg text-text3">· Post #{cr.postNumber}</span>
-      {scheduledLabel && <span className="text-caption-lg text-text3">· {scheduledLabel}</span>}
+      <span className="text-caption text-text3">· Post #{cr.postNumber}</span>
+      {scheduledLabel && <span className="text-caption text-text3">· {scheduledLabel}</span>}
 
       <span className="ml-1 rounded-xs bg-wash px-2 py-0.5 text-micro font-medium text-forest">
         {PLATFORM_LABELS[platform] ?? platform}

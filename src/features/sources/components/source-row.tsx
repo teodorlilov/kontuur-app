@@ -170,7 +170,7 @@ export function SourceRow({
               return (
                 <span
                   key={name}
-                  className="text-label-lg px-1.5 py-0.5 rounded-full font-medium"
+                  className="text-label px-1.5 py-0.5 rounded-full font-medium"
                   style={{ background: color.bg, color: color.text }}
                 >
                   {name}

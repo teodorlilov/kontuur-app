@@ -108,36 +108,70 @@
 
   --ease-contour: cubic-bezier(0.22, 1, 0.36, 1);
 
-  /* The type ramp from DESIGN.md §Typography, which until now existed only as
-     prose — so every surface restated its sizes as literals and the Closed Ramp
-     Rule had nothing to enforce it.
+  /* The type ramp from DESIGN.md §Typography. Ten roles, every step a whole
+     pixel, each carrying its own line-height.
 
-     Additive, unlike the radii above: none of these names is one of Tailwind's
-     (xs/sm/base/lg/…), so its default scale survives intact and nothing outside
-     this system is retyped.
+     The previous ramp had fourteen steps with six of them inside a 2.5px band
+     (13 · 13.5 · 14 · 14.5 · 15 · 15.5). Steps that close are indistinguishable,
+     so call sites stopped believing the ramp and wrote literals instead — the
+     Closed Ramp Rule had no teeth because the ramp itself was unusable. These
+     ratios widen from 1.09 at the dense end to 1.29 at the display end: small UI
+     sizes need fine resolution, display sizes need separation.
 
-     Four roles are ranges in the doc rather than single steps, and the -sm/-lg
-     names carry those ends. They are not an invitation to add more: a size that
-     is not one of these is drift, and the fix is to snap it to the nearest of
-     them. Deliberately no --text-*--line-height pairs — leading stays with the
-     call sites that already set it.
+     Additive, still: none of these names is one of Tailwind's (xs/sm/base/lg/…),
+     so its default scale keeps resolving while the migration runs. It gets
+     deleted with `--text-*: initial` once nothing references it — doing that
+     early is unsafe, because an unmigrated `text-sm` would then emit no rule at
+     all rather than failing.
+
+     letter-spacing is declared ONLY where it is not `normal`. Declaring
+     `normal` emits letter-spacing on the utility, which resets inherited
+     tracking on anything nested inside a tracked parent.
+
+     No --text-*--font-weight pairs either: weight is legitimately per-instance
+     (body runs 400 and 500), and baking it in would reset font-semibold on a
+     nested element.
+
+     Trap: the `/` modifier short-circuits Tailwind's resolver and silently drops
+     the paired values. Write `text-headline leading-tight`, never
+     `text-headline/tight`.
 
      `--text-display` is the size; `--font-display` is the serif family. Display
      type usually wants both. */
-  --text-metric: 31px;
-  --text-headline: 23px;
-  --text-display-lg: 17px;
-  --text-display: 15.5px;
-  --text-display-sm: 15px;
-  --text-title: 14.5px;
-  --text-body-lg: 13.5px;
+  --text-prompt: 36px;
+  --text-prompt--line-height: 1.15;
+  --text-prompt--letter-spacing: -0.01em;
+
+  --text-metric: 28px;
+  --text-metric--line-height: 1.1;
+  --text-metric--letter-spacing: -0.02em;
+
+  --text-headline: 22px;
+  --text-headline--line-height: 1.25;
+  --text-headline--letter-spacing: -0.02em;
+
+  --text-display: 18px;
+  --text-display--line-height: 1.35;
+
+  --text-lead: 16px;
+  --text-lead--line-height: 1.6;
+
+  --text-title: 15px;
+  --text-title--line-height: 1.4;
+  --text-title--letter-spacing: -0.01em;
+
   --text-body: 13px;
-  --text-stat-label: 12.5px;
-  --text-caption-lg: 12px;
-  --text-caption: 11.5px;
+  --text-body--line-height: 1.6;
+
+  --text-caption: 12px;
+  --text-caption--line-height: 1.4;
+
   --text-micro: 11px;
-  --text-label-lg: 10px;
-  --text-label: 9.5px;
+  --text-micro--line-height: 1.35;
+
+  --text-label: 10px;
+  --text-label--line-height: 1.2;
+  --text-label--letter-spacing: 0.16em;
 }
 
 /* ─── Metric ramp ─────────────────────────────────────────────────────
@@ -157,8 +191,17 @@
 }
 
 /* Registered with Tailwind so components use utilities, not inline styles.
-   `inline` keeps these out of :root — no clash with the compat aliases above,
-   which declare --color-surface and friends for their own consumers.
+
+   `inline` does NOT keep these out of :root — an earlier version of this comment
+   claimed it did, and the built CSS disproves it: :root carries
+   `--font-sans: var(--font-geist-sans)` either way, which is exactly what the
+   ~50 `style={{ fontFamily: 'var(--font-sans)' }}` call sites depend on.
+
+   What `inline` changes is the utility: `.font-sans` compiles to
+   `font-family: var(--font-geist-sans)` directly, rather than going through
+   another `var(--font-sans)` hop. Plain @theme keeps the hop — compare
+   `.text-body { font-size: var(--text-body) }` from the ramp above.
+
    These names sit outside Tailwind's own namespaces, so no existing utility
    changes meaning. The radius scale, which does collide, is handled above. */
 @theme inline {

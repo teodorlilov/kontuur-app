@@ -26,7 +26,7 @@ export function RosterPagination({
 
   return (
     <div className="flex items-center justify-between gap-4 border-t border-line px-3 pb-1 pt-4">
-      <p className="text-stat-label text-text3">
+      <p className="text-caption text-text3">
         {remaining} more {remaining === 1 ? 'client' : 'clients'} on schedule
       </p>
       <Link
