@@ -47,9 +47,9 @@ export function EmptyStateAnalytics({
       </IconFrame>
 
       <h2
+        className="text-headline"
         style={{
           fontFamily: 'var(--font-display, Georgia, serif)',
-          fontSize: 22,
           fontWeight: 400,
           color: 'var(--ink)',
           marginBottom: 8,
@@ -60,8 +60,8 @@ export function EmptyStateAnalytics({
       </h2>
 
       <p
+        className="text-body"
         style={{
-          fontSize: 13,
           color: 'var(--text2)',
           lineHeight: 1.65,
           textAlign: 'center',
@@ -78,13 +78,13 @@ export function EmptyStateAnalytics({
         <button
           type="button"
           onClick={onGenerate}
+          className="text-body"
           style={{
             padding: '10px 24px',
             background: 'var(--spring)',
             color: '#fff',
             border: 'none',
             borderRadius: 9,
-            fontSize: 13,
             fontWeight: 500,
             cursor: 'pointer',
             fontFamily: 'inherit',
@@ -96,13 +96,13 @@ export function EmptyStateAnalytics({
         <button
           type="button"
           onClick={onConnect}
+          className="text-body"
           style={{
             padding: '10px 24px',
             background: 'var(--forest-deep)',
             color: '#f2f5f1',
             border: 'none',
             borderRadius: 9,
-            fontSize: 13,
             fontWeight: 500,
             cursor: 'pointer',
             fontFamily: 'inherit',
@@ -113,7 +113,7 @@ export function EmptyStateAnalytics({
       )}
 
       {isTerra && platform && followerCount != null && (
-        <p style={{ fontSize: 12, color: 'var(--text2)', marginTop: 14 }}>
+        <p className="text-caption text-text2" style={{ marginTop: 14 }}>
           {clientName} · {capitalizePlatform(platform)} · {followerCount.toLocaleString()} followers
         </p>
       )}

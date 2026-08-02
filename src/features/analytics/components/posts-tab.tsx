@@ -71,7 +71,10 @@ export function PostsTab({ metrics, aiSummary }: PostsTabProps) {
   )
 }
 
-function computePostMetrics(metrics: AnalyticsMetrics): { totalLikes: number; avgReachPerPost: number } {
+function computePostMetrics(metrics: AnalyticsMetrics): {
+  totalLikes: number
+  avgReachPerPost: number
+} {
   const igPosts = metrics.platform === 'instagram' ? (metrics.posts as IGPost[]) : []
   const fbPosts = metrics.platform === 'facebook' ? (metrics.posts as FBPost[]) : []
 

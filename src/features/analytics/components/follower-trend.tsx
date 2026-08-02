@@ -11,7 +11,11 @@ import {
   ReferenceDot,
 } from 'recharts'
 import type { AnalyticsMetrics, InstagramMetrics, IGDailyInsight } from '@/types/api'
-import { CHART_COLORS, CHART_AXIS_PROPS, CHART_TOOLTIP_STYLE } from '@/features/analytics/lib/chart-config'
+import {
+  CHART_COLORS,
+  CHART_AXIS_PROPS,
+  CHART_TOOLTIP_STYLE,
+} from '@/features/analytics/lib/chart-config'
 
 interface FollowerTrendProps {
   metrics: AnalyticsMetrics
@@ -37,11 +41,13 @@ export function FollowerTrend({ metrics }: FollowerTrendProps) {
           padding: '20px 24px',
         }}
       >
-        <p style={{ fontSize: 15, fontWeight: 500, color: 'var(--ink)', marginBottom: 16 }}>
+        <p className="text-title font-medium text-ink" style={{ marginBottom: 16 }}>
           Follower count over time
         </p>
-        <p style={{ fontSize: 13.5, color: 'var(--text3)', textAlign: 'center', padding: '32px 0' }}>
-          {isIG ? 'Not enough follower data available' : 'Follower trend is only available for Instagram'}
+        <p className="text-body text-text3" style={{ textAlign: 'center', padding: '32px 0' }}>
+          {isIG
+            ? 'Not enough follower data available'
+            : 'Follower trend is only available for Instagram'}
         </p>
       </div>
     )
@@ -58,12 +64,22 @@ export function FollowerTrend({ metrics }: FollowerTrendProps) {
         padding: '20px 24px',
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-        <p style={{ fontSize: 15, fontWeight: 500, color: 'var(--ink)' }}>
-          Follower count over time
-        </p>
-        <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, color: CHART_COLORS.label }}>
-          <span style={{ width: 8, height: 8, borderRadius: '50%', background: CHART_COLORS.follower }} />
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          marginBottom: 16,
+        }}
+      >
+        <p className="text-title font-medium text-ink">Follower count over time</p>
+        <span
+          className="text-micro"
+          style={{ display: 'flex', alignItems: 'center', gap: 5, color: CHART_COLORS.label }}
+        >
+          <span
+            style={{ width: 8, height: 8, borderRadius: '50%', background: CHART_COLORS.follower }}
+          />
           Followers
         </span>
       </div>

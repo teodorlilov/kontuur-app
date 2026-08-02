@@ -86,7 +86,7 @@ export function ReportHistory({ clientId, platform, onLoad }: ReportHistoryProps
 
   return (
     <div className="bg-surface rounded-xl border border-line p-5">
-      <p className="text-sm font-medium text-text2 mb-3">Previous reports</p>
+      <p className="text-body font-medium text-text2 mb-3">Previous reports</p>
       <div className="space-y-2">
         {reports.map((r) => (
           <div
@@ -94,12 +94,11 @@ export function ReportHistory({ clientId, platform, onLoad }: ReportHistoryProps
             className="flex items-center justify-between py-2 border-b border-line last:border-0"
           >
             <div>
-              <p className="text-sm text-ink">
-                {capitalizePlatform(r.platform)} · {r.period_start} to{' '}
-                {r.period_end}
+              <p className="text-body text-ink">
+                {capitalizePlatform(r.platform)} · {r.period_start} to {r.period_end}
               </p>
               {r.ai_summary && (
-                <p className="text-xs text-text3 line-clamp-1 mt-0.5">{r.ai_summary}</p>
+                <p className="text-caption text-text3 line-clamp-1 mt-0.5">{r.ai_summary}</p>
               )}
             </div>
             <div className="flex items-center gap-3 shrink-0 ml-4">
@@ -107,7 +106,7 @@ export function ReportHistory({ clientId, platform, onLoad }: ReportHistoryProps
                 type="button"
                 onClick={() => handleView(r.id)}
                 disabled={loadingId === r.id}
-                className="text-xs font-medium hover:underline disabled:opacity-50"
+                className="text-caption font-medium hover:underline disabled:opacity-50"
                 style={{ color: 'var(--spring-text)' }}
               >
                 {loadingId === r.id ? 'Loading…' : 'View'}
@@ -116,7 +115,7 @@ export function ReportHistory({ clientId, platform, onLoad }: ReportHistoryProps
                 type="button"
                 onClick={() => handleDelete(r.id)}
                 disabled={deletingId === r.id}
-                className="text-xs font-medium text-danger hover:text-danger hover:underline disabled:opacity-50"
+                className="text-caption font-medium text-danger hover:text-danger hover:underline disabled:opacity-50"
               >
                 {deletingId === r.id ? 'Deleting…' : 'Delete'}
               </button>

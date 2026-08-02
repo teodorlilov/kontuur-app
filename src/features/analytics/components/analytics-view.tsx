@@ -138,7 +138,7 @@ export function AnalyticsView({ clients, initialConnections }: AnalyticsViewProp
   if (clients.length === 0) {
     return (
       <div className="bg-surface rounded-xl border border-line p-8 text-center">
-        <p className="text-sm text-text3">No clients yet. Add a client to get started.</p>
+        <p className="text-body text-text3">No clients yet. Add a client to get started.</p>
       </div>
     )
   }
@@ -166,7 +166,7 @@ export function AnalyticsView({ clients, initialConnections }: AnalyticsViewProp
         title="Analytics"
         railTools={
           report ? (
-            <span className="hidden text-xs text-text3 sm:block">
+            <span className="hidden text-caption text-text3 sm:block">
               Updated {formatRelativeTime(new Date(report.created_at))}
             </span>
           ) : null
@@ -267,10 +267,10 @@ export function AnalyticsView({ clients, initialConnections }: AnalyticsViewProp
         {!generating && report && metrics && (
           <div id="analytics-print-area" className="space-y-6">
             <div className="hidden print:block mb-6">
-              <h1 className="text-2xl font-bold text-ink">
+              <h1 className="text-headline font-semibold text-ink">
                 {currentClientName} — {capitalizePlatform(report.platform)} Report
               </h1>
-              <p className="text-sm text-text3 mt-1">
+              <p className="text-body text-text3 mt-1">
                 Period: {report.period_start} to {report.period_end}
               </p>
             </div>

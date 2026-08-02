@@ -14,7 +14,7 @@ export function PostGrid({ metrics }: PostGridProps) {
 
   return (
     <div className="bg-surface rounded-xl border border-line p-5">
-      <p className="text-sm font-medium text-text2 mb-4">All posts</p>
+      <p className="text-body font-medium text-text2 mb-4">All posts</p>
       <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-2">
         {posts.map((post) => {
           const saveRate =
@@ -41,7 +41,7 @@ export function PostGrid({ metrics }: PostGridProps) {
                 />
               ) : (
                 <div
-                  className="w-full h-full flex items-center justify-center text-xs font-semibold text-white"
+                  className="w-full h-full flex items-center justify-center text-caption font-semibold text-white"
                   style={typeColorStyle(post.media_type)}
                 >
                   {formatType(post.media_type)}

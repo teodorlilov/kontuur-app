@@ -1,7 +1,12 @@
 'use client'
 
 import dynamic from 'next/dynamic'
-import type { AnalyticsMetrics, InstagramMetrics, FacebookMetrics, IGDailyInsight } from '@/types/api'
+import type {
+  AnalyticsMetrics,
+  InstagramMetrics,
+  FacebookMetrics,
+  IGDailyInsight,
+} from '@/types/api'
 import { MetricCard } from '@/components/ui/metric-card'
 import { getFollowerCount, getNetFollowerChange, calcFollowerGrowthRate } from '../utils/metrics'
 import { AudienceSummary } from './audience-summary'

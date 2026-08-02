@@ -12,7 +12,12 @@ import {
   ReferenceDot,
 } from 'recharts'
 import type { AnalyticsMetrics } from '@/types/api'
-import { CHART_COLORS, CHART_AXIS_PROPS, CHART_TOOLTIP_STYLE, LINE_PROPS } from '@/features/analytics/lib/chart-config'
+import {
+  CHART_COLORS,
+  CHART_AXIS_PROPS,
+  CHART_TOOLTIP_STYLE,
+  LINE_PROPS,
+} from '@/features/analytics/lib/chart-config'
 
 interface AnalyticsChartsProps {
   metrics: AnalyticsMetrics
@@ -35,10 +40,10 @@ export function AnalyticsCharts({ metrics }: AnalyticsChartsProps) {
           padding: '20px 24px',
         }}
       >
-        <p style={{ fontSize: 15, fontWeight: 500, color: 'var(--ink)', marginBottom: 16 }}>
+        <p className="text-title font-medium text-ink" style={{ marginBottom: 16 }}>
           Daily reach over time
         </p>
-        <p style={{ fontSize: 13.5, color: 'var(--text3)', textAlign: 'center', padding: '32px 0' }}>
+        <p className="text-body text-text3" style={{ textAlign: 'center', padding: '32px 0' }}>
           No daily data available
         </p>
       </div>
@@ -56,17 +61,37 @@ export function AnalyticsCharts({ metrics }: AnalyticsChartsProps) {
         padding: '20px 24px',
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-        <p style={{ fontSize: 15, fontWeight: 500, color: 'var(--ink)' }}>
-          Daily reach over time
-        </p>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          marginBottom: 16,
+        }}
+      >
+        <p className="text-title font-medium text-ink">Daily reach over time</p>
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-          <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, color: CHART_COLORS.label }}>
-            <span style={{ width: 8, height: 8, borderRadius: '50%', background: CHART_COLORS.reach }} />
+          <span
+            className="text-micro"
+            style={{ display: 'flex', alignItems: 'center', gap: 5, color: CHART_COLORS.label }}
+          >
+            <span
+              style={{ width: 8, height: 8, borderRadius: '50%', background: CHART_COLORS.reach }}
+            />
             Reach
           </span>
-          <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, color: CHART_COLORS.label }}>
-            <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'rgba(22,68,48,0.35)' }} />
+          <span
+            className="text-micro"
+            style={{ display: 'flex', alignItems: 'center', gap: 5, color: CHART_COLORS.label }}
+          >
+            <span
+              style={{
+                width: 8,
+                height: 8,
+                borderRadius: '50%',
+                background: 'rgba(22,68,48,0.35)',
+              }}
+            />
             Views
           </span>
         </div>
@@ -87,7 +112,9 @@ export function AnalyticsCharts({ metrics }: AnalyticsChartsProps) {
           />
           <Tooltip
             {...CHART_TOOLTIP_STYLE}
-            formatter={(value) => (typeof value === 'number' ? value.toLocaleString() : String(value))}
+            formatter={(value) =>
+              typeof value === 'number' ? value.toLocaleString() : String(value)
+            }
           />
           <Line dataKey="views" stroke="rgba(22,68,48,0.35)" {...LINE_PROPS} />
           <Area

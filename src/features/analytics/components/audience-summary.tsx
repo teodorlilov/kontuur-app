@@ -12,18 +12,35 @@ interface AudienceSummaryProps {
 }
 
 /** 4-cell follower summary card for the audience tab. */
-export function AudienceSummary({ total, newCount, unfollows, netGrowth, followersDeltaPct }: AudienceSummaryProps) {
+export function AudienceSummary({
+  total,
+  newCount,
+  unfollows,
+  netGrowth,
+  followersDeltaPct,
+}: AudienceSummaryProps) {
   const { timezone } = useShell()
   // The agency's today, not the browser's: this renders on the server and again after hydration.
   const today = formatDayMonth(new Date(), timezone)
-  const deltaLabel = followersDeltaPct != null
-    ? `${followersDeltaPct >= 0 ? '↑' : '↓'} ${followersDeltaPct > 0 ? '+' : ''}${followersDeltaPct}% vs last period`
-    : 'in selected period'
+  const deltaLabel =
+    followersDeltaPct != null
+      ? `${followersDeltaPct >= 0 ? '↑' : '↓'} ${followersDeltaPct > 0 ? '+' : ''}${followersDeltaPct}% vs last period`
+      : 'in selected period'
 
   const cells = [
-    { label: 'Total followers', value: total.toLocaleString(), colour: 'var(--ink)', sub: `as of ${today}` },
+    {
+      label: 'Total followers',
+      value: total.toLocaleString(),
+      colour: 'var(--ink)',
+      sub: `as of ${today}`,
+    },
     { label: 'New followers', value: `+${newCount}`, colour: 'var(--metric-3)', sub: deltaLabel },
-    { label: 'Unfollowers', value: `−${unfollows}`, colour: 'var(--text2)', sub: 'in selected period' },
+    {
+      label: 'Unfollowers',
+      value: `−${unfollows}`,
+      colour: 'var(--text2)',
+      sub: 'in selected period',
+    },
     {
       label: 'Net growth',
       value: netGrowth >= 0 ? `+${netGrowth}` : `−${Math.abs(netGrowth)}`,
@@ -56,21 +73,15 @@ export function AudienceSummary({ total, newCount, unfollows, netGrowth, followe
           }}
         >
           <div
-            style={{
-              fontSize: 9,
-              fontWeight: 500,
-              color: 'var(--text2)',
-              letterSpacing: '1.1px',
-              textTransform: 'uppercase',
-              marginBottom: 8,
-            }}
+            className="text-label font-semibold uppercase text-text2"
+            style={{ marginBottom: 8 }}
           >
             {cell.label}
           </div>
           <div
+            className="text-metric"
             style={{
               fontFamily: 'var(--font-display, Georgia, serif)',
-              fontSize: 32,
               fontWeight: 400,
               color: cell.colour,
               lineHeight: 1,
@@ -79,7 +90,7 @@ export function AudienceSummary({ total, newCount, unfollows, netGrowth, followe
           >
             {cell.value}
           </div>
-          <div style={{ fontSize: 11, color: 'var(--text2)' }}>{cell.sub}</div>
+          <div className="text-micro text-text2">{cell.sub}</div>
         </div>
       ))}
     </div>

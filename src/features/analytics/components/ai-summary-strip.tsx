@@ -37,19 +37,17 @@ export function AiSummaryStrip({ summary }: AiSummaryStripProps) {
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
         {/* Label */}
         <span
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 5,
-            fontSize: 9,
-            fontWeight: 500,
-            color: 'var(--spring-text)',
-            letterSpacing: '1.2px',
-            textTransform: 'uppercase',
-            flexShrink: 0,
-          }}
+          className="text-label font-semibold uppercase text-spring-text"
+          style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}
         >
-          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <svg
+            width="10"
+            height="10"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+          >
             <circle cx="12" cy="12" r="10" />
             <path d="M12 8v4l3 3" />
           </svg>
@@ -59,8 +57,8 @@ export function AiSummaryStrip({ summary }: AiSummaryStripProps) {
         {/* Preview — hidden when expanded */}
         {!expanded && (
           <span
+            className="text-caption"
             style={{
-              fontSize: 12,
               color: 'var(--text2)',
               flex: 1,
               overflow: 'hidden',
@@ -73,7 +71,10 @@ export function AiSummaryStrip({ summary }: AiSummaryStripProps) {
         )}
 
         {/* Toggle */}
-        <span style={{ fontSize: 10, color: 'var(--spring-text)', fontWeight: 500, flexShrink: 0, whiteSpace: 'nowrap' }}>
+        <span
+          className="text-micro font-medium text-spring-text"
+          style={{ flexShrink: 0, whiteSpace: 'nowrap' }}
+        >
           {expanded ? '← Collapse' : 'Expand →'}
         </span>
       </div>
@@ -81,8 +82,8 @@ export function AiSummaryStrip({ summary }: AiSummaryStripProps) {
       {/* Full text */}
       {expanded && (
         <div
+          className="text-caption"
           style={{
-            fontSize: 12,
             color: 'var(--text2)',
             lineHeight: 1.72,
             marginTop: 10,

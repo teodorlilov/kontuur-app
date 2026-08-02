@@ -26,15 +26,22 @@ export function OverviewTab({ metrics, aiSummary, onViewAllPosts }: OverviewTabP
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <MediaTypeBreakdown metrics={metrics} />
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-            <p style={{ fontSize: 15, fontWeight: 500, color: 'var(--ink)' }}>Top posts by reach</p>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              marginBottom: 12,
+            }}
+          >
+            <p className="text-title font-medium text-ink">Top posts by reach</p>
             <button
               type="button"
               onClick={onViewAllPosts}
+              className="text-caption"
               style={{
                 background: 'none',
                 border: 'none',
-                fontSize: 12,
                 fontWeight: 500,
                 color: 'var(--spring-text)',
                 cursor: 'pointer',

@@ -37,18 +37,18 @@ export function AudienceSection({ metrics }: AudienceSectionProps) {
 
   return (
     <div className="bg-surface rounded-xl border border-line p-5 space-y-6">
-      <p className="text-sm font-medium text-text2">Audience</p>
+      <p className="text-body font-medium text-text2">Audience</p>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Gender breakdown */}
         <div>
-          <p className="text-xs font-medium text-text3 uppercase tracking-wide mb-3">Gender</p>
+          <p className="text-label font-semibold uppercase text-text3 mb-3">Gender</p>
           <div className="space-y-2">
             {genderItems.map((g) => {
               const pct = Math.round((g.value / totalGender) * 100)
               return (
                 <div key={g.label}>
-                  <div className="flex justify-between text-xs text-text2 mb-0.5">
+                  <div className="flex justify-between text-caption text-text2 mb-0.5">
                     <span>{g.label}</span>
                     <span>{pct}%</span>
                   </div>
@@ -66,7 +66,7 @@ export function AudienceSection({ metrics }: AudienceSectionProps) {
 
         {/* Age distribution */}
         <div>
-          <p className="text-xs font-medium text-text3 uppercase tracking-wide mb-3">Age</p>
+          <p className="text-label font-semibold uppercase text-text3 mb-3">Age</p>
           {ageData.length > 0 ? (
             <ResponsiveContainer width="100%" height={140}>
               <BarChart data={ageData} margin={{ top: 0, right: 0, left: -28, bottom: 0 }}>
@@ -93,22 +93,20 @@ export function AudienceSection({ metrics }: AudienceSectionProps) {
               </BarChart>
             </ResponsiveContainer>
           ) : (
-            <p className="text-xs text-text3">No age data available</p>
+            <p className="text-caption text-text3">No age data available</p>
           )}
         </div>
 
         {/* Top locations */}
         <div>
-          <p className="text-xs font-medium text-text3 uppercase tracking-wide mb-3">
-            Top locations
-          </p>
+          <p className="text-label font-semibold uppercase text-text3 mb-3">Top locations</p>
           <div className="grid grid-cols-2 gap-4">
             {audience.top_countries.length > 0 && (
               <div>
-                <p className="text-xs text-text3 mb-1">Countries</p>
+                <p className="text-caption text-text3 mb-1">Countries</p>
                 <div className="space-y-1">
                   {audience.top_countries.map((c) => (
-                    <div key={c.name} className="flex justify-between text-xs">
+                    <div key={c.name} className="flex justify-between text-caption">
                       <span className="text-text2 truncate mr-2">{c.name}</span>
                       <span className="text-text3 shrink-0">{c.value.toLocaleString()}</span>
                     </div>
@@ -118,10 +116,10 @@ export function AudienceSection({ metrics }: AudienceSectionProps) {
             )}
             {audience.top_cities.length > 0 && (
               <div>
-                <p className="text-xs text-text3 mb-1">Cities</p>
+                <p className="text-caption text-text3 mb-1">Cities</p>
                 <div className="space-y-1">
                   {audience.top_cities.map((c) => (
-                    <div key={c.name} className="flex justify-between text-xs">
+                    <div key={c.name} className="flex justify-between text-caption">
                       <span className="text-text2 truncate mr-2">{c.name}</span>
                       <span className="text-text3 shrink-0">{c.value.toLocaleString()}</span>
                     </div>

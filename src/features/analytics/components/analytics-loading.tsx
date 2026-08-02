@@ -52,9 +52,9 @@ export function AnalyticsLoading({ platform, clientName, range }: AnalyticsLoadi
       <FrameIcon />
 
       <h2
+        className="text-headline"
         style={{
           fontFamily: 'var(--font-display)',
-          fontSize: 22,
           fontWeight: 400,
           color: 'var(--ink)',
           textAlign: 'center',
@@ -63,16 +63,24 @@ export function AnalyticsLoading({ platform, clientName, range }: AnalyticsLoadi
       >
         Building your report
       </h2>
-      <p style={{ fontSize: 13, color: 'var(--text2)', textAlign: 'center', marginBottom: 28 }}>
+      <p className="text-body text-text2" style={{ textAlign: 'center', marginBottom: 28 }}>
         {clientName} · {capitalizePlatform(platform)} · Last {range}
       </p>
 
-      <div style={{ width: '100%', maxWidth: 320, display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 24 }}>
+      <div
+        style={{
+          width: '100%',
+          maxWidth: 320,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 6,
+          marginBottom: 24,
+        }}
+      >
         {labels.map((label, i) => (
           <StageRow key={i} isDone={i < stage} isActive={i === stage} label={label} />
         ))}
       </div>
-
     </div>
   )
 }
@@ -97,7 +105,15 @@ function FrameIcon() {
   )
 }
 
-function StageRow({ isDone, isActive, label }: { isDone: boolean; isActive: boolean; label: string }) {
+function StageRow({
+  isDone,
+  isActive,
+  label,
+}: {
+  isDone: boolean
+  isActive: boolean
+  label: string
+}) {
   return (
     <div
       style={{
@@ -112,8 +128,8 @@ function StageRow({ isDone, isActive, label }: { isDone: boolean; isActive: bool
     >
       <StageIcon isDone={isDone} isActive={isActive} />
       <span
+        className="text-caption"
         style={{
-          fontSize: 12,
           fontWeight: 500,
           color: isDone ? 'var(--spring-text)' : isActive ? 'var(--ink)' : 'var(--text2)',
         }}

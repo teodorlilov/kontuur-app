@@ -22,6 +22,7 @@ const INLINE_SIZE_EXEMPT = [
   'features/canvas-editor/components/properties-panel.tsx',
   // Recharts spreads `tick` onto an SVG <text> as a presentation attribute, and
   // SVG attributes do not resolve var() -- a token here renders at the UA default.
+  'features/analytics/lib/chart-config.ts',
   'features/analytics/components/audience-section.tsx',
   'features/analytics/components/post-day-breakdown.tsx',
 ]
@@ -38,9 +39,9 @@ const INLINE_SIZE_EXEMPT = [
  * three to zero and deletes this block along with the `expect(...length)` lines.
  */
 const DRIFT_BUDGET = {
-  legacyScale: 82,
+  legacyScale: 32,
   bracketPx: 0,
-  inlineSize: 358,
+  inlineSize: 332,
 }
 
 function sourceFiles(): string[] {
