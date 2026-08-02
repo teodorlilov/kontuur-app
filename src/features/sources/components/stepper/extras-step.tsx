@@ -60,10 +60,10 @@ function DomainListEditor({
 
   return (
     <div className="space-y-1.5">
-      <label className="text-xs font-medium text-text3">
+      <label className="text-caption font-medium text-text3">
         {label} <span className="text-text3">(optional)</span>
       </label>
-      <p className="text-xs text-text3">{helper}</p>
+      <p className="text-caption text-text3">{helper}</p>
       <div className="flex gap-2">
         <input
           type="text"
@@ -76,7 +76,7 @@ function DomainListEditor({
             }
           }}
           placeholder={placeholder}
-          className="flex-1 rounded-lg border border-line2 px-3 py-1.5 text-sm text-ink placeholder:text-text3 focus:border-line2 focus:outline-none focus:ring-1 focus:ring-line2"
+          className="flex-1 rounded-lg border border-line2 px-3 py-1.5 text-lead md:text-body text-ink placeholder:text-text3 focus:border-line2 focus:outline-none focus:ring-1 focus:ring-line2"
         />
         <Button variant="secondary" size="sm" onClick={addDomain} disabled={!input.trim()}>
           Add
@@ -87,7 +87,7 @@ function DomainListEditor({
           {domains.map((domain) => (
             <span
               key={domain}
-              className={`inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full ${chipClass}`}
+              className={`inline-flex items-center gap-1 text-caption px-2 py-1 rounded-full ${chipClass}`}
             >
               {domain}
               <button
@@ -181,8 +181,8 @@ export function ExtrasStep({
   return (
     <div className="space-y-5">
       <div>
-        <h3 className="text-lg font-medium text-ink">Extras (optional)</h3>
-        <p className="text-sm text-text3 mt-1">
+        <h3 className="font-sans text-display font-medium text-ink">Extras (optional)</h3>
+        <p className="text-body text-text3 mt-1">
           Fine-tune where ideas come from. Most people skip this.
         </p>
       </div>
@@ -194,14 +194,14 @@ export function ExtrasStep({
           onChange={(e) => setIsEnabled(e.target.checked)}
           className="h-4 w-4 rounded border-line2"
         />
-        <span className="text-sm font-medium text-ink">
+        <span className="text-body font-medium text-ink">
           Web research — search the web for trends and news in your industry
         </span>
       </label>
 
       {isEnabled && (
         <details className="rounded-lg border border-line px-4 py-3">
-          <summary className="text-sm text-text2 cursor-pointer select-none">
+          <summary className="text-body text-text2 cursor-pointer select-none">
             Advanced: prefer or block specific sites
           </summary>
           <div className="space-y-4 pt-3">
@@ -228,30 +228,30 @@ export function ExtrasStep({
       )}
 
       <details className="rounded-lg border border-line px-4 py-3">
-        <summary className="text-sm text-text2 cursor-pointer select-none">
+        <summary className="text-body text-text2 cursor-pointer select-none">
           Upload reference documents (PDF or TXT)
         </summary>
         <div className="space-y-3 pt-3">
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-medium text-text2">Label</label>
+            <label className="text-caption font-medium text-text2">Label</label>
             <input
               type="text"
               value={label}
               onChange={(e) => setLabel(e.target.value)}
               placeholder="e.g. Service descriptions"
-              className="rounded-lg border border-line2 px-3 py-1.5 text-sm text-ink placeholder:text-text3 focus:border-line2 focus:outline-none focus:ring-1 focus:ring-line2"
+              className="rounded-lg border border-line2 px-3 py-1.5 text-lead md:text-body text-ink placeholder:text-text3 focus:border-line2 focus:outline-none focus:ring-1 focus:ring-line2"
             />
           </div>
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-medium text-text2">File (PDF or TXT)</label>
+            <label className="text-caption font-medium text-text2">File (PDF or TXT)</label>
             <input
               type="file"
               accept=".pdf,.txt"
               onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-              className="text-sm text-text2 file:mr-3 file:rounded-lg file:border-0 file:bg-sunken file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-text2 hover:file:bg-line"
+              className="text-body text-text2 file:mr-3 file:rounded-lg file:border-0 file:bg-sunken file:px-3 file:py-1.5 file:text-body file:font-medium file:text-text2 hover:file:bg-line"
             />
           </div>
-          <p className="text-xs text-text3">
+          <p className="text-caption text-text3">
             Max 10MB. Text will be extracted and used as context for research and generation.
           </p>
           <Button
@@ -263,7 +263,7 @@ export function ExtrasStep({
             Upload &amp; extract
           </Button>
           {uploadedCount > 0 && (
-            <p className="text-xs text-spring-text font-medium">
+            <p className="text-caption text-spring-text font-medium">
               {uploadedCount} document{uploadedCount !== 1 ? 's' : ''} uploaded
             </p>
           )}

@@ -60,13 +60,13 @@ export function ScanStep({
       <div className="space-y-5">
         <div className="flex flex-col items-center gap-3 py-10">
           <Spinner size="md" />
-          <p className="text-sm text-text3">Scanning {hostname} for pages...</p>
+          <p className="text-body text-text3">Scanning {hostname} for pages...</p>
         </div>
         <div className="flex justify-end">
           <button
             type="button"
             onClick={onSkip}
-            className="text-sm text-text3 hover:text-text2"
+            className="text-body text-text3 hover:text-text2"
           >
             Skip website
           </button>
@@ -78,8 +78,8 @@ export function ScanStep({
   return (
     <div className="space-y-5">
       <div>
-        <h3 className="text-lg font-medium text-ink">Your website</h3>
-        <p className="text-sm text-text3 mt-1">
+        <h3 className="font-sans text-display font-medium text-ink">Your website</h3>
+        <p className="text-body text-text3 mt-1">
           We read your website to ground post ideas in your real content.
         </p>
       </div>
@@ -93,7 +93,7 @@ export function ScanStep({
       />
 
       {prescanStatus === 'failed' && (
-        <p className="text-sm text-danger">
+        <p className="text-body text-danger">
           We couldn&apos;t scan {hostname}. Check the URL or skip for now.
         </p>
       )}
@@ -102,7 +102,7 @@ export function ScanStep({
         <button
           type="button"
           onClick={onSkip}
-          className="text-sm text-text3 hover:text-text2"
+          className="text-body text-text3 hover:text-text2"
         >
           Skip for now
         </button>

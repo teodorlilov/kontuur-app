@@ -99,7 +99,7 @@ export function PageGroupList({
     .filter((group) => group.urls.length > 0)
 
   if (visibleGroups.length === 0) {
-    return <p className="text-sm text-text3 py-4 text-center">No pages match your filter.</p>
+    return <p className="text-body text-text3 py-4 text-center">No pages match your filter.</p>
   }
 
   return (
@@ -128,8 +128,8 @@ export function PageGroupList({
                 onClick={() => toggleExpanded(group.key)}
                 className="flex items-center gap-2 flex-1 min-w-0 text-left"
               >
-                <span className="text-sm font-medium text-ink truncate">{group.label}</span>
-                <span className="text-xs text-text3 shrink-0">
+                <span className="text-body font-medium text-ink truncate">{group.label}</span>
+                <span className="text-caption text-text3 shrink-0">
                   {group.urls.length} page{group.urls.length === 1 ? '' : 's'}
                   {selectedCount > 0 ? ` · ${selectedCount} selected` : ''}
                 </span>
@@ -160,7 +160,7 @@ export function PageGroupList({
                     onChange={() => onToggle([url], !selected.has(url))}
                     className="h-4 w-4 rounded border-line2 cursor-pointer shrink-0"
                   />
-                  <span className="text-sm text-ink truncate" title={url}>
+                  <span className="text-body text-ink truncate" title={url}>
                     {displayPath(url)}
                   </span>
                 </label>

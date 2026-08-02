@@ -37,8 +37,8 @@ export function WebsitePagesStep({
     return (
       <div className="space-y-5">
         <div className="text-center py-6">
-          <p className="text-sm text-text3">We couldn&apos;t find pages automatically.</p>
-          <p className="text-xs text-text3 mt-1">
+          <p className="text-body text-text3">We couldn&apos;t find pages automatically.</p>
+          <p className="text-caption text-text3 mt-1">
             You can still use the site&apos;s homepage as a source.
           </p>
         </div>
@@ -57,8 +57,8 @@ export function WebsitePagesStep({
   return (
     <div className="space-y-4">
       <div>
-        <h3 className="text-lg font-medium text-ink">Choose what we read</h3>
-        <p className="text-sm text-text3 mt-1">
+        <h3 className="font-sans text-display font-medium text-ink">Choose what we read</h3>
+        <p className="text-body text-text3 mt-1">
           Found {pages.length} pages on {siteOrigin.replace(/^https?:\/\//, '')}. Pick the
           sections worth reading — or use the whole site.
         </p>
@@ -69,7 +69,7 @@ export function WebsitePagesStep({
         value={filter}
         onChange={(e) => setFilter(e.target.value)}
         placeholder="Filter pages..."
-        className="w-full px-3 py-2 text-sm text-ink placeholder:text-text3 border border-line rounded-lg focus:outline-none focus:ring-2 focus:ring-line2"
+        className="w-full px-3 py-2 text-lead md:text-body text-ink placeholder:text-text3 border border-line rounded-lg focus:outline-none focus:ring-2 focus:ring-line2"
       />
 
       <PageGroupList
@@ -85,7 +85,7 @@ export function WebsitePagesStep({
           <Button variant="ghost" size="sm" onClick={onBack}>
             Back
           </Button>
-          <span className="text-xs text-text3">
+          <span className="text-caption text-text3">
             {selected.size === 0 ? 'Whole site' : `${selected.size} pages selected`}
           </span>
         </div>

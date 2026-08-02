@@ -71,29 +71,29 @@ export function SourceRow({
     return (
       <div className="px-4 py-3 rounded-xl border border-line2 bg-wash flex flex-col gap-2">
         <div className="flex flex-col gap-1">
-          <label className="text-xs font-medium text-text2">Label</label>
+          <label className="text-caption font-medium text-text2">Label</label>
           <input
             type="text"
             value={editLabel}
             onChange={(e) => setEditLabel(e.target.value)}
-            className="rounded-lg border border-line2 px-3 py-1.5 text-sm text-ink focus:border-spring focus:outline-none focus:ring-1 focus:ring-spring/12"
+            className="rounded-lg border border-line2 px-3 py-1.5 text-lead md:text-body text-ink focus:border-spring focus:outline-none focus:ring-1 focus:ring-spring/12"
           />
         </div>
         {source.type !== 'file' && source.type !== 'tavily' && (
           <div className="flex flex-col gap-1">
-            <label className="text-xs font-medium text-text2">URL</label>
+            <label className="text-caption font-medium text-text2">URL</label>
             <input
               type="url"
               value={editUrl}
               onChange={(e) => setEditUrl(e.target.value)}
-              className="rounded-lg border border-line2 px-3 py-1.5 text-sm text-ink focus:border-spring focus:outline-none focus:ring-1 focus:ring-spring/12"
+              className="rounded-lg border border-line2 px-3 py-1.5 text-lead md:text-body text-ink focus:border-spring focus:outline-none focus:ring-1 focus:ring-spring/12"
             />
           </div>
         )}
         {source.type === 'website' && (
           <>
             <div className="flex flex-col gap-1">
-              <label className="text-xs font-medium text-text2">
+              <label className="text-caption font-medium text-text2">
                 Focus instructions (optional)
               </label>
               <textarea
@@ -101,7 +101,7 @@ export function SourceRow({
                 onChange={(e) => setEditFocus(e.target.value)}
                 placeholder="e.g. Property listings — prices, locations, sizes. Ignore navigation, filters."
                 rows={2}
-                className="rounded-lg border border-line2 px-3 py-1.5 text-sm text-ink placeholder:text-text3 focus:border-spring focus:outline-none focus:ring-1 focus:ring-spring/12 resize-none"
+                className="rounded-lg border border-line2 px-3 py-1.5 text-lead md:text-body text-ink placeholder:text-text3 focus:border-spring focus:outline-none focus:ring-1 focus:ring-spring/12 resize-none"
               />
             </div>
             {onScanPages && (
@@ -114,7 +114,7 @@ export function SourceRow({
                   {selectedPages.length > 0 ? 'Rescan pages' : 'Scan for pages'}
                 </Button>
                 {selectedPages.length > 0 && (
-                  <span className="text-xs text-forest font-medium">
+                  <span className="text-caption text-forest font-medium">
                     {selectedPages.length} pages selected
                   </span>
                 )}
@@ -130,7 +130,7 @@ export function SourceRow({
           >
             Save
           </Button>
-          <button onClick={handleCancel} className="text-sm text-text3 hover:text-text2">
+          <button onClick={handleCancel} className="text-body text-text3 hover:text-text2">
             Cancel
           </button>
         </div>
@@ -153,15 +153,15 @@ export function SourceRow({
         title="Click to edit"
       >
         <div className="flex items-center gap-2">
-          <p className="text-sm font-medium text-ink truncate">{source.label}</p>
+          <p className="text-body font-medium text-ink truncate">{source.label}</p>
           {selectedPages.length > 0 && (
-            <span className="text-xs bg-wash text-forest px-1.5 py-0.5 rounded-full shrink-0">
+            <span className="text-caption bg-wash text-forest px-1.5 py-0.5 rounded-full shrink-0">
               {selectedPages.length} pages
             </span>
           )}
         </div>
         {source.type !== 'tavily' && (
-          <p className="text-xs text-text3 truncate">{truncateText(source.url, 60)}</p>
+          <p className="text-caption text-text3 truncate">{truncateText(source.url, 60)}</p>
         )}
         {pillars && pillarNames.length > 0 && (
           <div className="flex flex-wrap gap-1 mt-1">
@@ -180,13 +180,13 @@ export function SourceRow({
           </div>
         )}
         {pillars && pillarNames.length === 0 && (
-          <p className="text-[10px] text-text3 mt-0.5">All pillars</p>
+          <p className="text-label text-text3 mt-0.5">All pillars</p>
         )}
         <div className="mt-0.5 flex items-center gap-2">
           {statusBadge}
           {usage && usage.approvedCount + usage.discardedCount > 0 && (
             <span
-              className="text-xs text-text3"
+              className="text-caption text-text3"
               title={`${usage.approvedCount} approved · ${usage.discardedCount} discarded`}
             >
               · Fueled {usage.approvedCount} post{usage.approvedCount === 1 ? '' : 's'}

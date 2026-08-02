@@ -246,7 +246,7 @@ export function PillarSourceStepper({
             style={{ width: `${progressPct}%`, background: 'var(--forest)' }}
           />
         </div>
-        <p className="text-xs text-text3 mt-1.5 text-right">
+        <p className="text-caption text-text3 mt-1.5 text-right">
           Step {currentIndex + 1} of {sequence.length}
         </p>
       </div>

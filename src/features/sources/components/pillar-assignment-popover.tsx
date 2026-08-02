@@ -30,7 +30,7 @@ export function PillarAssignmentPopover({
       <Popover.Trigger asChild>
         <button
           type="button"
-          className="text-xs text-forest hover:underline font-medium whitespace-nowrap"
+          className="text-caption text-forest hover:underline font-medium whitespace-nowrap"
         >
           {assignedPillarIds.length > 0 ? `Topics: ${assignedPillarIds.length}` : 'Limit topics'}
         </button>
@@ -41,11 +41,11 @@ export function PillarAssignmentPopover({
           sideOffset={4}
           align="start"
         >
-          <p className="text-xs font-medium text-text3 px-2 pb-1">
+          <p className="text-caption font-medium text-text3 px-2 pb-1">
             Limit to specific topics (optional)
           </p>
           {pillars.length === 0 ? (
-            <p className="text-xs text-text3 px-2 py-1">No topics configured</p>
+            <p className="text-caption text-text3 px-2 py-1">No topics configured</p>
           ) : (
             <div className="space-y-1">
               {pillars.map((p) => {
@@ -54,7 +54,7 @@ export function PillarAssignmentPopover({
                 return (
                   <label
                     key={p.id}
-                    className="flex items-center gap-2 rounded px-2 py-1.5 text-sm cursor-pointer hover:bg-sunken"
+                    className="flex items-center gap-2 rounded px-2 py-1.5 text-body cursor-pointer hover:bg-sunken"
                   >
                     <input
                       type="checkbox"
@@ -73,7 +73,7 @@ export function PillarAssignmentPopover({
             </div>
           )}
           {assignedPillarIds.length === 0 && pillars.length > 0 && (
-            <p className="text-xs text-text3 px-2 pt-1 border-t border-line mt-1">
+            <p className="text-caption text-text3 px-2 pt-1 border-t border-line mt-1">
               Feeds all topics (default)
             </p>
           )}
