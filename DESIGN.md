@@ -25,48 +25,60 @@ colors:
   amber: "#8a6116"
   amber-bg: "#f7efdc"
 typography:
-  display:
+  prompt:
     fontFamily: "Instrument Serif, Georgia, serif"
-    fontSize: "17px"
+    fontSize: "36px"
     fontWeight: 400
-    lineHeight: 1.4
-    letterSpacing: "normal"
-  headline:
-    fontFamily: "Geist, Arial, sans-serif"
-    fontSize: "23px"
-    fontWeight: 600
-    lineHeight: 1.25
-    letterSpacing: "-0.02em"
+    lineHeight: 1.15
+    letterSpacing: "-0.01em"
   metric:
     fontFamily: "Geist, Arial, sans-serif"
-    fontSize: "31px"
+    fontSize: "28px"
     fontWeight: 600
     lineHeight: 1.1
     letterSpacing: "-0.02em"
     fontFeature: "tabular-nums"
-  title:
+  headline:
     fontFamily: "Geist, Arial, sans-serif"
-    fontSize: "14.5px"
+    fontSize: "22px"
     fontWeight: 600
-    lineHeight: 1.4
+    lineHeight: 1.25
     letterSpacing: "-0.02em"
-  body:
+  display:
+    fontFamily: "Instrument Serif, Georgia, serif"
+    fontSize: "18px"
+    fontWeight: 400
+    lineHeight: 1.35
+    letterSpacing: "normal"
+  lead:
     fontFamily: "Geist, Arial, sans-serif"
-    fontSize: "13.5px"
+    fontSize: "16px"
     fontWeight: 400
     lineHeight: 1.6
     letterSpacing: "normal"
-  label-stat:
+  title:
     fontFamily: "Geist, Arial, sans-serif"
-    fontSize: "12.5px"
-    fontWeight: 500
-    lineHeight: 1.3
+    fontSize: "15px"
+    fontWeight: 600
+    lineHeight: 1.4
+    letterSpacing: "-0.01em"
+  body:
+    fontFamily: "Geist, Arial, sans-serif"
+    fontSize: "13px"
+    fontWeight: 400
+    lineHeight: 1.6
     letterSpacing: "normal"
   caption:
     fontFamily: "Geist, Arial, sans-serif"
-    fontSize: "11.5px"
+    fontSize: "12px"
     fontWeight: 400
     lineHeight: 1.4
+    letterSpacing: "normal"
+  micro:
+    fontFamily: "Geist, Arial, sans-serif"
+    fontSize: "11px"
+    fontWeight: 500
+    lineHeight: 1.35
     letterSpacing: "normal"
   label:
     fontFamily: "Geist, Arial, sans-serif"
@@ -263,22 +275,29 @@ Read the exception as a correction, not a loophole. This rule previously read "t
 
 **Display Font:** Instrument Serif (with Georgia, serif)
 **Body Font:** Geist (with Arial, Helvetica, sans-serif)
-**Mono Font:** Geist Mono
+
+There is no mono font. Geist Mono was loaded and preloaded on every page for two `<kbd>` keycaps and nothing else, so it was deleted; `kbd` falls to Tailwind preflight's system mono stack. Geist itself ships `latin`, `latin-ext` and `cyrillic`, and all three are preloaded — Bulgarian UI text is set in Geist, not a fallback.
 
 **Character:** A neutral, highly legible grotesque doing all the work, interrupted rarely by a warm serif italic. The serif never explains or labels — it appears at moments of address (a greeting, an empty state, an editorial aside) and then gets out of the way. The pairing's restraint is the point: the serif is memorable precisely because it is rationed.
 
 ### Hierarchy
 
-- **Metric** (600, 31px, −0.02em, tabular-nums): Stat values. Always tabular.
-- **Prompt** (Instrument Serif, 400, 30px, −0.01em): The one thing a full-screen onboarding surface is asking — the question on an interview card, the client name on the auto-draft sheet. **One per view, and only on a surface that has nothing else competing for the eye.** It is not a dashboard heading: inside the app shell that job belongs to Headline. Subject to the Latin-Only Serif Rule like every other serif role, which in practice means Bulgarian client names render at Headline instead.
-- **Headline** (600, 23px, −0.02em): The dashboard greeting and page-level headings. Also the sans fallback for Prompt when the string carries Cyrillic.
-- **Display** (Instrument Serif italic, 400, 15–17px): Editorial asides, empty-state lines, the agency name in the greeting, the wordmark. Accents only.
-- **Title** (600, 14.5px, −0.02em): Section titles.
-- **Stat Label** (500, 12.5px): The label above a metric. A real half-step between Body and Caption — a stat label must read as quieter than body text without dropping to caption size.
-- **Body** (400/500, 13–13.5px, 1.6): Body text, navigation items, table cells.
-- **Caption** (400, 11.5–12px): Hints, captions, card sub-lines.
-- **Micro** (500/600, 11px): Badges, pills, timestamps.
-- **Label** (600, 9.5–10px, +0.16em, uppercase): Sidebar section labels.
+Ten roles. Every step is a whole pixel, and every step carries its own
+line-height — and, where it is not `normal`, its own letter-spacing — as a
+`--text-*` token in `globals.css`. Leading is therefore not a call-site
+decision, and `leading-*` / `tracking-*` at a call site means someone is
+deliberately overriding the role and owes a WHY.
+
+- **Prompt** (Instrument Serif, 400, 36px, −0.01em, 1.15): The one thing a full-screen surface is asking — the question on an interview card, the hero on an auth or legal page. **One per view, and only on a surface that has nothing else competing for the eye.** It is not a dashboard heading: inside the app shell that job belongs to Headline. Subject to the Latin-Only Serif Rule, which in practice means Bulgarian client names render at Headline instead.
+- **Metric** (600, 28px, −0.02em, 1.1, tabular-nums): Stat values. Always tabular.
+- **Headline** (600, 22px, −0.02em, 1.25): The dashboard greeting and page-level headings. Also the sans fallback for Prompt when the string carries Cyrillic.
+- **Display** (Instrument Serif italic, 400, 18px, 1.35): Editorial asides, empty-state lines, the agency name in the greeting, the wordmark. Accents only. Set `font-sans` on it for the rare 18px sans subhead — `--text-display` is the size, `--font-display` is the family.
+- **Lead** (400, 16px, 1.6): Prose read at arm's length rather than at work distance — marketing, auth, legal, and public share pages. Not for the app shell, where Body carries prose. It is also exactly the Mobile Input Exemption size, so a focusable field below `md` is `text-lead` rather than a literal.
+- **Title** (600, 15px, −0.01em, 1.4): Section titles, card headings, the large button.
+- **Body** (400/500, 13px, 1.6): Body text, navigation items, table cells, form control text at `md` and above. The inherited default on `body` too.
+- **Caption** (400/500, 12px, 1.4): Hints, captions, card sub-lines, field labels, errors. Also the quiet label above a metric — that role used to be a 12.5px half-step of its own, but every site already carried the distinction in colour and weight, so the half-step was doing no work.
+- **Micro** (500/600, 11px, 1.35): Badges, pills, timestamps, deltas.
+- **Label** (600, 10px, +0.16em, 1.2, uppercase): Sidebar section labels, table column heads, the line above a stat. The tracking rides on the token; a single centred glyph set in this role needs `tracking-normal`, because 0.16em on one character is trailing space.
 
 ### Named Rules
 
@@ -288,9 +307,11 @@ Read the exception as a correction, not a loophole. This rule previously read "t
 
 **The Weight Ceiling Rule.** 400 and 500 carry the interface; 600 is correct for titles, stat numbers, and section headings. **700 stays unused.**
 
-**The Closed Ramp Rule.** The nine roles above are the ramp. A literal size that is not one of them is drift, not a decision — the app currently carries nineteen distinct literal sizes, which is nineteen ad-hoc values with a ramp described over them. Add a step only when a role genuinely exists and recurs; snap one-offs to the nearest documented size instead. *Prompt is the one step added this way (2026-08-01): the onboarding surfaces needed a size for the single thing being asked, it recurred six times across two of them, and the ramp had nothing between Headline and Metric that a serif could carry.*
+**The Closed Ramp Rule.** The ten roles above are the ramp, and they are `--text-*` tokens rather than prose — so a size is `text-body` or `text-caption`, never `text-[13px]` and never an inline `fontSize`. A literal that is not a role is drift, not a decision. Add a step only when a role genuinely exists and recurs; snap one-offs to the nearest documented size instead. `src/app/__tests__/type-ramp.test.ts` enforces this, and also asserts that `TYPE_RAMP` in `src/utils/cn.ts` matches the token set exactly — a step missing from that array is silently reclassified as a text *colour* and eats whatever colour precedes it.
 
-**The Mobile Input Exemption.** Focusable fields at the mobile breakpoint are set to **16px**, off-ramp and deliberately so: below 16px iOS Safari auto-zooms the viewport the moment a field takes focus, which throws the layout mid-entry and cannot be dismissed without a pinch. This is the only sanctioned off-ramp size in the system, it applies to inputs and textareas only, and it never leaks to static text.
+*A ramp is only closed if its steps are distinguishable.* The previous version had fourteen roles with six inside a 2.5px band, and the predictable result was that call sites stopped believing it and wrote literals — 645 of them, across three parallel systems. Separation is the rule's precondition, not a nicety: these ratios widen from 1.09 at the dense end to 1.29 at the display end.
+
+**The Mobile Input Exemption.** Focusable fields below `md` are set to **16px**: any smaller and iOS Safari auto-zooms the viewport the moment a field takes focus, throwing the layout mid-entry with no way back but a pinch. This is no longer off-ramp — Lead is exactly 16px, so the exemption is expressed as `text-lead md:text-body` in `CONTROL_TEXT`, and it still applies to focusable fields only and never leaks to static text.
 
 ## Layout
 
@@ -407,7 +428,7 @@ Raw values live in `src/app/globals.css` as prefix-free custom properties (`--pa
 
 The radius scale is declared in plain `@theme` rather than `@theme inline`, because `--radius-*` are Tailwind's own names — this **replaces** its defaults app-wide instead of shadowing them, so `rounded-lg` resolves to 14px everywhere including surfaces not yet rebuilt. That is deliberate.
 
-A legacy compatibility block in `globals.css` aliases the pre-Contour `--color-*` and `--sidebar-*` names onto Contour values, so unmigrated surfaces follow the palette rather than stranding on the old navy. **Each alias is deleted as its surface is rebuilt** — an alias still in that block is a to-do list entry.
+The pre-Contour `--color-*` and `--sidebar-*` compatibility block is gone: all 43 aliases were resolved to their Contour tokens and deleted. Nothing should reintroduce one — the tokens above are the vocabulary.
 
 ### Structural class hooks
 
@@ -424,11 +445,10 @@ Reach for these before writing a new one:
 | `components/ui/card.tsx` | A clearing. Padding comes from `className`. |
 | `components/ui/section-heading.tsx` | An `h2` with its icon chip; `tone="wash" \| "marker"`. |
 | `components/ui/action-link.tsx` | A `next/link` styled as an action. |
-| `components/ui/button.tsx` | A button that acts. Token choices mirror `ActionLink`. |
-| `components/ui/section-card.tsx` | A settings panel — titled, with a divider header. |
+| `components/ui/button.tsx` | A button that acts. Sizes mirror `ActionLink`: caption / body / title. |
+| `components/ui/form/form-section.tsx` | A settings panel — titled, with a divider header. |
+| `components/ui/form/control-classes.ts` | The one definition of how a form control looks, including the Mobile Input Exemption. |
 | `components/layout/page-header/` | The header every dashboard page opens with. |
-
-`Card` and `SectionCard` are both current and are not duplicates: one is a bare container, the other owns a header structure.
 
 ### Where the rest lives
 

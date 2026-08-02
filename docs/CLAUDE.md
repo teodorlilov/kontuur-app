@@ -58,10 +58,17 @@ to `components/` only on the second consumer. Never the other way around.
 - Conditional classes go through `cn()`. No inline `style=` except for
   truly dynamic values (e.g. computed transforms).
 - `DESIGN.md` (repo root, not `docs/`) is the design system. Its **Closed Ramp
-  Rule** governs type: the roles are `--text-*` tokens in `globals.css`, so a
-  font size is `text-body` / `text-caption` / `text-metric`, never `text-[13px]`.
-  A size that is not a role is drift — snap it to the nearest one rather than
-  adding a step. Two shared primitives are still on literals; see TECH-DEBT §5.
+  Rule** governs type: the ten roles are `--text-*` tokens in `globals.css`, so a
+  font size is `text-body` / `text-caption` / `text-metric` — never `text-[13px]`
+  and never an inline `fontSize`. A size that is not a role is drift; snap it to
+  the nearest one rather than adding a step.
+- Each role carries its own line-height, and its letter-spacing where that is not
+  `normal`. So `leading-*` or `tracking-*` at a call site means you are
+  overriding the role on purpose and owe a WHY comment.
+- Adding or removing a `--text-*` token means updating `TYPE_RAMP` in
+  `src/utils/cn.ts` in the same change. A step missing from that array is
+  silently filed as a text *colour* by tailwind-merge and deletes whatever colour
+  precedes it. `src/app/__tests__/type-ramp.test.ts` fails if the two drift.
 
 ## Code quality (non-negotiable)
 

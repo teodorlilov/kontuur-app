@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-07-30T09:00:00Z",
+  "generatedAt": "2026-08-02T18:36:49Z",
   "title": "Design System: Kontuur",
   "extensions": {
     "colorMeta": {
@@ -8,92 +8,171 @@
         "role": "primary",
         "displayName": "Deep Pine",
         "canonical": "#164430",
-        "tonalRamp": ["#050f0a", "#0a1f15", "#0f2e20", "#164430", "#1e5a41", "#2a7857", "#5aa484", "#a8d4bd"]
+        "tonalRamp": [
+          "#050f0a",
+          "#0a1f15",
+          "#0f2e20",
+          "#164430",
+          "#1e5a41",
+          "#2a7857",
+          "#5aa484",
+          "#a8d4bd"
+        ]
       },
       "living-green": {
         "role": "secondary",
         "displayName": "Living Green",
         "canonical": "#2e9e68",
         "note": "3.38:1 on white — clears 3:1 for non-text UI (dots, rings, strokes) but fails as text. Use living-green-text for words.",
-        "tonalRamp": ["#082517", "#0f4029", "#175c3c", "#217c51", "#2e9e68", "#4dbb85", "#7fd6a8", "#c2ecd6"]
+        "tonalRamp": [
+          "#082517",
+          "#0f4029",
+          "#175c3c",
+          "#217c51",
+          "#2e9e68",
+          "#4dbb85",
+          "#7fd6a8",
+          "#c2ecd6"
+        ]
       },
       "living-green-text": {
         "role": "secondary",
         "displayName": "Living Green Text",
         "canonical": "#278658",
         "note": "4.53:1 on white. The text-safe green: positive deltas, links, status labels on light grounds.",
-        "tonalRamp": ["#071e13", "#0d3524", "#134c33", "#1b6a45", "#278658", "#39a771", "#68c79b", "#b3e6cd"]
+        "tonalRamp": [
+          "#071e13",
+          "#0d3524",
+          "#134c33",
+          "#1b6a45",
+          "#278658",
+          "#39a771",
+          "#68c79b",
+          "#b3e6cd"
+        ]
       },
       "ink-tertiary": {
         "role": "neutral",
         "displayName": "Ink Tertiary",
         "canonical": "#667068",
         "note": "Corrected from #8b958d (2.71:1 on paper). Holds 4.51:1 on Warm Paper at the same hue and chroma.",
-        "tonalRamp": ["#12150f", "#232722", "#353b35", "#4a524b", "#667068", "#8b958d", "#b4bcb5", "#dde2dd"]
+        "tonalRamp": [
+          "#12150f",
+          "#232722",
+          "#353b35",
+          "#4a524b",
+          "#667068",
+          "#8b958d",
+          "#b4bcb5",
+          "#dde2dd"
+        ]
       },
       "new-growth": {
         "role": "tertiary",
         "displayName": "New Growth",
         "canonical": "#cfea45",
-        "tonalRamp": ["#232a05", "#3a460a", "#556611", "#72881a", "#93ac24", "#b4cd32", "#cfea45", "#e8f5a2"]
-      },
-      "warm-paper": {
-        "role": "neutral",
-        "displayName": "Warm Paper",
-        "canonical": "#f1f0ea",
-        "tonalRamp": ["#1a1a17", "#33322d", "#4d4c45", "#6b695f", "#8f8d81", "#b8b6ab", "#dcdad2", "#f1f0ea"]
+        "tonalRamp": [
+          "#232a05",
+          "#3a460a",
+          "#556611",
+          "#72881a",
+          "#93ac24",
+          "#b4cd32",
+          "#cfea45",
+          "#e8f5a2"
+        ]
       },
       "forest-ink": {
         "role": "neutral",
         "displayName": "Forest Ink",
         "canonical": "#0f1512",
-        "tonalRamp": ["#0f1512", "#1c2620", "#2e3d35", "#44574c", "#5f7568", "#8b958d", "#bcc7be", "#e7ece7"]
+        "tonalRamp": [
+          "#0f1512",
+          "#1c2620",
+          "#2e3d35",
+          "#44574c",
+          "#5f7568",
+          "#8b958d",
+          "#bcc7be",
+          "#e7ece7"
+        ]
       },
       "clay": {
         "role": "error",
         "displayName": "Clay",
         "canonical": "#b04a38",
-        "tonalRamp": ["#2b0f0a", "#471a12", "#63271b", "#7f3527", "#9b4030", "#b04a38", "#d08573", "#fbefec"]
+        "tonalRamp": [
+          "#2b0f0a",
+          "#471a12",
+          "#63271b",
+          "#7f3527",
+          "#9b4030",
+          "#b04a38",
+          "#d08573",
+          "#fbefec"
+        ]
       },
       "amber": {
         "role": "warning",
         "displayName": "Amber",
         "canonical": "#8a6116",
-        "tonalRamp": ["#221703", "#3a2707", "#52380c", "#6b4a11", "#8a6116", "#b08430", "#d4b06a", "#f7efdc"]
+        "tonalRamp": [
+          "#221703",
+          "#3a2707",
+          "#52380c",
+          "#6b4a11",
+          "#8a6116",
+          "#b08430",
+          "#d4b06a",
+          "#f7efdc"
+        ]
+      },
+      "near-white-paper": {
+        "role": "neutral",
+        "displayName": "Near-White Paper",
+        "canonical": "#fbfcfa"
       }
     },
     "typographyMeta": {
-      "display": {
-        "displayName": "Display — Instrument Serif italic",
-        "purpose": "Accents only: the wordmark, the greeting's agency name, editorial one-liners, empty states. Latin-only — gate interpolated user strings on hasCyrillic()."
+      "prompt": {
+        "displayName": "Prompt",
+        "purpose": "The single question a full-screen surface asks. One per view."
       },
       "metric": {
         "displayName": "Metric",
-        "purpose": "Stat values. Always tabular-nums with -0.02em tracking."
+        "purpose": "Stat values. Always tabular."
       },
       "headline": {
         "displayName": "Headline",
-        "purpose": "Dashboard greeting and page-level headings."
+        "purpose": "Page titles and the dashboard greeting; sans fallback for Cyrillic Prompt."
+      },
+      "display": {
+        "displayName": "Display",
+        "purpose": "Serif editorial asides, empty states, the wordmark. Accents only."
+      },
+      "lead": {
+        "displayName": "Lead",
+        "purpose": "Prose read at arm’s length — marketing, auth, legal, public. Also the mobile input size."
       },
       "title": {
         "displayName": "Title",
-        "purpose": "Section titles inside cards and panels."
+        "purpose": "Section titles, card headings, the large button."
       },
       "body": {
         "displayName": "Body",
-        "purpose": "Body text, navigation items, table cells."
-      },
-      "label-stat": {
-        "displayName": "Stat Label",
-        "purpose": "The label above a metric. A real half-step between Body and Caption — quieter than body text without dropping to caption size."
+        "purpose": "Body copy, navigation, table cells, form controls at md+. The inherited default."
       },
       "caption": {
         "displayName": "Caption",
-        "purpose": "Hints, card sub-lines, timestamps."
+        "purpose": "Hints, field labels, errors, card sub-lines, the quiet label above a metric."
+      },
+      "micro": {
+        "displayName": "Micro",
+        "purpose": "Badges, pills, timestamps, deltas."
       },
       "label": {
-        "displayName": "Micro Label",
-        "purpose": "Uppercase sidebar section labels at +0.16em."
+        "displayName": "Label",
+        "purpose": "Uppercase section labels and table column heads. Tracking rides on the token."
       }
     },
     "shadows": [
@@ -153,10 +232,22 @@
       }
     ],
     "breakpoints": [
-      { "name": "sm", "value": "640px" },
-      { "name": "md", "value": "768px" },
-      { "name": "lg", "value": "1024px" },
-      { "name": "xl", "value": "1280px" }
+      {
+        "name": "sm",
+        "value": "640px"
+      },
+      {
+        "name": "md",
+        "value": "768px"
+      },
+      {
+        "name": "lg",
+        "value": "1024px"
+      },
+      {
+        "name": "xl",
+        "value": "1280px"
+      }
     ]
   },
   "components": [
@@ -166,7 +257,7 @@
       "refersTo": "button-primary",
       "description": "The single main action on a page. Deep Pine ground, white text.",
       "html": "<button class=\"ds-btn ds-btn-primary\">Generate posts</button>",
-      "css": ".ds-btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: var(--radius-md, 10px); font-family: var(--font-sans), Arial, sans-serif; font-size: 13.5px; font-weight: 500; line-height: 1; border: none; white-space: nowrap; cursor: pointer; transition: background 150ms cubic-bezier(0.22,1,0.36,1), border-color 150ms cubic-bezier(0.22,1,0.36,1), transform 100ms cubic-bezier(0.22,1,0.36,1); } .ds-btn:active { transform: scale(0.98); } .ds-btn-primary { background: #164430; color: #ffffff; } .ds-btn-primary:hover { background: #0c2e20; } .ds-btn-primary:focus-visible { outline: 2px solid #2e9e68; outline-offset: 2px; }"
+      "css": ".ds-btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: var(--radius-md, 10px); font-family: var(--font-sans), Arial, sans-serif; font-size: 13px; font-weight: 500; line-height: 1; border: none; white-space: nowrap; cursor: pointer; transition: background 150ms cubic-bezier(0.22,1,0.36,1), border-color 150ms cubic-bezier(0.22,1,0.36,1), transform 100ms cubic-bezier(0.22,1,0.36,1); } .ds-btn:active { transform: scale(0.98); } .ds-btn-primary { background: #164430; color: #ffffff; } .ds-btn-primary:hover { background: #0c2e20; } .ds-btn-primary:focus-visible { outline: 2px solid #2e9e68; outline-offset: 2px; }"
     },
     {
       "name": "Secondary Button",
@@ -174,7 +265,7 @@
       "refersTo": "button-secondary",
       "description": "Secondary actions and destructive confirmations. Hairline border, no fill.",
       "html": "<button class=\"ds-btn ds-btn-secondary\">Add client</button>",
-      "css": ".ds-btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: var(--radius-md, 10px); font-family: var(--font-sans), Arial, sans-serif; font-size: 13.5px; font-weight: 500; line-height: 1; cursor: pointer; transition: background 150ms cubic-bezier(0.22,1,0.36,1), border-color 150ms cubic-bezier(0.22,1,0.36,1), transform 100ms cubic-bezier(0.22,1,0.36,1); } .ds-btn:active { transform: scale(0.98); } .ds-btn-secondary { background: transparent; color: #0f1512; border: 0.5px solid #d5ddd6; } .ds-btn-secondary:hover { background: rgba(15,21,18,0.04); border-color: #bcc7be; } .ds-btn-secondary:focus-visible { outline: 2px solid #2e9e68; outline-offset: 2px; }"
+      "css": ".ds-btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: var(--radius-md, 10px); font-family: var(--font-sans), Arial, sans-serif; font-size: 13px; font-weight: 500; line-height: 1; cursor: pointer; transition: background 150ms cubic-bezier(0.22,1,0.36,1), border-color 150ms cubic-bezier(0.22,1,0.36,1), transform 100ms cubic-bezier(0.22,1,0.36,1); } .ds-btn:active { transform: scale(0.98); } .ds-btn-secondary { background: transparent; color: #0f1512; border: 0.5px solid #d5ddd6; } .ds-btn-secondary:hover { background: rgba(15,21,18,0.04); border-color: #bcc7be; } .ds-btn-secondary:focus-visible { outline: 2px solid #2e9e68; outline-offset: 2px; }"
     },
     {
       "name": "Ghost Button",
@@ -182,7 +273,7 @@
       "refersTo": "button-ghost",
       "description": "Tertiary actions and cancels. Tighter padding, secondary ink.",
       "html": "<button class=\"ds-btn-ghost\">Cancel</button>",
-      "css": ".ds-btn-ghost { display: inline-flex; align-items: center; gap: 6px; padding: 8px 10px; border-radius: var(--radius-md, 10px); background: transparent; color: #57625a; border: none; font-family: var(--font-sans), Arial, sans-serif; font-size: 13.5px; font-weight: 500; line-height: 1; cursor: pointer; transition: background 150ms cubic-bezier(0.22,1,0.36,1), color 150ms cubic-bezier(0.22,1,0.36,1); } .ds-btn-ghost:hover { background: rgba(15,21,18,0.04); color: #0f1512; } .ds-btn-ghost:focus-visible { outline: 2px solid #2e9e68; outline-offset: 2px; }"
+      "css": ".ds-btn-ghost { display: inline-flex; align-items: center; gap: 6px; padding: 8px 10px; border-radius: var(--radius-md, 10px); background: transparent; color: #57625a; border: none; font-family: var(--font-sans), Arial, sans-serif; font-size: 13px; font-weight: 500; line-height: 1; cursor: pointer; transition: background 150ms cubic-bezier(0.22,1,0.36,1), color 150ms cubic-bezier(0.22,1,0.36,1); } .ds-btn-ghost:hover { background: rgba(15,21,18,0.04); color: #0f1512; } .ds-btn-ghost:focus-visible { outline: 2px solid #2e9e68; outline-offset: 2px; }"
     },
     {
       "name": "Card",
@@ -190,7 +281,7 @@
       "refersTo": "card",
       "description": "The resting surface. 20px corners, 0.5px hairline, ambient lift only.",
       "html": "<div class=\"ds-card\"><div class=\"ds-card-label\">Pending review</div><div class=\"ds-card-metric\">5</div><div class=\"ds-card-foot\">Oldest waiting since 2d ago</div></div>",
-      "css": ".ds-card { background: #ffffff; border: 0.5px solid #e7ece7; border-radius: 20px; padding: 20px 24px; box-shadow: 0 1px 2px rgba(15,21,18,0.03), 0 14px 36px -14px rgba(15,21,18,0.1); font-family: var(--font-sans), Arial, sans-serif; min-width: 200px; } .ds-card-label { font-size: 12.5px; font-weight: 500; color: #57625a; } .ds-card-metric { font-size: 31px; font-weight: 600; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; color: #0f1512; margin: 6px 0 4px; } .ds-card-foot { font-size: 11.5px; color: #57625a; }"
+      "css": ".ds-card { background: #ffffff; border: 0.5px solid #e7ece7; border-radius: 20px; padding: 20px 24px; box-shadow: 0 1px 2px rgba(15,21,18,0.03), 0 14px 36px -14px rgba(15,21,18,0.1); font-family: var(--font-sans), Arial, sans-serif; min-width: 200px; } .ds-card-label { font-size: 12px; font-weight: 500; color: #57625a; } .ds-card-metric { font-size: 28px; font-weight: 600; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; color: #0f1512; margin: 6px 0 4px; } .ds-card-foot { font-size: 12px; color: #57625a; }"
     },
     {
       "name": "Dark Capsule Card",
@@ -198,7 +289,7 @@
       "refersTo": "card-dark",
       "description": "The single highest-authority surface. Pine gradient over a 13px dot grid — never a flat fill.",
       "html": "<div class=\"ds-card-dark\"><div class=\"ds-card-dark-label\">Scheduled this week</div><div class=\"ds-card-dark-metric\">6</div></div>",
-      "css": ".ds-card-dark { background-image: radial-gradient(rgba(255,255,255,0.05) 1px, transparent 1.5px), linear-gradient(180deg, #10382a 0%, #0a2b1d 100%); background-size: 13px 13px, auto; border-radius: 20px; padding: 20px 24px; box-shadow: 0 18px 44px -14px rgba(12,46,32,0.55); font-family: var(--font-sans), Arial, sans-serif; min-width: 200px; } .ds-card-dark-label { font-size: 12.5px; font-weight: 500; color: rgba(242,245,241,0.72); } .ds-card-dark-metric { font-size: 31px; font-weight: 600; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; color: #ffffff; margin-top: 6px; }"
+      "css": ".ds-card-dark { background-image: radial-gradient(rgba(255,255,255,0.05) 1px, transparent 1.5px), linear-gradient(180deg, #10382a 0%, #0a2b1d 100%); background-size: 13px 13px, auto; border-radius: 20px; padding: 20px 24px; box-shadow: 0 18px 44px -14px rgba(12,46,32,0.55); font-family: var(--font-sans), Arial, sans-serif; min-width: 200px; } .ds-card-dark-label { font-size: 12px; font-weight: 500; color: rgba(242,245,241,0.72); } .ds-card-dark-metric { font-size: 28px; font-weight: 600; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; color: #ffffff; margin-top: 6px; }"
     },
     {
       "name": "Text Input",
@@ -206,7 +297,7 @@
       "refersTo": "input",
       "description": "The one element carrying a full 1px border, so form fields read as the interactive edge.",
       "html": "<input class=\"ds-input\" type=\"text\" placeholder=\"Search\" />",
-      "css": ".ds-input { background: #ffffff; border: 1px solid #d5ddd6; border-radius: 10px; padding: 8px 12px; font-family: var(--font-sans), Arial, sans-serif; font-size: 13.5px; color: #0f1512; outline: none; transition: border-color 150ms cubic-bezier(0.22,1,0.36,1), box-shadow 150ms cubic-bezier(0.22,1,0.36,1); } .ds-input::placeholder { color: #8b958d; } .ds-input:focus { border-color: #2e9e68; box-shadow: 0 0 0 3px rgba(46,158,104,0.12); }"
+      "css": ".ds-input { background: #ffffff; border: 1px solid #d5ddd6; border-radius: 10px; padding: 8px 12px; font-family: var(--font-sans), Arial, sans-serif; font-size: 13px; color: #0f1512; outline: none; transition: border-color 150ms cubic-bezier(0.22,1,0.36,1), box-shadow 150ms cubic-bezier(0.22,1,0.36,1); } .ds-input::placeholder { color: #8b958d; } .ds-input:focus { border-color: #2e9e68; box-shadow: 0 0 0 3px rgba(46,158,104,0.12); }"
     },
     {
       "name": "Status Chip",
@@ -246,38 +337,43 @@
     ],
     "rules": [
       {
-        "name": "The Living Present Rule",
-        "body": "New Growth lime marks now — today, in progress, publishing, live — and nothing else. It is never a category colour, never decorative, and never assigned by position in a list. At most one lime element per view. Audit test: if the lime element would still be lime tomorrow, it is wrong.",
+        "name": "The Fill-Only Lime Rule",
+        "body": "New Growth is a ground, never a word on a light surface. It measures 1.35:1 on Surface, so lime text on white or paper is unreadable regardless of size. Lime type is legitimate only on Pine Deep, where the relationship inverts.",
         "section": "colors"
       },
       {
-        "name": "The Fill-Only Lime Rule",
-        "body": "New Growth is a fill, a marker, or a dot — never a word on a light ground. It measures 1.35:1 on Surface, so lime text on white or paper is unreadable regardless of size. Lime type is legitimate only on Pine Deep, where the relationship inverts.",
+        "name": "The Standing Place Rule",
+        "body": "New Growth marks where the user is standing: the route in the rail, the commitment in the header, the moment in the field. **One lime answer per band** — rail, header, field — and the wordmark, which is the constant, is exempt from the count. Lime never names a category, a client, a platform, a permanent property, or a position in a list.",
+        "section": "colors"
+      },
+      {
+        "name": "The Small Present Rule",
+        "body": "Below roughly 16px, and on anything thinner than 4px, the present tense on a light ground is **Living Green**, not lime. Living Green holds 3.38:1 on Surface, which clears the 3:1 non-text bar, and it is already this system's signal of motion. On dark grounds the relationship inverts and the small \"now\" mark is lime again — which is why MiniWeek's 2px today-rule stays lime on the dark stat card while NextUpCard's today-dot is Living Green on the light one.",
         "section": "colors"
       },
       {
         "name": "The Legible Tint Rule",
-        "body": "Text on a tinted surface uses a solid ink token — Forest Ink or Ink Secondary — never an alpha-reduced ink. Measured: ink/55% lands at 4.10:1 on Surface Lime, 4.08:1 on Marker, and 3.74:1 on Sage, so the same line changes legibility depending on which tint sits under it.",
+        "body": "Text on a tinted surface (Surface Lime, Sage, Marker, Wash, and the status backgrounds) uses a **solid** ink token — Forest Ink or Ink Secondary — never an alpha-reduced ink. Measured: `ink/55%` lands at 4.10:1 on Surface Lime, 4.08:1 on Marker, and 3.74:1 on Sage, so the same line changes legibility depending on which tint sits under it. Alpha inks are for hairlines and overlays, not for reading.",
         "section": "colors"
       },
       {
         "name": "The Botanical Closure Rule",
-        "body": "Every hue in this system is a green, a neutral, or one of the two earthen status colours. There are no blues. A blue link, a blue-500, or a fifth unrelated hue for a fourth chart series is out of system.",
+        "body": "Every hue in the *interface* is a green, a neutral, or one of the two earthen status colours. A blue link, a `blue-500`, or a fifth unrelated hue for a fourth chart series is out of system — the metric ramp deliberately runs Deep Pine → Living Green → `#7fa588` → Pine Deep rather than four unrelated colours.",
         "section": "colors"
       },
       {
         "name": "The Muted Status Rule",
-        "body": "Status colour is earthen, never saturated. green-500 and red-500 are rejected on sight; a failure is Clay and a wait is Amber.",
+        "body": "Status colour is earthen, never saturated. `green-500` and `red-500` are rejected on sight; a failure is Clay and a wait is Amber.",
         "section": "colors"
       },
       {
         "name": "The Stable Rhythm Rule",
-        "body": "Repeating surfaces may carry a decorative cycle — the coverage capsules run Surface Lime → Sage → Pine Deep — but the cycle must key to something that belongs to the item, not to where it currently sits. Keyed to a row's position on a paginated page, the same client wears three different capsules in three minutes and decoration starts reading as data. Audit test: paginate, and every visible item must keep the surface it had.",
+        "body": "Repeating surfaces may carry a decorative cycle — the coverage capsules run Surface Lime → Sage → Pine Deep — but the cycle must key to something that belongs to the item, not to where it currently sits. Keyed to a row's position on a paginated page, the same client wears three different capsules in three minutes and decoration starts reading as data. *Audit test: paginate, and every visible item must keep the surface it had.*",
         "section": "colors"
       },
       {
         "name": "The Latin-Only Serif Rule",
-        "body": "Instrument Serif ships no Cyrillic glyphs, and half this product's audience is Bulgarian. Any interpolated user string set in font-display must gate on hasCyrillic() and fall back to the sans face. Audit test: if a string comes from the database and is set in the serif, it needs the gate.",
+        "body": "Instrument Serif ships no Cyrillic glyphs, and half this product's audience is Bulgarian. Any interpolated user string set in `font-display` **must** gate on `hasCyrillic()` and fall back to the sans face. This applies to agency names, client names, initials, and AI-generated copy alike — not just the greeting. *Audit test: if a string comes from the database and is set in the serif, it needs the gate.*",
         "section": "typography"
       },
       {
@@ -286,56 +382,61 @@
         "section": "typography"
       },
       {
-        "name": "The Closed Ramp Rule",
-        "body": "The documented roles are the ramp. A literal size that is not one of them is drift, not a decision — the app currently carries nineteen distinct literal sizes, which is nineteen ad-hoc values with a ramp described over them. Add a step only when a role genuinely exists and recurs; snap one-offs to the nearest documented size instead.",
-        "section": "typography"
-      },
-      {
         "name": "The Weight Ceiling Rule",
-        "body": "400 and 500 carry the interface; 600 is correct for titles, stat numbers, and section headings. 700 stays unused.",
+        "body": "400 and 500 carry the interface; 600 is correct for titles, stat numbers, and section headings. **700 stays unused.**",
         "section": "typography"
       },
       {
-        "name": "The Two Facts Rule",
-        "body": "A day chip carries two independent facts — is it today, and is it covered — and one must never consume the other. Today is marked with a 2px New Growth rule beneath the chip; the chip's own fill continues to encode published / scheduled / open. The same applies to any bar height encoding volume: an empty state must never render larger than an occupied one.",
-        "section": "components"
+        "name": "The Closed Ramp Rule",
+        "body": "The ten roles above are the ramp, and they are `--text-*` tokens rather than prose — so a size is `text-body` or `text-caption`, never `text-[13px]` and never an inline `fontSize`. A literal that is not a role is drift, not a decision. Add a step only when a role genuinely exists and recurs; snap one-offs to the nearest documented size instead. `src/app/__tests__/type-ramp.test.ts` enforces this, and also asserts that `TYPE_RAMP` in `src/utils/cn.ts` matches the token set exactly — a step missing from that array is silently reclassified as a text *colour* and eats whatever colour precedes it.",
+        "section": "typography"
       },
       {
         "name": "The Resting Surface Rule",
         "body": "Surfaces are at rest by default. Shadow answers state — floating, hovering, focused — never decoration. If two adjacent elements both cast shadow, at least one of them is wrong.",
-        "section": "elevation"
+        "section": "elevation & depth"
       },
       {
         "name": "The Hairline Rule",
-        "body": "Card borders are 0.5px, never 1px. A 1px border on a card is out of system and reads as a different product.",
+        "body": "A card edge is carried by alpha, not weight: `border-ink/[0.05]`, or `border-line` where a divider needs to be slightly more present. A card border that reads as a *line* rather than as an edge is out of system. Never introduce a literal `0.5px` border in new work.",
         "section": "shapes"
+      },
+      {
+        "name": "The Two Facts Rule",
+        "body": "A day chip carries two independent facts — *is it today* and *is it covered* — and one must never consume the other. On a light strip today is a New Growth **plate behind the day**, the date sitting on lime in Pine Deep ink; on a dark strip it is a 2px New Growth rule **beneath** the chip. Either way the chip's own fill continues to encode published / scheduled / open. A lime chip that hides whether today has anything scheduled has spent the loudest colour in the system erasing the answer the strip exists to give. *The 2px rule on a light ground was retired: it measured 1.35:1, so it erased the answer twice over.*",
+        "section": "components"
       }
     ],
     "dos": [
-      "Do use Warm Paper (#f1f0ea) for page grounds and Surface white for cards.",
-      "Do use 0.5px hairlines on cards and dividers; 1px only on inputs.",
-      "Do set every metric in tabular numerals with -0.02em.",
-      "Do gate every interpolated user string set in the serif on hasCyrillic().",
-      "Do give every purely visual data encoding an sr-only sentence, as the coverage strip does.",
-      "Do use cubic-bezier(0.22, 1, 0.36, 1) (--ease-contour) for state transitions.",
+      "Do use Near-White Paper (`#fbfcfa`) for page grounds and Surface white for cards.",
+      "Do carry card and divider edges with low-alpha ink (`border-ink/[0.05]`, `border-line`); reserve full-strength `border-line2` for inputs.",
+      "Do set every metric in tabular numerals with `-0.02em`.",
+      "Do gate every interpolated user string set in the serif on `hasCyrillic()`.",
+      "Do give every purely visual data encoding an `sr-only` sentence, as the coverage strip does.",
+      "Do use `cubic-bezier(0.22, 1, 0.36, 1)` (`--ease-contour`) for state transitions.",
       "Do keep weight at 600 or below.",
-      "Do reserve New Growth lime for the live present."
+      "Do give every lime area a dark passenger — a glyph, a numeral or a word in Forest Ink or Pine Deep.",
+      "Do keep lime to one answer per band: rail, header, field.",
+      "Do colour a client from `CLIENT_COLORS`, hashed on their name, rendered as a tint with the ink darkened into it — the same colour on their avatar, their dot and their calendar pill."
     ],
     "donts": [
       "Don't use pure white for a page background, or a cool grey anywhere.",
-      "Don't introduce a hue outside the botanical ramp — no blues, no blue-500 links, no unrelated fourth chart colour.",
-      "Don't use saturated status colours (green-500, red-500); status is Clay and Amber.",
-      "Don't use font-weight: 700.",
+      "Don't introduce a hue outside the botanical ramp — no `blue-500` links, no unrelated fourth chart colour. `CLIENT_COLORS` is the one exception, and only for identity.",
+      "Don't put a client's *own* detected brand colour into Kontuur's chrome. A brand hex from their website is content: it belongs in a swatch row or a generated post, never on a button, an avatar or a surface.",
+      "Don't render a `CLIENT_COLORS` hue as a solid fill under white text — Sky, Sage and Living Green fail 4.5:1 that way. Tint the ground, darken the ink.",
+      "Don't use saturated status colours (`green-500`, `red-500`); status is Clay and Amber.",
+      "Don't use `font-weight: 700`.",
       "Don't set body text, labels, or buttons in Instrument Serif.",
       "Don't let a tinted surface (Surface Lime, Sage) encode data. They are surfaces; if a colour must carry meaning, it belongs to a status token with a legend.",
-      "Don't let a state signal be carried by position. A row that means 'needs you' must look that way wherever it sits.",
-      "Don't let a decorative tier change under the same item — key the coverage capsule cycle to the client's place in the whole roster, never its row on the current page.",
-      "Don't animate width, height, padding, or margin; transition transform and opacity.",
-      "Don't ship an interactive element without a visible :focus-visible ring.",
-      "Don't put a 1px border on a card.",
-      "Don't set green text on a light ground in Living Green (#2e9e68, 3.38:1) — that is Living Green Text's job (#278658).",
+      "Don't let a *state* signal be carried by position. A row that means \"needs you\" must look that way wherever it sits. Decorative rhythm is the exception below, and it is the only one.",
+      "Don't let a decorative tier change under the same item. The coverage capsules cycle lime → sage → dark, which is rhythm rather than data — so the cycle is keyed to the client's place in the whole roster, never its row on the current page. A client that changes colour when you paginate has turned decoration into a false signal.",
+      "Don't animate `width`, `height`, `padding`, or `margin`; transition `transform` and `opacity`.",
+      "Don't ship an interactive element without a visible `:focus-visible` ring.",
+      "Don't set green text on a light ground in Living Green (`#2e9e68`, 3.38:1) — that is Living Green Text's job (`#278658`).",
       "Don't put lime type on paper or white, at any size.",
-      "Don't use an alpha-reduced ink (ink/55, ink/60) for reading text on a tinted surface."
+      "Don't paint a lime rule, border, dot or underline on a light ground — at 1.35:1 it fails even the 3:1 non-text bar, so it is invisible rather than quiet. Three tempting places this has been tried and rejected: the sticky header's bottom border, the tab rail's active underline, and the route-change progress bar. All three stay Deep Pine.",
+      "Don't use an alpha-reduced ink (`ink/55`, `ink/60`) for reading text on a tinted surface.",
+      "Don't write a literal `0.5px` border in new work — it renders inconsistently across DPRs, which is why Contour carries hairlines with alpha instead."
     ]
   }
 }
