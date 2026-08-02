@@ -80,23 +80,56 @@ const TIMEZONE_DATA: TimezoneEntry[] = [
   { value: 'Pacific/Auckland', city: 'Auckland', region: 'Oceania' },
 ]
 
-function getCurrentOffset(timezone: string): string {
-  return (
-    new Intl.DateTimeFormat('en', {
-      timeZone: timezone,
-      timeZoneName: 'shortOffset',
+/**
+ * Minutes this zone is ahead of UTC, right now.
+ *
+ * Reads the zone's numeric wall-clock parts rather than `timeZoneName`, because
+ * only the numbers are stable across ICU builds — see `formatOffset`.
+ */
+function getOffsetMinutes(timeZone: string, now: Date): number {
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat('en-US', {
+      timeZone,
+      hour12: false,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
     })
-      .formatToParts(new Date())
-      .find((p) => p.type === 'timeZoneName')?.value ?? 'UTC'
+      .formatToParts(now)
+      .map((p) => [p.type, p.value])
   )
+
+  const wallClock = Date.UTC(
+    Number(parts.year),
+    Number(parts.month) - 1,
+    Number(parts.day),
+    // ICU renders midnight as hour 24 in some builds; both forms mean 0.
+    Number(parts.hour) % 24,
+    Number(parts.minute)
+  )
+  // Seconds are dropped from both sides so the difference lands on a whole minute.
+  return Math.round((wallClock - Math.floor(now.getTime() / 60000) * 60000) / 60000)
 }
 
-function getOffsetMinutes(timezone: string): number {
-  const label = getCurrentOffset(timezone) // e.g. "GMT+5:30", "GMT-5", "UTC"
-  const match = label.match(/([+-])(\d+)(?::(\d+))?/)
-  if (!match) return 0
-  const sign = match[1] === '+' ? 1 : -1
-  return sign * (parseInt(match[2]!) * 60 + parseInt(match[3] ?? '0'))
+/**
+ * "GMT", "GMT+5:30", "GMT-8" — formatted here rather than taken from Intl.
+ *
+ * `timeZoneName: 'shortOffset'` is a *display name*, and its rendering differs
+ * between ICU builds: at zero offset Node emits "GMT" while browsers emit
+ * "GMT+0". Server and client therefore disagreed on the UTC option's label,
+ * which React reported as a hydration mismatch on the timezone <select>.
+ */
+function formatOffset(minutes: number): string {
+  if (minutes === 0) return 'GMT'
+  const sign = minutes < 0 ? '-' : '+'
+  const abs = Math.abs(minutes)
+  const hours = Math.floor(abs / 60)
+  const rest = abs % 60
+  return rest === 0
+    ? `GMT${sign}${hours}`
+    : `GMT${sign}${hours}:${String(rest).padStart(2, '0')}`
 }
 
 const REGION_ORDER = [
@@ -109,22 +142,39 @@ const REGION_ORDER = [
   'Oceania',
 ]
 
-function buildTimezoneOptions(): { region: string; options: { value: string; label: string }[] }[] {
-  const withOffsets = TIMEZONE_DATA.map((tz) => ({
-    ...tz,
-    offsetMinutes: getOffsetMinutes(tz.value),
-    offsetLabel: getCurrentOffset(tz.value),
-  })).sort((a, b) => a.offsetMinutes - b.offsetMinutes)
+interface TimezoneGroup {
+  region: string
+  options: { value: string; label: string }[]
+}
+
+function buildTimezoneOptions(now: Date): TimezoneGroup[] {
+  const withOffsets = TIMEZONE_DATA.map((tz) => {
+    const offsetMinutes = getOffsetMinutes(tz.value, now)
+    return { ...tz, offsetMinutes, offsetLabel: formatOffset(offsetMinutes) }
+  }).sort((a, b) => a.offsetMinutes - b.offsetMinutes)
 
   return REGION_ORDER.map((region) => ({
     region,
     options: withOffsets
       .filter((tz) => tz.region === region)
-      .map((tz) => ({
-        value: tz.value,
-        label: `(${tz.offsetLabel}) ${tz.city}`,
-      })),
+      .map((tz) => ({ value: tz.value, label: `(${tz.offsetLabel}) ${tz.city}` })),
   }))
 }
 
-export const GROUPED_TIMEZONES = buildTimezoneOptions()
+let cache: { day: string; groups: TimezoneGroup[] } | null = null
+
+/**
+ * Timezone options grouped by region, offsets current as of today.
+ *
+ * Deliberately a function rather than a module constant. A constant is evaluated
+ * once when the module is imported — on the server that is process boot, which
+ * may be weeks before a given request, so the offsets it captured go stale the
+ * next time a zone changes for DST and stop matching what the browser computes.
+ * Memoised per UTC day, so a long-lived server still pays this once a day.
+ */
+export function getGroupedTimezones(): TimezoneGroup[] {
+  const now = new Date()
+  const day = now.toISOString().slice(0, 10)
+  if (cache?.day !== day) cache = { day, groups: buildTimezoneOptions(now) }
+  return cache.groups
+}

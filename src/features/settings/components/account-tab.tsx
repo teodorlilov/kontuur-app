@@ -9,7 +9,7 @@ import { StatusPill } from '@/components/ui/status-pill'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import { toast } from '@/components/ui/toast'
-import { GROUPED_TIMEZONES } from '@/lib/timezones'
+import { getGroupedTimezones } from '@/lib/timezones'
 import type { AgencyInfo } from '@/types/api'
 
 interface AccountTabProps {
@@ -89,7 +89,7 @@ export function AccountTab({ agency, currentUserRole }: AccountTabProps) {
             value={timezone}
             onChange={(e) => setTimezone(e.target.value)}
             disabled={!isAdmin}
-            options={GROUPED_TIMEZONES.flatMap((group) => group.options.map((o) => ({ ...o })))}
+            options={getGroupedTimezones().flatMap((group) => group.options)}
           />
         </Field>
       </FormSection>
