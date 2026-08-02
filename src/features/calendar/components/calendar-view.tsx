@@ -72,7 +72,8 @@ function ApprovalButton({
         className={cn(
           TOOL_ROW,
           'text-caption',
-          isDisabled && 'cursor-not-allowed text-text3 opacity-60 hover:bg-transparent hover:text-text3'
+          isDisabled &&
+            'cursor-not-allowed text-text3 opacity-60 hover:bg-transparent hover:text-text3'
         )}
       >
         <Icon className="size-3.5 shrink-0" />
@@ -81,9 +82,7 @@ function ApprovalButton({
 
       {pickerOpen && clients.length > 1 && (
         <div className="absolute right-0 top-9 z-30 min-w-[180px] rounded-panel border border-line bg-surface py-1 shadow-pop">
-          <p className="px-3 py-1.5 text-label font-semibold uppercase text-text3">
-            Select client
-          </p>
+          <p className="px-3 py-1.5 text-label font-semibold uppercase text-text3">Select client</p>
           {clients.map((c) => (
             <button
               key={c.id}
@@ -101,8 +100,18 @@ function ApprovalButton({
 }
 
 const MONTH_NAMES = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December',
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
 ]
 
 /** Month navigation, inline with the title it moves. */
@@ -166,16 +175,18 @@ export function CalendarView({ initialPosts, clients }: CalendarViewProps) {
   }, [searchParams, router])
 
   const filteredUnscheduled = useMemo(
-    () => selectedClientId
-      ? unscheduledPosts.filter((p) => p.client_id === selectedClientId)
-      : unscheduledPosts,
-    [unscheduledPosts, selectedClientId],
+    () =>
+      selectedClientId
+        ? unscheduledPosts.filter((p) => p.client_id === selectedClientId)
+        : unscheduledPosts,
+    [unscheduledPosts, selectedClientId]
   )
   const filteredScheduled = useMemo(
-    () => selectedClientId
-      ? scheduledPosts.filter((p) => p.client_id === selectedClientId)
-      : scheduledPosts,
-    [scheduledPosts, selectedClientId],
+    () =>
+      selectedClientId
+        ? scheduledPosts.filter((p) => p.client_id === selectedClientId)
+        : scheduledPosts,
+    [scheduledPosts, selectedClientId]
   )
 
   // Active post — search all posts so both grid and panel clicks work
@@ -197,11 +208,14 @@ export function CalendarView({ initialPosts, clients }: CalendarViewProps) {
     setCardOpen(true)
   }, [])
 
-  const handleUnschedule = useCallback((postId: string) => {
-    void unschedulePost(postId)
-    setCardOpen(false)
-    setActivePostId(null)
-  }, [unschedulePost])
+  const handleUnschedule = useCallback(
+    (postId: string) => {
+      void unschedulePost(postId)
+      setCardOpen(false)
+      setActivePostId(null)
+    },
+    [unschedulePost]
+  )
 
   const closeCard = useCallback(() => {
     setCardOpen(false)
@@ -309,7 +323,9 @@ export function CalendarView({ initialPosts, clients }: CalendarViewProps) {
                 clients={currentWeekClients}
                 pickerOpen={copyLinkPicker}
                 onTogglePicker={() => setCopyLinkPicker((v: boolean) => !v)}
-                onSelectClient={(id) => { void handleCopyLink(id) }}
+                onSelectClient={(id) => {
+                  void handleCopyLink(id)
+                }}
               />
               <ApprovalButton
                 icon={Mail}
@@ -321,7 +337,9 @@ export function CalendarView({ initialPosts, clients }: CalendarViewProps) {
                 clients={currentWeekClients}
                 pickerOpen={emailPicker}
                 onTogglePicker={() => setEmailPicker((v: boolean) => !v)}
-                onSelectClient={(id) => { void handleEmailClient(id) }}
+                onSelectClient={(id) => {
+                  void handleEmailClient(id)
+                }}
               />
             </>
           ) : null
@@ -390,8 +408,12 @@ export function CalendarView({ initialPosts, clients }: CalendarViewProps) {
         onSchedule={handleSchedule}
         onUnschedule={handleUnschedule}
         onSkip={handleSkip}
-        onDelete={(id) => { void handleDeletePost(id) }}
-        onSendApproval={(id) => { void handleSendApproval(id) }}
+        onDelete={(id) => {
+          void handleDeletePost(id)
+        }}
+        onSendApproval={(id) => {
+          void handleSendApproval(id)
+        }}
         approvalSending={approvalSending}
         isScheduling={saving}
         editMode={editMode}

@@ -82,6 +82,7 @@ export const DayCell = memo(function DayCell({
       {/* Day number */}
       {today ? (
         <div
+          className="text-label tracking-normal"
           style={{
             width: 20,
             height: 20,
@@ -93,7 +94,6 @@ export const DayCell = memo(function DayCell({
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            fontSize: 10,
             fontWeight: 500,
             flexShrink: 0,
             marginBottom: 2,
@@ -103,8 +103,8 @@ export const DayCell = memo(function DayCell({
         </div>
       ) : (
         <div
+          className="text-micro"
           style={{
-            fontSize: 11,
             fontWeight: 500,
             color: isOtherMonth ? 'var(--text3)' : 'var(--ink)',
             lineHeight: 1,
@@ -119,21 +119,14 @@ export const DayCell = memo(function DayCell({
       {/* Post event pills */}
       {posts.slice(0, MAX_VISIBLE).map((post) => {
         const style = getClientStyle(post.client_id)
-        return (
-          <PostEventPill
-            key={post.id}
-            post={post}
-            onPostClick={onPostClick}
-            {...style}
-          />
-        )
+        return <PostEventPill key={post.id} post={post} onPostClick={onPostClick} {...style} />
       })}
 
       {/* Overflow badge */}
       {posts.length > MAX_VISIBLE && (
         <div
+          className="text-label tracking-normal"
           style={{
-            fontSize: 9,
             color: 'var(--text2)',
             background: 'var(--sunken)',
             padding: '1px 4px',

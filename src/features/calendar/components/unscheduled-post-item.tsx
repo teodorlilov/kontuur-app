@@ -12,7 +12,11 @@ interface UnscheduledPostItemProps {
 }
 
 /** Single row in the unscheduled slide panel. */
-export const UnscheduledPostItem = memo(function UnscheduledPostItem({ post, isActive, onClick }: UnscheduledPostItemProps) {
+export const UnscheduledPostItem = memo(function UnscheduledPostItem({
+  post,
+  isActive,
+  onClick,
+}: UnscheduledPostItemProps) {
   const pillarColor = post.pillar ? getPillarColor(post.pillar).hex : 'var(--text2)'
   const score = post.quality_score_avg ?? 0
 
@@ -62,16 +66,14 @@ export const UnscheduledPostItem = memo(function UnscheduledPostItem({ post, isA
               flexShrink: 0,
             }}
           />
-          <span style={{ fontSize: 11, fontWeight: 500, color: 'var(--ink)' }}>
-            {post.client_name}
-          </span>
+          <span className="text-micro font-medium text-ink">{post.client_name}</span>
           {post.priority && (
             <span
+              className="text-label tracking-normal"
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: 3,
-                fontSize: 9,
                 fontWeight: 500,
                 padding: '1px 6px',
                 borderRadius: 3,
@@ -84,10 +86,15 @@ export const UnscheduledPostItem = memo(function UnscheduledPostItem({ post, isA
           )}
         </div>
         <span
+          className="text-micro"
           style={{
-            fontSize: 11,
             fontWeight: 500,
-            color: score >= 9 ? 'var(--spring-text)' : score >= 7 ? 'var(--spring-text)' : 'var(--danger)',
+            color:
+              score >= 9
+                ? 'var(--spring-text)'
+                : score >= 7
+                  ? 'var(--spring-text)'
+                  : 'var(--danger)',
           }}
         >
           {score}/10
@@ -95,7 +102,7 @@ export const UnscheduledPostItem = memo(function UnscheduledPostItem({ post, isA
       </div>
 
       {/* Row 2: pillar + type */}
-      <div style={{ fontSize: 10, color: 'var(--text2)', marginBottom: 4 }}>
+      <div className="text-label tracking-normal text-text2" style={{ marginBottom: 4 }}>
         {post.pillar ?? 'No pillar'}
         {' · '}
         {post.post_type === 'carousel'
@@ -105,8 +112,8 @@ export const UnscheduledPostItem = memo(function UnscheduledPostItem({ post, isA
 
       {/* Row 3: caption preview */}
       <div
+        className="text-micro"
         style={{
-          fontSize: 11,
           color: 'var(--text2)',
           lineHeight: 1.45,
           display: '-webkit-box',
@@ -123,8 +130,8 @@ export const UnscheduledPostItem = memo(function UnscheduledPostItem({ post, isA
       <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
         {post.platform && (
           <span
+            className="text-label tracking-normal"
             style={{
-              fontSize: 9,
               fontWeight: 500,
               padding: '2px 6px',
               borderRadius: 3,
@@ -136,8 +143,8 @@ export const UnscheduledPostItem = memo(function UnscheduledPostItem({ post, isA
           </span>
         )}
         <span
+          className="text-label tracking-normal"
           style={{
-            fontSize: 9,
             fontWeight: 500,
             padding: '2px 6px',
             borderRadius: 3,
@@ -147,7 +154,7 @@ export const UnscheduledPostItem = memo(function UnscheduledPostItem({ post, isA
         >
           {post.post_type === 'carousel' ? 'Carousel' : 'Single'}
         </span>
-        <span style={{ fontSize: 10, color: 'var(--text3)', marginLeft: 'auto' }}>
+        <span className="text-label tracking-normal text-text3" style={{ marginLeft: 'auto' }}>
           {timeAgo(post.created_at)}
         </span>
       </div>

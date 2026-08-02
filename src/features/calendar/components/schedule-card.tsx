@@ -53,18 +53,13 @@ interface ScheduleCardProps {
   onImageDeleted: (postId: string, imageId: string) => void
 }
 
-const SECTION_LABEL_STYLE: React.CSSProperties = {
-  fontSize: 9,
-  fontWeight: 500,
-  color: 'var(--text2)',
-  letterSpacing: '1px',
-  textTransform: 'uppercase',
-  display: 'block',
-  marginBottom: 6,
-}
+/** The uppercase section label, as DESIGN.md's Label role. Tracking is on the token. */
+const SECTION_LABEL = 'block mb-1.5 text-label font-semibold uppercase text-text2'
+/** Same role where the caller supplies its own display/margin. */
+const SECTION_LABEL_BARE = 'text-label font-semibold uppercase text-text2'
 
 const CAPTION_CONTAINER_STYLE = {
-  fontSize: 13,
+  fontSize: 'var(--text-body)',
   color: 'var(--ink)',
   lineHeight: 1.6,
   background: 'rgba(15,21,18,0.025)',
@@ -163,32 +158,39 @@ export const ScheduleCard = memo(function ScheduleCard({
 
   // Delegate merging to the calendar state hook (functional updates) — computing the merged array
   // here from a captured `post` snapshot loses images when concurrent generations complete.
-  const handleImageUploaded = useCallback((image: PostImage) => {
-    if (!post) return
-    onImageUpserted(post.id, image)
-  }, [post, onImageUpserted])
+  const handleImageUploaded = useCallback(
+    (image: PostImage) => {
+      if (!post) return
+      onImageUpserted(post.id, image)
+    },
+    [post, onImageUpserted]
+  )
 
-  const handleImageDeleted = useCallback((imageId: string) => {
-    if (!post) return
-    onImageDeleted(post.id, imageId)
-  }, [post, onImageDeleted])
+  const handleImageDeleted = useCallback(
+    (imageId: string) => {
+      if (!post) return
+      onImageDeleted(post.id, imageId)
+    },
+    [post, onImageDeleted]
+  )
 
   const getSlideCopy = useCallback(
     (position: number) =>
       post
         ? slideCopyAt(
-            { post_type: post.post_type, slides_json: post.slides_json, caption: post.caption ?? null },
+            {
+              post_type: post.post_type,
+              slides_json: post.slides_json,
+              caption: post.caption ?? null,
+            },
             position
           )
         : null,
     [post]
   )
 
-  const { generatingPositions, composingPositions, generate, recompose, applyStyle } = useGenerateVisuals(
-    post?.id ?? '',
-    handleImageUploaded,
-    getSlideCopy
-  )
+  const { generatingPositions, composingPositions, generate, recompose, applyStyle } =
+    useGenerateVisuals(post?.id ?? '', handleImageUploaded, getSlideCopy)
   const [editingPosition, setEditingPosition] = useState<number | null>(null)
 
   if (!isOpen || !post) return null
@@ -199,7 +201,9 @@ export const ScheduleCard = memo(function ScheduleCard({
   const isScheduled = currentPost.status === 'scheduled'
   const isPublished = currentPost.status === 'published'
   const isFailed = currentPost.status === 'failed'
-  const slides = Array.isArray(currentPost.slides_json) ? (currentPost.slides_json as CarouselSlide[]) : []
+  const slides = Array.isArray(currentPost.slides_json)
+    ? (currentPost.slides_json as CarouselSlide[])
+    : []
   const isCarousel = currentPost.post_type === 'carousel'
   const totalImageSlots = isCarousel ? slides.length : 1
   const missingPositions = missingImagePositions(images, totalImageSlots, generatingPositions)
@@ -280,7 +284,8 @@ export const ScheduleCard = memo(function ScheduleCard({
     )
   }
 
-  const editingImage = editingPosition !== null ? images.find((img) => img.position === editingPosition) : undefined
+  const editingImage =
+    editingPosition !== null ? images.find((img) => img.position === editingPosition) : undefined
 
   return (
     <div
@@ -332,12 +337,8 @@ export const ScheduleCard = memo(function ScheduleCard({
             {/* Sans, not the display serif: client names may be Cyrillic and
                 Instrument Serif has no Cyrillic glyphs. */}
             <div
-              style={{
-                fontSize: 19,
-                fontWeight: 600,
-                letterSpacing: '-0.01em',
-                color: 'var(--ink)',
-              }}
+              className="text-display font-semibold text-ink"
+              style={{ letterSpacing: '-0.01em' }}
             >
               {currentPost.client_name}
             </div>
@@ -348,7 +349,7 @@ export const ScheduleCard = memo(function ScheduleCard({
                   <NavBtn onClick={onPrev} disabled={postIndex === 0}>
                     <ChevronLeft style={{ width: 12, height: 12 }} />
                   </NavBtn>
-                  <span style={{ fontSize: 10, color: 'var(--text2)' }}>
+                  <span className="text-label tracking-normal text-text2">
                     {postIndex + 1} of {totalPosts}
                   </span>
                   <NavBtn onClick={onNext} disabled={postIndex === totalPosts - 1}>
@@ -380,10 +381,34 @@ export const ScheduleCard = memo(function ScheduleCard({
           {/* Tag pills */}
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
             <TagPill
-              bg={isPublished ? 'rgba(46,158,104,0.12)' : isFailed ? 'rgba(180,50,50,0.12)' : isScheduled ? 'var(--marker)' : 'rgba(15,21,18,0.06)'}
-              color={isPublished ? 'var(--forest)' : isFailed ? 'var(--danger)' : isScheduled ? 'var(--forest-deep)' : 'var(--text2)'}
+              bg={
+                isPublished
+                  ? 'rgba(46,158,104,0.12)'
+                  : isFailed
+                    ? 'rgba(180,50,50,0.12)'
+                    : isScheduled
+                      ? 'var(--marker)'
+                      : 'rgba(15,21,18,0.06)'
+              }
+              color={
+                isPublished
+                  ? 'var(--forest)'
+                  : isFailed
+                    ? 'var(--danger)'
+                    : isScheduled
+                      ? 'var(--forest-deep)'
+                      : 'var(--text2)'
+              }
             >
-              {isPublished ? 'Published' : isFailed ? 'Failed' : currentPost.status === 'publishing' ? 'Publishing' : isScheduled ? 'Scheduled' : 'Unscheduled'}
+              {isPublished
+                ? 'Published'
+                : isFailed
+                  ? 'Failed'
+                  : currentPost.status === 'publishing'
+                    ? 'Publishing'
+                    : isScheduled
+                      ? 'Scheduled'
+                      : 'Unscheduled'}
             </TagPill>
             {/* Priority is attention, so Amber — it was a terracotta wash under
                 green ink, because --color-terracotta aliased to --spring. */}
@@ -398,13 +423,17 @@ export const ScheduleCard = memo(function ScheduleCard({
               </TagPill>
             )}
             {currentPost.platform && (
-              <TagPill bg="rgba(44,111,165,0.10)" color="var(--forest)">{currentPost.platform}</TagPill>
+              <TagPill bg="rgba(44,111,165,0.10)" color="var(--forest)">
+                {currentPost.platform}
+              </TagPill>
             )}
             <TagPill bg="rgba(15,21,18,0.06)" color="var(--text2)">
               {isCarousel ? `Carousel \u00B7 ${slides.length} slides` : 'Single image'}
             </TagPill>
             <TagPill
-              bg={score >= 9 ? 'var(--wash)' : score >= 7 ? 'var(--pending-bg)' : 'var(--danger-bg)'}
+              bg={
+                score >= 9 ? 'var(--wash)' : score >= 7 ? 'var(--pending-bg)' : 'var(--danger-bg)'
+              }
               color={score >= 9 ? 'var(--forest)' : score >= 7 ? 'var(--pending)' : 'var(--danger)'}
             >
               {score}/10
@@ -417,13 +446,15 @@ export const ScheduleCard = memo(function ScheduleCard({
             {currentPost.approval_status === 'approved' && (
               <TagPill bg="rgba(46,158,104,0.12)" color="var(--forest)">
                 ✓ Client approved
-                {currentPost.approval_responded_at && ` · ${formatRelativeTime(parseTimestamp(currentPost.approval_responded_at))}`}
+                {currentPost.approval_responded_at &&
+                  ` · ${formatRelativeTime(parseTimestamp(currentPost.approval_responded_at))}`}
               </TagPill>
             )}
             {currentPost.approval_status === 'changes_requested' && (
               <TagPill bg="rgba(22,68,48,0.10)" color="var(--forest)">
                 ◻ Changes requested
-                {currentPost.approval_responded_at && ` · ${formatRelativeTime(parseTimestamp(currentPost.approval_responded_at))}`}
+                {currentPost.approval_responded_at &&
+                  ` · ${formatRelativeTime(parseTimestamp(currentPost.approval_responded_at))}`}
               </TagPill>
             )}
             {editMode && (
@@ -435,7 +466,10 @@ export const ScheduleCard = memo(function ScheduleCard({
         </div>
 
         {/* Card body — two columns on desktop, stacked & scrollable on mobile */}
-        <div className="flex flex-col md:flex-row overflow-y-auto md:overflow-hidden" style={{ flex: 1, minHeight: 0 }}>
+        <div
+          className="flex flex-col md:flex-row overflow-y-auto md:overflow-hidden"
+          style={{ flex: 1, minHeight: 0 }}
+        >
           {/* Left: caption + slides + schedule form */}
           <div
             className="md:border-r md:border-[rgba(15,21,18,0.07)] md:overflow-y-auto"
@@ -448,7 +482,8 @@ export const ScheduleCard = memo(function ScheduleCard({
             }}
           >
             {/* Client response */}
-            {(currentPost.approval_status === 'approved' || currentPost.approval_status === 'changes_requested') && (
+            {(currentPost.approval_status === 'approved' ||
+              currentPost.approval_status === 'changes_requested') && (
               <ClientResponseCard
                 approvalStatus={currentPost.approval_status}
                 clientNote={currentPost.approval_client_note}
@@ -460,17 +495,15 @@ export const ScheduleCard = memo(function ScheduleCard({
             {/* Caption */}
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                <span style={{ ...SECTION_LABEL_STYLE, display: undefined, marginBottom: undefined }}>
-                  Caption
-                </span>
+                <span className={SECTION_LABEL_BARE}>Caption</span>
                 <button
+                  className="text-label tracking-normal"
                   type="button"
                   onClick={handleCopyCaption}
                   style={{
                     display: 'flex',
                     alignItems: 'center',
                     gap: 3,
-                    fontSize: 10,
                     color: 'var(--text2)',
                     background: 'none',
                     border: 'none',
@@ -506,15 +539,19 @@ export const ScheduleCard = memo(function ScheduleCard({
             {/* Carousel slides */}
             {isCarousel && slides.length > 0 && (
               <div>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <span style={SECTION_LABEL_STYLE}>Carousel slides</span>
+                <div
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
+                >
+                  <span className={SECTION_LABEL}>Carousel slides</span>
                   {canGenerateVisuals && slotsWithoutImage > 0 && (
                     <button
+                      className="text-label tracking-normal"
                       type="button"
-                      onClick={() => { void generate(missingPositions) }}
+                      onClick={() => {
+                        void generate(missingPositions)
+                      }}
                       disabled={missingPositions.length === 0}
                       style={{
-                        fontSize: 10,
                         fontWeight: 500,
                         color: 'var(--spring-text)',
                         background: 'none',
@@ -549,7 +586,13 @@ export const ScheduleCard = memo(function ScheduleCard({
                   onImageUploaded={handleImageUploaded}
                   onImageDeleted={handleImageDeleted}
                   canvaConnected={canvaConnected}
-                  onGenerateImage={canGenerateVisuals ? (position) => { void generate([position]) } : undefined}
+                  onGenerateImage={
+                    canGenerateVisuals
+                      ? (position) => {
+                          void generate([position])
+                        }
+                      : undefined
+                  }
                   generatingPositions={generatingPositions}
                   composingPositions={composingPositions}
                   onEditImage={canGenerateVisuals ? setEditingPosition : undefined}
@@ -560,7 +603,7 @@ export const ScheduleCard = memo(function ScheduleCard({
             {/* Single post image slot */}
             {!isCarousel && (
               <div>
-                <span style={SECTION_LABEL_STYLE}>Image</span>
+                <span className={SECTION_LABEL}>Image</span>
                 <ImageSlot
                   postId={currentPost.id}
                   position={0}
@@ -568,7 +611,13 @@ export const ScheduleCard = memo(function ScheduleCard({
                   onUploaded={handleImageUploaded}
                   onDeleted={handleImageDeleted}
                   canvaConnected={canvaConnected}
-                  onGenerate={canGenerateVisuals ? () => { void generate([0]) } : undefined}
+                  onGenerate={
+                    canGenerateVisuals
+                      ? () => {
+                          void generate([0])
+                        }
+                      : undefined
+                  }
                   generating={generatingPositions.includes(0)}
                   composing={composingPositions.includes(0)}
                   onEdit={canGenerateVisuals ? () => setEditingPosition(0) : undefined}
@@ -596,8 +645,12 @@ export const ScheduleCard = memo(function ScheduleCard({
         {/* Card footer — edit mode vs normal */}
         {editMode ? (
           <EditModeFooter
-            onSave={() => { void handleSaveOnly() }}
-            onSaveAndResend={() => { void handleSaveAndResendApproval() }}
+            onSave={() => {
+              void handleSaveOnly()
+            }}
+            onSaveAndResend={() => {
+              void handleSaveAndResendApproval()
+            }}
             onCancel={() => onExitEditMode?.()}
             saving={savingContent}
           />
@@ -617,7 +670,9 @@ export const ScheduleCard = memo(function ScheduleCard({
             onSkip={onSkip}
             onSendApproval={onSendApproval}
             onDelete={onDelete}
-            onPublishNow={() => { void handlePublishNow() }}
+            onPublishNow={() => {
+              void handlePublishNow()
+            }}
           />
         )}
       </div>
@@ -626,7 +681,9 @@ export const ScheduleCard = memo(function ScheduleCard({
           target={{ kind: 'post', postId: currentPost.id, position: editingPosition }}
           image={{ publicUrl: editingImage.publicUrl, storagePath: editingImage.storagePath }}
           slideCopy={getSlideCopy(editingPosition)}
-          slideLabel={isCarousel ? `Slide ${editingPosition + 1} of ${totalImageSlots}` : 'Post visual'}
+          slideLabel={
+            isCarousel ? `Slide ${editingPosition + 1} of ${totalImageSlots}` : 'Post visual'
+          }
           onClose={() => setEditingPosition(null)}
           onSaved={handleImageUploaded}
           onApplyToAll={
@@ -701,12 +758,11 @@ function TagPill({
   const isTwText = color.startsWith('text-')
   return (
     <span
-      className={cn(isTwBg && bg, isTwText && color)}
+      className={cn('text-label tracking-normal', isTwBg && bg, isTwText && color)}
       style={{
         display: 'inline-flex',
         alignItems: 'center',
         gap: 4,
-        fontSize: 10,
         fontWeight: 500,
         padding: '3px 8px',
         borderRadius: 5,
@@ -715,7 +771,9 @@ function TagPill({
       }}
     >
       {dot && (
-        <span style={{ width: 5, height: 5, borderRadius: '50%', background: dot, flexShrink: 0 }} />
+        <span
+          style={{ width: 5, height: 5, borderRadius: '50%', background: dot, flexShrink: 0 }}
+        />
       )}
       {children}
     </span>
@@ -724,10 +782,19 @@ function TagPill({
 
 /** Date/time/platform scheduling form. */
 function ScheduleForm({
-  date, time, platform, onDateChange, onTimeChange, onPlatformChange,
+  date,
+  time,
+  platform,
+  onDateChange,
+  onTimeChange,
+  onPlatformChange,
 }: {
-  date: string; time: string; platform: string
-  onDateChange: (v: string) => void; onTimeChange: (v: string) => void; onPlatformChange: (v: string) => void
+  date: string
+  time: string
+  platform: string
+  onDateChange: (v: string) => void
+  onTimeChange: (v: string) => void
+  onPlatformChange: (v: string) => void
 }) {
   return (
     <div
@@ -740,23 +807,41 @@ function ScheduleForm({
       }}
     >
       <div style={{ display: 'flex', gap: 10 }}>
-        <ScheduleInput id="card-date" label="Date" type="date" value={date} onChange={onDateChange} min={new Date().toISOString().slice(0, 10)} />
-        <ScheduleInput id="card-time" label="Time" type="time" value={time} onChange={onTimeChange} />
+        <ScheduleInput
+          id="card-date"
+          label="Date"
+          type="date"
+          value={date}
+          onChange={onDateChange}
+          min={new Date().toISOString().slice(0, 10)}
+        />
+        <ScheduleInput
+          id="card-time"
+          label="Time"
+          type="time"
+          value={time}
+          onChange={onTimeChange}
+        />
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-        <span style={{ fontSize: 10, fontWeight: 500, color: 'var(--text2)' }}>Platform</span>
+        <span className="text-label tracking-normal font-medium text-text2">Platform</span>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
           {PLATFORMS.map((p) => (
             <button
               key={p}
               type="button"
               onClick={() => onPlatformChange(p)}
+              className="text-label tracking-normal"
               style={{
-                fontSize: 10, padding: '5px 10px', borderRadius: 5,
+                padding: '5px 10px',
+                borderRadius: 5,
                 border: platform === p ? 'none' : '1px solid var(--line2)',
                 background: platform === p ? 'var(--forest)' : '#fff',
                 color: platform === p ? '#f2f5f1' : 'var(--text2)',
-                cursor: 'pointer', fontFamily: 'inherit', fontWeight: 500, transition: 'all 0.15s',
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+                fontWeight: 500,
+                transition: 'all 0.15s',
               }}
             >
               {p}
@@ -768,18 +853,40 @@ function ScheduleForm({
   )
 }
 
-function ScheduleInput({ id, label, type, value, onChange, min }: {
-  id: string; label: string; type: string; value: string; onChange: (v: string) => void; min?: string
+function ScheduleInput({
+  id,
+  label,
+  type,
+  value,
+  onChange,
+  min,
+}: {
+  id: string
+  label: string
+  type: string
+  value: string
+  onChange: (v: string) => void
+  min?: string
 }) {
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
-      <label htmlFor={id} style={{ fontSize: 10, fontWeight: 500, color: 'var(--text2)' }}>{label}</label>
+      <label htmlFor={id} className="text-label tracking-normal font-medium text-text2">
+        {label}
+      </label>
       <input
-        id={id} type={type} value={value} min={min}
+        id={id}
+        type={type}
+        value={value}
+        min={min}
         onChange={(e) => onChange(e.target.value)}
+        className="text-lead md:text-caption"
         style={{
-          fontSize: 12, border: '1px solid var(--line2)', borderRadius: 7,
-          padding: '7px 10px', fontFamily: 'inherit', outline: 'none', color: 'var(--ink)',
+          border: '1px solid var(--line2)',
+          borderRadius: 7,
+          padding: '7px 10px',
+          fontFamily: 'inherit',
+          outline: 'none',
+          color: 'var(--ink)',
         }}
       />
     </div>
@@ -787,8 +894,14 @@ function ScheduleInput({ id, label, type, value, onChange, min }: {
 }
 
 /** Right-hand sidebar with quality scores and source info. */
-function QualitySidebar({ score, validation, currentPost }: {
-  score: number; validation: StoredValidation | null; currentPost: CalendarPost
+function QualitySidebar({
+  score,
+  validation,
+  currentPost,
+}: {
+  score: number
+  validation: StoredValidation | null
+  currentPost: CalendarPost
 }) {
   return (
     <div
@@ -796,8 +909,18 @@ function QualitySidebar({ score, validation, currentPost }: {
       style={{ flexShrink: 0, padding: 18, display: 'flex', flexDirection: 'column', gap: 14 }}
     >
       <div style={{ textAlign: 'center' }}>
-        <span style={{ ...SECTION_LABEL_STYLE, marginBottom: 4 }}>Quality</span>
-        <span style={{ fontSize: 28, fontWeight: 600, color: score >= 9 ? 'var(--spring-text)' : score >= 7 ? 'var(--spring-text)' : 'var(--danger)' }}>
+        <span className={cn(SECTION_LABEL_BARE, 'block mb-1')}>Quality</span>
+        <span
+          className="text-metric font-semibold"
+          style={{
+            color:
+              score >= 9
+                ? 'var(--spring-text)'
+                : score >= 7
+                  ? 'var(--spring-text)'
+                  : 'var(--danger)',
+          }}
+        >
           {score}
         </span>
       </div>
@@ -807,7 +930,14 @@ function QualitySidebar({ score, validation, currentPost }: {
       {validation?.criteria.issues && validation.criteria.issues.length > 0 && (
         <div style={{ background: 'rgba(46,158,104,0.08)', borderRadius: 8, padding: '10px 12px' }}>
           {validation.criteria.issues.map((issue, i) => (
-            <p key={i} style={{ fontSize: 11, color: 'var(--spring-text)', lineHeight: 1.5, marginBottom: i < validation.criteria.issues.length - 1 ? 6 : 0 }}>
+            <p
+              key={i}
+              className="text-micro text-spring-text"
+              style={{
+                lineHeight: 1.5,
+                marginBottom: i < validation.criteria.issues.length - 1 ? 6 : 0,
+              }}
+            >
               &ldquo;{issue.description}&rdquo;
             </p>
           ))}
@@ -816,17 +946,34 @@ function QualitySidebar({ score, validation, currentPost }: {
 
       {currentPost.source_title && (
         <div>
-          <span style={SECTION_LABEL_STYLE}>Source</span>
-          <p style={{ fontSize: 11, fontWeight: 500, color: 'var(--ink)', marginBottom: 4 }}>
-            {currentPost.source_type ? `${currentPost.source_type} \u00B7 ` : ''}{currentPost.source_title}
+          <span className={SECTION_LABEL}>Source</span>
+          <p className="text-micro font-medium text-ink" style={{ marginBottom: 4 }}>
+            {currentPost.source_type ? `${currentPost.source_type} \u00B7 ` : ''}
+            {currentPost.source_title}
           </p>
           {currentPost.source_excerpt && (
-            <p style={{ fontSize: 11, color: 'var(--text2)', lineHeight: 1.45, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden', marginBottom: 6 }}>
+            <p
+              className="text-micro text-text2"
+              style={{
+                lineHeight: 1.45,
+                display: '-webkit-box',
+                WebkitLineClamp: 3,
+                WebkitBoxOrient: 'vertical',
+                overflow: 'hidden',
+                marginBottom: 6,
+              }}
+            >
               {currentPost.source_excerpt}
             </p>
           )}
           {currentPost.source_url && (
-            <a href={currentPost.source_url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: 'var(--spring-text)', textDecoration: 'none' }}>
+            <a
+              href={currentPost.source_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-micro"
+              style={{ color: 'var(--spring-text)', textDecoration: 'none' }}
+            >
               Verify on Google &rarr;
             </a>
           )}
@@ -838,41 +985,98 @@ function QualitySidebar({ score, validation, currentPost }: {
 
 /** Footer buttons for the normal (non-edit) mode. */
 function NormalFooter({
-  date, isScheduled, isPublished, isScheduling, currentPost, images, publishing, publishError,
-  approvalSending, onSchedule, onUnschedule, onSkip, onSendApproval, onDelete, onPublishNow,
+  date,
+  isScheduled,
+  isPublished,
+  isScheduling,
+  currentPost,
+  images,
+  publishing,
+  publishError,
+  approvalSending,
+  onSchedule,
+  onUnschedule,
+  onSkip,
+  onSendApproval,
+  onDelete,
+  onPublishNow,
 }: {
-  date: string; isScheduled: boolean; isPublished: boolean; isScheduling: boolean
-  currentPost: CalendarPost; images: PostImage[]; publishing: boolean; publishError: string | null
-  approvalSending?: boolean; onSchedule: () => void; onUnschedule: (id: string) => void
-  onSkip: (id: string) => void; onSendApproval?: (id: string) => void; onDelete: (id: string) => void
+  date: string
+  isScheduled: boolean
+  isPublished: boolean
+  isScheduling: boolean
+  currentPost: CalendarPost
+  images: PostImage[]
+  publishing: boolean
+  publishError: string | null
+  approvalSending?: boolean
+  onSchedule: () => void
+  onUnschedule: (id: string) => void
+  onSkip: (id: string) => void
+  onSendApproval?: (id: string) => void
+  onDelete: (id: string) => void
   onPublishNow: () => void
 }) {
   return (
     <div
       style={{
-        padding: '14px 24px', borderTop: '1px solid rgba(15,21,18,0.07)',
-        display: 'flex', flexWrap: 'wrap', gap: 8, flexShrink: 0,
+        padding: '14px 24px',
+        borderTop: '1px solid rgba(15,21,18,0.07)',
+        display: 'flex',
+        flexWrap: 'wrap',
+        gap: 8,
+        flexShrink: 0,
       }}
     >
-      <Button onClick={onSchedule} disabled={!date || isScheduling} loading={isScheduling} style={{ flex: 1 }}>
+      <Button
+        onClick={onSchedule}
+        disabled={!date || isScheduling}
+        loading={isScheduling}
+        style={{ flex: 1 }}
+      >
         {isScheduled ? 'Update schedule' : 'Schedule to calendar'}
       </Button>
       {isScheduled ? (
-        <Button variant="secondary" onClick={() => onUnschedule(currentPost.id)}>Unschedule</Button>
+        <Button variant="secondary" onClick={() => onUnschedule(currentPost.id)}>
+          Unschedule
+        </Button>
       ) : (
-        <Button variant="secondary" onClick={() => onSkip(currentPost.id)}>Skip for now</Button>
+        <Button variant="secondary" onClick={() => onSkip(currentPost.id)}>
+          Skip for now
+        </Button>
       )}
       {isScheduled && onSendApproval && (
-        <Button variant="secondary" onClick={() => onSendApproval(currentPost.id)} disabled={approvalSending} loading={approvalSending}>
+        <Button
+          variant="secondary"
+          onClick={() => onSendApproval(currentPost.id)}
+          disabled={approvalSending}
+          loading={approvalSending}
+        >
           <Mail style={{ width: 12, height: 12 }} /> Send for approval
         </Button>
       )}
-      {images.length > 0 && !isPublished && currentPost.status !== 'publishing' && currentPost.platform === 'Instagram' && (
-        <Button onClick={onPublishNow} disabled={publishing} loading={publishing}>Publish to Instagram</Button>
-      )}
-      <Button variant="danger" onClick={() => onDelete(currentPost.id)}>Delete post</Button>
+      {images.length > 0 &&
+        !isPublished &&
+        currentPost.status !== 'publishing' &&
+        currentPost.platform === 'Instagram' && (
+          <Button onClick={onPublishNow} disabled={publishing} loading={publishing}>
+            Publish to Instagram
+          </Button>
+        )}
+      <Button variant="danger" onClick={() => onDelete(currentPost.id)}>
+        Delete post
+      </Button>
       {publishError && (
-        <div style={{ width: '100%', fontSize: 11, color: 'var(--danger)', background: 'var(--danger-bg)', padding: '8px 10px', borderRadius: 6 }}>
+        <div
+          className="text-micro"
+          style={{
+            width: '100%',
+            color: 'var(--danger)',
+            background: 'var(--danger-bg)',
+            padding: '8px 10px',
+            borderRadius: 6,
+          }}
+        >
           {publishError}
         </div>
       )}

@@ -73,11 +73,11 @@ export function ClientResponseCard({
           <Icon size={13} color={s.iconColor} />
         </div>
         <div>
-          <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--ink)' }}>
+          <div className="text-body font-medium text-ink">
             {clientName} {s.label}
           </div>
           {timeAgo && (
-            <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 1 }}>
+            <div className="text-micro text-text2" style={{ marginTop: 1 }}>
               {timeAgo} · via review link
             </div>
           )}
@@ -87,8 +87,8 @@ export function ClientResponseCard({
       {/* Body */}
       <div style={{ padding: '10px 14px' }}>
         <div
+          className="text-body"
           style={{
-            fontSize: 13,
             color: 'var(--ink)',
             fontStyle: 'italic',
             lineHeight: 1.55,

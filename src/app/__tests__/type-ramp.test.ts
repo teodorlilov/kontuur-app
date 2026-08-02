@@ -41,7 +41,7 @@ const INLINE_SIZE_EXEMPT = [
 const DRIFT_BUDGET = {
   legacyScale: 32,
   bracketPx: 0,
-  inlineSize: 332,
+  inlineSize: 289,
 }
 
 function sourceFiles(): string[] {

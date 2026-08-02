@@ -72,14 +72,8 @@ export const MonthGrid = memo(function MonthGrid({
         {DAY_HEADERS.map((d) => (
           <div
             key={d}
-            style={{
-              textAlign: 'center',
-              fontSize: 9,
-              fontWeight: 500,
-              color: 'var(--text2)',
-              letterSpacing: '0.5px',
-              textTransform: 'uppercase',
-            }}
+            className="text-label font-semibold uppercase text-text2"
+            style={{ textAlign: 'center' }}
           >
             {d}
           </div>

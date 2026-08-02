@@ -10,7 +10,11 @@ interface ScheduleFabProps {
 }
 
 /** Floating action button showing unscheduled post count. */
-export const ScheduleFab = memo(function ScheduleFab({ unscheduledCount, isOpen, onClick }: ScheduleFabProps) {
+export const ScheduleFab = memo(function ScheduleFab({
+  unscheduledCount,
+  isOpen,
+  onClick,
+}: ScheduleFabProps) {
   return (
     <div style={{ position: 'absolute', bottom: 24, right: 24, zIndex: 10 }}>
       <button
@@ -38,6 +42,7 @@ export const ScheduleFab = memo(function ScheduleFab({ unscheduledCount, isOpen,
         {/* Badge */}
         {unscheduledCount > 0 && (
           <div
+            className="text-label tracking-normal"
             style={{
               position: 'absolute',
               top: -2,
@@ -47,7 +52,6 @@ export const ScheduleFab = memo(function ScheduleFab({ unscheduledCount, isOpen,
               borderRadius: '50%',
               background: 'var(--pending)',
               border: '2px solid var(--surface)',
-              fontSize: 10,
               fontWeight: 500,
               color: '#fff',
               display: 'flex',

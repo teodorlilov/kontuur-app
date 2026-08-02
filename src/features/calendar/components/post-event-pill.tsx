@@ -12,12 +12,21 @@ interface PostEventPillProps {
 }
 
 /** Compact pill shown inside a day cell for a scheduled post. */
-export const PostEventPill = memo(function PostEventPill({ post, onPostClick, dotColor, bgColor, textColor }: PostEventPillProps) {
+export const PostEventPill = memo(function PostEventPill({
+  post,
+  onPostClick,
+  dotColor,
+  bgColor,
+  textColor,
+}: PostEventPillProps) {
   const statusDotColor =
-    post.status === 'published' ? 'var(--spring-text)' :
-    post.status === 'failed' ? 'var(--danger)' :
-    post.status === 'publishing' ? 'var(--spring-text)' :
-    dotColor
+    post.status === 'published'
+      ? 'var(--spring-text)'
+      : post.status === 'failed'
+        ? 'var(--danger)'
+        : post.status === 'publishing'
+          ? 'var(--spring-text)'
+          : dotColor
 
   return (
     <button
@@ -41,8 +50,12 @@ export const PostEventPill = memo(function PostEventPill({ post, onPostClick, do
         fontFamily: 'inherit',
         transition: 'opacity 0.12s',
       }}
-      onMouseEnter={(e) => { e.currentTarget.style.opacity = '0.75' }}
-      onMouseLeave={(e) => { e.currentTarget.style.opacity = '1' }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.opacity = '0.75'
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.opacity = '1'
+      }}
     >
       <span
         style={{
@@ -54,8 +67,8 @@ export const PostEventPill = memo(function PostEventPill({ post, onPostClick, do
         }}
       />
       <span
+        className="text-label tracking-normal"
         style={{
-          fontSize: 10,
           fontWeight: 500,
           color: textColor,
           overflow: 'hidden',

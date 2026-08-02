@@ -96,8 +96,8 @@ export const UnscheduledPanel = memo(function UnscheduledPanel({
           }}
         >
           <div
+            className="text-body"
             style={{
-              fontSize: 14,
               fontWeight: 500,
               color: 'var(--ink)',
               display: 'flex',
@@ -107,8 +107,8 @@ export const UnscheduledPanel = memo(function UnscheduledPanel({
           >
             Ready to schedule
             <span
+              className="text-micro"
               style={{
-                fontSize: 11,
                 fontWeight: 500,
                 color: 'var(--spring-text)',
                 background: 'rgba(46,158,104,0.12)',
@@ -155,6 +155,7 @@ export const UnscheduledPanel = memo(function UnscheduledPanel({
           >
             <Search style={{ width: 12, height: 12, color: 'var(--text2)', flexShrink: 0 }} />
             <input
+              className="text-lead md:text-micro"
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -162,7 +163,6 @@ export const UnscheduledPanel = memo(function UnscheduledPanel({
               style={{
                 border: 'none',
                 outline: 'none',
-                fontSize: 11,
                 color: 'var(--ink)',
                 background: 'transparent',
                 width: '100%',
@@ -193,22 +193,14 @@ export const UnscheduledPanel = memo(function UnscheduledPanel({
           flexShrink: 0,
         }}
       >
-        <span
-          style={{
-            fontSize: 9,
-            fontWeight: 500,
-            color: 'var(--text2)',
-            letterSpacing: '1px',
-            textTransform: 'uppercase',
-          }}
-        >
+        <span className="text-label font-semibold uppercase text-text2">
           {filtered.length} posts
         </span>
         <select
+          className="text-lead md:text-label md:tracking-normal"
           value={sort}
           onChange={(e) => setSort(e.target.value as PanelSort)}
           style={{
-            fontSize: 10,
             color: 'var(--text2)',
             background: 'none',
             border: 'none',
@@ -254,10 +246,10 @@ export const UnscheduledPanel = memo(function UnscheduledPanel({
         )}
         {filtered.length === 0 && (
           <div
+            className="text-body"
             style={{
               padding: '40px 20px',
               textAlign: 'center',
-              fontSize: 13,
               color: 'var(--text2)',
               fontStyle: 'italic',
             }}
@@ -279,9 +271,7 @@ export const UnscheduledPanel = memo(function UnscheduledPanel({
           flexShrink: 0,
         }}
       >
-        <span style={{ fontSize: 11, color: 'var(--text2)' }}>
-          Select a post to schedule it
-        </span>
+        <span className="text-micro text-text2">Select a post to schedule it</span>
       </div>
     </div>
   )
@@ -290,13 +280,9 @@ export const UnscheduledPanel = memo(function UnscheduledPanel({
 function SectionLabel({ label }: { label: string }) {
   return (
     <div
+      className="text-label font-semibold uppercase text-text2"
       style={{
         padding: '8px 18px 4px',
-        fontSize: 9,
-        fontWeight: 500,
-        color: 'var(--text2)',
-        letterSpacing: '1.2px',
-        textTransform: 'uppercase',
         background: 'var(--sunken)',
         borderBottom: '1px solid rgba(15,21,18,0.07)',
       }}
@@ -317,11 +303,11 @@ function FilterBtn({
 }) {
   return (
     <button
+      className="text-label tracking-normal"
       type="button"
       onClick={onClick}
       style={{
         padding: '5px 10px',
-        fontSize: 10,
         fontWeight: 500,
         border: active ? 'none' : '1px solid var(--line2)',
         borderRadius: 5,
