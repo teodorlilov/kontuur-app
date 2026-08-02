@@ -66,17 +66,19 @@ export function ImageLightbox({
               boxShadow: '0 1px 4px rgba(15,21,18,0.18)',
               cursor: 'pointer',
               fontFamily: 'inherit',
-              fontSize: 11,
-              fontWeight: 500,
               color: 'var(--text2)',
             }}
+            className="text-micro font-medium"
           >
             <Download style={{ width: 13, height: 13 }} />
             Download
           </button>
         </div>
         {caption && (
-          <p style={{ fontSize: 13, fontWeight: 500, color: '#fff', textAlign: 'center', marginTop: 10 }}>
+          <p
+            className="text-body font-medium"
+            style={{ color: '#fff', textAlign: 'center', marginTop: 10 }}
+          >
             {caption}
           </p>
         )}

@@ -1,6 +1,7 @@
 'use client'
 
 import { Check } from 'lucide-react'
+import { cn } from '@/utils/cn'
 
 interface WizardStep {
   key: string
@@ -71,12 +72,10 @@ function Topbar({
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: '16px', minWidth: 0, flexShrink: 1 }}>
         <div
-          className="hidden md:block"
+          className="hidden font-display text-title font-normal text-ink md:block"
           style={{
-            fontFamily: 'var(--font-display)',
-            fontSize: '15px',
-            fontWeight: 400,
-            color: 'var(--ink)',
+            // A logotype, not type: the 3px is letterform spacing in a wordmark,
+            // so it does not answer to --text-title's tracking.
             letterSpacing: '3px',
             paddingRight: '16px',
             borderRight: '1px solid var(--line)',
@@ -85,7 +84,12 @@ function Topbar({
         >
           KONTUUR
         </div>
-        <span style={{ fontSize: '12px', color: 'var(--text2)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{subtitle}</span>
+        <span
+          className="min-w-0 truncate text-caption text-text2"
+          style={{ whiteSpace: 'nowrap' }}
+        >
+          {subtitle}
+        </span>
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0, overflow: 'hidden' }}>
@@ -93,15 +97,7 @@ function Topbar({
         <button
           type="button"
           onClick={onCancel}
-          style={{
-            fontSize: '12px',
-            color: 'var(--text2)',
-            background: 'none',
-            border: 'none',
-            cursor: 'pointer',
-            fontFamily: 'var(--font-sans)',
-            padding: '6px 0',
-          }}
+          className="cursor-pointer border-none bg-none px-0 py-1.5 font-sans text-caption text-text2"
         >
           {cancelLabel}
         </button>
@@ -120,12 +116,11 @@ function StepIndicator({ steps, activeIndex }: { steps: WizardStep[]; activeInde
           <div key={step.key} style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
             <StepDot isDone={isDone} isActive={isActive} index={i} />
             <span
-              className="hidden sm:inline"
-              style={{
-                fontSize: '11px',
-                fontWeight: isActive ? 500 : 400,
-                color: isDone || isActive ? 'var(--ink)' : 'var(--text3)',
-              }}
+              className={cn(
+                'hidden text-micro sm:inline',
+                isActive ? 'font-medium' : 'font-normal',
+                isDone || isActive ? 'text-ink' : 'text-text3'
+              )}
             >
               {step.label}
             </span>
@@ -190,11 +185,12 @@ function StepDot({
       }}
     >
       <span
-        style={{
-          fontSize: '9.5px',
-          fontWeight: 600,
-          color: isActive ? 'var(--forest-deep)' : 'var(--text3)',
-        }}
+        className={cn(
+          // tracking-normal because --text-label carries +0.16em for multi-character
+          // labels; on a single centred digit that is trailing space.
+          'text-label font-semibold tracking-normal',
+          isActive ? 'text-forest-deep' : 'text-text3'
+        )}
       >
         {index + 1}
       </span>

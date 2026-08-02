@@ -21,7 +21,7 @@ export function SectionHeading({
   children: React.ReactNode
 }) {
   return (
-    <h2 className="flex items-center gap-2.5 text-title font-semibold tracking-[-0.01em] text-ink">
+    <h2 className="flex items-center gap-2.5 text-title font-semibold text-ink">
       <span
         aria-hidden="true"
         className={cn('grid size-[27px] place-items-center rounded-sm', TONE_CLASSES[tone])}

@@ -56,14 +56,8 @@ export function Modal({ open, onClose, title, children, className, maxWidth = 52
           >
             {title && (
               <Dialog.Title
-                style={{
-                  fontFamily: 'var(--font-display)',
-                  fontSize: 20,
-                  fontWeight: 400,
-                  color: 'var(--ink)',
-                  letterSpacing: '-0.02em',
-                  margin: 0,
-                }}
+                className="font-display text-display font-normal text-ink"
+                style={{ margin: 0 }}
               >
                 {title}
               </Dialog.Title>
