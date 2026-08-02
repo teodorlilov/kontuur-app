@@ -24,7 +24,7 @@ export function CrumbTrail({ items }: { items: CrumbItem[] }) {
   ]
 
   return (
-    <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-2 text-xs">
+    <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-2 text-caption">
       {trail.map((crumb, index) => {
         const isLast = index === trail.length - 1
         return (

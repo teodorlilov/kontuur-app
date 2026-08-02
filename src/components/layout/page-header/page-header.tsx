@@ -103,7 +103,7 @@ export function PageHeader({
                   'grid size-[42px] flex-none place-items-center rounded-lg bg-forest-deep',
                   // Lime as the figure on Pine Deep, 10.87:1 — the inverse of the
                   // sidebar plate, and the header's lime on the two detail routes.
-                  'text-xs font-bold text-accent transition-[width,height] duration-300 ease-contour motion-reduce:transition-none',
+                  'text-caption font-semibold text-accent transition-[width,height] duration-300 ease-contour motion-reduce:transition-none',
                   // Floating chrome, not a clearing — the one place a mark this
                   // small still earns a shadow.
                   'shadow-[0_6px_16px_-6px_rgba(15,21,18,0.4)]',
