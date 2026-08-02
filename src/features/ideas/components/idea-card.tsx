@@ -18,21 +18,20 @@ export function IdeaCard({ idea, clientDotColor, onGenerate, onDismiss }: IdeaCa
 
   return (
     <div style={cardStyle}>
-      <CardHeader
-        idea={idea}
-        clientDotColor={clientDotColor}
-        isUnread={isUnread}
-      />
+      <CardHeader idea={idea} clientDotColor={clientDotColor} isUnread={isUnread} />
 
-      <div style={{ padding: '13px 16px', fontSize: 13, color: 'var(--ink)', lineHeight: 1.68 }}>
+      <div
+        className="text-body"
+        style={{ padding: '13px 16px', color: 'var(--ink)', lineHeight: 1.68 }}
+      >
         &ldquo;{idea.ideaText}&rdquo;
       </div>
 
       {idea.extraNotes && (
         <div
+          className="text-caption"
           style={{
             padding: '0 16px 13px',
-            fontSize: 12,
             color: 'var(--text2)',
             lineHeight: 1.6,
           }}
@@ -74,11 +73,11 @@ function CardHeader({
       {isUnread && <UnreadDot />}
 
       <div
+        className="text-caption"
         style={{
           display: 'flex',
           alignItems: 'center',
           gap: 6,
-          fontSize: 12,
           fontWeight: 500,
           color: 'var(--ink)',
         }}
@@ -98,23 +97,21 @@ function CardHeader({
       {idea.clientNiche && (
         <>
           <Separator />
-          <span style={{ fontSize: 11, color: 'var(--text2)' }}>{idea.clientNiche}</span>
+          <span className="text-micro" style={{ color: 'var(--text2)' }}>
+            {idea.clientNiche}
+          </span>
         </>
       )}
 
       {idea.platform && <PlatformPill label={idea.platform} />}
 
-      {idea.targetDate && (
-        <span style={metaPillStyle}>Target: {idea.targetDate}</span>
-      )}
+      {idea.targetDate && <span style={metaPillStyle}>Target: {idea.targetDate}</span>}
 
-      {idea.status === 'generated' && (
-        <span style={generatedBadgeStyle}>✓ Generated</span>
-      )}
+      {idea.status === 'generated' && <span style={generatedBadgeStyle}>✓ Generated</span>}
 
       <span
+        className="text-micro"
         style={{
-          fontSize: 11,
           color: 'rgba(15,21,18,0.7)',
           marginLeft: 'auto',
         }}
@@ -139,11 +136,17 @@ function CardFooter({
   return (
     <div style={footerStyle}>
       {isGenerated ? (
-        <span style={{ fontSize: 11, color: 'var(--text2)' }}>Post generated</span>
+        <span className="text-micro" style={{ color: 'var(--text2)' }}>
+          Post generated
+        </span>
       ) : idea.status === 'generating' ? (
-        <span style={{ fontSize: 11, color: 'var(--spring-text)' }}>Generating…</span>
+        <span className="text-micro" style={{ color: 'var(--spring-text)' }}>
+          Generating…
+        </span>
       ) : idea.status === 'dismissed' ? (
-        <span style={{ fontSize: 11, color: 'rgba(15,21,18,0.5)' }}>Dismissed</span>
+        <span className="text-micro" style={{ color: 'rgba(15,21,18,0.5)' }}>
+          Dismissed
+        </span>
       ) : (
         <>
           <button onClick={() => onGenerate(idea)} style={generateButtonStyle}>
@@ -174,14 +177,14 @@ function UnreadDot() {
 }
 
 function Separator() {
-  return <span style={{ color: 'rgba(15,21,18,0.20)', fontSize: 11 }}>·</span>
+  return <span style={{ color: 'rgba(15,21,18,0.20)', fontSize: 'var(--text-micro)' }}>·</span>
 }
 
 function PlatformPill({ label }: { label: string }) {
   return (
     <span
+      className="text-label tracking-normal"
       style={{
-        fontSize: 10,
         fontWeight: 500,
         padding: '2px 8px',
         borderRadius: 4,
@@ -205,7 +208,7 @@ const cardStyle: React.CSSProperties = {
 }
 
 const metaPillStyle: React.CSSProperties = {
-  fontSize: 10,
+  fontSize: 'var(--text-label)',
   fontWeight: 500,
   padding: '2px 8px',
   borderRadius: 4,
@@ -214,7 +217,7 @@ const metaPillStyle: React.CSSProperties = {
 }
 
 const generatedBadgeStyle: React.CSSProperties = {
-  fontSize: 10,
+  fontSize: 'var(--text-label)',
   fontWeight: 500,
   padding: '2px 8px',
   borderRadius: 4,
@@ -240,7 +243,7 @@ const generateButtonStyle: React.CSSProperties = {
   color: '#f2f5f1',
   border: 'none',
   borderRadius: 7,
-  fontSize: 11,
+  fontSize: 'var(--text-micro)',
   fontWeight: 500,
   cursor: 'pointer',
   fontFamily: 'inherit',
@@ -251,7 +254,7 @@ const generateButtonStyle: React.CSSProperties = {
 }
 
 const dismissButtonStyle: React.CSSProperties = {
-  fontSize: 11,
+  fontSize: 'var(--text-micro)',
   fontWeight: 500,
   color: 'rgba(15,21,18,0.7)',
   background: 'none',

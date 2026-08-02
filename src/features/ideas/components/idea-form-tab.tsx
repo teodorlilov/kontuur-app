@@ -72,10 +72,7 @@ export function IdeaFormTab({
   return (
     <>
       <FormSection>
-        <Field
-          label="Share this link"
-          hint="Send it once — it doesn't expire."
-        >
+        <Field label="Share this link" hint="Send it once — it doesn't expire.">
           <InputAffix
             suffix={
               <span className="flex items-center gap-1">

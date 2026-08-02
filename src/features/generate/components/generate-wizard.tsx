@@ -64,17 +64,21 @@ export function GenerateWizard({
   const [platform, setPlatform] = useState(initialIdea?.platform ?? 'Instagram')
   const [brandProfileLoading, setBrandProfileLoading] = useState(false)
   const [targetPostCount, setTargetPostCount] = useState(initialIdea ? 0 : initialTargetPostCount)
-  const [preloadedClientData, setPreloadedClientData] = useState<ClientData | null>(initialClientData)
+  const [preloadedClientData, setPreloadedClientData] = useState<ClientData | null>(
+    initialClientData
+  )
 
   // Step 2
   const [priorityPosts, setPriorityPosts] = useState<PriorityPost[]>(
     initialIdea
-      ? [{
-          title: initialIdea.ideaText.slice(0, 60),
-          brief: initialIdea.ideaText,
-          platform: initialIdea.platform ?? 'Instagram',
-          targetDate: initialIdea.targetDate ?? '',
-        }]
+      ? [
+          {
+            title: initialIdea.ideaText.slice(0, 60),
+            brief: initialIdea.ideaText,
+            platform: initialIdea.platform ?? 'Instagram',
+            targetDate: initialIdea.targetDate ?? '',
+          },
+        ]
       : []
   )
 
@@ -119,7 +123,9 @@ export function GenerateWizard({
   }, [step])
 
   useEffect(() => {
-    return () => { abortControllerRef.current?.abort() }
+    return () => {
+      abortControllerRef.current?.abort()
+    }
   }, [step])
 
   async function startGeneration() {
@@ -138,8 +144,21 @@ export function GenerateWizard({
     try {
       const endpoint = sourceIdea ? '/api/ai/generate-from-idea' : '/api/ai/generate-stream'
       const payload = sourceIdea
-        ? { ideaId: sourceIdea.id, postType, slideCount, preloadedClientData: preloadedClientData ?? undefined }
-        : { clientId, platform, postType, slideCount, priorityPosts, targetPostCount, preloadedClientData: preloadedClientData ?? undefined }
+        ? {
+            ideaId: sourceIdea.id,
+            postType,
+            slideCount,
+            preloadedClientData: preloadedClientData ?? undefined,
+          }
+        : {
+            clientId,
+            platform,
+            postType,
+            slideCount,
+            priorityPosts,
+            targetPostCount,
+            preloadedClientData: preloadedClientData ?? undefined,
+          }
 
       const res = await fetch(endpoint, {
         method: 'POST',
@@ -231,7 +250,11 @@ export function GenerateWizard({
     }
   }
 
-  function handlePostRegenerated(postId: string, updatedPost: PostData, updatedValidation: ValidationData) {
+  function handlePostRegenerated(
+    postId: string,
+    updatedPost: PostData,
+    updatedValidation: ValidationData
+  ) {
     setGeneratedPosts((prev) =>
       prev.map((p) => (p.post.id === postId ? { post: updatedPost, ...updatedValidation } : p))
     )
@@ -309,9 +332,18 @@ export function GenerateWizard({
       : 'Optional'
 
   return (
-    <GenerateShell currentStep={step} onCancel={() => router.push('/dashboard')} onStepClick={handleStepClick} sourceIdea={sourceIdea} showTopbar={step !== 'results' || generatedPosts.length === 0}>
+    <GenerateShell
+      currentStep={step}
+      onCancel={() => router.push('/dashboard')}
+      onStepClick={handleStepClick}
+      sourceIdea={sourceIdea}
+      showTopbar={step !== 'results' || generatedPosts.length === 0}
+    >
       {step === 'client' && (
-        <WizardCard title="Client & platform" subtitle="Choose which client and platform to generate for">
+        <WizardCard
+          title="Client & platform"
+          subtitle="Choose which client and platform to generate for"
+        >
           <StepClient
             clients={clients}
             selectedClient={clientId}
@@ -320,7 +352,10 @@ export function GenerateWizard({
             onClientChange={setClientId}
             onPlatformChange={handlePlatformChange}
           />
-          <WizardFooter onNext={() => setStep('priority')} nextDisabled={!clientId || brandProfileLoading} />
+          <WizardFooter
+            onNext={() => setStep('priority')}
+            nextDisabled={!clientId || brandProfileLoading}
+          />
         </WizardCard>
       )}
 
@@ -389,7 +424,11 @@ export function GenerateWizard({
               discardedCount={discardedCount}
               clientName={clientName}
               clientId={clientId}
-              onGenerateMore={() => { setApprovedCount(0); setDiscardedCount(0); setStep('type') }}
+              onGenerateMore={() => {
+                setApprovedCount(0)
+                setDiscardedCount(0)
+                setStep('type')
+              }}
             />
           )}
         </>
@@ -452,15 +491,28 @@ function NoClientsState() {
   return (
     <div className="flex flex-col items-center justify-center min-h-[calc(100vh-4rem)] gap-4 text-center">
       <div className="h-12 w-12 rounded-full bg-sunken flex items-center justify-center">
-        <svg className="h-6 w-6 text-text3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
+        <svg
+          className="h-6 w-6 text-text3"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          strokeWidth={1.5}
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z"
+          />
         </svg>
       </div>
       <div>
-        <p className="text-sm font-medium text-ink">No clients yet</p>
-        <p className="text-sm text-text3 mt-1">Add your first client before generating posts.</p>
+        <p className="text-body font-medium text-ink">No clients yet</p>
+        <p className="text-body text-text3 mt-1">Add your first client before generating posts.</p>
       </div>
-      <a href="/clients/new" className="inline-flex items-center gap-1.5 text-sm font-medium text-[var(--spring-text)] hover:underline">
+      <a
+        href="/clients/new"
+        className="inline-flex items-center gap-1.5 text-body font-medium text-[var(--spring-text)] hover:underline"
+      >
         + Add your first client
       </a>
     </div>
@@ -536,16 +588,28 @@ function AllReviewedState({
             margin: '0 auto 20px',
           }}
         >
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--spring-text)" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+          <svg
+            width="28"
+            height="28"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="var(--spring-text)"
+            strokeWidth={2.5}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
             <path d="M4.5 12.75l6 6 9-13.5" />
           </svg>
         </div>
 
         {/* Heading */}
-        <h2 style={{ fontSize: 22, fontWeight: 600, color: 'var(--ink)', margin: '0 0 6px' }}>
+        <h2
+          className="text-headline"
+          style={{ fontWeight: 600, color: 'var(--ink)', margin: '0 0 6px' }}
+        >
           All posts reviewed
         </h2>
-        <p style={{ fontSize: 14, color: 'var(--text2)', margin: '0 0 28px' }}>
+        <p className="text-body" style={{ color: 'var(--text2)', margin: '0 0 28px' }}>
           {approvedCount > 0
             ? `${approvedCount} post${approvedCount !== 1 ? 's' : ''} approved and saved to calendar for ${clientName}`
             : 'All posts were discarded.'}
@@ -563,8 +627,13 @@ function AllReviewedState({
         >
           {stats.map((s) => (
             <div key={s.label} style={{ flex: 1 }}>
-              <div style={{ fontSize: 28, fontWeight: 600, color: s.color }}>{s.value}</div>
-              <div style={{ fontSize: 11, fontWeight: 500, color: 'var(--text2)', letterSpacing: 0.5, marginTop: 4 }}>
+              <div className="text-metric" style={{ fontWeight: 600, color: s.color }}>
+                {s.value}
+              </div>
+              <div
+                className="text-micro"
+                style={{ fontWeight: 500, color: 'var(--text2)', letterSpacing: 0.5, marginTop: 4 }}
+              >
                 {s.label}
               </div>
             </div>
@@ -585,7 +654,11 @@ function AllReviewedState({
             <button
               onClick={handleSendApproval}
               disabled={sending || approvedCount === 0}
-              style={{ ...actionBtnStyle, flex: 1, opacity: sending || approvedCount === 0 ? 0.5 : 1 }}
+              style={{
+                ...actionBtnStyle,
+                flex: 1,
+                opacity: sending || approvedCount === 0 ? 0.5 : 1,
+              }}
             >
               <Send size={14} />
               {sending ? 'Sending...' : 'Send for approval'}
@@ -603,7 +676,7 @@ const actionBtnStyle: React.CSSProperties = {
   justifyContent: 'center',
   gap: 8,
   padding: '10px 16px',
-  fontSize: 13,
+  fontSize: 'var(--text-body)',
   fontWeight: 500,
   color: 'var(--text2)',
   background: 'none',

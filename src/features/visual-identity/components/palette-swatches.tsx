@@ -22,12 +22,21 @@ export function PaletteSwatches({
   onChange: (palette: Palette) => void
 }) {
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(88px, 1fr))', gap: '10px' }}>
+    <div
+      style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(88px, 1fr))',
+        gap: '10px',
+      }}
+    >
       {ROLE_ORDER.map((role) => (
-        <label key={role} style={{ display: 'flex', flexDirection: 'column', gap: '5px', cursor: 'pointer' }}>
+        <label
+          key={role}
+          style={{ display: 'flex', flexDirection: 'column', gap: '5px', cursor: 'pointer' }}
+        >
           <span
+            className="text-label"
             style={{
-              fontSize: '9px',
               fontWeight: 500,
               color: 'var(--text2)',
               letterSpacing: '1px',
@@ -61,7 +70,10 @@ export function PaletteSwatches({
                 cursor: 'pointer',
               }}
             />
-            <span style={{ fontSize: '11px', color: 'var(--ink)', fontVariantNumeric: 'tabular-nums' }}>
+            <span
+              className="text-micro"
+              style={{ color: 'var(--ink)', fontVariantNumeric: 'tabular-nums' }}
+            >
               {palette[role]}
             </span>
           </span>

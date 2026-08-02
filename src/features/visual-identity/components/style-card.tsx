@@ -30,7 +30,9 @@ export function StyleCard({
         transition: 'border-color 0.12s, box-shadow 0.12s',
       }}
     >
-      <div style={{ position: 'relative', aspectRatio: '3 / 4', background: 'rgba(15,21,18,0.04)' }}>
+      <div
+        style={{ position: 'relative', aspectRatio: '3 / 4', background: 'rgba(15,21,18,0.04)' }}
+      >
         <Image
           src={style.previewSrc}
           alt={`${style.name} preview`}
@@ -83,8 +85,13 @@ export function StyleCard({
         )}
       </div>
       <div style={{ padding: '10px 12px' }}>
-        <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--ink)' }}>{style.name}</div>
-        <div style={{ fontSize: 10.5, color: 'var(--text2)', lineHeight: 1.45, marginTop: 3 }}>
+        <div className="text-caption" style={{ fontWeight: 600, color: 'var(--ink)' }}>
+          {style.name}
+        </div>
+        <div
+          className="text-label tracking-normal"
+          style={{ color: 'var(--text2)', lineHeight: 1.45, marginTop: 3 }}
+        >
           {style.description}
         </div>
       </div>

@@ -97,7 +97,9 @@ export function ResultsView({
         platform={platform}
         postType={postType}
         currentIndex={selectedIndex}
-        visualsProgress={generatingVisuals ? `Generating visuals ${doneVisuals}/${allVisuals.length}…` : null}
+        visualsProgress={
+          generatingVisuals ? `Generating visuals ${doneVisuals}/${allVisuals.length}…` : null
+        }
         onPrev={navigatePrev}
         onNext={navigateNext}
         onNewRun={onNewRun}
@@ -106,23 +108,33 @@ export function ResultsView({
       {skippedPillars.length > 0 && <SkippedBanner pillars={skippedPillars} clientId={clientId} />}
       <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
         {/* Post list — full width on mobile, fixed 280px on desktop */}
-        <div className={`${mobilePanel === 'list' ? 'flex' : 'hidden'} md:flex`} style={{ flexShrink: 0 }}>
-          <PostList posts={posts} selectedPostId={selectedPostId} visualsByPost={visualsByPost} onSelect={handleSelectPost} />
+        <div
+          className={`${mobilePanel === 'list' ? 'flex' : 'hidden'} md:flex`}
+          style={{ flexShrink: 0 }}
+        >
+          <PostList
+            posts={posts}
+            selectedPostId={selectedPostId}
+            visualsByPost={visualsByPost}
+            onSelect={handleSelectPost}
+          />
         </div>
 
         {/* Detail + quality panels — hidden on mobile when viewing list */}
-        <div className={`${mobilePanel === 'detail' ? 'flex' : 'hidden'} md:flex`} style={{ flex: 1, overflow: 'hidden', flexDirection: 'column' }}>
+        <div
+          className={`${mobilePanel === 'detail' ? 'flex' : 'hidden'} md:flex`}
+          style={{ flex: 1, overflow: 'hidden', flexDirection: 'column' }}
+        >
           {/* Mobile back button */}
           <button
             type="button"
-            className="md:hidden"
+            className="text-caption md:hidden"
             onClick={() => setMobilePanel('list')}
             style={{
               display: 'flex',
               alignItems: 'center',
               gap: 4,
               padding: '8px 12px',
-              fontSize: 12,
               fontWeight: 500,
               color: 'var(--text2)',
               background: 'var(--surface)',
@@ -222,19 +234,30 @@ function ResultsTopbar({
         boxShadow: '0 1px 0 rgba(15,21,18,0.05)',
       }}
     >
-      <span style={{ fontSize: '13px', fontWeight: 500, color: 'var(--ink)' }}>
+      <span className="text-body" style={{ fontWeight: 500, color: 'var(--ink)' }}>
         {postsCount} posts generated
       </span>
-      <span className="hidden sm:inline" style={{ fontSize: '11px', color: 'var(--text2)' }}>
+      <span
+        className="hidden sm:inline"
+        style={{ fontSize: 'var(--text-micro)', color: 'var(--text2)' }}
+      >
         {clientName} · {platform} · {postType === 'carousel' ? 'Carousel' : 'Single image'}
       </span>
       {visualsProgress && (
-        <span style={{ fontSize: '11px', fontWeight: 500, color: 'var(--spring-text)' }} className="animate-pulse">
+        <span
+          className="text-micro animate-pulse"
+          style={{ fontWeight: 500, color: 'var(--spring-text)' }}
+        >
           ✨ {visualsProgress}
         </span>
       )}
       <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '8px' }}>
-        <PostNavigator current={currentIndex + 1} total={postsCount} onPrev={onPrev} onNext={onNext} />
+        <PostNavigator
+          current={currentIndex + 1}
+          total={postsCount}
+          onPrev={onPrev}
+          onNext={onNext}
+        />
         <Button variant="ghost" size="sm" onClick={onNewRun}>
           New run
         </Button>
@@ -276,7 +299,10 @@ function PostNavigator({
       >
         <ChevronLeft size={14} />
       </button>
-      <span style={{ fontSize: '11px', color: 'var(--text2)', minWidth: '60px', textAlign: 'center' }}>
+      <span
+        className="text-micro"
+        style={{ color: 'var(--text2)', minWidth: '60px', textAlign: 'center' }}
+      >
         Post {current} of {total}
       </span>
       <button
@@ -301,6 +327,7 @@ function PostNavigator({
 function SkippedBanner({ pillars, clientId }: { pillars: SkippedPillar[]; clientId: string }) {
   return (
     <div
+      className="text-micro"
       style={{
         display: 'flex',
         alignItems: 'center',
@@ -308,7 +335,6 @@ function SkippedBanner({ pillars, clientId }: { pillars: SkippedPillar[]; client
         padding: '7px 18px',
         background: 'rgba(46,158,104,0.07)',
         borderBottom: '1px solid rgba(46,158,104,0.12)',
-        fontSize: '11px',
         color: 'var(--spring-text)',
         flexShrink: 0,
       }}
@@ -319,7 +345,12 @@ function SkippedBanner({ pillars, clientId }: { pillars: SkippedPillar[]; client
         : `${pillars.length} topics skipped — no sources feed them.`}
       <a
         href={`/clients/${clientId}/sources`}
-        style={{ color: 'var(--spring-text)', fontWeight: 500, marginLeft: '3px', textDecoration: 'none' }}
+        style={{
+          color: 'var(--spring-text)',
+          fontWeight: 500,
+          marginLeft: '3px',
+          textDecoration: 'none',
+        }}
       >
         Fix in Content sources →
       </a>

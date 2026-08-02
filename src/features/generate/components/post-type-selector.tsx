@@ -69,17 +69,17 @@ export function PostTypeSelector({
                 : 'border-line2 bg-surface hover:border-text3/45'
             )}
           >
-            <span className="text-xl mt-0.5">{opt.icon}</span>
+            <span className="text-headline mt-0.5">{opt.icon}</span>
             <div>
               <span
                 className={cn(
-                  'text-base font-medium block',
+                  'text-body font-medium block',
                   value === opt.type ? 'text-[var(--ink)]' : 'text-ink'
                 )}
               >
                 {opt.label}
               </span>
-              <span className="text-sm text-text3 mt-0.5 block">{opt.sub}</span>
+              <span className="text-body text-text3 mt-0.5 block">{opt.sub}</span>
             </div>
           </button>
         ))}
@@ -87,16 +87,16 @@ export function PostTypeSelector({
 
       {value === 'carousel' && (
         <div className="flex items-center gap-3">
-          <label className="text-base font-medium text-text2">Slide count</label>
+          <label className="text-body font-medium text-text2">Slide count</label>
           <input
             type="number"
             min={3}
             max={10}
             value={slideCount}
             onChange={(e) => onSlideCountChange(parseInt(e.target.value, 10))}
-            className="w-20 rounded-lg border border-line2 px-4 py-3 text-base text-ink focus:border-[var(--line2)] focus:outline-none focus:ring-1 focus:ring-[var(--line2)]"
+            className="w-20 rounded-lg border border-line2 px-4 py-3 text-lead md:text-body text-ink focus:border-[var(--line2)] focus:outline-none focus:ring-1 focus:ring-[var(--line2)]"
           />
-          <span className="text-sm text-text3">3–10 slides</span>
+          <span className="text-body text-text3">3–10 slides</span>
         </div>
       )}
     </div>

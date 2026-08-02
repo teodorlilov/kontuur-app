@@ -58,10 +58,20 @@ function ListHeader({ count }: { count: number }) {
         flexShrink: 0,
       }}
     >
-      <span style={{ fontSize: 'var(--text-label)', fontWeight: 500, color: 'var(--text2)', letterSpacing: '1.5px', textTransform: 'uppercase' }}>
+      <span
+        style={{
+          fontSize: 'var(--text-label)',
+          fontWeight: 500,
+          color: 'var(--text2)',
+          letterSpacing: '1.5px',
+          textTransform: 'uppercase',
+        }}
+      >
         Posts
       </span>
-      <span style={{ fontSize: '10px', color: 'var(--text2)' }}>{count} generated</span>
+      <span className="text-label tracking-normal" style={{ color: 'var(--text2)' }}>
+        {count} generated
+      </span>
     </div>
   )
 }
@@ -95,9 +105,35 @@ function PostListItem({
       }}
     >
       {isActive && <ActiveBar />}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '5px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', fontWeight: 500, color: 'var(--ink)' }}>
-          {pillarColor && <div style={{ width: '7px', height: '7px', borderRadius: '50%', background: pillarColor.hex, flexShrink: 0 }} />}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          marginBottom: '5px',
+        }}
+      >
+        <div
+          className="text-micro"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            fontWeight: 500,
+            color: 'var(--ink)',
+          }}
+        >
+          {pillarColor && (
+            <div
+              style={{
+                width: '7px',
+                height: '7px',
+                borderRadius: '50%',
+                background: pillarColor.hex,
+                flexShrink: 0,
+              }}
+            />
+          )}
           {post.pillar ?? 'General'}
         </div>
         <ScoreLabel score={score} />
@@ -118,11 +154,11 @@ function VisualsCounter({ visuals }: { visuals: DraftVisual[] | undefined }) {
   const complete = done === visuals.length
   return (
     <span
+      className="text-label tracking-normal"
       style={{
         display: 'inline-flex',
         alignItems: 'center',
         gap: '3px',
-        fontSize: '10px',
         fontWeight: 500,
         padding: '3px 7px',
         borderRadius: '4px',
@@ -150,11 +186,11 @@ function StatusBadge({ status }: { status: string }) {
 
   return (
     <span
+      className="text-label tracking-normal"
       style={{
         display: 'inline-flex',
         alignItems: 'center',
         gap: '4px',
-        fontSize: '10px',
         fontWeight: 500,
         padding: '3px 8px',
         borderRadius: '4px',

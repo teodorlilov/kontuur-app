@@ -16,7 +16,14 @@ interface GenerateShellProps {
 }
 
 /** Topbar chrome with step indicators for the generate flow. */
-export function GenerateShell({ currentStep, onCancel, onStepClick, sourceIdea, showTopbar = true, children }: GenerateShellProps) {
+export function GenerateShell({
+  currentStep,
+  onCancel,
+  onStepClick,
+  sourceIdea,
+  showTopbar = true,
+  children,
+}: GenerateShellProps) {
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       {showTopbar && (
@@ -25,15 +32,15 @@ export function GenerateShell({ currentStep, onCancel, onStepClick, sourceIdea, 
       {sourceIdea && showTopbar && (
         <IdeaBanner idea={sourceIdea} onEdit={() => onStepClick('client')} />
       )}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>{children}</div>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        {children}
+      </div>
     </div>
   )
 }
 
 function IdeaBanner({ idea, onEdit }: { idea: ClientIdea; onEdit: () => void }) {
-  const truncated = idea.ideaText.length > 80
-    ? `${idea.ideaText.slice(0, 80)}…`
-    : idea.ideaText
+  const truncated = idea.ideaText.length > 80 ? `${idea.ideaText.slice(0, 80)}…` : idea.ideaText
 
   return (
     <div
@@ -48,8 +55,8 @@ function IdeaBanner({ idea, onEdit }: { idea: ClientIdea; onEdit: () => void }) 
       }}
     >
       <span
+        className="text-label"
         style={{
-          fontSize: 10,
           fontWeight: 500,
           color: 'var(--text2)',
           letterSpacing: 0.5,
@@ -62,9 +69,7 @@ function IdeaBanner({ idea, onEdit }: { idea: ClientIdea; onEdit: () => void }) 
 
       <span style={clientPillStyle}>{idea.clientName}</span>
 
-      {idea.platform && (
-        <span style={platformPillStyle}>{idea.platform}</span>
-      )}
+      {idea.platform && <span style={platformPillStyle}>{idea.platform}</span>}
 
       <span style={ideaPillStyle}>
         <MessageSquare size={10} />
@@ -80,7 +85,7 @@ function IdeaBanner({ idea, onEdit }: { idea: ClientIdea; onEdit: () => void }) 
 }
 
 const clientPillStyle: React.CSSProperties = {
-  fontSize: 11,
+  fontSize: 'var(--text-micro)',
   fontWeight: 500,
   padding: '3px 9px',
   borderRadius: 5,
@@ -92,7 +97,7 @@ const clientPillStyle: React.CSSProperties = {
 }
 
 const platformPillStyle: React.CSSProperties = {
-  fontSize: 11,
+  fontSize: 'var(--text-micro)',
   fontWeight: 500,
   padding: '3px 9px',
   borderRadius: 5,
@@ -101,7 +106,7 @@ const platformPillStyle: React.CSSProperties = {
 }
 
 const ideaPillStyle: React.CSSProperties = {
-  fontSize: 11,
+  fontSize: 'var(--text-micro)',
   fontWeight: 500,
   padding: '3px 9px',
   borderRadius: 5,
@@ -119,7 +124,7 @@ const ideaPillStyle: React.CSSProperties = {
 
 const editButtonStyle: React.CSSProperties = {
   marginLeft: 'auto',
-  fontSize: 11,
+  fontSize: 'var(--text-micro)',
   fontWeight: 500,
   color: 'var(--text2)',
   background: 'none',

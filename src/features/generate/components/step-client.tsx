@@ -39,7 +39,9 @@ export function StepClient({
       {brandProfileLoading && (
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '8px' }}>
           <Spinner size="sm" />
-          <span style={{ fontSize: '12px', color: 'var(--text2)' }}>Loading brand profile...</span>
+          <span className="text-caption" style={{ color: 'var(--text2)' }}>
+            Loading brand profile...
+          </span>
         </div>
       )}
 
@@ -71,12 +73,12 @@ function PlatformPill({
 }) {
   return (
     <button
+      className="text-caption"
       type="button"
       onClick={onClick}
       style={{
         padding: '8px 16px',
         borderRadius: '22px',
-        fontSize: '12px',
         fontWeight: 500,
         cursor: 'pointer',
         border: isSelected ? '1.5px solid var(--forest-deep)' : '1.5px solid rgba(15,21,18,0.14)',
@@ -94,8 +96,8 @@ function PlatformPill({
 function FieldLabel({ children }: { children: React.ReactNode }) {
   return (
     <div
+      className="text-label"
       style={{
-        fontSize: '10px',
         fontWeight: 500,
         color: 'var(--text2)',
         letterSpacing: '0.8px',
@@ -113,7 +115,7 @@ const SELECT_STYLE: React.CSSProperties = {
   padding: '10px 13px',
   border: '1px solid var(--line2)',
   borderRadius: '8px',
-  fontSize: '13px',
+  fontSize: 'var(--text-body)',
   fontFamily: 'inherit',
   color: 'var(--ink)',
   background: 'var(--surface)',

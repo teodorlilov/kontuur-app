@@ -34,7 +34,17 @@ interface PostDetailProps {
 }
 
 /** Middle panel: post content with scrollable body and fixed action bar. */
-export function PostDetail({ post, validationData, visuals, onRegenerateVisual, onEditedVisual, onApplyStyleToAll, onApprove, onDiscard, onRegenerate }: PostDetailProps) {
+export function PostDetail({
+  post,
+  validationData,
+  visuals,
+  onRegenerateVisual,
+  onEditedVisual,
+  onApplyStyleToAll,
+  onApprove,
+  onDiscard,
+  onRegenerate,
+}: PostDetailProps) {
   const {
     caption,
     setCaption,
@@ -49,12 +59,20 @@ export function PostDetail({ post, validationData, visuals, onRegenerateVisual, 
   const [editingPosition, setEditingPosition] = useState<number | null>(null)
   const slides = parseSlides(slidesJson)
   const pendingVisualCount = (visuals ?? []).filter((v) => v.status === 'generating').length
-  const doneVisualCount = (visuals ?? []).filter((v) => v.status === 'done' && !!v.publicUrl && !!v.storagePath).length
+  const doneVisualCount = (visuals ?? []).filter(
+    (v) => v.status === 'done' && !!v.publicUrl && !!v.storagePath
+  ).length
 
   const isCarousel = post.post_type === 'carousel'
   const editingVisual =
     editingPosition !== null
-      ? visuals?.find((v) => v.position === editingPosition && v.status === 'done' && !!v.publicUrl && !!v.storagePath)
+      ? visuals?.find(
+          (v) =>
+            v.position === editingPosition &&
+            v.status === 'done' &&
+            !!v.publicUrl &&
+            !!v.storagePath
+        )
       : undefined
 
   const getSlideCopy = (position: number) =>
@@ -94,7 +112,7 @@ export function PostDetail({ post, validationData, visuals, onRegenerateVisual, 
               visual={visual}
               altText={
                 isCarousel
-                  ? slides[activeIndex]?.headline ?? 'Slide visual'
+                  ? (slides[activeIndex]?.headline ?? 'Slide visual')
                   : caption.slice(0, 80) || 'Post visual'
               }
               onRegenerate={() => onRegenerateVisual(activeIndex)}
@@ -109,24 +127,39 @@ export function PostDetail({ post, validationData, visuals, onRegenerateVisual, 
             hasLowQuality={hasLowQuality}
             regenerating={regenerating}
             onClick={() => {
-              const qualityIssues = criteria.issues.map((i: { type: string; description: string }) => `${i.type}: ${i.description}`)
+              const qualityIssues = criteria.issues.map(
+                (i: { type: string; description: string }) => `${i.type}: ${i.description}`
+              )
               const noop = () => {}
               void regenerate(slop.ai_tells_found, qualityIssues, noop, noop)
             }}
           />
         )}
         <div style={{ display: 'flex', gap: '8px' }}>
-          <Button onClick={() => scheduleModal.openModal()} loading={approving} className="flex-1" size="sm">
+          <Button
+            onClick={() => scheduleModal.openModal()}
+            loading={approving}
+            className="flex-1"
+            size="sm"
+          >
             Approve
           </Button>
-          <Button onClick={() => onDiscard(post.id)} variant="ghost" size="sm" className="text-text3 hover:text-danger">
+          <Button
+            onClick={() => onDiscard(post.id)}
+            variant="ghost"
+            size="sm"
+            className="text-text3 hover:text-danger"
+          >
             Discard
           </Button>
         </div>
         {pendingVisualCount > 0 && (
-          <p style={{ fontSize: 11, color: 'var(--spring-text)', margin: '6px 0 0', textAlign: 'center' }}>
-            {pendingVisualCount} visual{pendingVisualCount > 1 ? 's' : ''} still generating — approving now attaches
-            the finished ones; add the rest later in Calendar.
+          <p
+            className="text-micro"
+            style={{ color: 'var(--spring-text)', margin: '6px 0 0', textAlign: 'center' }}
+          >
+            {pendingVisualCount} visual{pendingVisualCount > 1 ? 's' : ''} still generating —
+            approving now attaches the finished ones; add the rest later in Calendar.
           </p>
         )}
       </PostDetailLayout>
@@ -141,15 +174,28 @@ export function PostDetail({ post, validationData, visuals, onRegenerateVisual, 
           }}
           image={{ publicUrl: editingVisual.publicUrl, storagePath: editingVisual.storagePath }}
           slideCopy={getSlideCopy(editingPosition)}
-          slideLabel={isCarousel ? `Slide ${editingPosition + 1} of ${slides.length}` : 'Post visual'}
+          slideLabel={
+            isCarousel ? `Slide ${editingPosition + 1} of ${slides.length}` : 'Post visual'
+          }
           onClose={() => setEditingPosition(null)}
           onSavedDraft={(visual, doc) =>
-            onEditedVisual(post.id, { position: visual.position, status: 'done', publicUrl: visual.publicUrl, storagePath: visual.storagePath, canvasDoc: doc })
+            onEditedVisual(post.id, {
+              position: visual.position,
+              status: 'done',
+              publicUrl: visual.publicUrl,
+              storagePath: visual.storagePath,
+              canvasDoc: doc,
+            })
           }
           onApplyToAll={
             isCarousel && doneVisualCount > 1
               ? // Local caption/slide edits ride along so doc-less siblings seed from fresh copy.
-                (doc) => onApplyStyleToAll({ ...post, caption, slides_json: slidesJson }, editingPosition, doc)
+                (doc) =>
+                  onApplyStyleToAll(
+                    { ...post, caption, slides_json: slidesJson },
+                    editingPosition,
+                    doc
+                  )
               : undefined
           }
         />

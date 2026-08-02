@@ -27,7 +27,14 @@ interface StepLoadingProps {
 }
 
 /** Step 4: centered loading view with 4 named stages. */
-export function StepLoading({ clientName, stage, streamTotal, generatedCount, researchPhase, isIdeaFlow }: StepLoadingProps) {
+export function StepLoading({
+  clientName,
+  stage,
+  streamTotal,
+  generatedCount,
+  researchPhase,
+  isIdeaFlow,
+}: StepLoadingProps) {
   return (
     <div
       style={{
@@ -43,9 +50,9 @@ export function StepLoading({ clientName, stage, streamTotal, generatedCount, re
       <FrameIcon />
 
       <h2
+        className="text-headline"
         style={{
           fontFamily: 'var(--font-display)',
-          fontSize: '22px',
           fontWeight: 400,
           color: 'var(--ink)',
           textAlign: 'center',
@@ -54,11 +61,20 @@ export function StepLoading({ clientName, stage, streamTotal, generatedCount, re
       >
         {isIdeaFlow ? `Generating post for ${clientName}` : `Generating posts for ${clientName}`}
       </h2>
-      <p style={{ fontSize: '13px', color: 'var(--text2)', textAlign: 'center', marginBottom: '28px' }}>
-        {isIdeaFlow ? 'Searching sources, enriching idea, writing post' : 'Fetching sources, researching content, writing captions'}
+      <p
+        className="text-body"
+        style={{ color: 'var(--text2)', textAlign: 'center', marginBottom: '28px' }}
+      >
+        {isIdeaFlow
+          ? 'Searching sources, enriching idea, writing post'
+          : 'Fetching sources, researching content, writing captions'}
       </p>
 
-      <StageList stage={stage} researchPhase={researchPhase} labels={isIdeaFlow ? IDEA_STAGE_LABELS : STAGE_LABELS} />
+      <StageList
+        stage={stage}
+        researchPhase={researchPhase}
+        labels={isIdeaFlow ? IDEA_STAGE_LABELS : STAGE_LABELS}
+      />
 
       {streamTotal > 0 && <ProgressBar current={generatedCount} total={streamTotal} />}
 
@@ -87,9 +103,26 @@ function FrameIcon() {
   )
 }
 
-function StageList({ stage, researchPhase, labels }: { stage: number; researchPhase: string; labels: string[] }) {
+function StageList({
+  stage,
+  researchPhase,
+  labels,
+}: {
+  stage: number
+  researchPhase: string
+  labels: string[]
+}) {
   return (
-    <div style={{ width: '100%', maxWidth: '320px', marginBottom: '24px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+    <div
+      style={{
+        width: '100%',
+        maxWidth: '320px',
+        marginBottom: '24px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '6px',
+      }}
+    >
       {labels.map((label, i) => {
         const isDone = i < stage
         const isActive = i === stage
@@ -100,7 +133,15 @@ function StageList({ stage, researchPhase, labels }: { stage: number; researchPh
   )
 }
 
-function StageRow({ isDone, isActive, label }: { isDone: boolean; isActive: boolean; label: string }) {
+function StageRow({
+  isDone,
+  isActive,
+  label,
+}: {
+  isDone: boolean
+  isActive: boolean
+  label: string
+}) {
   return (
     <div
       style={{
@@ -109,14 +150,18 @@ function StageRow({ isDone, isActive, label }: { isDone: boolean; isActive: bool
         gap: '10px',
         padding: '10px 14px',
         borderRadius: '8px',
-        background: isDone ? 'rgba(46,158,104,0.07)' : isActive ? 'rgba(15,21,18,0.06)' : 'var(--paper)',
+        background: isDone
+          ? 'rgba(46,158,104,0.07)'
+          : isActive
+            ? 'rgba(15,21,18,0.06)'
+            : 'var(--paper)',
         transition: 'background 0.3s',
       }}
     >
       <StageIcon isDone={isDone} isActive={isActive} />
       <span
+        className="text-caption"
         style={{
-          fontSize: '12px',
           fontWeight: 500,
           color: isDone ? 'var(--spring-text)' : isActive ? 'var(--ink)' : 'var(--text2)',
         }}
@@ -167,7 +212,15 @@ function StageIcon({ isDone, isActive }: { isDone: boolean; isActive: boolean })
   }
 
   return (
-    <div style={{ width: '20px', height: '20px', borderRadius: '50%', background: 'rgba(15,21,18,0.12)', flexShrink: 0 }} />
+    <div
+      style={{
+        width: '20px',
+        height: '20px',
+        borderRadius: '50%',
+        background: 'rgba(15,21,18,0.12)',
+        flexShrink: 0,
+      }}
+    />
   )
 }
 
@@ -175,11 +228,28 @@ function ProgressBar({ current, total }: { current: number; total: number }) {
   const percent = total > 0 ? Math.round((current / total) * 100) : 0
   return (
     <div style={{ width: '100%', maxWidth: '320px', marginBottom: '20px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: 'var(--text2)', marginBottom: '6px' }}>
+      <div
+        className="text-micro"
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          color: 'var(--text2)',
+          marginBottom: '6px',
+        }}
+      >
         <span>Generating posts...</span>
-        <span>{current} of {total} complete</span>
+        <span>
+          {current} of {total} complete
+        </span>
       </div>
-      <div style={{ height: '4px', background: 'rgba(15,21,18,0.08)', borderRadius: '2px', overflow: 'hidden' }}>
+      <div
+        style={{
+          height: '4px',
+          background: 'rgba(15,21,18,0.08)',
+          borderRadius: '2px',
+          overflow: 'hidden',
+        }}
+      >
         <div
           style={{
             height: '100%',
@@ -238,6 +308,12 @@ export function mapPhaseToStage(phase: string): number {
   const lower = phase.toLowerCase()
   if (lower.includes('quality') || lower.includes('validat') || lower.includes('check')) return 3
   if (lower.includes('generat') || lower.includes('writ') || lower.includes('caption')) return 2
-  if (lower.includes('pillar') || lower.includes('research') || lower.includes('theme') || lower.includes('analyz')) return 1
+  if (
+    lower.includes('pillar') ||
+    lower.includes('research') ||
+    lower.includes('theme') ||
+    lower.includes('analyz')
+  )
+    return 1
   return 0
 }

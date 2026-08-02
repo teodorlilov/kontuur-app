@@ -41,34 +41,31 @@ export function CanvaDesignPicker({
   const [error, setError] = useState<string | null>(null)
   const [continuation, setContinuation] = useState<string | null>(null)
 
-  const fetchDesigns = useCallback(
-    async (searchQuery: string, cont?: string) => {
-      setLoading(true)
-      setError(null)
-      try {
-        const params = new URLSearchParams()
-        if (searchQuery) params.set('query', searchQuery)
-        if (cont) params.set('continuation', cont)
+  const fetchDesigns = useCallback(async (searchQuery: string, cont?: string) => {
+    setLoading(true)
+    setError(null)
+    try {
+      const params = new URLSearchParams()
+      if (searchQuery) params.set('query', searchQuery)
+      if (cont) params.set('continuation', cont)
 
-        const res = await fetch(`/api/canva/designs?${params}`)
-        const data = await res.json()
+      const res = await fetch(`/api/canva/designs?${params}`)
+      const data = await res.json()
 
-        if (!res.ok) throw new Error(data.error ?? 'Failed to load designs')
+      if (!res.ok) throw new Error(data.error ?? 'Failed to load designs')
 
-        if (cont) {
-          setDesigns((prev) => [...prev, ...data.designs])
-        } else {
-          setDesigns(data.designs)
-        }
-        setContinuation(data.continuation)
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load designs')
-      } finally {
-        setLoading(false)
+      if (cont) {
+        setDesigns((prev) => [...prev, ...data.designs])
+      } else {
+        setDesigns(data.designs)
       }
-    },
-    []
-  )
+      setContinuation(data.continuation)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load designs')
+    } finally {
+      setLoading(false)
+    }
+  }, [])
 
   // Load designs when modal opens
   useEffect(() => {
@@ -123,6 +120,7 @@ export function CanvaDesignPicker({
         >
           <Search style={{ width: 14, height: 14, color: 'var(--text2)', flexShrink: 0 }} />
           <input
+            className="text-body"
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
@@ -132,7 +130,6 @@ export function CanvaDesignPicker({
               border: 'none',
               background: 'transparent',
               outline: 'none',
-              fontSize: 13,
               color: 'var(--ink)',
               fontFamily: 'inherit',
             }}
@@ -142,8 +139,8 @@ export function CanvaDesignPicker({
 
       {error && (
         <div
+          className="text-caption"
           style={{
-            fontSize: 12,
             color: 'var(--danger)',
             background: 'var(--danger-bg)',
             padding: '8px 12px',
@@ -191,11 +188,11 @@ export function CanvaDesignPicker({
 
       {!loading && designs.length === 0 && (
         <div
+          className="text-body"
           style={{
             textAlign: 'center',
             padding: 32,
             color: 'var(--text2)',
-            fontSize: 13,
           }}
         >
           No designs found. Create one in Canva first.
@@ -206,10 +203,10 @@ export function CanvaDesignPicker({
       {continuation && !loading && (
         <div style={{ display: 'flex', justifyContent: 'center', marginTop: 12 }}>
           <button
+            className="text-caption"
             type="button"
             onClick={() => fetchDesigns(query, continuation)}
             style={{
-              fontSize: 12,
               color: 'var(--forest)',
               background: 'none',
               border: 'none',
@@ -277,7 +274,12 @@ function DesignCard({
       >
         {isImporting ? (
           <Loader2
-            style={{ width: 20, height: 20, color: 'var(--forest)', animation: 'spin 1s linear infinite' }}
+            style={{
+              width: 20,
+              height: 20,
+              color: 'var(--forest)',
+              animation: 'spin 1s linear infinite',
+            }}
           />
         ) : design.thumbnailUrl ? (
           <img
@@ -292,9 +294,9 @@ function DesignCard({
 
       {/* Title */}
       <div
+        className="text-micro"
         style={{
           padding: '8px 10px',
-          fontSize: 11,
           fontWeight: 500,
           color: 'var(--ink)',
           overflow: 'hidden',

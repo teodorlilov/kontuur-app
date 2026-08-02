@@ -43,16 +43,20 @@ export function IdeasView({ initialIdeas, clients }: IdeasViewProps) {
     })
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const filteredIdeas = useMemo(() => ideas.filter((i) => {
-    const matchClient = activeClient === 'all' || i.clientId === activeClient
-    const matchStatus =
-      activeStatus === 'all'
-        ? true
-        : activeStatus === 'new'
-          ? i.status === 'new' || i.status === 'generating'
-          : i.status === 'generated' || i.status === 'dismissed'
-    return matchClient && matchStatus
-  }), [ideas, activeClient, activeStatus])
+  const filteredIdeas = useMemo(
+    () =>
+      ideas.filter((i) => {
+        const matchClient = activeClient === 'all' || i.clientId === activeClient
+        const matchStatus =
+          activeStatus === 'all'
+            ? true
+            : activeStatus === 'new'
+              ? i.status === 'new' || i.status === 'generating'
+              : i.status === 'generated' || i.status === 'dismissed'
+        return matchClient && matchStatus
+      }),
+    [ideas, activeClient, activeStatus]
+  )
 
   const { clientOptions, totalNewCount, tabCounts } = useMemo(() => {
     const scoped = activeClient === 'all' ? ideas : ideas.filter((i) => i.clientId === activeClient)
@@ -134,10 +138,19 @@ export function IdeasView({ initialIdeas, clients }: IdeasViewProps) {
             />
           ) : null
         }
-        tabs={<TabRail items={tabs} active={activeStatus} onSelect={setActiveStatus} label="Filter ideas" />}
+        tabs={
+          <TabRail
+            items={tabs}
+            active={activeStatus}
+            onSelect={setActiveStatus}
+            label="Filter ideas"
+          />
+        }
       />
 
-      <div className={cn(PAGE_SHELL, 'flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto pb-8 pt-5')}>
+      <div
+        className={cn(PAGE_SHELL, 'flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto pb-8 pt-5')}
+      >
         {filteredIdeas.length === 0 ? (
           <EmptyState
             icon={<Lightbulb size={28} />}

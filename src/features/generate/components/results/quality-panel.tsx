@@ -1,7 +1,11 @@
 'use client'
 
 import { PanelSection } from '@/components/posts/panel-section'
-import { QualitySection, SourceInfoSection, MetadataRow } from '@/components/posts/info-panel-sections'
+import {
+  QualitySection,
+  SourceInfoSection,
+  MetadataRow,
+} from '@/components/posts/info-panel-sections'
 import type { PostData, ValidationData } from '@/types/post'
 
 interface RunSummary {

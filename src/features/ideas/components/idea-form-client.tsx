@@ -105,7 +105,9 @@ export function IdeaFormClient({ token, clientName, agencyName }: IdeaFormClient
         </button>
 
         {error && (
-          <div style={{ fontSize: 12, color: 'var(--danger)', marginTop: 12 }}>{error}</div>
+          <div className="text-caption" style={{ color: 'var(--danger)', marginTop: 12 }}>
+            {error}
+          </div>
         )}
 
         <button
@@ -117,7 +119,9 @@ export function IdeaFormClient({ token, clientName, agencyName }: IdeaFormClient
             cursor: submitting || !hasValidIdea ? 'default' : 'pointer',
           }}
         >
-          {submitting ? 'Sending...' : `Send idea${briefs.filter((b) => b.ideaText.trim()).length !== 1 ? 's' : ''}`}
+          {submitting
+            ? 'Sending...'
+            : `Send idea${briefs.filter((b) => b.ideaText.trim()).length !== 1 ? 's' : ''}`}
         </button>
       </div>
     </div>
@@ -131,8 +135,8 @@ function FormHeader({ agencyName, clientName }: { agencyName: string; clientName
     <div style={{ background: 'var(--forest-deep)', padding: '22px 0 0' }}>
       <div style={{ maxWidth: 560, margin: '0 auto', padding: '0 24px 20px' }}>
         <div
+          className="text-label"
           style={{
-            fontSize: 10,
             fontWeight: 500,
             color: 'rgba(242,245,241,0.45)',
             letterSpacing: 2,
@@ -157,8 +161,8 @@ function FormHeader({ agencyName, clientName }: { agencyName: string; clientName
         {/* Sans, not the display serif: client names may be Cyrillic and
             Instrument Serif has no Cyrillic glyphs. */}
         <div
+          className="text-headline"
           style={{
-            fontSize: 21,
             fontWeight: 600,
             letterSpacing: '-0.01em',
             color: '#F2F5F1',
@@ -167,8 +171,9 @@ function FormHeader({ agencyName, clientName }: { agencyName: string; clientName
         >
           Share a post idea, {clientName}
         </div>
-        <div style={{ fontSize: 13, color: 'rgba(242,245,241,0.55)', lineHeight: 1.55 }}>
-          Tell us what you'd like to post and we'll take it from there. No login needed — just fill in the form below.
+        <div className="text-body" style={{ color: 'rgba(242,245,241,0.55)', lineHeight: 1.55 }}>
+          Tell us what you'd like to post and we'll take it from there. No login needed — just fill
+          in the form below.
         </div>
       </div>
     </div>
@@ -224,15 +229,18 @@ function BriefCard({
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
             {PLATFORMS.map((p) => (
               <button
+                className="text-caption"
                 key={p}
                 type="button"
                 onClick={() => onUpdate('platform', brief.platform === p ? '' : p)}
                 style={{
                   padding: '5px 12px',
                   borderRadius: 6,
-                  fontSize: 12,
                   fontWeight: 500,
-                  border: brief.platform === p ? '1.5px solid var(--forest-deep)' : '1px solid rgba(15,21,18,0.14)',
+                  border:
+                    brief.platform === p
+                      ? '1.5px solid var(--forest-deep)'
+                      : '1px solid rgba(15,21,18,0.14)',
                   background: brief.platform === p ? 'var(--forest-deep)' : '#fff',
                   color: brief.platform === p ? '#f2f5f1' : 'var(--text2)',
                   cursor: 'pointer',
@@ -270,7 +278,10 @@ function FieldGroup({
 }) {
   return (
     <div>
-      <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--ink)', marginBottom: 6 }}>
+      <div
+        className="text-caption"
+        style={{ fontWeight: 500, color: 'var(--ink)', marginBottom: 6 }}
+      >
         {label}
         {required && <span style={{ color: 'var(--spring-text)', marginLeft: 3 }}>*</span>}
       </div>
@@ -292,6 +303,7 @@ function SuccessView({ agencyName, onReset }: { agencyName: string; onReset: () 
     >
       <div style={{ textAlign: 'center', maxWidth: 400 }}>
         <div
+          className="text-headline"
           style={{
             width: 48,
             height: 48,
@@ -301,15 +313,14 @@ function SuccessView({ agencyName, onReset }: { agencyName: string; onReset: () 
             alignItems: 'center',
             justifyContent: 'center',
             margin: '0 auto 16px',
-            fontSize: 22,
           }}
         >
           ✓
         </div>
         <div
+          className="text-headline"
           style={{
             fontFamily: 'var(--font-display, Georgia, serif)',
-            fontSize: 22,
             fontWeight: 400,
             color: 'var(--ink)',
             marginBottom: 8,
@@ -317,7 +328,10 @@ function SuccessView({ agencyName, onReset }: { agencyName: string; onReset: () 
         >
           Ideas sent!
         </div>
-        <div style={{ fontSize: 13, color: 'var(--text2)', lineHeight: 1.6, marginBottom: 20 }}>
+        <div
+          className="text-body"
+          style={{ color: 'var(--text2)', lineHeight: 1.6, marginBottom: 20 }}
+        >
           {agencyName} will review your ideas and get in touch.
         </div>
         <button onClick={onReset} style={submitButtonStyle}>
@@ -347,7 +361,7 @@ const cardHeaderStyle: React.CSSProperties = {
 }
 
 const labelStyle: React.CSSProperties = {
-  fontSize: 9,
+  fontSize: 'var(--text-label)',
   fontWeight: 500,
   color: 'var(--spring-text)',
   letterSpacing: 1.2,
@@ -355,7 +369,7 @@ const labelStyle: React.CSSProperties = {
 }
 
 const removeButtonStyle: React.CSSProperties = {
-  fontSize: 11,
+  fontSize: 'var(--text-micro)',
   color: 'rgba(15,21,18,0.7)',
   background: 'none',
   border: 'none',
@@ -365,7 +379,7 @@ const removeButtonStyle: React.CSSProperties = {
 
 const textareaStyle: React.CSSProperties = {
   width: '100%',
-  fontSize: 13,
+  fontSize: 'var(--text-body)',
   fontFamily: 'inherit',
   border: '1px solid rgba(15,21,18,0.14)',
   borderRadius: 8,
@@ -378,7 +392,7 @@ const textareaStyle: React.CSSProperties = {
 
 const inputStyle: React.CSSProperties = {
   width: '100%',
-  fontSize: 13,
+  fontSize: 'var(--text-body)',
   fontFamily: 'inherit',
   border: '1px solid rgba(15,21,18,0.14)',
   borderRadius: 8,
@@ -391,7 +405,7 @@ const addButtonStyle: React.CSSProperties = {
   width: '100%',
   padding: '11px 16px',
   borderRadius: 10,
-  fontSize: 12,
+  fontSize: 'var(--text-caption)',
   fontWeight: 500,
   color: 'var(--text2)',
   background: 'none',
@@ -404,7 +418,7 @@ const addButtonStyle: React.CSSProperties = {
 const submitButtonStyle: React.CSSProperties = {
   padding: '11px 24px',
   borderRadius: 9,
-  fontSize: 13,
+  fontSize: 'var(--text-body)',
   fontWeight: 500,
   color: '#f2f5f1',
   background: 'var(--forest-deep)',

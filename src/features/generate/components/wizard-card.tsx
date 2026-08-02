@@ -45,13 +45,21 @@ export function WizardCard({
   )
 }
 
-function CardHeader({ title, subtitle, badge }: { title: string; subtitle: string; badge?: string }) {
+function CardHeader({
+  title,
+  subtitle,
+  badge,
+}: {
+  title: string
+  subtitle: string
+  badge?: string
+}) {
   return (
     <>
       <div
+        className="text-headline"
         style={{
           fontFamily: 'var(--font-display, Georgia, serif)',
-          fontSize: '26px',
           fontWeight: 400,
           color: 'var(--ink)',
           marginBottom: '6px',
@@ -60,8 +68,8 @@ function CardHeader({ title, subtitle, badge }: { title: string; subtitle: strin
         {title}
       </div>
       <div
+        className="text-body"
         style={{
-          fontSize: '13px',
           color: 'var(--text2)',
           lineHeight: 1.6,
           marginBottom: badge ? '8px' : '28px',
@@ -71,10 +79,10 @@ function CardHeader({ title, subtitle, badge }: { title: string; subtitle: strin
       </div>
       {badge && (
         <div
+          className="text-label tracking-normal"
           style={{
             display: 'inline-flex',
             alignItems: 'center',
-            fontSize: '10px',
             fontWeight: 500,
             padding: '2px 8px',
             borderRadius: '10px',

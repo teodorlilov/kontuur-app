@@ -36,8 +36,8 @@ export function PriorityPostForm({ posts, onChange }: PriorityPostFormProps) {
         >
           <div className="flex items-center justify-between mb-3">
             <span
+              className="text-label"
               style={{
-                fontSize: '9px',
                 fontWeight: 500,
                 color: 'var(--spring-text)',
                 letterSpacing: '1.2px',
@@ -46,10 +46,7 @@ export function PriorityPostForm({ posts, onChange }: PriorityPostFormProps) {
             >
               Priority post {i + 1}
             </span>
-            <button
-              onClick={() => removeRow(i)}
-              className="text-sm text-text3 hover:text-danger"
-            >
+            <button onClick={() => removeRow(i)} className="text-body text-text3 hover:text-danger">
               Remove
             </button>
           </div>
@@ -60,22 +57,26 @@ export function PriorityPostForm({ posts, onChange }: PriorityPostFormProps) {
             placeholder="e.g. Summer skin care campaign announcement"
           />
           <div className="flex flex-col gap-1.5 mt-3">
-            <label style={{ fontSize: '12px', fontWeight: 500, color: 'var(--text2)' }}>Brief</label>
+            <label className="text-caption" style={{ fontWeight: 500, color: 'var(--text2)' }}>
+              Brief
+            </label>
             <textarea
               value={post.brief}
               onChange={(e) => updateRow(i, 'brief', e.target.value)}
               placeholder="Key messages to include, specific products or services to mention..."
               rows={2}
-              className="w-full rounded-lg border border-line2 px-4 py-3 text-base text-ink placeholder:text-text3 focus:border-[var(--line2)] focus:outline-none focus:ring-1 focus:ring-[var(--line2)] resize-none"
+              className="w-full rounded-lg border border-line2 px-4 py-3 text-lead md:text-body texe text-ink placeholder:text-text3 focus:border-[var(--line2)] focus:outline-none focus:ring-1 focus:ring-[var(--line2)] resize-none"
             />
           </div>
           <div className="grid grid-cols-2 gap-4 mt-3">
             <div className="flex flex-col gap-1.5">
-              <label style={{ fontSize: '12px', fontWeight: 500, color: 'var(--text2)' }}>Platform</label>
+              <label className="text-caption" style={{ fontWeight: 500, color: 'var(--text2)' }}>
+                Platform
+              </label>
               <select
                 value={post.platform}
                 onChange={(e) => updateRow(i, 'platform', e.target.value)}
-                className="rounded-lg border border-line2 px-4 py-3 text-base text-ink focus:border-[var(--line2)] focus:outline-none focus:ring-1 focus:ring-[var(--line2)]"
+                className="rounded-lg border border-line2 px-4 py-3 text-lead md:text-body text-ink focus:border-[var(--line2)] focus:outline-none focus:ring-1 focus:ring-[var(--line2)]"
               >
                 {PLATFORMS.map((p) => (
                   <option key={p} value={p}>
@@ -95,11 +96,11 @@ export function PriorityPostForm({ posts, onChange }: PriorityPostFormProps) {
       ))}
 
       <button
+        className="text-caption"
         onClick={addRow}
         style={{
           width: '100%',
           padding: '12px',
-          fontSize: '12px',
           fontWeight: 500,
           color: 'var(--text2)',
           background: 'none',

@@ -2,7 +2,12 @@
 
 import { useState } from 'react'
 import type { Palette, VisualIdentity } from '@/types/visual'
-import { BRAND_STYLES, BRAND_STYLE_IDS, type BrandStyle, type BrandStyleId } from '@/lib/visual/brand-styles'
+import {
+  BRAND_STYLES,
+  BRAND_STYLE_IDS,
+  type BrandStyle,
+  type BrandStyleId,
+} from '@/lib/visual/brand-styles'
 import { ImageLightbox } from '@/components/ui/image-lightbox'
 import { PaletteSwatches } from './palette-swatches'
 import { StyleCard } from './style-card'
@@ -19,7 +24,7 @@ type VisualIdentityPanelProps = {
 }
 
 const LABEL_STYLE: React.CSSProperties = {
-  fontSize: '9px',
+  fontSize: 'var(--text-label)',
   fontWeight: 500,
   color: 'var(--spring-text)',
   letterSpacing: '1.5px',
@@ -30,7 +35,13 @@ const LABEL_STYLE: React.CSSProperties = {
 /** The shared brand visual-identity editor: the Brand Style used for AI visuals plus the editable
  *  Brand Palette measured from the client's site. Used by both the onboarding Review step and the
  *  client settings tab so the editor lives in one place. */
-export function VisualIdentityPanel({ identity, onChange, status, onReanalyze, reanalyzing }: VisualIdentityPanelProps) {
+export function VisualIdentityPanel({
+  identity,
+  onChange,
+  status,
+  onReanalyze,
+  reanalyzing,
+}: VisualIdentityPanelProps) {
   const [previewStyle, setPreviewStyle] = useState<BrandStyle | null>(null)
 
   // Rebuilt without palette_description: it described the old colours; generation self-heals a fresh one.
@@ -40,16 +51,21 @@ export function VisualIdentityPanel({ identity, onChange, status, onReanalyze, r
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
       {status && status !== 'ready' && status !== 'idle' && (
-        <div style={{ fontSize: '11px', color: 'var(--text2)', lineHeight: 1.5 }}>
-          {status === 'pending' && 'Analyzing your website for brand colours… you can keep editing; results will appear here.'}
-          {status === 'failed' && 'Analysis took too long — using default colours. Adjust anything below.'}
+        <div className="text-micro" style={{ color: 'var(--text2)', lineHeight: 1.5 }}>
+          {status === 'pending' &&
+            'Analyzing your website for brand colours… you can keep editing; results will appear here.'}
+          {status === 'failed' &&
+            'Analysis took too long — using default colours. Adjust anything below.'}
           {status === 'fallback' && 'No site colours could be read — using defaults. Adjust below.'}
         </div>
       )}
 
       <div>
         <div style={LABEL_STYLE}>Brand style</div>
-        <p style={{ fontSize: '11px', color: 'var(--text2)', margin: '0 0 10px', lineHeight: 1.5 }}>
+        <p
+          className="text-micro"
+          style={{ color: 'var(--text2)', margin: '0 0 10px', lineHeight: 1.5 }}
+        >
           The design system AI visuals follow. Colours always come from the brand palette below.
         </p>
         <div
@@ -79,6 +95,7 @@ export function VisualIdentityPanel({ identity, onChange, status, onReanalyze, r
 
       {onReanalyze && (
         <button
+          className="text-caption"
           type="button"
           onClick={onReanalyze}
           disabled={reanalyzing}
@@ -89,7 +106,6 @@ export function VisualIdentityPanel({ identity, onChange, status, onReanalyze, r
             border: '1px solid var(--line)',
             background: 'var(--paper)',
             color: 'var(--ink)',
-            fontSize: '12px',
             cursor: reanalyzing ? 'default' : 'pointer',
             opacity: reanalyzing ? 0.7 : 1,
             fontFamily: 'var(--font-sans)',

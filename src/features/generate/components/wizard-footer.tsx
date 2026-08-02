@@ -10,7 +10,14 @@ interface WizardFooterProps {
 }
 
 /** Shared footer for wizard steps with Back / Skip / Generate / Next buttons. */
-export function WizardFooter({ onBack, onNext, onSkip, onGenerate, nextDisabled, skipLabel }: WizardFooterProps) {
+export function WizardFooter({
+  onBack,
+  onNext,
+  onSkip,
+  onGenerate,
+  nextDisabled,
+  skipLabel,
+}: WizardFooterProps) {
   return (
     <div
       style={{
@@ -35,6 +42,7 @@ export function WizardFooter({ onBack, onNext, onSkip, onGenerate, nextDisabled,
 function BackButton({ onClick }: { onClick: () => void }) {
   return (
     <button
+      className="text-caption"
       type="button"
       onClick={onClick}
       style={{
@@ -42,7 +50,6 @@ function BackButton({ onClick }: { onClick: () => void }) {
         background: 'var(--sunken)',
         border: '1px solid var(--line2)',
         borderRadius: '9px',
-        fontSize: '12px',
         fontWeight: 500,
         color: 'var(--text2)',
         cursor: 'pointer',
@@ -60,10 +67,10 @@ function BackButton({ onClick }: { onClick: () => void }) {
 function SkipButton({ onClick, label }: { onClick: () => void; label: string }) {
   return (
     <button
+      className="text-caption"
       type="button"
       onClick={onClick}
       style={{
-        fontSize: '12px',
         fontWeight: 500,
         color: 'var(--text2)',
         background: 'none',
@@ -80,6 +87,7 @@ function SkipButton({ onClick, label }: { onClick: () => void; label: string }) 
 function GenerateButton({ onClick }: { onClick: () => void }) {
   return (
     <button
+      className="text-caption"
       type="button"
       onClick={onClick}
       style={{
@@ -88,7 +96,6 @@ function GenerateButton({ onClick }: { onClick: () => void }) {
         color: '#fff',
         border: 'none',
         borderRadius: '9px',
-        fontSize: '12px',
         fontWeight: 500,
         cursor: 'pointer',
         fontFamily: 'inherit',
@@ -106,6 +113,7 @@ function GenerateButton({ onClick }: { onClick: () => void }) {
 function NextButton({ onClick, disabled }: { onClick: () => void; disabled?: boolean }) {
   return (
     <button
+      className="text-caption"
       type="button"
       onClick={onClick}
       disabled={disabled}
@@ -115,7 +123,6 @@ function NextButton({ onClick, disabled }: { onClick: () => void; disabled?: boo
         color: '#f2f5f1',
         border: 'none',
         borderRadius: '9px',
-        fontSize: '12px',
         fontWeight: 500,
         cursor: disabled ? 'not-allowed' : 'pointer',
         fontFamily: 'inherit',

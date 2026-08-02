@@ -25,15 +25,24 @@ export function DraftVisualSlot({
 }) {
   if (!visual) {
     return (
-      <ActionPanel onClick={onRegenerate} icon={<Sparkles style={{ width: 12, height: 12 }} />} label="Generate visual" />
+      <ActionPanel
+        onClick={onRegenerate}
+        icon={<Sparkles style={{ width: 12, height: 12 }} />}
+        label="Generate visual"
+      />
     )
   }
 
   if (visual.status === 'generating') {
     return (
       <div style={panelStyle('rgba(46,158,104,0.45)', 'rgba(46,158,104,0.04)')}>
-        <Sparkles style={{ width: 14, height: 14, color: 'var(--spring-text)' }} className="animate-pulse" />
-        <span style={{ fontSize: 11, color: 'var(--spring-text)' }}>Generating visual…</span>
+        <Sparkles
+          style={{ width: 14, height: 14, color: 'var(--spring-text)' }}
+          className="animate-pulse"
+        />
+        <span className="text-micro" style={{ color: 'var(--spring-text)' }}>
+          Generating visual…
+        </span>
       </div>
     )
   }
@@ -49,7 +58,14 @@ export function DraftVisualSlot({
     )
   }
 
-  return <DraftVisualPreview publicUrl={visual.publicUrl} altText={altText} onRegenerate={onRegenerate} onEdit={onEdit} />
+  return (
+    <DraftVisualPreview
+      publicUrl={visual.publicUrl}
+      altText={altText}
+      onRegenerate={onRegenerate}
+      onEdit={onEdit}
+    />
+  )
 }
 
 /** Compact preview matching ImageCard's dimensions (≤280px, uncropped, click to enlarge). */
@@ -97,7 +113,11 @@ function DraftVisualPreview({
             Edit text
           </FooterAction>
         )}
-        <FooterAction onClick={onRegenerate} color="var(--spring-text)" background="rgba(46,158,104,0.08)">
+        <FooterAction
+          onClick={onRegenerate}
+          color="var(--spring-text)"
+          background="rgba(46,158,104,0.08)"
+        >
           <Sparkles style={{ width: 11, height: 11 }} />
           Regenerate
         </FooterAction>
@@ -120,6 +140,7 @@ function FooterAction({
 }) {
   return (
     <button
+      className="text-label tracking-normal"
       type="button"
       onClick={onClick}
       style={{
@@ -132,7 +153,6 @@ function FooterAction({
         background,
         cursor: 'pointer',
         fontFamily: 'inherit',
-        fontSize: 10,
         fontWeight: 500,
         color,
       }}
@@ -172,9 +192,15 @@ function ActionPanel({
   const border = tone === 'error' ? 'rgba(163,45,45,0.35)' : 'rgba(46,158,104,0.45)'
   const background = tone === 'error' ? 'rgba(163,45,45,0.04)' : 'rgba(46,158,104,0.04)'
   return (
-    <button type="button" onClick={onClick} style={{ ...panelStyle(border, background), cursor: 'pointer', color }}>
+    <button
+      type="button"
+      onClick={onClick}
+      style={{ ...panelStyle(border, background), cursor: 'pointer', color }}
+    >
       {icon}
-      <span style={{ fontSize: 11, color }}>{label}</span>
+      <span className="text-micro" style={{ color }}>
+        {label}
+      </span>
     </button>
   )
 }

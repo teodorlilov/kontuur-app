@@ -41,7 +41,9 @@ export function WizardTopbar({ currentStep, onStepClick, onCancel }: WizardTopba
         boxShadow: '0 1px 0 rgba(15,21,18,0.05)',
       }}
     >
-      <div className="hidden md:block"><LogoMark /></div>
+      <div className="hidden md:block">
+        <LogoMark />
+      </div>
       <StepStrip steps={STEPS} currentIndex={currentIndex} onStepClick={onStepClick} />
       <CancelButton onClick={onCancel} />
     </div>
@@ -51,9 +53,9 @@ export function WizardTopbar({ currentStep, onStepClick, onCancel }: WizardTopba
 function LogoMark() {
   return (
     <div
+      className="text-body"
       style={{
         fontFamily: 'var(--font-display, Georgia, serif)',
-        fontSize: '13px',
         letterSpacing: '3px',
         color: 'var(--ink)',
         paddingRight: '20px',
@@ -123,11 +125,15 @@ function StepItem({
     >
       <StepCircle state={state} number={number} />
       <span
-        className="hidden sm:inline"
+        className="text-caption hidden sm:inline"
         style={{
-          fontSize: '12px',
           fontWeight: 500,
-          color: state === 'done' ? 'var(--text2)' : state === 'active' ? 'var(--forest-deep)' : 'rgba(15,21,18,0.5)',
+          color:
+            state === 'done'
+              ? 'var(--text2)'
+              : state === 'active'
+                ? 'var(--forest-deep)'
+                : 'rgba(15,21,18,0.5)',
         }}
       >
         {label}
@@ -139,6 +145,7 @@ function StepItem({
 function StepCircle({ state, number }: { state: 'done' | 'active' | 'idle'; number: number }) {
   return (
     <div
+      className="text-label tracking-normal"
       style={{
         width: '22px',
         height: '22px',
@@ -146,12 +153,16 @@ function StepCircle({ state, number }: { state: 'done' | 'active' | 'idle'; numb
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        fontSize: '10px',
         fontWeight: 600,
         flexShrink: 0,
         background:
-          state === 'done' ? 'rgba(46,158,104,0.12)' : state === 'active' ? 'var(--spring-text)' : 'rgba(15,21,18,0.07)',
-        color: state === 'done' ? 'var(--spring-text)' : state === 'active' ? '#fff' : 'var(--text2)',
+          state === 'done'
+            ? 'rgba(46,158,104,0.12)'
+            : state === 'active'
+              ? 'var(--spring-text)'
+              : 'rgba(15,21,18,0.07)',
+        color:
+          state === 'done' ? 'var(--spring-text)' : state === 'active' ? '#fff' : 'var(--text2)',
       }}
     >
       {state === 'done' ? '✓' : number}
@@ -177,11 +188,11 @@ function StepConnector({ isDone }: { isDone: boolean }) {
 function CancelButton({ onClick }: { onClick: () => void }) {
   return (
     <button
+      className="text-caption"
       type="button"
       onClick={onClick}
       style={{
         marginLeft: 'auto',
-        fontSize: '12px',
         fontWeight: 500,
         color: 'var(--text2)',
         background: 'none',

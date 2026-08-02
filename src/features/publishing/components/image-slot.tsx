@@ -29,7 +29,18 @@ interface ImageSlotProps {
 }
 
 /** Single-image upload/display slot for a carousel slide or single post. */
-export function ImageSlot({ postId, position, image, onUploaded, onDeleted, canvaConnected, onGenerate, generating, composing, onEdit }: ImageSlotProps) {
+export function ImageSlot({
+  postId,
+  position,
+  image,
+  onUploaded,
+  onDeleted,
+  canvaConnected,
+  onGenerate,
+  generating,
+  composing,
+  onEdit,
+}: ImageSlotProps) {
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [dragOver, setDragOver] = useState(false)
@@ -37,11 +48,22 @@ export function ImageSlot({ postId, position, image, onUploaded, onDeleted, canv
   const inputRef = useRef<HTMLInputElement>(null)
 
   if (generating || composing) {
-    return <GeneratingCard label={composing ? 'Adding text…' : image ? 'Regenerating visual…' : 'Generating visual…'} />
+    return (
+      <GeneratingCard
+        label={composing ? 'Adding text…' : image ? 'Regenerating visual…' : 'Generating visual…'}
+      />
+    )
   }
 
   if (image) {
-    return <ImageCard image={image} onDelete={() => handleDelete(image.id)} onRegenerate={onGenerate} onEdit={onEdit} />
+    return (
+      <ImageCard
+        image={image}
+        onDelete={() => handleDelete(image.id)}
+        onRegenerate={onGenerate}
+        onEdit={onEdit}
+      />
+    )
   }
 
   return (
@@ -49,7 +71,10 @@ export function ImageSlot({ postId, position, image, onUploaded, onDeleted, canv
       <DropZone
         dragOver={dragOver}
         uploading={uploading}
-        onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
+        onDragOver={(e) => {
+          e.preventDefault()
+          setDragOver(true)
+        }}
         onDragLeave={() => setDragOver(false)}
         onDrop={handleDrop}
         onClick={() => inputRef.current?.click()}
@@ -59,11 +84,14 @@ export function ImageSlot({ postId, position, image, onUploaded, onDeleted, canv
         type="file"
         accept="image/jpeg,image/png"
         style={{ display: 'none' }}
-        onChange={(e) => { if (e.target.files?.length) void handleFile(e.target.files[0]!) }}
+        onChange={(e) => {
+          if (e.target.files?.length) void handleFile(e.target.files[0]!)
+        }}
       />
 
       {onGenerate && (
         <button
+          className="text-label tracking-normal"
           type="button"
           onClick={onGenerate}
           style={{
@@ -77,7 +105,6 @@ export function ImageSlot({ postId, position, image, onUploaded, onDeleted, canv
             background: 'rgba(46,158,104,0.04)',
             cursor: 'pointer',
             fontFamily: 'inherit',
-            fontSize: 10,
             fontWeight: 500,
             color: 'var(--spring-text)',
             transition: 'background 120ms ease, border-color 120ms ease',
@@ -98,6 +125,7 @@ export function ImageSlot({ postId, position, image, onUploaded, onDeleted, canv
 
       {canvaConnected && (
         <button
+          className="text-label tracking-normal"
           type="button"
           onClick={() => setPickerOpen(true)}
           style={{
@@ -111,7 +139,6 @@ export function ImageSlot({ postId, position, image, onUploaded, onDeleted, canv
             background: 'var(--sunken)',
             cursor: 'pointer',
             fontFamily: 'inherit',
-            fontSize: 10,
             fontWeight: 500,
             color: 'var(--forest)',
             transition: 'background 120ms ease, border-color 120ms ease',
@@ -228,14 +255,16 @@ function DropZone({
       }}
     >
       {uploading ? (
-        <span style={{ fontSize: 11, color: 'var(--text2)' }}>Uploading...</span>
+        <span className="text-micro" style={{ color: 'var(--text2)' }}>
+          Uploading...
+        </span>
       ) : (
         <>
           <Upload style={{ width: 16, height: 16, color: 'var(--text2)' }} />
-          <span style={{ fontSize: 11, color: 'var(--text2)' }}>
+          <span className="text-micro" style={{ color: 'var(--text2)' }}>
             Drop file here or click to upload
           </span>
-          <span style={{ fontSize: 10, color: 'rgba(15,21,18,0.35)' }}>
+          <span className="text-label tracking-normal" style={{ color: 'rgba(15,21,18,0.35)' }}>
             JPEG or PNG, ≤ 8 MB
           </span>
         </>
@@ -258,8 +287,13 @@ function GeneratingCard({ label }: { label: string }) {
         background: 'rgba(46,158,104,0.04)',
       }}
     >
-      <Sparkles style={{ width: 14, height: 14, color: 'var(--spring-text)' }} className="animate-pulse" />
-      <span style={{ fontSize: 11, color: 'var(--spring-text)' }}>{label}</span>
+      <Sparkles
+        style={{ width: 14, height: 14, color: 'var(--spring-text)' }}
+        className="animate-pulse"
+      />
+      <span className="text-micro" style={{ color: 'var(--spring-text)' }}>
+        {label}
+      </span>
     </div>
   )
 }
@@ -333,7 +367,14 @@ function ImageCard({
           type="button"
           title="View full size"
           onClick={() => setViewing(true)}
-          style={{ display: 'block', width: '100%', padding: 0, border: 'none', background: 'none', cursor: 'zoom-in' }}
+          style={{
+            display: 'block',
+            width: '100%',
+            padding: 0,
+            border: 'none',
+            background: 'none',
+            cursor: 'zoom-in',
+          }}
         >
           <Image
             src={image.publicUrl}
@@ -346,7 +387,11 @@ function ImageCard({
 
         <div style={{ position: 'absolute', top: 8, right: 8, display: 'flex', gap: 6 }}>
           {onRegenerate && (
-            <OverlayAction title="Regenerate with AI" color="var(--spring-text)" onClick={onRegenerate}>
+            <OverlayAction
+              title="Regenerate with AI"
+              color="var(--spring-text)"
+              onClick={onRegenerate}
+            >
               <Sparkles style={{ width: 13, height: 13 }} />
             </OverlayAction>
           )}
@@ -370,7 +415,7 @@ function ImageCard({
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
         <Check style={{ width: 10, height: 10, color: 'var(--spring-text)' }} />
-        <span style={{ fontSize: 10, color: 'var(--spring-text)' }}>
+        <span className="text-label tracking-normal" style={{ color: 'var(--spring-text)' }}>
           Uploaded{sizeMB ? ` · ${sizeMB} MB` : ''}
         </span>
       </div>
@@ -389,8 +434,8 @@ function ImageCard({
 function ErrorMessage({ message }: { message: string }) {
   return (
     <div
+      className="text-micro"
       style={{
-        fontSize: 11,
         color: 'var(--danger)',
         background: 'var(--danger-bg)',
         padding: '7px 10px',
