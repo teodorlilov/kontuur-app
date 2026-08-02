@@ -18,13 +18,31 @@ interface LoginFormPanelProps {
   onSubmit: (e: React.SyntheticEvent<HTMLFormElement>) => void
 }
 
-function LoginFormPanel({ email, setEmail, password, setPassword, errors, loading, onSubmit }: LoginFormPanelProps) {
+function LoginFormPanel({
+  email,
+  setEmail,
+  password,
+  setPassword,
+  errors,
+  loading,
+  onSubmit,
+}: LoginFormPanelProps) {
   return (
     <div>
-      <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 400, color: 'var(--ink)', marginBottom: 6 }}>
+      <h3
+        className="text-headline"
+        style={{
+          fontFamily: 'var(--font-display)',
+          fontWeight: 400,
+          color: 'var(--ink)',
+          marginBottom: 6,
+        }}
+      >
         Welcome back
       </h3>
-      <p style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 32 }}>Sign in to your account</p>
+      <p className="text-body" style={{ color: 'var(--text2)', marginBottom: 32 }}>
+        Sign in to your account
+      </p>
       <form onSubmit={onSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
         <div style={{ marginBottom: 18 }}>
           <Input
@@ -51,13 +69,18 @@ function LoginFormPanel({ email, setEmail, password, setPassword, errors, loadin
           />
         </div>
         <div style={{ textAlign: 'right', marginBottom: 18 }}>
-          <Link href="/forgot-password" style={{ fontSize: 11, color: 'var(--text2)', textDecoration: 'none' }}>
+          <Link
+            href="/forgot-password"
+            className="text-micro"
+            style={{ color: 'var(--text2)', textDecoration: 'none' }}
+          >
             Forgot password?
           </Link>
         </div>
         <button
           type="submit"
           disabled={loading}
+          className="text-label font-semibold uppercase"
           style={{
             width: '100%',
             display: 'flex',
@@ -68,29 +91,48 @@ function LoginFormPanel({ email, setEmail, password, setPassword, errors, loadin
             background: 'var(--forest-deep)',
             color: '#f2f5f1',
             fontFamily: 'var(--font-sans)',
-            fontSize: 10,
-            fontWeight: 800,
-            letterSpacing: '2.5px',
-            textTransform: 'uppercase',
             border: 'none',
             borderRadius: 4,
             cursor: loading ? 'not-allowed' : 'pointer',
             opacity: loading ? 0.5 : 1,
             marginTop: 8,
           }}
-          onMouseEnter={(e) => { if (!loading) e.currentTarget.style.background = 'var(--spring-text)' }}
-          onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--forest-deep)' }}
+          onMouseEnter={(e) => {
+            if (!loading) e.currentTarget.style.background = 'var(--spring-text)'
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = 'var(--forest-deep)'
+          }}
         >
           {loading && (
-            <svg style={{ width: 14, height: 14, animation: 'spin 1s linear infinite' }} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-              <circle style={{ opacity: 0.25 }} cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-              <path style={{ opacity: 0.75 }} fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+            <svg
+              style={{ width: 14, height: 14, animation: 'spin 1s linear infinite' }}
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+            >
+              <circle
+                style={{ opacity: 0.25 }}
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                strokeWidth="4"
+              />
+              <path
+                style={{ opacity: 0.75 }}
+                fill="currentColor"
+                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+              />
             </svg>
           )}
           Sign in
         </button>
       </form>
-      <p style={{ textAlign: 'center', fontSize: 12, color: 'var(--text2)', marginTop: 20 }}>
+      <p
+        className="text-caption"
+        style={{ textAlign: 'center', color: 'var(--text2)', marginTop: 20 }}
+      >
         No account?{' '}
         <Link href="/signup" style={{ color: 'var(--spring-text)', textDecoration: 'none' }}>
           Sign up

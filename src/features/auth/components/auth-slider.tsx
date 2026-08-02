@@ -40,8 +40,10 @@ export function AuthSlider() {
 
   useEffect(() => {
     startTimer()
-    return () => { if (timerRef.current) clearInterval(timerRef.current) }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   function goTo(n: number) {
@@ -63,10 +65,9 @@ export function AuthSlider() {
             }}
           >
             <h2
-              className="mb-3 leading-snug"
+              className="text-prompt mb-3 leading-snug"
               style={{
                 fontFamily: 'var(--font-display, Georgia, serif)',
-                fontSize: '40px',
                 fontWeight: 400,
                 color: '#f2f5f1',
               }}
@@ -75,18 +76,21 @@ export function AuthSlider() {
                 <span key={li}>
                   {line.split(' ').map((word, wi) => (
                     <span key={wi}>
-                      {word === s.italicWord
-                        ? <em style={{ fontStyle: 'italic', color: 'var(--spring-text)' }}>{word}</em>
-                        : word
-                      }
-                      {' '}
+                      {word === s.italicWord ? (
+                        <em style={{ fontStyle: 'italic', color: 'var(--spring-text)' }}>{word}</em>
+                      ) : (
+                        word
+                      )}{' '}
                     </span>
                   ))}
                   {li < s.headline.length - 1 && <br />}
                 </span>
               ))}
             </h2>
-            <p style={{ fontSize: '16px', color: 'rgba(242,245,241,0.42)', lineHeight: 1.75, maxWidth: '380px' }}>
+            <p
+              className="text-lead"
+              style={{ color: 'rgba(242,245,241,0.42)', lineHeight: 1.75, maxWidth: '380px' }}
+            >
               {s.body}
             </p>
           </div>

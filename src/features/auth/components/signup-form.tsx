@@ -24,12 +24,28 @@ interface ModeSelectorProps {
 
 function ModeSelector({ mode, setMode }: ModeSelectorProps) {
   const options = [
-    { value: 'agency' as Mode, label: 'I manage social media for clients', sub: 'Agency mode — manage multiple clients' },
-    { value: 'solo' as Mode, label: 'I manage my own business socials', sub: 'Solo mode — simplified for one brand' },
+    {
+      value: 'agency' as Mode,
+      label: 'I manage social media for clients',
+      sub: 'Agency mode — manage multiple clients',
+    },
+    {
+      value: 'solo' as Mode,
+      label: 'I manage my own business socials',
+      sub: 'Solo mode — simplified for one brand',
+    },
   ]
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-      <p style={{ fontSize: 10, fontWeight: 500, color: 'var(--ink)', letterSpacing: '2px', textTransform: 'uppercase' }}>
+      <p
+        className="text-label"
+        style={{
+          fontWeight: 500,
+          color: 'var(--ink)',
+          letterSpacing: '2px',
+          textTransform: 'uppercase',
+        }}
+      >
         How will you use kontuur?
       </p>
       {options.map((opt) => (
@@ -41,16 +57,31 @@ function ModeSelector({ mode, setMode }: ModeSelectorProps) {
             textAlign: 'left',
             padding: '12px 14px',
             borderRadius: 4,
-            border: mode === opt.value ? '1px solid var(--forest-deep)' : '1px solid rgba(15,21,18,0.14)',
+            border:
+              mode === opt.value ? '1px solid var(--forest-deep)' : '1px solid rgba(15,21,18,0.14)',
             background: '#fff',
             cursor: 'pointer',
             transition: 'border-color 0.15s',
           }}
-          onMouseEnter={(e) => { if (mode !== opt.value) e.currentTarget.style.borderColor = 'var(--spring-text)' }}
-          onMouseLeave={(e) => { if (mode !== opt.value) e.currentTarget.style.borderColor = 'rgba(15,21,18,0.14)' }}
+          onMouseEnter={(e) => {
+            if (mode !== opt.value) e.currentTarget.style.borderColor = 'var(--spring-text)'
+          }}
+          onMouseLeave={(e) => {
+            if (mode !== opt.value) e.currentTarget.style.borderColor = 'rgba(15,21,18,0.14)'
+          }}
         >
-          <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--ink)', display: 'block' }}>{opt.label}</span>
-          <span style={{ fontSize: 12, color: 'var(--text2)', marginTop: 2, display: 'block' }}>{opt.sub}</span>
+          <span
+            className="text-body"
+            style={{ fontWeight: 500, color: 'var(--ink)', display: 'block' }}
+          >
+            {opt.label}
+          </span>
+          <span
+            className="text-caption"
+            style={{ color: 'var(--text2)', marginTop: 2, display: 'block' }}
+          >
+            {opt.sub}
+          </span>
         </button>
       ))}
     </div>
@@ -128,10 +159,20 @@ export function SignupForm() {
   return (
     <AuthLayout>
       <div>
-        <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 400, color: 'var(--ink)', marginBottom: 4 }}>
+        <h3
+          className="text-headline"
+          style={{
+            fontFamily: 'var(--font-display)',
+            fontWeight: 400,
+            color: 'var(--ink)',
+            marginBottom: 4,
+          }}
+        >
           Create your account
         </h3>
-        <p style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 32 }}>14-day free trial, no card required</p>
+        <p className="text-body" style={{ color: 'var(--text2)', marginBottom: 32 }}>
+          14-day free trial, no card required
+        </p>
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <Input
             label="Business name"
@@ -167,6 +208,7 @@ export function SignupForm() {
           <button
             type="submit"
             disabled={loading}
+            className="text-label font-semibold uppercase"
             style={{
               width: '100%',
               display: 'flex',
@@ -177,29 +219,48 @@ export function SignupForm() {
               background: 'var(--forest-deep)',
               color: '#f2f5f1',
               fontFamily: 'var(--font-sans)',
-              fontSize: 10,
-              fontWeight: 800,
-              letterSpacing: '2.5px',
-              textTransform: 'uppercase',
               border: 'none',
               borderRadius: 4,
               cursor: loading ? 'not-allowed' : 'pointer',
               opacity: loading ? 0.5 : 1,
               marginTop: 8,
             }}
-            onMouseEnter={(e) => { if (!loading) e.currentTarget.style.background = 'var(--spring-text)' }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--forest-deep)' }}
+            onMouseEnter={(e) => {
+              if (!loading) e.currentTarget.style.background = 'var(--spring-text)'
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'var(--forest-deep)'
+            }}
           >
             {loading && (
-              <svg style={{ width: 14, height: 14, animation: 'spin 1s linear infinite' }} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle style={{ opacity: 0.25 }} cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path style={{ opacity: 0.75 }} fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+              <svg
+                style={{ width: 14, height: 14, animation: 'spin 1s linear infinite' }}
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <circle
+                  style={{ opacity: 0.25 }}
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                />
+                <path
+                  style={{ opacity: 0.75 }}
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                />
               </svg>
             )}
             Create account
           </button>
         </form>
-        <p style={{ textAlign: 'center', fontSize: 12, color: 'var(--text2)', marginTop: 20 }}>
+        <p
+          className="text-caption"
+          style={{ textAlign: 'center', color: 'var(--text2)', marginTop: 20 }}
+        >
           Already have an account?{' '}
           <Link href="/login" style={{ color: 'var(--spring-text)', textDecoration: 'none' }}>
             Sign in
