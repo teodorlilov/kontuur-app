@@ -69,12 +69,12 @@ export function PostList({
       >
         {FILTERS.map((f) => (
           <button
+            className="text-micro"
             key={f}
             onClick={() => onFilterChange(f)}
             style={{
               padding: '5px 10px',
               borderRadius: 6,
-              fontSize: 11,
               fontWeight: 500,
               cursor: 'pointer',
               border: 'none',
@@ -87,17 +87,17 @@ export function PostList({
             {FILTER_LABELS[f]}
           </button>
         ))}
-        <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--text2)' }}>
+        <span className="text-micro" style={{ marginLeft: 'auto', color: 'var(--text2)' }}>
           {filtered.length} posts
         </span>
       </div>
 
       {/* Post header */}
       <div
+        className="text-label"
         style={{
           padding: '10px 16px',
           borderBottom: '1px solid rgba(15,21,18,0.07)',
-          fontSize: 9,
           fontWeight: 500,
           color: 'var(--text2)',
           letterSpacing: '1.5px',
@@ -126,10 +126,10 @@ export function PostList({
         ))}
         {filtered.length === 0 && (
           <div
+            className="text-caption"
             style={{
               padding: '40px 20px',
               textAlign: 'center',
-              fontSize: 12,
               color: 'var(--text2)',
               fontStyle: 'italic',
             }}

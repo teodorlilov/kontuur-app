@@ -39,9 +39,9 @@ const INLINE_SIZE_EXEMPT = [
  * three to zero and deletes this block along with the `expect(...length)` lines.
  */
 const DRIFT_BUDGET = {
-  legacyScale: 32,
+  legacyScale: 29,
   bracketPx: 0,
-  inlineSize: 289,
+  inlineSize: 248,
 }
 
 function sourceFiles(): string[] {

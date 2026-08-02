@@ -17,7 +17,6 @@ interface PostListItemProps {
 
 /** Format scheduled_at into a short date like "Sat, Apr 25". */
 
-
 /** Build a human-readable post type label. */
 function postTypeLabel(postType: string, slides: unknown): string {
   if (postType === 'carousel') {
@@ -33,11 +32,11 @@ function ApprovalStatusBadge({ status }: { status: ApprovalPostStatus }) {
   const Icon = status === 'pending' ? Clock : status === 'approved' ? Check : MessageCircle
   return (
     <div
+      className="text-label tracking-normal"
       style={{
         display: 'inline-flex',
         alignItems: 'center',
         gap: 4,
-        fontSize: 10,
         fontWeight: 500,
         padding: '2px 7px',
         borderRadius: 4,
@@ -86,12 +85,21 @@ export function PostListItem({ post, index, status, isActive, onClick }: PostLis
           marginBottom: 4,
         }}
       >
-        <span style={{ fontSize: 10, fontWeight: 500, color: 'var(--text2)' }}>#{index}</span>
-        {date && <span style={{ fontSize: 10, color: 'var(--text2)' }}>{date}</span>}
+        <span
+          className="text-label tracking-normal"
+          style={{ fontWeight: 500, color: 'var(--text2)' }}
+        >
+          #{index}
+        </span>
+        {date && (
+          <span className="text-label tracking-normal" style={{ color: 'var(--text2)' }}>
+            {date}
+          </span>
+        )}
         {post.platform && (
           <span
+            className="text-label tracking-normal"
             style={{
-              fontSize: 10,
               fontWeight: 500,
               padding: '1px 7px',
               borderRadius: 3,
@@ -116,11 +124,11 @@ export function PostListItem({ post, index, status, isActive, onClick }: PostLis
       >
         {post.pillar && pillar && (
           <div
+            className="text-micro"
             style={{
               display: 'flex',
               alignItems: 'center',
               gap: 4,
-              fontSize: 11,
               fontWeight: 500,
               color: 'var(--ink)',
             }}
@@ -137,7 +145,7 @@ export function PostListItem({ post, index, status, isActive, onClick }: PostLis
             {post.pillar}
           </div>
         )}
-        <span style={{ fontSize: 10, color: 'var(--text2)' }}>
+        <span className="text-label tracking-normal" style={{ color: 'var(--text2)' }}>
           · {postTypeLabel(post.post_type, post.slides_json)}
         </span>
       </div>

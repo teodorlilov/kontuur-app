@@ -39,13 +39,13 @@ function StatusChip({ label, colour }: { label: string; colour: ChipColour }) {
   const Icon = CHIP_ICONS[colour]
   return (
     <div
+      className="text-micro"
       style={{
         display: 'inline-flex',
         alignItems: 'center',
         gap: 5,
         padding: '4px 10px',
         borderRadius: 6,
-        fontSize: 11,
         fontWeight: 500,
         background: s.bg,
         color: s.color,
@@ -87,11 +87,11 @@ export function ReviewHeader({
         }}
       >
         <div
+          className="text-label"
           style={{
             display: 'flex',
             alignItems: 'center',
             gap: 8,
-            fontSize: 10,
             fontWeight: 500,
             color: 'var(--text2)',
             letterSpacing: '2px',
@@ -104,8 +104,8 @@ export function ReviewHeader({
           {agencyName}
         </div>
         <div
+          className="text-micro"
           style={{
-            fontSize: 11,
             color: 'var(--text2)',
             background: 'var(--paper)',
             border: '1px solid rgba(15,21,18,0.12)',
@@ -119,9 +119,9 @@ export function ReviewHeader({
 
       {/* Title */}
       <div
+        className="text-headline"
         style={{
           fontFamily: 'var(--font-display, Georgia, serif)',
-          fontSize: 24,
           fontWeight: 400,
           color: 'var(--ink)',
           marginBottom: 6,
@@ -132,8 +132,8 @@ export function ReviewHeader({
 
       {/* Meta */}
       <div
+        className="text-caption"
         style={{
-          fontSize: 12,
           color: 'var(--text2)',
           display: 'flex',
           alignItems: 'center',
@@ -151,12 +151,8 @@ export function ReviewHeader({
       {/* Status chips */}
       <div style={{ display: 'flex', gap: 7, marginTop: 12 }}>
         <StatusChip label={`${totalCount} posts`} colour="total" />
-        {pendingCount > 0 && (
-          <StatusChip label={`${pendingCount} pending`} colour="pending" />
-        )}
-        {approvedCount > 0 && (
-          <StatusChip label={`${approvedCount} approved`} colour="approved" />
-        )}
+        {pendingCount > 0 && <StatusChip label={`${pendingCount} pending`} colour="pending" />}
+        {approvedCount > 0 && <StatusChip label={`${approvedCount} approved`} colour="approved" />}
         {changesCount > 0 && (
           <StatusChip label={`${changesCount} feedback sent`} colour="changes" />
         )}

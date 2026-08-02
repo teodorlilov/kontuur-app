@@ -17,12 +17,12 @@ function StatusMessage({ status }: { status: 'approved' | 'changes_requested' })
   const isApproved = status === 'approved'
   return (
     <div
+      className="text-caption"
       style={{
         flex: 1,
         display: 'flex',
         alignItems: 'center',
         gap: 8,
-        fontSize: 12,
         fontWeight: 500,
         color: isApproved ? 'var(--spring-text)' : 'var(--forest)',
       }}
@@ -61,6 +61,7 @@ export function ActionBar({
       {status === 'pending' && (
         <>
           <button
+            className="text-caption"
             onClick={onRequestChanges}
             disabled={isSubmitting}
             style={{
@@ -68,7 +69,6 @@ export function ActionBar({
               background: 'var(--sunken)',
               border: '1px solid var(--line2)',
               borderRadius: 9,
-              fontSize: 12,
               fontWeight: 500,
               color: 'var(--text2)',
               cursor: 'pointer',
@@ -85,6 +85,7 @@ export function ActionBar({
           </button>
 
           <button
+            className="text-caption"
             onClick={onApprove}
             disabled={isSubmitting}
             style={{
@@ -93,7 +94,6 @@ export function ActionBar({
               color: '#fff',
               border: 'none',
               borderRadius: 9,
-              fontSize: 12,
               fontWeight: 500,
               cursor: 'pointer',
               fontFamily: 'inherit',
@@ -112,6 +112,7 @@ export function ActionBar({
 
       {totalPending > 0 && (
         <button
+          className="text-caption"
           onClick={onApproveAll}
           disabled={isSubmitting}
           style={{
@@ -120,7 +121,6 @@ export function ActionBar({
             color: '#f2f5f1',
             border: 'none',
             borderRadius: 9,
-            fontSize: 12,
             fontWeight: 500,
             cursor: 'pointer',
             fontFamily: 'inherit',

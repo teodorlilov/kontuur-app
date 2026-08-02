@@ -27,7 +27,12 @@ interface ReviewQueueProps {
 }
 
 /** Owns the page header: the tab rail and the list read the same filter state. */
-export function ReviewQueue({ initialPosts, clients, bestTimeMap, oldestPendingAt }: ReviewQueueProps) {
+export function ReviewQueue({
+  initialPosts,
+  clients,
+  bestTimeMap,
+  oldestPendingAt,
+}: ReviewQueueProps) {
   const [posts, setPosts] = useState(initialPosts)
   const [activeTab, setActiveTab] = useState<ReviewTab>('all')
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null)
@@ -68,13 +73,17 @@ export function ReviewQueue({ initialPosts, clients, bestTimeMap, oldestPendingA
 
   function handleImageUpserted(postId: string, image: PostImage) {
     setPosts((prev) =>
-      prev.map((p) => (p.id === postId ? { ...p, images: upsertImageAtPosition(p.images, image) } : p))
+      prev.map((p) =>
+        p.id === postId ? { ...p, images: upsertImageAtPosition(p.images, image) } : p
+      )
     )
   }
 
   function handleImageDeleted(postId: string, imageId: string) {
     setPosts((prev) =>
-      prev.map((p) => (p.id === postId ? { ...p, images: p.images.filter((img) => img.id !== imageId) } : p))
+      prev.map((p) =>
+        p.id === postId ? { ...p, images: p.images.filter((img) => img.id !== imageId) } : p
+      )
     )
   }
 
@@ -116,7 +125,7 @@ export function ReviewQueue({ initialPosts, clients, bestTimeMap, oldestPendingA
         count={posts.length}
         railTools={
           oldestPendingAt ? (
-            <span className="hidden text-xs text-text3 sm:block">
+            <span className="hidden text-caption text-text3 sm:block">
               Oldest waiting {formatRelativeTime(new Date(oldestPendingAt))}
             </span>
           ) : null
@@ -151,11 +160,21 @@ export function ReviewQueue({ initialPosts, clients, bestTimeMap, oldestPendingA
             </Button>
           </>
         }
-        tabs={<TabRail items={tabs} active={activeTab} onSelect={setActiveTab} label="Filter review queue" />}
+        tabs={
+          <TabRail
+            items={tabs}
+            active={activeTab}
+            onSelect={setActiveTab}
+            label="Filter review queue"
+          />
+        }
       />
 
       <div style={{ flex: 1, display: 'flex', overflow: 'hidden', minHeight: 0 }}>
-        <div className={`${mobileView === 'list' ? 'flex' : 'hidden'} md:flex`} style={{ flexShrink: 0 }}>
+        <div
+          className={`${mobileView === 'list' ? 'flex' : 'hidden'} md:flex`}
+          style={{ flexShrink: 0 }}
+        >
           <ReviewPostList
             posts={filteredPosts}
             selectedPostId={selectedPostId}
@@ -171,18 +190,20 @@ export function ReviewQueue({ initialPosts, clients, bestTimeMap, oldestPendingA
           />
         </div>
 
-        <div className={`${mobileView === 'detail' ? 'flex' : 'hidden'} md:flex`} style={{ flex: 1, flexDirection: 'column', overflow: 'hidden' }}>
+        <div
+          className={`${mobileView === 'detail' ? 'flex' : 'hidden'} md:flex`}
+          style={{ flex: 1, flexDirection: 'column', overflow: 'hidden' }}
+        >
           {/* Mobile back button */}
           <button
             type="button"
-            className="md:hidden"
+            className="text-caption md:hidden"
             onClick={() => setMobileView('list')}
             style={{
               display: 'flex',
               alignItems: 'center',
               gap: 4,
               padding: '8px 12px',
-              fontSize: 12,
               fontWeight: 500,
               color: 'var(--text2)',
               background: 'var(--surface)',
@@ -209,13 +230,18 @@ export function ReviewQueue({ initialPosts, clients, bestTimeMap, oldestPendingA
                 onImageDeleted={handleImageDeleted}
               />
             ) : (
-              <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <div
+                style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              >
                 <div style={{ textAlign: 'center' }}>
-                  <p style={{ fontSize: '13px', fontWeight: 500, color: 'var(--text2)' }}>
+                  <p className="text-body" style={{ fontWeight: 500, color: 'var(--text2)' }}>
                     {posts.length === 0 ? 'No posts to review' : 'Select a post to review'}
                   </p>
                   {posts.length === 0 && (
-                    <p style={{ fontSize: '11px', color: 'var(--text2)', marginTop: '4px', opacity: 0.7 }}>
+                    <p
+                      className="text-micro"
+                      style={{ color: 'var(--text2)', marginTop: '4px', opacity: 0.7 }}
+                    >
                       Posts will appear here when autonomous generation is enabled.
                     </p>
                   )}

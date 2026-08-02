@@ -52,12 +52,17 @@ export function ReviewPostList({
             borderBottom: '1px solid var(--line)',
           }}
         >
-          <span style={{ fontSize: '10px', color: 'var(--text2)' }}>
+          <span className="text-label tracking-normal" style={{ color: 'var(--text2)' }}>
             {posts.length} {posts.length === 1 ? 'post' : 'posts'}
             {approvedCount > 0 && ` \u00b7 ${approvedCount} approved`}
           </span>
           {approvedCount > 0 && (
-            <Button onClick={onOpenBatch} size="sm" variant="secondary" className="text-label px-2 py-0.5 h-auto">
+            <Button
+              onClick={onOpenBatch}
+              size="sm"
+              variant="secondary"
+              className="text-label px-2 py-0.5 h-auto"
+            >
               Schedule
             </Button>
           )}
@@ -68,8 +73,13 @@ export function ReviewPostList({
       <div style={{ flex: 1, overflowY: 'auto' }}>
         {posts.length === 0 ? (
           <div style={{ padding: '32px 16px', textAlign: 'center' }}>
-            <p style={{ fontSize: '12px', fontWeight: 500, color: 'var(--text2)' }}>No posts to review</p>
-            <p style={{ fontSize: '11px', color: 'var(--text2)', marginTop: '4px', opacity: 0.7 }}>
+            <p className="text-caption" style={{ fontWeight: 500, color: 'var(--text2)' }}>
+              No posts to review
+            </p>
+            <p
+              className="text-micro"
+              style={{ color: 'var(--text2)', marginTop: '4px', opacity: 0.7 }}
+            >
               Posts appear here when generation is enabled.
             </p>
           </div>
@@ -115,10 +125,34 @@ function ReviewPostListItem({
       {isActive && <ActiveBar />}
 
       {/* Pillar + score */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '2px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', fontWeight: 500, color: 'var(--ink)' }}>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          marginBottom: '2px',
+        }}
+      >
+        <div
+          className="text-micro"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            fontWeight: 500,
+            color: 'var(--ink)',
+          }}
+        >
           {pillarColor && (
-            <div style={{ width: '7px', height: '7px', borderRadius: '50%', background: pillarColor.hex, flexShrink: 0 }} />
+            <div
+              style={{
+                width: '7px',
+                height: '7px',
+                borderRadius: '50%',
+                background: pillarColor.hex,
+                flexShrink: 0,
+              }}
+            />
           )}
           {post.pillar ?? 'General'}
         </div>
@@ -126,14 +160,17 @@ function ReviewPostListItem({
       </div>
 
       {/* Client name */}
-      <div style={{ fontSize: '10px', color: 'var(--text2)', marginBottom: '5px' }}>
+      <div
+        className="text-label tracking-normal"
+        style={{ color: 'var(--text2)', marginBottom: '5px' }}
+      >
         {post.client_name}
       </div>
 
       {/* Caption preview */}
       <div
+        className="text-micro"
         style={{
-          fontSize: '11px',
           color: 'var(--text2)',
           lineHeight: 1.45,
           display: '-webkit-box',
@@ -152,7 +189,10 @@ function ReviewPostListItem({
           <StatusBadge post={post} />
           <VisualsBadge post={post} />
         </div>
-        <span style={{ fontSize: '10px', color: 'var(--text2)', opacity: 0.7 }}>
+        <span
+          className="text-label tracking-normal"
+          style={{ color: 'var(--text2)', opacity: 0.7 }}
+        >
           {formatRelativeTime(new Date(post.created_at))}
         </span>
       </div>
@@ -167,11 +207,11 @@ function VisualsBadge({ post }: { post: ReviewPost }) {
   const complete = post.images.length >= totalSlots
   return (
     <span
+      className="text-label tracking-normal"
       style={{
         display: 'inline-flex',
         alignItems: 'center',
         gap: '3px',
-        fontSize: '10px',
         fontWeight: 500,
         padding: '3px 7px',
         borderRadius: '4px',
@@ -194,11 +234,11 @@ function StatusBadge({ post }: { post: ReviewPost }) {
 
   return (
     <span
+      className="text-label tracking-normal"
       style={{
         display: 'inline-flex',
         alignItems: 'center',
         gap: '4px',
-        fontSize: '10px',
         fontWeight: 500,
         padding: '3px 8px',
         borderRadius: '4px',

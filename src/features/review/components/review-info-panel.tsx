@@ -4,7 +4,11 @@ import { AlertTriangle } from 'lucide-react'
 import { formatRelativeTime } from '@/utils/format'
 import { PanelSection } from '@/components/posts/panel-section'
 import { SlopDetector } from '@/components/posts/slop-detector'
-import { QualitySection, SourceInfoSection, MetadataRow } from '@/components/posts/info-panel-sections'
+import {
+  QualitySection,
+  SourceInfoSection,
+  MetadataRow,
+} from '@/components/posts/info-panel-sections'
 import { parseStoredValidation } from '@/lib/validation/stored-validation-schema'
 import type { ReviewPost } from '@/features/review/lib/filter-review-posts'
 import type { SlopDetection } from '@/types/api'
@@ -17,7 +21,12 @@ interface ReviewInfoPanelProps {
 }
 
 /** Right panel: quality scores, health review, source context, and post info. */
-export function ReviewInfoPanel({ post, validationJson, slopResult, slopLoading }: ReviewInfoPanelProps) {
+export function ReviewInfoPanel({
+  post,
+  validationJson,
+  slopResult,
+  slopLoading,
+}: ReviewInfoPanelProps) {
   const qualityData = parseStoredValidation(validationJson)
 
   return (
@@ -62,7 +71,7 @@ function AuthenticitySection({
   return (
     <PanelSection title="Authenticity">
       {slopLoading ? (
-        <div className="flex items-center gap-2 text-xs" style={{ color: 'var(--text2)' }}>
+        <div className="flex items-center gap-2 text-caption" style={{ color: 'var(--text2)' }}>
           <div className="w-3 h-3 border-2 border-line2 border-t-transparent rounded-full animate-spin" />
           Checking authenticity...
         </div>
@@ -89,9 +98,13 @@ function HealthReviewSection() {
           border: '1px solid rgba(138,97,22,0.25)',
         }}
       >
-        <AlertTriangle size={13} style={{ color: 'var(--pending)', flexShrink: 0, marginTop: '1px' }} />
-        <span style={{ fontSize: '11px', color: 'var(--pending)', lineHeight: 1.5 }}>
-          Medical content — verify all clinical claims before approving. Medical safety instructions will be added on publish.
+        <AlertTriangle
+          size={13}
+          style={{ color: 'var(--pending)', flexShrink: 0, marginTop: '1px' }}
+        />
+        <span className="text-micro" style={{ color: 'var(--pending)', lineHeight: 1.5 }}>
+          Medical content — verify all clinical claims before approving. Medical safety instructions
+          will be added on publish.
         </span>
       </div>
     </PanelSection>

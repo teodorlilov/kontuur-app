@@ -20,8 +20,8 @@ function ReadOnlyFeedback({ value }: { value: string }) {
       }}
     >
       <div
+        className="text-label tracking-normal"
         style={{
-          fontSize: 10,
           fontWeight: 500,
           color: 'var(--forest)',
           marginBottom: 8,
@@ -33,7 +33,9 @@ function ReadOnlyFeedback({ value }: { value: string }) {
         <MessageCircle size={11} />
         Feedback you sent
       </div>
-      <div style={{ fontSize: 13, color: 'var(--ink)', lineHeight: 1.6 }}>{value}</div>
+      <div className="text-body" style={{ color: 'var(--ink)', lineHeight: 1.6 }}>
+        {value}
+      </div>
     </div>
   )
 }
@@ -49,10 +51,14 @@ function FeedbackInput({ value, onChange }: { value: string; onChange?: (v: stri
         padding: '14px 16px',
       }}
     >
-      <div style={{ fontSize: 10, fontWeight: 500, color: 'var(--text2)', marginBottom: 8 }}>
+      <div
+        className="text-label tracking-normal"
+        style={{ fontWeight: 500, color: 'var(--text2)', marginBottom: 8 }}
+      >
         Leave feedback (optional)
       </div>
       <textarea
+        className="text-body"
         value={value}
         onChange={(e) => onChange?.(e.target.value)}
         placeholder="e.g. Can we soften the tone on slide 2? Also please add the clinic's phone number to the CTA slide..."
@@ -62,7 +68,6 @@ function FeedbackInput({ value, onChange }: { value: string; onChange?: (v: stri
           padding: '9px 12px',
           border: '1px solid rgba(15,21,18,0.16)',
           borderRadius: 8,
-          fontSize: 13,
           fontFamily: 'inherit',
           color: 'var(--ink)',
           background: '#fff',

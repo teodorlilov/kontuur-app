@@ -33,7 +33,14 @@ interface ReviewPostViewProps {
 }
 
 /** Wrapper that owns useReviewActions and renders center + right panels. */
-export function ReviewPostView({ post, bestTimeData, onApprove, onDelete, onImageUpserted, onImageDeleted }: ReviewPostViewProps) {
+export function ReviewPostView({
+  post,
+  bestTimeData,
+  onApprove,
+  onDelete,
+  onImageUpserted,
+  onImageDeleted,
+}: ReviewPostViewProps) {
   const {
     caption,
     slidesJson,
@@ -77,32 +84,50 @@ export function ReviewPostView({ post, bestTimeData, onApprove, onDelete, onImag
       slideCopyAt({ post_type: post.post_type, slides_json: slidesJson, caption }, position),
     [post.post_type, slidesJson, caption]
   )
-  const { generatingPositions, composingPositions, generate, recompose, applyStyle } = useGenerateVisuals(post.id, mergeImage, getSlideCopy)
+  const { generatingPositions, composingPositions, generate, recompose, applyStyle } =
+    useGenerateVisuals(post.id, mergeImage, getSlideCopy)
 
   const totalSlots = isCarousel ? slides.length : 1
   const missingPositions = missingImagePositions(images, totalSlots, generatingPositions)
   const slotsWithoutImage = totalSlots - images.length
-  const editingImage = editingPosition !== null ? images.find((img) => img.position === editingPosition) : undefined
+  const editingImage =
+    editingPosition !== null ? images.find((img) => img.position === editingPosition) : undefined
 
   // Copy changes never regenerate the AI art — but baked text re-composes from the fresh copy.
   const handleRewrite = useCallback(async () => {
     const rewritten = await rewrite()
     if (rewritten) {
-      void recompose({ post_type: post.post_type, slides_json: rewritten.slidesJson, caption: rewritten.caption }, images)
+      void recompose(
+        {
+          post_type: post.post_type,
+          slides_json: rewritten.slidesJson,
+          caption: rewritten.caption,
+        },
+        images
+      )
     }
   }, [rewrite, recompose, post.post_type, images])
 
-  const handleCaptionSave = useCallback(async (newCaption: string) => {
-    if (await saveCaption(newCaption)) {
-      void recompose({ post_type: post.post_type, slides_json: slidesJson, caption: newCaption }, images)
-    }
-  }, [saveCaption, recompose, post.post_type, slidesJson, images])
+  const handleCaptionSave = useCallback(
+    async (newCaption: string) => {
+      if (await saveCaption(newCaption)) {
+        void recompose(
+          { post_type: post.post_type, slides_json: slidesJson, caption: newCaption },
+          images
+        )
+      }
+    },
+    [saveCaption, recompose, post.post_type, slidesJson, images]
+  )
 
-  const handleSlidesSave = useCallback(async (newSlides: unknown) => {
-    if (await saveSlidesJson(newSlides)) {
-      void recompose({ post_type: post.post_type, slides_json: newSlides, caption }, images)
-    }
-  }, [saveSlidesJson, recompose, post.post_type, caption, images])
+  const handleSlidesSave = useCallback(
+    async (newSlides: unknown) => {
+      if (await saveSlidesJson(newSlides)) {
+        void recompose({ post_type: post.post_type, slides_json: newSlides, caption }, images)
+      }
+    },
+    [saveSlidesJson, recompose, post.post_type, caption, images]
+  )
 
   // Run slop detection on mount
   useEffect(() => {
@@ -115,8 +140,12 @@ export function ReviewPostView({ post, bestTimeData, onApprove, onDelete, onImag
 
   // Compute rewrite visibility
   const qualityData = parseStoredValidation(validationJson)
-  const hasLowQuality = qualityData ? qualityData.scores.overall_score < REWRITE_SCORE_THRESHOLD : false
-  const hasLowAuthenticity = slopResult ? slopResult.human_authenticity_score < AUTHENTICITY_URGENT_THRESHOLD : false
+  const hasLowQuality = qualityData
+    ? qualityData.scores.overall_score < REWRITE_SCORE_THRESHOLD
+    : false
+  const hasLowAuthenticity = slopResult
+    ? slopResult.human_authenticity_score < AUTHENTICITY_URGENT_THRESHOLD
+    : false
   const hasAiTells = (slopResult?.ai_tells_found.length ?? 0) > 0
   const showRewrite = hasLowAuthenticity || hasAiTells || hasLowQuality
 
@@ -135,13 +164,19 @@ export function ReviewPostView({ post, bestTimeData, onApprove, onDelete, onImag
         sourceType={post.source_type}
         sourceExcerpt={post.source_excerpt}
         editable
-        onCaptionChange={(c) => { void handleCaptionSave(c) }}
-        onSlidesChange={(s) => { void handleSlidesSave(s) }}
+        onCaptionChange={(c) => {
+          void handleCaptionSave(c)
+        }}
+        onSlidesChange={(s) => {
+          void handleSlidesSave(s)
+        }}
         postId={post.id}
         images={images}
         onImageUploaded={mergeImage}
         onImageDeleted={(imageId) => onImageDeleted(post.id, imageId)}
-        onGenerateImage={(position) => { void generate([position]) }}
+        onGenerateImage={(position) => {
+          void generate([position])
+        }}
         generatingPositions={generatingPositions}
         composingPositions={composingPositions}
         onEditImage={setEditingPosition}
@@ -151,12 +186,16 @@ export function ReviewPostView({ post, bestTimeData, onApprove, onDelete, onImag
             hasLowAuthenticity={hasLowAuthenticity}
             hasLowQuality={hasLowQuality}
             regenerating={rewriting}
-            onClick={() => { void handleRewrite() }}
+            onClick={() => {
+              void handleRewrite()
+            }}
           />
         )}
         {slotsWithoutImage > 0 && (
           <Button
-            onClick={() => { void generate(missingPositions) }}
+            onClick={() => {
+              void generate(missingPositions)
+            }}
             loading={generatingPositions.length > 0}
             variant="secondary"
             size="sm"
@@ -166,16 +205,37 @@ export function ReviewPostView({ post, bestTimeData, onApprove, onDelete, onImag
           </Button>
         )}
         <div style={{ display: 'flex', gap: '8px' }}>
-          <Button onClick={() => scheduleModal.openModal()} loading={approving} className="flex-1" size="sm">
+          <Button
+            onClick={() => scheduleModal.openModal()}
+            loading={approving}
+            className="flex-1"
+            size="sm"
+          >
             Approve
           </Button>
-          <Button onClick={() => { void handleRewrite() }} loading={rewriting} variant="secondary" size="sm">
+          <Button
+            onClick={() => {
+              void handleRewrite()
+            }}
+            loading={rewriting}
+            variant="secondary"
+            size="sm"
+          >
             Rewrite
           </Button>
           {confirmDelete ? (
             <div className="flex items-center gap-2">
-              <span className="text-xs" style={{ color: 'var(--text2)' }}>Delete?</span>
-              <Button onClick={() => { void deletePost(() => onDelete(post.id)) }} loading={deleting} variant="danger" size="sm">
+              <span className="text-caption" style={{ color: 'var(--text2)' }}>
+                Delete?
+              </span>
+              <Button
+                onClick={() => {
+                  void deletePost(() => onDelete(post.id))
+                }}
+                loading={deleting}
+                variant="danger"
+                size="sm"
+              >
                 Confirm
               </Button>
               <Button onClick={() => setConfirmDelete(false)} variant="ghost" size="sm">
@@ -211,7 +271,12 @@ export function ReviewPostView({ post, bestTimeData, onApprove, onDelete, onImag
           onApplyToAll={
             images.length > 1
               ? (doc) => {
-                  void applyStyle(doc, editingPosition, { post_type: post.post_type, slides_json: slidesJson, caption }, images)
+                  void applyStyle(
+                    doc,
+                    editingPosition,
+                    { post_type: post.post_type, slides_json: slidesJson, caption },
+                    images
+                  )
                 }
               : undefined
           }

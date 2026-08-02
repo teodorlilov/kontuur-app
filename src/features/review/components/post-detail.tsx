@@ -29,11 +29,11 @@ interface PostDetailProps {
 function MetaPill({ label, dotColor }: { label: string; dotColor?: string }) {
   return (
     <span
+      className="text-micro"
       style={{
         display: 'inline-flex',
         alignItems: 'center',
         gap: 4,
-        fontSize: 11,
         fontWeight: 500,
         padding: '3px 9px',
         borderRadius: 6,
@@ -94,7 +94,6 @@ function NavButton({
 
 /** Format scheduled_at into a readable date string. */
 
-
 /** Build a post type label from post_type and slides_json. */
 function postTypeLabel(postType: string, slides: unknown): string {
   if (postType === 'carousel') {
@@ -105,7 +104,13 @@ function postTypeLabel(postType: string, slides: unknown): string {
 }
 
 /** Meta topbar showing post pills and navigation arrows. */
-function MetaTopbar({ post, postIndex, totalPosts, status, onNavigate }: {
+function MetaTopbar({
+  post,
+  postIndex,
+  totalPosts,
+  status,
+  onNavigate,
+}: {
   post: ApprovalPostData
   postIndex: number
   totalPosts: number
@@ -135,8 +140,8 @@ function MetaTopbar({ post, postIndex, totalPosts, status, onNavigate }: {
       {post.pillar && <MetaPill label={post.pillar} dotColor={pillar?.hex} />}
       {statusStyle && (
         <span
+          className="text-micro"
           style={{
-            fontSize: 11,
             fontWeight: 500,
             padding: '3px 9px',
             borderRadius: 6,
@@ -173,8 +178,8 @@ function CaptionCard({ caption }: { caption: string | null }) {
       }}
     >
       <div
+        className="text-label"
         style={{
-          fontSize: 9,
           fontWeight: 500,
           color: 'var(--text2)',
           letterSpacing: '1.2px',
@@ -187,9 +192,9 @@ function CaptionCard({ caption }: { caption: string | null }) {
       >
         Caption
         <button
+          className="text-label tracking-normal"
           onClick={() => navigator.clipboard?.writeText(caption)}
           style={{
-            fontSize: 10,
             color: 'var(--spring-text)',
             fontWeight: 500,
             background: 'none',
@@ -206,8 +211,8 @@ function CaptionCard({ caption }: { caption: string | null }) {
         </button>
       </div>
       <div
+        className="text-body"
         style={{
-          fontSize: 14,
           color: 'var(--ink)',
           lineHeight: 1.72,
           whiteSpace: 'pre-wrap',
@@ -271,7 +276,11 @@ export function PostDetail({
             altText={post.caption?.slice(0, 80) ?? 'Post visual'}
           />
         )}
-        <SlidesSection slidesJson={post.slides_json} postType={post.post_type} images={post.images} />
+        <SlidesSection
+          slidesJson={post.slides_json}
+          postType={post.post_type}
+          images={post.images}
+        />
         {status !== 'approved' && (
           <FeedbackBox
             mode={status === 'changes_requested' ? 'read-only' : 'input'}
