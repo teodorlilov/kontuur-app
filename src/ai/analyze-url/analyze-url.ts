@@ -32,7 +32,6 @@ Based on this content, return a JSON object with these fields:
   "detected_language": string (primary language of content),
   "detected_language_formality": "formal" | "casual" | "neutral",
   "detected_is_health_niche": boolean,
-  "detected_testimonial_voice": string | null (if you can infer how a happy customer would describe them, write one sentence — otherwise null),
   "detected_avoid_topics": string | null (any topics that seem off-brand or risky for this business)
 }
 

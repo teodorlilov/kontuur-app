@@ -1,42 +1,50 @@
 'use client'
 
-import { WizardShell } from '@/components/ui/wizard-shell'
-import type { OnboardingStep } from '@/features/onboarding/types'
+import { Wordmark } from '@/components/layout/wordmark'
+import { cn } from '@/utils/cn'
 
 interface OnboardingShellProps {
-  currentStep: OnboardingStep
+  /** Review widens the column: the draft reads as one column while it is written, then opens to two. */
+  wide?: boolean
   onCancel: () => void
   children: React.ReactNode
 }
 
-const STEPS = [
-  { key: 'entry', label: 'Start' },
-  { key: 'loading', label: 'Analyzing' },
-  { key: 'interview', label: 'Interview' },
-  { key: 'review', label: 'Review' },
-] as const
-
-const STEP_ORDER: Record<string, number> = {
-  entry: 0,
-  loading: 1,
-  interview: 2,
-  generating: 2,
-  review: 3,
-}
-
-/** Topbar chrome with step indicator and progress line for the onboarding flow. */
-export function OnboardingShell({ currentStep, onCancel, children }: OnboardingShellProps) {
-  const activeIndex = STEP_ORDER[currentStep] ?? 0
-
+/**
+ * The frame around adding a client.
+ *
+ * No step indicator: the flow is two steps — paste a site, check what it drafted — and a stepper
+ * over two steps is chrome describing itself. This replaced `WizardShell`, whose progress line and
+ * numbered dots were built for the five-step interview, and whose letter-spaced "KONTUUR" text
+ * predated the real `Wordmark` component.
+ */
+export function OnboardingShell({ wide = false, onCancel, children }: OnboardingShellProps) {
   return (
-    <WizardShell
-      steps={STEPS as unknown as { key: string; label: string }[]}
-      currentStepIndex={activeIndex}
-      subtitle="New client onboarding"
-      cancelLabel="Cancel onboarding"
-      onCancel={onCancel}
-    >
-      {children}
-    </WizardShell>
+    <div className="min-h-dvh bg-paper">
+      <div
+        className={cn(
+          'mx-auto px-4 pb-32 pt-6 md:px-8',
+          // Snaps rather than transitions: animating max-width on the container holding the whole
+          // document is the layout thrash DESIGN.md rules out, and the sheet fades in on its own.
+          wide ? 'max-w-[1180px]' : 'max-w-[840px]'
+        )}
+      >
+        <div className="mb-4 flex h-10 items-center justify-between">
+          <Wordmark href="/clients" />
+          <button
+            type="button"
+            onClick={onCancel}
+            className={cn(
+              'rounded-sm px-2.5 py-2 text-caption text-text2',
+              'transition-colors duration-150 ease-contour hover:bg-wash hover:text-ink',
+              'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-spring'
+            )}
+          >
+            Cancel
+          </button>
+        </div>
+        {children}
+      </div>
+    </div>
   )
 }

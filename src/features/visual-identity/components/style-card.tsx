@@ -2,6 +2,7 @@
 
 import Image from 'next/image'
 import { Check, ZoomIn } from 'lucide-react'
+import { cn } from '@/utils/cn'
 import type { BrandStyle } from '@/lib/visual/brand-styles'
 
 /** Selectable brand-style card: portrait preview, name, one-liner, selected ring, zoom-to-lightbox. */
@@ -19,79 +20,63 @@ export function StyleCard({
   return (
     <div
       onClick={onSelect}
-      role="button"
-      style={{
-        borderRadius: 12,
-        overflow: 'hidden',
-        border: selected ? '2px solid var(--forest)' : '1px solid var(--line)',
-        background: 'var(--surface)',
-        cursor: 'pointer',
-        boxShadow: selected ? '0 2px 10px rgba(46,158,104,0.18)' : '0 1px 4px rgba(15,21,18,0.05)',
-        transition: 'border-color 0.12s, box-shadow 0.12s',
+      onKeyDown={(event) => {
+        // role="button" on a div buys none of a real button's keyboard behaviour, and it has to
+        // be a div because the zoom control below is a button and buttons cannot nest.
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault()
+          onSelect()
+        }
       }}
+      role="button"
+      tabIndex={0}
+      aria-pressed={selected}
+      className={cn(
+        'cursor-pointer overflow-hidden rounded-lg border bg-surface',
+        'transition-[border-color,box-shadow] duration-150 ease-contour',
+        'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-spring',
+        // An inset ring rather than a 2px border: a border that thickens on select changes the
+        // card's box and nudges its neighbours. No resting shadow — a card is a clearing.
+        selected
+          ? 'border-forest shadow-[inset_0_0_0_1px_var(--forest)]'
+          : 'border-line hover:border-text3'
+      )}
     >
-      <div
-        style={{ position: 'relative', aspectRatio: '3 / 4', background: 'rgba(15,21,18,0.04)' }}
-      >
+      <div className="relative aspect-3/4 bg-sunken">
         <Image
           src={style.previewSrc}
           alt={`${style.name} preview`}
           fill
           sizes="220px"
-          style={{ objectFit: 'cover' }}
+          className="object-cover"
         />
         <button
           type="button"
           title="Preview full size"
-          onClick={(e) => {
-            e.stopPropagation()
+          aria-label={`Preview ${style.name} full size`}
+          onClick={(event) => {
+            event.stopPropagation()
             onPreview()
           }}
-          style={{
-            position: 'absolute',
-            top: 8,
-            right: 8,
-            width: 26,
-            height: 26,
-            borderRadius: 7,
-            border: 'none',
-            background: 'rgba(255,255,255,0.85)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            cursor: 'zoom-in',
-            color: 'var(--text2)',
-          }}
+          className={cn(
+            'absolute right-2 top-2 grid size-7 cursor-zoom-in place-items-center rounded-sm',
+            'bg-surface/85 text-text2 transition-colors duration-150 ease-contour',
+            'hover:bg-surface hover:text-ink',
+            'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-spring'
+          )}
         >
-          <ZoomIn style={{ width: 14, height: 14 }} />
+          <ZoomIn className="size-3.5" />
         </button>
         {selected && (
-          <span
-            style={{
-              position: 'absolute',
-              bottom: 8,
-              right: 8,
-              width: 22,
-              height: 22,
-              borderRadius: '50%',
-              background: 'var(--forest)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <Check style={{ width: 13, height: 13, color: '#fff' }} />
+          <span className="absolute bottom-2 right-2 grid size-6 place-items-center rounded-full bg-forest">
+            <Check className="size-3.5 text-surface" />
           </span>
         )}
       </div>
-      <div style={{ padding: '10px 12px' }}>
-        <div className="text-caption" style={{ fontWeight: 600, color: 'var(--ink)' }}>
-          {style.name}
-        </div>
-        <div
-          className="text-label tracking-normal"
-          style={{ color: 'var(--text2)', lineHeight: 1.45, marginTop: 3 }}
-        >
+      <div className="px-3 py-2.5">
+        <div className="text-caption font-semibold text-ink">{style.name}</div>
+        {/* tracking-normal: Label's 0.16em is for uppercase micro-labels, not a sentence. */}
+        <div className="mt-1 text-label leading-relaxed tracking-normal text-text2">
           {style.description}
         </div>
       </div>

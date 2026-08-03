@@ -8,290 +8,638 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Instrument+Serif:ital,wght@0,400;1,400&display=swap" rel="stylesheet">
 <style>
-  /* ═══ Contour tokens — mirrors src/app/globals.css ═══ */
+  /* ═══ Contour tokens — mirrors src/app/globals.css :root, name for name ═══
+     Anything not in this block is drift. The ten --text-* roles are the closed
+     ramp from DESIGN.md § Typography: there is no eleventh size anywhere in
+     this file, and every font-size below reads `var(--text-…)`. */
   :root{
+    /* Surfaces. There is no --raised: cards are flat clearings, not gradients. */
     --paper:#fbfcfa; --surface:#ffffff; --sunken:#f3f5f2;
+
+    /* Ink */
     --ink:#0f1512; --text2:#57625a; --text3:#667068;
     --line:#e7ece7; --line2:#d5ddd6;
+
+    /* Greens */
     --forest:#164430; --forest-deep:#0c2e20;
-    --spring:#2e9e68; --spring-text:#278658; --spring-lite:#7fd6a8;
+    --spring:#2e9e68; --spring-lite:#7fd6a8; --spring-text:#278658;
     --wash:#eef4ef; --marker:#d9eddd; --surface-lime:#e6eeae; --sage:#cfe4d4;
-    --accent:#cfea45;
-    --danger:#b04a38; --danger-bg:#fbefec; --pending:#8a6116; --pending-bg:#f7efdc;
-    --m1:#164430; --m2:#2e9e68; --m3:#7fa588; --m4:#0c2e20;
+    --accent:#cfea45; --accent-deep:#b4cd32;
 
+    /* Status */
+    --danger:#b04a38; --danger-bg:#fbefec; --danger-line:#e8cfc9;
+    --pending:#8a6116; --pending-bg:#f7efdc;
+
+    /* Metric ramp — four greens for four series, not four unrelated hues. */
+    --metric-1:var(--forest); --metric-2:var(--spring);
+    --metric-3:#7fa588; --metric-4:var(--forest-deep);
+
+    /* Composed dark surfaces. Dark grounds are never flat fills. */
+    --surface-dark:linear-gradient(180deg,#113429 0%,#0e2b21 100%);
+    --surface-dark-capsule:linear-gradient(180deg,#10382a 0%,#0a2b1d 100%);
+    --dot-grid:radial-gradient(rgba(255,255,255,.05) 1px, transparent 1.5px);
+    /* Hatching means absence — an unfilled slot, never ornament. */
+    --hatch:repeating-linear-gradient(45deg, rgba(15,21,18,.16) 0 2px, transparent 2px 5px);
+    /* The off-white the system sets on Pine Deep — see components/layout/wordmark.tsx. */
+    --on-dark:#f2f5f1;
+
+    /* Elevation */
+    --sh-card:0 1px 2px rgba(15,21,18,.03), 0 14px 36px -14px rgba(15,21,18,.1);
     --sh-pop:0 12px 32px rgba(15,21,18,.1);
-    --r-xs:4px; --r-sm:8px; --r-chip:10px; --r-panel:14px; --r-card:20px;
-    --serif:'Instrument Serif',Georgia,serif;
-    --sans:'Geist','Inter',-apple-system,BlinkMacSystemFont,Arial,sans-serif;
-    --ease:cubic-bezier(.22,1,.36,1);
+    --sh-frame:0 24px 60px rgba(15,21,18,.06);
+    --sh-dark:0 18px 44px -14px rgba(12,46,32,.55);
 
+    /* Radii */
+    --radius-xs:4px; --radius-sm:8px; --radius-md:10px;
+    --radius-lg:14px; --radius-xl:20px; --radius-full:9999px;
+
+    --ease-contour:cubic-bezier(.22,1,.36,1);
+
+    --font-display:'Instrument Serif',Georgia,serif;
+    --font-sans:'Geist','Inter',-apple-system,BlinkMacSystemFont,Arial,sans-serif;
+
+    /* ── The ramp. Ten roles; each carries its own leading, and its tracking
+       where that is not `normal`. Overriding either at a call site is a
+       deliberate act that owes a WHY. ── */
+    --text-prompt:36px;   --text-prompt-lh:1.15; --text-prompt-ls:-.01em;
+    --text-metric:28px;   --text-metric-lh:1.1;  --text-metric-ls:-.02em;
+    --text-headline:22px; --text-headline-lh:1.25; --text-headline-ls:-.02em;
+    --text-display:18px;  --text-display-lh:1.35;
+    --text-lead:16px;     --text-lead-lh:1.6;
+    --text-title:15px;    --text-title-lh:1.4;   --text-title-ls:-.01em;
+    --text-body:13px;     --text-body-lh:1.6;
+    --text-caption:12px;  --text-caption-lh:1.4;
+    --text-micro:11px;    --text-micro-lh:1.35;
+    --text-label:10px;    --text-label-lh:1.2;   --text-label-ls:.16em;
   }
 
+  /* Spacing is the closed scale — 4 · 8 · 12 · 16 · 20 · 24 · 32 · 40 · 48 · 64.
+     Intermediate values are not invented. Widths and heights that size a region
+     by its contents (column caps, swatch tiles) are layout, not spacing. */
+
   *{margin:0;padding:0;box-sizing:border-box}
-  body{min-height:100dvh;font-family:var(--sans);font-size:13.5px;line-height:1.6;color:var(--ink);
-    background:var(--paper);-webkit-font-smoothing:antialiased}
+  body{min-height:100dvh;font-family:var(--font-sans);
+    font-size:var(--text-body);line-height:var(--text-body-lh);
+    color:var(--ink);background:var(--paper);-webkit-font-smoothing:antialiased}
   button,input,textarea{font:inherit;color:inherit}
   button{background:none;border:none;cursor:pointer;text-align:left}
-  :focus-visible{outline:2px solid var(--spring);outline-offset:3px;border-radius:var(--r-xs)}
+  ::selection{background:var(--marker);color:var(--forest-deep)}
+  /* Matches globals.css exactly — the outline follows each element's own radius,
+     so nothing here restates corner shape. */
+  :focus-visible{outline:2px solid var(--spring);outline-offset:2px}
   .sr{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;
     clip:rect(0 0 0 0);white-space:nowrap;border:0}
 
+  /* ═══ The ground ═══
+     Depth comes from interrupting the terrain, not from elevation: on #fbfcfa a
+     white card separates by 1.05:1, so tone cannot do the work.
+
+     This field runs HOTTER than the shipped one — .13–.30 forest at 0.9px, where
+     components/layout/contour-field.tsx draws .05–.14 at 0.7px. That is a
+     deliberate call for this surface, and it is safe here because every word on
+     the page sits on an opaque white sheet or in a clear centre column; the
+     terrain only shows in the margins. Porting these values into the app would
+     put them under body text, which is the case globals.css warns about — there,
+     lower the stroke before darkening --text3. */
   .field{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:0}
-  .field path{fill:none;stroke:var(--forest);stroke-width:1;
+  .field path{fill:none;stroke:var(--forest);stroke-width:.9;
     stroke-dasharray:1;stroke-dashoffset:1;opacity:0;
-    transition:stroke-dashoffset 1.3s var(--ease),opacity .7s var(--ease)}
+    transition:stroke-dashoffset 1.3s var(--ease-contour),opacity .7s var(--ease-contour)}
+  .field path.major{stroke-width:1.4}
   .field path.surveyed{stroke-dashoffset:0;opacity:var(--o)}
 
   /* The column widens for review: the draft reads as one column while it is
      being written, then opens to two so the whole profile fits without scrolling. */
-  .page{position:relative;z-index:1;max-width:840px;margin:0 auto;padding:22px 30px 130px}
+  /* 128px of bottom room = two 64s: the floating save bar plus the page's own
+     bottom margin. The scale is closed, so the value is composed, not invented. */
+  .page{position:relative;z-index:1;max-width:840px;margin:0 auto;padding:24px 32px 128px}
   /* Snaps rather than transitions: animating max-width on the container that holds
      the whole document is the layout thrash DESIGN.md rules out, and the review
      content fades in on its own, which already carries the change. */
+  /* Sized by what it holds rather than by the shell's 1280px cap — two columns of
+     label/value rows stop being readable before they reach it. */
   .page.wide{max-width:1180px}
 
-  .top{display:flex;align-items:center;justify-content:space-between;height:44px;margin-bottom:10px}
-  .lg{font-family:var(--serif);font-size:17px}
-  .exit{font-size:12px;color:var(--text3);padding:6px 10px;border-radius:var(--r-sm);
-    transition:background .14s,color .14s}
-  .exit:hover{background:var(--sunken);color:var(--danger)}
+  .top{display:flex;align-items:center;justify-content:space-between;height:40px;margin-bottom:16px}
 
-  /* ═══ 1 · The ask ═══ */
-  .ask{max-width:530px;margin:11vh auto 0;text-align:center;animation:up .45s var(--ease) both}
+  /* ── The lockup, verbatim from components/layout/wordmark.tsx: a New Growth
+     plate carrying an italic serif `k` in Forest Ink at 13.65:1, beside the name
+     with a Deep Pine full stop. This lime is the constant — DESIGN.md exempts it
+     from the one-answer-per-band count, which is why the field band below is
+     still free to carry its own. ── */
+  .wm{display:flex;align-items:center;gap:8px;
+    font-family:var(--font-display);font-size:var(--text-display);
+    line-height:var(--text-display-lh);color:var(--ink)}
+  .wm i{display:grid;place-items:center;width:28px;height:28px;flex:none;
+    border-radius:var(--radius-lg);background:var(--accent);font-style:italic}
+  .wm span{line-height:1}
+  .wm em{font-style:normal;color:var(--forest)}
+
+  /* Ghost: Ink Secondary, 8px 10px — DESIGN.md § Buttons. */
+  .exit{font-size:var(--text-caption);line-height:var(--text-caption-lh);
+    color:var(--text2);padding:8px 10px;border-radius:var(--radius-sm);
+    transition:background .15s var(--ease-contour),color .15s var(--ease-contour)}
+  .exit:hover{background:var(--wash);color:var(--ink)}
+
+  /* ═══ 1 · The ask ═══
+     Prompt over Lead, the same pairing features/auth/components/auth-layout.tsx
+     uses — one question on a surface with nothing competing for the eye. */
+  .ask{max-width:520px;margin:12vh auto 0;text-align:center;animation:up .45s var(--ease-contour) both}
   @keyframes up{from{opacity:0;transform:translateY(12px);filter:blur(6px)}}
-  .ask h1{font-family:var(--serif);font-size:30px;font-weight:400;line-height:1.2;
-    letter-spacing:-.01em;text-wrap:balance}
-  .ask>p{font-size:13.5px;color:var(--text2);margin-top:10px}
-  .field-in{display:flex;align-items:center;gap:8px;margin-top:26px;padding:6px 6px 6px 15px;
-    border-radius:var(--r-panel);background:var(--surface);border:1px solid var(--line2);
-    transition:border-color .14s,box-shadow .14s}
-  .field-in:focus-within{border-color:var(--spring);box-shadow:0 0 0 3px rgba(46,158,104,.12)}
-  .field-in .pre{font-size:14.5px;color:var(--text3);flex:none}
-  .field-in input{flex:1;min-width:0;border:none;background:none;outline:none;font-size:16px;padding:10px 0}
+  .ask h1{font-family:var(--font-display);font-weight:400;
+    font-size:var(--text-prompt);line-height:var(--text-prompt-lh);
+    letter-spacing:var(--text-prompt-ls);text-wrap:balance}
+  .ask>p{font-size:var(--text-lead);line-height:var(--text-lead-lh);
+    color:var(--text2);margin-top:12px}
+
+  /* Panel radius outside, chip radius on the button inside — concentric, and both
+     are real steps. A 10px control wrapping a 10px control is not. */
+  .field-in{display:flex;align-items:center;gap:8px;margin-top:32px;padding:4px 4px 4px 16px;
+    border-radius:var(--radius-lg);background:var(--surface);border:1px solid var(--line2);
+    transition:border-color .15s var(--ease-contour),box-shadow .15s var(--ease-contour)}
+  .field-in:hover{border-color:color-mix(in srgb, var(--text3) 45%, transparent)}
+  .field-in:focus-within{border-color:var(--spring);
+    box-shadow:0 0 0 3px color-mix(in srgb, var(--spring) 12%, transparent)}
+  .field-in .pre{font-size:var(--text-lead);color:var(--text3);flex:none}
+  /* Lead, not the usual body-at-md control size: this field is the entire subject
+     of the view, and Lead is a ramp step rather than an escape from one. It also
+     satisfies the Mobile Input Exemption at every width without a breakpoint. */
+  .field-in input{flex:1;min-width:0;border:none;background:none;outline:none;
+    font-size:var(--text-lead);line-height:var(--text-lead-lh);padding:8px 0}
   .field-in input::placeholder{color:var(--text3)}
-  .alt{font-size:12.5px;color:var(--text3);margin-top:14px}
-  .alt button{color:var(--spring-text);font-weight:500;font-size:12.5px;padding:3px 6px;
-    margin:-3px -6px;border-radius:var(--r-xs);transition:background .14s,color .14s}
+  .alt{font-size:var(--text-caption);line-height:var(--text-caption-lh);
+    color:var(--text3);margin-top:16px}
+  .alt button{color:var(--spring-text);font-weight:500;font-size:var(--text-caption);
+    padding:4px 8px;margin:-4px -8px;border-radius:var(--radius-xs);
+    transition:background .15s var(--ease-contour),color .15s var(--ease-contour)}
   /* Living Green Text is 4.53:1 on white but only 4.1:1 once Wash slides under it. */
   .alt button:hover{background:var(--wash);color:var(--forest)}
 
-  /* ═══ 2 · The sheet ═══ */
-  .sheet{background:var(--surface);border:1px solid rgba(15,21,18,.05);border-radius:var(--r-card);
-    overflow:hidden;animation:up .45s var(--ease) both}
+  /* ═══ 2 · The sheet ═══ A clearing: opaque, hairline edge, no shadow. */
+  .sheet{background:var(--surface);border:1px solid rgba(15,21,18,.05);border-radius:var(--radius-xl);
+    overflow:hidden;animation:up .45s var(--ease-contour) both}
 
-  /* The identity zone. Wash separates "whose profile this is" from the form
-     below it, and gives the top of the sheet a region of colour rather than an
-     accent floating in white. */
-  .sh-h{display:flex;align-items:center;gap:14px;padding:18px 24px 16px;background:var(--wash)}
+  /* The identity zone, and this view's one New Growth answer — the wordmark above
+     is the constant and exempt from the count, so the field band is free to carry
+     it. Legal as a ground, never as ink: the band is a filled plate and every
+     passenger on it is dark. Audit test — what stops it being lime? Saving the
+     client; this surface is where you are standing until then.
+
+     The inks are forced by measurement, not taste. On #cfea45: Forest Ink 13.65,
+     Pine Deep 10.87, Ink Secondary 4.70 — but Ink Tertiary is 3.80 and Surface
+     white is 1.35, so the sub-line moves up a step and any white control here
+     needs its own edge (below). */
+  .sh-h{display:flex;align-items:center;gap:16px;padding:20px 24px;background:var(--accent)}
   /* Colour comes from CLIENT_COLORS (src/utils/constants.ts), hashed on the name
      exactly as components/ui/avatar.tsx does — so a client wears the same colour
      here, on the roster dot and on the calendar pill. Tint-plus-darkened-ink
      rather than a solid fill: the lighter members of that palette fail 4.5:1
-     under white text. */
-  .mono{width:44px;height:44px;border-radius:var(--r-chip);flex:none;display:grid;place-items:center;
-    font-size:14px;font-weight:600;letter-spacing:.02em;background:var(--sunken);color:var(--text3)}
+     under white text. Round, because avatars and pills go fully round. */
+  .mono{width:44px;height:44px;border-radius:var(--radius-full);flex:none;
+    display:grid;place-items:center;font-size:var(--text-body);font-weight:500;
+    background:var(--sunken);color:var(--text3);user-select:none}
+  /* Before a name exists the tile has no passenger, and a pale empty disc on lime
+     separates by about 1.35:1 — it reads as a hole rather than as a waiting slot.
+     Hatch says absence, and the Pine Deep edge gives it a boundary that does not
+     depend on hue. Both drop away the moment nameLanded() hashes a colour. */
+  .mono.empty{background-image:var(--hatch);
+    box-shadow:inset 0 0 0 1px rgba(12,46,32,.45)}
   .sh-t{flex:1;min-width:0}
-  .sh-t h1{font-family:var(--serif);font-size:30px;font-weight:400;line-height:1.15;letter-spacing:-.01em}
-  .sh-t h1.cyr{font-family:var(--sans);font-size:23px;font-weight:600;letter-spacing:-.02em}
-  .sh-t p{font-size:12px;color:var(--text3);margin-top:2px}
-  .sh-t p b{font-weight:500;color:var(--text2)}
+  /* Headline, not Prompt. Prompt is for a surface with nothing competing, and a
+     twelve-row form is competing. Setting it in the sans unconditionally also
+     retires the Latin/Cyrillic font swap here: a Bulgarian client name and a
+     Latin one now land at the same size in the same face, so the header stops
+     resizing depending on whose site was read. */
+  .sh-t h1{font-size:var(--text-headline);font-weight:600;
+    line-height:var(--text-headline-lh);letter-spacing:var(--text-headline-ls)}
+  /* Ink Secondary, not Tertiary: 4.70:1 on lime against Tertiary's 3.80:1. */
+  .sh-t p{font-size:var(--text-caption);line-height:var(--text-caption-lh);
+    color:var(--text2);margin-top:4px}
+  .sh-t p b{font-weight:500;color:var(--forest-deep)}
   .sh-a{flex:none}
+  /* A white control on lime separates by 1.35:1 and its Hairline Strong edge by
+     1.02:1 — the button would have no silhouette at all. Pine Deep gives it one
+     at 10.87:1. This is the same problem the Fill-Only Lime Rule solves in the
+     other direction, where a lime control takes a Pine Deep edge. */
+  .sh-h .btn-sec{border-color:var(--forest-deep);color:var(--forest-deep)}
+  .sh-h .btn-sec:hover{background:var(--forest-deep);color:var(--accent)}
 
+  /* 2px is below the Small Present Rule's floor, so this stays Living Green —
+     3.38:1 clears the non-text bar. Lime here would measure 1.35:1 and vanish. */
   .scan{height:2px;background:var(--line);position:relative;overflow:hidden}
   .scan i{position:absolute;inset:0;background:var(--spring);transform-origin:left;
-    transform:scaleX(0);transition:transform .45s var(--ease)}
+    transform:scaleX(0);transition:transform .45s var(--ease-contour)}
   /* .off, not .done — .done is the completion screen, and sharing the class name
-     would hand this 2px bar that section's 9vh margin. */
+     would hand this 2px bar that section's top margin. */
   .scan.off{opacity:0;transition:opacity .4s}
 
   /* ── One layout, from the first frame. The shape of a client profile is known
      before the scan starts, so the whole form is drawn immediately and the values
      land in place. Nothing reflows when the scan finishes. ── */
-  .cols{display:grid;grid-template-columns:1fr 1fr;animation:up .4s var(--ease) both}
+  .cols{display:grid;grid-template-columns:1fr 1fr;animation:up .4s var(--ease-contour) both}
   .cols>div+div{border-left:1px solid var(--line)}
-  .grp{padding:14px 22px 10px}
-  .grp h2{font-size:10px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;
-    color:var(--text3);margin-bottom:2px}
+  .grp{padding:16px 24px 12px}
+  /* The visual system sits in its own band under the columns. It went to the
+     foot once before and was missed there — but that was a gallery of 220px
+     posters below the fold. At row scale the band is ~150px, lands above the
+     fold, and is the only place on the sheet carrying imagery, so it reads as a
+     deliberate footer rather than an afterthought.
+     It also does the work no column assignment could: lifting it out leaves the
+     left and right columns within ~80px of each other in BOTH modes, where
+     before the gap was 400. The split is now by kind — who they are, what they
+     publish, how it looks. */
+  .band{border-top:1px solid var(--line);padding:16px 24px 20px}
+  /* The band heading already names this row. */
+  .band .cl{display:none}
+  /* Side by side across the full width, folding to one column when the sheet
+     narrows — the two cards are what fills the band. */
+  .band .sysopts{grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}
+  .grp h2,.band h2{font-size:var(--text-label);font-weight:600;
+    letter-spacing:var(--text-label-ls);line-height:var(--text-label-lh);
+    text-transform:uppercase;color:var(--text2);margin-bottom:4px}
 
-  .crow{display:grid;grid-template-columns:108px 1fr auto;gap:10px;align-items:baseline;
-    padding:7px 0;border-top:1px solid var(--line);min-height:34px;position:relative}
-  .grp h2 + .crow{border-top:none}
+  /* Every row spans the group's full width, its padding putting the content back
+     where the grid wants it. Bleeding only the tinted rows made a tint read as a
+     floating rectangle instead of a highlighted row, and gave those rows a
+     divider wider than their neighbours'. */
+  .crow{display:grid;grid-template-columns:112px 1fr auto;gap:12px;align-items:baseline;
+    margin:0 -24px;padding:8px 24px;border-top:1px solid var(--line);min-height:32px;
+    position:relative}
+  .grp h2 + .crow,.band h2 + .crow{border-top:none}
+  /* A picker with one option chosen is already its own read view — there is
+     nothing an Edit button would reveal. */
+  .crow[data-id="style"] .cedit{display:none}
 
-  /* Waiting for its value. Reserves the row's height so filling it moves nothing. */
-  .skel{display:inline-block;height:10px;border-radius:99px;background:var(--sunken)}
-  .crow.pending .cl{color:var(--line2)}
+  /* Waiting for its value. Reserves the row's height so filling it moves nothing.
+     The shimmer is globals.css's .skeleton, not a flat sunken bar. */
+  .skel{display:inline-block;height:8px;border-radius:var(--radius-sm);
+    background:linear-gradient(90deg,var(--sunken) 25%,var(--line) 50%,var(--sunken) 75%);
+    background-size:200% 100%;animation:shimmer 1.5s ease-in-out infinite}
+  @keyframes shimmer{from{background-position:-200% 0}to{background-position:200% 0}}
+  /* The label is known before the value is — that is the whole premise of drawing
+     the form first — so it stays fully legible while the row waits. It used to go
+     to --line2, which is 1.4:1 and simply gone. */
   .crow.pending .cedit{display:none}
-  /* The live present: the one field being written right now. Nothing else is lime. */
-  .crow.live::before{content:'';position:absolute;left:-13px;top:15px;width:6px;height:6px;
-    border-radius:50%;background:var(--accent)}
+  /* The live present: the one field being written right now. At 6px this is below
+     the Small Present Rule's 16px floor, so "now" is Living Green — lime at this
+     size measures 1.35:1 on white and fails even the 3:1 non-text bar. */
+  .crow.live::before{content:'';position:absolute;left:8px;top:16px;width:6px;height:6px;
+    border-radius:var(--radius-full);background:var(--spring)}
 
   /* Needs your call is Amber — lime never means "attention". Full-bleed to the
      column edges, so it reads as a band rather than an indented box. */
-  .crow.ask-me{grid-template-columns:1fr;gap:6px;background:var(--pending-bg);
-    margin:0 -22px;padding:11px 22px 13px}
-  .crow.ask-me .cl{color:var(--pending)}
+  .crow.ask-me{grid-template-columns:1fr;gap:8px;background:var(--pending-bg);
+    padding:12px 24px 16px}
+  .crow.ask-me .cl{color:var(--pending);font-weight:600}
   .crow.ask-me .cedit{display:none}
   /* .cv is a baseline flex row in the read view; left as flex the question and its
      choices would sit side by side instead of stacking. */
   .crow.ask-me .cv{display:block}
-  .crow.ask-me .qq{font-size:12px;color:var(--text2);line-height:1.5;margin-bottom:9px}
-  .crow.ask-me .swr{margin-bottom:9px}
-  /* The ask row is full-bleed, so the marker moves inside its padding rather than
-     into the group gutter, where the sheet's overflow would clip it. */
-  .crow.ask-me.live::before{left:9px}
-  .cl{font-size:11px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--text3)}
-  .cv{display:flex;align-items:baseline;gap:7px;min-width:0}
+  /* Solid ink on a tinted ground — the Legible Tint Rule. An alpha-reduced ink
+     would measure differently under Amber than under Marker or Wash. */
+  .crow.ask-me .qq{font-size:var(--text-caption);line-height:var(--text-caption-lh);
+    color:var(--text2);margin-bottom:8px}
+  .crow.ask-me .swr{margin-bottom:8px}
+
+  /* Sentence-case Caption, not a second uppercase micro-label. The group heading
+     above already owns the Label role, and running both uppercase at different
+     sizes and trackings was two spellings of one idea. */
+  .cl{font-size:var(--text-caption);font-weight:500;line-height:var(--text-caption-lh);
+    color:var(--text2)}
+  .cv{display:flex;align-items:baseline;gap:8px;min-width:0}
   .val{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
-  .src{flex:none;font-size:11px;color:var(--text3)}
+  .src{flex:none;font-size:var(--text-micro);line-height:var(--text-micro-lh);color:var(--text3)}
   .src.low{color:var(--pending);font-weight:500}
-  .cedit{font-size:11.5px;color:var(--text3);padding:2px 6px;border-radius:var(--r-xs);
-    opacity:0;transition:opacity .14s,background .14s,color .14s}
+  .cedit{font-size:var(--text-micro);line-height:var(--text-micro-lh);color:var(--text3);
+    padding:4px 8px;border-radius:var(--radius-xs);
+    opacity:0;transition:opacity .15s var(--ease-contour),background .15s,color .15s}
   .crow:hover .cedit,.crow:focus-within .cedit{opacity:1}
   .cedit:hover{background:var(--sunken);color:var(--ink)}
-  /* Marker is the highlighter fill — the right tint for "you decided this",
-     and it makes your two choices findable in the finished profile. */
-  .crow.resolved{background:var(--marker);margin:0 -22px;padding-left:22px;padding-right:22px}
-  .crow.resolved .cl{color:var(--forest-deep)}
-  .crow.resolved .src{color:var(--forest)}
+
+  /* ── No website: the sheet stops being a review and becomes a form. ──
+     The read-value / Edit / Done cycle exists because the auto-draft has
+     something to read; with nothing to read it was three interactions per field
+     and twelve rows of "— not set". Every field is simply open and typed into,
+     and the affordances that only make sense against drafted content — the Edit
+     button, the source chip, the "your call" marker — are gone rather than
+     re-labelled. */
+  .manual .cedit,.manual .src{display:none}
+  .manual .crow{align-items:stretch}
+  .manual .cl{color:var(--ink)}
+  ::placeholder{color:var(--text3)}
+  /* Marker confirms "you decided this" and then clears — the Passing Tint Rule.
+     What makes the choice findable afterwards is the "your call" chip beside the
+     value, not the colour; a tint left up keeps pulling the eye to the one row
+     already dealt with. No full-bleed, because the flash goes and a row left on
+     negative margins would keep a wider divider than its neighbours. */
+  .crow.resolved{animation:flash-confirm 2.4s var(--ease-contour) forwards}
+  @keyframes flash-confirm{
+    0%,45%{background-color:var(--marker)}
+    100%{background-color:transparent}
+  }
 
   /* Editing expands one row in place; the rest of the review stays put. */
-  .crow.open{grid-template-columns:1fr;gap:8px;padding:11px 0 13px}
+  .crow.open{grid-template-columns:1fr;gap:8px;padding:12px 0 16px}
   /* .cv is a baseline flex row in the read view; an editor with several children
      (the content-mix pillars) would lay out sideways and overflow the column. */
   .crow.open .cv{display:block}
   .crow.open .cedit{opacity:1;justify-self:start;margin-left:0;border:1px solid var(--line2);
-    border-radius:var(--r-sm);padding:4px 11px;color:var(--ink);font-weight:500}
-  .crow.open .cedit:hover{border-color:var(--forest);color:var(--forest);background:none}
-  .minibar{display:inline-flex;width:64px;height:7px;border-radius:99px;overflow:hidden;
-    gap:1px;flex:none;align-self:center}
-  .minibar i{display:block}
-  .minisw{display:inline-flex;gap:3px;flex:none;align-self:center}
-  .minisw i{width:14px;height:14px;border-radius:var(--r-xs);border:1px solid var(--line2);display:block}
+    border-radius:var(--radius-sm);padding:8px 12px;color:var(--ink);font-weight:500;
+    font-size:var(--text-caption);line-height:1}
+  .crow.open .cedit:hover{border-color:var(--forest);color:var(--forest);background:var(--wash)}
+  .minisw{display:inline-flex;gap:4px;flex:none;align-self:center}
+  .minisw i{width:16px;height:16px;border-radius:var(--radius-xs);border:1px solid var(--line2);display:block}
 
-  .tags{display:flex;flex-wrap:wrap;gap:6px}
-  .tag{font-size:11.5px;border-radius:var(--r-chip);padding:3px 9px;background:var(--wash);
+  /* Chips: 10px radius, 3px 8px, Micro — DESIGN.md § Chips / Badges. */
+  .tags{display:flex;flex-wrap:wrap;gap:8px}
+  .tag{font-size:var(--text-micro);line-height:var(--text-micro-lh);
+    border-radius:var(--radius-md);padding:3px 8px;background:var(--wash);
     color:var(--forest);border:1px solid transparent}
-  button.tag{transition:background .14s,border-color .14s,color .14s}
+  button.tag{transition:background .15s var(--ease-contour),border-color .15s,color .15s}
   button.tag[aria-pressed="false"]{background:var(--surface);border-color:var(--line2);color:var(--text2)}
   button.tag[aria-pressed="true"]{background:var(--forest);color:#fff}
-  .mixbar{height:9px;border-radius:99px;background:var(--sunken);display:flex;gap:2px;
-    overflow:hidden;margin-bottom:7px}
+  .mixbar{height:8px;border-radius:var(--radius-full);background:var(--sunken);display:flex;gap:2px;
+    overflow:hidden;margin-bottom:8px}
   .mixbar i{display:block}
-  .swr{display:flex;gap:6px;flex-wrap:wrap}
-  .swr i,.swr input{width:26px;height:26px;border-radius:var(--r-sm);border:1px solid var(--line2);
+  .swr{display:flex;gap:8px;flex-wrap:wrap}
+  .swr i,.swr input{width:24px;height:24px;border-radius:var(--radius-sm);border:1px solid var(--line2);
     display:block;padding:0;background:none;cursor:pointer}
 
-  .qz-o{display:flex;gap:7px;flex-wrap:wrap}
-  .qz-o button{height:31px;padding:0 12px;border-radius:var(--r-chip);border:1px solid var(--line2);
-    background:var(--surface);font-size:12.5px;transition:background .14s,border-color .14s,color .14s}
-  .qz-o button:hover{background:var(--sunken);border-color:#bfcbc2}
+  /* Radio chips styled as the secondary button, since that is what they are.
+     The hover edge is components/ui/form/control-classes.ts's `text3/45`, not the
+     loose grey this file used to carry — that hex was outside the palette. */
+  .qz-o{display:flex;gap:8px;flex-wrap:wrap}
+  .qz-o button{padding:8px 12px;border-radius:var(--radius-sm);border:1px solid var(--line2);
+    background:var(--surface);font-size:var(--text-caption);line-height:1;
+    transition:background .15s var(--ease-contour),border-color .15s,color .15s}
+  .qz-o button:hover{background:var(--wash);border-color:color-mix(in srgb, var(--text3) 45%, transparent)}
   .qz-o button[aria-checked="true"]{background:var(--forest);border-color:var(--forest);color:#fff}
 
-  .f-in{width:100%;border:1px solid var(--line2);border-radius:var(--r-chip);background:var(--surface);
-    padding:8px 11px;font-size:13.5px;line-height:1.55;resize:none;font-family:inherit;
-    transition:border-color .14s,box-shadow .14s}
-  .f-in:focus{outline:none;border-color:var(--spring);box-shadow:0 0 0 3px rgba(46,158,104,.12)}
-  .arow{display:flex;align-items:center;gap:8px;margin-bottom:6px}
-  .arow .sw{width:9px;height:9px;border-radius:var(--r-xs);flex:none}
-  .arow .nm{flex:1;min-width:0;height:32px;border:1px solid var(--line2);border-radius:var(--r-sm);
-    background:var(--surface);padding:0 10px;font-size:13px}
+  .f-in{width:100%;border:1px solid var(--line2);border-radius:var(--radius-md);background:var(--surface);
+    padding:8px 12px;font-size:var(--text-body);line-height:var(--text-body-lh);resize:none;
+    font-family:inherit;transition:border-color .15s var(--ease-contour),box-shadow .15s}
+  .f-in:hover{border-color:color-mix(in srgb, var(--text3) 45%, transparent)}
+  .f-in:focus{outline:none;border-color:var(--spring);
+    box-shadow:0 0 0 3px color-mix(in srgb, var(--spring) 12%, transparent)}
+  .arow{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+  .arow .sw{width:8px;height:8px;border-radius:var(--radius-xs);flex:none}
+  .arow .nm{flex:1;min-width:0;height:40px;border:1px solid var(--line2);border-radius:var(--radius-md);
+    background:var(--surface);padding:0 12px;font-size:var(--text-body)}
   .arow .pc{width:64px;flex:none;display:flex;align-items:center;border:1px solid var(--line2);
-    border-radius:var(--r-sm);background:var(--surface)}
-  .arow .pc input{width:100%;border:none;height:30px;padding:0 2px 0 9px;font-size:13px;
-    text-align:right;background:none;font-variant-numeric:tabular-nums}
+    border-radius:var(--radius-md);background:var(--surface)}
+  /* Tabular, because it is a number you compare down a column. 38px is the 40px
+     control height less the wrapper's two 1px edges — a fit, not a spacing step. */
+  .arow .pc input{width:100%;border:none;height:38px;padding:0 4px 0 8px;font-size:var(--text-body);
+    text-align:right;background:none;font-variant-numeric:tabular-nums;letter-spacing:var(--text-metric-ls)}
   .arow .nm:focus,.arow .pc input:focus{outline:none}
-  .arow .pc span{font-size:11.5px;color:var(--text3);padding-right:9px}
+  .arow .pc span{font-size:var(--text-micro);color:var(--text3);padding-right:8px}
 
-  /* ═══ Buttons ═══ */
-  .btn{height:38px;padding:0 17px;border-radius:var(--r-chip);display:inline-flex;align-items:center;
-    justify-content:center;gap:7px;font-size:13.5px;font-weight:500;line-height:1;
-    border:1px solid transparent;transition:background .15s,border-color .15s,color .15s,transform .1s}
-  .btn:active{transform:scale(.98)}
+  /* ═══ Rows that hold a composed control rather than a line of text ═══
+     .cv is a baseline flex row by default, which lays a gallery or a picker out
+     sideways. These four rows own the full width of their column. */
+  .crow.block{grid-template-columns:1fr;gap:8px}
+  .crow.block .cv{display:block;width:100%}
+  .crow.block .cedit{position:absolute;top:8px;right:0}
+  /* Where the value came from is still worth saying on these rows; it just
+     cannot sit on the value's baseline when the value is a gallery. */
+  .crow.block .cv > .src{display:block;margin-top:8px}
+
+  /* ── Content mix. The bar alone said "4 pillars" and hid the four things the
+     row exists to show; the split is the answer, so it is spelled out. ── */
+  .mixlist{display:grid;gap:4px;margin-top:8px}
+  .mixrow{display:grid;grid-template-columns:8px 1fr auto;gap:8px;align-items:center;
+    font-size:var(--text-caption);line-height:var(--text-caption-lh)}
+  .mixrow i{width:8px;height:8px;border-radius:var(--radius-xs)}
+  .mixrow span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text2)}
+  .mixrow b{font-weight:600;font-variant-numeric:tabular-nums;
+    letter-spacing:var(--text-metric-ls);color:var(--ink)}
+
+  /* ── The visual system, as two option rows rather than a poster gallery.
+     Full-size cards at the foot of the sheet were the most striking thing on the
+     page and the least likely to be seen — below the fold, after the save bar,
+     past every field. Sitting first in Content and look, at row scale, it gets
+     read; the thumbnails still carry the texture, and the zoom opens the real
+     preview, which is the affordance style-card.tsx already ships for exactly
+     this trade-off. ── */
+  .sysopts{display:grid;gap:8px}
+  .sysopt{position:relative;display:grid;grid-template-columns:auto minmax(0,1fr) auto;
+    gap:12px;align-items:center;padding:8px;border:1px solid var(--line);
+    border-radius:var(--radius-lg);background:var(--surface);cursor:pointer;text-align:left;
+    transition:border-color .15s var(--ease-contour),box-shadow .15s var(--ease-contour)}
+  .sysopt:hover{border-color:var(--text3)}
+  .sysopt[aria-pressed="true"]{border-color:var(--forest);box-shadow:inset 0 0 0 1px var(--forest)}
+  .sthumb{width:56px;height:72px;flex:none;display:block;object-fit:cover;
+    border-radius:var(--radius-sm);background:var(--sunken)}
+  .sysopt .sname{display:block;font-size:var(--text-caption);line-height:var(--text-caption-lh);
+    font-weight:600;color:var(--ink)}
+  .sysopt .sdesc{display:block;font-size:var(--text-micro);line-height:1.45;color:var(--text2);
+    margin-top:2px}
+  .sysopt .sfonts{display:block;font-size:var(--text-micro);line-height:var(--text-micro-lh);
+    color:var(--text3);margin-top:4px}
+  .sact{display:flex;align-items:center;gap:4px;flex:none}
+  /* Reserved rather than toggled, so selecting a row does not reflow the other. */
+  .schk{width:24px;height:24px;border-radius:var(--radius-full);background:var(--forest);color:#fff;
+    display:grid;place-items:center;visibility:hidden}
+  .sysopt[aria-pressed="true"] .schk{visibility:visible}
+  .szoom{width:28px;height:28px;border-radius:var(--radius-sm);color:var(--text3);
+    display:grid;place-items:center;cursor:zoom-in;transition:background .15s var(--ease-contour)}
+  .szoom:hover{background:var(--sunken);color:var(--ink)}
+  .sysnote{font-size:var(--text-micro);line-height:1.5;color:var(--text3);margin-top:8px}
+
+  /* The full preview. A genuinely floating layer, so the one thing on this page
+     that may carry Frame. */
+  .lb{position:fixed;inset:0;z-index:60;display:grid;place-items:center;padding:32px;
+    background:rgba(12,46,32,.72);backdrop-filter:blur(4px)}
+  .lb[hidden]{display:none}
+  .lb figure{max-width:440px;text-align:center}
+  .lb img{display:block;width:100%;border-radius:var(--radius-lg);box-shadow:var(--sh-frame)}
+  .lb figcaption{margin-top:12px;font-size:var(--text-caption);color:var(--on-dark)}
+  .lb-x{position:absolute;top:24px;right:24px;color:var(--on-dark);padding:8px 10px;
+    border-radius:var(--radius-sm);font-size:var(--text-caption);
+    transition:background .15s var(--ease-contour)}
+  .lb-x:hover{background:rgba(255,255,255,.12)}
+
+  /* ── Field grid, shared by the schedule picker. 40px controls on the forms
+     grid, from components/ui/form/control-classes.ts. ── */
+  .fgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+  .flab{display:block;font-size:var(--text-caption);line-height:var(--text-caption-lh);
+    font-weight:500;color:var(--text2);margin-bottom:4px}
+  .f-sel,.f-time{width:100%;height:40px;padding:0 12px;background:var(--surface);
+    border:1px solid var(--line2);border-radius:var(--radius-md);font-size:var(--text-body);
+    color:var(--ink);transition:border-color .15s var(--ease-contour),box-shadow .15s}
+  .f-sel{appearance:none;padding-right:32px;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12' fill='none' stroke='%23667068' stroke-width='1.5' stroke-linecap='round'%3E%3Cpath d='M3 4.5L6 7.5 9 4.5'/%3E%3C/svg%3E");
+    background-repeat:no-repeat;background-position:right 12px center}
+  .f-sel:hover,.f-time:hover{border-color:color-mix(in srgb, var(--text3) 45%, transparent)}
+  .f-sel:focus,.f-time:focus{outline:none;border-color:var(--spring);
+    box-shadow:0 0 0 3px color-mix(in srgb, var(--spring) 12%, transparent)}
+
+  /* Seven cells showing which day the run lands on — the WeekPreview from
+     features/clients/components/settings/schedule-tab.tsx. Purely visual, so it
+     is aria-hidden and the same fact is spelled out in a sentence beside it. */
+  .week{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-top:12px}
+  .week i{border:1px solid var(--line);border-radius:var(--radius-md);background:var(--surface);
+    padding:8px 0;text-align:center;font-size:var(--text-micro);
+    line-height:var(--text-micro-lh);color:var(--text3);font-style:normal}
+  .week i b{display:block;margin-top:2px;font-size:var(--text-caption);font-weight:600;color:var(--ink)}
+  .week i.on{border-color:var(--forest);background:var(--forest);color:rgba(255,255,255,.65)}
+  .week i.on b{color:#fff}
+
+  /* ── Platform: which one publishes, and whether it can. Chips are
+     components/ui/form/chip-group.tsx — fully round, Living Green dot for a live
+     connection. The rows below are the Connected accounts panel. ── */
+  .chips{display:flex;flex-wrap:wrap;gap:8px}
+  .chip{display:inline-flex;align-items:center;gap:8px;height:32px;padding:0 14px;
+    border:1px solid var(--line2);border-radius:var(--radius-full);background:var(--surface);
+    font-size:var(--text-body);line-height:1;color:var(--text2);
+    transition:background .15s var(--ease-contour),border-color .15s,color .15s}
+  .chip:hover:not(:disabled){border-color:color-mix(in srgb, var(--text3) 45%, transparent);color:var(--ink)}
+  .chip[aria-pressed="true"]{background:var(--forest);border-color:var(--forest);
+    color:#fff;font-weight:500}
+  .chip:disabled{opacity:.4;cursor:not-allowed}
+  .chip .dot{width:6px;height:6px;border-radius:var(--radius-full);background:var(--line2);flex:none}
+  .chip .dot.live{background:var(--spring)}
+  .chip[aria-pressed="true"] .dot{background:rgba(255,255,255,.5)}
+  .chip[aria-pressed="true"] .dot.live{background:var(--spring-lite)}
+
+  .accts{margin-top:12px}
+  .acct{display:flex;align-items:center;gap:12px;padding:12px 0;border-top:1px solid var(--line)}
+  .acct:first-child{border-top:none}
+  .acct.soon{opacity:.55}
+  .stile{width:40px;height:40px;flex:none;display:grid;place-items:center;
+    border-radius:var(--radius-lg);background:var(--wash);color:var(--forest);
+    font-size:var(--text-micro);font-weight:600}
+  .acct .tx{flex:1;min-width:0}
+  .acct .tx b{display:block;font-size:var(--text-body);font-weight:600;color:var(--ink)}
+  .acct .tx span{font-size:var(--text-caption);line-height:var(--text-caption-lh);color:var(--text3)}
+  /* PILL_TONES, verbatim from components/ui/status-pill.tsx. */
+  .pill{display:inline-flex;align-items:center;height:24px;padding:0 10px;flex:none;
+    border-radius:var(--radius-full);font-size:var(--text-micro);font-weight:600}
+  .pill.ok{background:var(--wash);color:var(--forest)}
+  .pill.warn{background:var(--pending-bg);color:var(--pending)}
+  .pill.bad{background:var(--danger-bg);color:var(--danger)}
+
+  /* ═══ Buttons — sizes and variants from components/ui/button.tsx ═══ */
+  .btn{padding:12px 20px;border-radius:var(--radius-sm);display:inline-flex;align-items:center;
+    justify-content:center;gap:8px;white-space:nowrap;
+    font-size:var(--text-body);font-weight:500;line-height:1;
+    border:1px solid transparent;
+    transition:background-color .15s var(--ease-contour),border-color .15s,color .15s,
+      transform .15s,box-shadow .15s}
+  .btn:active{transform:translateY(0) scale(.98);box-shadow:none}
   .btn-primary{background:var(--forest);color:#fff}
-  .btn-primary:hover{background:var(--forest-deep)}
+  .btn-primary:hover{background:var(--forest-deep);transform:translateY(-1px);box-shadow:var(--sh-pop)}
   .btn-sec{border-color:var(--line2);background:var(--surface);color:var(--ink)}
-  .btn-sec:hover{border-color:var(--forest);color:var(--forest)}
-  .btn-ghost{color:var(--text2);padding:0 11px}
-  .btn-ghost:hover{background:var(--sunken);color:var(--ink)}
-  .btn-sm{height:30px;font-size:12.5px;padding:0 12px;border-radius:var(--r-sm)}
-  .btn-lg{height:44px;font-size:14.5px;padding:0 22px}
-  .btn:disabled{opacity:.4;pointer-events:none}
+  .btn-sec:hover{border-color:var(--forest);background:var(--wash);color:var(--forest)}
+  .btn-ghost{color:var(--forest)}
+  .btn-ghost:hover{background:var(--wash)}
+  .btn-danger{border-color:var(--danger-line);color:var(--danger)}
+  .btn-danger:hover{border-color:var(--danger);background:var(--danger-bg)}
+  .btn-sm{padding:8px 14px;font-size:var(--text-caption);border-radius:var(--radius-sm)}
+  .btn-lg{padding:14px 24px;font-size:var(--text-title);border-radius:var(--radius-md)}
+  .btn:disabled{opacity:.5;pointer-events:none}
 
-  /* ═══ Save bar — the one genuinely floating layer ═══ */
-  .bar{position:fixed;left:0;right:0;bottom:0;z-index:40;padding:0 30px 20px;
-    transform:translateY(140%);transition:transform .42s var(--ease)}
+  /* ═══ Save bar — the one genuinely floating layer, so the one that may cast ═══ */
+  .bar{position:fixed;left:0;right:0;bottom:0;z-index:40;padding:0 32px 20px;
+    transform:translateY(140%);transition:transform .42s var(--ease-contour)}
   .bar.on{transform:none}
   .bar-in{max-width:1180px;margin:0 auto;display:flex;align-items:center;gap:12px;
     background:rgba(255,255,255,.92);backdrop-filter:blur(16px);border:1px solid rgba(15,21,18,.06);
-    border-radius:var(--r-panel);padding:10px 12px 10px 18px;box-shadow:var(--sh-pop)}
-  .bar-t{flex:1;min-width:0;font-size:12.5px;display:flex;align-items:center;gap:9px}
-  .bar-t .dot{width:7px;height:7px;border-radius:50%;flex:none;background:var(--pending)}
+    border-radius:var(--radius-lg);padding:12px 12px 12px 20px;box-shadow:var(--sh-pop)}
+  .bar-t{flex:1;min-width:0;font-size:var(--text-caption);line-height:var(--text-caption-lh);
+    display:flex;align-items:center;gap:8px}
+  .bar-t .dot{width:8px;height:8px;border-radius:var(--radius-full);flex:none;background:var(--pending)}
   .bar-t.ok .dot{background:var(--spring)}
   .bar-t b{font-weight:600}
   .bar-t span{color:var(--text3)}
-  .jump{font-size:12px;font-weight:500;color:var(--pending);padding:5px 9px;
-    border-radius:var(--r-sm);flex:none;transition:background .14s}
+  .jump{font-size:var(--text-caption);font-weight:500;color:var(--pending);padding:8px 10px;
+    border-radius:var(--radius-sm);flex:none;transition:background .15s var(--ease-contour)}
   .jump:hover{background:var(--pending-bg)}
 
   /* ═══ Done ═══ */
-  .done{max-width:500px;margin:9vh auto 0;text-align:center;animation:up .45s var(--ease) both}
-  .ring{width:60px;height:60px;border-radius:50%;background:var(--forest);color:#fff;
-    display:grid;place-items:center;margin:0 auto 20px;animation:pop .55s var(--ease) .08s both}
+  .done{max-width:500px;margin:12vh auto 0;text-align:center;animation:up .45s var(--ease-contour) both}
+  /* The one lime answer in this band. A 64px plate is far above the Small Present
+     Rule's floor, and it carries a Pine Deep passenger at 10.87:1 — lime is never
+     empty, and its dark content is what makes it a shape against paper. It marks
+     where you are standing; clicking any card below stops it being lime. */
+  .ring{width:64px;height:64px;border-radius:var(--radius-full);background:var(--accent);
+    color:var(--forest-deep);display:grid;place-items:center;margin:0 auto 24px;
+    animation:pop .55s var(--ease-contour) .08s both}
   @keyframes pop{from{transform:scale(.5);opacity:0}}
-  .done h1{font-family:var(--serif);font-size:30px;font-weight:400;line-height:1.2}
-  .done h1.cyr{font-family:var(--sans);font-size:23px;font-weight:600;letter-spacing:-.02em}
+  .done h1{font-family:var(--font-display);font-weight:400;font-size:var(--text-prompt);
+    line-height:var(--text-prompt-lh);letter-spacing:var(--text-prompt-ls)}
+  /* The Latin-Only Serif Rule: Instrument Serif ships no Cyrillic, so a Bulgarian
+     client name renders at Headline in the sans instead. */
+  .done h1.cyr{font-family:var(--font-sans);font-size:var(--text-headline);font-weight:600;
+    line-height:var(--text-headline-lh);letter-spacing:var(--text-headline-ls)}
   .done h1 em{font-style:italic;color:var(--forest)}
   .done h1.cyr em{font-style:normal;color:var(--forest)}
-  .done>p{font-size:13.5px;color:var(--text2);margin-top:8px}
-  .nxs{display:grid;gap:8px;margin-top:26px;text-align:left}
-  .nx{display:flex;align-items:center;gap:13px;padding:14px 16px;width:100%;text-align:left;
-    border:1px solid var(--line2);border-radius:var(--r-panel);background:var(--surface);
-    transition:background .14s,border-color .14s}
-  .nx:hover{background:var(--sunken);border-color:var(--forest)}
-  .nx-ic{width:33px;height:33px;border-radius:var(--r-chip);flex:none;background:var(--wash);
+  .done>p{font-size:var(--text-lead);line-height:var(--text-lead-lh);color:var(--text2);margin-top:12px}
+  .nxs{display:grid;gap:8px;margin-top:32px;text-align:left}
+  .nx{display:flex;align-items:center;gap:12px;padding:16px;width:100%;text-align:left;
+    border:1px solid var(--line2);border-radius:var(--radius-lg);background:var(--surface);
+    transition:background .15s var(--ease-contour),border-color .15s}
+  .nx:hover{background:var(--wash);border-color:var(--forest)}
+  .nx-ic{width:32px;height:32px;border-radius:var(--radius-md);flex:none;background:var(--wash);
     color:var(--forest);display:grid;place-items:center}
   .nx .tx{flex:1;min-width:0}
-  .nx b{font-size:13.5px;font-weight:600;display:block}
-  .nx span{font-size:12px;color:var(--text3)}
+  .nx b{font-size:var(--text-title);font-weight:600;line-height:var(--text-title-lh);
+    letter-spacing:var(--text-title-ls);display:block}
+  .nx span{font-size:var(--text-caption);line-height:var(--text-caption-lh);color:var(--text3)}
   .nx .go{color:var(--text3);flex:none}
-  .nx.pri{background:var(--forest);border-color:var(--forest);color:#fff}
-  .nx.pri:hover{background:var(--forest-deep)}
-  .nx.pri .nx-ic{background:rgba(255,255,255,.14);color:var(--accent)}
-  .nx.pri span,.nx.pri .go{color:rgba(255,255,255,.62)}
+  /* Dark surfaces are never flat fills: a vertical pine gradient under the dot
+     grid at 13px, so a large dark area does not read as dead ink. The icon is
+     Living Green Lite rather than lime — the ring above already spent this band's
+     one lime answer, and 7fd6a8 is the system's green on a dark ground. */
+  .nx.pri{background-image:var(--dot-grid),var(--surface-dark);background-size:13px 13px,100% 100%;
+    background-color:var(--forest-deep);border-color:var(--forest-deep);color:var(--on-dark)}
+  /* Hover swaps one composed surface for the other rather than inventing a
+     darker hex — a tone shift between two declared grounds, never a new hue. */
+  .nx.pri:hover{background-image:var(--dot-grid),var(--surface-dark-capsule)}
+  .nx.pri .nx-ic{background:rgba(255,255,255,.14);color:var(--spring-lite)}
+  .nx.pri span,.nx.pri .go{color:rgba(242,245,241,.62)}
 
   .hide{display:none}
 
-  @media(max-width:900px){
+  /* Tailwind's own breakpoints, so a port lands on lg: and md: without arithmetic. */
+  @media(max-width:1024px){
     .cols{grid-template-columns:1fr}
     .cols>div+div{border-left:none;border-top:1px solid var(--line)}
-    .askg{grid-template-columns:1fr}
   }
-  @media(max-width:720px){
-    .page{padding:16px 16px 140px}
-    .ask{margin-top:5vh}
-    .sh-h{padding:16px 16px 14px}
+  @media(max-width:768px){
+    .page{padding:16px 16px 128px}
+    .ask{margin-top:8vh}
+    .sh-h{padding:16px}
     .grp{padding-left:16px;padding-right:16px}
     /* Edit pairs with the label instead of taking a third line on every row. */
-    .crow{grid-template-columns:1fr auto;gap:3px 8px;padding:9px 0}
+    .crow{grid-template-columns:1fr auto;gap:4px 8px;margin:0 -16px;padding:8px 16px}
     .cl{grid-column:1}
     .cedit{grid-column:2;grid-row:1;opacity:1;align-self:center;margin:0}
     .cv{grid-column:1/-1}
-    .crow.open .cv,.crow.open .cedit{grid-column:1/-1;grid-row:auto;justify-self:start}
-    .crow.ask-me{grid-template-columns:1fr;margin:0 -16px;padding:11px 16px 13px}
-    .crow.resolved{margin:0 -16px;padding-left:16px;padding-right:16px}
-    .crow.live::before{left:-9px}
-    .bar{padding:0 16px 14px}
+    /* justify-self:start belongs to the Done button alone. Applied to .cv it
+       made every field shrink to its content below md — a one-row textarea at
+       230px, clipping its own placeholder. */
+    .crow.open .cv{grid-column:1/-1;grid-row:auto}
+    .crow.open .cedit{grid-column:1/-1;grid-row:auto;justify-self:start}
+    .crow.ask-me{grid-template-columns:1fr;padding:12px 16px 16px}
+    .bar{padding:0 16px 16px}
     .bar-in{flex-wrap:wrap}
     .bar-t{flex-basis:100%}
     .bar .btn{flex:1}
-    .f-in,.field-in input,.arow .nm,.arow .pc input{font-size:16px}
+    /* The Mobile Input Exemption: below md a focusable field is 16px, or iOS
+       Safari zooms the viewport the moment it takes focus. Lead is exactly 16px,
+       so this is a ramp step and not a literal. */
+    .f-in,.arow .nm,.arow .pc input{font-size:var(--text-lead)}
     .field{opacity:.45}
   }
   @media (prefers-reduced-motion:reduce){
     *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;
       transition-duration:.01ms!important}
     .field path{stroke-dashoffset:0}
+    .skel{animation:none}
+    /* No flash rather than an instant one — the confirmation is also in the
+       "your call" chip, so dropping the colour loses nothing. */
+    .crow.resolved{animation:none}
   }
 </style>
 </head>
@@ -301,7 +649,7 @@
 
 <div class="page" id="page">
   <div class="top">
-    <span class="lg">Kontuur</span>
+    <span class="wm"><i aria-hidden="true">k</i><span>kontuur<em>.</em></span></span>
     <button class="exit" id="exit">Cancel</button>
   </div>
 
@@ -320,7 +668,7 @@
   <section id="s2" class="hide">
     <div class="sheet">
       <div class="sh-h">
-        <span class="mono" id="mono" aria-hidden="true">··</span>
+        <span class="mono empty" id="mono" aria-hidden="true"></span>
         <div class="sh-t">
           <h1 id="dName">Reading the site…</h1>
           <p id="dSub"></p>
@@ -339,9 +687,20 @@
 <div class="bar" id="bar"><div class="bar-in">
   <p class="bar-t" id="barT"><span class="dot"></span><span id="barTx"></span></p>
   <button class="jump hide" id="jump">Take me there ↓</button>
-  <button class="btn btn-ghost" id="discard">Discard</button>
+  <button class="btn btn-danger" id="discard">Discard</button>
   <button class="btn btn-primary btn-lg" id="save">Save client →</button>
 </div></div>
+
+<div class="lb" id="lb" hidden>
+  <button class="lb-x" id="lbx">Close ✕</button>
+  <!-- Filled by openLightbox. Deliberately empty: an image element parked here
+       as a placeholder needs an empty source attribute, which resolves against
+       the document, so the browser re-requests this page as an image before
+       anything is ever zoomed. (Spelling that tag out in this comment tripped
+       the design scanner, which reads prose as source — the same trap
+       globals.css documents for Tailwind's class scanner.) -->
+  <figure id="lbfig"></figure>
+</div>
 
 <div class="sr" role="status" aria-live="polite" id="live"></div>
 
@@ -358,12 +717,52 @@ var GROUPS = [
   { id:'people', name:'Their people',   col:0 },
   { id:'voice',  name:'How they sound', col:0 },
   { id:'look',   name:'Content and look', col:1 },
-  { id:'pub',    name:'Publishing',     col:1 }
+  { id:'pub',    name:'Publishing',     col:1 },
+  { id:'system', name:'Their visual system', full:1 }
 ];
 
+/* BRAND_STYLES, from src/lib/visual/brand-styles.ts — the scalable design
+   systems a client's AI visuals are generated in. Two today; adding a third is
+   one entry there plus one preview jpg, which is why this is a registry and not
+   a free-text field. The previews are the real files under public/. */
+var STYLES = [
+  { id:'graphic-editorial', name:'Graphic Editorial',
+    desc:'Bold modernist magazine energy — expressive grids, collage, tactile print textures.',
+    fonts:'Oswald · Source Sans 3', src:'../../public/brand-styles/graphic-editorial.jpg' },
+  { id:'clinical-luxury', name:'Clinical Luxury',
+    desc:'Premium beauty-editorial calm — close-up photography, negative space, refined restraint.',
+    fonts:'Playfair Display · Commissioner', src:'../../public/brand-styles/clinical-luxury.jpg' }
+];
+function styleById(id){
+  for(var i=0;i<STYLES.length;i++) if(STYLES[i].id === id) return STYLES[i];
+  return STYLES[0];
+}
+
+/* WEEKDAY_OPTIONS and POSTS_PER_RUN_OPTIONS, from src/utils/constants.ts. */
+var WEEKDAYS = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+var PER_RUN = ['1','2','3','4','5','6','7'];
+
+/* PLATFORMS from src/utils/constants.ts, and the LIVE_PLATFORMS set that
+   schedule-tab.tsx uses to grey out the ones that cannot publish yet. The rows
+   are PLATFORM_ROWS from settings/connected-accounts-tab.tsx. */
+var PLATFORMS = ['Instagram','Facebook','LinkedIn','X / Twitter','TikTok'];
+var LIVE_PLATFORMS = { Instagram:1, Facebook:1 };
+var ACCOUNTS = [
+  { id:'instagram', label:'Instagram', initials:'IG',
+    note:'Business or Creator account required', supported:1 },
+  { id:'facebook', label:'Facebook Page', initials:'FB',
+    note:'Needed for Instagram publishing', supported:1 },
+  { id:'linkedin', label:'LinkedIn', initials:'LI', note:'Company pages', supported:0 }
+];
+/* Connection state is not a profile field you type — it belongs to the account,
+   not the client's brief — so it lives beside A rather than inside it. */
+var connected = { instagram:false, facebook:false };
+
 var ROWS = [
-  { id:'name', g:'basics', l:'Client name', v:'Недвижими имоти Витоша', src:'the page title', conf:'high' },
-  { id:'niche', g:'basics', l:'What they do', v:'Real estate agency', src:'their services page', conf:'high' },
+  { id:'name', g:'basics', l:'Client name', ph:'Acme Studio',
+    v:'Недвижими имоти Витоша', src:'the page title', conf:'high' },
+  { id:'niche', g:'basics', l:'What they do', ph:'What do they sell or do?',
+    v:'Real estate agency', src:'their services page', conf:'high' },
 
   { id:'aud', g:'people', l:'Audience', conf:'high', src:'services and about pages', kind:'tags',
     v:['Property buyers','Property sellers','Investors','Valuation clients','Legal consultation'] },
@@ -372,22 +771,30 @@ var ROWS = [
     opts:['Book a viewing','Send an enquiry','Follow and engage','Build trust'] },
 
   { id:'tone', g:'voice', l:'Tone', big:1, conf:'high', src:'their own copy',
+    ph:'How should their posts sound?',
     v:'Professional and attentive. Clear and informative, never pushy. Speaks to people making a large, careful decision.' },
-  { id:'lang', g:'voice', l:'Language', v:'Bulgarian — formal (Вие)', src:'the site language', conf:'high' },
+  { id:'lang', g:'voice', l:'Language', ph:'English',
+    v:'Bulgarian — formal (Вие)', src:'the site language', conf:'high' },
   { id:'avoid', g:'voice', l:'Never post', big:1, conf:'low', src:'real-estate defaults',
+    ph:'Anything they must never post about',
     v:'Political content, unverified property claims, financial advice beyond real estate, discriminatory housing language.' },
 
+  /* The mix bars are the metric ramp — four greens for four series, deliberately
+     not four unrelated hues. See DESIGN.md § The Botanical Closure Rule. */
   { id:'mix', g:'look', l:'Content mix', conf:'high', src:'what they publish', kind:'mix',
-    v:[['Property listings & market updates',40,'var(--m1)'],['Expert team & services',25,'var(--m2)'],
-       ['Real estate advice & tips',20,'var(--m3)'],['Client testimonials',15,'var(--m4)']] },
+    v:[['Property listings & market updates',40,'var(--metric-1)'],['Expert team & services',25,'var(--metric-2)'],
+       ['Real estate advice & tips',20,'var(--metric-3)'],['Client testimonials',15,'var(--metric-4)']] },
   { id:'pal', g:'look', l:'Brand palette', ask:1, kind:'sw',
     v:['#ffffff','#707070','#a886cd','#6d5785','#e0e0e0'],
     q:'Purple is unusual for an estate agency — a cookie banner over the page can cause this.',
     opts:['Looks right','Pick manually','Re-scan'] },
-  { id:'style', g:'look', l:'Visual style', v:'Graphic editorial', src:'bold grids, strong type', conf:'low' },
+  { id:'style', g:'system', l:'Visual system', kind:'style', v:'graphic-editorial',
+    src:'bold grids, strong type', conf:'low' },
 
-  { id:'sched', g:'pub', l:'Schedule', v:'Mondays 09:00 · 3 a week', src:'a starting cadence', conf:'pend' },
-  { id:'plat', g:'pub', l:'Platform', v:'Instagram', src:'not connected yet', conf:'pend' }
+  { id:'sched', g:'pub', l:'Schedule', kind:'sched', src:'a starting cadence', conf:'pend',
+    v:{ day:'Monday', time:'09:00', n:'3' } },
+  { id:'plat', g:'pub', l:'Platform', kind:'plat', v:'Instagram',
+    src:'not connected yet', conf:'pend' }
 ];
 
 var A = {}, resolved = {}, host = 'everestimoti.com', manualMode = false, reviewing = false;
@@ -395,8 +802,8 @@ var doc  = document.getElementById('doc');
 var live = document.getElementById('live');
 var page = document.getElementById('page');
 
-/* One row carries the lime marker, handed over rather than cleared on a timer —
-   overlapping timers would put several on screen at once. */
+/* One row carries the present-tense marker, handed over rather than cleared on a
+   timer — overlapping timers would put several on screen at once. */
 var liveEl = null;
 function setLive(el){
   if(liveEl) liveEl.classList.remove('live');
@@ -428,13 +835,19 @@ function rowById(id){ for(var i=0;i<ROWS.length;i++) if(ROWS[i].id===id) return 
 function initA(){
   ROWS.forEach(function(r){
     if(r.ask && !r.kind) return;
-    A[r.id] = Array.isArray(r.v) ? r.v.map(function(x){ return Array.isArray(x) ? x.slice() : x; })
-                                 : (r.v || '');
+    if(Array.isArray(r.v))
+      A[r.id] = r.v.map(function(x){ return Array.isArray(x) ? x.slice() : x; });
+    /* Copied, not aliased: the schedule is the one row whose value is an object,
+       and sharing it with ROWS would make editing the draft rewrite the seed. */
+    else if(r.v && typeof r.v === 'object') A[r.id] = { day:r.v.day, time:r.v.time, n:r.v.n };
+    else A[r.id] = r.v || '';
   });
 }
 initA();
 
-/* ════ Contour field ════ */
+/* ════ Contour field ════
+   Alpha and stroke weight track components/layout/contour-field.tsx: .05–.14
+   forest, 0.7px with every fifth line at 1.1px. */
 function ringPath(cx, cy, r, rough, seed){
   var pts = [], steps = 46;
   for(var s=0; s<steps; s++){
@@ -453,11 +866,13 @@ var fieldPaths = (function(){
    {x:1240,y:110,r0:26,step:22,rings:7}].forEach(function(p, pi){
     for(var r=0; r<p.rings; r++)
       all.push({ d:ringPath(p.x,p.y,p.r0+r*p.step,.10+r*.055,pi*2.4+r*.31),
-                 o:(0.30*(1-r/(p.rings+1.5))).toFixed(3), order:r+pi*.34 });
+                 o:Math.max(0.13, 0.30 - r*0.021).toFixed(3),
+                 major:r % 5 === 0, order:r+pi*.34 });
   });
   all.sort(function(a,b){ return a.order-b.order; });
   el.innerHTML = all.map(function(p,n){
-    return '<path d="'+p.d+'" pathLength="1" style="--o:'+p.o+';transition-delay:'+(n*22)+'ms"/>';
+    return '<path class="'+(p.major?'major':'')+'" d="'+p.d+'" pathLength="1" '
+      + 'style="--o:'+p.o+';transition-delay:'+(n*22)+'ms"/>';
   }).join('');
   return el.querySelectorAll('path');
 })();
@@ -507,13 +922,24 @@ function start(isManual){
 function buildForm(){
   doc.innerHTML = '<div class="cols">' + [0,1].map(function(col){
     return '<div>' + GROUPS.filter(function(g){ return g.col === col; }).map(function(g){
-      var rows = ROWS.filter(function(r){ return r.g === g.id; });
-      return '<section class="grp"><h2>'+esc(g.name)+'</h2>'
-        + rows.map(pendingRow).join('') + '</section>';
+      return group(g);
     }).join('') + '</div>';
-  }).join('') + '</div>';
+  }).join('') + '</div>'
+  + GROUPS.filter(function(g){ return g.full; }).map(function(g){
+      return group(g, 'band');
+    }).join('');
   setBar(0);
 }
+
+function group(g, cls){
+  var rows = ROWS.filter(function(r){ return r.g === g.id; });
+  return '<section class="'+(cls || 'grp')+'"><h2>'+esc(g.name)+'</h2>'
+    + rows.map(pendingRow).join('') + '</section>';
+}
+
+/* A row whose value is a picker, a gallery or a list rather than a line of text.
+   These break out of the label/value/edit grid and take the full column. */
+function isBlock(r){ return r.kind === 'mix' || r.kind === 'style'; }
 
 function pendingRow(r){
   /* Placeholder width tracks the eventual value, so the row settles rather than jumps. */
@@ -528,6 +954,14 @@ function fillRow(r){
   var row = doc.querySelector('.crow[data-id="'+r.id+'"]');
   if(!row) return;
   row.classList.remove('pending');
+  if(isBlock(r)) row.classList.add('block');
+  /* Manual mode has nothing to read, so there is no read view to return to:
+     the row opens once and stays open. */
+  if(manualMode){
+    row.classList.add('open');
+    row.querySelector('.cv').innerHTML = editorFor(r);
+    return;
+  }
   if(r.ask && !resolved[r.id]){
     row.classList.add('ask-me');
     row.querySelector('.cv').innerHTML = askBody(r);
@@ -552,14 +986,17 @@ function askBody(r){
     + '</div>';
 }
 
+/* The name lands at Headline in the sans whatever alphabet it is written in, so
+   nothing here gates on hasCyrillic — the serif appears on the done screen, where
+   the string is the whole line and the rule applies. */
 function nameLanded(name){
-  var h = document.getElementById('dName');
-  h.textContent = name;
-  h.className = hasCyrillic(name) ? 'cyr' : '';
+  document.getElementById('dName').textContent = name;
   var m = document.getElementById('mono'), hue = clientHue(name);
+  m.classList.remove('empty');
   m.textContent = initials(name);
   /* 30%, not avatar.tsx's 14%: this is a 44px hero mark sitting on the Wash band
-     rather than a small disc on white, and at 14% it disappears into the tint. */
+     rather than a small disc on white, and at 14% it disappears into the tint.
+     The darkened-ink foreground does not change. */
   m.style.background = 'color-mix(in srgb, ' + hue + ' 30%, #ffffff)';
   m.style.color = 'color-mix(in srgb, ' + hue + ' 78%, var(--ink))';
 }
@@ -584,25 +1021,75 @@ function finish(){
     + openAsks().length + ' need your call.';
 }
 
-/* No website: the same form, empty and yours to fill. Nothing is invented. */
+/* No website: the same skeleton, every field open and yours to fill. Nothing is
+   invented — only the *shape* of a profile is supplied. */
 function startManual(){
   document.getElementById('dName').textContent = 'New client';
   document.getElementById('dSub').innerHTML = 'Nothing to read — fill this in yourself.';
   document.getElementById('scan').classList.add('off');
+  doc.classList.add('manual');
   surveyField(1);
   ROWS.forEach(function(r){
     if(r.kind === 'tags') A[r.id] = [];
-    else if(r.kind === 'mix') A[r.id] = [];
+    /* Four unnamed pillars at an even split. The editor maps over this array, so
+       an empty one rendered a heading, a Done button and nothing between them —
+       there was no way to add a pillar at all. Four blank rows are the shape of a
+       content mix, not a claim about this client. */
+    else if(r.kind === 'mix') A[r.id] = [['',25,'var(--metric-1)'],['',25,'var(--metric-2)'],
+                                         ['',25,'var(--metric-3)'],['',25,'var(--metric-4)']];
     else if(r.kind === 'sw') A[r.id] = ['#ffffff','#ffffff','#ffffff','#ffffff','#ffffff'];
+    /* A cadence has to start somewhere and the row says so — "a starting
+       cadence" is a default, not a claim about this client. The platform does
+       not: nothing is pre-selected, because that would be picking for you. */
+    else if(r.kind === 'sched') A[r.id] = { day:'Monday', time:'09:00', n:'3' };
+    else if(r.kind === 'plat') A[r.id] = '';
+    /* DEFAULT_BRAND_STYLE_ID in brand-styles.ts: getBrandStyle() resolves an
+       unset id to Graphic Editorial, so a blank picker would show a choice the
+       client does not actually have. Selecting the default states the truth. */
+    else if(r.kind === 'style') A[r.id] = 'graphic-editorial';
     else A[r.id] = '';
-    r.conf = 'pend'; r.src = 'not set';
-    if(r.ask){ r.ask = 0; resolved[r.id] = 1; }
+    /* No source and no confidence: both describe a reading that never happened.
+       `ask` is cleared but `opts` is kept — the four goal choices are a better
+       input than a free-text box whether or not a site was read. Marking these
+       rows `resolved` was the old bug: it painted "your call" on two fields you
+       had not touched. */
+    r.conf = ''; r.src = ''; r.ask = 0;
     fillRow(r);
   });
   reviewing = true;
   setBar(0);
   document.getElementById('bar').classList.add('on');
-  live.textContent = 'Blank profile ready. Fill in what you know.';
+  live.textContent = 'Blank profile ready. Every field is open — fill in what you know.';
+}
+
+/* Counts a field as filled only if it holds something a person typed or picked:
+   a blank pillar name or an untouched white swatch is still empty. */
+function filledCount(){
+  return ROWS.filter(function(r){
+    var v = A[r.id];
+    if(v && typeof v === 'object' && !Array.isArray(v)) return !!(v.day && v.time && v.n);
+    if(Array.isArray(v)) return v.some(function(x){
+      return Array.isArray(x) ? String(x[0]).trim() !== '' : (x && x.toLowerCase() !== '#ffffff');
+    });
+    return String(v || '').trim() !== '';
+  }).length;
+}
+
+/* The identity mark earns its colour as you type, the same hash the roster and
+   the calendar pill use — so the client is already wearing their colour before
+   the profile is saved. */
+function manualName(value){
+  var name = String(value || '').trim();
+  var mark = document.getElementById('mono');
+  if(!name){
+    document.getElementById('dName').textContent = 'New client';
+    mark.classList.add('empty');
+    mark.textContent = '';
+    mark.style.background = '';
+    mark.style.color = '';
+    return;
+  }
+  nameLanded(name);
 }
 
 function openAsks(){ return ROWS.filter(function(r){ return r.ask && !resolved[r.id]; }); }
@@ -617,14 +1104,27 @@ function readValue(r){
       + (list.length > 2 ? ' <span class="src">+'+(list.length-2)+' more</span>' : '') + '</span>'
       + srcChip(r);
   }
+  /* The pillars are the answer, so they are listed. A 64px bar and the words
+     "4 pillars" showed the shape of the split while hiding all four of the
+     things the row exists to name. */
   if(r.kind === 'mix'){
     var mix = v || [];
     if(!mix.length) return '<span class="val">—</span>' + srcChip(r);
-    return '<span class="minibar" aria-hidden="true">'
+    return '<div class="mixbar" aria-hidden="true">'
       + mix.map(function(p){ return '<i style="flex-basis:'+p[1]+'%;background:'+p[2]+'"></i>'; }).join('')
-      + '</span><span class="val">'+mix.length+' pillars</span>'
-      + '<span class="sr">' + esc(mix.map(function(p){ return p[0]+' '+p[1]+' percent'; }).join(', ')) + '.</span>'
-      + srcChip(r);
+      + '</div><div class="mixlist">'
+      + mix.map(function(p){
+          return '<div class="mixrow"><i style="background:'+p[2]+'"></i>'
+            + '<span>'+esc(p[0] || 'Unnamed pillar')+'</span><b>'+p[1]+'%</b></div>';
+        }).join('')
+      + '</div>' + srcChip(r);
+  }
+  if(r.kind === 'style') return styleGallery(v);
+  if(r.kind === 'sched') return '<span class="val">'+esc(schedText(v))+'</span>' + srcChip(r);
+  if(r.kind === 'plat'){
+    var live = connected[String(v).toLowerCase()];
+    return '<span class="val">'+esc(v || '—')+'</span>'
+      + '<span class="pill '+(live?'ok':'bad')+'">'+(live?'Connected':'Not connected')+'</span>';
   }
   if(r.kind === 'sw'){
     return '<span class="minisw" aria-hidden="true">'
@@ -632,6 +1132,12 @@ function readValue(r){
       + '</span>' + srcChip(r);
   }
   return '<span class="val">' + (esc(v) || '—') + '</span>' + srcChip(r);
+}
+
+/* "Mondays 09:00 · 3 a week" — the sentence form of the cadence object. */
+function schedText(v){
+  if(!v || !v.day) return '—';
+  return v.day + 's ' + v.time + ' · ' + v.n + ' a week';
 }
 
 function srcChip(r){
@@ -652,9 +1158,13 @@ function setBar(n){
   var t = document.getElementById('barT'), tx = document.getElementById('barTx');
   var jump = document.getElementById('jump');
   jump.classList.add('hide');
+  /* "Nothing detected" was true for one second and wrong from then on. A count
+     that climbs as you type is the same honesty with something to show for it. */
   if(manualMode){
-    t.className = 'bar-t';
-    tx.innerHTML = '<b>Nothing detected</b> <span>· fill in what you know, edit the rest later</span>';
+    var filled = filledCount();
+    t.className = filled ? 'bar-t ok' : 'bar-t';
+    tx.innerHTML = '<b>'+filled+' of '+ROWS.length+' filled</b> '
+      + '<span>· save whenever you like, the rest stays editable</span>';
     return;
   }
   if(!reviewing){
@@ -680,6 +1190,18 @@ document.getElementById('jump').onclick = function(){
   var b = next.querySelector('.qz-o button');
   if(b) setTimeout(function(){ b.focus(); }, 420);
 };
+
+/* Redraws one row in whichever view it is currently showing. The platform row
+   has to redraw on a connection too: the chip's dot, the pill and the button all
+   encode the same fact, so refreshing one of them would leave the other two lying. */
+function repaint(id, announce){
+  var row = doc.querySelector('.crow[data-id="'+id+'"]'), r = rowById(id);
+  if(!row) return;
+  var editing = manualMode || row.classList.contains('open');
+  row.querySelector('.cv').innerHTML = editing ? editorFor(r) : readValue(r);
+  if(manualMode) setBar(0);
+  if(announce) live.textContent = announce + '.';
+}
 
 /* ════ Editing — expands one row in place ════ */
 function openEditor(id){
@@ -707,7 +1229,26 @@ function closeEditor(id){
 
 function editorFor(r){
   var v = A[r.id];
+  /* A row whose answer is one of a known few stays a choice when it is edited.
+     Falling through to a textarea here meant manual mode threw away the four
+     goal options and asked you to invent the wording yourself. */
+  if(r.opts && !r.kind){
+    return '<div class="qz-o" role="radiogroup" aria-label="'+esc(r.l)+'">'
+      + r.opts.map(function(o,i){
+          return '<button role="radio" aria-checked="'+(v === o ? 'true' : 'false')+'" '
+            + 'tabindex="'+(v === o || (!v && !i) ? '0' : '-1')+'" data-opt="'+esc(o)+'">'
+            + esc(o)+'</button>';
+        }).join('')
+      + '</div>';
+  }
   if(r.kind === 'tags'){
+    /* The chips are the audiences that were *detected*. With no site read there
+       is no such list, and offering the last client's — "Valuation clients" to a
+       wine bar — would be inventing content on the one screen whose whole promise
+       is that it invents nothing. Manual mode asks the question instead. */
+    if(manualMode) return '<textarea class="f-in" rows="1" data-txt="'+esc(r.id)+'" '
+      + 'placeholder="Who are they trying to reach?" aria-label="'+esc(r.l)+'">'
+      + esc(Array.isArray(v) ? v.join(', ') : (v || '')) + '</textarea>';
     return '<div class="tags">' + (r.v || []).map(function(t){
       return '<button class="tag" aria-pressed="'+((v||[]).indexOf(t)>-1?'true':'false')+'" '
         + 'data-tag="'+esc(t)+'" data-row="'+esc(r.id)+'">'+esc(t)+'</button>';
@@ -716,7 +1257,8 @@ function editorFor(r){
   if(r.kind === 'mix'){
     return (v||[]).map(function(p,n){
       return '<div class="arow"><span class="sw" style="background:'+p[2]+'" aria-hidden="true"></span>'
-        + '<input class="nm" value="'+esc(p[0])+'" data-mix="'+n+'" data-k="0" aria-label="Pillar name">'
+        + '<input class="nm" value="'+esc(p[0])+'" data-mix="'+n+'" data-k="0" '
+        + 'placeholder="Pillar name" aria-label="Pillar name">'
         + '<span class="pc"><input type="number" min="0" max="100" value="'+p[1]+'" data-mix="'+n+'" '
         + 'data-k="1" aria-label="'+esc(p[0])+' percent"><span aria-hidden="true">%</span></span></div>';
     }).join('');
@@ -726,8 +1268,114 @@ function editorFor(r){
       return '<input type="color" value="'+esc(c)+'" data-sw="'+n+'" aria-label="Brand colour '+(n+1)+'">';
     }).join('') + '</div>';
   }
+  if(r.kind === 'style') return styleGallery(v);
+  if(r.kind === 'sched') return schedPicker(v);
+  if(r.kind === 'plat')  return platPicker(v);
   return '<textarea class="f-in" rows="'+(r.big?3:1)+'" data-txt="'+esc(r.id)+'" '
+    + (r.ph ? 'placeholder="'+esc(r.ph)+'" ' : '')
     + 'aria-label="'+esc(r.l)+'">'+esc(v)+'</textarea>';
+}
+
+/* Two option rows. A div[role=button] rather than a <button>, because the zoom
+   control lives inside the row and a button cannot nest one — the same shape
+   style-card.tsx uses, and the reason keydown below handles Enter and Space. */
+function styleGallery(current){
+  return '<div class="sysopts" role="group" aria-label="Visual system">'
+    + STYLES.map(function(st){
+        var on = st.id === current;
+        return '<div class="sysopt" role="button" tabindex="0" '
+          + 'aria-pressed="'+(on?'true':'false')+'" data-style="'+esc(st.id)+'">'
+          + '<img class="sthumb" src="'+esc(st.src)+'" alt="">'
+          + '<span><span class="sname">'+esc(st.name)+'</span>'
+          + '<span class="sdesc">'+esc(st.desc)+'</span>'
+          + '<span class="sfonts">'+esc(st.fonts)+'</span></span>'
+          + '<span class="sact">'
+          + '<button class="szoom" data-zoom="'+esc(st.id)+'" title="See it full size" '
+          + 'aria-label="See '+esc(st.name)+' full size">'
+          + '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+          + 'stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'
+          + '<circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5M11 8.5v5M8.5 11h5"/>'
+          + '</svg></button>'
+          + '<span class="schk" aria-hidden="true">'
+          + '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+          + 'stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">'
+          + '<path d="M4 12.5l5.5 5.5L20 6.5"/></svg></span>'
+          + '</span></div>';
+      }).join('')
+    + '</div>'
+    /* From brand-styles.ts, whose prompts are deliberately colour-free: "the
+       client's palette is the only colour source". One line, because the palette
+       row it refers to is two rows below. */
+    + '<p class="sysnote">Every visual is generated in this system — it sets the '
+    + 'typography, grid and texture, and the brand palette supplies the colour.</p>';
+}
+
+/* A cadence, not a date: posting repeats, so the thing to pick is a weekday, a
+   time and a count — the three fields settings/schedule-tab.tsx uses, with its
+   WeekPreview underneath so the choice is visible as a week. */
+function schedPicker(v){
+  var sel = function(name, opts, cur, label){
+    return '<div><label class="flab" for="s-'+name+'">'+label+'</label>'
+      + '<select class="f-sel" id="s-'+name+'" data-sched="'+name+'">'
+      + opts.map(function(o){
+          return '<option'+(o === cur ? ' selected' : '')+'>'+esc(o)+'</option>';
+        }).join('')
+      + '</select></div>';
+  };
+  return '<div class="fgrid">'
+    + sel('n', PER_RUN, v.n, 'How many')
+    + sel('day', WEEKDAYS, v.day, 'Generate on')
+    + '<div><label class="flab" for="s-time">Time</label>'
+    + '<input class="f-time" id="s-time" type="time" value="'+esc(v.time)+'" data-sched="time"></div>'
+    + '</div>' + weekPreview(v);
+}
+
+/* Seven cells, the run day filled. Purely visual, so it is aria-hidden and the
+   same fact is spelled out beside it — the rule DESIGN.md sets for the coverage
+   strip, and what the shipped WeekPreview already does. */
+function weekPreview(v){
+  return '<div class="week" aria-hidden="true">'
+    + WEEKDAYS.map(function(d){
+        var on = d === v.day;
+        return '<i class="'+(on?'on':'')+'">'+d.slice(0,3)+'<b>'+(on ? esc(v.n) : '—')+'</b></i>';
+      }).join('')
+    + '</div><p class="sr">'+esc(v.n)+' posts generated every '+esc(v.day)+' at '+esc(v.time)+'.</p>';
+}
+
+/* Two questions in one row, because they are one decision: where posts go, and
+   whether that is actually possible yet. The chips are the platform choice; the
+   rows below are the OAuth connections, and a platform can be picked before it
+   is connected — Kontuur still drafts and schedules, it just cannot publish. */
+function platPicker(current){
+  return '<div class="chips" role="group" aria-label="Publishing platform">'
+    + PLATFORMS.map(function(name){
+        var ok = !!LIVE_PLATFORMS[name];
+        var live = connected[name.toLowerCase()];
+        return '<button class="chip" aria-pressed="'+(ok && name === current ? 'true' : 'false')+'"'
+          + (ok ? '' : ' disabled')+' data-plat="'+esc(name)+'">'
+          + (ok ? '<span class="dot'+(live?' live':'')+'" aria-hidden="true"></span>' : '')
+          + esc(ok ? name : name + ' · soon') + '</button>';
+      }).join('')
+    + '</div><div class="accts">'
+    + ACCOUNTS.map(function(a){
+        var live = connected[a.id];
+        var pill = !a.supported ? '<span class="pill warn">Coming soon</span>'
+          : live ? '<span class="pill ok">Connected</span>'
+                 : '<span class="pill bad">Not connected</span>';
+        var action = !a.supported ? ''
+          : live ? '<button class="btn btn-ghost btn-sm" data-disconnect="'+a.id+'">Disconnect</button>'
+                 : '<button class="btn btn-sec btn-sm" data-connect="'+a.id+'">Connect</button>';
+        return '<div class="acct'+(a.supported?'':' soon')+'">'
+          + '<span class="stile" aria-hidden="true">'+a.initials+'</span>'
+          /* The shipped row shows connection.account_name here. A mock cannot know
+             it, and inventing a handle would be fabricated proof — so the line
+             states the consequence of connecting instead, which is true either
+             way and stops the note reading "required" once it no longer is. */
+          + '<span class="tx"><b>'+esc(a.label)+'</b><span>'
+          + esc(live ? 'Publishing enabled' : a.note)+'</span></span>'
+          + pill + action + '</div>';
+      }).join('')
+    + '</div>';
 }
 
 /* ════ Exceptions — answered in place, in the row they belong to ════ */
@@ -737,6 +1385,16 @@ function chooseOpt(btn){
     x.setAttribute('aria-checked', x === btn ? 'true' : 'false');
     x.tabIndex = x === btn ? 0 : -1;
   });
+
+  /* In manual mode the row is already open and stays open — picking an option is
+     just setting a value, with no exception to resolve and no read view to
+     collapse back into. */
+  if(manualMode){
+    A[id] = choice;
+    setBar(0);
+    live.textContent = rowById(id).l + ' set to ' + choice + '.';
+    return;
+  }
 
   /* Neither of these resolves the row on its own, so the count must not drop. */
   if(id === 'pal' && choice === 'Pick manually') return palManual(card);
@@ -759,8 +1417,9 @@ function palManual(card){
     return '<input type="color" value="'+esc(c)+'" data-sw="'+n+'" aria-label="Brand colour '+(n+1)+'">';
   }).join('');
   card.querySelector('.qq').textContent = 'Set the five brand colours yourself, then confirm.';
+  /* Secondary, not primary: the save bar already owns this view's one primary. */
   card.querySelector('.qz-o').innerHTML =
-    '<button class="btn btn-primary btn-sm" data-opt="Set by hand">Use these colours</button>';
+    '<button class="btn btn-sec btn-sm" data-opt="Set by hand">Use these colours</button>';
   live.textContent = 'Pick the five brand colours by hand.';
 }
 
@@ -783,11 +1442,29 @@ function palRescan(card){
 document.addEventListener('click', function(e){
   var t = e.target;
 
-  var opt = t.closest('.qz-o button, .crow .btn-primary');
+  var opt = t.closest('.qz-o button, .crow .btn-sec');
   if(opt && opt.dataset.opt) return chooseOpt(opt);
 
   var ed = t.closest('.cedit');
   if(ed) return ed.dataset.done ? closeEditor(ed.dataset.edit) : openEditor(ed.dataset.edit);
+
+  var zm = t.closest('[data-zoom]');
+  if(zm) return openLightbox(zm.dataset.zoom);
+  if(t.closest('#lbx') || t.id === 'lb') return closeLightbox();
+
+  var sc = t.closest('.sysopt');
+  if(sc){ A.style = sc.dataset.style; return repaint('style', styleById(A.style).name); }
+
+  var pc = t.closest('.chip');
+  if(pc && !pc.disabled){ A.plat = pc.dataset.plat; return repaint('plat', A.plat); }
+
+  /* The mock stands in for the OAuth round trip; the state it lands in is the
+     one the real connection produces. */
+  var cn = t.closest('[data-connect]'), dc = t.closest('[data-disconnect]');
+  if(cn || dc){
+    connected[(cn || dc).dataset[cn ? 'connect' : 'disconnect']] = !!cn;
+    return repaint('plat', 'Instagram ' + (cn ? 'connected' : 'disconnected'));
+  }
 
   var tg = t.closest('button.tag');
   if(tg){
@@ -796,6 +1473,7 @@ document.addEventListener('click', function(e){
     if(k > -1) cur.splice(k,1); else cur.push(val);
     A[listRow] = cur;
     tg.setAttribute('aria-pressed', k > -1 ? 'false' : 'true');
+    if(manualMode) setBar(0);
     return;
   }
 
@@ -806,18 +1484,25 @@ document.addEventListener('click', function(e){
 
 document.addEventListener('input', function(e){
   var t = e.target, d = t.dataset;
-  if(d.txt){ if(t.tagName === 'TEXTAREA'){ t.style.height='auto'; t.style.height=t.scrollHeight+'px'; }
-    A[d.txt] = t.value; return; }
-  if(d.mix !== undefined){
+  if(d.txt){
+    if(t.tagName === 'TEXTAREA'){ t.style.height='auto'; t.style.height=t.scrollHeight+'px'; }
+    A[d.txt] = t.value;
+    if(d.txt === 'name' && manualMode) manualName(t.value);
+  } else if(d.mix !== undefined){
     var row = t.closest('.crow'), id = row ? row.dataset.id : 'mix';
     var p = A[id][+d.mix];
     p[d.k === '1' ? 1 : 0] = d.k === '1' ? Math.max(0, Math.min(100, +t.value || 0)) : t.value;
-    return;
-  }
-  if(d.sw !== undefined){
+  } else if(d.sched){
+    A.sched[d.sched] = t.value;
+    /* The week strip is part of the editor, so it is redrawn with it — otherwise
+       the run day keeps pointing at the previous answer. */
+    var srow = t.closest('.crow');
+    if(srow) srow.querySelector('.cv').innerHTML = editorFor(rowById('sched'));
+  } else if(d.sw !== undefined){
     var owner = t.closest('.crow');
     if(owner) A[owner.dataset.id][+d.sw] = t.value;
-  }
+  } else return;
+  if(manualMode) setBar(0);
 });
 
 document.addEventListener('keydown', function(e){
@@ -829,6 +1514,12 @@ document.addEventListener('keydown', function(e){
     list[(i + (e.key === 'ArrowRight' ? 1 : -1) + list.length) % list.length].focus();
     return;
   }
+  if(el && el.classList && el.classList.contains('sysopt') && (e.key === 'Enter' || e.key === ' ')){
+    e.preventDefault();
+    A.style = el.dataset.style;
+    return repaint('style', styleById(A.style).name);
+  }
+  if(e.key === 'Escape' && !document.getElementById('lb').hidden) return closeLightbox();
   if(e.key === 'Escape' && el && el.closest){
     var open = el.closest('.crow.open');
     if(open) closeEditor(open.dataset.id);
@@ -846,6 +1537,28 @@ function rescan(){
   }, 1600);
 }
 
+/* The previews are 768×1024 posters shown at 56px in the row; the zoom is how
+   the system stays inspectable at that size. Focus moves to Close and returns to
+   the row that opened it, because a dialog that strands focus behind itself is
+   worse than no dialog. */
+var zoomOrigin = null;
+function openLightbox(id){
+  var st = styleById(id), lb = document.getElementById('lb');
+  zoomOrigin = doc.querySelector('.sysopt[data-style="'+id+'"]');
+  document.getElementById('lbfig').innerHTML =
+    '<img src="'+esc(st.src)+'" alt="'+esc(st.name)+' preview">'
+    + '<figcaption>'+esc(st.name)+' · '+esc(st.fonts)+'</figcaption>';
+  lb.hidden = false;
+  document.getElementById('lbx').focus();
+}
+
+function closeLightbox(){
+  document.getElementById('lb').hidden = true;
+  document.getElementById('lbfig').innerHTML = '';
+  if(zoomOrigin) zoomOrigin.focus();
+  zoomOrigin = null;
+}
+
 /* ════ 3 · Done ════ */
 function done(){
   var name = A.name || 'New client';
@@ -855,7 +1568,7 @@ function done(){
   var s3 = document.getElementById('s3');
   s3.classList.remove('hide');
   s3.innerHTML = '<div class="done">'
-    + '<div class="ring"><svg width="25" height="25" viewBox="0 0 24 24" fill="none" '
+    + '<div class="ring"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" '
     + 'stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">'
     + '<path d="M4 12.5l5.5 5.5L20 6.5"/></svg></div>'
     + '<h1 class="'+(hasCyrillic(name)?'cyr':'')+'"><em>'+esc(name)+'</em> is ready</h1>'

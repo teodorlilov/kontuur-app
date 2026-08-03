@@ -18,8 +18,8 @@ function makeClient(overrides: Partial<ClientData> = {}): ClientData {
     language: 'Bulgarian',
     tone: 'professional',
     targetAudience: 'Women 25-45',
-    clientTestimonialVoice: 'They really care about my skin.',
     avoidTopics: 'politics',
+    socialGoals: '',
     contentPillars: [
       { id: 'p1', pillar: 'Skincare tips', weight: 50 },
       { id: 'p2', pillar: 'Product reviews', weight: 50 },

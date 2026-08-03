@@ -90,7 +90,9 @@ export function PillarEditor({ pillars, onChange, allowEmpty = false }: PillarEd
               aria-label={`Pillar ${i + 1} name`}
               className="flex-1"
             />
-            <InputAffix suffix="%" className="w-[82px] flex-none">
+            {/* 92px, not 82: the field has to hold "100", and after the border, the "%" and
+                the control's own padding, 82 left 31px of text box for three digits. */}
+            <InputAffix suffix="%" className="w-[92px] flex-none">
               <Input
                 type="number"
                 value={pillar.weight}
@@ -98,6 +100,8 @@ export function PillarEditor({ pillars, onChange, allowEmpty = false }: PillarEd
                 aria-label={`Pillar ${i + 1} share`}
                 min={0}
                 max={100}
+                // Tabular: four of these stack in a column and are read against each other.
+                className="tabular-nums"
               />
             </InputAffix>
             {canRemove && (

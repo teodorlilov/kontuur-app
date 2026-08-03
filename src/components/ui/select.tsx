@@ -23,6 +23,21 @@ interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
   placeholder?: string
 }
 
+/**
+ * Guarantees the current value is selectable, prepending it when the list has never heard of it.
+ *
+ * A client saved before a language joined the list, or a value a site read produced that the list
+ * does not carry, would otherwise silently render as the first option — the control would show one
+ * language while the record held another.
+ */
+export function ensureOption(
+  options: ReadonlyArray<{ value: string; label: string }>,
+  value: string
+): Array<{ value: string; label: string }> {
+  if (!value || options.some((option) => option.value === value)) return [...options]
+  return [{ value, label: value }, ...options]
+}
+
 /** A native select, restyled to match the other controls. */
 export function Select({
   label,

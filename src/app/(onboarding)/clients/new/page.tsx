@@ -3,90 +3,101 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from '@/components/ui/toast'
-import { ensurePillarIds, serializePillars } from '@/lib/clients/content-pillars'
-import type { UrlAnalysisResponse } from '@/types/api'
-import type { SourceKind, VisualIdentity } from '@/types/visual'
-import type { OnboardingStep, OnboardProfile, Message } from '@/features/onboarding/types'
-import { QUESTIONS, getDetectedAnswer } from '@/features/onboarding/lib/questions'
-import { buildDefaultIdentity } from '@/lib/visual/identity'
+import { createClient } from '@/features/clients/actions/client-actions'
 import { useExtractionStatus } from '@/features/visual-identity/hooks/use-extraction-status'
 import { PillarSourceStepper } from '@/features/sources/components/stepper/pillar-source-stepper'
 import type { StepperSummary, FetchStatus } from '@/features/sources/types'
-import type { SourceSuggestion } from '@/types/api'
+import type { SourceSuggestion, UrlAnalysisResponse } from '@/types/api'
+import type { SourceKind } from '@/types/visual'
+import { toHostLabel, toWebsiteUrl } from '@/utils/url'
 import { OnboardingShell } from '@/features/onboarding/components/onboarding-shell'
 import { OnboardingSuccess } from '@/features/onboarding/components/onboarding-success'
 import { StepEntry } from '@/features/onboarding/components/step-entry'
-import { StepLoading } from '@/features/onboarding/components/step-loading'
-import { StepInterview } from '@/features/onboarding/components/step-interview'
-import { StepReview } from '@/features/onboarding/components/step-review'
+import { DraftSheet } from '@/features/onboarding/components/draft-sheet'
+import { DraftSaveBar } from '@/features/onboarding/components/draft-save-bar'
+import { buildDraftFromAnalysis, buildEmptyDraft } from '@/features/onboarding/lib/build-draft'
+import {
+  ANSWERABLE_FIELDS,
+  blockingFields,
+  buildCreateInput,
+  countFilled,
+  hasValue,
+} from '@/features/onboarding/lib/draft-payload'
+import { DRAFT_ROWS } from '@/features/onboarding/lib/draft-rows'
+import type { DraftFieldId, DraftProfile, FieldProvenance } from '@/features/onboarding/types'
 
 export default function NewClientPage() {
   const router = useRouter()
 
-  // Step state
-  const [step, setStep] = useState<OnboardingStep>('entry')
-
-  // Interview state
-  const [currentQ, setCurrentQ] = useState(0)
-  const [messages, setMessages] = useState<Message[]>([{ role: 'ai', text: QUESTIONS[0]!.text }])
-  const [answers, setAnswers] = useState<Record<string, string>>({})
-  const [input, setInput] = useState('')
-  const [multiSelectAnswers, setMultiSelectAnswers] = useState<string[]>([])
-
-  // Profile state
-  const [profile, setProfile] = useState<OnboardProfile | null>(null)
-  const [clientName, setClientName] = useState('')
-
-  // URL analysis state
+  const [showDraft, setShowDraft] = useState(false)
+  const [manual, setManual] = useState(false)
+  /**
+   * Always a full `https://…` URL, or empty. Never a bare host.
+   *
+   * `StepEntry` normalises on the way in and shows only the host, so every consumer here — the
+   * site read, source discovery, colour extraction, the saved `website_url` and the sources
+   * stepper, which calls `new URL(...)` on it — can use this directly.
+   */
   const [websiteUrl, setWebsiteUrl] = useState('')
-  const [instagramHandle, setInstagramHandle] = useState('')
-  const [analysisData, setAnalysisData] = useState<UrlAnalysisResponse | null>(null)
-  const [analysisComplete, setAnalysisComplete] = useState(false)
+  const [analyzing, setAnalyzing] = useState(false)
+  const [rereading, setRereading] = useState(false)
 
-  // Visual identity state (async extraction hides behind the interview; Review upgrades it in place)
+  const [draft, setDraft] = useState<DraftProfile>(buildEmptyDraft)
+  const [provenance, setProvenance] = useState<Partial<Record<DraftFieldId, FieldProvenance>>>({})
+  const [unanswered, setUnanswered] = useState<DraftFieldId[]>([])
+
+  // Brand colours are measured by a separate job that runs while the sheet is being read, and
+  // land in place when they arrive — unless the user has already edited the palette by hand.
   const [sessionId] = useState(() => crypto.randomUUID())
-  const [visualIdentity, setVisualIdentity] = useState<VisualIdentity | null>(null)
-  const [identityEdited, setIdentityEdited] = useState(false)
   const [extractionStarted, setExtractionStarted] = useState(false)
+  const [identityEdited, setIdentityEdited] = useState(false)
   const { status: extractionStatus } = useExtractionStatus({
     sessionId,
     enabled: extractionStarted,
     onResolved: (identity) => {
-      if (!identityEdited) setVisualIdentity(identity)
+      if (!identityEdited) setDraft((current) => ({ ...current, identity }))
     },
   })
 
-  // Review edit state
-  const [editSection, setEditSection] = useState<string | null>(null)
-  const [editValue, setEditValue] = useState('')
-
-  // Save + stepper state
   const [saving, setSaving] = useState(false)
-  const [showStepper, setShowStepper] = useState(false)
   const [savedClientId, setSavedClientId] = useState<string | null>(null)
+  const [showStepper, setShowStepper] = useState(false)
   const [stepperSummary, setStepperSummary] = useState<StepperSummary | null>(null)
 
-  // Background source discovery — runs during the interview so the stepper
-  // opens with results in hand (mirrors the visual-identity extraction pattern)
+  // Source discovery runs in the background so the stepper opens with results in hand.
   const [prescanStatus, setPrescanStatus] = useState<FetchStatus>('idle')
   const [prescannedPages, setPrescannedPages] = useState<string[]>([])
   const [feedStatus, setFeedStatus] = useState<FetchStatus>('idle')
   const [feedSuggestions, setFeedSuggestions] = useState<SourceSuggestion[]>([])
 
-  // Schedule state
-  const [scheduleFreqType, setScheduleFreqType] = useState('per_week')
-  const [scheduleFreqValue, setScheduleFreqValue] = useState('3')
-  const [scheduleDay, setScheduleDay] = useState('monday')
-  const [scheduleTime, setScheduleTime] = useState('09:00')
+  // Derived, never stored: a stored set only ever grew, so clearing a field the sheet had asked
+  // about left the header saying "all checked" while the save bar blocked on that same field.
+  const resolved = unanswered.filter((field) => hasValue(draft, field))
+  const openAsks = unanswered.filter((field) => !resolved.includes(field))
+  const blocking = blockingFields(draft, unanswered)
+  const blockedBy = blocking[0]
+    ? (DRAFT_ROWS.find((row) => row.id === blocking[0])?.label ?? 'A field')
+    : undefined
 
   function handleCancel() {
-    const confirmed = window.confirm('Cancel onboarding? Any unsaved progress will be lost.')
-    if (confirmed) router.push('/clients')
+    if (window.confirm('Cancel? Any unsaved progress will be lost.')) router.push('/clients')
+  }
+
+  /**
+   * Applies an edit.
+   *
+   * Which questions that settles is read back off the draft rather than tracked here, so typing a
+   * niche into the blank form settles it exactly as picking a post goal does — and clearing it
+   * un-settles it again.
+   */
+  function handleChange(patch: Partial<DraftProfile>) {
+    if (patch.identity) setIdentityEdited(true)
+    setDraft((current) => ({ ...current, ...patch }))
   }
 
   /** Scan the website for pages in the background; the stepper reflects the status. */
   async function runSourcePrescan(url: string) {
-    const trimmed = url.trim()
+    const trimmed = toWebsiteUrl(url)
     if (!trimmed) return
     setPrescanStatus('running')
     setPrescannedPages([])
@@ -105,19 +116,19 @@ export default function NewClientPage() {
     }
   }
 
-  /** Prefetch feed suggestions once the profile (niche + pillars) is known. */
-  async function runFeedPrefetch(source: Omit<OnboardProfile, 'contact_email'>, name: string) {
+  /** Prefetch feed suggestions once the niche and pillars are known. */
+  async function runFeedPrefetch(profile: DraftProfile) {
     setFeedStatus('running')
     try {
       const res = await fetch('/api/ai/suggest-sources', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          niche: source.niche,
-          clientName: name || undefined,
-          pillars: source.content_pillars.map((p) => p.pillar),
-          targetAudience: source.target_audience.join(', '),
-          language: source.language,
+          niche: profile.niche,
+          clientName: profile.name || undefined,
+          pillars: profile.pillars.map((pillar) => pillar.pillar),
+          targetAudience: profile.audience,
+          language: profile.language,
         }),
       })
       if (!res.ok) throw new Error('prefetch failed')
@@ -129,44 +140,7 @@ export default function NewClientPage() {
     }
   }
 
-  async function handleAnalyzeUrl() {
-    if (!websiteUrl.trim() && !instagramHandle.trim()) {
-      toast.error('Please enter a website URL or Instagram handle')
-      return
-    }
-
-    setStep('loading')
-    setAnalysisComplete(false)
-    if (websiteUrl.trim()) void runSourcePrescan(websiteUrl)
-
-    try {
-      const res = await fetch('/api/ai/analyze-url', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          websiteUrl: websiteUrl.trim() || undefined,
-          instagramHandle: instagramHandle.trim() || undefined,
-        }),
-      })
-
-      if (res.ok) {
-        const data = (await res.json()) as UrlAnalysisResponse
-        setAnalysisData(data)
-        setVisualIdentity(buildDefaultIdentity())
-        void startExtraction()
-        toast.success('Brand analysis complete')
-      } else {
-        toast.error('Could not analyze the provided URLs — continuing manually')
-      }
-    } catch {
-      toast.error('Analysis failed — continuing manually')
-    }
-
-    setAnalysisComplete(true)
-  }
-
-  // Kick off async brand-visual extraction; it runs during the interview and lands by Review.
-  // Only begin polling if the server accepted the job — otherwise the placeholder identity stands.
+  /** Kick off the async brand-colour extraction; it lands in the sheet when it finishes. */
   async function startExtraction() {
     try {
       const res = await fetch('/api/extract/start', {
@@ -174,18 +148,87 @@ export default function NewClientPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           onboardingSessionId: sessionId,
-          websiteUrl: websiteUrl.trim() || undefined,
+          websiteUrl: websiteUrl || undefined,
         }),
       })
       if (res.ok) setExtractionStarted(true)
     } catch {
-      // Keep the default-palette placeholder; the user can still edit and save.
+      // Keep the default palette; the user can still edit and save.
     }
   }
 
-  function handleVisualIdentityChange(identity: VisualIdentity) {
-    setVisualIdentity(identity)
-    setIdentityEdited(true)
+  /** Reads the site and drafts the profile from it. */
+  async function readSite(): Promise<UrlAnalysisResponse | null> {
+    const res = await fetch('/api/ai/analyze-url', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ websiteUrl }),
+    })
+    if (!res.ok) return null
+    return (await res.json()) as UrlAnalysisResponse
+  }
+
+  async function handleAnalyze() {
+    setAnalyzing(true)
+    void runSourcePrescan(websiteUrl)
+
+    const analysis = await readSite().catch(() => null)
+    setAnalyzing(false)
+
+    if (!analysis) {
+      // The site could not be read, so there is nothing to check — the blank form is the honest
+      // fallback rather than a sheet full of empty rows dressed as a draft.
+      toast.error('Could not read that site — fill the profile in by hand')
+      startManual()
+      return
+    }
+
+    const result = buildDraftFromAnalysis(analysis)
+    setDraft(result.draft)
+    setProvenance(result.provenance)
+    setUnanswered(result.unanswered)
+    setManual(false)
+    setShowDraft(true)
+    void startExtraction()
+    void runFeedPrefetch(result.draft)
+  }
+
+  function startManual() {
+    setDraft(buildEmptyDraft())
+    setProvenance({})
+    setUnanswered([])
+    setManual(true)
+    setShowDraft(true)
+  }
+
+  async function handleReread() {
+    // A re-read replaces the whole draft, so it has to be asked for rather than assumed. Same
+    // window.confirm as handleCancel above — the other place this flow can throw work away.
+    if (!window.confirm('Read the site again? Anything you have changed will be replaced.')) return
+
+    setRereading(true)
+    const analysis = await readSite().catch(() => null)
+    setRereading(false)
+
+    if (!analysis) {
+      toast.error('Re-read failed — nothing changed')
+      return
+    }
+
+    const result = buildDraftFromAnalysis(analysis)
+    // The identity is deliberately carried over: brand colours come from a different job, and a
+    // re-read of the page copy has nothing to say about them.
+    setDraft({ ...result.draft, identity: draft.identity })
+    setProvenance(result.provenance)
+    setUnanswered(result.unanswered)
+    toast.success('Read again')
+  }
+
+  function jumpToAsk() {
+    const first = blocking[0] ?? openAsks[0]
+    if (!first) return
+    const row = document.querySelector(`[data-field="${first}"]`)
+    row?.scrollIntoView({ behavior: 'smooth', block: 'center' })
   }
 
   function resolveIdentitySource(): SourceKind {
@@ -193,251 +236,77 @@ export default function NewClientPage() {
     return extractionStatus === 'ready' ? 'website' : 'default'
   }
 
-  function handleLoadingComplete() {
-    setStep('interview')
-  }
-
-  function handleSkipToInterview() {
-    if (websiteUrl.trim() && prescanStatus === 'idle') void runSourcePrescan(websiteUrl)
-    setStep('interview')
-  }
-
-  function submitAnswer(text: string) {
-    if (!text.trim()) return
-
-    const qId = QUESTIONS[currentQ]!.id
-    const newAnswers = { ...answers, [qId]: text }
-    setAnswers(newAnswers)
-
-    const newMessages: Message[] = [...messages, { role: 'user', text }]
-
-    if (currentQ < QUESTIONS.length - 1) {
-      const nextQ = currentQ + 1
-      setCurrentQ(nextQ)
-
-      const detected = getDetectedAnswer(QUESTIONS[nextQ]!.id, analysisData)
-      const questionText = detected
-        ? `${QUESTIONS[nextQ]!.text}\n\nBased on their website, we think: "${detected}"`
-        : QUESTIONS[nextQ]!.text
-
-      setMessages([...newMessages, { role: 'ai', text: questionText }])
-    } else {
-      setMessages([...newMessages, { role: 'ai', text: 'Building your client profile...' }])
-      setStep('generating')
-      void generateProfile(newAnswers)
-    }
-
-    setInput('')
-    setMultiSelectAnswers([])
-  }
-
-  function toggleMultiSelect(chip: string) {
-    setMultiSelectAnswers((prev) =>
-      prev.includes(chip) ? prev.filter((c) => c !== chip) : [...prev, chip]
-    )
-  }
-
-  function submitMultiSelect() {
-    if (multiSelectAnswers.length === 0) return
-    submitAnswer(multiSelectAnswers.join(', '))
-  }
-
-  async function generateProfile(answersMap: Record<string, string>) {
-    try {
-      const res = await fetch('/api/ai/onboard', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          answers: answersMap,
-          analysisData: analysisData ?? undefined,
-        }),
-      })
-
-      if (!res.ok) throw new Error('Failed to generate profile')
-
-      const data = (await res.json()) as { profile: Omit<OnboardProfile, 'contact_email'> }
-      setProfile({
-        ...data.profile,
-        // The generator returns pillars without ids. Stamped here, where the data enters, because
-        // the editor keys its rows by id — leaving it until save meant every row keyed `undefined`
-        // for the whole review step.
-        content_pillars: ensurePillarIds(data.profile.content_pillars),
-        contact_email: '',
-      })
-      if (answersMap.q0) setClientName(answersMap.q0)
-      void runFeedPrefetch(data.profile, answersMap.q0 ?? clientName)
-      setStep('review')
-    } catch {
-      toast.error('Failed to generate profile. Please try again.')
-      setStep('interview')
-    }
-  }
-
-  function handleFieldSave(key: string, value: string) {
-    if (!profile) return
-    const profileKey = key as keyof OnboardProfile
-    if (profileKey === 'target_audience' || profileKey === 'social_goals') {
-      setProfile({
-        ...profile,
-        [profileKey]: value
-          .split(',')
-          .map((s) => s.trim())
-          .filter(Boolean),
-      })
-    } else {
-      setProfile({ ...profile, [profileKey]: value })
-    }
-  }
-
   async function handleSave() {
-    if (!clientName.trim()) {
-      toast.error('Please enter a client name')
-      return
-    }
-    if (!profile) return
+    // The button is disabled while anything blocks, so this only catches a programmatic call.
+    if (blocking.length > 0) return
 
     setSaving(true)
-    try {
-      const res = await fetch('/api/clients', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: clientName,
-          niche: profile.niche,
-          language: profile.language,
-          website_url: websiteUrl.trim() || null,
-          contact_email: profile.contact_email.trim() || null,
-          brand_profile: {
-            tone: profile.tone,
-            target_audience: profile.target_audience.join(', '),
-            content_pillars: serializePillars(profile.content_pillars),
-            avoid_topics: profile.avoid_topics,
-            client_testimonial_voice: profile.client_testimonial_voice,
-            language_formality: profile.language_formality,
-            is_health_niche: profile.is_health_niche,
-          },
-          posting_schedule: {
-            frequency_type: scheduleFreqType,
-            frequency_value: parseInt(scheduleFreqValue, 10),
-            auto_generate_day: scheduleDay,
-            auto_generate_time: scheduleTime,
-          },
-          visual_identity: visualIdentity ?? buildDefaultIdentity(),
-          visual_identity_source: resolveIdentitySource(),
-        }),
-      })
+    const result = await createClient(buildCreateInput(draft, websiteUrl, resolveIdentitySource()))
+    setSaving(false)
 
-      if (!res.ok) throw new Error('Failed to save client')
-
-      const data = (await res.json()) as { client_id: string }
-
-      // Trigger best-time generation in background
-      fetch('/api/ai/best-time', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ client_id: data.client_id }),
-      }).catch(() => null)
-
-      toast.success('Client saved!')
-      setSaving(false)
-      setSavedClientId(data.client_id)
-      setShowStepper(true)
-    } catch {
-      toast.error('Failed to save client. Please try again.')
-      setSaving(false)
+    if (!result.ok) {
+      toast.error(result.error)
+      return
     }
-  }
 
-  function handleRedo() {
-    setStep('entry')
-    setCurrentQ(0)
-    setMessages([{ role: 'ai', text: QUESTIONS[0]!.text }])
-    setAnswers({})
-    setInput('')
-    setProfile(null)
-    setAnalysisData(null)
-    setAnalysisComplete(false)
-    setWebsiteUrl('')
-    setInstagramHandle('')
-    setMultiSelectAnswers([])
-    setVisualIdentity(null)
-    setIdentityEdited(false)
-    setExtractionStarted(false)
-    setPrescanStatus('idle')
-    setPrescannedPages([])
-    setFeedStatus('idle')
-    setFeedSuggestions([])
-  }
+    // Best-time generation is a nicety; a failure must not block the flow.
+    void fetch('/api/ai/best-time', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ client_id: result.data }),
+    }).catch(() => null)
 
-  const currentQuestion = QUESTIONS[currentQ]
-  const isMultiSelect = currentQuestion?.multiSelect ?? false
-  const detectedAnswer = currentQuestion
-    ? getDetectedAnswer(currentQuestion.id, analysisData)
-    : null
+    // The analysed path prefetched at read time; the blank form had no niche to prefetch from
+    // until now. Without this the stepper's feed step reads an unstarted prefetch as one still
+    // running and shows a skeleton that never resolves.
+    if (feedStatus === 'idle') void runFeedPrefetch(draft)
+
+    toast.success('Client saved')
+    setSavedClientId(result.data)
+    setShowStepper(true)
+  }
 
   return (
     <>
-      <OnboardingShell currentStep={step} onCancel={handleCancel}>
-        {step === 'entry' && (
+      <OnboardingShell wide={showDraft} onCancel={handleCancel}>
+        {showDraft ? (
+          <DraftSheet
+            draft={draft}
+            onChange={handleChange}
+            provenance={provenance}
+            unanswered={unanswered}
+            resolved={resolved}
+            manual={manual}
+            host={toHostLabel(websiteUrl)}
+            paletteStatus={extractionStatus}
+            onReread={() => void handleReread()}
+            rereading={rereading}
+          />
+        ) : (
           <StepEntry
             websiteUrl={websiteUrl}
-            instagramHandle={instagramHandle}
             onWebsiteUrlChange={setWebsiteUrl}
-            onInstagramHandleChange={setInstagramHandle}
-            onAnalyze={() => void handleAnalyzeUrl()}
-            onSkip={handleSkipToInterview}
-          />
-        )}
-        {step === 'loading' && (
-          <StepLoading
-            analysisComplete={analysisComplete}
-            onSkip={handleSkipToInterview}
-            onComplete={handleLoadingComplete}
-          />
-        )}
-        {(step === 'interview' || step === 'generating') && (
-          <StepInterview
-            messages={messages}
-            currentQ={currentQ}
-            input={input}
-            onInputChange={setInput}
-            onSubmitAnswer={submitAnswer}
-            isMultiSelect={isMultiSelect}
-            multiSelectAnswers={multiSelectAnswers}
-            onToggleMultiSelect={toggleMultiSelect}
-            onSubmitMultiSelect={submitMultiSelect}
-            detectedAnswer={detectedAnswer}
-            hasAnalysisData={analysisData !== null}
-            isGenerating={step === 'generating'}
-          />
-        )}
-        {step === 'review' && profile && (
-          <StepReview
-            profile={profile}
-            clientName={clientName}
-            onClientNameChange={setClientName}
-            editSection={editSection}
-            onEditSection={setEditSection}
-            editValue={editValue}
-            onEditValueChange={setEditValue}
-            onFieldSave={handleFieldSave}
-            onPillarsChange={(pillars) => setProfile({ ...profile, content_pillars: pillars })}
-            onContactEmailChange={(v) => setProfile({ ...profile, contact_email: v })}
-            scheduleDay={scheduleDay}
-            onScheduleDayChange={setScheduleDay}
-            scheduleTime={scheduleTime}
-            onScheduleTimeChange={setScheduleTime}
-            saving={saving}
-            onSave={() => void handleSave()}
-            onRedo={handleRedo}
-            websiteUrl={websiteUrl}
-            visualIdentity={visualIdentity ?? buildDefaultIdentity()}
-            onVisualIdentityChange={handleVisualIdentityChange}
-            extractionStatus={extractionStatus}
+            onAnalyze={() => void handleAnalyze()}
+            onSkip={startManual}
+            analyzing={analyzing}
           />
         )}
       </OnboardingShell>
-      {showStepper && savedClientId && profile && (
+
+      <DraftSaveBar
+        visible={showDraft && !showStepper && !stepperSummary}
+        openAsks={openAsks.length}
+        blockedBy={blockedBy}
+        manual={manual}
+        filled={countFilled(draft, ANSWERABLE_FIELDS)}
+        total={ANSWERABLE_FIELDS.length}
+        saving={saving}
+        onSave={() => void handleSave()}
+        onDiscard={handleCancel}
+        onJumpToAsk={jumpToAsk}
+      />
+
+      {showStepper && savedClientId && (
         <PillarSourceStepper
           open={showStepper}
           clientId={savedClientId}
@@ -445,14 +314,12 @@ export default function NewClientPage() {
           prescanStatus={prescanStatus}
           prescannedPages={prescannedPages}
           onScanRequested={(url) => {
-            setWebsiteUrl(url)
+            setWebsiteUrl(toWebsiteUrl(url))
             void runSourcePrescan(url)
           }}
           feedSuggestions={feedSuggestions}
           feedStatus={feedStatus}
-          onRetryFeedSuggestions={() => {
-            if (profile) void runFeedPrefetch(profile, clientName)
-          }}
+          onRetryFeedSuggestions={() => void runFeedPrefetch(draft)}
           onFinished={(summary) => {
             setShowStepper(false)
             setStepperSummary(summary)
@@ -460,9 +327,10 @@ export default function NewClientPage() {
           onDismiss={() => router.push(`/clients/${savedClientId}/sources`)}
         />
       )}
+
       {stepperSummary && savedClientId && (
         <OnboardingSuccess
-          clientName={clientName}
+          clientName={draft.name}
           summary={stepperSummary}
           onGenerate={() => router.push(`/generate?client=${savedClientId}`)}
           onViewSources={() => router.push(`/clients/${savedClientId}/sources`)}

@@ -41,19 +41,19 @@ export function BrandProfileTab({ brand, onChange }: BrandProfileTabProps) {
             placeholder="Small businesses looking to improve their social presence…"
           />
         </Field>
+        <Field label="Post goal" hint="What a post should get someone to do.">
+          <Input
+            value={brand.socialGoals}
+            onChange={(e) => onChange({ socialGoals: e.target.value })}
+            placeholder="Book an appointment, send an enquiry…"
+          />
+        </Field>
         <Field label="Topics to avoid" hint="Comma-separated.">
           <Textarea
             autoGrow
             value={brand.avoidTopics}
             onChange={(e) => onChange({ avoidTopics: e.target.value })}
             placeholder="Hard-sell messaging, competitor comparisons…"
-          />
-        </Field>
-        <Field label="Client testimonial voice" span={6} optional>
-          <Input
-            value={brand.testimonialVoice}
-            onChange={(e) => onChange({ testimonialVoice: e.target.value })}
-            placeholder="How clients describe them"
           />
         </Field>
         <Field label="Language requirements" optional>

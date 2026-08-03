@@ -1,7 +1,7 @@
 'use client'
 
-import { useEffect } from 'react'
 import { Button } from '@/components/ui/button'
+import { useUnloadGuard } from '@/hooks/use-unload-guard'
 import { cn } from '@/utils/cn'
 
 interface SaveBarProps {
@@ -50,23 +50,4 @@ export function SaveBar({ dirty, label, saving, onSave, onDiscard }: SaveBarProp
       </Button>
     </div>
   )
-}
-
-/**
- * Warns before leaving with unsaved work.
- *
- * Attached only while dirty and removed as soon as it is not: a `beforeunload` listener that is
- * always registered disables the back/forward cache for the whole route.
- */
-function useUnloadGuard(dirty: boolean) {
-  useEffect(() => {
-    if (!dirty) return
-
-    function handler(event: BeforeUnloadEvent) {
-      event.preventDefault()
-    }
-
-    window.addEventListener('beforeunload', handler)
-    return () => window.removeEventListener('beforeunload', handler)
-  }, [dirty])
 }

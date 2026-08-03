@@ -185,7 +185,6 @@ export type Database = {
           best_time_json: Json | null
           best_time_updated_at: string | null
           client_id: string | null
-          client_testimonial_voice: string | null
           content_pillars: string | null
           default_carousel_slides: number | null
           default_post_type: string | null
@@ -194,6 +193,7 @@ export type Database = {
           language_formality: string | null
           language_notes: string | null
           secondary_language: string | null
+          social_goals: string | null
           source_strategy: Json
           target_audience: string | null
           tone: string | null
@@ -204,7 +204,6 @@ export type Database = {
           best_time_json?: Json | null
           best_time_updated_at?: string | null
           client_id?: string | null
-          client_testimonial_voice?: string | null
           content_pillars?: string | null
           default_carousel_slides?: number | null
           default_post_type?: string | null
@@ -213,6 +212,7 @@ export type Database = {
           language_formality?: string | null
           language_notes?: string | null
           secondary_language?: string | null
+          social_goals?: string | null
           source_strategy?: Json
           target_audience?: string | null
           tone?: string | null
@@ -223,7 +223,6 @@ export type Database = {
           best_time_json?: Json | null
           best_time_updated_at?: string | null
           client_id?: string | null
-          client_testimonial_voice?: string | null
           content_pillars?: string | null
           default_carousel_slides?: number | null
           default_post_type?: string | null
@@ -232,6 +231,7 @@ export type Database = {
           language_formality?: string | null
           language_notes?: string | null
           secondary_language?: string | null
+          social_goals?: string | null
           source_strategy?: Json
           target_audience?: string | null
           tone?: string | null

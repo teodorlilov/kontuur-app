@@ -75,7 +75,8 @@ export async function POST(request: Request) {
   try {
     const analysis = await analyzeUrl({ websiteContent, instagramContent })
     return NextResponse.json(analysis)
-  } catch {
+  } catch (err) {
+    console.error('[analyze-url] analysis failed:', err)
     return NextResponse.json({ error: 'Failed to parse analysis response' }, { status: 500 })
   }
 }

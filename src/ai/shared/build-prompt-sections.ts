@@ -21,8 +21,11 @@ export function buildClientBrief(client: ClientData, platform: string): string {
   const lines = [
     `BRIEF:`,
     `Niche: ${sanitizePromptField(client.niche)} | Audience: ${sanitizePromptField(client.targetAudience)} | Platform: ${platform}`,
-    `Tone: ${sanitizePromptField(client.tone)}. Clients describe it as: "${sanitizePromptField(client.clientTestimonialVoice)}"`,
+    `Tone: ${sanitizePromptField(client.tone)}`,
   ]
+  // Conditional so a client who never answered the question keeps a byte-identical prompt — the
+  // cached prefix is only invalidated for the clients the line actually describes.
+  if (client.socialGoals) lines.push(`Goal: ${sanitizePromptField(client.socialGoals)}`)
   if (client.avoidTopics) lines.push(`Topics to avoid: ${sanitizePromptField(client.avoidTopics)}`)
   return lines.join('\n')
 }
@@ -33,19 +36,20 @@ export function buildClientBrief(client: ClientData, platform: string): string {
  */
 export function buildClientProfile(client: ClientData, platform: string): string {
   const lc = client.languageConfig
+  // Pre-computed rather than inlined so an unanswered goal contributes no line at all, keeping the
+  // prompt byte-identical for every client who has not set one.
+  const goalLine = client.socialGoals
+    ? `\nPost goal: ${sanitizePromptField(client.socialGoals)}`
+    : ''
   return `CLIENT PROFILE:
 Client: ${sanitizePromptField(client.name)} | Niche: ${sanitizePromptField(client.niche)} | Platform: ${platform}
 Language: ${sanitizePromptField(lc.language, PROMPT_FIELD_LIMITS.short)} | Formality: ${sanitizePromptField(lc.formality, PROMPT_FIELD_LIMITS.short)}
-Target audience: ${sanitizePromptField(client.targetAudience)}
+Target audience: ${sanitizePromptField(client.targetAudience)}${goalLine}
 Content pillars: ${client.contentPillars.map((p) => `${sanitizePromptField(p.pillar)} (${p.weight}%)`).join(', ')}
 Topics to avoid: ${sanitizePromptField(client.avoidTopics)}
 
 BRAND VOICE:
-This brand sounds: ${sanitizePromptField(client.tone)}.${
-    client.tone
-      ? `\nClients describe it as: '${sanitizePromptField(client.clientTestimonialVoice)}'.`
-      : ''
-  }`
+This brand sounds: ${sanitizePromptField(client.tone)}.`
 }
 
 /**

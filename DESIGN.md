@@ -393,6 +393,18 @@ Components should feel **tactile and considered** — like well-made objects on 
 
 - **Style:** 224px sidebar. Items at 13px body weight with Ink Secondary text; **the active item takes New Growth fill with Pine Deep text and icon**, over an inset Pine Deep edge at 45% so the plate has a boundary. Its count badge inverts to Pine Deep fill with lime text, because Wash on a lime plate is unreadable. Uppercase 10px `+0.16em` section labels above groups. Icons are 16px Lucide strokes, always paired with a text label.
 
+### Confirmation
+
+A change that lands confirms itself with a **passing tint** and then clears — `.flash-confirm` in
+`globals.css`, Marker by default, any surface token via `--flash-tint`. It respects
+`prefers-reduced-motion` by not running at all.
+
+**The Passing Tint Rule.** A tint that marks *what just happened* must not survive the moment. The
+durable record is whatever the change left in text — a value, a status, a source chip — and colour
+is only the arrival. Left up, it turns a moment into a permanent label, and the one row the user has
+already dealt with keeps pulling the eye for the rest of the session. _Audit test: if the tint would
+still be there on a reload, it is describing state and belongs to a status token, not to this._
+
 ### Chips / Badges
 
 - **Style:** 10px radius, `3px 8px`, 11px micro type. Semantic pairs are fixed: published = Wash on Deep Pine; scheduled = Marker on Pine Deep; pending = Amber Background on Amber; draft = Sunken on Ink Secondary; error = Clay Background on Clay.
@@ -468,6 +480,8 @@ Component placement, data-fetching rules, validation and error handling are in [
 - **Do** gate every interpolated user string set in the serif on `hasCyrillic()`.
 - **Do** give every purely visual data encoding an `sr-only` sentence, as the coverage strip does.
 - **Do** use `cubic-bezier(0.22, 1, 0.36, 1)` (`--ease-contour`) for state transitions.
+- **Do** confirm a landed change with `.flash-confirm` and let the tint clear; keep the durable
+  record in text.
 - **Do** keep weight at 600 or below.
 - **Do** give every lime area a dark passenger — a glyph, a numeral or a word in Forest Ink or Pine Deep.
 - **Do** keep lime to one answer per band: rail, header, field.

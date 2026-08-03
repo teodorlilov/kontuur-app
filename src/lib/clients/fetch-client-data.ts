@@ -21,7 +21,8 @@ export interface ClientData {
   tone: string
   targetAudience: string
   avoidTopics: string
-  clientTestimonialVoice: string
+  /** What a post should get someone to do. Comma-separated, like targetAudience. */
+  socialGoals: string
   contentPillars: WeightedPillar[]
   isHealthNiche: boolean | null
   topPerformingPosts: string[]
@@ -89,7 +90,7 @@ export async function fetchClientData(
       tone: profile?.tone ?? 'professional',
       targetAudience: profile?.target_audience ?? 'general audience',
       avoidTopics: profile?.avoid_topics ?? '',
-      clientTestimonialVoice: profile?.client_testimonial_voice ?? '',
+      socialGoals: profile?.social_goals ?? '',
       contentPillars: parsePillars(profile?.content_pillars ?? null),
       isHealthNiche: profile?.is_health_niche ?? null,
       topPerformingPosts,

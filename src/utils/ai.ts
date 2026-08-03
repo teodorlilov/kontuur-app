@@ -4,6 +4,7 @@ import type { ToolUseBlock } from '@anthropic-ai/sdk/resources'
 import type { UrlAnalysisResponse } from '@/types/api'
 import { callAnthropic, LIGHT_MODEL } from '@/utils/ai-client'
 import { buildAnalyzeUrlPrompt, type AnalyzeUrlInput } from '@/ai/analyze-url/analyze-url'
+import { urlAnalysisResponseSchema } from '@/ai/analyze-url/schema'
 
 /**
  * Extracts the structured input from a tool_use response block.
@@ -104,5 +105,7 @@ export async function analyzeUrl(input: AnalyzeUrlInput): Promise<UrlAnalysisRes
     userMessage: buildAnalyzeUrlPrompt(input),
   })
 
-  return parseJsonResponse<UrlAnalysisResponse>(message)
+  // Parsed, not cast: everything downstream treats these fields as guaranteed, and the model is
+  // under no obligation to return them. Throws only when the response is not an object at all.
+  return urlAnalysisResponseSchema.parse(parseJsonResponse<unknown>(message))
 }

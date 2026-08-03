@@ -4,8 +4,8 @@ import type { SourceStrategy } from '@/types/sources'
 import type { SourceKind } from '@/types/visual'
 
 /**
- * The one declaration of the client write shape, shared by both write paths — the `updateClient`
- * action and `POST /api/clients`.
+ * The one declaration of the client write shape, shared by both write paths — the `createClient`
+ * and `updateClient` actions.
  *
  * Every boundary parses with these schemas rather than trusting its caller, and `z.object` strips
  * unknown keys, so an unexpected field can never reach an `update()` call.
@@ -41,9 +41,9 @@ void _sourceKindBackward
 export const brandProfileInputSchema = z.object({
   tone: z.string().nullable().optional(),
   target_audience: z.string().nullable().optional(),
+  social_goals: z.string().nullable().optional(),
   content_pillars: z.string().nullable().optional(),
   avoid_topics: z.string().nullable().optional(),
-  client_testimonial_voice: z.string().nullable().optional(),
   default_post_type: z.string().optional(),
   default_carousel_slides: z.number().int().positive().optional(),
   weekly_mix_json: z.record(z.string(), z.number()).optional(),
@@ -80,7 +80,7 @@ export const updateClientSchema = clientFieldsSchema.extend({
   visual_identity: visualIdentitySchema.optional(),
 })
 
-/** Input to `POST /api/clients` — the onboarding creation path. Name is the only required field. */
+/** Input to the `createClient` action — the onboarding path. Name is the only required field. */
 export const createClientSchema = clientFieldsSchema.extend({
   name: z.string().trim().min(1, 'Client name is required'),
   brand_profile: brandProfileInputSchema.optional(),

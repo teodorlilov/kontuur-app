@@ -6,9 +6,7 @@ export default async function OnboardingLayout({ children }: { children: React.R
   const userId = await getAuthUserId()
   if (!userId) redirect('/login')
 
-  return (
-    <AuthProvider>
-      <div style={{ minHeight: '100vh', background: 'var(--paper)' }}>{children}</div>
-    </AuthProvider>
-  )
+  // The ground is the shell's, not the layout's — OnboardingShell already owns the paper
+  // background and the page column, so a second wrapper here only added a stray inline style.
+  return <AuthProvider>{children}</AuthProvider>
 }

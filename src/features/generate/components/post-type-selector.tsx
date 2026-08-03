@@ -93,7 +93,12 @@ export function PostTypeSelector({
             min={3}
             max={10}
             value={slideCount}
-            onChange={(e) => onSlideCountChange(parseInt(e.target.value, 10))}
+            // Clearing the field yields '', and parseInt('') is NaN — which React then rejects as
+            // a `value`. Only a real number is propagated; an empty field keeps the last one.
+            onChange={(e) => {
+              const next = parseInt(e.target.value, 10)
+              if (!Number.isNaN(next)) onSlideCountChange(next)
+            }}
             className="w-20 rounded-lg border border-line2 px-4 py-3 text-lead md:text-body text-ink focus:border-[var(--line2)] focus:outline-none focus:ring-1 focus:ring-[var(--line2)]"
           />
           <span className="text-body text-text3">3–10 slides</span>

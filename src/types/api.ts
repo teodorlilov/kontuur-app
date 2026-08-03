@@ -29,40 +29,6 @@ export interface CarouselSlide {
 }
 
 
-// ---- Onboarding ----
-
-export interface OnboardRequest {
-  answers: {
-    q1: string
-    q2: string
-    q3: string
-    q4: string
-    q4b: string
-    q5: string
-    q6: string
-    q7?: string
-  }
-  analysisData?: UrlAnalysisResponse
-}
-
-export interface OnboardResponse {
-  niche: string
-  niche_reasoning: string
-  target_audience: string[]
-  social_goals: string[]
-  content_pillars: Array<{ pillar: string; weight: number }>
-  content_pillars_reasoning: string
-  tone: string
-  avoid_topics: string
-  client_testimonial_voice: string
-  recommended_platforms: Array<{ platform: string; priority: string; reason: string }>
-  platform_reasoning: string
-  is_health_niche: boolean
-  suggested_post_frequency: string
-  language: string
-  language_formality: string
-}
-
 // ---- URL Analysis ----
 
 export interface UrlAnalysisRequest {
@@ -81,7 +47,6 @@ export interface UrlAnalysisResponse {
   detected_language: string
   detected_language_formality: string
   detected_is_health_niche: boolean
-  detected_testimonial_voice: string | null
   detected_avoid_topics: string | null
 }
 

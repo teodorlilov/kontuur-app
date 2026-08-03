@@ -5,6 +5,18 @@ import type { VisualIdentity } from '@/types/visual'
 
 export type ExtractionStatus = 'idle' | 'pending' | 'ready' | 'fallback' | 'failed'
 
+/**
+ * What each state means to a person, in one place.
+ *
+ * Lives beside the type rather than in a component because two surfaces read it — the settings
+ * panel and the onboarding draft sheet — and two copies of this wording would drift.
+ */
+export const EXTRACTION_HINT: Partial<Record<ExtractionStatus, string>> = {
+  pending: 'Reading the site for brand colours — you can keep editing; results land here.',
+  failed: 'Reading the colours took too long. These are defaults — adjust anything below.',
+  fallback: 'No colours could be read from the site. These are defaults — adjust below.',
+}
+
 type UseExtractionStatusArgs = {
   sessionId: string
   enabled: boolean
@@ -50,7 +62,10 @@ export function useExtractionStatus({ sessionId, enabled, onResolved }: UseExtra
         const res = await fetch(`/api/extract/status?session=${encodeURIComponent(sessionId)}`)
         if (!active) return
         if (!res.ok) return schedule()
-        const data = (await res.json()) as { status: ExtractionStatus; identity: VisualIdentity | null }
+        const data = (await res.json()) as {
+          status: ExtractionStatus
+          identity: VisualIdentity | null
+        }
         if (!active) return
         if ((data.status === 'ready' || data.status === 'fallback') && data.identity) {
           setStatus(data.status)

@@ -22,9 +22,10 @@ export interface ClientDraft {
 export interface BrandDraft {
   tone: string
   targetAudience: string
+  /** What a post should get someone to do. Comma-separated, like targetAudience. */
+  socialGoals: string
   contentPillars: WeightedPillar[]
   avoidTopics: string
-  testimonialVoice: string
   languageFormality: string
   secondaryLanguage: string
   isHealthNiche: boolean
@@ -81,9 +82,9 @@ export function buildDrafts(
     brand: {
       tone: profile?.tone ?? '',
       targetAudience: profile?.target_audience ?? '',
+      socialGoals: profile?.social_goals ?? '',
       contentPillars: parsePillars(profile?.content_pillars ?? null),
       avoidTopics: profile?.avoid_topics ?? '',
-      testimonialVoice: profile?.client_testimonial_voice ?? '',
       languageFormality: profile?.language_formality ?? 'neutral',
       secondaryLanguage: profile?.secondary_language ?? '',
       isHealthNiche: profile?.is_health_niche ?? false,
@@ -129,10 +130,10 @@ export function buildUpdatePayload(
     payload.brand_profile = {
       tone: brand.tone || null,
       target_audience: brand.targetAudience || null,
+      social_goals: brand.socialGoals || null,
       content_pillars:
         brand.contentPillars.length > 0 ? serializePillars(brand.contentPillars) : null,
       avoid_topics: brand.avoidTopics || null,
-      client_testimonial_voice: brand.testimonialVoice || null,
       language_formality: brand.languageFormality,
       secondary_language: brand.secondaryLanguage || null,
       is_health_niche: brand.isHealthNiche,

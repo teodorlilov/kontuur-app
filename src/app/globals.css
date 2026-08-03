@@ -77,7 +77,11 @@
   /* Textures — dark surfaces pair the dot grid with 13px 13px sizing */
   --dot-grid: radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1.5px);
   --hatch: repeating-linear-gradient(45deg, rgba(15, 21, 18, 0.16) 0 2px, transparent 2px 5px);
-  --hatch-inv: repeating-linear-gradient(45deg, rgba(242, 245, 241, 0.4) 0 2px, transparent 2px 5px);
+  --hatch-inv: repeating-linear-gradient(
+    45deg,
+    rgba(242, 245, 241, 0.4) 0 2px,
+    transparent 2px 5px
+  );
 
   /* Elevation */
   --sh-card: 0 1px 2px rgba(15, 21, 18, 0.03), 0 14px 36px -14px rgba(15, 21, 18, 0.1);
@@ -288,8 +292,14 @@ body {
 /* Named for what it does. It was `bounce-dot`, which described a motion this
    system does not use — nothing here bounces, and the keyframe only fades. */
 @keyframes pulse-dot {
-  0%, 80%, 100% { opacity: 0.3; }
-  40% { opacity: 1; }
+  0%,
+  80%,
+  100% {
+    opacity: 0.3;
+  }
+  40% {
+    opacity: 1;
+  }
 }
 
 @keyframes fade-up {
@@ -383,8 +393,13 @@ body {
 }
 
 @keyframes notif-pulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(46, 158, 104, 0.4); }
-  50%      { box-shadow: 0 0 0 4px rgba(46, 158, 104, 0); }
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(46, 158, 104, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 4px rgba(46, 158, 104, 0);
+  }
 }
 
 /* ─── Composed surfaces ───────────────────────────────────────────────
@@ -393,13 +408,17 @@ body {
    silently renders as "no background" rather than as an error. */
 .surface-dark {
   background-image: var(--dot-grid), var(--surface-dark);
-  background-size: 13px 13px, 100% 100%;
+  background-size:
+    13px 13px,
+    100% 100%;
   background-color: var(--forest-deep);
 }
 
 .surface-dark-capsule {
   background-image: var(--dot-grid), var(--surface-dark-capsule);
-  background-size: 13px 13px, 100% 100%;
+  background-size:
+    13px 13px,
+    100% 100%;
   background-color: var(--forest-deep);
 }
 
@@ -425,13 +444,22 @@ body {
 
 /* ─── Live generation indicator ─── */
 @keyframes live-pulse {
-  0%, 100% { opacity: 0.35; }
-  50% { opacity: 1; }
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 1;
+  }
 }
 
 @keyframes live-sweep {
-  from { transform: translateX(-110%); }
-  to { transform: translateX(360%); }
+  from {
+    transform: translateX(-110%);
+  }
+  to {
+    transform: translateX(360%);
+  }
 }
 
 .live-dot {
@@ -470,14 +498,65 @@ body {
   }
 }
 
+/* ─── Number inputs ──────────────────────────────────────────────────
+   Chrome renders spin buttons inside every input[type=number] and Tailwind's
+   preflight does not remove them. Every numeric field in this app is a small
+   bounded value in a tight control — a pillar's percentage, a canvas coordinate,
+   a slide count — so the spinner eats exactly the width the digits need: an 82px
+   percentage field had 31px for its text and the stepper took half of it,
+   clipping "30" to "3C".
+
+   Nothing is lost. Arrow keys still step the value; only the mouse affordance
+   goes, and it was never usable at this size anyway. */
+input[type='number'] {
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+input[type='number']::-webkit-inner-spin-button,
+input[type='number']::-webkit-outer-spin-button {
+  appearance: none;
+  margin: 0;
+}
+
+/* ─── Confirmation flash ─────────────────────────────────────────────
+   A change confirms itself and then gets out of the way.
+
+   Motion here answers a state rather than decorating one: the tint says "that
+   landed", and the durable record is whatever the change left behind in text —
+   a value, a status, a source chip. Leaving the tint up turns a moment into a
+   permanent label, so a row the user already settled keeps pulling the eye for
+   the rest of the session.
+
+   Tone-agnostic: set --flash-tint to any surface token. Marker is the default
+   because the commonest case is "you decided this". background-color is safe to
+   animate — it is not layout, unlike the width/height/padding/margin DESIGN.md
+   rules out. */
+@keyframes flash-confirm {
+  0%,
+  45% {
+    background-color: var(--flash-tint, var(--marker));
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+.flash-confirm {
+  animation: flash-confirm 2.4s var(--ease-contour) forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* No flash at all rather than an instant one: the confirmation this carries is
+     also stated in text, so nothing is lost by dropping the colour. */
+  .flash-confirm {
+    animation: none;
+  }
+}
+
 /* ─── Skeleton ─── */
 .skeleton {
-  background: linear-gradient(
-    90deg,
-    var(--sunken) 25%,
-    var(--line) 50%,
-    var(--sunken) 75%
-  );
+  background: linear-gradient(90deg, var(--sunken) 25%, var(--line) 50%, var(--sunken) 75%);
   background-size: 200% 100%;
   animation: shimmer 1.5s ease-in-out infinite;
   border-radius: var(--radius-sm);
@@ -486,10 +565,16 @@ body {
 /* ─── Marketing responsive layout ─── */
 
 /* Section horizontal padding — used by all marketing sections */
-.mkt-pad { padding-left: 40px; padding-right: 40px; }
+.mkt-pad {
+  padding-left: 40px;
+  padding-right: 40px;
+}
 
 @media (max-width: 768px) {
-  .mkt-pad { padding-left: 20px; padding-right: 20px; }
+  .mkt-pad {
+    padding-left: 20px;
+    padding-right: 20px;
+  }
 }
 
 /* ─── Print styles ─── */
@@ -500,7 +585,8 @@ body {
    .app-sidebar being hidden here is also why the lime active-nav plate never
    reaches paper: there is no print override to maintain. */
 @media print {
-  html, body {
+  html,
+  body {
     height: auto !important;
     overflow: visible !important;
   }

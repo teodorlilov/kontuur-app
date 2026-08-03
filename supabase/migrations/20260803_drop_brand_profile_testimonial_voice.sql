@@ -1,0 +1,14 @@
+-- Retire client_testimonial_voice.
+--
+-- The field asked what a happy customer would say about the client, and fed two
+-- prompt sites (the generation brief and the validation profile) plus two entries
+-- in the quality rubric. It has been removed from all four in the same change:
+-- the caption prompt now carries tone alone, and the judges score against tone
+-- and formality rather than against a second, overlapping voice description.
+--
+-- DESTRUCTIVE AND IRREVERSIBLE. Every stored value is lost when this runs, and
+-- no backfill can reconstruct it — the text was written by an LLM from a website
+-- read that is not retained. Apply this LAST, after the code that stops reading
+-- the column is deployed, so a running instance never selects a column that has
+-- gone.
+ALTER TABLE brand_profiles DROP COLUMN IF EXISTS client_testimonial_voice;

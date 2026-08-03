@@ -22,60 +22,24 @@ export function PaletteSwatches({
   onChange: (palette: Palette) => void
 }) {
   return (
-    <div
-      style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(88px, 1fr))',
-        gap: '10px',
-      }}
-    >
+    <div className="grid grid-cols-[repeat(auto-fit,minmax(88px,1fr))] gap-2.5">
       {ROLE_ORDER.map((role) => (
-        <label
-          key={role}
-          style={{ display: 'flex', flexDirection: 'column', gap: '5px', cursor: 'pointer' }}
-        >
-          <span
-            className="text-label"
-            style={{
-              fontWeight: 500,
-              color: 'var(--text2)',
-              letterSpacing: '1px',
-              textTransform: 'uppercase',
-            }}
-          >
+        <label key={role} className="flex cursor-pointer flex-col gap-1">
+          {/* tracking-normal: the Label role carries 0.16em, which is too loose for a word
+              this short sitting directly above its own control. */}
+          <span className="text-label font-medium uppercase tracking-normal text-text2">
             {ROLE_LABELS[role]}
           </span>
-          <span
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '7px',
-              border: '1px solid var(--line)',
-              borderRadius: '8px',
-              padding: '5px 7px',
-              background: 'var(--paper)',
-            }}
-          >
+          <span className="flex items-center gap-2 rounded-sm border border-line bg-paper px-2 py-1">
             <input
               type="color"
               value={palette[role]}
-              onChange={(e) => onChange({ ...palette, [role]: e.target.value.toUpperCase() })}
-              style={{
-                width: '22px',
-                height: '22px',
-                border: 'none',
-                borderRadius: '5px',
-                background: 'none',
-                padding: 0,
-                cursor: 'pointer',
-              }}
+              onChange={(event) =>
+                onChange({ ...palette, [role]: event.target.value.toUpperCase() })
+              }
+              className="size-[22px] cursor-pointer rounded-xs border-none bg-none p-0"
             />
-            <span
-              className="text-micro"
-              style={{ color: 'var(--ink)', fontVariantNumeric: 'tabular-nums' }}
-            >
-              {palette[role]}
-            </span>
+            <span className="text-micro tabular-nums text-ink">{palette[role]}</span>
           </span>
         </label>
       ))}

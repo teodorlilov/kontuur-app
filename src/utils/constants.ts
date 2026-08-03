@@ -22,6 +22,42 @@ export const USER_AGENT_BOT = 'PostflowBot/1.0'
 
 export const PLATFORMS = ['Instagram', 'Facebook', 'LinkedIn', 'X / Twitter', 'TikTok'] as const
 
+/** The subset of PLATFORMS that can actually publish today. The rest of the list is roadmap. */
+export const LIVE_PLATFORMS = new Set<string>(['Instagram', 'Facebook'])
+
+export interface PlatformAccount {
+  id: string
+  label: string
+  initials: string
+  note: string
+  supported: boolean
+}
+
+/**
+ * The accounts a client can connect, in the order both surfaces list them — the settings
+ * Connected accounts tab and the onboarding platform row.
+ *
+ * These labels are the *account* vocabulary ("Facebook Page"), not the PLATFORMS vocabulary
+ * ("Facebook"). The two lists describe different things and must not be derived from each other.
+ */
+export const PLATFORM_ACCOUNTS: readonly PlatformAccount[] = [
+  {
+    id: 'instagram',
+    label: 'Instagram',
+    initials: 'IG',
+    note: 'Business or Creator account required',
+    supported: true,
+  },
+  {
+    id: 'facebook',
+    label: 'Facebook Page',
+    initials: 'FB',
+    note: 'Needed for Instagram publishing',
+    supported: true,
+  },
+  { id: 'linkedin', label: 'LinkedIn', initials: 'LI', note: 'Company pages', supported: false },
+]
+
 /**
  * Per-client identity colours — the one job here is telling clients apart, so
  * these step through hue AND lightness. A pure green ramp was tried and failed:

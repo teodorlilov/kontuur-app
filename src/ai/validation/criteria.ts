@@ -83,7 +83,7 @@ export const ISSUE_TYPE_DEFINITIONS: Record<string, string> = {
   generic_cta:
     'CTA contains no action verb tied to a specific service, outcome, or destination unique to this client',
   no_personality:
-    'Zero brand-specific vocabulary, named client/product references, or tone markers from the declared testimonial voice',
+    'Zero brand-specific vocabulary, named client/product references, or tone markers from the declared tone',
   too_polished:
     'Three or more consecutive sentences in the 8-25 word range with no sentence shorter than 6 words or longer than 35 words',
   buried_lead:
@@ -93,7 +93,7 @@ export const ISSUE_TYPE_DEFINITIONS: Record<string, string> = {
   repetitive:
     'Same idea or phrasing repeated in different words',
   off_brand:
-    'Post uses vocabulary, register, or framing explicitly excluded by the declared tone or testimonial voice',
+    'Post uses vocabulary, register, or framing explicitly excluded by the declared tone',
   wrong_audience:
     'Post addresses pain points, aspirations, or vocabulary belonging to a different audience segment than declared',
 }

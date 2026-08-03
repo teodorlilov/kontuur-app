@@ -2,7 +2,7 @@
 
 import { Field, FormSection, InputAffix, ToggleRow } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
-import { Select } from '@/components/ui/select'
+import { Select, ensureOption } from '@/components/ui/select'
 import {
   CONTENT_LANGUAGE_OPTIONS,
   LANGUAGE_FORMALITY_OPTIONS,
@@ -19,10 +19,7 @@ interface BasicInfoTabProps {
 
 /** Identity and language: who the client is and how posts are written for them. */
 export function BasicInfoTab({ client, brand, onClientChange, onBrandChange }: BasicInfoTabProps) {
-  // A client saved before a language joined the list must still show its own value.
-  const languageOptions = CONTENT_LANGUAGE_OPTIONS.some((o) => o.value === client.language)
-    ? [...CONTENT_LANGUAGE_OPTIONS]
-    : [{ value: client.language, label: client.language }, ...CONTENT_LANGUAGE_OPTIONS]
+  const languageOptions = ensureOption(CONTENT_LANGUAGE_OPTIONS, client.language)
 
   return (
     <>

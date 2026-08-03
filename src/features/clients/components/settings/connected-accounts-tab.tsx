@@ -9,33 +9,8 @@ import { toast } from '@/components/ui/toast'
 import { disconnectConnection } from '@/features/clients/actions/connection-actions'
 import { isTokenExpired } from '@/lib/meta/token-expiry'
 import { cn } from '@/utils/cn'
+import { PLATFORM_ACCOUNTS, type PlatformAccount } from '@/utils/constants'
 import type { MetaConnection } from '@/types/api'
-
-interface PlatformRow {
-  id: string
-  label: string
-  initials: string
-  note: string
-  supported: boolean
-}
-
-const PLATFORM_ROWS: PlatformRow[] = [
-  {
-    id: 'instagram',
-    label: 'Instagram',
-    initials: 'IG',
-    note: 'Business or Creator account required',
-    supported: true,
-  },
-  {
-    id: 'facebook',
-    label: 'Facebook Page',
-    initials: 'FB',
-    note: 'Needed for Instagram publishing',
-    supported: true,
-  },
-  { id: 'linkedin', label: 'LinkedIn', initials: 'LI', note: 'Company pages', supported: false },
-]
 
 interface ConnectedAccountsTabProps {
   clientId: string
@@ -70,7 +45,7 @@ export function ConnectedAccountsTab({ clientId, connections }: ConnectedAccount
   return (
     <>
       <div>
-        {PLATFORM_ROWS.map((platform) => {
+        {PLATFORM_ACCOUNTS.map((platform) => {
           const connection = visible.find((c) => c.platform === platform.id)
           return (
             <AccountRow
@@ -100,7 +75,7 @@ function AccountRow({
   isDisconnecting,
   onDisconnect,
 }: {
-  platform: PlatformRow
+  platform: PlatformAccount
   connection: MetaConnection | undefined
   clientId: string
   isDisconnecting: boolean

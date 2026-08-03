@@ -57,7 +57,7 @@ function buildRubricSection(client?: ClientData): string {
 - Theme & pillar: does the post substantively address the requested theme, and align with the declared pillar (when a "Pillar:" line is present in the user turn)?
 - Hook: does the first line (carousels: the cover slide headline) stop the scroll or promise clear value? Generic or buried hooks lower the score.
 - CTA: one CTA maximum, specific and low-pressure. For carousels the actionable CTA lives in the LAST SLIDE BODY — a framing-only headline is fine.
-- Brand voice & register: does it match the tone, testimonial voice, and address formality in the client profile?
+- Brand voice & register: does it match the tone and address formality in the client profile?
 
 overall_score (0-10): holistic quality for this business, audience, and theme. 8+ = publish as-is; 5-7 = usable with edits; <5 = weak.
 human_score (0-10): how human the text reads. 10 = indistinguishable from a skilled human writer; every AI tell drags it down.

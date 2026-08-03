@@ -27,8 +27,6 @@ export type {
 export type {
   PriorityPost,
   CarouselSlide,
-  OnboardRequest,
-  OnboardResponse,
   UrlAnalysisRequest,
   UrlAnalysisResponse,
   ResearchRequest,

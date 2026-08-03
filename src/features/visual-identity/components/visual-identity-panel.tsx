@@ -8,10 +8,12 @@ import {
   type BrandStyle,
   type BrandStyleId,
 } from '@/lib/visual/brand-styles'
+import { Button } from '@/components/ui/button'
 import { ImageLightbox } from '@/components/ui/image-lightbox'
+import { LABEL_CLASS } from '@/components/ui/form/control-classes'
 import { PaletteSwatches } from './palette-swatches'
 import { StyleCard } from './style-card'
-import type { ExtractionStatus } from '../hooks/use-extraction-status'
+import { EXTRACTION_HINT, type ExtractionStatus } from '../hooks/use-extraction-status'
 
 type VisualIdentityPanelProps = {
   identity: VisualIdentity
@@ -21,15 +23,6 @@ type VisualIdentityPanelProps = {
   /** Settings only: re-run extraction from the client's website. */
   onReanalyze?: () => void
   reanalyzing?: boolean
-}
-
-const LABEL_STYLE: React.CSSProperties = {
-  fontSize: 'var(--text-label)',
-  fontWeight: 500,
-  color: 'var(--spring-text)',
-  letterSpacing: '1.5px',
-  textTransform: 'uppercase',
-  marginBottom: '8px',
 }
 
 /** The shared brand visual-identity editor: the Brand Style used for AI visuals plus the editable
@@ -48,34 +41,18 @@ export function VisualIdentityPanel({
   const setPalette = (palette: Palette) => onChange({ palette, style: identity.style })
   const setStyle = (style: BrandStyleId) => onChange({ ...identity, style })
 
+  const hint = status ? EXTRACTION_HINT[status] : undefined
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-      {status && status !== 'ready' && status !== 'idle' && (
-        <div className="text-micro" style={{ color: 'var(--text2)', lineHeight: 1.5 }}>
-          {status === 'pending' &&
-            'Analyzing your website for brand colours… you can keep editing; results will appear here.'}
-          {status === 'failed' &&
-            'Analysis took too long — using default colours. Adjust anything below.'}
-          {status === 'fallback' && 'No site colours could be read — using defaults. Adjust below.'}
-        </div>
-      )}
+    <div className="flex flex-col gap-5">
+      {hint && <p className="text-micro leading-relaxed text-text2">{hint}</p>}
 
       <div>
-        <div style={LABEL_STYLE}>Brand style</div>
-        <p
-          className="text-micro"
-          style={{ color: 'var(--text2)', margin: '0 0 10px', lineHeight: 1.5 }}
-        >
+        <div className={LABEL_CLASS.caps}>Brand style</div>
+        <p className="mb-2.5 mt-2 text-micro leading-relaxed text-text2">
           The design system AI visuals follow. Colours always come from the brand palette below.
         </p>
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))',
-            gap: '12px',
-            maxWidth: 560,
-          }}
-        >
+        <div className="grid max-w-[560px] grid-cols-[repeat(auto-fill,minmax(160px,1fr))] gap-3">
           {BRAND_STYLE_IDS.map((id) => (
             <StyleCard
               key={id}
@@ -89,30 +66,21 @@ export function VisualIdentityPanel({
       </div>
 
       <div>
-        <div style={LABEL_STYLE}>Brand palette</div>
+        <div className={`${LABEL_CLASS.caps} mb-2 block`}>Brand palette</div>
         <PaletteSwatches palette={identity.palette} onChange={setPalette} />
       </div>
 
       {onReanalyze && (
-        <button
-          className="text-caption"
+        <Button
+          variant="secondary"
+          size="sm"
           type="button"
           onClick={onReanalyze}
-          disabled={reanalyzing}
-          style={{
-            alignSelf: 'flex-start',
-            padding: '8px 14px',
-            borderRadius: '8px',
-            border: '1px solid var(--line)',
-            background: 'var(--paper)',
-            color: 'var(--ink)',
-            cursor: reanalyzing ? 'default' : 'pointer',
-            opacity: reanalyzing ? 0.7 : 1,
-            fontFamily: 'var(--font-sans)',
-          }}
+          loading={reanalyzing}
+          className="self-start"
         >
           {reanalyzing ? 'Re-analyzing…' : 'Re-analyze from website'}
-        </button>
+        </Button>
       )}
 
       {previewStyle && (

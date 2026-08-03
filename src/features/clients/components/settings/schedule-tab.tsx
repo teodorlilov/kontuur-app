@@ -3,17 +3,16 @@
 import { Chip, ChipGroup, Field, FormSection, ToggleRow } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
+import { WeekPreview } from '@/components/ui/week-preview'
 import { cn } from '@/utils/cn'
 import {
   CAROUSEL_SLIDE_OPTIONS,
+  LIVE_PLATFORMS,
   PLATFORMS,
   POSTS_PER_RUN_OPTIONS,
   WEEKDAY_OPTIONS,
 } from '@/utils/constants'
 import type { BrandDraft, ScheduleDraft } from '@/features/clients/lib/client-draft'
-
-/** Only these two can publish today; the rest are shown so the roadmap is legible. */
-const LIVE_PLATFORMS = new Set(['Instagram', 'Facebook'])
 
 // No "Text only" option: nothing downstream generates it.
 const POST_TYPE_OPTIONS = [
@@ -130,57 +129,12 @@ export function ScheduleTab({
           </Field>
 
           <WeekPreview
+            className="col-span-12"
             day={schedule.autoDay}
             count={schedule.isActive ? parseInt(schedule.freqValue, 10) || 0 : 0}
           />
         </div>
       </FormSection>
     </>
-  )
-}
-
-/**
- * Seven day cells showing which one the run lands on.
- *
- * Purely visual, so it is `aria-hidden` with the same fact spelled out in a sentence beside it —
- * the rule DESIGN.md sets for the coverage strip.
- */
-function WeekPreview({ day, count }: { day: string; count: number }) {
-  const dayLabel = WEEKDAY_OPTIONS.find((w) => w.value === day)?.label ?? day
-
-  return (
-    <div className="col-span-12">
-      <div aria-hidden className="grid grid-cols-7 gap-1.5">
-        {WEEKDAY_OPTIONS.map((weekday) => {
-          const isRunDay = weekday.value === day
-          return (
-            <div
-              key={weekday.value}
-              className={cn(
-                'rounded-md border py-2 text-center text-micro',
-                isRunDay
-                  ? 'border-forest bg-forest text-surface/65'
-                  : 'border-line bg-surface text-text3'
-              )}
-            >
-              {weekday.label.slice(0, 3)}
-              <b
-                className={cn(
-                  'mt-0.5 block text-caption font-semibold',
-                  isRunDay ? 'text-surface' : 'text-ink'
-                )}
-              >
-                {isRunDay && count > 0 ? count : '—'}
-              </b>
-            </div>
-          )
-        })}
-      </div>
-      <p className="sr-only">
-        {count > 0
-          ? `${count} post${count === 1 ? '' : 's'} generated every ${dayLabel}.`
-          : 'Autonomous generation is off.'}
-      </p>
-    </div>
   )
 }
