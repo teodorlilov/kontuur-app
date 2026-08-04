@@ -7,9 +7,11 @@ None of these block shipping; each entry says what it is, why it was deferred, a
 
 ## 1. Code structure
 
-### 1.1 `parse-slides.ts` lives in the components tree but is imported by an API route
-- **Where:** `src/components/posts/parse-slides.ts`, imported by `src/app/api/posts/[id]/visuals/route.ts`
-  (and by `slides-section`, `post-content-display`, `review-post-list`, `use-draft-visuals`).
+### 1.1 `parse-slides.ts` lives in the components tree but is imported by API routes
+- **Where:** `src/components/posts/parse-slides.ts`, imported by `src/lib/visual/generate-post-visual.ts`
+  (server) and a dozen client surfaces (`slides-section`, the review leaves, `use-draft-visuals`, …).
+  (2026-08-04: `post-content-display`/`review-post-list` were deleted in the review-tab rebuild;
+  the server-side import moved from the visuals route into the extracted lib.)
 - **Problem:** a server route depending on `components/` is the wrong dependency direction. Works today
   (pure TS, no `'use client'`), but it's a layering smell.
 - **Fix:** move to `src/lib/posts/parse-slides.ts` (or fold into `src/lib/validation.ts`), update imports.
@@ -120,7 +122,8 @@ None of these block shipping; each entry says what it is, why it was deferred, a
 
 - **Vercel image optimization:** every generated visual is a unique URL through `next/image`; each
   regenerate mints a new one. If quota becomes a problem: `unoptimized` for small thumbnails or
-  tighter `sizes`.
+  tighter `sizes`. (2026-08-04: compose/recompose and the queue's compose-on-open have the same
+  shape — every bake writes a new storage path, so the optimizer cache never re-hits.)
 - **fal queue time vs `maxDuration 120`:** ~52s render + queueing headroom. If 502s cluster on the
   visuals routes, this is the first suspect.
 - **1024² vs Instagram's 1080² recommendation:** IG upscales slightly; bump to 1088×1088 (multiple of
@@ -153,4 +156,63 @@ Additional finds from the 2026-07-25 performance sweep (same posture): a malform
 Instagram CDN thumbnails aren't in `next/image` remotePatterns.)
 
 Fix as a dedicated lint-cleanup pass, not opportunistically.
+
+(2026-08-04: `post-content-display`, `carousel-slides`' sibling `post-detail-layout`, and
+`slop-detector` were deleted in the review-tab rebuild — their entries above are historical.
+Still live: `schedule-card`, `calendar-view`, `use-extraction-status`, `canva-design-picker`,
+`notifications-bell`, `language-panel`, plus `review-view.tsx`'s focus-clamp effect and
+`forgot-password-form`/`idea-form-client`.)
+
+---
+
+## 5. Review-tab performance audit — evaluated and deferred (2026-08-04)
+
+Findings from the post-redesign audit that were deliberately NOT fixed, each with the reasoning
+and the trigger that should reopen it. (The fixed items landed in `98e0ef0` + `0b8c72c`.)
+
+### 5.1 Layout badge counts pending posts by fetching rows
+- **Where:** `getCachedPendingRows` (`src/lib/queries/cache.ts`) — the dashboard layout reads
+  `.length` for the sidebar badge.
+- **Why kept:** the same React-cached call feeds the dashboard's data loader, which needs the
+  rows. A dedicated `count head:true` query for the layout would run as an EXTRA query on the
+  heaviest page to save ~60 bytes/post of transfer elsewhere, on a 30s server-side cache.
+- **Reopen when:** agencies routinely hold hundreds of pending posts (transfer per cache miss
+  grows linearly).
+
+### 5.2 Calendar bundles zod client-side
+- **Where:** `schedule-card.tsx` calls `parseStoredValidation` in the browser — the ~280 KB raw
+  zod chunk that was removed from `/review` still ships on `/calendar` (measured 807 KB
+  route-specific client JS).
+- **Fix:** the same pattern as `0b8c72c` — adapt validation server-side in the calendar page and
+  ship `ValidationData`. Deferred as out of the review-tab's scope, not because it's hard.
+
+### 5.3 Supabase browser client on every dashboard route
+- **Where:** `shell-context.tsx` (notifications realtime + fetch) and `sidebar.tsx` (sign-out)
+  pull `@supabase/supabase-js` (~184 KB raw) into the shared dashboard bundle.
+- **Why kept:** the realtime bell is a core shell feature; splitting the client out buys nothing
+  while any layout surface needs it.
+- **Reopen when:** a bundle pass targets the shared shell — a lazy realtime module is the shape.
+
+### 5.4 No Suspense/loading boundary on `/review`
+- **What:** navigation blocks until all six page queries resolve.
+- **Why kept:** deliberate app-wide posture from the 2026-08 nav-performance work (loading.tsx
+  removal). Revisit only if the queue's queries measurably slow navigation.
+
+### 5.5 Review RSC payload is unbounded
+- **What:** the page ships every pending post (copy, parsed validation, image lists) up front —
+  no pagination. Server-side adaptation (`0b8c72c`) shrank per-post weight; the count is still
+  unbounded.
+- **Reopen when:** queues regularly exceed ~100 posts; the shape then is bucket-windowed loading.
+
+### 5.6 Week-schedule query index unverified
+- **Where:** `fetchWeekSchedule` filters `client_id + status + scheduled_at`
+  (`src/features/review/lib/week-schedule.ts`).
+- **Action:** one-time `explain analyze` against prod; add a composite index only if it scans.
+
+### 5.7 Pending type-regen cleanup (migrations 20260805 + 20260806)
+- **What:** three `as`-casts marked with WHY comments (`deletePost` discard insert, cron generate
+  insert, `POST /api/posts` insert) and `topic_summary` selected via a per-page string append in
+  `review/page.tsx` instead of `POST_COLUMNS`.
+- **Fix:** after both migrations reach prod, regenerate `database.ts`, drop the casts, fold
+  `topic_summary` into `POST_COLUMNS`.
 
