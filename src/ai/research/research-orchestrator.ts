@@ -219,10 +219,15 @@ export class ResearchPipeline {
       }
     }
 
-    // Detect skipped pillars (pillars with no returned topics — includes pre-skipped + post-LLM)
+    // Detect skipped pillars. Only a pillar the prompt asked topics of can be
+    // "skipped by research" — at small run sizes the allocation instructs the
+    // LLM to generate 0 for most pillars, and those are rotation, not failures.
+    // Same allocateByWeight call as buildPillarAllocationBlock, so the ask
+    // here matches what the prompt actually said.
+    const asked = allocateByWeight(effectivePillars, requestedCount, clientData.recentPillarCounts)
     const coveredPillars = new Set(groundedTopics.map((t) => t.pillar).filter(Boolean))
     const postLlmSkipped: SkippedPillar[] = effectivePillars
-      .filter((p) => !coveredPillars.has(p.pillar))
+      .filter((p) => (asked.get(p.pillar) ?? 0) > 0 && !coveredPillars.has(p.pillar))
       .map((p) => ({ name: p.pillar }))
     const skippedPillars = [...preSkippedPillars, ...postLlmSkipped]
 

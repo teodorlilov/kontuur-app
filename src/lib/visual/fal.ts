@@ -1,4 +1,4 @@
-import { fal } from '@fal-ai/client'
+import { fal, ApiError } from '@fal-ai/client'
 import type { Rgb } from './extract/color'
 
 const FAL_MODEL = 'fal-ai/gpt-image-2'
@@ -19,6 +19,27 @@ function ensureConfigured(): void {
   // The client's default env var is FAL_KEY; ours is FAL_API_KEY, so credentials are passed explicitly.
   fal.config({ credentials })
   configured = true
+}
+
+/**
+ * All model invocations go through here: fal's ApiError message is only the HTTP status text
+ * ("Forbidden"), while the actual reason — exhausted balance, a locked key, a flagged prompt —
+ * rides in the response body's `detail` and would otherwise be dropped.
+ */
+async function subscribeFal(model: string, input: Record<string, unknown>) {
+  ensureConfigured()
+  try {
+    return await fal.subscribe(model, { input })
+  } catch (err) {
+    if (err instanceof ApiError && err.body) {
+      const detail = (err.body as { detail?: unknown }).detail
+      if (detail) {
+        const reason = typeof detail === 'string' ? detail : JSON.stringify(detail)
+        throw new Error(`${model}: ${err.message} — ${reason}`, { cause: err })
+      }
+    }
+    throw err
+  }
 }
 
 function firstImageUrl(data: unknown): string | null {
@@ -52,15 +73,12 @@ export async function downloadFalFile(url: string): Promise<Buffer> {
  * downloads and re-uploads to our storage — the fal URL is never persisted.
  */
 export async function generateSlideImage(prompt: string): Promise<string> {
-  ensureConfigured()
-  const result = await fal.subscribe(FAL_MODEL, {
-    input: {
-      prompt,
-      image_size: FAL_IMAGE_SIZE,
-      quality: 'medium',
-      output_format: 'jpeg',
-      num_images: 1,
-    },
+  const result = await subscribeFal(FAL_MODEL, {
+    prompt,
+    image_size: FAL_IMAGE_SIZE,
+    quality: 'medium',
+    output_format: 'jpeg',
+    num_images: 1,
   })
   const url = firstImageUrl(result.data)
   if (!url) throw new Error('fal-ai/gpt-image-2 returned no image')
@@ -75,10 +93,7 @@ export async function generateSlideImage(prompt: string): Promise<string> {
  * subject. The default model selects decisively; edge finesse matters less than selection.
  */
 export async function removeImageBackground(imageUrl: string): Promise<string> {
-  ensureConfigured()
-  const result = await fal.subscribe(DIS_MODEL, {
-    input: { image_url: imageUrl, output_format: 'png' },
-  })
+  const result = await subscribeFal(DIS_MODEL, { image_url: imageUrl, output_format: 'png' })
   const url = singleImageUrl(result.data)
   if (!url) throw new Error('fal-ai/birefnet/v2 returned no image')
   return url
@@ -89,10 +104,7 @@ export async function removeImageBackground(imageUrl: string): Promise<string> {
  * temporary fal-hosted URL. `colors` steers generation toward the brand palette directly.
  */
 export async function generateVectorAsset(prompt: string, colors: Rgb[]): Promise<string> {
-  ensureConfigured()
-  const result = await fal.subscribe(VECTOR_MODEL, {
-    input: { prompt, image_size: 'square_hd', colors },
-  })
+  const result = await subscribeFal(VECTOR_MODEL, { prompt, image_size: 'square_hd', colors })
   const url = firstImageUrl(result.data)
   if (!url) throw new Error('fal-ai/recraft/v4/text-to-vector returned no image')
   return url
@@ -117,17 +129,14 @@ export async function editImageWithMask(input: {
   width: number
   height: number
 }): Promise<string> {
-  ensureConfigured()
-  const result = await fal.subscribe(EDIT_MODEL, {
-    input: {
-      image_urls: [input.imageUrl],
-      mask_url: input.maskUrl,
-      prompt: input.prompt,
-      image_size: { width: input.width, height: input.height },
-      quality: 'medium',
-      output_format: 'jpeg',
-      num_images: 1,
-    },
+  const result = await subscribeFal(EDIT_MODEL, {
+    image_urls: [input.imageUrl],
+    mask_url: input.maskUrl,
+    prompt: input.prompt,
+    image_size: { width: input.width, height: input.height },
+    quality: 'medium',
+    output_format: 'jpeg',
+    num_images: 1,
   })
   const url = firstImageUrl(result.data)
   if (!url) throw new Error('openai/gpt-image-2/edit returned no image')

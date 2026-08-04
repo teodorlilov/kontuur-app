@@ -136,6 +136,9 @@ export async function POST(request: Request) {
             })
           },
           onResult: (result) => send({ type: 'result', data: result }),
+          // The writing stage is the run's longest and was silent — surface
+          // each theme as its generation starts, through the same phase event.
+          onProgress: (theme) => send({ type: 'phase', message: `Writing: ${theme}` }),
         })
       } catch (err) {
         runFailed = true
