@@ -3,7 +3,7 @@
 import Image from 'next/image'
 import { AlertCircle } from 'lucide-react'
 import { cn } from '@/utils/cn'
-import type { DraftVisual } from '@/features/generate/lib/draft-visuals'
+import type { DraftVisual } from '@/lib/visual/draft-visuals'
 
 type FrameSize = 'cover' | 'strip' | 'thumb'
 

@@ -15,11 +15,12 @@ import {
 } from '@/components/ui/form/control-classes'
 import { CanvasEditor } from '@/features/canvas-editor/components/canvas-editor'
 import { slideCopyAt } from '@/features/canvas-editor/lib/slide-copy'
-import { VisualFrame } from '../visual-frame'
-import { updateSlideField } from '@/features/generate/lib/slides-edit'
-import type { DraftVisual } from '@/features/generate/lib/draft-visuals'
+import type { EditorTarget } from '@/features/canvas-editor/types'
+import { VisualFrame } from './visual-frame'
+import { updateSlideField } from '@/components/posts/slides-edit'
+import type { DraftVisual } from '@/lib/visual/draft-visuals'
 import type { CanvasDoc } from '@/types/canvas'
-import type { CarouselSlide } from '@/types/api'
+import type { CarouselSlide, PostImage } from '@/types/api'
 import type { PostData } from '@/types/post'
 
 interface WorkColumnProps {
@@ -41,6 +42,10 @@ interface WorkColumnProps {
   onReplaceVisual: (position: number, file: File) => Promise<boolean>
   onEditedVisual: (draftId: string, visual: DraftVisual) => void
   onApplyStyleToAll: (post: PostData, sourcePosition: number, doc: CanvasDoc) => void
+  /** Overrides the wizard-draft editor target — the queue points at persisted posts. */
+  editorTarget?: (position: number, visual: DraftVisual) => EditorTarget
+  /** Post-target editor saves land here (CanvasEditor onSaved); draft saves keep onEditedVisual. */
+  onSavedImage?: (image: PostImage) => void
 }
 
 /**
@@ -68,6 +73,8 @@ export function WorkColumn({
   onReplaceVisual,
   onEditedVisual,
   onApplyStyleToAll,
+  editorTarget,
+  onSavedImage,
 }: WorkColumnProps) {
   const [replacing, setReplacing] = useState(false)
   const [viewing, setViewing] = useState(false)
@@ -325,13 +332,18 @@ export function WorkColumn({
 
       {editingPosition !== null && editingVisual?.publicUrl && editingVisual.storagePath && (
         <CanvasEditor
-          target={{
-            kind: 'draft',
-            clientId: post.client_id,
-            draftId: post.id,
-            position: editingPosition,
-            doc: editingVisual.canvasDoc ?? null,
-          }}
+          // The editor's save path follows the target kind: draft targets fire
+          // onSavedDraft, post targets fire onSaved — passing both is inert.
+          target={
+            editorTarget?.(editingPosition, editingVisual) ?? {
+              kind: 'draft',
+              clientId: post.client_id,
+              draftId: post.id,
+              position: editingPosition,
+              doc: editingVisual.canvasDoc ?? null,
+            }
+          }
+          onSaved={onSavedImage}
           image={{ publicUrl: editingVisual.publicUrl, storagePath: editingVisual.storagePath }}
           slideCopy={slideCopyAt(workingPost, editingPosition)}
           slideLabel={isCarousel ? `Slide ${editingPosition + 1} of ${slides.length}` : 'Post visual'}

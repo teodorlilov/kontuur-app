@@ -10,7 +10,7 @@ import type { CanvasDoc } from '@/types/canvas'
 import { fetchClientIdentity } from '@/features/canvas-editor/lib/identity-client'
 import { slideCopyAt } from '@/features/canvas-editor/lib/slide-copy'
 import type { DraftVisualResult } from '@/features/canvas-editor/types'
-import { draftStoragePaths, type DraftVisual } from '@/features/generate/lib/draft-visuals'
+import { draftStoragePaths, type DraftVisual } from '@/lib/visual/draft-visuals'
 
 /** The draft fields visual generation needs — satisfied by both `PostData` and `DraftPost`. */
 export interface DraftPostInput {

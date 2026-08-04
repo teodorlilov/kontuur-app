@@ -7,15 +7,13 @@ import { StatusPill } from '@/components/ui/status-pill'
 import { getPillarColor } from '@/components/ui/colors/pillar-colors'
 import { parseSlides } from '@/components/posts/parse-slides'
 import { sourceTypeLabel } from '@/components/posts/source-tile'
-import { VisualFrame } from '../visual-frame'
-import { countVisualsByStatus, type DraftVisual } from '@/features/generate/lib/draft-visuals'
+import { VisualFrame } from './visual-frame'
+import { countVisualsByStatus, type DraftVisual } from '@/lib/visual/draft-visuals'
 import { REWRITE_SCORE_THRESHOLD } from '@/lib/content-rules/constants'
-import type { PostData, ValidationData } from '@/types/post'
-
-type GeneratedPost = { post: PostData } & ValidationData
+import type { ReviewDraft } from './types'
 
 interface ReviewGridProps {
-  drafts: GeneratedPost[]
+  drafts: ReviewDraft[]
   visualsByDraft: Record<string, DraftVisual[]>
   approvedCount: number
   discardedCount: number
@@ -83,7 +81,7 @@ function DraftCard({
   onOpen,
   onApprove,
 }: {
-  item: GeneratedPost
+  item: ReviewDraft
   visuals: DraftVisual[] | undefined
   onOpen: () => void
   onApprove: () => void

@@ -4,14 +4,12 @@ import { useEffect, useRef } from 'react'
 import { Check } from 'lucide-react'
 import { cn } from '@/utils/cn'
 import { parseSlides } from '@/components/posts/parse-slides'
-import { VisualFrame } from '../visual-frame'
-import type { DraftVisual } from '@/features/generate/lib/draft-visuals'
-import type { PostData, ValidationData } from '@/types/post'
-
-type GeneratedPost = { post: PostData } & ValidationData
+import { VisualFrame } from './visual-frame'
+import type { DraftVisual } from '@/lib/visual/draft-visuals'
+import type { ReviewDraft } from './types'
 
 interface DraftRailProps {
-  posts: GeneratedPost[]
+  posts: ReviewDraft[]
   approvedIds: Set<string>
   discardedIds: Set<string>
   visualsByDraft: Record<string, DraftVisual[]>

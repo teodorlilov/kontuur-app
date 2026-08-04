@@ -6,33 +6,29 @@ import { Button } from '@/components/ui/button'
 import { Segmented } from '@/components/layout/page-header/segmented'
 import { useBestTime } from '@/components/posts/use-best-time'
 import { SkippedBanner } from './skipped-banner'
-import { ReviewGrid } from './review-grid'
-import { DraftRail } from './draft-rail'
-import { WorkColumn } from './work-column'
-import { InsightPanel } from './insight-panel'
-import { CommitmentBar } from './commitment-bar'
-import { ScheduleDialog } from './schedule-dialog'
+import { ReviewGrid } from '@/components/posts/review/review-grid'
+import { DraftRail } from '@/components/posts/review/draft-rail'
+import { WorkColumn } from '@/components/posts/review/work-column'
+import { InsightPanel } from '@/components/posts/review/insight-panel'
+import { CommitmentBar } from '@/components/posts/review/commitment-bar'
+import { ScheduleDialog } from '@/components/posts/review/schedule-dialog'
+import { useDraftEdits } from '@/components/posts/review/use-draft-edits'
+import { useReviewKeyboard } from '@/components/posts/review/use-review-keyboard'
+import type { ReviewDraft } from '@/components/posts/review/types'
 import { approveDraft } from '@/features/generate/lib/approve-draft'
 import { rewriteDraft } from '@/features/generate/lib/rewrite-draft'
 import {
   completedDraftImages,
   countVisualsByStatus,
   type DraftVisual,
-} from '@/features/generate/lib/draft-visuals'
+} from '@/lib/visual/draft-visuals'
 import type { PillarAllocation } from '@/features/generate/lib/run-plan'
 import type { SkippedPillar } from '@/ai/research/types'
 import type { CanvasDoc } from '@/types/canvas'
 import type { CarouselSlide } from '@/types/api'
 import type { PostData, ValidationData } from '@/types/post'
 
-type GeneratedPost = { post: PostData } & ValidationData
-
 type ReviewLayout = 'all' | 'focus'
-
-interface DraftEdits {
-  caption: string
-  slidesJson: unknown
-}
 
 /** The run's fixed facts, threaded into the header meta and the work column. */
 interface RunContext {
@@ -44,7 +40,7 @@ interface RunContext {
 }
 
 interface ReviewViewProps {
-  posts: GeneratedPost[]
+  posts: ReviewDraft[]
   approvedIds: Set<string>
   discardedIds: Set<string>
   skippedPillars: SkippedPillar[]
@@ -93,7 +89,7 @@ export function ReviewView({
   const [layout, setLayout] = useState<ReviewLayout>(posts.length === 1 ? 'focus' : 'all')
   const [focusedId, setFocusedId] = useState(posts[0]?.post.id ?? '')
   const [slideIdx, setSlideIdx] = useState(0)
-  const [editsByDraft, setEditsByDraft] = useState<Record<string, DraftEdits>>({})
+  const { editsFor, setEdits } = useDraftEdits()
   const [scheduleTarget, setScheduleTarget] = useState<string | null>(null)
   const [approving, setApproving] = useState(false)
   const [rewriting, setRewriting] = useState(false)
@@ -131,19 +127,6 @@ export function ReviewView({
     }
     return { failed, composing }
   }, [liveDrafts, visualsByDraft])
-
-  function editsFor(item: GeneratedPost): DraftEdits {
-    return (
-      editsByDraft[item.post.id] ?? {
-        caption: item.post.caption ?? '',
-        slidesJson: item.post.slides_json,
-      }
-    )
-  }
-
-  function setEdits(postId: string, edits: DraftEdits) {
-    setEditsByDraft((prev) => ({ ...prev, [postId]: edits }))
-  }
 
   function focusDraft(postId: string) {
     setFocusedId(postId)
@@ -226,25 +209,13 @@ export function ReviewView({
     handleRewritten(focused.post.id, outcome.updatedPost, outcome.validation)
   }
 
-  // The review queue is worked with hands on the keys: arrows move, A opens
-  // the approve decision, D discards. Never while typing or deciding.
-  useEffect(() => {
-    function onKeyDown(e: KeyboardEvent) {
-      if (layout !== 'focus' || !focused) return
-      if (scheduleTarget) return
-      const target = e.target as HTMLElement | null
-      if (target && /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName)) return
-      if (target?.isContentEditable) return
-      if (document.querySelector('[role="dialog"]')) return
-      if (e.key === 'ArrowRight') focusNeighbour(1)
-      else if (e.key === 'ArrowLeft') focusNeighbour(-1)
-      else if (e.key === 'a' || e.key === 'A') setScheduleTarget(focused.post.id)
-      else if (e.key === 'd' || e.key === 'D') onDiscarded(focused.post.id)
-    }
-    window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [layout, focused, scheduleTarget, focusedIndex, liveDrafts])
+  useReviewKeyboard({
+    enabled: layout === 'focus' && !!focused && !scheduleTarget,
+    onPrev: () => focusNeighbour(-1),
+    onNext: () => focusNeighbour(1),
+    onApprove: () => focused && setScheduleTarget(focused.post.id),
+    onDiscard: () => focused && onDiscarded(focused.post.id),
+  })
 
   const focusedEdits = focused ? editsFor(focused) : null
 
