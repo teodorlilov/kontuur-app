@@ -1,12 +1,12 @@
 'use client'
 
 import { Chip, ChipGroup, Field, FormSection, ToggleRow } from '@/components/ui/form'
-import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import { WeekPreview } from '@/components/ui/week-preview'
 import { cn } from '@/utils/cn'
 import {
   CAROUSEL_SLIDE_OPTIONS,
+  GENERATION_HOUR_OPTIONS,
   LIVE_PLATFORMS,
   PLATFORMS,
   POSTS_PER_RUN_OPTIONS,
@@ -119,12 +119,12 @@ export function ScheduleTab({
             />
           </Field>
           <Field label="Time" span={4}>
-            {/* A native time input, matching onboarding. A fixed list of slots could not
-                represent a value already saved there. */}
-            <Input
-              type="time"
+            {/* Hour slots, not a free time input: the cron matches day + hour, so minutes
+                would be accepted but never honoured. Saved values snap on hydration. */}
+            <Select
               value={schedule.autoTime}
-              onChange={(e) => onScheduleChange({ autoTime: e.target.value })}
+              onChange={(value) => onScheduleChange({ autoTime: value })}
+              options={GENERATION_HOUR_OPTIONS}
             />
           </Field>
 

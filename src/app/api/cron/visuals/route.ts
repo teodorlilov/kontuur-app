@@ -12,7 +12,7 @@ export const maxDuration = 300
 // before Vercel kills the function at maxDuration.
 const TIME_BUDGET_MS = 240_000
 // One gpt-image-2 generation runs ~52s; two lanes fit roughly this many
-// inside the budget — the backlog self-heals across daily runs.
+// inside the budget — the backlog self-heals across hourly runs.
 const MAX_IMAGES_PER_RUN = 12
 const MAX_VISUAL_ATTEMPTS = 3
 const CONCURRENCY = 2
@@ -32,10 +32,15 @@ export async function GET(request: NextRequest) {
   const startedAt = Date.now()
   const admin = createAdminSupabaseClient()
 
+  // Server-side mirror of pickVisualBacklog's gates (a null quality score is
+  // below the floor on both sides): an hourly tick must not ship every
+  // pending post's slides_json across the wire to conclude nothing is due.
   const { data: rows, error } = await admin
     .from('posts')
     .select(VISUAL_BACKLOG_POST_COLUMNS)
     .eq('status', 'pending_review')
+    .lt('visuals_attempts', MAX_VISUAL_ATTEMPTS)
+    .gte('quality_score_avg', QUALITY_FLOOR)
     .order('created_at', { ascending: true })
   if (error) {
     console.error('[cron/visuals] failed to load pending posts:', error.message)
@@ -43,6 +48,16 @@ export async function GET(request: NextRequest) {
   }
 
   const posts = (rows ?? []) as BacklogPost[]
+  if (posts.length === 0) {
+    return NextResponse.json({
+      posts: 0,
+      generated: 0,
+      failed: 0,
+      skipped_no_copy: 0,
+      skipped_for_time: 0,
+      duration_ms: Date.now() - startedAt,
+    })
+  }
   const imagesByPost = await fetchImagesByPost(posts.map((p) => p.id))
   const jobs = pickVisualBacklog(posts, imagesByPost, {
     qualityFloor: QUALITY_FLOOR,
@@ -50,15 +65,18 @@ export async function GET(request: NextRequest) {
     maxImagesPerRun: MAX_IMAGES_PER_RUN,
   })
 
-  // Count the attempt up front — a run that fails mid-post still counted, so
-  // a post whose generations keep dying cannot eat every future run.
-  for (const job of jobs) {
-    const post = posts.find((p) => p.id === job.postId)
-    if (!post) continue
+  // The attempt is counted when a post's first position actually starts — a
+  // run that dies mid-post is still counted, but a job the time budget never
+  // reached is not. Counting up front burned the attempt cap on unstarted
+  // tail jobs of every over-full run, which hourly cadence makes permanent.
+  const attemptCounted = new Set<string>()
+  const countAttempt = async (postId: string) => {
+    const post = posts.find((p) => p.id === postId)
+    if (!post) return
     await admin
       .from('posts')
       .update({ visuals_attempts: post.visuals_attempts + 1 })
-      .eq('id', job.postId)
+      .eq('id', postId)
   }
 
   const semaphore = createSemaphore(CONCURRENCY)
@@ -75,6 +93,11 @@ export async function GET(request: NextRequest) {
           if (Date.now() - startedAt > TIME_BUDGET_MS) {
             skippedForTime++
             return
+          }
+          // Synchronous check-and-add, so two lanes on one post count once.
+          if (!attemptCounted.has(job.postId)) {
+            attemptCounted.add(job.postId)
+            await countAttempt(job.postId)
           }
           const result = await generatePostVisual({
             postId: job.postId,

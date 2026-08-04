@@ -1,9 +1,8 @@
 'use client'
 
-import { Input } from '@/components/ui/input'
-import { Select } from '@/components/ui/select'
+import { Select, ensureOption } from '@/components/ui/select'
 import { WeekPreview } from '@/components/ui/week-preview'
-import { POSTS_PER_RUN_OPTIONS, WEEKDAY_OPTIONS } from '@/utils/constants'
+import { GENERATION_HOUR_OPTIONS, POSTS_PER_RUN_OPTIONS, WEEKDAY_OPTIONS } from '@/utils/constants'
 import type { DraftSchedule } from '@/features/onboarding/types'
 
 /** "Mondays 09:00 · 3 a week" — the cadence as a sentence. */
@@ -44,11 +43,13 @@ export function ScheduleEdit({
           onChange={(value) => onChange({ ...schedule, day: value })}
           options={[...WEEKDAY_OPTIONS]}
         />
-        <Input
+        {/* Hour slots, not a free time input: the cron matches day + hour. `ensureOption`
+            keeps a pre-change draft with minutes selectable; the payload snaps it on save. */}
+        <Select
           label="Time"
-          type="time"
           value={schedule.time}
-          onChange={(event) => onChange({ ...schedule, time: event.target.value })}
+          onChange={(value) => onChange({ ...schedule, time: value })}
+          options={ensureOption(GENERATION_HOUR_OPTIONS, schedule.time)}
         />
       </div>
       <WeekPreview className="mt-3" day={schedule.day} count={parseInt(schedule.count, 10) || 0} />

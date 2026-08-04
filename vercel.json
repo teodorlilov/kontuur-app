@@ -2,11 +2,11 @@
   "crons": [
     {
       "path": "/api/cron/generate",
-      "schedule": "0 9 * * *"
+      "schedule": "0 * * * *"
     },
     {
       "path": "/api/cron/visuals",
-      "schedule": "10 9 * * *"
+      "schedule": "10 * * * *"
     },
     {
       "path": "/api/cron/publish",
@@ -16,9 +16,7 @@
   "headers": [
     {
       "source": "/favicon.ico",
-      "headers": [
-        { "key": "Cache-Control", "value": "public, max-age=86400" }
-      ]
+      "headers": [{ "key": "Cache-Control", "value": "public, max-age=86400" }]
     }
   ]
 }

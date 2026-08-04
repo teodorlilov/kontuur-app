@@ -1,4 +1,5 @@
 import { serializePillars } from '@/lib/clients/content-pillars'
+import { snapTimeToHour } from '@/utils/date-helpers'
 import type { CreateClientInput } from '@/features/clients/schemas'
 import type { SourceKind } from '@/types/visual'
 import { buildEmptyDraft } from '@/features/onboarding/lib/build-draft'
@@ -111,7 +112,7 @@ export function buildCreateInput(
       frequency_type: 'per_week',
       frequency_value: postsPerWeek,
       auto_generate_day: draft.schedule.day,
-      auto_generate_time: draft.schedule.time,
+      auto_generate_time: snapTimeToHour(draft.schedule.time),
     },
     visual_identity: draft.identity,
     visual_identity_source: identitySource,

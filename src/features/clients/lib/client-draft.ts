@@ -1,5 +1,6 @@
 import { parsePillars, serializePillars, type WeightedPillar } from '@/lib/clients/content-pillars'
 import { buildDefaultIdentity } from '@/lib/visual/identity'
+import { snapTimeToHour } from '@/utils/date-helpers'
 import type { UpdateClientInput } from '@/features/clients/schemas'
 import type { BrandProfileRow, ClientRow, PostingScheduleRow } from '@/types'
 import type { VisualIdentity } from '@/types/visual'
@@ -97,7 +98,7 @@ export function buildDrafts(
       isActive: schedule?.is_active ?? true,
       freqValue: String(schedule?.frequency_value ?? 3),
       autoDay: schedule?.auto_generate_day ?? 'monday',
-      autoTime: schedule?.auto_generate_time ?? '09:00',
+      autoTime: snapTimeToHour(schedule?.auto_generate_time),
     },
     identity: identity ?? buildDefaultIdentity(),
   }

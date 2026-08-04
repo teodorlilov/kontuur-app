@@ -46,11 +46,26 @@ export function toDateKey(date: Date, timeZone?: string): string {
   return `${value('year')}-${value('month')}-${value('day')}`
 }
 
-/** Returns today's weekday as lowercase string: 'monday', 'tuesday', etc. */
-export function getTodayWeekday(timezone = 'UTC'): string {
-  return new Intl.DateTimeFormat('en-US', { weekday: 'long', timeZone: timezone })
-    .format(new Date())
-    .toLowerCase()
+/** Weekday name (lowercase), hour and minute of an instant in `timezone`, from one formatter pass. */
+export function getZonedParts(
+  date: Date,
+  timezone = 'UTC'
+): { weekday: string; hour: number; minute: number } {
+  const parts = getFormatter(`zoned:${timezone}`, {
+    weekday: 'long',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+    timeZone: timezone,
+  }).formatToParts(date)
+  const value = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((part) => part.type === type)?.value ?? ''
+  return {
+    weekday: value('weekday').toLowerCase(),
+    // hour12:false reports midnight as 24 in some ICU builds.
+    hour: Number(value('hour')) % 24,
+    minute: Number(value('minute')),
+  }
 }
 
 /** Monday-first index (0–6) of a date's weekday in the given zone. */
@@ -152,13 +167,28 @@ export function getMonthBoundaries(timeZone?: string): {
 
   return {
     monthStart: getZonedDayStart(firstOf(year, month), timeZone).toISOString(),
-    lastMonthStart: getZonedDayStart(firstOf(previous.year, previous.month), timeZone).toISOString(),
+    lastMonthStart: getZonedDayStart(
+      firstOf(previous.year, previous.month),
+      timeZone
+    ).toISOString(),
   }
 }
 
 /** Combine a date string (YYYY-MM-DD) and time string (HH:MM) into an ISO timestamp. */
 export function formatScheduledAt(date: string, time: string): string {
   return new Date(`${date}T${time || '12:00'}:00`).toISOString()
+}
+
+/**
+ * Clamp an 'HH:MM' string to the top of its hour. Generation slots are
+ * day + hour — minutes would be stored but never honoured, so they are
+ * dropped at every write and hydration site. Invalid input falls back to
+ * '09:00', the historical fire time.
+ */
+export function snapTimeToHour(time: string | null | undefined): string {
+  const hour = Number.parseInt(time ?? '', 10)
+  if (!Number.isInteger(hour) || hour < 0 || hour > 23) return '09:00'
+  return `${String(hour).padStart(2, '0')}:00`
 }
 
 /** Map a day name (e.g. 'Monday') to the next occurrence as YYYY-MM-DD. */

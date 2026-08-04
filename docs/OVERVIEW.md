@@ -25,10 +25,10 @@ them on a calendar, and auto-publishes to Instagram.
 
 It supports two operating modes, chosen at signup and stored on the agency:
 
-| Mode | For | Navigation |
-| ---- | --- | ---------- |
+| Mode       | For                                        | Navigation                                                                                           |
+| ---------- | ------------------------------------------ | ---------------------------------------------------------------------------------------------------- |
 | **Agency** | Teams managing social for multiple clients | Dashboard · Clients · Generate posts · Review queue · Calendar · Client ideas · Analytics · Settings |
-| **Solo** | A single business managing its own socials | Dashboard · Create content · My drafts · My calendar · My results · Settings |
+| **Solo**   | A single business managing its own socials | Dashboard · Create content · My drafts · My calendar · My results · Settings                         |
 
 Solo mode auto-creates one client for the business and simplifies the language and
 navigation throughout.
@@ -68,22 +68,22 @@ is due.
 
 ## 2. Tech stack
 
-| Layer | Technology |
-| ----- | ---------- |
-| Framework | Next.js 16 (App Router), React 19 |
-| Language | TypeScript (strict) |
-| Styling | Tailwind CSS 4, Radix UI primitives, Framer Motion, Lucide icons |
-| Toasts | Sonner |
-| Database / Auth / Storage | Supabase (PostgreSQL + Row Level Security + Auth + Storage) |
-| AI | Anthropic Claude — `claude-sonnet-4-5` (default) + `claude-haiku-4-5` (light tasks) |
-| Email | Resend |
-| Charts | Recharts |
-| PDF | jsPDF (report export), pdf-parse (source file extraction) |
-| Publishing | Meta Graph API (Instagram / Facebook) |
-| Design import | Canva Connect API |
-| Research | Tavily (web trend search), Jina AI Reader (website content extraction) |
-| Hosting / Cron | Vercel |
-| Tests | Vitest |
+| Layer                     | Technology                                                                          |
+| ------------------------- | ----------------------------------------------------------------------------------- |
+| Framework                 | Next.js 16 (App Router), React 19                                                   |
+| Language                  | TypeScript (strict)                                                                 |
+| Styling                   | Tailwind CSS 4, Radix UI primitives, Framer Motion, Lucide icons                    |
+| Toasts                    | Sonner                                                                              |
+| Database / Auth / Storage | Supabase (PostgreSQL + Row Level Security + Auth + Storage)                         |
+| AI                        | Anthropic Claude — `claude-sonnet-4-5` (default) + `claude-haiku-4-5` (light tasks) |
+| Email                     | Resend                                                                              |
+| Charts                    | Recharts                                                                            |
+| PDF                       | jsPDF (report export), pdf-parse (source file extraction)                           |
+| Publishing                | Meta Graph API (Instagram / Facebook)                                               |
+| Design import             | Canva Connect API                                                                   |
+| Research                  | Tavily (web trend search), Jina AI Reader (website content extraction)              |
+| Hosting / Cron            | Vercel                                                                              |
+| Tests                     | Vitest                                                                              |
 
 ---
 
@@ -120,14 +120,14 @@ route handler or a server action (`src/features/*/actions/`).
 
 ### Route groups (`src/app/`)
 
-| Group | Access | Purpose |
-| ----- | ------ | ------- |
-| `(marketing)` | public | Landing page, pricing, privacy, terms, data-deletion |
-| `(auth)` | public | Login, signup, forgot / setup password |
-| `(onboarding)` | authed | New-client AI interview |
-| `(dashboard)` | authed | Dashboard, clients, review, calendar, ideas, analytics, settings |
-| `(generate)` | authed | Full-screen generation wizard |
-| `(public)` | token-based | Client approval portal + client idea submission (no login) |
+| Group          | Access      | Purpose                                                          |
+| -------------- | ----------- | ---------------------------------------------------------------- |
+| `(marketing)`  | public      | Landing page, pricing, privacy, terms, data-deletion             |
+| `(auth)`       | public      | Login, signup, forgot / setup password                           |
+| `(onboarding)` | authed      | New-client AI interview                                          |
+| `(dashboard)`  | authed      | Dashboard, clients, review, calendar, ideas, analytics, settings |
+| `(generate)`   | authed      | Full-screen generation wizard                                    |
+| `(public)`     | token-based | Client approval portal + client idea submission (no login)       |
 
 ### Data-fetching rule (UI → server)
 
@@ -217,46 +217,52 @@ The schema is defined in `src/types/database.ts` (generated from Supabase) with 
 in `supabase/migrations/`. Nineteen tables, grouped by domain:
 
 ### Tenancy & identity
-| Table | Purpose |
-| ----- | ------- |
+
+| Table      | Purpose                                                                                                                                     |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
 | `agencies` | Tenant root. Holds `mode` (agency/solo), `plan`, `plan_client_limit`, `timezone`, `trial_ends_at`, and Stripe billing fields (scaffolding). |
-| `users` | App user linked to an `agency_id` with a `role` (admin/member). Mirrors the Supabase auth user. |
+| `users`    | App user linked to an `agency_id` with a `role` (admin/member). Mirrors the Supabase auth user.                                             |
 
 ### Clients & brand
-| Table | Purpose |
-| ----- | ------- |
-| `clients` | A managed brand: `name`, `niche`, `language`, `posts_per_week`, `website_url`, `contact_email`. |
+
+| Table            | Purpose                                                                                                                                                                                                                                 |
+| ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `clients`        | A managed brand: `name`, `niche`, `language`, `posts_per_week`, `website_url`, `contact_email`.                                                                                                                                         |
 | `brand_profiles` | 1:1 with a client. Tone, target audience, content pillars, formality, secondary language, avoid-topics, health-niche flag, default post type + carousel slide count, `source_strategy`, `weekly_mix_json`, and cached `best_time_json`. |
-| `client_sources` | Research inputs per client — type `rss` / `website` / `file` / `tavily`, with fetch status, extracted text, source summary, and `pillar_ids` mapping the source to content pillars. |
-| `language_rules` | Per-language authenticity ruleset (Bulgarian + English seeded): banned anglicisms, banned calques, formality rules, native CTA phrases, opener examples. |
+| `client_sources` | Research inputs per client — type `rss` / `website` / `file` / `tavily`, with fetch status, extracted text, source summary, and `pillar_ids` mapping the source to content pillars.                                                     |
+| `language_rules` | Per-language authenticity ruleset (Bulgarian + English seeded): banned anglicisms, banned calques, formality rules, native CTA phrases, opener examples.                                                                                |
 
 ### Generation
-| Table | Purpose |
-| ----- | ------- |
-| `generation_runs` | One row per generation batch (client + platform). |
-| `generation_themes` | Themes within a run — description, post count, priority flag/brief, target date, whether research was used. Also feeds dedup history. |
-| `posts` | The core content record. Caption, `slides_json` (carousels), `platform`, `post_type`, `pillar`, `status`, `priority`, `quality_score_avg`, `validation_json`, source attribution, `scheduled_at`, and publishing fields (`ig_media_id`, `ig_creation_id`, `published_at`, `publish_attempts`, `publish_error`, `rewrite_count`). |
-| `post_images` | Ordered images attached to a post (Supabase Storage path + public URL). |
-| `post_history` | Rolling topic summaries per client used to deduplicate future generations. |
+
+| Table               | Purpose                                                                                                                                                                                                                                                                                                                          |
+| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `generation_runs`   | One row per generation batch (client + platform).                                                                                                                                                                                                                                                                                |
+| `generation_themes` | Themes within a run — description, post count, priority flag/brief, target date, whether research was used. Also feeds dedup history.                                                                                                                                                                                            |
+| `posts`             | The core content record. Caption, `slides_json` (carousels), `platform`, `post_type`, `pillar`, `status`, `priority`, `quality_score_avg`, `validation_json`, source attribution, `scheduled_at`, and publishing fields (`ig_media_id`, `ig_creation_id`, `published_at`, `publish_attempts`, `publish_error`, `rewrite_count`). |
+| `post_images`       | Ordered images attached to a post (Supabase Storage path + public URL).                                                                                                                                                                                                                                                          |
+| `post_history`      | Rolling topic summaries per client used to deduplicate future generations.                                                                                                                                                                                                                                                       |
 
 ### Review, approval & ideas
-| Table | Purpose |
-| ----- | ------- |
-| `post_approval_tokens` | Public approval links (48h expiry), batchable, tracking `status`, client email/note, `responded_at`. |
-| `notifications` | In-app agency notifications (client approvals, change requests) with unread state and optional feedback. |
-| `client_ideas` | Ideas submitted by clients via a public form — links a `token_id`, target date, status, and the resulting `generated_post_id`. |
-| `idea_form_tokens` | Per-client public link that lets a client submit ideas without logging in. |
+
+| Table                  | Purpose                                                                                                                        |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `post_approval_tokens` | Public approval links (48h expiry), batchable, tracking `status`, client email/note, `responded_at`.                           |
+| `notifications`        | In-app agency notifications (client approvals, change requests) with unread state and optional feedback.                       |
+| `client_ideas`         | Ideas submitted by clients via a public form — links a `token_id`, target date, status, and the resulting `generated_post_id`. |
+| `idea_form_tokens`     | Per-client public link that lets a client submit ideas without logging in.                                                     |
 
 ### Scheduling, publishing & connections
-| Table | Purpose |
-| ----- | ------- |
-| `posting_schedules` | Autonomous generation config per client — active flag, frequency, `auto_generate_day`/`time`. Drives the generate cron. |
-| `social_connections` | OAuth connections (Instagram/Facebook) — account id/name, access + refresh tokens, expiry. |
+
+| Table                | Purpose                                                                                                                 |
+| -------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `posting_schedules`  | Autonomous generation config per client — active flag, frequency, `auto_generate_day`/`time`. Drives the generate cron. |
+| `social_connections` | OAuth connections (Instagram/Facebook) — account id/name, access + refresh tokens, expiry.                              |
 
 ### Insights
-| Table | Purpose |
-| ----- | ------- |
-| `analytics_reports` | Stored reports per client/platform/period — `metrics_json` + AI `ai_summary`. |
+
+| Table                    | Purpose                                                                                                                        |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------ |
+| `analytics_reports`      | Stored reports per client/platform/period — `metrics_json` + AI `ai_summary`.                                                  |
 | `intelligence_briefings` | Weekly per-agency briefing — platform updates, trending topics, weekly tip, action nudge, sources, and solo `coaching_points`. |
 
 Plus an RPC: **`client_post_stats(p_agency_id)`** returns per-client `total_count`,
@@ -269,7 +275,9 @@ Plus an RPC: **`client_post_stats(p_agency_id)`** returns per-client `total_coun
 Every pipeline lives under `src/ai/` with its prompts co-located. The four that matter most:
 
 ### Research (`src/ai/research/`)
+
 `ResearchPipeline.execute()` orchestrates:
+
 1. Load client data (brand profile, post history, generation-theme history, used source URLs).
 2. Instantiate **polymorphic sources** via a factory — `RssResearchSource`, `WebsiteResearchSource`,
    `FileResearchSource` — and fetch them all in parallel; `tavily` runs as a separate web trend search.
@@ -279,7 +287,9 @@ Every pipeline lives under `src/ai/` with its prompts co-located. The four that 
    deduplicate against history, and attach full source text for downstream grounding.
 
 ### Generation (`src/ai/generation/`)
+
 `GenerationPipeline.execute()`:
+
 1. Builds a theme list (priority posts first, then researched themes) and attaches
    similar past themes via the `Deduplicator` (angle-similarity threshold).
 2. Processes themes in batches of **5 concurrent** LLM calls (`Promise.allSettled` — one
@@ -290,6 +300,7 @@ Every pipeline lives under `src/ai/` with its prompts co-located. The four that 
 4. Applies text/slide corrections from validation and emits a draft record with scores attached.
 
 ### Validation (`src/ai/validation/`)
+
 `validatePost()` runs **two LLM calls in parallel** — quality and language — then computes
 a multi-dimensional score set:
 
@@ -307,6 +318,7 @@ The `overall_score` is written to `posts.quality_score_avg`; posts below `QUALIT
 discarded before an agency ever sees them.
 
 ### Rewrite (`src/ai/rewrite/`)
+
 Targeted rewrite of an existing post from reviewer feedback, incrementing `posts.rewrite_count`.
 
 ---
@@ -385,16 +397,16 @@ footer), plus privacy, terms, and data-deletion pages, `sitemap.ts`, and `robots
 
 ## 8. Integrations & external services
 
-| Service | Used for | Key env |
-| ------- | -------- | ------- |
-| Anthropic Claude | All generation, validation, research, briefings | `ANTHROPIC_API_KEY` |
-| Supabase | Database, auth, storage | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` |
-| Meta Graph API | Instagram/Facebook publishing + OAuth | `META_APP_ID`, `META_APP_SECRET` |
-| Canva Connect | Import designs as post images | `CANVA_CLIENT_ID`, `CANVA_CLIENT_SECRET`, `CANVA_REDIRECT_URI` |
-| Resend | Approval + invite emails | `RESEND_API_KEY`, `RESEND_FROM_EMAIL` |
-| Tavily | Web trend search during research | `TAVILY_API_URL_KEY` |
-| Jina AI Reader | Website content extraction | `JINA_API_KEY` (optional) |
-| Vercel | Hosting + cron | `CRON_SECRET`, `NEXT_PUBLIC_APP_URL` |
+| Service          | Used for                                        | Key env                                                                                  |
+| ---------------- | ----------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| Anthropic Claude | All generation, validation, research, briefings | `ANTHROPIC_API_KEY`                                                                      |
+| Supabase         | Database, auth, storage                         | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` |
+| Meta Graph API   | Instagram/Facebook publishing + OAuth           | `META_APP_ID`, `META_APP_SECRET`                                                         |
+| Canva Connect    | Import designs as post images                   | `CANVA_CLIENT_ID`, `CANVA_CLIENT_SECRET`, `CANVA_REDIRECT_URI`                           |
+| Resend           | Approval + invite emails                        | `RESEND_API_KEY`, `RESEND_FROM_EMAIL`                                                    |
+| Tavily           | Web trend search during research                | `TAVILY_API_URL_KEY`                                                                     |
+| Jina AI Reader   | Website content extraction                      | `JINA_API_KEY` (optional)                                                                |
+| Vercel           | Hosting + cron                                  | `CRON_SECRET`, `NEXT_PUBLIC_APP_URL`                                                     |
 
 > Instagram publishing depends on Meta App Review for three Instagram permissions — see the
 > project memory and Meta developer console for current review status.
@@ -405,10 +417,11 @@ footer), plus privacy, terms, and data-deletion pages, `sitemap.ts`, and `robots
 
 Configured in `vercel.json`, both authenticated with `Authorization: Bearer $CRON_SECRET`:
 
-| Endpoint | Schedule | Does |
-| -------- | -------- | ---- |
-| `GET /api/cron/generate` | daily `0 9 * * *` | For each active posting schedule due today: research → generate → validate → save `pending_review` → notify agency → refresh stale best-time. Then one weekly intelligence briefing per agency (+ solo coaching). `maxDuration: 300s`. |
-| `GET /api/cron/publish` | daily `0 9 * * *` | Publish every post with `status='scheduled'` whose time is due (5-min window), grouped by client, to Instagram; retry up to 3 attempts. `maxDuration: 60s`. |
+| Endpoint                 | Schedule            | Does                                                                                                                                                                                                                                                                                                                           |
+| ------------------------ | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `GET /api/cron/generate` | hourly `0 * * * *`  | For each active posting schedule whose day + hour slot (agency timezone) has passed today and has no generation run since the slot: research → generate → validate → save `pending_review` → notify agency → refresh stale best-time. Then one weekly intelligence briefing per agency (+ solo coaching). `maxDuration: 300s`. |
+| `GET /api/cron/visuals`  | hourly `10 * * * *` | Paint missing visuals for `pending_review` posts (quality-gated, attempt-capped backlog) so drafts arrive in the queue as finished creatives. `maxDuration: 300s`.                                                                                                                                                             |
+| `GET /api/cron/publish`  | daily `0 9 * * *`   | Publish every post with `status='scheduled'` whose time is due (5-min window), grouped by client, to Instagram; retry up to 3 attempts. `maxDuration: 60s`.                                                                                                                                                                    |
 
 ---
 
@@ -467,19 +480,19 @@ Auth redirect URLs at the deployed domain, and the two cron jobs run automatical
 
 ## 14. Documentation index
 
-| Doc | What it is | Status |
-| --- | ---------- | ------ |
-| **OVERVIEW.md** (this file) | Product + architecture + full feature catalog | **Current — start here** |
-| [DESIGN.md](../DESIGN.md) | Kontuur design system — the single design document (colours, type, spacing, named rules, implementation) | Current |
-| [CLAUDE.md](./CLAUDE.md) | Code-quality rules (DRY, single source of truth, function limits) | Current |
-| [CODING_SKILLS.md](./CODING_SKILLS.md) | LLM coding-behaviour guidelines | Current |
-| [plans/PUBLISHING.md](./plans/PUBLISHING.md) | Instagram publishing implementation plan | Shipped |
-| [plans/NOTIFICATION.md](./plans/NOTIFICATION.md) | Client-response notification plan | Shipped |
-| [plans/CLIENT_IDEAS.md](./plans/CLIENT_IDEAS.md) | Client ideas feature plan | Shipped |
-| [plans/AI-GENERATED_TEMPLATES.md](./plans/AI-GENERATED_TEMPLATES.md) | AI brand-template image generation | Proposed (not built) |
-| [archive/MASTER_PROMPT.md](./archive/MASTER_PROMPT.md) | Original "PostFlow" build spec | Historical |
-| [archive/ARCHITECTURE.md](./archive/ARCHITECTURE.md) | Original "PostFlow" Session-0 architecture | Historical (superseded by this file) |
-| [archive/SESSIONS.md](./archive/SESSIONS.md) | Original 9-session build plan | Historical |
+| Doc                                                                  | What it is                                                                                               | Status                               |
+| -------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- | ------------------------------------ |
+| **OVERVIEW.md** (this file)                                          | Product + architecture + full feature catalog                                                            | **Current — start here**             |
+| [DESIGN.md](../DESIGN.md)                                            | Kontuur design system — the single design document (colours, type, spacing, named rules, implementation) | Current                              |
+| [CLAUDE.md](./CLAUDE.md)                                             | Code-quality rules (DRY, single source of truth, function limits)                                        | Current                              |
+| [CODING_SKILLS.md](./CODING_SKILLS.md)                               | LLM coding-behaviour guidelines                                                                          | Current                              |
+| [plans/PUBLISHING.md](./plans/PUBLISHING.md)                         | Instagram publishing implementation plan                                                                 | Shipped                              |
+| [plans/NOTIFICATION.md](./plans/NOTIFICATION.md)                     | Client-response notification plan                                                                        | Shipped                              |
+| [plans/CLIENT_IDEAS.md](./plans/CLIENT_IDEAS.md)                     | Client ideas feature plan                                                                                | Shipped                              |
+| [plans/AI-GENERATED_TEMPLATES.md](./plans/AI-GENERATED_TEMPLATES.md) | AI brand-template image generation                                                                       | Proposed (not built)                 |
+| [archive/MASTER_PROMPT.md](./archive/MASTER_PROMPT.md)               | Original "PostFlow" build spec                                                                           | Historical                           |
+| [archive/ARCHITECTURE.md](./archive/ARCHITECTURE.md)                 | Original "PostFlow" Session-0 architecture                                                               | Historical (superseded by this file) |
+| [archive/SESSIONS.md](./archive/SESSIONS.md)                         | Original 9-session build plan                                                                            | Historical                           |
 
 ---
 

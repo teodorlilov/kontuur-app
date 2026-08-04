@@ -122,3 +122,12 @@ export const POSTS_PER_RUN_OPTIONS = [1, 2, 3, 4, 5, 6, 7].map((n) => ({
   value: String(n),
   label: String(n),
 }))
+
+/**
+ * Full-hour slots for the autonomous-generation time picker. The cron matches
+ * day + hour, so a free time input would accept minutes it silently ignores.
+ */
+export const GENERATION_HOUR_OPTIONS = Array.from({ length: 24 }, (_, hour) => {
+  const value = `${String(hour).padStart(2, '0')}:00`
+  return { value, label: value }
+})

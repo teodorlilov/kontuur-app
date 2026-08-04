@@ -5,6 +5,8 @@ import {
   getWeekDayKeys,
   getWeekRange,
   getWeekdayIndex,
+  getZonedParts,
+  snapTimeToHour,
   toDateKey,
 } from '../date-helpers'
 
@@ -146,5 +148,47 @@ describe('omitting the zone', () => {
       ).padStart(2, '0')}`
       expect(toDateKey(date)).toBe(legacy)
     }
+  })
+})
+
+describe('getZonedParts', () => {
+  it('reads weekday, hour and minute in the requested zone', () => {
+    expect(getZonedParts(THURSDAY, 'UTC')).toEqual({ weekday: 'thursday', hour: 12, minute: 0 })
+  })
+
+  it('crosses the day line with the zone, not with UTC', () => {
+    const lateUtc = new Date('2026-07-30T23:30:00Z')
+    // Friday morning in Sydney (UTC+10), Thursday evening in New York (UTC-4).
+    expect(getZonedParts(lateUtc, 'Australia/Sydney')).toEqual({
+      weekday: 'friday',
+      hour: 9,
+      minute: 30,
+    })
+    expect(getZonedParts(lateUtc, 'America/New_York')).toEqual({
+      weekday: 'thursday',
+      hour: 19,
+      minute: 30,
+    })
+  })
+
+  it('reports midnight as hour 0, not 24', () => {
+    expect(getZonedParts(new Date('2026-07-30T00:00:00Z'), 'UTC').hour).toBe(0)
+  })
+})
+
+describe('snapTimeToHour', () => {
+  it('drops minutes, keeping the hour', () => {
+    expect(snapTimeToHour('13:04')).toBe('13:00')
+    expect(snapTimeToHour('09:00')).toBe('09:00')
+    expect(snapTimeToHour('9:30')).toBe('09:00')
+    expect(snapTimeToHour('23:59')).toBe('23:00')
+  })
+
+  it('falls back to the historical 09:00 for missing or invalid input', () => {
+    expect(snapTimeToHour(null)).toBe('09:00')
+    expect(snapTimeToHour(undefined)).toBe('09:00')
+    expect(snapTimeToHour('')).toBe('09:00')
+    expect(snapTimeToHour('later')).toBe('09:00')
+    expect(snapTimeToHour('25:00')).toBe('09:00')
   })
 })

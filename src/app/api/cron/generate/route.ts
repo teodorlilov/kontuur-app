@@ -14,7 +14,7 @@ import { generateSoloCoaching } from '@/ai/solo-coaching/generate-coaching'
 import { generateBestTime } from '@/ai/best-time/generate-best-time'
 import { getMondayISO } from '@/utils/date-helpers'
 import { BEST_TIME_REFRESH_DAYS, DEFAULT_CAROUSEL_SLIDES } from '@/utils/constants'
-import { fetchScheduleContext, shouldGenerateToday } from './helpers'
+import { fetchScheduleContext, getScheduleDue } from './helpers'
 import type { PostType } from '@/types/api'
 import type { Theme } from '@/ai/generation/types'
 import type { Database, Json } from '@/types/database'
@@ -44,34 +44,67 @@ export async function GET(request: NextRequest) {
   // Fetch all active schedules + batch-load context (clients, profiles, timezones)
   const { data: schedules } = await supabase
     .from('posting_schedules')
-    .select('id, client_id, is_active, frequency_value, auto_generate_day')
+    .select('id, client_id, is_active, frequency_value, auto_generate_day, auto_generate_time')
     .eq('is_active', true)
 
   const ctx = await fetchScheduleContext(supabase, schedules ?? [])
 
-  // Idempotency guard: skip clients that already had a generation run in the
-  // last 20h, so a retried/duplicate cron fire can't create a second batch.
-  const recentCutoff = new Date(Date.now() - 20 * 3_600_000).toISOString()
+  // One slot, one batch: each client's latest generation run decides below
+  // whether today's slot already produced. 'failed' runs are excluded — a
+  // failed run saved nothing, and counting it would cancel the same-day
+  // retries the due-since check exists for. 'running' stays in so an
+  // in-flight invocation is not doubled. 26h covers the widest case — a
+  // midnight slot checked at the end of its local day, plus grace.
+  const recentCutoff = new Date(Date.now() - 26 * 3_600_000).toISOString()
   const { data: recentRuns } = await supabase
     .from('generation_runs')
-    .select('client_id')
-    .in('client_id', (schedules ?? []).map((s) => s.client_id))
+    .select('client_id, created_at')
+    .in(
+      'client_id',
+      (schedules ?? []).map((s) => s.client_id)
+    )
+    .in('status', ['running', 'complete'])
     .gte('created_at', recentCutoff)
-  const recentlyGenerated = new Set(
-    ((recentRuns as Array<{ client_id: string | null }> | null) ?? []).map((r) => r.client_id)
-  )
+  const lastRunAt = new Map<string, number>()
+  for (const run of (recentRuns as Array<{
+    client_id: string | null
+    created_at: string
+  }> | null) ?? []) {
+    if (!run.client_id) continue
+    const at = new Date(run.created_at).getTime()
+    if (at > (lastRunAt.get(run.client_id) ?? 0)) lastRunAt.set(run.client_id, at)
+  }
 
-  for (const schedule of schedules ?? []) {
+  // A run shortly before the slot counts as the slot's batch, absorbing a
+  // manual batch finished moments ahead of the tick. Kept narrow on purpose:
+  // single-post idea runs land in generation_runs too, and a wide grace would
+  // let a morning idea post silently cancel the weekly batch. Runs at or
+  // after the slot dedup later ticks and sequential re-fires; two invocations
+  // racing the same tick are NOT covered (no unique constraint on
+  // generation_runs — pre-existing, see docs/TECH-DEBT.md).
+  const GENERATION_GRACE_MS = 900_000
+
+  // Fewest remaining retry ticks first: a 23:00 slot has no next-hour tick
+  // inside its local day, so a time-budget skip must not land on it merely
+  // because it sorted last in table order.
+  const dueClients = (schedules ?? [])
+    .flatMap((schedule) => {
+      const clientRow = ctx.clients.get(schedule.client_id)
+      if (!clientRow) return []
+      const agencyTimezone = ctx.agencyTimezones.get(clientRow.agency_id) ?? 'UTC'
+      const { due, scheduledAt, localHour } = getScheduleDue(schedule, agencyTimezone)
+      if (!due) return []
+      if ((lastRunAt.get(clientRow.id) ?? 0) >= scheduledAt.getTime() - GENERATION_GRACE_MS)
+        return []
+      return [{ schedule, clientRow, localHour }]
+    })
+    .sort((a, b) => b.localHour - a.localHour)
+
+  for (const { schedule, clientRow } of dueClients) {
     // Declared outside the try so the catch can mark an interrupted run failed.
     let runId: string | null = null
     try {
-      const clientRow = ctx.clients.get(schedule.client_id)
-      if (!clientRow) continue
-
       const { id: clientId, agency_id: agencyId } = clientRow
-      const agencyTimezone = ctx.agencyTimezones.get(agencyId) ?? 'UTC'
-      if (!shouldGenerateToday(schedule, agencyTimezone)) continue
-      if (recentlyGenerated.has(clientId)) continue
 
       if (Date.now() - startedAt > TIME_BUDGET_MS) {
         results.skipped_for_time.push(clientId)
@@ -94,10 +127,18 @@ export async function GET(request: NextRequest) {
       const slideCount = brandProfile?.default_carousel_slides ?? DEFAULT_CAROUSEL_SLIDES
 
       // 8. Create generation run (mirrors the wizard flow for dedup tracking).
-      // A null runId means tracking failed — startGenerationRun has already
-      // logged why, and generation proceeds untracked rather than aborting.
+      // Under hourly ticks the run row IS the slot's dedup key: a batch
+      // generated without one would be regenerated every remaining tick
+      // today. Skip instead — the next tick retries the insert.
       const total = (schedule as { frequency_value: number }).frequency_value || 1
       runId = await startGenerationRun(supabase, { clientId, platform, targetCount: total })
+      if (!runId) {
+        results.errors.push({
+          clientId,
+          error: 'could not open a generation run — deferred to next tick',
+        })
+        continue
+      }
 
       // 9. Research themes via Tavily + LLM (same pipeline as wizard)
       const researchStartedAt = Date.now()
@@ -203,34 +244,42 @@ export async function GET(request: NextRequest) {
         }
       }
 
-      // 12. Notify agency
-      await supabase.from('notifications').insert({
-        agency_id: agencyId,
-        message: `${generationResults.length} post${generationResults.length === 1 ? '' : 's'} ready to review for ${clientRow.name}`,
-      })
-
-      // 13. Refresh best-time if stale
-      const updatedAt = brandProfile?.best_time_updated_at
-      const isStale =
-        !updatedAt ||
-        Date.now() - new Date(updatedAt).getTime() > BEST_TIME_REFRESH_DAYS * 86_400_000
-      if (isStale) {
-        const bestTime = await generateBestTime({
-          niche: clientRow.niche ?? 'General',
-          targetAudience: client.targetAudience,
-          language: client.language,
-          platforms: platform,
-        })
-        await supabase
-          .from('brand_profiles')
-          .update({
-            best_time_json: bestTime as unknown as Json,
-            best_time_updated_at: new Date().toISOString(),
-          })
-          .eq('client_id', clientId)
-      }
-
+      // The batch is on disk — close the run before the follow-ups. The retry
+      // guard trusts 'failed' to mean "nothing saved", so a notify or
+      // best-time error past this point must not relabel a saved batch and
+      // trigger a duplicate next tick.
       if (runId) await finishGenerationRun(supabase, runId, 'complete')
+
+      try {
+        // 12. Notify agency
+        await supabase.from('notifications').insert({
+          agency_id: agencyId,
+          message: `${generationResults.length} post${generationResults.length === 1 ? '' : 's'} ready to review for ${clientRow.name}`,
+        })
+
+        // 13. Refresh best-time if stale
+        const updatedAt = brandProfile?.best_time_updated_at
+        const isStale =
+          !updatedAt ||
+          Date.now() - new Date(updatedAt).getTime() > BEST_TIME_REFRESH_DAYS * 86_400_000
+        if (isStale) {
+          const bestTime = await generateBestTime({
+            niche: clientRow.niche ?? 'General',
+            targetAudience: client.targetAudience,
+            language: client.language,
+            platforms: platform,
+          })
+          await supabase
+            .from('brand_profiles')
+            .update({
+              best_time_json: bestTime as unknown as Json,
+              best_time_updated_at: new Date().toISOString(),
+            })
+            .eq('client_id', clientId)
+        }
+      } catch (err) {
+        console.error(`[cron] post-save follow-ups failed for client ${clientId}:`, err)
+      }
 
       processedAgencyIds.add(agencyId)
       results.processed++
