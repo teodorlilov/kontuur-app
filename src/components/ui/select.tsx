@@ -1,26 +1,28 @@
 'use client'
 
+import { ChevronDown } from 'lucide-react'
 import { cn } from '@/utils/cn'
+import { Listbox } from './listbox'
 import { useFieldContext } from './form/field-context'
 import {
-  CONTROL_BASE,
-  CONTROL_DISABLED,
-  CONTROL_INVALID,
+  CONTROL_SURFACE,
+  CONTROL_TEXT,
   LABEL_CLASS,
   type LabelVariant,
 } from './form/control-classes'
 
-/** Inline chevron, stroked in Ink Secondary. Inlined as a data URI so it needs no network fetch. */
-const CHEVRON =
-  "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 10 10' fill='none' stroke='%2357625A' stroke-width='1.4'%3E%3Cpath d='M2.5 4L5 6.5 7.5 4'/%3E%3C/svg%3E\")"
-
-interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
+interface SelectProps {
   /** Standalone label. Inside a `Field`, omit this. */
   label?: string
   labelVariant?: LabelVariant
   error?: string
   options: Array<{ value: string; label: string }>
   placeholder?: string
+  value: string
+  onChange: (value: string) => void
+  disabled?: boolean
+  id?: string
+  className?: string
 }
 
 /**
@@ -38,16 +40,22 @@ export function ensureOption(
   return [{ value, label: value }, ...options]
 }
 
-/** A native select, restyled to match the other controls. */
+/**
+ * The form select, rendered as the system's Listbox rather than a native
+ * `<select>` — the same floating menu everywhere a dropdown opens. The API
+ * changed with it: `onChange` receives the value directly, not a change event.
+ */
 export function Select({
   label,
   labelVariant = 'default',
   error,
   options,
   placeholder,
+  value,
+  onChange,
+  disabled,
   className,
   id,
-  ...props
 }: SelectProps) {
   const field = useFieldContext()
   const inputId = id ?? field?.controlId ?? label?.toLowerCase().replace(/\s+/g, '-')
@@ -60,31 +68,44 @@ export function Select({
           {label}
         </label>
       )}
-      <select
-        id={inputId}
-        aria-invalid={invalid || undefined}
-        aria-describedby={field?.describedBy}
-        className={cn(
-          CONTROL_BASE,
-          CONTROL_DISABLED,
-          CONTROL_INVALID,
-          'cursor-pointer appearance-none bg-[position:right_12px_center] bg-no-repeat pr-[34px]',
-          className
+      <Listbox
+        value={value}
+        options={options}
+        onChange={onChange}
+        label={label ?? placeholder ?? 'Options'}
+        disabled={disabled}
+        renderTrigger={(selected, open) => (
+          <button
+            type="button"
+            id={inputId}
+            // No aria-invalid: unsupported on button. The Clay edge carries it
+            // visually and the error paragraph below announces it via aria-live
+            // plus the Field's describedBy wiring.
+            aria-describedby={field?.describedBy}
+            aria-expanded={open}
+            disabled={disabled}
+            className={cn(
+              CONTROL_SURFACE,
+              CONTROL_TEXT,
+              'flex h-10 cursor-pointer items-center gap-2 px-3 text-left',
+              invalid && 'border-danger',
+              disabled && 'cursor-not-allowed bg-sunken text-text3',
+              className
+            )}
+          >
+            <span className={cn('min-w-0 flex-1 truncate', !selected && 'text-text3')}>
+              {selected?.label ?? placeholder ?? 'Choose…'}
+            </span>
+            <ChevronDown
+              aria-hidden
+              className={cn(
+                'size-3 flex-none text-text2 transition-transform duration-150 ease-contour',
+                open && 'rotate-180'
+              )}
+            />
+          </button>
         )}
-        style={{ backgroundImage: CHEVRON }}
-        {...props}
-      >
-        {placeholder && (
-          <option value="" disabled>
-            {placeholder}
-          </option>
-        )}
-        {options.map((opt) => (
-          <option key={opt.value} value={opt.value}>
-            {opt.label}
-          </option>
-        ))}
-      </select>
+      />
       {error && (
         <p className="text-caption text-danger" aria-live="polite">
           {error}

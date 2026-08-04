@@ -13,85 +13,44 @@ interface ModalProps {
   maxWidth?: number
 }
 
+/**
+ * The system's dialog frame: Pine-tinted backdrop, a Surface card with a serif
+ * Display title and an X, the body supplied by the caller. For a yes/no
+ * decision reach for `ConfirmDialog`, which builds its action row on this.
+ */
 export function Modal({ open, onClose, title, children, className, maxWidth = 520 }: ModalProps) {
   return (
     <Dialog.Root open={open} onOpenChange={(o) => !o && onClose()}>
       <Dialog.Portal>
-        <Dialog.Overlay
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(26,25,24,0.45)',
-            zIndex: 200,
-            animation: 'fade-in 200ms ease',
-          }}
-        />
+        <Dialog.Overlay className="fixed inset-0 z-[200] bg-forest-deep/40 [animation:fade-in_200ms_ease]" />
         <Dialog.Content
           aria-describedby={undefined}
-          className={cn('overflow-y-auto', className)}
-          style={{
-            position: 'fixed',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            background: 'var(--surface)',
-            borderRadius: 'var(--radius-xl)',
-            width: '90vw',
-            maxWidth,
-            maxHeight: '90vh',
-            border: '1px solid var(--line)',
-            zIndex: 201,
-            animation: 'scale-in 200ms cubic-bezier(0.16,1,0.3,1)',
-            outline: 'none',
-          }}
+          className={cn(
+            'fixed left-1/2 top-1/2 z-[201] w-[90vw] -translate-x-1/2 -translate-y-1/2',
+            'max-h-[90vh] overflow-y-auto overscroll-contain outline-none',
+            'rounded-card border border-line bg-surface shadow-frame',
+            '[animation:scale-in_200ms_cubic-bezier(0.16,1,0.3,1)]',
+            className
+          )}
+          // The one genuinely per-instance dimension.
+          style={{ maxWidth }}
         >
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              padding: '20px 28px 16px',
-              borderBottom: '1px solid var(--line)',
-            }}
-          >
+          <div className="flex items-center justify-between border-b border-line px-7 pb-4 pt-5">
             {title && (
-              <Dialog.Title
-                className="font-display text-display font-normal text-ink"
-                style={{ margin: 0 }}
-              >
+              <Dialog.Title className="font-display text-display font-normal text-ink">
                 {title}
               </Dialog.Title>
             )}
-            <Dialog.Close asChild style={{ marginLeft: 'auto' }}>
+            <Dialog.Close asChild>
               <button
                 aria-label="Close"
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  width: 28,
-                  height: 28,
-                  borderRadius: 'var(--radius-sm)',
-                  border: 'none',
-                  background: 'transparent',
-                  color: 'var(--text3)',
-                  cursor: 'pointer',
-                  transition: 'background 120ms ease, color 120ms ease',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = 'rgba(15,21,18,0.04)'
-                  e.currentTarget.style.color = 'var(--ink)'
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = 'transparent'
-                  e.currentTarget.style.color = 'var(--text3)'
-                }}
+                className="ml-auto grid size-7 place-items-center rounded-sm text-text3 transition-colors duration-150 ease-contour hover:bg-ink/[0.04] hover:text-ink"
               >
-                <X size={16} />
+                <X size={16} aria-hidden />
               </button>
             </Dialog.Close>
           </div>
-          <div style={{ padding: '20px 28px 28px' }}>{children}</div>
+          <div className="px-7 pb-7 pt-5">{children}</div>
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>

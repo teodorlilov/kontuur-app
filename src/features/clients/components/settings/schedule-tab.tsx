@@ -67,7 +67,7 @@ export function ScheduleTab({
         <Field label="Default post type" span={4}>
           <Select
             value={brand.defaultPostType}
-            onChange={(e) => onBrandChange({ defaultPostType: e.target.value })}
+            onChange={(value) => onBrandChange({ defaultPostType: value })}
             options={POST_TYPE_OPTIONS}
           />
         </Field>
@@ -75,7 +75,7 @@ export function ScheduleTab({
           <Field label="Default slides" span={3}>
             <Select
               value={brand.defaultCarouselSlides}
-              onChange={(e) => onBrandChange({ defaultCarouselSlides: e.target.value })}
+              onChange={(value) => onBrandChange({ defaultCarouselSlides: value })}
               options={SLIDE_OPTIONS}
             />
           </Field>
@@ -107,14 +107,14 @@ export function ScheduleTab({
           <Field label="How many" span={3}>
             <Select
               value={schedule.freqValue}
-              onChange={(e) => onScheduleChange({ freqValue: e.target.value })}
+              onChange={(value) => onScheduleChange({ freqValue: value })}
               options={POSTS_PER_RUN_OPTIONS}
             />
           </Field>
           <Field label="Generate on" span={4}>
             <Select
               value={schedule.autoDay}
-              onChange={(e) => onScheduleChange({ autoDay: e.target.value })}
+              onChange={(value) => onScheduleChange({ autoDay: value })}
               options={[...WEEKDAY_OPTIONS]}
             />
           </Field>

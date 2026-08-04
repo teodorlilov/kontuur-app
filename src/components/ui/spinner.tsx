@@ -14,8 +14,9 @@ const sizes = {
 export function Spinner({ size = 'md', className }: SpinnerProps) {
   return (
     <svg
-      className={cn('animate-spin', sizes[size], className)}
-      style={{ color: 'var(--forest)' }}
+      // Colour is a class, not an inline style, so a caller on a dark plate
+      // can override it — tailwind-merge lets the later text-* win.
+      className={cn('animate-spin text-forest', sizes[size], className)}
       xmlns="http://www.w3.org/2000/svg"
       fill="none"
       viewBox="0 0 24 24"

@@ -1,0 +1,2196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Kontuur — generate posts</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Instrument+Serif:ital,wght@0,400;1,400&display=swap" rel="stylesheet">
+<style>
+  /* ═══ Contour tokens — mirrors src/app/globals.css :root, name for name ═══
+     Anything not in this block is drift. The ten --text-* roles are the closed
+     ramp from DESIGN.md § Typography: there is no eleventh size in this file,
+     and every font-size below reads `var(--text-…)`.
+
+     This replaces the supplied draft's palette wholesale rather than adjusting
+     it. That draft ran on --paper:#f1f0ea and --t3:#8b958d — the two values
+     DESIGN.md § Neutral names as retired and says must not be restored (the
+     second measured 2.71:1) — plus Bricolage Grotesque and Inter Tight, a lime
+     gradient on buttons, gradient-clipped display numerals, and backdrop-blur
+     glass on every card. None of that is a tuning question. */
+  :root{
+    /* Surfaces. There is no --raised: cards are flat clearings, not gradients. */
+    --paper:#fbfcfa; --surface:#ffffff; --sunken:#f3f5f2;
+
+    /* Ink */
+    --ink:#0f1512; --text2:#57625a; --text3:#667068;
+    --line:#e7ece7; --line2:#d5ddd6;
+
+    /* Greens */
+    --forest:#164430; --forest-deep:#0c2e20;
+    --spring:#2e9e68; --spring-lite:#7fd6a8; --spring-text:#278658;
+    --wash:#eef4ef; --marker:#d9eddd; --surface-lime:#e6eeae; --sage:#cfe4d4;
+    --accent:#cfea45; --accent-deep:#b4cd32;
+
+    /* Status */
+    --danger:#b04a38; --danger-bg:#fbefec; --danger-line:#e8cfc9;
+    --pending:#8a6116; --pending-bg:#f7efdc;
+
+    /* Composed dark surfaces. Dark grounds are never flat fills. */
+    --surface-dark:linear-gradient(180deg,#113429 0%,#0e2b21 100%);
+    --surface-dark-capsule:linear-gradient(180deg,#10382a 0%,#0a2b1d 100%);
+    --dot-grid:radial-gradient(rgba(255,255,255,.05) 1px, transparent 1.5px);
+    /* Hatching means absence — an unfilled slot, never ornament. */
+    --hatch:repeating-linear-gradient(45deg, rgba(15,21,18,.16) 0 2px, transparent 2px 5px);
+    --hatch-inv:repeating-linear-gradient(45deg, rgba(242,245,241,.4) 0 2px, transparent 2px 5px);
+    /* The off-white the system sets on Pine Deep — components/layout/wordmark.tsx. */
+    --on-dark:#f2f5f1;
+
+    /* Elevation. Nothing at rest uses these: a card is a clearing, and hover
+       does not add a shadow either. They are for genuinely floating chrome. */
+    --sh-card:0 1px 2px rgba(15,21,18,.03), 0 14px 36px -14px rgba(15,21,18,.1);
+    --sh-pop:0 12px 32px rgba(15,21,18,.1);
+    --sh-frame:0 24px 60px rgba(15,21,18,.06);
+    --sh-dark:0 18px 44px -14px rgba(12,46,32,.55);
+
+    /* Radii */
+    --radius-xs:4px; --radius-sm:8px; --radius-md:10px;
+    --radius-lg:14px; --radius-xl:20px; --radius-full:9999px;
+
+    --ease-contour:cubic-bezier(.22,1,.36,1);
+
+    --font-display:'Instrument Serif',Georgia,serif;
+    --font-sans:'Geist','Inter',-apple-system,BlinkMacSystemFont,Arial,sans-serif;
+
+    /* ── The ramp. Ten roles; each carries its own leading, and its tracking
+       where that is not `normal`. Overriding either at a call site is a
+       deliberate act that owes a WHY. ── */
+    --text-prompt:36px;   --text-prompt-lh:1.15; --text-prompt-ls:-.01em;
+    --text-metric:28px;   --text-metric-lh:1.1;  --text-metric-ls:-.02em;
+    --text-headline:22px; --text-headline-lh:1.25; --text-headline-ls:-.02em;
+    --text-display:18px;  --text-display-lh:1.35;
+    --text-lead:16px;     --text-lead-lh:1.6;
+    --text-title:15px;    --text-title-lh:1.4;   --text-title-ls:-.01em;
+    --text-body:13px;     --text-body-lh:1.6;
+    --text-caption:12px;  --text-caption-lh:1.4;
+    --text-micro:11px;    --text-micro-lh:1.35;
+    --text-label:10px;    --text-label-lh:1.2;   --text-label-ls:.16em;
+  }
+
+  /* Spacing is the closed scale — 4 · 8 · 12 · 16 · 20 · 24 · 32 · 40 · 48 · 64.
+     Intermediate values are not invented. Widths and heights that size a region
+     by its contents (a rail, a slide tile, a column cap) are layout, not spacing. */
+
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%}
+  body{font-family:var(--font-sans);font-size:var(--text-body);
+    line-height:var(--text-body-lh);color:var(--ink);background:var(--paper);
+    -webkit-font-smoothing:antialiased;overflow:hidden}
+  button,input,textarea,select{font:inherit;color:inherit}
+  button{background:none;border:none;cursor:pointer;text-align:left}
+  ::selection{background:var(--marker);color:var(--forest-deep)}
+  /* Matches globals.css exactly — the outline follows each element's own radius,
+     so nothing here restates corner shape. */
+  :focus-visible{outline:2px solid var(--spring);outline-offset:2px}
+  .sr{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;
+    clip:rect(0 0 0 0);white-space:nowrap;border:0}
+  [hidden]{display:none !important}
+
+  /* ═══ The ground ═══
+     Ported from components/layout/contour-field.tsx, constants included — that
+     file's own note says re-deriving them will not reproduce the same field.
+     Depth comes from interrupting the terrain, not from elevation: on #fbfcfa a
+     white card separates by 1.05:1, so tone cannot do the work.
+
+     The draft this replaces shipped a 30KB inline SVG field whose stroke read
+     `%2523164430` — a double-encoded hash, so the colour was invalid and the
+     whole field rendered strokeless. It also stacked two radial "aurora" washes
+     and a fractal-noise grain layer at mix-blend-mode:multiply on top. */
+  .field{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:0}
+
+  /* ═══ Shell ═══
+     A full-screen flow, not a dashboard page: no sidebar, and the only chrome is
+     the bar that says where you are and how to leave. */
+  .shell{position:relative;z-index:1;height:100dvh;display:flex;flex-direction:column}
+
+  .top{flex:none;display:flex;align-items:center;gap:24px;
+    padding:12px 32px;border-bottom:1px solid var(--line);
+    background:color-mix(in srgb, var(--paper) 88%, transparent);
+    backdrop-filter:blur(8px)}
+
+  /* ── The lockup, verbatim from components/layout/wordmark.tsx: a New Growth
+     plate carrying an italic serif `k` in Forest Ink at 13.65:1, beside the name
+     with a Deep Pine full stop. This lime is the constant — DESIGN.md exempts it
+     from the one-answer-per-band count, so the stepper beside it is still free
+     to carry the header band's answer. ── */
+  .wm{display:flex;align-items:center;gap:8px;flex:none;
+    font-family:var(--font-display);font-size:var(--text-display);
+    line-height:var(--text-display-lh);color:var(--ink)}
+  .wm i{display:grid;place-items:center;width:28px;height:28px;flex:none;
+    border-radius:var(--radius-lg);background:var(--accent);font-style:italic}
+  .wm span{line-height:1}
+  .wm em{font-style:normal;color:var(--forest)}
+
+  /* ── Steps. Three, because there are three: choose, wait, review. The draft
+     numbered five and then rendered four screens against them. A step you
+     cannot act on is not a step — "Generating" is here because it is a place
+     you are, not a place you go. ── */
+  .steps{flex:1;display:flex;align-items:center;gap:8px;min-width:0}
+  .step{display:flex;align-items:center;gap:8px;padding:6px 8px;
+    border-radius:var(--radius-sm);color:var(--text3);
+    font-size:var(--text-caption);line-height:var(--text-caption-lh);
+    transition:color .15s var(--ease-contour),background .15s var(--ease-contour)}
+  button.step:hover{background:var(--wash);color:var(--ink)}
+  .step .n{width:22px;height:22px;flex:none;display:grid;place-items:center;
+    border-radius:var(--radius-full);background:var(--sunken);color:var(--text2);
+    font-size:var(--text-micro);font-weight:600;line-height:1;
+    font-variant-numeric:tabular-nums;
+    transition:background .2s var(--ease-contour),color .2s var(--ease-contour)}
+  /* The header band's one New Growth answer: where you are standing. A 22px
+     plate is above the Small Present Rule's 16px floor and carries a Pine Deep
+     numeral at 10.87:1, so lime is legal here as a ground. It is not a control —
+     the current step is not clickable — so it needs no inset edge.
+     Audit test: what stops it being lime? Moving to the next step. */
+  .step[aria-current="step"]{color:var(--ink);font-weight:500}
+  .step[aria-current="step"] .n{background:var(--accent);color:var(--forest-deep)}
+  .step.done{color:var(--text2)}
+  .step.done .n{background:var(--wash);color:var(--forest)}
+  /* Named .slink, not .bar: the sticky commitment bar at the foot of Review is
+     .bar, and a bare class collision gave every step connector that rule's
+     sticky positioning, 12px padding, white fill and pop shadow. */
+  .slink{width:24px;height:1px;background:var(--line2);flex:none}
+  .slink.done{background:var(--forest)}
+  @media(max-width:900px){.step .lb{display:none}}
+  /* On a phone the whole rail does not fit beside Cancel, and three bare
+     numerals say less than one named step. Below 720px the stepper collapses to
+     where you are, with its label back. */
+  @media(max-width:720px){
+    .slink{display:none}
+    .step:not([aria-current="step"]){display:none}
+    .step .lb{display:inline}
+  }
+
+  /* Danger: transparent, Clay text — DESIGN.md § Buttons. Leaving mid-run
+     discards drafts, so it is destructive and says so. */
+  .quit{flex:none;font-size:var(--text-caption);line-height:1;color:var(--danger);
+    padding:8px 16px;border-radius:var(--radius-md);
+    transition:background .15s var(--ease-contour)}
+  .quit:hover{background:var(--danger-bg)}
+
+  .stage{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain}
+  .view{max-width:1280px;margin:0 auto;padding:24px 32px 64px}
+  /* Focus review needs the full width its three columns ask for. */
+  .view.wide{max-width:1440px}
+  @media(max-width:720px){.top{padding:12px 16px;gap:16px}.view{padding:16px}}
+
+  /* One authored entrance, on the view that just became current — not one
+     identical animation on every element of it. */
+  @keyframes rise{from{opacity:0;transform:translateY(12px)}}
+  .view{animation:rise .4s var(--ease-contour) both}
+
+  /* ═══ Primitives ═══ */
+
+  /* A clearing: opaque Surface white, hairline edge, contour lines stopping at
+     its boundary. No resting shadow, and none on hover either — resting and
+     hover elevation make the same claim this system rejects. */
+  .card{background:var(--surface);border:1px solid rgba(15,21,18,.05);
+    border-radius:var(--radius-xl)}
+
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;
+    border-radius:var(--radius-md);padding:8px 16px;line-height:1;
+    font-size:var(--text-body);font-weight:500;white-space:nowrap;
+    transition:background .15s var(--ease-contour),border-color .15s var(--ease-contour),
+      color .15s var(--ease-contour),transform .1s var(--ease-contour)}
+  .btn:active{transform:scale(.98)}
+  .btn[disabled]{opacity:.45;pointer-events:none}
+  .btn.pri{background:var(--forest);color:#fff}
+  .btn.pri:hover{background:var(--forest-deep)}
+  .btn.sec{border:1px solid var(--line2);color:var(--ink)}
+  .btn.sec:hover{background:var(--wash);border-color:color-mix(in srgb,var(--text3) 45%,transparent)}
+  .btn.ghost{color:var(--text2);padding:8px 10px}
+  .btn.ghost:hover{background:var(--sunken);color:var(--ink)}
+  /* Discard is destructive but sits beside three ordinary actions — it reveals
+     Clay on approach rather than wearing it at rest. */
+  .btn.ghost.dz:hover{background:var(--danger-bg);color:var(--danger)}
+  .btn.danger{color:var(--danger);border:1px solid var(--danger-line)}
+  .btn.danger:hover{background:var(--danger-bg)}
+  .btn.sm{font-size:var(--text-caption);padding:5px 12px;border-radius:var(--radius-sm)}
+  .btn.lg{font-size:var(--text-title);padding:11px 22px}
+  .btn.wide{width:100%}
+  .btn svg{flex:none}
+
+  /* Chips: 10px radius, 3px 8px, Micro — DESIGN.md § Chips / Badges. */
+  .chip{display:inline-flex;align-items:center;gap:4px;
+    font-size:var(--text-micro);line-height:var(--text-micro-lh);font-weight:500;
+    border-radius:var(--radius-md);padding:3px 8px}
+  .chip.ok{background:var(--wash);color:var(--forest)}
+  .chip.wait{background:var(--pending-bg);color:var(--pending)}
+  .chip.bad{background:var(--danger-bg);color:var(--danger)}
+  .chip.quiet{background:var(--sunken);color:var(--text2)}
+  .chip.mark{background:var(--marker);color:var(--forest-deep)}
+
+  .lb{font-size:var(--text-label);line-height:var(--text-label-lh);
+    letter-spacing:var(--text-label-ls);text-transform:uppercase;
+    font-weight:600;color:var(--text2)}
+  .h1{font-size:var(--text-headline);line-height:var(--text-headline-lh);
+    letter-spacing:var(--text-headline-ls);font-weight:600}
+  .cap{font-size:var(--text-caption);line-height:var(--text-caption-lh);color:var(--text2)}
+  .mic{font-size:var(--text-micro);line-height:var(--text-micro-lh);color:var(--text3)}
+  /* Every number that is compared down a column or across a run. */
+  .num{font-variant-numeric:tabular-nums;letter-spacing:var(--text-metric-ls)}
+  .metric{font-size:var(--text-metric);line-height:var(--text-metric-lh);
+    letter-spacing:var(--text-metric-ls);font-weight:600;font-variant-numeric:tabular-nums}
+
+  /* Ink Secondary keeps working on every tint this file uses — the Legible Tint
+     Rule: alpha inks measure differently under Marker than under Wash. */
+  .dot{width:8px;height:8px;border-radius:var(--radius-full);flex:none}
+
+  /* ═══ 1 · Set up ═══
+     One screen. The draft's three-question wizard (client → priority → type)
+     is three page loads to answer what fits in one column, and it hides the
+     consequence of each answer behind a Next button. */
+  .setup{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:24px;align-items:start}
+  @media(max-width:1080px){.setup{grid-template-columns:minmax(0,1fr)}}
+
+  .sheet{padding:24px}
+  .sheet > h1{font-size:var(--text-headline);line-height:var(--text-headline-lh);
+    letter-spacing:var(--text-headline-ls);font-weight:600}
+  /* Headline, not Prompt. Prompt is for a surface with nothing competing for the
+     eye, and a five-group form competes. */
+  .sheet > p.sub{font-size:var(--text-caption);line-height:var(--text-caption-lh);
+    color:var(--text2);margin-top:4px}
+
+  .grp{margin-top:24px;padding-top:20px;border-top:1px solid var(--line)}
+  .grp > h2{font-size:var(--text-label);line-height:var(--text-label-lh);
+    letter-spacing:var(--text-label-ls);text-transform:uppercase;
+    font-weight:600;color:var(--text2);margin-bottom:12px}
+  .grp > h2 em{font-style:normal;font-weight:400;letter-spacing:normal;
+    text-transform:none;font-size:var(--text-caption);color:var(--text3)}
+
+  /* ── Client. Colour comes from CLIENT_COLORS (src/utils/constants.ts), hashed
+     on the name exactly as components/ui/avatar.tsx does — the same colour on
+     the roster dot and the calendar pill. Tint the ground, darken the ink:
+     the lighter members of that palette fail 4.5:1 as a solid fill. ── */
+  .picker{position:relative}
+  .cli{display:flex;align-items:center;gap:12px;width:100%;padding:12px;
+    border:1px solid var(--line2);border-radius:var(--radius-lg);background:var(--surface);
+    transition:border-color .15s var(--ease-contour),background .15s var(--ease-contour)}
+  .cli:hover{border-color:color-mix(in srgb,var(--text3) 45%,transparent);background:var(--sunken)}
+  .cli .av{width:36px;height:36px;flex:none;border-radius:var(--radius-full);
+    display:grid;place-items:center;font-size:var(--text-caption);font-weight:600}
+  .cli .who{flex:1;min-width:0}
+  /* Set in the sans unconditionally. A client name is a database string, and
+     Instrument Serif ships no Cyrillic — the Latin-Only Serif Rule. Nothing on
+     this surface sets a client name in the serif, so nothing needs the gate. */
+  .cli .who b{display:block;font-size:var(--text-title);font-weight:600;
+    line-height:var(--text-title-lh);letter-spacing:var(--text-title-ls);
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .cli .who span{display:block;font-size:var(--text-caption);
+    line-height:var(--text-caption-lh);color:var(--text2);
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .cli .cv{flex:none;color:var(--text3)}
+
+  /* A listbox floats, so it takes --sh-pop — and it is portalled to <body> and
+     positioned fixed rather than absolutely inside .picker. Two ancestors would
+     otherwise clip or capture it: .stage scrolls with overflow-y:auto, and the
+     view's entrance animation touches transform, which makes .view a containing
+     block for fixed descendants for as long as the animation is filling. */
+  .menu{position:fixed;z-index:40;
+    background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-lg);
+    box-shadow:var(--sh-pop);padding:4px;overflow:hidden}
+  .menu button{display:flex;align-items:center;gap:12px;width:100%;padding:8px;
+    border-radius:var(--radius-md);transition:background .15s var(--ease-contour)}
+  .menu button:hover{background:var(--wash)}
+  .menu button[aria-selected="true"]{background:var(--wash)}
+  .menu .av{width:28px;height:28px;flex:none;border-radius:var(--radius-full);
+    display:grid;place-items:center;font-size:var(--text-micro);font-weight:600}
+  .menu b{font-size:var(--text-body);font-weight:500;display:block}
+  .menu span{font-size:var(--text-micro);line-height:var(--text-micro-lh);color:var(--text3);display:block}
+
+  /* ── Platform. All five generate; two publish. The draft greyed LinkedIn and
+     TikTok out as "soon", which is wrong in both directions: generation
+     supports them today (utils/constants.ts PLATFORMS) and it is *publishing*
+     that is limited to LIVE_PLATFORMS. Disabling the control hides a capability
+     the product has; the note tells the truth instead. ── */
+  .pills{display:flex;flex-wrap:wrap;gap:8px}
+  .pill{display:inline-flex;align-items:center;gap:8px;padding:8px 14px;
+    border:1px solid var(--line2);border-radius:var(--radius-full);
+    background:var(--surface);color:var(--text2);
+    font-size:var(--text-body);font-weight:500;line-height:1;
+    transition:background .15s var(--ease-contour),border-color .15s var(--ease-contour),
+      color .15s var(--ease-contour)}
+  .pill:hover{border-color:color-mix(in srgb,var(--text3) 45%,transparent);
+    background:var(--wash);color:var(--ink)}
+  .pill[aria-pressed="true"]{background:var(--forest);border-color:var(--forest);color:#fff}
+  /* Living Green at dot scale is the signal of health and motion, and it clears
+     3:1 for non-text UI. Lime at 8px would measure 1.35:1 — absent, not quiet. */
+  .pill .dot{background:var(--line2)}
+  .pill.live .dot{background:var(--spring)}
+  .pill[aria-pressed="true"] .dot{background:var(--spring-lite)}
+  .pnote{font-size:var(--text-caption);line-height:var(--text-caption-lh);
+    color:var(--text2);margin-top:8px;display:flex;align-items:center;gap:8px}
+  .pnote a{color:var(--spring-text);font-weight:500;text-decoration:none}
+  .pnote a:hover{text-decoration:underline}
+
+  /* ── Format ── */
+  .fmt{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  @media(max-width:560px){.fmt{grid-template-columns:1fr}}
+  .fc{padding:16px;border:1px solid var(--line2);border-radius:var(--radius-lg);
+    background:var(--surface);
+    transition:border-color .15s var(--ease-contour),background .15s var(--ease-contour),
+      box-shadow .15s var(--ease-contour)}
+  .fc:hover{border-color:color-mix(in srgb,var(--text3) 45%,transparent);background:var(--sunken)}
+  /* Selected is an active state: a Deep Pine edge on Wash. Not lime — the
+     header band already carries this view's lime answer, and a 16px card is a
+     surface, not a standing place. */
+  .fc[aria-pressed="true"]{border-color:var(--forest);background:var(--wash);
+    box-shadow:inset 0 0 0 1px var(--forest)}
+  .fc .ic{width:32px;height:32px;border-radius:var(--radius-md);display:grid;place-items:center;
+    background:var(--sunken);color:var(--text2);margin-bottom:12px}
+  .fc[aria-pressed="true"] .ic{background:var(--forest);color:var(--accent)}
+  .fc b{display:block;font-size:var(--text-title);font-weight:600;
+    line-height:var(--text-title-lh);letter-spacing:var(--text-title-ls)}
+  .fc span{display:block;font-size:var(--text-caption);
+    line-height:var(--text-caption-lh);color:var(--text2);margin-top:4px}
+  .fc[disabled]{opacity:.5;pointer-events:none}
+
+  /* ── Steppers. One control shape for both numbers, and the two numbers sit on
+     one row: how many posts and how many slides are the same decision — the
+     size of the run — and splitting them across two groups made the reader
+     carry the first answer down the page to make the second. ── */
+  .counts{display:flex;align-items:center;gap:24px;flex-wrap:wrap}
+  .cnt2{display:flex;align-items:center;gap:8px}
+  .cnt2 .cl2{font-size:var(--text-body);color:var(--text2)}
+  .stepper{display:inline-flex;align-items:center;gap:4px;padding:4px;
+    border:1px solid var(--line2);border-radius:var(--radius-md);background:var(--surface)}
+  .stepper button{width:28px;height:28px;display:grid;place-items:center;
+    border-radius:var(--radius-sm);color:var(--text2);
+    transition:background .15s var(--ease-contour),color .15s var(--ease-contour)}
+  .stepper button:hover{background:var(--wash);color:var(--forest)}
+  .stepper button[disabled]{opacity:.35;pointer-events:none}
+  .stepper .v{min-width:32px;text-align:center;font-size:var(--text-title);
+    font-weight:600;font-variant-numeric:tabular-nums;letter-spacing:var(--text-metric-ls)}
+
+  /* ── Priority briefs. The real payload is a list of {title, brief, platform,
+     targetDate} (types/api PriorityPost), not the single free-text box the
+     draft offered. ── */
+  .brief{display:flex;align-items:flex-start;gap:12px;padding:12px;
+    border:1px dashed var(--line2);border-radius:var(--radius-lg);width:100%;
+    transition:border-color .15s var(--ease-contour),background .15s var(--ease-contour)}
+  .brief:hover{border-color:var(--forest);background:var(--wash)}
+  .brief .ic{width:28px;height:28px;flex:none;border-radius:var(--radius-md);
+    display:grid;place-items:center;background:var(--wash);color:var(--forest)}
+  .brief b{display:block;font-size:var(--text-body);font-weight:500}
+  .brief span{display:block;font-size:var(--text-caption);
+    line-height:var(--text-caption-lh);color:var(--text2);margin-top:2px}
+  .blist{display:flex;flex-direction:column;gap:8px;margin-bottom:8px}
+  .bitem{display:flex;align-items:center;gap:12px;padding:8px 12px;
+    border:1px solid var(--line);border-radius:var(--radius-md);background:var(--sunken)}
+  .bitem b{flex:1;min-width:0;font-size:var(--text-body);font-weight:500;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+  /* ═══ The run capsule ═══
+     Pine Deep over the dot grid — dark surfaces are never flat fills. On dark
+     the lime relationship inverts and New Growth becomes the figure: this is
+     the field band's one lime answer, and it is the commitment itself. */
+  /* background-color under the layered background, not merely beside it: every
+     word in this capsule is near-white or lime, and both are unreadable on
+     paper. If the gradient does not paint — print, a forced-colors mode, a
+     renderer that drops the layer — the fallback has to still be Pine Deep. */
+  .run{position:sticky;top:0;border-radius:var(--radius-xl);overflow:hidden;
+    background-color:var(--forest-deep);
+    background-image:var(--dot-grid), var(--surface-dark);
+    background-size:13px 13px, auto;
+    color:var(--on-dark);box-shadow:var(--sh-dark)}
+  @media(max-width:1080px){.run{position:static}}
+  .run .hd{padding:20px 20px 16px;border-bottom:1px solid rgba(242,245,241,.1)}
+  .run .lb{color:rgba(242,245,241,.55)}
+  /* Named .runnum for the same reason .slink is not .bar: .big is the 4:5 slide
+     canvas in Review, and this element inherited its aspect-ratio — a 28px
+     numeral in a 375px-tall box. */
+  .run .runnum{margin-top:8px;color:var(--accent);
+    font-size:var(--text-metric);line-height:var(--text-metric-lh);
+    letter-spacing:var(--text-metric-ls);font-weight:600;font-variant-numeric:tabular-nums}
+  .run .of{font-size:var(--text-caption);line-height:var(--text-caption-lh);
+    color:rgba(242,245,241,.7);margin-top:4px}
+  .run .bd{padding:16px 20px}
+  .rrow{display:flex;align-items:baseline;justify-content:space-between;gap:12px;
+    padding:6px 0;font-size:var(--text-caption);line-height:var(--text-caption-lh)}
+  .rrow > span{color:rgba(242,245,241,.55)}
+  .rrow > b{font-weight:500;text-align:right}
+  /* Living Green Lite is the green that stays legible on Pine Deep. */
+  .rrow > b.good{color:var(--spring-lite)}
+  /* No colour for the caution rows. The band's one lime answer is the count,
+     and lime never means "attention" anyway; there is no on-dark amber token,
+     so the words carry it — "Sources only" already differs from "Sources + web",
+     and the mix note below spells out the consequence. */
+  .rrow > b.warn{color:var(--on-dark)}
+  .rrow a{color:var(--accent);text-decoration:none;
+    border-bottom:1px solid color-mix(in srgb,var(--accent) 40%,transparent)}
+  /* ── Content mix, in the capsule that answers "what will this run produce" —
+     computed by the same allocateByWeight() the research orchestrator runs
+     (src/lib/clients/content-pillars.ts), so the split shown before the run is
+     the split the run asks for. A tight list: dot, name, count. ── */
+  .plist{margin-top:16px;padding-top:16px;border-top:1px solid rgba(242,245,241,.1)}
+  .plist .lb{color:rgba(242,245,241,.45);margin-bottom:8px}
+  .prow{display:flex;align-items:center;gap:8px;padding:4px 0;
+    font-size:var(--text-caption);line-height:var(--text-caption-lh)}
+  .prow .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .prow .q2{flex:none;color:rgba(242,245,241,.5);font-variant-numeric:tabular-nums}
+  .prow.none .nm,.prow.none .q2{color:rgba(242,245,241,.4)}
+  /* A pillar with no sources gets an EMPTY marker, not a coloured one: hatching
+     is how this system says absence, and --hatch-inv is its dark-ground
+     variant. It needs no new hue — an on-dark amber is not a token, and lime
+     never means attention. Nor is it struck through: nothing is skipped yet,
+     that verdict only exists after research runs. */
+  .prow.none .dot{background:transparent;background-image:var(--hatch-inv);
+    box-shadow:inset 0 0 0 1px rgba(242,245,241,.3)}
+  .pnote2{margin-top:12px;font-size:var(--text-micro);line-height:var(--text-micro-lh);
+    color:rgba(242,245,241,.6)}
+  /* Living Green Lite is the green that stays legible on Pine Deep. Lime would
+     be a second lime answer in this band — the count already holds it. */
+  .pnote2 a{color:var(--spring-lite);text-decoration:none;
+    border-bottom:1px solid color-mix(in srgb,var(--spring-lite) 40%,transparent)}
+
+  .run .ft{padding:0 20px 20px}
+  /* A white control on a dark ground needs no borrowed edge; Pine Deep under
+     white text is 10.87:1 inverted, so the button simply inverts. */
+  .run .ft .btn.pri{background:var(--accent);color:var(--forest-deep)}
+  .run .ft .btn.pri:hover{background:var(--accent-deep)}
+  .run .foot{font-size:var(--text-micro);line-height:var(--text-micro-lh);
+    color:rgba(242,245,241,.55);margin-top:12px;text-align:center}
+
+  /* ═══ 2 · Generating ═══ */
+  .gen{max-width:760px;margin:0 auto}
+  .gen > header{margin-bottom:24px}
+  .gen h1{font-size:var(--text-headline);line-height:var(--text-headline-lh);
+    letter-spacing:var(--text-headline-ls);font-weight:600}
+  .gen header p{font-size:var(--text-caption);line-height:var(--text-caption-lh);
+    color:var(--text2);margin-top:4px}
+
+  /* The four stages are the ones the stream actually emits, mapped by
+     mapPhaseToStage() in features/generate/components/step-loading.tsx. */
+  .stages{display:flex;gap:8px;margin:20px 0 24px}
+  .stg{flex:1;min-width:0}
+  .stg .tr{height:4px;border-radius:var(--radius-full);background:var(--line);overflow:hidden}
+  .stg .tr i{display:block;height:100%;background:var(--forest);
+    transform-origin:left;transform:scaleX(0);
+    transition:transform .6s var(--ease-contour)}
+  .stg.on .tr i,.stg.done .tr i{transform:scaleX(1)}
+  .stg.on .tr i{background:var(--spring)}
+  .stg .nm{font-size:var(--text-micro);line-height:var(--text-micro-lh);
+    color:var(--text3);margin-top:8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .stg.on .nm{color:var(--ink);font-weight:500}
+  .stg.done .nm{color:var(--text2)}
+  @media(max-width:640px){.stages{flex-direction:column;gap:4px}.stg .nm{margin-top:4px}}
+
+  .counter{display:flex;align-items:baseline;gap:8px;margin-bottom:16px}
+  .counter .metric{color:var(--ink)}
+  .counter span{font-size:var(--text-caption);color:var(--text2)}
+
+  .lands{display:flex;flex-direction:column;gap:12px}
+  /* Each post is a clearing cut into the terrain as it lands — the one authored
+     moment of this view. Nothing else on the screen moves. */
+  @keyframes land{from{opacity:0;transform:translateY(10px)}}
+  .land{display:flex;align-items:flex-start;gap:16px;padding:16px 20px;
+    background:var(--surface);border:1px solid rgba(15,21,18,.05);
+    border-radius:var(--radius-lg)}
+  .land.arrived{animation:land .45s var(--ease-contour) both}
+  .land.pending{background:transparent;border-style:dashed;border-color:var(--line2)}
+  .land .n{width:28px;height:28px;flex:none;border-radius:var(--radius-md);
+    display:grid;place-items:center;background:var(--sunken);color:var(--text2);
+    font-size:var(--text-micro);font-weight:600;font-variant-numeric:tabular-nums}
+  .land.arrived .n{background:var(--wash);color:var(--forest)}
+  .land .bd{flex:1;min-width:0}
+  .land .ti{font-size:var(--text-title);font-weight:600;line-height:var(--text-title-lh);
+    letter-spacing:var(--text-title-ls);margin-top:6px}
+  .land .ex{font-size:var(--text-caption);line-height:var(--text-caption-lh);
+    color:var(--text2);margin-top:6px}
+  .land .qs{flex:none;text-align:right}
+  .land .qs .metric{font-size:var(--text-headline);line-height:1;color:var(--forest)}
+  .land .qs .lb{margin-top:4px}
+  /* globals.css .skeleton — a shimmer that reserves the row's height, not a
+     spinner dropped into the middle of content. */
+  .skel{height:8px;border-radius:var(--radius-sm);
+    background:linear-gradient(90deg,var(--sunken) 25%,var(--line) 50%,var(--sunken) 75%);
+    background-size:200% 100%;animation:shimmer 1.5s ease-in-out infinite}
+  @keyframes shimmer{from{background-position:-200% 0}to{background-position:200% 0}}
+
+  /* ═══ 3 · Review ═══ */
+  .rvh{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;
+    flex-wrap:wrap;margin-bottom:16px}
+  .rvh h1{font-size:var(--text-headline);line-height:var(--text-headline-lh);
+    letter-spacing:var(--text-headline-ls);font-weight:600}
+  .meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+    font-size:var(--text-caption);line-height:var(--text-caption-lh);
+    color:var(--text2);margin-top:4px}
+  .meta i{width:3px;height:3px;border-radius:var(--radius-full);background:var(--line2);flex:none}
+  .rvh .acts{display:flex;align-items:center;gap:8px}
+
+  /* Segmented control: Sunken well, Surface for the chosen segment. */
+  .seg{display:inline-flex;gap:2px;padding:2px;background:var(--sunken);
+    border-radius:var(--radius-md)}
+  .seg button{padding:5px 12px;border-radius:var(--radius-sm);
+    font-size:var(--text-caption);font-weight:500;color:var(--text2);line-height:1;
+    transition:background .15s var(--ease-contour),color .15s var(--ease-contour)}
+  .seg button[aria-pressed="true"]{background:var(--surface);color:var(--ink);
+    box-shadow:0 1px 2px rgba(15,21,18,.06)}
+
+  .banner{display:flex;align-items:flex-start;gap:12px;padding:12px 16px;
+    border-radius:var(--radius-lg);background:var(--pending-bg);margin-bottom:16px;
+    font-size:var(--text-caption);line-height:var(--text-caption-lh);color:var(--text2)}
+  .banner b{color:var(--pending);font-weight:600}
+  .banner svg{flex:none;color:var(--pending);margin-top:1px}
+  .banner a{margin-left:auto;flex:none;color:var(--pending);font-weight:600;
+    text-decoration:none;white-space:nowrap;
+    border-bottom:1px solid color-mix(in srgb,var(--pending) 35%,transparent)}
+
+  /* ── Grid: triage. Three answers per card — is it good, is it grounded, is it
+     finished — and two actions. ── */
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px}
+  .rc{display:flex;flex-direction:column;overflow:hidden;text-align:left;
+    background:var(--surface);border:1px solid rgba(15,21,18,.05);
+    border-radius:var(--radius-xl);
+    transition:border-color .15s var(--ease-contour)}
+  .rc:hover{border-color:var(--line2)}
+  .rc.approved{opacity:.72}
+  .rc .cover{position:relative;aspect-ratio:4/5}
+  .rc .bd{padding:16px;display:flex;flex-direction:column;flex:1;gap:8px}
+  .rc .ti{font-size:var(--text-title);font-weight:600;line-height:var(--text-title-lh);
+    letter-spacing:var(--text-title-ls)}
+  .rc .ex{font-size:var(--text-caption);line-height:var(--text-caption-lh);
+    color:var(--text2);flex:1}
+  .rc .ft{display:flex;align-items:center;gap:8px;padding-top:12px;
+    border-top:1px solid var(--line)}
+  .rc .ft .src{flex:1;min-width:0;font-size:var(--text-micro);color:var(--text3);
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .rc .row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .rc .row .chip:first-child{margin-right:auto}
+
+  /* ── The generated visual. No photography is faked here: these are the
+     EDITORIAL composition the engine actually renders — tonal ground, kicker,
+     headline, page pill — so the mock shows the real output anatomy without
+     inventing imagery, and reuses nothing from the auth or landing surfaces.
+     The grounds are content, not chrome: a post carries the client's own
+     palette, which DESIGN.md keeps out of Kontuur's interface but allows in
+     what Kontuur produces. ── */
+  .vis{position:relative;width:100%;height:100%;overflow:hidden;
+    display:flex;flex-direction:column;justify-content:flex-end;
+    padding:16px;color:#fff}
+  .vis .kick{font-size:var(--text-label);line-height:var(--text-label-lh);
+    letter-spacing:var(--text-label-ls);text-transform:uppercase;font-weight:600;
+    color:rgba(255,255,255,.75);margin-bottom:8px}
+  .vis .hl{font-family:var(--font-display);font-size:var(--text-headline);
+    line-height:var(--text-headline-lh);text-wrap:balance}
+  .vis .hl.caps{font-family:var(--font-sans);text-transform:uppercase;font-weight:600;
+    font-size:var(--text-title);line-height:var(--text-title-lh);letter-spacing:.02em}
+  .vis .pg{position:absolute;top:12px;right:12px;font-size:var(--text-micro);
+    font-weight:500;padding:3px 8px;border-radius:var(--radius-md);
+    background:rgba(255,255,255,.92);color:var(--ink);font-variant-numeric:tabular-nums}
+  .vis::after{content:'';position:absolute;inset:0;
+    background:linear-gradient(180deg,transparent 40%,rgba(9,20,15,.55));pointer-events:none}
+  .vis > *{position:relative;z-index:1}
+  /* A visual that has not been generated yet is an absence, and hatching is how
+     this system says absence. It never renders larger or louder than a real one. */
+  .vis.empty{background:var(--sunken);background-image:var(--hatch);
+    align-items:center;justify-content:center;color:var(--text2)}
+  .vis.failed{background:var(--danger-bg);align-items:center;justify-content:center;
+    color:var(--danger);gap:8px;text-align:center}
+  .vis.failed::after{display:none}
+  .vis.empty::after{display:none}
+  /* Filmstrip scale: three lines, clamped. The tile is a reminder of which
+     slide this is, not a place to read the slide. */
+  .vis.tile{padding:8px;justify-content:flex-end}
+  .vis.tile .hl{font-size:var(--text-micro);line-height:1.25;
+    display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+  .vis.tile .hl.caps{font-size:var(--text-micro);letter-spacing:0}
+
+  .pips{position:absolute;top:12px;left:12px;z-index:2;display:flex;gap:3px}
+  .pips i{width:14px;height:3px;border-radius:var(--radius-full);
+    background:rgba(255,255,255,.45);display:block}
+  .pips i.on{background:#fff}
+
+  /* ── Focus: rail · work · panel ── */
+  .ws{display:grid;grid-template-columns:240px minmax(0,1fr) 320px;gap:16px;align-items:start}
+  /* The rail is navigation and has an equivalent (prev / next), so it goes
+     first. The panel is not: quality, the flagged claim and the source excerpt
+     are the whole reason this screen is a review rather than a list, so on a
+     phone it stacks under the work column instead of disappearing. */
+  @media(max-width:1200px){.ws{grid-template-columns:minmax(0,1fr) 320px}.ws .rail{display:none}}
+  @media(max-width:900px){.ws{grid-template-columns:minmax(0,1fr)}}
+
+  .rail{overflow:hidden}
+  .rail .hd{display:flex;align-items:center;justify-content:space-between;
+    padding:12px 16px;border-bottom:1px solid var(--line)}
+  .ri{display:flex;gap:12px;width:100%;padding:12px 16px;position:relative;
+    border-bottom:1px solid var(--line);
+    transition:background .15s var(--ease-contour)}
+  .ri:last-child{border-bottom:none}
+  .ri:hover{background:var(--sunken)}
+  /* Selected carries in three places at once — Wash ground, a 1px Deep Pine
+     edge, and the title stepping from Ink Secondary to Forest Ink — so the row
+     reads as current from its own content rather than from a bar beside it.
+     The 3px stripe this replaced was the incumbent (components/posts/
+     post-list-parts ActiveBar) and it was doing all the work alone: on a Wash
+     row that already changed ground, a second, louder signal is decoration. */
+  .ri[aria-current="true"]{background:var(--wash)}
+  .ri[aria-current="true"]::before{content:'';position:absolute;left:0;top:0;bottom:0;
+    width:1px;background:var(--forest)}
+  .ri[aria-current="true"] .bd b{color:var(--ink)}
+  .ri .th{width:32px;height:40px;flex:none;border-radius:var(--radius-sm);overflow:hidden}
+  .ri .bd{flex:1;min-width:0}
+  .ri .bd b{display:block;font-size:var(--text-caption);font-weight:600;
+    line-height:var(--text-caption-lh);color:var(--text2);
+    display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .ri .bd span{display:block;font-size:var(--text-micro);
+    line-height:var(--text-micro-lh);color:var(--text3);margin-top:4px}
+  .ri .q{flex:none;font-size:var(--text-caption);font-weight:600;color:var(--forest);
+    font-variant-numeric:tabular-nums}
+  .ri.done .q{color:var(--spring-text)}
+
+  .work{display:flex;flex-direction:column;gap:16px}
+  .whd{display:flex;align-items:center;gap:12px;padding:12px 16px;flex-wrap:wrap}
+  .nav{display:flex;align-items:center;gap:4px;flex:none}
+  .nav button{width:28px;height:28px;display:grid;place-items:center;
+    border-radius:var(--radius-sm);color:var(--text2);
+    transition:background .15s var(--ease-contour)}
+  .nav button:hover{background:var(--sunken);color:var(--ink)}
+  .nav button[disabled]{opacity:.35;pointer-events:none}
+  .nav .of{font-size:var(--text-micro);color:var(--text3);
+    min-width:64px;text-align:center;font-variant-numeric:tabular-nums}
+  .whd .ttl{flex:1;min-width:120px}
+  /* Truncate rather than wrap: a two-line title pushed the action cluster onto
+     a third row and left Approve stranded under Discard. */
+  .whd .ttl b{display:block;font-size:var(--text-title);font-weight:600;
+    line-height:var(--text-title-lh);letter-spacing:var(--text-title-ls);
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .whd .ttl span{display:block;font-size:var(--text-micro);color:var(--text3);margin-top:2px}
+  /* The actions travel as one group, so at narrow widths they drop together
+     instead of breaking apart. */
+  .wacts{display:flex;align-items:center;gap:8px;flex:none;margin-left:auto}
+
+  .strip{padding:0 16px 16px}
+  .strip .sh{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+  .films{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;scrollbar-width:thin}
+  .film{width:72px;flex:none}
+  .film .im{aspect-ratio:4/5;border-radius:var(--radius-sm);overflow:hidden;
+    border:2px solid transparent;
+    transition:border-color .15s var(--ease-contour)}
+  .film[aria-pressed="true"] .im{border-color:var(--forest)}
+  .film .lb2{font-size:var(--text-micro);line-height:var(--text-micro-lh);
+    color:var(--text3);text-align:center;margin-top:4px;
+    font-variant-numeric:tabular-nums}
+  .film[aria-pressed="true"] .lb2{color:var(--ink);font-weight:500}
+
+  .slide{display:grid;grid-template-columns:200px minmax(0,1fr);gap:20px;padding:0 16px 16px}
+  @media(max-width:720px){.slide{grid-template-columns:minmax(0,1fr)}}
+  .big{aspect-ratio:4/5;border-radius:var(--radius-lg);overflow:hidden}
+  .sr2 .lb{margin-bottom:8px}
+  .ta{width:100%;border:1px solid var(--line2);border-radius:var(--radius-md);
+    background:var(--surface);padding:8px 12px;min-height:88px;resize:vertical;
+    font-family:inherit;font-size:var(--text-lead);line-height:var(--text-lead-lh);
+    transition:border-color .15s var(--ease-contour),box-shadow .15s var(--ease-contour)}
+  /* Lead at every width satisfies the Mobile Input Exemption without a
+     breakpoint — a focusable field under 16px auto-zooms iOS Safari mid-entry. */
+  .ta:hover{border-color:color-mix(in srgb,var(--text3) 45%,transparent)}
+  .ta:focus{outline:none;border-color:var(--spring);
+    box-shadow:0 0 0 3px color-mix(in srgb,var(--spring) 12%,transparent)}
+  .sacts{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+  .snote{margin-top:12px;padding:12px;border-radius:var(--radius-md);
+    background:var(--danger-bg);font-size:var(--text-caption);
+    line-height:var(--text-caption-lh);color:var(--text2)}
+  .snote b{display:block;color:var(--danger);font-weight:600;margin-bottom:4px}
+
+  .capb{padding:16px}
+  .capb .hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+  .capbody{border:1px solid var(--line);border-radius:var(--radius-md);
+    background:var(--sunken);padding:16px;
+    font-size:var(--text-lead);line-height:var(--text-lead-lh);color:var(--ink);
+    /* Prose at arm's length inside a work column — 65–75ch, so the caption reads
+       the way it will read in a feed. */
+    max-width:68ch}
+  .capbody p + p{margin-top:12px}
+  .capbody .tags{display:block;margin-top:12px;color:var(--forest);
+    font-size:var(--text-body)}
+
+  /* ── Panel ── */
+  .panel{overflow:hidden}
+  .pnl{padding:16px;border-top:1px solid var(--line)}
+  .pnl:first-child{border-top:none}
+  .pnl > .hd{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+  /* Metric, not the serif. A score is a stat value, and the Rationed Serif Rule
+     keeps Instrument Serif for moments of address. (info-panel-sections.tsx sets
+     this one in font-display today — this is the correction.) */
+  .pnl .hd .metric{color:var(--forest)}
+  .pnl .hd .metric.low{color:var(--pending)}
+  .qbars{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+  .qb{display:flex;align-items:center;gap:12px}
+  .qb .n2{width:64px;flex:none;font-size:var(--text-caption);color:var(--text2)}
+  .qb .tr{flex:1;height:6px;border-radius:var(--radius-full);background:var(--sunken);overflow:hidden}
+  .qb .tr i{display:block;height:100%;border-radius:var(--radius-full);background:var(--forest);
+    transform-origin:left}
+  .qb .tr i.low{background:var(--pending)}
+  .qb .v{width:20px;text-align:right;font-size:var(--text-caption);font-weight:600;
+    font-variant-numeric:tabular-nums}
+  .flags{display:flex;flex-direction:column;gap:8px;margin-top:16px}
+  .flags h4{font-size:var(--text-caption);font-weight:600;color:var(--text2)}
+  .flag{display:flex;align-items:flex-start;gap:8px;
+    font-size:var(--text-caption);line-height:var(--text-caption-lh);color:var(--text2)}
+  .flag svg{flex:none;margin-top:2px}
+  .flag.bad svg{color:var(--danger)}
+  .flag.wait svg{color:var(--pending)}
+  .flag b{font-weight:500;color:var(--ink)}
+  /* Block, not inline: as a <span> in inline flow its padding overlapped the
+     sentence above instead of clearing it. */
+  .fix{display:block;margin-top:8px;padding:8px;border-radius:var(--radius-sm);
+    background:var(--sunken);
+    font-size:var(--text-micro);line-height:var(--text-micro-lh);color:var(--text2)}
+  .fix s{color:var(--danger);text-decoration-thickness:1px}
+  .fix b{color:var(--forest)}
+
+  .srct{font-size:var(--text-body);font-weight:500;line-height:var(--text-body-lh);margin-top:12px}
+  .srcu{font-size:var(--text-micro);color:var(--text3);margin-top:4px;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .claim{margin-top:16px;padding-left:12px;border-left:1px solid var(--line2)}
+  .claim + .claim{margin-top:12px}
+  .claim .c{font-size:var(--text-caption);line-height:var(--text-caption-lh);color:var(--ink)}
+  /* Marker is the highlighter fill, and Forest Ink on it is 11.7:1. The draft
+     highlighted the matched span in lime, which measures 1.35:1 on white — the
+     evidence would have been invisible exactly where it matters most. */
+  .claim .e{margin-top:8px;font-size:var(--text-caption);line-height:var(--text-caption-lh);
+    color:var(--text2)}
+  .claim .e mark{background:var(--marker);color:var(--forest-deep);
+    border-radius:var(--radius-xs);padding:0 2px}
+  .claim .st{margin-top:8px}
+
+  .kv{display:flex;align-items:baseline;justify-content:space-between;gap:12px;
+    padding:4px 0;font-size:var(--text-caption);line-height:var(--text-caption-lh)}
+  .kv span{color:var(--text2)}
+  .kv b{font-weight:500;text-align:right}
+
+  /* ── The commitment bar ── */
+  .bar{position:sticky;bottom:0;z-index:10;margin-top:16px;
+    display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+    padding:12px 16px;border-radius:var(--radius-lg);
+    background:var(--surface);border:1px solid rgba(15,21,18,.05);
+    box-shadow:var(--sh-pop)}
+  .bar .t{flex:1;min-width:160px;font-size:var(--text-caption);
+    line-height:var(--text-caption-lh);color:var(--text2)}
+  .bar .t b{font-weight:600;color:var(--ink);font-variant-numeric:tabular-nums}
+
+  /* ═══ 4 · Done ═══
+     The one surface on this flow with nothing competing for the eye, so it is
+     the one that earns Prompt. English copy only — Instrument Serif ships no
+     Cyrillic, and nothing here interpolates a client name. */
+  .finish{max-width:480px;margin:8vh auto 0;text-align:center}
+  .ring{width:64px;height:64px;margin:0 auto 24px;border-radius:var(--radius-full);
+    display:grid;place-items:center;background:var(--wash);color:var(--forest)}
+  .finish h1{font-family:var(--font-display);font-weight:400;
+    font-size:var(--text-prompt);line-height:var(--text-prompt-lh);
+    letter-spacing:var(--text-prompt-ls);text-wrap:balance}
+  .finish > p{font-size:var(--text-lead);line-height:var(--text-lead-lh);
+    color:var(--text2);margin-top:12px}
+  .tally{display:flex;justify-content:center;gap:32px;margin-top:32px;
+    padding:20px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+  .tally div{text-align:center}
+  .tally .metric{color:var(--ink)}
+  .tally .lb{margin-top:4px}
+  .nxs{display:flex;flex-direction:column;gap:8px;margin-top:32px;text-align:left}
+  .nx{display:flex;align-items:center;gap:12px;padding:16px;
+    border:1px solid var(--line);border-radius:var(--radius-lg);background:var(--surface);
+    transition:border-color .15s var(--ease-contour),background .15s var(--ease-contour)}
+  .nx:hover{border-color:var(--forest);background:var(--wash)}
+  .nx .ic{width:32px;height:32px;flex:none;border-radius:var(--radius-md);
+    display:grid;place-items:center;background:var(--wash);color:var(--forest)}
+  .nx b{display:block;font-size:var(--text-body);font-weight:600}
+  .nx span{display:block;font-size:var(--text-caption);
+    line-height:var(--text-caption-lh);color:var(--text2);margin-top:2px}
+  .nx.pri{background:var(--forest);border-color:var(--forest);color:#fff}
+  .nx.pri .ic{background:rgba(255,255,255,.14);color:var(--accent)}
+  .nx.pri span{color:rgba(255,255,255,.75)}
+  .nx.pri:hover{background:var(--forest-deep)}
+
+  /* ═══ Overlays ═══ Modal, and only where focus genuinely must be protected:
+     an irreversible discard, and the schedule decision an approve makes. */
+  dialog{border:none;padding:0;background:none;max-width:none;max-height:none}
+  dialog::backdrop{background:rgba(12,46,32,.4)}
+  .dlg{width:min(440px,calc(100vw - 32px));background:var(--surface);
+    border-radius:var(--radius-xl);box-shadow:var(--sh-frame);padding:24px}
+  .dlg h2{font-size:var(--text-title);font-weight:600;
+    line-height:var(--text-title-lh);letter-spacing:var(--text-title-ls)}
+  .dlg > p{font-size:var(--text-caption);line-height:var(--text-caption-lh);
+    color:var(--text2);margin-top:8px}
+  .dlg .acts{display:flex;justify-content:flex-end;gap:8px;margin-top:24px}
+  .opts{display:flex;flex-direction:column;gap:8px;margin-top:16px}
+  .opt{display:flex;align-items:center;gap:12px;padding:12px;width:100%;
+    border:1px solid var(--line2);border-radius:var(--radius-md);
+    transition:border-color .15s var(--ease-contour),background .15s var(--ease-contour)}
+  .opt:hover{border-color:color-mix(in srgb,var(--text3) 45%,transparent);background:var(--sunken)}
+  .opt[aria-checked="true"]{border-color:var(--forest);background:var(--wash);
+    box-shadow:inset 0 0 0 1px var(--forest)}
+  .opt b{display:block;font-size:var(--text-body);font-weight:500}
+  .opt span{display:block;font-size:var(--text-caption);color:var(--text2);margin-top:2px}
+  .opt .tick{margin-left:auto;color:var(--forest);opacity:0}
+  .opt[aria-checked="true"] .tick{opacity:1}
+
+  /* ═══ Toasts ═══ components/ui/toast, positioned once. */
+  .toasts{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:60;
+    display:flex;flex-direction:column;gap:8px;align-items:center;pointer-events:none}
+  @keyframes toast-in{from{opacity:0;transform:translateY(8px)}}
+  .toast{display:flex;align-items:center;gap:8px;padding:8px 16px;
+    border-radius:var(--radius-full);background:var(--forest-deep);color:var(--on-dark);
+    font-size:var(--text-caption);box-shadow:var(--sh-dark);
+    animation:toast-in .25s var(--ease-contour) both}
+  .toast svg{color:var(--spring-lite);flex:none}
+
+  /* Motion confirms and guides; it never decorates — so with motion turned off
+     nothing here is lost. Every state this file animates is also stated in text. */
+  @media(prefers-reduced-motion:reduce){
+    *,*::before,*::after{animation-duration:.01ms !important;animation-iteration-count:1 !important;
+      transition-duration:.01ms !important}
+  }
+</style>
+</head>
+<body>
+
+<canvas class="field" id="fieldTerrain" aria-hidden="true"></canvas>
+<canvas class="field" id="fieldPeak" aria-hidden="true"></canvas>
+
+<div class="shell">
+
+  <header class="top">
+    <span class="wm"><i>k</i><span>kontuur<em>.</em></span></span>
+    <nav class="steps" id="steps" aria-label="Generation progress"></nav>
+    <button class="quit" id="quit">Cancel run</button>
+  </header>
+
+  <main class="stage" id="stage">
+
+    <!-- ══════════ 1 · SET UP ══════════ -->
+    <section class="view setup" id="v1">
+      <div class="card sheet">
+        <h1>Generate posts</h1>
+        <p class="sub">Everything on one screen. The panel on the right updates as you choose.</p>
+
+        <div class="grp" style="border-top:none;margin-top:20px;padding-top:0">
+          <h2>Client</h2>
+          <div class="picker">
+            <button class="cli" id="cliBtn" aria-haspopup="listbox" aria-expanded="false">
+              <span class="av" id="cliAv"></span>
+              <span class="who"><b id="cliName"></b><span id="cliMeta"></span></span>
+              <svg class="cv" width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M4 5.5 7 8.5l3-3"/></svg>
+            </button>
+            <div class="menu" id="cliMenu" role="listbox" hidden></div>
+          </div>
+        </div>
+
+        <div class="grp">
+          <h2>Platform</h2>
+          <div class="pills" id="plats" role="group" aria-label="Platform"></div>
+          <p class="pnote" id="platNote"></p>
+        </div>
+
+        <div class="grp">
+          <h2>Format</h2>
+          <div class="fmt" id="fmt"></div>
+        </div>
+
+        <div class="grp">
+          <h2>How many</h2>
+          <div class="counts">
+            <span class="cnt2">
+              <span class="stepper">
+                <button id="qMinus" aria-label="One post fewer"><svg width="12" height="12" viewBox="0 0 12 12" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M2.5 6h7"/></svg></button>
+                <span class="v" id="qVal">3</span>
+                <button id="qPlus" aria-label="One post more"><svg width="12" height="12" viewBox="0 0 12 12" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M6 2.5v7M2.5 6h7"/></svg></button>
+              </span>
+              <span class="cl2">posts</span>
+            </span>
+            <span class="cnt2" id="slideRow">
+              <span class="stepper">
+                <button id="slMinus" aria-label="One slide fewer"><svg width="12" height="12" viewBox="0 0 12 12" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M2.5 6h7"/></svg></button>
+                <span class="v" id="slVal">6</span>
+                <button id="slPlus" aria-label="One slide more"><svg width="12" height="12" viewBox="0 0 12 12" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M6 2.5v7M2.5 6h7"/></svg></button>
+              </span>
+              <span class="cl2">slides each</span>
+            </span>
+          </div>
+          <p class="cap" id="qNote" style="margin-top:12px"></p>
+        </div>
+
+        <div class="grp">
+          <h2>Priority briefs <em>— optional</em></h2>
+          <div class="blist" id="blist"></div>
+          <button class="brief" id="addBrief">
+            <span class="ic"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M7 3v8M3 7h8"/></svg></span>
+            <span><b>Add a campaign or announcement</b><span>Written first, ahead of the researched mix</span></span>
+          </button>
+        </div>
+      </div>
+
+      <aside class="run">
+        <div class="hd">
+          <p class="lb">This run</p>
+          <p class="runnum" id="runN">3 posts</p>
+          <p class="of" id="runOf"></p>
+        </div>
+        <div class="bd">
+          <div class="rrow"><span>Drafts land in</span><b>Review queue</b></div>
+          <div class="rrow"><span>Research</span><b class="good" id="runResearch">Sources + web</b></div>
+          <div class="rrow"><span>Visuals</span><b>Composed per slide</b></div>
+          <div class="rrow"><span>Publishing</span><b class="good" id="runPub">Instagram connected</b></div>
+          <div class="plist">
+            <p class="lb">Content mix</p>
+            <div id="mix"></div>
+            <p class="pnote2" id="mixNote"></p>
+          </div>
+        </div>
+        <div class="ft">
+          <button class="btn pri lg wide" id="go">Generate 3 posts</button>
+          <p class="foot">Nothing publishes from here. You review every draft first.</p>
+        </div>
+      </aside>
+    </section>
+
+    <!-- ══════════ 2 · GENERATING ══════════ -->
+    <section class="view gen" id="v2" hidden>
+      <header>
+        <h1 id="genTitle">Writing three carousels</h1>
+        <p id="genSub">Research, drafting, visuals and quality checks. Each post appears the moment it lands.</p>
+      </header>
+      <div class="stages" id="stages"></div>
+      <div class="counter">
+        <span class="metric" id="genCount">0</span>
+        <span id="genOf">of 3 written</span>
+      </div>
+      <div class="lands" id="lands"></div>
+    </section>
+
+    <!-- ══════════ 3 · REVIEW ══════════ -->
+    <section class="view" id="v3" hidden>
+      <div class="rvh">
+        <div>
+          <h1 id="rvTitle">Three drafts ready</h1>
+          <p class="meta" id="rvMeta"></p>
+        </div>
+        <div class="acts">
+          <div class="seg" role="group" aria-label="Review layout">
+            <button id="segAll" aria-pressed="true">All</button>
+            <button id="segOne" aria-pressed="false">Focus</button>
+          </div>
+          <button class="btn sec" id="newRun">New run</button>
+          <button class="btn pri" id="approveAll">Approve all</button>
+        </div>
+      </div>
+
+      <div class="banner" id="skipBanner" hidden>
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M7 4.5v3M7 9.5v.01"/><circle cx="7" cy="7" r="5.5"/></svg>
+        <span id="skipText"></span>
+        <a href="#sources">Add a source</a>
+      </div>
+
+      <div class="grid" id="grid"></div>
+
+      <div class="ws" id="ws" hidden>
+        <aside class="card rail">
+          <div class="hd"><span class="lb">Drafts</span><span class="mic num" id="railCount"></span></div>
+          <div id="railList"></div>
+        </aside>
+
+        <div class="work">
+          <div class="card">
+            <div class="whd">
+              <span class="nav">
+                <button id="prev" aria-label="Previous draft"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M8.5 3 5 7l3.5 4"/></svg></button>
+                <span class="of" id="wsOf"></span>
+                <button id="next" aria-label="Next draft"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M5.5 3 9 7l-3.5 4"/></svg></button>
+              </span>
+              <!-- Rewrite only. Approving is the commitment bar's job and the
+                   bar is always on screen, so the decision lives in exactly one
+                   place instead of three. Rewrite is a content action on the
+                   draft, not an approval, so it stays with the draft. -->
+              <span class="ttl"><b id="wsTitle"></b><span id="wsMeta"></span></span>
+              <span class="wacts"><span id="wsRewrite"></span></span>
+            </div>
+
+            <div class="strip">
+              <div class="sh">
+                <span class="lb">Slides</span>
+                <span style="display:flex;gap:8px">
+                  <button class="btn ghost sm" id="copyAll">Copy all</button>
+                  <button class="btn sec sm" id="openEd">Open visual editor</button>
+                </span>
+              </div>
+              <div class="films" id="films"></div>
+            </div>
+
+            <div class="slide">
+              <div class="big" id="bigSlide"></div>
+              <div class="sr2">
+                <p class="lb">Slide text</p>
+                <textarea class="ta" id="slideTxt" aria-label="Slide text"></textarea>
+                <div class="sacts">
+                  <button class="btn sec sm" id="regenVis">Regenerate visual</button>
+                  <button class="btn ghost sm" id="replaceVis">Replace image</button>
+                </div>
+                <div class="snote" id="visNote" hidden></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card capb">
+            <div class="hd"><span class="lb">Caption</span><button class="btn ghost sm" id="copyCap">Copy</button></div>
+            <div class="capbody" id="capBody"></div>
+          </div>
+        </div>
+
+        <aside class="card panel" id="panel"></aside>
+      </div>
+
+      <!-- One primary action: Approve & next. Skip defers, Discard rejects,
+           Approve all is the bulk escape — none of them compete for the eye. -->
+      <div class="bar" id="bar" hidden>
+        <p class="t"><b id="barCount"></b> <span id="barNote"></span></p>
+        <button class="btn ghost" id="barSkip">Skip</button>
+        <button class="btn ghost dz" id="barDiscard">Discard</button>
+        <button class="btn sec" id="barAll">Approve all</button>
+        <button class="btn pri" id="barNext">Approve &amp; next</button>
+      </div>
+    </section>
+
+    <!-- ══════════ 4 · DONE ══════════ -->
+    <section class="view finish" id="v4" hidden>
+      <div class="ring">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12.5 9.5 18 20 6.5"/></svg>
+      </div>
+      <h1 id="doneTitle">Three posts approved</h1>
+      <p id="doneSub"></p>
+      <div class="tally" id="tally"></div>
+      <div class="nxs">
+        <button class="nx pri" id="nxCal">
+          <span class="ic"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="2.5" y="3.5" width="11" height="10" rx="2"/><path d="M2.5 6.5h11M5.5 2v3M10.5 2v3"/></svg></span>
+          <span><b>Open the calendar</b><span id="nxCalSub"></span></span>
+        </button>
+        <button class="nx" id="nxApproval">
+          <span class="ic"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M2.5 4.5h11v8h-11z"/><path d="m2.5 5 5.5 4 5.5-4"/></svg></span>
+          <span><b>Send for client approval</b><span>A link the client opens without an account</span></span>
+        </button>
+        <button class="nx" id="nxAgain">
+          <span class="ic"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M3 8a5 5 0 1 1 1.6 3.7"/><path d="M3 4.5V8h3.5"/></svg></span>
+          <span><b>Generate another run</b><span>Same client, or switch to a different one</span></span>
+        </button>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<dialog id="dlgQuit"><form method="dialog" class="dlg">
+  <h2>Discard this run?</h2>
+  <p id="quitBody">The drafts generated so far are not saved yet. Leaving now discards them, along with the visuals composed for them.</p>
+  <div class="acts">
+    <button class="btn ghost" value="stay">Keep working</button>
+    <button class="btn danger" value="quit">Discard and leave</button>
+  </div>
+</form></dialog>
+
+<dialog id="dlgSchedule"><form method="dialog" class="dlg">
+  <h2>Approve — and when does it go out?</h2>
+  <p>Approved drafts sit in the review queue until they have a slot. You can pick one now or leave it unscheduled.</p>
+  <div class="opts" id="schedOpts" role="radiogroup" aria-label="Schedule"></div>
+  <div class="acts">
+    <button class="btn ghost" value="cancel">Cancel</button>
+    <button class="btn pri" value="ok" id="schedOk">Approve</button>
+  </div>
+</form></dialog>
+
+<div class="toasts" id="toasts" role="status" aria-live="polite"></div>
+
+<script>
+/* ══════════════════════════════════════════════════════════════════════
+   The ground — ported from src/components/layout/contour-field.tsx.
+   Constants included: that file's own note says re-deriving them will not
+   reproduce the same field.
+   ══════════════════════════════════════════════════════════════════════ */
+(function () {
+  var PEAKS = [
+    { x: 0.88, y: 0.06, a: 1.0, s: 0.26 },
+    { x: 0.06, y: 0.44, a: 0.78, s: 0.2 },
+    { x: 0.72, y: 0.92, a: 0.92, s: 0.3 },
+    { x: 0.34, y: 1.06, a: 0.6, s: 0.18 },
+    { x: 1.04, y: 0.56, a: 0.7, s: 0.22 }
+  ];
+  var CASES = [[],[[3,2]],[[2,1]],[[3,1]],[[0,1]],[[3,0],[2,1]],[[0,2]],[[3,0]],
+               [[3,0]],[[0,2]],[[3,2],[0,1]],[[0,1]],[[3,1]],[[2,1]],[[3,2]],[]];
+  var GRID_STEP = 9, LEVELS = 15, MAX_DPR = 2;
+
+  function field(nx, ny) {
+    var v = 0;
+    for (var i = 0; i < PEAKS.length; i++) {
+      var p = PEAKS[i], dx = nx - p.x, dy = ny - p.y;
+      v += p.a * Math.exp(-(dx * dx + dy * dy) / (2 * p.s * p.s));
+    }
+    return v;
+  }
+  function lerp(a, b, pa, pb, level) {
+    var t = (level - a) / (b - a);
+    return [pa[0] + (pb[0] - pa[0]) * t, pa[1] + (pb[1] - pa[1]) * t];
+  }
+  function sizeToBox(c, ctx) {
+    var dpr = Math.min(window.devicePixelRatio || 1, MAX_DPR);
+    c.width = Math.round(c.clientWidth * dpr);
+    c.height = Math.round(c.clientHeight * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  function drawField(c, ctx) {
+    var w = c.clientWidth, h = c.clientHeight;
+    if (!w || !h) return;
+    sizeToBox(c, ctx);
+    ctx.clearRect(0, 0, w, h);
+    var cols = Math.ceil(w / GRID_STEP), rows = Math.ceil(h / GRID_STEP);
+    var grid = new Float32Array((cols + 1) * (rows + 1));
+    for (var gy = 0; gy <= rows; gy++)
+      for (var gx = 0; gx <= cols; gx++)
+        grid[gy * (cols + 1) + gx] = field((gx * GRID_STEP) / w, (gy * GRID_STEP) / h);
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    for (var li = 1; li <= LEVELS; li++) {
+      var level = li * 0.075;
+      /* Run HOTTER than contour-field.tsx's shipped .05–.14 at 0.7px. That
+         file is tuned for the dashboard, where body text sits directly on the
+         ground; here every word is on an opaque sheet or in the clear centre
+         column, so the terrain only ever shows in the margins and can carry the
+         motif properly. Same values the onboarding flow uses. Porting these
+         back into the app would put them under body text — there, lower the
+         stroke before darkening --text3. */
+      ctx.strokeStyle = 'rgba(22, 68, 48, ' + (0.10 + li * 0.013).toFixed(3) + ')';
+      ctx.lineWidth = li % 5 === 0 ? 1.4 : 0.9;
+      ctx.beginPath();
+      for (var y = 0; y < rows; y++) for (var x = 0; x < cols; x++) {
+        var i0 = y * (cols + 1) + x;
+        var tl = grid[i0], tr = grid[i0 + 1], bl = grid[i0 + cols + 1], br = grid[i0 + cols + 2];
+        var idx = (tl >= level ? 8 : 0) | (tr >= level ? 4 : 0) | (br >= level ? 2 : 0) | (bl >= level ? 1 : 0);
+        var segs = CASES[idx];
+        if (!segs.length) continue;
+        var px = x * GRID_STEP, py = y * GRID_STEP;
+        var pTL = [px, py], pTR = [px + GRID_STEP, py],
+            pBR = [px + GRID_STEP, py + GRID_STEP], pBL = [px, py + GRID_STEP];
+        var edges = [lerp(tl, tr, pTL, pTR, level), lerp(tr, br, pTR, pBR, level),
+                     lerp(bl, br, pBL, pBR, level), lerp(tl, bl, pTL, pBL, level)];
+        for (var s = 0; s < segs.length; s++) {
+          var a = edges[segs[s][0]], b = edges[segs[s][1]];
+          ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]);
+        }
+      }
+      ctx.stroke();
+    }
+  }
+
+  var terrain = document.getElementById('fieldTerrain');
+  var tctx = terrain.getContext('2d');
+  drawField(terrain, tctx);
+  var t; window.addEventListener('resize', function () {
+    clearTimeout(t); t = setTimeout(function () { drawField(terrain, tctx); }, 120);
+  });
+
+  /* Layer 2 — the terrain rises where you point, so attention reads as
+     elevation. Still motion, so it does not run under reduced motion. */
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  var peak = document.getElementById('fieldPeak');
+  var pctx = peak.getContext('2d');
+  var cur = null, tgt = null, raf = null;
+  var rect = peak.getBoundingClientRect();
+  new ResizeObserver(function () {
+    sizeToBox(peak, pctx); rect = peak.getBoundingClientRect();
+  }).observe(peak);
+  sizeToBox(peak, pctx);
+  function render() {
+    raf = null;
+    pctx.clearRect(0, 0, peak.clientWidth, peak.clientHeight);
+    if (!cur || !tgt) return;
+    cur.x += (tgt.x - cur.x) * 0.14; cur.y += (tgt.y - cur.y) * 0.14;
+    for (var r = 1; r <= 6; r++) {
+      pctx.beginPath();
+      pctx.arc(cur.x, cur.y, r * 15, 0, Math.PI * 2);
+      pctx.strokeStyle = 'rgba(22, 68, 48, ' + (0.16 - r * 0.021).toFixed(3) + ')';
+      pctx.lineWidth = r === 5 ? 1.4 : 0.9;
+      pctx.stroke();
+    }
+    if (Math.abs(tgt.x - cur.x) > 0.4 || Math.abs(tgt.y - cur.y) > 0.4)
+      raf = requestAnimationFrame(render);
+  }
+  window.addEventListener('pointermove', function (e) {
+    tgt = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+    if (!cur) cur = { x: tgt.x, y: tgt.y };
+    if (raf === null) raf = requestAnimationFrame(render);
+  }, { passive: true });
+})();
+
+/* ══════════════════════════════════════════════════════════════════════
+   Sample data. Every shape below mirrors something the app really has:
+   PostData + ValidationData (src/types/post.ts), SourceGroundingIssue and
+   LanguageIssue (src/ai/validation/types.ts), DraftVisual
+   (features/generate/lib/draft-visuals.ts).
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* CLIENT_COLORS, src/utils/constants.ts. Assigned by hashing the client's
+   name, never by list position — hard-coded here to the value the hash gives. */
+var CLIENTS = [
+  { id:'asm', name:'About Social Media', niche:'Social media marketing agency',
+    lang:'English', tone:'Casual', perWeek:3, hue:'#164430', initials:'AS', igConnected:true, web:true,
+    pillars:[
+      { name:'Meta ads expertise',            weight:40, sources:3, hue:'#164430' },
+      { name:'Google ads expertise',          weight:30, sources:2, hue:'#2E9E68' },
+      { name:'AI in digital marketing',       weight:20, sources:4, hue:'#1F6B7A' },
+      { name:'Social media expertise & tips', weight:10, sources:0, hue:'#8A6116' }
+    ] },
+  { id:'fiz', name:'Физиомед', niche:'Физиотерапия и рехабилитация',
+    lang:'Български', tone:'Professional', perWeek:2, hue:'#1F6B7A', initials:'ФМ', igConnected:false, web:true,
+    pillars:[
+      { name:'Профилактика',   weight:45, sources:2, hue:'#1F6B7A' },
+      { name:'Възстановяване', weight:35, sources:3, hue:'#6E7F52' },
+      { name:'Спорт и травми', weight:20, sources:1, hue:'#A2603F' }
+    ] },
+  { id:'grn', name:'GreenLeaf Kitchen', niche:'Farm-to-table restaurant',
+    lang:'English', tone:'Warm', perWeek:4, hue:'#6E7F52', initials:'GK', igConnected:true, web:false,
+    pillars:[
+      { name:'Seasonal menu', weight:50, sources:2, hue:'#6E7F52' },
+      { name:'Producers',     weight:30, sources:1, hue:'#7FA588' },
+      { name:'Behind the pass', weight:20, sources:0, hue:'#A2603F' }
+    ] }
+];
+
+/* Grounds for the composed visuals. These are content — a post carries the
+   client's own palette, which DESIGN.md keeps out of Kontuur's chrome but
+   allows in what Kontuur produces. Nothing here is reused from the auth or
+   landing surfaces. */
+var GROUNDS = [
+  ['linear-gradient(160deg,#2f4a3d,#16261f)','linear-gradient(160deg,#3d4a3a,#1b241a)',
+   'linear-gradient(160deg,#4a4438,#241f18)','linear-gradient(160deg,#2b3f4a,#141f24)',
+   'linear-gradient(160deg,#3f3a4a,#1e1b24)','linear-gradient(160deg,#164430,#0c2e20)'],
+  ['linear-gradient(160deg,#3a4a4a,#182424)','linear-gradient(160deg,#4a423a,#241f1a)',
+   'linear-gradient(160deg,#2f4438,#16241d)','linear-gradient(160deg,#454a3a,#22241a)',
+   'linear-gradient(160deg,#3a4550,#1a2028)','linear-gradient(160deg,#1f6b7a,#0e3038)'],
+  ['linear-gradient(160deg,#4a3f3a,#241d1a)','linear-gradient(160deg,#3a4a44,#1a2420)',
+   'linear-gradient(160deg,#42474a,#1f2224)','linear-gradient(160deg,#4a463a,#24211a)',
+   'linear-gradient(160deg,#374a42,#1a2420)','linear-gradient(160deg,#6e7f52,#333b25)']
+];
+
+var POSTS = [
+  {
+    id:'p1', pillar:'Meta ads expertise', pillarHue:'#164430',
+    title:'Advantage+ has a floor, and it is $1,000 a week',
+    scores:{ overall:9, human:9, language:10, source:8 },
+    issues:[], aiTells:[], langIssues:[],
+    slides:[
+      { k:'Cover',    x:'Advantage+ doesn’t work the day you switch it on' },
+      { k:'Slide 2',  x:'The learning phase needs roughly 50 conversions a week, per ad set.' },
+      { k:'Slide 3',  x:'At a $20 CPA that is $1,000 a week. Minimum.' },
+      { k:'Slide 4',  x:'Below that, the ad set never leaves learning.' },
+      { k:'Slide 5',  x:'So: fewer ad sets, more budget in each one.' },
+      { k:'Slide 6',  x:'Consolidate first. Then turn it on.' }
+    ],
+    /* One visual came back as an error — DraftVisual.status === 'error'.
+       The retry is the real affordance; nothing here claims to detect
+       baked-in text, because nothing in the pipeline does. */
+    visuals:['done','error','done','done','done','done'],
+    caption:'<p><b>Advantage+ doesn’t work the day you switch it on.</b></p><p>The learning phase needs roughly 50 conversion events per week, per ad set, before delivery stabilises. At a $20 average CPA that is a $1,000 weekly minimum — not a recommendation, a floor. Below it, the ad set keeps relearning and you keep paying for the lesson.</p><p>Consolidate your ad sets before you turn it on, not after.</p><span class="tags">#MetaAds #PerformanceMarketing #AdvantagePlus</span>',
+    source:{ title:'About the learning phase', host:'facebook.com/business/help',
+             type:'Web research', when:'2 Aug' },
+    claims:[
+      { c:'The learning phase needs roughly 50 conversions a week, per ad set.',
+        e:'Ad sets exit the learning phase after approximately <mark>50 optimisation events</mark> within a seven-day window.',
+        status:'grounded' },
+      { c:'At a $20 CPA that is $1,000 a week.',
+        e:'The source states the event threshold. The spend figure is arithmetic on an assumed $20 CPA, which the source does not mention.',
+        status:'partially_grounded' }
+    ]
+  },
+  {
+    id:'p2', pillar:'Google ads expertise', pillarHue:'#2E9E68',
+    title:'Smart Bidding, in plain terms',
+    scores:{ overall:8, human:8, language:9, source:9 },
+    issues:[], aiTells:[], langIssues:[],
+    slides:[
+      { k:'Cover',   x:'Smart Bidding decides what a click is worth before you do' },
+      { k:'Slide 2', x:'It reads device, location, time of day and remarketing list.' },
+      { k:'Slide 3', x:'At auction time. Per auction. You cannot do that by hand.' },
+      { k:'Slide 4', x:'But it only works on clean conversion data.' },
+      { k:'Slide 5', x:'Give it 30 days before you judge it.' },
+      { k:'Slide 6', x:'Fix your tracking first. Then hand over the bids.' }
+    ],
+    visuals:['done','done','done','done','done','done'],
+    caption:'<p><b>Smart Bidding sets your bid for every single auction.</b></p><p>It reads signals you cannot evaluate by hand — device, location, time of day, remarketing list — and prices the click accordingly. That is the whole advantage, and it collapses entirely if your conversion tracking is wrong.</p><p>Fix the tracking. Then give it thirty days before you decide.</p><span class="tags">#GoogleAds #SmartBidding #PPC</span>',
+    source:{ title:'About Smart Bidding', host:'support.google.com',
+             type:'Web research', when:'2 Aug' },
+    claims:[
+      { c:'It reads device, location, time of day and remarketing list.',
+        e:'Smart Bidding uses a wide range of contextual signals — such as <mark>device, location, time of day</mark> and remarketing list — at auction time.',
+        status:'grounded' }
+    ]
+  },
+  {
+    id:'p3', pillar:'AI in digital marketing', pillarHue:'#1F6B7A',
+    title:'Where AI actually moves the needle',
+    scores:{ overall:6, human:5, language:7, source:8 },
+    issues:[{ type:'specificity', d:'Slide 3 lists three capabilities without naming a platform or a number.' }],
+    aiTells:['In this ever-evolving landscape', 'it’s crucial to leverage'],
+    worst:'In this ever-evolving landscape',
+    langIssues:[{ type:'register', from:'it’s crucial to leverage', to:'you need to use',
+                  d:'Corporate register. This client’s brand voice is Casual.' }],
+    slides:[
+      { k:'Cover',   x:'AI isn’t replacing your media buyer' },
+      { k:'Slide 2', x:'It is replacing their spreadsheet.' },
+      { k:'Slide 3', x:'Pausing underperformers. Reallocating budget. Adjusting bids.' },
+      { k:'Slide 4', x:'In this ever-evolving landscape, it’s crucial to leverage automation.' },
+      { k:'Slide 5', x:'What it doesn’t do: decide what you are selling.' },
+      { k:'Slide 6', x:'Or why anyone should care.' }
+    ],
+    visuals:['done','done','generating','generating','generating','generating'],
+    caption:'<p><b>Automated bidding now pauses ad sets and moves budget without a human in the loop.</b></p><p>In this ever-evolving landscape, it’s crucial to leverage automation for the mechanical work. What it does not do is decide what you are selling, who it is for, or why anyone should care.</p><span class="tags">#AIMarketing #AdOps #DigitalStrategy</span>',
+    source:{ title:'Automated bidding is quietly rewriting ad ops', host:'searchengineland.com',
+             type:'Web research', when:'1 Aug' },
+    claims:[
+      { c:'Automated systems pause underperformers and shift budget without manual input.',
+        e:'Automated systems <mark>pause underperforming ad sets and shift budget</mark> toward better performers without manual input.',
+        status:'grounded' }
+    ]
+  }
+];
+
+/* Thresholds, src/lib/content-rules/constants.ts. */
+var REWRITE_SCORE_THRESHOLD = 7;
+var AUTHENTICITY_URGENT_THRESHOLD = 6;
+
+/* ══════════════════════════════════════════════════════════════════════
+   allocateByWeight — ported from src/lib/clients/content-pillars.ts so the
+   mix shown before the run is the mix the run asks for, not a hand-written
+   table. The history nudge (recentPillarCounts) is server-side; this is the
+   memoryless branch, which is what a client-side preview can honestly show.
+   ══════════════════════════════════════════════════════════════════════ */
+function allocateByWeight(pillars, total) {
+  var result = {};
+  if (!pillars.length || total <= 0) return result;
+  var totalWeight = pillars.reduce(function (s, p) { return s + p.weight; }, 0);
+  if (totalWeight <= 0) return result;
+  var raw = pillars.map(function (p) { return (p.weight / totalWeight) * total; });
+  var floored = raw.map(Math.floor);
+  var remaining = total - floored.reduce(function (s, v) { return s + v; }, 0);
+  var order = raw.map(function (v, i) { return { i: i, key: v - floored[i] }; })
+                 .sort(function (a, b) { return b.key - a.key; });
+  for (var k = 0; k < order.length && remaining > 0; k++) { floored[order[k].i]++; remaining--; }
+  pillars.forEach(function (p, i) { result[p.name] = floored[i]; });
+  return result;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   State
+   ══════════════════════════════════════════════════════════════════════ */
+var S = {
+  view: 1,
+  clientId: 'asm',
+  platform: 'Instagram',
+  format: 'carousel',
+  slides: 6,
+  qty: 3,
+  briefs: [],
+  posts: [],
+  approved: [],
+  discarded: [],
+  focusId: null,
+  slideIdx: 0,
+  layout: 'all',
+  skipped: []
+};
+
+var PLATFORMS = [
+  { name:'Instagram',   live:true  },
+  { name:'Facebook',    live:true  },
+  { name:'LinkedIn',    live:false },
+  { name:'X / Twitter', live:false },
+  { name:'TikTok',      live:false }
+];
+
+var WORDS = ['zero','one','two','three','four','five','six','seven','eight','nine','ten'];
+function word(n) { return WORDS[n] || String(n); }
+function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+function plural(n, s) { return n + ' ' + s + (n === 1 ? '' : 's'); }
+function client() { return CLIENTS.find(function (c) { return c.id === S.clientId; }); }
+function el(id) { return document.getElementById(id); }
+
+/* Tint the ground, darken the ink — components/ui/avatar.tsx. Never a solid
+   fill under white text: the lighter members of CLIENT_COLORS fail 4.5:1. */
+function tint(hue) { return 'color-mix(in srgb, ' + hue + ' 14%, transparent)'; }
+function darken(hue) { return 'color-mix(in srgb, ' + hue + ' 78%, var(--ink))'; }
+/* The dark-ground counterpart of "tint the ground, darken the ink": on Pine
+   Deep the identity hues invert, so the mark is lightened toward the on-dark
+   off-white instead. Forest at full strength is 1.2:1 there — gone. */
+function lighten(hue) { return 'color-mix(in srgb, ' + hue + ' 45%, var(--on-dark))'; }
+
+function toast(msg) {
+  var t = document.createElement('div');
+  t.className = 'toast';
+  t.innerHTML = '<svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M2.5 7.5 6 11l5.5-7"/></svg>' + msg;
+  el('toasts').appendChild(t);
+  setTimeout(function () { t.remove(); }, 2600);
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   Chrome
+   ══════════════════════════════════════════════════════════════════════ */
+var STEPS = ['Set up', 'Generating', 'Review'];
+
+function renderSteps() {
+  var here = S.view >= 4 ? 3 : S.view;
+  el('steps').innerHTML = STEPS.map(function (label, i) {
+    var n = i + 1;
+    var state = n < here ? 'done' : n === here ? 'on' : '';
+    var tag = n < here && n === 1 && S.view < 4 ? 'button' : 'span';
+    var mark = n < here
+      ? '<svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M2 6.2 4.8 9 10 3.5"/></svg>'
+      : n;
+    return '<' + tag + ' class="step ' + state + '"' +
+      (n === here ? ' aria-current="step"' : '') +
+      (tag === 'button' ? ' data-step="' + n + '"' : '') + '>' +
+      '<span class="n">' + mark + '</span><span class="lb">' + label + '</span></' + tag + '>' +
+      (i < STEPS.length - 1 ? '<span class="slink' + (n < here ? ' done' : '') + '"></span>' : '');
+  }).join('');
+}
+
+function show(v) {
+  S.view = v;
+  [1, 2, 3, 4].forEach(function (n) { el('v' + n).hidden = n !== v; });
+  el('stage').scrollTop = 0;
+  el('quit').hidden = v === 4;
+  renderSteps();
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   1 · Set up
+   ══════════════════════════════════════════════════════════════════════ */
+function renderClient() {
+  var c = client();
+  var av = el('cliAv');
+  av.textContent = c.initials;
+  av.style.background = tint(c.hue);
+  av.style.color = darken(c.hue);
+  el('cliName').textContent = c.name;
+  el('cliMeta').textContent = c.niche + ' · ' + c.lang + ' · ' + c.tone;
+
+  el('cliMenu').innerHTML = CLIENTS.map(function (x) {
+    return '<button role="option" data-cid="' + x.id + '" aria-selected="' + (x.id === c.id) + '">' +
+      '<span class="av" style="background:' + tint(x.hue) + ';color:' + darken(x.hue) + '">' + x.initials + '</span>' +
+      '<span><b>' + x.name + '</b><span>' + x.niche + ' · ' + plural(x.perWeek, 'post') + ' a week</span></span></button>';
+  }).join('');
+}
+
+function renderPlatforms() {
+  el('plats').innerHTML = PLATFORMS.map(function (p) {
+    return '<button class="pill' + (p.live ? ' live' : '') + '" data-plat="' + p.name + '"' +
+      ' aria-pressed="' + (p.name === S.platform) + '"><span class="dot"></span>' + p.name + '</button>';
+  }).join('');
+
+  var p = PLATFORMS.find(function (x) { return x.name === S.platform; });
+  var c = client();
+  el('platNote').innerHTML = p.live
+    ? (c.igConnected || S.platform === 'Facebook'
+        ? 'Kontuur publishes to ' + S.platform + ' on schedule.'
+        : S.platform + ' isn’t connected for ' + c.name + ' yet — drafts still generate. <a href="#connect">Connect ' + S.platform + '</a>')
+    : 'Kontuur writes for ' + S.platform + ' but doesn’t publish there yet — you’ll copy these out by hand.';
+}
+
+function renderFormat() {
+  var carouselOK = S.platform === 'Instagram';
+  if (!carouselOK && S.format === 'carousel') S.format = 'single';
+  var opts = [
+    { id:'single', b:'Single image', s:'One caption, one composed visual',
+      ic:'<rect x="2.5" y="3.5" width="11" height="9" rx="2"/><circle cx="6" cy="7" r="1.2"/><path d="M3 11.5 6 9l2.5 2 2-1.5 2.5 2"/>' },
+    { id:'carousel', b:'Carousel', s: S.slides + ' slides, a visual on each',
+      ic:'<rect x="1.5" y="3.5" width="9" height="9" rx="2"/><path d="M12 5v6M14.5 6.5v3"/>' }
+  ];
+  el('fmt').innerHTML = opts.map(function (o) {
+    var off = o.id === 'carousel' && !carouselOK;
+    return '<button class="fc" data-fmt="' + o.id + '" aria-pressed="' + (S.format === o.id) + '"' +
+      (off ? ' disabled' : '') + '>' +
+      '<span class="ic"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true">' + o.ic + '</svg></span>' +
+      '<b>' + o.b + '</b><span>' + (off ? 'Instagram only' : o.s) + '</span></button>';
+  }).join('');
+  /* Slides-per-carousel lives beside the post count, so it appears and
+     disappears in place rather than moving the row below it. */
+  el('slideRow').hidden = S.format !== 'carousel';
+  el('slVal').textContent = S.slides;
+}
+
+function renderMix() {
+  var c = client();
+  var alloc = allocateByWeight(c.pillars, S.qty);
+  var starved = c.pillars.filter(function (p) { return p.sources === 0; });
+
+  el('mix').innerHTML = c.pillars.map(function (p) {
+    var n = alloc[p.name] || 0;
+    var empty = p.sources === 0;
+    return '<div class="prow' + (empty || n === 0 ? ' none' : '') + '">' +
+      '<span class="dot" style="background:' + lighten(p.hue) + '"></span>' +
+      '<span class="nm">' + p.name + '</span>' +
+      '<span class="q2">' + (empty ? 'no sources' : n === 0 ? '—' : plural(n, 'post')) + '</span></div>';
+  }).join('');
+
+  /* Genuinely knowable before the run: pillarHasSources() reads
+     client_sources.pillar_ids, which is loaded at setup. With web research on
+     this is a SOFT skip — search may still serve it — and that nuance is the
+     honest thing to say. The draft asserted the skip as settled fact on this
+     screen, but skipped_pillars is a stream event that does not exist yet. */
+  el('mixNote').innerHTML = starved.length === 0
+    ? 'Weighted by this client’s pillars. Research decides the final split.'
+    : plural(starved.length, 'pillar') + ' has no sources of its own. ' +
+      (c.web
+        ? 'Web research will look; if nothing lands, it is skipped. '
+        : 'Web research is off for this client, so it will be skipped. ') +
+      '<a href="#sources">Add a source</a>';
+}
+
+function renderBriefs() {
+  el('blist').innerHTML = S.briefs.map(function (b, i) {
+    return '<div class="bitem"><span class="chip mark">Priority</span><b>' + b + '</b>' +
+      '<button class="btn ghost sm" data-rmbrief="' + i + '">Remove</button></div>';
+  }).join('');
+}
+
+function renderRun() {
+  var c = client();
+  el('runN').textContent = plural(S.qty, 'post');
+  el('runOf').textContent = S.platform + ' · ' +
+    (S.format === 'carousel' ? 'Carousel, ' + S.slides + ' slides' : 'Single image') +
+    ' · ' + c.name;
+  el('runResearch').textContent = c.web ? 'Sources + web' : 'Sources only';
+  el('runResearch').className = c.web ? 'good' : 'warn';
+  var live = PLATFORMS.find(function (x) { return x.name === S.platform; }).live;
+  if (!live) {
+    el('runPub').textContent = 'Manual — copy out';
+    el('runPub').className = 'warn';
+  } else if (c.igConnected || S.platform === 'Facebook') {
+    el('runPub').textContent = S.platform + ' connected';
+    el('runPub').className = 'good';
+  } else {
+    el('runPub').innerHTML = '<a href="#connect">Connect ' + S.platform + '</a>';
+    el('runPub').className = '';
+  }
+  el('go').textContent = 'Generate ' + plural(S.qty, 'post');
+  el('qNote').innerHTML = 'This client posts <b style="font-weight:500;color:var(--ink)">' +
+    plural(c.perWeek, 'time') + ' a week</b>' +
+    (S.format === 'carousel' ? ' · carousels run 3–10 slides' : '');
+  renderMix();
+}
+
+function renderSetup() {
+  renderClient(); renderPlatforms(); renderFormat(); renderBriefs(); renderRun();
+}
+
+/* ── Setup events ──
+   The listbox is portalled to <body> on load and positioned from the button's
+   rect, so neither .stage's scroll clip nor .view's animated transform can trap
+   it. Re-anchored on scroll and resize rather than left where it opened. */
+document.body.appendChild(el('cliMenu'));
+
+function placeMenu() {
+  var m = el('cliMenu');
+  if (m.hidden) return;
+  var r = el('cliBtn').getBoundingClientRect();
+  m.style.left = r.left + 'px';
+  m.style.width = r.width + 'px';
+  /* Flip above the trigger when there is not room below it. */
+  var below = window.innerHeight - r.bottom;
+  var h = m.offsetHeight;
+  m.style.top = (below > h + 8 ? r.bottom + 4 : Math.max(8, r.top - h - 4)) + 'px';
+}
+
+function closeMenu() {
+  el('cliMenu').hidden = true;
+  el('cliBtn').setAttribute('aria-expanded', 'false');
+}
+
+el('cliBtn').onclick = function (e) {
+  e.stopPropagation();
+  var open = el('cliMenu').hidden;
+  el('cliMenu').hidden = !open;
+  this.setAttribute('aria-expanded', String(open));
+  if (open) placeMenu();
+};
+document.addEventListener('click', function (e) {
+  if (!e.target.closest('.picker') && !e.target.closest('.menu')) closeMenu();
+});
+document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeMenu(); });
+el('stage').addEventListener('scroll', placeMenu, { passive: true });
+window.addEventListener('resize', placeMenu);
+el('cliMenu').onclick = function (e) {
+  var b = e.target.closest('[data-cid]'); if (!b) return;
+  S.clientId = b.dataset.cid;
+  S.qty = client().perWeek;
+  el('qVal').textContent = S.qty;
+  renderSetup();
+};
+el('plats').onclick = function (e) {
+  var b = e.target.closest('[data-plat]'); if (!b) return;
+  S.platform = b.dataset.plat;
+  renderPlatforms(); renderFormat(); renderRun();
+};
+el('fmt').onclick = function (e) {
+  var b = e.target.closest('[data-fmt]'); if (!b) return;
+  S.format = b.dataset.fmt;
+  renderFormat(); renderRun();
+};
+el('slMinus').onclick = function () { if (S.slides > 3) { S.slides--; renderFormat(); renderRun(); } };
+el('slPlus').onclick  = function () { if (S.slides < 10) { S.slides++; renderFormat(); renderRun(); } };
+el('qMinus').onclick  = function () { if (S.qty > 1) { S.qty--; el('qVal').textContent = S.qty; renderRun(); } };
+el('qPlus').onclick   = function () { if (S.qty < 8) { S.qty++; el('qVal').textContent = S.qty; renderRun(); } };
+el('addBrief').onclick = function () {
+  S.briefs.push('Autumn retainer offer — ends 30 Sep');
+  renderBriefs();
+  toast('Brief added — it is written first');
+};
+el('blist').onclick = function (e) {
+  var b = e.target.closest('[data-rmbrief]'); if (!b) return;
+  S.briefs.splice(+b.dataset.rmbrief, 1);
+  renderBriefs();
+};
+
+/* ══════════════════════════════════════════════════════════════════════
+   2 · Generating — the four stages the stream really emits
+   ══════════════════════════════════════════════════════════════════════ */
+var STAGES = ['Fetching sources', 'Researching topics', 'Writing captions and slides', 'Quality checks'];
+
+function renderStages(active) {
+  el('stages').innerHTML = STAGES.map(function (s, i) {
+    var cls = i < active ? 'done' : i === active ? 'on' : '';
+    return '<div class="stg ' + cls + '"><div class="tr"><i></i></div><p class="nm">' + s + '</p></div>';
+  }).join('');
+}
+
+/* size: 'full' (cover / canvas) · 'strip' (72px filmstrip) · 'chip' (32px rail).
+   Copy is clamped, never sliced — a headline cut mid-word at 72px reads as a
+   rendering fault rather than as a small preview. At chip scale no type
+   survives at all, so the tile carries the ground only and the row's own title
+   beside it does the identifying. */
+function visualHTML(post, idx, size) {
+  size = size || 'full';
+  var state = post.visuals[idx];
+  var pi = POSTS.indexOf(post);
+  if (state === 'generating') {
+    return '<div class="vis empty">' + (size === 'full' ? '<span class="mic">Composing…</span>' : '') + '</div>';
+  }
+  if (state === 'error') {
+    var r = size === 'full' ? 18 : 12;
+    return '<div class="vis failed">' +
+      '<svg width="' + r + '" height="' + r + '" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M10 6v5M10 13.5v.5"/><circle cx="10" cy="10" r="7.5"/></svg>' +
+      (size === 'full' ? '<span class="mic" style="color:var(--danger)">Visual failed</span>' : '') + '</div>';
+  }
+  var ground = GROUNDS[pi % 3][idx % 6];
+  if (size === 'chip') return '<div class="vis" style="background:' + ground + '"></div>';
+  var s = post.slides[idx];
+  /* The engine alternates between the serif and condensed caps across a
+     carousel — the same variety the EDITORIAL template really produces. */
+  var serif = idx !== 0 && idx % 3 === 1;
+  if (size === 'strip') {
+    return '<div class="vis tile" style="background:' + ground + '">' +
+      '<span class="hl' + (serif ? '' : ' caps') + '">' + s.x + '</span></div>';
+  }
+  return '<div class="vis" style="background:' + ground + '">' +
+    '<span class="pg">' + (idx + 1) + '/' + post.slides.length + '</span>' +
+    '<span class="kick">' + post.pillar + '</span>' +
+    '<span class="hl' + (serif ? '' : ' caps') + '">' + s.x + '</span></div>';
+}
+
+function startRun() {
+  var c = client();
+  var n = S.qty;
+  S.posts = [];
+  S.approved = []; S.discarded = []; S.skipped = [];
+  show(2);
+
+  el('genTitle').textContent = 'Writing ' + word(n) + ' ' +
+    (S.format === 'carousel' ? 'carousel' : 'post') + (n === 1 ? '' : 's') + ' for ' + c.name;
+  el('genOf').textContent = 'of ' + n + ' written';
+  el('genCount').textContent = '0';
+
+  el('lands').innerHTML = Array.from({ length: n }, function (_, i) {
+    return '<div class="land pending" id="ld' + i + '"><span class="n">' + (i + 1) + '</span>' +
+      '<div class="bd"><span class="chip quiet">Researching</span>' +
+      '<div class="skel" style="width:70%;margin-top:12px"></div>' +
+      '<div class="skel" style="width:45%;margin-top:8px"></div></div></div>';
+  }).join('');
+
+  renderStages(0);
+  var t = 0;
+  [1, 2].forEach(function (stage, k) { t += 900; setTimeout(function () { renderStages(stage); }, t); });
+
+  var i = 0;
+  (function nextPost() {
+    if (i >= n) {
+      renderStages(4);
+      /* skipped_pillars is a stream event — it exists only now, which is why
+         the setup screen could only warn about missing sources, not assert a skip. */
+      var starved = client().pillars.filter(function (p) { return p.sources === 0; });
+      S.skipped = starved.map(function (p) { return p.name; });
+      setTimeout(enterReview, 700);
+      return;
+    }
+    setTimeout(function () {
+      var post = POSTS[i % POSTS.length];
+      S.posts.push(post);
+      var low = post.scores.overall < REWRITE_SCORE_THRESHOLD;
+      var node = el('ld' + i);
+      node.className = 'land arrived';
+      node.innerHTML = '<span class="n">' + (i + 1) + '</span><div class="bd">' +
+        '<span class="chip" style="background:' + tint(post.pillarHue) + ';color:' + darken(post.pillarHue) + '">' + post.pillar + '</span>' +
+        '<p class="ti">' + post.title + '</p>' +
+        '<p class="ex">' + post.slides[1].x + '</p></div>' +
+        '<div class="qs"><span class="metric" style="' + (low ? 'color:var(--pending)' : '') + '">' + post.scores.overall + '</span>' +
+        '<p class="lb">quality</p></div>';
+      i++;
+      el('genCount').textContent = i;
+      renderStages(Math.min(2 + (i === n ? 1 : 0), 3));
+      nextPost();
+    }, 1400);
+  })();
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   3 · Review
+   ══════════════════════════════════════════════════════════════════════ */
+function live() {
+  return S.posts.filter(function (p) {
+    return S.approved.indexOf(p.id) < 0 && S.discarded.indexOf(p.id) < 0;
+  });
+}
+
+function enterReview() {
+  S.focusId = S.posts[0] ? S.posts[0].id : null;
+  S.slideIdx = 0;
+  S.layout = 'all';
+  show(3);
+  renderReview();
+}
+
+function renderReview() {
+  var c = client();
+  var n = S.posts.length;
+  var remaining = live().length;
+  var approved = S.approved.length;
+
+  el('rvTitle').textContent = remaining === 0
+    ? 'Everything reviewed'
+    : cap(word(remaining)) + ' draft' + (remaining === 1 ? '' : 's') + ' ready';
+
+  var avg = n ? (S.posts.reduce(function (s, p) { return s + p.scores.overall; }, 0) / n) : 0;
+  el('rvMeta').innerHTML = [c.name, S.platform,
+    S.format === 'carousel' ? 'Carousel · ' + S.slides + ' slides' : 'Single image',
+    'Average quality ' + avg.toFixed(1)].join('<i></i>');
+
+  if (S.skipped.length) {
+    /* How many posts the skip actually cost — the same sum
+       research-orchestrator.ts reports as skippedCount: the skipped pillars'
+       share of the allocation. A pillar that was allocated nothing this run
+       cost nothing, and saying "came back short" there would be false. */
+    var alloc = allocateByWeight(c.pillars, S.qty);
+    var lost = S.skipped.reduce(function (s, name) { return s + (alloc[name] || 0); }, 0);
+    el('skipBanner').hidden = false;
+    el('skipText').innerHTML = '<b>' + plural(S.skipped.length, 'pillar') + ' skipped</b> — ' +
+      'research found nothing for <i>' + S.skipped.join('</i>, <i>') + '</i>. ' +
+      (lost > 0
+        ? 'This run came back with ' + plural(n, 'post') + ' instead of ' + S.qty + '.'
+        : 'Nothing was allocated to it at this size, so the count is unaffected — but it stays skipped until it has a source.');
+  } else {
+    el('skipBanner').hidden = true;
+  }
+
+  el('segAll').setAttribute('aria-pressed', String(S.layout === 'all'));
+  el('segOne').setAttribute('aria-pressed', String(S.layout === 'one'));
+  el('grid').hidden = S.layout !== 'all';
+  el('ws').hidden = S.layout !== 'one';
+  el('bar').hidden = S.layout !== 'one' || remaining === 0;
+  /* In Focus the sticky bar carries Approve all, and the bar never scrolls
+     away — so the header's copy of it would be a second button for one action.
+     Grid has no bar, so there it stays. */
+  el('approveAll').hidden = S.layout === 'one';
+  el('approveAll').disabled = remaining === 0;
+  el('approveAll').textContent = remaining === 0 ? 'All reviewed' : 'Approve all ' + remaining;
+  el('barAll').textContent = 'Approve all ' + remaining;
+
+  if (S.layout === 'all') renderGrid(); else renderFocus();
+
+  el('barCount').textContent = approved + ' of ' + n + ' approved';
+  /* A failure and a wait are different states and get different words — the
+     first needs a retry, the second needs nothing at all. */
+  function countVisuals(state) {
+    return S.posts.reduce(function (s, p) {
+      return s + p.visuals.filter(function (v) { return v === state; }).length;
+    }, 0);
+  }
+  var failed = countVisuals('error'), composing = countVisuals('generating');
+  el('barNote').textContent = [
+    failed ? plural(failed, 'visual') + ' failed' : '',
+    composing ? composing + ' still composing' : ''
+  ].filter(Boolean).map(function (x) { return '· ' + x; }).join(' ');
+}
+
+function renderGrid() {
+  var list = live();
+  if (!list.length) {
+    el('grid').innerHTML = '<div class="card" style="padding:32px;text-align:center;grid-column:1/-1">' +
+      '<p style="font-family:var(--font-display);font-size:var(--text-display);line-height:var(--text-display-lh)">' +
+      'Nothing left in this run.</p>' +
+      '<p class="cap" style="margin-top:8px">' + plural(S.approved.length, 'post') + ' approved, ' +
+      S.discarded.length + ' discarded.</p></div>';
+    return;
+  }
+  el('grid').innerHTML = list.map(function (p) {
+    var low = p.scores.overall < REWRITE_SCORE_THRESHOLD;
+    var broken = p.visuals.filter(function (v) { return v === 'error'; }).length;
+    var waiting = p.visuals.filter(function (v) { return v === 'generating'; }).length;
+    var flag = broken ? '<span class="chip bad">' + plural(broken, 'visual') + ' failed</span>'
+             : waiting ? '<span class="chip wait">' + waiting + ' composing</span>'
+             : '<span class="chip ok">Visuals ready</span>';
+    return '<article class="rc" data-open="' + p.id + '">' +
+      '<div class="cover">' + visualHTML(p, 0) +
+      '<span class="pips">' + p.slides.map(function (_, i) {
+        return '<i class="' + (i === 0 ? 'on' : '') + '"></i>'; }).join('') + '</span></div>' +
+      '<div class="bd">' +
+      /* The score sits in the body beside the pillar, not over the artwork.
+         On the cover it landed on top of the composed headline — the one thing
+         the cover exists to show. */
+      '<div class="row">' +
+      '<span class="chip" style="background:' + tint(p.pillarHue) + ';color:' + darken(p.pillarHue) + '">' + p.pillar + '</span>' +
+      '<span class="chip ' + (low ? 'wait' : 'ok') + ' num">' + p.scores.overall + '/10</span></div>' +
+      '<p class="ti">' + p.title + '</p>' +
+      '<p class="ex">' + p.slides[1].x + '</p>' +
+      '<div class="row">' + flag +
+      (low ? '<span class="chip wait">Needs a rewrite</span>' : '') + '</div>' +
+      '<div class="ft"><span class="src">' + p.source.type + ' · ' + p.source.host + '</span>' +
+      '<button class="btn ghost sm" data-open="' + p.id + '">Open</button>' +
+      '<button class="btn pri sm" data-approve="' + p.id + '">Approve</button></div></div></article>';
+  }).join('');
+}
+
+function focused() {
+  return S.posts.find(function (p) { return p.id === S.focusId; }) || live()[0];
+}
+
+function renderFocus() {
+  var list = live();
+  if (!list.length) { S.layout = 'all'; renderReview(); return; }
+  if (list.indexOf(focused()) < 0) { S.focusId = list[0].id; S.slideIdx = 0; }
+  var p = focused();
+  var idx = list.indexOf(p);
+  var s = p.slides[S.slideIdx];
+  var low = p.scores.overall < REWRITE_SCORE_THRESHOLD;
+  var unhuman = p.scores.human < AUTHENTICITY_URGENT_THRESHOLD;
+
+  /* Rail */
+  el('railCount').textContent = list.length + ' left';
+  el('railList').innerHTML = S.posts.map(function (q) {
+    var gone = S.approved.indexOf(q.id) >= 0 || S.discarded.indexOf(q.id) >= 0;
+    var state = S.approved.indexOf(q.id) >= 0 ? 'Approved'
+              : S.discarded.indexOf(q.id) >= 0 ? 'Discarded' : q.pillar;
+    return '<button class="ri' + (gone ? ' done' : '') + '" data-focus="' + q.id + '"' +
+      (q.id === p.id ? ' aria-current="true"' : '') + '>' +
+      '<span class="th">' + visualHTML(q, 0, 'chip') + '</span>' +
+      '<span class="bd"><b>' + q.title + '</b><span>' + state + '</span></span>' +
+      '<span class="q num">' + (gone ? '✓' : q.scores.overall) + '</span></button>';
+  }).join('');
+
+  /* Header */
+  el('wsOf').textContent = (idx + 1) + ' of ' + list.length;
+  el('prev').disabled = idx === 0;
+  el('next').disabled = idx === list.length - 1;
+  el('wsTitle').textContent = p.title;
+  el('wsMeta').textContent = p.pillar + ' · ' + S.platform + ' · ' +
+    (S.format === 'carousel' ? p.slides.length + ' slides' : 'single');
+
+  /* The rewrite affordance, with the same three labels
+     components/posts/rewrite-button.tsx renders. */
+  el('wsRewrite').innerHTML = (low || unhuman || p.aiTells.length)
+    ? '<button class="btn sec sm" id="doRewrite" style="' +
+      (unhuman ? 'color:var(--danger);border-color:var(--danger-line)'
+               : 'color:var(--pending);border-color:var(--pending)') + '">' +
+      (unhuman ? 'Rewrite — reads as AI' : 'Rewrite — low quality') + '</button>'
+    : '';
+
+  /* Filmstrip */
+  el('films').innerHTML = p.slides.map(function (sl, i) {
+    return '<button class="film" data-slide="' + i + '" aria-pressed="' + (i === S.slideIdx) + '">' +
+      '<span class="im" style="display:block">' + visualHTML(p, i, 'strip') + '</span>' +
+      '<span class="lb2">' + (i + 1) + '</span></button>';
+  }).join('');
+
+  /* Slide */
+  el('bigSlide').innerHTML = visualHTML(p, S.slideIdx);
+  el('slideTxt').value = s.x;
+  var vs = p.visuals[S.slideIdx];
+  el('visNote').hidden = vs === 'done';
+  if (vs === 'error') {
+    el('visNote').innerHTML = '<b>This visual failed to compose</b>' +
+      'The image job came back with an error. Regenerating asks for a new one; approving now attaches the slides that did finish, and you can add this one later from the calendar.';
+  } else if (vs === 'generating') {
+    el('visNote').style.background = 'var(--pending-bg)';
+    el('visNote').innerHTML = '<b style="color:var(--pending)">Still composing</b>' +
+      'Visuals run alongside the copy. Approving now attaches whatever has finished — nothing is lost, the rest arrive in the calendar.';
+  }
+
+  el('capBody').innerHTML = p.caption;
+  renderPanel(p);
+}
+
+function renderPanel(p) {
+  var low = p.scores.overall < REWRITE_SCORE_THRESHOLD;
+  function bar(label, v) {
+    var weak = v < REWRITE_SCORE_THRESHOLD;
+    return '<div class="qb"><span class="n2">' + label + '</span>' +
+      '<span class="tr"><i class="' + (weak ? 'low' : '') + '" style="width:' + (v * 10) + '%"></i></span>' +
+      '<span class="v" style="' + (weak ? 'color:var(--pending)' : '') + '">' + v + '</span></div>';
+  }
+
+  var flags = '';
+  if (p.aiTells.length) {
+    flags += '<div class="flags"><h4>Sounds like AI</h4>' + p.aiTells.map(function (t) {
+      return '<p class="flag wait"><svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M7 4v3.5M7 9.5v.01"/><circle cx="7" cy="7" r="5.5"/></svg>' +
+        '<span>“' + t + '”' + (t === p.worst ? ' <b>— worst offender</b>' : '') + '</span></p>';
+    }).join('') + '</div>';
+  }
+  if (p.issues.length) {
+    flags += '<div class="flags"><h4>Issues to fix</h4>' + p.issues.map(function (i) {
+      return '<p class="flag bad"><svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M4 4l6 6M10 4l-6 6"/></svg>' +
+        '<span><b>' + i.type.replace(/_/g, ' ') + ':</b> ' + i.d + '</span></p>';
+    }).join('') + '</div>';
+  }
+  if (p.langIssues.length) {
+    /* The language layer is the product's differentiator and had no surface in
+       the draft at all. Same panel serves the Bulgarian ruleset — the issue
+       types (anglicism, calque, register, formality) are shared. */
+    flags += '<div class="flags"><h4>Language — ' + client().lang + '</h4>' + p.langIssues.map(function (i) {
+      return '<p class="flag wait"><svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M7 4v3.5M7 9.5v.01"/><circle cx="7" cy="7" r="5.5"/></svg>' +
+        '<span><b>' + i.type + ':</b> ' + i.d + '<span class="fix"><s>' + i.from + '</s> → <b>' + i.to + '</b></span></span></p>';
+    }).join('') + '</div>';
+  }
+
+  var claims = p.claims.map(function (cl) {
+    var ok = cl.status === 'grounded';
+    return '<div class="claim"><p class="c">' + cl.c + '</p>' +
+      '<p class="e">' + cl.e + '</p>' +
+      '<p class="st"><span class="chip ' + (ok ? 'ok' : 'wait') + '">' +
+      (ok ? 'Matched in source' : 'Partly in source — check it') + '</span></p></div>';
+  }).join('');
+
+  el('panel').innerHTML =
+    '<div class="pnl"><div class="hd"><span class="lb">Quality</span>' +
+      '<span class="metric' + (low ? ' low' : '') + '">' + p.scores.overall + '</span></div>' +
+      '<div class="qbars">' + bar('Human', p.scores.human) + bar('Language', p.scores.language) +
+      (p.scores.source === null ? '' : bar('Sources', p.scores.source)) + '</div>' + flags + '</div>' +
+
+    '<div class="pnl"><div class="hd"><span class="lb">Source</span>' +
+      '<span class="chip quiet">' + p.source.when + '</span></div>' +
+      '<p class="srct">' + p.source.title + '</p>' +
+      '<p class="srcu">' + p.source.type + ' · ' + p.source.host + '</p>' + claims +
+      '<div style="display:flex;gap:8px;margin-top:16px">' +
+      '<button class="btn sec sm" style="flex:1">Open source</button>' +
+      '<button class="btn ghost sm">Flag</button></div></div>' +
+
+    '<div class="pnl"><span class="lb">Run</span><div style="margin-top:12px">' +
+      '<div class="kv"><span>Client</span><b>' + client().name + '</b></div>' +
+      '<div class="kv"><span>Platform</span><b>' + S.platform + '</b></div>' +
+      '<div class="kv"><span>Format</span><b>' + (S.format === 'carousel' ? 'Carousel · ' + S.slides + ' slides' : 'Single image') + '</b></div>' +
+      '<div class="kv"><span>Asked for</span><b>' + plural(S.qty, 'post') + '</b></div>' +
+      '<div class="kv"><span>Skipped</span><b style="' + (S.skipped.length ? 'color:var(--pending)' : '') + '">' +
+        (S.skipped.length ? plural(S.skipped.length, 'pillar') : 'None') + '</b></div>' +
+      '</div></div>';
+}
+
+/* ── Review events ── */
+el('segAll').onclick = function () { S.layout = 'all'; renderReview(); };
+el('segOne').onclick = function () { S.layout = 'one'; renderReview(); };
+
+el('grid').onclick = function (e) {
+  var a = e.target.closest('[data-approve]');
+  if (a) { e.stopPropagation(); openSchedule(a.dataset.approve); return; }
+  var o = e.target.closest('[data-open]');
+  if (o) { S.focusId = o.dataset.open; S.slideIdx = 0; S.layout = 'one'; renderReview(); }
+};
+
+el('railList').onclick = function (e) {
+  var b = e.target.closest('[data-focus]'); if (!b) return;
+  S.focusId = b.dataset.focus; S.slideIdx = 0; renderFocus();
+};
+el('films').onclick = function (e) {
+  var b = e.target.closest('[data-slide]'); if (!b) return;
+  S.slideIdx = +b.dataset.slide; renderFocus();
+};
+el('prev').onclick = function () {
+  var l = live(), i = l.indexOf(focused());
+  if (i > 0) { S.focusId = l[i - 1].id; S.slideIdx = 0; renderFocus(); }
+};
+el('next').onclick = function () {
+  var l = live(), i = l.indexOf(focused());
+  if (i < l.length - 1) { S.focusId = l[i + 1].id; S.slideIdx = 0; renderFocus(); }
+};
+el('slideTxt').addEventListener('input', function () {
+  focused().slides[S.slideIdx].x = this.value;
+  el('bigSlide').innerHTML = visualHTML(focused(), S.slideIdx);
+});
+el('regenVis').onclick = function () {
+  var p = focused();
+  p.visuals[S.slideIdx] = 'generating';
+  renderFocus();
+  toast('Composing a new visual for slide ' + (S.slideIdx + 1));
+  setTimeout(function () { p.visuals[S.slideIdx] = 'done'; if (S.view === 3) renderFocus(); }, 1800);
+};
+el('replaceVis').onclick = function () { toast('Upload or pick from the client library'); };
+el('copyCap').onclick = function () { toast('Caption copied'); };
+el('copyAll').onclick = function () { toast('All ' + focused().slides.length + ' slides copied'); };
+/* The visual editor is a shipped surface with its own design (the Konva canvas
+   editor) — this flow hands off to it rather than mocking a lesser version. */
+el('openEd').onclick = function () { toast('Opens the visual editor over this view'); };
+el('panel').onclick = function () {};
+el('wsRewrite').onclick = function (e) {
+  if (!e.target.closest('#doRewrite')) return;
+  var p = focused();
+  toast('Rewriting — fixing ' + plural(p.aiTells.length, 'AI tell'));
+  setTimeout(function () {
+    p.aiTells = []; p.langIssues = []; p.issues = [];
+    p.scores = { overall: 8, human: 8, language: 9, source: p.scores.source };
+    p.slides[3].x = 'Automation handles the mechanical work. You handle the offer.';
+    p.caption = '<p><b>Automated bidding now pauses ad sets and moves budget without a human in the loop.</b></p><p>Let it handle the mechanical work. What it does not do is decide what you are selling, who it is for, or why anyone should care.</p><span class="tags">#AIMarketing #AdOps #DigitalStrategy</span>';
+    if (S.view === 3) renderReview();
+    toast('Rewritten — quality 6 → 8');
+  }, 1600);
+};
+
+el('barDiscard').onclick = function () {
+  var p = focused();
+  S.discarded.push(p.id);
+  toast('Discarded — the source is noted as unhelpful');
+  renderReview();
+};
+el('barNext').onclick = function () { openSchedule(focused().id); };
+el('barSkip').onclick = function () { el('next').click(); };
+el('barAll').onclick = function () { approveAll(); };
+el('approveAll').onclick = function () { approveAll(); };
+el('newRun').onclick = function () { resetRun(); show(1); };
+
+/* ── Approve opens the schedule decision, because that is what it does in the
+   app (features/generate .. ScheduleModal). The draft approved silently and
+   then offered "Schedule them" on the finish screen — the same decision, one
+   screen too late and detached from the post it belongs to. ── */
+var SCHED = [
+  { id:'best', b:'Best time — Tue 18:30', s:'From this client’s own engagement history' },
+  { id:'next', b:'Next open slot — Wed 09:00', s:'The first gap in the posting schedule' },
+  { id:'pick', b:'Pick a date', s:'Choose the day and time yourself' },
+  { id:'none', b:'Leave unscheduled', s:'Sits in the review queue until you give it a slot' }
+];
+var schedChoice = 'best', schedTarget = null;
+
+function renderSched() {
+  el('schedOpts').innerHTML = SCHED.map(function (o) {
+    return '<button type="button" class="opt" role="radio" data-sch="' + o.id + '"' +
+      ' aria-checked="' + (o.id === schedChoice) + '"><span><b>' + o.b + '</b><span>' + o.s + '</span></span>' +
+      '<svg class="tick" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 8.5 6.5 12 13 4.5"/></svg></button>';
+  }).join('');
+}
+el('schedOpts').onclick = function (e) {
+  var b = e.target.closest('[data-sch]'); if (!b) return;
+  schedChoice = b.dataset.sch; renderSched();
+};
+function openSchedule(id) {
+  schedTarget = id; schedChoice = 'best'; renderSched();
+  el('dlgSchedule').showModal();
+}
+el('dlgSchedule').addEventListener('close', function () {
+  if (this.returnValue !== 'ok' || !schedTarget) return;
+  S.approved.push(schedTarget);
+  var label = SCHED.find(function (o) { return o.id === schedChoice; }).b;
+  toast(schedChoice === 'none' ? 'Approved — unscheduled' : 'Approved · ' + label);
+  schedTarget = null;
+  if (live().length === 0) { finish(); return; }
+  var l = live();
+  if (l.indexOf(focused()) < 0) { S.focusId = l[0].id; S.slideIdx = 0; }
+  renderReview();
+});
+
+function approveAll() {
+  live().forEach(function (p) { S.approved.push(p.id); });
+  toast(plural(S.approved.length, 'post') + ' approved');
+  finish();
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   4 · Done
+   ══════════════════════════════════════════════════════════════════════ */
+function finish() {
+  show(4);
+  var a = S.approved.length, d = S.discarded.length;
+  el('doneTitle').textContent = a === 0 ? 'Nothing kept this time'
+    : cap(word(a)) + ' post' + (a === 1 ? '' : 's') + ' approved';
+  el('doneSub').textContent = a === 0
+    ? 'Every draft was discarded. The sources behind them are noted, so the next run leans elsewhere.'
+    : 'They are in the review queue for ' + client().name + '.';
+  el('tally').innerHTML =
+    '<div><p class="metric">' + a + '</p><p class="lb">Approved</p></div>' +
+    '<div><p class="metric">' + d + '</p><p class="lb">Discarded</p></div>' +
+    '<div><p class="metric">' + S.skipped.length + '</p><p class="lb">Pillars skipped</p></div>';
+  el('nxCalSub').textContent = a === 0 ? 'See what is already scheduled'
+    : plural(a, 'draft') + ' waiting for a slot';
+}
+
+el('nxCal').onclick = function () { toast('Opens the calendar'); };
+el('nxApproval').onclick = function () { toast('Approval link sent to the client'); };
+el('nxAgain').onclick = function () { resetRun(); show(1); };
+
+function resetRun() {
+  S.posts = []; S.approved = []; S.discarded = []; S.skipped = [];
+  S.focusId = null; S.slideIdx = 0; S.layout = 'all';
+  POSTS.forEach(function (p, i) {
+    /* Restore the authored sample so a second run through the mock shows the
+       same states — the rewrite and regenerate handlers mutate these. */
+    p.visuals = i === 0 ? ['done','error','done','done','done','done']
+              : i === 2 ? ['done','done','generating','generating','generating','generating']
+              : ['done','done','done','done','done','done'];
+  });
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   Chrome events
+   ══════════════════════════════════════════════════════════════════════ */
+el('go').onclick = startRun;
+
+el('quit').onclick = function () {
+  if (S.view === 1) { toast('Back to the dashboard'); return; }
+  var n = live().length;
+  el('quitBody').textContent = n
+    ? plural(n, 'draft') + ' generated so far are not saved yet. Leaving now discards them, along with the visuals composed for them.'
+    : 'This run is still going. Leaving now stops it — nothing generated so far is saved.';
+  el('dlgQuit').showModal();
+};
+el('dlgQuit').addEventListener('close', function () {
+  if (this.returnValue === 'quit') { resetRun(); show(1); toast('Run discarded'); }
+});
+
+el('steps').onclick = function (e) {
+  var b = e.target.closest('[data-step]');
+  if (b && +b.dataset.step === 1) { resetRun(); show(1); }
+};
+
+/* Keyboard: the review step is a queue, and a queue is worked with the hands
+   on the keys. Arrows move, A approves, D discards — never while typing. */
+document.addEventListener('keydown', function (e) {
+  if (S.view !== 3 || S.layout !== 'one') return;
+  if (document.activeElement && /INPUT|TEXTAREA/.test(document.activeElement.tagName)) return;
+  if (document.querySelector('dialog[open]')) return;
+  if (e.key === 'ArrowRight') { el('next').click(); }
+  else if (e.key === 'ArrowLeft') { el('prev').click(); }
+  else if (e.key === 'a' || e.key === 'A') { el('barNext').click(); }
+  else if (e.key === 'd' || e.key === 'D') { el('barDiscard').click(); }
+});
+
+renderSetup();
+show(1);
+</script>
+</body>
+</html>

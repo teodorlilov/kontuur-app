@@ -83,7 +83,7 @@ export function AccountTab({ agency, currentUserRole }: AccountTabProps) {
         <Field label="Timezone" span={6} hint="Decides the correct day for scheduled generation.">
           <Select
             value={timezone}
-            onChange={(e) => setTimezone(e.target.value)}
+            onChange={(value) => setTimezone(value)}
             disabled={!isAdmin}
             options={getGroupedTimezones().flatMap((group) => group.options)}
           />

@@ -27,6 +27,23 @@ export function completedDraftImages(
     }))
 }
 
+/** Per-draft visual tallies for status chips and the review bar's note. */
+export function countVisualsByStatus(visuals: DraftVisual[] | undefined): {
+  failed: number
+  composing: number
+  done: number
+} {
+  let failed = 0
+  let composing = 0
+  let done = 0
+  for (const visual of visuals ?? []) {
+    if (visual.status === 'error') failed++
+    else if (visual.status === 'generating') composing++
+    else done++
+  }
+  return { failed, composing, done }
+}
+
 /** Every storage path a draft owns (flattened files, docs' clean backgrounds, element assets) —
  *  discard cleanup. */
 export function draftStoragePaths(visuals: DraftVisual[] | undefined): string[] {

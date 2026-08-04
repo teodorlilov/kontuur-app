@@ -89,7 +89,8 @@ export function useDraftVisuals() {
       post: DraftPostInput,
       position: number,
       clean: { publicUrl: string; storagePath: string },
-      signal: AbortSignal
+      signal: AbortSignal,
+      previousDoc?: CanvasDoc
     ): Promise<DraftVisual | null> => {
       try {
         const slideCopy = slideCopyAt(post, position)
@@ -98,8 +99,21 @@ export function useDraftVisuals() {
         if (signal.aborted) return null
         const result = await enqueueCompose(async () => {
           if (signal.aborted) return null
-          const { composeDraftVisual } = await import('@/features/canvas-editor/lib/auto-compose')
-          return composeDraftVisual({
+          const compose = await import('@/features/canvas-editor/lib/auto-compose')
+          if (previousDoc) {
+            // A background swap keeps the editor's work: the existing doc —
+            // hand-edited layers included — rebinds onto the new clean art.
+            // The stored pan/zoom belonged to the old image, so it resets.
+            return compose.recomposeDraftVisual({
+              clientId: post.client_id,
+              draftId: post.id,
+              position,
+              identity,
+              slideCopy,
+              doc: { ...previousDoc, background: clean, backgroundTransform: undefined },
+            })
+          }
+          return compose.composeDraftVisual({
             clientId: post.client_id,
             draftId: post.id,
             position,
@@ -278,6 +292,64 @@ export function useDraftVisuals() {
     [visualsByDraft, draftController, runDraftComposeTask, clientIdentity]
   )
 
+  /**
+   * Replace one slide's art with a user-supplied image. The upload becomes the
+   * new CLEAN background and the text layer is re-composed on top: a slide
+   * with a doc keeps its (possibly hand-edited) layers, a doc-less slide seeds
+   * from the post copy, and a slide whose copy yields no layers keeps the
+   * clean upload as-is. Callers must only offer this on `done`/`error` slides:
+   * a `generating` slide has a compose job in flight whose late result would
+   * overwrite the upload.
+   *
+   * The old state is kept until the upload succeeds, so a failed upload loses
+   * nothing. Cleanup: the endpoint deletes the old FLATTENED file via
+   * `previousStoragePath`; the old doc's clean background is deleted here. The
+   * doc's element assets are left alone — apply-style-to-all can share one
+   * asset across sibling docs, so deleting them for this slide could break
+   * another slide's doc. They are cleaned up with the rest on discard.
+   */
+  const replaceVisual = useCallback(
+    async (post: DraftPostInput, position: number, file: File): Promise<boolean> => {
+      const previous = (visualsByDraft[post.id] ?? []).find((v) => v.position === position)
+      try {
+        const formData = new FormData()
+        formData.set('file', file)
+        formData.set('clientId', post.client_id)
+        formData.set('draftId', post.id)
+        formData.set('position', String(position))
+        if (previous?.storagePath) formData.set('previousStoragePath', previous.storagePath)
+
+        const res = await fetch('/api/ai/generate-visual/upload', { method: 'POST', body: formData })
+        const data = await res.json()
+        if (!res.ok) throw new Error(data.error ?? 'Upload failed')
+        const clean = { publicUrl: data.publicUrl as string, storagePath: data.storagePath as string }
+
+        // Clean refs on the generating entry — an approve mid-compose attaches
+        // the clean upload rather than nothing.
+        setVisual(post.id, { position, status: 'generating', ...clean })
+
+        const backgroundPath = previous?.canvasDoc?.background.storagePath
+        if (backgroundPath) {
+          void fetch('/api/ai/generate-visual', {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ clientId: post.client_id, storagePaths: [backgroundPath] }),
+          })
+        }
+
+        const { signal } = draftController(post.id)
+        const composed = await composeVisual(post, position, clean, signal, previous?.canvasDoc)
+        if (!signal.aborted) setVisual(post.id, composed ?? { position, status: 'done', ...clean })
+        return true
+      } catch (err) {
+        console.error(`[draft-visuals] replace for draft ${post.id} position ${position} failed:`, err)
+        toast.error(err instanceof Error ? err.message : 'Upload failed')
+        return false
+      }
+    },
+    [visualsByDraft, setVisual, composeVisual, draftController]
+  )
+
   /** Stop pending jobs and drop tracking, keeping stored files (approve path — images were attached). */
   const abandonDraft = useCallback((draftId: string) => {
     controllers.current.get(draftId)?.abort()
@@ -319,6 +391,7 @@ export function useDraftVisuals() {
     enqueuePost,
     regenerate,
     applyEditedVisual,
+    replaceVisual,
     recomposeDraft,
     applyStyleAcrossDraft,
     abandonDraft,

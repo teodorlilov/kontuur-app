@@ -44,7 +44,12 @@ export function ImageLightbox({
 
   return (
     // Above the modal layer (z-50) on purpose: a lightbox is opened *from* dialogs.
+    // role="dialog": page-level shortcut handlers (the review flow's keys) suspend
+    // themselves while a [role="dialog"] is open — without it they keep firing under here.
     <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={alt}
       onClick={onClose}
       className="fixed inset-0 z-[200] flex cursor-zoom-out items-center justify-center bg-ink/[0.72] p-6"
     >

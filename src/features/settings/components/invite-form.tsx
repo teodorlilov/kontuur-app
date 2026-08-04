@@ -69,7 +69,7 @@ export function InviteForm() {
         />
       </Field>
       <Field label="Role" span={3}>
-        <Select value={role} onChange={(e) => setRole(e.target.value)} options={ROLE_OPTIONS} />
+        <Select value={role} onChange={(value) => setRole(value)} options={ROLE_OPTIONS} />
       </Field>
       <div className="col-span-12 flex items-end lg:col-span-3">
         <Button onClick={handleSubmit} loading={sending} disabled={!email} className="w-full">

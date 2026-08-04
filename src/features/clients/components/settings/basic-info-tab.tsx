@@ -61,14 +61,14 @@ export function BasicInfoTab({ client, brand, onClientChange, onBrandChange }: B
         <Field label="Primary" span={4}>
           <Select
             value={client.language}
-            onChange={(e) => onClientChange({ language: e.target.value })}
+            onChange={(value) => onClientChange({ language: value })}
             options={languageOptions}
           />
         </Field>
         <Field label="Formality" span={4}>
           <Select
             value={brand.languageFormality}
-            onChange={(e) => onBrandChange({ languageFormality: e.target.value })}
+            onChange={(value) => onBrandChange({ languageFormality: value })}
             options={[...LANGUAGE_FORMALITY_OPTIONS]}
           />
         </Field>
@@ -82,7 +82,7 @@ export function BasicInfoTab({ client, brand, onClientChange, onBrandChange }: B
         <Field label="Posts per run" span={3}>
           <Select
             value={client.postsPerWeek}
-            onChange={(e) => onClientChange({ postsPerWeek: e.target.value })}
+            onChange={(value) => onClientChange({ postsPerWeek: value })}
             options={POSTS_PER_RUN_OPTIONS}
           />
         </Field>

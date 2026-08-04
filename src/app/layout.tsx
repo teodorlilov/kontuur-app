@@ -68,8 +68,11 @@ export default function RootLayout({
       <body className="min-h-full">
         {FB_APP_ID && <meta property="fb:app_id" content={FB_APP_ID} />}
         {children}
+        {/* Top-right: the app's primary actions live in sticky bottom bars
+            (generate's commitment bar, save bars) — a bottom toast covered
+            the very button that fired it. */}
         <Toaster
-          position="bottom-right"
+          position="top-right"
           toastOptions={{
             style: {
               background: 'var(--surface)',

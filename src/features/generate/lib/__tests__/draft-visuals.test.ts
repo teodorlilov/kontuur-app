@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import type { CanvasDoc } from '@/types/canvas'
-import { completedDraftImages, draftStoragePaths, type DraftVisual } from '../draft-visuals'
+import {
+  completedDraftImages,
+  countVisualsByStatus,
+  draftStoragePaths,
+  type DraftVisual,
+} from '../draft-visuals'
 
 const doc = {
   version: 1,
@@ -30,6 +35,18 @@ describe('completedDraftImages', () => {
 
   it('handles undefined', () => {
     expect(completedDraftImages(undefined)).toEqual([])
+  })
+})
+
+describe('countVisualsByStatus', () => {
+  it('tallies error, generating and done independently', () => {
+    // Mid-compose entries carry stored refs but still count as composing
+    expect(countVisualsByStatus(visuals)).toEqual({ failed: 1, composing: 2, done: 1 })
+  })
+
+  it('handles undefined and empty', () => {
+    expect(countVisualsByStatus(undefined)).toEqual({ failed: 0, composing: 0, done: 0 })
+    expect(countVisualsByStatus([])).toEqual({ failed: 0, composing: 0, done: 0 })
   })
 })
 

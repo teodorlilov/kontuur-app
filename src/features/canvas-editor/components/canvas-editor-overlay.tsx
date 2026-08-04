@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AlertTriangle, Redo2, Undo2 } from 'lucide-react'
 import type Konva from 'konva'
 import { Button } from '@/components/ui/button'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { Spinner } from '@/components/ui/spinner'
 import { toast } from '@/components/ui/toast'
 import { useIsMobile } from '@/hooks/useIsMobile'
@@ -67,6 +68,7 @@ export function CanvasEditorOverlay(props: CanvasEditorProps) {
   const docState = useCanvasDoc()
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [mode, setMode] = useState<EditorMode>('edit')
+  const [confirmingClose, setConfirmingClose] = useState(false)
   const [strokes, setStrokes] = useState<BrushStroke[]>([])
   const [brushSize, setBrushSize] = useState(60)
   const [inpaintPrompt, setInpaintPrompt] = useState('')
@@ -117,7 +119,10 @@ export function CanvasEditorOverlay(props: CanvasEditorProps) {
       setStrokes([])
       return
     }
-    if (docState.dirty && !window.confirm('Discard unsaved changes?')) return
+    if (docState.dirty) {
+      setConfirmingClose(true)
+      return
+    }
     onClose()
   }, [mode, docState.dirty, onClose])
 
@@ -686,6 +691,19 @@ export function CanvasEditorOverlay(props: CanvasEditorProps) {
           )}
         </aside>
       </div>
+      <ConfirmDialog
+        open={confirmingClose}
+        title="Discard unsaved changes?"
+        confirmLabel="Discard changes"
+        cancelLabel="Keep editing"
+        onConfirm={() => {
+          setConfirmingClose(false)
+          onClose()
+        }}
+        onClose={() => setConfirmingClose(false)}
+      >
+        This slide has edits that are not saved. Closing the editor now throws them away.
+      </ConfirmDialog>
     </Backdrop>
   )
 }
@@ -694,7 +712,12 @@ export default CanvasEditorOverlay
 
 function Backdrop({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
   return (
+    // role="dialog": page-level shortcut handlers (the review flow's keys) suspend
+    // themselves while a [role="dialog"] is open — without it a stray keypress on the
+    // canvas can act on the page beneath the editor.
     <div
+      role="dialog"
+      aria-modal="true"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) onClose()
       }}

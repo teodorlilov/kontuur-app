@@ -1,9 +1,15 @@
 import { requireSessionUser } from '@/lib/auth/session'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { getCachedAgencyClients } from '@/lib/queries/cache'
-import { fetchClientData, type ClientData } from '@/lib/clients/fetch-client-data'
+import {
+  fetchClientSourceSummaries,
+  fetchConnectionsByClient,
+  type ClientSourceSummary,
+} from '@/lib/queries/db'
+import { buildClientData, fetchClientData, type ClientData } from '@/lib/clients/fetch-client-data'
 import { fetchIdeaById } from '@/features/ideas/lib/ideas'
-import { GenerateWizard } from '@/features/generate/components/generate-wizard'
+import { GenerateFlow } from '@/features/generate/components/generate-flow'
+import type { MetaConnection } from '@/types/api'
 
 interface PageProps {
   searchParams: Promise<{ ideaId?: string; client?: string }>
@@ -23,6 +29,8 @@ export default async function GeneratePage({ searchParams }: PageProps) {
 
   let initialClientData: ClientData | null = null
   let initialTargetPostCount = 3
+  let initialSources: ClientSourceSummary[] = []
+  let initialConnections: MetaConnection[] = []
 
   // ?client= preselects a client; ignore ids that don't belong to this agency
   const requestedClientId = client && clients.some((c) => c.id === client) ? client : undefined
@@ -34,17 +42,31 @@ export default async function GeneratePage({ searchParams }: PageProps) {
     if (targetClient && targetClient.posts_per_week > 0) {
       initialTargetPostCount = targetClient.posts_per_week
     }
-    const result = await fetchClientData(supabase, targetClientId, agencyId)
+    // The agency-scoped list row already proves ownership, so buildClientData
+    // skips fetchClientData's verification round-trip. The fallback covers an
+    // idea whose client is newer than the 60s-cached list — there the DB check
+    // still runs.
+    const [result, sources, connections] = await Promise.all([
+      targetClient
+        ? buildClientData(supabase, targetClient).then((data) => ({ data }))
+        : fetchClientData(supabase, targetClientId, agencyId),
+      fetchClientSourceSummaries(supabase, targetClientId),
+      fetchConnectionsByClient(supabase, targetClientId),
+    ])
     if ('data' in result) initialClientData = result.data
+    initialSources = sources
+    initialConnections = connections
   }
 
   return (
-    <GenerateWizard
+    <GenerateFlow
       initialClients={clients}
       initialClientData={initialClientData}
       initialTargetPostCount={initialTargetPostCount}
       initialIdea={initialIdea ?? undefined}
       initialClientId={requestedClientId}
+      initialSources={initialSources}
+      initialConnections={initialConnections}
     />
   )
 }

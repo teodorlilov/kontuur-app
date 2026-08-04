@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from '@/components/ui/toast'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { createClient } from '@/features/clients/actions/client-actions'
 import { useExtractionStatus } from '@/features/visual-identity/hooks/use-extraction-status'
 import { PillarSourceStepper } from '@/features/sources/components/stepper/pillar-source-stepper'
@@ -60,6 +61,8 @@ export default function NewClientPage() {
   })
 
   const [saving, setSaving] = useState(false)
+  const [confirmingCancel, setConfirmingCancel] = useState(false)
+  const [confirmingReread, setConfirmingReread] = useState(false)
   const [savedClientId, setSavedClientId] = useState<string | null>(null)
   const [showStepper, setShowStepper] = useState(false)
   const [stepperSummary, setStepperSummary] = useState<StepperSummary | null>(null)
@@ -80,7 +83,7 @@ export default function NewClientPage() {
     : undefined
 
   function handleCancel() {
-    if (window.confirm('Cancel? Any unsaved progress will be lost.')) router.push('/clients')
+    setConfirmingCancel(true)
   }
 
   /**
@@ -201,11 +204,9 @@ export default function NewClientPage() {
     setShowDraft(true)
   }
 
+  // A re-read replaces the whole draft, so it has to be asked for rather than assumed — the
+  // ConfirmDialog below is the ask; this runs only once it is confirmed.
   async function handleReread() {
-    // A re-read replaces the whole draft, so it has to be asked for rather than assumed. Same
-    // window.confirm as handleCancel above — the other place this flow can throw work away.
-    if (!window.confirm('Read the site again? Anything you have changed will be replaced.')) return
-
     setRereading(true)
     const analysis = await readSite().catch(() => null)
     setRereading(false)
@@ -279,7 +280,7 @@ export default function NewClientPage() {
             manual={manual}
             host={toHostLabel(websiteUrl)}
             paletteStatus={extractionStatus}
-            onReread={() => void handleReread()}
+            onReread={() => setConfirmingReread(true)}
             rereading={rereading}
           />
         ) : (
@@ -292,6 +293,31 @@ export default function NewClientPage() {
           />
         )}
       </OnboardingShell>
+
+      <ConfirmDialog
+        open={confirmingCancel}
+        title="Leave client setup?"
+        confirmLabel="Leave"
+        cancelLabel="Keep working"
+        onConfirm={() => router.push('/clients')}
+        onClose={() => setConfirmingCancel(false)}
+      >
+        Any unsaved progress will be lost.
+      </ConfirmDialog>
+
+      <ConfirmDialog
+        open={confirmingReread}
+        title="Read the site again?"
+        confirmLabel="Read again"
+        onConfirm={() => {
+          setConfirmingReread(false)
+          void handleReread()
+        }}
+        onClose={() => setConfirmingReread(false)}
+      >
+        Anything you have changed will be replaced. Brand colours are kept — they come from a
+        different job.
+      </ConfirmDialog>
 
       <DraftSaveBar
         visible={showDraft && !showStepper && !stepperSummary}

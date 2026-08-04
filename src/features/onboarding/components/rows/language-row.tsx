@@ -41,7 +41,7 @@ export function LanguageEdit({
       <Select
         label="Language"
         value={draft.language}
-        onChange={(event) => onChange({ language: event.target.value })}
+        onChange={(value) => onChange({ language: value })}
         // A site read can name a language the list has never carried; it stays selectable.
         options={ensureOption(CONTENT_LANGUAGE_OPTIONS, draft.language)}
         placeholder={draft.language ? undefined : 'Pick a language'}
@@ -49,7 +49,7 @@ export function LanguageEdit({
       <Select
         label="Formality"
         value={draft.languageFormality}
-        onChange={(event) => onChange({ languageFormality: event.target.value })}
+        onChange={(value) => onChange({ languageFormality: value })}
         options={ensureOption(LANGUAGE_FORMALITY_OPTIONS, draft.languageFormality)}
       />
     </div>

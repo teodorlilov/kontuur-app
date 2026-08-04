@@ -2,9 +2,8 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Button } from '@/components/ui/button'
 import { FormSection, RailBox, RailText } from '@/components/ui/form'
-import { Modal } from '@/components/ui/modal'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { toast } from '@/components/ui/toast'
 import { removeTeamMember } from '@/features/settings/actions/team-actions'
 import { InviteForm } from './invite-form'
@@ -69,24 +68,17 @@ export function TeamTab({ members, currentUserId, currentUserRole, agencyMode }:
         </div>
       </FormSection>
 
-      <Modal
+      <ConfirmDialog
         open={!!pendingRemoval}
-        onClose={() => setPendingRemoval(null)}
         title="Remove team member"
+        confirmLabel="Remove permanently"
+        loading={removing}
+        onConfirm={handleConfirmRemove}
+        onClose={() => setPendingRemoval(null)}
       >
-        <p className="text-body leading-relaxed text-text2">
-          <b className="font-semibold text-ink">{pendingRemoval?.email}</b> will lose access to this
-          workspace and their account will be deleted. This cannot be undone.
-        </p>
-        <div className="mt-5 flex justify-end gap-2">
-          <Button variant="secondary" size="sm" onClick={() => setPendingRemoval(null)}>
-            Cancel
-          </Button>
-          <Button variant="danger" size="sm" onClick={handleConfirmRemove} loading={removing}>
-            Remove permanently
-          </Button>
-        </div>
-      </Modal>
+        <b className="font-semibold text-ink">{pendingRemoval?.email}</b> will lose access to this
+        workspace and their account will be deleted. This cannot be undone.
+      </ConfirmDialog>
     </>
   )
 }

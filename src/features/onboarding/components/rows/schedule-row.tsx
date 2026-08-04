@@ -35,13 +35,13 @@ export function ScheduleEdit({
         <Select
           label="How many"
           value={schedule.count}
-          onChange={(event) => onChange({ ...schedule, count: event.target.value })}
+          onChange={(value) => onChange({ ...schedule, count: value })}
           options={POSTS_PER_RUN_OPTIONS}
         />
         <Select
           label="Generate on"
           value={schedule.day}
-          onChange={(event) => onChange({ ...schedule, day: event.target.value })}
+          onChange={(value) => onChange({ ...schedule, day: value })}
           options={[...WEEKDAY_OPTIONS]}
         />
         <Input
