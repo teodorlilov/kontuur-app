@@ -22,6 +22,7 @@ import {
   POST_HISTORY_COLUMNS,
   TOP_POSTS_COLUMNS,
   CLIENT_SOURCE_RESEARCH_COLUMNS,
+  CLIENT_SOURCE_SUMMARY_COLUMNS,
 } from '@/lib/queries/select-columns'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import type { TeamMember, MetaConnection } from '@/types/api'
@@ -278,6 +279,33 @@ export async function fetchClientSources(
     .eq('client_id', clientId)
     .eq('is_active', true)
   return (data as ClientSourceRow[] | null) ?? []
+}
+
+/** An active source as the generate flow's run-plan preview consumes it. */
+export interface ClientSourceSummary {
+  id: string
+  type: string
+  label: string
+  url: string | null
+  pillar_ids: string[] | null
+}
+
+/**
+ * Fetches active client sources without the heavy research columns
+ * (extracted_text, config). Feeds the pre-run content-mix preview in
+ * the generate flow — same is_active filter as fetchClientSources, so
+ * the preview sees exactly the sources the research pipeline will.
+ */
+export async function fetchClientSourceSummaries(
+  supabase: SupabaseClient,
+  clientId: string
+): Promise<ClientSourceSummary[]> {
+  const { data } = await supabase
+    .from('client_sources')
+    .select(CLIENT_SOURCE_SUMMARY_COLUMNS)
+    .eq('client_id', clientId)
+    .eq('is_active', true)
+  return (data as ClientSourceSummary[] | null) ?? []
 }
 
 /**

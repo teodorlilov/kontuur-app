@@ -1,10 +1,10 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import {
   fetchBrandProfileByClient,
-  fetchLanguageRulesByLanguage,
   fetchPostHistoryByClient,
   fetchTopPostsByClient,
 } from '@/lib/queries/db'
+import { getCachedLanguageRules } from '@/lib/queries/cache'
 import { toCarouselSwipeCues, toFormalityRulesData } from '@/lib/clients/language-rules'
 import type { LanguageConfig } from '@/lib/clients/language-rules'
 import { parsePillars, type WeightedPillar } from '@/lib/clients/content-pillars'
@@ -43,6 +43,59 @@ function parseRequireSourceGrounding(strategy: unknown): boolean {
   )
 }
 
+/** The client identity buildClientData assembles from. */
+export interface ClientIdentity {
+  id: string
+  name: string
+  niche: string | null
+  language: string
+}
+
+/**
+ * Assembles the generation context for a client whose agency scope the caller has already
+ * proven — e.g. a row from the agency-scoped client list. Skips the ownership query
+ * fetchClientData runs for callers that arrive with only an id.
+ */
+export async function buildClientData(
+  supabase: SupabaseClient,
+  client: ClientIdentity
+): Promise<ClientData> {
+  const [profile, langRules, postHistory, topPerformingPosts] = await Promise.all([
+    fetchBrandProfileByClient(supabase, client.id),
+    getCachedLanguageRules(client.language),
+    fetchPostHistoryByClient(supabase, client.id, MAX_POST_HISTORY_COUNT),
+    fetchTopPostsByClient(supabase, client.id),
+  ])
+
+  return {
+    id: client.id,
+    name: client.name,
+    niche: client.niche ?? 'General',
+    language: client.language,
+    tone: profile?.tone ?? 'professional',
+    targetAudience: profile?.target_audience ?? 'general audience',
+    avoidTopics: profile?.avoid_topics ?? '',
+    socialGoals: profile?.social_goals ?? '',
+    contentPillars: parsePillars(profile?.content_pillars ?? null),
+    isHealthNiche: profile?.is_health_niche ?? null,
+    topPerformingPosts,
+    defaultCarouselSlides: profile?.default_carousel_slides ?? 7,
+    defaultPostType: profile?.default_post_type ?? null,
+    requireSourceGrounding: parseRequireSourceGrounding(profile?.source_strategy),
+    sourceStrategy: (profile?.source_strategy as SourceStrategy | null) ?? null,
+    languageNotes: profile?.language_notes ?? '',
+    languageConfig: {
+      language: client.language,
+      formality: profile?.language_formality ?? 'formal',
+      carouselSwipeCues: toCarouselSwipeCues(langRules?.native_cta_phrases),
+      formalityRules: toFormalityRulesData(langRules?.formality_rules),
+      languageInstructions: langRules?.language_instructions ?? '',
+      languageNotes: profile?.language_notes ?? '',
+    },
+    postHistory,
+  }
+}
+
 /**
  * Fetches all client context needed for AI generation and rewrite operations.
  * Always verifies agency ownership. When preloaded is provided, skips the
@@ -64,52 +117,12 @@ export async function fetchClientData(
     .eq('agency_id', agencyId)
     .single()
 
-  const client = rawClient as {
-    id: string
-    name: string
-    niche: string | null
-    language: string
-  } | null
+  const client = rawClient as ClientIdentity | null
   if (!client) return { error: 'Client not found' }
 
   if (preloaded) return { data: preloaded }
 
-  const [profile, langRules, postHistory, topPerformingPosts] = await Promise.all([
-    fetchBrandProfileByClient(supabase, clientId),
-    fetchLanguageRulesByLanguage(supabase, client.language),
-    fetchPostHistoryByClient(supabase, clientId, MAX_POST_HISTORY_COUNT),
-    fetchTopPostsByClient(supabase, clientId),
-  ])
-
-  return {
-    data: {
-      id: client.id,
-      name: client.name,
-      niche: client.niche ?? 'General',
-      language: client.language,
-      tone: profile?.tone ?? 'professional',
-      targetAudience: profile?.target_audience ?? 'general audience',
-      avoidTopics: profile?.avoid_topics ?? '',
-      socialGoals: profile?.social_goals ?? '',
-      contentPillars: parsePillars(profile?.content_pillars ?? null),
-      isHealthNiche: profile?.is_health_niche ?? null,
-      topPerformingPosts,
-      defaultCarouselSlides: profile?.default_carousel_slides ?? 7,
-      defaultPostType: profile?.default_post_type ?? null,
-      requireSourceGrounding: parseRequireSourceGrounding(profile?.source_strategy),
-      sourceStrategy: (profile?.source_strategy as SourceStrategy | null) ?? null,
-      languageNotes: profile?.language_notes ?? '',
-      languageConfig: {
-        language: client.language,
-        formality: profile?.language_formality ?? 'formal',
-        carouselSwipeCues: toCarouselSwipeCues(langRules?.native_cta_phrases),
-        formalityRules: toFormalityRulesData(langRules?.formality_rules),
-        languageInstructions: langRules?.language_instructions ?? '',
-        languageNotes: profile?.language_notes ?? '',
-      },
-      postHistory,
-    },
-  }
+  return { data: await buildClientData(supabase, client) }
 }
 
 /** Returns the most common niche across an agency's clients, or undefined. */

@@ -59,6 +59,10 @@ export const CLIENT_SOURCE_FULL_COLUMNS =
 // client_sources (research pipeline — active only, with extracted_text for file sources)
 export const CLIENT_SOURCE_RESEARCH_COLUMNS = 'id, type, label, url, config, pillar_ids, extracted_text'
 
+// client_sources (UI summaries — the generate flow's run-plan preview; deliberately
+// excludes extracted_text and config, which are heavy and research-only)
+export const CLIENT_SOURCE_SUMMARY_COLUMNS = 'id, type, label, url, pillar_ids'
+
 // users
 export const USER_COLUMNS = 'id, email, role, created_at'
 

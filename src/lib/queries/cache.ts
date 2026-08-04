@@ -7,6 +7,7 @@ import {
   CLIENT_ROSTER_COLUMNS,
   UPCOMING_POST_COLUMNS,
 } from '@/lib/queries/select-columns'
+import { fetchLanguageRulesByLanguage } from '@/lib/queries/db'
 import { getWeekDayKeys, getWeekRange, toDateKey } from '@/utils/date-helpers'
 import { DAYS_PER_WEEK } from '@/utils/constants'
 import type { Database } from '@/types/database'
@@ -74,6 +75,21 @@ const _fetchAgencyClients = unstable_cache(
 )
 
 export const getCachedAgencyClients = cache(_fetchAgencyClients)
+
+/**
+ * Returns the language rules for one language — reference data shared by every agency.
+ * - unstable_cache: persists in Next.js Data Cache across requests (1h TTL, 'language-rules' tag);
+ *   the rows are near-immutable, and without this the generate page re-queried them per navigation
+ * - React cache(): deduplicates within a single SSR request
+ * Call revalidateTag('language-rules') if the rules are ever edited.
+ */
+const _fetchLanguageRules = unstable_cache(
+  async (language: string) => fetchLanguageRulesByLanguage(createAdminSupabaseClient(), language),
+  ['language-rules'],
+  { revalidate: 3600, tags: ['language-rules'] }
+)
+
+export const getCachedLanguageRules = cache(_fetchLanguageRules)
 
 export interface PendingRow {
   client_id: string
