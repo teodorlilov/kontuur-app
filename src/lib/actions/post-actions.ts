@@ -1,9 +1,16 @@
 'use server'
 
 import { revalidateTag } from 'next/cache'
+import { z } from 'zod'
+import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { resolveActionAuth, verifyPostOwnership, verifyPostsOwnership } from '@/lib/auth/helpers'
-import { isUserSettablePostStatus, isValidPostPlatform } from '@/lib/validation'
+import { DISCARD_REASONS, isUserSettablePostStatus, isValidPostPlatform } from '@/lib/validation'
+import type { Database } from '@/types/database'
 import type { ActionResult } from './types'
+
+const deletePostOptionsSchema = z
+  .object({ reason: z.enum(DISCARD_REASONS).optional() })
+  .optional()
 
 interface UpdatePostInput {
   status?: string
@@ -78,8 +85,14 @@ export async function resolveChangeRequest(postId: string): Promise<ActionResult
   return { ok: true, data: undefined }
 }
 
-/** Delete a post by ID, recording its outcome as a review discard first. */
-export async function deletePost(postId: string): Promise<ActionResult> {
+/** Delete a post by ID, recording its outcome (and the reviewer's reason) as a review discard first. */
+export async function deletePost(
+  postId: string,
+  options?: { reason?: string }
+): Promise<ActionResult> {
+  const parsedOptions = deletePostOptionsSchema.safeParse(options)
+  if (!parsedOptions.success) return { ok: false, error: 'Invalid discard reason' }
+
   const auth = await resolveActionAuth()
   if (!auth.ok) return { ok: false, error: auth.error }
   const { supabase, agencyId } = auth
@@ -91,6 +104,8 @@ export async function deletePost(postId: string): Promise<ActionResult> {
   // Only pending_review drafts count as a discard — deleting an already-approved
   // or published post is housekeeping, not a rejection of its source (and it
   // already counted as an approval, so logging a discard would double-skew stats).
+  // discarded_drafts is service-role-only (RLS with no policies), so the insert
+  // must go through the admin client — the user-scoped one fails silently.
   try {
     const { data: row } = await supabase
       .from('posts')
@@ -98,7 +113,8 @@ export async function deletePost(postId: string): Promise<ActionResult> {
       .eq('id', postId)
       .single()
     if (row?.client_id && row.status === 'pending_review') {
-      await supabase.from('discarded_drafts').insert({
+      const admin = createAdminSupabaseClient()
+      const discardRow = {
         client_id: row.client_id,
         client_source_id: row.client_source_id ?? null,
         pillar: row.pillar ?? null,
@@ -106,7 +122,16 @@ export async function deletePost(postId: string): Promise<ActionResult> {
         source_type: row.source_type ?? null,
         platform: row.platform ?? null,
         discarded_from: 'review',
-      })
+        reason: parsedOptions.data?.reason ?? null,
+      }
+      const { error: discardError } = await admin
+        .from('discarded_drafts')
+        // WHY as: `reason` lands with migration 20260805 and is not yet in the
+        // generated types — regenerate database.ts after applying, then drop this.
+        .insert(discardRow as Database['public']['Tables']['discarded_drafts']['Insert'])
+      if (discardError) {
+        console.error('[posts] failed to log review discard:', discardError.message)
+      }
     }
   } catch (err) {
     console.error('[posts] failed to log review discard:', err)

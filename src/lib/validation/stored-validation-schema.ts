@@ -1,5 +1,11 @@
 import { z } from 'zod'
-import type { ValidationCriteria, ValidationScores } from '@/types/api'
+import type {
+  LanguageResult,
+  SlopDetection,
+  SourceGroundingResult,
+  ValidationCriteria,
+  ValidationScores,
+} from '@/types/api'
 
 /**
  * Parses the `posts.validation_json` blob written by the AI validation pipeline.
@@ -75,9 +81,57 @@ const scoresSchema = z.object({
   source_score: z.number().nullable().catch(null),
 })
 
+/**
+ * The evidence trail (2026-08): language fixes, slop and grounding used to live
+ * only in the wizard's memory, so the review queue could not show them. They
+ * are stored trimmed — the applied corrections themselves are already baked
+ * into the saved copy, so `corrected_text`/`corrected_slides` stay out.
+ * Every field is optional and degrades to absent: rows written before this
+ * shape (or with a malformed section) parse exactly as they did before.
+ */
+const storedLanguageSchema = z.object({
+  passes: z.boolean().catch(true),
+  language_score: z.number().catch(0),
+  issues: z
+    .array(
+      z.object({
+        type: z.string().catch(''),
+        original_text: z.string().catch(''),
+        issue_description: z.string().catch(''),
+        suggested_fix: z.string().catch(''),
+      })
+    )
+    .catch([]),
+})
+
+const storedSlopSchema = z.object({
+  reads_as_human: z.boolean().catch(true),
+  ai_tells_found: z.array(z.string()).catch([]),
+  worst_offending_phrase: z.string().nullable().catch(null),
+  human_authenticity_score: z.number().catch(0),
+})
+
+const storedGroundingSchema = z.object({
+  grounded: z.boolean().catch(true),
+  grounding_score: z.number().catch(0),
+  flagged_claims: z
+    .array(
+      z.object({
+        // Malformed status degrades to the warn rendering, never to a false "matched".
+        status: z.enum(['grounded', 'ungrounded', 'partially_grounded']).catch('partially_grounded'),
+        claim: z.string().catch(''),
+        source_evidence: z.string().nullable().catch(null),
+      })
+    )
+    .catch([]),
+})
+
 const storedValidationSchema = z.object({
   criteria: criteriaSchema,
   scores: scoresSchema,
+  language: storedLanguageSchema.optional().catch(undefined),
+  slop: storedSlopSchema.optional().catch(undefined),
+  sourceGrounding: storedGroundingSchema.optional().catch(undefined),
 })
 
 // Fails the build if the schema and the hand-written types drift apart — the guard convention from
@@ -89,9 +143,27 @@ const _scoresBackward: SchemaScores = null as unknown as ValidationScores
 void _scoresForward
 void _scoresBackward
 
+// Same drift guard for the slop section — it is stored whole, so both
+// directions must hold.
+type SchemaSlop = z.infer<typeof storedSlopSchema>
+const _slopForward: SlopDetection = null as unknown as SchemaSlop
+const _slopBackward: SchemaSlop = null as unknown as SlopDetection
+void _slopForward
+void _slopBackward
+
+/** Language and grounding minus the corrections already applied to the copy. */
+export type StoredLanguage = Pick<LanguageResult, 'passes' | 'language_score' | 'issues'>
+export type StoredGrounding = Pick<
+  SourceGroundingResult,
+  'grounded' | 'grounding_score' | 'flagged_claims'
+>
+
 export interface StoredValidation {
   criteria: ValidationCriteria
   scores: ValidationScores
+  language?: StoredLanguage
+  slop?: SlopDetection
+  sourceGrounding?: StoredGrounding
 }
 
 /**
@@ -107,4 +179,37 @@ export function parseStoredValidation(raw: unknown): StoredValidation | null {
   // WHY as: source_claims is parsed as unknown[] because no consumer reads inside it; the rest of
   // the shape is proven by the schema and the guard above.
   return result.data as StoredValidation
+}
+
+/**
+ * The write side of this module: what generation persists into
+ * `posts.validation_json`. One builder for every writer (wizard stream, cron,
+ * rewrite) so the stored shape cannot drift between them.
+ */
+export function buildStoredValidation(validation: {
+  criteria: ValidationCriteria
+  scores: ValidationScores
+  language: LanguageResult
+  slop: SlopDetection
+  sourceGrounding?: SourceGroundingResult
+}): StoredValidation {
+  return {
+    criteria: validation.criteria,
+    scores: validation.scores,
+    language: {
+      passes: validation.language.passes,
+      language_score: validation.language.language_score,
+      issues: validation.language.issues,
+    },
+    slop: validation.slop,
+    ...(validation.sourceGrounding
+      ? {
+          sourceGrounding: {
+            grounded: validation.sourceGrounding.grounded,
+            grounding_score: validation.sourceGrounding.grounding_score,
+            flagged_claims: validation.sourceGrounding.flagged_claims,
+          },
+        }
+      : {}),
+  }
 }

@@ -12,6 +12,17 @@ export const USER_SETTABLE_POST_STATUSES = [
 
 export const POST_PLATFORMS = ['instagram', 'facebook'] as const
 
+/** Discard-reason values — must mirror the discarded_drafts.reason check constraint (migration 20260805). */
+export const DISCARD_REASONS = [
+  'off_brand',
+  'repetitive',
+  'wrong_facts',
+  'weak_source',
+  'bad_timing',
+] as const
+
+export type DiscardReason = (typeof DISCARD_REASONS)[number]
+
 export function isUserSettablePostStatus(value: string): boolean {
   return (USER_SETTABLE_POST_STATUSES as readonly string[]).includes(value)
 }

@@ -13,6 +13,8 @@ export const MIN_CAROUSEL_SLIDES = 3
 export const DEFAULT_CAROUSEL_SLIDES = 6
 export const CAROUSEL_SLIDE_OPTIONS = [4, 5, 6, 7, 8, 9, 10] as const
 export const APPROVAL_TOKEN_EXPIRY_HOURS = 48
+/** A sourced post older than this is flagged in review — its source may no longer be current. */
+export const STALE_REVIEW_DAYS = 7
 export const BEST_TIME_REFRESH_DAYS = 30
 export const TRIAL_DAYS = 14
 export const MAX_RSS_ITEMS = 40

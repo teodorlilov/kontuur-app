@@ -17,6 +17,8 @@ interface InsightPanelProps {
   validation: ValidationData
   rewriting: boolean
   onRewrite: () => void
+  /** Surface-specific sections appended after the shared ones (the queue adds triage + post info). */
+  extraSections?: React.ReactNode
 }
 
 /**
@@ -24,7 +26,13 @@ interface InsightPanelProps {
  * dimensions with their failures, the source with its checked claims, and the
  * language-fix receipt. Built for this flow; the review queue keeps its own panel.
  */
-export function InsightPanel({ post, validation, rewriting, onRewrite }: InsightPanelProps) {
+export function InsightPanel({
+  post,
+  validation,
+  rewriting,
+  onRewrite,
+  extraSections,
+}: InsightPanelProps) {
   const { scores, slop, criteria, language, sourceGrounding } = validation
   const low = scores.overall_score < REWRITE_SCORE_THRESHOLD
   const lowAuthenticity = slop.human_authenticity_score < AUTHENTICITY_URGENT_THRESHOLD
@@ -179,6 +187,7 @@ export function InsightPanel({ post, validation, rewriting, onRewrite }: Insight
         </section>
       )}
 
+      {extraSections}
     </aside>
   )
 }

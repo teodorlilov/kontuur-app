@@ -16,7 +16,7 @@ import { useDraftEdits } from '@/components/posts/review/use-draft-edits'
 import { useReviewKeyboard } from '@/components/posts/review/use-review-keyboard'
 import type { ReviewDraft } from '@/components/posts/review/types'
 import { approveDraft } from '@/features/generate/lib/approve-draft'
-import { rewriteDraft } from '@/features/generate/lib/rewrite-draft'
+import { rewriteDraft } from '@/lib/rewrite-draft'
 import {
   completedDraftImages,
   countVisualsByStatus,

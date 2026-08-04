@@ -14,6 +14,7 @@ import type {
 import { validatePost, validatePostsBatch } from '@/ai/validation/validate-post'
 import type { PostValidationResult } from '@/ai/validation/validate-post'
 import { applyTextCorrections, applySlideCorrections } from '@/ai/validation/correction-utils'
+import { buildStoredValidation } from '@/lib/validation/stored-validation-schema'
 import { Deduplicator } from '@/ai/shared/deduplicator'
 import { ANGLE_SIMILARITY_THRESHOLD } from '@/lib/content-rules/constants'
 import { QUALITY_FLOOR, DEFAULT_CAROUSEL_SLIDES } from '@/utils/constants'
@@ -180,7 +181,7 @@ export class GenerationPipeline {
         caption: applyTextCorrections(result.main_caption, validation),
         post_type: 'carousel',
         slides_json: applySlideCorrections(result.slides, validation.language.corrected_slides),
-        validation_json: { criteria: validation.criteria, scores: validation.scores },
+        validation_json: buildStoredValidation(validation),
         quality_score_avg: validation.qualityScore,
       })
     )
@@ -235,7 +236,7 @@ export class GenerationPipeline {
           caption,
           post_type: 'single',
           slides_json: null,
-          validation_json: { criteria: validation.criteria, scores: validation.scores },
+          validation_json: buildStoredValidation(validation),
           quality_score_avg: validation.qualityScore,
         })
       )

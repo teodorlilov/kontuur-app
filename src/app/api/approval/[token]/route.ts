@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
-import { createApprovalNotification } from '@/features/review/lib/create-approval-notification'
 import { fetchImagesByPost } from '@/features/publishing/lib/fetch-post-images'
-import type { ApprovalResponse, ApprovalPostData, ApprovalBatchData } from '@/types/api'
+import type { ApprovalPostData, ApprovalBatchData } from '@/types/api'
 
 export async function GET(_request: Request, { params }: { params: Promise<{ token: string }> }) {
   const { token } = await params
@@ -81,92 +80,3 @@ export async function GET(_request: Request, { params }: { params: Promise<{ tok
   return NextResponse.json(result)
 }
 
-export async function POST(request: Request, { params }: { params: Promise<{ token: string }> }) {
-  const { token } = await params
-  const supabase = createAdminSupabaseClient()
-
-  let body: ApprovalResponse
-  try {
-    body = await request.json()
-  } catch {
-    return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
-  }
-
-  if (body.status !== 'approved' && body.status !== 'changes_requested') {
-    return NextResponse.json(
-      { error: 'status must be "approved" or "changes_requested"' },
-      { status: 400 }
-    )
-  }
-
-  // Fetch token rows (client_email stores the batch ID)
-  const { data: tokenRows, error } = await supabase
-    .from('post_approval_tokens')
-    .select('id, post_id, status, expires_at')
-    .eq('batch_id', token)
-
-  if (error || !tokenRows || tokenRows.length === 0) {
-    return NextResponse.json({ error: 'Invalid approval link' }, { status: 404 })
-  }
-
-  // Check expiry
-  const firstRow = tokenRows[0]!
-  if (new Date(firstRow.expires_at) < new Date()) {
-    return NextResponse.json({ error: 'This approval link has expired' }, { status: 410 })
-  }
-
-  // Check if already responded
-  if (firstRow.status !== 'pending') {
-    return NextResponse.json(
-      { error: 'This approval has already been responded to' },
-      { status: 409 }
-    )
-  }
-
-  // Update all token rows with the batch status
-  const { error: updateError } = await supabase
-    .from('post_approval_tokens')
-    .update({ status: body.status, responded_at: new Date().toISOString() })
-    .eq('batch_id', token)
-
-  if (updateError) {
-    return NextResponse.json({ error: updateError.message }, { status: 500 })
-  }
-
-  // Apply per-post notes if provided
-  if (body.postNotes && body.postNotes.length > 0) {
-    for (const { postId, note } of body.postNotes) {
-      await supabase
-        .from('post_approval_tokens')
-        .update({ client_note: note })
-        .eq('batch_id', token)
-        .eq('post_id', postId)
-    }
-  }
-
-  // Post status stays as 'scheduled' — approval is tracked in post_approval_tokens
-  const postIds = tokenRows.map((r) => r.post_id)
-
-  // Create notification for the agency
-  const { data: postWithClient } = await supabase
-    .from('posts')
-    .select('client_id, clients!inner(name, agency_id)')
-    .eq('id', postIds[0]!)
-    .single() as { data: { client_id: string; clients: { name: string; agency_id: string } } | null }
-
-  if (postWithClient) {
-    const firstNote = body.postNotes?.[0]?.note ?? null
-    await createApprovalNotification(supabase, {
-      agencyId: postWithClient.clients.agency_id,
-      clientName: postWithClient.clients.name,
-      clientId: postWithClient.client_id,
-      postCount: postIds.length,
-      status: body.status,
-      feedbackText: body.status === 'changes_requested' ? firstNote : null,
-      reviewToken: token,
-      postId: postIds[0] ?? null,
-    })
-  }
-
-  return NextResponse.json({ success: true })
-}

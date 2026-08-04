@@ -18,17 +18,6 @@ export function ActiveBar() {
   )
 }
 
-export function ScoreLabel({ score }: { score: number }) {
-  // The 9+ and 7-8 bands were visually identical: --status-ok and
-  // --color-terracotta both aliased to --spring. Three bands, three colours now.
-  const color = score >= 9 ? 'var(--spring-text)' : score >= 7 ? 'var(--pending)' : 'var(--danger)'
-  return (
-    <span className="text-micro font-medium" style={{ color }}>
-      {score}/10
-    </span>
-  )
-}
-
 export function CaptionPreview({ caption }: { caption: string | null }) {
   return (
     <div

@@ -4,7 +4,7 @@ import { getCachedAgencyClients } from '@/lib/queries/cache'
 import { POST_COLUMNS } from '@/lib/queries/select-columns'
 import { fetchImagesByPost } from '@/features/publishing/lib/fetch-post-images'
 import { ReviewQueue } from '@/features/review/components/review-queue'
-import type { ReviewPost } from '@/features/review/lib/filter-review-posts'
+import type { QueueApproval, QueuePost } from '@/features/review/lib/queue-post'
 import type { BestTimePlatform } from '@/types/api'
 
 export default async function ReviewPage() {
@@ -21,7 +21,7 @@ export default async function ReviewPage() {
     brand_profiles: { is_health_niche: boolean; best_time_json: unknown } | null
   }
 
-  // Fetch brand_profiles and posts in parallel instead of sequentially
+  // Oldest first: the queue drains, it doesn't silt up.
   const [{ data: clientRows }, { data: postRows }] = await Promise.all([
     supabase
       .from('clients')
@@ -33,21 +33,17 @@ export default async function ReviewPage() {
           .select(POST_COLUMNS)
           .in('client_id', clientIds)
           .eq('status', 'pending_review')
-          .order('priority', { ascending: false })
-          .order('created_at', { ascending: false })
+          .order('created_at', { ascending: true })
       : Promise.resolve({ data: [] as unknown[] }),
   ])
 
   const clientList = (clientRows as ClientRow[] | null) ?? []
+  const clients = clientList.map((c) => ({ id: c.id, name: c.name }))
+  const healthByClient = new Map(
+    clientList.map((c) => [c.id, c.brand_profiles?.is_health_niche ?? false])
+  )
+  const nameByClient = new Map(clients.map((c) => [c.id, c.name]))
 
-  const clients = clientList.map((c) => ({
-    id: c.id,
-    name: c.name,
-    is_health_niche: c.brand_profiles?.is_health_niche ?? false,
-  }))
-
-  // Build client lookup and best-time map (avoids N client fetches from post cards)
-  const clientMap = new Map(clients.map((c) => [c.id, c]))
   const bestTimeMap: Record<string, BestTimePlatform[] | null> = {}
   for (const c of clientList) {
     const btj = c.brand_profiles?.best_time_json
@@ -72,51 +68,38 @@ export default async function ReviewPage() {
     source_title: string | null
     source_type: string | null
     source_excerpt: string | null
+    scheduled_at: string | null
     created_at: string
   }
 
   const typedPostRows = (postRows as PostRow[] | null) ?? []
-  const imagesByPost = await fetchImagesByPost(typedPostRows.map((p) => p.id))
+  const postIds = typedPostRows.map((p) => p.id)
 
-  const posts: ReviewPost[] = typedPostRows.map((p) => {
-    const client = clientMap.get(p.client_id)
-    return {
-      id: p.id,
-      client_id: p.client_id,
-      caption: p.caption,
-      platform: p.platform,
-      post_type: p.post_type,
-      slides_json: p.slides_json,
-      validation_json: p.validation_json,
-      status: p.status,
-      priority: p.priority,
-      quality_score_avg: p.quality_score_avg,
-      was_rewritten: p.was_rewritten,
-      rewrite_count: p.rewrite_count,
-      pillar: p.pillar,
-      source_url: p.source_url,
-      source_title: p.source_title,
-      source_type: p.source_type,
-      source_excerpt: p.source_excerpt,
-      created_at: p.created_at,
-      client_name: client?.name ?? 'Unknown',
-      is_health_niche: client?.is_health_niche ?? false,
-      images: imagesByPost.get(p.id) ?? [],
-    }
-  })
+  type TokenRow = { post_id: string; status: string; expires_at: string }
+  const [imagesByPost, { data: tokenRows }] = await Promise.all([
+    fetchImagesByPost(postIds),
+    postIds.length > 0
+      ? supabase
+          .from('post_approval_tokens')
+          .select('post_id, status, expires_at')
+          .eq('status', 'pending')
+          .gt('expires_at', new Date().toISOString())
+          .in('post_id', postIds)
+      : Promise.resolve({ data: [] as TokenRow[] }),
+  ])
 
-  // Derived from rows already fetched above — no extra query for the rail.
-  const oldestPendingAt = posts.reduce<string | null>(
-    (oldest, post) => (oldest === null || post.created_at < oldest ? post.created_at : oldest),
-    null
-  )
+  const approvalByPost = new Map<string, QueueApproval>()
+  for (const token of (tokenRows as TokenRow[] | null) ?? []) {
+    approvalByPost.set(token.post_id, { status: 'pending', expiresAt: token.expires_at })
+  }
 
-  return (
-    <ReviewQueue
-      initialPosts={posts}
-      clients={clients}
-      bestTimeMap={bestTimeMap}
-      oldestPendingAt={oldestPendingAt}
-    />
-  )
+  const posts: QueuePost[] = typedPostRows.map((p) => ({
+    ...p,
+    client_name: nameByClient.get(p.client_id) ?? 'Unknown',
+    is_health_niche: healthByClient.get(p.client_id) ?? false,
+    images: imagesByPost.get(p.id) ?? [],
+    approval: approvalByPost.get(p.id) ?? null,
+  }))
+
+  return <ReviewQueue initialPosts={posts} clients={clients} bestTimeMap={bestTimeMap} />
 }
