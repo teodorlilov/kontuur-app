@@ -11,7 +11,7 @@ import { AGE_WARN_DAYS, TRIAGE_REASON_LABELS, type TriagedPost } from '@/feature
  * warning, why triage flagged this post, and the cross-client context the
  * wizard never needed (whose post this is and how long it has waited).
  */
-export function QueueInsightSections({ triaged }: { triaged: TriagedPost }) {
+export function QueueInsightSections({ triaged, now }: { triaged: TriagedPost; now: Date }) {
   const { post, reasons, ageDays } = triaged
 
   return (
@@ -38,7 +38,7 @@ export function QueueInsightSections({ triaged }: { triaged: TriagedPost }) {
           />
           <InfoRow
             label="Generated"
-            value={formatRelativeTime(new Date(post.created_at))}
+            value={formatRelativeTime(new Date(post.created_at), now)}
             warn={ageDays > AGE_WARN_DAYS}
           />
         </div>

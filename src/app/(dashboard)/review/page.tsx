@@ -17,17 +17,19 @@ export default async function ReviewPage() {
   const cachedClients = await getCachedAgencyClients(agencyId)
   const clientIds = cachedClients.map((c) => c.id)
 
+  // Names already live in the cached client list — this join only adds the
+  // brand-profile fields the queue needs.
   type ClientRow = {
     id: string
-    name: string
     brand_profiles: { is_health_niche: boolean; best_time_json: unknown } | null
   }
 
-  // Oldest first: the queue drains, it doesn't silt up.
-  const [{ data: clientRows }, { data: postRows }] = await Promise.all([
+  // Oldest first: the queue drains, it doesn't silt up. The week schedule only
+  // needs client ids, so it rides in this first round instead of a second one.
+  const [{ data: clientRows }, { data: postRows }, weekSchedule] = await Promise.all([
     supabase
       .from('clients')
-      .select('id, name, brand_profiles(is_health_niche, best_time_json)')
+      .select('id, brand_profiles(is_health_niche, best_time_json)')
       .eq('agency_id', agencyId),
     clientIds.length > 0
       ? supabase
@@ -39,10 +41,15 @@ export default async function ReviewPage() {
           .eq('status', 'pending_review')
           .order('created_at', { ascending: true })
       : Promise.resolve({ data: [] as unknown[] }),
+    // Week context powers the slot picker — worth degrading, never failing for.
+    fetchWeekSchedule(supabase, clientIds, getMondayISO()).catch((err: unknown) => {
+      console.error('[review] week schedule failed:', err)
+      return [] as WeekScheduledPost[]
+    }),
   ])
 
   const clientList = (clientRows as ClientRow[] | null) ?? []
-  const clients = clientList.map((c) => ({ id: c.id, name: c.name }))
+  const clients = cachedClients.map((c) => ({ id: c.id, name: c.name }))
   const healthByClient = new Map(
     clientList.map((c) => [c.id, c.brand_profiles?.is_health_niche ?? false])
   )
@@ -81,14 +88,9 @@ export default async function ReviewPage() {
   const postIds = typedPostRows.map((p) => p.id)
 
   type TokenRow = { post_id: string; status: string; expires_at: string }
-  const [imagesByPost, composedByPost, weekSchedule, { data: tokenRows }] = await Promise.all([
+  const [imagesByPost, composedByPost, { data: tokenRows }] = await Promise.all([
     fetchImagesByPost(postIds),
     fetchCanvasDocPositions(postIds),
-    // Week context powers the slot picker — worth degrading, never failing for.
-    fetchWeekSchedule(supabase, clientIds, getMondayISO()).catch((err: unknown) => {
-      console.error('[review] week schedule failed:', err)
-      return [] as WeekScheduledPost[]
-    }),
     postIds.length > 0
       ? supabase
           .from('post_approval_tokens')
@@ -124,6 +126,7 @@ export default async function ReviewPage() {
       bestTimeMap={bestTimeMap}
       weekSchedule={weekSchedule}
       postsPerWeekByClient={postsPerWeekByClient}
+      loadedAt={new Date().toISOString()}
     />
   )
 }

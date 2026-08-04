@@ -17,7 +17,7 @@ import { ScheduleDialog } from '@/components/posts/review/schedule-dialog'
 import { useDraftEdits } from '@/components/posts/review/use-draft-edits'
 import { useReviewKeyboard } from '@/components/posts/review/use-review-keyboard'
 import { parseSlides } from '@/components/posts/parse-slides'
-import { updatePost, deletePost } from '@/lib/actions/post-actions'
+import { updatePost, deletePost, savePostCopy } from '@/lib/actions/post-actions'
 import { slideCopyAt } from '@/features/canvas-editor/lib/slide-copy'
 import { rewriteDraft } from '@/lib/rewrite-draft'
 import { buildStoredValidation } from '@/lib/validation/stored-validation-schema'
@@ -55,6 +55,9 @@ interface ReviewQueueProps {
   /** Slots the clients hold this week and next — the slot picker's occupancy. */
   weekSchedule: WeekScheduledPost[]
   postsPerWeekByClient: Record<string, number>
+  /** The server's render instant — triage ages and relative times key off this
+   *  so SSR and hydration render identical text. */
+  loadedAt: string
 }
 
 const EMPTY_ID_SET = new Set<string>()
@@ -75,6 +78,7 @@ export function ReviewQueue({
   bestTimeMap,
   weekSchedule,
   postsPerWeekByClient,
+  loadedAt,
 }: ReviewQueueProps) {
   const [posts, setPosts] = useState(initialPosts)
   const [activeBucket, setActiveBucket] = useState<TriageBucket>('needs_attention')
@@ -96,9 +100,10 @@ export function ReviewQueue({
   const [sessionScheduled, setSessionScheduled] = useState<WeekScheduledPost[]>([])
   const [slopOverrides, setSlopOverrides] = useState<Record<string, SlopDetection>>({})
 
-  // Triage ages are computed against the moment the page opened — a ticking
-  // "now" would reshuffle buckets under the reviewer's hands.
-  const [now] = useState(() => new Date())
+  // Triage ages are computed against the server's render instant — a ticking
+  // "now" would reshuffle buckets under the reviewer's hands, and a client
+  // clock would render different text at hydration than the server did.
+  const [now] = useState(() => new Date(loadedAt))
 
   // The sidebar badge is a per-hard-load server snapshot; this queue owns the
   // live truth, so it keeps the badge honest as posts settle.
@@ -177,7 +182,7 @@ export function ReviewQueue({
 
   // ── Persistence ──
   const autosave = useQueueAutosave(async (postId, edits) => {
-    const result = await updatePost(postId, {
+    const result = await savePostCopy(postId, {
       caption: edits.caption,
       slides_json: edits.slidesJson,
     })
@@ -671,6 +676,7 @@ export function ReviewQueue({
               bucket={activeBucket}
               items={bucketItems}
               visualsByPost={visualsByPost}
+              now={now}
               onOpen={focusDraft}
               onApprove={setScheduleTarget}
               onScheduleAll={() => openBatch(readyPosts)}
@@ -766,7 +772,7 @@ export function ReviewQueue({
                   validation={focused.validation}
                   rewriting={rewriting}
                   onRewrite={() => void handleRewrite()}
-                  extraSections={<QueueInsightSections triaged={focused} />}
+                  extraSections={<QueueInsightSections triaged={focused} now={now} />}
                 />
               </div>
               <CommitmentBar

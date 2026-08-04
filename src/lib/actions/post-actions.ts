@@ -12,6 +12,11 @@ const deletePostOptionsSchema = z
   .object({ reason: z.enum(DISCARD_REASONS).optional() })
   .optional()
 
+const savePostCopySchema = z.object({
+  caption: z.string(),
+  slides_json: z.unknown(),
+})
+
 interface UpdatePostInput {
   status?: string
   caption?: string
@@ -82,6 +87,37 @@ export async function resolveChangeRequest(postId: string): Promise<ActionResult
     .eq('status', 'changes_requested')
 
   revalidateTag('client-post-stats', 'max')
+  return { ok: true, data: undefined }
+}
+
+/**
+ * Persist working-copy edits (caption + slides) on a post. Deliberately does
+ * NOT revalidate 'client-post-stats': copy edits change no count or stat that
+ * tag protects, and this runs on every autosave flush — busting the
+ * layout-wide cache per typing pause forced a full route-tree re-render each
+ * time. Status transitions keep going through updatePost, which revalidates.
+ */
+export async function savePostCopy(
+  postId: string,
+  edits: { caption: string; slides_json: unknown }
+): Promise<ActionResult> {
+  const parsed = savePostCopySchema.safeParse(edits)
+  if (!parsed.success) return { ok: false, error: 'Invalid edits' }
+
+  const auth = await resolveActionAuth()
+  if (!auth.ok) return { ok: false, error: auth.error }
+  const { supabase, agencyId } = auth
+
+  const post = await verifyPostOwnership(supabase, postId, agencyId)
+  if (!post) return { ok: false, error: 'Post not found' }
+
+  const updates: Record<string, unknown> = {
+    caption: parsed.data.caption,
+    slides_json: parsed.data.slides_json,
+  }
+  const { error } = await supabase.from('posts').update(updates).eq('id', postId)
+  if (error) return { ok: false, error: error.message }
+
   return { ok: true, data: undefined }
 }
 

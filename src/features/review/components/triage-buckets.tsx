@@ -7,7 +7,6 @@ import { StatusPill } from '@/components/ui/status-pill'
 import { getPillarColor } from '@/components/ui/colors/pillar-colors'
 import { parseSlides } from '@/components/posts/parse-slides'
 import { VisualFrame } from '@/components/posts/review/visual-frame'
-import { formatRelativeTime } from '@/utils/format'
 import {
   AGE_WARN_DAYS,
   TRIAGE_REASON_LABELS,
@@ -21,6 +20,8 @@ interface TriageBucketsProps {
   bucket: TriageBucket
   items: TriagedPost[]
   visualsByPost: Record<string, DraftVisual[]>
+  /** The queue's pinned render instant — keeps SSR and hydration text identical. */
+  now: Date
   onOpen: (postId: string) => void
   onApprove: (postId: string) => void
   onScheduleAll: () => void
@@ -69,6 +70,7 @@ export function TriageBuckets({
   bucket,
   items,
   visualsByPost,
+  now,
   onOpen,
   onApprove,
   onScheduleAll,
@@ -169,7 +171,14 @@ export function TriageBuckets({
             </button>
             {post.approval && (
               <StatusPill tone="warn">
-                Sent · expires {formatRelativeTime(new Date(post.approval.expiresAt))}
+                {/* Expiry is a FUTURE instant — formatRelativeTime only reads the
+                    past ("just now" for anything ahead), so count the hours left. */}
+                Sent · expires in{' '}
+                {Math.max(
+                  0,
+                  Math.ceil((new Date(post.approval.expiresAt).getTime() - now.getTime()) / 3_600_000)
+                )}
+                h
               </StatusPill>
             )}
             <Button

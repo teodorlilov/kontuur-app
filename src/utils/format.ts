@@ -26,9 +26,10 @@ export function capitalize(value: string): string {
   return value.charAt(0).toUpperCase() + value.slice(1)
 }
 
-export function formatRelativeTime(date: Date): string {
-  const now = new Date()
-  const diffMs = now.getTime() - date.getTime()
+/** `relativeTo` pins the comparison instant — SSR'd surfaces pass a server-provided
+ *  time so the text cannot differ between server render and hydration. */
+export function formatRelativeTime(date: Date, relativeTo: Date = new Date()): string {
+  const diffMs = relativeTo.getTime() - date.getTime()
   const diffSeconds = Math.floor(diffMs / 1000)
   const diffMinutes = Math.floor(diffSeconds / 60)
   const diffHours = Math.floor(diffMinutes / 60)
