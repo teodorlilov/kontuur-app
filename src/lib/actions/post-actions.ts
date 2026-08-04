@@ -4,6 +4,7 @@ import { revalidateTag } from 'next/cache'
 import { z } from 'zod'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { resolveActionAuth, verifyPostOwnership, verifyPostsOwnership } from '@/lib/auth/helpers'
+import { parseStoredValidation } from '@/lib/validation/stored-validation-schema'
 import { DISCARD_REASONS, isUserSettablePostStatus, isValidPostPlatform } from '@/lib/validation'
 import type { Database } from '@/types/database'
 import type { ActionResult } from './types'
@@ -15,6 +16,13 @@ const deletePostOptionsSchema = z
 const savePostCopySchema = z.object({
   caption: z.string(),
   slides_json: z.unknown(),
+})
+
+const persistRewriteSchema = z.object({
+  caption: z.string(),
+  slides_json: z.unknown(),
+  quality_score_avg: z.number().nullable(),
+  validation: z.unknown(),
 })
 
 interface UpdatePostInput {
@@ -119,6 +127,57 @@ export async function savePostCopy(
   if (error) return { ok: false, error: error.message }
 
   return { ok: true, data: undefined }
+}
+
+/**
+ * Persist a rewrite: the fresh copy, its score, the rewrite bookkeeping and
+ * the full stored validation. The evidence is validated AND trimmed in one
+ * step by parseStoredValidation — building it here keeps the zod schema out
+ * of the client bundle. rewrite_count increments server-side so a stale
+ * client copy cannot regress it.
+ */
+export async function persistRewrite(
+  postId: string,
+  input: {
+    caption: string
+    slides_json: unknown
+    quality_score_avg: number | null
+    validation: unknown
+  }
+): Promise<ActionResult<{ rewriteCount: number }>> {
+  const parsed = persistRewriteSchema.safeParse(input)
+  if (!parsed.success) return { ok: false, error: 'Invalid rewrite payload' }
+  const stored = parseStoredValidation(parsed.data.validation)
+  if (!stored) return { ok: false, error: 'Invalid rewrite validation' }
+
+  const auth = await resolveActionAuth()
+  if (!auth.ok) return { ok: false, error: auth.error }
+  const { supabase, agencyId } = auth
+
+  const post = await verifyPostOwnership(supabase, postId, agencyId)
+  if (!post) return { ok: false, error: 'Post not found' }
+
+  const { data: row } = await supabase
+    .from('posts')
+    .select('rewrite_count')
+    .eq('id', postId)
+    .single()
+  const rewriteCount = (row?.rewrite_count ?? 0) + 1
+
+  const updates: Record<string, unknown> = {
+    caption: parsed.data.caption,
+    slides_json: parsed.data.slides_json,
+    quality_score_avg: parsed.data.quality_score_avg,
+    was_rewritten: true,
+    rewrite_count: rewriteCount,
+    validation_json: stored,
+  }
+  const { error } = await supabase.from('posts').update(updates).eq('id', postId)
+  if (error) return { ok: false, error: error.message }
+
+  // A rewrite moves the quality average, which the stats tag reports.
+  revalidateTag('client-post-stats', 'max')
+  return { ok: true, data: { rewriteCount } }
 }
 
 /** Delete a post by ID, recording its outcome (and the reviewer's reason) as a review discard first. */

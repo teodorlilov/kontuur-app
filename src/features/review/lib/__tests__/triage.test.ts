@@ -27,6 +27,8 @@ function post(overrides: Partial<QueuePost> = {}): QueuePost {
     post_type: 'single',
     slides_json: null,
     validation_json: null,
+    validation: validation(),
+    needsSlopCheck: false,
     status: 'pending_review',
     priority: false,
     quality_score_avg: 8,

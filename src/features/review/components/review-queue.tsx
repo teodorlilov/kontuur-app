@@ -17,10 +17,9 @@ import { ScheduleDialog } from '@/components/posts/review/schedule-dialog'
 import { useDraftEdits } from '@/components/posts/review/use-draft-edits'
 import { useReviewKeyboard } from '@/components/posts/review/use-review-keyboard'
 import { parseSlides } from '@/components/posts/parse-slides'
-import { updatePost, deletePost, savePostCopy } from '@/lib/actions/post-actions'
+import { updatePost, deletePost, persistRewrite, savePostCopy } from '@/lib/actions/post-actions'
 import { slideCopyAt } from '@/features/canvas-editor/lib/slide-copy'
 import { rewriteDraft } from '@/lib/rewrite-draft'
-import { buildStoredValidation } from '@/lib/validation/stored-validation-schema'
 import { countVisualsByStatus, type DraftVisual } from '@/lib/visual/draft-visuals'
 import { upsertImageAtPosition } from '@/features/publishing/lib/image-list'
 import { TriageBuckets } from './triage-buckets'
@@ -29,11 +28,6 @@ import { QueueInsightSections } from './queue-insight-sections'
 import { SendToClientDialog } from './send-to-client-dialog'
 import { useQueueAutosave } from '@/features/review/hooks/use-queue-autosave'
 import { useQueueVisuals } from '@/features/review/hooks/use-queue-visuals'
-import {
-  fallbackValidationData,
-  needsSlopFallback,
-  toValidationData,
-} from '@/features/review/lib/adapt-validation'
 import { totalVisualSlots } from '@/lib/visual/visual-backlog'
 import { computeTriage, type TriageBucket, type TriagedPost } from '@/features/review/lib/triage'
 import { toVisualSlots } from '@/features/review/lib/visual-slots'
@@ -134,12 +128,11 @@ export function ReviewQueue({
     }
   }, [])
 
+  // Validation arrives pre-adapted from the server; only late slop results overlay it.
   const validationFor = useCallback(
     (post: QueuePost): ValidationData => {
-      const base =
-        toValidationData(post.validation_json) ?? fallbackValidationData(post.quality_score_avg)
       const slop = slopOverrides[post.id]
-      return slop ? { ...base, slop } : base
+      return slop ? { ...post.validation, slop } : post.validation
     },
     [slopOverrides]
   )
@@ -295,7 +288,7 @@ export function ReviewQueue({
   // Legacy rows without a stored human score get one detect-slop pass on focus.
   useEffect(() => {
     const post = focused?.post
-    if (!post || !needsSlopFallback(post.validation_json)) return
+    if (!post || !post.needsSlopCheck) return
     if (slopRequestedRef.current.has(post.id)) return
     slopRequestedRef.current.add(post.id)
     const slides = parseSlides(post.slides_json)
@@ -499,14 +492,13 @@ export function ReviewQueue({
       return
     }
     const postId = focused.post.id
-    const storedValidation = buildStoredValidation(outcome.validation)
-    const persisted = await updatePost(postId, {
+    // Persistence builds the stored validation server-side — the zod schema
+    // stays out of this bundle.
+    const persisted = await persistRewrite(postId, {
       caption: outcome.updatedPost.caption ?? '',
       slides_json: outcome.updatedPost.slides_json,
-      quality_score_avg: outcome.updatedPost.quality_score_avg ?? undefined,
-      was_rewritten: true,
-      rewrite_count: outcome.updatedPost.rewrite_count ?? 1,
-      validation_json: storedValidation,
+      quality_score_avg: outcome.updatedPost.quality_score_avg ?? null,
+      validation: outcome.validation,
     })
     setRewriting(false)
     if (!persisted.ok) {
@@ -522,8 +514,9 @@ export function ReviewQueue({
               slides_json: outcome.updatedPost.slides_json,
               quality_score_avg: outcome.updatedPost.quality_score_avg ?? p.quality_score_avg,
               was_rewritten: true,
-              rewrite_count: outcome.updatedPost.rewrite_count ?? p.rewrite_count + 1,
-              validation_json: storedValidation,
+              rewrite_count: persisted.data.rewriteCount,
+              validation: outcome.validation,
+              needsSlopCheck: false,
             }
           : p
       )

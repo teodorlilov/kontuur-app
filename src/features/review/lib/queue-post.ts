@@ -1,4 +1,5 @@
 import type { PostImage } from '@/types/api'
+import type { ValidationData } from '@/types/post'
 
 /** A client sign-off request attached to a queue post (post_approval_tokens). */
 export interface QueueApproval {
@@ -14,7 +15,14 @@ export interface QueuePost {
   platform: string | null
   post_type: string
   slides_json: unknown
-  validation_json: unknown
+  /** The raw blob stays server-side (the page adapts it); null here keeps the
+   *  shape assignable to PostData without shipping legacy JSON to the client. */
+  validation_json: null
+  /** Adapted server-side — the client never parses (or bundles) the zod schema. */
+  validation: ValidationData
+  /** True for legacy rows whose authenticity was never measured — the shell
+   *  runs one detect-slop call on focus for these. */
+  needsSlopCheck: boolean
   status: string
   priority: boolean
   quality_score_avg: number | null

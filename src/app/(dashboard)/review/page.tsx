@@ -3,6 +3,11 @@ import { requireSessionUser } from '@/lib/auth/session'
 import { getCachedAgencyClients } from '@/lib/queries/cache'
 import { POST_COLUMNS } from '@/lib/queries/select-columns'
 import { fetchCanvasDocPositions, fetchImagesByPost } from '@/features/publishing/lib/fetch-post-images'
+import {
+  fallbackValidationData,
+  needsSlopFallback,
+  toValidationData,
+} from '@/features/review/lib/adapt-validation'
 import { fetchWeekSchedule, type WeekScheduledPost } from '@/features/review/lib/week-schedule'
 import { getMondayISO } from '@/utils/date-helpers'
 import { ReviewQueue } from '@/features/review/components/review-queue'
@@ -106,8 +111,15 @@ export default async function ReviewPage() {
     approvalByPost.set(token.post_id, { status: 'pending', expiresAt: token.expires_at })
   }
 
+  // Validation is adapted here, server-side: the client gets ValidationData,
+  // never the raw blob — that keeps zod (and legacy-shape parsing) out of the
+  // queue's bundle and per-render work.
   const posts: QueuePost[] = typedPostRows.map((p) => ({
     ...p,
+    validation_json: null,
+    validation:
+      toValidationData(p.validation_json) ?? fallbackValidationData(p.quality_score_avg),
+    needsSlopCheck: needsSlopFallback(p.validation_json),
     client_name: nameByClient.get(p.client_id) ?? 'Unknown',
     is_health_niche: healthByClient.get(p.client_id) ?? false,
     images: imagesByPost.get(p.id) ?? [],
