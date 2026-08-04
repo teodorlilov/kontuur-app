@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
 import { useBatchSchedule } from '@/components/scheduling/use-batch-schedule'
@@ -15,14 +16,30 @@ interface BatchScheduleModalProps {
   open: boolean
   onClose: () => void
   posts: BatchPost[]
+  /** Pre-filled slots (e.g. the queue's picker suggestions) — every row stays editable. */
+  initialAssignments?: Record<string, { date: string; time: string }>
   onComplete: () => void
 }
 
-export function BatchScheduleModal({ open, onClose, posts, onComplete }: BatchScheduleModalProps) {
-  const { assignments, setDate, setTime, scheduleAll, loading } = useBatchSchedule(posts, () => {
-    onComplete()
-    onClose()
-  })
+export function BatchScheduleModal({
+  open,
+  onClose,
+  posts,
+  initialAssignments,
+  onComplete,
+}: BatchScheduleModalProps) {
+  const { assignments, setDate, setTime, scheduleAll, resetAssignments, loading } =
+    useBatchSchedule(posts, () => {
+      onComplete()
+      onClose()
+    }, initialAssignments)
+
+  // Fresh seed per opening — adjusted during render (the documented pattern).
+  const [prevOpen, setPrevOpen] = useState(open)
+  if (open !== prevOpen) {
+    setPrevOpen(open)
+    if (open) resetAssignments(initialAssignments)
+  }
 
   const minDate = new Date().toISOString().slice(0, 10)
 

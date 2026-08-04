@@ -17,9 +17,20 @@ interface Assignment {
   time: string
 }
 
-export function useBatchSchedule(posts: BatchPost[], onComplete: () => void) {
-  const [assignments, setAssignments] = useState<Map<string, Assignment>>(new Map())
+export function useBatchSchedule(
+  posts: BatchPost[],
+  onComplete: () => void,
+  initialAssignments?: Record<string, Assignment>
+) {
+  const [assignments, setAssignments] = useState<Map<string, Assignment>>(
+    () => new Map(Object.entries(initialAssignments ?? {}))
+  )
   const [loading, setLoading] = useState(false)
+
+  /** Re-seed for a fresh opening — the modal stays mounted across batches. */
+  function resetAssignments(initial?: Record<string, Assignment>) {
+    setAssignments(new Map(Object.entries(initial ?? {})))
+  }
 
   function setDate(postId: string, date: string) {
     setAssignments((prev) => {
@@ -72,5 +83,5 @@ export function useBatchSchedule(posts: BatchPost[], onComplete: () => void) {
     }
   }
 
-  return { assignments, setDate, setTime, scheduleAll, loading }
+  return { assignments, setDate, setTime, scheduleAll, resetAssignments, loading }
 }

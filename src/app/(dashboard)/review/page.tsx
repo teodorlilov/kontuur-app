@@ -3,6 +3,8 @@ import { requireSessionUser } from '@/lib/auth/session'
 import { getCachedAgencyClients } from '@/lib/queries/cache'
 import { POST_COLUMNS } from '@/lib/queries/select-columns'
 import { fetchCanvasDocPositions, fetchImagesByPost } from '@/features/publishing/lib/fetch-post-images'
+import { fetchWeekSchedule, type WeekScheduledPost } from '@/features/review/lib/week-schedule'
+import { getMondayISO } from '@/utils/date-helpers'
 import { ReviewQueue } from '@/features/review/components/review-queue'
 import type { QueueApproval, QueuePost } from '@/features/review/lib/queue-post'
 import type { BestTimePlatform } from '@/types/api'
@@ -79,9 +81,14 @@ export default async function ReviewPage() {
   const postIds = typedPostRows.map((p) => p.id)
 
   type TokenRow = { post_id: string; status: string; expires_at: string }
-  const [imagesByPost, composedByPost, { data: tokenRows }] = await Promise.all([
+  const [imagesByPost, composedByPost, weekSchedule, { data: tokenRows }] = await Promise.all([
     fetchImagesByPost(postIds),
     fetchCanvasDocPositions(postIds),
+    // Week context powers the slot picker — worth degrading, never failing for.
+    fetchWeekSchedule(supabase, clientIds, getMondayISO()).catch((err: unknown) => {
+      console.error('[review] week schedule failed:', err)
+      return [] as WeekScheduledPost[]
+    }),
     postIds.length > 0
       ? supabase
           .from('post_approval_tokens')
@@ -106,5 +113,17 @@ export default async function ReviewPage() {
     approval: approvalByPost.get(p.id) ?? null,
   }))
 
-  return <ReviewQueue initialPosts={posts} clients={clients} bestTimeMap={bestTimeMap} />
+  const postsPerWeekByClient = Object.fromEntries(
+    cachedClients.map((c) => [c.id, c.posts_per_week ?? 0])
+  )
+
+  return (
+    <ReviewQueue
+      initialPosts={posts}
+      clients={clients}
+      bestTimeMap={bestTimeMap}
+      weekSchedule={weekSchedule}
+      postsPerWeekByClient={postsPerWeekByClient}
+    />
+  )
 }

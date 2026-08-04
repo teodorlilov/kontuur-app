@@ -9,6 +9,8 @@ interface CommitmentBarProps {
   failedVisuals: number
   composingVisuals: number
   approving: boolean
+  /** Surface-specific quiet actions before Skip (the queue adds Send to client). */
+  leadingActions?: React.ReactNode
   onSkip: () => void
   onDiscard: () => void
   onApproveAll: () => void
@@ -27,6 +29,7 @@ export function CommitmentBar({
   failedVisuals,
   composingVisuals,
   approving,
+  leadingActions,
   onSkip,
   onDiscard,
   onApproveAll,
@@ -45,6 +48,7 @@ export function CommitmentBar({
         </span>
         {notes.length > 0 && <span> · {notes.join(' · ')}</span>}
       </p>
+      {leadingActions}
       <Button variant="ghost" size="sm" className="text-text2" onClick={onSkip}>
         Skip
       </Button>

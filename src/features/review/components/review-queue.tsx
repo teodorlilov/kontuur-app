@@ -25,6 +25,7 @@ import { upsertImageAtPosition } from '@/features/publishing/lib/image-list'
 import { TriageBuckets } from './triage-buckets'
 import { DiscardToast, DISCARD_TOAST_MS } from './discard-toast'
 import { QueueInsightSections } from './queue-insight-sections'
+import { SendToClientDialog } from './send-to-client-dialog'
 import { useQueueAutosave } from '@/features/review/hooks/use-queue-autosave'
 import { useQueueVisuals } from '@/features/review/hooks/use-queue-visuals'
 import {
@@ -35,6 +36,10 @@ import {
 import { totalVisualSlots } from '@/lib/visual/visual-backlog'
 import { computeTriage, type TriageBucket, type TriagedPost } from '@/features/review/lib/triage'
 import { toVisualSlots } from '@/features/review/lib/visual-slots'
+import { isoToDateTimeFields, pickNextOpenSlot } from '@/features/review/lib/slot-picker'
+import { getMondayISO, getWeekDayKeys, toDateKey } from '@/utils/date-helpers'
+import { APPROVAL_TOKEN_EXPIRY_HOURS } from '@/utils/constants'
+import type { WeekScheduledPost } from '@/features/review/lib/week-schedule'
 import type { DiscardReason } from '@/features/review/lib/discard-reasons'
 import type { QueuePost } from '@/features/review/lib/queue-post'
 import type { ReviewDraft } from '@/components/posts/review/types'
@@ -46,6 +51,9 @@ interface ReviewQueueProps {
   initialPosts: QueuePost[]
   clients: Array<{ id: string; name: string }>
   bestTimeMap: Record<string, BestTimePlatform[] | null>
+  /** Slots the clients hold this week and next — the slot picker's occupancy. */
+  weekSchedule: WeekScheduledPost[]
+  postsPerWeekByClient: Record<string, number>
 }
 
 const EMPTY_ID_SET = new Set<string>()
@@ -60,7 +68,13 @@ function toDraft(t: TriagedPost): ReviewDraft {
  * discard are status transitions on real rows — edits autosave, discards get
  * an undo window, and every outcome updates the local list optimistically.
  */
-export function ReviewQueue({ initialPosts, clients, bestTimeMap }: ReviewQueueProps) {
+export function ReviewQueue({
+  initialPosts,
+  clients,
+  bestTimeMap,
+  weekSchedule,
+  postsPerWeekByClient,
+}: ReviewQueueProps) {
   const [posts, setPosts] = useState(initialPosts)
   const [activeBucket, setActiveBucket] = useState<TriageBucket>('needs_attention')
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null)
@@ -72,7 +86,13 @@ export function ReviewQueue({ initialPosts, clients, bestTimeMap }: ReviewQueueP
   const [approving, setApproving] = useState(false)
   const [rewriting, setRewriting] = useState(false)
   const [approvedCount, setApprovedCount] = useState(0)
-  const [batchPosts, setBatchPosts] = useState<QueuePost[]>([])
+  const [batch, setBatch] = useState<{
+    posts: QueuePost[]
+    assignments: Record<string, { date: string; time: string }>
+  } | null>(null)
+  const [sendTarget, setSendTarget] = useState<QueuePost | null>(null)
+  // Slots taken during this session — the picker must not offer them twice.
+  const [sessionScheduled, setSessionScheduled] = useState<WeekScheduledPost[]>([])
   const [slopOverrides, setSlopOverrides] = useState<Record<string, SlopDetection>>({})
 
   // Triage ages are computed against the moment the page opened — a ticking
@@ -303,6 +323,29 @@ export function ReviewQueue({ initialPosts, clients, bestTimeMap }: ReviewQueueP
     }
   }
 
+  // ── Scheduling context ──
+  const weekStart = useMemo(() => getMondayISO(now), [now])
+
+  const occupiedSlotsByClient = useMemo(() => {
+    const byClient = new Map<string, string[]>()
+    for (const slot of [...weekSchedule, ...sessionScheduled]) {
+      const list = byClient.get(slot.client_id) ?? []
+      list.push(slot.scheduled_at)
+      byClient.set(slot.client_id, list)
+    }
+    return byClient
+  }, [weekSchedule, sessionScheduled])
+
+  function nextSlotFor(post: QueuePost, occupied: string[]): string | null {
+    return pickNextOpenSlot({
+      platform: post.platform,
+      bestTimes: bestTimeMap[post.client_id] ?? null,
+      postsPerWeek: postsPerWeekByClient[post.client_id] ?? 0,
+      occupiedSlots: occupied,
+      now: new Date(),
+    })
+  }
+
   // ── Approve ──
   async function executeApprove(postId: string, scheduledAt: string | null): Promise<boolean> {
     const target = triaged.find((t) => t.post.id === postId)
@@ -321,6 +364,12 @@ export function ReviewQueue({ initialPosts, clients, bestTimeMap }: ReviewQueueP
     }
     setPosts((prev) => prev.filter((p) => p.id !== postId))
     setApprovedCount((c) => c + 1)
+    if (scheduledAt) {
+      setSessionScheduled((prev) => [
+        ...prev,
+        { client_id: target.post.client_id, scheduled_at: scheduledAt },
+      ])
+    }
     return true
   }
 
@@ -336,14 +385,42 @@ export function ReviewQueue({ initialPosts, clients, bestTimeMap }: ReviewQueueP
   }
 
   function openBatch(items: QueuePost[]) {
-    if (items.length > 0) setBatchPosts(items)
+    if (items.length === 0) return
+    // Prefill each row with the picker's suggestion, consuming slots per
+    // client as it goes — every row stays editable in the modal.
+    const occupiedCopy = new Map<string, string[]>()
+    const assignments: Record<string, { date: string; time: string }> = {}
+    for (const post of items) {
+      const occupied =
+        occupiedCopy.get(post.client_id) ??
+        [...(occupiedSlotsByClient.get(post.client_id) ?? [])]
+      const iso = nextSlotFor(post, occupied)
+      if (iso) {
+        occupied.push(iso)
+        assignments[post.id] = isoToDateTimeFields(iso)
+      }
+      occupiedCopy.set(post.client_id, occupied)
+    }
+    setBatch({ posts: items, assignments })
   }
 
   function handleBatchComplete() {
-    const scheduledIds = new Set(batchPosts.map((p) => p.id))
+    if (!batch) return
+    const scheduledIds = new Set(batch.posts.map((p) => p.id))
     setPosts((prev) => prev.filter((p) => !scheduledIds.has(p.id)))
-    setApprovedCount((c) => c + batchPosts.length)
-    setBatchPosts([])
+    setApprovedCount((c) => c + batch.posts.length)
+    // Best-effort occupancy: the prefilled slots stand in for whatever the
+    // reviewer confirmed — the server's truth returns on the next load.
+    setSessionScheduled((prev) => [
+      ...prev,
+      ...batch.posts.flatMap((post) => {
+        const assignment = batch.assignments[post.id]
+        return assignment
+          ? [{ client_id: post.client_id, scheduled_at: `${assignment.date}T${assignment.time}` }]
+          : []
+      }),
+    ])
+    setBatch(null)
   }
 
   // ── Discard (undo window, then commit) ──
@@ -471,10 +548,38 @@ export function ReviewQueue({ initialPosts, clients, bestTimeMap }: ReviewQueueP
     onDiscard: () => focused && discardPost(focused.post.id),
   })
 
+  function handleSent(postId: string) {
+    const expiresAt = new Date(Date.now() + APPROVAL_TOKEN_EXPIRY_HOURS * 3_600_000).toISOString()
+    setPosts((prev) =>
+      prev.map((p) => (p.id === postId ? { ...p, approval: { status: 'pending', expiresAt } } : p))
+    )
+    setSendTarget(null)
+  }
+
   // ── Render ──
   const scheduleTargetPost = scheduleTarget
     ? (posts.find((p) => p.id === scheduleTarget) ?? null)
     : null
+
+  const scheduleWeekContext = useMemo(() => {
+    if (!scheduleTargetPost) return undefined
+    const occupied = occupiedSlotsByClient.get(scheduleTargetPost.client_id) ?? []
+    const countsByDay = getWeekDayKeys(weekStart).map(
+      (dayKey) => occupied.filter((iso) => toDateKey(new Date(iso)) === dayKey).length
+    )
+    return {
+      weekStart,
+      countsByDay,
+      target: postsPerWeekByClient[scheduleTargetPost.client_id] ?? 0,
+      nextOpenSlot: pickNextOpenSlot({
+        platform: scheduleTargetPost.platform,
+        bestTimes: bestTimeMap[scheduleTargetPost.client_id] ?? null,
+        postsPerWeek: postsPerWeekByClient[scheduleTargetPost.client_id] ?? 0,
+        occupiedSlots: occupied,
+        now: new Date(),
+      }),
+    }
+  }, [scheduleTargetPost, occupiedSlotsByClient, weekStart, bestTimeMap, postsPerWeekByClient])
   const visualTallies = useMemo(() => {
     let failed = 0
     let composing = 0
@@ -561,6 +666,9 @@ export function ReviewQueue({ initialPosts, clients, bestTimeMap }: ReviewQueueP
               onOpen={focusDraft}
               onApprove={setScheduleTarget}
               onScheduleAll={() => openBatch(readyPosts)}
+              onRemind={(postId) =>
+                setSendTarget(posts.find((p) => p.id === postId) ?? null)
+              }
             />
           ) : (
             <>
@@ -660,6 +768,16 @@ export function ReviewQueue({ initialPosts, clients, bestTimeMap }: ReviewQueueP
                 failedVisuals={visualTallies.failed}
                 composingVisuals={visualTallies.composing}
                 approving={approving}
+                leadingActions={
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-text2"
+                    onClick={() => setSendTarget(focused.post)}
+                  >
+                    Send to client
+                  </Button>
+                }
                 onSkip={() => focusNeighbour(1)}
                 onDiscard={() => discardPost(focused.post.id)}
                 onApproveAll={() => openBatch(bucketItems.map((t) => t.post))}
@@ -675,20 +793,28 @@ export function ReviewQueue({ initialPosts, clients, bestTimeMap }: ReviewQueueP
         platform={scheduleTargetPost?.platform ?? null}
         bestTimeData={scheduleTargetPost ? (bestTimeMap[scheduleTargetPost.client_id] ?? null) : null}
         approving={approving}
+        weekContext={scheduleWeekContext}
         onConfirm={(scheduledAt) => void handleScheduleConfirm(scheduledAt)}
         onClose={() => setScheduleTarget(null)}
       />
 
       <BatchScheduleModal
-        open={batchPosts.length > 0}
-        onClose={() => setBatchPosts([])}
-        posts={batchPosts.map((p) => ({
+        open={batch !== null}
+        onClose={() => setBatch(null)}
+        posts={(batch?.posts ?? []).map((p) => ({
           id: p.id,
           client_name: p.client_name,
           caption: p.caption,
           platform: p.platform,
         }))}
+        initialAssignments={batch?.assignments}
         onComplete={handleBatchComplete}
+      />
+
+      <SendToClientDialog
+        post={sendTarget}
+        onClose={() => setSendTarget(null)}
+        onSent={handleSent}
       />
     </div>
   )

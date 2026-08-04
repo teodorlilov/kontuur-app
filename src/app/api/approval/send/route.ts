@@ -3,31 +3,31 @@ import { revalidateTag } from 'next/cache'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
 import { fetchClientWithOwnership } from '@/lib/auth/helpers'
 import { createApprovalBatch } from '@/features/review/lib/approval-batch'
-import type { SendApprovalRequest } from '@/types/api'
+import { approvalRequestSchema } from '@/features/review/schemas'
 
 export async function POST(request: Request) {
   const auth = await resolveAuth()
   if (!auth.ok) return auth.response
   const { supabase, agencyId } = auth
 
-  let body: SendApprovalRequest
+  let raw: unknown
   try {
-    body = await request.json()
+    raw = await request.json()
   } catch {
     return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
   }
-
-  const { clientId, weekStart } = body
-  if (!clientId || !weekStart) {
-    return NextResponse.json({ error: 'clientId and weekStart are required' }, { status: 400 })
+  const parsed = approvalRequestSchema.safeParse(raw)
+  if (!parsed.success) {
+    return NextResponse.json({ error: 'clientId plus weekStart or postIds required' }, { status: 400 })
   }
+  const { clientId, weekStart, postIds } = parsed.data
 
   const client = await fetchClientWithOwnership(supabase, clientId, agencyId)
   if (!client) {
     return NextResponse.json({ error: 'Client not found' }, { status: 404 })
   }
 
-  const result = await createApprovalBatch(supabase, clientId, weekStart)
+  const result = await createApprovalBatch(supabase, clientId, weekStart ?? null, null, { postIds })
   if (!result.ok) {
     return NextResponse.json({ error: result.error }, { status: result.status })
   }

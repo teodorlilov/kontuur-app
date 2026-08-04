@@ -24,6 +24,8 @@ interface TriageBucketsProps {
   onOpen: (postId: string) => void
   onApprove: (postId: string) => void
   onScheduleAll: () => void
+  /** Re-send the approval link for a waiting post (reissues the token). */
+  onRemind: (postId: string) => void
 }
 
 function postTitle(post: QueuePost): string {
@@ -70,6 +72,7 @@ export function TriageBuckets({
   onOpen,
   onApprove,
   onScheduleAll,
+  onRemind,
 }: TriageBucketsProps) {
   if (items.length === 0) {
     return (
@@ -169,6 +172,14 @@ export function TriageBuckets({
                 Sent · expires {formatRelativeTime(new Date(post.approval.expiresAt))}
               </StatusPill>
             )}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-text2"
+              onClick={() => onRemind(post.id)}
+            >
+              Remind
+            </Button>
           </div>
         ))}
         <p className="border-t border-line px-4 py-2.5 text-micro text-text3">

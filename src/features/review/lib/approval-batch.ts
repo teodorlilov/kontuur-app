@@ -8,32 +8,50 @@ type BatchResult =
 export async function createApprovalBatch(
   supabase: SupabaseClient,
   clientId: string,
-  weekStart: string,
-  clientEmail: string | null = null
+  weekStart: string | null,
+  clientEmail: string | null = null,
+  options?: { postIds?: string[] }
 ): Promise<BatchResult> {
-  const weekStartDate = new Date(weekStart)
-  if (isNaN(weekStartDate.getTime())) {
-    return { ok: false, error: 'weekStart must be a valid ISO date', status: 400 }
+  let postIds: string[]
+
+  if (options?.postIds && options.postIds.length > 0) {
+    // Explicit selection — the queue's send-to-client. Every id must belong to
+    // this client, otherwise the whole batch is refused.
+    const { data: owned, error: ownedError } = await supabase
+      .from('posts')
+      .select('id')
+      .eq('client_id', clientId)
+      .in('id', options.postIds)
+      .order('created_at', { ascending: true })
+    if (ownedError) return { ok: false, error: ownedError.message, status: 500 }
+    if (!owned || owned.length !== options.postIds.length) {
+      return { ok: false, error: 'Some posts do not belong to this client', status: 400 }
+    }
+    postIds = owned.map((p) => p.id)
+  } else {
+    const weekStartDate = new Date(weekStart ?? '')
+    if (isNaN(weekStartDate.getTime())) {
+      return { ok: false, error: 'weekStart must be a valid ISO date', status: 400 }
+    }
+
+    const weekEnd = new Date(weekStartDate)
+    weekEnd.setDate(weekEnd.getDate() + 6)
+    weekEnd.setHours(23, 59, 59, 999)
+
+    const { data: posts, error: postsError } = await supabase
+      .from('posts')
+      .select('id')
+      .eq('client_id', clientId)
+      .gte('scheduled_at', weekStartDate.toISOString())
+      .lte('scheduled_at', weekEnd.toISOString())
+      .order('scheduled_at', { ascending: true })
+
+    if (postsError) return { ok: false, error: postsError.message, status: 500 }
+    if (!posts || posts.length === 0) {
+      return { ok: false, error: 'No posts scheduled for this week', status: 400 }
+    }
+    postIds = posts.map((p) => p.id)
   }
-
-  const weekEnd = new Date(weekStartDate)
-  weekEnd.setDate(weekEnd.getDate() + 6)
-  weekEnd.setHours(23, 59, 59, 999)
-
-  const { data: posts, error: postsError } = await supabase
-    .from('posts')
-    .select('id')
-    .eq('client_id', clientId)
-    .gte('scheduled_at', weekStartDate.toISOString())
-    .lte('scheduled_at', weekEnd.toISOString())
-    .order('scheduled_at', { ascending: true })
-
-  if (postsError) return { ok: false, error: postsError.message, status: 500 }
-  if (!posts || posts.length === 0) {
-    return { ok: false, error: 'No posts scheduled for this week', status: 400 }
-  }
-
-  const postIds = posts.map((p) => p.id)
   const batchId = crypto.randomUUID()
   const expiresAt = new Date()
   expiresAt.setHours(expiresAt.getHours() + APPROVAL_TOKEN_EXPIRY_HOURS)
@@ -53,5 +71,5 @@ export async function createApprovalBatch(
   const { error: insertError } = await supabase.from('post_approval_tokens').insert(tokenRows)
   if (insertError) return { ok: false, error: insertError.message, status: 500 }
 
-  return { ok: true, batchId, postCount: posts.length }
+  return { ok: true, batchId, postCount: postIds.length }
 }

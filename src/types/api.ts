@@ -124,11 +124,6 @@ export interface ClientIdea {
 
 // ---- Approval ----
 
-export interface SendApprovalRequest {
-  clientId: string
-  weekStart: string // ISO date string (Monday of the week)
-}
-
 export interface ApprovalResponse {
   status: 'approved' | 'changes_requested'
   postNotes?: Array<{ postId: string; note: string }>

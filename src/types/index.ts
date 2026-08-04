@@ -38,7 +38,6 @@ export type {
   BestTimeResponse,
   BestTimePlatform,
   BestTimeWindow,
-  SendApprovalRequest,
   ApprovalResponse,
   CalendarPost,
   PostImage,

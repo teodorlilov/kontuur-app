@@ -12,31 +12,53 @@ import {
   LABEL_CLASS,
 } from '@/components/ui/form/control-classes'
 import { formatScheduledAt, getNextDateForDay, toDateKey } from '@/utils/date-helpers'
+import { WeekStrip } from './week-strip'
 import type { BestTimePlatform } from '@/types/api'
 
-type ScheduleChoice = 'best' | 'pick' | 'none'
+type ScheduleChoice = 'next' | 'best' | 'pick' | 'none'
+
+export interface ScheduleWeekContext {
+  /** Monday of the current week, YYYY-MM-DD. */
+  weekStart: string
+  /** Scheduled-post count per day, Monday-first, length 7. */
+  countsByDay: number[]
+  /** The client's posts-per-week target; 0 = no target. */
+  target: number
+  /** The picker's recommendation, or null when best-time data cannot produce one. */
+  nextOpenSlot: string | null
+}
 
 interface ScheduleDialogProps {
   open: boolean
   platform: string | null
   bestTimeData: BestTimePlatform[] | null
   approving: boolean
+  /** The client's week — surfaces the strip and the "next open slot" default (queue only for now). */
+  weekContext?: ScheduleWeekContext
   /** Resolves the decision: an ISO timestamp schedules, null approves unscheduled. */
   onConfirm: (scheduledAt: string | null) => void
   onClose: () => void
 }
 
+function formatSlotLabel(iso: string): string {
+  const date = new Date(iso)
+  const day = date.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })
+  const time = date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
+  return `${day}, ${time}`
+}
+
 /**
  * Approve is also the moment the post gets (or declines) a slot, so the two
- * decisions share one dialog: option cards for the recommendation, a manual
- * pick, or no slot at all. "Next open slot" is deliberately absent — deriving
- * it needs the client's scheduled posts, which this surface does not load yet.
+ * decisions share one dialog: the week's shape with a recommended open slot
+ * when the caller supplies it, the platform's best time, a manual pick, or no
+ * slot at all.
  */
 export function ScheduleDialog({
   open,
   platform,
   bestTimeData,
   approving,
+  weekContext,
   onConfirm,
   onClose,
 }: ScheduleDialogProps) {
@@ -56,18 +78,22 @@ export function ScheduleDialog({
   // Fresh decision per opening — best-time data arrives async, so the default
   // can only be decided when the dialog actually opens. Adjusted during render
   // (the documented pattern), not in an effect.
+  const nextOpenSlot = weekContext?.nextOpenSlot ?? null
+
   const [prevOpen, setPrevOpen] = useState(open)
   if (open !== prevOpen) {
     setPrevOpen(open)
     if (open) {
-      setChoice(best ? 'best' : 'none')
+      setChoice(nextOpenSlot ? 'next' : best ? 'best' : 'none')
       setPickedDate('')
       setPickedTime('')
     }
   }
 
   function handleConfirm() {
-    if (choice === 'best' && best) {
+    if (choice === 'next' && nextOpenSlot) {
+      onConfirm(nextOpenSlot)
+    } else if (choice === 'best' && best) {
       onConfirm(formatScheduledAt(getNextDateForDay(best.day), best.time))
     } else if (choice === 'pick' && pickedDate) {
       onConfirm(formatScheduledAt(pickedDate, pickedTime))
@@ -86,7 +112,23 @@ export function ScheduleDialog({
           unscheduled.
         </p>
 
+        {weekContext && (
+          <WeekStrip
+            weekStart={weekContext.weekStart}
+            countsByDay={weekContext.countsByDay}
+            target={weekContext.target}
+          />
+        )}
+
         <div role="radiogroup" aria-label="Schedule" className="flex flex-col gap-2">
+          {nextOpenSlot && (
+            <OptionCard
+              checked={choice === 'next'}
+              title={`Next open slot — ${formatSlotLabel(nextOpenSlot)}`}
+              sub="Fills this client's week"
+              onSelect={() => setChoice('next')}
+            />
+          )}
           {best && (
             <OptionCard
               checked={choice === 'best'}
