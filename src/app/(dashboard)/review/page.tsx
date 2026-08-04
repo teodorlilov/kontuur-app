@@ -2,7 +2,7 @@ import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { requireSessionUser } from '@/lib/auth/session'
 import { getCachedAgencyClients } from '@/lib/queries/cache'
 import { POST_COLUMNS } from '@/lib/queries/select-columns'
-import { fetchImagesByPost } from '@/features/publishing/lib/fetch-post-images'
+import { fetchCanvasDocPositions, fetchImagesByPost } from '@/features/publishing/lib/fetch-post-images'
 import { ReviewQueue } from '@/features/review/components/review-queue'
 import type { QueueApproval, QueuePost } from '@/features/review/lib/queue-post'
 import type { BestTimePlatform } from '@/types/api'
@@ -30,7 +30,9 @@ export default async function ReviewPage() {
     clientIds.length > 0
       ? supabase
           .from('posts')
-          .select(POST_COLUMNS)
+          // topic_summary rides separately until migration 20260806 reaches the
+          // generated types — fold it into POST_COLUMNS after the regen.
+          .select(`${POST_COLUMNS}, topic_summary`)
           .in('client_id', clientIds)
           .eq('status', 'pending_review')
           .order('created_at', { ascending: true })
@@ -68,6 +70,7 @@ export default async function ReviewPage() {
     source_title: string | null
     source_type: string | null
     source_excerpt: string | null
+    topic_summary: string | null
     scheduled_at: string | null
     created_at: string
   }
@@ -76,8 +79,9 @@ export default async function ReviewPage() {
   const postIds = typedPostRows.map((p) => p.id)
 
   type TokenRow = { post_id: string; status: string; expires_at: string }
-  const [imagesByPost, { data: tokenRows }] = await Promise.all([
+  const [imagesByPost, composedByPost, { data: tokenRows }] = await Promise.all([
     fetchImagesByPost(postIds),
+    fetchCanvasDocPositions(postIds),
     postIds.length > 0
       ? supabase
           .from('post_approval_tokens')
@@ -98,6 +102,7 @@ export default async function ReviewPage() {
     client_name: nameByClient.get(p.client_id) ?? 'Unknown',
     is_health_niche: healthByClient.get(p.client_id) ?? false,
     images: imagesByPost.get(p.id) ?? [],
+    composedPositions: composedByPost.get(p.id) ?? [],
     approval: approvalByPost.get(p.id) ?? null,
   }))
 

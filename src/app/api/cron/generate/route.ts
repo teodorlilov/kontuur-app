@@ -17,7 +17,7 @@ import { BEST_TIME_REFRESH_DAYS, DEFAULT_CAROUSEL_SLIDES } from '@/utils/constan
 import { fetchScheduleContext, shouldGenerateToday } from './helpers'
 import type { PostType } from '@/types/api'
 import type { Theme } from '@/ai/generation/types'
-import type { Json } from '@/types/database'
+import type { Database, Json } from '@/types/database'
 
 export const maxDuration = 300
 
@@ -160,23 +160,30 @@ export async function GET(request: NextRequest) {
         const { data: savedPosts, error: saveError } = await supabase
           .from('posts')
           .insert(
-            generationResults.map(({ post }) => ({
-              client_id: clientId,
-              caption: post.caption,
-              platform: post.platform,
-              post_type: post.post_type,
-              slides_json: post.slides_json as Json,
-              validation_json: post.validation_json as Json,
-              status: 'pending_review',
-              priority: false,
-              quality_score_avg: post.quality_score_avg,
-              source_url: post.source_url,
-              source_title: post.source_title,
-              source_type: post.source_type,
-              source_excerpt: post.source_excerpt,
-              client_source_id: post.client_source_id,
-              pillar: post.pillar,
-            }))
+            generationResults.map(
+              ({ post }) =>
+                ({
+                  client_id: clientId,
+                  caption: post.caption,
+                  platform: post.platform,
+                  post_type: post.post_type,
+                  slides_json: post.slides_json as Json,
+                  validation_json: post.validation_json as Json,
+                  status: 'pending_review',
+                  priority: false,
+                  quality_score_avg: post.quality_score_avg,
+                  source_url: post.source_url,
+                  source_title: post.source_title,
+                  source_type: post.source_type,
+                  source_excerpt: post.source_excerpt,
+                  client_source_id: post.client_source_id,
+                  pillar: post.pillar,
+                  topic_summary: post.topic_summary,
+                  // WHY as: topic_summary lands with migration 20260806 and is not
+                  // yet in the generated types — regenerate database.ts after
+                  // applying it, then drop this cast.
+                }) as Database['public']['Tables']['posts']['Insert']
+            )
           )
           .select('id')
 

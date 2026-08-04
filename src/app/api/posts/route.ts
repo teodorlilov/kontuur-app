@@ -5,7 +5,7 @@ import { draftVisualPrefix, movePostImageObject } from '@/features/publishing/li
 import { safeParseCanvasDoc } from '@/lib/canvas/doc-schema'
 import { POST_COLUMNS } from '@/lib/queries/select-columns'
 import type { CanvasDoc } from '@/types/canvas'
-import type { Json } from '@/types/database'
+import type { Database, Json } from '@/types/database'
 
 export async function GET(request: Request) {
   const auth = await resolveAuth()
@@ -240,11 +240,14 @@ export async function POST(request: Request) {
     source_excerpt: body.source_excerpt ?? null,
     client_source_id: clientSourceId,
     pillar: body.pillar ?? null,
+    topic_summary: body.topic_summary ?? null,
   }
 
   const { data: post, error } = await supabase
     .from('posts')
-    .insert(insertRow)
+    // WHY as: topic_summary lands with migration 20260806 and is not yet in the
+    // generated types — regenerate database.ts after applying, then drop this.
+    .insert(insertRow as Database['public']['Tables']['posts']['Insert'])
     .select(POST_COLUMNS)
     .single()
 

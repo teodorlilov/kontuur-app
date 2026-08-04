@@ -1,8 +1,8 @@
-import { parseSlides } from '@/components/posts/parse-slides'
 import {
   REWRITE_SCORE_THRESHOLD,
   AUTHENTICITY_URGENT_THRESHOLD,
 } from '@/lib/content-rules/constants'
+import { totalVisualSlots } from '@/lib/visual/visual-backlog'
 import { STALE_REVIEW_DAYS } from '@/utils/constants'
 import type { ValidationData } from '@/types/post'
 import type { QueuePost } from './queue-post'
@@ -40,11 +40,6 @@ const MS_PER_DAY = 86_400_000
 
 export function postAgeDays(createdAt: string, now: Date): number {
   return Math.floor((now.getTime() - new Date(createdAt).getTime()) / MS_PER_DAY)
-}
-
-/** Every slot the post is supposed to fill — carousels one per slide, singles one. */
-export function totalVisualSlots(post: Pick<QueuePost, 'post_type' | 'slides_json'>): number {
-  return post.post_type === 'carousel' ? parseSlides(post.slides_json).length : 1
 }
 
 function reasonsFor(post: QueuePost, validation: ValidationData, ageDays: number): TriageReason[] {

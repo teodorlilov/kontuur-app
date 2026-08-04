@@ -17,6 +17,7 @@ import { useDraftEdits } from '@/components/posts/review/use-draft-edits'
 import { useReviewKeyboard } from '@/components/posts/review/use-review-keyboard'
 import { parseSlides } from '@/components/posts/parse-slides'
 import { updatePost, deletePost } from '@/lib/actions/post-actions'
+import { slideCopyAt } from '@/features/canvas-editor/lib/slide-copy'
 import { rewriteDraft } from '@/lib/rewrite-draft'
 import { buildStoredValidation } from '@/lib/validation/stored-validation-schema'
 import { countVisualsByStatus, type DraftVisual } from '@/lib/visual/draft-visuals'
@@ -31,7 +32,8 @@ import {
   needsSlopFallback,
   toValidationData,
 } from '@/features/review/lib/adapt-validation'
-import { computeTriage, totalVisualSlots, type TriageBucket, type TriagedPost } from '@/features/review/lib/triage'
+import { totalVisualSlots } from '@/lib/visual/visual-backlog'
+import { computeTriage, type TriageBucket, type TriagedPost } from '@/features/review/lib/triage'
 import { toVisualSlots } from '@/features/review/lib/visual-slots'
 import type { DiscardReason } from '@/features/review/lib/discard-reasons'
 import type { QueuePost } from '@/features/review/lib/queue-post'
@@ -81,6 +83,7 @@ export function ReviewQueue({ initialPosts, clients, bestTimeMap }: ReviewQueueP
   useEffect(() => {
     postsRef.current = posts
   })
+  const composeRequestedRef = useRef(new Set<string>())
   // Written by the effect below the visuals hook; read only inside async callbacks.
   const focusedPostIdRef = useRef('')
   const recomposeRef = useRef<
@@ -211,6 +214,50 @@ export function ReviewQueue({ initialPosts, clients, bestTimeMap }: ReviewQueueP
     }
     return map
   }, [triaged, focusedPostId, visuals.generatingPositions, visuals.composingPositions])
+
+  // Cron art arrives clean — bake the copy onto it on first open, once per
+  // post per session. Only AI-generated files (visual-*.jpg) without a canvas
+  // doc qualify: a user-uploaded creative is finished work, never painted over.
+  useEffect(() => {
+    const target = focused?.post
+    if (!target || composeRequestedRef.current.has(target.id)) return
+    const composed = new Set(target.composedPositions)
+    const pending = target.images.filter(
+      (image) => image.fileName?.startsWith('visual-') && !composed.has(image.position)
+    )
+    if (pending.length === 0) return
+    composeRequestedRef.current.add(target.id)
+    const source = {
+      post_type: target.post_type,
+      slides_json: target.slides_json,
+      caption: target.caption,
+    }
+    void (async () => {
+      const { composePersistedPosition } = await import('@/features/canvas-editor/lib/auto-compose')
+      for (const image of pending) {
+        try {
+          const result = await composePersistedPosition({
+            postId: target.id,
+            position: image.position,
+            image,
+            slideCopy: slideCopyAt(source, image.position),
+          })
+          if (result) {
+            setPosts((prev) =>
+              prev.map((p) =>
+                p.id === target.id ? { ...p, images: upsertImageAtPosition(p.images, result) } : p
+              )
+            )
+          }
+        } catch (err) {
+          console.error(
+            `[review] compose-on-open for post ${target.id} position ${image.position} failed:`,
+            err
+          )
+        }
+      }
+    })()
+  }, [focused])
 
   // Legacy rows without a stored human score get one detect-slop pass on focus.
   useEffect(() => {

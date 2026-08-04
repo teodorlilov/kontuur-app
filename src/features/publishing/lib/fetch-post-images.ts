@@ -9,6 +9,29 @@ import type { PostImageRow } from '@/types/index'
  * because `post_images` has RLS that blocks the user-scoped client — callers must only pass ids of
  * posts they have already authorized.
  */
+/**
+ * Which positions of each post already carry a canvas doc — the queue's
+ * compose-on-open gate (doc-less AI art still needs its text baked). Admin
+ * client for the same RLS reason as the images fetch; callers must only pass
+ * ids of posts they have already authorized.
+ */
+export async function fetchCanvasDocPositions(postIds: string[]): Promise<Map<string, number[]>> {
+  const byPost = new Map<string, number[]>()
+  if (postIds.length === 0) return byPost
+
+  const admin = createAdminSupabaseClient()
+  const { data } = await admin
+    .from('post_canvas_docs')
+    .select('post_id, position')
+    .in('post_id', postIds)
+  for (const row of data ?? []) {
+    const positions = byPost.get(row.post_id) ?? []
+    positions.push(row.position)
+    byPost.set(row.post_id, positions)
+  }
+  return byPost
+}
+
 export async function fetchImagesByPost(postIds: string[]): Promise<Map<string, PostImage[]>> {
   const imagesByPost = new Map<string, PostImage[]>()
   if (postIds.length === 0) return imagesByPost

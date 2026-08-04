@@ -5,6 +5,10 @@
       "schedule": "0 9 * * *"
     },
     {
+      "path": "/api/cron/visuals",
+      "schedule": "10 9 * * *"
+    },
+    {
       "path": "/api/cron/publish",
       "schedule": "0 9 * * *"
     }

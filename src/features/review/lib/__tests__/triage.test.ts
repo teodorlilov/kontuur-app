@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { computeTriage, postAgeDays, totalVisualSlots } from '../triage'
+import { computeTriage, postAgeDays } from '../triage'
 import type { QueuePost } from '../queue-post'
 import type { ValidationData } from '@/types/post'
 import type { PostImage } from '@/types/api'
@@ -37,11 +37,13 @@ function post(overrides: Partial<QueuePost> = {}): QueuePost {
     source_title: null,
     source_type: null,
     source_excerpt: null,
+    topic_summary: null,
     scheduled_at: null,
     created_at: '2026-08-03T12:00:00Z',
     client_name: 'Client',
     is_health_niche: false,
     images: [image(0)],
+    composedPositions: [0],
     approval: null,
     ...overrides,
   }
@@ -172,11 +174,5 @@ describe('helpers', () => {
   it('postAgeDays floors to whole days', () => {
     expect(postAgeDays('2026-07-27T11:00:00Z', now)).toBe(8)
     expect(postAgeDays('2026-08-04T01:00:00Z', now)).toBe(0)
-  })
-
-  it('totalVisualSlots reads the slide count for carousels', () => {
-    const slides = [1, 2].map((n) => ({ slide_number: n, headline: `h${n}`, body: '' }))
-    expect(totalVisualSlots({ post_type: 'carousel', slides_json: slides })).toBe(2)
-    expect(totalVisualSlots({ post_type: 'single', slides_json: null })).toBe(1)
   })
 })

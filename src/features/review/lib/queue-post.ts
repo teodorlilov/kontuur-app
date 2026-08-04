@@ -25,10 +25,13 @@ export interface QueuePost {
   source_title: string | null
   source_type: string | null
   source_excerpt: string | null
+  topic_summary: string | null
   scheduled_at: string | null
   created_at: string
   client_name: string
   is_health_niche: boolean
   images: PostImage[]
+  /** Positions whose text overlay is already baked (a canvas doc exists). */
+  composedPositions: number[]
   approval: QueueApproval | null
 }

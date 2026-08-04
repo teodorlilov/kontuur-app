@@ -27,7 +27,12 @@ interface TriageBucketsProps {
 }
 
 function postTitle(post: QueuePost): string {
-  return parseSlides(post.slides_json)[0]?.headline || post.caption?.slice(0, 80) || 'Post'
+  return (
+    post.topic_summary ||
+    parseSlides(post.slides_json)[0]?.headline ||
+    post.caption?.slice(0, 80) ||
+    'Post'
+  )
 }
 
 function AgeChip({ ageDays }: { ageDays: number }) {
