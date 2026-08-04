@@ -550,6 +550,7 @@ export type Database = {
           id: string
           pillar: string | null
           platform: string | null
+          reason: string | null
           source_type: string | null
           source_url: string | null
         }
@@ -561,6 +562,7 @@ export type Database = {
           id?: string
           pillar?: string | null
           platform?: string | null
+          reason?: string | null
           source_type?: string | null
           source_url?: string | null
         }
@@ -572,6 +574,7 @@ export type Database = {
           id?: string
           pillar?: string | null
           platform?: string | null
+          reason?: string | null
           source_type?: string | null
           source_url?: string | null
         }
@@ -1112,6 +1115,7 @@ export type Database = {
           source_type: string | null
           source_url: string | null
           status: string | null
+          topic_summary: string | null
           validation_json: Json | null
           visuals_attempts: number
           was_rewritten: boolean | null
@@ -1145,6 +1149,7 @@ export type Database = {
           source_type?: string | null
           source_url?: string | null
           status?: string | null
+          topic_summary?: string | null
           validation_json?: Json | null
           visuals_attempts?: number
           was_rewritten?: boolean | null
@@ -1178,6 +1183,7 @@ export type Database = {
           source_type?: string | null
           source_url?: string | null
           status?: string | null
+          topic_summary?: string | null
           validation_json?: Json | null
           visuals_attempts?: number
           was_rewritten?: boolean | null

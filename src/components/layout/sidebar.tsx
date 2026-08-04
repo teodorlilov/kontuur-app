@@ -18,6 +18,7 @@ import {
   type NavItem,
 } from '@/components/layout/nav-items'
 import { Wordmark } from '@/components/layout/wordmark'
+import { useShell } from '@/components/layout/shell-context'
 import { DesignInCanvaButton } from '@/components/layout/design-in-canva-button'
 import { ActiveRunsCard } from '@/components/layout/active-runs-card'
 import { useActiveRuns } from '@/components/layout/use-active-runs'
@@ -226,6 +227,9 @@ export function Sidebar({
   const router = useRouter()
   const [mobileOpen, setMobileOpen] = useState(false)
   const collapsed = useSyncExternalStore(subscribeToCollapse, readCollapsed, () => false)
+  // The server count is a per-hard-load snapshot; a surface that mutates the
+  // queue (the review tab) reports the live number through the shell.
+  const { pendingCount: livePendingCount } = useShell()
   // Polled once here, then handed to both the rail and the drawer as data —
   // two SidebarContent instances must not mean two pollers.
   const runs = useActiveRuns(activeRuns)
@@ -238,7 +242,10 @@ export function Sidebar({
     router.refresh()
   }
 
-  const badgeCounts: Record<NavBadge, number> = { pending: pendingCount, ideas: ideasCount }
+  const badgeCounts: Record<NavBadge, number> = {
+    pending: livePendingCount ?? pendingCount,
+    ideas: ideasCount,
+  }
   const sharedProps = {
     agencyMode,
     agencyName,

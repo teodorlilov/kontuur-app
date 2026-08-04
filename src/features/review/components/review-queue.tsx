@@ -5,6 +5,7 @@ import { ChevronLeft } from 'lucide-react'
 import { toast } from '@/components/ui/toast'
 import { Button } from '@/components/ui/button'
 import { HeaderMeta, MetaFlag, PageHeader } from '@/components/layout/page-header/page-header'
+import { useShell } from '@/components/layout/shell-context'
 import { SelectControl } from '@/components/layout/page-header/select-control'
 import { TabRail, type TabItem } from '@/components/layout/page-header/tab-rail'
 import { BatchScheduleModal } from '@/components/scheduling/batch-schedule-modal'
@@ -98,6 +99,13 @@ export function ReviewQueue({
   // Triage ages are computed against the moment the page opened — a ticking
   // "now" would reshuffle buckets under the reviewer's hands.
   const [now] = useState(() => new Date())
+
+  // The sidebar badge is a per-hard-load server snapshot; this queue owns the
+  // live truth, so it keeps the badge honest as posts settle.
+  const { setPendingCount } = useShell()
+  useEffect(() => {
+    setPendingCount(posts.length)
+  }, [posts.length, setPendingCount])
 
   const postsRef = useRef(posts)
   useEffect(() => {

@@ -46,6 +46,14 @@ interface ShellValue {
   timezone: string
   openPalette: () => void
   notifications: NotificationsValue
+  /**
+   * Live pending-review count for the sidebar badge. The server-rendered
+   * count is a snapshot per hard load — layouts do not re-render on client
+   * navigation, so a surface that mutates the queue reports the truth here.
+   * Null = no surface has reported yet; the badge falls back to the snapshot.
+   */
+  pendingCount: number | null
+  setPendingCount: (count: number) => void
 }
 
 interface NotificationsValue {
@@ -221,14 +229,24 @@ export function ShellProvider({
   children,
 }: ShellProviderProps) {
   const [paletteOpen, setPaletteOpen] = useState(false)
+  const [pendingCount, setPendingCount] = useState<number | null>(null)
   const notifications = useNotifications()
 
   const openPalette = useCallback(() => setPaletteOpen(true), [])
   usePaletteHotkey(openPalette)
 
   const value = useMemo<ShellValue>(
-    () => ({ agencyName, userInitials, todayLabel, timezone, openPalette, notifications }),
-    [agencyName, userInitials, todayLabel, timezone, openPalette, notifications]
+    () => ({
+      agencyName,
+      userInitials,
+      todayLabel,
+      timezone,
+      openPalette,
+      notifications,
+      pendingCount,
+      setPendingCount,
+    }),
+    [agencyName, userInitials, todayLabel, timezone, openPalette, notifications, pendingCount]
   )
 
   return (
