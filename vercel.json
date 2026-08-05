@@ -10,7 +10,11 @@
     },
     {
       "path": "/api/cron/publish",
-      "schedule": "0 9 * * *"
+      "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/refresh-tokens",
+      "schedule": "30 8 * * *"
     }
   ],
   "headers": [

@@ -54,15 +54,15 @@ Review queue ──► optional Client approval portal (public magic link)
 Calendar (schedule + best-time recommendations) ──► attach images (upload / Canva)
        │
        ▼
-Auto-publish to Instagram (Meta Graph API) via daily cron
+Auto-publish to Instagram (Meta Graph API) via 5-min cron
        │
        ▼
 Analytics + weekly AI intelligence briefing
 ```
 
-This whole loop can also run **autonomously**: a daily cron generates a review queue for
-every client on an active posting schedule, and a second cron publishes everything that
-is due.
+This whole loop can also run **autonomously**: an hourly cron generates a review queue for
+every client whose posting schedule's day + hour slot has passed, and a second cron
+publishes everything that is due every five minutes.
 
 ---
 
@@ -415,13 +415,14 @@ footer), plus privacy, terms, and data-deletion pages, `sitemap.ts`, and `robots
 
 ## 9. Background jobs (Vercel Cron)
 
-Configured in `vercel.json`, both authenticated with `Authorization: Bearer $CRON_SECRET`:
+Configured in `vercel.json`, all authenticated with `Authorization: Bearer $CRON_SECRET`:
 
-| Endpoint                 | Schedule            | Does                                                                                                                                                                                                                                                                                                                           |
-| ------------------------ | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `GET /api/cron/generate` | hourly `0 * * * *`  | For each active posting schedule whose day + hour slot (agency timezone) has passed today and has no generation run since the slot: research → generate → validate → save `pending_review` → notify agency → refresh stale best-time. Then one weekly intelligence briefing per agency (+ solo coaching). `maxDuration: 300s`. |
-| `GET /api/cron/visuals`  | hourly `10 * * * *` | Paint missing visuals for `pending_review` posts (quality-gated, attempt-capped backlog) so drafts arrive in the queue as finished creatives. `maxDuration: 300s`.                                                                                                                                                             |
-| `GET /api/cron/publish`  | daily `0 9 * * *`   | Publish every post with `status='scheduled'` whose time is due (5-min window), grouped by client, to Instagram; retry up to 3 attempts. `maxDuration: 60s`.                                                                                                                                                                    |
+| Endpoint                       | Schedule                  | Does                                                                                                                                                                                                                                                                                                                           |
+| ------------------------------ | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `GET /api/cron/generate`       | hourly `0 * * * *`        | For each active posting schedule whose day + hour slot (agency timezone) has passed today and has no generation run since the slot: research → generate → validate → save `pending_review` → notify agency → refresh stale best-time. Then one weekly intelligence briefing per agency (+ solo coaching). `maxDuration: 300s`. |
+| `GET /api/cron/visuals`        | hourly `10 * * * *`       | Paint missing visuals for `pending_review` posts (quality-gated, attempt-capped backlog) so drafts arrive in the queue as finished creatives. `maxDuration: 300s`.                                                                                                                                                             |
+| `GET /api/cron/publish`        | every 5 min `*/5 * * * *` | Publish every `status='scheduled'` post whose `scheduled_at` has passed (24h catch-up window; older posts are marked failed), grouped by client, to Instagram; atomic claim against double-publishing, retry up to 3 attempts. `maxDuration: 300s`.                                                                            |
+| `GET /api/cron/refresh-tokens` | daily `30 8 * * *`        | Refresh Instagram long-lived tokens expiring within 14 days; notify the agency (7-day cooldown) when a refresh fails and the account needs reconnecting. `maxDuration: 300s`.                                                                                                                                                  |
 
 ---
 
@@ -444,7 +445,7 @@ All under `src/app/api/`. Representative map (each handler authenticates and sco
 - **Analytics** — `analytics/report`, `analytics/report/[reportId]`
 - **Settings** — `settings/account`, `settings/team`, `settings/team/invite`
 - **Auth** — `auth/signup`, `auth/forgot-password`
-- **Cron** — `cron/generate`, `cron/publish`
+- **Cron** — `cron/generate`, `cron/visuals`, `cron/publish`, `cron/refresh-tokens`
 
 ---
 

@@ -255,3 +255,12 @@ and the trigger that should reopen it. (The fixed items landed in `98e0ef0` + `0
   backlog before the provider recovers, permanently excluding those posts from auto-visuals
   (manual generation in the queue still works).
 - **Fix shape:** a `visuals_attempted_at` column + minimum spacing between attempts.
+
+### 5.10 Stored platform values are mixed-case
+
+- **Where:** `posts.platform` holds both `'Instagram'` (UI pickers pass `PLATFORMS` display
+  values verbatim; write paths validate case-insensitively but store as-received) and
+  `'instagram'` (older writes). `roster.ts` and the publish scheduler now both compensate
+  with case-insensitive compares.
+- **Fix shape:** normalize to lowercase at every write boundary + one backfill migration,
+  then drop the compare-side lowering.

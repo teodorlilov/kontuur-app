@@ -1,12 +1,14 @@
 import { NextResponse } from 'next/server'
 import { refreshExpiringTokens } from '@/features/publishing/lib/refresh-tokens'
 
-export const maxDuration = 60
+// 300, not 60: the refresh loop is serial (one Meta call per expiring
+// connection) and this route now solely owns it.
+export const maxDuration = 300
 
 /**
- * Standalone token-refresh endpoint. Not registered in vercel.json (the Hobby
- * plan caps projects at two cron jobs — refresh runs inside /api/cron/publish
- * instead), but kept for manual triggering or an external scheduler.
+ * Daily token-refresh cron (vercel.json). IG tokens live ~60 days and are
+ * refreshed 14 days out, so daily is ample — this used to piggyback on the
+ * publish cron, which now fires every five minutes and must stay lean.
  */
 export async function GET(request: Request) {
   const authHeader = request.headers.get('authorization')

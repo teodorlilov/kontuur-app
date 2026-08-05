@@ -51,8 +51,11 @@ export async function refreshExpiringTokens(): Promise<RefreshTokensResult> {
 
   for (const conn of (data as ExpiringConnection[] | null) ?? []) {
     try {
+      // Timed: the loop is serial, so one stalled Meta call would otherwise
+      // eat the whole cron budget and starve every connection behind it.
       const res = await fetch(
-        `https://graph.instagram.com/refresh_access_token?grant_type=ig_refresh_token&access_token=${conn.access_token}`
+        `https://graph.instagram.com/refresh_access_token?grant_type=ig_refresh_token&access_token=${conn.access_token}`,
+        { signal: AbortSignal.timeout(15_000) }
       )
       const body = (await res.json()) as IGRefreshResponse
 
