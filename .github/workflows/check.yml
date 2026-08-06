@@ -1,0 +1,36 @@
+name: check
+
+# Runs on every push and PR, not just main. The pre-push hook covers the same
+# ground locally, but it is skippable (`--no-verify`) and only exists on machines
+# where `npm install` has run — so this is the copy that is actually authoritative.
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+# A second push to the same branch makes the first run irrelevant.
+concurrency:
+  group: check-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          # 22 LTS: Next 16 requires >=20, and this stays close to what Vercel
+          # builds with. Bump both together if the deploy runtime moves.
+          node-version: 22
+          cache: npm
+
+      # ci, not install: builds from the lockfile exactly, so a run cannot pass on
+      # a dependency tree that no one has committed.
+      - run: npm ci
+
+      # typecheck && lint && test. Deliberately NOT `npm test` — vitest is
+      # transpile-only, so tests alone prove nothing about types.
+      # format:check is excluded until the repo is formatted; see docs/TECH-DEBT.md §7.2.
+      - run: npm run check

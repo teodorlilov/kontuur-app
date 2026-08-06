@@ -10,8 +10,10 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "vitest run",
-    "check": "npm run lint && npm run format:check && npm test",
-    "test:watch": "vitest"
+    "check": "npm run typecheck && npm run lint && npm test",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "prepare": "husky"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.80.0",
@@ -50,6 +52,7 @@
     "@vitejs/plugin-react": "^6.0.1",
     "eslint": "^9",
     "eslint-config-next": "16.2.1",
+    "husky": "^9.1.7",
     "prettier": "^3.8.2",
     "tailwindcss": "^4",
     "typescript": "^5",

@@ -1,0 +1,12 @@
+# The full gate before anything leaves this machine: typecheck, lint, tests.
+#
+# pre-push rather than pre-commit on purpose — it runs once per push instead of
+# once per commit, so the ~15s lands where it is worth paying and small
+# work-in-progress commits stay cheap.
+#
+# `npm test` alone is NOT this gate: vitest is transpile-only, so types are only
+# checked by the typecheck step. See docs/TECH-DEBT.md §7.1.
+#
+# Genuinely need to push past a failure? `git push --no-verify`. The GitHub
+# Action re-runs the same command, so it will still be caught there.
+npm run check

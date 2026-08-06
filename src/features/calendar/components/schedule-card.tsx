@@ -126,6 +126,8 @@ export const ScheduleCard = memo(function ScheduleCard({
   // Reset / pre-fill when post changes.
   // Left as an effect deliberately: it seeds seven independent fields from one prop, and the
   // render-time adjustment pattern would mean seven paired comparisons for no behavioural gain.
+  /* eslint-disable react-hooks/set-state-in-effect -- see above: seven independent
+     fields seeded from one prop, deliberately not a render-time adjustment. */
   useEffect(() => {
     if (post?.scheduled_at) {
       const d = new Date(post.scheduled_at)
@@ -140,6 +142,7 @@ export const ScheduleCard = memo(function ScheduleCard({
     setDraftSlides(Array.isArray(post?.slides_json) ? (post.slides_json as CarouselSlide[]) : [])
     setPublishError(null)
   }, [post?.id, post?.platform, post?.scheduled_at, post?.caption, post?.slides_json])
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   // Delegate merging to the calendar state hook (functional updates) — computing the merged array
   // here from a captured `post` snapshot loses images when concurrent generations complete.

@@ -40,7 +40,9 @@ function FormPanel({ email, setEmail, emailError, loading, onSubmit }: FormPanel
         ← Back to sign in
       </Link>
       <h3 className="text-headline font-display font-normal text-ink mb-1">Reset your password</h3>
-      <p className="text-body text-text2 mb-8">Enter your email and we'll send you a reset link.</p>
+      <p className="text-body text-text2 mb-8">
+        Enter your email and we&apos;ll send you a reset link.
+      </p>
       <form onSubmit={onSubmit} className="flex flex-col gap-0">
         <div className="mb-5">
           <Input
@@ -98,8 +100,8 @@ function FormPanel({ email, setEmail, emailError, loading, onSubmit }: FormPanel
         {/* leading: a four-line helper note at 11px opens past the micro role's 1.35,
             which is set for single-line chips rather than for a paragraph. */}
         <p className="text-micro text-text2 leading-[1.65]">
-          If you don't receive an email within a few minutes, check your spam folder or make sure
-          you're using the address you signed up with.
+          If you don&apos;t receive an email within a few minutes, check your spam folder or make
+          sure you&apos;re using the address you signed up with.
         </p>
       </div>
     </div>
@@ -143,7 +145,7 @@ function SuccessPanel({ email, onResend }: SuccessPanelProps) {
         <div className="flex-1 h-px bg-ink/10" />
       </div>
       <p className="text-micro text-text2 mb-4">
-        Didn't receive it?{' '}
+        Didn&apos;t receive it?{' '}
         <button
           onClick={onResend}
           className="text-micro text-spring-text bg-transparent border-none cursor-pointer p-0"

@@ -105,12 +105,15 @@ export function ReviewView({
   const focusedIndex = focused ? liveDrafts.indexOf(focused) : -1
 
   // Keep the focused id valid as drafts settle — clamp to the nearest live one.
+  /* eslint-disable react-hooks/set-state-in-effect -- `focused` already falls back for
+     render; this persists the clamp so the id stops pointing at a draft that is gone. */
   useEffect(() => {
     if (focused && focused.post.id !== focusedId) {
       setFocusedId(focused.post.id)
       setSlideIdx(0)
     }
   }, [focused, focusedId])
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const averageQuality =
     posts.length > 0

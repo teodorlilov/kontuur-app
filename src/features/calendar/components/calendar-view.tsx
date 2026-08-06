@@ -163,6 +163,9 @@ export function CalendarView({ initialPosts, clients }: CalendarViewProps) {
   // Auto-open modal in edit mode when navigated from dashboard with ?editPost=<id>.
   // Genuinely an effect, not a render-time adjustment: it consumes a one-shot URL param and
   // navigates to clear it, which is a side effect and must not run during render.
+  /* eslint-disable react-hooks/set-state-in-effect -- the ref makes this run once per
+     param, and the router.replace below is a navigation, so none of it can move into
+     render. */
   useEffect(() => {
     if (editParamProcessed.current) return
     const editPostId = searchParams.get('editPost')
@@ -173,6 +176,7 @@ export function CalendarView({ initialPosts, clients }: CalendarViewProps) {
     setEditMode(true)
     router.replace('/calendar', { scroll: false })
   }, [searchParams, router])
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const filteredUnscheduled = useMemo(
     () =>
