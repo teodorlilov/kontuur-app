@@ -1,8 +1,9 @@
 import type { ClientData } from '@/lib/clients/fetch-client-data'
+import type { PostType } from '@/types/api'
 
 export interface RewriteContext {
   caption: string
-  postType: 'single' | 'carousel'
+  postType: PostType
   slidesJson?: Array<{ headline: string; body: string }>
   aiTells: string[]
   qualityIssues?: string[]

@@ -191,14 +191,26 @@ export function snapTimeToHour(time: string | null | undefined): string {
   return `${String(hour).padStart(2, '0')}:00`
 }
 
+/**
+ * Sunday-first, because these map onto `Date.getDay()`'s 0–6.
+ *
+ * Deliberately not WEEKDAY_OPTIONS, which is Monday-first and carries display
+ * labels — that list orders a picker, this one indexes a JS date.
+ */
+const WEEKDAY_NAMES = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']
+
+/** A day name's `Date.getDay()` index, or -1 when it is not one. Case-insensitive. */
+export function weekdayNameToIndex(dayName: string): number {
+  return WEEKDAY_NAMES.indexOf(dayName.toLowerCase())
+}
+
 /** Map a day name (e.g. 'Monday') to the next occurrence as YYYY-MM-DD. */
 export function getNextDateForDay(dayName: string): string {
-  const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']
-  const targetIdx = days.indexOf(dayName.toLowerCase())
+  const targetIdx = weekdayNameToIndex(dayName)
   if (targetIdx === -1) return ''
   const today = new Date()
   const todayIdx = today.getDay()
-  const diff = (targetIdx - todayIdx + 7) % 7 || 7
+  const diff = (targetIdx - todayIdx + DAYS_PER_WEEK) % DAYS_PER_WEEK || DAYS_PER_WEEK
   const target = new Date(today)
   target.setDate(today.getDate() + diff)
   return toDateKey(target)

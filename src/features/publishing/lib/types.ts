@@ -1,3 +1,5 @@
+import type { PostRow } from '@/types'
+
 /** Image reference shape as projected from the post_images DB join. */
 export interface PostImageRef {
   public_url: string
@@ -5,12 +7,10 @@ export interface PostImageRef {
 }
 
 /** Base post shape used by the publishing pipeline (route + scheduler). */
-export interface PostForPublish {
-  id: string
-  caption: string | null
-  post_type: string
-  publish_attempts: number
-  client_id: string
+export type PostForPublish = Pick<
+  PostRow,
+  'id' | 'caption' | 'post_type' | 'publish_attempts' | 'client_id'
+> & {
   post_images: PostImageRef[]
 }
 

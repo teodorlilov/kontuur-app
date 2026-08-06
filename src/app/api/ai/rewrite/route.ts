@@ -3,11 +3,12 @@ import { resolveAuth } from '@/lib/auth/resolve-auth'
 import { fetchClientData } from '@/lib/clients/fetch-client-data'
 import { checkRateLimit, AI_RATE_LIMIT } from '@/lib/auth/rate-limit'
 import { performRewrite } from '@/ai/rewrite/rewrite-post'
+import type { PostType } from '@/types/api'
 
 interface RewriteRequestBody {
   clientId: string
   caption: string
-  postType: 'single' | 'carousel'
+  postType: PostType
   slidesJson?: Array<{ headline: string; body: string }>
   aiTells?: string[]
   qualityIssues?: string[]

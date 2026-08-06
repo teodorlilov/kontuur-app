@@ -29,7 +29,6 @@ function makeClient(overrides: Partial<ClientData> = {}): ClientData {
     defaultCarouselSlides: 7,
     defaultPostType: null,
     requireSourceGrounding: false,
-    sourceStrategy: null,
     languageNotes: '',
     postHistory: ['hydration tips', 'sunscreen myths'],
     languageConfig: {

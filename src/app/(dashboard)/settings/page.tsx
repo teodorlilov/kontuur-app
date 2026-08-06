@@ -30,7 +30,6 @@ export default async function SettingsPage() {
 
   const agencyMode: 'agency' | 'solo' = agencyData?.mode === 'solo' ? 'solo' : 'agency'
 
-  const agencyInfo = { ...agency, timezone: agency.timezone ?? 'UTC' }
   const isAdmin = role === 'admin'
 
   /**
@@ -42,7 +41,7 @@ export default async function SettingsPage() {
    */
   return (
     <SettingsView
-      agency={agencyInfo}
+      agency={agency}
       memberCount={members.length}
       agencyMode={agencyMode}
       panels={{
@@ -56,8 +55,8 @@ export default async function SettingsPage() {
         ),
         account: (
           <>
-            <AccountTab agency={agencyInfo} currentUserRole={role} />
-            <PlanSection agency={agencyInfo} clientCount={clientCount ?? 0} />
+            <AccountTab agency={agency} currentUserRole={role} />
+            <PlanSection agency={agency} clientCount={clientCount ?? 0} />
           </>
         ),
         integrations: <IntegrationsTab currentUserId={userId} members={canvaTeam} />,

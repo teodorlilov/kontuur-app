@@ -49,9 +49,9 @@ export async function POST(request: Request) {
   let body: GenerateStreamRequestBody
   try {
     // WHY the double assertion: the schema validates the wire shape but leaves
-    // sourceStrategy/formalityRules/priorityPosts as `unknown`, on purpose — they
-    // are large types this boundary only passes through. Parsing has proven the
-    // structure, so this re-attaches the domain types for the prompt builders.
+    // formalityRules/priorityPosts as `unknown`, on purpose — they are large types
+    // this boundary only passes through. Parsing has proven the structure, so this
+    // re-attaches the domain types for the prompt builders.
     body = generateStreamSchema.parse(
       await request.json()
     ) as unknown as GenerateStreamRequestBody
@@ -91,8 +91,8 @@ export async function POST(request: Request) {
           supabase,
           agencyId,
           clientId: body.clientId,
-          niche: client.niche ?? 'general',
-          language: client.language ?? 'English',
+          niche: client.niche,
+          language: client.language,
           count: body.targetPostCount,
           preloadedClientData: body.preloadedClientData,
           onPhase: (message) => send({ type: 'phase', message }),

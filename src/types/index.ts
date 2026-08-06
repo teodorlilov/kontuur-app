@@ -7,6 +7,7 @@ export type ClientRow = Tables<'clients'>
 export type BrandProfileRow = Tables<'brand_profiles'>
 export type PostingScheduleRow = Tables<'posting_schedules'>
 export type PostImageRow = Tables<'post_images'>
+export type PostRow = Tables<'posts'>
 
 export type {
   LanguageIssueType,

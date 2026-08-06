@@ -1,6 +1,7 @@
 import 'server-only'
 
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
+import type { PostStatus } from '@/lib/validation'
 import { isTokenExpired } from '@/lib/meta/token-expiry'
 import { publishSingleImage, publishCarousel } from './publish-to-instagram'
 import type { PostForPublish, InstagramConnection } from './types'
@@ -98,7 +99,7 @@ export async function publishDuePosts(): Promise<PublishSchedulerResult> {
   const { error: sweepError } = await admin
     .from('posts')
     .update({ status: 'failed', publish_error: 'Missed publish window' })
-    .in('status', ['scheduled', 'publishing'])
+    .in('status', ['scheduled', 'publishing'] satisfies readonly PostStatus[])
     .lt('scheduled_at', windowStart)
   if (sweepError) throw new Error(`missed-window sweep failed: ${sweepError.message}`)
 

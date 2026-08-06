@@ -1,8 +1,11 @@
 import { NextResponse } from 'next/server'
 import { revalidateTag } from 'next/cache'
+import { z } from 'zod'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
 import { verifyAdminRole } from '@/lib/auth/helpers'
 import { fetchAgencyById } from '@/lib/queries/db'
+import { accountSettingsSchema } from '@/features/settings/schemas'
+import { formatZodIssues } from '@/lib/validation/format-issues'
 
 /** Fetch the agency's account settings. */
 export async function GET() {
@@ -30,19 +33,17 @@ export async function PUT(request: Request) {
     return NextResponse.json({ error: 'Only admins can update account settings' }, { status: 403 })
   }
 
-  let body: { name?: string; timezone?: string }
+  let body: z.infer<typeof accountSettingsSchema>
   try {
-    body = await request.json()
-  } catch {
-    return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
+    body = accountSettingsSchema.parse(await request.json())
+  } catch (err) {
+    const reason =
+      err instanceof z.ZodError ? formatZodIssues(err).join('; ') : 'Invalid request body'
+    return NextResponse.json({ error: reason }, { status: 400 })
   }
 
-  if (body.name !== undefined && (typeof body.name !== 'string' || body.name.trim().length === 0)) {
-    return NextResponse.json({ error: 'Agency name cannot be empty' }, { status: 400 })
-  }
-
-  const updates: { name?: string; timezone?: string } = {}
-  if (body.name !== undefined) updates.name = body.name.trim()
+  const updates: typeof body = {}
+  if (body.name !== undefined) updates.name = body.name
   if (body.timezone !== undefined) updates.timezone = body.timezone
 
   if (Object.keys(updates).length === 0) {

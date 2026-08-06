@@ -1,19 +1,17 @@
 import { parseSlides } from '@/components/posts/parse-slides'
 import type { PostImage } from '@/types/api'
+import type { PostRow } from '@/types'
 
 /** Every slot a post is supposed to fill — carousels one per slide, singles one. */
 export function totalVisualSlots(post: { post_type: string; slides_json: unknown }): number {
   return post.post_type === 'carousel' ? parseSlides(post.slides_json).length : 1
 }
 
-export interface BacklogPost {
-  id: string
-  client_id: string
-  post_type: string
+export type BacklogPost = Pick<
+  PostRow,
+  'id' | 'client_id' | 'post_type' | 'quality_score_avg' | 'visuals_attempts' | 'created_at'
+> & {
   slides_json: unknown
-  quality_score_avg: number | null
-  visuals_attempts: number
-  created_at: string
 }
 
 export interface VisualJob {

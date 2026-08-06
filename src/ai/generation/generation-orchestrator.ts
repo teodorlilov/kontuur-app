@@ -2,6 +2,7 @@ import { randomUUID } from 'crypto'
 import { generatePost } from '@/ai/generation/generators/post-generator'
 import { generateCarousel } from '@/ai/generation/generators/carousel-generator'
 import type { ParsedPost } from '@/ai/generation/generators/post-generator'
+import type { PostType } from '@/types/api'
 import type {
   SinglePostInput,
   CarouselInput,
@@ -117,7 +118,7 @@ export class GenerationPipeline {
     theme: EnrichedTheme,
     overrides: {
       caption: string
-      post_type: 'single' | 'carousel'
+      post_type: PostType
       slides_json: unknown
       validation_json?: unknown
       quality_score_avg: number

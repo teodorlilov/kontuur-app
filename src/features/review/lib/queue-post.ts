@@ -1,5 +1,6 @@
 import type { PostImage } from '@/types/api'
 import type { ValidationData } from '@/types/post'
+import type { PostRow } from '@/types'
 
 /** A client sign-off request attached to a queue post (post_approval_tokens). */
 export interface QueueApproval {
@@ -8,12 +9,27 @@ export interface QueueApproval {
 }
 
 /** One pending_review post as the queue page loads it — the shell's data contract. */
-export interface QueuePost {
-  id: string
-  client_id: string
-  caption: string | null
-  platform: string | null
-  post_type: string
+export type QueuePost = Pick<
+  PostRow,
+  | 'id'
+  | 'client_id'
+  | 'caption'
+  | 'platform'
+  | 'post_type'
+  | 'status'
+  | 'priority'
+  | 'quality_score_avg'
+  | 'was_rewritten'
+  | 'rewrite_count'
+  | 'pillar'
+  | 'source_url'
+  | 'source_title'
+  | 'source_type'
+  | 'source_excerpt'
+  | 'topic_summary'
+  | 'scheduled_at'
+  | 'created_at'
+> & {
   slides_json: unknown
   /** The raw blob stays server-side (the page adapts it); null here keeps the
    *  shape assignable to PostData without shipping legacy JSON to the client. */
@@ -23,19 +39,6 @@ export interface QueuePost {
   /** True for legacy rows whose authenticity was never measured — the shell
    *  runs one detect-slop call on focus for these. */
   needsSlopCheck: boolean
-  status: string
-  priority: boolean
-  quality_score_avg: number | null
-  was_rewritten: boolean
-  rewrite_count: number
-  pillar: string | null
-  source_url: string | null
-  source_title: string | null
-  source_type: string | null
-  source_excerpt: string | null
-  topic_summary: string | null
-  scheduled_at: string | null
-  created_at: string
   client_name: string
   is_health_niche: boolean
   images: PostImage[]

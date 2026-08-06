@@ -14,19 +14,12 @@ import type {
   FailedPublish,
   UpcomingPublish,
 } from '@/features/dashboard/types'
+import type { PostSummary } from '@/types/post'
 
 interface ClientSummary {
   id: string
   name: string
   created_at: string | null
-}
-
-/** Rows arriving from the cached readers carry ids; only the composer knows the names. */
-interface NamedPublishRow {
-  id: string
-  client_id: string | null
-  platform: string | null
-  scheduled_at: string | null
 }
 
 /**
@@ -101,10 +94,10 @@ export async function fetchDashboardData(
   const nameFor = (clientId: string | null) =>
     (clientId && clientNames.get(clientId)) || 'Unknown'
 
-  const toPublish = (row: NamedPublishRow) => ({
+  const toPublish = (row: PostSummary) => ({
     id: row.id,
     clientName: nameFor(row.client_id),
-    platform: row.platform ?? 'instagram',
+    platform: row.platform,
     scheduledAt: row.scheduled_at,
   })
 

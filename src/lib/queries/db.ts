@@ -30,7 +30,7 @@ import {
 } from '@/lib/queries/select-columns'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import type { PostgrestError } from '@supabase/supabase-js'
-import type { TeamMember, MetaConnection } from '@/types/api'
+import type { AgencyInfo, TeamMember, MetaConnection } from '@/types/api'
 import type { ClientRow, BrandProfileRow, PostingScheduleRow, Json } from '@/types'
 
 type SupabaseClient = Awaited<ReturnType<typeof createServerSupabaseClient>>
@@ -45,17 +45,6 @@ type SupabaseClient = Awaited<ReturnType<typeof createServerSupabaseClient>>
 function unwrap<T>(result: { data: T; error: PostgrestError | null }, query: string): T {
   if (result.error) throw new Error(`${query} failed: ${result.error.message}`)
   return result.data
-}
-
-export type AgencySettings = {
-  id: string
-  name: string
-  plan: string
-  mode: string
-  subscription_status: string
-  trial_ends_at: string
-  plan_client_limit: number
-  timezone: string | null
 }
 
 // ---------- clients ----------
@@ -134,7 +123,7 @@ export async function fetchPostingScheduleByClient(
 export async function fetchAgencyById(
   supabase: SupabaseClient,
   agencyId: string
-): Promise<AgencySettings | null> {
+): Promise<AgencyInfo | null> {
   const data = unwrap(
     await supabase
       .from('agencies')
@@ -143,7 +132,7 @@ export async function fetchAgencyById(
       .maybeSingle(),
     'fetchAgencyById'
   )
-  return data as AgencySettings | null
+  return data as AgencyInfo | null
 }
 
 // ---------- users ----------

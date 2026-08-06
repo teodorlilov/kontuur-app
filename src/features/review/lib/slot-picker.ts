@@ -1,5 +1,10 @@
 import { DAYS_PER_WEEK } from '@/utils/constants'
-import { formatScheduledAt, getMondayISO, toDateKey } from '@/utils/date-helpers'
+import {
+  formatScheduledAt,
+  getMondayISO,
+  toDateKey,
+  weekdayNameToIndex,
+} from '@/utils/date-helpers'
 import type { BestTimePlatform } from '@/types/api'
 
 export interface SlotPickerInput {
@@ -17,8 +22,7 @@ export interface SlotPickerInput {
  * time filter drops slots already past) and "now" is injected for testability.
  */
 function upcomingDateKeysForDay(dayName: string, from: Date): string[] {
-  const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']
-  const targetIdx = days.indexOf(dayName.toLowerCase())
+  const targetIdx = weekdayNameToIndex(dayName)
   if (targetIdx === -1) return []
   const diff = (targetIdx - from.getDay() + DAYS_PER_WEEK) % DAYS_PER_WEEK
   return [diff, diff + DAYS_PER_WEEK].map((offset) => {

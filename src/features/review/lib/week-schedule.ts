@@ -1,4 +1,5 @@
 import { getWeekRange } from '@/utils/date-helpers'
+import type { PostStatus } from '@/lib/validation'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 export interface WeekScheduledPost {
@@ -27,7 +28,7 @@ export async function fetchWeekSchedule(
     .from('posts')
     .select('client_id, scheduled_at')
     .in('client_id', clientIds)
-    .in('status', ['scheduled', 'publishing', 'published'])
+    .in('status', ['scheduled', 'publishing', 'published'] satisfies readonly PostStatus[])
     .gte('scheduled_at', from)
     .lt('scheduled_at', toEnd)
   if (error) throw new Error(`week schedule query failed: ${error.message}`)

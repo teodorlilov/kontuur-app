@@ -4,7 +4,6 @@ import {
   type PendingApprovalRow,
   type RosterClientRow,
   type RosterConnectionRow,
-  type UpcomingPostRow,
   STATUS_PRECEDENCE,
   buildRoster,
   computeRosterEntry,
@@ -12,6 +11,7 @@ import {
   sortRoster,
   summariseRoster,
 } from '../roster'
+import type { PostSummary } from '@/types/post'
 
 const NOW = new Date('2026-07-31T12:00:00Z')
 const MS_PER_DAY = 86_400_000
@@ -41,13 +41,13 @@ function client(over: Partial<RosterClientRow> = {}): RosterClientRow {
  * `id` and `platform` exist on the shared type for the dashboard's next-up card and mean nothing
  * here, so they are filled in once rather than repeated across every fixture.
  */
-function up(clientId: string | null, scheduledAt: string): UpcomingPostRow {
+function up(clientId: string, scheduledAt: string): PostSummary {
   return { id: `post-${clientId}-${scheduledAt}`, client_id: clientId, platform: 'instagram', scheduled_at: scheduledAt }
 }
 
 function entry(
   over: Partial<RosterClientRow> = {},
-  upcoming: UpcomingPostRow[] = [up('c1', offset(1))],
+  upcoming: PostSummary[] = [up('c1', offset(1))],
   approvals: PendingApprovalRow[] = []
 ) {
   return computeRosterEntry(client(over), upcoming, approvals, NOW)
@@ -148,7 +148,7 @@ describe('computeRosterEntry — channels', () => {
 
 describe('computeRosterEntry — aggregates', () => {
   it('takes the earliest scheduled post and counts the rest behind it', () => {
-    const upcoming: UpcomingPostRow[] = [
+    const upcoming: PostSummary[] = [
       up('c1', offset(5)),
       up('c1', offset(2)),
       up('c1', offset(9)),
@@ -174,7 +174,7 @@ describe('computeRosterEntry — aggregates', () => {
 describe('buildRoster', () => {
   it('joins each client to only its own rows', () => {
     const clients = [client(), client({ id: 'c2', name: 'FlexHome' })]
-    const upcoming: UpcomingPostRow[] = [
+    const upcoming: PostSummary[] = [
       up('c1', offset(1)),
       up('c2', offset(3)),
       up('c2', offset(4)),
@@ -188,9 +188,11 @@ describe('buildRoster', () => {
     expect(second?.approvalCount).toBe(0)
   })
 
+  // Exercised through approvals rather than upcoming: posts.client_id is NOT NULL,
+  // so only the approval read can still hand groupByClient a null foreign key.
   it('ignores rows whose foreign key came back null', () => {
-    const upcoming: UpcomingPostRow[] = [up(null, offset(1))]
-    expect(buildRoster([client()], upcoming, [], NOW)[0]?.queuedCount).toBe(0)
+    const approvals: PendingApprovalRow[] = [{ client_id: null, created_at: offset(-4) }]
+    expect(buildRoster([client()], [], approvals, NOW)[0]?.approvalCount).toBe(0)
   })
 })
 

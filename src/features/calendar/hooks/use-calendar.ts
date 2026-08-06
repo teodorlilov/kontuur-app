@@ -5,12 +5,23 @@ import { toast } from '@/components/ui/toast'
 import { updatePost, resolveChangeRequest } from '@/lib/actions/post-actions'
 import { upsertImageAtPosition } from '@/features/publishing/lib/image-list'
 import type { CalendarPost, PostImage } from '@/types/api'
+import type { PostStatus } from '@/lib/validation'
 
 const CLEARED_APPROVAL = {
   approval_status: null,
   approval_client_note: null,
   approval_responded_at: null,
 } as const
+
+/** Statuses that occupy a calendar slot. Typed `readonly string[]` rather than the
+ *  narrowed literal union so `.includes()` still accepts a plain status string; the
+ *  `satisfies` is what checks the members against the vocabulary. */
+const ON_CALENDAR_STATUSES: readonly string[] = [
+  'scheduled',
+  'publishing',
+  'published',
+  'failed',
+] satisfies readonly PostStatus[]
 
 export function useCalendar(initialPosts: CalendarPost[]) {
   const [posts, setPosts] = useState(initialPosts)
@@ -22,9 +33,7 @@ export function useCalendar(initialPosts: CalendarPost[]) {
   )
 
   const scheduledPosts = useMemo(
-    () => posts.filter((p) =>
-      ['scheduled', 'publishing', 'published', 'failed'].includes(p.status) && p.scheduled_at
-    ),
+    () => posts.filter((p) => ON_CALENDAR_STATUSES.includes(p.status) && p.scheduled_at),
     [posts]
   )
 

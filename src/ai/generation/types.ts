@@ -45,7 +45,7 @@ export interface DraftPost {
   id: string
   client_id: string
   platform: string
-  post_type: 'single' | 'carousel'
+  post_type: PostType
   caption: string
   status: 'draft'
   priority: boolean

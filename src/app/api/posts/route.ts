@@ -5,6 +5,7 @@ import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { draftVisualPrefix, movePostImageObject } from '@/features/publishing/lib/storage'
 import { safeParseCanvasDoc } from '@/lib/canvas/doc-schema'
 import { POST_COLUMNS } from '@/lib/queries/select-columns'
+import { isValidPostPlatform } from '@/lib/validation'
 import type { CanvasDoc } from '@/types/canvas'
 import type { Database, Json } from '@/types/database'
 
@@ -88,12 +89,13 @@ export async function GET(request: Request) {
 const createPostSchema = z.object({
   client_id: z.string().min(1),
   caption: z.string().nullable().optional(),
-  platform: z.string().nullable().optional(),
+  platform: z.string().optional(),
   post_type: z.string().optional(),
   slides_json: z.unknown().optional(),
   validation_json: z.unknown().optional(),
   status: z.enum(['pending_review', 'scheduled', 'approved']).optional(),
-  scheduled_at: z.string().optional(),
+  /** nullable: approving without a slot sends an explicit null, not an omitted key. */
+  scheduled_at: z.string().nullable().optional(),
   priority: z.boolean().optional(),
   quality_score_avg: z.number().nullable().optional(),
   topic_summary: z.string().nullable().optional(),
@@ -230,6 +232,14 @@ export async function POST(request: Request) {
 
   if (!client) return NextResponse.json({ error: 'Client not found' }, { status: 404 })
 
+  // The only unguarded write to posts.platform, and its default was the lone source
+  // of lowercase 'instagram' in a column the rest of the app spells 'Instagram'.
+  // Same check as PUT and updatePost, so all three writers agree on one vocabulary.
+  const platform = body.platform ?? 'Instagram'
+  if (!isValidPostPlatform(platform)) {
+    return NextResponse.json({ error: `Invalid platform: ${platform}` }, { status: 400 })
+  }
+
   // Attribution guard: never persist a source id that belongs to another client
   let clientSourceId = body.client_source_id ?? null
   if (clientSourceId) {
@@ -252,7 +262,7 @@ export async function POST(request: Request) {
   const insertRow = {
     client_id: body.client_id,
     caption: body.caption ?? null,
-    platform: body.platform ?? 'instagram',
+    platform,
     post_type: body.post_type ?? 'single',
     slides_json: (body.slides_json as Json) ?? null,
     validation_json: (body.validation_json as Json) ?? null,

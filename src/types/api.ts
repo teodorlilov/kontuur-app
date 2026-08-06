@@ -1,3 +1,9 @@
+// Imported from './database' rather than the './index' barrel, which re-exports
+// this file — going through it would make the two circular.
+import type { Tables } from './database'
+
+type PostRow = Tables<'posts'>
+
 // ---- Shared enums / unions ----
 
 export type PostType = 'single' | 'carousel'
@@ -129,14 +135,12 @@ export interface ApprovalResponse {
   postNotes?: Array<{ postId: string; note: string }>
 }
 
-export interface ApprovalPostData {
-  id: string
-  caption: string | null
-  platform: string | null
-  post_type: string
+/** A post as the public approval page reads it, plus the note the client left. */
+export type ApprovalPostData = Pick<
+  PostRow,
+  'id' | 'caption' | 'platform' | 'post_type' | 'scheduled_at' | 'pillar'
+> & {
   slides_json: unknown
-  scheduled_at: string | null
-  pillar: string | null
   client_note: string | null
   images: PostImage[]
 }
@@ -151,25 +155,30 @@ export interface ApprovalBatchData {
 
 // ---- Calendar ----
 
-export interface CalendarPost {
-  id: string
-  client_id: string
+/** A calendar row: the post's own columns, plus the joined name, images and
+ *  approval state the calendar resolves alongside them. */
+export type CalendarPost = Pick<
+  PostRow,
+  | 'id'
+  | 'client_id'
+  | 'caption'
+  | 'platform'
+  | 'post_type'
+  | 'status'
+  | 'scheduled_at'
+  | 'priority'
+  | 'quality_score_avg'
+  | 'source_url'
+  | 'source_title'
+  | 'source_type'
+  | 'pillar'
+  | 'source_excerpt'
+  | 'created_at'
+> & {
   client_name: string
-  caption: string | null
-  platform: string | null
-  post_type: string
+  /** Parsed on the way in, unlike the raw column. */
   slides_json: CarouselSlide[] | null
   validation_json: unknown
-  status: string
-  scheduled_at: string | null
-  priority: boolean
-  quality_score_avg: number | null
-  source_url: string | null
-  source_title: string | null
-  source_type: string | null
-  pillar: string | null
-  source_excerpt: string | null
-  created_at: string
   images: PostImage[]
   approval_status: string | null
   approval_client_note: string | null
@@ -183,7 +192,7 @@ export interface DashboardChangeRequest {
   clientId: string
   clientName: string
   caption: string | null
-  platform: string | null
+  platform: string
   postType: string
   slidesJson: CarouselSlide[] | null
   scheduledAt: string | null

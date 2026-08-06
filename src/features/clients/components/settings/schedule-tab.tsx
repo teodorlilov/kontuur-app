@@ -13,9 +13,11 @@ import {
   WEEKDAY_OPTIONS,
 } from '@/utils/constants'
 import type { BrandDraft, ScheduleDraft } from '@/features/clients/lib/client-draft'
+import type { PostType } from '@/types/api'
 
-// No "Text only" option: nothing downstream generates it.
-const POST_TYPE_OPTIONS = [
+// No "Text only" option: nothing downstream generates it. Values are typed as
+// PostType so this picker cannot offer something the pipeline does not accept.
+const POST_TYPE_OPTIONS: Array<{ value: PostType; label: string }> = [
   { value: 'single', label: 'Single image' },
   { value: 'carousel', label: 'Carousel' },
 ]

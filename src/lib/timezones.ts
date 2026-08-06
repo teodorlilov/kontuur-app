@@ -81,6 +81,16 @@ const TIMEZONE_DATA: TimezoneEntry[] = [
 ]
 
 /**
+ * Whether a zone is one this app supports — the picker's own list, not all of IANA.
+ *
+ * Worth checking on the way in because the stored value is handed to
+ * `Intl.DateTimeFormat`, which throws `RangeError` on an unknown zone.
+ */
+export function isSupportedTimezone(value: string): boolean {
+  return TIMEZONE_DATA.some((tz) => tz.value === value)
+}
+
+/**
  * Minutes this zone is ahead of UTC, right now.
  *
  * Reads the zone's numeric wall-clock parts rather than `timeZoneName`, because

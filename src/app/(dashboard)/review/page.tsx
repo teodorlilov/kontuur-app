@@ -13,6 +13,7 @@ import { getMondayISO } from '@/utils/date-helpers'
 import { ReviewQueue } from '@/features/review/components/review-queue'
 import type { QueueApproval, QueuePost } from '@/features/review/lib/queue-post'
 import type { BestTimePlatform } from '@/types/api'
+import type { PostRow } from '@/types'
 
 export default async function ReviewPage() {
   const { agencyId } = await requireSessionUser()
@@ -66,30 +67,32 @@ export default async function ReviewPage() {
     bestTimeMap[c.id] = Array.isArray(btj) ? (btj as BestTimePlatform[]) : null
   }
 
-  type PostRow = {
-    id: string
-    client_id: string
-    caption: string | null
-    platform: string | null
-    post_type: string
+  type PostQueryRow = Pick<
+    PostRow,
+    | 'id'
+    | 'client_id'
+    | 'caption'
+    | 'platform'
+    | 'post_type'
+    | 'status'
+    | 'priority'
+    | 'quality_score_avg'
+    | 'was_rewritten'
+    | 'rewrite_count'
+    | 'pillar'
+    | 'source_url'
+    | 'source_title'
+    | 'source_type'
+    | 'source_excerpt'
+    | 'topic_summary'
+    | 'scheduled_at'
+    | 'created_at'
+  > & {
     slides_json: unknown
     validation_json: unknown
-    status: string
-    priority: boolean
-    quality_score_avg: number | null
-    was_rewritten: boolean
-    rewrite_count: number
-    pillar: string | null
-    source_url: string | null
-    source_title: string | null
-    source_type: string | null
-    source_excerpt: string | null
-    topic_summary: string | null
-    scheduled_at: string | null
-    created_at: string
   }
 
-  const typedPostRows = (postRows as PostRow[] | null) ?? []
+  const typedPostRows = (postRows as PostQueryRow[] | null) ?? []
   const postIds = typedPostRows.map((p) => p.id)
 
   type TokenRow = { post_id: string; status: string; expires_at: string }

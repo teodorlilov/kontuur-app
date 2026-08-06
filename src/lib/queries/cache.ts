@@ -12,14 +12,12 @@ import {
 import { fetchLanguageRulesByLanguage } from '@/lib/queries/db'
 import { getWeekDayKeys, getWeekRange, toDateKey } from '@/utils/date-helpers'
 import { DAYS_PER_WEEK } from '@/utils/constants'
+import type { PostStatus } from '@/lib/validation'
 import type { Database } from '@/types/database'
 // The roster owns its own input contract; this layer fills it rather than
 // exporting whatever shape PostgREST happened to return.
-import type {
-  PendingApprovalRow,
-  RosterClientRow,
-  UpcomingPostRow,
-} from '@/features/clients/lib/roster'
+import type { PendingApprovalRow, RosterClientRow } from '@/features/clients/lib/roster'
+import type { PostSummary } from '@/types/post'
 
 type Agency = Database['public']['Tables']['agencies']['Row']
 type Client = Database['public']['Tables']['clients']['Row']
@@ -130,7 +128,11 @@ export type DayState = 'published' | 'scheduled' | 'open'
  * dashboard's "scheduled this week" count and this coverage grid can never
  * measure different things while sitting on the same card.
  */
-export const SCHEDULED_STATUSES = ['approved', 'scheduled', 'publishing'] as const
+export const SCHEDULED_STATUSES = [
+  'approved',
+  'scheduled',
+  'publishing',
+] as const satisfies readonly PostStatus[]
 
 const SCHEDULED_STATUS_SET = new Set<string>(SCHEDULED_STATUSES)
 
@@ -253,7 +255,7 @@ export const getCachedClientRoster = cache(_fetchClientRoster)
  * Call revalidateTag('client-post-stats') after post mutations.
  */
 const _fetchUpcomingByClient = unstable_cache(
-  async (agencyId: string): Promise<UpcomingPostRow[]> => {
+  async (agencyId: string): Promise<PostSummary[]> => {
     const supabase = createAdminSupabaseClient()
     // Evaluated at cache-fill time, not per request — harmless over a 60s TTL,
     // and keeping it out of the arguments is what lets requests share the entry.
@@ -269,7 +271,7 @@ const _fetchUpcomingByClient = unstable_cache(
       return []
     }
     // WHY as: the clients!inner join is a filter only; its column is not read.
-    return (data ?? []) as unknown as UpcomingPostRow[]
+    return (data ?? []) as unknown as PostSummary[]
   },
   ['client-upcoming'],
   { revalidate: 60, tags: ['client-post-stats'] }

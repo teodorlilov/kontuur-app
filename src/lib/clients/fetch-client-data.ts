@@ -8,7 +8,6 @@ import { getCachedLanguageRules } from '@/lib/queries/cache'
 import { toCarouselSwipeCues, toFormalityRulesData } from '@/lib/clients/language-rules'
 import type { LanguageConfig } from '@/lib/clients/language-rules'
 import { parsePillars, type WeightedPillar } from '@/lib/clients/content-pillars'
-import type { SourceStrategy } from '@/types/api'
 import { MAX_POST_HISTORY_COUNT, DEFAULT_CAROUSEL_SLIDES } from '@/utils/constants'
 
 export interface ClientData {
@@ -29,7 +28,6 @@ export interface ClientData {
   defaultCarouselSlides: number
   defaultPostType: string | null
   requireSourceGrounding: boolean
-  sourceStrategy: SourceStrategy | null
   languageNotes: string
   // assembled from language_rules
   languageConfig: LanguageConfig
@@ -82,7 +80,6 @@ export async function buildClientData(
     defaultCarouselSlides: profile?.default_carousel_slides ?? DEFAULT_CAROUSEL_SLIDES,
     defaultPostType: profile?.default_post_type ?? null,
     requireSourceGrounding: parseRequireSourceGrounding(profile?.source_strategy),
-    sourceStrategy: (profile?.source_strategy as SourceStrategy | null) ?? null,
     languageNotes: profile?.language_notes ?? '',
     languageConfig: {
       language: client.language,

@@ -106,11 +106,9 @@ export const NOTIFICATION_COLUMNS =
 
 // posts (dashboard + roster shared reads)
 
-/** Upcoming publishes, read by both the clients roster and the dashboard's next-up card. */
+/** The PostSummary projection: upcoming publishes for the clients roster and the
+ *  dashboard's next-up card, and failed ones for its publish list. */
 export const UPCOMING_POST_COLUMNS = 'id, client_id, platform, scheduled_at, clients!inner(agency_id)'
-
-/** A publish row as the dashboard's next-up card renders it. */
-export const PUBLISH_ROW_COLUMNS = 'id, client_id, platform, scheduled_at, clients!inner(agency_id)'
 
 /** One row of the dashboard's review-queue preview. */
 export const PENDING_PREVIEW_COLUMNS =

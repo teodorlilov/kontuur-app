@@ -73,8 +73,9 @@ export async function fetchScheduleContext(
   if (agencyError) throw new Error(`agency timezone query failed: ${agencyError.message}`)
 
   const agencyTimezones = new Map<string, string>()
-  for (const row of (agencyRows ?? []) as Array<{ id: string; timezone: string | null }>) {
-    agencyTimezones.set(row.id, row.timezone ?? 'UTC')
+  // as: explicit column projection — Supabase types from the table, not the select
+  for (const row of (agencyRows ?? []) as Array<{ id: string; timezone: string }>) {
+    agencyTimezones.set(row.id, row.timezone)
   }
 
   const brandProfiles = new Map<string, BrandProfileRow>()

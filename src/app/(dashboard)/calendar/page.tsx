@@ -2,9 +2,11 @@ import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { requireSessionUser } from '@/lib/auth/session'
 import { getCachedAgencyClients } from '@/lib/queries/cache'
 import { POST_COLUMNS } from '@/lib/queries/select-columns'
+import type { PostStatus } from '@/lib/validation'
 import { fetchImagesByPost } from '@/features/publishing/lib/fetch-post-images'
 import { CalendarView } from '@/features/calendar/components/calendar-view'
 import type { CalendarPost } from '@/types/api'
+import type { PostRow } from '@/types'
 
 export default async function CalendarPage() {
   const { agencyId } = await requireSessionUser()
@@ -29,7 +31,13 @@ export default async function CalendarPage() {
             `${POST_COLUMNS}, post_approval_tokens(status, client_note, created_at, responded_at)`
           )
           .in('client_id', clientIds)
-          .in('status', ['approved', 'scheduled', 'publishing', 'published', 'failed'])
+          .in('status', [
+            'approved',
+            'scheduled',
+            'publishing',
+            'published',
+            'failed',
+          ] satisfies readonly PostStatus[])
           .order('created_at', { ascending: false })
       : Promise.resolve({ data: [] as unknown[] }),
   ])
@@ -48,29 +56,31 @@ export default async function CalendarPage() {
     responded_at: string | null
   }
 
-  type PostRow = {
-    id: string
-    client_id: string
-    caption: string | null
-    platform: string | null
-    post_type: string
+  type PostQueryRow = Pick<
+    PostRow,
+    | 'id'
+    | 'client_id'
+    | 'caption'
+    | 'platform'
+    | 'post_type'
+    | 'status'
+    | 'scheduled_at'
+    | 'priority'
+    | 'quality_score_avg'
+    | 'source_url'
+    | 'source_title'
+    | 'source_type'
+    | 'pillar'
+    | 'source_excerpt'
+    | 'created_at'
+  > & {
     slides_json: unknown
     validation_json: unknown
-    status: string
-    scheduled_at: string | null
-    priority: boolean
-    quality_score_avg: number | null
-    source_url: string | null
-    source_title: string | null
-    source_type: string | null
-    pillar: string | null
-    source_excerpt: string | null
-    created_at: string
     post_approval_tokens: ApprovalTokenRow[]
   }
 
   const clientNameMap = new Map(clientList.map((c) => [c.id, c.name]))
-  const typedPostRows = (postRows as PostRow[] | null) ?? []
+  const typedPostRows = (postRows as PostQueryRow[] | null) ?? []
 
   const imagesByPost = await fetchImagesByPost(typedPostRows.map((p) => p.id))
 

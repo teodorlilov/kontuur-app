@@ -26,7 +26,7 @@ export type Database = {
           stripe_customer_id: string | null
           stripe_subscription_id: string | null
           subscription_status: string | null
-          timezone: string | null
+          timezone: string
           trial_ends_at: string | null
         }
         Insert: {
@@ -40,7 +40,7 @@ export type Database = {
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
           subscription_status?: string | null
-          timezone?: string | null
+          timezone?: string
           trial_ends_at?: string | null
         }
         Update: {
@@ -54,7 +54,7 @@ export type Database = {
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
           subscription_status?: string | null
-          timezone?: string | null
+          timezone?: string
           trial_ends_at?: string | null
         }
         Relationships: []
@@ -1091,7 +1091,7 @@ export type Database = {
           caption: string | null
           client_id: string
           client_source_id: string | null
-          created_at: string | null
+          created_at: string
           design_json: Json | null
           design_overrides: Json | null
           format: string
@@ -1102,31 +1102,31 @@ export type Database = {
           pillar: string | null
           platform: string
           post_type: string
-          priority: boolean | null
-          publish_attempts: number | null
+          priority: boolean
+          publish_attempts: number
           publish_claimed_at: string | null
           publish_error: string | null
           published_at: string | null
           quality_score_avg: number | null
-          rewrite_count: number | null
+          rewrite_count: number
           scheduled_at: string | null
           slides_json: Json | null
           source_excerpt: string | null
           source_title: string | null
           source_type: string | null
           source_url: string | null
-          status: string | null
+          status: string
           topic_summary: string | null
           validation_json: Json | null
           visuals_attempts: number
-          was_rewritten: boolean | null
+          was_rewritten: boolean
         }
         Insert: {
           brand_kit_version?: number | null
           caption?: string | null
           client_id: string
           client_source_id?: string | null
-          created_at?: string | null
+          created_at?: string
           design_json?: Json | null
           design_overrides?: Json | null
           format?: string
@@ -1137,31 +1137,31 @@ export type Database = {
           pillar?: string | null
           platform: string
           post_type?: string
-          priority?: boolean | null
-          publish_attempts?: number | null
+          priority?: boolean
+          publish_attempts?: number
           publish_claimed_at?: string | null
           publish_error?: string | null
           published_at?: string | null
           quality_score_avg?: number | null
-          rewrite_count?: number | null
+          rewrite_count?: number
           scheduled_at?: string | null
           slides_json?: Json | null
           source_excerpt?: string | null
           source_title?: string | null
           source_type?: string | null
           source_url?: string | null
-          status?: string | null
+          status?: string
           topic_summary?: string | null
           validation_json?: Json | null
           visuals_attempts?: number
-          was_rewritten?: boolean | null
+          was_rewritten?: boolean
         }
         Update: {
           brand_kit_version?: number | null
           caption?: string | null
           client_id?: string
           client_source_id?: string | null
-          created_at?: string | null
+          created_at?: string
           design_json?: Json | null
           design_overrides?: Json | null
           format?: string
@@ -1172,24 +1172,24 @@ export type Database = {
           pillar?: string | null
           platform?: string
           post_type?: string
-          priority?: boolean | null
-          publish_attempts?: number | null
+          priority?: boolean
+          publish_attempts?: number
           publish_claimed_at?: string | null
           publish_error?: string | null
           published_at?: string | null
           quality_score_avg?: number | null
-          rewrite_count?: number | null
+          rewrite_count?: number
           scheduled_at?: string | null
           slides_json?: Json | null
           source_excerpt?: string | null
           source_title?: string | null
           source_type?: string | null
           source_url?: string | null
-          status?: string | null
+          status?: string
           topic_summary?: string | null
           validation_json?: Json | null
           visuals_attempts?: number
-          was_rewritten?: boolean | null
+          was_rewritten?: boolean
         }
         Relationships: [
           {

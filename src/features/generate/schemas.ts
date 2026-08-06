@@ -72,7 +72,6 @@ export const clientDataSchema = z.object({
   defaultCarouselSlides: z.number(),
   defaultPostType: z.string().nullable(),
   requireSourceGrounding: z.boolean(),
-  sourceStrategy: z.unknown().nullable(),
   languageNotes: z.string(),
   languageConfig: z.looseObject({
     language: z.string(),

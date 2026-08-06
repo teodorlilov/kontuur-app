@@ -9,13 +9,6 @@ import {
 import { extractFlaggedSlide } from '@/utils/extract-flagged-slides'
 import type { DashboardChangeRequest } from '@/types/api'
 
-const PLATFORM_LABELS: Record<string, string> = {
-  instagram: 'Instagram',
-  facebook: 'Facebook',
-  linkedin: 'LinkedIn',
-  tiktok: 'TikTok',
-}
-
 /** Build post type label — "Carousel · N slides" or "Single image". */
 function buildPostTypeLabel(postType: string, slideCount: number): string {
   if (postType === 'carousel') return `Carousel · ${slideCount} slides`
@@ -24,7 +17,6 @@ function buildPostTypeLabel(postType: string, slideCount: number): string {
 
 /** Header row: client name · Post #N · scheduled date + badges + time. */
 function CardHeader({ cr }: { cr: DashboardChangeRequest }) {
-  const platform = cr.platform ?? 'instagram'
   const slideCount = cr.slidesJson?.length ?? 0
   const scheduledLabel = cr.scheduledAt ? formatScheduleDate(parseTimestamp(cr.scheduledAt)) : ''
   const timeAgo = cr.respondedAt ? formatRelativeTime(parseTimestamp(cr.respondedAt)) : ''
@@ -36,7 +28,7 @@ function CardHeader({ cr }: { cr: DashboardChangeRequest }) {
       {scheduledLabel && <span className="text-caption text-text3">· {scheduledLabel}</span>}
 
       <span className="ml-1 rounded-xs bg-wash px-2 py-0.5 text-micro font-medium text-forest">
-        {PLATFORM_LABELS[platform] ?? platform}
+        {cr.platform}
       </span>
       <span className="rounded-xs bg-sunken px-2 py-0.5 text-micro font-medium text-text2">
         {buildPostTypeLabel(cr.postType, slideCount)}

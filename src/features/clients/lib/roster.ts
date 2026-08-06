@@ -1,6 +1,7 @@
 import { daysUntilExpiry, isTokenExpired, isTokenExpiring } from '@/lib/meta/token-expiry'
 import { POST_PLATFORMS } from '@/lib/validation'
 import { extractInitials } from '@/utils/format'
+import type { PostSummary } from '@/types/post'
 
 /**
  * Pure derivation for the Clients roster. No Supabase, no React — every input is
@@ -64,20 +65,6 @@ export interface RosterClientRow {
   social_connections: RosterConnectionRow[] | null
 }
 
-/**
- * An upcoming post, as both the roster and the dashboard read it.
- *
- * `id` and `platform` are surplus to the roster's own needs — it only counts rows and takes the
- * earliest per client — but the dashboard's "going out next" card lists individual publishes from
- * the same cached entry, so the shape has to satisfy both.
- */
-export interface UpcomingPostRow {
-  id: string
-  client_id: string | null
-  platform: string | null
-  scheduled_at: string | null
-}
-
 export interface PendingApprovalRow {
   client_id: string | null
   created_at: string | null
@@ -127,8 +114,8 @@ export interface RosterSummary {
 // ─── Derivation ──────────────────────────────────────────────────────────────
 
 /**
- * Older rows store display case ('Instagram') while the connect flow writes
- * lowercase — isValidPostPlatform carries the same warning.
+ * The connect flow writes lowercase, but tolerate display case so a hand-fixed or
+ * legacy social_connections row still matches its chip.
  */
 function normalisePlatform(platform: string | null): PostPlatform | null {
   const match = POST_PLATFORMS.find((p) => p === platform?.toLowerCase())
@@ -197,7 +184,7 @@ function latest(a: string | null, b: string | null): string | null {
  */
 export function computeRosterEntry(
   row: RosterClientRow,
-  upcoming: UpcomingPostRow[],
+  upcoming: PostSummary[],
   approvals: PendingApprovalRow[],
   now: Date
 ): ClientRosterEntry {
@@ -242,7 +229,7 @@ function groupByClient<T extends { client_id: string | null }>(rows: T[]): Map<s
 /** Join the three queries in memory and derive every row. */
 export function buildRoster(
   clients: RosterClientRow[],
-  upcoming: UpcomingPostRow[],
+  upcoming: PostSummary[],
   approvals: PendingApprovalRow[],
   now: Date
 ): ClientRosterEntry[] {

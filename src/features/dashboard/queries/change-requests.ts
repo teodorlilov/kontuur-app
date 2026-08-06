@@ -6,17 +6,15 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { BATCH_POSITION_COLUMNS, CHANGE_REQUEST_COLUMNS } from '@/lib/queries/select-columns'
 import type { CarouselSlide } from '@/types/api'
+import type { PostRow } from '@/types'
 
 const CHANGE_REQUEST_LIMIT = 5
 
-interface ChangeRequestRow {
-  id: string
-  client_id: string
-  caption: string | null
-  platform: string | null
-  post_type: string
+type ChangeRequestRow = Pick<
+  PostRow,
+  'id' | 'client_id' | 'caption' | 'platform' | 'post_type' | 'scheduled_at'
+> & {
   slides_json: unknown
-  scheduled_at: string | null
   post_approval_tokens: Array<{
     status: string
     client_note: string | null
@@ -30,7 +28,7 @@ export interface ChangeRequest {
   id: string
   clientId: string
   caption: string | null
-  platform: string | null
+  platform: string
   postType: string
   slidesJson: CarouselSlide[] | null
   scheduledAt: string | null

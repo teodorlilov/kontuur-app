@@ -61,7 +61,7 @@ export async function POST(request: Request) {
     const bestTime = await generateBestTime({
       niche: clientData.niche ?? 'General',
       targetAudience: profile?.target_audience ?? 'General audience',
-      language: clientData.language ?? 'English',
+      language: clientData.language,
       platforms: platformsStr,
     })
 
