@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { formatZodIssues } from '@/lib/validation/format-issues'
 import type { VisualIdentity } from '@/types/visual'
 import { BRAND_STYLE_IDS, DEFAULT_BRAND_STYLE_ID } from './brand-styles'
 
@@ -44,8 +45,5 @@ export type VisualIdentityParse =
 export function safeParseVisualIdentity(input: unknown): VisualIdentityParse {
   const result = visualIdentitySchema.safeParse(input)
   if (result.success) return { success: true, identity: result.data }
-  return {
-    success: false,
-    issues: result.error.issues.map((issue) => `${issue.path.join('.')}: ${issue.message}`),
-  }
+  return { success: false, issues: formatZodIssues(result.error) }
 }

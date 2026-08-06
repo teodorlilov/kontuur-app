@@ -32,11 +32,11 @@ export function FontSelect({ value, text, onChange }: FontSelectProps) {
 
   return (
     <div>
-      <div style={PANEL_LABEL}>Font</div>
+      <div className={PANEL_LABEL}>Font</div>
       <select
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        style={PANEL_CONTROL}
+        className={PANEL_CONTROL}
       >
         {/* A doc can reference a font outside the offered list (unknown or Cyrillic-filtered); keep it selectable. */}
         {!currentEntry && <option value={value}>{value}</option>}
@@ -53,14 +53,9 @@ export function FontSelect({ value, text, onChange }: FontSelectProps) {
         ))}
       </select>
       {currentUnsupported && (
-        <p
-          style={{
-            fontSize: 'var(--text-label)',
-            color: 'var(--danger)',
-            margin: '6px 0 0',
-            lineHeight: 1.4,
-          }}
-        >
+        // leading-[1.4]: a two-line warning under the control; the Label role's
+        // single-line leading closes the lines up too far to scan.
+        <p className="mx-0 mb-0 mt-1.5 text-label leading-[1.4] text-danger">
           {value} has no Cyrillic support — this text will render in a system font.
         </p>
       )}

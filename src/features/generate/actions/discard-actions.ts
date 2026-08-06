@@ -1,5 +1,6 @@
 'use server'
 
+import 'server-only'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { resolveActionAuth, verifyClientOwnership } from '@/lib/auth/helpers'
 import { discardedDraftSchema, type DiscardedDraftInput } from '@/features/generate/schemas'

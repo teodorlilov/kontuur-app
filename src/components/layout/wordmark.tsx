@@ -43,7 +43,7 @@ export function Wordmark({ tone = 'light', markOnly = false, href, className }: 
 
   const shell = cn(
     'flex items-center gap-2.5 text-display no-underline',
-    tone === 'dark' ? 'text-[#f2f5f1]' : 'text-ink',
+    tone === 'dark' ? 'text-ink-inv' : 'text-ink',
     markOnly && 'justify-center',
     className
   )

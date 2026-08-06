@@ -14,11 +14,12 @@ async function fetchPostForPublish(
   admin: SupabaseClient,
   postId: string
 ): Promise<PostWithImages | null> {
-  const { data } = await admin
+  const { data, error } = await admin
     .from('posts')
     .select('id, caption, post_type, status, scheduled_at, publish_attempts, client_id, post_images(public_url, position)')
     .eq('id', postId)
-    .single()
+    .maybeSingle()
+  if (error) throw new Error(`post lookup failed: ${error.message}`)
   // Supabase cannot infer the joined post_images shape; cast to our known query projection
   return data as unknown as PostWithImages | null
 }
@@ -28,12 +29,15 @@ async function fetchConnection(
   admin: SupabaseClient,
   clientId: string
 ): Promise<InstagramConnection | null> {
-  const { data } = await admin
+  // maybeSingle: "no connection" is an expected state the caller reports as a
+  // 400, not a query failure.
+  const { data, error } = await admin
     .from('social_connections')
     .select('account_id, access_token, token_expires_at')
     .eq('client_id', clientId)
     .eq('platform', 'instagram')
-    .single()
+    .maybeSingle()
+  if (error) throw new Error(`connection lookup failed: ${error.message}`)
   // Supabase select returns the exact fields we project; narrow to InstagramConnection
   return data as InstagramConnection | null
 }
@@ -65,12 +69,15 @@ export async function POST(
     }
 
     // Conditional claim — skips if the cron scheduler (or another request) is mid-publish
-    const { data: claimed } = await admin
+    const { data: claimed, error: claimError } = await admin
       .from('posts')
       .update({ status: 'publishing', publish_attempts: post.publish_attempts + 1 })
       .eq('id', postId)
       .neq('status', 'publishing')
       .select('id')
+    // A DB error is not a lost race — reporting it as one would tell the user to
+    // wait for a publish that is not running.
+    if (claimError) throw new Error(`claim failed: ${claimError.message}`)
     if (!claimed || claimed.length === 0) {
       return NextResponse.json({ error: 'Post is already being published' }, { status: 409 })
     }
@@ -83,17 +90,30 @@ export async function POST(
 
     if (result.success) {
       const now = new Date().toISOString()
-      await admin.from('posts').update({
+      const { error: writeError } = await admin.from('posts').update({
         status: 'published',
         ig_media_id: result.mediaId ?? null,
         published_at: now,
         publish_error: null,
         ...(post.scheduled_at ? {} : { scheduled_at: now }),
       }).eq('id', postId)
+      // The media is live, so this is not a failed publish — but the row still
+      // reads 'publishing', which the cron reclaim would republish.
+      if (writeError) {
+        console.error(
+          `[publish] UNRECONCILED post ${postId} is live on Instagram as media ${result.mediaId ?? 'unknown'} but its status write failed: ${writeError.message}`
+        )
+      }
       return NextResponse.json({ ok: true, mediaId: result.mediaId ?? null })
     }
 
-    await admin.from('posts').update({ status: 'failed', publish_error: result.error }).eq('id', postId)
+    const { error: failWriteError } = await admin
+      .from('posts')
+      .update({ status: 'failed', publish_error: result.error })
+      .eq('id', postId)
+    if (failWriteError) {
+      console.error(`[publish] post ${postId} failure write was lost: ${failWriteError.message}`)
+    }
     return NextResponse.json({ error: result.error }, { status: 500 })
   } catch (err) {
     console.error('Publish error:', err)

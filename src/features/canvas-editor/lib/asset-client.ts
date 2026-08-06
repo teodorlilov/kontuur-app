@@ -5,7 +5,8 @@ export interface AssetRef {
   storagePath: string
 }
 
-async function parseAssetResponse(
+/** Unwrap an upload/generate response into its stored asset, or throw the server's reason. */
+export async function parseAssetResponse(
   res: Response,
   fallbackError: string
 ): Promise<AssetRef & { width?: number; height?: number }> {

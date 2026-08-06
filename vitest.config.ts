@@ -9,6 +9,9 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, 'src'),
+      // Next resolves `server-only` itself; vitest does not, and the guard's job
+      // is to fail a client bundle, which vitest never builds.
+      'server-only': path.resolve(__dirname, 'src/test/server-only-stub.ts'),
     },
   },
 })

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { BarChart3, Check } from 'lucide-react'
 import { Spinner } from '@/components/ui/spinner'
+import { cn } from '@/utils/cn'
 import { capitalizePlatform } from '../utils/metrics'
 
 interface AnalyticsLoadingProps {
@@ -36,47 +37,17 @@ export function AnalyticsLoading({ platform, clientName, range }: AnalyticsLoadi
   }, [stage, labels.length])
 
   return (
-    <div
-      style={{
-        flex: 1,
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: 40,
-        background: 'var(--surface)',
-        borderRadius: 'var(--radius-lg)',
-        border: '1px solid var(--line)',
-      }}
-    >
+    <div className="flex-1 flex flex-col items-center justify-center p-10 bg-surface rounded-lg border border-line">
       <FrameIcon />
 
-      <h2
-        className="text-headline"
-        style={{
-          fontFamily: 'var(--font-display)',
-          fontWeight: 400,
-          color: 'var(--ink)',
-          textAlign: 'center',
-          marginBottom: 5,
-        }}
-      >
+      <h2 className="text-headline font-display font-normal text-ink text-center mb-[5px]">
         Building your report
       </h2>
-      <p className="text-body text-text2" style={{ textAlign: 'center', marginBottom: 28 }}>
+      <p className="text-body text-text2 text-center mb-7">
         {clientName} · {capitalizePlatform(platform)} · Last {range}
       </p>
 
-      <div
-        style={{
-          width: '100%',
-          maxWidth: 320,
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 6,
-          marginBottom: 24,
-        }}
-      >
+      <div className="w-full max-w-[320px] flex flex-col gap-1.5 mb-6">
         {labels.map((label, i) => (
           <StageRow key={i} isDone={i < stage} isActive={i === stage} label={label} />
         ))}
@@ -87,19 +58,7 @@ export function AnalyticsLoading({ platform, clientName, range }: AnalyticsLoadi
 
 function FrameIcon() {
   return (
-    <div
-      style={{
-        borderLeft: '2px solid var(--spring)',
-        borderRight: '2px solid var(--spring)',
-        borderTop: '1px solid var(--line2)',
-        borderBottom: '1px solid var(--line2)',
-        padding: '14px 16px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginBottom: 20,
-      }}
-    >
+    <div className="border-x-2 border-x-spring border-y border-y-line2 px-4 py-3.5 flex items-center justify-center mb-5">
       <BarChart3 size={22} color="var(--spring)" strokeWidth={1.5} />
     </div>
   )
@@ -116,23 +75,18 @@ function StageRow({
 }) {
   return (
     <div
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 10,
-        padding: '10px 14px',
-        borderRadius: 8,
-        background: isDone ? 'var(--wash)' : isActive ? 'rgba(15,21,18,0.06)' : 'var(--paper)',
-        transition: 'background 0.3s',
-      }}
+      className={cn(
+        'flex items-center gap-2.5 px-3.5 py-2.5 rounded-sm',
+        isDone ? 'bg-wash' : isActive ? 'bg-ink/6' : 'bg-paper'
+      )}
+      style={{ transition: 'background 0.3s' }}
     >
       <StageIcon isDone={isDone} isActive={isActive} />
       <span
-        className="text-caption"
-        style={{
-          fontWeight: 500,
-          color: isDone ? 'var(--spring-text)' : isActive ? 'var(--ink)' : 'var(--text2)',
-        }}
+        className={cn(
+          'text-caption font-medium',
+          isDone ? 'text-spring-text' : isActive ? 'text-ink' : 'text-text2'
+        )}
       >
         {label}
       </span>
@@ -140,20 +94,12 @@ function StageRow({
   )
 }
 
-function StageIcon({ isDone, isActive }: { isDone: boolean; isActive: boolean }) {
-  const base: React.CSSProperties = {
-    width: 20,
-    height: 20,
-    borderRadius: '50%',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
-  }
+const STAGE_ICON_BASE = 'w-5 h-5 rounded-full flex items-center justify-center shrink-0'
 
+function StageIcon({ isDone, isActive }: { isDone: boolean; isActive: boolean }) {
   if (isDone) {
     return (
-      <div style={{ ...base, background: 'var(--spring)' }}>
+      <div className={cn(STAGE_ICON_BASE, 'bg-spring')}>
         <Check size={10} color="#fff" strokeWidth={2.5} />
       </div>
     )
@@ -161,11 +107,11 @@ function StageIcon({ isDone, isActive }: { isDone: boolean; isActive: boolean })
 
   if (isActive) {
     return (
-      <div style={{ ...base, background: 'var(--forest-deep)' }}>
+      <div className={cn(STAGE_ICON_BASE, 'bg-forest-deep')}>
         <Spinner size="sm" className="!h-[10px] !w-[10px]" />
       </div>
     )
   }
 
-  return <div style={{ ...base, background: 'rgba(15,21,18,0.12)' }} />
+  return <div className={cn(STAGE_ICON_BASE, 'bg-ink/12')} />
 }

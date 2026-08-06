@@ -60,8 +60,11 @@ to `components/` only on the second consumer. Never the other way around.
 - `DESIGN.md` (repo root, not `docs/`) is the design system. Its **Closed Ramp
   Rule** governs type: the ten roles are `--text-*` tokens in `globals.css`, so a
   font size is `text-body` / `text-caption` / `text-metric` — never `text-[13px]`
-  and never an inline `fontSize`. A size that is not a role is drift; snap it to
-  the nearest one rather than adding a step.
+  and never an inline `fontSize`, including the token-valued
+  `fontSize: 'var(--text-body)'` form. A size that is not a role is drift; snap it
+  to the nearest one rather than adding a step. Three narrow exemptions are listed
+  by path in the guard test (Konva document fields, recharts `tick` props, the
+  sonner toast config) — each because a class genuinely cannot reach there.
 - Each role carries its own line-height, and its letter-spacing where that is not
   `normal`. So `leading-*` or `tracking-*` at a call site means you are
   overriding the role on purpose and owe a WHY comment.

@@ -1,14 +1,20 @@
 import { NextResponse } from 'next/server'
 import { revalidateTag } from 'next/cache'
+import { z } from 'zod'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { USER_RECORD_TAG } from '@/lib/auth/session'
 
-interface SignupBody {
-  businessName: string
-  mode: 'agency' | 'solo'
-}
+/**
+ * `mode` reaches agencies.mode and decides whether the account gets a solo
+ * client, so an unrecognised value has to be rejected rather than stored.
+ */
+const signupSchema = z.object({
+  businessName: z.string().trim().min(1),
+  mode: z.enum(['agency', 'solo']).default('agency'),
+})
 
+/** Provision an authenticated user's agency, user row, and (in solo mode) their first client. */
 export async function POST(request: Request) {
   // User must already be authenticated (browser called signUp first)
   const supabase = await createServerSupabaseClient()
@@ -18,23 +24,26 @@ export async function POST(request: Request) {
 
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  let body: SignupBody
+  let body: z.infer<typeof signupSchema>
   try {
-    body = await request.json()
+    body = signupSchema.parse(await request.json())
   } catch {
     return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
   }
 
   const { businessName, mode } = body
-  if (!businessName)
-    return NextResponse.json({ error: 'businessName is required' }, { status: 400 })
 
-  // Check if user record already exists (prevent duplicate setup)
-  const { data: existingUser } = await supabase
+  // maybeSingle: no row yet is the expected state for a fresh signup.
+  const { data: existingUser, error: existingError } = await supabase
     .from('users')
     .select('id')
     .eq('id', user.id)
-    .single()
+    .maybeSingle()
+
+  if (existingError) {
+    console.error('[signup] user lookup failed:', existingError.message)
+    return NextResponse.json({ error: 'Failed to create account' }, { status: 500 })
+  }
 
   if (existingUser) return NextResponse.json({ success: true })
 
@@ -48,6 +57,7 @@ export async function POST(request: Request) {
     .single()
 
   if (agencyError || !agencyData) {
+    console.error('[signup] agency insert failed:', agencyError?.message ?? 'no row returned')
     return NextResponse.json({ error: 'Failed to create agency' }, { status: 500 })
   }
 
@@ -61,6 +71,7 @@ export async function POST(request: Request) {
   })
 
   if (userError) {
+    console.error('[signup] user insert failed:', userError.message)
     return NextResponse.json({ error: 'Failed to create user record' }, { status: 500 })
   }
 
@@ -74,10 +85,24 @@ export async function POST(request: Request) {
       .select('id')
       .single()
 
-    if (!clientError && clientData) {
-      const clientId = (clientData as { id: string }).id
-      await admin.from('brand_profiles').insert({ client_id: clientId })
-      await admin.from('posting_schedules').insert({ client_id: clientId })
+    // A solo account with no client cannot generate anything, so a dropped
+    // insert here is a failed signup, not a cosmetic gap.
+    if (clientError || !clientData) {
+      console.error('[signup] solo client insert failed:', clientError?.message ?? 'no row returned')
+      return NextResponse.json({ error: 'Failed to create client' }, { status: 500 })
+    }
+
+    const clientId = (clientData as { id: string }).id
+    const [{ error: profileError }, { error: scheduleError }] = await Promise.all([
+      admin.from('brand_profiles').insert({ client_id: clientId }),
+      admin.from('posting_schedules').insert({ client_id: clientId }),
+    ])
+    if (profileError || scheduleError) {
+      console.error(
+        '[signup] solo defaults insert failed:',
+        profileError?.message ?? scheduleError?.message
+      )
+      return NextResponse.json({ error: 'Failed to create client defaults' }, { status: 500 })
     }
   }
 

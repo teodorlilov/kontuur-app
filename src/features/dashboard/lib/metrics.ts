@@ -1,11 +1,9 @@
-import { DAYS_PER_WEEK } from '@/utils/constants'
+import { DAYS_PER_WEEK, MS_PER_DAY } from '@/utils/constants'
 import { toDateKey } from '@/utils/date-helpers'
 import type { DayState } from '@/lib/queries/cache'
 
 /** Beyond this, a bare weekday stops being unambiguous and needs a date. */
 const WEEKDAY_HORIZON_DAYS = 6
-const MS_PER_DAY = 86_400_000
-
 /** Filled slots per weekday across every client, Monday first. */
 export function countFilledPerDay(coverage: Record<string, DayState[]>): number[] {
   const counts = Array<number>(DAYS_PER_WEEK).fill(0)

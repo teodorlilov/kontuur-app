@@ -1,6 +1,18 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { Footer } from '@/features/marketing/components/Footer'
+import {
+  proseBackLink,
+  proseContainer,
+  proseDivider,
+  proseEyebrow,
+  proseH1,
+  proseH2,
+  proseLead,
+  proseList,
+  proseMain,
+  proseP,
+} from '../legal-prose'
 
 export const metadata: Metadata = {
   title: 'Privacy Policy — Kontuur',
@@ -8,79 +20,28 @@ export const metadata: Metadata = {
     'Privacy Policy for Kontuur — AI-powered social media management for agencies. Learn how we collect, use, and protect your data.',
 }
 
-const h1Style: React.CSSProperties = {
-  fontFamily: 'var(--font-display, Georgia, serif)',
-  fontSize: 'var(--text-prompt)',
-  fontWeight: 600,
-  color: 'var(--ink)',
-  marginBottom: 8,
-  lineHeight: 1.2,
-}
-
-const h2Style: React.CSSProperties = {
-  fontSize: 'var(--text-display)',
-  fontWeight: 600,
-  color: 'var(--ink)',
-  marginTop: 48,
-  marginBottom: 12,
-}
-
-const pStyle: React.CSSProperties = {
-  fontSize: 'var(--text-title)',
-  color: 'var(--text2)',
-  lineHeight: 1.75,
-  marginBottom: 16,
-}
-
-const ulStyle: React.CSSProperties = {
-  fontSize: 'var(--text-title)',
-  color: 'var(--text2)',
-  lineHeight: 1.75,
-  paddingLeft: 20,
-  marginBottom: 16,
-}
-
-const dividerStyle: React.CSSProperties = {
-  borderTop: '1px solid var(--line)',
-  marginTop: 48,
-  marginBottom: 48,
-}
-
 export default function PrivacyPage() {
   return (
     <>
-      <main style={{ background: 'var(--paper)', minHeight: '100vh' }}>
-        <div style={{ maxWidth: 720, margin: '0 auto', padding: '80px 24px 100px' }}>
-          <Link
-            className="text-body"
-            href="/"
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 6,
-              color: 'var(--text3)',
-              textDecoration: 'none',
-              marginBottom: 48,
-            }}
-          >
+      <main className={proseMain}>
+        <div className={proseContainer}>
+          <Link className={proseBackLink} href="/">
             ← Back
           </Link>
-          <p className="text-body" style={{ color: 'var(--text3)', marginBottom: 16 }}>
-            Last updated: July 29, 2026
-          </p>
-          <h1 style={h1Style}>Privacy Policy</h1>
-          <p className="text-lead" style={{ ...pStyle, marginTop: 16 }}>
+          <p className={proseEyebrow}>Last updated: July 29, 2026</p>
+          <h1 className={proseH1}>Privacy Policy</h1>
+          <p className={proseLead}>
             This Privacy Policy explains how Kontuur, operated by Chelling Ltd (&quot;we&quot;,
             &quot;us&quot;, &quot;our&quot;), collects, uses, and protects your information when you
             use our platform at kontuur.io.
           </p>
 
-          <div style={dividerStyle} />
+          <div className={proseDivider} />
 
           {/* 1. Information we collect */}
-          <h2 style={h2Style}>1. Information We Collect</h2>
-          <p style={pStyle}>We collect the following categories of information:</p>
-          <ul style={ulStyle}>
+          <h2 className={proseH2}>1. Information We Collect</h2>
+          <p className={proseP}>We collect the following categories of information:</p>
+          <ul className={proseList}>
             <li>
               <strong>Account information:</strong> name, email address, and password when you
               register.
@@ -105,43 +66,43 @@ export default function PrivacyPage() {
           </ul>
 
           {/* 2. Meta / Instagram Data */}
-          <h2 style={h2Style}>2. Meta and Instagram Data</h2>
-          <p style={pStyle}>
+          <h2 className={proseH2}>2. Meta and Instagram Data</h2>
+          <p className={proseP}>
             When you connect an Instagram or Facebook account, Kontuur requests only the permissions
             required to perform the functions you authorise:
           </p>
-          <ul style={ulStyle}>
+          <ul className={proseList}>
             <li>Reading your Instagram business profile and page information.</li>
             <li>Publishing content (photos, videos, captions) on your behalf.</li>
             <li>Retrieving post-level insights and analytics.</li>
             <li>Scheduling content to be published at a future time.</li>
           </ul>
-          <p style={pStyle}>
+          <p className={proseP}>
             We <strong>do not</strong> access private messages, contacts, or any data beyond what is
             required for the above functions.
           </p>
-          <p style={pStyle}>
+          <p className={proseP}>
             Meta-derived data (profile details, media, and analytics) is stored securely in our
             database to power the dashboard and reports you see. We{' '}
             <strong>never sell, share, or use this data for advertising purposes</strong>. Access
             tokens are encrypted at rest and in transit.
           </p>
-          <p style={pStyle}>
+          <p className={proseP}>
             You can revoke Kontuur&apos;s access to your Meta accounts at any time from your
             Facebook Settings &rarr; Apps and Websites. Revoking access will remove the connection
             from Kontuur within 24 hours.
           </p>
-          <p style={pStyle}>
+          <p className={proseP}>
             To request deletion of all Meta-derived data we hold about you, visit our{' '}
-            <a href="/data-deletion" style={{ color: 'var(--spring)' }}>
+            <a href="/data-deletion" className="text-spring">
               Data Deletion page
             </a>
             .
           </p>
 
           {/* 3. How we use information */}
-          <h2 style={h2Style}>3. How We Use Your Information</h2>
-          <ul style={ulStyle}>
+          <h2 className={proseH2}>3. How We Use Your Information</h2>
+          <ul className={proseList}>
             <li>To provide, maintain, and improve the Kontuur platform.</li>
             <li>To generate AI-powered social media content on your behalf.</li>
             <li>To publish and schedule posts to connected social media accounts.</li>
@@ -152,12 +113,12 @@ export default function PrivacyPage() {
           </ul>
 
           {/* 4. Third-party services */}
-          <h2 style={h2Style}>4. Third-Party Services</h2>
-          <p style={pStyle}>
+          <h2 className={proseH2}>4. Third-Party Services</h2>
+          <p className={proseP}>
             Kontuur uses the following sub-processors that may have access to your data as necessary
             to provide their services:
           </p>
-          <ul style={ulStyle}>
+          <ul className={proseList}>
             <li>
               <strong>Supabase</strong> — database and authentication infrastructure. Data is stored
               in EU data centers.
@@ -180,20 +141,20 @@ export default function PrivacyPage() {
           </ul>
 
           {/* 5. Data retention */}
-          <h2 style={h2Style}>5. Data Retention</h2>
-          <p style={pStyle}>
+          <h2 className={proseH2}>5. Data Retention</h2>
+          <p className={proseP}>
             We retain your account data for as long as your account is active. Generated posts and
             analytics are retained for the duration of your subscription plus a 30-day grace period
             after cancellation.
           </p>
-          <p style={pStyle}>
+          <p className={proseP}>
             You may request deletion of your account and all associated data at any time by
             contacting us at the address below. We will process deletion requests within 30 days.
           </p>
 
           {/* 6. Data security */}
-          <h2 style={h2Style}>6. Data Security</h2>
-          <p style={pStyle}>
+          <h2 className={proseH2}>6. Data Security</h2>
+          <p className={proseP}>
             We implement industry-standard security measures including encrypted storage, HTTPS
             transport, and access controls. OAuth tokens are stored encrypted and scoped to the
             minimum permissions required. Despite these measures, no transmission over the internet
@@ -201,12 +162,12 @@ export default function PrivacyPage() {
           </p>
 
           {/* 7. GDPR rights */}
-          <h2 style={h2Style}>7. Your Rights (GDPR)</h2>
-          <p style={pStyle}>
+          <h2 className={proseH2}>7. Your Rights (GDPR)</h2>
+          <p className={proseP}>
             If you are located in the European Economic Area, you have the following rights
             regarding your personal data:
           </p>
-          <ul style={ulStyle}>
+          <ul className={proseList}>
             <li>
               <strong>Access:</strong> request a copy of the personal data we hold about you.
             </li>
@@ -225,40 +186,40 @@ export default function PrivacyPage() {
               activities.
             </li>
           </ul>
-          <p style={pStyle}>
+          <p className={proseP}>
             To exercise any of these rights, contact us at{' '}
-            <a href="mailto:privacy@kontuur.io" style={{ color: 'var(--spring)' }}>
+            <a href="mailto:privacy@kontuur.io" className="text-spring">
               privacy@kontuur.io
             </a>
             .
           </p>
 
           {/* 8. Cookies */}
-          <h2 style={h2Style}>8. Cookies</h2>
-          <p style={pStyle}>
+          <h2 className={proseH2}>8. Cookies</h2>
+          <p className={proseP}>
             Kontuur uses only strictly necessary cookies for session management and authentication.
             We do not use advertising or tracking cookies. A full cookie policy is available on
             request.
           </p>
 
           {/* 9. Changes */}
-          <h2 style={h2Style}>9. Changes to This Policy</h2>
-          <p style={pStyle}>
+          <h2 className={proseH2}>9. Changes to This Policy</h2>
+          <p className={proseP}>
             We may update this Privacy Policy from time to time. When we do, we will update the
             &quot;Last updated&quot; date above and notify active users by email if the changes are
             material.
           </p>
 
           {/* 10. Contact */}
-          <h2 style={h2Style}>10. Contact</h2>
-          <p style={pStyle}>For privacy-related questions or requests, please contact:</p>
-          <p style={pStyle}>
+          <h2 className={proseH2}>10. Contact</h2>
+          <p className={proseP}>For privacy-related questions or requests, please contact:</p>
+          <p className={proseP}>
             <strong>Chelling Ltd</strong>
             <br />
             UIC 206770508, Sofia, Bulgaria
             <br />
             Email:{' '}
-            <a href="mailto:privacy@kontuur.io" style={{ color: 'var(--spring)' }}>
+            <a href="mailto:privacy@kontuur.io" className="text-spring">
               privacy@kontuur.io
             </a>
           </p>

@@ -1,6 +1,7 @@
 'use client'
 
 import type { CanvasBackgroundTransform } from '@/types/canvas'
+import { cn } from '@/utils/cn'
 import { MAX_BACKGROUND_ZOOM } from '@/lib/canvas/constants'
 import { PanelSlider } from './panel-slider'
 import { PANEL_CONTROL, PANEL_LABEL } from './panel-styles'
@@ -27,15 +28,15 @@ export function BackgroundControls({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
       <div>
-        <div style={PANEL_LABEL}>Background</div>
+        <div className={PANEL_LABEL}>Background</div>
         <button
           type="button"
           onClick={onToggleReposition}
-          style={{
-            ...PANEL_CONTROL,
-            cursor: 'pointer',
-            background: repositionMode ? 'rgba(15,21,18,0.04)' : 'var(--paper)',
-          }}
+          className={cn(
+            PANEL_CONTROL,
+            'cursor-pointer',
+            repositionMode ? 'bg-ink/[0.04]' : 'bg-paper'
+          )}
         >
           {repositionMode ? 'Done repositioning' : 'Reposition'}
         </button>
@@ -43,7 +44,7 @@ export function BackgroundControls({
           type="button"
           onClick={onEnterInpaint}
           title="Paint over a zone and describe what should replace it"
-          style={{ ...PANEL_CONTROL, marginTop: '8px', cursor: 'pointer' }}
+          className={cn(PANEL_CONTROL, 'mt-2 cursor-pointer')}
         >
           AI repair (brush)
         </button>
@@ -57,7 +58,7 @@ export function BackgroundControls({
         onChange={onZoom}
       />
       {transform && (
-        <button type="button" onClick={onReset} style={{ ...PANEL_CONTROL, cursor: 'pointer' }}>
+        <button type="button" onClick={onReset} className={cn(PANEL_CONTROL, 'cursor-pointer')}>
           Reset crop
         </button>
       )}

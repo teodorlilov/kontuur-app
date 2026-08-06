@@ -1,40 +1,22 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { Footer } from '@/features/marketing/components/Footer'
+import {
+  proseBackLink,
+  proseContainer,
+  proseDivider,
+  proseEyebrow,
+  proseH1,
+  proseH2,
+  proseLead,
+  proseList,
+  proseMain,
+  proseP,
+} from '../legal-prose'
 
 export const metadata: Metadata = {
   title: 'Data Deletion — Kontuur',
   description: 'Request deletion of your data from Kontuur.',
-}
-
-const h1Style: React.CSSProperties = {
-  fontFamily: 'var(--font-display, Georgia, serif)',
-  fontSize: 'var(--text-prompt)',
-  fontWeight: 600,
-  color: 'var(--ink)',
-  marginBottom: 8,
-  lineHeight: 1.2,
-}
-
-const h2Style: React.CSSProperties = {
-  fontSize: 'var(--text-display)',
-  fontWeight: 600,
-  color: 'var(--ink)',
-  marginTop: 48,
-  marginBottom: 12,
-}
-
-const pStyle: React.CSSProperties = {
-  fontSize: 'var(--text-title)',
-  color: 'var(--text2)',
-  lineHeight: 1.75,
-  marginBottom: 16,
-}
-
-const dividerStyle: React.CSSProperties = {
-  borderTop: '1px solid var(--line)',
-  marginTop: 48,
-  marginBottom: 48,
 }
 
 interface PageProps {
@@ -46,40 +28,27 @@ export default async function DataDeletionPage({ searchParams }: PageProps) {
 
   return (
     <>
-      <main style={{ background: 'var(--paper)', minHeight: '100vh' }}>
-        <div style={{ maxWidth: 720, margin: '0 auto', padding: '80px 24px 100px' }}>
-          <Link
-            className="text-body"
-            href="/"
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 6,
-              color: 'var(--text3)',
-              textDecoration: 'none',
-              marginBottom: 48,
-            }}
-          >
+      <main className={proseMain}>
+        <div className={proseContainer}>
+          <Link className={proseBackLink} href="/">
             ← Back
           </Link>
-          <p className="text-body" style={{ color: 'var(--text3)', marginBottom: 16 }}>
-            Data Deletion
-          </p>
+          <p className={proseEyebrow}>Data Deletion</p>
 
           {code ? (
             <>
-              <h1 style={h1Style}>Deletion Request Received</h1>
-              <p className="text-lead" style={{ ...pStyle, marginTop: 16 }}>
+              <h1 className={proseH1}>Deletion Request Received</h1>
+              <p className={proseLead}>
                 Your data deletion request has been processed. All data associated with your
                 Facebook or Instagram account has been removed from Kontuur&apos;s servers.
               </p>
-              <div style={dividerStyle} />
-              <p style={pStyle}>
+              <div className={proseDivider} />
+              <p className={proseP}>
                 <strong>Confirmation code:</strong> {code}
               </p>
-              <p style={pStyle}>
+              <p className={proseP}>
                 If you have further questions, contact us at{' '}
-                <a href="mailto:privacy@kontuur.io" style={{ color: 'var(--spring)' }}>
+                <a href="mailto:privacy@kontuur.io" className="text-spring">
                   privacy@kontuur.io
                 </a>{' '}
                 and include this confirmation code.
@@ -87,19 +56,19 @@ export default async function DataDeletionPage({ searchParams }: PageProps) {
             </>
           ) : (
             <>
-              <h1 style={h1Style}>Data Deletion Instructions</h1>
-              <p className="text-lead" style={{ ...pStyle, marginTop: 16 }}>
+              <h1 className={proseH1}>Data Deletion Instructions</h1>
+              <p className={proseLead}>
                 You can request deletion of all data Kontuur holds about you at any time.
               </p>
 
-              <div style={dividerStyle} />
+              <div className={proseDivider} />
 
-              <h2 style={h2Style}>Option 1 — Remove via Facebook Settings</h2>
-              <p style={pStyle}>
+              <h2 className={proseH2}>Option 1 — Remove via Facebook Settings</h2>
+              <p className={proseP}>
                 If you connected your Facebook or Instagram account to Kontuur, you can revoke
                 access and trigger automatic data deletion directly through Facebook:
               </p>
-              <ol style={{ ...pStyle, paddingLeft: 20 }}>
+              <ol className={proseList}>
                 <li>Go to your Facebook account settings.</li>
                 <li>
                   Navigate to <strong>Security and Login</strong> &rarr;{' '}
@@ -114,10 +83,10 @@ export default async function DataDeletionPage({ searchParams }: PageProps) {
                 </li>
               </ol>
 
-              <h2 style={h2Style}>Option 2 — Contact Us Directly</h2>
-              <p style={pStyle}>
+              <h2 className={proseH2}>Option 2 — Contact Us Directly</h2>
+              <p className={proseP}>
                 Email us at{' '}
-                <a href="mailto:privacy@kontuur.io" style={{ color: 'var(--spring)' }}>
+                <a href="mailto:privacy@kontuur.io" className="text-spring">
                   privacy@kontuur.io
                 </a>{' '}
                 with the subject line <strong>&quot;Data Deletion Request&quot;</strong> and include
@@ -125,14 +94,14 @@ export default async function DataDeletionPage({ searchParams }: PageProps) {
                 30 days and send you a confirmation.
               </p>
 
-              <h2 style={h2Style}>What We Delete</h2>
-              <p style={pStyle}>Upon receiving a deletion request, we remove:</p>
-              <ul style={{ ...pStyle, paddingLeft: 20 }}>
+              <h2 className={proseH2}>What We Delete</h2>
+              <p className={proseP}>Upon receiving a deletion request, we remove:</p>
+              <ul className={proseList}>
                 <li>Your Facebook and Instagram OAuth access tokens.</li>
                 <li>Your social account details (account ID, username) stored in our database.</li>
                 <li>Any analytics data retrieved from your connected accounts.</li>
               </ul>
-              <p style={pStyle}>
+              <p className={proseP}>
                 Content you created within Kontuur (post drafts, captions) may be retained as part
                 of your agency&apos;s account unless you also request full account deletion.
               </p>

@@ -1,5 +1,7 @@
 'use client'
 
+import { cn } from '@/utils/cn'
+
 interface PanelCheckboxProps {
   label: string
   checked: boolean
@@ -13,15 +15,10 @@ export function PanelCheckbox({ label, checked, onChange, disabled, title }: Pan
   return (
     <label
       title={title}
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: '8px',
-        fontSize: 'var(--text-caption)',
-        color: 'var(--ink)',
-        cursor: disabled ? 'default' : 'pointer',
-        opacity: disabled ? 0.5 : 1,
-      }}
+      className={cn(
+        'flex items-center gap-2 text-caption text-ink',
+        disabled ? 'cursor-default opacity-50' : 'cursor-pointer'
+      )}
     >
       <input
         type="checkbox"

@@ -3,6 +3,7 @@ import { resolveAuth } from '@/lib/auth/resolve-auth'
 import { verifyClientOwnership } from '@/lib/auth/helpers'
 import { fetchConnectionsByClient } from '@/lib/queries/db'
 
+/** List a client's connected social accounts. */
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const clientId = searchParams.get('client_id')

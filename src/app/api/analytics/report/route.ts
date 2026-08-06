@@ -1,47 +1,56 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
 import { verifyClientOwnership, fetchClientWithOwnership } from '@/lib/auth/helpers'
 import { generateAnalyticsSummary } from '@/ai/analytics/generate-summary'
 import { fetchInstagramMetrics } from '@/lib/meta/instagram-metrics'
 import { fetchFacebookMetrics } from '@/lib/meta/facebook-metrics'
 import { isTokenExpired } from '@/lib/meta/token-expiry'
-import type { AnalyticsReportRequest, InstagramMetrics, FacebookMetrics } from '@/types/api'
+import type { InstagramMetrics, FacebookMetrics } from '@/types/api'
 
+/** platform selects which Meta API is called, so it is an enum rather than a free string. */
+const reportRequestSchema = z.object({
+  client_id: z.string().min(1),
+  platform: z.enum(['instagram', 'facebook']),
+  period_start: z.string().min(1),
+  period_end: z.string().min(1),
+})
+
+/** Generate an analytics report for one client and platform over a date range. */
 export async function POST(request: NextRequest) {
   const auth = await resolveAuth()
   if (!auth.ok) return auth.response
   const { supabase, agencyId } = auth
 
-  let body: AnalyticsReportRequest
+  let body: z.infer<typeof reportRequestSchema>
   try {
-    body = (await request.json()) as AnalyticsReportRequest
+    body = reportRequestSchema.parse(await request.json())
   } catch {
-    return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
-  }
-
-  const { client_id, platform, period_start, period_end } = body
-  if (!client_id || !platform || !period_start || !period_end) {
     return NextResponse.json(
-      { error: 'client_id, platform, period_start, period_end are required' },
+      { error: 'client_id, platform (instagram|facebook), period_start, period_end are required' },
       { status: 400 }
     )
   }
-  if (!['instagram', 'facebook'].includes(platform)) {
-    return NextResponse.json({ error: 'platform must be instagram or facebook' }, { status: 400 })
-  }
+
+  const { client_id, platform, period_start, period_end } = body
 
   const clientRow = await fetchClientWithOwnership(supabase, client_id, agencyId)
   if (!clientRow) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
   const clientName = clientRow.name
 
-  // Get social connection for client + platform
-  const { data: connection } = await supabase
+  // Get social connection for client + platform. maybeSingle: "not connected"
+  // is an expected state the caller reports, not a query failure.
+  const { data: connection, error: connectionError } = await supabase
     .from('social_connections')
     .select('account_id, access_token, token_expires_at')
     .eq('client_id', client_id)
     .eq('platform', platform)
-    .single()
+    .maybeSingle()
+  if (connectionError) {
+    console.error('[analytics] connection lookup failed:', connectionError.message)
+    return NextResponse.json({ error: 'Failed to load connection' }, { status: 500 })
+  }
 
   if (!connection) {
     return NextResponse.json(
@@ -113,6 +122,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
+/** List the agency's stored analytics reports, newest first. */
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const clientId = searchParams.get('client_id')

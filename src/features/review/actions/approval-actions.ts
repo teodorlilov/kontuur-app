@@ -1,5 +1,6 @@
 'use server'
 
+import 'server-only'
 import { revalidateTag } from 'next/cache'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { createApprovalNotification } from '@/features/review/lib/create-approval-notification'

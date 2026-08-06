@@ -56,8 +56,14 @@ export async function createApprovalBatch(
   const expiresAt = new Date()
   expiresAt.setHours(expiresAt.getHours() + APPROVAL_TOKEN_EXPIRY_HOURS)
 
-  // Remove any existing tokens for these posts before creating the new batch
-  await supabase.from('post_approval_tokens').delete().in('post_id', postIds)
+  // Remove any existing tokens for these posts before creating the new batch.
+  // Leaving stale tokens alive would keep older approval links working against
+  // the same posts, so a failed cleanup has to stop the batch.
+  const { error: cleanupError } = await supabase
+    .from('post_approval_tokens')
+    .delete()
+    .in('post_id', postIds)
+  if (cleanupError) return { ok: false, error: cleanupError.message, status: 500 }
 
   const tokenRows = postIds.map((postId) => ({
     post_id: postId,

@@ -71,6 +71,8 @@ export default function RootLayout({
         {/* Top-right: the app's primary actions live in sticky bottom bars
             (generate's commitment bar, save bars) — a bottom toast covered
             the very button that fired it. */}
+        {/* Styled by object, not class: this is sonner's config, and its own base
+            rules would win over utility classes where an inline style does not. */}
         <Toaster
           position="top-right"
           toastOptions={{

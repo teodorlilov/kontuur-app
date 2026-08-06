@@ -7,6 +7,7 @@ import { USER_AGENT_BROWSER } from '@/utils/constants'
 import { readLimitedText } from '@/lib/sources/read-limited-text'
 import type { DiscoverPagesRequest, DiscoverPagesResponse } from '@/types/api'
 
+/** Discover a site's readable pages via its sitemap, falling back to a shallow crawl. */
 export async function POST(request: Request) {
   const auth = await resolveAuth()
   if (!auth.ok) return auth.response

@@ -29,11 +29,13 @@ export default async function AuthCallbackPage({
       } = await supabase.auth.getUser()
 
       if (user) {
-        const { data: existingUser } = await supabase
+        // maybeSingle: "no row yet" is the normal first-visit state, not an error.
+        const { data: existingUser, error: lookupError } = await supabase
           .from('users')
           .select('id')
           .eq('id', user.id)
-          .single()
+          .maybeSingle()
+        if (lookupError) throw new Error(`user lookup failed: ${lookupError.message}`)
 
         if (!existingUser) {
           const admin = createAdminSupabaseClient()
@@ -43,7 +45,7 @@ export default async function AuthCallbackPage({
             user_metadata: (user.user_metadata ?? {}) as Record<string, unknown>,
           })
 
-          if (result?.isInvited) {
+          if (result.isInvited) {
             redirect('/setup-password')
           }
         }

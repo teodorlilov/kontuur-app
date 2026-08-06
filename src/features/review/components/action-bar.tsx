@@ -17,15 +17,8 @@ function StatusMessage({ status }: { status: 'approved' | 'changes_requested' })
   const isApproved = status === 'approved'
   return (
     <div
-      className="text-caption"
-      style={{
-        flex: 1,
-        display: 'flex',
-        alignItems: 'center',
-        gap: 8,
-        fontWeight: 500,
-        color: isApproved ? 'var(--spring-text)' : 'var(--forest)',
-      }}
+      className="flex flex-1 items-center gap-2 text-caption font-medium"
+      style={{ color: isApproved ? 'var(--spring-text)' : 'var(--forest)' }}
     >
       {isApproved ? <Check size={14} /> : <MessageCircle size={14} />}
       {isApproved
@@ -45,64 +38,26 @@ export function ActionBar({
   isSubmitting,
 }: ActionBarProps) {
   return (
-    <div
-      style={{
-        padding: '12px 22px',
-        background: '#fff',
-        borderTop: '1px solid rgba(15,21,18,0.07)',
-        display: 'flex',
-        gap: 8,
-        alignItems: 'center',
-        flexShrink: 0,
-      }}
-    >
+    <div className="flex shrink-0 items-center gap-2 border-t border-ink/7 bg-surface px-[22px] py-3">
       {status !== 'pending' && <StatusMessage status={status} />}
 
       {status === 'pending' && (
         <>
           <button
-            className="text-caption"
+            className="flex cursor-pointer items-center gap-1.5 rounded-[9px] border border-line2 bg-sunken px-[18px] py-2.5 text-caption font-medium text-text2 transition-all duration-150 ease-[ease]"
             onClick={onRequestChanges}
             disabled={isSubmitting}
-            style={{
-              padding: '10px 18px',
-              background: 'var(--sunken)',
-              border: '1px solid var(--line2)',
-              borderRadius: 9,
-              fontWeight: 500,
-              color: 'var(--text2)',
-              cursor: 'pointer',
-              fontFamily: 'inherit',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6,
-              opacity: isSubmitting ? 0.7 : 1,
-              transition: 'all 0.15s',
-            }}
+            style={{ opacity: isSubmitting ? 0.7 : 1 }}
           >
             <MessageCircle size={12} />
             Request changes
           </button>
 
           <button
-            className="text-caption"
+            className="flex cursor-pointer items-center gap-1.5 rounded-[9px] border-0 bg-spring px-5 py-2.5 text-caption font-medium text-white transition-all duration-150 ease-[ease]"
             onClick={onApprove}
             disabled={isSubmitting}
-            style={{
-              padding: '10px 20px',
-              background: 'var(--spring)',
-              color: '#fff',
-              border: 'none',
-              borderRadius: 9,
-              fontWeight: 500,
-              cursor: 'pointer',
-              fontFamily: 'inherit',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6,
-              opacity: isSubmitting ? 0.7 : 1,
-              transition: 'all 0.15s',
-            }}
+            style={{ opacity: isSubmitting ? 0.7 : 1 }}
           >
             <Check size={12} />
             Approve this post
@@ -112,24 +67,9 @@ export function ActionBar({
 
       {totalPending > 0 && (
         <button
-          className="text-caption"
+          className="ml-auto flex cursor-pointer items-center gap-1.5 rounded-[9px] border-0 bg-forest-deep px-5 py-2.5 text-caption font-medium text-ink-inv transition-[background] duration-150 ease-[ease]"
           onClick={onApproveAll}
           disabled={isSubmitting}
-          style={{
-            padding: '10px 20px',
-            background: 'var(--forest-deep)',
-            color: '#f2f5f1',
-            border: 'none',
-            borderRadius: 9,
-            fontWeight: 500,
-            cursor: 'pointer',
-            fontFamily: 'inherit',
-            marginLeft: 'auto',
-            transition: 'background 0.15s',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 6,
-          }}
         >
           Approve all {totalPending} posts →
         </button>

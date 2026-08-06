@@ -57,13 +57,7 @@ export function TopPostsTable({ metrics, limit = 5 }: TopPostsTableProps) {
                       href={post.permalink}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-body text-ink truncate hover:underline block"
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.color = 'var(--spring-text)'
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.color = ''
-                      }}
+                      className="text-body text-ink truncate hover:text-spring-text hover:underline block"
                     >
                       {post.caption ?? '(no caption)'}
                     </a>

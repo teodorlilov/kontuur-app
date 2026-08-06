@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createBrowserSupabaseClient } from '@/lib/supabase/client'
 import { validateEmail, validatePassword } from '@/lib/validation'
+import { cn } from '@/utils/cn'
 import { Input } from '@/components/ui/input'
 import { toast } from '@/components/ui/toast'
 import { AuthLayout } from '@/features/auth/components/auth-layout'
@@ -36,16 +37,10 @@ function ModeSelector({ mode, setMode }: ModeSelectorProps) {
     },
   ]
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-      <p
-        className="text-label"
-        style={{
-          fontWeight: 500,
-          color: 'var(--ink)',
-          letterSpacing: '2px',
-          textTransform: 'uppercase',
-        }}
-      >
+    <div className="flex flex-col gap-2">
+      {/* tracking: a 10px caps question spaced wider than the label role's 0.16em (1.6px),
+          so it reads as a section header rather than as a field label. */}
+      <p className="text-label font-medium text-ink tracking-[2px] uppercase">
         How will you use kontuur?
       </p>
       {options.map((opt) => (
@@ -53,35 +48,14 @@ function ModeSelector({ mode, setMode }: ModeSelectorProps) {
           key={opt.value}
           type="button"
           onClick={() => setMode(opt.value)}
-          style={{
-            textAlign: 'left',
-            padding: '12px 14px',
-            borderRadius: 4,
-            border:
-              mode === opt.value ? '1px solid var(--forest-deep)' : '1px solid rgba(15,21,18,0.14)',
-            background: '#fff',
-            cursor: 'pointer',
-            transition: 'border-color 0.15s',
-          }}
-          onMouseEnter={(e) => {
-            if (mode !== opt.value) e.currentTarget.style.borderColor = 'var(--spring-text)'
-          }}
-          onMouseLeave={(e) => {
-            if (mode !== opt.value) e.currentTarget.style.borderColor = 'rgba(15,21,18,0.14)'
-          }}
+          className={cn(
+            'text-left px-3.5 py-3 rounded-xs border bg-surface cursor-pointer',
+            mode === opt.value ? 'border-forest-deep' : 'border-ink/14 hover:border-spring-text'
+          )}
+          style={{ transition: 'border-color 0.15s' }}
         >
-          <span
-            className="text-body"
-            style={{ fontWeight: 500, color: 'var(--ink)', display: 'block' }}
-          >
-            {opt.label}
-          </span>
-          <span
-            className="text-caption"
-            style={{ color: 'var(--text2)', marginTop: 2, display: 'block' }}
-          >
-            {opt.sub}
-          </span>
+          <span className="text-body font-medium text-ink block">{opt.label}</span>
+          <span className="text-caption text-text2 mt-0.5 block">{opt.sub}</span>
         </button>
       ))}
     </div>
@@ -159,21 +133,11 @@ export function SignupForm() {
   return (
     <AuthLayout>
       <div>
-        <h3
-          className="text-headline"
-          style={{
-            fontFamily: 'var(--font-display)',
-            fontWeight: 400,
-            color: 'var(--ink)',
-            marginBottom: 4,
-          }}
-        >
+        <h3 className="text-headline font-display font-normal text-ink mb-1">
           Create your account
         </h3>
-        <p className="text-body" style={{ color: 'var(--text2)', marginBottom: 32 }}>
-          14-day free trial, no card required
-        </p>
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <p className="text-body text-text2 mb-8">14-day free trial, no card required</p>
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <Input
             label="Business name"
             type="text"
@@ -208,28 +172,15 @@ export function SignupForm() {
           <button
             type="submit"
             disabled={loading}
-            className="text-label font-semibold uppercase"
+            className={cn(
+              'text-label font-semibold uppercase font-sans',
+              'w-full flex items-center justify-center gap-1.5 px-0 py-[13px] mt-2',
+              'bg-forest-deep text-ink-inv border-none rounded-xs',
+              !loading && 'hover:bg-spring-text'
+            )}
             style={{
-              width: '100%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 6,
-              padding: '13px 0',
-              background: 'var(--forest-deep)',
-              color: '#f2f5f1',
-              fontFamily: 'var(--font-sans)',
-              border: 'none',
-              borderRadius: 4,
               cursor: loading ? 'not-allowed' : 'pointer',
               opacity: loading ? 0.5 : 1,
-              marginTop: 8,
-            }}
-            onMouseEnter={(e) => {
-              if (!loading) e.currentTarget.style.background = 'var(--spring-text)'
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = 'var(--forest-deep)'
             }}
           >
             {loading && (
@@ -257,12 +208,9 @@ export function SignupForm() {
             Create account
           </button>
         </form>
-        <p
-          className="text-caption"
-          style={{ textAlign: 'center', color: 'var(--text2)', marginTop: 20 }}
-        >
+        <p className="text-caption text-center text-text2 mt-5">
           Already have an account?{' '}
-          <Link href="/login" style={{ color: 'var(--spring-text)', textDecoration: 'none' }}>
+          <Link href="/login" className="text-spring-text no-underline">
             Sign in
           </Link>
         </p>

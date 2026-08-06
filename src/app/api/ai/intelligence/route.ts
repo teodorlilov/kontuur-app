@@ -6,6 +6,7 @@ import { getAgencyNiche } from '@/lib/clients/fetch-client-data'
 import { getMondayISO } from '@/utils/date-helpers'
 import type { Json } from '@/types/database'
 
+/** Generate this week's agency intelligence briefing on demand (the cron writes the scheduled one). */
 export async function POST() {
   const auth = await resolveAuth()
   if (!auth.ok) return auth.response

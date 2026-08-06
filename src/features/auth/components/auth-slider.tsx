@@ -64,20 +64,13 @@ export function AuthSlider() {
               pointerEvents: i === current ? 'auto' : 'none',
             }}
           >
-            <h2
-              className="text-prompt mb-3 leading-snug"
-              style={{
-                fontFamily: 'var(--font-display, Georgia, serif)',
-                fontWeight: 400,
-                color: '#f2f5f1',
-              }}
-            >
+            <h2 className="text-prompt mb-3 leading-snug font-display font-normal text-ink-inv">
               {s.headline.map((line, li) => (
                 <span key={li}>
                   {line.split(' ').map((word, wi) => (
                     <span key={wi}>
                       {word === s.italicWord ? (
-                        <em style={{ fontStyle: 'italic', color: 'var(--spring-text)' }}>{word}</em>
+                        <em className="italic text-spring-text">{word}</em>
                       ) : (
                         word
                       )}{' '}
@@ -87,12 +80,9 @@ export function AuthSlider() {
                 </span>
               ))}
             </h2>
-            <p
-              className="text-lead"
-              style={{ color: 'rgba(242,245,241,0.42)', lineHeight: 1.75, maxWidth: '380px' }}
-            >
-              {s.body}
-            </p>
+            {/* leading: reading copy on the dark panel opens past the lead role's 1.6 —
+                low-contrast text at 42% needs the extra line gap to stay scannable. */}
+            <p className="text-lead text-ink-inv/42 leading-[1.75] max-w-[380px]">{s.body}</p>
           </div>
         ))}
       </div>
@@ -103,16 +93,11 @@ export function AuthSlider() {
             key={i}
             onClick={() => goTo(i)}
             aria-label={`Go to slide ${i + 1}`}
+            className="w-1.5 h-1.5 p-0 rounded-full border-none cursor-pointer"
             style={{
-              width: '6px',
-              height: '6px',
-              borderRadius: '50%',
-              border: 'none',
-              cursor: 'pointer',
               transition: 'background 0.3s, transform 0.3s',
               background: i === current ? 'var(--spring-text)' : 'rgba(242,245,241,0.2)',
               transform: i === current ? 'scale(1.2)' : 'scale(1)',
-              padding: 0,
             }}
           />
         ))}

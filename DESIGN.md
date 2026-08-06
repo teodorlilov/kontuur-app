@@ -307,7 +307,15 @@ deliberately overriding the role and owes a WHY.
 
 **The Weight Ceiling Rule.** 400 and 500 carry the interface; 600 is correct for titles, stat numbers, and section headings. **700 stays unused.**
 
-**The Closed Ramp Rule.** The ten roles above are the ramp, and they are `--text-*` tokens rather than prose — so a size is `text-body` or `text-caption`, never `text-[13px]` and never an inline `fontSize`. A literal that is not a role is drift, not a decision. Add a step only when a role genuinely exists and recurs; snap one-offs to the nearest documented size instead. `src/app/__tests__/type-ramp.test.ts` enforces this, and also asserts that `TYPE_RAMP` in `src/utils/cn.ts` matches the token set exactly — a step missing from that array is silently reclassified as a text _colour_ and eats whatever colour precedes it.
+**The Closed Ramp Rule.** The ten roles above are the ramp, and they are `--text-*` tokens rather than prose — so a size is `text-body` or `text-caption`, never `text-[13px]` and **never an inline `fontSize`, not even the token-valued `fontSize: 'var(--text-body)'` form**. A literal that is not a role is drift, not a decision. Add a step only when a role genuinely exists and recurs; snap one-offs to the nearest documented size instead. `src/app/__tests__/type-ramp.test.ts` enforces this, and also asserts that `TYPE_RAMP` in `src/utils/cn.ts` matches the token set exactly — a step missing from that array is silently reclassified as a text _colour_ and eats whatever colour precedes it.
+
+_On the `var()` form._ For a while the guard permitted `fontSize: 'var(--text-body)'` on the grounds that it still points at a ramp token, and about forty call sites grew on that permission. The permission was wrong: a size expressed as a style object cannot be overridden by a class, does not participate in the responsive variants the ramp relies on (see the Mobile Input Exemption), and reintroduces the second vocabulary the ramp exists to delete. It reads as compliant, which is what made it worse than a literal. All forty were converted; the guard now fails on any inline `fontSize`.
+
+_The three exemptions are technical, not stylistic,_ and each is listed by path in the test:
+
+- **Konva document fields** (`lib/canvas/`, the canvas editor's properties panel). `fontSize` there is a saved document value bounded by a zod schema, not a style. A codemod through it corrupts users' stored designs.
+- **Recharts `tick` props** (`chart-config.ts` and the two charts that size their own axes). Recharts spreads `tick` onto an SVG `<text>` as a presentation attribute, and SVG attributes do not resolve `var()` — a token there renders at the user-agent default.
+- **The sonner toast config** in `app/layout.tsx`. It is a third-party component's options object; its own base rules win over utility classes where an inline style does not.
 
 _A ramp is only closed if its steps are distinguishable._ The previous version had fourteen roles with six inside a 2.5px band, and the predictable result was that call sites stopped believing it and wrote literals — 645 of them, across three parallel systems. Separation is the rule's precondition, not a nicety: these ratios widen from 1.09 at the dense end to 1.29 at the display end.
 

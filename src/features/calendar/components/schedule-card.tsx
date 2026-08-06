@@ -58,15 +58,9 @@ const SECTION_LABEL = 'block mb-1.5 text-label font-semibold uppercase text-text
 /** Same role where the caller supplies its own display/margin. */
 const SECTION_LABEL_BARE = 'text-label font-semibold uppercase text-text2'
 
-const CAPTION_CONTAINER_STYLE = {
-  fontSize: 'var(--text-body)',
-  color: 'var(--ink)',
-  lineHeight: 1.6,
-  background: 'rgba(15,21,18,0.025)',
-  borderRadius: 10,
-  padding: '12px 14px',
-  border: '1px solid var(--line)',
-} as const
+/** The caption block's frame — Body role (which already carries 1.6) on an ink wash. */
+const CAPTION_CONTAINER =
+  'rounded-md border border-line bg-ink/[0.025] px-3.5 py-3 text-body text-ink'
 
 /** Footer buttons shown when the modal is in edit mode. */
 function EditModeFooter({
@@ -81,20 +75,11 @@ function EditModeFooter({
   saving: boolean
 }) {
   return (
-    <div
-      style={{
-        padding: '14px 24px',
-        borderTop: '1px solid rgba(15,21,18,0.07)',
-        display: 'flex',
-        flexWrap: 'wrap',
-        gap: 8,
-        flexShrink: 0,
-      }}
-    >
+    <div className="flex shrink-0 flex-wrap gap-2 border-t border-ink/[0.07] px-6 py-3.5">
       <Button variant="secondary" onClick={onSave} disabled={saving} loading={saving}>
         Save changes
       </Button>
-      <Button onClick={onSaveAndResend} disabled={saving} loading={saving} style={{ flex: 1 }}>
+      <Button onClick={onSaveAndResend} disabled={saving} loading={saving} className="flex-1">
         Save &amp; re-send for approval
       </Button>
       <Button variant="secondary" onClick={onCancel}>
@@ -292,94 +277,48 @@ export const ScheduleCard = memo(function ScheduleCard({
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose()
       }}
-      style={{
-        position: 'absolute',
-        inset: 0,
-        zIndex: 40,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: 12,
-        background: 'rgba(12,46,32,0.32)',
-        backdropFilter: 'blur(4px)',
-        WebkitBackdropFilter: 'blur(4px)',
-      }}
+      className="absolute inset-0 z-40 flex items-center justify-center bg-forest-deep/[0.32] p-3 backdrop-blur-[4px]"
     >
-      <div
-        style={{
-          background: '#fff',
-          borderRadius: 20,
-          width: '100%',
-          maxWidth: 780,
-          maxHeight: '85vh',
-          display: 'flex',
-          flexDirection: 'column',
-          boxShadow: 'var(--sh-frame), 0 0 0 1px rgba(15,21,18,0.06)',
-          overflow: 'hidden',
-        }}
-      >
+      <div className="flex max-h-[85vh] w-full max-w-[780px] flex-col overflow-hidden rounded-xl bg-surface shadow-[var(--sh-frame),0_0_0_1px_rgba(15,21,18,0.06)]">
         {/* Card header */}
-        <div
-          style={{
-            padding: '22px 24px 16px',
-            borderBottom: '1px solid rgba(15,21,18,0.07)',
-            flexShrink: 0,
-          }}
-        >
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'flex-start',
-              justifyContent: 'space-between',
-              marginBottom: 10,
-            }}
-          >
+        <div className="shrink-0 border-b border-ink/[0.07] px-6 pb-4 pt-[22px]">
+          <div className="mb-2.5 flex items-start justify-between">
             {/* Sans, not the display serif: client names may be Cyrillic and
-                Instrument Serif has no Cyrillic glyphs. */}
-            <div
-              className="text-display font-semibold text-ink"
-              style={{ letterSpacing: '-0.01em' }}
-            >
+                Instrument Serif has no Cyrillic glyphs.
+                tracking-[-0.01em]: the Display role ships untracked, and a name
+                set at 18px needs the same optical tightening the ramp gives its
+                larger steps. */}
+            <div className="text-display font-semibold tracking-[-0.01em] text-ink">
               {currentPost.client_name}
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div className="flex items-center gap-2">
               {/* Post navigator — hidden for scheduled posts opened from the grid */}
               {postIndex >= 0 && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                <div className="flex items-center gap-[5px]">
                   <NavBtn onClick={onPrev} disabled={postIndex === 0}>
-                    <ChevronLeft style={{ width: 12, height: 12 }} />
+                    <ChevronLeft className="size-3" />
                   </NavBtn>
+                  {/* tracking-normal cancels the Label role's built-in 0.16em. */}
                   <span className="text-label tracking-normal text-text2">
                     {postIndex + 1} of {totalPosts}
                   </span>
                   <NavBtn onClick={onNext} disabled={postIndex === totalPosts - 1}>
-                    <ChevronRight style={{ width: 12, height: 12 }} />
+                    <ChevronRight className="size-3" />
                   </NavBtn>
                 </div>
               )}
               <button
                 type="button"
                 onClick={onClose}
-                style={{
-                  width: 28,
-                  height: 28,
-                  border: '1px solid var(--line2)',
-                  borderRadius: 7,
-                  background: '#fff',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  cursor: 'pointer',
-                  color: 'var(--text2)',
-                }}
+                className="flex size-7 cursor-pointer items-center justify-center rounded-[7px] border border-line2 bg-surface text-text2"
               >
-                <X style={{ width: 14, height: 14 }} />
+                <X className="size-3.5" />
               </button>
             </div>
           </div>
 
           {/* Tag pills */}
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          <div className="flex flex-wrap gap-1.5">
             <TagPill
               bg={
                 isPublished
@@ -466,21 +405,9 @@ export const ScheduleCard = memo(function ScheduleCard({
         </div>
 
         {/* Card body — two columns on desktop, stacked & scrollable on mobile */}
-        <div
-          className="flex flex-col md:flex-row overflow-y-auto md:overflow-hidden"
-          style={{ flex: 1, minHeight: 0 }}
-        >
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto md:flex-row md:overflow-hidden">
           {/* Left: caption + slides + schedule form */}
-          <div
-            className="md:border-r md:border-[rgba(15,21,18,0.07)] md:overflow-y-auto"
-            style={{
-              flex: 1,
-              padding: '18px 22px',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 14,
-            }}
-          >
+          <div className="flex flex-1 flex-col gap-3.5 px-[22px] py-[18px] md:overflow-y-auto md:border-r md:border-[rgba(15,21,18,0.07)]">
             {/* Client response */}
             {(currentPost.approval_status === 'approved' ||
               currentPost.approval_status === 'changes_requested') && (
@@ -494,24 +421,15 @@ export const ScheduleCard = memo(function ScheduleCard({
 
             {/* Caption */}
             <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+              <div className="mb-1.5 flex justify-between">
                 <span className={SECTION_LABEL_BARE}>Caption</span>
+                {/* tracking-normal cancels the Label role's built-in 0.16em. */}
                 <button
-                  className="text-label tracking-normal"
+                  className="flex cursor-pointer items-center gap-[3px] border-none bg-transparent text-label tracking-normal text-text2"
                   type="button"
                   onClick={handleCopyCaption}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 3,
-                    color: 'var(--text2)',
-                    background: 'none',
-                    border: 'none',
-                    cursor: 'pointer',
-                    fontFamily: 'inherit',
-                  }}
                 >
-                  <Copy style={{ width: 10, height: 10 }} />
+                  <Copy className="size-2.5" />
                   Copy
                 </button>
               </div>
@@ -524,43 +442,35 @@ export const ScheduleCard = memo(function ScheduleCard({
                     recomposeBakedText({ caption: draftCaption })
                   }
                 }}
-                style={{
-                  ...CAPTION_CONTAINER_STYLE,
-                  whiteSpace: 'pre-wrap',
-                  width: '100%',
-                  minHeight: 120,
-                  resize: 'vertical',
-                  outline: 'none',
-                  fontFamily: 'inherit',
-                }}
+                className={cn(
+                  CAPTION_CONTAINER,
+                  'min-h-[120px] w-full resize-y whitespace-pre-wrap'
+                )}
+                // outline-none would let the global :focus-visible ring through —
+                // that rule is unlayered and outranks any utility.
+                style={{ outline: 'none' }}
               />
             </div>
 
             {/* Carousel slides */}
             {isCarousel && slides.length > 0 && (
               <div>
-                <div
-                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
-                >
+                <div className="flex items-center justify-between">
                   <span className={SECTION_LABEL}>Carousel slides</span>
                   {canGenerateVisuals && slotsWithoutImage > 0 && (
+                    // tracking-normal cancels the Label role's built-in 0.16em.
                     <button
-                      className="text-label tracking-normal"
+                      className={cn(
+                        'border-none bg-transparent p-0 text-label font-medium tracking-normal text-spring-text',
+                        missingPositions.length === 0
+                          ? 'cursor-default opacity-60'
+                          : 'cursor-pointer'
+                      )}
                       type="button"
                       onClick={() => {
                         void generate(missingPositions)
                       }}
                       disabled={missingPositions.length === 0}
-                      style={{
-                        fontWeight: 500,
-                        color: 'var(--spring-text)',
-                        background: 'none',
-                        border: 'none',
-                        cursor: missingPositions.length === 0 ? 'default' : 'pointer',
-                        opacity: missingPositions.length === 0 ? 0.6 : 1,
-                        fontFamily: 'inherit',
-                        padding: 0,
-                      }}
                     >
                       {missingPositions.length === 0
                         ? '✨ Generating visuals…'
@@ -722,20 +632,13 @@ function NavBtn({
       type="button"
       onClick={onClick}
       disabled={disabled}
-      style={{
-        width: 24,
-        height: 24,
-        border: '1px solid var(--line2)',
-        borderRadius: 5,
-        background: '#fff',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        cursor: disabled ? 'default' : 'pointer',
-        color: 'var(--text2)',
-        opacity: disabled ? 0.3 : 1,
-        transition: 'opacity 0.15s',
-      }}
+      className={cn(
+        'flex size-6 items-center justify-center rounded-[5px] border border-line2 bg-surface text-text2',
+        disabled ? 'cursor-default opacity-30' : 'cursor-pointer'
+      )}
+      // `opacity 0.15s` rides the default `ease`; Tailwind's transition-* would
+      // swap in its own curve.
+      style={{ transition: 'opacity 0.15s' }}
     >
       {children}
     </button>
@@ -757,24 +660,20 @@ function TagPill({
   const isTwBg = bg.startsWith('bg-')
   const isTwText = color.startsWith('text-')
   return (
+    // tracking-normal cancels the Label role's built-in 0.16em.
     <span
-      className={cn('text-label tracking-normal', isTwBg && bg, isTwText && color)}
+      className={cn(
+        'inline-flex items-center gap-1 rounded-[5px] px-2 py-[3px] text-label font-medium tracking-normal',
+        isTwBg && bg,
+        isTwText && color
+      )}
       style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: 4,
-        fontWeight: 500,
-        padding: '3px 8px',
-        borderRadius: 5,
         ...(isTwBg ? {} : { background: bg }),
         ...(isTwText ? {} : { color }),
       }}
     >
-      {dot && (
-        <span
-          style={{ width: 5, height: 5, borderRadius: '50%', background: dot, flexShrink: 0 }}
-        />
-      )}
+      {/* The dot carries the pillar's own hue, so it stays a value. */}
+      {dot && <span className="size-[5px] shrink-0 rounded-full" style={{ background: dot }} />}
       {children}
     </span>
   )
@@ -797,16 +696,8 @@ function ScheduleForm({
   onPlatformChange: (v: string) => void
 }) {
   return (
-    <div
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 10,
-        borderTop: '1px solid rgba(15,21,18,0.07)',
-        paddingTop: 14,
-      }}
-    >
-      <div style={{ display: 'flex', gap: 10 }}>
+    <div className="flex flex-col gap-2.5 border-t border-ink/[0.07] pt-3.5">
+      <div className="flex gap-2.5">
         <ScheduleInput
           id="card-date"
           label="Date"
@@ -823,26 +714,25 @@ function ScheduleForm({
           onChange={onTimeChange}
         />
       </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-        <span className="text-label tracking-normal font-medium text-text2">Platform</span>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+      <div className="flex flex-col gap-1">
+        {/* tracking-normal cancels the Label role's built-in 0.16em. */}
+        <span className="text-label font-medium tracking-normal text-text2">Platform</span>
+        <div className="flex flex-wrap gap-[5px]">
           {PLATFORMS.map((p) => (
+            // tracking-normal cancels the Label role's built-in 0.16em.
             <button
               key={p}
               type="button"
               onClick={() => onPlatformChange(p)}
-              className="text-label tracking-normal"
-              style={{
-                padding: '5px 10px',
-                borderRadius: 5,
-                border: platform === p ? 'none' : '1px solid var(--line2)',
-                background: platform === p ? 'var(--forest)' : '#fff',
-                color: platform === p ? '#f2f5f1' : 'var(--text2)',
-                cursor: 'pointer',
-                fontFamily: 'inherit',
-                fontWeight: 500,
-                transition: 'all 0.15s',
-              }}
+              className={cn(
+                'cursor-pointer rounded-[5px] px-2.5 py-[5px] text-label font-medium tracking-normal',
+                platform === p
+                  ? 'border-none bg-forest text-ink-inv'
+                  : 'border border-line2 bg-surface text-text2'
+              )}
+              // `all 0.15s` rides the default `ease`; Tailwind's transition-*
+              // would swap in its own curve.
+              style={{ transition: 'all 0.15s' }}
             >
               {p}
             </button>
@@ -869,8 +759,9 @@ function ScheduleInput({
   min?: string
 }) {
   return (
-    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
-      <label htmlFor={id} className="text-label tracking-normal font-medium text-text2">
+    <div className="flex flex-1 flex-col gap-1">
+      {/* tracking-normal cancels the Label role's built-in 0.16em. */}
+      <label htmlFor={id} className="text-label font-medium tracking-normal text-text2">
         {label}
       </label>
       <input
@@ -879,15 +770,10 @@ function ScheduleInput({
         value={value}
         min={min}
         onChange={(e) => onChange(e.target.value)}
-        className="text-lead md:text-caption"
-        style={{
-          border: '1px solid var(--line2)',
-          borderRadius: 7,
-          padding: '7px 10px',
-          fontFamily: 'inherit',
-          outline: 'none',
-          color: 'var(--ink)',
-        }}
+        className="rounded-[7px] border border-line2 px-2.5 py-[7px] text-lead text-ink md:text-caption"
+        // outline-none would let the global :focus-visible ring through — that
+        // rule is unlayered and outranks any utility.
+        style={{ outline: 'none' }}
       />
     </div>
   )
@@ -904,14 +790,12 @@ function QualitySidebar({
   currentPost: CalendarPost
 }) {
   return (
-    <div
-      className="w-full md:w-[260px] border-t md:border-t-0 border-[rgba(15,21,18,0.07)] md:overflow-y-auto"
-      style={{ flexShrink: 0, padding: 18, display: 'flex', flexDirection: 'column', gap: 14 }}
-    >
-      <div style={{ textAlign: 'center' }}>
+    <div className="flex w-full shrink-0 flex-col gap-3.5 border-t border-[rgba(15,21,18,0.07)] p-[18px] md:w-[260px] md:overflow-y-auto md:border-t-0">
+      <div className="text-center">
         <span className={cn(SECTION_LABEL_BARE, 'block mb-1')}>Quality</span>
         <span
           className="text-metric font-semibold"
+          // Banded off the score, so the colour stays a value.
           style={{
             color:
               score >= 9
@@ -928,15 +812,16 @@ function QualitySidebar({
       {validation && <QualityScores criteria={validation.criteria} scores={validation.scores} />}
 
       {validation?.criteria.issues && validation.criteria.issues.length > 0 && (
-        <div style={{ background: 'rgba(46,158,104,0.08)', borderRadius: 8, padding: '10px 12px' }}>
+        <div className="rounded-sm bg-spring/[0.08] px-3 py-2.5">
           {validation.criteria.issues.map((issue, i) => (
+            // leading-[1.5]: a stacked list of quoted issues, set tighter than
+            // running Micro copy so each quote reads as its own unit.
             <p
               key={i}
-              className="text-micro text-spring-text"
-              style={{
-                lineHeight: 1.5,
-                marginBottom: i < validation.criteria.issues.length - 1 ? 6 : 0,
-              }}
+              className={cn(
+                'text-micro leading-[1.5] text-spring-text',
+                i < validation.criteria.issues.length - 1 && 'mb-1.5'
+              )}
             >
               &ldquo;{issue.description}&rdquo;
             </p>
@@ -947,22 +832,14 @@ function QualitySidebar({
       {currentPost.source_title && (
         <div>
           <span className={SECTION_LABEL}>Source</span>
-          <p className="text-micro font-medium text-ink" style={{ marginBottom: 4 }}>
+          <p className="mb-1 text-micro font-medium text-ink">
             {currentPost.source_type ? `${currentPost.source_type} \u00B7 ` : ''}
             {currentPost.source_title}
           </p>
           {currentPost.source_excerpt && (
-            <p
-              className="text-micro text-text2"
-              style={{
-                lineHeight: 1.45,
-                display: '-webkit-box',
-                WebkitLineClamp: 3,
-                WebkitBoxOrient: 'vertical',
-                overflow: 'hidden',
-                marginBottom: 6,
-              }}
-            >
+            // leading-[1.45]: a three-line clamp reads as a block, so it sets
+            // tighter than Micro's own rhythm would leave it.
+            <p className="mb-1.5 line-clamp-3 text-micro leading-[1.45] text-text2">
               {currentPost.source_excerpt}
             </p>
           )}
@@ -971,8 +848,7 @@ function QualitySidebar({
               href={currentPost.source_url}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-micro"
-              style={{ color: 'var(--spring-text)', textDecoration: 'none' }}
+              className="text-micro text-spring-text no-underline"
             >
               Verify on Google &rarr;
             </a>
@@ -1018,21 +894,12 @@ function NormalFooter({
   onPublishNow: () => void
 }) {
   return (
-    <div
-      style={{
-        padding: '14px 24px',
-        borderTop: '1px solid rgba(15,21,18,0.07)',
-        display: 'flex',
-        flexWrap: 'wrap',
-        gap: 8,
-        flexShrink: 0,
-      }}
-    >
+    <div className="flex shrink-0 flex-wrap gap-2 border-t border-ink/[0.07] px-6 py-3.5">
       <Button
         onClick={onSchedule}
         disabled={!date || isScheduling}
         loading={isScheduling}
-        style={{ flex: 1 }}
+        className="flex-1"
       >
         {isScheduled ? 'Update schedule' : 'Schedule to calendar'}
       </Button>
@@ -1052,7 +919,7 @@ function NormalFooter({
           disabled={approvalSending}
           loading={approvalSending}
         >
-          <Mail style={{ width: 12, height: 12 }} /> Send for approval
+          <Mail className="size-3" /> Send for approval
         </Button>
       )}
       {images.length > 0 &&
@@ -1067,16 +934,7 @@ function NormalFooter({
         Delete post
       </Button>
       {publishError && (
-        <div
-          className="text-micro"
-          style={{
-            width: '100%',
-            color: 'var(--danger)',
-            background: 'var(--danger-bg)',
-            padding: '8px 10px',
-            borderRadius: 6,
-          }}
-        >
+        <div className="w-full rounded-[6px] bg-danger-bg px-2.5 py-2 text-micro text-danger">
           {publishError}
         </div>
       )}

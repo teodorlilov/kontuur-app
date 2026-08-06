@@ -73,10 +73,15 @@ export async function GET(request: NextRequest) {
   const countAttempt = async (postId: string) => {
     const post = posts.find((p) => p.id === postId)
     if (!post) return
-    await admin
+    const { error: attemptError } = await admin
       .from('posts')
       .update({ visuals_attempts: post.visuals_attempts + 1 })
       .eq('id', postId)
+    // An uncounted attempt lets a permanently failing post retry forever and
+    // hold a slot in every run's backlog.
+    if (attemptError) {
+      console.error(`[cron/visuals] attempt count failed for post ${postId}:`, attemptError.message)
+    }
   }
 
   const semaphore = createSemaphore(CONCURRENCY)

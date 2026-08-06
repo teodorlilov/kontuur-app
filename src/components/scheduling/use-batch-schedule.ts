@@ -5,7 +5,8 @@ import { toast } from '@/components/ui/toast'
 import { batchSchedulePosts } from '@/lib/actions/post-actions'
 import { formatScheduledAt } from '@/utils/date-helpers'
 
-interface BatchPost {
+/** The post fields the batch-schedule modal renders and the hook writes. */
+export interface BatchPost {
   id: string
   client_name: string
   caption: string | null

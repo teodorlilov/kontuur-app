@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { formatZodIssues } from '@/lib/validation/format-issues'
 import { visualIdentitySchema } from '@/lib/visual/identity-schema'
 import type { SourceStrategy } from '@/types/sources'
 import type { SourceKind } from '@/types/visual'
@@ -94,7 +95,7 @@ export type CreateClientInput = z.infer<typeof createClientSchema>
 export type BrandProfileInput = z.infer<typeof brandProfileInputSchema>
 export type ScheduleInput = z.infer<typeof scheduleInputSchema>
 
-/** Flattens a ZodError into `path: message` lines for a single boundary log. */
+/** Flattens a ZodError into one `path: message` line for a single boundary log. */
 export function formatIssues(error: z.ZodError): string {
-  return error.issues.map((issue) => `${issue.path.join('.')}: ${issue.message}`).join('; ')
+  return formatZodIssues(error).join('; ')
 }

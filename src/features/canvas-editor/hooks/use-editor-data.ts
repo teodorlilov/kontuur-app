@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import type { CanvasDoc } from '@/types/canvas'
 import { seedCanvasDoc, type SeedIdentity } from '@/lib/canvas/seed-doc'
+import { fetchCanvasState } from '../lib/canvas-state-client'
 import { fetchClientIdentity } from '../lib/identity-client'
 import type { EditorTarget, SlideCopy } from '../types'
 
@@ -53,14 +54,10 @@ async function fetchDocAndIdentity(
   target: EditorTarget
 ): Promise<{ rawDoc: CanvasDoc | null; identity: SeedIdentity }> {
   if (target.kind === 'post') {
-    const res = await fetch(`/api/posts/${target.postId}/canvas?position=${target.position}`)
-    const body = (await res.json()) as {
-      doc?: CanvasDoc | null
-      identity?: SeedIdentity
-      error?: string
-    }
-    if (!res.ok || !body.identity) throw new Error(body.error ?? 'Failed to load the canvas')
-    return { rawDoc: body.doc ?? null, identity: body.identity }
+    const state = await fetchCanvasState(target.postId, target.position)
+    // The editor is opening, so a miss has to surface rather than open empty.
+    if (!state.ok || !state.identity) throw new Error(state.error ?? 'Failed to load the canvas')
+    return { rawDoc: state.doc, identity: state.identity }
   }
   return { rawDoc: target.doc, identity: await fetchClientIdentity(target.clientId) }
 }

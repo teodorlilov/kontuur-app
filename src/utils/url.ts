@@ -37,3 +37,18 @@ export function toHostLabel(input: string): string {
     .replace(/^https?:\/\//i, '')
     .replace(/\/+$/, '')
 }
+
+/**
+ * Source attribution label: `https://www.bbc.co.uk/news/x` → `bbc.co.uk`.
+ *
+ * Unlike toHostLabel this parses the URL, so a malformed source_url yields null
+ * and the caller can omit the attribution rather than print a broken string.
+ */
+export function toSourceHost(url: string | null | undefined): string | null {
+  if (!url) return null
+  try {
+    return new URL(url).hostname.replace(/^www\./, '')
+  } catch {
+    return null
+  }
+}

@@ -38,7 +38,7 @@ export const metadata: Metadata = {
 
 export default function LandingPage() {
   return (
-    <div style={{ background: 'var(--paper)', minHeight: '100vh' }}>
+    <div className="min-h-screen bg-paper">
       <Nav />
       <Hero />
       <SocialProof />

@@ -14,7 +14,12 @@ import { TYPE_RAMP } from '@/utils/cn'
 const SRC = path.resolve(__dirname, '../..')
 const GLOBALS = path.join(SRC, 'app/globals.css')
 
-/** Files that may hold a literal font size, each for a reason that is not drift. */
+/**
+ * Files that may set an inline font size, each for a reason that is not drift.
+ *
+ * Every entry is a place a className genuinely cannot reach. "It was easier to
+ * write inline" is not on this list and must not be added to it.
+ */
 const INLINE_SIZE_EXEMPT = [
   // fontSize is a Konva document-model field here (z.number().min(8).max(400)),
   // not a style. A codemod through these corrupts saved user documents.
@@ -25,6 +30,11 @@ const INLINE_SIZE_EXEMPT = [
   'features/analytics/lib/chart-config.ts',
   'features/analytics/components/audience-section.tsx',
   'features/analytics/components/post-day-breakdown.tsx',
+  // sonner's own base rules beat utility classes; only an inline style wins.
+  'app/layout.tsx',
+  // The inline-edit overlay mirrors the Konva node's own fontSize onto a DOM
+  // textarea, scaled to the current zoom. Document data again, not a style.
+  'features/canvas-editor/hooks/use-inline-text-edit.ts',
 ]
 
 function sourceFiles(): string[] {
@@ -119,16 +129,26 @@ describe('the type ramp', () => {
     expect(bad).toEqual([])
   })
 
-  it('sets no literal inline font size', () => {
+  it('sets no inline font size at all', () => {
     const bad: string[] = []
     for (const f of files) {
       if (INLINE_SIZE_EXEMPT.some((p) => rel(f).startsWith(p) || rel(f) === p)) continue
       readFileSync(f, 'utf8')
         .split('\n')
         .forEach((line, i) => {
-          // Permits fontSize: 'var(--text-body)'; catches numbers and px strings.
-          const m = line.match(/fontSize:\s*(\d|['"`]\d)/)
-          if (m) bad.push(`${rel(f)}:${i + 1}`)
+          // Catches BOTH drift forms: the literal (fontSize: 13, '13px') and the
+          // token-valued one (fontSize: 'var(--text-body)'). The var() form used
+          // to be permitted for pointing at a ramp token, and ~40 call sites grew
+          // on that permission -- but a size in a style object cannot be
+          // overridden by a class and does not take responsive variants, so it
+          // reintroduces the second vocabulary the ramp exists to delete.
+          // Matches value assignments only, so `fontSize: number` in a type and
+          // `fontSize: clampNumber(...)` in Konva code are not swept up.
+          const m = line.match(/fontSize:\s*['"`\d]/)
+          // clamp() is the Fluid Hero Exception: marketing headings are
+          // deliberately fluid and have no ramp step that can hold both a
+          // 375px and a 1440px viewport. DESIGN.md § The Fluid Hero Exception.
+          if (m && !/fontSize:\s*['"`]clamp\(/.test(line)) bad.push(`${rel(f)}:${i + 1}`)
         })
     }
     expect(bad).toEqual([])

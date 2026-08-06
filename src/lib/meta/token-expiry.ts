@@ -16,7 +16,7 @@
  * refresh_token, so a NULL expiry there means "refresh before use".
  */
 
-const MS_PER_DAY = 86_400_000
+import { MS_PER_DAY } from '@/utils/constants'
 
 /** Refresh Instagram tokens expiring within this window on each daily run. */
 export const REFRESH_WINDOW_DAYS = 14

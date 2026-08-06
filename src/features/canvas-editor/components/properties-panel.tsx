@@ -1,5 +1,6 @@
 'use client'
 
+import { cn } from '@/utils/cn'
 import type {
   CanvasDoc,
   CanvasElement,
@@ -169,7 +170,7 @@ function TextControls({
       />
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
         <div>
-          <div style={PANEL_LABEL}>Size</div>
+          <div className={PANEL_LABEL}>Size</div>
           <input
             type="number"
             min={8}
@@ -178,17 +179,17 @@ function TextControls({
             onChange={(event) =>
               onChange({ fontSize: clampNumber(event.target.value, 8, 400, layer.fontSize) })
             }
-            style={PANEL_CONTROL}
+            className={PANEL_CONTROL}
           />
         </div>
         <div>
-          <div style={PANEL_LABEL}>Weight</div>
+          <div className={PANEL_LABEL}>Weight</div>
           <select
             value={layer.fontWeight}
             onChange={(event) =>
               onChange({ fontWeight: Number(event.target.value) as CanvasFontWeight })
             }
-            style={PANEL_CONTROL}
+            className={PANEL_CONTROL}
           >
             {weights.map((weight) => (
               <option key={weight} value={weight}>
@@ -198,21 +199,18 @@ function TextControls({
           </select>
         </div>
         <div>
-          <div style={PANEL_LABEL}>Align</div>
+          <div className={PANEL_LABEL}>Align</div>
           <div style={{ display: 'flex', gap: '4px' }}>
             {ALIGNS.map((align) => (
               <button
                 key={align}
                 type="button"
                 onClick={() => onChange({ align })}
-                style={{
-                  ...PANEL_CONTROL,
-                  width: 'auto',
-                  flex: 1,
-                  cursor: 'pointer',
-                  textTransform: 'capitalize',
-                  background: layer.align === align ? 'rgba(15,21,18,0.04)' : 'var(--paper)',
-                }}
+                className={cn(
+                  PANEL_CONTROL,
+                  'w-auto flex-1 cursor-pointer capitalize',
+                  layer.align === align ? 'bg-ink/[0.04]' : 'bg-paper'
+                )}
               >
                 {align[0]?.toUpperCase()}
               </button>
@@ -220,7 +218,7 @@ function TextControls({
           </div>
         </div>
         <div>
-          <div style={PANEL_LABEL}>Line height</div>
+          <div className={PANEL_LABEL}>Line height</div>
           <input
             type="number"
             min={0.8}
@@ -230,11 +228,11 @@ function TextControls({
             onChange={(event) =>
               onChange({ lineHeight: clampNumber(event.target.value, 0.8, 3, layer.lineHeight) })
             }
-            style={PANEL_CONTROL}
+            className={PANEL_CONTROL}
           />
         </div>
         <div>
-          <div style={PANEL_LABEL}>Rotation °</div>
+          <div className={PANEL_LABEL}>Rotation °</div>
           <input
             type="number"
             min={-180}
@@ -246,7 +244,7 @@ function TextControls({
                 rotation: clampNumber(event.target.value, -180, 180, layer.rotation ?? 0),
               })
             }
-            style={PANEL_CONTROL}
+            className={PANEL_CONTROL}
           />
         </div>
       </div>

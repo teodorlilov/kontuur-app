@@ -1,9 +1,11 @@
 'use server'
 
+import 'server-only'
 import { revalidatePath, revalidateTag } from 'next/cache'
 import { resolveActionAuth, verifyAdminRole } from '@/lib/auth/helpers'
 import { USER_RECORD_TAG } from '@/lib/auth/session'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
+import { removeTeamMemberSchema } from '@/features/settings/schemas'
 import type { ActionResult } from '@/lib/actions/types'
 
 /**
@@ -24,17 +26,26 @@ export async function removeTeamMember(userId: string): Promise<ActionResult> {
   if (!(await verifyAdminRole(supabase, actorId))) {
     return { ok: false, error: 'Only admins can remove team members' }
   }
+  if (!removeTeamMemberSchema.safeParse(userId).success) {
+    return { ok: false, error: 'Member not found' }
+  }
   if (userId === actorId) {
     return { ok: false, error: 'You cannot remove yourself' }
   }
 
   const admin = createAdminSupabaseClient()
 
-  const { data: target } = await admin
+  const { data: target, error: targetError } = await admin
     .from('users')
     .select('id, role, agency_id')
     .eq('id', userId)
     .maybeSingle()
+  // A failed lookup must not read as "not in your agency" — that turns a
+  // database blip into a misleading permission message.
+  if (targetError) {
+    console.error(`[team:remove] target lookup failed for ${userId}:`, targetError.message)
+    return { ok: false, error: 'Could not remove the member' }
+  }
 
   if (!target || target.agency_id !== agencyId) {
     return { ok: false, error: 'Member not found' }

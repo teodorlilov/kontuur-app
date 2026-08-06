@@ -43,3 +43,10 @@ export interface QueuePost {
   composedPositions: number[]
   approval: QueueApproval | null
 }
+
+/** "Carousel · 6 slides" or "Single image" — the format label both queue leaves show. */
+export function postTypeLabel(postType: string, slides: unknown): string {
+  if (postType !== 'carousel') return 'Single image'
+  const count = Array.isArray(slides) ? slides.length : 0
+  return `Carousel · ${count} slides`
+}

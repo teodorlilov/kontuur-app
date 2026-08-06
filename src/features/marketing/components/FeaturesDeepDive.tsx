@@ -62,69 +62,39 @@ export function FeaturesDeepDive() {
   const isMobile = useIsMobile()
 
   return (
-    <section
-      className="mkt-pad"
-      style={{ paddingTop: 80, paddingBottom: 80, background: 'var(--paper)' }}
-    >
+    <section className="mkt-pad bg-paper py-20">
       <div
-        style={{
-          maxWidth: 1100,
-          margin: '0 auto',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: isMobile ? 48 : 80,
-        }}
+        className="mx-auto my-0 flex max-w-[1100px] flex-col"
+        style={{ gap: isMobile ? 48 : 80 }}
       >
         {features.map((f) => (
           <AnimateIn key={f.title}>
             <div
+              className="grid items-center"
               style={{
-                display: 'grid',
                 gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
                 gap: isMobile ? 24 : 64,
-                alignItems: 'center',
               }}
             >
               {/* Text column — always first on mobile */}
               <div style={{ order: isMobile ? 1 : f.reversed ? 2 : 1 }}>
-                <f.icon size={28} color="var(--spring)" style={{ marginBottom: 16 }} />
+                <f.icon size={28} color="var(--spring)" className="mb-4" />
+                {/* leading-[1.2] + tracking-[-0.02em]: the fluid heading size is not
+                    a ramp step, so it brings no metrics of its own. */}
                 <h3
-                  style={{
-                    fontFamily: 'var(--font-display)',
-                    fontSize: 'clamp(22px, 2.5vw, 28px)',
-                    fontWeight: 400,
-                    letterSpacing: '-0.02em',
-                    color: 'var(--ink)',
-                    marginBottom: 16,
-                    lineHeight: 1.2,
-                  }}
+                  className="mb-4 font-display font-normal leading-[1.2] tracking-[-0.02em] text-ink"
+                  style={{ fontSize: 'clamp(22px, 2.5vw, 28px)' }}
                 >
                   {f.title}
                 </h3>
-                <p
-                  className="text-title"
-                  style={{
-                    color: 'var(--text2)',
-                    lineHeight: 1.7,
-                    marginBottom: 20,
-                    maxWidth: 440,
-                  }}
-                >
-                  {f.body}
-                </p>
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                {/* leading-[1.7]: a four-line body paragraph; the Title role's 1.4
+                    is set for one-line headings and reads cramped here. */}
+                <p className="mb-5 max-w-[440px] text-title leading-[1.7] text-text2">{f.body}</p>
+                <div className="flex flex-wrap gap-2">
                   {f.tags.map((tag) => (
                     <span
-                      className="text-caption"
+                      className="inline-block rounded-[6px] bg-marker px-2.5 py-1 text-caption font-medium text-forest-deep"
                       key={tag}
-                      style={{
-                        display: 'inline-block',
-                        padding: '4px 10px',
-                        background: 'var(--marker)',
-                        color: 'var(--forest-deep)',
-                        borderRadius: 6,
-                        fontWeight: 500,
-                      }}
                     >
                       {tag}
                     </span>
@@ -136,15 +106,8 @@ export function FeaturesDeepDive() {
                 src={f.imageSrc}
                 alt={f.imageAlt}
                 sizes="(max-width: 768px) 100vw, 518px"
-                style={{
-                  order: isMobile ? 2 : f.reversed ? 1 : 2,
-                  width: '100%',
-                  height: 'auto',
-                  borderRadius: 12,
-                  border: '1px solid var(--line)',
-                  display: 'block',
-                  boxShadow: '0 4px 24px rgba(0,0,0,0.08)',
-                }}
+                className="block h-auto w-full rounded-[12px] border border-line shadow-[0_4px_24px_rgba(0,0,0,0.08)]"
+                style={{ order: isMobile ? 2 : f.reversed ? 1 : 2 }}
               />
             </div>
           </AnimateIn>

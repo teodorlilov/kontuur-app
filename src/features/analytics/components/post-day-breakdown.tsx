@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo } from 'react'
+import { CHART_COLORS, CHART_AXIS_PROPS, CHART_TOOLTIP_STYLE } from '@/features/analytics/lib/chart-config'
 import {
   BarChart,
   Bar,
@@ -84,21 +85,21 @@ export function PostDayBreakdown({ metrics }: PostDayBreakdownProps) {
       </div>
       <ResponsiveContainer width="100%" height={160}>
         <BarChart data={chartData} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+          <CartesianGrid strokeDasharray="3 3" stroke={CHART_COLORS.grid} />
           <XAxis
             dataKey="day"
-            tick={{ fontSize: 10, fill: '#667068' }}
+            tick={{ ...CHART_AXIS_PROPS.tick, fontSize: 10 }}
             tickLine={false}
             axisLine={false}
           />
           <YAxis
-            tick={{ fontSize: 10, fill: '#667068' }}
+            tick={{ ...CHART_AXIS_PROPS.tick, fontSize: 10 }}
             tickLine={false}
             axisLine={false}
             tickFormatter={(v: number) => `${v}%`}
           />
           <Tooltip
-            contentStyle={{ fontSize: 11, borderRadius: 8, border: '1px solid #e5e7eb' }}
+            contentStyle={CHART_TOOLTIP_STYLE.contentStyle}
             formatter={(value: unknown, _name: unknown, props: { payload?: { count: number } }) => {
               const count = props.payload?.count ?? 0
               return [`${value}% avg eng. · ${count} post${count !== 1 ? 's' : ''}`, '']

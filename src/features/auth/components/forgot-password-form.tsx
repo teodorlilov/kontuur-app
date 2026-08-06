@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { validateEmail } from '@/lib/validation'
+import { cn } from '@/utils/cn'
 import { Input } from '@/components/ui/input'
 import { toast } from '@/components/ui/toast'
 import { AuthLayout } from '@/features/auth/components/auth-layout'
@@ -30,37 +31,18 @@ interface FormPanelProps {
 function FormPanel({ email, setEmail, emailError, loading, onSubmit }: FormPanelProps) {
   return (
     <div>
+      {/* tracking: the micro role carries no letter-spacing; this back-link is opened a
+          hair so the arrow does not collide with the word after it. */}
       <Link
         href="/login"
-        className="text-micro"
-        style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: 6,
-          color: 'var(--text2)',
-          textDecoration: 'none',
-          letterSpacing: '0.3px',
-          marginBottom: 32,
-        }}
+        className="text-micro inline-flex items-center gap-1.5 text-text2 no-underline tracking-[0.3px] mb-8"
       >
         ← Back to sign in
       </Link>
-      <h3
-        className="text-headline"
-        style={{
-          fontFamily: 'var(--font-display)',
-          fontWeight: 400,
-          color: 'var(--ink)',
-          marginBottom: 4,
-        }}
-      >
-        Reset your password
-      </h3>
-      <p className="text-body" style={{ color: 'var(--text2)', marginBottom: 32, lineHeight: 1.6 }}>
-        Enter your email and we'll send you a reset link.
-      </p>
-      <form onSubmit={onSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-        <div style={{ marginBottom: 20 }}>
+      <h3 className="text-headline font-display font-normal text-ink mb-1">Reset your password</h3>
+      <p className="text-body text-text2 mb-8">Enter your email and we'll send you a reset link.</p>
+      <form onSubmit={onSubmit} className="flex flex-col gap-0">
+        <div className="mb-5">
           <Input
             label="Email"
             type="email"
@@ -76,28 +58,15 @@ function FormPanel({ email, setEmail, emailError, loading, onSubmit }: FormPanel
         <button
           type="submit"
           disabled={loading}
-          className="text-label font-semibold uppercase"
+          className={cn(
+            'text-label font-semibold uppercase font-sans',
+            'w-full flex items-center justify-center gap-1.5 px-0 py-[13px] mt-1',
+            'bg-forest-deep text-ink-inv border-none rounded-xs',
+            !loading && 'hover:bg-spring-text'
+          )}
           style={{
-            width: '100%',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 6,
-            padding: '13px 0',
-            background: 'var(--forest-deep)',
-            color: '#f2f5f1',
-            fontFamily: 'var(--font-sans)',
-            border: 'none',
-            borderRadius: 4,
             cursor: loading ? 'not-allowed' : 'pointer',
             opacity: loading ? 0.5 : 1,
-            marginTop: 4,
-          }}
-          onMouseEnter={(e) => {
-            if (!loading) e.currentTarget.style.background = 'var(--spring-text)'
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = 'var(--forest-deep)'
           }}
         >
           {loading && (
@@ -125,16 +94,10 @@ function FormPanel({ email, setEmail, emailError, loading, onSubmit }: FormPanel
           Send reset link
         </button>
       </form>
-      <div
-        style={{
-          marginTop: 20,
-          padding: 14,
-          background: 'rgba(15,21,18,0.05)',
-          borderLeft: '2px solid var(--spring-text)',
-          borderRadius: '0 4px 4px 0',
-        }}
-      >
-        <p className="text-micro" style={{ color: 'var(--text2)', lineHeight: 1.65 }}>
+      <div className="mt-5 p-3.5 bg-ink/5 border-l-2 border-l-spring-text rounded-r-xs">
+        {/* leading: a four-line helper note at 11px opens past the micro role's 1.35,
+            which is set for single-line chips rather than for a paragraph. */}
+        <p className="text-micro text-text2 leading-[1.65]">
           If you don't receive an email within a few minutes, check your spam folder or make sure
           you're using the address you signed up with.
         </p>
@@ -150,19 +113,8 @@ interface SuccessPanelProps {
 
 function SuccessPanel({ email, onResend }: SuccessPanelProps) {
   return (
-    <div style={{ textAlign: 'center' }}>
-      <div
-        style={{
-          width: 56,
-          height: 56,
-          borderRadius: '50%',
-          border: '1.5px solid var(--spring-text)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          margin: '0 auto 24px',
-        }}
-      >
+    <div className="text-center">
+      <div className="w-14 h-14 rounded-full border-[1.5px] border-spring-text flex items-center justify-center mx-auto mb-6">
         <svg
           width="22"
           height="22"
@@ -176,73 +128,32 @@ function SuccessPanel({ email, onResend }: SuccessPanelProps) {
           <path d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
         </svg>
       </div>
-      <h3
-        className="text-headline"
-        style={{
-          fontFamily: 'var(--font-display)',
-          fontWeight: 400,
-          color: 'var(--ink)',
-          marginBottom: 8,
-        }}
-      >
-        Check your email
-      </h3>
-      <p className="text-body" style={{ color: 'var(--text2)', lineHeight: 1.7, marginBottom: 8 }}>
-        We sent a password reset link to
-      </p>
-      <div
-        className="text-caption"
-        style={{
-          display: 'inline-block',
-          background: '#ffffff',
-          border: '1px solid rgba(15,21,18,0.14)',
-          borderRadius: 4,
-          padding: '6px 12px',
-          color: 'var(--ink)',
-          fontWeight: 500,
-          marginBottom: 28,
-        }}
-      >
+      <h3 className="text-headline font-display font-normal text-ink mb-2">Check your email</h3>
+      {/* leading: this line sits between an icon and a boxed address, and opens past the
+          body role's 1.6 to keep that vertical rhythm even. */}
+      <p className="text-body text-text2 leading-[1.7] mb-2">We sent a password reset link to</p>
+      <div className="text-caption inline-block bg-surface border border-ink/14 rounded-xs px-3 py-1.5 text-ink font-medium mb-7">
         {email}
       </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-        <div style={{ flex: 1, height: 1, background: 'rgba(15,21,18,0.1)' }} />
-        <span
-          className="text-label tracking-normal"
-          style={{ color: 'var(--text3)', letterSpacing: '1px' }}
-        >
-          OR
-        </span>
-        <div style={{ flex: 1, height: 1, background: 'rgba(15,21,18,0.1)' }} />
+      <div className="flex items-center gap-3 mb-4">
+        <div className="flex-1 h-px bg-ink/10" />
+        {/* tracking: a two-letter divider label reads tighter than the label role's
+            0.16em (1.6px) — at this width the role's spacing pulls "OR" apart. */}
+        <span className="text-label text-text3 tracking-[1px]">OR</span>
+        <div className="flex-1 h-px bg-ink/10" />
       </div>
-      <p className="text-micro" style={{ color: 'var(--text2)', marginBottom: 16 }}>
+      <p className="text-micro text-text2 mb-4">
         Didn't receive it?{' '}
         <button
           onClick={onResend}
-          className="text-micro"
-          style={{
-            color: 'var(--spring-text)',
-            background: 'none',
-            border: 'none',
-            cursor: 'pointer',
-            padding: 0,
-          }}
+          className="text-micro text-spring-text bg-transparent border-none cursor-pointer p-0"
         >
           Resend email
         </button>
       </p>
       <Link
         href="/login"
-        className="text-micro"
-        style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: 6,
-          color: 'var(--text2)',
-          textDecoration: 'none',
-          width: '100%',
-        }}
+        className="text-micro inline-flex items-center justify-center gap-1.5 text-text2 no-underline w-full"
       >
         ← Back to sign in
       </Link>

@@ -1104,6 +1104,7 @@ export type Database = {
           post_type: string
           priority: boolean | null
           publish_attempts: number | null
+          publish_claimed_at: string | null
           publish_error: string | null
           published_at: string | null
           quality_score_avg: number | null
@@ -1138,6 +1139,7 @@ export type Database = {
           post_type?: string
           priority?: boolean | null
           publish_attempts?: number | null
+          publish_claimed_at?: string | null
           publish_error?: string | null
           published_at?: string | null
           quality_score_avg?: number | null
@@ -1172,6 +1174,7 @@ export type Database = {
           post_type?: string
           priority?: boolean | null
           publish_attempts?: number | null
+          publish_claimed_at?: string | null
           publish_error?: string | null
           published_at?: string | null
           quality_score_avg?: number | null

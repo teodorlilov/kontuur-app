@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { formatZodIssues } from '@/lib/validation/format-issues'
 import type { CanvasDoc } from '@/types/canvas'
 import { CANVAS_DOC_VERSION, MAX_BACKGROUND_ZOOM, MAX_ELEMENTS } from './constants'
 
@@ -91,8 +92,5 @@ export type CanvasDocParse =
 export function safeParseCanvasDoc(input: unknown): CanvasDocParse {
   const result = canvasDocSchema.safeParse(input)
   if (result.success) return { success: true, doc: result.data }
-  return {
-    success: false,
-    issues: result.error.issues.map((issue) => `${issue.path.join('.')}: ${issue.message}`),
-  }
+  return { success: false, issues: formatZodIssues(result.error) }
 }

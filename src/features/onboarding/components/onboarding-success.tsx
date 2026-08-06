@@ -36,20 +36,15 @@ export function OnboardingSuccess({
 
   return (
     <div
-      className="onboarding-success-overlay fixed inset-0 z-50 flex items-center justify-center"
-      style={{ background: 'var(--paper)', animation: 'fade-in 250ms ease' }}
+      className="onboarding-success-overlay fixed inset-0 z-50 flex items-center justify-center bg-paper"
+      style={{ animation: 'fade-in 250ms ease' }}
       role="dialog"
       aria-label="Onboarding complete"
     >
       <div className="flex flex-col items-center text-center px-6 max-w-md">
         <div
-          className="flex items-center justify-center rounded-full"
-          style={{
-            width: 72,
-            height: 72,
-            background: 'rgba(46,158,104,0.12)',
-            animation: 'scale-in 350ms ease both',
-          }}
+          className="flex items-center justify-center rounded-full w-[72px] h-[72px] bg-spring/12"
+          style={{ animation: 'scale-in 350ms ease both' }}
         >
           <svg width="34" height="34" viewBox="0 0 24 24" fill="none" aria-hidden="true">
             <path
@@ -66,20 +61,15 @@ export function OnboardingSuccess({
         </div>
 
         <h2
-          className="text-prompt mt-6"
-          style={{
-            fontFamily: 'var(--font-display)',
-            fontWeight: 400,
-            color: 'var(--ink)',
-            animation: 'fade-up 350ms ease 150ms both',
-          }}
+          className="text-prompt mt-6 font-display font-normal text-ink"
+          style={{ animation: 'fade-up 350ms ease 150ms both' }}
         >
           {clientName} is ready
         </h2>
 
         <p
-          className="mt-3 text-body"
-          style={{ color: 'var(--text2)', animation: 'fade-up 350ms ease 250ms both' }}
+          className="mt-3 text-body text-text2"
+          style={{ animation: 'fade-up 350ms ease 250ms both' }}
         >
           {recap.length > 0 ? recap : 'You can add sources anytime from Content sources.'}
         </p>

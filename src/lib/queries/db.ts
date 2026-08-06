@@ -9,6 +9,10 @@
  * - Narrow auth checks ('id', 'agency_id' only) stay inline at call sites.
  * - Add a function here when the same query pattern appears in 2+ files.
  * - If you add/remove a column, update select-columns.ts first, then this file.
+ *
+ * WHY the `as` casts throughout: each query projects an explicit column list from
+ * select-columns.ts, so the row shape is known here but not inferable — Supabase
+ * types the result from the table, not from the projection string.
  */
 
 import {
@@ -25,10 +29,23 @@ import {
   CLIENT_SOURCE_SUMMARY_COLUMNS,
 } from '@/lib/queries/select-columns'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
+import type { PostgrestError } from '@supabase/supabase-js'
 import type { TeamMember, MetaConnection } from '@/types/api'
 import type { ClientRow, BrandProfileRow, PostingScheduleRow, Json } from '@/types'
 
 type SupabaseClient = Awaited<ReturnType<typeof createServerSupabaseClient>>
+
+/**
+ * Unwrap a Supabase read, turning a query error into a throw.
+ *
+ * These helpers sit below the boundary, so a failed read has to propagate:
+ * returning null or [] instead would make a database outage indistinguishable
+ * from "no rows" and render as an empty page rather than an error.
+ */
+function unwrap<T>(result: { data: T; error: PostgrestError | null }, query: string): T {
+  if (result.error) throw new Error(`${query} failed: ${result.error.message}`)
+  return result.data
+}
 
 export type AgencySettings = {
   id: string
@@ -52,12 +69,15 @@ export async function fetchClientById(
   clientId: string,
   agencyId: string
 ): Promise<Omit<ClientRow, 'agency_id'> | null> {
-  const { data } = await supabase
-    .from('clients')
-    .select(CLIENT_COLUMNS)
-    .eq('id', clientId)
-    .eq('agency_id', agencyId)
-    .single()
+  const data = unwrap(
+    await supabase
+      .from('clients')
+      .select(CLIENT_COLUMNS)
+      .eq('id', clientId)
+      .eq('agency_id', agencyId)
+      .maybeSingle(),
+    'fetchClientById'
+  )
   return data as Omit<ClientRow, 'agency_id'> | null
 }
 
@@ -71,11 +91,14 @@ export async function fetchBrandProfileByClient(
   supabase: SupabaseClient,
   clientId: string
 ): Promise<Omit<BrandProfileRow, 'client_id'> | null> {
-  const { data } = await supabase
-    .from('brand_profiles')
-    .select(BRAND_PROFILE_COLUMNS)
-    .eq('client_id', clientId)
-    .single()
+  const data = unwrap(
+    await supabase
+      .from('brand_profiles')
+      .select(BRAND_PROFILE_COLUMNS)
+      .eq('client_id', clientId)
+      .maybeSingle(),
+    'fetchBrandProfileByClient'
+  )
   return data as Omit<BrandProfileRow, 'client_id'> | null
 }
 
@@ -89,11 +112,14 @@ export async function fetchPostingScheduleByClient(
   supabase: SupabaseClient,
   clientId: string
 ): Promise<Omit<PostingScheduleRow, 'client_id' | 'created_at'> | null> {
-  const { data } = await supabase
-    .from('posting_schedules')
-    .select(POSTING_SCHEDULE_COLUMNS)
-    .eq('client_id', clientId)
-    .single()
+  const data = unwrap(
+    await supabase
+      .from('posting_schedules')
+      .select(POSTING_SCHEDULE_COLUMNS)
+      .eq('client_id', clientId)
+      .maybeSingle(),
+    'fetchPostingScheduleByClient'
+  )
   return data as Omit<PostingScheduleRow, 'client_id' | 'created_at'> | null
 }
 
@@ -109,11 +135,14 @@ export async function fetchAgencyById(
   supabase: SupabaseClient,
   agencyId: string
 ): Promise<AgencySettings | null> {
-  const { data } = await supabase
-    .from('agencies')
-    .select(AGENCY_SETTINGS_COLUMNS)
-    .eq('id', agencyId)
-    .single()
+  const data = unwrap(
+    await supabase
+      .from('agencies')
+      .select(AGENCY_SETTINGS_COLUMNS)
+      .eq('id', agencyId)
+      .maybeSingle(),
+    'fetchAgencyById'
+  )
   return data as AgencySettings | null
 }
 
@@ -124,11 +153,14 @@ export async function fetchTeamMembersByAgency(
   supabase: SupabaseClient,
   agencyId: string
 ): Promise<TeamMember[]> {
-  const { data } = await supabase
-    .from('users')
-    .select(USER_COLUMNS)
-    .eq('agency_id', agencyId)
-    .order('created_at', { ascending: true })
+  const data = unwrap(
+    await supabase
+      .from('users')
+      .select(USER_COLUMNS)
+      .eq('agency_id', agencyId)
+      .order('created_at', { ascending: true }),
+    'fetchTeamMembersByAgency'
+  )
   return (data ?? []) as TeamMember[]
 }
 
@@ -142,11 +174,14 @@ export async function fetchConnectionsByClient(
   supabase: SupabaseClient,
   clientId: string
 ): Promise<MetaConnection[]> {
-  const { data } = await supabase
-    .from('social_connections')
-    .select(SOCIAL_CONNECTION_COLUMNS)
-    .eq('client_id', clientId)
-    .order('created_at', { ascending: true })
+  const data = unwrap(
+    await supabase
+      .from('social_connections')
+      .select(SOCIAL_CONNECTION_COLUMNS)
+      .eq('client_id', clientId)
+      .order('created_at', { ascending: true }),
+    'fetchConnectionsByClient'
+  )
   return (data ?? []) as MetaConnection[]
 }
 
@@ -170,11 +205,14 @@ export async function fetchLanguageRulesByLanguage(
   supabase: SupabaseClient,
   language: string
 ): Promise<LanguageRulesRow | null> {
-  const { data } = await supabase
-    .from('language_rules')
-    .select(LANGUAGE_RULES_COLUMNS)
-    .eq('language', language)
-    .single()
+  const data = unwrap(
+    await supabase
+      .from('language_rules')
+      .select(LANGUAGE_RULES_COLUMNS)
+      .eq('language', language)
+      .maybeSingle(),
+    'fetchLanguageRulesByLanguage'
+  )
   return data as LanguageRulesRow | null
 }
 
@@ -194,12 +232,15 @@ export async function fetchPostHistoryByClient(
   clientId: string,
   limit = 30
 ): Promise<string[]> {
-  const { data } = await supabase
-    .from('post_history')
-    .select(POST_HISTORY_COLUMNS)
-    .eq('client_id', clientId)
-    .order('created_at', { ascending: false })
-    .limit(limit)
+  const data = unwrap(
+    await supabase
+      .from('post_history')
+      .select(POST_HISTORY_COLUMNS)
+      .eq('client_id', clientId)
+      .order('created_at', { ascending: false })
+      .limit(limit),
+    'fetchPostHistoryByClient'
+  )
   return (
     (data as Array<{ topic_summary: string | null }> | null)
       ?.map((h) => h.topic_summary)
@@ -218,14 +259,17 @@ export async function fetchTopPostsByClient(
   supabase: SupabaseClient,
   clientId: string
 ): Promise<string[]> {
-  const { data } = await supabase
-    .from('posts')
-    .select(TOP_POSTS_COLUMNS)
-    .eq('client_id', clientId)
-    .eq('status', 'approved')
-    .gte('quality_score_avg', 7.5)
-    .order('quality_score_avg', { ascending: false })
-    .limit(20)
+  const data = unwrap(
+    await supabase
+      .from('posts')
+      .select(TOP_POSTS_COLUMNS)
+      .eq('client_id', clientId)
+      .eq('status', 'approved')
+      .gte('quality_score_avg', 7.5)
+      .order('quality_score_avg', { ascending: false })
+      .limit(20),
+    'fetchTopPostsByClient'
+  )
   return (
     (data as Array<{ caption: string | null }> | null)
       ?.map((p) => (p.caption ?? '').slice(0, 120))
@@ -242,11 +286,12 @@ export async function countPendingPostsByClients(
   clientIds: string[]
 ): Promise<number> {
   if (clientIds.length === 0) return 0
-  const { count } = await supabase
+  const { count, error } = await supabase
     .from('posts')
     .select('id', { count: 'exact', head: true })
     .eq('status', 'pending_review')
     .in('client_id', clientIds)
+  if (error) throw new Error(`countPendingPostsByClients failed: ${error.message}`)
   return count ?? 0
 }
 
@@ -273,11 +318,14 @@ export async function fetchClientSources(
   supabase: SupabaseClient,
   clientId: string
 ): Promise<ClientSourceRow[]> {
-  const { data } = await supabase
-    .from('client_sources')
-    .select(CLIENT_SOURCE_RESEARCH_COLUMNS)
-    .eq('client_id', clientId)
-    .eq('is_active', true)
+  const data = unwrap(
+    await supabase
+      .from('client_sources')
+      .select(CLIENT_SOURCE_RESEARCH_COLUMNS)
+      .eq('client_id', clientId)
+      .eq('is_active', true),
+    'fetchClientSources'
+  )
   return (data as ClientSourceRow[] | null) ?? []
 }
 
@@ -300,11 +348,14 @@ export async function fetchClientSourceSummaries(
   supabase: SupabaseClient,
   clientId: string
 ): Promise<ClientSourceSummary[]> {
-  const { data } = await supabase
-    .from('client_sources')
-    .select(CLIENT_SOURCE_SUMMARY_COLUMNS)
-    .eq('client_id', clientId)
-    .eq('is_active', true)
+  const data = unwrap(
+    await supabase
+      .from('client_sources')
+      .select(CLIENT_SOURCE_SUMMARY_COLUMNS)
+      .eq('client_id', clientId)
+      .eq('is_active', true),
+    'fetchClientSourceSummaries'
+  )
   return (data as ClientSourceSummary[] | null) ?? []
 }
 
@@ -321,13 +372,16 @@ export async function fetchUsedSourceUrls(
   clientId: string,
   limit = 50
 ): Promise<string[]> {
-  const { data } = await supabase
-    .from('posts')
-    .select('source_url')
-    .eq('client_id', clientId)
-    .not('source_url', 'is', null)
-    .order('created_at', { ascending: false })
-    .limit(limit)
+  const data = unwrap(
+    await supabase
+      .from('posts')
+      .select('source_url')
+      .eq('client_id', clientId)
+      .not('source_url', 'is', null)
+      .order('created_at', { ascending: false })
+      .limit(limit),
+    'fetchUsedSourceUrls'
+  )
   return (data as Array<{ source_url: string | null }> | null)
     ?.map((r) => r.source_url)
     .filter((u): u is string => u !== null) ?? []
@@ -363,6 +417,9 @@ export async function fetchSourceUsageStats(
     supabase.from('discarded_drafts').select('client_source_id').eq('client_id', clientId),
   ])
 
+  const posts = unwrap(postsRes, 'fetchSourceUsageStats(posts)')
+  const discards = unwrap(discardsRes, 'fetchSourceUsageStats(discards)')
+
   const stats = new Map<string, SourceUsageStats>()
   const get = (id: string): SourceUsageStats => {
     const existing = stats.get(id)
@@ -372,14 +429,14 @@ export async function fetchSourceUsageStats(
     return fresh
   }
 
-  for (const row of postsRes.data ?? []) {
+  for (const row of posts ?? []) {
     // pending_review cron drafts are not yet a human signal
     if (row.client_source_id && row.status !== 'pending_review') {
       get(row.client_source_id).approvedCount++
     }
   }
 
-  for (const row of discardsRes.data ?? []) {
+  for (const row of discards ?? []) {
     if (row.client_source_id) get(row.client_source_id).discardedCount++
   }
 
@@ -398,13 +455,16 @@ export async function fetchRecentPillarCounts(
   clientId: string,
   limit = 30
 ): Promise<Map<string, number>> {
-  const { data } = await supabase
-    .from('posts')
-    .select('pillar')
-    .eq('client_id', clientId)
-    .not('pillar', 'is', null)
-    .order('created_at', { ascending: false })
-    .limit(limit)
+  const data = unwrap(
+    await supabase
+      .from('posts')
+      .select('pillar')
+      .eq('client_id', clientId)
+      .not('pillar', 'is', null)
+      .order('created_at', { ascending: false })
+      .limit(limit),
+    'fetchRecentPillarCounts'
+  )
 
   const counts = new Map<string, number>()
   for (const row of (data as Array<{ pillar: string | null }> | null) ?? []) {

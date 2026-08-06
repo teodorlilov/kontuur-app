@@ -1,6 +1,7 @@
 'use client'
 
 import { Spinner } from '@/components/ui/spinner'
+import { cn } from '@/utils/cn'
 import { PANEL_CONTROL } from './panel-styles'
 
 interface PanelButtonProps {
@@ -10,8 +11,8 @@ interface PanelButtonProps {
   disabled?: boolean
   title?: string
   icon?: React.ReactNode
-  /** Layout tweaks only (marginTop, width) — the control chrome stays uniform. */
-  style?: React.CSSProperties
+  /** Layout tweaks only (margin, width) — the control chrome stays uniform. */
+  className?: string
   children?: React.ReactNode
 }
 
@@ -22,7 +23,7 @@ export function PanelButton({
   disabled,
   title,
   icon,
-  style,
+  className,
   children,
 }: PanelButtonProps) {
   const inactive = Boolean(busy || disabled)
@@ -32,16 +33,12 @@ export function PanelButton({
       onClick={onClick}
       disabled={inactive}
       title={title}
-      style={{
-        ...PANEL_CONTROL,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 6,
-        cursor: inactive ? 'default' : 'pointer',
-        opacity: inactive ? 0.6 : 1,
-        ...style,
-      }}
+      className={cn(
+        PANEL_CONTROL,
+        'flex items-center justify-center gap-1.5',
+        inactive ? 'cursor-default opacity-60' : 'cursor-pointer',
+        className
+      )}
     >
       {busy ? <Spinner size="sm" /> : icon}
       {children}

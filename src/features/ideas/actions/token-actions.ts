@@ -2,6 +2,7 @@
 
 import { resolveActionAuth, verifyClientOwnership } from '@/lib/auth/helpers'
 import { getOrCreateToken } from '@/features/ideas/lib/ideas'
+import { ensureIdeaTokenSchema } from '@/features/ideas/schemas'
 import type { ActionResult } from '@/lib/actions/types'
 
 /**
@@ -15,6 +16,10 @@ export async function ensureIdeaToken(clientId: string): Promise<ActionResult<st
   const auth = await resolveActionAuth()
   if (!auth.ok) return { ok: false, error: auth.error }
   const { supabase, agencyId } = auth
+
+  if (!ensureIdeaTokenSchema.safeParse(clientId).success) {
+    return { ok: false, error: 'Not found' }
+  }
 
   const owned = await verifyClientOwnership(supabase, clientId, agencyId)
   if (!owned) return { ok: false, error: 'Not found' }

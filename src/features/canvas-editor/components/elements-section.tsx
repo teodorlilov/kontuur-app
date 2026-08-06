@@ -1,6 +1,7 @@
 'use client'
 
 import { useRef, useState } from 'react'
+import { cn } from '@/utils/cn'
 import {
   ChevronDown,
   ChevronUp,
@@ -66,31 +67,17 @@ export function ElementsSection(props: ElementsSectionProps) {
 
   return (
     <div>
-      <div
-        style={{
-          ...PANEL_LABEL,
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-        }}
-      >
+      <div className={cn(PANEL_LABEL, 'flex items-center justify-between')}>
         <span>Elements</span>
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
           title="Upload an image element (logo, graphic)"
           disabled={uploading}
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 4,
-            border: 'none',
-            background: 'transparent',
-            color: 'var(--text2)',
-            fontSize: 'var(--text-label)',
-            cursor: uploading ? 'default' : 'pointer',
-            padding: 0,
-          }}
+          className={cn(
+            'inline-flex items-center gap-1 border-none bg-transparent p-0 text-label text-text2',
+            uploading ? 'cursor-default' : 'cursor-pointer'
+          )}
         >
           {uploading ? <Spinner size="sm" /> : <Upload size={12} />} Upload
         </button>
@@ -108,7 +95,7 @@ export function ElementsSection(props: ElementsSectionProps) {
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
         {elements.length === 0 && (
-          <p style={{ fontSize: 'var(--text-micro)', color: 'var(--text2)', margin: 0 }}>
+          <p className="m-0 text-micro text-text2">
             No elements yet — upload a logo or graphic.
           </p>
         )}
@@ -128,7 +115,7 @@ export function ElementsSection(props: ElementsSectionProps) {
         busy={isolating}
         icon={<Scissors size={12} />}
         title="Cut the main subject out as a movable element — the background stays intact underneath"
-        style={{ marginTop: '8px' }}
+        className="mt-2"
       >
         Cut out subject
       </PanelButton>
@@ -136,7 +123,7 @@ export function ElementsSection(props: ElementsSectionProps) {
         onClick={props.onLassoCut}
         icon={<Lasso size={12} />}
         title="Draw a loop around anything to cut it out — no AI, instant"
-        style={{ marginTop: '8px' }}
+        className="mt-2"
       >
         Lasso cut
       </PanelButton>
@@ -146,7 +133,7 @@ export function ElementsSection(props: ElementsSectionProps) {
           value={svgPrompt}
           placeholder="e.g. hand-drawn arrow"
           onChange={(event) => setSvgPrompt(event.target.value)}
-          style={{ ...PANEL_CONTROL, flex: 1 }}
+          className={cn(PANEL_CONTROL, 'flex-1')}
         />
         <PanelButton
           onClick={() => {
@@ -157,11 +144,11 @@ export function ElementsSection(props: ElementsSectionProps) {
           disabled={!svgPrompt.trim()}
           icon={<Sparkles size={12} />}
           title="Generate a vector graphic in the client's brand palette (~10s)"
-          style={{ width: 'auto' }}
+          className="w-auto"
         />
       </div>
       {selected && (
-        <div style={{ marginTop: '10px' }}>
+        <div className="mt-2.5">
           <PanelSlider
             label={`Opacity · ${Math.round((selected.opacity ?? 1) * 100)}%`}
             min={0.05}
@@ -170,7 +157,7 @@ export function ElementsSection(props: ElementsSectionProps) {
             value={selected.opacity ?? 1}
             onChange={(opacity) => onOpacityChange(selected.id, opacity)}
           />
-          <div style={{ marginTop: '8px' }}>
+          <div className="mt-2">
             <PanelCheckbox
               label="In front of text"
               checked={selected.aboveText ?? false}
@@ -182,7 +169,7 @@ export function ElementsSection(props: ElementsSectionProps) {
               onClick={props.onSetAsBackground}
               icon={<Wallpaper size={12} />}
               title="Fill the whole slide with this image (replaces the background and removes it as an element)"
-              style={{ marginTop: '8px' }}
+              className="mt-2"
             >
               Set as background
             </PanelButton>
@@ -192,7 +179,7 @@ export function ElementsSection(props: ElementsSectionProps) {
             busy={props.removingBackground}
             icon={<ImageIcon size={12} />}
             title="Key out the element's flat background colour (border colours go transparent)"
-            style={{ marginTop: '8px' }}
+            className="mt-2"
           >
             Remove background
           </PanelButton>
@@ -201,7 +188,7 @@ export function ElementsSection(props: ElementsSectionProps) {
               onClick={props.onEraseSelected}
               icon={<Eraser size={12} />}
               title="Brush away parts of this element"
-              style={{ marginTop: '8px' }}
+              className="mt-2"
             >
               Erase parts
             </PanelButton>
@@ -241,16 +228,7 @@ function ElementRow({
       }}
     >
       <Icon size={13} style={{ color: 'var(--text2)', flexShrink: 0 }} />
-      <span
-        style={{
-          flex: 1,
-          fontSize: 'var(--text-caption)',
-          color: 'var(--ink)',
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
-          whiteSpace: 'nowrap',
-        }}
-      >
+      <span className="flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-caption text-ink">
         {element.kind === 'svg' ? 'Vector' : 'Image'}
       </span>
       <RowButton title="Bring forward" onClick={() => onMove('up')}>

@@ -4,6 +4,7 @@ import { validateQuality } from '@/ai/validation/prompts/prompt-builder'
 import { deriveSlopFromQuality } from '@/ai/validation/content-rules/compute-scores'
 import type { SlopDetection } from '@/types/api'
 
+/** Score one draft for AI-sounding copy — the queue's authenticity read, derived from the quality validator. */
 export async function POST(request: Request) {
   const auth = await resolveAuth()
   if (!auth.ok) return auth.response

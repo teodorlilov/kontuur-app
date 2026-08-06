@@ -67,7 +67,7 @@ export function ImageSlot({
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+    <div className="flex flex-col gap-1.5">
       <DropZone
         dragOver={dragOver}
         uploading={uploading}
@@ -80,79 +80,35 @@ export function ImageSlot({
         onClick={() => inputRef.current?.click()}
       />
       <input
+        className="hidden"
         ref={inputRef}
         type="file"
         accept="image/jpeg,image/png"
-        style={{ display: 'none' }}
         onChange={(e) => {
           if (e.target.files?.length) void handleFile(e.target.files[0]!)
         }}
       />
 
+      {/* tracking-normal on both buttons: cancels the Label role's built-in 0.16em —
+          these are actions read as words, not eyebrows. */}
       {onGenerate && (
         <button
-          className="text-label tracking-normal"
+          className="flex cursor-pointer items-center justify-center gap-[5px] rounded-sm border border-line2 bg-spring/4 px-2 py-[7px] text-label font-medium tracking-normal text-spring-text transition-[background,border-color] duration-120 ease-[ease] hover:border-spring-text hover:bg-spring/10"
           type="button"
           onClick={onGenerate}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 5,
-            padding: '7px 8px',
-            border: '1px solid var(--line2)',
-            borderRadius: 8,
-            background: 'rgba(46,158,104,0.04)',
-            cursor: 'pointer',
-            fontFamily: 'inherit',
-            fontWeight: 500,
-            color: 'var(--spring-text)',
-            transition: 'background 120ms ease, border-color 120ms ease',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = 'rgba(46,158,104,0.10)'
-            e.currentTarget.style.borderColor = 'var(--spring-text)'
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = 'rgba(46,158,104,0.04)'
-            e.currentTarget.style.borderColor = 'var(--line2)'
-          }}
         >
-          <Sparkles style={{ width: 12, height: 12 }} />
+          <Sparkles className="h-3 w-3" />
           Generate with AI
         </button>
       )}
 
       {canvaConnected && (
         <button
-          className="text-label tracking-normal"
+          className="flex cursor-pointer items-center justify-center gap-[5px] rounded-sm border border-line2 bg-sunken px-2 py-[7px] text-label font-medium tracking-normal text-forest transition-[background,border-color] duration-120 ease-[ease] hover:border-forest hover:bg-wash"
           type="button"
           onClick={() => setPickerOpen(true)}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 5,
-            padding: '7px 8px',
-            border: '1px solid var(--line2)',
-            borderRadius: 8,
-            background: 'var(--sunken)',
-            cursor: 'pointer',
-            fontFamily: 'inherit',
-            fontWeight: 500,
-            color: 'var(--forest)',
-            transition: 'background 120ms ease, border-color 120ms ease',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = 'var(--wash)'
-            e.currentTarget.style.borderColor = 'var(--forest)'
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = 'var(--sunken)'
-            e.currentTarget.style.borderColor = 'var(--line2)'
-          }}
         >
-          <Download style={{ width: 12, height: 12 }} />
+          <Download className="h-3 w-3" />
           Import from Canva
         </button>
       )}
@@ -232,6 +188,7 @@ function DropZone({
 }) {
   return (
     <button
+      className="flex w-full flex-col items-center justify-center gap-1.5 rounded-md px-3 py-4 transition-[border-color,background] duration-150 ease-[ease]"
       type="button"
       onClick={onClick}
       onDragOver={onDragOver}
@@ -239,34 +196,20 @@ function DropZone({
       onDrop={onDrop}
       disabled={uploading}
       style={{
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 6,
-        padding: '16px 12px',
         border: `1.5px dashed ${dragOver ? 'var(--spring-text)' : 'rgba(15,21,18,0.20)'}`,
-        borderRadius: 10,
         background: dragOver ? 'rgba(46,158,104,0.04)' : 'rgba(15,21,18,0.02)',
         cursor: uploading ? 'wait' : 'pointer',
-        width: '100%',
-        fontFamily: 'inherit',
-        transition: 'border-color 0.15s, background 0.15s',
       }}
     >
       {uploading ? (
-        <span className="text-micro" style={{ color: 'var(--text2)' }}>
-          Uploading...
-        </span>
+        <span className="text-micro text-text2">Uploading...</span>
       ) : (
         <>
-          <Upload style={{ width: 16, height: 16, color: 'var(--text2)' }} />
-          <span className="text-micro" style={{ color: 'var(--text2)' }}>
-            Drop file here or click to upload
-          </span>
-          <span className="text-label tracking-normal" style={{ color: 'rgba(15,21,18,0.35)' }}>
-            JPEG or PNG, ≤ 8 MB
-          </span>
+          <Upload className="h-4 w-4 text-text2" />
+          <span className="text-micro text-text2">Drop file here or click to upload</span>
+          {/* tracking-normal: cancels the Label role's built-in 0.16em — a format
+              hint reads as a sentence, not an eyebrow. */}
+          <span className="text-label tracking-normal text-ink/35">JPEG or PNG, ≤ 8 MB</span>
         </>
       )}
     </button>
@@ -275,25 +218,9 @@ function DropZone({
 
 function GeneratingCard({ label }: { label: string }) {
   return (
-    <div
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 8,
-        padding: '16px 12px',
-        border: '1.5px dashed rgba(46,158,104,0.45)',
-        borderRadius: 10,
-        background: 'rgba(46,158,104,0.04)',
-      }}
-    >
-      <Sparkles
-        style={{ width: 14, height: 14, color: 'var(--spring-text)' }}
-        className="animate-pulse"
-      />
-      <span className="text-micro" style={{ color: 'var(--spring-text)' }}>
-        {label}
-      </span>
+    <div className="flex items-center justify-center gap-2 rounded-md border-[1.5px] border-dashed border-spring/45 bg-spring/4 px-3 py-4">
+      <Sparkles className="h-3.5 w-3.5 animate-pulse text-spring-text" />
+      <span className="text-micro text-spring-text">{label}</span>
     </div>
   )
 }
@@ -312,25 +239,14 @@ function OverlayAction({
 }) {
   return (
     <button
+      className="flex h-[26px] w-[26px] cursor-pointer items-center justify-center rounded-[7px] border-0 bg-white/88 shadow-[0_1px_4px_rgba(15,21,18,0.18)]"
       type="button"
       title={title}
       onClick={(e) => {
         e.stopPropagation()
         onClick()
       }}
-      style={{
-        width: 26,
-        height: 26,
-        borderRadius: 7,
-        border: 'none',
-        background: 'rgba(255,255,255,0.88)',
-        boxShadow: '0 1px 4px rgba(15,21,18,0.18)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        cursor: 'pointer',
-        color,
-      }}
+      style={{ color }}
     >
       {children}
     </button>
@@ -352,52 +268,37 @@ function ImageCard({
   const [viewing, setViewing] = useState(false)
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+    <div className="flex flex-col gap-1.5">
       {/* Uncropped preview (capped width so a 1:1 visual stays ~280px tall); click for full size */}
-      <div
-        style={{
-          position: 'relative',
-          maxWidth: 280,
-          borderRadius: 10,
-          overflow: 'hidden',
-          border: '1px solid var(--line)',
-        }}
-      >
+      <div className="relative max-w-[280px] overflow-hidden rounded-md border border-line">
         <button
+          className="block w-full cursor-zoom-in border-0 bg-transparent p-0"
           type="button"
           title="View full size"
           onClick={() => setViewing(true)}
-          style={{
-            display: 'block',
-            width: '100%',
-            padding: 0,
-            border: 'none',
-            background: 'none',
-            cursor: 'zoom-in',
-          }}
         >
           <Image
+            className="block h-auto w-full"
             src={image.publicUrl}
             alt={image.fileName ?? 'Post image'}
             width={512}
             height={512}
-            style={{ width: '100%', height: 'auto', display: 'block' }}
           />
         </button>
 
-        <div style={{ position: 'absolute', top: 8, right: 8, display: 'flex', gap: 6 }}>
+        <div className="absolute right-2 top-2 flex gap-1.5">
           {onRegenerate && (
             <OverlayAction
               title="Regenerate with AI"
               color="var(--spring-text)"
               onClick={onRegenerate}
             >
-              <Sparkles style={{ width: 13, height: 13 }} />
+              <Sparkles className="h-[13px] w-[13px]" />
             </OverlayAction>
           )}
           {onEdit && (
             <OverlayAction title="Edit text overlay" color="var(--text2)" onClick={onEdit}>
-              <Pencil style={{ width: 13, height: 13 }} />
+              <Pencil className="h-[13px] w-[13px]" />
             </OverlayAction>
           )}
           <OverlayAction
@@ -405,17 +306,19 @@ function ImageCard({
             color="var(--text2)"
             onClick={() => void downloadImageFile(image.publicUrl, image.fileName ?? undefined)}
           >
-            <Download style={{ width: 13, height: 13 }} />
+            <Download className="h-[13px] w-[13px]" />
           </OverlayAction>
           <OverlayAction title="Remove image" color="var(--text2)" onClick={onDelete}>
-            <X style={{ width: 13, height: 13 }} />
+            <X className="h-[13px] w-[13px]" />
           </OverlayAction>
         </div>
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-        <Check style={{ width: 10, height: 10, color: 'var(--spring-text)' }} />
-        <span className="text-label tracking-normal" style={{ color: 'var(--spring-text)' }}>
+      <div className="flex items-center gap-1">
+        <Check className="h-2.5 w-2.5 text-spring-text" />
+        {/* tracking-normal: cancels the Label role's built-in 0.16em — a status line
+            reads as words, not as an eyebrow. */}
+        <span className="text-label tracking-normal text-spring-text">
           Uploaded{sizeMB ? ` · ${sizeMB} MB` : ''}
         </span>
       </div>
@@ -433,15 +336,7 @@ function ImageCard({
 
 function ErrorMessage({ message }: { message: string }) {
   return (
-    <div
-      className="text-micro"
-      style={{
-        color: 'var(--danger)',
-        background: 'var(--danger-bg)',
-        padding: '7px 10px',
-        borderRadius: 6,
-      }}
-    >
+    <div className="rounded-[6px] bg-danger-bg px-2.5 py-[7px] text-micro text-danger">
       {message}
     </div>
   )

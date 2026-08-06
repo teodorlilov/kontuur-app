@@ -143,7 +143,7 @@ export async function updateClient(
   if (!owned) return { ok: false, error: 'Not found' }
 
   const clientError = await updateClientFields(supabase, clientId, data)
-  if (clientError) return { ok: false, error: clientError }
+  if (clientError) return failedUpdate(clientId, 'client fields', clientError)
 
   const [profileError, scheduleError, identityError] = await Promise.all([
     data.brand_profile ? updateBrandProfile(supabase, clientId, data.brand_profile) : null,
@@ -152,9 +152,9 @@ export async function updateClient(
       ? upsertVisualIdentity(clientId, data.visual_identity, 'manual').then((r) => r.error ?? null)
       : null,
   ])
-  if (profileError) return { ok: false, error: profileError }
-  if (scheduleError) return { ok: false, error: scheduleError }
-  if (identityError) return { ok: false, error: identityError }
+  if (profileError) return failedUpdate(clientId, 'brand profile', profileError)
+  if (scheduleError) return failedUpdate(clientId, 'posting schedule', scheduleError)
+  if (identityError) return failedUpdate(clientId, 'visual identity', identityError)
 
   revalidateTag('agency-clients', 'max')
   revalidatePath('/generate')
@@ -162,6 +162,16 @@ export async function updateClient(
 }
 
 // ── Internal helpers ──
+
+/**
+ * Log the database's reason at the boundary and hand the user a plain one.
+ * Raw Supabase messages name columns and constraints, which belong in the log
+ * rather than in a form error.
+ */
+function failedUpdate(clientId: string, part: string, reason: string): ActionResult {
+  console.error(`[clients:update] ${part} write failed for ${clientId}:`, reason)
+  return { ok: false, error: `Could not save the ${part}. Please try again.` }
+}
 
 async function updateClientFields(
   supabase: SupabaseServerClient,
@@ -218,11 +228,14 @@ async function syncDeletedPillars(
   clientId: string,
   newPillarsJson: string | null
 ): Promise<void> {
-  const { data: oldProfile } = await supabase
+  // An unread previous pillar set looks like "nothing was deleted", which leaves
+  // orphaned pillar ids on posts instead of clearing them.
+  const { data: oldProfile, error } = await supabase
     .from('brand_profiles')
     .select('content_pillars')
     .eq('client_id', clientId)
-    .single()
+    .maybeSingle()
+  if (error) throw new Error(`pillar sync read failed: ${error.message}`)
 
   const oldPillars = parsePillars(
     (oldProfile as { content_pillars: string | null } | null)?.content_pillars ?? null

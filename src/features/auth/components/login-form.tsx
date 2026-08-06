@@ -4,6 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { createBrowserSupabaseClient } from '@/lib/supabase/client'
 import { validateEmail } from '@/lib/validation'
+import { cn } from '@/utils/cn'
 import { Input } from '@/components/ui/input'
 import { toast } from '@/components/ui/toast'
 import { AuthLayout } from '@/features/auth/components/auth-layout'
@@ -29,22 +30,10 @@ function LoginFormPanel({
 }: LoginFormPanelProps) {
   return (
     <div>
-      <h3
-        className="text-headline"
-        style={{
-          fontFamily: 'var(--font-display)',
-          fontWeight: 400,
-          color: 'var(--ink)',
-          marginBottom: 6,
-        }}
-      >
-        Welcome back
-      </h3>
-      <p className="text-body" style={{ color: 'var(--text2)', marginBottom: 32 }}>
-        Sign in to your account
-      </p>
-      <form onSubmit={onSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-        <div style={{ marginBottom: 18 }}>
+      <h3 className="text-headline font-display font-normal text-ink mb-1.5">Welcome back</h3>
+      <p className="text-body text-text2 mb-8">Sign in to your account</p>
+      <form onSubmit={onSubmit} className="flex flex-col gap-0">
+        <div className="mb-[18px]">
           <Input
             label="Email"
             type="email"
@@ -56,7 +45,7 @@ function LoginFormPanel({
             labelVariant="caps"
           />
         </div>
-        <div style={{ marginBottom: 6 }}>
+        <div className="mb-1.5">
           <Input
             label="Password"
             type="password"
@@ -68,40 +57,23 @@ function LoginFormPanel({
             labelVariant="caps"
           />
         </div>
-        <div style={{ textAlign: 'right', marginBottom: 18 }}>
-          <Link
-            href="/forgot-password"
-            className="text-micro"
-            style={{ color: 'var(--text2)', textDecoration: 'none' }}
-          >
+        <div className="text-right mb-[18px]">
+          <Link href="/forgot-password" className="text-micro text-text2 no-underline">
             Forgot password?
           </Link>
         </div>
         <button
           type="submit"
           disabled={loading}
-          className="text-label font-semibold uppercase"
+          className={cn(
+            'text-label font-semibold uppercase font-sans',
+            'w-full flex items-center justify-center gap-1.5 px-0 py-[13px] mt-2',
+            'bg-forest-deep text-ink-inv border-none rounded-xs',
+            !loading && 'hover:bg-spring-text'
+          )}
           style={{
-            width: '100%',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 6,
-            padding: '13px 0',
-            background: 'var(--forest-deep)',
-            color: '#f2f5f1',
-            fontFamily: 'var(--font-sans)',
-            border: 'none',
-            borderRadius: 4,
             cursor: loading ? 'not-allowed' : 'pointer',
             opacity: loading ? 0.5 : 1,
-            marginTop: 8,
-          }}
-          onMouseEnter={(e) => {
-            if (!loading) e.currentTarget.style.background = 'var(--spring-text)'
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = 'var(--forest-deep)'
           }}
         >
           {loading && (
@@ -129,12 +101,9 @@ function LoginFormPanel({
           Sign in
         </button>
       </form>
-      <p
-        className="text-caption"
-        style={{ textAlign: 'center', color: 'var(--text2)', marginTop: 20 }}
-      >
+      <p className="text-caption text-center text-text2 mt-5">
         No account?{' '}
-        <Link href="/signup" style={{ color: 'var(--spring-text)', textDecoration: 'none' }}>
+        <Link href="/signup" className="text-spring-text no-underline">
           Sign up
         </Link>
       </p>

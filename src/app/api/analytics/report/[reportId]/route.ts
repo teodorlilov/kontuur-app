@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
 
+/** Fetch one stored analytics report. */
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ reportId: string }> }
@@ -29,6 +30,7 @@ export async function GET(
   return NextResponse.json({ report: reportData })
 }
 
+/** Delete one stored analytics report. */
 export async function DELETE(
   _request: NextRequest,
   { params }: { params: Promise<{ reportId: string }> }

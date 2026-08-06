@@ -34,6 +34,12 @@
 
   /* Ink */
   --ink: #0f1512;
+  /* Ink inverted: the off-white that reads AS text on forest grounds. Slightly
+     warm of pure white so it sits with the paper rather than glaring against
+     it. Named because it was hard-coded at 15 call sites across five features
+     — the palette offered nothing for "a word on a dark plate", so every
+     surface invented the same hex. Pine Deep behind it measures 14.6:1. */
+  --ink-inv: #f2f5f1;
   --text2: #57625a;
   /* Corrected from #8b958d, which measured 2.71:1 and failed AA outright.
      This holds 5.00:1 on the near-white ground (it was 4.51:1 on the old warm
@@ -224,6 +230,7 @@
   --color-surface: var(--surface);
   --color-sunken: var(--sunken);
   --color-ink: var(--ink);
+  --color-ink-inv: var(--ink-inv);
   --color-text2: var(--text2);
   --color-text3: var(--text3);
   --color-line: var(--line);

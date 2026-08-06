@@ -235,15 +235,7 @@ export default function ApprovalPage() {
 
   if (pageState === 'loading') {
     return (
-      <div
-        style={{
-          minHeight: '100vh',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          background: 'var(--paper)',
-        }}
-      >
+      <div className="flex min-h-screen items-center justify-center bg-paper">
         <Spinner size="lg" />
       </div>
     )
@@ -251,31 +243,10 @@ export default function ApprovalPage() {
 
   if (pageState === 'error') {
     return (
-      <div
-        style={{
-          minHeight: '100vh',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          background: 'var(--paper)',
-        }}
-      >
-        <div
-          style={{
-            background: '#fff',
-            borderRadius: 12,
-            border: '1px solid rgba(15,21,18,0.10)',
-            padding: 32,
-            maxWidth: 420,
-            textAlign: 'center',
-          }}
-        >
-          <div className="text-metric" style={{ marginBottom: 12 }}>
-            ⚠️
-          </div>
-          <p className="text-body" style={{ color: 'var(--ink)', fontWeight: 500 }}>
-            {errorMessage}
-          </p>
+      <div className="flex min-h-screen items-center justify-center bg-paper">
+        <div className="max-w-[420px] rounded-[12px] border border-ink/10 bg-surface p-8 text-center">
+          <div className="mb-3 text-metric">⚠️</div>
+          <p className="text-body font-medium text-ink">{errorMessage}</p>
         </div>
       </div>
     )
@@ -283,44 +254,15 @@ export default function ApprovalPage() {
 
   if (pageState === 'submitted') {
     return (
-      <div
-        style={{
-          minHeight: '100vh',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          background: 'var(--paper)',
-        }}
-      >
-        <div
-          style={{
-            background: '#fff',
-            borderRadius: 12,
-            border: '1px solid rgba(15,21,18,0.10)',
-            padding: 32,
-            maxWidth: 420,
-            textAlign: 'center',
-          }}
-        >
-          <div className="text-metric" style={{ marginBottom: 12 }}>
-            {submittedStatus === 'approved' ? '✅' : '📝'}
-          </div>
-          <h2
-            className="text-display"
-            style={{
-              fontFamily: 'var(--font-display, Georgia, serif)',
-              fontWeight: 400,
-              color: 'var(--ink)',
-              marginBottom: 8,
-            }}
-          >
+      <div className="flex min-h-screen items-center justify-center bg-paper">
+        <div className="max-w-[420px] rounded-[12px] border border-ink/10 bg-surface p-8 text-center">
+          <div className="mb-3 text-metric">{submittedStatus === 'approved' ? '✅' : '📝'}</div>
+          <h2 className="mb-2 font-display text-display font-normal text-ink">
             {submittedStatus === 'approved'
               ? 'Thank you! Your posts are confirmed.'
               : 'Your feedback has been sent to the team.'}
           </h2>
-          <p className="text-body" style={{ color: 'var(--text2)' }}>
-            You can close this page.
-          </p>
+          <p className="text-body text-text2">You can close this page.</p>
         </div>
       </div>
     )
@@ -329,15 +271,7 @@ export default function ApprovalPage() {
   if (!data) return null
 
   return (
-    <div
-      style={{
-        height: '100vh',
-        display: 'flex',
-        flexDirection: 'column',
-        overflow: 'hidden',
-        background: 'var(--paper)',
-      }}
-    >
+    <div className="flex h-screen flex-col overflow-hidden bg-paper">
       <ReviewHeader
         agencyName={data.agencyName}
         clientName={data.clientName}
@@ -349,7 +283,7 @@ export default function ApprovalPage() {
         changesCount={countByStatus(postStatuses, 'changes_requested')}
       />
 
-      <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+      <div className="flex flex-1 overflow-hidden">
         <PostList
           posts={posts}
           postStatuses={postStatuses}
@@ -375,30 +309,9 @@ export default function ApprovalPage() {
             isSubmitting={isSubmitting}
           />
         ) : (
-          <div
-            style={{
-              flex: 1,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              flexDirection: 'column',
-              gap: 12,
-              padding: 40,
-              background: 'var(--paper)',
-            }}
-          >
-            <div
-              className="text-display"
-              style={{
-                fontFamily: 'var(--font-display, Georgia, serif)',
-                fontWeight: 400,
-                color: 'var(--ink)',
-                marginBottom: 6,
-              }}
-            >
-              All done
-            </div>
-            <div className="text-body" style={{ color: 'var(--text2)', textAlign: 'center' }}>
+          <div className="flex flex-1 flex-col items-center justify-center gap-3 bg-paper p-10">
+            <div className="mb-1.5 font-display text-display font-normal text-ink">All done</div>
+            <div className="text-center text-body text-text2">
               All posts have been reviewed. The agency will be notified.
             </div>
           </div>

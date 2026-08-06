@@ -1,6 +1,8 @@
 'use client'
 
 import { memo, useState } from 'react'
+import { cn } from '@/utils/cn'
+import { toDateKey } from '@/utils/date-helpers'
 import { PostEventPill } from './post-event-pill'
 import type { CalendarPost } from '@/types/api'
 
@@ -37,7 +39,8 @@ export const DayCell = memo(function DayCell({
   const [dragOver, setDragOver] = useState(false)
 
   const dayNum = date.getDate()
-  const dateKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`
+  // Same helper the parent grid keys this cell by, so the two cannot disagree.
+  const dateKey = toDateKey(date)
 
   return (
     <div
@@ -54,63 +57,36 @@ export const DayCell = memo(function DayCell({
         const postId = e.dataTransfer.getData('text/plain')
         if (postId) onDrop(postId, dateKey)
       }}
-      style={{
-        background: dragOver ? 'var(--wash)' : isOtherMonth ? 'var(--sunken)' : 'var(--surface)',
+      className={cn(
+        'flex min-h-0 cursor-pointer flex-col gap-[3px] overflow-hidden rounded-md px-2 pb-1.5 pt-2',
+        'hover:shadow-[0_1px_6px_rgba(15,21,18,0.06)]',
+        dragOver ? 'bg-wash' : isOtherMonth ? 'bg-sunken' : 'bg-surface',
         // Today's ring is Living Green at 3.38:1 — it clears the 3:1 non-text
         // bar, where lime would be 1.35:1. The lime lives in the day plate below.
-        border: today ? '1.5px solid var(--spring)' : '1px solid var(--line)',
-        borderRadius: 10,
-        padding: '8px 8px 6px',
-        cursor: 'pointer',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 3,
-        overflow: 'hidden',
-        minHeight: 0,
-        opacity: isOtherMonth ? 0.45 : 1,
-        transition: 'border-color 0.15s, box-shadow 0.15s',
-      }}
-      onMouseEnter={(e) => {
-        if (!today) e.currentTarget.style.borderColor = 'var(--line2)'
-        e.currentTarget.style.boxShadow = '0 1px 6px rgba(15,21,18,0.06)'
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.borderColor = today ? 'var(--spring)' : 'var(--line)'
-        e.currentTarget.style.boxShadow = 'none'
-      }}
+        // Only the non-today ring warms on hover; today's stays put.
+        today ? 'border-[1.5px] border-spring' : 'border border-line hover:border-line2',
+        isOtherMonth && 'opacity-45'
+      )}
+      // The shorthand's default `ease` has no exact utility — Tailwind's
+      // transition-* would swap in its own curve.
+      style={{ transition: 'border-color 0.15s, box-shadow 0.15s' }}
     >
       {/* Day number */}
       {today ? (
-        <div
-          className="text-label tracking-normal"
-          style={{
-            width: 20,
-            height: 20,
-            borderRadius: '50%',
-            // The field's lime: today's plate, carrying Pine Deep at 10.87:1.
-            // Was spring under white text, which measured 3.38:1 and failed.
-            background: 'var(--accent)',
-            color: 'var(--forest-deep)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontWeight: 500,
-            flexShrink: 0,
-            marginBottom: 2,
-          }}
-        >
+        // bg-accent is the field's lime: today's plate, carrying Pine Deep at
+        // 10.87:1. Was spring under white text, which measured 3.38:1 and failed.
+        // tracking-normal cancels the Label role's built-in 0.16em.
+        <div className="mb-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-accent text-label font-medium tracking-normal text-forest-deep">
           {dayNum}
         </div>
       ) : (
+        // leading-none: the number is one glyph sat on its own line, and Micro's
+        // 1.35 would spend the cell's height on space the pills below need.
         <div
-          className="text-micro"
-          style={{
-            fontWeight: 500,
-            color: isOtherMonth ? 'var(--text3)' : 'var(--ink)',
-            lineHeight: 1,
-            flexShrink: 0,
-            marginBottom: 2,
-          }}
+          className={cn(
+            'mb-0.5 shrink-0 text-micro font-medium leading-none',
+            isOtherMonth ? 'text-text3' : 'text-ink'
+          )}
         >
           {dayNum}
         </div>
@@ -124,16 +100,8 @@ export const DayCell = memo(function DayCell({
 
       {/* Overflow badge */}
       {posts.length > MAX_VISIBLE && (
-        <div
-          className="text-label tracking-normal"
-          style={{
-            color: 'var(--text2)',
-            background: 'var(--sunken)',
-            padding: '1px 4px',
-            borderRadius: 3,
-            alignSelf: 'flex-start',
-          }}
-        >
+        // tracking-normal cancels the Label role's built-in 0.16em.
+        <div className="self-start rounded-[3px] bg-sunken px-1 py-px text-label tracking-normal text-text2">
           +{posts.length - MAX_VISIBLE}
         </div>
       )}

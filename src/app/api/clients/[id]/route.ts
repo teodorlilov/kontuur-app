@@ -10,6 +10,7 @@ import {
 } from '@/lib/queries/db'
 import { fetchClientData } from '@/lib/clients/fetch-client-data'
 
+/** Fetch one client with the full generation context the wizard needs. */
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const auth = await resolveAuth()
@@ -42,6 +43,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   })
 }
 
+/** Delete a client and everything cascading from it. */
 export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const auth = await resolveAuth()

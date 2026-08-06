@@ -3,7 +3,7 @@ import {
   AUTHENTICITY_URGENT_THRESHOLD,
 } from '@/lib/content-rules/constants'
 import { totalVisualSlots } from '@/lib/visual/visual-backlog'
-import { STALE_REVIEW_DAYS } from '@/utils/constants'
+import { STALE_REVIEW_DAYS, MS_PER_DAY } from '@/utils/constants'
 import type { ValidationData } from '@/types/post'
 import type { QueuePost } from './queue-post'
 
@@ -35,8 +35,6 @@ export const TRIAGE_REASON_LABELS: Record<TriageReason, string> = {
   stale_source: 'Source may be outdated',
   missing_visuals: 'Visuals missing',
 }
-
-const MS_PER_DAY = 86_400_000
 
 export function postAgeDays(createdAt: string, now: Date): number {
   return Math.floor((now.getTime() - new Date(createdAt).getTime()) / MS_PER_DAY)

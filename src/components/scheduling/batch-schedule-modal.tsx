@@ -3,14 +3,7 @@
 import { useState } from 'react'
 import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
-import { useBatchSchedule } from '@/components/scheduling/use-batch-schedule'
-
-interface BatchPost {
-  id: string
-  client_name: string
-  caption: string | null
-  platform: string | null
-}
+import { useBatchSchedule, type BatchPost } from '@/components/scheduling/use-batch-schedule'
 
 interface BatchScheduleModalProps {
   open: boolean

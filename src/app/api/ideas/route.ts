@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
 import { fetchIdeasForAgency, updateIdeaStatus, markIdeasRead, fetchIdeaById } from '@/features/ideas/lib/ideas'
-import type { IdeaStatus } from '@/types/api'
+import { updateIdeasSchema, type UpdateIdeasInput } from '@/features/ideas/schemas'
 
 /** GET — list ideas for the authenticated agency. */
 export async function GET(req: Request) {
@@ -32,25 +32,21 @@ export async function PATCH(req: Request) {
   if (!auth.ok) return auth.response
   const { agencyId } = auth
 
-  const body = await req.json()
+  let body: UpdateIdeasInput
+  try {
+    body = updateIdeasSchema.parse(await req.json())
+  } catch {
+    return NextResponse.json(
+      { error: 'Expected either { action: "mark_read", ids } or { ideaId, status | postId }' },
+      { status: 400 }
+    )
+  }
 
-  // Mark ideas as read
-  if (body.action === 'mark_read' && Array.isArray(body.ids)) {
-    await markIdeasRead(agencyId, body.ids as string[])
+  if ('action' in body) {
+    await markIdeasRead(agencyId, body.ids)
     return NextResponse.json({ ok: true })
   }
 
-  // Update idea status and/or link a generated post
-  const { ideaId, status, postId } = body as {
-    ideaId: string
-    status?: IdeaStatus
-    postId?: string
-  }
-
-  if (!ideaId || (!status && !postId)) {
-    return NextResponse.json({ error: 'ideaId and status or postId required' }, { status: 400 })
-  }
-
-  await updateIdeaStatus(ideaId, agencyId, status, postId)
+  await updateIdeaStatus(body.ideaId, agencyId, body.status, body.postId)
   return NextResponse.json({ ok: true })
 }

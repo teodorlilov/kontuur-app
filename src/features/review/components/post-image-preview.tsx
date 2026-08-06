@@ -7,13 +7,13 @@ import type { PostImage } from '@/types/api'
 export function PostImagePreview({ image, altText }: { image: PostImage | null; altText: string }) {
   if (!image) return null
   return (
-    <div style={{ borderRadius: 10, overflow: 'hidden', border: '1px solid rgba(15,21,18,0.10)' }}>
+    <div className="overflow-hidden rounded-md border border-ink/10">
       <Image
+        className="block h-auto w-full"
         src={image.publicUrl}
         alt={altText}
         width={512}
         height={512}
-        style={{ width: '100%', height: 'auto', display: 'block' }}
       />
     </div>
   )

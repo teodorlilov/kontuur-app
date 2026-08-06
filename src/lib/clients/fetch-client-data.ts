@@ -9,7 +9,7 @@ import { toCarouselSwipeCues, toFormalityRulesData } from '@/lib/clients/languag
 import type { LanguageConfig } from '@/lib/clients/language-rules'
 import { parsePillars, type WeightedPillar } from '@/lib/clients/content-pillars'
 import type { SourceStrategy } from '@/types/api'
-import { MAX_POST_HISTORY_COUNT } from '@/utils/constants'
+import { MAX_POST_HISTORY_COUNT, DEFAULT_CAROUSEL_SLIDES } from '@/utils/constants'
 
 export interface ClientData {
   // from clients table
@@ -79,7 +79,7 @@ export async function buildClientData(
     contentPillars: parsePillars(profile?.content_pillars ?? null),
     isHealthNiche: profile?.is_health_niche ?? null,
     topPerformingPosts,
-    defaultCarouselSlides: profile?.default_carousel_slides ?? 7,
+    defaultCarouselSlides: profile?.default_carousel_slides ?? DEFAULT_CAROUSEL_SLIDES,
     defaultPostType: profile?.default_post_type ?? null,
     requireSourceGrounding: parseRequireSourceGrounding(profile?.source_strategy),
     sourceStrategy: (profile?.source_strategy as SourceStrategy | null) ?? null,
@@ -110,13 +110,18 @@ export async function fetchClientData(
   agencyId: string,
   preloaded?: ClientData
 ): Promise<{ data: ClientData } | { error: string }> {
-  const { data: rawClient } = await supabase
+  // maybeSingle so a genuinely missing client stays distinguishable from a
+  // failed query — reporting a database error as 'Client not found' sends the
+  // user hunting for a client that is actually there.
+  const { data: rawClient, error } = await supabase
     .from('clients')
     .select('id, name, niche, language')
     .eq('id', clientId)
     .eq('agency_id', agencyId)
-    .single()
+    .maybeSingle()
+  if (error) return { error: `Could not load the client: ${error.message}` }
 
+  // as: explicit column projection — Supabase types from the table, not the select
   const client = rawClient as ClientIdentity | null
   if (!client) return { error: 'Client not found' }
 
@@ -130,7 +135,9 @@ export async function getAgencyNiche(
   supabase: SupabaseClient,
   agencyId: string
 ): Promise<string | undefined> {
-  const { data } = await supabase.from('clients').select('niche').eq('agency_id', agencyId)
+  const { data, error } = await supabase.from('clients').select('niche').eq('agency_id', agencyId)
+  if (error) throw new Error(`agency niche query failed: ${error.message}`)
+  // as: explicit column projection — Supabase types from the table, not the select
   const rows = (data as Array<{ niche: string | null }> | null) ?? []
   const freq = new Map<string, number>()
   for (const { niche } of rows) {

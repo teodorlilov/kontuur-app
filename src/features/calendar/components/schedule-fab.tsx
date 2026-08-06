@@ -2,6 +2,7 @@
 
 import { memo } from 'react'
 import { CalendarDays } from 'lucide-react'
+import { cn } from '@/utils/cn'
 
 interface ScheduleFabProps {
   unscheduledCount: number
@@ -16,50 +17,29 @@ export const ScheduleFab = memo(function ScheduleFab({
   onClick,
 }: ScheduleFabProps) {
   return (
-    <div style={{ position: 'absolute', bottom: 24, right: 24, zIndex: 10 }}>
+    <div className="absolute bottom-6 right-6 z-10">
       <button
         type="button"
         onClick={onClick}
-        style={{
-          width: 52,
-          height: 52,
-          borderRadius: '50%',
+        className={cn(
+          'relative flex size-[52px] cursor-pointer items-center justify-center rounded-full border-none',
+          'shadow-[0_4px_18px_rgba(12,46,32,0.28)]',
           // Open is the active state — Pine Deep, a tone shift from Deep Pine
           // rather than a hue change. Both branches used to be green anyway.
-          background: isOpen ? 'var(--forest-deep)' : 'var(--forest)',
-          border: 'none',
-          cursor: 'pointer',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          boxShadow: '0 4px 18px rgba(12,46,32,0.28)',
-          transition: 'all 0.2s',
-          position: 'relative',
-        }}
+          isOpen ? 'bg-forest-deep' : 'bg-forest'
+        )}
+        // `all 0.2s` rides the default `ease`; Tailwind's transition-* would
+        // swap in its own curve, so the shorthand stays a value.
+        style={{ transition: 'all 0.2s' }}
       >
-        <CalendarDays style={{ width: 20, height: 20, color: '#f2f5f1' }} />
+        <CalendarDays className="size-5 text-ink-inv" />
 
         {/* Badge */}
         {unscheduledCount > 0 && (
-          <div
-            className="text-label tracking-normal"
-            style={{
-              position: 'absolute',
-              top: -2,
-              right: -2,
-              width: 18,
-              height: 18,
-              borderRadius: '50%',
-              background: 'var(--pending)',
-              border: '2px solid var(--surface)',
-              fontWeight: 500,
-              color: '#fff',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              lineHeight: 1,
-            }}
-          >
+          // leading-none: a single digit centred in an 18px disc, where Label's
+          // 1.2 would push it off the optical centre.
+          // tracking-normal cancels the Label role's built-in 0.16em.
+          <div className="absolute -right-0.5 -top-0.5 flex size-[18px] items-center justify-center rounded-full border-2 border-surface bg-pending text-label font-medium leading-none tracking-normal text-white">
             {unscheduledCount > 9 ? '9+' : unscheduledCount}
           </div>
         )}

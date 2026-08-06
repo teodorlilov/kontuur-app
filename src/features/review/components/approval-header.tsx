@@ -39,17 +39,8 @@ function StatusChip({ label, colour }: { label: string; colour: ChipColour }) {
   const Icon = CHIP_ICONS[colour]
   return (
     <div
-      className="text-micro"
-      style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: 5,
-        padding: '4px 10px',
-        borderRadius: 6,
-        fontWeight: 500,
-        background: s.bg,
-        color: s.color,
-      }}
+      className="inline-flex items-center gap-[5px] rounded-[6px] px-2.5 py-1 text-micro font-medium"
+      style={{ background: s.bg, color: s.color }}
     >
       <Icon size={11} />
       {label}
@@ -69,87 +60,34 @@ export function ReviewHeader({
   changesCount,
 }: ReviewHeaderProps) {
   return (
-    <div
-      style={{
-        background: '#fff',
-        borderBottom: '1px solid rgba(15,21,18,0.10)',
-        padding: '18px 28px 16px',
-        flexShrink: 0,
-      }}
-    >
+    <div className="shrink-0 border-b border-ink/10 bg-surface px-7 pb-4 pt-[18px]">
       {/* Top row: agency + date */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          marginBottom: 14,
-        }}
-      >
-        <div
-          className="text-label"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-            fontWeight: 500,
-            color: 'var(--text2)',
-            letterSpacing: '2px',
-            textTransform: 'uppercase' as const,
-          }}
-        >
-          <div
-            style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--spring-text)' }}
-          />
+      <div className="mb-3.5 flex items-center justify-between">
+        {/* tracking-[2px]: wider than the Label role's own 0.16em (1.6px at its 10px
+            step) — the agency name is the page's widest-set mark. */}
+        <div className="flex items-center gap-2 text-label font-medium uppercase tracking-[2px] text-text2">
+          <div className="h-1.5 w-1.5 rounded-full bg-spring-text" />
           {agencyName}
         </div>
-        <div
-          className="text-micro"
-          style={{
-            color: 'var(--text2)',
-            background: 'var(--paper)',
-            border: '1px solid rgba(15,21,18,0.12)',
-            padding: '4px 10px',
-            borderRadius: 6,
-          }}
-        >
+        <div className="rounded-[6px] border border-ink/12 bg-paper px-2.5 py-1 text-micro text-text2">
           {formatDateChip()}
         </div>
       </div>
 
       {/* Title */}
-      <div
-        className="text-headline"
-        style={{
-          fontFamily: 'var(--font-display, Georgia, serif)',
-          fontWeight: 400,
-          color: 'var(--ink)',
-          marginBottom: 6,
-        }}
-      >
-        Posts for review
-      </div>
+      <div className="mb-1.5 font-display text-headline font-normal text-ink">Posts for review</div>
 
       {/* Meta */}
-      <div
-        className="text-caption"
-        style={{
-          color: 'var(--text2)',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 10,
-          flexWrap: 'wrap',
-        }}
-      >
+      <div className="flex flex-wrap items-center gap-2.5 text-caption text-text2">
         <span>{clientName}</span>
-        <span style={{ color: 'rgba(15,21,18,0.20)' }}>·</span>
+        <span className="text-ink/20">·</span>
         <span>{dateRange}</span>
-        <span style={{ color: 'rgba(15,21,18,0.20)' }}>·</span>
+        <span className="text-ink/20">·</span>
         <span>{platform}</span>
       </div>
 
       {/* Status chips */}
-      <div style={{ display: 'flex', gap: 7, marginTop: 12 }}>
+      <div className="mt-3 flex gap-[7px]">
         <StatusChip label={`${totalCount} posts`} colour="total" />
         {pendingCount > 0 && <StatusChip label={`${pendingCount} pending`} colour="pending" />}
         {approvedCount > 0 && <StatusChip label={`${approvedCount} approved`} colour="approved" />}

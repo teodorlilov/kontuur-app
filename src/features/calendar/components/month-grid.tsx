@@ -49,48 +49,20 @@ export const MonthGrid = memo(function MonthGrid({
   }
 
   return (
-    <div
-      className="px-2 md:px-[18px]"
-      style={{
-        flex: 1,
-        paddingTop: 10,
-        paddingBottom: 18,
-        display: 'flex',
-        flexDirection: 'column',
-        overflow: 'hidden',
-      }}
-    >
+    <div className="flex flex-1 flex-col overflow-hidden px-2 pb-[18px] pt-2.5 md:px-[18px]">
       {/* Day headers */}
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(7, 1fr)',
-          padding: '5px 0 4px',
-          flexShrink: 0,
-        }}
-      >
+      {/* grid-cols-[repeat(7,1fr)], not grid-cols-7: the shorthand floors each
+          track at min-content, which would let a long pill widen its column. */}
+      <div className="grid shrink-0 grid-cols-[repeat(7,1fr)] pb-1 pt-[5px]">
         {DAY_HEADERS.map((d) => (
-          <div
-            key={d}
-            className="text-label font-semibold uppercase text-text2"
-            style={{ textAlign: 'center' }}
-          >
+          <div key={d} className="text-center text-label font-semibold uppercase text-text2">
             {d}
           </div>
         ))}
       </div>
 
       {/* Day cells */}
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(7, 1fr)',
-          gridAutoRows: '1fr',
-          gap: 5,
-          flex: 1,
-          minHeight: 0,
-        }}
-      >
+      <div className="grid min-h-0 flex-1 auto-rows-[1fr] grid-cols-[repeat(7,1fr)] gap-[5px]">
         {days.map((day) => {
           const key = toDateKey(day)
           const dayPosts = postsByDate.get(key) ?? []

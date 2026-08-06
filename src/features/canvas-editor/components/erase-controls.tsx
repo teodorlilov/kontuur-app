@@ -21,8 +21,8 @@ export function EraseControls({ erase }: { erase: ErasePanelState }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
       <div>
-        <div style={PANEL_LABEL}>Erase from element</div>
-        <p style={{ fontSize: 'var(--text-micro)', color: 'var(--text2)', margin: 0 }}>
+        <div className={PANEL_LABEL}>Erase from element</div>
+        <p className="m-0 text-micro text-text2">
           Paint over the parts of the selected element to remove — they become transparent.
         </p>
       </div>

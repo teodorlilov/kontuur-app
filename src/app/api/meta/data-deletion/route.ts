@@ -27,6 +27,7 @@ function verifySignedRequest(signedRequest: string, appSecret: string): { user_i
   }
 }
 
+/** Meta's mandated data-deletion callback. Verifies Meta's HMAC signature before deleting anything. */
 export async function POST(request: NextRequest) {
   const contentType = request.headers.get('content-type') ?? ''
   let signedRequest: string | null = null

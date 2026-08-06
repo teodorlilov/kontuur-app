@@ -10,119 +10,50 @@ const fadeUp = (delay: number) => ({
 
 export function Hero() {
   return (
-    <section
-      className="mkt-pad"
-      style={{
-        paddingTop: 96,
-        paddingBottom: 0,
-        textAlign: 'center',
-        background: 'var(--paper)',
-        overflow: 'hidden',
-      }}
-    >
+    <section className="mkt-pad overflow-hidden bg-paper pb-0 pt-24 text-center">
+      {/* tracking-[0.1em]: an all-caps eyebrow needs air between letters; the
+          Micro role is tuned for mixed-case UI labels and carries none. */}
       <motion.p
-        className="text-micro"
+        className="mb-5 text-micro font-medium uppercase tracking-[0.1em] text-spring"
         {...fadeUp(0)}
-        style={{
-          textTransform: 'uppercase',
-          letterSpacing: '0.1em',
-          color: 'var(--spring)',
-          fontWeight: 500,
-          marginBottom: 20,
-        }}
       >
         Built for marketing agencies
       </motion.p>
 
+      {/* leading-[1.1] + tracking-[-0.03em]: the fluid hero size is not a ramp
+          step, so it brings no metrics of its own — both are set here. */}
       <motion.h1
         {...fadeUp(0.06)}
-        style={{
-          fontFamily: 'var(--font-display)',
-          fontSize: 'clamp(36px, 5vw, 64px)',
-          fontWeight: 400,
-          letterSpacing: '-0.03em',
-          lineHeight: 1.1,
-          color: 'var(--ink)',
-          maxWidth: 700,
-          margin: '0 auto 24px',
-        }}
+        className="mx-auto mb-6 mt-0 max-w-[700px] font-display font-normal leading-[1.1] tracking-[-0.03em] text-ink"
+        style={{ fontSize: 'clamp(36px, 5vw, 64px)' }}
       >
         AI-powered social media
         <br />
         for serious agencies.
       </motion.h1>
 
+      {/* leading-[1.6]: a centred two-line standfirst; the Display role's 1.35
+          is set for headings and packs these lines too tight. */}
       <motion.p
-        className="text-display"
+        className="mx-auto mb-10 mt-0 max-w-[480px] text-display leading-[1.6] text-text2"
         {...fadeUp(0.12)}
-        style={{
-          color: 'var(--text2)',
-          maxWidth: 480,
-          margin: '0 auto 40px',
-          lineHeight: 1.6,
-        }}
       >
         Generate, review, schedule and analyse Instagram content for all your clients — from one
         place.
       </motion.p>
 
-      <motion.div
-        {...fadeUp(0.18)}
-        style={{
-          display: 'flex',
-          gap: 12,
-          justifyContent: 'center',
-          flexWrap: 'wrap',
-          marginBottom: 72,
-        }}
-      >
+      <motion.div className="mb-18 flex flex-wrap justify-center gap-3" {...fadeUp(0.18)}>
+        {/* leading-none: a single-line button label, centred by its own padding. */}
         <Link
-          className="text-title"
+          className="inline-flex items-center gap-1.5 rounded-md bg-forest px-6 py-3 text-title font-medium leading-none text-white no-underline transition-[background] duration-150 ease-[ease] hover:bg-forest-deep"
           href="/dashboard"
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 6,
-            padding: '12px 24px',
-            background: 'var(--forest)',
-            color: '#fff',
-            borderRadius: 10,
-            fontWeight: 500,
-            textDecoration: 'none',
-            lineHeight: 1,
-            transition: 'background 150ms ease',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = 'var(--forest-deep)'
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = 'var(--forest)'
-          }}
         >
           Get started free →
         </Link>
+        {/* leading-none: matches the primary button so both caps sit at one height. */}
         <a
-          className="text-title"
+          className="inline-flex items-center rounded-md border border-line2 bg-transparent px-6 py-3 text-title font-medium leading-none text-ink no-underline transition-[background] duration-150 ease-[ease] hover:bg-ink/[0.04]"
           href="#how-it-works"
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            padding: '12px 24px',
-            background: 'transparent',
-            color: 'var(--ink)',
-            border: '1px solid var(--line2)',
-            borderRadius: 10,
-            fontWeight: 500,
-            textDecoration: 'none',
-            lineHeight: 1,
-            transition: 'background 150ms ease',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = 'rgba(15,21,18,0.04)'
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = 'transparent'
-          }}
         >
           See how it works
         </a>
@@ -132,19 +63,10 @@ export function Hero() {
       <motion.img
         src="/dashboard.png"
         alt="Kontuur dashboard"
+        className="mx-auto my-0 block w-full max-w-[1100px] rounded-t-[16px] border border-b-0 border-line shadow-[0_-8px_48px_rgba(26,25,24,0.08)]"
         initial={{ opacity: 0, y: 32, scale: 0.97 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ duration: 0.6, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
-        style={{
-          maxWidth: 1100,
-          width: '100%',
-          margin: '0 auto',
-          borderRadius: '16px 16px 0 0',
-          border: '1px solid var(--line)',
-          borderBottom: 'none',
-          boxShadow: '0 -8px 48px rgba(26,25,24,0.08)',
-          display: 'block',
-        }}
       />
     </section>
   )

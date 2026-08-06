@@ -25,6 +25,7 @@ export const maxDuration = 300
 // instead of Vercel killing the function at maxDuration (300s) mid-client.
 const TIME_BUDGET_MS = 240_000
 
+/** Cron endpoint — generates each client's batch when its weekday+hour slot comes due in the agency's timezone. */
 export async function GET(request: NextRequest) {
   const authHeader = request.headers.get('authorization')
   if (!process.env.CRON_SECRET || authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
@@ -41,11 +42,16 @@ export async function GET(request: NextRequest) {
   }
   const processedAgencyIds = new Set<string>()
 
-  // Fetch all active schedules + batch-load context (clients, profiles, timezones)
-  const { data: schedules } = await supabase
+  const { data: schedules, error: schedulesError } = await supabase
     .from('posting_schedules')
     .select('id, client_id, is_active, frequency_value, auto_generate_day, auto_generate_time')
     .eq('is_active', true)
+  // No schedules and a failed schedule query both produce an empty due list, so
+  // without this the cron reports a clean run on the day it generated nothing.
+  if (schedulesError) {
+    console.error('[cron:generate] active schedule query failed:', schedulesError.message)
+    return NextResponse.json({ error: 'Failed to load schedules' }, { status: 500 })
+  }
 
   const ctx = await fetchScheduleContext(supabase, schedules ?? [])
 
@@ -56,7 +62,7 @@ export async function GET(request: NextRequest) {
   // in-flight invocation is not doubled. 26h covers the widest case — a
   // midnight slot checked at the end of its local day, plus grace.
   const recentCutoff = new Date(Date.now() - 26 * 3_600_000).toISOString()
-  const { data: recentRuns } = await supabase
+  const { data: recentRuns, error: recentRunsError } = await supabase
     .from('generation_runs')
     .select('client_id, created_at')
     .in(
@@ -65,6 +71,12 @@ export async function GET(request: NextRequest) {
     )
     .in('status', ['running', 'complete'])
     .gte('created_at', recentCutoff)
+  // This is the whole dedup guard: an unread failure reads as "nothing ran
+  // recently" and regenerates a batch every client already has.
+  if (recentRunsError) {
+    console.error('[cron:generate] recent run query failed:', recentRunsError.message)
+    return NextResponse.json({ error: 'Failed to load recent runs' }, { status: 500 })
+  }
   const lastRunAt = new Map<string, number>()
   for (const run of (recentRuns as Array<{
     client_id: string | null
@@ -115,18 +127,15 @@ export async function GET(request: NextRequest) {
 
       const brandProfile = ctx.brandProfiles.get(clientId) ?? null
 
-      // Fetch full ClientData (includes top-performing posts, language config)
       const clientResult = await fetchClientData(supabase, clientId, agencyId)
       if ('error' in clientResult) continue
       const client = clientResult.data
 
-      // 7. Determine platform, post type, slide count
       const mixJson = (brandProfile?.weekly_mix_json ?? {}) as Record<string, unknown>
       const platform = extractPlatformFromMix(mixJson)
       const postType = (brandProfile?.default_post_type ?? 'single') as PostType
       const slideCount = brandProfile?.default_carousel_slides ?? DEFAULT_CAROUSEL_SLIDES
 
-      // 8. Create generation run (mirrors the wizard flow for dedup tracking).
       // Under hourly ticks the run row IS the slot's dedup key: a batch
       // generated without one would be regenerated every remaining tick
       // today. Skip instead — the next tick retries the insert.
@@ -140,7 +149,6 @@ export async function GET(request: NextRequest) {
         continue
       }
 
-      // 9. Research themes via Tavily + LLM (same pipeline as wizard)
       const researchStartedAt = Date.now()
       const researchTopics = await performResearch({
         supabase,
@@ -170,7 +178,6 @@ export async function GET(request: NextRequest) {
         clientSourceId: t.client_source_id ?? null,
       }))
 
-      // 10. Run generation pipeline (with trackTheme wired up, same as wizard)
       const researchMs = Date.now() - researchStartedAt
       const generationStartedAt = Date.now()
       const generationResults = await runGenerationBatch({
@@ -196,7 +203,7 @@ export async function GET(request: NextRequest) {
       })
       const generationMs = Date.now() - generationStartedAt
 
-      // 11. Save posts to DB as pending_review — batch insert to avoid N serial round-trips
+      // Batch insert rather than N serial round-trips.
       if (generationResults.length > 0) {
         const { data: savedPosts, error: saveError } = await supabase
           .from('posts')
@@ -234,12 +241,21 @@ export async function GET(request: NextRequest) {
         }
 
         if (savedPosts && savedPosts.length > 0) {
-          await supabase.from('post_history').insert(
+          const { error: historyError } = await supabase.from('post_history').insert(
             generationResults.map(({ post }) => ({
               client_id: clientId,
               topic_summary: post.topic_summary,
             }))
           )
+          // Logged, not thrown: the batch is already saved, and the run must not
+          // be relabelled 'failed' past this point. History only feeds topic
+          // de-duplication, so the cost of losing it is a repeated topic later.
+          if (historyError) {
+            console.error(
+              `[cron] post history insert failed for client ${clientId}:`,
+              historyError.message
+            )
+          }
           results.posts_created += savedPosts.length
         }
       }
@@ -251,13 +267,12 @@ export async function GET(request: NextRequest) {
       if (runId) await finishGenerationRun(supabase, runId, 'complete')
 
       try {
-        // 12. Notify agency
-        await supabase.from('notifications').insert({
+        const { error: notifyError } = await supabase.from('notifications').insert({
           agency_id: agencyId,
           message: `${generationResults.length} post${generationResults.length === 1 ? '' : 's'} ready to review for ${clientRow.name}`,
         })
+        if (notifyError) throw new Error(`notification insert failed: ${notifyError.message}`)
 
-        // 13. Refresh best-time if stale
         const updatedAt = brandProfile?.best_time_updated_at
         const isStale =
           !updatedAt ||
@@ -269,13 +284,16 @@ export async function GET(request: NextRequest) {
             language: client.language,
             platforms: platform,
           })
-          await supabase
+          const { error: bestTimeError } = await supabase
             .from('brand_profiles')
             .update({
               best_time_json: bestTime as unknown as Json,
               best_time_updated_at: new Date().toISOString(),
             })
             .eq('client_id', clientId)
+          // Unwritten best_time_updated_at leaves the profile permanently stale,
+          // so every later tick pays for a fresh LLM best-time call.
+          if (bestTimeError) throw new Error(`best time write failed: ${bestTimeError.message}`)
         }
       } catch (err) {
         console.error(`[cron] post-save follow-ups failed for client ${clientId}:`, err)
@@ -297,22 +315,25 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  // 14. Intelligence briefing — one per agency per week
+  // One briefing per agency per week.
   const weekStart = getMondayISO()
   for (const agencyId of processedAgencyIds) {
     try {
-      const { data: existing } = await supabase
+      // This read is the once-per-week guard; an unread failure regenerates a
+      // briefing the agency already has, at LLM cost.
+      const { data: existing, error: existingError } = await supabase
         .from('intelligence_briefings')
         .select('id')
         .eq('agency_id', agencyId)
         .gte('week_start', weekStart)
         .maybeSingle()
+      if (existingError) throw new Error(`briefing lookup failed: ${existingError.message}`)
 
       if (!existing) {
         const agencyNiche = await getAgencyNiche(supabase, agencyId)
         const briefing = await generateBriefing({ agencyNiche })
 
-        const { data: inserted } = await supabase
+        const { data: inserted, error: insertError } = await supabase
           .from('intelligence_briefings')
           .insert({
             agency_id: agencyId,
@@ -325,38 +346,46 @@ export async function GET(request: NextRequest) {
           })
           .select('id')
           .single()
+        if (insertError || !inserted) {
+          throw new Error(`briefing insert failed: ${insertError?.message ?? 'no row returned'}`)
+        }
 
         // Solo coaching card — only for solo-mode agencies
-        if (inserted) {
-          const { data: rawAgency } = await supabase
-            .from('agencies')
-            .select('mode')
-            .eq('id', agencyId)
-            .single()
-          const agency = rawAgency as { mode: string } | null
+        const { data: rawAgency, error: agencyError } = await supabase
+          .from('agencies')
+          .select('mode')
+          .eq('id', agencyId)
+          .maybeSingle()
+        if (agencyError) throw new Error(`agency mode lookup failed: ${agencyError.message}`)
+        // as: explicit column projection — Supabase types from the table, not the select
+        const agency = rawAgency as { mode: string } | null
 
-          if (agency?.mode === 'solo') {
-            // SECURITY: admin client bypasses RLS — must scope pending count to this agency's clients
-            // agencyNiche already computed above — no extra niche query needed
-            const { data: agencyClients } = await supabase
-              .from('clients')
-              .select('id')
-              .eq('agency_id', agencyId)
-            const agencyClientIds = ((agencyClients as Array<{ id: string }> | null) ?? []).map(
-              (c) => c.id
-            )
+        if (agency?.mode === 'solo') {
+          // SECURITY: admin client bypasses RLS — must scope pending count to this agency's clients
+          // agencyNiche already computed above — no extra niche query needed
+          const { data: agencyClients, error: clientsError } = await supabase
+            .from('clients')
+            .select('id')
+            .eq('agency_id', agencyId)
+          // An empty list would read as "nothing pending" and coach the opposite advice.
+          if (clientsError) throw new Error(`agency client query failed: ${clientsError.message}`)
+          const agencyClientIds = ((agencyClients as Array<{ id: string }> | null) ?? []).map(
+            (c) => c.id
+          )
 
-            const pendingCount = await countPendingPostsByClients(supabase, agencyClientIds)
+          const pendingCount = await countPendingPostsByClients(supabase, agencyClientIds)
 
-            const coaching = await generateSoloCoaching({
-              niche: agencyNiche ?? 'general',
-              pendingCount,
-            })
+          const coaching = await generateSoloCoaching({
+            niche: agencyNiche ?? 'general',
+            pendingCount,
+          })
 
-            await supabase
-              .from('intelligence_briefings')
-              .update({ coaching_points: coaching.coaching_points as unknown as Json })
-              .eq('id', (inserted as { id: string }).id)
+          const { error: coachingError } = await supabase
+            .from('intelligence_briefings')
+            .update({ coaching_points: coaching.coaching_points as unknown as Json })
+            .eq('id', (inserted as { id: string }).id)
+          if (coachingError) {
+            throw new Error(`coaching write failed: ${coachingError.message}`)
           }
         }
       }

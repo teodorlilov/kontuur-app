@@ -1,6 +1,7 @@
 'use client'
 
 import { Copy, ChevronLeft, ChevronRight } from 'lucide-react'
+import { postTypeLabel } from '@/features/review/lib/queue-post'
 import { getPillarColor } from '@/components/ui/colors/pillar-colors'
 import { formatScheduleDate } from '@/utils/format'
 import type { ApprovalPostData } from '@/types/api'
@@ -28,30 +29,9 @@ interface PostDetailProps {
 /** Small pill for the meta topbar. */
 function MetaPill({ label, dotColor }: { label: string; dotColor?: string }) {
   return (
-    <span
-      className="text-micro"
-      style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: 4,
-        fontWeight: 500,
-        padding: '3px 9px',
-        borderRadius: 6,
-        background: 'rgba(15,21,18,0.06)',
-        color: 'var(--text2)',
-        whiteSpace: 'nowrap',
-      }}
-    >
+    <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-[6px] bg-ink/6 px-[9px] py-[3px] text-micro font-medium text-text2">
       {dotColor && (
-        <span
-          style={{
-            width: 6,
-            height: 6,
-            borderRadius: '50%',
-            background: dotColor,
-            flexShrink: 0,
-          }}
-        />
+        <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: dotColor }} />
       )}
       {label}
     </span>
@@ -71,20 +51,12 @@ function NavButton({
   const Icon = direction === 'prev' ? ChevronLeft : ChevronRight
   return (
     <button
+      className="flex h-7 w-7 items-center justify-center rounded-[6px] border border-ink/12 bg-surface transition-opacity duration-120 ease-[ease]"
       onClick={onClick}
       disabled={disabled}
       style={{
-        width: 28,
-        height: 28,
-        borderRadius: 6,
-        border: '1px solid rgba(15,21,18,0.12)',
-        background: '#fff',
         cursor: disabled ? 'default' : 'pointer',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
         opacity: disabled ? 0.35 : 1,
-        transition: 'opacity 0.12s',
       }}
     >
       <Icon size={14} color="var(--text2)" />
@@ -95,14 +67,6 @@ function NavButton({
 /** Format scheduled_at into a readable date string. */
 
 /** Build a post type label from post_type and slides_json. */
-function postTypeLabel(postType: string, slides: unknown): string {
-  if (postType === 'carousel') {
-    const count = Array.isArray(slides) ? slides.length : 0
-    return `Carousel · ${count} slides`
-  }
-  return 'Single image'
-}
-
 /** Meta topbar showing post pills and navigation arrows. */
 function MetaTopbar({
   post,
@@ -121,18 +85,7 @@ function MetaTopbar({
   const statusStyle = status !== 'pending' ? APPROVAL_STATUS_STYLES[status] : null
 
   return (
-    <div
-      style={{
-        padding: '10px 20px',
-        background: '#fff',
-        borderBottom: '1px solid rgba(15,21,18,0.07)',
-        display: 'flex',
-        alignItems: 'center',
-        gap: 7,
-        flexShrink: 0,
-        flexWrap: 'wrap',
-      }}
-    >
+    <div className="flex shrink-0 flex-wrap items-center gap-[7px] border-b border-ink/7 bg-surface px-5 py-2.5">
       <MetaPill label={`#${postIndex + 1}`} />
       <MetaPill label={post.scheduled_at ? formatScheduleDate(new Date(post.scheduled_at)) : ''} />
       {post.platform && <MetaPill label={post.platform} />}
@@ -140,20 +93,14 @@ function MetaTopbar({
       {post.pillar && <MetaPill label={post.pillar} dotColor={pillar?.hex} />}
       {statusStyle && (
         <span
-          className="text-micro"
-          style={{
-            fontWeight: 500,
-            padding: '3px 9px',
-            borderRadius: 6,
-            background: statusStyle.bg,
-            color: statusStyle.color,
-          }}
+          className="rounded-[6px] px-[9px] py-[3px] text-micro font-medium"
+          style={{ background: statusStyle.bg, color: statusStyle.color }}
         >
           {statusStyle.label}
         </span>
       )}
 
-      <div style={{ marginLeft: 'auto', display: 'flex', gap: 5 }}>
+      <div className="ml-auto flex gap-[5px]">
         <NavButton direction="prev" disabled={postIndex === 0} onClick={() => onNavigate(-1)} />
         <NavButton
           direction="next"
@@ -169,57 +116,24 @@ function MetaTopbar({
 function CaptionCard({ caption }: { caption: string | null }) {
   if (!caption) return null
   return (
-    <div
-      style={{
-        background: '#fff',
-        border: '1px solid rgba(15,21,18,0.10)',
-        borderRadius: 12,
-        padding: '16px 18px',
-      }}
-    >
-      <div
-        className="text-label"
-        style={{
-          fontWeight: 500,
-          color: 'var(--text2)',
-          letterSpacing: '1.2px',
-          textTransform: 'uppercase' as const,
-          marginBottom: 10,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-        }}
-      >
+    <div className="rounded-[12px] border border-ink/10 bg-surface px-[18px] py-4">
+      {/* tracking-[1.2px]: tighter than the Label role's own 0.16em (1.6px at its
+          10px step) — the caption eyebrow sits closer than a standalone label. */}
+      <div className="mb-2.5 flex items-center justify-between text-label font-medium uppercase tracking-[1.2px] text-text2">
         Caption
+        {/* tracking-normal: cancels the Label role's 0.16em — this is a button, not
+            a spaced-out eyebrow. */}
         <button
-          className="text-label tracking-normal"
+          className="flex cursor-pointer items-center gap-1 border-0 bg-transparent text-label font-medium tracking-normal text-spring-text"
           onClick={() => navigator.clipboard?.writeText(caption)}
-          style={{
-            color: 'var(--spring-text)',
-            fontWeight: 500,
-            background: 'none',
-            border: 'none',
-            cursor: 'pointer',
-            fontFamily: 'inherit',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 4,
-          }}
         >
           <Copy size={10} />
           Copy
         </button>
       </div>
-      <div
-        className="text-body"
-        style={{
-          color: 'var(--ink)',
-          lineHeight: 1.72,
-          whiteSpace: 'pre-wrap',
-        }}
-      >
-        {caption}
-      </div>
+      {/* leading-[1.72]: the Body role runs 1.6, which is tight for a full caption
+          read as a paragraph rather than as UI text. */}
+      <div className="whitespace-pre-wrap text-body leading-[1.72] text-ink">{caption}</div>
     </div>
   )
 }
@@ -240,15 +154,7 @@ export function PostDetail({
   isSubmitting,
 }: PostDetailProps) {
   return (
-    <div
-      style={{
-        flex: 1,
-        display: 'flex',
-        flexDirection: 'column',
-        overflow: 'hidden',
-        minWidth: 0,
-      }}
-    >
+    <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
       <MetaTopbar
         post={post}
         postIndex={postIndex}
@@ -258,17 +164,7 @@ export function PostDetail({
       />
 
       {/* Scrollable content */}
-      <div
-        style={{
-          flex: 1,
-          overflowY: 'auto',
-          padding: '18px 22px',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 12,
-          background: 'var(--paper)',
-        }}
-      >
+      <div className="flex flex-1 flex-col gap-3 overflow-y-auto bg-paper px-[22px] py-[18px]">
         <CaptionCard caption={post.caption} />
         {post.post_type !== 'carousel' && (
           <PostImagePreview

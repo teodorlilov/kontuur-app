@@ -24,22 +24,12 @@ export function AiSummaryStrip({ summary }: AiSummaryStripProps) {
   return (
     <div
       onClick={() => setExpanded((prev) => !prev)}
-      style={{
-        background: 'var(--surface)',
-        border: '1px solid var(--line)',
-        borderRadius: 'var(--radius-lg)',
-        padding: '13px 16px',
-        marginBottom: 18,
-        cursor: 'pointer',
-        transition: 'all 0.15s',
-      }}
+      className="bg-surface border border-line rounded-lg px-4 py-[13px] mb-[18px] cursor-pointer"
+      style={{ transition: 'all 0.15s' }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+      <div className="flex items-center gap-2.5">
         {/* Label */}
-        <span
-          className="text-label font-semibold uppercase text-spring-text"
-          style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}
-        >
+        <span className="text-label font-semibold uppercase text-spring-text flex items-center gap-[5px] shrink-0">
           <svg
             width="10"
             height="10"
@@ -56,41 +46,22 @@ export function AiSummaryStrip({ summary }: AiSummaryStripProps) {
 
         {/* Preview — hidden when expanded */}
         {!expanded && (
-          <span
-            className="text-caption"
-            style={{
-              color: 'var(--text2)',
-              flex: 1,
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-            }}
-          >
+          <span className="text-caption text-text2 flex-1 overflow-hidden text-ellipsis whitespace-nowrap">
             {preview}
           </span>
         )}
 
         {/* Toggle */}
-        <span
-          className="text-micro font-medium text-spring-text"
-          style={{ flexShrink: 0, whiteSpace: 'nowrap' }}
-        >
+        <span className="text-micro font-medium text-spring-text shrink-0 whitespace-nowrap">
           {expanded ? '← Collapse' : 'Expand →'}
         </span>
       </div>
 
       {/* Full text */}
       {expanded && (
-        <div
-          className="text-caption"
-          style={{
-            color: 'var(--text2)',
-            lineHeight: 1.72,
-            marginTop: 10,
-            paddingTop: 10,
-            borderTop: '1px solid rgba(15,21,18,0.06)',
-          }}
-        >
+        // leading-[1.72] is the block's original line-height: a multi-sentence
+        // summary reads looser than text-caption's own 1.4 UI setting.
+        <div className="text-caption text-text2 leading-[1.72] mt-2.5 pt-2.5 border-t border-t-ink/6">
           {clean}
         </div>
       )}

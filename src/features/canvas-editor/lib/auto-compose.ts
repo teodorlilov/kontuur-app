@@ -4,6 +4,7 @@ import type { CanvasBackgroundRef, CanvasDoc } from '@/types/canvas'
 import type { PostImage } from '@/types/api'
 import { composeDoc } from './compose'
 import { saveDraftCanvas, savePostCanvas } from './save-canvas'
+import { fetchCanvasState } from './canvas-state-client'
 import type { DraftVisualResult, SlideCopy } from '../types'
 
 // SlideCopy union → the slide/caption fields seedCanvasDoc and applyCopyToDoc expect.
@@ -40,9 +41,8 @@ export async function composePersistedPosition(input: {
   image: PostImage
   slideCopy: SlideCopy | null
 }): Promise<PostImage | null> {
-  const res = await fetch(`/api/posts/${input.postId}/canvas?position=${input.position}`)
-  if (!res.ok) return null
-  const body = (await res.json()) as { doc?: CanvasDoc | null; identity?: SeedIdentity }
+  const body = await fetchCanvasState(input.postId, input.position)
+  if (!body.ok) return null
   if (!body.identity) return null
 
   const background = { publicUrl: input.image.publicUrl, storagePath: input.image.storagePath }
@@ -67,9 +67,8 @@ export async function recomposePersistedPosition(input: {
   baseImagePath: string
   slideCopy: SlideCopy
 }): Promise<PostImage | null> {
-  const res = await fetch(`/api/posts/${input.postId}/canvas?position=${input.position}`)
-  if (!res.ok) return null
-  const body = (await res.json()) as { doc?: CanvasDoc | null; identity?: SeedIdentity }
+  const body = await fetchCanvasState(input.postId, input.position)
+  if (!body.ok) return null
   if (!body.doc || !body.identity) return null
 
   const doc = body.doc
@@ -124,9 +123,8 @@ export async function applyStyleToPostSibling(input: {
   slideCopy: SlideCopy | null
   source: CanvasDoc
 }): Promise<PostImage | null> {
-  const res = await fetch(`/api/posts/${input.postId}/canvas?position=${input.position}`)
-  if (!res.ok) return null
-  const body = (await res.json()) as { doc?: CanvasDoc | null; identity?: SeedIdentity }
+  const body = await fetchCanvasState(input.postId, input.position)
+  if (!body.ok) return null
   if (!body.identity) return null
 
   const background = { publicUrl: input.image.publicUrl, storagePath: input.image.storagePath }

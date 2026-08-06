@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
+import { z } from 'zod'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
+import { generateFromIdeaSchema } from '@/features/generate/schemas'
 import { fetchClientById } from '@/lib/queries/db'
 import { checkRateLimit, AI_RATE_LIMIT } from '@/lib/auth/rate-limit'
 import { fetchIdeaById, updateIdeaStatus } from '@/features/ideas/lib/ideas'
@@ -20,10 +22,8 @@ type StreamEvent =
   | { type: 'result'; data: unknown }
   | { type: 'error'; message: string }
 
-interface RequestBody {
-  ideaId: string
-  postType: 'single' | 'carousel'
-  slideCount: number
+/** Parsed body, with preloadedClientData re-narrowed to its app type after validation. */
+type RequestBody = Omit<z.infer<typeof generateFromIdeaSchema>, 'preloadedClientData'> & {
   preloadedClientData: ClientData
 }
 
@@ -40,13 +40,15 @@ export async function POST(request: Request) {
 
   let body: RequestBody
   try {
-    body = await request.json()
+    // WHY the double assertion: see generate-stream — the schema deliberately
+    // leaves the pass-through config objects as `unknown`, and parsing has
+    // already proven the structure this re-attaches types to.
+    body = generateFromIdeaSchema.parse(await request.json()) as unknown as RequestBody
   } catch {
-    return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
-  }
-
-  if (!body.ideaId || !body.postType || !body.preloadedClientData) {
-    return NextResponse.json({ error: 'ideaId, postType, and preloadedClientData are required' }, { status: 400 })
+    return NextResponse.json(
+      { error: 'ideaId, postType, and preloadedClientData are required' },
+      { status: 400 }
+    )
   }
 
   const idea = await fetchIdeaById(body.ideaId, agencyId)
@@ -76,9 +78,18 @@ export async function POST(request: Request) {
           send(controller, { type: 'result', data: result })
         })
       } catch (err) {
+        // The stream is the only channel back to the caller, so the boundary
+        // both reports and logs — a thrown stream error is otherwise invisible.
+        console.error(`[generate-from-idea] generation failed for idea ${body.ideaId}:`, err)
         send(controller, { type: 'error', message: err instanceof Error ? err.message : 'Generation failed' })
       } finally {
-        await updateIdeaStatus(body.ideaId, agencyId, hasResult ? 'generated' : 'new').catch(() => {})
+        // Left un-thrown: the stream is closing and the status is recoverable on
+        // the next load, but a stuck 'generating' badge needs to be traceable.
+        await updateIdeaStatus(body.ideaId, agencyId, hasResult ? 'generated' : 'new').catch(
+          (statusErr: unknown) => {
+            console.error(`[generate-from-idea] idea status reset failed for ${body.ideaId}:`, statusErr)
+          }
+        )
         if (runId) await finishGenerationRun(supabase, runId, hasResult ? 'complete' : 'failed')
         controller.close()
       }

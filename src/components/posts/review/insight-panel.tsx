@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { AlertCircle, Check, ChevronDown, X, ExternalLink } from 'lucide-react'
 import { cn } from '@/utils/cn'
+import { toSourceHost } from '@/utils/url'
 import { StatusPill } from '@/components/ui/status-pill'
 import { sourceTypeLabel } from '@/components/posts/source-tile'
 import { RewriteButton } from '@/components/posts/rewrite-button'
@@ -112,7 +113,7 @@ export function InsightPanel({
             <p className="mt-3 text-body font-medium text-ink">{post.source_title}</p>
           )}
           <p className="mt-1 truncate text-micro text-text3">
-            {[sourceTypeLabel(post.source_type), hostOf(post.source_url)].filter(Boolean).join(' · ')}
+            {[sourceTypeLabel(post.source_type), toSourceHost(post.source_url)].filter(Boolean).join(' · ')}
           </p>
 
           {sourceGrounding?.flagged_claims.map((claim, i) => (
@@ -190,15 +191,6 @@ export function InsightPanel({
       {extraSections}
     </aside>
   )
-}
-
-function hostOf(url: string | null | undefined): string | null {
-  if (!url) return null
-  try {
-    return new URL(url).hostname.replace(/^www\./, '')
-  } catch {
-    return null
-  }
 }
 
 function ScoreBar({ label, score }: { label: string; score: number }) {

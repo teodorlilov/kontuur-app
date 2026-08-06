@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server'
+import { z } from 'zod'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
+import { generateStreamSchema } from '@/features/generate/schemas'
 import { fetchClientById } from '@/lib/queries/db'
 import { DEFAULT_CAROUSEL_SLIDES } from '@/utils/constants'
 import { checkRateLimit, AI_RATE_LIMIT } from '@/lib/auth/rate-limit'
@@ -20,16 +22,20 @@ type UnifiedStreamEvent =
   | { type: 'skipped_pillars'; pillars: SkippedPillar[]; skippedCount: number }
   | { type: 'error'; message: string }
 
-interface GenerateStreamRequestBody {
-  clientId: string
-  platform: string
-  postType: 'single' | 'carousel'
-  slideCount: number
-  priorityPosts: PriorityPost[]
-  targetPostCount: number
+/**
+ * Parsed body. priorityPosts and preloadedClientData are re-narrowed to their
+ * app types after validation: the schema proves the shape, these keep the
+ * downstream prompt builders working against the richer domain types.
+ */
+type GenerateStreamRequestBody = Omit<
+  z.infer<typeof generateStreamSchema>,
+  'priorityPosts' | 'preloadedClientData'
+> & {
+  priorityPosts?: PriorityPost[]
   preloadedClientData: ClientData
 }
 
+/** Stream a batch generation run as ndjson: research, then a post per theme. */
 export async function POST(request: Request) {
   const auth = await resolveAuth()
   if (!auth.ok) return auth.response
@@ -42,20 +48,18 @@ export async function POST(request: Request) {
 
   let body: GenerateStreamRequestBody
   try {
-    body = await request.json()
+    // WHY the double assertion: the schema validates the wire shape but leaves
+    // sourceStrategy/formalityRules/priorityPosts as `unknown`, on purpose — they
+    // are large types this boundary only passes through. Parsing has proven the
+    // structure, so this re-attaches the domain types for the prompt builders.
+    body = generateStreamSchema.parse(
+      await request.json()
+    ) as unknown as GenerateStreamRequestBody
   } catch {
-    return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
-  }
-
-  if (!body.clientId || !body.platform || !body.postType) {
     return NextResponse.json(
-      { error: 'clientId, platform, and postType are required' },
+      { error: 'clientId, platform, postType and preloadedClientData are required' },
       { status: 400 }
     )
-  }
-
-  if (!body.preloadedClientData) {
-    return NextResponse.json({ error: 'preloadedClientData is required' }, { status: 400 })
   }
 
   const ownerCheck = await fetchClientById(supabase, body.clientId, agencyId)
@@ -142,7 +146,11 @@ export async function POST(request: Request) {
         })
       } catch (err) {
         runFailed = true
-        throw err
+        // This is the boundary: rethrowing alone only errors the ReadableStream,
+        // which logs nowhere and leaves the client with a silently truncated
+        // response. Report it on the stream the way every other stage does.
+        console.error(`[generate-stream] run failed for client ${body.clientId}:`, err)
+        send({ type: 'error', message: err instanceof Error ? err.message : 'Generation failed' })
       } finally {
         if (runId) await finishGenerationRun(supabase, runId, runFailed ? 'failed' : 'complete')
         controller.close()

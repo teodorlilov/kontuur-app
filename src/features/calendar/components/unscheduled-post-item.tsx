@@ -2,6 +2,7 @@
 
 import { memo } from 'react'
 import { getPillarColor } from '@/components/ui/colors/pillar-colors'
+import { cn } from '@/utils/cn'
 import { formatDayMonth } from '@/utils/format'
 import type { CalendarPost } from '@/types/api'
 
@@ -23,72 +24,36 @@ export const UnscheduledPostItem = memo(function UnscheduledPostItem({
   return (
     <div
       onClick={onClick}
-      style={{
-        padding: '11px 18px',
-        borderBottom: '1px solid rgba(15,21,18,0.055)',
-        cursor: 'pointer',
-        background: isActive ? 'rgba(15,21,18,0.035)' : 'transparent',
-        position: 'relative',
-        transition: 'background 0.12s',
-      }}
+      className={cn(
+        'relative cursor-pointer border-b border-ink/[0.055] px-[18px] py-[11px]',
+        isActive ? 'bg-ink/[0.035]' : 'bg-transparent'
+      )}
+      // `background 0.12s` rides the default `ease`; Tailwind's transition-*
+      // would swap in its own curve.
+      style={{ transition: 'background 0.12s' }}
     >
       {/* Active indicator */}
       {isActive && (
-        <div
-          style={{
-            position: 'absolute',
-            left: 0,
-            top: '15%',
-            bottom: '15%',
-            width: 2.5,
-            background: 'var(--forest)',
-            borderRadius: '0 2px 2px 0',
-          }}
-        />
+        <div className="absolute bottom-[15%] left-0 top-[15%] w-[2.5px] rounded-r-[2px] bg-forest" />
       )}
 
       {/* Row 1: client + priority + score */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          marginBottom: 3,
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <span
-            style={{
-              width: 7,
-              height: 7,
-              borderRadius: '50%',
-              background: pillarColor,
-              flexShrink: 0,
-            }}
-          />
+      <div className="mb-[3px] flex items-center justify-between">
+        <div className="flex items-center gap-1.5">
+          {/* The dot takes the post's pillar hue, so it stays a value. */}
+          <span className="size-[7px] shrink-0 rounded-full" style={{ background: pillarColor }} />
           <span className="text-micro font-medium text-ink">{post.client_name}</span>
           {post.priority && (
-            <span
-              className="text-label tracking-normal"
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 3,
-                fontWeight: 500,
-                padding: '1px 6px',
-                borderRadius: 3,
-                background: 'rgba(46,158,104,0.14)',
-                color: 'var(--forest)',
-              }}
-            >
+            // tracking-normal cancels the Label role's built-in 0.16em.
+            <span className="inline-flex items-center gap-[3px] rounded-[3px] bg-spring/[0.14] px-1.5 py-px text-label font-medium tracking-normal text-forest">
               Priority
             </span>
           )}
         </div>
         <span
-          className="text-micro"
+          className="text-micro font-medium"
+          // Banded off the score, so the colour stays a value.
           style={{
-            fontWeight: 500,
             color:
               score >= 9
                 ? 'var(--spring-text)'
@@ -102,7 +67,8 @@ export const UnscheduledPostItem = memo(function UnscheduledPostItem({
       </div>
 
       {/* Row 2: pillar + type */}
-      <div className="text-label tracking-normal text-text2" style={{ marginBottom: 4 }}>
+      {/* tracking-normal cancels the Label role's built-in 0.16em. */}
+      <div className="mb-1 text-label tracking-normal text-text2">
         {post.pillar ?? 'No pillar'}
         {' · '}
         {post.post_type === 'carousel'
@@ -111,50 +77,24 @@ export const UnscheduledPostItem = memo(function UnscheduledPostItem({
       </div>
 
       {/* Row 3: caption preview */}
-      <div
-        className="text-micro"
-        style={{
-          color: 'var(--text2)',
-          lineHeight: 1.45,
-          display: '-webkit-box',
-          WebkitLineClamp: 2,
-          WebkitBoxOrient: 'vertical',
-          overflow: 'hidden',
-          marginBottom: 6,
-        }}
-      >
+      {/* leading-[1.45]: a two-line clamp reads as a block, so it sets tighter
+          than Micro's 1.35-derived rhythm would leave it. */}
+      <div className="mb-1.5 line-clamp-2 text-micro leading-[1.45] text-text2">
         {post.caption ?? 'No caption'}
       </div>
 
       {/* Row 4: platform tag + timestamp */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+      {/* tracking-normal on each chip cancels the Label role's built-in 0.16em. */}
+      <div className="flex items-center gap-[5px]">
         {post.platform && (
-          <span
-            className="text-label tracking-normal"
-            style={{
-              fontWeight: 500,
-              padding: '2px 6px',
-              borderRadius: 3,
-              background: 'rgba(46,158,104,0.12)',
-              color: 'var(--forest)',
-            }}
-          >
+          <span className="rounded-[3px] bg-spring/[0.12] px-1.5 py-0.5 text-label font-medium tracking-normal text-forest">
             {post.platform}
           </span>
         )}
-        <span
-          className="text-label tracking-normal"
-          style={{
-            fontWeight: 500,
-            padding: '2px 6px',
-            borderRadius: 3,
-            background: 'rgba(15,21,18,0.06)',
-            color: 'var(--text2)',
-          }}
-        >
+        <span className="rounded-[3px] bg-ink/[0.06] px-1.5 py-0.5 text-label font-medium tracking-normal text-text2">
           {post.post_type === 'carousel' ? 'Carousel' : 'Single'}
         </span>
-        <span className="text-label tracking-normal text-text3" style={{ marginLeft: 'auto' }}>
+        <span className="ml-auto text-label tracking-normal text-text3">
           {timeAgo(post.created_at)}
         </span>
       </div>

@@ -1,6 +1,7 @@
 'use client'
 
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
+import { CHART_COLORS, CHART_AXIS_PROPS, CHART_TOOLTIP_STYLE } from '@/features/analytics/lib/chart-config'
 import type { AnalyticsMetrics } from '@/types/api'
 
 interface AudienceSectionProps {
@@ -70,15 +71,15 @@ export function AudienceSection({ metrics }: AudienceSectionProps) {
           {ageData.length > 0 ? (
             <ResponsiveContainer width="100%" height={140}>
               <BarChart data={ageData} margin={{ top: 0, right: 0, left: -28, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                <CartesianGrid strokeDasharray="3 3" stroke={CHART_COLORS.grid} />
                 <XAxis
                   dataKey="age"
-                  tick={{ fontSize: 9, fill: '#667068' }}
+                  tick={{ ...CHART_AXIS_PROPS.tick, fontSize: 9 }}
                   tickLine={false}
                   axisLine={false}
                 />
                 <YAxis
-                  tick={{ fontSize: 9, fill: '#667068' }}
+                  tick={{ ...CHART_AXIS_PROPS.tick, fontSize: 9 }}
                   tickLine={false}
                   axisLine={false}
                   tickFormatter={(v: number) =>
@@ -86,7 +87,7 @@ export function AudienceSection({ metrics }: AudienceSectionProps) {
                   }
                 />
                 <Tooltip
-                  contentStyle={{ fontSize: 11, borderRadius: 8, border: '1px solid #e5e7eb' }}
+                  contentStyle={CHART_TOOLTIP_STYLE.contentStyle}
                   cursor={{ fill: 'rgba(15,21,18,0.04)' }}
                 />
                 <Bar dataKey="value" fill="var(--forest)" radius={[3, 3, 0, 0]} />

@@ -12,6 +12,7 @@ interface SuggestSourcesBody {
   language?: string
 }
 
+/** Suggest research sources for a niche. Cached, because the same niche recurs across clients. */
 export async function POST(request: Request) {
   const auth = await resolveAuth()
   if (!auth.ok) return auth.response

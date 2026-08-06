@@ -106,8 +106,7 @@ export function ReportHistory({ clientId, platform, onLoad }: ReportHistoryProps
                 type="button"
                 onClick={() => handleView(r.id)}
                 disabled={loadingId === r.id}
-                className="text-caption font-medium hover:underline disabled:opacity-50"
-                style={{ color: 'var(--spring-text)' }}
+                className="text-caption font-medium text-spring-text hover:underline disabled:opacity-50"
               >
                 {loadingId === r.id ? 'Loading…' : 'View'}
               </button>

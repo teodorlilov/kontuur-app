@@ -9,6 +9,7 @@ interface BestTimeRequestBody {
   client_id: string
 }
 
+/** Ask the model for a client's best posting times and cache them on the brand profile. */
 export async function POST(request: Request) {
   const auth = await resolveAuth()
   if (!auth.ok) return auth.response

@@ -15,6 +15,7 @@ const inviteSchema = z.object({
   role: z.enum(['admin', 'member']).default('member'),
 })
 
+/** Invite a teammate by email. Admin only. */
 export async function POST(request: Request) {
   const auth = await resolveAuth()
   if (!auth.ok) return auth.response

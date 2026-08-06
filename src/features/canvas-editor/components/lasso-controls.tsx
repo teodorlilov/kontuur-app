@@ -19,8 +19,8 @@ export function LassoControls({ lasso }: { lasso: LassoPanelState }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
       <div>
-        <div style={PANEL_LABEL}>Lasso cut</div>
-        <p style={{ fontSize: 'var(--text-micro)', color: 'var(--text2)', margin: 0 }}>
+        <div className={PANEL_LABEL}>Lasso cut</div>
+        <p className="m-0 text-micro text-text2">
           Draw a loose loop around anything — it becomes a movable element the moment you release.
         </p>
       </div>
@@ -30,15 +30,7 @@ export function LassoControls({ lasso }: { lasso: LassoPanelState }) {
         onChange={lasso.onDetectObjectChange}
       />
       {lasso.cutting && (
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-            fontSize: 'var(--text-caption)',
-            color: 'var(--text2)',
-          }}
-        >
+        <div className="flex items-center gap-2 text-caption text-text2">
           <Spinner size="sm" /> Cutting…
         </div>
       )}

@@ -22,6 +22,7 @@ const FACEBOOK_PAGE_SCOPES = [
   'business_management',
 ].join(',')
 
+/** Start the Meta OAuth flow — redirects to Facebook/Instagram with a signed state. */
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const clientId = searchParams.get('client_id')

@@ -12,29 +12,12 @@ export default async function IdeaFormPage({ params }: PageProps) {
 
   if (!context) {
     return (
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          minHeight: '100vh',
-          padding: 24,
-        }}
-      >
-        <div style={{ textAlign: 'center', maxWidth: 400 }}>
-          <div
-            className="text-lead"
-            style={{
-              fontWeight: 500,
-              color: 'var(--ink)',
-              marginBottom: 8,
-            }}
-          >
+      <div className="flex min-h-screen items-center justify-center p-6">
+        <div className="max-w-[400px] text-center">
+          <div className="mb-2 text-lead font-medium text-ink">
             This link is invalid or has expired.
           </div>
-          <div className="text-body" style={{ color: 'var(--text2)', lineHeight: 1.6 }}>
-            Please contact your agency for a new link.
-          </div>
+          <div className="text-body text-text2">Please contact your agency for a new link.</div>
         </div>
       </div>
     )

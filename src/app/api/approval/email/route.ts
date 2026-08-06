@@ -5,6 +5,7 @@ import { createApprovalBatch } from '@/features/review/lib/approval-batch'
 import { approvalRequestSchema } from '@/features/review/schemas'
 import { sendApprovalEmail } from '@/lib/email/resend'
 
+/** Create an approval batch and email the client the link. */
 export async function POST(request: Request) {
   const auth = await resolveAuth()
   if (!auth.ok) return auth.response
@@ -66,10 +67,15 @@ export async function POST(request: Request) {
     )
   }
 
-  await supabase.from('notifications').insert({
+  // Logged, not failed: the email is already out, and reporting an error here
+  // would invite a resend that mails the client a second time.
+  const { error: notifyError } = await supabase.from('notifications').insert({
     agency_id: agencyId,
     message: `Approval email sent to ${client.contact_email} for ${client.name} — ${result.postCount} post${result.postCount === 1 ? '' : 's'}`,
   })
+  if (notifyError) {
+    console.error('[approval] sent-notification insert failed:', notifyError.message)
+  }
 
   return NextResponse.json({ success: true, postCount: result.postCount })
 }

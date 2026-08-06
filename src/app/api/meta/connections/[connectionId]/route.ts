@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
 
+/** Disconnect one social account. */
 export async function DELETE(
   _request: NextRequest,
   { params }: { params: Promise<{ connectionId: string }> }

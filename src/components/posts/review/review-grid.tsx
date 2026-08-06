@@ -1,6 +1,7 @@
 'use client'
 
 import { cn } from '@/utils/cn'
+import { toSourceHost } from '@/utils/url'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { StatusPill } from '@/components/ui/status-pill'
@@ -64,15 +65,6 @@ export function ReviewGrid({
       ))}
     </div>
   )
-}
-
-function hostOf(url: string | null | undefined): string | null {
-  if (!url) return null
-  try {
-    return new URL(url).hostname.replace(/^www\./, '')
-  } catch {
-    return null
-  }
 }
 
 function DraftCard({
@@ -150,7 +142,7 @@ function DraftCard({
         </div>
         <div className="mt-1 flex items-center gap-2 border-t border-line pt-3">
           <span className="min-w-0 flex-1 truncate text-micro text-text3">
-            {[sourceTypeLabel(post.source_type), hostOf(post.source_url)].filter(Boolean).join(' · ')}
+            {[sourceTypeLabel(post.source_type), toSourceHost(post.source_url)].filter(Boolean).join(' · ')}
           </span>
           <Button variant="ghost" size="sm" className="text-text2" onClick={onOpen}>
             Open

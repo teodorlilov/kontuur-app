@@ -2,6 +2,7 @@
 
 import { memo, useState, useMemo } from 'react'
 import { X, Search } from 'lucide-react'
+import { cn } from '@/utils/cn'
 import { UnscheduledPostItem } from './unscheduled-post-item'
 import type { CalendarPost } from '@/types/api'
 
@@ -61,113 +62,46 @@ export const UnscheduledPanel = memo(function UnscheduledPanel({
 
   return (
     <div
+      className="absolute bottom-0 right-0 top-0 z-[15] flex w-full max-w-[360px] flex-col border-l border-line bg-surface shadow-[-6px_0_30px_rgba(15,21,18,0.12)]"
+      // Stays a transform: Tailwind's translate-* utilities write the `translate`
+      // property, which this `transition: transform` would no longer animate.
       style={{
-        position: 'absolute',
-        top: 0,
-        right: 0,
-        bottom: 0,
-        width: '100%',
-        maxWidth: 360,
-        background: '#fff',
-        borderLeft: '1px solid var(--line)',
-        display: 'flex',
-        flexDirection: 'column',
-        zIndex: 15,
-        boxShadow: '-6px 0 30px rgba(15,21,18,0.12)',
         transform: isOpen ? 'translateX(0)' : 'translateX(100%)',
         transition: 'transform 0.28s cubic-bezier(.4,0,.2,1)',
       }}
     >
       {/* Header */}
-      <div
-        style={{
-          padding: '16px 18px 12px',
-          borderBottom: '1px solid rgba(15,21,18,0.07)',
-          flexShrink: 0,
-        }}
-      >
+      <div className="shrink-0 border-b border-ink/[0.07] px-[18px] pb-3 pt-4">
         {/* Title row */}
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            marginBottom: 10,
-          }}
-        >
-          <div
-            className="text-body"
-            style={{
-              fontWeight: 500,
-              color: 'var(--ink)',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8,
-            }}
-          >
+        <div className="mb-2.5 flex items-center justify-between">
+          <div className="flex items-center gap-2 text-body font-medium text-ink">
             Ready to schedule
-            <span
-              className="text-micro"
-              style={{
-                fontWeight: 500,
-                color: 'var(--spring-text)',
-                background: 'rgba(46,158,104,0.12)',
-                padding: '2px 8px',
-                borderRadius: 5,
-              }}
-            >
+            <span className="rounded-[5px] bg-spring/[0.12] px-2 py-0.5 text-micro font-medium text-spring-text">
               {posts.length} posts
             </span>
           </div>
           <button
             type="button"
             onClick={onClose}
-            style={{
-              width: 24,
-              height: 24,
-              border: 'none',
-              background: 'none',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: 'var(--text2)',
-              borderRadius: 4,
-            }}
+            className="flex size-6 cursor-pointer items-center justify-center rounded-xs border-none bg-transparent text-text2"
           >
-            <X style={{ width: 14, height: 14 }} />
+            <X className="size-3.5" />
           </button>
         </div>
 
         {/* Search + filter */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <div
-            style={{
-              flex: 1,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6,
-              padding: '5px 8px',
-              border: '1px solid var(--line2)',
-              borderRadius: 6,
-              background: '#fff',
-            }}
-          >
-            <Search style={{ width: 12, height: 12, color: 'var(--text2)', flexShrink: 0 }} />
+        <div className="flex items-center gap-1.5">
+          <div className="flex flex-1 items-center gap-1.5 rounded-[6px] border border-line2 bg-surface px-2 py-[5px]">
+            <Search className="size-3 shrink-0 text-text2" />
             <input
-              className="text-lead md:text-micro"
+              className="w-full border-none bg-transparent text-lead text-ink md:text-micro"
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search posts..."
-              style={{
-                border: 'none',
-                outline: 'none',
-                color: 'var(--ink)',
-                background: 'transparent',
-                width: '100%',
-                fontFamily: 'inherit',
-              }}
+              // outline-none would let the global :focus-visible ring through —
+              // that rule is unlayered and outranks any utility.
+              style={{ outline: 'none' }}
             />
           </div>
           <FilterBtn
@@ -184,30 +118,19 @@ export const UnscheduledPanel = memo(function UnscheduledPanel({
       </div>
 
       {/* Sort row */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '7px 18px 0',
-          flexShrink: 0,
-        }}
-      >
+      <div className="flex shrink-0 items-center justify-between px-[18px] pt-[7px]">
         <span className="text-label font-semibold uppercase text-text2">
           {filtered.length} posts
         </span>
+        {/* md:tracking-normal cancels the Label role's built-in 0.16em once the
+            control drops to that size. */}
         <select
-          className="text-lead md:text-label md:tracking-normal"
+          className="cursor-pointer border-none bg-transparent text-lead text-text2 md:text-label md:tracking-normal"
           value={sort}
           onChange={(e) => setSort(e.target.value as PanelSort)}
-          style={{
-            color: 'var(--text2)',
-            background: 'none',
-            border: 'none',
-            outline: 'none',
-            cursor: 'pointer',
-            fontFamily: 'inherit',
-          }}
+          // outline-none would let the global :focus-visible ring through —
+          // that rule is unlayered and outranks any utility.
+          style={{ outline: 'none' }}
         >
           <option value="score">Sort: Quality score</option>
           <option value="client">Sort: Client</option>
@@ -217,7 +140,7 @@ export const UnscheduledPanel = memo(function UnscheduledPanel({
       </div>
 
       {/* Scrollable post list */}
-      <div style={{ flex: 1, overflowY: 'auto' }}>
+      <div className="flex-1 overflow-y-auto">
         {priorityPosts.length > 0 && (
           <>
             <SectionLabel label={`Priority \u2014 ${priorityPosts.length} posts`} />
@@ -245,32 +168,14 @@ export const UnscheduledPanel = memo(function UnscheduledPanel({
           </>
         )}
         {filtered.length === 0 && (
-          <div
-            className="text-body"
-            style={{
-              padding: '40px 20px',
-              textAlign: 'center',
-              color: 'var(--text2)',
-              fontStyle: 'italic',
-            }}
-          >
+          <div className="px-5 py-10 text-center text-body italic text-text2">
             {search ? `No posts match \u201C${search}\u201D` : 'No posts to schedule'}
           </div>
         )}
       </div>
 
       {/* Footer */}
-      <div
-        style={{
-          padding: '12px 18px',
-          borderTop: '1px solid rgba(15,21,18,0.07)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          background: 'var(--sunken)',
-          flexShrink: 0,
-        }}
-      >
+      <div className="flex shrink-0 items-center justify-center border-t border-ink/[0.07] bg-sunken px-[18px] py-3">
         <span className="text-micro text-text2">Select a post to schedule it</span>
       </div>
     </div>
@@ -279,14 +184,7 @@ export const UnscheduledPanel = memo(function UnscheduledPanel({
 
 function SectionLabel({ label }: { label: string }) {
   return (
-    <div
-      className="text-label font-semibold uppercase text-text2"
-      style={{
-        padding: '8px 18px 4px',
-        background: 'var(--sunken)',
-        borderBottom: '1px solid rgba(15,21,18,0.07)',
-      }}
-    >
+    <div className="border-b border-ink/[0.07] bg-sunken px-[18px] pb-1 pt-2 text-label font-semibold uppercase text-text2">
       {label}
     </div>
   )
@@ -302,22 +200,17 @@ function FilterBtn({
   onClick: () => void
 }) {
   return (
+    // tracking-normal cancels the Label role's built-in 0.16em.
     <button
-      className="text-label tracking-normal"
+      className={cn(
+        'cursor-pointer whitespace-nowrap rounded-[5px] px-2.5 py-[5px] text-label font-medium tracking-normal',
+        active ? 'border-none bg-forest text-ink-inv' : 'border border-line2 bg-surface text-text2'
+      )}
       type="button"
       onClick={onClick}
-      style={{
-        padding: '5px 10px',
-        fontWeight: 500,
-        border: active ? 'none' : '1px solid var(--line2)',
-        borderRadius: 5,
-        background: active ? 'var(--forest)' : '#fff',
-        color: active ? '#f2f5f1' : 'var(--text2)',
-        cursor: 'pointer',
-        fontFamily: 'inherit',
-        transition: 'all 0.15s',
-        whiteSpace: 'nowrap',
-      }}
+      // `all 0.15s` rides the default `ease`; Tailwind's transition-* would
+      // swap in its own curve.
+      style={{ transition: 'all 0.15s' }}
     >
       {label}
     </button>

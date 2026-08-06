@@ -7,10 +7,8 @@ import { getPillarColor } from '@/components/ui/colors/pillar-colors'
 import { parseSlides } from '@/components/posts/parse-slides'
 import { STAGE_LABELS, IDEA_STAGE_LABELS } from '@/features/generate/lib/stages'
 import { REWRITE_SCORE_THRESHOLD } from '@/lib/content-rules/constants'
-import type { PostData, ValidationData } from '@/types/post'
+import type { ReviewDraft } from '@/components/posts/review/types'
 import type { PostType } from '@/types/api'
-
-type GeneratedPost = { post: PostData } & ValidationData
 
 interface GeneratingViewProps {
   clientName: string
@@ -19,7 +17,7 @@ interface GeneratingViewProps {
   researchPhase: string
   streamTotal: number
   targetPostCount: number
-  posts: GeneratedPost[]
+  posts: ReviewDraft[]
   isIdeaFlow: boolean
 }
 
@@ -184,7 +182,7 @@ function PendingCard({ index, live }: { index: number; live: boolean }) {
   )
 }
 
-function ArrivedCard({ index, item }: { index: number; item: GeneratedPost }) {
+function ArrivedCard({ index, item }: { index: number; item: ReviewDraft }) {
   const { post, scores } = item
   const slides = parseSlides(post.slides_json)
   const title = post.topic_summary || slides[0]?.headline || post.caption?.slice(0, 80) || 'Draft'

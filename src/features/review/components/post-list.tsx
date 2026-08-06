@@ -44,76 +44,35 @@ export function PostList({
   const filtered = filterPosts(posts, postStatuses, activeFilter)
 
   return (
-    <div
-      style={{
-        width: 300,
-        flexShrink: 0,
-        background: '#fff',
-        borderRight: '1px solid rgba(15,21,18,0.10)',
-        display: 'flex',
-        flexDirection: 'column',
-        overflow: 'hidden',
-      }}
-    >
+    <div className="flex w-[300px] shrink-0 flex-col overflow-hidden border-r border-ink/10 bg-surface">
       {/* Filter bar */}
-      <div
-        style={{
-          borderBottom: '1px solid rgba(15,21,18,0.10)',
-          display: 'flex',
-          alignItems: 'center',
-          padding: '0 16px',
-          gap: 4,
-          height: 40,
-          flexShrink: 0,
-        }}
-      >
+      <div className="flex h-10 shrink-0 items-center gap-1 border-b border-ink/10 px-4">
         {FILTERS.map((f) => (
           <button
-            className="text-micro"
+            className="cursor-pointer rounded-[6px] border-0 px-2.5 py-[5px] text-micro font-medium transition-all duration-150 ease-[ease]"
             key={f}
             onClick={() => onFilterChange(f)}
             style={{
-              padding: '5px 10px',
-              borderRadius: 6,
-              fontWeight: 500,
-              cursor: 'pointer',
-              border: 'none',
-              fontFamily: 'inherit',
-              transition: 'all 0.15s',
               background: activeFilter === f ? 'var(--forest-deep)' : 'transparent',
-              color: activeFilter === f ? '#f2f5f1' : 'var(--text2)',
+              color: activeFilter === f ? 'var(--ink-inv)' : 'var(--text2)',
             }}
           >
             {FILTER_LABELS[f]}
           </button>
         ))}
-        <span className="text-micro" style={{ marginLeft: 'auto', color: 'var(--text2)' }}>
-          {filtered.length} posts
-        </span>
+        <span className="ml-auto text-micro text-text2">{filtered.length} posts</span>
       </div>
 
       {/* Post header */}
-      <div
-        className="text-label"
-        style={{
-          padding: '10px 16px',
-          borderBottom: '1px solid rgba(15,21,18,0.07)',
-          fontWeight: 500,
-          color: 'var(--text2)',
-          letterSpacing: '1.5px',
-          textTransform: 'uppercase' as const,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          flexShrink: 0,
-        }}
-      >
+      {/* tracking-[1.5px]: the Label role carries 0.16em, which lands at 1.6px on
+          its 10px step — this header was drawn a hair tighter than that. */}
+      <div className="flex shrink-0 items-center justify-between border-b border-ink/7 px-4 py-2.5 text-label font-medium uppercase tracking-[1.5px] text-text2">
         <span>Posts</span>
         <span>{posts.length} total</span>
       </div>
 
       {/* Scrollable list */}
-      <div style={{ flex: 1, overflowY: 'auto' }}>
+      <div className="flex-1 overflow-y-auto">
         {filtered.map((post, i) => (
           <PostListItem
             key={post.id}
@@ -125,15 +84,7 @@ export function PostList({
           />
         ))}
         {filtered.length === 0 && (
-          <div
-            className="text-caption"
-            style={{
-              padding: '40px 20px',
-              textAlign: 'center',
-              color: 'var(--text2)',
-              fontStyle: 'italic',
-            }}
-          >
+          <div className="px-5 py-10 text-center text-caption italic text-text2">
             No posts match this filter
           </div>
         )}

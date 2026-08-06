@@ -18,6 +18,7 @@ interface RewriteRequestBody {
   rewriteReason?: 'quality' | 'language' | 'source_grounding' | 'manual'
 }
 
+/** Rewrite one post's copy against its validation evidence and return the fresh draft. */
 export async function POST(request: Request) {
   try {
     const auth = await resolveAuth()

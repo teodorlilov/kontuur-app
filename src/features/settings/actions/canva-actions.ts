@@ -1,5 +1,6 @@
 'use server'
 
+import 'server-only'
 import { resolveActionAuth } from '@/lib/auth/helpers'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import type { ActionResult } from '@/lib/actions/types'

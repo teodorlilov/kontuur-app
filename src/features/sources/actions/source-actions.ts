@@ -1,5 +1,6 @@
 'use server'
 
+import 'server-only'
 import { randomUUID } from 'crypto'
 import { revalidateTag } from 'next/cache'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'

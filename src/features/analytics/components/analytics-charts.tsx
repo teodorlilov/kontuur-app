@@ -32,20 +32,9 @@ export function AnalyticsCharts({ metrics }: AnalyticsChartsProps) {
 
   if (dailyData.length === 0) {
     return (
-      <div
-        style={{
-          background: 'var(--surface)',
-          border: '1px solid var(--line)',
-          borderRadius: 'var(--radius-lg)',
-          padding: '20px 24px',
-        }}
-      >
-        <p className="text-title font-medium text-ink" style={{ marginBottom: 16 }}>
-          Daily reach over time
-        </p>
-        <p className="text-body text-text3" style={{ textAlign: 'center', padding: '32px 0' }}>
-          No daily data available
-        </p>
+      <div className="bg-surface border border-line rounded-lg px-6 py-5">
+        <p className="text-title font-medium text-ink mb-4">Daily reach over time</p>
+        <p className="text-body text-text3 text-center py-8">No daily data available</p>
       </div>
     )
   }
@@ -53,45 +42,22 @@ export function AnalyticsCharts({ metrics }: AnalyticsChartsProps) {
   const lastPoint = dailyData[dailyData.length - 1]
 
   return (
-    <div
-      style={{
-        background: 'var(--surface)',
-        border: '1px solid var(--line)',
-        borderRadius: 'var(--radius-lg)',
-        padding: '20px 24px',
-      }}
-    >
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          marginBottom: 16,
-        }}
-      >
+    <div className="bg-surface border border-line rounded-lg px-6 py-5">
+      <div className="flex items-center justify-between mb-4">
         <p className="text-title font-medium text-ink">Daily reach over time</p>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+        <div className="flex items-center gap-3.5">
           <span
-            className="text-micro"
-            style={{ display: 'flex', alignItems: 'center', gap: 5, color: CHART_COLORS.label }}
+            className="text-micro flex items-center gap-[5px]"
+            style={{ color: CHART_COLORS.label }}
           >
-            <span
-              style={{ width: 8, height: 8, borderRadius: '50%', background: CHART_COLORS.reach }}
-            />
+            <span className="w-2 h-2 rounded-full" style={{ background: CHART_COLORS.reach }} />
             Reach
           </span>
           <span
-            className="text-micro"
-            style={{ display: 'flex', alignItems: 'center', gap: 5, color: CHART_COLORS.label }}
+            className="text-micro flex items-center gap-[5px]"
+            style={{ color: CHART_COLORS.label }}
           >
-            <span
-              style={{
-                width: 8,
-                height: 8,
-                borderRadius: '50%',
-                background: 'rgba(22,68,48,0.35)',
-              }}
-            />
+            <span className="w-2 h-2 rounded-full bg-forest/35" />
             Views
           </span>
         </div>

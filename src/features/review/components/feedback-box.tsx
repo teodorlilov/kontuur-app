@@ -11,31 +11,14 @@ interface FeedbackBoxProps {
 /** Read-only card showing previously submitted feedback. */
 function ReadOnlyFeedback({ value }: { value: string }) {
   return (
-    <div
-      style={{
-        background: 'rgba(22,68,48,0.04)',
-        border: '1px solid rgba(22,68,48,0.20)',
-        borderRadius: 12,
-        padding: '14px 16px',
-      }}
-    >
-      <div
-        className="text-label tracking-normal"
-        style={{
-          fontWeight: 500,
-          color: 'var(--forest)',
-          marginBottom: 8,
-          display: 'flex',
-          alignItems: 'center',
-          gap: 5,
-        }}
-      >
+    <div className="rounded-[12px] border border-forest/20 bg-forest/4 px-4 py-3.5">
+      {/* tracking-normal: cancels the Label role's built-in 0.16em — this reads as a
+          sentence fragment, not a spaced-out eyebrow. */}
+      <div className="mb-2 flex items-center gap-[5px] text-label font-medium tracking-normal text-forest">
         <MessageCircle size={11} />
         Feedback you sent
       </div>
-      <div className="text-body" style={{ color: 'var(--ink)', lineHeight: 1.6 }}>
-        {value}
-      </div>
+      <div className="text-body text-ink">{value}</div>
     </div>
   )
 }
@@ -43,39 +26,24 @@ function ReadOnlyFeedback({ value }: { value: string }) {
 /** Textarea input for writing feedback on a pending post. */
 function FeedbackInput({ value, onChange }: { value: string; onChange?: (v: string) => void }) {
   return (
-    <div
-      style={{
-        background: '#fff',
-        border: '1px solid rgba(15,21,18,0.10)',
-        borderRadius: 12,
-        padding: '14px 16px',
-      }}
-    >
-      <div
-        className="text-label tracking-normal"
-        style={{ fontWeight: 500, color: 'var(--text2)', marginBottom: 8 }}
-      >
+    <div className="rounded-[12px] border border-ink/10 bg-surface px-4 py-3.5">
+      {/* tracking-normal: cancels the Label role's built-in 0.16em — this is a field
+          label read as words, not a spaced-out eyebrow. */}
+      <div className="mb-2 text-label font-medium tracking-normal text-text2">
         Leave feedback (optional)
       </div>
+      {/* leading-[1.55]: the Body role runs 1.6, which spaces a 3-row input taller
+          than the box it has to sit in. */}
       <textarea
-        className="text-body"
+        className="w-full resize-none rounded-sm border border-ink/16 bg-surface px-3 py-[9px] text-body leading-[1.55] text-ink transition-[border-color] duration-150 ease-[ease]"
         value={value}
         onChange={(e) => onChange?.(e.target.value)}
         placeholder="e.g. Can we soften the tone on slide 2? Also please add the clinic's phone number to the CTA slide..."
         rows={3}
-        style={{
-          width: '100%',
-          padding: '9px 12px',
-          border: '1px solid rgba(15,21,18,0.16)',
-          borderRadius: 8,
-          fontFamily: 'inherit',
-          color: 'var(--ink)',
-          background: '#fff',
-          outline: 'none',
-          resize: 'none',
-          lineHeight: 1.55,
-          transition: 'border-color 0.15s',
-        }}
+        // Stays inline: an `outline-none` class would lose to the unlayered
+        // `:focus-visible` ring in globals.css, so the field would gain a ring it
+        // does not have today. Inline is the only expression that still wins.
+        style={{ outline: 'none' }}
       />
     </div>
   )

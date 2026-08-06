@@ -1,6 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 
+/**
+ * Send a password-reset link.
+ *
+ * NOTE: answers 404 "No account found with this email" for an unknown address,
+ * which makes this endpoint a user-enumeration oracle — anyone can test whether
+ * a given email has an account here. The usual fix is to answer 200 either way
+ * and say "if that address has an account, a link is on its way", but that
+ * removes a real error the signup/login UI currently shows, so it is a product
+ * decision rather than a silent change. See docs/TECH-DEBT.md §6.5.
+ */
 export async function POST(request: NextRequest) {
   const { email } = await request.json()
 

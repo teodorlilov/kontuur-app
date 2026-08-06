@@ -1,5 +1,6 @@
 'use server'
 
+import 'server-only'
 import { revalidateTag } from 'next/cache'
 import { z } from 'zod'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
@@ -88,11 +89,14 @@ export async function resolveChangeRequest(postId: string): Promise<ActionResult
   const post = await verifyPostOwnership(supabase, postId, agencyId)
   if (!post) return { ok: false, error: 'Post not found' }
 
-  await supabase
+  const { error } = await supabase
     .from('post_approval_tokens')
     .update({ status: 'resolved' })
     .eq('post_id', postId)
     .eq('status', 'changes_requested')
+  // Reporting success on a dropped write leaves the change request showing as
+  // open on every surface that reads the token.
+  if (error) return { ok: false, error: error.message }
 
   revalidateTag('client-post-stats', 'max')
   return { ok: true, data: undefined }
@@ -157,11 +161,14 @@ export async function persistRewrite(
   const post = await verifyPostOwnership(supabase, postId, agencyId)
   if (!post) return { ok: false, error: 'Post not found' }
 
-  const { data: row } = await supabase
+  // A failed read here is not "no rewrites yet": treating it as 0 silently
+  // resets the counter to 1 and loses the post's rewrite history.
+  const { data: row, error: countError } = await supabase
     .from('posts')
     .select('rewrite_count')
     .eq('id', postId)
-    .single()
+    .maybeSingle()
+  if (countError) return { ok: false, error: countError.message }
   const rewriteCount = (row?.rewrite_count ?? 0) + 1
 
   const updates: Record<string, unknown> = {
@@ -259,14 +266,21 @@ export async function batchSchedulePosts(
   }
 
   let succeeded = 0
+  const failures: string[] = []
   for (const [scheduledAt, ids] of byTime) {
     const { error } = await supabase
       .from('posts')
       .update({ status: 'scheduled', scheduled_at: scheduledAt })
       .in('id', ids)
-    if (!error) succeeded += ids.length
+    if (error) failures.push(error.message)
+    else succeeded += ids.length
   }
 
   revalidateTag('client-post-stats', 'max')
+  // The partial count alone cannot tell the user whether the gap was an
+  // ownership check or a database failure, so the reason travels with it.
+  if (failures.length > 0) {
+    console.error('[posts] batch schedule partially failed:', failures.join('; '))
+  }
   return { ok: true, data: { succeeded, total: items.length } }
 }

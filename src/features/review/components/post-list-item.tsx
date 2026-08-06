@@ -1,6 +1,8 @@
 'use client'
 
 import { Clock, Check, MessageCircle } from 'lucide-react'
+import { cn } from '@/utils/cn'
+import { postTypeLabel } from '@/features/review/lib/queue-post'
 import { ActiveBar, CaptionPreview } from '@/components/posts/post-list-parts'
 import { getPillarColor } from '@/components/ui/colors/pillar-colors'
 import { formatScheduleDate } from '@/utils/format'
@@ -18,31 +20,16 @@ interface PostListItemProps {
 /** Format scheduled_at into a short date like "Sat, Apr 25". */
 
 /** Build a human-readable post type label. */
-function postTypeLabel(postType: string, slides: unknown): string {
-  if (postType === 'carousel') {
-    const count = Array.isArray(slides) ? slides.length : 0
-    return `Carousel · ${count} slides`
-  }
-  return 'Single image'
-}
-
 /** Small status badge showing pending / approved / feedback sent. */
 function ApprovalStatusBadge({ status }: { status: ApprovalPostStatus }) {
   const s = APPROVAL_STATUS_STYLES[status]
   const Icon = status === 'pending' ? Clock : status === 'approved' ? Check : MessageCircle
   return (
+    // tracking-normal: cancels the Label role's built-in 0.16em — a badge this
+    // small reads as a word, and 1.6px of tracking pulls it apart.
     <div
-      className="text-label tracking-normal"
-      style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: 4,
-        fontWeight: 500,
-        padding: '2px 7px',
-        borderRadius: 4,
-        background: s.bg,
-        color: s.color,
-      }}
+      className="inline-flex items-center gap-1 rounded-xs px-[7px] py-0.5 text-label font-medium tracking-normal"
+      style={{ background: s.bg, color: s.color }}
     >
       <Icon size={9} />
       {s.label}
@@ -58,94 +45,36 @@ export function PostListItem({ post, index, status, isActive, onClick }: PostLis
   return (
     <div
       onClick={onClick}
-      style={{
-        padding: '13px 16px',
-        borderBottom: '1px solid rgba(15,21,18,0.055)',
-        cursor: 'pointer',
-        background: isActive ? 'rgba(15,21,18,0.035)' : 'transparent',
-        position: 'relative',
-        overflow: 'hidden',
-        transition: 'background 0.12s',
-      }}
-      onMouseEnter={(e) => {
-        if (!isActive) e.currentTarget.style.background = 'var(--sunken)'
-      }}
-      onMouseLeave={(e) => {
-        if (!isActive) e.currentTarget.style.background = 'transparent'
-      }}
+      className={cn(
+        'relative cursor-pointer overflow-hidden border-b border-ink/5.5 px-4 py-[13px] transition-[background] duration-120 ease-[ease]',
+        isActive ? 'bg-ink/3.5' : 'bg-transparent hover:bg-sunken'
+      )}
     >
       {isActive && <ActiveBar />}
 
-      {/* Row 1: number · date · platform */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          marginBottom: 4,
-        }}
-      >
-        <span
-          className="text-label tracking-normal"
-          style={{ fontWeight: 500, color: 'var(--text2)' }}
-        >
-          #{index}
-        </span>
-        {date && (
-          <span className="text-label tracking-normal" style={{ color: 'var(--text2)' }}>
-            {date}
-          </span>
-        )}
+      {/* Row 1: number · date · platform.
+          tracking-normal throughout: cancels the Label role's built-in 0.16em, which
+          is set for eyebrows — these are values (an index, a date, a platform). */}
+      <div className="mb-1 flex items-center justify-between">
+        <span className="text-label font-medium tracking-normal text-text2">#{index}</span>
+        {date && <span className="text-label tracking-normal text-text2">{date}</span>}
         {post.platform && (
-          <span
-            className="text-label tracking-normal"
-            style={{
-              fontWeight: 500,
-              padding: '1px 7px',
-              borderRadius: 3,
-              background: 'rgba(46,158,104,0.12)',
-              color: 'var(--spring-text)',
-            }}
-          >
+          <span className="rounded-[3px] bg-spring/12 px-[7px] py-px text-label font-medium tracking-normal text-spring-text">
             {post.platform}
           </span>
         )}
       </div>
 
       {/* Row 2: pillar + type */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 5,
-          marginBottom: 5,
-          flexWrap: 'wrap',
-        }}
-      >
+      <div className="mb-[5px] flex flex-wrap items-center gap-[5px]">
         {post.pillar && pillar && (
-          <div
-            className="text-micro"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 4,
-              fontWeight: 500,
-              color: 'var(--ink)',
-            }}
-          >
-            <div
-              style={{
-                width: 6,
-                height: 6,
-                borderRadius: '50%',
-                background: pillar.hex,
-                flexShrink: 0,
-              }}
-            />
+          <div className="flex items-center gap-1 text-micro font-medium text-ink">
+            <div className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: pillar.hex }} />
             {post.pillar}
           </div>
         )}
-        <span className="text-label tracking-normal" style={{ color: 'var(--text2)' }}>
+        {/* tracking-normal: see row 1 — this is a type name, not an eyebrow. */}
+        <span className="text-label tracking-normal text-text2">
           · {postTypeLabel(post.post_type, post.slides_json)}
         </span>
       </div>

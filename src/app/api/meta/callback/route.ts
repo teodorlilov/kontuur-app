@@ -4,20 +4,22 @@ import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
 import { verifyClientOwnership } from '@/lib/auth/helpers'
 import { META_GRAPH_BASE as GRAPH_BASE, IG_GRAPH_BASE } from '@/lib/meta/constants'
+import {
+  igShortLivedTokenSchema,
+  igShortLivedWrappedSchema,
+  igLongLivedTokenSchema,
+  fbTokenResponseSchema,
+  igUserSchema,
+  fbPagesResponseSchema,
+  fbBusinessPagesResponseSchema,
+  type IGShortLivedToken,
+  type IGLongLivedToken,
+  type FBTokenResponse,
+  type FBPage,
+} from '@/lib/meta/schemas'
 import { decodeOAuthState } from '../oauth-state'
 
 // ---- Instagram Business Login token exchange ----
-
-interface IGShortLivedToken {
-  access_token: string
-  user_id: string
-}
-
-interface IGLongLivedToken {
-  access_token: string
-  token_type: string
-  expires_in: number
-}
 
 async function exchangeInstagramCode(
   code: string,
@@ -42,18 +44,22 @@ async function exchangeInstagramCode(
 
   // Business Login wraps the token in a data array ({"data":[{access_token,...}]});
   // the legacy flat shape ({access_token,...}) still appears on some responses —
-  // accept both, and fail loudly with the raw body so shape drift is debuggable
-  const parsed = (await res.json()) as
-    | IGShortLivedToken
-    | { data?: IGShortLivedToken[] }
-  const token =
-    'data' in parsed && Array.isArray(parsed.data) ? parsed.data[0] : (parsed as IGShortLivedToken)
-  if (!token?.access_token) {
+  // the schema accepts both, and we fail loudly with the raw body so shape drift
+  // stays debuggable.
+  const raw: unknown = await res.json()
+  const wrapped = igShortLivedWrappedSchema.safeParse(raw)
+  if (wrapped.success) {
+    const token = wrapped.data.data[0]!
+    return { access_token: token.access_token, user_id: token.user_id }
+  }
+
+  const flat = igShortLivedTokenSchema.safeParse(raw)
+  if (!flat.success) {
     throw new Error(
-      `Instagram token exchange returned no access_token: ${JSON.stringify(parsed).slice(0, 300)}`
+      `Instagram token exchange returned no access_token: ${JSON.stringify(raw).slice(0, 300)}`
     )
   }
-  return { access_token: token.access_token, user_id: String(token.user_id) }
+  return { access_token: flat.data.access_token, user_id: flat.data.user_id }
 }
 
 async function exchangeInstagramForLongLived(shortLivedToken: string): Promise<IGLongLivedToken> {
@@ -80,20 +86,14 @@ async function exchangeInstagramForLongLived(shortLivedToken: string): Promise<I
       `Instagram long-lived token exchange failed (token len=${shortLivedToken.length}, prefix=${shortLivedToken.slice(0, 4)}): ${err.slice(0, 300)}`
     )
   }
-  const parsed = (await res.json()) as IGLongLivedToken
-  if (!parsed?.access_token) {
+  const result = igLongLivedTokenSchema.safeParse(await res.json())
+  if (!result.success) {
     throw new Error('Instagram long-lived token exchange returned no access_token')
   }
-  return parsed
+  return result.data
 }
 
 // ---- Facebook token exchange ----
-
-interface FBTokenResponse {
-  access_token: string
-  token_type: string
-  expires_in?: number
-}
 
 async function exchangeFacebookCode(code: string, redirectUri: string): Promise<FBTokenResponse> {
   const url = new URL(`${GRAPH_BASE}/oauth/access_token`)
@@ -107,7 +107,7 @@ async function exchangeFacebookCode(code: string, redirectUri: string): Promise<
     const err = await res.text()
     throw new Error(`Facebook token exchange failed: ${err}`)
   }
-  return res.json() as Promise<FBTokenResponse>
+  return fbTokenResponseSchema.parse(await res.json())
 }
 
 async function exchangeFacebookForLongLived(shortLivedToken: string): Promise<FBTokenResponse> {
@@ -122,7 +122,7 @@ async function exchangeFacebookForLongLived(shortLivedToken: string): Promise<FB
     const err = await res.text()
     throw new Error(`Facebook long-lived token exchange failed: ${err}`)
   }
-  return res.json() as Promise<FBTokenResponse>
+  return fbTokenResponseSchema.parse(await res.json())
 }
 
 // ---- Platform connection savers ----
@@ -139,7 +139,7 @@ async function connectInstagram(
     `${IG_GRAPH_BASE}/me?fields=id,username,name&access_token=${longLivedToken}`
   )
   if (!igRes.ok) throw new Error('Failed to fetch Instagram account details')
-  const igUser = (await igRes.json()) as { id: string; username?: string; name?: string }
+  const igUser = igUserSchema.parse(await igRes.json())
 
   const expiresAt = new Date()
   expiresAt.setSeconds(expiresAt.getSeconds() + expiresIn)
@@ -159,12 +159,6 @@ async function connectInstagram(
   if (error) throw new Error(`Failed to save Instagram connection: ${error.message}`)
 }
 
-interface FBPage {
-  id: string
-  name: string
-  access_token: string
-}
-
 async function connectFacebook(
   longLivedToken: string,
   clientId: string,
@@ -174,7 +168,7 @@ async function connectFacebook(
   const pagesRes = await fetch(
     `${GRAPH_BASE}/me/accounts?fields=id,name,access_token&limit=100&access_token=${longLivedToken}`
   )
-  const pagesBody = (await pagesRes.json()) as { data?: FBPage[]; error?: { message: string } }
+  const pagesBody = fbPagesResponseSchema.parse(await pagesRes.json())
   if (!pagesRes.ok || pagesBody.error) {
     throw new Error(
       `Failed to fetch Facebook pages: ${pagesBody.error?.message ?? pagesRes.status}`
@@ -188,7 +182,7 @@ async function connectFacebook(
     const bmRes = await fetch(
       `${GRAPH_BASE}/me/businesses?fields=owned_pages{id,name,access_token}&limit=10&access_token=${longLivedToken}`
     )
-    const bmBody = (await bmRes.json()) as { data?: Array<{ owned_pages?: { data: FBPage[] } }> }
+    const bmBody = fbBusinessPagesResponseSchema.parse(await bmRes.json())
     page = bmBody.data?.[0]?.owned_pages?.data?.[0]
   }
 
@@ -216,6 +210,7 @@ async function connectFacebook(
 
 // ---- Route handler ----
 
+/** Meta OAuth return leg: exchange the code for a long-lived token and store the connection. */
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const code = searchParams.get('code')

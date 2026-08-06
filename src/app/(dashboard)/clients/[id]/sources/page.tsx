@@ -3,6 +3,7 @@ import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { requireSessionUser } from '@/lib/auth/session'
 import { SourcesManager } from '@/features/sources/components/sources-manager'
+import { ensureWebResearchSource } from '@/features/sources/lib/ensure-web-research-source'
 import { fetchClientById, fetchSourceUsageStats } from '@/lib/queries/db'
 import { parsePillarsWithMeta, serializePillars } from '@/lib/clients/content-pillars'
 import { CLIENT_SOURCE_FULL_COLUMNS } from '@/lib/queries/select-columns'
@@ -14,7 +15,6 @@ export default async function ClientSourcesPage({ params }: { params: Promise<{ 
   const { agencyId } = await requireSessionUser()
   const supabase = await createServerSupabaseClient()
 
-  // Verify client belongs to agency
   const client = await fetchClientById(supabase, id, agencyId)
   if (!client) notFound()
 
@@ -32,9 +32,21 @@ export default async function ClientSourcesPage({ params }: { params: Promise<{ 
       .from('brand_profiles')
       .select('source_strategy, content_pillars')
       .eq('client_id', id)
-      .single(),
-    fetchSourceUsageStats(createAdminSupabaseClient(), id).catch(() => []),
+      .maybeSingle(),
+    // Stats are decorative: the page is still usable without them, so a failure
+    // is logged and swallowed rather than blanking the source manager.
+    fetchSourceUsageStats(createAdminSupabaseClient(), id).catch((err: unknown) => {
+      console.error('[sources] usage stats unavailable:', err)
+      return []
+    }),
   ])
+
+  if (sourcesResult.error) {
+    throw new Error(`source list query failed: ${sourcesResult.error.message}`)
+  }
+  if (profileResult.error) {
+    throw new Error(`brand profile query failed: ${profileResult.error.message}`)
+  }
 
   // Cast through unknown — pillar_ids column added by migration, not yet in generated Supabase types
   const initialSources = (sourcesResult.data as unknown as ClientSource[] | null) ?? []
@@ -45,36 +57,26 @@ export default async function ClientSourcesPage({ params }: { params: Promise<{ 
   const sourceStrategy = (profile?.source_strategy as SourceStrategy | null) ?? {}
   const { pillars, hadMissingIds } = parsePillarsWithMeta(profile?.content_pillars ?? null)
 
-  // Persist generated pillar IDs + auto-create tavily source in parallel
-  const pillarWrite =
+  // Both writes are lazy backfills for clients that predate their feature, so they
+  // run on first open rather than at client creation.
+  const needsTavily = !initialSources.some((s) => s.type === 'tavily')
+  const [pillarWrite, webResearchSource] = await Promise.all([
     hadMissingIds && pillars.length > 0
       ? supabase
           .from('brand_profiles')
           .update({ content_pillars: serializePillars(pillars) })
           .eq('client_id', id)
-      : null
+      : null,
+    needsTavily ? ensureWebResearchSource(supabase, id) : null,
+  ])
 
-  // Intentional: every client gets a web-research row so the toggle is always visible on this page
-  const needsTavily = !initialSources.some((s) => s.type === 'tavily')
-  const tavilyWrite = needsTavily
-    ? supabase
-        .from('client_sources')
-        .insert({
-          client_id: id,
-          type: 'tavily',
-          label: 'Web research',
-          url: '',
-          is_active: true,
-        })
-        .select(CLIENT_SOURCE_FULL_COLUMNS)
-        .single()
-    : null
-
-  const [, tavilyResult] = await Promise.all([pillarWrite, tavilyWrite])
-
-  if (tavilyResult?.data) {
-    initialSources.unshift(tavilyResult.data as unknown as ClientSource)
+  // A dropped pillar-ID write means the next render regenerates different ids and
+  // the pillar filters stop matching stored posts, so it cannot pass silently.
+  if (pillarWrite?.error) {
+    console.error('[sources] pillar id backfill failed:', pillarWrite.error.message)
   }
+
+  if (webResearchSource) initialSources.unshift(webResearchSource)
 
   return (
     <SourcesManager

@@ -41,7 +41,7 @@ export async function fetchScheduleContext(
 ): Promise<ScheduleContext> {
   const clientIds = schedules.map((s) => s.client_id)
 
-  const [{ data: clientRows }, { data: profileRows }] = await Promise.all([
+  const [clientResult, profileResult] = await Promise.all([
     supabase.from('clients').select('id, agency_id, name, niche, language').in('id', clientIds),
     supabase
       .from('brand_profiles')
@@ -51,16 +51,26 @@ export async function fetchScheduleContext(
       .in('client_id', clientIds),
   ])
 
+  // An empty context is indistinguishable from "no client row" downstream, which
+  // silently skips every due schedule and reports the run as clean.
+  if (clientResult.error) throw new Error(`client context query failed: ${clientResult.error.message}`)
+  if (profileResult.error) {
+    throw new Error(`brand profile context query failed: ${profileResult.error.message}`)
+  }
+
   const clients = new Map<string, ClientRow>()
-  for (const row of (clientRows ?? []) as ClientRow[]) {
+  // as: explicit column projection — Supabase types from the table, not the select
+  for (const row of (clientResult.data ?? []) as ClientRow[]) {
     clients.set(row.id, row)
   }
 
   const agencyIds = [...new Set([...clients.values()].map((c) => c.agency_id))]
-  const { data: agencyRows } = await supabase
+  const { data: agencyRows, error: agencyError } = await supabase
     .from('agencies')
     .select('id, timezone, mode')
     .in('id', agencyIds)
+  // Falling back to UTC for every agency would fire each slot at the wrong local hour.
+  if (agencyError) throw new Error(`agency timezone query failed: ${agencyError.message}`)
 
   const agencyTimezones = new Map<string, string>()
   for (const row of (agencyRows ?? []) as Array<{ id: string; timezone: string | null }>) {
@@ -68,7 +78,7 @@ export async function fetchScheduleContext(
   }
 
   const brandProfiles = new Map<string, BrandProfileRow>()
-  for (const row of (profileRows ?? []) as BrandProfileRow[]) {
+  for (const row of (profileResult.data ?? []) as BrandProfileRow[]) {
     brandProfiles.set(row.client_id, row)
   }
 

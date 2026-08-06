@@ -30,7 +30,7 @@ export function PanelSlider({
 }: PanelSliderProps) {
   return (
     <div>
-      <div style={PANEL_LABEL}>{label}</div>
+      <div className={PANEL_LABEL}>{label}</div>
       <input
         type="range"
         min={min}

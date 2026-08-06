@@ -1,21 +1,11 @@
-/** Shared inline styles for the editor's properties panel (matches the app's settings panels). */
+/** Shared classes for the editor's properties panel (matches the app's settings panels). */
 
-export const PANEL_LABEL: React.CSSProperties = {
-  fontSize: 'var(--text-label)',
-  fontWeight: 500,
-  color: 'var(--spring-text)',
-  letterSpacing: '1.5px',
-  textTransform: 'uppercase',
-  marginBottom: '8px',
-}
+/**
+ * tracking-[1.5px]: these headings sit directly above their control with no rule
+ * between them, and the Label role's default spacing is too tight to read as a
+ * heading at that distance.
+ */
+export const PANEL_LABEL = 'mb-2 text-label font-medium uppercase tracking-[1.5px] text-spring-text'
 
-export const PANEL_CONTROL: React.CSSProperties = {
-  width: '100%',
-  padding: '6px 8px',
-  borderRadius: '6px',
-  border: '1px solid var(--line)',
-  background: 'var(--paper)',
-  color: 'var(--ink)',
-  fontSize: 'var(--text-caption)',
-  fontFamily: 'var(--font-sans)',
-}
+export const PANEL_CONTROL =
+  'w-full rounded-[6px] border border-line bg-paper px-2 py-1.5 font-sans text-caption text-ink'

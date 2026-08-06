@@ -1,4 +1,5 @@
 import { mapImageRow } from '@/features/publishing/lib/map-image-row'
+import { parseAssetResponse } from './asset-client'
 import type { CanvasDoc } from '@/types/canvas'
 import type { PostImage } from '@/types/api'
 import type { PostImageRow } from '@/types/index'
@@ -50,11 +51,9 @@ export async function saveDraftCanvas(
   formData.set('position', String(target.position))
   if (previousStoragePath) formData.set('previousStoragePath', previousStoragePath)
   const res = await fetch('/api/ai/generate-visual/upload', { method: 'POST', body: formData })
-  const body = (await res.json()) as { publicUrl?: string; storagePath?: string; error?: string }
-  if (!res.ok || !body.publicUrl || !body.storagePath)
-    throw new Error(body.error ?? 'Saving the design failed')
+  const asset = await parseAssetResponse(res, 'Saving the design failed')
   return {
-    visual: { position: target.position, publicUrl: body.publicUrl, storagePath: body.storagePath },
-    doc: { ...doc, flattenedStoragePath: body.storagePath },
+    visual: { position: target.position, publicUrl: asset.publicUrl, storagePath: asset.storagePath },
+    doc: { ...doc, flattenedStoragePath: asset.storagePath },
   }
 }

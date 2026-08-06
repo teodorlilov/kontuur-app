@@ -1,16 +1,15 @@
 'use client'
 
 import { useState } from 'react'
+import { PLATFORMS } from '@/utils/constants'
+import { cn } from '@/utils/cn'
+import type { IdeaBrief } from '@/features/ideas/schemas'
 
-const PLATFORMS = ['Instagram', 'Facebook', 'LinkedIn', 'X', 'TikTok'] as const
-
-interface IdeaBrief {
-  id: string
-  ideaText: string
-  extraNotes: string
-  platform: string
-  targetDate: string
-}
+/**
+ * A brief while the form still holds it: every field present (empty until typed)
+ * plus a key for React. Derived from the submitted shape so the two cannot drift.
+ */
+type DraftBrief = Required<IdeaBrief> & { id: string }
 
 interface IdeaFormClientProps {
   token: string
@@ -18,7 +17,7 @@ interface IdeaFormClientProps {
   agencyName: string
 }
 
-function createBrief(): IdeaBrief {
+function createBrief(): DraftBrief {
   return {
     id: crypto.randomUUID(),
     ideaText: '',
@@ -30,12 +29,12 @@ function createBrief(): IdeaBrief {
 
 /** Public idea form — no auth required. */
 export function IdeaFormClient({ token, clientName, agencyName }: IdeaFormClientProps) {
-  const [briefs, setBriefs] = useState<IdeaBrief[]>([createBrief()])
+  const [briefs, setBriefs] = useState<DraftBrief[]>([createBrief()])
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  function updateBrief(id: string, field: keyof IdeaBrief, value: string) {
+  function updateBrief(id: string, field: keyof DraftBrief, value: string) {
     setBriefs((prev) => prev.map((b) => (b.id === id ? { ...b, [field]: value } : b)))
   }
 
@@ -85,10 +84,10 @@ export function IdeaFormClient({ token, clientName, agencyName }: IdeaFormClient
   const hasValidIdea = briefs.some((b) => b.ideaText.trim())
 
   return (
-    <div style={{ minHeight: '100vh' }}>
+    <div className="min-h-screen">
       <FormHeader agencyName={agencyName} clientName={clientName} />
 
-      <div style={{ maxWidth: 560, margin: '0 auto', padding: '24px 24px 48px' }}>
+      <div className="max-w-[560px] mx-auto px-6 pt-6 pb-12">
         {briefs.map((brief, i) => (
           <BriefCard
             key={brief.id}
@@ -100,24 +99,20 @@ export function IdeaFormClient({ token, clientName, agencyName }: IdeaFormClient
           />
         ))}
 
-        <button onClick={addBrief} style={addButtonStyle}>
+        <button onClick={addBrief} className={ADD_BUTTON_CLASS}>
           + Add another idea
         </button>
 
-        {error && (
-          <div className="text-caption" style={{ color: 'var(--danger)', marginTop: 12 }}>
-            {error}
-          </div>
-        )}
+        {error && <div className="text-caption text-danger mt-3">{error}</div>}
 
         <button
           onClick={handleSubmit}
           disabled={submitting || !hasValidIdea}
-          style={{
-            ...submitButtonStyle,
-            opacity: submitting || !hasValidIdea ? 0.5 : 1,
-            cursor: submitting || !hasValidIdea ? 'default' : 'pointer',
-          }}
+          className={cn(
+            SUBMIT_BUTTON_CLASS,
+            (submitting || !hasValidIdea) && 'opacity-50 cursor-default'
+          )}
+          style={{ transition: 'background 0.15s' }}
         >
           {submitting
             ? 'Sending...'
@@ -132,46 +127,23 @@ export function IdeaFormClient({ token, clientName, agencyName }: IdeaFormClient
 
 function FormHeader({ agencyName, clientName }: { agencyName: string; clientName: string }) {
   return (
-    <div style={{ background: 'var(--forest-deep)', padding: '22px 0 0' }}>
-      <div style={{ maxWidth: 560, margin: '0 auto', padding: '0 24px 20px' }}>
-        <div
-          className="text-label"
-          style={{
-            fontWeight: 500,
-            color: 'rgba(242,245,241,0.45)',
-            letterSpacing: 2,
-            textTransform: 'uppercase',
-            marginBottom: 6,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 7,
-          }}
-        >
-          <span
-            style={{
-              width: 5,
-              height: 5,
-              borderRadius: '50%',
-              background: 'var(--spring-text)',
-              display: 'inline-block',
-            }}
-          />
+    <div className="bg-forest-deep pt-[22px]">
+      <div className="max-w-[560px] mx-auto px-6 pb-5">
+        {/* tracking-[2px] is the eyebrow's original letter-spacing — wider than
+            text-label's own 0.16em, which is 1.6px at this size. */}
+        <div className="text-label tracking-[2px] font-medium text-ink-inv/45 uppercase mb-1.5 flex items-center gap-[7px]">
+          <span className="w-[5px] h-[5px] rounded-full bg-spring-text inline-block" />
           {agencyName}
         </div>
         {/* Sans, not the display serif: client names may be Cyrillic and
             Instrument Serif has no Cyrillic glyphs. */}
-        <div
-          className="text-headline"
-          style={{
-            fontWeight: 600,
-            letterSpacing: '-0.01em',
-            color: '#F2F5F1',
-            marginBottom: 5,
-          }}
-        >
+        {/* tracking-[-0.01em] is this heading's original letter-spacing, looser
+            than text-headline's own -0.02em. */}
+        <div className="text-headline tracking-[-0.01em] font-semibold text-ink-inv mb-[5px]">
           Share a post idea, {clientName}
         </div>
-        <div className="text-body" style={{ color: 'rgba(242,245,241,0.55)', lineHeight: 1.55 }}>
+        {/* leading-[1.55] is the intro's original line-height, tighter than text-body's 1.6. */}
+        <div className="text-body leading-[1.55] text-ink-inv/55">
           Tell us what you'd like to post and we'll take it from there. No login needed — just fill
           in the form below.
         </div>
@@ -187,31 +159,31 @@ function BriefCard({
   onUpdate,
   onRemove,
 }: {
-  brief: IdeaBrief
+  brief: DraftBrief
   index: number
   canRemove: boolean
-  onUpdate: (field: keyof IdeaBrief, value: string) => void
+  onUpdate: (field: keyof DraftBrief, value: string) => void
   onRemove: () => void
 }) {
   return (
-    <div style={cardStyle}>
-      <div style={cardHeaderStyle}>
-        <span style={labelStyle}>Idea {index + 1}</span>
+    <div className={CARD_CLASS}>
+      <div className={CARD_HEADER_CLASS}>
+        <span className={LABEL_CLASS}>Idea {index + 1}</span>
         {canRemove && (
-          <button onClick={onRemove} style={removeButtonStyle}>
+          <button onClick={onRemove} className={REMOVE_BUTTON_CLASS}>
             Remove
           </button>
         )}
       </div>
 
-      <div style={{ padding: '14px 18px 18px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <div className="px-[18px] pt-3.5 pb-[18px] flex flex-col gap-3.5">
         <FieldGroup label="What's the post about?" required>
           <textarea
             value={brief.ideaText}
             onChange={(e) => onUpdate('ideaText', e.target.value)}
             placeholder="Describe the topic, angle, or message you have in mind..."
             rows={3}
-            style={textareaStyle}
+            className={TEXTAREA_CLASS}
           />
         </FieldGroup>
 
@@ -221,32 +193,24 @@ function BriefCard({
             onChange={(e) => onUpdate('extraNotes', e.target.value)}
             placeholder="Specific products, phrases, things to avoid..."
             rows={2}
-            style={textareaStyle}
+            className={TEXTAREA_CLASS}
           />
         </FieldGroup>
 
         <FieldGroup label="Platform">
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          <div className="flex gap-1.5 flex-wrap">
             {PLATFORMS.map((p) => (
               <button
-                className="text-caption"
                 key={p}
                 type="button"
                 onClick={() => onUpdate('platform', brief.platform === p ? '' : p)}
-                style={{
-                  padding: '5px 12px',
-                  borderRadius: 6,
-                  fontWeight: 500,
-                  border:
-                    brief.platform === p
-                      ? '1.5px solid var(--forest-deep)'
-                      : '1px solid rgba(15,21,18,0.14)',
-                  background: brief.platform === p ? 'var(--forest-deep)' : '#fff',
-                  color: brief.platform === p ? '#f2f5f1' : 'var(--text2)',
-                  cursor: 'pointer',
-                  fontFamily: 'inherit',
-                  transition: 'all 0.15s',
-                }}
+                className={cn(
+                  'text-caption px-3 py-[5px] rounded-[6px] font-medium cursor-pointer',
+                  brief.platform === p
+                    ? 'border-[1.5px] border-forest-deep bg-forest-deep text-ink-inv'
+                    : 'border border-ink/14 bg-surface text-text2'
+                )}
+                style={{ transition: 'all 0.15s' }}
               >
                 {p}
               </button>
@@ -259,7 +223,7 @@ function BriefCard({
             type="date"
             value={brief.targetDate}
             onChange={(e) => onUpdate('targetDate', e.target.value)}
-            style={inputStyle}
+            className={INPUT_CLASS}
           />
         </FieldGroup>
       </div>
@@ -278,12 +242,9 @@ function FieldGroup({
 }) {
   return (
     <div>
-      <div
-        className="text-caption"
-        style={{ fontWeight: 500, color: 'var(--ink)', marginBottom: 6 }}
-      >
+      <div className="text-caption font-medium text-ink mb-1.5">
         {label}
-        {required && <span style={{ color: 'var(--spring-text)', marginLeft: 3 }}>*</span>}
+        {required && <span className="text-spring-text ml-[3px]">*</span>}
       </div>
       {children}
     </div>
@@ -292,49 +253,20 @@ function FieldGroup({
 
 function SuccessView({ agencyName, onReset }: { agencyName: string; onReset: () => void }) {
   return (
-    <div
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        minHeight: '100vh',
-        padding: 24,
-      }}
-    >
-      <div style={{ textAlign: 'center', maxWidth: 400 }}>
-        <div
-          className="text-headline"
-          style={{
-            width: 48,
-            height: 48,
-            borderRadius: '50%',
-            background: 'rgba(46,158,104,0.12)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            margin: '0 auto 16px',
-          }}
-        >
+    <div className="flex items-center justify-center min-h-screen p-6">
+      <div className="text-center max-w-[400px]">
+        <div className="text-headline w-12 h-12 rounded-full bg-spring/12 flex items-center justify-center mx-auto mb-4">
           ✓
         </div>
-        <div
-          className="text-headline"
-          style={{
-            fontFamily: 'var(--font-display, Georgia, serif)',
-            fontWeight: 400,
-            color: 'var(--ink)',
-            marginBottom: 8,
-          }}
-        >
-          Ideas sent!
-        </div>
-        <div
-          className="text-body"
-          style={{ color: 'var(--text2)', lineHeight: 1.6, marginBottom: 20 }}
-        >
+        <div className="text-headline font-display font-normal text-ink mb-2">Ideas sent!</div>
+        <div className="text-body text-text2 mb-5">
           {agencyName} will review your ideas and get in touch.
         </div>
-        <button onClick={onReset} style={submitButtonStyle}>
+        <button
+          onClick={onReset}
+          className={SUBMIT_BUTTON_CLASS}
+          style={{ transition: 'background 0.15s' }}
+        >
           Submit more ideas
         </button>
       </div>
@@ -344,86 +276,29 @@ function SuccessView({ agencyName, onReset }: { agencyName: string; onReset: () 
 
 // ── Styles ──────────────────────────────────────────────────
 
-const cardStyle: React.CSSProperties = {
-  background: '#fff',
-  border: '1px solid rgba(15,21,18,0.12)',
-  borderRadius: 13,
-  overflow: 'hidden',
-  marginBottom: 12,
-}
+const CARD_CLASS = 'bg-surface border border-ink/12 rounded-[13px] overflow-hidden mb-3'
 
-const cardHeaderStyle: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'space-between',
-  padding: '10px 18px',
-  borderBottom: '1px solid rgba(15,21,18,0.07)',
-}
+const CARD_HEADER_CLASS =
+  'flex items-center justify-between px-[18px] py-2.5 border-b border-b-ink/7'
 
-const labelStyle: React.CSSProperties = {
-  fontSize: 'var(--text-label)',
-  fontWeight: 500,
-  color: 'var(--spring-text)',
-  letterSpacing: 1.2,
-  textTransform: 'uppercase',
-}
+// tracking-[1.2px] is this label's original letter-spacing, not text-label's 0.16em;
+// leading-[1.6] holds the body line-height it inherited when it only set a size.
+const LABEL_CLASS =
+  'text-label tracking-[1.2px] leading-[1.6] font-medium text-spring-text uppercase'
 
-const removeButtonStyle: React.CSSProperties = {
-  fontSize: 'var(--text-micro)',
-  color: 'rgba(15,21,18,0.7)',
-  background: 'none',
-  border: 'none',
-  cursor: 'pointer',
-  fontFamily: 'inherit',
-}
+// leading-[1.6]: preflight's `font: inherit` gave this button the body line-height,
+// which text-micro's 1.35 would otherwise tighten.
+const REMOVE_BUTTON_CLASS = 'text-micro leading-[1.6] text-ink/70 cursor-pointer'
 
-const textareaStyle: React.CSSProperties = {
-  width: '100%',
-  fontSize: 'var(--text-body)',
-  fontFamily: 'inherit',
-  border: '1px solid rgba(15,21,18,0.14)',
-  borderRadius: 8,
-  padding: '10px 12px',
-  color: 'var(--ink)',
-  resize: 'vertical',
-  lineHeight: 1.6,
-  background: '#fff',
-}
+const TEXTAREA_CLASS =
+  'w-full text-body border border-ink/14 rounded-sm px-3 py-2.5 text-ink resize-y bg-surface'
 
-const inputStyle: React.CSSProperties = {
-  width: '100%',
-  fontSize: 'var(--text-body)',
-  fontFamily: 'inherit',
-  border: '1px solid rgba(15,21,18,0.14)',
-  borderRadius: 8,
-  padding: '8px 12px',
-  color: 'var(--ink)',
-  background: '#fff',
-}
+const INPUT_CLASS = 'w-full text-body border border-ink/14 rounded-sm px-3 py-2 text-ink bg-surface'
 
-const addButtonStyle: React.CSSProperties = {
-  width: '100%',
-  padding: '11px 16px',
-  borderRadius: 10,
-  fontSize: 'var(--text-caption)',
-  fontWeight: 500,
-  color: 'var(--text2)',
-  background: 'none',
-  border: '1px dashed rgba(15,21,18,0.16)',
-  cursor: 'pointer',
-  fontFamily: 'inherit',
-  marginBottom: 20,
-}
+// leading-[1.6]: same as the remove button — the inherited body line-height, which
+// text-caption's 1.4 would otherwise tighten.
+const ADD_BUTTON_CLASS =
+  'w-full px-4 py-[11px] rounded-md text-caption leading-[1.6] font-medium text-text2 border border-dashed border-ink/16 cursor-pointer mb-5'
 
-const submitButtonStyle: React.CSSProperties = {
-  padding: '11px 24px',
-  borderRadius: 9,
-  fontSize: 'var(--text-body)',
-  fontWeight: 500,
-  color: '#f2f5f1',
-  background: 'var(--forest-deep)',
-  border: 'none',
-  cursor: 'pointer',
-  fontFamily: 'inherit',
-  transition: 'background 0.15s',
-}
+const SUBMIT_BUTTON_CLASS =
+  'px-6 py-[11px] rounded-[9px] text-body font-medium text-ink-inv bg-forest-deep cursor-pointer'

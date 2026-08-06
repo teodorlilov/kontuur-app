@@ -10,7 +10,7 @@ import {
   ResponsiveContainer,
   ReferenceDot,
 } from 'recharts'
-import type { AnalyticsMetrics, InstagramMetrics, IGDailyInsight } from '@/types/api'
+import type { AnalyticsMetrics, IGDailyInsight } from '@/types/api'
 import {
   CHART_COLORS,
   CHART_AXIS_PROPS,
@@ -33,18 +33,9 @@ export function FollowerTrend({ metrics }: FollowerTrendProps) {
 
   if (followerSeries.length < 2) {
     return (
-      <div
-        style={{
-          background: 'var(--surface)',
-          border: '1px solid var(--line)',
-          borderRadius: 'var(--radius-lg)',
-          padding: '20px 24px',
-        }}
-      >
-        <p className="text-title font-medium text-ink" style={{ marginBottom: 16 }}>
-          Follower count over time
-        </p>
-        <p className="text-body text-text3" style={{ textAlign: 'center', padding: '32px 0' }}>
+      <div className="bg-surface border border-line rounded-lg px-6 py-5">
+        <p className="text-title font-medium text-ink mb-4">Follower count over time</p>
+        <p className="text-body text-text3 text-center py-8">
           {isIG
             ? 'Not enough follower data available'
             : 'Follower trend is only available for Instagram'}
@@ -56,30 +47,14 @@ export function FollowerTrend({ metrics }: FollowerTrendProps) {
   const lastPoint = followerSeries[followerSeries.length - 1]
 
   return (
-    <div
-      style={{
-        background: 'var(--surface)',
-        border: '1px solid var(--line)',
-        borderRadius: 'var(--radius-lg)',
-        padding: '20px 24px',
-      }}
-    >
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          marginBottom: 16,
-        }}
-      >
+    <div className="bg-surface border border-line rounded-lg px-6 py-5">
+      <div className="flex items-center justify-between mb-4">
         <p className="text-title font-medium text-ink">Follower count over time</p>
         <span
-          className="text-micro"
-          style={{ display: 'flex', alignItems: 'center', gap: 5, color: CHART_COLORS.label }}
+          className="text-micro flex items-center gap-[5px]"
+          style={{ color: CHART_COLORS.label }}
         >
-          <span
-            style={{ width: 8, height: 8, borderRadius: '50%', background: CHART_COLORS.follower }}
-          />
+          <span className="w-2 h-2 rounded-full" style={{ background: CHART_COLORS.follower }} />
           Followers
         </span>
       </div>

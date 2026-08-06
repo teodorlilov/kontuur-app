@@ -2,27 +2,13 @@ const agencies = ['About Social Media', 'Agency 2', 'Agency 3', 'Agency 4', 'Age
 
 export function SocialProof() {
   return (
-    <section
-      className="mkt-pad"
-      style={{
-        background: 'var(--sunken)',
-        borderTop: '1px solid var(--line)',
-        borderBottom: '1px solid var(--line)',
-        paddingTop: 20,
-        paddingBottom: 20,
-        textAlign: 'center',
-      }}
-    >
-      <p className="text-caption" style={{ color: 'var(--text3)', marginBottom: 12 }}>
+    <section className="mkt-pad border-y border-line bg-sunken py-5 text-center">
+      <p className="mb-3 text-caption text-text3">
         Trusted by agencies in Bulgaria and across Europe
       </p>
-      <div style={{ display: 'flex', gap: 32, justifyContent: 'center', flexWrap: 'wrap' }}>
+      <div className="flex flex-wrap justify-center gap-8">
         {agencies.map((name) => (
-          <span
-            key={name}
-            className="text-body font-medium"
-            style={{ color: 'var(--text3)', opacity: 0.6 }}
-          >
+          <span key={name} className="text-body font-medium text-text3 opacity-60">
             {name}
           </span>
         ))}

@@ -1,6 +1,7 @@
 'use client'
 
 import { useShell } from '@/components/layout/shell-context'
+import { cn } from '@/utils/cn'
 import { formatDayMonth } from '@/utils/format'
 
 interface AudienceSummaryProps {
@@ -50,43 +51,23 @@ export function AudienceSummary({
   ]
 
   return (
-    <div
-      className="grid grid-cols-2 md:grid-cols-4"
-      style={{
-        border: '1px solid var(--line)',
-        borderRadius: 'var(--radius-lg)',
-        background: 'var(--surface)',
-        overflow: 'hidden',
-        marginBottom: 14,
-      }}
-    >
+    <div className="grid grid-cols-2 md:grid-cols-4 border border-line rounded-lg bg-surface overflow-hidden mb-3.5">
       {cells.map((cell, i) => (
         <div
           key={cell.label}
-          className={[
+          className={cn(
+            'px-5 py-[18px]',
+            i < 3 ? 'border-r border-r-ink/6' : '',
             i % 2 === 0 ? '' : 'max-md:!border-r-0',
-            i < 2 ? 'max-md:border-b max-md:border-b-[rgba(15,21,18,0.06)]' : '',
-          ].join(' ')}
-          style={{
-            padding: '18px 20px',
-            borderRight: i < 3 ? '1px solid rgba(15,21,18,0.06)' : 'none',
-          }}
+            i < 2 ? 'max-md:border-b max-md:border-b-[rgba(15,21,18,0.06)]' : ''
+          )}
         >
+          <div className="text-label font-semibold uppercase text-text2 mb-2">{cell.label}</div>
+          {/* leading-none is the figure's original line-height of 1 — tighter than
+              text-metric's 1.1 so the number sits flush against its caption. */}
           <div
-            className="text-label font-semibold uppercase text-text2"
-            style={{ marginBottom: 8 }}
-          >
-            {cell.label}
-          </div>
-          <div
-            className="text-metric"
-            style={{
-              fontFamily: 'var(--font-display, Georgia, serif)',
-              fontWeight: 400,
-              color: cell.colour,
-              lineHeight: 1,
-              marginBottom: 5,
-            }}
+            className="text-metric font-display font-normal leading-none mb-[5px]"
+            style={{ color: cell.colour }}
           >
             {cell.value}
           </div>

@@ -5,6 +5,7 @@ import { fetchClientWithOwnership } from '@/lib/auth/helpers'
 import { createApprovalBatch } from '@/features/review/lib/approval-batch'
 import { approvalRequestSchema } from '@/features/review/schemas'
 
+/** Create an approval batch and return its link for the agency to share manually. */
 export async function POST(request: Request) {
   const auth = await resolveAuth()
   if (!auth.ok) return auth.response
@@ -35,10 +36,15 @@ export async function POST(request: Request) {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
   const approvalUrl = `${appUrl}/approve/${result.batchId}`
 
-  await supabase.from('notifications').insert({
+  // Logged, not failed: the batch and its link already exist, so failing the
+  // request would hide a working approval URL from the caller.
+  const { error: notifyError } = await supabase.from('notifications').insert({
     agency_id: agencyId,
     message: `Approval link generated for ${client.name} — ${result.postCount} post${result.postCount === 1 ? '' : 's'}`,
   })
+  if (notifyError) {
+    console.error('[approval] link-notification insert failed:', notifyError.message)
+  }
 
   // Responding to an approval already invalidated this tag, but *sending* one
   // never did — so the Clients roster would keep reporting nothing awaiting

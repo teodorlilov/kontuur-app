@@ -3,6 +3,7 @@ import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { fetchImagesByPost } from '@/features/publishing/lib/fetch-post-images'
 import type { ApprovalPostData, ApprovalBatchData } from '@/types/api'
 
+/** Public: resolve a client approval link into the batch of posts awaiting sign-off. */
 export async function GET(_request: Request, { params }: { params: Promise<{ token: string }> }) {
   const { token } = await params
   const supabase = createAdminSupabaseClient()

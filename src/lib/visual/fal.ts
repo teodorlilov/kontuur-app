@@ -1,3 +1,5 @@
+import 'server-only'
+
 import { fal, ApiError } from '@fal-ai/client'
 import type { Rgb } from './extract/color'
 

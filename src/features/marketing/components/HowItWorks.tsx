@@ -20,97 +20,35 @@ const steps = [
 
 export function HowItWorks() {
   return (
-    <section
-      id="how-it-works"
-      className="mkt-pad"
-      style={{
-        paddingTop: 96,
-        paddingBottom: 96,
-        background: 'var(--sunken)',
-        borderTop: '1px solid var(--line)',
-        borderBottom: '1px solid var(--line)',
-      }}
-    >
+    <section id="how-it-works" className="mkt-pad border-y border-line bg-sunken py-24">
       <AnimateIn>
-        <p
-          className="text-micro"
-          style={{
-            textTransform: 'uppercase',
-            letterSpacing: '0.1em',
-            color: 'var(--spring)',
-            fontWeight: 500,
-            textAlign: 'center',
-            marginBottom: 12,
-          }}
-        >
+        {/* tracking-[0.1em]: an all-caps eyebrow needs air between letters; the
+            Micro role is tuned for mixed-case UI labels and carries none. */}
+        <p className="mb-3 text-center text-micro font-medium uppercase tracking-[0.1em] text-spring">
           How it works
         </p>
+        {/* tracking-[-0.02em]: the fluid section size is not a ramp step, so it
+            brings no tracking of its own. */}
         <h2
-          style={{
-            fontFamily: 'var(--font-display)',
-            fontSize: 'clamp(28px, 3vw, 40px)',
-            fontWeight: 400,
-            letterSpacing: '-0.02em',
-            textAlign: 'center',
-            marginBottom: 64,
-            color: 'var(--ink)',
-          }}
+          className="mb-16 text-center font-display font-normal tracking-[-0.02em] text-ink"
+          style={{ fontSize: 'clamp(28px, 3vw, 40px)' }}
         >
           Up and running in minutes
         </h2>
       </AnimateIn>
 
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-          gap: 40,
-          maxWidth: 900,
-          margin: '0 auto',
-        }}
-      >
+      <div className="mx-auto my-0 grid max-w-[900px] grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-10">
         {steps.map((step, i) => (
           <AnimateIn key={step.num} delay={i * 0.06}>
-            <div style={{ textAlign: 'center' }}>
-              <div
-                className="text-title"
-                style={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: '50%',
-                  background: 'var(--forest)',
-                  color: '#fff',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontWeight: 600,
-                  margin: '0 auto 20px',
-                  lineHeight: 1,
-                }}
-              >
+            <div className="text-center">
+              {/* leading-none: a single digit centred in its own circle. */}
+              <div className="mx-auto mb-5 mt-0 flex h-9 w-9 items-center justify-center rounded-full bg-forest text-title font-semibold leading-none text-white">
                 {step.num}
               </div>
-              <h3
-                className="text-title"
-                style={{
-                  fontWeight: 500,
-                  marginBottom: 10,
-                  color: 'var(--ink)',
-                  lineHeight: 1.4,
-                }}
-              >
-                {step.title}
-              </h3>
-              <p
-                className="text-body"
-                style={{
-                  color: 'var(--text2)',
-                  lineHeight: 1.65,
-                  margin: 0,
-                }}
-              >
-                {step.desc}
-              </p>
+              <h3 className="mb-2.5 text-title font-medium text-ink">{step.title}</h3>
+              {/* leading-[1.65]: a three-line step description; the Body role's 1.6
+                  is set for single-line UI text and reads dense at this length. */}
+              <p className="m-0 text-body leading-[1.65] text-text2">{step.desc}</p>
             </div>
           </AnimateIn>
         ))}

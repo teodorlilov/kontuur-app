@@ -24,8 +24,8 @@ export function InpaintControls({ inpaint }: { inpaint: InpaintPanelState }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
       <div>
-        <div style={PANEL_LABEL}>AI repair</div>
-        <p style={{ fontSize: 'var(--text-micro)', color: 'var(--text2)', margin: '0 0 8px' }}>
+        <div className={PANEL_LABEL}>AI repair</div>
+        <p className="mx-0 mb-2 mt-0 text-micro text-text2">
           Paint over what should change, then describe what belongs there instead.
         </p>
         <input
@@ -33,7 +33,7 @@ export function InpaintControls({ inpaint }: { inpaint: InpaintPanelState }) {
           value={inpaint.prompt}
           placeholder="e.g. remove the object, continue the background"
           onChange={(event) => inpaint.onPromptChange(event.target.value)}
-          style={PANEL_CONTROL}
+          className={PANEL_CONTROL}
         />
       </div>
       <BrushSizeSlider size={inpaint.brushSize} onChange={inpaint.onBrushSizeChange} />

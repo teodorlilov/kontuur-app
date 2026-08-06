@@ -25,11 +25,11 @@ export function ScrimControls({ scrim, palette, onChange }: ScrimControlsProps) 
       {scrim.enabled && (
         <>
           <div>
-            <div style={PANEL_LABEL}>Coverage</div>
+            <div className={PANEL_LABEL}>Coverage</div>
             <select
               value={scrim.mode}
               onChange={(event) => onChange({ mode: event.target.value as CanvasScrim['mode'] })}
-              style={PANEL_CONTROL}
+              className={PANEL_CONTROL}
             >
               <option value="bottom">Bottom band</option>
               <option value="full">Full canvas</option>

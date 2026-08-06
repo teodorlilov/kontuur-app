@@ -264,3 +264,115 @@ and the trigger that should reopen it. (The fixed items landed in `98e0ef0` + `0
   with case-insensitive compares.
 - **Fix shape:** normalize to lowercase at every write boundary + one backfill migration,
   then drop the compare-side lowering.
+
+---
+
+## 6. CLAUDE.md compliance audit — 2026-08-06 (waves 1–2 applied)
+
+Full findings in `docs/claude-md-audit-2026-08-05.md`. Waves 1 (correctness) and 2 (error
+handling + zod boundaries) are applied; what follows is what was deliberately NOT done.
+
+### 6.1 New migration must reach prod before deploy
+
+- **`20260808_unique_tavily_source_per_client.sql`** — collapses duplicate web-research rows and
+  adds a partial unique index. The app degrades gracefully without it (the 23505 read-back path in
+  `ensureWebResearchSource` simply never triggers), so deploy order is not fatal — but the race it
+  closes stays open until it lands. Joins 20260805/20260806/20260807 in the pending set (§5.7).
+
+### 6.2 `api/meta/callback` still implements token exchange in the route file
+
+- **What:** ~200 lines of OAuth exchange + connection persistence live in the route, against the
+  "route files stay thin" rule. Its Meta responses are now zod-parsed via `src/lib/meta/schemas.ts`,
+  so the validation gap is closed; only the placement is outstanding.
+- **Why deferred:** this is the one code path that cannot be exercised locally, and the token-shape
+  handling is hard-won (Business Login's `data[]` wrapper vs the legacy flat shape — see the
+  in-file comment and `project_meta_app_review` history). A move should be its own change, verified
+  against a real Live-mode consent, not folded into an audit sweep.
+
+### 6.3 Wave 3 (duplication) — logic half done, primitive half open
+
+**Done** (pure logic, no rendered output changed): `hostOf` ×2 → `toSourceHost` in `utils/url.ts`;
+`MS_PER_DAY` ×3 and the loose `3_600_000`s → `MS_PER_HOUR`/`MS_PER_DAY` in constants; the zod-issue
+flatten ×3 → `lib/validation/format-issues.ts`; `GeneratedPost` ×2 → the shared `ReviewDraft`;
+`BatchPost` ×2 → one export; `postTypeLabel` ×2 → `review/lib/queue-post.ts`; the canvas doc
+fetch-and-parse ×4 → `canvas-state-client.ts`; `parseAssetResponse` re-implementation → the shared
+one; `day-cell`'s hand-built date key → `toDateKey` (now agreeing with its parent grid).
+Also fixed real drift: `audience-section` and `post-day-breakdown` bypassed `chart-config` and had
+drifted to off-palette greys (`#f0f0f0`, and `#e5e7eb` — a Tailwind default left over from before
+the palette purge). Their deliberately smaller tick sizes are preserved.
+
+**Deliberately NOT done — `timeAgo` is not a duplicate.** The audit paired
+`unscheduled-post-item`'s `timeAgo` with `formatRelativeTime` on matching thresholds, but the
+outputs differ: "Just now" vs "just now", a "Yesterday" case the shared one lacks, and a different
+date fallback. Converging them is a copy change, not a refactor.
+
+**Still open — the primitive half.** Input's class string copied 8×, StatusPill restated 5×,
+spinner SVG 5×, hand-rolled Modal and Button, `ScoreBar` ×2, the picker header ×2. Each is a
+rendered-output change, so they belong with the styling wave, not ahead of it. Audit §3 lists
+every pair with both sites.
+
+### 6.3b Wave 4 (styling) — applied 2026-08-06, NOT visually verified
+
+Inline `style={{` across `src/` went **553 → 151**; the 151 that remain are runtime-computed
+(a bar width encoding a count, a colour from `getClientStyle`, ternaries over data) and belong
+inline. `#f2f5f1` went 15 → 0 behind the new `--ink-inv` token. Every `leading-`/`tracking-`
+override that survived now carries its WHY comment.
+
+Converted surface by surface: auth, calendar, review + publishing, analytics + ideas, marketing +
+legal + public pages, and the canvas editor's panel layer (`PANEL_LABEL`/`PANEL_CONTROL` are class
+strings now, and `PanelButton` takes `className` instead of `style`).
+
+**Deliberately left inline, because converting would NOT have been identical:**
+
+- **`transition` shorthands** (~18 sites). Tailwind's `transition-*` utilities force
+  `cubic-bezier(0.4,0,0.2,1)`; these ride the CSS default `ease`. `duration-150` alone retimes the
+  curve. Where a transition did convert, it carries an explicit `ease-[ease]`.
+- **`outline: 'none'`** (6 form controls). `globals.css` declares `:focus-visible { outline: 2px
+  solid var(--spring) }` **unlayered**, which outranks the utilities layer — an `outline-none`
+  class would have *added* a focus ring these controls deliberately do not have.
+- **`transform: translateX()`** on the unscheduled panel. Tailwind v4's `translate-x-*` writes the
+  `translate` property, and the element's `transition: transform` would stop animating it.
+- **The sonner toast config**, SVG presentation attributes, `animation` shorthands, and every
+  recharts prop (`tick`, `contentStyle`, `stroke`, …) — recharts spreads `tick` onto an SVG
+  `<text>`, where `var()` does not resolve.
+
+**Known non-identical detail:** `rgba()` → `/[alpha]` modifiers compile to
+`color-mix(in oklab, …)` with an opaque fallback outside `@supports`. Same pixel in any browser
+with `color-mix` (2023+); pre-2023 those borders/backgrounds render opaque. This is already how
+Tailwind v4 behaves everywhere else in the app, so it is consistent rather than newly introduced.
+
+**Still owed: the browser matrix.** All of the above is verified by `tsc` and 687 tests, and each
+agent recompiled its candidate classes through the project's real Tailwind 4.2.2 pipeline to
+confirm every one emits a rule. None of it has been looked at in a browser. `hover:` variants now
+compile inside `@media (hover: hover)`, so a tap no longer triggers a momentary hover on touch —
+arguably a fix, but it is a behaviour change.
+
+### 6.3c Wave 5 (rulebook) — the ramp ruling, applied
+
+The `fontSize: 'var(--text-*)'` permission is gone. The guard now fails on **any** inline
+`fontSize`, the ~40 sites that relied on it are classes, and DESIGN.md records why the permission
+was wrong rather than just deleting it. Four exemptions are listed by path in the test, each
+because a class cannot reach: Konva document fields, the inline-edit overlay that mirrors them,
+recharts `tick` props, and sonner's options object. `clamp()` still passes — the Fluid Hero
+Exception is unchanged.
+
+The remaining §6 rulebook contradictions (polling vs "never fetch in useEffect", the select-columns
+scope, the server-action boundary policy) are still open.
+
+### 6.4 `npm run lint` exits 1 (pre-existing, see §4)
+
+The 9 errors in §4 mean the command cannot gate anything today. Wave 2 left warnings *below* the
+starting count (11 vs 12), but until §4 is cleared, `npm run check` stays red and new breakage is
+invisible behind it.
+
+### 6.5 `/api/auth/forgot-password` is a user-enumeration oracle
+
+- **Where:** `src/app/api/auth/forgot-password/route.ts` — returns 404 `"No account found with
+  this email"` for an unknown address and 200 for a known one.
+- **What:** anyone can test whether a given email has an account here, unauthenticated and
+  unthrottled (the route has no rate-limit check, unlike the AI routes).
+- **Found:** 2026-08-06, while writing the handler's JSDoc — the first draft of that comment
+  claimed the endpoint always answers 200, and checking the claim showed it does not.
+- **Fix shape:** answer 200 unconditionally with "if that address has an account, a link is on
+  its way", and add `checkRateLimit`. Deferred because it removes an error message the
+  forgot-password form currently shows, so the copy needs deciding alongside it.

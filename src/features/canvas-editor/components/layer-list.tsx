@@ -1,6 +1,7 @@
 'use client'
 
 import { Plus, Trash2 } from 'lucide-react'
+import { cn } from '@/utils/cn'
 import type { CanvasTextLayer } from '@/types/canvas'
 import { PANEL_LABEL } from './panel-styles'
 
@@ -22,37 +23,20 @@ interface LayerListProps {
 export function LayerList({ layers, selectedId, onSelect, onAdd, onRemove }: LayerListProps) {
   return (
     <div>
-      <div
-        style={{
-          ...PANEL_LABEL,
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-        }}
-      >
+      <div className={cn(PANEL_LABEL, 'flex items-center justify-between')}>
         <span>Text layers</span>
         <button
           type="button"
           onClick={onAdd}
           title="Add text"
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 4,
-            border: 'none',
-            background: 'transparent',
-            color: 'var(--text2)',
-            fontSize: 'var(--text-label)',
-            cursor: 'pointer',
-            padding: 0,
-          }}
+          className="inline-flex cursor-pointer items-center gap-1 border-none bg-transparent p-0 text-label text-text2"
         >
           <Plus size={12} /> Add
         </button>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
         {layers.length === 0 && (
-          <p style={{ fontSize: 'var(--text-micro)', color: 'var(--text2)', margin: 0 }}>
+          <p className="m-0 text-micro text-text2">
             No text yet — add a layer.
           </p>
         )}
@@ -72,15 +56,7 @@ export function LayerList({ layers, selectedId, onSelect, onAdd, onRemove }: Lay
               border: selectedId === layer.id ? '1px solid var(--line2)' : '1px solid transparent',
             }}
           >
-            <span
-              style={{
-                fontSize: 'var(--text-caption)',
-                color: 'var(--ink)',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-              }}
-            >
+            <span className="overflow-hidden text-ellipsis whitespace-nowrap text-caption text-ink">
               <span style={{ color: 'var(--text2)', marginRight: 6 }}>
                 {ROLE_LABELS[layer.role]}
               </span>

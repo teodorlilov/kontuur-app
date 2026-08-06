@@ -15,7 +15,7 @@ export function ColorSwatches({ label, palette, value, onChange }: ColorSwatches
   const roles = Object.entries(palette) as Array<[string, string]>
   return (
     <div>
-      <div style={PANEL_LABEL}>{label}</div>
+      <div className={PANEL_LABEL}>{label}</div>
       <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
         {roles.map(([role, hex]) => (
           <button

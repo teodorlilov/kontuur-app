@@ -26,11 +26,10 @@ import type { PriorityPost, PostType, ClientIdea, MetaConnection } from '@/types
 import type { GenerationResult } from '@/ai/generation/types'
 import type { SkippedPillar } from '@/ai/research/types'
 import type { PostData, ValidationData } from '@/types/post'
+import type { ReviewDraft } from '@/components/posts/review/types'
 import type { FlowStep } from './flow-stepper'
 
 type Client = Pick<ClientRow, 'id' | 'name' | 'niche' | 'language' | 'posts_per_week'>
-
-type GeneratedPost = { post: PostData } & ValidationData
 
 type UnifiedStreamEvent =
   | { type: 'total'; count: number }
@@ -89,7 +88,7 @@ export function GenerateFlow({
 
   // Stream state
   const [isGenerating, setIsGenerating] = useState(false)
-  const [generatedPosts, setGeneratedPosts] = useState<GeneratedPost[]>([])
+  const [generatedPosts, setGeneratedPosts] = useState<ReviewDraft[]>([])
   const [streamTotal, setStreamTotal] = useState(0)
   const [researchPhase, setResearchPhase] = useState('')
   const [loadingStage, setLoadingStage] = useState(0)
@@ -251,7 +250,7 @@ export function GenerateFlow({
           // view mute between results — the last activity stays up until the
           // next phase replaces it.
           setLoadingStage((prev) => Math.max(prev, 2))
-          const generated = event.data as unknown as GeneratedPost
+          const generated = event.data as unknown as ReviewDraft
           receivedCount++
           setGeneratedPosts((prev) => [...prev, generated])
           // Kick off visuals as each post's copy streams — images overlap the rest of the run.

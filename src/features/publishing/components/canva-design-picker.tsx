@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { Search, Loader2, Image as ImageIcon } from 'lucide-react'
+import { cn } from '@/utils/cn'
 import { Modal } from '@/components/ui/modal'
 import { mapImageRow } from '@/features/publishing/lib/map-image-row'
 import type { PostImage } from '@/types/api'
@@ -106,62 +107,31 @@ export function CanvaDesignPicker({
   return (
     <Modal open={open} onClose={onClose} title="Import from Canva" maxWidth={600}>
       {/* Search bar */}
-      <form onSubmit={handleSearch} style={{ marginBottom: 16 }}>
-        <div
-          style={{
-            display: 'flex',
-            gap: 8,
-            alignItems: 'center',
-            padding: '8px 12px',
-            border: '1px solid var(--line2)',
-            borderRadius: 8,
-            background: 'var(--sunken)',
-          }}
-        >
-          <Search style={{ width: 14, height: 14, color: 'var(--text2)', flexShrink: 0 }} />
+      <form onSubmit={handleSearch} className="mb-4">
+        <div className="flex items-center gap-2 rounded-sm border border-line2 bg-sunken px-3 py-2">
+          <Search className="h-3.5 w-3.5 shrink-0 text-text2" />
           <input
-            className="text-body"
+            className="flex-1 border-0 bg-transparent text-body text-ink"
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search your Canva designs..."
-            style={{
-              flex: 1,
-              border: 'none',
-              background: 'transparent',
-              outline: 'none',
-              color: 'var(--ink)',
-              fontFamily: 'inherit',
-            }}
+            // Stays inline: an `outline-none` class would lose to the unlayered
+            // `:focus-visible` ring in globals.css, so the field would gain a ring it
+            // does not have today. Inline is the only expression that still wins.
+            style={{ outline: 'none' }}
           />
         </div>
       </form>
 
       {error && (
-        <div
-          className="text-caption"
-          style={{
-            color: 'var(--danger)',
-            background: 'var(--danger-bg)',
-            padding: '8px 12px',
-            borderRadius: 6,
-            marginBottom: 12,
-          }}
-        >
+        <div className="mb-3 rounded-[6px] bg-danger-bg px-3 py-2 text-caption text-danger">
           {error}
         </div>
       )}
 
       {/* Designs grid */}
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))',
-          gap: 10,
-          maxHeight: 400,
-          overflowY: 'auto',
-        }}
-      >
+      <div className="grid max-h-[400px] grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-2.5 overflow-y-auto">
         {designs.map((design) => (
           <DesignCard
             key={design.id}
@@ -174,46 +144,24 @@ export function CanvaDesignPicker({
       </div>
 
       {loading && (
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'center',
-            padding: 24,
-            color: 'var(--text2)',
-          }}
-        >
-          <Loader2 style={{ width: 20, height: 20, animation: 'spin 1s linear infinite' }} />
+        <div className="flex justify-center p-6 text-text2">
+          <Loader2 className="h-5 w-5 animate-spin" />
         </div>
       )}
 
       {!loading && designs.length === 0 && (
-        <div
-          className="text-body"
-          style={{
-            textAlign: 'center',
-            padding: 32,
-            color: 'var(--text2)',
-          }}
-        >
+        <div className="p-8 text-center text-body text-text2">
           No designs found. Create one in Canva first.
         </div>
       )}
 
       {/* Load more */}
       {continuation && !loading && (
-        <div style={{ display: 'flex', justifyContent: 'center', marginTop: 12 }}>
+        <div className="mt-3 flex justify-center">
           <button
-            className="text-caption"
+            className="cursor-pointer border-0 bg-transparent px-3 py-1.5 text-caption text-forest"
             type="button"
             onClick={() => fetchDesigns(query, continuation)}
-            style={{
-              color: 'var(--forest)',
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              fontFamily: 'inherit',
-              padding: '6px 12px',
-            }}
           >
             Load more
           </button>
@@ -236,74 +184,37 @@ function DesignCard({
 }) {
   return (
     <button
+      className={cn(
+        'flex flex-col overflow-hidden rounded-sm border border-line bg-surface p-0 text-left transition-[border-color,box-shadow] duration-150 ease-[ease]',
+        // Gated on `disabled` because the JS hover it replaces never fired on a
+        // disabled button — mouse events are suppressed there, but :hover is not.
+        !disabled && 'hover:border-forest'
+      )}
       type="button"
       onClick={onImport}
       disabled={disabled}
       style={{
-        display: 'flex',
-        flexDirection: 'column',
-        border: '1px solid var(--line)',
-        borderRadius: 8,
-        overflow: 'hidden',
-        background: 'var(--surface)',
         cursor: disabled ? 'wait' : 'pointer',
         opacity: disabled && !isImporting ? 0.5 : 1,
-        transition: 'border-color 150ms ease, box-shadow 150ms ease',
-        fontFamily: 'inherit',
-        padding: 0,
-        textAlign: 'left',
-      }}
-      onMouseEnter={(e) => {
-        if (!disabled) e.currentTarget.style.borderColor = 'var(--forest)'
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.borderColor = 'var(--line)'
       }}
     >
       {/* Thumbnail */}
-      <div
-        style={{
-          width: '100%',
-          aspectRatio: '4/5',
-          background: 'var(--sunken)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          overflow: 'hidden',
-        }}
-      >
+      <div className="flex aspect-[4/5] w-full items-center justify-center overflow-hidden bg-sunken">
         {isImporting ? (
-          <Loader2
-            style={{
-              width: 20,
-              height: 20,
-              color: 'var(--forest)',
-              animation: 'spin 1s linear infinite',
-            }}
-          />
+          <Loader2 className="h-5 w-5 animate-spin text-forest" />
         ) : design.thumbnailUrl ? (
           <img
+            className="h-full w-full object-cover"
             src={design.thumbnailUrl}
             alt={design.title}
-            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
           />
         ) : (
-          <ImageIcon style={{ width: 24, height: 24, color: 'var(--text2)' }} />
+          <ImageIcon className="h-6 w-6 text-text2" />
         )}
       </div>
 
       {/* Title */}
-      <div
-        className="text-micro"
-        style={{
-          padding: '8px 10px',
-          fontWeight: 500,
-          color: 'var(--ink)',
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
-          whiteSpace: 'nowrap',
-        }}
-      >
+      <div className="truncate px-2.5 py-2 text-micro font-medium text-ink">
         {isImporting ? 'Importing...' : design.title || 'Untitled'}
       </div>
     </button>

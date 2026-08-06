@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { z } from 'zod'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { draftVisualPrefix, movePostImageObject } from '@/features/publishing/lib/storage'
@@ -7,6 +8,7 @@ import { POST_COLUMNS } from '@/lib/queries/select-columns'
 import type { CanvasDoc } from '@/types/canvas'
 import type { Database, Json } from '@/types/database'
 
+/** List the agency's posts, filterable by status, client and scheduled window. */
 export async function GET(request: Request) {
   const auth = await resolveAuth()
   if (!auth.ok) return auth.response
@@ -20,12 +22,18 @@ export async function GET(request: Request) {
   const scheduledFrom = searchParams.get('scheduled_from')
   const scheduledTo = searchParams.get('scheduled_to')
 
-  // Fetch all client IDs (and names if needed) for this agency
-  const { data: clientRows } = await supabase
+  const { data: clientRows, error: clientsError } = await supabase
     .from('clients')
     .select('id, name')
     .eq('agency_id', agencyId)
+  // An empty client list short-circuits to `{ posts: [] }` below, so a failed
+  // query would render as an agency with no posts at all.
+  if (clientsError) {
+    console.error('[posts] client query failed:', clientsError.message)
+    return NextResponse.json({ error: 'Failed to load clients' }, { status: 500 })
+  }
 
+  // as: explicit column projection — Supabase types from the table, not the select
   const clients = (clientRows as Array<{ id: string; name: string }> | null) ?? []
   const clientIds = clients.map((c) => c.id)
 
@@ -53,13 +61,17 @@ export async function GET(request: Request) {
   if (scheduledFrom) query = query.gte('scheduled_at', scheduledFrom)
   if (scheduledTo) query = query.lte('scheduled_at', scheduledTo)
 
-  const { data: posts } = await query
+  const { data: posts, error: postsError } = await query
+  if (postsError) {
+    console.error('[posts] post query failed:', postsError.message)
+    return NextResponse.json({ error: 'Failed to load posts' }, { status: 500 })
+  }
 
-  // Attach client_name if requested
   if (includeClient) {
     const nameMap = new Map(clients.map((c) => [c.id, c.name]))
     const enriched = (posts ?? []).map((p: Record<string, unknown>) => ({
       ...p,
+      // as: POST_COLUMNS projects client_id; the row itself is a generic record
       client_name: nameMap.get(p.client_id as string) ?? 'Unknown',
     }))
     return NextResponse.json({ posts: enriched })
@@ -68,30 +80,46 @@ export async function GET(request: Request) {
   return NextResponse.json({ posts: posts ?? [] })
 }
 
-interface CreatePostBody {
-  client_id: string
-  caption: string | null
-  platform: string | null
-  post_type: string
-  slides_json?: unknown
-  validation_json?: unknown
-  status?: string
-  scheduled_at?: string
-  priority?: boolean
-  quality_score_avg?: number | null
-  topic_summary?: string | null
-  was_rewritten?: boolean
-  rewrite_count?: number
-  source_url?: string | null
-  source_title?: string | null
-  source_type?: string | null
-  source_excerpt?: string | null
-  client_source_id?: string | null
-  pillar?: string | null
+/**
+ * The wizard's approve payload. `status` is an enum rather than a free string
+ * because it is written straight to posts.status, and the previous hand-rolled
+ * interface let anything through — only client_id was ever checked at runtime.
+ */
+const createPostSchema = z.object({
+  client_id: z.string().min(1),
+  caption: z.string().nullable().optional(),
+  platform: z.string().nullable().optional(),
+  post_type: z.string().optional(),
+  slides_json: z.unknown().optional(),
+  validation_json: z.unknown().optional(),
+  status: z.enum(['pending_review', 'scheduled', 'approved']).optional(),
+  scheduled_at: z.string().optional(),
+  priority: z.boolean().optional(),
+  quality_score_avg: z.number().nullable().optional(),
+  topic_summary: z.string().nullable().optional(),
+  was_rewritten: z.boolean().optional(),
+  rewrite_count: z.number().optional(),
+  source_url: z.string().nullable().optional(),
+  source_title: z.string().nullable().optional(),
+  source_type: z.string().nullable().optional(),
+  source_excerpt: z.string().nullable().optional(),
+  client_source_id: z.string().nullable().optional(),
+  pillar: z.string().nullable().optional(),
   /** Draft visuals generated in the wizard, attached as post_images rows on approve.
    *  `canvasDoc` (when present) becomes the slide's post_canvas_docs row so edits stay editable. */
-  images?: Array<{ position: number; publicUrl: string; storagePath: string; canvasDoc?: unknown }>
-}
+  images: z
+    .array(
+      z.object({
+        position: z.number(),
+        publicUrl: z.string(),
+        storagePath: z.string(),
+        canvasDoc: z.unknown().optional(),
+      })
+    )
+    .optional(),
+})
+
+type CreatePostBody = z.infer<typeof createPostSchema>
 
 /** Attach wizard-draft visuals to a freshly created post. Only paths under the client's drafts prefix
  *  are accepted so a caller can't claim foreign storage objects. Failure logs but never fails the post. */
@@ -175,6 +203,7 @@ async function attachDraftCanvasDocs(
   if (error) console.error('[posts] failed to attach draft canvas docs:', error.message)
 }
 
+/** Create a post from an approved wizard draft, attaching its draft visuals and canvas docs. */
 export async function POST(request: Request) {
   const auth = await resolveAuth()
   if (!auth.ok) return auth.response
@@ -182,34 +211,38 @@ export async function POST(request: Request) {
 
   let body: CreatePostBody
   try {
-    body = await request.json()
+    body = createPostSchema.parse(await request.json())
   } catch {
     return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
   }
 
-  if (!body.client_id || typeof body.client_id !== 'string') {
-    return NextResponse.json({ error: 'client_id is required' }, { status: 400 })
-  }
-
-  // Verify client belongs to agency
-  const { data: client } = await supabase
+  const { data: client, error: clientError } = await supabase
     .from('clients')
     .select('id')
     .eq('id', body.client_id)
     .eq('agency_id', agencyId)
-    .single()
+    .maybeSingle()
+  // A failed ownership read must not read as "not yours".
+  if (clientError) {
+    console.error('[posts] client ownership check failed:', clientError.message)
+    return NextResponse.json({ error: 'Failed to verify client' }, { status: 500 })
+  }
 
   if (!client) return NextResponse.json({ error: 'Client not found' }, { status: 404 })
 
   // Attribution guard: never persist a source id that belongs to another client
   let clientSourceId = body.client_source_id ?? null
   if (clientSourceId) {
-    const { data: ownedSource } = await supabase
+    const { data: ownedSource, error: sourceError } = await supabase
       .from('client_sources')
       .select('id')
       .eq('id', clientSourceId)
       .eq('client_id', body.client_id)
       .maybeSingle()
+    if (sourceError) {
+      console.error('[posts] source ownership check failed:', sourceError.message)
+      return NextResponse.json({ error: 'Failed to verify source' }, { status: 500 })
+    }
     if (!ownedSource) {
       console.warn('[posts] client_source_id does not belong to client — dropping attribution')
       clientSourceId = null
@@ -256,12 +289,17 @@ export async function POST(request: Request) {
   await attachDraftImages(post.id, body.client_id, body.images)
   await attachDraftCanvasDocs(post.id, body.client_id, body.images)
 
-  // Record in post history to avoid duplicate themes in future generations
+  // Record in post history to avoid duplicate themes in future generations.
+  // Logged rather than failed: the post itself is already saved, and history
+  // only feeds topic de-duplication on later runs.
   if (body.topic_summary) {
-    await supabase.from('post_history').insert({
+    const { error: historyError } = await supabase.from('post_history').insert({
       client_id: body.client_id,
       topic_summary: body.topic_summary,
     })
+    if (historyError) {
+      console.error('[posts] post history insert failed:', historyError.message)
+    }
   }
 
   return NextResponse.json({ post })

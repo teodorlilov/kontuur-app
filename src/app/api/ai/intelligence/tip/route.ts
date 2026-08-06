@@ -5,6 +5,7 @@ import { callAnthropic, LIGHT_MODEL } from '@/utils/ai-client'
 import { extractTextFromMessage } from '@/utils/ai'
 import { sanitizePromptField, PROMPT_FIELD_LIMITS } from '@/ai/utils/sanitize'
 
+/** One short coaching tip for the dashboard briefing bar. Rate-limited — it is a nicety, not a page dependency. */
 export async function POST(request: Request) {
   const auth = await resolveAuth()
   if (!auth.ok) return auth.response

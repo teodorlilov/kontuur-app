@@ -730,21 +730,7 @@ function Backdrop({ children, onClose }: { children: React.ReactNode; onClose: (
 
 function CenterNotice({ children }: { children: React.ReactNode }) {
   return (
-    <div
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        height: '100%',
-        width: '100%',
-        color: 'var(--text2)',
-        fontSize: 'var(--text-body)',
-        fontFamily: 'var(--font-sans)',
-        textAlign: 'center',
-        padding: 24,
-      }}
-    >
+    <div className="flex size-full flex-col items-center justify-center p-6 text-center font-sans text-body text-text2">
       {children}
     </div>
   )
@@ -778,26 +764,11 @@ function TopBar(props: TopBarProps) {
         background: 'var(--paper)',
       }}
     >
-      <span
-        style={{
-          fontSize: 'var(--text-body)',
-          fontWeight: 500,
-          color: 'var(--ink)',
-          fontFamily: 'var(--font-sans)',
-        }}
-      >
-        {props.slideLabel}
-      </span>
+      <span className="font-sans text-body font-medium text-ink">{props.slideLabel}</span>
       {props.overflows && (
         <span
           title="Some text does not fit its slot — shorten it or reduce the font size."
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 4,
-            fontSize: 'var(--text-micro)',
-            color: 'var(--danger)',
-          }}
+          className="inline-flex items-center gap-1 text-micro text-danger"
         >
           <AlertTriangle size={13} /> Text overflows
         </span>

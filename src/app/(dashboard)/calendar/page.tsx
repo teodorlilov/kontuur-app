@@ -75,7 +75,6 @@ export default async function CalendarPage() {
   const imagesByPost = await fetchImagesByPost(typedPostRows.map((p) => p.id))
 
   const posts: CalendarPost[] = typedPostRows.map((p) => {
-    // Sort tokens by created_at desc and take the latest
     const latestToken = p.post_approval_tokens
       .slice()
       .sort((a, b) => b.created_at.localeCompare(a.created_at))[0]

@@ -34,65 +34,25 @@ export function Footer() {
   const isSmall = useIsMobile(480)
 
   return (
-    <footer
-      className="mkt-pad"
-      style={{
-        background: 'var(--forest)',
-        borderTop: '1px solid rgba(255,255,255,0.08)',
-        paddingTop: 64,
-        paddingBottom: 40,
-      }}
-    >
+    <footer className="mkt-pad border-t border-white/8 bg-forest pb-10 pt-16">
       {/* Link columns — centered */}
       <div
-        style={{
-          display: 'flex',
-          justifyContent: 'center',
-          gap: isSmall ? 32 : isMobile ? 48 : 80,
-          flexWrap: 'wrap',
-          marginBottom: 48,
-        }}
+        className="mb-12 flex flex-wrap justify-center"
+        style={{ gap: isSmall ? 32 : isMobile ? 48 : 80 }}
       >
         {columns.map((col) => (
           <div key={col.title}>
-            <p
-              className="text-label"
-              style={{
-                textTransform: 'uppercase',
-                letterSpacing: '0.1em',
-                color: 'rgba(255,255,255,0.25)',
-                fontWeight: 600,
-                marginBottom: 16,
-              }}
-            >
+            {/* tracking-[0.1em]: a footer column head; the Label role's 0.16em is
+                set for lone UI badges and over-spaces a word this long. */}
+            <p className="mb-4 text-label font-semibold uppercase tracking-[0.1em] text-white/25">
               {col.title}
             </p>
-            <ul
-              style={{
-                listStyle: 'none',
-                padding: 0,
-                margin: 0,
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 10,
-              }}
-            >
+            <ul className="m-0 flex list-none flex-col gap-2.5 p-0">
               {col.links.map((link) => (
                 <li key={link.label}>
                   <Link
-                    className="text-body"
+                    className="text-body text-white/55 no-underline transition-[color] duration-120 ease-[ease] hover:text-white/85"
                     href={link.href}
-                    style={{
-                      color: 'rgba(255,255,255,0.55)',
-                      textDecoration: 'none',
-                      transition: 'color 120ms ease',
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.color = 'rgba(255,255,255,0.85)'
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.color = 'rgba(255,255,255,0.55)'
-                    }}
                   >
                     {link.label}
                   </Link>
@@ -104,24 +64,12 @@ export function Footer() {
       </div>
 
       {/* Bottom bar */}
-      <div
-        style={{
-          borderTop: '1px solid rgba(255,255,255,0.08)',
-          paddingTop: 24,
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: 8,
-        }}
-      >
-        <p className="text-body" style={{ color: 'rgba(255,255,255,0.35)', margin: 0 }}>
+      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-white/8 pt-6">
+        <p className="m-0 text-body text-white/35">
           © {new Date().getFullYear()} Kontuur. Operated by Chelling Ltd, UIC 206770508, Sofia,
           Bulgaria.
         </p>
-        <p className="text-body" style={{ color: 'rgba(255,255,255,0.35)', margin: 0 }}>
-          Built by About Social Media
-        </p>
+        <p className="m-0 text-body text-white/35">Built by About Social Media</p>
       </div>
     </footer>
   )

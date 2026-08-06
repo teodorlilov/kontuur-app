@@ -4,6 +4,7 @@ import { verifyPostOwnership } from '@/lib/auth/helpers'
 import { isUserSettablePostStatus, isValidPostPlatform } from '@/lib/validation'
 import { POST_COLUMNS } from '@/lib/queries/select-columns'
 
+/** Fetch one post. */
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const auth = await resolveAuth()
@@ -33,6 +34,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   return NextResponse.json({ post })
 }
 
+/** Update one post's fields. */
 export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const auth = await resolveAuth()
@@ -81,6 +83,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
   return NextResponse.json({ post: updated })
 }
 
+/** Delete one post. */
 export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const auth = await resolveAuth()

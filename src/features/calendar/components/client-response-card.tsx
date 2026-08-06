@@ -41,34 +41,14 @@ export function ClientResponseCard({
   const timeAgo = respondedAt ? formatRelativeTime(parseTimestamp(respondedAt)) : null
 
   return (
-    <div
-      style={{
-        border: `1px solid ${s.border}`,
-        borderRadius: 12,
-        overflow: 'hidden',
-      }}
-    >
+    // The three tints below are picked out of STYLES by approval status, so
+    // they stay values rather than classes.
+    <div className="overflow-hidden rounded-[12px] border" style={{ borderColor: s.border }}>
       {/* Header */}
-      <div
-        style={{
-          background: s.headerBg,
-          padding: '12px 14px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 9,
-        }}
-      >
+      <div className="flex items-center gap-[9px] px-3.5 py-3" style={{ background: s.headerBg }}>
         <div
-          style={{
-            width: 28,
-            height: 28,
-            borderRadius: '50%',
-            background: s.iconBg,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            flexShrink: 0,
-          }}
+          className="flex size-7 shrink-0 items-center justify-center rounded-full"
+          style={{ background: s.iconBg }}
         >
           <Icon size={13} color={s.iconColor} />
         </div>
@@ -77,25 +57,16 @@ export function ClientResponseCard({
             {clientName} {s.label}
           </div>
           {timeAgo && (
-            <div className="text-micro text-text2" style={{ marginTop: 1 }}>
-              {timeAgo} · via review link
-            </div>
+            <div className="mt-px text-micro text-text2">{timeAgo} · via review link</div>
           )}
         </div>
       </div>
 
       {/* Body */}
-      <div style={{ padding: '10px 14px' }}>
-        <div
-          className="text-body"
-          style={{
-            color: 'var(--ink)',
-            fontStyle: 'italic',
-            lineHeight: 1.55,
-          }}
-        >
-          {clientNote || s.fallback}
-        </div>
+      <div className="px-3.5 py-2.5">
+        {/* leading-[1.55]: a quoted note in italic sets tighter than Body's 1.6,
+            so the block reads as one voice rather than a list of lines. */}
+        <div className="text-body italic leading-[1.55] text-ink">{clientNote || s.fallback}</div>
       </div>
     </div>
   )

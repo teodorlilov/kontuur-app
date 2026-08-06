@@ -4,6 +4,7 @@ import { resolveAuth } from '@/lib/auth/resolve-auth'
 import { verifyAdminRole } from '@/lib/auth/helpers'
 import { fetchAgencyById } from '@/lib/queries/db'
 
+/** Fetch the agency's account settings. */
 export async function GET() {
   const auth = await resolveAuth()
   if (!auth.ok) return auth.response
@@ -18,6 +19,7 @@ export async function GET() {
   return NextResponse.json({ agency })
 }
 
+/** Update the agency's account settings. */
 export async function PUT(request: Request) {
   const auth = await resolveAuth()
   if (!auth.ok) return auth.response

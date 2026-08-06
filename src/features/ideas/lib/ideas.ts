@@ -1,7 +1,10 @@
+import 'server-only'
+
 import { randomBytes } from 'crypto'
 import type { ClientIdea, IdeaStatus } from '@/types/api'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { CLIENT_IDEA_COLUMNS } from '@/lib/queries/select-columns'
+import type { IdeaBrief } from '@/features/ideas/schemas'
 
 // ── Token helpers (admin client — public routes, no auth) ────
 
@@ -121,19 +124,12 @@ export async function fetchFormContext(token: string) {
 
 // ── Submission (admin client — public route) ─────────────────
 
-interface IdeaInput {
-  ideaText: string
-  extraNotes?: string
-  platform?: string
-  targetDate?: string
-}
-
 /** Inserts one or more ideas submitted by a client. */
 export async function submitIdeas(
   tokenId: string,
   agencyId: string,
   clientId: string,
-  ideas: IdeaInput[]
+  ideas: IdeaBrief[]
 ): Promise<void> {
   const supabase = createAdminSupabaseClient()
 

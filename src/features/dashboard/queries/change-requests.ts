@@ -1,3 +1,5 @@
+import 'server-only'
+
 import { cache } from 'react'
 import { unstable_cache } from 'next/cache'
 import type { SupabaseClient } from '@supabase/supabase-js'
@@ -51,11 +53,14 @@ async function fetchBatchPositions(
 ): Promise<Map<string, number>> {
   if (batchIds.length === 0) return new Map()
 
-  const { data } = await supabase
+  // Positions come from this order alone, so an unread failure would silently
+  // label every post "Post #1".
+  const { data, error } = await supabase
     .from('post_approval_tokens')
     .select(BATCH_POSITION_COLUMNS)
     .in('batch_id', batchIds)
     .order('created_at', { ascending: true })
+  if (error) throw new Error(`batch position query failed: ${error.message}`)
 
   const batchOrder = new Map<string, string[]>()
   for (const token of (data as Array<{ batch_id: string | null; post_id: string | null }> | null) ??

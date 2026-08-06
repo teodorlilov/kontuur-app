@@ -39,13 +39,13 @@ export function RunPanel({
   const totalCount = postCount + briefCount
 
   return (
-    <aside className="surface-dark-capsule flex flex-col overflow-hidden rounded-card bg-forest-deep text-[#f2f5f1] shadow-dark lg:sticky lg:top-6">
+    <aside className="surface-dark-capsule flex flex-col overflow-hidden rounded-card bg-forest-deep text-ink-inv shadow-dark lg:sticky lg:top-6">
       <div className="border-b border-white/10 p-5 pb-4">
-        <p className="text-label font-semibold uppercase text-[#f2f5f1]/55">This run</p>
+        <p className="text-label font-semibold uppercase text-ink-inv/55">This run</p>
         <p className="mt-2 text-metric font-semibold tabular-nums text-accent">
           {totalCount} post{totalCount === 1 ? '' : 's'}
         </p>
-        <p className="mt-1 text-caption text-[#f2f5f1]/70">{metaLine}</p>
+        <p className="mt-1 text-caption text-ink-inv/70">{metaLine}</p>
       </div>
 
       <div className="flex flex-col p-5 pt-4">
@@ -76,9 +76,9 @@ export function RunPanel({
         />
 
         <div className="mt-4 border-t border-white/10 pt-4">
-          <p className="mb-2 text-label font-semibold uppercase text-[#f2f5f1]/45">Content mix</p>
+          <p className="mb-2 text-label font-semibold uppercase text-ink-inv/45">Content mix</p>
           {isIdeaFlow ? (
-            <p className="text-caption text-[#f2f5f1]/70">
+            <p className="text-caption text-ink-inv/70">
               One post, written from the idea’s brief.
             </p>
           ) : (
@@ -87,9 +87,9 @@ export function RunPanel({
                   and with this row the mix sums to the headline count. */}
               {briefCount > 0 && (
                 <div className="flex items-center gap-2 py-1 text-caption">
-                  <span aria-hidden className="size-2 flex-none rounded-full bg-[#f2f5f1]/60" />
+                  <span aria-hidden className="size-2 flex-none rounded-full bg-ink-inv/60" />
                   <span className="min-w-0 flex-1 truncate">Priority briefs</span>
-                  <span className="flex-none tabular-nums text-[#f2f5f1]/70">
+                  <span className="flex-none tabular-nums text-ink-inv/70">
                     {briefCount} post{briefCount === 1 ? '' : 's'}
                   </span>
                 </div>
@@ -110,25 +110,25 @@ export function RunPanel({
                     style={
                       hasSources
                         ? {
-                            background: `color-mix(in srgb, ${getPillarColor(pillar.pillar).hex} 45%, #f2f5f1)`,
+                            background: `color-mix(in srgb, ${getPillarColor(pillar.pillar).hex} 45%, var(--ink-inv))`,
                           }
                         : undefined
                     }
                   />
-                  <span className={cn('min-w-0 flex-1 truncate', !hasSources && 'text-[#f2f5f1]/45')}>
+                  <span className={cn('min-w-0 flex-1 truncate', !hasSources && 'text-ink-inv/45')}>
                     {pillar.pillar}
                   </span>
                   <span
                     className={cn(
                       'flex-none tabular-nums',
-                      hasSources && count > 0 ? 'text-[#f2f5f1]/70' : 'text-[#f2f5f1]/45'
+                      hasSources && count > 0 ? 'text-ink-inv/70' : 'text-ink-inv/45'
                     )}
                   >
                     {!hasSources ? 'no sources' : count === 0 ? '—' : `${count} post${count === 1 ? '' : 's'}`}
                   </span>
                 </div>
               ))}
-              <p className="mt-3 text-micro text-[#f2f5f1]/60">
+              <p className="mt-3 text-micro text-ink-inv/60">
                 {starvedPillars.length === 0 ? (
                   'Weighted by this client’s pillars. Research decides the final split.'
                 ) : (
@@ -161,7 +161,7 @@ export function RunPanel({
         >
           Generate {totalCount} post{totalCount === 1 ? '' : 's'}
         </Button>
-        <p className="mt-3 text-center text-micro text-[#f2f5f1]/55">
+        <p className="mt-3 text-center text-micro text-ink-inv/55">
           Nothing publishes from here. You review every draft first.
         </p>
       </div>
@@ -180,9 +180,9 @@ function CapsuleRow({
 }) {
   return (
     <div className="flex items-baseline justify-between gap-3 py-1.5 text-caption">
-      <span className="text-[#f2f5f1]/55">{label}</span>
+      <span className="text-ink-inv/55">{label}</span>
       {/* Living Green Lite is the green that stays legible on Pine Deep. */}
-      <span className={cn('text-right font-medium', good ? 'text-spring-lite' : 'text-[#f2f5f1]')}>
+      <span className={cn('text-right font-medium', good ? 'text-spring-lite' : 'text-ink-inv')}>
         {value}
       </span>
     </div>
