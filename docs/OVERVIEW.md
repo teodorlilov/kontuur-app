@@ -68,22 +68,25 @@ publishes everything that is due every five minutes.
 
 ## 2. Tech stack
 
-| Layer                     | Technology                                                                          |
-| ------------------------- | ----------------------------------------------------------------------------------- |
-| Framework                 | Next.js 16 (App Router), React 19                                                   |
-| Language                  | TypeScript (strict)                                                                 |
-| Styling                   | Tailwind CSS 4, Radix UI primitives, Framer Motion, Lucide icons                    |
-| Toasts                    | Sonner                                                                              |
-| Database / Auth / Storage | Supabase (PostgreSQL + Row Level Security + Auth + Storage)                         |
-| AI                        | Anthropic Claude — `claude-sonnet-4-5` (default) + `claude-haiku-4-5` (light tasks) |
-| Email                     | Resend                                                                              |
-| Charts                    | Recharts                                                                            |
-| PDF                       | jsPDF (report export), pdf-parse (source file extraction)                           |
-| Publishing                | Meta Graph API (Instagram / Facebook)                                               |
-| Design import             | Canva Connect API                                                                   |
-| Research                  | Tavily (web trend search), Jina AI Reader (website content extraction)              |
-| Hosting / Cron            | Vercel                                                                              |
-| Tests                     | Vitest                                                                              |
+| Layer                     | Technology                                                                              |
+| ------------------------- | --------------------------------------------------------------------------------------- |
+| Framework                 | Next.js 16 (App Router), React 19                                                       |
+| Language                  | TypeScript (strict)                                                                     |
+| Styling                   | Tailwind CSS 4, Radix UI primitives, Framer Motion, Lucide icons                        |
+| Toasts                    | Sonner                                                                                  |
+| Database / Auth / Storage | Supabase (PostgreSQL + Row Level Security + Auth + Storage)                             |
+| AI (text)                 | Anthropic Claude — `claude-sonnet-4-5` (default) + `claude-haiku-4-5` (light tasks)     |
+| AI (imagery)              | fal.ai — `gpt-image-2` (generate + edit), `birefnet/v2` (cutout), `recraft/v4` (vector) |
+| Canvas                    | Konva + react-konva — the single renderer for composed post creatives                   |
+| Validation                | zod at every boundary (route bodies, server-action args, third-party responses)         |
+| Email                     | Resend                                                                                  |
+| Charts                    | Recharts                                                                                |
+| PDF                       | jsPDF (report export), pdf-parse (source file extraction)                               |
+| Publishing                | Meta Graph API (Instagram / Facebook)                                                   |
+| Design import             | Canva Connect API                                                                       |
+| Research                  | Tavily (web trend search), Jina AI Reader (website content extraction)                  |
+| Hosting / Cron            | Vercel                                                                                  |
+| Tests                     | Vitest                                                                                  |
 
 ---
 
@@ -153,6 +156,24 @@ server actions opportunistically when touching the file — no big-bang rewrite.
 - Server routes that must bypass RLS (cron jobs, storage, public token flows) use an
   **admin Supabase client** (`src/lib/supabase/admin.ts`) and manually scope every query
   to the correct agency/client.
+- Every module that touches the admin client or a non-`NEXT_PUBLIC_` env var imports
+  **`server-only`**. That import is what makes a leak into a client bundle a _build failure_
+  rather than a shipped secret, so it is not optional decoration — add it to any new
+  server-side module.
+
+### The design system is enforced, not documented
+
+[DESIGN.md](../DESIGN.md) is the design document, but the parts that matter are compiled in:
+
+- `globals.css` deletes Tailwind's default type scale (`--text-*: initial`), so `text-sm`
+  resolves to **nothing at all**. There is no second vocabulary to fall back into — the ten
+  named roles are the only sizes in the app.
+- Colour lives in `@theme inline` as semantic tokens (`bg-forest`, `text-ink-inv`, …). A raw
+  hex in a component means the palette is missing a name for that idea; add the token instead.
+- Styling is expressed as classes, not `style={{}}`. Inline style is for genuinely computed
+  values only — a width encoding a count, a colour derived from data. Four narrow exemptions
+  exist where a class cannot reach (see §12).
+- `src/app/__tests__/type-ramp.test.ts` fails the build when any of this drifts.
 
 ### The Anthropic wrapper (`src/utils/ai-client.ts`)
 
@@ -196,11 +217,16 @@ src/
 ├── features/                    # Layer 1 — feature-scoped React modules
 │   ├── auth clients dashboard generate review calendar ideas
 │   ├── analytics settings sources publishing onboarding marketing
+│   ├── canvas-editor           #   Konva creative editor (layers, cutout, inpaint, elements)
+│   ├── visual-identity         #   per-client palette / style extraction + review
 │   └── (each: components/ + hooks/ + actions/ + lib/ + types)
 │
 ├── components/                  # Shared UI — ui/ primitives, layout/, posts/, scheduling/, providers/
 ├── lib/                         # Server utils — supabase/, auth/, queries/, sources/, clients/, email/,
-│                                #   meta/ (Graph API constants + IG/FB metrics fetching & aggregation)
+│                                #   meta/ (Graph API constants + IG/FB metrics fetching & aggregation),
+│                                #   visual/ (fal.ai wrapper, brand styles, identity extraction),
+│                                #   canvas/ (doc schema, seeding, node attrs — the saved creative model),
+│                                #   generation/ (run bookkeeping), validation/, content-rules/, render/
 ├── utils/                       # Generic helpers + ai-client (Anthropic wrapper)
 ├── types/                       # database.ts (generated), api.ts, post.ts, sources.ts
 ├── hooks/  i18n/  middleware.ts
@@ -364,9 +390,19 @@ in one click.
 recommendations per platform, batch scheduling from review, and client-response cards. Calendar
 images are preloaded for snappy navigation.
 
-**Images & Canva** — Attach images to a post by direct upload or by importing a Canva design
-(user-level Canva Connect OAuth → list designs → export to an image slot). Images are stored in
-Supabase Storage and ordered per post.
+**AI visuals & the canvas editor** — Posts arrive in review as finished creatives, not bare copy.
+A per-client **visual identity** (palette + brand style, extracted from the client's site or set by
+hand) seeds every image. `gpt-image-2` via fal.ai paints the art; a **Konva** document then bakes
+the post's own copy onto it, so the text stays editable rather than being burned into the model
+output. The editor exposes text layers, background reposition/zoom, subject cutout (BiRefNet),
+lasso cut, eraser, AI inpaint, generated vectors (Recraft) and an element band. A saved creative is
+a `post_canvas_docs` row (the doc) plus the flattened jpeg in `post_images` — the doc is what makes
+a slide re-editable and what lets a copy edit re-bake the image automatically. The `visuals` cron
+paints the backlog so drafts are finished before anyone opens the queue.
+
+**Images & Canva** — Alongside generated visuals, attach images by direct upload or by importing a
+Canva design (user-level Canva Connect OAuth → list designs → export to an image slot). Images are
+stored in Supabase Storage and ordered per post.
 
 **Instagram publishing** — Meta Graph API two-step flow (create container → poll → publish) for
 single images and 2–10-image carousels, with token-expiry checks and up to 3 retry attempts.
@@ -454,9 +490,11 @@ All under `src/app/api/`. Representative map (each handler authenticates and sco
 See [`.env.example`](../.env.example) for the authoritative list with comments. Summary:
 
 `NEXT_PUBLIC_SUPABASE_URL` · `NEXT_PUBLIC_SUPABASE_ANON_KEY` · `SUPABASE_SERVICE_ROLE_KEY` ·
-`ANTHROPIC_API_KEY` · `META_APP_ID` · `META_APP_SECRET` · `RESEND_API_KEY` · `RESEND_FROM_EMAIL` ·
-`NEXT_PUBLIC_APP_URL` · `CRON_SECRET` · `JINA_API_KEY` · `TAVILY_API_URL_KEY` ·
-`CANVA_CLIENT_ID` · `CANVA_CLIENT_SECRET` · `CANVA_REDIRECT_URI`
+`ANTHROPIC_API_KEY` · `FAL_API_KEY` · `META_APP_ID` · `META_APP_SECRET` ·
+`META_INSTAGRAM_APP_ID` · `META_INSTAGRAM_APP_SECRET` · `META_REDIRECT_URI` ·
+`RESEND_API_KEY` · `RESEND_FROM_EMAIL` · `NEXT_PUBLIC_APP_URL` · `CRON_SECRET` ·
+`JINA_API_KEY` · `TAVILY_API_URL_KEY` · `CANVA_CLIENT_ID` · `CANVA_CLIENT_SECRET` ·
+`CANVA_REDIRECT_URI` · `CHROME_EXECUTABLE_PATH` (brand-kit extraction only)
 
 Rule: anything without the `NEXT_PUBLIC_` prefix is server-only and must never reach the client.
 
@@ -466,8 +504,20 @@ Rule: anything without the `NEXT_PUBLIC_` prefix is server-only and must never r
 
 - **Vitest** — unit tests co-located in `__tests__/` folders across `ai/research`, `ai/validation`,
   `ai/rewrite`, `ai/shared`, `lib/sources`, `lib/clients`, `features/review`, and `utils`.
+  74 files / 687 tests. `server-only` is aliased to a stub in `vitest.config.ts`: it is a
+  Next-internal module, so the guard would otherwise fail every test that touches a server file.
+- **Design guards** — `src/app/__tests__/type-ramp.test.ts` is a _test that enforces the design
+  system_, not a unit test. It fails the build on any off-ramp font size (including inline
+  `fontSize`, in every form), on Tailwind's deleted default scale, and if `TYPE_RAMP` in
+  `src/utils/cn.ts` drifts from the `--text-*` tokens — a missing step there is silently filed as a
+  text _colour_ by tailwind-merge and eats whatever colour precedes it. Four path exemptions are
+  listed in the test, each where a className genuinely cannot reach (Konva document fields,
+  recharts `tick` props, the sonner options object).
 - **Scripts** — `npm run dev | build | start | lint | test | test:watch`, plus `format` / `format:check`.
 - **Type safety** — TypeScript strict mode; `npx tsc --noEmit` is the gate for changes.
+- **Known**: `npm run lint` currently exits 1 on 9 pre-existing errors catalogued in
+  [TECH-DEBT.md](./TECH-DEBT.md) §4, so `npm run check` is red until that cleanup pass runs.
+  Verify any gate directly — piping to `tail` returns the pipe's exit code, not the command's.
 
 ---
 
@@ -481,19 +531,25 @@ Auth redirect URLs at the deployed domain, and the two cron jobs run automatical
 
 ## 14. Documentation index
 
-| Doc                                                                  | What it is                                                                                               | Status                               |
-| -------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- | ------------------------------------ |
-| **OVERVIEW.md** (this file)                                          | Product + architecture + full feature catalog                                                            | **Current — start here**             |
-| [DESIGN.md](../DESIGN.md)                                            | Kontuur design system — the single design document (colours, type, spacing, named rules, implementation) | Current                              |
-| [CLAUDE.md](./CLAUDE.md)                                             | Code-quality rules (DRY, single source of truth, function limits)                                        | Current                              |
-| [CODING_SKILLS.md](./CODING_SKILLS.md)                               | LLM coding-behaviour guidelines                                                                          | Current                              |
-| [plans/PUBLISHING.md](./plans/PUBLISHING.md)                         | Instagram publishing implementation plan                                                                 | Shipped                              |
-| [plans/NOTIFICATION.md](./plans/NOTIFICATION.md)                     | Client-response notification plan                                                                        | Shipped                              |
-| [plans/CLIENT_IDEAS.md](./plans/CLIENT_IDEAS.md)                     | Client ideas feature plan                                                                                | Shipped                              |
-| [plans/AI-GENERATED_TEMPLATES.md](./plans/AI-GENERATED_TEMPLATES.md) | AI brand-template image generation                                                                       | Proposed (not built)                 |
-| [archive/MASTER_PROMPT.md](./archive/MASTER_PROMPT.md)               | Original "PostFlow" build spec                                                                           | Historical                           |
-| [archive/ARCHITECTURE.md](./archive/ARCHITECTURE.md)                 | Original "PostFlow" Session-0 architecture                                                               | Historical (superseded by this file) |
-| [archive/SESSIONS.md](./archive/SESSIONS.md)                         | Original 9-session build plan                                                                            | Historical                           |
+| Doc                                                              | What it is                                                                                               | Status                               |
+| ---------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- | ------------------------------------ |
+| **OVERVIEW.md** (this file)                                      | Product + architecture + full feature catalog                                                            | **Current — start here**             |
+| [DESIGN.md](../DESIGN.md)                                        | Kontuur design system — the single design document (colours, type, spacing, named rules, implementation) | Current                              |
+| [PRODUCT.md](../PRODUCT.md)                                      | What the product promises and who it is for                                                              | Current                              |
+| [CLAUDE.md](./CLAUDE.md)                                         | Code-quality rules (DRY, single source of truth, function limits)                                        | Current                              |
+| [TECH-DEBT.md](./TECH-DEBT.md)                                   | Every deferred issue, each with why it was deferred and the intended fix                                 | Current                              |
+| [DB-GEN-TYPES.md](./DB-GEN-TYPES.md)                             | How to regenerate `src/types/database.ts` after a migration                                              | Current                              |
+| [RLS-SECURITY-REVIEW.md](./RLS-SECURITY-REVIEW.md)               | Row Level Security review of the Supabase tables                                                         | Current                              |
+| [CODING_SKILLS.md](./CODING_SKILLS.md)                           | LLM coding-behaviour guidelines                                                                          | Current                              |
+| [VISUAL-GENERATION-PRD.md](./VISUAL-GENERATION-PRD.md)           | The visual-generation PRD — design rationale for the shipped canvas/imagery subsystem                    | Shipped (kept for rationale)         |
+| [claude-md-audit-2026-08-05.md](./claude-md-audit-2026-08-05.md) | Branch-wide CLAUDE.md compliance audit; fixes applied, deferrals in TECH-DEBT §6                         | Point-in-time record                 |
+| [plans/PUBLISHING.md](./plans/PUBLISHING.md)                     | Instagram publishing implementation plan                                                                 | Shipped                              |
+| [plans/NOTIFICATION.md](./plans/NOTIFICATION.md)                 | Client-response notification plan                                                                        | Shipped                              |
+| [plans/CLIENT_IDEAS.md](./plans/CLIENT_IDEAS.md)                 | Client ideas feature plan                                                                                | Shipped                              |
+| [plans/LANDING-REDESIGN.md](./plans/LANDING-REDESIGN.md)         | Marketing landing redesign plan                                                                          | Shipped                              |
+| [archive/MASTER_PROMPT.md](./archive/MASTER_PROMPT.md)           | Original "PostFlow" build spec                                                                           | Historical                           |
+| [archive/ARCHITECTURE.md](./archive/ARCHITECTURE.md)             | Original "PostFlow" Session-0 architecture                                                               | Historical (superseded by this file) |
+| [archive/SESSIONS.md](./archive/SESSIONS.md)                     | Original 9-session build plan                                                                            | Historical                           |
 
 ---
 
@@ -503,5 +559,10 @@ Auth redirect URLs at the deployed domain, and the two cron jobs run automatical
 - **Publishing reach** — auto-publish targets Instagram; other platforms are generated/scheduled
   but not auto-published.
 - **Meta App Review** — live Instagram publishing/analytics depend on approved Meta permissions.
-- **AI-generated post imagery** — proposed in `plans/AI-GENERATED_TEMPLATES.md`; images today are
-  uploaded or imported from Canva.
+- **Publishing is Instagram-only in code** — Facebook connections exist and Page tokens are kept
+  alive, but `attemptPublish` fails any non-Instagram platform on purpose rather than posting it
+  to the wrong account.
+- **Deferred engineering debt** — [TECH-DEBT.md](./TECH-DEBT.md) is the live list. The largest open
+  items: a lint-cleanup pass (§4) that currently makes `npm run check` red, the audit deferrals in
+  §6 (client-`fetch` mutations that should be server actions, oversized route files, shared-primitive
+  duplication), and the pending type regeneration in §5.7.
