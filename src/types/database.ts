@@ -61,36 +61,36 @@ export type Database = {
       }
       analytics_reports: {
         Row: {
-          ai_summary: string | null
-          client_id: string | null
-          created_at: string | null
+          ai_summary: string
+          client_id: string
+          created_at: string
           id: string
           metrics_json: Json | null
-          period_end: string | null
-          period_start: string | null
-          platform: string | null
+          period_end: string
+          period_start: string
+          platform: string
           report_type: string | null
         }
         Insert: {
-          ai_summary?: string | null
-          client_id?: string | null
-          created_at?: string | null
+          ai_summary: string
+          client_id: string
+          created_at?: string
           id?: string
           metrics_json?: Json | null
-          period_end?: string | null
-          period_start?: string | null
-          platform?: string | null
+          period_end: string
+          period_start: string
+          platform: string
           report_type?: string | null
         }
         Update: {
-          ai_summary?: string | null
-          client_id?: string | null
-          created_at?: string | null
+          ai_summary?: string
+          client_id?: string
+          created_at?: string
           id?: string
           metrics_json?: Json | null
-          period_end?: string | null
-          period_start?: string | null
-          platform?: string | null
+          period_end?: string
+          period_start?: string
+          platform?: string
           report_type?: string | null
         }
         Relationships: [
@@ -184,7 +184,7 @@ export type Database = {
           avoid_topics: string | null
           best_time_json: Json | null
           best_time_updated_at: string | null
-          client_id: string | null
+          client_id: string
           content_pillars: string | null
           default_carousel_slides: number | null
           default_post_type: string | null
@@ -203,7 +203,7 @@ export type Database = {
           avoid_topics?: string | null
           best_time_json?: Json | null
           best_time_updated_at?: string | null
-          client_id?: string | null
+          client_id: string
           content_pillars?: string | null
           default_carousel_slides?: number | null
           default_post_type?: string | null
@@ -222,7 +222,7 @@ export type Database = {
           avoid_topics?: string | null
           best_time_json?: Json | null
           best_time_updated_at?: string | null
-          client_id?: string | null
+          client_id?: string
           content_pillars?: string | null
           default_carousel_slides?: number | null
           default_post_type?: string | null
@@ -499,7 +499,7 @@ export type Database = {
       }
       clients: {
         Row: {
-          agency_id: string | null
+          agency_id: string
           contact_email: string | null
           created_at: string | null
           id: string
@@ -510,7 +510,7 @@ export type Database = {
           website_url: string | null
         }
         Insert: {
-          agency_id?: string | null
+          agency_id: string
           contact_email?: string | null
           created_at?: string | null
           id?: string
@@ -521,7 +521,7 @@ export type Database = {
           website_url?: string | null
         }
         Update: {
-          agency_id?: string | null
+          agency_id?: string
           contact_email?: string | null
           created_at?: string | null
           id?: string
@@ -827,36 +827,36 @@ export type Database = {
       }
       notifications: {
         Row: {
-          agency_id: string | null
+          agency_id: string
           client_id: string | null
-          created_at: string | null
+          created_at: string
           feedback_text: string | null
           id: string
-          is_read: boolean | null
+          is_read: boolean
           message: string | null
           post_id: string | null
           review_token: string | null
           type: string | null
         }
         Insert: {
-          agency_id?: string | null
+          agency_id: string
           client_id?: string | null
-          created_at?: string | null
+          created_at?: string
           feedback_text?: string | null
           id?: string
-          is_read?: boolean | null
+          is_read?: boolean
           message?: string | null
           post_id?: string | null
           review_token?: string | null
           type?: string | null
         }
         Update: {
-          agency_id?: string | null
+          agency_id?: string
           client_id?: string | null
-          created_at?: string | null
+          created_at?: string
           feedback_text?: string | null
           id?: string
-          is_read?: boolean | null
+          is_read?: boolean
           message?: string | null
           post_id?: string | null
           review_token?: string | null
@@ -1211,36 +1211,36 @@ export type Database = {
       social_connections: {
         Row: {
           access_token: string | null
-          account_id: string | null
-          account_name: string | null
+          account_id: string
+          account_name: string
           client_id: string | null
-          created_at: string | null
+          created_at: string
           id: string
-          platform: string | null
+          platform: string
           refresh_token: string | null
           token_expires_at: string | null
           user_id: string | null
         }
         Insert: {
           access_token?: string | null
-          account_id?: string | null
-          account_name?: string | null
+          account_id: string
+          account_name: string
           client_id?: string | null
-          created_at?: string | null
+          created_at?: string
           id?: string
-          platform?: string | null
+          platform: string
           refresh_token?: string | null
           token_expires_at?: string | null
           user_id?: string | null
         }
         Update: {
           access_token?: string | null
-          account_id?: string | null
-          account_name?: string | null
+          account_id?: string
+          account_name?: string
           client_id?: string | null
-          created_at?: string | null
+          created_at?: string
           id?: string
-          platform?: string | null
+          platform?: string
           refresh_token?: string | null
           token_expires_at?: string | null
           user_id?: string | null

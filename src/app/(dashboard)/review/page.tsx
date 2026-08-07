@@ -40,9 +40,7 @@ export default async function ReviewPage() {
     clientIds.length > 0
       ? supabase
           .from('posts')
-          // topic_summary rides separately until migration 20260806 reaches the
-          // generated types — fold it into POST_COLUMNS after the regen.
-          .select(`${POST_COLUMNS}, topic_summary`)
+          .select(POST_COLUMNS)
           .in('client_id', clientIds)
           .eq('status', 'pending_review')
           .order('created_at', { ascending: true })

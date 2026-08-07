@@ -46,33 +46,35 @@ const EXEMPT: Record<string, string> = {
     'A write contract, all fields optional so a caller can send only what changed. Same reason as UpdatePostInput.',
   'features/generate/hooks/use-draft-visuals.ts:DraftPostInput':
     "A structural contract deliberately satisfied by BOTH PostData and DraftPost, so it cannot be tied to either. slides_json is `unknown` rather than the column's Json for exactly that reason.",
+
+  // The four below narrow a structurally-untyped `Json` column into the shape the app
+  // actually writes. Deriving them would replace a useful assertion with `Json` and
+  // push a cast to every use — strictly worse. Same posture as PostData.slides_json.
+  'types/sources.ts:ClientSource':
+    'Narrows three columns on purpose: `type` to a four-way union, and config/pillar_ids from the column type `Json` to Record<string, unknown> / string[].',
+  'lib/queries/db.ts:ClientSourceRow':
+    'Same narrowing as ClientSource — config and pillar_ids are `Json` in the column and Record<string, unknown> / string[] here.',
+  'lib/queries/db.ts:ClientSourceSummary':
+    'Same narrowing as ClientSource — pillar_ids is `Json` in the column and string[] here.',
+  'features/dashboard/types.ts:DashboardBriefing':
+    'coaching_points is `Json | null` in the column and string[] | null here. (platform_updates genuinely is string[] | null in the column — only the one field is narrowed.)',
 }
 
 /**
  * Pre-existing mirrors, from before this guard existed. NOT exemptions — these are
  * debt, and the list may only ever shrink.
  *
- * They are not fixed here because deriving them surfaces real nullability the app has
- * never handled: AgencyInfo alone asserts non-null on five columns the schema allows
- * to be null, and correcting that is a behavioural change, not a typing one.
+ * One left. AgencyInfo declares plan, mode, subscription_status, trial_ends_at and
+ * plan_client_limit non-null over columns that permit null, and fetchAgencyById casts
+ * to it. Those columns read as populated only because of table defaults — no code path
+ * writes any of the four, because billing is not implemented yet. Deriving it now would
+ * break `capitalize(agency.plan)` and force a UI decision about a flow that does not
+ * exist. Revisit when billing lands; migration 20260813 deliberately left them alone.
  *
  * To clear one: derive it, then delete its line. The staleness check below fails if
  * you derive it and forget. Rationale per entry: docs/TECH-DEBT.md §7.3.
  */
-const KNOWN_MIRRORS: string[] = [
-  'app/api/cron/generate/helpers.ts:BrandProfileRow',
-  'app/api/cron/generate/helpers.ts:ClientRow',
-  'app/api/cron/generate/helpers.ts:ScheduleRow',
-  'features/analytics/components/report-history.tsx:ReportHistoryEntry',
-  'features/dashboard/types.ts:DashboardBriefing',
-  'lib/queries/db.ts:ClientSourceRow',
-  'lib/queries/db.ts:ClientSourceSummary',
-  'types/api.ts:AgencyInfo',
-  'types/api.ts:AnalyticsReport',
-  'types/api.ts:EnrichedNotification',
-  'types/api.ts:MetaConnection',
-  'types/sources.ts:ClientSource',
-]
+const KNOWN_MIRRORS: string[] = ['types/api.ts:AgencyInfo']
 
 function sourceFiles(): string[] {
   const out: string[] = []

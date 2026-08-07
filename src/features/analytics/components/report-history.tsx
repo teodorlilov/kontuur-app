@@ -1,19 +1,16 @@
 'use client'
 
+import type { AnalyticsReportRow } from '@/types'
 import { useState, useEffect } from 'react'
 import { deleteReport } from '@/features/analytics/actions/report-actions'
 import { capitalizePlatform } from '../utils/metrics'
 import type { AnalyticsReport } from '@/types/api'
 import { createModuleCache } from '@/utils/module-cache'
 
-interface ReportHistoryEntry {
-  id: string
-  platform: string
-  period_start: string
-  period_end: string
-  ai_summary: string | null
-  created_at: string
-}
+type ReportHistoryEntry = Pick<
+  AnalyticsReportRow,
+  'id' | 'platform' | 'period_start' | 'period_end' | 'ai_summary' | 'created_at'
+>
 
 interface ReportHistoryProps {
   clientId: string

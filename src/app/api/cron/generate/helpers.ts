@@ -1,36 +1,30 @@
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { getZonedParts } from '@/utils/date-helpers'
+import type { BrandProfileRow, ClientRow, PostingScheduleRow } from '@/types'
 
 type AdminClient = ReturnType<typeof createAdminSupabaseClient>
 
-interface ScheduleRow {
-  id: string
-  client_id: string
-  is_active: boolean
-  frequency_value: number
-  auto_generate_day: string
-  auto_generate_time: string | null
-}
+type ScheduleRow = Pick<
+  PostingScheduleRow,
+  'id' | 'client_id' | 'is_active' | 'frequency_value' | 'auto_generate_day' | 'auto_generate_time'
+>
 
-interface ClientRow {
-  id: string
-  agency_id: string
-  name: string
-  niche: string | null
-  language: string
-}
+// Named *Context rather than *Row: the barrel already exports ClientRow and
+// BrandProfileRow as the full table types, and these are the cron's projections of them.
+type ClientContext = Pick<ClientRow, 'id' | 'agency_id' | 'name' | 'niche' | 'language'>
 
-interface BrandProfileRow {
-  client_id: string
-  weekly_mix_json: unknown
-  default_post_type: string | null
-  default_carousel_slides: number | null
-  best_time_updated_at: string | null
-}
+type BrandProfileContext = Pick<
+  BrandProfileRow,
+  | 'client_id'
+  | 'weekly_mix_json'
+  | 'default_post_type'
+  | 'default_carousel_slides'
+  | 'best_time_updated_at'
+>
 
 export interface ScheduleContext {
-  clients: Map<string, ClientRow>
-  brandProfiles: Map<string, BrandProfileRow>
+  clients: Map<string, ClientContext>
+  brandProfiles: Map<string, BrandProfileContext>
   agencyTimezones: Map<string, string>
 }
 
@@ -53,14 +47,15 @@ export async function fetchScheduleContext(
 
   // An empty context is indistinguishable from "no client row" downstream, which
   // silently skips every due schedule and reports the run as clean.
-  if (clientResult.error) throw new Error(`client context query failed: ${clientResult.error.message}`)
+  if (clientResult.error)
+    throw new Error(`client context query failed: ${clientResult.error.message}`)
   if (profileResult.error) {
     throw new Error(`brand profile context query failed: ${profileResult.error.message}`)
   }
 
-  const clients = new Map<string, ClientRow>()
+  const clients = new Map<string, ClientContext>()
   // as: explicit column projection — Supabase types from the table, not the select
-  for (const row of (clientResult.data ?? []) as ClientRow[]) {
+  for (const row of (clientResult.data ?? []) as ClientContext[]) {
     clients.set(row.id, row)
   }
 
@@ -78,8 +73,8 @@ export async function fetchScheduleContext(
     agencyTimezones.set(row.id, row.timezone)
   }
 
-  const brandProfiles = new Map<string, BrandProfileRow>()
-  for (const row of (profileResult.data ?? []) as BrandProfileRow[]) {
+  const brandProfiles = new Map<string, BrandProfileContext>()
+  for (const row of (profileResult.data ?? []) as BrandProfileContext[]) {
     brandProfiles.set(row.client_id, row)
   }
 

@@ -433,13 +433,27 @@ an entry and forget to delete its line, so the debt can never look smaller or la
 - **Why:** migration `20260506` made `posts.platform`, `posts.post_type` and `clients.language`
   NOT NULL. The generated types updated; nine hand-written copies did not, and kept declaring
   `| null` for three months while read sites carried `??` fallbacks for an impossible state.
-- **Backlog — 12 pre-existing mirrors** (`KNOWN_MIRRORS` in the test): the three row types in
-  `cron/generate/helpers.ts`, `ReportHistoryEntry`, `DashboardBriefing`, `ClientSourceRow`,
-  `ClientSourceSummary`, `AgencyInfo`, `AnalyticsReport`, `EnrichedNotification`, `MetaConnection`,
-  `ClientSource`.
-- **Why not fixed now:** deriving them surfaces real nullability the app has never handled —
-  `AgencyInfo` alone asserts non-null on five columns the schema permits to be null, and
-  `fetchAgencyById` casts to it. That is a behavioural change per type, not a typing one.
+- **Backlog — 1 remaining** (was 12). Cleared 2026-08-07 in two passes:
+  - **Triage first.** Four were never mirrors: `ClientSource`, `ClientSourceRow`,
+    `ClientSourceSummary` and `DashboardBriefing` narrow a structurally-untyped `Json`
+    column into the shape the app writes. Deriving them would replace a useful assertion
+    with `Json` and push a cast to every use. Moved to `EXEMPT` with reasons — the initial
+    backlog was over-inclusive because it was built from field *names* without checking
+    field *types*.
+  - **Then migration 20260813**, which let `ScheduleRow`, `ClientContext`,
+    `BrandProfileContext`, `ReportHistoryEntry`, `EnrichedNotification`, `MetaConnection`
+    and `AnalyticsReport` derive. Three of those derive *partially* — they narrow one
+    column on purpose (`platform` to a two-way union, `type` to `NotificationType`,
+    `metrics_json` to `AnalyticsMetrics`), so the Pick covers the rest and the narrowed
+    field stays explicit with a comment.
+- **Still open: `AgencyInfo`,** and it is waiting on a feature, not on effort. It declares
+  `plan`, `mode`, `subscription_status`, `trial_ends_at` and `plan_client_limit` non-null
+  over nullable columns, and `fetchAgencyById` casts to it. Those columns read as populated
+  only because of table defaults — no code writes any of them, because **billing is not
+  implemented**. Deriving it would break `capitalize(agency.plan)` and force a UI decision
+  about a flow that does not exist. `trial_ends_at` should stay nullable even after billing
+  ships: an active paid agency has no trial end date, and `plan-section.tsx` already guards
+  for its absence.
 - **Note:** 5 further declarations are permanently exempt (`DraftPost`, `UpdatePostInput`,
   `PublishStatusPatch`, `UpdateSourceInput`, `DraftPostInput`) — write contracts and structural
   contracts that deliberately say what a column type cannot.

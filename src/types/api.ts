@@ -3,6 +3,9 @@
 import type { Tables } from './database'
 
 type PostRow = Tables<'posts'>
+type NotificationRow = Tables<'notifications'>
+type SocialConnectionRow = Tables<'social_connections'>
+type AnalyticsReportRow = Tables<'analytics_reports'>
 
 // ---- Shared enums / unions ----
 
@@ -33,7 +36,6 @@ export interface CarouselSlide {
   headline: string
   body: string
 }
-
 
 // ---- URL Analysis ----
 
@@ -216,17 +218,20 @@ export interface ActiveRun {
 
 export type NotificationType = 'client_approved_all' | 'client_feedback'
 
-export interface EnrichedNotification {
-  id: string
-  agency_id: string
-  message: string | null
-  is_read: boolean
-  created_at: string
+export type EnrichedNotification = Pick<
+  NotificationRow,
+  | 'id'
+  | 'agency_id'
+  | 'message'
+  | 'is_read'
+  | 'created_at'
+  | 'client_id'
+  | 'post_id'
+  | 'feedback_text'
+  | 'review_token'
+> & {
+  /** Narrowed from the column's plain string to the kinds the UI actually renders. */
   type: NotificationType | null
-  client_id: string | null
-  post_id: string | null
-  feedback_text: string | null
-  review_token: string | null
 }
 
 // ---- Settings / Team ----
@@ -261,13 +266,13 @@ export interface UpdateAgencyRequest {
 
 // ---- Meta Connections ----
 
-export interface MetaConnection {
-  id: string
+export type MetaConnection = Pick<
+  SocialConnectionRow,
+  'id' | 'account_id' | 'account_name' | 'token_expires_at' | 'created_at'
+> & {
+  /** Narrowed from the column's plain string: the table also holds 'canva' rows,
+   *  which every consumer of this type filters out. */
   platform: 'instagram' | 'facebook'
-  account_id: string
-  account_name: string
-  token_expires_at: string | null
-  created_at: string
 }
 
 // ---- Analytics ----
@@ -410,15 +415,13 @@ export interface FacebookMetrics {
 
 export type AnalyticsMetrics = InstagramMetrics | FacebookMetrics
 
-export interface AnalyticsReport {
-  id: string
-  client_id: string
-  platform: string
-  period_start: string
-  period_end: string
+export type AnalyticsReport = Pick<
+  AnalyticsReportRow,
+  'id' | 'client_id' | 'platform' | 'period_start' | 'period_end' | 'ai_summary' | 'created_at'
+> & {
+  /** Narrowed from the column's `Json`: the report route writes this shape and every
+   *  reader charts it, so the assertion lives here rather than at each use. */
   metrics_json: AnalyticsMetrics
-  ai_summary: string
-  created_at: string
 }
 
 // ---- API error ----
@@ -447,4 +450,3 @@ export type {
   DiscoverPagesRequest,
   DiscoverPagesResponse,
 } from './sources'
-

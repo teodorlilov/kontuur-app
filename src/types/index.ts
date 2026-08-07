@@ -8,12 +8,11 @@ export type BrandProfileRow = Tables<'brand_profiles'>
 export type PostingScheduleRow = Tables<'posting_schedules'>
 export type PostImageRow = Tables<'post_images'>
 export type PostRow = Tables<'posts'>
+export type NotificationRow = Tables<'notifications'>
+export type SocialConnectionRow = Tables<'social_connections'>
+export type AnalyticsReportRow = Tables<'analytics_reports'>
 
-export type {
-  LanguageIssueType,
-  SlopDetection,
-  SourceGroundingResult,
-} from '@/ai/validation/types'
+export type { LanguageIssueType, SlopDetection, SourceGroundingResult } from '@/ai/validation/types'
 
 export type {
   ClientSource,
