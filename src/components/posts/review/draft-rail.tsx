@@ -100,10 +100,23 @@ export function DraftRail({
               <span
                 className={cn(
                   'flex-none text-caption font-semibold tabular-nums',
-                  settled ? 'text-spring-text' : 'text-forest'
+                  // Neutral ink for an unjudged draft — forest is the pass colour,
+                  // and a blank green slot read as a score that never rendered.
+                  settled
+                    ? 'text-spring-text'
+                    : scores.overall_score === null
+                      ? 'text-text3'
+                      : 'text-forest'
                 )}
+                {...(!settled && scores.overall_score === null
+                  ? { 'aria-label': 'Not scored' }
+                  : {})}
               >
-                {settled ? <Check aria-hidden className="size-3.5" strokeWidth={2.2} /> : scores.overall_score}
+                {settled ? (
+                  <Check aria-hidden className="size-3.5" strokeWidth={2.2} />
+                ) : (
+                  (scores.overall_score ?? '—')
+                )}
               </span>
             </button>
           )

@@ -1,9 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import {
-  fetchBrandProfileByClient,
-  fetchPostHistoryByClient,
-  fetchTopPostsByClient,
-} from '@/lib/queries/db'
+import { fetchBrandProfileByClient, fetchPostHistoryByClient } from '@/lib/queries/db'
 import { getCachedLanguageRules } from '@/lib/queries/cache'
 import { toCarouselSwipeCues, toFormalityRulesData } from '@/lib/clients/language-rules'
 import type { LanguageConfig } from '@/lib/clients/language-rules'
@@ -24,7 +20,6 @@ export interface ClientData {
   socialGoals: string
   contentPillars: WeightedPillar[]
   isHealthNiche: boolean | null
-  topPerformingPosts: string[]
   defaultCarouselSlides: number
   defaultPostType: string | null
   requireSourceGrounding: boolean
@@ -58,11 +53,10 @@ export async function buildClientData(
   supabase: SupabaseClient,
   client: ClientIdentity
 ): Promise<ClientData> {
-  const [profile, langRules, postHistory, topPerformingPosts] = await Promise.all([
+  const [profile, langRules, postHistory] = await Promise.all([
     fetchBrandProfileByClient(supabase, client.id),
     getCachedLanguageRules(client.language),
     fetchPostHistoryByClient(supabase, client.id, MAX_POST_HISTORY_COUNT),
-    fetchTopPostsByClient(supabase, client.id),
   ])
 
   return {
@@ -76,7 +70,6 @@ export async function buildClientData(
     socialGoals: profile?.social_goals ?? '',
     contentPillars: parsePillars(profile?.content_pillars ?? null),
     isHealthNiche: profile?.is_health_niche ?? null,
-    topPerformingPosts,
     defaultCarouselSlides: profile?.default_carousel_slides ?? DEFAULT_CAROUSEL_SLIDES,
     defaultPostType: profile?.default_post_type ?? null,
     requireSourceGrounding: parseRequireSourceGrounding(profile?.source_strategy),

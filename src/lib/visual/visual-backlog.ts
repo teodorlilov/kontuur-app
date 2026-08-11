@@ -40,7 +40,10 @@ export function pickVisualBacklog(
   )
   for (const post of ordered) {
     if (budget <= 0) break
-    if ((post.quality_score_avg ?? 0) < options.qualityFloor) continue
+    // Unjudged posts pass the floor — see the cron's matching `.or(...)`. `?? 0`
+    // would put them below every floor, conflating "not measured" with "measured
+    // terrible".
+    if (post.quality_score_avg !== null && post.quality_score_avg < options.qualityFloor) continue
     if (post.visuals_attempts >= options.maxAttempts) continue
 
     const covered = new Set((imagesByPost.get(post.id) ?? []).map((image) => image.position))

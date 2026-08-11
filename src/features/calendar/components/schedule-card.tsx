@@ -199,7 +199,7 @@ export const ScheduleCard = memo(function ScheduleCard({
   // No point generating visuals for content that is already (or currently being) published.
   const canGenerateVisuals = !isPublished && currentPost.status !== 'publishing'
   const pillarColor = currentPost.pillar ? getPillarColor(currentPost.pillar) : null
-  const score = currentPost.quality_score_avg ?? 0
+  const score = currentPost.quality_score_avg
   const validation = parseStoredValidation(currentPost.validation_json)
 
   function handleSchedule() {
@@ -372,14 +372,24 @@ export const ScheduleCard = memo(function ScheduleCard({
             <TagPill bg="rgba(15,21,18,0.06)" color="var(--text2)">
               {isCarousel ? `Carousel \u00B7 ${slides.length} slides` : 'Single image'}
             </TagPill>
-            <TagPill
-              bg={
-                score >= 9 ? 'var(--wash)' : score >= 7 ? 'var(--pending-bg)' : 'var(--danger-bg)'
-              }
-              color={score >= 9 ? 'var(--forest)' : score >= 7 ? 'var(--pending)' : 'var(--danger)'}
-            >
-              {score}/10
-            </TagPill>
+            {score === null ? (
+              // The neutral tone the design system reserves for "no judgement" —
+              // absence is a fact about the post, not a verdict on it.
+              <TagPill bg="rgba(15,21,18,0.05)" color="var(--text3)">
+                Not scored
+              </TagPill>
+            ) : (
+              <TagPill
+                bg={
+                  score >= 9 ? 'var(--wash)' : score >= 7 ? 'var(--pending-bg)' : 'var(--danger-bg)'
+                }
+                color={
+                  score >= 9 ? 'var(--forest)' : score >= 7 ? 'var(--pending)' : 'var(--danger)'
+                }
+              >
+                {score}/10
+              </TagPill>
+            )}
             {images.length > 0 && (
               <TagPill bg="rgba(15,21,18,0.06)" color="var(--text2)">
                 {images.length} of {totalImageSlots} images
@@ -788,7 +798,7 @@ function QualitySidebar({
   validation,
   currentPost,
 }: {
-  score: number
+  score: number | null
   validation: StoredValidation | null
   currentPost: CalendarPost
 }) {
@@ -798,17 +808,13 @@ function QualitySidebar({
         <span className={cn(SECTION_LABEL_BARE, 'block mb-1')}>Quality</span>
         <span
           className="text-metric font-semibold"
-          // Banded off the score, so the colour stays a value.
-          style={{
-            color:
-              score >= 9
-                ? 'var(--spring-text)'
-                : score >= 7
-                  ? 'var(--spring-text)'
-                  : 'var(--danger)',
-          }}
+          // Banded off the score, so the colour stays a value. Unjudged takes the
+          // neutral ink: it has not earned a verdict in either direction, and the
+          // `?? 0` this replaced rendered it as a red 0 — a failing grade for a
+          // check that never ran.
+          style={{ color: score === null ? 'var(--text3)' : score >= 7 ? 'var(--spring-text)' : 'var(--danger)' }}
         >
-          {score}
+          {score ?? '—'}
         </span>
       </div>
 

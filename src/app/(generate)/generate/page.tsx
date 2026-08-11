@@ -1,3 +1,4 @@
+import { notFound, redirect } from 'next/navigation'
 import { requireSessionUser } from '@/lib/auth/session'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { getCachedAgencyClients } from '@/lib/queries/cache'
@@ -8,6 +9,7 @@ import {
 } from '@/lib/queries/db'
 import { buildClientData, fetchClientData, type ClientData } from '@/lib/clients/fetch-client-data'
 import { fetchIdeaById } from '@/features/ideas/lib/ideas'
+import { AWAITING_DECISION } from '@/features/ideas/lib/idea-filters'
 import { GenerateFlow } from '@/features/generate/components/generate-flow'
 import type { MetaConnection } from '@/types/api'
 
@@ -26,6 +28,19 @@ export default async function GeneratePage({ searchParams }: PageProps) {
     getCachedAgencyClients(agencyId),
     ideaId ? fetchIdeaById(ideaId, agencyId) : null,
   ])
+
+  // An `?ideaId=` that resolves to nothing used to fall through to `clients[0]`, so a
+  // deleted, mistyped or other-agency id silently opened a full batch run for the
+  // agency's oldest client — the user pressed "Generate from this idea" and got N
+  // posts for someone else, with nothing saying the idea had been dropped.
+  if (ideaId && !initialIdea) notFound()
+
+  // And a bookmarked link re-ran an idea that had already been generated from, or
+  // resurrected a dismissed one. Send the user to where the idea actually is rather
+  // than 404ing on a row that does exist.
+  if (initialIdea && !AWAITING_DECISION.includes(initialIdea.status)) {
+    redirect(`/ideas?tab=${initialIdea.status === 'generated' ? 'generated' : 'dismissed'}`)
+  }
 
   let initialClientData: ClientData | null = null
   let initialTargetPostCount = 3

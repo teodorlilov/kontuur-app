@@ -9,13 +9,6 @@
  * app — louder than New Growth, on a surface that is meant to recede.
  */
 
-/** Score badge colors (bg + text) for 1-10 scores. */
-export function scoreBadgeClass(score: number): string {
-  if (score >= 8) return 'bg-wash text-forest'
-  if (score >= 6) return 'bg-pending-bg text-pending'
-  return 'bg-danger-bg text-danger'
-}
-
 /** Progress-bar fill color for 1-10 scores. */
 export function scoreBarColor(score: number): string {
   if (score >= 8) return 'bg-spring'
@@ -42,11 +35,3 @@ export function statusDotColor(status?: string): string {
   return (status && STATUS_DOT_COLORS[status]) ?? 'bg-line2'
 }
 
-/** Quality score badge (0-10) for post cards using avg score.
- *  Uses lower thresholds than per-dimension scores because this is
- *  an average across multiple dimensions, which trends lower. */
-export function qualityScoreBadgeClass(score: number): string {
-  if (score >= 7) return 'bg-wash text-forest'
-  if (score >= 5) return 'bg-pending-bg text-pending'
-  return 'bg-danger-bg text-danger'
-}

@@ -46,6 +46,12 @@ export type PostData = Pick<
    *  (CarouselSlide[], ValidationData) rather than trusting the column. */
   slides_json: unknown
   validation_json: unknown
+  /**
+   * The date a priority brief asked for. Present only on wizard drafts, which are
+   * not rows yet — there is no `posts.target_date`, and nothing persists it. It
+   * exists so the schedule dialog can default to what the client asked for.
+   */
+  target_date?: string | null
 } & Partial<
     Pick<
       PostRow,

@@ -5,6 +5,7 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { formatClientName } from '@/utils/format'
 import type { ActiveRun } from '@/types/api'
 
 /** A run is only shown as active this long — a crashed invocation cannot mark itself done. */
@@ -19,10 +20,16 @@ interface ActiveRunRow {
   generation_themes: Array<{ post_count: number | null }>
 }
 
+/**
+ * Where a run came from. The generate cron's dedup counts only its own runs, so a
+ * run a human asked for cannot cancel that client's scheduled batch for the day.
+ */
+export type GenerationRunKind = 'cron' | 'manual'
+
 /** Records the start of a generation batch. Returns the run id, or null if tracking failed. */
 export async function startGenerationRun(
   supabase: SupabaseClient,
-  input: { clientId: string; platform: string; targetCount: number }
+  input: { clientId: string; platform: string; targetCount: number; kind: GenerationRunKind }
 ): Promise<string | null> {
   const { data, error } = await supabase
     .from('generation_runs')
@@ -30,6 +37,7 @@ export async function startGenerationRun(
       client_id: input.clientId,
       platform: input.platform,
       target_count: input.targetCount,
+      kind: input.kind,
       status: 'running',
     })
     .select('id')
@@ -91,7 +99,7 @@ export async function fetchActiveRuns(
 
   return rows.map((row) => ({
     id: row.id,
-    clientName: row.clients?.name ?? 'Client',
+    clientName: formatClientName(row.clients?.name),
     targetCount: row.target_count ?? 0,
     doneCount: row.generation_themes.reduce((sum, theme) => sum + (theme.post_count ?? 0), 0),
     startedAt: row.created_at ?? new Date().toISOString(),
@@ -132,4 +140,30 @@ export async function fetchThemeDescriptions(
   return (rows ?? []).flatMap((run) =>
     run.generation_themes.map((theme) => theme.theme_description).filter((t): t is string => t !== null)
   )
+}
+
+/**
+ * Record a theme a run produced. Best-effort: a failed insert must not sink the
+ * batch, but it must not vanish either — a dropped row under-reports `doneCount`
+ * in `fetchActiveRuns` and silently shrinks the exclusion list the next run reads.
+ */
+export async function trackGenerationTheme(
+  supabase: SupabaseClient,
+  runId: string | null,
+  theme: { description: string; isPriority?: boolean; brief?: string; targetDate?: string; sourceExcerpt?: string },
+  postCount: number
+): Promise<void> {
+  if (!runId) return
+  const { error } = await supabase.from('generation_themes').insert({
+    run_id: runId,
+    theme_description: theme.description,
+    post_count: postCount,
+    is_priority: theme.isPriority ?? false,
+    priority_brief: theme.brief ?? null,
+    target_date: theme.targetDate ?? null,
+    research_used: !!theme.sourceExcerpt,
+  })
+  if (error) {
+    console.error(`[generation] theme insert failed for run ${runId}:`, error.message)
+  }
 }

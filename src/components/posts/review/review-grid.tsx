@@ -83,7 +83,7 @@ function DraftCard({
   const title = post.topic_summary || slides[0]?.headline || post.caption?.slice(0, 80) || 'Draft'
   const excerpt = slides[1]?.headline || post.caption?.slice(0, 120) || ''
   const pillarColor = post.pillar ? getPillarColor(post.pillar) : null
-  const low = scores.overall_score < REWRITE_SCORE_THRESHOLD
+  const low = scores.overall_score !== null && scores.overall_score < REWRITE_SCORE_THRESHOLD
   const { failed, composing } = countVisualsByStatus(visuals)
   const cover = visuals?.find((v) => v.position === 0)
   const slideCount = post.post_type === 'carousel' ? slides.length : 1
@@ -114,9 +114,15 @@ function DraftCard({
             </span>
           )}
           <span className="ml-auto flex-none">
-            <StatusPill tone={low ? 'warn' : 'ok'}>
-              <span className="tabular-nums">{scores.overall_score}/10</span>
-            </StatusPill>
+            {/* Unjudged is neutral, never the ok tone — a green "/10" over a null
+                score read as a pass on a check that never ran. */}
+            {scores.overall_score === null ? (
+              <StatusPill tone="neutral">Not scored</StatusPill>
+            ) : (
+              <StatusPill tone={low ? 'warn' : 'ok'}>
+                <span className="tabular-nums">{scores.overall_score}/10</span>
+              </StatusPill>
+            )}
           </span>
         </div>
         <button type="button" onClick={onOpen} className="text-left">

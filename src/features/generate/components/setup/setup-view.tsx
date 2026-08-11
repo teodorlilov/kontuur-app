@@ -30,6 +30,8 @@ interface SetupViewProps {
   onSlideCountChange: (count: number) => void
   onPostCountChange: (count: number) => void
   onBriefsChange: (briefs: PriorityPost[]) => void
+  /** Leading briefs the user may not remove — a client idea they opened the run from. */
+  lockedBriefCount?: number
   onGenerate: () => void
 }
 
@@ -54,7 +56,7 @@ export function SetupView(props: SetupViewProps) {
         <h1 className="text-headline font-semibold text-ink">Generate posts</h1>
         <p className="mt-1 text-caption text-text2">
           {isIdeaFlow
-            ? 'This run writes one post from a client idea.'
+            ? 'This run writes the client’s idea. Add researched posts alongside it if you want more.'
             : 'Everything on one screen. The panel on the right updates as you choose.'}
         </p>
 
@@ -80,7 +82,6 @@ export function SetupView(props: SetupViewProps) {
             clientName={selectedClient?.name ?? 'this client'}
             clientId={props.clientId}
             onChange={props.onPlatformChange}
-            disabled={isIdeaFlow}
           />
         </SetupGroup>
 
@@ -93,39 +94,42 @@ export function SetupView(props: SetupViewProps) {
           />
         </SetupGroup>
 
-        {!isIdeaFlow && (
-          <SetupGroup title="How many">
-            <CountSteppers
-              postCount={props.postCount}
-              slideCount={props.slideCount}
-              postType={props.postType}
-              postsPerWeek={postsPerWeek}
-              onPostCount={props.onPostCountChange}
-              onSlideCount={props.onSlideCountChange}
-            />
-          </SetupGroup>
-        )}
+        {/* Shown on the idea flow too. An idea is a locked priority brief, not a
+            different kind of run — it starts the stepper at 0 so "just this idea"
+            is one post, and raising it adds researched posts alongside. Hiding the
+            stepper made that combination unreachable while the flow beneath it
+            already summed briefs and researched posts correctly. */}
+        <SetupGroup title="How many">
+          <CountSteppers
+            postCount={props.postCount}
+            slideCount={props.slideCount}
+            postType={props.postType}
+            postsPerWeek={postsPerWeek}
+            onPostCount={props.onPostCountChange}
+            onSlideCount={props.onSlideCountChange}
+          />
+        </SetupGroup>
 
         <SetupGroup title="Priority briefs" hint={isIdeaFlow ? undefined : '— optional'}>
           <BriefList
             briefs={props.briefs}
             onChange={props.onBriefsChange}
-            lockedIdeaBrief={
-              sourceIdea ? { clientName: sourceIdea.clientName, text: sourceIdea.ideaText } : undefined
-            }
+            lockedCount={props.lockedBriefCount ?? 0}
+            postType={props.postType}
           />
         </SetupGroup>
       </Card>
 
       <RunPanel
         runPlan={props.runPlan}
-        postCount={isIdeaFlow ? 1 : props.postCount}
-        briefCount={isIdeaFlow ? 0 : props.briefs.length}
+        // The real numbers, not a hardcoded 1. The idea is already one of `briefs`,
+        // so the panel's postCount + briefCount is the same sum the server writes.
+        postCount={props.postCount}
+        briefCount={props.briefs.length}
         metaLine={metaLine}
         clientId={props.clientId}
         generating={props.generating}
         onGenerate={props.onGenerate}
-        isIdeaFlow={isIdeaFlow}
       />
     </div>
   )

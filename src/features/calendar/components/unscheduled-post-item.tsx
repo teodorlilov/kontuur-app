@@ -19,7 +19,7 @@ export const UnscheduledPostItem = memo(function UnscheduledPostItem({
   onClick,
 }: UnscheduledPostItemProps) {
   const pillarColor = post.pillar ? getPillarColor(post.pillar).hex : 'var(--text2)'
-  const score = post.quality_score_avg ?? 0
+  const score = post.quality_score_avg
 
   return (
     <div
@@ -52,17 +52,18 @@ export const UnscheduledPostItem = memo(function UnscheduledPostItem({
         </div>
         <span
           className="text-micro font-medium"
-          // Banded off the score, so the colour stays a value.
+          // Banded off the score, so the colour stays a value. An unjudged post gets
+          // the neutral ink — it has not earned a verdict in either direction.
           style={{
             color:
-              score >= 9
-                ? 'var(--spring-text)'
+              score === null
+                ? 'var(--text3)'
                 : score >= 7
                   ? 'var(--spring-text)'
                   : 'var(--danger)',
           }}
         >
-          {score}/10
+          {score === null ? 'Not scored' : `${score}/10`}
         </span>
       </div>
 

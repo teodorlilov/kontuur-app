@@ -1,12 +1,20 @@
 'use client'
 
 import { Minus, Plus } from 'lucide-react'
-import { MIN_CAROUSEL_SLIDES, MAX_CAROUSEL_SLIDES } from '@/utils/constants'
+import {
+  MIN_CAROUSEL_SLIDES,
+  MAX_CAROUSEL_SLIDES,
+  POSTS_PER_RUN_OPTIONS,
+} from '@/utils/constants'
 import type { PostType } from '@/types/api'
 
-/** Posts-per-run bounds — mirrors POSTS_PER_RUN_OPTIONS's 1–7 plus one. */
-const MIN_POSTS = 1
-const MAX_POSTS = 8
+/**
+ * Posts-per-run bounds. 0 is valid and means "only the briefs" — an idea or a
+ * campaign post with no researched mix alongside it. The ceiling derives from
+ * the settings picker so the wizard cannot drift from what a schedule allows.
+ */
+const MIN_POSTS = 0
+const MAX_POSTS = Math.max(...POSTS_PER_RUN_OPTIONS.map((o) => Number(o.value)))
 
 interface StepperProps {
   value: number

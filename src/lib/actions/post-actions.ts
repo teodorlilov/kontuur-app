@@ -7,7 +7,6 @@ import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { resolveActionAuth, verifyPostOwnership, verifyPostsOwnership } from '@/lib/auth/helpers'
 import { parseStoredValidation } from '@/lib/validation/stored-validation-schema'
 import { DISCARD_REASONS, isUserSettablePostStatus, isValidPostPlatform } from '@/lib/validation'
-import type { Database } from '@/types/database'
 import type { ActionResult } from './types'
 
 const deletePostOptionsSchema = z
@@ -228,9 +227,7 @@ export async function deletePost(
       }
       const { error: discardError } = await admin
         .from('discarded_drafts')
-        // WHY as: `reason` lands with migration 20260805 and is not yet in the
-        // generated types — regenerate database.ts after applying, then drop this.
-        .insert(discardRow as Database['public']['Tables']['discarded_drafts']['Insert'])
+        .insert(discardRow)
       if (discardError) {
         console.error('[posts] failed to log review discard:', discardError.message)
       }

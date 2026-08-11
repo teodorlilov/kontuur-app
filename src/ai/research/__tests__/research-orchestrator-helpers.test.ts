@@ -4,7 +4,7 @@ import { describe, it, expect, vi } from 'vitest'
 // requires ANTHROPIC_API_KEY at module load — mock it out
 vi.mock('@/utils/ai-client')
 
-import { interleaveRoundRobin } from '../research-orchestrator'
+import { interleaveRoundRobin } from '@/utils/interleave'
 import { RssResearchSource } from '../sources/rss-source'
 import { WebsiteResearchSource } from '../sources/website-source'
 import { FileResearchSource } from '../sources/file-source'

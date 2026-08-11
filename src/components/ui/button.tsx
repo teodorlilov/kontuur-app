@@ -1,4 +1,5 @@
 import { cn } from '@/utils/cn'
+import { FOCUS_RING } from './form/control-classes'
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'primary' | 'secondary' | 'ghost' | 'danger'
@@ -41,7 +42,7 @@ export function Button({
         // inherited leading would just add slack inside a fixed height.
         'inline-flex items-center justify-center gap-2 whitespace-nowrap font-sans font-medium leading-none',
         'transition-[background-color,border-color,color,transform,box-shadow] duration-150 ease-contour',
-        'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-spring',
+        FOCUS_RING,
         'active:translate-y-0 active:scale-[0.98] active:shadow-none',
         'disabled:pointer-events-none disabled:opacity-50',
         VARIANT_CLASSES[variant],

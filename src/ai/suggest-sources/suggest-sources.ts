@@ -2,7 +2,7 @@ import { callAnthropic, LIGHT_MODEL } from '@/utils/ai-client'
 import { parseJsonResponse } from '@/utils/ai'
 import { discoverFeedUrl } from '@/lib/sources/discover-feed-url'
 import { validateSourceUrl } from '@/lib/sources/validate-url'
-import { TAVILY_API_URL } from '@/utils/constants'
+import { queryTavily, type TavilyHit } from '@/lib/sources/tavily-client'
 
 export interface SuggestSourcesInput {
   niche: string
@@ -18,12 +18,7 @@ export interface SuggestedSource {
   reason: string
 }
 
-interface TavilyResult {
-  title: string
-  url: string
-  content: string
-  score: number
-}
+type TavilyResult = TavilyHit
 
 const QUERY_COUNT = 4
 const RESULTS_PER_QUERY = 6
@@ -78,25 +73,7 @@ function fallbackQueries(niche: string): string[] {
  * Search Tavily for websites matching a query.
  */
 async function searchTavily(query: string, maxResults: number): Promise<TavilyResult[]> {
-  const key = process.env.TAVILY_API_URL_KEY
-  if (!key) return []
-
-  const res = await fetch(TAVILY_API_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      api_key: key,
-      query,
-      topic: 'general',
-      search_depth: 'basic',
-      max_results: maxResults,
-    }),
-    signal: AbortSignal.timeout(10_000),
-  })
-  if (!res.ok) return []
-
-  const data = (await res.json()) as { results?: TavilyResult[] }
-  return data.results ?? []
+  return queryTavily(query, { maxResults })
 }
 
 /**

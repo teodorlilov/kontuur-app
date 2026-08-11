@@ -35,10 +35,15 @@ export function InsightPanel({
   extraSections,
 }: InsightPanelProps) {
   const { scores, slop, criteria, language, sourceGrounding } = validation
-  const low = scores.overall_score < REWRITE_SCORE_THRESHOLD
-  const lowAuthenticity = slop.human_authenticity_score < AUTHENTICITY_URGENT_THRESHOLD
+  // Unjudged is not low — but it is still worth offering the rewrite, since an
+  // unchecked draft is exactly when a reviewer wants one.
+  const unscored = scores.overall_score === null
+  const low = scores.overall_score !== null && scores.overall_score < REWRITE_SCORE_THRESHOLD
+  const lowAuthenticity =
+    slop.human_authenticity_score !== null &&
+    slop.human_authenticity_score < AUTHENTICITY_URGENT_THRESHOLD
   // Diagnosis → treatment: the rewrite lives beside the findings it fixes.
-  const showRewrite = lowAuthenticity || slop.ai_tells_found.length > 0 || low
+  const showRewrite = lowAuthenticity || slop.ai_tells_found.length > 0 || low || unscored
   const [showFixes, setShowFixes] = useState(false)
 
   return (
@@ -47,15 +52,21 @@ export function InsightPanel({
       <section className="p-4">
         <div className="flex items-baseline justify-between gap-3">
           <h3 className="text-label font-semibold uppercase text-text2">Quality</h3>
-          {/* A score is a stat value — sans Metric, never the serif. */}
-          <span
-            className={cn(
-              'text-metric font-semibold tabular-nums',
-              low ? 'text-pending' : 'text-forest'
-            )}
-          >
-            {scores.overall_score}
-          </span>
+          {/* A score is a stat value — sans Metric, never the serif. Unjudged is
+              a fact, not a pass: the forest (pass) colour must never read over
+              an absence. */}
+          {unscored ? (
+            <StatusPill tone="neutral">Not scored</StatusPill>
+          ) : (
+            <span
+              className={cn(
+                'text-metric font-semibold tabular-nums',
+                low ? 'text-pending' : 'text-forest'
+              )}
+            >
+              {scores.overall_score}
+            </span>
+          )}
         </div>
         <div className="mt-3 flex flex-col gap-2">
           <ScoreBar label="Human" score={slop.human_authenticity_score} />
@@ -193,8 +204,10 @@ export function InsightPanel({
   )
 }
 
-function ScoreBar({ label, score }: { label: string; score: number }) {
-  const weak = score < REWRITE_SCORE_THRESHOLD
+function ScoreBar({ label, score }: { label: string; score: number | null }) {
+  // Unmeasured is neither weak nor strong. Coercing null here would paint a full
+  // amber bar at scaleX(0) — a confident-looking verdict on a check that never ran.
+  const weak = score !== null && score < REWRITE_SCORE_THRESHOLD
   return (
     <div className="flex items-center gap-3">
       <span className="w-16 flex-none text-caption text-text2">{label}</span>
@@ -202,7 +215,7 @@ function ScoreBar({ label, score }: { label: string; score: number }) {
         <span
           className={cn('block h-full origin-left rounded-full', weak ? 'bg-pending' : 'bg-forest')}
           // Width encodes the score — a genuinely computed value.
-          style={{ transform: `scaleX(${Math.max(0, Math.min(score, 10)) / 10})` }}
+          style={{ transform: `scaleX(${score === null ? 0 : Math.max(0, Math.min(score, 10)) / 10})` }}
         />
       </span>
       <span

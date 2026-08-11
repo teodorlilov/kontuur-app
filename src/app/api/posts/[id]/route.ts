@@ -68,7 +68,15 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
   if (body.rewrite_count !== undefined) updatePayload.rewrite_count = body.rewrite_count
   if (body.source_url !== undefined) updatePayload.source_url = body.source_url
   if (body.source_title !== undefined) updatePayload.source_title = body.source_title
-  if (body.quality_score_avg !== undefined) updatePayload.quality_score_avg = body.quality_score_avg
+  if (body.quality_score_avg !== undefined) {
+    // null is a real value here — "not judged" — so it must be accepted on purpose
+    // rather than by an untyped body happening to let it through.
+    const score = body.quality_score_avg
+    if (score !== null && typeof score !== 'number') {
+      return NextResponse.json({ error: 'quality_score_avg must be a number or null' }, { status: 400 })
+    }
+    updatePayload.quality_score_avg = score
+  }
   if (body.validation_json !== undefined) updatePayload.validation_json = body.validation_json
 
   const { data: updated, error } = await supabase
@@ -93,7 +101,13 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
   const post = await verifyPostOwnership(supabase, id, agencyId)
   if (!post) return NextResponse.json({ error: 'Post not found' }, { status: 404 })
 
-  await supabase.from('posts').delete().eq('id', id)
+  // A swallowed error here told the caller { success: true } about a row that was
+  // still in the table — the optimistic UI removed it until the next hard load.
+  const { error } = await supabase.from('posts').delete().eq('id', id)
+  if (error) {
+    console.error('[posts] delete failed:', error.message)
+    return NextResponse.json({ error: error.message }, { status: 500 })
+  }
 
   return NextResponse.json({ success: true })
 }

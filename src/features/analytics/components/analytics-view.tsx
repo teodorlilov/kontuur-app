@@ -159,8 +159,11 @@ export function AnalyticsView({ clients, initialConnections }: AnalyticsViewProp
 
   const showTabs = !generating && !!report && !!metrics
 
+  // No scroll container of its own — see settings-view. StickyShell's sentinel has
+  // to leave the intersection of the page's real scroller, and an overflow-hidden
+  // flex root with a scrolling child kept it permanently in view.
   return (
-    <div className="flex h-full flex-col overflow-hidden">
+    <>
       <PageHeader
         crumb={[{ label: 'Analytics' }]}
         title="Analytics"
@@ -241,7 +244,7 @@ export function AnalyticsView({ clients, initialConnections }: AnalyticsViewProp
         }
       />
 
-      <div className={cn(PAGE_SHELL, 'min-h-0 flex-1 space-y-6 overflow-y-auto pb-8 pt-6')}>
+      <div className={cn(PAGE_SHELL, 'space-y-6 pb-8 pt-6')}>
         {connectedPlatforms.size === 0 && !generating && (
           <EmptyStateAnalytics
             variant="no-accounts"
@@ -297,6 +300,6 @@ export function AnalyticsView({ clients, initialConnections }: AnalyticsViewProp
           </div>
         )}
       </div>
-    </div>
+    </>
   )
 }

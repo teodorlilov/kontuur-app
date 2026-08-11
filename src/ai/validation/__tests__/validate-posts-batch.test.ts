@@ -52,28 +52,16 @@ function qualityItem(index: number, overrides: Record<string, unknown> = {}) {
   }
 }
 
-function languageItem(index: number, overrides: Record<string, unknown> = {}) {
-  return { index, issues: [], corrected_text: null, ...overrides }
-}
-
-/** Mocks the two batched calls: quality first (has SCORING in system), language second. */
-function mockBatchCalls(
-  qualityResults: unknown[],
-  languageResults: unknown[]
-) {
-  callAnthropic.mockImplementation((opts: { systemPrompt?: string }) => {
-    const isQuality = opts.systemPrompt?.includes('quality assessor')
-    const input = isQuality ? { results: qualityResults } : { results: languageResults }
-    return Promise.resolve({ content: [{ type: 'tool_use', id: 'mock', name: 'output', input }] })
+/** Mocks the single merged judge call. */
+function mockBatchCalls(results: unknown[]) {
+  callAnthropic.mockResolvedValue({
+    content: [{ type: 'tool_use', id: 'mock', name: 'output', input: { results } }],
   })
 }
 
 describe('validatePostsBatch', () => {
   it('maps batch results back to slots by index', async () => {
-    mockBatchCalls(
-      [qualityItem(1, { overall_score: 9 }), qualityItem(2, { overall_score: 4 })],
-      [languageItem(1), languageItem(2)]
-    )
+    mockBatchCalls([qualityItem(1, { overall_score: 9 }), qualityItem(2, { overall_score: 4 })])
 
     const results = await validatePostsBatch({
       captions: ['post one', 'post two'],
@@ -88,11 +76,11 @@ describe('validatePostsBatch', () => {
     expect(results[0]!.qualityScore).toBe(9)
   })
 
-  it('fires exactly 2 LLM calls regardless of caption count', async () => {
-    mockBatchCalls(
-      [qualityItem(1), qualityItem(2), qualityItem(3)],
-      [languageItem(1), languageItem(2), languageItem(3)]
-    )
+  it('fires exactly 1 LLM call regardless of caption count', async () => {
+    // Quality, source grounding and language used to be two parallel calls over the
+    // same text. One judge means one verdict and one corrected version — the reason
+    // a language rewrite can no longer silently revert a grounding correction.
+    mockBatchCalls([qualityItem(1), qualityItem(2), qualityItem(3)])
 
     await validatePostsBatch({
       captions: ['a', 'b', 'c'],
@@ -101,11 +89,11 @@ describe('validatePostsBatch', () => {
       label: 'test',
     })
 
-    expect(callAnthropic).toHaveBeenCalledTimes(2)
+    expect(callAnthropic).toHaveBeenCalledTimes(1)
   })
 
   it('scales quality maxTokens with caption count under the cap', async () => {
-    mockBatchCalls([qualityItem(1), qualityItem(2)], [languageItem(1), languageItem(2)])
+    mockBatchCalls([qualityItem(1), qualityItem(2)])
 
     await validatePostsBatch({
       captions: ['a', 'b'],
@@ -117,12 +105,43 @@ describe('validatePostsBatch', () => {
     const qualityCall = callAnthropic.mock.calls.find((c) =>
       (c[0] as { systemPrompt?: string }).systemPrompt?.includes('quality assessor')
     )
-    expect((qualityCall![0] as { maxTokens: number }).maxTokens).toBe(2048)
+    expect((qualityCall![0] as { maxTokens: number }).maxTokens).toBe(4096)
+  })
+
+  it('caps maxTokens at the batch ceiling for large batches', async () => {
+    mockBatchCalls([1, 2, 3, 4, 5].map((i) => qualityItem(i)))
+
+    await validatePostsBatch({
+      captions: ['a', 'b', 'c', 'd', 'e'],
+      client: makeClient(),
+      platform: 'Instagram',
+      label: 'test',
+    })
+
+    expect((callAnthropic.mock.calls[0]![0] as { maxTokens: number }).maxTokens).toBe(8192)
+  })
+
+  it('states the client language rules once, not per merged section', async () => {
+    // The merge pushed both prompt builders' language blocks into one system
+    // prompt; the client's notes appeared three times before the de-dup.
+    mockBatchCalls([qualityItem(1)])
+    const client = makeClient()
+    client.languageConfig!.languageNotes = 'UNIQUE_NOTES_MARKER'
+
+    await validatePostsBatch({
+      captions: ['a'],
+      client,
+      platform: 'Instagram',
+      label: 'test',
+    })
+
+    const systemPrompt = (callAnthropic.mock.calls[0]![0] as { systemPrompt: string }).systemPrompt
+    expect(systemPrompt.split('UNIQUE_NOTES_MARKER')).toHaveLength(2)
   })
 
   it('leaves a missing index slot at fallback defaults', async () => {
     // Model only reports item 2 — item 1 gets the neutral fallback
-    mockBatchCalls([qualityItem(2, { overall_score: 3 })], [languageItem(1), languageItem(2)])
+    mockBatchCalls([qualityItem(2, { overall_score: 3 })])
 
     const results = await validatePostsBatch({
       captions: ['a', 'b'],
@@ -131,21 +150,14 @@ describe('validatePostsBatch', () => {
       label: 'test',
     })
 
-    expect(results[0]!.scores.overall_score).toBe(7)
+    expect(results[0]!.scores.overall_score).toBeNull()
     expect(results[1]!.scores.overall_score).toBe(3)
   })
 
-  it('degrades all items when the quality batch call rejects', async () => {
-    callAnthropic.mockImplementation((opts: { systemPrompt?: string }) => {
-      if (opts.systemPrompt?.includes('quality assessor')) {
-        return Promise.reject(new Error('model down'))
-      }
-      return Promise.resolve({
-        content: [
-          { type: 'tool_use', id: 'mock', name: 'output', input: { results: [languageItem(1)] } },
-        ],
-      })
-    })
+  it('degrades every item to null scores when the single call rejects', async () => {
+    // There is no longer a language call that can fail independently: a judge
+    // outage is one event, not two.
+    callAnthropic.mockRejectedValue(new Error('model down'))
 
     const results = await validatePostsBatch({
       captions: ['a'],
@@ -154,37 +166,14 @@ describe('validatePostsBatch', () => {
       label: 'test',
     })
 
-    expect(results[0]!.scores.overall_score).toBe(7)
-    expect(results[0]!.validationWarnings).toContain('quality')
-  })
-
-  it('passes language through when the language batch call rejects', async () => {
-    callAnthropic.mockImplementation((opts: { systemPrompt?: string }) => {
-      if (opts.systemPrompt?.includes('quality assessor')) {
-        return Promise.resolve({
-          content: [
-            { type: 'tool_use', id: 'mock', name: 'output', input: { results: [qualityItem(1)] } },
-          ],
-        })
-      }
-      return Promise.reject(new Error('model down'))
-    })
-
-    const results = await validatePostsBatch({
-      captions: ['a'],
-      client: makeClient(),
-      platform: 'Instagram',
-      label: 'test',
-    })
-
-    expect(results[0]!.language.passes).toBe(true)
-    expect(results[0]!.scores.language_score).toBe(10)
-    expect(results[0]!.validationWarnings).toContain('language')
+    // The absent score *is* the record that no judgement happened — there is no
+    // separate warnings array to keep in step with it.
+    expect(results[0]!.scores.overall_score).toBeNull()
+    expect(results[0]!.slop.reads_as_human).toBeNull()
   })
 
   it('keeps only failure notes when the model returns the full PASS/FAIL checklist', async () => {
-    mockBatchCalls(
-      [
+    mockBatchCalls([
         qualityItem(1, {
           structure_passes: false,
           structure_notes: [
@@ -193,9 +182,7 @@ describe('validatePostsBatch', () => {
             'CAUTION — Main caption is dense',
           ],
         }),
-      ],
-      [languageItem(1)]
-    )
+      ])
 
     const results = await validatePostsBatch({
       captions: ['a'],
@@ -217,21 +204,12 @@ describe('validatePostsBatch', () => {
           overall_score: 5,
           issues: [{ type: 'weak_hook', description: 'Opens with filler' }],
           ai_tells: ['delve'],
-        }),
-      ],
-      [
-        languageItem(1, {
-          issues: [
-            {
-              type: 'calque',
-              original_text: 'x',
-              issue_description: 'y',
-              suggested_fix: 'z',
-            },
+          language_issues: [
+            { type: 'calque', original_text: 'x', issue_description: 'y', suggested_fix: 'z' },
           ],
           corrected_text: 'fixed text',
         }),
-      ]
+      ],
     )
 
     const results = await validatePostsBatch({

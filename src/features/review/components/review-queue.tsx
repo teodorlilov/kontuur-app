@@ -23,7 +23,7 @@ import { rewriteDraft } from '@/lib/rewrite-draft'
 import { countVisualsByStatus, type DraftVisual } from '@/lib/visual/draft-visuals'
 import { upsertImageAtPosition } from '@/features/publishing/lib/image-list'
 import { TriageBuckets } from './triage-buckets'
-import { DiscardToast, DISCARD_TOAST_MS } from './discard-toast'
+import { DiscardToast, DISCARD_TOAST_MS } from '@/components/ui/discard-toast'
 import { QueueInsightSections } from './queue-insight-sections'
 import { SendToClientDialog } from './send-to-client-dialog'
 import { useQueueAutosave } from '@/features/review/hooks/use-queue-autosave'
@@ -35,7 +35,11 @@ import { isoToDateTimeFields, pickNextOpenSlot } from '@/features/review/lib/slo
 import { getMondayISO, getWeekDayKeys, toDateKey } from '@/utils/date-helpers'
 import { APPROVAL_TOKEN_EXPIRY_HOURS } from '@/utils/constants'
 import type { WeekScheduledPost } from '@/features/review/lib/week-schedule'
-import type { DiscardReason } from '@/features/review/lib/discard-reasons'
+import {
+  DISCARD_REASONS,
+  DISCARD_REASON_LABELS,
+  type DiscardReason,
+} from '@/features/review/lib/discard-reasons'
 import type { QueuePost } from '@/features/review/lib/queue-post'
 import type { ReviewDraft } from '@/components/posts/review/types'
 import type { CanvasDoc } from '@/types/canvas'
@@ -464,9 +468,17 @@ export function ReviewQueue({
             toast.dismiss(toastId)
             restore()
           }}
-          onReason={(reason) => {
-            toast.dismiss(toastId)
-            commit(reason)
+          reasons={{
+            prompt: "Why didn't it work?",
+            hint: "Optional — teaches next week's generation.",
+            options: DISCARD_REASONS.map((reason) => ({
+              id: reason,
+              label: DISCARD_REASON_LABELS[reason],
+            })),
+            onPick: (reason) => {
+              toast.dismiss(toastId)
+              commit(reason)
+            },
           }}
         />
       ),
@@ -512,7 +524,7 @@ export function ReviewQueue({
               ...p,
               caption: outcome.updatedPost.caption,
               slides_json: outcome.updatedPost.slides_json,
-              quality_score_avg: outcome.updatedPost.quality_score_avg ?? p.quality_score_avg,
+              quality_score_avg: outcome.updatedPost.quality_score_avg,
               was_rewritten: true,
               rewrite_count: persisted.data.rewriteCount,
               validation: outcome.validation,
@@ -613,8 +625,12 @@ export function ReviewQueue({
     ...clients.map((c) => ({ value: c.id, label: c.name })),
   ]
 
+  // No scroll container of its own — see settings-view. StickyShell's sentinel has
+  // to leave the intersection of the page's real scroller, and an overflow-hidden
+  // flex root with a scrolling child kept it permanently in view, so ~150px of
+  // header stayed expanded through the whole queue.
   return (
-    <div className="flex h-full flex-col overflow-hidden">
+    <>
       <PageHeader
         crumb={[{ label: 'Review queue' }]}
         title="Review"
@@ -662,7 +678,9 @@ export function ReviewQueue({
         }
       />
 
-      <main className="min-h-0 flex-1 overflow-y-auto">
+      {/* A div, not <main>: the layout's main.app-content already wraps this, and
+          nested main elements are invalid — the other redesigned surfaces agree. */}
+      <div>
         <div className="mx-auto w-full max-w-[1440px] px-4 py-6 md:px-8">
           {view === 'buckets' || !focused || !focusedEdits ? (
             <TriageBuckets
@@ -793,7 +811,7 @@ export function ReviewQueue({
             </>
           )}
         </div>
-      </main>
+      </div>
 
       <ScheduleDialog
         open={scheduleTarget !== null}
@@ -823,6 +841,6 @@ export function ReviewQueue({
         onClose={() => setSendTarget(null)}
         onSent={handleSent}
       />
-    </div>
+    </>
   )
 }

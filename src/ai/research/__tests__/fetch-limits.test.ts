@@ -14,7 +14,6 @@ describe('computeFetchLimits', () => {
     expect(limits.websiteMaxPages).toBe(5) // min(5, 10)
     expect(limits.rssItemsPerSource).toBe(6)
     expect(limits.rssGlobalCap).toBe(40)
-    expect(limits.rssBudget).toBe(4000)
     expect(limits.webBudget).toBe(8000)
     expect(limits.fileBudget).toBe(6000)
   })
@@ -24,7 +23,6 @@ describe('computeFetchLimits', () => {
     expect(limits.websiteMaxPages).toBe(10) // capped at 10
     expect(limits.rssItemsPerSource).toBe(6)
     expect(limits.rssGlobalCap).toBe(40)
-    expect(limits.rssBudget).toBe(4000)
     expect(limits.webBudget).toBe(8000)
     expect(limits.fileBudget).toBe(6000)
   })
@@ -38,7 +36,6 @@ describe('computeFetchLimits', () => {
 
   it('enforces minimum 40% token budgets at count=1', () => {
     const limits = computeFetchLimits(1)
-    expect(limits.rssBudget).toBe(1600)
     expect(limits.webBudget).toBe(3200)
     expect(limits.fileBudget).toBe(2400)
   })

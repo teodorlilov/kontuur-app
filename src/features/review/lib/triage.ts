@@ -8,6 +8,7 @@ import type { ValidationData } from '@/types/post'
 import type { QueuePost } from './queue-post'
 
 export type TriageReason =
+  | 'not_validated'
   | 'low_quality'
   | 'ai_tells'
   | 'health_review'
@@ -29,6 +30,7 @@ export const AGE_WARN_DAYS = 5
 
 /** Reviewer-facing copy for the reason chips — one source for cards and the insight panel. */
 export const TRIAGE_REASON_LABELS: Record<TriageReason, string> = {
+  not_validated: 'Not checked',
   low_quality: 'Low quality score',
   ai_tells: 'Sounds like AI',
   health_review: 'Health client — verify claims',
@@ -44,17 +46,23 @@ function reasonsFor(post: QueuePost, validation: ValidationData, ageDays: number
   const reasons: TriageReason[] = []
   const { scores, slop, criteria } = validation
 
-  if (
+  // An unjudged post must never reach `ready`, whose copy tells the reviewer
+  // "clean scores, nothing flagged" above a one-click bulk approve. Absence of a
+  // verdict is itself a reason to look.
+  if (scores.overall_score === null) {
+    reasons.push('not_validated')
+  } else if (
     scores.overall_score < REWRITE_SCORE_THRESHOLD ||
     (post.quality_score_avg !== null && post.quality_score_avg < REWRITE_SCORE_THRESHOLD)
   ) {
     reasons.push('low_quality')
   }
-  // A 0 authenticity score means "not measured yet" (legacy row awaiting the
-  // detect-slop fallback) — only a measured-low score flags the post.
+  // Only a measured-low score flags the post. This used to test `> 0`, an in-band
+  // sentinel for "not measured yet" — now that absence has its own value, the
+  // sentinel and its comment go.
   if (
     slop.ai_tells_found.length > 0 ||
-    (slop.human_authenticity_score > 0 &&
+    (slop.human_authenticity_score !== null &&
       slop.human_authenticity_score < AUTHENTICITY_URGENT_THRESHOLD)
   ) {
     reasons.push('ai_tells')

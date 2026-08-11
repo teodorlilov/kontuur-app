@@ -17,6 +17,9 @@ import type { Database } from '@/types/database'
 // The roster owns its own input contract; this layer fills it rather than
 // exporting whatever shape PostgREST happened to return.
 import type { PendingApprovalRow, RosterClientRow } from '@/features/clients/lib/roster'
+// Same reason: the inbox owns what "waiting on a decision" means, and the badge
+// has to count that population rather than a second guess at it.
+import { AWAITING_DECISION } from '@/features/ideas/lib/idea-filters'
 import type { PostSummary } from '@/types/post'
 
 type Agency = Database['public']['Tables']['agencies']['Row']
@@ -118,6 +121,40 @@ const _fetchPendingRows = unstable_cache(
 )
 
 export const getCachedPendingRows = cache(_fetchPendingRows)
+
+/**
+ * Ideas still awaiting a decision, for the sidebar badge.
+ *
+ * Lives here rather than in the ideas feature because of where it is read: the
+ * dashboard layout renders it into a shell that survives client navigation, so
+ * dismissing an idea left the badge stale until a hard reload. Being a tagged
+ * entry is what lets the idea actions clear it.
+ *
+ * Call revalidateTag('client-ideas') after any idea mutation.
+ */
+const _fetchNewIdeasCount = unstable_cache(
+  async (agencyId: string): Promise<number> => {
+    const supabase = createAdminSupabaseClient()
+    const { count, error } = await supabase
+      .from('client_ideas')
+      .select('id', { count: 'exact', head: true })
+      .eq('agency_id', agencyId)
+      // The same population the Inbox tab shows. Counting its own predicate here
+      // is how the badge and the tab came to disagree about a stranded row.
+      .in('status', [...AWAITING_DECISION])
+    if (error) {
+      // A badge is not worth failing the whole shell for; every other page in the
+      // layout still renders. Logged so it is a reported failure, not a silent zero.
+      console.error('[cache] new ideas count failed:', error.message)
+      return 0
+    }
+    return count ?? 0
+  },
+  ['new-ideas-count'],
+  { revalidate: 60, tags: ['client-ideas'] }
+)
+
+export const getCachedNewIdeasCount = cache(_fetchNewIdeasCount)
 
 /** Whether a given day of a client's week is published, scheduled, or still open. */
 export type DayState = 'published' | 'scheduled' | 'open'

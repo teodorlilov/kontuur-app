@@ -52,7 +52,13 @@ describe('pickVisualBacklog', () => {
 
   it('skips posts below the quality floor — no art spend on likely discards', () => {
     expect(pickVisualBacklog([post({ quality_score_avg: 4 })], new Map(), options)).toEqual([])
-    expect(pickVisualBacklog([post({ quality_score_avg: null })], new Map(), options)).toEqual([])
+  })
+
+  it('an unjudged post is eligible — the judge failing is not the post failing', () => {
+    // null used to be treated as below every floor, so a judge outage silently
+    // denied art to a whole batch — and triage then flagged `missing_visuals`
+    // forever, blaming the post for our failure. The cron's `.or(...)` mirrors this.
+    expect(pickVisualBacklog([post({ quality_score_avg: null })], new Map(), options)).toHaveLength(1)
   })
 
   it('skips posts that already burned their attempts', () => {

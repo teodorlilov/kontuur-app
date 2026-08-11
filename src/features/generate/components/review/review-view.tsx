@@ -115,10 +115,13 @@ export function ReviewView({
   }, [focused, focusedId])
   /* eslint-enable react-hooks/set-state-in-effect */
 
+  // Averaged over scored posts only: an unjudged post has no number to contribute,
+  // and `?? 0` would drag the run's average down with a score nobody assigned.
+  const scores = posts
+    .map((p) => p.scores.overall_score)
+    .filter((s): s is number => s !== null)
   const averageQuality =
-    posts.length > 0
-      ? posts.reduce((sum, p) => sum + p.scores.overall_score, 0) / posts.length
-      : 0
+    scores.length > 0 ? scores.reduce((sum, s) => sum + s, 0) / scores.length : null
 
   const visualTallies = useMemo(() => {
     let failed = 0
@@ -239,13 +242,21 @@ export function ReviewView({
               runContext.postType === 'carousel'
                 ? `Carousel · ${runContext.slideCount} slides`
                 : 'Single image',
-              `Average quality ${averageQuality.toFixed(1)}`,
-            ].map((part, i) => (
-              <span key={part} className="flex items-center gap-2">
-                {i > 0 && <i aria-hidden className="size-[3px] rounded-full bg-line2" />}
-                {part}
-              </span>
-            ))}
+              // The denominator matters: one scored post among five unjudged
+              // must not present itself as the run's average.
+              averageQuality === null
+                ? null
+                : `Average quality ${averageQuality.toFixed(1)}${
+                    scores.length < posts.length ? ` (${scores.length} of ${posts.length} scored)` : ''
+                  }`,
+            ]
+              .filter((part): part is string => part !== null)
+              .map((part, i) => (
+                <span key={part} className="flex items-center gap-2">
+                  {i > 0 && <i aria-hidden className="size-[3px] rounded-full bg-line2" />}
+                  {part}
+                </span>
+              ))}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -310,7 +321,12 @@ export function ReviewView({
               post={focused.post}
               visuals={visualsByDraft[focused.post.id]}
               positionInRun={`${focusedIndex + 1} of ${liveDrafts.length}`}
-              metaLine={[focused.post.pillar, runContext.platform, runContext.postType]
+              // The draft's own platform, not the run's — a brief can override it.
+              metaLine={[
+                focused.post.pillar,
+                focused.post.platform ?? runContext.platform,
+                runContext.postType,
+              ]
                 .filter(Boolean)
                 .join(' · ')}
               workingCaption={focusedEdits.caption}
@@ -362,9 +378,14 @@ export function ReviewView({
 
       <ScheduleDialog
         open={scheduleTarget !== null}
-        platform={runContext.platform}
+        // Resolved from the target draft like requestedDate — its brief may have
+        // overridden the run platform.
+        platform={
+          posts.find((p) => p.post.id === scheduleTarget)?.post.platform ?? runContext.platform
+        }
         bestTimeData={bestTimeData}
         approving={approving}
+        requestedDate={posts.find((p) => p.post.id === scheduleTarget)?.post.target_date ?? null}
         onConfirm={(scheduledAt) => void handleScheduleConfirm(scheduledAt)}
         onClose={() => setScheduleTarget(null)}
       />

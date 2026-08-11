@@ -23,11 +23,21 @@ export interface PostImage {
 
 // ---- Generate ----
 
+/**
+ * A campaign or announcement written ahead of the researched mix — and the shape a
+ * client idea takes once it reaches generation.
+ *
+ * `platform` follows the empty-string convention `targetDate` set: the editor ships
+ * every field, `''` until chosen. Empty inherits the run's platform; a value
+ * overrides it for that one post — so an idea asked for on Instagram can ride along
+ * with researched posts written for Facebook in a single run. The wire schema
+ * (`priorityPostSchema`) narrows the value to `PLATFORMS`.
+ */
 export interface PriorityPost {
   title: string
   brief: string
-  platform: string
   targetDate: string
+  platform: string
 }
 
 export interface CarouselSlide {
@@ -113,7 +123,12 @@ export interface BestTimeResponse {
 
 // ---- Client Ideas ----
 
-export type IdeaStatus = 'new' | 'generating' | 'generated' | 'dismissed'
+// The single definition. It was restated as a zod enum in the ideas feature to
+// validate PATCH /api/ideas; that route is gone, and nothing parses a status off the
+// wire — the values reaching `ClientIdea` come from the column, which 20260817
+// constrains to exactly these three ('generating' was retired there: nothing has
+// written it since the generate routes merged, and stranded rows migrate to 'new').
+export type IdeaStatus = 'new' | 'generated' | 'dismissed'
 
 export interface ClientIdea {
   id: string
@@ -216,7 +231,7 @@ export interface ActiveRun {
 
 // ---- Notifications ----
 
-export type NotificationType = 'client_approved_all' | 'client_feedback'
+export type NotificationType = 'client_approved_all' | 'client_feedback' | 'posts_ready'
 
 export type EnrichedNotification = Pick<
   NotificationRow,

@@ -42,10 +42,17 @@ export interface ValidationCriteria {
 // ---- Score dimensions ----
 
 export interface ValidationScores {
-  overall_score: number
-  /** Authenticity score — used for slop detection threshold */
-  human_score: number
-  language_score: number
+  /**
+   * null when the judge did not run. A post nobody read must not carry a number —
+   * the fallback that used to fill this cleared every threshold, so a failed call
+   * rendered as a confident passing score over a check that never happened.
+   * `source_score` has modelled absence this way since it shipped.
+   */
+  overall_score: number | null
+  /** Authenticity score — used for slop detection threshold. null when unjudged. */
+  human_score: number | null
+  /** null when the language judge did not run — same absence rule as overall_score. */
+  language_score: number | null
   source_score: number | null
 }
 
@@ -63,17 +70,19 @@ export interface LanguageIssue {
 
 export interface LanguageValidationResult {
   passes: boolean
-  language_score: number
+  /** null when the language judge did not run. */
+  language_score: number | null
   issues: LanguageIssue[]
   corrected_text: string | null
   corrected_slides?: Array<{ headline: string; body: string }> | null
 }
 
 export interface SlopDetection {
-  reads_as_human: boolean
+  /** null when unjudged — false would be an accusation nobody made. */
+  reads_as_human: boolean | null
   ai_tells_found: string[]
   worst_offending_phrase: string | null
-  human_authenticity_score: number
+  human_authenticity_score: number | null
 }
 
 export interface SourceGroundingIssue {
@@ -86,8 +95,6 @@ export interface SourceGroundingResult {
   grounded: boolean
   grounding_score: number
   flagged_claims: SourceGroundingIssue[]
-  corrected_text: string | null
-  corrected_slides?: Array<{ headline: string; body: string }> | null
 }
 
 // ---- Main output ----
@@ -98,6 +105,5 @@ export interface PostValidationResult {
   language: LanguageValidationResult
   slop: SlopDetection
   sourceGrounding?: SourceGroundingResult
-  qualityScore: number
-  validationWarnings: string[]
+  qualityScore: number | null
 }

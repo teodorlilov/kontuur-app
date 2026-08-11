@@ -91,14 +91,16 @@ export function computeSourceScore(claims: SourceGroundingIssue[] | null): numbe
 // ---------------------------------------------------------------------------
 
 interface SlopInput {
-  human_score: number
+  human_score: number | null
   ai_tells: string[]
   worst_offending_phrase: string | null
 }
 
 export function deriveSlopFromQuality(quality: SlopInput): SlopDetection {
   return {
-    reads_as_human: quality.human_score >= REWRITE_SCORE_THRESHOLD,
+    // null, not false — an unjudged post has not been accused of anything.
+    reads_as_human:
+      quality.human_score === null ? null : quality.human_score >= REWRITE_SCORE_THRESHOLD,
     ai_tells_found: quality.ai_tells,
     worst_offending_phrase: quality.worst_offending_phrase,
     human_authenticity_score: quality.human_score,

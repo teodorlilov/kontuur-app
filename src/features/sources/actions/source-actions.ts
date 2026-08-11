@@ -10,6 +10,7 @@ import { validateSourceUrl } from '@/lib/sources/validate-url'
 import { isValidRssUrl } from '@/lib/sources/fetch-rss'
 import { fetchWebsiteSource } from '@/lib/sources/fetch-website'
 import { validateUpload, getFileExtension } from '@/lib/sources/validate-upload'
+import { WEB_RESEARCH_SOURCE_LABEL } from '@/utils/constants'
 import type { ClientSource } from '@/types/api'
 import type { TavilyConfig } from '@/types/sources'
 import type { Json } from '@/types/database'
@@ -286,7 +287,7 @@ export async function upsertTavilySource(
     .insert({
       client_id: clientId,
       type: 'tavily',
-      label: 'Web research',
+      label: WEB_RESEARCH_SOURCE_LABEL,
       url: '',
       is_active: input.is_active,
       config: config as unknown as Json,

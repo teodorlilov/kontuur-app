@@ -9,8 +9,12 @@ import {
   getAuthUserId,
   getCachedUserRecord,
 } from '@/lib/auth/session'
-import { getCachedAgency, getCachedAgencyClients, getCachedPendingRows } from '@/lib/queries/cache'
-import { getCachedNewIdeasCount } from '@/features/ideas/lib/cache'
+import {
+  getCachedAgency,
+  getCachedAgencyClients,
+  getCachedNewIdeasCount,
+  getCachedPendingRows,
+} from '@/lib/queries/cache'
 import { USER_AUTH_COLUMNS } from '@/lib/queries/select-columns'
 import { fetchActiveRuns } from '@/lib/generation/runs'
 import { extractInitials } from '@/utils/format'

@@ -9,6 +9,7 @@ import { StatusPill } from '@/components/ui/status-pill'
 import { Input } from '@/components/ui/input'
 import { toast } from '@/components/ui/toast'
 import { ensureIdeaToken } from '@/features/ideas/actions/token-actions'
+import { AWAITING_DECISION } from '@/features/ideas/lib/idea-filters'
 import type { ClientIdea } from '@/types/api'
 
 /**
@@ -123,7 +124,7 @@ export function IdeaFormTab({
                   &ldquo;{idea.ideaText}&rdquo;
                 </p>
                 {idea.platform && <StatusPill tone="mark">{idea.platform}</StatusPill>}
-                {idea.status === 'new' && <StatusPill tone="ok">New</StatusPill>}
+                {AWAITING_DECISION.includes(idea.status) && <StatusPill tone="ok">New</StatusPill>}
               </div>
             ))}
             <Link

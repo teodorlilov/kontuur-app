@@ -6,32 +6,23 @@ import { fetchClientById } from '@/lib/queries/db'
 import { DEFAULT_CAROUSEL_SLIDES } from '@/utils/constants'
 import { checkRateLimit, AI_RATE_LIMIT } from '@/lib/auth/rate-limit'
 import { performResearch } from '@/ai/research/research-orchestrator'
-import { finishGenerationRun, startGenerationRun } from '@/lib/generation/runs'
+import { finishGenerationRun, startGenerationRun, trackGenerationTheme } from '@/lib/generation/runs'
 import { runGenerationBatch } from '@/ai/generation/generation-orchestrator'
-import type { ResearchTopic, SkippedPillar } from '@/ai/research/types'
-import type { Theme } from '@/ai/generation/types'
-import type { PriorityPost } from '@/types/api'
+import { toTheme, toThemeTitle } from '@/ai/generation/to-theme'
+import type { ResearchTopic, TopicBrief } from '@/ai/research/types'
+import type { UnifiedStreamEvent } from '@/features/generate/lib/stream-events'
+import type { EnrichedTheme as Theme } from '@/ai/generation/types'
 import type { ClientData } from '@/lib/clients/fetch-client-data'
 
 export const maxDuration = 300
 
-type UnifiedStreamEvent =
-  | { type: 'total'; count: number }
-  | { type: 'phase'; message: string }
-  | { type: 'result'; data: unknown }
-  | { type: 'skipped_pillars'; pillars: SkippedPillar[]; skippedCount: number }
-  | { type: 'error'; message: string }
-
 /**
- * Parsed body. priorityPosts and preloadedClientData are re-narrowed to their
- * app types after validation: the schema proves the shape, these keep the
- * downstream prompt builders working against the richer domain types.
+ * Parsed body. preloadedClientData is re-narrowed to its app type after
+ * validation: the schema proves the shape, this keeps the downstream prompt
+ * builders working against the richer domain type. priorityPosts no longer
+ * needs the treatment — its schema is the real shape.
  */
-type GenerateStreamRequestBody = Omit<
-  z.infer<typeof generateStreamSchema>,
-  'priorityPosts' | 'preloadedClientData'
-> & {
-  priorityPosts?: PriorityPost[]
+type GenerateStreamRequestBody = Omit<z.infer<typeof generateStreamSchema>, 'preloadedClientData'> & {
   preloadedClientData: ClientData
 }
 
@@ -49,9 +40,9 @@ export async function POST(request: Request) {
   let body: GenerateStreamRequestBody
   try {
     // WHY the double assertion: the schema validates the wire shape but leaves
-    // formalityRules/priorityPosts as `unknown`, on purpose — they are large types
-    // this boundary only passes through. Parsing has proven the structure, so this
-    // re-attaches the domain types for the prompt builders.
+    // formalityRules as `unknown`, on purpose — it is a large type this boundary
+    // only passes through. Parsing has proven the structure, so this re-attaches
+    // the domain type for the prompt builders.
     body = generateStreamSchema.parse(
       await request.json()
     ) as unknown as GenerateStreamRequestBody
@@ -65,6 +56,19 @@ export async function POST(request: Request) {
   const ownerCheck = await fetchClientById(supabase, body.clientId, agencyId)
   if (!ownerCheck) return NextResponse.json({ error: 'Client not found' }, { status: 404 })
 
+  // The check above proves `body.clientId`. Generation then writes `client_id` from
+  // `preloadedClientData`, which the caller supplies — so without this, a crafted
+  // request could pass ownership for one client and produce a draft attributed to
+  // another, written in that other client's voice, from its sources. Approve
+  // re-verifies at POST /api/posts, so the blast radius stayed inside the agency;
+  // it was still silent and unlogged.
+  if (body.preloadedClientData.id !== body.clientId) {
+    console.error(
+      `[generate-stream] client mismatch: body.clientId=${body.clientId} preloaded=${body.preloadedClientData.id}`
+    )
+    return NextResponse.json({ error: 'Client not found' }, { status: 404 })
+  }
+
   const client = body.preloadedClientData
 
   const targetCount = body.targetPostCount + (body.priorityPosts?.length ?? 0)
@@ -72,6 +76,7 @@ export async function POST(request: Request) {
     clientId: body.clientId,
     platform: body.platform,
     targetCount,
+    kind: 'manual',
   })
 
   const encoder = new TextEncoder()
@@ -85,39 +90,64 @@ export async function POST(request: Request) {
         // Emit total upfront so the UI shows skeletons immediately
         send({ type: 'total', count: targetCount })
 
+        // Priority briefs are planned in the same call as the researched topics, so
+        // the model assigns each a source and cannot hand the same article to both.
+        // They used to bypass research entirely and reach generation with no source
+        // at all — the identical gap client ideas had.
+        const priorityPosts = body.priorityPosts ?? []
+        const briefs: TopicBrief[] = priorityPosts.map((pp) => ({
+          text: pp.brief ? `${pp.title}\n\n${pp.brief}` : pp.title,
+        }))
+
         // Run research — phase messages stream; topics collected for generation
         const topics: ResearchTopic[] = []
         await performResearch({
           supabase,
-          agencyId,
           clientId: body.clientId,
           niche: client.niche,
-          language: client.language,
           count: body.targetPostCount,
+          briefs,
           preloadedClientData: body.preloadedClientData,
-          onPhase: (message) => send({ type: 'phase', message }),
+          onPhase: (message, phase) =>
+            send({ type: 'phase', message, stage: phase === 'gathering' ? 'sources' : 'research' }),
           onTopic: (topic) => topics.push(topic),
           onSkippedPillars: (pillars, skippedCount) =>
             send({ type: 'skipped_pillars', pillars, skippedCount }),
         })
 
-        if (topics.length === 0 && (body.priorityPosts?.length ?? 0) === 0) {
+        if (topics.length === 0 && priorityPosts.length === 0) {
           runFailed = true
           send({ type: 'error', message: 'Research found no topics. Check your client sources or try again.' })
           return
         }
 
-        const themes: Theme[] = topics.map((t) => ({
-          description: t.suggested_theme,
-          count: 1,
-          pillar: t.pillar ?? undefined,
-          sourceUrl: t.source_url,
-          sourceTitle: t.source_title,
-          sourceType: t.source_type ?? undefined,
-          sourceExcerpt: t.source_excerpt,
-          sourceFullText: t.source_full_text,
-          clientSourceId: t.client_source_id ?? null,
-        }))
+        // A brief keeps its own instruction and target date whether or not planning
+        // found it a source; an unsourced brief is still a post the user asked for.
+        // First claim wins, matching partitionByBrief's own rule — the orchestrator
+        // clears duplicate indices, but that invariant lives in another module, and
+        // a Map constructor here would silently let the last duplicate replace the
+        // brief's planned theme.
+        const byBriefIndex = new Map<number, ResearchTopic>()
+        for (const t of topics) {
+          if (typeof t.brief_index === 'number' && !byBriefIndex.has(t.brief_index)) {
+            byBriefIndex.set(t.brief_index, t)
+          }
+        }
+        const briefThemes: Theme[] = priorityPosts.map((pp, i) => {
+          const planned = byBriefIndex.get(i + 1)
+          return {
+            ...(planned ? toTheme(planned) : { description: toThemeTitle(pp.title), count: 1 }),
+            isPriority: true,
+            brief: pp.brief,
+            targetDate: pp.targetDate,
+            // '' inherits the run platform — only a real override rides the theme.
+            ...(pp.platform ? { platform: pp.platform } : {}),
+          }
+        })
+        const researchThemes: Theme[] = topics
+          .filter((t) => typeof t.brief_index !== 'number')
+          .map(toTheme)
+        const themes: Theme[] = [...briefThemes, ...researchThemes]
 
         await runGenerationBatch({
           client,
@@ -126,23 +156,15 @@ export async function POST(request: Request) {
           slideCount: body.slideCount || client.defaultCarouselSlides || DEFAULT_CAROUSEL_SLIDES,
           requireSourceGrounding: client.requireSourceGrounding,
           themes,
-          priorityPosts: body.priorityPosts ?? [],
-          trackTheme: async (theme, postCount) => {
-            if (!runId) return
-            await supabase.from('generation_themes').insert({
-              run_id: runId,
-              theme_description: theme.description,
-              post_count: postCount,
-              is_priority: theme.isPriority ?? false,
-              priority_brief: theme.brief ?? null,
-              target_date: theme.targetDate ?? null,
-              research_used: !!theme.sourceExcerpt,
-            })
-          },
+          trackTheme: (theme, postCount) => trackGenerationTheme(supabase, runId, theme, postCount),
           onResult: (result) => send({ type: 'result', data: result }),
-          // The writing stage is the run's longest and was silent — surface
-          // each theme as its generation starts, through the same phase event.
-          onProgress: (theme) => send({ type: 'phase', message: `Writing: ${theme}` }),
+          // The two longest stages, each previously silent about which one it was.
+          onProgress: (theme, phase) =>
+            send(
+              phase === 'writing'
+                ? { type: 'phase', message: `Writing: ${theme}`, stage: 'writing' }
+                : { type: 'phase', message: `Checking: ${theme}`, stage: 'quality' }
+            ),
         })
       } catch (err) {
         runFailed = true

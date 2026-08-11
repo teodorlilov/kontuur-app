@@ -16,7 +16,6 @@ interface RunPanelProps {
   clientId: string
   generating: boolean
   onGenerate: () => void
-  isIdeaFlow: boolean
 }
 
 /**
@@ -32,7 +31,6 @@ export function RunPanel({
   clientId,
   generating,
   onGenerate,
-  isIdeaFlow,
 }: RunPanelProps) {
   const { publishState, webResearchActive, starvedPillars, skipMode } = runPlan
   // The headline promises what actually lands — briefs write extra posts.
@@ -50,10 +48,15 @@ export function RunPanel({
 
       <div className="flex flex-col p-5 pt-4">
         <CapsuleRow label="Drafts land in" value="Review queue" />
+        {/* No idea-flow special case. This said "From your brief" and suppressed the
+            good state, which was true when an idea bypassed research entirely. An
+            idea is now a locked priority brief planned in the same pass as every
+            other topic — including a focus web query of its own — so the panel was
+            reporting no research while a live search decided the outcome. */}
         <CapsuleRow
           label="Research"
-          value={isIdeaFlow ? 'From your brief' : webResearchActive ? 'Sources + web' : 'Sources only'}
-          good={!isIdeaFlow && webResearchActive}
+          value={webResearchActive ? 'Sources + web' : 'Sources only'}
+          good={webResearchActive}
         />
         <CapsuleRow label="Visuals" value="Composed per slide" />
         <CapsuleRow
@@ -77,12 +80,6 @@ export function RunPanel({
 
         <div className="mt-4 border-t border-white/10 pt-4">
           <p className="mb-2 text-label font-semibold uppercase text-ink-inv/45">Content mix</p>
-          {isIdeaFlow ? (
-            <p className="text-caption text-ink-inv/70">
-              One post, written from the idea’s brief.
-            </p>
-          ) : (
-            <>
               {/* Briefs first — they are written ahead of the researched mix,
                   and with this row the mix sums to the headline count. */}
               {briefCount > 0 && (
@@ -147,8 +144,6 @@ export function RunPanel({
                   </>
                 )}
               </p>
-            </>
-          )}
         </div>
       </div>
 
@@ -157,6 +152,9 @@ export function RunPanel({
           size="lg"
           loading={generating}
           onClick={onGenerate}
+          // 0 is expressible (briefs-only runs) but not runnable: a zero-post run
+          // opens a generation_runs row just to fail with a misleading error.
+          disabled={totalCount === 0}
           className="w-full bg-accent text-forest-deep hover:bg-accent-deep hover:shadow-none"
         >
           Generate {totalCount} post{totalCount === 1 ? '' : 's'}

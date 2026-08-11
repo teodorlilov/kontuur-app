@@ -1,12 +1,20 @@
 import { callAnthropic, LIGHT_MODEL } from '@/utils/ai-client'
 import { parseJsonResponse } from '@/utils/ai'
 import { shuffleArray } from '@/utils/shuffle'
-import { TAVILY_API_URL } from '@/utils/constants'
+import { interleaveRoundRobin } from '@/utils/interleave'
+import { queryTavily } from '@/lib/sources/tavily-client'
 import type { WeightedPillar } from '@/lib/clients/content-pillars'
 import type { TavilyConfig } from '@/types/sources'
 
 export interface ClientSearchContext {
   targetAudience?: string
+  /**
+   * User-supplied topics — a client idea or a priority brief. Each gets a search
+   * query written about it, alongside the niche/pillar queries. Without these a
+   * brief is searched for as though it were the client's niche, which returns
+   * material about the business rather than about what was actually asked for.
+   */
+  focusTexts?: string[]
   contentPillars?: WeightedPillar[]
   postHistory?: string[]
   language?: string
@@ -33,7 +41,7 @@ async function generateSearchQueries(
   niche: string,
   context: ClientSearchContext,
   count: number,
-): Promise<Array<{ query: string; pillar: string }>> {
+): Promise<string[]> {
   const monthYear = new Date().toLocaleString('en-US', { month: 'long', year: 'numeric' })
 
   const pillarsText =
@@ -47,6 +55,11 @@ async function generateSearchQueries(
   const historyText =
     context.postHistory && context.postHistory.length > 0
       ? `\nAlready covered — avoid these angles: ${context.postHistory.slice(0, 10).join(', ')}`
+      : ''
+
+  const focusText =
+    context.focusTexts && context.focusTexts.length > 0
+      ? `\nThe client has asked for posts on these specific subjects. Write one query for EACH, about the subject itself — not about the business:\n${context.focusTexts.map((t, i) => `${i + 1}. ${t}`).join('\n')}\n`
       : ''
 
   try {
@@ -64,7 +77,7 @@ Business: ${niche}
 Audience: ${context.targetAudience ?? 'general'}
 ${pillarsText ? `\nContent pillars:\n${pillarsText}` : ''}
 ${historyText}
-
+${focusText}
 Rules:
 - Each query covers a DIFFERENT pillar or angle — no overlapping topics
 - Mix languages: some in ${context.language ?? 'English'} for local market, some in English for research
@@ -72,14 +85,14 @@ Rules:
 - Every query must be specific enough that only results relevant to THIS business type appear
 
 Return JSON only:
-[{ "query": "exact search string", "pillar": "pillar name this serves" }]`,
+["exact search string", "another search string"]`,
       assistantPrefill: '[',
       cacheSystemPrompt: true,
     })
 
-    return parseJsonResponse<Array<{ query: string; pillar: string }>>(message, 'array', '[')
+    return parseJsonResponse<string[]>(message, 'array', '[')
   } catch {
-    return [{ query: toSearchQuery(niche), pillar: 'general' }]
+    return [toSearchQuery(niche)]
   }
 }
 
@@ -96,43 +109,31 @@ export interface TrendSearchResult {
 const TIME_RANGES = ['week', 'month', '3months'] as const
 
 /**
- * Executes a batch of Tavily queries in parallel, merges results, and deduplicates by URL.
- * Returns all results scoring at or above scoreThreshold.
+ * Executes a batch of Tavily queries in parallel and deduplicates by URL.
+ * Returns one group of results per query, aligned with `queries` — the capping
+ * step interleaves groups round-robin, so flattening here would let one prolific
+ * query crowd the others (including a brief's focus query) out of the cap.
  */
 async function runTavilyQueries(
-  key: string,
-  queries: Array<{ query: string; pillar: string }>,
+  queries: string[],
   perQueryMax: number,
   scoreThreshold: number,
   timeRangeOverride?: string,
   searchDepth: 'basic' | 'advanced' = 'basic',
   includeDomains?: string[],
   excludeDomains?: string[],
-): Promise<TrendSearchResult[]> {
+): Promise<TrendSearchResult[][]> {
   const results = await Promise.allSettled(
-    queries.map(async ({ query }, i) => {
-      const topic = i % 2 === 0 ? 'news' : 'general'
-      const time_range = timeRangeOverride ?? TIME_RANGES[i % TIME_RANGES.length]
-      const res = await fetch(TAVILY_API_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          api_key: key,
-          query,
-          topic,
-          time_range,
-          search_depth: searchDepth,
-          max_results: Math.min(perQueryMax, 10),
-          ...(includeDomains?.length ? { include_domains: includeDomains } : {}),
-          ...(excludeDomains?.length ? { exclude_domains: excludeDomains } : {}),
-        }),
-        signal: AbortSignal.timeout(10000),
+    queries.map(async (query, i) => {
+      const hits = await queryTavily(query, {
+        topic: i % 2 === 0 ? 'news' : 'general',
+        timeRange: timeRangeOverride ?? TIME_RANGES[i % TIME_RANGES.length],
+        searchDepth,
+        maxResults: Math.min(perQueryMax, 10),
+        includeDomains,
+        excludeDomains,
       })
-      if (!res.ok) return []
-      const data = (await res.json()) as {
-        results?: Array<{ title: string; url: string; content: string; score: number }>
-      }
-      return (data.results ?? []).map((r) => ({
+      return hits.map((r) => ({
         title: r.title,
         snippet: r.content,
         url: r.url,
@@ -141,19 +142,33 @@ async function runTavilyQueries(
     }),
   )
 
-  const byUrl = new Map<string, TrendSearchResult>()
-  for (const result of results) {
-    if (result.status === 'fulfilled') {
-      for (const item of result.value) {
-        if (item.score < scoreThreshold) continue
-        const existing = byUrl.get(item.url)
-        if (!existing || item.score > existing.score) {
-          byUrl.set(item.url, item)
-        }
+  const rawGroups = results.map((r) => (r.status === 'fulfilled' ? r.value : []))
+  return dedupeIntoGroups(rawGroups, scoreThreshold)
+}
+
+/**
+ * Global URL de-dupe that keeps each surviving item in its query's group. A URL
+ * two queries both found keeps its higher-scoring copy, in that copy's group,
+ * so the round-robin cap never counts one article twice.
+ */
+export function dedupeIntoGroups(
+  rawGroups: TrendSearchResult[][],
+  scoreThreshold: number
+): TrendSearchResult[][] {
+  const bestByUrl = new Map<string, { item: TrendSearchResult; group: number }>()
+  rawGroups.forEach((groupItems, groupIndex) => {
+    for (const item of groupItems) {
+      if (item.score < scoreThreshold) continue
+      const existing = bestByUrl.get(item.url)
+      if (!existing || item.score > existing.item.score) {
+        bestByUrl.set(item.url, { item, group: groupIndex })
       }
     }
-  }
-  return [...byUrl.values()]
+  })
+
+  const groups: TrendSearchResult[][] = rawGroups.map(() => [])
+  for (const { item, group } of bestByUrl.values()) groups[group]?.push(item)
+  return groups
 }
 
 /**
@@ -176,11 +191,13 @@ export async function searchTrends(
   const key = process.env.TAVILY_API_URL_KEY
   if (!key) return []
 
-  // Always generate at least 3 queries to ensure pool diversity, even for small counts
-  const queryCount = clientContext ? Math.max(3, Math.min(count + 1, 5)) : 1
+  // Always generate at least 3 queries to ensure pool diversity, even for small
+  // counts, plus one per requested subject so no brief goes unsearched.
+  const focusCount = clientContext?.focusTexts?.length ?? 0
+  const queryCount = clientContext ? Math.max(3, Math.min(count + 1, 5)) + focusCount : 1
   const queries = clientContext
     ? await generateSearchQueries(niche, clientContext, queryCount)
-    : [{ query: toSearchQuery(niche), pillar: 'general' }]
+    : [toSearchQuery(niche)]
 
   const perQueryMax = Math.ceil((count * 3) / queries.length)
 
@@ -189,19 +206,22 @@ export async function searchTrends(
 
   try {
     // Pass 1: recent articles, strict relevance threshold
-    let pool = await runTavilyQueries(key, queries, perQueryMax, 0.3, undefined, 'basic', includeDomains, excludeDomains)
+    let groups = await runTavilyQueries(queries, perQueryMax, 0.3, undefined, 'basic', includeDomains, excludeDomains)
 
     // Pass 2: only if pass 1 yielded nothing — broader time range, lower threshold
-    if (pool.length === 0) {
-      const fallbackQuery = [{ query: `${toSearchQuery(niche)} ${new Date().getFullYear()}`, pillar: 'general' }]
-      pool = await runTavilyQueries(key, fallbackQuery, count + 2, 0.15, 'year', 'advanced', includeDomains, excludeDomains)
+    if (groups.every((g) => g.length === 0)) {
+      const fallbackQuery = [`${toSearchQuery(niche)} ${new Date().getFullYear()}`]
+      groups = await runTavilyQueries(fallbackQuery, count + 2, 0.15, 'year', 'advanced', includeDomains, excludeDomains)
     }
 
-    // Filter out URLs already used in previous posts
+    // Filter out URLs already used in previous posts, then cap fairly: shuffle
+    // WITHIN each query's group for run-to-run variety, and interleave across
+    // groups so every query — a brief's focus query included — keeps a share of
+    // the cap instead of gambling on a global shuffle.
     const excluded = new Set(clientContext?.excludedUrls ?? [])
-    const filtered = pool.filter((r) => !excluded.has(r.url))
+    const cappedGroups = groups.map((g) => shuffleArray(g.filter((r) => !excluded.has(r.url))))
 
-    return shuffleArray(filtered).slice(0, count + 2)
+    return interleaveRoundRobin(cappedGroups, count + 2 + focusCount)
   } catch {
     return []
   }

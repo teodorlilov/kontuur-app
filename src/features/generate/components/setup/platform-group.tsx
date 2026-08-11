@@ -11,14 +11,14 @@ interface PlatformGroupProps {
   clientName: string
   clientId: string
   onChange: (platform: string) => void
-  /** Idea runs lock the platform — it came with the idea. */
-  disabled?: boolean
 }
 
 /**
  * All five platforms generate; only LIVE_PLATFORMS publish. Every chip stays
  * enabled — disabling LinkedIn or TikTok would hide a capability the product
- * has — and the note beneath tells the publishing truth for the choice.
+ * has — and the note beneath tells the publishing truth for the choice. An idea
+ * no longer locks this: its platform lives on its own brief, so the run's
+ * platform stays free for the researched posts alongside.
  */
 export function PlatformGroup({
   platform,
@@ -26,7 +26,6 @@ export function PlatformGroup({
   clientName,
   clientId,
   onChange,
-  disabled,
 }: PlatformGroupProps) {
   return (
     <div className="flex flex-col gap-2">
@@ -36,7 +35,6 @@ export function PlatformGroup({
             key={p}
             pressed={p === platform}
             live={LIVE_PLATFORMS.has(p)}
-            disabled={disabled && p !== platform}
             onClick={() => onChange(p)}
           >
             {p}

@@ -1,7 +1,7 @@
 import { callAnthropic, DEFAULT_MODEL } from '@/utils/ai-client'
 import { extractToolInput } from '@/utils/ai'
 import type { ResearchPromptBuilder } from '../prompts/prompt-builder'
-import type { ResearchTopic, SourceContext } from '../types'
+import type { ResearchTopic, SourceContext, TopicBrief } from '../types'
 
 const TOPICS_OUTPUT_SCHEMA = {
   type: 'object' as const,
@@ -13,62 +13,38 @@ const TOPICS_OUTPUT_SCHEMA = {
         properties: {
           finding: { type: 'string' },
           suggested_theme: { type: 'string' },
+          // 1-based index of the requested post this topic serves, null when the
+          // model chose the topic itself. Required so the caller can map results
+          // back without relying on response ordering.
+          brief_index: { type: ['integer', 'null'] },
           pillar: { type: ['string', 'null'] },
           source_url: { type: ['string', 'null'] },
           source_title: { type: ['string', 'null'] },
           source_type: { type: ['string', 'null'] },  // 'rss' | 'website' | 'file' | 'web_search' | 'performance' | null
           source_excerpt: { type: 'string' },
         },
-        required: ['finding', 'suggested_theme', 'pillar', 'source_url', 'source_title', 'source_type', 'source_excerpt'],
+        required: ['finding', 'suggested_theme', 'brief_index', 'pillar', 'source_url', 'source_title', 'source_type', 'source_excerpt'],
       },
     },
   },
   required: ['topics'],
 }
 
+/**
+ * Plan a whole run in one call: a topic for each user-supplied brief, plus
+ * `researchCount` the model chooses from what is left.
+ *
+ * One call rather than two so the model cannot give the same source to a brief and
+ * to a researched topic — neither pass would know what the other had taken.
+ */
 export async function generateTopics(
   builder: ResearchPromptBuilder,
-  count: number,
+  plan: { briefs: readonly TopicBrief[]; researchCount: number },
   sourceContext?: SourceContext
 ): Promise<ResearchTopic[]> {
-  const userPrompt = builder.buildResearchUserPrompt(count, sourceContext)
-  const systemPrompt = builder.systemPrompt
-
-  const message = await callAnthropic({
-    systemPrompt,
-    userMessage: userPrompt,
-    model: DEFAULT_MODEL,
-    outputSchema: TOPICS_OUTPUT_SCHEMA,
-  })
-
-  const { topics } = extractToolInput<{ topics: ResearchTopic[] }>(message, TOPICS_OUTPUT_SCHEMA)
-  return topics
-}
-
-/**
- * Ask for replacement topics when the grounding filter rejected part of the
- * first response — continues the original conversation so the (cached) system
- * prompt and source material are reused instead of re-sent as a fresh prompt.
- */
-export async function generateTopUpTopics(
-  builder: ResearchPromptBuilder,
-  count: number,
-  shortfall: number,
-  sourceContext: SourceContext | undefined,
-  firstResponseTopics: ResearchTopic[],
-  keptThemes: string[]
-): Promise<ResearchTopic[]> {
-  const originalUserPrompt = builder.buildResearchUserPrompt(count, sourceContext)
-
   const message = await callAnthropic({
     systemPrompt: builder.systemPrompt,
-    conversationHistory: [
-      { role: 'user', content: originalUserPrompt },
-      { role: 'assistant', content: JSON.stringify({ topics: firstResponseTopics }) },
-    ],
-    userMessage: `${shortfall} of your topics were rejected because they lacked a valid source_url from the SOURCE MATERIAL above.
-Provide exactly ${shortfall} additional topic(s), each grounded in the source material with a valid source_url.
-Do not repeat any of these themes: ${keptThemes.map((t) => `"${t}"`).join(', ') || '(none kept)'}`,
+    userMessage: builder.buildTopicPlanPrompt(plan, sourceContext),
     model: DEFAULT_MODEL,
     outputSchema: TOPICS_OUTPUT_SCHEMA,
   })

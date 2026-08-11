@@ -5,7 +5,9 @@ import type { SlopDetection } from '@/types/api'
 /** Derive slop data from validation JSON if available (avoids a separate API call). */
 export function deriveSlopFromValidation(validationJson: unknown): SlopDetection | null {
   const parsed = parseStoredValidation(validationJson)
-  if (!parsed?.scores.human_score) return null
+  // Explicit null check: a measured 0 is a real judgement and must derive real
+  // slop — a falsy check laundered it back into "unmeasured".
+  if (parsed == null || parsed.scores.human_score === null) return null
   return deriveSlopFromQuality({
     human_score: parsed.scores.human_score,
     ai_tells: parsed.criteria.ai_tells,

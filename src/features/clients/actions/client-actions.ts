@@ -19,6 +19,7 @@ import {
   type ScheduleInput,
   type UpdateClientInput,
 } from '@/features/clients/schemas'
+import { WEB_RESEARCH_SOURCE_LABEL } from '@/utils/constants'
 import type { SourceKind } from '@/types/visual'
 import type { ActionResult } from '@/lib/actions/types'
 
@@ -66,7 +67,8 @@ export async function createClient(input: CreateClientInput): Promise<ActionResu
   const bp = data.brand_profile
   const ps = data.posting_schedule
 
-  const [{ error: profileError }, { error: scheduleError }] = await Promise.all([
+  const [{ error: profileError }, { error: scheduleError }, { error: webResearchError }] =
+    await Promise.all([
     supabase.from('brand_profiles').insert({
       client_id: clientId,
       tone: bp?.tone,
@@ -91,10 +93,27 @@ export async function createClient(input: CreateClientInput): Promise<ActionResu
       auto_generate_day: ps?.auto_generate_day,
       auto_generate_time: ps?.auto_generate_time,
     }),
+    // Web research is a per-client capability, not a source someone adds, so it has
+    // no "add" button and needs a creation moment of its own. It used to be written
+    // lazily during the sources page render, which made "has a human opened that
+    // page?" an input to the generation pipeline — `shouldSearchWeb` is `!!tavilyRow`.
+    // Created here so absence is impossible and the toggle always has a row to bind
+    // to; `is_active: true` because web research is the useful default. Only the
+    // toggle changes it afterwards.
+    supabase.from('client_sources').insert({
+      client_id: clientId,
+      type: 'tavily',
+      label: WEB_RESEARCH_SOURCE_LABEL,
+      url: '',
+      is_active: true,
+    }),
   ])
 
-  if (profileError || scheduleError) {
-    console.error('[clients:create] child insert failed:', profileError ?? scheduleError)
+  if (profileError || scheduleError || webResearchError) {
+    console.error(
+      '[clients:create] child insert failed:',
+      profileError ?? scheduleError ?? webResearchError
+    )
     // Roll the client back rather than leave a half-built row behind: the user's retry would
     // otherwise add a second client with the same name. Children cascade — DELETE
     // /api/clients/[id] deletes the client row alone and relies on the same behaviour.
@@ -104,7 +123,11 @@ export async function createClient(input: CreateClientInput): Promise<ActionResu
     }
     return {
       ok: false,
-      error: profileError ? 'Failed to create brand profile' : 'Failed to create posting schedule',
+      error: profileError
+        ? 'Failed to create brand profile'
+        : scheduleError
+          ? 'Failed to create posting schedule'
+          : 'Failed to create client sources',
     }
   }
 

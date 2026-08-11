@@ -1,6 +1,8 @@
 import type { LanguageConfig } from '@/lib/clients/language-rules'
 import { formatFormalityRules } from '@/ai/shared/formality-guidance'
+import { sanitizePromptField, PROMPT_FIELD_LIMITS } from '@/ai/utils/sanitize'
 
+/** The judge's language section: base checks plus the client's own rules, sanitized. */
 export function buildLanguageValidationRules(config: LanguageConfig): string {
   const baseRules = `Check for:
 1. ANGLICISMS — English words used in target language text
@@ -14,14 +16,15 @@ export function buildLanguageValidationRules(config: LanguageConfig): string {
   // Formality rules from DB — same rules generation was told to follow
   const formalitySection = `\n\n${formatFormalityRules(config)}\nFlag any content that violates the register rules above.`
 
-  // Language-specific instructions from DB
+  // Language-specific instructions from DB — client-entered text, sanitized like
+  // every other user-provided prompt field.
   const languageSpecific = config.languageInstructions
-    ? `\n\n${config.language}-SPECIFIC CHECKS:\n${config.languageInstructions}`
+    ? `\n\n${config.language}-SPECIFIC CHECKS:\n${sanitizePromptField(config.languageInstructions, PROMPT_FIELD_LIMITS.long)}`
     : ''
 
   // Per-client language notes
   const clientNotes = config.languageNotes
-    ? `\n\nCLIENT-SPECIFIC LANGUAGE REQUIREMENTS:\n${config.languageNotes}`
+    ? `\n\nCLIENT-SPECIFIC LANGUAGE REQUIREMENTS:\n${sanitizePromptField(config.languageNotes, PROMPT_FIELD_LIMITS.long)}`
     : ''
 
   return `${baseRules}${formalitySection}${languageSpecific}${clientNotes}`

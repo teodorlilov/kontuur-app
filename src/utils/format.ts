@@ -26,6 +26,14 @@ export function capitalize(value: string): string {
   return value.charAt(0).toUpperCase() + value.slice(1)
 }
 
+/**
+ * A client's display name, or the one fallback for a row whose join came back
+ * empty. Four call sites each spelled `?? 'Client'` before; one word, one place.
+ */
+export function formatClientName(name: string | null | undefined): string {
+  return name ?? 'Client'
+}
+
 /** `relativeTo` pins the comparison instant — SSR'd surfaces pass a server-provided
  *  time so the text cannot differ between server render and hydration. */
 export function formatRelativeTime(date: Date, relativeTo: Date = new Date()): string {

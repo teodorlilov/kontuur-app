@@ -1,30 +1,20 @@
-/** The four stages the generation stream moves through, as the progress rail names them. */
-export const STAGE_LABELS = [
-  'Fetching sources',
-  'Researching topics',
-  'Writing captions and slides',
-  'Quality checks',
-] as const
+import { GENERATION_STAGES, type GenerationStage } from './stream-events'
 
-/** Stage labels for the single-post idea flow. */
-export const IDEA_STAGE_LABELS = [
-  'Searching for sources',
-  'Enriching idea',
-  'Writing post',
-  'Quality checks',
-] as const
-
-/** Maps streaming phase strings to discrete stage indices (0-3). */
-export function mapPhaseToStage(phase: string): number {
-  const lower = phase.toLowerCase()
-  if (lower.includes('quality') || lower.includes('validat') || lower.includes('check')) return 3
-  if (lower.includes('generat') || lower.includes('writ') || lower.includes('caption')) return 2
-  if (
-    lower.includes('pillar') ||
-    lower.includes('research') ||
-    lower.includes('theme') ||
-    lower.includes('analyz')
-  )
-    return 1
-  return 0
+/**
+ * What the progress rail calls each stage.
+ *
+ * One set for every run. There used to be a second, `IDEA_STAGE_LABELS`, because
+ * generating from a client idea was a separate endpoint with a different shape —
+ * its second label was "Enriching idea", naming a shallow lookup that no longer
+ * exists. An idea is now a locked priority brief on the same pipeline, so it moves
+ * through the same four stages and a second vocabulary would only describe a flow
+ * that is gone.
+ */
+export const STAGE_LABELS: Record<GenerationStage, string> = {
+  sources: 'Fetching sources',
+  research: 'Researching topics',
+  writing: 'Writing captions and slides',
+  quality: 'Quality checks',
 }
+
+export const ORDERED_STAGE_LABELS = GENERATION_STAGES.map((stage) => STAGE_LABELS[stage])

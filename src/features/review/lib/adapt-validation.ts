@@ -26,15 +26,16 @@ export function toValidationData(validationJson: unknown): ValidationData | null
     slop:
       stored.slop ??
       deriveSlopFromValidation(validationJson) ?? {
-        // Authenticity unknown (pre-scores row) — 0 keeps the "sounds like AI"
-        // flag honest until the shell's one-shot detect-slop call replaces it.
-        reads_as_human: true,
+        // Authenticity unknown (pre-scores row). null, not a verdict: this used to
+        // claim `reads_as_human: true` and a measured 0 in the same breath, and the
+        // 0 was an in-band sentinel triage had to special-case.
+        reads_as_human: null,
         ai_tells_found: stored.criteria.ai_tells,
         worst_offending_phrase: stored.criteria.worst_offending_phrase,
-        human_authenticity_score: 0,
+        human_authenticity_score: null,
       },
     ...(stored.sourceGrounding
-      ? { sourceGrounding: { ...stored.sourceGrounding, corrected_text: null } }
+      ? { sourceGrounding: stored.sourceGrounding }
       : {}),
   }
 }
@@ -44,7 +45,7 @@ export function toValidationData(validationJson: unknown): ValidationData | null
  * surface with neutral evidence instead of dropping the post from the queue.
  */
 export function fallbackValidationData(qualityScoreAvg: number | null): ValidationData {
-  const score = qualityScoreAvg ?? 0
+  const score = qualityScoreAvg
   return {
     criteria: {
       ai_tells: [],
@@ -54,13 +55,16 @@ export function fallbackValidationData(qualityScoreAvg: number | null): Validati
       health_compliant: null,
       issues: [],
     },
-    scores: { overall_score: score, human_score: 0, language_score: score, source_score: null },
-    language: { passes: true, language_score: score, issues: [], corrected_text: null },
+    // Nothing here was measured, so nothing here carries a number or a verdict.
+    // The zeros this used to fabricate put every legacy post in needs_attention
+    // wearing a "Sounds like AI" chip from a measurement nobody made.
+    scores: { overall_score: score, human_score: null, language_score: null, source_score: null },
+    language: { passes: true, language_score: null, issues: [], corrected_text: null },
     slop: {
-      reads_as_human: true,
+      reads_as_human: null,
       ai_tells_found: [],
       worst_offending_phrase: null,
-      human_authenticity_score: 0,
+      human_authenticity_score: null,
     },
   }
 }
@@ -69,5 +73,7 @@ export function fallbackValidationData(qualityScoreAvg: number | null): Validati
 export function needsSlopFallback(validationJson: unknown): boolean {
   const stored = parseStoredValidation(validationJson)
   if (!stored) return true
-  return !stored.slop && !stored.scores.human_score
+  // Explicit null check: a measured 0 is the strongest verdict there is, and a
+  // falsy check would overwrite it with a fresh detect-slop call on every focus.
+  return !stored.slop && stored.scores.human_score === null
 }

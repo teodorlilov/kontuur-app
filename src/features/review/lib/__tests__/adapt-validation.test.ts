@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { fallbackValidationData, needsSlopFallback, toValidationData } from '../adapt-validation'
+import { deriveSlopFromValidation } from '../derive-slop'
 
 const scores = { overall_score: 8, human_score: 7, language_score: 9, source_score: null }
 const criteria = {
@@ -62,9 +63,26 @@ describe('toValidationData — garbage', () => {
 
 describe('needsSlopFallback', () => {
   it('true only when neither stored slop nor a human score exists', () => {
-    expect(needsSlopFallback({ scores: { ...scores, human_score: 0 }, criteria })).toBe(true)
     expect(needsSlopFallback({ scores, criteria })).toBe(false)
+    expect(needsSlopFallback({ scores: { ...scores, human_score: null }, criteria })).toBe(true)
     expect(needsSlopFallback(null)).toBe(true)
+  })
+
+  it('honours a measured 0 instead of re-judging it', () => {
+    // 0 is the strongest verdict there is; a falsy check used to overwrite it
+    // with a fresh detect-slop call on every focus.
+    expect(needsSlopFallback({ scores: { ...scores, human_score: 0 }, criteria })).toBe(false)
+  })
+})
+
+describe('deriveSlopFromValidation', () => {
+  it('derives real slop from a measured 0', () => {
+    const slop = deriveSlopFromValidation({ scores: { ...scores, human_score: 0 }, criteria })
+    expect(slop?.human_authenticity_score).toBe(0)
+  })
+
+  it('derives nothing from an unjudged row', () => {
+    expect(deriveSlopFromValidation({ scores: { ...scores, human_score: null }, criteria })).toBeNull()
   })
 })
 
@@ -73,6 +91,11 @@ describe('fallbackValidationData', () => {
     const data = fallbackValidationData(6)
     expect(data.scores.overall_score).toBe(6)
     expect(data.criteria.ai_tells).toEqual([])
-    expect(data.slop.human_authenticity_score).toBe(0)
+    // Nothing was measured, so nothing carries a number or a verdict — the zeros
+    // this used to fabricate flagged every legacy post as AI.
+    expect(data.slop.human_authenticity_score).toBeNull()
+    expect(data.slop.reads_as_human).toBeNull()
+    expect(data.scores.language_score).toBeNull()
+    expect(data.language.language_score).toBeNull()
   })
 })

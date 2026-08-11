@@ -1,8 +1,9 @@
+import { capitalize } from '@/utils/format'
 import type { AnalyticsMetrics, InstagramMetrics, FacebookMetrics } from '@/types/api'
 
 /** Capitalizes the first letter of a platform name (e.g. "instagram" → "Instagram"). */
 export function capitalizePlatform(platform: string): string {
-  return platform.charAt(0).toUpperCase() + platform.slice(1)
+  return capitalize(platform)
 }
 
 /** Returns the follower/fan count from the account object regardless of platform. */

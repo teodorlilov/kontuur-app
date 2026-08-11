@@ -3,20 +3,16 @@ import type { SourceGroundingResult, SourceGroundingIssue } from '@/ai/validatio
 import { computeGroundingScore } from '@/ai/validation/content-rules/compute-scores'
 
 /**
- * Apply text corrections from validation results.
- * Priority: language corrections win over source grounding corrections.
- * Grounding is applied first (fixes factual errors), then language overwrites
- * (ensures the corrected text is grammatically native).
+ * Apply the corrected text from validation.
+ *
+ * One judge produces one corrected version carrying both factual and language
+ * fixes, so there is no precedence to decide. This used to apply grounding first
+ * and then let language overwrite it — over text the language judge had never
+ * seen, which silently reinstated fabricated claims the grounding pass removed.
+ * Both corrections now come from the same response and cannot disagree.
  */
 export function applyTextCorrections(original: string, validation: PostValidationResult): string {
-  let result = original
-  if (validation.sourceGrounding?.corrected_text) {
-    result = validation.sourceGrounding.corrected_text
-  }
-  if (validation.language.corrected_text) {
-    result = validation.language.corrected_text
-  }
-  return result
+  return validation.language.corrected_text ?? original
 }
 
 /**
@@ -36,20 +32,17 @@ export function applySlideCorrections<T extends { headline: string; body: string
 }
 
 /**
- * Derives the backward-compatible SourceGroundingResult from source claims.
- * Used to populate the `sourceGrounding` field of PostValidationResult.
+ * Derives the SourceGroundingResult from source claims — the grounding verdict only.
+ *
+ * It used to carry its own `corrected_text`/`corrected_slides` as well, from a time
+ * when grounding and language were separate judges with competing corrections.
+ * Neither field was ever read: `applySlideCorrections` took the language copy and
+ * `buildStoredValidation` persisted only the verdict. One judge now produces one
+ * correction, so there is nothing left to duplicate.
  */
 export function deriveSourceGroundingResult(
-  claims: SourceGroundingIssue[],
-  correctedText: string | null,
-  correctedSlides: Array<{ headline: string; body: string }> | null | undefined
+  claims: SourceGroundingIssue[]
 ): SourceGroundingResult {
   const { grounding_score, grounded } = computeGroundingScore({ flagged_claims: claims })
-  return {
-    grounded,
-    grounding_score,
-    flagged_claims: claims,
-    corrected_text: correctedText ?? null,
-    ...(correctedSlides !== undefined ? { corrected_slides: correctedSlides } : {}),
-  }
+  return { grounded, grounding_score, flagged_claims: claims }
 }

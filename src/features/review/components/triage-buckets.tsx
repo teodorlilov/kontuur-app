@@ -53,7 +53,8 @@ function AgeChip({ ageDays }: { ageDays: number }) {
 }
 
 function ScorePill({ score }: { score: number | null }) {
-  if (score === null) return null
+  // Absence alone reads as a layout gap beside scored siblings — state the fact.
+  if (score === null) return <StatusPill tone="neutral">Not scored</StatusPill>
   return (
     <StatusPill tone={score < 7 ? 'warn' : 'ok'}>
       <span className="tabular-nums">{score}/10</span>

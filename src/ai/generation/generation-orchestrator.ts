@@ -18,17 +18,17 @@ import { applyTextCorrections, applySlideCorrections } from '@/ai/validation/cor
 import { buildStoredValidation } from '@/lib/validation/stored-validation-schema'
 import { Deduplicator } from '@/ai/shared/deduplicator'
 import { ANGLE_SIMILARITY_THRESHOLD } from '@/lib/content-rules/constants'
-import { QUALITY_FLOOR, DEFAULT_CAROUSEL_SLIDES } from '@/utils/constants'
+import { DEFAULT_CAROUSEL_SLIDES } from '@/utils/constants'
 
 const MAX_CONCURRENT_AI_CALLS = 5
 
-export class GenerationPipeline {
+class GenerationPipeline {
   private readonly results: GenerationResult[] = []
 
   constructor(private readonly ctx: GenerationRunContext) { }
 
   async execute(): Promise<GenerationResult[]> {
-    const allThemes = this.buildThemeList()
+    const allThemes = this.ctx.themes ?? []
     this.attachSimilarThemes(allThemes)
 
     for (let i = 0; i < allThemes.length; i += MAX_CONCURRENT_AI_CALLS) {
@@ -47,20 +47,6 @@ export class GenerationPipeline {
     return this.results
   }
 
-  private buildThemeList(): EnrichedTheme[] {
-    const themeList = [
-      ...(this.ctx.priorityPosts ?? []).map((pp) => ({
-        description: pp.title,
-        count: 1,
-        isPriority: true,
-        brief: pp.brief,
-        targetDate: pp.targetDate,
-      })),
-      ...(this.ctx.themes ?? []),
-    ]
-    return themeList
-  }
-
   private attachSimilarThemes(themes: EnrichedTheme[]): void {
     const cache = Deduplicator.buildCache(
       this.ctx.client.postHistory,
@@ -75,7 +61,7 @@ export class GenerationPipeline {
   }
 
   private async processTheme(theme: EnrichedTheme): Promise<void> {
-    this.ctx.onProgress?.(theme.description)
+    this.ctx.onProgress?.(theme.description, 'writing')
     const input = this.buildThemeInput(theme)
 
     if (this.ctx.postType === 'carousel') {
@@ -85,8 +71,27 @@ export class GenerationPipeline {
     }
   }
 
+  /**
+   * Whether this theme's post is held to its source.
+   *
+   * True when the client asked for it, and also whenever the theme actually carries
+   * source text — a post written from a fetched article is checkable against it
+   * regardless of the client's setting.
+   */
+  private isGrounded(theme: EnrichedTheme): boolean {
+    return this.ctx.requireSourceGrounding || !!(theme.sourceExcerpt || theme.sourceFullText)
+  }
+
+  /**
+   * A brief with its own platform overrides the run's; everything else inherits.
+   * Prompt-cache note: system prompts cache per client+platform, so a mixed run
+   * warms one extra prefix per distinct brief platform — expected and bounded.
+   */
+  private platformFor(theme: EnrichedTheme): string {
+    return theme.platform ?? this.ctx.platform
+  }
+
   private buildThemeInput(theme: EnrichedTheme): SinglePostInput | CarouselInput {
-    const hasGrounding = !!(theme.sourceExcerpt || theme.sourceFullText)
     const base = {
       client: this.ctx.client,
       theme: theme.description,
@@ -94,22 +99,29 @@ export class GenerationPipeline {
       sourceExcerpt: theme.sourceExcerpt,
       sourceFullText: theme.sourceFullText,
       sourceUrl: theme.sourceUrl,
-      requireSourceGrounding: this.ctx.requireSourceGrounding || hasGrounding,
+      requireSourceGrounding: this.isGrounded(theme),
       similarPastThemes: theme.similarPastThemes,
       brief: theme.brief,
       targetDate: theme.targetDate,
     }
 
     if (this.ctx.postType === 'carousel') {
-      return { ...base, slideCount: this.ctx.slideCount ?? DEFAULT_CAROUSEL_SLIDES, platform: this.ctx.platform }
+      return { ...base, slideCount: this.ctx.slideCount ?? DEFAULT_CAROUSEL_SLIDES, platform: this.platformFor(theme) }
     }
-    return { ...base, platform: this.ctx.platform, count: theme.count || 1 }
+    return { ...base, platform: this.platformFor(theme), count: theme.count || 1 }
   }
 
   private buildGroundingContext(theme: EnrichedTheme) {
-    const MAX_SOURCE_CHARS = 3000
-    const groundingText = (theme.sourceFullText || theme.sourceExcerpt)?.slice(0, MAX_SOURCE_CHARS)
-    return this.ctx.requireSourceGrounding && groundingText
+    // No re-slice: sourceFullText is already capped once, at attachment, by
+    // SOURCE_FULL_TEXT_CAP (fetch-limits.ts). Cutting it again here handed the
+    // judge less text than the writer saw, so claims sourced from the tail were
+    // flagged as fabricated.
+    const groundingText = theme.sourceFullText || theme.sourceExcerpt
+    // Same predicate the writer is given. These disagreed: the writer was told to
+    // stay grounded whenever a source was present, while the judge only checked
+    // when the client flag was set — so the fabricated-statistic check was off for
+    // exactly the posts that quote fetched source text.
+    return this.isGrounded(theme) && groundingText
       ? { excerpt: groundingText, url: theme.sourceUrl }
       : undefined
   }
@@ -121,13 +133,13 @@ export class GenerationPipeline {
       post_type: PostType
       slides_json: unknown
       validation_json?: unknown
-      quality_score_avg: number
+      quality_score_avg: number | null
     }
   ): DraftPost {
     return {
       id: randomUUID(),
       client_id: this.ctx.client.id,
-      platform: this.ctx.platform,
+      platform: this.platformFor(theme),
       status: 'draft',
       priority: theme.isPriority ?? false,
       topic_summary: theme.description,
@@ -137,6 +149,7 @@ export class GenerationPipeline {
       source_excerpt: theme.sourceExcerpt ?? null,
       client_source_id: theme.clientSourceId ?? null,
       pillar: theme.pillar ?? null,
+      target_date: theme.targetDate ?? null,
       validation_json: null,
       created_at: new Date().toISOString(),
       ...overrides,
@@ -164,11 +177,12 @@ export class GenerationPipeline {
       )
     }
 
+    this.ctx.onProgress?.(theme.description, 'validating')
     const validation = await validatePost({
       caption: result.main_caption,
       slides: result.slides,
       client: this.ctx.client,
-      platform: this.ctx.platform,
+      platform: this.platformFor(theme),
       sourceContext: this.buildGroundingContext(theme),
       theme: theme.description,
       targetPillar: theme.pillar,
@@ -198,14 +212,17 @@ export class GenerationPipeline {
   }
 
   private async collectSinglePosts(theme: EnrichedTheme, posts: ParsedPost[]): Promise<void> {
-    await this.trackThemeSafe(theme, posts.length)
     const requested = theme.count || 1
+    // Track what the run will keep, not how many variants the writer produced —
+    // the latter made live progress climb past 100%.
+    await this.trackThemeSafe(theme, Math.min(requested, posts.length))
 
-    // Validate all variants of this theme in one batched pass (2 LLM calls), then pick the best
+    this.ctx.onProgress?.(theme.description, 'validating')
+    // Validate all variants of this theme in one batched pass, then pick the best
     const validations = await validatePostsBatch({
       captions: posts.map(({ caption }) => caption),
       client: this.ctx.client,
-      platform: this.ctx.platform,
+      platform: this.platformFor(theme),
       sourceContext: this.buildGroundingContext(theme),
       theme: theme.description,
       targetPillar: theme.pillar,
@@ -220,15 +237,20 @@ export class GenerationPipeline {
       }
     })
 
-    const qualified = results
-      .filter((r) => r.score >= QUALITY_FLOOR)
-      .sort((a, b) => b.score - a.score)
+    // Ranked, not gated. A low score is surfaced rather than acted on here: triage
+    // flags the post `low_quality` and routes it to needs_attention, so it never
+    // reaches the ready bucket or a bulk approve. Dropping it at this point would
+    // discard written work silently and leave the run shorter than it promised.
+    //
+    // This used to filter on QUALITY_FLOOR and then fall back to the unfiltered
+    // list when nothing qualified — which, with one caption per theme, returned the
+    // same single item either way. The gate read as real and decided nothing.
+    // Unscored variants sort last rather than coalescing to 0, which would rank
+    // them below a measured 3. They are still kept if nothing scored — a judge
+    // outage must not empty the run.
+    const toKeep = [...results]
+      .sort((a, b) => (b.score ?? -1) - (a.score ?? -1))
       .slice(0, requested)
-
-    const toKeep =
-      qualified.length > 0
-        ? qualified
-        : results.sort((a, b) => b.score - a.score).slice(0, requested)
 
     toKeep.forEach(({ validation, caption }) =>
       this.collectResult(

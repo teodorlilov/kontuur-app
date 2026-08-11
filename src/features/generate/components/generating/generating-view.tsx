@@ -3,9 +3,10 @@
 import { Check } from 'lucide-react'
 import { cn } from '@/utils/cn'
 import { Spinner } from '@/components/ui/spinner'
+import { StatusPill } from '@/components/ui/status-pill'
 import { getPillarColor } from '@/components/ui/colors/pillar-colors'
 import { parseSlides } from '@/components/posts/parse-slides'
-import { STAGE_LABELS, IDEA_STAGE_LABELS } from '@/features/generate/lib/stages'
+import { ORDERED_STAGE_LABELS } from '@/features/generate/lib/stages'
 import { REWRITE_SCORE_THRESHOLD } from '@/lib/content-rules/constants'
 import type { ReviewDraft } from '@/components/posts/review/types'
 import type { PostType } from '@/types/api'
@@ -18,7 +19,6 @@ interface GeneratingViewProps {
   streamTotal: number
   targetPostCount: number
   posts: ReviewDraft[]
-  isIdeaFlow: boolean
 }
 
 /**
@@ -35,9 +35,7 @@ export function GeneratingView({
   streamTotal,
   targetPostCount,
   posts,
-  isIdeaFlow,
 }: GeneratingViewProps) {
-  const labels = isIdeaFlow ? IDEA_STAGE_LABELS : STAGE_LABELS
   const expected = Math.max(streamTotal || targetPostCount || 1, posts.length)
   const noun = postType === 'carousel' ? 'carousel' : 'post'
   // The landing list earns its place only once writing begins — before that it
@@ -59,7 +57,7 @@ export function GeneratingView({
       {/* The pipeline, one box per phase: done phases settle, the active one
           carries the stream's own words, waiting ones hold their place. */}
       <div className="my-6 flex flex-col gap-2">
-        {labels.map((label, i) => (
+        {ORDERED_STAGE_LABELS.map((label, i) => (
           <PhaseBox
             key={label}
             label={label}
@@ -188,7 +186,7 @@ function ArrivedCard({ index, item }: { index: number; item: ReviewDraft }) {
   const title = post.topic_summary || slides[0]?.headline || post.caption?.slice(0, 80) || 'Draft'
   const excerpt = slides[1]?.headline || post.caption?.slice(0, 120) || ''
   const pillarColor = post.pillar ? getPillarColor(post.pillar) : null
-  const low = scores.overall_score < REWRITE_SCORE_THRESHOLD
+  const low = scores.overall_score !== null && scores.overall_score < REWRITE_SCORE_THRESHOLD
 
   return (
     // One authored moment on this view: a post lands as a clearing cut into
@@ -211,15 +209,23 @@ function ArrivedCard({ index, item }: { index: number; item: ReviewDraft }) {
         {excerpt && <p className="mt-1.5 line-clamp-2 text-caption text-text2">{excerpt}</p>}
       </div>
       <div className="flex-none text-right">
-        <p
-          className={cn(
-            'text-headline font-semibold leading-none tabular-nums',
-            low ? 'text-pending' : 'text-forest'
-          )}
-        >
-          {scores.overall_score}
-        </p>
-        <p className="mt-1 text-label font-semibold uppercase text-text3">quality</p>
+        {/* A large numeral must never render blank, and forest (the pass colour)
+            must never read over an absence. */}
+        {scores.overall_score === null ? (
+          <StatusPill tone="neutral">Not scored</StatusPill>
+        ) : (
+          <>
+            <p
+              className={cn(
+                'text-headline font-semibold leading-none tabular-nums',
+                low ? 'text-pending' : 'text-forest'
+              )}
+            >
+              {scores.overall_score}
+            </p>
+            <p className="mt-1 text-label font-semibold uppercase text-text3">quality</p>
+          </>
+        )}
       </div>
     </div>
   )

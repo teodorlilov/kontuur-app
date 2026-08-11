@@ -36,18 +36,21 @@ export async function updateSession(request: NextRequest) {
 
   const { pathname } = request.nextUrl
 
+  // No /api/* entries: src/middleware.ts excludes `api/` from the matcher, so this
+  // function never sees an API path and any branch for one is unreachable.
   const isPublicPath =
     pathname === '/' ||
     pathname.startsWith('/login') ||
     pathname.startsWith('/signup') ||
     pathname.startsWith('/forgot-password') ||
-    pathname.startsWith('/api/auth/forgot-password') ||
     pathname.startsWith('/auth/callback') ||
     pathname.startsWith('/setup-password') ||
     pathname.startsWith('/approve') ||
-    pathname.startsWith('/api/approval') ||
-    pathname.startsWith('/ideas') ||
-    pathname.startsWith('/api/ideas/submit') ||
+    // The trailing slash is load-bearing: the public idea form is /ideas/<token>,
+    // while /ideas itself is the agency's inbox. A prefix match made the dashboard
+    // route public, so a signed-out visitor reached the page instead of the login
+    // redirect and got an error thrown from its own auth check.
+    pathname.startsWith('/ideas/') ||
     pathname.startsWith('/privacy') ||
     pathname.startsWith('/terms') ||
     pathname.startsWith('/data-deletion') ||

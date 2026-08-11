@@ -42,7 +42,15 @@ export const UnscheduledPanel = memo(function UnscheduledPanel({
     }
     switch (sort) {
       case 'score':
-        result.sort((a, b) => (b.quality_score_avg ?? 0) - (a.quality_score_avg ?? 0))
+        // Unscored rows sort last rather than as zeros — a post nobody judged
+        // has not earned last place. They then leave the ranked sections for a
+        // labelled group below, so an absence never reads as a rank.
+        result.sort((a, b) => {
+          if (a.quality_score_avg === null && b.quality_score_avg === null) return 0
+          if (a.quality_score_avg === null) return 1
+          if (b.quality_score_avg === null) return -1
+          return b.quality_score_avg - a.quality_score_avg
+        })
         break
       case 'client':
         result.sort((a, b) => a.client_name.localeCompare(b.client_name))
@@ -57,8 +65,10 @@ export const UnscheduledPanel = memo(function UnscheduledPanel({
     return result
   }, [posts, showPriorityOnly, search, sort])
 
-  const priorityPosts = filtered.filter((p) => p.priority)
-  const regularPosts = filtered.filter((p) => !p.priority)
+  const unscoredPosts = sort === 'score' ? filtered.filter((p) => p.quality_score_avg === null) : []
+  const rankedPosts = sort === 'score' ? filtered.filter((p) => p.quality_score_avg !== null) : filtered
+  const priorityPosts = rankedPosts.filter((p) => p.priority)
+  const regularPosts = rankedPosts.filter((p) => !p.priority)
 
   return (
     <div
@@ -158,6 +168,19 @@ export const UnscheduledPanel = memo(function UnscheduledPanel({
           <>
             <SectionLabel label={`Regular \u2014 ${regularPosts.length} posts`} />
             {regularPosts.map((post) => (
+              <UnscheduledPostItem
+                key={post.id}
+                post={post}
+                isActive={post.id === activePostId}
+                onClick={() => onPostClick(post)}
+              />
+            ))}
+          </>
+        )}
+        {unscoredPosts.length > 0 && (
+          <>
+            <SectionLabel label={`Not scored \u2014 ${unscoredPosts.length} posts`} />
+            {unscoredPosts.map((post) => (
               <UnscheduledPostItem
                 key={post.id}
                 post={post}

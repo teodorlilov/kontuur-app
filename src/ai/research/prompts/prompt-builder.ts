@@ -1,8 +1,9 @@
 import { allocateByWeight, type WeightedPillar } from '@/lib/clients/content-pillars'
 import type { LanguageConfig } from '@/lib/clients/language-rules'
-import type { SourceContext } from '../types'
+import type { SourceContext, TopicBrief } from '../types'
 import { todayDateString } from '@/ai/utils/prompt-helpers'
 import { buildLanguageRules } from '@/ai/shared/build-prompt-sections'
+import { sanitizePromptField } from '@/ai/utils/sanitize'
 
 function buildPromptSection(title: string, tag: string, content: string): string {
   if (!content.trim()) return ''
@@ -36,12 +37,28 @@ export class ResearchPromptBuilder {
     this.systemPrompt = this.buildResearchSystemPrompt()
   }
 
-  /** Build the user prompt for the initial generation request. */
-  buildResearchUserPrompt(count: number, sourceContext?: SourceContext): string {
-    const pillarsContext = this.buildPillarAllocationBlock(count)
-    const historyContext = this.buildCoveredTopicsBlock()
-    const ctx: SourceContext = sourceContext ?? { rssItems: [], websiteExcerpts: [], fileExcerpts: [] }
-    return this.buildSourcedPrompt(count, ctx, pillarsContext, historyContext)
+  /**
+   * Build the user prompt that plans a whole run: a topic for every user-supplied
+   * brief, plus `researchCount` the model chooses itself.
+   *
+   * Both in one call on purpose. Separate passes could hand the same article to a
+   * brief and to a researched topic, because neither would know what the other took.
+   */
+  buildTopicPlanPrompt(
+    plan: { briefs: readonly TopicBrief[]; researchCount: number },
+    sourceContext?: SourceContext
+  ): string {
+    const ctx: SourceContext = sourceContext ?? {
+      rssItems: [],
+      websiteExcerpts: [],
+      fileExcerpts: [],
+    }
+    return this.buildSourcedPrompt(
+      plan,
+      ctx,
+      this.buildPillarAllocationBlock(plan.researchCount),
+      this.buildCoveredTopicsBlock()
+    )
   }
 
   // ---- Private prompt builders ----
@@ -63,12 +80,8 @@ You read raw business data and extract post themes that are specific, factual, a
     return parts.filter(Boolean).join('\n\n')
   }
 
-  private buildSourcedPrompt(
-    count: number,
-    sourceContext: SourceContext,
-    pillarsContext: string,
-    historyContext: string
-  ): string {
+  /** The five source sections, in the order the model reads them. */
+  private buildSourceMaterialBlock(sourceContext: SourceContext): string {
     const rssSection =
       sourceContext.rssItems.length > 0
         ? buildPromptSection(
@@ -143,6 +156,55 @@ You read raw business data and extract post themes that are specific, factual, a
           )
         : ''
 
+    return `${rssSection}
+${webSection}
+${fileSection}
+${webSearchSection}
+${performanceSection}`
+  }
+
+  /**
+   * Requested posts the model must plan, listed before the sourcing rules so the
+   * source assignments below are made with the requests already in view.
+   */
+  private buildRequestedPostsBlock(briefs: readonly TopicBrief[]): string {
+    if (briefs.length === 0) return ''
+    const lines = briefs.map((b, i) => `${i + 1}. "${sanitizePromptField(b.text)}"`).join('\n')
+    return `
+### REQUESTED POSTS — the client asked for these by name. One topic each, brief_index set to the number shown:
+${lines}
+`
+  }
+
+  private buildSourcedPrompt(
+    plan: { briefs: readonly TopicBrief[]; researchCount: number },
+    sourceContext: SourceContext,
+    pillarsContext: string,
+    historyContext: string
+  ): string {
+    const { briefs, researchCount } = plan
+    const count = researchCount
+    // Additive by design: with no briefs every one of these is '' and the prompt is
+    // byte-identical to the batch prompt that shipped before briefs existed. The
+    // snapshot in research-prompt-stability.test.ts is what holds that true.
+    const briefRules =
+      briefs.length === 0
+        ? ''
+        : `
+- The REQUESTED POSTS above are required. Return exactly one topic per requested post, with brief_index set to its number, in addition to the ${count} you choose yourself.
+- A requested post's topic keeps the client's intent — do not substitute a different subject because the sources suit it better.
+- Give each requested post the single best-matching source. If nothing in the source material genuinely relates to it, set source_url, source_title and source_type to null rather than attaching a loose match — an unsourced post is honest, a mismatched one is not.
+- Never give the same source_url to a requested post and to a topic you chose. Requested posts have first claim.
+- Requested posts get pillar null: the client asked for them, so they sit outside the pillar rotation.`
+    const briefTask =
+      briefs.length === 0
+        ? ''
+        : ` Also return one topic for each of the ${briefs.length} REQUESTED POST${briefs.length > 1 ? 'S' : ''} above.`
+    const briefIndexField =
+      briefs.length === 0
+        ? ''
+        : `\n  "brief_index": "the requested post's number, or null if you chose this topic yourself",`
+
     return `Date: ${todayDateString()}
 ### NICHE: ${this.niche}
 
@@ -151,13 +213,9 @@ ${pillarsContext}
 
 ### EXCLUSION LIST:
 ${historyContext}
-
+${this.buildRequestedPostsBlock(briefs)}
 ### SOURCE MATERIAL (use for grounding):
-${rssSection}
-${webSection}
-${fileSection}
-${webSearchSection}
-${performanceSection}
+${this.buildSourceMaterialBlock(sourceContext)}
 
 ### SOURCING RULES:
 - Every topic MUST be grounded in the provided source material. Never use your own knowledge.
@@ -171,11 +229,11 @@ ${performanceSection}
 - If a pillar has no available source items, omit that pillar entirely — do NOT fabricate.
 - Never return a topic with source_url null unless source_type is "file" or "performance".
 - Maximize source diversity: use each available source URL at least once before reusing any URL for a second topic. Each topic from the same URL must cover a genuinely different angle.
-- source_excerpt MUST only contain information that is explicitly present in the source material. Do NOT add facts, mechanisms, claims, or details from your own knowledge — even if they are technically correct. If the source doesn't mention something, it must not appear in the excerpt.
+- source_excerpt MUST only contain information that is explicitly present in the source material. Do NOT add facts, mechanisms, claims, or details from your own knowledge — even if they are technically correct. If the source doesn't mention something, it must not appear in the excerpt.${briefRules}
 
-### TASK: Identify up to ${count} unique post theme${count > 1 ? 's' : ''}. Return only topics grounded in the provided source material — fewer than ${count} is acceptable if sources don't fully cover all pillars.
+### TASK: Identify up to ${count} unique post theme${count > 1 ? 's' : ''}. Return only topics grounded in the provided source material — fewer than ${count} is acceptable if sources don't fully cover all pillars.${briefTask}
 [{
-  "finding": "one sentence: why this theme, what specific fact justifies it",
+  "finding": "one sentence: why this theme, what specific fact justifies it",${briefIndexField}
   "suggested_theme": "5-10 words summary about the theme in ${this.languageConfig.language}, use proper grammer",
   "pillar": "pillar name",
   "source_url": "url or null",

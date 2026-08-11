@@ -93,12 +93,12 @@ export const VISUAL_BACKLOG_POST_COLUMNS =
 export const POST_IMAGE_COLUMNS =
   'id, post_id, public_url, storage_path, position, file_name, file_size, content_type, created_at'
 
-// posts (top performing)
-export const TOP_POSTS_COLUMNS = 'caption'
-
 // client_ideas
+// No agency_id or token_id: every read is already scoped by agency in its WHERE
+// clause, and `mapIdeaRow` discarded both. They were bytes over the wire on every
+// idea, on a page that loads all of them.
 export const CLIENT_IDEA_COLUMNS =
-  'id, agency_id, client_id, token_id, idea_text, extra_notes, platform, target_date, status, generated_post_id, submitted_at, read_at'
+  'id, client_id, idea_text, extra_notes, platform, target_date, status, generated_post_id, submitted_at, read_at'
 
 // notifications
 export const NOTIFICATION_COLUMNS =

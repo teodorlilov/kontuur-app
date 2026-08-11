@@ -1,11 +1,11 @@
 import { callAnthropic, LIGHT_MODEL } from '@/utils/ai-client'
 import { extractToolInput } from '@/utils/ai'
-import { buildClientProfile, buildAiTells, buildLanguageRules, buildHealthRules } from '@/ai/shared/build-prompt-sections'
+import { buildClientProfile, buildAiTells, buildHealthRules } from '@/ai/shared/build-prompt-sections'
 import { buildContentSection } from '@/ai/validation/prompts/shared/content-section'
 import { carouselSemanticRules, ISSUE_TYPE_DEFINITIONS } from '@/ai/validation/criteria'
-import { NEUTRAL_FALLBACK_SCORE } from '@/lib/content-rules/constants'
+import { buildLanguageValidationRules } from '@/ai/validation/prompts/language-validation-rules'
 import type { ClientData } from '@/lib/clients/fetch-client-data'
-import type { QualityIssue, ClaimStatus } from '@/ai/validation/types'
+import type { QualityIssue, ClaimStatus, LanguageIssue } from '@/ai/validation/types'
 
 export interface ValidateQualityInput {
   caption: string
@@ -28,8 +28,8 @@ export interface ValidateQualityBatchInput {
 
 /** Raw LLM response shape — internal to the validation module. */
 export interface LlmQualityResponse {
-  overall_score: number
-  human_score: number
+  overall_score: number | null
+  human_score: number | null
   ai_tells: string[]
   worst_offending_phrase: string | null
   structure_passes: boolean | null
@@ -39,11 +39,18 @@ export interface LlmQualityResponse {
   corrected_slides: Array<{ headline: string; body: string }> | null
   health_compliant: boolean | null
   issues: QualityIssue[]
+  language_issues: LanguageIssue[]
 }
 
-// Output budget per rated item — the lean schema returns roughly half the old payload
-export const QUALITY_MAX_TOKENS_PER_ITEM = 1024
-export const VALIDATION_BATCH_MAX_TOKENS = 6144
+// Output budget per rated item. 2048 restores the pre-merge envelope in one call:
+// the old quality and language judges spent 1024 each over the same caption, and
+// the merged item schema is the union of both payloads — including a full
+// non-English corrected_text rewrite (~600-800 tokens alone). 1024 here truncated
+// long corrections mid-tool-use, nulling the whole theme's validation.
+const QUALITY_MAX_TOKENS_PER_ITEM = 2048
+// Four items at the per-item rate; themes batch 1-3 captions in practice, so the
+// cap is headroom rather than a squeeze.
+const VALIDATION_BATCH_MAX_TOKENS = 8192
 
 // ---- Prompt section builders ----
 
@@ -117,10 +124,18 @@ function buildValidationSystemPrompt(client?: ClientData, platform?: string): st
           : formality === 'casual'
             ? 'formal address in a casual-register post'
             : 'extreme formality or casualness when neutral register is required'
-      }${lc.languageNotes ? `\n${lc.languageNotes}` : ''}`
+      }`
     )
 
-    sections.push(buildLanguageRules(lc))
+    // One language block only: buildLanguageValidationRules already carries the
+    // formality rules, language instructions and client notes, so adding
+    // buildLanguageRules here (as generation does) would state each twice.
+    sections.push(buildLanguageValidationRules(lc))
+    sections.push(`You are also the native ${language} proofreader for this text. Be ruthless about naturalness — flag phrasing that reads as translated from English even when it is grammatically correct. The standard is: would a native ${language} speaker write this exact phrase on social media?
+
+Report every language problem in "language_issues" with the exact offending phrase and its fix.
+
+"corrected_text" is the SINGLE corrected version of the post. It must carry every fix you would make — factual corrections against the source material AND language corrections — because nothing downstream merges two versions. Leave it null only when the text needs no change at all.`)
   }
 
   sections.push(buildRubricSection(client))
@@ -166,6 +181,13 @@ function buildValidationUserPrompt(input: ValidateQualityInput, isCarousel: bool
       `STRUCTURE CHECKLIST (carousel) — evaluate ONLY these semantic rules, then set structure_passes. Do NOT report word counts or cover-body-text — those are verified in code.
 structure_notes: ONLY the failed rules, one short failure description each. NEVER include passing rules, never prefix entries with "PASS"/"FAIL" — if everything passes, return [].
 ${rules}`
+    )
+    // "Same count, original order" is load-bearing: corrections are applied to
+    // slides positionally, so a partial or reordered list would land fixes on the
+    // wrong slides. This lives outside the language-gated section because clients
+    // without a languageConfig still get carousel corrections.
+    parts.push(
+      `IMPORTANT: "corrected_text" must contain ONLY the corrected caption. "corrected_slides" must contain ALL slides in their original order — the same count you were given — or null when no slide needs a change.`
     )
   } else {
     parts.push('STRUCTURE: not a carousel — set structure_passes to null and structure_notes to [].')
@@ -253,12 +275,26 @@ const QUALITY_ITEM_PROPERTIES = {
       required: ['type', 'description'],
     },
   },
+  language_issues: {
+    type: 'array',
+    description: 'Every language/naturalness problem found; [] when the text reads natively',
+    items: {
+      type: 'object',
+      properties: {
+        type: { type: 'string' },
+        original_text: { type: 'string' },
+        issue_description: { type: 'string' },
+        suggested_fix: { type: 'string' },
+      },
+      required: ['type', 'original_text', 'issue_description', 'suggested_fix'],
+    },
+  },
 }
 
 const QUALITY_ITEM_REQUIRED = [
   'overall_score', 'human_score', 'ai_tells', 'worst_offending_phrase', 'structure_passes',
   'structure_notes', 'flagged_claims', 'corrected_text', 'corrected_slides', 'health_compliant',
-  'issues',
+  'issues', 'language_issues',
 ]
 
 const QUALITY_OUTPUT_SCHEMA = {
@@ -284,8 +320,11 @@ const QUALITY_BATCH_OUTPUT_SCHEMA = {
 
 function normalizeQualityResponse(parsed: Partial<LlmQualityResponse>): LlmQualityResponse {
   return {
-    overall_score: typeof parsed.overall_score === 'number' ? parsed.overall_score : NEUTRAL_FALLBACK_SCORE,
-    human_score: typeof parsed.human_score === 'number' ? parsed.human_score : NEUTRAL_FALLBACK_SCORE,
+    // A non-numeric score means the judge answered without judging. Absence is the
+    // honest record; the neutral number this used to substitute was indistinguishable
+    // from a real verdict and cleared every downstream threshold.
+    overall_score: typeof parsed.overall_score === 'number' ? parsed.overall_score : null,
+    human_score: typeof parsed.human_score === 'number' ? parsed.human_score : null,
     ai_tells: Array.isArray(parsed.ai_tells) ? parsed.ai_tells : [],
     worst_offending_phrase: parsed.worst_offending_phrase ?? null,
     structure_passes: parsed.structure_passes ?? null,
@@ -295,6 +334,7 @@ function normalizeQualityResponse(parsed: Partial<LlmQualityResponse>): LlmQuali
     corrected_slides: parsed.corrected_slides ?? null,
     health_compliant: parsed.health_compliant ?? null,
     issues: Array.isArray(parsed.issues) ? parsed.issues : [],
+    language_issues: Array.isArray(parsed.language_issues) ? parsed.language_issues : [],
   }
 }
 

@@ -22,6 +22,11 @@ export async function POST(request: Request) {
 
   try {
     const raw = await validateQuality({ caption: body.text })
+    if (raw.human_score === null) {
+      // The judge answered without judging. Returning a null-filled body would look
+      // like a measurement to a caller whose whole purpose is to obtain one.
+      return NextResponse.json({ error: 'Slop detection returned no score' }, { status: 502 })
+    }
     const result: SlopDetection = deriveSlopFromQuality({
       human_score: raw.human_score,
       ai_tells: raw.ai_tells,

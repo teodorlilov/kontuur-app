@@ -11,9 +11,6 @@ export const PLATFORM_LIMITS: Record<string, PlatformLimits> = {
 } as const
 
 // ---- Sentence Variety ----
-export const MIN_SHORT_SENTENCE_WORDS = 6
-export const MIN_LONG_SENTENCE_WORDS = 20
-export const MAX_CONSECUTIVE_SIMILAR_LENGTH = 2
 
 // ---- Functions ----
 

@@ -35,6 +35,11 @@ interface ScheduleDialogProps {
   approving: boolean
   /** The client's week — surfaces the strip and the "next open slot" default (queue only for now). */
   weekContext?: ScheduleWeekContext
+  /**
+   * The date a priority brief asked for, 'YYYY-MM-DD'. Preselects the manual pick,
+   * because a date the client named outranks any slot we would recommend.
+   */
+  requestedDate?: string | null
   /** Resolves the decision: an ISO timestamp schedules, null approves unscheduled. */
   onConfirm: (scheduledAt: string | null) => void
   onClose: () => void
@@ -59,6 +64,7 @@ export function ScheduleDialog({
   bestTimeData,
   approving,
   weekContext,
+  requestedDate,
   onConfirm,
   onClose,
 }: ScheduleDialogProps) {
@@ -84,8 +90,9 @@ export function ScheduleDialog({
   if (open !== prevOpen) {
     setPrevOpen(open)
     if (open) {
-      setChoice(nextOpenSlot ? 'next' : best ? 'best' : 'none')
-      setPickedDate('')
+      // A date the client asked for wins: it is a commitment, not a recommendation.
+      setChoice(requestedDate ? 'pick' : nextOpenSlot ? 'next' : best ? 'best' : 'none')
+      setPickedDate(requestedDate ?? '')
       setPickedTime('')
     }
   }

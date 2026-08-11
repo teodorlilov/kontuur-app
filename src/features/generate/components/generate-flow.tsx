@@ -8,35 +8,29 @@ import { ActionLink } from '@/components/ui/action-link'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { EmptyState } from '@/components/layout/empty-state'
 import { readNDJSONStream } from '@/utils/stream'
+import { formatClientName } from '@/utils/format'
 import { FlowChrome } from './flow-chrome'
 import { SetupView } from './setup/setup-view'
 import { DoneView } from './done/done-view'
 import { GeneratingView } from './generating/generating-view'
 import { ReviewView } from './review/review-view'
-import { mapPhaseToStage } from '@/features/generate/lib/stages'
+import { stageIndex, type UnifiedStreamEvent } from '@/features/generate/lib/stream-events'
 import { computeRunPlan } from '@/features/generate/lib/run-plan'
 import { useDraftVisuals } from '@/features/generate/hooks/use-draft-visuals'
 import { useUnloadGuard } from '@/hooks/use-unload-guard'
 import { logDiscardedDraft } from '@/features/generate/actions/discard-actions'
+import { linkGeneratedPost } from '@/features/ideas/actions/idea-actions'
 import { clientRefreshSchema } from '@/features/generate/schemas'
 import type { ClientRow } from '@/types'
 import type { ClientData } from '@/lib/clients/fetch-client-data'
 import type { ClientSourceSummary } from '@/lib/queries/db'
 import type { PriorityPost, PostType, ClientIdea, MetaConnection } from '@/types/api'
-import type { GenerationResult } from '@/ai/generation/types'
 import type { SkippedPillar } from '@/ai/research/types'
 import type { PostData, ValidationData } from '@/types/post'
 import type { ReviewDraft } from '@/components/posts/review/types'
 import type { FlowStep } from './flow-stepper'
 
 type Client = Pick<ClientRow, 'id' | 'name' | 'niche' | 'language' | 'posts_per_week'>
-
-type UnifiedStreamEvent =
-  | { type: 'total'; count: number }
-  | { type: 'phase'; message: string }
-  | { type: 'result'; data: GenerationResult }
-  | { type: 'skipped_pillars'; pillars: SkippedPillar[]; skippedCount: number }
-  | { type: 'error'; message: string }
 
 interface GenerateFlowProps {
   initialClients: Client[]
@@ -78,7 +72,22 @@ export function GenerateFlow({
   )
   const [slideCount, setSlideCount] = useState(initialClientData?.defaultCarouselSlides ?? 6)
   const [targetPostCount, setTargetPostCount] = useState(initialIdea ? 0 : initialTargetPostCount)
-  const [priorityPosts, setPriorityPosts] = useState<PriorityPost[]>([])
+  const [priorityPosts, setPriorityPosts] = useState<PriorityPost[]>(
+    initialIdea
+      ? [
+          {
+            title: initialIdea.ideaText,
+            brief: initialIdea.extraNotes ?? '',
+            targetDate: initialIdea.targetDate ?? '',
+            // The client's ask rides the brief, so the run platform stays free
+            // for the researched posts alongside — the whole-flow lock is gone.
+            platform: initialIdea.platform ?? '',
+          },
+        ]
+      : []
+  )
+  // The client's own words are not the agency's to edit or drop.
+  const lockedBriefCount = initialIdea ? 1 : 0
   const [preloadedClientData, setPreloadedClientData] = useState<ClientData | null>(
     initialClientData
   )
@@ -104,10 +113,16 @@ export function GenerateFlow({
   // Monotonic ticket for client switches — only the latest switch may write state,
   // so a slow response for client A cannot overwrite a faster switch to client B.
   const clientRequestRef = useRef(0)
+  // Whether this flow session has already linked the idea to an approved post. A
+  // ref, not state: approve-all's sequential loop reads `approvedIds` from one
+  // stale render, so a state-based "first approval" gate fired once per draft and
+  // the LAST post won the link. Never reset on a new run — the idea was fulfilled
+  // by the first approval, and a second run must not overwrite generated_post_id.
+  const ideaLinkedRef = useRef(false)
   const draftVisuals = useDraftVisuals()
 
   const selectedClient = clients.find((c) => c.id === clientId)
-  const clientName = selectedClient?.name ?? 'Client'
+  const clientName = formatClientName(selectedClient?.name)
 
   const liveDrafts = useMemo(
     () => generatedPosts.filter((p) => !approvedIds.has(p.post.id) && !discardedIds.has(p.post.id)),
@@ -119,21 +134,22 @@ export function GenerateFlow({
   // setup and the done screen leave silently.
   useUnloadGuard(isGenerating || liveDrafts.length > 0)
 
-  // The run's true size: researched posts plus priority briefs, the same sum
-  // the server writes (generate-stream's targetCount). The allocation preview
-  // keeps using targetPostCount alone — briefs are extra, not part of the mix.
-  const plannedPostCount = sourceIdea ? 1 : targetPostCount + priorityPosts.length
+  // The run's true size: researched posts plus briefs, the same sum the server
+  // writes (generate-stream's targetCount). The allocation preview keeps using
+  // targetPostCount alone — briefs are extra, not part of the mix. An idea is one
+  // of those briefs, so it adds to the run rather than replacing it.
+  const plannedPostCount = targetPostCount + priorityPosts.length
 
   const runPlan = useMemo(
     () =>
       computeRunPlan({
         pillars: preloadedClientData?.contentPillars ?? [],
-        targetPostCount: sourceIdea ? 1 : targetPostCount,
+        targetPostCount,
         sources: clientSources,
         connections: clientConnections,
         platform,
       }),
-    [preloadedClientData, sourceIdea, targetPostCount, clientSources, clientConnections, platform]
+    [preloadedClientData, targetPostCount, clientSources, clientConnections, platform]
   )
 
   // Abort any in-flight stream when the flow unmounts.
@@ -205,25 +221,17 @@ export function GenerateFlow({
     draftVisuals.resetAll()
 
     try {
-      const endpoint = sourceIdea ? '/api/ai/generate-from-idea' : '/api/ai/generate-stream'
-      const payload = sourceIdea
-        ? {
-            ideaId: sourceIdea.id,
-            postType,
-            slideCount,
-            preloadedClientData: preloadedClientData ?? undefined,
-          }
-        : {
-            clientId,
-            platform,
-            postType,
-            slideCount,
-            priorityPosts,
-            targetPostCount,
-            preloadedClientData: preloadedClientData ?? undefined,
-          }
+      const payload = {
+        clientId,
+        platform,
+        postType,
+        slideCount,
+        priorityPosts,
+        targetPostCount,
+        preloadedClientData: preloadedClientData ?? undefined,
+      }
 
-      const res = await fetch(endpoint, {
+      const res = await fetch('/api/ai/generate-stream', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         signal: controller.signal,
@@ -244,12 +252,14 @@ export function GenerateFlow({
           setStreamTotal(event.count)
         } else if (event.type === 'phase') {
           setResearchPhase(event.message)
-          setLoadingStage((prev) => Math.max(prev, mapPhaseToStage(event.message)))
+          // The server states its stage now; it used to be guessed from this same
+          // prose, and the first wrong guess stuck because of the Math.max below.
+          setLoadingStage((prev) => Math.max(prev, stageIndex(event.stage)))
         } else if (event.type === 'result') {
           // Deliberately NOT clearing researchPhase: blanking it here left the
           // view mute between results — the last activity stays up until the
           // next phase replaces it.
-          setLoadingStage((prev) => Math.max(prev, 2))
+          setLoadingStage((prev) => Math.max(prev, stageIndex('writing')))
           const generated = event.data as unknown as ReviewDraft
           receivedCount++
           setGeneratedPosts((prev) => [...prev, generated])
@@ -284,12 +294,20 @@ export function GenerateFlow({
   function handlePostApproved(postId: string) {
     // Completed visuals were attached by POST /api/posts; stop any still-pending jobs.
     draftVisuals.abandonDraft(postId)
-    // Link the approved post to the idea (status already set by the route)
-    if (sourceIdea && approvedIds.size === 0) {
-      void fetch('/api/ideas', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ideaId: sourceIdea.id, postId }),
+    // Approval is the moment the idea is fulfilled — the first approved post claims it.
+    // The action sets the status too: nothing else does now that the run itself leaves
+    // the idea untouched, so the link and the status can no longer disagree.
+    if (sourceIdea && !ideaLinkedRef.current) {
+      // Claimed synchronously before the call — approve-all's loop is sequential,
+      // so the next iteration must already see the claim.
+      ideaLinkedRef.current = true
+      void linkGeneratedPost(sourceIdea.id, postId).then((result) => {
+        if (!result.ok) {
+          // Releasing the claim lets the next approval retry; until then the idea
+          // honestly stays in the inbox, which is what the toast says.
+          ideaLinkedRef.current = false
+          toast.error('Post approved, but its idea is still in the inbox — marking it generated failed')
+        }
       })
     }
     settleDraft(postId, 'approved')
@@ -309,14 +327,10 @@ export function GenerateFlow({
         platform: removed.post.platform ?? null,
       })
     }
-    // Reset the idea back to "new" when its generated post is discarded
-    if (sourceIdea) {
-      void fetch('/api/ideas', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ideaId: sourceIdea.id, status: 'new' }),
-      })
-    }
+    // Nothing to undo on the idea: it stays `new` for the whole run and only moves on
+    // approval. The reset that used to live here now actively hurt — discarding a
+    // second draft after approving a first would clear the fulfilled status while
+    // leaving generated_post_id pointing at the approved post.
     settleDraft(postId, 'discarded')
   }
 
@@ -407,6 +421,7 @@ export function GenerateFlow({
             slideCount={slideCount}
             postCount={targetPostCount}
             briefs={priorityPosts}
+            lockedBriefCount={lockedBriefCount}
             runPlan={runPlan}
             sourceIdea={sourceIdea}
             generating={isGenerating}
@@ -429,7 +444,6 @@ export function GenerateFlow({
             streamTotal={streamTotal}
             targetPostCount={plannedPostCount}
             posts={generatedPosts}
-            isIdeaFlow={!!sourceIdea}
           />
         )}
 

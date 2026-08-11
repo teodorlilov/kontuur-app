@@ -172,8 +172,6 @@ describe('parseStoredValidation — the evidence trail (2026-08 optional fields)
         flagged_claims: [
           { claim: 'rate is 6.58%', status: 'partially_grounded' as const, source_evidence: null },
         ],
-        corrected_text: 'corrected',
-        corrected_slides: null,
       },
     })
     expect(built.language).not.toHaveProperty('corrected_text')

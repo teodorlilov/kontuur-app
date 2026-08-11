@@ -13,6 +13,7 @@ interface NotificationItemProps {
 
 /** Build the title line for a notification. */
 function titleForNotification(n: EnrichedNotification): string {
+  if (n.type === 'posts_ready') return 'has drafts ready to review'
   if (n.type === 'client_approved_all') return 'approved all posts'
   if (n.type === 'client_feedback') return 'requested changes'
   // Legacy rows without type — derive from message
@@ -28,16 +29,22 @@ function bodyForNotification(n: EnrichedNotification): string {
   if (n.type === 'client_feedback' && !n.feedback_text) {
     return n.message ?? 'Changes requested on weekly calendar'
   }
+  if (n.type === 'posts_ready') return n.message ?? ''
   // Legacy rows
   return n.message ?? ''
 }
 
 /** Extract client name from a notification. */
 function clientNameFor(n: EnrichedNotification): string {
-  // Typed notifications: parse client name from message ("ClientName approved...")
+  // The client name lives only inside the message, in two shapes depending on who
+  // wrote it: "<Client> approved…" from the approval flow, "…ready to review for
+  // <Client>" from the generate cron. Parsing it back out is fragile — the row
+  // carries client_id and the name should be resolved from that (TECH-DEBT §7.7).
   if (n.message) {
-    const match = n.message.match(/^(.+?)\s+(approved|requested)/)
-    if (match) return match[1]!
+    const leading = n.message.match(/^(.+?)\s+(approved|requested)/)
+    if (leading) return leading[1]!
+    const trailing = n.message.match(/\bfor\s+(.+)$/)
+    if (trailing) return trailing[1]!
   }
   return 'Client'
 }
@@ -48,6 +55,8 @@ export function NotificationItem({
   onMarkRead,
   onNavigate,
 }: NotificationItemProps) {
+  // A generation notice is neither an approval nor a change request; it gets the
+  // neutral marker rather than falling through to the change-request styling.
   const isApproval =
     n.type === 'client_approved_all' || (!n.type && n.message?.includes('approved'))
   const clientName = clientNameFor(n)

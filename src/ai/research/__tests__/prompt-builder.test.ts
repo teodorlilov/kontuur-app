@@ -58,7 +58,7 @@ describe('ResearchPromptBuilder', () => {
   it('returns parsed research topics from Claude response', async () => {
     mockClaudeToolResponse({ topics: VALID_TOPICS })
     const builder = createBuilder()
-    const topics = await generateTopics(builder,5)
+    const topics = await generateTopics(builder, { briefs: [], researchCount: 5 })
     expect(topics).toHaveLength(5)
     expect(topics[0]!.finding).toBe('Article about HIIT workouts')
     expect(topics[0]!.suggested_theme).toBe('Share latest HIIT research')
@@ -79,7 +79,7 @@ describe('ResearchPromptBuilder', () => {
       fileExcerpts: [],
     }
     const builder = createBuilder()
-    await generateTopics(builder,5, sourceContext)
+    await generateTopics(builder, { briefs: [], researchCount: 5 }, sourceContext)
 
     const callArgs = callAnthropic.mock.calls[0]![0]
     const prompt = callArgs.userMessage as string
@@ -102,7 +102,7 @@ describe('ResearchPromptBuilder', () => {
       fileExcerpts: [],
     }
     const builder = createBuilder()
-    await generateTopics(builder,5, sourceContext)
+    await generateTopics(builder, { briefs: [], researchCount: 5 }, sourceContext)
 
     const callArgs = callAnthropic.mock.calls[0]![0]
     const prompt = callArgs.userMessage as string
@@ -123,7 +123,7 @@ describe('ResearchPromptBuilder', () => {
       ],
     }
     const builder = createBuilder()
-    await generateTopics(builder,5, sourceContext)
+    await generateTopics(builder, { briefs: [], researchCount: 5 }, sourceContext)
 
     const callArgs = callAnthropic.mock.calls[0]![0]
     const prompt = callArgs.userMessage as string
@@ -140,7 +140,7 @@ describe('ResearchPromptBuilder', () => {
         { id: 'p3', pillar: 'Recovery', weight: 25 },
       ],
     })
-    await generateTopics(builder,5)
+    await generateTopics(builder, { briefs: [], researchCount: 5 })
 
     const callArgs = callAnthropic.mock.calls[0]![0]
     const prompt = callArgs.userMessage as string
@@ -152,7 +152,7 @@ describe('ResearchPromptBuilder', () => {
   it('includes language in prompt', async () => {
     mockClaudeToolResponse({ topics: VALID_TOPICS })
     const builder = createBuilder({ languageConfig: makeLanguageConfig('Bulgarian') })
-    await generateTopics(builder,5)
+    await generateTopics(builder, { briefs: [], researchCount: 5 })
 
     const callArgs = callAnthropic.mock.calls[0]![0]
     const prompt = callArgs.userMessage as string
@@ -162,20 +162,20 @@ describe('ResearchPromptBuilder', () => {
   it('parses topics returned as a JSON-encoded string (schema coercion)', async () => {
     mockClaudeToolResponse({ topics: JSON.stringify(VALID_TOPICS) })
     const builder = createBuilder()
-    const topics = await generateTopics(builder,5)
+    const topics = await generateTopics(builder, { briefs: [], researchCount: 5 })
     expect(topics).toHaveLength(5)
   })
 
   it('throws when the response has no tool_use block', async () => {
     mockClaudeResponse('I could not find any trends.')
     const builder = createBuilder()
-    await expect(generateTopics(builder,5)).rejects.toThrow('No tool_use block')
+    await expect(generateTopics(builder, { briefs: [], researchCount: 5 })).rejects.toThrow('No tool_use block')
   })
 
   it('uses custom count in fallback prompt', async () => {
     mockClaudeToolResponse({ topics: VALID_TOPICS })
     const builder = createBuilder()
-    await generateTopics(builder,3)
+    await generateTopics(builder, { briefs: [], researchCount: 3 })
 
     const callArgs = callAnthropic.mock.calls[0]![0]
     const prompt = callArgs.userMessage as string
@@ -191,7 +191,7 @@ describe('ResearchPromptBuilder', () => {
       fileExcerpts: [],
     }
     const builder = createBuilder()
-    await generateTopics(builder,7, sourceContext)
+    await generateTopics(builder, { briefs: [], researchCount: 7 }, sourceContext)
 
     const callArgs = callAnthropic.mock.calls[0]![0]
     const prompt = callArgs.userMessage as string
@@ -201,7 +201,7 @@ describe('ResearchPromptBuilder', () => {
   it('defaults count works correctly', async () => {
     mockClaudeToolResponse({ topics: VALID_TOPICS })
     const builder = createBuilder()
-    await generateTopics(builder,5)
+    await generateTopics(builder, { briefs: [], researchCount: 5 })
 
     const callArgs = callAnthropic.mock.calls[0]![0]
     const prompt = callArgs.userMessage as string
@@ -211,7 +211,7 @@ describe('ResearchPromptBuilder', () => {
   it('includes post history in prompt when provided', async () => {
     mockClaudeToolResponse({ topics: VALID_TOPICS })
     const builder = createBuilder({ postHistory: ['HIIT benefits', 'Protein myths'] })
-    await generateTopics(builder,5)
+    await generateTopics(builder, { briefs: [], researchCount: 5 })
 
     const callArgs = callAnthropic.mock.calls[0]![0]
     const prompt = callArgs.userMessage as string
@@ -233,7 +233,7 @@ describe('ResearchPromptBuilder', () => {
         { id: 'p2', pillar: 'Investment Tips', weight: 50 },
       ],
     })
-    await generateTopics(builder,5, sourceContext)
+    await generateTopics(builder, { briefs: [], researchCount: 5 }, sourceContext)
 
     const callArgs = callAnthropic.mock.calls[0]![0]
     const prompt = callArgs.userMessage as string
@@ -244,7 +244,7 @@ describe('ResearchPromptBuilder', () => {
   it('requests structured output via outputSchema', async () => {
     mockClaudeToolResponse({ topics: VALID_TOPICS })
     const builder = createBuilder()
-    await generateTopics(builder,5)
+    await generateTopics(builder, { briefs: [], researchCount: 5 })
 
     const callArgs = callAnthropic.mock.calls[0]![0]
     expect(callArgs.outputSchema).toBeDefined()
@@ -254,7 +254,7 @@ describe('ResearchPromptBuilder', () => {
   it('returns parsed topics array', async () => {
     mockClaudeToolResponse({ topics: VALID_TOPICS })
     const builder = createBuilder()
-    const topics = await generateTopics(builder,5)
+    const topics = await generateTopics(builder, { briefs: [], researchCount: 5 })
     expect(topics).toHaveLength(5)
   })
 })

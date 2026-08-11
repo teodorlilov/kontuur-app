@@ -118,21 +118,6 @@ export interface NgramCache {
  * Used by the generation pipeline to detect near-duplicate angles.
  */
 export class Deduplicator {
-  /**
-   * Compute n-gram similarity between two text strings.
-   * Called as Deduplicator.ngramSimilarity(a, b, lang) — no instantiation needed.
-   */
-  static ngramSimilarity(a: string, b: string, language?: string): number {
-    const config = Deduplicator.resolveConfig(language)
-    const wordsA = Deduplicator.extractWords(a, config).join('')
-    const wordsB = Deduplicator.extractWords(b, config).join('')
-    if (wordsA.length === 0 || wordsB.length === 0) return 0
-    return Deduplicator.jaccardSimilarity(
-      Deduplicator.generateNgrams(wordsA),
-      Deduplicator.generateNgrams(wordsB)
-    )
-  }
-
   /** Pre-compute n-grams for a corpus so repeated comparisons reuse them. */
   static buildCache(texts: string[], language?: string): NgramCache {
     const config = Deduplicator.resolveConfig(language)

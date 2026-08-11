@@ -52,8 +52,8 @@ function post(overrides: Partial<QueuePost> = {}): QueuePost {
 }
 
 function validation(overrides: {
-  overall?: number
-  human?: number
+  overall?: number | null
+  human?: number | null
   aiTells?: string[]
   healthCompliant?: boolean | null
 } = {}): ValidationData {
@@ -105,9 +105,21 @@ describe('computeTriage — reasons land a post in needs_attention', () => {
     expect(t.reasons).toContain('ai_tells')
   })
 
-  it('an unmeasured authenticity score (0) does NOT flag — that is the fallback state', () => {
-    const t = triageOne(post(), validation({ human: 0 }))
-    expect(t.reasons).not.toContain('ai_tells')
+  it('an unmeasured authenticity score does not flag, but a measured 0 does', () => {
+    // 0 used to be an in-band sentinel for "not measured yet", so a genuinely
+    // terrible score was indistinguishable from an absent one and neither flagged.
+    // Absence has its own value now, and 0 means what it says.
+    expect(triageOne(post(), validation({ human: null })).reasons).not.toContain('ai_tells')
+    expect(triageOne(post(), validation({ human: 0 })).reasons).toContain('ai_tells')
+  })
+
+  it('an unjudged post is never ready — it flags not_validated instead of low_quality', () => {
+    // Ready's copy says "Clean scores, nothing flagged" above one-click bulk
+    // approval; a post no judge read must not sit under it.
+    const t = triageOne(post({ quality_score_avg: null }), validation({ overall: null }))
+    expect(t.bucket).toBe('needs_attention')
+    expect(t.reasons).toContain('not_validated')
+    expect(t.reasons).not.toContain('low_quality')
   })
 
   it('health clients need a human check until compliance is affirmed', () => {

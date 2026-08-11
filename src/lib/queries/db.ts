@@ -24,28 +24,15 @@ import {
   SOCIAL_CONNECTION_COLUMNS,
   LANGUAGE_RULES_COLUMNS,
   POST_HISTORY_COLUMNS,
-  TOP_POSTS_COLUMNS,
   CLIENT_SOURCE_RESEARCH_COLUMNS,
   CLIENT_SOURCE_SUMMARY_COLUMNS,
 } from '@/lib/queries/select-columns'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
-import type { PostgrestError } from '@supabase/supabase-js'
+import { unwrap } from '@/lib/queries/unwrap'
 import type { AgencyInfo, TeamMember, MetaConnection } from '@/types/api'
 import type { ClientRow, BrandProfileRow, PostingScheduleRow, Json } from '@/types'
 
 type SupabaseClient = Awaited<ReturnType<typeof createServerSupabaseClient>>
-
-/**
- * Unwrap a Supabase read, turning a query error into a throw.
- *
- * These helpers sit below the boundary, so a failed read has to propagate:
- * returning null or [] instead would make a database outage indistinguishable
- * from "no rows" and render as an empty page rather than an error.
- */
-function unwrap<T>(result: { data: T; error: PostgrestError | null }, query: string): T {
-  if (result.error) throw new Error(`${query} failed: ${result.error.message}`)
-  return result.data
-}
 
 // ---------- clients ----------
 
@@ -234,35 +221,6 @@ export async function fetchPostHistoryByClient(
     (data as Array<{ topic_summary: string | null }> | null)
       ?.map((h) => h.topic_summary)
       .filter((s): s is string => s !== null) ?? []
-  )
-}
-
-/**
- * Fetches captions of top-performing approved posts for a client (quality_score_avg >= 7.5).
- * Returns a flat string array of truncated captions (first 120 chars each).
- *
- * Used in:
- *   src/app/(dashboard)/generate/page.tsx (server-side prefetch)
- */
-export async function fetchTopPostsByClient(
-  supabase: SupabaseClient,
-  clientId: string
-): Promise<string[]> {
-  const data = unwrap(
-    await supabase
-      .from('posts')
-      .select(TOP_POSTS_COLUMNS)
-      .eq('client_id', clientId)
-      .eq('status', 'approved')
-      .gte('quality_score_avg', 7.5)
-      .order('quality_score_avg', { ascending: false })
-      .limit(20),
-    'fetchTopPostsByClient'
-  )
-  return (
-    (data as Array<{ caption: string | null }> | null)
-      ?.map((p) => (p.caption ?? '').slice(0, 120))
-      .filter(Boolean) ?? []
   )
 }
 

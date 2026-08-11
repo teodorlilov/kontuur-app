@@ -1,14 +1,15 @@
 import { callAnthropic, LIGHT_MODEL } from '@/utils/ai-client'
 import { extractToolInput } from '@/utils/ai'
+import { sanitizePromptField } from '@/ai/utils/sanitize'
 import type { WeightedPillar } from '@/lib/clients/content-pillars'
 import type { SourceContext } from './types'
 import type { SourceUsageStats } from '@/lib/queries/db'
 import type { RssItem } from '@/lib/sources/fetch-rss'
 import type { TrendSearchResult } from '@/lib/sources/fetch-trend-search'
 
-export const RANK_SCORE_THRESHOLD = 4
+const RANK_SCORE_THRESHOLD = 4
 /** Historical approval/discard boost is clamped to ± this many score points. */
-export const RANK_BOOST_CLAMP = 2
+const RANK_BOOST_CLAMP = 2
 export const RANK_PER_PILLAR_CAP = 4
 export const RANKED_RSS_CAP = 12
 export const RANKED_WEB_CAP = 8
@@ -23,6 +24,13 @@ export interface RankOptions {
   contentPillars: WeightedPillar[]
   /** Per-source outcome history — sources that fueled approved posts get a bounded score boost. */
   sourceStats?: SourceUsageStats[]
+  /**
+   * User-supplied subjects (briefs, client ideas) this run must serve. Without
+   * them the ranker judges "relevance to this business" alone and can filter out
+   * every result a brief's focus query found — an off-niche brief would lose all
+   * its material before topic planning ever saw it.
+   */
+  focusTexts?: readonly string[]
 }
 
 interface Ranking {
@@ -64,11 +72,20 @@ function buildRankUserPrompt(
 ): string {
   const pillarsText = opts.contentPillars.map((p) => `- ${p.pillar}`).join('\n')
 
+  const focusBlock =
+    opts.focusTexts && opts.focusTexts.length > 0
+      ? `\nThe client has explicitly requested posts about these subjects:\n${opts.focusTexts
+          .map((t) => `- ${sanitizePromptField(t)}`)
+          .join(
+            '\n'
+          )}\nScore an item that serves one of these requests by its relevance to the request, not to the business's usual territory.\n`
+      : ''
+
   return `Business: ${opts.niche}
 Audience: ${opts.targetAudience ?? 'general'}
 Content pillars:
 ${pillarsText}
-
+${focusBlock}
 Items:
 ${lines.join('\n')}`
 }
@@ -171,7 +188,10 @@ export async function rankSourceItems(
       (opts.sourceStats ?? []).map((stat) => [stat.clientSourceId, stat])
     )
     const rankedRss = selectTop(rssItems, byIndex, 0, RANKED_RSS_CAP, statsBySource)
-    const rankedWeb = selectTop(webItems, byIndex, rssItems.length, RANKED_WEB_CAP, statsBySource)
+    // A run with briefs earns extra web slots: a brief's material must not be
+    // squeezed out of the fixed cap by strong-but-generic niche items.
+    const webCap = RANKED_WEB_CAP + (opts.focusTexts?.length ?? 0)
+    const rankedWeb = selectTop(webItems, byIndex, rssItems.length, webCap, statsBySource)
 
     // Everything filtered = the ranker is wrong, not the sources — keep the run alive
     if (rankedRss.length + rankedWeb.length === 0) {

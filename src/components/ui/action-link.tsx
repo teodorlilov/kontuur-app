@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { cn } from '@/utils/cn'
+import { FOCUS_RING } from './form/control-classes'
 
 /**
  * Tokens deliberately mirror components/ui/button.tsx, because these two sit
@@ -38,6 +39,9 @@ export function ActionLink({
         'inline-flex items-center font-medium no-underline',
         'transition-[background-color,border-color,box-shadow,color] duration-150 ease-contour',
         'active:scale-[0.98]',
+        // Same ring as Button: these are a row's primary affordances, and a
+        // keyboard user tabbing the ideas inbox had no visible focus at all.
+        FOCUS_RING,
         VARIANT_CLASSES[variant],
         SIZE_CLASSES[size],
         className

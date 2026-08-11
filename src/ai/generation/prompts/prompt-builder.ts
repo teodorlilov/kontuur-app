@@ -49,7 +49,7 @@ export function buildGenerateUserPrompt(input: SinglePostInput): string {
     }),
 
     input.brief
-      ? `PRIORITY BRIEF:\n${sanitizePromptField(input.brief)}${input.targetDate ? `\nTarget publish date: ${input.targetDate}` : ''}`
+      ? `PRIORITY BRIEF:\n${sanitizePromptField(input.brief)}${input.targetDate ? `\nTarget publish date: ${sanitizePromptField(input.targetDate)}` : ''}`
       : '',
 
     historyText ? `Topics already covered — do not repeat: ${historyText}` : '',
@@ -87,7 +87,7 @@ export function buildGenerateUserCarouselPrompt(input: CarouselInput): string {
     }),
 
     input.brief
-      ? `PRIORITY BRIEF:\n${sanitizePromptField(input.brief)}${input.targetDate ? `\nTarget publish date: ${input.targetDate}` : ''}`
+      ? `PRIORITY BRIEF:\n${sanitizePromptField(input.brief)}${input.targetDate ? `\nTarget publish date: ${sanitizePromptField(input.targetDate)}` : ''}`
       : '',
 
     historyText ? `Topics already covered — do not repeat: ${historyText}` : '',

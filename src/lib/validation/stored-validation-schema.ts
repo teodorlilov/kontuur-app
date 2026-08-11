@@ -75,9 +75,11 @@ const criteriaSchema = z.object({
 })
 
 const scoresSchema = z.object({
-  overall_score: z.number().catch(0),
-  human_score: z.number().catch(0),
-  language_score: z.number().catch(0),
+  // Nullable, not `.catch(0)`: on a 0-10 scale, 0 is the strongest possible
+  // negative claim — the same lie as a fabricated pass, inverted.
+  overall_score: z.number().nullable().catch(null),
+  human_score: z.number().nullable().catch(null),
+  language_score: z.number().nullable().catch(null),
   source_score: z.number().nullable().catch(null),
 })
 
@@ -91,7 +93,7 @@ const scoresSchema = z.object({
  */
 const storedLanguageSchema = z.object({
   passes: z.boolean().catch(true),
-  language_score: z.number().catch(0),
+  language_score: z.number().nullable().catch(null),
   issues: z
     .array(
       z.object({
@@ -105,10 +107,10 @@ const storedLanguageSchema = z.object({
 })
 
 const storedSlopSchema = z.object({
-  reads_as_human: z.boolean().catch(true),
+  reads_as_human: z.boolean().nullable().catch(null),
   ai_tells_found: z.array(z.string()).catch([]),
   worst_offending_phrase: z.string().nullable().catch(null),
-  human_authenticity_score: z.number().catch(0),
+  human_authenticity_score: z.number().nullable().catch(null),
 })
 
 const storedGroundingSchema = z.object({
@@ -135,8 +137,9 @@ const storedValidationSchema = z.object({
 })
 
 // Fails the build if the schema and the hand-written types drift apart — the guard convention from
-// lib/canvas/doc-schema.ts. Only the forward direction holds: the schema narrows `source_claims`
-// to unknown[] because nothing renders its contents.
+// lib/canvas/doc-schema.ts. Both directions hold for the scores; it is `criteriaSchema` that
+// narrows `source_claims` to unknown[] (nothing renders its contents), which is why the cast in
+// parseStoredValidation carries a WHY.
 type SchemaScores = z.infer<typeof scoresSchema>
 const _scoresForward: ValidationScores = null as unknown as SchemaScores
 const _scoresBackward: SchemaScores = null as unknown as ValidationScores

@@ -32,15 +32,17 @@ export async function GET(request: NextRequest) {
   const startedAt = Date.now()
   const admin = createAdminSupabaseClient()
 
-  // Server-side mirror of pickVisualBacklog's gates (a null quality score is
-  // below the floor on both sides): an hourly tick must not ship every
-  // pending post's slides_json across the wire to conclude nothing is due.
+  // Server-side mirror of pickVisualBacklog's gates: an hourly tick must not ship
+  // every pending post's slides_json across the wire to conclude nothing is due.
+  // A null score is ELIGIBLE on both sides — it means the judge did not run, which
+  // is our failure, not the post's. `.gte` alone would silently exclude it, since
+  // SQL three-valued logic makes NULL >= 5 unknown.
   const { data: rows, error } = await admin
     .from('posts')
     .select(VISUAL_BACKLOG_POST_COLUMNS)
     .eq('status', 'pending_review')
     .lt('visuals_attempts', MAX_VISUAL_ATTEMPTS)
-    .gte('quality_score_avg', QUALITY_FLOOR)
+    .or(`quality_score_avg.is.null,quality_score_avg.gte.${QUALITY_FLOOR}`)
     .order('created_at', { ascending: true })
   if (error) {
     console.error('[cron/visuals] failed to load pending posts:', error.message)

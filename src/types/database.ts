@@ -369,7 +369,7 @@ export type Database = {
           platform: string | null
           read_at: string | null
           status: string
-          submitted_at: string | null
+          submitted_at: string
           target_date: string | null
           token_id: string
         }
@@ -383,7 +383,7 @@ export type Database = {
           platform?: string | null
           read_at?: string | null
           status?: string
-          submitted_at?: string | null
+          submitted_at?: string
           target_date?: string | null
           token_id: string
         }
@@ -397,7 +397,7 @@ export type Database = {
           platform?: string | null
           read_at?: string | null
           status?: string
-          submitted_at?: string | null
+          submitted_at?: string
           target_date?: string | null
           token_id?: string
         }
@@ -601,6 +601,7 @@ export type Database = {
           completed_at: string | null
           created_at: string | null
           id: string
+          kind: string
           platform: string | null
           status: string
           target_count: number | null
@@ -610,6 +611,7 @@ export type Database = {
           completed_at?: string | null
           created_at?: string | null
           id?: string
+          kind?: string
           platform?: string | null
           status?: string
           target_count?: number | null
@@ -619,6 +621,7 @@ export type Database = {
           completed_at?: string | null
           created_at?: string | null
           id?: string
+          kind?: string
           platform?: string | null
           status?: string
           target_count?: number | null

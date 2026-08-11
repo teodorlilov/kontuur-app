@@ -7,8 +7,10 @@ import {
 } from '@/lib/clients/fetch-client-data'
 import { countPendingPostsByClients } from '@/lib/queries/db'
 import { runGenerationBatch } from '@/ai/generation/generation-orchestrator'
+import { toTheme } from '@/ai/generation/to-theme'
+import { draftColumns } from '@/lib/generation/draft-columns'
 import { performResearch } from '@/ai/research/research-orchestrator'
-import { finishGenerationRun, startGenerationRun } from '@/lib/generation/runs'
+import { finishGenerationRun, startGenerationRun, trackGenerationTheme } from '@/lib/generation/runs'
 import { generateBriefing } from '@/ai/intelligence/generate-briefing'
 import { generateSoloCoaching } from '@/ai/solo-coaching/generate-coaching'
 import { generateBestTime } from '@/ai/best-time/generate-best-time'
@@ -17,7 +19,7 @@ import { BEST_TIME_REFRESH_DAYS, DEFAULT_CAROUSEL_SLIDES } from '@/utils/constan
 import { fetchScheduleContext, getScheduleDue } from './helpers'
 import type { PostType } from '@/types/api'
 import type { Theme } from '@/ai/generation/types'
-import type { Database, Json } from '@/types/database'
+import type { Json } from '@/types/database'
 
 export const maxDuration = 300
 
@@ -69,6 +71,7 @@ export async function GET(request: NextRequest) {
       'client_id',
       (schedules ?? []).map((s) => s.client_id)
     )
+    .eq('kind', 'cron')
     .in('status', ['running', 'complete'])
     .gte('created_at', recentCutoff)
   // This is the whole dedup guard: an unread failure reads as "nothing ran
@@ -87,13 +90,12 @@ export async function GET(request: NextRequest) {
     if (at > (lastRunAt.get(run.client_id) ?? 0)) lastRunAt.set(run.client_id, at)
   }
 
-  // A run shortly before the slot counts as the slot's batch, absorbing a
-  // manual batch finished moments ahead of the tick. Kept narrow on purpose:
-  // single-post idea runs land in generation_runs too, and a wide grace would
-  // let a morning idea post silently cancel the weekly batch. Runs at or
-  // after the slot dedup later ticks and sequential re-fires; two invocations
-  // racing the same tick are NOT covered (no unique constraint on
-  // generation_runs — pre-existing, see docs/TECH-DEBT.md).
+  // A run shortly before the slot counts as the slot's batch, absorbing a cron
+  // run finished moments ahead of the tick. Runs a human asked for no longer
+  // reach this map at all — the query above filters to kind='cron' — so a
+  // morning idea post can no longer cancel the day's scheduled batch. Two
+  // invocations racing the same tick are still NOT covered (no unique
+  // constraint on generation_runs — pre-existing, see docs/TECH-DEBT.md).
   const GENERATION_GRACE_MS = 900_000
 
   // Fewest remaining retry ticks first: a 23:00 slot has no next-hour tick
@@ -140,7 +142,7 @@ export async function GET(request: NextRequest) {
       // generated without one would be regenerated every remaining tick
       // today. Skip instead — the next tick retries the insert.
       const total = (schedule as { frequency_value: number }).frequency_value || 1
-      runId = await startGenerationRun(supabase, { clientId, platform, targetCount: total })
+      runId = await startGenerationRun(supabase, { clientId, platform, targetCount: total, kind: 'cron' })
       if (!runId) {
         results.errors.push({
           clientId,
@@ -152,10 +154,8 @@ export async function GET(request: NextRequest) {
       const researchStartedAt = Date.now()
       const researchTopics = await performResearch({
         supabase,
-        agencyId,
         clientId,
         niche: client.niche,
-        language: client.language,
         count: total,
         preloadedClientData: client,
       })
@@ -166,17 +166,7 @@ export async function GET(request: NextRequest) {
         continue
       }
 
-      const themes: Theme[] = researchTopics.map((t) => ({
-        description: t.suggested_theme,
-        count: 1,
-        pillar: t.pillar,
-        sourceUrl: t.source_url,
-        sourceTitle: t.source_title,
-        sourceType: t.source_type ?? undefined,
-        sourceExcerpt: t.source_excerpt,
-        sourceFullText: t.source_full_text,
-        clientSourceId: t.client_source_id ?? null,
-      }))
+      const themes: Theme[] = researchTopics.map(toTheme)
 
       const researchMs = Date.now() - researchStartedAt
       const generationStartedAt = Date.now()
@@ -187,19 +177,7 @@ export async function GET(request: NextRequest) {
         slideCount,
         requireSourceGrounding: client.requireSourceGrounding,
         themes,
-        priorityPosts: [],
-        trackTheme: async (theme, postCount) => {
-          if (!runId) return
-          await supabase.from('generation_themes').insert({
-            run_id: runId,
-            theme_description: theme.description,
-            post_count: postCount,
-            is_priority: theme.isPriority ?? false,
-            priority_brief: theme.brief ?? null,
-            target_date: theme.targetDate ?? null,
-            research_used: !!theme.sourceExcerpt,
-          })
-        },
+        trackTheme: (theme, postCount) => trackGenerationTheme(supabase, runId, theme, postCount),
       })
       const generationMs = Date.now() - generationStartedAt
 
@@ -208,30 +186,11 @@ export async function GET(request: NextRequest) {
         const { data: savedPosts, error: saveError } = await supabase
           .from('posts')
           .insert(
-            generationResults.map(
-              ({ post }) =>
-                ({
-                  client_id: clientId,
-                  caption: post.caption,
-                  platform: post.platform,
-                  post_type: post.post_type,
-                  slides_json: post.slides_json as Json,
-                  validation_json: post.validation_json as Json,
-                  status: 'pending_review',
-                  priority: false,
-                  quality_score_avg: post.quality_score_avg,
-                  source_url: post.source_url,
-                  source_title: post.source_title,
-                  source_type: post.source_type,
-                  source_excerpt: post.source_excerpt,
-                  client_source_id: post.client_source_id,
-                  pillar: post.pillar,
-                  topic_summary: post.topic_summary,
-                  // WHY as: topic_summary lands with migration 20260806 and is not
-                  // yet in the generated types — regenerate database.ts after
-                  // applying it, then drop this cast.
-                }) as Database['public']['Tables']['posts']['Insert']
-            )
+            generationResults.map(({ post }) => ({
+              ...draftColumns(post),
+              status: 'pending_review',
+              priority: false,
+            }))
           )
           .select('id')
 
@@ -260,6 +219,18 @@ export async function GET(request: NextRequest) {
         }
       }
 
+      // A run that saved nothing is failed, not complete. The dedup guard counts
+      // 'complete' as "this slot already produced", so closing an empty batch that
+      // way skipped the client for every remaining tick that local day — the exact
+      // opposite of what the same-day retries exist for. Nor is there anything to
+      // announce: "0 posts ready to review" is not a notification.
+      if (generationResults.length === 0) {
+        console.error(`[cron] Generation produced no posts for client ${clientId}`)
+        results.errors.push({ clientId, error: 'generation produced no posts' })
+        if (runId) await finishGenerationRun(supabase, runId, 'failed')
+        continue
+      }
+
       // The batch is on disk — close the run before the follow-ups. The retry
       // guard trusts 'failed' to mean "nothing saved", so a notify or
       // best-time error past this point must not relabel a saved batch and
@@ -269,6 +240,8 @@ export async function GET(request: NextRequest) {
       try {
         const { error: notifyError } = await supabase.from('notifications').insert({
           agency_id: agencyId,
+          type: 'posts_ready',
+          client_id: clientId,
           message: `${generationResults.length} post${generationResults.length === 1 ? '' : 's'} ready to review for ${clientRow.name}`,
         })
         if (notifyError) throw new Error(`notification insert failed: ${notifyError.message}`)

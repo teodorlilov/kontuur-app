@@ -25,7 +25,6 @@ function makeClient(overrides: Partial<ClientData> = {}): ClientData {
       { id: 'p2', pillar: 'Product reviews', weight: 50 },
     ],
     isHealthNiche: null,
-    topPerformingPosts: [],
     defaultCarouselSlides: 7,
     defaultPostType: null,
     requireSourceGrounding: false,

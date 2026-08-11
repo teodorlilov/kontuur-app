@@ -9,18 +9,27 @@ interface QualityScoresProps {
   scores: ValidationScores
 }
 
-function ScoreBar({ label, score }: { label: string; score: number }) {
+function ScoreBar({ label, score }: { label: string; score: number | null }) {
   return (
     <div className="flex items-center gap-3">
       <span className="text-caption text-text3 w-16 shrink-0">{label}</span>
       <div className="flex-1 h-1.5 bg-sunken rounded-full overflow-hidden">
-        <div
-          className={cn('h-full rounded-full transition-all', scoreBarColor(score))}
-          style={{ width: `${score * 10}%` }}
-        />
+        {/* No fill at all when unmeasured — a zero-width fill would read as a
+            score of 0, the strongest negative claim on this scale. */}
+        {score !== null && (
+          <div
+            className={cn('h-full rounded-full transition-all', scoreBarColor(score))}
+            style={{ width: `${score * 10}%` }}
+          />
+        )}
       </div>
-      <span className={cn('text-caption font-semibold w-6 text-right', scoreTextColor(score))}>
-        {score}
+      <span
+        className={cn(
+          'text-caption font-semibold w-6 text-right',
+          score === null ? 'text-text3' : scoreTextColor(score)
+        )}
+      >
+        {score ?? '—'}
       </span>
     </div>
   )

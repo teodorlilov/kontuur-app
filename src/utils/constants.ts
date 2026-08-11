@@ -21,6 +21,11 @@ export const BEST_TIME_REFRESH_DAYS = 30
 export const TRIAL_DAYS = 14
 export const MAX_RSS_ITEMS = 40
 export const TAVILY_API_URL = 'https://api.tavily.com/search'
+/**
+ * Stored `label` of a client's web-research row. Written at client creation and by
+ * the sources toggle, so it lives here rather than being retyped at each writer.
+ */
+export const WEB_RESEARCH_SOURCE_LABEL = 'Web research'
 export const USER_AGENT_BROWSER = 'Mozilla/5.0 (compatible; Postflow/1.0)'
 export const USER_AGENT_BOT = 'PostflowBot/1.0'
 

@@ -5,9 +5,10 @@ import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { draftVisualPrefix, movePostImageObject } from '@/features/publishing/lib/storage'
 import { safeParseCanvasDoc } from '@/lib/canvas/doc-schema'
 import { POST_COLUMNS } from '@/lib/queries/select-columns'
+import { draftColumns } from '@/lib/generation/draft-columns'
 import { isValidPostPlatform } from '@/lib/validation'
 import type { CanvasDoc } from '@/types/canvas'
-import type { Database, Json } from '@/types/database'
+import type { Json } from '@/types/database'
 
 /** List the agency's posts, filterable by status, client and scheduled window. */
 export async function GET(request: Request) {
@@ -259,13 +260,28 @@ export async function POST(request: Request) {
     }
   }
 
+  // Draft facts go through the shared builder so a column added there cannot be
+  // silently dropped by this route. What stays inline is what this route owns:
+  // workflow status, scheduling, rewrite bookkeeping, and the two guarded fields —
+  // the canonicalized platform is passed in, and the ownership-checked source id
+  // overrides the builder's pass-through.
   const insertRow = {
-    client_id: body.client_id,
-    caption: body.caption ?? null,
-    platform,
-    post_type: body.post_type ?? 'single',
-    slides_json: (body.slides_json as Json) ?? null,
-    validation_json: (body.validation_json as Json) ?? null,
+    ...draftColumns({
+      client_id: body.client_id,
+      caption: body.caption ?? null,
+      platform,
+      post_type: body.post_type ?? 'single',
+      slides_json: body.slides_json,
+      validation_json: body.validation_json,
+      quality_score_avg: body.quality_score_avg ?? null,
+      source_url: body.source_url,
+      source_title: body.source_title,
+      source_type: body.source_type,
+      source_excerpt: body.source_excerpt,
+      pillar: body.pillar,
+      topic_summary: body.topic_summary,
+    }),
+    client_source_id: clientSourceId,
     status:
       body.status === 'pending_review'
         ? 'pending_review'
@@ -274,23 +290,13 @@ export async function POST(request: Request) {
           : 'approved',
     scheduled_at: body.scheduled_at ?? null,
     priority: body.priority ?? false,
-    quality_score_avg: body.quality_score_avg ?? null,
     was_rewritten: body.was_rewritten ?? false,
     rewrite_count: body.rewrite_count ?? 0,
-    source_url: body.source_url ?? null,
-    source_title: body.source_title ?? null,
-    source_type: body.source_type ?? null,
-    source_excerpt: body.source_excerpt ?? null,
-    client_source_id: clientSourceId,
-    pillar: body.pillar ?? null,
-    topic_summary: body.topic_summary ?? null,
   }
 
   const { data: post, error } = await supabase
     .from('posts')
-    // WHY as: topic_summary lands with migration 20260806 and is not yet in the
-    // generated types — regenerate database.ts after applying, then drop this.
-    .insert(insertRow as Database['public']['Tables']['posts']['Insert'])
+    .insert(insertRow)
     .select(POST_COLUMNS)
     .single()
 

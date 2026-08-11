@@ -28,14 +28,3 @@ export function sanitizePromptField(
   if (!value) return ''
   return value.trim().slice(0, maxLength).replace(/</g, '&lt;').replace(/>/g, '&gt;')
 }
-
-/**
- * Sanitize an array of user-provided strings.
- * Applies sanitizePromptField to each item and filters out empty results.
- */
-export function sanitizePromptArray(
-  items: string[],
-  maxLength: number = PROMPT_FIELD_LIMITS.standard
-): string[] {
-  return items.map((item) => sanitizePromptField(item, maxLength)).filter(Boolean) as string[]
-}

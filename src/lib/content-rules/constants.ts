@@ -1,12 +1,5 @@
 export const REWRITE_SCORE_THRESHOLD = 7
-/** Neutral score used when the quality LLM call fails or omits a score — above
- *  the quality floor, below "great", so degraded posts are neither dropped nor
- *  made to look polished. */
-export const NEUTRAL_FALLBACK_SCORE = 7
 export const AUTHENTICITY_URGENT_THRESHOLD = 6
 export const LANGUAGE_PASS_THRESHOLD = 8
-export const SOURCE_GROUNDING_MIN_CONFIDENCE = 6
 export const NGRAM_SIZE = 3
-export const NGRAM_SIMILARITY_THRESHOLD = 0.3
 export const ANGLE_SIMILARITY_THRESHOLD = 0.15
-export const ENABLE_LLM_DEDUP = false

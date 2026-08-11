@@ -18,6 +18,18 @@ export const CONTROL_FOCUS_WITHIN =
   'focus-within:border-spring focus-within:ring-[3px] focus-within:ring-spring/12'
 
 /**
+ * The keyboard focus ring for anything that acts rather than accepts text — buttons,
+ * cards you can press, custom controls.
+ *
+ * `focus-visible` rather than `focus`, so a pointer press does not leave a ring behind.
+ * Named here because the same four utilities are hand-written at a dozen call sites and
+ * were simply absent from others: the public idea form had no focus styling at all, which
+ * on an unauthenticated page is the one place a keyboard user has no fallback.
+ */
+export const FOCUS_RING =
+  'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-spring'
+
+/**
  * Type, size and padding shared by every control.
  *
  * The two sizes are DESIGN.md's Mobile Input Exemption, which until now the doc

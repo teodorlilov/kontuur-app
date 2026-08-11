@@ -4,16 +4,12 @@ import {
   type LlmQualityResponse,
 } from '@/ai/validation/prompts/prompt-builder'
 import {
-  validateLanguage,
-  validateLanguageBatch,
-} from '@/ai/validation/prompts/validate-language'
-import {
   computeSourceScore,
+  computeLanguageScore,
   deriveSlopFromQuality,
 } from '@/ai/validation/content-rules/compute-scores'
 import { checkCarouselStructure } from '@/ai/validation/content-rules/check-structure'
 import { deriveSourceGroundingResult } from '@/ai/validation/correction-utils'
-import { NEUTRAL_FALLBACK_SCORE } from '@/lib/content-rules/constants'
 import type { ClientData } from '@/lib/clients/fetch-client-data'
 import type {
   ValidationCriteria,
@@ -66,14 +62,27 @@ function toFailureNotes(notes: string[]): string[] {
     .map((note) => note.replace(/^\s*(FAIL|CAUTION)\s*[:—-]\s*/i, ''))
 }
 
-/** Assemble the final result from the two raw LLM responses — pure, no LLM calls. */
+/** Assemble the final result from one raw LLM response — pure, no LLM calls. */
 function assemblePostValidation(
   qualityRaw: LlmQualityResponse | null,
-  lang: LanguageValidationResult,
   hasSource: boolean,
-  validationWarnings: string[],
   codeStructure: { passes: boolean; notes: string[] } | null = null
 ): PostValidationResult {
+  // One judge, one corrected text. This used to be two parallel calls whose
+  // corrections both landed on the same caption, with language applied last — so a
+  // language rewrite silently reinstated a fabricated statistic the grounding pass
+  // had just removed, over text the language judge had never seen.
+  const languageIssues = qualityRaw?.language_issues ?? []
+  const lang: LanguageValidationResult = qualityRaw
+    ? {
+        ...computeLanguageScore({ issues: languageIssues }),
+        issues: languageIssues,
+        corrected_text: qualityRaw.corrected_text,
+        ...(qualityRaw.corrected_slides !== undefined
+          ? { corrected_slides: qualityRaw.corrected_slides }
+          : {}),
+      }
+    : LANGUAGE_FALLBACK
   // Structure verdict merges code-counted checks (word counts, cover body —
   // deterministic) with the LLM's semantic notes (distinct ideas, headlines)
   const llmStructure =
@@ -116,8 +125,8 @@ function assemblePostValidation(
     : lang
 
   const scores: ValidationScores = {
-    overall_score: qualityRaw?.overall_score ?? NEUTRAL_FALLBACK_SCORE,
-    human_score: qualityRaw?.human_score ?? NEUTRAL_FALLBACK_SCORE,
+    overall_score: qualityRaw?.overall_score ?? null,
+    human_score: qualityRaw?.human_score ?? null,
     language_score: language.language_score,
     source_score: computeSourceScore(criteria.source_claims),
   }
@@ -130,11 +139,7 @@ function assemblePostValidation(
 
   const sourceGrounding =
     hasSource && qualityRaw && criteria.source_claims !== null
-      ? deriveSourceGroundingResult(
-          criteria.source_claims,
-          qualityRaw.corrected_text,
-          qualityRaw.corrected_slides
-        )
+      ? deriveSourceGroundingResult(criteria.source_claims)
       : undefined
 
   return {
@@ -144,89 +149,55 @@ function assemblePostValidation(
     slop,
     ...(sourceGrounding ? { sourceGrounding } : {}),
     qualityScore: scores.overall_score,
-    validationWarnings,
   }
 }
 
 /**
- * Unified validation for both single posts and carousels.
- * Runs quality (+ source grounding) and language validation in parallel (2 LLM calls).
+ * Unified validation for both single posts and carousels — one LLM call covering
+ * quality, source grounding and language.
  */
 export async function validatePost(input: ValidatePostInput): Promise<PostValidationResult> {
-  const validationWarnings: string[] = []
   const isCarousel = !!input.slides && input.slides.length > 0
 
-  const [qualityRaw, lang] = await Promise.all([
-    validateQuality({
-      caption: input.caption,
-      slides: input.slides,
-      client: input.client,
-      platform: input.platform,
-      theme: input.theme,
-      targetPillar: input.targetPillar,
-      sourceContext: input.sourceContext,
-    }).catch((err) => {
-      console.error(`[${input.label}] quality validation failed:`, err)
-      validationWarnings.push('quality')
-      return null
-    }),
-    validateLanguage(
-      isCarousel ? { text: input.caption, slides: input.slides } : { text: input.caption },
-      input.client.languageConfig
-    ).catch((err) => {
-      console.error(`[${input.label}] language validation failed:`, err)
-      validationWarnings.push('language')
-      return LANGUAGE_FALLBACK
-    }),
-  ])
+  const qualityRaw = await validateQuality({
+    caption: input.caption,
+    slides: input.slides,
+    client: input.client,
+    platform: input.platform,
+    theme: input.theme,
+    targetPillar: input.targetPillar,
+    sourceContext: input.sourceContext,
+  }).catch((err) => {
+    console.error(`[${input.label}] validation failed:`, err)
+    return null
+  })
 
   const codeStructure = isCarousel ? checkCarouselStructure(input.caption, input.slides!) : null
 
-  return assemblePostValidation(
-    qualityRaw,
-    lang,
-    !!input.sourceContext,
-    validationWarnings,
-    codeStructure
-  )
+  return assemblePostValidation(qualityRaw, !!input.sourceContext, codeStructure)
 }
 
 /**
- * Validate N single-post variants of one theme in 2 LLM calls total (quality + language batches).
- * A failed batch call degrades ALL items in this theme to the same fallbacks the
- * per-post path uses — accepted trade-off for the 2N → 2 request reduction.
+ * Validate N single-post variants of one theme in ONE LLM call.
+ * A failed call degrades ALL items in this theme to the same fallbacks the
+ * per-post path uses — accepted trade-off for the N → 1 request reduction.
  */
 export async function validatePostsBatch(
   input: ValidatePostsBatchInput
 ): Promise<PostValidationResult[]> {
-  const batchWarnings: string[] = []
-
-  const [qualityResults, langResults] = await Promise.all([
-    validateQualityBatch({
-      captions: input.captions,
-      client: input.client,
-      platform: input.platform,
-      theme: input.theme,
-      targetPillar: input.targetPillar,
-      sourceContext: input.sourceContext,
-    }).catch((err) => {
-      console.error(`[${input.label}] quality batch failed:`, err)
-      batchWarnings.push('quality')
-      return input.captions.map(() => null)
-    }),
-    validateLanguageBatch(input.captions, input.client.languageConfig).catch((err) => {
-      console.error(`[${input.label}] language batch failed:`, err)
-      batchWarnings.push('language')
-      return input.captions.map(() => LANGUAGE_FALLBACK)
-    }),
-  ])
+  const results = await validateQualityBatch({
+    captions: input.captions,
+    client: input.client,
+    platform: input.platform,
+    theme: input.theme,
+    targetPillar: input.targetPillar,
+    sourceContext: input.sourceContext,
+  }).catch((err) => {
+    console.error(`[${input.label}] validation batch failed:`, err)
+    return input.captions.map(() => null)
+  })
 
   return input.captions.map((_, i) =>
-    assemblePostValidation(
-      qualityResults[i] ?? null,
-      langResults[i] ?? LANGUAGE_FALLBACK,
-      !!input.sourceContext,
-      [...batchWarnings]
-    )
+    assemblePostValidation(results[i] ?? null, !!input.sourceContext)
   )
 }

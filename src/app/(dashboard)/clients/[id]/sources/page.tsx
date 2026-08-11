@@ -3,7 +3,6 @@ import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { requireSessionUser } from '@/lib/auth/session'
 import { SourcesManager } from '@/features/sources/components/sources-manager'
-import { ensureWebResearchSource } from '@/features/sources/lib/ensure-web-research-source'
 import { fetchClientById, fetchSourceUsageStats } from '@/lib/queries/db'
 import { parsePillarsWithMeta, serializePillars } from '@/lib/clients/content-pillars'
 import { CLIENT_SOURCE_FULL_COLUMNS } from '@/lib/queries/select-columns'
@@ -57,26 +56,23 @@ export default async function ClientSourcesPage({ params }: { params: Promise<{ 
   const sourceStrategy = (profile?.source_strategy as SourceStrategy | null) ?? {}
   const { pillars, hadMissingIds } = parsePillarsWithMeta(profile?.content_pillars ?? null)
 
-  // Both writes are lazy backfills for clients that predate their feature, so they
-  // run on first open rather than at client creation.
-  const needsTavily = !initialSources.some((s) => s.type === 'tavily')
-  const [pillarWrite, webResearchSource] = await Promise.all([
+  // A lazy backfill for clients that predate pillar ids, so it runs on first open.
+  // The web-research row is NOT written here: it is created with the client and
+  // backfilled by migration 20260814, because a page render must not decide whether
+  // the generation pipeline searches the web.
+  const pillarWrite =
     hadMissingIds && pillars.length > 0
-      ? supabase
+      ? await supabase
           .from('brand_profiles')
           .update({ content_pillars: serializePillars(pillars) })
           .eq('client_id', id)
-      : null,
-    needsTavily ? ensureWebResearchSource(supabase, id) : null,
-  ])
+      : null
 
   // A dropped pillar-ID write means the next render regenerates different ids and
   // the pillar filters stop matching stored posts, so it cannot pass silently.
   if (pillarWrite?.error) {
     console.error('[sources] pillar id backfill failed:', pillarWrite.error.message)
   }
-
-  if (webResearchSource) initialSources.unshift(webResearchSource)
 
   return (
     <SourcesManager

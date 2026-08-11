@@ -1,3 +1,4 @@
+import { draftColumns } from '@/lib/generation/draft-columns'
 import type { PostData } from '@/types/post'
 
 export interface DraftImagePayload {
@@ -34,25 +35,15 @@ export async function approveDraft({
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        client_id: post.client_id,
-        caption: caption !== undefined ? caption : post.caption,
-        platform: post.platform,
-        post_type: post.post_type,
-        slides_json: slidesJson !== undefined ? slidesJson : post.slides_json,
-        validation_json: post.validation_json,
+        ...draftColumns(post),
+        // The reviewer's edits win over what was generated.
+        ...(caption !== undefined ? { caption } : {}),
+        ...(slidesJson !== undefined ? { slides_json: slidesJson } : {}),
         status: scheduledAt ? 'scheduled' : 'approved',
         scheduled_at: scheduledAt ?? null,
         priority: post.priority,
-        quality_score_avg: post.quality_score_avg,
-        topic_summary: post.topic_summary,
         was_rewritten: post.was_rewritten,
         rewrite_count: post.rewrite_count,
-        source_url: post.source_url ?? null,
-        source_title: post.source_title ?? null,
-        source_type: post.source_type ?? null,
-        source_excerpt: post.source_excerpt ?? null,
-        client_source_id: post.client_source_id ?? null,
-        pillar: post.pillar ?? null,
         ...(images.length > 0 ? { images } : {}),
       }),
     })

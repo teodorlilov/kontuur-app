@@ -46,7 +46,7 @@ export async function rewriteDraft({
     const data = (await res.json()) as {
       caption: string
       slides_json: unknown
-      quality_score_avg: number
+      quality_score_avg: number | null
       language: ValidationData['language']
       slop: ValidationData['slop']
       sourceGrounding: ValidationData['sourceGrounding'] | null

@@ -23,6 +23,7 @@ import { RosterSort as RosterSortControl } from '@/features/clients/components/r
 import { RosterTable } from '@/features/clients/components/roster/roster-table'
 import { ActionLink } from '@/components/ui/action-link'
 import { formatRelativeTime } from '@/utils/format'
+import { parseParam } from '@/utils/parse-param'
 import { cn } from '@/utils/cn'
 
 const FILTERS: readonly RosterFilter[] = ['attention', 'approval', 'connection', 'empty', 'all']
@@ -30,14 +31,6 @@ const SORTS: readonly RosterSort[] = ['attention', 'name']
 
 const DEFAULT_FILTER: RosterFilter = 'attention'
 const DEFAULT_SORT: RosterSort = 'attention'
-
-function parseParam<T extends string>(
-  raw: string | string[] | undefined,
-  allowed: readonly T[],
-  fallback: T
-): T {
-  return allowed.find((value) => value === raw) ?? fallback
-}
 
 /** Only non-default state reaches the URL, so /clients stays the canonical view. */
 function buildHref(filter: RosterFilter, sort: RosterSort): string {

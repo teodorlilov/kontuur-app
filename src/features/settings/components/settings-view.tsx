@@ -89,8 +89,12 @@ export function SettingsView({
 
   const panel = PANEL_COPY[activeTab]
 
+  // No scroll container of its own: StickyShell's sentinel has to leave the
+  // intersection of the page's real scroller for the header to compress, and an
+  // `overflow-hidden` flex root with a scrolling child made that impossible — the
+  // header stayed at full height forever. `main.app-content` is the scroller.
   return (
-    <div className="flex h-full flex-col overflow-hidden">
+    <>
       <PageHeader
         crumb={[{ label: 'Settings' }]}
         title="Settings"
@@ -110,11 +114,11 @@ export function SettingsView({
         }
       />
 
-      <div className={cn(PAGE_SHELL, 'min-h-0 flex-1 overflow-y-auto pb-12 pt-5')}>
+      <div className={cn(PAGE_SHELL, 'pb-12 pt-5')}>
         <FormPanel title={panel.title} description={panel.description} rail={rails[activeTab]}>
           {panels[activeTab]}
         </FormPanel>
       </div>
-    </div>
+    </>
   )
 }

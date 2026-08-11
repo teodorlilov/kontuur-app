@@ -1,4 +1,6 @@
 import { z } from 'zod'
+import { MAX_CAROUSEL_SLIDES, MIN_CAROUSEL_SLIDES, PLATFORMS } from '@/utils/constants'
+import type { PriorityPost } from '@/types/api'
 
 /** Input for logging an explicitly discarded wizard draft. */
 export const discardedDraftSchema = z.object({
@@ -55,7 +57,7 @@ export type ClientRefresh = z.infer<typeof clientRefreshSchema>
  * typed as ClientData, and only ever pass through to the prompt builders — this
  * schema exists to stop a malformed payload reaching them, not to re-model them.
  */
-export const clientDataSchema = z.object({
+const clientDataSchema = z.object({
   id: z.string(),
   name: z.string(),
   niche: z.string(),
@@ -68,7 +70,6 @@ export const clientDataSchema = z.object({
     z.object({ id: z.string(), pillar: z.string(), weight: z.number() })
   ),
   isHealthNiche: z.boolean().nullable(),
-  topPerformingPosts: z.array(z.string()),
   defaultCarouselSlides: z.number(),
   defaultPostType: z.string().nullable(),
   requireSourceGrounding: z.boolean(),
@@ -84,21 +85,41 @@ export const clientDataSchema = z.object({
   postHistory: z.array(z.string()),
 })
 
+/**
+ * One user-authored brief on the wire. `''` means "not chosen" for the optional
+ * fields, matching the public idea form's convention — the editor ships every
+ * field, empty until typed. `platform: ''` inherits the run platform; a value
+ * overrides it for that one post. The enum is load-bearing: it is what
+ * guarantees only canonical display-case values ever reach `posts.platform`,
+ * whose CHECK (20260809) rejects anything else.
+ */
+export const priorityPostSchema = z.object({
+  title: z.string().trim().min(1).max(200),
+  brief: z.string().max(2000).default(''),
+  targetDate: z.literal('').or(z.iso.date()).default(''),
+  platform: z.literal('').or(z.enum(PLATFORMS)).default(''),
+})
+
+// Drift guard, forward direction (the stored-validation-schema idiom).
+// PriorityPost stays hand-written in types/api.ts — importing this schema there
+// would point types/ at a feature and invite a cycle — and the backward
+// direction cannot hold on purpose: the schema narrows `platform` to the enum
+// while the type carries `string`, exactly like `targetDate`.
+type SchemaPriorityPost = z.infer<typeof priorityPostSchema>
+const _priorityPostForward: PriorityPost = null as unknown as SchemaPriorityPost
+void _priorityPostForward
+
 /** Body of POST /api/ai/generate-stream — the wizard's batch run. */
 export const generateStreamSchema = z.object({
   clientId: z.string().min(1),
-  platform: z.string().min(1),
+  // The run default every theme without its own platform falls back to.
+  platform: z.enum(PLATFORMS),
   postType: z.enum(['single', 'carousel']),
-  slideCount: z.number().int().min(1).optional(),
+  // Bounded by the same constants the picker offers. It was `.min(1)` and unbounded
+  // above, so a hand-made request could ask the writer for a 500-slide carousel —
+  // one prompt, one very expensive call, and a draft nothing in the app can render.
+  slideCount: z.number().int().min(MIN_CAROUSEL_SLIDES).max(MAX_CAROUSEL_SLIDES).optional(),
   targetPostCount: z.number().int().min(0).default(0),
-  priorityPosts: z.array(z.unknown()).optional(),
-  preloadedClientData: clientDataSchema,
-})
-
-/** Body of POST /api/ai/generate-from-idea — one post from a client's submitted idea. */
-export const generateFromIdeaSchema = z.object({
-  ideaId: z.string().min(1),
-  postType: z.enum(['single', 'carousel']),
-  slideCount: z.number().int().min(1).optional(),
+  priorityPosts: z.array(priorityPostSchema).optional(),
   preloadedClientData: clientDataSchema,
 })

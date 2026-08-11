@@ -1,31 +1,41 @@
 import { describe, it, expect } from 'vitest'
-import { mapPhaseToStage, STAGE_LABELS, IDEA_STAGE_LABELS } from '../stages'
+import { ORDERED_STAGE_LABELS, STAGE_LABELS } from '../stages'
+import { GENERATION_STAGES, stageIndex } from '../stream-events'
 
-describe('mapPhaseToStage', () => {
-  it('maps quality/validation phrases to stage 3', () => {
-    expect(mapPhaseToStage('Running quality validation')).toBe(3)
-    expect(mapPhaseToStage('Checking sources')).toBe(3)
+/**
+ * The rail used to infer its stage by substring-matching the phase prose, and got it
+ * wrong in both directions: "Quality checks" was unreachable because no server phase
+ * contained quality/validat/check, and "Generating theme ideas…" matched
+ * `includes('generat')` before the research branch, so research reported itself as
+ * writing. `setLoadingStage` is Math.max-monotonic, so that first wrong guess stuck
+ * for the rest of the run. The server states its stage now; these pin the contract
+ * that replaced the guessing.
+ */
+describe('generation stages', () => {
+  it('runs sources → research → writing → quality, in that order', () => {
+    // The rail advances monotonically, so the order *is* the behaviour: a stage
+    // declared out of order would let a later phase move the rail backwards, which
+    // Math.max would then silently swallow.
+    expect(GENERATION_STAGES).toEqual(['sources', 'research', 'writing', 'quality'])
   })
 
-  it('maps writing phrases to stage 2', () => {
-    expect(mapPhaseToStage('Writing captions')).toBe(2)
-    expect(mapPhaseToStage('Generating posts')).toBe(2)
+  it('every stage has an index and a label', () => {
+    for (const [i, stage] of GENERATION_STAGES.entries()) {
+      expect(stageIndex(stage)).toBe(i)
+      expect(STAGE_LABELS[stage]).toBeTruthy()
+    }
+    expect(ORDERED_STAGE_LABELS).toHaveLength(GENERATION_STAGES.length)
   })
 
-  it('maps research phrases to stage 1', () => {
-    expect(mapPhaseToStage('Researching topics for pillar')).toBe(1)
-    expect(mapPhaseToStage('Analyzing themes')).toBe(1)
-  })
-
-  it('defaults to stage 0 for fetch phrases and unknowns', () => {
-    expect(mapPhaseToStage('Fetching sources...')).toBe(0)
-    expect(mapPhaseToStage('')).toBe(0)
-  })
-})
-
-describe('stage labels', () => {
-  it('both flows expose four stages', () => {
-    expect(STAGE_LABELS).toHaveLength(4)
-    expect(IDEA_STAGE_LABELS).toHaveLength(4)
+  it('exposes one label set, not one per flow', () => {
+    // There were two, and the idea flow's second label named `searchForIdea` — a
+    // shallow lookup deleted when the generate routes merged. An idea is now a
+    // locked priority brief on the same pipeline.
+    expect(ORDERED_STAGE_LABELS).toEqual([
+      'Fetching sources',
+      'Researching topics',
+      'Writing captions and slides',
+      'Quality checks',
+    ])
   })
 })

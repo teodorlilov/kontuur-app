@@ -2,8 +2,19 @@
 
 import { useState } from 'react'
 import { PLATFORMS } from '@/utils/constants'
+import {
+  CONTROL_FOCUS,
+  CONTROL_SURFACE,
+  CONTROL_TEXT,
+  FOCUS_RING,
+} from '@/components/ui/form/control-classes'
 import { cn } from '@/utils/cn'
-import type { IdeaBrief } from '@/features/ideas/schemas'
+import {
+  EXTRA_NOTES_MAX,
+  IDEA_TEXT_MAX,
+  MAX_IDEAS_PER_SUBMISSION,
+  type IdeaBrief,
+} from '@/features/ideas/schemas'
 
 /**
  * A brief while the form still holds it: every field present (empty until typed)
@@ -39,7 +50,11 @@ export function IdeaFormClient({ token, clientName, agencyName }: IdeaFormClient
   }
 
   function addBrief() {
-    setBriefs((prev) => [...prev, createBrief()])
+    // Same cap the submit schema enforces — the form must not build a payload
+    // the route is guaranteed to reject.
+    setBriefs((prev) =>
+      prev.length >= MAX_IDEAS_PER_SUBMISSION ? prev : [...prev, createBrief()]
+    )
   }
 
   function removeBrief(id: string) {
@@ -62,10 +77,20 @@ export function IdeaFormClient({ token, clientName, agencyName }: IdeaFormClient
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token, ideas: valid }),
       })
-      if (!res.ok) throw new Error()
-      setSubmitted(true)
+      if (res.ok) {
+        setSubmitted(true)
+        return
+      }
+      // The route's own message, not one generic string for every failure. A client
+      // whose link was deleted was told to "try again", which can never work — they
+      // need to know to ask for a new link. Same for the hourly cap, where the fix
+      // is to wait rather than to retry immediately.
+      const body = (await res.json().catch(() => null)) as { error?: string } | null
+      setError(body?.error ?? 'Something went wrong. Please try again.')
     } catch {
-      setError('Something went wrong. Please try again.')
+      // Reaching here means the request never completed — offline, DNS, a dropped
+      // connection. Retrying is genuinely the right advice for those.
+      setError('Could not reach us just now. Please check your connection and try again.')
     } finally {
       setSubmitting(false)
     }
@@ -99,9 +124,11 @@ export function IdeaFormClient({ token, clientName, agencyName }: IdeaFormClient
           />
         ))}
 
-        <button onClick={addBrief} className={ADD_BUTTON_CLASS}>
-          + Add another idea
-        </button>
+        {briefs.length < MAX_IDEAS_PER_SUBMISSION && (
+          <button onClick={addBrief} className={ADD_BUTTON_CLASS}>
+            + Add another idea
+          </button>
+        )}
 
         {error && <div className="text-caption text-danger mt-3">{error}</div>}
 
@@ -168,7 +195,7 @@ function BriefCard({
   return (
     <div className={CARD_CLASS}>
       <div className={CARD_HEADER_CLASS}>
-        <span className={LABEL_CLASS}>Idea {index + 1}</span>
+        <span className={BRIEF_LABEL_CLASS}>Idea {index + 1}</span>
         {canRemove && (
           <button onClick={onRemove} className={REMOVE_BUTTON_CLASS}>
             Remove
@@ -183,6 +210,7 @@ function BriefCard({
             onChange={(e) => onUpdate('ideaText', e.target.value)}
             placeholder="Describe the topic, angle, or message you have in mind..."
             rows={3}
+            maxLength={IDEA_TEXT_MAX}
             className={TEXTAREA_CLASS}
           />
         </FieldGroup>
@@ -193,6 +221,7 @@ function BriefCard({
             onChange={(e) => onUpdate('extraNotes', e.target.value)}
             placeholder="Specific products, phrases, things to avoid..."
             rows={2}
+            maxLength={EXTRA_NOTES_MAX}
             className={TEXTAREA_CLASS}
           />
         </FieldGroup>
@@ -206,6 +235,7 @@ function BriefCard({
                 onClick={() => onUpdate('platform', brief.platform === p ? '' : p)}
                 className={cn(
                   'text-caption px-3 py-[5px] rounded-[6px] font-medium cursor-pointer',
+                  FOCUS_RING,
                   brief.platform === p
                     ? 'border-[1.5px] border-forest-deep bg-forest-deep text-ink-inv'
                     : 'border border-ink/14 bg-surface text-text2'
@@ -281,24 +311,38 @@ const CARD_CLASS = 'bg-surface border border-ink/12 rounded-[13px] overflow-hidd
 const CARD_HEADER_CLASS =
   'flex items-center justify-between px-[18px] py-2.5 border-b border-b-ink/7'
 
+// Named for this form rather than `LABEL_CLASS`, which is the exported object in
+// control-classes.ts — two different things under one name, invisible to a grep.
 // tracking-[1.2px] is this label's original letter-spacing, not text-label's 0.16em;
 // leading-[1.6] holds the body line-height it inherited when it only set a size.
-const LABEL_CLASS =
+const BRIEF_LABEL_CLASS =
   'text-label tracking-[1.2px] leading-[1.6] font-medium text-spring-text uppercase'
 
 // leading-[1.6]: preflight's `font: inherit` gave this button the body line-height,
 // which text-micro's 1.35 would otherwise tighten.
-const REMOVE_BUTTON_CLASS = 'text-micro leading-[1.6] text-ink/70 cursor-pointer'
+const REMOVE_BUTTON_CLASS = cn('text-micro leading-[1.6] text-ink/70 cursor-pointer', FOCUS_RING)
 
-const TEXTAREA_CLASS =
-  'w-full text-body border border-ink/14 rounded-sm px-3 py-2.5 text-ink resize-y bg-surface'
+// The system's control treatment rather than a hand-rolled edge. This form had its
+// own border, radius and text classes and — on the app's only unauthenticated page —
+// no focus styling whatsoever. It also picks up the Mobile Input Exemption, which
+// matters most here: a client fills this in on a phone.
+const TEXTAREA_CLASS = cn(CONTROL_SURFACE, CONTROL_FOCUS, CONTROL_TEXT, 'resize-y px-3 py-2.5')
 
-const INPUT_CLASS = 'w-full text-body border border-ink/14 rounded-sm px-3 py-2 text-ink bg-surface'
+const INPUT_CLASS = cn(CONTROL_SURFACE, CONTROL_FOCUS, CONTROL_TEXT, 'h-10 px-3')
 
 // leading-[1.6]: same as the remove button — the inherited body line-height, which
 // text-caption's 1.4 would otherwise tighten.
-const ADD_BUTTON_CLASS =
-  'w-full px-4 py-[11px] rounded-md text-caption leading-[1.6] font-medium text-text2 border border-dashed border-ink/16 cursor-pointer mb-5'
+//
+// WHY bespoke buttons rather than <Button>: this is the public client-facing form,
+// a surface with its own agreed look (forest-deep on paper, its own radii and
+// padding) that the dashboard's Button does not carry. Conforming it is a visual
+// redesign that goes through a mock first, not a refactor.
+const ADD_BUTTON_CLASS = cn(
+  'w-full px-4 py-[11px] rounded-md text-caption leading-[1.6] font-medium text-text2 border border-dashed border-ink/16 cursor-pointer mb-5',
+  FOCUS_RING
+)
 
-const SUBMIT_BUTTON_CLASS =
-  'px-6 py-[11px] rounded-[9px] text-body font-medium text-ink-inv bg-forest-deep cursor-pointer'
+const SUBMIT_BUTTON_CLASS = cn(
+  'px-6 py-[11px] rounded-[9px] text-body font-medium text-ink-inv bg-forest-deep cursor-pointer',
+  FOCUS_RING
+)

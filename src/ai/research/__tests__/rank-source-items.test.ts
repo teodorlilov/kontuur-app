@@ -3,7 +3,13 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 vi.mock('@/utils/ai-client')
 
 import { callAnthropic } from '@/utils/__mocks__/ai-client'
-import { rankSourceItems, computeSourceBoost, RANK_MIN_ITEMS, RANKED_RSS_CAP } from '../rank-source-items'
+import {
+  rankSourceItems,
+  computeSourceBoost,
+  RANK_MIN_ITEMS,
+  RANKED_RSS_CAP,
+  RANKED_WEB_CAP,
+} from '../rank-source-items'
 import type { SourceContext } from '../types'
 import type { RssItem } from '@/lib/sources/fetch-rss'
 import type { TrendSearchResult } from '@/lib/sources/fetch-trend-search'
@@ -158,6 +164,32 @@ describe('rankSourceItems', () => {
 
   it('exposes a sane minimum-items constant', () => {
     expect(RANK_MIN_ITEMS).toBeGreaterThan(0)
+  })
+
+  it('tells the judge about requested subjects and scores them by the request', async () => {
+    const context = makeContext(8, 0)
+    mockRankings(Array.from({ length: 8 }, (_, i) => ({ index: i + 1, score: 8 })))
+
+    await rankSourceItems(context, { ...OPTS, focusTexts: ['the new EU packaging rules'] })
+
+    const call = callAnthropic.mock.calls[0]?.[0] as { userMessage: string }
+    expect(call.userMessage).toContain('the new EU packaging rules')
+    expect(call.userMessage).toContain('relevance to the request')
+  })
+
+  it('grows the web cap by one slot per requested subject', async () => {
+    // Without the extra slots a brief's material competes with niche items for a
+    // fixed cap and can be squeezed out entirely.
+    const context = makeContext(0, RANKED_WEB_CAP + 1)
+    mockRankings(
+      Array.from({ length: RANKED_WEB_CAP + 1 }, (_, i) => ({ index: i + 1, score: 8 }))
+    )
+
+    const capped = await rankSourceItems(context, OPTS)
+    expect(capped.webSearchItems).toHaveLength(RANKED_WEB_CAP)
+
+    const grown = await rankSourceItems(context, { ...OPTS, focusTexts: ['a brief'] })
+    expect(grown.webSearchItems).toHaveLength(RANKED_WEB_CAP + 1)
   })
 })
 
