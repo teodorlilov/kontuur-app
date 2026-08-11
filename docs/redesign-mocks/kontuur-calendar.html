@@ -1,0 +1,1488 @@
+<title>Calendar redesign — Kontuur</title>
+
+<style>
+  /* ─── Document chrome: theme-aware. The app mock inside stays light,
+         because Kontuur is a committed light system. ─────────────────── */
+  :root {
+    --doc-bg: #f7f8f5;
+    --doc-surface: #ffffff;
+    --doc-ink: #101613;
+    --doc-ink2: #4f5a52;
+    --doc-ink3: #6d7770;
+    --doc-line: #e2e8e2;
+    --doc-accent: #164430;
+    --doc-accent-soft: #eef4ef;
+    --doc-flag: #8a6116;
+    --doc-flag-bg: #f7efdc;
+    --doc-bad: #b04a38;
+    --doc-bad-bg: #fbefec;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --doc-bg: #0e1411;
+      --doc-surface: #151d19;
+      --doc-ink: #eef2ee;
+      --doc-ink2: #a8b3ab;
+      --doc-ink3: #7f8b83;
+      --doc-line: #24302a;
+      --doc-accent: #7fd6a8;
+      --doc-accent-soft: #17251d;
+      --doc-flag: #d6ae5e;
+      --doc-flag-bg: #251e10;
+      --doc-bad: #e08e7c;
+      --doc-bad-bg: #2a1714;
+    }
+  }
+  :root[data-theme="dark"] {
+    --doc-bg: #0e1411;
+    --doc-surface: #151d19;
+    --doc-ink: #eef2ee;
+    --doc-ink2: #a8b3ab;
+    --doc-ink3: #7f8b83;
+    --doc-line: #24302a;
+    --doc-accent: #7fd6a8;
+    --doc-accent-soft: #17251d;
+    --doc-flag: #d6ae5e;
+    --doc-flag-bg: #251e10;
+    --doc-bad: #e08e7c;
+    --doc-bad-bg: #2a1714;
+  }
+  :root[data-theme="light"] {
+    --doc-bg: #f7f8f5;
+    --doc-surface: #ffffff;
+    --doc-ink: #101613;
+    --doc-ink2: #4f5a52;
+    --doc-ink3: #6d7770;
+    --doc-line: #e2e8e2;
+    --doc-accent: #164430;
+    --doc-accent-soft: #eef4ef;
+    --doc-flag: #8a6116;
+    --doc-flag-bg: #f7efdc;
+    --doc-bad: #b04a38;
+    --doc-bad-bg: #fbefec;
+  }
+
+  /* ─── Kontuur tokens, verbatim from DESIGN.md. Scoped to the mock. ──── */
+  .kontuur {
+    --paper: #fbfcfa;
+    --surface: #ffffff;
+    --sunken: #f3f5f2;
+    --ink: #0f1512;
+    --text2: #57625a;
+    --text3: #667068;
+    --line: #e7ece7;
+    --line2: #d5ddd6;
+    --forest: #164430;
+    --forest-deep: #0c2e20;
+    --spring: #2e9e68;
+    --spring-text: #278658;
+    --accent: #cfea45;
+    --wash: #eef4ef;
+    --marker: #d9eddd;
+    --sage: #cfe4d4;
+    --danger: #b04a38;
+    --danger-bg: #fbefec;
+    --pending: #8a6116;
+    --pending-bg: #f7efdc;
+    --hatch: repeating-linear-gradient(45deg, rgba(15,21,18,0.055) 0 1px, transparent 1px 6px);
+    --ease: cubic-bezier(0.22, 1, 0.36, 1);
+    --font: "Geist", -apple-system, "Segoe UI", Arial, sans-serif;
+    --serif: "Instrument Serif", Georgia, serif;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--doc-bg);
+    color: var(--doc-ink);
+    font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+    font-size: 15px;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 56px 24px 96px; }
+  .prose { max-width: 68ch; }
+
+  h1, h2, h3 { text-wrap: balance; margin: 0; }
+  h1 {
+    font-family: Georgia, serif;
+    font-style: italic;
+    font-weight: 400;
+    font-size: clamp(34px, 5vw, 50px);
+    line-height: 1.08;
+    letter-spacing: -0.015em;
+  }
+  h2 {
+    font-size: 22px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    line-height: 1.25;
+  }
+  h3 { font-size: 15px; font-weight: 600; letter-spacing: -0.01em; }
+  p { margin: 0; }
+
+  /* A breadcrumb, not a tracked-caps hero eyebrow. */
+  .breadcrumb {
+    font-size: 13px;
+    color: var(--doc-ink3);
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  }
+  .breadcrumb b { font-weight: 500; color: var(--doc-ink2); }
+  .breadcrumb .sep { color: var(--doc-line); }
+  .lede { font-size: 18px; line-height: 1.55; color: var(--doc-ink2); }
+  .stack { display: flex; flex-direction: column; }
+  .g8 { gap: 8px; } .g12 { gap: 12px; } .g16 { gap: 16px; }
+  .g24 { gap: 24px; } .g32 { gap: 32px; } .g48 { gap: 48px; } .g64 { gap: 64px; }
+
+  section { scroll-margin-top: 24px; }
+
+  .rule { height: 1px; background: var(--doc-line); border: 0; margin: 0; }
+
+  .sechead { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; }
+  .sechead .n {
+    font-size: 11px; font-weight: 600; letter-spacing: 0.16em;
+    color: var(--doc-ink3); font-variant-numeric: tabular-nums;
+  }
+
+  /* ─── Diagnosis cards ─────────────────────────────────────────────── */
+  .findings { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(268px, 1fr)); }
+  .finding {
+    background: var(--doc-surface);
+    border: 1px solid var(--doc-line);
+    border-radius: 14px;
+    padding: 18px 20px 20px;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .finding h3 { font-size: 14px; line-height: 1.4; }
+  .finding p { font-size: 13.5px; color: var(--doc-ink2); line-height: 1.6; }
+  .finding code {
+    font-size: 11.5px;
+    color: var(--doc-ink3);
+    background: var(--doc-bg);
+    border: 1px solid var(--doc-line);
+    border-radius: 5px;
+    padding: 1px 5px;
+    white-space: nowrap;
+  }
+  .sev {
+    align-self: flex-start;
+    font-size: 11px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase;
+    padding: 3px 8px; border-radius: 999px;
+  }
+  .sev.bad { background: var(--doc-bad-bg); color: var(--doc-bad); }
+  .sev.warn { background: var(--doc-flag-bg); color: var(--doc-flag); }
+  .sev.info { background: var(--doc-accent-soft); color: var(--doc-accent); }
+
+  /* ─── Mock frame ──────────────────────────────────────────────────── */
+  .framewrap {
+    overflow-x: auto;
+    border-radius: 18px;
+    border: 1px solid var(--doc-line);
+    background: #eceee9;
+    padding: 14px;
+  }
+  .kontuur {
+    min-width: 1080px;
+    font-family: var(--font);
+    color: var(--ink);
+    background: var(--paper);
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 1px 2px rgba(15,21,18,0.05), 0 20px 48px -22px rgba(15,21,18,0.28);
+    display: grid;
+    grid-template-columns: 186px 1fr;
+    height: 720px;
+    font-size: 13px;
+    line-height: 1.6;
+  }
+
+  /* sidebar */
+  .k-rail {
+    background: var(--surface);
+    border-right: 1px solid var(--line);
+    padding: 18px 12px;
+    display: flex; flex-direction: column; gap: 22px;
+  }
+  .k-mark {
+    font-family: var(--serif); font-style: italic; font-size: 18px;
+    color: var(--forest); padding: 0 8px;
+  }
+  .k-navlabel {
+    font-size: 10px; font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--text3); padding: 0 8px 6px;
+  }
+  .k-nav { display: flex; flex-direction: column; gap: 1px; }
+  .k-navitem {
+    display: flex; align-items: center; gap: 9px;
+    padding: 7px 9px; border-radius: 8px;
+    color: var(--text2); font-size: 13px;
+  }
+  .k-navitem .ic { width: 14px; height: 14px; flex: none; opacity: 0.8; }
+  /* The lime plate: New Growth ground carrying Pine Deep. One per band. */
+  .k-navitem[aria-current] {
+    background: var(--accent);
+    color: var(--forest-deep);
+    font-weight: 500;
+    box-shadow: inset 0 0 0 1px rgba(12,46,32,0.45);
+  }
+  .k-navitem[aria-current] .ic { opacity: 1; }
+  .k-count {
+    margin-left: auto; font-size: 11px; font-weight: 600; letter-spacing: 0.06em;
+    background: var(--wash); color: var(--forest); padding: 1px 6px; border-radius: 999px;
+    font-variant-numeric: tabular-nums;
+  }
+  .k-navitem[aria-current] .k-count { background: var(--forest-deep); color: var(--accent); }
+
+  /* main */
+  .k-main { display: flex; flex-direction: column; min-width: 0; }
+
+  .k-head {
+    background: var(--paper);
+    border-bottom: 1px solid var(--line);
+    padding: 0 24px;
+    flex: none;
+  }
+  .k-crumb {
+    display: flex; align-items: center; justify-content: space-between;
+    height: 40px; font-size: 12px; color: var(--text3);
+  }
+  .k-crumb b { font-weight: 500; color: var(--text2); }
+  .k-tools { display: flex; align-items: center; gap: 4px; }
+  .k-tool {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 12px; color: var(--text2);
+    padding: 4px 8px; border-radius: 8px; background: none; border: 0;
+    font-family: inherit; cursor: pointer;
+  }
+  .k-tool:hover { background: rgba(15,21,18,0.05); color: var(--ink); }
+
+  .k-titlerow {
+    display: flex; align-items: flex-end; justify-content: space-between;
+    gap: 24px; padding-bottom: 14px;
+  }
+  .k-title {
+    font-size: 22px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.25;
+    display: flex; align-items: center; gap: 10px; margin: 0;
+  }
+  .k-step {
+    display: inline-grid; place-items: center; width: 26px; height: 26px;
+    border-radius: 7px; border: 1px solid var(--line2); background: var(--surface);
+    color: var(--text2); cursor: pointer;
+  }
+  .k-step:hover { border-color: var(--forest); color: var(--forest); }
+  .k-meta {
+    display: flex; align-items: center; gap: 9px; flex-wrap: wrap;
+    font-size: 12px; color: var(--text3); margin-top: 3px;
+  }
+  .k-meta .dotsep { color: var(--line2); }
+  .k-flag {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 11px; font-weight: 500;
+    background: var(--pending-bg); color: var(--pending);
+    padding: 1px 7px; border-radius: 999px;
+  }
+  .k-flag.bad { background: var(--danger-bg); color: var(--danger); }
+  .k-actions { display: flex; align-items: center; gap: 8px; flex: none; }
+  .k-btn {
+    font-family: inherit; font-size: 12px; line-height: 1;
+    padding: 7px 13px; border-radius: 8px; cursor: pointer;
+    border: 1px solid var(--line2); background: var(--surface); color: var(--ink);
+  }
+  .k-btn:hover { border-color: var(--forest); }
+  .k-btn.primary { background: var(--forest); border-color: var(--forest); color: #fff; }
+  .k-btn.primary:hover { background: var(--forest-deep); border-color: var(--forest-deep); }
+  .k-select {
+    font-family: inherit; font-size: 12px;
+    padding: 6px 10px; border-radius: 8px;
+    border: 1px solid var(--line2); background: var(--surface); color: var(--ink);
+  }
+
+  /* tab rail */
+  .k-tabs { display: flex; gap: 2px; margin-bottom: -1px; }
+  .k-tab {
+    font-family: inherit; font-size: 13px; font-weight: 500;
+    padding: 8px 14px 9px; border: 0; background: none; cursor: pointer;
+    color: var(--text2); border-bottom: 2px solid transparent;
+  }
+  .k-tab:hover { color: var(--ink); }
+  /* Deep Pine underline — never lime on a light ground (1.35:1). */
+  .k-tab[aria-selected="true"] { color: var(--forest); border-bottom-color: var(--forest); }
+
+  /* body */
+  .k-body { flex: 1; display: flex; min-height: 0; }
+  .k-field { flex: 1; min-width: 0; padding: 12px 16px 16px 24px; display: flex; flex-direction: column; }
+
+  /* ── week grid ── */
+  .k-week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; flex: 1; min-height: 0; }
+  .k-col {
+    display: flex; flex-direction: column; min-height: 0;
+    border: 1px solid var(--line); border-radius: 10px; background: var(--surface);
+    overflow: hidden;
+  }
+  .k-col.past { background: var(--sunken); }
+  .k-colhead {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 7px 9px 6px; border-bottom: 1px solid var(--line); flex: none;
+  }
+  .k-dow { font-size: 10px; font-weight: 600; letter-spacing: 0.16em; color: var(--text3); }
+  .k-dnum { font-size: 12px; font-weight: 500; color: var(--ink); font-variant-numeric: tabular-nums; }
+  /* Today: the lime plate in the field. Pine Deep on New Growth, 10.87:1. */
+  .k-col.today { border-color: var(--spring); }
+  .k-col.today .k-dnum {
+    background: var(--accent); color: var(--forest-deep);
+    width: 19px; height: 19px; border-radius: 999px;
+    display: grid; place-items: center; font-weight: 600; letter-spacing: 0;
+  }
+  .k-lane { flex: 1; overflow-y: auto; padding: 6px; display: flex; flex-direction: column; gap: 5px; }
+
+  /* ── the post pill ── */
+  .k-post {
+    display: block; width: 100%; text-align: left;
+    border: 1px solid var(--line); background: var(--surface);
+    border-radius: 8px; padding: 6px 7px; cursor: pointer;
+    font-family: inherit; color: inherit;
+    transition: border-color .15s var(--ease), background .15s var(--ease);
+  }
+  .k-post:hover { border-color: var(--line2); background: var(--sunken); }
+  .k-post:focus-visible { outline: 2px solid var(--spring); outline-offset: 1px; }
+  .k-ptop { display: flex; align-items: center; gap: 5px; margin-bottom: 3px; }
+  /* Client identity: tint the hue, darken the ink into it. Never a solid fill. */
+  .k-mono {
+    font-size: 10px; font-weight: 600; letter-spacing: 0.04em;
+    padding: 1px 4px; border-radius: 4px; flex: none;
+    background: color-mix(in srgb, var(--c) 14%, transparent);
+    color: color-mix(in srgb, var(--c) 78%, var(--ink));
+  }
+  .k-ptime {
+    font-size: 11px; font-weight: 500; color: var(--text3);
+    font-variant-numeric: tabular-nums; margin-left: auto;
+  }
+  .k-ptitle {
+    font-size: 12px; line-height: 1.35; color: var(--ink);
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .k-pfoot { display: flex; align-items: center; gap: 4px; margin-top: 4px; }
+  .k-chip {
+    font-size: 11px; font-weight: 500; letter-spacing: 0.02em;
+    padding: 1px 5px; border-radius: 4px;
+    background: var(--sunken); color: var(--text2);
+  }
+  .k-chip.wait { background: var(--pending-bg); color: var(--pending); }
+  .k-chip.ok { background: var(--wash); color: var(--forest); }
+  .k-chip.live { background: var(--marker); color: var(--forest-deep); }
+
+  /* status treatments — form, not just hue */
+  .k-post.published { background: var(--wash); border-color: transparent; }
+  .k-post.published .k-ptitle { color: var(--forest-deep); }
+  .k-post.published:hover { background: var(--marker); }
+  .k-post.failed {
+    background: var(--danger-bg);
+    border-color: color-mix(in srgb, var(--danger) 28%, transparent);
+    border-left: 3px solid var(--danger);
+  }
+  .k-post.failed .k-ptime { color: var(--danger); font-weight: 600; }
+
+  /* ── the ghost slot: --hatch, the token reserved for absence ── */
+  .k-ghost {
+    display: block; width: 100%; text-align: left;
+    border: 1px dashed var(--line2); border-radius: 8px;
+    background-color: var(--surface); background-image: var(--hatch);
+    padding: 6px 7px; cursor: pointer; font-family: inherit;
+    transition: border-color .15s var(--ease), background-color .15s var(--ease);
+  }
+  .k-ghost:hover { border-color: var(--forest); background-color: var(--wash); }
+  .k-ghost:focus-visible { outline: 2px solid var(--spring); outline-offset: 1px; }
+  .k-ghost .k-mono { opacity: 0.75; }
+  .k-glabel {
+    font-size: 11px; color: var(--text3); display: flex; align-items: center; gap: 4px;
+  }
+  .k-ghost:hover .k-glabel { color: var(--forest); }
+
+  .k-empty {
+    margin: auto; text-align: center; padding: 10px;
+    font-family: var(--serif); font-style: italic; font-size: 13px; color: var(--text3);
+  }
+
+  /* ── month grid ── */
+  .k-month { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; flex: 1; min-height: 0; }
+  .k-mhead {
+    display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px;
+    padding-bottom: 6px; flex: none;
+  }
+  .k-mhead span {
+    font-size: 10px; font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--text3); text-align: center;
+  }
+  .k-mcell {
+    border: 1px solid var(--line); border-radius: 9px; background: var(--surface);
+    padding: 6px 7px; display: flex; flex-direction: column; gap: 4px; min-height: 0;
+    cursor: pointer; overflow: hidden;
+  }
+  .k-mcell:hover { border-color: var(--line2); }
+  .k-mcell.out { background: var(--sunken); opacity: 0.5; }
+  .k-mcell.today { border-color: var(--spring); }
+  .k-mcell .n { font-size: 11px; font-weight: 500; color: var(--ink); font-variant-numeric: tabular-nums; flex: none; }
+  .k-mcell.today .n {
+    background: var(--accent); color: var(--forest-deep);
+    width: 18px; height: 18px; border-radius: 999px; display: grid; place-items: center;
+    font-weight: 600;
+  }
+  /* Coverage bars: solid = published, outlined = scheduled, hatched = open.
+     Height is fixed; an empty state never renders larger than an occupied one. */
+  .k-bars { display: flex; flex-direction: column; gap: 2px; }
+  .k-bar { height: 5px; border-radius: 2px; }
+  .k-bar.pub { background: color-mix(in srgb, var(--c) 62%, transparent); }
+  .k-bar.sch { background: color-mix(in srgb, var(--c) 18%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c) 45%, transparent); }
+  .k-bar.open { background-image: var(--hatch); box-shadow: inset 0 0 0 1px var(--line2); }
+  .k-bar.fail { background: color-mix(in srgb, var(--danger) 55%, transparent); }
+  .k-mfoot { margin-top: auto; font-size: 11px; color: var(--text3); font-variant-numeric: tabular-nums; }
+
+  /* ── queue rail ── */
+  .k-queue {
+    width: 288px; flex: none;
+    border-left: 1px solid var(--line); background: var(--surface);
+    display: flex; flex-direction: column; min-height: 0;
+  }
+  .k-qhead { padding: 13px 15px 11px; border-bottom: 1px solid var(--line); flex: none; }
+  .k-qtitle { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .k-qtitle h3 { font-size: 13px; font-weight: 500; margin: 0; }
+  .k-qcount {
+    font-size: 11px; font-weight: 600; letter-spacing: 0.06em;
+    background: var(--pending-bg); color: var(--pending);
+    padding: 2px 7px; border-radius: 999px; font-variant-numeric: tabular-nums;
+  }
+  .k-qsub { font-size: 11px; color: var(--text3); margin-top: 3px; }
+  .k-qbulk {
+    margin-top: 10px; width: 100%;
+    font-family: inherit; font-size: 12px; font-weight: 500;
+    padding: 7px 10px; border-radius: 8px; cursor: pointer;
+    background: var(--wash); border: 1px solid transparent; color: var(--forest);
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+  }
+  .k-qbulk:hover { background: var(--marker); }
+  .k-qlist { flex: 1; overflow-y: auto; }
+  .k-qitem {
+    padding: 10px 15px; border-bottom: 1px solid var(--line);
+    cursor: pointer; display: flex; flex-direction: column; gap: 4px;
+    background: none; border-left: 0; border-right: 0; border-top: 0;
+    width: 100%; text-align: left; font-family: inherit;
+  }
+  .k-qitem:hover { background: var(--sunken); }
+  .k-qitem:focus-visible { outline: 2px solid var(--spring); outline-offset: -2px; }
+  .k-qrow { display: flex; align-items: center; gap: 6px; }
+  .k-qtopic { font-size: 12px; line-height: 1.4; color: var(--ink); }
+  .k-qage { margin-left: auto; font-size: 11px; color: var(--text3); font-variant-numeric: tabular-nums; }
+  .k-qscore { font-size: 11px; font-weight: 600; color: var(--spring-text); font-variant-numeric: tabular-nums; }
+  .k-qplace {
+    font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--forest); opacity: 0; transition: opacity .12s;
+  }
+  .k-qitem:hover .k-qplace, .k-qitem:focus-visible .k-qplace { opacity: 1; }
+
+  /* ── place dialog ── */
+  .k-scrim {
+    position: absolute; inset: 0; z-index: 50;
+    background: rgba(12,46,32,0.30);
+    display: grid; place-items: center; padding: 20px;
+  }
+  .k-scrim[hidden] { display: none; }
+  .k-dialog {
+    width: 100%; max-width: 400px; background: var(--surface);
+    border-radius: 14px; box-shadow: 0 24px 60px rgba(15,21,18,0.22);
+    overflow: hidden;
+  }
+  .k-dhead { padding: 16px 18px 13px; border-bottom: 1px solid var(--line); }
+  .k-dhead h3 { font-size: 15px; font-weight: 600; letter-spacing: -0.01em; margin: 0; }
+  .k-dhead p { font-size: 12px; color: var(--text3); margin-top: 2px; }
+  .k-dbody { padding: 15px 18px; display: flex; flex-direction: column; gap: 12px; }
+  .k-field-row { display: flex; flex-direction: column; gap: 5px; }
+  .k-field-row label {
+    font-size: 10px; font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--text2);
+  }
+  .k-input {
+    font-family: inherit; font-size: 13px; padding: 8px 11px;
+    border: 1px solid var(--line2); border-radius: 10px; background: var(--surface); color: var(--ink);
+  }
+  .k-input:focus-visible { outline: 0; border-color: var(--spring); box-shadow: 0 0 0 3px rgba(46,158,104,0.12); }
+  .k-dfoot {
+    padding: 13px 18px; border-top: 1px solid var(--line); background: var(--sunken);
+    display: flex; gap: 8px; align-items: center;
+  }
+  .k-dfoot .grow { flex: 1; }
+  .k-pos { position: relative; }
+
+  .k-note {
+    font-size: 11px; color: var(--text3); padding: 8px 10px;
+    background: var(--sunken); border-radius: 8px; line-height: 1.5;
+  }
+  .k-note b { color: var(--text2); font-weight: 500; }
+
+  /* ─── legend under mock ─────────────────────────────────────────── */
+  .legend {
+    display: grid; gap: 10px 22px;
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    font-size: 13px; color: var(--doc-ink2);
+  }
+  .legend div { display: flex; gap: 9px; align-items: flex-start; }
+  .legend .sw { width: 30px; height: 17px; border-radius: 5px; flex: none; margin-top: 2px; }
+  .legend b { color: var(--doc-ink); font-weight: 600; }
+
+  /* ─── decision blocks ───────────────────────────────────────────── */
+  .decision {
+    background: var(--doc-surface);
+    border: 1px solid var(--doc-line);
+    border-radius: 14px;
+    overflow: hidden;
+  }
+  .decision > header {
+    padding: 15px 20px 14px;
+    border-bottom: 1px solid var(--doc-line);
+    display: flex; gap: 12px; align-items: baseline;
+  }
+  .decision > header .q { font-size: 15px; font-weight: 600; letter-spacing: -0.01em; }
+  .decision .tag {
+    font-size: 11px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--doc-ink3); flex: none; font-variant-numeric: tabular-nums;
+  }
+  .opts { display: grid; grid-template-columns: 1fr 1fr; }
+  .opt { padding: 15px 20px 18px; display: flex; flex-direction: column; gap: 7px; }
+  .opt + .opt { border-left: 1px solid var(--doc-line); }
+  .opt .head {
+    font-size: 11px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase;
+  }
+  .opt.rec { background: var(--doc-accent-soft); }
+  .opt.rec .head { color: var(--doc-accent); }
+  .opt.alt .head { color: var(--doc-ink3); }
+  .opt .what { font-size: 14px; font-weight: 500; line-height: 1.45; }
+  .opt .why { font-size: 13px; color: var(--doc-ink2); line-height: 1.6; }
+
+  /* ─── phase table ───────────────────────────────────────────────── */
+  .phases { display: flex; flex-direction: column; gap: 2px; }
+  .phase {
+    background: var(--doc-surface);
+    border: 1px solid var(--doc-line);
+    border-radius: 12px;
+    padding: 16px 20px 18px;
+    display: grid; grid-template-columns: 30px 1fr; gap: 4px 16px;
+  }
+  .phase .num {
+    font-size: 22px; font-weight: 600; color: var(--doc-line);
+    letter-spacing: -0.02em; line-height: 1.1; font-variant-numeric: tabular-nums;
+    grid-row: span 3;
+  }
+  .phase .pt { font-size: 15px; font-weight: 600; letter-spacing: -0.01em; }
+  .phase .pg { font-size: 13.5px; color: var(--doc-ink2); line-height: 1.6; }
+  .phase ul { margin: 6px 0 0; padding-left: 17px; font-size: 13px; color: var(--doc-ink2); line-height: 1.65; }
+  .phase li { margin-bottom: 3px; }
+  .phase li::marker { color: var(--doc-ink3); }
+  .ship {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 11px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--doc-accent); background: var(--doc-accent-soft);
+    padding: 3px 9px; border-radius: 999px; margin-top: 10px; align-self: flex-start;
+  }
+
+  .qlist { display: flex; flex-direction: column; gap: 12px; }
+  .q {
+    display: grid; grid-template-columns: 18px 1fr; gap: 12px;
+    font-size: 14px; line-height: 1.6;
+  }
+  .q .mk { color: var(--doc-ink3); font-weight: 600; font-size: 12px; padding-top: 2px; }
+  .q b { font-weight: 600; }
+  .q span { color: var(--doc-ink2); }
+
+  @media (max-width: 720px) {
+    .wrap { padding: 40px 18px 72px; }
+    .opts { grid-template-columns: 1fr; }
+    .opt + .opt { border-left: 0; border-top: 1px solid var(--doc-line); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; animation: none !important; }
+  }
+</style>
+
+<div class="wrap stack g64">
+
+  <!-- ══ MASTHEAD ══ -->
+  <header class="stack g16 prose">
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+      <span>Kontuur</span>
+      <span class="sep">/</span>
+      <span>Redesign</span>
+      <span class="sep">/</span>
+      <b>Calendar</b>
+    </nav>
+    <h1>The calendar shows what is scheduled. It never shows what isn&rsquo;t.</h1>
+    <p class="lede">
+      Postflow already computes when each client should publish &mdash; <code style="font-size:0.85em">best_time_json</code>,
+      <code style="font-size:0.85em">posts_per_week</code> and <code style="font-size:0.85em">pickNextOpenSlot</code> all exist,
+      and <code style="font-size:0.85em">/review</code> uses them. The calendar page queries
+      <code style="font-size:0.85em">id, name, contact_email</code> and knows none of it. So it can render occupancy
+      and never deficit &mdash; which means it cannot answer the one question an agency opens it to ask:
+      <em>who is about to go dark?</em>
+    </p>
+  </header>
+
+  <hr class="rule" />
+
+  <!-- ══ 1. DIAGNOSIS ══ -->
+  <section class="stack g24">
+    <div class="sechead">
+      <span class="n">01</span>
+      <h2>What&rsquo;s actually wrong</h2>
+    </div>
+    <p class="prose" style="color:var(--doc-ink2);font-size:15px;">
+      Six specialists read every file in <code style="font-size:0.85em">src/features/calendar/</code> plus the
+      publishing pipeline around it. Two independent critics then tried to knock the findings down. These survived.
+      They fall into three groups: <b>gestures that are decoration</b>, <b>dates that are wrong</b>, and
+      <b>a surface built before the design system existed</b>.
+    </p>
+
+    <div class="findings">
+
+      <article class="finding">
+        <span class="sev bad">Correctness</span>
+        <h3>Five different opinions about what day it is</h3>
+        <p>
+          Posts are bucketed by slicing the raw UTC string (<code>scheduled_at.slice(0,10)</code>), &ldquo;today&rdquo;
+          is resolved in the browser&rsquo;s zone, the month is resolved in the agency&rsquo;s zone, and the schedule
+          form prefills its date in UTC beside its time in local. Reopen a post and press Update and it
+          moves a day. Posts render on the wrong cell.
+        </p>
+      </article>
+
+      <article class="finding">
+        <span class="sev bad">Dead gesture</span>
+        <h3>Drag-and-drop that has no drag</h3>
+        <p>
+          <code>day-cell.tsx</code> implements the complete HTML5 drop protocol. Nothing in the app sets
+          <code>draggable</code> &mdash; the only <code>draggable</code> in the repo is inside the Konva canvas
+          editor, which is a different system entirely. The only thing droppable on a day is stray selected text,
+          which the handler forwards to a real <code>updatePost</code>.
+        </p>
+      </article>
+
+      <article class="finding">
+        <span class="sev bad">Unreachable</span>
+        <h3>The third post on any day does not exist</h3>
+        <p>
+          <code>MAX_VISIBLE = 2</code>, the &ldquo;+N&rdquo; badge is an inert <code>&lt;div&gt;</code>, and the grid
+          is pinned to viewport height under <code>overflow: hidden</code>. Post three is unreachable by mouse,
+          keyboard and screen reader. The two shown are the two most <em>recently created</em>, not the two earliest.
+        </p>
+      </article>
+
+      <article class="finding">
+        <span class="sev warn">Lie</span>
+        <h3>Day cells advertise a click that does nothing</h3>
+        <p>
+          Every cell carries <code>cursor: pointer</code>, a hover shadow the Resting Surface Rule forbids, and an
+          <code>onClick</code> wired to a literal <code>noop</code>. Three of the calendar&rsquo;s four
+          scheduling gestures are costume.
+        </p>
+      </article>
+
+      <article class="finding">
+        <span class="sev warn">Identity</span>
+        <h3>Clients change colour when you filter</h3>
+        <p>
+          DESIGN.md&nbsp;&sect;240 requires client hue to be hashed from the client&rsquo;s name, so they wear the same
+          colour on their avatar, dot and calendar pill forever. <code>month-grid.tsx</code> instead indexes the palette
+          by position in the currently-visible sorted set. Filter, and everyone&rsquo;s colour shifts.
+        </p>
+      </article>
+
+      <article class="finding">
+        <span class="sev warn">Scope</span>
+        <h3>A 1,085-line modal with the date field last</h3>
+        <p>
+          <code>ScheduleCard</code> carries nine responsibilities &mdash; caption editing, carousel slides, AI visual
+          generation, the Konva editor, quality scores, validation, publish-now, approval and scheduling. Its date input
+          sits at the bottom of the scroll column, below six slide editors, in a dialog whose primary button says Schedule.
+        </p>
+      </article>
+
+      <article class="finding">
+        <span class="sev info">System</span>
+        <h3>The last surface predating Kontuur</h3>
+        <p>
+          96 inline <code>style={{}}</code> objects across nine components, raw <code>'#fff'</code>, hardcoded radii and
+          <code>rgba()</code> hairlines, hover states mutated imperatively through <code>onMouseEnter</code>. DESIGN.md:
+          &ldquo;Components use classes, never inline <code>style</code> objects.&rdquo;
+        </p>
+      </article>
+
+      <article class="finding">
+        <span class="sev info">Access</span>
+        <h3>No keyboard path through the grid at all</h3>
+        <p>
+          Day cells are bare <code>&lt;div onClick&gt;</code> &mdash; no <code>role</code>, no <code>tabIndex</code>, no
+          key handling, no <code>role="grid"</code>, no roving tabindex. Changing month replaces 42 cells in silence.
+          At 375px the columns are 43.6px wide and <code>overflow: hidden</code> destroys the excess rather than scrolling it.
+        </p>
+      </article>
+
+    </div>
+  </section>
+
+  <hr class="rule" />
+
+  <!-- ══ 2. THE MOCK ══ -->
+  <section class="stack g24">
+    <div class="sechead">
+      <span class="n">02</span>
+      <h2>The proposal</h2>
+    </div>
+    <p class="prose" style="color:var(--doc-ink2);font-size:15px;">
+      The week becomes the working unit &mdash; the unit the approval batch, <code style="font-size:0.85em">posts_per_week</code>
+      and <code style="font-size:0.85em">best_time_json</code> already speak. Month demotes to a coverage overview.
+      Every slot a client&rsquo;s cadence implies but nothing fills is drawn in <code style="font-size:0.85em">--hatch</code>,
+      the token DESIGN.md already reserves for absence, and clicking one is how you place a post.
+      The backlog stops being a floating panel over the grid and becomes furniture beside it.
+    </p>
+
+    <div class="framewrap">
+      <div class="kontuur k-pos">
+
+        <!-- sidebar -->
+        <nav class="k-rail" aria-label="Main">
+          <div class="k-mark">Kontuur</div>
+          <div>
+            <div class="k-navlabel">Workspace</div>
+            <div class="k-nav">
+              <span class="k-navitem"><svg class="ic" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 8l6-5 6 5v6a1 1 0 01-1 1H3a1 1 0 01-1-1z"/></svg>Dashboard</span>
+              <span class="k-navitem"><svg class="ic" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 3h12v10H2z"/><path d="M2 6h12"/></svg>Generate</span>
+              <span class="k-navitem"><svg class="ic" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 4h10M3 8h10M3 12h6"/></svg>Review<span class="k-count">6</span></span>
+              <span class="k-navitem" aria-current="page"><svg class="ic" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="12" height="11" rx="1.5"/><path d="M2 6.5h12M5.5 2v2M10.5 2v2"/></svg>Calendar</span>
+              <span class="k-navitem"><svg class="ic" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="5.5" r="2.5"/><path d="M3 13.5c0-2.5 2.2-4 5-4s5 1.5 5 4"/></svg>Clients</span>
+            </div>
+          </div>
+        </nav>
+
+        <!-- main -->
+        <div class="k-main">
+
+          <header class="k-head">
+            <div class="k-crumb">
+              <div>Northfield Studio <span style="color:var(--line2)">/</span> <b>Calendar</b></div>
+              <div class="k-tools">
+                <button class="k-tool" type="button">
+                  <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6.5 9.5l3-3M7 4.5l1.5-1.5a2.5 2.5 0 013.5 3.5L10.5 8M5.5 8L4 9.5a2.5 2.5 0 003.5 3.5L9 11.5"/></svg>
+                  Copy week link
+                </button>
+                <button class="k-tool" type="button">
+                  <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3.5" width="12" height="9" rx="1"/><path d="M2.5 4.5L8 8.5l5.5-4"/></svg>
+                  Email this week
+                </button>
+              </div>
+            </div>
+
+            <div class="k-titlerow">
+              <div>
+                <h1 class="k-title">
+                  <span id="k-range">3 &ndash; 9 August 2026</span>
+                  <span style="display:inline-flex;gap:4px;">
+                    <button class="k-step" type="button" aria-label="Previous week"><svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M7.5 2.5L4 6l3.5 3.5"/></svg></button>
+                    <button class="k-step" type="button" aria-label="Next week"><svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4.5 2.5L8 6l-3.5 3.5"/></svg></button>
+                  </span>
+                </h1>
+                <div class="k-meta">
+                  <span>12 scheduled</span>
+                  <span class="dotsep">&middot;</span>
+                  <span>3 published</span>
+                  <span class="dotsep">&middot;</span>
+                  <span class="k-flag">5 open slots</span>
+                  <span class="k-flag bad">1 failed to publish</span>
+                </div>
+              </div>
+              <div class="k-actions">
+                <button class="k-btn" type="button">This week</button>
+                <select class="k-select" aria-label="Filter by client">
+                  <option>All clients</option>
+                  <option>Hälsa Nutrition</option>
+                  <option>Verdant Botanicals</option>
+                  <option>Nord Bakery</option>
+                  <option>Билков Дом</option>
+                  <option>Casa Ceramics</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="k-tabs" role="tablist" aria-label="Calendar view">
+              <button class="k-tab" type="button" role="tab" aria-selected="true" data-view="week">Week</button>
+              <button class="k-tab" type="button" role="tab" aria-selected="false" data-view="month">Month</button>
+            </div>
+          </header>
+
+          <div class="k-body">
+            <div class="k-field">
+
+              <!-- ─── WEEK ─── -->
+              <div class="k-week" data-panel="week">
+
+                <!-- MON -->
+                <div class="k-col past">
+                  <div class="k-colhead"><span class="k-dow">Mon</span><span class="k-dnum">3</span></div>
+                  <div class="k-lane">
+                    <button class="k-post published" type="button">
+                      <div class="k-ptop"><span class="k-mono" style="--c:#1F6B7A">HN</span><span class="k-ptime">09:00</span></div>
+                      <div class="k-ptitle">Five signs you&rsquo;re under-hydrated</div>
+                      <div class="k-pfoot"><span class="k-chip ok">Published</span></div>
+                    </button>
+                    <button class="k-post published" type="button">
+                      <div class="k-ptop"><span class="k-mono" style="--c:#2E9E68">VB</span><span class="k-ptime">18:00</span></div>
+                      <div class="k-ptitle">Repotting a rubber plant without shocking it</div>
+                      <div class="k-pfoot"><span class="k-chip ok">Published</span></div>
+                    </button>
+                  </div>
+                </div>
+
+                <!-- TUE -->
+                <div class="k-col past">
+                  <div class="k-colhead"><span class="k-dow">Tue</span><span class="k-dnum">4</span></div>
+                  <div class="k-lane">
+                    <button class="k-post published" type="button">
+                      <div class="k-ptop"><span class="k-mono" style="--c:#8A6116">NB</span><span class="k-ptime">08:00</span></div>
+                      <div class="k-ptitle">Sourdough, day three</div>
+                      <div class="k-pfoot"><span class="k-chip ok">Published</span></div>
+                    </button>
+                    <button class="k-ghost k-slot" type="button">
+                      <div class="k-ptop"><span class="k-mono" style="--c:#6E7F52">БД</span><span class="k-ptime">10:00</span></div>
+                      <div class="k-glabel">Slot passed unfilled</div>
+                    </button>
+                    <button class="k-post" type="button">
+                      <div class="k-ptop"><span class="k-mono" style="--c:#A2603F">CC</span><span class="k-ptime">17:30</span></div>
+                      <div class="k-ptitle">Glaze tests, batch 12</div>
+                    </button>
+                  </div>
+                </div>
+
+                <!-- WED — today -->
+                <div class="k-col today">
+                  <div class="k-colhead"><span class="k-dow">Wed</span><span class="k-dnum">5</span></div>
+                  <div class="k-lane">
+                    <button class="k-post" type="button">
+                      <div class="k-ptop"><span class="k-mono" style="--c:#1F6B7A">HN</span><span class="k-ptime">09:00</span></div>
+                      <div class="k-ptitle">Magnesium at night: does it actually help?</div>
+                      <div class="k-pfoot"><span class="k-chip wait">Waiting 2d</span></div>
+                    </button>
+                    <button class="k-post failed" type="button">
+                      <div class="k-ptop"><span class="k-mono" style="--c:#2E9E68">VB</span><span class="k-ptime">12:00</span></div>
+                      <div class="k-ptitle">Late-summer pruning, in four steps</div>
+                      <div class="k-pfoot"><span class="k-chip" style="background:var(--danger-bg);color:var(--danger)">Token expired</span></div>
+                    </button>
+                    <button class="k-ghost k-slot" type="button">
+                      <div class="k-ptop"><span class="k-mono" style="--c:#8A6116">NB</span><span class="k-ptime">16:00</span></div>
+                      <div class="k-glabel">Open &mdash; place a post</div>
+                    </button>
+                  </div>
+                </div>
+
+                <!-- THU -->
+                <div class="k-col">
+                  <div class="k-colhead"><span class="k-dow">Thu</span><span class="k-dnum">6</span></div>
+                  <div class="k-lane">
+                    <button class="k-post" type="button">
+                      <div class="k-ptop"><span class="k-mono" style="--c:#6E7F52">БД</span><span class="k-ptime">10:00</span></div>
+                      <div class="k-ptitle">Чай от лайка &mdash; кога наистина помага</div>
+                      <div class="k-pfoot"><span class="k-chip ok">Approved</span></div>
+                    </button>
+                    <button class="k-post" type="button">
+                      <div class="k-ptop"><span class="k-mono" style="--c:#A2603F">CC</span><span class="k-ptime">17:30</span></div>
+                      <div class="k-ptitle">Studio tour: the wheel corner</div>
+                    </button>
+                    <button class="k-ghost k-slot" type="button">
+                      <div class="k-ptop"><span class="k-mono" style="--c:#1F6B7A">HN</span><span class="k-ptime">09:00</span></div>
+                      <div class="k-glabel">Open &mdash; place a post</div>
+                    </button>
+                  </div>
+                </div>
+
+                <!-- FRI -->
+                <div class="k-col">
+                  <div class="k-colhead"><span class="k-dow">Fri</span><span class="k-dnum">7</span></div>
+                  <div class="k-lane">
+                    <button class="k-post" type="button">
+                      <div class="k-ptop"><span class="k-mono" style="--c:#8A6116">NB</span><span class="k-ptime">08:00</span></div>
+                      <div class="k-ptitle">The Friday bake list</div>
+                      <div class="k-pfoot"><span class="k-chip ok">Approved</span></div>
+                    </button>
+                    <button class="k-post" type="button">
+                      <div class="k-ptop"><span class="k-mono" style="--c:#2E9E68">VB</span><span class="k-ptime">18:00</span></div>
+                      <div class="k-ptitle">Three plants for a dark hallway</div>
+                      <div class="k-pfoot"><span class="k-chip wait">Changes asked</span></div>
+                    </button>
+                  </div>
+                </div>
+
+                <!-- SAT -->
+                <div class="k-col">
+                  <div class="k-colhead"><span class="k-dow">Sat</span><span class="k-dnum">8</span></div>
+                  <div class="k-lane">
+                    <button class="k-ghost k-slot" type="button">
+                      <div class="k-ptop"><span class="k-mono" style="--c:#A2603F">CC</span><span class="k-ptime">11:00</span></div>
+                      <div class="k-glabel">Open &mdash; place a post</div>
+                    </button>
+                    <p class="k-empty">Quiet</p>
+                  </div>
+                </div>
+
+                <!-- SUN -->
+                <div class="k-col">
+                  <div class="k-colhead"><span class="k-dow">Sun</span><span class="k-dnum">9</span></div>
+                  <div class="k-lane">
+                    <button class="k-post" type="button">
+                      <div class="k-ptop"><span class="k-mono" style="--c:#1F6B7A">HN</span><span class="k-ptime">09:00</span></div>
+                      <div class="k-ptitle">Sunday prep: three lunches, one pan</div>
+                    </button>
+                    <button class="k-ghost k-slot" type="button">
+                      <div class="k-ptop"><span class="k-mono" style="--c:#6E7F52">БД</span><span class="k-ptime">10:00</span></div>
+                      <div class="k-glabel">Open &mdash; place a post</div>
+                    </button>
+                  </div>
+                </div>
+
+              </div>
+
+              <!-- ─── MONTH ─── -->
+              <div data-panel="month" hidden style="display:flex;flex-direction:column;flex:1;min-height:0;">
+                <div class="k-mhead">
+                  <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
+                </div>
+                <div class="k-month" id="k-monthgrid"></div>
+              </div>
+
+            </div>
+
+            <!-- queue rail -->
+            <aside class="k-queue" aria-label="Waiting to be placed">
+              <div class="k-qhead">
+                <div class="k-qtitle">
+                  <h3>Waiting to be placed</h3>
+                  <span class="k-qcount">11</span>
+                </div>
+                <p class="k-qsub">All clients &middot; oldest first</p>
+                <button class="k-qbulk" type="button">
+                  <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M8 3v10M3 8h10"/></svg>
+                  Fill this week&rsquo;s 5 open slots
+                </button>
+              </div>
+              <div class="k-qlist">
+                <button class="k-qitem" type="button">
+                  <div class="k-qrow"><span class="k-mono" style="--c:#2E9E68">VB</span><span class="k-qscore">9/10</span><span class="k-qage">5d</span></div>
+                  <div class="k-qtopic">What &ldquo;organic&rdquo; actually means on a label</div>
+                  <div class="k-qrow"><span class="k-chip">Carousel · 6</span><span class="k-qplace">Place →</span></div>
+                </button>
+                <button class="k-qitem" type="button">
+                  <div class="k-qrow"><span class="k-mono" style="--c:#1F6B7A">HN</span><span class="k-qscore">8/10</span><span class="k-qage">3d</span></div>
+                  <div class="k-qtopic">Protein timing, honestly</div>
+                  <div class="k-qrow"><span class="k-chip wait">Priority</span><span class="k-chip">Single</span><span class="k-qplace">Place →</span></div>
+                </button>
+                <button class="k-qitem" type="button">
+                  <div class="k-qrow"><span class="k-mono" style="--c:#8A6116">NB</span><span class="k-qscore">9/10</span><span class="k-qage">2d</span></div>
+                  <div class="k-qtopic">Why we close on Mondays</div>
+                  <div class="k-qrow"><span class="k-chip">Carousel · 4</span><span class="k-qplace">Place →</span></div>
+                </button>
+                <button class="k-qitem" type="button">
+                  <div class="k-qrow"><span class="k-mono" style="--c:#6E7F52">БД</span><span class="k-qscore">8/10</span><span class="k-qage">2d</span></div>
+                  <div class="k-qtopic">Мента срещу маточина: кое кога</div>
+                  <div class="k-qrow"><span class="k-chip">Carousel · 5</span><span class="k-qplace">Place →</span></div>
+                </button>
+                <button class="k-qitem" type="button">
+                  <div class="k-qrow"><span class="k-mono" style="--c:#A2603F">CC</span><span class="k-qscore">7/10</span><span class="k-qage">1d</span></div>
+                  <div class="k-qtopic">Sanding down a bad batch</div>
+                  <div class="k-qrow"><span class="k-chip">Single</span><span class="k-qplace">Place →</span></div>
+                </button>
+              </div>
+            </aside>
+          </div>
+        </div>
+
+        <!-- place dialog -->
+        <div class="k-scrim" id="k-scrim" hidden>
+          <div class="k-dialog" role="dialog" aria-modal="true" aria-labelledby="k-dtitle">
+            <div class="k-dhead">
+              <h3 id="k-dtitle">Place a post</h3>
+              <p>Nord Bakery &middot; Wednesday 5 August, 16:00</p>
+            </div>
+            <div class="k-dbody">
+              <div class="k-field-row">
+                <label for="k-dpost">Post</label>
+                <select class="k-input" id="k-dpost">
+                  <option>Why we close on Mondays &mdash; 9/10 &middot; waiting 2d</option>
+                  <option>The proving cabinet, explained &mdash; 8/10 &middot; waiting 6d</option>
+                </select>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 96px;gap:10px;">
+                <div class="k-field-row">
+                  <label for="k-ddate">Date</label>
+                  <input class="k-input" id="k-ddate" type="date" value="2026-08-05" />
+                </div>
+                <div class="k-field-row">
+                  <label for="k-dtime">Time</label>
+                  <input class="k-input" id="k-dtime" type="time" value="16:00" />
+                </div>
+              </div>
+              <p class="k-note">
+                <b>16:00</b> is Nord Bakery&rsquo;s best window on Instagram. Times shown in
+                <b>Europe/Sofia</b>, the agency zone.
+              </p>
+            </div>
+            <div class="k-dfoot">
+              <button class="k-btn" type="button" data-close>Cancel</button>
+              <span class="grow"></span>
+              <button class="k-btn primary" type="button" data-close>Place post</button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <p style="font-size:12.5px;color:var(--doc-ink3);margin-top:-8px;">
+      Interactive: switch <b>Week / Month</b>, click any hatched slot to open the Place dialog.
+      Rendered in Kontuur&rsquo;s light world deliberately &mdash; the app has no dark theme, so the mock doesn&rsquo;t invent one.
+      Georgia stands in for Instrument Serif and the system sans for Geist; neither can load here.
+    </p>
+
+    <div class="legend">
+      <div>
+        <span class="sw" style="background:#eef4ef"></span>
+        <span><b>Published</b> &mdash; solid Wash fill, no border. It happened; it recedes.</span>
+      </div>
+      <div>
+        <span class="sw" style="background:#fff;border:1px solid #e7ece7"></span>
+        <span><b>Scheduled</b> &mdash; Surface white with a hairline. The default state, quietest form.</span>
+      </div>
+      <div>
+        <span class="sw" style="background:#fbefec;border:1px solid rgba(176,74,56,.28);border-left:3px solid #b04a38"></span>
+        <span><b>Failed</b> &mdash; Clay edge and tint, with the reason on the pill, not buried in a modal.</span>
+      </div>
+      <div>
+        <span class="sw" style="background-image:repeating-linear-gradient(45deg,rgba(15,21,18,.055) 0 1px,transparent 1px 6px);background-color:#fff;border:1px dashed #d5ddd6"></span>
+        <span><b>Open slot</b> &mdash; <code style="font-size:11px">--hatch</code>, the token DESIGN.md reserves for absence. Clickable.</span>
+      </div>
+      <div>
+        <span class="sw" style="background:color-mix(in srgb,#1F6B7A 14%,transparent);color:color-mix(in srgb,#1F6B7A 78%,#0f1512);display:grid;place-items:center;font-size:10px;font-weight:600;">HN</span>
+        <span><b>Client</b> &mdash; monogram tinted from the hue hashed off their name, per DESIGN.md §240. Colour never moves.</span>
+      </div>
+      <div>
+        <span class="sw" style="background:#cfea45;display:grid;place-items:center;color:#0c2e20;font-size:10px;font-weight:600;">5</span>
+        <span><b>Today</b> &mdash; the lime plate, carrying Pine Deep at 10.87:1. One lime answer per band.</span>
+      </div>
+    </div>
+  </section>
+
+  <hr class="rule" />
+
+  <!-- ══ 3. DECISIONS ══ -->
+  <section class="stack g24">
+    <div class="sechead">
+      <span class="n">03</span>
+      <h2>Five calls I need you to make</h2>
+    </div>
+    <p class="prose" style="color:var(--doc-ink2);font-size:15px;">
+      Everything above is settled &mdash; the bugs are bugs and the token work is owed. These five are genuine
+      forks where a different answer changes what gets built. My recommendation is on the left.
+    </p>
+
+    <div class="stack g12">
+
+      <article class="decision">
+        <header><span class="tag">01</span><span class="q">What is the calendar&rsquo;s working unit?</span></header>
+        <div class="opts">
+          <div class="opt rec">
+            <span class="head">Recommend</span>
+            <span class="what">Week is the default; month becomes a coverage overview.</span>
+            <span class="why">
+              Week is already the product&rsquo;s native unit everywhere but here: the approval batch is week-scoped,
+              <code style="font-size:11px">posts_per_week</code> is the target, <code style="font-size:11px">best_time_json</code>
+              expands to a week. A month cell is a ~90&times;100px budget that legibly holds two marks &mdash; which is exactly
+              why <code style="font-size:11px">MAX_VISIBLE = 2</code> and the broken &ldquo;+N&rdquo; exist at all. Month stays,
+              because &ldquo;is November thin?&rdquo; is a real question; it just stops being where you place work.
+            </span>
+          </div>
+          <div class="opt alt">
+            <span class="head">Alternative</span>
+            <span class="what">A client-rows &times; days matrix as the primary view.</span>
+            <span class="why">
+              One row per client, seven day columns. Genuinely the strongest idea in the research: it moves client
+              identity from the hue channel (capacity ~6, fails for colour-blind users, illegible at 5px) to the
+              position channel, which is unbounded &mdash; and a cadence gap becomes a literal hole in a row.
+              I&rsquo;m deferring rather than rejecting it: it&rsquo;s a third data structure, and it only beats week view
+              past roughly six simultaneous clients.
+            </span>
+          </div>
+        </div>
+      </article>
+
+      <article class="decision">
+        <header><span class="tag">02</span><span class="q">Where do open slots come from?</span></header>
+        <div class="opts">
+          <div class="opt rec">
+            <span class="head">Recommend</span>
+            <span class="what">Derive them from what already exists. No migration.</span>
+            <span class="why">
+              <code style="font-size:11px">best_time_json</code> + <code style="font-size:11px">posts_per_week</code> +
+              <code style="font-size:11px">pickNextOpenSlot</code> are all built and already consumed by
+              <code style="font-size:11px">/review</code>. Add two fields to the calendar&rsquo;s query, promote the slot
+              picker to <code style="font-size:11px">src/lib/scheduling/</code>, and the ghost layer exists.
+              Where a client has no best-time data yet, it degrades to nothing rather than to a guess.
+            </span>
+          </div>
+          <div class="opt alt">
+            <span class="head">Alternative</span>
+            <span class="what">A real <code>posting_slots</code> table you edit per client.</span>
+            <span class="why">
+              Buffer&rsquo;s model, and the better long-term primitive &mdash; agencies will eventually want to pin
+              &ldquo;Acme posts Tue/Thu 09:00&rdquo; by hand rather than accept what Instagram&rsquo;s data infers. But it&rsquo;s a
+              migration, a settings surface, onboarding seeding and reconciliation against
+              <code style="font-size:11px">best_time_json</code>. Worth building <em>after</em> someone has used derived slots.
+              <b>Note:</b> the existing <code style="font-size:11px">posting_schedules</code> table is not this &mdash; it governs
+              when posts are <em>generated</em>, not when they publish.
+            </span>
+          </div>
+        </div>
+      </article>
+
+      <article class="decision">
+        <header><span class="tag">03</span><span class="q">Does the calendar keep editing post content?</span></header>
+        <div class="opts">
+          <div class="opt rec">
+            <span class="head">Recommend</span>
+            <span class="what">No. It edits <em>when</em> and <em>whether</em>. Content goes back to review.</span>
+            <span class="why">
+              The 1,085-line modal becomes a small Place dialog. Captions, slides, visual generation, the Konva editor
+              and quality all leave &mdash; review already owns those surfaces and does them better.
+              Bonus: the closed modal currently ships zod, <code style="font-size:11px">CarouselSlides</code> and
+              <code style="font-size:11px">CanvasEditor</code> into /calendar&rsquo;s first load (807&nbsp;KB route JS today).
+              <b>The catch:</b> <code style="font-size:11px">/review</code> only queries
+              <code style="font-size:11px">pending_review</code> posts and there is no <code style="font-size:11px">/posts/[id]</code>
+              route &mdash; so the destination has to be built before anything is deleted.
+            </span>
+          </div>
+          <div class="opt alt">
+            <span class="head">Alternative</span>
+            <span class="what">Keep one modal, but decompose it and put the date first.</span>
+            <span class="why">
+              Cheaper, no new route, and preserves &ldquo;fix a typo without leaving the calendar&rdquo; &mdash; which you may
+              genuinely use daily. It leaves the bundle problem, and it keeps two content editors in the product
+              that will drift apart. <b>Tell me if you edit captions from the calendar in practice.</b> That single
+              fact decides this one.
+            </span>
+          </div>
+        </div>
+      </article>
+
+      <article class="decision">
+        <header><span class="tag">04</span><span class="q">Drag first, or command first?</span></header>
+        <div class="opts">
+          <div class="opt rec">
+            <span class="head">Recommend</span>
+            <span class="what">One <code>movePost</code> command; drag added last as an accelerator on it.</span>
+            <span class="why">
+              WCAG 2.5.7 requires a non-dragging single-pointer path regardless, so the command has to exist either
+              way. Building it first makes drag nearly free; building drag first guarantees two write paths that drift &mdash;
+              they already have, which is why <code style="font-size:11px">handleDrop</code> hardcodes noon while the
+              modal passes a real timestamp. One command is also one place to put optimistic apply, rollback and Undo.
+            </span>
+          </div>
+          <div class="opt alt">
+            <span class="head">Alternative</span>
+            <span class="what">Fix drag first &mdash; it&rsquo;s what people expect of a calendar.</span>
+            <span class="why">
+              Fair, and it&rsquo;s the gesture that <em>feels</em> like a calendar. But nothing depends on the current
+              implementation because it has never worked, so there is no migration pressure &mdash; and shipping
+              drag onto a grid whose date handling is still wrong just moves posts to the wrong day faster.
+            </span>
+          </div>
+        </div>
+      </article>
+
+      <article class="decision">
+        <header><span class="tag">05</span><span class="q">Should the week actions follow the week on screen?</span></header>
+        <div class="opts">
+          <div class="opt rec">
+            <span class="head">Recommend</span>
+            <span class="what">Yes &mdash; and label them with the week they will send.</span>
+            <span class="why">
+              Today &ldquo;Copy link&rdquo; and &ldquo;Email client&rdquo; act on the real wall-clock week no matter what month
+              you&rsquo;re looking at &mdash; navigate to September, click Email, and August goes out. Once week view exists
+              the fix is obvious: the rail follows the viewed week and says so.
+              Both the client-side window and <code style="font-size:11px">createApprovalBatch</code>&rsquo;s server-side
+              window must move together, or the token covers a different post set than the button promised.
+            </span>
+          </div>
+          <div class="opt alt">
+            <span class="head">Alternative</span>
+            <span class="what">Stay pinned to the current week, labelled explicitly.</span>
+            <span class="why">
+              &ldquo;Send week of Mon 3 Aug&rdquo; regardless of what you&rsquo;re viewing. Safer against misfires, and it
+              matches how approvals actually work &mdash; you almost always send the upcoming week.
+              Less flexible if you ever want to send a client two weeks ahead.
+            </span>
+          </div>
+        </div>
+      </article>
+
+    </div>
+  </section>
+
+  <hr class="rule" />
+
+  <!-- ══ 4. PLAN ══ -->
+  <section class="stack g24">
+    <div class="sechead">
+      <span class="n">04</span>
+      <h2>How it ships</h2>
+    </div>
+    <p class="prose" style="color:var(--doc-ink2);font-size:15px;">
+      Six phases, each shippable on its own, ordered so the highest user value lands first.
+      No database migration is needed for any of it &mdash; <code style="font-size:0.85em">publish_error</code>,
+      <code style="font-size:0.85em">publish_attempts</code>, <code style="font-size:0.85em">published_at</code> and
+      <code style="font-size:0.85em">topic_summary</code> all already exist in the generated types.
+      No new library either; the existing HTML5 drag API is sufficient once it has a source.
+    </p>
+
+    <div class="phases">
+
+      <article class="phase">
+        <span class="num">1</span>
+        <span class="pt">Truth pass</span>
+        <span class="pg">
+          The grid stops lying. One timezone, one date key, every post reachable, client colour stable.
+          No visual redesign &mdash; this is mostly deletion, and it is the highest value per line in the plan.
+        </span>
+        <div>
+          <ul>
+            <li>Every date resolves through the agency zone, on <b>both</b> read and write &mdash; there is currently no zoned wall-clock&rarr;instant helper at all, and every write path needs one before any new writer exists.</li>
+            <li>Day buckets sort by <code>scheduled_at</code>, not by creation order.</li>
+            <li>Grid unpins from viewport height; &ldquo;+N&rdquo; becomes a real button opening a day popover.</li>
+            <li>Client hue hashes off the client&rsquo;s name &mdash; which also deletes the unstable closure that was silently defeating <code>memo(DayCell)</code> on all 42 cells.</li>
+            <li>The dead drop chain, the <code>noop</code> day click and the affordances advertising them are removed. Nothing that lies stays.</li>
+            <li>Riding along: the failed-publish re-arm fix (reset <code>publish_attempts</code>, <code>publish_error</code> <em>and</em> <code>publish_claimed_at</code>, as a dedicated action rather than widening the generic update whitelist), and the bundle win &mdash; adapt validation server-side and lazy-load the canvas editor. Both are independent of the redesign and owed regardless.</li>
+          </ul>
+          <span class="ship">Ships alone</span>
+        </div>
+      </article>
+
+      <article class="phase">
+        <span class="num">2</span>
+        <span class="pt">Ghost slots on the grid you already have</span>
+        <span class="pg">
+          The calendar starts showing the target, not just the occupancy. Deliberately lands
+          <em>before</em> the week view, because it is the highest-leverage change in the plan and it needs no new grid.
+        </span>
+        <div>
+          <ul>
+            <li>Fetch the cadence the calendar has never seen; promote the slot picker to shared code and fix its timezone handling in the same commit as its test.</li>
+            <li>Ghost slots render in <code>--hatch</code>. Clicking one is what finally gives the day click something honest to do.</li>
+            <li>The pill is rebuilt against tokens: hashed monogram, <code>topic_summary</code> instead of the pillar name, status as form rather than hue, and a real accessible label.</li>
+            <li>The single <code>movePost</code> command lands here, behind a per-pill action menu.</li>
+          </ul>
+          <span class="ship">Ships alone</span>
+        </div>
+      </article>
+
+      <article class="phase">
+        <span class="num">3</span>
+        <span class="pt">Week view and keyboard</span>
+        <span class="pg">
+          Seven full-height columns, time-ordered, every post visible &mdash; plus the <code>Week | Month</code> tab rail,
+          reusing the existing component unchanged.
+        </span>
+        <div>
+          <ul>
+            <li>Full ARIA grid semantics, roving tabindex and arrow-key navigation &mdash; done <b>once</b>, here, after the grid&rsquo;s markup has settled. Doing it in phase 2 would mean doing it twice.</li>
+            <li>An agenda fallback below the mobile breakpoint. At 375px the current grid gives 43.6px columns and destroys the overflow rather than scrolling it, which also fails reflow at 200% desktop zoom.</li>
+          </ul>
+          <span class="ship">Ships alone</span>
+        </div>
+      </article>
+
+      <article class="phase">
+        <span class="num">4</span>
+        <span class="pt">Docked queue rail</span>
+        <span class="pg">
+          The backlog becomes furniture beside the grid instead of an overlay covering it &mdash; and stops
+          disagreeing with itself about how many posts are in it.
+        </span>
+        <div>
+          <ul>
+            <li>Collapsible to a counted spine, correctly inert when collapsed, with the grid&rsquo;s client filter applied <em>and stated</em>.</li>
+            <li>Today the panel header shows an unfiltered count and the sort row shows a filtered one, 40px apart. One count: &ldquo;7 of 40&rdquo;.</li>
+            <li>The floating action button goes away; so does the pinned footer band spending fixed vertical space on a static sentence.</li>
+          </ul>
+          <span class="ship">Ships alone</span>
+        </div>
+      </article>
+
+      <article class="phase">
+        <span class="num">5</span>
+        <span class="pt">Liveness and the failure lane</span>
+        <span class="pg">
+          The calendar tells the truth about what already happened. Today it is frozen at page load:
+          the cron publishes and client approvals land, and an open tab never knows.
+        </span>
+        <div>
+          <ul>
+            <li>Refresh on focus and after every mutation, hard-gated against clobbering in-flight edits.</li>
+            <li>Failed posts sort to the top of their day with the reason on the pill, and the dashboard&rsquo;s &ldquo;needs a human&rdquo; card deep-links to the post rather than to a bare <code>/calendar</code>.</li>
+            <li>Pending approval finally renders &mdash; today it falls through every branch &mdash; including whether the 72-hour link has quietly expired.</li>
+            <li>Per-post pending state instead of one shared <code>saving</code> flag, so a caption autosave stops disabling the Schedule button and a failed schedule stops closing the dialog as though it worked.</li>
+          </ul>
+          <span class="ship">Ships alone</span>
+        </div>
+      </article>
+
+      <article class="phase">
+        <span class="num">6</span>
+        <span class="pt">Drag, bulk moves, and bounded queries</span>
+        <span class="pg">
+          Speed. Drag becomes a real accelerator on the command from phase 2, and a slipped launch week
+          stops costing forty dialog round-trips.
+        </span>
+        <div>
+          <ul>
+            <li>Typed drag payload, a real drag ghost, and time-of-day preserved on a day-drop &mdash; never the hardcoded noon.</li>
+            <li>Optimistic apply with visible rollback and an Undo toast on every move. Drag is a low-precision gesture; cheap reversal beats any amount of hover affordance.</li>
+            <li>Range-select and &ldquo;shift selected by &plusmn;N days&rdquo;, through the existing <code>batchSchedulePosts</code> action rather than forty sequential writes.</li>
+            <li>View, week and client filter move into the URL &mdash; which is what finally lets the server stop fetching every post the agency has ever produced, with full slides, validation and image rows, on every load.</li>
+          </ul>
+          <span class="ship">Ships alone</span>
+        </div>
+      </article>
+
+    </div>
+  </section>
+
+  <hr class="rule" />
+
+  <!-- ══ 5. OPEN ══ -->
+  <section class="stack g24">
+    <div class="sechead">
+      <span class="n">05</span>
+      <h2>Still open</h2>
+    </div>
+    <div class="qlist prose">
+      <div class="q"><span class="mk">01</span><span><b>Per-client timezones.</b> <span>Everything resolves to one agency zone. An agency with clients in different markets can&rsquo;t share one. If per-client zones are coming, slot times should be stored client-local now rather than migrated later.</span></span></div>
+      <div class="q"><span class="mk">02</span><span><b>Nine clients.</b> <span>The identity palette holds eight hues. Past eight the answer is monogram-plus-desaturation rather than cycling &mdash; but is a nine-client roster a real near-term case?</span></span></div>
+      <div class="q"><span class="mk">03</span><span><b>Upstream volume.</b> <span>The page fetches five statuses, so drafts and pending-review posts are invisible and the calendar reads emptier than the pipeline actually is. Should the header say &ldquo;12 more upstream&rdquo;, or does that belong entirely to review?</span></span></div>
+      <div class="q"><span class="mk">04</span><span><b>Thumbnails.</b> <span>Instagram planners lean hard on a visual grid. Postflow generates the imagery already. Worth a density control &mdash; dots / pills / thumbnails &mdash; or does week view make month density a non-problem?</span></span></div>
+    </div>
+  </section>
+
+</div>
+
+<script>
+  (function () {
+    // ── view tabs ──
+    var tabs = Array.prototype.slice.call(document.querySelectorAll('.k-tab'));
+    var panels = {
+      week: document.querySelector('[data-panel="week"]'),
+      month: document.querySelector('[data-panel="month"]')
+    };
+    var range = document.getElementById('k-range');
+    var LABEL = { week: '3 – 9 August 2026', month: 'August 2026' };
+
+    tabs.forEach(function (tab) {
+      tab.addEventListener('click', function () {
+        var view = tab.dataset.view;
+        tabs.forEach(function (t) { t.setAttribute('aria-selected', String(t === tab)); });
+        Object.keys(panels).forEach(function (k) {
+          if (k === view) { panels[k].removeAttribute('hidden'); }
+          else { panels[k].setAttribute('hidden', ''); }
+        });
+        panels.week.style.display = view === 'week' ? 'grid' : 'none';
+        range.textContent = LABEL[view];
+      });
+    });
+
+    // ── month grid: coverage bars, generated so the markup stays honest ──
+    // Aug 2026 starts on a Saturday. Grid is Monday-first, so it opens with
+    // Jul 27–31 then Aug 1.
+    var HUES = ['#1F6B7A', '#2E9E68', '#8A6116', '#6E7F52', '#A2603F'];
+    var DAYS = [
+      // [dayNumber, outsideMonth, bars]  bars: p=published s=scheduled o=open f=failed
+      [27, 1, 'pp'], [28, 1, 'ps'], [29, 1, 'p'], [30, 1, 'pp'], [31, 1, 'ps'], [1, 1, ''], [2, 1, 'p'],
+      [3, 0, 'pp'], [4, 0, 'pso'], [5, 0, 'sfo'], [6, 0, 'sso'], [7, 0, 'ss'], [8, 0, 'o'], [9, 0, 'so'],
+      [10, 0, 'ss'], [11, 0, 'so'], [12, 0, 's'], [13, 0, 'sso'], [14, 0, 'ss'], [15, 0, 'o'], [16, 0, 's'],
+      [17, 0, 'so'], [18, 0, 'oo'], [19, 0, 'o'], [20, 0, 'so'], [21, 0, 'o'], [22, 0, ''], [23, 0, 'o'],
+      [24, 0, 'oo'], [25, 0, 'o'], [26, 0, 'oo'], [27, 0, 'o'], [28, 0, 'o'], [29, 0, ''], [30, 0, 'o'],
+      [31, 0, 'o'], [1, 1, ''], [2, 1, ''], [3, 1, ''], [4, 1, ''], [5, 1, ''], [6, 1, '']
+    ];
+    var CLS = { p: 'pub', s: 'sch', o: 'open', f: 'fail' };
+    var LABELS = { p: 'published', s: 'scheduled', o: 'open slot', f: 'failed' };
+    var grid = document.getElementById('k-monthgrid');
+
+    DAYS.forEach(function (d, i) {
+      var num = d[0], out = d[1], bars = d[2];
+      var cell = document.createElement('div');
+      cell.className = 'k-mcell' + (out ? ' out' : '') + (!out && num === 5 ? ' today' : '');
+
+      var n = document.createElement('span');
+      n.className = 'n';
+      n.textContent = num;
+      cell.appendChild(n);
+
+      if (bars) {
+        var wrap = document.createElement('div');
+        wrap.className = 'k-bars';
+        bars.split('').forEach(function (ch, j) {
+          var bar = document.createElement('span');
+          bar.className = 'k-bar ' + CLS[ch];
+          bar.style.setProperty('--c', HUES[(i + j) % HUES.length]);
+          wrap.appendChild(bar);
+        });
+        cell.appendChild(wrap);
+
+        var openCount = (bars.match(/o/g) || []).length;
+        if (openCount && !out) {
+          var foot = document.createElement('span');
+          foot.className = 'k-mfoot';
+          foot.textContent = openCount + ' open';
+          cell.appendChild(foot);
+        }
+        // Purely visual encoding always gets its spoken equivalent.
+        var sr = bars.split('').map(function (ch) { return LABELS[ch]; }).join(', ');
+        cell.setAttribute('aria-label', num + ': ' + sr);
+      } else {
+        cell.setAttribute('aria-label', num + ': nothing scheduled');
+      }
+      grid.appendChild(cell);
+    });
+
+    // ── place dialog ──
+    var scrim = document.getElementById('k-scrim');
+    var lastFocus = null;
+
+    function openDialog(trigger) {
+      lastFocus = trigger;
+      scrim.removeAttribute('hidden');
+      var first = scrim.querySelector('select, input, button');
+      if (first) first.focus();
+    }
+    function closeDialog() {
+      scrim.setAttribute('hidden', '');
+      if (lastFocus) lastFocus.focus();
+    }
+
+    document.querySelectorAll('.k-slot, .k-qitem, .k-qbulk').forEach(function (el) {
+      el.addEventListener('click', function () { openDialog(el); });
+    });
+    scrim.querySelectorAll('[data-close]').forEach(function (b) {
+      b.addEventListener('click', closeDialog);
+    });
+    scrim.addEventListener('click', function (e) {
+      if (e.target === scrim) closeDialog();
+    });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && !scrim.hasAttribute('hidden')) closeDialog();
+    });
+  })();
+</script>

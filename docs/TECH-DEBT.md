@@ -246,13 +246,19 @@ and the trigger that should reopen it. (The fixed items landed in `98e0ef0` + `0
   (`src/features/review/lib/week-schedule.ts`).
 - **Action:** one-time `explain analyze` against prod; add a composite index only if it scans.
 
-### 5.7 Pending type-regen cleanup (migrations 20260805 + 20260806)
+### 5.7 Pending type-regen cleanup (migrations 20260805 + 20260806) — RESOLVED 2026-08-10
 
-- **What:** three `as`-casts marked with WHY comments (`deletePost` discard insert, cron generate
-  insert, `POST /api/posts` insert) and `topic_summary` selected via a per-page string append in
-  `review/page.tsx` instead of `POST_COLUMNS`.
-- **Fix:** after both migrations reach prod, regenerate `database.ts`, drop the casts, fold
-  `topic_summary` into `POST_COLUMNS`.
+- **What was:** three `as`-casts marked with WHY comments (`deletePost` discard insert, cron
+  generate insert, `POST /api/posts` insert) and `topic_summary` selected via a per-page string
+  append instead of `POST_COLUMNS`.
+- **Closed by:** `20260805`–`20260817` applied to prod and `database.ts` regenerated. All three
+  casts are gone; `topic_summary` had already been folded into `POST_COLUMNS`.
+- **What the casts were hiding:** dropping them did *not* typecheck. `posts['Insert']` had been
+  suppressing the whole row, and underneath it `slides_json`/`validation_json` were reaching the
+  insert as `unknown` — which widens to `{}`, not `Json`. The read side types both columns
+  `unknown` deliberately (each surface parses them into its own shape), so the narrowing now
+  happens once, in `draftColumns`, the single place a draft becomes a write. Two asserted columns
+  instead of fourteen unchecked ones.
 
 ### 5.8 generation_runs has no unique-per-slot constraint
 
@@ -273,14 +279,18 @@ and the trigger that should reopen it. (The fixed items landed in `98e0ef0` + `0
   (manual generation in the queue still works).
 - **Fix shape:** a `visuals_attempted_at` column + minimum spacing between attempts.
 
-### 5.10 Stored platform values are mixed-case
+### 5.10 Stored platform values are mixed-case — RESOLVED 2026-08-09, direction reversed
 
-- **Where:** `posts.platform` holds both `'Instagram'` (UI pickers pass `PLATFORMS` display
-  values verbatim; write paths validate case-insensitively but store as-received) and
-  `'instagram'` (older writes). `roster.ts` and the publish scheduler now both compensate
-  with case-insensitive compares.
-- **Fix shape:** normalize to lowercase at every write boundary + one backfill migration,
-  then drop the compare-side lowering.
+- **What was:** `posts.platform` held both `'Instagram'` (UI pickers pass `PLATFORMS` display
+  values verbatim) and `'instagram'` (older writes), and `roster.ts` and the publish scheduler
+  both compensated with case-insensitive compares.
+- **Closed by:** migration `20260809_canonicalize_post_platform.sql`, applied to prod.
+- **The direction is the opposite of what this entry used to prescribe.** It said "normalize
+  to lowercase at every write boundary"; the canonical form is the **display** case in
+  `PLATFORMS`, because that is what every picker submits and what the UI renders — lowercasing
+  on write would have meant re-casing on read at every call site instead. `20260817` follows
+  the same rule for `client_ideas.platform`. Anyone reading the old advice would have written a
+  migration that fights the one that shipped.
 
 ---
 
@@ -485,3 +495,150 @@ build with *"Did you mean 'publishing'?"*.
 
 The subsets are legitimately different from each other and were **not** merged — consolidating them
 would have invented an abstraction, not removed one.
+
+### 7.6 Nothing detects dead code — `knip` is manual, and misses unused *fields*
+
+- **Gap:** there is no dead-code tooling in `devDependencies` (no knip, ts-prune, depcheck) and
+  `@typescript-eslint/no-unused-vars` only flags unused *locals*. An orphaned **export** compiles,
+  lints and tests clean forever.
+- **What that cost:** the 2026-08 pipeline refactor found `ClientData.topPerformingPosts` — a real
+  20-caption DB query on every generation run, read by nothing — plus `FetchLimits.rssBudget`,
+  `ENABLE_LLM_DEDUP`, `NGRAM_SIMILARITY_THRESHOLD`, `SOURCE_GROUNDING_MIN_CONFIDENCE`,
+  `ResearchStreamEvent`, `GenerateStreamEvent`, `sanitizePromptArray`, three sentence-length
+  constants, two `score-colors` helpers, and `ResearchRunContext.agencyId`/`.language` — two
+  *required* fields both callers dutifully populated and neither read. All of the above are
+  deleted as of 2026-08-11 and pinned that way by `src/app/__tests__/deletion-ledger.test.ts`.
+  `DEFENSIVE_DATA_CLAUSE` has exactly one importer (`generate-best-time.ts`) and belongs on
+  the research prompts too (§7.9 M10).
+- **Interim:** `npx knip@5 --include exports,files` finds unused exports and files without adding a
+  dependency. Run it per commit that deletes anything. It currently reports one unused file
+  (`src/components/ui/skeleton.tsx`) and a large set of `src/types/index.ts` barrel re-exports —
+  the barrel is a deliberate re-export surface, so a config must exempt it before the signal is
+  usable.
+- **The part knip does not solve:** it works at export granularity, so an unused **field on a used
+  type** is invisible to it. That is the shape most of the above took —
+  `PostValidationResult.validationWarnings` (written at four sites, read by none),
+  `SourceGroundingResult.corrected_text`/`.corrected_slides` (set, never read), `rssBudget`,
+  `topPerformingPosts`. Every one was found by hand.
+- **Fix shape:** add `knip` as a devDependency with a `knip.json` that exempts the type barrels and
+  Next's framework exports (`POST`/`GET`/`maxDuration`/`metadata`/`default` have no in-repo
+  referrer by design), seed a baseline of what exists today, then add it to `npm run check` so the
+  list may only shrink — the same "backlog that only shrinks" shape as §7.3 and §7.4. Field-level
+  detection needs something else: either a periodic manual audit, or a guard test that greps for
+  writes-without-reads on the handful of types that carry evidence (`PostValidationResult`,
+  `ClientData`, `FetchLimits`).
+- **Why not now:** wiring a detector into the gate mid-refactor would fail the build on debt this
+  work has not reached yet. Sequence it after the pipeline waves land.
+
+### 7.7 Notification client names are regex-parsed back out of the message
+
+`notification-item.tsx` recovers the client name by matching the message text — two
+patterns now, because the approval flow writes "<Client> approved…" and the generate cron
+writes "…ready to review for <Client>". The row carries `client_id`; the name should be
+resolved from it instead.
+
+Why it matters beyond tidiness: the same file's `titleForNotification` had no default
+branch, so the cron's untyped notification fell through to "requested changes" and *every*
+generation notice rendered as a change request from a client named "Client". The type is
+fixed (`posts_ready`, added 2026-08-10); the name parsing is not.
+
+**Fix shape:** pass the resolved name in from the shell, which already loads the agency's
+clients for the sidebar, or join it in the notifications query. Then delete both regexes.
+
+### 7.8 `/ideas` reads every idea an agency has ever received
+
+`fetchIdeasForAgency` takes an optional `limit` and the inbox page passes none, so the
+route selects the agency's entire idea history — including everything already generated
+or dismissed — and ships it to the client to be filtered in memory.
+
+Two things are sized by that read rather than by a page: the payload, and
+`MARK_READ_MAX` in `features/ideas/schemas.ts`, which bounds the ids one mark-as-read may
+carry. The cap is loose (500) precisely because the client legitimately sends as many ids
+as it rendered; it can tighten to a page once there is a page.
+
+**Fix shape:** server-side filtering with a bounded page (the `/clients` roster is the
+pattern — URL params read in the Server Component), then narrow `MARK_READ_MAX` to that
+bound in the same change.
+
+### 7.9 Deferrals from the Client Ideas audit — 2026-08-06
+
+The audit file (`docs/ideas-audit-2026-08-06.md`) has been deleted; it was a working
+artifact. Roughly sixty findings were fixed across the eight waves. These are what is
+left, with the audit's own ids so the reasoning is traceable.
+
+**Needs a production query, not a code change.**
+- **M16 — the schema baseline is not in version control.** No migration creates `agencies`,
+  `clients`, `posts` or `users`, and `grep -rin 'policy' supabase/migrations/` returns
+  nothing across 40 files. The RLS posture cannot be verified *or* fixed from this
+  codebase. Cross-agency safety currently rests on hand-written `.eq('agency_id', …)`
+  predicates, which are correct today. Needs a prod schema dump.
+- **M21 — `generation_runs`/`generation_themes` are written with the user-scoped client on
+  the wizard path and the admin client on the cron path.** If those tables are RLS-enabled
+  with no user policy, every wizard theme insert is failing silently into
+  `trackThemeSafe` — zeroing `doneCount` and emptying the theme exclusion list. One query
+  settles it.
+
+**Prompt hardening.**
+- **M10 — third-party fetched text is interpolated raw into XML-delimited prompt sections.**
+  RSS titles, website markdown, file text, Tavily snippets and IG captions reach
+  `<rss_content>`…`<performance_content>` unescaped, and `buildGroundingPrompt` interpolates
+  up to 4000 chars of fetched markdown untagged. `sanitizePromptField` exists for exactly
+  this and is applied to none of them. `DEFENSIVE_DATA_CLAUSE` now has one consumer
+  (`generate-best-time.ts`) and belongs on the research prompts too.
+- **M11 — RESOLVED 2026-08-11.** `priorityPosts` now crosses the boundary through
+  `priorityPostSchema` (title/brief caps, ISO date, platform enum); only
+  `preloadedClientData` keeps the documented re-narrowing.
+
+**Generation quality signals.**
+- **M12 — wizard drafts are never persisted, but their themes are.** `trackTheme` fires
+  unconditionally while the wizard persists nothing until approve, and
+  `fetchThemeDescriptions` feeds the last 10 runs into "RECENTLY COVERED TOPICS (do NOT
+  suggest these)". A theme rejected *because the draft was bad* is banned for ten runs,
+  identically to one that shipped.
+- **Skipped-pillar count uses a different allocation than the prompt** — `allocateByWeight`
+  is computed twice with different inputs. ±1 item on marginal units only.
+
+**Ideas feature.**
+- **M18 — `idea_form_tokens.agency_id` can silently diverge from `clients.agency_id`.** Two
+  independent FKs with no composite constraint; reassign a client between agencies and its
+  old tokens keep minting ideas into the old agency.
+- **M23 — the idea link is undiscoverable.** It only exists after someone opens the last
+  client-settings tab and clicks Create. Onboarding never mentions it, so the realistic
+  outcome is an empty `idea_form_tokens` table and a permanently empty inbox.
+- **`fetchFormContext` issues two queries where an FK join would do.** The duplicate token
+  lookup is gone; the join is not.
+
+**Cross-cutting.**
+- **The button focus ring is hand-written at ~10 sites.** `FOCUS_RING` now exists in
+  `components/ui/form/control-classes.ts` and is used by `Button`, `ActionLink` and the
+  public idea form. The remaining copies (visual-identity, onboarding, image-lightbox)
+  are unchanged — a mechanical sweep, deliberately not bundled into a feature commit.
+- **A client whose `fetchClientData` fails inside the cron loop vanishes with no trace** —
+  no run row, no `results.errors` entry, no console line.
+
+### 7.10 Decisions and deferrals from the 2026-08-10 audit-fix round
+
+Recorded here because each one reverses or defers something the refactor plan
+specified; the reasoning must outlive the session that decided it.
+
+**Decisions.**
+- **"Ranked, not gated" stands — no `VARIANTS_PER_POST`.** The original plan wanted
+  singles generated twice with the quality floor selecting the better; the decision
+  (2026-08-11) is that doubling writer spend per post is not worth it. Quality is
+  owed by the prompts, and a weak draft is surfaced by triage (`low_quality`,
+  `not_validated`) for a human, not silently outcompeted. If draft quality sags,
+  variants remain the known lever.
+- **Two quality bars remain, deliberately distinct.** `QUALITY_FLOOR` (5) gates
+  visuals spend; `REWRITE_SCORE_THRESHOLD` (7) drives triage and the rewrite offer.
+  The third bar (a bare 7.5 exemplar cutoff) died with `fetchTopPostsByClient`.
+  Reconciling the two that remain is a product decision, not a cleanup.
+
+**Deferrals.**
+- **`ClientIdea` is still a hand-written camelCase interface** rather than deriving
+  from the generated row type; `row-mirrors.test.ts` does not cover it. Deriving it
+  properly means threading the `clients(name, niche)` join shape through.
+- **Ideas sort control and search** are drawn in the approved mock but not built;
+  the list is server-ordered newest-first only.
+- **Below-`md` responsive pass on the ideas grid** — the table drops columns at
+  1180px but has no `md:` behaviour (actions to a second line, search into the
+  rail) the plan sketched.

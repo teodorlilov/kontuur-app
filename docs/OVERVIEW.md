@@ -42,7 +42,7 @@ Onboard client ──► Configure brand profile + research sources
 Research (Tavily web + client RSS/website/file sources, grounded per content pillar)
        │
        ▼
-Generate (single posts / carousels, source-grounded, N candidates per theme)
+Generate (single posts / carousels, source-grounded, one caption per theme)
        │
        ▼
 Validate (quality + language, multi-dimensional scores, auto-correction, slop + source checks)
@@ -302,33 +302,48 @@ Every pipeline lives under `src/ai/` with its prompts co-located. The four that 
 
 ### Research (`src/ai/research/`)
 
-`ResearchPipeline.execute()` orchestrates:
+Split in two, because gathering material and deciding what a post is about are different
+jobs: only the second varies by where the topic came from.
 
-1. Load client data (brand profile, post history, generation-theme history, used source URLs).
-2. Instantiate **polymorphic sources** via a factory — `RssResearchSource`, `WebsiteResearchSource`,
-   `FileResearchSource` — and fetch them all in parallel; `tavily` runs as a separate web trend search.
-3. Skip content pillars that have no eligible sources; allocate topic budget by pillar weight.
-4. Generate grounded topic ideas with the LLM, tagging each with the source's eligible pillars.
-5. Filter LLM-hallucinated topics (a topic must carry a real source URL, unless it's a file source),
-   deduplicate against history, and attach full source text for downstream grounding.
+**Stage A — `gatherSources()` (`source-gathering.ts`)** loads client data (brand profile,
+post history, generation-theme history, used source URLs), instantiates **polymorphic
+sources** via a factory — `RssResearchSource`, `WebsiteResearchSource`,
+`FileResearchSource` — and fetches them in parallel, with `tavily` as a separate web
+search and Instagram performance as a style signal. Which source kinds run is an option:
+a run that only serves briefs skips RSS and performance, and crawls the client's website
+under `BRIEF_FETCH_LIMITS` rather than a budget derived from a post count of zero.
+
+**Stage B** ranks the pooled material with a cheap Haiku pass and skips pillars with no
+eligible sources.
+
+**Stage C — `generateTopics()`** is one Sonnet call over the briefs *and* the researched
+count together. One call, because two passes could hand the same article to a brief and a
+researched topic without either knowing. Its `suggested_theme` is a short proper-grammar
+summary, which is what stops a loose client sentence from becoming a draft's title.
+Topics the model did not ground in a real source are dropped — briefs excepted, since a
+brief is a post the user asked for whether or not planning found it a source.
 
 ### Generation (`src/ai/generation/`)
 
 `GenerationPipeline.execute()`:
 
-1. Builds a theme list (priority posts first, then researched themes) and attaches
-   similar past themes via the `Deduplicator` (angle-similarity threshold).
+1. Adapts each planned topic into a theme (`toTheme`) and attaches similar past themes via
+   the `Deduplicator` (angle-similarity threshold).
 2. Processes themes in batches of **5 concurrent** LLM calls (`Promise.allSettled` — one
    theme failing never sinks the batch).
-3. For **single** posts it generates several candidates per theme, validates each, and keeps
-   the best above `QUALITY_FLOOR` (falling back to the top scorer if none qualify).
+3. For **single** posts it writes one caption per theme and validates it. When the model
+   returns more than one, the highest-scoring is kept — a ranking, not a gate.
    For **carousels** it generates the deck and validates the whole thing.
 4. Applies text/slide corrections from validation and emits a draft record with scores attached.
 
 ### Validation (`src/ai/validation/`)
 
-`validatePost()` runs **two LLM calls in parallel** — quality and language — then computes
-a multi-dimensional score set:
+`validatePost()` runs **one LLM call** — quality and language judged together — then computes
+a multi-dimensional score set. They were two parallel calls over the same text at the same
+model and temperature, which meant two corrected versions of one caption and no defined
+precedence: the language pass could reinstate a fabricated statistic the grounding pass had
+just removed, because it never saw the text it was overwriting. One call, one corrected text,
+and that bug class is gone by construction.
 
 - **Quality criteria:** niche fit, audience match, pillar match, theme adherence, hook verdict,
   CTA verdict, structure checks, AI tells, brand-voice match, formality consistency,
@@ -340,8 +355,13 @@ a multi-dimensional score set:
 - **Slop detection** is derived from the human score, AI tells, and the worst offending phrase.
 - **Source grounding** is verified only when a source excerpt was supplied.
 
-The `overall_score` is written to `posts.quality_score_avg`; posts below `QUALITY_FLOOR` are
-discarded before an agency ever sees them.
+The `overall_score` is written to `posts.quality_score_avg`. A low score is **surfaced, not
+acted on**: generation keeps the post, and review's triage flags it `low_quality` and routes it
+to *needs attention*, so it never reaches the ready bucket or a bulk approve. Nothing is
+discarded on the agency's behalf — a run returns what it promised, and the reviewer decides.
+
+`QUALITY_FLOOR` remains a spend gate for the visuals cron, which only illustrates posts at or
+above it.
 
 ### Rewrite (`src/ai/rewrite/`)
 
@@ -383,8 +403,13 @@ request changes with a note; the agency is notified in-app. Approval emails (sin
 are sent via Resend.
 
 **Client ideas** — A per-client public form (token link) lets clients submit post ideas without
-logging in. Ideas land in a dashboard page, filterable by client, and can be turned into a post
-in one click.
+logging in. Ideas land in a triage inbox (Inbox · Generated · Dismissed · All), URL-driven and
+server-filtered, grouped by client and selectable for bulk dismiss with an undo window. Opening
+one shows the full submission, read-only: the client's words are a record of what was asked
+for, not a field. Generating routes the idea through the same pipeline as everything else, as
+a locked priority brief — editable in the wizard, where a correction is scoped to that run.
+The idea stays in the inbox until a post is approved from it, which is the moment it is
+recorded as `generated` and linked.
 
 **Content calendar** — Monthly grid with scheduling (FAB + unscheduled panel), best-time
 recommendations per platform, batch scheduling from review, and client-response cards. Calendar
@@ -409,9 +434,12 @@ single images and 2–10-image carousels, with token-expiry checks and up to 3 r
 Meta OAuth connect, connection management, profile-picture fetch, and a data-deletion callback
 are all implemented.
 
-**Autonomous operation** — A daily generate cron researches + generates + validates a review
-queue for every client on an active schedule (and refreshes stale best-times, weekly briefings,
-and solo coaching). A daily publish cron pushes every due scheduled post to Instagram.
+**Autonomous operation** — An **hourly** generate cron researches + generates + validates a
+review queue for every client whose posting schedule's day + hour slot has passed (and
+refreshes stale best-times, weekly briefings, and solo coaching). A **every-5-minute** publish
+cron pushes every due scheduled post to Instagram. It never generates from a client idea:
+an idea is a request that an agency human decides is worth making, and a guard test
+(`api/cron/__tests__/cron-invariants.test.ts`) keeps it that way.
 
 **Intelligence & coaching** — Weekly per-agency briefing (platform updates, niche trends, weekly
 tip, action nudge, sources); on-demand tips; solo-mode Monday coaching card.
@@ -467,13 +495,13 @@ Configured in `vercel.json`, all authenticated with `Authorization: Bearer $CRON
 All under `src/app/api/`. Representative map (each handler authenticates and scopes to the agency):
 
 - **AI** — `ai/onboard`, `ai/analyze-url`, `ai/suggest-sources`, `ai/generate-stream`,
-  `ai/generate-from-idea`, `ai/rewrite`, `ai/detect-slop`, `ai/best-time`, `ai/intelligence`,
-  `ai/intelligence/tip`
+  `ai/rewrite`, `ai/detect-slop`, `ai/best-time`, `ai/intelligence`, `ai/intelligence/tip`
 - **Clients** — `clients`, `clients/[id]`, `clients/[id]/sources` (+ `/tavily`, `/upload`, `/[sourceId]`)
 - **Sources** — `sources/discover`
 - **Posts** — `posts`, `posts/[id]`, `posts/[id]/images`, `posts/[id]/publish`
 - **Approval & ideas** — `approval/send`, `approval/email`, `approval/[token]`,
-  `ideas`, `ideas/submit`, `ideas/token`
+  `ideas/submit` (the only public write; rate-limited per link). Idea mutations are server
+  actions, not routes — `ideas` was deleted with them, and `ideas/token` never existed.
 - **Meta** — `meta/connect`, `meta/callback`, `meta/connections`, `meta/connections/[id]`,
   `meta/profile-picture`, `meta/data-deletion`
 - **Canva** — `canva/connect`, `canva/callback`, `canva/status`, `canva/team-status`,

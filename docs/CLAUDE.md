@@ -2,13 +2,17 @@
 
 ## Project
 AI-powered social media management SaaS for agencies (kontuur.app).
-Stack: Next.js 14 App Router · TypeScript (strict) · Supabase (Postgres, Auth, Storage) · Tailwind.
+Stack: Next.js 16 App Router · React 19 · TypeScript (strict) · Supabase (Postgres, Auth,
+Storage) · Tailwind v4.
 
 ## Commands
+- **Before pushing: `npm run check`** — typecheck + lint + test, the same command
+  `.husky/pre-push` and CI run. Everything below is for narrowing down a failure.
 - Dev: `npm run dev`
-- Typecheck: `npx tsc --noEmit`
-- Lint: `npm run lint`
+- Typecheck: `npm run typecheck`
+- Lint: `npm run lint` · Test: `npm test` (watch: `npm run test:watch`)
 - Regenerate DB types: `npx supabase gen types typescript --local > src/types/database.ts`
+- `format:check` is deliberately outside `check`. Do not add it.
 
 ## Where things live (check here BEFORE creating anything new)
 - `src/app/` — routes, layouts, route handlers, server actions entry points.
@@ -130,11 +134,23 @@ Before any change:
    utility first, then use it in both.
 
 After each change:
-1. `npx tsc --noEmit`
-2. `npm run lint`
-3. Remove any dead code or duplication the change introduced.
-4. State which files were modified and why. If you made a judgment call
+1. `npm run check`.
+2. Remove any dead code or duplication the change introduced. Nothing in the
+   toolchain catches an orphaned *export* — `npx knip@5 --include exports,files`
+   over what you touched is the interim check (see TECH-DEBT §7.6).
+3. State which files were modified and why. If you made a judgment call
    (e.g. where a shared function lives), state the decision and reasoning.
+
+Some rules are enforced by guard tests rather than review. Each carries a backlog
+that **may only ever shrink**, and fixing an entry without deleting its line fails
+the suite:
+- `src/types/__tests__/row-mirrors.test.ts` — a type covering ≥5 columns of one
+  table must derive from the generated row type, not restate it.
+- `src/app/api/__tests__/boundary-validation.test.ts` — a route that reads a body
+  must zod-parse it.
+- `src/app/__tests__/type-ramp.test.ts` — the Closed Ramp Rule.
+- `src/app/api/cron/__tests__/cron-invariants.test.ts` — the scheduler never reads
+  `client_ideas`, and `generation_themes` has exactly one writer.
 
 ## Do not
 - Rename things that are not broken.
