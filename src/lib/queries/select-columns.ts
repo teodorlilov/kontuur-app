@@ -19,6 +19,13 @@ export const CLIENT_COLUMNS =
 export const CLIENT_LIST_COLUMNS = 'id, name, niche, posts_per_week, language, created_at'
 
 /**
+ * The four fields an AI prompt needs to speak for a client. Narrower than
+ * CLIENT_LIST_COLUMNS on purpose — a prompt has no use for posts_per_week or
+ * created_at, and both readers pair this with an `agency_id` ownership filter.
+ */
+export const CLIENT_AI_CONTEXT_COLUMNS = 'id, name, niche, language'
+
+/**
  * Clients roster. The social_connections embed is a REVERSE relationship
  * (social_connections holds client_id), so PostgREST returns an ARRAY here —
  * unlike brand_profiles above, which is a forward FK and returns an object.
@@ -41,6 +48,15 @@ export const BRAND_KIT_EXTRACTION_COLUMNS =
 // posting_schedules
 export const POSTING_SCHEDULE_COLUMNS =
   'id, is_active, frequency_type, frequency_value, auto_generate_day, auto_generate_time'
+
+/**
+ * The generate cron's sweep across every active schedule. Genuinely not the
+ * constant above: it needs client_id to resolve each row's owner, and has no use
+ * for frequency_type. Named rather than left inline because the two had already
+ * drifted apart unnoticed — which is the whole reason this file exists.
+ */
+export const POSTING_SCHEDULE_DUE_COLUMNS =
+  'id, client_id, is_active, frequency_value, auto_generate_day, auto_generate_time'
 
 // agencies
 export const AGENCY_COLUMNS =
@@ -72,6 +88,17 @@ export const USER_AUTH_COLUMNS = 'agency_id, role'
 export const SOCIAL_CONNECTION_COLUMNS =
   'id, platform, account_id, account_name, token_expires_at, created_at'
 
+/**
+ * The credential read — the ONLY projection that pulls access_token, used by the
+ * four callers that must actually talk to Meta (publish, analytics, the publish
+ * scheduler, the performance source).
+ *
+ * Deliberately separate from SOCIAL_CONNECTION_COLUMNS, which omits the token so
+ * display reads cannot leak one. Keep it that way: widening the display constant
+ * to cover this would put a live token on every connections list.
+ */
+export const SOCIAL_CONNECTION_AUTH_COLUMNS = 'account_id, access_token, token_expires_at'
+
 // intelligence_briefings
 export const BRIEFING_COLUMNS =
   'briefing_text, action_nudge, weekly_tip, platform_updates, week_start, coaching_points'
@@ -81,6 +108,9 @@ export const LANGUAGE_RULES_COLUMNS = 'native_cta_phrases, formality_rules, lang
 
 // post_history
 export const POST_HISTORY_COLUMNS = 'topic_summary'
+
+/** The fields the exemplar bank reads to teach the writer this client's approved voice. */
+export const EXEMPLAR_COLUMNS = 'caption, slides_json, post_type, edited_at, created_at'
 
 // post_canvas_docs
 export const POST_CANVAS_DOC_COLUMNS = 'id, post_id, position, doc, created_at, updated_at'
@@ -92,6 +122,9 @@ export const VISUAL_BACKLOG_POST_COLUMNS =
 // post_images
 export const POST_IMAGE_COLUMNS =
   'id, post_id, public_url, storage_path, position, file_name, file_size, content_type, created_at'
+
+/** Just enough to delete a stored object: the row to remove and the blob it points at. */
+export const POST_IMAGE_STORAGE_COLUMNS = 'id, storage_path'
 
 // client_ideas
 // No agency_id or token_id: every read is already scoped by agency in its WHERE

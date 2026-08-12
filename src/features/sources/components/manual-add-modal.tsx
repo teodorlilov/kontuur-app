@@ -28,6 +28,9 @@ export function ManualAddInModal({ onAdd, isSaving }: ManualAddInModalProps) {
         placeholder="https://example.com/feed"
         className="rounded-lg border border-line2 px-3 py-1.5 text-lead md:text-body text-ink placeholder:text-text3 focus:border-spring focus:outline-none focus:ring-1 focus:ring-spring/12"
       />
+      <p className="text-caption text-text3">
+        It will feed every pillar until you limit its topics.
+      </p>
       <Button
         size="sm"
         loading={isSaving}

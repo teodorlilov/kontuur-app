@@ -4,9 +4,11 @@ export const MS_PER_HOUR = 3_600_000
 export const MS_PER_DAY = 86_400_000
 
 /**
- * Minimum quality_score_avg for a post to enter the review queue.
- * Posts below this score are discarded before the agency sees them.
- * Set to 0 to disable filtering.
+ * Minimum quality_score_avg for a pending post to be worth spending image
+ * generation on. Nothing is discarded on score: generation ranks rather than
+ * gates, and triage routes a weak post to needs_attention where a human decides.
+ * This is only the visuals cron's spend gate — a null score is eligible, since an
+ * absent verdict means the judge never ran, which is not the post's fault.
  */
 export const QUALITY_FLOOR = 5
 export const MAX_POST_HISTORY_COUNT = 30
@@ -18,6 +20,8 @@ export const APPROVAL_TOKEN_EXPIRY_HOURS = 48
 /** A sourced post older than this is flagged in review — its source may no longer be current. */
 export const STALE_REVIEW_DAYS = 7
 export const BEST_TIME_REFRESH_DAYS = 30
+/** How often the cron re-distills a client's style memo from review edits. */
+export const STYLE_MEMO_REFRESH_DAYS = 7
 export const TRIAL_DAYS = 14
 export const MAX_RSS_ITEMS = 40
 export const TAVILY_API_URL = 'https://api.tavily.com/search'
@@ -129,6 +133,9 @@ export const POSTS_PER_RUN_OPTIONS = [1, 2, 3, 4, 5, 6, 7].map((n) => ({
   value: String(n),
   label: String(n),
 }))
+
+/** Run size assumed when a client has no posts_per_week set. */
+export const DEFAULT_RUN_SIZE = 3
 
 /**
  * Full-hour slots for the autonomous-generation time picker. The cron matches

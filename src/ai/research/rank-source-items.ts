@@ -178,9 +178,11 @@ export async function rankSourceItems(
       temperature: 0,
     })
 
-    const { rankings } = extractToolInput<{ rankings: Ranking[] }>(message)
+    // Schema passed so a rankings array returned as a JSON-encoded string is
+    // repaired rather than dropped — losing it silently reverts to unranked order.
+    const { rankings } = extractToolInput<{ rankings: Ranking[] }>(message, RANK_OUTPUT_SCHEMA)
     const byIndex = new Map<number, Ranking>()
-    for (const ranking of rankings ?? []) {
+    for (const ranking of Array.isArray(rankings) ? rankings : []) {
       if (typeof ranking.index === 'number') byIndex.set(ranking.index, ranking)
     }
 

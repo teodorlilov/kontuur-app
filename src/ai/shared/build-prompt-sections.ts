@@ -1,5 +1,6 @@
 import type { ClientData } from '@/lib/clients/fetch-client-data'
 import type { LanguageConfig } from '@/lib/clients/language-rules'
+import type { PostType } from '@/types/api'
 import { formatFormalityRules } from '@/ai/shared/formality-guidance'
 import {
   formatAiTells,
@@ -7,6 +8,7 @@ import {
   formatHealthRules,
 } from '@/ai/shared/content-criteria'
 import { ISSUE_TYPE_DEFINITIONS } from '@/ai/validation/criteria'
+import { LANGUAGE_STANDARDS } from '@/ai/shared/language-standards'
 import {
   sanitizePromptField,
   PROMPT_FIELD_LIMITS,
@@ -77,21 +79,50 @@ export function buildAiTells(language: string): string {
 }
 
 /**
- * The quality bar posts are validated against — injected into BOTH the
- * generation and validation prompts so the generator writes to the same
- * standard the validator grades. Derived from ISSUE_TYPE_DEFINITIONS
- * (single source), so the two can never drift apart again.
+ * The quality bar posts are written and graded against — the generation prompt
+ * carries it so the writer targets the same standard the validator applies.
+ * Derived from ISSUE_TYPE_DEFINITIONS (single source), so the two can never
+ * drift apart. Phrased per format: the old format-neutral wording put carousel
+ * instructions in every single-post prompt, and the writer sometimes obeyed
+ * them — emitting SLIDE-structured text as a single post's caption.
  */
-export function buildQualityBar(): string {
+export function buildQualityBar(format: PostType): string {
   const failureModes = Object.entries(ISSUE_TYPE_DEFINITIONS)
     .map(([type, desc]) => `- ${type.replaceAll('_', ' ')}: ${desc}`)
     .join('\n')
 
+  const hookRule =
+    format === 'carousel'
+      ? '- Hook (cover headline): name a specific mechanism, result, number, or named entity from the source material — never a topic label, greeting, or generic opener.'
+      : '- Hook (first line): name a specific mechanism, result, number, or named entity from the source material — never a topic label, greeting, or generic opener.'
+  const ctaRule =
+    format === 'carousel'
+      ? "- CTA: exactly one, with an action verb tied to a specific service, outcome, or destination. The actionable CTA lives in the LAST slide's BODY."
+      : '- CTA: exactly one, with an action verb tied to a specific service, outcome, or destination.'
+
   return `QUALITY BAR — every post is automatically validated against this standard; write to pass it the first time:
-- Hook (first line; carousels: cover headline): name a specific mechanism, result, number, or named entity from the source material — never a topic label, greeting, or generic opener.
-- CTA: exactly one, with an action verb tied to a specific service, outcome, or destination. For carousels the actionable CTA lives in the LAST slide's BODY.
+${hookRule}
+${ctaRule}
 - Failure modes that get posts flagged:
 ${failureModes}`
+}
+
+/**
+ * Native-writing rules for generation — LANGUAGE_STANDARDS rendered as writing
+ * imperatives, the same table the validation judge renders as checks, so the
+ * writer is told everything it will be graded on. The writer routinely works
+ * from English source material — web search and site extraction — so without
+ * these the judge is the only line of defense against translated-English
+ * phrasing, and it arrives after the text is written. Skipped for English
+ * clients: the standards are about crossing FROM English, and grammar/register
+ * are carried for English by the AI-tells and quality-bar sections.
+ */
+export function buildNativeWritingRules(lc: LanguageConfig): string {
+  if (lc.language.trim().toLowerCase() === 'english') return ''
+  const rules = LANGUAGE_STANDARDS.map((s) => `- ${s.write(lc.language)}`).join('\n')
+  return `WRITE NATIVE ${lc.language.toUpperCase()} — the validator grades every one of these; write to pass the first time:
+- The source material is often English. Re-express its ideas in natural ${lc.language}; a native reader must not be able to tell the post was written from English material.
+${rules}`
 }
 
 /**

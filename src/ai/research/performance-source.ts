@@ -3,6 +3,7 @@ import { fetchTopPerformingPosts } from '@/lib/meta/instagram-metrics'
 import { isTokenExpired } from '@/lib/meta/token-expiry'
 import type { IGPost } from '@/types/api'
 import type { PerformanceItem } from './types'
+import { SOCIAL_CONNECTION_AUTH_COLUMNS } from '@/lib/queries/select-columns'
 
 const PERFORMANCE_LOOKBACK_DAYS = 60
 const PERFORMANCE_TOP_N = 5
@@ -28,7 +29,7 @@ export async function fetchPerformanceItems(
   try {
     const { data: connection } = await supabase
       .from('social_connections')
-      .select('account_id, access_token, token_expires_at')
+      .select(SOCIAL_CONNECTION_AUTH_COLUMNS)
       .eq('client_id', clientId)
       .eq('platform', 'instagram')
       .maybeSingle()

@@ -1,10 +1,12 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { fetchBrandProfileByClient, fetchPostHistoryByClient } from '@/lib/queries/db'
+import type { ClientExemplars } from '@/lib/queries/db'
 import { getCachedLanguageRules } from '@/lib/queries/cache'
 import { toCarouselSwipeCues, toFormalityRulesData } from '@/lib/clients/language-rules'
 import type { LanguageConfig } from '@/lib/clients/language-rules'
 import { parsePillars, type WeightedPillar } from '@/lib/clients/content-pillars'
 import { MAX_POST_HISTORY_COUNT, DEFAULT_CAROUSEL_SLIDES } from '@/utils/constants'
+import { CLIENT_AI_CONTEXT_COLUMNS } from '@/lib/queries/select-columns'
 
 export interface ClientData {
   // from clients table
@@ -22,18 +24,20 @@ export interface ClientData {
   isHealthNiche: boolean | null
   defaultCarouselSlides: number
   defaultPostType: string | null
-  requireSourceGrounding: boolean
   languageNotes: string
   // assembled from language_rules
   languageConfig: LanguageConfig
   // from post_history
   postHistory: string[]
-}
-
-function parseRequireSourceGrounding(strategy: unknown): boolean {
-  return (
-    (strategy as { require_source_grounding?: boolean } | null)?.require_source_grounding ?? false
-  )
+  /**
+   * Voice exemplars for the writer's prompt. Attached server-side at the two
+   * generation entry points via fetchEngineContext — deliberately NOT assembled
+   * here: this shape rides the browser round-trip on the manual path, where the
+   * wire schema strips unknown keys and prompt text must not be caller-supplied.
+   */
+  exemplars?: ClientExemplars
+  /** Distilled review-correction rules — same attach path and rationale as exemplars. */
+  styleMemo?: string[]
 }
 
 /** The client identity buildClientData assembles from. */
@@ -72,7 +76,6 @@ export async function buildClientData(
     isHealthNiche: profile?.is_health_niche ?? null,
     defaultCarouselSlides: profile?.default_carousel_slides ?? DEFAULT_CAROUSEL_SLIDES,
     defaultPostType: profile?.default_post_type ?? null,
-    requireSourceGrounding: parseRequireSourceGrounding(profile?.source_strategy),
     languageNotes: profile?.language_notes ?? '',
     languageConfig: {
       language: client.language,
@@ -105,7 +108,7 @@ export async function fetchClientData(
   // user hunting for a client that is actually there.
   const { data: rawClient, error } = await supabase
     .from('clients')
-    .select('id, name, niche, language')
+    .select(CLIENT_AI_CONTEXT_COLUMNS)
     .eq('id', clientId)
     .eq('agency_id', agencyId)
     .maybeSingle()

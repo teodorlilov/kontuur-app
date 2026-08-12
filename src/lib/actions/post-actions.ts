@@ -173,6 +173,12 @@ export async function persistRewrite(
   const updates: Record<string, unknown> = {
     caption: parsed.data.caption,
     slides_json: parsed.data.slides_json,
+    // Re-baseline the AI text: a rewrite's delta is the AI's, not the
+    // reviewer's, so the edit-diff (caption vs generated_caption) must reset —
+    // and updating these in the same statement is what tells the edited_at
+    // trigger this was not a human edit.
+    generated_caption: parsed.data.caption,
+    generated_slides_json: parsed.data.slides_json,
     quality_score_avg: parsed.data.quality_score_avg,
     was_rewritten: true,
     rewrite_count: rewriteCount,

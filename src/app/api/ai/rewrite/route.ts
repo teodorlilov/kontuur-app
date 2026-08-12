@@ -4,12 +4,13 @@ import { fetchClientData } from '@/lib/clients/fetch-client-data'
 import { checkRateLimit, AI_RATE_LIMIT } from '@/lib/auth/rate-limit'
 import { performRewrite } from '@/ai/rewrite/rewrite-post'
 import type { PostType } from '@/types/api'
+import type { SlideText } from '@/types/slide'
 
 interface RewriteRequestBody {
   clientId: string
   caption: string
   postType: PostType
-  slidesJson?: Array<{ headline: string; body: string }>
+  slidesJson?: SlideText[]
   aiTells?: string[]
   qualityIssues?: string[]
   platform?: string

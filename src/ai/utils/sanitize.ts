@@ -28,3 +28,20 @@ export function sanitizePromptField(
   if (!value) return ''
   return value.trim().slice(0, maxLength).replace(/</g, '&lt;').replace(/>/g, '&gt;')
 }
+
+/**
+ * Strip markdown syntax from generated post text before it becomes a draft.
+ *
+ * The writer sees source material as markdown (website extraction, web search)
+ * and mimics it, but captions publish as plain text — a leading "#" or "**"
+ * reaches Instagram verbatim. Deliberately narrow: heading markers, paired
+ * bold/emphasis markers and inline code only. Dashes and "- " lists stay,
+ * because a dash list in a caption is usually the writer's intent, not syntax.
+ */
+export function stripMarkdownArtifacts(text: string): string {
+  return text
+    .replace(/^#{1,6}\s+/gm, '')
+    .replace(/\*\*([^*]+)\*\*/g, '$1')
+    .replace(/__([^_]+)__/g, '$1')
+    .replace(/`([^`]+)`/g, '$1')
+}

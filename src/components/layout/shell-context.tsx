@@ -18,7 +18,7 @@ import type { EnrichedNotification } from '@/types/api'
 /**
  * Split out of this bundle rather than imported at the top of the file. The
  * palette pulls in Radix Dialog, and this provider mounts on every dashboard
- * page — a top-level import made all seven routes pay ~40kB for a dialog most
+ * page — a top-level import made every dashboard route pay ~40kB for a dialog most
  * visits never open. The ⌘K listener lives here instead (see usePaletteHotkey),
  * so the shortcut still works before the chunk has been fetched.
  */
@@ -215,8 +215,8 @@ interface ShellProviderProps {
 }
 
 /**
- * Holds the app-shell state the page header reads, so nine pages do not each
- * thread the same props. Mounted in the dashboard layout, which is what lets
+ * Holds the app-shell state the page header reads, so every dashboard page does
+ * not thread the same props. Mounted in the dashboard layout, which is what lets
  * the notifications channel survive navigation.
  */
 export function ShellProvider({

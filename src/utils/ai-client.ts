@@ -9,8 +9,12 @@ export const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 })
 
-export const DEFAULT_MODEL = 'claude-sonnet-4-5'
-/** Lighter model for analytical/extraction tasks (pillars, sources, best-time, URL analysis) */
+export const DEFAULT_MODEL = 'claude-sonnet-5'
+/**
+ * Lighter model for everything that judges, ranks or extracts rather than writes —
+ * validation, source ranking, style-memo distillation, suggestions, best-time,
+ * URL analysis. It is also the only model these calls may set `temperature` on.
+ */
 export const LIGHT_MODEL = 'claude-haiku-4-5'
 export const DEFAULT_MAX_TOKENS = 4096
 
@@ -27,11 +31,30 @@ export interface CallAnthropicOptions {
   conversationHistory?: MessageParam[]
   /** Called for each text token as it streams from the API. */
   onToken?: (text: string) => void
-  /** Sampling temperature. Judging/validation calls run at 0 for consistent verdicts. */
+  /**
+   * Sampling temperature. Judging/validation calls run at 0 for consistent verdicts.
+   * 5-series models (Sonnet 5, Opus 5) reject non-default values with a 400 —
+   * only set this on LIGHT_MODEL calls.
+   */
   temperature?: number
   /**
-   * When provided, forces tool use with this JSON Schema as the output schema.
-   * The API guarantees the response is valid JSON matching the schema — no parsing required.
+   * Extended-thinking override. Omitted → thinking is explicitly DISABLED:
+   * 5-series models turn adaptive thinking ON when the field is absent, and
+   * thinking tokens count against max_tokens — which silently truncates
+   * forced-tool output sized to tight budgets (a truncated tool call kills the
+   * whole theme). Callers that want thinking must opt in deliberately.
+   */
+  thinking?: { type: 'enabled'; budget_tokens: number } | { type: 'disabled' }
+  /**
+   * When provided, forces tool use with this JSON Schema as the output schema,
+   * so the response arrives as structured JSON rather than free text.
+   *
+   * The shape is NOT enforced: the tool is declared without `strict: true`, so
+   * the schema steers the model without constraining decoding. Callers must
+   * still guard against missing fields. Turning strict on is not a one-line
+   * change — it requires `additionalProperties: false` on every object and the
+   * removal of every minItems/maxItems, which strict mode does not support.
+   *
    * Incompatible with assistantPrefill.
    */
   outputSchema?: { type: 'object'; properties?: Record<string, unknown>; required?: string[]; [key: string]: unknown }
@@ -65,6 +88,7 @@ export async function callAnthropic(opts: CallAnthropicOptions): Promise<Message
     onToken,
     outputSchema,
     temperature,
+    thinking = { type: 'disabled' as const },
   } = opts
 
   const messages: MessageParam[] = [...conversationHistory, { role: 'user', content: userMessage }]
@@ -75,6 +99,7 @@ export async function callAnthropic(opts: CallAnthropicOptions): Promise<Message
   const requestParams = {
     model,
     max_tokens: maxTokens,
+    thinking,
     ...(temperature !== undefined && { temperature }),
     ...(systemPrompt && {
       system: cacheSystemPrompt

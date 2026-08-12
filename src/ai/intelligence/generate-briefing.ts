@@ -44,10 +44,16 @@ Be specific and current. Each bullet point should be a complete sentence under 2
 
 export async function generateBriefing(input: BriefingInput): Promise<BriefingResult> {
   try {
+    // Raw client (web-search tool isn't part of callAnthropic's contract), so the
+    // 5-series gotchas are handled here too: thinking defaults ON and eats
+    // max_tokens, and the web-search tool version is paired to the model tier.
+    // A 400 here is swallowed by the catch as "no news this week" — keep these in
+    // sync with DEFAULT_MODEL bumps.
     const response = await anthropic.messages.create({
       model: DEFAULT_MODEL,
       max_tokens: 2048,
-      tools: [{ type: 'web_search_20250305' as const, name: 'web_search' }],
+      thinking: { type: 'disabled' },
+      tools: [{ type: 'web_search_20260209' as const, name: 'web_search' }],
       messages: [{ role: 'user', content: buildPrompt(input) }],
     })
 

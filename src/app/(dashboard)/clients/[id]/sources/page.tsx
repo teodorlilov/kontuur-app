@@ -6,7 +6,7 @@ import { SourcesManager } from '@/features/sources/components/sources-manager'
 import { fetchClientById, fetchSourceUsageStats } from '@/lib/queries/db'
 import { parsePillarsWithMeta, serializePillars } from '@/lib/clients/content-pillars'
 import { CLIENT_SOURCE_FULL_COLUMNS } from '@/lib/queries/select-columns'
-import type { ClientSource, SourceStrategy } from '@/types/api'
+import type { ClientSource } from '@/types/api'
 
 export default async function ClientSourcesPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -29,7 +29,7 @@ export default async function ClientSourcesPage({ params }: { params: Promise<{ 
       .order('created_at', { ascending: false }),
     supabase
       .from('brand_profiles')
-      .select('source_strategy, content_pillars')
+      .select('content_pillars')
       .eq('client_id', id)
       .maybeSingle(),
     // Stats are decorative: the page is still usable without them, so a failure
@@ -47,13 +47,13 @@ export default async function ClientSourcesPage({ params }: { params: Promise<{ 
     throw new Error(`brand profile query failed: ${profileResult.error.message}`)
   }
 
-  // Cast through unknown — pillar_ids column added by migration, not yet in generated Supabase types
+  // WHY as: ClientSource narrows what the generated types leave wide — `type` to its
+  // four-value union, and the jsonb `pillar_ids`/`config` to the shapes every writer
+  // in the app actually stores. A narrowing cast, not a missing-column workaround.
   const initialSources = (sourcesResult.data as unknown as ClientSource[] | null) ?? []
   const profile = profileResult.data as {
-    source_strategy: unknown
     content_pillars: string | null
   } | null
-  const sourceStrategy = (profile?.source_strategy as SourceStrategy | null) ?? {}
   const { pillars, hadMissingIds } = parsePillarsWithMeta(profile?.content_pillars ?? null)
 
   // A lazy backfill for clients that predate pillar ids, so it runs on first open.
@@ -80,9 +80,9 @@ export default async function ClientSourcesPage({ params }: { params: Promise<{ 
       clientName={client.name}
       niche={client.niche ?? ''}
       initialSources={initialSources}
-      initialSourceStrategy={sourceStrategy}
       pillars={pillars}
       usageStats={usageStats}
+      postsPerWeek={client.posts_per_week ?? 0}
     />
   )
 }

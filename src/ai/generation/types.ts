@@ -15,7 +15,6 @@ export interface GenerationInput {
   sourceExcerpt?: string
   sourceFullText?: string
   sourceUrl?: string | null
-  requireSourceGrounding?: boolean
   similarPastThemes?: string[]
   brief?: string
   targetDate?: string
@@ -112,17 +111,19 @@ export interface GenerationRunContext {
   platform: string
   postType: PostType
   slideCount?: number
-  requireSourceGrounding: boolean
   themes: Theme[]
   trackTheme: (theme: EnrichedTheme, postCount: number) => Promise<void>
   /** Called immediately when each theme's result is ready. Used for streaming responses. */
   onResult?: (result: GenerationResult) => void
   /**
-   * Called as each theme moves through writing and then judging.
+   * Called as each theme moves through writing, judging, and (rarely) the
+   * bounded refine round.
    *
-   * Carries which of the two it is, because judging was previously silent: the
+   * Carries which phase it is, because judging was previously silent: the
    * progress rail's "Quality checks" stage was unreachable for the whole run, and
    * the judge call — the slowest thing after writing — was entirely unnarrated.
+   * 'refining' needs no wire/UI change: the stream route maps every non-writing
+   * phase onto the existing quality stage.
    */
-  onProgress?: (theme: string, phase: 'writing' | 'validating') => void
+  onProgress?: (theme: string, phase: 'writing' | 'validating' | 'refining') => void
 }

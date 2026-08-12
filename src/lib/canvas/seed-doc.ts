@@ -8,6 +8,7 @@ import type { Palette } from '@/types/visual'
 import { getBrandStyle } from '@/lib/visual/brand-styles'
 import { clampAtWordBoundary, sanitizePromptText } from '@/lib/visual/prompt'
 import { CANVAS_DOC_VERSION, CANVAS_HEIGHT, CANVAS_WIDTH } from './constants'
+import type { SlideText } from '@/types/slide'
 
 /** Captions are generated hook-first, so sentence one is the designed hook; keep it slide-sized. */
 const HOOK_MAX_CHARS = 90
@@ -38,7 +39,7 @@ interface SeedInput {
   identity: SeedIdentity
   background: CanvasBackgroundRef
   /** Carousel copy for this position; omit for single posts. */
-  slide?: { headline: string; body: string }
+  slide?: SlideText
   /** Single-post caption; its hook becomes the one seeded headline. */
   caption?: string | null
 }

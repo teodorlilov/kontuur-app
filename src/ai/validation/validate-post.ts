@@ -8,7 +8,15 @@ import {
   computeLanguageScore,
   deriveSlopFromQuality,
 } from '@/ai/validation/content-rules/compute-scores'
-import { checkCarouselStructure } from '@/ai/validation/content-rules/check-structure'
+import {
+  checkCarouselStructure,
+  checkSingleFormat,
+} from '@/ai/validation/content-rules/check-structure'
+import {
+  validateLanguageFocus,
+  mergeLanguageVerdicts,
+  type LanguageFocusResult,
+} from '@/ai/validation/prompts/language-focus'
 import { deriveSourceGroundingResult } from '@/ai/validation/correction-utils'
 import type { ClientData } from '@/lib/clients/fetch-client-data'
 import type {
@@ -17,6 +25,7 @@ import type {
   PostValidationResult,
   LanguageValidationResult,
 } from '@/ai/validation/types'
+import type { SlideText } from '@/types/slide'
 
 export interface SourceContext {
   excerpt: string
@@ -25,7 +34,7 @@ export interface SourceContext {
 
 export interface ValidatePostInput {
   caption: string
-  slides?: Array<{ headline: string; body: string }>
+  slides?: SlideText[]
   client: ClientData
   platform: string
   sourceContext?: SourceContext
@@ -54,6 +63,16 @@ const LANGUAGE_FALLBACK: LanguageValidationResult = {
   corrected_text: null,
 }
 
+/**
+ * Code structure check for a single post — non-null only on failure, so passing
+ * singles keep `structure_followed: null` (the stored shape the review UI reads
+ * as "not a carousel") and only a caption masquerading as a carousel surfaces.
+ */
+function singleFormatFailure(caption: string): { passes: boolean; notes: string[] } | null {
+  const result = checkSingleFormat(caption)
+  return result.passes ? null : result
+}
+
 // Haiku sometimes returns the full checklist with PASS/FAIL prefixes despite
 // being asked for failures only — keep only genuine failure notes
 function toFailureNotes(notes: string[]): string[] {
@@ -62,25 +81,35 @@ function toFailureNotes(notes: string[]): string[] {
     .map((note) => note.replace(/^\s*(FAIL|CAUTION)\s*[:—-]\s*/i, ''))
 }
 
-/** Assemble the final result from one raw LLM response — pure, no LLM calls. */
+/** Assemble the final result from the raw LLM responses — pure, no LLM calls. */
 function assemblePostValidation(
   qualityRaw: LlmQualityResponse | null,
   hasSource: boolean,
-  codeStructure: { passes: boolean; notes: string[] } | null = null
+  codeStructure: { passes: boolean; notes: string[] } | null = null,
+  languageFocus: LanguageFocusResult | null = null
 ): PostValidationResult {
-  // One judge, one corrected text. This used to be two parallel calls whose
-  // corrections both landed on the same caption, with language applied last — so a
-  // language rewrite silently reinstated a fabricated statistic the grounding pass
-  // had just removed, over text the language judge had never seen.
-  const languageIssues = qualityRaw?.language_issues ?? []
-  const lang: LanguageValidationResult = qualityRaw
+  // The merged judge's language verdict, overlaid by the focused proofreader
+  // when one ran (non-English clients): the eleven-job judge demonstrably
+  // misses anglicisms it scores 10/10, and everything downstream — corrections,
+  // the refine loop — keys off these issues existing.
+  const verdict = qualityRaw
+    ? mergeLanguageVerdicts(
+        {
+          issues: qualityRaw.language_issues ?? [],
+          corrected_text: qualityRaw.corrected_text,
+          corrected_slides: qualityRaw.corrected_slides,
+        },
+        languageFocus
+      )
+    : languageFocus
+      ? mergeLanguageVerdicts({ issues: [], corrected_text: null, corrected_slides: null }, languageFocus)
+      : null
+  const lang: LanguageValidationResult = verdict
     ? {
-        ...computeLanguageScore({ issues: languageIssues }),
-        issues: languageIssues,
-        corrected_text: qualityRaw.corrected_text,
-        ...(qualityRaw.corrected_slides !== undefined
-          ? { corrected_slides: qualityRaw.corrected_slides }
-          : {}),
+        ...computeLanguageScore({ issues: verdict.issues }),
+        issues: verdict.issues,
+        corrected_text: verdict.corrected_text,
+        ...(verdict.corrected_slides !== null ? { corrected_slides: verdict.corrected_slides } : {}),
       }
     : LANGUAGE_FALLBACK
   // Structure verdict merges code-counted checks (word counts, cover body —
@@ -152,9 +181,40 @@ function assemblePostValidation(
   }
 }
 
+/** The focused proofreader runs only where the leak exists — crossing FROM English. */
+function needsLanguageFocus(client: ClientData): boolean {
+  return client.languageConfig.language.trim().toLowerCase() !== 'english'
+}
+
 /**
- * Unified validation for both single posts and carousels — one LLM call covering
- * quality, source grounding and language.
+ * The text the proofreader should read: the grader's corrected version when it
+ * produced one, else the original.
+ *
+ * This is what makes the two calls sequential rather than parallel. The grader is
+ * the only call that sees the source material, so its corrected text carries
+ * factual fixes the proofreader cannot reproduce. Running them side by side
+ * produced two competing rewrites and the merge kept the proofreader's, silently
+ * dropping every fact the grader had repaired. Chaining them makes the
+ * proofreader's output a superset — language fixes applied on top of corrected
+ * facts — so `mergeLanguageVerdicts` preferring it is now correct.
+ */
+function textForProofreader(
+  input: { caption: string; slides?: SlideText[] },
+  qualityRaw: LlmQualityResponse | null,
+  isCarousel: boolean
+): { caption: string; slides?: SlideText[] } {
+  const caption = qualityRaw?.corrected_text ?? input.caption
+  if (!isCarousel) return { caption }
+  return { caption, slides: qualityRaw?.corrected_slides ?? input.slides }
+}
+
+/**
+ * Unified validation for both single posts and carousels: the grader (quality,
+ * source grounding, language) first, then — for non-English clients only — a
+ * focused native proofreader over the grader's corrected text.
+ *
+ * The two calls are sequential by design; see textForProofreader. Cost is one
+ * extra round trip per post on non-English clients.
  */
 export async function validatePost(input: ValidatePostInput): Promise<PostValidationResult> {
   const isCarousel = !!input.slides && input.slides.length > 0
@@ -172,15 +232,31 @@ export async function validatePost(input: ValidatePostInput): Promise<PostValida
     return null
   })
 
-  const codeStructure = isCarousel ? checkCarouselStructure(input.caption, input.slides!) : null
+  const focus = needsLanguageFocus(input.client)
+    ? await validateLanguageFocus(
+        textForProofreader(input, qualityRaw, isCarousel),
+        input.client.languageConfig
+      ).catch((err) => {
+        console.error(`[${input.label}] language focus failed:`, err)
+        return null
+      })
+    : null
 
-  return assemblePostValidation(qualityRaw, !!input.sourceContext, codeStructure)
+  const codeStructure = isCarousel
+    ? checkCarouselStructure(input.caption, input.slides!)
+    : singleFormatFailure(input.caption)
+
+  return assemblePostValidation(qualityRaw, !!input.sourceContext, codeStructure, focus)
 }
 
 /**
- * Validate N single-post variants of one theme in ONE LLM call.
+ * Validate N single-post variants of one theme in ONE grader call.
  * A failed call degrades ALL items in this theme to the same fallbacks the
  * per-post path uses — accepted trade-off for the N → 1 request reduction.
+ *
+ * The proofreader pass then runs per caption over the grader's corrections, for
+ * the reason in textForProofreader. Those N calls stay parallel with each other,
+ * so the batch costs two sequential steps rather than N + 1.
  */
 export async function validatePostsBatch(
   input: ValidatePostsBatchInput
@@ -197,7 +273,26 @@ export async function validatePostsBatch(
     return input.captions.map(() => null)
   })
 
-  return input.captions.map((_, i) =>
-    assemblePostValidation(results[i] ?? null, !!input.sourceContext)
+  const focusResults = needsLanguageFocus(input.client)
+    ? await Promise.all(
+        input.captions.map((caption, i) =>
+          validateLanguageFocus(
+            textForProofreader({ caption }, results[i] ?? null, false),
+            input.client.languageConfig
+          ).catch((err) => {
+            console.error(`[${input.label}] language focus failed:`, err)
+            return null
+          })
+        )
+      )
+    : input.captions.map(() => null)
+
+  return input.captions.map((caption, i) =>
+    assemblePostValidation(
+      results[i] ?? null,
+      !!input.sourceContext,
+      singleFormatFailure(caption),
+      focusResults[i] ?? null
+    )
   )
 }

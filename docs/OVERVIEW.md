@@ -385,7 +385,12 @@ per-pillar source mapping; language + formality controls; health-niche complianc
 
 **Research sources** — Per-client RSS feeds, crawled websites (sitemap/subpage discovery via
 Jina), uploaded files (PDF/text, extracted + summarised), and Tavily web search. A stepper
-wizard and sources manager handle discovery, pillar assignment, and strategy toggles.
+wizard handles discovery; the sources manager is a two-column page — source cards on the left,
+each with a FEEDS row of toggleable pillar chips (empty assignment = feeds all pillars), and a
+"next run" rail on the right rendering the generate panel's content mix from the current
+configuration plus the strict-mode toggle. Pillar coverage is one shared three-state model
+(`computePillarCoverage`: content / web / none) used by the run panel, this page, and the
+research pre-skip.
 
 **Post generation** — Single posts and carousels across Instagram, Facebook, LinkedIn,
 X/Twitter, and TikTok. Theme-based, source-grounded, deduplicated, with a streaming wizard,

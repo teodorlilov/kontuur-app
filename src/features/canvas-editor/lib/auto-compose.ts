@@ -6,10 +6,11 @@ import { composeDoc } from './compose'
 import { saveDraftCanvas, savePostCanvas } from './save-canvas'
 import { fetchCanvasState } from './canvas-state-client'
 import type { DraftVisualResult, SlideCopy } from '../types'
+import type { SlideText } from '@/types/slide'
 
 // SlideCopy union → the slide/caption fields seedCanvasDoc and applyCopyToDoc expect.
 function copyFields(slideCopy: SlideCopy): {
-  slide?: { headline: string; body: string }
+  slide?: SlideText
   caption?: string | null
 } {
   return {

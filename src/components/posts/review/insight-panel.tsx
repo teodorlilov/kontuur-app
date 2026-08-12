@@ -45,6 +45,8 @@ export function InsightPanel({
   // Diagnosis → treatment: the rewrite lives beside the findings it fixes.
   const showRewrite = lowAuthenticity || slop.ai_tells_found.length > 0 || low || unscored
   const [showFixes, setShowFixes] = useState(false)
+  const appliedFixes = language.issues.filter((issue) => issue.applied !== false)
+  const unappliedFixes = language.issues.filter((issue) => issue.applied === false)
 
   return (
     <aside className="overflow-hidden rounded-card border border-ink/[0.05] bg-surface">
@@ -158,9 +160,14 @@ export function InsightPanel({
         </section>
       )}
 
-      {/* ── Language fixes — a receipt, not a warning: the pipeline already
-          applied these corrections to the copy before it reached review. ── */}
-      {language.issues.length > 0 && (
+      {/* ── Language fixes — applied ones are a receipt, not a warning: the
+          pipeline corrected the copy before it reached review. Issues whose
+          quoted phrase was never found could NOT be fixed and stay visible —
+          hiding them behind the receipt is how a language score of 1 shipped
+          under a "fixes applied" checkmark. `applied` is absent on rows stored
+          before the stamp existed; those read as applied, which is what the
+          panel already claimed for them. ── */}
+      {appliedFixes.length > 0 && (
         <section className="border-t border-line p-4">
           <button
             type="button"
@@ -170,7 +177,7 @@ export function InsightPanel({
           >
             <Check aria-hidden className="size-3.5 flex-none text-forest" strokeWidth={2} />
             <span className="min-w-0 flex-1 text-caption text-text2">
-              {language.issues.length} language fix{language.issues.length === 1 ? '' : 'es'} applied
+              {appliedFixes.length} language fix{appliedFixes.length === 1 ? '' : 'es'} applied
               automatically
             </span>
             <ChevronDown
@@ -183,7 +190,7 @@ export function InsightPanel({
           </button>
           {showFixes && (
             <div className="mt-3 flex flex-col gap-2">
-              {language.issues.map((issue, i) => (
+              {appliedFixes.map((issue, i) => (
                 <div key={i} className="rounded-sm bg-sunken p-2 text-micro text-text2">
                   <span className="mb-1 block text-label font-semibold uppercase text-text3">
                     {issue.type.replaceAll('_', ' ')}
@@ -196,6 +203,29 @@ export function InsightPanel({
               ))}
             </div>
           )}
+        </section>
+      )}
+      {unappliedFixes.length > 0 && (
+        <section className="border-t border-line p-4">
+          <div className="flex items-center gap-2">
+            <AlertCircle aria-hidden className="size-3.5 flex-none text-pending" strokeWidth={2} />
+            <span className="min-w-0 flex-1 text-caption text-text2">
+              {unappliedFixes.length} language issue{unappliedFixes.length === 1 ? '' : 's'} could
+              not be fixed automatically — check the copy
+            </span>
+          </div>
+          {/* Never collapsed: an unresolved issue is the panel's reason to exist. */}
+          <div className="mt-3 flex flex-col gap-2">
+            {unappliedFixes.map((issue, i) => (
+              <div key={i} className="rounded-sm bg-sunken p-2 text-micro text-text2">
+                <span className="mb-1 block text-label font-semibold uppercase text-text3">
+                  {issue.type.replaceAll('_', ' ')}
+                </span>
+                <span className="text-text2">{issue.issue_description}</span>{' '}
+                <span className="font-medium text-ink">→ {issue.suggested_fix}</span>
+              </div>
+            ))}
+          </div>
         </section>
       )}
 

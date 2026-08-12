@@ -22,6 +22,11 @@ interface ApproveDraftInput {
  * payload. `status` derives from `scheduledAt` — the server stores it verbatim
  * and the calendar reads it. Every approve path (single, approve-all) goes
  * through here so the body cannot drift between them.
+ *
+ * Returns the SAVED row's id (null = not approved). The draft's own id never
+ * reaches the database — the insert generates a fresh one — so anything that
+ * references the post afterwards (the idea link) must use this id; using the
+ * draft id is a foreign-key violation.
  */
 export async function approveDraft({
   post,
@@ -29,7 +34,7 @@ export async function approveDraft({
   slidesJson,
   scheduledAt,
   images,
-}: ApproveDraftInput): Promise<boolean> {
+}: ApproveDraftInput): Promise<string | null> {
   try {
     const res = await fetch('/api/posts', {
       method: 'POST',
@@ -47,8 +52,10 @@ export async function approveDraft({
         ...(images.length > 0 ? { images } : {}),
       }),
     })
-    return res.ok
+    if (!res.ok) return null
+    const data = (await res.json()) as { post?: { id?: string } }
+    return data.post?.id ?? null
   } catch {
-    return false
+    return null
   }
 }

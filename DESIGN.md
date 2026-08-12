@@ -193,7 +193,7 @@ A botanical ramp on warm paper: greens carry all brand meaning, and the two stat
 ### Primary
 
 - **Deep Pine** (`#164430`): The brand green. Primary buttons, active navigation, links, published status text. The default answer whenever an element must read as "Kontuur".
-- **Pine Deep** (`#0c2e20`): Hover state for Deep Pine, and the ground for dark surfaces — the dark stat capsule, the onboarding rail, the sidebar outside the app shell.
+- **Pine Deep** (`#0c2e20`): Hover state for Deep Pine, and the ground for dark surfaces — the dark stat capsule, the onboarding rail, the sidebar outside the app shell, and the run-preview capsule (the generate run panel and the sources page's next-run rail — the same object seen from the doing and the configuring side). The lime Generate commitment inside it exists only on /generate; the sources rail previews and never commits.
 
 ### Secondary
 
@@ -223,6 +223,7 @@ A botanical ramp on warm paper: greens carry all brand meaning, and the two stat
 
 - **Clay** (`#b04a38`) on **Clay Background** (`#fbefec`): Errors and destructive actions.
 - **Amber** (`#8a6116`) on **Amber Background** (`#f7efdc`): Pending, waiting, needs attention.
+- **Amber Lite** (`#d6ae5e`): Amber's word on Pine Deep — full-strength Amber is illegible there. The same relationship Living Green Lite has to Living Green.
 
 ### Client Identity
 

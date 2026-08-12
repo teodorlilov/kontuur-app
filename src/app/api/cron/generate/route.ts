@@ -5,7 +5,7 @@ import {
   getAgencyNiche,
   extractPlatformFromMix,
 } from '@/lib/clients/fetch-client-data'
-import { countPendingPostsByClients } from '@/lib/queries/db'
+import { countPendingPostsByClients, fetchEngineContext } from '@/lib/queries/db'
 import { runGenerationBatch } from '@/ai/generation/generation-orchestrator'
 import { toTheme } from '@/ai/generation/to-theme'
 import { draftColumns } from '@/lib/generation/draft-columns'
@@ -15,11 +15,13 @@ import { generateBriefing } from '@/ai/intelligence/generate-briefing'
 import { generateSoloCoaching } from '@/ai/solo-coaching/generate-coaching'
 import { generateBestTime } from '@/ai/best-time/generate-best-time'
 import { getMondayISO } from '@/utils/date-helpers'
-import { BEST_TIME_REFRESH_DAYS, DEFAULT_CAROUSEL_SLIDES } from '@/utils/constants'
+import { BEST_TIME_REFRESH_DAYS, DEFAULT_CAROUSEL_SLIDES, STYLE_MEMO_REFRESH_DAYS } from '@/utils/constants'
+import { distillStyleMemo } from '@/ai/learning/distill-style-memo'
 import { fetchScheduleContext, getScheduleDue } from './helpers'
 import type { PostType } from '@/types/api'
 import type { Theme } from '@/ai/generation/types'
 import type { Json } from '@/types/database'
+import { POSTING_SCHEDULE_DUE_COLUMNS } from '@/lib/queries/select-columns'
 
 export const maxDuration = 300
 
@@ -46,7 +48,7 @@ export async function GET(request: NextRequest) {
 
   const { data: schedules, error: schedulesError } = await supabase
     .from('posting_schedules')
-    .select('id, client_id, is_active, frequency_value, auto_generate_day, auto_generate_time')
+    .select(POSTING_SCHEDULE_DUE_COLUMNS)
     .eq('is_active', true)
   // No schedules and a failed schedule query both produce an empty due list, so
   // without this the cron reports a clean run on the day it generated nothing.
@@ -131,7 +133,10 @@ export async function GET(request: NextRequest) {
 
       const clientResult = await fetchClientData(supabase, clientId, agencyId)
       if ('error' in clientResult) continue
-      const client = clientResult.data
+      // Voice exemplars + learned memo attach at generation time only — engine
+      // context, never part of the browser-facing ClientData round-trip.
+      const { exemplars, styleMemo } = await fetchEngineContext(supabase, clientId)
+      const client = { ...clientResult.data, exemplars, styleMemo }
 
       const mixJson = (brandProfile?.weekly_mix_json ?? {}) as Record<string, unknown>
       const platform = extractPlatformFromMix(mixJson)
@@ -175,7 +180,6 @@ export async function GET(request: NextRequest) {
         platform,
         postType,
         slideCount,
-        requireSourceGrounding: client.requireSourceGrounding,
         themes,
         trackTheme: (theme, postCount) => trackGenerationTheme(supabase, runId, theme, postCount),
       })
@@ -268,6 +272,16 @@ export async function GET(request: NextRequest) {
           // so every later tick pays for a fresh LLM best-time call.
           if (bestTimeError) throw new Error(`best time write failed: ${bestTimeError.message}`)
         }
+
+        // Learn from the review queue on the same isolated footing as best-time:
+        // a distiller failure must never relabel the saved batch. The distiller
+        // itself skips when the memo is fresh or there are too few new edits,
+        // and only advances its cursor after a successful write.
+        await distillStyleMemo(supabase, clientId, {
+          language: client.language,
+          languageNotes: client.languageNotes,
+          skipIfFresherThanDays: STYLE_MEMO_REFRESH_DAYS,
+        })
       } catch (err) {
         console.error(`[cron] post-save follow-ups failed for client ${clientId}:`, err)
       }

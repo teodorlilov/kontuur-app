@@ -13,14 +13,21 @@ import { urlAnalysisResponseSchema } from '@/ai/analyze-url/schema'
  */
 export function extractToolInput<T>(
   message: Anthropic.Message,
-  schema?: { properties?: Record<string, { type?: string | string[] }> }
+  // Properties are `unknown` rather than `{ type?: ... }` so any real JSON Schema
+  // fits: a branch declared with `anyOf` carries no `type` of its own and would
+  // otherwise fail to match, which is what kept callers from passing their schema.
+  schema?: { properties?: Record<string, unknown> }
 ): T {
   const block = message.content.find((b): b is ToolUseBlock => b.type === 'tool_use')
   if (!block) throw new Error('[extractToolInput] No tool_use block in response')
   const input = block.input as Record<string, unknown>
   if (schema?.properties) {
     for (const [key, def] of Object.entries(schema.properties)) {
-      if (def.type === 'array' && typeof input[key] === 'string') {
+      // `type` may be a union — a nullable array is declared `['array','null']`,
+      // and matching only the bare string left every optional array unrepaired.
+      const type = (def as { type?: unknown })?.type
+      const isArrayType = type === 'array' || (Array.isArray(type) && type.includes('array'))
+      if (isArrayType && typeof input[key] === 'string') {
         input[key] = sanitizeAndParseJson(input[key] as string, [], 'array')
       }
     }

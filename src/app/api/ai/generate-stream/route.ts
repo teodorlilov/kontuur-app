@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
 import { generateStreamSchema } from '@/features/generate/schemas'
-import { fetchClientById } from '@/lib/queries/db'
+import { fetchClientById, fetchEngineContext } from '@/lib/queries/db'
 import { DEFAULT_CAROUSEL_SLIDES } from '@/utils/constants'
 import { checkRateLimit, AI_RATE_LIMIT } from '@/lib/auth/rate-limit'
 import { performResearch } from '@/ai/research/research-orchestrator'
@@ -69,7 +69,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Client not found' }, { status: 404 })
   }
 
-  const client = body.preloadedClientData
+  // Voice exemplars are fetched here, server-side, never trusted from the body:
+  // the wizard's clientDataSchema strips unknown keys, so a ride-along field
+  // would silently vanish on this path while cron kept it — and exemplar text
+  // feeds the prompt, so it must not be caller-controlled anyway.
+  const { exemplars, styleMemo } = await fetchEngineContext(supabase, body.clientId)
+  const client = { ...body.preloadedClientData, exemplars, styleMemo }
 
   const targetCount = body.targetPostCount + (body.priorityPosts?.length ?? 0)
   const runId = await startGenerationRun(supabase, {
@@ -95,9 +100,16 @@ export async function POST(request: Request) {
         // They used to bypass research entirely and reach generation with no source
         // at all — the identical gap client ideas had.
         const priorityPosts = body.priorityPosts ?? []
-        const briefs: TopicBrief[] = priorityPosts.map((pp) => ({
-          text: pp.brief ? `${pp.title}\n\n${pp.brief}` : pp.title,
-        }))
+        // The composed request — title plus any notes — is ONE text with two
+        // consumers: the planner's REQUESTED POSTS block and the theme's brief
+        // (the writer's PRIORITY BRIEF block). theme.brief used to carry only
+        // the notes, so an idea with no notes reached the writer with no trace
+        // of the client's words — a planner topic that drifted off the request
+        // went uncorrected ("scale our meta ads" shipped as an attribution post).
+        const briefTexts = priorityPosts.map((pp) =>
+          pp.brief ? `${pp.title}\n\n${pp.brief}` : pp.title
+        )
+        const briefs: TopicBrief[] = briefTexts.map((text) => ({ text }))
 
         // Run research — phase messages stream; topics collected for generation
         const topics: ResearchTopic[] = []
@@ -138,7 +150,7 @@ export async function POST(request: Request) {
           return {
             ...(planned ? toTheme(planned) : { description: toThemeTitle(pp.title), count: 1 }),
             isPriority: true,
-            brief: pp.brief,
+            brief: briefTexts[i],
             targetDate: pp.targetDate,
             // '' inherits the run platform — only a real override rides the theme.
             ...(pp.platform ? { platform: pp.platform } : {}),
@@ -154,7 +166,6 @@ export async function POST(request: Request) {
           platform: body.platform,
           postType: body.postType,
           slideCount: body.slideCount || client.defaultCarouselSlides || DEFAULT_CAROUSEL_SLIDES,
-          requireSourceGrounding: client.requireSourceGrounding,
           themes,
           trackTheme: (theme, postCount) => trackGenerationTheme(supabase, runId, theme, postCount),
           onResult: (result) => send({ type: 'result', data: result }),

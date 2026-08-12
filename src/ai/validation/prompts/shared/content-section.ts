@@ -1,3 +1,5 @@
+import type { SlideText } from '@/types/slide'
+
 export interface ContentSectionOpts {
   /** Tag name for the caption/post in single mode */
   singleTag: string
@@ -18,7 +20,7 @@ export interface ContentSectionOpts {
  */
 export function buildContentSection(
   text: string,
-  slides: Array<{ headline: string; body: string }> | undefined,
+  slides: SlideText[] | undefined,
   opts: ContentSectionOpts
 ): string {
   const isCarousel = !!slides?.length

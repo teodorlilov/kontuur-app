@@ -19,7 +19,6 @@ export type {
   SourceSuggestion,
   SuggestSourcesRequest,
   SuggestSourcesResponse,
-  SourceStrategy,
   DiscoverPagesRequest,
   DiscoverPagesResponse,
 } from './sources'

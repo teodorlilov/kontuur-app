@@ -53,7 +53,8 @@ interface ReviewViewProps {
   onEditedVisual: (draftId: string, visual: DraftVisual) => void
   onApplyStyleToAll: (post: PostData, sourcePosition: number, doc: CanvasDoc) => void
   /** Post-POST bookkeeping — the POST itself happens here, where edits live. */
-  onApproved: (postId: string) => void
+  /** `savedPostId` is the row the POST created — the draft id does not exist in `posts`. */
+  onApproved: (postId: string, savedPostId: string) => void
   onDiscarded: (postId: string) => void
   onRewritten: (postId: string, updatedPost: PostData, validation: ValidationData) => void
   onNewRun: () => void
@@ -150,19 +151,19 @@ export function ReviewView({
     const item = posts.find((p) => p.post.id === postId)
     if (!item) return false
     const edits = editsFor(item)
-    const ok = await approveDraft({
+    const savedPostId = await approveDraft({
       post: item.post,
       caption: edits.caption,
       slidesJson: edits.slidesJson,
       scheduledAt,
       images: completedDraftImages(visualsByDraft[postId]),
     })
-    if (ok) {
-      onApproved(postId)
+    if (savedPostId) {
+      onApproved(postId, savedPostId)
     } else {
       toast.error('Failed to approve post')
     }
-    return ok
+    return savedPostId !== null
   }
 
   async function handleScheduleConfirm(scheduledAt: string | null) {
@@ -322,8 +323,9 @@ export function ReviewView({
               visuals={visualsByDraft[focused.post.id]}
               positionInRun={`${focusedIndex + 1} of ${liveDrafts.length}`}
               // The draft's own platform, not the run's — a brief can override it.
+              // Requested posts carry no pillar; their origin is the label.
               metaLine={[
-                focused.post.pillar,
+                focused.post.priority ? 'Client idea' : focused.post.pillar,
                 focused.post.platform ?? runContext.platform,
                 runContext.postType,
               ]

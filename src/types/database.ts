@@ -497,6 +497,41 @@ export type Database = {
           },
         ]
       }
+      client_style_memos: {
+        Row: {
+          client_id: string
+          id: string
+          memo: Json
+          report: Json | null
+          reviewed_through: string
+          updated_at: string
+        }
+        Insert: {
+          client_id: string
+          id?: string
+          memo?: Json
+          report?: Json | null
+          reviewed_through?: string
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string
+          id?: string
+          memo?: Json
+          report?: Json | null
+          reviewed_through?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_style_memos_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: true
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clients: {
         Row: {
           agency_id: string
@@ -1097,7 +1132,10 @@ export type Database = {
           created_at: string
           design_json: Json | null
           design_overrides: Json | null
+          edited_at: string | null
           format: string
+          generated_caption: string | null
+          generated_slides_json: Json | null
           id: string
           ig_creation_id: string | null
           ig_media_id: string | null
@@ -1132,7 +1170,10 @@ export type Database = {
           created_at?: string
           design_json?: Json | null
           design_overrides?: Json | null
+          edited_at?: string | null
           format?: string
+          generated_caption?: string | null
+          generated_slides_json?: Json | null
           id?: string
           ig_creation_id?: string | null
           ig_media_id?: string | null
@@ -1167,7 +1208,10 @@ export type Database = {
           created_at?: string
           design_json?: Json | null
           design_overrides?: Json | null
+          edited_at?: string | null
           format?: string
+          generated_caption?: string | null
+          generated_slides_json?: Json | null
           id?: string
           ig_creation_id?: string | null
           ig_media_id?: string | null

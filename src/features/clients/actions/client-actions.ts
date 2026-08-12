@@ -82,7 +82,6 @@ export async function createClient(input: CreateClientInput): Promise<ActionResu
       language_formality: bp?.language_formality,
       secondary_language: bp?.secondary_language,
       is_health_niche: bp?.is_health_niche,
-      source_strategy: bp?.source_strategy,
       language_notes: bp?.language_notes,
     }),
     supabase.from('posting_schedules').insert({
@@ -233,7 +232,6 @@ async function updateBrandProfile(
   if (bp.language_formality !== undefined) updates.language_formality = bp.language_formality
   if (bp.secondary_language !== undefined) updates.secondary_language = bp.secondary_language
   if (bp.is_health_niche !== undefined) updates.is_health_niche = bp.is_health_niche
-  if (bp.source_strategy !== undefined) updates.source_strategy = bp.source_strategy
   if (bp.language_notes !== undefined) updates.language_notes = bp.language_notes
 
   if (Object.keys(updates).length === 0) return null

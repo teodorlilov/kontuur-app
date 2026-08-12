@@ -8,6 +8,17 @@ export type IdeaTab = (typeof IDEA_TABS)[number]
 export const DEFAULT_IDEA_TAB: IdeaTab = 'inbox'
 
 /**
+ * Ideas still waiting on a human decision.
+ *
+ * Read by the Inbox tab and by the sidebar badge, which is the point: the badge
+ * used to count its own `status = 'new'` predicate, so a stranded row could be in
+ * the number the sidebar showed or the list the tab showed, but not reliably both.
+ * One value today ('generating' was retired by 20260817), but the seam stays —
+ * the badge and the tab must never grow separate definitions of "awaiting" again.
+ */
+export const AWAITING_DECISION: readonly IdeaStatus[] = ['new']
+
+/**
  * The one definition of what each tab shows, and the only place a tab is mapped
  * to a status.
  *
@@ -22,17 +33,6 @@ export const DEFAULT_IDEA_TAB: IdeaTab = 'inbox'
  * value outside the union still appears under All rather than vanishing from
  * every tab at once.
  */
-/**
- * Ideas still waiting on a human decision.
- *
- * Read by the Inbox tab and by the sidebar badge, which is the point: the badge
- * used to count its own `status = 'new'` predicate, so a stranded row could be in
- * the number the sidebar showed or the list the tab showed, but not reliably both.
- * One value today ('generating' was retired by 20260817), but the seam stays —
- * the badge and the tab must never grow separate definitions of "awaiting" again.
- */
-export const AWAITING_DECISION: readonly IdeaStatus[] = ['new']
-
 const TAB_STATUSES: Record<IdeaTab, readonly IdeaStatus[] | null> = {
   inbox: AWAITING_DECISION,
   generated: ['generated'],

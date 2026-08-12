@@ -2,6 +2,7 @@ import 'server-only'
 
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
+import { POST_IMAGE_STORAGE_COLUMNS } from '@/lib/queries/select-columns'
 
 const BUCKET = 'post-images'
 
@@ -99,7 +100,7 @@ export async function replaceExistingImage(
 ): Promise<void> {
   const { data: existing } = await admin
     .from('post_images')
-    .select('id, storage_path')
+    .select(POST_IMAGE_STORAGE_COLUMNS)
     .eq('post_id', postId)
     .eq('position', position)
     .single()

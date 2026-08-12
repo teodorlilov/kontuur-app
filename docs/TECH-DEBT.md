@@ -616,6 +616,18 @@ left, with the audit's own ids so the reasoning is traceable.
 - **A client whose `fetchClientData` fails inside the cron loop vanishes with no trace** —
   no run row, no `results.errors` entry, no console line.
 
+### 7.11 Coverage-aware pre-skip can empty a cron batch (accepted)
+
+Since the 2026-08-11 pillar-coverage rework, `gatherSources` pre-skips any pillar
+whose coverage state is `none` — including when a topic-limited tavily source is
+active but limited away from it. A client whose *every* pillar is unservable now
+produces zero topics, and the cron run fails cleanly (`cron/generate/route.ts`
+already handles zero topics). Accepted rather than special-cased: that state is
+only reachable by deliberately topic-limiting every source away from every
+pillar, the sources page shows it loudly ("N pillars nothing feeds" + skipped
+rows in the rail), and stale-id assignments degrade to feeds-all rather than
+starving anything by accident.
+
 ### 7.10 Decisions and deferrals from the 2026-08-10 audit-fix round
 
 Recorded here because each one reverses or defers something the refactor plan

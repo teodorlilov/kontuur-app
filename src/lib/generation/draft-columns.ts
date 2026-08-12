@@ -25,6 +25,7 @@ export type DraftColumnSource = Pick<
   /** Carried un-narrowed, the same way PostData does — the column is structurally Json. */
   slides_json: unknown
   validation_json: unknown
+  generated_slides_json?: unknown
 } & Partial<
     Pick<
       PostRow,
@@ -35,6 +36,7 @@ export type DraftColumnSource = Pick<
       | 'source_excerpt'
       | 'client_source_id'
       | 'pillar'
+      | 'generated_caption'
     >
   >
 
@@ -52,6 +54,14 @@ export function draftColumns(post: DraftColumnSource) {
     // for all fourteen columns rather than these two.
     slides_json: (post.slides_json ?? null) as Json,
     validation_json: (post.validation_json ?? null) as Json,
+    // The AI's own text, kept for the edit-diff the learning loop reads. MUST
+    // coalesce: the wizard runs this builder twice — client-side over the
+    // pristine draft (captures the AI text), then server-side over the merged
+    // body where `caption` is already the reviewer's edit. Without the
+    // coalesce the second run would recompute the baseline from the edited
+    // text and erase the very divergence being captured.
+    generated_caption: post.generated_caption ?? post.caption,
+    generated_slides_json: (post.generated_slides_json ?? post.slides_json ?? null) as Json,
     quality_score_avg: post.quality_score_avg,
     topic_summary: post.topic_summary ?? null,
     source_url: post.source_url ?? null,

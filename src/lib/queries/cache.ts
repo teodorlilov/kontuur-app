@@ -159,7 +159,6 @@ export const getCachedNewIdeasCount = cache(_fetchNewIdeasCount)
 /** Whether a given day of a client's week is published, scheduled, or still open. */
 export type DayState = 'published' | 'scheduled' | 'open'
 
-
 /**
  * Statuses that mean a slot is filled but has not gone out yet. Exported so the
  * dashboard's "scheduled this week" count and this coverage grid can never
@@ -294,13 +293,14 @@ export const getCachedClientRoster = cache(_fetchClientRoster)
 const _fetchUpcomingByClient = unstable_cache(
   async (agencyId: string): Promise<PostSummary[]> => {
     const supabase = createAdminSupabaseClient()
-    // Evaluated at cache-fill time, not per request — harmless over a 60s TTL,
-    // and keeping it out of the arguments is what lets requests share the entry.
     const { data, error } = await supabase
       .from('posts')
       .select(UPCOMING_POST_COLUMNS)
       .in('status', SCHEDULED_STATUSES)
       .eq('clients.agency_id', agencyId)
+      // "Now" is evaluated at cache-fill time, not per request — harmless over a
+      // 60s TTL, and keeping it out of the arguments is what lets requests share
+      // the entry.
       .gte('scheduled_at', new Date().toISOString())
       .order('scheduled_at', { ascending: true })
     if (error) {

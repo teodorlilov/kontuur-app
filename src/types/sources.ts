@@ -33,10 +33,6 @@ export interface SuggestSourcesResponse {
   suggestions: SourceSuggestion[]
 }
 
-export interface SourceStrategy {
-  require_source_grounding?: boolean
-}
-
 export interface TavilyConfig {
   include_domains?: string[]
   exclude_domains?: string[]

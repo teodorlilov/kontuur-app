@@ -48,7 +48,7 @@ describe('computeRunPlan', () => {
   it('a source with empty pillar_ids feeds every pillar', () => {
     const plan = computeRunPlan({ ...base, sources: [source({ pillar_ids: [] })] })
     expect(plan.starvedPillars).toEqual([])
-    expect(plan.skipMode).toBeNull()
+    expect(plan.webOnlyPillars).toEqual([])
   })
 
   it('detects starved pillars from scoped sources', () => {
@@ -56,21 +56,46 @@ describe('computeRunPlan', () => {
     expect(plan.starvedPillars).toEqual(['AI marketing', 'Tips'])
   })
 
-  it('a tavily source makes skips soft but does not count as a content source', () => {
+  it('an unlimited tavily source keeps unfed pillars as web-only, never starved', () => {
     const plan = computeRunPlan({
       ...base,
       sources: [source({ pillar_ids: ['a'] }), source({ id: 's2', type: 'tavily' })],
     })
     expect(plan.webResearchActive).toBe(true)
-    // tavily's own (empty) pillar_ids must NOT mark every pillar as fed
-    expect(plan.starvedPillars).toEqual(['Google ads', 'AI marketing', 'Tips'])
-    expect(plan.skipMode).toBe('soft')
+    // tavily is not a content source: those pillars ride on the search landing
+    expect(plan.starvedPillars).toEqual([])
+    expect(plan.webOnlyPillars).toEqual(['Google ads', 'AI marketing', 'Tips'])
+    expect(plan.allocation.map((a) => a.coverage)).toEqual(['content', 'web', 'web', 'web'])
+  })
+
+  it("a pillar assigned in tavily's own topic limit is web, never starved", () => {
+    // The panel used to ignore the Topics assignment on the web research card
+    // and show "no sources" for pillars deliberately routed to it.
+    const plan = computeRunPlan({
+      ...base,
+      sources: [source({ id: 's2', type: 'tavily', pillar_ids: ['a', 'b'] })],
+    })
+    expect(plan.webOnlyPillars).toEqual(['Meta ads', 'Google ads'])
+    expect(plan.starvedPillars).toEqual(['AI marketing', 'Tips'])
+    // The run redistributes: skipped pillars carry no count, fed pillars carry
+    // the whole target — a count on a "skipped" row is a self-contradiction.
+    expect(plan.allocation.filter((a) => a.coverage === 'none').every((a) => a.count === 0)).toBe(
+      true
+    )
+    expect(plan.allocation.reduce((sum, a) => sum + a.count, 0)).toBe(3)
   })
 
   it('without tavily, starved pillars are a hard skip', () => {
     const plan = computeRunPlan({ ...base, sources: [source({ pillar_ids: ['a'] })] })
     expect(plan.webResearchActive).toBe(false)
-    expect(plan.skipMode).toBe('hard')
+    expect(plan.starvedPillars).toEqual(['Google ads', 'AI marketing', 'Tips'])
+    expect(plan.webOnlyPillars).toEqual([])
+  })
+
+  it('a source whose pillar_ids all point at deleted pillars feeds everything', () => {
+    const plan = computeRunPlan({ ...base, sources: [source({ pillar_ids: ['deleted'] })] })
+    expect(plan.starvedPillars).toEqual([])
+    expect(plan.webOnlyPillars).toEqual([])
   })
 
   describe('publishState', () => {

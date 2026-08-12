@@ -59,6 +59,8 @@ interface CountSteppersProps {
   slideCount: number
   postType: PostType
   postsPerWeek: number
+  /** Priority briefs ride on top of the stepper's researched count. */
+  briefCount: number
   onPostCount: (value: number) => void
   onSlideCount: (value: number) => void
 }
@@ -73,6 +75,7 @@ export function CountSteppers({
   slideCount,
   postType,
   postsPerWeek,
+  briefCount,
   onPostCount,
   onSlideCount,
 }: CountSteppersProps) {
@@ -112,6 +115,17 @@ export function CountSteppers({
         </span>
         {isCarousel && (
           <> · carousels run {MIN_CAROUSEL_SLIDES}–{MAX_CAROUSEL_SLIDES} slides</>
+        )}
+        {/* Briefs are not in the stepper — without this line, a locked idea
+            makes "0 posts" sit beside a panel promising 1 and the two look
+            like a contradiction instead of a sum. */}
+        {briefCount > 0 && (
+          <>
+            {' '}· + {briefCount} priority brief{briefCount === 1 ? '' : 's'} ·{' '}
+            <span className="font-medium text-ink">
+              {postCount + briefCount} post{postCount + briefCount === 1 ? '' : 's'} total
+            </span>
+          </>
         )}
       </p>
     </div>

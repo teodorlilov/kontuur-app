@@ -11,6 +11,8 @@ interface DoneViewProps {
   approvedCount: number
   discardedCount: number
   skippedPillarCount: number
+  /** Covered pillars the run was too small to schedule — rotation, not a skip. */
+  restingPillarCount: number
   clientName: string
   clientId: string
   onNewRun: () => void
@@ -26,6 +28,7 @@ export function DoneView({
   approvedCount,
   discardedCount,
   skippedPillarCount,
+  restingPillarCount,
   clientName,
   clientId,
   onNewRun,
@@ -76,6 +79,15 @@ export function DoneView({
         <Tally value={discardedCount} label="Discarded" />
         <Tally value={skippedPillarCount} label="Pillars skipped" />
       </div>
+      {/* Answers "where are my other pillars?" — skipped counts failures only,
+          and a small run leaving covered pillars unscheduled is rotation. */}
+      {restingPillarCount > 0 && (
+        <p className="mt-3 text-caption text-text3">
+          {restingPillarCount === 1
+            ? '1 covered pillar wasn’t scheduled this run — it takes its turn next time.'
+            : `${restingPillarCount} covered pillars weren’t scheduled this run — they take their turn next time.`}
+        </p>
+      )}
 
       <div className="mt-8 flex flex-col gap-2 text-left">
         <NextAction

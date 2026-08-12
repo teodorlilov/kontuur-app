@@ -7,6 +7,7 @@ import { fetchInstagramMetrics } from '@/lib/meta/instagram-metrics'
 import { fetchFacebookMetrics } from '@/lib/meta/facebook-metrics'
 import { isTokenExpired } from '@/lib/meta/token-expiry'
 import type { InstagramMetrics, FacebookMetrics } from '@/types/api'
+import { SOCIAL_CONNECTION_AUTH_COLUMNS } from '@/lib/queries/select-columns'
 
 /** platform selects which Meta API is called, so it is an enum rather than a free string. */
 const reportRequestSchema = z.object({
@@ -43,7 +44,7 @@ export async function POST(request: NextRequest) {
   // is an expected state the caller reports, not a query failure.
   const { data: connection, error: connectionError } = await supabase
     .from('social_connections')
-    .select('account_id, access_token, token_expires_at')
+    .select(SOCIAL_CONNECTION_AUTH_COLUMNS)
     .eq('client_id', client_id)
     .eq('platform', platform)
     .maybeSingle()

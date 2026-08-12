@@ -26,8 +26,11 @@ import {
   POST_HISTORY_COLUMNS,
   CLIENT_SOURCE_RESEARCH_COLUMNS,
   CLIENT_SOURCE_SUMMARY_COLUMNS,
+  EXEMPLAR_COLUMNS,
 } from '@/lib/queries/select-columns'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { createAdminSupabaseClient } from '@/lib/supabase/admin'
+import { parseMemoBullets } from '@/lib/learning/style-memo'
 import { unwrap } from '@/lib/queries/unwrap'
 import type { AgencyInfo, TeamMember, MetaConnection } from '@/types/api'
 import type { ClientRow, BrandProfileRow, PostingScheduleRow, Json } from '@/types'
@@ -388,6 +391,108 @@ export async function fetchSourceUsageStats(
   }
 
   return [...stats.values()]
+}
+
+/** Approved voice for the writer's prompt, split per format. */
+export interface ClientExemplars {
+  single: string[]
+  carousel: Array<{ caption: string; coverHeadline: string }>
+}
+
+/**
+ * Per-client context the engine attaches at generation time only — never part
+ * of the browser round-trip (the wizard's clientDataSchema would silently strip
+ * unknown keys, so ride-along fields diverge between paths).
+ */
+export interface EngineContext {
+  exemplars: ClientExemplars
+  /** Distilled review-correction rules; [] until the distiller has learned any. */
+  styleMemo: string[]
+}
+
+// Exemplar bounds: enough voice to imitate without bloating the cached prompt
+// prefix; captions outside the band are either too thin to carry style or too
+// long to be representative.
+const EXEMPLAR_SINGLE_LIMIT = 3
+const EXEMPLAR_CAROUSEL_LIMIT = 2
+const EXEMPLAR_MIN_CHARS = 80
+const EXEMPLAR_MAX_CHARS = 1200
+
+/**
+ * The engine's per-client generation context: recently approved posts as voice
+ * exemplars. Distinct from `post_history` (topic_summary only, for topic dedup)
+ * and from the IG performance source (engagement-ranked public captions for
+ * research) — this is approved caption TEXT, for the writer to imitate.
+ *
+ * Human-edited posts rank first: `caption` on an edited row is the reviewer's
+ * corrected text, the closest thing to ground truth on this client's voice.
+ *
+ * Used in:
+ *   src/app/api/ai/generate-stream/route.ts
+ *   src/app/api/cron/generate/route.ts
+ */
+export async function fetchEngineContext(
+  supabase: SupabaseClient,
+  clientId: string
+): Promise<EngineContext> {
+  const [exemplarResult, memoResult] = await Promise.all([
+    supabase
+      .from('posts')
+      .select(EXEMPLAR_COLUMNS)
+      .eq('client_id', clientId)
+      // Everything past review counts — publish transit or failure does not
+      // un-approve the copy, and excluding those states would churn the cached
+      // prompt prefix as posts move through publishing.
+      .in('status', ['approved', 'scheduled', 'publishing', 'published', 'failed'])
+      .order('edited_at', { ascending: false, nullsFirst: false })
+      .order('created_at', { ascending: false })
+      .limit(24),
+    // The memo table is service-role-only (RLS, no policies) — read it through
+    // the admin client regardless of the caller's client, or the manual path
+    // (user-scoped supabase) would silently lose the memo while cron kept it.
+    createAdminSupabaseClient()
+      .from('client_style_memos')
+      .select('memo')
+      .eq('client_id', clientId)
+      .maybeSingle(),
+  ])
+  const data = unwrap(exemplarResult, 'fetchEngineContext')
+
+  // The memo is an enrichment, not a requirement: a failed read must not sink
+  // the run. But it must not vanish silently either — an unlogged failure is
+  // indistinguishable from "the distiller has not learned anything yet".
+  if (memoResult.error) {
+    console.error('[engine] style memo read failed:', memoResult.error)
+  }
+  // as: maybeSingle() over a projected column set, narrowed to what we read.
+  const styleMemo = parseMemoBullets(
+    (memoResult.data as { memo?: Json } | null)?.memo ?? null
+  ).map((b) => b.rule)
+
+  // as: explicit column projection — the generated row type covers the whole
+  // table, not the three columns EXEMPLAR_COLUMNS selects.
+  const rows = (data ?? []) as Array<{
+    caption: string | null
+    slides_json: unknown
+    post_type: string
+  }>
+
+  const single: string[] = []
+  const carousel: Array<{ caption: string; coverHeadline: string }> = []
+  for (const row of rows) {
+    const caption = row.caption?.trim() ?? ''
+    if (caption.length < EXEMPLAR_MIN_CHARS || caption.length > EXEMPLAR_MAX_CHARS) continue
+    if (row.post_type === 'carousel') {
+      if (carousel.length >= EXEMPLAR_CAROUSEL_LIMIT) continue
+      const slides = Array.isArray(row.slides_json) ? (row.slides_json as Array<{ headline?: unknown }>) : []
+      const coverHeadline = typeof slides[0]?.headline === 'string' ? slides[0].headline : ''
+      carousel.push({ caption, coverHeadline })
+    } else {
+      if (single.length >= EXEMPLAR_SINGLE_LIMIT) continue
+      single.push(caption)
+    }
+  }
+  return { exemplars: { single, carousel }, styleMemo }
 }
 
 /**

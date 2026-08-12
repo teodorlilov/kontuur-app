@@ -72,7 +72,6 @@ const clientDataSchema = z.object({
   isHealthNiche: z.boolean().nullable(),
   defaultCarouselSlides: z.number(),
   defaultPostType: z.string().nullable(),
-  requireSourceGrounding: z.boolean(),
   languageNotes: z.string(),
   languageConfig: z.looseObject({
     language: z.string(),

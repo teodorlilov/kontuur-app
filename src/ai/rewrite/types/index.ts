@@ -1,10 +1,11 @@
 import type { ClientData } from '@/lib/clients/fetch-client-data'
 import type { PostType } from '@/types/api'
+import type { SlideText } from '@/types/slide'
 
 export interface RewriteContext {
   caption: string
   postType: PostType
-  slidesJson?: Array<{ headline: string; body: string }>
+  slidesJson?: SlideText[]
   aiTells: string[]
   qualityIssues?: string[]
   platform: string
@@ -24,7 +25,7 @@ export interface RewriteCaptionInput {
 
 export interface RewriteCarouselInput {
   mainCaption: string
-  slides: Array<{ headline: string; body: string }>
+  slides: SlideText[]
   aiTells: string[]
   qualityIssues?: string[]
   client: ClientData
@@ -33,5 +34,5 @@ export interface RewriteCarouselInput {
 
 export interface RewriteCarouselResult {
   main_caption: string
-  slides: Array<{ headline: string; body: string }>
+  slides: SlideText[]
 }

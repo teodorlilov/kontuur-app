@@ -93,8 +93,16 @@ export function DraftRail({
                 >
                   {title}
                 </span>
-                <span className="mt-1 block truncate text-micro text-text3">
-                  {settled ?? post.pillar ?? 'General'}
+                {/* Requested posts have no pillar by design (they sit outside the
+                    rotation) — showing the 'General' fallback there mislabelled
+                    exactly the drafts with a special origin. */}
+                <span
+                  className={cn(
+                    'mt-1 block truncate text-micro',
+                    !settled && post.priority ? 'font-semibold text-forest' : 'text-text3'
+                  )}
+                >
+                  {settled ?? (post.priority ? 'Client idea' : (post.pillar ?? 'General'))}
                 </span>
               </span>
               <span

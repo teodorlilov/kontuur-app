@@ -3,9 +3,9 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { truncateText } from '@/utils/format'
-import { resolvePillarNames } from '@/lib/clients/content-pillars'
-import { getPillarColor } from '@/components/ui/colors/pillar-colors'
-import { PillarAssignmentPopover } from './pillar-assignment-popover'
+import { resolveEffectivePillarIds } from '@/lib/clients/content-pillars'
+import { togglePillarAssignment } from '@/features/sources/lib/pillar-toggle'
+import { PillarChip } from './pillar-chip'
 import type { ClientSource } from '@/types/api'
 import type { WeightedPillar } from '@/lib/clients/content-pillars'
 import type { SourceUsageStats } from '@/lib/queries/db'
@@ -41,7 +41,8 @@ export function SourceRow({
   const [editFocus, setEditFocus] = useState((config?.focus_instructions as string) ?? '')
   const selectedPages = (config?.selected_pages as string[] | undefined) ?? []
 
-  const pillarNames = pillars ? resolvePillarNames(source.pillar_ids ?? [], pillars) : []
+  const litPillarIds = pillars ? resolveEffectivePillarIds(source.pillar_ids, pillars) : []
+  const feedsAll = litPillarIds.length === 0
 
   function handleSave() {
     const updates: { label?: string; url?: string; config?: Record<string, unknown> } = {}
@@ -143,13 +144,13 @@ export function SourceRow({
 
   return (
     <div
-      className={`flex items-center gap-3 px-4 py-3 rounded-xl border bg-surface transition-opacity ${source.is_active ? 'border-line' : 'border-line opacity-50'}`}
+      className={`flex items-start gap-3 px-4 py-3 rounded-xl border bg-surface transition-opacity ${source.is_active ? 'border-line' : 'border-line opacity-50'}`}
     >
       <input
         type="checkbox"
         checked={source.is_active}
         onChange={onToggle}
-        className="h-4 w-4 rounded border-line2 accent-forest cursor-pointer shrink-0"
+        className="mt-1 h-4 w-4 rounded border-line2 accent-forest cursor-pointer shrink-0"
         title={source.is_active ? 'Disable source' : 'Enable source'}
       />
       <div
@@ -168,25 +169,6 @@ export function SourceRow({
         {source.type !== 'tavily' && (
           <p className="text-caption text-text3 truncate">{truncateText(source.url, 60)}</p>
         )}
-        {pillars && pillarNames.length > 0 && (
-          <div className="flex flex-wrap gap-1 mt-1">
-            {pillarNames.map((name) => {
-              const color = getPillarColor(name)
-              return (
-                <span
-                  key={name}
-                  className="text-label px-1.5 py-0.5 rounded-full font-medium"
-                  style={{ background: color.bg, color: color.text }}
-                >
-                  {name}
-                </span>
-              )
-            })}
-          </div>
-        )}
-        {pillars && pillarNames.length === 0 && (
-          <p className="text-label text-text3 mt-0.5">All pillars</p>
-        )}
         <div className="mt-0.5 flex items-center gap-2">
           {statusBadge}
           {usage && usage.approvedCount + usage.discardedCount > 0 && (
@@ -198,16 +180,40 @@ export function SourceRow({
             </span>
           )}
         </div>
+        {pillars && pillars.length > 0 && onPillarIdsChange && (
+          <div
+            className="mt-2.5 border-t border-dashed border-line2 pt-2.5"
+            // Chips are the control: every pillar shows lit or hollow, so the
+            // feeds-all default is a visible state instead of popover fine print.
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-1.5 flex items-baseline justify-between gap-3">
+              <span className="text-label font-semibold uppercase text-text3">Feeds</span>
+              <span
+                className={
+                  feedsAll ? 'text-caption font-medium text-spring-text' : 'text-caption text-text3'
+                }
+              >
+                {feedsAll
+                  ? 'Feeds every pillar — including ones you add later'
+                  : `Feeds ${litPillarIds.length} of ${pillars.length} pillars`}
+              </span>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {pillars.map((p) => (
+                <PillarChip
+                  key={p.id}
+                  pillar={p.pillar}
+                  lit={feedsAll || litPillarIds.includes(p.id)}
+                  onToggle={() =>
+                    onPillarIdsChange(togglePillarAssignment(source.pillar_ids, p.id, pillars))
+                  }
+                />
+              ))}
+            </div>
+          </div>
+        )}
       </div>
-      {pillars && onPillarIdsChange && (
-        <div className="shrink-0">
-          <PillarAssignmentPopover
-            pillars={pillars}
-            assignedPillarIds={source.pillar_ids ?? []}
-            onChange={onPillarIdsChange}
-          />
-        </div>
-      )}
       <button
         onClick={onDelete}
         className="text-text3 hover:text-danger transition-colors px-1 py-1 shrink-0"

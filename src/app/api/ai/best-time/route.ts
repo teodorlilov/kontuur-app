@@ -4,6 +4,7 @@ import { generateBestTime } from '@/ai/best-time/generate-best-time'
 import { extractPlatformFromMix } from '@/lib/clients/fetch-client-data'
 import type { Json } from '@/types/database'
 import { checkRateLimit, AI_RATE_LIMIT } from '@/lib/auth/rate-limit'
+import { CLIENT_AI_CONTEXT_COLUMNS } from '@/lib/queries/select-columns'
 
 interface BestTimeRequestBody {
   client_id: string
@@ -32,7 +33,7 @@ export async function POST(request: Request) {
   // Verify client belongs to this agency
   const { data: rawClientData } = await supabase
     .from('clients')
-    .select('id, name, niche, language')
+    .select(CLIENT_AI_CONTEXT_COLUMNS)
     .eq('id', body.client_id)
     .eq('agency_id', agencyId)
     .single()

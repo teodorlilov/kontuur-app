@@ -31,9 +31,11 @@ function toSamples(entries: { color: string; weight: number }[]): ColorSample[] 
 }
 
 /**
- * Measure a loaded page's resolved styles: background/text/border/accent colours (categorised, so
- * `deriveColorRoles` can cluster them) and the heading/body font stacks + the observed size ladder for
- * `fitTypeScale`. Everything here is `measured`; vision refines it afterwards. Runs in Chromium.
+ * Measure a loaded page's resolved styles: background/text/border/accent colours, categorised so
+ * `deriveColorRoles` can cluster them into a palette. Font sizes are collected but not
+ * categorised — their only reader is `hasEnoughSignal`, which treats a page resolving fewer than
+ * two of them as a blank shell rather than a site worth extracting. Everything here is `measured`;
+ * vision refines it afterwards. Runs in Chromium.
  */
 export async function measurePage(page: Page): Promise<PageMeasurement> {
   const raw: RawMeasurement = await page.evaluate(() => {

@@ -7,15 +7,18 @@ import { fetchClientPostStats } from '@/features/clients/lib/post-stats'
 import {
   fetchClientById,
   fetchBrandProfileByClient,
+  fetchClientSourceSummaries,
   fetchConnectionsByClient,
   fetchPostingScheduleByClient,
 } from '@/lib/queries/db'
+import { parsePillars, resolveEffectivePillarIds } from '@/lib/clients/content-pillars'
 import {
   fetchIdeaCounts,
   fetchIdeasForAgency,
   fetchTokenByClient,
 } from '@/features/ideas/lib/ideas'
 import { fetchVisualIdentity } from '@/lib/visual/queries'
+import { fetchStyleMemoDisplay } from '@/lib/learning/style-memo'
 
 /** Pillar rows are capped so one prolific client can't pull an unbounded result set. */
 const PILLAR_SAMPLE_SIZE = 500
@@ -44,6 +47,8 @@ export default async function EditClientPage({ params }: { params: Promise<{ id:
     ideaToken,
     ideaCounts,
     recentIdeas,
+    sourceSummaries,
+    styleMemo,
   ] = await Promise.all([
     // In the parallel block, not awaited above it: nothing below depends on the identity, so
     // awaiting it first would cost a serial round trip before any of these started.
@@ -81,6 +86,8 @@ export default async function EditClientPage({ params }: { params: Promise<{ id:
     fetchTokenByClient(id),
     fetchIdeaCounts(id),
     fetchIdeasForAgency(agencyId, { clientId: id, limit: IDEA_PREVIEW_LIMIT }),
+    fetchClientSourceSummaries(supabase, id),
+    fetchStyleMemoDisplay(id),
   ])
 
   const insights = buildInsights(recentPostsRes.data ?? [], pillarPostsRes.data ?? [])
@@ -91,6 +98,7 @@ export default async function EditClientPage({ params }: { params: Promise<{ id:
     <ClientSettingsForm
       clientId={id}
       sourceCount={sourceCount ?? 0}
+      styleMemo={styleMemo}
       client={client}
       profile={profile}
       schedule={schedule}
@@ -107,6 +115,19 @@ export default async function EditClientPage({ params }: { params: Promise<{ id:
       ideaUsedCount={ideaCounts.usedCount}
       ideaTotalCount={ideaCounts.totalCount}
       recentIdeas={recentIdeas}
+      // Content sources only: the tavily row grants web coverage, not material,
+      // and the pillar editor's notice promises material. Resolved against the
+      // live pillars so a source scoped entirely to deleted ones counts as
+      // feeds-all here too — the raw ids would have this notice disagreeing with
+      // every other coverage surface during the deleted-pillar window.
+      unrestrictedSourceCount={
+        sourceSummaries.filter(
+          (s) =>
+            s.type !== 'tavily' &&
+            resolveEffectivePillarIds(s.pillar_ids, parsePillars(profile?.content_pillars ?? null))
+              .length === 0
+        ).length
+      }
     />
   )
 }

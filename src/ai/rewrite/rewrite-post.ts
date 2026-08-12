@@ -1,7 +1,8 @@
 import { rewriteCaption, rewriteCarousel } from '@/ai/rewrite/prompts/rewrite-prompts'
 import { validatePost } from '@/ai/validation/validate-post'
-import { applyTextCorrections, applySlideCorrections } from '@/ai/validation/correction-utils'
+import { applyPostCorrections, applySlideCorrections } from '@/ai/validation/correction-utils'
 import type { RewriteContext } from './types'
+import type { SlideText } from '@/types/slide'
 
 export type { RewriteContext }
 
@@ -38,7 +39,7 @@ export async function performRewrite(ctx: RewriteContext) {
 
   const validation = await validatePost({
     caption: newCaption,
-    slides: isCarousel ? (newSlidesJson as Array<{ headline: string; body: string }>) : undefined,
+    slides: isCarousel ? (newSlidesJson as SlideText[]) : undefined,
     client: ctx.client,
     label: `rewrite-${ctx.postType}`,
     platform: ctx.platform,
@@ -47,22 +48,22 @@ export async function performRewrite(ctx: RewriteContext) {
       : undefined,
   })
 
-  const finalCaption = applyTextCorrections(newCaption, validation)
-  const finalSlidesJson = isCarousel
-    ? applySlideCorrections(
-        newSlidesJson as Array<{ headline: string; body: string }>,
-        validation.language.corrected_slides
-      )
-    : newSlidesJson
+  // Same contract as generation: the returned verdict is re-scored against the
+  // corrected copy, so the review panel never shows fixes beside a pre-fix score.
+  const applied = applyPostCorrections(
+    newCaption,
+    isCarousel ? (newSlidesJson as SlideText[]) : null,
+    validation
+  )
 
   return {
-    caption: finalCaption,
-    slides_json: finalSlidesJson,
-    quality_score_avg: validation.qualityScore,
-    language: validation.language,
-    slop: validation.slop,
-    sourceGrounding: validation.sourceGrounding ?? null,
-    criteria: validation.criteria,
-    scores: validation.scores,
+    caption: applied.caption,
+    slides_json: isCarousel ? applied.slides : newSlidesJson,
+    quality_score_avg: applied.validation.qualityScore,
+    language: applied.validation.language,
+    slop: applied.validation.slop,
+    sourceGrounding: applied.validation.sourceGrounding ?? null,
+    criteria: applied.validation.criteria,
+    scores: applied.validation.scores,
   }
 }

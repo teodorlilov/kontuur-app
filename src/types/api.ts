@@ -1,6 +1,7 @@
 // Imported from './database' rather than the './index' barrel, which re-exports
 // this file — going through it would make the two circular.
 import type { Tables } from './database'
+import type { SlideText } from './slide'
 
 type PostRow = Tables<'posts'>
 type NotificationRow = Tables<'notifications'>
@@ -40,11 +41,10 @@ export interface PriorityPost {
   platform: string
 }
 
-export interface CarouselSlide {
+/** A slide as it is stored: its text, plus the position metadata the writer stamps on. */
+export interface CarouselSlide extends SlideText {
   slide_number?: number
   slide_role?: 'cover' | 'content' | 'cta'
-  headline: string
-  body: string
 }
 
 // ---- URL Analysis ----
@@ -456,12 +456,13 @@ export type {
   ValidationScores,
 } from '@/ai/validation/types'
 
+export type { SlideText } from './slide'
+
 export type {
   ClientSource,
   SourceSuggestion,
   SuggestSourcesRequest,
   SuggestSourcesResponse,
-  SourceStrategy,
   DiscoverPagesRequest,
   DiscoverPagesResponse,
 } from './sources'

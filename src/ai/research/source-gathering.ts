@@ -11,9 +11,9 @@ import {
 import { fetchThemeDescriptions } from '@/lib/generation/runs'
 import { searchTrends } from '@/lib/sources/fetch-trend-search'
 import {
+  computePillarCoverage,
   getSourcePillarIds,
   resolvePillarNames,
-  pillarHasSources,
   type WeightedPillar,
 } from '@/lib/clients/content-pillars'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
@@ -87,7 +87,7 @@ export interface GatheredSources {
    * an error for a researched batch, normal for a run built from briefs.
    */
   hasAnySources: boolean
-  /** Pillars still in play. Narrowed only when web search is off. */
+  /** Pillars still in play — coverage-state 'none' pillars are pre-skipped out. */
   effectivePillars: WeightedPillar[]
   preSkippedPillars: SkippedPillar[]
   fullTextIndex: SourceFullTextIndex
@@ -125,18 +125,19 @@ export async function gatherSources(
   const shouldSearchWeb = !!tavilyRow
   const tavilyConfig = (tavilyRow?.config ?? {}) as TavilyConfig
 
-  // Soft-skip: with web research active, no pillar is skipped upfront — search
-  // can serve any topic. Pre-skip only applies when tavily is off AND a
-  // pillar has no eligible sources at all.
-  let effectivePillars = pillars
-  let preSkippedPillars: SkippedPillar[] = []
-  if (!tavilyRow) {
-    const allSourcePillarIds = sourceObjects.map((s) => getSourcePillarIds(s.pillarIds))
-    effectivePillars = pillars.filter((p) => pillarHasSources(p.id, allSourcePillarIds))
-    preSkippedPillars = pillars
-      .filter((p) => !pillarHasSources(p.id, allSourcePillarIds))
-      .map((p) => ({ name: p.pillar }))
-  }
+  // Pre-skip pillars nothing can serve. Web research is soft coverage — the
+  // pillar stays in the run and the search decides — but only within the tavily
+  // row's own topic limit: a pillar limited away from it with no content source
+  // used to be asked for and dropped every run. Coverage reads requestedSources,
+  // not all sources, because a run that excludes a source kind cannot draw on it.
+  const coverage = computePillarCoverage(pillars, [
+    ...requestedSources,
+    ...(tavilyRow ? [tavilyRow] : []),
+  ])
+  const effectivePillars = pillars.filter((p) => coverage.get(p.id)?.state !== 'none')
+  const preSkippedPillars: SkippedPillar[] = pillars
+    .filter((p) => coverage.get(p.id)?.state === 'none')
+    .map((p) => ({ name: p.pillar }))
 
   const [, allWebSearchItems, performanceItems] = await Promise.all([
     fetchAllSources(ctx.supabase, sourceObjects, limits),

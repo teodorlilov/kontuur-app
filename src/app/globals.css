@@ -55,6 +55,7 @@
   --forest-deep: #0c2e20;
   --spring: #2e9e68;
   --spring-lite: #7fd6a8; /* spring, legible on dark surfaces */
+  --pending-lite: #d6ae5e; /* pending amber, legible on dark surfaces */
   /* Living Green as a WORD on light. --spring is 3.38:1 and fails as text;
      this holds 4.53:1 at the same hue. DESIGN.md named it long before this
      declaration existed, which is why green text kept landing on --spring. */
@@ -251,6 +252,7 @@
   --color-danger-line: var(--danger-line);
   --color-pending: var(--pending);
   --color-pending-bg: var(--pending-bg);
+  --color-pending-lite: var(--pending-lite);
 
   --radius-chip: var(--radius-md);
   --radius-panel: var(--radius-lg);

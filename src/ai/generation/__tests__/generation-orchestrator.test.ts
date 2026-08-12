@@ -5,15 +5,19 @@ import type { ClientData } from '@/lib/clients/fetch-client-data'
 const mocks = vi.hoisted(() => ({
   generatePost: vi.fn(),
   generateCarousel: vi.fn(),
+  revisePost: vi.fn(),
+  reviseCarousel: vi.fn(),
   validatePost: vi.fn(),
   validatePostsBatch: vi.fn(),
 }))
 
 vi.mock('@/ai/generation/generators/post-generator', () => ({
   generatePost: mocks.generatePost,
+  revisePost: mocks.revisePost,
 }))
 vi.mock('@/ai/generation/generators/carousel-generator', () => ({
   generateCarousel: mocks.generateCarousel,
+  reviseCarousel: mocks.reviseCarousel,
 }))
 vi.mock('@/ai/validation/validate-post', () => ({
   validatePost: mocks.validatePost,
@@ -76,7 +80,6 @@ describe('per-theme platform', () => {
       client: client(),
       platform: 'Instagram',
       postType: 'single',
-      requireSourceGrounding: false,
       themes,
       trackTheme: vi.fn().mockResolvedValue(undefined),
     })
@@ -102,5 +105,87 @@ describe('per-theme platform', () => {
     )
     expect(judgePlatforms.get('the brief')).toBe('Facebook')
     expect(judgePlatforms.get('researched')).toBe('Instagram')
+  })
+})
+
+function run(themes: EnrichedTheme[]) {
+  return runGenerationBatch({
+    client: client(),
+    platform: 'Instagram',
+    postType: 'single',
+    themes,
+    trackTheme: vi.fn().mockResolvedValue(undefined),
+  })
+}
+
+/** A validation the refine loop must act on: structure failed, no judge fix. */
+function structureFailure(): PostValidationResult {
+  const v = validation()
+  v.criteria.structure_followed = {
+    passes: false,
+    notes: ['Caption is written as a carousel (slide labels) — this is a single-image post.'],
+  }
+  v.scores.overall_score = 5
+  v.qualityScore = 5
+  return v
+}
+
+describe('bounded refine loop', () => {
+  it('revises on a structure failure and keeps the better result', async () => {
+    mocks.validatePostsBatch
+      .mockResolvedValueOnce([structureFailure()])
+      .mockResolvedValueOnce([validation()])
+    mocks.revisePost.mockResolvedValue('revised text')
+
+    const results = await run([{ description: 't', count: 1 }])
+    expect(mocks.revisePost).toHaveBeenCalledTimes(1)
+    expect(results[0]!.post.caption).toBe('revised text')
+    expect(results[0]!.post.quality_score_avg).toBe(8)
+  })
+
+  it('never revises a clean draft', async () => {
+    await run([{ description: 't', count: 1 }])
+    expect(mocks.revisePost).not.toHaveBeenCalled()
+  })
+
+  it('flagged issues WITH a judge fix are not a revision trigger — the fix ships instead', async () => {
+    const fixed = validation()
+    fixed.language.issues = [
+      { type: 'anglicism', original_text: 'x', issue_description: 'y', suggested_fix: 'z' },
+    ]
+    fixed.language.corrected_text = 'corrected by judge'
+    mocks.validatePostsBatch.mockResolvedValue([fixed])
+
+    const results = await run([{ description: 't', count: 1 }])
+    expect(mocks.revisePost).not.toHaveBeenCalled()
+    expect(results[0]!.post.caption).toBe('corrected by judge')
+  })
+
+  it('an unjudged revision loses to the judged original', async () => {
+    const unjudged = validation()
+    unjudged.scores.overall_score = null
+    unjudged.qualityScore = null
+    mocks.validatePostsBatch
+      .mockResolvedValueOnce([structureFailure()])
+      .mockResolvedValueOnce([unjudged])
+    mocks.revisePost.mockResolvedValue('revised text')
+
+    const results = await run([{ description: 't', count: 1 }])
+    expect(results[0]!.post.caption).toBe('draft text')
+    expect(results[0]!.post.quality_score_avg).toBe(5)
+  })
+
+  it('revisions are capped per run', async () => {
+    mocks.validatePostsBatch.mockImplementation(
+      async ({ captions }: { captions: string[] }) => captions.map(() => structureFailure())
+    )
+    mocks.revisePost.mockResolvedValue('revised text')
+
+    const themes: EnrichedTheme[] = Array.from({ length: 5 }, (_, i) => ({
+      description: `t${i}`,
+      count: 1,
+    }))
+    await run(themes)
+    expect(mocks.revisePost.mock.calls.length).toBeLessThanOrEqual(3)
   })
 })

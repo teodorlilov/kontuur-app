@@ -65,7 +65,6 @@ function clientData(overrides: Partial<ClientData> = {}): ClientData {
     isHealthNiche: false,
     defaultCarouselSlides: 6,
     defaultPostType: 'single',
-    requireSourceGrounding: false,
     languageNotes: '',
     languageConfig: {
       language: 'English',
@@ -119,6 +118,10 @@ function topic(over: Partial<ResearchTopic> = {}): ResearchTopic {
     suggested_theme: 'A theme',
     source_url: 'https://example.com/a',
     source_type: 'rss',
+    // The topic schema requires an excerpt of every topic the model returns, so
+    // the default fixture carries one — grounding needs source TEXT, not just a
+    // reference, and a fixture without it would not represent a real response.
+    source_excerpt: 'What the source actually says.',
     ...over,
   }
 }
@@ -193,6 +196,23 @@ describe('ResearchPipeline.execute — grounding filter', () => {
     ])
 
     const result = await run({ count: 2 })
+
+    expect(result.map((t) => t.suggested_theme)).toEqual(['grounded'])
+  })
+
+  // A URL is a reference, not material. Validation compares the post against
+  // source TEXT, so a topic with nothing behind its URL would be written blind
+  // and saved showing a source it was never checked against.
+  it('drops a topic that has a url but no source text', async () => {
+    mocks.fetchClientSources.mockResolvedValue([tavilyRow()])
+    mocks.searchTrends.mockResolvedValue([{ title: 't', snippet: 's', url: 'u', score: 1 }])
+    mocks.generateTopics.mockResolvedValue([
+      topic({ suggested_theme: 'grounded' }),
+      topic({ suggested_theme: 'empty excerpt', source_excerpt: '   ' }),
+      topic({ suggested_theme: 'no excerpt at all', source_excerpt: undefined }),
+    ])
+
+    const result = await run({ count: 3 })
 
     expect(result.map((t) => t.suggested_theme)).toEqual(['grounded'])
   })

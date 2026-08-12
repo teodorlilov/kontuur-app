@@ -1,20 +1,25 @@
 import type { LanguageConfig } from '@/lib/clients/language-rules'
 import { formatFormalityRules } from '@/ai/shared/formality-guidance'
+import { LANGUAGE_STANDARDS } from '@/ai/shared/language-standards'
 import { sanitizePromptField, PROMPT_FIELD_LIMITS } from '@/ai/utils/sanitize'
 
-/** The judge's language section: base checks plus the client's own rules, sanitized. */
+/**
+ * The judge's language section: LANGUAGE_STANDARDS rendered as checks — the same
+ * table generation renders as writing rules, so the judge can never grade a
+ * standard the writer was not told — plus the client's own rules, sanitized.
+ */
 export function buildLanguageValidationRules(config: LanguageConfig): string {
   const baseRules = `Check for:
-1. ANGLICISMS — English words used in target language text
-2. CALQUES — Phrases translated literally from English that sound unnatural
-3. GRAMMAR — Wrong conjugations, gender agreement, case endings, punctuation, incorrect expressions
-4. FORMALITY — Consistent formal or informal address, never mixed
-5. REGISTER — Naturalness score 1-10
-6. MIXED_SCRIPT — Characters from the wrong alphabet mixed into words (e.g., Latin 'a', 'e', 'i', 'o', 'c', 'p' used inside Cyrillic words, or vice versa). Check EVERY word character-by-character. This is critical — a word like "влiza" mixes Cyrillic "вл" with Latin "iza" and must be flagged.
-7. VOCABULARY — Non-native words borrowed from related but different languages (e.g., Russian words used in Bulgarian text like "визит" instead of "посещение", or Czech words in Slovak). Flag words that a native speaker would not use naturally.`
+${LANGUAGE_STANDARDS.map((s, i) => `${i + 1}. ${s.check}`).join('\n')}`
 
   // Formality rules from DB — same rules generation was told to follow
   const formalitySection = `\n\n${formatFormalityRules(config)}\nFlag any content that violates the register rules above.`
+
+  // The writer is INSTRUCTED to work these into carousel covers — a proofreader
+  // that "fixes" them fights the client's own configuration every run.
+  const swipeCues = config.carouselSwipeCues
+    ? `\n\nSANCTIONED PHRASES: the client configured these carousel swipe cues — never flag or rewrite them: ${sanitizePromptField(config.carouselSwipeCues, PROMPT_FIELD_LIMITS.short)}`
+    : ''
 
   // Language-specific instructions from DB — client-entered text, sanitized like
   // every other user-provided prompt field.
@@ -27,5 +32,5 @@ export function buildLanguageValidationRules(config: LanguageConfig): string {
     ? `\n\nCLIENT-SPECIFIC LANGUAGE REQUIREMENTS:\n${sanitizePromptField(config.languageNotes, PROMPT_FIELD_LIMITS.long)}`
     : ''
 
-  return `${baseRules}${formalitySection}${languageSpecific}${clientNotes}`
+  return `${baseRules}${formalitySection}${swipeCues}${languageSpecific}${clientNotes}`
 }

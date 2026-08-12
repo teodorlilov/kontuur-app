@@ -6,6 +6,7 @@ import { isTokenExpired } from '@/lib/meta/token-expiry'
 import { publishSingleImage, publishCarousel } from '@/features/publishing/lib/publish-to-instagram'
 import type { PostForPublish, InstagramConnection } from '@/features/publishing/lib/types'
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { SOCIAL_CONNECTION_AUTH_COLUMNS } from '@/lib/queries/select-columns'
 
 type PostWithImages = PostForPublish & { status: string; scheduled_at: string | null }
 
@@ -33,7 +34,7 @@ async function fetchConnection(
   // 400, not a query failure.
   const { data, error } = await admin
     .from('social_connections')
-    .select('account_id, access_token, token_expires_at')
+    .select(SOCIAL_CONNECTION_AUTH_COLUMNS)
     .eq('client_id', clientId)
     .eq('platform', 'instagram')
     .maybeSingle()

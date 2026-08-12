@@ -5,7 +5,7 @@ import { canvaFetch, CanvaAuthError } from '../../../canva-auth'
 import { CANVA_API_BASE } from '../../../canva-constants'
 import { uploadPostImage, deletePostImage } from '@/features/publishing/lib/storage'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
-import { POST_IMAGE_COLUMNS } from '@/lib/queries/select-columns'
+import { POST_IMAGE_COLUMNS, POST_IMAGE_STORAGE_COLUMNS } from '@/lib/queries/select-columns'
 
 interface CanvaExportJob {
   job: { id: string; status: string }
@@ -132,7 +132,7 @@ export async function POST(
 
   const { data: existing } = await admin
     .from('post_images')
-    .select('id, storage_path')
+    .select(POST_IMAGE_STORAGE_COLUMNS)
     .eq('post_id', postId)
     .eq('position', position)
     .single()

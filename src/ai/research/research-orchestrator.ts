@@ -157,10 +157,25 @@ function partitionByBrief(
   return { briefTopics, researchTopics }
 }
 
-/** A topic the model actually sourced, rather than one it invented. */
+/**
+ * A topic the model actually sourced, rather than one it invented.
+ *
+ * Requires source TEXT, not just a source reference. Checking the reference alone
+ * let through a topic carrying a URL the fetch map had nothing behind: the post
+ * was written blind, saved with that URL showing in review, and the grounding
+ * check silently did not run — validation needs text to compare against, so a
+ * reference with no text reads downstream as "no source at all".
+ *
+ * Either text will do. `source_excerpt` is the model's own summary (required by
+ * the topic schema, but that schema is not strictly enforced so it can come back
+ * empty); `source_full_text` is attached server-side from the fetched source map
+ * and is absent whenever the URL or title failed to match an entry.
+ */
 function isGrounded(t: ResearchTopic): boolean {
+  const hasSourceText = !!(t.source_excerpt?.trim() || t.source_full_text?.trim())
   return (
     !!t.suggested_theme?.trim() &&
+    hasSourceText &&
     (!!t.source_url || t.source_type === 'file' || t.source_type === 'performance')
   )
 }

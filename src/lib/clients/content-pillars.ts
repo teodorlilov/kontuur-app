@@ -161,9 +161,67 @@ export function resolvePillarNames(ids: string[], pillars: WeightedPillar[]): st
   return pillars.filter((p) => idSet.has(p.id)).map((p) => p.pillar)
 }
 
-/** Check if a pillar has at least one eligible source (any source with empty pillar_ids or containing this pillar's id). */
-export function pillarHasSources(pillarId: string, allSourcePillarIds: string[][]): boolean {
-  return allSourcePillarIds.some(
-    (ids) => ids.length === 0 || ids.includes(pillarId)
-  )
+/**
+ * Resolve a source's pillar_ids to the ids that exist on the client today.
+ * Ids referencing deleted pillars degrade to [] = feeds-all: sync-source-pillars
+ * already rewrites the column to [] once the last assigned pillar dies, and the
+ * sources UI displays that state as "All pillars" — a stale set must behave like
+ * the [] it is about to become, not silently starve the source.
+ */
+export function resolveEffectivePillarIds(pillarIds: unknown, pillars: WeightedPillar[]): string[] {
+  const ids = getSourcePillarIds(pillarIds)
+  if (ids.length === 0) return []
+  const known = new Set(pillars.map((p) => p.id))
+  const effective = ids.filter((id) => known.has(id))
+  return effective.length === 0 ? [] : effective
+}
+
+/**
+ * How a pillar can be served, in descending confidence: deterministic source
+ * material ('content'), a web search that may or may not land ('web'), or
+ * nothing at all ('none' — the run skips it).
+ */
+export type PillarCoverageState = 'content' | 'web' | 'none'
+
+export interface PillarCoverage {
+  state: PillarCoverageState
+  /** Labels of the non-tavily sources that feed this pillar, in source order. */
+  contentSourceLabels: string[]
+}
+
+/** The three fields coverage needs — structural, so every source row shape qualifies. */
+export interface CoverageSource {
+  type: string
+  label: string
+  pillar_ids: unknown
+}
+
+/**
+ * The one definition of pillar coverage, shared by the generate run panel, the
+ * sources page, and the research pre-skip — three surfaces that previously each
+ * computed their own (and disagreed on whether the tavily source counts).
+ * Callers pass ACTIVE sources only. A source feeds a pillar when its effective
+ * pillar_ids are empty (= all pillars) or contain the pillar's id; the tavily
+ * row grants only 'web' — search may find nothing, so it is never 'content'.
+ */
+export function computePillarCoverage(
+  pillars: WeightedPillar[],
+  sources: readonly CoverageSource[]
+): Map<string, PillarCoverage> {
+  const contentSources = sources
+    .filter((s) => s.type !== 'tavily')
+    .map((s) => ({ label: s.label, ids: resolveEffectivePillarIds(s.pillar_ids, pillars) }))
+  const tavilyRow = sources.find((s) => s.type === 'tavily')
+  const tavilyIds = tavilyRow ? resolveEffectivePillarIds(tavilyRow.pillar_ids, pillars) : null
+
+  const feeds = (ids: string[], pillarId: string) => ids.length === 0 || ids.includes(pillarId)
+
+  const coverage = new Map<string, PillarCoverage>()
+  for (const pillar of pillars) {
+    const labels = contentSources.filter((s) => feeds(s.ids, pillar.id)).map((s) => s.label)
+    const state: PillarCoverageState =
+      labels.length > 0 ? 'content' : tavilyIds !== null && feeds(tavilyIds, pillar.id) ? 'web' : 'none'
+    coverage.set(pillar.id, { state, contentSourceLabels: labels })
+  }
+  return coverage
 }

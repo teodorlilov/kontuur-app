@@ -1,7 +1,7 @@
 import {
   allocateByWeight,
-  getSourcePillarIds,
-  pillarHasSources,
+  computePillarCoverage,
+  type PillarCoverageState,
   type WeightedPillar,
 } from '@/lib/clients/content-pillars'
 import { LIVE_PLATFORMS } from '@/utils/constants'
@@ -14,8 +14,8 @@ export interface PillarAllocation {
   pillar: WeightedPillar
   /** Posts this run would ask for on this pillar (memoryless split). */
   count: number
-  /** Whether at least one active source feeds this pillar. */
-  hasSources: boolean
+  /** How the pillar can be served: source material, web search only, or nothing. */
+  coverage: PillarCoverageState
 }
 
 /** How publishing will behave for the chosen platform. */
@@ -29,16 +29,12 @@ export type PublishState =
 
 export interface RunPlan {
   allocation: PillarAllocation[]
-  /** Names of pillars with no sources of their own. */
+  /** Names of pillars nothing feeds — the run pre-skips them. */
   starvedPillars: string[]
-  /** An active tavily source means web research can serve any pillar. */
+  /** Names of pillars only web research can serve — kept, but may not land. */
+  webOnlyPillars: string[]
+  /** An active tavily source means the run searches the web. */
   webResearchActive: boolean
-  /**
-   * What happens to starved pillars: 'soft' — web research may still serve
-   * them; 'hard' — they are pre-skipped before research; null — nothing is
-   * starved. Mirrors research-orchestrator.ts's pre-skip rule.
-   */
-  skipMode: 'soft' | 'hard' | null
   publishState: PublishState
 }
 
@@ -64,25 +60,28 @@ export function computeRunPlan({
   platform,
 }: ComputeRunPlanInput): RunPlan {
   const webResearchActive = sources.some((s) => s.type === 'tavily')
-  const contentSourcePillarIds = sources
-    .filter((s) => s.type !== 'tavily')
-    .map((s) => getSourcePillarIds(s.pillar_ids))
+  const coverage = computePillarCoverage(pillars, sources)
 
-  const counts = allocateByWeight(pillars, targetPostCount)
+  // Mirror the orchestrator: the run's count is spread over pillars research
+  // can serve — a pre-skipped pillar costs coverage, not posts. Allocating over
+  // all pillars painted a count onto rows annotated "skipped", which read as
+  // the preview contradicting itself.
+  const servablePillars = pillars.filter((p) => coverage.get(p.id)?.state !== 'none')
+  const counts = allocateByWeight(servablePillars, targetPostCount)
   const allocation: PillarAllocation[] = pillars.map((pillar) => ({
     pillar,
     count: counts.get(pillar.pillar) ?? 0,
-    hasSources: pillarHasSources(pillar.id, contentSourcePillarIds),
+    coverage: coverage.get(pillar.id)?.state ?? 'none',
   }))
 
-  const starvedPillars = allocation.filter((a) => !a.hasSources).map((a) => a.pillar.pillar)
-  const skipMode = starvedPillars.length === 0 ? null : webResearchActive ? 'soft' : 'hard'
+  const starvedPillars = allocation.filter((a) => a.coverage === 'none').map((a) => a.pillar.pillar)
+  const webOnlyPillars = allocation.filter((a) => a.coverage === 'web').map((a) => a.pillar.pillar)
 
   return {
     allocation,
     starvedPillars,
+    webOnlyPillars,
     webResearchActive,
-    skipMode,
     publishState: computePublishState(platform, connections),
   }
 }
@@ -101,9 +100,11 @@ function computePublishState(platform: string, connections: MetaConnection[]): P
 }
 
 /**
- * How many posts the skipped pillars actually cost this run — the same sum
- * research-orchestrator.ts reports as skippedCount. A pillar allocated nothing
- * cost nothing, and the review banner's copy must not claim otherwise.
+ * How many posts the skipped pillars actually cost this run. Pre-skipped
+ * pillars allocate 0 by construction — the run redistributes their share — so
+ * only post-research skips (a fed pillar research came back empty for)
+ * contribute, and the review banner's copy must not claim the run came back
+ * short when it did not.
  */
 export function allocationCostOfSkips(
   allocation: PillarAllocation[],

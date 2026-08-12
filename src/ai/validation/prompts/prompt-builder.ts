@@ -6,10 +6,11 @@ import { carouselSemanticRules, ISSUE_TYPE_DEFINITIONS } from '@/ai/validation/c
 import { buildLanguageValidationRules } from '@/ai/validation/prompts/language-validation-rules'
 import type { ClientData } from '@/lib/clients/fetch-client-data'
 import type { QualityIssue, ClaimStatus, LanguageIssue } from '@/ai/validation/types'
+import type { SlideText } from '@/types/slide'
 
 export interface ValidateQualityInput {
   caption: string
-  slides?: Array<{ headline: string; body: string }>
+  slides?: SlideText[]
   client?: ClientData
   platform?: string
   theme?: string
@@ -36,7 +37,7 @@ export interface LlmQualityResponse {
   structure_notes: string[]
   flagged_claims: Array<{ claim: string; status: ClaimStatus; source_evidence: string | null }>
   corrected_text: string | null
-  corrected_slides: Array<{ headline: string; body: string }> | null
+  corrected_slides: SlideText[] | null
   health_compliant: boolean | null
   issues: QualityIssue[]
   language_issues: LanguageIssue[]
@@ -47,7 +48,7 @@ export interface LlmQualityResponse {
 // the merged item schema is the union of both payloads — including a full
 // non-English corrected_text rewrite (~600-800 tokens alone). 1024 here truncated
 // long corrections mid-tool-use, nulling the whole theme's validation.
-const QUALITY_MAX_TOKENS_PER_ITEM = 2048
+export const QUALITY_MAX_TOKENS_PER_ITEM = 2048
 // Four items at the per-item rate; themes batch 1-3 captions in practice, so the
 // cap is headroom rather than a squeeze.
 const VALIDATION_BATCH_MAX_TOKENS = 8192
@@ -113,29 +114,18 @@ function buildValidationSystemPrompt(client?: ClientData, platform?: string): st
 
   if (client?.languageConfig) {
     const lc = client.languageConfig
-    const formality = lc.formality ?? 'neutral'
-    sections.push(
-      `${language}-specific AI patterns to also check:
-- Literal calques from English that no native ${language} speaker would write
-- Unnatural word order following English syntax
-- Register violation: ${
-        formality === 'formal'
-          ? 'informal address in a formal-register post'
-          : formality === 'casual'
-            ? 'formal address in a casual-register post'
-            : 'extreme formality or casualness when neutral register is required'
-      }`
-    )
-
-    // One language block only: buildLanguageValidationRules already carries the
-    // formality rules, language instructions and client notes, so adding
-    // buildLanguageRules here (as generation does) would state each twice.
+    // One language block only: buildLanguageValidationRules carries the seven
+    // shared standards (which cover calques, English word order and register
+    // violations), the formality rules, language instructions and client notes.
+    // A "-specific AI patterns" section here used to restate three of those
+    // checks in different words — the judge heard calques thrice while the
+    // writer heard them nowhere.
     sections.push(buildLanguageValidationRules(lc))
     sections.push(`You are also the native ${language} proofreader for this text. Be ruthless about naturalness — flag phrasing that reads as translated from English even when it is grammatically correct. The standard is: would a native ${language} speaker write this exact phrase on social media?
 
 Report every language problem in "language_issues" with the exact offending phrase and its fix.
 
-"corrected_text" is the SINGLE corrected version of the post. It must carry every fix you would make — factual corrections against the source material AND language corrections — because nothing downstream merges two versions. Leave it null only when the text needs no change at all.`)
+"corrected_text" is the SINGLE corrected version of the post. It must carry every fix you would make — factual corrections against the source material AND language corrections — because nothing downstream merges two versions. Leave it null ONLY when the text needs no change at all. If "language_issues" is non-empty, "corrected_text" MUST be the corrected version — flagging a problem without supplying the fixed text is a contract violation.`)
   }
 
   sections.push(buildRubricSection(client))
@@ -366,7 +356,13 @@ export async function validateQuality(input: ValidateQualityInput): Promise<LlmQ
     temperature: 0,
   })
 
-  return normalizeQualityResponse(extractToolInput<LlmQualityResponse>(message))
+  // The schema is passed so extractToolInput can repair an array the model
+  // returned as a JSON-encoded string. Without it `normalizeQualityResponse`
+  // silently coerces every such field to [] — a post with language issues then
+  // scores a clean 10 and ships uncorrected.
+  return normalizeQualityResponse(
+    extractToolInput<LlmQualityResponse>(message, QUALITY_OUTPUT_SCHEMA)
+  )
 }
 
 /**
@@ -385,10 +381,18 @@ export async function validateQualityBatch(
     temperature: 0,
   })
 
-  const parsed = extractToolInput<{ results?: Array<Partial<LlmQualityResponse> & { index?: number }> }>(message)
+  // Schema passed for the same reason as validateQuality: `results` arriving as a
+  // JSON-encoded string would otherwise be iterated CHARACTER BY CHARACTER below,
+  // leaving every slot null — a whole batch silently unvalidated.
+  const parsed = extractToolInput<{ results?: Array<Partial<LlmQualityResponse> & { index?: number }> }>(
+    message,
+    QUALITY_BATCH_OUTPUT_SCHEMA
+  )
   const slots: Array<LlmQualityResponse | null> = input.captions.map(() => null)
 
-  for (const item of parsed.results ?? []) {
+  // Array.isArray, not `?? []`: a non-array that survived coercion is not iterable
+  // as records, and `for...of` over a string yields characters rather than failing.
+  for (const item of Array.isArray(parsed.results) ? parsed.results : []) {
     if (typeof item.index !== 'number') continue
     const slot = item.index - 1
     if (slot < 0 || slot >= slots.length) continue

@@ -45,7 +45,6 @@ describe('generateStreamSchema', () => {
     isHealthNiche: null,
     defaultCarouselSlides: 6,
     defaultPostType: null,
-    requireSourceGrounding: false,
     languageNotes: '',
     languageConfig: {
       language: 'English',

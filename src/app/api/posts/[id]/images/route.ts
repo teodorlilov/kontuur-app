@@ -4,7 +4,7 @@ import { verifyPostOwnership } from '@/lib/auth/helpers'
 import { uploadPostImage, deletePostImage, replaceExistingImage } from '@/features/publishing/lib/storage'
 import { validateImageFile } from '@/features/publishing/lib/validate-image-file'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
-import { POST_IMAGE_COLUMNS } from '@/lib/queries/select-columns'
+import { POST_IMAGE_COLUMNS, POST_IMAGE_STORAGE_COLUMNS } from '@/lib/queries/select-columns'
 
 /** Upload an image for a post (linked to a carousel slide position or single post). */
 export async function POST(
@@ -66,7 +66,7 @@ export async function DELETE(
   const admin = createAdminSupabaseClient()
   const { data: image } = await admin
     .from('post_images')
-    .select('id, storage_path')
+    .select(POST_IMAGE_STORAGE_COLUMNS)
     .eq('id', body.imageId)
     .eq('post_id', postId)
     .single()

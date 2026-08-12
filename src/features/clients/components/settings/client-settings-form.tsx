@@ -90,6 +90,10 @@ const GROUP_LABEL: Record<keyof DirtyGroups, string> = {
 interface ClientSettingsFormProps {
   clientId: string
   sourceCount: number
+  /** Active content sources with no topic limit — they feed every pillar, including new ones. */
+  unrestrictedSourceCount: number
+  /** What the engine has learned from this client's review edits; null until it has. */
+  styleMemo: { bullets: Array<{ rule: string; evidence_count: number }>; updatedAt: string } | null
   client: Omit<ClientRow, 'agency_id'>
   profile: Omit<BrandProfileRow, 'client_id'> | null
   schedule: Omit<PostingScheduleRow, 'client_id' | 'created_at'> | null
@@ -340,7 +344,16 @@ export function ClientSettingsForm(props: ClientSettingsFormProps) {
           />
         )
       case 'brand':
-        return <BrandProfileTab brand={drafts.brand} onChange={patchBrand} />
+        return (
+          <BrandProfileTab
+            brand={drafts.brand}
+            onChange={patchBrand}
+            savedPillarNames={initial.brand.contentPillars.map((p) => p.pillar)}
+            unrestrictedSourceCount={props.unrestrictedSourceCount}
+            clientId={props.clientId}
+            styleMemo={props.styleMemo}
+          />
+        )
       case 'visual':
         return <VisualIdentityTab identity={drafts.identity} onChange={setIdentity} />
       case 'schedule':

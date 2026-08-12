@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { cn } from '@/utils/cn'
 import { Button } from '@/components/ui/button'
-import { getPillarColor } from '@/components/ui/colors/pillar-colors'
+import { ContentMixList } from './content-mix-list'
 import type { RunPlan } from '@/features/generate/lib/run-plan'
 
 interface RunPanelProps {
@@ -32,7 +32,7 @@ export function RunPanel({
   generating,
   onGenerate,
 }: RunPanelProps) {
-  const { publishState, webResearchActive, starvedPillars, skipMode } = runPlan
+  const { publishState, webResearchActive, starvedPillars, webOnlyPillars } = runPlan
   // The headline promises what actually lands — briefs write extra posts.
   const totalCount = postCount + briefCount
 
@@ -79,71 +79,35 @@ export function RunPanel({
         />
 
         <div className="mt-4 border-t border-white/10 pt-4">
-          <p className="mb-2 text-label font-semibold uppercase text-ink-inv/45">Content mix</p>
-              {/* Briefs first — they are written ahead of the researched mix,
-                  and with this row the mix sums to the headline count. */}
-              {briefCount > 0 && (
-                <div className="flex items-center gap-2 py-1 text-caption">
-                  <span aria-hidden className="size-2 flex-none rounded-full bg-ink-inv/60" />
-                  <span className="min-w-0 flex-1 truncate">Priority briefs</span>
-                  <span className="flex-none tabular-nums text-ink-inv/70">
-                    {briefCount} post{briefCount === 1 ? '' : 's'}
-                  </span>
-                </div>
-              )}
-              {runPlan.allocation.map(({ pillar, count, hasSources }) => (
-                <div key={pillar.id} className="flex items-center gap-2 py-1 text-caption">
-                  <span
-                    aria-hidden
-                    className={cn(
-                      'size-2 flex-none rounded-full',
-                      // Hatching says absence — a starved pillar's dot is an
-                      // empty slot, not a coloured mark.
-                      !hasSources && 'slot-open-inv shadow-[inset_0_0_0_1px_rgba(242,245,241,0.3)]'
-                    )}
-                    // The identity hue lightened toward the on-dark off-white:
-                    // Forest at full strength is 1.2:1 on Pine Deep — invisible.
-                    // Computed because the palette is a token list, not classes.
-                    style={
-                      hasSources
-                        ? {
-                            background: `color-mix(in srgb, ${getPillarColor(pillar.pillar).hex} 45%, var(--ink-inv))`,
-                          }
-                        : undefined
-                    }
-                  />
-                  <span className={cn('min-w-0 flex-1 truncate', !hasSources && 'text-ink-inv/45')}>
-                    {pillar.pillar}
-                  </span>
-                  <span
-                    className={cn(
-                      'flex-none tabular-nums',
-                      hasSources && count > 0 ? 'text-ink-inv/70' : 'text-ink-inv/45'
-                    )}
-                  >
-                    {!hasSources ? 'no sources' : count === 0 ? '—' : `${count} post${count === 1 ? '' : 's'}`}
-                  </span>
-                </div>
-              ))}
-              <p className="mt-3 text-micro text-ink-inv/60">
-                {starvedPillars.length === 0 ? (
-                  'Weighted by this client’s pillars. Research decides the final split.'
-                ) : (
-                  <>
-                    {starvedPillars.length} pillar{starvedPillars.length === 1 ? ' has' : 's have'} no
-                    sources of {starvedPillars.length === 1 ? 'its' : 'their'} own.{' '}
-                    {skipMode === 'soft'
-                      ? 'Web research will look; if nothing lands, it is skipped. '
-                      : 'Web research is off for this client, so it will be skipped. '}
-                    <Link
-                      href={`/clients/${clientId}/sources`}
-                      className="text-spring-lite underline decoration-spring-lite/40 underline-offset-2"
-                    >
-                      Add a source
-                    </Link>
-                  </>
-                )}
-              </p>
+          <ContentMixList allocation={runPlan.allocation} briefCount={briefCount} />
+          <p className="mt-3 text-micro text-ink-inv/60">
+            {starvedPillars.length > 0 ? (
+              <>
+                {starvedPillars.length} pillar{starvedPillars.length === 1 ? ' has' : 's have'}{' '}
+                nothing feeding {starvedPillars.length === 1 ? 'it' : 'them'} and will be skipped.{' '}
+                <Link
+                  href={`/clients/${clientId}/sources`}
+                  className="text-spring-lite underline decoration-spring-lite/40 underline-offset-2"
+                >
+                  Add a source
+                </Link>
+              </>
+            ) : webOnlyPillars.length > 0 ? (
+              <>
+                {webOnlyPillars.length} pillar{webOnlyPillars.length === 1 ? ' relies' : 's rely'}{' '}
+                on web research alone; if nothing lands, {webOnlyPillars.length === 1 ? 'it is' : 'they are'}{' '}
+                skipped.{' '}
+                <Link
+                  href={`/clients/${clientId}/sources`}
+                  className="text-spring-lite underline decoration-spring-lite/40 underline-offset-2"
+                >
+                  Add a source
+                </Link>
+              </>
+            ) : (
+              'Weighted by this client’s pillars. Research decides the final split.'
+            )}
+          </p>
         </div>
       </div>
 

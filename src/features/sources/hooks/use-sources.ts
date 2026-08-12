@@ -2,10 +2,9 @@
 
 import { useState } from 'react'
 import { toast } from '@/components/ui/toast'
-import { updateClient } from '@/features/clients/actions/client-actions'
 import { createSource, uploadSource, updateSource, deleteSource } from '@/features/sources/actions/source-actions'
 import type { ActionResult } from '@/lib/actions/types'
-import type { ClientSource, SourceSuggestion, SourceStrategy } from '@/types/api'
+import type { ClientSource, SourceSuggestion } from '@/types/api'
 
 async function withRollback<T>(
   previous: T,
@@ -34,7 +33,6 @@ interface UseSourcesOptions {
   niche: string
   pillarNames?: string[]
   initialSources: ClientSource[]
-  initialSourceStrategy?: SourceStrategy
 }
 
 export function useSources({
@@ -43,27 +41,13 @@ export function useSources({
   niche,
   pillarNames,
   initialSources,
-  initialSourceStrategy,
 }: UseSourcesOptions) {
   const [sources, setSources] = useState<ClientSource[]>(initialSources)
-  const [strategy, setStrategy] = useState<SourceStrategy>(
-    initialSourceStrategy ?? {}
-  )
   const [suggestions, setSuggestions] = useState<SourceSuggestion[]>([])
   const [isSaving, setIsSaving] = useState(false)
   const [suggesting, setSuggesting] = useState(false)
   const [addingFromSuggestion, setAddingFromSuggestion] = useState<string | null>(null)
   const [showModal, setShowModal] = useState(false)
-
-  async function handleToggleGrounding(enabled: boolean) {
-    const updated: SourceStrategy = { ...strategy, require_source_grounding: enabled }
-    const previous = strategy
-    setStrategy(updated)
-    await withRollback(previous, setStrategy,
-      () => updateClient(clientId, { brand_profile: { source_strategy: updated } }),
-      'Failed to save research settings'
-    )
-  }
 
   async function handleSuggest() {
     setSuggesting(true)
@@ -168,7 +152,10 @@ export function useSources({
 
   async function handleEditSource(
     sourceId: string,
-    updates: { label?: string; url?: string; config?: Record<string, unknown>; pillar_ids?: string[] }
+    updates: { label?: string; url?: string; config?: Record<string, unknown>; pillar_ids?: string[] },
+    // quiet: pillar chips fire one write per click — a success toast per chip
+    // is noise, so they rely on the optimistic state and toast only on rollback.
+    opts?: { quiet?: boolean }
   ) {
     const previous = sources
     setSources((prev) => prev.map((s) => (s.id === sourceId ? { ...s, ...updates } : s)))
@@ -176,7 +163,7 @@ export function useSources({
       () => updateSource(sourceId, updates),
       'Failed to update source'
     )
-    if (ok) toast.success('Source updated')
+    if (ok && !opts?.quiet) toast.success('Source updated')
     return ok
   }
 
@@ -203,14 +190,12 @@ export function useSources({
 
   return {
     sources,
-    strategy,
     suggestions,
     isSaving,
     suggesting,
     addingFromSuggestion,
     showModal,
     setShowModal,
-    handleToggleGrounding,
     handleSuggest,
     handleAddSource,
     handleUploadFile,

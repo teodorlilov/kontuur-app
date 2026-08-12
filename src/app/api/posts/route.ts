@@ -108,6 +108,11 @@ const createPostSchema = z.object({
   source_excerpt: z.string().nullable().optional(),
   client_source_id: z.string().nullable().optional(),
   pillar: z.string().nullable().optional(),
+  /** The AI's own text as generated, sent by the wizard so the pre-insert human
+   *  edit stays diffable — draftColumns coalesces these ahead of the (already
+   *  edited) caption/slides. */
+  generated_caption: z.string().nullable().optional(),
+  generated_slides_json: z.unknown().optional(),
   /** Draft visuals generated in the wizard, attached as post_images rows on approve.
    *  `canvasDoc` (when present) becomes the slide's post_canvas_docs row so edits stay editable. */
   images: z
@@ -280,6 +285,8 @@ export async function POST(request: Request) {
       source_excerpt: body.source_excerpt,
       pillar: body.pillar,
       topic_summary: body.topic_summary,
+      generated_caption: body.generated_caption,
+      generated_slides_json: body.generated_slides_json,
     }),
     client_source_id: clientSourceId,
     status:

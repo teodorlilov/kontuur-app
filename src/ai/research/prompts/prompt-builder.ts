@@ -239,8 +239,22 @@ ${this.buildSourceMaterialBlock(sourceContext)}
   "source_url": "url or null",
   "source_title": "title or null",
   "source_type": "rss | website | file | web_search | performance | null",
-  "source_excerpt": "Write in ${this.languageConfig.language}. 5-8 sentences extracting the key facts from the source. Each sentence must correspond to a specific passage in the source — do not infer, interpret, or connect facts that the source does not explicitly connect. Include only facts, claims, and details that are explicitly stated — do NOT add information from your own knowledge, even if technically correct. For technical or medical terms, use the established term in ${this.languageConfig.language}. If no established term exists, keep the original English term — do NOT create hybrid transliterations mixing Latin and Cyrillic characters. Replace all double-quotes with single-quotes."
+  "source_excerpt": "Write in ${this.languageConfig.language}. ${this.buildExcerptSpec()} Each sentence must correspond to a specific passage in the source — do not infer, interpret, or connect facts that the source does not explicitly connect. Include only facts, claims, and details that are explicitly stated — do NOT add information from your own knowledge, even if technically correct. For technical or medical terms, use the established term in ${this.languageConfig.language}. If no established term exists, keep the original English term — do NOT create hybrid transliterations mixing Latin and Cyrillic characters. Replace all double-quotes with single-quotes."
 }]`
+  }
+
+  /**
+   * How much the excerpt must carry. For non-English clients the excerpt is the
+   * writer's ONLY grounding text (the raw English source stays out of the
+   * writer's prompt to stop translationese), so it must hold every fact the
+   * post could need. English clients keep the lean spec — their writer still
+   * reads the full source text, and a longer excerpt would only cost tokens.
+   */
+  private buildExcerptSpec(): string {
+    const isEnglish = this.languageConfig.language.trim().toLowerCase() === 'english'
+    return isEnglish
+      ? '5-8 sentences extracting the key facts from the source.'
+      : `8-12 sentences extracting the key facts from the source. This excerpt is the ONLY source text the post writer will see, so carry every number, price, percentage, named person, named product and concrete claim from the source that the theme needs.`
   }
 
   private buildPillarAllocationBlock(count: number): string {

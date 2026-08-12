@@ -1,11 +1,12 @@
 import { describe, it, expect } from 'vitest'
-import { checkCarouselStructure } from '../check-structure'
+import { checkCarouselStructure, checkSingleFormat } from '../check-structure'
+import type { SlideText } from '@/types/slide'
 
 function words(n: number): string {
   return Array.from({ length: n }, (_, i) => `w${i}`).join(' ')
 }
 
-function slides(bodies: string[]): Array<{ headline: string; body: string }> {
+function slides(bodies: string[]): SlideText[] {
   return bodies.map((body, i) => ({ headline: `Headline ${i + 1}`, body }))
 }
 
@@ -43,5 +44,32 @@ describe('checkCarouselStructure', () => {
     const result = checkCarouselStructure(words(50), slides([words(45)]))
     expect(result.notes).toHaveLength(1)
     expect(result.notes[0]).toContain('Cover slide')
+  })
+})
+
+describe('checkSingleFormat', () => {
+  it('passes an ordinary caption', () => {
+    expect(checkSingleFormat('Три съвета за възстановяване. Запишете час днес.')).toEqual({
+      passes: true,
+      notes: [],
+    })
+  })
+
+  it('flags slide labels in either language', () => {
+    expect(checkSingleFormat('# Carousel Post\nSLIDE 1 (Cover)\nHeadline: X').passes).toBe(false)
+    expect(checkSingleFormat('Слайд 1: Заглавие тук').passes).toBe(false)
+  })
+
+  it('flags repeated Headline:/Body: field structure', () => {
+    const caption = '**Headline:** Първи ред\n**Body:** Обяснение тук'
+    expect(checkSingleFormat(caption).passes).toBe(false)
+  })
+
+  it('tolerates a single field-label mention — quoting "headline:" once is not structure', () => {
+    expect(checkSingleFormat('Каква е формулата? Headline: кратък и конкретен.').passes).toBe(true)
+  })
+
+  it('ignores hashtags and dash lists', () => {
+    expect(checkSingleFormat('Съвети:\n- първи\n- втори\n#маркетинг').passes).toBe(true)
   })
 })

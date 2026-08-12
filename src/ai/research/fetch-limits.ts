@@ -14,12 +14,6 @@ const FILE_BUDGET_MAX = 6000
 const MIN_BUDGET_RATIO = 0.4
 
 /**
- * Compute fetch limits scaled proportionally to the requested post count.
- * At count >= 5 (the default), all values match the original hardcoded defaults.
- * Below 5, everything scales down linearly — fewer subpages, fewer RSS items,
- * smaller prompt budgets.
- */
-/**
  * Budget for a run whose topics were supplied rather than chosen.
  *
  * Explicit rather than `computeFetchLimits(0)`, which returns
@@ -40,6 +34,18 @@ export const BRIEF_FETCH_LIMITS: FetchLimits = {
 /** How many web results a briefs-only run aims for. */
 export const BRIEF_WEB_RESULTS = 3
 
+/**
+ * Scale the haystack to the size of the batch — a one-post run should not pay to
+ * gather material for five.
+ *
+ * BASE_COUNT is where scaling tops out, not the default run size (DEFAULT_RUN_SIZE
+ * is smaller): a typical run is deliberately below full budget. Two limits opt out
+ * of the ratio. Page count tracks `count` directly and keeps climbing past
+ * BASE_COUNT to its own cap, because more posts want more distinct pages rather
+ * than a fixed share of them. The text budgets floor at MIN_BUDGET_RATIO, because
+ * below that a source arrives too truncated to ground a claim at all — which costs
+ * more than the tokens it saves.
+ */
 export function computeFetchLimits(count: number): FetchLimits {
   const s = Math.min(Math.max(count, 1) / BASE_COUNT, 1)
 

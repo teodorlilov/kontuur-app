@@ -1,7 +1,6 @@
 import { z } from 'zod'
 import { formatZodIssues } from '@/lib/validation/format-issues'
 import { visualIdentitySchema } from '@/lib/visual/identity-schema'
-import type { SourceStrategy } from '@/types/sources'
 import type { SourceKind } from '@/types/visual'
 
 /**
@@ -12,19 +11,7 @@ import type { SourceKind } from '@/types/visual'
  * unknown keys, so an unexpected field can never reach an `update()` call.
  */
 
-const sourceStrategySchema = z.object({
-  require_source_grounding: z.boolean().optional(),
-})
-
 const sourceKindSchema = z.enum(['default', 'website', 'manual'])
-
-// Fails the build if SourceStrategy and the schema drift apart — the guard convention from
-// src/lib/visual/identity-schema.ts.
-type SchemaSourceStrategy = z.infer<typeof sourceStrategySchema>
-const _sourceStrategyForward: SourceStrategy = null as unknown as SchemaSourceStrategy
-const _sourceStrategyBackward: SchemaSourceStrategy = null as unknown as SourceStrategy
-void _sourceStrategyForward
-void _sourceStrategyBackward
 
 type SchemaSourceKind = z.infer<typeof sourceKindSchema>
 const _sourceKindForward: SourceKind = null as unknown as SchemaSourceKind
@@ -51,7 +38,6 @@ export const brandProfileInputSchema = z.object({
   language_formality: z.string().optional(),
   secondary_language: z.string().nullable().optional(),
   is_health_niche: z.boolean().optional(),
-  source_strategy: sourceStrategySchema.optional(),
   language_notes: z.string().nullable().optional(),
 })
 

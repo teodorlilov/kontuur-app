@@ -3,6 +3,7 @@ import { extractTextFromMessage, extractToolInput } from '@/utils/ai'
 import { buildGenerateSystemPrompt } from '@/ai/generation/prompts/prompt-builder'
 import { buildAiTells } from '@/ai/shared/build-prompt-sections'
 import { formatHistory } from '@/ai/utils/prompt-helpers'
+import { stripMarkdownArtifacts } from '@/ai/utils/sanitize'
 import type { RewriteCaptionInput, RewriteCarouselInput, RewriteCarouselResult } from '../types'
 
 export async function rewriteCaption(input: RewriteCaptionInput): Promise<string> {
@@ -10,7 +11,7 @@ export async function rewriteCaption(input: RewriteCaptionInput): Promise<string
   const lc = client.languageConfig
 
   const message = await callAnthropic({
-    systemPrompt: buildGenerateSystemPrompt(client, input.platform) + '\n\n' + buildAiTells(lc.language),
+    systemPrompt: buildGenerateSystemPrompt(client, input.platform, 'single') + '\n\n' + buildAiTells(lc.language),
     userMessage: `Recent topics already covered — do not drift into: ${formatHistory(client.postHistory, { limit: 15 })}
 
 ORIGINAL POST:
@@ -41,20 +42,46 @@ Return ONLY the rewritten post text. No explanations, no commentary.`,
   })
 
   const text = extractTextFromMessage(message)
-  return text ? text.trim() : input.caption
+  return text ? stripMarkdownArtifacts(text.trim()) : input.caption
+}
+
+/**
+ * Output schema pinned to the draft's slide count. Named rather than inline so the
+ * same object reaches `extractToolInput`, which needs it to repair an array the
+ * model returned as a JSON-encoded string.
+ */
+function buildRewriteOutputSchema(slideCount: number) {
+  return {
+    type: 'object' as const,
+    properties: {
+      main_caption: { type: 'string' },
+      slides: {
+        type: 'array',
+        minItems: slideCount,
+        maxItems: slideCount,
+        items: {
+          type: 'object',
+          properties: { headline: { type: 'string' }, body: { type: 'string' } },
+          required: ['headline', 'body'],
+        },
+      },
+    },
+    required: ['main_caption', 'slides'],
+  }
 }
 
 export async function rewriteCarousel(input: RewriteCarouselInput): Promise<RewriteCarouselResult> {
   const slidesText = input.slides
     .map((s, i) => `Slide ${i + 1}:\nHeadline: ${s.headline}\nBody: ${s.body}`)
-
     .join('\n\n')
+
+  const outputSchema = buildRewriteOutputSchema(input.slides.length)
 
   const { client } = input
   const lc = client.languageConfig
 
   const message = await callAnthropic({
-    systemPrompt: buildGenerateSystemPrompt(client, input.platform) + '\n\n' + buildAiTells(lc.language),
+    systemPrompt: buildGenerateSystemPrompt(client, input.platform, 'carousel') + '\n\n' + buildAiTells(lc.language),
     userMessage: `Recent topics already covered — do not drift into: ${formatHistory(client.postHistory, { limit: 15 })}
 
 MAIN CAPTION:
@@ -83,24 +110,21 @@ SELF-CHECK before returning:
 - Does the opener make someone stop scrolling? If not — rewrite it.
 - Could this post be written about any business in the niche? If yes — add specificity.
 - Read each slide aloud. Any sentence that sounds like a written report must be rewritten in spoken language.`,
-    outputSchema: {
-      type: 'object' as const,
-      properties: {
-        main_caption: { type: 'string' },
-        slides: {
-          type: 'array',
-          minItems: input.slides.length,
-          maxItems: input.slides.length,
-          items: {
-            type: 'object',
-            properties: { headline: { type: 'string' }, body: { type: 'string' } },
-            required: ['headline', 'body'],
-          },
-        },
-      },
-      required: ['main_caption', 'slides'],
-    },
+    outputSchema,
   })
 
-  return extractToolInput<RewriteCarouselResult>(message)
+  const raw = extractToolInput<Partial<RewriteCarouselResult>>(message, outputSchema)
+  // Same unenforced-schema guard the carousel generator carries: a truncated tool
+  // call can omit either field, and mapping over the missing one threw a TypeError
+  // that surfaced to the reviewer as a bare "rewrite failed".
+  if (typeof raw.main_caption !== 'string' || !Array.isArray(raw.slides)) {
+    throw new Error('rewriteCarousel: model returned an incomplete carousel')
+  }
+  return {
+    main_caption: stripMarkdownArtifacts(raw.main_caption),
+    slides: raw.slides.map((s) => ({
+      headline: stripMarkdownArtifacts(s.headline ?? ''),
+      body: stripMarkdownArtifacts(s.body ?? ''),
+    })),
+  }
 }

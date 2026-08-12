@@ -4,16 +4,16 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
 import { PagePickerModal } from '@/features/sources/components/page-picker-modal'
-import { ToggleRow } from '@/components/ui/form'
 import { SourceRow } from '@/features/sources/components/source-row'
+import { SourcesRail } from '@/features/sources/components/sources-rail'
 import { ManualAddInModal } from '@/features/sources/components/manual-add-modal'
 import { extractInitials, formatRelativeTime } from '@/utils/format'
 import { HeaderMeta, MetaFlag, PageHeader } from '@/components/layout/page-header/page-header'
 import { useSources } from '@/features/sources/hooks/use-sources'
 import { WHOLE_SITE_PAGE_CAP } from '@/features/sources/constants'
-import { pillarHasSources, getSourcePillarIds } from '@/lib/clients/content-pillars'
+import { computePillarCoverage } from '@/lib/clients/content-pillars'
 import { toast } from '@/components/ui/toast'
-import type { ClientSource, SourceStrategy } from '@/types/api'
+import type { ClientSource } from '@/types/api'
 import type { WeightedPillar } from '@/lib/clients/content-pillars'
 import type { SourceUsageStats } from '@/lib/queries/db'
 
@@ -22,9 +22,10 @@ interface SourcesManagerProps {
   clientName: string
   niche: string
   initialSources: ClientSource[]
-  initialSourceStrategy?: SourceStrategy
   pillars: WeightedPillar[]
   usageStats?: SourceUsageStats[]
+  /** Sizes the rail's next-run preview; 0 falls back to DEFAULT_RUN_SIZE. */
+  postsPerWeek: number
 }
 
 interface AddForm {
@@ -38,20 +39,18 @@ export function SourcesManager({
   clientName,
   niche,
   initialSources,
-  initialSourceStrategy,
   pillars,
   usageStats,
+  postsPerWeek,
 }: SourcesManagerProps) {
   const {
     sources,
-    strategy,
     suggestions,
     isSaving,
     suggesting,
     addingFromSuggestion,
     showModal,
     setShowModal,
-    handleToggleGrounding,
     handleSuggest,
     handleAddSource,
     handleUploadFile,
@@ -65,7 +64,6 @@ export function SourcesManager({
     niche,
     pillarNames: pillars.map((p) => p.pillar),
     initialSources,
-    initialSourceStrategy,
   })
 
   const [adding, setAdding] = useState<'rss' | 'website' | 'file' | null>(null)
@@ -160,13 +158,14 @@ export function SourcesManager({
   const websiteSources = sources.filter((s) => s.type === 'website')
   const fileSources = sources.filter((s) => s.type === 'file')
   const tavilySource = sources.find((s) => s.type === 'tavily')
-  const activeSourceCount = sources.filter((s) => s.is_active).length
-  const requireGrounding = strategy.require_source_grounding ?? false
 
-  const allSourcePillarIds = sources
-    .filter((s) => s.is_active)
-    .map((s) => getSourcePillarIds(s.pillar_ids))
-  const uncoveredPillars = pillars.filter((p) => !pillarHasSources(p.id, allSourcePillarIds))
+  // The shared coverage model: tavily counts only as 'web', and only within its
+  // own topic limit — so this page and the generate panel tell one story.
+  const coverage = computePillarCoverage(
+    pillars,
+    sources.filter((s) => s.is_active)
+  )
+  const uncoveredPillars = pillars.filter((p) => coverage.get(p.id)?.state === 'none')
 
   function renderSourceList(
     sourcesOfType: ClientSource[],
@@ -176,7 +175,19 @@ export function SourcesManager({
   ) {
     if (sourcesOfType.length === 0) {
       return adding === sourceType ? null : (
-        <p className="text-body text-text3 py-4">{emptyMessage}</p>
+        <button
+          type="button"
+          onClick={() => {
+            setAdding(sourceType)
+            setAddForm({ label: '', url: '', focusInstructions: '' })
+          }}
+          className="flex w-full items-center gap-3 rounded-xl border border-dashed border-line2 px-4 py-4 text-left text-caption text-text3 transition-colors hover:text-text2"
+        >
+          <span className="flex size-7 flex-none items-center justify-center rounded-full bg-sunken text-body text-text2">
+            +
+          </span>
+          {emptyMessage}
+        </button>
       )
     }
     return (
@@ -189,7 +200,7 @@ export function SourcesManager({
             usage={usageBySourceId.get(source.id)}
             pillars={pillars}
             onPillarIdsChange={(ids) => {
-              void handleEditSource(source.id, { pillar_ids: ids })
+              void handleEditSource(source.id, { pillar_ids: ids }, { quiet: true })
             }}
             onToggle={() => {
               void handleToggleActive(source)
@@ -259,8 +270,8 @@ export function SourcesManager({
               'Drafts are grounded in what these sources publish',
               uncoveredPillars.length > 0 && (
                 <MetaFlag>
-                  {uncoveredPillars.length} pillar{uncoveredPillars.length === 1 ? '' : 's'} with no
-                  source
+                  {uncoveredPillars.length} pillar{uncoveredPillars.length === 1 ? '' : 's'} nothing
+                  feeds
                 </MetaFlag>
               ),
             ]}
@@ -268,61 +279,19 @@ export function SourcesManager({
         }
       />
 
-      <div className="mx-auto max-w-2xl px-6 pb-10 pt-6">
-        {/* Source settings */}
-        <section className="mb-6 bg-surface rounded-xl border border-line p-5">
-          <p className="text-body font-medium text-text2 mb-3">Source settings</p>
-          <ToggleRow
-            title="Strict mode: only use facts from these sources"
-            description="When on, posts stick to facts found in your sources. Anything unverified gets flagged."
-            checked={requireGrounding}
-            onChange={(v) => {
-              void handleToggleGrounding(v)
-            }}
-          />
-        </section>
-
-        {/* Topic-filter gaps (only meaningful once sources exist) */}
-        {activeSourceCount > 0 && uncoveredPillars.length > 0 && (
-          <div className="mb-6 rounded-lg border border-pending bg-pending-bg px-4 py-3 space-y-1">
-            {uncoveredPillars.map((p) => (
-              <p key={p.id} className="text-caption text-pending">
-                No sources feed <span className="font-medium">&quot;{p.pillar}&quot;</span> right
-                now. Ideas for this topic will come from web research and general knowledge instead.
-              </p>
-            ))}
-          </div>
-        )}
-
-        {/* Research status */}
-        <div className="mb-6">
-          {requireGrounding && activeSourceCount === 0 ? (
-            <p className="text-caption text-pending">
-              Source grounding is on but no sources are active — disable grounding or activate a
-              source.
-            </p>
-          ) : activeSourceCount === 0 ? (
-            <p className="text-caption text-text3">
-              No active sources — generation will have no source material.
-            </p>
-          ) : (
-            <p className="text-caption text-text3">
-              {activeSourceCount} {activeSourceCount === 1 ? 'source' : 'sources'} active
-            </p>
-          )}
-        </div>
-
+      <div className="mx-auto grid w-full max-w-[1280px] items-start gap-6 px-4 py-6 md:px-8 lg:grid-cols-[minmax(0,1fr)_340px]">
+        <div className="min-w-0">
         {/* Web research (Tavily) section */}
         {tavilySource && (
           <section className="mb-8">
-            <h2 className="text-body font-semibold text-text2 mb-3">Web research</h2>
+            <h2 className="text-label font-semibold uppercase text-text3 mb-3">Web research</h2>
             <SourceRow
               source={tavilySource}
               statusBadge={getStatusBadge(tavilySource)}
               usage={usageBySourceId.get(tavilySource.id)}
               pillars={pillars}
               onPillarIdsChange={(ids) => {
-                void handleEditSource(tavilySource.id, { pillar_ids: ids })
+                void handleEditSource(tavilySource.id, { pillar_ids: ids }, { quiet: true })
               }}
               onToggle={() => {
                 void handleToggleActive(tavilySource)
@@ -340,7 +309,7 @@ export function SourcesManager({
         {/* News & blogs section */}
         <section className="mb-8">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-body font-semibold text-text2">News &amp; blogs</h2>
+            <h2 className="text-label font-semibold uppercase text-text3">News &amp; blogs</h2>
             <div className="flex items-center gap-2">
               <Button
                 variant="ghost"
@@ -379,6 +348,9 @@ export function SourcesManager({
                   className="rounded-lg border border-line2 px-3 py-1.5 text-lead md:text-body text-ink placeholder:text-text3 focus:border-spring focus:outline-none focus:ring-1 focus:ring-spring/12"
                 />
               </div>
+              <p className="text-caption text-text3">
+                It will feed every pillar until you limit its topics.
+              </p>
               <div className="flex items-center gap-2">
                 <Button
                   size="sm"
@@ -410,7 +382,7 @@ export function SourcesManager({
         {/* Websites section */}
         <section className="mb-8">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-body font-semibold text-text2">Websites</h2>
+            <h2 className="text-label font-semibold uppercase text-text3">Websites</h2>
             <Button
               variant="secondary"
               size="sm"
@@ -471,6 +443,9 @@ export function SourcesManager({
                   )}
                 </div>
               )}
+              <p className="text-caption text-text3">
+                It will feed every pillar until you limit its topics.
+              </p>
               <div className="flex items-center gap-2">
                 <Button
                   size="sm"
@@ -505,7 +480,7 @@ export function SourcesManager({
         {/* Documents section */}
         <section className="mb-8">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-body font-semibold text-text2">Documents</h2>
+            <h2 className="text-label font-semibold uppercase text-text3">Documents</h2>
             <Button
               variant="secondary"
               size="sm"
@@ -534,6 +509,7 @@ export function SourcesManager({
               </div>
               <p className="text-caption text-text3">
                 Max 10MB. Text will be extracted and used as context for research and generation.
+                It will feed every pillar until you limit its topics.
               </p>
               <div className="flex items-center gap-2">
                 <Button
@@ -565,6 +541,14 @@ export function SourcesManager({
             'file'
           )}
         </section>
+        </div>
+
+        <SourcesRail
+          clientId={clientId}
+          pillars={pillars}
+          sources={sources}
+          postsPerWeek={postsPerWeek}
+        />
 
         {/* Page Picker Modal */}
         <PagePickerModal

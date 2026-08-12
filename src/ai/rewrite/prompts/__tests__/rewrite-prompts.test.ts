@@ -27,7 +27,6 @@ function makeClient(overrides: Partial<ClientData> = {}): ClientData {
     isHealthNiche: null,
     defaultCarouselSlides: 7,
     defaultPostType: null,
-    requireSourceGrounding: false,
     languageNotes: '',
     postHistory: ['hydration tips', 'sunscreen myths'],
     languageConfig: {

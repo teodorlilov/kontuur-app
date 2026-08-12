@@ -6,6 +6,8 @@
  * rows were retired — failures surface as actionable `issues` entries instead.
  */
 
+import type { SlideText } from '@/types/slide'
+
 // ---- Issue taxonomy ----
 
 export type LanguageIssueType =
@@ -31,7 +33,11 @@ export interface StructureResult {
 export interface ValidationCriteria {
   ai_tells: string[]
   worst_offending_phrase: string | null
-  /** null for single posts; carousels get a collapsed pass/fail with failure notes */
+  /**
+   * Collapsed pass/fail with failure notes. Carousels always carry one; a single
+   * post carries one only when the code-side format guard fails (caption written
+   * as a carousel) — otherwise null, which the UI reads as "not a carousel".
+   */
   structure_followed: StructureResult | null
   /** null when no source present */
   source_claims: SourceGroundingIssue[] | null
@@ -66,6 +72,14 @@ export interface LanguageIssue {
   original_text: string
   issue_description: string
   suggested_fix: string
+  /**
+   * Whether the fix verifiably reached the saved copy — stamped when
+   * corrections are applied, so review can tell a receipt ("fixed before you
+   * saw it") from a warning ("flagged, but the quoted phrase was not found").
+   * Absent on rows stored before this field existed and on verdicts whose
+   * corrections have not been applied yet.
+   */
+  applied?: boolean
 }
 
 export interface LanguageValidationResult {
@@ -74,7 +88,7 @@ export interface LanguageValidationResult {
   language_score: number | null
   issues: LanguageIssue[]
   corrected_text: string | null
-  corrected_slides?: Array<{ headline: string; body: string }> | null
+  corrected_slides?: SlideText[] | null
 }
 
 export interface SlopDetection {

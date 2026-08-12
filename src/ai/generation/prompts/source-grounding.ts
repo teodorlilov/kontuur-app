@@ -1,19 +1,53 @@
 import { decodeUrl } from '@/utils/decode-url'
+import type { PostType } from '@/types/api'
+
+/**
+ * The one place that decides which source text grounds a post — fed to BOTH the
+ * writer prompt and the judge's fabrication check, which previously each wrote
+ * their own `sourceFullText || sourceExcerpt` and could silently diverge.
+ *
+ * English clients: the capped full source text, as always. Non-English clients:
+ * the planner's native-language excerpt is the primary — composing while
+ * reading 4000 chars of English is the documented translationese failure mode —
+ * and for carousels (5 slides need more facts than 12 sentences) the English
+ * full text rides along as background the writer may take NO facts from. The
+ * judge checks claims against `primary` only: a fact lifted from background is
+ * exactly what it should flag.
+ */
+export function selectGroundingText(
+  source: { sourceExcerpt?: string; sourceFullText?: string },
+  language: string,
+  format: PostType
+): { primary?: string; background?: string } {
+  const isEnglish = language.trim().toLowerCase() === 'english'
+  if (isEnglish) return { primary: source.sourceFullText || source.sourceExcerpt }
+
+  const primary = source.sourceExcerpt || source.sourceFullText
+  const background =
+    format === 'carousel' && source.sourceExcerpt && source.sourceFullText
+      ? source.sourceFullText
+      : undefined
+  return { primary, background }
+}
 
 /**
  * Shared source grounding section builder for AI prompts.
- * Used by generate-post.ts and generate-carousel.ts.
+ * One builder for both formats, so the single and carousel user prompts in
+ * prompt-builder.ts cannot drift on how they present source material.
  */
 export function buildGroundingPrompt(opts: {
-  sourceExcerpt?: string
-  sourceFullText?: string
+  primary?: string
+  background?: string
   sourceUrl?: string | null
-  requireSourceGrounding?: boolean
   contentLabel?: string
 }): string {
-  const { sourceExcerpt, sourceFullText, sourceUrl, requireSourceGrounding, contentLabel = 'caption' } = opts
-  const sourceText = sourceFullText || sourceExcerpt
-  if (!requireSourceGrounding || !sourceText) {
+  const { primary, background, sourceUrl, contentLabel = 'caption' } = opts
+  const sourceText = primary
+  // Source text present is the only condition: a post written from a source is
+  // always checked against it. This used to be gated behind a client toggle that
+  // could not change the outcome — with source text the gate was forced open,
+  // without it there was nothing to check — so the setting was removed entirely.
+  if (!sourceText) {
     return `FACTUAL GROUNDING (no source material available):
 - Do NOT invent specific statistics, case studies, customer quotes, or measurable results.
 - You may describe common patterns and well-established knowledge in this field.
@@ -31,7 +65,7 @@ export function buildGroundingPrompt(opts: {
 SOURCE MATERIAL (use as primary context):
 Source Text: ${sourceText}
 Source URL: ${urlLine}
-
+${background ? `\nBACKGROUND CONTEXT (for understanding only — every fact, number and claim you use MUST come from the Source Text above, NONE from this background):\n${background}\n` : ''}
 SOURCE GROUNDING RULES:
 - Use this source as the primary context and inspiration for the post.
 - Every specific statistic, number, price, or claim you include MUST come from the source or the client's own known expertise — do NOT invent facts.

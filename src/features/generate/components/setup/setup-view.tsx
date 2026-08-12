@@ -8,6 +8,7 @@ import { FormatCards } from './format-cards'
 import { CountSteppers } from './count-steppers'
 import { BriefList } from './brief-list'
 import { RunPanel } from './run-panel'
+import { DEFAULT_RUN_SIZE } from '@/utils/constants'
 import type { RunPlan } from '@/features/generate/lib/run-plan'
 import type { PostType, PriorityPost, ClientIdea } from '@/types/api'
 
@@ -40,7 +41,7 @@ export function SetupView(props: SetupViewProps) {
   const { sourceIdea } = props
   const isIdeaFlow = !!sourceIdea
   const selectedClient = props.clients.find((c) => c.id === props.clientId)
-  const postsPerWeek = selectedClient?.posts_per_week ?? 3
+  const postsPerWeek = selectedClient?.posts_per_week ?? DEFAULT_RUN_SIZE
 
   const metaLine = [
     props.platform,
@@ -103,6 +104,7 @@ export function SetupView(props: SetupViewProps) {
           <CountSteppers
             postCount={props.postCount}
             slideCount={props.slideCount}
+            briefCount={props.briefs.length}
             postType={props.postType}
             postsPerWeek={postsPerWeek}
             onPostCount={props.onPostCountChange}

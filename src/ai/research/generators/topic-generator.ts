@@ -42,10 +42,15 @@ export async function generateTopics(
   plan: { briefs: readonly TopicBrief[]; researchCount: number },
   sourceContext?: SourceContext
 ): Promise<ResearchTopic[]> {
+  // Output scales with the number of planned topics (each carries a multi-sentence
+  // source_excerpt) — the flat 4096 default truncated the forced tool call around
+  // 4-6 topics, which nulls the entire plan and fails the run.
+  const topicCount = plan.briefs.length + plan.researchCount
   const message = await callAnthropic({
     systemPrompt: builder.systemPrompt,
     userMessage: builder.buildTopicPlanPrompt(plan, sourceContext),
     model: DEFAULT_MODEL,
+    maxTokens: Math.max(4096, 1024 * topicCount),
     outputSchema: TOPICS_OUTPUT_SCHEMA,
   })
 

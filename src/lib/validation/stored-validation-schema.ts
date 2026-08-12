@@ -101,6 +101,9 @@ const storedLanguageSchema = z.object({
         original_text: z.string().catch(''),
         issue_description: z.string().catch(''),
         suggested_fix: z.string().catch(''),
+        // Absent on rows stored before the stamp existed — the panel treats
+        // "unknown" as applied, matching what it claimed for those rows anyway.
+        applied: z.boolean().optional().catch(undefined),
       })
     )
     .catch([]),

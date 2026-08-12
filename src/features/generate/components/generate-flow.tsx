@@ -260,7 +260,11 @@ export function GenerateFlow({
           // view mute between results — the last activity stays up until the
           // next phase replaces it.
           setLoadingStage((prev) => Math.max(prev, stageIndex('writing')))
-          const generated = event.data as unknown as ReviewDraft
+          // No cast: GenerationResult already satisfies ReviewDraft. The double
+          // assertion that stood here defeated the one thing UnifiedStreamEvent
+          // exists for — if the two shapes ever diverge, this must fail the build
+          // rather than hand the review leaves a draft they cannot render.
+          const generated: ReviewDraft = event.data
           receivedCount++
           setGeneratedPosts((prev) => [...prev, generated])
           // Kick off visuals as each post's copy streams — images overlap the rest of the run.
@@ -291,7 +295,7 @@ export function GenerateFlow({
     setOutcome((prev) => new Set(prev).add(postId))
   }
 
-  function handlePostApproved(postId: string) {
+  function handlePostApproved(postId: string, savedPostId: string) {
     // Completed visuals were attached by POST /api/posts; stop any still-pending jobs.
     draftVisuals.abandonDraft(postId)
     // Approval is the moment the idea is fulfilled — the first approved post claims it.
@@ -301,7 +305,10 @@ export function GenerateFlow({
       // Claimed synchronously before the call — approve-all's loop is sequential,
       // so the next iteration must already see the claim.
       ideaLinkedRef.current = true
-      void linkGeneratedPost(sourceIdea.id, postId).then((result) => {
+      // The link MUST use the saved row's id: the draft id was never inserted —
+      // POST /api/posts generates its own — and linking it violated the
+      // generated_post_id foreign key, stranding the idea in the inbox.
+      void linkGeneratedPost(sourceIdea.id, savedPostId).then((result) => {
         if (!result.ok) {
           // Releasing the claim lets the next approval retry; until then the idea
           // honestly stays in the inbox, which is what the toast says.
@@ -481,6 +488,14 @@ export function GenerateFlow({
             approvedCount={approvedIds.size}
             discardedCount={discardedIds.size}
             skippedPillarCount={skippedPillars.length}
+            // Covered pillars the allocation gave no post: a small run leaves the
+            // rest unscheduled (rotation), which is not a skip and must not read
+            // like one on the tally. Counted off the allocation rather than
+            // subtracting the run size — allocateByWeight can put two posts on
+            // one pillar, so the subtraction disagreed with the setup panel.
+            restingPillarCount={
+              runPlan.allocation.filter((a) => a.coverage !== 'none' && a.count === 0).length
+            }
             clientName={clientName}
             clientId={clientId}
             onNewRun={requestNewRun}

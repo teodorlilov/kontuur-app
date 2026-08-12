@@ -8,6 +8,7 @@ import {
   type ClientSourceSummary,
 } from '@/lib/queries/db'
 import { buildClientData, fetchClientData, type ClientData } from '@/lib/clients/fetch-client-data'
+import { DEFAULT_RUN_SIZE } from '@/utils/constants'
 import { fetchIdeaById } from '@/features/ideas/lib/ideas'
 import { AWAITING_DECISION } from '@/features/ideas/lib/idea-filters'
 import { GenerateFlow } from '@/features/generate/components/generate-flow'
@@ -43,7 +44,7 @@ export default async function GeneratePage({ searchParams }: PageProps) {
   }
 
   let initialClientData: ClientData | null = null
-  let initialTargetPostCount = 3
+  let initialTargetPostCount: number = DEFAULT_RUN_SIZE
   let initialSources: ClientSourceSummary[] = []
   let initialConnections: MetaConnection[] = []
 
