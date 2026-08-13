@@ -1,5 +1,6 @@
-import { SignupForm } from '@/features/auth/components/signup-form'
+import { redirect } from 'next/navigation'
 
+/** Sign-up is a dialog over the landing page. See `(auth)/login/page.tsx`. */
 export default function SignupPage() {
-  return <SignupForm />
+  redirect('/?auth=signup')
 }

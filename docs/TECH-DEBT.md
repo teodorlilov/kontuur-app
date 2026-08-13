@@ -407,6 +407,16 @@ had never had.
   its way", and add `checkRateLimit`. Deferred because it removes an error message the
   forgot-password form currently shows, so the copy needs deciding alongside it.
 
+**Mostly cleared** — the landing redesign settled the copy. `/forgot-password` is now a dialog
+whose sent view reads *"If an account exists for that address, a reset link is on its way"*, so
+the 404 had nothing left to display and the route answers 200 either way. The provider's own
+failure is logged at the boundary and returned as a generic message, so it cannot leak the same
+signal by another route. The route also gained the zod schema it was missing, and its entry left
+`KNOWN_UNVALIDATED` in `boundary-validation.test.ts`.
+
+**Still open:** `checkRateLimit`. The oracle is closed, but the endpoint will still send mail for
+any address as fast as it is asked to.
+
 ---
 
 ## 7. Enforcement guards — added 2026-08-06, with the backlogs they exposed

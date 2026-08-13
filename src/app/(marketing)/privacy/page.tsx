@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { Footer } from '@/features/marketing/components/Footer'
+import { Footer } from '@/features/marketing/components/footer'
 import {
   proseBackLink,
   proseContainer,

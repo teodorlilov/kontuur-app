@@ -28,7 +28,6 @@ the source of truth and these remain for design rationale.
 | [plans/PUBLISHING.md](./plans/PUBLISHING.md)             | Shipped — Instagram publishing pipeline |
 | [plans/NOTIFICATION.md](./plans/NOTIFICATION.md)         | Shipped — client-response notifications |
 | [plans/CLIENT_IDEAS.md](./plans/CLIENT_IDEAS.md)         | Shipped — client idea submission        |
-| [plans/LANDING-REDESIGN.md](./plans/LANDING-REDESIGN.md) | Shipped — marketing landing redesign    |
 
 Mocks for the 2026 app redesign live in [`redesign-mocks/`](./redesign-mocks/); the shipped
 surfaces are the source of truth, and the mocks remain for direction rationale.

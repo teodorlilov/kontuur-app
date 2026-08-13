@@ -35,6 +35,11 @@ const INLINE_SIZE_EXEMPT = [
   // The inline-edit overlay mirrors the Konva node's own fontSize onto a DOM
   // textarea, scaled to the current zoom. Document data again, not a style.
   'features/canvas-editor/hooks/use-inline-text-edit.ts',
+  // ImageResponse renders through satori, which rasterises a JSX tree with no
+  // stylesheet in scope at all -- there is no CSS pass, so className is inert
+  // and inline style is the only channel that exists. This is a picture, not a
+  // page: nothing here can be overridden by a utility or a responsive variant.
+  'app/opengraph-image.tsx',
 ]
 
 function sourceFiles(): string[] {

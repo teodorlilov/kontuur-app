@@ -1,26 +1,42 @@
 'use client'
 
 import { useState } from 'react'
-import { createBrowserSupabaseClient } from '@/lib/supabase/client'
-import { validatePassword } from '@/lib/validation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { toast } from '@/components/ui/toast'
-import { KontuurLogo } from '@/components/ui/kontuur-logo'
+import { createBrowserSupabaseClient } from '@/lib/supabase/client'
+import { validatePassword } from '@/lib/validation'
+import { AuthFormError, AuthPanel, FIELD_SURFACE } from './auth-panel'
+import { useAuthForm } from './use-auth-form'
 
-interface FormErrors {
-  password?: string
-  confirmPassword?: string
-}
+type Field = 'password' | 'confirmPassword'
 
+/**
+ * Where an invite link and a password-recovery link both land.
+ *
+ * Stays a real route rather than a dialog view: it is only reachable with a
+ * live session that an email link established, so there is nothing on the
+ * landing page that could open it. It wears the dialog's panel and fields so it
+ * still reads as the same surface.
+ */
 export function SetupPasswordForm() {
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [errors, setErrors] = useState<FormErrors>({})
+  const {
+    formRef,
+    errors,
+    formError,
+    submitting,
+    setSubmitting,
+    setFormError,
+    checkFields,
+    rejectWith,
+  } = useAuthForm<Field>()
 
-  function validate(): FormErrors {
-    const next: FormErrors = {}
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+
+    const next: Partial<Record<Field, string>> = {}
     const passwordError = validatePassword(password)
     if (passwordError) next.password = passwordError
     if (!confirmPassword) {
@@ -28,36 +44,26 @@ export function SetupPasswordForm() {
     } else if (password !== confirmPassword) {
       next.confirmPassword = 'Passwords do not match'
     }
-    return next
-  }
+    if (!checkFields(next)) return
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    const errs = validate()
-    if (Object.keys(errs).length > 0) {
-      setErrors(errs)
-      return
-    }
-    setErrors({})
-    setLoading(true)
+    setSubmitting(true)
+    setFormError(null)
 
     const supabase = createBrowserSupabaseClient()
-
-    // Check that user has a session
     const {
       data: { user },
     } = await supabase.auth.getUser()
+
     if (!user) {
       toast.error('Session expired. Please use your invite link again or reset your password.')
-      window.location.href = '/login'
+      window.location.href = '/?auth=reset'
       return
     }
 
     const { error } = await supabase.auth.updateUser({ password })
 
     if (error) {
-      toast.error(error.message)
-      setLoading(false)
+      rejectWith(error.message)
       return
     }
 
@@ -68,45 +74,42 @@ export function SetupPasswordForm() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-sunken px-4">
-      <div className="w-full max-w-sm">
-        <div className="mb-8 text-center">
-          <div className="inline-flex mb-6">
-            <KontuurLogo />
-          </div>
-          <h1 className="text-headline font-semibold text-ink">Set your password</h1>
-          <p className="text-body text-text3 mt-1">
-            Choose a password to complete your account setup
-          </p>
-        </div>
-
-        <form
-          onSubmit={handleSubmit}
-          className="bg-surface rounded-xl border border-line p-6 flex flex-col gap-4"
+    <main className="flex min-h-screen items-center justify-center bg-paper px-5 py-12">
+      <div className="w-full max-w-[432px] rounded-card border border-line bg-surface p-8 md:p-9">
+        <AuthPanel
+          title="Set your password"
+          description="Choose a password to complete your account setup."
         >
-          <Input
-            label="Password"
-            type="password"
-            placeholder="Min. 10 characters"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            error={errors.password}
-            autoComplete="new-password"
-          />
-          <Input
-            label="Confirm password"
-            type="password"
-            placeholder="Re-enter your password"
-            value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
-            error={errors.confirmPassword}
-            autoComplete="new-password"
-          />
-          <Button type="submit" loading={loading} className="w-full mt-1">
-            Set password
-          </Button>
-        </form>
+          <form ref={formRef} onSubmit={handleSubmit} className="flex flex-col gap-4">
+            {formError && <AuthFormError>{formError}</AuthFormError>}
+
+            <Input
+              label="Password"
+              type="password"
+              placeholder="Min. 10 characters"
+              autoComplete="new-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              error={errors.password}
+              className={FIELD_SURFACE}
+            />
+            <Input
+              label="Confirm password"
+              type="password"
+              placeholder="Re-enter your password"
+              autoComplete="new-password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              error={errors.confirmPassword}
+              className={FIELD_SURFACE}
+            />
+
+            <Button type="submit" size="lg" loading={submitting} className="mt-1 w-full">
+              Set password
+            </Button>
+          </form>
+        </AuthPanel>
       </div>
-    </div>
+    </main>
   )
 }

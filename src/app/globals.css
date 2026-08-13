@@ -10,9 +10,15 @@
 @source not "../../.claude";
 
 /* ─── Contour design system — source of truth ─────────────────────────
-   Naming follows docs/plans/LANDING-REDESIGN.md §2. Density rule:
-   landing = full contour field · auth = 2 lines · dashboard = full field,
-   mounted once by components/layout/contour-field.tsx.
+   Every value below is published in DESIGN.md § Colors; that document is the
+   decision and this block is how it is spelled. (This comment used to cite
+   docs/plans/LANDING-REDESIGN.md §2, which carried the PRE-Contour palette —
+   #f1f0ea paper, #8b958d tertiary, a --raised card gradient — i.e. the three
+   values DESIGN.md says must never come back. That plan is gone.)
+
+   Density rule: landing and dashboard both carry the full contour field,
+   mounted by components/layout/contour-field.tsx; the sign-up dialog's ink
+   panel carries two lines and nothing else does.
 
    The dashboard was "data only" until the v2 ground landed. It now carries
    the field too, because depth comes from interrupting the terrain rather
@@ -507,6 +513,36 @@ body {
   }
 }
 
+/* ─── Invalid-field shake ────────────────────────────────────────────
+   Empty-submit feedback on the auth dialogs. Transform-only, so a field
+   flagging itself never reflows the dialog around it. The error line is what
+   carries the message; this only points at it, which is why reduced motion
+   drops it outright rather than shortening it. */
+@keyframes shake {
+  20% {
+    transform: translateX(-6px);
+  }
+  40% {
+    transform: translateX(6px);
+  }
+  60% {
+    transform: translateX(-4px);
+  }
+  80% {
+    transform: translateX(4px);
+  }
+}
+
+.shake {
+  animation: shake 0.4s var(--ease-contour);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shake {
+    animation: none;
+  }
+}
+
 /* ─── Number inputs ──────────────────────────────────────────────────
    Chrome renders spin buttons inside every input[type=number] and Tailwind's
    preflight does not remove them. Every numeric field in this app is a small
@@ -571,7 +607,7 @@ input[type='number']::-webkit-outer-spin-button {
   border-radius: var(--radius-sm);
 }
 
-/* ─── Marketing responsive layout ─── */
+/* ─── Marketing layout + motion ─── */
 
 /* Section horizontal padding — used by all marketing sections */
 .mkt-pad {
@@ -583,6 +619,99 @@ input[type='number']::-webkit-outer-spin-button {
   .mkt-pad {
     padding-left: 20px;
     padding-right: 20px;
+  }
+}
+
+/* Idle bob for the hero's floating posts.
+   Animates the `translate` property rather than `transform`, because the tiles
+   already carry a `rotate` and the two would overwrite each other as one
+   shorthand — the individual transform properties compose instead. */
+@keyframes ph-bob {
+  from {
+    translate: 0 -7px;
+  }
+  to {
+    translate: 0 9px;
+  }
+}
+
+.ph-bob {
+  animation: ph-bob 8s ease-in-out infinite alternate;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ph-bob {
+    animation: none;
+  }
+}
+
+/* Scroll reveal — distinct from .rv above, which fires on mount. This one waits
+   for an IntersectionObserver to add .in (features/marketing/.../reveal.tsx).
+
+   Both fallbacks live here rather than in the component, so the settled state is
+   the CSS default and no JavaScript has to agree with it: reduced motion never
+   transitions, and @media (scripting: none) keeps the page readable for a visitor
+   without JS — otherwise every revealed block would sit at opacity 0 forever. */
+.reveal {
+  opacity: 0;
+  transform: translateY(14px);
+  transition:
+    opacity 0.55s var(--ease-contour),
+    transform 0.55s var(--ease-contour);
+  transition-delay: var(--d, 0ms);
+}
+
+.reveal.in {
+  opacity: 1;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}
+
+@media (scripting: none) {
+  .reveal {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Marquee — the hero post wall and the serif word bands.
+   The track renders its content exactly twice, so translating -50% lands on an
+   identical frame and the seam is invisible. Duration and direction come from
+   the call site through the two custom properties; hovering the clipping
+   parent pauses it, because a moving wall is unreadable if you want to look. */
+@keyframes mq-scroll {
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.mq {
+  overflow: hidden;
+}
+
+.mq-track {
+  display: flex;
+  width: max-content;
+  animation: mq-scroll var(--mq-duration, 46s) linear infinite;
+  animation-direction: var(--mq-direction, normal);
+}
+
+.mq:hover .mq-track {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* The wall still reads as a wall standing still — the tiles are the content,
+     the scrolling is not. */
+  .mq-track {
+    animation: none;
   }
 }
 

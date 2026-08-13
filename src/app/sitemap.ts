@@ -2,6 +2,12 @@ import type { MetadataRoute } from 'next'
 
 const BASE_URL = 'https://kontuur.app'
 
+/**
+ * `/login` and `/signup` are not listed: both are now redirects to `/?auth=…`,
+ * because sign-in and sign-up are dialogs over the landing page. Advertising a
+ * redirect as an indexable URL asks crawlers to follow a hop to a page already
+ * listed above at priority 1.
+ */
 export default function sitemap(): MetadataRoute.Sitemap {
   const lastModified = new Date()
 
@@ -11,18 +17,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
       lastModified,
       changeFrequency: 'weekly',
       priority: 1,
-    },
-    {
-      url: `${BASE_URL}/login`,
-      lastModified,
-      changeFrequency: 'monthly',
-      priority: 0.5,
-    },
-    {
-      url: `${BASE_URL}/signup`,
-      lastModified,
-      changeFrequency: 'monthly',
-      priority: 0.8,
     },
     {
       url: `${BASE_URL}/privacy`,

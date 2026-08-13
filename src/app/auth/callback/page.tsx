@@ -54,7 +54,11 @@ export default async function AuthCallbackPage({
       }
     }
 
-    redirect('/login?error=confirmation_failed')
+    // Straight to the sign-in dialog with the reason attached. This used to be
+    // `/login?error=confirmation_failed`, and nothing on that page ever read
+    // the param — an expired confirmation link dropped a visitor on a blank
+    // sign-in form with no explanation at all.
+    redirect('/?auth=signin&error=confirmation_failed')
   }
 
   // No code param — implicit flow (invite link with hash fragment tokens).

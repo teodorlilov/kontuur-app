@@ -58,7 +58,6 @@ const KNOWN_UNVALIDATED: string[] = [
   'ai/paste-from-url/route.ts',
   'ai/rewrite/route.ts',
   'ai/suggest-sources/route.ts',
-  'auth/forgot-password/route.ts',
   'canva/designs/[designId]/export/route.ts',
   'extract/start/route.ts',
   'posts/[id]/images/route.ts',

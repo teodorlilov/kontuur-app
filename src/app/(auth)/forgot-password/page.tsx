@@ -1,5 +1,6 @@
-import { ForgotPasswordForm } from '@/features/auth/components/forgot-password-form'
+import { redirect } from 'next/navigation'
 
+/** Password reset is a dialog over the landing page. See `(auth)/login/page.tsx`. */
 export default function ForgotPasswordPage() {
-  return <ForgotPasswordForm />
+  redirect('/?auth=reset')
 }

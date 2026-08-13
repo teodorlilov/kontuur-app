@@ -1,58 +1,58 @@
 'use client'
 
 import { Suspense } from 'react'
-import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { KontuurLogo } from '@/components/ui/kontuur-logo'
+import { useSearchParams } from 'next/navigation'
+import { Mail } from 'lucide-react'
+import { AuthPanel } from '@/features/auth/components/auth-panel'
 
+/**
+ * Where sign-up lands when the Supabase project has email confirmation on.
+ *
+ * Still a real route rather than a dialog view: sign-up navigates here, and the
+ * visitor's next move is in their inbox, not on this page. It borrows the
+ * dialog's own panel so the two read as one surface.
+ */
 function CheckEmailContent() {
-  const searchParams = useSearchParams()
-  const email = searchParams.get('email')
+  const email = useSearchParams().get('email')
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-sunken px-4 py-10">
-      <div className="w-full max-w-sm text-center">
-        <div className="inline-flex mb-8">
-          <KontuurLogo />
-        </div>
-
-        <div className="bg-surface rounded-xl border border-line p-8">
-          <div className="h-12 w-12 rounded-full bg-wash flex items-center justify-center mx-auto mb-4">
-            <svg
-              className="h-6 w-6 text-forest"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={1.5}
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75"
-              />
-            </svg>
+    <main className="flex min-h-screen items-center justify-center bg-paper px-5 py-12">
+      <div className="w-full max-w-[432px] rounded-card border border-line bg-surface p-8 md:p-9">
+        <AuthPanel
+          title="Check your email"
+          description={
+            <>
+              We sent a confirmation link to{' '}
+              {email ? (
+                <span className="font-medium text-ink">{email}</span>
+              ) : (
+                'your email address'
+              )}
+              . Click it to activate your account.
+            </>
+          }
+        >
+          <div className="flex flex-col items-center gap-6">
+            <span className="grid size-12 place-items-center rounded-full bg-wash text-forest">
+              <Mail size={22} strokeWidth={1.6} aria-hidden />
+            </span>
+            <p className="text-center text-caption text-text3">
+              Didn&apos;t receive it? Check your spam folder.
+            </p>
+            <p className="text-center text-caption text-text2">
+              Already confirmed?{' '}
+              <Link
+                href="/?auth=signin"
+                className="font-medium text-spring-text underline-offset-4 hover:underline"
+              >
+                Sign in
+              </Link>
+            </p>
           </div>
-
-          <h1 className="text-display font-sans font-semibold text-ink mb-2">Check your email</h1>
-          <p className="text-body text-text3">
-            We sent a confirmation link to{' '}
-            {email ? <span className="font-medium text-text2">{email}</span> : 'your email address'}
-            . Click the link to activate your account.
-          </p>
-
-          <p className="text-caption text-text3 mt-4">
-            Didn&apos;t receive it? Check your spam folder.
-          </p>
-        </div>
-
-        <p className="text-center text-body text-text3 mt-4">
-          Already confirmed?{' '}
-          <Link href="/login" className="text-forest font-medium hover:underline">
-            Sign in
-          </Link>
-        </p>
+        </AuthPanel>
       </div>
-    </div>
+    </main>
   )
 }
 

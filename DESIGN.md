@@ -163,9 +163,17 @@ components:
 > Anything from it that was still true is in § Implementation.
 >
 > **Related, and deliberately not merged here:** [docs/CLAUDE.md](docs/CLAUDE.md)
-> owns code structure and conventions; [docs/plans/LANDING-REDESIGN.md](docs/plans/LANDING-REDESIGN.md)
-> is a locked-but-unimplemented plan that predates Contour and still carries the
-> old palette — reconcile it against this document before building it.
+> owns code structure and conventions.
+>
+> `docs/plans/LANDING-REDESIGN.md` used to be listed here as a locked plan to
+> reconcile against this document before building. It was built — the landing
+> page is `src/features/marketing/`, the auth dialogs are
+> `src/features/auth/components/` — and the plan was then deleted rather than
+> marked done, for the same reason `docs/STYLE-GUIDE.md` was: its token section
+> published the pre-Contour palette, so leaving it in the repo left two answers
+> to the same question. Its mocks survive as reference in
+> [docs/redesign-mocks/](docs/redesign-mocks/), under a README that says plainly
+> that this document outranks them.
 
 ## Overview
 
@@ -312,17 +320,20 @@ deliberately overriding the role and owes a WHY.
 
 _On the `var()` form._ For a while the guard permitted `fontSize: 'var(--text-body)'` on the grounds that it still points at a ramp token, and about forty call sites grew on that permission. The permission was wrong: a size expressed as a style object cannot be overridden by a class, does not participate in the responsive variants the ramp relies on (see the Mobile Input Exemption), and reintroduces the second vocabulary the ramp exists to delete. It reads as compliant, which is what made it worse than a literal. All forty were converted; the guard now fails on any inline `fontSize`.
 
-_The three exemptions are technical, not stylistic,_ and each is listed by path in the test:
+_The four exemptions are technical, not stylistic,_ and each is listed by path in the test:
 
 - **Konva document fields** (`lib/canvas/`, the canvas editor's properties panel). `fontSize` there is a saved document value bounded by a zod schema, not a style. A codemod through it corrupts users' stored designs.
 - **Recharts `tick` props** (`chart-config.ts` and the two charts that size their own axes). Recharts spreads `tick` onto an SVG `<text>` as a presentation attribute, and SVG attributes do not resolve `var()` — a token there renders at the user-agent default.
 - **The sonner toast config** in `app/layout.tsx`. It is a third-party component's options object; its own base rules win over utility classes where an inline style does not.
+- **The social card** in `app/opengraph-image.tsx`. `ImageResponse` rasterises its JSX through satori, where no stylesheet is in scope — there is no CSS pass, so `className` is inert and inline style is the only channel there is. It is a picture, not a page.
 
 _A ramp is only closed if its steps are distinguishable._ The previous version had fourteen roles with six inside a 2.5px band, and the predictable result was that call sites stopped believing it and wrote literals — 645 of them, across three parallel systems. Separation is the rule's precondition, not a nicety: these ratios widen from 1.09 at the dense end to 1.29 at the display end.
 
 The rule is enforced structurally, not by review. `globals.css` deletes Tailwind's own scale with `--text-*: initial`, so `text-sm` resolves to nothing at all; there is no second vocabulary to fall back into.
 
-**The Fluid Hero Exception.** Marketing section headings are `clamp()`, not ramp steps — `clamp(28px, 3vw, 40px)` for a section, `clamp(40px, 5vw, 64px)` for the landing hero. A heading that has to hold a 1440px viewport and a 375px one is doing something no fixed step can, and snapping it to Prompt would be a downgrade dressed as consistency. This is the only sanctioned off-ramp sizing in the system. It applies to marketing section and hero headings only, it never appears inside the app shell, and the lower bound of every clamp is still a ramp step so the mobile rendering lands on the system.
+**The Fluid Hero Exception.** Marketing section headings are `clamp()`, not ramp steps — `clamp(28px, 3vw, 40px)` for a section, `clamp(36px, 7.5vw, 104px)` for the landing hero. A heading that has to hold a 1440px viewport and a 375px one is doing something no fixed step can, and snapping it to Prompt would be a downgrade dressed as consistency.
+
+_On the hero's ceiling._ It was `64px` while the landing page was a column of generic sections. The rebuilt landing is a single two-line statement over the contour field with nothing competing for the viewport, and at 64px that reads as a subheading of itself. 104px is the size the composition was drawn at; the 7.5vw middle term means it only arrives on displays wide enough to hold it. This is the only sanctioned off-ramp sizing in the system. It applies to marketing section and hero headings only, it never appears inside the app shell, and the lower bound of every clamp is still a ramp step so the mobile rendering lands on the system.
 
 **The Mobile Input Exemption.** Focusable fields below `md` are set to **16px**: any smaller and iOS Safari auto-zooms the viewport the moment a field takes focus, throwing the layout mid-entry with no way back but a pinch. This is no longer off-ramp — Lead is exactly 16px, so the exemption is expressed as `text-lead md:text-body` in `CONTROL_TEXT`, and it still applies to focusable fields only and never leaks to static text.
 

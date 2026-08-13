@@ -26,26 +26,22 @@ export const metadata: Metadata = {
   metadataBase: new URL('https://kontuur.app'),
   title: 'kontuur',
   description: 'AI-powered social media management for agencies',
+  // No `images` on either block: `app/opengraph-image.tsx` is a file convention,
+  // and Next fills og:image and twitter:image from it for every route that
+  // inherits this layout. Naming a file here as well would pin the card to a
+  // static asset again, which is how the last one came to be a screenshot of a
+  // dashboard that no longer exists.
   openGraph: {
     type: 'website',
     url: 'https://kontuur.app',
     siteName: 'kontuur',
     title: 'kontuur',
     description: 'AI-powered social media management for agencies',
-    images: [
-      {
-        url: '/dashboard.png',
-        width: 1200,
-        height: 630,
-        alt: 'kontuur — AI-powered social media management for agencies',
-      },
-    ],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'kontuur',
     description: 'AI-powered social media management for agencies',
-    images: ['/dashboard.png'],
   },
 }
 
