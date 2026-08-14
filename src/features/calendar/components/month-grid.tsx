@@ -39,7 +39,9 @@ export const MonthGrid = memo(function MonthGrid({
     // No padding here: the view wrapper in CalendarView owns it, so all three views
     // sit on the same gutters. min-h-0 so the 42-cell grid is bounded by the workspace
     // rather than growing it.
-    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+    // min-h on mobile because the page is a scroll column there: six rows of
+    // `auto-rows-[1fr]` in an unbounded parent would resolve to nothing.
+    <div className="flex min-h-[480px] flex-col overflow-hidden md:min-h-0 md:flex-1">
       {/* Day headers */}
       {/* grid-cols-[repeat(7,1fr)], not grid-cols-7: the shorthand floors each
           track at min-content, which would let a long pill widen its column. */}

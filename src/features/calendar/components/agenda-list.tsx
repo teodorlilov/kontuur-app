@@ -51,7 +51,10 @@ export const AgendaList = memo(function AgendaList({
   const daysWithPosts = dayKeys.filter((key) => (lanes.get(key) ?? []).length > 0)
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto pb-4 md:hidden">
+    // No scroller of its own: this only ever renders below md, where the page is one
+    // column and the backlog sits beneath it. A nested overflow here would trap the
+    // week in a box and leave the queue unreachable underneath.
+    <div className="flex flex-col gap-4 pb-4 md:hidden">
       {daysWithPosts.length === 0 ? (
         <p className="m-auto px-4 text-center font-display text-body italic text-text3">
           Nothing scheduled this week.

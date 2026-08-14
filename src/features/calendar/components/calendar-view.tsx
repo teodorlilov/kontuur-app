@@ -574,8 +574,12 @@ export function CalendarView({ initialPosts, clients }: CalendarViewProps) {
         }
       />
 
-      <div className="flex min-h-0 flex-1">
-        <div className="flex min-h-0 flex-1 flex-col px-2 pb-[18px] pt-2.5 md:px-[18px]">
+      {/* Two panes side by side on desktop; one column that scrolls on a phone, where
+          there is no width to dock a 300px rail into. The backlog moves below the week
+          rather than behind a button: it was a floating panel once, and the layer it
+          needed is what buried its own close control. */}
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto md:flex-row md:overflow-hidden">
+        <div className="flex flex-col px-2 pb-[18px] pt-2.5 md:min-h-0 md:flex-1 md:px-[18px]">
         {mode === 'week' ? (
           <WeekGrid
             weekStartISO={weekStart}
@@ -605,17 +609,15 @@ export function CalendarView({ initialPosts, clients }: CalendarViewProps) {
         </div>
 
         {/* Docked, not floating: a sibling of the grid rather than a layer over it. */}
-        <div className="hidden md:flex">
-          <QueueRail
-            posts={filteredUnscheduled}
-            totalCount={unscheduledPosts.length}
-            activePostId={activePostId}
-            clientFilterName={
-              selectedClientId ? (clients.find((c) => c.id === selectedClientId)?.name ?? null) : null
-            }
-            onPostClick={handlePanelPostClick}
-          />
-        </div>
+        <QueueRail
+          posts={filteredUnscheduled}
+          totalCount={unscheduledPosts.length}
+          activePostId={activePostId}
+          clientFilterName={
+            selectedClientId ? (clients.find((c) => c.id === selectedClientId)?.name ?? null) : null
+          }
+          onPostClick={handlePanelPostClick}
+        />
       </div>
 
       <ScheduleCard

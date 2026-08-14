@@ -55,21 +55,29 @@ export const QueueRail = memo(function QueueRail({
 
   if (collapsed) {
     return (
-      <aside className="flex w-11 flex-none flex-col items-center gap-3 border-l border-line bg-surface py-3">
+      // Collapsed is a strip down the side of the grid on desktop and a bar across the
+      // bottom on a phone — the same control, turned to face the axis it is stealing
+      // space from.
+      <aside
+        className={cn(
+          'flex w-full flex-none flex-row items-center gap-3 border-t border-line bg-surface px-3 py-2',
+          'md:w-11 md:flex-col md:border-l md:border-t-0 md:px-0 md:py-3'
+        )}
+      >
         <button
           type="button"
           onClick={() => setCollapsed(false)}
           aria-label={`Expand queue, ${totalCount} waiting to be scheduled`}
-          className="grid size-7 place-items-center rounded-sm text-text2 transition-colors duration-150 ease-contour hover:bg-ink/[0.06] hover:text-ink"
+          className="grid size-7 flex-none place-items-center rounded-sm text-text2 transition-colors duration-150 ease-contour hover:bg-ink/[0.06] hover:text-ink"
         >
-          <ChevronLeft className="size-3.5" />
+          <ChevronLeft className="size-3.5 rotate-90 md:rotate-0" />
         </button>
-        <span className="rounded-full bg-pending-bg px-1.5 py-0.5 text-micro font-semibold tabular-nums text-pending">
+        <span className="order-last rounded-full bg-pending-bg px-1.5 py-0.5 text-micro font-semibold tabular-nums text-pending md:order-none">
           {totalCount}
         </span>
         <span
           aria-hidden="true"
-          className="text-label font-semibold uppercase text-text2 [writing-mode:vertical-rl]"
+          className="text-label font-semibold uppercase text-text2 md:[writing-mode:vertical-rl]"
         >
           Waiting
         </span>
@@ -80,7 +88,13 @@ export const QueueRail = memo(function QueueRail({
   return (
     <aside
       aria-label="Posts waiting to be scheduled"
-      className="flex w-[300px] flex-none flex-col border-l border-line bg-surface"
+      // Below md it sits under the week in the page's own scroll rather than beside it:
+      // seven columns do not fit on a phone and neither does a 300px rail, and the
+      // alternative — hiding it — left the backlog with no entry point at all.
+      className={cn(
+        'flex w-full flex-none flex-col border-t border-line bg-surface',
+        'md:w-[300px] md:border-l md:border-t-0'
+      )}
     >
       <div className="flex-none border-b border-line px-4 pb-3 pt-3.5">
         <div className="flex items-center gap-2">
@@ -166,7 +180,9 @@ export const QueueRail = memo(function QueueRail({
         </div>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto">
+      {/* Its own scroller only where it is a pane. On a phone it is a section of the
+          page, so it takes its natural height and the page scrolls it. */}
+      <div className="md:min-h-0 md:flex-1 md:overflow-y-auto">
         {groups.matched === 0 ? (
           <p className="px-4 py-8 text-center font-display text-caption italic text-text3">
             {totalCount === 0 ? 'Nothing waiting.' : 'Nothing matches that.'}

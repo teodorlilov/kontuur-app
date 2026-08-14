@@ -75,7 +75,7 @@ export const ClientsView = memo(function ClientsView({
   if (clients.length === 0) return null
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto">
+    <div className="flex flex-col gap-2 md:min-h-0 md:flex-1 md:overflow-y-auto">
       {/* Sticky, because a seventeen-client agency scrolls this list and a coverage strip
           with no weekday over it is seven anonymous chips. */}
       <div
