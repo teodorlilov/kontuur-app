@@ -1,11 +1,18 @@
 'use client'
 
 import { cn } from '@/utils/cn'
-import { COVERAGE_TONE } from '@/features/calendar/lib/coverage-tone'
-import { describeCoverage, type CoverageState } from '@/features/calendar/lib/week-model'
+import { COVERAGE_INK, COVERAGE_TONE } from '@/features/calendar/lib/coverage-tone'
+import { describeCoverage, type ClientDay } from '@/features/calendar/lib/week-model'
+import { isoToDateTimeFields } from '@/utils/date-helpers'
 
 /**
  * DESIGN.md's Signature Component: seven chips, one per day, encoding a client's week.
+ *
+ * **Each chip carries its hour.** The mock specified it verbatim — the cell's text
+ * content is the time — and shipping it empty left the strip answering only "is this day
+ * covered", when the hour is the thing an agency is actually scheduling. An occupied cell
+ * shows when the post goes out; a hatched one shows the suggested time nothing filled,
+ * which the hatch already marks as a suggestion rather than a commitment.
  *
  * Cells encode **state only, never client identity**. Casa Ceramics' identity hue is
  * Clay (`#A2603F`) and the failure colour is `--danger` (`#b04a38`) — a hue-coded cell
@@ -17,10 +24,17 @@ import { describeCoverage, type CoverageState } from '@/features/calendar/lib/we
  *
  * Lives in the calendar for now. It moves to `components/ui/` when the dashboard's
  * `CoverageRow` adopts it — converting that second consumer is what earns the promotion.
- * The month's day cells share this component's *tones* (`lib/coverage-tone.ts`) but not
- * its geometry, which is why that map is a separate module and this is not yet shared.
  */
-export function CoverageStrip({ week, className }: { week: CoverageState[]; className?: string }) {
+export function CoverageStrip({
+  week,
+  timeZone,
+  className,
+}: {
+  week: ClientDay[]
+  /** The agency zone. The hour printed here must match the one the week grid shows. */
+  timeZone: string
+  className?: string
+}) {
   return (
     <>
       {/* A sunken bed under the seven cells. Without it the strip is a scatter of marks
@@ -33,11 +47,22 @@ export function CoverageStrip({ week, className }: { week: CoverageState[]; clas
           className
         )}
       >
-        {week.map((state, index) => (
-          <span key={index} className={cn('h-6 rounded-xs', COVERAGE_TONE[state])} />
+        {week.map((day, index) => (
+          <span
+            key={index}
+            className={cn(
+              // tracking-normal cancels the Label role's +0.16em, which on a five-glyph
+              // numeral pushes "09:00" past the width of a seventh of the strip.
+              'grid h-7 place-items-center rounded-xs text-label font-semibold tracking-normal tabular-nums',
+              COVERAGE_TONE[day.state],
+              COVERAGE_INK[day.state]
+            )}
+          >
+            {day.at ? isoToDateTimeFields(day.at, timeZone).time : ''}
+          </span>
         ))}
       </div>
-      <span className="sr-only">{describeCoverage(week)}</span>
+      <span className="sr-only">{describeCoverage(week, timeZone)}</span>
     </>
   )
 }

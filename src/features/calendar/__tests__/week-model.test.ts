@@ -5,6 +5,7 @@ import {
   describeCoverage,
   groupPostsByDate,
   strongestState,
+  type ClientDay,
 } from '../lib/week-model'
 import type { CalendarPost } from '@/types/api'
 
@@ -62,7 +63,7 @@ describe('buildClientWeek', () => {
     })
     expect(result.filled).toBe(0)
     expect(result.verdict).toBe('Dark this week')
-    expect(result.week).toEqual(Array(7).fill('none'))
+    expect(result.week).toEqual(Array(7).fill({ state: 'none', at: null }))
   })
 
   it('counts posts, not days — two on one Tuesday is two towards the target', () => {
@@ -104,7 +105,10 @@ describe('buildClientWeek', () => {
       weekStartISO: week,
       target: 2,
     })
-    expect(result.week[2]).toBe('failed')
+    expect(result.week[2]?.state).toBe('failed')
+    // And it carries the *failure's* hour, not the published post's. The cell prints
+    // this, so showing 09:00 beside a clay chip would name the wrong post.
+    expect(result.week[2]?.at).toBe('2026-08-05T15:00:00.000Z')
     expect(result.verdict).toBe('On track')
   })
 
@@ -179,14 +183,42 @@ describe('strongestState', () => {
 })
 
 describe('describeCoverage', () => {
-  it('names every non-empty day, in order', () => {
-    expect(describeCoverage(['published', 'none', 'failed', 'none', 'none', 'none', 'none'])).toBe(
-      'Monday published, Wednesday failed to publish.'
+  const SOFIA = 'Europe/Sofia'
+  const empty = (): ClientDay[] => Array.from({ length: 7 }, () => ({ state: 'none', at: null }))
+
+  function week(overrides: Record<number, ClientDay>): ClientDay[] {
+    const days = empty()
+    for (const [index, day] of Object.entries(overrides)) days[Number(index)] = day
+    return days
+  }
+
+  it('names every non-empty day, in order, with its hour', () => {
+    // The hour is spoken because it is printed in the cell. A spoken equivalent that
+    // omits what the sighted reader sees is a lesser strip, not an equal one.
+    const said = describeCoverage(
+      week({
+        0: { state: 'published', at: '2026-08-03T06:00:00.000Z' },
+        2: { state: 'failed', at: '2026-08-05T15:00:00.000Z' },
+      }),
+      SOFIA
+    )
+    expect(said).toBe('Monday 09:00 published, Wednesday 18:00 failed to publish.')
+  })
+
+  it('resolves the hour in the agency zone, not the runtime', () => {
+    // 21:30Z is 00:30 the next day in Sofia — the same instant the grid buckets forward.
+    const said = describeCoverage(week({ 1: { state: 'scheduled', at: '2026-08-04T21:30:00.000Z' } }), SOFIA)
+    expect(said).toBe('Tuesday 00:30 scheduled.')
+  })
+
+  it('names a day that has a state but no instant', () => {
+    expect(describeCoverage(week({ 0: { state: 'open', at: null } }), SOFIA)).toBe(
+      'Monday an open slot.'
     )
   })
 
   it('says so when the week is empty', () => {
-    expect(describeCoverage(Array(7).fill('none'))).toBe('Nothing this week.')
+    expect(describeCoverage(empty(), SOFIA)).toBe('Nothing this week.')
   })
 })
 

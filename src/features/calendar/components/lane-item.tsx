@@ -1,6 +1,6 @@
 'use client'
 
-import type { CSSProperties, ReactNode } from 'react'
+import type { CSSProperties, DragEvent, ReactNode } from 'react'
 import { cn } from '@/utils/cn'
 import { getClientTone } from '@/components/ui/colors/identity-colors'
 import { extractInitials } from '@/utils/format'
@@ -56,6 +56,9 @@ export function LaneItem({
   time,
   ground = 'identity',
   postId,
+  draggable,
+  onDragStart,
+  onDragEnd,
   onClick,
   ariaLabel,
   children,
@@ -71,6 +74,17 @@ export function LaneItem({
    * every lane and card.
    */
   postId?: string
+  /**
+   * Makes the card a drag source.
+   *
+   * The one thing the calendar's previous drag support was missing: it had a complete
+   * `dragover`/`drop` protocol on the day cells and **no element anywhere was
+   * `draggable`**, so none of it could ever fire. A drop target with no source is not
+   * half a feature; it is none of it.
+   */
+  draggable?: boolean
+  onDragStart?: (event: DragEvent<HTMLButtonElement>) => void
+  onDragEnd?: () => void
   onClick?: () => void
   ariaLabel: string
   children: ReactNode
@@ -82,6 +96,9 @@ export function LaneItem({
     <button
       type="button"
       onClick={onClick}
+      draggable={draggable}
+      onDragStart={onDragStart}
+      onDragEnd={onDragEnd}
       aria-label={ariaLabel}
       // Every lane item is a cell in the week grid's 2-D keyboard model. The marker
       // sits on the button because that is the thing that can take focus.
@@ -103,6 +120,9 @@ export function LaneItem({
       }
       className={cn(
         'group flex w-full flex-none flex-col gap-1 rounded-chip border px-2 py-1.5 text-left',
+        // Only where dragging is offered. A grab cursor on a card that cannot move is
+        // an affordance for nothing.
+        draggable && 'cursor-grab active:cursor-grabbing',
         'transition-colors duration-150 ease-contour',
         'focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-spring',
         GROUND_CLASS[ground],

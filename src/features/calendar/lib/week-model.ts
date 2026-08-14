@@ -1,4 +1,4 @@
-import { getWeekDayKeys, toDateKey } from '@/utils/date-helpers'
+import { getWeekDayKeys, isoToDateTimeFields, toDateKey } from '@/utils/date-helpers'
 import type { CalendarPost } from '@/types/api'
 import type { PostStatus } from '@/lib/validation'
 import type { BestTimePlatform } from '@/types/api'
@@ -101,9 +101,24 @@ export function strongestState(posts: CalendarPost[]): CoverageState {
   )
 }
 
+/**
+ * One day of a client's week.
+ *
+ * The **time** rides along with the state, because a coverage cell that shows only a
+ * tone answers "is this day covered" and not "at what hour" — and the hour is the fact
+ * the agency is actually scheduling. For a placed post it is when it goes out; for an
+ * open or missed slot it is the suggested time nothing filled, which the hatch already
+ * marks as a suggestion rather than a commitment.
+ */
+export interface ClientDay {
+  state: CoverageState
+  /** The instant this day's strongest item sits at, or null when the day is empty. */
+  at: string | null
+}
+
 export interface ClientWeek {
-  /** Seven day states, Monday first. */
-  week: CoverageState[]
+  /** Seven days, Monday first. */
+  week: ClientDay[]
   /** Posts placed this week, however they turned out. */
   filled: number
   /** The agency's weekly target. 0 when no cadence has been set. */
@@ -137,15 +152,25 @@ export function buildClientWeek(input: {
     )
     filled += mine.filter((item) => item.kind === 'post').length
 
-    return mine.reduce<CoverageState>((strongest, item) => {
-      const next: CoverageState =
-        item.kind === 'post'
-          ? stateOfPost(item.post.status as PostStatus)
-          : item.missed
-            ? 'missed'
-            : 'open'
-      return strongerOf(strongest, next)
-    }, 'none')
+    // The strongest item, and the time *it* sits at — not the first item's. A day
+    // holding a filled 09:00 and an unfilled 18:00 reads as scheduled, so it must show
+    // 09:00; showing the open slot's hour would label a covered day with a gap's time.
+    return mine.reduce<ClientDay>(
+      (strongest, item) => {
+        const next: CoverageState =
+          item.kind === 'post'
+            ? stateOfPost(item.post.status as PostStatus)
+            : item.missed
+              ? 'missed'
+              : 'open'
+        // `strongerOf` returns the first argument on a tie, so an equal state keeps the
+        // earlier item's time — which is the one the lane already sorted to the top.
+        return strongerOf(strongest.state, next) === strongest.state
+          ? strongest
+          : { state: next, at: item.at }
+      },
+      { state: 'none', at: null }
+    )
   })
 
   return { week, filled, target, verdict: verdictFor(filled, target) }
@@ -179,9 +204,16 @@ const DAY_WORDS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Satu
  * component rather than an accessibility afterthought. Exported as a pure function
  * because that is the only part of it the node-environment suite can reach.
  */
-export function describeCoverage(week: CoverageState[]): string {
+export function describeCoverage(week: ClientDay[], timeZone: string): string {
   const said = week
-    .map((state, index) => (state === 'none' ? null : `${DAY_WORDS[index]} ${STATE_WORDS[state]}`))
+    .map((day, index) => {
+      if (day.state === 'none') return null
+      // The hour is spoken too, because it is now printed in the cell. A sighted reader
+      // sees "Wednesday 09:00, scheduled"; anything less here is a lesser version of the
+      // same strip rather than an equivalent one.
+      const at = day.at ? ` ${isoToDateTimeFields(day.at, timeZone).time}` : ''
+      return `${DAY_WORDS[index]}${at} ${STATE_WORDS[day.state]}`
+    })
     .filter(Boolean)
   return said.length === 0 ? 'Nothing this week.' : `${said.join(', ')}.`
 }

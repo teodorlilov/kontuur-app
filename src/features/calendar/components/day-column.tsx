@@ -1,6 +1,6 @@
 'use client'
 
-import { memo } from 'react'
+import { memo, useState } from 'react'
 import { cn } from '@/utils/cn'
 import { PostCard } from './post-card'
 import { GhostSlot } from './ghost-slot'
@@ -23,8 +23,11 @@ export const DayColumn = memo(function DayColumn({
   isPast,
   items,
   timeZone,
+  isDropTarget,
   onPostClick,
   onSlotClick,
+  onDropPost,
+  onDragStateChange,
 }: {
   dayKey: string
   columnIndex: number
@@ -32,11 +35,16 @@ export const DayColumn = memo(function DayColumn({
   isPast: boolean
   items: LaneItem[]
   timeZone: string
+  /** A card is in flight and this column is not the one it came from. */
+  isDropTarget: boolean
   onPostClick: (postId: string) => void
   onSlotClick: (slot: { clientName: string; at: string }) => void
+  onDropPost: (postId: string, dayKey: string) => void
+  onDragStateChange: (postId: string | null) => void
 }) {
   const dayNumber = Number(dayKey.slice(8, 10))
   const label = DOW_LABELS[columnIndex] ?? ''
+  const [isOver, setIsOver] = useState(false)
 
   return (
     <div
@@ -45,12 +53,38 @@ export const DayColumn = memo(function DayColumn({
       tabIndex={-1}
       data-grid-column={columnIndex}
       aria-label={dayLabel(label, dayNumber, items)}
+      // `preventDefault` on dragover is what makes a drop possible at all — without it
+      // the browser refuses the drop and nothing fires. It is also the reason the
+      // calendar's previous drop protocol looked complete and did nothing.
+      onDragOver={(event) => {
+        if (!isDropTarget) return
+        event.preventDefault()
+        event.dataTransfer.dropEffect = 'move'
+        setIsOver(true)
+      }}
+      // relatedTarget, not a bare leave: dragging across a card *inside* the column
+      // fires dragleave on the column, and clearing on that flickers the highlight off
+      // every time the pointer crosses a post.
+      onDragLeave={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setIsOver(false)
+      }}
+      onDrop={(event) => {
+        event.preventDefault()
+        setIsOver(false)
+        onDragStateChange(null)
+        const postId = event.dataTransfer.getData('text/plain')
+        if (postId) onDropPost(postId, dayKey)
+      }}
       className={cn(
-        'flex min-h-0 flex-col overflow-hidden rounded-lg border',
+        'flex min-h-0 flex-col overflow-hidden rounded-lg border transition-colors duration-150 ease-contour',
         isPast ? 'bg-sunken' : 'bg-surface',
         // Living Green at 3.38:1 clears the 3:1 non-text bar; lime would be 1.35:1.
         // The lime is spent on the day plate below, where it carries dark ink.
-        isToday ? 'border-spring' : 'border-line'
+        isToday ? 'border-spring' : 'border-line',
+        // Where it can land, and where it is about to. Two weights, because "this is a
+        // possible target" and "let go now" are different answers.
+        isDropTarget && 'border-dashed border-line2',
+        isOver && 'border-solid border-forest bg-wash'
       )}
     >
       <div
@@ -96,6 +130,7 @@ export const DayColumn = memo(function DayColumn({
                 post={item.post}
                 timeZone={timeZone}
                 onClick={onPostClick}
+                onDragStateChange={onDragStateChange}
               />
             ) : (
               <GhostSlot

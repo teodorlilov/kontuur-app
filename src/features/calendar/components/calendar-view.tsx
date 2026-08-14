@@ -88,6 +88,7 @@ export function CalendarView({ initialPosts, clients }: CalendarViewProps) {
     unschedulePost,
     updatePostContent,
     movePostByDays,
+    movePostToDay,
     rearmPost,
     removePost,
     upsertPostImage,
@@ -215,23 +216,39 @@ export function CalendarView({ initialPosts, clients }: CalendarViewProps) {
    * toast expire commits, which is the same contract `DiscardToast` already carries on
    * the review queue and the ideas inbox.
    */
-  async function handleMovePost(postId: string, days: number) {
-    const moved = await movePostByDays(postId, days)
-    if (!moved) return
-
-    const landedOn = formatScheduleDate(new Date(moved.to), timezone)
+  function offerUndo(landedAt: string, revert: () => void) {
     const toastId = toast.custom(
       () => (
         <DiscardToast
-          title={`Moved to ${landedOn}`}
+          title={`Moved to ${formatScheduleDate(new Date(landedAt), timezone)}`}
           onUndo={() => {
             toast.dismiss(toastId)
-            void movePostByDays(postId, -days)
+            revert()
           }}
         />
       ),
       { duration: DISCARD_TOAST_MS }
     )
+  }
+
+  /** Nudged with the keyboard. */
+  async function handleMovePost(postId: string, days: number) {
+    const moved = await movePostByDays(postId, days)
+    if (moved) offerUndo(moved.to, () => void movePostByDays(postId, -days))
+  }
+
+  /**
+   * Dropped on a day.
+   *
+   * Undo puts it back on the day it *came from* rather than reversing a delta — the
+   * pointer named an absolute target, so the reversal is absolute too. A relative undo
+   * would land somewhere else entirely if the move had crossed a DST boundary.
+   */
+  async function handleDropPost(postId: string, dayKey: string) {
+    const moved = await movePostToDay(postId, dayKey)
+    if (!moved) return
+    const cameFrom = toDateKey(new Date(moved.from), timezone)
+    offerUndo(moved.to, () => void movePostToDay(postId, cameFrom))
   }
 
   /** Retry a failed publish at the time the card's form is showing. */
@@ -509,6 +526,9 @@ export function CalendarView({ initialPosts, clients }: CalendarViewProps) {
             onMovePost={(postId, days) => {
               void handleMovePost(postId, days)
             }}
+            onDropPost={(postId, dayKey) => {
+              void handleDropPost(postId, dayKey)
+            }}
           />
         ) : mode === 'clients' ? (
           <ClientsView
@@ -524,6 +544,7 @@ export function CalendarView({ initialPosts, clients }: CalendarViewProps) {
             month={month}
             timeZone={timezone}
             scheduledPosts={filteredScheduled}
+            onPostClick={handleGridPostClick}
             onSelectWeek={openWeek}
           />
         )}

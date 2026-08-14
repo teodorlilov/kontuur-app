@@ -104,7 +104,12 @@ export const ClientsView = memo(function ClientsView({
       </div>
 
       {rows.map(({ client, coverage }) => (
-        <ClientWeekRow key={client.id} name={client.name} coverage={coverage} />
+        <ClientWeekRow
+          key={client.id}
+          name={client.name}
+          coverage={coverage}
+          timeZone={timeZone}
+        />
       ))}
     </div>
   )
@@ -141,7 +146,15 @@ function toneFor(verdict: ClientWeek['verdict']) {
  * the colour has stopped distinguishing anything. Full-strength Amber (5.6:1) in two
  * small places says it louder than a wash over 1200px ever did.
  */
-function ClientWeekRow({ name, coverage }: { name: string; coverage: ClientWeek }) {
+function ClientWeekRow({
+  name,
+  coverage,
+  timeZone,
+}: {
+  name: string
+  coverage: ClientWeek
+  timeZone: string
+}) {
   const tone = toneFor(coverage.verdict)
   const hasTarget = coverage.target > 0
 
@@ -163,10 +176,19 @@ function ClientWeekRow({ name, coverage }: { name: string; coverage: ClientWeek 
 
       <div className="flex min-w-0 items-center gap-2.5">
         <Avatar name={name} />
-        <span className="truncate text-body font-medium text-ink">{name}</span>
+        <span className="min-w-0">
+          <span className="block truncate text-body font-medium text-ink">{name}</span>
+          {/* The cadence, and only the half a human set. `posts_per_week` is agency-set
+              and can be stated flatly; the days and the hour come from a model's guess,
+              so they appear as suggested times inside the hatched cells rather than as a
+              pattern claimed here. */}
+          <span className="block text-micro tabular-nums text-text3">
+            {hasTarget ? `${coverage.target}× a week` : 'No cadence set'}
+          </span>
+        </span>
       </div>
 
-      <CoverageStrip week={coverage.week} />
+      <CoverageStrip week={coverage.week} timeZone={timeZone} />
 
       <div className="flex items-center gap-2 md:flex-col md:items-end md:gap-1">
         <span className="text-caption font-semibold tabular-nums text-ink">

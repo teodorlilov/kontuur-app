@@ -5,11 +5,14 @@ import { toast } from '@/components/ui/toast'
 import { updatePost, resolveChangeRequest } from '@/lib/actions/post-actions'
 import { rearmFailedPost } from '@/features/calendar/actions/post-recovery'
 import { reconcilePosts } from '@/features/calendar/lib/reconcile-posts'
-import { shiftScheduledByDays } from '@/features/calendar/lib/move-post'
+import { moveScheduledToDay, shiftScheduledByDays } from '@/features/calendar/lib/move-post'
 import { upsertImageAtPosition } from '@/features/publishing/lib/image-list'
 import type { ActionResult } from '@/lib/actions/types'
 import type { CalendarPost, PostImage } from '@/types/api'
 import type { PostStatus } from '@/lib/validation'
+
+/** Where a moved post came from and went, so the caller can offer to put it back. */
+type MoveResult = { from: string; to: string } | null
 
 const CLEARED_APPROVAL = {
   approval_status: null,
@@ -225,8 +228,12 @@ export function useCalendar(initialPosts: CalendarPost[], timeZone: string) {
    *
    * Returns where it went, so the caller can offer to put it back.
    */
-  const movePostByDays = useCallback(
-    async (postId: string, days: number): Promise<{ from: string; to: string } | null> => {
+  const commitMove = useCallback(
+    async (
+      postId: string,
+      /** Where it should land, given where it is now. */
+      resolve: (from: string) => string
+    ): Promise<MoveResult> => {
       const post = posts.find((p) => p.id === postId)
       if (!post?.scheduled_at) return null
       if (post.status !== 'scheduled') {
@@ -239,7 +246,10 @@ export function useCalendar(initialPosts: CalendarPost[], timeZone: string) {
       }
 
       const from = post.scheduled_at
-      const to = shiftScheduledByDays(from, days, timeZone)
+      const to = resolve(from)
+      // Dropping a card back on the day it came from is not a move. Writing it anyway
+      // would spend a round-trip and raise an Undo window for nothing.
+      if (to === from) return null
 
       const ok = await runPostMutation({
         postId,
@@ -248,11 +258,25 @@ export function useCalendar(initialPosts: CalendarPost[], timeZone: string) {
         failureMessage: 'Could not move this post',
       })
 
-      // The optimistic patch is applied by `runPostMutation` only after the write
-      // succeeds, so a failure needs no rollback — the card never left its day.
+      // The patch is applied by `runPostMutation` only after the write succeeds, so a
+      // failure needs no rollback — the card never left its day.
       return ok ? { from, to } : null
     },
-    [posts, runPostMutation, timeZone]
+    [posts, runPostMutation]
+  )
+
+  /** Nudge it, as the keyboard does. */
+  const movePostByDays = useCallback(
+    (postId: string, days: number): Promise<MoveResult> =>
+      commitMove(postId, (from) => shiftScheduledByDays(from, days, timeZone)),
+    [commitMove, timeZone]
+  )
+
+  /** Drop it on a day, as the pointer does. Same guards, same write, same Undo. */
+  const movePostToDay = useCallback(
+    (postId: string, dayKey: string): Promise<MoveResult> =>
+      commitMove(postId, (from) => moveScheduledToDay(from, dayKey, timeZone)),
+    [commitMove, timeZone]
   )
 
   /** Remove a post from local state (called after successful deletion). */
@@ -309,6 +333,7 @@ export function useCalendar(initialPosts: CalendarPost[], timeZone: string) {
     unschedulePost,
     updatePostContent,
     movePostByDays,
+    movePostToDay,
     rearmPost,
     removePost,
     upsertPostImage,

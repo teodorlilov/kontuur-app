@@ -36,10 +36,13 @@ export const PostCard = memo(function PostCard({
   post,
   timeZone,
   onClick,
+  onDragStateChange,
 }: {
   post: CalendarPost
   timeZone: string
   onClick: (postId: string) => void
+  /** Told which post is in flight, so the lanes can show where it may land. */
+  onDragStateChange?: (postId: string | null) => void
 }) {
   const { time } = isoToDateTimeFields(post.scheduled_at!, timeZone)
   const status = post.status as PostStatus
@@ -54,6 +57,18 @@ export const PostCard = memo(function PostCard({
       time={time}
       ground={groundFor(status)}
       postId={post.id}
+      // Only a scheduled post can be dragged, for the same reason only a scheduled post
+      // can be nudged: a published one's date is a record and a failed one needs its
+      // attempt count cleared first.
+      draggable={status === 'scheduled'}
+      onDragStart={(event) => {
+        // text/plain, not a custom type: Safari drops payloads on unregistered MIME
+        // types, and this is one id, not a document.
+        event.dataTransfer.setData('text/plain', post.id)
+        event.dataTransfer.effectAllowed = 'move'
+        onDragStateChange?.(post.id)
+      }}
+      onDragEnd={() => onDragStateChange?.(null)}
       onClick={() => onClick(post.id)}
       ariaLabel={
         `${post.client_name}, ${time}, ${POST_STATUS_CHIP[status].label}. ${title}` +

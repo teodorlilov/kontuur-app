@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { shiftScheduledByDays } from '../lib/move-post'
+import { moveScheduledToDay, shiftScheduledByDays } from '../lib/move-post'
 import { formatScheduledAt, isoToDateTimeFields } from '@/utils/date-helpers'
 
 const SOFIA = 'Europe/Sofia'
@@ -71,6 +71,38 @@ describe('shiftScheduledByDays', () => {
     const from = formatIn('2026-08-12', '09:30', SOFIA)
     // Sofia is UTC+3 in August, so 09:30 local is 06:30Z.
     expect(shiftScheduledByDays(from, 0, SOFIA)).toBe('2026-08-12T06:30:00.000Z')
+  })
+})
+
+describe('moveScheduledToDay', () => {
+  it('lands on the named day and keeps the time', () => {
+    const from = formatIn('2026-08-12', '09:30', SOFIA)
+    expect(wallClock(moveScheduledToDay(from, '2026-08-15', SOFIA), SOFIA)).toBe('2026-08-15 09:30')
+  })
+
+  it('keeps the time when the drop crosses a DST boundary', () => {
+    // The relative and absolute forms must agree about the hour, or a dropped post and
+    // a nudged one end up on the same day at different times.
+    const from = formatIn('2026-10-24', '09:00', SOFIA)
+    expect(moveScheduledToDay(from, '2026-10-26', SOFIA)).toBe(
+      shiftScheduledByDays(from, 2, SOFIA)
+    )
+  })
+
+  it('is a no-op when the target is the day it is already on', () => {
+    // What a drop back onto the source column produces. The caller skips the write, but
+    // the arithmetic has to agree that nothing changed.
+    const from = formatIn('2026-08-12', '09:30', SOFIA)
+    expect(moveScheduledToDay(from, '2026-08-12', SOFIA)).toBe(from)
+  })
+
+  it('resolves the target day in the agency zone, not the runtime', () => {
+    // 09:00 in New York is 13:00Z that day; a UTC reading of the target key would put
+    // the post on the day before.
+    const from = formatIn('2026-08-12', '09:00', NEW_YORK)
+    expect(wallClock(moveScheduledToDay(from, '2026-08-13', NEW_YORK), NEW_YORK)).toBe(
+      '2026-08-13 09:00'
+    )
   })
 })
 

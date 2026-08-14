@@ -25,3 +25,20 @@ export function shiftScheduledByDays(
   const { date, time } = isoToDateTimeFields(scheduledAt, timeZone)
   return formatScheduledAt(shiftDateKey(date, days), time, timeZone)
 }
+
+/**
+ * Move a scheduled instant onto a named day, keeping the time.
+ *
+ * The same operation as above, addressed absolutely rather than relatively, because a
+ * drop lands on *a day* and a keypress moves *by a day*. Both resolve through the same
+ * two helpers, so a dropped post and a nudged one cannot disagree about what happens to
+ * the hour — which is the drift that put noon on every dragged post last time.
+ */
+export function moveScheduledToDay(
+  scheduledAt: string,
+  targetDayKey: string,
+  timeZone: string
+): string {
+  const { time } = isoToDateTimeFields(scheduledAt, timeZone)
+  return formatScheduledAt(targetDayKey, time, timeZone)
+}
