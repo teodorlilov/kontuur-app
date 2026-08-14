@@ -99,8 +99,11 @@ export const DayColumn = memo(function DayColumn({
         if (postId) onDropPost(postId, dayKey)
       }}
       className={cn(
-        'flex min-h-0 flex-col overflow-hidden rounded-lg border transition-colors duration-150 ease-contour',
-        isPast ? 'bg-sunken' : 'bg-surface',
+        // Every lane is Surface white, past or not. The week used to sink passed days to
+        // --sunken, which made the grid read as two materials — three columns of grey
+        // paper beside four of white — with the seam moving one column every midnight.
+        // Time is carried by the header's ink instead, where it costs no ground.
+        'flex min-h-0 flex-col overflow-hidden rounded-lg border bg-surface transition-colors duration-150 ease-contour',
         // Living Green at 3.38:1 clears the 3:1 non-text bar; lime would be 1.35:1.
         // The lime is spent on the day plate below, where it carries dark ink.
         isToday ? 'border-spring' : 'border-line',
@@ -110,13 +113,18 @@ export const DayColumn = memo(function DayColumn({
         isOver && 'border-solid border-forest bg-wash'
       )}
     >
+      {/* A dateline, not a caption bar: the weekday is the small label and the date is
+          the thing said. The two used to be the same size at opposite ends of the cap,
+          which gave the column no head — nothing to read first, and no anchor for the
+          today plate to sit against. */}
       <div
         className={cn(
-          'flex flex-none items-center justify-between gap-1.5 border-b border-line px-2.5 py-2',
+          'flex flex-none flex-col gap-0.5 border-b px-3 py-2',
           // A tinted cap, so seven columns read as seven columns. A white column on
           // near-white paper separates by 1.05:1 and its hairline edge is 1.13:1 —
           // together not enough to draw a grid, which is why the header carries it.
-          isToday ? 'bg-wash' : 'bg-sunken'
+          // It is also now the only tint in the column, so it does that work alone.
+          isToday ? 'border-spring/40 bg-wash' : 'border-line bg-sunken'
         )}
       >
         <span
@@ -127,15 +135,33 @@ export const DayColumn = memo(function DayColumn({
         >
           {label}
         </span>
-        {isToday ? (
-          // The Two Facts Rule: today is a plate *behind* the day number, so the lane
-          // below stays free to say whether today is covered.
-          <span className="grid size-5 place-items-center rounded-full bg-accent text-label font-semibold tracking-normal tabular-nums text-forest-deep shadow-[inset_0_0_0_1px_rgba(12,46,32,0.45)]">
-            {dayNumber}
-          </span>
-        ) : (
-          <span className="text-caption font-medium tabular-nums text-ink">{dayNumber}</span>
-        )}
+        {/* Fixed height on both variants: the lime plate is taller than a bare numeral,
+            and without it today's lane would start three pixels below its neighbours' —
+            seven columns whose cards no longer line up across the week. */}
+        <span className="flex h-6 items-center">
+          {isToday ? (
+            // The Two Facts Rule: today is a plate *behind* the day number, so the lane
+            // below stays free to say whether today is covered. A pill rather than a
+            // fixed circle, so the date keeps the same size it has in the other six
+            // columns — a circle small enough to hold two digits shrank today's number
+            // below every other day's, which is the opposite of what marking it means.
+            <span className="flex h-6 items-center rounded-full bg-accent px-2 text-title font-semibold tabular-nums text-forest-deep shadow-[inset_0_0_0_1px_rgba(12,46,32,0.45)]">
+              {dayNumber}
+            </span>
+          ) : (
+            <span
+              className={cn(
+                'text-title tabular-nums',
+                // The whole signal that a day has passed, now that its lane is white
+                // like every other. Quiet ink rather than a grey ground: it recedes
+                // without claiming the column is a different kind of thing.
+                isPast ? 'font-medium text-text3' : 'font-semibold text-ink'
+              )}
+            >
+              {dayNumber}
+            </span>
+          )}
+        </span>
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto p-1.5">
