@@ -2,20 +2,20 @@
 
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Link, Mail } from 'lucide-react'
 import { useCalendar } from '@/features/calendar/hooks/use-calendar'
 import { useApproval, type ClientEntry } from '@/features/calendar/hooks/use-approval'
 import { toast } from '@/components/ui/toast'
 import { DiscardToast, DISCARD_TOAST_MS } from '@/components/ui/discard-toast'
-import { Button } from '@/components/ui/button'
 import { HeaderMeta, MetaFlag, PageHeader } from '@/components/layout/page-header/page-header'
 import { SelectControl } from '@/components/layout/page-header/select-control'
 import { useShell } from '@/components/layout/shell-context'
+import { cn } from '@/utils/cn'
 import { deletePost } from '@/lib/actions/post-actions'
 import { getMondayISO, getWeekRange, toDateKey } from '@/utils/date-helpers'
 import { formatScheduleDate } from '@/utils/format'
 import { useCalendarRange } from '@/features/calendar/hooks/use-calendar-range'
-import { ApprovalTools } from './approval-tools'
+import { ApprovalAction } from './approval-tools'
 import { WeekGrid } from './week-grid'
 import { ClientsView } from './clients-view'
 import { buildClientWeek, buildWeekLanes } from '@/features/calendar/lib/week-model'
@@ -383,33 +383,25 @@ export function CalendarView({ initialPosts, clients }: CalendarViewProps) {
         title={
           <>
             {title}
+            {/* Back, forward and home are one cluster. `Today` sat in the actions row
+                beside things that act on posts, where it read as a fourth command and
+                repeated the date the rail already shows — it navigates, so it belongs
+                with the arrows that navigate. */}
             <span className="inline-flex items-center gap-0.5">
               <RangeStepBtn onClick={stepBack} direction="prev" unit={stepUnit} />
               <RangeStepBtn onClick={stepForward} direction="next" unit={stepUnit} />
+              <button
+                type="button"
+                onClick={goToToday}
+                className={cn(
+                  'ml-0.5 h-7 rounded-sm px-2 text-caption font-medium text-text2',
+                  'transition-colors duration-150 ease-contour hover:bg-ink/[0.06] hover:text-ink'
+                )}
+              >
+                Today
+              </button>
             </span>
           </>
-        }
-        railTools={
-          clients.length > 0 ? (
-            <>
-              <ApprovalTools
-                clients={currentWeekClients}
-                disabled={noPostsThisWeek}
-                copyLinkSending={copyLinkSending}
-                copyLinkPicker={copyLinkPicker}
-                setCopyLinkPicker={setCopyLinkPicker}
-                emailSending={emailSending}
-                emailPicker={emailPicker}
-                setEmailPicker={setEmailPicker}
-                onCopyLink={(id) => {
-                  void handleCopyLink(id)
-                }}
-                onEmailClient={(id) => {
-                  void handleEmailClient(id)
-                }}
-              />
-            </>
-          ) : null
         }
         meta={
           <HeaderMeta
@@ -442,9 +434,6 @@ export function CalendarView({ initialPosts, clients }: CalendarViewProps) {
         }
         actions={
           <>
-            <Button variant="secondary" size="sm" onClick={goToToday}>
-              Today
-            </Button>
             {clients.length > 1 && (
               <SelectControl
                 label="Client"
@@ -454,6 +443,49 @@ export function CalendarView({ initialPosts, clients }: CalendarViewProps) {
                   ...clients.map((c) => ({ value: c.id, label: c.name })),
                 ]}
                 onChange={(id) => setSelectedClientId(id || null)}
+              />
+            )}
+            {/* Out of the crumb row, which is `overflow-hidden` so it can collapse when
+                the header sticks — its client picker was opening into a 44px clipping
+                box, invisible, which read as the button doing nothing. */}
+            {clients.length > 0 && (
+              <ApprovalAction
+                variant="secondary"
+                icon={Link}
+                label="Copy link"
+                loadingLabel="Generating…"
+                loading={copyLinkSending}
+                disabled={noPostsThisWeek}
+                disabledReason="No posts scheduled this week"
+                clients={currentWeekClients}
+                pickerOpen={copyLinkPicker}
+                onTogglePicker={() => setCopyLinkPicker((v) => !v)}
+                onSelectClient={(id) => {
+                  void handleCopyLink(id)
+                }}
+              />
+            )}
+            {/* The page's one Deep Pine commitment. Everything else in this header
+                narrows or navigates; this is the only control that acts on anything. */}
+            {clients.length > 0 && (
+              <ApprovalAction
+                variant="primary"
+                icon={Mail}
+                // Month has no single week to send, so the action falls back to the
+                // current one. The label says so rather than leaving the reader to
+                // discover it from the email — which is what the hook's own comment
+                // already claimed happened.
+                label={mode === 'month' ? 'Send this week for approval' : 'Send week for approval'}
+                loadingLabel="Sending…"
+                loading={emailSending}
+                disabled={noPostsThisWeek}
+                disabledReason="No posts scheduled this week"
+                clients={currentWeekClients}
+                pickerOpen={emailPicker}
+                onTogglePicker={() => setEmailPicker((v) => !v)}
+                onSelectClient={(id) => {
+                  void handleEmailClient(id)
+                }}
               />
             )}
           </>
