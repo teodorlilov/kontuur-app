@@ -1,7 +1,7 @@
 'use client'
 
 import { cn } from '@/utils/cn'
-import { getPillarColor } from '@/components/ui/colors/pillar-colors'
+import { getPillarColor } from '@/components/ui/colors/identity-colors'
 import { FOCUS_RING } from '@/components/ui/form/control-classes'
 
 interface PillarChipProps {

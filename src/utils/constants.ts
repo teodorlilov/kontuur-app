@@ -76,7 +76,8 @@ export const PLATFORM_ACCOUNTS: readonly PlatformAccount[] = [
  * these step through hue AND lightness. A pure green ramp was tried and failed:
  * at pill opacity, forest vs forest-deep and spring vs sea read as the same
  * swatch. Kept desaturated so none of them competes with the green chrome.
- * Consumed as dots/avatars directly, and as calendar pills via CLIENT_PILL_TONES.
+ * Rendered only through `getClientTone`/`getPillarColor` in
+ * `components/ui/colors/identity-colors.ts`, which owns the one sanctioned tint recipe.
  */
 export const CLIENT_COLORS = [
   '#164430', // forest
@@ -88,17 +89,6 @@ export const CLIENT_COLORS = [
   '#A2603F', // clay
   '#7FA588', // sage
 ] as const
-
-/**
- * Calendar pill tones, derived from CLIENT_COLORS rather than hand-listed a
- * second time — the same client must read as the same colour on the dashboard
- * dot and the calendar pill, and two literal tables would drift.
- */
-export const CLIENT_PILL_TONES = CLIENT_COLORS.map((hex) => ({
-  dotColor: hex,
-  bgColor: `color-mix(in srgb, ${hex} 12%, transparent)`,
-  textColor: `color-mix(in srgb, ${hex} 72%, var(--ink))`,
-}))
 
 export const WEEKDAY_OPTIONS = [
   { value: 'monday', label: 'Monday' },

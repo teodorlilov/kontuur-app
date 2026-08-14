@@ -2,19 +2,30 @@
 
 import { useState, useMemo } from 'react'
 import { toast } from '@/components/ui/toast'
-import { getMondayISO } from '@/utils/date-helpers'
-import type { CalendarPost } from '@/types/api'
+import { getMondayISO, getWeekRange } from '@/utils/date-helpers'
+import type { BestTimePlatform, CalendarPost } from '@/types/api'
 
 export interface ClientEntry {
   id: string
   name: string
   contact_email: string | null
+  /** The agency's weekly target for this client. 0 means no cadence has been set. */
+  posts_per_week: number
+  /**
+   * Times this client might post, suggested from `best_time_json` — a model guess off
+   * four profile fields, not Meta data. Null when there is nothing usable stored.
+   */
+  best_times: BestTimePlatform[] | null
 }
 
 interface UseApprovalArgs {
   clients: ClientEntry[]
   filteredScheduled: CalendarPost[]
   allPosts: CalendarPost[]
+  /** Monday of the week currently on screen, 'YYYY-MM-DD'. */
+  weekStartISO: string
+  /** The agency zone. Both the membership filter and the server's query resolve in it. */
+  timeZone: string
 }
 
 /** POST to the approval email API and return post count, or throw on failure. */
@@ -36,31 +47,32 @@ function formatPostCount(count: number): string {
 }
 
 /** Manages approval state: week scoping, copy-link, email, and per-post approval. */
-export function useApproval({ clients, filteredScheduled, allPosts }: UseApprovalArgs) {
+export function useApproval({
+  clients,
+  filteredScheduled,
+  allPosts,
+  weekStartISO,
+  timeZone,
+}: UseApprovalArgs) {
   const [copyLinkSending, setCopyLinkSending] = useState(false)
   const [copyLinkPicker, setCopyLinkPicker] = useState(false)
   const [emailSending, setEmailSending] = useState(false)
   const [emailPicker, setEmailPicker] = useState(false)
   const [approvalSending, setApprovalSending] = useState(false)
 
-  const currentWeekStart = useMemo(() => getMondayISO(), [])
-  const currentWeekEnd = useMemo(() => {
-    const d = new Date(currentWeekStart)
-    d.setDate(d.getDate() + 6)
-    d.setHours(23, 59, 59, 999)
-    return d
-  }, [currentWeekStart])
+  // The week on screen, not the wall-clock week. These buttons used to call
+  // getMondayISO() with no arguments, so navigating to September and clicking Email
+  // sent August — silently, with nothing on screen to say so.
+  const currentWeekStart = weekStartISO
 
-  const currentWeekScheduled = useMemo(
-    () => {
-      const start = new Date(currentWeekStart)
-      return filteredScheduled.filter((p) => {
-        const d = new Date(p.scheduled_at!)
-        return d >= start && d <= currentWeekEnd
-      })
-    },
-    [filteredScheduled, currentWeekStart, currentWeekEnd],
-  )
+  // getWeekRange, not a hand-rolled +6 days and setHours(23,59,59,999): that end was
+  // computed in the browser's zone while the grid labelled the agency's, and it was
+  // inclusive where the server's query is half-open. Both halves now read the same
+  // helper, so the button and the batch cannot disagree about which posts they mean.
+  const currentWeekScheduled = useMemo(() => {
+    const { from, to } = getWeekRange(currentWeekStart, timeZone)
+    return filteredScheduled.filter((p) => p.scheduled_at! >= from && p.scheduled_at! < to)
+  }, [filteredScheduled, currentWeekStart, timeZone])
 
   const currentWeekClients = useMemo(() => {
     const ids = new Set(currentWeekScheduled.map((p) => p.client_id))
@@ -123,7 +135,7 @@ export function useApproval({ clients, filteredScheduled, allPosts }: UseApprova
     }
     setApprovalSending(true)
     try {
-      const weekStart = getMondayISO(new Date(post.scheduled_at))
+      const weekStart = getMondayISO(new Date(post.scheduled_at), timeZone)
       const data = await sendApprovalEmail(post.client_id, weekStart)
       toast.success(`Approval email sent! (${formatPostCount(data.postCount)})`)
     } catch (e) {

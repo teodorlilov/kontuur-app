@@ -1,0 +1,246 @@
+import { getWeekDayKeys, toDateKey } from '@/utils/date-helpers'
+import type { CalendarPost } from '@/types/api'
+import type { PostStatus } from '@/lib/validation'
+import type { BestTimePlatform } from '@/types/api'
+import { suggestWeekSlots } from '@/lib/scheduling/slot-picker'
+
+/**
+ * What the grid draws, derived from what the page loaded.
+ *
+ * Pure so it can be tested: the suite runs `environment: 'node'` with no
+ * testing-library, so anything left inside a component is covered by nothing.
+ */
+
+/**
+ * Group posts by the day they fall on in `timeZone`, each bucket in time order.
+ *
+ * The key comes from `toDateKey`, not from slicing the raw column: `scheduled_at` is a
+ * UTC instant, so its first ten characters are the UTC day. For any agency east or west
+ * of UTC that is the wrong cell either side of midnight — a 22:30Z post belongs to
+ * tomorrow in Sofia and to today in London.
+ *
+ * Sorting here rather than at the call site because the page orders by `created_at DESC`,
+ * so a day's posts arrive newest-first: without this a 09:00 post renders below an 18:00
+ * one, and the lane stops reading as a timeline.
+ */
+export function groupPostsByDate(
+  posts: CalendarPost[],
+  timeZone?: string
+): Map<string, CalendarPost[]> {
+  const map = new Map<string, CalendarPost[]>()
+  for (const post of posts) {
+    if (!post.scheduled_at) continue
+    const key = toDateKey(new Date(post.scheduled_at), timeZone)
+    const list = map.get(key) ?? []
+    list.push(post)
+    map.set(key, list)
+  }
+  for (const list of map.values()) {
+    list.sort((a, b) => (a.scheduled_at ?? '').localeCompare(b.scheduled_at ?? ''))
+  }
+  return map
+}
+
+// ---- Coverage ----
+
+/**
+ * What one day of a client's week says.
+ *
+ * Ordered weakest → strongest claim, which is also the precedence order below.
+ *
+ * `open` and `missed` describe a slot the client's cadence implies and nothing fills —
+ * they are unreachable until slots are derived, and are declared now so the strip that
+ * renders them is not rebuilt when they arrive. They are day states, not post states:
+ * no post is ever "open".
+ */
+export type CoverageState = 'none' | 'open' | 'missed' | 'scheduled' | 'published' | 'failed'
+
+const STATE_RANK: Record<CoverageState, number> = {
+  none: 0,
+  open: 1,
+  missed: 2,
+  scheduled: 3,
+  published: 4,
+  /**
+   * Failed outranks everything, including published. A day holding one published post
+   * and one failure is a day that needs a human — surfacing the success would hide the
+   * only thing on it that is asking for something.
+   */
+  failed: 5,
+}
+
+/** How a post's status reads as a day state. */
+function stateOfPost(status: PostStatus): CoverageState {
+  if (status === 'failed') return 'failed'
+  if (status === 'published') return 'published'
+  return 'scheduled'
+}
+
+export interface ClientWeek {
+  /** Seven day states, Monday first. */
+  week: CoverageState[]
+  /** Posts placed this week, however they turned out. */
+  filled: number
+  /** The agency's weekly target. 0 when no cadence has been set. */
+  target: number
+  verdict: 'On track' | 'Dark this week' | 'No cadence set' | `${number} short`
+}
+
+/**
+ * One client's week: a state per day, plus the ratio and verdict the header reads.
+ *
+ * A **transpose** of the day buckets, not a second pass over the posts. Bucketing twice
+ * would be two chances to disagree about which day a 23:30 post belongs to, which is the
+ * bug the zoned key exists to kill.
+ *
+ * `filled` counts posts rather than days, because the target is posts per week: two posts
+ * on one Tuesday is two towards a target of three, not one.
+ */
+export function buildClientWeek(input: {
+  clientId: string
+  /** The same lanes the week grid draws, so both views agree about every day. */
+  lanes: Map<string, LaneItem[]>
+  weekStartISO: string
+  target: number
+}): ClientWeek {
+  const { clientId, lanes, weekStartISO, target } = input
+
+  let filled = 0
+  const week = getWeekDayKeys(weekStartISO).map((dayKey) => {
+    const mine = (lanes.get(dayKey) ?? []).filter((item) =>
+      item.kind === 'post' ? item.post.client_id === clientId : item.clientId === clientId
+    )
+    filled += mine.filter((item) => item.kind === 'post').length
+
+    return mine.reduce<CoverageState>((strongest, item) => {
+      const next: CoverageState =
+        item.kind === 'post'
+          ? stateOfPost(item.post.status as PostStatus)
+          : item.missed
+            ? 'missed'
+            : 'open'
+      return STATE_RANK[next] > STATE_RANK[strongest] ? next : strongest
+    }, 'none')
+  })
+
+  return { week, filled, target, verdict: verdictFor(filled, target) }
+}
+
+function verdictFor(filled: number, target: number): ClientWeek['verdict'] {
+  // No target means nobody has said what this client's week should look like, so there
+  // is no deficit to report — an absent cadence is not a failing one.
+  if (target <= 0) return 'No cadence set'
+  if (filled === 0) return 'Dark this week'
+  if (filled < target) return `${target - filled} short`
+  return 'On track'
+}
+
+const STATE_WORDS: Record<CoverageState, string> = {
+  none: 'nothing',
+  open: 'an open slot',
+  missed: 'a slot that passed unfilled',
+  scheduled: 'scheduled',
+  published: 'published',
+  failed: 'failed to publish',
+}
+
+const DAY_WORDS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+
+/**
+ * The same week in words.
+ *
+ * DESIGN.md calls a coverage strip without its spoken equivalent "incomplete, not merely
+ * imperfect" — the chips carry real data in a purely visual form, so this is part of the
+ * component rather than an accessibility afterthought. Exported as a pure function
+ * because that is the only part of it the node-environment suite can reach.
+ */
+export function describeCoverage(week: CoverageState[]): string {
+  const said = week
+    .map((state, index) => (state === 'none' ? null : `${DAY_WORDS[index]} ${STATE_WORDS[state]}`))
+    .filter(Boolean)
+  return said.length === 0 ? 'Nothing this week.' : `${said.join(', ')}.`
+}
+
+// ---- Lanes ----
+
+/**
+ * One thing in a day's lane: a post, or a slot nothing fills.
+ *
+ * A slot in the past is `missed` — a record that the cadence went unmet, not a task
+ * anyone can still do. That distinction is why it is a separate state and not just an
+ * open slot with an earlier timestamp.
+ */
+export type LaneItem =
+  | { kind: 'post'; at: string; post: CalendarPost }
+  | { kind: 'slot'; at: string; clientId: string; clientName: string; missed: boolean }
+
+export interface LaneClient {
+  id: string
+  name: string
+  platform: string | null
+  bestTimes: BestTimePlatform[] | null
+}
+
+/**
+ * Everything the week grid draws, bucketed by zoned day key and ordered by time.
+ *
+ * Slots are **suggestions**, not evidence — see `slot-picker.ts`. A client with nothing
+ * stored contributes no slots at all rather than a guessed cadence.
+ *
+ * A suggested time is dropped when that client already has a post that day: the slot
+ * exists to show a gap, and a day they are already posting on is not one. Matching on
+ * the day rather than the exact time is deliberate — a post moved from 09:00 to 11:00
+ * still fills that day's slot, and pairing on the timestamp would draw a ghost beside it.
+ */
+export function buildWeekLanes(input: {
+  posts: CalendarPost[]
+  clients: LaneClient[]
+  weekStartISO: string
+  timeZone: string
+  now: Date
+}): Map<string, LaneItem[]> {
+  const { posts, clients, weekStartISO, timeZone, now } = input
+  const postsByDate = groupPostsByDate(posts, timeZone)
+  const lanes = new Map<string, LaneItem[]>()
+
+  for (const dayKey of getWeekDayKeys(weekStartISO)) {
+    lanes.set(
+      dayKey,
+      (postsByDate.get(dayKey) ?? []).map((post) => ({
+        kind: 'post' as const,
+        at: post.scheduled_at!,
+        post,
+      }))
+    )
+  }
+
+  for (const client of clients) {
+    const daysTheyPost = new Set(
+      posts
+        .filter((p) => p.client_id === client.id && p.scheduled_at)
+        .map((p) => toDateKey(new Date(p.scheduled_at!), timeZone))
+    )
+
+    for (const at of suggestWeekSlots({
+      platform: client.platform,
+      bestTimes: client.bestTimes,
+      weekStartISO,
+      timeZone,
+    })) {
+      const dayKey = toDateKey(new Date(at), timeZone)
+      if (daysTheyPost.has(dayKey)) continue
+      lanes.get(dayKey)?.push({
+        kind: 'slot',
+        at,
+        clientId: client.id,
+        clientName: client.name,
+        missed: new Date(at) < now,
+      })
+    }
+  }
+
+  for (const items of lanes.values()) {
+    items.sort((a, b) => a.at.localeCompare(b.at))
+  }
+  return lanes
+}

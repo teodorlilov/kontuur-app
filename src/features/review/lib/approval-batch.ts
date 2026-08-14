@@ -1,14 +1,22 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { APPROVAL_TOKEN_EXPIRY_HOURS } from '@/utils/constants'
+import { getWeekRange } from '@/utils/date-helpers'
 
 type BatchResult =
   | { ok: true; batchId: string; postCount: number }
   | { ok: false; error: string; status: number }
 
+/**
+ * `timeZone` is required rather than defaulted. A default would let a route that forgot
+ * to pass it quietly build a UTC window and email the wrong week — which is the exact
+ * bug this parameter exists to close, so a missing argument must be a build error.
+ * It is unused on the explicit-postIds path, which names its posts directly.
+ */
 export async function createApprovalBatch(
   supabase: SupabaseClient,
   clientId: string,
   weekStart: string | null,
+  timeZone: string,
   clientEmail: string | null = null,
   options?: { postIds?: string[] }
 ): Promise<BatchResult> {
@@ -29,21 +37,23 @@ export async function createApprovalBatch(
     }
     postIds = owned.map((p) => p.id)
   } else {
-    const weekStartDate = new Date(weekStart ?? '')
-    if (isNaN(weekStartDate.getTime())) {
+    if (isNaN(new Date(weekStart ?? '').getTime())) {
       return { ok: false, error: 'weekStart must be a valid ISO date', status: 400 }
     }
 
-    const weekEnd = new Date(weekStartDate)
-    weekEnd.setDate(weekEnd.getDate() + 6)
-    weekEnd.setHours(23, 59, 59, 999)
+    // getWeekRange, not `new Date(weekStart)` + 6 days + setHours(23,59,59,999).
+    // That version resolved both ends in the *server's* zone — UTC on Vercel — while
+    // the calendar that labelled the button resolved them in the agency's, so for any
+    // agency off UTC the token covered a different set of posts than the button
+    // promised. It was also inclusive-end where this is half-open.
+    const { from, to } = getWeekRange(weekStart!, timeZone)
 
     const { data: posts, error: postsError } = await supabase
       .from('posts')
       .select('id')
       .eq('client_id', clientId)
-      .gte('scheduled_at', weekStartDate.toISOString())
-      .lte('scheduled_at', weekEnd.toISOString())
+      .gte('scheduled_at', from)
+      .lt('scheduled_at', to)
       .order('scheduled_at', { ascending: true })
 
     if (postsError) return { ok: false, error: postsError.message, status: 500 }

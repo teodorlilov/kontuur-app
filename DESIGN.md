@@ -246,7 +246,7 @@ Eight colours, stepping through hue _and_ lightness, all desaturated so none com
 | Teal         | `#1f6b7a` | Clay  | `#a2603f` |
 | Ochre        | `#8a6116` | Sage  | `#7fa588` |
 
-They live in `CLIENT_COLORS` (`src/utils/constants.ts`) and are **assigned by hashing the client's name**, never by list position — so a client wears the same colour on their avatar, their dashboard dot and their calendar pill, on every page, forever. `CLIENT_PILL_TONES` derives the calendar pill trio from the same array rather than restating it, because two literal tables would drift.
+They live in `CLIENT_COLORS` (`src/utils/constants.ts`) and are **assigned by hashing the client's name**, never by list position — so a client wears the same colour on their avatar, their dashboard dot and their calendar pill, on every page, forever. `getClientTone` and `getPillarColor` (`src/components/ui/colors/identity-colors.ts`) are the only renderings of that palette — one private recipe behind two names, because a pillar is not a client but the tint is identical. `CLIENT_PILL_TONES` used to be a third, at 12%/72%, so a client's calendar pill quietly disagreed with their own avatar; it was deleted rather than corrected.
 
 **Never render one as a solid fill under white text.** The lighter members (Sky, Sage, Living Green) fail 4.5:1 that way. The sanctioned rendering is a tint of the hue with the ink darkened into it — `background: color-mix(in srgb, {hue} 14%, transparent)` and `color: color-mix(in srgb, {hue} 78%, var(--ink))`, as `components/ui/avatar.tsx` does. A hero-scale mark may raise the tint (the onboarding identity tile uses 30% on a Wash ground); the darkened-ink foreground does not change.
 

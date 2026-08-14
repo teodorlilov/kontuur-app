@@ -31,8 +31,13 @@ import { useQueueVisuals } from '@/features/review/hooks/use-queue-visuals'
 import { totalVisualSlots } from '@/lib/visual/visual-backlog'
 import { computeTriage, type TriageBucket, type TriagedPost } from '@/features/review/lib/triage'
 import { toVisualSlots } from '@/features/review/lib/visual-slots'
-import { isoToDateTimeFields, pickNextOpenSlot } from '@/features/review/lib/slot-picker'
-import { getMondayISO, getWeekDayKeys, toDateKey } from '@/utils/date-helpers'
+import { pickNextOpenSlot } from '@/lib/scheduling/slot-picker'
+import {
+  getMondayISO,
+  getWeekDayKeys,
+  isoToDateTimeFields,
+  toDateKey,
+} from '@/utils/date-helpers'
 import { APPROVAL_TOKEN_EXPIRY_HOURS } from '@/utils/constants'
 import type { WeekScheduledPost } from '@/features/review/lib/week-schedule'
 import {
@@ -105,7 +110,7 @@ export function ReviewQueue({
 
   // The sidebar badge is a per-hard-load server snapshot; this queue owns the
   // live truth, so it keeps the badge honest as posts settle.
-  const { setPendingCount } = useShell()
+  const { setPendingCount, timezone } = useShell()
   useEffect(() => {
     setPendingCount(posts.length)
   }, [posts.length, setPendingCount])
@@ -407,7 +412,7 @@ export function ReviewQueue({
       const iso = nextSlotFor(post, occupied)
       if (iso) {
         occupied.push(iso)
-        assignments[post.id] = isoToDateTimeFields(iso)
+        assignments[post.id] = isoToDateTimeFields(iso, timezone)
       }
       occupiedCopy.set(post.client_id, occupied)
     }

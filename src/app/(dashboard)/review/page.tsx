@@ -1,7 +1,7 @@
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { requireSessionUser } from '@/lib/auth/session'
 import { getCachedAgencyClients } from '@/lib/queries/cache'
-import { POST_COLUMNS } from '@/lib/queries/select-columns'
+import { POST_COLUMNS, type PostColumns } from '@/lib/queries/select-columns'
 import { fetchCanvasDocPositions, fetchImagesByPost } from '@/features/publishing/lib/fetch-post-images'
 import {
   fallbackValidationData,
@@ -13,7 +13,6 @@ import { getMondayISO } from '@/utils/date-helpers'
 import { ReviewQueue } from '@/features/review/components/review-queue'
 import type { QueueApproval, QueuePost } from '@/features/review/lib/queue-post'
 import type { BestTimePlatform } from '@/types/api'
-import type { PostRow } from '@/types'
 
 export default async function ReviewPage() {
   const { agencyId } = await requireSessionUser()
@@ -65,32 +64,9 @@ export default async function ReviewPage() {
     bestTimeMap[c.id] = Array.isArray(btj) ? (btj as BestTimePlatform[]) : null
   }
 
-  type PostQueryRow = Pick<
-    PostRow,
-    | 'id'
-    | 'client_id'
-    | 'caption'
-    | 'platform'
-    | 'post_type'
-    | 'status'
-    | 'priority'
-    | 'quality_score_avg'
-    | 'was_rewritten'
-    | 'rewrite_count'
-    | 'pillar'
-    | 'source_url'
-    | 'source_title'
-    | 'source_type'
-    | 'source_excerpt'
-    | 'topic_summary'
-    | 'scheduled_at'
-    | 'created_at'
-  > & {
-    slides_json: unknown
-    validation_json: unknown
-  }
-
-  const typedPostRows = (postRows as PostQueryRow[] | null) ?? []
+  // `PostColumns`, not a local Pick: this restated 18 of the 23 columns POST_COLUMNS
+  // selects, and disagreed with the calendar's list about three of them.
+  const typedPostRows = (postRows as PostColumns[] | null) ?? []
   const postIds = typedPostRows.map((p) => p.id)
 
   type TokenRow = { post_id: string; status: string; expires_at: string }

@@ -1,0 +1,120 @@
+import { DAYS_PER_WEEK } from '@/utils/constants'
+import {
+  formatScheduledAt,
+  getMondayISO,
+  getWeekDayKeys,
+  getZonedParts,
+  shiftDateKey,
+  toDateKey,
+} from '@/utils/date-helpers'
+import type { BestTimePlatform } from '@/types/api'
+
+/**
+ * When a client *might* post.
+ *
+ * The source is `brand_profiles.best_time_json`, which is **not** Meta data: it is a
+ * Claude Haiku response to four profile fields (niche, audience, language, platforms),
+ * regenerated on a 30-day timer from those same four fields. Nothing here is evidence
+ * about when this audience is actually online, and no caller may present it as such —
+ * hence `suggest*` rather than `best*` in the name below. When real Meta timing data
+ * lands, only the source of these times changes; the shape does not.
+ *
+ * The count a client is measured against (`posts_per_week`) is a different matter: an
+ * agency set it by hand, and it is the honest half of every deficit claim.
+ */
+
+export interface SlotPickerInput {
+  platform: string | null
+  bestTimes: BestTimePlatform[] | null
+  /** The client's weekly target; 0 = no cap. */
+  postsPerWeek: number
+  /** ISO timestamps this client already holds (this week and next). */
+  occupiedSlots: string[]
+  now: Date
+  /** The agency zone. Slot times are wall-clock in it, not in the runtime's. */
+  timeZone?: string
+}
+
+/** The platform's entry, or null when nothing usable is stored for it. */
+function entryFor(
+  platform: string | null,
+  bestTimes: BestTimePlatform[] | null
+): BestTimePlatform | null {
+  if (!platform || !bestTimes) return null
+  const entry = bestTimes.find((b) => b.platform.toLowerCase() === platform.toLowerCase())
+  if (!entry || entry.best_days.length === 0 || entry.best_time_windows.length === 0) return null
+  return entry
+}
+
+/**
+ * Every time the platform's stored pattern implies in the week starting `weekStartISO`,
+ * as ISO instants, ascending.
+ *
+ * Empty when there is no usable entry — the calendar degrades to drawing nothing rather
+ * than to guessing about a guess.
+ */
+export function suggestWeekSlots(input: {
+  platform: string | null
+  bestTimes: BestTimePlatform[] | null
+  weekStartISO: string
+  timeZone?: string
+}): string[] {
+  const entry = entryFor(input.platform, input.bestTimes)
+  if (!entry) return []
+
+  const wanted = new Set(entry.best_days.map((day) => day.toLowerCase()))
+  const slots: string[] = []
+
+  for (const dayKey of getWeekDayKeys(input.weekStartISO)) {
+    // The weekday of a bare calendar date, read in UTC: the key is a date, not an
+    // instant, so involving the agency zone here would shift it by the offset.
+    const { weekday } = getZonedParts(new Date(`${dayKey}T12:00:00Z`), 'UTC')
+    if (!wanted.has(weekday)) continue
+    for (const window of entry.best_time_windows) {
+      slots.push(formatScheduledAt(dayKey, window.time, input.timeZone))
+    }
+  }
+
+  return slots.sort()
+}
+
+/**
+ * The first suggested slot this client can actually take: drops slots in the past, days
+ * they already post, and weeks that have hit the posts-per-week target.
+ *
+ * Spans **three** weeks, not two. The candidate set has to hold at least two future
+ * occurrences of every best day after the past filter — on a Friday, for a client whose
+ * best day is Monday, the current week's Monday is already gone, so two weeks would
+ * leave one candidate and return null the moment it was occupied.
+ */
+export function pickNextOpenSlot(input: SlotPickerInput): string | null {
+  const { postsPerWeek, occupiedSlots, now, timeZone } = input
+  if (!entryFor(input.platform, input.bestTimes)) return null
+
+  const occupiedDays = new Set(occupiedSlots.map((iso) => toDateKey(new Date(iso), timeZone)))
+  const countByWeek = new Map<string, number>()
+  for (const iso of occupiedSlots) {
+    const week = getMondayISO(new Date(iso), timeZone)
+    countByWeek.set(week, (countByWeek.get(week) ?? 0) + 1)
+  }
+  const underWeeklyCap = (iso: string) =>
+    postsPerWeek <= 0 ||
+    (countByWeek.get(getMondayISO(new Date(iso), timeZone)) ?? 0) < postsPerWeek
+
+  const thisWeek = getMondayISO(now, timeZone)
+  const candidates = [0, 1, 2].flatMap((weekOffset) =>
+    suggestWeekSlots({
+      platform: input.platform,
+      bestTimes: input.bestTimes,
+      weekStartISO: shiftDateKey(thisWeek, weekOffset * DAYS_PER_WEEK),
+      timeZone,
+    })
+  )
+
+  const open = candidates
+    .filter((iso) => new Date(iso) > now)
+    .filter((iso) => !occupiedDays.has(toDateKey(new Date(iso), timeZone)))
+    .filter(underWeeklyCap)
+    .sort()
+  return open[0] ?? null
+}

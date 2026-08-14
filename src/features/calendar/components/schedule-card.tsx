@@ -4,11 +4,13 @@ import { memo, useState, useEffect, useCallback } from 'react'
 import { X, ChevronLeft, ChevronRight, Copy, Mail } from 'lucide-react'
 import { cn } from '@/utils/cn'
 import { toast } from '@/components/ui/toast'
-import { getPillarColor } from '@/components/ui/colors/pillar-colors'
+import { getPillarColor } from '@/components/ui/colors/identity-colors'
 import { formatRelativeTime, parseTimestamp } from '@/utils/format'
+import { formatScheduledAt, isoToDateTimeFields, toDateKey } from '@/utils/date-helpers'
 import { PLATFORMS } from '@/utils/constants'
 import { CarouselSlides } from '@/components/posts/carousel-slides'
 import { QualityScores } from '@/components/posts/quality-scores'
+import { SCORE_BAND_VARS, scoreBand, scoreTextColor } from '@/components/ui/colors/score-colors'
 import { ClientResponseCard } from '@/features/calendar/components/client-response-card'
 import { Button } from '@/components/ui/button'
 import { CanvasEditor } from '@/features/canvas-editor/components/canvas-editor'
@@ -31,6 +33,16 @@ interface ContentUpdates {
 
 interface ScheduleCardProps {
   post: CalendarPost | null
+  /** The agency zone. The date/time pair is wall-clock in it, on read and on write. */
+  timeZone: string
+  /**
+   * The suggested slot this card was opened from, when it was.
+   *
+   * Prefills the date and time so placing into a gap is one click rather than two date
+   * pickers. Its time is a *suggestion* from `best_time_json`, not evidence — the card
+   * says so and the field stays editable.
+   */
+  slotPrefill?: { clientId: string; at: string } | null
   postIndex: number
   totalPosts: number
   isOpen: boolean
@@ -92,6 +104,8 @@ function EditModeFooter({
 /** Centred floating card modal for post detail and scheduling. */
 export const ScheduleCard = memo(function ScheduleCard({
   post,
+  timeZone,
+  slotPrefill,
   postIndex,
   totalPosts,
   isOpen,
@@ -129,10 +143,22 @@ export const ScheduleCard = memo(function ScheduleCard({
   /* eslint-disable react-hooks/set-state-in-effect -- see above: seven independent
      fields seeded from one prop, deliberately not a render-time adjustment. */
   useEffect(() => {
-    if (post?.scheduled_at) {
-      const d = new Date(post.scheduled_at)
-      setDate(d.toISOString().slice(0, 10))
-      setTime(d.toTimeString().slice(0, 5))
+    if (slotPrefill) {
+      // Opened from a suggested slot: the slot decides when, not whatever the post
+      // happened to carry.
+      const { date: slotDate, time: slotTime } = isoToDateTimeFields(slotPrefill.at, timeZone)
+      setDate(slotDate)
+      setTime(slotTime)
+    } else if (post?.scheduled_at) {
+      // One zone for both fields. This was `toISOString().slice(0,10)` — the UTC date —
+      // beside `toTimeString().slice(0,5)` — the browser's time. Reopening a post and
+      // pressing Update rewrote it at the wrong instant, by whatever the offset was.
+      const { date: prefillDate, time: prefillTime } = isoToDateTimeFields(
+        post.scheduled_at,
+        timeZone
+      )
+      setDate(prefillDate)
+      setTime(prefillTime)
     } else {
       setDate('')
       setTime('09:00')
@@ -141,7 +167,15 @@ export const ScheduleCard = memo(function ScheduleCard({
     setDraftCaption(post?.caption ?? '')
     setDraftSlides(Array.isArray(post?.slides_json) ? (post.slides_json as CarouselSlide[]) : [])
     setPublishError(null)
-  }, [post?.id, post?.platform, post?.scheduled_at, post?.caption, post?.slides_json])
+  }, [
+    post?.id,
+    post?.platform,
+    post?.scheduled_at,
+    post?.caption,
+    post?.slides_json,
+    timeZone,
+    slotPrefill,
+  ])
   /* eslint-enable react-hooks/set-state-in-effect */
 
   // Delegate merging to the calendar state hook (functional updates) — computing the merged array
@@ -204,7 +238,7 @@ export const ScheduleCard = memo(function ScheduleCard({
 
   function handleSchedule() {
     if (!date) return
-    const scheduledAt = new Date(`${date}T${time || '09:00'}:00`).toISOString()
+    const scheduledAt = formatScheduledAt(date, time || '09:00', timeZone)
     void onSchedule(currentPost.id, scheduledAt, platform)
   }
 
@@ -379,14 +413,9 @@ export const ScheduleCard = memo(function ScheduleCard({
                 Not scored
               </TagPill>
             ) : (
-              <TagPill
-                bg={
-                  score >= 9 ? 'var(--wash)' : score >= 7 ? 'var(--pending-bg)' : 'var(--danger-bg)'
-                }
-                color={
-                  score >= 9 ? 'var(--forest)' : score >= 7 ? 'var(--pending)' : 'var(--danger)'
-                }
-              >
+              // The shared banding. This pill used to split at 9/7 while the sidebar
+              // forty pixels away split at 7, so an 8 read amber here and green there.
+              <TagPill {...SCORE_BAND_VARS[scoreBand(score)]}>
                 {score}/10
               </TagPill>
             )}
@@ -557,6 +586,7 @@ export const ScheduleCard = memo(function ScheduleCard({
                 onDateChange={setDate}
                 onTimeChange={setTime}
                 onPlatformChange={setPlatform}
+                timeZone={timeZone}
               />
             )}
           </div>
@@ -669,21 +699,14 @@ function TagPill({
   dot?: string
   children: React.ReactNode
 }) {
-  // bg/color may be Tailwind classes (e.g. "bg-wash", "text-forest") or CSS values
-  const isTwBg = bg.startsWith('bg-')
-  const isTwText = color.startsWith('text-')
+  // bg/color are CSS values, never Tailwind classes. This used to branch on a
+  // `bg-`/`text-` prefix to accept both; all eleven call sites pass `rgba()` or
+  // `var(--…)`, so the class arm never once ran.
   return (
     // tracking-normal cancels the Label role's built-in 0.16em.
     <span
-      className={cn(
-        'inline-flex items-center gap-1 rounded-[5px] px-2 py-[3px] text-label font-medium tracking-normal',
-        isTwBg && bg,
-        isTwText && color
-      )}
-      style={{
-        ...(isTwBg ? {} : { background: bg }),
-        ...(isTwText ? {} : { color }),
-      }}
+      className="inline-flex items-center gap-1 rounded-[5px] px-2 py-[3px] text-label font-medium tracking-normal"
+      style={{ background: bg, color }}
     >
       {/* The dot carries the pillar's own hue, so it stays a value. */}
       {dot && <span className="size-[5px] shrink-0 rounded-full" style={{ background: dot }} />}
@@ -700,6 +723,7 @@ function ScheduleForm({
   onDateChange,
   onTimeChange,
   onPlatformChange,
+  timeZone,
 }: {
   date: string
   time: string
@@ -707,7 +731,12 @@ function ScheduleForm({
   onDateChange: (v: string) => void
   onTimeChange: (v: string) => void
   onPlatformChange: (v: string) => void
+  timeZone: string
 }) {
+  // The floor is today in the *agency's* zone. It was `toISOString().slice(0,10)` — UTC
+  // today — which for an agency ahead of UTC blocks their own current day after 00:00
+  // local, and for one behind it offers a day that has already passed.
+  const todayKey = toDateKey(new Date(), timeZone)
   return (
     <div className="flex flex-col gap-2.5 border-t border-ink/[0.07] pt-3.5">
       <div className="flex gap-2.5">
@@ -717,7 +746,7 @@ function ScheduleForm({
           type="date"
           value={date}
           onChange={onDateChange}
-          min={new Date().toISOString().slice(0, 10)}
+          min={todayKey}
         />
         <ScheduleInput
           id="card-time"
@@ -807,12 +836,13 @@ function QualitySidebar({
       <div className="text-center">
         <span className={cn(SECTION_LABEL_BARE, 'block mb-1')}>Quality</span>
         <span
-          className="text-metric font-semibold"
-          // Banded off the score, so the colour stays a value. Unjudged takes the
-          // neutral ink: it has not earned a verdict in either direction, and the
-          // `?? 0` this replaced rendered it as a red 0 — a failing grade for a
-          // check that never ran.
-          style={{ color: score === null ? 'var(--text3)' : score >= 7 ? 'var(--spring-text)' : 'var(--danger)' }}
+          // Unjudged takes the neutral ink: it has not earned a verdict in either
+          // direction, and the `?? 0` this replaced rendered it as a red 0 — a failing
+          // grade for a check that never ran.
+          className={cn(
+            'text-metric font-semibold',
+            score === null ? 'text-text3' : scoreTextColor(score)
+          )}
         >
           {score ?? '—'}
         </span>

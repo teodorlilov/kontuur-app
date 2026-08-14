@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
 import { verifyClientOwnership } from '@/lib/auth/helpers'
 import { createApprovalBatch } from '@/features/review/lib/approval-batch'
+import { getCachedAgency } from '@/lib/queries/cache'
 import { approvalRequestSchema } from '@/features/review/schemas'
 import { sendApprovalEmail } from '@/lib/email/resend'
 
@@ -42,9 +43,18 @@ export async function POST(request: Request) {
     )
   }
 
-  const result = await createApprovalBatch(supabase, clientId, weekStart ?? null, client.contact_email, {
-    postIds,
-  })
+  // The batch window resolves in the agency's zone, matching the calendar that
+  // labelled the button. Without it the server built a UTC week and emailed a
+  // different set of posts than the caller named.
+  const agency = await getCachedAgency(agencyId)
+  const result = await createApprovalBatch(
+    supabase,
+    clientId,
+    weekStart ?? null,
+    agency?.timezone ?? 'UTC',
+    client.contact_email,
+    { postIds }
+  )
   if (!result.ok) {
     return NextResponse.json({ error: result.error }, { status: result.status })
   }

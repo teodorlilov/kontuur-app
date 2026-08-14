@@ -1,18 +1,11 @@
 'use client'
 
-import { memo, useState } from 'react'
+import { memo } from 'react'
 import { cn } from '@/utils/cn'
-import { toDateKey } from '@/utils/date-helpers'
 import { PostEventPill } from './post-event-pill'
 import type { CalendarPost } from '@/types/api'
 
 const MAX_VISIBLE = 2
-
-interface ClientStyle {
-  dotColor: string
-  bgColor: string
-  textColor: string
-}
 
 interface DayCellProps {
   date: Date
@@ -20,56 +13,36 @@ interface DayCellProps {
   isOtherMonth: boolean
   posts: CalendarPost[]
   onPostClick: (postId: string) => void
-  onDayClick: (date: Date) => void
-  onDrop: (postId: string, dateKey: string) => void
-  getClientStyle: (clientId: string) => ClientStyle
 }
 
-/** Single day cell in the month grid. */
+/**
+ * Single day cell in the month grid.
+ *
+ * The cell itself is inert: it has no click, no cursor and no hover shadow. It used to
+ * carry all three plus the full HTML5 drop protocol, and none of it did anything —
+ * nothing in the app ever set `draggable` on a calendar element, and the click was
+ * wired to a literal `noop`. The only thing droppable was stray selected text, which
+ * the handler forwarded to a real `updatePost` as a post id.
+ */
 export const DayCell = memo(function DayCell({
   date,
   isToday: today,
   isOtherMonth,
   posts,
   onPostClick,
-  onDayClick,
-  onDrop,
-  getClientStyle,
 }: DayCellProps) {
-  const [dragOver, setDragOver] = useState(false)
-
   const dayNum = date.getDate()
-  // Same helper the parent grid keys this cell by, so the two cannot disagree.
-  const dateKey = toDateKey(date)
 
   return (
     <div
-      onClick={() => onDayClick(date)}
-      onDragOver={(e) => {
-        e.preventDefault()
-        e.dataTransfer.dropEffect = 'move'
-      }}
-      onDragEnter={() => setDragOver(true)}
-      onDragLeave={() => setDragOver(false)}
-      onDrop={(e) => {
-        e.preventDefault()
-        setDragOver(false)
-        const postId = e.dataTransfer.getData('text/plain')
-        if (postId) onDrop(postId, dateKey)
-      }}
       className={cn(
-        'flex min-h-0 cursor-pointer flex-col gap-[3px] overflow-hidden rounded-md px-2 pb-1.5 pt-2',
-        'hover:shadow-[0_1px_6px_rgba(15,21,18,0.06)]',
-        dragOver ? 'bg-wash' : isOtherMonth ? 'bg-sunken' : 'bg-surface',
+        'flex min-h-0 flex-col gap-[3px] overflow-hidden rounded-md px-2 pb-1.5 pt-2',
+        isOtherMonth ? 'bg-sunken' : 'bg-surface',
         // Today's ring is Living Green at 3.38:1 — it clears the 3:1 non-text
         // bar, where lime would be 1.35:1. The lime lives in the day plate below.
-        // Only the non-today ring warms on hover; today's stays put.
-        today ? 'border-[1.5px] border-spring' : 'border border-line hover:border-line2',
+        today ? 'border-[1.5px] border-spring' : 'border border-line',
         isOtherMonth && 'opacity-45'
       )}
-      // The shorthand's default `ease` has no exact utility — Tailwind's
-      // transition-* would swap in its own curve.
-      style={{ transition: 'border-color 0.15s, box-shadow 0.15s' }}
     >
       {/* Day number */}
       {today ? (
@@ -93,10 +66,9 @@ export const DayCell = memo(function DayCell({
       )}
 
       {/* Post event pills */}
-      {posts.slice(0, MAX_VISIBLE).map((post) => {
-        const style = getClientStyle(post.client_id)
-        return <PostEventPill key={post.id} post={post} onPostClick={onPostClick} {...style} />
-      })}
+      {posts.slice(0, MAX_VISIBLE).map((post) => (
+        <PostEventPill key={post.id} post={post} onPostClick={onPostClick} />
+      ))}
 
       {/* Overflow badge */}
       {posts.length > MAX_VISIBLE && (

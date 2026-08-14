@@ -2,14 +2,9 @@
 
 import { memo, useMemo } from 'react'
 import { DayCell } from './day-cell'
-import {
-  getDaysInMonth,
-  groupPostsByDate,
-  getTodayKey,
-  isSameMonth,
-} from '@/features/calendar/helpers'
+import { getDaysInMonth, isSameMonth } from '@/features/calendar/lib/calendar-range'
+import { groupPostsByDate } from '@/features/calendar/lib/week-model'
 import { toDateKey } from '@/utils/date-helpers'
-import { CLIENT_PILL_TONES } from '@/utils/constants'
 import type { CalendarPost } from '@/types/api'
 
 const DAY_HEADERS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
@@ -17,39 +12,34 @@ const DAY_HEADERS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 interface MonthGridProps {
   year: number
   month: number
+  /** The agency zone. Bucketing and "today" must both resolve in it, or a post near
+   *  midnight renders in a cell the header disagrees with. */
+  timeZone: string
   scheduledPosts: CalendarPost[]
   onPostClick: (postId: string) => void
-  onDayClick: (date: Date) => void
-  onDrop: (postId: string, dateKey: string) => void
 }
 
 /** Full-height month calendar grid with coloured post pills. */
 export const MonthGrid = memo(function MonthGrid({
   year,
   month,
+  timeZone,
   scheduledPosts,
   onPostClick,
-  onDayClick,
-  onDrop,
 }: MonthGridProps) {
   const days = useMemo(() => getDaysInMonth(year, month), [year, month])
-  const postsByDate = useMemo(() => groupPostsByDate(scheduledPosts), [scheduledPosts])
-  const todayKey = useMemo(() => getTodayKey(), [])
+  const postsByDate = useMemo(
+    () => groupPostsByDate(scheduledPosts, timeZone),
+    [scheduledPosts, timeZone]
+  )
+  const todayKey = useMemo(() => toDateKey(new Date(), timeZone), [timeZone])
 
-  const clientStyleMap = useMemo(() => {
-    const ids = [...new Set(scheduledPosts.map((p) => p.client_id))].sort()
-    const map = new Map<string, number>()
-    ids.forEach((id, i) => map.set(id, i))
-    return map
-  }, [scheduledPosts])
-
-  function getClientStyle(clientId: string) {
-    const idx = clientStyleMap.get(clientId) ?? 0
-    return CLIENT_PILL_TONES[idx % CLIENT_PILL_TONES.length]!
-  }
 
   return (
-    <div className="flex flex-1 flex-col overflow-hidden px-2 pb-[18px] pt-2.5 md:px-[18px]">
+    // No padding here: the view wrapper in CalendarView owns it, so all three views
+    // sit on the same gutters. min-h-0 so the 42-cell grid is bounded by the workspace
+    // rather than growing it.
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       {/* Day headers */}
       {/* grid-cols-[repeat(7,1fr)], not grid-cols-7: the shorthand floors each
           track at min-content, which would let a long pill widen its column. */}
@@ -64,6 +54,11 @@ export const MonthGrid = memo(function MonthGrid({
       {/* Day cells */}
       <div className="grid min-h-0 flex-1 auto-rows-[1fr] grid-cols-[repeat(7,1fr)] gap-[5px]">
         {days.map((day) => {
+          // Deliberately UNZONED, unlike the two above. `getDaysInMonth` builds these
+          // with `new Date(year, month, d)` — local midnight standing for "the 6th",
+          // not an instant. Reading it back locally round-trips to the 6th on any
+          // runtime; reading it in the agency zone would shift it to the 5th or 7th.
+          // The zone belongs to the post instants, which is where it now is.
           const key = toDateKey(day)
           const dayPosts = postsByDate.get(key) ?? []
           return (
@@ -74,9 +69,6 @@ export const MonthGrid = memo(function MonthGrid({
               isOtherMonth={!isSameMonth(day, month, year)}
               posts={dayPosts}
               onPostClick={onPostClick}
-              onDayClick={onDayClick}
-              onDrop={onDrop}
-              getClientStyle={getClientStyle}
             />
           )
         })}

@@ -2,6 +2,7 @@
 // this file — going through it would make the two circular.
 import type { Tables } from './database'
 import type { SlideText } from './slide'
+import type { PostColumns } from '@/lib/queries/select-columns'
 
 type PostRow = Tables<'posts'>
 type NotificationRow = Tables<'notifications'>
@@ -172,26 +173,19 @@ export interface ApprovalBatchData {
 
 // ---- Calendar ----
 
-/** A calendar row: the post's own columns, plus the joined name, images and
- *  approval state the calendar resolves alongside them. */
-export type CalendarPost = Pick<
-  PostRow,
-  | 'id'
-  | 'client_id'
-  | 'caption'
-  | 'platform'
-  | 'post_type'
-  | 'status'
-  | 'scheduled_at'
-  | 'priority'
-  | 'quality_score_avg'
-  | 'source_url'
-  | 'source_title'
-  | 'source_type'
-  | 'pillar'
-  | 'source_excerpt'
-  | 'created_at'
-> & {
+/**
+ * A calendar row: everything a `POST_COLUMNS` select returns, plus the joined name,
+ * images and approval state the calendar resolves alongside them.
+ *
+ * Derived from `PostColumns` rather than restating its own `Pick`. The hand-written
+ * version listed 15 of the 23 columns the query already fetched, so `topic_summary`,
+ * `published_at` and four others arrived over the wire on every load and were invisible
+ * to the type system — and it disagreed with the equivalent list in `/review`.
+ *
+ * The two `Omit`ed columns are narrowed below: the raw ones are `Json`, and every
+ * surface parses them into its own shape rather than trusting the column.
+ */
+export type CalendarPost = Omit<PostColumns, 'slides_json' | 'validation_json'> & {
   client_name: string
   /** Parsed on the way in, unlike the raw column. */
   slides_json: CarouselSlide[] | null

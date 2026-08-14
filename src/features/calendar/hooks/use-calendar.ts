@@ -37,135 +37,133 @@ export function useCalendar(initialPosts: CalendarPost[]) {
     [posts]
   )
 
-  const schedulePost = useCallback(async (
-    postId: string,
-    scheduledAt: string,
-    platform?: string,
-    contentUpdates?: { caption?: string; slides_json?: unknown }
-  ) => {
-    setSaving(true)
-    try {
-      const result = await updatePost(postId, {
-        status: 'scheduled',
-        scheduled_at: scheduledAt,
-        ...(platform ? { platform } : {}),
-        ...(contentUpdates?.caption !== undefined ? { caption: contentUpdates.caption } : {}),
-        ...(contentUpdates?.slides_json !== undefined
-          ? { slides_json: contentUpdates.slides_json }
-          : {}),
+  /**
+   * One optimistic post mutation: call the action, patch local state, toast either way.
+   *
+   * The three mutations below were the same twenty lines three times — `setSaving`, the
+   * `updatePost` call, an `!ok` toast-and-bail, a `setPosts` map keyed on the same id, a
+   * success toast, a catch that repeats the failure toast, and a `finally` that clears
+   * `saving`. Only the fields, the patch and the two strings ever differed.
+   *
+   * Collapsing them now is also what makes the per-post pending state a one-function
+   * change later, instead of the same edit made three times and one of them forgotten.
+   */
+  const runPostMutation = useCallback(
+    async (opts: {
+      postId: string
+      fields: Parameters<typeof updatePost>[1]
+      patch: (post: CalendarPost) => CalendarPost
+      successMessage: string
+      failureMessage: string
+      /** Answer an outstanding change request, when this mutation is the answer. */
+      resolvesChangeRequest?: boolean
+    }): Promise<boolean> => {
+      setSaving(true)
+      try {
+        const result = await updatePost(opts.postId, opts.fields)
+        if (!result.ok) {
+          toast.error(opts.failureMessage)
+          return false
+        }
+
+        if (opts.resolvesChangeRequest) {
+          const post = posts.find((p) => p.id === opts.postId)
+          if (post?.approval_status === 'changes_requested') {
+            void resolveChangeRequest(opts.postId)
+          }
+        }
+
+        setPosts((prev) => prev.map((p) => (p.id === opts.postId ? opts.patch(p) : p)))
+        toast.success(opts.successMessage)
+        return true
+      } catch {
+        toast.error(opts.failureMessage)
+        return false
+      } finally {
+        setSaving(false)
+      }
+    },
+    [posts]
+  )
+
+  const schedulePost = useCallback(
+    async (
+      postId: string,
+      scheduledAt: string,
+      platform?: string,
+      contentUpdates?: { caption?: string; slides_json?: unknown }
+    ) => {
+      await runPostMutation({
+        postId,
+        fields: {
+          status: 'scheduled',
+          scheduled_at: scheduledAt,
+          ...(platform ? { platform } : {}),
+          ...(contentUpdates?.caption !== undefined ? { caption: contentUpdates.caption } : {}),
+          ...(contentUpdates?.slides_json !== undefined
+            ? { slides_json: contentUpdates.slides_json }
+            : {}),
+        },
+        patch: (p) => ({
+          ...p,
+          status: 'scheduled',
+          scheduled_at: scheduledAt,
+          platform: platform ?? p.platform,
+          ...(contentUpdates?.caption !== undefined && { caption: contentUpdates.caption }),
+          ...(contentUpdates?.slides_json !== undefined && {
+            slides_json: contentUpdates.slides_json as CalendarPost['slides_json'],
+          }),
+        }),
+        successMessage: 'Post scheduled',
+        failureMessage: 'Failed to schedule post',
       })
+    },
+    [runPostMutation]
+  )
 
-      if (!result.ok) {
-        toast.error('Failed to schedule post')
-        return
-      }
-
-      setPosts((prev) =>
-        prev.map((p) =>
-          p.id === postId
-            ? {
-                ...p,
-                status: 'scheduled',
-                scheduled_at: scheduledAt,
-                platform: platform ?? p.platform,
-                ...(contentUpdates?.caption !== undefined && { caption: contentUpdates.caption }),
-                ...(contentUpdates?.slides_json !== undefined && {
-                  slides_json: contentUpdates.slides_json as CalendarPost['slides_json'],
-                }),
-              }
-            : p
-        )
-      )
-      toast.success('Post scheduled')
-    } catch {
-      toast.error('Failed to schedule post')
-    } finally {
-      setSaving(false)
-    }
-  }, [])
-
-  const unschedulePost = useCallback(async (postId: string) => {
-    setSaving(true)
-    try {
-      const result = await updatePost(postId, { status: 'approved', scheduled_at: null })
-
-      if (!result.ok) {
-        toast.error('Failed to unschedule post')
-        return
-      }
-
-      const post = posts.find((p) => p.id === postId)
-      if (post?.approval_status === 'changes_requested') {
-        void resolveChangeRequest(postId)
-      }
-
-      setPosts((prev) =>
-        prev.map((p) =>
-          p.id === postId
-            ? {
-                ...p,
-                status: 'approved',
-                scheduled_at: null,
-                ...(p.approval_status === 'changes_requested' ? CLEARED_APPROVAL : {}),
-              }
-            : p
-        )
-      )
-      toast.success('Post moved to unscheduled')
-    } catch {
-      toast.error('Failed to unschedule post')
-    } finally {
-      setSaving(false)
-    }
-  }, [posts])
-
-  const handleDrop = useCallback((postId: string, dateString: string) => {
-    const scheduledAt = new Date(`${dateString}T12:00:00`).toISOString()
-    void schedulePost(postId, scheduledAt)
-  }, [schedulePost])
+  const unschedulePost = useCallback(
+    async (postId: string) => {
+      await runPostMutation({
+        postId,
+        fields: { status: 'approved', scheduled_at: null },
+        patch: (p) => ({
+          ...p,
+          status: 'approved',
+          scheduled_at: null,
+          ...(p.approval_status === 'changes_requested' ? CLEARED_APPROVAL : {}),
+        }),
+        successMessage: 'Post moved to unscheduled',
+        failureMessage: 'Failed to unschedule post',
+        resolvesChangeRequest: true,
+      })
+    },
+    [runPostMutation]
+  )
 
   /** Save caption/slides without changing schedule state. */
-  const updatePostContent = useCallback(async (
-    postId: string,
-    contentUpdates: { caption?: string; slides_json?: unknown }
-  ): Promise<boolean> => {
-    setSaving(true)
-    try {
-      const result = await updatePost(postId, contentUpdates)
-      if (!result.ok) {
-        toast.error('Failed to save changes')
-        return false
-      }
-
-      const post = posts.find((p) => p.id === postId)
-      if (post?.approval_status === 'changes_requested') {
-        void resolveChangeRequest(postId)
-      }
-
-      setPosts((prev) =>
-        prev.map((p) =>
-          p.id === postId
-            ? {
-                ...p,
-                ...(contentUpdates.caption !== undefined && { caption: contentUpdates.caption }),
-                ...(contentUpdates.slides_json !== undefined && {
-                  // Supabase REST returns untyped JSON — slides_json matches CarouselSlide[] by schema
-                  slides_json: contentUpdates.slides_json as CalendarPost['slides_json'],
-                }),
-                ...CLEARED_APPROVAL,
-              }
-            : p
-        )
-      )
-      toast.success('Changes saved')
-      return true
-    } catch {
-      toast.error('Failed to save changes')
-      return false
-    } finally {
-      setSaving(false)
-    }
-  }, [posts])
+  const updatePostContent = useCallback(
+    async (
+      postId: string,
+      contentUpdates: { caption?: string; slides_json?: unknown }
+    ): Promise<boolean> =>
+      runPostMutation({
+        postId,
+        fields: contentUpdates,
+        patch: (p) => ({
+          ...p,
+          ...(contentUpdates.caption !== undefined && { caption: contentUpdates.caption }),
+          ...(contentUpdates.slides_json !== undefined && {
+            // Supabase REST returns untyped JSON — slides_json matches CarouselSlide[] by schema
+            slides_json: contentUpdates.slides_json as CalendarPost['slides_json'],
+          }),
+          ...CLEARED_APPROVAL,
+        }),
+        successMessage: 'Changes saved',
+        failureMessage: 'Failed to save changes',
+        resolvesChangeRequest: true,
+      }),
+    [runPostMutation]
+  )
 
   /** Remove a post from local state (called after successful deletion). */
   const removePost = useCallback((postId: string) => {
@@ -207,7 +205,6 @@ export function useCalendar(initialPosts: CalendarPost[]) {
     schedulePost,
     unschedulePost,
     updatePostContent,
-    handleDrop,
     removePost,
     upsertPostImage,
     removePostImage,

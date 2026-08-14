@@ -1,6 +1,5 @@
 import { cn } from '@/utils/cn'
-import { CLIENT_COLORS } from '@/utils/constants'
-import { hashIndex } from '@/utils/hash-index'
+import { getClientTone } from '@/components/ui/colors/identity-colors'
 
 type AvatarSize = 'sm' | 'md' | 'lg'
 
@@ -32,7 +31,7 @@ export function Avatar({ name, size = 'md', color, className }: AvatarProps) {
     .map((word) => word[0]?.toUpperCase() ?? '')
     .join('')
 
-  const hue = color === 'brand' ? null : CLIENT_COLORS[hashIndex(name, CLIENT_COLORS.length)]!
+  const tone = color === 'brand' ? null : getClientTone(name)
 
   return (
     <div
@@ -43,14 +42,7 @@ export function Avatar({ name, size = 'md', color, className }: AvatarProps) {
         className
       )}
       // Computed from the hash — the palette is a token list, not a fixed pair of classes.
-      style={
-        hue
-          ? {
-              background: `color-mix(in srgb, ${hue} 14%, transparent)`,
-              color: `color-mix(in srgb, ${hue} 78%, var(--ink))`,
-            }
-          : undefined
-      }
+      style={tone ? { background: tone.bg, color: tone.text } : undefined}
     >
       {initials}
     </div>

@@ -8,9 +8,85 @@
  * - If you add a column to a table, update the relevant constant here first.
  */
 
+import type { PostRow } from '@/types'
+
+/**
+ * `[a, b, c]` joined by `D`, as a literal type rather than plain `string`.
+ *
+ * Needed because the Supabase client infers a query's result shape from the *literal*
+ * text of the select string. `keys.join(', ')` is typed `string`, which collapses that
+ * inference to `GenericStringError` at every call site — so a column list built from an
+ * array has to hand the literal back.
+ *
+ * Local to this file: one consumer, and it is a workaround for one library's typing
+ * rather than a utility anything else should reach for.
+ */
+type Join<T extends readonly string[], D extends string> = T extends readonly [
+  infer Head extends string,
+  ...infer Tail extends string[],
+]
+  ? Tail extends readonly []
+    ? Head
+    : `${Head}${D}${Join<Tail, D>}`
+  : ''
+
 // posts
-export const POST_COLUMNS =
-  'id, client_id, caption, platform, post_type, slides_json, image_url, validation_json, status, priority, scheduled_at, published_at, quality_score_avg, was_rewritten, rewrite_count, source_url, source_title, source_type, pillar, source_excerpt, client_source_id, topic_summary, created_at'
+
+/**
+ * The post projection, as one list.
+ *
+ * The select string and its TypeScript type both derive from this array, because
+ * declaring them separately is how they drift: this file listed 23 columns while
+ * `calendar/page.tsx` typed 15 of them and `review/page.tsx` typed 18 — disagreeing with
+ * each other about `was_rewritten`, `rewrite_count` and `topic_summary`, and leaving six
+ * columns fetched on every load and typed nowhere.
+ *
+ * `row-mirrors.test.ts` could not catch that: each of those was a `Pick<PostRow, …>`, so
+ * the guard was satisfied while four projections of one table pulled apart. The `satisfies`
+ * below closes it one level up — rename a column in the schema and this is a build error.
+ */
+export const POST_COLUMN_KEYS = [
+  'id',
+  'client_id',
+  'caption',
+  'platform',
+  'post_type',
+  'slides_json',
+  'image_url',
+  'validation_json',
+  'status',
+  'priority',
+  'scheduled_at',
+  'published_at',
+  'quality_score_avg',
+  'was_rewritten',
+  'rewrite_count',
+  'source_url',
+  'source_title',
+  'source_type',
+  'pillar',
+  'source_excerpt',
+  'client_source_id',
+  'topic_summary',
+  'created_at',
+] as const satisfies readonly (keyof PostRow)[]
+
+/**
+ * The wire format.
+ *
+ * The assertion re-states what `join` provably produces — the runtime value and the
+ * asserted type are the same characters — and is load-bearing: without it the constant
+ * is plain `string` and Supabase stops inferring result shapes from it.
+ */
+export const POST_COLUMNS = POST_COLUMN_KEYS.join(', ') as Join<typeof POST_COLUMN_KEYS, ', '>
+
+/**
+ * The same list as a type — what a `POST_COLUMNS` select actually returns.
+ *
+ * Pages import this instead of restating a `Pick`. Adding a column to the array above
+ * reaches the query and every reader at once; there is no second place to forget.
+ */
+export type PostColumns = Pick<PostRow, (typeof POST_COLUMN_KEYS)[number]>
 
 // clients
 export const CLIENT_COLUMNS =

@@ -1,5 +1,5 @@
 import { cn } from '@/utils/cn'
-import { getPillarColor } from '@/components/ui/colors/pillar-colors'
+import { getPillarColor } from '@/components/ui/colors/identity-colors'
 import type { PillarAllocation } from '@/features/generate/lib/run-plan'
 
 interface ContentMixListProps {

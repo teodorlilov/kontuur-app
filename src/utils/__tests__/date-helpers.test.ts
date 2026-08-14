@@ -6,8 +6,11 @@ import {
   getWeekRange,
   getWeekdayIndex,
   getZonedParts,
+  isoToDateTimeFields,
+  formatScheduledAt,
   snapTimeToHour,
   toDateKey,
+  zonedTimeToInstant,
 } from '../date-helpers'
 
 /** 2026-07-30 is a Thursday. */
@@ -190,5 +193,104 @@ describe('snapTimeToHour', () => {
     expect(snapTimeToHour('')).toBe('09:00')
     expect(snapTimeToHour('later')).toBe('09:00')
     expect(snapTimeToHour('25:00')).toBe('09:00')
+  })
+})
+
+describe('zonedTimeToInstant', () => {
+  it('resolves a wall clock against the named zone, not the runtime one', () => {
+    // Sofia is UTC+3 in August (EEST).
+    expect(zonedTimeToInstant('2026-08-06', '10:00', 'Europe/Sofia').toISOString()).toBe(
+      '2026-08-06T07:00:00.000Z'
+    )
+    // ...and UTC+2 in January (EET). Same wall clock, different instant.
+    expect(zonedTimeToInstant('2026-01-06', '10:00', 'Europe/Sofia').toISOString()).toBe(
+      '2026-01-06T08:00:00.000Z'
+    )
+  })
+
+  it('handles a zone on the other side of UTC', () => {
+    // New York is UTC-4 in August (EDT).
+    expect(zonedTimeToInstant('2026-08-06', '09:00', 'America/New_York').toISOString()).toBe(
+      '2026-08-06T13:00:00.000Z'
+    )
+  })
+
+  it('resolves a nonexistent spring-forward wall clock forward past the transition', () => {
+    // Sofia springs forward at 03:00 on 29 Mar 2026, so 03:30 local never happens.
+    // Documented behaviour, not an accident: it lands at the first instant that does.
+    expect(zonedTimeToInstant('2026-03-29', '03:30', 'Europe/Sofia').toISOString()).toBe(
+      '2026-03-29T01:30:00.000Z'
+    )
+  })
+
+  it('resolves an ambiguous fall-back wall clock to the second occurrence', () => {
+    // Sofia falls back at 04:00 EEST on 25 Oct 2026, so 03:30 local happens twice:
+    // once at 00:30Z (UTC+3) and again at 01:30Z (UTC+2). The second pass samples the
+    // offset after the shift, so the later one wins. Asserted because either is
+    // defensible and the choice must not drift.
+    expect(zonedTimeToInstant('2026-10-25', '03:30', 'Europe/Sofia').toISOString()).toBe(
+      '2026-10-25T01:30:00.000Z'
+    )
+  })
+
+  it('falls back to the runtime zone when the zone is omitted', () => {
+    expect(zonedTimeToInstant('2026-08-06', '18:00').toISOString()).toBe(
+      new Date('2026-08-06T18:00:00').toISOString()
+    )
+  })
+})
+
+describe('formatScheduledAt', () => {
+  it('is the ISO form of zonedTimeToInstant', () => {
+    expect(formatScheduledAt('2026-08-06', '10:00', 'Europe/Sofia')).toBe(
+      zonedTimeToInstant('2026-08-06', '10:00', 'Europe/Sofia').toISOString()
+    )
+  })
+
+  it('defaults an empty time to noon', () => {
+    expect(formatScheduledAt('2026-08-06', '', 'Europe/Sofia')).toBe(
+      formatScheduledAt('2026-08-06', '12:00', 'Europe/Sofia')
+    )
+  })
+
+  /**
+   * The regression guard for the four callers that predate agency timezones
+   * (slot-picker, schedule-dialog ×2, use-batch-schedule). Omitting the zone must
+   * reproduce the old bare-string parse byte for byte, or this refactor silently
+   * moves every scheduled post in the app.
+   */
+  it('omitting the zone reproduces the pre-refactor bare-string parse', () => {
+    const cases: Array<[string, string]> = [
+      ['2026-08-06', '18:00'],
+      ['2026-01-02', '00:00'],
+      ['2026-12-31', '23:59'],
+      ['2026-03-29', '09:00'],
+      ['2026-10-25', '09:00'],
+    ]
+    for (const [date, time] of cases) {
+      expect(formatScheduledAt(date, time)).toBe(new Date(`${date}T${time}:00`).toISOString())
+    }
+  })
+})
+
+describe('isoToDateTimeFields', () => {
+  it('splits an ISO instant into the form pair, in the given zone', () => {
+    expect(isoToDateTimeFields('2026-08-06T07:00:00.000Z', 'Europe/Sofia')).toEqual({
+      date: '2026-08-06',
+      time: '10:00',
+    })
+  })
+
+  it('round-trips with formatScheduledAt', () => {
+    const iso = formatScheduledAt('2026-08-06', '10:00', 'Europe/Sofia')
+    expect(isoToDateTimeFields(iso, 'Europe/Sofia')).toEqual({ date: '2026-08-06', time: '10:00' })
+  })
+
+  it('reports the zoned day, not the UTC one, either side of midnight', () => {
+    // 22:30 UTC on the 6th is 01:30 on the 7th in Sofia.
+    expect(isoToDateTimeFields('2026-08-06T22:30:00.000Z', 'Europe/Sofia')).toEqual({
+      date: '2026-08-07',
+      time: '01:30',
+    })
   })
 })

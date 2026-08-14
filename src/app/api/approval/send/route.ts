@@ -3,6 +3,7 @@ import { revalidateTag } from 'next/cache'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
 import { fetchClientWithOwnership } from '@/lib/auth/helpers'
 import { createApprovalBatch } from '@/features/review/lib/approval-batch'
+import { getCachedAgency } from '@/lib/queries/cache'
 import { approvalRequestSchema } from '@/features/review/schemas'
 
 /** Create an approval batch and return its link for the agency to share manually. */
@@ -28,7 +29,18 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Client not found' }, { status: 404 })
   }
 
-  const result = await createApprovalBatch(supabase, clientId, weekStart ?? null, null, { postIds })
+  // The batch window resolves in the agency's zone, matching the calendar that
+  // labelled the button. Without it the server built a UTC week and emailed a
+  // different set of posts than the caller named.
+  const agency = await getCachedAgency(agencyId)
+  const result = await createApprovalBatch(
+    supabase,
+    clientId,
+    weekStart ?? null,
+    agency?.timezone ?? 'UTC',
+    null,
+    { postIds }
+  )
   if (!result.ok) {
     return NextResponse.json({ error: result.error }, { status: result.status })
   }

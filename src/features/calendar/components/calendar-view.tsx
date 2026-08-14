@@ -13,14 +13,31 @@ import { TOOL_ROW } from '@/components/layout/page-header/shared'
 import { cn } from '@/utils/cn'
 import { useShell } from '@/components/layout/shell-context'
 import { deletePost } from '@/lib/actions/post-actions'
-import { monthViewIn, nextMonthView, prevMonthView, type MonthView } from '../helpers'
+import { getMondayISO, getWeekRange, shiftDateKey, toDateKey } from '@/utils/date-helpers'
+import { DAYS_PER_WEEK } from '@/utils/constants'
+import {
+  monthViewIn,
+  monthViewOfWeek,
+  nextMonthView,
+  nextWeekView,
+  prevMonthView,
+  prevWeekView,
+  weekViewIn,
+  weekViewOfMonth,
+  type MonthView,
+  type WeekView,
+} from '@/features/calendar/lib/calendar-range'
+import { WeekGrid } from './week-grid'
+import { ClientsView } from './clients-view'
+import { buildClientWeek, buildWeekLanes } from '@/features/calendar/lib/week-model'
+import { TabRail } from '@/components/layout/page-header/tab-rail'
 import { MonthGrid } from './month-grid'
-import { ScheduleFab } from './schedule-fab'
-import { UnscheduledPanel } from './unscheduled-panel'
+import { QueueRail } from './queue-rail'
 import { ScheduleCard } from './schedule-card'
 import type { CalendarPost } from '@/types/api'
 
-const noop = () => {}
+/** Which unit the calendar is showing. */
+type CalendarMode = 'week' | 'month' | 'clients'
 
 interface CalendarViewProps {
   initialPosts: CalendarPost[]
@@ -138,11 +155,16 @@ export function CalendarView({ initialPosts, clients }: CalendarViewProps) {
   // double-invokes them under StrictMode, so that fired twice and skipped a whole year.
   const [view, setView] = useState<MonthView>(() => monthViewIn(timezone))
   const { year, month } = view
+  // The week is its own state rather than derived from the month: stepping weeks must
+  // not drag the month grid around behind it, and a week straddles two months anyway.
+  const [weekStart, setWeekStart] = useState<WeekView>(() => weekViewIn(timezone))
+  const [mode, setMode] = useState<CalendarMode>('week')
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null)
-  const [panelOpen, setPanelOpen] = useState(false)
   const [cardOpen, setCardOpen] = useState(false)
   const [activePostId, setActivePostId] = useState<string | null>(null)
   const [editMode, setEditMode] = useState(false)
+  /** Set when the card was opened from a suggested slot, so it can prefill and scope. */
+  const [slotPrefill, setSlotPrefill] = useState<{ clientId: string; at: string } | null>(null)
   const editParamProcessed = useRef(false)
 
   const {
@@ -152,7 +174,6 @@ export function CalendarView({ initialPosts, clients }: CalendarViewProps) {
     schedulePost,
     unschedulePost,
     updatePostContent,
-    handleDrop,
     removePost,
     upsertPostImage,
     removePostImage,
@@ -197,10 +218,37 @@ export function CalendarView({ initialPosts, clients }: CalendarViewProps) {
   const activePost = allPosts.find((p) => p.id === activePostId) ?? null
   const activeIndex = filteredUnscheduled.findIndex((p) => p.id === activePostId)
 
-  const prevMonth = useCallback(() => setView(prevMonthView), [])
-  const nextMonth = useCallback(() => setView(nextMonthView), [])
+  const stepBack = useCallback(
+    () => (mode === 'month' ? setView(prevMonthView) : setWeekStart(prevWeekView)),
+    [mode]
+  )
+  const stepForward = useCallback(
+    () => (mode === 'month' ? setView(nextMonthView) : setWeekStart(nextWeekView)),
+    [mode]
+  )
 
-  const goToToday = useCallback(() => setView(monthViewIn(timezone)), [timezone])
+  const goToToday = useCallback(() => {
+    setView(monthViewIn(timezone))
+    setWeekStart(weekViewIn(timezone))
+  }, [timezone])
+
+  // Switching views keeps the reader where they were. Opening Month from a week in
+  // September lands on September; opening Week from a month lands on a week inside it,
+  // unless the week already showing is in that month.
+  const selectMode = useCallback(
+    (next: CalendarMode) => {
+      setMode(next)
+      if (next === 'month') {
+        setView(monthViewOfWeek(weekStart))
+      } else {
+        const weeksMonth = monthViewOfWeek(weekStart)
+        if (weeksMonth.year !== year || weeksMonth.month !== month) {
+          setWeekStart(weekViewOfMonth({ year, month }))
+        }
+      }
+    },
+    [weekStart, year, month]
+  )
 
   const handlePanelPostClick = useCallback((post: CalendarPost) => {
     setActivePostId(post.id)
@@ -224,9 +272,8 @@ export function CalendarView({ initialPosts, clients }: CalendarViewProps) {
   const closeCard = useCallback(() => {
     setCardOpen(false)
     setEditMode(false)
+    setSlotPrefill(null)
   }, [])
-  const closePanel = useCallback(() => setPanelOpen(false), [])
-  const togglePanel = useCallback(() => setPanelOpen((v) => !v), [])
 
   function handleNavPost(dir: 1 | -1) {
     const next = filteredUnscheduled[activeIndex + dir]
@@ -280,7 +327,15 @@ export function CalendarView({ initialPosts, clients }: CalendarViewProps) {
     handleCopyLink,
     handleEmailClient,
     handleSendApproval,
-  } = useApproval({ clients, filteredScheduled, allPosts })
+  } = useApproval({
+    clients,
+    filteredScheduled,
+    allPosts,
+    // The week on screen when there is one. In Month the calendar has no single week
+    // to send, so it falls back to the current one — and the buttons say which.
+    weekStartISO: mode === 'week' ? weekStart : getMondayISO(new Date(), timezone),
+    timeZone: timezone,
+  })
 
   async function handleSaveAndResend(
     postId: string,
@@ -292,25 +347,102 @@ export function CalendarView({ initialPosts, clients }: CalendarViewProps) {
     setEditMode(false)
   }
 
-  // Scoped to the month on screen, so the figure matches the grid beneath it.
-  const scheduledThisMonth = filteredScheduled.filter((post) => {
-    if (!post.scheduled_at) return false
-    const at = new Date(post.scheduled_at)
-    return at.getFullYear() === year && at.getMonth() === month
-  }).length
+  // Scoped to the month on screen, so the figure matches the grid beneath it — and
+  // resolved in the agency zone, because the grid itself is. Reading getMonth() off the
+  // instant asks the browser's calendar, which disagrees with the header on the first
+  // and last day of every month for any agency not on the viewer's zone.
+  const monthPrefix = `${year}-${String(month + 1).padStart(2, '0')}`
+  const scheduledThisMonth = filteredScheduled.filter(
+    (post) =>
+      post.scheduled_at && toDateKey(new Date(post.scheduled_at), timezone).startsWith(monthPrefix)
+  ).length
+
+  const { from: weekFrom, to: weekTo } = getWeekRange(weekStart, timezone)
+  const scheduledThisWeek = filteredScheduled.filter(
+    (post) => post.scheduled_at && post.scheduled_at >= weekFrom && post.scheduled_at < weekTo
+  ).length
+
+  // The deficit, surfaced in the rail so it is visible without opening the tab. Counts
+  // clients who are behind their own target — a client with no cadence set has no target
+  // to be behind, so they are not counted.
+  const laneClients = useMemo(
+    () =>
+      clients.map((client) => ({
+        id: client.id,
+        name: client.name,
+        // Instagram is the only platform the suggestion source is populated for today;
+        // when a client carries a default platform this reads it instead.
+        platform: 'Instagram',
+        bestTimes: client.best_times,
+      })),
+    [clients]
+  )
+
+  /**
+   * Placing into a suggested slot: open the dialog the product already has, with the
+   * client, date and time filled in. The stepper scopes to that client, because stepping
+   * the whole agency backlog from one client's slot offers posts it cannot take.
+   */
+  const handleSlotClick = useCallback(
+    (slot: { clientName: string; at: string }) => {
+      const client = clients.find((c) => c.name === slot.clientName)
+      if (!client) return
+      const firstWaiting = filteredUnscheduled.find((p) => p.client_id === client.id)
+      setSlotPrefill({ clientId: client.id, at: slot.at })
+      setActivePostId(firstWaiting?.id ?? null)
+      setCardOpen(true)
+    },
+    [clients, filteredUnscheduled]
+  )
+
+  const clientsBehind = useMemo(() => {
+    const lanes = buildWeekLanes({
+      posts: filteredScheduled,
+      clients: laneClients,
+      weekStartISO: weekStart,
+      timeZone: timezone,
+      now: new Date(),
+    })
+    return clients.filter((client) => {
+      if (client.posts_per_week <= 0) return false
+      const { verdict } = buildClientWeek({
+        clientId: client.id,
+        lanes,
+        weekStartISO: weekStart,
+        target: client.posts_per_week,
+      })
+      return verdict === 'Dark this week' || verdict.endsWith('short')
+    }).length
+  }, [clients, laneClients, filteredScheduled, weekStart, timezone])
+
+  /** "3 – 9 August 2026", collapsing the month when both ends share one. */
+  const weekRangeLabel = (() => {
+    const end = shiftDateKey(weekStart, DAYS_PER_WEEK - 1)
+    const [startYear, startMonth, startDay] = weekStart.split('-').map(Number)
+    const [endYear, endMonth, endDay] = end.split('-').map(Number)
+    const startPart =
+      startMonth === endMonth ? `${startDay}` : `${startDay} ${MONTH_NAMES[startMonth! - 1]}`
+    const yearPart = startYear === endYear ? `${endYear}` : `${startYear} – ${endYear}`
+    return `${startPart} – ${endDay} ${MONTH_NAMES[endMonth! - 1]} ${yearPart}`
+  })()
 
   return (
-    <div className="relative flex min-h-full flex-col">
+    // h-full, not min-h-full: the calendar is a fixed-size workspace, not a document.
+    // `.app-shell` is already h-screen/overflow-hidden with <main> as the only scroller,
+    // so min-h-full let a tall day lane grow the grid, grow the page, and scroll the
+    // column headers and the queue rail off the top together. Bounded here, the lanes'
+    // and the rail's own overflow-y-auto are what move.
+    <div className="relative flex h-full flex-col overflow-hidden">
       <PageHeader
         crumb={[{ label: 'Calendar' }]}
         // The month is the title and "Calendar" demotes to the crumb — the way
         // every calendar already behaves.
         title={
           <>
-            {MONTH_NAMES[month]} {year}
+            {mode === 'month' ? `${MONTH_NAMES[month]} ${year}` : weekRangeLabel}
             <span className="inline-flex items-center gap-0.5">
-              <MonthStepBtn onClick={prevMonth} direction="prev" />
-              <MonthStepBtn onClick={nextMonth} direction="next" />
+              <MonthStepBtn onClick={stepBack} direction="prev" />
+              <MonthStepBtn onClick={stepForward} direction="next" />
             </span>
           </>
         }
@@ -351,10 +483,29 @@ export function CalendarView({ initialPosts, clients }: CalendarViewProps) {
         meta={
           <HeaderMeta
             parts={[
-              `${scheduledThisMonth} scheduled this month`,
+              mode === 'month'
+                ? `${scheduledThisMonth} scheduled this month`
+                : `${scheduledThisWeek} scheduled this week`,
               filteredUnscheduled.length > 0 && (
                 <MetaFlag>{filteredUnscheduled.length} waiting to be scheduled</MetaFlag>
               ),
+            ]}
+          />
+        }
+        tabs={
+          <TabRail
+            label="Calendar view"
+            active={mode}
+            onSelect={selectMode}
+            items={[
+              { id: 'week', label: 'Week' },
+              { id: 'month', label: 'Month' },
+              {
+                id: 'clients',
+                label: 'Clients',
+                // Amber, not lime: this is something needing care, not where you are.
+                ...(clientsBehind > 0 ? { count: clientsBehind, warn: true } : {}),
+              },
             ]}
           />
         }
@@ -378,31 +529,54 @@ export function CalendarView({ initialPosts, clients }: CalendarViewProps) {
         }
       />
 
-      <MonthGrid
-        year={year}
-        month={month}
-        scheduledPosts={filteredScheduled}
-        onPostClick={handleGridPostClick}
-        onDayClick={noop}
-        onDrop={handleDrop}
-      />
+      <div className="flex min-h-0 flex-1">
+        <div className="flex min-h-0 flex-1 flex-col px-2 pb-[18px] pt-2.5 md:px-[18px]">
+        {mode === 'week' ? (
+          <WeekGrid
+            weekStartISO={weekStart}
+            scheduledPosts={filteredScheduled}
+            clients={laneClients}
+            timeZone={timezone}
+            onPostClick={handleGridPostClick}
+            onSlotClick={handleSlotClick}
+          />
+        ) : mode === 'clients' ? (
+          <ClientsView
+            clients={clients}
+            laneClients={laneClients}
+            scheduledPosts={filteredScheduled}
+            weekStartISO={weekStart}
+            timeZone={timezone}
+          />
+        ) : (
+          <MonthGrid
+            year={year}
+            month={month}
+            timeZone={timezone}
+            scheduledPosts={filteredScheduled}
+            onPostClick={handleGridPostClick}
+          />
+        )}
+        </div>
 
-      <ScheduleFab
-        unscheduledCount={filteredUnscheduled.length}
-        isOpen={panelOpen}
-        onClick={togglePanel}
-      />
-
-      <UnscheduledPanel
-        posts={filteredUnscheduled}
-        isOpen={panelOpen}
-        activePostId={activePostId}
-        onPostClick={handlePanelPostClick}
-        onClose={closePanel}
-      />
+        {/* Docked, not floating: a sibling of the grid rather than a layer over it. */}
+        <div className="hidden md:flex">
+          <QueueRail
+            posts={filteredUnscheduled}
+            totalCount={unscheduledPosts.length}
+            activePostId={activePostId}
+            clientFilterName={
+              selectedClientId ? (clients.find((c) => c.id === selectedClientId)?.name ?? null) : null
+            }
+            onPostClick={handlePanelPostClick}
+          />
+        </div>
+      </div>
 
       <ScheduleCard
         post={activePost}
+        timeZone={timezone}
+        slotPrefill={slotPrefill}
         postIndex={activeIndex}
         totalPosts={filteredUnscheduled.length}
         isOpen={cardOpen}

@@ -9,19 +9,56 @@
  * app — louder than New Growth, on a surface that is meant to recede.
  */
 
+/**
+ * The one banding for a 1–10 score.
+ *
+ * Every score colour in the app derives from this. There used to be four thresholds:
+ * this file's 8/6, and three more inside the calendar — two copies of a `>= 7` split and
+ * a `>= 9` one on the quality pill. The last two sat in the same modal, so a post scoring
+ * 8 rendered amber in the header and green in the sidebar forty pixels away.
+ */
+export type ScoreBand = 'strong' | 'fair' | 'weak'
+
+export function scoreBand(score: number): ScoreBand {
+  if (score >= 8) return 'strong'
+  if (score >= 6) return 'fair'
+  return 'weak'
+}
+
+/**
+ * The same three bands as the CSS pair a tinted chip needs.
+ *
+ * CSS values rather than Tailwind classes because the consumer is `TagPill`, which takes
+ * `background`/`color` — and keeping it value-only is what lets that component stay a
+ * single code path (its class-or-value branch was dead and has been removed).
+ */
+export const SCORE_BAND_VARS: Record<ScoreBand, { bg: string; color: string }> = {
+  strong: { bg: 'var(--wash)', color: 'var(--forest)' },
+  fair: { bg: 'var(--pending-bg)', color: 'var(--pending)' },
+  weak: { bg: 'var(--danger-bg)', color: 'var(--danger)' },
+}
+
+const BAR_CLASS: Record<ScoreBand, string> = {
+  strong: 'bg-spring',
+  fair: 'bg-pending',
+  weak: 'bg-danger',
+}
+
+const TEXT_CLASS: Record<ScoreBand, string> = {
+  // Living Green Text, not --spring: green as a word on light needs 4.53:1.
+  strong: 'text-spring-text',
+  fair: 'text-pending',
+  weak: 'text-danger',
+}
+
 /** Progress-bar fill color for 1-10 scores. */
 export function scoreBarColor(score: number): string {
-  if (score >= 8) return 'bg-spring'
-  if (score >= 6) return 'bg-pending'
-  return 'bg-danger'
+  return BAR_CLASS[scoreBand(score)]
 }
 
 /** Text color for 1-10 scores. */
 export function scoreTextColor(score: number): string {
-  // Living Green Text, not --spring: green as a word on light needs 4.53:1.
-  if (score >= 8) return 'text-spring-text'
-  if (score >= 6) return 'text-pending'
-  return 'text-danger'
+  return TEXT_CLASS[scoreBand(score)]
 }
 
 /** Carousel slide status → dot color. */

@@ -2,7 +2,7 @@
 
 import { Copy, ChevronLeft, ChevronRight } from 'lucide-react'
 import { postTypeLabel } from '@/features/review/lib/queue-post'
-import { getPillarColor } from '@/components/ui/colors/pillar-colors'
+import { getPillarColor } from '@/components/ui/colors/identity-colors'
 import { formatScheduleDate } from '@/utils/format'
 import type { ApprovalPostData } from '@/types/api'
 import { SlidesSection } from './slides-section'

@@ -4,7 +4,7 @@ import { cn } from '@/utils/cn'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { StatusPill } from '@/components/ui/status-pill'
-import { getPillarColor } from '@/components/ui/colors/pillar-colors'
+import { getPillarColor } from '@/components/ui/colors/identity-colors'
 import { parseSlides } from '@/components/posts/parse-slides'
 import { VisualFrame } from '@/components/posts/review/visual-frame'
 import {

@@ -13,6 +13,12 @@ export const PILL_TONES = {
   /** Clay, not signal-red — the status hues in this system are earthen. */
   bad: 'bg-danger-bg text-danger',
   mark: 'bg-accent text-forest-deep',
+  /**
+   * The Marker highlight, which DESIGN.md § Chips pairs with "scheduled".
+   * Distinct from `mark` above: that is the New Growth *plate*, which the Standing
+   * Place Rule reserves for where the user is, never for a permanent property.
+   */
+  marker: 'bg-marker text-forest-deep',
   /** No judgement — a label like "you" that states a fact rather than a status. */
   neutral: 'bg-ink/[0.05] text-text3',
 } as const

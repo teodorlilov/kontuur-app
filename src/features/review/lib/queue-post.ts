@@ -1,6 +1,6 @@
 import type { PostImage } from '@/types/api'
 import type { ValidationData } from '@/types/post'
-import type { PostRow } from '@/types'
+import type { PostColumns } from '@/lib/queries/select-columns'
 
 /** A client sign-off request attached to a queue post (post_approval_tokens). */
 export interface QueueApproval {
@@ -8,27 +8,19 @@ export interface QueueApproval {
   expiresAt: string
 }
 
-/** One pending_review post as the queue page loads it — the shell's data contract. */
-export type QueuePost = Pick<
-  PostRow,
-  | 'id'
-  | 'client_id'
-  | 'caption'
-  | 'platform'
-  | 'post_type'
-  | 'status'
-  | 'priority'
-  | 'quality_score_avg'
-  | 'was_rewritten'
-  | 'rewrite_count'
-  | 'pillar'
-  | 'source_url'
-  | 'source_title'
-  | 'source_type'
-  | 'source_excerpt'
-  | 'topic_summary'
-  | 'scheduled_at'
-  | 'created_at'
+/**
+ * One pending_review post as the queue page loads it — the shell's data contract.
+ *
+ * Derived from `PostColumns` (what the page's select actually returns) minus the three
+ * columns the client has no use for, rather than restating the other eighteen. The
+ * restated version was the third copy of that list, and the `Omit` now says something
+ * the `Pick` could not: these are deliberately withheld, not forgotten.
+ *
+ * `slides_json` and `validation_json` are re-declared below because both are narrowed.
+ */
+export type QueuePost = Omit<
+  PostColumns,
+  'image_url' | 'published_at' | 'client_source_id' | 'slides_json' | 'validation_json'
 > & {
   slides_json: unknown
   /** The raw blob stays server-side (the page adapts it); null here keeps the

@@ -75,7 +75,7 @@ export function getWeekdayIndex(date: Date = new Date(), timeZone?: string): num
 }
 
 /** Shift a 'YYYY-MM-DD' calendar date by whole days, without touching a clock. */
-function shiftDateKey(dateISO: string, days: number): string {
+export function shiftDateKey(dateISO: string, days: number): string {
   const [year, month, day] = dateISO.split('-').map(Number)
   // UTC arithmetic on a bare calendar date: no local midnight, so no DST edge.
   return new Date(Date.UTC(year ?? 0, (month ?? 1) - 1, (day ?? 1) + days))
@@ -124,9 +124,24 @@ function getZoneOffsetMs(date: Date, timeZone?: string): number {
   return asUTC - date.getTime()
 }
 
-/** The instant at which a calendar date begins in `timeZone`. */
-function getZonedDayStart(dateISO: string, timeZone?: string): Date {
-  const asIfUTC = new Date(`${dateISO}T00:00:00Z`)
+/**
+ * The instant at which a wall-clock time occurs in `timeZone`.
+ *
+ * The inverse of `toDateKey`/`getZonedParts`: those read an instant in a zone, this
+ * one resolves a zone's wall clock back to an instant. Writing a scheduled time needs
+ * this direction, and until now nothing exported it — every writer built
+ * `new Date('YYYY-MM-DDTHH:MM:00')`, which the engine resolves in the *runtime* zone
+ * (the browser on the client, UTC on Vercel) and never in the agency's.
+ *
+ * DST edges, both asserted in the tests so the behaviour is recorded rather than
+ * rediscovered: a wall clock inside the spring-forward gap does not exist and resolves
+ * forward past the transition; one inside the fall-back overlap occurs twice and
+ * resolves to the *second* (later, post-transition) occurrence, because the second pass
+ * samples the offset after the shift. Either occurrence would be defensible — what
+ * matters is that scheduling 03:30 on a fall-back day is not a coin flip.
+ */
+export function zonedTimeToInstant(dateISO: string, time: string, timeZone?: string): Date {
+  const asIfUTC = new Date(`${dateISO}T${time}:00Z`)
   // Two passes: the first offset is sampled at the wrong instant when the guess
   // lands on the far side of a DST transition, the second corrects it.
   let instant = asIfUTC
@@ -134,6 +149,11 @@ function getZonedDayStart(dateISO: string, timeZone?: string): Date {
     instant = new Date(asIfUTC.getTime() - getZoneOffsetMs(instant, timeZone))
   }
   return instant
+}
+
+/** The instant at which a calendar date begins in `timeZone`. */
+function getZonedDayStart(dateISO: string, timeZone?: string): Date {
+  return zonedTimeToInstant(dateISO, '00:00', timeZone)
 }
 
 /**
@@ -174,9 +194,35 @@ export function getMonthBoundaries(timeZone?: string): {
   }
 }
 
-/** Combine a date string (YYYY-MM-DD) and time string (HH:MM) into an ISO timestamp. */
-export function formatScheduledAt(date: string, time: string): string {
-  return new Date(`${date}T${time || '12:00'}:00`).toISOString()
+/**
+ * Combine a date string (YYYY-MM-DD) and time string (HH:MM) into an ISO timestamp,
+ * reading the pair as wall-clock time in `timeZone`.
+ *
+ * The ISO form of `zonedTimeToInstant`, which is what every existing writer wants.
+ * Omitting the zone reproduces the old bare-string parse exactly — Intl falls back to
+ * the runtime zone — so callers that predate agency timezones are unaffected.
+ */
+export function formatScheduledAt(date: string, time: string, timeZone?: string): string {
+  return zonedTimeToInstant(date, time || '12:00', timeZone).toISOString()
+}
+
+/**
+ * An ISO instant as the date/time input pair the scheduling forms edit, in `timeZone`.
+ *
+ * Lives here rather than in the review feature because it is the read side of
+ * `formatScheduledAt` and shares its zone contract; keeping the pair together is what
+ * stops one of them growing a zone the other lacks.
+ *
+ * `timeZone` is required, unlike its siblings above. Those default to the runtime zone,
+ * which is wrong but at least matches what their callers already did; this function is
+ * new to every caller, and a form prefilled in the wrong zone is invisible until someone
+ * notices a post went out an hour early. A missing argument should be a build error.
+ */
+export function isoToDateTimeFields(iso: string, timeZone: string): { date: string; time: string } {
+  const instant = new Date(iso)
+  const { hour, minute } = getZonedParts(instant, timeZone)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return { date: toDateKey(instant, timeZone), time: `${pad(hour)}:${pad(minute)}` }
 }
 
 /**
