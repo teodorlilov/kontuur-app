@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { approvalRequestSchema } from '../schemas'
+import { approvalRequestSchema } from '../schema'
 
 const clientId = '6f9619ff-8b86-4d01-b42d-00cf4fc964ff'
 const postId = '7f9619ff-8b86-4d01-b42d-00cf4fc964aa'

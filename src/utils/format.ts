@@ -107,6 +107,18 @@ export function extractInitials(name: string): string {
   return (first.charAt(0) + second.charAt(0)).toUpperCase()
 }
 
+/**
+ * A count and its noun: `pluralise(1, 'post')` → "1 post", `pluralise(3, 'post')` → "3 posts".
+ *
+ * Every noun this app counts is a regular plural, so the rule is one `s`. It was written
+ * inline roughly twenty times, in three spellings of the same ternary — `=== 1 ? '' : 's'`,
+ * `!== 1 ? 's' : ''`, and a local copy of this exact function in the clients roster. The
+ * approval surfaces are converted here; the rest follow when they are next touched.
+ */
+export function pluralise(count: number, noun: string): string {
+  return `${count} ${noun}${count === 1 ? '' : 's'}`
+}
+
 /** Formats a number compactly: 1200 → "1.2K", 50 → "50". */
 export function formatCompactNumber(n: number): string {
   if (n >= 1000) return `${(n / 1000).toFixed(1)}K`

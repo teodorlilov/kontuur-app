@@ -6,6 +6,8 @@ import { Check, CalendarDays, Mail, RotateCcw } from 'lucide-react'
 import { cn } from '@/utils/cn'
 import { toast } from '@/components/ui/toast'
 import { getMondayISO } from '@/utils/date-helpers'
+import { pluralise } from '@/utils/format'
+import { requestApprovalEmail } from '@/lib/approval/request-approval'
 
 interface DoneViewProps {
   approvedCount: number
@@ -40,17 +42,8 @@ export function DoneView({
   async function handleSendApproval() {
     setSending(true)
     try {
-      const res = await fetch('/api/approval/email', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ clientId, weekStart: getMondayISO() }),
-      })
-      if (!res.ok) {
-        const err = (await res.json()) as { error: string }
-        throw new Error(err.error || 'Failed to send approval email')
-      }
-      const data = (await res.json()) as { postCount: number }
-      toast.success(`Approval sent — ${data.postCount} post${data.postCount !== 1 ? 's' : ''}`)
+      const data = await requestApprovalEmail({ clientId, weekStart: getMondayISO() })
+      toast.success(`Approval sent — ${pluralise(data.postCount, 'post')}`)
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Failed to send approval email')
     } finally {
@@ -66,7 +59,7 @@ export function DoneView({
       <h1 className="font-display text-prompt text-ink [text-wrap:balance]">
         {nothingKept
           ? 'Nothing kept this time'
-          : `${approvedCount} post${approvedCount === 1 ? '' : 's'} approved`}
+          : `${pluralise(approvedCount, 'post')} approved`}
       </h1>
       <p className="mt-3 text-lead text-text2">
         {nothingKept
@@ -97,7 +90,7 @@ export function DoneView({
           sub={
             nothingKept
               ? 'See what is already scheduled'
-              : `${approvedCount} draft${approvedCount === 1 ? '' : 's'} waiting for a slot`
+              : `${pluralise(approvedCount, 'draft')} waiting for a slot`
           }
           onClick={() => router.push('/calendar')}
         />

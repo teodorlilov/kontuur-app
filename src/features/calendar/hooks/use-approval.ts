@@ -2,7 +2,9 @@
 
 import { useState, useMemo } from 'react'
 import { toast } from '@/components/ui/toast'
+import { requestApprovalEmail, requestApprovalLink } from '@/lib/approval/request-approval'
 import { getMondayISO, getWeekRange } from '@/utils/date-helpers'
+import { pluralise } from '@/utils/format'
 import type { BestTimePlatform, CalendarPost } from '@/types/api'
 
 export interface ClientEntry {
@@ -26,24 +28,6 @@ interface UseApprovalArgs {
   weekStartISO: string
   /** The agency zone. Both the membership filter and the server's query resolve in it. */
   timeZone: string
-}
-
-/** POST to the approval email API and return post count, or throw on failure. */
-async function sendApprovalEmail(clientId: string, weekStart: string): Promise<{ postCount: number }> {
-  const res = await fetch('/api/approval/email', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ clientId, weekStart }),
-  })
-  if (!res.ok) {
-    const err = (await res.json()) as { error: string }
-    throw new Error(err.error || 'Failed to send approval email')
-  }
-  return (await res.json()) as { postCount: number }
-}
-
-function formatPostCount(count: number): string {
-  return `${count} post${count === 1 ? '' : 's'}`
 }
 
 /** Manages approval state: week scoping, copy-link, email, and per-post approval. */
@@ -89,21 +73,11 @@ export function useApproval({
     setCopyLinkSending(true)
     setCopyLinkPicker(false)
     try {
-      const res = await fetch('/api/approval/send', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ clientId, weekStart: currentWeekStart }),
-      })
-      if (!res.ok) {
-        const err = (await res.json()) as { error: string }
-        toast.error(err.error || 'Failed to generate approval link')
-        return
-      }
-      const data = (await res.json()) as { url: string; postCount: number }
+      const data = await requestApprovalLink({ clientId, weekStart: currentWeekStart })
       await navigator.clipboard.writeText(data.url)
-      toast.success(`Approval link copied! (${formatPostCount(data.postCount)})`)
-    } catch {
-      toast.error('Failed to generate approval link')
+      toast.success(`Approval link copied! (${pluralise(data.postCount, 'post')})`)
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Failed to generate approval link')
     } finally {
       setCopyLinkSending(false)
     }
@@ -117,8 +91,8 @@ export function useApproval({
     setEmailSending(true)
     setEmailPicker(false)
     try {
-      const data = await sendApprovalEmail(clientId, currentWeekStart)
-      toast.success(`Approval email sent! (${formatPostCount(data.postCount)})`)
+      const data = await requestApprovalEmail({ clientId, weekStart: currentWeekStart })
+      toast.success(`Approval email sent! (${pluralise(data.postCount, 'post')})`)
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Failed to send approval email')
     } finally {
@@ -136,8 +110,8 @@ export function useApproval({
     setApprovalSending(true)
     try {
       const weekStart = getMondayISO(new Date(post.scheduled_at), timeZone)
-      const data = await sendApprovalEmail(post.client_id, weekStart)
-      toast.success(`Approval email sent! (${formatPostCount(data.postCount)})`)
+      const data = await requestApprovalEmail({ clientId: post.client_id, weekStart })
+      toast.success(`Approval email sent! (${pluralise(data.postCount, 'post')})`)
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Failed to send approval email')
     } finally {

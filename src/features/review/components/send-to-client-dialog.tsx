@@ -5,6 +5,7 @@ import { Link2, Mail } from 'lucide-react'
 import { toast } from '@/components/ui/toast'
 import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
+import { requestApprovalEmail, requestApprovalLink } from '@/lib/approval/request-approval'
 import type { QueuePost } from '@/features/review/lib/queue-post'
 
 interface SendToClientDialogProps {
@@ -25,26 +26,22 @@ export function SendToClientDialog({ post, onClose, onSent }: SendToClientDialog
   async function send(kind: 'email' | 'send') {
     if (!post) return
     setSending(kind)
+    const batch = { clientId: post.client_id, postIds: [post.id] }
     try {
-      const res = await fetch(`/api/approval/${kind}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ clientId: post.client_id, postIds: [post.id] }),
-      })
-      const data = await res.json()
-      if (!res.ok) {
-        toast.error((data as { error?: string }).error ?? 'Failed to send for approval')
-        return
-      }
       if (kind === 'send') {
-        await navigator.clipboard.writeText((data as { url: string }).url)
+        const { url } = await requestApprovalLink(batch)
+        await navigator.clipboard.writeText(url)
         toast.success('Approval link copied')
       } else {
+        await requestApprovalEmail(batch)
         toast.success('Approval email sent')
       }
       onSent(post.id)
-    } catch {
-      toast.error('Failed to send for approval')
+    } catch (e) {
+      // The server's message when it gave one. This used to read the body *before*
+      // checking `res.ok`, so a response without JSON — a 502 from the edge — threw a
+      // SyntaxError that surfaced as the generic failure below.
+      toast.error(e instanceof Error ? e.message : 'Failed to send for approval')
     } finally {
       setSending(null)
     }

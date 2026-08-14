@@ -4,7 +4,8 @@ import { resolveAuth } from '@/lib/auth/resolve-auth'
 import { fetchClientWithOwnership } from '@/lib/auth/helpers'
 import { createApprovalBatch } from '@/features/review/lib/approval-batch'
 import { getCachedAgency } from '@/lib/queries/cache'
-import { approvalRequestSchema } from '@/features/review/schemas'
+import { approvalRequestSchema } from '@/lib/approval/schema'
+import { pluralise } from '@/utils/format'
 
 /** Create an approval batch and return its link for the agency to share manually. */
 export async function POST(request: Request) {
@@ -52,7 +53,7 @@ export async function POST(request: Request) {
   // request would hide a working approval URL from the caller.
   const { error: notifyError } = await supabase.from('notifications').insert({
     agency_id: agencyId,
-    message: `Approval link generated for ${client.name} — ${result.postCount} post${result.postCount === 1 ? '' : 's'}`,
+    message: `Approval link generated for ${client.name} — ${pluralise(result.postCount, 'post')}`,
   })
   if (notifyError) {
     console.error('[approval] link-notification insert failed:', notifyError.message)
