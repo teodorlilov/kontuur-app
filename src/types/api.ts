@@ -2,7 +2,7 @@
 // this file — going through it would make the two circular.
 import type { Tables } from './database'
 import type { SlideText } from './slide'
-import type { PostColumns } from '@/lib/queries/select-columns'
+import type { CalendarPostColumns } from '@/lib/queries/select-columns'
 
 type PostRow = Tables<'posts'>
 type NotificationRow = Tables<'notifications'>
@@ -174,18 +174,19 @@ export interface ApprovalBatchData {
 // ---- Calendar ----
 
 /**
- * A calendar row: everything a `POST_COLUMNS` select returns, plus the joined name,
- * images and approval state the calendar resolves alongside them.
+ * A calendar row: everything a `CALENDAR_POST_COLUMNS` select returns, plus the joined
+ * name, images and approval state the calendar resolves alongside them.
  *
- * Derived from `PostColumns` rather than restating its own `Pick`. The hand-written
- * version listed 15 of the 23 columns the query already fetched, so `topic_summary`,
- * `published_at` and four others arrived over the wire on every load and were invisible
- * to the type system — and it disagreed with the equivalent list in `/review`.
+ * Derived from `CalendarPostColumns` rather than restating its own `Pick`. The
+ * hand-written version listed 15 of the 23 columns the query already fetched, so
+ * `topic_summary`, `published_at` and four others arrived over the wire on every load
+ * and were invisible to the type system — and it disagreed with the equivalent list
+ * in `/review`.
  *
  * The two `Omit`ed columns are narrowed below: the raw ones are `Json`, and every
  * surface parses them into its own shape rather than trusting the column.
  */
-export type CalendarPost = Omit<PostColumns, 'slides_json' | 'validation_json'> & {
+export type CalendarPost = Omit<CalendarPostColumns, 'slides_json' | 'validation_json'> & {
   client_name: string
   /** Parsed on the way in, unlike the raw column. */
   slides_json: CarouselSlide[] | null
@@ -194,6 +195,14 @@ export type CalendarPost = Omit<PostColumns, 'slides_json' | 'validation_json'> 
   approval_status: string | null
   approval_client_note: string | null
   approval_responded_at: string | null
+  /**
+   * When the client's approval link stops working.
+   *
+   * Carried because a post sitting at `pending` says nothing about whether anyone can
+   * still act on it: a lapsed link and a link nobody has opened yet look identical on
+   * every surface, and the answer decides whether the agency waits or re-sends.
+   */
+  approval_expires_at: string | null
 }
 
 // ---- Dashboard Change Requests ----

@@ -1,8 +1,9 @@
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { requireSessionUser } from '@/lib/auth/session'
 import { getCachedAgencyClients } from '@/lib/queries/cache'
-import { POST_COLUMNS, type PostColumns } from '@/lib/queries/select-columns'
+import { CALENDAR_POST_COLUMNS, type CalendarPostColumns } from '@/lib/queries/select-columns'
 import type { PostStatus } from '@/lib/validation'
+import type { Tables } from '@/types/database'
 import { fetchImagesByPost } from '@/features/publishing/lib/fetch-post-images'
 import { parseBestTimes } from '@/lib/scheduling/schemas'
 import { CalendarView } from '@/features/calendar/components/calendar-view'
@@ -34,7 +35,7 @@ export default async function CalendarPage() {
       ? supabase
           .from('posts')
           .select(
-            `${POST_COLUMNS}, post_approval_tokens(status, client_note, created_at, responded_at)`
+            `${CALENDAR_POST_COLUMNS}, post_approval_tokens(status, client_note, created_at, responded_at, expires_at)`
           )
           .in('client_id', clientIds)
           .in('status', [
@@ -64,17 +65,19 @@ export default async function CalendarPage() {
     best_times: parseBestTimes(c.brand_profiles?.best_time_json),
   }))
 
-  type ApprovalTokenRow = {
-    status: string
-    client_note: string | null
-    created_at: string
-    responded_at: string | null
-  }
+  // Derived, not restated. Adding `expires_at` pushed this to five fields and
+  // `row-mirrors` correctly called it a hand-written copy of the table — and the copy
+  // was already wrong: it declared `created_at: string` over a nullable column, which
+  // is what `latestToken` below was sorting on.
+  type ApprovalTokenRow = Pick<
+    Tables<'post_approval_tokens'>,
+    'status' | 'client_note' | 'created_at' | 'responded_at' | 'expires_at'
+  >
 
-  // `PostColumns`, not a local Pick: this page used to restate 15 of the 23 columns
-  // POST_COLUMNS selects, so six arrived on every load typed as nothing — and its list
-  // had already drifted from /review's equivalent.
-  type PostQueryRow = PostColumns & {
+  // `CalendarPostColumns`, not a local Pick: this page used to restate 15 of the 23
+  // columns POST_COLUMNS selects, so six arrived on every load typed as nothing — and
+  // its list had already drifted from /review's equivalent.
+  type PostQueryRow = CalendarPostColumns & {
     post_approval_tokens: ApprovalTokenRow[]
   }
 
@@ -89,7 +92,12 @@ export default async function CalendarPage() {
    * adopts it; it has one consumer until then.
    */
   function latestToken(tokens: ApprovalTokenRow[]): ApprovalTokenRow | undefined {
-    return tokens.slice().sort((a, b) => b.created_at.localeCompare(a.created_at))[0]
+    // `created_at` is nullable in the schema, and this called `.localeCompare` on it
+    // directly — a row inserted without one would have thrown the whole page. It has a
+    // default, so nothing has hit it; the type was hiding that it could.
+    return tokens
+      .slice()
+      .sort((a, b) => (b.created_at ?? '').localeCompare(a.created_at ?? ''))[0]
   }
 
   const clientNameMap = new Map(clientList.map((c) => [c.id, c.name]))
@@ -109,6 +117,7 @@ export default async function CalendarPage() {
       approval_status: token?.status ?? null,
       approval_client_note: token?.client_note ?? null,
       approval_responded_at: token?.responded_at ?? null,
+      approval_expires_at: token?.expires_at ?? null,
     }
   })
 

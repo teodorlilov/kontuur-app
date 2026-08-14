@@ -64,6 +64,13 @@ export const PostCard = memo(function PostCard({
       >
         {title}
       </span>
+      {/* Why it failed, on the card itself. A lane of identical "Failed" chips says the
+          week went wrong without saying whether it was one expired token or five posts
+          with no images — the difference between one fix and five. */}
+      {isFailed && post.publish_error && (
+        <span className="line-clamp-2 text-micro text-danger">{post.publish_error}</span>
+      )}
+
       <span className="flex flex-wrap items-center gap-1">
         <PostStatusChip status={status} />
         {!isPublished && !isFailed && (

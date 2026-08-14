@@ -3,7 +3,10 @@
 import { useState, useMemo, useCallback } from 'react'
 import { toast } from '@/components/ui/toast'
 import { updatePost, resolveChangeRequest } from '@/lib/actions/post-actions'
+import { rearmFailedPost } from '@/features/calendar/actions/post-recovery'
+import { reconcilePosts } from '@/features/calendar/lib/reconcile-posts'
 import { upsertImageAtPosition } from '@/features/publishing/lib/image-list'
+import type { ActionResult } from '@/lib/actions/types'
 import type { CalendarPost, PostImage } from '@/types/api'
 import type { PostStatus } from '@/lib/validation'
 
@@ -25,7 +28,14 @@ const ON_CALENDAR_STATUSES: readonly string[] = [
 
 export function useCalendar(initialPosts: CalendarPost[]) {
   const [posts, setPosts] = useState(initialPosts)
-  const [saving, setSaving] = useState(false)
+  /**
+   * Which posts have a write in flight, not whether *any* does.
+   *
+   * The shared boolean this replaces put every card in the grid into a loading state
+   * because one of them was saving — and on a week holding twelve posts, scheduling one
+   * disabled the other eleven.
+   */
+  const [pendingIds, setPendingIds] = useState<ReadonlySet<string>>(() => new Set())
 
   const unscheduledPosts = useMemo(
     () => posts.filter((p) => p.status === 'approved' && !p.scheduled_at),
@@ -37,32 +47,45 @@ export function useCalendar(initialPosts: CalendarPost[]) {
     [posts]
   )
 
+  const setPending = useCallback((postId: string, pending: boolean) => {
+    setPendingIds((prev) => {
+      const next = new Set(prev)
+      if (pending) next.add(postId)
+      else next.delete(postId)
+      return next
+    })
+  }, [])
+
   /**
    * One optimistic post mutation: call the action, patch local state, toast either way.
    *
-   * The three mutations below were the same twenty lines three times — `setSaving`, the
-   * `updatePost` call, an `!ok` toast-and-bail, a `setPosts` map keyed on the same id, a
+   * The three mutations below were the same twenty lines three times — a saving flag,
+   * the action call, an `!ok` toast-and-bail, a `setPosts` map keyed on the same id, a
    * success toast, a catch that repeats the failure toast, and a `finally` that clears
-   * `saving`. Only the fields, the patch and the two strings ever differed.
+   * the flag. Only the action, the patch and the two strings ever differed.
    *
-   * Collapsing them now is also what makes the per-post pending state a one-function
-   * change later, instead of the same edit made three times and one of them forgotten.
+   * It takes the call itself rather than a field payload, so `rearmFailedPost` — a
+   * different action entirely — reuses this instead of restating the dance. That was
+   * the point of collapsing them: the per-post pending state below became one edit
+   * here rather than four, with one of them forgotten.
    */
   const runPostMutation = useCallback(
     async (opts: {
       postId: string
-      fields: Parameters<typeof updatePost>[1]
+      run: () => Promise<ActionResult>
       patch: (post: CalendarPost) => CalendarPost
       successMessage: string
       failureMessage: string
       /** Answer an outstanding change request, when this mutation is the answer. */
       resolvesChangeRequest?: boolean
     }): Promise<boolean> => {
-      setSaving(true)
+      setPending(opts.postId, true)
       try {
-        const result = await updatePost(opts.postId, opts.fields)
+        const result = await opts.run()
         if (!result.ok) {
-          toast.error(opts.failureMessage)
+          // The action's own message when it has one — "This post is no longer failed"
+          // says something the caller's generic string cannot.
+          toast.error(result.error || opts.failureMessage)
           return false
         }
 
@@ -80,10 +103,10 @@ export function useCalendar(initialPosts: CalendarPost[]) {
         toast.error(opts.failureMessage)
         return false
       } finally {
-        setSaving(false)
+        setPending(opts.postId, false)
       }
     },
-    [posts]
+    [posts, setPending]
   )
 
   const schedulePost = useCallback(
@@ -95,15 +118,16 @@ export function useCalendar(initialPosts: CalendarPost[]) {
     ) => {
       await runPostMutation({
         postId,
-        fields: {
-          status: 'scheduled',
-          scheduled_at: scheduledAt,
-          ...(platform ? { platform } : {}),
-          ...(contentUpdates?.caption !== undefined ? { caption: contentUpdates.caption } : {}),
-          ...(contentUpdates?.slides_json !== undefined
-            ? { slides_json: contentUpdates.slides_json }
-            : {}),
-        },
+        run: () =>
+          updatePost(postId, {
+            status: 'scheduled',
+            scheduled_at: scheduledAt,
+            ...(platform ? { platform } : {}),
+            ...(contentUpdates?.caption !== undefined ? { caption: contentUpdates.caption } : {}),
+            ...(contentUpdates?.slides_json !== undefined
+              ? { slides_json: contentUpdates.slides_json }
+              : {}),
+          }),
         patch: (p) => ({
           ...p,
           status: 'scheduled',
@@ -125,7 +149,7 @@ export function useCalendar(initialPosts: CalendarPost[]) {
     async (postId: string) => {
       await runPostMutation({
         postId,
-        fields: { status: 'approved', scheduled_at: null },
+        run: () => updatePost(postId, { status: 'approved', scheduled_at: null }),
         patch: (p) => ({
           ...p,
           status: 'approved',
@@ -148,7 +172,7 @@ export function useCalendar(initialPosts: CalendarPost[]) {
     ): Promise<boolean> =>
       runPostMutation({
         postId,
-        fields: contentUpdates,
+        run: () => updatePost(postId, contentUpdates),
         patch: (p) => ({
           ...p,
           ...(contentUpdates.caption !== undefined && { caption: contentUpdates.caption }),
@@ -165,10 +189,42 @@ export function useCalendar(initialPosts: CalendarPost[]) {
     [runPostMutation]
   )
 
+  /**
+   * Put a failed post back in the publish queue.
+   *
+   * Not `schedulePost`: `updatePost` refuses to move a post out of `'failed'`, and even
+   * if it did, `publish_attempts` would still be at the scheduler's limit and the post
+   * would sit there looking queued forever. See `rearmFailedPost` for both halves.
+   */
+  const rearmPost = useCallback(
+    async (postId: string, scheduledAt: string): Promise<boolean> =>
+      runPostMutation({
+        postId,
+        run: () => rearmFailedPost(postId, { scheduledAt }),
+        patch: (p) => ({ ...p, status: 'scheduled', scheduled_at: scheduledAt, publish_error: null, publish_attempts: 0 }),
+        successMessage: 'Back in the publish queue',
+        failureMessage: 'Could not retry this post',
+      }),
+    [runPostMutation]
+  )
+
   /** Remove a post from local state (called after successful deletion). */
   const removePost = useCallback((postId: string) => {
     setPosts((prev) => prev.filter((p) => p.id !== postId))
   }, [])
+
+  /**
+   * Take a fresh server list, keeping the posts the user is still working on.
+   *
+   * The reconciliation itself lives in `lib/` and is tested there; this is the seam
+   * where it meets state.
+   */
+  const adoptServerPosts = useCallback(
+    (server: CalendarPost[], keepLocalIds: ReadonlySet<string>) => {
+      setPosts((prev) => reconcilePosts(prev, server, keepLocalIds))
+    },
+    []
+  )
 
   /** Merge one uploaded/generated image into a post's images. Functional update so concurrent
    *  completions (bulk visual generation) never clobber each other via stale snapshots. */
@@ -205,10 +261,12 @@ export function useCalendar(initialPosts: CalendarPost[]) {
     schedulePost,
     unschedulePost,
     updatePostContent,
+    rearmPost,
     removePost,
     upsertPostImage,
     removePostImage,
     markPostPublished,
-    saving,
+    adoptServerPosts,
+    pendingIds,
   }
 }

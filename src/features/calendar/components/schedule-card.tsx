@@ -54,6 +54,8 @@ interface ScheduleCardProps {
   onSkip: (postId: string) => void
   onDelete: (postId: string) => void
   onSendApproval?: (postId: string) => void
+  /** Put a failed post back in the publish queue at the time the form is showing. */
+  onRearm?: (postId: string, scheduledAt: string) => void
   approvalSending?: boolean
   isScheduling: boolean
   editMode?: boolean
@@ -117,6 +119,7 @@ export const ScheduleCard = memo(function ScheduleCard({
   onSkip,
   onDelete,
   onSendApproval,
+  onRearm,
   approvalSending,
   isScheduling,
   editMode,
@@ -223,6 +226,11 @@ export const ScheduleCard = memo(function ScheduleCard({
   const isScheduled = currentPost.status === 'scheduled'
   const isPublished = currentPost.status === 'published'
   const isFailed = currentPost.status === 'failed'
+  /** A sent approval nobody can act on any more — the link's own deadline has passed. */
+  const approvalLapsed =
+    currentPost.approval_status === 'pending' &&
+    currentPost.approval_expires_at !== null &&
+    new Date(currentPost.approval_expires_at) < new Date()
   const slides = Array.isArray(currentPost.slides_json)
     ? (currentPost.slides_json as CarouselSlide[])
     : []
@@ -239,6 +247,13 @@ export const ScheduleCard = memo(function ScheduleCard({
   function handleSchedule() {
     if (!date) return
     const scheduledAt = formatScheduledAt(date, time || '09:00', timeZone)
+    // A failed post cannot be moved by `updatePost` — 'failed' is not user-settable —
+    // and would stay stuck at the scheduler's attempt limit even if it could. The form
+    // is the same; only the write differs.
+    if (isFailed && onRearm) {
+      onRearm(currentPost.id, scheduledAt)
+      return
+    }
     void onSchedule(currentPost.id, scheduledAt, platform)
   }
 
@@ -438,6 +453,20 @@ export const ScheduleCard = memo(function ScheduleCard({
                   ` · ${formatRelativeTime(parseTimestamp(currentPost.approval_responded_at))}`}
               </TagPill>
             )}
+            {/* Sent and unanswered. This fell through every branch above, so a post
+                waiting on a client looked identical to one nobody had ever sent — and a
+                link that has since lapsed looked identical to both. The distinction
+                decides whether the agency waits or re-sends. */}
+            {currentPost.approval_status === 'pending' &&
+              (approvalLapsed ? (
+                <TagPill bg="rgba(138,97,22,0.12)" color="var(--pending)">
+                  ⧗ Approval link expired
+                </TagPill>
+              ) : (
+                <TagPill bg="rgba(138,97,22,0.12)" color="var(--pending)">
+                  ⧗ Awaiting client
+                </TagPill>
+              ))}
             {editMode && (
               <TagPill bg="rgba(22,68,48,0.12)" color="var(--forest)">
                 ✏ Editing
@@ -940,7 +969,11 @@ function NormalFooter({
         loading={isScheduling}
         className="flex-1"
       >
-        {isScheduled ? 'Update schedule' : 'Schedule to calendar'}
+        {currentPost.status === 'failed'
+          ? 'Retry publish'
+          : isScheduled
+            ? 'Update schedule'
+            : 'Schedule to calendar'}
       </Button>
       {isScheduled ? (
         <Button variant="secondary" onClick={() => onUnschedule(currentPost.id)}>
@@ -972,9 +1005,17 @@ function NormalFooter({
       <Button variant="danger" onClick={() => onDelete(currentPost.id)}>
         Delete post
       </Button>
+      {/* This attempt's error, then the stored reason from the last one. Both, and in
+          that order: a retry that fails for a new reason must not be explained by the
+          old one still sitting in the column. */}
       {publishError && (
         <div className="w-full rounded-[6px] bg-danger-bg px-2.5 py-2 text-micro text-danger">
           {publishError}
+        </div>
+      )}
+      {!publishError && currentPost.status === 'failed' && currentPost.publish_error && (
+        <div className="w-full rounded-[6px] bg-danger-bg px-2.5 py-2 text-micro text-danger">
+          Last attempt failed: {currentPost.publish_error}
         </div>
       )}
     </div>

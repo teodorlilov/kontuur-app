@@ -88,6 +88,30 @@ export const POST_COLUMNS = POST_COLUMN_KEYS.join(', ') as Join<typeof POST_COLU
  */
 export type PostColumns = Pick<PostRow, (typeof POST_COLUMN_KEYS)[number]>
 
+/**
+ * The calendar's projection: the post columns, plus why a publish failed.
+ *
+ * `POST_COLUMNS` is deliberately not widened. Its six other readers have no use for
+ * these two, and it is read for every post they hold — a failure reason is a string of
+ * unbounded length on a query the dashboard runs on every load.
+ *
+ * Extended from the same array rather than written out again, so a column added above
+ * reaches this list too. `publish_claimed_at` is not here: the scheduler writes it and
+ * nothing displays it, so selecting it would be fetching a lock for a human to look at.
+ */
+export const CALENDAR_POST_COLUMN_KEYS = [
+  ...POST_COLUMN_KEYS,
+  'publish_error',
+  'publish_attempts',
+] as const satisfies readonly (keyof PostRow)[]
+
+export const CALENDAR_POST_COLUMNS = CALENDAR_POST_COLUMN_KEYS.join(', ') as Join<
+  typeof CALENDAR_POST_COLUMN_KEYS,
+  ', '
+>
+
+export type CalendarPostColumns = Pick<PostRow, (typeof CALENDAR_POST_COLUMN_KEYS)[number]>
+
 // clients
 export const CLIENT_COLUMNS =
   'id, name, niche, posts_per_week, language, website_url, contact_email, created_at'

@@ -86,3 +86,57 @@ describe('one writer per run-progress table', () => {
     ])
   })
 })
+
+describe('the publish queue can always be re-entered', () => {
+  /**
+   * `publish_attempts` is the gate on the whole queue: `publishDuePosts` selects
+   * `.lt('publish_attempts', MAX_ATTEMPTS)`, so a post at the limit is invisible to
+   * the scheduler no matter what its status says. A row can therefore sit on the
+   * calendar reading "Scheduled" and never be picked up again.
+   *
+   * Three files may touch it, and each has a different job:
+   *
+   * - `scheduler.ts` **increments** it when claiming a post.
+   * - `posts/[id]/publish/route.ts` **increments** it for a manual publish, so a
+   *   hand-fired attempt still counts against the same budget.
+   * - `post-recovery.ts` is the only thing that **resets** it, and it is the reason
+   *   a failed post can be revived at all.
+   *
+   * A fourth writer is the thing to catch. An incrementer added elsewhere would spend
+   * the budget without the scheduler knowing; a second resetter would let a post loop
+   * past MAX_ATTEMPTS forever, which is the runaway this ceiling exists to stop.
+   */
+  /**
+   * Files that write the column to the **table**, not ones that merely name it.
+   *
+   * `types/database.ts` declares it because it is generated from the schema, and the
+   * calendar's optimistic patch sets it in local React state, where no ceiling applies
+   * because no query reads it. Requiring `from('posts')` alongside is what separates a
+   * write from a mention.
+   */
+  function postsWriters(pattern: RegExp): string[] {
+    return filesUnder(SRC, (name) => name.endsWith('.ts') || name.endsWith('.tsx'))
+      .filter((file) => {
+        const src = readFileSync(file, 'utf8')
+        return src.includes(".from('posts')") && pattern.test(src)
+      })
+      .map((file) => path.relative(SRC, file))
+      .sort()
+  }
+
+  it('publish_attempts is written in exactly three places', () => {
+    expect(postsWriters(/publish_attempts:\s/)).toEqual([
+      path.join('app', 'api', 'posts', '[id]', 'publish', 'route.ts'),
+      path.join('features', 'calendar', 'actions', 'post-recovery.ts'),
+      path.join('features', 'publishing', 'lib', 'scheduler.ts'),
+    ])
+  })
+
+  it('exactly one of them resets it to zero', () => {
+    // The half that actually matters. Every other writer adds to the count; if a
+    // second file starts zeroing it, MAX_ATTEMPTS stops being a ceiling.
+    expect(postsWriters(/publish_attempts:\s*0\b/)).toEqual([
+      path.join('features', 'calendar', 'actions', 'post-recovery.ts'),
+    ])
+  })
+})

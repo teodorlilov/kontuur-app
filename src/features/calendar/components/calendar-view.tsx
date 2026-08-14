@@ -174,12 +174,49 @@ export function CalendarView({ initialPosts, clients }: CalendarViewProps) {
     schedulePost,
     unschedulePost,
     updatePostContent,
+    rearmPost,
     removePost,
     upsertPostImage,
     removePostImage,
     markPostPublished,
-    saving,
+    adoptServerPosts,
+    pendingIds,
   } = useCalendar(initialPosts)
+
+  /**
+   * Come back to the tab and see what actually happened.
+   *
+   * The publish cron runs every five minutes and this page never asked again, so a post
+   * that failed at 09:05 kept rendering as "Scheduled" until a hard reload — the state
+   * the calendar is least able to afford being wrong about.
+   *
+   * Only on focus, not after every mutation: those already patch state optimistically,
+   * and this page's query is still unbounded (P7), so firing it on every click would
+   * refetch every post in five statuses to confirm something already on screen.
+   */
+  useEffect(() => {
+    function refresh() {
+      router.refresh()
+    }
+    window.addEventListener('focus', refresh)
+    return () => window.removeEventListener('focus', refresh)
+  }, [router])
+
+  /**
+   * Adopt server data when a refresh lands, keeping whatever the user is working on.
+   *
+   * Guarded on the *identity* of `initialPosts` rather than running whenever its
+   * dependencies change: without the ref this re-adopts the same server snapshot every
+   * time a mutation settles, and quietly reverts the optimistic patch that just landed.
+   */
+  const adopted = useRef(initialPosts)
+  useEffect(() => {
+    if (adopted.current === initialPosts) return
+    adopted.current = initialPosts
+    const keepLocal = new Set(pendingIds)
+    if (activePostId) keepLocal.add(activePostId)
+    adoptServerPosts(initialPosts, keepLocal)
+  }, [initialPosts, activePostId, pendingIds, adoptServerPosts])
 
   // Auto-open modal in edit mode when navigated from dashboard with ?editPost=<id>.
   // Genuinely an effect, not a render-time adjustment: it consumes a one-shot URL param and
@@ -286,6 +323,14 @@ export function CalendarView({ initialPosts, clients }: CalendarViewProps) {
     setCardOpen(false)
     const nextPost = filteredUnscheduled[idx + 1]
     setActivePostId(nextPost?.id ?? null)
+  }
+
+  /** Retry a failed publish at the time the card's form is showing. */
+  async function handleRearm(postId: string, scheduledAt: string) {
+    const ok = await rearmPost(postId, scheduledAt)
+    // Left open on failure, so the reason the action gave is next to the form that
+    // produced it rather than behind a closed dialog.
+    if (ok) closeCard()
   }
 
   function handleSkip(postId: string) {
@@ -592,8 +637,13 @@ export function CalendarView({ initialPosts, clients }: CalendarViewProps) {
         onSendApproval={(id) => {
           void handleSendApproval(id)
         }}
+        onRearm={(id, at) => {
+          void handleRearm(id, at)
+        }}
         approvalSending={approvalSending}
-        isScheduling={saving}
+        // This card's post, not "any post anywhere" — the shared boolean this replaces
+        // spun the dialog's button because an unrelated card in the grid was saving.
+        isScheduling={activePostId !== null && pendingIds.has(activePostId)}
         editMode={editMode}
         onExitEditMode={() => setEditMode(false)}
         onSaveContent={handleSaveContent}
