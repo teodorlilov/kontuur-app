@@ -17,6 +17,11 @@ paper), all of which the shipped page deliberately does not use.
 | `kontuur-*.html`                                | Per-surface app mocks                           |
 | `img-*-c.jpg`                                   | The fal.ai photography the mocks embed          |
 
+The calendar has two files doing different jobs: `kontuur-calendar.html` is the
+diagnosis and the phased plan; `kontuur-calendar-v2.html` is the screen — a
+real-scale frame whose Week / Month / Clients views all render from one shared
+data model. Read the second for the design, the first for why.
+
 Older mocks are in [`archive/`](./archive/), several of them still cited by name
 from code comments.
 
