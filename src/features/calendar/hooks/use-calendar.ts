@@ -5,6 +5,7 @@ import { toast } from '@/components/ui/toast'
 import { updatePost, resolveChangeRequest } from '@/lib/actions/post-actions'
 import { rearmFailedPost } from '@/features/calendar/actions/post-recovery'
 import { reconcilePosts } from '@/features/calendar/lib/reconcile-posts'
+import { shiftScheduledByDays } from '@/features/calendar/lib/move-post'
 import { upsertImageAtPosition } from '@/features/publishing/lib/image-list'
 import type { ActionResult } from '@/lib/actions/types'
 import type { CalendarPost, PostImage } from '@/types/api'
@@ -26,7 +27,7 @@ const ON_CALENDAR_STATUSES: readonly string[] = [
   'failed',
 ] satisfies readonly PostStatus[]
 
-export function useCalendar(initialPosts: CalendarPost[]) {
+export function useCalendar(initialPosts: CalendarPost[], timeZone: string) {
   const [posts, setPosts] = useState(initialPosts)
   /**
    * Which posts have a write in flight, not whether *any* does.
@@ -74,7 +75,8 @@ export function useCalendar(initialPosts: CalendarPost[]) {
       postId: string
       run: () => Promise<ActionResult>
       patch: (post: CalendarPost) => CalendarPost
-      successMessage: string
+      /** Omitted when the caller raises its own — a move offers Undo, not a sentence. */
+      successMessage?: string
       failureMessage: string
       /** Answer an outstanding change request, when this mutation is the answer. */
       resolvesChangeRequest?: boolean
@@ -97,7 +99,7 @@ export function useCalendar(initialPosts: CalendarPost[]) {
         }
 
         setPosts((prev) => prev.map((p) => (p.id === opts.postId ? opts.patch(p) : p)))
-        toast.success(opts.successMessage)
+        if (opts.successMessage) toast.success(opts.successMessage)
         return true
       } catch {
         toast.error(opts.failureMessage)
@@ -208,6 +210,51 @@ export function useCalendar(initialPosts: CalendarPost[]) {
     [runPostMutation]
   )
 
+  /**
+   * Move a scheduled post by whole days, keeping the time it was set for.
+   *
+   * The fast path beside the dialog's date field, which remains the discoverable one —
+   * WCAG 2.5.7 requires that any drag affordance have a non-dragging equivalent, and
+   * this is what a future drag handler will call rather than writing its own date maths.
+   * The last time those were two paths, the drop handler hardcoded noon and silently
+   * threw away the hour someone had chosen.
+   *
+   * Refuses anything not `scheduled`. A published post's `scheduled_at` is a record of
+   * when it went out, and a failed one needs `rearmFailedPost` to clear its attempt
+   * count — moving either would produce a row that lies about itself.
+   *
+   * Returns where it went, so the caller can offer to put it back.
+   */
+  const movePostByDays = useCallback(
+    async (postId: string, days: number): Promise<{ from: string; to: string } | null> => {
+      const post = posts.find((p) => p.id === postId)
+      if (!post?.scheduled_at) return null
+      if (post.status !== 'scheduled') {
+        toast.error(
+          post.status === 'failed'
+            ? 'Retry this post to put it back in the queue.'
+            : 'Only scheduled posts can be moved.'
+        )
+        return null
+      }
+
+      const from = post.scheduled_at
+      const to = shiftScheduledByDays(from, days, timeZone)
+
+      const ok = await runPostMutation({
+        postId,
+        run: () => updatePost(postId, { scheduled_at: to }),
+        patch: (p) => ({ ...p, scheduled_at: to }),
+        failureMessage: 'Could not move this post',
+      })
+
+      // The optimistic patch is applied by `runPostMutation` only after the write
+      // succeeds, so a failure needs no rollback — the card never left its day.
+      return ok ? { from, to } : null
+    },
+    [posts, runPostMutation, timeZone]
+  )
+
   /** Remove a post from local state (called after successful deletion). */
   const removePost = useCallback((postId: string) => {
     setPosts((prev) => prev.filter((p) => p.id !== postId))
@@ -261,6 +308,7 @@ export function useCalendar(initialPosts: CalendarPost[]) {
     schedulePost,
     unschedulePost,
     updatePostContent,
+    movePostByDays,
     rearmPost,
     removePost,
     upsertPostImage,

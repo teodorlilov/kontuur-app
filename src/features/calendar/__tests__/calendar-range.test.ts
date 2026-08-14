@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
+  formatMonthLabel,
+  formatWeekRange,
   monthViewIn,
   nextMonthView,
   nextWeekView,
@@ -92,6 +94,41 @@ describe('week stepping', () => {
     // way — the arithmetic is on the date key, never on a clock.
     expect(nextWeekView('2026-03-23')).toBe('2026-03-30')
     expect(prevWeekView('2026-03-30')).toBe('2026-03-23')
+  })
+})
+
+/**
+ * The header's own words. Untestable until now — the label was built inline inside
+ * `CalendarView`, where the node-environment suite cannot reach it, and its month- and
+ * year-collapsing branches only fire on six of the fifty-two weeks in a year.
+ */
+describe('formatWeekRange', () => {
+  it('names the month once when the week sits inside one', () => {
+    expect(formatWeekRange('2026-08-03')).toBe('3 – 9 August 2026')
+  })
+
+  it('names both months when the week straddles them', () => {
+    expect(formatWeekRange('2026-08-31')).toBe('31 August – 6 September 2026')
+  })
+
+  it('names both years when the week straddles New Year', () => {
+    expect(formatWeekRange('2026-12-28')).toBe('28 December – 3 January 2026 – 2027')
+  })
+
+  it('reads the key as a date, not an instant', () => {
+    // String arithmetic throughout: parsing these into `Date` would let the runtime
+    // zone move the day the header prints, so the label and the grid beneath it could
+    // disagree about which week is on screen.
+    expect(formatWeekRange('2026-01-01')).toBe('1 – 7 January 2026')
+  })
+})
+
+describe('formatMonthLabel', () => {
+  it('names the month and year', () => {
+    // Month is 0-indexed, matching MonthView and `Date` — off by one here would put
+    // every header a month ahead of its own grid.
+    expect(formatMonthLabel({ year: 2026, month: 7 })).toBe('August 2026')
+    expect(formatMonthLabel({ year: 2026, month: 0 })).toBe('January 2026')
   })
 })
 

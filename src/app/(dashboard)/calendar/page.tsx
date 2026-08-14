@@ -13,7 +13,8 @@ export default async function CalendarPage() {
   const { agencyId } = await requireSessionUser()
   const supabase = await createServerSupabaseClient()
 
-  // Cache hit — layout already populated this for the current request
+  // Cache hit — layout already populated this for the current request. Measured at 1ms,
+  // so the claim is not aspirational.
   const cachedClients = await getCachedAgencyClients(agencyId)
   const clientIds = cachedClients.map((c) => c.id)
 

@@ -76,6 +76,31 @@ function stateOfPost(status: PostStatus): CoverageState {
   return 'scheduled'
 }
 
+/**
+ * The stronger claim of two day states.
+ *
+ * Private, and used by both reducers below. A second `>` against a second copy of the
+ * rank table is how the week and the month would come to disagree about a day holding
+ * both a published post and a failure.
+ */
+function strongerOf(a: CoverageState, b: CoverageState): CoverageState {
+  return STATE_RANK[b] > STATE_RANK[a] ? b : a
+}
+
+/**
+ * How a day of posts reads as one state.
+ *
+ * Posts only — no slots. The month says what is *placed*; deriving open and missed
+ * slots for six weeks across every client would be the deficit question, and that is
+ * the Clients tab's job with a target to measure against.
+ */
+export function strongestState(posts: CalendarPost[]): CoverageState {
+  return posts.reduce<CoverageState>(
+    (strongest, post) => strongerOf(strongest, stateOfPost(post.status as PostStatus)),
+    'none'
+  )
+}
+
 export interface ClientWeek {
   /** Seven day states, Monday first. */
   week: CoverageState[]
@@ -119,7 +144,7 @@ export function buildClientWeek(input: {
           : item.missed
             ? 'missed'
             : 'open'
-      return STATE_RANK[next] > STATE_RANK[strongest] ? next : strongest
+      return strongerOf(strongest, next)
     }, 'none')
   })
 

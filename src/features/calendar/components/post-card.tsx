@@ -53,8 +53,14 @@ export const PostCard = memo(function PostCard({
       clientName={post.client_name}
       time={time}
       ground={groundFor(status)}
+      postId={post.id}
       onClick={() => onClick(post.id)}
-      ariaLabel={`${post.client_name}, ${time}, ${POST_STATUS_CHIP[status].label}. ${title}`}
+      ariaLabel={
+        `${post.client_name}, ${time}, ${POST_STATUS_CHIP[status].label}. ${title}` +
+        // Announced on the card rather than hidden in a help panel: a shortcut nobody
+        // is told about is a shortcut nobody has.
+        (status === 'scheduled' ? '. Alt with left or right arrow moves it a day' : '')
+      }
     >
       <span
         className={cn(

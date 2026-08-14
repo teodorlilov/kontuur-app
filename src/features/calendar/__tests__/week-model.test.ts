@@ -4,6 +4,7 @@ import {
   buildWeekLanes,
   describeCoverage,
   groupPostsByDate,
+  strongestState,
 } from '../lib/week-model'
 import type { CalendarPost } from '@/types/api'
 
@@ -139,6 +140,41 @@ describe('buildClientWeek', () => {
       target: 0,
     })
     expect(result.verdict).toBe('No cadence set')
+  })
+})
+
+describe('strongestState', () => {
+  it('is none for a day with nothing on it', () => {
+    expect(strongestState([])).toBe('none')
+  })
+
+  it.each([
+    ['published', 'failed'],
+    ['failed', 'published'],
+  ])('lets a failure outrank a success, given %s then %s', (first, second) => {
+    // A day holding one published post and one failure is a day that needs a human;
+    // surfacing the success would hide the only thing on it asking for something.
+    // Both orderings, because the reduction runs over whatever order the query
+    // returned — a ranking sensitive to that would shade the same day two ways.
+    const day = [
+      { id: 'a', status: first },
+      { id: 'b', status: second },
+    ] as CalendarPost[]
+    expect(strongestState(day)).toBe('failed')
+  })
+
+  it('reads a published day as published, not merely scheduled', () => {
+    const day = [
+      { id: 'a', status: 'scheduled' },
+      { id: 'b', status: 'published' },
+    ] as CalendarPost[]
+    expect(strongestState(day)).toBe('published')
+  })
+
+  it('reads everything still in flight as scheduled', () => {
+    // `publishing` is proceeding, not a problem — the month must not render a post
+    // mid-send as anything louder than one waiting to go.
+    expect(strongestState([{ id: 'a', status: 'publishing' }] as CalendarPost[])).toBe('scheduled')
   })
 })
 

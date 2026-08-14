@@ -2,143 +2,51 @@
 
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
-import { ChevronLeft, ChevronRight, Link, Mail } from 'lucide-react'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { useCalendar } from '@/features/calendar/hooks/use-calendar'
 import { useApproval, type ClientEntry } from '@/features/calendar/hooks/use-approval'
 import { toast } from '@/components/ui/toast'
+import { DiscardToast, DISCARD_TOAST_MS } from '@/components/ui/discard-toast'
 import { Button } from '@/components/ui/button'
 import { HeaderMeta, MetaFlag, PageHeader } from '@/components/layout/page-header/page-header'
 import { SelectControl } from '@/components/layout/page-header/select-control'
-import { TOOL_ROW } from '@/components/layout/page-header/shared'
-import { cn } from '@/utils/cn'
 import { useShell } from '@/components/layout/shell-context'
 import { deletePost } from '@/lib/actions/post-actions'
-import { getMondayISO, getWeekRange, shiftDateKey, toDateKey } from '@/utils/date-helpers'
-import { DAYS_PER_WEEK } from '@/utils/constants'
-import {
-  monthViewIn,
-  monthViewOfWeek,
-  nextMonthView,
-  nextWeekView,
-  prevMonthView,
-  prevWeekView,
-  weekViewIn,
-  weekViewOfMonth,
-  type MonthView,
-  type WeekView,
-} from '@/features/calendar/lib/calendar-range'
+import { getMondayISO, getWeekRange, toDateKey } from '@/utils/date-helpers'
+import { formatScheduleDate } from '@/utils/format'
+import { useCalendarRange } from '@/features/calendar/hooks/use-calendar-range'
+import { ApprovalTools } from './approval-tools'
 import { WeekGrid } from './week-grid'
 import { ClientsView } from './clients-view'
 import { buildClientWeek, buildWeekLanes } from '@/features/calendar/lib/week-model'
 import { TabRail } from '@/components/layout/page-header/tab-rail'
-import { MonthGrid } from './month-grid'
+import { MonthCoverage } from './month-coverage'
 import { QueueRail } from './queue-rail'
 import { ScheduleCard } from './schedule-card'
 import type { CalendarPost } from '@/types/api'
-
-/** Which unit the calendar is showing. */
-type CalendarMode = 'week' | 'month' | 'clients'
 
 interface CalendarViewProps {
   initialPosts: CalendarPost[]
   clients: ClientEntry[]
 }
 
-interface ApprovalButtonProps {
-  icon: React.ElementType
-  label: string
-  loadingLabel: string
-  loading: boolean
-  disabled?: boolean
-  disabledReason?: string
-  clients: ClientEntry[]
-  pickerOpen: boolean
-  onTogglePicker: () => void
-  onSelectClient: (id: string) => void
-}
-
-/** A rail utility that sends the week to a client, with a picker when several qualify. */
-function ApprovalButton({
-  icon: Icon,
-  label,
-  loadingLabel,
-  loading,
-  disabled,
-  disabledReason,
-  clients,
-  pickerOpen,
-  onTogglePicker,
-  onSelectClient,
-}: ApprovalButtonProps) {
-  const isDisabled = disabled || loading
-
-  return (
-    <div className="relative">
-      <button
-        type="button"
-        onClick={() => {
-          if (isDisabled) return
-          if (clients.length === 1) {
-            onSelectClient(clients[0]!.id)
-          } else {
-            onTogglePicker()
-          }
-        }}
-        disabled={isDisabled}
-        title={disabled ? disabledReason : undefined}
-        className={cn(
-          TOOL_ROW,
-          'text-caption',
-          isDisabled &&
-            'cursor-not-allowed text-text3 opacity-60 hover:bg-transparent hover:text-text3'
-        )}
-      >
-        <Icon className="size-3.5 shrink-0" />
-        {loading ? loadingLabel : label}
-      </button>
-
-      {pickerOpen && clients.length > 1 && (
-        <div className="absolute right-0 top-9 z-30 min-w-[180px] rounded-panel border border-line bg-surface py-1 shadow-pop">
-          <p className="px-3 py-1.5 text-label font-semibold uppercase text-text3">Select client</p>
-          {clients.map((c) => (
-            <button
-              key={c.id}
-              type="button"
-              onClick={() => onSelectClient(c.id)}
-              className="w-full px-3 py-2 text-left text-body text-ink transition-colors hover:bg-wash"
-            >
-              {c.name}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
-
-const MONTH_NAMES = [
-  'January',
-  'February',
-  'March',
-  'April',
-  'May',
-  'June',
-  'July',
-  'August',
-  'September',
-  'October',
-  'November',
-  'December',
-]
-
 /** Month navigation, inline with the title it moves. */
-function MonthStepBtn({ onClick, direction }: { onClick: () => void; direction: 'prev' | 'next' }) {
+function RangeStepBtn({
+  onClick,
+  direction,
+  unit,
+}: {
+  onClick: () => void
+  direction: 'prev' | 'next'
+  /** What a step actually moves — the button announced "month" in all three views. */
+  unit: 'month' | 'week'
+}) {
   const Icon = direction === 'prev' ? ChevronLeft : ChevronRight
   return (
     <button
       type="button"
       onClick={onClick}
-      aria-label={direction === 'prev' ? 'Previous month' : 'Next month'}
+      aria-label={`${direction === 'prev' ? 'Previous' : 'Next'} ${unit}`}
       className="grid size-7 place-items-center rounded-sm text-text2 transition-colors duration-150 ease-contour hover:bg-ink/[0.06] hover:text-ink"
     >
       <Icon className="size-3" />
@@ -150,15 +58,20 @@ export function CalendarView({ initialPosts, clients }: CalendarViewProps) {
   const { timezone } = useShell()
   const router = useRouter()
   const searchParams = useSearchParams()
-  // One piece of state, not two: stepping across a year boundary changes both, and splitting them
-  // forced the month updater to call setYear from inside itself. Updaters must be pure — React
-  // double-invokes them under StrictMode, so that fired twice and skipped a whole year.
-  const [view, setView] = useState<MonthView>(() => monthViewIn(timezone))
-  const { year, month } = view
-  // The week is its own state rather than derived from the month: stepping weeks must
-  // not drag the month grid around behind it, and a week straddles two months anyway.
-  const [weekStart, setWeekStart] = useState<WeekView>(() => weekViewIn(timezone))
-  const [mode, setMode] = useState<CalendarMode>('week')
+  // What range is on screen and every way of moving it — one concern, one hook.
+  const {
+    year,
+    month,
+    weekStart,
+    mode,
+    title,
+    stepUnit,
+    selectMode,
+    openWeek,
+    stepBack,
+    stepForward,
+    goToToday,
+  } = useCalendarRange(timezone)
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null)
   const [cardOpen, setCardOpen] = useState(false)
   const [activePostId, setActivePostId] = useState<string | null>(null)
@@ -174,6 +87,7 @@ export function CalendarView({ initialPosts, clients }: CalendarViewProps) {
     schedulePost,
     unschedulePost,
     updatePostContent,
+    movePostByDays,
     rearmPost,
     removePost,
     upsertPostImage,
@@ -181,7 +95,7 @@ export function CalendarView({ initialPosts, clients }: CalendarViewProps) {
     markPostPublished,
     adoptServerPosts,
     pendingIds,
-  } = useCalendar(initialPosts)
+  } = useCalendar(initialPosts, timezone)
 
   /**
    * Come back to the tab and see what actually happened.
@@ -255,38 +169,6 @@ export function CalendarView({ initialPosts, clients }: CalendarViewProps) {
   const activePost = allPosts.find((p) => p.id === activePostId) ?? null
   const activeIndex = filteredUnscheduled.findIndex((p) => p.id === activePostId)
 
-  const stepBack = useCallback(
-    () => (mode === 'month' ? setView(prevMonthView) : setWeekStart(prevWeekView)),
-    [mode]
-  )
-  const stepForward = useCallback(
-    () => (mode === 'month' ? setView(nextMonthView) : setWeekStart(nextWeekView)),
-    [mode]
-  )
-
-  const goToToday = useCallback(() => {
-    setView(monthViewIn(timezone))
-    setWeekStart(weekViewIn(timezone))
-  }, [timezone])
-
-  // Switching views keeps the reader where they were. Opening Month from a week in
-  // September lands on September; opening Week from a month lands on a week inside it,
-  // unless the week already showing is in that month.
-  const selectMode = useCallback(
-    (next: CalendarMode) => {
-      setMode(next)
-      if (next === 'month') {
-        setView(monthViewOfWeek(weekStart))
-      } else {
-        const weeksMonth = monthViewOfWeek(weekStart)
-        if (weeksMonth.year !== year || weeksMonth.month !== month) {
-          setWeekStart(weekViewOfMonth({ year, month }))
-        }
-      }
-    },
-    [weekStart, year, month]
-  )
-
   const handlePanelPostClick = useCallback((post: CalendarPost) => {
     setActivePostId(post.id)
     setCardOpen(true)
@@ -323,6 +205,33 @@ export function CalendarView({ initialPosts, clients }: CalendarViewProps) {
     setCardOpen(false)
     const nextPost = filteredUnscheduled[idx + 1]
     setActivePostId(nextPost?.id ?? null)
+  }
+
+  /**
+   * Move a post a day, and offer to put it back.
+   *
+   * An Undo window rather than a confirmation: moving is cheap, reversible and usually
+   * right, so asking first would tax the common case to guard the rare one. Letting the
+   * toast expire commits, which is the same contract `DiscardToast` already carries on
+   * the review queue and the ideas inbox.
+   */
+  async function handleMovePost(postId: string, days: number) {
+    const moved = await movePostByDays(postId, days)
+    if (!moved) return
+
+    const landedOn = formatScheduleDate(new Date(moved.to), timezone)
+    const toastId = toast.custom(
+      () => (
+        <DiscardToast
+          title={`Moved to ${landedOn}`}
+          onUndo={() => {
+            toast.dismiss(toastId)
+            void movePostByDays(postId, -days)
+          }}
+        />
+      ),
+      { duration: DISCARD_TOAST_MS }
+    )
   }
 
   /** Retry a failed publish at the time the card's form is showing. */
@@ -460,17 +369,6 @@ export function CalendarView({ initialPosts, clients }: CalendarViewProps) {
     }).length
   }, [clients, laneClients, filteredScheduled, weekStart, timezone])
 
-  /** "3 – 9 August 2026", collapsing the month when both ends share one. */
-  const weekRangeLabel = (() => {
-    const end = shiftDateKey(weekStart, DAYS_PER_WEEK - 1)
-    const [startYear, startMonth, startDay] = weekStart.split('-').map(Number)
-    const [endYear, endMonth, endDay] = end.split('-').map(Number)
-    const startPart =
-      startMonth === endMonth ? `${startDay}` : `${startDay} ${MONTH_NAMES[startMonth! - 1]}`
-    const yearPart = startYear === endYear ? `${endYear}` : `${startYear} – ${endYear}`
-    return `${startPart} – ${endDay} ${MONTH_NAMES[endMonth! - 1]} ${yearPart}`
-  })()
-
   return (
     // h-full, not min-h-full: the calendar is a fixed-size workspace, not a document.
     // `.app-shell` is already h-screen/overflow-hidden with <main> as the only scroller,
@@ -484,41 +382,29 @@ export function CalendarView({ initialPosts, clients }: CalendarViewProps) {
         // every calendar already behaves.
         title={
           <>
-            {mode === 'month' ? `${MONTH_NAMES[month]} ${year}` : weekRangeLabel}
+            {title}
             <span className="inline-flex items-center gap-0.5">
-              <MonthStepBtn onClick={stepBack} direction="prev" />
-              <MonthStepBtn onClick={stepForward} direction="next" />
+              <RangeStepBtn onClick={stepBack} direction="prev" unit={stepUnit} />
+              <RangeStepBtn onClick={stepForward} direction="next" unit={stepUnit} />
             </span>
           </>
         }
         railTools={
           clients.length > 0 ? (
             <>
-              <ApprovalButton
-                icon={Link}
-                label="Copy link"
-                loadingLabel="Generating..."
-                loading={copyLinkSending}
-                disabled={noPostsThisWeek}
-                disabledReason="No posts scheduled this week"
+              <ApprovalTools
                 clients={currentWeekClients}
-                pickerOpen={copyLinkPicker}
-                onTogglePicker={() => setCopyLinkPicker((v: boolean) => !v)}
-                onSelectClient={(id) => {
+                disabled={noPostsThisWeek}
+                copyLinkSending={copyLinkSending}
+                copyLinkPicker={copyLinkPicker}
+                setCopyLinkPicker={setCopyLinkPicker}
+                emailSending={emailSending}
+                emailPicker={emailPicker}
+                setEmailPicker={setEmailPicker}
+                onCopyLink={(id) => {
                   void handleCopyLink(id)
                 }}
-              />
-              <ApprovalButton
-                icon={Mail}
-                label="Email client"
-                loadingLabel="Sending..."
-                loading={emailSending}
-                disabled={noPostsThisWeek}
-                disabledReason="No posts scheduled this week"
-                clients={currentWeekClients}
-                pickerOpen={emailPicker}
-                onTogglePicker={() => setEmailPicker((v: boolean) => !v)}
-                onSelectClient={(id) => {
+                onEmailClient={(id) => {
                   void handleEmailClient(id)
                 }}
               />
@@ -588,6 +474,9 @@ export function CalendarView({ initialPosts, clients }: CalendarViewProps) {
             timeZone={timezone}
             onPostClick={handleGridPostClick}
             onSlotClick={handleSlotClick}
+            onMovePost={(postId, days) => {
+              void handleMovePost(postId, days)
+            }}
           />
         ) : mode === 'clients' ? (
           <ClientsView
@@ -598,12 +487,12 @@ export function CalendarView({ initialPosts, clients }: CalendarViewProps) {
             timeZone={timezone}
           />
         ) : (
-          <MonthGrid
+          <MonthCoverage
             year={year}
             month={month}
             timeZone={timezone}
             scheduledPosts={filteredScheduled}
-            onPostClick={handleGridPostClick}
+            onSelectWeek={openWeek}
           />
         )}
         </div>

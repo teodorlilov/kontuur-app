@@ -55,6 +55,7 @@ export function LaneItem({
   clientName,
   time,
   ground = 'identity',
+  postId,
   onClick,
   ariaLabel,
   children,
@@ -64,6 +65,12 @@ export function LaneItem({
   /** Already formatted in the agency zone by the caller — this is presentation only. */
   time: string
   ground?: LaneGround
+  /**
+   * Present on a real post, absent on a slot. The week grid reads it off the focused
+   * element to know what Alt+Arrow should move, rather than threading a handler through
+   * every lane and card.
+   */
+  postId?: string
   onClick?: () => void
   ariaLabel: string
   children: ReactNode
@@ -79,6 +86,7 @@ export function LaneItem({
       // Every lane item is a cell in the week grid's 2-D keyboard model. The marker
       // sits on the button because that is the thing that can take focus.
       data-grid-cell
+      data-post-id={postId}
       // Custom properties rather than a `background` — a hover state cannot be
       // expressed as an inline style, and an inline style would outrank the hover
       // class besides. The values are hashed off the client's name, so they are

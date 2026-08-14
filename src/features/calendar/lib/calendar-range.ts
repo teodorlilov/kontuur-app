@@ -1,6 +1,21 @@
 import { getMondayISO, getWeekdayIndex, shiftDateKey, toDateKey } from '@/utils/date-helpers'
 import { DAYS_PER_WEEK } from '@/utils/constants'
 
+const MONTH_NAMES = [
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
+]
+
 /**
  * What range the calendar is showing, and how to step it.
  *
@@ -37,6 +52,11 @@ export function prevMonthView({ year, month }: MonthView): MonthView {
 /** Steps a month view forwards, carrying the year. */
 export function nextMonthView({ year, month }: MonthView): MonthView {
   return month === 11 ? { year: year + 1, month: 0 } : { year, month: month + 1 }
+}
+
+/** What a month view is called. */
+export function formatMonthLabel({ year, month }: MonthView): string {
+  return `${MONTH_NAMES[month]} ${year}`
 }
 
 export function isSameMonth(date: Date, month: number, year: number): boolean {
@@ -102,6 +122,27 @@ export function prevWeekView(weekStartISO: WeekView): WeekView {
 /** Steps a week view forwards. */
 export function nextWeekView(weekStartISO: WeekView): WeekView {
   return shiftDateKey(weekStartISO, DAYS_PER_WEEK)
+}
+
+/**
+ * What a week view is called: "3 – 9 August 2026".
+ *
+ * The month is named once when both ends share it and twice when they do not; the year
+ * likewise. Five weeks a year straddle a month and one straddles a year, and the naive
+ * form ("3 August – 9 August 2026") reads as clutter on the other forty-six.
+ *
+ * String arithmetic on the key, never `Date`: this is a label for a bare date range, and
+ * parsing it into an instant would let a zone offset move the day the header prints.
+ */
+export function formatWeekRange(weekStartISO: WeekView): string {
+  const end = shiftDateKey(weekStartISO, DAYS_PER_WEEK - 1)
+  const [startYear, startMonth, startDay] = weekStartISO.split('-').map(Number)
+  const [endYear, endMonth, endDay] = end.split('-').map(Number)
+
+  const startPart =
+    startMonth === endMonth ? `${startDay}` : `${startDay} ${MONTH_NAMES[startMonth! - 1]}`
+  const yearPart = startYear === endYear ? `${endYear}` : `${startYear} – ${endYear}`
+  return `${startPart} – ${endDay} ${MONTH_NAMES[endMonth! - 1]} ${yearPart}`
 }
 
 // ---- Moving between the two ----
