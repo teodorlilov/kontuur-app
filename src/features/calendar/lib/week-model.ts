@@ -1,4 +1,10 @@
-import { getWeekDayKeys, isoToDateTimeFields, toDateKey } from '@/utils/date-helpers'
+import {
+  getWeekDayKeys,
+  getWeekRange,
+  isoToDateTimeFields,
+  toDateKey,
+} from '@/utils/date-helpers'
+import { WEEKDAY_LABELS } from '@/utils/constants'
 import type { CalendarPost } from '@/types/api'
 import type { PostStatus } from '@/lib/validation'
 import type { BestTimePlatform } from '@/types/api'
@@ -39,6 +45,35 @@ export function groupPostsByDate(
     list.sort((a, b) => (a.scheduled_at ?? '').localeCompare(b.scheduled_at ?? ''))
   }
   return map
+}
+
+/**
+ * The posts that fall inside a week, compared as **instants**.
+ *
+ * Two callers filtered this by comparing the raw `scheduled_at` string against
+ * `getWeekRange`'s output with `>=` and `<`. Those are two different renderings of the
+ * same instant — PostgREST returns `2026-08-10T21:00:00+00:00`, `toISOString()` produces
+ * `2026-08-10T21:00:00.000Z` — and lexicographically `'+'` (0x2B) sorts before `'.'`
+ * (0x2E), so a post sitting exactly on the week's first instant compared as *before* it.
+ * A post scheduled for midnight on the Monday dropped out of the week's own count and out
+ * of the client list the approval buttons offer.
+ *
+ * `Date.parse` on both sides removes the question: an instant is an instant however it
+ * was spelled.
+ */
+export function postsInWeek(
+  posts: CalendarPost[],
+  weekStartISO: string,
+  timeZone: string
+): CalendarPost[] {
+  const { from, to } = getWeekRange(weekStartISO, timeZone)
+  const fromMs = Date.parse(from)
+  const toMs = Date.parse(to)
+  return posts.filter((post) => {
+    if (!post.scheduled_at) return false
+    const at = Date.parse(post.scheduled_at)
+    return at >= fromMs && at < toMs
+  })
 }
 
 // ---- Coverage ----
@@ -176,6 +211,35 @@ export function buildClientWeek(input: {
   return { week, filled, target, verdict: verdictFor(filled, target) }
 }
 
+/**
+ * How many clients are short of their own weekly target.
+ *
+ * Counts posts directly rather than going through `buildWeekLanes` + `buildClientWeek`.
+ * That is not just cheaper, it is what the question actually needs: suggested slots move
+ * a day's *state*, never `filled` or the verdict, so building seven lanes and every
+ * client's slot set to reach a number derived from post counts alone was work whose
+ * result was discarded. The rail badge renders in all three modes, so it was paying for a
+ * week's lanes even on the month.
+ *
+ * A client with no cadence set has no target to be behind and is never counted.
+ */
+export function countClientsBehind(
+  posts: CalendarPost[],
+  clients: ReadonlyArray<{ id: string; posts_per_week: number }>,
+  weekStartISO: string,
+  timeZone: string
+): number {
+  const thisWeek = postsInWeek(posts, weekStartISO, timeZone)
+  const filledByClient = new Map<string, number>()
+  for (const post of thisWeek) {
+    filledByClient.set(post.client_id, (filledByClient.get(post.client_id) ?? 0) + 1)
+  }
+  return clients.filter(
+    (client) =>
+      client.posts_per_week > 0 && (filledByClient.get(client.id) ?? 0) < client.posts_per_week
+  ).length
+}
+
 function verdictFor(filled: number, target: number): ClientWeek['verdict'] {
   // No target means nobody has said what this client's week should look like, so there
   // is no deficit to report — an absent cadence is not a failing one.
@@ -194,7 +258,7 @@ const STATE_WORDS: Record<CoverageState, string> = {
   failed: 'failed to publish',
 }
 
-const DAY_WORDS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+const DAY_WORDS = WEEKDAY_LABELS
 
 /**
  * The same week in words.

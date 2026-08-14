@@ -90,15 +90,49 @@ export const CLIENT_COLORS = [
   '#7FA588', // sage
 ] as const
 
-export const WEEKDAY_OPTIONS = [
-  { value: 'monday', label: 'Monday' },
-  { value: 'tuesday', label: 'Tuesday' },
-  { value: 'wednesday', label: 'Wednesday' },
-  { value: 'thursday', label: 'Thursday' },
-  { value: 'friday', label: 'Friday' },
-  { value: 'saturday', label: 'Saturday' },
-  { value: 'sunday', label: 'Sunday' },
+/**
+ * Weekday and month names, Monday-first, in one place.
+ *
+ * Six copies of these lists had accumulated across the calendar alone — three identical
+ * `['Mon'…'Sun']` arrays, two full weekday lists and two `MONTH_NAMES` — each free to
+ * drift from the others and from `date-helpers`' own lookup table. A calendar that names
+ * the same day two ways is a calendar with two calendars in it.
+ *
+ * Monday-first, matching every grid in the app. The Sunday-first list `date-helpers`
+ * keeps for `Date.getDay()` indexing is deliberately separate and says so.
+ */
+export const WEEKDAY_LABELS = [
+  'Monday',
+  'Tuesday',
+  'Wednesday',
+  'Thursday',
+  'Friday',
+  'Saturday',
+  'Sunday',
 ] as const
+
+/** The same seven, at column-header width. */
+export const WEEKDAY_LABELS_SHORT = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] as const
+
+/** Indexed by `MonthView.month` / `Date.getMonth()` — January is 0. */
+export const MONTH_LABELS = [
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
+] as const
+
+/** The picker's form of `WEEKDAY_LABELS`: a stored lowercase value beside its label. */
+export const WEEKDAY_OPTIONS: ReadonlyArray<{ value: string; label: string }> =
+  WEEKDAY_LABELS.map((label) => ({ value: label.toLowerCase(), label }))
 
 /** Languages a client's content can be written in. The one list — every language picker reads it. */
 export const CONTENT_LANGUAGE_OPTIONS = [

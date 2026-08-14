@@ -31,7 +31,7 @@ export const WeekGrid = memo(function WeekGrid({
   clients: LaneClient[]
   timeZone: string
   onPostClick: (postId: string) => void
-  onSlotClick: (slot: { clientName: string; at: string }) => void
+  onSlotClick: (slot: { clientId: string; clientName: string; at: string }) => void
   /** Move the focused post by whole days. Negative is earlier. */
   onMovePost: (postId: string, days: number) => void
   /** Drop the dragged post onto a named day. */
@@ -52,7 +52,7 @@ export const WeekGrid = memo(function WeekGrid({
     [scheduledPosts, clients, weekStartISO, timeZone]
   )
   const todayKey = useMemo(() => toDateKey(new Date(), timeZone), [timeZone])
-  const { gridRef, onKeyDown } = useGridNavigation(DAYS_PER_WEEK)
+  const { gridRef, onKeyDown, onFocus, activeColumn, activeRow } = useGridNavigation(DAYS_PER_WEEK)
   // Which post is in flight, so every day but its own can offer itself as a target.
   const [draggingId, setDraggingId] = useState<string | null>(null)
   const draggingFromDay = draggingId
@@ -90,26 +90,36 @@ export const WeekGrid = memo(function WeekGrid({
       <div
         ref={gridRef}
         onKeyDown={handleKeyDown}
+        onFocus={onFocus}
         role="grid"
         aria-label="Week"
         className="hidden min-h-0 flex-1 grid-cols-7 gap-1.5 md:grid"
       >
-        {dayKeys.map((dayKey, index) => (
-          <DayColumn
-            key={dayKey}
-            dayKey={dayKey}
-            columnIndex={index}
-            isToday={dayKey === todayKey}
-            isPast={dayKey < todayKey}
-            items={lanes.get(dayKey) ?? []}
-            timeZone={timeZone}
-            isDropTarget={draggingId !== null && dayKey !== draggingFromDay}
-            onPostClick={onPostClick}
-            onSlotClick={onSlotClick}
-            onDropPost={onDropPost}
-            onDragStateChange={setDraggingId}
-          />
-        ))}
+        {/* `role="grid"` requires rows between the grid and its cells; the seven columns
+            were `gridcell` children of `grid` directly, which is a structure no assistive
+            technology is obliged to make sense of. `display: contents` gives the row its
+            place in the accessibility tree while leaving the seven columns as the CSS
+            grid's own children, so the layout is byte-identical. */}
+        <div role="row" className="contents">
+          {dayKeys.map((dayKey, index) => (
+            <DayColumn
+              key={dayKey}
+              dayKey={dayKey}
+              columnIndex={index}
+              isToday={dayKey === todayKey}
+              isPast={dayKey < todayKey}
+              items={lanes.get(dayKey) ?? []}
+              timeZone={timeZone}
+              isDropTarget={draggingId !== null && dayKey !== draggingFromDay}
+              // -1 in every column but the one holding the grid's single tab stop.
+              activeRow={activeColumn === index ? activeRow : -1}
+              onPostClick={onPostClick}
+              onSlotClick={onSlotClick}
+              onDropPost={onDropPost}
+              onDragStateChange={setDraggingId}
+            />
+          ))}
+        </div>
       </div>
 
       <AgendaList

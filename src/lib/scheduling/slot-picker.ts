@@ -40,6 +40,27 @@ export interface SlotPickerInput {
   timeZone: string
 }
 
+/**
+ * Which platform's suggestions to draw for a client, from what is actually stored.
+ *
+ * The calendar hardcoded `'Instagram'` for every client, under a comment claiming it read
+ * the client's default platform. It does not: no `platform` column exists on `clients` or
+ * `brand_profiles`, so there was nothing to read. The effect was that a client whose
+ * `best_time_json` holds only Facebook matched no entry, drew no slots, and read as
+ * permanently uncovered on both the week grid and the Clients tab.
+ *
+ * Instagram still wins when the client has an Instagram entry — that is the platform the
+ * product publishes to, so it stays the one whose gaps are actionable. Otherwise this
+ * falls back to what the client does have rather than to a platform they do not use.
+ * Null when nothing is stored, which degrades to no slots at all: the plan's rule is that
+ * absent data becomes absence, never a guess.
+ */
+export function suggestionPlatform(bestTimes: BestTimePlatform[] | null): string | null {
+  if (!bestTimes || bestTimes.length === 0) return null
+  const instagram = bestTimes.find((b) => b.platform.toLowerCase() === 'instagram')
+  return (instagram ?? bestTimes[0]!).platform
+}
+
 /** The platform's entry, or null when nothing usable is stored for it. */
 function entryFor(
   platform: string | null,

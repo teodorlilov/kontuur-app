@@ -4,23 +4,8 @@ import { memo } from 'react'
 import { cn } from '@/utils/cn'
 import { PostCard } from './post-card'
 import { GhostSlot } from './ghost-slot'
+import { MONTH_LABELS as MONTHS, WEEKDAY_LABELS as DOW_LONG } from '@/utils/constants'
 import type { LaneItem } from '@/features/calendar/lib/week-model'
-
-const DOW_LONG = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
-const MONTHS = [
-  'January',
-  'February',
-  'March',
-  'April',
-  'May',
-  'June',
-  'July',
-  'August',
-  'September',
-  'October',
-  'November',
-  'December',
-]
 
 /**
  * The week below `md`: one day after another rather than seven columns.
@@ -46,7 +31,7 @@ export const AgendaList = memo(function AgendaList({
   todayKey: string
   timeZone: string
   onPostClick: (postId: string) => void
-  onSlotClick: (slot: { clientName: string; at: string }) => void
+  onSlotClick: (slot: { clientId: string; clientName: string; at: string }) => void
 }) {
   const daysWithPosts = dayKeys.filter((key) => (lanes.get(key) ?? []).length > 0)
 
@@ -89,6 +74,7 @@ export const AgendaList = memo(function AgendaList({
                 ) : (
                   <GhostSlot
                     key={`${item.clientId}-${item.at}`}
+                    clientId={item.clientId}
                     clientName={item.clientName}
                     at={item.at}
                     missed={item.missed}

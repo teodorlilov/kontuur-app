@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { pickNextOpenSlot, suggestWeekSlots } from '../slot-picker'
+import { pickNextOpenSlot, suggestionPlatform, suggestWeekSlots } from '../slot-picker'
 import { formatScheduledAt } from '@/utils/date-helpers'
 import type { BestTimePlatform } from '@/types/api'
 
@@ -156,5 +156,48 @@ describe('suggestWeekSlots', () => {
     expect(
       suggestWeekSlots({ platform: 'Instagram', bestTimes: hollow, weekStartISO: '2026-08-03', timeZone: TZ })
     ).toEqual([])
+  })
+})
+
+describe('suggestionPlatform', () => {
+  function entry(platform: string): BestTimePlatform {
+    return {
+      platform,
+      best_days: ['Thursday'],
+      best_time_windows: [window],
+      avoid: '',
+      confidence: 'ai-derived',
+      reasoning_summary: '',
+    }
+  }
+
+  it('returns null when nothing is stored, so the caller draws no slots', () => {
+    expect(suggestionPlatform(null)).toBeNull()
+    expect(suggestionPlatform([])).toBeNull()
+  })
+
+  it('prefers Instagram when the client has it', () => {
+    expect(suggestionPlatform([entry('Facebook'), entry('Instagram')])).toBe('Instagram')
+  })
+
+  it('matches Instagram whatever case it was stored in', () => {
+    expect(suggestionPlatform([entry('instagram')])).toBe('instagram')
+  })
+
+  it('falls back to what the client does have', () => {
+    // The calendar hardcoded 'Instagram' for every client, so this one matched no stored
+    // entry, drew no slots, and read as permanently uncovered.
+    expect(suggestionPlatform([entry('Facebook')])).toBe('Facebook')
+  })
+
+  it('resolves to a platform suggestWeekSlots can actually use', () => {
+    const facebook = [entry('Facebook')]
+    const slots = suggestWeekSlots({
+      platform: suggestionPlatform(facebook),
+      bestTimes: facebook,
+      weekStartISO: '2026-08-03',
+      timeZone: TZ,
+    })
+    expect(slots).toEqual([formatScheduledAt('2026-08-06', '18:00', TZ)])
   })
 })

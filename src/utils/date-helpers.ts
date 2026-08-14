@@ -1,15 +1,13 @@
-import { DAYS_PER_WEEK } from '@/utils/constants'
+import { DAYS_PER_WEEK, WEEKDAY_LABELS } from '@/utils/constants'
 
-/** Weekday names in the order the app renders a week. */
-const MONDAY_FIRST_WEEKDAYS = [
-  'Monday',
-  'Tuesday',
-  'Wednesday',
-  'Thursday',
-  'Friday',
-  'Saturday',
-  'Sunday',
-]
+/**
+ * Weekday names in the order the app renders a week.
+ *
+ * The shared list, not a private copy: `getWeekdayIndex` matches an `en-US` formatter's
+ * output against it, so a divergence here would silently return 0 — Monday — for every
+ * day of the week.
+ */
+const MONDAY_FIRST_WEEKDAYS: readonly string[] = WEEKDAY_LABELS
 
 /**
  * **Readers** below take an optional IANA `timeZone`; leaving it undefined makes Intl

@@ -1,6 +1,6 @@
 'use client'
 
-import type { CSSProperties, DragEvent, ReactNode } from 'react'
+import type { CSSProperties, DragEvent, ElementType, ReactNode } from 'react'
 import { cn } from '@/utils/cn'
 import { getClientTone } from '@/components/ui/colors/identity-colors'
 import { extractInitials } from '@/utils/format'
@@ -60,6 +60,7 @@ export function LaneItem({
   onDragStart,
   onDragEnd,
   onClick,
+  tabIndex,
   ariaLabel,
   children,
   className,
@@ -83,26 +84,45 @@ export function LaneItem({
    * half a feature; it is none of it.
    */
   draggable?: boolean
-  onDragStart?: (event: DragEvent<HTMLButtonElement>) => void
+  /** `HTMLElement`, not `HTMLButtonElement`: the shell renders as a div when it carries
+   *  no handler, and a narrower element type here makes the two arms irreconcilable. */
+  onDragStart?: (event: DragEvent<HTMLElement>) => void
   onDragEnd?: () => void
   onClick?: () => void
+  /**
+   * The grid's roving tabindex: 0 on the one cell Tab reaches, -1 on the rest.
+   *
+   * Undefined outside a grid — the agenda list below `md` is an ordinary document, where
+   * every card should be a tab stop.
+   */
+  tabIndex?: number
   ariaLabel: string
   children: ReactNode
   className?: string
 }) {
   const tone = getClientTone(clientName)
+  /**
+   * Without a handler this is a record, not a control.
+   *
+   * A passed slot rendered as a `<button>` carrying no `onClick`: focusable, announced as
+   * a button, inert on activation. Rendering the same shell as a plain element instead
+   * keeps the text in the accessibility tree — a screen reader still reads "passed
+   * unfilled" in browse mode — while taking it out of the tab order and out of the grid's
+   * arrow navigation, which is where a thing you cannot act on belongs.
+   */
+  // Annotated, not inferred: a bare `'button' | 'div'` union gives JSX a union of two
+  // incompatible prop bags and TypeScript refuses to reconcile them.
+  const Tag: ElementType = onClick ? 'button' : 'div'
 
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      draggable={draggable}
-      onDragStart={onDragStart}
-      onDragEnd={onDragEnd}
+    <Tag
+      {...(onClick
+        ? { type: 'button' as const, onClick, draggable, onDragStart, onDragEnd, tabIndex }
+        : {})}
       aria-label={ariaLabel}
-      // Every lane item is a cell in the week grid's 2-D keyboard model. The marker
-      // sits on the button because that is the thing that can take focus.
-      data-grid-cell
+      // Every interactive lane item is a cell in the week grid's 2-D keyboard model. The
+      // marker sits on the element that can take focus, so a non-interactive one has none.
+      {...(onClick ? { 'data-grid-cell': '' } : {})}
       data-post-id={postId}
       // Custom properties rather than a `background` — a hover state cannot be
       // expressed as an inline style, and an inline style would outrank the hover
@@ -141,6 +161,6 @@ export function LaneItem({
         <span className="ml-auto text-micro font-medium tabular-nums text-text2">{time}</span>
       </span>
       {children}
-    </button>
+    </Tag>
   )
 }

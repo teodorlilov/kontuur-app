@@ -35,11 +35,14 @@ function groundFor(status: PostStatus): LaneGround {
 export const PostCard = memo(function PostCard({
   post,
   timeZone,
+  tabIndex,
   onClick,
   onDragStateChange,
 }: {
   post: CalendarPost
   timeZone: string
+  /** The week grid's roving tabindex. Undefined in the agenda list, which is a document. */
+  tabIndex?: number
   onClick: (postId: string) => void
   /** Told which post is in flight, so the lanes can show where it may land. */
   onDragStateChange?: (postId: string | null) => void
@@ -57,6 +60,7 @@ export const PostCard = memo(function PostCard({
       time={time}
       ground={groundFor(status)}
       postId={post.id}
+      tabIndex={tabIndex}
       // Only a scheduled post can be dragged, for the same reason only a scheduled post
       // can be nudged: a published one's date is a record and a failed one needs its
       // attempt count cleared first.

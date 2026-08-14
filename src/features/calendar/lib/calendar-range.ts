@@ -1,20 +1,5 @@
 import { getMondayISO, getWeekdayIndex, shiftDateKey, toDateKey } from '@/utils/date-helpers'
-import { DAYS_PER_WEEK } from '@/utils/constants'
-
-const MONTH_NAMES = [
-  'January',
-  'February',
-  'March',
-  'April',
-  'May',
-  'June',
-  'July',
-  'August',
-  'September',
-  'October',
-  'November',
-  'December',
-]
+import { DAYS_PER_WEEK, MONTH_LABELS as MONTH_NAMES } from '@/utils/constants'
 
 /**
  * What range the calendar is showing, and how to step it.

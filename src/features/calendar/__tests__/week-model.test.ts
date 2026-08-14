@@ -2,8 +2,10 @@ import { describe, it, expect } from 'vitest'
 import {
   buildClientWeek,
   buildWeekLanes,
+  countClientsBehind,
   describeCoverage,
   groupPostsByDate,
+  postsInWeek,
   strongestState,
   type ClientDay,
 } from '../lib/week-model'
@@ -38,6 +40,78 @@ describe('groupPostsByDate', () => {
 
   it('skips unscheduled posts', () => {
     expect(groupPostsByDate([post('a', '') ], 'Europe/Sofia').size).toBe(0)
+  })
+})
+
+describe('postsInWeek', () => {
+  const week = '2026-08-03' // Mon 3 – Sun 9 Aug 2026
+  const TZ = 'Europe/Sofia'
+
+  /**
+   * The week opens at 21:00Z on the Sunday, because Sofia is UTC+3 in August. A post
+   * sitting exactly there is inside the week — it is midnight on the Monday, locally.
+   */
+  it('includes a post sitting exactly on the first instant of the week', () => {
+    // The two spellings of that instant. PostgREST returns the offset form; anything the
+    // app wrote itself is a `Z` with milliseconds. Compared as strings, '+' (0x2B) sorts
+    // before '.' (0x2E), so the offset form tested as *earlier* than the boundary and the
+    // post fell out of its own week.
+    const fromDb = post('midnight-monday', '2026-08-02T21:00:00+00:00')
+    const fromApp = post('midnight-monday', '2026-08-02T21:00:00.000Z')
+
+    expect(postsInWeek([fromDb], week, TZ).map((p) => p.id)).toEqual(['midnight-monday'])
+    expect(postsInWeek([fromApp], week, TZ).map((p) => p.id)).toEqual(['midnight-monday'])
+  })
+
+  it('excludes the first instant of the next week — the range is half-open', () => {
+    expect(postsInWeek([post('next', '2026-08-09T21:00:00+00:00')], week, TZ)).toEqual([])
+  })
+
+  it('excludes the instant before the week opens', () => {
+    expect(postsInWeek([post('prev', '2026-08-02T20:59:59+00:00')], week, TZ)).toEqual([])
+  })
+
+  it('skips unscheduled posts', () => {
+    expect(postsInWeek([{ id: 'a', scheduled_at: null } as CalendarPost], week, TZ)).toEqual([])
+  })
+
+  it('resolves the boundary in the agency zone, not UTC', () => {
+    // 22:00Z on Sunday is already Monday 01:00 in Sofia, but still Sunday in London.
+    const p = [post('a', '2026-08-02T22:00:00+00:00')]
+    expect(postsInWeek(p, week, 'Europe/Sofia')).toHaveLength(1)
+    expect(postsInWeek(p, week, 'Europe/London')).toHaveLength(0)
+  })
+})
+
+describe('countClientsBehind', () => {
+  const week = '2026-08-03'
+  const TZ = 'Europe/Sofia'
+
+  function placed(clientId: string, at: string): CalendarPost {
+    return { id: `${clientId}-${at}`, client_id: clientId, scheduled_at: at } as CalendarPost
+  }
+
+  it('counts a client with nothing placed against a target', () => {
+    expect(countClientsBehind([], [{ id: 'a', posts_per_week: 3 }], week, TZ)).toBe(1)
+  })
+
+  it('does not count a client with no cadence set', () => {
+    expect(countClientsBehind([], [{ id: 'a', posts_per_week: 0 }], week, TZ)).toBe(0)
+  })
+
+  it('does not count a client who has met their target', () => {
+    const posts = [placed('a', '2026-08-04T06:00:00+00:00'), placed('a', '2026-08-06T06:00:00+00:00')]
+    expect(countClientsBehind(posts, [{ id: 'a', posts_per_week: 2 }], week, TZ)).toBe(0)
+  })
+
+  it('counts posts, not days — two on one day both count toward the target', () => {
+    const posts = [placed('a', '2026-08-04T06:00:00+00:00'), placed('a', '2026-08-04T15:00:00+00:00')]
+    expect(countClientsBehind(posts, [{ id: 'a', posts_per_week: 2 }], week, TZ)).toBe(0)
+  })
+
+  it('ignores posts outside the viewed week', () => {
+    const posts = [placed('a', '2026-08-11T06:00:00+00:00')]
+    expect(countClientsBehind(posts, [{ id: 'a', posts_per_week: 1 }], week, TZ)).toBe(1)
   })
 })
 

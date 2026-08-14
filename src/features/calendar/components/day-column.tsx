@@ -1,12 +1,11 @@
 'use client'
 
-import { memo, useState } from 'react'
+import { memo, useMemo, useState } from 'react'
 import { cn } from '@/utils/cn'
 import { PostCard } from './post-card'
 import { GhostSlot } from './ghost-slot'
+import { WEEKDAY_LABELS_SHORT as DOW_LABELS } from '@/utils/constants'
 import type { LaneItem } from '@/features/calendar/lib/week-model'
-
-const DOW_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
 /**
  * One day of the week: a header, then a scrollable lane of everything on that day.
@@ -24,6 +23,7 @@ export const DayColumn = memo(function DayColumn({
   items,
   timeZone,
   isDropTarget,
+  activeRow,
   onPostClick,
   onSlotClick,
   onDropPost,
@@ -37,8 +37,13 @@ export const DayColumn = memo(function DayColumn({
   timeZone: string
   /** A card is in flight and this column is not the one it came from. */
   isDropTarget: boolean
+  /**
+   * Which of this column's focusable items answers to Tab, or -1 when the grid's single
+   * tab stop is in another column.
+   */
+  activeRow: number
   onPostClick: (postId: string) => void
-  onSlotClick: (slot: { clientName: string; at: string }) => void
+  onSlotClick: (slot: { clientId: string; clientName: string; at: string }) => void
   onDropPost: (postId: string, dayKey: string) => void
   onDragStateChange: (postId: string | null) => void
 }) {
@@ -46,11 +51,29 @@ export const DayColumn = memo(function DayColumn({
   const label = DOW_LABELS[columnIndex] ?? ''
   const [isOver, setIsOver] = useState(false)
 
+  /**
+   * Each item's position among the *focusable* ones, or -1 for a passed slot.
+   *
+   * Not the array index: a missed slot renders as a record rather than a control, so it
+   * is absent from the column's `[data-grid-cell]` list — and that list is what the
+   * navigation hook counts rows against. Deriving the two from different sequences is how
+   * Tab would land on a card the arrows think is somewhere else.
+   */
+  const rowOf = useMemo(() => {
+    let row = 0
+    return items.map((item) => (item.kind === 'post' || !item.missed ? row++ : -1))
+  }, [items])
+  const focusableCount = rowOf.filter((row) => row >= 0).length
+  // Clamped, because the active row travels across columns of different heights — the
+  // same clamp `focusCell` applies when it moves focus there.
+  const tabRow = activeRow < 0 ? -1 : Math.min(activeRow, focusableCount - 1)
+
   return (
     <div
       role="gridcell"
-      // Focusable so a quiet day is still a stop on the way across the week.
-      tabIndex={-1}
+      // Focusable only when it is the tab stop and has nothing inside to be one: a quiet
+      // day still has to be reachable, but a day holding cards defers to them.
+      tabIndex={activeRow >= 0 && focusableCount === 0 ? 0 : -1}
       data-grid-column={columnIndex}
       aria-label={dayLabel(label, dayNumber, items)}
       // `preventDefault` on dragover is what makes a drop possible at all — without it
@@ -123,22 +146,25 @@ export const DayColumn = memo(function DayColumn({
             Quiet
           </p>
         ) : (
-          items.map((item) =>
+          items.map((item, index) =>
             item.kind === 'post' ? (
               <PostCard
                 key={item.post.id}
                 post={item.post}
                 timeZone={timeZone}
+                tabIndex={rowOf[index] === tabRow ? 0 : -1}
                 onClick={onPostClick}
                 onDragStateChange={onDragStateChange}
               />
             ) : (
               <GhostSlot
                 key={`${item.clientId}-${item.at}`}
+                clientId={item.clientId}
                 clientName={item.clientName}
                 at={item.at}
                 missed={item.missed}
                 timeZone={timeZone}
+                tabIndex={rowOf[index] === tabRow ? 0 : -1}
                 onClick={onSlotClick}
               />
             )
@@ -149,11 +175,19 @@ export const DayColumn = memo(function DayColumn({
   )
 })
 
-/** What a screen reader hears for the column as a whole, before entering it. */
+/**
+ * What a screen reader hears for the column as a whole, before entering it.
+ *
+ * Missed slots are counted here because they are no longer reachable inside the column:
+ * they render as records rather than controls, so this summary is the only place the
+ * keyboard learns the week went unmet.
+ */
 function dayLabel(weekday: string, dayNumber: number, items: LaneItem[]): string {
   const posts = items.filter((i) => i.kind === 'post').length
   const open = items.filter((i) => i.kind === 'slot' && !i.missed).length
+  const missed = items.filter((i) => i.kind === 'slot' && i.missed).length
   const parts = [`${posts} ${posts === 1 ? 'post' : 'posts'}`]
   if (open > 0) parts.push(`${open} suggested ${open === 1 ? 'slot' : 'slots'} open`)
+  if (missed > 0) parts.push(`${missed} ${missed === 1 ? 'slot' : 'slots'} passed unfilled`)
   return `${weekday} ${dayNumber}, ${parts.join(', ')}`
 }

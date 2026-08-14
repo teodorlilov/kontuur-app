@@ -1,6 +1,6 @@
 'use client'
 
-import type { ElementType } from 'react'
+import { useEffect, useRef, type ElementType } from 'react'
 import { Button } from '@/components/ui/button'
 import type { ClientEntry } from '@/features/calendar/hooks/use-approval'
 
@@ -46,14 +46,47 @@ export function ApprovalAction({
   onTogglePicker: () => void
   onSelectClient: (id: string) => void
 }) {
+  const rootRef = useRef<HTMLDivElement>(null)
+  const menuOpen = pickerOpen && clients.length > 1
+
+  /**
+   * Escape, and a click anywhere else, close the menu.
+   *
+   * It had neither. The only ways out were picking a client or hitting the same button
+   * again — so a menu opened by mistake followed the reader down the page, and Escape,
+   * which every other overlay in the app answers to, did nothing. Bound only while open,
+   * so a page with two of these is not carrying two idle document listeners.
+   */
+  useEffect(() => {
+    if (!menuOpen) return
+
+    function onPointerDown(event: MouseEvent) {
+      if (!rootRef.current?.contains(event.target as Node)) onTogglePicker()
+    }
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') onTogglePicker()
+    }
+
+    document.addEventListener('mousedown', onPointerDown)
+    document.addEventListener('keydown', onKeyDown)
+    return () => {
+      document.removeEventListener('mousedown', onPointerDown)
+      document.removeEventListener('keydown', onKeyDown)
+    }
+  }, [menuOpen, onTogglePicker])
+
   return (
-    <div className="relative">
+    <div ref={rootRef} className="relative">
       <Button
         variant={variant}
         size="sm"
         disabled={disabled}
         loading={loading}
         title={disabled ? disabledReason : undefined}
+        // Announced as what it is. A trigger that opens a menu and says nothing leaves a
+        // screen reader to discover the menu by walking into it.
+        aria-haspopup={clients.length > 1 ? 'menu' : undefined}
+        aria-expanded={clients.length > 1 ? menuOpen : undefined}
         onClick={() => {
           if (disabled || loading) return
           // One client needs no menu — the choice is already made.
@@ -65,13 +98,17 @@ export function ApprovalAction({
         {loading ? loadingLabel : label}
       </Button>
 
-      {pickerOpen && clients.length > 1 && (
-        <div className="absolute right-0 top-full z-30 mt-1.5 min-w-[180px] rounded-panel border border-line bg-surface py-1 shadow-pop">
+      {menuOpen && (
+        <div
+          role="menu"
+          className="absolute right-0 top-full z-30 mt-1.5 min-w-[180px] rounded-panel border border-line bg-surface py-1 shadow-pop"
+        >
           <p className="px-3 py-1.5 text-label font-semibold uppercase text-text3">Select client</p>
           {clients.map((c) => (
             <button
               key={c.id}
               type="button"
+              role="menuitem"
               onClick={() => onSelectClient(c.id)}
               className="w-full px-3 py-2 text-left text-body text-ink transition-colors hover:bg-wash"
             >

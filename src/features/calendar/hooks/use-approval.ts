@@ -3,7 +3,8 @@
 import { useState, useMemo } from 'react'
 import { toast } from '@/components/ui/toast'
 import { requestApprovalEmail, requestApprovalLink } from '@/lib/approval/request-approval'
-import { getMondayISO, getWeekRange } from '@/utils/date-helpers'
+import { getMondayISO } from '@/utils/date-helpers'
+import { postsInWeek } from '@/features/calendar/lib/week-model'
 import { pluralise } from '@/utils/format'
 import type { BestTimePlatform, CalendarPost } from '@/types/api'
 
@@ -49,14 +50,15 @@ export function useApproval({
   // sent August — silently, with nothing on screen to say so.
   const currentWeekStart = weekStartISO
 
-  // getWeekRange, not a hand-rolled +6 days and setHours(23,59,59,999): that end was
+  // `postsInWeek`, not a hand-rolled +6 days and setHours(23,59,59,999): that end was
   // computed in the browser's zone while the grid labelled the agency's, and it was
   // inclusive where the server's query is half-open. Both halves now read the same
-  // helper, so the button and the batch cannot disagree about which posts they mean.
-  const currentWeekScheduled = useMemo(() => {
-    const { from, to } = getWeekRange(currentWeekStart, timeZone)
-    return filteredScheduled.filter((p) => p.scheduled_at! >= from && p.scheduled_at! < to)
-  }, [filteredScheduled, currentWeekStart, timeZone])
+  // helper, so the button and the batch cannot disagree about which posts they mean —
+  // and it compares instants rather than the two spellings of one.
+  const currentWeekScheduled = useMemo(
+    () => postsInWeek(filteredScheduled, currentWeekStart, timeZone),
+    [filteredScheduled, currentWeekStart, timeZone]
+  )
 
   const currentWeekClients = useMemo(() => {
     const ids = new Set(currentWeekScheduled.map((p) => p.client_id))

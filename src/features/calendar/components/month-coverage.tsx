@@ -7,12 +7,10 @@ import { getClientTone } from '@/components/ui/colors/identity-colors'
 import { getDaysInMonth, isSameMonth, type WeekView } from '@/features/calendar/lib/calendar-range'
 import { COVERAGE_INK, COVERAGE_TONE } from '@/features/calendar/lib/coverage-tone'
 import { groupPostsByDate, strongestState } from '@/features/calendar/lib/week-model'
-import { DAYS_PER_WEEK } from '@/utils/constants'
+import { DAYS_PER_WEEK, WEEKDAY_LABELS_SHORT as DAY_HEADERS } from '@/utils/constants'
 import { getMondayISO, isoToDateTimeFields, toDateKey } from '@/utils/date-helpers'
 import { extractInitials, pluralise } from '@/utils/format'
 import type { CalendarPost } from '@/types/api'
-
-const DAY_HEADERS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
 /** A gutter cell, then seven days. One template, shared by the header and every row. */
 const MONTH_GRID = 'grid grid-cols-[52px_repeat(7,minmax(0,1fr))] gap-1'

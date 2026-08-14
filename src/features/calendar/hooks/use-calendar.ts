@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { toast } from '@/components/ui/toast'
 import { updatePost, resolveChangeRequest } from '@/lib/actions/post-actions'
 import { rearmFailedPost } from '@/features/calendar/actions/post-recovery'
@@ -40,6 +40,25 @@ export function useCalendar(initialPosts: CalendarPost[], timeZone: string) {
    * disabled the other eleven.
    */
   const [pendingIds, setPendingIds] = useState<ReadonlySet<string>>(() => new Set())
+
+  /**
+   * The current posts, readable from a callback that outlives the render that made it.
+   *
+   * Every mutation below used to close over `posts` directly, which meant two things.
+   * Each one changed identity on every state change, so the memoised grid re-rendered
+   * whenever any post did. And worse, a callback held past its render read a stale list:
+   * the Undo offered after a move ran `posts.find(...)` against the array from *before*
+   * the move, found the post at its original time, and computed the reversal from there —
+   * so a keyboard nudge undone landed a day earlier than it started, and a drag undone
+   * resolved to the position it was already at and silently did nothing.
+   *
+   * A ref makes "the latest posts" a stable reference, so the callbacks are stable and
+   * always read the current list.
+   */
+  const postsRef = useRef(posts)
+  useEffect(() => {
+    postsRef.current = posts
+  }, [posts])
 
   const unscheduledPosts = useMemo(
     () => posts.filter((p) => p.status === 'approved' && !p.scheduled_at),
@@ -95,7 +114,7 @@ export function useCalendar(initialPosts: CalendarPost[], timeZone: string) {
         }
 
         if (opts.resolvesChangeRequest) {
-          const post = posts.find((p) => p.id === opts.postId)
+          const post = postsRef.current.find((p) => p.id === opts.postId)
           if (post?.approval_status === 'changes_requested') {
             void resolveChangeRequest(opts.postId)
           }
@@ -111,7 +130,7 @@ export function useCalendar(initialPosts: CalendarPost[], timeZone: string) {
         setPending(opts.postId, false)
       }
     },
-    [posts, setPending]
+    [setPending]
   )
 
   const schedulePost = useCallback(
@@ -185,7 +204,13 @@ export function useCalendar(initialPosts: CalendarPost[], timeZone: string) {
             // Supabase REST returns untyped JSON — slides_json matches CarouselSlide[] by schema
             slides_json: contentUpdates.slides_json as CalendarPost['slides_json'],
           }),
-          ...CLEARED_APPROVAL,
+          // Only when there is a change request to answer, matching `unschedulePost` above
+          // and — more to the point — matching what the server does. `resolveChangeRequest`
+          // touches tokens in `changes_requested` and nothing else, so clearing this
+          // unconditionally dropped the "Client approved" chip off an approved post the
+          // moment its caption was edited, and the next focus refresh put it straight back.
+          // A patch the server will contradict is not optimism, it is a flicker.
+          ...(p.approval_status === 'changes_requested' ? CLEARED_APPROVAL : {}),
         }),
         successMessage: 'Changes saved',
         failureMessage: 'Failed to save changes',
@@ -234,7 +259,7 @@ export function useCalendar(initialPosts: CalendarPost[], timeZone: string) {
       /** Where it should land, given where it is now. */
       resolve: (from: string) => string
     ): Promise<MoveResult> => {
-      const post = posts.find((p) => p.id === postId)
+      const post = postsRef.current.find((p) => p.id === postId)
       if (!post?.scheduled_at) return null
       if (post.status !== 'scheduled') {
         toast.error(
@@ -262,7 +287,7 @@ export function useCalendar(initialPosts: CalendarPost[], timeZone: string) {
       // failure needs no rollback — the card never left its day.
       return ok ? { from, to } : null
     },
-    [posts, runPostMutation]
+    [runPostMutation]
   )
 
   /** Nudge it, as the keyboard does. */
@@ -277,6 +302,28 @@ export function useCalendar(initialPosts: CalendarPost[], timeZone: string) {
     (postId: string, dayKey: string): Promise<MoveResult> =>
       commitMove(postId, (from) => moveScheduledToDay(from, dayKey, timeZone)),
     [commitMove, timeZone]
+  )
+
+  /**
+   * Put a post back at an instant it already held. What Undo does.
+   *
+   * Takes the instant rather than re-deriving it. `commitMove` answers "where should this
+   * land, given where it is now", which is the right question for a nudge or a drop and
+   * the wrong one for a reversal: the caller is holding the exact `from` the move
+   * returned, so recomputing it from state is a chance to get a different answer — and it
+   * did. Undoing a nudge re-applied the shift to the *original* time instead of restoring
+   * it, and undoing a drop resolved to a value equal to the one already stored, which
+   * `commitMove` correctly declines to write, so nothing happened at all.
+   */
+  const restoreSchedule = useCallback(
+    async (postId: string, instant: string): Promise<boolean> =>
+      runPostMutation({
+        postId,
+        run: () => updatePost(postId, { scheduled_at: instant }),
+        patch: (p) => ({ ...p, scheduled_at: instant }),
+        failureMessage: 'Could not put this post back',
+      }),
+    [runPostMutation]
   )
 
   /** Remove a post from local state (called after successful deletion). */
@@ -334,6 +381,7 @@ export function useCalendar(initialPosts: CalendarPost[], timeZone: string) {
     updatePostContent,
     movePostByDays,
     movePostToDay,
+    restoreSchedule,
     rearmPost,
     removePost,
     upsertPostImage,

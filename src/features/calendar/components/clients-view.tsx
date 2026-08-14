@@ -5,6 +5,7 @@ import { cn } from '@/utils/cn'
 import { Avatar } from '@/components/ui/avatar'
 import { PILL_TONES, type PillTone } from '@/components/ui/status-pill'
 import { getWeekDayKeys, toDateKey } from '@/utils/date-helpers'
+import { WEEKDAY_LABELS_SHORT as DOW_LABELS } from '@/utils/constants'
 import {
   buildClientWeek,
   buildWeekLanes,
@@ -14,8 +15,6 @@ import {
 import { CoverageStrip } from './coverage-strip'
 import type { ClientEntry } from '@/features/calendar/hooks/use-approval'
 import type { CalendarPost } from '@/types/api'
-
-const DOW_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
 /** Shared by the header labels and every row, so the two can never fall out of step. */
 const ROW_GRID = 'md:grid-cols-[minmax(180px,1fr)_minmax(280px,2fr)_136px]'

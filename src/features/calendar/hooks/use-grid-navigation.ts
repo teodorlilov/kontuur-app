@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useRef } from 'react'
+import { useCallback, useRef, useState } from 'react'
 
 /**
  * Arrow-key movement across a calendar grid, with a roving tabindex.
@@ -15,12 +15,27 @@ import { useCallback, useRef } from 'react'
  * popover. A week is two-dimensional — Left/Right move between days, Up/Down between
  * cards within a day — so the two cannot share.
  *
- * Focus is moved by walking the DOM rather than by holding an index in state: the lanes
+ * Focus is *moved* by walking the DOM rather than by holding an index in state: the lanes
  * re-render on every mutation, and an index would point at whatever card happened to
  * take that position afterwards.
+ *
+ * The roving tabindex is the separate half, and for a long time it was only a claim in
+ * this comment. Every lane item rendered as an ordinary `<button>`, so all of them were
+ * tab stops and Tab walked the week card by card — which is exactly what `role="grid"`
+ * exists to avoid, and what a keyboard user has to sit through twelve times on a busy
+ * week. `activeColumn`/`activeRow` below are the authority for which single cell answers
+ * to Tab; arrows do the rest.
  */
 export function useGridNavigation(columnCount: number) {
   const gridRef = useRef<HTMLDivElement>(null)
+  /**
+   * The one cell in the grid that is reachable with Tab.
+   *
+   * Only a *tabindex* pointer, never a focus pointer — the DOM keeps the latter. It is
+   * updated from real focus events, so clicking a card and then tabbing away and back
+   * returns to that card rather than to Monday.
+   */
+  const [active, setActive] = useState<{ column: number; row: number }>({ column: 0, row: 0 })
 
   const focusCell = useCallback((column: number, row: number) => {
     const grid = gridRef.current
@@ -83,5 +98,25 @@ export function useGridNavigation(columnCount: number) {
     [columnCount, focusCell]
   )
 
-  return { gridRef, onKeyDown }
+  /**
+   * Follow real focus, wherever it came from.
+   *
+   * React's `onFocus` is `focusin`, so this catches the pointer as well as the keyboard —
+   * without it, clicking Thursday and tabbing out would return to whatever cell the
+   * arrows last visited.
+   */
+  const onFocus = useCallback((event: React.FocusEvent<HTMLDivElement>) => {
+    const target = event.target as HTMLElement
+    const columnEl = target.closest<HTMLElement>('[data-grid-column]')
+    if (!columnEl) return
+
+    const column = Number(columnEl.dataset.gridColumn)
+    const cell = target.closest<HTMLElement>('[data-grid-cell]')
+    const cells = [...columnEl.querySelectorAll<HTMLElement>('[data-grid-cell]')]
+    const row = cell ? Math.max(cells.indexOf(cell), 0) : 0
+
+    setActive((prev) => (prev.column === column && prev.row === row ? prev : { column, row }))
+  }, [])
+
+  return { gridRef, onKeyDown, onFocus, activeColumn: active.column, activeRow: active.row }
 }

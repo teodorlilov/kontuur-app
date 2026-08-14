@@ -19,17 +19,24 @@ import { LaneItem } from './lane-item'
  * month actually was.
  */
 export const GhostSlot = memo(function GhostSlot({
+  clientId,
   clientName,
   at,
   missed,
   timeZone,
+  tabIndex,
   onClick,
 }: {
+  /** Carried through to the click. The lane has always held it; the click used to drop
+   *  it and make the handler find the client back by display name. */
+  clientId: string
   clientName: string
   at: string
   missed: boolean
   timeZone: string
-  onClick: (slot: { clientName: string; at: string }) => void
+  /** The week grid's roving tabindex. Ignored on a passed slot, which is not a control. */
+  tabIndex?: number
+  onClick: (slot: { clientId: string; clientName: string; at: string }) => void
 }) {
   const { time } = isoToDateTimeFields(at, timeZone)
 
@@ -38,7 +45,10 @@ export const GhostSlot = memo(function GhostSlot({
       clientName={clientName}
       time={time}
       ground={missed ? 'missed' : 'ghost'}
-      onClick={missed ? undefined : () => onClick({ clientName, at })}
+      tabIndex={tabIndex}
+      // A passed slot is a record, not a control. It rendered as a `<button>` with no
+      // handler: a tab stop that announced itself and then did nothing when activated.
+      onClick={missed ? undefined : () => onClick({ clientId, clientName, at })}
       ariaLabel={
         missed
           ? `${clientName}, ${time}, a suggested slot that passed unfilled`

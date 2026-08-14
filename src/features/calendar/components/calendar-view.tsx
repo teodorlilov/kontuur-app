@@ -12,13 +12,14 @@ import { SelectControl } from '@/components/layout/page-header/select-control'
 import { useShell } from '@/components/layout/shell-context'
 import { cn } from '@/utils/cn'
 import { deletePost } from '@/lib/actions/post-actions'
-import { getMondayISO, getWeekRange, toDateKey } from '@/utils/date-helpers'
+import { getMondayISO, toDateKey } from '@/utils/date-helpers'
 import { formatScheduleDate } from '@/utils/format'
 import { useCalendarRange } from '@/features/calendar/hooks/use-calendar-range'
 import { ApprovalAction } from './approval-tools'
 import { WeekGrid } from './week-grid'
 import { ClientsView } from './clients-view'
-import { buildClientWeek, buildWeekLanes } from '@/features/calendar/lib/week-model'
+import { countClientsBehind, postsInWeek } from '@/features/calendar/lib/week-model'
+import { suggestionPlatform } from '@/lib/scheduling/slot-picker'
 import { TabRail } from '@/components/layout/page-header/tab-rail'
 import { MonthCoverage } from './month-coverage'
 import { QueueRail } from './queue-rail'
@@ -89,6 +90,7 @@ export function CalendarView({ initialPosts, clients }: CalendarViewProps) {
     updatePostContent,
     movePostByDays,
     movePostToDay,
+    restoreSchedule,
     rearmPost,
     removePost,
     upsertPostImage,
@@ -168,7 +170,24 @@ export function CalendarView({ initialPosts, clients }: CalendarViewProps) {
 
   // Active post — search all posts so both grid and panel clicks work
   const activePost = allPosts.find((p) => p.id === activePostId) ?? null
-  const activeIndex = filteredUnscheduled.findIndex((p) => p.id === activePostId)
+
+  /**
+   * What the card's stepper walks.
+   *
+   * Scoped to one client when the card was opened from that client's suggested slot,
+   * which is what `slotPrefill.clientId` is for — it was stored, typed and passed to the
+   * card, and then read by nothing, so the header still said "3 of 48" while offering to
+   * step through posts that could not go in the slot being filled. Entered from the queue
+   * there is no prefill and this is the whole backlog, exactly as before.
+   */
+  const cardQueue = useMemo(
+    () =>
+      slotPrefill
+        ? filteredUnscheduled.filter((p) => p.client_id === slotPrefill.clientId)
+        : filteredUnscheduled,
+    [filteredUnscheduled, slotPrefill]
+  )
+  const activeIndex = cardQueue.findIndex((p) => p.id === activePostId)
 
   const handlePanelPostClick = useCallback((post: CalendarPost) => {
     setActivePostId(post.id)
@@ -180,31 +199,40 @@ export function CalendarView({ initialPosts, clients }: CalendarViewProps) {
     setCardOpen(true)
   }, [])
 
-  const handleUnschedule = useCallback(
-    (postId: string) => {
-      void unschedulePost(postId)
-      setCardOpen(false)
-      setActivePostId(null)
-    },
-    [unschedulePost]
-  )
-
+  /**
+   * Close the card and forget what it was opened for.
+   *
+   * Every path that dismisses the card goes through here. Four of them used to call a
+   * bare `setCardOpen(false)` and leave `slotPrefill` standing, so after placing a post
+   * into a Tuesday 09:00 slot the *next* post opened from the queue — any client, any day
+   * — arrived prefilled with that Tuesday and that hour, because the card's prefill
+   * effect reads the slot before it reads the post's own time.
+   */
   const closeCard = useCallback(() => {
     setCardOpen(false)
     setEditMode(false)
     setSlotPrefill(null)
   }, [])
 
+  const handleUnschedule = useCallback(
+    (postId: string) => {
+      void unschedulePost(postId)
+      closeCard()
+      setActivePostId(null)
+    },
+    [unschedulePost, closeCard]
+  )
+
   function handleNavPost(dir: 1 | -1) {
-    const next = filteredUnscheduled[activeIndex + dir]
+    const next = cardQueue[activeIndex + dir]
     if (next) setActivePostId(next.id)
   }
 
   async function handleSchedule(postId: string, scheduledAt: string, platform: string) {
-    const idx = filteredUnscheduled.findIndex((p) => p.id === postId)
+    const idx = cardQueue.findIndex((p) => p.id === postId)
     await schedulePost(postId, scheduledAt, platform)
-    setCardOpen(false)
-    const nextPost = filteredUnscheduled[idx + 1]
+    closeCard()
+    const nextPost = cardQueue[idx + 1]
     setActivePostId(nextPost?.id ?? null)
   }
 
@@ -216,40 +244,58 @@ export function CalendarView({ initialPosts, clients }: CalendarViewProps) {
    * toast expire commits, which is the same contract `DiscardToast` already carries on
    * the review queue and the ideas inbox.
    */
-  function offerUndo(landedAt: string, revert: () => void) {
-    const toastId = toast.custom(
-      () => (
-        <DiscardToast
-          title={`Moved to ${formatScheduleDate(new Date(landedAt), timezone)}`}
-          onUndo={() => {
-            toast.dismiss(toastId)
-            revert()
-          }}
-        />
-      ),
-      { duration: DISCARD_TOAST_MS }
-    )
-  }
+  const offerUndo = useCallback(
+    (postId: string, moved: { from: string; to: string }) => {
+      const toastId = toast.custom(
+        () => (
+          <DiscardToast
+            title={`Moved to ${formatScheduleDate(new Date(moved.to), timezone)}`}
+            onUndo={() => {
+              toast.dismiss(toastId)
+              // The exact instant it left, written back. Not a reversed delta and not a
+              // recomputed day: both of those re-derive the origin from state, and the
+              // state a toast callback can see is the one captured before the move. The
+              // relative form re-applied the shift to the original time and landed a day
+              // early; the absolute form resolved to the value already stored, which the
+              // move path correctly declines to write, so Undo did nothing at all.
+              void restoreSchedule(postId, moved.from)
+            }}
+          />
+        ),
+        { duration: DISCARD_TOAST_MS }
+      )
+    },
+    [timezone, restoreSchedule]
+  )
 
   /** Nudged with the keyboard. */
-  async function handleMovePost(postId: string, days: number) {
-    const moved = await movePostByDays(postId, days)
-    if (moved) offerUndo(moved.to, () => void movePostByDays(postId, -days))
-  }
+  const handleMovePost = useCallback(
+    async (postId: string, days: number) => {
+      const moved = await movePostByDays(postId, days)
+      if (moved) offerUndo(postId, moved)
+    },
+    [movePostByDays, offerUndo]
+  )
 
-  /**
-   * Dropped on a day.
-   *
-   * Undo puts it back on the day it *came from* rather than reversing a delta — the
-   * pointer named an absolute target, so the reversal is absolute too. A relative undo
-   * would land somewhere else entirely if the move had crossed a DST boundary.
-   */
-  async function handleDropPost(postId: string, dayKey: string) {
-    const moved = await movePostToDay(postId, dayKey)
-    if (!moved) return
-    const cameFrom = toDateKey(new Date(moved.from), timezone)
-    offerUndo(moved.to, () => void movePostToDay(postId, cameFrom))
-  }
+  /** Dropped on a day. Same command, same Undo. */
+  const handleDropPost = useCallback(
+    async (postId: string, dayKey: string) => {
+      const moved = await movePostToDay(postId, dayKey)
+      if (moved) offerUndo(postId, moved)
+    },
+    [movePostToDay, offerUndo]
+  )
+
+  // The grid's props are void-returning, and both handlers are async. Adapting them here
+  // once keeps the reference stable; doing it inline in the JSX is what defeated `memo`.
+  const onMovePost = useCallback(
+    (postId: string, days: number) => void handleMovePost(postId, days),
+    [handleMovePost]
+  )
+  const onDropPost = useCallback(
+    (postId: string, dayKey: string) => void handleDropPost(postId, dayKey),
+    [handleDropPost]
+  )
 
   /** Retry a failed publish at the time the card's form is showing. */
   async function handleRearm(postId: string, scheduledAt: string) {
@@ -260,9 +306,9 @@ export function CalendarView({ initialPosts, clients }: CalendarViewProps) {
   }
 
   function handleSkip(postId: string) {
-    setCardOpen(false)
-    const idx = filteredUnscheduled.findIndex((p) => p.id === postId)
-    const nextPost = filteredUnscheduled[idx + 1]
+    const idx = cardQueue.findIndex((p) => p.id === postId)
+    closeCard()
+    const nextPost = cardQueue[idx + 1]
     if (nextPost) setActivePostId(nextPost.id)
   }
 
@@ -278,7 +324,7 @@ export function CalendarView({ initialPosts, clients }: CalendarViewProps) {
     if (result.ok) {
       removePost(postId)
       toast.success('Post deleted')
-      setCardOpen(false)
+      closeCard()
       setActivePostId(null)
     } else {
       toast.error('Failed to delete post')
@@ -328,22 +374,18 @@ export function CalendarView({ initialPosts, clients }: CalendarViewProps) {
       post.scheduled_at && toDateKey(new Date(post.scheduled_at), timezone).startsWith(monthPrefix)
   ).length
 
-  const { from: weekFrom, to: weekTo } = getWeekRange(weekStart, timezone)
-  const scheduledThisWeek = filteredScheduled.filter(
-    (post) => post.scheduled_at && post.scheduled_at >= weekFrom && post.scheduled_at < weekTo
-  ).length
+  // Compared as instants, not as strings — see `postsInWeek`.
+  const scheduledThisWeek = postsInWeek(filteredScheduled, weekStart, timezone).length
 
-  // The deficit, surfaced in the rail so it is visible without opening the tab. Counts
-  // clients who are behind their own target — a client with no cadence set has no target
-  // to be behind, so they are not counted.
   const laneClients = useMemo(
     () =>
       clients.map((client) => ({
         id: client.id,
         name: client.name,
-        // Instagram is the only platform the suggestion source is populated for today;
-        // when a client carries a default platform this reads it instead.
-        platform: 'Instagram',
+        // Read off what the client actually has stored rather than asserted. This was
+        // hardcoded 'Instagram' for every client, so a client whose suggestions are
+        // Facebook-only matched nothing and drew no slots at all.
+        platform: suggestionPlatform(client.best_times),
         bestTimes: client.best_times,
       })),
     [clients]
@@ -351,40 +393,51 @@ export function CalendarView({ initialPosts, clients }: CalendarViewProps) {
 
   /**
    * Placing into a suggested slot: open the dialog the product already has, with the
-   * client, date and time filled in. The stepper scopes to that client, because stepping
-   * the whole agency backlog from one client's slot offers posts it cannot take.
+   * client, date and time filled in. The stepper scopes to that client via `cardQueue`,
+   * because stepping the whole agency backlog from one client's slot offers posts it
+   * cannot take.
+   *
+   * The slot carries the client's **id**. It always knew it — `LaneItem` has held a
+   * `clientId` since the lanes were built — but the click only forwarded the display
+   * name, so this had to look the client back up by `name`. Two clients sharing a name
+   * resolved to whichever came first, and a renamed client resolved to none, which
+   * returned early and made the slot look inert.
    */
   const handleSlotClick = useCallback(
-    (slot: { clientName: string; at: string }) => {
-      const client = clients.find((c) => c.name === slot.clientName)
-      if (!client) return
-      const firstWaiting = filteredUnscheduled.find((p) => p.client_id === client.id)
-      setSlotPrefill({ clientId: client.id, at: slot.at })
-      setActivePostId(firstWaiting?.id ?? null)
+    (slot: { clientId: string; clientName: string; at: string }) => {
+      const firstWaiting = filteredUnscheduled.find((p) => p.client_id === slot.clientId)
+      // Nothing to place. Opening the card here showed an empty overlay — `ScheduleCard`
+      // renders nothing without a post — so the click read as broken on exactly the
+      // clients whose gaps the slot exists to point at.
+      if (!firstWaiting) {
+        toast.info(`Nothing waiting for ${slot.clientName}. Generate a post to fill this slot.`)
+        return
+      }
+      setSlotPrefill({ clientId: slot.clientId, at: slot.at })
+      setActivePostId(firstWaiting.id)
       setCardOpen(true)
     },
-    [clients, filteredUnscheduled]
+    [filteredUnscheduled]
   )
 
-  const clientsBehind = useMemo(() => {
-    const lanes = buildWeekLanes({
-      posts: filteredScheduled,
-      clients: laneClients,
-      weekStartISO: weekStart,
-      timeZone: timezone,
-      now: new Date(),
-    })
-    return clients.filter((client) => {
-      if (client.posts_per_week <= 0) return false
-      const { verdict } = buildClientWeek({
-        clientId: client.id,
-        lanes,
-        weekStartISO: weekStart,
-        target: client.posts_per_week,
-      })
-      return verdict === 'Dark this week' || verdict.endsWith('short')
-    }).length
-  }, [clients, laneClients, filteredScheduled, weekStart, timezone])
+  /**
+   * The deficit, surfaced in the rail so it is visible without opening the tab.
+   *
+   * Deliberately **unfiltered**: this is an agency-wide signal shown in all three modes,
+   * and it was reading the client-filtered posts against the full roster — so narrowing
+   * the header picker to one client made every other client look dark and drove the count
+   * to nearly the size of the roster.
+   */
+  const clientsBehind = useMemo(
+    () => countClientsBehind(scheduledPosts, clients, weekStart, timezone),
+    [scheduledPosts, clients, weekStart, timezone]
+  )
+
+  /** The Clients tab honours the header filter — on both axes, or it reports false gaps. */
+  const visibleClients = useMemo(
+    () => (selectedClientId ? clients.filter((c) => c.id === selectedClientId) : clients),
+    [clients, selectedClientId]
+  )
 
   return (
     // h-full, not min-h-full: the calendar is a fixed-size workspace, not a document.
@@ -523,16 +576,16 @@ export function CalendarView({ initialPosts, clients }: CalendarViewProps) {
             timeZone={timezone}
             onPostClick={handleGridPostClick}
             onSlotClick={handleSlotClick}
-            onMovePost={(postId, days) => {
-              void handleMovePost(postId, days)
-            }}
-            onDropPost={(postId, dayKey) => {
-              void handleDropPost(postId, dayKey)
-            }}
+            // Stable references, not fresh arrows every render. `WeekGrid` is memoised and
+            // forwards `onDropPost` straight to all seven `DayColumn`s, which are memoised
+            // too — an inline lambda here re-rendered the entire grid on every keystroke in
+            // the queue's search box.
+            onMovePost={onMovePost}
+            onDropPost={onDropPost}
           />
         ) : mode === 'clients' ? (
           <ClientsView
-            clients={clients}
+            clients={visibleClients}
             laneClients={laneClients}
             scheduledPosts={filteredScheduled}
             weekStartISO={weekStart}
@@ -567,7 +620,7 @@ export function CalendarView({ initialPosts, clients }: CalendarViewProps) {
         timeZone={timezone}
         slotPrefill={slotPrefill}
         postIndex={activeIndex}
-        totalPosts={filteredUnscheduled.length}
+        totalPosts={cardQueue.length}
         isOpen={cardOpen}
         onClose={closeCard}
         onPrev={() => handleNavPost(-1)}
