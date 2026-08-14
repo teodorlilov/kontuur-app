@@ -1,7 +1,7 @@
 import { notFound, redirect } from 'next/navigation'
 import { requireSessionUser } from '@/lib/auth/session'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
-import { getCachedAgencyClients } from '@/lib/queries/cache'
+import { getCachedAgency, getCachedAgencyClients } from '@/lib/queries/cache'
 import {
   fetchClientSourceSummaries,
   fetchConnectionsByClient,
@@ -25,9 +25,13 @@ export default async function GeneratePage({ searchParams }: PageProps) {
   const [{ agencyId }, { ideaId, client }] = await Promise.all([requireSessionUser(), searchParams])
   const supabase = await createServerSupabaseClient()
 
-  const [clients, initialIdea] = await Promise.all([
+  // The agency's zone rides along in the same wave. This route group has no
+  // ShellProvider, so `useShell` is unavailable below and the scheduling dialog was
+  // resolving wall-clock times against the operator's browser instead.
+  const [clients, initialIdea, agency] = await Promise.all([
     getCachedAgencyClients(agencyId),
     ideaId ? fetchIdeaById(ideaId, agencyId) : null,
+    getCachedAgency(agencyId),
   ])
 
   // An `?ideaId=` that resolves to nothing used to fall through to `clients[0]`, so a
@@ -76,6 +80,7 @@ export default async function GeneratePage({ searchParams }: PageProps) {
 
   return (
     <GenerateFlow
+      timeZone={agency?.timezone ?? 'UTC'}
       initialClients={clients}
       initialClientData={initialClientData}
       initialTargetPostCount={initialTargetPostCount}

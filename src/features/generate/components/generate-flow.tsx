@@ -40,6 +40,8 @@ interface GenerateFlowProps {
   initialClientId?: string
   initialSources?: ClientSourceSummary[]
   initialConnections?: MetaConnection[]
+  /** The agency zone, read on the server: this route group has no ShellProvider. */
+  timeZone: string
 }
 
 /**
@@ -49,6 +51,7 @@ interface GenerateFlowProps {
  * lives here.
  */
 export function GenerateFlow({
+  timeZone,
   initialClients,
   initialClientData,
   initialTargetPostCount,
@@ -462,6 +465,7 @@ export function GenerateFlow({
             skippedPillars={skippedPillars}
             allocation={runPlan.allocation}
             clientId={clientId}
+            timeZone={timeZone}
             runContext={{
               clientName,
               platform,

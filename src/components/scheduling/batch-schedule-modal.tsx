@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
 import { useBatchSchedule, type BatchPost } from '@/components/scheduling/use-batch-schedule'
+import { toDateKey } from '@/utils/date-helpers'
 
 interface BatchScheduleModalProps {
   open: boolean
@@ -11,6 +12,8 @@ interface BatchScheduleModalProps {
   posts: BatchPost[]
   /** Pre-filled slots (e.g. the queue's picker suggestions) — every row stays editable. */
   initialAssignments?: Record<string, { date: string; time: string }>
+  /** The agency zone: every date here is a wall clock in it. */
+  timeZone: string
   onComplete: () => void
 }
 
@@ -19,13 +22,18 @@ export function BatchScheduleModal({
   onClose,
   posts,
   initialAssignments,
+  timeZone,
   onComplete,
 }: BatchScheduleModalProps) {
-  const { assignments, setDate, setTime, scheduleAll, resetAssignments, loading } =
-    useBatchSchedule(posts, () => {
+  const { assignments, setDate, setTime, scheduleAll, resetAssignments, loading } = useBatchSchedule(
+    posts,
+    () => {
       onComplete()
       onClose()
-    }, initialAssignments)
+    },
+    timeZone,
+    initialAssignments
+  )
 
   // Fresh seed per opening — adjusted during render (the documented pattern).
   const [prevOpen, setPrevOpen] = useState(open)
@@ -34,7 +42,10 @@ export function BatchScheduleModal({
     if (open) resetAssignments(initialAssignments)
   }
 
-  const minDate = new Date().toISOString().slice(0, 10)
+  // The agency's today, not UTC's. `toISOString().slice(0, 10)` is the UTC date, so an
+  // agency east of it lost an hour of scheduling every evening — the picker refused a
+  // date that was already tomorrow where they sit.
+  const minDate = toDateKey(new Date(), timeZone)
 
   return (
     <Modal open={open} onClose={onClose} title="Schedule approved posts" className="max-w-2xl">

@@ -1,5 +1,6 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
+  getNextDateForDay,
   getMondayISO,
   getMonthBoundaries,
   getWeekDayKeys,
@@ -259,18 +260,6 @@ describe('formatScheduledAt', () => {
    * reproduce the old bare-string parse byte for byte, or this refactor silently
    * moves every scheduled post in the app.
    */
-  it('omitting the zone reproduces the pre-refactor bare-string parse', () => {
-    const cases: Array<[string, string]> = [
-      ['2026-08-06', '18:00'],
-      ['2026-01-02', '00:00'],
-      ['2026-12-31', '23:59'],
-      ['2026-03-29', '09:00'],
-      ['2026-10-25', '09:00'],
-    ]
-    for (const [date, time] of cases) {
-      expect(formatScheduledAt(date, time)).toBe(new Date(`${date}T${time}:00`).toISOString())
-    }
-  })
 })
 
 describe('isoToDateTimeFields', () => {
@@ -292,5 +281,47 @@ describe('isoToDateTimeFields', () => {
       date: '2026-08-07',
       time: '01:30',
     })
+  })
+})
+
+/**
+ * The helper that turns "Monday" into a date, and the last place in the app that read a
+ * weekday off the browser. Its answer becomes a `scheduled_at`, so a zone-blind reading
+ * put approved posts on the wrong day for any operator whose machine disagreed with
+ * their agency.
+ */
+describe('getNextDateForDay', () => {
+  afterEach(() => vi.useRealTimers())
+  const SOFIA = 'Europe/Sofia'
+  const LA = 'America/Los_Angeles'
+
+  it('finds the next occurrence of a weekday', () => {
+    // 2026-08-14 is a Friday in Sofia.
+    vi.useFakeTimers().setSystemTime(new Date('2026-08-14T09:00:00.000Z'))
+    expect(getNextDateForDay('Monday', SOFIA)).toBe('2026-08-17')
+    expect(getNextDateForDay('Saturday', SOFIA)).toBe('2026-08-15')
+  })
+
+  it('skips a week rather than returning today', () => {
+    // "Next Friday" on a Friday is the one after, not this morning — a date already
+    // past would be written as a schedule nobody could meet.
+    vi.useFakeTimers().setSystemTime(new Date('2026-08-14T09:00:00.000Z'))
+    expect(getNextDateForDay('Friday', SOFIA)).toBe('2026-08-21')
+  })
+
+  it('answers in the agency zone, not the runtime', () => {
+    // 2026-08-15T04:00Z is Saturday 07:00 in Sofia and still Friday 21:00 in Los
+    // Angeles. The next Monday is the same date, but the two zones disagree about what
+    // day it is *now*, which is what the old `Date.getDay()` read.
+    vi.useFakeTimers().setSystemTime(new Date('2026-08-15T04:00:00.000Z'))
+    expect(getNextDateForDay('Sunday', SOFIA)).toBe('2026-08-16')
+    // Friday in LA, so the next Sunday is still the 16th — but reached by a different
+    // count, and a Saturday query proves the two really do differ.
+    expect(getNextDateForDay('Saturday', SOFIA)).toBe('2026-08-22')
+    expect(getNextDateForDay('Saturday', LA)).toBe('2026-08-15')
+  })
+
+  it('returns empty for a name that is not a weekday', () => {
+    expect(getNextDateForDay('Someday', SOFIA)).toBe('')
   })
 })

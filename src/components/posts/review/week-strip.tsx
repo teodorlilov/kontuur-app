@@ -12,6 +12,8 @@ export interface WeekStripProps {
   countsByDay: number[]
   /** The client's posts-per-week target; 0 hides the meta line. */
   target: number
+  /** The agency zone. "Today" must be theirs, not the operator's browser. */
+  timeZone: string
 }
 
 /**
@@ -19,8 +21,8 @@ export interface WeekStripProps {
  * the week stands against the posts-per-week target. Deep Pine dots for
  * filled days; today is named by Living Green (the small "now" mark on light).
  */
-export function WeekStrip({ weekStart, countsByDay, target }: WeekStripProps) {
-  const todayKey = toDateKey(new Date())
+export function WeekStrip({ weekStart, countsByDay, target, timeZone }: WeekStripProps) {
+  const todayKey = toDateKey(new Date(), timeZone)
   const dayKeys = getWeekDayKeys(weekStart)
   const placed = countsByDay.reduce((sum, count) => sum + count, 0)
 

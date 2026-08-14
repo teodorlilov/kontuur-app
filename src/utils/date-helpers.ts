@@ -12,9 +12,17 @@ const MONDAY_FIRST_WEEKDAYS = [
 ]
 
 /**
- * Every helper below takes an optional IANA `timeZone`. Leaving it undefined
- * makes Intl fall back to the runtime zone, which is what the callers that
- * predate agency timezones already relied on — so omitting it is a no-op.
+ * **Readers** below take an optional IANA `timeZone`; leaving it undefined makes Intl
+ * fall back to the runtime zone. That is legitimate in the few places doing arithmetic on
+ * a bare calendar date rather than on an instant — the month grid builds its cells with
+ * `new Date(year, month, d)`, local midnight standing for "the 6th", and reading those
+ * back in an agency zone would shift them to the 5th or the 7th.
+ *
+ * **Writers** — `formatScheduledAt`, and `SlotPickerInput` in `lib/scheduling` — require
+ * one. They turn a wall clock into a stored instant, and a runtime fallback there is not
+ * a no-op: it writes the operator's zone into a column the whole app reads in the
+ * agency's. Three call sites lived on that fallback for exactly as long as it was
+ * allowed to exist.
  */
 
 /**
@@ -198,11 +206,16 @@ export function getMonthBoundaries(timeZone?: string): {
  * Combine a date string (YYYY-MM-DD) and time string (HH:MM) into an ISO timestamp,
  * reading the pair as wall-clock time in `timeZone`.
  *
- * The ISO form of `zonedTimeToInstant`, which is what every existing writer wants.
- * Omitting the zone reproduces the old bare-string parse exactly — Intl falls back to
- * the runtime zone — so callers that predate agency timezones are unaffected.
+ * The ISO form of `zonedTimeToInstant`, and the one way this app turns a wall clock into
+ * an instant.
+ *
+ * `timeZone` is **required**. It was optional through the migration, falling back to the
+ * runtime zone so unconverted callers kept their old behaviour — and three of them stayed
+ * unconverted for exactly that reason, writing `scheduled_at` in the operator's zone
+ * while the calendar bucketed it in the agency's. Now that every caller passes one, a
+ * missing zone is a build error rather than a post an hour or two out.
  */
-export function formatScheduledAt(date: string, time: string, timeZone?: string): string {
+export function formatScheduledAt(date: string, time: string, timeZone: string): string {
   return zonedTimeToInstant(date, time || '12:00', timeZone).toISOString()
 }
 
@@ -250,14 +263,21 @@ export function weekdayNameToIndex(dayName: string): number {
   return WEEKDAY_NAMES.indexOf(dayName.toLowerCase())
 }
 
-/** Map a day name (e.g. 'Monday') to the next occurrence as YYYY-MM-DD. */
-export function getNextDateForDay(dayName: string): string {
+/**
+ * Map a day name (e.g. 'Monday') to the next occurrence as YYYY-MM-DD.
+ *
+ * `timeZone` is required, and is the agency's. This read the browser's weekday from
+ * `Date.getDay()` and its date from `toDateKey(target)` with no zone, so on either side
+ * of midnight an operator west of their agency asked "what is the next Monday" and got
+ * the answer for a different day — one that then became a `scheduled_at` the calendar
+ * bucketed somewhere else again.
+ */
+export function getNextDateForDay(dayName: string, timeZone: string): string {
   const targetIdx = weekdayNameToIndex(dayName)
   if (targetIdx === -1) return ''
-  const today = new Date()
-  const todayIdx = today.getDay()
+  // Monday-first from `getZonedParts`, shifted back to `Date.getDay()`'s Sunday-first,
+  // which is what WEEKDAY_NAMES indexes.
+  const todayIdx = (getWeekdayIndex(new Date(), timeZone) + 1) % DAYS_PER_WEEK
   const diff = (targetIdx - todayIdx + DAYS_PER_WEEK) % DAYS_PER_WEEK || DAYS_PER_WEEK
-  const target = new Date(today)
-  target.setDate(today.getDate() + diff)
-  return toDateKey(target)
+  return shiftDateKey(toDateKey(new Date(), timeZone), diff)
 }

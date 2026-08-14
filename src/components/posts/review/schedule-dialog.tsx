@@ -40,6 +40,16 @@ interface ScheduleDialogProps {
    * because a date the client named outranks any slot we would recommend.
    */
   requestedDate?: string | null
+  /**
+   * The agency zone, and required.
+   *
+   * Every date this dialog produces became a `scheduled_at` resolved in the *browser's*
+   * zone, while the calendar buckets that column in the agency's — so an operator whose
+   * machine disagreed with their agency scheduled posts at the wrong instant, silently.
+   * Required rather than defaulted, because a default would let a caller that forgot it
+   * keep writing the old wrong answer.
+   */
+  timeZone: string
   /** Resolves the decision: an ISO timestamp schedules, null approves unscheduled. */
   onConfirm: (scheduledAt: string | null) => void
   onClose: () => void
@@ -65,6 +75,7 @@ export function ScheduleDialog({
   approving,
   weekContext,
   requestedDate,
+  timeZone,
   onConfirm,
   onClose,
 }: ScheduleDialogProps) {
@@ -101,9 +112,9 @@ export function ScheduleDialog({
     if (choice === 'next' && nextOpenSlot) {
       onConfirm(nextOpenSlot)
     } else if (choice === 'best' && best) {
-      onConfirm(formatScheduledAt(getNextDateForDay(best.day), best.time))
+      onConfirm(formatScheduledAt(getNextDateForDay(best.day, timeZone), best.time, timeZone))
     } else if (choice === 'pick' && pickedDate) {
-      onConfirm(formatScheduledAt(pickedDate, pickedTime))
+      onConfirm(formatScheduledAt(pickedDate, pickedTime, timeZone))
     } else {
       onConfirm(null)
     }
@@ -124,6 +135,7 @@ export function ScheduleDialog({
             weekStart={weekContext.weekStart}
             countsByDay={weekContext.countsByDay}
             target={weekContext.target}
+            timeZone={timeZone}
           />
         )}
 
@@ -156,7 +168,7 @@ export function ScheduleDialog({
                   <span className={LABEL_CLASS.default}>Date</span>
                   <input
                     type="date"
-                    min={toDateKey(new Date())}
+                    min={toDateKey(new Date(), timeZone)}
                     value={pickedDate}
                     onChange={(e) => setPickedDate(e.target.value)}
                     onClick={(e) => e.stopPropagation()}

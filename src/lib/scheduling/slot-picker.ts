@@ -31,8 +31,13 @@ export interface SlotPickerInput {
   /** ISO timestamps this client already holds (this week and next). */
   occupiedSlots: string[]
   now: Date
-  /** The agency zone. Slot times are wall-clock in it, not in the runtime's. */
-  timeZone?: string
+  /**
+   * The agency zone. Slot times are wall-clock in it, not in the runtime's.
+   *
+   * Required. Optional it silently produced browser-local instants for any caller that
+   * forgot, which is the whole class of bug the zoned write path exists to close.
+   */
+  timeZone: string
 }
 
 /** The platform's entry, or null when nothing usable is stored for it. */
@@ -57,7 +62,8 @@ export function suggestWeekSlots(input: {
   platform: string | null
   bestTimes: BestTimePlatform[] | null
   weekStartISO: string
-  timeZone?: string
+  /** The agency zone — see the note on `SlotPickerInput`. */
+  timeZone: string
 }): string[] {
   const entry = entryFor(input.platform, input.bestTimes)
   if (!entry) return []

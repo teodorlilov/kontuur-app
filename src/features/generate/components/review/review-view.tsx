@@ -46,6 +46,15 @@ interface ReviewViewProps {
   skippedPillars: SkippedPillar[]
   allocation: PillarAllocation[]
   clientId: string
+  /**
+   * The agency zone, arriving as a prop rather than from `useShell`.
+   *
+   * This flow renders under `(generate)/layout.tsx`, which has AuthProvider and the
+   * contour field and no ShellProvider — so the hook every other surface uses is simply
+   * not available here. That is why the scheduling path in this route group kept
+   * resolving wall-clock times in the browser's zone.
+   */
+  timeZone: string
   runContext: RunContext
   visualsByDraft: Record<string, DraftVisual[]>
   onRegenerateVisual: (post: PostData, position: number) => void
@@ -73,6 +82,7 @@ export function ReviewView({
   skippedPillars,
   allocation,
   clientId,
+  timeZone,
   runContext,
   visualsByDraft,
   onRegenerateVisual,
@@ -388,6 +398,7 @@ export function ReviewView({
         bestTimeData={bestTimeData}
         approving={approving}
         requestedDate={posts.find((p) => p.post.id === scheduleTarget)?.post.target_date ?? null}
+        timeZone={timeZone}
         onConfirm={(scheduledAt) => void handleScheduleConfirm(scheduledAt)}
         onClose={() => setScheduleTarget(null)}
       />

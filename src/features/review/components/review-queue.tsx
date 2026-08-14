@@ -358,6 +358,7 @@ export function ReviewQueue({
       postsPerWeek: postsPerWeekByClient[post.client_id] ?? 0,
       occupiedSlots: occupied,
       now: new Date(),
+      timeZone: timezone,
     })
   }
 
@@ -588,7 +589,9 @@ export function ReviewQueue({
     if (!scheduleTargetPost) return undefined
     const occupied = occupiedSlotsByClient.get(scheduleTargetPost.client_id) ?? []
     const countsByDay = getWeekDayKeys(weekStart).map(
-      (dayKey) => occupied.filter((iso) => toDateKey(new Date(iso)) === dayKey).length
+      // Zoned, like every other bucketing in the app: this counts a client's posts per
+      // day for the WeekStrip, and an unzoned key put a 23:30 post on the wrong dot.
+      (dayKey) => occupied.filter((iso) => toDateKey(new Date(iso), timezone) === dayKey).length
     )
     return {
       weekStart,
@@ -600,9 +603,17 @@ export function ReviewQueue({
         postsPerWeek: postsPerWeekByClient[scheduleTargetPost.client_id] ?? 0,
         occupiedSlots: occupied,
         now: new Date(),
+        timeZone: timezone,
       }),
     }
-  }, [scheduleTargetPost, occupiedSlotsByClient, weekStart, bestTimeMap, postsPerWeekByClient])
+  }, [
+    scheduleTargetPost,
+    occupiedSlotsByClient,
+    weekStart,
+    bestTimeMap,
+    postsPerWeekByClient,
+    timezone,
+  ])
   const visualTallies = useMemo(() => {
     let failed = 0
     let composing = 0
@@ -824,6 +835,7 @@ export function ReviewQueue({
         bestTimeData={scheduleTargetPost ? (bestTimeMap[scheduleTargetPost.client_id] ?? null) : null}
         approving={approving}
         weekContext={scheduleWeekContext}
+        timeZone={timezone}
         onConfirm={(scheduledAt) => void handleScheduleConfirm(scheduledAt)}
         onClose={() => setScheduleTarget(null)}
       />
@@ -837,6 +849,7 @@ export function ReviewQueue({
           caption: p.caption,
           platform: p.platform,
         }))}
+        timeZone={timezone}
         initialAssignments={batch?.assignments}
         onComplete={handleBatchComplete}
       />

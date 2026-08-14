@@ -21,6 +21,8 @@ interface Assignment {
 export function useBatchSchedule(
   posts: BatchPost[],
   onComplete: () => void,
+  /** The agency zone. Each date/time pair is a wall clock in it, not in the browser's. */
+  timeZone: string,
   initialAssignments?: Record<string, Assignment>
 ) {
   const [assignments, setAssignments] = useState<Map<string, Assignment>>(
@@ -66,7 +68,7 @@ export function useBatchSchedule(
     try {
       const items = toSchedule.map((p) => {
         const a = assignments.get(p.id)!
-        return { postId: p.id, scheduledAt: formatScheduledAt(a.date, a.time) }
+        return { postId: p.id, scheduledAt: formatScheduledAt(a.date, a.time, timeZone) }
       })
 
       const result = await batchSchedulePosts(items)

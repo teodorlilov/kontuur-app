@@ -1,6 +1,19 @@
 import { describe, it, expect } from 'vitest'
 import { pickNextOpenSlot, suggestWeekSlots } from '../slot-picker'
+import { formatScheduledAt } from '@/utils/date-helpers'
 import type { BestTimePlatform } from '@/types/api'
+
+/**
+ * The agency zone, now that `SlotPickerInput` requires one.
+ *
+ * The two assertions below used to build their expected instants with
+ * `new Date('...T18:00:00')` — a bare-string parse, which resolves in whatever zone the
+ * machine running the suite happens to be in. They passed only because the code under
+ * test read the same runtime zone, so both sides moved together and the suite would have
+ * produced different values on a laptop in Sofia and on CI in UTC. Expressed through the
+ * same helper the app writes with, they say what they mean: 18:00 *there*.
+ */
+const TZ = 'Europe/Sofia'
 
 // Tuesday 4 Aug 2026, 12:00 local.
 const now = new Date('2026-08-04T12:00:00')
@@ -25,6 +38,7 @@ function pick(overrides: Partial<Parameters<typeof pickNextOpenSlot>[0]> = {}) {
     postsPerWeek: 3,
     occupiedSlots: [],
     now,
+    timeZone: TZ,
     ...overrides,
   })
 }
@@ -87,10 +101,11 @@ describe('the three-week candidate span', () => {
       bestTimes: mondayOnly,
       postsPerWeek: 0,
       // Monday 10 Aug taken, so the answer has to come from the week after.
-      occupiedSlots: [new Date('2026-08-10T09:00:00').toISOString()],
+      occupiedSlots: [formatScheduledAt('2026-08-10', '09:00', TZ)],
       now: friday,
+      timeZone: TZ,
     })
-    expect(result).toBe(new Date('2026-08-17T18:00:00').toISOString())
+    expect(result).toBe(formatScheduledAt('2026-08-17', '18:00', TZ))
   })
 
   it('offers the nearest future occurrence when nothing is taken', () => {
@@ -100,8 +115,9 @@ describe('the three-week candidate span', () => {
       postsPerWeek: 0,
       occupiedSlots: [],
       now: friday,
+      timeZone: TZ,
     })
-    expect(result).toBe(new Date('2026-08-10T18:00:00').toISOString())
+    expect(result).toBe(formatScheduledAt('2026-08-10', '18:00', TZ))
   })
 })
 
@@ -109,7 +125,7 @@ describe('suggestWeekSlots', () => {
   it('returns every matching day × window in the week, ascending', () => {
     // Thursday 6 and Friday 7 August 2026.
     expect(
-      suggestWeekSlots({ platform: 'Instagram', bestTimes, weekStartISO: '2026-08-03' })
+      suggestWeekSlots({ platform: 'Instagram', bestTimes, weekStartISO: '2026-08-03', timeZone: TZ })
     ).toEqual([
       new Date('2026-08-06T18:00:00').toISOString(),
       new Date('2026-08-07T18:00:00').toISOString(),
@@ -121,24 +137,24 @@ describe('suggestWeekSlots', () => {
       platform: 'Instagram',
       bestTimes,
       weekStartISO: '2026-08-03',
-      timeZone: 'Europe/Sofia',
+      timeZone: TZ,
     })
     // 18:00 Sofia in August (UTC+3) is 15:00Z — not 18:00Z, and not the runtime's 18:00.
     expect(first).toBe('2026-08-06T15:00:00.000Z')
   })
 
   it('degrades to nothing rather than guessing', () => {
-    expect(suggestWeekSlots({ platform: 'Instagram', bestTimes: null, weekStartISO: '2026-08-03' })).toEqual([])
-    expect(suggestWeekSlots({ platform: null, bestTimes, weekStartISO: '2026-08-03' })).toEqual([])
+    expect(suggestWeekSlots({ platform: 'Instagram', bestTimes: null, weekStartISO: '2026-08-03', timeZone: TZ })).toEqual([])
+    expect(suggestWeekSlots({ platform: null, bestTimes, weekStartISO: '2026-08-03', timeZone: TZ })).toEqual([])
     expect(
-      suggestWeekSlots({ platform: 'LinkedIn', bestTimes, weekStartISO: '2026-08-03' })
+      suggestWeekSlots({ platform: 'LinkedIn', bestTimes, weekStartISO: '2026-08-03', timeZone: TZ })
     ).toEqual([])
   })
 
   it('ignores an entry whose days or windows are empty', () => {
     const hollow: BestTimePlatform[] = [{ ...bestTimes[0]!, best_days: [] }]
     expect(
-      suggestWeekSlots({ platform: 'Instagram', bestTimes: hollow, weekStartISO: '2026-08-03' })
+      suggestWeekSlots({ platform: 'Instagram', bestTimes: hollow, weekStartISO: '2026-08-03', timeZone: TZ })
     ).toEqual([])
   })
 })
