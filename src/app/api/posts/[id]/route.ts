@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
 import { verifyPostOwnership } from '@/lib/auth/helpers'
-import { isUserSettablePostStatus, isValidPostPlatform } from '@/lib/validation'
+import { parsePostUpdate } from '@/lib/validation/post-update-schema'
 import { POST_COLUMNS } from '@/lib/queries/select-columns'
 
 /** Fetch one post. */
@@ -44,44 +44,23 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
   const post = await verifyPostOwnership(supabase, id, agencyId)
   if (!post) return NextResponse.json({ error: 'Post not found' }, { status: 404 })
 
-  let body: Record<string, unknown>
+  let body: unknown
   try {
     body = await request.json()
   } catch {
     return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
   }
 
-  if (body.status !== undefined && !isUserSettablePostStatus(String(body.status))) {
-    return NextResponse.json({ error: `Invalid status: ${String(body.status)}` }, { status: 400 })
-  }
-  if (body.platform !== undefined && !isValidPostPlatform(String(body.platform))) {
-    return NextResponse.json({ error: `Invalid platform: ${String(body.platform)}` }, { status: 400 })
-  }
-
-  const updatePayload: Record<string, unknown> = {}
-  if (body.status !== undefined) updatePayload.status = body.status
-  if (body.caption !== undefined) updatePayload.caption = body.caption
-  if (body.slides_json !== undefined) updatePayload.slides_json = body.slides_json
-  if (body.scheduled_at !== undefined) updatePayload.scheduled_at = body.scheduled_at
-  if (body.platform !== undefined) updatePayload.platform = body.platform
-  if (body.was_rewritten !== undefined) updatePayload.was_rewritten = body.was_rewritten
-  if (body.rewrite_count !== undefined) updatePayload.rewrite_count = body.rewrite_count
-  if (body.source_url !== undefined) updatePayload.source_url = body.source_url
-  if (body.source_title !== undefined) updatePayload.source_title = body.source_title
-  if (body.quality_score_avg !== undefined) {
-    // null is a real value here — "not judged" — so it must be accepted on purpose
-    // rather than by an untyped body happening to let it through.
-    const score = body.quality_score_avg
-    if (score !== null && typeof score !== 'number') {
-      return NextResponse.json({ error: 'quality_score_avg must be a number or null' }, { status: 400 })
-    }
-    updatePayload.quality_score_avg = score
-  }
-  if (body.validation_json !== undefined) updatePayload.validation_json = body.validation_json
+  // The same whitelist the server action enforces, from the same schema. This route
+  // used to restate all eleven fields, which is how it came to validate
+  // `quality_score_avg` while the action did not — and how both came to write
+  // `scheduled_at` unchecked.
+  const parsed = parsePostUpdate(body)
+  if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: 400 })
 
   const { data: updated, error } = await supabase
     .from('posts')
-    .update(updatePayload)
+    .update(parsed.updates)
     .eq('id', id)
     .select(POST_COLUMNS)
     .single()

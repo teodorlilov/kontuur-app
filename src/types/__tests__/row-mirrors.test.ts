@@ -38,8 +38,10 @@ const MIN_FIELDS = 5
 const EXEMPT: Record<string, string> = {
   'ai/generation/types.ts:DraftPost':
     'A draft before it is a row, deliberately narrower than the columns: status is the literal "draft", post_type and source_type are unions, and caption/topic_summary/quality_score_avg are non-null because the generator guarantees them. Deriving would widen all of it back.',
-  'lib/actions/post-actions.ts:UpdatePostInput':
-    'A write contract — which fields may be updated — not a row. Deriving would turn source_url?: string into string | null and start admitting nulls the update path never intended.',
+  // `UpdatePostInput` was exempted here while it was a hand-written interface. It is now
+  // `z.infer<typeof updatePostSchema>` in lib/validation/post-update-schema.ts, which
+  // this scanner does not see at all — a schema declares no field names in a shape it
+  // could read. The reason the exemption gave still holds and is recorded there.
   'features/publishing/lib/scheduler.ts:PublishStatusPatch':
     'A partial update payload: every field is optional because each caller patches a different subset (markPublished sets four, markFailed three). The optionality means "may be omitted from this patch", not "may be null in the column".',
   'features/sources/actions/source-actions.ts:UpdateSourceInput':

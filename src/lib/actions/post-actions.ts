@@ -6,7 +6,8 @@ import { z } from 'zod'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { resolveActionAuth, verifyPostOwnership, verifyPostsOwnership } from '@/lib/auth/helpers'
 import { parseStoredValidation } from '@/lib/validation/stored-validation-schema'
-import { DISCARD_REASONS, isUserSettablePostStatus, isValidPostPlatform } from '@/lib/validation'
+import { parsePostUpdate, type UpdatePostInput } from '@/lib/validation/post-update-schema'
+import { DISCARD_REASONS } from '@/lib/validation'
 import type { ActionResult } from './types'
 
 const deletePostOptionsSchema = z
@@ -25,25 +26,14 @@ const persistRewriteSchema = z.object({
   validation: z.unknown(),
 })
 
-interface UpdatePostInput {
-  status?: string
-  caption?: string
-  slides_json?: unknown
-  scheduled_at?: string | null
-  platform?: string
-  was_rewritten?: boolean
-  rewrite_count?: number
-  source_url?: string
-  source_title?: string
-  quality_score_avg?: number
-  validation_json?: unknown
-}
-
 /** Update a post's fields. */
-export async function updatePost(
-  postId: string,
-  fields: UpdatePostInput
-): Promise<ActionResult> {
+export async function updatePost(postId: string, fields: UpdatePostInput): Promise<ActionResult> {
+  // Parsed before auth, matching `savePostCopy` below: a malformed payload is the
+  // caller's own bug and says nothing about the post, so there is nothing to leak by
+  // answering it first.
+  const parsed = parsePostUpdate(fields)
+  if (!parsed.ok) return { ok: false, error: parsed.error }
+
   const auth = await resolveActionAuth()
   if (!auth.ok) return { ok: false, error: auth.error }
   const { supabase, agencyId } = auth
@@ -51,28 +41,7 @@ export async function updatePost(
   const post = await verifyPostOwnership(supabase, postId, agencyId)
   if (!post) return { ok: false, error: 'Post not found' }
 
-  if (fields.status !== undefined && !isUserSettablePostStatus(fields.status)) {
-    return { ok: false, error: `Invalid status: ${fields.status}` }
-  }
-  if (fields.platform !== undefined && !isValidPostPlatform(fields.platform)) {
-    return { ok: false, error: `Invalid platform: ${fields.platform}` }
-  }
-
-  const updates: Record<string, unknown> = {}
-  if (fields.status !== undefined) updates.status = fields.status
-  if (fields.caption !== undefined) updates.caption = fields.caption
-  if (fields.slides_json !== undefined) updates.slides_json = fields.slides_json
-  if (fields.scheduled_at !== undefined) updates.scheduled_at = fields.scheduled_at
-  if (fields.platform !== undefined) updates.platform = fields.platform
-  if (fields.was_rewritten !== undefined) updates.was_rewritten = fields.was_rewritten
-  if (fields.rewrite_count !== undefined) updates.rewrite_count = fields.rewrite_count
-  if (fields.source_url !== undefined) updates.source_url = fields.source_url
-  if (fields.source_title !== undefined) updates.source_title = fields.source_title
-  if (fields.quality_score_avg !== undefined) updates.quality_score_avg = fields.quality_score_avg
-  if (fields.validation_json !== undefined)
-    updates.validation_json = fields.validation_json
-
-  const { error } = await supabase.from('posts').update(updates).eq('id', postId)
+  const { error } = await supabase.from('posts').update(parsed.updates).eq('id', postId)
   if (error) return { ok: false, error: error.message }
 
   revalidateTag('client-post-stats', 'max')
