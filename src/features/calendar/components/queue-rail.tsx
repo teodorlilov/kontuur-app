@@ -188,20 +188,18 @@ export const QueueRail = memo(function QueueRail({
             {totalCount === 0 ? 'Nothing waiting.' : 'Nothing matches that.'}
           </p>
         ) : (
-          <>
+          // Sections, not three fixed slots: sorting by client gathers under client
+          // names, so the headings are part of the answer rather than chrome the sort
+          // renders beneath.
+          groups.sections.map((section) => (
             <QueueGroup
-              label="Priority"
-              emphasis
-              posts={groups.priority}
+              key={section.key}
+              label={section.label}
+              emphasis={section.emphasis}
+              posts={section.posts}
               {...{ activePostId, onPostClick }}
             />
-            <QueueGroup label="Regular" posts={groups.regular} {...{ activePostId, onPostClick }} />
-            <QueueGroup
-              label="Not scored"
-              posts={groups.unscored}
-              {...{ activePostId, onPostClick }}
-            />
-          </>
+          ))
         )}
       </div>
     </aside>
