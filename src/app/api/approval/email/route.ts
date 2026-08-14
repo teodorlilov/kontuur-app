@@ -71,15 +71,17 @@ export async function POST(request: Request) {
       postCount: result.postCount,
     })
   } catch (err) {
-    console.error('Resend error:', err)
-    return NextResponse.json(
-      { error: 'Failed to send email. Check RESEND_API_KEY and RESEND_FROM_EMAIL.' },
-      { status: 500 }
-    )
+    console.error('[approval] email send failed:', err)
+    // The provider's own words, not a guess. This used to say "Check RESEND_API_KEY and
+    // RESEND_FROM_EMAIL" for every failure — and the failure it could not report at all
+    // was the common one, because the SDK resolves rather than throws on a rejected send.
+    const reason = err instanceof Error ? err.message : 'unknown error'
+    return NextResponse.json({ error: `Could not send the email — ${reason}` }, { status: 500 })
   }
 
-  // Logged, not failed: the email is already out, and reporting an error here
-  // would invite a resend that mails the client a second time.
+  // Logged, not failed: the email really is out by this point — the send above now
+  // reads its result rather than discarding it — so reporting an error here would
+  // invite a resend that mails the client a second time.
   const { error: notifyError } = await supabase.from('notifications').insert({
     agency_id: agencyId,
     message: `Approval email sent to ${client.contact_email} for ${client.name} — ${pluralise(result.postCount, 'post')}`,

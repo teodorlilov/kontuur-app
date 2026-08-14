@@ -1,5 +1,20 @@
 import { Resend } from 'resend'
+import { pluralise } from '@/utils/format'
 
+/**
+ * Send the client their approval link.
+ *
+ * **The SDK does not throw.** `resend.emails.send()` resolves with `{ data, error }`
+ * whatever happens — an unverified sending domain, a sandbox restriction, a bad key, a
+ * rate limit all come back as a resolved promise carrying an error object. Awaiting it
+ * and discarding the result, which is what this did, meant the route's `try/catch`
+ * caught nothing, the API returned 200, the UI toasted "Approval email sent!" and a
+ * notification row recorded a send that never happened.
+ *
+ * So the error is read and thrown. The route above turns it into a 500 carrying the
+ * provider's own words, because "your domain is not verified" is the answer, and
+ * "check RESEND_API_KEY" was a guess.
+ */
 export async function sendApprovalEmail({
   to,
   clientName,
@@ -15,7 +30,7 @@ export async function sendApprovalEmail({
     throw new Error('RESEND_API_KEY is not set')
   }
   const resend = new Resend(process.env.RESEND_API_KEY)
-  await resend.emails.send({
+  const { error } = await resend.emails.send({
     from: process.env.RESEND_FROM_EMAIL ?? 'noreply@postflow.app',
     to,
     subject: 'Your content is ready for approval',
@@ -60,7 +75,7 @@ export async function sendApprovalEmail({
                   Your scheduled social media content is ready for review.
                 </p>
                 <p style="margin:0 0 32px;font-size:15px;color:#111;line-height:1.6;">
-                  <strong>${postCount} post${postCount === 1 ? '' : 's'}</strong> for <strong>${clientName}</strong>
+                  <strong>${pluralise(postCount, 'post')}</strong> for <strong>${clientName}</strong>
                   ${postCount === 1 ? 'is' : 'are'} awaiting your approval.
                 </p>
                 <table cellpadding="0" cellspacing="0" style="margin-bottom:32px;">
@@ -81,4 +96,11 @@ export async function sendApprovalEmail({
       </html>
     `,
   })
+
+  if (error) {
+    // Named, because the two most common failures say very different things: an
+    // unverified `from` domain and a sandbox key that may only mail its owner both
+    // return 403, and only the message distinguishes them.
+    throw new Error(`${error.name ?? 'send failed'}: ${error.message ?? 'no detail returned'}`)
+  }
 }
