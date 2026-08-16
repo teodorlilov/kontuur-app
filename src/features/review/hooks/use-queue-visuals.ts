@@ -19,7 +19,7 @@ interface UseQueueVisualsOptions {
 /**
  * Post-backed visual actions for the focused queue post: regenerate through
  * the visuals endpoint (with auto-compose), replace through upload, plus the
- * shared recompose/apply-style passes.
+ * shared recompose pass.
  */
 export function useQueueVisuals({ postId, copySource, onImage }: UseQueueVisualsOptions) {
   const getSlideCopy = useCallback(
@@ -28,7 +28,7 @@ export function useQueueVisuals({ postId, copySource, onImage }: UseQueueVisuals
     [copySource]
   )
 
-  const { generatingPositions, composingPositions, generate, recompose, applyStyle } =
+  const { generatingPositions, composingPositions, generate, recompose } =
     useGenerateVisuals(postId, onImage, getSlideCopy)
 
   const replaceImage = useCallback(
@@ -51,5 +51,5 @@ export function useQueueVisuals({ postId, copySource, onImage }: UseQueueVisuals
     [postId, onImage]
   )
 
-  return { generatingPositions, composingPositions, generate, recompose, applyStyle, replaceImage }
+  return { generatingPositions, composingPositions, generate, recompose, replaceImage }
 }

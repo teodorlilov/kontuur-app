@@ -85,12 +85,19 @@ None of these block shipping; each entry says what it is, why it was deferred, a
   nudge was deleted — its message survives only as the recompose-failure toast). Positions
   without a doc are never touched; unchanged copy is a no-op (text comparison before flatten).
 
-### 2.6 No "apply text style to all slides" — RESOLVED 2026-07-24
+### 2.6 No "apply text style to all slides" — RESOLVED 2026-07-24, REBUILT 2026-08-16
 
-- The editor's "Save & apply to all" button saves the slide, then carries its full look
-  (role-matched layer position/width/font/size/weight/color/align/line-height + scrim) onto
-  every sibling on all three surfaces (`applyStyleToDoc` + per-surface orchestrators). Each
-  slide keeps its own text; doc-less siblings are seeded, styled and composed in one pass.
+- **Now (Wave 11):** "Apply style…" opens a panel in the editor showing what each other slide would
+  look like, one tick per slide. Applying commits `applyStyleToDoc` into each slide's OWN undo
+  history — one step each, undoable from the panel — and nothing is written until Save. The source
+  slide is excluded from its own apply: `applyStyleToDoc` matches the FIRST node of a role, so a
+  slide holding a duplicated headline would have the copy snapped onto the original's geometry.
+- **Was (2026-07-24 → 2026-08-16):** a "Save & apply to all" button that saved the slide, then had
+  each SURFACE re-compose every sibling server-side (`applyStyleToPostSibling` /
+  `applyStyleToDraftSibling` behind `useGenerateVisuals.applyStyle` and `applyStyleAcrossDraft`).
+  All of that is deleted. It wrote immediately with no preview, and its 409s were swallowed
+  silently — after the in-editor carousel landed, a sibling saved moments earlier would 409 against
+  a path the surface no longer held, and simply not be restyled.
 
 ### 2.7 Clean-background orphans (accepted)
 

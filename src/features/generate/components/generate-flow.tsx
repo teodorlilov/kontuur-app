@@ -479,7 +479,6 @@ export function GenerateFlow({
               draftVisuals.replaceVisual(post, position, file)
             }
             onEditedVisual={draftVisuals.applyEditedVisual}
-            onApplyStyleToAll={draftVisuals.applyStyleAcrossDraft}
             onApproved={handlePostApproved}
             onDiscarded={handlePostDiscarded}
             onRewritten={handlePostRegenerated}

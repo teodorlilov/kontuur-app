@@ -349,16 +349,19 @@ Shift+Cmd+Z, shortcuts suspended while the inline-edit textarea is focused.
 PER SLIDE (`use-editor-slides.ts`), so ⌘Z on slide 3 cannot reach into slide 1. Every doc loads in
 one round trip (`GET /api/posts/[id]/canvas` with no `?position`). Save writes every dirty slide
 sequentially ("Saving 2/4…"), reports failures by slide number, and — unlike before —
-**does not close the editor**. **"Save & apply to all"
-(2026-07-24):** on carousels with >1 image, a second top-bar button saves the slide and carries
-its full look — role-matched layer position/width/font/size/weight/color/align/line-height +
-scrim — onto every sibling (each keeps its own text; autofit reshrinks). Pure transfer =
-`src/lib/canvas/apply-style.ts`; the SURFACE orchestrates the
-siblings through `useGenerateVisuals.applyStyle` (review/calendar) or
-`applyStyleAcrossDraft` (wizard), with the same serial queue, "Adding text…" slot feedback and
-degrade-to-current-image failure posture as auto-compose. Doc-less siblings are seeded, styled
-and composed in one pass. Because applying hands every sibling doc back to the surface, that path
-alone still closes the editor — its in-memory copies are stale the moment the surface rewrites them.
+**does not close the editor**. **Apply style (2026-08-16, replacing "Save & apply to all"):** on a
+carousel, a top-bar button opens a panel that PREVIEWS the result on every other slide — each tile
+is the same `applyStyleToDoc` + autofit the Apply performs, rastered at 0.35 through
+`exportDocToJpegBlob`, built one at a time because each raises an offscreen Konva stage. Tick the
+slides you want; Apply commits into each slide's own history (one undo step each, plus an Undo in
+the panel), and nothing is written until Save. The source slide is never in its own list —
+`applyStyleToDoc` matches the FIRST node of a role, so applying a doc to itself would snap a
+duplicated headline onto the original's geometry (pinned by a test). Transfers position, width,
+font, size, weight, colour, alignment, line spacing, rotation, caps, italics, marker highlight and
+the scrim; each slide keeps its own words, and a slide with only user-added text is offered
+disabled. The whole server-side orchestration this replaces — `applyStyleToPostSibling`,
+`applyStyleToDraftSibling`, `useGenerateVisuals.applyStyle`, `applyStyleAcrossDraft` and the
+`onApplyToAll` prop — is deleted.
 
 **Background reposition + text rotation (2026-07-24):** the background is no longer fixed. A
 "Background" panel section enters **Reposition mode** — text/scrim dim to 35% and lock, dragging
@@ -371,7 +374,7 @@ The pure pan/zoom math lives in `src/lib/canvas/reposition.ts` (slack-normalized
 focus-invariant zoom — node-tested). Text layers rotate via the transformer's **rotate handle**
 (snaps at 0/±45/±90/180, tolerance 6°) or an exact degrees input in the panel; the inline-edit
 textarea anchors at the unrotated pivot and mirrors the tilt via CSS `rotate()`. Rotation
-propagates through "Save & apply to all" (part of the look — an unrotated source un-tilts
+propagates through the apply-style panel (part of the look — an unrotated source un-tilts
 siblings); the background crop does NOT (each slide's crop belongs to its own art).
 
 **Editing target** is a discriminated union: `{ kind:'post', postId, position }` (GET on open, PUT
@@ -477,7 +480,7 @@ appears. (The stage's dedup by-products stayed: shared `lib/canvas/clamp.ts` and
 
 ✅ **Quick wins shipped 2026-07-24 (commit `a04f1f9`):** §6.1 slide-role prompt hints with the
 alternating rich/quiet rhythm (see Phase 3 prompt contract), auto-recompose on persisted-post
-copy edits (ex-TECH-DEBT 2.5) and "Save & apply to all" (ex-TECH-DEBT 2.6) — details woven into
+copy edits (ex-TECH-DEBT 2.5) and the apply-style panel (ex-TECH-DEBT 2.6) — details woven into
 the sections above.
 
 ✅ **Background reposition (crop/pan/zoom) + text rotation shipped 2026-07-24** — the two
@@ -601,7 +604,7 @@ per-layer by design; doodles were already covered by generated SVG elements.
   `textGroupAttrs` carries position, `textNodeAttrs` is glyph-only — editor and exporter mirror
   the same structure. Width-resize folds scale into the text child mid-gesture; bands snap to
   the new wrap on release (one doc commit per gesture). Both flags copy with
-  "Save & apply to all"; `PanelCheckbox` now backs every panel checkbox row.
+  the apply-style transfer; `PanelCheckbox` was itself deleted in the Wave-5 chrome rebuild.
 
 **Setup:** migrations `20260718_create_brand_visual_identity.sql` +
 `20260721_strip_legacy_visual_identity_fields.sql` + `20260722_post_images_unique_position.sql` +

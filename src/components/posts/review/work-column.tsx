@@ -19,7 +19,6 @@ import type { EditorSlide, EditorTarget } from '@/features/canvas-editor/types'
 import { VisualFrame } from './visual-frame'
 import { updateSlideField } from '@/components/posts/slides-edit'
 import type { DraftVisual } from '@/lib/visual/draft-visuals'
-import type { CanvasDoc } from '@/types/canvas'
 import type { CarouselSlide, PostImage } from '@/types/api'
 import type { PostData } from '@/types/post'
 
@@ -41,13 +40,6 @@ interface WorkColumnProps {
   onRegenerateVisual: (position: number) => void
   onReplaceVisual: (position: number, file: File) => Promise<boolean>
   onEditedVisual: (draftId: string, visual: DraftVisual) => void
-  /** `savedImages` is the file at each position as of the editor's own save — see CanvasEditorProps. */
-  onApplyStyleToAll: (
-    post: PostData,
-    sourcePosition: number,
-    doc: CanvasDoc,
-    savedImages: Map<number, { publicUrl: string; storagePath: string }>
-  ) => void
   /** Overrides the wizard-draft editor target — the queue points at persisted posts. */
   editorTarget?: EditorTarget
   /** Post-target editor saves land here (CanvasEditor onSaved); draft saves keep onEditedVisual. */
@@ -78,7 +70,6 @@ export function WorkColumn({
   onRegenerateVisual,
   onReplaceVisual,
   onEditedVisual,
-  onApplyStyleToAll,
   editorTarget,
   onSavedImage,
 }: WorkColumnProps) {
@@ -92,9 +83,6 @@ export function WorkColumn({
   const title = post.topic_summary || slides[0]?.headline || workingCaption.slice(0, 60) || 'Draft'
   const activeVisual = visuals?.find((v) => v.position === slideIdx)
   const activeSlide = slides[slideIdx]
-  const doneVisualCount = (visuals ?? []).filter(
-    (v) => v.status === 'done' && !!v.publicUrl && !!v.storagePath
-  ).length
   const canEditActive =
     activeVisual?.status === 'done' && !!activeVisual.publicUrl && !!activeVisual.storagePath
 
@@ -356,12 +344,6 @@ export function WorkColumn({
               storagePath: visual.storagePath,
               canvasDoc: doc,
             })
-          }
-          onApplyToAll={
-            isCarousel && doneVisualCount > 1
-              ? // Local caption/slide edits ride along so doc-less siblings seed from fresh copy.
-                (doc, position, saved) => onApplyStyleToAll(workingPost, position, doc, saved)
-              : undefined
           }
         />
       )}

@@ -215,7 +215,7 @@ export const ScheduleCard = memo(function ScheduleCard({
     [post]
   )
 
-  const { generatingPositions, composingPositions, generate, recompose, applyStyle } =
+  const { generatingPositions, composingPositions, generate, recompose } =
     useGenerateVisuals(post?.id ?? '', handleImageUploaded, getSlideCopy)
   const [editingPosition, setEditingPosition] = useState<number | null>(null)
 
@@ -675,24 +675,6 @@ export const ScheduleCard = memo(function ScheduleCard({
           initialPosition={editingPosition}
           onClose={() => setEditingPosition(null)}
           onSaved={handleImageUploaded}
-          onApplyToAll={
-            images.length > 1
-              ? (doc, position, saved) => {
-                  void applyStyle(
-                    doc,
-                    position,
-                    {
-                      post_type: currentPost.post_type,
-                      slides_json: currentPost.slides_json,
-                      caption: currentPost.caption ?? null,
-                    },
-                    // The editor's paths win where it has one: it just saved these slides, and each
-                    // restyle is guarded against the file currently at that position.
-                    images.map((image) => ({ ...image, ...(saved.get(image.position) ?? {}) }))
-                  )
-                }
-              : undefined
-          }
         />
       )}
     </div>

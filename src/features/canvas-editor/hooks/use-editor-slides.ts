@@ -45,8 +45,20 @@ export interface EditorSlidesState extends EditorDocState {
   activePosition: number
   goToSlide: (position: number) => void
   initDocs: (prepare: (doc: CanvasDoc, seeded: boolean) => CanvasDoc) => void
-  /** Every slide's current doc. The font union covers them all, because any slide can be exported. */
-  allDocs: CanvasDoc[]
+  /**
+   * Commit the same mutation to several NAMED slides, one undo step each.
+   *
+   * Deliberately plural, and deliberately not a singular `transformAt(position, …)`. A singular
+   * verb invites a caller to name a position at call time — the exact hazard `transformDoc`'s
+   * comment below exists to prevent, since an op that resolves after the user has moved on would
+   * then land on the wrong slide. Nothing has one target but the active slide; the only thing with
+   * several is a panel where the user has just ticked them by hand.
+   */
+  transformSlides: (positions: number[], mutate: (doc: CanvasDoc) => CanvasDoc) => void
+  /** Step several named slides back one entry each — the undo half of `transformSlides`. */
+  undoSlides: (positions: number[]) => void
+  /** Every slide's current doc, by position. Reactive, unlike `docAt`. */
+  docsByPosition: Map<number, CanvasDoc>
   docAt: (position: number) => CanvasDoc | null
   /** The file stored at each position: the save's stale-guard, and the slide strip's thumbnails. */
   images: Map<number, SlideImage>
@@ -141,36 +153,44 @@ export function useEditorSlides(
     [load]
   )
 
+  /**
+   * Step the named slides' histories, one entry each, in a single state update.
+   *
+   * Every position arrives as an argument and the update is functional, so this closes over
+   * nothing and never goes stale. The Map is copied once for the whole set, and an all-no-op call
+   * returns the same Map — which is what keeps a no-op action from re-rendering the editor.
+   */
+  const stepSlides = useCallback(
+    (positions: number[], step: (history: DocHistory) => DocHistory) => {
+      setHistories((current) => {
+        let next: Map<number, DocHistory> | null = null
+        for (const position of positions) {
+          const history = current.get(position)
+          if (!history) continue
+          const stepped = step(history)
+          if (stepped === history) continue
+          next ??= new Map(current)
+          next.set(position, stepped)
+        }
+        return next ?? current
+      })
+    },
+    []
+  )
+
   // Bound to the slide that was active when it was created, NOT to whatever is active when it
   // runs. That is what keeps a 60s AI op honest: the callback an op closed over at its start
   // commits to the slide it was started from, even if the user has moved on. Reading the position
   // from a ref here would look equivalent and would silently land those results on the wrong slide.
   const transformDoc = useCallback<TransformDoc>(
-    (mutate, options) => {
-      setHistories((current) => {
-        const history = current.get(activePosition)
-        if (!history) return current
-        const next = commitHistory(history, mutate, options)
-        // The history core returns the same object for a structural no-op; passing it through
-        // means a no-op action does not re-render the editor either.
-        if (next === history) return current
-        return new Map(current).set(activePosition, next)
-      })
-    },
-    [activePosition]
+    (mutate, options) => stepSlides([activePosition], (history) => commitHistory(history, mutate, options)),
+    [stepSlides, activePosition]
   )
 
-  const stepHistory = useCallback(
-    (step: (history: DocHistory) => DocHistory) => {
-      setHistories((current) => {
-        const history = current.get(activePosition)
-        if (!history) return current
-        const next = step(history)
-        if (next === history) return current
-        return new Map(current).set(activePosition, next)
-      })
-    },
-    [activePosition]
+  const transformSlides = useCallback(
+    (positions: number[], mutate: (doc: CanvasDoc) => CanvasDoc) =>
+      stepSlides(positions, (history) => commitHistory(history, mutate)),
+    [stepSlides]
   )
 
   const markSaved = useCallback(({ position, exported, stored, image }: SavedSlide) => {
@@ -199,11 +219,15 @@ export function useEditorSlides(
     [histories, saved]
   )
 
-  const allDocs = useMemo(() => {
+  const docsByPosition = useMemo(() => {
     // Before the histories exist the resolved docs are the only ones there are — and the font union
     // must already cover them, or a seeded slide would autofit against a face that is not loaded.
-    if (histories.size > 0) return [...histories.values()].map((history) => history.present)
-    return load.status === 'ready' ? [...load.resolved.values()].map((slide) => slide.doc) : []
+    if (histories.size > 0) {
+      return new Map([...histories].map(([position, history]) => [position, history.present]))
+    }
+    return load.status === 'ready'
+      ? new Map([...load.resolved].map(([position, slide]) => [position, slide.doc]))
+      : new Map<number, CanvasDoc>()
   }, [histories, load])
 
   const backgroundUrl =
@@ -220,15 +244,20 @@ export function useEditorSlides(
     activePosition,
     goToSlide: setActivePosition,
     initDocs,
-    allDocs,
+    transformSlides,
+    undoSlides: useCallback(
+      (positions: number[]) => stepSlides(positions, undoHistory),
+      [stepSlides]
+    ),
+    docsByPosition,
     docAt: useCallback((position) => latestHistories.current.get(position)?.present ?? null, []),
     images,
     backgroundUrl,
     dirtyPositions,
     dirty: dirtyPositions.length > 0,
     markSaved,
-    undo: useCallback(() => stepHistory(undoHistory), [stepHistory]),
-    redo: useCallback(() => stepHistory(redoHistory), [stepHistory]),
+    undo: useCallback(() => stepSlides([activePosition], undoHistory), [stepSlides, activePosition]),
+    redo: useCallback(() => stepSlides([activePosition], redoHistory), [stepSlides, activePosition]),
     canUndo: (activeHistory?.past.length ?? 0) > 0,
     canRedo: (activeHistory?.future.length ?? 0) > 0,
   }

@@ -251,38 +251,6 @@ export function useDraftVisuals() {
     [visualsByDraft, draftController, runDraftComposeTask, clientIdentity]
   )
 
-  /** "Save & apply to all" from the draft editor: restyle every other slide with the source's look. */
-  const applyStyleAcrossDraft = useCallback(
-    (post: DraftPostInput, sourcePosition: number, sourceDoc: CanvasDoc) => {
-      const visuals = visualsByDraft[post.id] ?? []
-      const { signal } = draftController(post.id)
-      for (const visual of visuals) {
-        if (visual.position === sourcePosition) continue
-        if (visual.status !== 'done' || !visual.publicUrl || !visual.storagePath) continue
-        const { canvasDoc, publicUrl, storagePath } = visual
-        const slideCopy = slideCopyAt(post, visual.position)
-        if (!slideCopy) continue
-        runDraftComposeTask(post, visual, signal, async () => {
-          const { applyStyleToDraftSibling } = await import('@/features/canvas-editor/lib/auto-compose')
-          const identity = await clientIdentity(post.client_id)
-          return applyStyleToDraftSibling({
-            clientId: post.client_id,
-            draftId: post.id,
-            position: visual.position,
-            identity,
-            slideCopy,
-            doc: canvasDoc ?? null,
-            // No doc = compose never ran, so the shown file IS the clean background (keep it);
-            // with a doc the shown file is a flattened artifact and gets replaced.
-            clean: canvasDoc ? canvasDoc.background : { publicUrl, storagePath },
-            source: sourceDoc,
-            previousFlattenedPath: canvasDoc ? storagePath : undefined,
-          })
-        })
-      }
-    },
-    [visualsByDraft, draftController, runDraftComposeTask, clientIdentity]
-  )
 
   /**
    * Replace one slide's art with a user-supplied image. The upload becomes the
@@ -385,7 +353,6 @@ export function useDraftVisuals() {
     applyEditedVisual,
     replaceVisual,
     recomposeDraft,
-    applyStyleAcrossDraft,
     abandonDraft,
     discardDraft,
     resetAll,

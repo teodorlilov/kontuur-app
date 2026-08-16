@@ -22,7 +22,14 @@ import { highlightBands } from './measure-fit'
  */
 export async function exportDocToJpegBlob(
   doc: CanvasDoc,
-  backgroundImage: HTMLImageElement
+  backgroundImage: HTMLImageElement,
+  /**
+   * Raster scale. 1 is the save path and must stay the default — the 1079/1081 rounding above is
+   * exactly why. A preview passes a fraction, which shrinks the SECOND render `toBlob` performs
+   * (Konva rasterizes into its own canvas, so `layer.draw()` below is a discarded first pass whose
+   * cost goes with stage area × devicePixelRatio²).
+   */
+  pixelRatio = 1
 ): Promise<Blob> {
   // Hidden nodes leave here, before the load — not just before the draw. A missing asset THROWS
   // (a save must never silently bake a hole), so loading a hidden node's asset would let one broken
@@ -96,7 +103,7 @@ export async function exportDocToJpegBlob(
       stage.toBlob({
         mimeType: 'image/jpeg',
         quality: 0.9,
-        pixelRatio: 1,
+        pixelRatio,
         callback: (blob) =>
           blob ? resolve(blob) : reject(new Error('Canvas export produced no blob')),
       })

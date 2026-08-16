@@ -24,7 +24,6 @@ import {
 } from '@/lib/visual/draft-visuals'
 import type { PillarAllocation } from '@/features/generate/lib/run-plan'
 import type { SkippedPillar } from '@/ai/research/types'
-import type { CanvasDoc } from '@/types/canvas'
 import type { CarouselSlide } from '@/types/api'
 import type { PostData, ValidationData } from '@/types/post'
 
@@ -60,7 +59,6 @@ interface ReviewViewProps {
   onRegenerateVisual: (post: PostData, position: number) => void
   onReplaceVisual: (post: PostData, position: number, file: File) => Promise<boolean>
   onEditedVisual: (draftId: string, visual: DraftVisual) => void
-  onApplyStyleToAll: (post: PostData, sourcePosition: number, doc: CanvasDoc) => void
   /** Post-POST bookkeeping — the POST itself happens here, where edits live. */
   /** `savedPostId` is the row the POST created — the draft id does not exist in `posts`. */
   onApproved: (postId: string, savedPostId: string) => void
@@ -88,7 +86,6 @@ export function ReviewView({
   onRegenerateVisual,
   onReplaceVisual,
   onEditedVisual,
-  onApplyStyleToAll,
   onApproved,
   onDiscarded,
   onRewritten,
@@ -358,7 +355,6 @@ export function ReviewView({
               onRegenerateVisual={(position) => onRegenerateVisual(focused.post, position)}
               onReplaceVisual={(position, file) => onReplaceVisual(focused.post, position, file)}
               onEditedVisual={onEditedVisual}
-              onApplyStyleToAll={onApplyStyleToAll}
             />
             {/* Stacks under the work column below 900px — never hidden: the
                 quality and source panel is the reason this screen is a review. */}

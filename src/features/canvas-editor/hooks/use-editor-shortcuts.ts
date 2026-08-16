@@ -6,7 +6,7 @@ import { useEffect, useRef } from 'react'
 const NUDGE_STEP = 1
 const BIG_NUDGE_STEP = 10
 
-export interface EditorShortcutHandlers {
+interface EditorShortcutHandlers {
   /** The Escape ladder: leave the active mode, then the selection, then the editor. */
   onEscape: () => void
   undo: () => void
@@ -27,15 +27,23 @@ export interface EditorShortcutHandlers {
  * The editor's keyboard canon. Never fires while typing — the inline-edit textarea and every panel
  * input keep their own keys. Unlike the page-level surfaces this deliberately runs inside a dialog:
  * the editor IS the dialog that suspends them.
+ *
+ * `suspended` covers the editor's OWN dialogs (the apply-style panel, the shortcuts sheet, the
+ * discard confirmation). Those portal outside this subtree, so a target check cannot see them — and
+ * without this, ⌘Z pressed over an open panel silently undoes on the canvas behind it. It is read
+ * through a ref rather than re-installing the listener, so the handler contract stays stable.
  */
-export function useEditorShortcuts(handlers: EditorShortcutHandlers) {
+export function useEditorShortcuts(handlers: EditorShortcutHandlers, suspended = false) {
   const ref = useRef(handlers)
+  const suspendedRef = useRef(suspended)
   useEffect(() => {
     ref.current = handlers
+    suspendedRef.current = suspended
   })
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
+      if (suspendedRef.current) return
       const target = event.target as HTMLElement | null
       if (target && /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName)) return
       if (target?.isContentEditable) return

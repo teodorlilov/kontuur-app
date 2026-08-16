@@ -52,20 +52,4 @@ export interface CanvasEditorProps {
   onSaved?: (image: PostImage) => void
   /** Draft save result: the flattened upload + the doc to hold in wizard memory. */
   onSavedDraft?: (visual: DraftVisualResult, doc: CanvasDoc) => void
-  /**
-   * Enables "Save & apply to all": every dirty slide saves, then the surface receives the ACTIVE
-   * slide's doc and the position it came from, and carries that look onto the others server-side.
-   * That hands authority over every sibling doc back to the surface, so this path — unlike a plain
-   * Save — still closes the editor.
-   *
-   * `images` is the file at each position AS OF the save that just ran. The surface's own copy is
-   * a render-time snapshot from before it, and every sibling this call restyles is guarded against
-   * the path it was opened with — so passing the stale one makes each just-saved sibling 409 and
-   * be skipped in silence.
-   */
-  onApplyToAll?: (
-    doc: CanvasDoc,
-    position: number,
-    images: Map<number, { publicUrl: string; storagePath: string }>
-  ) => void
 }

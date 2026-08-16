@@ -1,6 +1,5 @@
-import { applyStyleToDoc } from '@/lib/canvas/apply-style'
 import { isTextNode, textNodes } from '@/lib/canvas/doc-nodes'
-import { rebindDocToImage, resolveDocForImage } from '@/lib/canvas/resolve-doc'
+import { rebindDocToImage } from '@/lib/canvas/resolve-doc'
 import { applyCopyToDoc, seedCanvasDoc, type SeedIdentity } from '@/lib/canvas/seed-doc'
 import type { CanvasBackgroundRef, CanvasDoc, CanvasNode } from '@/types/canvas'
 import type { PostImage } from '@/types/api'
@@ -119,50 +118,5 @@ export async function recomposeDraftVisual(input: {
 }): Promise<{ visual: DraftVisualResult; doc: CanvasDoc }> {
   const updated = applyCopyToDoc(input.doc, copyFields(input.slideCopy))
   const { doc: fitted, blob } = await composeDoc(updated)
-  return saveDraftCanvas(input, input.position, fitted, blob, input.previousFlattenedPath)
-}
-
-/**
- * "Apply to all slides" on a persisted sibling: reuse its doc (or seed one over its current image),
- * carry the source slide's look onto it, re-flatten and save. Null = nothing to compose.
- */
-export async function applyStyleToPostSibling(input: {
-  postId: string
-  position: number
-  image: { publicUrl: string; storagePath: string }
-  slideCopy: SlideCopy | null
-  source: CanvasDoc
-}): Promise<PostImage | null> {
-  const body = await fetchCanvasState(input.postId, input.position)
-  if (!body.ok) return null
-  if (!body.identity) return null
-
-  const background = { publicUrl: input.image.publicUrl, storagePath: input.image.storagePath }
-  const doc = body.doc
-    ? resolveDocForImage(body.doc, background)
-    : input.slideCopy && seedFromCopy(body.identity, background, input.slideCopy)
-  if (!doc || textNodes(doc).length === 0) return null
-
-  const styled = applyStyleToDoc(doc, input.source)
-  const { doc: fitted, blob } = await composeDoc(styled)
-  return savePostCanvas(input.postId, input.position, fitted, blob, input.image.storagePath)
-}
-
-/** "Apply to all slides" on a wizard draft sibling (doc reused or seeded, then styled + re-baked). */
-export async function applyStyleToDraftSibling(input: {
-  clientId: string
-  draftId: string
-  position: number
-  identity: SeedIdentity
-  slideCopy: SlideCopy
-  doc: CanvasDoc | null
-  clean: CanvasBackgroundRef
-  source: CanvasDoc
-  previousFlattenedPath?: string
-}): Promise<{ visual: DraftVisualResult; doc: CanvasDoc } | null> {
-  const doc = input.doc ?? seedFromCopy(input.identity, input.clean, input.slideCopy)
-  if (!doc) return null
-  const styled = applyStyleToDoc(doc, input.source)
-  const { doc: fitted, blob } = await composeDoc(styled)
   return saveDraftCanvas(input, input.position, fitted, blob, input.previousFlattenedPath)
 }

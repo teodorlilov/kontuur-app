@@ -47,7 +47,6 @@ import {
 } from '@/features/review/lib/discard-reasons'
 import type { QueuePost } from '@/features/review/lib/queue-post'
 import type { ReviewDraft } from '@/components/posts/review/types'
-import type { CanvasDoc } from '@/types/canvas'
 import type { CarouselSlide, BestTimePlatform, PostImage, SlopDetection } from '@/types/api'
 import type { ValidationData } from '@/types/post'
 
@@ -774,22 +773,6 @@ export function ReviewQueue({
                   onEditedVisual={() => {
                     // Post-target saves come back through onSavedImage; nothing draft-side.
                   }}
-                  onApplyStyleToAll={(post, sourcePosition, doc: CanvasDoc, saved) =>
-                    void visuals.applyStyle(
-                      doc,
-                      sourcePosition,
-                      {
-                        post_type: post.post_type,
-                        slides_json: post.slides_json,
-                        caption: post.caption,
-                      },
-                      // The ref is a render behind and cannot hold the slides the editor saved a
-                      // moment ago; its paths would 409 every one of them. The editor's map wins.
-                      (postsRef.current.find((p) => p.id === focused.post.id)?.images ?? []).map(
-                        (image) => ({ ...image, ...(saved.get(image.position) ?? {}) })
-                      )
-                    )
-                  }
                   editorTarget={{ kind: 'post', postId: focused.post.id }}
                   onSavedImage={mergeImage}
                 />

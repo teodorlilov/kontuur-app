@@ -39,9 +39,11 @@ import { useEditorShortcuts } from '../hooks/use-editor-shortcuts'
 import { useInlineTextEdit } from '../hooks/use-inline-text-edit'
 import { useStageViewport } from '../hooks/use-stage-viewport'
 import { autofitDocText, overflowingTextLabels } from '../lib/measure-fit'
+import { styledDoc } from '../lib/style-preview'
 import type { CanvasEditorProps } from '../types'
 import { EditorStage } from './editor-stage'
 import { ViewportControls } from './viewport-controls'
+import { ApplyStylePanel } from './workspace/apply-style-panel'
 import { ModeBar } from './workspace/mode-bar'
 import { Rail, useRailSection } from './workspace/rail'
 import { RailPanel } from './workspace/rail-panel'
@@ -84,7 +86,7 @@ const REMOVE_OBJECT_PROMPT =
   'remove the marked object completely and seamlessly continue the surrounding background'
 
 /** The full-screen canvas editor. Holds the whole carousel; all Konva code lives beneath this file. */
-export function CanvasEditorOverlay(props: CanvasEditorProps) {
+function CanvasEditorOverlay(props: CanvasEditorProps) {
   const { target, slides, onClose } = props
   const isMobile = useIsMobile(MIN_VIEWPORT_WIDTH)
   const slidesState = useEditorSlides(target, slides, props.initialPosition)
@@ -99,6 +101,7 @@ export function CanvasEditorOverlay(props: CanvasEditorProps) {
   const [showShortcuts, setShowShortcuts] = useState(false)
   const [railSection, setRailSection] = useRailSection()
   const [confirmingClose, setConfirmingClose] = useState(false)
+  const [applyingStyle, setApplyingStyle] = useState(false)
   const modeState = useEditorMode(selection.clear)
   const { mode, strokes, brushSize, inpaintPrompt, lassoDetect } = modeState
   // Read from the live prop, not from the load: the surface's copy edits ride in while the editor
@@ -112,14 +115,14 @@ export function CanvasEditorOverlay(props: CanvasEditorProps) {
     const style = getBrandStyle(identity.style)
     // Every slide's families, not just the active one: any slide can be exported by a Save, and a
     // family that is not loaded bakes as a system face.
-    const docFamilies = slidesState.allDocs.flatMap((doc) =>
+    const docFamilies = [...slidesState.docsByPosition.values()].flatMap((doc) =>
       textNodes(doc).map((node) => node.fontFamily)
     )
     // Sorted, because `useEditorFonts` keys readiness on the joined list: in node order, merely
     // restacking two text layers reorders it, which reads as a new set and flips fontsReady
     // false for a frame — unmounting the stage over a z-order change.
     return [...new Set([...docFamilies, style.fonts.display, style.fonts.body])].sort()
-  }, [identity, slidesState.allDocs])
+  }, [identity, slidesState.docsByPosition])
 
   const fontsReady = useEditorFonts(families)
   // Memoized because it is not cheap: every layer gets a synchronous Konva text-wrap measure, and
@@ -284,7 +287,10 @@ export function CanvasEditorOverlay(props: CanvasEditorProps) {
     fitToScreen: viewport.fit,
     actualSize: viewport.actualSize,
     showShortcuts: () => setShowShortcuts(true),
-  })
+  },
+  // The editor's own dialogs portal outside this subtree, so the handler's target check cannot see
+  // them. Without this, ⌘Z over an open panel undoes on the canvas behind it.
+  applyingStyle || showShortcuts || confirmingClose)
 
   // The browser's own guard for the tab closing on unsaved work — the in-app ladder only covers
   // the editor's own close paths.
@@ -320,24 +326,20 @@ export function CanvasEditorOverlay(props: CanvasEditorProps) {
         canRedo={slidesState.canRedo}
         undo={slidesState.undo}
         redo={slidesState.redo}
-        saving={saving === 'save'}
-        applying={saving === 'all'}
+        saving={saving}
         progress={progress}
         // Nothing to save is a real state now that the editor stays open after saving — the button
         // stops offering an action that would do nothing.
         canSave={ready && !saving && mode === 'edit' && slidesState.dirty}
-        canApplyToAll={ready && !saving && mode === 'edit'}
+        canApplyStyle={ready && !saving && mode === 'edit'}
         onCancel={attemptClose}
         onShowShortcuts={() => setShowShortcuts(true)}
         onSave={() => {
-          void performSave(false)
+          void performSave()
         }}
-        onApplyToAll={
-          props.onApplyToAll
-            ? () => {
-                void performSave(true)
-              }
-            : undefined
+        // One slide has nothing to apply its style to — the same gate the slide strip uses.
+        onApplyStyle={
+          slidesState.positions.length > 1 ? () => setApplyingStyle(true) : undefined
         }
       />
       <div className="flex min-h-0 flex-1">
@@ -544,6 +546,17 @@ export function CanvasEditorOverlay(props: CanvasEditorProps) {
           )}
         </div>
       </div>
+      <ApplyStylePanel
+        open={applyingStyle}
+        onClose={() => setApplyingStyle(false)}
+        sourcePosition={slidesState.activePosition}
+        positions={slidesState.positions}
+        docsByPosition={slidesState.docsByPosition}
+        onApply={(targets, source) =>
+          slidesState.transformSlides(targets, (doc) => styledDoc(doc, source))
+        }
+        onUndo={slidesState.undoSlides}
+      />
       <ShortcutsSheet open={showShortcuts} onClose={() => setShowShortcuts(false)} />
       <ConfirmDialog
         open={confirmingClose}
@@ -564,6 +577,8 @@ export function CanvasEditorOverlay(props: CanvasEditorProps) {
   )
 }
 
+// Default-only, deliberately: the sole consumer is a `dynamic(() => import(…))` boundary, and a
+// second named export would be another door into the chunk that is meant to load on demand.
 export default CanvasEditorOverlay
 
 /** What the discard confirmation says is at stake — by slide, when there is more than one. */

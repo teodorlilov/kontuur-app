@@ -8,7 +8,6 @@ import { MAX_CONCURRENT_VISUAL_REQUESTS } from '@/lib/visual/limits'
 import { StaleImageError } from '@/features/canvas-editor/lib/save-canvas'
 import { slideCopyAt, type SlideCopySource } from '@/features/canvas-editor/lib/slide-copy'
 import type { SlideCopy } from '@/features/canvas-editor/types'
-import type { CanvasDoc } from '@/types/canvas'
 import type { PostImage } from '@/types/api'
 import type { PostImageRow } from '@/types/index'
 
@@ -74,18 +73,16 @@ export function useGenerateVisuals(
     [postId, onImage, getSlideCopy]
   )
 
-  // Shared skeleton for the post-hoc compose passes (recompose after a copy edit, apply-style-to-
-  // all): serial, slot feedback via composingPositions, one summary toast covering all failures.
+  // The post-hoc compose pass — re-baking every position after a copy edit: serial, slot feedback
+  // via composingPositions, one summary toast covering all failures.
   const runComposePass = useCallback(
     async (
       images: PostImage[],
-      exclude: number | null,
       task: (image: PostImage) => Promise<PostImage | null>,
       failureMessage: string
     ) => {
       const targets = images.filter(
         (image) =>
-          image.position !== exclude &&
           !generatingPositions.includes(image.position) &&
           !composingPositions.includes(image.position)
       )
@@ -122,7 +119,6 @@ export function useGenerateVisuals(
     (source: SlideCopySource, images: PostImage[]) =>
       runComposePass(
         images,
-        null,
         async (image) => {
           const slideCopy = slideCopyAt(source, image.position)
           if (!slideCopy) return null
@@ -139,26 +135,6 @@ export function useGenerateVisuals(
     [postId, runComposePass]
   )
 
-  // "Save & apply to all": carry the saved slide's look onto every sibling (TECH-DEBT 2.6).
-  const applyStyle = useCallback(
-    (sourceDoc: CanvasDoc, sourcePosition: number, source: SlideCopySource, images: PostImage[]) =>
-      runComposePass(
-        images,
-        sourcePosition,
-        async (image) => {
-          const { applyStyleToPostSibling } = await import('@/features/canvas-editor/lib/auto-compose')
-          return applyStyleToPostSibling({
-            postId,
-            position: image.position,
-            image: { publicUrl: image.publicUrl, storagePath: image.storagePath },
-            slideCopy: slideCopyAt(source, image.position),
-            source: sourceDoc,
-          })
-        },
-        'Some slides could not be restyled — open them in the editor to adjust.'
-      ),
-    [postId, runComposePass]
-  )
 
   const generate = useCallback(
     async (positions: number[]) => {
@@ -188,5 +164,5 @@ export function useGenerateVisuals(
     [postId, onImage, generatingPositions, composeTail]
   )
 
-  return { generatingPositions, composingPositions, generate, recompose, applyStyle }
+  return { generatingPositions, composingPositions, generate, recompose }
 }

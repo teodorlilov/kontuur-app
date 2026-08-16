@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { cn } from '@/utils/cn'
 import { EDITOR_ICON_BUTTON } from './chrome'
 
-export interface TopBarProps {
+interface TopBarProps {
   /** Where you are in the carousel. Derived here, so nothing upstream can name the slide twice. */
   position: number
   slideCount: number
@@ -17,15 +17,15 @@ export interface TopBarProps {
   undo: () => void
   redo: () => void
   saving: boolean
-  applying: boolean
   /** Slides finished out of slides in the run — only set while several are saving at once. */
   progress: { done: number; total: number } | null
   canSave: boolean
-  /** Applying stays available with nothing dirty — it carries an existing look onto the siblings. */
-  canApplyToAll: boolean
+  /** Carrying a look onto the siblings stays available with nothing dirty — it is its own action. */
+  canApplyStyle: boolean
   onCancel: () => void
   onSave: () => void
-  onApplyToAll?: () => void
+  /** Opens the apply-style panel. Absent on a single-slide post, which has nothing to apply to. */
+  onApplyStyle?: () => void
   onShowShortcuts: () => void
 }
 
@@ -104,16 +104,15 @@ export function TopBar(props: TopBarProps) {
       <Button variant="secondary" size="sm" onClick={props.onCancel}>
         Cancel
       </Button>
-      {props.onApplyToAll && (
+      {props.onApplyStyle && (
         <Button
           variant="secondary"
           size="sm"
-          loading={props.applying}
-          disabled={!props.canApplyToAll}
-          onClick={props.onApplyToAll}
-          title="Save this slide and carry its style onto every other slide (each keeps its own text)"
+          disabled={!props.canApplyStyle}
+          onClick={props.onApplyStyle}
+          title="Carry this slide's type and scrim onto the other slides (each keeps its own words)"
         >
-          Save &amp; apply to all
+          Apply style…
         </Button>
       )}
       {/* The one commitment in this header, and so the one lime answer on the screen. */}
