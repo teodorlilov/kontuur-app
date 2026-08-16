@@ -31,6 +31,9 @@ function styledNode(target: CanvasTextNode, source: CanvasTextNode): CanvasTextN
     shadowOffsetY: source.shadowOffsetY,
     stroke: source.stroke,
     strokeWidth: source.strokeWidth,
+    // `arcBend` deliberately does NOT travel. An arc only renders on a single line, so carrying it
+    // onto a sibling whose text wraps would set a field that draws nothing — the slide would look
+    // untouched while claiming the style was applied. Arch is a per-slide decision.
   }
 }
 

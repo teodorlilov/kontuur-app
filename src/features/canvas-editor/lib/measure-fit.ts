@@ -24,6 +24,16 @@ function measuredHeight(node: CanvasTextNode, fontSize: number): number {
   return measureText(node, fontSize).height()
 }
 
+/**
+ * Whether the node's text fits on one line at its current width.
+ *
+ * The arc needs it: bending works per line, and the renderer would have to replicate Konva's own
+ * wrap to know where each line starts and how long it is. A wrapped node stays straight.
+ */
+export function isSingleLine(node: CanvasTextNode): boolean {
+  return measureText(node, node.fontSize).textArr.length <= 1
+}
+
 /** Marker-band rects for the node's current wrap; [] when it has no highlight. */
 export function highlightBands(node: CanvasTextNode): MarkerBandAttrs[] {
   if (!node.highlight) return []

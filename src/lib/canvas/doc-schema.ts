@@ -44,6 +44,7 @@ const textNodeSchema = z.object({
   shadowOffsetY: z.number().min(-200).max(200).optional(),
   stroke: hex.optional(),
   strokeWidth: z.number().min(0).max(40).optional(),
+  arcBend: z.number().min(-1).max(1).optional(),
   textOverridden: z.boolean().optional(),
 })
 

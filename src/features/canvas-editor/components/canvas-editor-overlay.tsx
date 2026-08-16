@@ -76,6 +76,7 @@ const CONTINUOUS_FIELDS = [
   'shadowBlur',
   'shadowOffsetX',
   'shadowOffsetY',
+  'arcBend',
 ] as const
 
 /**

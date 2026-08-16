@@ -10,6 +10,7 @@ import {
   type TextEffectId,
 } from '@/lib/canvas/text-effects'
 import type { CanvasTextNode } from '@/types/canvas'
+import { isSingleLine } from '../../lib/measure-fit'
 import { PanelSlider } from '../panel-slider'
 import { EDITOR_LABEL } from './chrome'
 import { ToolbarPopover } from './toolbar-popover'
@@ -30,6 +31,10 @@ interface TextEffectsPopoverProps {
 export function TextEffectsPopover({ node, onChange }: TextEffectsPopoverProps) {
   const active = activeTextEffect(node)
   const activeLabel = TEXT_EFFECT_PRESETS.find((preset) => preset.id === active)?.label
+  const bend = node.arcBend ?? 0
+  // An arc is placed along ONE line: bending a wrapped node would need each line's own start and
+  // length, which means replicating Konva's wrap. The control says so rather than going quiet.
+  const canArc = isSingleLine(node)
 
   return (
     <ToolbarPopover
@@ -93,6 +98,31 @@ export function TextEffectsPopover({ node, onChange }: TextEffectsPopoverProps) 
               />
             </>
           )}
+          <div className="mt-1 border-t border-line pt-2">
+            <PanelSlider
+              label={`Arch · ${Math.round(bend * 100)}`}
+              min={-100}
+              max={100}
+              step={2}
+              value={Math.round(bend * 100)}
+              disabled={!canArc}
+              onChange={(percent) =>
+                onChange({
+                  // 0 is stored as absent, so the doc has exactly one spelling of "straight" and
+                  // the renderer can keep the un-arced text on Konva's kerned whole-string path.
+                  arcBend: percent === 0 ? undefined : percent / 100,
+                  // An arc and a marker band cannot both be right: the band is a straight pill
+                  // measured from the wrapped line, and it would sit under a curve.
+                  ...(percent === 0 ? {} : { highlight: undefined }),
+                })
+              }
+            />
+            <p className="m-0 mt-1 text-micro text-text2">
+              {canArc
+                ? 'Bends the line into an arch. Drag past the middle to curve it the other way.'
+                : 'This text runs to more than one line — widen the layer to arch it.'}
+            </p>
+          </div>
           {node.stroke && (
             <PanelSlider
               label={`Outline · ${node.strokeWidth ?? 0}px`}

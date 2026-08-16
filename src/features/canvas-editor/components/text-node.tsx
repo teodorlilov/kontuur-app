@@ -1,12 +1,13 @@
 'use client'
 
-import { useRef } from 'react'
+import { useMemo, useRef } from 'react'
 import { Group, Rect, Text } from 'react-konva'
 import type Konva from 'konva'
 import type { CanvasTextNode } from '@/types/canvas'
 import { persistedRotation } from '@/lib/canvas/clamp'
 import { MIN_TEXT_LAYER_WIDTH } from '@/lib/canvas/constants'
 import { textGroupAttrs, textNodeAttrs } from '@/lib/canvas/node-attrs'
+import { arcCharRenderer } from '../lib/text-arc-renderer'
 import { highlightBands } from '../lib/measure-fit'
 
 interface TextNodeProps {
@@ -37,6 +38,7 @@ export function TextNode({
   onStartEdit,
 }: TextNodeProps) {
   const textRef = useRef<Konva.Text>(null)
+  const charRenderer = useMemo(() => arcCharRenderer(node) ?? null, [node])
   return (
     <Group
       {...textGroupAttrs(node)}
@@ -74,6 +76,9 @@ export function TextNode({
       <Text
         ref={textRef}
         {...textNodeAttrs(node)}
+        // Memoized: react-konva diffs props by reference, so a fresh arrow here would re-set the
+        // attr and redraw the layer on every render of the stage.
+        charRenderFunc={charRenderer}
         onDblClick={(event) => onStartEdit(event.target as Konva.Text)}
         onDblTap={(event) => onStartEdit(event.target as Konva.Text)}
       />

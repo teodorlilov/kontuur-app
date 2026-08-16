@@ -72,6 +72,13 @@ export interface CanvasTextNode extends CanvasNodeBase {
   /** Outline colour; absent = no outline. Drawn UNDER the fill — see `textNodeAttrs`. */
   stroke?: string
   strokeWidth?: number
+  /**
+   * How far the line is bent into an arc, as a fraction of a half-turn: −1…1, absent or 0 = flat.
+   *
+   * Flat rather than `arc: { bend }` for the reason the effect fields above are flat — the
+   * undo-coalescing key is a field NAME, and `updateNodeInDoc` is a shallow spread.
+   */
+  arcBend?: number
   /** Set when the user hand-edits the text in the editor; recompose then keeps their wording. */
   textOverridden?: boolean
 }

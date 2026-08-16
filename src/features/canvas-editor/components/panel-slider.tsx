@@ -1,5 +1,6 @@
 'use client'
 
+import { cn } from '@/utils/cn'
 import { EDITOR_LABEL } from './workspace/chrome'
 
 interface PanelSliderProps {
@@ -9,6 +10,8 @@ interface PanelSliderProps {
   max: number
   step: number
   value: number
+  /** Greyed and inert — the caller says why beneath it, since a dead control with no reason reads as broken. */
+  disabled?: boolean
   onChange: (value: number) => void
 }
 
@@ -16,18 +19,19 @@ interface PanelSliderProps {
  * The properties panel's standard labelled range row. Purely presentational — how a drag folds into
  * the undo history is the doc layer's business, not this component's.
  */
-export function PanelSlider({ label, min, max, step, value, onChange }: PanelSliderProps) {
+export function PanelSlider({ label, min, max, step, value, disabled, onChange }: PanelSliderProps) {
   return (
     <div>
-      <div className={EDITOR_LABEL}>{label}</div>
+      <div className={cn(EDITOR_LABEL, disabled && 'opacity-45')}>{label}</div>
       <input
         type="range"
         min={min}
         max={max}
         step={step}
         value={value}
+        disabled={disabled}
         onChange={(event) => onChange(Number(event.target.value))}
-        className="w-full accent-forest"
+        className={cn('w-full accent-forest', disabled && 'cursor-not-allowed opacity-45')}
       />
     </div>
   )

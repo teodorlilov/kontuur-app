@@ -13,6 +13,7 @@ import {
 import { ensureFontsReady } from './fonts'
 import { loadCrossOriginImage, naturalSize } from './load-image'
 import { highlightBands } from './measure-fit'
+import { arcCharRenderer } from './text-arc-renderer'
 
 /**
  * Flatten a canvas doc to a jpeg Blob on an offscreen vanilla-Konva stage at native doc size
@@ -74,7 +75,9 @@ export async function exportDocToJpegBlob(
         // Mirror of the editor's TextNode structure: group owns position, bands under glyphs.
         const group = new Konva.Group(textGroupAttrs(node))
         for (const band of highlightBands(node)) group.add(new Konva.Rect(band))
-        group.add(new Konva.Text(textNodeAttrs(node)))
+        // The same hook the stage installs, from the same factory — the arc has one geometry
+        // source, so a bent headline cannot bake differently from how it was drawn.
+        group.add(new Konva.Text({ ...textNodeAttrs(node), charRenderFunc: arcCharRenderer(node) }))
         layer.add(group)
       } else if (isShapeNode(node)) {
         // Same Group + child structure, same attrs resolver — a shape cannot be drawn one way here
