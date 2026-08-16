@@ -36,6 +36,7 @@ import type { BrushStroke, EditorMode } from '../types'
 import type { EditorSelection } from '../hooks/use-editor-selection'
 import type { ViewportControls } from '../hooks/use-stage-viewport'
 import { naturalSize } from '../lib/load-image'
+import { isSingleLine } from '../lib/measure-fit'
 import {
   BrushSurface,
   ERASE_STROKE_COLOR,
@@ -43,6 +44,7 @@ import {
   LASSO_PREVIEW_WIDTH,
   LASSO_STROKE_COLOR,
 } from './brush-surface'
+import { ArcHandle } from './arc-handle'
 import { ImageNode } from './image-node'
 import { ShapeNode } from './shape-node'
 import { TextNode } from './text-node'
@@ -288,6 +290,15 @@ export function EditorStage({
       : primary && isShapeNode(primary) && primary.kind === 'line'
         ? 'line'
         : 'element'
+  // The node the arc handle attaches to: one selected text layer, in plain editing, that fits on a
+  // single line. `isSingleLine` measures, so it is gated behind the cheap checks.
+  const arcTarget =
+    mode === 'edit' && selectedKind === 'text' && primary && isTextNode(primary) && !isLocked(primary)
+      ? isSingleLine(primary)
+        ? primary
+        : null
+      : null
+
   // What a canvas gesture may touch. Hidden nodes are not on screen and locked ones are pinned, so
   // neither may be swept into a marquee, offer a snap edge, or be carried by a drag — but both stay
   // selectable from the layers list, which is what makes locking different from hiding.
@@ -537,6 +548,22 @@ export function EditorStage({
           rotationSnapTolerance={6}
           {...transformerConfigFor(selectedKind, scale, unlockRatio)}
         />
+        {/* Only for a single selected text node that can actually take an arc — a wrapped one
+            cannot, and the toolbar slider says so in words. */}
+        {arcTarget && (
+          <ArcHandle
+            node={arcTarget}
+            scale={scale}
+            onCommit={(bend) =>
+              onNodeChange<CanvasTextNode>(arcTarget.id, {
+                arcBend: bend === 0 ? undefined : bend,
+                // Same exclusion the toolbar enforces: a marker band is a straight pill and cannot
+                // sit under a curve.
+                ...(bend === 0 ? {} : { highlight: undefined }),
+              })
+            }
+          />
+        )}
         {mode === 'reposition' && (
           <RepositionSurface
             interactive={!viewport.panning}
