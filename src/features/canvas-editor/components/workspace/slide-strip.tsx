@@ -5,7 +5,7 @@ import { cn } from '@/utils/cn'
 import { VisualFrame } from '@/components/posts/review/visual-frame'
 import { focusableItems, rovingFocus } from '@/components/ui/roving-focus'
 
-export interface SlideStripProps {
+interface SlideStripProps {
   positions: number[]
   activePosition: number
   /** The file stored at each position — a saved slide's tile updates without the editor closing. */

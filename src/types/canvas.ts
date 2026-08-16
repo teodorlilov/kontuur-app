@@ -13,8 +13,13 @@ export type CanvasTextAlign = 'left' | 'center' | 'right'
 
 export type CanvasFontWeight = 400 | 500 | 600 | 700
 
-/** What every node has, whatever it draws. `kind` discriminates the union. */
-export interface CanvasNodeBase {
+/**
+ * What every node has, whatever it draws. `kind` discriminates the union.
+ *
+ * Not exported: nothing outside this file should type against "a node's common half". Callers take
+ * `CanvasNode` and narrow, which is what keeps a kind check from being forgotten.
+ */
+interface CanvasNodeBase {
   id: string
   x: number
   y: number

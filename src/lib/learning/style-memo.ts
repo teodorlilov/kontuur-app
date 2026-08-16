@@ -12,7 +12,7 @@ export interface StyleMemoBullet {
   last_seen: string
 }
 
-export interface StyleMemoDisplay {
+interface StyleMemoDisplay {
   bullets: StyleMemoBullet[]
   updatedAt: string
 }

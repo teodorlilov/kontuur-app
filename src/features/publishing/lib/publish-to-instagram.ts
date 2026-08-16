@@ -1,6 +1,6 @@
 import { IG_GRAPH_BASE } from '@/lib/meta/constants'
 
-export interface PublishResult {
+interface PublishResult {
   success: boolean
   mediaId?: string
   error?: string

@@ -74,7 +74,6 @@ export const markIdeasReadSchema = z.array(uuid).min(1).max(MARK_READ_MAX)
 export const linkGeneratedPostSchema = z.object({ ideaId: uuid, postId: uuid })
 
 export type IdeaBrief = z.infer<typeof ideaBriefSchema>
-export type SubmitIdeasInput = z.infer<typeof submitIdeasSchema>
 
 /**
  * Maps a submit-payload zod failure to a message the client can act on.

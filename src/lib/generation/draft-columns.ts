@@ -18,7 +18,7 @@ import type { Json, PostRow } from '@/types'
  * at different points in its life — the cron has the freshly generated record, the
  * review flow a `PostData` the reviewer has been editing.
  */
-export type DraftColumnSource = Pick<
+type DraftColumnSource = Pick<
   PostRow,
   'client_id' | 'caption' | 'platform' | 'post_type' | 'quality_score_avg'
 > & {

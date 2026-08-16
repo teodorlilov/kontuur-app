@@ -8,7 +8,7 @@ import { createHmac, timingSafeEqual } from 'crypto'
 
 const STATE_TTL_MS = 15 * 60 * 1000
 
-export interface OAuthStatePayload {
+interface OAuthStatePayload {
   clientId: string
   platform: 'instagram' | 'facebook'
 }

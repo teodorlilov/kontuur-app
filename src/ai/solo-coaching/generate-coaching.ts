@@ -1,12 +1,12 @@
 import { callAnthropic, LIGHT_MODEL } from '@/utils/ai-client'
 import { sanitizeAndParseJson, extractTextFromMessage } from '@/utils/ai'
 
-export interface SoloCoachingInput {
+interface SoloCoachingInput {
   niche: string
   pendingCount: number
 }
 
-export interface SoloCoachingResult {
+interface SoloCoachingResult {
   coaching_points: string[]
 }
 

@@ -10,7 +10,7 @@ import { EDITOR_BUTTON } from './chrome'
 import { LayersSection } from './layers-section'
 import type { RailSection } from './rail'
 
-export interface RailPanelProps {
+interface RailPanelProps {
   section: RailSection
   doc: CanvasDoc
   selectedIds: string[]

@@ -1,6 +1,6 @@
 import { callAnthropic, LIGHT_MODEL } from '@/utils/ai-client'
 
-export interface GenerateSummaryInput {
+interface GenerateSummaryInput {
   clientName: string
   platform: string
   startDate: string

@@ -43,7 +43,7 @@ const NO_CANDIDATES: AssetRef[] = []
 const EXPAND_PROMPT =
   'extend the existing scene outward naturally, continuing the same subject, colours, lighting and style to the edges'
 
-export interface EditorAiOps {
+interface EditorAiOps {
   inpainting: boolean
   lassoCutting: boolean
   erasing: boolean

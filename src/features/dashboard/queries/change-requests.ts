@@ -24,7 +24,7 @@ type ChangeRequestRow = Pick<
 }
 
 /** A post the client asked changes on, with everything but its client name resolved. */
-export interface ChangeRequest {
+interface ChangeRequest {
   id: string
   clientId: string
   caption: string | null

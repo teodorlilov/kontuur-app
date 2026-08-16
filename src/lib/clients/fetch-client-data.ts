@@ -41,7 +41,7 @@ export interface ClientData {
 }
 
 /** The client identity buildClientData assembles from. */
-export interface ClientIdentity {
+interface ClientIdentity {
   id: string
   name: string
   niche: string | null

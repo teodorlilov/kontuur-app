@@ -24,7 +24,7 @@ interface ActiveRunRow {
  * Where a run came from. The generate cron's dedup counts only its own runs, so a
  * run a human asked for cannot cancel that client's scheduled batch for the day.
  */
-export type GenerationRunKind = 'cron' | 'manual'
+type GenerationRunKind = 'cron' | 'manual'
 
 /** Records the start of a generation batch. Returns the run id, or null if tracking failed. */
 export async function startGenerationRun(

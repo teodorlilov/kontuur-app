@@ -52,7 +52,7 @@ export type ResearchSourceKind = 'rss' | 'website' | 'file'
 /** Unexported: the default when a caller names no kinds. Only `gatherSources` reads it. */
 const ALL_SOURCE_KINDS: readonly ResearchSourceKind[] = ['rss', 'website', 'file']
 
-export interface ResearchClientData extends ClientData {
+interface ResearchClientData extends ClientData {
   sources: ClientSourceRow[]
   history: string[]
   usedUrls: string[]
@@ -60,7 +60,7 @@ export interface ResearchClientData extends ClientData {
   recentPillarCounts: Map<string, number>
 }
 
-export interface GatherOptions {
+interface GatherOptions {
   limits: FetchLimits
   /** Which non-web source rows to build. Defaults to all. */
   sourceKinds?: readonly ResearchSourceKind[]
@@ -79,7 +79,7 @@ export interface GatherOptions {
   includePerformance?: boolean
 }
 
-export interface GatheredSources {
+interface GatheredSources {
   clientData: ResearchClientData
   context: SourceContext
   /**

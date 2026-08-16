@@ -11,7 +11,7 @@ import { coverCrop, type CropAttrs } from './cover-crop'
 /** The lower share of the canvas the 'bottom' scrim band covers. */
 const BOTTOM_BAND_RATIO = 0.5
 
-export interface TextGroupAttrs {
+interface TextGroupAttrs {
   x: number
   y: number
   /** Degrees around the group's top-left origin (Konva default pivot). */
@@ -26,7 +26,7 @@ export function textGroupAttrs(node: CanvasTextNode): TextGroupAttrs {
   return { x: node.x, y: node.y, rotation: node.rotation ?? 0 }
 }
 
-export interface TextNodeAttrs {
+interface TextNodeAttrs {
   width: number
   text: string
   fontFamily: string
@@ -62,7 +62,7 @@ export function textNodeAttrs(node: CanvasTextNode): TextNodeAttrs {
   }
 }
 
-export interface NodeGroupAttrs {
+interface NodeGroupAttrs {
   x: number
   y: number
   rotation: number
@@ -89,7 +89,7 @@ export function nodeGroupAttrs(node: CanvasImageNode | CanvasShapeNode): NodeGro
   }
 }
 
-export interface ImageBitmapAttrs {
+interface ImageBitmapAttrs {
   width: number
   height: number
   scaleX: number
@@ -121,7 +121,7 @@ export function imageBitmapAttrs(node: CanvasImageNode): ImageBitmapAttrs {
   }
 }
 
-export interface ShapeChildAttrs {
+interface ShapeChildAttrs {
   width: number
   height: number
   /** Konva reads this only on Ellipse; harmless elsewhere, and it keeps one attr shape. */
@@ -157,7 +157,7 @@ export function shapeChildAttrs(node: CanvasShapeNode): ShapeChildAttrs {
   }
 }
 
-export interface ScrimNodeAttrs {
+interface ScrimNodeAttrs {
   x: number
   y: number
   width: number
@@ -180,7 +180,7 @@ export function scrimNodeAttrs(scrim: CanvasScrim, canvas: { w: number; h: numbe
   }
 }
 
-export interface BackgroundNodeAttrs extends CropAttrs {
+interface BackgroundNodeAttrs extends CropAttrs {
   x: number
   y: number
   width: number

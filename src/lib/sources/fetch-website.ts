@@ -48,7 +48,7 @@ export async function fetchWebsiteSource(
   }
 }
 
-export interface WebsiteFetchResult {
+interface WebsiteFetchResult {
   excerpts: Array<{ url: string; markdown: string }>
   error?: string
 }

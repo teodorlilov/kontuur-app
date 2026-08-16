@@ -10,7 +10,7 @@ import { fetchImagesByPost } from '@/features/publishing/lib/fetch-post-images'
 const PENDING_PREVIEW_LIMIT = 12
 
 /** A queued draft with its thumbnail already resolved, before the client name is attached. */
-export interface ReviewQueueRow {
+interface ReviewQueueRow {
   id: string
   caption: string
   platform: string

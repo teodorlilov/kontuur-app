@@ -12,7 +12,7 @@ import type { FieldProvenance } from '@/features/onboarding/types'
  * answer landed, and the "your call" chip beside the value is what makes it findable afterwards.
  * A tint that never leaves keeps drawing the eye to the one thing already dealt with.
  */
-export type DraftRowTone = 'default' | 'asking' | 'resolved'
+type DraftRowTone = 'default' | 'asking' | 'resolved'
 
 interface DraftRowProps {
   /** Anchors the save bar's "take me there" jump. */

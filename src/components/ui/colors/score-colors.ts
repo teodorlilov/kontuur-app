@@ -17,7 +17,7 @@
  * a `>= 9` one on the quality pill. The last two sat in the same modal, so a post scoring
  * 8 rendered amber in the header and green in the sidebar forty pixels away.
  */
-export type ScoreBand = 'strong' | 'fair' | 'weak'
+type ScoreBand = 'strong' | 'fair' | 'weak'
 
 export function scoreBand(score: number): ScoreBand {
   if (score >= 8) return 'strong'

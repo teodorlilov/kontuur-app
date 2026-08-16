@@ -108,7 +108,7 @@ const LANGUAGE_CONFIGS: Record<string, LanguageConfig> = {
 const DEFAULT_CONFIG: LanguageConfig = { stopWords: EN_STOP_WORDS, minWordLength: 4 }
 
 /** Pre-computed n-gram sets for a corpus of strings. */
-export interface NgramCache {
+interface NgramCache {
   entries: Array<{ text: string; ngrams: Set<string> }>
   config: LanguageConfig
 }

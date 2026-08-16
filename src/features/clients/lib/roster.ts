@@ -95,7 +95,7 @@ export interface ClientRosterEntry {
   expiresInDays: number | null
 }
 
-export interface RosterSummary {
+interface RosterSummary {
   total: number
   /** Chip counts — these are CLIENTS. */
   attention: number

@@ -22,7 +22,7 @@ type BrandProfileContext = Pick<
   | 'best_time_updated_at'
 >
 
-export interface ScheduleContext {
+interface ScheduleContext {
   clients: Map<string, ClientContext>
   brandProfiles: Map<string, BrandProfileContext>
   agencyTimezones: Map<string, string>
@@ -84,7 +84,7 @@ export async function fetchScheduleContext(
 /** Rows saved before the time column was honoured match the historical 09:00 fire. */
 const DEFAULT_GENERATE_HOUR = 9
 
-export interface ScheduleDue {
+interface ScheduleDue {
   due: boolean
   /** Instant of today's slot — the top of the configured hour in the agency's zone. */
   scheduledAt: Date

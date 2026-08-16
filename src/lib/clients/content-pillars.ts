@@ -183,14 +183,14 @@ export function resolveEffectivePillarIds(pillarIds: unknown, pillars: WeightedP
  */
 export type PillarCoverageState = 'content' | 'web' | 'none'
 
-export interface PillarCoverage {
+interface PillarCoverage {
   state: PillarCoverageState
   /** Labels of the non-tavily sources that feed this pillar, in source order. */
   contentSourceLabels: string[]
 }
 
 /** The three fields coverage needs — structural, so every source row shape qualifies. */
-export interface CoverageSource {
+interface CoverageSource {
   type: string
   label: string
   pillar_ids: unknown

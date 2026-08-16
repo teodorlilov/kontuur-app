@@ -1,5 +1,5 @@
 /** Which pair of arrows steps the list — a row answers to Left/Right, a column to Up/Down. */
-export type RovingOrientation = 'vertical' | 'horizontal'
+type RovingOrientation = 'vertical' | 'horizontal'
 
 const STEP_KEYS: Record<RovingOrientation, { next: string; previous: string }> = {
   vertical: { next: 'ArrowDown', previous: 'ArrowUp' },

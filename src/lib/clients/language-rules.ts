@@ -15,7 +15,7 @@ export interface NeutralFormalityExample {
   reason: string
 }
 
-export interface FormalityRuleSet {
+interface FormalityRuleSet {
   rules: string[]
   examples: Record<string, (FormalityExample | NeutralFormalityExample)[]>
 }

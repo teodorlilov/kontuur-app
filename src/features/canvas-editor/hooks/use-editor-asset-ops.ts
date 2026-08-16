@@ -14,7 +14,7 @@ import type { EditorDocState } from './use-doc-actions'
 import type { EditorSelection } from './use-editor-selection'
 import { usePasteImage } from './use-paste-image'
 
-export interface EditorAssetOps {
+interface EditorAssetOps {
   uploadingAsset: boolean
   replacingBackground: boolean
   /** Room in the doc for `count` more nodes; toasts and returns false when the cap is reached. */

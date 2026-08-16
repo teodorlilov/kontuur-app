@@ -166,7 +166,7 @@ export async function fetchConnectionsByClient(
 
 // ---------- language_rules ----------
 
-export type LanguageRulesRow = {
+type LanguageRulesRow = {
   native_cta_phrases: Json | null
   formality_rules: Json | null
   language_instructions: string | null
@@ -404,7 +404,7 @@ export interface ClientExemplars {
  * of the browser round-trip (the wizard's clientDataSchema would silently strip
  * unknown keys, so ride-along fields diverge between paths).
  */
-export interface EngineContext {
+interface EngineContext {
   exemplars: ClientExemplars
   /** Distilled review-correction rules; [] until the distiller has learned any. */
   styleMemo: string[]

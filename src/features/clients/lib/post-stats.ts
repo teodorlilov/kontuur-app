@@ -1,7 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 /** The four post counts and the last generation time the client settings page reports. */
-export interface ClientPostStats {
+interface ClientPostStats {
   pendingCount: number
   publishedCount: number
   scheduledCount: number

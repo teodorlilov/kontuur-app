@@ -34,12 +34,12 @@ const STALE_CLAIM_MS = 30 * 60 * 1000
 const RETRY_SPACING_MS = 30 * 60 * 1000
 
 /** A post whose media is live on Instagram but whose row never recorded it. */
-export interface UnreconciledPost {
+interface UnreconciledPost {
   postId: string
   mediaId: string | null
 }
 
-export interface PublishSchedulerResult {
+interface PublishSchedulerResult {
   processed: number
   published: number
   failed: number

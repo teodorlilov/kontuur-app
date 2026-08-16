@@ -1,7 +1,7 @@
 import type { CanvasDoc } from '@/types/canvas'
 import type { SeedIdentity } from '@/lib/canvas/seed-doc'
 
-export interface CanvasState {
+interface CanvasState {
   /** False when the request itself failed; `error` then carries the reason. */
   ok: boolean
   doc: CanvasDoc | null
@@ -32,7 +32,7 @@ export async function fetchCanvasState(postId: string, position: number): Promis
 }
 
 /** One stored doc, by the slide it belongs to. Slides without a doc are simply absent. */
-export interface PositionedDoc {
+interface PositionedDoc {
   position: number
   doc: CanvasDoc
 }

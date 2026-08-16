@@ -33,7 +33,7 @@ import { TextToolbar } from './text-toolbar'
 import { NODE_KIND_META } from './node-kinds'
 import { ColorPopover, SliderPopover } from './toolbar-controls'
 
-export interface SelectionToolbarProps {
+interface SelectionToolbarProps {
   doc: CanvasDoc
   palette: Palette
   /** The whole selection, in the order it was built. The last entry drives the single-node bars. */

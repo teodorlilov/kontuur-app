@@ -18,7 +18,7 @@ export const DEFAULT_MODEL = 'claude-sonnet-5'
 export const LIGHT_MODEL = 'claude-haiku-4-5'
 export const DEFAULT_MAX_TOKENS = 4096
 
-export interface CallAnthropicOptions {
+interface CallAnthropicOptions {
   systemPrompt?: string
   userMessage: string
   model?: string

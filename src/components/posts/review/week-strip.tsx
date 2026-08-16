@@ -5,7 +5,7 @@ import { getWeekDayKeys, toDateKey } from '@/utils/date-helpers'
 
 const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
-export interface WeekStripProps {
+interface WeekStripProps {
   /** Monday of the shown week, YYYY-MM-DD. */
   weekStart: string
   /** Scheduled-post count per day, Monday-first, length 7. */

@@ -17,7 +17,7 @@ import type { BestTimePlatform } from '@/types/api'
 
 type ScheduleChoice = 'next' | 'best' | 'pick' | 'none'
 
-export interface ScheduleWeekContext {
+interface ScheduleWeekContext {
   /** Monday of the current week, YYYY-MM-DD. */
   weekStart: string
   /** Scheduled-post count per day, Monday-first, length 7. */

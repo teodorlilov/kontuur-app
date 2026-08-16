@@ -8,7 +8,7 @@ import type { ClientData } from '@/lib/clients/fetch-client-data'
 import type { QualityIssue, ClaimStatus, LanguageIssue } from '@/ai/validation/types'
 import type { SlideText } from '@/types/slide'
 
-export interface ValidateQualityInput {
+interface ValidateQualityInput {
   caption: string
   slides?: SlideText[]
   client?: ClientData
@@ -18,7 +18,7 @@ export interface ValidateQualityInput {
   sourceContext?: { excerpt: string; url?: string | null }
 }
 
-export interface ValidateQualityBatchInput {
+interface ValidateQualityBatchInput {
   captions: string[]
   client?: ClientData
   platform?: string

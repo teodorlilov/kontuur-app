@@ -1,4 +1,4 @@
-export interface PlatformLimits {
+interface PlatformLimits {
   readonly wordCount: { readonly min: number; readonly max: number }
 }
 

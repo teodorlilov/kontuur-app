@@ -8,7 +8,7 @@ import { slideTextBlock } from '@/lib/visual/prompt'
 import { generateVisual } from '@/lib/visual/generate-visual'
 import type { PostImageRow } from '@/types/index'
 
-export type GeneratePostVisualResult =
+type GeneratePostVisualResult =
   | { ok: true; image: PostImageRow }
   | { ok: false; reason: 'not_found' | 'no_copy' }
 

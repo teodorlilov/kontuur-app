@@ -11,7 +11,7 @@ import { PromptRow } from './prompt-row'
 /** How long a gpt-image-2 background typically takes — the same figure the wizard quotes. */
 const TYPICAL_SECONDS = 52
 
-export interface AiSectionProps {
+interface AiSectionProps {
   candidates: AssetRef[]
   /** The background the doc currently uses — the strip marks it so a pick reads as a swap. */
   currentStoragePath: string

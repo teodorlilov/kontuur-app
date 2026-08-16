@@ -6,7 +6,7 @@ import { describePalette } from './describe-palette'
 import { buildVisualPrompt } from './prompt'
 import { downloadFalFile, generateSlideImage } from './fal'
 
-export type GeneratedVisual = { buffer: Buffer; contentType: 'image/jpeg' }
+type GeneratedVisual = { buffer: Buffer; contentType: 'image/jpeg' }
 
 /** Resolve the client's identity, self-healing a missing palette description (best-effort persist). */
 async function resolveIdentity(clientId: string): Promise<VisualIdentity> {

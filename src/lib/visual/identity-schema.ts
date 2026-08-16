@@ -37,7 +37,7 @@ export function parseVisualIdentity(input: unknown): VisualIdentity {
   return visualIdentitySchema.parse(input)
 }
 
-export type VisualIdentityParse =
+type VisualIdentityParse =
   | { success: true; identity: VisualIdentity }
   | { success: false; issues: string[] }
 

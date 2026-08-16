@@ -47,8 +47,6 @@ export const clientRefreshSchema = z.object({
     .default([]),
 })
 
-export type ClientRefresh = z.infer<typeof clientRefreshSchema>
-
 /**
  * The generation context the wizard round-trips back to the AI routes.
  *
@@ -138,8 +136,6 @@ export const generateDraftVisualSchema = z.object({
   slides: z.array(z.object({ headline: z.string(), body: z.string() })).default([]),
   caption: z.string().nullable().default(null),
 })
-
-export type GenerateDraftVisualInput = z.infer<typeof generateDraftVisualSchema>
 
 /** Discard cleanup: delete a draft's stored visuals. Paths are re-checked against the client's
  *  prefix in the route — this only proves the shape. */

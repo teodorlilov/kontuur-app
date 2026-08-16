@@ -75,4 +75,3 @@ export type IGShortLivedToken = { access_token: string; user_id: string }
 export type IGLongLivedToken = z.infer<typeof igLongLivedTokenSchema>
 export type FBTokenResponse = z.infer<typeof fbTokenResponseSchema>
 export type FBPage = z.infer<typeof fbPageSchema>
-export type IGRefreshResponse = z.infer<typeof igRefreshResponseSchema>

@@ -107,7 +107,7 @@ export function parseCanvasDoc(input: unknown): CanvasDoc {
   return canvasDocSchema.parse(input)
 }
 
-export type CanvasDocParse =
+type CanvasDocParse =
   | { success: true; doc: CanvasDoc }
   | { success: false; issues: string[] }
 

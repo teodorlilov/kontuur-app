@@ -19,7 +19,7 @@ import { hashIndex } from '@/utils/hash-index'
  * expressed as a utility, and the palette is a token list rather than a fixed
  * set of class pairs.
  */
-export interface IdentityTone {
+interface IdentityTone {
   /** `background` value — the hue at 14%. */
   bg: string
   /** `color` value — the hue darkened 78% into ink. */

@@ -2,11 +2,11 @@ import Anthropic from '@anthropic-ai/sdk'
 import { anthropic, DEFAULT_MODEL } from '@/utils/ai-client'
 import { sanitizeAndParseJson } from '@/utils/ai'
 
-export interface BriefingInput {
+interface BriefingInput {
   agencyNiche?: string
 }
 
-export interface BriefingResult {
+interface BriefingResult {
   platform_updates: string[]
   niche_trends: string[]
   weekly_tip: string

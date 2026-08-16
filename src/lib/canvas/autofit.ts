@@ -1,6 +1,6 @@
-export type FitLabel = 'ok' | 'overflow' | `shrunk:${number}`
+type FitLabel = 'ok' | 'overflow' | `shrunk:${number}`
 
-export type FitOutcome = { size: number; steps: number; fit: FitLabel }
+type FitOutcome = { size: number; steps: number; fit: FitLabel }
 
 /**
  * Step `startSize` down the type scale until `fits(size)` reports true or `min` is reached, and

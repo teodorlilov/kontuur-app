@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import type { ReviewDraft } from './types'
 
-export interface DraftEdits {
+interface DraftEdits {
   caption: string
   slidesJson: unknown
 }

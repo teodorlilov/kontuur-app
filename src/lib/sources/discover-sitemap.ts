@@ -10,7 +10,7 @@ const MAX_SUB_SITEMAPS = 15
 const FETCH_TIMEOUT = 5000
 const MAX_BODY_BYTES = 1_000_000 // 1MB
 
-export interface SitemapDiscoveryResult {
+interface SitemapDiscoveryResult {
   urls: string[]
   source: 'sitemap' | 'none'
 }

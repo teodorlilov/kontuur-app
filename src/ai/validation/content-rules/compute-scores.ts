@@ -19,13 +19,13 @@ import type {
 // Language scoring
 // ---------------------------------------------------------------------------
 
-export interface LanguageScoreInput {
+interface LanguageScoreInput {
   issues: Array<{ type: LanguageIssueType }>
   /** When true, all issues were auto-corrected — score reflects the corrected text. */
   corrected?: boolean
 }
 
-export interface ComputedLanguageScore {
+interface ComputedLanguageScore {
   language_score: number
   passes: boolean
 }
@@ -49,11 +49,11 @@ export function computeLanguageScore(input: LanguageScoreInput): ComputedLanguag
 // Grounding scoring
 // ---------------------------------------------------------------------------
 
-export interface GroundingScoreInput {
+interface GroundingScoreInput {
   flagged_claims: Array<{ status: 'grounded' | 'ungrounded' | 'partially_grounded' }>
 }
 
-export interface ComputedGroundingScore {
+interface ComputedGroundingScore {
   grounding_score: number
   grounded: boolean
 }

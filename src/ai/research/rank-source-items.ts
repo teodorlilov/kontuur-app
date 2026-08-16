@@ -18,7 +18,7 @@ export const RANK_MIN_ITEMS = 8
 
 const SNIPPET_MAX_CHARS = 200
 
-export interface RankOptions {
+interface RankOptions {
   niche: string
   targetAudience?: string
   contentPillars: WeightedPillar[]

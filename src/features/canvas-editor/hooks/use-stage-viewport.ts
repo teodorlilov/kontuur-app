@@ -12,7 +12,7 @@ const FIT_PADDING = 48
 /** How much one zoom button press changes the scale. */
 const ZOOM_STEP = 1.2
 
-export interface StageViewport {
+interface StageViewport {
   scale: number
   x: number
   y: number

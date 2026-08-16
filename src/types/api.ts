@@ -295,13 +295,6 @@ export type MetaConnection = Pick<
 
 // ---- Analytics ----
 
-export interface AnalyticsReportRequest {
-  client_id: string
-  platform: 'instagram' | 'facebook'
-  period_start: string // ISO date YYYY-MM-DD
-  period_end: string // ISO date YYYY-MM-DD
-}
-
 export interface AudienceDemographics {
   gender_age: Record<string, number>
   top_cities: Array<{ name: string; value: number }>

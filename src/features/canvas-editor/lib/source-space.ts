@@ -3,7 +3,7 @@ import { coverCrop, type CropAttrs } from '@/lib/canvas/cover-crop'
 import type { BrushStroke } from '../types'
 
 /** The mapping from editor canvas space into background SOURCE pixels through the current crop. */
-export interface SourceSpace {
+interface SourceSpace {
   crop: CropAttrs
   /** Source px per canvas px. */
   scale: number

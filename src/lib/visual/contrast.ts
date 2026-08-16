@@ -4,7 +4,7 @@ import type { Palette } from '@/types/visual'
 /** WCAG AA for body text. Below this, generated visuals are hard to read. */
 const AA_NORMAL = 4.5
 
-export interface ContrastCheck {
+interface ContrastCheck {
   ratio: number
   passes: boolean
   ink: string

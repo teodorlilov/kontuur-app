@@ -13,7 +13,7 @@ import { PaletteEdit, PaletteRead } from './rows/palette-row'
 import { PlatformEdit, PlatformRead } from './rows/platform-row'
 import { ScheduleEdit, ScheduleRead } from './rows/schedule-row'
 
-export interface DraftFieldProps {
+interface DraftFieldProps {
   spec: DraftRowSpec
   draft: DraftProfile
   onChange: (patch: Partial<DraftProfile>) => void

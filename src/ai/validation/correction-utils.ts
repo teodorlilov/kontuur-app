@@ -79,7 +79,7 @@ export function applySlideCorrections<T extends SlideText>(
   }))
 }
 
-export interface PostCorrectionsResult<T> {
+interface PostCorrectionsResult<T> {
   caption: string
   slides: T[] | null
   /** The same validation, its language verdict re-scored against the SHIPPED text. */

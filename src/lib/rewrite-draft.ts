@@ -9,7 +9,7 @@ interface RewriteDraftInput {
   qualityIssues: string[]
 }
 
-export interface RewriteOutcome {
+interface RewriteOutcome {
   updatedPost: PostData
   validation: ValidationData
 }

@@ -6,7 +6,7 @@ import { BrushSizeSlider } from '../brush-size-slider'
 import { EDITOR_BUTTON, EDITOR_CONTROL, EDITOR_PRESSED, TOOLBAR_DIVIDER } from './chrome'
 import type { EditorMode } from '../../types'
 
-export interface ModeBarState {
+interface ModeBarState {
   mode: Exclude<EditorMode, 'edit'>
   brushSize: number
   hasStrokes: boolean

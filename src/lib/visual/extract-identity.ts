@@ -13,7 +13,7 @@ function fallbackResult(reason: string, style: BrandStyleId): ExtractionResult {
   }
 }
 
-export type ExtractIdentityInput = {
+type ExtractIdentityInput = {
   url: string
   /** The client's already-chosen brand style — extraction never overrides a user choice. */
   currentStyle?: BrandStyleId

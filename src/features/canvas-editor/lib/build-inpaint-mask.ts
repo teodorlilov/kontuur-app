@@ -25,7 +25,7 @@ const SEAM_OVERLAP_PX = 24
  * different composite operation, so folding them in here would mean a region that has to know which
  * coordinate space it is in — the abstraction would carry the difference rather than remove it.
  */
-export interface EditRegion {
+interface EditRegion {
   /** Paint the editable area as an opaque shape. The caller owns composite op and filter. */
   paint: (ctx: CanvasRenderingContext2D) => void
   /** Blur radius for the composite's feathered edge, in the target image's own pixels. */

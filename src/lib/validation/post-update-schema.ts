@@ -52,7 +52,7 @@ export const updatePostSchema = z
  */
 export type UpdatePostInput = z.infer<typeof updatePostSchema>
 
-export type PostUpdateParse =
+type PostUpdateParse =
   | { ok: true; updates: Record<string, unknown> }
   | { ok: false; error: string }
 

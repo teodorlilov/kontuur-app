@@ -2,7 +2,7 @@
 
 import { createContext, useContext } from 'react'
 
-export interface FieldContextValue {
+interface FieldContextValue {
   /** Id the label points at; the control adopts it. */
   controlId: string
   /** Space-separated ids of the hint and/or error text, or undefined when there is neither. */

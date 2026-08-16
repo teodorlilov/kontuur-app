@@ -14,7 +14,7 @@ export type BacklogPost = Pick<
   slides_json: unknown
 }
 
-export interface VisualJob {
+interface VisualJob {
   postId: string
   clientId: string
   positions: number[]

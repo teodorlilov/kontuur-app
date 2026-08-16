@@ -1,7 +1,7 @@
 import { draftColumns } from '@/lib/generation/draft-columns'
 import type { PostData } from '@/types/post'
 
-export interface DraftImagePayload {
+interface DraftImagePayload {
   position: number
   publicUrl: string
   storagePath: string

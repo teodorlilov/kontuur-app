@@ -1,6 +1,6 @@
 import type { SlideText } from '@/types/slide'
 
-export interface ContentSectionOpts {
+interface ContentSectionOpts {
   /** Tag name for the caption/post in single mode */
   singleTag: string
   /** Tag name for the caption in carousel mode (defaults to singleTag) */

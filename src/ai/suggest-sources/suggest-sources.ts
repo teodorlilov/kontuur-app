@@ -4,7 +4,7 @@ import { discoverFeedUrl } from '@/lib/sources/discover-feed-url'
 import { validateSourceUrl } from '@/lib/sources/validate-url'
 import { queryTavily, type TavilyHit } from '@/lib/sources/tavily-client'
 
-export interface SuggestSourcesInput {
+interface SuggestSourcesInput {
   niche: string
   clientName?: string
   pillars?: string[]
@@ -12,7 +12,7 @@ export interface SuggestSourcesInput {
   language?: string
 }
 
-export interface SuggestedSource {
+interface SuggestedSource {
   url: string
   label: string
   reason: string

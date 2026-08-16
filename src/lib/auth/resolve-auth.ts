@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { requireAuth, AuthError, type SupabaseServerClient } from '@/lib/auth/helpers'
 
-export interface AuthContext {
+interface AuthContext {
   supabase: SupabaseServerClient
   agencyId: string
   userId: string

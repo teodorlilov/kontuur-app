@@ -15,7 +15,7 @@ interface ExpiringConnection {
   token_expires_at: string | null
 }
 
-export interface RefreshTokensResult {
+interface RefreshTokensResult {
   refreshed: number
   failed: number
   errors: string[]

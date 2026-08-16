@@ -17,7 +17,7 @@ import {
 } from '@/features/calendar/lib/calendar-range'
 
 /** Which unit the calendar is showing. */
-export type CalendarMode = 'week' | 'month' | 'clients'
+type CalendarMode = 'week' | 'month' | 'clients'
 
 /**
  * What range the calendar is looking at, and every way of moving it.

@@ -8,7 +8,7 @@ export interface TavilyHit {
   score: number
 }
 
-export interface TavilyQueryOptions {
+interface TavilyQueryOptions {
   maxResults: number
   topic?: 'news' | 'general'
   timeRange?: string

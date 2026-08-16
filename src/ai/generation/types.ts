@@ -8,7 +8,7 @@ import type {
 } from '@/ai/validation/types'
 
 // ---- Shared base input — fields common to all content types ----
-export interface GenerationInput {
+interface GenerationInput {
   client: ClientData
   theme: string
   targetPillar?: string

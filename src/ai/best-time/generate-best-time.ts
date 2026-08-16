@@ -7,7 +7,7 @@ import {
   DEFENSIVE_DATA_CLAUSE,
 } from '@/ai/utils/sanitize'
 
-export interface BestTimeInput {
+interface BestTimeInput {
   niche: string
   targetAudience: string
   language: string

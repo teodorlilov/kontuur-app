@@ -3,7 +3,7 @@ import { verifyPostOwnership, type SupabaseServerClient } from '@/lib/auth/helpe
 import { fetchClientById } from '@/lib/queries/db'
 import { uploadDraftAsset, uploadPostImage, type UploadResult } from './storage'
 
-export interface AssetTarget {
+interface AssetTarget {
   clientId?: string
   draftId?: string
   postId?: string
@@ -29,7 +29,7 @@ export function foreignStoragePathResponse(clientId: string, storagePath: string
   return NextResponse.json({ error: 'storagePath must belong to this client' }, { status: 400 })
 }
 
-export type AssetDestination =
+type AssetDestination =
   | {
       ok: true
       /** The owning client — source-path guards check against this, never a caller-supplied id. */

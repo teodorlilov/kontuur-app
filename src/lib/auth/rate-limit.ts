@@ -21,14 +21,14 @@ setInterval(() => {
   }
 }, CLEANUP_INTERVAL_MS).unref()
 
-export interface RateLimitConfig {
+interface RateLimitConfig {
   /** Max requests allowed in the window */
   max: number
   /** Window duration in milliseconds */
   windowMs: number
 }
 
-export interface RateLimitResult {
+interface RateLimitResult {
   allowed: boolean
   remaining: number
   resetAt: number

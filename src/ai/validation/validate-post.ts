@@ -32,7 +32,7 @@ export interface SourceContext {
   url?: string | null
 }
 
-export interface ValidatePostInput {
+interface ValidatePostInput {
   caption: string
   slides?: SlideText[]
   client: ClientData
@@ -43,7 +43,7 @@ export interface ValidatePostInput {
   label: string
 }
 
-export interface ValidatePostsBatchInput {
+interface ValidatePostsBatchInput {
   captions: string[]
   client: ClientData
   platform: string

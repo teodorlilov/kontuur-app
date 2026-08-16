@@ -12,7 +12,7 @@ type FrameSize = 'cover' | 'panel' | 'strip' | 'thumb'
  * producer of "an image that may still be arriving" can render through it — the canvas editor's
  * generated candidates are not draft visuals, but they are exactly this shape.
  */
-export interface FramedVisual {
+interface FramedVisual {
   status: DraftVisual['status']
   publicUrl?: string
 }

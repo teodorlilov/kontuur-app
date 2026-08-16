@@ -1,7 +1,7 @@
 const ALLOWED_TYPES = new Set(['application/pdf', 'text/plain'])
 const MAX_SIZE = 10 * 1024 * 1024 // 10MB
 
-export interface UploadValidation {
+interface UploadValidation {
   valid: boolean
   error?: string
 }

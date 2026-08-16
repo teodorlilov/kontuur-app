@@ -80,7 +80,7 @@ export async function updateVisualIdentityBlob(
   return error ? { error: error.message } : {}
 }
 
-export type ExtractionSession = {
+type ExtractionSession = {
   status: string
   identity: VisualIdentity | null
   report: ExtractionReport | null
@@ -103,7 +103,7 @@ export async function fetchExtraction(supabase: Db, sessionId: string): Promise<
   }
 }
 
-export type ExtractionPatch = {
+type ExtractionPatch = {
   status: 'pending' | 'ready' | 'fallback' | 'failed'
   agencyId?: string | null
   identity?: VisualIdentity | null

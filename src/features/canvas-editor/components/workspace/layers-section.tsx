@@ -10,7 +10,7 @@ import { docIndexForRow, layerRows, slotForRowStep } from '../../lib/layer-rows'
 import { EDITOR_ICON_BUTTON, EDITOR_PRESSED } from './chrome'
 import { NODE_KIND_META, nodeLabel } from './node-kinds'
 
-export interface LayersSectionProps {
+interface LayersSectionProps {
   doc: CanvasDoc
   /** Every selected id, not just the primary — the canvas supports multi-select, so this must too. */
   selectedIds: string[]

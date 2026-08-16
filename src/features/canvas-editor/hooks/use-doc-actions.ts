@@ -34,7 +34,7 @@ export type TransformDoc = (
   options?: CommitOptions
 ) => void
 
-export interface DocActions {
+interface DocActions {
   transformDoc: TransformDoc
   /** Patch one node. Callers name the node's kind so a text field cannot land on an image. */
   updateNode: <T extends CanvasNode>(id: string, patch: Partial<T>, options?: CommitOptions) => void

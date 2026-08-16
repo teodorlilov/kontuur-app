@@ -6,7 +6,7 @@ import { queryTavily } from '@/lib/sources/tavily-client'
 import type { WeightedPillar } from '@/lib/clients/content-pillars'
 import type { TavilyConfig } from '@/types/sources'
 
-export interface ClientSearchContext {
+interface ClientSearchContext {
   targetAudience?: string
   /**
    * User-supplied topics — a client idea or a priority brief. Each gets a search
