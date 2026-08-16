@@ -33,21 +33,30 @@ function lineOffsetX(layer: Pick<CanvasTextNode, 'width' | 'align'>, lineWidth: 
  */
 export function markerBands(
   lines: ReadonlyArray<{ width: number }>,
-  layer: Pick<CanvasTextNode, 'width' | 'align' | 'fontSize' | 'lineHeight' | 'highlight'>
+  layer: Pick<
+    CanvasTextNode,
+    'width' | 'align' | 'fontSize' | 'lineHeight' | 'highlight' | 'letterSpacing'
+  >
 ): MarkerBandAttrs[] {
   if (!layer.highlight) return []
   const fill = layer.highlight
   const lineBox = layer.fontSize * layer.lineHeight
   const height = layer.fontSize * BAND_HEIGHT_RATIO
   const overshoot = layer.fontSize * BAND_OVERSHOOT_RATIO
+  // Konva measures a line as `measureText(text).width + letterSpacing * length` — the spacing is
+  // counted after the LAST glyph too, but nothing is drawn there. Bands are measured from the ink,
+  // so the trailing advance comes back off; otherwise tracked text sits left of its own highlight
+  // (centre/right alignment) or trails a gap at the end (left).
+  const trailing = layer.letterSpacing ?? 0
 
   const bands: MarkerBandAttrs[] = []
   lines.forEach((line, index) => {
-    if (line.width <= 0) return
+    const ink = Math.max(0, line.width - trailing)
+    if (ink <= 0) return
     bands.push({
-      x: lineOffsetX(layer, line.width) - overshoot,
+      x: lineOffsetX(layer, ink) - overshoot,
       y: index * lineBox + (lineBox - height) / 2,
-      width: line.width + overshoot * 2,
+      width: ink + overshoot * 2,
       height,
       rotation: BAND_WOBBLE_CYCLE[index % BAND_WOBBLE_CYCLE.length]!,
       cornerRadius: height / 2,

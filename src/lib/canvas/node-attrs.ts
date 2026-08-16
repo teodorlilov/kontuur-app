@@ -16,6 +16,8 @@ interface TextGroupAttrs {
   y: number
   /** Degrees around the group's top-left origin (Konva default pivot). */
   rotation: number
+  /** On the GROUP so bands and glyphs fade together, matching `nodeGroupAttrs` for other kinds. */
+  opacity: number
 }
 
 /**
@@ -23,7 +25,7 @@ interface TextGroupAttrs {
  * node); the text child itself sits at the group origin with only the glyph attrs below.
  */
 export function textGroupAttrs(node: CanvasTextNode): TextGroupAttrs {
-  return { x: node.x, y: node.y, rotation: node.rotation ?? 0 }
+  return { x: node.x, y: node.y, rotation: node.rotation ?? 0, opacity: node.opacity ?? 1 }
 }
 
 interface TextNodeAttrs {
@@ -37,6 +39,16 @@ interface TextNodeAttrs {
   align: CanvasTextAlign
   lineHeight: number
   wrap: 'word'
+  letterSpacing: number
+  shadowColor: string | undefined
+  shadowOpacity: number
+  shadowBlur: number
+  shadowOffsetX: number
+  shadowOffsetY: number
+  stroke: string | undefined
+  strokeWidth: number
+  /** Fill LAST, so an outline rings the glyph instead of eating half its width out of it. */
+  fillAfterStrokeEnabled: boolean
 }
 
 // Konva folds this straight into ctx.font, so 'italic', 'italic bold' and 'italic 500' all work.
@@ -46,7 +58,16 @@ function fontStyleFor(node: CanvasTextNode): string {
   return weight ? `italic ${weight}` : 'italic'
 }
 
-/** Glyph attrs for one text node (position lives on the group) — editor stage + exporter. */
+/**
+ * Glyph attrs for one text node (position lives on the group) — editor stage + exporter.
+ *
+ * TOTAL on purpose: every key is always present, never conditionally spread. `measure-fit.ts` holds
+ * ONE module-level `Konva.Text` and reconfigures it per node with `setAttrs`, which only writes the
+ * keys it is given — so an omitted `letterSpacing` leaves the PREVIOUS node's spacing in place and
+ * the next node measures wrong. That misfires autofit, the overflow warning and the marker bands at
+ * once, and only in a particular z-order. The two renderers are immune (react-konva resets dropped
+ * props, the exporter builds a fresh Text per node), so it would never show up as a draw bug.
+ */
 export function textNodeAttrs(node: CanvasTextNode): TextNodeAttrs {
   return {
     width: node.width,
@@ -59,6 +80,18 @@ export function textNodeAttrs(node: CanvasTextNode): TextNodeAttrs {
     align: node.align,
     lineHeight: node.lineHeight,
     wrap: 'word',
+    letterSpacing: node.letterSpacing ?? 0,
+    // An absent colour is how "no shadow" is said — Konva's hasShadow() is false without one.
+    shadowColor: node.shadowColor,
+    shadowOpacity: node.shadowOpacity ?? 1,
+    shadowBlur: node.shadowBlur ?? 0,
+    shadowOffsetX: node.shadowOffsetX ?? 0,
+    shadowOffsetY: node.shadowOffsetY ?? 0,
+    stroke: node.stroke,
+    strokeWidth: node.strokeWidth ?? 0,
+    // Konva's default paints the stroke OVER the glyph, so half the outline's width is taken out
+    // of the letterform and a 4px outline reads as a 2px one on thinning type.
+    fillAfterStrokeEnabled: true,
   }
 }
 

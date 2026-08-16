@@ -176,3 +176,32 @@ describe('canvasDocSchema', () => {
     expect(() => parseCanvasDoc({ ...validDoc(), version: 1 })).toThrow()
   })
 })
+
+describe('additive-optional text effects', () => {
+  it('round-trips every effect field unchanged', () => {
+    // The `_forward`/`_backward` parity guards in doc-schema.ts cover REQUIRED fields only — an
+    // optional field added to one side and not the other typechecks clean in BOTH directions
+    // (excess-property checking does not apply to a cast). This assertion is the only thing that
+    // fails if the zod schema and CanvasTextNode drift on these.
+    const node = textNode({
+      letterSpacing: 12,
+      shadowColor: '#000000',
+      shadowOpacity: 0.45,
+      shadowBlur: 16,
+      shadowOffsetX: 0,
+      shadowOffsetY: 4,
+      stroke: '#FFFFFF',
+      strokeWidth: 3,
+    })
+    const parsed = parseCanvasDoc({ ...validDoc(), nodes: [node] })
+    expect(parsed.nodes[0]).toEqual(node)
+  })
+
+  it('rejects a blur big enough to hang the exporter', () => {
+    // Canvas shadow blur costs O(area), so an unbounded value out of a corrupt doc is a hung
+    // export rather than a cosmetic glitch.
+    expect(() =>
+      parseCanvasDoc({ ...validDoc(), nodes: [textNode({ shadowBlur: 1e9 })] })
+    ).toThrow()
+  })
+})

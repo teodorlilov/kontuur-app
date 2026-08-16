@@ -71,15 +71,28 @@ const CONTINUOUS_FIELDS = [
   'width',
   'strokeWidth',
   'cornerRadius',
+  'letterSpacing',
+  'shadowOpacity',
+  'shadowBlur',
+  'shadowOffsetX',
+  'shadowOffsetY',
 ] as const
 
 /**
  * One panel gesture on one field is one undo step. Only the panel's own controls need this — the
  * stage's drag/transform handlers already commit once, at the end of the gesture.
+ *
+ * The test is on the VALUE, not on the key's presence. A text-effect preset patches every field it
+ * owns, clearing the ones it does not use to `undefined` — so `'shadowBlur' in patch` is true for a
+ * tile CLICK, which would hand a discrete action a coalesce key and fold it into whatever drag came
+ * before it. Presence answers "is this key mentioned"; the question is "is this a drag".
  */
-function panelCommit(id: string, patch: object): CommitOptions | undefined {
-  const field = CONTINUOUS_FIELDS.find((name) => name in patch)
-  return field ? { coalesceKey: `${id}:${field}` } : undefined
+function panelCommit(id: string, patch: Record<string, unknown>): CommitOptions | undefined {
+  const field = CONTINUOUS_FIELDS.find((name) => patch[name] !== undefined)
+  // A patch touching several continuous fields at once is a preset, not a drag — `find` would
+  // otherwise pick whichever happens to be first and coalesce the whole thing under it.
+  const single = CONTINUOUS_FIELDS.filter((name) => patch[name] !== undefined).length === 1
+  return field && single ? { coalesceKey: `${id}:${field}` } : undefined
 }
 /** The "Remove object" brush preset — removal is an inpaint with a fixed, well-tested prompt. */
 const REMOVE_OBJECT_PROMPT =
@@ -242,8 +255,15 @@ function CanvasEditorOverlay(props: CanvasEditorProps) {
   )
 
   const panelTextChange = useCallback(
-    (id: string, patch: Partial<CanvasTextNode>) =>
-      slidesState.updateNode<CanvasTextNode>(id, patch, panelCommit(id, patch)),
+    // `discrete` is how a control says "this is a press, not a drag". A text-effect preset patches
+    // several range-backed fields at once, and inferring intent from the patch alone cannot tell
+    // that from a gesture — so the control that knows says so.
+    (id: string, patch: Partial<CanvasTextNode>, discrete?: boolean) =>
+      slidesState.updateNode<CanvasTextNode>(
+        id,
+        patch,
+        discrete ? undefined : panelCommit(id, patch)
+      ),
     [slidesState]
   )
 

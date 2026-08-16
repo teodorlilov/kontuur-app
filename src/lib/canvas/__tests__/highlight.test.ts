@@ -42,3 +42,29 @@ describe('markerBands', () => {
     expect(bands[0]!.y).toBe(120 + 20) // the band belongs to line index 1
   })
 })
+
+describe('markerBands with letter spacing', () => {
+  it('measures the band from the ink, not from Konva\'s trailing advance', () => {
+    // Konva returns `measureText(text).width + letterSpacing * length` — the spacing after the
+    // LAST glyph is counted but never drawn. Bands built from that number are one space too wide,
+    // which pushes centred text off its own highlight.
+    const layer = { width: 1000, align: 'center' as const, fontSize: 100, lineHeight: 1.2, highlight: '#ffee00', letterSpacing: 20 }
+    const [band] = markerBands([{ width: 520 }], layer)
+    const overshoot = 100 * 0.3
+
+    // 520 measured − 20 trailing = 500 of actual ink.
+    expect(band!.width).toBe(500 + overshoot * 2)
+    expect(band!.x).toBe((1000 - 500) / 2 - overshoot)
+  })
+
+  it('is unchanged when there is no letter spacing', () => {
+    const layer = { width: 1000, align: 'left' as const, fontSize: 100, lineHeight: 1.2, highlight: '#ffee00' }
+    const [band] = markerBands([{ width: 520 }], layer)
+    expect(band!.width).toBe(520 + 100 * 0.3 * 2)
+  })
+
+  it('drops a line whose ink is entirely trailing advance', () => {
+    const layer = { width: 1000, align: 'left' as const, fontSize: 100, lineHeight: 1.2, highlight: '#ffee00', letterSpacing: 20 }
+    expect(markerBands([{ width: 20 }], layer)).toEqual([])
+  })
+})

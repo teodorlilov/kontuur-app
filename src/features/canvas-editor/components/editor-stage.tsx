@@ -47,6 +47,15 @@ import { ImageNode } from './image-node'
 import { ShapeNode } from './shape-node'
 import { TextNode } from './text-node'
 
+/**
+ * How every measuring site asks for a node's box.
+ *
+ * Konva grows a client rect by the stroke width plus the shadow offset and twice its blur. A text
+ * layer wearing an Outline or a Shadow would therefore snap, marquee-select and outline against its
+ * halo rather than its glyphs — so alignment guides would line up the blur, not the letters.
+ */
+const MEASURE_BOX = { skipStroke: true, skipShadow: true } as const
+
 /** Wheel gestures settle into ONE doc commit (and one undo step) after this pause. */
 const WHEEL_COMMIT_DELAY_MS = 150
 /** Alignment guides: the system's one signal red, at hairline weight. */
@@ -243,7 +252,7 @@ export function EditorStage({
       layer.batchDraw()
       return
     }
-    const rect = node.getClientRect({ relativeTo: contentRef.current ?? undefined })
+    const rect = node.getClientRect({ relativeTo: contentRef.current ?? undefined, ...MEASURE_BOX })
     layer.add(
       new Konva.Rect({
         ...rect,
@@ -301,7 +310,7 @@ export function EditorStage({
           .find((candidate: Konva.Node) => marquee.ids.has(candidate.id()))
           .map((node: Konva.Node) => ({
             id: node.id(),
-            rect: node.getClientRect({ relativeTo: layer }),
+            rect: node.getClientRect({ relativeTo: layer, ...MEASURE_BOX }),
           })),
         band
       )
@@ -376,7 +385,7 @@ export function EditorStage({
     const staying = new Set(moving)
     const siblings = docNodes(layer)
       .filter((candidate: Konva.Node) => !staying.has(candidate.id()))
-      .map((candidate: Konva.Node) => candidate.getClientRect({ relativeTo: layer }))
+      .map((candidate: Konva.Node) => candidate.getClientRect({ relativeTo: layer, ...MEASURE_BOX }))
     snapStopsRef.current = collectSnapStops(siblings, doc.canvas)
   }
 
@@ -395,7 +404,7 @@ export function EditorStage({
       drawGuides([])
       return
     }
-    const rect = gesture.leader.getClientRect({ relativeTo: layer })
+    const rect = gesture.leader.getClientRect({ relativeTo: layer, ...MEASURE_BOX })
     const { dx, dy, guides } = snapRect(rect, stops, SNAP_TOLERANCE / scale)
     if (dx !== 0 || dy !== 0) {
       gesture.leader.position({ x: gesture.leader.x() + dx, y: gesture.leader.y() + dy })

@@ -52,6 +52,26 @@ export interface CanvasTextNode extends CanvasNodeBase {
   italic?: boolean
   /** Marker-highlight band colour (hex) drawn behind each line; absent = no highlight. */
   highlight?: string
+  /**
+   * Extra tracking in authoring-space px, negative to tighten.
+   *
+   * Konva adds the spacing after the LAST glyph too, so a measured line is one `letterSpacing`
+   * wider than its ink — `markerBands` subtracts it back out.
+   */
+  letterSpacing?: number
+  /**
+   * Drop shadow, flat rather than nested: the doc's `hex` is six digits with no alpha, so a soft
+   * shadow needs its own opacity channel, and flat names give each knob its own undo step (the
+   * coalescing key is a field NAME). `shadowColor` absent = no shadow at all.
+   */
+  shadowColor?: string
+  shadowOpacity?: number
+  shadowBlur?: number
+  shadowOffsetX?: number
+  shadowOffsetY?: number
+  /** Outline colour; absent = no outline. Drawn UNDER the fill — see `textNodeAttrs`. */
+  stroke?: string
+  strokeWidth?: number
   /** Set when the user hand-edits the text in the editor; recompose then keeps their wording. */
   textOverridden?: boolean
 }

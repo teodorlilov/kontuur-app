@@ -16,6 +16,7 @@ import type { CanvasFontWeight, CanvasTextNode } from '@/types/canvas'
 import type { Palette } from '@/types/visual'
 import { EDITOR_CONTROL, EDITOR_ICON_BUTTON, EDITOR_PRESSED, TOOLBAR_DIVIDER } from './chrome'
 import { FontListbox } from './font-listbox'
+import { TextEffectsPopover } from './text-effects-popover'
 import { ColorPopover } from './toolbar-controls'
 
 const WEIGHT_FALLBACK: CanvasFontWeight[] = [400, 700]
@@ -24,7 +25,9 @@ const ALIGN_ICONS = { left: AlignLeft, center: AlignCenter, right: AlignRight } 
 interface TextToolbarProps {
   node: CanvasTextNode
   palette: Palette
-  onChange: (patch: Partial<CanvasTextNode>) => void
+  /** `discrete` marks a press rather than a drag — a preset writes several range-backed fields
+   *  at once, and only the control knows that is one decision rather than a gesture. */
+  onChange: (patch: Partial<CanvasTextNode>, discrete?: boolean) => void
 }
 
 /** Everything you can do to the selected text, in the bar directly above the canvas. */
@@ -117,6 +120,10 @@ export function TextToolbar({ node, palette, onChange }: TextToolbarProps) {
           onChange={(highlight) => onChange({ highlight })}
         />
       )}
+
+      <span className={TOOLBAR_DIVIDER} aria-hidden />
+
+      <TextEffectsPopover node={node} onChange={onChange} />
 
       <span className={TOOLBAR_DIVIDER} aria-hidden />
 

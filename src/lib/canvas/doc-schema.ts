@@ -32,6 +32,18 @@ const textNodeSchema = z.object({
   uppercase: z.boolean().optional(),
   italic: z.boolean().optional(),
   highlight: hex.optional(),
+  // Flat, not nested: `hex` carries no alpha, so a soft shadow needs its own opacity channel, and
+  // the undo-coalescing key is a field NAME — nested knobs would all fold into one step.
+  letterSpacing: z.number().min(-20).max(200).optional(),
+  shadowColor: hex.optional(),
+  shadowOpacity: z.number().min(0).max(1).optional(),
+  // Bounded for a harder reason than the others: canvas shadow blur costs O(area), so an
+  // unbounded value out of a corrupt doc is a hung export, not a cosmetic glitch.
+  shadowBlur: z.number().min(0).max(200).optional(),
+  shadowOffsetX: z.number().min(-200).max(200).optional(),
+  shadowOffsetY: z.number().min(-200).max(200).optional(),
+  stroke: hex.optional(),
+  strokeWidth: z.number().min(0).max(40).optional(),
   textOverridden: z.boolean().optional(),
 })
 

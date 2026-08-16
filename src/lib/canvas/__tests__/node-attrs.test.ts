@@ -52,8 +52,13 @@ describe('textNodeAttrs', () => {
 
 describe('textGroupAttrs', () => {
   it('exposes the layer position with rotation defaulting to 0', () => {
-    expect(textGroupAttrs(makeLayer())).toEqual({ x: 96, y: 128, rotation: 0 })
+    expect(textGroupAttrs(makeLayer())).toEqual({ x: 96, y: 128, rotation: 0, opacity: 1 })
     expect(textGroupAttrs(makeLayer({ rotation: -12 })).rotation).toBe(-12)
+  })
+
+  it('carries opacity on the GROUP, so bands and glyphs fade together', () => {
+    // On the Text child instead, a marker highlight would stay solid while its words faded.
+    expect(textGroupAttrs(makeLayer({ opacity: 0.4 })).opacity).toBe(0.4)
   })
 })
 
@@ -212,5 +217,41 @@ describe('shapeChildAttrs', () => {
       'strokeWidth',
       'width',
     ])
+  })
+})
+
+describe('textNodeAttrs is total', () => {
+  it('emits every key even when the node carries no effects', () => {
+    // `measure-fit.ts` reuses ONE Konva.Text across every node and reconfigures it with setAttrs,
+    // which writes only the keys it is handed. An omitted letterSpacing would leave the PREVIOUS
+    // node's tracking in place, so the next node measures wrong — corrupting autofit, the overflow
+    // warning and the marker bands at once, and only in a particular z-order.
+    expect(Object.keys(textNodeAttrs(makeLayer())).sort()).toEqual(
+      [
+        'align',
+        'fillAfterStrokeEnabled',
+        'fill',
+        'fontFamily',
+        'fontSize',
+        'fontStyle',
+        'letterSpacing',
+        'lineHeight',
+        'shadowBlur',
+        'shadowColor',
+        'shadowOffsetX',
+        'shadowOffsetY',
+        'shadowOpacity',
+        'stroke',
+        'strokeWidth',
+        'text',
+        'width',
+        'wrap',
+      ].sort()
+    )
+  })
+
+  it('paints the fill after the stroke, so an outline rings the glyph', () => {
+    // Konva's default strokes OVER the glyph, taking half the outline width out of the letterform.
+    expect(textNodeAttrs(makeLayer()).fillAfterStrokeEnabled).toBe(true)
   })
 })

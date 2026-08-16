@@ -21,6 +21,16 @@ function styledNode(target: CanvasTextNode, source: CanvasTextNode): CanvasTextN
     fill: source.fill,
     align: source.align,
     lineHeight: source.lineHeight,
+    // The tier-1 effects are part of the look, and they ride along even when absent — an
+    // unshadowed source clears a shadowed target, exactly as an unrotated one un-tilts it.
+    letterSpacing: source.letterSpacing,
+    shadowColor: source.shadowColor,
+    shadowOpacity: source.shadowOpacity,
+    shadowBlur: source.shadowBlur,
+    shadowOffsetX: source.shadowOffsetX,
+    shadowOffsetY: source.shadowOffsetY,
+    stroke: source.stroke,
+    strokeWidth: source.strokeWidth,
   }
 }
 

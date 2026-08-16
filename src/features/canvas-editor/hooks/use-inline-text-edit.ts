@@ -75,6 +75,10 @@ function applyTextareaStyle(
     textTransform: node.uppercase ? 'uppercase' : 'none',
     fontFamily: `"${node.fontFamily}", sans-serif`,
     fontSize: `${node.fontSize * scale}px`,
+    // The textarea sits ON the canvas text, so tracking has to match or the glyphs the user is
+    // typing sit beside the ones they are replacing. CSS adds a trailing advance after the last
+    // glyph exactly as Konva does, so the two stay aligned.
+    letterSpacing: `${(node.letterSpacing ?? 0) * scale}px`,
     fontStyle: node.italic ? 'italic' : 'normal',
     fontWeight: String(node.fontWeight),
     lineHeight: String(node.lineHeight),

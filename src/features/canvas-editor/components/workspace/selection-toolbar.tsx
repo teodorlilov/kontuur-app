@@ -39,7 +39,8 @@ interface SelectionToolbarProps {
   /** The whole selection, in the order it was built. The last entry drives the single-node bars. */
   selectedIds: string[]
   busy: { removingBackground: boolean }
-  onTextChange: (id: string, patch: Partial<CanvasTextNode>) => void
+  /** `discrete` marks a press rather than a drag, so it never folds into a neighbouring gesture. */
+  onTextChange: (id: string, patch: Partial<CanvasTextNode>, discrete?: boolean) => void
   onAssetChange: (id: string, patch: Partial<CanvasImageNode>) => void
   onShapeChange: (id: string, patch: Partial<CanvasShapeNode>) => void
   onMoveNode: (id: string, direction: 'up' | 'down', toEdge?: boolean) => void
@@ -69,7 +70,7 @@ export function SelectionToolbar(props: SelectionToolbarProps) {
           <TextToolbar
             node={selected}
             palette={props.palette}
-            onChange={(patch) => props.onTextChange(selected.id, patch)}
+            onChange={(patch, discrete) => props.onTextChange(selected.id, patch, discrete)}
           />
           <span className={TOOLBAR_DIVIDER} aria-hidden />
           <OrderControls id={selected.id} {...props} />
