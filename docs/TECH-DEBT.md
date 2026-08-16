@@ -591,6 +591,22 @@ would have invented an abstraction, not removed one.
   (`src/components/ui/skeleton.tsx`) and a large set of `src/types/index.ts` barrel re-exports —
   the barrel is a deliberate re-export surface, so a config must exempt it before the signal is
   usable.
+- **The interim command does not cover TYPES.** Adding `types,duplicates` on 2026-08-16 reported
+  184 unused type exports that had accumulated invisibly. **That raw number is misleading and the
+  lesson generalises: 68 of the 184 were false positives** — knip follows neither re-export barrels
+  nor test files, so it flagged types genuinely read by `date-helpers`, by the row-mirrors guard,
+  and via `src/types/index.ts`. Un-exporting them on knip's word would have broken the build. Every
+  entry was classified by grepping for real usage first. Acted on in `b31fda3`: 107 lost only their
+  `export` (used solely inside their own file, mostly Props interfaces), 5 were deleted outright
+  (`ClientRefresh`, `GenerateDraftVisualInput`, `SubmitIdeasInput`, `IGRefreshResponse`,
+  `AnalyticsReportRequest`).
+- **72 remain, and they are the barrel question above:** 40 in `src/types/index.ts`, 16 in
+  `api.ts`, 4 generated, the rest scattered. They are dead in the strict sense — fifteen files
+  import from `@/types`, but not those — yet clearing them cascades: delete a re-export and the
+  underlying declaration becomes unused in turn, and then someone has to rule on whether the API
+  request/response shapes are dead weight or documentation. `types` is deliberately NOT in the
+  command above until that is settled: with 72 standing hits it would fire every run and be
+  ignored, which is worse than not having it.
 - **The part knip does not solve:** it works at export granularity, so an unused **field on a used
   type** is invisible to it. That is the shape most of the above took —
   `PostValidationResult.validationWarnings` (written at four sites, read by none),
@@ -730,3 +746,45 @@ specified; the reasoning must outlive the session that decided it.
 - **Below-`md` responsive pass on the ideas grid** — the table drops columns at
   1180px but has no `md:` behaviour (actions to a second line, search into the
   rail) the plan sketched.
+
+### 7.12 No test net for interactive behaviour — and jsdom would catch a minority of it
+
+- **Gap:** `vitest` runs node-only (`vitest.config.ts` sets no environment), so there are no
+  component tests and no browser tests. Every defect that lives in a component's *lifecycle* —
+  effect keying, focus management, keyboard routing — reaches a human or nobody.
+- **What that cost (canvas-editor arc, waves 1–11).** Eight interactive defects, against what a
+  jsdom + testing-library setup could actually have seen:
+
+  | Defect | jsdom? |
+  |---|---|
+  | Workspace collapsed to 11% zoom (`flex-1` under a block parent) | **No** — no layout engine |
+  | Editor never full-screen (`backdrop-filter` capturing `position: fixed`) | **No** — same |
+  | "Elements" clipped by the Label role's 0.16em tracking | **No** — same |
+  | Line shape's resize handles inert (40px floor on a 6px box) | **No** — Konva/canvas |
+  | Shape slider burning one undo step per tick | **No DOM needed** — a hook unit test reaches it |
+  | Layers panel unreachable by keyboard (`tabIndex` keyed on selection) | **Yes** |
+  | ⌘Z reaching the canvas through an open dialog | **Yes** |
+  | Apply-style needing two clicks (`@8e1bfad`, fixed same day) | **Yes, IF the test models the parent re-render** |
+
+- **The finding that matters:** jsdom covers 3 of 8, and **the three worst — the ones that made the
+  editor visibly broken — are all layout**, which jsdom cannot see at all. The failure distribution
+  points at a real browser, not at a DOM shim. The manual browser pass has, empirically, caught
+  every layout defect in this arc, including two that a full typecheck, a clean lint, 1,100+ tests
+  and twelve review agents all missed.
+- **Note on the apply-style entry:** it is qualified for a reason. That panel broke because its
+  PARENT re-rendered with a fresh `docsByPosition` after the panel's own commit. A test rendering
+  it with static props passes happily. Catching it requires wiring a parent that commits — i.e.
+  already having had the insight the test is meant to substitute for. Tests pin a lesson; they do
+  not supply it. The durable half is the discipline in `feedback-trace-state-loops`: trace what a
+  feature writes against what it reads, and key an *initialiser* effect on its trigger rather than
+  on derived data.
+- **Also worth knowing:** `react-hooks/exhaustive-deps` pushes you INTO that bug — it wants the
+  derived value in the dep array and warns if you omit it. A clean lint is evidence of nothing here.
+- **Fix shape, cheapest first:** (1) keep pushing behaviour out of components into pure functions
+  that node tests already reach — the house pattern, and how `doc-history`, `layer-rows`, `snapping`
+  and `resolve-slides` are covered; (2) keep the manual browser pass; (3) Playwright smoke tests
+  against the real editor, which is the only automation matching where the defects actually are;
+  (4) jsdom + testing-library last, for the keyboard/lifecycle third.
+- **Why not now:** Playwright selectors against three more waves of editor churn (12–14: text
+  effects, arch text, multi-format) would be maintenance for no signal. Sequence it after the arc
+  settles. Adding jsdom instead would buy the minority of the problem and read as coverage.

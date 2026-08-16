@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
 import { Spinner } from '@/components/ui/spinner'
@@ -8,6 +8,22 @@ import { VisualFrame } from '@/components/posts/review/visual-frame'
 import type { CanvasDoc } from '@/types/canvas'
 import { cn } from '@/utils/cn'
 import { renderStylePreview, styledDoc, takesStyle } from '../../lib/style-preview'
+
+/** One row: the slide, its doc as it stood when the panel opened, and whether it can take a style. */
+interface StyleTarget {
+  position: number
+  doc: CanvasDoc | undefined
+  eligible: boolean
+}
+
+/** What one opening of the panel works from — frozen, so no later commit can move it. */
+interface StyleSession {
+  source: CanvasDoc
+  targets: StyleTarget[]
+}
+
+/** Stable empty list, so a closed panel does not hand its effects a fresh array every render. */
+const EMPTY_TARGETS: StyleTarget[] = []
 
 interface ApplyStylePanelProps {
   open: boolean
@@ -31,56 +47,63 @@ interface ApplyStylePanelProps {
 export function ApplyStylePanel(props: ApplyStylePanelProps) {
   const { open, sourcePosition, positions, docsByPosition } = props
 
-  // The source is snapshotted once per opening. The previews and the Apply must agree on what is
-  // being carried, and the slide behind the dialog is still editable.
-  const [source, setSource] = useState<CanvasDoc | null>(null)
-  useEffect(() => {
-    setSource(open ? (docsByPosition.get(sourcePosition) ?? null) : null)
-    // `docsByPosition` is deliberately not a dependency — re-reading it as the user edits behind
-    // the dialog is exactly what "frozen" excludes.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, sourcePosition])
-
-  // The source is never in its own list. Applying a doc to itself is not the no-op it looks like:
-  // `applyStyleToDoc` matches the FIRST node of each role, so a slide holding a duplicated headline
-  // would have the copy snapped onto the original's position and size.
-  const targets = useMemo(
-    () =>
-      positions
-        .filter((position) => position !== sourcePosition)
-        .map((position) => {
-          const doc = docsByPosition.get(position)
-          return { position, doc, eligible: Boolean(doc && takesStyle(doc)) }
-        }),
-    [positions, sourcePosition, docsByPosition]
-  )
-
+  const [session, setSession] = useState<StyleSession | null>(null)
   const [checked, setChecked] = useState<Set<number>>(new Set())
   const [previews, setPreviews] = useState<Map<number, string>>(new Map())
   const [building, setBuilding] = useState(false)
   const [applied, setApplied] = useState<number[] | null>(null)
 
-  // Everything eligible starts ticked: the action is "apply to the others", and unticking one is
-  // the exception.
+  /**
+   * Everything the panel works from is snapshotted ONCE, when it opens.
+   *
+   * Not just for consistency — `docsByPosition` is rebuilt on every doc commit, INCLUDING the one
+   * this panel's own Apply performs. Deriving the rows from it live meant applying re-ran this
+   * effect, which reset `applied` and put the footer back to "Apply to N slides" as though nothing
+   * had happened. The style HAD been carried; the second press was a no-op that only made the
+   * confirmation stick. Anything keyed on the live map has the same defect available to it.
+   */
   useEffect(() => {
-    if (!open) return
+    if (!open) {
+      setSession(null)
+      setApplied(null)
+      return
+    }
+    const source = docsByPosition.get(sourcePosition)
+    if (!source) return
+    // The source is never in its own list. Applying a doc to itself is not the no-op it looks like:
+    // `applyStyleToDoc` matches the FIRST node of each role, so a slide holding a duplicated
+    // headline would have the copy snapped onto the original's position and size.
+    const targets = positions
+      .filter((position) => position !== sourcePosition)
+      .map((position) => {
+        const doc = docsByPosition.get(position)
+        return { position, doc, eligible: Boolean(doc && takesStyle(doc)) }
+      })
+    setSession({ source, targets })
     setApplied(null)
-    setChecked(new Set(targets.filter((t) => t.eligible).map((t) => t.position)))
-  }, [open, targets])
+    // Everything eligible starts ticked: the action is "apply to the others", and unticking one is
+    // the exception.
+    setChecked(new Set(targets.filter((target) => target.eligible).map((t) => t.position)))
+    // Open-only by design — see above. `docsByPosition` and `positions` are read, never depended on.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, sourcePosition])
+
+  const source = session?.source ?? null
+  const targets = session?.targets ?? EMPTY_TARGETS
 
   // Previews are built one at a time. Each one raises a whole offscreen Konva stage and rasterizes
   // it on the main thread, so rendering nine at once would jank the editor behind the dialog.
   useEffect(() => {
-    if (!open || !source) return
+    if (!session) return
     let cancelled = false
     const urls: string[] = []
     setBuilding(true)
     void (async () => {
-      for (const target of targets) {
+      for (const target of session.targets) {
         if (cancelled) break
         if (!target.eligible || !target.doc) continue
         try {
-          const url = await renderStylePreview(styledDoc(target.doc, source))
+          const url = await renderStylePreview(styledDoc(target.doc, session.source))
           if (cancelled) {
             URL.revokeObjectURL(url)
             break
@@ -100,7 +123,7 @@ export function ApplyStylePanel(props: ApplyStylePanelProps) {
       for (const url of urls) URL.revokeObjectURL(url)
       setPreviews(new Map())
     }
-  }, [open, source, targets])
+  }, [session])
 
   const toggle = useCallback((position: number) => {
     setChecked((current) => {
