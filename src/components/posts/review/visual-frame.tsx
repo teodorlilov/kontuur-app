@@ -5,10 +5,20 @@ import { AlertCircle } from 'lucide-react'
 import { cn } from '@/utils/cn'
 import type { DraftVisual } from '@/lib/visual/draft-visuals'
 
-type FrameSize = 'cover' | 'strip' | 'thumb'
+type FrameSize = 'cover' | 'panel' | 'strip' | 'thumb'
+
+/**
+ * Everything this frame actually reads. Declared structurally rather than as `DraftVisual` so any
+ * producer of "an image that may still be arriving" can render through it — the canvas editor's
+ * generated candidates are not draft visuals, but they are exactly this shape.
+ */
+export interface FramedVisual {
+  status: DraftVisual['status']
+  publicUrl?: string
+}
 
 interface VisualFrameProps {
-  visual: DraftVisual | undefined
+  visual: FramedVisual | undefined
   size: FrameSize
   alt: string
   /** "2/6" — rendered at cover size only. */
@@ -18,8 +28,21 @@ interface VisualFrameProps {
 
 const SIZE_CLASS: Record<FrameSize, string> = {
   cover: 'rounded-panel',
+  panel: 'rounded-sm',
   strip: 'rounded-sm',
   thumb: 'rounded-sm',
+}
+
+/**
+ * What each size actually occupies, for the srcset. These are layout facts, not preferences: a
+ * `panel` tile serving the `strip` hint gets an 80px source upscaled into a ~124px box, which is
+ * visibly soft on exactly the thing the user is being asked to judge.
+ */
+const SIZE_HINT: Record<FrameSize, string> = {
+  cover: '(max-width: 768px) 100vw, 360px',
+  panel: '160px',
+  strip: '80px',
+  thumb: '80px',
 }
 
 /**
@@ -65,7 +88,7 @@ export function VisualFrame({ visual, size, alt, pager, className }: VisualFrame
         src={visual.publicUrl}
         alt={alt}
         fill
-        sizes={size === 'cover' ? '(max-width: 768px) 100vw, 360px' : '80px'}
+        sizes={SIZE_HINT[size]}
         className="object-cover"
       />
       {visual.status === 'generating' && (

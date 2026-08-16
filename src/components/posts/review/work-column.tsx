@@ -15,7 +15,7 @@ import {
 } from '@/components/ui/form/control-classes'
 import { CanvasEditor } from '@/features/canvas-editor/components/canvas-editor'
 import { slideCopyAt } from '@/features/canvas-editor/lib/slide-copy'
-import type { EditorTarget } from '@/features/canvas-editor/types'
+import type { EditorSlide, EditorTarget } from '@/features/canvas-editor/types'
 import { VisualFrame } from './visual-frame'
 import { updateSlideField } from '@/components/posts/slides-edit'
 import type { DraftVisual } from '@/lib/visual/draft-visuals'
@@ -41,9 +41,15 @@ interface WorkColumnProps {
   onRegenerateVisual: (position: number) => void
   onReplaceVisual: (position: number, file: File) => Promise<boolean>
   onEditedVisual: (draftId: string, visual: DraftVisual) => void
-  onApplyStyleToAll: (post: PostData, sourcePosition: number, doc: CanvasDoc) => void
+  /** `savedImages` is the file at each position as of the editor's own save — see CanvasEditorProps. */
+  onApplyStyleToAll: (
+    post: PostData,
+    sourcePosition: number,
+    doc: CanvasDoc,
+    savedImages: Map<number, { publicUrl: string; storagePath: string }>
+  ) => void
   /** Overrides the wizard-draft editor target — the queue points at persisted posts. */
-  editorTarget?: (position: number, visual: DraftVisual) => EditorTarget
+  editorTarget?: EditorTarget
   /** Post-target editor saves land here (CanvasEditor onSaved); draft saves keep onEditedVisual. */
   onSavedImage?: (image: PostImage) => void
 }
@@ -95,16 +101,19 @@ export function WorkColumn({
   // The working post — edits ride into the canvas editor's slide copy.
   const workingPost: PostData = { ...post, caption: workingCaption, slides_json: workingSlidesJson }
 
-  const editingVisual =
-    editingPosition !== null
-      ? visuals?.find(
-          (v) =>
-            v.position === editingPosition &&
-            v.status === 'done' &&
-            !!v.publicUrl &&
-            !!v.storagePath
-        )
-      : undefined
+  // Every finished visual is editable, so the editor can carousel between them; a slot still
+  // generating has nothing to open. Ascending, because the strip reads left to right.
+  const editorSlides: EditorSlide[] = (visuals ?? [])
+    .filter((visual) => visual.status === 'done' && !!visual.publicUrl && !!visual.storagePath)
+    .map((visual) => ({
+      position: visual.position,
+      image: { publicUrl: visual.publicUrl!, storagePath: visual.storagePath! },
+      slideCopy: slideCopyAt(workingPost, visual.position),
+      doc: visual.canvasDoc ?? null,
+    }))
+    .sort((a, b) => a.position - b.position)
+  const canEditPosition =
+    editingPosition !== null && editorSlides.some((slide) => slide.position === editingPosition)
 
   async function handleReplaceFile(file: File) {
     setReplacing(true)
@@ -330,23 +339,14 @@ export function WorkColumn({
         />
       )}
 
-      {editingPosition !== null && editingVisual?.publicUrl && editingVisual.storagePath && (
+      {canEditPosition && editingPosition !== null && (
         <CanvasEditor
           // The editor's save path follows the target kind: draft targets fire
           // onSavedDraft, post targets fire onSaved — passing both is inert.
-          target={
-            editorTarget?.(editingPosition, editingVisual) ?? {
-              kind: 'draft',
-              clientId: post.client_id,
-              draftId: post.id,
-              position: editingPosition,
-              doc: editingVisual.canvasDoc ?? null,
-            }
-          }
+          target={editorTarget ?? { kind: 'draft', clientId: post.client_id, draftId: post.id }}
+          slides={editorSlides}
+          initialPosition={editingPosition}
           onSaved={onSavedImage}
-          image={{ publicUrl: editingVisual.publicUrl, storagePath: editingVisual.storagePath }}
-          slideCopy={slideCopyAt(workingPost, editingPosition)}
-          slideLabel={isCarousel ? `Slide ${editingPosition + 1} of ${slides.length}` : 'Post visual'}
           onClose={() => setEditingPosition(null)}
           onSavedDraft={(visual, doc) =>
             onEditedVisual(post.id, {
@@ -360,7 +360,7 @@ export function WorkColumn({
           onApplyToAll={
             isCarousel && doneVisualCount > 1
               ? // Local caption/slide edits ride along so doc-less siblings seed from fresh copy.
-                (doc) => onApplyStyleToAll(workingPost, editingPosition, doc)
+                (doc, position, saved) => onApplyStyleToAll(workingPost, position, doc, saved)
               : undefined
           }
         />

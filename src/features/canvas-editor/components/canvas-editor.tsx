@@ -1,6 +1,7 @@
 'use client'
 
 import dynamic from 'next/dynamic'
+import { createPortal } from 'react-dom'
 import { Spinner } from '@/components/ui/spinner'
 import type { CanvasEditorProps } from '../types'
 
@@ -8,24 +9,19 @@ import type { CanvasEditorProps } from '../types'
 // page navigation never pays for it.
 const CanvasEditorOverlay = dynamic(() => import('./canvas-editor-overlay'), {
   ssr: false,
-  loading: () => (
-    <div
-      style={{
-        position: 'fixed',
-        inset: 0,
-        zIndex: 200,
-        background: 'var(--sunken)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}
-    >
-      <Spinner size="md" />
-    </div>
-  ),
+  // Portalled for the same reason the editor itself is: the card that opens it is
+  // backdrop-filtered, which would otherwise confine this `fixed` box to the content column and
+  // make the spinner jump when the real editor takes over.
+  loading: () =>
+    createPortal(
+      <div className="fixed inset-0 z-[200] flex items-center justify-center bg-sunken">
+        <Spinner size="md" />
+      </div>,
+      document.body
+    ),
 })
 
-/** The canvas text-overlay editor. Mount conditionally per slide position (post or wizard draft). */
+/** The canvas text-overlay editor. Mounted once per post or wizard draft; it holds every slide. */
 export function CanvasEditor(props: CanvasEditorProps) {
   return <CanvasEditorOverlay {...props} />
 }

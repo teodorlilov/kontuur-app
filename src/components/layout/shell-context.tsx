@@ -195,6 +195,9 @@ function usePaletteHotkey(onOpen: () => void): void {
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+        // Same suspension rule the page-level shortcut handlers follow: a modal layer (the canvas
+        // editor, a dialog) owns the keyboard while it is open.
+        if (document.querySelector('[role="dialog"]')) return
         event.preventDefault()
         onOpen()
       }

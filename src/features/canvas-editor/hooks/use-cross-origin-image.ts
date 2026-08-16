@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { loadCrossOriginImage } from '../lib/load-image'
+import { decodedImage, loadCrossOriginImage } from '../lib/load-image'
 
 interface LoadedImage {
   src: string
@@ -11,6 +11,10 @@ interface LoadedImage {
 /**
  * React wrapper around `loadCrossOriginImage`. A stale result for a previous src is filtered by
  * comparison, so no state reset is needed when src changes.
+ *
+ * An already-decoded src resolves during THIS render rather than after an effect. That is what
+ * keeps returning to a slide you have already visited from unmounting the Konva stage: the caller
+ * gates the stage on this being non-null, and a one-frame null is a full teardown and rebuild.
  */
 export function useCrossOriginImage(src: string | null): HTMLImageElement | null {
   const [loaded, setLoaded] = useState<LoadedImage | null>(null)
@@ -28,5 +32,6 @@ export function useCrossOriginImage(src: string | null): HTMLImageElement | null
     }
   }, [src])
 
-  return src && loaded?.src === src ? loaded.image : null
+  if (!src) return null
+  return loaded?.src === src ? loaded.image : decodedImage(src)
 }

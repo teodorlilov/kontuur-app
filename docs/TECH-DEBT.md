@@ -110,7 +110,18 @@ None of these block shipping; each entry says what it is, why it was deferred, a
   the source of truth. Discard cleanup DOES cover element srcs referenced by draft docs
   (`draftStoragePaths`); approve moves referenced element files out of `drafts/`.
 - **Fix if it ever matters:** the same periodic cleanup job as 2.2, extended to skip every path
-  referenced by any doc's `elements[].src.storagePath`.
+  referenced by any doc's image nodes (`nodes[]` filtered by `isImageNode`, `src.storagePath`).
+- **Extended 2026-08-16 (Wave 9c):** an outpaint uploads a PADDED intermediate (the original on a
+  larger canvas) purely so the model has a file to edit, then uploads the composited result. The
+  intermediate is never referenced by any doc and nothing collects it — same class and same posture
+  as the raw inpaint output above it. One per Expand press.
+- **Extended 2026-08-15 (Wave 8):** in-editor background generation adds a new orphan class —
+  every generated candidate is stored, and only the one the user picks is ever referenced. The rest
+  (and any generation the user cancels, which the server finishes regardless) are abandoned. For a
+  DRAFT target they land under the client's `drafts/` prefix, so the existing discard cleanup
+  (`DELETE /api/ai/generate-visual`) already reaches them; for a PERSISTED POST target nothing
+  collects them — the canvas PUT deletes exactly one displaced background per save. Same posture
+  as the rest of this entry: storage pennies, no integrity risk.
 
 ### 2.9 Supabase bucket MIME allowlist must include `image/svg+xml` (manual step)
 
@@ -122,13 +133,61 @@ None of these block shipping; each entry says what it is, why it was deferred, a
 - **Also `image/webp`:** paste-from-web (`/api/ai/paste-from-url`) re-hosts pasted/dropped images
   and Pinterest commonly serves WebP, so the same `post-images` allowlist must include `image/webp`
   or those uploads 500 at the storage step. Same manual dashboard step, same per-environment check.
+  The editor's own element upload accepts WebP directly as of the canvas-editor redesign, so this
+  is now reachable from the file picker, not just from a paste.
+- **SVG *upload* is deliberately not offered.** The file picker stops at JPEG/PNG/WebP because
+  accepting an SVG needs more than a MIME entry: `validateImageFile` rejects it, uploads would need
+  the same server-side sanitisation `/api/ai/generate-svg` applies (`lib/visual/sanitize-svg.ts`),
+  and an SVG without intrinsic dimensions has no natural size to place from. Generated vectors are
+  unaffected — they take the sanitised route.
+
+### 2.11 Canvas doc v1 rows persist until each slide is next saved (accepted, 2026-08-15)
+
+- **What:** the doc schema moved to v2 (one ordered `nodes[]` replacing v1's separate `layers` and
+  `elements` bands, so z-order is fully general). There is **no data migration** — `doc` is jsonb,
+  and `safeParseCanvasDoc` dispatches on the stored `version`: a v1 row is validated against
+  `canvasDocSchemaV1` and upgraded in memory on every read. The next save of that slide persists v2.
+- **Why no backfill:** the upgrade is pure and total, so a v1 row and its upgraded form render
+  identically. A backfill would be a write across every historical row to buy nothing a reader
+  cannot do for free.
+- **Cost:** `src/lib/canvas/doc-v1.ts` (v1 types + v1 schema + `upgradeCanvasDoc`) outlives the
+  format. It is a deliberate island — nothing but `doc-schema.ts` imports it — so it can be deleted
+  whole once no v1 rows remain.
+- **Action:** none now. Retiring it needs a deliberate backfill (`UPDATE post_canvas_docs` through
+  the upgrader) plus a check that `doc->>'version' = '1'` returns no rows; only then delete the
+  file and the v1 branch in `safeParseCanvasDoc`. Do not delete it because "everything looks
+  upgraded" — a slide that has not been opened since the cutover is still v1 on disk.
+
+### 2.12 A mirrored picture cannot be promoted to the slide background (accepted, 2026-08-15)
+
+- **What:** `flipX`/`flipY` live on the node. `background` is a bare `{publicUrl, storagePath}` with
+  no orientation of its own, so "Set as background" on a flipped picture would store the unmirrored
+  file and silently undo the flip. `setNodeAsBackground` refuses instead, and the editor says why.
+- **Why not just bake it:** carrying the mirror means drawing the flipped bitmap to a canvas and
+  uploading the result — async work, inside what is otherwise a pure synchronous doc reducer that
+  must stay one undo step.
+- **Action:** if this turns out to bite, the fix is in `use-editor-asset-ops` (which already owns
+  upload-then-mutate flows), not in `use-doc-actions`: bake, upload, then promote the new ref.
 
 ### 2.10 Inpaint dimensions round to multiples of 16 (accepted)
 
 - **What:** gpt-image-2/edit only accepts dims in multiples of 16. Our pipeline sizes comply
   (1088×1360, legacy 1024²), but inpainting a manually-uploaded image with non-conforming dims
   resamples it to the nearest valid size (`roundTo16`) — a marginal, invisible quality cost.
-- **Action:** none; noted so a future "why is this 1 px off" bug hunt starts here.
+- **Measured 2026-08-16** (two live probes against `openai/gpt-image-2/edit`): an ON-GRID request is
+  honoured exactly (asked 1632×2048, got 1632×2048); an OFF-GRID one is **floored**, not rounded
+  (asked 1632×2040, got 1632×2032). Our `roundTo16` uses `Math.round`, so the route and the model
+  disagree at a .5 boundary — the route would ask for 2048 where the model, given 2040, would have
+  produced 2032. The consequence for the existing inpaint path is narrow: the mask is built at the
+  source's natural size while the output comes back on-grid, so `compositeEditedRegion` rescales by
+  up to 8px (~0.4%) on an off-grid source. Feathered strokes hide it; it is a shift, not merely a
+  resample, which is the part the original wording understated.
+- **Consequence for any future outpaint:** the padded frame MUST be computed on-grid client-side, so
+  the mask and the request agree. Leaning on the route's rounding would silently shift the mask.
+- **Also measured:** the model regenerates globally even where the mask says keep — the preserved
+  region came back with a mean absolute channel difference of 3.1/255 and a worst-case of 78/255.
+  That is why `compositeEditedRegion` exists and why it is load-bearing, not belt-and-braces.
+- **Action:** none; noted so a future "why is this 8 px off" bug hunt starts here.
 
 ---
 

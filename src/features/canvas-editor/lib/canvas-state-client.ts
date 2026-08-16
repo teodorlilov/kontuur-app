@@ -30,3 +30,29 @@ export async function fetchCanvasState(postId: string, position: number): Promis
     error: body.error,
   }
 }
+
+/** One stored doc, by the slide it belongs to. Slides without a doc are simply absent. */
+export interface PositionedDoc {
+  position: number
+  doc: CanvasDoc
+}
+
+/**
+ * Every stored doc for a post, plus the identity to seed the slides that have none.
+ *
+ * The editor's own load: it can move between all of a post's slides, so it asks for all of them at
+ * once. A miss throws rather than returning a flag — unlike the per-position read, this one has no
+ * caller that can carry on without it.
+ */
+export async function fetchCanvasDocs(
+  postId: string
+): Promise<{ docs: PositionedDoc[]; identity: SeedIdentity }> {
+  const res = await fetch(`/api/posts/${postId}/canvas`)
+  const body = (await res.json().catch(() => ({}))) as {
+    docs?: PositionedDoc[]
+    identity?: SeedIdentity
+    error?: string
+  }
+  if (!res.ok || !body.identity) throw new Error(body.error ?? 'Failed to load the canvas')
+  return { docs: body.docs ?? [], identity: body.identity }
+}

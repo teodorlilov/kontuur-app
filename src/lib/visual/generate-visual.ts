@@ -23,16 +23,25 @@ async function resolveIdentity(clientId: string): Promise<VisualIdentity> {
 }
 
 /**
- * The single image-generation pipeline shared by the draft and persisted-post routes:
- * client identity → 3-variable prompt → gpt-image-2 → downloaded image bytes.
+ * The single image-generation pipeline shared by the draft, persisted-post and in-editor routes:
+ * client identity → prompt → gpt-image-2 → downloaded image bytes.
+ *
+ * `direction` is the editor's optional art direction. It rides INSIDE this pipeline rather than
+ * beside it so a hand-written prompt still inherits the client's palette and brand style — a
+ * freeform prompt sent straight to the model would be a second, unbranded prompt-assembly path.
  */
-export async function generateVisual(input: { clientId: string; textBlock: string }): Promise<GeneratedVisual> {
+export async function generateVisual(input: {
+  clientId: string
+  textBlock: string
+  direction?: string
+}): Promise<GeneratedVisual> {
   const identity = await resolveIdentity(input.clientId)
   const prompt = buildVisualPrompt({
     textBlock: input.textBlock,
     // resolveIdentity always sets palette_description; the ?? guards the type, not a real path.
     paletteDescription: identity.palette_description ?? '',
     stylePrompt: getBrandStyle(identity.style).prompt,
+    ...(input.direction ? { direction: input.direction } : {}),
   })
 
   const imageUrl = await generateSlideImage(prompt)

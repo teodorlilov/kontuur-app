@@ -8,12 +8,12 @@ import {
 } from '../draft-visuals'
 
 const doc = {
-  version: 1,
+  version: 2,
   canvas: { w: 1080, h: 1350 },
   background: { publicUrl: 'https://x.test/clean.jpg', storagePath: 'c1/drafts/d1/clean.jpg' },
   flattenedStoragePath: 'c1/drafts/d1/flat.jpg',
   scrim: { enabled: true, color: '#FFFFFF', opacity: 0.35, mode: 'bottom' },
-  layers: [],
+  nodes: [],
 } satisfies CanvasDoc
 
 const visuals: DraftVisual[] = [
@@ -59,8 +59,8 @@ describe('draftStoragePaths', () => {
     ])
   })
 
-  it('collects element asset paths from docs', () => {
-    const withElements: DraftVisual[] = [
+  it('collects placed-asset paths from docs, and text nodes contribute none', () => {
+    const withAssets: DraftVisual[] = [
       {
         position: 0,
         status: 'done',
@@ -68,12 +68,39 @@ describe('draftStoragePaths', () => {
         storagePath: 'c1/drafts/d1/flat.jpg',
         canvasDoc: {
           ...doc,
-          elements: [
-            { id: 'e1', kind: 'image', src: { publicUrl: 'https://x.test/logo.png', storagePath: 'c1/drafts/d1/assets/logo.png' }, x: 0, y: 0, width: 100, height: 100 },
+          nodes: [
+            {
+              id: 'e1',
+              kind: 'image',
+              src: {
+                publicUrl: 'https://x.test/logo.png',
+                storagePath: 'c1/drafts/d1/assets/logo.png',
+              },
+              x: 0,
+              y: 0,
+              width: 100,
+              height: 100,
+            },
+            {
+              id: 't1',
+              kind: 'text',
+              role: 'custom',
+              text: 'no file of its own',
+              x: 0,
+              y: 0,
+              width: 400,
+              fontFamily: 'Inter',
+              fontSize: 40,
+              fontWeight: 400,
+              fill: '#ffffff',
+              align: 'left',
+              lineHeight: 1.2,
+            },
           ],
         },
       },
     ]
-    expect(draftStoragePaths(withElements)).toContain('c1/drafts/d1/assets/logo.png')
+    expect(draftStoragePaths(withAssets)).toContain('c1/drafts/d1/assets/logo.png')
+    expect(draftStoragePaths(withAssets)).toHaveLength(3)
   })
 })

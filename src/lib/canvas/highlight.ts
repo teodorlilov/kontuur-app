@@ -1,4 +1,4 @@
-import type { CanvasTextLayer } from '@/types/canvas'
+import type { CanvasTextNode } from '@/types/canvas'
 
 /** Band height as a share of the font size — covers the x-height like a real marker swipe. */
 const BAND_HEIGHT_RATIO = 0.8
@@ -8,7 +8,7 @@ const BAND_OVERSHOOT_RATIO = 0.3
  *  editor, re-renders and the export all draw the identical bands. */
 const BAND_WOBBLE_CYCLE = [-1.5, 1, -0.8] as const
 
-/** One marker band, Konva.Rect-ready, positioned relative to the text layer's origin. */
+/** One marker band, Konva.Rect-ready, positioned relative to the text node's origin. */
 export interface MarkerBandAttrs {
   x: number
   y: number
@@ -20,7 +20,7 @@ export interface MarkerBandAttrs {
 }
 
 // Where a line's glyphs start horizontally inside the layer box, per alignment.
-function lineOffsetX(layer: Pick<CanvasTextLayer, 'width' | 'align'>, lineWidth: number): number {
+function lineOffsetX(layer: Pick<CanvasTextNode, 'width' | 'align'>, lineWidth: number): number {
   if (layer.align === 'center') return (layer.width - lineWidth) / 2
   if (layer.align === 'right') return layer.width - lineWidth
   return 0
@@ -33,7 +33,7 @@ function lineOffsetX(layer: Pick<CanvasTextLayer, 'width' | 'align'>, lineWidth:
  */
 export function markerBands(
   lines: ReadonlyArray<{ width: number }>,
-  layer: Pick<CanvasTextLayer, 'width' | 'align' | 'fontSize' | 'lineHeight' | 'highlight'>
+  layer: Pick<CanvasTextNode, 'width' | 'align' | 'fontSize' | 'lineHeight' | 'highlight'>
 ): MarkerBandAttrs[] {
   if (!layer.highlight) return []
   const fill = layer.highlight

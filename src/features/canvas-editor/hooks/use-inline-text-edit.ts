@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type Konva from 'konva'
-import type { CanvasTextLayer } from '@/types/canvas'
+import type { CanvasTextNode } from '@/types/canvas'
 
 /**
  * The standard Konva inline-edit trick: on double-click the Text node hides and an absolutely
@@ -16,34 +16,34 @@ export function useInlineTextEdit(onCommit: (id: string, text: string) => void) 
   useEffect(() => () => cleanupRef.current?.(), [])
 
   const startEdit = useCallback(
-    (layer: CanvasTextLayer, node: Konva.Text, scale: number) => {
+    (node: CanvasTextNode, text: Konva.Text, scale: number) => {
       cleanupRef.current?.()
-      const stage = node.getStage()
+      const stage = text.getStage()
       if (!stage) return
 
       const containerRect = stage.container().getBoundingClientRect()
-      // Anchor at the node's top-left PIVOT (rotation-independent), not getClientRect() — that
+      // Anchor at the text's top-left PIVOT (rotation-independent), not getClientRect() — that
       // returns the rotation-expanded bounding box and would misplace a rotated overlay.
-      const pivot = node.absolutePosition()
+      const pivot = text.absolutePosition()
       const textarea = document.createElement('textarea')
-      textarea.value = layer.text
-      applyTextareaStyle(textarea, layer, pivot, node.height() * scale, containerRect, scale)
+      textarea.value = node.text
+      applyTextareaStyle(textarea, node, pivot, text.height() * scale, containerRect, scale)
       document.body.appendChild(textarea)
-      setEditingId(layer.id)
+      setEditingId(node.id)
 
       const finish = (commit: boolean) => {
         cleanupRef.current = null
         const value = textarea.value
         textarea.remove()
         setEditingId(null)
-        if (commit && value !== layer.text) onCommit(layer.id, value)
+        if (commit && value !== node.text) onCommit(node.id, value)
       }
       cleanupRef.current = () => finish(false)
 
       textarea.addEventListener('blur', () => finish(true))
       textarea.addEventListener('keydown', (event) => {
         if (event.key === 'Escape') finish(false)
-        event.stopPropagation() // editor-level shortcuts (undo, delete-layer) stay suspended
+        event.stopPropagation() // editor-level shortcuts (undo, delete) stay suspended
       })
       textarea.focus()
       textarea.select()
@@ -56,9 +56,9 @@ export function useInlineTextEdit(onCommit: (id: string, text: string) => void) 
 
 function applyTextareaStyle(
   textarea: HTMLTextAreaElement,
-  layer: CanvasTextLayer,
+  node: CanvasTextNode,
   pivot: { x: number; y: number },
-  nodeHeight: number,
+  textHeight: number,
   containerRect: DOMRect,
   scale: number
 ): void {
@@ -66,20 +66,20 @@ function applyTextareaStyle(
     position: 'absolute',
     top: `${containerRect.top + window.scrollY + pivot.y}px`,
     left: `${containerRect.left + window.scrollX + pivot.x}px`,
-    width: `${layer.width * scale}px`,
-    minHeight: `${nodeHeight + 8}px`,
+    width: `${node.width * scale}px`,
+    minHeight: `${textHeight + 8}px`,
     // Mirror the node's rotation around the same top-left pivot so the overlay sits ON the text.
-    transform: `rotate(${layer.rotation ?? 0}deg)`,
+    transform: `rotate(${node.rotation ?? 0}deg)`,
     transformOrigin: 'left top',
     // Display-only capitals, exactly like the node — the committed text keeps its casing.
-    textTransform: layer.uppercase ? 'uppercase' : 'none',
-    fontFamily: `"${layer.fontFamily}", sans-serif`,
-    fontSize: `${layer.fontSize * scale}px`,
-    fontStyle: layer.italic ? 'italic' : 'normal',
-    fontWeight: String(layer.fontWeight),
-    lineHeight: String(layer.lineHeight),
-    textAlign: layer.align,
-    color: layer.fill,
+    textTransform: node.uppercase ? 'uppercase' : 'none',
+    fontFamily: `"${node.fontFamily}", sans-serif`,
+    fontSize: `${node.fontSize * scale}px`,
+    fontStyle: node.italic ? 'italic' : 'normal',
+    fontWeight: String(node.fontWeight),
+    lineHeight: String(node.lineHeight),
+    textAlign: node.align,
+    color: node.fill,
     background: 'rgba(255, 255, 255, 0.72)',
     border: '1px dashed var(--line2)',
     outline: 'none',

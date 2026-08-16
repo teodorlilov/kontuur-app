@@ -1,9 +1,10 @@
 import type {
   CanvasBackgroundRef,
   CanvasDoc,
-  CanvasTextLayer,
+  CanvasTextNode,
   CanvasTextRole,
 } from '@/types/canvas'
+import { isTextNode } from './doc-nodes'
 import type { Palette } from '@/types/visual'
 import { getBrandStyle } from '@/lib/visual/brand-styles'
 import { clampAtWordBoundary, sanitizePromptText } from '@/lib/visual/prompt'
@@ -46,19 +47,20 @@ interface SeedInput {
 
 /**
  * Build the first canvas doc for a slide: copy placed in the brand style's font pairing over the
- * clean background, contrast scrim on. Empty copy seeds no layer — callers can skip composing a
- * doc with zero layers.
+ * clean background, contrast scrim on. Empty copy seeds no node — callers can skip composing a
+ * doc with no text.
  */
 export function seedCanvasDoc(input: SeedInput): CanvasDoc {
   const { identity, background, slide, caption } = input
   const style = getBrandStyle(identity.style)
   const headlineText = slide ? sanitizePromptText(slide.headline) : captionHook(caption)
   const bodyText = slide ? sanitizePromptText(slide.body) : ''
-  const layers: CanvasTextLayer[] = []
+  const nodes: CanvasTextNode[] = []
 
   if (headlineText) {
-    layers.push({
+    nodes.push({
       id: crypto.randomUUID(),
+      kind: 'text',
       role: 'headline',
       text: headlineText,
       ...(style.fonts.headlineUppercase ? { uppercase: true } : {}),
@@ -74,8 +76,9 @@ export function seedCanvasDoc(input: SeedInput): CanvasDoc {
     })
   }
   if (bodyText) {
-    layers.push({
+    nodes.push({
       id: crypto.randomUUID(),
+      kind: 'text',
       role: 'body',
       text: bodyText,
       x: TEXT_X,
@@ -96,13 +99,13 @@ export function seedCanvasDoc(input: SeedInput): CanvasDoc {
     background,
     flattenedStoragePath: null,
     scrim: { enabled: true, color: identity.palette.surface, opacity: 0.35, mode: 'bottom' },
-    layers,
+    nodes,
   }
 }
 
 /**
- * Refresh role-seeded layers from rewritten copy (wizard recompose): headline/body layers take the
- * new text unless the user hand-edited them (`textOverridden`); custom layers are never touched.
+ * Refresh role-seeded text from rewritten copy (wizard recompose): headline/body nodes take the
+ * new text unless the user hand-edited them (`textOverridden`); custom text is never touched.
  */
 export function applyCopyToDoc(
   doc: CanvasDoc,
@@ -110,21 +113,22 @@ export function applyCopyToDoc(
 ): CanvasDoc {
   const headline = input.slide ? sanitizePromptText(input.slide.headline) : captionHook(input.caption)
   const body = input.slide ? sanitizePromptText(input.slide.body) : ''
-  const layers = doc.layers.map((layer) => {
-    if (layer.textOverridden) return layer
-    // Case is a render-time layer flag, so refreshed copy stays raw here.
-    if (layer.role === 'headline' && headline) return { ...layer, text: headline }
-    if (layer.role === 'body' && body) return { ...layer, text: body }
-    return layer
+  const nodes = doc.nodes.map((node) => {
+    if (!isTextNode(node) || node.textOverridden) return node
+    // Case is a render-time flag, so refreshed copy stays raw here.
+    if (node.role === 'headline' && headline) return { ...node, text: headline }
+    if (node.role === 'body' && body) return { ...node, text: body }
+    return node
   })
-  return { ...doc, layers }
+  return { ...doc, nodes }
 }
 
-/** A fresh layer for the editor's "Add text" button, in the style's body font. */
-export function createTextLayer(role: CanvasTextRole, identity: SeedIdentity): CanvasTextLayer {
+/** A fresh text node for the editor's "Add text" button, in the style's body font. */
+export function createTextNode(role: CanvasTextRole, identity: SeedIdentity): CanvasTextNode {
   const style = getBrandStyle(identity.style)
   return {
     id: crypto.randomUUID(),
+    kind: 'text',
     role,
     text: 'New text',
     x: TEXT_X,

@@ -1,0 +1,1749 @@
+<title>Canvas editor — the working mock</title>
+
+<style>
+  /* ═══ Document chrome. Theme-aware. The app mock inside stays light,
+         because Kontuur is a committed light system. ═══════════════════ */
+  :root {
+    --d-bg: #f6f8f5;
+    --d-surface: #ffffff;
+    --d-ink: #101613;
+    --d-ink2: #4f5a52;
+    --d-ink3: #667068;
+    --d-line: #e1e8e1;
+    --d-accent: #164430;
+    --d-soft: #eef4ef;
+    --d-warn: #8a6116;
+    --d-warn-bg: #f7efdc;
+    --d-bad: #b04a38;
+    --d-bad-bg: #fbefec;
+    --d-well: #eaece7;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --d-bg: #0d1310;
+      --d-surface: #141c18;
+      --d-ink: #edf1ed;
+      --d-ink2: #a6b2a9;
+      --d-ink3: #7e8a82;
+      --d-line: #222e28;
+      --d-accent: #7fd6a8;
+      --d-soft: #16241c;
+      --d-warn: #d6ae5e;
+      --d-warn-bg: #241d10;
+      --d-bad: #e08e7c;
+      --d-bad-bg: #291713;
+      --d-well: #0a0f0c;
+    }
+  }
+  :root[data-theme="dark"] {
+    --d-bg: #0d1310;
+    --d-surface: #141c18;
+    --d-ink: #edf1ed;
+    --d-ink2: #a6b2a9;
+    --d-ink3: #7e8a82;
+    --d-line: #222e28;
+    --d-accent: #7fd6a8;
+    --d-soft: #16241c;
+    --d-warn: #d6ae5e;
+    --d-warn-bg: #241d10;
+    --d-bad: #e08e7c;
+    --d-bad-bg: #291713;
+    --d-well: #0a0f0c;
+  }
+  :root[data-theme="light"] {
+    --d-bg: #f6f8f5;
+    --d-surface: #ffffff;
+    --d-ink: #101613;
+    --d-ink2: #4f5a52;
+    --d-ink3: #667068;
+    --d-line: #e1e8e1;
+    --d-accent: #164430;
+    --d-soft: #eef4ef;
+    --d-warn: #8a6116;
+    --d-warn-bg: #f7efdc;
+    --d-bad: #b04a38;
+    --d-bad-bg: #fbefec;
+    --d-well: #eaece7;
+  }
+
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+
+  body {
+    margin: 0;
+    background: var(--d-bg);
+    color: var(--d-ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+    font-size: 15px;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap { max-width: 1200px; margin: 0 auto; padding: 56px 24px 104px; }
+  .prose { max-width: 66ch; }
+  .stack { display: flex; flex-direction: column; }
+  .g8 { gap: 8px; } .g12 { gap: 12px; } .g16 { gap: 16px; }
+  .g20 { gap: 20px; } .g24 { gap: 24px; } .g32 { gap: 32px; } .g56 { gap: 56px; }
+
+  h1, h2, h3 { text-wrap: balance; margin: 0; }
+  h1 {
+    font-family: Georgia, "Times New Roman", serif;
+    font-style: italic; font-weight: 400;
+    font-size: clamp(32px, 4.6vw, 46px);
+    line-height: 1.1; letter-spacing: -0.015em;
+  }
+  h2 { font-size: 22px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.25; }
+  h3 { font-size: 15px; font-weight: 600; letter-spacing: -0.01em; }
+  p { margin: 0; }
+  em { font-family: Georgia, serif; }
+
+  .crumbs {
+    font-size: 13px; color: var(--d-ink3);
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  }
+  .crumbs b { font-weight: 500; color: var(--d-ink2); }
+  .crumbs .s { color: var(--d-line); }
+  .lede { font-size: 17px; line-height: 1.6; color: var(--d-ink2); }
+  .note { font-size: 13px; color: var(--d-ink3); line-height: 1.6; }
+  .rule { height: 1px; background: var(--d-line); border: 0; margin: 0; }
+  section { scroll-margin-top: 24px; }
+
+  .sechead { display: flex; align-items: baseline; gap: 13px; flex-wrap: wrap; }
+  .sechead .kicker {
+    font-size: 11px; font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--d-ink3);
+  }
+  code.i {
+    font-size: 0.86em; color: var(--d-ink3);
+    background: var(--d-bg); border: 1px solid var(--d-line);
+    border-radius: 5px; padding: 1px 5px; white-space: nowrap;
+  }
+
+  .sr-only {
+    position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+    overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+  }
+
+  /* ═══ Kontuur tokens — verbatim from src/app/globals.css, scoped to the mock.
+         The ten --text-* roles are DESIGN.md's closed ramp: every font-size on
+         a piece of *chrome* below reads var(--text-…). The only literal sizes
+         in this file are inside the drawn artwork, which is a document, not a
+         surface — the same distinction the Closed Ramp Rule draws when it
+         exempts Konva document fields. ═══════════════════════════════════ */
+  .kontuur {
+    --paper: #fbfcfa;
+    --surface: #ffffff;
+    --sunken: #f3f5f2;
+    --ink: #0f1512;
+    --ink-inv: #f2f5f1;
+    --text2: #57625a;
+    --text3: #667068;
+    --line: #e7ece7;
+    --line2: #d5ddd6;
+    --forest: #164430;
+    --forest-deep: #0c2e20;
+    --spring: #2e9e68;
+    --spring-text: #278658;
+    --spring-lite: #7fd6a8;
+    --accent: #cfea45;
+    --accent-deep: #b4cd32;
+    --wash: #eef4ef;
+    --marker: #d9eddd;
+    --lime-s: #e6eeae;
+    --sage: #cfe4d4;
+    --danger: #b04a38;
+    --danger-bg: #fbefec;
+    --danger-line: #e8cfc9;
+    --pending: #8a6116;
+    --pending-bg: #f7efdc;
+
+    --surface-dark: linear-gradient(180deg, #113429 0%, #0e2b21 100%);
+    --dot-grid: radial-gradient(rgba(255,255,255,.05) 1px, transparent 1.5px);
+    --hatch: repeating-linear-gradient(45deg, rgba(15,21,18,.16) 0 2px, transparent 2px 5px);
+
+    --sh-card: 0 1px 2px rgba(15,21,18,.03), 0 14px 36px -14px rgba(15,21,18,.1);
+    --sh-pop: 0 12px 32px rgba(15,21,18,.1);
+    --sh-frame: 0 24px 60px rgba(15,21,18,.06);
+
+    --radius-xs: 4px; --radius-sm: 8px; --radius-md: 10px;
+    --radius-lg: 14px; --radius-xl: 20px; --radius-full: 9999px;
+
+    --text-prompt: 36px; --text-metric: 28px; --text-headline: 22px;
+    --text-display: 18px; --text-lead: 16px; --text-title: 15px;
+    --text-body: 13px; --text-caption: 12px; --text-micro: 11px;
+    --text-label: 10px;
+
+    --ease: cubic-bezier(0.22, 1, 0.36, 1);
+    --serif: Georgia, "Times New Roman", serif;
+
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+    color: var(--ink);
+    font-size: var(--text-body);
+    line-height: 1.6;
+  }
+  .kontuur h1, .kontuur h2, .kontuur h3 {
+    font-family: inherit; font-style: normal; font-weight: 600; letter-spacing: -0.01em;
+  }
+  .kontuur button { font-family: inherit; cursor: default; }
+
+  /* ═══ The well the frame sits in ═══ */
+  .well {
+    background: var(--d-well);
+    border: 1px solid var(--d-line);
+    border-radius: 18px;
+    padding: 14px;
+    overflow-x: auto;
+  }
+  /* 1280 is the honest width: the editor is full-screen chrome, so it owes no
+     240px app rail — but 48 + 280 of panel plus a 4:5 sheet that has to stay
+     legible at 42% does not fit in less. Below this the flyout collapses; see
+     the note under the frame. */
+  .kontuur.app {
+    min-width: 1280px;
+    height: 812px;
+    background: var(--paper);
+    border-radius: 14px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    box-shadow: 0 1px 2px rgba(15,21,18,.05), 0 22px 52px -24px rgba(15,21,18,.3);
+  }
+
+  /* ─────────────────────────────────────────────────────────────────────
+     TOP BAR — 56px. Identity on the left, the document's one complaint in
+     the middle, history and the two verbs on the right.
+     ───────────────────────────────────────────────────────────────────── */
+  .e-top {
+    flex: none; height: 56px; padding: 0 12px 0 8px;
+    background: var(--surface); border-bottom: 1px solid var(--line);
+    display: flex; align-items: center; gap: 12px;
+  }
+  .e-doc { display: flex; align-items: center; gap: 10px; min-width: 0; }
+  .e-doc .who { font-size: var(--text-caption); color: var(--text3); }
+  .e-doc .slash { color: var(--line2); }
+  .e-doc .what { font-size: var(--text-title); font-weight: 600; letter-spacing: -.01em; }
+  .e-doc .of {
+    font-size: var(--text-micro); font-weight: 500; color: var(--text2);
+    background: var(--sunken); border-radius: var(--radius-md); padding: 3px 8px;
+    font-variant-numeric: tabular-nums;
+  }
+  .e-spacer { flex: 1; }
+
+  /* The one status colour in the bar. Amber, not clay: an overflowing
+     headline is a wait-for-you, not a failure. */
+  .e-warn {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: var(--pending-bg); color: var(--pending);
+    border-radius: var(--radius-md); padding: 4px 6px 4px 10px;
+    font-size: var(--text-micro); font-weight: 500;
+  }
+  .e-warn .ic { flex: none; }
+  .e-warn .fix {
+    border: 0; background: rgba(138,97,22,.14); color: var(--pending);
+    font-size: var(--text-micro); font-weight: 600;
+    border-radius: var(--radius-sm); padding: 3px 8px;
+  }
+
+  /* 29px icon buttons — the app's TOOL_ROW height, reused verbatim. */
+  .e-icon {
+    width: 29px; height: 29px; display: grid; place-items: center;
+    border: 0; background: none; border-radius: var(--radius-sm);
+    color: var(--text2);
+    transition: background-color .15s var(--ease), color .15s var(--ease);
+  }
+  .e-icon:hover { background: rgba(15,21,18,.05); color: var(--ink); }
+  .e-icon[aria-pressed="true"] { background: var(--wash); color: var(--forest); }
+  .e-icon[aria-disabled="true"] { color: var(--line2); }
+  .e-icon.lg { width: 32px; height: 32px; }
+
+  .e-sep { width: 1px; height: 20px; background: var(--line); flex: none; }
+
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px; line-height: 1;
+    border-radius: var(--radius-md); padding: 8px 16px;
+    font-size: var(--text-body); font-weight: 500;
+    border: 1px solid transparent; background: none; color: var(--ink);
+    transition: background-color .15s var(--ease), border-color .15s var(--ease);
+  }
+  .btn.sec { border-color: var(--line2); }
+  .btn.sec:hover { border-color: var(--text3); }
+  .btn.pri { background: var(--forest); color: #fff; }
+  .btn.pri:hover { background: var(--forest-deep); }
+  .btn.ghost { color: var(--text2); padding: 8px 10px; }
+  .btn.ghost:hover { background: rgba(15,21,18,.05); }
+  .btn.sm { padding: 5px 12px; font-size: var(--text-caption); border-radius: var(--radius-sm); }
+  /* The one lime answer in this screen: the commitment in the header. Forest
+     Ink on New Growth is 13.65:1, and the inset Pine Deep edge at 45% gives the
+     plate a boundary that clears 1.4.11 rather than relying on hue. */
+  .btn.commit {
+    background: var(--accent); color: var(--forest-deep); font-weight: 600;
+    box-shadow: inset 0 0 0 1px rgba(12,46,32,.45);
+  }
+  .btn.commit:hover { background: var(--accent-deep); }
+
+  /* ─────────────────────────────────────────────────────────────────────
+     BODY — rail | flyout | canvas column
+     ───────────────────────────────────────────────────────────────────── */
+  .e-body { flex: 1; display: flex; min-height: 0; }
+
+  /* ─── the 48px section rail ─── */
+  .e-rail {
+    flex: none; width: 48px; background: var(--surface);
+    border-right: 1px solid var(--line);
+    padding: 8px 0; display: flex; flex-direction: column; gap: 2px; align-items: center;
+  }
+  .e-railbtn {
+    width: 40px; padding: 7px 0 6px; border: 0; background: none;
+    border-radius: var(--radius-sm); color: var(--text2);
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+    transition: background-color .15s var(--ease), color .15s var(--ease);
+  }
+  .e-railbtn .lb {
+    font-size: var(--text-label); font-weight: 600; letter-spacing: .04em;
+    text-transform: uppercase; line-height: 1.2;
+  }
+  .e-railbtn:hover { background: rgba(15,21,18,.05); color: var(--ink); }
+  /* Active is Wash + Deep Pine, deliberately NOT the lime plate the app
+     sidebar uses. The lime in this screen is spent on Save; a second one here
+     would leave neither reading as "the commitment". */
+  .e-railbtn[aria-current] { background: var(--wash); color: var(--forest); }
+
+  /* ─── the 280px flyout ─── */
+  .e-flyout {
+    flex: none; width: 280px; background: var(--surface);
+    border-right: 1px solid var(--line);
+    display: flex; flex-direction: column; min-height: 0;
+  }
+  .e-flyhead {
+    flex: none; height: 44px; padding: 0 8px 0 16px;
+    display: flex; align-items: center; justify-content: space-between;
+    border-bottom: 1px solid var(--line);
+  }
+  .e-flyhead h3 { font-size: var(--text-title); }
+  .e-flybody {
+    flex: 1; min-height: 0; overflow: hidden;
+    padding: 16px; display: flex; flex-direction: column; gap: 20px;
+  }
+  .e-lbl {
+    font-size: var(--text-label); font-weight: 600; letter-spacing: .16em;
+    text-transform: uppercase; color: var(--text3);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .e-lbl .n { letter-spacing: 0; font-variant-numeric: tabular-nums; }
+
+  /* Hatching means absence — an empty target, never ornament. */
+  .e-drop {
+    border: 1px dashed var(--line2); border-radius: var(--radius-lg);
+    background: var(--sunken); padding: 18px 16px;
+    display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center;
+  }
+  .e-drop .ic { color: var(--text3); }
+  .e-drop .t { font-size: var(--text-caption); font-weight: 500; color: var(--ink); }
+  .e-drop .x { font-size: var(--text-micro); color: var(--text3); line-height: 1.45; }
+
+  .e-aiacts { display: flex; flex-direction: column; gap: 6px; }
+  .e-aiact {
+    display: flex; align-items: center; gap: 9px; width: 100%;
+    border: 1px solid var(--line); background: var(--surface); color: var(--ink);
+    border-radius: var(--radius-md); padding: 8px 10px;
+    font-size: var(--text-caption); text-align: left;
+    transition: border-color .15s var(--ease), background-color .15s var(--ease);
+  }
+  .e-aiact:hover { border-color: var(--line2); background: var(--paper); }
+  .e-aiact .ic { color: var(--forest); flex: none; }
+  .e-aiact .k { margin-left: auto; font-size: var(--text-micro); color: var(--text3); }
+
+  /* ─── placed element rows ─── */
+  .e-rows { display: flex; flex-direction: column; gap: 2px; }
+  .e-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 5px 6px 5px 5px; border-radius: var(--radius-md);
+    border: 1px solid transparent; background: none; width: 100%; text-align: left;
+  }
+  .e-row:hover, .e-row[data-hover] { background: var(--paper); border-color: var(--line); }
+  .e-row[aria-selected="true"] { background: var(--wash); border-color: var(--marker); }
+  .e-thumb {
+    width: 32px; height: 32px; flex: none; border-radius: var(--radius-sm);
+    border: 1px solid var(--line); overflow: hidden; position: relative;
+    background: var(--sunken);
+  }
+  .e-row .meta { min-width: 0; flex: 1; }
+  .e-row .nm {
+    font-size: var(--text-caption); color: var(--ink); font-weight: 500;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .e-row .ty { font-size: var(--text-micro); color: var(--text3); }
+  .e-rowacts { display: flex; align-items: center; gap: 0; opacity: 0; }
+  .e-row:hover .e-rowacts, .e-row[data-hover] .e-rowacts,
+  .e-row[aria-selected="true"] .e-rowacts { opacity: 1; }
+  .e-mini {
+    width: 22px; height: 22px; display: grid; place-items: center;
+    border: 0; background: none; border-radius: var(--radius-xs); color: var(--text3);
+  }
+  .e-mini:hover { background: rgba(15,21,18,.06); color: var(--ink); }
+  .e-mini.bad:hover { background: var(--danger-bg); color: var(--danger); }
+  .e-locktag {
+    font-size: var(--text-micro); color: var(--text3);
+    display: inline-flex; align-items: center; gap: 4px;
+  }
+  .e-empty {
+    font-family: var(--serif); font-style: italic; font-size: var(--text-display);
+    color: var(--text2); line-height: 1.35;
+  }
+
+  /* ─────────────────────────────────────────────────────────────────────
+     CANVAS COLUMN
+     ───────────────────────────────────────────────────────────────────── */
+  .e-col { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+
+  /* ─── the contextual toolbar, 48px, bound to the selection ─── */
+  .e-tools {
+    flex: none; height: 48px; padding: 0 12px;
+    background: var(--surface); border-bottom: 1px solid var(--line);
+    display: flex; align-items: center; gap: 6px;
+  }
+  .e-tools.mode { background: var(--wash); border-bottom-color: var(--marker); }
+  .e-bound {
+    margin-left: auto; font-size: var(--text-micro); color: var(--text3);
+    display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;
+  }
+  .e-bound .dot { width: 5px; height: 5px; border-radius: 999px; background: var(--spring); }
+
+  .e-ctl {
+    display: inline-flex; align-items: center; gap: 7px; height: 29px;
+    padding: 0 9px; border: 1px solid var(--line); background: var(--surface);
+    border-radius: var(--radius-sm); color: var(--ink);
+    font-size: var(--text-caption); white-space: nowrap;
+    transition: border-color .15s var(--ease);
+  }
+  .e-ctl:hover { border-color: var(--line2); }
+  .e-ctl .ic { color: var(--text2); flex: none; }
+  .e-ctl .cv { color: var(--text3); flex: none; }
+  .e-ctl.w150 { width: 150px; justify-content: flex-start; }
+  .e-ctl.num { font-variant-numeric: tabular-nums; }
+  .e-ctl.plain { border-color: transparent; color: var(--text2); }
+  .e-ctl.plain:hover { border-color: transparent; background: rgba(15,21,18,.05); color: var(--ink); }
+
+  /* number stepper */
+  .e-step {
+    display: inline-flex; align-items: center; height: 29px;
+    border: 1px solid var(--line); border-radius: var(--radius-sm); overflow: hidden;
+  }
+  .e-step button {
+    width: 25px; height: 27px; display: grid; place-items: center;
+    border: 0; background: none; color: var(--text2);
+  }
+  .e-step button:hover { background: rgba(15,21,18,.05); color: var(--ink); }
+  .e-step .v {
+    min-width: 34px; text-align: center; font-size: var(--text-caption);
+    font-variant-numeric: tabular-nums;
+    border-left: 1px solid var(--line); border-right: 1px solid var(--line);
+    line-height: 27px;
+  }
+
+  /* segmented icon group — alignment, flips */
+  .e-seg {
+    display: inline-flex; align-items: center; gap: 2px;
+    background: var(--sunken); border-radius: var(--radius-sm); padding: 2px;
+  }
+  .e-seg button {
+    width: 25px; height: 25px; display: grid; place-items: center;
+    border: 0; background: none; border-radius: var(--radius-xs); color: var(--text2);
+  }
+  .e-seg button:hover { background: rgba(15,21,18,.06); color: var(--ink); }
+  .e-seg button[aria-pressed="true"] { background: var(--surface); color: var(--forest); box-shadow: 0 1px 2px rgba(15,21,18,.06); }
+
+  /* colour swatch control */
+  .e-swatch {
+    width: 16px; height: 16px; border-radius: var(--radius-xs);
+    border: 1px solid rgba(15,21,18,.18); flex: none;
+  }
+
+  /* slider */
+  .e-slider { width: 84px; height: 4px; border-radius: var(--radius-xs); background: var(--line2); position: relative; flex: none; }
+  .e-slider i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: var(--radius-xs); background: var(--forest); }
+  .e-slider b {
+    position: absolute; top: 50%; transform: translate(-50%, -50%);
+    width: 12px; height: 12px; border-radius: 999px;
+    background: var(--surface); border: 1px solid var(--line2);
+    box-shadow: 0 1px 2px rgba(15,21,18,.12);
+  }
+
+  /* the marker-highlight toggle carries its own tint when it is on */
+  .e-ctl.marker-on { background: var(--marker); border-color: var(--marker); color: var(--forest); }
+
+  /* ─── the workspace and the sheet ─── */
+  .e-work {
+    flex: 1; min-height: 0; position: relative;
+    background: var(--sunken);
+    display: grid; place-items: center; padding: 32px;
+  }
+  /* A sheet genuinely floats above the workspace, which is the one thing
+     DESIGN.md still spends shadow on. Square corners: the artwork is a
+     1080×1350 document, not a card, and a radius here would be a lie about
+     what publishes. */
+  .e-sheet {
+    position: relative; height: 564px; aspect-ratio: 4 / 5;
+    background: #fff; box-shadow: var(--sh-card);
+    outline: 1px solid rgba(15,21,18,.05); outline-offset: 0;
+    overflow: hidden;
+  }
+
+  /* ═══ THE ARTWORK ═══
+     Everything inside .e-art is the client's document, drawn at 42%. The hexes
+     are Atelier Nord's own, which DESIGN.md § Client Identity calls content:
+     they are legitimate inside the post and would be out of system on a button
+     or a surface. The literal font sizes are document values, exempt from the
+     Closed Ramp Rule for exactly the reason Konva fields are. */
+  .e-art { position: absolute; inset: 0; background: linear-gradient(168deg, #efe7db 0%, #e3d7c5 52%, #d6c7b0 100%); }
+  .e-art .grain {
+    position: absolute; inset: 0; opacity: .5;
+    background: repeating-linear-gradient(96deg, rgba(120,98,70,.10) 0 1px, transparent 1px 7px);
+  }
+  .e-art .scrim { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(42,36,29,.16) 0%, rgba(42,36,29,0) 42%); }
+  /* the placed cutout: a table, silhouetted */
+  .e-art .table { position: absolute; right: 26px; bottom: 96px; width: 218px; }
+  .e-art .table .top { height: 13px; border-radius: 3px; background: #8d7350; }
+  .e-art .table .leg { position: absolute; top: 13px; width: 9px; height: 74px; background: #967954; border-radius: 0 0 2px 2px; }
+  .e-art .table .shadow {
+    position: absolute; left: 8px; right: 8px; top: 86px; height: 12px; border-radius: 999px;
+    background: rgba(80,63,42,.22); filter: blur(5px);
+  }
+  .e-art .kick {
+    position: absolute; left: 28px; top: 30px;
+    font-size: 9px; font-weight: 600; letter-spacing: .19em; text-transform: uppercase; color: #7a6a55;
+  }
+  .e-art .head {
+    position: absolute; left: 28px; top: 58px; width: 420px;
+    font-family: Georgia, "Times New Roman", serif; font-style: italic;
+    font-size: 42px; line-height: 1.02; color: #2c261e; letter-spacing: -.01em;
+  }
+  .e-art .head .over { white-space: nowrap; }
+  .e-art .sub {
+    position: absolute; left: 28px; top: 232px; width: 258px;
+    font-size: 12.5px; line-height: 1.55; color: #574c3c;
+  }
+  .e-art .mark { position: absolute; left: 28px; bottom: 28px; }
+  .e-art .mark .r { width: 26px; height: 2px; background: #2c261e; margin-bottom: 8px; }
+  .e-art .mark .w { font-size: 9px; font-weight: 600; letter-spacing: .22em; text-transform: uppercase; color: #2c261e; }
+
+  /* ═══ selection chrome ═══
+     Living Green: 3.38:1 on the sheet, which clears the 3:1 non-text bar, and
+     it is already this system's signal of motion. */
+  .e-sel { position: absolute; border: 1px solid var(--spring); }
+  .e-sel .h {
+    position: absolute; width: 8px; height: 8px; background: var(--surface);
+    border: 1px solid var(--spring); border-radius: 1px;
+  }
+  .e-sel .h.tl { left: -4px; top: -4px; } .e-sel .h.tr { right: -4px; top: -4px; }
+  .e-sel .h.bl { left: -4px; bottom: -4px; } .e-sel .h.br { right: -4px; bottom: -4px; }
+  .e-sel .rot {
+    position: absolute; left: 50%; top: -26px; transform: translateX(-50%);
+    width: 18px; height: 18px; border-radius: 999px; background: var(--surface);
+    border: 1px solid var(--spring); display: grid; place-items: center; color: var(--spring-text);
+  }
+  .e-sel .stem { position: absolute; left: 50%; top: -8px; width: 1px; height: 8px; background: var(--spring); }
+
+  /* Snap guides. The system has no "guide" colour; clay is the nearest token
+     and it is transient chrome over artwork, never a status on a surface. */
+  .e-guide { position: absolute; }
+  .e-guide.v { top: 0; bottom: 0; width: 0; border-left: 1px dashed var(--danger); }
+  .e-guide.h { left: 0; right: 0; height: 0; border-top: 1px dashed var(--danger); }
+
+  /* ─── zoom cluster, floating bottom-right ─── */
+  .e-zoom {
+    position: absolute; right: 16px; bottom: 16px;
+    display: inline-flex; align-items: center; gap: 2px;
+    background: var(--surface); border-radius: var(--radius-md);
+    box-shadow: var(--sh-pop); padding: 3px;
+  }
+  .e-zoom button {
+    height: 26px; min-width: 26px; padding: 0 4px; display: grid; place-items: center;
+    border: 0; background: none; border-radius: var(--radius-sm); color: var(--text2);
+  }
+  .e-zoom button:hover { background: rgba(15,21,18,.05); color: var(--ink); }
+  .e-zoom .pct {
+    min-width: 50px; font-size: var(--text-caption); font-weight: 500;
+    color: var(--ink); font-variant-numeric: tabular-nums;
+  }
+  .e-zoom .sep { width: 1px; height: 16px; background: var(--line); margin: 0 2px; }
+
+  /* the mode hint that sits over the canvas */
+  .e-modehint {
+    position: absolute; left: 50%; top: 16px; transform: translateX(-50%);
+    display: inline-flex; align-items: center; gap: 8px;
+    background-image: var(--dot-grid), var(--surface-dark);
+    background-size: 13px 13px, auto;
+    color: var(--ink-inv); border-radius: var(--radius-md);
+    padding: 6px 12px; font-size: var(--text-micro); box-shadow: var(--sh-pop);
+  }
+  .e-modehint kbd {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: var(--text-label); background: rgba(242,245,241,.14);
+    border-radius: var(--radius-xs); padding: 2px 5px; letter-spacing: .04em;
+  }
+
+  /* the inpaint mask, painted over a dimmed document */
+  .e-dim { opacity: .35; }
+  .e-mask { position: absolute; }
+  .e-mask i {
+    position: absolute; border-radius: 999px;
+    background: rgba(46,158,104,.34); box-shadow: 0 0 0 1px rgba(46,158,104,.5);
+  }
+  .e-brush {
+    position: absolute; width: 64px; height: 64px; border-radius: 999px;
+    border: 1px solid rgba(255,255,255,.9); box-shadow: 0 0 0 1px rgba(15,21,18,.35);
+  }
+
+  /* ─── the docked AI bar ─── */
+  .e-dock {
+    flex: none; height: 80px; padding: 0 20px;
+    background: var(--surface); border-top: 1px solid var(--line);
+    display: flex; align-items: center; gap: 20px;
+  }
+  .e-field {
+    flex: 1; max-width: 520px; height: 36px;
+    display: flex; align-items: center; gap: 9px; padding: 0 12px;
+    background: var(--surface); border: 1px solid var(--line2); border-radius: var(--radius-md);
+    color: var(--text3); font-size: var(--text-body);
+  }
+  .e-field .ic { color: var(--forest); flex: none; }
+  .e-field.filled { color: var(--ink); }
+  .e-cands { display: flex; align-items: center; gap: 12px; margin-left: auto; }
+  .e-cands .cap { display: flex; flex-direction: column; gap: 2px; text-align: right; }
+  .e-cands .cap .t { font-size: var(--text-label); font-weight: 600; letter-spacing: .16em; text-transform: uppercase; color: var(--text3); }
+  .e-cands .cap .x { font-size: var(--text-micro); color: var(--text3); }
+  .e-cands .strip { display: flex; gap: 6px; }
+  .e-cand {
+    width: 44px; height: 55px; border-radius: var(--radius-sm); overflow: hidden;
+    border: 1px solid var(--line); padding: 0; position: relative;
+  }
+  .e-cand[aria-pressed="true"] { border-color: var(--spring); box-shadow: 0 0 0 2px rgba(46,158,104,.18); }
+  .e-cand .f { position: absolute; inset: 0; }
+
+  /* ═══ Detail plates ═══ */
+  .plates { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(268px, 1fr)); }
+  .plate {
+    background: var(--d-surface); border: 1px solid var(--d-line); border-radius: 16px;
+    overflow: hidden; display: flex; flex-direction: column;
+  }
+  /* Hard-coded, not tokenised: the plate holds a piece of the app, and the app
+     is light in every theme. */
+  .plate .body {
+    padding: 18px 20px; background: #fbfcfa; border-bottom: 1px solid var(--d-line);
+    display: flex; align-items: center; justify-content: center; min-height: 132px;
+  }
+  .plate .cap { padding: 13px 20px 16px; display: flex; flex-direction: column; gap: 5px; }
+  .plate .cap h3 { font-size: 14px; }
+  .plate .cap p { font-size: 13px; color: var(--d-ink2); line-height: 1.55; }
+
+  /* ═══ Toolbar comparison ═══ */
+  .bars { display: flex; flex-direction: column; gap: 14px; }
+  .bar {
+    background: var(--d-surface); border: 1px solid var(--d-line); border-radius: 16px;
+    overflow: hidden;
+  }
+  .bar .strip { background: #fbfcfa; overflow-x: auto; }
+  .bar .strip .kontuur { min-width: 940px; }
+  .bar .cap {
+    padding: 12px 20px 15px; display: grid; grid-template-columns: 128px 1fr; gap: 4px 18px;
+    border-top: 1px solid var(--d-line);
+  }
+  .bar .cap .when {
+    font-size: 11px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase;
+    color: var(--d-accent); padding-top: 3px;
+  }
+  .bar .cap p { font-size: 13px; color: var(--d-ink2); line-height: 1.55; }
+  .bar .cap p b { color: var(--d-ink); font-weight: 600; }
+  @media (max-width: 720px) { .bar .cap { grid-template-columns: 1fr; } }
+
+  .notes { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(258px, 1fr)); }
+  .note-card {
+    background: var(--d-surface); border: 1px solid var(--d-line); border-radius: 14px;
+    padding: 16px 18px 18px; display: flex; flex-direction: column; gap: 7px;
+  }
+  .note-card .tag {
+    align-self: flex-start; font-size: 10px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase;
+    padding: 3px 8px; border-radius: 999px; background: var(--d-soft); color: var(--d-accent);
+  }
+  .note-card .tag.w { background: var(--d-warn-bg); color: var(--d-warn); }
+  .note-card h3 { font-size: 14px; line-height: 1.4; }
+  .note-card p { font-size: 13px; color: var(--d-ink2); line-height: 1.6; }
+
+  .calls { display: flex; flex-direction: column; gap: 10px; }
+  .call {
+    background: var(--d-surface); border: 1px solid var(--d-line); border-radius: 14px;
+    padding: 16px 20px 18px; display: grid; grid-template-columns: 22px 1fr; gap: 4px 14px;
+  }
+  .call .mk { font-size: 12px; font-weight: 600; color: var(--d-ink3); font-variant-numeric: tabular-nums; grid-row: span 2; padding-top: 2px; }
+  .call .q { font-size: 14px; font-weight: 600; letter-spacing: -.01em; }
+  .call .a { font-size: 13px; color: var(--d-ink2); line-height: 1.6; }
+  .call .a b { color: var(--d-ink); font-weight: 600; }
+
+  @media (max-width: 720px) { .wrap { padding: 40px 16px 72px; } }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+
+<div class="wrap stack g56">
+
+  <!-- ══════════ MASTHEAD ══════════ -->
+  <header class="stack g16 prose">
+    <nav class="crumbs" aria-label="Breadcrumb">
+      <span>Kontuur</span><span class="s" aria-hidden="true">/</span>
+      <span>Redesign</span><span class="s" aria-hidden="true">/</span>
+      <b>Canvas editor</b>
+    </nav>
+    <h1>An editor with one panel is a settings screen with a picture in it.</h1>
+    <p class="lede">
+      Today every verb in the editor lives in one 300px column on the right — text
+      layers, fonts, elements, cutouts, scrim and background, in a fixed vertical stack
+      that is not selection-driven at all: the sections are simply always there, and
+      only the text block and one element sub-block appear and vanish. This is the
+      consumer-editor anatomy instead: a <b>section rail</b> for what you can add, a
+      <b>flyout</b> for the section you are in, and a <b>contextual toolbar</b> that
+      only ever shows the verbs the current selection can take.
+    </p>
+    <p class="note">
+      Two full states below — normal editing and inpaint — plus the three toolbars
+      side by side, because the whole proposal rests on them being different. Nothing
+      here is interactive: it is drawn, not wired. Georgia stands in for Instrument
+      Serif and the system sans for Geist, since neither font can load in this file.
+    </p>
+  </header>
+
+  <hr class="rule" />
+
+  <!-- ══════════ STATE 1 ══════════ -->
+  <section class="stack g20">
+    <div class="sechead">
+      <span class="kicker">State one</span>
+      <h2>Editing, with a text object selected</h2>
+    </div>
+    <p class="prose note" style="font-size:14px;color:var(--d-ink2);">
+      Atelier Nord, slide 2 of a five-slide carousel. The headline is selected and
+      being dragged: the toolbar has become a type toolbar, the snap guides show it
+      catching the sheet&rsquo;s centre line and the cutout&rsquo;s top edge, and the top bar
+      is saying — once, quietly — that the last line no longer fits.
+      <b>The flyout does not follow the selection.</b> It is showing Elements because
+      that is the section you are in; the toolbar is what tracks what you clicked.
+    </p>
+
+    <div class="well">
+      <div class="kontuur app">
+
+        <!-- ─── top bar ─── -->
+        <header class="e-top">
+          <button class="e-icon" type="button" aria-label="Back to the post">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3.5L5.5 8l4.5 4.5"/></svg>
+          </button>
+          <div class="e-doc">
+            <span class="who">Atelier Nord</span>
+            <span class="slash" aria-hidden="true">/</span>
+            <span class="what">Eleven weeks</span>
+            <span class="of">Slide 2 of 5</span>
+          </div>
+
+          <div class="e-warn">
+            <svg class="ic" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2.6l5.7 10.1H2.3z"/><path d="M8 6.6v3"/><path d="M8 11.4h.01"/></svg>
+            &ldquo;Oak, and the patience&hellip;&rdquo; overflows
+            <button class="fix" type="button">Auto-fit</button>
+          </div>
+
+          <span class="e-spacer"></span>
+
+          <button class="e-icon" type="button" aria-label="Undo" title="Undo (⌘Z)">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 5.5h7a3.5 3.5 0 010 7H6"/><path d="M5 2.8L2.3 5.5 5 8.2"/></svg>
+          </button>
+          <button class="e-icon" type="button" aria-label="Redo" title="Redo (⇧⌘Z)" aria-disabled="true">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13.5 5.5h-7a3.5 3.5 0 000 7H10"/><path d="M11 2.8l2.7 2.7L11 8.2"/></svg>
+          </button>
+          <span class="e-sep" aria-hidden="true"></span>
+          <button class="btn ghost" type="button">Cancel</button>
+          <button class="btn sec" type="button" title="Save this slide and carry its style onto every other slide (each keeps its own text)">Save &amp; apply to all</button>
+          <button class="btn commit" type="button">Save</button>
+        </header>
+
+        <div class="e-body">
+
+          <!-- ─── section rail ─── -->
+          <nav class="e-rail" aria-label="Editor sections">
+            <button class="e-railbtn" type="button">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3.5h10"/><path d="M8 3.5v9"/><path d="M6 12.5h4"/></svg>
+              <span class="lb">Text</span>
+            </button>
+            <button class="e-railbtn" type="button" aria-current="true">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="1.8" y="7.6" width="6.6" height="6.6" rx="1.2"/><circle cx="10.8" cy="5.2" r="3.4"/></svg>
+              <span class="lb">Elements</span>
+            </button>
+            <button class="e-railbtn" type="button">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6.2 1.8l1.1 2.8 2.8 1.1-2.8 1.1-1.1 2.8-1.1-2.8L2.3 5.7l2.8-1.1z"/><path d="M11.6 9.2l.6 1.6 1.6.6-1.6.6-.6 1.6-.6-1.6-1.6-.6 1.6-.6z"/></svg>
+              <span class="lb">AI</span>
+            </button>
+            <button class="e-railbtn" type="button">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2.8" width="12" height="10.4" rx="1.6"/><circle cx="5.7" cy="6.3" r="1.1"/><path d="M2.4 11.2l3.3-3 3 2.6 2-1.8 3 2.6"/></svg>
+              <span class="lb">Bg</span>
+            </button>
+            <button class="e-railbtn" type="button">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 1.9l6 3-6 3-6-3z"/><path d="M2.4 8.2L8 11l5.6-2.8"/><path d="M2.4 11.3L8 14.1l5.6-2.8"/></svg>
+              <span class="lb">Layers</span>
+            </button>
+          </nav>
+
+          <!-- ─── flyout: Elements ─── -->
+          <aside class="e-flyout" aria-label="Elements">
+            <div class="e-flyhead">
+              <h3>Elements</h3>
+              <button class="e-icon" type="button" aria-label="Collapse the panel">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 3.5L5 8l4.5 4.5"/><path d="M13 2.8v10.4"/></svg>
+              </button>
+            </div>
+
+            <div class="e-flybody">
+              <div class="e-drop">
+                <svg class="ic" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 10.6V2.4"/><path d="M5 5.4L8 2.4l3 3"/><path d="M2.4 10.2v2.2a1.2 1.2 0 001.2 1.2h8.8a1.2 1.2 0 001.2-1.2v-2.2"/></svg>
+                <span class="t">Drop an image, or click to upload</span>
+                <span class="x">PNG, JPG or SVG. You can also paste from the clipboard,<br/>or drag a file straight in from the desktop.</span>
+              </div>
+
+              <div class="stack g8">
+                <span class="e-lbl">Do with AI</span>
+                <div class="e-aiacts">
+                  <button class="e-aiact" type="button">
+                    <svg class="ic" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="3.6" cy="3.6" r="1.8"/><circle cx="3.6" cy="12.4" r="1.8"/><path d="M5 4.8L13 12"/><path d="M5 11.2L13 4"/></svg>
+                    Cut out subject
+                    <span class="k">~4s</span>
+                  </button>
+                  <button class="e-aiact" type="button">
+                    <svg class="ic" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="2.4 2"><path d="M8 2.2c3.4 0 5.8 1.7 5.8 3.9S11.4 10 8 10 2.2 8.3 2.2 6.1 4.6 2.2 8 2.2z"/><path stroke-dasharray="0" d="M6.4 9.7c-.5 1.6-.2 2.9.8 3.6"/></svg>
+                    Lasso cut
+                    <span class="k">Draw</span>
+                  </button>
+                  <button class="e-aiact" type="button">
+                    <svg class="ic" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 13L8 3l5 10-5-2.2z"/><circle cx="3" cy="13" r="1.1"/><circle cx="13" cy="13" r="1.1"/><circle cx="8" cy="3" r="1.1"/></svg>
+                    Generate vector
+                    <span class="k">Prompt</span>
+                  </button>
+                </div>
+              </div>
+
+              <div class="stack g8">
+                <span class="e-lbl">On this slide <span class="n">4</span></span>
+                <div class="e-rows">
+
+                  <button class="e-row" type="button" data-hover>
+                    <span class="e-thumb" aria-hidden="true">
+                      <span style="position:absolute;left:5px;right:5px;top:12px;height:4px;border-radius:1px;background:#8d7350"></span>
+                      <span style="position:absolute;left:7px;top:16px;width:3px;height:9px;background:#967954"></span>
+                      <span style="position:absolute;right:7px;top:16px;width:3px;height:9px;background:#967954"></span>
+                    </span>
+                    <span class="meta">
+                      <span class="nm">Fjord table — cutout</span>
+                      <span class="ty">Image · masked</span>
+                    </span>
+                    <span class="e-rowacts">
+                      <span class="e-mini" aria-label="Move up"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9.5L8 5.5l4 4"/></svg></span>
+                      <span class="e-mini" aria-label="Move down"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6.5L8 10.5l4-4"/></svg></span>
+                      <span class="e-mini bad" aria-label="Delete"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2.8 4.2h10.4"/><path d="M6.4 4.2V2.9h3.2v1.3"/><path d="M4.2 4.2l.6 8.4h6.4l.6-8.4"/></svg></span>
+                    </span>
+                  </button>
+
+                  <button class="e-row" type="button">
+                    <span class="e-thumb" aria-hidden="true">
+                      <span style="position:absolute;left:6px;top:14px;width:18px;height:2px;background:#a8862f"></span>
+                    </span>
+                    <span class="meta">
+                      <span class="nm">Brass rule</span>
+                      <span class="ty">Vector · Recraft</span>
+                    </span>
+                    <span class="e-rowacts">
+                      <span class="e-mini" aria-label="Move up"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9.5L8 5.5l4 4"/></svg></span>
+                      <span class="e-mini" aria-label="Move down"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6.5L8 10.5l4-4"/></svg></span>
+                      <span class="e-mini bad" aria-label="Delete"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2.8 4.2h10.4"/><path d="M6.4 4.2V2.9h3.2v1.3"/><path d="M4.2 4.2l.6 8.4h6.4l.6-8.4"/></svg></span>
+                    </span>
+                  </button>
+
+                  <button class="e-row" type="button">
+                    <span class="e-thumb" aria-hidden="true">
+                      <span style="position:absolute;inset:0;display:grid;place-items:center;font-size:6px;font-weight:600;letter-spacing:.1em;color:#2c261e">AN</span>
+                    </span>
+                    <span class="meta">
+                      <span class="nm">Atelier Nord wordmark</span>
+                      <span class="ty">Vector · brand kit</span>
+                    </span>
+                    <span class="e-rowacts">
+                      <span class="e-mini" aria-label="Move up"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9.5L8 5.5l4 4"/></svg></span>
+                      <span class="e-mini" aria-label="Move down"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6.5L8 10.5l4-4"/></svg></span>
+                      <span class="e-mini bad" aria-label="Delete"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2.8 4.2h10.4"/><path d="M6.4 4.2V2.9h3.2v1.3"/><path d="M4.2 4.2l.6 8.4h6.4l.6-8.4"/></svg></span>
+                    </span>
+                  </button>
+
+                  <button class="e-row" type="button">
+                    <span class="e-thumb" aria-hidden="true">
+                      <span style="position:absolute;inset:0;background:linear-gradient(168deg,#efe7db,#d6c7b0)"></span>
+                    </span>
+                    <span class="meta">
+                      <span class="nm">Oak grain — backdrop</span>
+                      <span class="ty">
+                        <span class="e-locktag">
+                          <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3.4" y="7" width="9.2" height="6.2" rx="1.4"/><path d="M5.6 7V5.2a2.4 2.4 0 014.8 0V7"/></svg>
+                          Background · locked
+                        </span>
+                      </span>
+                    </span>
+                  </button>
+
+                </div>
+              </div>
+            </div>
+          </aside>
+
+          <!-- ─── canvas column ─── -->
+          <div class="e-col">
+
+            <!-- contextual toolbar: TEXT -->
+            <div class="e-tools" role="toolbar" aria-label="Text controls">
+              <button class="e-ctl w150" type="button">
+                <span style="font-family:Georgia,serif;font-style:italic">Playfair Display</span>
+                <svg class="cv" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-left:auto"><path d="M4 6.5L8 10.5l4-4"/></svg>
+              </button>
+              <span class="e-step">
+                <button type="button" aria-label="Smaller"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M4 8h8"/></svg></button>
+                <span class="v">96</span>
+                <button type="button" aria-label="Larger"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M4 8h8"/><path d="M8 4v8"/></svg></button>
+              </span>
+              <button class="e-ctl" type="button">
+                Regular
+                <svg class="cv" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6.5L8 10.5l4-4"/></svg>
+              </button>
+
+              <span class="e-sep" aria-hidden="true"></span>
+
+              <span class="e-seg" role="group" aria-label="Alignment">
+                <button type="button" aria-label="Align left" aria-pressed="true"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2.5 4h11"/><path d="M2.5 8h7"/><path d="M2.5 12h9"/></svg></button>
+                <button type="button" aria-label="Align centre"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2.5 4h11"/><path d="M4.5 8h7"/><path d="M3.5 12h9"/></svg></button>
+                <button type="button" aria-label="Align right"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2.5 4h11"/><path d="M6.5 8h7"/><path d="M4.5 12h9"/></svg></button>
+              </span>
+
+              <span class="e-sep" aria-hidden="true"></span>
+
+              <button class="e-ctl" type="button" aria-label="Text colour">
+                <span class="e-swatch" style="background:#2c261e"></span>
+                <svg class="cv" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6.5L8 10.5l4-4"/></svg>
+              </button>
+              <button class="e-ctl num" type="button" aria-label="Line height">
+                <svg class="ic" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2.6 3.4V12.6"/><path d="M1.2 4.8l1.4-1.4 1.4 1.4"/><path d="M1.2 11.2l1.4 1.4 1.4-1.4"/><path d="M6.4 4.4h8"/><path d="M6.4 8h8"/><path d="M6.4 11.6h8"/></svg>
+                1.02
+              </button>
+              <button class="e-ctl num" type="button" aria-label="Rotation">
+                <svg class="ic" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13.2 8a5.2 5.2 0 11-1.9-4"/><path d="M13.4 2.2v3.4H10"/></svg>
+                &minus;2&deg;
+              </button>
+
+              <span class="e-sep" aria-hidden="true"></span>
+
+              <button class="e-ctl plain" type="button" aria-label="Uppercase" aria-pressed="false">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1.4 12.4L4.1 4l2.7 8.4"/><path d="M2.3 10h3.6"/><path d="M9.2 12.4L11.9 4l2.7 8.4"/><path d="M10.1 10h3.6"/></svg>
+              </button>
+              <button class="e-ctl plain" type="button" aria-label="Italic" aria-pressed="true" style="background:var(--wash);color:var(--forest)">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.4 3.2H6.2"/><path d="M9.8 12.8H5.6"/><path d="M9.4 3.2L6.6 12.8"/></svg>
+              </button>
+              <button class="e-ctl plain" type="button" aria-label="Marker highlight">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8.4 2.6l4.6 4.6-4.4 4.4H5.2L3.8 9.8z"/><path d="M2.4 14h11.2"/></svg>
+              </button>
+
+              <span class="e-bound"><span class="dot" aria-hidden="true"></span>Headline &middot; text</span>
+            </div>
+
+            <!-- workspace -->
+            <div class="e-work">
+              <div class="e-sheet">
+                <div class="e-art">
+                  <span class="grain" aria-hidden="true"></span>
+                  <span class="scrim" aria-hidden="true"></span>
+
+                  <div class="table" aria-hidden="true">
+                    <div class="top"></div>
+                    <div class="leg" style="left:14px"></div>
+                    <div class="leg" style="right:14px"></div>
+                    <div class="shadow"></div>
+                  </div>
+
+                  <div class="kick">Material notes &mdash; 03</div>
+                  <div class="head">
+                    Oak, and the<br/>
+                    patience it<br/>
+                    <span class="over">asks for.</span>
+                  </div>
+                  <div class="sub">
+                    Eleven weeks from board to table. Here is where every one of them goes —
+                    and why the eighth is the one nobody skips.
+                  </div>
+                  <div class="mark">
+                    <div class="r"></div>
+                    <div class="w">Atelier Nord</div>
+                  </div>
+                </div>
+
+                <!-- snap guides: the sheet's centre line, and the cutout's top edge -->
+                <span class="e-guide v" style="left:50%"></span>
+                <span class="e-guide h" style="top:174px"></span>
+
+                <!-- the selection, extending past the right edge because the text does -->
+                <span class="e-sel" style="left:22px; top:52px; width:414px; height:126px;">
+                  <span class="stem"></span>
+                  <span class="rot" aria-hidden="true">
+                    <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M13.2 8a5.2 5.2 0 11-1.9-4"/><path d="M13.4 2.2v3.4H10"/></svg>
+                  </span>
+                  <span class="h tl"></span><span class="h tr"></span>
+                  <span class="h bl"></span><span class="h br"></span>
+                </span>
+              </div>
+
+              <!-- zoom cluster -->
+              <div class="e-zoom" role="group" aria-label="Zoom">
+                <button type="button" aria-label="Zoom out" title="Zoom out (⌘−)"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M4 8h8"/></svg></button>
+                <button class="pct" type="button" title="Actual size (⇧0)">42%</button>
+                <button type="button" aria-label="Zoom in" title="Zoom in (⌘+)"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M4 8h8"/><path d="M8 4v8"/></svg></button>
+                <span class="sep" aria-hidden="true"></span>
+                <button type="button" aria-label="Fit to screen" title="Fit to screen (⇧1)"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2.4H2.4V6"/><path d="M10 2.4h3.6V6"/><path d="M10 13.6h3.6V10"/><path d="M6 13.6H2.4V10"/></svg></button>
+              </div>
+            </div>
+
+            <!-- docked AI bar -->
+            <div class="e-dock">
+              <div class="e-field">
+                <svg class="ic" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6.2 1.8l1.1 2.8 2.8 1.1-2.8 1.1-1.1 2.8-1.1-2.8L2.3 5.7l2.8-1.1z"/><path d="M11.6 9.2l.6 1.6 1.6.6-1.6.6-.6 1.6-.6-1.6-1.6-.6 1.6-.6z"/></svg>
+                Describe a new background&hellip;
+              </div>
+              <button class="btn pri" type="button">Generate</button>
+
+              <div class="e-cands">
+                <span class="cap">
+                  <span class="t">Last run</span>
+                  <span class="x">Click to place &middot; shift-click to set as background</span>
+                </span>
+                <span class="strip">
+                  <button class="e-cand" type="button" aria-pressed="true" aria-label="Candidate 1, applied">
+                    <span class="f" style="background:linear-gradient(168deg,#efe7db,#d6c7b0)"></span>
+                  </button>
+                  <button class="e-cand" type="button" aria-label="Candidate 2">
+                    <span class="f" style="background:linear-gradient(150deg,#e6e1d4,#bfb49c)"></span>
+                  </button>
+                  <button class="e-cand" type="button" aria-label="Candidate 3">
+                    <span class="f" style="background:linear-gradient(200deg,#f1ece2,#cdbfa8)"></span>
+                  </button>
+                </span>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <p class="prose note">
+      Under about 1180px the flyout collapses to an overlay above the canvas and the
+      rail keeps its width — the sheet is the one thing that must not shrink, because
+      everything else in the screen exists to change it. Below the existing
+      <code class="i">MIN_VIEWPORT_WIDTH</code> of 768 the editor keeps doing what it does
+      now and refuses, with the same sentence: <em>the canvas editor needs a larger screen</em>.
+      That floor is honest and the redesign does not move it.
+    </p>
+  </section>
+
+  <hr class="rule" />
+
+  <!-- ══════════ THE THREE TOOLBARS ══════════ -->
+  <section class="stack g24">
+    <div class="sechead">
+      <span class="kicker">Selection</span>
+      <h2>One bar, three contents</h2>
+    </div>
+    <p class="prose note" style="font-size:14px;color:var(--d-ink2);">
+      This is the whole proposal in three strips. Today all of these controls are
+      present at once in the right-hand column, greyed or inert when they do not
+      apply. Here the bar holds only what the selection can take, and names what it
+      is bound to at the right end — so an empty-looking bar is never ambiguous.
+    </p>
+
+    <div class="bars">
+
+      <!-- TEXT -->
+      <article class="bar">
+        <div class="strip">
+          <div class="kontuur">
+            <div class="e-tools" role="toolbar" aria-label="Text controls">
+              <button class="e-ctl w150" type="button">
+                <span style="font-family:Georgia,serif;font-style:italic">Playfair Display</span>
+                <svg class="cv" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-left:auto"><path d="M4 6.5L8 10.5l4-4"/></svg>
+              </button>
+              <span class="e-step">
+                <button type="button" aria-label="Smaller"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M4 8h8"/></svg></button>
+                <span class="v">96</span>
+                <button type="button" aria-label="Larger"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M4 8h8"/><path d="M8 4v8"/></svg></button>
+              </span>
+              <button class="e-ctl" type="button">Regular<svg class="cv" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6.5L8 10.5l4-4"/></svg></button>
+              <span class="e-sep" aria-hidden="true"></span>
+              <span class="e-seg" role="group" aria-label="Alignment">
+                <button type="button" aria-label="Align left" aria-pressed="true"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2.5 4h11"/><path d="M2.5 8h7"/><path d="M2.5 12h9"/></svg></button>
+                <button type="button" aria-label="Align centre"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2.5 4h11"/><path d="M4.5 8h7"/><path d="M3.5 12h9"/></svg></button>
+                <button type="button" aria-label="Align right"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2.5 4h11"/><path d="M6.5 8h7"/><path d="M4.5 12h9"/></svg></button>
+              </span>
+              <span class="e-sep" aria-hidden="true"></span>
+              <button class="e-ctl" type="button" aria-label="Text colour">
+                <span class="e-swatch" style="background:#2c261e"></span>
+                <svg class="cv" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6.5L8 10.5l4-4"/></svg>
+              </button>
+              <button class="e-ctl num" type="button" aria-label="Line height">
+                <svg class="ic" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2.6 3.4V12.6"/><path d="M1.2 4.8l1.4-1.4 1.4 1.4"/><path d="M1.2 11.2l1.4 1.4 1.4-1.4"/><path d="M6.4 4.4h8"/><path d="M6.4 8h8"/><path d="M6.4 11.6h8"/></svg>
+                1.02
+              </button>
+              <button class="e-ctl num" type="button" aria-label="Rotation">
+                <svg class="ic" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13.2 8a5.2 5.2 0 11-1.9-4"/><path d="M13.4 2.2v3.4H10"/></svg>
+                &minus;2&deg;
+              </button>
+              <span class="e-sep" aria-hidden="true"></span>
+              <button class="e-ctl plain" type="button" aria-label="Uppercase">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1.4 12.4L4.1 4l2.7 8.4"/><path d="M2.3 10h3.6"/><path d="M9.2 12.4L11.9 4l2.7 8.4"/><path d="M10.1 10h3.6"/></svg>
+              </button>
+              <button class="e-ctl plain" type="button" aria-label="Italic" aria-pressed="true" style="background:var(--wash);color:var(--forest)">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.4 3.2H6.2"/><path d="M9.8 12.8H5.6"/><path d="M9.4 3.2L6.6 12.8"/></svg>
+              </button>
+              <button class="e-ctl marker-on" type="button" aria-label="Marker highlight" aria-pressed="true">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8.4 2.6l4.6 4.6-4.4 4.4H5.2L3.8 9.8z"/><path d="M2.4 14h11.2"/></svg>
+              </button>
+              <span class="e-bound"><span class="dot" aria-hidden="true"></span>Headline &middot; text</span>
+            </div>
+          </div>
+        </div>
+        <div class="cap">
+          <span class="when">Text selected</span>
+          <p>
+            Family, size, weight, alignment, colour, leading, rotation — then the three
+            treatments the composition engine actually ships: uppercase, real italics,
+            and the marker highlight, which carries its own <b>Marker</b> tint when it is
+            on rather than a checkbox. <b>Alignment is icons, not the letters</b>
+            <code class="i">L</code> <code class="i">C</code> <code class="i">R</code> the
+            panel uses today: three capitals in a row are a legibility trap at 25px and they
+            do not survive translation. The size stepper is a stepper because 96 &rarr; 92 is
+            a nudge, not a form entry. The family list is the document&rsquo;s own twenty —
+            <code class="i">font-library.ts</code>, Playfair through Caveat — and it keeps
+            hiding Latin-only faces when the layer carries Cyrillic. Kontuur&rsquo;s Instrument
+            Serif is chrome and never appears in it.
+          </p>
+        </div>
+      </article>
+
+      <!-- ELEMENT -->
+      <article class="bar">
+        <div class="strip">
+          <div class="kontuur">
+            <div class="e-tools" role="toolbar" aria-label="Element controls">
+              <span class="e-ctl num" style="cursor:default">
+                <svg class="ic" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="5.6"/><path d="M8 2.4v11.2"/><path d="M8 4.6l5 5"/><path d="M8 8.4l3.9 3.9"/><path d="M8 12.2l1.6 1.6"/></svg>
+                <span class="e-slider" aria-hidden="true"><i style="width:84%"></i><b style="left:84%"></b></span>
+                84%
+              </span>
+
+              <span class="e-sep" aria-hidden="true"></span>
+
+              <button class="e-ctl" type="button">
+                <svg class="ic" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2.2" y="2.2" width="8" height="8" rx="1.4"/><path d="M5.8 13.8h6.4a1.6 1.6 0 001.6-1.6V5.8"/></svg>
+                Forward
+              </button>
+              <button class="e-ctl" type="button">
+                <svg class="ic" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="5.8" y="5.8" width="8" height="8" rx="1.4"/><path d="M10.2 2.2H3.8a1.6 1.6 0 00-1.6 1.6v6.4"/></svg>
+                Back
+              </button>
+
+              <span class="e-sep" aria-hidden="true"></span>
+
+              <button class="e-ctl" type="button">
+                <svg class="ic" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2.8" width="12" height="10.4" rx="1.6"/><path d="M2.4 11.2l3.3-3 3 2.6 2-1.8 3 2.6"/><circle cx="5.7" cy="6.3" r="1.1"/></svg>
+                Set as background
+              </button>
+              <button class="e-ctl" type="button">
+                <svg class="ic" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6.2 1.8l1.1 2.8 2.8 1.1-2.8 1.1-1.1 2.8-1.1-2.8L2.3 5.7l2.8-1.1z"/><path d="M11.6 9.2l.6 1.6 1.6.6-1.6.6-.6 1.6-.6-1.6-1.6-.6 1.6-.6z"/></svg>
+                Remove background
+              </button>
+              <button class="e-ctl" type="button">
+                <svg class="ic" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8.4 1.9l5.7 5.7-5.2 5.2H4.6L1.9 10.1z"/><path d="M4.4 6l5.6 5.6"/><path d="M2.4 14h11.2"/></svg>
+                Erase parts
+              </button>
+
+              <span class="e-sep" aria-hidden="true"></span>
+
+              <span class="e-seg" role="group" aria-label="Flip">
+                <button type="button" aria-label="Flip horizontally"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v12"/><path d="M6 4.6L2.6 8 6 11.4z"/><path d="M10 4.6L13.4 8 10 11.4z"/></svg></button>
+                <button type="button" aria-label="Flip vertically"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 8h12"/><path d="M4.6 6L8 2.6 11.4 6z"/><path d="M4.6 10L8 13.4 11.4 10z"/></svg></button>
+              </span>
+
+              <span class="e-bound"><span class="dot" aria-hidden="true"></span>Fjord table &middot; image</span>
+            </div>
+          </div>
+        </div>
+        <div class="cap">
+          <span class="when">Element selected</span>
+          <p>
+            Opacity gets a slider with its number beside it, because it is the one value
+            here people scrub rather than type. Order is two verbs — <b>Forward</b> and
+            <b>Back</b>, today&rsquo;s <code class="i">Bring forward</code> /
+            <code class="i">Send backward</code> — not a z-index field. The three
+            consequential verbs (<b>Set as background</b>, <b>Remove background</b>,
+            <b>Erase parts</b>) keep their words: each changes the document in a way no icon
+            reliably predicts, and this is the bar where a wrong guess costs an undo.
+            <b>Two open items.</b> The flips are new — nothing in the editor flips an element
+            today. And the panel&rsquo;s <code class="i">In front of text</code> checkbox has no
+            home here yet; it is a third z-order fact that Forward / Back cannot express, so
+            it either becomes a toggle in this bar or the row order in Layers absorbs it.
+          </p>
+        </div>
+      </article>
+
+      <!-- NOTHING -->
+      <article class="bar">
+        <div class="strip">
+          <div class="kontuur">
+            <div class="e-tools" role="toolbar" aria-label="Background controls">
+              <button class="e-ctl" type="button">
+                <svg class="ic" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 1.8L9.8 3.6M8 1.8L6.2 3.6M8 1.8v12.4M8 14.2l1.8-1.8M8 14.2l-1.8-1.8"/><path d="M1.8 8l1.8-1.8M1.8 8l1.8 1.8M1.8 8h12.4M14.2 8l-1.8-1.8M14.2 8l-1.8 1.8"/></svg>
+                Reposition
+              </button>
+              <span class="e-ctl num" style="cursor:default">
+                <svg class="ic" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2.2" y="2.2" width="11.6" height="11.6" rx="1.6"/><path d="M2.6 9.6h10.8"/><path d="M2.6 11.4h10.8"/><path d="M2.6 13h10.8"/></svg>
+                Scrim
+                <span class="e-slider" aria-hidden="true"><i style="width:26%"></i><b style="left:26%"></b></span>
+                26%
+              </span>
+
+              <span class="e-sep" aria-hidden="true"></span>
+
+              <button class="e-ctl" type="button">
+                <svg class="ic" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2.4 13.6l7.2-7.2"/><path d="M8.8 3.6l3.6 3.6"/><path d="M11 1.4l.7 1.9 1.9.7-1.9.7-.7 1.9-.7-1.9-1.9-.7 1.9-.7z"/></svg>
+                AI repair
+              </button>
+              <button class="e-ctl" type="button">
+                <svg class="ic" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2.8" width="12" height="10.4" rx="1.6"/><path d="M5.4 9.2A2.8 2.8 0 0110 7.4"/><path d="M10.6 6.8l-.6 1.4 1.4-.2"/><path d="M10.6 6.8A2.8 2.8 0 016 8.6"/></svg>
+                Replace image
+              </button>
+
+              <span class="e-bound">Nothing selected &mdash; these act on the background</span>
+            </div>
+          </div>
+        </div>
+        <div class="cap">
+          <span class="when">Nothing selected</span>
+          <p>
+            The state that has no home today. Click the workspace and the bar becomes the
+            background&rsquo;s: move the crop, set the legibility scrim, open inpainting, swap
+            the image outright. It is also the honest place for <b>AI repair</b> — it acts on
+            the backdrop, so it belongs where the backdrop&rsquo;s verbs are rather than in a
+            panel three sections away. The right end says so in words instead of leaving a
+            near-empty bar to be read as a bug. Two more arrive conditionally, exactly as
+            they do now: the background <code class="i">Zoom · 1.40×</code> slider and
+            <code class="i">Reset crop</code>, which only exists once a crop transform does.
+            <b>Scrim keeps its detail behind the control</b> — coverage (bottom band or full
+            canvas) and colour open from it rather than spending four slots in the bar.
+            <b>Replace image</b> lives outside the editor today, on the review column; it
+            belongs here, next to the thing it replaces.
+          </p>
+        </div>
+      </article>
+
+    </div>
+  </section>
+
+  <hr class="rule" />
+
+  <!-- ══════════ STATE 2 ══════════ -->
+  <section class="stack g20">
+    <div class="sechead">
+      <span class="kicker">State two</span>
+      <h2>Inpaint is a mode, and admits it</h2>
+    </div>
+    <p class="prose note" style="font-size:14px;color:var(--d-ink2);">
+      Brushing over a picture to describe what should replace it is not a property, and
+      it cannot live in a panel beside sliders that still look clickable. It takes the
+      screen: the document drops to 35% so the mask is the only thing at full strength,
+      the contextual toolbar is replaced by the mode&rsquo;s own bar on a <code class="i">--wash</code>
+      ground, the rail and flyout go inert, and the way out is stated over the canvas
+      rather than remembered.
+    </p>
+
+    <div class="well">
+      <div class="kontuur app">
+
+        <header class="e-top">
+          <button class="e-icon" type="button" aria-label="Back to the post" aria-disabled="true">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3.5L5.5 8l4.5 4.5"/></svg>
+          </button>
+          <div class="e-doc" style="opacity:.5">
+            <span class="who">Atelier Nord</span>
+            <span class="slash" aria-hidden="true">/</span>
+            <span class="what">Eleven weeks</span>
+            <span class="of">Slide 2 of 5</span>
+          </div>
+          <span class="e-spacer"></span>
+          <button class="e-icon" type="button" aria-label="Undo">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 5.5h7a3.5 3.5 0 010 7H6"/><path d="M5 2.8L2.3 5.5 5 8.2"/></svg>
+          </button>
+          <button class="e-icon" type="button" aria-label="Redo" aria-disabled="true">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13.5 5.5h-7a3.5 3.5 0 000 7H10"/><path d="M11 2.8l2.7 2.7L11 8.2"/></svg>
+          </button>
+          <span class="e-sep" aria-hidden="true"></span>
+          <span style="opacity:.4;display:inline-flex;gap:8px">
+            <span class="btn ghost">Cancel</span>
+            <span class="btn sec">Save &amp; apply to all</span>
+            <span class="btn commit">Save</span>
+          </span>
+        </header>
+
+        <div class="e-body">
+
+          <nav class="e-rail" aria-label="Editor sections" style="opacity:.45">
+            <span class="e-railbtn">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3.5h10"/><path d="M8 3.5v9"/><path d="M6 12.5h4"/></svg>
+              <span class="lb">Text</span>
+            </span>
+            <span class="e-railbtn">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="1.8" y="7.6" width="6.6" height="6.6" rx="1.2"/><circle cx="10.8" cy="5.2" r="3.4"/></svg>
+              <span class="lb">Elements</span>
+            </span>
+            <span class="e-railbtn">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6.2 1.8l1.1 2.8 2.8 1.1-2.8 1.1-1.1 2.8-1.1-2.8L2.3 5.7l2.8-1.1z"/><path d="M11.6 9.2l.6 1.6 1.6.6-1.6.6-.6 1.6-.6-1.6-1.6-.6 1.6-.6z"/></svg>
+              <span class="lb">AI</span>
+            </span>
+            <span class="e-railbtn">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2.8" width="12" height="10.4" rx="1.6"/><circle cx="5.7" cy="6.3" r="1.1"/><path d="M2.4 11.2l3.3-3 3 2.6 2-1.8 3 2.6"/></svg>
+              <span class="lb">Bg</span>
+            </span>
+            <span class="e-railbtn">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 1.9l6 3-6 3-6-3z"/><path d="M2.4 8.2L8 11l5.6-2.8"/><path d="M2.4 11.3L8 14.1l5.6-2.8"/></svg>
+              <span class="lb">Layers</span>
+            </span>
+          </nav>
+
+          <aside class="e-flyout" aria-label="Elements" style="opacity:.45">
+            <div class="e-flyhead"><h3>Elements</h3></div>
+            <div class="e-flybody">
+              <div class="e-drop">
+                <svg class="ic" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 10.6V2.4"/><path d="M5 5.4L8 2.4l3 3"/><path d="M2.4 10.2v2.2a1.2 1.2 0 001.2 1.2h8.8a1.2 1.2 0 001.2-1.2v-2.2"/></svg>
+                <span class="t">Drop an image, or click to upload</span>
+                <span class="x">PNG, JPG or SVG. You can also paste from the clipboard,<br/>or drag a file straight in from the desktop.</span>
+              </div>
+              <div class="stack g8">
+                <span class="e-lbl">On this slide <span class="n">4</span></span>
+                <div class="e-rows">
+                  <span class="e-row"><span class="e-thumb"></span><span class="meta"><span class="nm">Fjord table — cutout</span><span class="ty">Image · masked</span></span></span>
+                  <span class="e-row"><span class="e-thumb"></span><span class="meta"><span class="nm">Brass rule</span><span class="ty">Vector · Recraft</span></span></span>
+                  <span class="e-row"><span class="e-thumb"></span><span class="meta"><span class="nm">Atelier Nord wordmark</span><span class="ty">Vector · brand kit</span></span></span>
+                  <span class="e-row"><span class="e-thumb"></span><span class="meta"><span class="nm">Oak grain — backdrop</span><span class="ty">Background · locked</span></span></span>
+                </div>
+              </div>
+            </div>
+          </aside>
+
+          <div class="e-col">
+
+            <!-- the mode bar -->
+            <div class="e-tools mode" role="toolbar" aria-label="Inpaint">
+              <span class="e-ctl num" style="background:transparent;border-color:var(--marker);cursor:default">
+                <svg class="ic" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9.6 2.6a2.1 2.1 0 013 3l-6 6-3.6.6.6-3.6z"/><path d="M8.4 3.8l3.8 3.8"/></svg>
+                Brush size
+                <span class="e-slider" aria-hidden="true"><i style="width:40%"></i><b style="left:40%"></b></span>
+                60&nbsp;px
+              </span>
+
+              <span class="e-field filled" style="flex:1;max-width:none;height:29px;border-radius:var(--radius-sm);font-size:var(--text-caption)">
+                Continue the plaster wall — no shelf, no cable
+              </span>
+
+              <button class="btn ghost sm" type="button" title="Erase what you painted over and let AI continue the background">Remove object</button>
+              <button class="btn ghost sm" type="button">Clear strokes</button>
+              <button class="btn pri sm" type="button">Apply</button>
+              <span class="e-sep" aria-hidden="true"></span>
+              <button class="btn sec sm" type="button">Done</button>
+            </div>
+
+            <div class="e-work">
+              <div class="e-sheet">
+                <div class="e-art e-dim">
+                  <span class="grain" aria-hidden="true"></span>
+                  <span class="scrim" aria-hidden="true"></span>
+                  <div class="table" aria-hidden="true">
+                    <div class="top"></div>
+                    <div class="leg" style="left:14px"></div>
+                    <div class="leg" style="right:14px"></div>
+                    <div class="shadow"></div>
+                  </div>
+                  <div class="kick">Material notes &mdash; 03</div>
+                  <div class="head">Oak, and the<br/>patience it<br/><span class="over">asks for.</span></div>
+                  <div class="sub">
+                    Eleven weeks from board to table. Here is where every one of them goes —
+                    and why the eighth is the one nobody skips.
+                  </div>
+                  <div class="mark"><div class="r"></div><div class="w">Atelier Nord</div></div>
+                </div>
+
+                <!-- the painted mask, at full strength over the dimmed document -->
+                <span class="e-mask" aria-hidden="true">
+                  <i style="left:250px;top:300px;width:104px;height:88px"></i>
+                  <i style="left:296px;top:262px;width:96px;height:96px"></i>
+                  <i style="left:330px;top:236px;width:74px;height:74px"></i>
+                </span>
+                <span class="e-brush" style="left:340px;top:240px" aria-hidden="true"></span>
+
+                <span class="e-modehint">
+                  Brush what should change &middot; <kbd>Esc</kbd> to finish
+                </span>
+              </div>
+
+              <div class="e-zoom" role="group" aria-label="Zoom">
+                <button type="button" aria-label="Zoom out" title="Zoom out (⌘−)"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M4 8h8"/></svg></button>
+                <button class="pct" type="button" title="Actual size (⇧0)">42%</button>
+                <button type="button" aria-label="Zoom in" title="Zoom in (⌘+)"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M4 8h8"/><path d="M8 4v8"/></svg></button>
+                <span class="sep" aria-hidden="true"></span>
+                <button type="button" aria-label="Fit to screen" title="Fit to screen (⇧1)"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2.4H2.4V6"/><path d="M10 2.4h3.6V6"/><path d="M10 13.6h3.6V10"/><path d="M6 13.6H2.4V10"/></svg></button>
+              </div>
+            </div>
+
+            <div class="e-dock" style="opacity:.45">
+              <div class="e-field">
+                <svg class="ic" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6.2 1.8l1.1 2.8 2.8 1.1-2.8 1.1-1.1 2.8-1.1-2.8L2.3 5.7l2.8-1.1z"/><path d="M11.6 9.2l.6 1.6 1.6.6-1.6.6-.6 1.6-.6-1.6-1.6-.6 1.6-.6z"/></svg>
+                Describe a new background&hellip;
+              </div>
+              <span class="btn pri">Generate</span>
+              <div class="e-cands">
+                <span class="cap">
+                  <span class="t">Last run</span>
+                  <span class="x">Click to place &middot; shift-click to set as background</span>
+                </span>
+                <span class="strip">
+                  <span class="e-cand"><span class="f" style="background:linear-gradient(168deg,#efe7db,#d6c7b0)"></span></span>
+                  <span class="e-cand"><span class="f" style="background:linear-gradient(150deg,#e6e1d4,#bfb49c)"></span></span>
+                  <span class="e-cand"><span class="f" style="background:linear-gradient(200deg,#f1ece2,#cdbfa8)"></span></span>
+                </span>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <p class="prose note">
+      The dock dims with everything else, which is the point: while a mask is live there
+      is exactly one prompt field on screen and no question about which one applies.
+      Undo and redo stay lit, because an over-brushed stroke is the most likely next
+      action and reaching for it should not first require leaving the mode.
+    </p>
+  </section>
+
+  <hr class="rule" />
+
+  <!-- ══════════ PLATES ══════════ -->
+  <section class="stack g24">
+    <div class="sechead">
+      <span class="kicker">Detail</span>
+      <h2>Four objects, close up</h2>
+    </div>
+
+    <div class="plates">
+
+      <article class="plate">
+        <div class="body kontuur">
+          <div style="width:248px">
+            <div class="stack g12">
+              <div class="e-drop">
+                <svg class="ic" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 10.6V2.4"/><path d="M5 5.4L8 2.4l3 3"/><path d="M2.4 10.2v2.2a1.2 1.2 0 001.2 1.2h8.8a1.2 1.2 0 001.2-1.2v-2.2"/></svg>
+                <span class="t">Drop an image, or click to upload</span>
+              </div>
+              <p class="e-empty">Nothing placed yet.</p>
+              <p style="font-size:var(--text-caption);color:var(--text3);margin:0;line-height:1.5">
+                Paste from the clipboard, drag a file in from the desktop, or cut a subject
+                out of the backdrop with AI.
+              </p>
+            </div>
+          </div>
+        </div>
+        <div class="cap">
+          <h3>The empty panel</h3>
+          <p>
+            The one sanctioned serif moment in the editor — an empty state, set in
+            Display italic and gated on <code class="i">hasCyrillic()</code> nowhere,
+            because this string is ours and never a client&rsquo;s. Under it, the three ways
+            in, stated rather than discovered.
+          </p>
+        </div>
+      </article>
+
+      <article class="plate">
+        <div class="body kontuur">
+          <div class="e-row" data-hover style="width:248px;">
+            <span class="e-thumb" aria-hidden="true">
+              <span style="position:absolute;left:5px;right:5px;top:12px;height:4px;border-radius:1px;background:#8d7350"></span>
+              <span style="position:absolute;left:7px;top:16px;width:3px;height:9px;background:#967954"></span>
+              <span style="position:absolute;right:7px;top:16px;width:3px;height:9px;background:#967954"></span>
+            </span>
+            <span class="meta">
+              <span class="nm">Fjord table — cutout</span>
+              <span class="ty">Image · masked</span>
+            </span>
+            <span class="e-rowacts">
+              <span class="e-mini"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9.5L8 5.5l4 4"/></svg></span>
+              <span class="e-mini"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6.5L8 10.5l4-4"/></svg></span>
+              <span class="e-mini bad"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2.8 4.2h10.4"/><path d="M6.4 4.2V2.9h3.2v1.3"/><path d="M4.2 4.2l.6 8.4h6.4l.6-8.4"/></svg></span>
+            </span>
+          </div>
+        </div>
+        <div class="cap">
+          <h3>The element row</h3>
+          <p>
+            32px thumbnail, the name the user or the engine gave it, and what it is.
+            Reorder and delete appear on hover and focus and take no width when they are
+            not there — three permanent icon buttons per row would make a four-item list
+            look like a control panel.
+          </p>
+        </div>
+      </article>
+
+      <article class="plate">
+        <div class="body kontuur" style="background:#f3f5f2">
+          <div class="e-zoom" style="position:static">
+            <button type="button" aria-label="Zoom out" title="Zoom out (⌘−)"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M4 8h8"/></svg></button>
+            <button class="pct" type="button" title="Actual size (⇧0)">42%</button>
+            <button type="button" aria-label="Zoom in" title="Zoom in (⌘+)"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M4 8h8"/><path d="M8 4v8"/></svg></button>
+            <span class="sep" aria-hidden="true"></span>
+            <button type="button" aria-label="Fit to screen" title="Fit to screen (⇧1)"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2.4H2.4V6"/><path d="M10 2.4h3.6V6"/><path d="M10 13.6h3.6V10"/><path d="M6 13.6H2.4V10"/></svg></button>
+          </div>
+        </div>
+        <div class="cap">
+          <h3>The zoom cluster</h3>
+          <p>
+            Floating chrome, so it is the one place in the canvas column that spends
+            <code class="i">--sh-pop</code>. <b>The percentage is a button</b> — it snaps to
+            100%, which is the request people actually have when they read it. Fit sits
+            behind a hairline because it answers a different question from the two steppers.
+          </p>
+        </div>
+      </article>
+
+      <article class="plate">
+        <div class="body kontuur">
+          <div class="e-warn">
+            <svg class="ic" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2.6l5.7 10.1H2.3z"/><path d="M8 6.6v3"/><path d="M8 11.4h.01"/></svg>
+            Headline runs past the frame
+            <button class="fix" type="button">Auto-fit</button>
+          </div>
+        </div>
+        <div class="cap">
+          <h3>The overflow chip</h3>
+          <p>
+            <b>Recoloured.</b> It is <code class="i">text-danger</code> today; amber on Amber
+            Background is the Muted Status Rule read literally — text that will crop is a
+            wait-for-you, not a failure, and clay here would sit next to the clay snap
+            guides and mean two different things. Everything else is as built: the string
+            names the offending layer, pluralises to <em>{n} text layers overflow</em>, and
+            carries <code class="i">Auto-fit</code> so noticing and solving are one gesture.
+          </p>
+        </div>
+      </article>
+
+    </div>
+  </section>
+
+  <hr class="rule" />
+
+  <!-- ══════════ MOVES ══════════ -->
+  <section class="stack g24">
+    <div class="sechead">
+      <span class="kicker">Moves</span>
+      <h2>What each decision buys</h2>
+    </div>
+
+    <div class="notes">
+      <article class="note-card">
+        <span class="tag">Structure</span>
+        <h3>Adding and changing are different questions</h3>
+        <p>
+          The rail answers &ldquo;what can I put here&rdquo;; the toolbar answers &ldquo;what can
+          I do to this&rdquo;. One column answering both is why every control has to be
+          present at once, and why the panel scrolls past the thing you came for.
+        </p>
+      </article>
+
+      <article class="note-card">
+        <span class="tag">The point</span>
+        <h3>The toolbar names its subject</h3>
+        <p>
+          Every variant ends with what it is bound to — <code class="i">Headline · text</code>,
+          <code class="i">Fjord table · image</code>, or the sentence for nothing. A
+          context-sensitive bar with no subject line is the fastest way to make people
+          believe controls have disappeared.
+        </p>
+      </article>
+
+      <article class="note-card">
+        <span class="tag">Palette</span>
+        <h3>One lime answer: Save</h3>
+        <p>
+          The commitment in the header, carrying Pine Deep over an inset edge at 45%. The
+          rail&rsquo;s active section is Wash and Deep Pine, and the dock&rsquo;s Generate is a
+          Deep Pine primary. Two lime plates on one screen and neither reads as the thing
+          that ends the session.
+        </p>
+      </article>
+
+      <article class="note-card">
+        <span class="tag">Furniture</span>
+        <h3>Zoom leaves the panel</h3>
+        <p>
+          It is a view control, not a document property, and it belongs where the eye
+          already is: over the bottom-right of the workspace, small, on Surface with
+          <code class="i">--sh-pop</code>. It is also the only floating object in the
+          column, which is what makes the shadow legible as meaning.
+        </p>
+      </article>
+
+      <article class="note-card">
+        <span class="tag w">New</span>
+        <h3>The dock is the only genuinely new capability</h3>
+        <p>
+          There is no background generation inside the editor at all today: the three AI
+          verbs it has are Recraft vectors, BiRefNet cutouts and gpt-image inpainting, and
+          regenerating a visual means leaving for the review column, where it is
+          <b>single-shot and destructive</b> — no candidates, no picker, no way back but
+          undo. Docked under the canvas, the prompt and the last three results sit beside
+          the thing you are judging them against.
+        </p>
+      </article>
+
+      <article class="note-card">
+        <span class="tag">Layers</span>
+        <h3>Two lists become one</h3>
+        <p>
+          Text layers and elements are separate lists today, ordered opposite ways — text
+          in document order, elements reversed so the topmost reads first — and only one of
+          them can reorder. The rail&rsquo;s <b>Layers</b> section is where they reconcile
+          into a single stack, which is also the only place
+          <code class="i">In front of text</code> stops being a checkbox and becomes a
+          position.
+        </p>
+      </article>
+
+      <article class="note-card">
+        <span class="tag w">Deviation</span>
+        <h3>Two things the system does not have</h3>
+        <p>
+          <b>A guide colour.</b> Snap guides are dashed <code class="i">--danger</code> — the
+          nearest token, chosen because it never appears elsewhere over artwork; it is
+          transient chrome, and it never touches a surface where clay means error.
+          <b>A sheet radius.</b> The canvas is square-cornered rather than any step of the
+          4/8/10/14/20 scale, because it is a 1080&times;1350 document and a rounded corner
+          there would be a claim about what publishes.
+        </p>
+      </article>
+
+      <article class="note-card">
+        <span class="tag w">Owed</span>
+        <h3>Every icon-only control needs its word</h3>
+        <p>
+          Alignment, flips, reorder, delete and the type toggles are icon-only by design
+          and therefore owe <code class="i">aria-label</code> plus a tooltip, and the
+          toolbar owes <code class="i">role="toolbar"</code> with roving focus. Drawn here,
+          they are stated in the markup; in code they are the acceptance criteria.
+        </p>
+      </article>
+
+      <article class="note-card">
+        <span class="tag">Reuse</span>
+        <h3>The canvas keeps its engine</h3>
+        <p>
+          Nothing above changes the Konva document model, the cutout toolkit, or how a
+          composition is rendered — the 35% dim, the Escape ladder and the exclusive modes
+          already work exactly as drawn. This is chrome: what wraps the stage, and which
+          verb is reachable when. One tidy-up rides along: the top bar&rsquo;s undo and redo
+          are a bespoke 28px inline-styled button today while the zoom cluster uses
+          <code class="i">TOOL_ROW</code> at 29px, so the same control has two sizes in one
+          screen. Everything here is TOOL_ROW.
+        </p>
+      </article>
+    </div>
+  </section>
+
+  <hr class="rule" />
+
+  <!-- ══════════ CALLS ══════════ -->
+  <section class="stack g24">
+    <div class="sechead">
+      <span class="kicker">Before code</span>
+      <h2>Four calls I need from you</h2>
+    </div>
+    <p class="prose note" style="font-size:14px;color:var(--d-ink2);">
+      The anatomy is the thing to approve or reject as a whole. These four are the
+      places where I could reasonably have drawn it the other way. My answer is on the
+      record next to each.
+    </p>
+
+    <div class="calls">
+      <article class="call">
+        <span class="mk">01</span>
+        <span class="q">Does the flyout stay open, or collapse after you place something?</span>
+        <span class="a">
+          <b>Stays open, and remembers.</b> Drawn open at 280px it costs a quarter of the
+          horizontal budget, which is why the sheet is at 42% rather than 55%. Auto-collapse
+          buys the canvas back but makes the panel feel like it is being taken away mid-task
+          — and people place several elements in a row far more often than one. The chevron
+          in the panel header is the manual answer, and the state should persist per user
+          rather than reset every open.
+        </span>
+      </article>
+
+      <article class="call">
+        <span class="mk">02</span>
+        <span class="q">Is Save the lime, or is it the dock&rsquo;s Generate?</span>
+        <span class="a">
+          <b>Save.</b> The Standing Place Rule says lime marks the commitment in the header,
+          and on <code class="i">/generate</code> that is exactly what it marks. Here the
+          commitment is the one that ends the session and writes the document; generating a
+          background is a step inside it, however expensive it feels. If you&rsquo;d rather the
+          lime went to Generate, then Save becomes a Deep Pine primary and the header carries
+          no lime at all — what it must not do is carry both.
+        </span>
+      </article>
+
+      <article class="call">
+        <span class="mk">03</span>
+        <span class="q">Should AI repair live in the no-selection toolbar, or in the rail&rsquo;s AI section?</span>
+        <span class="a">
+          <b>The toolbar, with an entry from the rail too.</b> It acts on the backdrop, so its
+          home is where the backdrop&rsquo;s other verbs are. But &ldquo;AI&rdquo; is where people
+          will look first, and a section that lists the AI verbs and routes into the same mode
+          costs nothing. The risk to avoid is two <em>different</em> inpaint entry points with
+          different state — one mode, two doors.
+        </span>
+      </article>
+
+      <article class="call">
+        <span class="mk">04</span>
+        <span class="q">Full-screen, or docked inside the app shell?</span>
+        <span class="a">
+          <b>Full-screen, as today.</b> The rail plus flyout plus a legible 4:5 sheet needs
+          1280px before the app&rsquo;s own 240px sidebar is counted, and an editor is a place you
+          go rather than a page you browse. That does mean the top bar owes a real way back —
+          the chevron and Cancel both return to the post, and unsaved work has to be caught
+          there rather than silently discarded.
+        </span>
+      </article>
+    </div>
+
+    <p class="note prose">
+      Approve the anatomy and the next wave is chrome only: extract the toolbar variants
+      behind a selection type, move the existing controls into them unchanged, add the
+      rail and the flyout around the stage, and dock the prompt bar. The Konva layer, the
+      cutout toolkit and the saved document stay exactly where they are.
+    </p>
+  </section>
+
+</div>

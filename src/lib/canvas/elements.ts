@@ -1,7 +1,7 @@
-import type { CanvasElement } from '@/types/canvas'
+import type { CanvasImageNode, CanvasShapeKind, CanvasShapeNode } from '@/types/canvas'
 
-/** Friendly default width for a freshly added element — big enough to see, small enough to place. */
-const DEFAULT_ELEMENT_WIDTH = 420
+/** Friendly default width for a freshly placed asset — big enough to see, small enough to place. */
+const DEFAULT_ASSET_WIDTH = 420
 
 /**
  * Map a canvas-space point into an element's bitmap pixels: un-translate, un-rotate around the
@@ -10,7 +10,7 @@ const DEFAULT_ELEMENT_WIDTH = 420
  */
 export function canvasPointToElementLocal(
   point: { x: number; y: number },
-  element: Pick<CanvasElement, 'x' | 'y' | 'width' | 'height' | 'rotation'>,
+  element: Pick<CanvasImageNode, 'x' | 'y' | 'width' | 'height' | 'rotation'>,
   natural: { width: number; height: number }
 ): { x: number; y: number } {
   const radians = ((element.rotation ?? 0) * Math.PI) / 180
@@ -27,30 +27,64 @@ export function canvasPointToElementLocal(
   }
 }
 
-/** A new image element at an exact canvas rect — cutouts land pixel-perfect over their source spot. */
-export function createElementAtRect(
-  src: CanvasElement['src'],
+/** A new image node at an exact canvas rect — cutouts land pixel-perfect over their source spot. */
+export function createNodeAtRect(
+  src: CanvasImageNode['src'],
   rect: { x: number; y: number; width: number; height: number }
-): CanvasElement {
+): CanvasImageNode {
   return { id: crypto.randomUUID(), kind: 'image', src, ...rect }
 }
 
-/** A new element centered on the canvas, scaled to a friendly width at the asset's natural aspect. */
-export function createCenteredElement(
-  kind: CanvasElement['kind'],
-  src: CanvasElement['src'],
-  natural: { width: number; height: number },
+/** The box a freshly inserted node occupies: a friendly width, centred, at the given aspect. */
+function centeredBox(
+  width: number,
+  height: number,
   canvas: { w: number; h: number }
-): CanvasElement {
-  const width = Math.min(DEFAULT_ELEMENT_WIDTH, canvas.w)
-  const height = width * (natural.height / Math.max(1, natural.width))
+): { x: number; y: number; width: number; height: number } {
+  return { x: (canvas.w - width) / 2, y: (canvas.h - height) / 2, width, height }
+}
+
+/** Default extent of an inserted shape, as a share of the canvas width. */
+const SHAPE_WIDTH_RATIO = 0.45
+/** A line is a rule, not a box — its box height is just its ink. */
+const LINE_STROKE_WIDTH = 6
+
+/**
+ * A new drawn primitive, centred, in the client's accent colour. Rect and ellipse arrive filled
+ * (an outline-only shape reads as a mistake until you ask for it); a line arrives as a stroke,
+ * because that is all a line is.
+ */
+export function createShapeNode(
+  kind: CanvasShapeKind,
+  canvas: { w: number; h: number },
+  color: string
+): CanvasShapeNode {
+  const width = Math.round(canvas.w * SHAPE_WIDTH_RATIO)
+  if (kind === 'line') {
+    return {
+      id: crypto.randomUUID(),
+      kind,
+      ...centeredBox(width, LINE_STROKE_WIDTH, canvas),
+      stroke: color,
+      strokeWidth: LINE_STROKE_WIDTH,
+    }
+  }
   return {
     id: crypto.randomUUID(),
     kind,
-    src,
-    x: (canvas.w - width) / 2,
-    y: (canvas.h - height) / 2,
-    width,
-    height,
+    ...centeredBox(width, width, canvas),
+    fill: color,
   }
+}
+
+/** A new node centered on the canvas, scaled to a friendly width at the asset's natural aspect. */
+export function createCenteredNode(
+  kind: CanvasImageNode['kind'],
+  src: CanvasImageNode['src'],
+  natural: { width: number; height: number },
+  canvas: { w: number; h: number }
+): CanvasImageNode {
+  const width = Math.min(DEFAULT_ASSET_WIDTH, canvas.w)
+  const height = width * (natural.height / Math.max(1, natural.width))
+  return { id: crypto.randomUUID(), kind, src, ...centeredBox(width, height, canvas) }
 }

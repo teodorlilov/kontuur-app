@@ -1,12 +1,19 @@
 import { applyStyleToDoc } from '@/lib/canvas/apply-style'
+import { isTextNode, textNodes } from '@/lib/canvas/doc-nodes'
+import { rebindDocToImage, resolveDocForImage } from '@/lib/canvas/resolve-doc'
 import { applyCopyToDoc, seedCanvasDoc, type SeedIdentity } from '@/lib/canvas/seed-doc'
-import type { CanvasBackgroundRef, CanvasDoc } from '@/types/canvas'
+import type { CanvasBackgroundRef, CanvasDoc, CanvasNode } from '@/types/canvas'
 import type { PostImage } from '@/types/api'
 import { composeDoc } from './compose'
 import { saveDraftCanvas, savePostCanvas } from './save-canvas'
 import { fetchCanvasState } from './canvas-state-client'
 import type { DraftVisualResult, SlideCopy } from '../types'
 import type { SlideText } from '@/types/slide'
+
+// The wording of a node, or null for anything that has none — only text can change under a rewrite.
+function nodeText(node: CanvasNode | undefined): string | null {
+  return node && isTextNode(node) ? node.text : null
+}
 
 // SlideCopy union → the slide/caption fields seedCanvasDoc and applyCopyToDoc expect.
 function copyFields(slideCopy: SlideCopy): {
@@ -28,7 +35,7 @@ function seedFromCopy(
   slideCopy: SlideCopy
 ): CanvasDoc | null {
   const doc = seedCanvasDoc({ identity, background, ...copyFields(slideCopy) })
-  return doc.layers.length > 0 ? doc : null
+  return textNodes(doc).length > 0 ? doc : null
 }
 
 /**
@@ -47,20 +54,21 @@ export async function composePersistedPosition(input: {
   if (!body.identity) return null
 
   const background = { publicUrl: input.image.publicUrl, storagePath: input.image.storagePath }
-  // Fresh art becomes the new clean background; the stored pan/zoom belonged to the old art.
+  // The image is always fresh art here (this runs right after it generated), so it unconditionally
+  // becomes the new clean background.
   const doc = body.doc
-    ? { ...body.doc, background, backgroundTransform: undefined }
+    ? rebindDocToImage(body.doc, background)
     : input.slideCopy && seedFromCopy(body.identity, background, input.slideCopy)
-  if (!doc || doc.layers.length === 0) return null
+  if (!doc || textNodes(doc).length === 0) return null
 
   const { doc: fitted, blob } = await composeDoc(doc)
   return savePostCanvas(input.postId, input.position, fitted, blob, input.image.storagePath)
 }
 
 /**
- * Re-bake a persisted position after its copy changed: role layers take the new text (hand-edited
- * ones keep their wording), the doc re-flattens over its clean background. Null = nothing baked
- * at this position (no doc — never bake text onto images that never had it) or no layer changed.
+ * Re-bake a persisted position after its copy changed: role-seeded text takes the new wording
+ * (hand-edited nodes keep theirs), the doc re-flattens over its clean background. Null = nothing
+ * baked at this position (no doc — never bake text onto images that never had it) or nothing changed.
  */
 export async function recomposePersistedPosition(input: {
   postId: string
@@ -74,7 +82,8 @@ export async function recomposePersistedPosition(input: {
 
   const doc = body.doc
   const updated = applyCopyToDoc(doc, copyFields(input.slideCopy))
-  if (updated.layers.every((layer, index) => layer.text === doc.layers[index]?.text)) return null
+  // applyCopyToDoc preserves node order and count, so index comparison is sound.
+  if (updated.nodes.every((node, index) => nodeText(node) === nodeText(doc.nodes[index]))) return null
 
   const { doc: fitted, blob } = await composeDoc(updated)
   return savePostCanvas(input.postId, input.position, fitted, blob, input.baseImagePath)
@@ -92,7 +101,7 @@ export async function composeDraftVisual(input: {
   const doc = seedFromCopy(input.identity, input.clean, input.slideCopy)
   if (!doc) return null
   const { doc: fitted, blob } = await composeDoc(doc)
-  return saveDraftCanvas(input, fitted, blob)
+  return saveDraftCanvas(input, input.position, fitted, blob)
 }
 
 /**
@@ -110,7 +119,7 @@ export async function recomposeDraftVisual(input: {
 }): Promise<{ visual: DraftVisualResult; doc: CanvasDoc }> {
   const updated = applyCopyToDoc(input.doc, copyFields(input.slideCopy))
   const { doc: fitted, blob } = await composeDoc(updated)
-  return saveDraftCanvas(input, fitted, blob, input.previousFlattenedPath)
+  return saveDraftCanvas(input, input.position, fitted, blob, input.previousFlattenedPath)
 }
 
 /**
@@ -129,15 +138,10 @@ export async function applyStyleToPostSibling(input: {
   if (!body.identity) return null
 
   const background = { publicUrl: input.image.publicUrl, storagePath: input.image.storagePath }
-  // Same rebind rule as the editor: our own baked output → compose over the doc's clean
-  // background (pan/zoom kept); image changed underneath → the current image IS the new clean
-  // background and the stored pan/zoom resets with it.
   const doc = body.doc
-    ? body.doc.flattenedStoragePath === input.image.storagePath
-      ? body.doc
-      : { ...body.doc, background, backgroundTransform: undefined }
+    ? resolveDocForImage(body.doc, background)
     : input.slideCopy && seedFromCopy(body.identity, background, input.slideCopy)
-  if (!doc || doc.layers.length === 0) return null
+  if (!doc || textNodes(doc).length === 0) return null
 
   const styled = applyStyleToDoc(doc, input.source)
   const { doc: fitted, blob } = await composeDoc(styled)
@@ -160,5 +164,5 @@ export async function applyStyleToDraftSibling(input: {
   if (!doc) return null
   const styled = applyStyleToDoc(doc, input.source)
   const { doc: fitted, blob } = await composeDoc(styled)
-  return saveDraftCanvas(input, fitted, blob, input.previousFlattenedPath)
+  return saveDraftCanvas(input, input.position, fitted, blob, input.previousFlattenedPath)
 }

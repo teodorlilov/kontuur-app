@@ -115,4 +115,27 @@ describe('buildVisualPrompt', () => {
         "\nUse the palette as the visual color foundation. Don't add text, just illustration relevant to the data the visual is for"
     )
   })
+
+  it('is byte-identical with an absent direction — the editor cannot change what the app generates', () => {
+    const base = {
+      textBlock: 'Slide 1 of 2\n\nHeadline: Hook\nBody: Why.',
+      paletteDescription: 'Dominant background: white',
+      stylePrompt: 'Editorial style paragraph.',
+    }
+    expect(buildVisualPrompt({ ...base, direction: undefined })).toBe(buildVisualPrompt(base))
+    expect(buildVisualPrompt({ ...base, direction: '' })).toBe(buildVisualPrompt(base))
+  })
+
+  it('appends art direction as its own block, before the closing instruction', () => {
+    const prompt = buildVisualPrompt({
+      textBlock: 'Single image post\n\nHook.',
+      paletteDescription: 'Dominant background: white',
+      stylePrompt: 'Editorial style paragraph.',
+      direction: 'a lone tree on a ridge at dusk',
+    })
+    expect(prompt).toContain('\nART DIRECTION\n\na lone tree on a ridge at dusk\n')
+    // The no-text instruction must stay last, or the model starts writing captions into the art.
+    expect(prompt.endsWith('relevant to the data the visual is for')).toBe(true)
+    expect(prompt.indexOf('ART DIRECTION')).toBeGreaterThan(prompt.indexOf('STYLE'))
+  })
 })

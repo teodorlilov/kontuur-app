@@ -1,6 +1,6 @@
 'use client'
 
-import { PANEL_LABEL } from './panel-styles'
+import { EDITOR_LABEL } from './workspace/chrome'
 
 interface PanelSliderProps {
   /** Full label including any value readout (e.g. "Zoom · 1.40×"). */
@@ -10,27 +10,16 @@ interface PanelSliderProps {
   step: number
   value: number
   onChange: (value: number) => void
-  /** Fires when the drag/keyboard gesture ends — for consumers that commit on release. */
-  onCommit?: () => void
 }
 
 /**
- * The properties panel's standard labelled range row. Purely presentational: per-tick consumers
- * (zoom, opacity, brush size) pass only onChange; preview-then-commit consumers (background
- * filters) additionally pass onCommit — the semantics stay at the call site.
+ * The properties panel's standard labelled range row. Purely presentational — how a drag folds into
+ * the undo history is the doc layer's business, not this component's.
  */
-export function PanelSlider({
-  label,
-  min,
-  max,
-  step,
-  value,
-  onChange,
-  onCommit,
-}: PanelSliderProps) {
+export function PanelSlider({ label, min, max, step, value, onChange }: PanelSliderProps) {
   return (
     <div>
-      <div className={PANEL_LABEL}>{label}</div>
+      <div className={EDITOR_LABEL}>{label}</div>
       <input
         type="range"
         min={min}
@@ -38,9 +27,7 @@ export function PanelSlider({
         step={step}
         value={value}
         onChange={(event) => onChange(Number(event.target.value))}
-        onPointerUp={onCommit}
-        onKeyUp={onCommit}
-        style={{ width: '100%' }}
+        className="w-full accent-forest"
       />
     </div>
   )

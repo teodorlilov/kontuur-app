@@ -1,4 +1,4 @@
-import type { CanvasBackgroundTransform, CanvasElement } from '@/types/canvas'
+import type { CanvasBackgroundTransform, CanvasImageNode } from '@/types/canvas'
 import { canvasPointToElementLocal } from '@/lib/canvas/elements'
 import type { SourceRect } from '@/lib/canvas/reposition'
 import type { BrushStroke } from '../types'
@@ -387,7 +387,7 @@ export async function removeElementBackground(bitmap: HTMLImageElement): Promise
 export async function eraseStrokesFromElement(
   bitmap: HTMLImageElement,
   strokes: BrushStroke[],
-  element: CanvasElement
+  element: CanvasImageNode
 ): Promise<Blob> {
   const natural = naturalSize(bitmap)
   const [canvas, ctx] = createDrawingCanvas(natural)

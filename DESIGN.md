@@ -322,7 +322,7 @@ _On the `var()` form._ For a while the guard permitted `fontSize: 'var(--text-bo
 
 _The four exemptions are technical, not stylistic,_ and each is listed by path in the test:
 
-- **Konva document fields** (`lib/canvas/`, the canvas editor's properties panel). `fontSize` there is a saved document value bounded by a zod schema, not a style. A codemod through it corrupts users' stored designs.
+- **Konva document fields** (`lib/canvas/`, and the editor chrome that edits them). `fontSize` there is a saved document value bounded by a zod schema, not a style. A codemod through it corrupts users' stored designs.
 - **Recharts `tick` props** (`chart-config.ts` and the two charts that size their own axes). Recharts spreads `tick` onto an SVG `<text>` as a presentation attribute, and SVG attributes do not resolve `var()` — a token there renders at the user-agent default.
 - **The sonner toast config** in `app/layout.tsx`. It is a third-party component's options object; its own base rules win over utility classes where an inline style does not.
 - **The social card** in `app/opengraph-image.tsx`. `ImageResponse` rasterises its JSX through satori, where no stylesheet is in scope — there is no CSS pass, so `className` is inert and inline style is the only channel there is. It is a picture, not a page.

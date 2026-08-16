@@ -1,9 +1,10 @@
 import type {
   CanvasBackgroundTransform,
-  CanvasElement,
+  CanvasImageNode,
   CanvasScrim,
+  CanvasShapeNode,
   CanvasTextAlign,
-  CanvasTextLayer,
+  CanvasTextNode,
 } from '@/types/canvas'
 import { coverCrop, type CropAttrs } from './cover-crop'
 
@@ -21,8 +22,8 @@ export interface TextGroupAttrs {
  * Position attrs for the group wrapping one text layer (highlight bands + glyphs move as one
  * node); the text child itself sits at the group origin with only the glyph attrs below.
  */
-export function textGroupAttrs(layer: CanvasTextLayer): TextGroupAttrs {
-  return { x: layer.x, y: layer.y, rotation: layer.rotation ?? 0 }
+export function textGroupAttrs(node: CanvasTextNode): TextGroupAttrs {
+  return { x: node.x, y: node.y, rotation: node.rotation ?? 0 }
 }
 
 export interface TextNodeAttrs {
@@ -39,46 +40,120 @@ export interface TextNodeAttrs {
 }
 
 // Konva folds this straight into ctx.font, so 'italic', 'italic bold' and 'italic 500' all work.
-function fontStyleFor(layer: CanvasTextLayer): string {
-  const weight = layer.fontWeight === 400 ? '' : layer.fontWeight === 700 ? 'bold' : String(layer.fontWeight)
-  if (!layer.italic) return weight || 'normal'
+function fontStyleFor(node: CanvasTextNode): string {
+  const weight = node.fontWeight === 400 ? '' : node.fontWeight === 700 ? 'bold' : String(node.fontWeight)
+  if (!node.italic) return weight || 'normal'
   return weight ? `italic ${weight}` : 'italic'
 }
 
-/** Glyph attrs for one text layer (position lives on the group) — editor stage + exporter. */
-export function textNodeAttrs(layer: CanvasTextLayer): TextNodeAttrs {
+/** Glyph attrs for one text node (position lives on the group) — editor stage + exporter. */
+export function textNodeAttrs(node: CanvasTextNode): TextNodeAttrs {
   return {
-    width: layer.width,
+    width: node.width,
     // Konva has no textTransform — capitals are applied to the drawn string, not the stored one.
-    text: layer.uppercase ? layer.text.toUpperCase() : layer.text,
-    fontFamily: layer.fontFamily,
-    fontSize: layer.fontSize,
-    fontStyle: fontStyleFor(layer),
-    fill: layer.fill,
-    align: layer.align,
-    lineHeight: layer.lineHeight,
+    text: node.uppercase ? node.text.toUpperCase() : node.text,
+    fontFamily: node.fontFamily,
+    fontSize: node.fontSize,
+    fontStyle: fontStyleFor(node),
+    fill: node.fill,
+    align: node.align,
+    lineHeight: node.lineHeight,
     wrap: 'word',
   }
 }
 
-export interface ElementNodeAttrs {
+export interface NodeGroupAttrs {
   x: number
   y: number
-  width: number
-  height: number
   rotation: number
   opacity: number
 }
 
-/** Konva attrs for one element — shared by the editor stage JSX and the offscreen exporter. */
-export function elementNodeAttrs(element: CanvasElement): ElementNodeAttrs {
+/**
+ * Position attrs for the group wrapping one placed asset or drawn shape. The group — never the
+ * child — is what the Transformer resizes, for the same reason text uses one.
+ *
+ * A mirror CANNOT live on the transform target. Konva decomposes a gesture's matrix back onto the
+ * node (Transformer.js → Util.js `decompose`, konva 10.3.0), and that decomposition can only ever
+ * return a positive scaleX: a mirror comes back as `scaleY < 0` plus a ∓180° rotation. The size
+ * fold in `image-node.tsx` would then read a negative scaleY, clamp the height to MIN_ELEMENT_SIZE,
+ * and the flip would be gone. Keeping the mirror on the child means the Transformer only ever sees
+ * an ordinary positive-scale node.
+ */
+export function nodeGroupAttrs(node: CanvasImageNode | CanvasShapeNode): NodeGroupAttrs {
   return {
-    x: element.x,
-    y: element.y,
-    width: element.width,
-    height: element.height,
-    rotation: element.rotation ?? 0,
-    opacity: element.opacity ?? 1,
+    x: node.x,
+    y: node.y,
+    rotation: node.rotation ?? 0,
+    opacity: node.opacity ?? 1,
+  }
+}
+
+export interface ImageBitmapAttrs {
+  width: number
+  height: number
+  scaleX: number
+  scaleY: number
+  offsetX: number
+  offsetY: number
+}
+
+/**
+ * Bitmap attrs for one placed asset: the mirror, expressed so the node's box does not move.
+ *
+ * Konva maps a local point u to `x + scale * (u - offset)`. With scale −1 and the offset on the FAR
+ * edge, that is `x + (width - u)`, which folds [0, width] back onto itself — the flip happens
+ * strictly inside the node's own box, so x/y keep meaning "top-left of the unflipped box" and the
+ * rotation pivot stays put. An offset of width/2 would mirror correctly but silently move the pivot
+ * to the centre, tilting every rotated node about a different point than before.
+ *
+ * Returned in full rather than conditionally, so the attrs are a pure function of the node and the
+ * exporter and the stage cannot drift.
+ */
+export function imageBitmapAttrs(node: CanvasImageNode): ImageBitmapAttrs {
+  return {
+    width: node.width,
+    height: node.height,
+    scaleX: node.flipX ? -1 : 1,
+    scaleY: node.flipY ? -1 : 1,
+    offsetX: node.flipX ? node.width : 0,
+    offsetY: node.flipY ? node.height : 0,
+  }
+}
+
+export interface ShapeChildAttrs {
+  width: number
+  height: number
+  /** Konva reads this only on Ellipse; harmless elsewhere, and it keeps one attr shape. */
+  offsetX: number
+  offsetY: number
+  fill: string | undefined
+  stroke: string | undefined
+  strokeWidth: number
+  cornerRadius: number
+  /** `line` only: the box's top edge, so the angle is the node's rotation. */
+  points: number[]
+}
+
+/**
+ * Child attrs for one drawn shape — the single resolver the stage and the offscreen exporter both
+ * read, so a rect can never be drawn two different ways.
+ *
+ * The ellipse offset is what keeps the GROUP origin at the box's top-left: Konva draws an Ellipse
+ * from its centre, so without it the node's x/y would mean something different for one kind than
+ * for every other, and snapping, marquee and the layers list would all disagree about where it is.
+ */
+export function shapeChildAttrs(node: CanvasShapeNode): ShapeChildAttrs {
+  return {
+    width: node.width,
+    height: node.height,
+    offsetX: node.kind === 'ellipse' ? -node.width / 2 : 0,
+    offsetY: node.kind === 'ellipse' ? -node.height / 2 : 0,
+    fill: node.kind === 'line' ? undefined : node.fill,
+    stroke: node.stroke,
+    strokeWidth: node.strokeWidth ?? 0,
+    cornerRadius: node.kind === 'rect' ? (node.cornerRadius ?? 0) : 0,
+    points: [0, 0, node.width, 0],
   }
 }
 

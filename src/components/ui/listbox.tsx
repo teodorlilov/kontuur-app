@@ -4,6 +4,7 @@ import { useRef, useState } from 'react'
 import * as Popover from '@radix-ui/react-popover'
 import { Check } from 'lucide-react'
 import { cn } from '@/utils/cn'
+import { focusableItems, rovingFocus } from './roving-focus'
 
 export interface ListboxOption<T extends string = string> {
   value: T
@@ -54,22 +55,7 @@ export function Listbox<T extends string>({
 
   /** Roving arrow-key focus over the option buttons — Popover has no own roving. */
   function handleKeyDown(event: React.KeyboardEvent) {
-    if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return
-    event.preventDefault()
-    const items = Array.from(
-      listRef.current?.querySelectorAll<HTMLButtonElement>('[role="option"]') ?? []
-    )
-    if (items.length === 0) return
-    const current = items.indexOf(document.activeElement as HTMLButtonElement)
-    const next =
-      event.key === 'Home'
-        ? 0
-        : event.key === 'End'
-          ? items.length - 1
-          : event.key === 'ArrowDown'
-            ? Math.min(current + 1, items.length - 1)
-            : Math.max(current - 1, 0)
-    items[next]?.focus()
+    rovingFocus(event, focusableItems(listRef.current, '[role="option"]'))
   }
 
   return (

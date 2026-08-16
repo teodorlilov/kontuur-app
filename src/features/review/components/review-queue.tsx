@@ -774,7 +774,7 @@ export function ReviewQueue({
                   onEditedVisual={() => {
                     // Post-target saves come back through onSavedImage; nothing draft-side.
                   }}
-                  onApplyStyleToAll={(post, sourcePosition, doc: CanvasDoc) =>
+                  onApplyStyleToAll={(post, sourcePosition, doc: CanvasDoc, saved) =>
                     void visuals.applyStyle(
                       doc,
                       sourcePosition,
@@ -783,14 +783,14 @@ export function ReviewQueue({
                         slides_json: post.slides_json,
                         caption: post.caption,
                       },
-                      postsRef.current.find((p) => p.id === focused.post.id)?.images ?? []
+                      // The ref is a render behind and cannot hold the slides the editor saved a
+                      // moment ago; its paths would 409 every one of them. The editor's map wins.
+                      (postsRef.current.find((p) => p.id === focused.post.id)?.images ?? []).map(
+                        (image) => ({ ...image, ...(saved.get(image.position) ?? {}) })
+                      )
                     )
                   }
-                  editorTarget={(position) => ({
-                    kind: 'post',
-                    postId: focused.post.id,
-                    position,
-                  })}
+                  editorTarget={{ kind: 'post', postId: focused.post.id }}
                   onSavedImage={mergeImage}
                 />
                 <InsightPanel

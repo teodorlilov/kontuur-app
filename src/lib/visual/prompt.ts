@@ -84,13 +84,19 @@ export function slideTextBlock(input: {
 }
 
 /**
- * The full gpt-image-2 prompt — the 3-variable contract (TEXT / COLOR PALETTE / STYLE) validated by hand.
- * Nothing else is ever injected; the closing instruction keeps images text-free and palette-grounded.
+ * The full gpt-image-2 prompt — the 3-variable contract (TEXT / COLOR PALETTE / STYLE) validated by
+ * hand. The closing instruction keeps images text-free and palette-grounded.
+ *
+ * `direction` is a FOURTH, opt-in block: art direction the user typed in the editor, which is a
+ * different thing from TEXT (the copy that will be overlaid). It is appended only when present, so
+ * every pipeline path that does not pass one produces a byte-identical prompt to before it existed
+ * — the hand-validated contract is unchanged for the generation the app does on its own.
  */
 export function buildVisualPrompt(input: {
   textBlock: string
   paletteDescription: string
   stylePrompt: string
+  direction?: string
 }): string {
   return [
     'create a visual for social media for this slide',
@@ -103,6 +109,7 @@ export function buildVisualPrompt(input: {
     'STYLE',
     '',
     input.stylePrompt,
+    ...(input.direction ? ['', 'ART DIRECTION', '', input.direction] : []),
     '',
     "Use the palette as the visual color foundation. Don't add text, just illustration relevant to the data the visual is for",
   ].join('\n')

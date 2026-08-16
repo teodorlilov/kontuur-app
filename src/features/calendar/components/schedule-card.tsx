@@ -15,6 +15,7 @@ import { ClientResponseCard } from '@/features/calendar/components/client-respon
 import { Button } from '@/components/ui/button'
 import { CanvasEditor } from '@/features/canvas-editor/components/canvas-editor'
 import { slideCopyAt } from '@/features/canvas-editor/lib/slide-copy'
+import type { EditorSlide } from '@/features/canvas-editor/types'
 import { ImageSlot } from '@/features/publishing/components/image-slot'
 import { useCanvaStatus } from '@/features/publishing/hooks/use-canva-status'
 import { useGenerateVisuals } from '@/features/publishing/hooks/use-generate-visuals'
@@ -321,8 +322,17 @@ export const ScheduleCard = memo(function ScheduleCard({
     )
   }
 
-  const editingImage =
-    editingPosition !== null ? images.find((img) => img.position === editingPosition) : undefined
+  // Every slide that HAS an image is editable, so the editor can carousel between them; an empty
+  // slot has nothing to open. Ascending, because the strip reads left to right.
+  const editorSlides: EditorSlide[] = images
+    .map((image) => ({
+      position: image.position,
+      image: { publicUrl: image.publicUrl, storagePath: image.storagePath },
+      slideCopy: getSlideCopy(image.position),
+    }))
+    .sort((a, b) => a.position - b.position)
+  const canEditPosition =
+    editingPosition !== null && editorSlides.some((slide) => slide.position === editingPosition)
 
   return (
     <div
@@ -658,28 +668,27 @@ export const ScheduleCard = memo(function ScheduleCard({
           />
         )}
       </div>
-      {editingPosition !== null && editingImage && (
+      {canEditPosition && editingPosition !== null && (
         <CanvasEditor
-          target={{ kind: 'post', postId: currentPost.id, position: editingPosition }}
-          image={{ publicUrl: editingImage.publicUrl, storagePath: editingImage.storagePath }}
-          slideCopy={getSlideCopy(editingPosition)}
-          slideLabel={
-            isCarousel ? `Slide ${editingPosition + 1} of ${totalImageSlots}` : 'Post visual'
-          }
+          target={{ kind: 'post', postId: currentPost.id }}
+          slides={editorSlides}
+          initialPosition={editingPosition}
           onClose={() => setEditingPosition(null)}
           onSaved={handleImageUploaded}
           onApplyToAll={
             images.length > 1
-              ? (doc) => {
+              ? (doc, position, saved) => {
                   void applyStyle(
                     doc,
-                    editingPosition,
+                    position,
                     {
                       post_type: currentPost.post_type,
                       slides_json: currentPost.slides_json,
                       caption: currentPost.caption ?? null,
                     },
-                    images
+                    // The editor's paths win where it has one: it just saved these slides, and each
+                    // restyle is guarded against the file currently at that position.
+                    images.map((image) => ({ ...image, ...(saved.get(image.position) ?? {}) }))
                   )
                 }
               : undefined

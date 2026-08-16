@@ -22,6 +22,15 @@ diagnosis and the phased plan; `kontuur-calendar-v2.html` is the screen — a
 real-scale frame whose Week / Month / Clients views all render from one shared
 data model. Read the second for the design, the first for why.
 
+`kontuur-editor.html` was the gate for the canvas-editor chrome wave: it drew the
+workspace anatomy (icon rail + flyout, a contextual toolbar per selection type,
+docked prompt bar, zoom cluster) and closed with four open decisions. **Approved
+and built** — the single right-hand properties panel it replaced is gone. Two of
+its decisions were later overturned in code and it was never rendered in a
+browser, so read it as the argument for the anatomy, not as the current spec:
+its 48px rail clips the "Elements" label, and model-backed verbs now live only
+in the AI panel rather than having "one mode, two doors".
+
 Older mocks are in [`archive/`](./archive/), several of them still cited by name
 from code comments.
 

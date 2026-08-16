@@ -13,7 +13,8 @@ export const LASSO_PREVIEW_WIDTH = 2
 
 interface BrushSurfaceProps {
   canvas: { w: number; h: number }
-  scale: number
+  /** False while Space is held, so the drag pans the view instead of painting. */
+  interactive: boolean
   brushSize: number
   strokes: BrushStroke[]
   strokeColor: string
@@ -29,7 +30,7 @@ interface BrushSurfaceProps {
  */
 export function BrushSurface({
   canvas,
-  scale,
+  interactive,
   brushSize,
   strokes,
   strokeColor,
@@ -48,10 +49,10 @@ export function BrushSurface({
     }
   }, [])
 
-  const pointerPos = (node: Konva.Node): { x: number; y: number } | null => {
-    const pointer = node.getStage()?.getPointerPosition()
-    return pointer ? { x: pointer.x / scale, y: pointer.y / scale } : null
-  }
+  // Relative to the surface itself, so strokes land where they were painted at any zoom or pan —
+  // the stage transform is already divided out.
+  const pointerPos = (node: Konva.Node): { x: number; y: number } | null =>
+    node.getRelativePointerPosition()
 
   return (
     <Group>
@@ -81,9 +82,12 @@ export function BrushSurface({
         y={0}
         width={canvas.w}
         height={canvas.h}
-        draggable
+        listening={interactive}
+        draggable={interactive}
         // Pinned drag: the surface never moves, we only read the pointer to draw the stroke.
-        dragBoundFunc={() => ({ x: 0, y: 0 })}
+        // dragBoundFunc returns an ABSOLUTE position and the stage carries the view transform, so
+        // the canvas origin is the stage's own position — not (0, 0).
+        dragBoundFunc={() => rectRef.current?.getStage()?.position() ?? { x: 0, y: 0 }}
         onDragStart={(event) => {
           const point = pointerPos(event.target)
           if (!point) return

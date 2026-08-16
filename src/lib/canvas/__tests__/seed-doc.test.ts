@@ -1,9 +1,18 @@
 import { describe, expect, it } from 'vitest'
+import type { CanvasDoc, CanvasTextNode } from '@/types/canvas'
 import { buildDefaultIdentity } from '@/lib/visual/identity'
 import { parseCanvasDoc } from '../doc-schema'
-import { applyCopyToDoc, captionHook, createTextLayer, seedCanvasDoc } from '../seed-doc'
+import { applyCopyToDoc, captionHook, createTextNode, seedCanvasDoc } from '../seed-doc'
 
 const background = { publicUrl: 'https://x.test/clean.jpg', storagePath: 'c1/p1/clean.jpg' }
+
+// Seeding only ever produces text; this narrows the union so assertions can read its fields.
+function seededText(doc: CanvasDoc): CanvasTextNode[] {
+  return doc.nodes.map((node) => {
+    if (node.kind !== 'text') throw new Error('seeding produced a non-text node')
+    return node
+  })
+}
 
 describe('seedCanvasDoc', () => {
   it('seeds headline + body for a carousel slide in the style pairing (default = graphic-editorial)', () => {
@@ -13,8 +22,8 @@ describe('seedCanvasDoc', () => {
       slide: { headline: 'Защо кожата ви има нужда от SPF', body: 'Слънцето уврежда кожата целогодишно.' },
     })
     expect(parseCanvasDoc(doc)).toEqual(doc)
-    expect(doc.layers).toHaveLength(2)
-    const [headline, body] = doc.layers
+    expect(doc.nodes).toHaveLength(2)
+    const [headline, body] = seededText(doc)
     expect(headline!.role).toBe('headline')
     expect(headline!.fontFamily).toBe('Oswald')
     // graphic-editorial's signature is condensed caps — a render flag, the stored text stays raw
@@ -33,15 +42,15 @@ describe('seedCanvasDoc', () => {
       background,
       slide: { headline: 'Ритуалът на спокойствието', body: '' },
     })
-    expect(doc.layers).toHaveLength(1)
-    expect(doc.layers[0]!.text).toBe('Ритуалът на спокойствието')
-    expect(doc.layers[0]!.uppercase).toBeUndefined()
-    expect(doc.layers[0]!.fontFamily).toBe('Playfair Display')
+    expect(doc.nodes).toHaveLength(1)
+    expect(seededText(doc)[0]!.text).toBe('Ритуалът на спокойствието')
+    expect(seededText(doc)[0]!.uppercase).toBeUndefined()
+    expect(seededText(doc)[0]!.fontFamily).toBe('Playfair Display')
   })
 
   it('omits layers for empty copy', () => {
     const doc = seedCanvasDoc({ identity: buildDefaultIdentity(), background, slide: { headline: '', body: '' } })
-    expect(doc.layers).toHaveLength(0)
+    expect(doc.nodes).toHaveLength(0)
   })
 
   it('seeds a single post with the caption hook only', () => {
@@ -50,10 +59,10 @@ describe('seedCanvasDoc', () => {
       background,
       caption: 'Лятото идва! Запазете час днес на www.example.com #лято @studio',
     })
-    expect(doc.layers).toHaveLength(1)
-    expect(doc.layers[0]!.role).toBe('headline')
-    expect(doc.layers[0]!.text).toBe('Лятото идва!')
-    expect(doc.layers[0]!.uppercase).toBe(true)
+    expect(doc.nodes).toHaveLength(1)
+    expect(seededText(doc)[0]!.role).toBe('headline')
+    expect(seededText(doc)[0]!.text).toBe('Лятото идва!')
+    expect(seededText(doc)[0]!.uppercase).toBe(true)
   })
 })
 
@@ -88,35 +97,39 @@ describe('applyCopyToDoc', () => {
     })
   }
 
-  it('refreshes role layers from new copy (the uppercase flag persists on the layer)', () => {
-    const updated = applyCopyToDoc(seededDoc(), {
-      slide: { headline: 'New headline', body: 'New body.' },
-    })
-    expect(updated.layers[0]!.text).toBe('New headline')
-    expect(updated.layers[0]!.uppercase).toBe(true) // seeded flag survives the refresh
-    expect(updated.layers[1]!.text).toBe('New body.')
+  it('refreshes role text from new copy (the uppercase flag persists on the node)', () => {
+    const updated = seededText(
+      applyCopyToDoc(seededDoc(), { slide: { headline: 'New headline', body: 'New body.' } })
+    )
+    expect(updated[0]!.text).toBe('New headline')
+    expect(updated[0]!.uppercase).toBe(true) // seeded flag survives the refresh
+    expect(updated[1]!.text).toBe('New body.')
   })
 
-  it('keeps a hand-edited layer untouched', () => {
+  it('keeps hand-edited wording untouched', () => {
     const doc = seededDoc()
-    doc.layers[0] = { ...doc.layers[0]!, text: 'My custom wording', textOverridden: true }
-    const updated = applyCopyToDoc(doc, { slide: { headline: 'New headline', body: 'New body.' } })
-    expect(updated.layers[0]!.text).toBe('My custom wording')
-    expect(updated.layers[1]!.text).toBe('New body.')
+    doc.nodes[0] = { ...seededText(doc)[0]!, text: 'My custom wording', textOverridden: true }
+    const updated = seededText(
+      applyCopyToDoc(doc, { slide: { headline: 'New headline', body: 'New body.' } })
+    )
+    expect(updated[0]!.text).toBe('My custom wording')
+    expect(updated[1]!.text).toBe('New body.')
   })
 
-  it('leaves layers alone when the new copy is empty', () => {
+  it('leaves text alone when the new copy is empty', () => {
     const doc = seededDoc()
     const updated = applyCopyToDoc(doc, { slide: { headline: '', body: '' } })
-    expect(updated.layers.map((l) => l.text)).toEqual(doc.layers.map((l) => l.text))
+    expect(seededText(updated).map((node) => node.text)).toEqual(
+      seededText(doc).map((node) => node.text)
+    )
   })
 })
 
-describe('createTextLayer', () => {
+describe('createTextNode', () => {
   it('creates a custom layer in the style body font with a unique id', () => {
     const identity = buildDefaultIdentity()
-    const a = createTextLayer('custom', identity)
-    const b = createTextLayer('custom', identity)
+    const a = createTextNode('custom', identity)
+    const b = createTextNode('custom', identity)
     expect(a.role).toBe('custom')
     expect(a.fontFamily).toBe('Source Sans 3')
     expect(a.id).not.toBe(b.id)

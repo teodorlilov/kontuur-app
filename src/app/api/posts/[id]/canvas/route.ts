@@ -4,6 +4,7 @@ import { verifyPostOwnership } from '@/lib/auth/helpers'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { POST_CANVAS_DOC_COLUMNS, POST_IMAGE_COLUMNS } from '@/lib/queries/select-columns'
 import { parseCanvasDoc, safeParseCanvasDoc } from '@/lib/canvas/doc-schema'
+import { upsertCanvasDoc } from '@/lib/canvas/doc-store'
 import type { CanvasDoc } from '@/types/canvas'
 import { fetchVisualIdentityOrDefault } from '@/lib/visual/queries'
 import {
@@ -12,9 +13,15 @@ import {
   uploadPostImage,
 } from '@/features/publishing/lib/storage'
 import { validateImageFile } from '@/features/publishing/lib/validate-image-file'
-import type { Json } from '@/types/database'
 
-/** The canvas doc + identity for one position — everything the editor needs in one round trip. */
+/**
+ * The canvas docs + identity a caller needs in one round trip.
+ *
+ * `?position=N` answers for that one slide (`{doc, identity}`) — what the auto-compose passes want,
+ * since they work a slide at a time. Omitting it answers for the whole post (`{docs, identity}`),
+ * which is what the editor opens with: it carousels between slides, so a second request per slide
+ * would be a waterfall the user waits through.
+ */
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id: postId } = await params
   const auth = await resolveAuth()
@@ -23,12 +30,31 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   const post = await verifyPostOwnership(auth.supabase, postId, auth.agencyId)
   if (!post) return NextResponse.json({ error: 'Post not found' }, { status: 404 })
 
-  const position = Number(new URL(request.url).searchParams.get('position') ?? 0)
+  const admin = createAdminSupabaseClient()
+  const identity = await fetchVisualIdentityOrDefault(post.client_id)
+  const identityBody = { palette: identity.palette, style: identity.style }
+  const positionParam = new URL(request.url).searchParams.get('position')
+
+  if (positionParam === null) {
+    const { data: rows } = await admin
+      .from('post_canvas_docs')
+      .select(POST_CANVAS_DOC_COLUMNS)
+      .eq('post_id', postId)
+      .order('position')
+    // A malformed/legacy row drops out of the list rather than failing the request — the editor
+    // reseeds that slide, exactly as it does for a slide that never had a doc.
+    const docs = (rows ?? []).flatMap((row) => {
+      const parsed = safeParseCanvasDoc(row.doc)
+      return parsed.success ? [{ position: row.position, doc: parsed.doc }] : []
+    })
+    return NextResponse.json({ docs, identity: identityBody })
+  }
+
+  const position = Number(positionParam)
   if (!Number.isInteger(position) || position < 0) {
     return NextResponse.json({ error: 'Invalid position' }, { status: 400 })
   }
 
-  const admin = createAdminSupabaseClient()
   const { data: row } = await admin
     .from('post_canvas_docs')
     .select(POST_CANVAS_DOC_COLUMNS)
@@ -38,10 +64,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
 
   // A malformed/legacy doc reads as "no doc" — the editor reseeds instead of erroring.
   const parsed = row ? safeParseCanvasDoc(row.doc) : null
-  const doc = parsed?.success ? parsed.doc : null
-
-  const identity = await fetchVisualIdentityOrDefault(post.client_id)
-  return NextResponse.json({ doc, identity: { palette: identity.palette, style: identity.style } })
+  return NextResponse.json({ doc: parsed?.success ? parsed.doc : null, identity: identityBody })
 }
 
 interface PutFields {
@@ -111,13 +134,8 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
 
     await cleanUpStaleBackground(admin, postId, position, doc, current.storage_path, post.client_id)
 
-    const { error: docError } = await admin
-      .from('post_canvas_docs')
-      .upsert(
-        { post_id: postId, position, doc: stored as unknown as Json, updated_at: new Date().toISOString() },
-        { onConflict: 'post_id,position' }
-      )
-    if (docError) return NextResponse.json({ error: docError.message }, { status: 500 })
+    const { error: docError } = await upsertCanvasDoc(admin, { postId, position, doc: stored })
+    if (docError) return NextResponse.json({ error: docError }, { status: 500 })
 
     // The clean background survives its own row being replaced by the flattened export.
     await replaceExistingImage(admin, postId, position, doc.background.storagePath)

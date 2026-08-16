@@ -1,3 +1,4 @@
+import { isImageNode } from '@/lib/canvas/doc-nodes'
 import type { CanvasDoc } from '@/types/canvas'
 
 /** One in-flight/finished AI visual for an in-memory wizard draft (no `posts` row yet).
@@ -44,7 +45,7 @@ export function countVisualsByStatus(visuals: DraftVisual[] | undefined): {
   return { failed, composing, done }
 }
 
-/** Every storage path a draft owns (flattened files, docs' clean backgrounds, element assets) —
+/** Every storage path a draft owns (flattened files, docs' clean backgrounds, placed assets) —
  *  discard cleanup. */
 export function draftStoragePaths(visuals: DraftVisual[] | undefined): string[] {
   const paths = new Set<string>()
@@ -52,8 +53,8 @@ export function draftStoragePaths(visuals: DraftVisual[] | undefined): string[] 
     if (visual.storagePath) paths.add(visual.storagePath)
     if (!visual.canvasDoc) continue
     paths.add(visual.canvasDoc.background.storagePath)
-    for (const element of visual.canvasDoc.elements ?? []) {
-      paths.add(element.src.storagePath)
+    for (const node of visual.canvasDoc.nodes) {
+      if (isImageNode(node)) paths.add(node.src.storagePath)
     }
   }
   return [...paths]

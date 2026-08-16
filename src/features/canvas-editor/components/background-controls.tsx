@@ -1,53 +1,54 @@
 'use client'
 
+import { useRef } from 'react'
 import type { CanvasBackgroundTransform } from '@/types/canvas'
 import { cn } from '@/utils/cn'
 import { MAX_BACKGROUND_ZOOM } from '@/lib/canvas/constants'
 import { PanelSlider } from './panel-slider'
-import { PANEL_CONTROL, PANEL_LABEL } from './panel-styles'
+import { EDITOR_CONTROL, EDITOR_LABEL } from './workspace/chrome'
 
 interface BackgroundControlsProps {
   transform: CanvasBackgroundTransform | undefined
-  repositionMode: boolean
-  onToggleReposition: () => void
-  onEnterInpaint: () => void
+  replacing: boolean
+  onReplace: (file: File) => void
   onZoom: (zoom: number) => void
   onReset: () => void
 }
 
-/** Background section: reposition mode, AI repair entry, zoom slider, reset to the cover fit. */
+/** The slide's picture: swap it, zoom the crop, or reset to the plain cover fit. */
 export function BackgroundControls({
   transform,
-  repositionMode,
-  onToggleReposition,
-  onEnterInpaint,
+  replacing,
+  onReplace,
   onZoom,
   onReset,
 }: BackgroundControlsProps) {
   const zoom = transform?.zoom ?? 1
+  const fileInputRef = useRef<HTMLInputElement>(null)
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+    <div className="flex flex-col gap-3">
       <div>
-        <div className={PANEL_LABEL}>Background</div>
+        <div className={EDITOR_LABEL}>Background</div>
         <button
           type="button"
-          onClick={onToggleReposition}
-          className={cn(
-            PANEL_CONTROL,
-            'cursor-pointer',
-            repositionMode ? 'bg-ink/[0.04]' : 'bg-paper'
-          )}
+          onClick={() => fileInputRef.current?.click()}
+          disabled={replacing}
+          title="Swap the slide's image — your text and elements stay exactly where they are"
+          className={cn(EDITOR_CONTROL, 'mb-2', replacing ? 'cursor-default' : 'cursor-pointer')}
         >
-          {repositionMode ? 'Done repositioning' : 'Reposition'}
+          {replacing ? 'Replacing…' : 'Replace image…'}
         </button>
-        <button
-          type="button"
-          onClick={onEnterInpaint}
-          title="Paint over a zone and describe what should replace it"
-          className={cn(PANEL_CONTROL, 'mt-2 cursor-pointer')}
-        >
-          AI repair (brush)
-        </button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          className="hidden"
+          onChange={(event) => {
+            const file = event.target.files?.[0]
+            if (file) onReplace(file)
+            event.target.value = ''
+          }}
+        />
       </div>
       <PanelSlider
         label={`Zoom · ${zoom.toFixed(2)}×`}
@@ -58,7 +59,7 @@ export function BackgroundControls({
         onChange={onZoom}
       />
       {transform && (
-        <button type="button" onClick={onReset} className={cn(PANEL_CONTROL, 'cursor-pointer')}>
+        <button type="button" onClick={onReset} className={cn(EDITOR_CONTROL, 'cursor-pointer')}>
           Reset crop
         </button>
       )}

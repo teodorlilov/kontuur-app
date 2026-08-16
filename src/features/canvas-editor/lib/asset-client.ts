@@ -1,4 +1,4 @@
-import type { EditorTarget } from '../types'
+import type { EditorTarget, SlideCopy } from '../types'
 
 export interface AssetRef {
   publicUrl: string
@@ -80,6 +80,34 @@ export async function generateSvgAsset(
   if (asset.width === undefined || asset.height === undefined)
     throw new Error('Vector generation failed')
   return { ...asset, width: asset.width, height: asset.height }
+}
+
+/**
+ * Generate a fresh background for the slide being edited; returns the stored ref. The slide's copy
+ * travels with the request because the server cannot re-derive it — a wizard draft has no row, and
+ * a post's row can be behind unsaved edits.
+ *
+ * The only wire call that takes a signal: it is the only one that runs long enough (~52s) for
+ * cancelling to mean anything. Aborting abandons the response, not the server's work — the image
+ * still generates and lands in storage, which TECH-DEBT §2.8 accepts as an orphan.
+ */
+export async function generateBackgroundAsset(input: {
+  target: EditorTarget
+  slideCopy: SlideCopy | null
+  direction?: string
+  signal?: AbortSignal
+}): Promise<AssetRef> {
+  const res = await fetch('/api/ai/generate-background', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      ...targetIds(input.target),
+      slideCopy: input.slideCopy,
+      ...(input.direction ? { direction: input.direction } : {}),
+    }),
+    signal: input.signal,
+  })
+  return parseAssetResponse(res, 'Background generation failed')
 }
 
 /** Inpaint the masked region of the clean background; returns the new clean image ref. */

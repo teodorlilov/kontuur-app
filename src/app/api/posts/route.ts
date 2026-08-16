@@ -3,12 +3,13 @@ import { z } from 'zod'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { draftVisualPrefix, movePostImageObject } from '@/features/publishing/lib/storage'
+import { isImageNode } from '@/lib/canvas/doc-nodes'
 import { safeParseCanvasDoc } from '@/lib/canvas/doc-schema'
+import { insertCanvasDocs } from '@/lib/canvas/doc-store'
 import { POST_COLUMNS } from '@/lib/queries/select-columns'
 import { draftColumns } from '@/lib/generation/draft-columns'
 import { isValidPostPlatform } from '@/lib/validation'
 import type { CanvasDoc } from '@/types/canvas'
-import type { Json } from '@/types/database'
 
 /** List the agency's posts, filterable by status, client and scheduled window. */
 export async function GET(request: Request) {
@@ -158,9 +159,9 @@ async function attachDraftImages(
   if (error) console.error('[posts] failed to attach draft visuals:', error.message)
 }
 
-/** Move a draft doc's stored files (clean background + element assets) into the post's folder.
- *  Only the client's own drafts-prefixed element files may attach — others are dropped; a failed
- *  move keeps the drafts path, which still serves. */
+/** Move a draft doc's stored files (clean background + placed assets) into the post's folder.
+ *  Only the client's own drafts-prefixed files are moved; anything else keeps the path it has, as
+ *  does a failed move — both still serve. */
 async function relocateDraftDoc(
   doc: CanvasDoc,
   prefix: string,
@@ -168,17 +169,17 @@ async function relocateDraftDoc(
   postId: string
 ): Promise<CanvasDoc> {
   const background = (await movePostImageObject(doc.background.storagePath, clientId, postId)) ?? doc.background
-  if (!doc.elements) return { ...doc, background }
-  const elements = (
-    await Promise.all(
-      doc.elements.map(async (element) => {
-        if (!element.src.storagePath.startsWith(prefix)) return null
-        const moved = await movePostImageObject(element.src.storagePath, clientId, postId)
-        return moved ? { ...element, src: moved } : element
-      })
-    )
-  ).filter((element) => element !== null)
-  return { ...doc, background, elements }
+  const nodes = await Promise.all(
+    doc.nodes.map(async (node) => {
+      // Only a placed asset has a file; text and drawn shapes have nothing to move. An asset
+      // already outside `drafts/` is not ours to move either — all pass through untouched rather
+      // than being dropped from the doc.
+      if (!isImageNode(node) || !node.src.storagePath.startsWith(prefix)) return node
+      const moved = await movePostImageObject(node.src.storagePath, clientId, postId)
+      return moved ? { ...node, src: moved } : node
+    })
+  )
+  return { ...doc, background, nodes }
 }
 
 /** Attach the drafts' canvas docs to a freshly created post. The clean background files move out of
@@ -200,15 +201,14 @@ async function attachDraftCanvasDocs(
       const parsed = safeParseCanvasDoc(img.canvasDoc)
       if (!parsed.success || !parsed.doc.background.storagePath.startsWith(prefix)) return null
       const doc = await relocateDraftDoc(parsed.doc, prefix, clientId, postId)
-      return { post_id: postId, position: img.position, doc: doc as unknown as Json }
+      return { postId, position: img.position, doc }
     })
   )
 
   const inserts = rows.filter((row) => row !== null)
   if (inserts.length === 0) return
-  const admin = createAdminSupabaseClient()
-  const { error } = await admin.from('post_canvas_docs').insert(inserts)
-  if (error) console.error('[posts] failed to attach draft canvas docs:', error.message)
+  const { error } = await insertCanvasDocs(createAdminSupabaseClient(), inserts)
+  if (error) console.error('[posts] failed to attach draft canvas docs:', error)
 }
 
 /** Create a post from an approved wizard draft, attaching its draft visuals and canvas docs. */

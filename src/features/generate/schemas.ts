@@ -122,3 +122,28 @@ export const generateStreamSchema = z.object({
   priorityPosts: z.array(priorityPostSchema).optional(),
   preloadedClientData: clientDataSchema,
 })
+
+/**
+ * The wizard's draft-visual generation request. `slides` carries the whole array rather than the
+ * one slide's fields so the route can hand it straight to `slideTextBlock` — the same derivation
+ * the persisted-post path uses, instead of a second copy of the carousel-vs-single branch.
+ *
+ * `slideCount` is gone with it: the array's own length is the count, and the two could disagree.
+ */
+export const generateDraftVisualSchema = z.object({
+  clientId: z.string().min(1),
+  draftId: z.string().min(1),
+  position: z.number().int().min(0),
+  postType: z.string().min(1),
+  slides: z.array(z.object({ headline: z.string(), body: z.string() })).default([]),
+  caption: z.string().nullable().default(null),
+})
+
+export type GenerateDraftVisualInput = z.infer<typeof generateDraftVisualSchema>
+
+/** Discard cleanup: delete a draft's stored visuals. Paths are re-checked against the client's
+ *  prefix in the route — this only proves the shape. */
+export const deleteDraftVisualsSchema = z.object({
+  clientId: z.string().min(1),
+  storagePaths: z.array(z.string().min(1)).min(1),
+})

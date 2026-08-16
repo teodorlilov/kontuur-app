@@ -52,7 +52,6 @@ const KNOWN_UNVALIDATED: string[] = [
   'ai/best-time/route.ts',
   'ai/detect-slop/route.ts',
   'ai/generate-svg/route.ts',
-  'ai/generate-visual/route.ts',
   'ai/intelligence/tip/route.ts',
   'ai/isolate-subject/route.ts',
   'ai/paste-from-url/route.ts',

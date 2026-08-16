@@ -1,0 +1,66 @@
+'use client'
+
+import { useCallback, useState } from 'react'
+import type { BrushStroke, EditorMode } from '../types'
+
+/** Default inpaint/erase brush width in authoring-space px. */
+const DEFAULT_BRUSH_SIZE = 60
+
+export interface EditorModeState {
+  mode: EditorMode
+  strokes: BrushStroke[]
+  brushSize: number
+  inpaintPrompt: string
+  lassoDetect: boolean
+  setBrushSize: (size: number) => void
+  setInpaintPrompt: (prompt: string) => void
+  setLassoDetect: (detect: boolean) => void
+  /** Enter a tool, or leave it when it is already the active one. */
+  switchMode: (next: Exclude<EditorMode, 'edit'>) => void
+  /** Return to plain editing, dropping any strokes in progress. */
+  exitMode: () => void
+  addStroke: (stroke: BrushStroke) => void
+  clearStrokes: () => void
+}
+
+/**
+ * Which tool is active and everything that tool is holding. Modes are exclusive: entering one
+ * drops the strokes of the last and clears the selection — except the eraser, which works ON the
+ * selection and so keeps it.
+ */
+export function useEditorMode(clearSelection: () => void): EditorModeState {
+  const [mode, setMode] = useState<EditorMode>('edit')
+  const [strokes, setStrokes] = useState<BrushStroke[]>([])
+  const [brushSize, setBrushSize] = useState(DEFAULT_BRUSH_SIZE)
+  const [inpaintPrompt, setInpaintPrompt] = useState('')
+  const [lassoDetect, setLassoDetect] = useState(true)
+
+  const switchMode = useCallback(
+    (next: Exclude<EditorMode, 'edit'>) => {
+      if (next !== 'erase') clearSelection()
+      setStrokes([])
+      setMode((current) => (current === next ? 'edit' : next))
+    },
+    [clearSelection]
+  )
+
+  const exitMode = useCallback(() => {
+    setMode('edit')
+    setStrokes([])
+  }, [])
+
+  return {
+    mode,
+    strokes,
+    brushSize,
+    inpaintPrompt,
+    lassoDetect,
+    setBrushSize,
+    setInpaintPrompt,
+    setLassoDetect,
+    switchMode,
+    exitMode,
+    addStroke: useCallback((stroke: BrushStroke) => setStrokes((all) => [...all, stroke]), []),
+    clearStrokes: useCallback(() => setStrokes([]), []),
+  }
+}

@@ -39,21 +39,22 @@ export async function savePostCanvas(
 
 /** Upload a draft's flattened jpeg; the doc stays in wizard memory (returned with its new path). */
 export async function saveDraftCanvas(
-  target: { clientId: string; draftId: string; position: number },
+  target: { clientId: string; draftId: string },
+  position: number,
   doc: CanvasDoc,
   blob: Blob,
   previousStoragePath?: string
 ): Promise<{ visual: DraftVisualResult; doc: CanvasDoc }> {
   const formData = new FormData()
-  formData.set('file', flattenedFile(blob, target.position))
+  formData.set('file', flattenedFile(blob, position))
   formData.set('clientId', target.clientId)
   formData.set('draftId', target.draftId)
-  formData.set('position', String(target.position))
+  formData.set('position', String(position))
   if (previousStoragePath) formData.set('previousStoragePath', previousStoragePath)
   const res = await fetch('/api/ai/generate-visual/upload', { method: 'POST', body: formData })
   const asset = await parseAssetResponse(res, 'Saving the design failed')
   return {
-    visual: { position: target.position, publicUrl: asset.publicUrl, storagePath: asset.storagePath },
+    visual: { position, publicUrl: asset.publicUrl, storagePath: asset.storagePath },
     doc: { ...doc, flattenedStoragePath: asset.storagePath },
   }
 }

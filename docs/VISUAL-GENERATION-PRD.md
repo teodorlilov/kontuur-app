@@ -342,16 +342,23 @@ properties panel (font/size/weight/color(5 palette roles + custom)/align/line-he
 with add/delete, scrim controls); top bar with slide label, overflow badge, undo/redo, Cancel,
 Save. "Preparing canvas…" until background image AND fonts resolve — never a flash of system-font
 text. Dirty-guard on Escape/backdrop/Cancel. Desktop-only: <768px renders a needs-larger-screen
-notice. Undo/redo = doc-snapshot stack capped at 50 (`use-canvas-doc`), Cmd/Ctrl+Z / Shift+Cmd+Z,
-shortcuts suspended while the inline-edit textarea is focused. **"Save & apply to all"
+notice. Undo/redo = doc-snapshot stack capped at 50 (`lib/doc-history.ts`), Cmd/Ctrl+Z /
+Shift+Cmd+Z, shortcuts suspended while the inline-edit textarea is focused.
+**In-editor carousel (2026-08-16):** the editor opens on the whole post, not one slide of it —
+`{target, slides[], initialPosition}`, a bottom slide strip with dirty dots, and ONE UNDO HISTORY
+PER SLIDE (`use-editor-slides.ts`), so ⌘Z on slide 3 cannot reach into slide 1. Every doc loads in
+one round trip (`GET /api/posts/[id]/canvas` with no `?position`). Save writes every dirty slide
+sequentially ("Saving 2/4…"), reports failures by slide number, and — unlike before —
+**does not close the editor**. **"Save & apply to all"
 (2026-07-24):** on carousels with >1 image, a second top-bar button saves the slide and carries
 its full look — role-matched layer position/width/font/size/weight/color/align/line-height +
 scrim — onto every sibling (each keeps its own text; autofit reshrinks). Pure transfer =
-`src/lib/canvas/apply-style.ts`; the editor stays single-position — the SURFACE orchestrates
+`src/lib/canvas/apply-style.ts`; the SURFACE orchestrates the
 siblings through `useGenerateVisuals.applyStyle` (review/calendar) or
 `applyStyleAcrossDraft` (wizard), with the same serial queue, "Adding text…" slot feedback and
 degrade-to-current-image failure posture as auto-compose. Doc-less siblings are seeded, styled
-and composed in one pass.
+and composed in one pass. Because applying hands every sibling doc back to the surface, that path
+alone still closes the editor — its in-memory copies are stale the moment the surface rewrites them.
 
 **Background reposition + text rotation (2026-07-24):** the background is no longer fixed. A
 "Background" panel section enters **Reposition mode** — text/scrim dim to 35% and lock, dragging

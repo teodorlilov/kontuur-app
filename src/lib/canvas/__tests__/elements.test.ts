@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import { CANVAS_HEIGHT, CANVAS_WIDTH } from '../constants'
-import { canvasPointToElementLocal, createCenteredElement } from '../elements'
+import { canvasPointToElementLocal, createCenteredNode } from '../elements'
 
 const CANVAS = { w: CANVAS_WIDTH, h: CANVAS_HEIGHT }
 const SRC = { publicUrl: 'https://cdn/a.png', storagePath: 'c1/p1/a.png' }
 
-describe('createCenteredElement', () => {
+describe('createCenteredNode', () => {
   it('centers the element at the default width, preserving the asset aspect', () => {
-    const element = createCenteredElement('image', SRC, { width: 840, height: 420 }, CANVAS)
+    const element = createCenteredNode('image', SRC, { width: 840, height: 420 }, CANVAS)
     expect(element.width).toBe(420)
     expect(element.height).toBe(210)
     expect(element.x).toBe((CANVAS_WIDTH - 420) / 2)
@@ -18,7 +18,7 @@ describe('createCenteredElement', () => {
   })
 
   it('survives a zero-width natural size without dividing by zero', () => {
-    const element = createCenteredElement('svg', SRC, { width: 0, height: 100 }, CANVAS)
+    const element = createCenteredNode('svg', SRC, { width: 0, height: 100 }, CANVAS)
     expect(Number.isFinite(element.height)).toBe(true)
   })
 })

@@ -21,23 +21,6 @@ export interface DraftPostInput {
   slides_json: unknown
 }
 
-function buildJobPayload(post: DraftPostInput, position: number): Record<string, unknown> {
-  if (post.post_type === 'carousel') {
-    const slides = parseSlides(post.slides_json)
-    const slide = slides[position]
-    return {
-      clientId: post.client_id,
-      draftId: post.id,
-      position,
-      postType: 'carousel',
-      headline: slide?.headline ?? '',
-      body: slide?.body ?? '',
-      slideCount: slides.length,
-    }
-  }
-  return { clientId: post.client_id, draftId: post.id, position: 0, postType: 'single', caption: post.caption ?? '' }
-}
-
 /**
  * Auto-generation queue for wizard-draft visuals: one stateless request per slide with bounded
  * concurrency, per-draft aborts, and storage cleanup on discard. After each image generates, it is
@@ -141,7 +124,16 @@ export function useDraftVisuals() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           signal,
-          body: JSON.stringify(buildJobPayload(post, position)),
+          // The whole slides array, not this slide's fields: the route derives its text block with
+          // the same `slideTextBlock` the persisted-post path uses.
+          body: JSON.stringify({
+            clientId: post.client_id,
+            draftId: post.id,
+            position,
+            postType: post.post_type,
+            slides: parseSlides(post.slides_json),
+            caption: post.caption,
+          }),
         })
         const data = await res.json()
         if (!res.ok) throw new Error(data.error ?? 'Visual generation failed')

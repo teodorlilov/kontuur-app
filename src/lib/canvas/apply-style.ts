@@ -1,9 +1,11 @@
-import type { CanvasDoc, CanvasTextLayer } from '@/types/canvas'
+import type { CanvasDoc, CanvasTextNode } from '@/types/canvas'
+import { isTextNode, textNodes } from './doc-nodes'
 
-// The "look" of a layer — everything except identity (id/role) and content (text/textOverridden).
-// Copying an oversized fontSize is fine: compose autofits each slide's own text downstream.
-// `rotation` rides along deliberately even when undefined — an unrotated source un-tilts targets.
-function styledLayer(target: CanvasTextLayer, source: CanvasTextLayer): CanvasTextLayer {
+// The "look" of a text node — everything except identity (id/kind/role) and content
+// (text/textOverridden). Copying an oversized fontSize is fine: compose autofits each slide's own
+// text downstream. `rotation` rides along deliberately even when undefined — an unrotated source
+// un-tilts targets.
+function styledNode(target: CanvasTextNode, source: CanvasTextNode): CanvasTextNode {
   return {
     ...target,
     x: source.x,
@@ -24,14 +26,16 @@ function styledLayer(target: CanvasTextLayer, source: CanvasTextLayer): CanvasTe
 
 /**
  * Carry one slide's look onto another doc ("apply to all slides"): the scrim plus each
- * headline/body layer's style, matched by role. Text, `textOverridden` and `custom` layers are
- * never touched; roles missing on either side are left alone (no layer is ever created).
+ * headline/body node's style, matched by role. Text, `textOverridden` and `custom` nodes are
+ * never touched; roles missing on either side are left alone (no node is ever created), and placed
+ * assets are a slide's own content, so they are left exactly as they are.
  */
 export function applyStyleToDoc(target: CanvasDoc, source: CanvasDoc): CanvasDoc {
-  const layers = target.layers.map((layer) => {
-    if (layer.role === 'custom') return layer
-    const sourceLayer = source.layers.find((candidate) => candidate.role === layer.role)
-    return sourceLayer ? styledLayer(layer, sourceLayer) : layer
+  const sourceText = textNodes(source)
+  const nodes = target.nodes.map((node) => {
+    if (!isTextNode(node) || node.role === 'custom') return node
+    const match = sourceText.find((candidate) => candidate.role === node.role)
+    return match ? styledNode(node, match) : node
   })
-  return { ...target, scrim: { ...source.scrim }, layers }
+  return { ...target, scrim: { ...source.scrim }, nodes }
 }

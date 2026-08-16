@@ -3,31 +3,15 @@ import { resolveAuth } from '@/lib/auth/resolve-auth'
 import { visualsRateLimitResponse } from '@/lib/auth/rate-limit'
 import { fetchClientById } from '@/lib/queries/db'
 import { uploadDraftVisual, deleteDraftVisuals, draftVisualPrefix } from '@/features/publishing/lib/storage'
-import { carouselSlideText, singlePostText } from '@/lib/visual/prompt'
+import { slideTextBlock } from '@/lib/visual/prompt'
 import { generateVisual } from '@/lib/visual/generate-visual'
+import {
+  deleteDraftVisualsSchema,
+  generateDraftVisualSchema,
+} from '@/features/generate/schemas'
 
 // One gpt-image-2 generation (~52s) + download + storage upload per request.
 export const maxDuration = 120
-
-interface GenerateDraftVisualBody {
-  clientId?: string
-  draftId?: string
-  position?: number
-  postType?: string
-  headline?: string
-  body?: string
-  caption?: string
-  slideCount?: number
-}
-
-function draftTextBlock(body: GenerateDraftVisualBody, position: number): string | null {
-  if (body.postType === 'carousel') {
-    const total = Number(body.slideCount ?? 0)
-    if (!Number.isInteger(total) || total < 1) return null
-    return carouselSlideText({ headline: body.headline ?? '', body: body.body ?? '' }, position, total)
-  }
-  return position === 0 ? singlePostText(body.caption ?? null) : null
-}
 
 /** Generate an AI visual for an in-memory wizard draft; the image is stored, the DB row waits for approve. */
 export async function POST(request: Request) {
@@ -37,30 +21,32 @@ export async function POST(request: Request) {
   const limited = visualsRateLimitResponse(auth.userId)
   if (limited) return limited
 
-  let body: GenerateDraftVisualBody
+  let body
   try {
-    body = await request.json()
+    body = generateDraftVisualSchema.parse(await request.json())
   } catch {
     return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
-  }
-
-  const position = Number(body.position ?? 0)
-  if (!body.clientId || !body.draftId || !Number.isInteger(position) || position < 0) {
-    return NextResponse.json({ error: 'clientId, draftId, and a valid position are required' }, { status: 400 })
   }
 
   const client = await fetchClientById(auth.supabase, body.clientId, auth.agencyId)
   if (!client) return NextResponse.json({ error: 'Client not found' }, { status: 404 })
 
-  const textBlock = draftTextBlock(body, position)
+  // The same derivation the persisted-post path uses (generate-post-visual.ts), so the
+  // carousel-vs-single branch lives in exactly one place.
+  const textBlock = slideTextBlock({
+    postType: body.postType,
+    slides: body.slides,
+    caption: body.caption,
+    position: body.position,
+  })
   if (!textBlock) {
     return NextResponse.json({ error: 'No slide copy to generate from' }, { status: 400 })
   }
 
   try {
     const visual = await generateVisual({ clientId: body.clientId, textBlock })
-    const { publicUrl, storagePath } = await uploadDraftVisual(visual.buffer, body.clientId, body.draftId, position)
-    return NextResponse.json({ position, publicUrl, storagePath })
+    const { publicUrl, storagePath } = await uploadDraftVisual(visual.buffer, body.clientId, body.draftId, body.position)
+    return NextResponse.json({ publicUrl, storagePath })
   } catch (err) {
     console.error('[generate-visual] draft generation failed:', err)
     const message = err instanceof Error ? err.message : 'Visual generation failed'
@@ -73,16 +59,12 @@ export async function DELETE(request: Request) {
   const auth = await resolveAuth()
   if (!auth.ok) return auth.response
 
-  let body: { clientId?: string; storagePaths?: string[] }
+  let clientId: string
+  let storagePaths: string[]
   try {
-    body = await request.json()
+    ;({ clientId, storagePaths } = deleteDraftVisualsSchema.parse(await request.json()))
   } catch {
     return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
-  }
-
-  const { clientId, storagePaths } = body
-  if (!clientId || !Array.isArray(storagePaths) || storagePaths.length === 0) {
-    return NextResponse.json({ error: 'clientId and storagePaths are required' }, { status: 400 })
   }
 
   const client = await fetchClientById(auth.supabase, clientId, auth.agencyId)
