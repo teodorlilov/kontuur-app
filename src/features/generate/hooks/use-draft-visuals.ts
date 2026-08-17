@@ -116,7 +116,12 @@ export function useDraftVisuals() {
   )
 
   const runJob = useCallback(
-    async (post: DraftPostInput, position: number, signal: AbortSignal) => {
+    async (
+      post: DraftPostInput,
+      position: number,
+      signal: AbortSignal,
+      previousDoc?: CanvasDoc
+    ) => {
       const release = await semaphore.current.acquire()
       try {
         if (signal.aborted) return
@@ -140,7 +145,7 @@ export function useDraftVisuals() {
         const clean = { publicUrl: data.publicUrl as string, storagePath: data.storagePath as string }
         // Clean refs on the still-generating entry: an approve mid-compose attaches the clean image.
         setVisual(post.id, { position, status: 'generating', ...clean })
-        const composed = await composeVisual(post, position, clean, signal)
+        const composed = await composeVisual(post, position, clean, signal, previousDoc)
         if (signal.aborted) return
         setVisual(post.id, composed ?? { position, status: 'done', ...clean })
       } catch (err) {
@@ -183,13 +188,23 @@ export function useDraftVisuals() {
     [draftController, runJob]
   )
 
-  /** Re-generate one slide's visual (retry after error or explicit regenerate). */
+  /**
+   * Re-generate one slide's visual (retry after error or explicit regenerate).
+   *
+   * The existing doc is read BEFORE the status reset — `setVisual` replaces the whole entry, so a
+   * moment later there is no `canvasDoc` left to find. Carrying it over makes a regenerate a
+   * background swap that keeps the editor's work, matching what `replaceVisual` does for an upload
+   * and what `composePersistedPosition` already does for a persisted post. A retry after an error
+   * has no doc to carry, so it seeds from copy exactly as before.
+   */
   const regenerate = useCallback(
     (post: DraftPostInput, position: number) => {
+      const previousDoc = (visualsByDraft[post.id] ?? []).find((v) => v.position === position)
+        ?.canvasDoc
       setVisual(post.id, { position, status: 'generating' })
-      void runJob(post, position, draftController(post.id).signal)
+      void runJob(post, position, draftController(post.id).signal, previousDoc)
     },
-    [draftController, runJob, setVisual]
+    [draftController, runJob, setVisual, visualsByDraft]
   )
 
   /** Editor save for a draft slide: swap in the edited flattened file + its doc. */

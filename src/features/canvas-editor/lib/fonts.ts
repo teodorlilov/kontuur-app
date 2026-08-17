@@ -1,4 +1,4 @@
-import { FONT_LIBRARY, getFontEntry } from '@/lib/canvas/font-library'
+import { FONT_LIBRARY, getFontEntry, type FontEntry } from '@/lib/canvas/font-library'
 import { editorFontsHref } from '@/lib/canvas/google-fonts'
 
 // Stylesheet covering the whole editor library — binaries only download once text uses them.
@@ -27,13 +27,31 @@ export function injectLibraryStylesheet(): void {
 const loaded = new Map<string, Promise<unknown>>()
 
 // Every face the family serves: each weight upright, plus italic where the library hosts one.
-function faceLoadKeys(family: string): string[] {
-  const entry = getFontEntry(family)
-  if (!entry) return []
+function faceLoadKeys(entry: FontEntry): string[] {
   return entry.weights.flatMap((weight) => [
-    `${weight} 48px "${family}"`,
-    ...(entry.italic ? [`italic ${weight} 48px "${family}"`] : []),
+    `${weight} 48px "${entry.family}"`,
+    ...(entry.italic ? [`italic ${weight} 48px "${entry.family}"`] : []),
   ])
+}
+
+/**
+ * One character from each Unicode subset this family actually serves.
+ *
+ * `document.fonts.load(font)` defaults its text to a single space, and Google splits each family
+ * into per-script `@font-face` rules whose Cyrillic `unicode-range` does NOT contain U+0020 — so a
+ * bare call resolves having awaited only the Latin binary. Cyrillic text is then measured against
+ * whatever the OS substitutes, and because `autofitDocText` writes its measurement back into the
+ * doc, the wrong `fontSize` is PERSISTED rather than merely drawn once.
+ *
+ * Derived from the library's own `cyrillic` flag rather than probing every family with Cyrillic:
+ * a Latin-only family has no Cyrillic face to wait for, and forcing the probe would download a
+ * subset nothing will ever paint.
+ *
+ * Invariant the memo below depends on: this is a function of the FAMILY alone. If it ever varies
+ * per call, the probe has to join the cache key with it.
+ */
+function probeText(entry: FontEntry): string {
+  return entry.cyrillic ? 'Aа' : 'A'
 }
 
 /**
@@ -45,10 +63,13 @@ export async function ensureFontsReady(families: string[]): Promise<void> {
   if (typeof document === 'undefined' || !('fonts' in document)) return
   const loads: Promise<unknown>[] = []
   for (const family of new Set(families)) {
-    for (const key of faceLoadKeys(family)) {
+    const entry = getFontEntry(family)
+    if (!entry) continue
+    const probe = probeText(entry)
+    for (const key of faceLoadKeys(entry)) {
       let promise = loaded.get(key)
       if (!promise) {
-        promise = document.fonts.load(key).catch(() => undefined)
+        promise = document.fonts.load(key, probe).catch(() => undefined)
         loaded.set(key, promise)
       }
       loads.push(promise)
