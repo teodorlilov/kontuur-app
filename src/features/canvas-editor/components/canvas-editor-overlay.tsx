@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import type Konva from 'konva'
 import { Button } from '@/components/ui/button'
@@ -130,8 +130,15 @@ function CanvasEditorOverlay(props: CanvasEditorProps) {
   const [railSection, setRailSection] = useRailSection()
   const [confirmingClose, setConfirmingClose] = useState(false)
   const [applyingStyle, setApplyingStyle] = useState(false)
-  /** Slides the last "on every slide" landed on, so the panel can offer one undo for the set. */
-  const [lockupApplied, setLockupApplied] = useState<number[] | null>(null)
+  /**
+   * What the last multi-slide apply landed on, and what those slides held BEFORE it.
+   *
+   * The docs are captured, not just the positions: undoing a set by stepping each history back one
+   * entry only undoes the apply while nothing has happened since, and both panels stay open
+   * afterwards. See `restoreSlides`.
+   */
+  const [lockupApplied, setLockupApplied] = useState<AppliedSet | null>(null)
+  const [styleApplied, setStyleApplied] = useState<AppliedSet | null>(null)
   const modeState = useEditorMode(selection.clear)
   const { mode, strokes, brushSize, inpaintPrompt, lassoDetect } = modeState
   // Read from the live prop, not from the load: the surface's copy edits ride in while the editor
@@ -192,11 +199,20 @@ function CanvasEditorOverlay(props: CanvasEditorProps) {
    * Gated on `backgroundImage` because the grid is read from real pixels; until the art decodes
    * there is nothing to compare against and the honest answer is to say nothing.
    */
+  /**
+   * Deferred, because measuring costs a 108×135 offscreen draw and a full `getImageData`.
+   *
+   * The doc changes on every tick of every slider and every frame of every drag, and each one was
+   * rebuilding the whole grid to answer a question the user reads at rest. `useDeferredValue` lets
+   * React drop the intermediate values and measure once the gesture settles — the warning arrives a
+   * beat late, which is the correct priority for a warning, and the drag stops competing with it.
+   */
+  const settledDoc = useDeferredValue(slidesState.doc)
   const lowContrast = useMemo(() => {
-    if (!slidesState.doc || !backgroundImage || !fontsReady) return EMPTY_OVERFLOW
-    const grid = buildBackdropGrid(slidesState.doc, backgroundImage)
-    return grid ? lowContrastLabels(slidesState.doc, grid) : EMPTY_OVERFLOW
-  }, [slidesState.doc, backgroundImage, fontsReady])
+    if (!settledDoc || !backgroundImage || !fontsReady) return EMPTY_OVERFLOW
+    const grid = buildBackdropGrid(settledDoc, backgroundImage)
+    return grid ? lowContrastLabels(settledDoc, grid) : EMPTY_OVERFLOW
+  }, [settledDoc, backgroundImage, fontsReady])
 
   const { editingId, startEdit } = useInlineTextEdit(
     (id, text) => {
@@ -394,7 +410,7 @@ function CanvasEditorOverlay(props: CanvasEditorProps) {
       // Remembered so the panel can offer ONE undo. `transformSlides` commits an entry per slide,
       // and ⌘Z steps only the active one — so without this the way to back out a seven-slide apply
       // is to visit each slide and undo it there.
-      setLockupApplied(targets)
+      setLockupApplied(appliedSet(targets, slidesState.docsByPosition))
       if (skipped.length > 0) toast.info(skipReport(skipped))
     },
     [slidesState, lockupCtx, candidates]
@@ -571,9 +587,9 @@ function CanvasEditorOverlay(props: CanvasEditorProps) {
                 setLockupApplied(null)
                 applyLockupHere(id)
               }}
-              appliedToAll={lockupApplied}
+              appliedToAll={lockupApplied?.positions ?? null}
               onUndoApplyToAll={() => {
-                if (lockupApplied) slidesState.undoSlides(lockupApplied)
+                if (lockupApplied) slidesState.restoreSlides(lockupApplied.before)
                 setLockupApplied(null)
               }}
               // One slide has nothing to apply a lockup across — the same gate the strip uses.
@@ -776,10 +792,13 @@ function CanvasEditorOverlay(props: CanvasEditorProps) {
         sourcePosition={slidesState.activePosition}
         positions={slidesState.positions}
         docsByPosition={slidesState.docsByPosition}
-        onApply={(targets, source) =>
+        onApply={(targets, source) => {
+          setStyleApplied(appliedSet(targets, slidesState.docsByPosition))
           slidesState.transformSlides(targets, (doc) => styledDoc(doc, source))
-        }
-        onUndo={slidesState.undoSlides}
+        }}
+        onUndo={() => {
+          if (styleApplied) slidesState.restoreSlides(styleApplied.before)
+        }}
       />
       <ShortcutsSheet open={showShortcuts} onClose={() => setShowShortcuts(false)} />
       <ConfirmDialog
@@ -847,6 +866,22 @@ const MODE_HINTS: Record<Exclude<EditorMode, 'edit'>, string> = {
   inpaint: 'Paint over what should change, then Apply',
   lasso: 'Draw a loop around the object to cut it out',
   erase: 'Paint to rub parts of the selected element away',
+}
+
+/** A multi-slide apply, with what its targets held beforehand so the set can be put back. */
+interface AppliedSet {
+  positions: number[]
+  before: Map<number, CanvasDoc>
+}
+
+/** Capture the targets' current docs, so "Undo" can restore them whatever happens in between. */
+function appliedSet(positions: number[], docs: Map<number, CanvasDoc>): AppliedSet {
+  const before = new Map<number, CanvasDoc>()
+  for (const position of positions) {
+    const doc = docs.get(position)
+    if (doc) before.set(position, doc)
+  }
+  return { positions, before }
 }
 
 /** Why apply-to-all passed a slide over. Each has its own fix, so each is said in the user's terms. */

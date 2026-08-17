@@ -1,4 +1,5 @@
 import Konva from 'konva'
+import { CANVAS_PAPER } from '@/lib/canvas/constants'
 import type { CanvasDoc } from '@/types/canvas'
 import { isImageNode, isShapeNode, isTextNode, visibleNodes } from '@/lib/canvas/doc-nodes'
 import {
@@ -60,6 +61,11 @@ export async function exportDocToJpegBlob(
     const layer = new Konva.Layer({ listening: false })
     stage.add(layer)
 
+    // The same sheet the stage draws beneath the artwork. Without it a background with alpha baked
+    // its transparent pixels BLACK — jpeg has no alpha — while the editor showed them white.
+    layer.add(
+      new Konva.Rect({ x: 0, y: 0, width: doc.canvas.w, height: doc.canvas.h, fill: CANVAS_PAPER })
+    )
     layer.add(
       new Konva.Image({
         image: backgroundImage,

@@ -351,6 +351,26 @@ function slotCapacity(
   return Math.floor((node.width / advance) * slotLines(node, floor))
 }
 
+/**
+ * The lowest a slot's text may reach: the colour block it is reversed out of, or the given floor.
+ *
+ * `field` sets both copy nodes to `palette.surface` because they sit on an opaque 640px-tall accent
+ * block — white type that is only white-on-brand while it stays ON the block. Measured to the canvas
+ * floor instead, a long headline was cleared to wrap straight off the bottom of it and finish as
+ * white words on the photograph, which is the exact unreadability the whole capacity gate exists to
+ * refuse. Derived from the members rather than declared, so any later lockup that reverses type out
+ * of a field is bounded the same way without saying so.
+ */
+function blockFloor(lockup: Lockup, ctx: LockupContext, slot: { y: number }, floor: number): number {
+  const under = lockup
+    .members(ctx)
+    .find(
+      (member) =>
+        member.kind === 'rect' && slot.y >= member.y && slot.y < member.y + member.height
+    )
+  return under && under.kind === 'rect' ? Math.min(floor, under.y + under.height) : floor
+}
+
 /** The character budget each copy slot of this lockup affords. */
 export function lockupCapacity(
   lockup: Lockup,
@@ -362,10 +382,11 @@ export function lockupCapacity(
   // which stops being true the moment a layout puts its supporting line above the headline.
   const headlineFloor = headline.y < body.y ? body.y : TEXT_FLOOR
   const bodyFloor = body.y < headline.y ? headline.y : TEXT_FLOOR
+  const heroFloor = hero && hero.y < headline.y ? headline.y : TEXT_FLOOR
   return {
-    headline: slotCapacity(headline, headlineFloor),
-    body: slotCapacity(body, bodyFloor),
-    hero: hero ? slotCapacity(hero, hero.y < headline.y ? headline.y : TEXT_FLOOR) : 0,
+    headline: slotCapacity(headline, blockFloor(lockup, ctx, headline, headlineFloor)),
+    body: slotCapacity(body, blockFloor(lockup, ctx, body, bodyFloor)),
+    hero: hero ? slotCapacity(hero, blockFloor(lockup, ctx, hero, heroFloor)) : 0,
   }
 }
 
@@ -1284,9 +1305,19 @@ export function supportsCyrillic(lockup: Lockup): boolean {
   return lockup.pinned.every((family) => getFontEntry(family)?.cyrillic === true)
 }
 
-/** Every family the catalogue pins — what the picker preloads so tiles are not drawn in a fallback. */
-export function lockupFamilies(): FontFamilyName[] {
-  return [...new Set(LOCKUPS.flatMap((lockup) => lockup.pinned))]
+/**
+ * The families a pack pins — what the picker preloads so its tiles are not drawn in a fallback.
+ *
+ * Per pack, not per catalogue. The Text rail is the section the editor opens on, so preloading the
+ * whole catalogue meant every editor open fetched the pinned faces of sixteen lockups before the
+ * user had shown any interest in lockups at all. A pack is what is on screen; the other one loads
+ * when its tab is pressed, which is the first moment its faces can be seen.
+ *
+ * Omitting the pack still answers for the whole catalogue — the font-claims test checks all of them.
+ */
+export function lockupFamilies(pack?: LockupPack): FontFamilyName[] {
+  const shown = pack ? LOCKUPS.filter((lockup) => lockup.pack === pack) : LOCKUPS
+  return [...new Set(shown.flatMap((lockup) => lockup.pinned))]
 }
 
 /**
@@ -1407,15 +1438,23 @@ export function applyLockup(
   if (patch.hero) {
     const heroId = take()
     if (heroId) {
-      // Built FRESH rather than spread from the node being swept. Inheriting that node's `hidden`
-      // or `locked` would resurrect them onto a slide the user had just changed the layout of, and
-      // a hidden hero draws nothing while still holding the first word of the headline.
+      // The hero being swept, so its EFFECTS survive the swap. `LOCKUP_FIELDS` deliberately excludes
+      // the effects layer — shadow, outline, marker, arc are an orthogonal choice the user makes on
+      // top of a layout — but building the replacement fresh threw them away anyway, so a re-apply
+      // was not the no-op the id reuse assumes and switching hero lockups quietly undid the user's
+      // decoration. `hidden` and `locked` are still cleared: inheriting those would resurrect them
+      // onto a slide whose layout has just changed, and a hidden hero draws nothing while still
+      // holding the first word of the headline.
+      const previous = doc.nodes.find((node) => isTextNode(node) && node.role === 'hero')
       created.push({
+        ...previous,
         id: heroId,
         kind: 'text',
         role: 'hero',
         text: split.hero,
         textOverridden: overridden,
+        hidden: undefined,
+        locked: undefined,
         ...patch.hero,
       } as CanvasNode)
     }
@@ -1451,7 +1490,12 @@ export function applyLockup(
   // appending would float the kicker and rule above every placed picture while the headline they
   // belong to stayed behind — one lockup, drawn on two different planes.
   const at = restyled.findIndex((node) => isTextNode(node) && node.role === 'headline')
-  const index = at === -1 ? restyled.length : at
+  // With no headline to sit under, the slide's own first text node serves instead — which is the
+  // same rule, not a special case. Falling straight through to `length` did the very thing the
+  // paragraph above forbids, on exactly the slide that cannot spot it: one whose headline was
+  // deleted, leaving a rule drawn over the picture it was meant to sit beneath.
+  const under = at !== -1 ? at : restyled.findIndex(isTextNode)
+  const index = under === -1 ? restyled.length : under
   return { ...doc, nodes: [...restyled.slice(0, index), ...created, ...restyled.slice(index)] }
 }
 

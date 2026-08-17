@@ -1,3 +1,4 @@
+import { CANVAS_PAPER } from '@/lib/canvas/constants'
 import type { BackdropGrid } from '@/lib/canvas/contrast'
 import { isImageNode, isShapeNode, visibleNodes } from '@/lib/canvas/doc-nodes'
 import {
@@ -118,7 +119,11 @@ export function buildBackdropGrid(doc: CanvasDoc, image: HTMLImageElement): Back
   surface.height = rows
   const context = surface.getContext('2d', { willReadFrequently: true })
   if (!context) return null
-  context.clearRect(0, 0, cols, rows)
+  // The sheet, not a clear: a cleared cell reads back as rgb(0,0,0) with alpha 0, so a background
+  // with alpha made the grid report BLACK behind text the viewer sees on white — and the repaint
+  // then picked a light fill for a light backdrop.
+  context.fillStyle = CANVAS_PAPER
+  context.fillRect(0, 0, cols, rows)
 
   // Drawn through the SAME resolver the stage and the exporter use, so the crop the grid measures
   // is the crop the viewer sees rather than a second implementation of cover-fit.

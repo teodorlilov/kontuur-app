@@ -9,7 +9,7 @@ import {
   textBox,
   type BackdropGrid,
 } from '@/lib/canvas/contrast'
-import { scrimNodeAttrs } from '@/lib/canvas/node-attrs'
+import { scrimNodeAttrs, shapeChildAttrs } from '@/lib/canvas/node-attrs'
 import { buildBackdropGrid } from '../../lib/backdrop-grid'
 import { decodedImage } from '../../lib/load-image'
 import { clampAtWordBoundary } from '@/lib/visual/prompt'
@@ -101,12 +101,13 @@ export function LockupsSection({
   const active = activeLockup(doc, ctx)
 
   // Pinned faces are not in the doc yet, so the editor's own font pass has never asked for them.
-  // Loading them when the panel opens keeps the cost with the feature, and means a tile is never
-  // drawn in a substitute face.
+  // Scoped to the pack ON SCREEN, and re-run when the tab changes: the Text rail is what the editor
+  // opens on, so preloading all sixteen lockups' faces spent that fetch on every editor open,
+  // whether or not the user ever looked at a lockup.
   useEffect(() => {
     injectLibraryStylesheet()
-    void ensureFontsReady(lockupFamilies())
-  }, [])
+    void ensureFontsReady(lockupFamilies(pack))
+  }, [pack])
 
   if (!headline && !body) {
     return (
@@ -379,6 +380,11 @@ function TilePreview({ lockup, ctx, headline, body, background, scrim, backdrop,
 function TileMember({ member }: { member: LockupMember }) {
   if (member.kind === 'text') return <TileText node={member} text={member.text} />
   const height = `calc(${member.height / CANVAS_WIDTH} * 100cqi)`
+  // Read through the SAME resolver the stage and the exporter use. Reaching for `member.stroke`
+  // directly drew a rule correctly and a block not at all — a rect carries `fill` and never a
+  // stroke — so `field`, whose whole idea is type reversed out of a colour block, previewed as bare
+  // type on the photograph and looked like the one broken tile in the catalogue.
+  const attrs = shapeChildAttrs({ ...member, id: 'preview' })
   return (
     <span
       className="absolute block"
@@ -387,7 +393,7 @@ function TileMember({ member }: { member: LockupMember }) {
         top: `${(member.y / CANVAS_HEIGHT) * 100}%`,
         width: `${(member.width / CANVAS_WIDTH) * 100}%`,
         height,
-        background: member.stroke,
+        background: attrs.fill ?? attrs.stroke,
       }}
     />
   )

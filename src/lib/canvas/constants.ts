@@ -3,6 +3,17 @@
 export const CANVAS_WIDTH = 1080
 export const CANVAS_HEIGHT = 1350
 
+/**
+ * The sheet the composition sits on, under the background image.
+ *
+ * A raw hex rather than a token, and deliberately: Konva cannot read a CSS variable, the exported
+ * jpeg must be identical whatever theme the editor happened to be in, and jpeg has no alpha — a
+ * transparent pixel bakes BLACK. So a background with alpha (png, webp, svg all upload) showed white
+ * in the editor, which drew this sheet, and black in the file, which did not. Stated once so the
+ * stage, the exporter and the contrast measurement cannot each answer it differently.
+ */
+export const CANVAS_PAPER = '#FFFFFF'
+
 /** Bump when a stored doc STOPS PARSING against the previous schema; readers must then add a
  *  migration path per version. v2 replaced v1's separate text/element bands with one ordered
  *  `nodes` list — see `doc-v1.ts`. Adding an OPTIONAL field is not such a change: old docs still

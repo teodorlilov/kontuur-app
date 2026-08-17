@@ -58,8 +58,17 @@ export interface EditorSlidesState extends EditorDocState {
     positions: number[],
     mutate: (doc: CanvasDoc, position: number) => CanvasDoc
   ) => void
-  /** Step several named slides back one entry each — the undo half of `transformSlides`. */
-  undoSlides: (positions: number[]) => void
+  /**
+   * Put slides back to docs captured before a multi-slide apply — the undo half of `transformSlides`.
+   *
+   * Takes the DOCS, not the positions, and commits forward rather than stepping histories back. A
+   * step-back is only the apply if nothing has happened since, and something usually has: both
+   * panels stay open afterwards and invite the user to look around the carousel. On a slide edited
+   * in between it undid that edit and left the apply standing — neither what the button says nor
+   * anything the user asked for. Restoring what was captured is right whatever came after, and being
+   * an ordinary commit it is itself undoable with ⌘Z.
+   */
+  restoreSlides: (docs: Map<number, CanvasDoc>) => void
   /** Every slide's current doc, by position. Reactive, unlike `docAt`. */
   docsByPosition: Map<number, CanvasDoc>
   docAt: (position: number) => CanvasDoc | null
@@ -257,8 +266,11 @@ export function useEditorSlides(
     goToSlide: setActivePosition,
     initDocs,
     transformSlides,
-    undoSlides: useCallback(
-      (positions: number[]) => stepSlides(positions, undoHistory),
+    restoreSlides: useCallback(
+      (docs: Map<number, CanvasDoc>) =>
+        stepSlides([...docs.keys()], (history, position) =>
+          commitHistory(history, (doc) => docs.get(position) ?? doc)
+        ),
       [stepSlides]
     ),
     docsByPosition,

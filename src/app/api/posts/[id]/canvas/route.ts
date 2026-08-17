@@ -31,16 +31,22 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   if (!post) return NextResponse.json({ error: 'Post not found' }, { status: 404 })
 
   const admin = createAdminSupabaseClient()
-  const identity = await fetchVisualIdentityOrDefault(post.client_id)
-  const identityBody = { palette: identity.palette, style: identity.style }
+  // Started together, awaited together. The identity and the docs are independent reads, and the
+  // editor cannot open until both land — so serialising them charged the user one round trip for
+  // nothing on the one request the whole editor waits on.
+  const identityPromise = fetchVisualIdentityOrDefault(post.client_id)
   const positionParam = new URL(request.url).searchParams.get('position')
 
   if (positionParam === null) {
-    const { data: rows } = await admin
-      .from('post_canvas_docs')
-      .select(POST_CANVAS_DOC_COLUMNS)
-      .eq('post_id', postId)
-      .order('position')
+    const [identity, { data: rows }] = await Promise.all([
+      identityPromise,
+      admin
+        .from('post_canvas_docs')
+        .select(POST_CANVAS_DOC_COLUMNS)
+        .eq('post_id', postId)
+        .order('position'),
+    ])
+    const identityBody = { palette: identity.palette, style: identity.style }
     // A malformed/legacy row drops out of the list rather than failing the request — the editor
     // reseeds that slide, exactly as it does for a slide that never had a doc.
     const docs = (rows ?? []).flatMap((row) => {
@@ -55,16 +61,22 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     return NextResponse.json({ error: 'Invalid position' }, { status: 400 })
   }
 
-  const { data: row } = await admin
-    .from('post_canvas_docs')
-    .select(POST_CANVAS_DOC_COLUMNS)
-    .eq('post_id', postId)
-    .eq('position', position)
-    .single()
+  const [identity, { data: row }] = await Promise.all([
+    identityPromise,
+    admin
+      .from('post_canvas_docs')
+      .select(POST_CANVAS_DOC_COLUMNS)
+      .eq('post_id', postId)
+      .eq('position', position)
+      .single(),
+  ])
 
   // A malformed/legacy doc reads as "no doc" — the editor reseeds instead of erroring.
   const parsed = row ? safeParseCanvasDoc(row.doc) : null
-  return NextResponse.json({ doc: parsed?.success ? parsed.doc : null, identity: identityBody })
+  return NextResponse.json({
+    doc: parsed?.success ? parsed.doc : null,
+    identity: { palette: identity.palette, style: identity.style },
+  })
 }
 
 interface PutFields {

@@ -171,6 +171,35 @@ describe('the line budget', () => {
     }
   })
 
+  it('bounds a reversed slot inside its own colour block, not at the canvas floor', () => {
+    // `field` reverses white copy out of an opaque accent block. Measured to the canvas floor, a
+    // long headline was cleared to wrap straight off the bottom of the block and finish as white
+    // words on the photograph — the exact unreadability the capacity gate exists to refuse.
+    for (const context of CONTEXTS) {
+      for (const lockup of LOCKUPS) {
+        for (const [role, slot] of Object.entries(lockup.copy(context))) {
+          if (!slot) continue
+          const under = lockup
+            .members(context)
+            .find((m) => m.kind === 'rect' && slot.y >= m.y && slot.y < m.y + m.height)
+          if (!under || under.kind !== 'rect') continue
+          const bottom = under.y + under.height
+          const lines = slotLines(slot, bottom)
+          expect(textBottom(slot, lines), `${lockup.id}.${role}`).toBeLessThanOrEqual(bottom)
+        }
+      }
+    }
+  })
+
+  it('gives `field` a smaller budget than the bare canvas would', () => {
+    const field = LOCKUPS.find((l) => l.id === 'field')!
+    const block = field.members(ctx).find((m) => m.kind === 'rect')
+    if (!block || block.kind !== 'rect') throw new Error('field is defined by its colour block')
+    const { headline } = field.copy(ctx)
+    expect(slotLines(headline, block.y + block.height)).toBeLessThan(slotLines(headline, TEXT_FLOOR))
+    expect(lockupCapacity(field, ctx).headline).toBeGreaterThan(0)
+  })
+
   it('leaves at least half the catalogue usable for ordinary social copy', () => {
     // A catalogue where most tiles are greyed out for a normal headline is not a catalogue.
     const headline = 'Five ways to grow your audience faster'
@@ -543,6 +572,53 @@ describe('the hero split', () => {
     const flat = apply(trimmed, 'stack')
     expect(slideCopy(flat).headline).toBe('Five')
     expect(flat.nodes.some((n) => isTextNode(n) && n.role === 'headline')).toBe(true)
+  })
+
+  it('carries the hero across a swap with its decoration, but not its hidden flag', () => {
+    // `LOCKUP_FIELDS` excludes the effects layer on purpose — shadow, outline, marker and arc are an
+    // orthogonal choice made on top of a layout — but the replacement hero was built fresh, so
+    // switching hero lockups threw the user's decoration away and the swap was not the no-op the id
+    // reuse assumes. `hidden`/`locked` must still be dropped: a hidden hero draws nothing while
+    // holding the first word of the headline.
+    const withHero = apply(copyDoc(), 'headliner')
+    const decorated = {
+      ...withHero,
+      nodes: withHero.nodes.map((n) =>
+        isTextNode(n) && n.role === 'hero'
+          ? { ...n, shadowColor: '#001122', shadowBlur: 12, hidden: true, locked: true }
+          : n
+      ),
+    }
+    const swapped = apply(decorated, 'duet')
+    const hero = swapped.nodes.find((n) => isTextNode(n) && n.role === 'hero') as CanvasTextNode
+    expect(hero.shadowColor).toBe('#001122')
+    expect(hero.shadowBlur).toBe(12)
+    expect(hero.hidden).toBeUndefined()
+    expect(hero.locked).toBeUndefined()
+  })
+
+  it('puts its furniture under the copy even with no headline to sit under', () => {
+    // Array order is render order. With no headline the insertion index fell through to `length`,
+    // doing the very thing `applyLockup`'s own comment forbids — floating the rule above every
+    // placed picture — and only on a slide whose headline had been deleted, where it is hardest
+    // to notice.
+    const source = doc([
+      {
+        id: 'img-1',
+        kind: 'image',
+        x: 0,
+        y: 0,
+        width: 200,
+        height: 200,
+        src: { publicUrl: 'https://example.test/b.png', storagePath: 'b.png' },
+      },
+      textNode('body', 'Only a supporting line'),
+    ])
+    const after = apply(source, 'editorial')
+    const member = after.nodes.findIndex(isLockupOwned)
+    const body = after.nodes.findIndex((n) => isTextNode(n) && n.role === 'body')
+    expect(member).toBeGreaterThanOrEqual(0)
+    expect(member, 'furniture draws under the copy').toBeLessThan(body)
   })
 
   it('rejoins every hero, not just the first', () => {

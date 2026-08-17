@@ -28,6 +28,26 @@ export function initHistory(doc: CanvasDoc): DocHistory {
 }
 
 /**
+ * Serialisations, keyed by the doc that produced them.
+ *
+ * The no-op guard below compares two docs by their JSON, and one of the two is almost always a doc
+ * that has been compared before: during a coalesced run each tick's `next` becomes the following
+ * tick's `present`. Re-serialising it every time doubled the cost of the guard on exactly the path
+ * that runs most — one slider drag is one commit per tick over the whole doc. Docs are immutable
+ * here (every transform returns a new object), so a cached string can never go stale, and a WeakMap
+ * lets the entry go the moment the doc leaves the history.
+ */
+const serialisations = new WeakMap<CanvasDoc, string>()
+
+function serialised(doc: CanvasDoc): string {
+  const cached = serialisations.get(doc)
+  if (cached !== undefined) return cached
+  const json = JSON.stringify(doc)
+  serialisations.set(doc, json)
+  return json
+}
+
+/**
  * Apply a mutation and record it. A mutation that leaves the doc structurally unchanged returns the
  * history untouched, so a no-op action (deleting nothing, moving past the end of the stack) never
  * costs an undo step; a keyed run (slider drag, arrow-key repeat) edits its own step in place.
@@ -39,7 +59,7 @@ export function commitHistory(
 ): DocHistory {
   const { present } = history
   const next = mutate(present)
-  if (next === present || JSON.stringify(next) === JSON.stringify(present)) return history
+  if (next === present || serialised(next) === serialised(present)) return history
 
   const now = options.now ?? Date.now()
   const key = options.coalesceKey

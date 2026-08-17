@@ -9,7 +9,12 @@ import type {
   CanvasNode,
   CanvasTextNode,
 } from '@/types/canvas'
-import { MIN_ELEMENT_SIZE, MIN_TEXT_LAYER_WIDTH, WHEEL_ZOOM_RATE } from '@/lib/canvas/constants'
+import {
+  CANVAS_PAPER,
+  MIN_ELEMENT_SIZE,
+  MIN_TEXT_LAYER_WIDTH,
+  WHEEL_ZOOM_RATE,
+} from '@/lib/canvas/constants'
 import { coverCrop } from '@/lib/canvas/cover-crop'
 import {
   grabbableIds,
@@ -478,13 +483,14 @@ export function EditorStage({
       }}
     >
       <Layer ref={contentRef}>
-        {/* The sheet the composition sits on, so the canvas edge reads against the workspace. */}
+        {/* The sheet the composition sits on, so the canvas edge reads against the workspace —
+            and so a background with alpha reads the same here as it bakes. */}
         <Rect
           x={0}
           y={0}
           width={doc.canvas.w}
           height={doc.canvas.h}
-          fill="#ffffff"
+          fill={CANVAS_PAPER}
           listening={false}
         />
         <KonvaImage

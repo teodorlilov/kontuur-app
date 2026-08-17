@@ -47,7 +47,13 @@ export function useEditorSave({ props, slides }: SaveInput): EditorSave {
         for (const position of positions) {
           const doc = slides.docAt(position)
           const image = slides.images.get(position)
-          if (!doc || !image) continue
+          // Counted, not skipped past. `continue` jumped the increment at the bottom of the loop, so
+          // a slide with no doc left the counter permanently short and "Saving 3/4…" was the last
+          // thing the user saw of a save that had finished.
+          if (!doc || !image) {
+            setProgress((current) => (current ? { ...current, done: current.done + 1 } : null))
+            continue
+          }
           try {
             // Loaded per slide rather than reused from the stage: the editor only holds the ACTIVE
             // slide's background element, and the browser serves the rest from cache anyway.
