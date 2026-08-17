@@ -303,12 +303,12 @@ function CanvasEditorOverlay(props: CanvasEditorProps) {
    * undo step.
    */
   const withContrast = useCallback(
-    (next: CanvasDoc): CanvasDoc => {
-      if (!backgroundImage || candidates.length === 0) return next
-      const grid = buildBackdropGrid(next, backgroundImage)
+    (next: CanvasDoc, art: HTMLImageElement | null): CanvasDoc => {
+      if (!art || candidates.length === 0) return next
+      const grid = buildBackdropGrid(next, art)
       return grid ? recolourForBackdrop(next, grid, candidates) : next
     },
-    [backgroundImage, candidates]
+    [candidates]
   )
 
   /**
@@ -328,10 +328,10 @@ function CanvasEditorOverlay(props: CanvasEditorProps) {
       if (!assetOps.canAddNode(lockupNodeDelta(doc, id, lockupCtx))) return
       const ids = lockupMemberIds(doc, id, lockupCtx, () => crypto.randomUUID())
       slidesState.transformDoc((current) =>
-        withContrast(applyLockup(current, id, lockupCtx, ids))
+        withContrast(applyLockup(current, id, lockupCtx, ids), backgroundImage)
       )
     },
-    [slidesState, lockupCtx, assetOps, withContrast]
+    [slidesState, lockupCtx, assetOps, withContrast, backgroundImage]
   )
 
   /**
@@ -402,10 +402,7 @@ function CanvasEditorOverlay(props: CanvasEditorProps) {
         // so a slide the user has never opened has nothing decoded and simply keeps its colours —
         // the alternative is awaiting a decode per slide inside a state updater, which is not a
         // thing a pure mutate may do.
-        const image = decodedImage(next.background.publicUrl)
-        if (!image || candidates.length === 0) return next
-        const grid = buildBackdropGrid(next, image)
-        return grid ? recolourForBackdrop(next, grid, candidates) : next
+        return withContrast(next, decodedImage(next.background.publicUrl))
       })
       // Remembered so the panel can offer ONE undo. `transformSlides` commits an entry per slide,
       // and ⌘Z steps only the active one — so without this the way to back out a seven-slide apply
@@ -413,7 +410,7 @@ function CanvasEditorOverlay(props: CanvasEditorProps) {
       setLockupApplied(appliedSet(targets, slidesState.docsByPosition))
       if (skipped.length > 0) toast.info(skipReport(skipped))
     },
-    [slidesState, lockupCtx, candidates]
+    [slidesState, lockupCtx, withContrast]
   )
 
   const removeNodes = useCallback(

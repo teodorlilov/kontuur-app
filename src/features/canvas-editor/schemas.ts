@@ -13,6 +13,16 @@ import { z } from 'zod'
 const MAX_DIRECTION_CHARS = 500
 
 /**
+ * The ceiling on copy the client hands back for the server to prompt with.
+ *
+ * Generous — a slide's headline and body are a sentence each, and the caption path carries a whole
+ * post — but a ceiling nonetheless. Every field here is spent on a paid image model, and `direction`
+ * beside it was capped while these were not: the field a user types in was bounded and the fields a
+ * user can PUT ANYTHING IN, because they arrive from the client rather than from the row, were not.
+ */
+const MAX_COPY_CHARS = 4000
+
+/**
  * The copy a slide carries, as the editor holds it. The client sends this rather than the server
  * re-deriving it: a wizard draft has no row to read (it lives in browser memory until approve), and
  * a persisted post's row can be behind unsaved edits the user is looking at right now.
@@ -20,12 +30,12 @@ const MAX_DIRECTION_CHARS = 500
 const slideCopySchema = z.union([
   z.object({
     kind: z.literal('slide'),
-    headline: z.string(),
-    body: z.string(),
+    headline: z.string().max(MAX_COPY_CHARS),
+    body: z.string().max(MAX_COPY_CHARS),
   }),
   z.object({
     kind: z.literal('caption'),
-    caption: z.string().nullable(),
+    caption: z.string().max(MAX_COPY_CHARS).nullable(),
   }),
 ])
 

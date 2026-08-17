@@ -76,6 +76,18 @@ export function isLockupOwned(node: CanvasNode): boolean {
   return 'role' in node && node.role !== undefined && LOCKUP_ROLES.includes(node.role as never)
 }
 
+/**
+ * A text node in the user's own words — its first line, or a stand-in when it has none.
+ *
+ * One definition because three surfaces name text nodes back to the user and they must agree: the
+ * overflow warning, the low-contrast warning, and the layers list. Written out separately they had
+ * already drifted on what an empty node is called, which is the visible half of the problem; the
+ * invisible half is that a warning and the row it sends you to could name the same node differently.
+ */
+export function textLabel(node: CanvasTextNode): string {
+  return node.text.trim().split('\n')[0] || 'Empty text layer'
+}
+
 /** Both flags are tri-state on the wire (absent = off); read them through these, never `!node.x`. */
 export function isHidden(node: CanvasNode): boolean {
   return node.hidden === true

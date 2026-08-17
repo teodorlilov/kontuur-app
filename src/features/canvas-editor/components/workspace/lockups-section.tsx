@@ -33,7 +33,7 @@ import {
 import type { CanvasDoc, CanvasScrim, CanvasTextNode } from '@/types/canvas'
 import { cn } from '@/utils/cn'
 import { ensureFontsReady, injectLibraryStylesheet } from '../../lib/fonts'
-import { EDITOR_LABEL } from './chrome'
+import { EDITOR_LABEL, FOCUS_RING } from './chrome'
 
 /** Tiles per row — also the step `rovingFocus` moves on Up/Down, so the two cannot drift. */
 const COLUMNS = 2
@@ -132,7 +132,7 @@ export function LockupsSection({
             onClick={() => setPack(entry.id)}
             className={cn(
               'flex-1 cursor-pointer rounded-sm border px-2 py-1 text-micro transition-colors duration-150 ease-contour',
-              'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-spring',
+              FOCUS_RING,
               pack === entry.id
                 ? 'border-forest bg-wash text-forest'
                 : 'border-line text-text2 hover:border-line2 hover:bg-ink/[0.03]'
@@ -171,7 +171,7 @@ export function LockupsSection({
               onClick={() => onApply(lockup.id)}
               className={cn(
                 'flex cursor-pointer flex-col gap-1 rounded-sm border p-1 text-left transition-colors duration-150 ease-contour',
-                'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-spring',
+                FOCUS_RING,
                 active === lockup.id
                   ? 'border-forest bg-wash'
                   : 'border-line hover:border-line2 hover:bg-ink/[0.03]',
@@ -199,6 +199,8 @@ export function LockupsSection({
                 {!supportsCyrillic(lockup) && (
                   <span
                     title="Latin alphabet only"
+                    // leading-4 overrides the role: a 1-line badge inside a 20px row needs its box to be
+                    // the row, and text-label’s own leading would push the border past the label beside it.
                     className="rounded-xs border border-line px-1 text-label leading-4 text-text3"
                   >
                     Lat
@@ -208,6 +210,8 @@ export function LockupsSection({
               {/* The reason, on the tile rather than only in a tooltip. A greyed control whose
                   explanation is a hover away reads as broken on a touch device and to anyone who
                   simply does not hover. */}
+              {/* leading-4 on purpose: this line sits directly under the tile’s name and the role’s
+                  own leading opens a gap that reads as a separate block rather than a caption. */}
               {note && <span className="px-0.5 text-label leading-4 text-text3">{note}</span>}
             </button>
           )
@@ -223,7 +227,7 @@ export function LockupsSection({
             className={cn(
               'mt-1 w-full cursor-pointer rounded-sm border border-line px-2 py-1.5 text-micro text-ink',
               'transition-colors duration-150 ease-contour hover:border-line2 hover:bg-ink/[0.03]',
-              'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-spring'
+              FOCUS_RING
             )}
           >
             Put this lockup on every slide
@@ -239,7 +243,7 @@ export function LockupsSection({
               <button
                 type="button"
                 onClick={onUndoApplyToAll}
-                className="rounded-xs underline underline-offset-2 hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-spring"
+                className="rounded-xs underline underline-offset-2 hover:text-ink"
               >
                 Undo
               </button>

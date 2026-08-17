@@ -1,6 +1,6 @@
 import { Circle, Image as ImageIcon, Minus, Shapes, Square, Type } from 'lucide-react'
 import type { CanvasNode, CanvasTextRole } from '@/types/canvas'
-import { isShapeNode, isTextNode } from '@/lib/canvas/doc-nodes'
+import { isShapeNode, isTextNode, textLabel } from '@/lib/canvas/doc-nodes'
 
 /**
  * What each node kind is called and what icon stands for it — declared once, because the layers
@@ -33,7 +33,7 @@ const ROLE_LABELS: Partial<Record<CanvasTextRole, string>> = {
 /** What a layers row calls this node: its own words for text, its kind's name otherwise. */
 export function nodeLabel(node: CanvasNode): string {
   if (isTextNode(node)) {
-    const words = node.text.trim().split('\n')[0] || 'Empty text'
+    const words = textLabel(node)
     const role = ROLE_LABELS[node.role]
     return role ? `${role} · ${words}` : words
   }

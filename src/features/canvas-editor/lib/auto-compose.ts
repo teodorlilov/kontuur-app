@@ -6,26 +6,12 @@ import type { PostImage } from '@/types/api'
 import { composeDoc } from './compose'
 import { saveDraftCanvas, savePostCanvas } from './save-canvas'
 import { fetchCanvasState } from './canvas-state-client'
+import { copyFields } from './resolve-slides'
 import type { DraftVisualResult, SlideCopy } from '../types'
-import type { SlideText } from '@/types/slide'
 
 // The wording of a node, or null for anything that has none — only text can change under a rewrite.
 function nodeText(node: CanvasNode | undefined): string | null {
   return node && isTextNode(node) ? node.text : null
-}
-
-// SlideCopy union → the slide/caption fields seedCanvasDoc and applyCopyToDoc expect.
-function copyFields(slideCopy: SlideCopy): {
-  slide?: SlideText
-  caption?: string | null
-} {
-  return {
-    slide:
-      slideCopy.kind === 'slide'
-        ? { headline: slideCopy.headline, body: slideCopy.body }
-        : undefined,
-    caption: slideCopy.kind === 'caption' ? slideCopy.caption : undefined,
-  }
 }
 
 function seedFromCopy(

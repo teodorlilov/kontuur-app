@@ -2,8 +2,8 @@ import { parseHex, relativeLuminance } from '@/lib/visual/extract/color'
 import type { CanvasTextNode } from '@/types/canvas'
 
 /**
- * The fields a preset owns. Every preset writes ALL of them, so switching between two presets can
- * never leave a knob from the one you left behind.
+ * Every field any preset may write. See `TEXT_EFFECT_EXCLUSIVE_FIELDS` for the ones this layer owns
+ * outright and therefore clears on every press — the two differ by exactly `letterSpacing`.
  */
 export type TextEffectField =
   | 'letterSpacing'
@@ -62,18 +62,36 @@ export interface TextEffectPreset {
   fields: (node: Pick<CanvasTextNode, 'fontSize' | 'fill'>) => Partial<CanvasTextNode>
 }
 
-/** Every field a preset owns, cleared. The base every preset builds on, and the 'none' preset. */
+/**
+ * The fields this layer owns OUTRIGHT, and may therefore clear without asking.
+ *
+ * `letterSpacing` is the one field that is not on this list although `spaced` writes it, because
+ * `LOCKUP_FIELDS` claims it too: `trackingFor` derives a lockup's tracking from its own size and
+ * case, so tracking is typography the layout chose rather than a decoration laid over it. Clearing
+ * it from the shared base meant pressing Shadow — which has nothing to say about tracking — silently
+ * undid the lockup's spacing, and with it the slide's claim to be wearing that lockup at all.
+ *
+ * `none` still clears it, so choosing `spaced` stays undoable by the control that set it. The trade
+ * that leaves, stated because it is a decision and not an oversight: pressing None on a slide
+ * wearing a lockup zeroes the lockup's tracking rather than restoring it. Restoring would mean
+ * remembering the value from before the preset, which is a field this model does not have — ⌘Z is
+ * the way back today.
+ */
+export const TEXT_EFFECT_EXCLUSIVE_FIELDS: readonly TextEffectField[] = TEXT_EFFECT_FIELDS.filter(
+  (field) => field !== 'letterSpacing'
+)
+
+/**
+ * Every field this layer owns outright, cleared — the base the decorating presets build on.
+ *
+ * Built FROM the list rather than restating it: a field added to one and forgotten in the other is a
+ * knob that survives a preset change, which is the single failure this whole layer exists to prevent.
+ * The cast is the shape `Object.fromEntries` cannot express — keys drawn from a literal union.
+ */
 function cleared(): Partial<CanvasTextNode> {
-  return {
-    letterSpacing: undefined,
-    shadowColor: undefined,
-    shadowOpacity: undefined,
-    shadowBlur: undefined,
-    shadowOffsetX: undefined,
-    shadowOffsetY: undefined,
-    stroke: undefined,
-    strokeWidth: undefined,
-  }
+  return Object.fromEntries(
+    TEXT_EFFECT_EXCLUSIVE_FIELDS.map((field) => [field, undefined])
+  ) as Partial<CanvasTextNode>
 }
 
 /**
@@ -87,7 +105,9 @@ export const TEXT_EFFECT_PRESETS: readonly TextEffectPreset[] = [
     id: 'none',
     label: 'None',
     description: 'Plain type, no shadow or outline',
-    fields: cleared,
+    // The one preset that also clears `letterSpacing`, so the control that set wide tracking is the
+    // control that takes it away again. See EXCLUSIVE_FIELDS for why the others leave it alone.
+    fields: () => ({ ...cleared(), letterSpacing: undefined }),
   },
   {
     id: 'shadow',
@@ -155,7 +175,12 @@ export function applyTextEffect(
 export function activeTextEffect(node: CanvasTextNode): TextEffectId | null {
   for (const preset of TEXT_EFFECT_PRESETS) {
     const fields = preset.fields(node)
-    if (TEXT_EFFECT_FIELDS.every((field) => node[field] === fields[field])) return preset.id
+    // Matched on the fields the preset DECLARES, not on every field the layer knows about. A preset
+    // that deliberately leaves `letterSpacing` alone must not be judged on it, or a lockup's own
+    // tracking would stop every effect from reporting as applied — the same way it once stopped
+    // every lockup from reporting as worn.
+    const declared = Object.keys(fields) as TextEffectField[]
+    if (declared.every((field) => node[field] === fields[field])) return preset.id
   }
   return null
 }

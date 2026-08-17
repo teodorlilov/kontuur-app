@@ -13,7 +13,7 @@
  */
 
 import { contrastRatio, parseHex, type Rgb } from '@/lib/visual/extract/color'
-import { isTextNode } from './doc-nodes'
+import { isTextNode, textLabel } from './doc-nodes'
 import type { CanvasDoc, CanvasTextNode } from '@/types/canvas'
 import type { Palette } from '@/types/visual'
 
@@ -185,5 +185,5 @@ export function lowContrastLabels(doc: CanvasDoc, grid: BackdropGrid): string[] 
       if (!backdrop || !fill) return false
       return contrastRatio(fill, backdrop) < CONTRAST_FLOOR
     })
-    .map((node) => node.text.trim().split('\n')[0] || 'Empty text layer')
+    .map(textLabel)
 }

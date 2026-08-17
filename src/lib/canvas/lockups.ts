@@ -1456,11 +1456,16 @@ export function applyLockup(
         hidden: undefined,
         locked: undefined,
         ...patch.hero,
+        // The union cannot be narrowed by construction here: `patch.hero` is a `Pick` of the text
+        // node's own fields, so TypeScript sees a spread of partials rather than the complete text
+        // node this provably is. `the catalogue` suite checks every lockup writes every owned field.
       } as CanvasNode)
     }
   }
   for (const member of lockup.members(ctx)) {
     const memberId = take()
+    // Same reason as the hero above: a `LockupMember` is a node minus its id, and re-adding the id
+    // is exactly what makes it a node — which the spread cannot express to the compiler.
     if (memberId) created.push({ ...member, id: memberId } as CanvasNode)
   }
 

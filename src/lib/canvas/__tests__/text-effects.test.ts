@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { CanvasTextNode } from '@/types/canvas'
 import {
+  TEXT_EFFECT_EXCLUSIVE_FIELDS,
   TEXT_EFFECT_FIELDS,
   TEXT_EFFECT_PRESETS,
   activeTextEffect,
@@ -39,14 +40,32 @@ describe('applyTextEffect', () => {
     expect(shadowed.shadowColor).toBeDefined()
   })
 
-  it('every preset patch mentions every owned field', () => {
-    // A preset that merely omits a field would inherit it from whatever came before.
+  it('every preset patch mentions every field this layer owns outright', () => {
+    // A preset that merely omits one would inherit it from whatever came before. `letterSpacing` is
+    // excluded on purpose — the lockup layer claims it too, so only `none` may clear it.
     for (const preset of TEXT_EFFECT_PRESETS) {
       const patch = preset.fields(text())
-      for (const field of TEXT_EFFECT_FIELDS) {
+      for (const field of TEXT_EFFECT_EXCLUSIVE_FIELDS) {
         expect(Object.hasOwn(patch, field), `${preset.id} is missing ${field}`).toBe(true)
       }
     }
+  })
+
+  it('leaves a lockup\'s tracking alone unless the user presses None', () => {
+    // Pressing Shadow says nothing about tracking. It used to wipe it, which also stopped the slide
+    // reporting as wearing the lockup that set it.
+    const tracked = text({ letterSpacing: 9 })
+    for (const id of ['shadow', 'lift', 'outline'] as const) {
+      const after = { ...tracked, ...applyTextEffect(tracked, id) }
+      expect(after.letterSpacing, id).toBe(9)
+    }
+    expect({ ...tracked, ...applyTextEffect(tracked, 'none') }.letterSpacing).toBeUndefined()
+  })
+
+  it('still reports the applied effect on a node the lockup layer has tracked', () => {
+    const tracked = text({ letterSpacing: 9 })
+    const shadowed = { ...tracked, ...applyTextEffect(tracked, 'shadow') }
+    expect(activeTextEffect(shadowed)).toBe('shadow')
   })
 
   it('"none" clears everything', () => {

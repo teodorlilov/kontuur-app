@@ -42,5 +42,13 @@ export const EDITOR_PRESSED = 'bg-wash text-forest'
 /** Section and field headings inside the rail panel. */
 export const EDITOR_LABEL = LABEL_CLASS.caps
 
+/**
+ * The app's focus halo, re-exported so an editor file has ONE place to reach for chrome.
+ *
+ * Six workspace files had hand-written the same four utilities beside an import of this module —
+ * which is how a focus ring drifts: the copies are invisible to a change made here.
+ */
+export { FOCUS_RING }
+
 /** A hairline divider between toolbar groups. */
 export const TOOLBAR_DIVIDER = 'mx-1 h-5 w-px shrink-0 bg-line'

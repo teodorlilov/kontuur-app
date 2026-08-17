@@ -3,6 +3,8 @@
 import { useEffect, useRef } from 'react'
 import { Circle, Line } from 'react-konva'
 import type Konva from 'konva'
+import { CANVAS_PAPER } from '@/lib/canvas/constants'
+import { CHROME_SPRING } from '../lib/canvas-chrome'
 import { clampBend } from '@/lib/canvas/text-arc'
 import type { CanvasTextNode } from '@/types/canvas'
 import { arcCharRenderer } from '../lib/text-arc-renderer'
@@ -11,8 +13,6 @@ import { arcCharRenderer } from '../lib/text-arc-renderer'
 const DRAG_RANGE = 260
 /** Gap between the text's box and the handle's resting place. */
 const HANDLE_GAP = 34
-/** Kontuur spring — the same green the hover outline and the marquee use. */
-const HANDLE_STROKE = '#2e9e68'
 
 interface ArcHandleProps {
   node: CanvasTextNode
@@ -64,6 +64,11 @@ export function ArcHandle({ node, scale, onCommit }: ArcHandleProps) {
   const preview = (bend: number) => {
     // Found by id rather than threaded down as a ref: TextNode owns its own Text, and reaching for
     // it here keeps this handle mountable beside any selected node without changing that component.
+    //
+    // `editor-stage.tsx` bans the '#id' selector, and this is the exception rather than a lapse:
+    // the rule is about an id the caller has CSS-ESCAPED, which Konva then compares verbatim and
+    // never matches. `_isMatch` is a plain string compare, so an unescaped id — which is all this
+    // passes — matches exactly. Escape this and it silently stops finding anything.
     const layer = handleRef.current?.getLayer()
     const text = layer?.findOne<Konva.Group>(`#${node.id}`)?.findOne<Konva.Text>('Text')
     if (!text) return
@@ -80,7 +85,7 @@ export function ArcHandle({ node, scale, onCommit }: ArcHandleProps) {
       {/* A hairline back to the text, so the handle reads as attached to something. */}
       <Line
         points={[centreX, node.y + boxHeight, centreX, restY]}
-        stroke={HANDLE_STROKE}
+        stroke={CHROME_SPRING}
         strokeWidth={1 / scale}
         dash={[3 / scale, 3 / scale]}
         listening={false}
@@ -90,8 +95,8 @@ export function ArcHandle({ node, scale, onCommit }: ArcHandleProps) {
         x={centreX}
         y={restY}
         radius={7 / scale}
-        fill="#ffffff"
-        stroke={HANDLE_STROKE}
+        fill={CANVAS_PAPER}
+        stroke={CHROME_SPRING}
         strokeWidth={2 / scale}
         draggable
         // Vertical only: the arc is symmetric about the line's middle, so sideways movement has

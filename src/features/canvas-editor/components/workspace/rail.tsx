@@ -3,7 +3,7 @@
 import { useCallback, useSyncExternalStore } from 'react'
 import { ChevronLeft, Image as ImageIcon, Layers, Shapes, Sparkles, Type } from 'lucide-react'
 import { cn } from '@/utils/cn'
-import { EDITOR_ICON_BUTTON, EDITOR_LABEL } from './chrome'
+import { EDITOR_ICON_BUTTON, EDITOR_LABEL, FOCUS_RING } from './chrome'
 
 export type RailSection = 'text' | 'elements' | 'ai' | 'background' | 'layers'
 
@@ -47,7 +47,7 @@ export function Rail({ active, busy = [], onSelect, children }: RailProps) {
             className={cn(
               'flex w-14 cursor-pointer flex-col items-center gap-0.5 rounded-sm py-1.5',
               'text-text2 transition-colors duration-150 ease-contour hover:bg-ink/[0.05] hover:text-ink',
-              'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-spring',
+              FOCUS_RING,
               active === id && 'bg-wash text-forest'
             )}
           >

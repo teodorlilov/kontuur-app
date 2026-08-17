@@ -2,7 +2,7 @@ import Konva from 'konva'
 import type { CanvasDoc, CanvasTextNode } from '@/types/canvas'
 import { computeFit } from '@/lib/canvas/autofit'
 import { TEXT_BOTTOM_MARGIN } from '@/lib/canvas/constants'
-import { isTextNode } from '@/lib/canvas/doc-nodes'
+import { isTextNode, textLabel } from '@/lib/canvas/doc-nodes'
 import { markerBands, type MarkerBandAttrs } from '@/lib/canvas/highlight'
 import { textNodeAttrs } from '@/lib/canvas/node-attrs'
 
@@ -76,5 +76,5 @@ export function overflowingTextLabels(doc: CanvasDoc): string[] {
   return doc.nodes
     .filter(isTextNode)
     .filter((node) => textOverflows(node, doc.canvas.h))
-    .map((node) => node.text.trim().split('\n')[0] || 'Empty text layer')
+    .map(textLabel)
 }

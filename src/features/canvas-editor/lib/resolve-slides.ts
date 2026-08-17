@@ -1,7 +1,28 @@
 import type { CanvasDoc } from '@/types/canvas'
 import { resolveDocForImage } from '@/lib/canvas/resolve-doc'
 import { seedCanvasDoc, type SeedIdentity } from '@/lib/canvas/seed-doc'
-import type { EditorSlide } from '../types'
+import type { EditorSlide, SlideCopy } from '../types'
+import type { SlideText } from '@/types/slide'
+
+/**
+ * The `SlideCopy` union as the slide/caption fields `seedCanvasDoc` and `applyCopyToDoc` take.
+ *
+ * One mapping, because two modules seed from copy — this one when the editor opens, `auto-compose`
+ * when a fresh picture lands — and a union that grows a third member would otherwise be handled in
+ * one of them and silently dropped by the other.
+ */
+export function copyFields(slideCopy: SlideCopy | null | undefined): {
+  slide?: SlideText
+  caption?: string | null
+} {
+  return {
+    slide:
+      slideCopy?.kind === 'slide'
+        ? { headline: slideCopy.headline, body: slideCopy.body }
+        : undefined,
+    caption: slideCopy?.kind === 'caption' ? slideCopy.caption : undefined,
+  }
+}
 
 export interface ResolvedSlide {
   doc: CanvasDoc
@@ -46,15 +67,13 @@ function resolveSlide(
     // when the image is its own bake, and returns a rebound copy when the art changed underneath.
     return { doc, seeded: false, matchesStored: doc === stored }
   }
-  const copy = slide.slideCopy
   return {
     seeded: true,
     matchesStored: false,
     doc: seedCanvasDoc({
       identity,
       background: { ...slide.image },
-      slide: copy?.kind === 'slide' ? { headline: copy.headline, body: copy.body } : undefined,
-      caption: copy?.kind === 'caption' ? copy.caption : undefined,
+      ...copyFields(slide.slideCopy),
     }),
   }
 }

@@ -7,7 +7,7 @@ import { focusableItems, rovingFocus } from '@/components/ui/roving-focus'
 import { isHidden, isLocked, isShapeNode, isTextNode } from '@/lib/canvas/doc-nodes'
 import type { CanvasDoc, CanvasNode } from '@/types/canvas'
 import { docIndexForRow, layerRows, slotForRowStep } from '../../lib/layer-rows'
-import { EDITOR_ICON_BUTTON, EDITOR_PRESSED } from './chrome'
+import { EDITOR_ICON_BUTTON, EDITOR_PRESSED, FOCUS_RING } from './chrome'
 import { NODE_KIND_META, nodeLabel } from './node-kinds'
 
 interface LayersSectionProps {
@@ -215,7 +215,7 @@ function LayerRow({ node, selected, tabbable, dragging, ...props }: LayerRowProp
         onClick={(event) => props.onSelect(node.id, event.shiftKey)}
         className={cn(
           'flex min-w-0 flex-1 cursor-pointer items-center gap-2 rounded-xs text-left',
-          'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-spring',
+          FOCUS_RING,
           hidden && 'opacity-40'
         )}
       >

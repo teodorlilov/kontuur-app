@@ -10,6 +10,12 @@ import type {
   CanvasTextNode,
 } from '@/types/canvas'
 import {
+  CHROME_DANGER,
+  CHROME_MARQUEE_FILL,
+  CHROME_MARQUEE_STROKE,
+  CHROME_SPRING,
+} from '../lib/canvas-chrome'
+import {
   CANVAS_PAPER,
   MIN_ELEMENT_SIZE,
   MIN_TEXT_LAYER_WIDTH,
@@ -65,12 +71,6 @@ const MEASURE_BOX = { skipStroke: true, skipShadow: true } as const
 
 /** Wheel gestures settle into ONE doc commit (and one undo step) after this pause. */
 const WHEEL_COMMIT_DELAY_MS = 150
-/** Alignment guides: the system's one signal red, at hairline weight. */
-const GUIDE_COLOR = '#b04a38'
-/** The rubber band, and the outline that ties a hovered panel row to its node — Kontuur spring. */
-const MARQUEE_STROKE = 'rgba(46, 158, 104, 0.9)'
-const MARQUEE_FILL = 'rgba(46, 158, 104, 0.08)'
-const HOVER_STROKE = '#2e9e68'
 
 interface EditorStageProps {
   doc: CanvasDoc
@@ -203,7 +203,7 @@ export function EditorStage({
               guide.axis === 'vertical'
                 ? [guide.position, 0, guide.position, doc.canvas.h]
                 : [0, guide.position, doc.canvas.w, guide.position],
-            stroke: GUIDE_COLOR,
+            stroke: CHROME_DANGER,
             // Divided by the view scale so guides stay hairline at every zoom.
             strokeWidth: 1 / scale,
             dash: [4 / scale, 4 / scale],
@@ -264,7 +264,7 @@ export function EditorStage({
       new Konva.Rect({
         ...rect,
         name: 'hover-outline',
-        stroke: HOVER_STROKE,
+        stroke: CHROME_SPRING,
         strokeWidth: 2 / scale,
         listening: false,
       })
@@ -350,8 +350,8 @@ export function EditorStage({
       y: start.y,
       width: 0,
       height: 0,
-      fill: MARQUEE_FILL,
-      stroke: MARQUEE_STROKE,
+      fill: CHROME_MARQUEE_FILL,
+      stroke: CHROME_MARQUEE_STROKE,
       strokeWidth: 1 / scale,
       listening: false,
     })
