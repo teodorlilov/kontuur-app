@@ -16,7 +16,6 @@ import {
   applyLockup,
   fitsCopy,
   getLockup,
-  lockupMemberCount,
   lockupMemberIds,
   lockupNodeDelta,
   setHeadline,
@@ -320,7 +319,7 @@ function CanvasEditorOverlay(props: CanvasEditorProps) {
       // it must be asked about the NET delta, or a nearly-full slide is refused an edit that
       // actually frees room.
       if (!assetOps.canAddNode(lockupNodeDelta(doc, id, lockupCtx))) return
-      const ids = lockupMemberIds(doc, lockupMemberCount(id, lockupCtx), () => crypto.randomUUID())
+      const ids = lockupMemberIds(doc, id, lockupCtx, () => crypto.randomUUID())
       slidesState.transformDoc((current) =>
         withContrast(applyLockup(current, id, lockupCtx, ids))
       )
@@ -374,9 +373,7 @@ function CanvasEditorOverlay(props: CanvasEditorProps) {
           const slideCtx = { ...lockupCtx, slide: { position, total } }
           return [
             position,
-            doc
-              ? lockupMemberIds(doc, lockupMemberCount(id, slideCtx), () => crypto.randomUUID())
-              : [],
+            doc ? lockupMemberIds(doc, id, slideCtx, () => crypto.randomUUID()) : [],
           ] as const
         })
       )

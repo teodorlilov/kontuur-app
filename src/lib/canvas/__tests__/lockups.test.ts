@@ -79,10 +79,16 @@ function doc(nodes: CanvasDoc['nodes']): CanvasDoc {
 /** A doc with the two copy nodes every lockup expects to find. */
 const copyDoc = () => doc([textNode('headline', 'Five ways to grow'), textNode('body', 'Supporting line')])
 
-/** Ids the way the editor mints them — sequential and deterministic, so assertions can name them. */
+/**
+ * Ids the way the editor mints them — sequential and deterministic, so assertions can name them.
+ *
+ * The counter is module-level, standing in for `crypto.randomUUID`'s promise never to repeat itself.
+ * Reset per call it did repeat: a doc built by one apply already held `minted-0`, and the next apply
+ * minted `minted-0` again, which reads as the product emitting a duplicate id.
+ */
+let mintCount = 0
 function idsFor(source: CanvasDoc, id: Parameters<typeof applyLockup>[1]) {
-  let n = 0
-  return lockupMemberIds(source, lockupMemberCount(id, ctx), () => `minted-${n++}`)
+  return lockupMemberIds(source, id, ctx, () => `minted-${mintCount++}`)
 }
 
 const apply = (source: CanvasDoc, id: Parameters<typeof applyLockup>[1]) =>
@@ -369,6 +375,56 @@ describe('the node budget', () => {
     // Three owned already; swapping to a one-member lockup frees two.
     expect(lockupNodeDelta(withQuote, 'tip', ctx)).toBe(-2)
     expect(lockupNodeDelta(withQuote, 'quote', ctx)).toBe(0)
+  })
+
+  it('predicts the change it actually makes, for every lockup and every starting doc', () => {
+    // Stated against the transform rather than re-derived, because the delta and the transform
+    // disagreeing is precisely how a promoted hero got counted as swept.
+    for (const source of [copyDoc(), apply(copyDoc(), 'quote'), promotedDoc()]) {
+      for (const lockup of LOCKUPS) {
+        const change = apply(source, lockup.id).nodes.length - source.nodes.length
+        expect(lockupNodeDelta(source, lockup.id, ctx), lockup.id).toBe(change)
+      }
+    }
+  })
+})
+
+/**
+ * A slide whose only copy is a hero: the poster word kept, the small remainder line deleted.
+ *
+ * The state that makes the next apply PROMOTE rather than sweep — and the one the id bookkeeping
+ * gets wrong, because the promoted node keeps its id while the same id is still in the reuse pool.
+ */
+function promotedDoc(): CanvasDoc {
+  const withHero = apply(copyDoc(), 'headliner')
+  return {
+    ...withHero,
+    nodes: withHero.nodes.filter((n) => !(isTextNode(n) && n.role === 'headline')),
+  }
+}
+
+describe('node ids', () => {
+  it('are unique after any lockup, from any starting doc', () => {
+    // The earlier promotion test reached for `stack`, which creates nothing — so there was no id to
+    // lend and the collision stayed invisible. Applying a lockup with members to a promoted hero
+    // handed the created rule the surviving node's own id: colliding React keys, and every
+    // find-by-id aliasing onto whichever of the two came first.
+    for (const source of [copyDoc(), apply(copyDoc(), 'quote'), promotedDoc()]) {
+      for (const lockup of LOCKUPS) {
+        const ids = apply(source, lockup.id).nodes.map((n) => n.id)
+        expect(new Set(ids).size, lockup.id).toBe(ids.length)
+      }
+    }
+  })
+
+  it('keeps the promoted hero on its own id while the lockup still brings its members', () => {
+    const trimmed = promotedDoc()
+    const hero = trimmed.nodes.find((n) => isTextNode(n) && n.role === 'hero') as CanvasTextNode
+    const after = apply(trimmed, 'editorial')
+    const headline = after.nodes.find((n) => isTextNode(n) && n.role === 'headline') as CanvasTextNode
+    expect(headline.id).toBe(hero.id)
+    expect(headline.text).toBe('Five')
+    expect(after.nodes.filter(isLockupOwned).length).toBe(lockupMemberCount('editorial', ctx))
   })
 })
 

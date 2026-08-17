@@ -1252,16 +1252,49 @@ export function lockupMemberCount(id: LockupId, ctx: LockupContext): number {
 }
 
 /**
+ * The hero this lockup will PROMOTE into the headline instead of sweeping, if there is one.
+ *
+ * Deleting the small remainder line to keep only the poster word is a reasonable design move, and it
+ * used to be fatal: the next lockup swept the hero, found no headline to rejoin into, and the slide
+ * lost its only copy. Promotion keeps that node — which makes this one decision, taken once, that
+ * three callers must agree on. `applyLockup` uses it to know what survives the sweep,
+ * `lockupMemberIds` to know that the survivor's id is NOT free to lend to a created member, and
+ * `lockupNodeDelta` to know it is not a removal. Re-derived independently, they disagreed: the
+ * promoted node kept its id while the same id was handed to a rule, and the doc came out holding two
+ * nodes with one id — colliding React keys, and every `find`-by-id aliasing onto the wrong one.
+ */
+function promotedHeroId(doc: CanvasDoc, id: LockupId, ctx: LockupContext): string | undefined {
+  const lockup = getLockup(id)
+  if (!lockup || lockup.copy(ctx).hero) return undefined
+  if (doc.nodes.some((node) => isTextNode(node) && node.role === 'headline')) return undefined
+  return doc.nodes.find((node) => isTextNode(node) && node.role === 'hero')?.id
+}
+
+/** The lockup-owned nodes an apply would actually remove — everything it owns bar a promoted hero. */
+function sweptIds(doc: CanvasDoc, id: LockupId, ctx: LockupContext): string[] {
+  const promoted = promotedHeroId(doc, id, ctx)
+  return doc.nodes.filter((node) => node.id !== promoted && isLockupOwned(node)).map((n) => n.id)
+}
+
+/**
  * Ids for a lockup's members, REUSING the ids of the nodes it is about to sweep.
  *
  * Reuse is what makes re-application free: `commitHistory` decides "nothing changed" by comparing
  * the stringified doc, so fresh uuids on every click would stack an undo step and re-dirty the slide
  * even when the result is visually identical. Must be called OUTSIDE the doc transform — see
  * `LockupMember`.
+ *
+ * Only ids that are genuinely being swept are reusable. A promoted hero keeps its own id and is
+ * therefore excluded — see `promotedHeroId`.
  */
-export function lockupMemberIds(doc: CanvasDoc, count: number, mint: () => string): string[] {
-  const reusable = doc.nodes.filter(isLockupOwned).map((node) => node.id)
-  return Array.from({ length: count }, (_, index) => reusable[index] ?? mint())
+export function lockupMemberIds(
+  doc: CanvasDoc,
+  id: LockupId,
+  ctx: LockupContext,
+  mint: () => string
+): string[] {
+  const reusable = sweptIds(doc, id, ctx)
+  return Array.from({ length: lockupMemberCount(id, ctx) }, (_, index) => reusable[index] ?? mint())
 }
 
 /**
@@ -1272,7 +1305,7 @@ export function lockupMemberIds(doc: CanvasDoc, count: number, mint: () => strin
  * operation that would land it at 39.
  */
 export function lockupNodeDelta(doc: CanvasDoc, id: LockupId, ctx: LockupContext): number {
-  return lockupMemberCount(id, ctx) - doc.nodes.filter(isLockupOwned).length
+  return lockupMemberCount(id, ctx) - sweptIds(doc, id, ctx).length
 }
 
 /**
@@ -1300,18 +1333,10 @@ export function applyLockup(
   const copy = slideCopy(doc)
   const hasHeadline = doc.nodes.some((node) => isTextNode(node) && node.role === 'headline')
 
-  /**
-   * When there is no headline node, the FIRST hero is promoted into one instead of being swept.
-   *
-   * Deleting the small remainder line to keep only the poster word is a reasonable design move, and
-   * it used to be fatal: the next lockup swept the hero, found no headline to rejoin into, and the
-   * slide lost its only copy with nothing but ⌘Z to get it back. Promotion reuses the hero's own id,
-   * so no extra id has to be minted inside a transform that must stay pure.
-   */
-  const promotedId =
-    !hasHeadline && !patch.hero
-      ? doc.nodes.find((node) => isTextNode(node) && node.role === 'hero')?.id
-      : undefined
+  // When there is no headline node, the FIRST hero is promoted into one instead of being swept, and
+  // keeps its own id — so no extra id is minted inside a transform that must stay pure. Shared with
+  // the two helpers that mint `ids`, because all three must name the same node.
+  const promotedId = promotedHeroId(doc, id, ctx)
 
   // A hero with nowhere to put a remainder carries the WHOLE sentence rather than half of it being
   // dropped on the floor.
