@@ -29,3 +29,8 @@ export const WHEEL_ZOOM_RATE = 0.0015
 /** Max nodes of any kind per doc — the schema write-gate and the editor's add guards agree.
  *  40 = the two 20-item caps v1 kept per band, now that one list holds both. */
 export const MAX_NODES = 40
+
+/** Breathing room kept below the lowest text line in the authoring space. Shared because the
+ *  autofit measurer and the arrangement catalogue have to agree on where the page ends — an
+ *  arrangement that budgets to a different floor than autofit enforces gets silently rescaled. */
+export const TEXT_BOTTOM_MARGIN = 48

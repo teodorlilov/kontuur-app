@@ -20,12 +20,19 @@ const nodeBase = {
 const textNodeSchema = z.object({
   ...nodeBase,
   kind: z.literal('text'),
-  role: z.enum(['headline', 'body', 'custom']),
+  role: z.enum(['headline', 'body', 'custom', 'kicker', 'tagline', 'hero']),
   text: z.string(),
   width: z.number().positive(),
   fontFamily: z.string().min(1),
   fontSize: z.number().min(8).max(400),
-  fontWeight: z.union([z.literal(400), z.literal(500), z.literal(600), z.literal(700)]),
+  fontWeight: z.union([
+    z.literal(400),
+    z.literal(500),
+    z.literal(600),
+    z.literal(700),
+    z.literal(800),
+    z.literal(900),
+  ]),
   fill: hex,
   align: z.enum(['left', 'center', 'right']),
   lineHeight: z.number().min(0.8).max(3),
@@ -70,6 +77,11 @@ const shapeNodeSchema = z.object({
   // same reason fontSize is bounded: a corrupt doc must not make the exporter draw a 1e9px rule.
   strokeWidth: z.number().min(1).max(200).optional(),
   cornerRadius: z.number().min(0).max(400).optional(),
+  // Mirrors `CanvasShapeNode.role`. The compile-time parity guard below CANNOT catch a missing
+  // optional field — an extra optional on the type stays assignable both ways — so this line is
+  // held in place by a round-trip test instead. Without it zod strips the key on save and the
+  // lockup sweep loses track of its own rule after a reload.
+  role: z.literal('mark').optional(),
 })
 
 const scrimSchema = z.object({

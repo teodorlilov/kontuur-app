@@ -1,12 +1,14 @@
 'use client'
 
 import { Plus } from 'lucide-react'
+import type { LockupContext, LockupId } from '@/lib/canvas/lockups'
 import type { CanvasDoc, CanvasNode, CanvasShapeKind } from '@/types/canvas'
 import type { AssetRef } from '../../lib/asset-client'
 import { AiSection } from './ai-section'
+import { LockupsSection } from './lockups-section'
 import { AssetsSection } from '../assets-section'
 import { BackgroundControls } from '../background-controls'
-import { EDITOR_BUTTON } from './chrome'
+import { EDITOR_BUTTON, EDITOR_LABEL } from './chrome'
 import { LayersSection } from './layers-section'
 import type { RailSection } from './rail'
 
@@ -25,6 +27,14 @@ interface RailPanelProps {
   candidates: AssetRef[]
   /** Whether the slide has words to regenerate from — changes what an empty prompt means. */
   hasSlideCopy: boolean
+  /** The client's colours, brand pairing and slide position — what a lockup resolves against. */
+  lockupContext: LockupContext
+  onApplyLockup: (id: LockupId) => void
+  /** Absent on a single post — one slide has nothing to apply a lockup across. */
+  onApplyLockupToAll?: (id: LockupId) => void
+  /** Slides the last apply-to-all landed on, so the panel can offer one undo for the set. */
+  appliedToAll: number[] | null
+  onUndoApplyToAll: () => void
   onGenerateBackground: (direction?: string) => void
   onCancelBackground: () => void
   onPickCandidate: (ref: AssetRef) => void
@@ -58,6 +68,17 @@ export function RailPanel(props: RailPanelProps) {
         <p className="m-0 text-micro text-text2">
           Double-click any text on the canvas to edit it in place.
         </p>
+        <div className="border-t border-line pt-3">
+          <h3 className={EDITOR_LABEL}>Lockups</h3>
+          <LockupsSection
+            doc={props.doc}
+            ctx={props.lockupContext}
+            onApply={props.onApplyLockup}
+            onApplyToAll={props.onApplyLockupToAll}
+            appliedToAll={props.appliedToAll}
+            onUndoApplyToAll={props.onUndoApplyToAll}
+          />
+        </div>
       </div>
     )
   }

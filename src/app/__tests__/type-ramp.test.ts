@@ -34,6 +34,10 @@ const INLINE_SIZE_EXEMPT = [
   // The inline-edit overlay mirrors the Konva node's own fontSize onto a DOM
   // textarea, scaled to the current zoom. Document data again, not a style.
   'features/canvas-editor/hooks/use-inline-text-edit.ts',
+  // Lockup tiles draw the canvas document in DOM at container scale, so every
+  // size here is a doc fontSize divided by the canvas width -- the same
+  // document data the exemption above covers, just rendered small.
+  'features/canvas-editor/components/workspace/lockups-section.tsx',
   // ImageResponse renders through satori, which rasterises a JSX tree with no
   // stylesheet in scope at all -- there is no CSS pass, so className is inert
   // and inline style is the only channel that exists. This is a picture, not a

@@ -177,6 +177,48 @@ describe('canvasDocSchema', () => {
   })
 })
 
+describe('lockup ownership', () => {
+  it('round-trips a mark-roled shape, which nothing else guards', () => {
+    // The parity guards cover REQUIRED fields only, so `role?: 'mark'` on CanvasShapeNode typechecks
+    // clean whether or not shapeNodeSchema mirrors it. Worse, the failure is silent rather than
+    // loud: zod strips unknown keys, so a missing mirror would drop the role on save and leave a
+    // rule the lockup sweep can never find again — an orphan that accumulates one per application.
+    const rule = {
+      id: 'rule-1',
+      kind: 'line' as const,
+      role: 'mark' as const,
+      x: 96,
+      y: 300,
+      width: 200,
+      height: 2,
+      stroke: '#101010',
+      strokeWidth: 2,
+    }
+    const parsed = parseCanvasDoc({ ...validDoc(), nodes: [rule] })
+    expect(parsed.nodes[0]).toEqual(rule)
+  })
+
+  it('accepts the lockup text roles and still refuses an unknown one', () => {
+    for (const role of ['kicker', 'tagline'] as const) {
+      const parsed = parseCanvasDoc({ ...validDoc(), nodes: [textNode({ role })] })
+      expect((parsed.nodes[0] as { role: string }).role).toBe(role)
+    }
+    const doc = { ...validDoc(), nodes: [textNode({ role: 'eyebrow' as never })] }
+    expect(safeParseCanvasDoc(doc).success).toBe(false)
+  })
+
+  it('refuses any shape role other than mark', () => {
+    // 'mark' is the only shape role there is; anything else must not slip through as a free string.
+    const doc = {
+      ...validDoc(),
+      nodes: [
+        { id: 'r', kind: 'rect', role: 'ornament', x: 0, y: 0, width: 10, height: 10, fill: '#000000' },
+      ],
+    }
+    expect(safeParseCanvasDoc(doc).success).toBe(false)
+  })
+})
+
 describe('additive-optional text effects', () => {
   it('round-trips every effect field unchanged', () => {
     // The `_forward`/`_backward` parity guards in doc-schema.ts cover REQUIRED fields only — an

@@ -1,7 +1,10 @@
-/** Which pair of arrows steps the list — a row answers to Left/Right, a column to Up/Down. */
-type RovingOrientation = 'vertical' | 'horizontal'
+/**
+ * Which arrows step the collection — a row answers to Left/Right, a column to Up/Down, and a grid
+ * of `columns` per row answers to all four, stepping one cell sideways and one ROW vertically.
+ */
+type RovingOrientation = 'vertical' | 'horizontal' | { grid: number }
 
-const STEP_KEYS: Record<RovingOrientation, { next: string; previous: string }> = {
+const STEP_KEYS: Record<'vertical' | 'horizontal', { next: string; previous: string }> = {
   vertical: { next: 'ArrowDown', previous: 'ArrowUp' },
   horizontal: { next: 'ArrowRight', previous: 'ArrowLeft' },
 }
@@ -22,23 +25,33 @@ export function rovingFocus(
   items: HTMLElement[],
   orientation: RovingOrientation = 'vertical'
 ): boolean {
-  const step = STEP_KEYS[orientation]
-  // Only this orientation's arrows are claimed. The other pair belongs to whatever is underneath —
-  // in the editor that is a 1px nudge of the selected node, which a list has no business eating.
-  if (![step.next, step.previous, 'Home', 'End'].includes(event.key)) return false
+  const columns = typeof orientation === 'object' ? orientation.grid : null
+  const step = typeof orientation === 'object' ? STEP_KEYS.horizontal : STEP_KEYS[orientation]
+  // A grid claims both pairs; a one-dimensional list claims only its own. The other pair belongs to
+  // whatever is underneath — in the editor that is a 1px nudge of the selected node, which a list
+  // has no business eating. A grid DOES have business with it: its second axis is real movement,
+  // and leaving Up/Down unclaimed there would silently slide the artwork while focus is in a panel.
+  const rowKeys = columns === null ? [] : [STEP_KEYS.vertical.next, STEP_KEYS.vertical.previous]
+  if (![step.next, step.previous, ...rowKeys, 'Home', 'End'].includes(event.key)) return false
   event.preventDefault()
   event.stopPropagation()
   if (items.length === 0) return true
 
   const current = items.indexOf(document.activeElement as HTMLElement)
+  const delta =
+    event.key === step.next
+      ? 1
+      : event.key === step.previous
+        ? -1
+        : event.key === STEP_KEYS.vertical.next
+          ? (columns ?? 0)
+          : -(columns ?? 0)
   const next =
     event.key === 'Home'
       ? 0
       : event.key === 'End'
         ? items.length - 1
-        : event.key === step.next
-          ? Math.min(current + 1, items.length - 1)
-          : Math.max(current - 1, 0)
+        : Math.max(0, Math.min(current + delta, items.length - 1))
   items[next]?.focus()
   return true
 }

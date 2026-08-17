@@ -1,6 +1,6 @@
 'use client'
 
-import { AlertTriangle, ChevronLeft, Keyboard, Redo2, Undo2 } from 'lucide-react'
+import { AlertTriangle, ChevronLeft, Contrast, Keyboard, Redo2, Undo2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/utils/cn'
 import { EDITOR_ICON_BUTTON } from './chrome'
@@ -12,6 +12,14 @@ interface TopBarProps {
   /** The overflowing layers' text; empty when everything fits. */
   overflowing: string[]
   onAutoFit: () => void
+  /**
+   * Layers the picture is swallowing — text whose colour no palette entry can rescue.
+   *
+   * A warning rather than a repaint. A lockup that MOVED the text resolves its own colours, because
+   * it chose the position; text the user placed keeps the colour they chose, and this says why it
+   * is hard to read instead of overriding them.
+   */
+  lowContrast: string[]
   canUndo: boolean
   canRedo: boolean
   undo: () => void
@@ -66,6 +74,18 @@ export function TopBar(props: TopBarProps) {
           >
             Auto-fit
           </button>
+        </span>
+      )}
+
+      {props.lowContrast.length > 0 && (
+        <span
+          className="inline-flex items-center gap-1.5 text-micro text-text2"
+          title={`Hard to read against the picture: ${props.lowContrast.join(' · ')}. Try a stronger contrast scrim, a different colour, or moving the layer.`}
+        >
+          <Contrast size={13} aria-hidden />
+          {props.lowContrast.length === 1
+            ? `"${props.lowContrast[0]}" is hard to read`
+            : `${props.lowContrast.length} layers are hard to read`}
         </span>
       )}
 

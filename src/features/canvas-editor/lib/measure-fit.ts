@@ -1,12 +1,11 @@
 import Konva from 'konva'
 import type { CanvasDoc, CanvasTextNode } from '@/types/canvas'
 import { computeFit } from '@/lib/canvas/autofit'
+import { TEXT_BOTTOM_MARGIN } from '@/lib/canvas/constants'
 import { isTextNode } from '@/lib/canvas/doc-nodes'
 import { markerBands, type MarkerBandAttrs } from '@/lib/canvas/highlight'
 import { textNodeAttrs } from '@/lib/canvas/node-attrs'
 
-/** Breathing room kept below the lowest text line in the authoring space. */
-const BOTTOM_MARGIN = 48
 const MIN_FONT_SIZE = 24
 const FIT_SCALE = 1.15
 
@@ -41,7 +40,7 @@ export function highlightBands(node: CanvasTextNode): MarkerBandAttrs[] {
 }
 
 function availableHeight(node: CanvasTextNode, canvasH: number): number {
-  return canvasH - node.y - BOTTOM_MARGIN
+  return canvasH - node.y - TEXT_BOTTOM_MARGIN
 }
 
 // The largest scale-step font size (≤ the node's own) at which the text fits its slot.

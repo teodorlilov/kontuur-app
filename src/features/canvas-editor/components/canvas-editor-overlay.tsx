@@ -10,13 +10,27 @@ import { toast } from '@/components/ui/toast'
 import { cn } from '@/utils/cn'
 import { useIsMobile } from '@/hooks/useIsMobile'
 import { useUnloadGuard } from '@/hooks/use-unload-guard'
-import { CANVAS_HEIGHT, CANVAS_WIDTH } from '@/lib/canvas/constants'
-import { isImageNode, textNodes } from '@/lib/canvas/doc-nodes'
+import { CANVAS_HEIGHT, CANVAS_WIDTH, MAX_NODES } from '@/lib/canvas/constants'
+import { lowContrastLabels, recolourForBackdrop } from '@/lib/canvas/contrast'
+import {
+  applyLockup,
+  fitsCopy,
+  getLockup,
+  lockupMemberCount,
+  lockupMemberIds,
+  lockupNodeDelta,
+  setHeadline,
+  slideCopy as logicalCopy,
+  type LockupContext,
+  type LockupId,
+} from '@/lib/canvas/lockups'
+import { isImageNode, isTextNode, textNodes } from '@/lib/canvas/doc-nodes'
 import { DEFAULT_BACKGROUND_TRANSFORM, zoomBackgroundTo } from '@/lib/canvas/reposition'
 import { createShapeNode } from '@/lib/canvas/elements'
 import { createTextNode } from '@/lib/canvas/seed-doc'
 import { getBrandStyle } from '@/lib/visual/brand-styles'
 import type {
+  CanvasDoc,
   CanvasImageNode,
   CanvasScrim,
   CanvasShapeKind,
@@ -25,7 +39,8 @@ import type {
 } from '@/types/canvas'
 import type { CommitOptions } from '../lib/doc-history'
 import { imageFileFromTransfer, imageUrlFromTransfer } from '../lib/clipboard-image'
-import { naturalSize } from '../lib/load-image'
+import { buildBackdropGrid } from '../lib/backdrop-grid'
+import { decodedImage, naturalSize } from '../lib/load-image'
 import type { EditorMode } from '../types'
 import { useCrossOriginImage } from '../hooks/use-cross-origin-image'
 import { useEditorAiOps } from '../hooks/use-editor-ai-ops'
@@ -116,6 +131,8 @@ function CanvasEditorOverlay(props: CanvasEditorProps) {
   const [railSection, setRailSection] = useRailSection()
   const [confirmingClose, setConfirmingClose] = useState(false)
   const [applyingStyle, setApplyingStyle] = useState(false)
+  /** Slides the last "on every slide" landed on, so the panel can offer one undo for the set. */
+  const [lockupApplied, setLockupApplied] = useState<number[] | null>(null)
   const modeState = useEditorMode(selection.clear)
   const { mode, strokes, brushSize, inpaintPrompt, lassoDetect } = modeState
   // Read from the live prop, not from the load: the surface's copy edits ride in while the editor
@@ -138,6 +155,23 @@ function CanvasEditorOverlay(props: CanvasEditorProps) {
     return [...new Set([...docFamilies, style.fonts.display, style.fonts.body])].sort()
   }, [identity, slidesState.docsByPosition])
 
+  // The client's colours plus their brand pairing — everything a lockup needs to resolve itself.
+  // The slide half is the ACTIVE position, so an index numeral says what slide it is on.
+  const lockupCtx = useMemo<LockupContext | null>(
+    () =>
+      identity
+        ? {
+            palette: identity.palette,
+            fonts: getBrandStyle(identity.style).fonts,
+            slide: {
+              position: slidesState.activePosition,
+              total: slidesState.positions.length,
+            },
+          }
+        : null,
+    [identity, slidesState.activePosition, slidesState.positions.length]
+  )
+
   const fontsReady = useEditorFonts(families)
   // Memoized because it is not cheap: every layer gets a synchronous Konva text-wrap measure, and
   // the viewport lives in this component — panning would otherwise re-measure the whole doc per frame.
@@ -152,8 +186,36 @@ function CanvasEditorOverlay(props: CanvasEditorProps) {
   // so an effect would only add a second render pass before the stage could appear.
   if (fontsReady && !initialFontsReady) setInitialFontsReady(true)
   const backgroundImage = useCrossOriginImage(slidesState.backgroundUrl)
-  const { editingId, startEdit } = useInlineTextEdit((id, text) =>
-    slidesState.updateNode<CanvasTextNode>(id, { text, textOverridden: true })
+
+  /**
+   * Layers the picture is swallowing, measured against the composed art.
+   *
+   * Gated on `backgroundImage` because the grid is read from real pixels; until the art decodes
+   * there is nothing to compare against and the honest answer is to say nothing.
+   */
+  const lowContrast = useMemo(() => {
+    if (!slidesState.doc || !backgroundImage || !fontsReady) return EMPTY_OVERFLOW
+    const grid = buildBackdropGrid(slidesState.doc, backgroundImage)
+    return grid ? lowContrastLabels(slidesState.doc, grid) : EMPTY_OVERFLOW
+  }, [slidesState.doc, backgroundImage, fontsReady])
+
+  const { editingId, startEdit } = useInlineTextEdit(
+    (id, text) => {
+      const doc = slidesState.doc
+      const node = doc?.nodes.find((candidate) => candidate.id === id)
+      // A hero lockup keeps the headline in two boxes. Editing either one edits the SENTENCE, and
+      // `setHeadline` re-splits it — so replacing the poster word cannot leave the old remainder
+      // trailing behind it when a flat lockup rejoins them later.
+      if (doc && node && isTextNode(node) && (node.role === 'hero' || node.role === 'headline')) {
+        slidesState.transformDoc((current) => setHeadline(current, text))
+        return
+      }
+      slidesState.updateNode<CanvasTextNode>(id, { text, textOverridden: true })
+    },
+    (node) =>
+      slidesState.doc && (node.role === 'hero' || node.role === 'headline')
+        ? logicalCopy(slidesState.doc).headline
+        : node.text
   )
 
   // Build every slide's history once fonts can measure — seeded layers autofit before first paint.
@@ -211,6 +273,143 @@ function CanvasEditorOverlay(props: CanvasEditorProps) {
     backgroundImage,
     canAddNode: assetOps.canAddNode,
   })
+
+  /**
+   * Put a lockup on the active slide.
+   *
+   * Ids are minted HERE, not inside the mutate: `transformDoc`'s callback runs inside a React state
+   * updater that Strict Mode double-invokes, so ids generated in there differ between invocations
+   * and anything captured to select afterwards would point at nodes that do not exist.
+   */
+  /**
+   * The client's colours in preference order for a contrast repaint.
+   *
+   * Their OWN ink first, then the surface, and only then plain black or white: repainting brand
+   * colour is a last resort, and `bestFill` keeps the earliest candidate on a tie.
+   */
+  const fillCandidates = useMemo(
+    () =>
+      identity
+        ? [identity.palette.ink, identity.palette.surface, identity.palette['accent-deep'], '#000000', '#FFFFFF']
+        : [],
+    [identity]
+  )
+
+  /**
+   * Resolve fills against the art once the lockup has moved the text.
+   *
+   * The grid is measured HERE, outside the mutate: reading pixels needs a canvas, and
+   * `transformDoc`'s callback runs inside a React state updater that Strict Mode double-invokes.
+   * Measured first and closed over, the transform stays pure and the repaint costs no second
+   * undo step.
+   */
+  const withContrast = useCallback(
+    (next: CanvasDoc): CanvasDoc => {
+      if (!backgroundImage || fillCandidates.length === 0) return next
+      const grid = buildBackdropGrid(next, backgroundImage)
+      return grid ? recolourForBackdrop(next, grid, fillCandidates) : next
+    },
+    [backgroundImage, fillCandidates]
+  )
+
+  const applyLockupHere = useCallback(
+    (id: LockupId) => {
+      const doc = slidesState.doc
+      if (!doc || !lockupCtx) return
+      // The cap guard is GROSS — it knows nothing about the nodes this operation first sweeps — so
+      // it must be asked about the NET delta, or a nearly-full slide is refused an edit that
+      // actually frees room.
+      if (!assetOps.canAddNode(lockupNodeDelta(doc, id, lockupCtx))) return
+      const ids = lockupMemberIds(doc, lockupMemberCount(id, lockupCtx), () => crypto.randomUUID())
+      slidesState.transformDoc((current) =>
+        withContrast(applyLockup(current, id, lockupCtx, ids))
+      )
+    },
+    [slidesState, lockupCtx, assetOps, withContrast]
+  )
+
+  /**
+   * Put one lockup on every slide, each laid out around its OWN words and its own position.
+   *
+   * One `transformSlides` dispatch rather than a loop, following the apply-style idiom. Ids are
+   * minted per position up front for the same Strict Mode reason as above, and because one prebuilt
+   * array shared across N docs would give every slide the same node ids — survivable today only by
+   * accident of scoping, and data corruption the moment anything merges two docs.
+   */
+  const applyLockupEverywhere = useCallback(
+    (id: LockupId) => {
+      if (!lockupCtx) return
+      const total = slidesState.positions.length
+      const lockup = getLockup(id)
+      if (!lockup) return
+
+      /**
+       * Only the slides the lockup can actually hold.
+       *
+       * Every slide has its OWN words, and the picker only ever measured the active one — so a
+       * carousel where slide 1's first word fits happily could stamp slide 4's eleven-character one
+       * into the same poster slot and run it off the canvas. Autofit cannot rescue that: it measures
+       * to the canvas floor, sees room, and lets the hero crash through the headline beneath it.
+       * Slides that cannot take the lockup are skipped and named rather than quietly broken.
+       */
+      const targets: number[] = []
+      const skipped: number[] = []
+      for (const position of slidesState.positions) {
+        const doc = slidesState.docsByPosition.get(position)
+        if (!doc) continue
+        const slideCtx = { ...lockupCtx, slide: { position, total } }
+        const copy = logicalCopy(doc)
+        const room = doc.nodes.length + lockupNodeDelta(doc, id, slideCtx) <= MAX_NODES
+        if (fitsCopy(lockup, slideCtx, copy.headline, copy.body) && room) targets.push(position)
+        else skipped.push(position)
+      }
+      if (targets.length === 0) {
+        toast.error('None of the other slides have copy short enough for this lockup')
+        return
+      }
+
+      const idsByPosition = new Map(
+        targets.map((position) => {
+          const doc = slidesState.docsByPosition.get(position)
+          const slideCtx = { ...lockupCtx, slide: { position, total } }
+          return [
+            position,
+            doc
+              ? lockupMemberIds(doc, lockupMemberCount(id, slideCtx), () => crypto.randomUUID())
+              : [],
+          ] as const
+        })
+      )
+      slidesState.transformSlides(targets, (doc, position) => {
+        const next = applyLockup(
+          doc,
+          id,
+          { ...lockupCtx, slide: { position, total } },
+          idsByPosition.get(position) ?? []
+        )
+        // Each slide is resolved against ITS OWN art. `decodedImage` is a synchronous cache read,
+        // so a slide the user has never opened has nothing decoded and simply keeps its colours —
+        // the alternative is awaiting a decode per slide inside a state updater, which is not a
+        // thing a pure mutate may do.
+        const image = decodedImage(next.background.publicUrl)
+        if (!image || fillCandidates.length === 0) return next
+        const grid = buildBackdropGrid(next, image)
+        return grid ? recolourForBackdrop(next, grid, fillCandidates) : next
+      })
+      // Remembered so the panel can offer ONE undo. `transformSlides` commits an entry per slide,
+      // and ⌘Z steps only the active one — so without this the way to back out a seven-slide apply
+      // is to visit each slide and undo it there.
+      setLockupApplied(targets)
+      if (skipped.length > 0) {
+        toast.info(
+          skipped.length === 1
+            ? `Slide ${skipped[0]! + 1} was skipped — its copy is too long for this lockup`
+            : `${skipped.length} slides were skipped — their copy is too long for this lockup`
+        )
+      }
+    },
+    [slidesState, lockupCtx, fillCandidates]
+  )
 
   const removeNodes = useCallback(
     (ids: string[]) => {
@@ -342,6 +541,7 @@ function CanvasEditorOverlay(props: CanvasEditorProps) {
         position={slidesState.activePosition}
         slideCount={slidesState.positions.length}
         overflowing={overflowing}
+        lowContrast={lowContrast}
         onAutoFit={() => slidesState.transformDoc(autofitDocText)}
         canUndo={slidesState.canUndo}
         canRedo={slidesState.canRedo}
@@ -373,10 +573,24 @@ function CanvasEditorOverlay(props: CanvasEditorProps) {
           }
           onSelect={setRailSection}
         >
-          {ready && identity && railSection && (
+          {ready && identity && lockupCtx && railSection && (
             <RailPanel
               section={railSection}
               doc={slidesState.doc!}
+              lockupContext={lockupCtx}
+              onApplyLockup={(id) => {
+                setLockupApplied(null)
+                applyLockupHere(id)
+              }}
+              appliedToAll={lockupApplied}
+              onUndoApplyToAll={() => {
+                if (lockupApplied) slidesState.undoSlides(lockupApplied)
+                setLockupApplied(null)
+              }}
+              // One slide has nothing to apply a lockup across — the same gate the strip uses.
+              onApplyLockupToAll={
+                slidesState.positions.length > 1 ? applyLockupEverywhere : undefined
+              }
               selectedIds={selection.ids}
               busy={{
                 uploadingAsset: assetOps.uploadingAsset,

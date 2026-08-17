@@ -1,9 +1,11 @@
+import { LOCKUP_ROLES } from '@/types/canvas'
 import type {
   CanvasDoc,
   CanvasImageNode,
   CanvasNode,
   CanvasShapeNode,
   CanvasTextNode,
+  CanvasTextRole,
 } from '@/types/canvas'
 
 /** Where a duplicate lands relative to its original (authoring-space px, both axes). */
@@ -46,6 +48,32 @@ export function isShapeNode(node: CanvasNode): node is CanvasShapeNode {
  */
 export function textNodes(doc: CanvasDoc): CanvasTextNode[] {
   return doc.nodes.filter(isTextNode)
+}
+
+/**
+ * The roles that carry the AI's copy and therefore take a style, an arrangement and a rewrite.
+ *
+ * An explicit ALLOWLIST, deliberately not `role !== 'custom'`. That older spelling meant "everything
+ * the seeder made", which was the same set right up until the vocabulary grew — at which point it
+ * silently began opting lockup members in, dragging their geometry between slides. A predicate that
+ * changes meaning when an enum grows is a predicate that will change meaning again.
+ */
+const STYLED_ROLES: readonly CanvasTextRole[] = ['headline', 'body']
+
+/** Whether this text node holds slide copy — the only kind a style or an arrangement may move. */
+export function isStyledRole(node: CanvasTextNode): boolean {
+  return STYLED_ROLES.includes(node.role)
+}
+
+/**
+ * Whether a lockup put this node here, and may therefore take it away again.
+ *
+ * Written against `'role' in node` rather than `node.role`, because image nodes have no role at all
+ * and the union would not compile otherwise — which is the useful accident that keeps this the one
+ * definition instead of an inline check at each sweep site.
+ */
+export function isLockupOwned(node: CanvasNode): boolean {
+  return 'role' in node && node.role !== undefined && LOCKUP_ROLES.includes(node.role as never)
 }
 
 /** Both flags are tri-state on the wire (absent = off); read them through these, never `!node.x`. */

@@ -7,11 +7,42 @@
  * and the upgrade into this one live in `lib/canvas/doc-v1.ts`, which nothing but the parser reads.
  */
 
-export type CanvasTextRole = 'headline' | 'body' | 'custom'
+/**
+ * What a text node IS on the slide, which decides who may rewrite it.
+ *
+ * `headline`/`body` are the AI's copy — a rewrite refreshes their words. `custom` is the user's own
+ * text and is never touched by anything. `kicker`/`tagline` are LOCKUP-OWNED: a lockup creates them,
+ * a lockup replaces them, and a copy rewrite leaves their wording alone because they carry framing
+ * ("EST. 2024", "3 / 7"), not the message.
+ *
+ * `hero` is the odd one — lockup-owned like a kicker, but holding COPY rather than framing: the
+ * headline's first word, lifted out so it can be set at poster scale against the rest. Sweeping a
+ * hero therefore returns its word to the headline rather than discarding it.
+ */
+export type CanvasTextRole = 'headline' | 'body' | 'custom' | 'kicker' | 'tagline' | 'hero'
+
+/**
+ * Roles a lockup owns outright: applying one sweeps every node wearing them and lays down its own.
+ * That is what makes re-application idempotent without a grouping field on the node.
+ *
+ * Includes the shape role, so the sweep is one predicate over the whole node list.
+ */
+export const LOCKUP_ROLES = ['kicker', 'tagline', 'mark', 'hero'] as const
 
 export type CanvasTextAlign = 'left' | 'center' | 'right'
 
-export type CanvasFontWeight = 400 | 500 | 600 | 700
+/**
+ * The weights a text node may ask for.
+ *
+ * Floor at 400 on purpose — 300 and below is unreadable as body copy at feed scale, and nothing on
+ * a 1080px canvas viewed at a third of that wants a light. The ceiling reaches 900 because poster
+ * typography lives at 800–1000: several library families (Sofia Sans to 1000, Alumni Sans and Onest
+ * to 900) serve real black cuts, and capping at 700 meant asking for impact and getting a semibold.
+ */
+export type CanvasFontWeight = 400 | 500 | 600 | 700 | 800 | 900
+
+/** The same set as a value, so the picker and the schema cannot list different weights. */
+export const CANVAS_FONT_WEIGHTS: readonly CanvasFontWeight[] = [400, 500, 600, 700, 800, 900]
 
 /**
  * What every node has, whatever it draws. `kind` discriminates the union.
@@ -125,6 +156,15 @@ export interface CanvasShapeNode extends CanvasNodeBase {
   strokeWidth?: number
   /** Rect only — one optional number is not worth forking the union, the schema and both renderers. */
   cornerRadius?: number
+  /**
+   * Set on the hairline a lockup draws, so the sweep can find it again after a reload.
+   *
+   * Shapes have no other role: a picture or a hand-drawn box is the slide's own content. This one
+   * value exists purely to mark a shape as lockup-owned, and it MUST be mirrored in `shapeNodeSchema`
+   * — zod strips unknown keys silently, so a missing mirror would erase the ownership on first save
+   * and leave an orphan rule the next lockup can never clear.
+   */
+  role?: 'mark'
 }
 
 export type CanvasNode = CanvasTextNode | CanvasImageNode | CanvasShapeNode

@@ -5,6 +5,7 @@ import type {
   CanvasTextRole,
 } from '@/types/canvas'
 import { isTextNode } from './doc-nodes'
+import { splitHero } from './lockups'
 import type { Palette } from '@/types/visual'
 import { getBrandStyle } from '@/lib/visual/brand-styles'
 import { clampAtWordBoundary, sanitizePromptText } from '@/lib/visual/prompt'
@@ -113,11 +114,32 @@ export function applyCopyToDoc(
 ): CanvasDoc {
   const headline = input.slide ? sanitizePromptText(input.slide.headline) : captionHook(input.caption)
   const body = input.slide ? sanitizePromptText(input.slide.body) : ''
+  /**
+   * A slide wearing a hero lockup holds its headline in TWO nodes, and they must be refreshed — or
+   * left alone — as ONE unit.
+   *
+   * `textOverridden` is stamped per node, so treating the halves independently produced sentences
+   * nobody wrote: a user who retyped the poster word to "Seven" and then received a rewrite of
+   * "Ten tips for founders" got a slide reading "Seven tips for founders", with the rewrite's own
+   * first word appearing nowhere. On this app's "Ten tips…" copy the number and the noun then come
+   * from different sentences, and the recompose bakes and publishes it without a word of warning.
+   */
+  const heroSplit = doc.nodes.some((node) => isTextNode(node) && node.role === 'hero')
+  const keepHeadline = doc.nodes.some(
+    (node) =>
+      isTextNode(node) &&
+      (node.role === 'hero' || node.role === 'headline') &&
+      node.textOverridden
+  )
+  const split = heroSplit ? splitHero(headline) : { hero: '', rest: headline }
   const nodes = doc.nodes.map((node) => {
-    if (!isTextNode(node) || node.textOverridden) return node
+    if (!isTextNode(node)) return node
     // Case is a render-time flag, so refreshed copy stays raw here.
-    if (node.role === 'headline' && headline) return { ...node, text: headline }
-    if (node.role === 'body' && body) return { ...node, text: body }
+    if (node.role === 'hero') return keepHeadline || !headline ? node : { ...node, text: split.hero }
+    if (node.role === 'headline') {
+      return keepHeadline || !headline ? node : { ...node, text: split.rest }
+    }
+    if (node.role === 'body' && body && !node.textOverridden) return { ...node, text: body }
     return node
   })
   return { ...doc, nodes }

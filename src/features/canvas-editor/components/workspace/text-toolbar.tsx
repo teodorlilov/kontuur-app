@@ -12,6 +12,7 @@ import {
 import { cn } from '@/utils/cn'
 import { clamp } from '@/lib/canvas/clamp'
 import { getFontEntry } from '@/lib/canvas/font-library'
+import { CANVAS_FONT_WEIGHTS } from '@/types/canvas'
 import type { CanvasFontWeight, CanvasTextNode } from '@/types/canvas'
 import type { Palette } from '@/types/visual'
 import { EDITOR_CONTROL, EDITOR_ICON_BUTTON, EDITOR_PRESSED, TOOLBAR_DIVIDER } from './chrome'
@@ -216,8 +217,10 @@ function ToggleButton({
 function weightOptions(fontFamily: string): CanvasFontWeight[] {
   const entry = getFontEntry(fontFamily)
   if (!entry) return WEIGHT_FALLBACK
+  // Against the shared list, never a copy of it: a second hard-coded set here would keep offering
+  // 700 as the ceiling long after the doc learned to store 900.
   const supported = entry.weights.filter((weight): weight is CanvasFontWeight =>
-    [400, 500, 600, 700].includes(weight)
+    CANVAS_FONT_WEIGHTS.includes(weight as CanvasFontWeight)
   )
   return supported.length > 0 ? supported : WEIGHT_FALLBACK
 }

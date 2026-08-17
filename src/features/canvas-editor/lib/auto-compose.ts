@@ -60,7 +60,7 @@ export async function composePersistedPosition(input: {
     : input.slideCopy && seedFromCopy(body.identity, background, input.slideCopy)
   if (!doc || textNodes(doc).length === 0) return null
 
-  const { doc: fitted, blob } = await composeDoc(doc)
+  const { doc: fitted, blob } = await composeDoc(doc, body.identity.palette)
   return savePostCanvas(input.postId, input.position, fitted, blob, input.image.storagePath)
 }
 
@@ -84,7 +84,7 @@ export async function recomposePersistedPosition(input: {
   // applyCopyToDoc preserves node order and count, so index comparison is sound.
   if (updated.nodes.every((node, index) => nodeText(node) === nodeText(doc.nodes[index]))) return null
 
-  const { doc: fitted, blob } = await composeDoc(updated)
+  const { doc: fitted, blob } = await composeDoc(updated, body.identity.palette)
   return savePostCanvas(input.postId, input.position, fitted, blob, input.baseImagePath)
 }
 
@@ -99,7 +99,7 @@ export async function composeDraftVisual(input: {
 }): Promise<{ visual: DraftVisualResult; doc: CanvasDoc } | null> {
   const doc = seedFromCopy(input.identity, input.clean, input.slideCopy)
   if (!doc) return null
-  const { doc: fitted, blob } = await composeDoc(doc)
+  const { doc: fitted, blob } = await composeDoc(doc, input.identity.palette)
   return saveDraftCanvas(input, input.position, fitted, blob)
 }
 
@@ -117,6 +117,6 @@ export async function recomposeDraftVisual(input: {
   previousFlattenedPath?: string
 }): Promise<{ visual: DraftVisualResult; doc: CanvasDoc }> {
   const updated = applyCopyToDoc(input.doc, copyFields(input.slideCopy))
-  const { doc: fitted, blob } = await composeDoc(updated)
+  const { doc: fitted, blob } = await composeDoc(updated, input.identity.palette)
   return saveDraftCanvas(input, input.position, fitted, blob, input.previousFlattenedPath)
 }

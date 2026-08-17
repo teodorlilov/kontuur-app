@@ -1,6 +1,6 @@
 import type { CanvasDoc } from '@/types/canvas'
 import { applyStyleToDoc } from '@/lib/canvas/apply-style'
-import { textNodes } from '@/lib/canvas/doc-nodes'
+import { isStyledRole, textNodes } from '@/lib/canvas/doc-nodes'
 import { exportDocToJpegBlob } from './export-doc'
 import { ensureFontsReady, injectLibraryStylesheet } from './fonts'
 import { loadCrossOriginImage } from './load-image'
@@ -21,7 +21,7 @@ const PREVIEW_SCALE = 0.35
  * so the panel offers it disabled rather than as a tick that silently does nothing.
  */
 export function takesStyle(doc: CanvasDoc): boolean {
-  return textNodes(doc).some((node) => node.role !== 'custom')
+  return textNodes(doc).some(isStyledRole)
 }
 
 /**

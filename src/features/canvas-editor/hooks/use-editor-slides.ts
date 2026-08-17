@@ -54,7 +54,10 @@ export interface EditorSlidesState extends EditorDocState {
    * then land on the wrong slide. Nothing has one target but the active slide; the only thing with
    * several is a panel where the user has just ticked them by hand.
    */
-  transformSlides: (positions: number[], mutate: (doc: CanvasDoc) => CanvasDoc) => void
+  transformSlides: (
+    positions: number[],
+    mutate: (doc: CanvasDoc, position: number) => CanvasDoc
+  ) => void
   /** Step several named slides back one entry each — the undo half of `transformSlides`. */
   undoSlides: (positions: number[]) => void
   /** Every slide's current doc, by position. Reactive, unlike `docAt`. */
@@ -161,13 +164,13 @@ export function useEditorSlides(
    * returns the same Map — which is what keeps a no-op action from re-rendering the editor.
    */
   const stepSlides = useCallback(
-    (positions: number[], step: (history: DocHistory) => DocHistory) => {
+    (positions: number[], step: (history: DocHistory, position: number) => DocHistory) => {
       setHistories((current) => {
         let next: Map<number, DocHistory> | null = null
         for (const position of positions) {
           const history = current.get(position)
           if (!history) continue
-          const stepped = step(history)
+          const stepped = step(history, position)
           if (stepped === history) continue
           next ??= new Map(current)
           next.set(position, stepped)
@@ -187,9 +190,18 @@ export function useEditorSlides(
     [stepSlides, activePosition]
   )
 
+  /**
+   * The mutate receives the POSITION it is running for, so a transform can differ per slide.
+   *
+   * Apply-style does not need it — one source doc restyles every target identically — but a lockup
+   * does: its index numeral and counter are the slide's own position, and a lockup applied across a
+   * carousel that numbered every slide "01" would be worse than one that numbered none.
+   */
   const transformSlides = useCallback(
-    (positions: number[], mutate: (doc: CanvasDoc) => CanvasDoc) =>
-      stepSlides(positions, (history) => commitHistory(history, mutate)),
+    (positions: number[], mutate: (doc: CanvasDoc, position: number) => CanvasDoc) =>
+      stepSlides(positions, (history, position) =>
+        commitHistory(history, (doc) => mutate(doc, position))
+      ),
     [stepSlides]
   )
 

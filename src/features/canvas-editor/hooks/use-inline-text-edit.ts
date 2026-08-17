@@ -9,7 +9,17 @@ import type { CanvasTextNode } from '@/types/canvas'
  * positioned textarea with matching metrics appears over it. Blur commits, Escape cancels.
  * Committed edits set `textOverridden` so recompose keeps the user's wording.
  */
-export function useInlineTextEdit(onCommit: (id: string, text: string) => void) {
+export function useInlineTextEdit(
+  onCommit: (id: string, text: string) => void,
+  /**
+   * What the editor OPENS with, when that is not simply the node's own text.
+   *
+   * A hero lockup holds one sentence in two boxes, and on the canvas the bigger one looks like the
+   * whole headline — so retyping either half left the other half's leftovers glued to the result.
+   * Handing the editor the whole sentence removes the fragment rather than warning about it.
+   */
+  initialText?: (node: CanvasTextNode) => string
+) {
   const [editingId, setEditingId] = useState<string | null>(null)
   const cleanupRef = useRef<(() => void) | null>(null)
 
@@ -25,8 +35,9 @@ export function useInlineTextEdit(onCommit: (id: string, text: string) => void) 
       // Anchor at the text's top-left PIVOT (rotation-independent), not getClientRect() — that
       // returns the rotation-expanded bounding box and would misplace a rotated overlay.
       const pivot = text.absolutePosition()
+      const opened = initialText?.(node) ?? node.text
       const textarea = document.createElement('textarea')
-      textarea.value = node.text
+      textarea.value = opened
       applyTextareaStyle(textarea, node, pivot, text.height() * scale, containerRect, scale)
       document.body.appendChild(textarea)
       setEditingId(node.id)
@@ -36,7 +47,9 @@ export function useInlineTextEdit(onCommit: (id: string, text: string) => void) 
         const value = textarea.value
         textarea.remove()
         setEditingId(null)
-        if (commit && value !== node.text) onCommit(node.id, value)
+        // Compared against what was OPENED, not the node's own text: on a split headline those
+        // differ, and comparing to the node would commit on every open.
+        if (commit && value !== opened) onCommit(node.id, value)
       }
       cleanupRef.current = () => finish(false)
 
@@ -48,7 +61,7 @@ export function useInlineTextEdit(onCommit: (id: string, text: string) => void) 
       textarea.focus()
       textarea.select()
     },
-    [onCommit]
+    [onCommit, initialText]
   )
 
   return { editingId, startEdit }
@@ -88,7 +101,9 @@ function applyTextareaStyle(
     border: '1px dashed var(--line2)',
     outline: 'none',
     resize: 'none',
-    overflow: 'hidden',
+    // Scrolls rather than clips: opened on a split headline the box holds the WHOLE sentence, which
+    // is taller than the poster word whose metrics it is wearing.
+    overflow: 'auto',
     margin: '0',
     padding: '0',
     zIndex: '300',

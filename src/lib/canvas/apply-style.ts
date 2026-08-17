@@ -1,5 +1,5 @@
 import type { CanvasDoc, CanvasTextNode } from '@/types/canvas'
-import { isTextNode, textNodes } from './doc-nodes'
+import { isStyledRole, isTextNode, textNodes } from './doc-nodes'
 
 // The "look" of a text node — everything except identity (id/kind/role) and content
 // (text/textOverridden). Copying an oversized fontSize is fine: compose autofits each slide's own
@@ -46,7 +46,12 @@ function styledNode(target: CanvasTextNode, source: CanvasTextNode): CanvasTextN
 export function applyStyleToDoc(target: CanvasDoc, source: CanvasDoc): CanvasDoc {
   const sourceText = textNodes(source)
   const nodes = target.nodes.map((node) => {
-    if (!isTextNode(node) || node.role === 'custom') return node
+    // Lockup members are excluded as firmly as `custom` is, for the opposite reason: a lockup
+    // POSITIONS its own pieces relative to the headline it was built around. Carrying one slide's
+    // kicker coordinates onto another would move half a lockup and leave the rest, and since this
+    // function never creates a node, a target with no kicker would receive nothing at all. Lockups
+    // travel by being re-run per slide, not by having their geometry copied.
+    if (!isTextNode(node) || !isStyledRole(node)) return node
     const match = sourceText.find((candidate) => candidate.role === node.role)
     return match ? styledNode(node, match) : node
   })
