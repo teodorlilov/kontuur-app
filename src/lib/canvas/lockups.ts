@@ -20,7 +20,7 @@
 
 import { CANVAS_HEIGHT, CANVAS_WIDTH, TEXT_BOTTOM_MARGIN } from './constants'
 import { isLockupOwned, isTextNode } from './doc-nodes'
-import { getFontEntry, type FontFamilyName } from './font-library'
+import { getFontEntry, hasCyrillic, type FontFamilyName } from './font-library'
 import type { BrandStyleFonts } from '@/lib/visual/brand-styles'
 import type {
   CanvasDoc,
@@ -103,6 +103,21 @@ export const LOCKUP_FIELDS: readonly LockupField[] = [
   'letterSpacing',
 ]
 
+/**
+ * The fields that say a slide is STILL wearing a lockup — everything it writes, minus `fill`.
+ *
+ * A lockup writes colour and the contrast pass then overwrites it, on the way to the canvas and on
+ * every slide the art is busy enough to need it — which is the common case, not the exception. So
+ * matching identity on `fill` meant a lockup stopped reporting as active the instant it was applied:
+ * the picker showed nothing selected on a slide plainly wearing the layout, and withheld "apply to
+ * every slide", which is offered only for the active one.
+ *
+ * Geometry and face are what a lockup IS. Colour is a downstream decision about the picture, made
+ * after the layout has been chosen — so a hand-picked colour no more cancels the lockup than the
+ * automatic repaint does.
+ */
+const IDENTITY_FIELDS: readonly LockupField[] = LOCKUP_FIELDS.filter((field) => field !== 'fill')
+
 export interface LockupContext {
   palette: Palette
   fonts: BrandStyleFonts
@@ -177,16 +192,23 @@ export function slideCopy(doc: CanvasDoc): { headline: string; body: string } {
 export function setHeadline(doc: CanvasDoc, text: string): CanvasDoc {
   const hasHero = doc.nodes.some((node) => isTextNode(node) && node.role === 'hero')
   const split = hasHero ? splitHero(text) : { hero: '', rest: text }
-  let seenHero = false
+  // Only the FIRST node of each role is written, which is the same rule `applyLockup`'s rejoin
+  // follows and for the same reason: a user can duplicate either half to build a second line, and
+  // writing the sentence into every match destroys whatever they typed into the copies. Duplicates
+  // are left exactly as they are rather than blanked — an empty text node is a layer that draws
+  // nothing and cannot be clicked, which is a worse thing to leave behind than a stale word.
+  let heroTaken = false
+  let headlineTaken = false
   const nodes = doc.nodes.map((node) => {
     if (!isTextNode(node)) return node
-    if (node.role === 'hero') {
-      // Only the first hero takes the word; a duplicate would otherwise repeat it.
-      const value = seenHero ? '' : split.hero
-      seenHero = true
-      return { ...node, text: value, textOverridden: true as const }
+    if (node.role === 'hero' && !heroTaken) {
+      heroTaken = true
+      return { ...node, text: split.hero, textOverridden: true as const }
     }
-    if (node.role === 'headline') return { ...node, text: split.rest, textOverridden: true as const }
+    if (node.role === 'headline' && !headlineTaken) {
+      headlineTaken = true
+      return { ...node, text: split.rest, textOverridden: true as const }
+    }
     return node
   })
   return { ...doc, nodes }
@@ -370,6 +392,35 @@ export function fitsCopy(
   if (!lockup.copy(ctx).hero) return headline.length <= capacity.headline
   const split = splitHero(headline)
   return split.hero.length <= capacity.hero && split.rest.length <= capacity.headline
+}
+
+/** Both reasons a lockup may refuse a slide's copy — both, because both can be true at once. */
+export interface LockupBlock {
+  /** The copy is Cyrillic and this lockup's faces have no Cyrillic letters. */
+  wrongScript: boolean
+  /** The copy overruns a slot whose size the lockup's geometry fixes. */
+  tooMuchCopy: boolean
+}
+
+/**
+ * Why this lockup cannot take this slide's copy, or neither reason when it can.
+ *
+ * ONE definition, because two paths ask it and they must give the same answer: the picker greys a
+ * tile on it, and apply-to-all decides which slides to skip on it. Asked separately they disagreed —
+ * apply-to-all checked only capacity, so a carousel whose first slide was English happily stamped a
+ * Latin-only face onto a later Cyrillic one, which the picker would never have offered.
+ */
+export function lockupBlock(
+  lockup: Lockup,
+  ctx: LockupContext,
+  copy: { headline: string; body: string }
+): LockupBlock {
+  return {
+    // Keyed on the words actually on the slide, not on the client's language: a Bulgarian client
+    // running an English campaign line is entitled to the Latin-only faces.
+    wrongScript: hasCyrillic(`${copy.headline} ${copy.body}`) && !supportsCyrillic(lockup),
+    tooMuchCopy: !fitsCopy(lockup, ctx, copy.headline, copy.body),
+  }
 }
 
 /**
@@ -1419,7 +1470,7 @@ export function activeLockup(doc: CanvasDoc, ctx: LockupContext): LockupId | nul
   if (!headline && !body) return null
   const ownedCount = doc.nodes.filter(isLockupOwned).length
   const matches = (node: CanvasTextNode, patch: Pick<CanvasTextNode, LockupField>) =>
-    LOCKUP_FIELDS.every((field) => node[field] === patch[field])
+    IDENTITY_FIELDS.every((field) => node[field] === patch[field])
 
   for (const lockup of LOCKUPS) {
     const patch = lockup.copy(ctx)

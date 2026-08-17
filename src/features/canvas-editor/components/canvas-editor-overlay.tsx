@@ -11,11 +11,11 @@ import { cn } from '@/utils/cn'
 import { useIsMobile } from '@/hooks/useIsMobile'
 import { useUnloadGuard } from '@/hooks/use-unload-guard'
 import { CANVAS_HEIGHT, CANVAS_WIDTH, MAX_NODES } from '@/lib/canvas/constants'
-import { lowContrastLabels, recolourForBackdrop } from '@/lib/canvas/contrast'
+import { fillCandidates, lowContrastLabels, recolourForBackdrop } from '@/lib/canvas/contrast'
 import {
   applyLockup,
-  fitsCopy,
   getLockup,
+  lockupBlock,
   lockupMemberIds,
   lockupNodeDelta,
   setHeadline,
@@ -273,26 +273,10 @@ function CanvasEditorOverlay(props: CanvasEditorProps) {
     canAddNode: assetOps.canAddNode,
   })
 
-  /**
-   * Put a lockup on the active slide.
-   *
-   * Ids are minted HERE, not inside the mutate: `transformDoc`'s callback runs inside a React state
-   * updater that Strict Mode double-invokes, so ids generated in there differ between invocations
-   * and anything captured to select afterwards would point at nodes that do not exist.
-   */
-  /**
-   * The client's colours in preference order for a contrast repaint.
-   *
-   * Their OWN ink first, then the surface, and only then plain black or white: repainting brand
-   * colour is a last resort, and `bestFill` keeps the earliest candidate on a tie.
-   */
-  const fillCandidates = useMemo(
-    () =>
-      identity
-        ? [identity.palette.ink, identity.palette.surface, identity.palette['accent-deep'], '#000000', '#FFFFFF']
-        : [],
-    [identity]
-  )
+  // The shared definition, not a local copy of the list: the tiles and the compose pipeline resolve
+  // against the same one, and a preview that predicts a different colour than the export produces is
+  // the whole reason it is stated once.
+  const candidates = useMemo(() => (identity ? fillCandidates(identity.palette) : []), [identity])
 
   /**
    * Resolve fills against the art once the lockup has moved the text.
@@ -304,13 +288,20 @@ function CanvasEditorOverlay(props: CanvasEditorProps) {
    */
   const withContrast = useCallback(
     (next: CanvasDoc): CanvasDoc => {
-      if (!backgroundImage || fillCandidates.length === 0) return next
+      if (!backgroundImage || candidates.length === 0) return next
       const grid = buildBackdropGrid(next, backgroundImage)
-      return grid ? recolourForBackdrop(next, grid, fillCandidates) : next
+      return grid ? recolourForBackdrop(next, grid, candidates) : next
     },
-    [backgroundImage, fillCandidates]
+    [backgroundImage, candidates]
   )
 
+  /**
+   * Put a lockup on the active slide.
+   *
+   * Ids are minted HERE, not inside the mutate: `transformDoc`'s callback runs inside a React state
+   * updater that Strict Mode double-invokes, so ids generated in there differ between invocations
+   * and anything captured to select afterwards would point at nodes that do not exist.
+   */
   const applyLockupHere = useCallback(
     (id: LockupId) => {
       const doc = slidesState.doc
@@ -352,15 +343,22 @@ function CanvasEditorOverlay(props: CanvasEditorProps) {
        * Slides that cannot take the lockup are skipped and named rather than quietly broken.
        */
       const targets: number[] = []
-      const skipped: number[] = []
+      const skipped: { position: number; reason: SkipReason }[] = []
       for (const position of slidesState.positions) {
         const doc = slidesState.docsByPosition.get(position)
         if (!doc) continue
         const slideCtx = { ...lockupCtx, slide: { position, total } }
-        const copy = logicalCopy(doc)
+        const block = lockupBlock(lockup, slideCtx, logicalCopy(doc))
         const room = doc.nodes.length + lockupNodeDelta(doc, id, slideCtx) <= MAX_NODES
-        if (fitsCopy(lockup, slideCtx, copy.headline, copy.body) && room) targets.push(position)
-        else skipped.push(position)
+        const reason: SkipReason | null = block.wrongScript
+          ? 'script'
+          : block.tooMuchCopy
+            ? 'copy'
+            : !room
+              ? 'room'
+              : null
+        if (reason) skipped.push({ position, reason })
+        else targets.push(position)
       }
       if (targets.length === 0) {
         toast.error('None of the other slides have copy short enough for this lockup')
@@ -389,23 +387,17 @@ function CanvasEditorOverlay(props: CanvasEditorProps) {
         // the alternative is awaiting a decode per slide inside a state updater, which is not a
         // thing a pure mutate may do.
         const image = decodedImage(next.background.publicUrl)
-        if (!image || fillCandidates.length === 0) return next
+        if (!image || candidates.length === 0) return next
         const grid = buildBackdropGrid(next, image)
-        return grid ? recolourForBackdrop(next, grid, fillCandidates) : next
+        return grid ? recolourForBackdrop(next, grid, candidates) : next
       })
       // Remembered so the panel can offer ONE undo. `transformSlides` commits an entry per slide,
       // and ⌘Z steps only the active one — so without this the way to back out a seven-slide apply
       // is to visit each slide and undo it there.
       setLockupApplied(targets)
-      if (skipped.length > 0) {
-        toast.info(
-          skipped.length === 1
-            ? `Slide ${skipped[0]! + 1} was skipped — its copy is too long for this lockup`
-            : `${skipped.length} slides were skipped — their copy is too long for this lockup`
-        )
-      }
+      if (skipped.length > 0) toast.info(skipReport(skipped))
     },
-    [slidesState, lockupCtx, fillCandidates]
+    [slidesState, lockupCtx, candidates]
   )
 
   const removeNodes = useCallback(
@@ -855,6 +847,42 @@ const MODE_HINTS: Record<Exclude<EditorMode, 'edit'>, string> = {
   inpaint: 'Paint over what should change, then Apply',
   lasso: 'Draw a loop around the object to cut it out',
   erase: 'Paint to rub parts of the selected element away',
+}
+
+/** Why apply-to-all passed a slide over. Each has its own fix, so each is said in the user's terms. */
+type SkipReason = 'script' | 'copy' | 'room'
+
+const SKIP_PHRASES: Record<SkipReason, { one: string; many: string }> = {
+  script: {
+    one: 'its text is Cyrillic and this lockup has no Cyrillic letters',
+    many: 'their text is Cyrillic and this lockup has no Cyrillic letters',
+  },
+  copy: {
+    one: 'its copy is too long for this lockup',
+    many: 'their copy is too long for this lockup',
+  },
+  room: {
+    one: 'it is already at the layer limit',
+    many: 'they are already at the layer limit',
+  },
+}
+
+/**
+ * What the skipped-slides toast says.
+ *
+ * Names the reason only when every skipped slide shares one. The old wording said "copy is too long"
+ * whatever had happened, which sent the user off shortening a slide that had actually been passed
+ * over for its alphabet — a fix that could never work on a problem they were never told about.
+ */
+function skipReport(skipped: { position: number; reason: SkipReason }[]): string {
+  const first = skipped[0]
+  if (!first) return ''
+  if (skipped.length === 1) {
+    return `Slide ${first.position + 1} was skipped — ${SKIP_PHRASES[first.reason].one}`
+  }
+  const shared = skipped.every((entry) => entry.reason === first.reason)
+  const why = shared ? SKIP_PHRASES[first.reason].many : 'this lockup cannot hold them'
+  return `${skipped.length} slides were skipped — ${why}`
 }
 
 /** Names the active mode and its way out — until now the only exit was a button in the panel. */

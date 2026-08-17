@@ -15,6 +15,7 @@ import {
   fitsCopy,
   lockupCapacity,
   lockupFamilies,
+  lockupBlock,
   lockupMemberCount,
   lockupMemberIds,
   lockupNodeDelta,
@@ -646,6 +647,30 @@ describe('slot capacity', () => {
     const once = apply(copyDoc(), 'headliner')
     expect(apply(once, 'headliner')).toEqual(once)
   })
+
+  it('writes the first node of each role and leaves a duplicated line alone', () => {
+    // The rule `applyLockup`'s rejoin already follows, for the same reason: a user can duplicate
+    // either half to build a second line, and writing the sentence into every match destroys what
+    // they typed into the copy. setHeadline did the thing the other function documents as fatal —
+    // and blanked duplicate heroes on top of it, leaving layers that draw nothing.
+    const withHero = apply(copyDoc(), 'headliner')
+    const hero = withHero.nodes.find((n) => isTextNode(n) && n.role === 'hero') as CanvasTextNode
+    const head = withHero.nodes.find((n) => isTextNode(n) && n.role === 'headline') as CanvasTextNode
+    const duplicated = {
+      ...withHero,
+      nodes: [
+        ...withHero.nodes,
+        { ...hero, id: 'hero-copy', text: 'MINE' },
+        { ...head, id: 'head-copy', text: 'my own second line' },
+      ],
+    }
+    const after = setHeadline(duplicated, 'Seven better ways')
+    const byId = (id: string) => after.nodes.find((n) => n.id === id) as CanvasTextNode
+    expect(byId(hero.id).text).toBe('Seven')
+    expect(byId(head.id).text).toBe('better ways')
+    expect(byId('hero-copy').text).toBe('MINE')
+    expect(byId('head-copy').text).toBe('my own second line')
+  })
 })
 
 describe('activeLockup', () => {
@@ -663,6 +688,48 @@ describe('activeLockup', () => {
 
   it('reports nothing for a doc with no copy roles', () => {
     expect(activeLockup(doc([textNode('custom', 'mine')]), ctx)).toBeNull()
+  })
+
+  it('survives a recoloured fill, because the contrast pass repaints every apply', () => {
+    // The lockup writes a colour and `recolourForBackdrop` immediately overwrites it on any art busy
+    // enough to need it — the common case. Matching identity on `fill` meant a lockup stopped
+    // reporting active the moment it was applied, so the panel showed nothing selected and withheld
+    // "apply to every slide", which is offered only for the active one.
+    for (const lockup of LOCKUPS) {
+      const applied = apply(copyDoc(), lockup.id)
+      const repainted = {
+        ...applied,
+        nodes: applied.nodes.map((n) => (isTextNode(n) ? { ...n, fill: '#123456' } : n)),
+      }
+      expect(activeLockup(repainted, ctx), lockup.id).toBe(lockup.id)
+    }
+  })
+})
+
+describe('lockupBlock', () => {
+  const cyrillic = { headline: 'Пет начина', body: 'Кратък ред' }
+  const latin = { headline: 'Five ways', body: 'Short line' }
+
+  it('refuses a Latin-only lockup for Cyrillic copy, and allows it for Latin copy', () => {
+    const latinOnly = LOCKUPS.filter((lockup) => !supportsCyrillic(lockup))
+    expect(latinOnly.length, 'catalogue has Latin-only lockups to test').toBeGreaterThan(0)
+    for (const lockup of latinOnly) {
+      expect(lockupBlock(lockup, ctx, cyrillic).wrongScript, lockup.id).toBe(true)
+      expect(lockupBlock(lockup, ctx, latin).wrongScript, lockup.id).toBe(false)
+    }
+  })
+
+  it('reads the words on the slide, not the client language', () => {
+    // A Bulgarian client running an English campaign line is entitled to the Latin-only faces.
+    const latinOnly = LOCKUPS.find((lockup) => !supportsCyrillic(lockup))!
+    expect(lockupBlock(latinOnly, ctx, { headline: 'Growth', body: '' }).wrongScript).toBe(false)
+  })
+
+  it('reports both reasons independently, since a slide can fail on both', () => {
+    const latinOnly = LOCKUPS.find((lockup) => !supportsCyrillic(lockup))!
+    const flood = { headline: 'Пет'.repeat(200), body: 'Ред'.repeat(200) }
+    const block = lockupBlock(latinOnly, ctx, flood)
+    expect(block).toEqual({ wrongScript: true, tooMuchCopy: true })
   })
 })
 

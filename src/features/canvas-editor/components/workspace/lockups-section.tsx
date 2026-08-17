@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { focusableItems, rovingFocus } from '@/components/ui/roving-focus'
 import { CANVAS_HEIGHT, CANVAS_WIDTH } from '@/lib/canvas/constants'
-import { hasCyrillic } from '@/lib/canvas/font-library'
 import {
   fillCandidates,
   readableFill,
@@ -18,13 +17,14 @@ import {
   LOCKUPS,
   LOCKUP_PACKS,
   activeLockup,
-  fitsCopy,
+  lockupBlock,
   lockupCapacity,
   lockupFamilies,
   slideCopy,
   splitHero,
   supportsCyrillic,
   type Lockup,
+  type LockupBlock,
   type LockupContext,
   type LockupId,
   type LockupMember,
@@ -99,9 +99,6 @@ export function LockupsSection({
   }, [doc])
   const candidates = useMemo(() => fillCandidates(ctx.palette), [ctx.palette])
   const active = activeLockup(doc, ctx)
-  // Keyed on the words actually on the slide, not on the client's language: a Bulgarian client
-  // running an English campaign line is entitled to the Latin-only faces.
-  const requiresCyrillic = hasCyrillic(`${headline} ${body}`)
 
   // Pinned faces are not in the doc yet, so the editor's own font pass has never asked for them.
   // Loading them when the panel opens keeps the cost with the feature, and means a tile is never
@@ -157,21 +154,19 @@ export function LockupsSection({
         }
       >
         {shown.map((lockup) => {
-          const wrongScript = requiresCyrillic && !supportsCyrillic(lockup)
-          // A lockup is a SHAPE, not just a style. Stat sets its headline at display size because it
-          // is built for a figure like "47%" — pour a forty-character sentence in and it does not
-          // look bad, it runs clean off the canvas. Offering a tile that cannot work is worse than
-          // not offering it, so the slot's own geometry decides.
-          const tooMuchCopy = !fitsCopy(lockup, ctx, headline, body)
-          const blocked = wrongScript || tooMuchCopy
-          const note = blockedNote({ wrongScript, tooMuchCopy })
+          // The same predicate apply-to-all skips a slide on, so a tile the picker offers can never
+          // be one the carousel then refuses — or the reverse, which is how a Latin-only face
+          // reached a Cyrillic slide.
+          const block = lockupBlock(lockup, ctx, { headline, body })
+          const blocked = block.wrongScript || block.tooMuchCopy
+          const note = blockedNote(block)
           return (
             <button
               key={lockup.id}
               type="button"
               disabled={blocked}
               aria-pressed={active === lockup.id}
-              title={tileReason(lockup, ctx, { headline, body }, { wrongScript, tooMuchCopy })}
+              title={tileReason(lockup, ctx, { headline, body }, block)}
               onClick={() => onApply(lockup.id)}
               className={cn(
                 'flex cursor-pointer flex-col gap-1 rounded-sm border p-1 text-left transition-colors duration-150 ease-contour',
@@ -260,7 +255,7 @@ export function LockupsSection({
 }
 
 /** The short reason printed on a blocked tile; empty when the tile is offered. */
-function blockedNote(blocked: { wrongScript: boolean; tooMuchCopy: boolean }): string {
+function blockedNote(blocked: LockupBlock): string {
   if (blocked.wrongScript) return 'No Cyrillic'
   if (blocked.tooMuchCopy) return 'Needs shorter copy'
   return ''
@@ -275,7 +270,7 @@ function tileReason(
   lockup: Lockup,
   ctx: LockupContext,
   copy: { headline: string; body: string },
-  blocked: { wrongScript: boolean; tooMuchCopy: boolean }
+  blocked: LockupBlock
 ): string {
   if (blocked.wrongScript) {
     return `${lockup.label} — this lockup's font has no Cyrillic letters, and the slide's text is in Cyrillic`
