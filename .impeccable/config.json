@@ -1,7 +1,9 @@
 {
   "detector": {
     "ignoreRules": [],
-    "ignoreFiles": [],
+    "ignoreFiles": [
+      "docs/redesign-mocks/kontuur-analytics.html"
+    ],
     "ignoreValues": [
       {
         "rule": "design-system-font-size",

@@ -1,0 +1,1968 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Analytics — the comparison console</title>
+    <!--
+THESIS: Analytics is one question asked twice — "did it get better?" (client) and
+"what moved?" (operator) — so the whole page is organized as this period against
+the previous one, and refuses the category default of a tab-per-topic dashboard
+of disconnected tiles.
+OWN-WORLD: Contour (DESIGN.md governs): near-white paper, Surface clearings with
+alpha hairlines, Deep Pine / sage as the only two chart hues (now vs then —
+validated pair, ΔE 33), Living Green as the now-instant and the second series
+within a single period (never "then"), lime once
+as the standing place (active range), serif italic only where the report speaks.
+STORY: the reader lands on the period pair, reads the narrative, scans five
+now-vs-then facts, then descends: where views came from → which format earned
+them → which interactions moved → what the profile converted → who the audience
+became → the posts that did it. Print produces the client report unchanged.
+FIRST VIEWPORT: masthead (client, period-vs-period, range control with lime
+standing place, Export) over the AI narrative, over the five-cell hairline
+summary strip with sparklines; the reach comparison chart opens below the fold.
+FORM: Comparison console — candidate 6 of 7 on the grounded structure list,
+assigned by seed dd6afdf9 (concept-seed --scope surface --mode operate).
+FINISH: unreviewed and undocumented is unfinished; this build ends with the
+finish review, the verdict, and DESIGN.md.
+
+All numbers in this mock are SYNTHETIC seed data for the fictional client
+"GreenLeaf Café" (the roster the redesign mocks share). Nothing here is a
+performance claim. Accepted sub-3:1 sage: sparkline strokes and the 8px
+then-fills (2.75:1) — every such mark carries its printed value. Geist and Instrument Serif are stood in by the system sans
+and Georgia, as in every sibling mock.
+-->
+    <style>
+      /* ═══ Document chrome — theme-aware. The app frame inside stays light,
+         because Kontuur is a committed light system. ═══════════════════ */
+      :root {
+        --d-bg: #f6f8f5;
+        --d-surface: #ffffff;
+        --d-ink: #101613;
+        --d-ink2: #4f5a52;
+        --d-ink3: #667068;
+        --d-line: #e1e8e1;
+        --d-accent: #164430;
+        --d-soft: #eef4ef;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --d-bg: #0d1310;
+          --d-surface: #141c18;
+          --d-ink: #edf1ed;
+          --d-ink2: #a6b2a9;
+          --d-ink3: #7e8a82;
+          --d-line: #222e28;
+          --d-accent: #7fd6a8;
+          --d-soft: #16241c;
+        }
+      }
+      :root[data-theme='dark'] {
+        --d-bg: #0d1310;
+        --d-surface: #141c18;
+        --d-ink: #edf1ed;
+        --d-ink2: #a6b2a9;
+        --d-ink3: #7e8a82;
+        --d-line: #222e28;
+        --d-accent: #7fd6a8;
+        --d-soft: #16241c;
+      }
+      :root[data-theme='light'] {
+        --d-bg: #f6f8f5;
+        --d-surface: #ffffff;
+        --d-ink: #101613;
+        --d-ink2: #4f5a52;
+        --d-ink3: #667068;
+        --d-line: #e1e8e1;
+        --d-accent: #164430;
+        --d-soft: #eef4ef;
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      html {
+        -webkit-text-size-adjust: 100%;
+      }
+      body {
+        background: var(--d-bg);
+        color: var(--d-ink);
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+        font-size: 15px;
+        line-height: 1.6;
+      }
+      .doc {
+        max-width: 1480px;
+        margin: 0 auto;
+        padding: 48px 32px 96px;
+      }
+      .doc-head {
+        max-width: 760px;
+        margin-bottom: 12px;
+      }
+      .doc-head h1 {
+        font-family: Georgia, 'Times New Roman', serif;
+        font-style: italic;
+        font-weight: 400;
+        font-size: 34px;
+        line-height: 1.2;
+        letter-spacing: -0.01em;
+      }
+      .doc-head p {
+        color: var(--d-ink2);
+        margin-top: 12px;
+        font-size: 14px;
+      }
+      .doc-head p + p {
+        margin-top: 6px;
+      }
+      .doc-controls {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        margin: 24px 0 16px;
+        flex-wrap: wrap;
+      }
+      .doc-controls .lbl {
+        font-size: 11px;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--d-ink3);
+        font-weight: 600;
+        margin-right: 4px;
+      }
+      .doc-btn {
+        font: inherit;
+        font-size: 13px;
+        font-weight: 500;
+        color: var(--d-ink2);
+        background: var(--d-surface);
+        border: 1px solid var(--d-line);
+        border-radius: 999px;
+        padding: 5px 14px;
+        cursor: pointer;
+      }
+      .doc-btn[aria-pressed='true'] {
+        background: var(--d-accent);
+        border-color: var(--d-accent);
+        color: var(--d-bg);
+      }
+      .doc-btn:focus-visible {
+        outline: 2px solid var(--d-accent);
+        outline-offset: 2px;
+      }
+      .doc-note {
+        font-size: 12.5px;
+        color: var(--d-ink3);
+      }
+
+      /* ═══ The app frame — Contour tokens, committed light. ═══════════════ */
+      .frame {
+        --paper: #fbfcfa;
+        --surface: #ffffff;
+        --sunken: #f3f5f2;
+        --ink: #0f1512;
+        --text2: #57625a;
+        --text3: #667068;
+        --line: #e7ece7;
+        --line2: #d5ddd6;
+        --edge: rgba(15, 21, 18, 0.05);
+        --forest: #164430;
+        --forest-deep: #0c2e20;
+        --spring: #2e9e68;
+        --spring-text: #278658;
+        --spring-lite: #7fd6a8;
+        --accent: #cfea45;
+        --accent-deep: #b4cd32;
+        --wash: #eef4ef;
+        --marker: #d9eddd;
+        --sage-surface: #cfe4d4;
+        --then: #7fa588; /* previous period fills — always value-labeled */
+        --then-line: #6f957a; /* previous period at 2px — same hue, 3.4:1 on white */
+        --danger: #b04a38;
+        --danger-bg: #fbefec;
+        --pending: #8a6116;
+        --pending-bg: #f7efdc;
+        --ease: cubic-bezier(0.22, 1, 0.36, 1);
+        --hatch: repeating-linear-gradient(
+          45deg,
+          rgba(15, 21, 18, 0.055) 0 1px,
+          transparent 1px 7px
+        );
+
+        background: var(--paper);
+        color: var(--ink);
+        border: 1px solid var(--d-line);
+        border-radius: 18px;
+        box-shadow: 0 24px 60px rgba(15, 21, 18, 0.06);
+        overflow: hidden;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+        font-size: 13px;
+        line-height: 1.6;
+      }
+      .frame .serif {
+        font-family: Georgia, 'Times New Roman', serif;
+        font-style: italic;
+        font-weight: 400;
+      }
+
+      .shell {
+        max-width: 1280px;
+        margin: 0 auto;
+        padding: 0 32px 56px;
+      }
+
+      /* ── Type roles (DESIGN.md ramp, mock spellings) ── */
+      .t-headline {
+        font-size: 22px;
+        font-weight: 600;
+        letter-spacing: -0.02em;
+        line-height: 1.25;
+      }
+      .t-metric {
+        font-size: 28px;
+        font-weight: 600;
+        letter-spacing: -0.02em;
+        line-height: 1.1;
+        font-variant-numeric: tabular-nums;
+      }
+      .t-title {
+        font-size: 15px;
+        font-weight: 600;
+        letter-spacing: -0.01em;
+        line-height: 1.4;
+      }
+      .t-body {
+        font-size: 13px;
+        font-weight: 400;
+        line-height: 1.6;
+      }
+      .t-caption {
+        font-size: 12px;
+        font-weight: 400;
+        line-height: 1.4;
+      }
+      .t-micro {
+        font-size: 11px;
+        font-weight: 500;
+        line-height: 1.35;
+      }
+      .t-label {
+        font-size: 10px;
+        font-weight: 600;
+        letter-spacing: 0.16em;
+        line-height: 1.2;
+        text-transform: uppercase;
+      }
+      .num {
+        font-variant-numeric: tabular-nums;
+      }
+      .muted {
+        color: var(--text2);
+      }
+      .faint {
+        color: var(--text3);
+      }
+
+      .sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0 0 0 0);
+        white-space: nowrap;
+        border: 0;
+      }
+
+      /* ── Masthead ── */
+      .masthead {
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 24px;
+        padding: 36px 0 20px;
+        flex-wrap: wrap;
+      }
+      .mast-left {
+        min-width: 260px;
+      }
+      .client-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 10px;
+      }
+      .client-dot {
+        width: 26px;
+        height: 26px;
+        border-radius: 999px;
+        flex: none;
+        background: color-mix(in srgb, #6e7f52 14%, transparent);
+        color: color-mix(in srgb, #6e7f52 78%, var(--ink));
+        display: grid;
+        place-items: center;
+        font-size: 10px;
+        font-weight: 600;
+        letter-spacing: 0.02em;
+      }
+      .period-line {
+        margin-top: 6px;
+        color: var(--text2);
+      }
+      .period-line strong {
+        color: var(--ink);
+        font-weight: 500;
+      }
+      .mast-right {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        flex-wrap: wrap;
+      }
+
+      .range {
+        display: flex;
+        align-items: center;
+        border: 1px solid var(--line2);
+        border-radius: 10px;
+        background: var(--surface);
+        padding: 2px;
+        gap: 2px;
+      }
+      .range button {
+        font: inherit;
+        font-size: 12px;
+        font-weight: 500;
+        color: var(--text2);
+        background: transparent;
+        border: 0;
+        border-radius: 8px;
+        padding: 5px 12px;
+        cursor: pointer;
+        transition:
+          background 150ms var(--ease),
+          color 150ms var(--ease);
+      }
+      .range button:hover {
+        background: var(--sunken);
+      }
+      .range button:focus-visible {
+        outline: 0;
+        box-shadow: 0 0 0 3px rgba(46, 158, 104, 0.25);
+      }
+      /* The one lime in the frame: where the reader is standing in time. */
+      .range button[aria-pressed='true'] {
+        background: var(--accent);
+        color: var(--forest-deep);
+        font-weight: 600;
+        box-shadow: inset 0 0 0 1px rgba(12, 46, 32, 0.45);
+      }
+      .btn-secondary {
+        font: inherit;
+        font-size: 13px;
+        font-weight: 500;
+        color: var(--ink);
+        background: transparent;
+        border: 1px solid var(--line2);
+        border-radius: 10px;
+        padding: 8px 16px;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        transition: background 150ms var(--ease);
+      }
+      .btn-secondary:hover {
+        background: var(--sunken);
+      }
+      .btn-secondary:focus-visible {
+        outline: 0;
+        box-shadow: 0 0 0 3px rgba(46, 158, 104, 0.25);
+      }
+      .btn-secondary:active {
+        transform: scale(0.98);
+      }
+      .btn-secondary svg {
+        width: 14px;
+        height: 14px;
+        stroke: currentColor;
+        fill: none;
+        stroke-width: 1.4;
+      }
+
+      /* ── The narrative (AI summary) ── */
+      .narrative {
+        padding: 20px 0 26px;
+        border-top: 1px solid var(--edge);
+        max-width: 74ch;
+      }
+      .narrative p {
+        font-family: Georgia, serif;
+        font-style: italic;
+        font-size: 18px;
+        line-height: 1.55;
+        color: var(--ink);
+      }
+      .narrative .src {
+        margin-top: 8px;
+      }
+
+      /* ── Summary strip — direction-01 idiom, comparison grammar ── */
+      .strip {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        border-top: 1px solid var(--edge);
+        border-bottom: 1px solid var(--edge);
+      }
+      .cell {
+        padding: 18px 22px 20px 0;
+        min-width: 0;
+      }
+      .cell + .cell {
+        border-left: 1px solid var(--edge);
+        padding-left: 22px;
+      }
+      .cell .t-label {
+        color: var(--text3);
+      }
+      .cell .val {
+        display: flex;
+        align-items: baseline;
+        gap: 8px;
+        margin-top: 8px;
+        flex-wrap: wrap;
+      }
+      .delta {
+        font-size: 11px;
+        font-weight: 600;
+        padding: 2px 7px;
+        border-radius: 999px;
+        white-space: nowrap;
+        font-variant-numeric: tabular-nums;
+      }
+      /* DESIGN.md chip pairs: Deep Pine on Wash / Clay on Clay bg — spring-text on
+     Wash measures 4.1:1, which is why it is not used here. */
+      .delta.up {
+        color: var(--forest);
+        background: var(--wash);
+      }
+      .delta.down {
+        color: var(--danger);
+        background: var(--danger-bg);
+      }
+      .delta.flat {
+        color: var(--text2);
+        background: var(--sunken);
+      }
+      .cell .then-line {
+        margin-top: 4px;
+        color: var(--text3);
+      }
+      .cell svg.spark {
+        display: block;
+        margin-top: 10px;
+        width: 100%;
+        height: 28px;
+      }
+
+      /* ── Sections ── */
+      .section {
+        margin-top: 28px;
+        background: var(--surface);
+        border: 1px solid var(--edge);
+        border-radius: 20px;
+        padding: 22px 26px 26px;
+      }
+      .sec-head {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 4px;
+        flex-wrap: wrap;
+      }
+      .sec-head .sub {
+        color: var(--text2);
+        max-width: 62ch;
+      }
+      .legend {
+        display: flex;
+        gap: 16px;
+        align-items: center;
+        flex: none;
+      }
+      .legend span {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 11px;
+        font-weight: 500;
+        color: var(--text2);
+      }
+      .key {
+        width: 14px;
+        height: 3px;
+        border-radius: 999px;
+        display: inline-block;
+      }
+      .key.now {
+        background: var(--forest);
+      }
+      .key.then {
+        background: var(--then);
+      }
+      .key.dot-now {
+        width: 8px;
+        height: 8px;
+        border-radius: 999px;
+        background: var(--forest);
+      }
+      .key.dot-b {
+        width: 8px;
+        height: 8px;
+        border-radius: 999px;
+        background: var(--spring);
+      }
+
+      /* Hero comparison chart */
+      .chart-wrap {
+        margin-top: 14px;
+        overflow-x: auto;
+      }
+      .chart-inner {
+        min-width: 720px;
+      }
+      .chart-wrap svg {
+        display: block;
+        width: 100%;
+        height: auto;
+      }
+      .axis-row {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 6px;
+        color: var(--text3);
+        font-size: 11px;
+        font-variant-numeric: tabular-nums;
+      }
+      .callout {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: 14px;
+        background: var(--wash);
+        color: var(--forest);
+        border-radius: 10px;
+        padding: 5px 10px;
+        font-size: 11px;
+        font-weight: 500;
+      }
+      .callout b {
+        font-weight: 600;
+      }
+
+      /* Two-column pairing for mid sections */
+      .duo {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 28px;
+        margin-top: 28px;
+      }
+      .duo .section {
+        margin-top: 0;
+      }
+
+      /* Composition bar (follower vs non-follower) */
+      .comp-bar {
+        display: flex;
+        height: 34px;
+        border-radius: 8px;
+        overflow: hidden;
+        margin-top: 16px;
+        gap: 2px;
+        background: var(--surface);
+      }
+      .comp-bar .seg {
+        display: flex;
+        align-items: center;
+        padding: 0 12px;
+        color: #fff;
+        font-size: 11px;
+        font-weight: 600;
+        font-variant-numeric: tabular-nums;
+        min-width: 0;
+        white-space: nowrap;
+      }
+      .comp-bar .seg.followers {
+        background: var(--forest);
+        border-radius: 8px 0 0 8px;
+      }
+      /* In-fill label picks ink by the fill's luminance: white fails on Living Green. */
+      .comp-bar .seg.new {
+        background: var(--spring);
+        border-radius: 0 8px 8px 0;
+        color: var(--ink);
+      }
+      .comp-note {
+        margin-top: 10px;
+        color: var(--text2);
+      }
+      .comp-then {
+        display: flex;
+        height: 8px;
+        gap: 2px;
+        margin-top: 10px;
+        border-radius: 4px;
+        overflow: hidden;
+        opacity: 0.55;
+      }
+      .comp-then i {
+        background: var(--forest);
+      }
+      .comp-then em {
+        background: var(--spring);
+      }
+
+      /* Format rows & funnel rows: labeled rows, paired now/then bars */
+      .rows {
+        margin-top: 12px;
+        display: grid;
+        gap: 14px;
+      }
+      .row {
+        display: grid;
+        grid-template-columns: 118px 1fr;
+        gap: 14px;
+        align-items: center;
+      }
+      .row .name {
+        font-size: 12px;
+        font-weight: 500;
+        color: var(--ink);
+      }
+      .row .name .faint {
+        display: block;
+        font-weight: 400;
+        font-size: 11px;
+      }
+      .bars {
+        display: grid;
+        gap: 3px;
+      }
+      .bar {
+        position: relative;
+        height: 16px;
+        display: flex;
+        align-items: center;
+      }
+      .bar i {
+        display: block;
+        height: 100%;
+        border-radius: 0 4px 4px 0;
+      }
+      .bar.now i {
+        background: var(--forest);
+      }
+      .bar.then i {
+        background: var(--then);
+        height: 8px;
+        border-radius: 0 4px 4px 0;
+      }
+      .bar .v {
+        margin-left: 8px;
+        font-size: 11px;
+        font-weight: 500;
+        color: var(--ink);
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+      }
+      .bar.then .v {
+        color: var(--text3);
+        font-weight: 400;
+      }
+
+      /* Interaction small multiples */
+      .multiples {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 0;
+        margin-top: 8px;
+      }
+      .mult {
+        padding: 14px 18px 4px 0;
+      }
+      .mult + .mult {
+        border-left: 1px solid var(--edge);
+        padding-left: 18px;
+      }
+      .mult .t-label {
+        color: var(--text3);
+      }
+      .mult .val {
+        display: flex;
+        align-items: baseline;
+        gap: 7px;
+        margin-top: 6px;
+      }
+      .mult .val b {
+        font-size: 18px;
+        font-weight: 600;
+        letter-spacing: -0.02em;
+        font-variant-numeric: tabular-nums;
+      }
+      .mini {
+        display: flex;
+        align-items: flex-end;
+        gap: 6px;
+        height: 46px;
+        margin-top: 10px;
+      }
+      .mini i {
+        width: 18px;
+        border-radius: 4px 4px 0 0;
+        display: block;
+      }
+      .mini .then {
+        background: var(--then);
+      }
+      .mini .now {
+        background: var(--forest);
+      }
+
+      /* Audience */
+      .aud-grid {
+        display: grid;
+        grid-template-columns: 1.4fr 1fr;
+        gap: 32px;
+        margin-top: 16px;
+      }
+      .age-cols {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 14px;
+        align-items: end;
+        height: 150px;
+      }
+      .age {
+        display: grid;
+        grid-template-rows: 1fr auto;
+        height: 100%;
+        gap: 8px;
+      }
+      .age .pair {
+        display: flex;
+        gap: 3px;
+        align-items: flex-end;
+        height: 100%;
+        justify-content: center;
+      }
+      .age .pair i {
+        width: 16px;
+        border-radius: 4px 4px 0 0;
+      }
+      .age .pair .fwrap {
+        position: relative;
+        display: flex;
+        align-items: flex-end;
+        height: 100%;
+      }
+      .age .pair .fol {
+        background: var(--forest);
+      }
+      .age .pair .tick {
+        position: absolute;
+        left: -2px;
+        width: 20px;
+        height: 2px;
+        background: var(--then-line);
+        border-radius: 999px;
+      }
+      .age .pair .eng {
+        background: var(--spring);
+      }
+      .age .cap {
+        text-align: center;
+        color: var(--text3);
+        font-size: 11px;
+      }
+      .aud-side .t-label {
+        color: var(--text3);
+      }
+      .place-list {
+        margin-top: 10px;
+        display: grid;
+        gap: 8px;
+      }
+      .place {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 12px;
+      }
+      .place .nm {
+        width: 74px;
+        color: var(--ink);
+        flex: none;
+      }
+      .place .track {
+        flex: 1;
+        height: 6px;
+        border-radius: 999px;
+        background: var(--sunken);
+        overflow: hidden;
+      }
+      .place .track i {
+        display: block;
+        height: 100%;
+        background: var(--forest);
+        border-radius: 999px;
+      }
+      .place .was {
+        width: 56px;
+        text-align: right;
+        color: var(--text3);
+        font-size: 11px;
+        font-variant-numeric: tabular-nums;
+        flex: none;
+      }
+      .place .pc {
+        width: 38px;
+        text-align: right;
+        color: var(--text2);
+        font-variant-numeric: tabular-nums;
+        flex: none;
+        font-size: 11px;
+      }
+      .aud-side + .aud-side {
+        margin-top: 22px;
+      }
+
+      /* Posts table */
+      .table-scroll {
+        overflow-x: auto;
+        margin-top: 12px;
+      }
+      table.posts {
+        width: 100%;
+        min-width: 640px;
+        border-collapse: collapse;
+      }
+      .posts th {
+        text-align: right;
+        font-size: 10px;
+        font-weight: 600;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: var(--text3);
+        padding: 8px 10px;
+        border-bottom: 1px solid var(--line);
+      }
+      .posts th:first-child {
+        text-align: left;
+        padding-left: 0;
+      }
+      .posts td {
+        padding: 10px;
+        border-bottom: 1px solid var(--edge);
+        text-align: right;
+        font-variant-numeric: tabular-nums;
+        font-size: 12px;
+        color: var(--ink);
+        white-space: nowrap;
+      }
+      .posts td:first-child {
+        text-align: left;
+        padding-left: 0;
+        white-space: normal;
+      }
+      .posts tr:last-child td {
+        border-bottom: 0;
+      }
+      .posts tr.top td {
+        background: var(--wash);
+      }
+      .posts tr.top td:first-child {
+        border-radius: 8px 0 0 8px;
+        padding-left: 10px;
+      }
+      .posts tr.top td:last-child {
+        border-radius: 0 8px 8px 0;
+      }
+      .post-id {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-width: 0;
+      }
+      .thumb {
+        width: 34px;
+        height: 34px;
+        border-radius: 8px;
+        flex: none;
+        background: var(--sage-surface);
+        display: grid;
+        place-items: center;
+        color: var(--forest);
+        font-size: 10px;
+        font-weight: 600;
+      }
+      .thumb.reel {
+        background: var(--marker);
+      }
+      .post-id .cap {
+        font-size: 12px;
+        color: var(--ink);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        max-width: 30ch;
+      }
+      .post-id .cap .faint {
+        display: block;
+        font-size: 11px;
+      }
+      .chip {
+        display: inline-block;
+        font-size: 10px;
+        font-weight: 600;
+        padding: 2px 7px;
+        border-radius: 999px;
+        background: var(--sunken);
+        color: var(--text2);
+        margin-left: 8px;
+        vertical-align: 1px;
+        letter-spacing: 0.02em;
+      }
+      td .d {
+        font-size: 11px;
+        font-weight: 500;
+        display: block;
+        margin-top: 1px;
+      }
+      td .d.up {
+        color: var(--forest);
+      }
+      td .d.down {
+        color: var(--danger);
+      }
+
+      /* Archive + sync footer */
+      .archive-rows {
+        margin-top: 10px;
+        display: grid;
+      }
+      .arch {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 11px 0;
+        border-bottom: 1px solid var(--edge);
+        font-size: 12px;
+      }
+      .arch:last-child {
+        border-bottom: 0;
+      }
+      .arch .when {
+        color: var(--text3);
+        font-variant-numeric: tabular-nums;
+      }
+      .arch a {
+        color: var(--forest);
+        font-weight: 500;
+        text-decoration: none;
+      }
+      .arch a:hover {
+        text-decoration: underline;
+      }
+      .arch a:focus-visible {
+        outline: 0;
+        box-shadow: 0 0 0 3px rgba(46, 158, 104, 0.25);
+        border-radius: 4px;
+      }
+      .sync {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: 26px;
+        color: var(--text3);
+        font-size: 11px;
+      }
+      .sync .live {
+        width: 7px;
+        height: 7px;
+        border-radius: 999px;
+        background: var(--spring);
+      }
+
+      /* ── First-day state ── */
+      .frame[data-state='day1'] .when-live {
+        display: none !important;
+      }
+      .frame:not([data-state='day1']) .when-day1 {
+        display: none !important;
+      }
+      .empty-fill {
+        border-radius: 10px;
+        background: var(--hatch);
+        min-height: 96px;
+        display: grid;
+        place-items: center;
+        padding: 18px;
+      }
+      .empty-fill span {
+        background: var(--surface);
+        border-radius: 999px;
+        padding: 4px 12px;
+        color: var(--text2);
+        font-size: 11px;
+        font-weight: 500;
+      }
+      .cell .dash {
+        color: var(--text3);
+      }
+      .cell .slot {
+        margin-top: 10px;
+        height: 28px;
+        border-radius: 8px;
+        background: var(--hatch);
+      }
+
+      /* ── Print: the document ships, the console chrome stays home ── */
+      @media print {
+        body {
+          background: #fff;
+        }
+        .doc {
+          padding: 0;
+          max-width: none;
+        }
+        .doc-head,
+        .doc-controls,
+        .doc-foot {
+          display: none;
+        }
+        .frame {
+          border: 0;
+          box-shadow: none;
+          border-radius: 0;
+        }
+        .print-hide {
+          display: none !important;
+        }
+        .section {
+          break-inside: avoid;
+          border-color: #e7ece7;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        * {
+          transition: none !important;
+        }
+      }
+
+      /* ── Narrow ── */
+      @media (max-width: 980px) {
+        .doc {
+          padding: 24px 12px 64px;
+        }
+        .shell {
+          padding: 0 18px 40px;
+        }
+        .strip {
+          grid-template-columns: 1fr 1fr;
+        }
+        .cell,
+        .cell + .cell {
+          border-left: 0;
+          padding-left: 0;
+        }
+        .cell:nth-child(even) {
+          border-left: 1px solid var(--edge);
+          padding-left: 18px;
+        }
+        .cell:nth-child(n + 3) {
+          border-top: 1px solid var(--edge);
+        }
+        .duo {
+          grid-template-columns: 1fr;
+        }
+        .multiples {
+          grid-template-columns: 1fr 1fr;
+        }
+        .mult:nth-child(odd) {
+          border-left: 0;
+          padding-left: 0;
+        }
+        .mult:nth-child(even) {
+          border-left: 1px solid var(--edge);
+        }
+        .mult {
+          border-top: 1px solid var(--edge);
+        }
+        .mult:nth-child(-n + 2) {
+          border-top: 0;
+        }
+        .aud-grid {
+          grid-template-columns: 1fr;
+        }
+        .posts .opt {
+          display: none;
+        }
+        .comp-bar .seg {
+          padding: 0 8px;
+        }
+        .comp-bar .seg-name {
+          display: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="doc">
+      <header class="doc-head">
+        <h1>Analytics, as a comparison console</h1>
+        <p>
+          One organizing idea: every number on this page is read against the previous period. The
+          agency's question ("what moved?") and the client's question ("did it get better?") are the
+          same question here. Print produces the client report.
+        </p>
+        <p class="doc-note">
+          All figures are synthetic seed data for the fictional GreenLeaf&nbsp;Café. Chart hues are
+          the validated pair — Deep&nbsp;Pine for this period, sage for the previous one.
+        </p>
+      </header>
+
+      <div class="doc-controls">
+        <span class="lbl">State</span>
+        <button class="doc-btn" data-state-btn="live" aria-pressed="true">Thirty days in</button>
+        <button class="doc-btn" data-state-btn="day1" aria-pressed="false">
+          First day — before the first sync
+        </button>
+      </div>
+
+      <!-- ═══════════════════ THE SCREEN ═══════════════════ -->
+      <div class="frame" data-state="live" id="frame">
+        <div class="shell">
+          <!-- Masthead -->
+          <header class="masthead">
+            <div class="mast-left">
+              <div class="client-row">
+                <span class="client-dot" aria-hidden="true">GC</span>
+                <span class="t-title">GreenLeaf Café</span>
+                <span class="t-micro faint">Instagram · @greenleaf.cafe</span>
+              </div>
+              <h2 class="t-headline">Analytics</h2>
+              <p class="period-line t-body">
+                <strong>19 Jul – 17 Aug 2026</strong>
+                <span class="faint">against</span>
+                19 Jun – 18 Jul
+              </p>
+            </div>
+            <div class="mast-right print-hide">
+              <div class="range" role="group" aria-label="Reporting period">
+                <button aria-pressed="false">7 days</button>
+                <button aria-pressed="true">30 days</button>
+                <button aria-pressed="false">90 days</button>
+                <button aria-pressed="false">Custom</button>
+              </div>
+              <button class="btn-secondary">
+                <svg viewBox="0 0 16 16" aria-hidden="true">
+                  <path d="M8 2v8m0 0 3-3m-3 3L5 7M3 12v1.5h10V12" />
+                </svg>
+                Export report
+              </button>
+            </div>
+          </header>
+
+          <!-- The narrative -->
+          <section class="narrative" aria-label="Summary">
+            <div class="when-live">
+              <p>
+                “Saves grew faster than any other signal this month — nearly a third over June — and
+                almost all of that came from carousels. Two in five views now come from people who
+                don't follow you yet.”
+              </p>
+              <div class="src t-micro faint">
+                Written from this period's numbers · regenerates after each nightly sync
+              </div>
+            </div>
+            <div class="when-day1">
+              <p>
+                “Your first report writes itself tonight. From tomorrow, every number on this page
+                reads against the month before it.”
+              </p>
+              <div class="src t-micro faint">First sync tonight at 03:30 · nothing to do</div>
+            </div>
+          </section>
+
+          <!-- Summary strip -->
+          <section aria-label="Headline metrics">
+            <h3 class="sr-only">Headline metrics, this period against the previous period</h3>
+            <div class="strip">
+              <div class="cell">
+                <div class="t-label">Views</div>
+                <div class="when-live">
+                  <div class="val">
+                    <span class="t-metric">48,210</span><span class="delta up">▲ 15.1%</span>
+                  </div>
+                  <div class="then-line t-micro">41,890 last period</div>
+                  <svg
+                    class="spark"
+                    data-spark="views"
+                    role="img"
+                    aria-label="Views by day, thirty days, rising through the period"
+                  ></svg>
+                </div>
+                <div class="when-day1">
+                  <div class="val"><span class="t-metric dash">—</span></div>
+                  <div class="then-line t-micro">counts from tonight</div>
+                  <div class="slot" aria-hidden="true"></div>
+                </div>
+              </div>
+              <div class="cell">
+                <div class="t-label">Reach</div>
+                <div class="when-live">
+                  <div class="val">
+                    <span class="t-metric">12,640</span><span class="delta up">▲ 12.8%</span>
+                  </div>
+                  <div class="then-line t-micro">11,210 last period</div>
+                  <svg
+                    class="spark"
+                    data-spark="reach"
+                    role="img"
+                    aria-label="Reach by day, thirty days, a spike on nine August"
+                  ></svg>
+                </div>
+                <div class="when-day1">
+                  <div class="val"><span class="t-metric dash">—</span></div>
+                  <div class="then-line t-micro">counts from tonight</div>
+                  <div class="slot" aria-hidden="true"></div>
+                </div>
+              </div>
+              <div class="cell">
+                <div class="t-label">Interactions</div>
+                <div class="when-live">
+                  <div class="val">
+                    <span class="t-metric">3,486</span><span class="delta up">▲ 12.4%</span>
+                  </div>
+                  <div class="then-line t-micro">3,102 last period</div>
+                  <svg
+                    class="spark"
+                    data-spark="inter"
+                    role="img"
+                    aria-label="Interactions by day, thirty days, steady with a mid-month lift"
+                  ></svg>
+                </div>
+                <div class="when-day1">
+                  <div class="val"><span class="t-metric dash">—</span></div>
+                  <div class="then-line t-micro">counts from tonight</div>
+                  <div class="slot" aria-hidden="true"></div>
+                </div>
+              </div>
+              <div class="cell">
+                <div class="t-label">Net followers</div>
+                <div class="when-live">
+                  <div class="val">
+                    <span class="t-metric">+186</span><span class="delta up">▲ 53.7%</span>
+                  </div>
+                  <div class="then-line t-micro">241 gained · 55 lost · 8,412 total</div>
+                  <svg
+                    class="spark"
+                    data-spark="foll"
+                    role="img"
+                    aria-label="Follower count by day, thirty days, climbing steadily"
+                  ></svg>
+                </div>
+                <div class="when-day1">
+                  <div class="val"><span class="t-metric dash">—</span></div>
+                  <div class="then-line t-micro">counts from tonight</div>
+                  <div class="slot" aria-hidden="true"></div>
+                </div>
+              </div>
+              <div class="cell">
+                <div class="t-label">Engagement rate</div>
+                <div class="when-live">
+                  <div class="val">
+                    <span class="t-metric">4.6%</span><span class="delta up">▲ 0.4 pt</span>
+                  </div>
+                  <div class="then-line t-micro">4.2% last period</div>
+                  <svg
+                    class="spark"
+                    data-spark="er"
+                    role="img"
+                    aria-label="Engagement rate by day, thirty days, gently rising"
+                  ></svg>
+                </div>
+                <div class="when-day1">
+                  <div class="val"><span class="t-metric dash">—</span></div>
+                  <div class="then-line t-micro">counts from tonight</div>
+                  <div class="slot" aria-hidden="true"></div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- Hero comparison: reach day by day -->
+          <section class="section" aria-label="Reach, day by day">
+            <div class="sec-head">
+              <div>
+                <h3 class="t-title">Reach, day by day</h3>
+                <p class="sub t-caption">Each day against the same day of the previous period.</p>
+              </div>
+              <div class="legend" aria-hidden="true">
+                <span><i class="key now"></i>This period</span>
+                <span><i class="key then"></i>Previous</span>
+              </div>
+            </div>
+            <div class="when-live">
+              <div class="chart-wrap">
+                <div class="chart-inner">
+                  <svg
+                    id="trend"
+                    viewBox="0 0 1120 264"
+                    role="img"
+                    aria-label="Line chart. Daily reach for this period against the previous one. This period runs higher most days and spikes to 986 on nine August; the previous period stays between 310 and 610."
+                  ></svg>
+                </div>
+              </div>
+              <div class="callout">
+                Best day: <b>9 Aug — 986 accounts</b> · the “Iced bar menu” carousel
+              </div>
+            </div>
+            <div class="when-day1">
+              <div class="empty-fill" style="min-height: 240px">
+                <span>Day one builds tonight — reach appears here after the 03:30 sync</span>
+              </div>
+            </div>
+          </section>
+
+          <!-- Where views came from + Formats -->
+          <div class="duo">
+            <section class="section" aria-label="Where views came from">
+              <div class="sec-head">
+                <div>
+                  <h3 class="t-title">Where views came from</h3>
+                  <p class="sub t-caption">Followers against people who found you.</p>
+                </div>
+              </div>
+              <div class="when-live">
+                <div
+                  class="comp-bar"
+                  role="img"
+                  aria-label="This period, 58 percent of views came from followers and 42 percent from non-followers. Last period the split was 66 to 34."
+                >
+                  <div class="seg followers" style="flex: 58">
+                    <span class="seg-name">Followers · </span>58%
+                  </div>
+                  <div class="seg new" style="flex: 42">
+                    <span class="seg-name">Non-followers · </span>42%
+                  </div>
+                </div>
+                <div class="comp-then" aria-hidden="true">
+                  <i style="flex: 66"></i><em style="flex: 34"></em>
+                </div>
+                <p class="comp-note t-caption">
+                  Non-follower views grew from <span class="num">34%</span> to
+                  <span class="num">42%</span> — 20,248 views from accounts that don't follow you
+                  yet, up <span class="num">6,006</span> on last period.
+                </p>
+                <div class="legend" style="margin-top: 12px" aria-hidden="true">
+                  <span><i class="key dot-now"></i>Followers</span>
+                  <span><i class="key dot-b"></i>Non-followers</span>
+                </div>
+              </div>
+              <div class="when-day1">
+                <div class="empty-fill"><span>Splits appear after the first sync</span></div>
+              </div>
+            </section>
+
+            <section class="section" aria-label="Reach by format">
+              <div class="sec-head">
+                <div>
+                  <h3 class="t-title">What each format earned</h3>
+                  <p class="sub t-caption">Reach by format, against last period.</p>
+                </div>
+                <div class="legend" aria-hidden="true">
+                  <span><i class="key now"></i>Now</span>
+                  <span><i class="key then"></i>Then</span>
+                </div>
+              </div>
+              <div class="when-live">
+                <div
+                  class="rows"
+                  id="formats"
+                  role="img"
+                  aria-label="Bar chart. Carousels reached 6,930 accounts this period versus 5,410 last period. Single images reached 4,210 versus 4,480. Reels reached 1,500 versus 1,320."
+                ></div>
+                <p class="comp-note t-caption" style="margin-top: 14px">
+                  Carousels carried the month: <span class="num">+28%</span> reach on
+                  <span class="num">9</span> posts. Singles slipped <span class="num">6%</span>.
+                </p>
+              </div>
+              <div class="when-day1">
+                <div class="empty-fill">
+                  <span>Format comparison appears after the first sync</span>
+                </div>
+              </div>
+            </section>
+          </div>
+
+          <!-- Interactions -->
+          <section class="section" aria-label="Interactions">
+            <div class="sec-head">
+              <div>
+                <h3 class="t-title">What people did</h3>
+                <p class="sub t-caption">Each interaction, this period beside the last.</p>
+              </div>
+              <div class="legend" aria-hidden="true">
+                <span
+                  ><i class="key then" style="height: 8px; width: 8px; border-radius: 4px"></i
+                  >Then</span
+                >
+                <span
+                  ><i class="key now" style="height: 12px; width: 8px; border-radius: 4px"></i
+                  >Now</span
+                >
+              </div>
+            </div>
+            <div class="when-live">
+              <div
+                class="multiples"
+                id="multiples"
+                role="img"
+                aria-label="Five paired columns. Likes 2,410 against 2,236 — up 8 percent. Comments 312 against 270 — up 16 percent. Saves 508 against 391 — up 30 percent, the fastest-growing signal. Shares 198 against 154 — up 29 percent. Replies 58 against 51 — up 14 percent."
+              ></div>
+            </div>
+            <div class="when-day1">
+              <div class="empty-fill">
+                <span>Interaction detail appears after the first sync</span>
+              </div>
+            </div>
+          </section>
+
+          <!-- Profile actions + Audience -->
+          <div class="duo">
+            <section class="section" aria-label="Profile actions">
+              <div class="sec-head">
+                <div>
+                  <h3 class="t-title">What the profile converted</h3>
+                  <p class="sub t-caption">
+                    <span class="when-live"
+                      >1,890 profile visits became these taps. The sage bar is last period.</span
+                    ><span class="when-day1"
+                      >Where profile visits turn into taps, once counted.</span
+                    >
+                  </p>
+                </div>
+              </div>
+              <div class="when-live">
+                <div
+                  class="rows"
+                  id="funnel"
+                  role="img"
+                  aria-label="Bar chart of link taps by button. Website 342, was 298. Directions 121, was 96. Call 38, was 41. Email 22, was 19."
+                ></div>
+              </div>
+              <div class="when-day1">
+                <div class="empty-fill"><span>Tap detail appears after the first sync</span></div>
+              </div>
+            </section>
+
+            <section class="section" aria-label="Audience">
+              <div class="sec-head">
+                <div>
+                  <h3 class="t-title">Who follows, who engages</h3>
+                  <p class="sub t-caption">
+                    Followers against the people who actually engaged. The sage tick marks last
+                    period’s follower share.
+                  </p>
+                </div>
+                <div class="legend" aria-hidden="true">
+                  <span><i class="key dot-now"></i>Followers</span>
+                  <span><i class="key dot-b"></i>Engaged</span>
+                </div>
+              </div>
+              <div class="when-live">
+                <div class="aud-grid">
+                  <div>
+                    <div
+                      class="age-cols"
+                      id="ages"
+                      role="img"
+                      aria-label="Paired columns by age band, followers against engaged audience, in percent, with last period’s follower share as a tick. 18 to 24: 14 following, was 13, 22 engaging. 25 to 34: 38, was 40, and 41. 35 to 44: 27, was 28, and 22. 45 to 54: 14, was 13, and 10. 55 plus: 7, was 6, and 5. The engaged audience skews younger than the follower base."
+                    ></div>
+                    <p class="comp-note t-caption" style="margin-top: 12px">
+                      The people engaging skew <b>younger</b> than the people following — 18–24s are
+                      <span class="num">14%</span> of followers but <span class="num">22%</span> of
+                      engagement.
+                    </p>
+                  </div>
+                  <div>
+                    <div class="aud-side">
+                      <div class="t-label">Top cities</div>
+                      <div class="place-list">
+                        <div class="place">
+                          <span class="nm">Sofia</span
+                          ><span class="track"><i style="width: 88%"></i></span
+                          ><span class="pc">44%</span><span class="was">was 42%</span>
+                        </div>
+                        <div class="place">
+                          <span class="nm">Plovdiv</span
+                          ><span class="track"><i style="width: 24%"></i></span
+                          ><span class="pc">12%</span><span class="was">was 13%</span>
+                        </div>
+                        <div class="place">
+                          <span class="nm">Varna</span
+                          ><span class="track"><i style="width: 18%"></i></span
+                          ><span class="pc">9%</span><span class="was">was 8%</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="aud-side">
+                      <div class="t-label">Gender</div>
+                      <div class="place-list">
+                        <div class="place">
+                          <span class="nm">Women</span
+                          ><span class="track"><i style="width: 61%"></i></span
+                          ><span class="pc">61%</span><span class="was">was 62%</span>
+                        </div>
+                        <div class="place">
+                          <span class="nm">Men</span
+                          ><span class="track"><i style="width: 37%"></i></span
+                          ><span class="pc">37%</span><span class="was">was 36%</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="when-day1">
+                <div class="empty-fill">
+                  <span>Audience snapshots begin with the first weekly sync</span>
+                </div>
+              </div>
+            </section>
+          </div>
+
+          <!-- Posts -->
+          <section class="section" aria-label="The period's posts">
+            <div class="sec-head">
+              <div>
+                <h3 class="t-title">The posts that did it</h3>
+                <p class="sub t-caption">
+                  Every post published this period, ranked by reach.
+                  <em class="serif">Follows</em> is people who followed because of that post.
+                </p>
+              </div>
+            </div>
+            <div class="when-live">
+              <div class="table-scroll">
+                <table class="posts">
+                  <thead>
+                    <tr>
+                      <th scope="col">Post</th>
+                      <th scope="col">Reach</th>
+                      <th scope="col" class="opt">Views</th>
+                      <th scope="col">Interactions</th>
+                      <th scope="col" class="opt">Saves</th>
+                      <th scope="col">Follows</th>
+                      <th scope="col" class="opt">Profile visits</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr class="top">
+                      <td>
+                        <div class="post-id">
+                          <span class="thumb" aria-hidden="true">C</span>
+                          <span class="cap"
+                            >Iced bar menu, day one<span class="faint"
+                              >9 Aug · carousel · 7 slides</span
+                            ></span
+                          >
+                        </div>
+                      </td>
+                      <td>2,140<span class="d up">3.1× median</span></td>
+                      <td class="opt">6,880</td>
+                      <td>612</td>
+                      <td class="opt">148</td>
+                      <td>+38</td>
+                      <td class="opt">402</td>
+                    </tr>
+                    <tr>
+                      <td>
+                        <div class="post-id">
+                          <span class="thumb" aria-hidden="true">C</span>
+                          <span class="cap"
+                            >Five ways we brew cold<span class="faint"
+                              >2 Aug · carousel · 6 slides</span
+                            ></span
+                          >
+                        </div>
+                      </td>
+                      <td>1,460</td>
+                      <td class="opt">4,210</td>
+                      <td>391</td>
+                      <td class="opt">96</td>
+                      <td>+21</td>
+                      <td class="opt">238</td>
+                    </tr>
+                    <tr>
+                      <td>
+                        <div class="post-id">
+                          <span class="thumb reel" aria-hidden="true">R</span>
+                          <span class="cap"
+                            >Morning at the counter<span class="faint"
+                              >26 Jul · reel · 21 s</span
+                            ></span
+                          >
+                        </div>
+                      </td>
+                      <td>1,180</td>
+                      <td class="opt">3,904</td>
+                      <td>246</td>
+                      <td class="opt">31</td>
+                      <td>+12</td>
+                      <td class="opt">164</td>
+                    </tr>
+                    <tr>
+                      <td>
+                        <div class="post-id">
+                          <span class="thumb" aria-hidden="true">S</span>
+                          <span class="cap"
+                            >The garden table is back<span class="faint"
+                              >31 Jul · single</span
+                            ></span
+                          >
+                        </div>
+                      </td>
+                      <td>940</td>
+                      <td class="opt">2,110</td>
+                      <td>198</td>
+                      <td class="opt">44</td>
+                      <td>+9</td>
+                      <td class="opt">121</td>
+                    </tr>
+                    <tr>
+                      <td>
+                        <div class="post-id">
+                          <span class="thumb" aria-hidden="true">C</span>
+                          <span class="cap"
+                            >What “single origin” means<span class="faint"
+                              >7 Aug · carousel · 8 slides</span
+                            ></span
+                          >
+                        </div>
+                      </td>
+                      <td>860</td>
+                      <td class="opt">2,341</td>
+                      <td>231</td>
+                      <td class="opt">78</td>
+                      <td>+14</td>
+                      <td class="opt">96</td>
+                    </tr>
+                    <tr>
+                      <td>
+                        <div class="post-id">
+                          <span class="thumb" aria-hidden="true">S</span>
+                          <span class="cap"
+                            >Meet Deni, weekend barista<span class="faint"
+                              >12 Aug · single</span
+                            ></span
+                          >
+                        </div>
+                      </td>
+                      <td>640<span class="d down">below median</span></td>
+                      <td class="opt">1,504</td>
+                      <td>187</td>
+                      <td class="opt">12</td>
+                      <td>+6</td>
+                      <td class="opt">88</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <p class="comp-note t-caption" style="margin-top: 12px">
+                19 posts this period · median reach <span class="num">698</span> · every column
+                re-syncs nightly for 30 days after publish.
+              </p>
+            </div>
+            <div class="when-day1">
+              <div class="empty-fill" style="min-height: 140px">
+                <span>Published posts join this table as their first metrics arrive</span>
+              </div>
+            </div>
+          </section>
+
+          <!-- Archive -->
+          <section class="section" aria-label="Report archive">
+            <div class="sec-head">
+              <div>
+                <h3 class="t-title">Report archive</h3>
+                <p class="sub t-caption">Every exported period, kept as it was written.</p>
+              </div>
+            </div>
+            <div class="when-live">
+              <div class="archive-rows">
+                <div class="arch">
+                  <a href="#">19 Jun – 18 Jul 2026</a
+                  ><span class="when">written 19 Jul, 08:12</span>
+                </div>
+                <div class="arch">
+                  <a href="#">20 May – 18 Jun 2026</a
+                  ><span class="when">written 19 Jun, 08:04</span>
+                </div>
+                <div class="arch">
+                  <a href="#">19 Apr – 19 May 2026</a
+                  ><span class="when">written 20 May, 08:09</span>
+                </div>
+              </div>
+            </div>
+            <div class="when-day1">
+              <p class="t-caption faint" style="margin-top: 8px">
+                Your first report lands here once a full period has been collected.
+              </p>
+            </div>
+          </section>
+
+          <div class="sync">
+            <span class="live" aria-hidden="true"></span>
+            <span class="when-live"
+              >Synced nightly · last sync 18 Aug, 03:30 · next tonight, 03:30</span
+            >
+            <span class="when-day1">Connected · first sync tonight, 03:30</span>
+          </div>
+        </div>
+      </div>
+
+      <footer class="doc-foot" style="margin-top: 28px; max-width: 760px">
+        <p class="doc-note">
+          Decisions this mock commits to: no tabs — one document in presentation order, so print
+          equals the report · previous period is the sage reference everywhere, never a third series
+          · deltas color by desirability, not direction · nominal bars carry identity by row label,
+          one hue · the only lime is the active range (the standing place) · the summary strip's
+          empty cells hold the exact height of their occupied twins, and no empty state renders
+          larger than its occupied twin.
+        </p>
+        <p class="doc-note" style="margin-top: 8px">
+          Implementation owes two things this mock only names: a stale-sync state (the sync line
+          goes Amber — "last sync 3 days ago, reconnect Instagram") and one authored motion moment
+          (the now-line draws in over the already-visible then-line, honoring reduced motion).
+        </p>
+      </footer>
+    </div>
+
+    <script>
+      /* One shared data model — every chart below renders from it. */
+      const D = {
+        reachNow: [
+          402, 371, 344, 428, 455, 512, 489, 398, 362, 384, 441, 468, 530, 506, 412, 388, 371, 456,
+          491, 548, 472, 986, 742, 518, 463, 441, 485, 512, 538, 471,
+        ],
+        reachThen: [
+          351, 332, 318, 346, 371, 402, 388, 342, 331, 344, 362, 381, 412, 398, 351, 338, 329, 366,
+          391, 428, 610, 431, 388, 352, 341, 336, 371, 398, 412, 371,
+        ],
+        sparks: {
+          views: [
+            1284, 1191, 1108, 1382, 1461, 1655, 1572, 1281, 1163, 1235, 1420, 1508, 1710, 1631,
+            1322, 1244, 1191, 1468, 1580, 1766, 1519, 3184, 2391, 1667, 1490, 1420, 1562, 1650,
+            1734, 1516,
+          ],
+          reach: null, // uses reachNow
+          inter: [
+            92, 84, 79, 99, 106, 121, 114, 92, 83, 88, 102, 109, 124, 118, 95, 89, 85, 105, 113,
+            128, 109, 231, 172, 120, 107, 102, 112, 119, 125, 109,
+          ],
+          foll: [
+            8226, 8231, 8235, 8243, 8248, 8259, 8266, 8270, 8272, 8277, 8285, 8291, 8302, 8309,
+            8312, 8315, 8318, 8327, 8334, 8347, 8352, 8390, 8398, 8401, 8403, 8405, 8407, 8409,
+            8410, 8412,
+          ],
+          er: [
+            4.1, 4.0, 4.1, 4.2, 4.2, 4.3, 4.3, 4.2, 4.1, 4.2, 4.3, 4.3, 4.4, 4.4, 4.3, 4.3, 4.2,
+            4.4, 4.5, 4.6, 4.5, 5.2, 4.9, 4.6, 4.5, 4.5, 4.6, 4.6, 4.7, 4.6,
+          ],
+        },
+        formats: [
+          { name: 'Carousels', meta: '9 posts', now: 6930, then: 5410 },
+          { name: 'Singles', meta: '8 posts', now: 4210, then: 4480 },
+          { name: 'Reels', meta: '2 posts', now: 1500, then: 1320 },
+        ],
+        interactions: [
+          { name: 'Likes', now: 2410, then: 2236, d: '+8%' },
+          { name: 'Comments', now: 312, then: 270, d: '+16%' },
+          { name: 'Saves', now: 508, then: 391, d: '+30%' },
+          { name: 'Shares', now: 198, then: 154, d: '+29%' },
+          { name: 'Replies', now: 58, then: 51, d: '+14%' },
+        ],
+        funnel: [
+          { name: 'Website', now: 342, then: 298 },
+          { name: 'Directions', now: 121, then: 96 },
+          { name: 'Call', now: 38, then: 41 },
+          { name: 'Email', now: 22, then: 19 },
+        ],
+        ages: [
+          { band: '18–24', fol: 14, eng: 22, pf: 13 },
+          { band: '25–34', fol: 38, eng: 41, pf: 40 },
+          { band: '35–44', fol: 27, eng: 22, pf: 28 },
+          { band: '45–54', fol: 14, eng: 10, pf: 13 },
+          { band: '55+', fol: 7, eng: 5, pf: 6 },
+        ],
+      }
+      D.sparks.reach = D.reachNow
+
+      const NOW = '#164430',
+        THEN = '#7fa588',
+        THEN_LINE = '#6f957a',
+        SPRING = '#2e9e68'
+      const fmt = (n) => n.toLocaleString('en-US')
+
+      /* Hero trend: two 2px lines, 8% wash under the current one, ring on peak. */
+      ;(function trend() {
+        const svg = document.getElementById('trend')
+        if (!svg) return
+        const W = 1120,
+          H = 264,
+          pad = { t: 16, r: 12, b: 30, l: 12 }
+        const all = D.reachNow.concat(D.reachThen)
+        const max = Math.ceil(Math.max(...all) / 200) * 200
+        const x = (i) => pad.l + (i * (W - pad.l - pad.r)) / (D.reachNow.length - 1)
+        const y = (v) => pad.t + (1 - v / max) * (H - pad.t - pad.b)
+        const path = (arr) =>
+          arr.map((v, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ')
+        const grid = [0.25, 0.5, 0.75]
+          .map((f) => {
+            const gy = (pad.t + (1 - f) * (H - pad.t - pad.b)).toFixed(1)
+            return (
+              `<line x1="${pad.l}" y1="${gy}" x2="${W - pad.r}" y2="${gy}" stroke="#e7ece7" stroke-width="1"/>` +
+              `<text x="${W - pad.r}" y="${gy - 5}" text-anchor="end" font-size="10" fill="#667068" font-variant="tabular-nums">${fmt(max * f)}</text>`
+            )
+          })
+          .join('')
+        const peakI = D.reachNow.indexOf(Math.max(...D.reachNow))
+        const ticks = [
+          [0, '19 Jul'],
+          [7, '26 Jul'],
+          [14, '2 Aug'],
+          [21, '9 Aug'],
+          [29, '17 Aug'],
+        ]
+          .map(
+            ([i, t], k) =>
+              `<text x="${x(i).toFixed(1)}" y="${H - 8}" text-anchor="${k === 0 ? 'start' : k === 4 ? 'end' : 'middle'}" font-size="11" fill="#667068">${t}</text>`
+          )
+          .join('')
+        svg.innerHTML =
+          grid +
+          ticks +
+          `<path d="${path(D.reachNow)} L${x(D.reachNow.length - 1)},${H - pad.b} L${x(0)},${H - pad.b} Z" fill="${NOW}" opacity="0.06"/>` +
+          `<path d="${path(D.reachThen)}" fill="none" stroke="${THEN_LINE}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/>` +
+          `<path d="${path(D.reachNow)}" fill="none" stroke="${NOW}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/>` +
+          `<circle cx="${x(peakI)}" cy="${y(D.reachNow[peakI])}" r="6" fill="#fff"/>` +
+          `<circle cx="${x(peakI)}" cy="${y(D.reachNow[peakI])}" r="4" fill="${SPRING}"/>` +
+          `<text x="${x(peakI)}" y="${y(D.reachNow[peakI]) - 12}" text-anchor="middle" font-size="11" font-weight="600" fill="#0f1512" font-variant="tabular-nums">986</text>`
+      })()
+
+      /* Strip sparklines: sage trace, Living Green end-dot (the now-mark). */
+      document.querySelectorAll('svg.spark').forEach((svg) => {
+        const arr = D.sparks[svg.dataset.spark]
+        if (!arr) return
+        const W = 220,
+          H = 28,
+          min = Math.min(...arr),
+          max = Math.max(...arr)
+        svg.setAttribute('viewBox', `0 0 ${W} ${H}`)
+        svg.setAttribute('preserveAspectRatio', 'none')
+        const x = (i) => 2 + (i * (W - 10)) / (arr.length - 1)
+        const y = (v) => 3 + (1 - (v - min) / (max - min || 1)) * (H - 8)
+        const d = arr
+          .map((v, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(v).toFixed(1)}`)
+          .join(' ')
+        const lx = x(arr.length - 1),
+          ly = y(arr[arr.length - 1])
+        svg.innerHTML =
+          `<path d="${d}" fill="none" stroke="${THEN}" stroke-width="1.5" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>` +
+          `<circle cx="${lx}" cy="${ly}" r="4" fill="#fff"/><circle cx="${lx}" cy="${ly}" r="2.8" fill="${SPRING}"/>`
+      })
+
+      /* Format rows + funnel rows: labeled rows, now-bar over then-bar. */
+      function rows(el, data, thenAsTick) {
+        const max = Math.max(...data.flatMap((r) => [r.now, r.then]))
+        el.innerHTML = data
+          .map(
+            (r) => `
+      <div class="row">
+        <div class="name">${r.name}${r.meta ? `<span class="faint">${r.meta}</span>` : ''}</div>
+        <div class="bars">
+          <div class="bar now"><i style="width:${((r.now / max) * 82).toFixed(1)}%"></i><span class="v">${fmt(r.now)}</span></div>
+          <div class="bar then"><i style="width:${((r.then / max) * 82).toFixed(1)}%"></i><span class="v">${fmt(r.then)}</span></div>
+        </div>
+      </div>`
+          )
+          .join('')
+      }
+      rows(document.getElementById('formats'), D.formats)
+      rows(document.getElementById('funnel'), D.funnel)
+
+      /* Interaction small multiples: then-column beside now-column, delta chip. */
+      ;(function multiples() {
+        const el = document.getElementById('multiples')
+
+        el.innerHTML = D.interactions
+          .map((m) => {
+            const good = m.now >= m.then
+            const max = Math.max(m.now, m.then) // per-pair scale: the pair is the comparison
+            return `
+      <div class="mult">
+        <div class="t-label">${m.name}</div>
+        <div class="val"><b>${fmt(m.now)}</b>
+          <span class="delta ${good ? 'up' : 'down'}">${good ? '▲' : '▼'} ${m.d.replace('+', '')}</span></div>
+        <div class="mini" aria-hidden="true">
+          <i class="then" style="height:${Math.max(8, (m.then / max) * 46).toFixed(0)}px"></i>
+          <i class="now" style="height:${Math.max(8, (m.now / max) * 46).toFixed(0)}px"></i>
+        </div>
+        <div class="t-micro faint num">${fmt(m.then)} then</div>
+      </div>`
+          })
+          .join('')
+      })()
+
+      /* Audience age pairs. */
+      ;(function ages() {
+        const el = document.getElementById('ages')
+        const max = Math.max(...D.ages.flatMap((a) => [a.fol, a.eng]))
+        el.innerHTML = D.ages
+          .map(
+            (a) => `
+      <div class="age">
+        <div class="pair">
+          <span class="fwrap"><i class="fol" style="height:${((a.fol / max) * 100).toFixed(0)}%"></i><b class="tick" style="bottom:${((a.pf / max) * 100).toFixed(0)}%"></b></span>
+          <i class="eng" style="height:${((a.eng / max) * 100).toFixed(0)}%"></i>
+        </div>
+        <div class="cap num">${a.band}</div>
+      </div>`
+          )
+          .join('')
+      })()
+
+      /* Land narrow viewports on the recent days — the peak, not the oldest week. */
+      const wrap = document.querySelector('.chart-wrap')
+      if (wrap && wrap.scrollWidth > wrap.clientWidth) wrap.scrollLeft = wrap.scrollWidth
+
+      /* Doc chrome: state toggle. */
+      document.querySelectorAll('[data-state-btn]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          document.getElementById('frame').dataset.state = btn.dataset.stateBtn
+          document
+            .querySelectorAll('[data-state-btn]')
+            .forEach((b) => b.setAttribute('aria-pressed', String(b === btn)))
+        })
+      })
+    </script>
+  </body>
+</html>
