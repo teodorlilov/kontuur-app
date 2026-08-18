@@ -839,29 +839,45 @@ specified; the reasoning must outlive the session that decided it.
 
 Added 2026-08-18. Full reasoning in `docs/TECH-DEBT-PLAN.md` Part B.
 
-### 8.1 RLS is off on most tables — OPEN, and the largest item in the repo
+### 8.1 The RLS configuration exists only in the dashboard — OPEN (severity unknown)
 
-`docs/RLS-SECURITY-REVIEW.md` has been marked **OPEN** since 2026-07-22 and nothing in this
-file ever pointed at it, which is why five audits passed over it.
+**Measured 2026-08-18, and it is not what this entry first said.** The original wording —
+"RLS is off on most tables, a signed-in user can read any agency's rows via PostgREST" —
+was inferred from the migrations and is **wrong**. `supabase/queries/rls-audit.sql` query
+1 against prod:
 
-Confirmed from the migrations: only `client_ideas`, `idea_form_tokens`, `discarded_drafts` and
-`client_style_memos` ever run `enable row level security`. `posts`, `clients`, `agencies`,
-`users`, `brand_profiles`, `social_connections`, `notifications`, `generation_runs`,
-`post_canvas_docs` and `posting_schedules` have **no RLS statement in version control at all**.
+- **28 tables in `public`. RLS is enabled on all 28.** No table is unprotected. The
+  read-any-agency scenario does not exist in that shape.
+- **11 are LOCKED** — RLS on with zero policies, i.e. service-role only:
+  `brand_image_bank`, `brand_kit_extractions`, `brand_vector_bank`,
+  `brand_visual_identity`, `client_ideas`, `client_style_memos`, `discarded_drafts`,
+  `idea_form_tokens`, `image_generation_usage`, `post_canvas_docs`, `post_images`. This is
+  why 53 files route through `createAdminSupabaseClient` — the workaround was load-bearing,
+  not incidental.
+- **17 are SCOPED** — RLS on with ≥1 policy.
 
-Not exploited in-app — every server query carries a hand-written `.eq('agency_id', …)`. But
-`NEXT_PUBLIC_SUPABASE_ANON_KEY` ships in every browser bundle by design and a signed-in user
-holds a valid `authenticated` JWT, so PostgREST will serve **any agency's rows** to a raw
-`fetch` against `/rest/v1/posts`. The app does not have to be involved.
+**What survives, and it is still real: not one `CREATE POLICY` is in version control.**
+`grep -rin 'create policy'` over all 48 migrations returns nothing, and the live database
+has 18 policies. Every one was made by hand in the dashboard. The database cannot be
+rebuilt, the policies cannot be reviewed in a diff, and nothing stops the next dashboard
+click from changing an access rule silently. That is the finding: **undocumented and
+unreproducible**, rather than absent.
 
-Two tables (`post_images`, `brand_visual_identity`) have RLS **on with no policy**, toggled in
-the dashboard rather than by a migration — which is why 53 files route through
-`createAdminSupabaseClient`, and why "must use the admin client" is remembered as a rule rather
-than as the symptom it is.
+**Still open, and it decides the severity.** "SCOPED" means a policy exists, not that it
+scopes anything. 17 tables with exactly one policy each is the signature of a bulk
+enable-RLS pass, and a single `USING (true)` policy is exactly as exposed as no RLS while
+reporting as protected to any check that counts policies. Query 2 in the same file flags
+that shape; until it is run, this entry's severity is unknown rather than resolved.
 
-**Blocked on a prod schema dump** (§8.2). The review doc lays out options A/B/C and recommends
-C; if C is too large, adopt B *explicitly in migrations* so no table's RLS state depends on a
-dashboard click.
+**Also corrected:** `client_ideas` and `idea_form_tokens` were described here and in the
+review doc as "RLS on, with policies, from the migration — correct". They have **zero**
+policies, and `20260424_create_client_ideas.sql` only ever ran `ENABLE ROW LEVEL
+SECURITY`. The public idea form works because it uses the admin client throughout, not
+because a policy permits it.
+
+**The transferable mistake:** this entry inferred database state from version control, on
+a project where the two had never been connected — which is the same gap §8.2 describes.
+Do not diagnose a database from its migrations here until §8.2 is closed.
 
 ### 8.2 The schema baseline is not in version control — OPEN
 

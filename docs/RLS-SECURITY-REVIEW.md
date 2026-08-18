@@ -1,6 +1,10 @@
 # RLS Security Review (deferred task)
 
-**Status:** OPEN — analysis only. Do not treat the current per-table state as intentional.
+**Status:** OPEN — **partially measured 2026-08-18, and the original diagnosis was wrong.**
+RLS is enabled on all 28 public tables; there are no unprotected tables. What is real is
+that all 18 policies were created out-of-band and **none exist in version control**.
+Whether those policies actually scope by agency is unanswered — see "The question that is
+now open".
 **Prompted by:** a `brand_visual_identity` failure (2026-07-20): onboarding's identity save failed
 silently and Settings save returned `new row violates row-level security policy for table
 "brand_visual_identity"`. Fixed *tactically* by routing that table's reads/writes through the admin
@@ -50,11 +54,48 @@ node scripts/rls-report.mjs /tmp/prod-schema.sql
 
 </details>
 
-### Measured state — PASTE HERE
+### Measured state — 2026-08-18
 
-```
-(run `npm run db:rls` and paste the table)
-```
+**Measured, and it reverses this document's central claim.** 28 tables in `public`,
+**RLS is enabled on all 28**, `force_rls` false on all 28.
+
+| Verdict | Count | Tables |
+|---|---|---|
+| **OPEN** (no RLS) | **0** | — |
+| **LOCKED** (RLS on, 0 policies) | **11** | `brand_image_bank`, `brand_kit_extractions`, `brand_vector_bank`, `brand_visual_identity`, `client_ideas`, `client_style_memos`, `discarded_drafts`, `idea_form_tokens`, `image_generation_usage`, `post_canvas_docs`, `post_images` |
+| **SCOPED** (RLS on, ≥1 policy) | **17** | `agencies`, `analytics_reports`, `brand_profiles`, `client_assets`, `client_sources`, `clients`, `generation_runs`, `generation_themes`, `intelligence_briefings`, `language_rules`, `notifications`, `post_approval_tokens` (2), `post_history`, `posting_schedules`, `posts`, `social_connections`, `users` |
+
+#### What this corrects
+
+Everything below the line in this document was written from the migrations, and the
+migrations do not describe the live database.
+
+- **"the `OFF` rows are the real latent exposure … the door is open" — WRONG.** There are
+  no OFF rows. `posts`, `clients`, `brand_profiles`, `posting_schedules` and the rest all
+  have RLS on. The unauthenticated-read-any-agency scenario, which TECH-DEBT §8.1 called
+  the largest item in the repo, **does not exist in this shape**.
+- **"`client_ideas`, `idea_form_tokens` — ON, with policies (migration) — correct" — WRONG
+  on both halves.** They have **zero** policies today, and the migration that supposedly
+  created them (`20260424_create_client_ideas.sql`) only ever ran
+  `ALTER TABLE … ENABLE ROW LEVEL SECURITY`. They work because the public idea flow uses
+  the admin client throughout (`features/ideas/lib/ideas.ts`), not because a policy
+  permits it.
+- **Not one `CREATE POLICY` exists in version control.** `grep -rin 'create policy'` over
+  all 48 migrations returns nothing, yet the live database has 18 policies. Every one was
+  created out-of-band. That is the finding that survived: not "RLS is off" but **"the
+  entire RLS configuration is undocumented and unreproducible."**
+
+#### The question that is now open
+
+⚠️ **"SCOPED" means a policy exists, not that it is correct.** 17 tables carry exactly one
+policy each, which is the signature of a bulk enable-RLS pass rather than per-table
+design. A single `USING (true)` policy leaves a table exactly as exposed as no RLS at all
+while reporting as protected in any audit that counts policies instead of reading them —
+including the query above.
+
+**Run query 2 in `supabase/queries/rls-audit.sql`.** Its `exposure` column flags
+`USING (true)` and predicates with no agency/user reference. Until that comes back, the
+severity of this document is unknown, not resolved.
 
 The three verdicts and what each means:
 
@@ -81,16 +122,23 @@ Two more one-liners for open TECH-DEBT items, in the SQL editor:
 ```sql
 -- §2.9: the bucket MIME allowlist. Wants BOTH image/svg+xml and image/webp.
 select id, allowed_mime_types from storage.buckets where id = 'post-images';
-
--- §7.9 M21: if these are RLS-enabled with no policy, every wizard theme insert has been
--- failing silently into trackThemeSafe — zeroing doneCount and emptying the exclusion list.
-select relname, relrowsecurity from pg_class
-where relname in ('generation_runs', 'generation_themes');
 ```
+
+**§7.9 M21 — half answered.** `generation_runs` and `generation_themes` both have RLS on
+with **1 policy each**, so they are not the "RLS on, no policy" case that would have made
+every wizard theme insert fail silently into `trackThemeSafe`. What that policy permits is
+still unknown: the wizard path writes with the **user-scoped** client, so a SELECT-only
+policy would produce the same silent failure by a different route. Query 2 settles it.
 
 ---
 
-## Root cause
+## ❌ Root cause (as originally diagnosed — SUPERSEDED)
+
+> Everything from here to "Options" was reasoned from the migrations and is **factually
+> wrong about the live database**. Kept because the correction above needs something to
+> point at, and because the reasoning error is the transferable part: this section
+> inferred database state from version control, on a project where the two had never been
+> connected. Measured reality is in "Measured state" near the top.
 
 Row-Level Security (RLS) is applied **inconsistently and partly by accident**.
 
@@ -113,7 +161,7 @@ Row-Level Security (RLS) is applied **inconsistently and partly by accident**.
 
 ---
 
-## Current per-table state (verify in the dashboard as step 1 of the fix)
+## ❌ Current per-table state — SUPERSEDED, every `OFF` below is false
 
 | Table | RLS | Access pattern today |
 |---|---|---|

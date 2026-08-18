@@ -40,21 +40,40 @@ group by c.relname, c.relrowsecurity, c.relforcerowsecurity
 order by c.relrowsecurity asc, c.relname asc;   -- OPEN tables first: they are the finding
 
 
--- ── 2. What the existing policies actually say ────────────────────────────────
+-- ── 2. What the existing policies actually say ─── RUN THIS, IT IS THE REAL TEST ──
 --
--- Run only if query 1 reports any SCOPED table. A policy that exists is not a policy that
--- is correct, and the review doc's step 5 is explicit that this is verified by attacking
--- it, not by reading it.
+-- "SCOPED" from query 1 means a policy EXISTS. It does not mean the policy is any good,
+-- and the difference is the whole finding: a single `USING (true)` policy leaves a table
+-- exactly as exposed as no RLS at all, while reporting as protected in every audit that
+-- counts policies instead of reading them.
+--
+-- The `exposure` column below does the reading. Anything flagged ⚠️ is a table where any
+-- authenticated user can read every agency's rows through PostgREST — the exposure the
+-- review doc was written about, in the one shape that survives a naive check.
 select
-  tablename,
-  policyname,
-  cmd            as applies_to,
-  roles,
-  qual           as using_expression,
-  with_check     as check_expression
-from pg_policies
-where schemaname = 'public'
-order by tablename, policyname;
+  p.tablename,
+  p.policyname,
+  p.cmd                                    as applies_to,
+  p.permissive,
+  p.roles,
+  p.qual                                   as using_expression,
+  p.with_check                             as check_expression,
+  case
+    when p.qual is null and p.with_check is null then '⚠️ no predicate at all'
+    when btrim(coalesce(p.qual, '')) in ('true', '(true)') then '⚠️ USING (true) — wide open'
+    when p.qual not ilike '%agency%' and p.qual not ilike '%auth.uid%' and p.qual not ilike '%user_id%'
+      then '？ no agency/user reference — read it'
+    else 'scoped by predicate'
+  end                                      as exposure
+from pg_policies p
+where p.schemaname = 'public'
+order by
+  case
+    when btrim(coalesce(p.qual, '')) in ('true', '(true)') then 0
+    when p.qual is null then 0
+    else 1
+  end,
+  p.tablename, p.policyname;
 
 
 -- ── 3. TECH-DEBT §7.9 M21 — is wizard theme tracking silently failing? ────────
