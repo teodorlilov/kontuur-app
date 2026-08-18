@@ -6,13 +6,21 @@ Stack: Next.js 16 App Router · React 19 · TypeScript (strict) · Supabase (Pos
 Storage) · Tailwind v4.
 
 ## Commands
-- **Before pushing: `npm run check`** — typecheck + lint + test, the same command
-  `.husky/pre-push` and CI run. Everything below is for narrowing down a failure.
+- **Before pushing: `npm run check`** — typecheck + lint + format:check + test, the same
+  command `.husky/pre-push` and CI run. Everything below is for narrowing down a failure.
 - Dev: `npm run dev`
 - Typecheck: `npm run typecheck`
 - Lint: `npm run lint` · Test: `npm test` (watch: `npm run test:watch`)
-- Regenerate DB types: `npx supabase gen types typescript --local > src/types/database.ts`
-- `format:check` is deliberately outside `check`. Do not add it.
+- Format: `npm run format` · Regenerate DB types:
+  `npx supabase gen types typescript --local > src/types/database.ts`
+- `format:check` is **in** `check` as of 2026-08-18. It used to be excluded, and this
+  file used to say "do not add it" — because prettier failed on 169 files and a
+  permanently-red step is the §6.4 failure mode, not a gate. The repo is formatted now
+  and `.prettierignore` covers what is not ours (vendored `.claude`, generated
+  `database.ts`, markdown prose). If it goes red, run `npm run format` — do not remove
+  the step.
+- CI also runs `npm run build`. `tsc` does not evaluate App Router rules, so a
+  server-only import reaching a client bundle type-checks clean and fails the build.
 
 ## Where things live (check here BEFORE creating anything new)
 - `src/app/` — routes, layouts, route handlers, server actions entry points.
