@@ -3,20 +3,26 @@
 Catalogued 2026-07-22 during the Phase-3 AI-visuals review (branch `feat/ai-visual-flow`).
 None of these block shipping; each entry says what it is, why it was deferred, and the intended fix.
 
+**Remediation pass 2026-08-18.** `docs/TECH-DEBT-PLAN.md` holds the full audit — every entry
+re-verified against the code, plus sixteen findings this file did not record. What that pass
+closed is marked RESOLVED below. What it deliberately did not close, and why, is in §9.
+
+Seven entries were **wrong** when re-measured, which is its own finding: this file is 53 KB and
+had stopped being read end to end, so §7.4 published a backlog one entry too long and §7.2 a
+count 2.6× under. Each is corrected in place.
+
+**The largest item in the repo is not in this file at all.** `docs/RLS-SECURITY-REVIEW.md` has
+been OPEN since 2026-07-22 and nothing here ever pointed at it — see §8.
+
 ---
 
 ## 1. Code structure
 
-### 1.1 `parse-slides.ts` lives in the components tree but is imported by API routes
+### 1.1 `parse-slides.ts` lives in the components tree — RESOLVED 2026-08-18
 
-- **Where:** `src/components/posts/parse-slides.ts`, imported by `src/lib/visual/generate-post-visual.ts`
-  (server) and a dozen client surfaces (`slides-section`, the review leaves, `use-draft-visuals`, …).
-  (2026-08-04: `post-content-display`/`review-post-list` were deleted in the review-tab rebuild;
-  the server-side import moved from the visuals route into the extracted lib.)
-- **Problem:** a server route depending on `components/` is the wrong dependency direction. Works today
-  (pure TS, no `'use client'`), but it's a layering smell.
-- **Fix:** move to `src/lib/posts/parse-slides.ts` (or fold into `src/lib/validation.ts`), update imports.
-  ~5 min, zero behaviour change.
+Moved to `src/lib/posts/parse-slides.ts`; all twelve importers updated. It was, as the entry
+had claimed since July, ~5 minutes and zero behaviour change — which is the lesson worth
+keeping. It survived four months because it was nobody's task, not because it was hard.
 
 ### 1.2 "Post images" is a shared domain living under `features/publishing/`
 
@@ -245,7 +251,9 @@ Still live: `schedule-card`, `calendar-view`, `use-extraction-status`, `canva-de
 
 ### 4.1 RESOLVED 2026-08-06 — `npm run lint` exits 0
 
-The dedicated pass happened. All 9 errors are gone; 11 warnings remain and are not gating.
+The dedicated pass happened. All 9 errors are gone. **9 warnings remain** as of 2026-08-18
+(the "11" this entry claimed had drifted): 8 deliberately `_`-prefixed unused vars and the
+one `no-img-element` in `canva-design-picker`. None are gating.
 
 - **6 × `react/no-unescaped-entities`** (`forgot-password-form`, `idea-form-client`) — escaped as
   `&apos;`, which is the house convention (21 existing uses vs 6 `&rsquo;`) and renders identically.
@@ -306,11 +314,12 @@ and the trigger that should reopen it. (The fixed items landed in `98e0ef0` + `0
   unbounded.
 - **Reopen when:** queues regularly exceed ~100 posts; the shape then is bucket-windowed loading.
 
-### 5.6 Week-schedule query index unverified
+### 5.6 Week-schedule query index — RESOLVED 2026-08-18 (it already existed)
 
-- **Where:** `fetchWeekSchedule` filters `client_id + status + scheduled_at`
-  (`src/features/review/lib/week-schedule.ts`).
-- **Action:** one-time `explain analyze` against prod; add a composite index only if it scans.
+`fetchWeekSchedule` filters `client_id + status + scheduled_at`, and
+`20260731_add_roster_indexes.sql:17` creates `posts(client_id, status, scheduled_at)` — the
+exact composite, in that order. The entry was written without checking the migrations, and the
+`explain analyze` it asked for would have confirmed an index that had been there the whole time.
 
 ### 5.7 Pending type-regen cleanup (migrations 20260805 + 20260806) — RESOLVED 2026-08-10
 
@@ -399,14 +408,21 @@ the palette purge). Their deliberately smaller tick sizes are preserved.
 outputs differ: "Just now" vs "just now", a "Yesterday" case the shared one lacks, and a different
 date fallback. Converging them is a copy change, not a refactor.
 
-**Still open — the primitive half.** Input's class string copied 8×, StatusPill restated 5×,
-spinner SVG 5×, hand-rolled Modal and Button, `ScoreBar` ×2, the picker header ×2. Each is a
-rendered-output change, so they belong with the styling wave, not ahead of it. Audit §3 lists
-every pair with both sites.
+**The primitive half — mostly done by 2026-08-18, and the remainder is not what this said.**
+Re-measured: `components/ui/` now holds `button`, `modal`, `input`, `spinner`, `status-pill`
+and `form/control-classes`. Input ×8, StatusPill ×5, spinner ×5, Modal, Button and the picker
+header are all gone.
+
+`ScoreBar` ×2 **is not a duplicate**, and the entry was wrong to list it as one.
+`quality-scores.tsx` colours through `score-colors`' three bands (spring / pending / danger);
+`insight-panel.tsx` uses a two-tone forest/pending split keyed on `REWRITE_SCORE_THRESHOLD`,
+different DOM, and `scaleX` instead of `width`. Converging them changes what the calendar
+renders — a design decision, and exactly the call this file already made about `timeAgo` two
+paragraphs up. Left alone deliberately.
 
 ### 6.3b Wave 4 (styling) — applied 2026-08-06, NOT visually verified
 
-Inline `style={{` across `src/` went **553 → 151**; the 151 that remain are runtime-computed
+Inline `style={{` across `src/` went **553 → 151**, and **119** as of 2026-08-18; those that remain are runtime-computed
 (a bar width encoding a count, a colour from `getClientStyle`, ternaries over data) and belong
 inline. `#f2f5f1` went 15 → 0 behind the new `--ink-inv` token. Every `leading-`/`tracking-`
 override that survived now carries its WHY comment.
@@ -503,14 +519,21 @@ an entry and forget to delete its line, so the debt can never look smaller or la
 - **Fixed:** added `"typecheck": "tsc --noEmit"`, now the first step of `check`.
 - **Takeaway:** `npm test` passing is not evidence of type correctness. `npm run check` is.
 
-### 7.2 `format:check` dropped from `check` (open decision)
+### 7.2 `format:check` dropped from `check` — RESOLVED 2026-08-18
 
-- **What:** prettier fails on **169 files, 145 of them untouched by any recent work** — the repo has
-  simply never been formatted. Left in `check`, it kept the gate permanently red, which is the
-  §6.4 failure mode again.
-- **Now:** `check` is `typecheck && lint && test`. `npm run format:check` still exists standalone.
-- **Fix when someone wants it:** one `npm run format` commit on its own, then add the step back.
-  Deferred because a 169-file reformat buries whatever else is in the diff.
+- **What it said:** prettier failed on 169 files, so the step was pulled from `check` rather than
+  leave the gate permanently red (the §6.4 failure mode).
+- **What was actually true by 2026-08-18:** **438 files.** The debt had grown 2.6× unnoticed,
+  because nothing measured it — and **203 of those were never ours to format**: 168 vendored
+  files under `.claude/skills` (superpowers + impeccable), the generated `database.ts`, and
+  markdown whose reflow turns a one-line doc edit into a whole-file diff.
+- **Closed in three commits**, deliberately separate: `.prettierignore` gains the vendored and
+  generated paths (438 → 251), `npm run format` alone with nothing else in the diff (251 files),
+  then `format:check` back into `check`.
+- **This reversed a standing CLAUDE.md instruction** ("deliberately outside `check`. Do not add
+  it."). That instruction was right when written and wrong once the reason expired. CLAUDE.md now
+  records *why* it flipped rather than just dropping the line — read as a formatting preference,
+  the old wording would have argued against restoring it forever.
 
 ### 7.3 Hand-written mirrors of database rows — `src/types/__tests__/row-mirrors.test.ts`
 
@@ -552,13 +575,22 @@ an entry and forget to delete its line, so the debt can never look smaller or la
   that sits *outside* the per-client `try`, so one bad row would have aborted generation for every
   client on the tick. A hand-rolled `typeof` check is not validation either: that same route had
   one for `name` and still shipped the hole for `timezone`.
-- **Backlog — 15 routes** (`KNOWN_UNVALIDATED` in the test): the nine `ai/*` routes,
-  `auth/forgot-password`, `canva/designs/[id]/export`, `extract/start`, `posts/[id]/images`,
-  `posts/[id]`, `sources/discover`.
-- **Worst of them:** `posts/[id]/route.ts` hand-rolls checks for `status` and `platform`, so it
-  *reads* validated while every other field passes through untouched.
-- **Why not fixed now:** adding a schema changes what each route accepts — a behavioural change
-  per route, wanting its own review.
+- **Backlog — EMPTY as of 2026-08-18.** All thirteen cleared; `KNOWN_UNVALIDATED` is `[]`.
+  Verified by deliberately un-validating `sources/discover` and confirming the guard names it,
+  because an empty backlog that cannot detect a refill is just a deleted list.
+- **The detector had a defect worth more than the backlog.** `PARSES` required a literal
+  `.parse(`, so `posts/[id]/route.ts` — validated through the named wrapper `parsePostUpdate` —
+  still counted as unvalidated, its line stayed, and the staleness assertion whose entire job is
+  catching "fixed but not delisted" **passed anyway**. The published count was wrong in the
+  safe-looking direction, and the rule quietly discouraged naming a parser, which is the house
+  pattern. Widened to recognise `parse[A-Z]\w*(`.
+- **Two entries were already stale** when re-measured: `posts/[id]` (above) and
+  `auth/forgot-password`, fixed when its enumeration oracle closed. 15 → 13 → 0.
+- **What clearing them found:** `intelligence/tip` read its body through a bare
+  `as { topic?: string }` — an assertion, not a check — so a number would have reached
+  `sanitizePromptField(...).trim()` inside the handler. `postType` and `rewriteReason` were
+  typed unions nothing verified, each steering which validations run downstream, so an
+  unexpected value chose a branch by falling through it.
 - **Note:** `meta/data-deletion` is permanently exempt — its single-string payload is verified by
   HMAC-SHA256 with `timingSafeEqual`, a stronger check than a shape schema.
 
@@ -586,11 +618,23 @@ would have invented an abstraction, not removed one.
   deleted as of 2026-08-11 and pinned that way by `src/app/__tests__/deletion-ledger.test.ts`.
   `DEFENSIVE_DATA_CLAUSE` has exactly one importer (`generate-best-time.ts`) and belongs on
   the research prompts too (§7.9 M10).
-- **Interim:** `npx knip@5 --include exports,files` finds unused exports and files without adding a
-  dependency. Run it per commit that deletes anything. It currently reports one unused file
-  (`src/components/ui/skeleton.tsx`) and a large set of `src/types/index.ts` barrel re-exports —
-  the barrel is a deliberate re-export surface, so a config must exempt it before the signal is
-  usable.
+- **RESOLVED 2026-08-18.** knip is a devDependency, `knip.json` is committed, `npm run deadcode`
+  is a step in `check`, and it reports **zero** — so any future hit is something that commit
+  introduced. The "interim: run it by hand per commit that deletes anything" policy is exactly
+  the kind nobody executes, which is why it never was.
+- **What made the signal usable** was the config, not the tool. Next's framework exports
+  (`page`/`layout`/`route`/`error`/`opengraph-image`) are entry points, not dead code; test files
+  are entries too, or every fixture helper reads as unused; and `ignoreExportsUsedInFile` collapses
+  the ~107 Props interfaces exported but read only beside their component, which is style rather
+  than debt. Raw signal 29 exports + 71 types → **15 genuinely dead**, all deleted.
+- **The barrel question is settled.** The dead `src/types/api.ts` request/response interfaces were
+  deleted rather than exempted: the routes they claimed to describe have grown zod schemas, and the
+  schema is the contract now. Deleting `ResearchResponse` then orphaned `ResearchFinding`, and
+  clearing `sources/discover` later orphaned `DiscoverPagesRequest` — the cascade this entry
+  predicted, caught by the new gate on the very next commit.
+- **Every hit was grep-verified before deletion**, per this entry's own warning. That caught a
+  near-miss: knip correctly reported `ToastProvider` as an unused export of a *used* file, and
+  deleting the file would have broken 41 importers of `toast`.
 - **The interim command does not cover TYPES.** Adding `types,duplicates` on 2026-08-16 reported
   184 unused type exports that had accumulated invisibly. **That raw number is misleading and the
   lesson generalises: 68 of the 184 were false positives** — knip follows neither re-export barrels
@@ -788,3 +832,166 @@ specified; the reasoning must outlive the session that decided it.
 - **Why not now:** Playwright selectors against three more waves of editor churn (12–14: text
   effects, arch text, multi-format) would be maintenance for no signal. Sequence it after the arc
   settles. Adding jsdom instead would buy the minority of the problem and read as coverage.
+
+---
+
+## 8. Security posture — the items this file never recorded
+
+Added 2026-08-18. Full reasoning in `docs/TECH-DEBT-PLAN.md` Part B.
+
+### 8.1 RLS is off on most tables — OPEN, and the largest item in the repo
+
+`docs/RLS-SECURITY-REVIEW.md` has been marked **OPEN** since 2026-07-22 and nothing in this
+file ever pointed at it, which is why five audits passed over it.
+
+Confirmed from the migrations: only `client_ideas`, `idea_form_tokens`, `discarded_drafts` and
+`client_style_memos` ever run `enable row level security`. `posts`, `clients`, `agencies`,
+`users`, `brand_profiles`, `social_connections`, `notifications`, `generation_runs`,
+`post_canvas_docs` and `posting_schedules` have **no RLS statement in version control at all**.
+
+Not exploited in-app — every server query carries a hand-written `.eq('agency_id', …)`. But
+`NEXT_PUBLIC_SUPABASE_ANON_KEY` ships in every browser bundle by design and a signed-in user
+holds a valid `authenticated` JWT, so PostgREST will serve **any agency's rows** to a raw
+`fetch` against `/rest/v1/posts`. The app does not have to be involved.
+
+Two tables (`post_images`, `brand_visual_identity`) have RLS **on with no policy**, toggled in
+the dashboard rather than by a migration — which is why 53 files route through
+`createAdminSupabaseClient`, and why "must use the admin client" is remembered as a rule rather
+than as the symptom it is.
+
+**Blocked on a prod schema dump** (§8.2). The review doc lays out options A/B/C and recommends
+C; if C is too large, adopt B *explicitly in migrations* so no table's RLS state depends on a
+dashboard click.
+
+### 8.2 The schema baseline is not in version control — OPEN
+
+48 migrations; **four** contain `create table`. Nothing creates `agencies`, `clients`, `posts`,
+`users`, `notifications`, `post_images`, `generation_runs`, `social_connections`,
+`brand_profiles` or `posting_schedules`.
+
+So: the database cannot be rebuilt from the repo, `supabase gen types --local` against a fresh
+DB produces nothing, and the posture in §8.1 cannot be reviewed *or* fixed from code. This was
+§7.9 M16 — one bullet in an appendix, under "needs a production query". It is the foundation
+the whole security wave stands on.
+
+**Fix:** `supabase db dump --schema public` from prod, committed as
+`supabase/migrations/00000000_baseline.sql`, guarded to be a no-op against an existing database.
+
+### 8.3 Prompt injection via fetched source text — RESOLVED 2026-08-18
+
+Was §7.9 M10, filed under "prompt hardening" and under-ranked. It was live and reachable.
+
+`buildSourceMaterialBlock` interpolated RSS titles/descriptions/links, scraped page bodies,
+uploaded document text, Tavily titles/snippets and Instagram captions **raw** into
+`<rss_content>`…`<performance_content>`, and `buildGroundingPrompt` did the same with the
+markdown a post is grounded on. Anyone controlling a subscribed feed or a page a client added
+as a source could close the section and instruct the model, and the result would publish under
+a client's name.
+
+`sanitizePromptField` was imported into that exact file the entire time, applied to one thing:
+the agency's own topic briefs. The lesson generalises past this bug — **a sanitiser present in
+a file is not evidence it reaches the untrusted half.**
+
+Closed by sanitising every fetched field, tagging the grounding bodies, and adding
+`DEFENSIVE_DATA_CLAUSE` to both system prompts. Bodies go through a new `sanitizeSourceText`
+rather than `sanitizePromptField`: their length is already budgeted in `source-gathering.ts`,
+so re-capping would have shrunk research material by a factor of the source count — a quality
+regression wearing a security fix. Pinned by `ai/research/__tests__/prompt-injection.test.ts`,
+which asserts no fetched field can emit a raw angle bracket and that escaping does not drop text.
+
+### 8.4 Server actions were outside every guard — RESOLVED 2026-08-18
+
+`boundary-validation.test.ts` walks `src/app/api` for `route.ts` only. CLAUDE.md names three
+boundaries — "form data, server action args, route handler bodies" — and exactly one was
+enforced, so the rule held everywhere a test looked and nowhere else.
+
+`submitApproval` is one of two unauthenticated writes in the app: authorised by a URL token,
+running on the service-role client, taking `postNotes: Array<{postId, note}>` with no schema,
+no array cap and no string cap, written straight to `client_note`. It hand-checked `status`
+with a `!==` pair — the same tell §7.4 documents at the route layer, where one checked field
+makes the rest look checked.
+
+Closed: `features/review/schemas.ts` caps both dimensions, the four bare-id actions parse
+through `lib/actions/parse-input`, and `features/__tests__/action-validation.test.ts` now
+covers the second boundary with the same shrink-only shape. Its detector was verified against
+the real before/after rather than assumed.
+
+### 8.5 Unmetered paid endpoints — RESOLVED 2026-08-18
+
+`ai/detect-slop` (a live model call) and `ai/analyze-url` (model call **plus** an outbound
+fetch of a caller-supplied URL) had no rate limit at all, while seven cheaper text routes did.
+The reason nothing looked wrong: the 429 block was copied at seven call sites, so a missing
+copy is invisible at any single one. It is one `aiRateLimitResponse` helper now.
+
+`auth/forgot-password` is throttled per client IP — keyed on IP, not address, because keying on
+the address lets one caller walk a list one message at a time. This closes the §6.5 remainder.
+
+`detect-slop` also gained its schema and a boundary `console.error`; its bare `catch {}` had
+been turning every provider outage, timeout and parse failure into one opaque 500.
+
+### 8.6 The rate limiter is per-instance on serverless — RULED, not changed
+
+`lib/auth/rate-limit.ts` stores counts in a module-level `Map` and its header said *"suitable
+for single-instance deployments"* — true of the code, false of Vercel. Each concurrent lambda
+keeps its own counts, so the real ceiling is `max × warm instances`.
+
+**Ruling:** it is a runaway-loop guard, not a spend ceiling, and the header now says so. A real
+budget needs shared state (Postgres or Upstash) and is a deliberate change, not a constant edit.
+Do not add a limit here and describe it as a budget.
+
+### 8.7 Security headers — partially closed
+
+`Strict-Transport-Security` and `Permissions-Policy` added. **CSP is still open** and wants its
+own `report-only` rollout given Next's inline bootstrap and the Konva work — it is the
+defence-in-depth layer for §8.3, so it belongs after it, not instead of it.
+
+---
+
+## 9. What the 2026-08-18 pass deliberately did NOT do
+
+Sequenced, not forgotten. Ordered by what they are waiting on.
+
+**Waiting on production access — start here.**
+- §8.2 prod schema dump → unblocks §8.1, the largest item in the repo.
+- §8.1 record each table's true RLS state, then one idempotent migration.
+- §7.9 **M21**: are `generation_runs`/`generation_themes` RLS-enabled with no user policy? If
+  yes, every wizard theme insert has been failing silently into `trackThemeSafe`, zeroing
+  `doneCount` and emptying the theme exclusion list. One query settles it.
+- **Migration reconciliation.** `20260808`, `20260814`–`20260819` are tracked as "pending prod"
+  across four entries here and three memory notes. Confirm what is applied **once**, then
+  regenerate `database.ts`. Nothing in the repo can answer this.
+- §2.9 bucket MIME allowlist (`image/svg+xml` **and** `image/webp`), per environment.
+
+**Waiting on a decision.**
+- §1.2 / §1.3 the post-images domain and the shared review surface. `components/posts/review/`
+  is now **12 files**, not the two §1.3 describes, and imports `features/canvas-editor` and
+  `features/dashboard` — a whole feature in the shared layer. Both consumers (`review` and
+  `generate`) need it, so "move it into the feature" does not work and the right home is a
+  genuine choice. 44 external import sites for the lib half.
+- §6.2 `api/meta/callback` — still 297 lines with six token-exchange helpers. The caution
+  stands: this path cannot be exercised locally and must be verified against a real Live-mode
+  consent.
+- §6.3c the three rulebook contradictions, plus one this pass measured: **109 inline
+  `.select('…')` strings against 38 constants in `select-columns.ts`.** A rule the code
+  contradicts 109 times is not a rule — narrow it ("multi-column reads use a constant") or drop it.
+
+**Sequenced behind other work.**
+- §5.8 `generation_runs` unique-per-slot · §5.9 visuals retry spacing · §2.4 partial-success on
+  approve · §7.7 notification names from `client_id` · §7.8 `/ideas` pagination · M18 composite
+  FK · M12 theme tracking on unpersisted drafts.
+- §2.2 / §2.7 / §2.8 are one storage-orphan job. **Do not start with it** — lowest value by this
+  file's own repeated assessment ("storage pennies") and highest risk to get wrong, because a
+  cleanup that mis-computes the skip set deletes live artwork.
+- §5.2 calendar zod (the only §5 perf item with a measured number and no unmet precondition) ·
+  §5.3 · §5.5 · §5.1.
+- §7.12 Playwright. The analysis stands and should not be revisited: jsdom would have caught 3
+  of 8 real editor defects and **the three worst were all layout**, which jsdom cannot see.
+- Five features have no tests at all: `analytics`, `auth`, `marketing`, `settings`,
+  `visual-identity`. `auth` and `settings` are where a bug is a security bug.
+
+**Still owed, by five separate entries: the browser matrix.** §6.3b, the generate redesign, the
+review-tab redesign, the sources redesign and the pipeline refactor each end with the same
+sentence. Everything is verified by `tsc`, `next build` and 1,274 tests; **none of it has been
+looked at in a browser.** Per §7.12 the manual pass has empirically caught every layout defect
+in the editor arc, including two that a clean typecheck, a clean lint, 1,100+ tests and twelve
+review agents all missed.
