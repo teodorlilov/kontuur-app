@@ -35,9 +35,11 @@ import { ScheduleTab } from './schedule-tab'
 import { ConnectedAccountsTab } from './connected-accounts-tab'
 import { ContentInsightsTab } from './content-insights-tab'
 import { IdeaFormTab } from '@/features/ideas/components/idea-form-tab'
+import { DeleteClientDialog } from './delete-client-dialog'
 import {
   AccountsRail,
   BrandProfileRail,
+  ClientDangerRail,
   ClientStatusRail,
   IdeasRail,
   InsightsRail,
@@ -140,6 +142,7 @@ export function ClientSettingsForm(props: ClientSettingsFormProps) {
   const [activeTab, selectTab] = useTabParam<SettingsTab>(SETTINGS_TABS, 'basic')
   const [saving, setSaving] = useState(false)
   const [reanalyzing, setReanalyzing] = useState(false)
+  const [isConfirmingDelete, setIsConfirmingDelete] = useState(false)
 
   // The values the form loaded with. Everything dirty is measured against this, and Discard
   // restores it. A ref, not state: changing the baseline must never itself trigger a render.
@@ -329,6 +332,23 @@ export function ClientSettingsForm(props: ClientSettingsFormProps) {
           {renderPanel()}
         </FormPanel>
       </div>
+
+      <DeleteClientDialog
+        open={isConfirmingDelete}
+        onClose={() => setIsConfirmingDelete(false)}
+        clientId={clientId}
+        // The stored name, not drafts.client.name: an unsaved rename would leave the reader
+        // typing a name the confirm gate cannot match.
+        clientName={client.name}
+        counts={{
+          publishedCount,
+          pendingCount,
+          scheduledCount,
+          sourceCount,
+          connectionCount,
+          ideaCount: ideaTotalCount,
+        }}
+      />
     </div>
   )
 
@@ -388,14 +408,17 @@ export function ClientSettingsForm(props: ClientSettingsFormProps) {
     switch (activeTab) {
       case 'basic':
         return (
-          <ClientStatusRail
-            lastGeneratedAt={lastGeneratedAt}
-            pendingCount={pendingCount}
-            sourceCount={sourceCount}
-            publishedCount={publishedCount}
-            connectionCount={connectionCount}
-            onConnectClick={goToAccounts}
-          />
+          <>
+            <ClientStatusRail
+              lastGeneratedAt={lastGeneratedAt}
+              pendingCount={pendingCount}
+              sourceCount={sourceCount}
+              publishedCount={publishedCount}
+              connectionCount={connectionCount}
+              onConnectClick={goToAccounts}
+            />
+            <ClientDangerRail onDelete={() => setIsConfirmingDelete(true)} />
+          </>
         )
       case 'brand':
         return <BrandProfileRail pillarCount={drafts.brand.contentPillars.length} />

@@ -82,6 +82,15 @@ describe('ConfirmDialog', () => {
     expect(onConfirm).not.toHaveBeenCalled()
   })
 
+  it("will not act while the body's own gate is unsatisfied", async () => {
+    const { onConfirm, user } = setup({ disabled: true })
+    // `disabled` is what holds a type-to-confirm dialog shut until the name matches. It rides
+    // the same `disabled={disabled || loading}` coupling as the loading case above — break
+    // either and a client is deleted by someone who never finished typing its name.
+    await user.click(screen.getByRole('button', { name: 'Discard and leave' }))
+    expect(onConfirm).not.toHaveBeenCalled()
+  })
+
   it('renders nothing when closed', () => {
     setup({ open: false })
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()

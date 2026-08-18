@@ -32,6 +32,17 @@ export const WEB_RESEARCH_SOURCE_LABEL = 'Web research'
 export const USER_AGENT_BROWSER = 'Mozilla/5.0 (compatible; Postflow/1.0)'
 export const USER_AGENT_BOT = 'PostflowBot/1.0'
 
+/**
+ * The two Supabase Storage buckets. Every object in both is written under a `{clientId}/`
+ * prefix, which is what lets deleteClient sweep a whole client by prefix rather than by
+ * enumerating rows.
+ *
+ * Here rather than in publishing/lib/storage.ts because that file is `server-only` and the
+ * sources feature needs the second name too — three inline copies of it existed before.
+ */
+export const POST_IMAGES_BUCKET = 'post-images'
+export const CLIENT_FILES_BUCKET = 'client-files'
+
 export const PLATFORMS = ['Instagram', 'Facebook', 'LinkedIn', 'X / Twitter', 'TikTok'] as const
 
 /** The subset of PLATFORMS that can actually publish today. The rest of the list is roadmap. */

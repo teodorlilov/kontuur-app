@@ -10,7 +10,7 @@ import { validateSourceUrl } from '@/lib/sources/validate-url'
 import { isValidRssUrl } from '@/lib/sources/fetch-rss'
 import { fetchWebsiteSource } from '@/lib/sources/fetch-website'
 import { validateUpload, getFileExtension } from '@/lib/sources/validate-upload'
-import { WEB_RESEARCH_SOURCE_LABEL } from '@/utils/constants'
+import { CLIENT_FILES_BUCKET, WEB_RESEARCH_SOURCE_LABEL } from '@/utils/constants'
 import type { ClientSource } from '@/types/api'
 import type { TavilyConfig } from '@/types/sources'
 import { asJson } from '@/lib/queries/as-json'
@@ -143,10 +143,12 @@ export async function uploadSource(
   const ext = getFileExtension(validFile.name)
   const filePath = `${clientId}/${randomUUID()}.${ext}`
 
-  const { error: uploadError } = await admin.storage.from('client-files').upload(filePath, buffer, {
-    contentType: validFile.type,
-    upsert: false,
-  })
+  const { error: uploadError } = await admin.storage
+    .from(CLIENT_FILES_BUCKET)
+    .upload(filePath, buffer, {
+      contentType: validFile.type,
+      upsert: false,
+    })
 
   if (uploadError) return { ok: false, error: 'Failed to upload file to storage' }
 
@@ -169,7 +171,7 @@ export async function uploadSource(
     .single()
 
   if (insertError || !sourceData) {
-    await admin.storage.from('client-files').remove([filePath])
+    await admin.storage.from(CLIENT_FILES_BUCKET).remove([filePath])
     return { ok: false, error: 'Failed to create source record' }
   }
 
@@ -233,7 +235,7 @@ export async function deleteSource(sourceId: string): Promise<ActionResult> {
   const source = sourceRow as { type: string; file_path: string | null } | null
   if (source?.type === 'file' && source.file_path) {
     const admin = createAdminSupabaseClient()
-    await admin.storage.from('client-files').remove([source.file_path])
+    await admin.storage.from(CLIENT_FILES_BUCKET).remove([source.file_path])
   }
 
   const { error } = await supabase.from('client_sources').delete().eq('id', sourceId)

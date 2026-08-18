@@ -1,11 +1,16 @@
 'use server'
 
+import 'server-only'
 import { revalidateTag, revalidatePath } from 'next/cache'
 import {
+  fetchClientWithOwnership,
   resolveActionAuth,
   verifyClientOwnership,
   type SupabaseServerClient,
 } from '@/lib/auth/helpers'
+import { parseActionId } from '@/lib/actions/parse-input'
+import { createAdminSupabaseClient } from '@/lib/supabase/admin'
+import { removeStoragePrefix } from '@/features/publishing/lib/storage'
 import { parsePillars } from '@/lib/clients/content-pillars'
 import { removeDeletedPillarIds } from '@/lib/clients/sync-source-pillars'
 import { upsertVisualIdentity } from '@/lib/visual/queries'
@@ -19,7 +24,11 @@ import {
   type ScheduleInput,
   type UpdateClientInput,
 } from '@/features/clients/schemas'
-import { WEB_RESEARCH_SOURCE_LABEL } from '@/utils/constants'
+import {
+  CLIENT_FILES_BUCKET,
+  POST_IMAGES_BUCKET,
+  WEB_RESEARCH_SOURCE_LABEL,
+} from '@/utils/constants'
 import type { SourceKind } from '@/types/visual'
 import type { ActionResult } from '@/lib/actions/types'
 
@@ -114,8 +123,10 @@ export async function createClient(input: CreateClientInput): Promise<ActionResu
       profileError ?? scheduleError ?? webResearchError
     )
     // Roll the client back rather than leave a half-built row behind: the user's retry would
-    // otherwise add a second client with the same name. Children cascade — DELETE
-    // /api/clients/[id] deletes the client row alone and relies on the same behaviour.
+    // otherwise add a second client with the same name. This deletes the client row alone and
+    // lets the cascade take whichever children did land — which is only true as of 20260820.
+    // Before it, every child FK was NO ACTION, so this rollback raised 23503 in exactly the
+    // case it exists for: one insert already succeeded.
     const { error: rollbackError } = await supabase.from('clients').delete().eq('id', clientId)
     if (rollbackError) {
       console.error(
@@ -184,6 +195,73 @@ export async function updateClient(
 
   revalidateTag('agency-clients', 'max')
   revalidatePath('/generate')
+  return { ok: true, data: undefined }
+}
+
+/**
+ * Permanently delete a client, every row that belongs to it, and its stored files.
+ *
+ * Rows go by database cascade (20260820) rather than by a delete-per-table here: the FK graph
+ * reaches ~18 tables and any list maintained in TypeScript would drift from it silently.
+ *
+ * KNOWN LIMITATION, deliberate: a post already in `publishing` holds an open Instagram Graph
+ * call and still reaches the account after this returns. The publish run's follow-up write then
+ * updates zero rows, which Supabase does not report as an error, so nothing surfaces. Guarding
+ * it would mean refusing the delete for up to one cron tick; that trade was declined.
+ */
+export async function deleteClient(clientId: string): Promise<ActionResult> {
+  // Auth before validation, matching createClient and updateClient above.
+  const auth = await resolveActionAuth()
+  if (!auth.ok) return { ok: false, error: auth.error }
+  const { supabase, agencyId } = auth
+
+  const parsed = parseActionId(clientId, 'clientId')
+  if (!parsed.ok) return parsed.result
+
+  // Ownership on the user-scoped client, and it returns the name in the same round trip —
+  // the audit line below is the only record this client ever existed.
+  const client = await fetchClientWithOwnership(supabase, parsed.id, agencyId)
+  if (!client) return { ok: false, error: 'Not found' }
+
+  // Admin because the cascade reaches tables with RLS on and no policies (post_images,
+  // discarded_drafts, client_ideas, idea_form_tokens, brand_visual_identity,
+  // client_style_memos). The agency_id predicate stays precisely because admin bypasses
+  // RLS: it is the last check standing between this statement and another agency's client.
+  const admin = createAdminSupabaseClient()
+  const { error } = await admin
+    .from('clients')
+    .delete()
+    .eq('id', parsed.id)
+    .eq('agency_id', agencyId)
+
+  if (error) {
+    console.error(`[clients:delete] failed for ${parsed.id}:`, error.message)
+    // 23503 means a child FK is still NO ACTION — i.e. 20260820 has not reached this
+    // database. The generic message makes that indistinguishable from a transient fault.
+    if (error.code === '23503') {
+      return { ok: false, error: 'Cannot delete: the database is missing migration 20260820.' }
+    }
+    return { ok: false, error: 'Could not delete the client. Please try again.' }
+  }
+
+  // After the rows, never before: sweeping first would strip a live client's images if the
+  // delete then failed. Best-effort by contract — the client is already gone either way.
+  const [imageCount, fileCount] = await Promise.all([
+    removeStoragePrefix(POST_IMAGES_BUCKET, parsed.id),
+    removeStoragePrefix(CLIENT_FILES_BUCKET, parsed.id),
+  ])
+
+  // warn, not error: nothing failed. An irreversible action needs a trace, and this codebase
+  // has no info level.
+  console.warn(
+    `[clients:delete] removed "${client.name}" (${parsed.id}) — ` +
+      `${imageCount} images, ${fileCount} files`
+  )
+
+  revalidateTag('agency-clients', 'max')
+  revalidateTag('client-post-stats', 'max')
+  revalidatePath('/generate')
+  revalidatePath('/clients')
   return { ok: true, data: undefined }
 }
 

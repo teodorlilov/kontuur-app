@@ -13,6 +13,9 @@ interface ConfirmDialogProps {
   /** 'danger' for destructive outcomes (Clay); 'primary' for consequential but safe ones. */
   tone?: 'danger' | 'primary'
   loading?: boolean
+  /** Holds the confirm button shut until the body's own gate is satisfied — a typed-back name,
+   *  a ticked box. The dialog does not know the gate; it only refuses to act before it opens. */
+  disabled?: boolean
   onConfirm: () => void
   onClose: () => void
 }
@@ -30,6 +33,7 @@ export function ConfirmDialog({
   cancelLabel = 'Cancel',
   tone = 'danger',
   loading,
+  disabled,
   onConfirm,
   onClose,
 }: ConfirmDialogProps) {
@@ -45,6 +49,7 @@ export function ConfirmDialog({
             variant={tone === 'danger' ? 'danger' : 'primary'}
             size="sm"
             loading={loading}
+            disabled={disabled}
             onClick={onConfirm}
           >
             {confirmLabel}
