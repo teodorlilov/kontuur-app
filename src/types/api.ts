@@ -50,11 +50,6 @@ export interface CarouselSlide extends SlideText {
 
 // ---- URL Analysis ----
 
-export interface UrlAnalysisRequest {
-  websiteUrl?: string
-  instagramHandle?: string
-}
-
 export interface UrlAnalysisResponse {
   detected_business_name: string | null
   detected_niche: string
@@ -71,30 +66,7 @@ export interface UrlAnalysisResponse {
 
 // ---- Research ----
 
-export interface ResearchRequest {
-  niche: string
-  language: string
-}
-
-export interface ResearchFinding {
-  finding: string
-  suggested_theme: string
-}
-
-export interface ResearchResponse {
-  findings: ResearchFinding[]
-}
-
 // ---- Pillars ----
-
-export interface PillarsRequest {
-  niche: string
-  clientId?: string
-}
-
-export interface PillarsResponse {
-  pillars: Array<{ pillar: string }>
-}
 
 // ---- Client Ideas ----
 
@@ -121,11 +93,6 @@ export interface ClientIdea {
 }
 
 // ---- Approval ----
-
-export interface ApprovalResponse {
-  status: 'approved' | 'changes_requested'
-  postNotes?: Array<{ postId: string; note: string }>
-}
 
 /** A post as the public approval page reads it, plus the note the client left. */
 export type ApprovalPostData = Pick<
@@ -247,14 +214,6 @@ export interface AgencyInfo {
 }
 
 export type SettingsTab = 'team' | 'account' | 'integrations' | 'profile'
-
-export interface InviteTeamMemberRequest {
-  email: string
-}
-
-export interface UpdateAgencyRequest {
-  name: string
-}
 
 // ---- Meta Connections ----
 
@@ -411,11 +370,6 @@ export type AnalyticsReport = Pick<
 
 // ---- API error ----
 
-export interface ApiError {
-  error: string
-  code?: string
-}
-
 // Re-export validation types so consumers import from '@/types/api'
 export type {
   LanguageIssueType,
@@ -431,8 +385,6 @@ export type { SlideText } from './slide'
 export type {
   ClientSource,
   SourceSuggestion,
-  SuggestSourcesRequest,
-  SuggestSourcesResponse,
   DiscoverPagesRequest,
   DiscoverPagesResponse,
 } from './sources'

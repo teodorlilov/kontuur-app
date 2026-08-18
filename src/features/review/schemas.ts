@@ -52,5 +52,3 @@ export const submitApprovalSchema = z.object({
   status: approvalStatusSchema,
   postNotes: z.array(approvalNoteSchema).max(APPROVAL_NOTES_MAX).optional(),
 })
-
-export type SubmitApprovalInput = z.infer<typeof submitApprovalSchema>

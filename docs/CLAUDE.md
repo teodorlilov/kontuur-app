@@ -6,12 +6,13 @@ Stack: Next.js 16 App Router · React 19 · TypeScript (strict) · Supabase (Pos
 Storage) · Tailwind v4.
 
 ## Commands
-- **Before pushing: `npm run check`** — typecheck + lint + format:check + test, the same
-  command `.husky/pre-push` and CI run. Everything below is for narrowing down a failure.
+- **Before pushing: `npm run check`** — typecheck + lint + format:check + deadcode +
+  test, the same command `.husky/pre-push` and CI run. Everything below is for narrowing
+  down a failure.
 - Dev: `npm run dev`
 - Typecheck: `npm run typecheck`
 - Lint: `npm run lint` · Test: `npm test` (watch: `npm run test:watch`)
-- Format: `npm run format` · Regenerate DB types:
+- Format: `npm run format` · Dead code: `npm run deadcode` · Regenerate DB types:
   `npx supabase gen types typescript --local > src/types/database.ts`
 - `format:check` is **in** `check` as of 2026-08-18. It used to be excluded, and this
   file used to say "do not add it" — because prettier failed on 169 files and a
@@ -143,9 +144,12 @@ Before any change:
 
 After each change:
 1. `npm run check`.
-2. Remove any dead code or duplication the change introduced. Nothing in the
-   toolchain catches an orphaned *export* — `npx knip@5 --include exports,files`
-   over what you touched is the interim check (see TECH-DEBT §7.6).
+2. Remove any dead code or duplication the change introduced. Orphaned *exports*
+   are caught by `npm run deadcode` (knip), which is part of `check` as of
+   2026-08-18 and currently reports **zero** — so any hit is something this
+   change introduced. It works at export granularity and cannot see an unused
+   **field on a used type**; that shape (`topPerformingPosts`, `rssBudget`) still
+   needs a human, and `deletion-ledger.test.ts` pins the ones already found.
 3. State which files were modified and why. If you made a judgment call
    (e.g. where a shared function lives), state the decision and reasoning.
 

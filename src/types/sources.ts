@@ -21,18 +21,6 @@ export interface SourceSuggestion {
   reason: string
 }
 
-export interface SuggestSourcesRequest {
-  niche: string
-  clientName?: string
-  pillars?: string[]
-  targetAudience?: string
-  language?: string
-}
-
-export interface SuggestSourcesResponse {
-  suggestions: SourceSuggestion[]
-}
-
 export interface TavilyConfig {
   include_domains?: string[]
   exclude_domains?: string[]
