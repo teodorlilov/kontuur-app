@@ -6,8 +6,10 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  // API routes handle their own auth via resolveAuth() — exclude them to avoid double getUser() per request
+  // API routes handle their own auth via resolveAuth() — exclude them to avoid double getUser() per request.
+  // sw.js is the service-worker kill-switch: a redirect here would fail the browser's update
+  // check and keep the legacy worker registered forever, so it must be served as-is.
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|api/|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    '/((?!_next/static|_next/image|favicon.ico|sw.js|api/|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 }
