@@ -32,5 +32,17 @@ jobs:
 
       # typecheck && lint && test. Deliberately NOT `npm test` — vitest is
       # transpile-only, so tests alone prove nothing about types.
-      # format:check is excluded until the repo is formatted; see docs/TECH-DEBT.md §7.2.
       - run: npm run check
+
+      # `tsc --noEmit` does not evaluate the App Router's own rules: a server-only
+      # module pulled into a client bundle, a bad `metadata` shape, an invalid route
+      # segment config. On an app that routes 50+ files through a service-role Supabase
+      # client, "server code reached the browser" is precisely the class of mistake worth
+      # a build to catch — and `npm run check` passing was never evidence the app builds.
+      # Env vars are placeholders: the build only needs them present, not valid.
+      - run: npm run build
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder-anon-key
+          NEXT_PUBLIC_APP_URL: https://placeholder.test
+          SUPABASE_SERVICE_ROLE_KEY: placeholder-service-role-key
