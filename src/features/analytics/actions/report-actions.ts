@@ -2,10 +2,14 @@
 
 import { revalidateTag } from 'next/cache'
 import { resolveActionAuth } from '@/lib/auth/helpers'
+import { parseActionId } from '@/lib/actions/parse-input'
 import type { ActionResult } from '@/lib/actions/types'
 
 /** Delete an analytics report by ID. */
 export async function deleteReport(reportId: string): Promise<ActionResult> {
+  const parsed = parseActionId(reportId, 'reportId')
+  if (!parsed.ok) return parsed.result
+
   const auth = await resolveActionAuth()
   if (!auth.ok) return { ok: false, error: auth.error }
   const { supabase, agencyId } = auth

@@ -2,10 +2,14 @@
 
 import { revalidateTag } from 'next/cache'
 import { resolveActionAuth } from '@/lib/auth/helpers'
+import { parseActionId } from '@/lib/actions/parse-input'
 import type { ActionResult } from '@/lib/actions/types'
 
 /** Disconnect a social connection by ID. */
 export async function disconnectConnection(connectionId: string): Promise<ActionResult> {
+  const parsed = parseActionId(connectionId, 'connectionId')
+  if (!parsed.ok) return parsed.result
+
   const auth = await resolveActionAuth()
   if (!auth.ok) return { ok: false, error: auth.error }
   const { supabase, agencyId } = auth

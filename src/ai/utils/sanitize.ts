@@ -30,6 +30,25 @@ export function sanitizePromptField(
 }
 
 /**
+ * Escape prompt delimiters in third-party BODY text, without truncating it.
+ *
+ * Separate from `sanitizePromptField` because the two defend different things.
+ * `sanitizePromptField` caps length so a user cannot flood the prompt with their own
+ * profile fields. Source bodies are already budgeted upstream — `FetchLimits.webBudget`
+ * and `fileBudget`, divided per source in `source-gathering.ts` — so capping again here
+ * would silently shrink research material by a factor of the source count. That is a
+ * generation-quality regression wearing a security fix.
+ *
+ * What remains is the half that matters for fetched text: a page, feed or search result
+ * the agency does not control cannot close an XML-style section and issue instructions
+ * to the model in the gap.
+ */
+export function sanitizeSourceText(value: string | null | undefined): string {
+  if (!value) return ''
+  return value.trim().replace(/</g, '&lt;').replace(/>/g, '&gt;')
+}
+
+/**
  * Strip markdown syntax from generated post text before it becomes a draft.
  *
  * The writer sees source material as markdown (website extraction, web search)

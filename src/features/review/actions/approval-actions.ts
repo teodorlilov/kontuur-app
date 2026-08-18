@@ -4,24 +4,35 @@ import 'server-only'
 import { revalidateTag } from 'next/cache'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { createApprovalNotification } from '@/features/review/lib/create-approval-notification'
+import { submitApprovalSchema, type ApprovalStatus } from '@/features/review/schemas'
+import { formatZodIssues } from '@/lib/validation/format-issues'
 import type { ActionResult } from '@/lib/actions/types'
 
-/** Submit an approval/changes-requested response for a batch of posts. */
+/**
+ * Submit an approval/changes-requested response for a batch of posts.
+ *
+ * Unauthenticated by design — the URL token is the credential — and running on the
+ * service-role client, so the argument list is a public boundary and is parsed as one.
+ * It used to hand-check `status` and take `postNotes` on trust: an uncapped array of
+ * uncapped strings written straight to `client_note` by anyone holding the link.
+ */
 export async function submitApproval(
   token: string,
-  status: 'approved' | 'changes_requested',
+  status: ApprovalStatus,
   postNotes?: Array<{ postId: string; note: string }>
 ): Promise<ActionResult> {
-  if (status !== 'approved' && status !== 'changes_requested') {
-    return { ok: false, error: 'status must be "approved" or "changes_requested"' }
+  const parsed = submitApprovalSchema.safeParse({ token, status, postNotes })
+  if (!parsed.success) {
+    return { ok: false, error: formatZodIssues(parsed.error).join('; ') }
   }
+  const { token: batchId, status: verdict, postNotes: notes } = parsed.data
 
   const supabase = createAdminSupabaseClient()
 
   const { data: tokenRows, error } = await supabase
     .from('post_approval_tokens')
     .select('id, post_id, status, expires_at')
-    .eq('batch_id', token)
+    .eq('batch_id', batchId)
 
   if (error || !tokenRows || tokenRows.length === 0) {
     return { ok: false, error: 'Invalid approval link' }
@@ -38,18 +49,18 @@ export async function submitApproval(
 
   const { error: updateError } = await supabase
     .from('post_approval_tokens')
-    .update({ status, responded_at: new Date().toISOString() })
-    .eq('batch_id', token)
+    .update({ status: verdict, responded_at: new Date().toISOString() })
+    .eq('batch_id', batchId)
 
   if (updateError) return { ok: false, error: updateError.message }
 
-  if (postNotes && postNotes.length > 0) {
+  if (notes && notes.length > 0) {
     await Promise.all(
-      postNotes.map(({ postId, note }) =>
+      notes.map(({ postId, note }) =>
         supabase
           .from('post_approval_tokens')
           .update({ client_note: note })
-          .eq('batch_id', token)
+          .eq('batch_id', batchId)
           .eq('post_id', postId)
       )
     )
@@ -64,15 +75,15 @@ export async function submitApproval(
     .single() as { data: { client_id: string; clients: { name: string; agency_id: string } } | null }
 
   if (postWithClient) {
-    const firstNote = postNotes?.[0]?.note ?? null
+    const firstNote = notes?.[0]?.note ?? null
     await createApprovalNotification(supabase, {
       agencyId: postWithClient.clients.agency_id,
       clientName: postWithClient.clients.name,
       clientId: postWithClient.client_id,
       postCount: postIds.length,
-      status,
-      feedbackText: status === 'changes_requested' ? firstNote : null,
-      reviewToken: token,
+      status: verdict,
+      feedbackText: verdict === 'changes_requested' ? firstNote : null,
+      reviewToken: batchId,
       postId: postIds[0] ?? null,
     })
   }

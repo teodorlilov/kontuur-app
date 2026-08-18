@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
-import { checkRateLimit, AI_RATE_LIMIT } from '@/lib/auth/rate-limit'
+import { aiRateLimitResponse } from '@/lib/auth/rate-limit'
 import { generateBriefing } from '@/ai/intelligence/generate-briefing'
 import { getAgencyNiche } from '@/lib/clients/fetch-client-data'
 import { getMondayISO } from '@/utils/date-helpers'
@@ -12,10 +12,8 @@ export async function POST() {
   if (!auth.ok) return auth.response
   const { supabase, agencyId, userId } = auth
 
-  const rl = checkRateLimit(`ai:intelligence:${userId}`, AI_RATE_LIMIT)
-  if (!rl.allowed) {
-    return NextResponse.json({ error: 'Too many requests. Please wait a moment.' }, { status: 429 })
-  }
+  const limited = aiRateLimitResponse('intelligence', userId)
+  if (limited) return limited
 
   const agencyNiche = await getAgencyNiche(supabase, agencyId)
   const briefing = await generateBriefing({ agencyNiche })

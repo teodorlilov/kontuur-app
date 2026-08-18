@@ -1,4 +1,5 @@
 import { decodeUrl } from '@/utils/decode-url'
+import { sanitizePromptField, sanitizeSourceText } from '@/ai/utils/sanitize'
 import type { PostType } from '@/types/api'
 
 /**
@@ -61,11 +62,18 @@ export function buildGroundingPrompt(opts: {
     ? `If appropriate, naturally reference or link to the source article in the ${contentLabel}.`
     : 'Since there is no external URL, do not fabricate a link — just use the facts from the source.'
 
+  // Delimited and escaped, not interpolated bare. This text is a scraped page or feed
+  // body — the one input to generation that an outsider can write. Untagged it reads as
+  // prose the model may take instructions from; tagged and escaped it can only be data,
+  // which is what the DEFENSIVE_DATA_CLAUSE in the system prompt then refers to.
+  // Length is budgeted upstream (source-gathering), so nothing is truncated here.
   return `
 SOURCE MATERIAL (use as primary context):
-Source Text: ${sourceText}
-Source URL: ${urlLine}
-${background ? `\nBACKGROUND CONTEXT (for understanding only — every fact, number and claim you use MUST come from the Source Text above, NONE from this background):\n${background}\n` : ''}
+<source_text>
+${sanitizeSourceText(sourceText)}
+</source_text>
+Source URL: ${sanitizePromptField(urlLine)}
+${background ? `\nBACKGROUND CONTEXT (for understanding only — every fact, number and claim you use MUST come from the Source Text above, NONE from this background):\n<background_text>\n${sanitizeSourceText(background)}\n</background_text>\n` : ''}
 SOURCE GROUNDING RULES:
 - Use this source as the primary context and inspiration for the post.
 - Every specific statistic, number, price, or claim you include MUST come from the source or the client's own known expertise — do NOT invent facts.

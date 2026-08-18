@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
 import { fetchClientData } from '@/lib/clients/fetch-client-data'
-import { checkRateLimit, AI_RATE_LIMIT } from '@/lib/auth/rate-limit'
+import { aiRateLimitResponse } from '@/lib/auth/rate-limit'
 import { performRewrite } from '@/ai/rewrite/rewrite-post'
 import type { PostType } from '@/types/api'
 import type { SlideText } from '@/types/slide'
@@ -27,13 +27,8 @@ export async function POST(request: Request) {
     if (!auth.ok) return auth.response
     const { supabase, agencyId, userId } = auth
 
-    const rl = checkRateLimit(`ai:rewrite:${userId}`, AI_RATE_LIMIT)
-    if (!rl.allowed) {
-      return NextResponse.json(
-        { error: 'Too many requests. Please wait a moment.' },
-        { status: 429 }
-      )
-    }
+    const limited = aiRateLimitResponse('rewrite', userId)
+    if (limited) return limited
 
     let body: RewriteRequestBody
     try {

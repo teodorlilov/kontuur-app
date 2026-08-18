@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
-import { checkRateLimit, AI_RATE_LIMIT } from '@/lib/auth/rate-limit'
+import { aiRateLimitResponse } from '@/lib/auth/rate-limit'
 import { suggestSourcesCached } from '@/ai/suggest-sources/suggest-sources'
 import type { SourceSuggestion } from '@/types/api'
 
@@ -18,10 +18,8 @@ export async function POST(request: Request) {
   if (!auth.ok) return auth.response
   const { agencyId, userId } = auth
 
-  const rl = checkRateLimit(`ai:suggest-sources:${userId}`, AI_RATE_LIMIT)
-  if (!rl.allowed) {
-    return NextResponse.json({ error: 'Too many requests. Please wait a moment.' }, { status: 429 })
-  }
+  const limited = aiRateLimitResponse('suggest-sources', userId)
+  if (limited) return limited
 
   let body: SuggestSourcesBody
   try {

@@ -3,7 +3,7 @@ import { resolveAuth } from '@/lib/auth/resolve-auth'
 import { generateBestTime } from '@/ai/best-time/generate-best-time'
 import { extractPlatformFromMix } from '@/lib/clients/fetch-client-data'
 import type { Json } from '@/types/database'
-import { checkRateLimit, AI_RATE_LIMIT } from '@/lib/auth/rate-limit'
+import { aiRateLimitResponse } from '@/lib/auth/rate-limit'
 import { CLIENT_AI_CONTEXT_COLUMNS } from '@/lib/queries/select-columns'
 
 interface BestTimeRequestBody {
@@ -16,10 +16,8 @@ export async function POST(request: Request) {
   if (!auth.ok) return auth.response
   const { supabase, agencyId, userId } = auth
 
-  const rl = checkRateLimit(`ai:best-time:${userId}`, AI_RATE_LIMIT)
-  if (!rl.allowed) {
-    return NextResponse.json({ error: 'Too many requests. Please wait a moment.' }, { status: 429 })
-  }
+  const limited = aiRateLimitResponse('best-time', userId)
+  if (limited) return limited
 
   let body: BestTimeRequestBody
   try {

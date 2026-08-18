@@ -34,6 +34,19 @@ const nextConfig: NextConfig = {
           { key: 'X-Frame-Options', value: 'DENY' },
           { key: 'X-Content-Type-Options', value: 'nosniff' },
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+          // Two years and preload-eligible. Vercel terminates TLS and does not serve the
+          // app over plain HTTP, so this closes the first-request window rather than
+          // changing steady-state behaviour.
+          {
+            key: 'Strict-Transport-Security',
+            value: 'max-age=63072000; includeSubDomains; preload',
+          },
+          // Nothing in the app asks for any of these. Denying them by name means a future
+          // dependency cannot quietly start asking on a page the user already trusts.
+          {
+            key: 'Permissions-Policy',
+            value: 'camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()',
+          },
         ],
       },
     ]

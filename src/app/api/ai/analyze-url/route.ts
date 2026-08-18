@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
+import { aiRateLimitResponse } from '@/lib/auth/rate-limit'
 import { fetchWebsiteSource } from '@/lib/sources/fetch-website'
 import { fetchInstagramProfile } from '@/lib/sources/fetch-instagram'
 import { analyzeUrl } from '@/utils/ai'
@@ -15,6 +16,12 @@ const analyzeUrlSchema = z.object({
 export async function POST(request: Request) {
   const auth = await resolveAuth()
   if (!auth.ok) return auth.response
+
+  // Metered like the other model calls, and for a second reason the rest do not have:
+  // this route fetches an arbitrary caller-supplied URL, so unthrottled it is also a way
+  // to aim our egress at a third party.
+  const limited = aiRateLimitResponse('analyze-url', auth.userId)
+  if (limited) return limited
 
   let body: z.infer<typeof analyzeUrlSchema>
   try {

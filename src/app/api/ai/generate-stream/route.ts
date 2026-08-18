@@ -4,7 +4,7 @@ import { resolveAuth } from '@/lib/auth/resolve-auth'
 import { generateStreamSchema } from '@/features/generate/schemas'
 import { fetchClientById, fetchEngineContext } from '@/lib/queries/db'
 import { DEFAULT_CAROUSEL_SLIDES } from '@/utils/constants'
-import { checkRateLimit, AI_RATE_LIMIT } from '@/lib/auth/rate-limit'
+import { aiRateLimitResponse } from '@/lib/auth/rate-limit'
 import { performResearch } from '@/ai/research/research-orchestrator'
 import { finishGenerationRun, startGenerationRun, trackGenerationTheme } from '@/lib/generation/runs'
 import { runGenerationBatch } from '@/ai/generation/generation-orchestrator'
@@ -32,10 +32,8 @@ export async function POST(request: Request) {
   if (!auth.ok) return auth.response
   const { supabase, agencyId, userId } = auth
 
-  const rl = checkRateLimit(`ai:generate:${userId}`, AI_RATE_LIMIT)
-  if (!rl.allowed) {
-    return NextResponse.json({ error: 'Too many requests. Please wait a moment.' }, { status: 429 })
-  }
+  const limited = aiRateLimitResponse('generate', userId)
+  if (limited) return limited
 
   let body: GenerateStreamRequestBody
   try {

@@ -1,10 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
+import { checkRateLimit } from '@/lib/auth/rate-limit'
 
 const forgotPasswordSchema = z.object({
   email: z.string().trim().min(1).max(320),
 })
+
+/**
+ * 5 attempts per 15 minutes, keyed by client IP.
+ *
+ * The IP, not the address: keying on the email would let one caller walk a list, sending
+ * one message per address and never tripping a per-address counter. This is the only
+ * unauthenticated endpoint that causes mail to be sent, so there is no user id to key on
+ * and the source is all there is.
+ *
+ * Per-instance like everything else here (see rate-limit.ts) — a loop against one warm
+ * lambda is stopped; a distributed one is not. That is the honest bound.
+ */
+const FORGOT_PASSWORD_RATE_LIMIT = { max: 5, windowMs: 15 * 60_000 }
 
 /**
  * Send a password-reset link.
@@ -19,6 +33,16 @@ const forgotPasswordSchema = z.object({
  * the oracle closed with it. Resolves docs/TECH-DEBT.md §6.5.
  */
 export async function POST(request: NextRequest) {
+  // `x-forwarded-for` is set by Vercel's proxy and is the caller's IP; the fallback keeps
+  // one shared bucket rather than an unlimited one when the header is absent (local dev).
+  const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
+  const rl = checkRateLimit(`forgot-password:${ip}`, FORGOT_PASSWORD_RATE_LIMIT)
+  if (!rl.allowed) {
+    // 429 regardless of whether the address exists — the same reasoning that closed the
+    // enumeration oracle below applies to the throttle telling a caller anything.
+    return NextResponse.json({ error: 'Too many attempts. Please try again later.' }, { status: 429 })
+  }
+
   const parsed = forgotPasswordSchema.safeParse(await request.json().catch(() => null))
 
   if (!parsed.success) {

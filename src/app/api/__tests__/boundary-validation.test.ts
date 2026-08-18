@@ -21,8 +21,17 @@ const API = path.resolve(__dirname, '..')
 
 /** Reads a body. */
 const READS_BODY = /request\.json\(\)/
-/** Hands it to a zod schema. */
-const PARSES = /\.(safeParse|parse)\s*\(/
+/**
+ * Hands it to a zod schema — directly, or through a named parser that wraps one
+ * (`parsePostUpdate`, `parseStoredValidation`).
+ *
+ * The second branch is not cosmetic. With only the dotted form, `posts/[id]/route.ts`
+ * counted as unvalidated after it was fixed, its backlog line stayed, and the staleness
+ * assertion below — whose entire job is to catch "fixed but not delisted" — passed
+ * anyway. A detector that cannot see a fix publishes a backlog that is wrong in the
+ * safe-looking direction, and it discouraged the house pattern of naming a parser.
+ */
+const PARSES = /\.(safeParse|parse)\s*\(|\bparse[A-Z]\w*\s*\(/
 
 /**
  * Routes that read a body without a schema, each for a reason.
@@ -40,9 +49,7 @@ const EXEMPT: Record<string, string> = {
  * exemptions — these are debt, and the list may only ever shrink.
  *
  * Not fixed here because adding a schema changes what each route accepts, which is a
- * behavioural change per route and wants its own review. `posts/[id]/route.ts` is the
- * clearest case of why the rule exists: it hand-rolls checks for status and platform,
- * which reads as validated, while every other field goes through untouched.
+ * behavioural change per route and wants its own review.
  *
  * To clear one: add a schema in the feature's schemas.ts, parse the body with it, then
  * delete its line. The staleness check below fails if you fix it and forget.
@@ -50,7 +57,6 @@ const EXEMPT: Record<string, string> = {
  */
 const KNOWN_UNVALIDATED: string[] = [
   'ai/best-time/route.ts',
-  'ai/detect-slop/route.ts',
   'ai/generate-svg/route.ts',
   'ai/intelligence/tip/route.ts',
   'ai/isolate-subject/route.ts',
@@ -60,7 +66,6 @@ const KNOWN_UNVALIDATED: string[] = [
   'canva/designs/[designId]/export/route.ts',
   'extract/start/route.ts',
   'posts/[id]/images/route.ts',
-  'posts/[id]/route.ts',
   'sources/discover/route.ts',
 ]
 

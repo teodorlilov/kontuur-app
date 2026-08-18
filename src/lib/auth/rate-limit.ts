@@ -1,7 +1,14 @@
 /**
- * Simple in-memory rate limiter for API routes.
- * Tracks request counts per key (typically userId) with a sliding window.
- * Suitable for single-instance deployments.
+ * In-memory rate limiter for API routes: request counts per key, fixed window.
+ *
+ * WHAT IT ACTUALLY ENFORCES ON VERCEL. The store is a module-level Map, so it lives in
+ * one lambda instance. Under concurrency each instance keeps its own counts and the real
+ * ceiling is `max × warm instances`, not `max`. This is a **runaway-loop guard** — it
+ * stops a client retrying in a tight loop against the instance it is already talking to —
+ * and it is NOT a spend ceiling. Do not add a limit here and describe it as a budget; a
+ * budget needs shared state (Postgres or Upstash) and is a deliberate change, not a
+ * constant edit. (The header used to say "suitable for single-instance deployments",
+ * which was true of the code and false of where it runs. TECH-DEBT §B6.)
  */
 import { NextResponse } from 'next/server'
 
@@ -56,6 +63,20 @@ export function checkRateLimit(key: string, config: RateLimitConfig): RateLimitR
 
 /** Default config for AI endpoints: 20 requests per minute per user */
 export const AI_RATE_LIMIT: RateLimitConfig = { max: 20, windowMs: 60_000 }
+
+/**
+ * The 429 for a user who exhausted the per-minute model-call budget, or null when
+ * allowed. `scope` keys the pool, so two endpoints named differently do not share one.
+ *
+ * Exists because seven routes had each written the same three lines around
+ * `checkRateLimit`, which is how two of them (detect-slop, analyze-url) came to make
+ * paid model calls with no limit at all — nothing looked missing at any single call site.
+ */
+export function aiRateLimitResponse(scope: string, userId: string): NextResponse | null {
+  const rl = checkRateLimit(`ai:${scope}:${userId}`, AI_RATE_LIMIT)
+  if (rl.allowed) return null
+  return NextResponse.json({ error: 'Too many requests. Please wait a moment.' }, { status: 429 })
+}
 
 /** Image generation (paid ~52s gpt-image-2 calls): legitimate max throughput is ~6-7/min at
  *  concurrency 6, so 60 per 10 minutes never throttles real use but stops runaway loops.

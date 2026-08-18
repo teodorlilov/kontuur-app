@@ -5,6 +5,7 @@ import { resolveActionAuth } from '@/lib/auth/helpers'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { fetchClientById, fetchBrandProfileByClient } from '@/lib/queries/db'
 import { distillStyleMemo } from '@/ai/learning/distill-style-memo'
+import { parseActionId } from '@/lib/actions/parse-input'
 import type { ActionResult } from '@/lib/actions/types'
 
 /**
@@ -15,6 +16,9 @@ import type { ActionResult } from '@/lib/actions/types'
 export async function refreshStyleMemo(
   clientId: string
 ): Promise<ActionResult<{ updated: boolean; bulletCount: number }>> {
+  const parsed = parseActionId(clientId, 'clientId')
+  if (!parsed.ok) return parsed.result
+
   const auth = await resolveActionAuth()
   if (!auth.ok) return { ok: false, error: auth.error }
   const { supabase, agencyId } = auth

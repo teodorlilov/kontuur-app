@@ -3,7 +3,12 @@ import type { LanguageConfig } from '@/lib/clients/language-rules'
 import type { SourceContext, TopicBrief } from '../types'
 import { todayDateString } from '@/ai/utils/prompt-helpers'
 import { buildLanguageRules } from '@/ai/shared/build-prompt-sections'
-import { sanitizePromptField } from '@/ai/utils/sanitize'
+import {
+  DEFENSIVE_DATA_CLAUSE,
+  PROMPT_FIELD_LIMITS,
+  sanitizePromptField,
+  sanitizeSourceText,
+} from '@/ai/utils/sanitize'
 
 function buildPromptSection(title: string, tag: string, content: string): string {
   if (!content.trim()) return ''
@@ -69,6 +74,8 @@ export class ResearchPromptBuilder {
       `You are a strategic content researcher for social media agencies.
 You read raw business data and extract post themes that are specific, factual, and immediately usable by a social media manager.
 
+${DEFENSIVE_DATA_CLAUSE}
+
 ### THEME RULES (read before analysing the source):
 - Short summary of the them in native ${language}. One punchy declarative statement — not a question, not a comparison.
 - Must name ONE specific thing: a device, a mechanism, a condition name, a measurable result, or a number.
@@ -80,8 +87,23 @@ You read raw business data and extract post themes that are specific, factual, a
     return parts.filter(Boolean).join('\n\n')
   }
 
-  /** The five source sections, in the order the model reads them. */
+  /**
+   * The five source sections, in the order the model reads them.
+   *
+   * Every field below is third-party text the agency does not control — a feed item, a
+   * scraped page, an uploaded document, a search result, a Meta caption — so all of it
+   * goes through a sanitiser before it lands inside an XML-style section. Unescaped, any
+   * one of them could close its own tag and address the model directly, which would let
+   * whoever writes a subscribed feed steer what the agency publishes under a client's
+   * name. Short fields cap through `sanitizePromptField`; bodies use `sanitizeSourceText`
+   * because their length is already budgeted in `source-gathering.ts` (see its JSDoc).
+   */
   private buildSourceMaterialBlock(sourceContext: SourceContext): string {
+    const pillarTagFor = (pillars?: string[]): string =>
+      pillars?.length
+        ? `[${pillars.map((p) => sanitizePromptField(p, PROMPT_FIELD_LIMITS.short)).join(', ')}] `
+        : ''
+
     const rssSection =
       sourceContext.rssItems.length > 0
         ? buildPromptSection(
@@ -89,8 +111,11 @@ You read raw business data and extract post themes that are specific, factual, a
             'rss_content',
             sourceContext.rssItems
               .map((i) => {
-                const tag = i.eligiblePillars?.length ? `[${i.eligiblePillars.join(', ')}] ` : ''
-                return `- ${tag}${i.title}: ${i.description} (${i.link})`
+                const tag = pillarTagFor(i.eligiblePillars)
+                const title = sanitizePromptField(i.title)
+                const description = sanitizePromptField(i.description)
+                const link = sanitizePromptField(i.link)
+                return `- ${tag}${title}: ${description} (${link})`
               })
               .join('\n')
           )
@@ -103,10 +128,12 @@ You read raw business data and extract post themes that are specific, factual, a
             'website_content',
             sourceContext.websiteExcerpts
               .map((w) => {
-                const tag = w.eligiblePillars?.length ? `[${w.eligiblePillars.join(', ')}] ` : ''
+                const tag = pillarTagFor(w.eligiblePillars)
+                const url = sanitizePromptField(w.url)
+                const text = sanitizeSourceText(w.text)
                 return w.focusInstructions
-                  ? `${tag}[URL: ${w.url}]\n[Focus: ${w.focusInstructions}]\n${w.text}`
-                  : `${tag}[URL: ${w.url}]\n${w.text}`
+                  ? `${tag}[URL: ${url}]\n[Focus: ${sanitizePromptField(w.focusInstructions, PROMPT_FIELD_LIMITS.long)}]\n${text}`
+                  : `${tag}[URL: ${url}]\n${text}`
               })
               .join('\n\n')
           )
@@ -119,8 +146,8 @@ You read raw business data and extract post themes that are specific, factual, a
             'document_content',
             sourceContext.fileExcerpts
               .map((f) => {
-                const tag = f.eligiblePillars?.length ? `[${f.eligiblePillars.join(', ')}] ` : ''
-                return `${tag}[File: ${f.label}]\n${f.text}`
+                const tag = pillarTagFor(f.eligiblePillars)
+                return `${tag}[File: ${sanitizePromptField(f.label, PROMPT_FIELD_LIMITS.short)}]\n${sanitizeSourceText(f.text)}`
               })
               .join('\n\n')
           )
@@ -133,8 +160,11 @@ You read raw business data and extract post themes that are specific, factual, a
             'web_search_content',
             sourceContext.webSearchItems
               .map((r) => {
-                const tag = r.eligiblePillars?.length ? `[${r.eligiblePillars.join(', ')}] ` : ''
-                return `- ${tag}${r.title}: ${r.snippet} (${r.url})`
+                const tag = pillarTagFor(r.eligiblePillars)
+                const title = sanitizePromptField(r.title)
+                const snippet = sanitizePromptField(r.snippet)
+                const url = sanitizePromptField(r.url)
+                return `- ${tag}${title}: ${snippet} (${url})`
               })
               .join('\n')
           )
@@ -148,9 +178,14 @@ You read raw business data and extract post themes that are specific, factual, a
             `This client's best recent posts — angles their audience has PROVEN to respond to. Propose FOLLOW-UP angles (a deeper dive, the next step, the question the post raised). Never repeat the same content.\n` +
               sourceContext.performanceItems
                 .map((p) => {
-                  const pillarTag = p.pillar ? `[${p.pillar}] ` : ''
-                  const link = p.permalink ? ` (${p.permalink})` : ''
-                  return `- ${pillarTag}"${p.caption}" — ${p.engagementSummary}${link}`
+                  // A caption is fetched back from Meta, not written here — same posture
+                  // as the feeds above, capped at `long` because Instagram allows 2200.
+                  const pillarTag = p.pillar
+                    ? `[${sanitizePromptField(p.pillar, PROMPT_FIELD_LIMITS.short)}] `
+                    : ''
+                  const link = p.permalink ? ` (${sanitizePromptField(p.permalink)})` : ''
+                  const caption = sanitizePromptField(p.caption, PROMPT_FIELD_LIMITS.long)
+                  return `- ${pillarTag}"${caption}" — ${p.engagementSummary}${link}`
                 })
                 .join('\n')
           )

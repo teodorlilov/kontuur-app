@@ -3,10 +3,14 @@
 import 'server-only'
 import { resolveActionAuth } from '@/lib/auth/helpers'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
+import { parseActionId } from '@/lib/actions/parse-input'
 import type { ActionResult } from '@/lib/actions/types'
 
 /** Disconnect the current user's Canva connection. */
 export async function disconnectCanvaConnection(connectionId: string): Promise<ActionResult> {
+  const parsed = parseActionId(connectionId, 'connectionId')
+  if (!parsed.ok) return parsed.result
+
   const auth = await resolveActionAuth()
   if (!auth.ok) return { ok: false, error: auth.error }
 

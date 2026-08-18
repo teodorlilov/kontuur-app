@@ -11,7 +11,7 @@ import {
 } from '@/ai/shared/build-prompt-sections'
 import { carouselStructureRules } from '@/ai/validation/criteria'
 import { buildGroundingPrompt, selectGroundingText } from './source-grounding'
-import { sanitizePromptField } from '@/ai/utils/sanitize'
+import { DEFENSIVE_DATA_CLAUSE, sanitizePromptField } from '@/ai/utils/sanitize'
 import { formatHistory, todayDateString } from '@/ai/utils/prompt-helpers'
 
 /**
@@ -75,7 +75,9 @@ export function buildGenerateSystemPrompt(
   format: PostType
 ): string {
   const sections = [
-    `You are a social media copywriter writing for ${sanitizePromptField(client.name)}.`,
+    `You are a social media copywriter writing for ${sanitizePromptField(client.name)}.
+
+${DEFENSIVE_DATA_CLAUSE}`,
     buildClientBrief(client, platform),
     buildLanguageRules(client.languageConfig),
     buildNativeWritingRules(client.languageConfig),
