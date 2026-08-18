@@ -13,19 +13,42 @@ client (commit `00306a1`). This doc captures the *real*, project-wide issue for 
 
 ---
 
-## Step 1 — measure (read-only, ~2 minutes)
+## Step 1 — measure (read-only, ~2 minutes, no tooling)
 
-Everything here talks to the remote and writes nothing to it.
+**Open `supabase/queries/rls-audit.sql` and run query 1 in the dashboard SQL editor.**
+
+That is the whole step. No Docker, no CLI, no link — the state lives in the Postgres
+catalog and the catalog is queryable from the browser. It classifies every table in
+`public` into the three states this document describes. **Paste the result into the next
+section.**
+
+The same file carries three more queries worth running while you are there: what the
+existing policies actually say, the M21 check on `generation_runs`/`generation_themes`,
+and the §2.9 bucket MIME allowlist.
+
+<details>
+<summary>Optional: the CLI route (needs Docker)</summary>
+
+`npm run db:rls` produces the same table from a schema dump. It is not the recommended
+path and was the first thing tried here: `supabase db dump` runs `pg_dump` inside a pinned
+Docker container, so it needs a running daemon that this question does not otherwise
+require. Useful if you want the full DDL for other reasons.
 
 ```sh
 export SUPABASE_ACCESS_TOKEN=…    # https://supabase.com/dashboard/account/tokens
 npm run db:link                   # once per machine
-npm run db:rls                    # dumps the schema, prints the table below
+npm run db:rls                    # requires Docker Desktop running
 ```
 
-`npm run db:rls` classifies every table in `public` into the three states this document
-describes, so the "verify in the dashboard as step 1" instruction further down is now a
-command. **Paste its output into the next section.**
+Without Docker but with a local `pg_dump` (`brew install libpq`), you can also dump
+directly and feed the file to the reporter:
+
+```sh
+pg_dump --schema-only --schema=public "$DATABASE_URL" > /tmp/prod-schema.sql
+node scripts/rls-report.mjs /tmp/prod-schema.sql
+```
+
+</details>
 
 ### Measured state — PASTE HERE
 

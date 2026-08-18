@@ -19,8 +19,10 @@ Storage) · Tailwind v4.
 - Format: `npm run format` · Dead code: `npm run deadcode`
 - Database (all read-only except `db:types`, which rewrites the generated file):
   `npm run db:link` once per machine, then `db:status` (local vs remote migration
-  history), `db:dump` (schema → gitignored file), `db:rls` (per-table RLS report),
-  `db:types` (regenerate `src/types/database.ts`).
+  history), `db:types` (regenerate `src/types/database.ts`). `db:dump` / `db:rls` need a
+  **running Docker daemon** — the CLI runs `pg_dump` in a container. For the RLS question
+  specifically, skip them: `supabase/queries/rls-audit.sql` answers it from the dashboard
+  SQL editor with no tooling at all.
   This line used to say `gen types --local`, which could never have worked — there was no
   `supabase/config.toml` in the repo at all, so the CLI did not treat this as a project.
   `docs/DB-GEN-TYPES.md` had `--linked` and was right. There is deliberately **no
