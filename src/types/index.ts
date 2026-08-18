@@ -12,12 +12,7 @@ export type AnalyticsReportRow = Tables<'analytics_reports'>
 
 export type { LanguageIssueType, SlopDetection, SourceGroundingResult } from '@/ai/validation/types'
 
-export type {
-  ClientSource,
-  SourceSuggestion,
-  DiscoverPagesRequest,
-  DiscoverPagesResponse,
-} from './sources'
+export type { ClientSource, SourceSuggestion, DiscoverPagesResponse } from './sources'
 
 export type {
   PriorityPost,

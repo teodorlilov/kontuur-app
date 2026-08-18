@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
 import { verifyPostOwnership } from '@/lib/auth/helpers'
 import { canvaFetch, CanvaAuthError } from '../../../canva-auth'
@@ -6,6 +7,17 @@ import { CANVA_API_BASE } from '../../../canva-constants'
 import { uploadPostImage, deletePostImage } from '@/features/publishing/lib/storage'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { POST_IMAGE_COLUMNS, POST_IMAGE_STORAGE_COLUMNS } from '@/lib/queries/select-columns'
+import { MAX_CAROUSEL_SLIDES } from '@/utils/constants'
+
+/**
+ * `position` is the carousel slot the export lands in. Bounded by MAX_CAROUSEL_SLIDES
+ * because it is written to `post_images.position`, which has a unique constraint per
+ * post — an out-of-range value would insert a row no surface ever reads.
+ */
+const exportDesignSchema = z.object({
+  postId: z.uuid(),
+  position: z.number().int().min(0).max(MAX_CAROUSEL_SLIDES),
+})
 
 interface CanvaExportJob {
   job: { id: string; status: string }
@@ -33,17 +45,11 @@ export async function POST(
 ) {
   const { designId } = await params
 
-  let body: { postId: string; position: number }
-  try {
-    body = await request.json()
-  } catch {
-    return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
-  }
-
-  const { postId, position } = body
-  if (!postId || position == null) {
+  const parsed = exportDesignSchema.safeParse(await request.json().catch(() => null))
+  if (!parsed.success) {
     return NextResponse.json({ error: 'postId and position are required' }, { status: 400 })
   }
+  const { postId, position } = parsed.data
 
   const auth = await resolveAuth()
   if (!auth.ok) return auth.response

@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { z } from 'zod'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
 import { verifyPostOwnership } from '@/lib/auth/helpers'
 import {
@@ -9,6 +10,8 @@ import {
 import { validateImageFile } from '@/features/publishing/lib/validate-image-file'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { POST_IMAGE_COLUMNS, POST_IMAGE_STORAGE_COLUMNS } from '@/lib/queries/select-columns'
+
+const deleteImageSchema = z.object({ imageId: z.uuid() })
 
 /** Upload an image for a post (linked to a carousel slide position or single post). */
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -66,14 +69,9 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
   const post = await verifyPostOwnership(auth.supabase, postId, auth.agencyId)
   if (!post) return NextResponse.json({ error: 'Post not found' }, { status: 404 })
 
-  let body: { imageId?: string }
-  try {
-    body = await request.json()
-  } catch {
-    return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
-  }
-
-  if (!body.imageId) return NextResponse.json({ error: 'imageId required' }, { status: 400 })
+  const parsed = deleteImageSchema.safeParse(await request.json().catch(() => null))
+  if (!parsed.success) return NextResponse.json({ error: 'imageId required' }, { status: 400 })
+  const body = parsed.data
 
   const admin = createAdminSupabaseClient()
   const { data: image } = await admin

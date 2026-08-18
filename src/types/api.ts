@@ -382,9 +382,4 @@ export type {
 
 export type { SlideText } from './slide'
 
-export type {
-  ClientSource,
-  SourceSuggestion,
-  DiscoverPagesRequest,
-  DiscoverPagesResponse,
-} from './sources'
+export type { ClientSource, SourceSuggestion, DiscoverPagesResponse } from './sources'

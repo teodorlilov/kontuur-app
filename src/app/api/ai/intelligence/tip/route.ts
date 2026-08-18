@@ -1,9 +1,18 @@
 import { NextResponse } from 'next/server'
+import { z } from 'zod'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
 import { aiRateLimitResponse } from '@/lib/auth/rate-limit'
 import { callAnthropic, LIGHT_MODEL } from '@/utils/ai-client'
 import { extractTextFromMessage } from '@/utils/ai'
 import { sanitizePromptField, PROMPT_FIELD_LIMITS } from '@/ai/utils/sanitize'
+
+/**
+ * `topic` is optional and the body may be absent entirely, so the schema is permissive
+ * about presence — but not about type. It used to be read through a bare
+ * `as { topic?: string }`, which asserts rather than checks: a number reached
+ * `sanitizePromptField`, whose `.trim()` would have thrown inside the handler.
+ */
+const tipSchema = z.object({ topic: z.string().optional() })
 
 /** One short coaching tip for the dashboard briefing bar. Rate-limited — it is a nicety, not a page dependency. */
 export async function POST(request: Request) {
@@ -14,13 +23,8 @@ export async function POST(request: Request) {
   const limited = aiRateLimitResponse('intelligence:tip', userId)
   if (limited) return limited
 
-  let topic: string | undefined
-  try {
-    const body = (await request.json()) as { topic?: string }
-    topic = body.topic
-  } catch {
-    // topic is optional — ignore parse errors
-  }
+  const parsed = tipSchema.safeParse(await request.json().catch(() => null))
+  const topic = parsed.success ? parsed.data.topic : undefined
 
   const sanitizedTopic = topic ? sanitizePromptField(topic, PROMPT_FIELD_LIMITS.short) : undefined
   const prompt = sanitizedTopic

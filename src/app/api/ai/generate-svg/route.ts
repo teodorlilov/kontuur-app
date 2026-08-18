@@ -10,19 +10,12 @@ import {
   svgRejectionReason,
 } from '@/lib/visual/sanitize-svg'
 import { resolveAssetDestination } from '@/features/publishing/lib/asset-destination'
+import { generateSvgSchema, MAX_SVG_PROMPT_CHARS } from '@/features/canvas-editor/schemas'
 
 export const maxDuration = 60
 
-const MAX_PROMPT_CHARS = 300
 /** Recraft occasionally omits dimensions; a square default keeps element sizing sane. */
 const FALLBACK_SVG_SIZE = { width: 512, height: 512 }
-
-interface GenerateSvgBody {
-  clientId?: string
-  draftId?: string
-  postId?: string
-  prompt?: string
-}
 
 /**
  * Generate a brand-palette SVG element asset (Recraft V4 vector): the client's measured palette
@@ -36,20 +29,15 @@ export async function POST(request: Request) {
   const limited = visualsRateLimitResponse(auth.userId)
   if (limited) return limited
 
-  let body: GenerateSvgBody
-  try {
-    body = await request.json()
-  } catch {
-    return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
-  }
-  const prompt = typeof body.prompt === 'string' ? body.prompt.trim() : ''
-  if (!prompt) return NextResponse.json({ error: 'prompt is required' }, { status: 400 })
-  if (prompt.length > MAX_PROMPT_CHARS) {
+  const parsed = generateSvgSchema.safeParse(await request.json().catch(() => null))
+  if (!parsed.success) {
     return NextResponse.json(
-      { error: `prompt must be under ${MAX_PROMPT_CHARS} characters` },
+      { error: `prompt is required and must be under ${MAX_SVG_PROMPT_CHARS} characters` },
       { status: 400 }
     )
   }
+  const body = parsed.data
+  const { prompt } = body
 
   const destination = await resolveAssetDestination(auth.supabase, auth.agencyId, body)
   if (!destination.ok)

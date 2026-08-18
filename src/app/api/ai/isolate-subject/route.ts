@@ -7,15 +7,9 @@ import {
   resolveAssetDestination,
 } from '@/features/publishing/lib/asset-destination'
 import { publicPostImageUrl } from '@/features/publishing/lib/storage'
+import { isolateSubjectSchema } from '@/features/canvas-editor/schemas'
 
 export const maxDuration = 60
-
-interface IsolateBody {
-  clientId?: string
-  draftId?: string
-  postId?: string
-  storagePath?: string
-}
 
 /** Cut the main subject out of a slide's clean background into a transparent-PNG element asset. */
 export async function POST(request: Request) {
@@ -25,15 +19,11 @@ export async function POST(request: Request) {
   const limited = visualsRateLimitResponse(auth.userId)
   if (limited) return limited
 
-  let body: IsolateBody
-  try {
-    body = await request.json()
-  } catch {
-    return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
-  }
-  if (typeof body.storagePath !== 'string' || !body.storagePath) {
+  const parsed = isolateSubjectSchema.safeParse(await request.json().catch(() => null))
+  if (!parsed.success) {
     return NextResponse.json({ error: 'storagePath is required' }, { status: 400 })
   }
+  const body = parsed.data
 
   const destination = await resolveAssetDestination(auth.supabase, auth.agencyId, body)
   if (!destination.ok)

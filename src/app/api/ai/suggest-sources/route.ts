@@ -1,16 +1,23 @@
 import { NextResponse } from 'next/server'
+import { z } from 'zod'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
 import { aiRateLimitResponse } from '@/lib/auth/rate-limit'
 import { suggestSourcesCached } from '@/ai/suggest-sources/suggest-sources'
 import type { SourceSuggestion } from '@/types/api'
 
-interface SuggestSourcesBody {
-  niche: string
-  clientName?: string
-  pillars?: string[]
-  targetAudience?: string
-  language?: string
-}
+/**
+ * Fields are capped because they are interpolated into a cached model prompt: the cache
+ * key is the niche, so an oversized value would be paid for once and then served from
+ * cache to every client that shares it.
+ */
+const suggestSourcesSchema = z.object({
+  niche: z.string().trim().min(1).max(200),
+  clientName: z.string().trim().max(200).optional(),
+  // Capped at 10 here rather than sliced after parsing, which is what the route did.
+  pillars: z.array(z.string().min(1).max(200)).max(10).optional(),
+  targetAudience: z.string().trim().max(1000).optional(),
+  language: z.string().trim().max(100).optional(),
+})
 
 /** Suggest research sources for a niche. Cached, because the same niche recurs across clients. */
 export async function POST(request: Request) {
@@ -21,16 +28,11 @@ export async function POST(request: Request) {
   const limited = aiRateLimitResponse('suggest-sources', userId)
   if (limited) return limited
 
-  let body: SuggestSourcesBody
-  try {
-    body = await request.json()
-  } catch {
-    return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
-  }
-
-  if (!body.niche?.trim()) {
+  const parsed = suggestSourcesSchema.safeParse(await request.json().catch(() => null))
+  if (!parsed.success) {
     return NextResponse.json({ error: 'niche is required' }, { status: 400 })
   }
+  const body = parsed.data
 
   const pillars = Array.isArray(body.pillars)
     ? body.pillars.filter((p): p is string => typeof p === 'string' && p.length > 0).slice(0, 10)

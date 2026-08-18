@@ -3,15 +3,9 @@ import { resolveAuth } from '@/lib/auth/resolve-auth'
 import { visualsRateLimitResponse } from '@/lib/auth/rate-limit'
 import { resolveAssetDestination } from '@/features/publishing/lib/asset-destination'
 import { fetchRemoteImage } from '@/features/publishing/lib/fetch-remote-image'
+import { pasteFromUrlSchema } from '@/features/canvas-editor/schemas'
 
 export const maxDuration = 30
-
-interface PasteBody {
-  url?: string
-  clientId?: string
-  draftId?: string
-  postId?: string
-}
 
 /** Re-host an image pasted/dropped from an external URL into the target's storage; returns its ref. */
 export async function POST(request: Request) {
@@ -21,15 +15,11 @@ export async function POST(request: Request) {
   const limited = visualsRateLimitResponse(auth.userId)
   if (limited) return limited
 
-  let body: PasteBody
-  try {
-    body = await request.json()
-  } catch {
-    return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
-  }
-  if (typeof body.url !== 'string' || !body.url) {
+  const parsed = pasteFromUrlSchema.safeParse(await request.json().catch(() => null))
+  if (!parsed.success) {
     return NextResponse.json({ error: 'url is required' }, { status: 400 })
   }
+  const body = parsed.data
 
   const destination = await resolveAssetDestination(auth.supabase, auth.agencyId, body)
   if (!destination.ok)

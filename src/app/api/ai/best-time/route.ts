@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { z } from 'zod'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
 import { generateBestTime } from '@/ai/best-time/generate-best-time'
 import { extractPlatformFromMix } from '@/lib/clients/fetch-client-data'
@@ -6,9 +7,7 @@ import { asJson } from '@/lib/queries/as-json'
 import { aiRateLimitResponse } from '@/lib/auth/rate-limit'
 import { CLIENT_AI_CONTEXT_COLUMNS } from '@/lib/queries/select-columns'
 
-interface BestTimeRequestBody {
-  client_id: string
-}
+const bestTimeSchema = z.object({ client_id: z.uuid() })
 
 /** Ask the model for a client's best posting times and cache them on the brand profile. */
 export async function POST(request: Request) {
@@ -19,14 +18,11 @@ export async function POST(request: Request) {
   const limited = aiRateLimitResponse('best-time', userId)
   if (limited) return limited
 
-  let body: BestTimeRequestBody
-  try {
-    body = await request.json()
-  } catch {
-    return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
+  const parsed = bestTimeSchema.safeParse(await request.json().catch(() => null))
+  if (!parsed.success) {
+    return NextResponse.json({ error: 'client_id is required' }, { status: 400 })
   }
-
-  if (!body.client_id) return NextResponse.json({ error: 'client_id is required' }, { status: 400 })
+  const body = parsed.data
 
   // Verify client belongs to this agency
   const { data: rawClientData } = await supabase

@@ -26,10 +26,6 @@ export interface TavilyConfig {
   exclude_domains?: string[]
 }
 
-export interface DiscoverPagesRequest {
-  url: string
-}
-
 export interface DiscoverPagesResponse {
   pages: string[]
   source: 'sitemap' | 'link_extraction' | 'none'

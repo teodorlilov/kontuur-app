@@ -48,26 +48,15 @@ const EXEMPT: Record<string, string> = {
  * Routes that read a body without a schema, from before this guard existed. NOT
  * exemptions — these are debt, and the list may only ever shrink.
  *
- * Not fixed here because adding a schema changes what each route accepts, which is a
- * behavioural change per route and wants its own review.
+ * **Empty as of 2026-08-18.** All thirteen are cleared. Adding one back means a route
+ * reads a body on trust, which is the state this guard was written to end — fix the
+ * route instead.
  *
- * To clear one: add a schema in the feature's schemas.ts, parse the body with it, then
- * delete its line. The staleness check below fails if you fix it and forget.
- * Rationale per entry: docs/TECH-DEBT.md §7.4.
+ * To clear one (if it ever refills): add a schema in the feature's schemas.ts, parse the
+ * body with it, then delete its line. The staleness check below fails if you fix it and
+ * forget. Rationale: docs/TECH-DEBT.md §7.4.
  */
-const KNOWN_UNVALIDATED: string[] = [
-  'ai/best-time/route.ts',
-  'ai/generate-svg/route.ts',
-  'ai/intelligence/tip/route.ts',
-  'ai/isolate-subject/route.ts',
-  'ai/paste-from-url/route.ts',
-  'ai/rewrite/route.ts',
-  'ai/suggest-sources/route.ts',
-  'canva/designs/[designId]/export/route.ts',
-  'extract/start/route.ts',
-  'posts/[id]/images/route.ts',
-  'sources/discover/route.ts',
-]
+const KNOWN_UNVALIDATED: string[] = []
 
 function routeFiles(): string[] {
   const out: string[] = []

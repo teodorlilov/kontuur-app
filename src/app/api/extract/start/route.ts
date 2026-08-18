@@ -1,4 +1,5 @@
 import { NextResponse, after } from 'next/server'
+import { z } from 'zod'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { extractIdentity } from '@/lib/visual/extract-identity'
@@ -8,10 +9,16 @@ import { writeExtraction } from '@/lib/visual/queries'
 // Hardened Chromium capture + a vision call runs after the response (Next `after`); allow headroom.
 export const maxDuration = 60
 
-interface StartBody {
-  onboardingSessionId?: string
-  websiteUrl?: string
-}
+/**
+ * `websiteUrl` stays a plain bounded string, not `z.url()`: an empty or absent value is
+ * the documented "no website" path below, which stores the default-palette identity, and
+ * a malformed one is the capture's problem to report — this route answers before the
+ * capture runs, so a shape rejection here would be the only signal the user ever saw.
+ */
+const startExtractionSchema = z.object({
+  onboardingSessionId: z.string().trim().min(1).max(200),
+  websiteUrl: z.string().trim().max(2048).optional(),
+})
 
 /**
  * Kick off async brand-visual-identity extraction for an onboarding session. Writes a `pending` row,
@@ -22,18 +29,12 @@ export async function POST(request: Request) {
   if (!auth.ok) return auth.response
   const { agencyId } = auth
 
-  let body: StartBody
-  try {
-    body = await request.json()
-  } catch {
-    return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
-  }
-
-  const sessionId = body.onboardingSessionId?.trim()
-  if (!sessionId) {
+  const parsed = startExtractionSchema.safeParse(await request.json().catch(() => null))
+  if (!parsed.success) {
     return NextResponse.json({ error: 'onboardingSessionId is required' }, { status: 400 })
   }
-  const websiteUrl = body.websiteUrl?.trim()
+  const sessionId = parsed.data.onboardingSessionId
+  const websiteUrl = parsed.data.websiteUrl
   const admin = createAdminSupabaseClient()
 
   // No website → nothing to capture; store the default-palette identity immediately.
