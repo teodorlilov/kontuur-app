@@ -84,9 +84,7 @@ describe('moveScheduledToDay', () => {
     // The relative and absolute forms must agree about the hour, or a dropped post and
     // a nudged one end up on the same day at different times.
     const from = formatIn('2026-10-24', '09:00', SOFIA)
-    expect(moveScheduledToDay(from, '2026-10-26', SOFIA)).toBe(
-      shiftScheduledByDays(from, 2, SOFIA)
-    )
+    expect(moveScheduledToDay(from, '2026-10-26', SOFIA)).toBe(shiftScheduledByDays(from, 2, SOFIA))
   })
 
   it('is a no-op when the target is the day it is already on', () => {

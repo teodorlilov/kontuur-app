@@ -86,7 +86,9 @@ function reviewedAt(row: EditedPostRow): number {
 
 function wasHumanEdited(row: EditedPostRow): boolean {
   if ((row.generated_caption ?? '') !== (row.caption ?? '')) return true
-  return JSON.stringify(row.generated_slides_json ?? null) !== JSON.stringify(row.slides_json ?? null)
+  return (
+    JSON.stringify(row.generated_slides_json ?? null) !== JSON.stringify(row.slides_json ?? null)
+  )
 }
 
 function buildDiffBlock(rows: EditedPostRow[]): string {
@@ -128,8 +130,7 @@ export async function distillStyleMemo(
   if (
     opts.skipIfFresherThanDays &&
     memoRow?.updated_at &&
-    Date.now() - new Date(memoRow.updated_at).getTime() <
-      opts.skipIfFresherThanDays * 86_400_000
+    Date.now() - new Date(memoRow.updated_at).getTime() < opts.skipIfFresherThanDays * 86_400_000
   ) {
     return { updated: false, bulletCount: existingForSkip.length }
   }
@@ -183,9 +184,7 @@ export async function distillStyleMemo(
     .join('\n')
 
   const currentMemoBlock =
-    existing.length > 0
-      ? existing.map((b, i) => `${i}: ${b.rule}`).join('\n')
-      : '(empty)'
+    existing.length > 0 ? existing.map((b, i) => `${i}: ${b.rule}`).join('\n') : '(empty)'
 
   const message = await callAnthropic({
     systemPrompt: `You distill a reviewer's edits into a short list of reusable writing rules for an AI copywriter. Each rule must describe a recurring, actionable pattern ("Use X instead of Y", "Never open with Z") — one sentence, in English, specific enough that following it would have prevented the edit.

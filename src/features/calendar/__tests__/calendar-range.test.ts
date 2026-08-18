@@ -69,7 +69,6 @@ describe('monthViewIn', () => {
   })
 })
 
-
 describe('week stepping', () => {
   it('steps back a whole week, across a month boundary', () => {
     const first = prevWeekView('2026-08-03')
@@ -84,9 +83,7 @@ describe('week stepping', () => {
 
   it('lands on a Monday whatever the zone', () => {
     // Stepping never re-derives the weekday, so a Monday key stays a Monday.
-    expect(nextWeekView(weekViewIn('Europe/Sofia'))).toBe(
-      nextWeekView(weekViewIn('Europe/Sofia'))
-    )
+    expect(nextWeekView(weekViewIn('Europe/Sofia'))).toBe(nextWeekView(weekViewIn('Europe/Sofia')))
   })
 
   it('does not drift across a DST boundary', () => {

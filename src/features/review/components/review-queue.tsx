@@ -32,12 +32,7 @@ import { totalVisualSlots } from '@/lib/visual/visual-backlog'
 import { computeTriage, type TriageBucket, type TriagedPost } from '@/features/review/lib/triage'
 import { toVisualSlots } from '@/features/review/lib/visual-slots'
 import { pickNextOpenSlot } from '@/lib/scheduling/slot-picker'
-import {
-  getMondayISO,
-  getWeekDayKeys,
-  isoToDateTimeFields,
-  toDateKey,
-} from '@/utils/date-helpers'
+import { getMondayISO, getWeekDayKeys, isoToDateTimeFields, toDateKey } from '@/utils/date-helpers'
 import { APPROVAL_TOKEN_EXPIRY_HOURS } from '@/utils/constants'
 import type { WeekScheduledPost } from '@/features/review/lib/week-schedule'
 import {
@@ -123,7 +118,10 @@ export function ReviewQueue({
   // Written by the effect below the visuals hook; read only inside async callbacks.
   const focusedPostIdRef = useRef('')
   const recomposeRef = useRef<
-    (source: { post_type: string; slides_json: unknown; caption: string | null }, images: PostImage[]) => void
+    (
+      source: { post_type: string; slides_json: unknown; caption: string | null },
+      images: PostImage[]
+    ) => void
   >(() => {})
   const slopRequestedRef = useRef(new Set<string>())
   // Discards pending their undo window: id → commit. Unmount commits them all —
@@ -147,9 +145,7 @@ export function ReviewQueue({
   )
 
   const triaged = useMemo(() => {
-    const scoped = selectedClientId
-      ? posts.filter((p) => p.client_id === selectedClientId)
-      : posts
+    const scoped = selectedClientId ? posts.filter((p) => p.client_id === selectedClientId) : posts
     return computeTriage(
       scoped.map((post) => ({ post, validation: validationFor(post) })),
       now
@@ -407,9 +403,9 @@ export function ReviewQueue({
     const occupiedCopy = new Map<string, string[]>()
     const assignments: Record<string, { date: string; time: string }> = {}
     for (const post of items) {
-      const occupied =
-        occupiedCopy.get(post.client_id) ??
-        [...(occupiedSlotsByClient.get(post.client_id) ?? [])]
+      const occupied = occupiedCopy.get(post.client_id) ?? [
+        ...(occupiedSlotsByClient.get(post.client_id) ?? []),
+      ]
       const iso = nextSlotFor(post, occupied)
       if (iso) {
         occupied.push(iso)
@@ -707,9 +703,7 @@ export function ReviewQueue({
               onOpen={focusDraft}
               onApprove={setScheduleTarget}
               onScheduleAll={() => openBatch(readyPosts)}
-              onRemind={(postId) =>
-                setSendTarget(posts.find((p) => p.id === postId) ?? null)
-              }
+              onRemind={(postId) => setSendTarget(posts.find((p) => p.id === postId) ?? null)}
             />
           ) : (
             <>
@@ -816,7 +810,9 @@ export function ReviewQueue({
       <ScheduleDialog
         open={scheduleTarget !== null}
         platform={scheduleTargetPost?.platform ?? null}
-        bestTimeData={scheduleTargetPost ? (bestTimeMap[scheduleTargetPost.client_id] ?? null) : null}
+        bestTimeData={
+          scheduleTargetPost ? (bestTimeMap[scheduleTargetPost.client_id] ?? null) : null
+        }
         approving={approving}
         weekContext={scheduleWeekContext}
         timeZone={timezone}

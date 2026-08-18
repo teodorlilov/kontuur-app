@@ -58,8 +58,13 @@ export async function POST(request: Request) {
   const fields = parseInpaintFields(formData)
   if (typeof fields === 'string') return NextResponse.json({ error: fields }, { status: 400 })
 
-  const destination = await resolveAssetDestination(auth.supabase, auth.agencyId, assetTargetFromForm(formData))
-  if (!destination.ok) return NextResponse.json({ error: destination.error }, { status: destination.status })
+  const destination = await resolveAssetDestination(
+    auth.supabase,
+    auth.agencyId,
+    assetTargetFromForm(formData)
+  )
+  if (!destination.ok)
+    return NextResponse.json({ error: destination.error }, { status: destination.status })
   const foreignPath = foreignStoragePathResponse(destination.clientId, fields.storagePath)
   if (foreignPath) return foreignPath
 
@@ -73,7 +78,11 @@ export async function POST(request: Request) {
       height: roundTo16(fields.height),
     })
     const buffer = await downloadFalFile(editedUrl)
-    const { publicUrl, storagePath } = await destination.upload(buffer, 'image/jpeg', 'inpainted.jpg')
+    const { publicUrl, storagePath } = await destination.upload(
+      buffer,
+      'image/jpeg',
+      'inpainted.jpg'
+    )
     return NextResponse.json({ publicUrl, storagePath })
   } catch (err) {
     console.error('[inpaint] failed:', err)

@@ -123,7 +123,10 @@ export class Deduplicator {
     const config = Deduplicator.resolveConfig(language)
     const entries = texts.map((text) => {
       const joined = Deduplicator.extractWords(text, config).join('')
-      return { text, ngrams: joined.length > 0 ? Deduplicator.generateNgrams(joined) : new Set<string>() }
+      return {
+        text,
+        ngrams: joined.length > 0 ? Deduplicator.generateNgrams(joined) : new Set<string>(),
+      }
     })
     return { entries, config }
   }
@@ -134,7 +137,10 @@ export class Deduplicator {
     if (joined.length === 0) return []
     const queryNgrams = Deduplicator.generateNgrams(joined)
     return cache.entries
-      .filter((e) => e.ngrams.size > 0 && Deduplicator.jaccardSimilarity(queryNgrams, e.ngrams) > threshold)
+      .filter(
+        (e) =>
+          e.ngrams.size > 0 && Deduplicator.jaccardSimilarity(queryNgrams, e.ngrams) > threshold
+      )
       .map((e) => e.text)
   }
 

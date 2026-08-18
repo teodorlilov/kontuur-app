@@ -164,7 +164,9 @@ ${notes.map((n) => `- ${n}`).join('\n')}`
  */
 export function buildGenerateUserCarouselPrompt(input: CarouselInput): string {
   const historyText = formatHistory(input.client.postHistory)
-  const rules = carouselStructureRules(input.slideCount).map((r: string, i: number) => `${i + 1}. ${r}`).join('\n')
+  const rules = carouselStructureRules(input.slideCount)
+    .map((r: string, i: number) => `${i + 1}. ${r}`)
+    .join('\n')
 
   return [
     buildGroundingPrompt({

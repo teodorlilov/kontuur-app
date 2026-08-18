@@ -68,7 +68,8 @@ export async function recomposePersistedPosition(input: {
   const doc = body.doc
   const updated = applyCopyToDoc(doc, copyFields(input.slideCopy))
   // applyCopyToDoc preserves node order and count, so index comparison is sound.
-  if (updated.nodes.every((node, index) => nodeText(node) === nodeText(doc.nodes[index]))) return null
+  if (updated.nodes.every((node, index) => nodeText(node) === nodeText(doc.nodes[index])))
+    return null
 
   const { doc: fitted, blob } = await composeDoc(updated, body.identity.palette)
   return savePostCanvas(input.postId, input.position, fitted, blob, input.baseImagePath)

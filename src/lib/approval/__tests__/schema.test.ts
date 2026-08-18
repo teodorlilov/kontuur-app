@@ -6,7 +6,9 @@ const postId = '7f9619ff-8b86-4d01-b42d-00cf4fc964aa'
 
 describe('approvalRequestSchema — weekStart XOR postIds', () => {
   it('accepts a week batch', () => {
-    expect(approvalRequestSchema.safeParse({ clientId, weekStart: '2026-08-03' }).success).toBe(true)
+    expect(approvalRequestSchema.safeParse({ clientId, weekStart: '2026-08-03' }).success).toBe(
+      true
+    )
   })
 
   it('accepts an explicit post selection', () => {
@@ -23,6 +25,8 @@ describe('approvalRequestSchema — weekStart XOR postIds', () => {
   })
 
   it('rejects a non-uuid client', () => {
-    expect(approvalRequestSchema.safeParse({ clientId: 'nope', weekStart: '2026-08-03' }).success).toBe(false)
+    expect(
+      approvalRequestSchema.safeParse({ clientId: 'nope', weekStart: '2026-08-03' }).success
+    ).toBe(false)
   })
 })

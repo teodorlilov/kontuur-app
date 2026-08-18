@@ -7,7 +7,11 @@ import {
   markIdeasRead as markIdeasReadRows,
   setIdeasStatus,
 } from '@/features/ideas/lib/ideas'
-import { ideaIdsSchema, linkGeneratedPostSchema, markIdeasReadSchema } from '@/features/ideas/schemas'
+import {
+  ideaIdsSchema,
+  linkGeneratedPostSchema,
+  markIdeasReadSchema,
+} from '@/features/ideas/schemas'
 import type { IdeaStatus } from '@/types/api'
 import type { ActionResult } from '@/lib/actions/types'
 

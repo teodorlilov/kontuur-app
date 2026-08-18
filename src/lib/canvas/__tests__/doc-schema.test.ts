@@ -86,7 +86,11 @@ describe('canvasDocSchema', () => {
   it('accepts image nodes anywhere in the list and rejects out-of-range values', () => {
     const doc = validDoc()
     // Between two text nodes — the ordering v1 could not express at all.
-    doc.nodes = [textNode({ id: 'l1' }), imageNode({ rotation: -12, opacity: 0.8 }), textNode({ id: 'l2' })]
+    doc.nodes = [
+      textNode({ id: 'l1' }),
+      imageNode({ rotation: -12, opacity: 0.8 }),
+      textNode({ id: 'l2' }),
+    ]
     expect(parseCanvasDoc(doc)).toEqual(doc)
 
     const badOpacity = validDoc()
@@ -107,17 +111,55 @@ describe('canvasDocSchema', () => {
   it('accepts the three shape kinds, interleaved with everything else', () => {
     const doc = validDoc()
     doc.nodes = [
-      { id: 'r', kind: 'rect', x: 0, y: 0, width: 10, height: 10, fill: '#112233', cornerRadius: 4 },
+      {
+        id: 'r',
+        kind: 'rect',
+        x: 0,
+        y: 0,
+        width: 10,
+        height: 10,
+        fill: '#112233',
+        cornerRadius: 4,
+      },
       textNode(),
-      { id: 'e', kind: 'ellipse', x: 0, y: 0, width: 10, height: 10, stroke: '#112233', strokeWidth: 2 },
-      { id: 'l', kind: 'line', x: 0, y: 0, width: 10, height: 6, stroke: '#112233', strokeWidth: 6 },
+      {
+        id: 'e',
+        kind: 'ellipse',
+        x: 0,
+        y: 0,
+        width: 10,
+        height: 10,
+        stroke: '#112233',
+        strokeWidth: 2,
+      },
+      {
+        id: 'l',
+        kind: 'line',
+        x: 0,
+        y: 0,
+        width: 10,
+        height: 6,
+        stroke: '#112233',
+        strokeWidth: 6,
+      },
     ]
     expect(parseCanvasDoc(doc)).toEqual(doc)
   })
 
   it('rejects a zero-width stroke — a line IS its stroke, so zero would be an invisible node', () => {
     const doc = validDoc()
-    doc.nodes = [{ id: 'l', kind: 'line', x: 0, y: 0, width: 10, height: 1, stroke: '#112233', strokeWidth: 0 }]
+    doc.nodes = [
+      {
+        id: 'l',
+        kind: 'line',
+        x: 0,
+        y: 0,
+        width: 10,
+        height: 1,
+        stroke: '#112233',
+        strokeWidth: 0,
+      },
+    ]
     expect(safeParseCanvasDoc(doc).success).toBe(false)
   })
 
@@ -212,7 +254,16 @@ describe('lockup ownership', () => {
     const doc = {
       ...validDoc(),
       nodes: [
-        { id: 'r', kind: 'rect', role: 'ornament', x: 0, y: 0, width: 10, height: 10, fill: '#000000' },
+        {
+          id: 'r',
+          kind: 'rect',
+          role: 'ornament',
+          x: 0,
+          y: 0,
+          width: 10,
+          height: 10,
+          fill: '#000000',
+        },
       ],
     }
     expect(safeParseCanvasDoc(doc).success).toBe(false)

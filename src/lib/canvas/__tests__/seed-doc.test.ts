@@ -19,7 +19,10 @@ describe('seedCanvasDoc', () => {
     const doc = seedCanvasDoc({
       identity: buildDefaultIdentity(),
       background,
-      slide: { headline: 'Защо кожата ви има нужда от SPF', body: 'Слънцето уврежда кожата целогодишно.' },
+      slide: {
+        headline: 'Защо кожата ви има нужда от SPF',
+        body: 'Слънцето уврежда кожата целогодишно.',
+      },
     })
     expect(parseCanvasDoc(doc)).toEqual(doc)
     expect(doc.nodes).toHaveLength(2)
@@ -49,7 +52,11 @@ describe('seedCanvasDoc', () => {
   })
 
   it('omits layers for empty copy', () => {
-    const doc = seedCanvasDoc({ identity: buildDefaultIdentity(), background, slide: { headline: '', body: '' } })
+    const doc = seedCanvasDoc({
+      identity: buildDefaultIdentity(),
+      background,
+      slide: { headline: '', body: '' },
+    })
     expect(doc.nodes).toHaveLength(0)
   })
 
@@ -68,9 +75,9 @@ describe('seedCanvasDoc', () => {
 
 describe('captionHook', () => {
   it('takes the first sentence and strips URLs, hashtags and mentions', () => {
-    expect(captionHook('Big news from @studio! Visit https://x.test #promo. More text after.')).toBe(
-      'Big news from !'
-    )
+    expect(
+      captionHook('Big news from @studio! Visit https://x.test #promo. More text after.')
+    ).toBe('Big news from !')
   })
 
   it('clamps an unpunctuated caption at a word boundary', () => {

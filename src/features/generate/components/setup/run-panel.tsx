@@ -95,8 +95,8 @@ export function RunPanel({
             ) : webOnlyPillars.length > 0 ? (
               <>
                 {webOnlyPillars.length} pillar{webOnlyPillars.length === 1 ? ' relies' : 's rely'}{' '}
-                on web research alone; if nothing lands, {webOnlyPillars.length === 1 ? 'it is' : 'they are'}{' '}
-                skipped.{' '}
+                on web research alone; if nothing lands,{' '}
+                {webOnlyPillars.length === 1 ? 'it is' : 'they are'} skipped.{' '}
                 <Link
                   href={`/clients/${clientId}/sources`}
                   className="text-spring-lite underline decoration-spring-lite/40 underline-offset-2"

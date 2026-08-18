@@ -37,78 +37,75 @@ export function useEditorSave({ props, slides }: SaveInput): EditorSave {
   const { target, onSaved, onSavedDraft } = props
   const slideCount = slides.positions.length
 
-  const performSave = useCallback(
-    async () => {
-      const positions = slides.dirtyPositions
-      if (saving || positions.length === 0) return
-      setSaving(true)
-      setProgress(positions.length > 1 ? { done: 0, total: positions.length } : null)
-      try {
-        for (const position of positions) {
-          const doc = slides.docAt(position)
-          const image = slides.images.get(position)
-          // Counted, not skipped past. `continue` jumped the increment at the bottom of the loop, so
-          // a slide with no doc left the counter permanently short and "Saving 3/4…" was the last
-          // thing the user saw of a save that had finished.
-          if (!doc || !image) {
-            setProgress((current) => (current ? { ...current, done: current.done + 1 } : null))
-            continue
-          }
-          try {
-            // Loaded per slide rather than reused from the stage: the editor only holds the ACTIVE
-            // slide's background element, and the browser serves the rest from cache anyway.
-            const background = await loadCrossOriginImage(doc.background.publicUrl)
-            const blob = await exportDocToJpegBlob(doc, background)
-            if (target.kind === 'post') {
-              const saved = await savePostCanvas(
-                target.postId,
-                position,
-                doc,
-                blob,
-                image.storagePath
-              )
-              slides.markSaved({
-                position,
-                exported: doc,
-                stored: { ...doc, flattenedStoragePath: saved.storagePath },
-                image: { publicUrl: saved.publicUrl, storagePath: saved.storagePath },
-              })
-              onSaved?.(saved)
-            } else {
-              // Replace the previous FLATTENED file only — the clean background must survive
-              // re-editing.
-              const previousPath =
-                image.storagePath !== doc.background.storagePath ? image.storagePath : undefined
-              const { visual, doc: stored } = await saveDraftCanvas(
-                target,
-                position,
-                doc,
-                blob,
-                previousPath
-              )
-              slides.markSaved({
-                position,
-                exported: doc,
-                stored,
-                image: { publicUrl: visual.publicUrl, storagePath: visual.storagePath },
-              })
-              onSavedDraft?.(visual, stored)
-            }
-          } catch (err) {
-            // One slide failing (a 409 from a stale image, say) must not abandon the others. It
-            // stays dirty and named, so the user knows exactly which one to look at.
-            const reason = err instanceof Error ? err.message : 'Saving the design failed'
-            toast.error(slideCount > 1 ? `Slide ${position + 1}: ${reason}` : reason)
-          }
+  const performSave = useCallback(async () => {
+    const positions = slides.dirtyPositions
+    if (saving || positions.length === 0) return
+    setSaving(true)
+    setProgress(positions.length > 1 ? { done: 0, total: positions.length } : null)
+    try {
+      for (const position of positions) {
+        const doc = slides.docAt(position)
+        const image = slides.images.get(position)
+        // Counted, not skipped past. `continue` jumped the increment at the bottom of the loop, so
+        // a slide with no doc left the counter permanently short and "Saving 3/4…" was the last
+        // thing the user saw of a save that had finished.
+        if (!doc || !image) {
           setProgress((current) => (current ? { ...current, done: current.done + 1 } : null))
+          continue
         }
-      } finally {
-        setSaving(false)
-        setProgress(null)
+        try {
+          // Loaded per slide rather than reused from the stage: the editor only holds the ACTIVE
+          // slide's background element, and the browser serves the rest from cache anyway.
+          const background = await loadCrossOriginImage(doc.background.publicUrl)
+          const blob = await exportDocToJpegBlob(doc, background)
+          if (target.kind === 'post') {
+            const saved = await savePostCanvas(
+              target.postId,
+              position,
+              doc,
+              blob,
+              image.storagePath
+            )
+            slides.markSaved({
+              position,
+              exported: doc,
+              stored: { ...doc, flattenedStoragePath: saved.storagePath },
+              image: { publicUrl: saved.publicUrl, storagePath: saved.storagePath },
+            })
+            onSaved?.(saved)
+          } else {
+            // Replace the previous FLATTENED file only — the clean background must survive
+            // re-editing.
+            const previousPath =
+              image.storagePath !== doc.background.storagePath ? image.storagePath : undefined
+            const { visual, doc: stored } = await saveDraftCanvas(
+              target,
+              position,
+              doc,
+              blob,
+              previousPath
+            )
+            slides.markSaved({
+              position,
+              exported: doc,
+              stored,
+              image: { publicUrl: visual.publicUrl, storagePath: visual.storagePath },
+            })
+            onSavedDraft?.(visual, stored)
+          }
+        } catch (err) {
+          // One slide failing (a 409 from a stale image, say) must not abandon the others. It
+          // stays dirty and named, so the user knows exactly which one to look at.
+          const reason = err instanceof Error ? err.message : 'Saving the design failed'
+          toast.error(slideCount > 1 ? `Slide ${position + 1}: ${reason}` : reason)
+        }
+        setProgress((current) => (current ? { ...current, done: current.done + 1 } : null))
       }
-    },
-    [saving, slides, target, slideCount, onSaved, onSavedDraft]
-  )
+    } finally {
+      setSaving(false)
+      setProgress(null)
+    }
+  }, [saving, slides, target, slideCount, onSaved, onSavedDraft])
 
   return { saving, progress, performSave }
 }

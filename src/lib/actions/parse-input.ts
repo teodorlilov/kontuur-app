@@ -26,5 +26,8 @@ export function parseActionId(
 ): { ok: true; id: string } | { ok: false; result: ActionResult<never> } {
   const parsed = uuid.safeParse(value)
   if (parsed.success) return { ok: true, id: parsed.data }
-  return { ok: false, result: { ok: false, error: `${label}: ${formatZodIssues(parsed.error)[0]}` } }
+  return {
+    ok: false,
+    result: { ok: false, error: `${label}: ${formatZodIssues(parsed.error)[0]}` },
+  }
 }

@@ -63,8 +63,9 @@ describe('post goal in the prompts', () => {
     const withoutGoal = makeClient()
     const withGoal = makeClient({ socialGoals: 'Book an appointment' })
 
-    expect(buildClientProfile(withGoal, 'Instagram').replace('\nPost goal: Book an appointment', ''))
-      .toBe(buildClientProfile(withoutGoal, 'Instagram'))
+    expect(
+      buildClientProfile(withGoal, 'Instagram').replace('\nPost goal: Book an appointment', '')
+    ).toBe(buildClientProfile(withoutGoal, 'Instagram'))
   })
 })
 

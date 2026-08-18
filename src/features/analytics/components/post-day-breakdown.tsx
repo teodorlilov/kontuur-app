@@ -1,7 +1,11 @@
 'use client'
 
 import { useMemo } from 'react'
-import { CHART_COLORS, CHART_AXIS_PROPS, CHART_TOOLTIP_STYLE } from '@/features/analytics/lib/chart-config'
+import {
+  CHART_COLORS,
+  CHART_AXIS_PROPS,
+  CHART_TOOLTIP_STYLE,
+} from '@/features/analytics/lib/chart-config'
 import {
   BarChart,
   Bar,

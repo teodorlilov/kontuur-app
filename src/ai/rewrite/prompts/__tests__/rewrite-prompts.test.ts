@@ -2,7 +2,11 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 vi.mock('@/utils/ai-client')
 
-import { callAnthropic, mockClaudeResponse, mockClaudeToolResponse } from '@/utils/__mocks__/ai-client'
+import {
+  callAnthropic,
+  mockClaudeResponse,
+  mockClaudeToolResponse,
+} from '@/utils/__mocks__/ai-client'
 import { rewriteCaption, rewriteCarousel } from '../rewrite-prompts'
 import type { ClientData } from '@/lib/clients/fetch-client-data'
 

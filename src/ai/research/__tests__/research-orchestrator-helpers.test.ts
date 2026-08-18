@@ -34,11 +34,7 @@ describe('interleaveRoundRobin', () => {
   })
 
   it('no single list can crowd out the others', () => {
-    const lists = [
-      ['a1', 'a2', 'a3', 'a4', 'a5', 'a6'],
-      ['b1'],
-      ['c1', 'c2'],
-    ]
+    const lists = [['a1', 'a2', 'a3', 'a4', 'a5', 'a6'], ['b1'], ['c1', 'c2']]
     const result = interleaveRoundRobin(lists, 4)
     expect(result).toContain('b1')
     expect(result).toContain('c1')

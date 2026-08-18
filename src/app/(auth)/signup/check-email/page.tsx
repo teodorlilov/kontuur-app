@@ -24,11 +24,7 @@ function CheckEmailContent() {
           description={
             <>
               We sent a confirmation link to{' '}
-              {email ? (
-                <span className="font-medium text-ink">{email}</span>
-              ) : (
-                'your email address'
-              )}
+              {email ? <span className="font-medium text-ink">{email}</span> : 'your email address'}
               . Click it to activate your account.
             </>
           }

@@ -1,6 +1,10 @@
 import { callAnthropic, LIGHT_MODEL } from '@/utils/ai-client'
 import { extractToolInput } from '@/utils/ai'
-import { buildClientProfile, buildAiTells, buildHealthRules } from '@/ai/shared/build-prompt-sections'
+import {
+  buildClientProfile,
+  buildAiTells,
+  buildHealthRules,
+} from '@/ai/shared/build-prompt-sections'
 import { buildContentSection } from '@/ai/validation/prompts/shared/content-section'
 import { carouselSemanticRules, ISSUE_TYPE_DEFINITIONS } from '@/ai/validation/criteria'
 import { buildLanguageValidationRules } from '@/ai/validation/prompts/language-validation-rules'
@@ -180,7 +184,9 @@ ${rules}`
       `IMPORTANT: "corrected_text" must contain ONLY the corrected caption. "corrected_slides" must contain ALL slides in their original order — the same count you were given — or null when no slide needs a change.`
     )
   } else {
-    parts.push('STRUCTURE: not a carousel — set structure_passes to null and structure_notes to [].')
+    parts.push(
+      'STRUCTURE: not a carousel — set structure_passes to null and structure_notes to [].'
+    )
   }
 
   const contentSection = buildContentSection(input.caption, input.slides, {
@@ -225,7 +231,8 @@ const QUALITY_ITEM_PROPERTIES = {
   structure_passes: { type: ['boolean', 'null'] },
   structure_notes: {
     type: 'array',
-    description: 'FAILED structure rules only, one short failure description each; [] when all pass',
+    description:
+      'FAILED structure rules only, one short failure description each; [] when all pass',
     items: { type: 'string' },
   },
   flagged_claims: {
@@ -282,9 +289,18 @@ const QUALITY_ITEM_PROPERTIES = {
 }
 
 const QUALITY_ITEM_REQUIRED = [
-  'overall_score', 'human_score', 'ai_tells', 'worst_offending_phrase', 'structure_passes',
-  'structure_notes', 'flagged_claims', 'corrected_text', 'corrected_slides', 'health_compliant',
-  'issues', 'language_issues',
+  'overall_score',
+  'human_score',
+  'ai_tells',
+  'worst_offending_phrase',
+  'structure_passes',
+  'structure_notes',
+  'flagged_claims',
+  'corrected_text',
+  'corrected_slides',
+  'health_compliant',
+  'issues',
+  'language_issues',
 ]
 
 const QUALITY_OUTPUT_SCHEMA = {
@@ -375,7 +391,10 @@ export async function validateQualityBatch(
   const message = await callAnthropic({
     systemPrompt: buildValidationSystemPrompt(input.client, input.platform),
     userMessage: buildValidationBatchUserPrompt(input),
-    maxTokens: Math.min(QUALITY_MAX_TOKENS_PER_ITEM * input.captions.length, VALIDATION_BATCH_MAX_TOKENS),
+    maxTokens: Math.min(
+      QUALITY_MAX_TOKENS_PER_ITEM * input.captions.length,
+      VALIDATION_BATCH_MAX_TOKENS
+    ),
     outputSchema: QUALITY_BATCH_OUTPUT_SCHEMA,
     model: LIGHT_MODEL,
     temperature: 0,
@@ -384,10 +403,9 @@ export async function validateQualityBatch(
   // Schema passed for the same reason as validateQuality: `results` arriving as a
   // JSON-encoded string would otherwise be iterated CHARACTER BY CHARACTER below,
   // leaving every slot null — a whole batch silently unvalidated.
-  const parsed = extractToolInput<{ results?: Array<Partial<LlmQualityResponse> & { index?: number }> }>(
-    message,
-    QUALITY_BATCH_OUTPUT_SCHEMA
-  )
+  const parsed = extractToolInput<{
+    results?: Array<Partial<LlmQualityResponse> & { index?: number }>
+  }>(message, QUALITY_BATCH_OUTPUT_SCHEMA)
   const slots: Array<LlmQualityResponse | null> = input.captions.map(() => null)
 
   // Array.isArray, not `?? []`: a non-array that survived coercion is not iterable

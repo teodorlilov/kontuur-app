@@ -195,7 +195,8 @@ export function useEditorSlides(
   // commits to the slide it was started from, even if the user has moved on. Reading the position
   // from a ref here would look equivalent and would silently land those results on the wrong slide.
   const transformDoc = useCallback<TransformDoc>(
-    (mutate, options) => stepSlides([activePosition], (history) => commitHistory(history, mutate, options)),
+    (mutate, options) =>
+      stepSlides([activePosition], (history) => commitHistory(history, mutate, options)),
     [stepSlides, activePosition]
   )
 
@@ -280,8 +281,14 @@ export function useEditorSlides(
     dirtyPositions,
     dirty: dirtyPositions.length > 0,
     markSaved,
-    undo: useCallback(() => stepSlides([activePosition], undoHistory), [stepSlides, activePosition]),
-    redo: useCallback(() => stepSlides([activePosition], redoHistory), [stepSlides, activePosition]),
+    undo: useCallback(
+      () => stepSlides([activePosition], undoHistory),
+      [stepSlides, activePosition]
+    ),
+    redo: useCallback(
+      () => stepSlides([activePosition], redoHistory),
+      [stepSlides, activePosition]
+    ),
     canUndo: (activeHistory?.past.length ?? 0) > 0,
     canRedo: (activeHistory?.future.length ?? 0) > 0,
   }

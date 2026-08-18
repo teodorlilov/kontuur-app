@@ -200,7 +200,9 @@ function ShapeToolbar({ node, ...props }: SelectionToolbarProps & { node: Canvas
         label={node.kind === 'line' ? 'Colour' : 'Outline'}
         palette={props.palette}
         value={node.stroke ?? props.palette.ink}
-        onChange={(stroke) => change({ stroke, strokeWidth: node.strokeWidth ?? DEFAULT_STROKE_WIDTH })}
+        onChange={(stroke) =>
+          change({ stroke, strokeWidth: node.strokeWidth ?? DEFAULT_STROKE_WIDTH })
+        }
       />
       <SliderPopover
         label={node.kind === 'line' ? 'Thickness' : 'Outline width'}

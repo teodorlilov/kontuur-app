@@ -132,9 +132,7 @@ export function parseCanvasDoc(input: unknown): CanvasDoc {
   return canvasDocSchema.parse(input)
 }
 
-type CanvasDocParse =
-  | { success: true; doc: CanvasDoc }
-  | { success: false; issues: string[] }
+type CanvasDocParse = { success: true; doc: CanvasDoc } | { success: false; issues: string[] }
 
 /**
  * Non-throwing read of a stored doc, whatever version it was written at: v2 parses directly, v1 is

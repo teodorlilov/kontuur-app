@@ -156,8 +156,18 @@ describe('groupQueue', () => {
   it('changing the sort changes the answer', () => {
     // The claim the control makes, asserted across all four options.
     const posts = [
-      post({ id: 'newest-weak', client_name: 'Zed', created_at: '2026-08-09T00:00:00.000Z', quality_score_avg: 4 }),
-      post({ id: 'oldest-strong', client_name: 'Acme', created_at: '2026-08-01T00:00:00.000Z', quality_score_avg: 9 }),
+      post({
+        id: 'newest-weak',
+        client_name: 'Zed',
+        created_at: '2026-08-09T00:00:00.000Z',
+        quality_score_avg: 4,
+      }),
+      post({
+        id: 'oldest-strong',
+        client_name: 'Acme',
+        created_at: '2026-08-01T00:00:00.000Z',
+        quality_score_avg: 9,
+      }),
     ]
     expect(flat(group(posts, { sort: 'newest' }))).toEqual(['newest-weak', 'oldest-strong'])
     expect(flat(group(posts, { sort: 'score' }))).toEqual(['oldest-strong', 'newest-weak'])

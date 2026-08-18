@@ -36,7 +36,10 @@ interface SnapResult {
  * Every position a dragged node can align to: the start, centre and end of each sibling, plus the
  * canvas bounds and its centre lines.
  */
-export function collectSnapStops(siblings: SnapRect[], canvas: { w: number; h: number }): SnapStops {
+export function collectSnapStops(
+  siblings: SnapRect[],
+  canvas: { w: number; h: number }
+): SnapStops {
   const vertical = [0, canvas.w / 2, canvas.w]
   const horizontal = [0, canvas.h / 2, canvas.h]
   for (const rect of siblings) {

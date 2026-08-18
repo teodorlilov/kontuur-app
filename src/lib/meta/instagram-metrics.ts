@@ -36,7 +36,11 @@ async function fetchIGAccount(
     `${IG_GRAPH_BASE}/${accountId}?fields=followers_count,follows_count,media_count&${token}`
   )
   if (!res.ok) throw new Error('Failed to fetch Instagram account data')
-  return res.json() as Promise<{ followers_count: number; follows_count: number; media_count: number }>
+  return res.json() as Promise<{
+    followers_count: number
+    follows_count: number
+    media_count: number
+  }>
 }
 
 /** Fetches daily IG insights for a date range (unix timestamps). */
@@ -79,7 +83,13 @@ async function fetchIGMediaInRange(
 async function fetchSingleIGPostInsights(
   mediaId: string,
   token: string
-): Promise<{ saved: number; reach: number; impressions: number; shares: number; totalInteractions: number }> {
+): Promise<{
+  saved: number
+  reach: number
+  impressions: number
+  shares: number
+  totalInteractions: number
+}> {
   const zero = { saved: 0, reach: 0, impressions: 0, shares: 0, totalInteractions: 0 }
   try {
     const res = await fetch(
@@ -143,7 +153,12 @@ async function fetchIGAudienceDemographics(
     )
     if (!res.ok) return null
     const { data } = (await res.json()) as { data: AudienceApiData }
-    return buildAudienceDemographics(data, 'audience_gender_age', 'audience_city', 'audience_country')
+    return buildAudienceDemographics(
+      data,
+      'audience_gender_age',
+      'audience_city',
+      'audience_country'
+    )
   } catch {
     return null
   }
@@ -157,8 +172,13 @@ async function fetchIGPrevPeriodDeltas(
   untilTs: number
 ): Promise<IGPrevPeriodDeltas> {
   const zero: IGPrevPeriodDeltas = {
-    reach: 0, impressions: 0, profileViews: 0,
-    newFollowers: 0, unfollowers: 0, accountsEngaged: 0, websiteClicks: 0,
+    reach: 0,
+    impressions: 0,
+    profileViews: 0,
+    newFollowers: 0,
+    unfollowers: 0,
+    accountsEngaged: 0,
+    websiteClicks: 0,
   }
   try {
     const periodS = untilTs - sinceTs

@@ -56,7 +56,9 @@ export const GhostSlot = memo(function GhostSlot({
       }
     >
       <span
-        className={missed ? 'text-micro text-pending' : 'text-micro text-text3 group-hover:text-forest'}
+        className={
+          missed ? 'text-micro text-pending' : 'text-micro text-text3 group-hover:text-forest'
+        }
       >
         {missed ? 'Passed unfilled' : 'Suggested — place a post'}
       </span>

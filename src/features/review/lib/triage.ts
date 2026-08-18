@@ -94,8 +94,7 @@ export function computeTriage(
   return items
     .map(({ post, validation }) => {
       const ageDays = postAgeDays(post.created_at, now)
-      const waiting =
-        post.approval?.status === 'pending' && new Date(post.approval.expiresAt) > now
+      const waiting = post.approval?.status === 'pending' && new Date(post.approval.expiresAt) > now
       const reasons = reasonsFor(post, validation, ageDays)
       const bucket: TriageBucket = waiting
         ? 'waiting_on_client'

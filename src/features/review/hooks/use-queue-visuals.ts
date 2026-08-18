@@ -23,13 +23,15 @@ interface UseQueueVisualsOptions {
  */
 export function useQueueVisuals({ postId, copySource, onImage }: UseQueueVisualsOptions) {
   const getSlideCopy = useCallback(
-    (position: number): SlideCopy | null =>
-      copySource ? slideCopyAt(copySource, position) : null,
+    (position: number): SlideCopy | null => (copySource ? slideCopyAt(copySource, position) : null),
     [copySource]
   )
 
-  const { generatingPositions, composingPositions, generate, recompose } =
-    useGenerateVisuals(postId, onImage, getSlideCopy)
+  const { generatingPositions, composingPositions, generate, recompose } = useGenerateVisuals(
+    postId,
+    onImage,
+    getSlideCopy
+  )
 
   const replaceImage = useCallback(
     async (position: number, file: File): Promise<boolean> => {

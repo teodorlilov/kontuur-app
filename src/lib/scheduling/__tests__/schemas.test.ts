@@ -28,9 +28,7 @@ describe('parseBestTimes', () => {
 
   it('rejects a window whose time is not HH:MM', () => {
     // formatScheduledAt would build an Invalid Date from '6pm' and throw on toISOString.
-    expect(
-      parseBestTimes([{ ...valid[0], best_time_windows: [{ time: '6pm' }] }])
-    ).toBeNull()
+    expect(parseBestTimes([{ ...valid[0], best_time_windows: [{ time: '6pm' }] }])).toBeNull()
   })
 
   it('tolerates a confidence the model invented', () => {

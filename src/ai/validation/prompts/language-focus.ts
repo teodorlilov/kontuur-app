@@ -12,7 +12,7 @@ export interface LanguageFocusResult {
   corrected_text: string | null
   corrected_slides: SlideText[] | null
 }
- 
+
 const ISSUE_SCHEMA = {
   type: 'object' as const,
   properties: {
@@ -59,7 +59,9 @@ export async function validateLanguageFocus(
           }
         : {}),
     },
-    required: isCarousel ? ['issues', 'corrected_text', 'corrected_slides'] : ['issues', 'corrected_text'],
+    required: isCarousel
+      ? ['issues', 'corrected_text', 'corrected_slides']
+      : ['issues', 'corrected_text'],
   }
 
   const systemPrompt = `You are a native ${language} editor and proofreader. Your ONLY job is language: be ruthless about naturalness and flag text that reads as translated from English even when grammatically correct. The standard: would a native ${language} speaker write this exact phrase on social media?
@@ -135,7 +137,10 @@ export function mergeLanguageVerdicts(
     }
   }
   const seen = new Set(fromFocus.issues.map((i) => i.original_text))
-  const issues = [...fromFocus.issues, ...fromJudge.issues.filter((i) => !seen.has(i.original_text))]
+  const issues = [
+    ...fromFocus.issues,
+    ...fromJudge.issues.filter((i) => !seen.has(i.original_text)),
+  ]
   return {
     issues,
     corrected_text: fromFocus.corrected_text ?? fromJudge.corrected_text,

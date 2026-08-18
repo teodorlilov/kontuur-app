@@ -46,7 +46,9 @@ function makeContext(rssCount: number, webCount: number): SourceContext {
   }
 }
 
-function mockRankings(rankings: Array<{ index: number; score: number; bestPillar?: string | null }>) {
+function mockRankings(
+  rankings: Array<{ index: number; score: number; bestPillar?: string | null }>
+) {
   callAnthropic.mockResolvedValue({
     content: [
       {
@@ -181,9 +183,7 @@ describe('rankSourceItems', () => {
     // Without the extra slots a brief's material competes with niche items for a
     // fixed cap and can be squeezed out entirely.
     const context = makeContext(0, RANKED_WEB_CAP + 1)
-    mockRankings(
-      Array.from({ length: RANKED_WEB_CAP + 1 }, (_, i) => ({ index: i + 1, score: 8 }))
-    )
+    mockRankings(Array.from({ length: RANKED_WEB_CAP + 1 }, (_, i) => ({ index: i + 1, score: 8 })))
 
     const capped = await rankSourceItems(context, OPTS)
     expect(capped.webSearchItems).toHaveLength(RANKED_WEB_CAP)
@@ -200,8 +200,16 @@ describe('computeSourceBoost', () => {
   })
 
   it('boosts approved sources and sinks discarded ones symmetrically', () => {
-    const approved = computeSourceBoost({ clientSourceId: 's', approvedCount: 3, discardedCount: 0 })
-    const discarded = computeSourceBoost({ clientSourceId: 's', approvedCount: 0, discardedCount: 3 })
+    const approved = computeSourceBoost({
+      clientSourceId: 's',
+      approvedCount: 3,
+      discardedCount: 0,
+    })
+    const discarded = computeSourceBoost({
+      clientSourceId: 's',
+      approvedCount: 0,
+      discardedCount: 3,
+    })
     expect(approved).toBeGreaterThan(0)
     expect(discarded).toBe(-approved)
   })

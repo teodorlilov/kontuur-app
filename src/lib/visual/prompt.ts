@@ -46,14 +46,15 @@ function slideRoleHint(position: number, total: number): string {
 }
 
 /** TEXT block for one carousel slide; empty headline/body lines are omitted. Null when the slide has no copy. */
-export function carouselSlideText(slide: CarouselSlide, position: number, total: number): string | null {
+export function carouselSlideText(
+  slide: CarouselSlide,
+  position: number,
+  total: number
+): string | null {
   const headline = sanitizePromptText(slide.headline ?? '')
   const body = sanitizePromptText(slide.body ?? '')
   if (!headline && !body) return null
-  const lines = [
-    ...(headline ? [`Headline: ${headline}`] : []),
-    ...(body ? [`Body: ${body}`] : []),
-  ]
+  const lines = [...(headline ? [`Headline: ${headline}`] : []), ...(body ? [`Body: ${body}`] : [])]
   return `Slide ${position + 1} of ${total}\n${slideRoleHint(position, total)}\n\n${lines.join('\n')}`
 }
 

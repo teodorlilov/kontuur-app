@@ -41,7 +41,7 @@ describe('formatPublishSlot', () => {
 })
 
 describe('the slot label the schedule dialog shows', () => {
-  it('reads in the agency zone, not the viewer\'s', () => {
+  it("reads in the agency zone, not the viewer's", () => {
     // `ScheduleDialog` takes `timeZone` as a REQUIRED prop, with a comment explaining that resolving
     // a slot in the browser's zone silently scheduled posts at the wrong instant — and then labelled
     // that slot with a local `toLocaleTimeString`, no zone passed. So the dialog wrote 09:00 Sofia

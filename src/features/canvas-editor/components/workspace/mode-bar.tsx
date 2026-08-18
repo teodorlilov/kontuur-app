@@ -50,7 +50,9 @@ export function ModeBar(state: ModeBarState) {
           <button
             type="button"
             className={EDITOR_BUTTON}
-            disabled={!state.hasStrokes || state.inpaintPrompt.trim().length === 0 || state.inpainting}
+            disabled={
+              !state.hasStrokes || state.inpaintPrompt.trim().length === 0 || state.inpainting
+            }
             onClick={state.onApplyInpaint}
           >
             Apply

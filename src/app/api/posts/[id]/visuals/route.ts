@@ -14,10 +14,7 @@ const visualsRequestSchema = z.object({
 })
 
 /** Generate the AI visual for one post position and store it as a regular post image. */
-export async function POST(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id: postId } = await params
   const auth = await resolveAuth()
   if (!auth.ok) return auth.response

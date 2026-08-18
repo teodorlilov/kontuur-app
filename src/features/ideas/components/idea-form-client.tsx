@@ -52,9 +52,7 @@ export function IdeaFormClient({ token, clientName, agencyName }: IdeaFormClient
   function addBrief() {
     // Same cap the submit schema enforces — the form must not build a payload
     // the route is guaranteed to reject.
-    setBriefs((prev) =>
-      prev.length >= MAX_IDEAS_PER_SUBMISSION ? prev : [...prev, createBrief()]
-    )
+    setBriefs((prev) => (prev.length >= MAX_IDEAS_PER_SUBMISSION ? prev : [...prev, createBrief()]))
   }
 
   function removeBrief(id: string) {

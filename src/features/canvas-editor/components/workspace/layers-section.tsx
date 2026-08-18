@@ -348,4 +348,3 @@ function Thumbnail({ node }: { node: CanvasNode }) {
     </span>
   )
 }
-

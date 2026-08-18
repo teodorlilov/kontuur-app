@@ -61,7 +61,9 @@ export function svgNaturalSize(svg: string): { width: number; height: number } |
   const width = Number(open.match(/\swidth\s*=\s*["']?([\d.]+)/i)?.[1])
   const height = Number(open.match(/\sheight\s*=\s*["']?([\d.]+)/i)?.[1])
   if (width > 0 && height > 0) return { width, height }
-  const viewBox = open.match(/\sviewBox\s*=\s*["']\s*[\d.-]+[\s,]+[\d.-]+[\s,]+([\d.]+)[\s,]+([\d.]+)/i)
+  const viewBox = open.match(
+    /\sviewBox\s*=\s*["']\s*[\d.-]+[\s,]+[\d.-]+[\s,]+([\d.]+)[\s,]+([\d.]+)/i
+  )
   const vbWidth = Number(viewBox?.[1])
   const vbHeight = Number(viewBox?.[2])
   if (vbWidth > 0 && vbHeight > 0) return { width: vbWidth, height: vbHeight }

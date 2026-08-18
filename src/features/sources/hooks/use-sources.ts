@@ -2,7 +2,12 @@
 
 import { useState } from 'react'
 import { toast } from '@/components/ui/toast'
-import { createSource, uploadSource, updateSource, deleteSource } from '@/features/sources/actions/source-actions'
+import {
+  createSource,
+  uploadSource,
+  updateSource,
+  deleteSource,
+} from '@/features/sources/actions/source-actions'
 import type { ActionResult } from '@/lib/actions/types'
 import type { ClientSource, SourceSuggestion } from '@/types/api'
 
@@ -81,10 +86,12 @@ export function useSources({
         type,
         label: label.trim(),
         url: url.trim(),
-        ...(type === 'website' ? {
-          focusInstructions: options?.focusInstructions,
-          selectedPages: options?.selectedPages,
-        } : {}),
+        ...(type === 'website'
+          ? {
+              focusInstructions: options?.focusInstructions,
+              selectedPages: options?.selectedPages,
+            }
+          : {}),
       })
       if (!result.ok) {
         toast.error(result.error)
@@ -152,14 +159,21 @@ export function useSources({
 
   async function handleEditSource(
     sourceId: string,
-    updates: { label?: string; url?: string; config?: Record<string, unknown>; pillar_ids?: string[] },
+    updates: {
+      label?: string
+      url?: string
+      config?: Record<string, unknown>
+      pillar_ids?: string[]
+    },
     // quiet: pillar chips fire one write per click — a success toast per chip
     // is noise, so they rely on the optimistic state and toast only on rollback.
     opts?: { quiet?: boolean }
   ) {
     const previous = sources
     setSources((prev) => prev.map((s) => (s.id === sourceId ? { ...s, ...updates } : s)))
-    const ok = await withRollback(previous, setSources,
+    const ok = await withRollback(
+      previous,
+      setSources,
       () => updateSource(sourceId, updates),
       'Failed to update source'
     )
@@ -172,7 +186,9 @@ export function useSources({
     setSources((prev) =>
       prev.map((s) => (s.id === source.id ? { ...s, is_active: !s.is_active } : s))
     )
-    await withRollback(previous, setSources,
+    await withRollback(
+      previous,
+      setSources,
       () => updateSource(source.id, { is_active: !source.is_active }),
       'Failed to update source'
     )
@@ -181,7 +197,9 @@ export function useSources({
   async function handleDelete(source: ClientSource) {
     const previous = sources
     setSources((prev) => prev.filter((s) => s.id !== source.id))
-    const ok = await withRollback(previous, setSources,
+    const ok = await withRollback(
+      previous,
+      setSources,
       () => deleteSource(source.id),
       'Failed to delete source'
     )

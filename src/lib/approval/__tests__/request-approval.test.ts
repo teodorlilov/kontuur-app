@@ -34,10 +34,12 @@ describe('requestApprovalLink', () => {
   it('posts the batch and returns the link', async () => {
     const fetchMock = mockFetch({ ok: true, body: { url: 'https://k/a/tok', postCount: 3 } })
 
-    await expect(requestApprovalLink({ clientId: 'c1', weekStart: '2026-08-03' })).resolves.toEqual({
-      url: 'https://k/a/tok',
-      postCount: 3,
-    })
+    await expect(requestApprovalLink({ clientId: 'c1', weekStart: '2026-08-03' })).resolves.toEqual(
+      {
+        url: 'https://k/a/tok',
+        postCount: 3,
+      }
+    )
     expect(fetchMock).toHaveBeenCalledWith('/api/approval/send', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -86,9 +88,9 @@ describe('requestApprovalEmail', () => {
   it('posts to the email channel', async () => {
     const fetchMock = mockFetch({ ok: true, body: { postCount: 2 } })
 
-    await expect(requestApprovalEmail({ clientId: 'c1', weekStart: '2026-08-03' })).resolves.toEqual(
-      { postCount: 2 }
-    )
+    await expect(
+      requestApprovalEmail({ clientId: 'c1', weekStart: '2026-08-03' })
+    ).resolves.toEqual({ postCount: 2 })
     expect(fetchMock.mock.calls[0]?.[0]).toBe('/api/approval/email')
   })
 

@@ -21,7 +21,10 @@ const OUTPUT_SCHEMA = {
     accent: { type: 'string', description: 'Human colour name for the primary accent' },
     accent_deep: { type: 'string', description: 'Human colour name for the deep accent' },
     line: { type: 'string', description: 'Human colour name for the neutral line/border colour' },
-    character: { type: 'string', description: 'One sentence describing the overall palette character' },
+    character: {
+      type: 'string',
+      description: 'One sentence describing the overall palette character',
+    },
   },
   required: ['surface', 'ink', 'accent', 'accent_deep', 'line', 'character'],
 }

@@ -42,9 +42,12 @@ export async function fetchClientPostStats(
   // WHY as: src/types/database.ts predates this function and regenerating it needs a working
   // SUPABASE_ACCESS_TOKEN, which the CLI currently rejects. The row shape is pinned by the
   // migration and verified against the live function. Drop both casts once types are regenerated.
-  const { data, error } = await supabase.rpc('client_edit_stats' as never, {
-    p_client_id: clientId,
-  } as never)
+  const { data, error } = await supabase.rpc(
+    'client_edit_stats' as never,
+    {
+      p_client_id: clientId,
+    } as never
+  )
 
   if (error) {
     console.error(`[clients:postStats] aggregate failed for ${clientId}:`, error.message)

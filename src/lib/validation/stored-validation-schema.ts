@@ -123,7 +123,9 @@ const storedGroundingSchema = z.object({
     .array(
       z.object({
         // Malformed status degrades to the warn rendering, never to a false "matched".
-        status: z.enum(['grounded', 'ungrounded', 'partially_grounded']).catch('partially_grounded'),
+        status: z
+          .enum(['grounded', 'ungrounded', 'partially_grounded'])
+          .catch('partially_grounded'),
         claim: z.string().catch(''),
         source_evidence: z.string().nullable().catch(null),
       })

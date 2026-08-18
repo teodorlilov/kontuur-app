@@ -2,7 +2,10 @@ import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { requireSessionUser } from '@/lib/auth/session'
 import { getCachedAgencyClients } from '@/lib/queries/cache'
 import { POST_COLUMNS, type PostColumns } from '@/lib/queries/select-columns'
-import { fetchCanvasDocPositions, fetchImagesByPost } from '@/features/publishing/lib/fetch-post-images'
+import {
+  fetchCanvasDocPositions,
+  fetchImagesByPost,
+} from '@/features/publishing/lib/fetch-post-images'
 import {
   fallbackValidationData,
   needsSlopFallback,
@@ -96,8 +99,7 @@ export default async function ReviewPage() {
   const posts: QueuePost[] = typedPostRows.map((p) => ({
     ...p,
     validation_json: null,
-    validation:
-      toValidationData(p.validation_json) ?? fallbackValidationData(p.quality_score_avg),
+    validation: toValidationData(p.validation_json) ?? fallbackValidationData(p.quality_score_avg),
     needsSlopCheck: needsSlopFallback(p.validation_json),
     client_name: nameByClient.get(p.client_id) ?? 'Unknown',
     is_health_niche: healthByClient.get(p.client_id) ?? false,

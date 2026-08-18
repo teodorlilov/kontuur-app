@@ -19,7 +19,15 @@ interface PanelSliderProps {
  * The properties panel's standard labelled range row. Purely presentational — how a drag folds into
  * the undo history is the doc layer's business, not this component's.
  */
-export function PanelSlider({ label, min, max, step, value, disabled, onChange }: PanelSliderProps) {
+export function PanelSlider({
+  label,
+  min,
+  max,
+  step,
+  value,
+  disabled,
+  onChange,
+}: PanelSliderProps) {
   return (
     <div>
       <div className={cn(EDITOR_LABEL, disabled && 'opacity-45')}>{label}</div>

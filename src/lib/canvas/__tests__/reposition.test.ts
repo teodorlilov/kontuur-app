@@ -66,7 +66,12 @@ describe('zoomBackgroundTo', () => {
 })
 
 describe('sourceRectToCanvas', () => {
-  const fullRect = (src: { width: number; height: number }) => ({ x: 0, y: 0, width: src.width, height: src.height })
+  const fullRect = (src: { width: number; height: number }) => ({
+    x: 0,
+    y: 0,
+    width: src.width,
+    height: src.height,
+  })
 
   it('an aspect-matched full source with no transform covers the canvas exactly', () => {
     expect(sourceRectToCanvas(fullRect(PORTRAIT), PORTRAIT, CANVAS)).toEqual({
@@ -101,7 +106,12 @@ describe('sourceRectToCanvas', () => {
 
   it('a subject bbox lands proportionally inside the canvas', () => {
     // Center quarter of an aspect-matched source → center quarter of the canvas.
-    const rect = { x: PORTRAIT.width / 4, y: PORTRAIT.height / 4, width: PORTRAIT.width / 2, height: PORTRAIT.height / 2 }
+    const rect = {
+      x: PORTRAIT.width / 4,
+      y: PORTRAIT.height / 4,
+      width: PORTRAIT.width / 2,
+      height: PORTRAIT.height / 2,
+    }
     const mapped = sourceRectToCanvas(rect, PORTRAIT, CANVAS)
     expect(mapped.x).toBeCloseTo(CANVAS_WIDTH / 4, 6)
     expect(mapped.y).toBeCloseTo(CANVAS_HEIGHT / 4, 6)

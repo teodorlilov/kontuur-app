@@ -11,10 +11,7 @@ import type { PostgrestError } from '@supabase/supabase-js'
  * answer — `.single()` reports a missing row *as* an error, which this would then
  * escalate into a 500 for what is really a null.
  */
-export function unwrap<T>(
-  result: { data: T; error: PostgrestError | null },
-  query: string
-): T {
+export function unwrap<T>(result: { data: T; error: PostgrestError | null }, query: string): T {
   if (result.error) throw new Error(`${query} failed: ${result.error.message}`)
   return result.data
 }

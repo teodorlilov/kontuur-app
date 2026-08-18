@@ -11,7 +11,10 @@ export async function rewriteCaption(input: RewriteCaptionInput): Promise<string
   const lc = client.languageConfig
 
   const message = await callAnthropic({
-    systemPrompt: buildGenerateSystemPrompt(client, input.platform, 'single') + '\n\n' + buildAiTells(lc.language),
+    systemPrompt:
+      buildGenerateSystemPrompt(client, input.platform, 'single') +
+      '\n\n' +
+      buildAiTells(lc.language),
     userMessage: `Recent topics already covered — do not drift into: ${formatHistory(client.postHistory, { limit: 15 })}
 
 ORIGINAL POST:
@@ -81,7 +84,10 @@ export async function rewriteCarousel(input: RewriteCarouselInput): Promise<Rewr
   const lc = client.languageConfig
 
   const message = await callAnthropic({
-    systemPrompt: buildGenerateSystemPrompt(client, input.platform, 'carousel') + '\n\n' + buildAiTells(lc.language),
+    systemPrompt:
+      buildGenerateSystemPrompt(client, input.platform, 'carousel') +
+      '\n\n' +
+      buildAiTells(lc.language),
     userMessage: `Recent topics already covered — do not drift into: ${formatHistory(client.postHistory, { limit: 15 })}
 
 MAIN CAPTION:

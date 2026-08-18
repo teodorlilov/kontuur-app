@@ -2,7 +2,13 @@ import { describe, expect, it } from 'vitest'
 import { markerBands } from '../highlight'
 
 // fontSize 100 / lineHeight 1.2 → line box 120, band height 80, overshoot 30 — round numbers.
-const layer = { width: 800, align: 'left' as const, fontSize: 100, lineHeight: 1.2, highlight: '#ABCDEF' }
+const layer = {
+  width: 800,
+  align: 'left' as const,
+  fontSize: 100,
+  lineHeight: 1.2,
+  highlight: '#ABCDEF',
+}
 
 describe('markerBands', () => {
   it('returns no bands without a highlight colour', () => {
@@ -44,11 +50,18 @@ describe('markerBands', () => {
 })
 
 describe('markerBands with letter spacing', () => {
-  it('measures the band from the ink, not from Konva\'s trailing advance', () => {
+  it("measures the band from the ink, not from Konva's trailing advance", () => {
     // Konva returns `measureText(text).width + letterSpacing * length` — the spacing after the
     // LAST glyph is counted but never drawn. Bands built from that number are one space too wide,
     // which pushes centred text off its own highlight.
-    const layer = { width: 1000, align: 'center' as const, fontSize: 100, lineHeight: 1.2, highlight: '#ffee00', letterSpacing: 20 }
+    const layer = {
+      width: 1000,
+      align: 'center' as const,
+      fontSize: 100,
+      lineHeight: 1.2,
+      highlight: '#ffee00',
+      letterSpacing: 20,
+    }
     const [band] = markerBands([{ width: 520 }], layer)
     const overshoot = 100 * 0.3
 
@@ -58,13 +71,26 @@ describe('markerBands with letter spacing', () => {
   })
 
   it('is unchanged when there is no letter spacing', () => {
-    const layer = { width: 1000, align: 'left' as const, fontSize: 100, lineHeight: 1.2, highlight: '#ffee00' }
+    const layer = {
+      width: 1000,
+      align: 'left' as const,
+      fontSize: 100,
+      lineHeight: 1.2,
+      highlight: '#ffee00',
+    }
     const [band] = markerBands([{ width: 520 }], layer)
     expect(band!.width).toBe(520 + 100 * 0.3 * 2)
   })
 
   it('drops a line whose ink is entirely trailing advance', () => {
-    const layer = { width: 1000, align: 'left' as const, fontSize: 100, lineHeight: 1.2, highlight: '#ffee00', letterSpacing: 20 }
+    const layer = {
+      width: 1000,
+      align: 'left' as const,
+      fontSize: 100,
+      lineHeight: 1.2,
+      highlight: '#ffee00',
+      letterSpacing: 20,
+    }
     expect(markerBands([{ width: 20 }], layer)).toEqual([])
   })
 })

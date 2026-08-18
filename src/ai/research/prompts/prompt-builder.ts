@@ -308,12 +308,15 @@ ${this.buildSourceMaterialBlock(sourceContext)}
   private buildCoveredTopicsBlock(): string {
     const lines: string[] = []
     if (this.postHistory.length > 0) {
-      lines.push(`RECENTLY COVERED TOPICS (do NOT suggest these or closely related themes — find fresh angles the client has NOT posted about yet):\n${this.postHistory.map((t) => `- ${t}`).join('\n')}`)
+      lines.push(
+        `RECENTLY COVERED TOPICS (do NOT suggest these or closely related themes — find fresh angles the client has NOT posted about yet):\n${this.postHistory.map((t) => `- ${t}`).join('\n')}`
+      )
     }
     if (this.excludedUrls.length > 0) {
-      lines.push(`DO NOT use these source URLs — already used in previous posts:\n${this.excludedUrls.map((u) => `- ${u}`).join('\n')}`)
+      lines.push(
+        `DO NOT use these source URLs — already used in previous posts:\n${this.excludedUrls.map((u) => `- ${u}`).join('\n')}`
+      )
     }
     return lines.length > 0 ? `\n${lines.join('\n\n')}\n` : ''
   }
-
 }

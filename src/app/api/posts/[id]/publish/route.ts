@@ -17,7 +17,9 @@ async function fetchPostForPublish(
 ): Promise<PostWithImages | null> {
   const { data, error } = await admin
     .from('posts')
-    .select('id, caption, post_type, status, scheduled_at, publish_attempts, client_id, post_images(public_url, position)')
+    .select(
+      'id, caption, post_type, status, scheduled_at, publish_attempts, client_id, post_images(public_url, position)'
+    )
     .eq('id', postId)
     .maybeSingle()
   if (error) throw new Error(`post lookup failed: ${error.message}`)
@@ -44,10 +46,7 @@ async function fetchConnection(
 }
 
 /** Publish a post to Instagram immediately. */
-export async function POST(
-  _request: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function POST(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id: postId } = await params
   const auth = await resolveAuth()
   if (!auth.ok) return auth.response
@@ -60,11 +59,14 @@ export async function POST(
   try {
     const post = await fetchPostForPublish(admin, postId)
     if (!post) return NextResponse.json({ error: 'Post not found' }, { status: 404 })
-    if (post.status === 'published') return NextResponse.json({ error: 'Already published' }, { status: 400 })
-    if (post.post_images.length === 0) return NextResponse.json({ error: 'Post has no images' }, { status: 400 })
+    if (post.status === 'published')
+      return NextResponse.json({ error: 'Already published' }, { status: 400 })
+    if (post.post_images.length === 0)
+      return NextResponse.json({ error: 'Post has no images' }, { status: 400 })
 
     const conn = await fetchConnection(admin, post.client_id)
-    if (!conn) return NextResponse.json({ error: 'No Instagram account connected' }, { status: 400 })
+    if (!conn)
+      return NextResponse.json({ error: 'No Instagram account connected' }, { status: 400 })
     if (isTokenExpired(conn.token_expires_at)) {
       return NextResponse.json({ error: 'Instagram token expired' }, { status: 400 })
     }
@@ -83,21 +85,27 @@ export async function POST(
       return NextResponse.json({ error: 'Post is already being published' }, { status: 409 })
     }
 
-    const imageUrls = post.post_images.sort((a, b) => a.position - b.position).map((img) => img.public_url)
+    const imageUrls = post.post_images
+      .sort((a, b) => a.position - b.position)
+      .map((img) => img.public_url)
     const caption = post.caption ?? ''
-    const result = imageUrls.length === 1
-      ? await publishSingleImage(conn.account_id, conn.access_token, imageUrls[0]!, caption)
-      : await publishCarousel(conn.account_id, conn.access_token, imageUrls, caption)
+    const result =
+      imageUrls.length === 1
+        ? await publishSingleImage(conn.account_id, conn.access_token, imageUrls[0]!, caption)
+        : await publishCarousel(conn.account_id, conn.access_token, imageUrls, caption)
 
     if (result.success) {
       const now = new Date().toISOString()
-      const { error: writeError } = await admin.from('posts').update({
-        status: 'published',
-        ig_media_id: result.mediaId ?? null,
-        published_at: now,
-        publish_error: null,
-        ...(post.scheduled_at ? {} : { scheduled_at: now }),
-      }).eq('id', postId)
+      const { error: writeError } = await admin
+        .from('posts')
+        .update({
+          status: 'published',
+          ig_media_id: result.mediaId ?? null,
+          published_at: now,
+          publish_error: null,
+          ...(post.scheduled_at ? {} : { scheduled_at: now }),
+        })
+        .eq('id', postId)
       // The media is live, so this is not a failed publish — but the row still
       // reads 'publishing', which the cron reclaim would republish.
       if (writeError) {

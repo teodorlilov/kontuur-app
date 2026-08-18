@@ -20,15 +20,12 @@ export async function GET(_request: NextRequest) {
 
   // PKCE: generate code_verifier and code_challenge
   const codeVerifier = crypto.randomBytes(32).toString('base64url')
-  const codeChallenge = crypto
-    .createHash('sha256')
-    .update(codeVerifier)
-    .digest('base64url')
+  const codeChallenge = crypto.createHash('sha256').update(codeVerifier).digest('base64url')
 
   // Encode userId + codeVerifier in state so callback can retrieve both
-  const state = Buffer.from(
-    JSON.stringify({ userId: auth.userId, codeVerifier })
-  ).toString('base64url')
+  const state = Buffer.from(JSON.stringify({ userId: auth.userId, codeVerifier })).toString(
+    'base64url'
+  )
 
   const oauthUrl = new URL(CANVA_OAUTH_BASE)
   oauthUrl.searchParams.set('response_type', 'code')

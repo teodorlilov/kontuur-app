@@ -42,64 +42,62 @@ export default async function OpengraphImage() {
   ].filter((font) => font !== null)
 
   return new ImageResponse(
-    (
-      <div
-        style={{
-          width: '100%',
-          height: '100%',
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'space-between',
-          // Near-White Paper, never flat white — DESIGN.md § Neutral.
-          background: '#fbfcfa',
-          padding: 72,
-          fontFamily: 'Geist',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-          {/* The constant lime: a plate carrying Forest Ink at 13.65:1. */}
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: 56,
-              height: 56,
-              borderRadius: 16,
-              background: '#cfea45',
-              color: '#0f1512',
-              fontSize: 34,
-              fontWeight: 600,
-            }}
-          >
-            k
-          </div>
-          {/* satori needs an explicit display on any node with more than one
-              child — it has no CSS defaults to fall back on. */}
-          <div style={{ display: 'flex', fontSize: 34, color: '#0f1512' }}>
-            kontuur<span style={{ color: '#164430' }}>.</span>
-          </div>
-        </div>
-
+    <div
+      style={{
+        width: '100%',
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'space-between',
+        // Near-White Paper, never flat white — DESIGN.md § Neutral.
+        background: '#fbfcfa',
+        padding: 72,
+        fontFamily: 'Geist',
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+        {/* The constant lime: a plate carrying Forest Ink at 13.65:1. */}
         <div
           style={{
             display: 'flex',
-            fontSize: 76,
-            fontWeight: 600,
-            letterSpacing: '-0.03em',
-            lineHeight: 1.08,
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: 56,
+            height: 56,
+            borderRadius: 16,
+            background: '#cfea45',
             color: '#0f1512',
-            maxWidth: 900,
+            fontSize: 34,
+            fontWeight: 600,
           }}
         >
-          Beautiful client posts — written, designed &amp; published.
+          k
         </div>
-
-        <div style={{ display: 'flex', fontSize: 26, color: '#57625a' }}>
-          The AI social studio for agencies
+        {/* satori needs an explicit display on any node with more than one
+              child — it has no CSS defaults to fall back on. */}
+        <div style={{ display: 'flex', fontSize: 34, color: '#0f1512' }}>
+          kontuur<span style={{ color: '#164430' }}>.</span>
         </div>
       </div>
-    ),
+
+      <div
+        style={{
+          display: 'flex',
+          fontSize: 76,
+          fontWeight: 600,
+          letterSpacing: '-0.03em',
+          lineHeight: 1.08,
+          color: '#0f1512',
+          maxWidth: 900,
+        }}
+      >
+        Beautiful client posts — written, designed &amp; published.
+      </div>
+
+      <div style={{ display: 'flex', fontSize: 26, color: '#57625a' }}>
+        The AI social studio for agencies
+      </div>
+    </div>,
     { ...size, fonts: fonts.length > 0 ? fonts : undefined }
   )
 }

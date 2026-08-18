@@ -105,7 +105,9 @@ const fetchChangeRequests = unstable_cache(
 
     const batchIds = [
       ...new Set(
-        rows.flatMap((row) => row.post_approval_tokens.map((token) => token.batch_id)).filter(Boolean)
+        rows
+          .flatMap((row) => row.post_approval_tokens.map((token) => token.batch_id))
+          .filter(Boolean)
       ),
     ]
     const positions = await fetchBatchPositions(supabase, batchIds)

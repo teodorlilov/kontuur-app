@@ -33,8 +33,14 @@ export function panBackground(
   const slackY = src.height - crop.cropHeight
   return {
     zoom: transform.zoom,
-    offsetX: slackX > 0 ? clamp01(transform.offsetX - (delta.dx * crop.cropWidth) / canvas.w / slackX) : 0.5,
-    offsetY: slackY > 0 ? clamp01(transform.offsetY - (delta.dy * crop.cropHeight) / canvas.h / slackY) : 0.5,
+    offsetX:
+      slackX > 0
+        ? clamp01(transform.offsetX - (delta.dx * crop.cropWidth) / canvas.w / slackX)
+        : 0.5,
+    offsetY:
+      slackY > 0
+        ? clamp01(transform.offsetY - (delta.dy * crop.cropHeight) / canvas.h / slackY)
+        : 0.5,
   }
 }
 

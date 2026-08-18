@@ -1,11 +1,7 @@
 'use client'
 
 import { Minus, Plus } from 'lucide-react'
-import {
-  MIN_CAROUSEL_SLIDES,
-  MAX_CAROUSEL_SLIDES,
-  POSTS_PER_RUN_OPTIONS,
-} from '@/utils/constants'
+import { MIN_CAROUSEL_SLIDES, MAX_CAROUSEL_SLIDES, POSTS_PER_RUN_OPTIONS } from '@/utils/constants'
 import type { PostType } from '@/types/api'
 
 /**
@@ -114,14 +110,18 @@ export function CountSteppers({
           {postsPerWeek} time{postsPerWeek === 1 ? '' : 's'} a week
         </span>
         {isCarousel && (
-          <> · carousels run {MIN_CAROUSEL_SLIDES}–{MAX_CAROUSEL_SLIDES} slides</>
+          <>
+            {' '}
+            · carousels run {MIN_CAROUSEL_SLIDES}–{MAX_CAROUSEL_SLIDES} slides
+          </>
         )}
         {/* Briefs are not in the stepper — without this line, a locked idea
             makes "0 posts" sit beside a panel promising 1 and the two look
             like a contradiction instead of a sum. */}
         {briefCount > 0 && (
           <>
-            {' '}· + {briefCount} priority brief{briefCount === 1 ? '' : 's'} ·{' '}
+            {' '}
+            · + {briefCount} priority brief{briefCount === 1 ? '' : 's'} ·{' '}
             <span className="font-medium text-ink">
               {postCount + briefCount} post{postCount + briefCount === 1 ? '' : 's'} total
             </span>

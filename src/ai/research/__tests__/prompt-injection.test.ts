@@ -44,10 +44,16 @@ function hostileContext(): SourceContext {
         eligiblePillars: [ESCAPE],
       },
     ],
-    websiteExcerpts: [{ url: `https://evil.test/${ESCAPE}`, text: ESCAPE, focusInstructions: ESCAPE }],
+    websiteExcerpts: [
+      { url: `https://evil.test/${ESCAPE}`, text: ESCAPE, focusInstructions: ESCAPE },
+    ],
     fileExcerpts: [{ label: ESCAPE, text: ESCAPE }],
-    webSearchItems: [{ title: ESCAPE, snippet: ESCAPE, url: `https://evil.test/${ESCAPE}`, score: 0.5 }],
-    performanceItems: [{ caption: ESCAPE, engagementSummary: '10 likes', permalink: `https://ig.test/${ESCAPE}` }],
+    webSearchItems: [
+      { title: ESCAPE, snippet: ESCAPE, url: `https://evil.test/${ESCAPE}`, score: 0.5 },
+    ],
+    performanceItems: [
+      { caption: ESCAPE, engagementSummary: '10 likes', permalink: `https://ig.test/${ESCAPE}` },
+    ],
   }
 }
 
@@ -147,6 +153,8 @@ describe('generation system prompt', () => {
   }
 
   it('carries the defensive clause', () => {
-    expect(buildGenerateSystemPrompt(client(), 'Instagram', 'single')).toContain(DEFENSIVE_DATA_CLAUSE)
+    expect(buildGenerateSystemPrompt(client(), 'Instagram', 'single')).toContain(
+      DEFENSIVE_DATA_CLAUSE
+    )
   })
 })

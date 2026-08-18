@@ -63,9 +63,7 @@ describe('suggestSources', () => {
       tavilyResponse([tavilyResult('site-a.com', 0.9), tavilyResult('site-b.com', 0.8)])
     )
     // Re-rank pass-through: parse fails → unranked order
-    mockParseJsonResponse
-      .mockReturnValueOnce(['q1', 'q2'])
-      .mockReturnValue([])
+    mockParseJsonResponse.mockReturnValueOnce(['q1', 'q2']).mockReturnValue([])
 
     const results = await suggestSources({ niche: 'health' })
     expect(results.map((r) => r.url)).toEqual([
@@ -89,7 +87,9 @@ describe('suggestSources', () => {
       tavilyResponse([tavilyResult('hasfeed.com', 0.9), tavilyResult('nofeed.com', 0.8)])
     )
     mockDiscoverFeedUrl.mockImplementation((url: string) =>
-      url.includes('nofeed') ? Promise.resolve(null) : Promise.resolve(`${new URL(url).origin}/feed`)
+      url.includes('nofeed')
+        ? Promise.resolve(null)
+        : Promise.resolve(`${new URL(url).origin}/feed`)
     )
     mockParseJsonResponse.mockReturnValueOnce(['q1']).mockReturnValue([])
 
@@ -136,10 +136,7 @@ describe('suggestSources', () => {
       ])
 
     const results = await suggestSources({ niche: 'health' })
-    expect(results.map((r) => r.url)).toEqual([
-      'https://third.com/feed',
-      'https://first.com/feed',
-    ])
+    expect(results.map((r) => r.url)).toEqual(['https://third.com/feed', 'https://first.com/feed'])
     expect(results[0]!.reason).toBe('Best match for the clinic.')
   })
 

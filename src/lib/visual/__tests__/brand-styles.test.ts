@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest'
-import { BRAND_STYLES, BRAND_STYLE_IDS, DEFAULT_BRAND_STYLE_ID, getBrandStyle } from '../brand-styles'
+import {
+  BRAND_STYLES,
+  BRAND_STYLE_IDS,
+  DEFAULT_BRAND_STYLE_ID,
+  getBrandStyle,
+} from '../brand-styles'
 
 describe('brand style registry', () => {
   it('resolves unknown or missing ids to the default style', () => {

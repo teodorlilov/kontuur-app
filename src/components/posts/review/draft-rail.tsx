@@ -36,9 +36,7 @@ export function DraftRail({
 
   // Keep the focused row in view as keyboard navigation moves it.
   useEffect(() => {
-    listRef.current
-      ?.querySelector('[aria-current="true"]')
-      ?.scrollIntoView({ block: 'nearest' })
+    listRef.current?.querySelector('[aria-current="true"]')?.scrollIntoView({ block: 'nearest' })
   }, [focusedId])
 
   return (

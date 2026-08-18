@@ -58,7 +58,9 @@ describe('pickVisualBacklog', () => {
     // null used to be treated as below every floor, so a judge outage silently
     // denied art to a whole batch — and triage then flagged `missing_visuals`
     // forever, blaming the post for our failure. The cron's `.or(...)` mirrors this.
-    expect(pickVisualBacklog([post({ quality_score_avg: null })], new Map(), options)).toHaveLength(1)
+    expect(pickVisualBacklog([post({ quality_score_avg: null })], new Map(), options)).toHaveLength(
+      1
+    )
   })
 
   it('skips posts that already burned their attempts', () => {
@@ -70,8 +72,18 @@ describe('pickVisualBacklog', () => {
   })
 
   it('oldest posts drain first and the image budget is a hard ceiling', () => {
-    const older = post({ id: 'old', post_type: 'carousel', slides_json: slides(3), created_at: '2026-07-28T09:00:00Z' })
-    const newer = post({ id: 'new', post_type: 'carousel', slides_json: slides(3), created_at: '2026-08-02T09:00:00Z' })
+    const older = post({
+      id: 'old',
+      post_type: 'carousel',
+      slides_json: slides(3),
+      created_at: '2026-07-28T09:00:00Z',
+    })
+    const newer = post({
+      id: 'new',
+      post_type: 'carousel',
+      slides_json: slides(3),
+      created_at: '2026-08-02T09:00:00Z',
+    })
     const jobs = pickVisualBacklog([newer, older], new Map(), { ...options, maxImagesPerRun: 4 })
     expect(jobs.map((j) => j.postId)).toEqual(['old', 'new'])
     expect(jobs[0]?.positions).toEqual([0, 1, 2])

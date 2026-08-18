@@ -27,11 +27,7 @@ export default async function ClientSourcesPage({ params }: { params: Promise<{ 
       .select(CLIENT_SOURCE_FULL_COLUMNS)
       .eq('client_id', id)
       .order('created_at', { ascending: false }),
-    supabase
-      .from('brand_profiles')
-      .select('content_pillars')
-      .eq('client_id', id)
-      .maybeSingle(),
+    supabase.from('brand_profiles').select('content_pillars').eq('client_id', id).maybeSingle(),
     // Stats are decorative: the page is still usable without them, so a failure
     // is logged and swallowed rather than blanking the source manager.
     fetchSourceUsageStats(createAdminSupabaseClient(), id).catch((err: unknown) => {

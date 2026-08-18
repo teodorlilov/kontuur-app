@@ -70,10 +70,11 @@ export function carouselStructureRules(slideCount: number): string[] {
 
 /** Judgment-only rule set for the VALIDATION prompt — mechanical rules are checked in code. */
 export function carouselSemanticRules(slideCount: number): string[] {
-  return [...carouselRoleRules(slideCount, CAROUSEL_COVER_RULE_SEMANTIC), ...CAROUSEL_SEMANTIC_COMMON]
+  return [
+    ...carouselRoleRules(slideCount, CAROUSEL_COVER_RULE_SEMANTIC),
+    ...CAROUSEL_SEMANTIC_COMMON,
+  ]
 }
-
-
 
 // ---- Issue type definitions (objective, grounded in structure rules) ----
 
@@ -86,14 +87,11 @@ export const ISSUE_TYPE_DEFINITIONS: Record<string, string> = {
     'Zero brand-specific vocabulary, named client/product references, or tone markers from the declared tone',
   too_polished:
     'Three or more consecutive sentences in the 8-25 word range with no sentence shorter than 6 words or longer than 35 words',
-  buried_lead:
-    'The most interesting point is hidden after filler opening lines',
+  buried_lead: 'The most interesting point is hidden after filler opening lines',
   filler_content:
     'Sentence restates the preceding sentence or contains only transitional connectors with no new fact or insight',
-  repetitive:
-    'Same idea or phrasing repeated in different words',
-  off_brand:
-    'Post uses vocabulary, register, or framing explicitly excluded by the declared tone',
+  repetitive: 'Same idea or phrasing repeated in different words',
+  off_brand: 'Post uses vocabulary, register, or framing explicitly excluded by the declared tone',
   wrong_audience:
     'Post addresses pain points, aspirations, or vocabulary belonging to a different audience segment than declared',
 }

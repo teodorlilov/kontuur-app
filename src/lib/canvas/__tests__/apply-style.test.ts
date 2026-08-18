@@ -42,8 +42,29 @@ function textAt(doc: CanvasDoc, index: number): CanvasTextNode {
 
 const styledSource = makeDoc(
   [
-    makeText({ id: 's-h', role: 'headline', text: 'SOURCE HEAD', x: 60, y: 900, width: 700, fontFamily: 'Playfair Display', fontSize: 64, fontWeight: 500, fill: '#C07B55', align: 'center', lineHeight: 1.25 }),
-    makeText({ id: 's-b', role: 'body', text: 'Source body', y: 1100, fontFamily: 'Commissioner', fontSize: 36, fontWeight: 400 }),
+    makeText({
+      id: 's-h',
+      role: 'headline',
+      text: 'SOURCE HEAD',
+      x: 60,
+      y: 900,
+      width: 700,
+      fontFamily: 'Playfair Display',
+      fontSize: 64,
+      fontWeight: 500,
+      fill: '#C07B55',
+      align: 'center',
+      lineHeight: 1.25,
+    }),
+    makeText({
+      id: 's-b',
+      role: 'body',
+      text: 'Source body',
+      y: 1100,
+      fontFamily: 'Commissioner',
+      fontSize: 36,
+      fontWeight: 400,
+    }),
   ],
   { scrim: { enabled: false, color: '#000000', opacity: 0.6, mode: 'full' } }
 )
@@ -52,7 +73,14 @@ describe('applyStyleToDoc', () => {
   it('copies role-matched layer style and the scrim, keeping the target text', () => {
     const target = makeDoc([
       makeText({ id: 't-h', role: 'headline', text: 'TARGET HEAD' }),
-      makeText({ id: 't-b', role: 'body', text: 'Target body', y: 760, fontSize: 44, fontWeight: 400 }),
+      makeText({
+        id: 't-b',
+        role: 'body',
+        text: 'Target body',
+        y: 760,
+        fontSize: 44,
+        fontWeight: 400,
+      }),
     ])
     const result = applyStyleToDoc(target, styledSource)
 
@@ -70,7 +98,12 @@ describe('applyStyleToDoc', () => {
       align: 'center',
       lineHeight: 1.25,
     })
-    expect(result.nodes[1]).toMatchObject({ id: 't-b', text: 'Target body', fontFamily: 'Commissioner', y: 1100 })
+    expect(result.nodes[1]).toMatchObject({
+      id: 't-b',
+      text: 'Target body',
+      fontFamily: 'Commissioner',
+      y: 1100,
+    })
     expect(result.scrim).toEqual({ enabled: false, color: '#000000', opacity: 0.6, mode: 'full' })
   })
 
@@ -89,7 +122,13 @@ describe('applyStyleToDoc', () => {
   it('never touches custom layers and never creates missing roles', () => {
     const target = makeDoc([
       makeText({ id: 't-h', role: 'headline', text: 'Head only' }),
-      makeText({ id: 't-c', role: 'custom', text: 'Sticker note', fontFamily: 'Caveat', fontSize: 40 }),
+      makeText({
+        id: 't-c',
+        role: 'custom',
+        text: 'Sticker note',
+        fontFamily: 'Caveat',
+        fontSize: 40,
+      }),
     ])
     const result = applyStyleToDoc(target, styledSource)
     expect(result.nodes).toHaveLength(2)
@@ -97,21 +136,29 @@ describe('applyStyleToDoc', () => {
   })
 
   it('copies rotation as part of the look, and an unrotated source un-tilts the target', () => {
-    const tiltedSource = makeDoc([makeText({ id: 's-h', role: 'headline', text: 'Head', rotation: -6 })])
-    const target = makeDoc([makeText({ id: 't-h', role: 'headline', text: 'T head', rotation: 45 })])
+    const tiltedSource = makeDoc([
+      makeText({ id: 's-h', role: 'headline', text: 'Head', rotation: -6 }),
+    ])
+    const target = makeDoc([
+      makeText({ id: 't-h', role: 'headline', text: 'T head', rotation: 45 }),
+    ])
     expect(textAt(applyStyleToDoc(target, tiltedSource), 0).rotation).toBe(-6)
     const straightSource = makeDoc([makeText({ id: 's-h', role: 'headline', text: 'Head' })])
     expect(textAt(applyStyleToDoc(target, straightSource), 0).rotation).toBeUndefined()
   })
 
   it('copies italic + highlight as part of the look, and their absence clears the target', () => {
-    const source = makeDoc([makeText({ id: 's-h', role: 'headline', text: 'Head', italic: true, highlight: '#D6FF4B' })])
+    const source = makeDoc([
+      makeText({ id: 's-h', role: 'headline', text: 'Head', italic: true, highlight: '#D6FF4B' }),
+    ])
     const target = makeDoc([makeText({ id: 't-h', role: 'headline', text: 'T head' })])
     const styled = textAt(applyStyleToDoc(target, source), 0)
     expect(styled.italic).toBe(true)
     expect(styled.highlight).toBe('#D6FF4B')
     const plainSource = makeDoc([makeText({ id: 's-h', role: 'headline', text: 'Head' })])
-    const decorated = makeDoc([makeText({ id: 't-h', role: 'headline', text: 'T', italic: true, highlight: '#D6FF4B' })])
+    const decorated = makeDoc([
+      makeText({ id: 't-h', role: 'headline', text: 'T', italic: true, highlight: '#D6FF4B' }),
+    ])
     const cleared = textAt(applyStyleToDoc(decorated, plainSource), 0)
     expect(cleared.italic).toBeUndefined()
     expect(cleared.highlight).toBeUndefined()
@@ -142,11 +189,17 @@ describe('applyStyleToDoc', () => {
     const target = makeDoc([makeText({ id: 't-h', role: 'headline', text: 'T head' })], {
       backgroundTransform: { zoom: 1.5, offsetX: 0.7, offsetY: 0.3 },
     })
-    expect(applyStyleToDoc(target, source).backgroundTransform).toEqual({ zoom: 1.5, offsetX: 0.7, offsetY: 0.3 })
+    expect(applyStyleToDoc(target, source).backgroundTransform).toEqual({
+      zoom: 1.5,
+      offsetX: 0.7,
+      offsetY: 0.3,
+    })
   })
 
   it('leaves a target role alone when the source lacks it', () => {
-    const sourceHeadlineOnly = makeDoc([makeText({ id: 's-h', role: 'headline', text: 'Head', fill: '#00ff00' })])
+    const sourceHeadlineOnly = makeDoc([
+      makeText({ id: 's-h', role: 'headline', text: 'Head', fill: '#00ff00' }),
+    ])
     const target = makeDoc([
       makeText({ id: 't-h', role: 'headline', text: 'T head' }),
       makeText({ id: 't-b', role: 'body', text: 'T body', fill: '#123456' }),

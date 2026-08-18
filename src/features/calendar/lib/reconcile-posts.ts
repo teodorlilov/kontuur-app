@@ -29,7 +29,5 @@ export function reconcilePosts(
   if (protectedIds.size === 0) return server
 
   const localById = new Map(local.map((post) => [post.id, post]))
-  return server.map((post) =>
-    protectedIds.has(post.id) ? (localById.get(post.id) ?? post) : post
-  )
+  return server.map((post) => (protectedIds.has(post.id) ? (localById.get(post.id) ?? post) : post))
 }

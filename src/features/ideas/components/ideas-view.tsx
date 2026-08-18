@@ -86,9 +86,7 @@ export function IdeasView({
   // which has not been told yet — can be re-shaped instead of trusted verbatim.
   // State rather than a ref because the render-time reset below reads it, and
   // reading a ref during render is forbidden.
-  const [pendingStatuses, setPendingStatuses] = useState<ReadonlyMap<string, IdeaStatus>>(
-    new Map()
-  )
+  const [pendingStatuses, setPendingStatuses] = useState<ReadonlyMap<string, IdeaStatus>>(new Map())
   useEffect(() => {
     const pending = pendingRef.current
     return () => {
@@ -290,9 +288,7 @@ export function IdeasView({
         meta={
           selected.size > 0 ? (
             <div className="flex items-center gap-2.5">
-              <span className="text-caption font-semibold text-ink">
-                {selected.size} selected
-              </span>
+              <span className="text-caption font-semibold text-ink">{selected.size} selected</span>
               <Button variant="secondary" size="sm" onClick={() => dismiss([...selected])}>
                 Dismiss {selected.size}
               </Button>
@@ -304,9 +300,7 @@ export function IdeasView({
             <HeaderMeta
               parts={[
                 inboxCount > 0 ? (
-                  <MetaFlag>
-                    {inboxCount} waiting on you
-                  </MetaFlag>
+                  <MetaFlag>{inboxCount} waiting on you</MetaFlag>
                 ) : (
                   'Ideas your clients submit land here'
                 ),

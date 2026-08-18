@@ -4,7 +4,10 @@ import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 
 function base64UrlDecode(str: string): Buffer {
   // Convert base64url to standard base64
-  const base64 = str.replace(/-/g, '+').replace(/_/g, '/').padEnd(str.length + ((4 - (str.length % 4)) % 4), '=')
+  const base64 = str
+    .replace(/-/g, '+')
+    .replace(/_/g, '/')
+    .padEnd(str.length + ((4 - (str.length % 4)) % 4), '=')
   return Buffer.from(base64, 'base64')
 }
 

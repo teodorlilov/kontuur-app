@@ -3,12 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { focusableItems, rovingFocus } from '@/components/ui/roving-focus'
 import { CANVAS_HEIGHT, CANVAS_WIDTH } from '@/lib/canvas/constants'
-import {
-  fillCandidates,
-  readableFill,
-  textBox,
-  type BackdropGrid,
-} from '@/lib/canvas/contrast'
+import { fillCandidates, readableFill, textBox, type BackdropGrid } from '@/lib/canvas/contrast'
 import { scrimNodeAttrs, shapeChildAttrs } from '@/lib/canvas/node-attrs'
 import { buildBackdropGrid } from '../../lib/backdrop-grid'
 import { decodedImage } from '../../lib/load-image'
@@ -235,7 +230,8 @@ export function LockupsSection({
           {appliedToAll ? (
             <p className="m-0 mt-1 flex items-baseline gap-2 text-micro text-text2">
               <span>
-                On {appliedToAll.length} slide{appliedToAll.length === 1 ? '' : 's'}. Save to keep it.
+                On {appliedToAll.length} slide{appliedToAll.length === 1 ? '' : 's'}. Save to keep
+                it.
               </span>
               {/* ONE undo for the set. `transformSlides` commits an entry per slide and ⌘Z steps
                   only the active one, so without this the way out of a seven-slide apply is to
@@ -315,7 +311,16 @@ interface TilePreviewProps {
  * no ResizeObserver: `100cqi` IS the tile's width, and every doc coordinate is expressed as its
  * fraction of the 1080px authoring width.
  */
-function TilePreview({ lockup, ctx, headline, body, background, scrim, backdrop, candidates }: TilePreviewProps) {
+function TilePreview({
+  lockup,
+  ctx,
+  headline,
+  body,
+  background,
+  scrim,
+  backdrop,
+  candidates,
+}: TilePreviewProps) {
   const patch = lockup.copy(ctx)
   // Clamped to the LOCKUP'S OWN capacity as well as the tile's budget, so a preview never draws
   // copy the slot cannot hold. Stat's headline slot takes thirteen characters; without this its
@@ -371,7 +376,12 @@ function TilePreview({ lockup, ctx, headline, body, background, scrim, backdrop,
         <TileText node={patch.hero} text={split.hero} backdrop={backdrop} candidates={candidates} />
       )}
       {split.rest && (
-        <TileText node={patch.headline} text={split.rest} backdrop={backdrop} candidates={candidates} />
+        <TileText
+          node={patch.headline}
+          text={split.rest}
+          backdrop={backdrop}
+          candidates={candidates}
+        />
       )}
       {bodyText && (
         <TileText node={patch.body} text={bodyText} backdrop={backdrop} candidates={candidates} />
@@ -435,7 +445,9 @@ function TileText({
   // The colour the APPLY would land on, resolved through the same helper the doc transform uses —
   // so the tile shows the result rather than the starting point.
   const fill =
-    backdrop && candidates ? readableFill(backdrop, textBox(node), node.fill, candidates) : node.fill
+    backdrop && candidates
+      ? readableFill(backdrop, textBox(node), node.fill, candidates)
+      : node.fill
   const letterSpacing = node.letterSpacing
     ? `calc(${node.letterSpacing / CANVAS_WIDTH} * 100cqi)`
     : undefined

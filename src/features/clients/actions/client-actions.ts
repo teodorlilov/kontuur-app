@@ -69,44 +69,44 @@ export async function createClient(input: CreateClientInput): Promise<ActionResu
 
   const [{ error: profileError }, { error: scheduleError }, { error: webResearchError }] =
     await Promise.all([
-    supabase.from('brand_profiles').insert({
-      client_id: clientId,
-      tone: bp?.tone,
-      target_audience: bp?.target_audience,
-      social_goals: bp?.social_goals,
-      content_pillars: bp?.content_pillars,
-      avoid_topics: bp?.avoid_topics,
-      default_post_type: bp?.default_post_type,
-      default_carousel_slides: bp?.default_carousel_slides,
-      weekly_mix_json: bp?.weekly_mix_json,
-      language_formality: bp?.language_formality,
-      secondary_language: bp?.secondary_language,
-      is_health_niche: bp?.is_health_niche,
-      language_notes: bp?.language_notes,
-    }),
-    supabase.from('posting_schedules').insert({
-      client_id: clientId,
-      is_active: ps?.is_active,
-      frequency_type: ps?.frequency_type,
-      frequency_value: ps?.frequency_value,
-      auto_generate_day: ps?.auto_generate_day,
-      auto_generate_time: ps?.auto_generate_time,
-    }),
-    // Web research is a per-client capability, not a source someone adds, so it has
-    // no "add" button and needs a creation moment of its own. It used to be written
-    // lazily during the sources page render, which made "has a human opened that
-    // page?" an input to the generation pipeline — `shouldSearchWeb` is `!!tavilyRow`.
-    // Created here so absence is impossible and the toggle always has a row to bind
-    // to; `is_active: true` because web research is the useful default. Only the
-    // toggle changes it afterwards.
-    supabase.from('client_sources').insert({
-      client_id: clientId,
-      type: 'tavily',
-      label: WEB_RESEARCH_SOURCE_LABEL,
-      url: '',
-      is_active: true,
-    }),
-  ])
+      supabase.from('brand_profiles').insert({
+        client_id: clientId,
+        tone: bp?.tone,
+        target_audience: bp?.target_audience,
+        social_goals: bp?.social_goals,
+        content_pillars: bp?.content_pillars,
+        avoid_topics: bp?.avoid_topics,
+        default_post_type: bp?.default_post_type,
+        default_carousel_slides: bp?.default_carousel_slides,
+        weekly_mix_json: bp?.weekly_mix_json,
+        language_formality: bp?.language_formality,
+        secondary_language: bp?.secondary_language,
+        is_health_niche: bp?.is_health_niche,
+        language_notes: bp?.language_notes,
+      }),
+      supabase.from('posting_schedules').insert({
+        client_id: clientId,
+        is_active: ps?.is_active,
+        frequency_type: ps?.frequency_type,
+        frequency_value: ps?.frequency_value,
+        auto_generate_day: ps?.auto_generate_day,
+        auto_generate_time: ps?.auto_generate_time,
+      }),
+      // Web research is a per-client capability, not a source someone adds, so it has
+      // no "add" button and needs a creation moment of its own. It used to be written
+      // lazily during the sources page render, which made "has a human opened that
+      // page?" an input to the generation pipeline — `shouldSearchWeb` is `!!tavilyRow`.
+      // Created here so absence is impossible and the toggle always has a row to bind
+      // to; `is_active: true` because web research is the useful default. Only the
+      // toggle changes it afterwards.
+      supabase.from('client_sources').insert({
+        client_id: clientId,
+        type: 'tavily',
+        label: WEB_RESEARCH_SOURCE_LABEL,
+        url: '',
+        is_active: true,
+      }),
+    ])
 
   if (profileError || scheduleError || webResearchError) {
     console.error(
@@ -118,7 +118,11 @@ export async function createClient(input: CreateClientInput): Promise<ActionResu
     // /api/clients/[id] deletes the client row alone and relies on the same behaviour.
     const { error: rollbackError } = await supabase.from('clients').delete().eq('id', clientId)
     if (rollbackError) {
-      console.error('[clients:create] rollback failed, client is orphaned:', clientId, rollbackError)
+      console.error(
+        '[clients:create] rollback failed, client is orphaned:',
+        clientId,
+        rollbackError
+      )
     }
     return {
       ok: false,

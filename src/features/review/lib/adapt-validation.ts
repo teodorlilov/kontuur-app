@@ -23,8 +23,7 @@ export function toValidationData(validationJson: unknown): ValidationData | null
           issues: [],
           corrected_text: null,
         },
-    slop:
-      stored.slop ??
+    slop: stored.slop ??
       deriveSlopFromValidation(validationJson) ?? {
         // Authenticity unknown (pre-scores row). null, not a verdict: this used to
         // claim `reads_as_human: true` and a measured 0 in the same breath, and the
@@ -34,9 +33,7 @@ export function toValidationData(validationJson: unknown): ValidationData | null
         worst_offending_phrase: stored.criteria.worst_offending_phrase,
         human_authenticity_score: null,
       },
-    ...(stored.sourceGrounding
-      ? { sourceGrounding: stored.sourceGrounding }
-      : {}),
+    ...(stored.sourceGrounding ? { sourceGrounding: stored.sourceGrounding } : {}),
   }
 }
 

@@ -131,8 +131,9 @@ export const MONTH_LABELS = [
 ] as const
 
 /** The picker's form of `WEEKDAY_LABELS`: a stored lowercase value beside its label. */
-export const WEEKDAY_OPTIONS: ReadonlyArray<{ value: string; label: string }> =
-  WEEKDAY_LABELS.map((label) => ({ value: label.toLowerCase(), label }))
+export const WEEKDAY_OPTIONS: ReadonlyArray<{ value: string; label: string }> = WEEKDAY_LABELS.map(
+  (label) => ({ value: label.toLowerCase(), label })
+)
 
 /** Languages a client's content can be written in. The one list — every language picker reads it. */
 export const CONTENT_LANGUAGE_OPTIONS = [

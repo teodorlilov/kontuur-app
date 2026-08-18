@@ -126,7 +126,16 @@ function topic(over: Partial<ResearchTopic> = {}): ResearchTopic {
   }
 }
 
-function run(over: { count?: number; briefs?: { text: string }[]; preloaded?: ClientData; onPhase?: (m: string) => void; onTopic?: (t: ResearchTopic) => void; onSkippedPillars?: (p: { name: string }[], n: number) => void } = {}) {
+function run(
+  over: {
+    count?: number
+    briefs?: { text: string }[]
+    preloaded?: ClientData
+    onPhase?: (m: string) => void
+    onTopic?: (t: ResearchTopic) => void
+    onSkippedPillars?: (p: { name: string }[], n: number) => void
+  } = {}
+) {
   return performResearch({
     supabase: {} as unknown as SupabaseClient,
     clientId: 'client-1',
@@ -299,13 +308,20 @@ describe('ResearchPipeline.execute — a researched post is always sourced', () 
     // through to the researched pile and is grounding-filtered like any other.
     mocks.generateTopics.mockResolvedValue([
       topic({ suggested_theme: 'the brief', brief_index: 1, source_url: null, source_type: null }),
-      topic({ suggested_theme: 'also claiming', brief_index: 1, source_url: null, source_type: null }),
+      topic({
+        suggested_theme: 'also claiming',
+        brief_index: 1,
+        source_url: null,
+        source_type: null,
+      }),
       topic({ suggested_theme: 'researched', brief_index: null }),
     ])
 
     const result = await run({ count: 2, briefs: [{ text: 'one idea' }] })
 
-    const unsourced = result.filter((t) => !t.source_url && t.source_type !== 'file' && t.source_type !== 'performance')
+    const unsourced = result.filter(
+      (t) => !t.source_url && t.source_type !== 'file' && t.source_type !== 'performance'
+    )
     expect(unsourced).toHaveLength(1)
     expect(result.map((t) => t.suggested_theme)).toEqual(['the brief', 'researched'])
   })
@@ -337,7 +353,12 @@ describe('ResearchPipeline.execute — briefs', () => {
 
   it('keeps an unsourced brief topic but drops an unsourced researched one', async () => {
     mocks.generateTopics.mockResolvedValue([
-      topic({ suggested_theme: 'brief, no source', brief_index: 1, source_url: null, source_type: null }),
+      topic({
+        suggested_theme: 'brief, no source',
+        brief_index: 1,
+        source_url: null,
+        source_type: null,
+      }),
       topic({ suggested_theme: 'invented', brief_index: null, source_url: null }),
     ])
 
@@ -376,7 +397,9 @@ describe('ResearchPipeline.execute — briefs', () => {
   })
 
   it('keeps an out-of-range claim as a researched topic with its index cleared', async () => {
-    mocks.generateTopics.mockResolvedValue([topic({ suggested_theme: 'mislabelled', brief_index: 7 })])
+    mocks.generateTopics.mockResolvedValue([
+      topic({ suggested_theme: 'mislabelled', brief_index: 7 }),
+    ])
 
     const result = await run({ count: 1, briefs: [{ text: 'a' }, { text: 'b' }] })
 
@@ -408,7 +431,12 @@ describe('ResearchPipeline.execute — briefs', () => {
     mocks.fetchClientSources.mockResolvedValue([])
     mocks.searchTrends.mockResolvedValue([])
     mocks.generateTopics.mockResolvedValue([
-      topic({ suggested_theme: 'from the brief alone', brief_index: 1, source_url: null, source_type: null }),
+      topic({
+        suggested_theme: 'from the brief alone',
+        brief_index: 1,
+        source_url: null,
+        source_type: null,
+      }),
     ])
     const phases: string[] = []
 
@@ -455,9 +483,33 @@ describe('ResearchPipeline.execute — briefs', () => {
   it('gathers owned material but not RSS when there is nothing to research', async () => {
     mocks.fetchClientSources.mockResolvedValue([
       tavilyRow(),
-      { id: 'r1', type: 'rss', label: 'Feed', url: 'u', config: {}, pillar_ids: null, extracted_text: null },
-      { id: 'w1', type: 'website', label: 'Site', url: 'u', config: {}, pillar_ids: null, extracted_text: null },
-      { id: 'f1', type: 'file', label: 'Doc', url: '', config: {}, pillar_ids: null, extracted_text: 't' },
+      {
+        id: 'r1',
+        type: 'rss',
+        label: 'Feed',
+        url: 'u',
+        config: {},
+        pillar_ids: null,
+        extracted_text: null,
+      },
+      {
+        id: 'w1',
+        type: 'website',
+        label: 'Site',
+        url: 'u',
+        config: {},
+        pillar_ids: null,
+        extracted_text: null,
+      },
+      {
+        id: 'f1',
+        type: 'file',
+        label: 'Doc',
+        url: '',
+        config: {},
+        pillar_ids: null,
+        extracted_text: 't',
+      },
     ])
     mocks.generateTopics.mockResolvedValue([topic({ brief_index: 1 })])
 

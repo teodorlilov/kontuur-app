@@ -3,7 +3,15 @@ import { upsertImageAtPosition, missingImagePositions } from '../image-list'
 import type { PostImage } from '@/types/api'
 
 function makeImage(position: number, id = `img-${position}`): PostImage {
-  return { id, publicUrl: `https://x/${id}.jpg`, storagePath: `c/p/${id}.jpg`, position, fileName: null, fileSize: null, contentType: null }
+  return {
+    id,
+    publicUrl: `https://x/${id}.jpg`,
+    storagePath: `c/p/${id}.jpg`,
+    position,
+    fileName: null,
+    fileSize: null,
+    contentType: null,
+  }
 }
 
 describe('upsertImageAtPosition', () => {

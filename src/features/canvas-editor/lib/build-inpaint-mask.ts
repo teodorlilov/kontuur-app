@@ -65,12 +65,7 @@ export function borderRegion(frame: PaddedFrame): EditRegion {
     paint: (ctx) => {
       ctx.fillStyle = 'black'
       ctx.beginPath()
-      ctx.rect(
-        -overshoot,
-        -overshoot,
-        frame.width + overshoot * 2,
-        frame.height + overshoot * 2
-      )
+      ctx.rect(-overshoot, -overshoot, frame.width + overshoot * 2, frame.height + overshoot * 2)
       ctx.rect(keep.x, keep.y, keep.width, keep.height)
       // evenodd turns the inner rect into a hole rather than a second filled box.
       ctx.fill('evenodd')

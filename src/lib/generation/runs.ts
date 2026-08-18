@@ -80,7 +80,9 @@ export async function fetchActiveRuns(
 
   const { data, error } = await supabase
     .from('generation_runs')
-    .select('id, client_id, created_at, target_count, clients!inner(name, agency_id), generation_themes(post_count)')
+    .select(
+      'id, client_id, created_at, target_count, clients!inner(name, agency_id), generation_themes(post_count)'
+    )
     .eq('status', 'running')
     .eq('clients.agency_id', agencyId)
     .gte('created_at', cutoff)
@@ -138,7 +140,9 @@ export async function fetchThemeDescriptions(
   }> | null
 
   return (rows ?? []).flatMap((run) =>
-    run.generation_themes.map((theme) => theme.theme_description).filter((t): t is string => t !== null)
+    run.generation_themes
+      .map((theme) => theme.theme_description)
+      .filter((t): t is string => t !== null)
   )
 }
 
@@ -150,7 +154,13 @@ export async function fetchThemeDescriptions(
 export async function trackGenerationTheme(
   supabase: SupabaseClient,
   runId: string | null,
-  theme: { description: string; isPriority?: boolean; brief?: string; targetDate?: string; sourceExcerpt?: string },
+  theme: {
+    description: string
+    isPriority?: boolean
+    brief?: string
+    targetDate?: string
+    sourceExcerpt?: string
+  },
   postCount: number
 ): Promise<void> {
   if (!runId) return

@@ -1,16 +1,17 @@
 import { NextResponse } from 'next/server'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
 import { verifyPostOwnership } from '@/lib/auth/helpers'
-import { uploadPostImage, deletePostImage, replaceExistingImage } from '@/features/publishing/lib/storage'
+import {
+  uploadPostImage,
+  deletePostImage,
+  replaceExistingImage,
+} from '@/features/publishing/lib/storage'
 import { validateImageFile } from '@/features/publishing/lib/validate-image-file'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { POST_IMAGE_COLUMNS, POST_IMAGE_STORAGE_COLUMNS } from '@/lib/queries/select-columns'
 
 /** Upload an image for a post (linked to a carousel slide position or single post). */
-export async function POST(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id: postId } = await params
   const auth = await resolveAuth()
   if (!auth.ok) return auth.response
@@ -27,14 +28,28 @@ export async function POST(
   if (fileError) return NextResponse.json({ error: fileError }, { status: 400 })
 
   const buffer = Buffer.from(await file.arrayBuffer())
-  const { publicUrl, storagePath } = await uploadPostImage(buffer, file.name, file.type, post.client_id, postId)
+  const { publicUrl, storagePath } = await uploadPostImage(
+    buffer,
+    file.name,
+    file.type,
+    post.client_id,
+    postId
+  )
 
   const admin = createAdminSupabaseClient()
   await replaceExistingImage(admin, postId, position)
 
   const { data: image, error } = await admin
     .from('post_images')
-    .insert({ post_id: postId, public_url: publicUrl, storage_path: storagePath, position, file_name: file.name, file_size: file.size, content_type: file.type })
+    .insert({
+      post_id: postId,
+      public_url: publicUrl,
+      storage_path: storagePath,
+      position,
+      file_name: file.name,
+      file_size: file.size,
+      content_type: file.type,
+    })
     .select(POST_IMAGE_COLUMNS)
     .single()
 
@@ -43,10 +58,7 @@ export async function POST(
 }
 
 /** Delete a post image by its ID. */
-export async function DELETE(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id: postId } = await params
   const auth = await resolveAuth()
   if (!auth.ok) return auth.response

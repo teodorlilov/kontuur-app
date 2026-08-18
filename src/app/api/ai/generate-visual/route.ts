@@ -2,13 +2,14 @@ import { NextResponse } from 'next/server'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
 import { visualsRateLimitResponse } from '@/lib/auth/rate-limit'
 import { fetchClientById } from '@/lib/queries/db'
-import { uploadDraftVisual, deleteDraftVisuals, draftVisualPrefix } from '@/features/publishing/lib/storage'
+import {
+  uploadDraftVisual,
+  deleteDraftVisuals,
+  draftVisualPrefix,
+} from '@/features/publishing/lib/storage'
 import { slideTextBlock } from '@/lib/visual/prompt'
 import { generateVisual } from '@/lib/visual/generate-visual'
-import {
-  deleteDraftVisualsSchema,
-  generateDraftVisualSchema,
-} from '@/features/generate/schemas'
+import { deleteDraftVisualsSchema, generateDraftVisualSchema } from '@/features/generate/schemas'
 
 // One gpt-image-2 generation (~52s) + download + storage upload per request.
 export const maxDuration = 120
@@ -45,7 +46,12 @@ export async function POST(request: Request) {
 
   try {
     const visual = await generateVisual({ clientId: body.clientId, textBlock })
-    const { publicUrl, storagePath } = await uploadDraftVisual(visual.buffer, body.clientId, body.draftId, body.position)
+    const { publicUrl, storagePath } = await uploadDraftVisual(
+      visual.buffer,
+      body.clientId,
+      body.draftId,
+      body.position
+    )
     return NextResponse.json({ publicUrl, storagePath })
   } catch (err) {
     console.error('[generate-visual] draft generation failed:', err)
@@ -72,7 +78,10 @@ export async function DELETE(request: Request) {
 
   const prefix = draftVisualPrefix(clientId)
   if (storagePaths.some((path) => typeof path !== 'string' || !path.startsWith(prefix))) {
-    return NextResponse.json({ error: 'storagePaths must be draft visuals of this client' }, { status: 400 })
+    return NextResponse.json(
+      { error: 'storagePaths must be draft visuals of this client' },
+      { status: 400 }
+    )
   }
 
   await deleteDraftVisuals(storagePaths)

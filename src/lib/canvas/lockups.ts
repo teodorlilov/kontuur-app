@@ -173,7 +173,10 @@ export function slideCopy(doc: CanvasDoc): { headline: string; body: string } {
     .filter((node) => isTextNode(node) && node.role === 'hero')
     .map((node) => (node as CanvasTextNode).text)
   return {
-    headline: [...heroes, first('headline')].map((part) => part.trim()).filter(Boolean).join(' '),
+    headline: [...heroes, first('headline')]
+      .map((part) => part.trim())
+      .filter(Boolean)
+      .join(' '),
     body: first('body'),
   }
 }
@@ -222,7 +225,8 @@ export function setHeadline(doc: CanvasDoc, text: string): CanvasDoc {
  */
 function headlineOverridden(doc: CanvasDoc): boolean {
   return doc.nodes.some(
-    (node) => isTextNode(node) && (node.role === 'hero' || node.role === 'headline') && node.textOverridden
+    (node) =>
+      isTextNode(node) && (node.role === 'hero' || node.role === 'headline') && node.textOverridden
   )
 }
 
@@ -343,7 +347,10 @@ const UPPERCASE_ADVANCE = 0.59
  * whole function exists to be.
  */
 function slotCapacity(
-  node: Pick<CanvasTextNode, 'y' | 'width' | 'fontSize' | 'lineHeight' | 'uppercase' | 'letterSpacing'>,
+  node: Pick<
+    CanvasTextNode,
+    'y' | 'width' | 'fontSize' | 'lineHeight' | 'uppercase' | 'letterSpacing'
+  >,
   floor: number
 ): number {
   const glyph = node.fontSize * (node.uppercase ? UPPERCASE_ADVANCE : AVERAGE_ADVANCE)
@@ -361,12 +368,16 @@ function slotCapacity(
  * refuse. Derived from the members rather than declared, so any later lockup that reverses type out
  * of a field is bounded the same way without saying so.
  */
-function blockFloor(lockup: Lockup, ctx: LockupContext, slot: { y: number }, floor: number): number {
+function blockFloor(
+  lockup: Lockup,
+  ctx: LockupContext,
+  slot: { y: number },
+  floor: number
+): number {
   const under = lockup
     .members(ctx)
     .find(
-      (member) =>
-        member.kind === 'rect' && slot.y >= member.y && slot.y < member.y + member.height
+      (member) => member.kind === 'rect' && slot.y >= member.y && slot.y < member.y + member.height
     )
   return under && under.kind === 'rect' ? Math.min(floor, under.y + under.height) : floor
 }
@@ -1281,7 +1292,6 @@ export const LOCKUPS: readonly Lockup[] = [
     }),
     members: () => [],
   },
-
 ]
 
 /** Catalogue lookup; null for an id no longer in the catalogue. */

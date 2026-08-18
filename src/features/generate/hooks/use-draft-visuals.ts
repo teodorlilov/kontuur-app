@@ -58,7 +58,7 @@ export function useDraftVisuals() {
   }, [])
 
   /** One offscreen compose at a time — canvas memory stays flat regardless of concurrency. */
-  const enqueueCompose = useCallback(async <T,>(job: () => Promise<T>): Promise<T> => {
+  const enqueueCompose = useCallback(async <T>(job: () => Promise<T>): Promise<T> => {
     const release = await composeSemaphore.current.acquire()
     try {
       return await job()
@@ -108,7 +108,10 @@ export function useDraftVisuals() {
         if (!result || signal.aborted) return null
         return { ...result.visual, status: 'done' as const, canvasDoc: result.doc }
       } catch (err) {
-        console.error(`[draft-visuals] compose for draft ${post.id} position ${position} failed:`, err)
+        console.error(
+          `[draft-visuals] compose for draft ${post.id} position ${position} failed:`,
+          err
+        )
         return null
       }
     },
@@ -142,7 +145,10 @@ export function useDraftVisuals() {
         })
         const data = await res.json()
         if (!res.ok) throw new Error(data.error ?? 'Visual generation failed')
-        const clean = { publicUrl: data.publicUrl as string, storagePath: data.storagePath as string }
+        const clean = {
+          publicUrl: data.publicUrl as string,
+          storagePath: data.storagePath as string,
+        }
         // Clean refs on the still-generating entry: an approve mid-compose attaches the clean image.
         setVisual(post.id, { position, status: 'generating', ...clean })
         const composed = await composeVisual(post, position, clean, signal, previousDoc)
@@ -199,8 +205,9 @@ export function useDraftVisuals() {
    */
   const regenerate = useCallback(
     (post: DraftPostInput, position: number) => {
-      const previousDoc = (visualsByDraft[post.id] ?? []).find((v) => v.position === position)
-        ?.canvasDoc
+      const previousDoc = (visualsByDraft[post.id] ?? []).find(
+        (v) => v.position === position
+      )?.canvasDoc
       setVisual(post.id, { position, status: 'generating' })
       void runJob(post, position, draftController(post.id).signal, previousDoc)
     },
@@ -228,9 +235,15 @@ export function useDraftVisuals() {
         try {
           const result = await task()
           if (signal.aborted) return
-          setVisual(post.id, result ? { ...result.visual, status: 'done', canvasDoc: result.doc } : visual)
+          setVisual(
+            post.id,
+            result ? { ...result.visual, status: 'done', canvasDoc: result.doc } : visual
+          )
         } catch (err) {
-          console.error(`[draft-visuals] compose pass for draft ${post.id} position ${visual.position} failed:`, err)
+          console.error(
+            `[draft-visuals] compose pass for draft ${post.id} position ${visual.position} failed:`,
+            err
+          )
           if (!signal.aborted) setVisual(post.id, visual)
         }
       })
@@ -266,7 +279,6 @@ export function useDraftVisuals() {
     [visualsByDraft, draftController, runDraftComposeTask, clientIdentity]
   )
 
-
   /**
    * Replace one slide's art with a user-supplied image. The upload becomes the
    * new CLEAN background and the text layer is re-composed on top: a slide
@@ -294,10 +306,16 @@ export function useDraftVisuals() {
         formData.set('position', String(position))
         if (previous?.storagePath) formData.set('previousStoragePath', previous.storagePath)
 
-        const res = await fetch('/api/ai/generate-visual/upload', { method: 'POST', body: formData })
+        const res = await fetch('/api/ai/generate-visual/upload', {
+          method: 'POST',
+          body: formData,
+        })
         const data = await res.json()
         if (!res.ok) throw new Error(data.error ?? 'Upload failed')
-        const clean = { publicUrl: data.publicUrl as string, storagePath: data.storagePath as string }
+        const clean = {
+          publicUrl: data.publicUrl as string,
+          storagePath: data.storagePath as string,
+        }
 
         // Clean refs on the generating entry — an approve mid-compose attaches
         // the clean upload rather than nothing.
@@ -317,7 +335,10 @@ export function useDraftVisuals() {
         if (!signal.aborted) setVisual(post.id, composed ?? { position, status: 'done', ...clean })
         return true
       } catch (err) {
-        console.error(`[draft-visuals] replace for draft ${post.id} position ${position} failed:`, err)
+        console.error(
+          `[draft-visuals] replace for draft ${post.id} position ${position} failed:`,
+          err
+        )
         toast.error(err instanceof Error ? err.message : 'Upload failed')
         return false
       }

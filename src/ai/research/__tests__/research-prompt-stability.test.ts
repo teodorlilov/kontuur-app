@@ -49,7 +49,11 @@ const CONTEXT: SourceContext = {
     },
   ],
   performanceItems: [
-    { caption: 'Our most-saved post', engagementSummary: '210 likes, 40 saves', pillar: 'Education' },
+    {
+      caption: 'Our most-saved post',
+      engagementSummary: '210 likes, 40 saves',
+      pillar: 'Education',
+    },
   ],
 }
 
@@ -79,7 +83,9 @@ afterAll(() => {
 
 describe('batch research prompt', () => {
   it('is byte-for-byte stable across the gather/plan refactor', () => {
-    expect(builder().buildTopicPlanPrompt({ briefs: [], researchCount: 3 }, CONTEXT)).toMatchSnapshot()
+    expect(
+      builder().buildTopicPlanPrompt({ briefs: [], researchCount: 3 }, CONTEXT)
+    ).toMatchSnapshot()
   })
 
   it('is byte-for-byte stable with no source context', () => {

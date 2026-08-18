@@ -32,7 +32,10 @@ export function PillarChip({ pillar, lit, onToggle }: PillarChipProps) {
     >
       <span
         aria-hidden
-        className={cn('size-1.5 flex-none rounded-full', !lit && 'border border-line2 bg-transparent')}
+        className={cn(
+          'size-1.5 flex-none rounded-full',
+          !lit && 'border border-line2 bg-transparent'
+        )}
         style={lit ? { background: color.hex } : undefined}
       />
       {pillar}

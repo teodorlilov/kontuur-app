@@ -281,266 +281,268 @@ export function SourcesManager({
 
       <div className="mx-auto grid w-full max-w-[1280px] items-start gap-6 px-4 py-6 md:px-8 lg:grid-cols-[minmax(0,1fr)_340px]">
         <div className="min-w-0">
-        {/* Web research (Tavily) section */}
-        {tavilySource && (
-          <section className="mb-8">
-            <h2 className="text-label font-semibold uppercase text-text3 mb-3">Web research</h2>
-            <SourceRow
-              source={tavilySource}
-              statusBadge={getStatusBadge(tavilySource)}
-              usage={usageBySourceId.get(tavilySource.id)}
-              pillars={pillars}
-              onPillarIdsChange={(ids) => {
-                void handleEditSource(tavilySource.id, { pillar_ids: ids }, { quiet: true })
-              }}
-              onToggle={() => {
-                void handleToggleActive(tavilySource)
-              }}
-              onEdit={(updates) => {
-                void handleEditSource(tavilySource.id, updates)
-              }}
-              onDelete={() => {
-                void handleDelete(tavilySource)
-              }}
-            />
-          </section>
-        )}
-
-        {/* News & blogs section */}
-        <section className="mb-8">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-label font-semibold uppercase text-text3">News &amp; blogs</h2>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                loading={suggesting}
-                onClick={() => {
-                  void handleSuggest()
+          {/* Web research (Tavily) section */}
+          {tavilySource && (
+            <section className="mb-8">
+              <h2 className="text-label font-semibold uppercase text-text3 mb-3">Web research</h2>
+              <SourceRow
+                source={tavilySource}
+                statusBadge={getStatusBadge(tavilySource)}
+                usage={usageBySourceId.get(tavilySource.id)}
+                pillars={pillars}
+                onPillarIdsChange={(ids) => {
+                  void handleEditSource(tavilySource.id, { pillar_ids: ids }, { quiet: true })
                 }}
-              >
-                Suggest feeds
-              </Button>
+                onToggle={() => {
+                  void handleToggleActive(tavilySource)
+                }}
+                onEdit={(updates) => {
+                  void handleEditSource(tavilySource.id, updates)
+                }}
+                onDelete={() => {
+                  void handleDelete(tavilySource)
+                }}
+              />
+            </section>
+          )}
+
+          {/* News & blogs section */}
+          <section className="mb-8">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-label font-semibold uppercase text-text3">News &amp; blogs</h2>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  loading={suggesting}
+                  onClick={() => {
+                    void handleSuggest()
+                  }}
+                >
+                  Suggest feeds
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => {
+                    setAdding('rss')
+                    setAddForm({ label: '', url: '', focusInstructions: '' })
+                  }}
+                >
+                  + Add feed
+                </Button>
+              </div>
+            </div>
+
+            {/* Inline add form */}
+            {adding === 'rss' && (
+              <div className="mb-3 p-4 rounded-xl border border-line2 bg-wash flex flex-col gap-3">
+                {renderLabelInput('e.g. Health News Daily')}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-caption font-medium text-text2">Feed URL (RSS)</label>
+                  <input
+                    type="url"
+                    value={addForm.url}
+                    onChange={(e) => setAddForm((f) => ({ ...f, url: e.target.value }))}
+                    placeholder="https://example.com/feed"
+                    className="rounded-lg border border-line2 px-3 py-1.5 text-lead md:text-body text-ink placeholder:text-text3 focus:border-spring focus:outline-none focus:ring-1 focus:ring-spring/12"
+                  />
+                </div>
+                <p className="text-caption text-text3">
+                  It will feed every pillar until you limit its topics.
+                </p>
+                <div className="flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    loading={isSaving}
+                    disabled={!addForm.label.trim() || !addForm.url.trim()}
+                    onClick={() => {
+                      void onAddSource('rss')
+                    }}
+                  >
+                    Add & Test
+                  </Button>
+                  <button
+                    onClick={() => setAdding(null)}
+                    className="text-body text-text3 hover:text-text2"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {renderSourceList(
+              rssSources,
+              'No feeds yet. Add a blog or news feed to pull fresh articles into your research.',
+              'rss'
+            )}
+          </section>
+
+          {/* Websites section */}
+          <section className="mb-8">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-label font-semibold uppercase text-text3">Websites</h2>
               <Button
                 variant="secondary"
                 size="sm"
                 onClick={() => {
-                  setAdding('rss')
+                  setAdding('website')
                   setAddForm({ label: '', url: '', focusInstructions: '' })
                 }}
               >
-                + Add feed
+                + Add website URL
               </Button>
             </div>
-          </div>
 
-          {/* Inline add form */}
-          {adding === 'rss' && (
-            <div className="mb-3 p-4 rounded-xl border border-line2 bg-wash flex flex-col gap-3">
-              {renderLabelInput('e.g. Health News Daily')}
-              <div className="flex flex-col gap-1.5">
-                <label className="text-caption font-medium text-text2">Feed URL (RSS)</label>
-                <input
-                  type="url"
-                  value={addForm.url}
-                  onChange={(e) => setAddForm((f) => ({ ...f, url: e.target.value }))}
-                  placeholder="https://example.com/feed"
-                  className="rounded-lg border border-line2 px-3 py-1.5 text-lead md:text-body text-ink placeholder:text-text3 focus:border-spring focus:outline-none focus:ring-1 focus:ring-spring/12"
-                />
-              </div>
-              <p className="text-caption text-text3">
-                It will feed every pillar until you limit its topics.
-              </p>
-              <div className="flex items-center gap-2">
-                <Button
-                  size="sm"
-                  loading={isSaving}
-                  disabled={!addForm.label.trim() || !addForm.url.trim()}
-                  onClick={() => {
-                    void onAddSource('rss')
-                  }}
-                >
-                  Add & Test
-                </Button>
-                <button
-                  onClick={() => setAdding(null)}
-                  className="text-body text-text3 hover:text-text2"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          )}
-
-          {renderSourceList(
-            rssSources,
-            'No feeds yet. Add a blog or news feed to pull fresh articles into your research.',
-            'rss'
-          )}
-        </section>
-
-        {/* Websites section */}
-        <section className="mb-8">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-label font-semibold uppercase text-text3">Websites</h2>
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => {
-                setAdding('website')
-                setAddForm({ label: '', url: '', focusInstructions: '' })
-              }}
-            >
-              + Add website URL
-            </Button>
-          </div>
-
-          {/* Inline add form */}
-          {adding === 'website' && (
-            <div className="mb-3 p-4 rounded-xl border border-line2 bg-wash flex flex-col gap-3">
-              {renderLabelInput('e.g. diagnosa.info')}
-              <div className="flex flex-col gap-1.5">
-                <label className="text-caption font-medium text-text2">Website URL</label>
-                <input
-                  type="url"
-                  value={addForm.url}
-                  onChange={(e) => setAddForm((f) => ({ ...f, url: e.target.value }))}
-                  placeholder="https://example.com"
-                  className="rounded-lg border border-line2 px-3 py-1.5 text-lead md:text-body text-ink placeholder:text-text3 focus:border-spring focus:outline-none focus:ring-1 focus:ring-spring/12"
-                />
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <label className="text-caption font-medium text-text2">
-                  Focus instructions (optional)
-                </label>
-                <textarea
-                  value={addForm.focusInstructions}
-                  onChange={(e) => setAddForm((f) => ({ ...f, focusInstructions: e.target.value }))}
-                  placeholder="e.g. Property listings — prices, locations, sizes. Ignore navigation, filters, search forms."
-                  rows={2}
-                  className="rounded-lg border border-line2 px-3 py-1.5 text-lead md:text-body text-ink placeholder:text-text3 focus:border-spring focus:outline-none focus:ring-1 focus:ring-spring/12 resize-none"
-                />
+            {/* Inline add form */}
+            {adding === 'website' && (
+              <div className="mb-3 p-4 rounded-xl border border-line2 bg-wash flex flex-col gap-3">
+                {renderLabelInput('e.g. diagnosa.info')}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-caption font-medium text-text2">Website URL</label>
+                  <input
+                    type="url"
+                    value={addForm.url}
+                    onChange={(e) => setAddForm((f) => ({ ...f, url: e.target.value }))}
+                    placeholder="https://example.com"
+                    className="rounded-lg border border-line2 px-3 py-1.5 text-lead md:text-body text-ink placeholder:text-text3 focus:border-spring focus:outline-none focus:ring-1 focus:ring-spring/12"
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-caption font-medium text-text2">
+                    Focus instructions (optional)
+                  </label>
+                  <textarea
+                    value={addForm.focusInstructions}
+                    onChange={(e) =>
+                      setAddForm((f) => ({ ...f, focusInstructions: e.target.value }))
+                    }
+                    placeholder="e.g. Property listings — prices, locations, sizes. Ignore navigation, filters, search forms."
+                    rows={2}
+                    className="rounded-lg border border-line2 px-3 py-1.5 text-lead md:text-body text-ink placeholder:text-text3 focus:border-spring focus:outline-none focus:ring-1 focus:ring-spring/12 resize-none"
+                  />
+                  <p className="text-caption text-text3">
+                    Tell the AI what to extract from this page. Leave empty to use all content.
+                  </p>
+                </div>
+                {addForm.url.trim() && (
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      disabled={!addForm.url.trim()}
+                      onClick={() => {
+                        void handleDiscoverPages(addForm.url, 'add')
+                      }}
+                    >
+                      Scan for pages
+                    </Button>
+                    {addSelectedPages.length > 0 && (
+                      <span className="text-caption text-forest font-medium">
+                        {addSelectedPages.length} pages selected
+                      </span>
+                    )}
+                  </div>
+                )}
                 <p className="text-caption text-text3">
-                  Tell the AI what to extract from this page. Leave empty to use all content.
+                  It will feed every pillar until you limit its topics.
                 </p>
-              </div>
-              {addForm.url.trim() && (
                 <div className="flex items-center gap-2">
                   <Button
-                    variant="secondary"
                     size="sm"
-                    disabled={!addForm.url.trim()}
+                    loading={isSaving}
+                    disabled={!addForm.label.trim() || !addForm.url.trim()}
                     onClick={() => {
-                      void handleDiscoverPages(addForm.url, 'add')
+                      void onAddSource('website')
                     }}
                   >
-                    Scan for pages
+                    Add & Test
                   </Button>
-                  {addSelectedPages.length > 0 && (
-                    <span className="text-caption text-forest font-medium">
-                      {addSelectedPages.length} pages selected
-                    </span>
-                  )}
+                  <button
+                    onClick={() => setAdding(null)}
+                    className="text-body text-text3 hover:text-text2"
+                  >
+                    Cancel
+                  </button>
                 </div>
-              )}
-              <p className="text-caption text-text3">
-                It will feed every pillar until you limit its topics.
-              </p>
-              <div className="flex items-center gap-2">
-                <Button
-                  size="sm"
-                  loading={isSaving}
-                  disabled={!addForm.label.trim() || !addForm.url.trim()}
-                  onClick={() => {
-                    void onAddSource('website')
-                  }}
-                >
-                  Add & Test
-                </Button>
-                <button
-                  onClick={() => setAdding(null)}
-                  className="text-body text-text3 hover:text-text2"
-                >
-                  Cancel
-                </button>
               </div>
+            )}
+
+            {renderSourceList(
+              websiteSources,
+              "No websites yet. Add your client's website URL to use their content as research material.",
+              'website',
+              (url, sourceId) => {
+                void handleDiscoverPages(url, sourceId)
+              }
+            )}
+          </section>
+
+          {/* Documents section */}
+          <section className="mb-8">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-label font-semibold uppercase text-text3">Documents</h2>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => {
+                  setAdding('file')
+                  setAddForm({ label: '', url: '', focusInstructions: '' })
+                  setSelectedFile(null)
+                }}
+              >
+                + Upload document
+              </Button>
             </div>
-          )}
 
-          {renderSourceList(
-            websiteSources,
-            "No websites yet. Add your client's website URL to use their content as research material.",
-            'website',
-            (url, sourceId) => {
-              void handleDiscoverPages(url, sourceId)
-            }
-          )}
-        </section>
-
-        {/* Documents section */}
-        <section className="mb-8">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-label font-semibold uppercase text-text3">Documents</h2>
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => {
-                setAdding('file')
-                setAddForm({ label: '', url: '', focusInstructions: '' })
-                setSelectedFile(null)
-              }}
-            >
-              + Upload document
-            </Button>
-          </div>
-
-          {/* Inline upload form */}
-          {adding === 'file' && (
-            <div className="mb-3 p-4 rounded-xl border border-line2 bg-wash flex flex-col gap-3">
-              {renderLabelInput('e.g. Service descriptions')}
-              <div className="flex flex-col gap-1.5">
-                <label className="text-caption font-medium text-text2">File (PDF or TXT)</label>
-                <input
-                  type="file"
-                  accept=".pdf,.txt"
-                  onChange={(e) => setSelectedFile(e.target.files?.[0] ?? null)}
-                  className="text-body text-text2 file:mr-3 file:rounded-lg file:border-0 file:bg-sunken file:px-3 file:py-1.5 file:text-body file:font-medium file:text-text2 hover:file:bg-line"
-                />
+            {/* Inline upload form */}
+            {adding === 'file' && (
+              <div className="mb-3 p-4 rounded-xl border border-line2 bg-wash flex flex-col gap-3">
+                {renderLabelInput('e.g. Service descriptions')}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-caption font-medium text-text2">File (PDF or TXT)</label>
+                  <input
+                    type="file"
+                    accept=".pdf,.txt"
+                    onChange={(e) => setSelectedFile(e.target.files?.[0] ?? null)}
+                    className="text-body text-text2 file:mr-3 file:rounded-lg file:border-0 file:bg-sunken file:px-3 file:py-1.5 file:text-body file:font-medium file:text-text2 hover:file:bg-line"
+                  />
+                </div>
+                <p className="text-caption text-text3">
+                  Max 10MB. Text will be extracted and used as context for research and generation.
+                  It will feed every pillar until you limit its topics.
+                </p>
+                <div className="flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    loading={isSaving}
+                    disabled={!addForm.label.trim() || !selectedFile}
+                    onClick={() => {
+                      void onUploadFile()
+                    }}
+                  >
+                    Upload & Extract
+                  </Button>
+                  <button
+                    onClick={() => {
+                      setAdding(null)
+                      setSelectedFile(null)
+                    }}
+                    className="text-body text-text3 hover:text-text2"
+                  >
+                    Cancel
+                  </button>
+                </div>
               </div>
-              <p className="text-caption text-text3">
-                Max 10MB. Text will be extracted and used as context for research and generation.
-                It will feed every pillar until you limit its topics.
-              </p>
-              <div className="flex items-center gap-2">
-                <Button
-                  size="sm"
-                  loading={isSaving}
-                  disabled={!addForm.label.trim() || !selectedFile}
-                  onClick={() => {
-                    void onUploadFile()
-                  }}
-                >
-                  Upload & Extract
-                </Button>
-                <button
-                  onClick={() => {
-                    setAdding(null)
-                    setSelectedFile(null)
-                  }}
-                  className="text-body text-text3 hover:text-text2"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          )}
+            )}
 
-          {renderSourceList(
-            fileSources,
-            'No documents yet. Upload PDFs or text files with client info the AI should reference.',
-            'file'
-          )}
-        </section>
+            {renderSourceList(
+              fileSources,
+              'No documents yet. Upload PDFs or text files with client info the AI should reference.',
+              'file'
+            )}
+          </section>
         </div>
 
         <SourcesRail

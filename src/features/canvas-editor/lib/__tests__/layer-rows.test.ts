@@ -117,7 +117,11 @@ describe('slotForRowStep — the ⌥↑/⌥↓ keyboard reorder', () => {
   function afterStep(index: number, direction: 'up' | 'down'): string[] {
     const from = doc()
     const id = layerRows(from)[index]!.id
-    const moved = reorderNodeInDoc(from, id, docIndexForRow(from, id, slotForRowStep(index, direction)))
+    const moved = reorderNodeInDoc(
+      from,
+      id,
+      docIndexForRow(from, id, slotForRowStep(index, direction))
+    )
     return layerRows(moved).map((entry) => entry.id)
   }
 
@@ -139,7 +143,9 @@ describe('slotForRowStep — the ⌥↑/⌥↓ keyboard reorder', () => {
   it('returns the same doc at the ends, so a held key burns no undo steps', () => {
     const from = doc()
     const top = layerRows(from)[0]!.id
-    expect(reorderNodeInDoc(from, top, docIndexForRow(from, top, slotForRowStep(0, 'up')))).toBe(from)
+    expect(reorderNodeInDoc(from, top, docIndexForRow(from, top, slotForRowStep(0, 'up')))).toBe(
+      from
+    )
     const bottom = layerRows(from)[3]!.id
     expect(
       reorderNodeInDoc(from, bottom, docIndexForRow(from, bottom, slotForRowStep(3, 'down')))
@@ -151,12 +157,20 @@ describe('slotForRowStep — the ⌥↑/⌥↓ keyboard reorder', () => {
     const id = 'a'
     for (let step = 0; step < 3; step++) {
       const index = layerRows(current).findIndex((node) => node.id === id)
-      current = reorderNodeInDoc(current, id, docIndexForRow(current, id, slotForRowStep(index, 'up')))
+      current = reorderNodeInDoc(
+        current,
+        id,
+        docIndexForRow(current, id, slotForRowStep(index, 'up'))
+      )
     }
     expect(layerRows(current).map((node) => node.id)).toEqual(['a', 'd', 'c', 'b'])
     for (let step = 0; step < 3; step++) {
       const index = layerRows(current).findIndex((node) => node.id === id)
-      current = reorderNodeInDoc(current, id, docIndexForRow(current, id, slotForRowStep(index, 'down')))
+      current = reorderNodeInDoc(
+        current,
+        id,
+        docIndexForRow(current, id, slotForRowStep(index, 'down'))
+      )
     }
     expect(layerRows(current).map((node) => node.id)).toEqual(['d', 'c', 'b', 'a'])
   })

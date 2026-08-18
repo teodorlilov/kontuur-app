@@ -2,7 +2,10 @@ import { NextResponse } from 'next/server'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
 import { visualsRateLimitResponse } from '@/lib/auth/rate-limit'
 import { downloadFalFile, removeImageBackground } from '@/lib/visual/fal'
-import { foreignStoragePathResponse, resolveAssetDestination } from '@/features/publishing/lib/asset-destination'
+import {
+  foreignStoragePathResponse,
+  resolveAssetDestination,
+} from '@/features/publishing/lib/asset-destination'
 import { publicPostImageUrl } from '@/features/publishing/lib/storage'
 
 export const maxDuration = 60
@@ -33,7 +36,8 @@ export async function POST(request: Request) {
   }
 
   const destination = await resolveAssetDestination(auth.supabase, auth.agencyId, body)
-  if (!destination.ok) return NextResponse.json({ error: destination.error }, { status: destination.status })
+  if (!destination.ok)
+    return NextResponse.json({ error: destination.error }, { status: destination.status })
   const foreignPath = foreignStoragePathResponse(destination.clientId, body.storagePath)
   if (foreignPath) return foreignPath
 

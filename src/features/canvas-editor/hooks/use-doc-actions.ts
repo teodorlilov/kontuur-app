@@ -29,10 +29,7 @@ import type { CommitOptions } from '../lib/doc-history'
  * Apply a mutation to the doc being edited and record it on that doc's undo history. Continuous
  * gestures (slider drags, arrow-key repeats) pass a coalesce key so the whole gesture is one step.
  */
-export type TransformDoc = (
-  mutate: (doc: CanvasDoc) => CanvasDoc,
-  options?: CommitOptions
-) => void
+export type TransformDoc = (mutate: (doc: CanvasDoc) => CanvasDoc, options?: CommitOptions) => void
 
 interface DocActions {
   transformDoc: TransformDoc
@@ -100,8 +97,7 @@ export function useDocActions(doc: CanvasDoc | null, transformDoc: TransformDoc)
 
   // Inpaint rebinds the clean background in place; the crop stays valid (same dimensions).
   const setBackground = useCallback(
-    (background: CanvasBackgroundRef) =>
-      transformDoc((current) => ({ ...current, background })),
+    (background: CanvasBackgroundRef) => transformDoc((current) => ({ ...current, background })),
     [transformDoc]
   )
 

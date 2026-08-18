@@ -50,11 +50,11 @@ export async function GET(_request: Request, { params }: { params: Promise<{ tok
 
   // Fetch client name + agency name in one join — saves one round-trip
   const clientId = posts[0]!.client_id
-  const { data: client } = await supabase
+  const { data: client } = (await supabase
     .from('clients')
     .select('name, agencies!inner(name)')
     .eq('id', clientId)
-    .single() as { data: { name: string; agencies: { name: string } } | null }
+    .single()) as { data: { name: string; agencies: { name: string } } | null }
 
   const agencyName = (client?.agencies as { name: string } | null)?.name ?? ''
 
@@ -80,4 +80,3 @@ export async function GET(_request: Request, { params }: { params: Promise<{ tok
 
   return NextResponse.json(result)
 }
-

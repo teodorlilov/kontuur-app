@@ -102,14 +102,19 @@ function assemblePostValidation(
         languageFocus
       )
     : languageFocus
-      ? mergeLanguageVerdicts({ issues: [], corrected_text: null, corrected_slides: null }, languageFocus)
+      ? mergeLanguageVerdicts(
+          { issues: [], corrected_text: null, corrected_slides: null },
+          languageFocus
+        )
       : null
   const lang: LanguageValidationResult = verdict
     ? {
         ...computeLanguageScore({ issues: verdict.issues }),
         issues: verdict.issues,
         corrected_text: verdict.corrected_text,
-        ...(verdict.corrected_slides !== null ? { corrected_slides: verdict.corrected_slides } : {}),
+        ...(verdict.corrected_slides !== null
+          ? { corrected_slides: verdict.corrected_slides }
+          : {}),
       }
     : LANGUAGE_FALLBACK
   // Structure verdict merges code-counted checks (word counts, cover body —

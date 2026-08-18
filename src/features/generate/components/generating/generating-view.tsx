@@ -200,7 +200,9 @@ function ArrivedCard({ index, item }: { index: number; item: ReviewDraft }) {
           <span
             className="inline-flex rounded-chip px-2 py-0.5 text-micro font-medium"
             // Identity tint + darkened ink — computed, the palette is a token list.
-            style={pillarColor ? { background: pillarColor.bg, color: pillarColor.text } : undefined}
+            style={
+              pillarColor ? { background: pillarColor.bg, color: pillarColor.text } : undefined
+            }
           >
             {post.pillar}
           </span>

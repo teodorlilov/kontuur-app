@@ -150,9 +150,7 @@ function partitionByBrief(
     }
   }
 
-  const briefTopics = [...byIndex.entries()]
-    .sort(([a], [b]) => a - b)
-    .map(([, topic]) => topic)
+  const briefTopics = [...byIndex.entries()].sort(([a], [b]) => a - b).map(([, topic]) => topic)
 
   return { briefTopics, researchTopics }
 }

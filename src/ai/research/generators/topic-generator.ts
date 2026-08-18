@@ -20,10 +20,19 @@ const TOPICS_OUTPUT_SCHEMA = {
           pillar: { type: ['string', 'null'] },
           source_url: { type: ['string', 'null'] },
           source_title: { type: ['string', 'null'] },
-          source_type: { type: ['string', 'null'] },  // 'rss' | 'website' | 'file' | 'web_search' | 'performance' | null
+          source_type: { type: ['string', 'null'] }, // 'rss' | 'website' | 'file' | 'web_search' | 'performance' | null
           source_excerpt: { type: 'string' },
         },
-        required: ['finding', 'suggested_theme', 'brief_index', 'pillar', 'source_url', 'source_title', 'source_type', 'source_excerpt'],
+        required: [
+          'finding',
+          'suggested_theme',
+          'brief_index',
+          'pillar',
+          'source_url',
+          'source_title',
+          'source_type',
+          'source_excerpt',
+        ],
       },
     },
   },

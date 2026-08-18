@@ -51,12 +51,14 @@ function post(overrides: Partial<QueuePost> = {}): QueuePost {
   }
 }
 
-function validation(overrides: {
-  overall?: number | null
-  human?: number | null
-  aiTells?: string[]
-  healthCompliant?: boolean | null
-} = {}): ValidationData {
+function validation(
+  overrides: {
+    overall?: number | null
+    human?: number | null
+    aiTells?: string[]
+    healthCompliant?: boolean | null
+  } = {}
+): ValidationData {
   const { overall = 8, human = 8, aiTells = [], healthCompliant = null } = overrides
   return {
     criteria: {
@@ -123,11 +125,20 @@ describe('computeTriage — reasons land a post in needs_attention', () => {
   })
 
   it('health clients need a human check until compliance is affirmed', () => {
-    const flagged = triageOne(post({ is_health_niche: true }), validation({ healthCompliant: null }))
+    const flagged = triageOne(
+      post({ is_health_niche: true }),
+      validation({ healthCompliant: null })
+    )
     expect(flagged.reasons).toContain('health_review')
-    const cleared = triageOne(post({ is_health_niche: true }), validation({ healthCompliant: true }))
+    const cleared = triageOne(
+      post({ is_health_niche: true }),
+      validation({ healthCompliant: true })
+    )
     expect(cleared.reasons).not.toContain('health_review')
-    const nonHealth = triageOne(post({ is_health_niche: false }), validation({ healthCompliant: null }))
+    const nonHealth = triageOne(
+      post({ is_health_niche: false }),
+      validation({ healthCompliant: null })
+    )
     expect(nonHealth.reasons).not.toContain('health_review')
   })
 

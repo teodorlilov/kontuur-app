@@ -5,8 +5,14 @@ import { deriveColorRoles, ensureLegibleColors } from '../color-roles'
 describe('deriveColorRoles', () => {
   it('picks the dominant background as surface and the dominant text as ink', () => {
     const roles = deriveColorRoles({
-      backgrounds: [{ hex: '#FFFFFF', weight: 100 }, { hex: '#F0F0F0', weight: 10 }],
-      texts: [{ hex: '#111111', weight: 50 }, { hex: '#888888', weight: 5 }],
+      backgrounds: [
+        { hex: '#FFFFFF', weight: 100 },
+        { hex: '#F0F0F0', weight: 10 },
+      ],
+      texts: [
+        { hex: '#111111', weight: 50 },
+        { hex: '#888888', weight: 5 },
+      ],
     })
     expect(roles.surface).toBe('#FFFFFF')
     expect(roles.ink).toBe('#111111')
@@ -16,7 +22,10 @@ describe('deriveColorRoles', () => {
     const roles = deriveColorRoles({
       backgrounds: [{ hex: '#FFFFFF', weight: 100 }],
       texts: [{ hex: '#111111', weight: 50 }],
-      accents: [{ hex: '#777777', weight: 20 }, { hex: '#2563EB', weight: 8 }],
+      accents: [
+        { hex: '#777777', weight: 20 },
+        { hex: '#2563EB', weight: 8 },
+      ],
     })
     expect(roles.accent).toBe('#2563EB')
   })
@@ -43,7 +52,13 @@ describe('deriveColorRoles', () => {
 
 describe('ensureLegibleColors', () => {
   it('leaves a well-contrasted palette untouched', () => {
-    const palette = { surface: '#FFFFFF', ink: '#1A1A1A', accent: '#2563EB', 'accent-deep': '#1E3A8A', line: '#E5E5E5' }
+    const palette = {
+      surface: '#FFFFFF',
+      ink: '#1A1A1A',
+      accent: '#2563EB',
+      'accent-deep': '#1E3A8A',
+      line: '#E5E5E5',
+    }
     expect(ensureLegibleColors(palette)).toEqual(palette)
   })
 

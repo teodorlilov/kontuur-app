@@ -57,7 +57,12 @@ interface CallAnthropicOptions {
    *
    * Incompatible with assistantPrefill.
    */
-  outputSchema?: { type: 'object'; properties?: Record<string, unknown>; required?: string[]; [key: string]: unknown }
+  outputSchema?: {
+    type: 'object'
+    properties?: Record<string, unknown>
+    required?: string[]
+    [key: string]: unknown
+  }
 }
 
 const MAX_RETRIES = 3
@@ -103,12 +108,20 @@ export async function callAnthropic(opts: CallAnthropicOptions): Promise<Message
     ...(temperature !== undefined && { temperature }),
     ...(systemPrompt && {
       system: cacheSystemPrompt
-        ? [{ type: 'text' as const, text: systemPrompt, cache_control: { type: 'ephemeral' as const } }]
+        ? [
+            {
+              type: 'text' as const,
+              text: systemPrompt,
+              cache_control: { type: 'ephemeral' as const },
+            },
+          ]
         : systemPrompt,
     }),
     messages,
     ...(outputSchema && {
-      tools: [{ name: 'output', description: 'Return the structured output', input_schema: outputSchema }],
+      tools: [
+        { name: 'output', description: 'Return the structured output', input_schema: outputSchema },
+      ],
       tool_choice: { type: 'tool' as const, name: 'output' },
     }),
   }
@@ -129,7 +142,10 @@ export async function callAnthropic(opts: CallAnthropicOptions): Promise<Message
     } catch (err) {
       if (isRetryable(err) && !emittedTokens && attempt < MAX_RETRIES) {
         const delay = RETRY_BASE_DELAY_MS * 2 ** attempt
-        console.warn(`[ai-client] transient API error, retrying in ${delay}ms (attempt ${attempt + 1}/${MAX_RETRIES})`, err)
+        console.warn(
+          `[ai-client] transient API error, retrying in ${delay}ms (attempt ${attempt + 1}/${MAX_RETRIES})`,
+          err
+        )
         await new Promise((r) => setTimeout(r, delay))
         continue
       }

@@ -46,7 +46,12 @@ export async function uploadPostImage(
   clientId: string,
   postId: string
 ): Promise<UploadResult> {
-  return uploadToBucket(BUCKET, `${clientId}/${postId}/${Date.now()}-${fileName}`, file, contentType)
+  return uploadToBucket(
+    BUCKET,
+    `${clientId}/${postId}/${Date.now()}-${fileName}`,
+    file,
+    contentType
+  )
 }
 
 /** Upload a wizard-draft visual (no `posts` row yet) under the client's drafts prefix. */
@@ -56,7 +61,12 @@ export async function uploadDraftVisual(
   draftId: string,
   position: number
 ): Promise<UploadResult> {
-  return uploadToBucket(BUCKET, `${draftVisualPrefix(clientId)}${draftId}/${position}-${Date.now()}.jpg`, file, 'image/jpeg')
+  return uploadToBucket(
+    BUCKET,
+    `${draftVisualPrefix(clientId)}${draftId}/${position}-${Date.now()}.jpg`,
+    file,
+    'image/jpeg'
+  )
 }
 
 /** Upload a canvas-element asset for an in-memory wizard draft (logo, cutout, generated vector). */
@@ -67,7 +77,12 @@ export async function uploadDraftAsset(
   draftId: string,
   fileName: string
 ): Promise<UploadResult> {
-  return uploadToBucket(BUCKET, `${draftVisualPrefix(clientId)}${draftId}/assets/${Date.now()}-${fileName}`, file, contentType)
+  return uploadToBucket(
+    BUCKET,
+    `${draftVisualPrefix(clientId)}${draftId}/assets/${Date.now()}-${fileName}`,
+    file,
+    contentType
+  )
 }
 
 /** Batch-delete draft visuals from storage (discarded wizard drafts). Logs on failure but does not throw. */

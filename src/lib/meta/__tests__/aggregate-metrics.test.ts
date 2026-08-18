@@ -199,8 +199,13 @@ describe('computeIGMediaTypeBreakdown', () => {
 
 describe('buildIGSummary', () => {
   const emptyDeltas = {
-    reach: 0, impressions: 0, profileViews: 0,
-    newFollowers: 0, unfollowers: 0, accountsEngaged: 0, websiteClicks: 0,
+    reach: 0,
+    impressions: 0,
+    profileViews: 0,
+    newFollowers: 0,
+    unfollowers: 0,
+    accountsEngaged: 0,
+    websiteClicks: 0,
   }
 
   it('uses follows/unfollows for net change when the API provided them', () => {

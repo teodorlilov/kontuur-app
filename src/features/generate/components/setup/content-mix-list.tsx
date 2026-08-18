@@ -59,12 +59,16 @@ export function ContentMixList({ allocation, briefCount = 0 }: ContentMixListPro
                   : undefined
               }
             />
-            <span className={cn('min-w-0 flex-1 truncate', coverage === 'none' && 'text-ink-inv/45')}>
+            <span
+              className={cn('min-w-0 flex-1 truncate', coverage === 'none' && 'text-ink-inv/45')}
+            >
               {pillar.pillar}
               {/* Compressed to a tag: the full "if nothing lands" sentence per row
                   drowned the list when most pillars shared the state — the panel
                   footnote explains it once. */}
-              {coverage === 'web' && <span className="text-micro text-ink-inv/45"> · web only</span>}
+              {coverage === 'web' && (
+                <span className="text-micro text-ink-inv/45"> · web only</span>
+              )}
             </span>
             <span
               className={cn(

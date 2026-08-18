@@ -17,11 +17,7 @@ import { formatScheduledAt, isoToDateTimeFields, shiftDateKey } from '@/utils/da
  * come back out in the agency's zone, get shifted as a bare date key, and are resolved
  * to an instant again by the same two-pass helper every other write uses.
  */
-export function shiftScheduledByDays(
-  scheduledAt: string,
-  days: number,
-  timeZone: string
-): string {
+export function shiftScheduledByDays(scheduledAt: string, days: number, timeZone: string): string {
   const { date, time } = isoToDateTimeFields(scheduledAt, timeZone)
   return formatScheduledAt(shiftDateKey(date, days), time, timeZone)
 }

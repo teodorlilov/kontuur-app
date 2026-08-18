@@ -99,9 +99,7 @@ export function BrandProfileTab({
           />
           {/* The feeds-all default is invisible until a run surprises someone;
               the moment a pillar is added is the moment to say it. */}
-          {newPillarNotice && (
-            <p className="mt-2 text-caption text-text3">{newPillarNotice}</p>
-          )}
+          {newPillarNotice && <p className="mt-2 text-caption text-text3">{newPillarNotice}</p>}
         </div>
       </FormSection>
     </>
@@ -157,9 +155,14 @@ function LearnedFromReviews({
           <ul className="flex flex-col gap-1.5">
             {styleMemo.bullets.map((b) => (
               <li key={b.rule} className="flex items-baseline gap-2 text-body text-text2">
-                <span aria-hidden className="size-1.5 flex-none translate-y-[-2px] rounded-full bg-forest/60" />
+                <span
+                  aria-hidden
+                  className="size-1.5 flex-none translate-y-[-2px] rounded-full bg-forest/60"
+                />
                 <span className="min-w-0 flex-1">{b.rule}</span>
-                <span className="flex-none text-micro tabular-nums text-text3">×{b.evidence_count}</span>
+                <span className="flex-none text-micro tabular-nums text-text3">
+                  ×{b.evidence_count}
+                </span>
               </li>
             ))}
           </ul>
@@ -174,9 +177,7 @@ function LearnedFromReviews({
           </Button>
           <span className="text-caption text-text3">
             {refreshResult ??
-              (styleMemo
-                ? `Updated ${new Date(styleMemo.updatedAt).toLocaleDateString()}`
-                : '')}
+              (styleMemo ? `Updated ${new Date(styleMemo.updatedAt).toLocaleDateString()}` : '')}
           </span>
         </div>
       </div>

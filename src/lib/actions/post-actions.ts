@@ -10,9 +10,7 @@ import { parsePostUpdate, type UpdatePostInput } from '@/lib/validation/post-upd
 import { DISCARD_REASONS } from '@/lib/validation'
 import type { ActionResult } from './types'
 
-const deletePostOptionsSchema = z
-  .object({ reason: z.enum(DISCARD_REASONS).optional() })
-  .optional()
+const deletePostOptionsSchema = z.object({ reason: z.enum(DISCARD_REASONS).optional() }).optional()
 
 const savePostCopySchema = z.object({
   caption: z.string(),
@@ -200,9 +198,7 @@ export async function deletePost(
         discarded_from: 'review',
         reason: parsedOptions.data?.reason ?? null,
       }
-      const { error: discardError } = await admin
-        .from('discarded_drafts')
-        .insert(discardRow)
+      const { error: discardError } = await admin.from('discarded_drafts').insert(discardRow)
       if (discardError) {
         console.error('[posts] failed to log review discard:', discardError.message)
       }

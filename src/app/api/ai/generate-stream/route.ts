@@ -6,7 +6,11 @@ import { fetchClientById, fetchEngineContext } from '@/lib/queries/db'
 import { DEFAULT_CAROUSEL_SLIDES } from '@/utils/constants'
 import { aiRateLimitResponse } from '@/lib/auth/rate-limit'
 import { performResearch } from '@/ai/research/research-orchestrator'
-import { finishGenerationRun, startGenerationRun, trackGenerationTheme } from '@/lib/generation/runs'
+import {
+  finishGenerationRun,
+  startGenerationRun,
+  trackGenerationTheme,
+} from '@/lib/generation/runs'
 import { runGenerationBatch } from '@/ai/generation/generation-orchestrator'
 import { toTheme, toThemeTitle } from '@/ai/generation/to-theme'
 import type { ResearchTopic, TopicBrief } from '@/ai/research/types'
@@ -22,7 +26,10 @@ export const maxDuration = 300
  * builders working against the richer domain type. priorityPosts no longer
  * needs the treatment — its schema is the real shape.
  */
-type GenerateStreamRequestBody = Omit<z.infer<typeof generateStreamSchema>, 'preloadedClientData'> & {
+type GenerateStreamRequestBody = Omit<
+  z.infer<typeof generateStreamSchema>,
+  'preloadedClientData'
+> & {
   preloadedClientData: ClientData
 }
 
@@ -41,9 +48,7 @@ export async function POST(request: Request) {
     // formalityRules as `unknown`, on purpose — it is a large type this boundary
     // only passes through. Parsing has proven the structure, so this re-attaches
     // the domain type for the prompt builders.
-    body = generateStreamSchema.parse(
-      await request.json()
-    ) as unknown as GenerateStreamRequestBody
+    body = generateStreamSchema.parse(await request.json()) as unknown as GenerateStreamRequestBody
   } catch {
     return NextResponse.json(
       { error: 'clientId, platform, postType and preloadedClientData are required' },
@@ -127,7 +132,10 @@ export async function POST(request: Request) {
 
         if (topics.length === 0 && priorityPosts.length === 0) {
           runFailed = true
-          send({ type: 'error', message: 'Research found no topics. Check your client sources or try again.' })
+          send({
+            type: 'error',
+            message: 'Research found no topics. Check your client sources or try again.',
+          })
           return
         }
 

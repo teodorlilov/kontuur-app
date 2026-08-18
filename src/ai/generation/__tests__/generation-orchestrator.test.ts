@@ -84,9 +84,7 @@ describe('per-theme platform', () => {
       trackTheme: vi.fn().mockResolvedValue(undefined),
     })
 
-    const platformByTheme = new Map(
-      results.map((r) => [r.post.topic_summary, r.post.platform])
-    )
+    const platformByTheme = new Map(results.map((r) => [r.post.topic_summary, r.post.platform]))
     expect(platformByTheme.get('the brief')).toBe('Facebook')
     expect(platformByTheme.get('researched')).toBe('Instagram')
 
@@ -176,8 +174,8 @@ describe('bounded refine loop', () => {
   })
 
   it('revisions are capped per run', async () => {
-    mocks.validatePostsBatch.mockImplementation(
-      async ({ captions }: { captions: string[] }) => captions.map(() => structureFailure())
+    mocks.validatePostsBatch.mockImplementation(async ({ captions }: { captions: string[] }) =>
+      captions.map(() => structureFailure())
     )
     mocks.revisePost.mockResolvedValue('revised text')
 

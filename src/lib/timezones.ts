@@ -137,9 +137,7 @@ function formatOffset(minutes: number): string {
   const abs = Math.abs(minutes)
   const hours = Math.floor(abs / 60)
   const rest = abs % 60
-  return rest === 0
-    ? `GMT${sign}${hours}`
-    : `GMT${sign}${hours}:${String(rest).padStart(2, '0')}`
+  return rest === 0 ? `GMT${sign}${hours}` : `GMT${sign}${hours}:${String(rest).padStart(2, '0')}`
 }
 
 const REGION_ORDER = [

@@ -181,7 +181,8 @@ export function EditorStage({
   const marqueeReleaseRef = useRef<((event: MouseEvent) => void) | null>(null)
   useEffect(
     () => () => {
-      if (marqueeReleaseRef.current) window.removeEventListener('mouseup', marqueeReleaseRef.current)
+      if (marqueeReleaseRef.current)
+        window.removeEventListener('mouseup', marqueeReleaseRef.current)
     },
     []
   )
@@ -298,7 +299,11 @@ export function EditorStage({
   // The node the arc handle attaches to: one selected text layer, in plain editing, that fits on a
   // single line. `isSingleLine` measures, so it is gated behind the cheap checks.
   const arcTarget =
-    mode === 'edit' && selectedKind === 'text' && primary && isTextNode(primary) && !isLocked(primary)
+    mode === 'edit' &&
+    selectedKind === 'text' &&
+    primary &&
+    isTextNode(primary) &&
+    !isLocked(primary)
       ? isSingleLine(primary)
         ? primary
         : null
@@ -401,7 +406,9 @@ export function EditorStage({
     const staying = new Set(moving)
     const siblings = docNodes(layer)
       .filter((candidate: Konva.Node) => !staying.has(candidate.id()))
-      .map((candidate: Konva.Node) => candidate.getClientRect({ relativeTo: layer, ...MEASURE_BOX }))
+      .map((candidate: Konva.Node) =>
+        candidate.getClientRect({ relativeTo: layer, ...MEASURE_BOX })
+      )
     snapStopsRef.current = collectSnapStops(siblings, doc.canvas)
   }
 

@@ -41,12 +41,10 @@ export async function exportDocToJpegBlob(
   // walks the assets in their own separate order.
   const [loaded] = await Promise.all([
     Promise.all(
-      drawn
-        .filter(isImageNode)
-        .map(async (node) => {
-          const image = await loadCrossOriginImage(node.src.publicUrl)
-          return [node.id, image] as const
-        })
+      drawn.filter(isImageNode).map(async (node) => {
+        const image = await loadCrossOriginImage(node.src.publicUrl)
+        return [node.id, image] as const
+      })
     ),
     ensureFontsReady(drawn.filter(isTextNode).map((node) => node.fontFamily)),
   ])

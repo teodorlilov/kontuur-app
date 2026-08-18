@@ -27,7 +27,10 @@ function parse(samples: ColorSample[]): Weighted[] {
 }
 
 function pick(list: Weighted[], score: (w: Weighted) => number): Rgb | null {
-  return list.reduce<Weighted | null>((best, w) => (!best || score(w) > score(best) ? w : best), null)?.rgb ?? null
+  return (
+    list.reduce<Weighted | null>((best, w) => (!best || score(w) > score(best) ? w : best), null)
+      ?.rgb ?? null
+  )
 }
 
 const NEUTRAL_MAX_SATURATION = 0.25
@@ -64,7 +67,10 @@ export function ensureLegibleColors(colors: Palette): Palette {
   const surface = parseHex(colors.surface)
   const ink = parseHex(colors.ink)
   if (!surface || !ink || contrastRatio(ink, surface) >= MIN_TEXT_CONTRAST) return colors
-  return { ...colors, ink: toHex(ensureContrast(ink, surface, MIN_TEXT_CONTRAST + CONTRAST_MARGIN)) }
+  return {
+    ...colors,
+    ink: toHex(ensureContrast(ink, surface, MIN_TEXT_CONTRAST + CONTRAST_MARGIN)),
+  }
 }
 
 /**
@@ -85,9 +91,14 @@ export function deriveColorRoles(obs: ColorObservations): Palette {
   // The accent is a *chromatic* colour, so drop near-neutral candidates first — a grey link or a
   // black button is not an accent. Weight by √frequency so a hue used across many buttons/links beats a
   // single saturated stray, without a high-count neutral swamping a genuinely branded colour.
-  const chromatic = (list: Weighted[]) => list.filter((w) => saturation(w.rgb) > NEUTRAL_MAX_SATURATION)
+  const chromatic = (list: Weighted[]) =>
+    list.filter((w) => saturation(w.rgb) > NEUTRAL_MAX_SATURATION)
   const accentPool = chromatic(accents.length ? accents : [...backgrounds, ...texts])
-  const accent = pick(accentPool, (w) => saturation(w.rgb) * Math.sqrt(w.weight)) ?? { r: 37, g: 99, b: 235 }
+  const accent = pick(accentPool, (w) => saturation(w.rgb) * Math.sqrt(w.weight)) ?? {
+    r: 37,
+    g: 99,
+    b: 235,
+  }
 
   const accentDeep = darken(accent, 0.35)
   // Dividers must read as a subtle neutral hairline, never a saturated brand colour (a green-bordered

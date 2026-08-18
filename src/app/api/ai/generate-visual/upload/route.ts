@@ -41,7 +41,10 @@ export async function POST(request: Request) {
     const buffer = Buffer.from(await file.arrayBuffer())
     const { publicUrl, storagePath } = await uploadDraftVisual(buffer, clientId, draftId, position)
 
-    if (typeof previousStoragePath === 'string' && previousStoragePath.startsWith(draftVisualPrefix(clientId))) {
+    if (
+      typeof previousStoragePath === 'string' &&
+      previousStoragePath.startsWith(draftVisualPrefix(clientId))
+    ) {
       await deleteDraftVisuals([previousStoragePath])
     }
 

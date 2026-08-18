@@ -1,12 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { CanvasDoc } from '@/types/canvas'
-import {
-  UNDO_CAP,
-  commitHistory,
-  initHistory,
-  redoHistory,
-  undoHistory,
-} from '../doc-history'
+import { UNDO_CAP, commitHistory, initHistory, redoHistory, undoHistory } from '../doc-history'
 
 function doc(overrides: Partial<CanvasDoc> = {}): CanvasDoc {
   return {

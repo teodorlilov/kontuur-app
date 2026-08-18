@@ -568,39 +568,39 @@ export function CalendarView({ initialPosts, clients }: CalendarViewProps) {
           needed is what buried its own close control. */}
       <div className="flex min-h-0 flex-1 flex-col overflow-y-auto md:flex-row md:overflow-hidden">
         <div className="flex flex-col px-2 pb-[18px] pt-2.5 md:min-h-0 md:flex-1 md:px-[18px]">
-        {mode === 'week' ? (
-          <WeekGrid
-            weekStartISO={weekStart}
-            scheduledPosts={filteredScheduled}
-            clients={laneClients}
-            timeZone={timezone}
-            onPostClick={handleGridPostClick}
-            onSlotClick={handleSlotClick}
-            // Stable references, not fresh arrows every render. `WeekGrid` is memoised and
-            // forwards `onDropPost` straight to all seven `DayColumn`s, which are memoised
-            // too — an inline lambda here re-rendered the entire grid on every keystroke in
-            // the queue's search box.
-            onMovePost={onMovePost}
-            onDropPost={onDropPost}
-          />
-        ) : mode === 'clients' ? (
-          <ClientsView
-            clients={visibleClients}
-            laneClients={laneClients}
-            scheduledPosts={filteredScheduled}
-            weekStartISO={weekStart}
-            timeZone={timezone}
-          />
-        ) : (
-          <MonthCoverage
-            year={year}
-            month={month}
-            timeZone={timezone}
-            scheduledPosts={filteredScheduled}
-            onPostClick={handleGridPostClick}
-            onSelectWeek={openWeek}
-          />
-        )}
+          {mode === 'week' ? (
+            <WeekGrid
+              weekStartISO={weekStart}
+              scheduledPosts={filteredScheduled}
+              clients={laneClients}
+              timeZone={timezone}
+              onPostClick={handleGridPostClick}
+              onSlotClick={handleSlotClick}
+              // Stable references, not fresh arrows every render. `WeekGrid` is memoised and
+              // forwards `onDropPost` straight to all seven `DayColumn`s, which are memoised
+              // too — an inline lambda here re-rendered the entire grid on every keystroke in
+              // the queue's search box.
+              onMovePost={onMovePost}
+              onDropPost={onDropPost}
+            />
+          ) : mode === 'clients' ? (
+            <ClientsView
+              clients={visibleClients}
+              laneClients={laneClients}
+              scheduledPosts={filteredScheduled}
+              weekStartISO={weekStart}
+              timeZone={timezone}
+            />
+          ) : (
+            <MonthCoverage
+              year={year}
+              month={month}
+              timeZone={timezone}
+              scheduledPosts={filteredScheduled}
+              onPostClick={handleGridPostClick}
+              onSelectWeek={openWeek}
+            />
+          )}
         </div>
 
         {/* Docked, not floating: a sibling of the grid rather than a layer over it. */}

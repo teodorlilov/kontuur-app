@@ -1,9 +1,4 @@
-import type {
-  CanvasBackgroundRef,
-  CanvasDoc,
-  CanvasTextNode,
-  CanvasTextRole,
-} from '@/types/canvas'
+import type { CanvasBackgroundRef, CanvasDoc, CanvasTextNode, CanvasTextRole } from '@/types/canvas'
 import { isTextNode } from './doc-nodes'
 import { splitHero } from './lockups'
 import type { Palette } from '@/types/visual'
@@ -112,7 +107,9 @@ export function applyCopyToDoc(
   doc: CanvasDoc,
   input: Pick<SeedInput, 'slide' | 'caption'>
 ): CanvasDoc {
-  const headline = input.slide ? sanitizePromptText(input.slide.headline) : captionHook(input.caption)
+  const headline = input.slide
+    ? sanitizePromptText(input.slide.headline)
+    : captionHook(input.caption)
   const body = input.slide ? sanitizePromptText(input.slide.body) : ''
   /**
    * A slide wearing a hero lockup holds its headline in TWO nodes, and they must be refreshed — or
@@ -127,15 +124,14 @@ export function applyCopyToDoc(
   const heroSplit = doc.nodes.some((node) => isTextNode(node) && node.role === 'hero')
   const keepHeadline = doc.nodes.some(
     (node) =>
-      isTextNode(node) &&
-      (node.role === 'hero' || node.role === 'headline') &&
-      node.textOverridden
+      isTextNode(node) && (node.role === 'hero' || node.role === 'headline') && node.textOverridden
   )
   const split = heroSplit ? splitHero(headline) : { hero: '', rest: headline }
   const nodes = doc.nodes.map((node) => {
     if (!isTextNode(node)) return node
     // Case is a render-time flag, so refreshed copy stays raw here.
-    if (node.role === 'hero') return keepHeadline || !headline ? node : { ...node, text: split.hero }
+    if (node.role === 'hero')
+      return keepHeadline || !headline ? node : { ...node, text: split.hero }
     if (node.role === 'headline') {
       return keepHeadline || !headline ? node : { ...node, text: split.rest }
     }

@@ -4,7 +4,11 @@ import { visualsRateLimitResponse } from '@/lib/auth/rate-limit'
 import { parseHex, type Rgb } from '@/lib/visual/extract/color'
 import { downloadFalFile, generateVectorAsset } from '@/lib/visual/fal'
 import { fetchVisualIdentityOrDefault } from '@/lib/visual/queries'
-import { removeSvgBackgroundRect, svgNaturalSize, svgRejectionReason } from '@/lib/visual/sanitize-svg'
+import {
+  removeSvgBackgroundRect,
+  svgNaturalSize,
+  svgRejectionReason,
+} from '@/lib/visual/sanitize-svg'
 import { resolveAssetDestination } from '@/features/publishing/lib/asset-destination'
 
 export const maxDuration = 60
@@ -41,11 +45,15 @@ export async function POST(request: Request) {
   const prompt = typeof body.prompt === 'string' ? body.prompt.trim() : ''
   if (!prompt) return NextResponse.json({ error: 'prompt is required' }, { status: 400 })
   if (prompt.length > MAX_PROMPT_CHARS) {
-    return NextResponse.json({ error: `prompt must be under ${MAX_PROMPT_CHARS} characters` }, { status: 400 })
+    return NextResponse.json(
+      { error: `prompt must be under ${MAX_PROMPT_CHARS} characters` },
+      { status: 400 }
+    )
   }
 
   const destination = await resolveAssetDestination(auth.supabase, auth.agencyId, body)
-  if (!destination.ok) return NextResponse.json({ error: destination.error }, { status: destination.status })
+  if (!destination.ok)
+    return NextResponse.json({ error: destination.error }, { status: destination.status })
 
   try {
     const identity = await fetchVisualIdentityOrDefault(destination.clientId)
@@ -58,12 +66,19 @@ export async function POST(request: Request) {
     const rejection = svgRejectionReason(raw)
     if (rejection) {
       console.error(`[generate-svg] rejected generated SVG: ${rejection}`)
-      return NextResponse.json({ error: 'The generated vector was rejected — try a different prompt' }, { status: 502 })
+      return NextResponse.json(
+        { error: 'The generated vector was rejected — try a different prompt' },
+        { status: 502 }
+      )
     }
     // Generators paint a full-canvas background rect; elements want transparency.
     const svg = removeSvgBackgroundRect(raw)
 
-    const { publicUrl, storagePath } = await destination.upload(Buffer.from(svg, 'utf8'), 'image/svg+xml', 'asset.svg')
+    const { publicUrl, storagePath } = await destination.upload(
+      Buffer.from(svg, 'utf8'),
+      'image/svg+xml',
+      'asset.svg'
+    )
     const size = svgNaturalSize(svg) ?? FALLBACK_SVG_SIZE
     return NextResponse.json({ publicUrl, storagePath, width: size.width, height: size.height })
   } catch (err) {

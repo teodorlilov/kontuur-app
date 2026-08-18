@@ -15,14 +15,19 @@ describe('safeParseVisualIdentity', () => {
   })
 
   it('rejects an unknown style id', () => {
-    expect(safeParseVisualIdentity({ palette: DEFAULT_PALETTE, style: 'vaporwave' }).success).toBe(false)
+    expect(safeParseVisualIdentity({ palette: DEFAULT_PALETTE, style: 'vaporwave' }).success).toBe(
+      false
+    )
   })
 
   it('accepts an optional palette description but rejects an empty one', () => {
     expect(
-      safeParseVisualIdentity({ palette: DEFAULT_PALETTE, palette_description: 'Cool and clean.' }).success
+      safeParseVisualIdentity({ palette: DEFAULT_PALETTE, palette_description: 'Cool and clean.' })
+        .success
     ).toBe(true)
-    expect(safeParseVisualIdentity({ palette: DEFAULT_PALETTE, palette_description: '' }).success).toBe(false)
+    expect(
+      safeParseVisualIdentity({ palette: DEFAULT_PALETTE, palette_description: '' }).success
+    ).toBe(false)
   })
 
   it('rejects a non-hex palette value with a path:message issue', () => {
@@ -32,13 +37,21 @@ describe('safeParseVisualIdentity', () => {
   })
 
   it('rejects a palette missing a colour role', () => {
-    const partial = { surface: '#FFFFFF', ink: '#000000', accent: '#2563EB', 'accent-deep': '#1E3A8A' }
+    const partial = {
+      surface: '#FFFFFF',
+      ink: '#000000',
+      accent: '#2563EB',
+      'accent-deep': '#1E3A8A',
+    }
     expect(safeParseVisualIdentity({ palette: partial }).success).toBe(false)
   })
 })
 
 describe('buildDefaultIdentity', () => {
   it('returns the neutral default palette with the default style', () => {
-    expect(buildDefaultIdentity()).toEqual({ palette: DEFAULT_PALETTE, style: DEFAULT_BRAND_STYLE_ID })
+    expect(buildDefaultIdentity()).toEqual({
+      palette: DEFAULT_PALETTE,
+      style: DEFAULT_BRAND_STYLE_ID,
+    })
   })
 })

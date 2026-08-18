@@ -52,7 +52,9 @@ export function TextToolbar({ node, palette, onChange }: TextToolbarProps) {
         aria-label="Font weight"
         title="Font weight"
         value={node.fontWeight}
-        onChange={(event) => onChange({ fontWeight: Number(event.target.value) as CanvasFontWeight })}
+        onChange={(event) =>
+          onChange({ fontWeight: Number(event.target.value) as CanvasFontWeight })
+        }
         className={cn(EDITOR_CONTROL, 'cursor-pointer')}
       >
         {weightOptions(node.fontFamily).map((weight) => (
@@ -113,7 +115,10 @@ export function TextToolbar({ node, palette, onChange }: TextToolbarProps) {
         // Clears any arc rather than disabling itself: a marker band is a straight pill measured
         // from the wrapped line, so it cannot sit under a curve. Mutual clear, not a dead control.
         onChange={(on) =>
-          onChange({ highlight: on ? palette.accent : undefined, ...(on ? { arcBend: undefined } : {}) }, true)
+          onChange(
+            { highlight: on ? palette.accent : undefined, ...(on ? { arcBend: undefined } : {}) },
+            true
+          )
         }
         icon={<Highlighter size={15} aria-hidden />}
       />

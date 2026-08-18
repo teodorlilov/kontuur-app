@@ -148,8 +148,7 @@ export function computeIGPostAggregates(posts: IGPost[], followers: number) {
     posts.length > 0 ? Math.round((totalEngagements / posts.length / followers) * 1000) / 10 : 0
   const totalSaved = posts.reduce((s, p) => s + (p.saved ?? 0), 0)
   const totalPostReach = posts.reduce((s, p) => s + (p.reach ?? 0), 0)
-  const avgSaveRate =
-    totalPostReach > 0 ? Math.round((totalSaved / totalPostReach) * 1000) / 10 : 0
+  const avgSaveRate = totalPostReach > 0 ? Math.round((totalSaved / totalPostReach) * 1000) / 10 : 0
   const totalShares = posts.reduce((s, p) => s + (p.shares ?? 0), 0)
   return { avgEngagementRate, totalSaved, avgSaveRate, totalShares }
 }

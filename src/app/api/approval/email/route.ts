@@ -21,7 +21,10 @@ export async function POST(request: Request) {
   }
   const parsed = approvalRequestSchema.safeParse(raw)
   if (!parsed.success) {
-    return NextResponse.json({ error: 'clientId plus weekStart or postIds required' }, { status: 400 })
+    return NextResponse.json(
+      { error: 'clientId plus weekStart or postIds required' },
+      { status: 400 }
+    )
   }
   const { clientId, weekStart, postIds } = parsed.data
 

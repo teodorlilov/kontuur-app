@@ -87,7 +87,10 @@ type ExtractionSession = {
 }
 
 /** Fetch an onboarding extraction session's status + result, or null when absent. */
-export async function fetchExtraction(supabase: Db, sessionId: string): Promise<ExtractionSession | null> {
+export async function fetchExtraction(
+  supabase: Db,
+  sessionId: string
+): Promise<ExtractionSession | null> {
   const { data, error } = await supabase
     .from('brand_kit_extractions')
     .select(BRAND_KIT_EXTRACTION_COLUMNS)

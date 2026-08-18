@@ -42,7 +42,12 @@ function client(over: Partial<RosterClientRow> = {}): RosterClientRow {
  * here, so they are filled in once rather than repeated across every fixture.
  */
 function up(clientId: string, scheduledAt: string): PostSummary {
-  return { id: `post-${clientId}-${scheduledAt}`, client_id: clientId, platform: 'instagram', scheduled_at: scheduledAt }
+  return {
+    id: `post-${clientId}-${scheduledAt}`,
+    client_id: clientId,
+    platform: 'instagram',
+    scheduled_at: scheduledAt,
+  }
 }
 
 function entry(
@@ -148,11 +153,7 @@ describe('computeRosterEntry — channels', () => {
 
 describe('computeRosterEntry — aggregates', () => {
   it('takes the earliest scheduled post and counts the rest behind it', () => {
-    const upcoming: PostSummary[] = [
-      up('c1', offset(5)),
-      up('c1', offset(2)),
-      up('c1', offset(9)),
-    ]
+    const upcoming: PostSummary[] = [up('c1', offset(5)), up('c1', offset(2)), up('c1', offset(9))]
     const result = entry({}, upcoming)
     expect(result.nextPostAt).toBe(offset(2))
     expect(result.queuedCount).toBe(3)
@@ -174,11 +175,7 @@ describe('computeRosterEntry — aggregates', () => {
 describe('buildRoster', () => {
   it('joins each client to only its own rows', () => {
     const clients = [client(), client({ id: 'c2', name: 'FlexHome' })]
-    const upcoming: PostSummary[] = [
-      up('c1', offset(1)),
-      up('c2', offset(3)),
-      up('c2', offset(4)),
-    ]
+    const upcoming: PostSummary[] = [up('c1', offset(1)), up('c2', offset(3)), up('c2', offset(4))]
     const approvals: PendingApprovalRow[] = [{ client_id: 'c1', created_at: offset(-4) }]
     const [first, second] = buildRoster(clients, upcoming, approvals, NOW)
 
@@ -208,11 +205,7 @@ describe('summariseRoster', () => {
       client({ id: 'c', name: 'Empty' }),
       client({ id: 'd', name: 'Healthy' }),
     ],
-    [
-      up('a', offset(1)),
-      up('b', offset(1)),
-      up('d', offset(1)),
-    ],
+    [up('a', offset(1)), up('b', offset(1)), up('d', offset(1))],
     [
       { client_id: 'a', created_at: offset(-4) },
       { client_id: 'a', created_at: offset(-2) },
@@ -265,10 +258,7 @@ describe('sortRoster', () => {
       client({ id: 'a', name: 'Ada', social_connections: [] }),
       client({ id: 'm', name: 'Mona' }),
     ],
-    [
-      up('z', offset(1)),
-      up('m', offset(1)),
-    ],
+    [up('z', offset(1)), up('m', offset(1))],
     [],
     NOW
   )

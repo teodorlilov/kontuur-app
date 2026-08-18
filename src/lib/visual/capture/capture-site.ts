@@ -26,7 +26,11 @@ const limiter = createSemaphore(MAX_CONCURRENT)
 const fail = (reason: string): CaptureResult => ({ ok: false, reason, measured: null })
 
 /** One hardened navigation + colour measurement. Never throws — returns `ok:false` on any failure. */
-async function captureOnce(browser: Browser, url: string, navTimeout: number): Promise<CaptureResult> {
+async function captureOnce(
+  browser: Browser,
+  url: string,
+  navTimeout: number
+): Promise<CaptureResult> {
   const page = await browser.newPage()
   try {
     await page.setUserAgent(REALISTIC_UA)

@@ -24,7 +24,10 @@ export function assetTargetFromForm(formData: FormData): AssetTarget {
 
 /** The 400 for a caller-supplied source path outside the verified owner's folder, or null when
  *  it belongs — routes that READ an existing stored file (cutout, inpaint) share this guard. */
-export function foreignStoragePathResponse(clientId: string, storagePath: string): NextResponse | null {
+export function foreignStoragePathResponse(
+  clientId: string,
+  storagePath: string
+): NextResponse | null {
   if (storagePath.startsWith(`${clientId}/`)) return null
   return NextResponse.json({ error: 'storagePath must belong to this client' }, { status: 400 })
 }
@@ -55,7 +58,8 @@ export async function resolveAssetDestination(
     return {
       ok: true,
       clientId: post.client_id,
-      upload: (file, contentType, fileName) => uploadPostImage(file, fileName, contentType, post.client_id, postId),
+      upload: (file, contentType, fileName) =>
+        uploadPostImage(file, fileName, contentType, post.client_id, postId),
     }
   }
   if (target.clientId && target.draftId) {
@@ -65,7 +69,8 @@ export async function resolveAssetDestination(
     return {
       ok: true,
       clientId,
-      upload: (file, contentType, fileName) => uploadDraftAsset(file, contentType, clientId, draftId, fileName),
+      upload: (file, contentType, fileName) =>
+        uploadDraftAsset(file, contentType, clientId, draftId, fileName),
     }
   }
   return { ok: false, status: 400, error: 'postId, or clientId + draftId, is required' }

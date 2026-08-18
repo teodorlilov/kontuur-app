@@ -53,7 +53,8 @@ interface TextNodeAttrs {
 
 // Konva folds this straight into ctx.font, so 'italic', 'italic bold' and 'italic 500' all work.
 function fontStyleFor(node: CanvasTextNode): string {
-  const weight = node.fontWeight === 400 ? '' : node.fontWeight === 700 ? 'bold' : String(node.fontWeight)
+  const weight =
+    node.fontWeight === 400 ? '' : node.fontWeight === 700 ? 'bold' : String(node.fontWeight)
   if (!node.italic) return weight || 'normal'
   return weight ? `italic ${weight}` : 'italic'
 }
@@ -200,7 +201,10 @@ interface ScrimNodeAttrs {
 }
 
 /** Konva attrs for the scrim rect; null when the scrim is disabled. */
-export function scrimNodeAttrs(scrim: CanvasScrim, canvas: { w: number; h: number }): ScrimNodeAttrs | null {
+export function scrimNodeAttrs(
+  scrim: CanvasScrim,
+  canvas: { w: number; h: number }
+): ScrimNodeAttrs | null {
   if (!scrim.enabled) return null
   const bandHeight = scrim.mode === 'full' ? canvas.h : canvas.h * BOTTOM_BAND_RATIO
   return {

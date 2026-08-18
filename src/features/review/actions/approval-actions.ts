@@ -68,11 +68,13 @@ export async function submitApproval(
 
   const postIds = tokenRows.map((r) => r.post_id)
 
-  const { data: postWithClient } = await supabase
+  const { data: postWithClient } = (await supabase
     .from('posts')
     .select('client_id, clients!inner(name, agency_id)')
     .eq('id', postIds[0]!)
-    .single() as { data: { client_id: string; clients: { name: string; agency_id: string } } | null }
+    .single()) as {
+    data: { client_id: string; clients: { name: string; agency_id: string } } | null
+  }
 
   if (postWithClient) {
     const firstNote = notes?.[0]?.note ?? null

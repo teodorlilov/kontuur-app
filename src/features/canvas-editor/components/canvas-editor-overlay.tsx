@@ -486,33 +486,35 @@ function CanvasEditorOverlay(props: CanvasEditorProps) {
     [slidesState]
   )
 
-  useEditorShortcuts({
-    onEscape: escapeLadder,
-    undo: slidesState.undo,
-    redo: slidesState.redo,
-    removeSelected: () => removeNodes(selection.ids),
-    duplicateSelected: () => {
-      if (!assetOps.canAddNode(selection.ids.length)) return
-      const copies = slidesState.duplicateNodes(selection.ids)
-      if (copies.length > 0) selection.selectMany(copies)
+  useEditorShortcuts(
+    {
+      onEscape: escapeLadder,
+      undo: slidesState.undo,
+      redo: slidesState.redo,
+      removeSelected: () => removeNodes(selection.ids),
+      duplicateSelected: () => {
+        if (!assetOps.canAddNode(selection.ids.length)) return
+        const copies = slidesState.duplicateNodes(selection.ids)
+        if (copies.length > 0) selection.selectMany(copies)
+      },
+      nudgeSelected: (dx, dy) => {
+        if (selection.ids.length > 0) slidesState.nudgeNodes(selection.ids, dx, dy)
+      },
+      reorderSelected: (direction, toEdge) => {
+        // Stacking moves one node at a time — with several selected the order between them is
+        // ambiguous, so the primary one moves.
+        if (selection.primaryId) slidesState.moveNode(selection.primaryId, direction, toEdge)
+      },
+      zoomIn: viewport.zoomIn,
+      zoomOut: viewport.zoomOut,
+      fitToScreen: viewport.fit,
+      actualSize: viewport.actualSize,
+      showShortcuts: () => setShowShortcuts(true),
     },
-    nudgeSelected: (dx, dy) => {
-      if (selection.ids.length > 0) slidesState.nudgeNodes(selection.ids, dx, dy)
-    },
-    reorderSelected: (direction, toEdge) => {
-      // Stacking moves one node at a time — with several selected the order between them is
-      // ambiguous, so the primary one moves.
-      if (selection.primaryId) slidesState.moveNode(selection.primaryId, direction, toEdge)
-    },
-    zoomIn: viewport.zoomIn,
-    zoomOut: viewport.zoomOut,
-    fitToScreen: viewport.fit,
-    actualSize: viewport.actualSize,
-    showShortcuts: () => setShowShortcuts(true),
-  },
-  // The editor's own dialogs portal outside this subtree, so the handler's target check cannot see
-  // them. Without this, ⌘Z over an open panel undoes on the canvas behind it.
-  applyingStyle || showShortcuts || confirmingClose)
+    // The editor's own dialogs portal outside this subtree, so the handler's target check cannot see
+    // them. Without this, ⌘Z over an open panel undoes on the canvas behind it.
+    applyingStyle || showShortcuts || confirmingClose
+  )
 
   // The browser's own guard for the tab closing on unsaved work — the in-app ladder only covers
   // the editor's own close paths.
@@ -561,9 +563,7 @@ function CanvasEditorOverlay(props: CanvasEditorProps) {
           void performSave()
         }}
         // One slide has nothing to apply its style to — the same gate the slide strip uses.
-        onApplyStyle={
-          slidesState.positions.length > 1 ? () => setApplyingStyle(true) : undefined
-        }
+        onApplyStyle={slidesState.positions.length > 1 ? () => setApplyingStyle(true) : undefined}
       />
       <div className="flex min-h-0 flex-1">
         <Rail
@@ -625,11 +625,7 @@ function CanvasEditorOverlay(props: CanvasEditorProps) {
               }}
               onAddShape={(kind: CanvasShapeKind) => {
                 if (!assetOps.canAddNode()) return
-                const node = createShapeNode(
-                  kind,
-                  slidesState.doc!.canvas,
-                  identity.palette.accent
-                )
+                const node = createShapeNode(kind, slidesState.doc!.canvas, identity.palette.accent)
                 slidesState.addNode(node)
                 selection.selectOnly(node.id)
               }}
@@ -662,8 +658,9 @@ function CanvasEditorOverlay(props: CanvasEditorProps) {
         </Rail>
 
         <div className="flex min-w-0 flex-1 flex-col">
-          {ready && identity && (
-            mode === 'edit' ? (
+          {ready &&
+            identity &&
+            (mode === 'edit' ? (
               <SelectionToolbar
                 doc={slidesState.doc!}
                 palette={identity.palette}
@@ -707,8 +704,7 @@ function CanvasEditorOverlay(props: CanvasEditorProps) {
                 }}
                 onDone={modeState.exitMode}
               />
-            )
-          )}
+            ))}
 
           <div
             ref={workspaceRef}
@@ -827,8 +823,7 @@ function dirtyNotice(dirtyPositions: number[], slideCount: number): string {
     return 'This slide has edits that are not saved. Closing the editor now throws them away.'
   }
   const named = dirtyPositions.map((position) => position + 1).join(', ')
-  const subject =
-    dirtyPositions.length === 1 ? `Slide ${named} has` : `Slides ${named} have`
+  const subject = dirtyPositions.length === 1 ? `Slide ${named} has` : `Slides ${named} have`
   return `${subject} edits that are not saved. Closing the editor now throws them away.`
 }
 

@@ -215,8 +215,11 @@ export const ScheduleCard = memo(function ScheduleCard({
     [post]
   )
 
-  const { generatingPositions, composingPositions, generate, recompose } =
-    useGenerateVisuals(post?.id ?? '', handleImageUploaded, getSlideCopy)
+  const { generatingPositions, composingPositions, generate, recompose } = useGenerateVisuals(
+    post?.id ?? '',
+    handleImageUploaded,
+    getSlideCopy
+  )
   const [editingPosition, setEditingPosition] = useState<number | null>(null)
 
   if (!isOpen || !post) return null
@@ -440,9 +443,7 @@ export const ScheduleCard = memo(function ScheduleCard({
             ) : (
               // The shared banding. This pill used to split at 9/7 while the sidebar
               // forty pixels away split at 7, so an 8 read amber here and green there.
-              <TagPill {...SCORE_BAND_VARS[scoreBand(score)]}>
-                {score}/10
-              </TagPill>
+              <TagPill {...SCORE_BAND_VARS[scoreBand(score)]}>{score}/10</TagPill>
             )}
             {images.length > 0 && (
               <TagPill bg="rgba(15,21,18,0.06)" color="var(--text2)">

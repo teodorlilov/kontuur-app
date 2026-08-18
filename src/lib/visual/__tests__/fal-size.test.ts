@@ -13,6 +13,9 @@ describe('FAL_IMAGE_SIZE', () => {
   })
 
   it('matches the canvas authoring aspect so the background covers without cropping', () => {
-    expect(FAL_IMAGE_SIZE.width / FAL_IMAGE_SIZE.height).toBeCloseTo(CANVAS_WIDTH / CANVAS_HEIGHT, 10)
+    expect(FAL_IMAGE_SIZE.width / FAL_IMAGE_SIZE.height).toBeCloseTo(
+      CANVAS_WIDTH / CANVAS_HEIGHT,
+      10
+    )
   })
 })

@@ -283,16 +283,7 @@ export function useEditorAiOps({
     } finally {
       setErasing(false)
     }
-  }, [
-    docState,
-    strokes,
-    erasing,
-    selectedAsset,
-    target,
-    activePosition,
-    clearStrokes,
-    ifStillOn,
-  ])
+  }, [docState, strokes, erasing, selectedAsset, target, activePosition, clearStrokes, ifStillOn])
 
   const removeSelectedNodeBackground = useCallback(async () => {
     if (!docState.doc || removingBackground) return

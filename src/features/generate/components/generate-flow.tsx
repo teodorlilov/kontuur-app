@@ -316,7 +316,9 @@ export function GenerateFlow({
           // Releasing the claim lets the next approval retry; until then the idea
           // honestly stays in the inbox, which is what the toast says.
           ideaLinkedRef.current = false
-          toast.error('Post approved, but its idea is still in the inbox — marking it generated failed')
+          toast.error(
+            'Post approved, but its idea is still in the inbox — marking it generated failed'
+          )
         }
       })
     }
@@ -387,11 +389,7 @@ export function GenerateFlow({
 
   if (clients.length === 0) return <NoClientsState />
 
-  const clientMeta = [
-    selectedClient?.niche,
-    selectedClient?.language,
-    preloadedClientData?.tone,
-  ]
+  const clientMeta = [selectedClient?.niche, selectedClient?.language, preloadedClientData?.tone]
     .filter(Boolean)
     .join(' · ')
 

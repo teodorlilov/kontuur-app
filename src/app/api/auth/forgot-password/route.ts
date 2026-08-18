@@ -40,7 +40,10 @@ export async function POST(request: NextRequest) {
   if (!rl.allowed) {
     // 429 regardless of whether the address exists — the same reasoning that closed the
     // enumeration oracle below applies to the throttle telling a caller anything.
-    return NextResponse.json({ error: 'Too many attempts. Please try again later.' }, { status: 429 })
+    return NextResponse.json(
+      { error: 'Too many attempts. Please try again later.' },
+      { status: 429 }
+    )
   }
 
   const parsed = forgotPasswordSchema.safeParse(await request.json().catch(() => null))
@@ -74,7 +77,10 @@ export async function POST(request: NextRequest) {
     console.error('[forgot-password] resetPasswordForEmail failed', {
       message: error.message,
     })
-    return NextResponse.json({ error: 'Could not send the reset email. Try again.' }, { status: 500 })
+    return NextResponse.json(
+      { error: 'Could not send the reset email. Try again.' },
+      { status: 500 }
+    )
   }
 
   return NextResponse.json({ success: true })

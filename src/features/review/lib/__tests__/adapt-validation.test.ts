@@ -36,9 +36,7 @@ describe('toValidationData — rows with the full evidence trail', () => {
   const language = {
     passes: false,
     language_score: 8,
-    issues: [
-      { type: 'calque', original_text: 'a', issue_description: 'b', suggested_fix: 'c' },
-    ],
+    issues: [{ type: 'calque', original_text: 'a', issue_description: 'b', suggested_fix: 'c' }],
   }
   const sourceGrounding = {
     grounded: true,
@@ -82,7 +80,9 @@ describe('deriveSlopFromValidation', () => {
   })
 
   it('derives nothing from an unjudged row', () => {
-    expect(deriveSlopFromValidation({ scores: { ...scores, human_score: null }, criteria })).toBeNull()
+    expect(
+      deriveSlopFromValidation({ scores: { ...scores, human_score: null }, criteria })
+    ).toBeNull()
   })
 })
 

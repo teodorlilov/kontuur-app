@@ -16,10 +16,7 @@ export async function buildPaddedBackground(
   const [canvas, ctx] = createDrawingCanvas(frame)
 
   // Cover-fill the whole frame with the source, then lay the crisp original back over the middle.
-  const coverScale = Math.max(
-    frame.width / frame.sourceWidth,
-    frame.height / frame.sourceHeight
-  )
+  const coverScale = Math.max(frame.width / frame.sourceWidth, frame.height / frame.sourceHeight)
   const coverWidth = frame.sourceWidth * coverScale
   const coverHeight = frame.sourceHeight * coverScale
   ctx.drawImage(

@@ -141,9 +141,11 @@ async function attachDraftImages(
   const rows = (images ?? [])
     .filter(
       (img) =>
-        Number.isInteger(img?.position) && img.position >= 0 &&
+        Number.isInteger(img?.position) &&
+        img.position >= 0 &&
         typeof img.publicUrl === 'string' &&
-        typeof img.storagePath === 'string' && img.storagePath.startsWith(prefix)
+        typeof img.storagePath === 'string' &&
+        img.storagePath.startsWith(prefix)
     )
     .map((img) => ({
       post_id: postId,
@@ -168,7 +170,8 @@ async function relocateDraftDoc(
   clientId: string,
   postId: string
 ): Promise<CanvasDoc> {
-  const background = (await movePostImageObject(doc.background.storagePath, clientId, postId)) ?? doc.background
+  const background =
+    (await movePostImageObject(doc.background.storagePath, clientId, postId)) ?? doc.background
   const nodes = await Promise.all(
     doc.nodes.map(async (node) => {
       // Only a placed asset has a file; text and drawn shapes have nothing to move. An asset

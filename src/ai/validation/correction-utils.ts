@@ -149,9 +149,7 @@ export function applyPostCorrections<T extends SlideText>(
  * `buildStoredValidation` persisted only the verdict. One judge now produces one
  * correction, so there is nothing left to duplicate.
  */
-export function deriveSourceGroundingResult(
-  claims: SourceGroundingIssue[]
-): SourceGroundingResult {
+export function deriveSourceGroundingResult(claims: SourceGroundingIssue[]): SourceGroundingResult {
   const { grounding_score, grounded } = computeGroundingScore({ flagged_claims: claims })
   return { grounded, grounding_score, flagged_claims: claims }
 }

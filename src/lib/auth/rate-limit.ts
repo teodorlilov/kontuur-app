@@ -88,5 +88,8 @@ const VISUALS_RATE_LIMIT: RateLimitConfig = { max: 60, windowMs: 10 * 60_000 }
 export function visualsRateLimitResponse(userId: string): NextResponse | null {
   const rl = checkRateLimit(`visuals:${userId}`, VISUALS_RATE_LIMIT)
   if (rl.allowed) return null
-  return NextResponse.json({ error: 'Too many visual generations. Please wait a few minutes.' }, { status: 429 })
+  return NextResponse.json(
+    { error: 'Too many visual generations. Please wait a few minutes.' },
+    { status: 429 }
+  )
 }

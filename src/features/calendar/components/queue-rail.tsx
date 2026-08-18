@@ -128,7 +128,10 @@ export const QueueRail = memo(function QueueRail({
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search"
               aria-label="Search waiting posts"
-              className={cn(CONTROL_TEXT, 'w-full border-none bg-transparent text-ink outline-none')}
+              className={cn(
+                CONTROL_TEXT,
+                'w-full border-none bg-transparent text-ink outline-none'
+              )}
             />
           </div>
           <button
@@ -172,7 +175,10 @@ export const QueueRail = memo(function QueueRail({
                 <ChevronDown
                   size={12}
                   aria-hidden="true"
-                  className={cn('transition-transform duration-150 ease-contour', open && 'rotate-180')}
+                  className={cn(
+                    'transition-transform duration-150 ease-contour',
+                    open && 'rotate-180'
+                  )}
                 />
               </button>
             )}

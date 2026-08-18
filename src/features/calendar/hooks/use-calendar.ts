@@ -231,7 +231,13 @@ export function useCalendar(initialPosts: CalendarPost[], timeZone: string) {
       runPostMutation({
         postId,
         run: () => rearmFailedPost(postId, { scheduledAt }),
-        patch: (p) => ({ ...p, status: 'scheduled', scheduled_at: scheduledAt, publish_error: null, publish_attempts: 0 }),
+        patch: (p) => ({
+          ...p,
+          status: 'scheduled',
+          scheduled_at: scheduledAt,
+          publish_error: null,
+          publish_attempts: 0,
+        }),
         successMessage: 'Back in the publish queue',
         failureMessage: 'Could not retry this post',
       }),
@@ -348,14 +354,18 @@ export function useCalendar(initialPosts: CalendarPost[], timeZone: string) {
    *  completions (bulk visual generation) never clobber each other via stale snapshots. */
   const upsertPostImage = useCallback((postId: string, image: PostImage) => {
     setPosts((prev) =>
-      prev.map((p) => (p.id === postId ? { ...p, images: upsertImageAtPosition(p.images, image) } : p))
+      prev.map((p) =>
+        p.id === postId ? { ...p, images: upsertImageAtPosition(p.images, image) } : p
+      )
     )
   }, [])
 
   /** Remove one image from a post's images in local state. */
   const removePostImage = useCallback((postId: string, imageId: string) => {
     setPosts((prev) =>
-      prev.map((p) => (p.id === postId ? { ...p, images: p.images.filter((img) => img.id !== imageId) } : p))
+      prev.map((p) =>
+        p.id === postId ? { ...p, images: p.images.filter((img) => img.id !== imageId) } : p
+      )
     )
   }, [])
 
@@ -364,9 +374,7 @@ export function useCalendar(initialPosts: CalendarPost[], timeZone: string) {
     const now = new Date().toISOString()
     setPosts((prev) =>
       prev.map((p) =>
-        p.id === postId
-          ? { ...p, status: 'published', scheduled_at: p.scheduled_at ?? now }
-          : p
+        p.id === postId ? { ...p, status: 'published', scheduled_at: p.scheduled_at ?? now } : p
       )
     )
     toast.success('Post published to Instagram')

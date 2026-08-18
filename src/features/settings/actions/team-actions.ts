@@ -73,7 +73,10 @@ export async function removeTeamMember(userId: string): Promise<ActionResult> {
   // belongs to no workspace, which is worth logging but not worth failing the action over.
   const { error: authError } = await admin.auth.admin.deleteUser(userId)
   if (authError) {
-    console.error(`[team:remove] user row deleted but auth account remains for ${userId}:`, authError.message)
+    console.error(
+      `[team:remove] user row deleted but auth account remains for ${userId}:`,
+      authError.message
+    )
   }
 
   // The removed member's agency and role are cached for five minutes; without this their session

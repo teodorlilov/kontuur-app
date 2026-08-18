@@ -38,7 +38,10 @@ export async function fetchWebsiteSource(
       return { markdown: '', error: 'No readable content found' }
     }
 
-    const text = article.textContent.trim().replace(/\n{3,}/g, '\n\n').slice(0, 8000)
+    const text = article.textContent
+      .trim()
+      .replace(/\n{3,}/g, '\n\n')
+      .slice(0, 8000)
     if (text.length < MIN_CONTENT_LENGTH) return { markdown: '', error: 'Content too short' }
 
     return { markdown: text }

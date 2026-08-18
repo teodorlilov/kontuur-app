@@ -68,7 +68,10 @@ export async function generateCarousel(
     outputSchema,
     maxTokens: 4096,
   })
-  const raw = extractToolInput<{ main_caption?: string; slides?: Array<{ headline?: string; body?: string }> }>(message, outputSchema)
+  const raw = extractToolInput<{
+    main_caption?: string
+    slides?: Array<{ headline?: string; body?: string }>
+  }>(message, outputSchema)
   // Same unenforced-schema guard as reviseCarousel below: a truncated tool call
   // can omit either field, and destructuring it blind threw an opaque TypeError.
   if (typeof raw.main_caption !== 'string' || !Array.isArray(raw.slides)) {

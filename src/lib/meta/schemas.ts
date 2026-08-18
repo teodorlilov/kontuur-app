@@ -60,7 +60,9 @@ export const fbPagesResponseSchema = z.looseObject({
 
 export const fbBusinessPagesResponseSchema = z.looseObject({
   data: z
-    .array(z.looseObject({ owned_pages: z.looseObject({ data: z.array(fbPageSchema) }).optional() }))
+    .array(
+      z.looseObject({ owned_pages: z.looseObject({ data: z.array(fbPageSchema) }).optional() })
+    )
     .optional(),
 })
 

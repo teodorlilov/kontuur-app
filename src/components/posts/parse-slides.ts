@@ -5,7 +5,8 @@ export function parseSlides(raw: unknown): CarouselSlide[] {
   if (!Array.isArray(raw)) return []
   return raw.filter(
     (slide): slide is CarouselSlide =>
-      !!slide && typeof slide === 'object' &&
+      !!slide &&
+      typeof slide === 'object' &&
       typeof (slide as CarouselSlide).headline === 'string' &&
       typeof (slide as CarouselSlide).body === 'string'
   )

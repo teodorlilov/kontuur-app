@@ -45,7 +45,8 @@ const nextConfig: NextConfig = {
           // dependency cannot quietly start asking on a page the user already trusts.
           {
             key: 'Permissions-Policy',
-            value: 'camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()',
+            value:
+              'camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()',
           },
         ],
       },

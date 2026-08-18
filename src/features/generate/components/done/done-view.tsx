@@ -57,9 +57,7 @@ export function DoneView({
         <Check aria-hidden className="size-7" strokeWidth={2} />
       </div>
       <h1 className="font-display text-prompt text-ink [text-wrap:balance]">
-        {nothingKept
-          ? 'Nothing kept this time'
-          : `${pluralise(approvedCount, 'post')} approved`}
+        {nothingKept ? 'Nothing kept this time' : `${pluralise(approvedCount, 'post')} approved`}
       </h1>
       <p className="mt-3 text-lead text-text2">
         {nothingKept

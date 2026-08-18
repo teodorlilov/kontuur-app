@@ -9,11 +9,7 @@
 
 import { LANGUAGE_PASS_THRESHOLD, REWRITE_SCORE_THRESHOLD } from '@/lib/content-rules/constants'
 import { LANGUAGE_ISSUE_WEIGHTS } from '@/ai/validation/criteria'
-import type {
-  SlopDetection,
-  LanguageIssueType,
-  SourceGroundingIssue,
-} from '@/ai/validation/types'
+import type { SlopDetection, LanguageIssueType, SourceGroundingIssue } from '@/ai/validation/types'
 
 // ---------------------------------------------------------------------------
 // Language scoring

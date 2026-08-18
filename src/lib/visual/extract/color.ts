@@ -5,7 +5,13 @@ const clamp = (n: number, min: number, max: number) => Math.min(max, Math.max(mi
 /** Parse `#rgb` / `#rrggbb` (with or without `#`) to RGB, or null if it isn't a plain hex colour. */
 export function parseHex(input: string): Rgb | null {
   const hex = input.trim().replace(/^#/, '')
-  const full = hex.length === 3 ? hex.split('').map((c) => c + c).join('') : hex
+  const full =
+    hex.length === 3
+      ? hex
+          .split('')
+          .map((c) => c + c)
+          .join('')
+      : hex
   if (!/^[0-9a-f]{6}$/i.test(full)) return null
   return {
     r: parseInt(full.slice(0, 2), 16),
@@ -29,7 +35,10 @@ export function parseCssColor(input: string): Rgb | null {
 
 /** RGB → uppercase `#rrggbb`. */
 export function toHex({ r, g, b }: Rgb): string {
-  const h = (n: number) => Math.round(clamp(n, 0, 255)).toString(16).padStart(2, '0')
+  const h = (n: number) =>
+    Math.round(clamp(n, 0, 255))
+      .toString(16)
+      .padStart(2, '0')
   return `#${h(r)}${h(g)}${h(b)}`.toUpperCase()
 }
 

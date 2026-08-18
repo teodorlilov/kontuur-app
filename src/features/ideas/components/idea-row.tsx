@@ -75,9 +75,7 @@ export function IdeaRow({
             {idea.ideaText}
           </button>
           {idea.extraNotes && (
-            <span className="mt-0.5 block truncate text-caption text-text3">
-              {idea.extraNotes}
-            </span>
+            <span className="mt-0.5 block truncate text-caption text-text3">{idea.extraNotes}</span>
           )}
         </span>
       </td>

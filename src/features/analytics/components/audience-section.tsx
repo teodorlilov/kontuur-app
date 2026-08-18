@@ -1,7 +1,11 @@
 'use client'
 
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
-import { CHART_COLORS, CHART_AXIS_PROPS, CHART_TOOLTIP_STYLE } from '@/features/analytics/lib/chart-config'
+import {
+  CHART_COLORS,
+  CHART_AXIS_PROPS,
+  CHART_TOOLTIP_STYLE,
+} from '@/features/analytics/lib/chart-config'
 import type { AnalyticsMetrics } from '@/types/api'
 
 interface AudienceSectionProps {

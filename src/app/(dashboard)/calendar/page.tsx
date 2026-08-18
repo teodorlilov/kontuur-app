@@ -29,9 +29,9 @@ export default async function CalendarPage() {
 
   const [{ data: clientRows }, { data: postRows }] = await Promise.all([
     supabase
-          .from('clients')
-          .select('id, name, contact_email, brand_profiles(best_time_json)')
-          .eq('agency_id', agencyId),
+      .from('clients')
+      .select('id, name, contact_email, brand_profiles(best_time_json)')
+      .eq('agency_id', agencyId),
     clientIds.length > 0
       ? supabase
           .from('posts')
@@ -96,9 +96,7 @@ export default async function CalendarPage() {
     // `created_at` is nullable in the schema, and this called `.localeCompare` on it
     // directly — a row inserted without one would have thrown the whole page. It has a
     // default, so nothing has hit it; the type was hiding that it could.
-    return tokens
-      .slice()
-      .sort((a, b) => (b.created_at ?? '').localeCompare(a.created_at ?? ''))[0]
+    return tokens.slice().sort((a, b) => (b.created_at ?? '').localeCompare(a.created_at ?? ''))[0]
   }
 
   const clientNameMap = new Map(clientList.map((c) => [c.id, c.name]))

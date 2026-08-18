@@ -52,9 +52,7 @@ export const updatePostSchema = z
  */
 export type UpdatePostInput = z.infer<typeof updatePostSchema>
 
-type PostUpdateParse =
-  | { ok: true; updates: Record<string, unknown> }
-  | { ok: false; error: string }
+type PostUpdateParse = { ok: true; updates: Record<string, unknown> } | { ok: false; error: string }
 
 /** Primitives can be shown back to the caller verbatim; an object cannot. */
 function shows(value: unknown): boolean {

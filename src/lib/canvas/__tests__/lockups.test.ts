@@ -78,7 +78,8 @@ function doc(nodes: CanvasDoc['nodes']): CanvasDoc {
 }
 
 /** A doc with the two copy nodes every lockup expects to find. */
-const copyDoc = () => doc([textNode('headline', 'Five ways to grow'), textNode('body', 'Supporting line')])
+const copyDoc = () =>
+  doc([textNode('headline', 'Five ways to grow'), textNode('body', 'Supporting line')])
 
 /**
  * Ids the way the editor mints them — sequential and deterministic, so assertions can name them.
@@ -137,8 +138,14 @@ describe('the catalogue', () => {
           if (member.kind === 'line') {
             expect(member.height, `${lockup.id} rule is a hairline`).toBeLessThanOrEqual(8)
           } else {
-            expect(member.height, `${lockup.id} block clears the resize floor`).toBeGreaterThanOrEqual(40)
-            expect(member.width, `${lockup.id} block clears the resize floor`).toBeGreaterThanOrEqual(40)
+            expect(
+              member.height,
+              `${lockup.id} block clears the resize floor`
+            ).toBeGreaterThanOrEqual(40)
+            expect(
+              member.width,
+              `${lockup.id} block clears the resize floor`
+            ).toBeGreaterThanOrEqual(40)
           }
         }
       }
@@ -165,8 +172,13 @@ describe('the line budget', () => {
       for (const lockup of LOCKUPS) {
         const { headline, body } = lockup.copy(context)
         const headlineFloor = headline.y < body.y ? body.y : TEXT_FLOOR
-        expect(textBottom(headline, slotLines(headline, headlineFloor)), lockup.id).toBeLessThanOrEqual(headlineFloor)
-        expect(textBottom(body, slotLines(body, TEXT_FLOOR)), lockup.id).toBeLessThanOrEqual(TEXT_FLOOR)
+        expect(
+          textBottom(headline, slotLines(headline, headlineFloor)),
+          lockup.id
+        ).toBeLessThanOrEqual(headlineFloor)
+        expect(textBottom(body, slotLines(body, TEXT_FLOOR)), lockup.id).toBeLessThanOrEqual(
+          TEXT_FLOOR
+        )
       }
     }
   })
@@ -196,7 +208,9 @@ describe('the line budget', () => {
     const block = field.members(ctx).find((m) => m.kind === 'rect')
     if (!block || block.kind !== 'rect') throw new Error('field is defined by its colour block')
     const { headline } = field.copy(ctx)
-    expect(slotLines(headline, block.y + block.height)).toBeLessThan(slotLines(headline, TEXT_FLOOR))
+    expect(slotLines(headline, block.y + block.height)).toBeLessThan(
+      slotLines(headline, TEXT_FLOOR)
+    )
     expect(lockupCapacity(field, ctx).headline).toBeGreaterThan(0)
   })
 
@@ -231,9 +245,10 @@ describe('the line budget', () => {
           ...lockup.members(context).map((m, i) => [`member${i}`, m] as const),
         ]
         for (const [name, box] of boxes) {
-          const visible =
-            Math.min(box.x + box.width, CANVAS_WIDTH) - Math.max(box.x, 0)
-          expect(visible / box.width, `${lockup.id}.${name} is mostly off-canvas`).toBeGreaterThan(0.66)
+          const visible = Math.min(box.x + box.width, CANVAS_WIDTH) - Math.max(box.x, 0)
+          expect(visible / box.width, `${lockup.id}.${name} is mostly off-canvas`).toBeGreaterThan(
+            0.66
+          )
           expect(box.y, `${lockup.id}.${name}`).toBeGreaterThanOrEqual(0)
         }
       }
@@ -263,7 +278,9 @@ describe('the line budget', () => {
 describe('font claims', () => {
   const everyTextBox = (context: LockupContext) =>
     LOCKUPS.flatMap((lockup) => [
-      ...Object.entries(lockup.copy(context)).map(([role, node]) => [lockup.id, role, node] as const),
+      ...Object.entries(lockup.copy(context)).map(
+        ([role, node]) => [lockup.id, role, node] as const
+      ),
       ...lockup
         .members(context)
         .filter((m) => m.kind === 'text')
@@ -283,9 +300,10 @@ describe('font claims', () => {
       for (const [id, role, node] of everyTextBox(context)) {
         const entry = getFontEntry(node.fontFamily)
         expect(entry, `${id}.${role} uses ${node.fontFamily}`).not.toBeNull()
-        expect(entry!.weights, `${id}.${role}: ${node.fontFamily} has no ${node.fontWeight}`).toContain(
-          node.fontWeight
-        )
+        expect(
+          entry!.weights,
+          `${id}.${role}: ${node.fontFamily} has no ${node.fontWeight}`
+        ).toContain(node.fontWeight)
       }
     }
   })
@@ -321,7 +339,9 @@ describe('font claims', () => {
 describe('applyLockup', () => {
   it('restyles the copy without touching its words', () => {
     const after = apply(copyDoc(), 'field')
-    const headline = after.nodes.find((n) => isTextNode(n) && n.role === 'headline') as CanvasTextNode
+    const headline = after.nodes.find(
+      (n) => isTextNode(n) && n.role === 'headline'
+    ) as CanvasTextNode
     expect(headline.text).toBe('Five ways to grow')
     expect(headline.align).toBe('left')
     expect(headline.fontSize).toBe(100)
@@ -343,7 +363,9 @@ describe('applyLockup', () => {
     const second = apply(first, 'tip')
     expect(second.nodes.filter(isLockupOwned)).toHaveLength(1)
     // And the copy nodes are still exactly two — nothing was duplicated or dropped.
-    expect(second.nodes.filter((n) => isTextNode(n) && n.role !== 'kicker' && n.role !== 'tagline')).toHaveLength(2)
+    expect(
+      second.nodes.filter((n) => isTextNode(n) && n.role !== 'kicker' && n.role !== 'tagline')
+    ).toHaveLength(2)
   })
 
   it('is byte-identical when re-applied, so it costs no undo step', () => {
@@ -390,7 +412,9 @@ describe('applyLockup', () => {
   })
 
   it('numbers an index from the slide it is applied to', () => {
-    const after = applyLockup(copyDoc(), 'index', { ...ctx, slide: { position: 4, total: 9 } }, ['k'])
+    const after = applyLockup(copyDoc(), 'index', { ...ctx, slide: { position: 4, total: 9 } }, [
+      'k',
+    ])
     const kicker = after.nodes.find((n) => isTextNode(n) && n.role === 'kicker') as CanvasTextNode
     expect(kicker.text).toBe('05')
   })
@@ -451,7 +475,9 @@ describe('node ids', () => {
     const trimmed = promotedDoc()
     const hero = trimmed.nodes.find((n) => isTextNode(n) && n.role === 'hero') as CanvasTextNode
     const after = apply(trimmed, 'editorial')
-    const headline = after.nodes.find((n) => isTextNode(n) && n.role === 'headline') as CanvasTextNode
+    const headline = after.nodes.find(
+      (n) => isTextNode(n) && n.role === 'headline'
+    ) as CanvasTextNode
     expect(headline.id).toBe(hero.id)
     expect(headline.text).toBe('Five')
     expect(after.nodes.filter(isLockupOwned).length).toBe(lockupMemberCount('editorial', ctx))
@@ -461,7 +487,6 @@ describe('node ids', () => {
 const HERO_LOCKUPS = ['headliner', 'duet'] as const
 
 describe('the hero split', () => {
-
   it('takes the FIRST word, never a rearrangement', () => {
     expect(splitHero('Five ways to grow')).toEqual({ hero: 'Five', rest: 'ways to grow' })
     expect(splitHero('  Пет  начина да растеш ')).toEqual({ hero: 'Пет', rest: 'начина да растеш' })
@@ -486,7 +511,9 @@ describe('the hero split', () => {
     const original = (before.nodes[0] as CanvasTextNode).text
     const withHero = apply(before, 'headliner')
     const flat = apply(withHero, 'editorial')
-    const headline = flat.nodes.find((n) => isTextNode(n) && n.role === 'headline') as CanvasTextNode
+    const headline = flat.nodes.find(
+      (n) => isTextNode(n) && n.role === 'headline'
+    ) as CanvasTextNode
     expect(headline.text).toBe(original)
     expect(flat.nodes.some((n) => isTextNode(n) && n.role === 'hero')).toBe(false)
   })
@@ -541,7 +568,9 @@ describe('the hero split', () => {
       ),
     }
     const flat = apply(edited, 'stack')
-    const headline = flat.nodes.find((n) => isTextNode(n) && n.role === 'headline') as CanvasTextNode
+    const headline = flat.nodes.find(
+      (n) => isTextNode(n) && n.role === 'headline'
+    ) as CanvasTextNode
     expect(headline.text).toBe('Seven ways to grow')
     expect(headline.textOverridden).toBe(true)
   })
@@ -624,7 +653,10 @@ describe('the hero split', () => {
   it('rejoins every hero, not just the first', () => {
     const withHero = apply(copyDoc(), 'headliner')
     const hero = withHero.nodes.find((n) => isTextNode(n) && n.role === 'hero') as CanvasTextNode
-    const twin = { ...withHero, nodes: [...withHero.nodes, { ...hero, id: 'hero-2', text: 'WAYS' }] }
+    const twin = {
+      ...withHero,
+      nodes: [...withHero.nodes, { ...hero, id: 'hero-2', text: 'WAYS' }],
+    }
     expect(slideCopy(twin).headline).toBe('Five WAYS ways to grow')
   })
 
@@ -637,14 +669,19 @@ describe('the hero split', () => {
       ),
     }
     const flat = apply(hidden, 'stack')
-    const headline = flat.nodes.find((n) => isTextNode(n) && n.role === 'headline') as CanvasTextNode
+    const headline = flat.nodes.find(
+      (n) => isTextNode(n) && n.role === 'headline'
+    ) as CanvasTextNode
     expect(headline.hidden).toBeUndefined()
   })
 
   it('writes the rejoined sentence into only the FIRST headline node', () => {
     const base = copyDoc()
     const headline = base.nodes[0] as CanvasTextNode
-    const twin = { ...base, nodes: [...base.nodes, { ...headline, id: 'h2', text: 'Sale ends Friday' }] }
+    const twin = {
+      ...base,
+      nodes: [...base.nodes, { ...headline, id: 'h2', text: 'Sale ends Friday' }],
+    }
     const after = apply(twin, 'stack')
     const second = after.nodes.find((n) => n.id === 'h2') as CanvasTextNode
     expect(second.text).toBe('Sale ends Friday')
@@ -707,7 +744,9 @@ describe('slot capacity', () => {
 
     // ...and switching back to a flat lockup has nothing stale to glue on.
     const flat = apply(retyped, 'editorial')
-    const headline = flat.nodes.find((n) => isTextNode(n) && n.role === 'headline') as CanvasTextNode
+    const headline = flat.nodes.find(
+      (n) => isTextNode(n) && n.role === 'headline'
+    ) as CanvasTextNode
     expect(headline.text).toBe('Новата Формула')
     expect(headline.textOverridden).toBe(true)
   })
@@ -731,7 +770,9 @@ describe('slot capacity', () => {
     // and blanked duplicate heroes on top of it, leaving layers that draw nothing.
     const withHero = apply(copyDoc(), 'headliner')
     const hero = withHero.nodes.find((n) => isTextNode(n) && n.role === 'hero') as CanvasTextNode
-    const head = withHero.nodes.find((n) => isTextNode(n) && n.role === 'headline') as CanvasTextNode
+    const head = withHero.nodes.find(
+      (n) => isTextNode(n) && n.role === 'headline'
+    ) as CanvasTextNode
     const duplicated = {
       ...withHero,
       nodes: [
@@ -825,7 +866,10 @@ describe('catalogue variety', () => {
       const { headline, body } = l.copy(ctx)
       return body.y < headline.y
     })
-    expect(above.length, 'no layout puts its supporting line above the headline').toBeGreaterThanOrEqual(2)
+    expect(
+      above.length,
+      'no layout puts its supporting line above the headline'
+    ).toBeGreaterThanOrEqual(2)
   })
 
   it('hangs type on more than one axis', () => {

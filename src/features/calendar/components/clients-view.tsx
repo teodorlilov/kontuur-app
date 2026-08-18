@@ -103,12 +103,7 @@ export const ClientsView = memo(function ClientsView({
       </div>
 
       {rows.map(({ client, coverage }) => (
-        <ClientWeekRow
-          key={client.id}
-          name={client.name}
-          coverage={coverage}
-          timeZone={timeZone}
-        />
+        <ClientWeekRow key={client.id} name={client.name} coverage={coverage} timeZone={timeZone} />
       ))}
     </div>
   )

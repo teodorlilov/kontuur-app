@@ -33,7 +33,7 @@
       --doc-bad-bg: #2a1714;
     }
   }
-  :root[data-theme="dark"] {
+  :root[data-theme='dark'] {
     --doc-bg: #0e1411;
     --doc-surface: #151d19;
     --doc-ink: #eef2ee;
@@ -47,7 +47,7 @@
     --doc-bad: #e08e7c;
     --doc-bad-bg: #2a1714;
   }
-  :root[data-theme="light"] {
+  :root[data-theme='light'] {
     --doc-bg: #f7f8f5;
     --doc-surface: #ffffff;
     --doc-ink: #101613;
@@ -85,26 +85,39 @@
     --pending: #8a6116;
     --pending-bg: #f7efdc;
     --ease: cubic-bezier(0.22, 1, 0.36, 1);
-    --font: "Geist", -apple-system, "Segoe UI", Arial, sans-serif;
-    --serif: "Instrument Serif", Georgia, serif;
+    --font: 'Geist', -apple-system, 'Segoe UI', Arial, sans-serif;
+    --serif: 'Instrument Serif', Georgia, serif;
   }
 
-  * { box-sizing: border-box; }
+  * {
+    box-sizing: border-box;
+  }
 
   body {
     margin: 0;
     background: var(--doc-bg);
     color: var(--doc-ink);
-    font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+    font-family: -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
     font-size: 15px;
     line-height: 1.65;
     -webkit-font-smoothing: antialiased;
   }
 
-  .wrap { max-width: 1180px; margin: 0 auto; padding: 56px 24px 96px; }
-  .prose { max-width: 68ch; }
+  .wrap {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 56px 24px 96px;
+  }
+  .prose {
+    max-width: 68ch;
+  }
 
-  h1, h2, h3 { text-wrap: balance; margin: 0; }
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+    margin: 0;
+  }
   h1 {
     font-family: Georgia, serif;
     font-style: italic;
@@ -113,22 +126,58 @@
     line-height: 1.08;
     letter-spacing: -0.015em;
   }
-  h2 { font-size: 22px; font-weight: 600; letter-spacing: -0.02em; }
-  p { margin: 0; }
-  .lede { font-size: 17px; color: var(--doc-ink2); line-height: 1.6; margin-top: 18px; }
-  .stack { display: flex; flex-direction: column; }
-  .g24 { gap: 24px; }
-  .g12 { gap: 12px; }
-  .g8  { gap: 8px; }
+  h2 {
+    font-size: 22px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+  }
+  p {
+    margin: 0;
+  }
+  .lede {
+    font-size: 17px;
+    color: var(--doc-ink2);
+    line-height: 1.6;
+    margin-top: 18px;
+  }
+  .stack {
+    display: flex;
+    flex-direction: column;
+  }
+  .g24 {
+    gap: 24px;
+  }
+  .g12 {
+    gap: 12px;
+  }
+  .g8 {
+    gap: 8px;
+  }
 
-  section { scroll-margin-top: 24px; margin-top: 64px; }
+  section {
+    scroll-margin-top: 24px;
+    margin-top: 64px;
+  }
 
-  .rule { height: 1px; background: var(--doc-line); border: 0; margin: 0; }
+  .rule {
+    height: 1px;
+    background: var(--doc-line);
+    border: 0;
+    margin: 0;
+  }
 
-  .sechead { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; }
+  .sechead {
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+    flex-wrap: wrap;
+  }
   .sechead .n {
-    font-size: 11px; font-weight: 600; letter-spacing: 0.16em;
-    color: var(--doc-ink3); font-variant-numeric: tabular-nums;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.16em;
+    color: var(--doc-ink3);
+    font-variant-numeric: tabular-nums;
   }
 
   code {
@@ -142,26 +191,57 @@
   }
 
   /* ─── Diagnosis cards ─────────────────────────────────────────────── */
-  .findings { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(268px, 1fr)); }
+  .findings {
+    display: grid;
+    gap: 12px;
+    grid-template-columns: repeat(auto-fit, minmax(268px, 1fr));
+  }
   .finding {
     background: var(--doc-surface);
     border: 1px solid var(--doc-line);
     border-radius: 14px;
     padding: 18px 20px 20px;
-    display: flex; flex-direction: column; gap: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
   }
-  .finding h3 { font-size: 14px; line-height: 1.4; }
-  .finding p { font-size: 13.5px; color: var(--doc-ink2); line-height: 1.6; }
-  .finding code { white-space: nowrap; }
+  .finding h3 {
+    font-size: 14px;
+    line-height: 1.4;
+  }
+  .finding p {
+    font-size: 13.5px;
+    color: var(--doc-ink2);
+    line-height: 1.6;
+  }
+  .finding code {
+    white-space: nowrap;
+  }
   .sev {
     align-self: flex-start;
-    font-size: 11px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase;
-    padding: 3px 8px; border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: 999px;
   }
-  .sev.bad  { background: var(--doc-bad-bg); color: var(--doc-bad); }
-  .sev.warn { background: var(--doc-flag-bg); color: var(--doc-flag); }
-  .sev.info { background: var(--doc-accent-soft); color: var(--doc-accent); }
-  .sev.done { background: var(--doc-accent-soft); color: var(--doc-accent); }
+  .sev.bad {
+    background: var(--doc-bad-bg);
+    color: var(--doc-bad);
+  }
+  .sev.warn {
+    background: var(--doc-flag-bg);
+    color: var(--doc-flag);
+  }
+  .sev.info {
+    background: var(--doc-accent-soft);
+    color: var(--doc-accent);
+  }
+  .sev.done {
+    background: var(--doc-accent-soft);
+    color: var(--doc-accent);
+  }
 
   /* ─── Decision blocks ─────────────────────────────────────────────── */
   .call {
@@ -170,19 +250,37 @@
     border-left: 3px solid var(--doc-accent);
     border-radius: 0 14px 14px 0;
     padding: 18px 22px 20px;
-    display: flex; flex-direction: column; gap: 9px;
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
   }
-  .call h3 { font-size: 15px; }
-  .call p { font-size: 14px; color: var(--doc-ink2); line-height: 1.62; }
+  .call h3 {
+    font-size: 15px;
+  }
+  .call p {
+    font-size: 14px;
+    color: var(--doc-ink2);
+    line-height: 1.62;
+  }
   .call .rec {
-    font-size: 13px; color: var(--doc-ink);
+    font-size: 13px;
+    color: var(--doc-ink);
     background: var(--doc-accent-soft);
-    border-radius: 8px; padding: 8px 12px;
+    border-radius: 8px;
+    padding: 8px 12px;
     align-self: flex-start;
   }
 
-  ul.plain { margin: 0; padding-left: 20px; }
-  ul.plain li { font-size: 14px; color: var(--doc-ink2); line-height: 1.62; margin-bottom: 6px; }
+  ul.plain {
+    margin: 0;
+    padding-left: 20px;
+  }
+  ul.plain li {
+    font-size: 14px;
+    color: var(--doc-ink2);
+    line-height: 1.62;
+    margin-bottom: 6px;
+  }
 
   /* ─── Mock frame ──────────────────────────────────────────────────── */
   .framewrap {
@@ -193,8 +291,10 @@
     padding: 14px;
   }
   .framecap {
-    font-size: 12.5px; color: var(--doc-ink3);
-    margin-top: 10px; text-align: center;
+    font-size: 12.5px;
+    color: var(--doc-ink3);
+    margin-top: 10px;
+    text-align: center;
   }
   .kontuur {
     min-width: 1080px;
@@ -203,52 +303,86 @@
     background: var(--paper);
     border-radius: 10px;
     overflow: hidden;
-    box-shadow: 0 1px 2px rgba(15,21,18,0.05), 0 20px 48px -22px rgba(15,21,18,0.28);
+    box-shadow:
+      0 1px 2px rgba(15, 21, 18, 0.05),
+      0 20px 48px -22px rgba(15, 21, 18, 0.28);
     display: grid;
     grid-template-columns: 186px 1fr;
     height: 720px;
     font-size: 13px;
     line-height: 1.6;
   }
-  .kontuur.short { height: 420px; }
+  .kontuur.short {
+    height: 420px;
+  }
 
   /* sidebar */
   .k-rail {
     background: var(--surface);
     border-right: 1px solid var(--line);
     padding: 18px 12px;
-    display: flex; flex-direction: column; gap: 22px;
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
   }
   .k-mark {
-    font-family: var(--serif); font-style: italic; font-size: 18px;
-    color: var(--forest); padding: 0 8px;
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 18px;
+    color: var(--forest);
+    padding: 0 8px;
   }
   .k-navlabel {
-    font-size: 10px; font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase;
-    color: var(--text3); padding: 0 8px 6px;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--text3);
+    padding: 0 8px 6px;
   }
-  .k-nav { display: flex; flex-direction: column; gap: 1px; }
+  .k-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+  }
   .k-navitem {
-    display: flex; align-items: center; gap: 9px;
-    padding: 7px 9px; border-radius: 8px;
-    color: var(--text2); font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 7px 9px;
+    border-radius: 8px;
+    color: var(--text2);
+    font-size: 13px;
   }
   /* The lime plate: New Growth ground carrying Pine Deep. One per band. */
   .k-navitem[aria-current] {
     background: var(--accent);
     color: var(--forest-deep);
     font-weight: 500;
-    box-shadow: inset 0 0 0 1px rgba(12,46,32,0.45);
+    box-shadow: inset 0 0 0 1px rgba(12, 46, 32, 0.45);
   }
   .k-count {
-    margin-left: auto; font-size: 11px; font-weight: 600; letter-spacing: 0.06em;
-    background: var(--wash); color: var(--forest); padding: 1px 6px; border-radius: 999px;
+    margin-left: auto;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    background: var(--wash);
+    color: var(--forest);
+    padding: 1px 6px;
+    border-radius: 999px;
     font-variant-numeric: tabular-nums;
   }
-  .k-navitem[aria-current] .k-count { background: var(--forest-deep); color: var(--accent); }
+  .k-navitem[aria-current] .k-count {
+    background: var(--forest-deep);
+    color: var(--accent);
+  }
 
   /* main */
-  .k-main { display: flex; flex-direction: column; min-width: 0; }
+  .k-main {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
 
   .k-head {
     background: var(--paper);
@@ -257,91 +391,212 @@
     flex: none;
   }
   .k-crumb {
-    display: flex; align-items: center; justify-content: space-between;
-    height: 40px; font-size: 12px; color: var(--text3);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 40px;
+    font-size: 12px;
+    color: var(--text3);
   }
-  .k-crumb b { font-weight: 500; color: var(--text2); }
-  .k-tools { display: flex; align-items: center; gap: 4px; }
+  .k-crumb b {
+    font-weight: 500;
+    color: var(--text2);
+  }
+  .k-tools {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
   .k-tool {
-    display: inline-flex; align-items: center; gap: 5px;
-    font-size: 12px; color: var(--text2);
-    padding: 4px 8px; border-radius: 8px; background: none; border: 0;
-    font-family: inherit; cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 12px;
+    color: var(--text2);
+    padding: 4px 8px;
+    border-radius: 8px;
+    background: none;
+    border: 0;
+    font-family: inherit;
+    cursor: pointer;
   }
-  .k-tool:hover { background: rgba(15,21,18,0.05); color: var(--ink); }
+  .k-tool:hover {
+    background: rgba(15, 21, 18, 0.05);
+    color: var(--ink);
+  }
 
   .k-titlerow {
-    display: flex; align-items: flex-end; justify-content: space-between;
-    gap: 24px; padding-bottom: 14px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 24px;
+    padding-bottom: 14px;
   }
   .k-title {
-    font-size: 22px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.25;
-    display: flex; align-items: center; gap: 10px; margin: 0;
+    font-size: 22px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    line-height: 1.25;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0;
   }
   .k-titlecount {
-    font-size: 12px; font-weight: 600; letter-spacing: 0.02em;
-    background: var(--wash); color: var(--forest);
-    padding: 2px 8px; border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    background: var(--wash);
+    color: var(--forest);
+    padding: 2px 8px;
+    border-radius: 999px;
     font-variant-numeric: tabular-nums;
   }
   .k-meta {
-    display: flex; align-items: center; gap: 9px; flex-wrap: wrap;
-    font-size: 12px; color: var(--text3); margin-top: 3px;
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    flex-wrap: wrap;
+    font-size: 12px;
+    color: var(--text3);
+    margin-top: 3px;
     min-height: 22px;
   }
-  .k-meta .dotsep { color: var(--line2); }
-  .k-flag {
-    display: inline-flex; align-items: center; gap: 5px;
-    font-size: 11px; font-weight: 500;
-    background: var(--pending-bg); color: var(--pending);
-    padding: 1px 7px; border-radius: 999px;
+  .k-meta .dotsep {
+    color: var(--line2);
   }
-  .k-actions { display: flex; align-items: center; gap: 8px; flex: none; }
+  .k-flag {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    font-weight: 500;
+    background: var(--pending-bg);
+    color: var(--pending);
+    padding: 1px 7px;
+    border-radius: 999px;
+  }
+  .k-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: none;
+  }
   /* Button geometry is DESIGN.md § Button verbatim: 10px radius at base, and
      sm = 5px 12px at Caption with an 8px radius. Written out so the row actions
      map 1:1 onto <Button> and <Button size="sm"> with nothing to re-derive. */
   .k-btn {
-    font-family: inherit; font-size: 13px; line-height: 1;
-    padding: 7px 13px; border-radius: 10px; cursor: pointer;
-    border: 1px solid var(--line2); background: var(--surface); color: var(--ink);
-    transition: border-color 0.14s var(--ease), background 0.14s var(--ease);
+    font-family: inherit;
+    font-size: 13px;
+    line-height: 1;
+    padding: 7px 13px;
+    border-radius: 10px;
+    cursor: pointer;
+    border: 1px solid var(--line2);
+    background: var(--surface);
+    color: var(--ink);
+    transition:
+      border-color 0.14s var(--ease),
+      background 0.14s var(--ease);
   }
-  .k-btn:hover { border-color: var(--forest); }
-  .k-btn:focus-visible { outline: 2px solid var(--forest); outline-offset: 2px; }
-  .k-btn.primary { background: var(--forest); border-color: var(--forest); color: #fff; }
-  .k-btn.primary:hover { background: var(--forest-deep); border-color: var(--forest-deep); }
-  .k-btn.sm { font-size: 12px; padding: 5px 12px; border-radius: 8px; }
-  .k-btn.ghost { border-color: transparent; background: none; color: var(--text2); }
-  .k-btn.ghost:hover { background: rgba(15,21,18,0.05); color: var(--ink); border-color: transparent; }
-  .k-select, .k-search {
-    font-family: inherit; font-size: 12px;
-    padding: 6px 10px; border-radius: 8px;
-    border: 1px solid var(--line2); background: var(--surface); color: var(--ink);
+  .k-btn:hover {
+    border-color: var(--forest);
   }
-  .k-search { width: 190px; }
-  .k-search::placeholder { color: var(--text3); }
+  .k-btn:focus-visible {
+    outline: 2px solid var(--forest);
+    outline-offset: 2px;
+  }
+  .k-btn.primary {
+    background: var(--forest);
+    border-color: var(--forest);
+    color: #fff;
+  }
+  .k-btn.primary:hover {
+    background: var(--forest-deep);
+    border-color: var(--forest-deep);
+  }
+  .k-btn.sm {
+    font-size: 12px;
+    padding: 5px 12px;
+    border-radius: 8px;
+  }
+  .k-btn.ghost {
+    border-color: transparent;
+    background: none;
+    color: var(--text2);
+  }
+  .k-btn.ghost:hover {
+    background: rgba(15, 21, 18, 0.05);
+    color: var(--ink);
+    border-color: transparent;
+  }
+  .k-select,
+  .k-search {
+    font-family: inherit;
+    font-size: 12px;
+    padding: 6px 10px;
+    border-radius: 8px;
+    border: 1px solid var(--line2);
+    background: var(--surface);
+    color: var(--ink);
+  }
+  .k-search {
+    width: 190px;
+  }
+  .k-search::placeholder {
+    color: var(--text3);
+  }
 
   /* tab rail */
-  .k-tabs { display: flex; gap: 2px; margin-bottom: -1px; }
+  .k-tabs {
+    display: flex;
+    gap: 2px;
+    margin-bottom: -1px;
+  }
   .k-tab {
-    font-family: inherit; font-size: 13px; font-weight: 500;
-    padding: 8px 14px 9px; border: 0; background: none; cursor: pointer;
-    color: var(--text2); border-bottom: 2px solid transparent;
-    display: inline-flex; align-items: center; gap: 7px;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 8px 14px 9px;
+    border: 0;
+    background: none;
+    cursor: pointer;
+    color: var(--text2);
+    border-bottom: 2px solid transparent;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
   }
-  .k-tab:hover { color: var(--ink); }
+  .k-tab:hover {
+    color: var(--ink);
+  }
   /* Deep Pine underline — never lime on a light ground (1.35:1). */
-  .k-tab[aria-selected="true"] { color: var(--forest); border-bottom-color: var(--forest); }
-  .k-tab .n {
-    font-size: 11px; font-variant-numeric: tabular-nums; color: var(--text3);
+  .k-tab[aria-selected='true'] {
+    color: var(--forest);
+    border-bottom-color: var(--forest);
   }
-  .k-tab[aria-selected="true"] .n { color: var(--forest); }
+  .k-tab .n {
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+    color: var(--text3);
+  }
+  .k-tab[aria-selected='true'] .n {
+    color: var(--forest);
+  }
   .k-tab .newdot {
-    width: 5px; height: 5px; border-radius: 999px; background: var(--spring-text);
+    width: 5px;
+    height: 5px;
+    border-radius: 999px;
+    background: var(--spring-text);
   }
 
   /* body */
-  .k-body { flex: 1; min-height: 0; overflow-y: auto; padding: 20px 24px 32px; }
+  .k-body {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 20px 24px 32px;
+  }
 
   .k-card {
     background: var(--surface);
@@ -351,7 +606,10 @@
   }
 
   /* ── the list ── */
-  table.k-list { width: 100%; border-collapse: collapse; }
+  table.k-list {
+    width: 100%;
+    border-collapse: collapse;
+  }
 
   /* One template shared by the header row and every body row, so the two can
      never drift. Applied to <tr>, which keeps real <th scope="col"> association. */
@@ -365,8 +623,12 @@
   @media (max-width: 1180px) {
     /* Platform and target drop rather than squeeze — a clipped date reads as a
        different date. */
-    .k-grid { grid-template-columns: 22px 1fr 66px 178px; }
-    .k-grid .drop { display: none; }
+    .k-grid {
+      grid-template-columns: 22px 1fr 66px 178px;
+    }
+    .k-grid .drop {
+      display: none;
+    }
   }
 
   thead .k-grid {
@@ -375,8 +637,13 @@
     background: var(--sunken);
   }
   th {
-    font-size: 10px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase;
-    color: var(--text3); text-align: left; padding: 0;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text3);
+    text-align: left;
+    padding: 0;
   }
 
   .k-grouphead {
@@ -390,156 +657,320 @@
     border-top: 1px solid var(--line);
   }
   /* The first group sits directly under the column head, which already draws a rule. */
-  tbody tr:first-child .k-grouphead { border-top: 0; }
+  tbody tr:first-child .k-grouphead {
+    border-top: 0;
+  }
   .k-groupname {
-    display: flex; align-items: center; gap: 8px;
-    font-size: 13px; font-weight: 600; color: var(--ink);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ink);
   }
-  .k-groupdot { width: 7px; height: 7px; border-radius: 999px; flex: none; }
-  .k-groupcount { font-size: 11px; color: var(--text3); font-variant-numeric: tabular-nums; }
+  .k-groupdot {
+    width: 7px;
+    height: 7px;
+    border-radius: 999px;
+    flex: none;
+  }
+  .k-groupcount {
+    font-size: 11px;
+    color: var(--text3);
+    font-variant-numeric: tabular-nums;
+  }
 
-  tbody tr.k-row > td { padding: 0; }
-  .k-rowinner { min-height: 52px; padding-top: 8px; padding-bottom: 8px; }
-  tbody tr.k-row + tr.k-row .k-rowinner { border-top: 1px solid var(--line); }
-  tbody tr.k-row:hover .k-rowinner { background: var(--sunken); }
-  tr.k-row.sel .k-rowinner { background: var(--wash); }
-  tr.k-row.hidden { display: none; }
+  tbody tr.k-row > td {
+    padding: 0;
+  }
+  .k-rowinner {
+    min-height: 52px;
+    padding-top: 8px;
+    padding-bottom: 8px;
+  }
+  tbody tr.k-row + tr.k-row .k-rowinner {
+    border-top: 1px solid var(--line);
+  }
+  tbody tr.k-row:hover .k-rowinner {
+    background: var(--sunken);
+  }
+  tr.k-row.sel .k-rowinner {
+    background: var(--wash);
+  }
+  tr.k-row.hidden {
+    display: none;
+  }
 
-  .k-check { width: 14px; height: 14px; accent-color: var(--forest); cursor: pointer; }
+  .k-check {
+    width: 14px;
+    height: 14px;
+    accent-color: var(--forest);
+    cursor: pointer;
+  }
 
-  .k-textcell { min-width: 0; display: flex; align-items: flex-start; gap: 8px; }
+  .k-textcell {
+    min-width: 0;
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+  }
   .k-unread {
-    width: 6px; height: 6px; border-radius: 999px; background: var(--spring-text);
-    flex: none; margin-top: 7px;
+    width: 6px;
+    height: 6px;
+    border-radius: 999px;
+    background: var(--spring-text);
+    flex: none;
+    margin-top: 7px;
   }
-  .k-unread.spacer { background: none; }
-  .k-textmain { min-width: 0; }
+  .k-unread.spacer {
+    background: none;
+  }
+  .k-textmain {
+    min-width: 0;
+  }
   .k-ideatext {
-    font-size: 13px; color: var(--ink); line-height: 1.45;
-    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    font-size: 13px;
+    color: var(--ink);
+    line-height: 1.45;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
-  tr.k-row.unread .k-ideatext { font-weight: 500; }
+  tr.k-row.unread .k-ideatext {
+    font-weight: 500;
+  }
   .k-notes {
-    font-size: 12px; color: var(--text3); line-height: 1.4; margin-top: 2px;
-    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    font-size: 12px;
+    color: var(--text3);
+    line-height: 1.4;
+    margin-top: 2px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .k-plat {
-    font-size: 11px; font-weight: 500;
-    background: var(--wash); color: var(--forest);
-    padding: 2px 8px; border-radius: 999px;
+    font-size: 11px;
+    font-weight: 500;
+    background: var(--wash);
+    color: var(--forest);
+    padding: 2px 8px;
+    border-radius: 999px;
     display: inline-block;
   }
 
   .k-due {
-    font-size: 11px; font-weight: 500;
-    padding: 2px 8px; border-radius: 999px;
+    font-size: 11px;
+    font-weight: 500;
+    padding: 2px 8px;
+    border-radius: 999px;
     display: inline-block;
     font-variant-numeric: tabular-nums;
-    background: var(--sunken); color: var(--text2);
+    background: var(--sunken);
+    color: var(--text2);
   }
-  .k-due.warn { background: var(--pending-bg); color: var(--pending); }
-  .k-due.bad { background: var(--danger-bg); color: var(--danger); }
+  .k-due.warn {
+    background: var(--pending-bg);
+    color: var(--pending);
+  }
+  .k-due.bad {
+    background: var(--danger-bg);
+    color: var(--danger);
+  }
 
-  .k-age { font-size: 11px; color: var(--text3); font-variant-numeric: tabular-nums; }
+  .k-age {
+    font-size: 11px;
+    color: var(--text3);
+    font-variant-numeric: tabular-nums;
+  }
 
-  .k-rowactions { display: flex; align-items: center; gap: 6px; justify-content: flex-end; }
+  .k-rowactions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    justify-content: flex-end;
+  }
   .k-link {
-    font-family: inherit; font-size: 12px; font-weight: 500;
-    color: var(--forest); background: none; border: 0; cursor: pointer;
-    padding: 5px 8px; border-radius: 8px;
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--forest);
+    background: none;
+    border: 0;
+    cursor: pointer;
+    padding: 5px 8px;
+    border-radius: 8px;
   }
-  .k-link:hover { background: var(--wash); }
+  .k-link:hover {
+    background: var(--wash);
+  }
 
   /* selection bar living in the meta slot */
-  .k-selbar { display: flex; align-items: center; gap: 10px; }
-  .k-selcount { font-size: 12px; font-weight: 600; color: var(--ink); }
+  .k-selbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .k-selcount {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--ink);
+  }
 
   /* ── detail dialog: the existing Modal (Radix), nothing new ── */
-  .k-modalframe { position: relative; }
-  .k-scrim { position: absolute; inset: 0; background: rgba(12,46,32,0.4); }
+  .k-modalframe {
+    position: relative;
+  }
+  .k-scrim {
+    position: absolute;
+    inset: 0;
+    background: rgba(12, 46, 32, 0.4);
+  }
   .k-dlg {
-    position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
     width: 560px;
     background: var(--surface);
     border: 1px solid var(--line);
     border-radius: 20px;
-    box-shadow: 0 24px 60px -20px rgba(15,21,18,0.45);
+    box-shadow: 0 24px 60px -20px rgba(15, 21, 18, 0.45);
     overflow: hidden;
   }
   .k-dlghead {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 18px 26px 14px; border-bottom: 1px solid var(--line);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 26px 14px;
+    border-bottom: 1px solid var(--line);
   }
   .k-dlgtitle {
-    font-family: var(--serif); font-style: italic; font-weight: 400;
-    font-size: 18px; color: var(--ink);
+    font-family: var(--serif);
+    font-style: italic;
+    font-weight: 400;
+    font-size: 18px;
+    color: var(--ink);
   }
-  .k-dlgbody { padding: 18px 26px 6px; display: flex; flex-direction: column; gap: 16px; }
+  .k-dlgbody {
+    padding: 18px 26px 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
   .k-dlgsub {
-    display: flex; align-items: center; gap: 8px;
-    font-size: 12px; color: var(--text3);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--text3);
   }
   /* The client's words, set as a quotation because that is what they are: a
      record of what was asked for, not an editable field. */
   .k-quote {
-    font-size: 13px; line-height: 1.6; color: var(--ink);
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--ink);
     border-left: 2px solid var(--sage);
     padding: 2px 0 2px 14px;
   }
-  .k-notes-full { font-size: 12px; line-height: 1.5; color: var(--text2); }
-  .k-deflist { display: grid; grid-template-columns: 92px 1fr; gap: 8px 14px; align-items: center; }
+  .k-notes-full {
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--text2);
+  }
+  .k-deflist {
+    display: grid;
+    grid-template-columns: 92px 1fr;
+    gap: 8px 14px;
+    align-items: center;
+  }
   .k-defkey {
-    font-size: 10px; font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
     color: var(--text3);
   }
-  .k-defval { font-size: 13px; color: var(--ink); }
-  .k-dlgfoot {
-    display: flex; align-items: center; gap: 8px;
-    padding: 16px 26px 20px; margin-top: 6px;
+  .k-defval {
+    font-size: 13px;
+    color: var(--ink);
   }
-  .k-dlgfoot .spacer { flex: 1; }
+  .k-dlgfoot {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 16px 26px 20px;
+    margin-top: 6px;
+  }
+  .k-dlgfoot .spacer {
+    flex: 1;
+  }
 
   /* empty state */
   .k-empty {
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    gap: 10px; padding: 56px 24px; text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 56px 24px;
+    text-align: center;
   }
   .k-emptyicon {
-    width: 44px; height: 44px; border-radius: 999px;
-    background: var(--wash); color: var(--forest);
-    display: grid; place-items: center; font-size: 18px;
+    width: 44px;
+    height: 44px;
+    border-radius: 999px;
+    background: var(--wash);
+    color: var(--forest);
+    display: grid;
+    place-items: center;
+    font-size: 18px;
   }
-  .k-emptytitle { font-size: 15px; font-weight: 600; color: var(--ink); }
-  .k-emptybody { font-size: 12px; color: var(--text2); max-width: 40ch; }
+  .k-emptytitle {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--ink);
+  }
+  .k-emptybody {
+    font-size: 12px;
+    color: var(--text2);
+    max-width: 40ch;
+  }
 
   .sr-only {
-    position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
-    overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0;
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
   }
 </style>
 
 <div class="wrap stack">
-
   <header class="prose">
     <h1>The inbox knows which ideas are new. It just won&rsquo;t say so twice the same way.</h1>
     <p class="lede">
-      Three tabs describe four statuses. Three header counts are computed three different
-      ways over two different scopes. The word <code>'new'</code> is spelled six times across
-      four files, <code>'used'</code> five times with three different meanings — so the tab
-      label, the tab count and the list underneath it can each disagree about the same idea.
-      That is the whole diagnosis: <em>this page has no shared definition of what it is showing.</em>
+      Three tabs describe four statuses. Three header counts are computed three different ways over
+      two different scopes. The word <code>'new'</code> is spelled six times across four files,
+      <code>'used'</code> five times with three different meanings — so the tab label, the tab count
+      and the list underneath it can each disagree about the same idea. That is the whole diagnosis:
+      <em>this page has no shared definition of what it is showing.</em>
     </p>
     <p class="lede">
       The fix is not a new visual language. <code>/clients</code> and <code>/review</code> already
-      solved grouping, tabs, tables, selection and undo. This page is the one dashboard route
-      whose chrome was redesigned and whose content was not — commit <code>6b69a6d</code>
-      converted its inline styles to classes and preserved every original value. Below is what
-      it looks like when it borrows from the surfaces that shipped.
+      solved grouping, tabs, tables, selection and undo. This page is the one dashboard route whose
+      chrome was redesigned and whose content was not — commit <code>6b69a6d</code>
+      converted its inline styles to classes and preserved every original value. Below is what it
+      looks like when it borrows from the surfaces that shipped.
     </p>
   </header>
 
-  <hr class="rule" style="margin-top:48px">
+  <hr class="rule" style="margin-top: 48px" />
 
   <!-- ══════════════════════════════════════════════════════════════ -->
   <section class="stack g24">
@@ -549,16 +980,15 @@
     </div>
 
     <div class="findings">
-
       <div class="finding">
         <span class="sev bad">Correctness</span>
         <h3>Three tabs, four statuses, and no agreement on the mapping</h3>
         <p>
           <b>New</b> counts <code>new</code> + <code>generating</code>. <b>Used</b> counts
           <code>generated</code> + <code>dismissed</code> — so a dismissed idea is filed under
-          &ldquo;Used&rdquo;, which is the one thing it is not. Meanwhile the settings rail
-          counts <code>usedCount</code> as <code>generated</code> alone. Same word, two
-          populations, one page apart.
+          &ldquo;Used&rdquo;, which is the one thing it is not. Meanwhile the settings rail counts
+          <code>usedCount</code> as <code>generated</code> alone. Same word, two populations, one
+          page apart.
         </p>
       </div>
 
@@ -567,8 +997,8 @@
         <h3>Three header counts, three scopes</h3>
         <p>
           The title count is unscoped. The tab counts are scoped to the selected client. The
-          per-client option labels are unscoped again. Pick a client and the number beside the
-          title stops describing what is on screen.
+          per-client option labels are unscoped again. Pick a client and the number beside the title
+          stops describing what is on screen.
         </p>
       </div>
 
@@ -576,9 +1006,9 @@
         <span class="sev warn">Interaction</span>
         <h3>Filter state that cannot be linked, shared or bookmarked</h3>
         <p>
-          Client and status live in <code>useState</code>, so every idea an agency has ever
-          received is shipped to the browser and filtered there. <code>/clients</code> already
-          reads its filters from the URL and filters in the Server Component.
+          Client and status live in <code>useState</code>, so every idea an agency has ever received
+          is shipped to the browser and filtered there. <code>/clients</code> already reads its
+          filters from the URL and filters in the Server Component.
         </p>
       </div>
 
@@ -586,9 +1016,9 @@
         <span class="sev warn">Interaction</span>
         <h3>A written field nothing reads</h3>
         <p>
-          <code>generated_post_id</code> is stored, selected, mapped onto
-          <code>ClientIdea</code> — and read by no component. Once an idea has been turned into
-          a post, the page can say &ldquo;Post generated&rdquo; but cannot take you to it.
+          <code>generated_post_id</code> is stored, selected, mapped onto <code>ClientIdea</code> —
+          and read by no component. Once an idea has been turned into a post, the page can say
+          &ldquo;Post generated&rdquo; but cannot take you to it.
         </p>
       </div>
 
@@ -596,8 +1026,8 @@
         <span class="sev warn">Layout</span>
         <h3>~150px of header that never compresses</h3>
         <p>
-          The view roots at <code>flex h-full overflow-hidden</code> with a scrolling sibling,
-          so <code>StickyShell</code>&rsquo;s sentinel never leaves intersection and every
+          The view roots at <code>flex h-full overflow-hidden</code> with a scrolling sibling, so
+          <code>StickyShell</code>&rsquo;s sentinel never leaves intersection and every
           <code>group-data-[stuck=true]</code> rule is dead. Shared with <code>/review</code>,
           <code>/settings</code> and <code>/analytics</code>.
         </p>
@@ -617,9 +1047,9 @@
         <span class="sev info">Craft</span>
         <h3>A bespoke class layer with no interaction states</h3>
         <p>
-          Five hand-rolled class constants and two dead <code>style={{transition}}</code>
-          objects — and zero <code>hover:</code> classes in the file. The buttons have no hover,
-          no active and no <code>focus-visible</code> state at all.
+          Five hand-rolled class constants and two dead <code>style={{transition}}</code> objects —
+          and zero <code>hover:</code> classes in the file. The buttons have no hover, no active and
+          no <code>focus-visible</code> state at all.
         </p>
       </div>
 
@@ -628,8 +1058,8 @@
         <h3>One empty state for every situation</h3>
         <p>
           &ldquo;No ideas yet — ideas submitted by clients will appear here&rdquo; is shown to an
-          agency holding forty of them who happens to be on an empty tab. No tab offers an
-          action out of its own empty state.
+          agency holding forty of them who happens to be on an empty tab. No tab offers an action
+          out of its own empty state.
         </p>
       </div>
 
@@ -638,10 +1068,10 @@
         <h3>The idea is unreadable and uncorrectable at every step</h3>
         <p>
           The row truncates to one line and nothing opens. The wizard is no better:
-          <code>brief-list.tsx</code> renders a committed brief as static truncated text, so
-          the notes, platform and target date are invisible there too &mdash; and the locked
-          idea row has no Remove. A client&rsquo;s words reach the writer with no human able to
-          read them in full, let alone sharpen them.
+          <code>brief-list.tsx</code> renders a committed brief as static truncated text, so the
+          notes, platform and target date are invisible there too &mdash; and the locked idea row
+          has no Remove. A client&rsquo;s words reach the writer with no human able to read them in
+          full, let alone sharpen them.
         </p>
       </div>
 
@@ -661,11 +1091,10 @@
         <p>
           Mark-as-read is a server action that updates state, dismiss rolls back on failure,
           <code>PATCH /api/ideas</code> is deleted, the sidebar badge revalidates, and
-          <code>20260817</code> added the FK cascades, the one-link-per-client constraint and
-          the status/platform CHECKs. This section is only about the tab.
+          <code>20260817</code> added the FK cascades, the one-link-per-client constraint and the
+          status/platform CHECKs. This section is only about the tab.
         </p>
       </div>
-
     </div>
   </section>
 
@@ -675,15 +1104,14 @@
       <span class="n">02</span>
       <h2>The proposal</h2>
     </div>
-    <p class="prose lede" style="margin-top:0">
+    <p class="prose lede" style="margin-top: 0">
       Tabs are the states you act on. Rows are grouped by client, so the per-row client column
-      disappears and ~150px comes back. Every row has exactly one action, and the checkboxes
-      turn the meta line into a bulk bar. Try the tabs and the checkboxes — they work.
+      disappears and ~150px comes back. Every row has exactly one action, and the checkboxes turn
+      the meta line into a bulk bar. Try the tabs and the checkboxes — they work.
     </p>
 
     <div class="framewrap">
       <div class="kontuur">
-
         <aside class="k-rail">
           <div class="k-mark">Kontuur</div>
           <div>
@@ -693,7 +1121,9 @@
               <div class="k-navitem">Clients</div>
               <div class="k-navitem">Calendar</div>
               <div class="k-navitem">Review <span class="k-count">7</span></div>
-              <div class="k-navitem" aria-current="page">Client ideas <span class="k-count">4</span></div>
+              <div class="k-navitem" aria-current="page">
+                Client ideas <span class="k-count">4</span>
+              </div>
               <div class="k-navitem">Generate</div>
               <div class="k-navitem">Analytics</div>
             </nav>
@@ -726,7 +1156,7 @@
                 </div>
               </div>
               <div class="k-actions">
-                <input class="k-search" placeholder="Search ideas" aria-label="Search ideas">
+                <input class="k-search" placeholder="Search ideas" aria-label="Search ideas" />
                 <select class="k-select" aria-label="Client">
                   <option>All clients</option>
                   <option>About Social Media (3 new)</option>
@@ -768,163 +1198,225 @@
 
                 <tbody id="rows">
                   <!-- ── group ── -->
-                  <tr data-group="a"><td colspan="6">
-                    <div class="k-grouphead">
-                      <input type="checkbox" class="k-check groupcheck" data-group="a"
-                             aria-label="Select all ideas from About Social Media">
-                      <div class="k-groupname">
-                        <span class="k-groupdot" style="background:#2e9e68"></span>
-                        About Social Media
+                  <tr data-group="a">
+                    <td colspan="6">
+                      <div class="k-grouphead">
+                        <input
+                          type="checkbox"
+                          class="k-check groupcheck"
+                          data-group="a"
+                          aria-label="Select all ideas from About Social Media"
+                        />
+                        <div class="k-groupname">
+                          <span class="k-groupdot" style="background: #2e9e68"></span>
+                          About Social Media
+                        </div>
+                        <span class="k-groupcount">3 ideas</span>
                       </div>
-                      <span class="k-groupcount">3 ideas</span>
-                    </div>
-                  </td></tr>
+                    </td>
+                  </tr>
 
-                  <tr class="k-row unread" data-state="inbox" data-group="a"><td>
-                    <div class="k-grid k-rowinner">
-                      <input type="checkbox" class="k-check rowcheck" data-group="a"
-                             aria-label="Select: Can we cover the new EU packaging rules">
-                      <div class="k-textcell">
-                        <span class="k-unread"><span class="sr-only">Unread</span></span>
-                        <div class="k-textmain">
-                          <div class="k-ideatext">Can we cover the new EU packaging rules before they take effect?</div>
-                          <div class="k-notes">the client sent a link too &mdash; happy for it to be a carousel</div>
+                  <tr class="k-row unread" data-state="inbox" data-group="a">
+                    <td>
+                      <div class="k-grid k-rowinner">
+                        <input
+                          type="checkbox"
+                          class="k-check rowcheck"
+                          data-group="a"
+                          aria-label="Select: Can we cover the new EU packaging rules"
+                        />
+                        <div class="k-textcell">
+                          <span class="k-unread"><span class="sr-only">Unread</span></span>
+                          <div class="k-textmain">
+                            <div class="k-ideatext">
+                              Can we cover the new EU packaging rules before they take effect?
+                            </div>
+                            <div class="k-notes">
+                              the client sent a link too &mdash; happy for it to be a carousel
+                            </div>
+                          </div>
+                        </div>
+                        <div class="drop"><span class="k-plat">Instagram</span></div>
+                        <div class="drop"><span class="k-due">Due 12 Aug</span></div>
+                        <div class="k-age">2d ago</div>
+                        <div class="k-rowactions">
+                          <button class="k-btn primary sm">Generate</button>
+                          <button class="k-btn ghost sm">Dismiss</button>
                         </div>
                       </div>
-                      <div class="drop"><span class="k-plat">Instagram</span></div>
-                      <div class="drop"><span class="k-due">Due 12 Aug</span></div>
-                      <div class="k-age">2d ago</div>
-                      <div class="k-rowactions">
-                        <button class="k-btn primary sm">Generate</button>
-                        <button class="k-btn ghost sm">Dismiss</button>
-                      </div>
-                    </div>
-                  </td></tr>
+                    </td>
+                  </tr>
 
-                  <tr class="k-row unread" data-state="inbox" data-group="a"><td>
-                    <div class="k-grid k-rowinner">
-                      <input type="checkbox" class="k-check rowcheck" data-group="a"
-                             aria-label="Select: Behind the scenes from the new studio">
-                      <div class="k-textcell">
-                        <span class="k-unread"><span class="sr-only">Unread</span></span>
-                        <div class="k-textmain">
-                          <div class="k-ideatext">Behind the scenes from the new studio</div>
+                  <tr class="k-row unread" data-state="inbox" data-group="a">
+                    <td>
+                      <div class="k-grid k-rowinner">
+                        <input
+                          type="checkbox"
+                          class="k-check rowcheck"
+                          data-group="a"
+                          aria-label="Select: Behind the scenes from the new studio"
+                        />
+                        <div class="k-textcell">
+                          <span class="k-unread"><span class="sr-only">Unread</span></span>
+                          <div class="k-textmain">
+                            <div class="k-ideatext">Behind the scenes from the new studio</div>
+                          </div>
+                        </div>
+                        <div class="drop"></div>
+                        <div class="drop"><span class="k-due warn">Due tomorrow</span></div>
+                        <div class="k-age">5h ago</div>
+                        <div class="k-rowactions">
+                          <button class="k-btn primary sm">Generate</button>
+                          <button class="k-btn ghost sm">Dismiss</button>
                         </div>
                       </div>
-                      <div class="drop"></div>
-                      <div class="drop"><span class="k-due warn">Due tomorrow</span></div>
-                      <div class="k-age">5h ago</div>
-                      <div class="k-rowactions">
-                        <button class="k-btn primary sm">Generate</button>
-                        <button class="k-btn ghost sm">Dismiss</button>
-                      </div>
-                    </div>
-                  </td></tr>
+                    </td>
+                  </tr>
 
-                  <tr class="k-row" data-state="inbox" data-group="a"><td>
-                    <div class="k-grid k-rowinner">
-                      <input type="checkbox" class="k-check rowcheck" data-group="a"
-                             aria-label="Select: Founder story for the anniversary post">
-                      <div class="k-textcell">
-                        <span class="k-unread spacer"></span>
-                        <div class="k-textmain">
-                          <div class="k-ideatext">Founder story for the anniversary post</div>
+                  <tr class="k-row" data-state="inbox" data-group="a">
+                    <td>
+                      <div class="k-grid k-rowinner">
+                        <input
+                          type="checkbox"
+                          class="k-check rowcheck"
+                          data-group="a"
+                          aria-label="Select: Founder story for the anniversary post"
+                        />
+                        <div class="k-textcell">
+                          <span class="k-unread spacer"></span>
+                          <div class="k-textmain">
+                            <div class="k-ideatext">Founder story for the anniversary post</div>
+                          </div>
+                        </div>
+                        <div class="drop"><span class="k-plat">LinkedIn</span></div>
+                        <div class="drop"><span class="k-due">Due 20 Aug</span></div>
+                        <div class="k-age">4d ago</div>
+                        <div class="k-rowactions">
+                          <button class="k-btn primary sm">Generate</button>
+                          <button class="k-btn ghost sm">Dismiss</button>
                         </div>
                       </div>
-                      <div class="drop"><span class="k-plat">LinkedIn</span></div>
-                      <div class="drop"><span class="k-due">Due 20 Aug</span></div>
-                      <div class="k-age">4d ago</div>
-                      <div class="k-rowactions">
-                        <button class="k-btn primary sm">Generate</button>
-                        <button class="k-btn ghost sm">Dismiss</button>
-                      </div>
-                    </div>
-                  </td></tr>
+                    </td>
+                  </tr>
 
                   <!-- ── group ── -->
-                  <tr data-group="b"><td colspan="6">
-                    <div class="k-grouphead">
-                      <input type="checkbox" class="k-check groupcheck" data-group="b"
-                             aria-label="Select all ideas from Verdant Kitchen">
-                      <div class="k-groupname">
-                        <span class="k-groupdot" style="background:#8a6116"></span>
-                        Verdant Kitchen
+                  <tr data-group="b">
+                    <td colspan="6">
+                      <div class="k-grouphead">
+                        <input
+                          type="checkbox"
+                          class="k-check groupcheck"
+                          data-group="b"
+                          aria-label="Select all ideas from Verdant Kitchen"
+                        />
+                        <div class="k-groupname">
+                          <span class="k-groupdot" style="background: #8a6116"></span>
+                          Verdant Kitchen
+                        </div>
+                        <span class="k-groupcount">2 ideas</span>
                       </div>
-                      <span class="k-groupcount">2 ideas</span>
-                    </div>
-                  </td></tr>
+                    </td>
+                  </tr>
 
-                  <tr class="k-row unread" data-state="inbox" data-group="b"><td>
-                    <div class="k-grid k-rowinner">
-                      <input type="checkbox" class="k-check rowcheck" data-group="b"
-                             aria-label="Select: Seasonal menu launch">
-                      <div class="k-textcell">
-                        <span class="k-unread"><span class="sr-only">Unread</span></span>
-                        <div class="k-textmain">
-                          <div class="k-ideatext">Seasonal menu launch &mdash; what makes it different this year</div>
-                          <div class="k-notes">please mention the two new suppliers by name</div>
+                  <tr class="k-row unread" data-state="inbox" data-group="b">
+                    <td>
+                      <div class="k-grid k-rowinner">
+                        <input
+                          type="checkbox"
+                          class="k-check rowcheck"
+                          data-group="b"
+                          aria-label="Select: Seasonal menu launch"
+                        />
+                        <div class="k-textcell">
+                          <span class="k-unread"><span class="sr-only">Unread</span></span>
+                          <div class="k-textmain">
+                            <div class="k-ideatext">
+                              Seasonal menu launch &mdash; what makes it different this year
+                            </div>
+                            <div class="k-notes">please mention the two new suppliers by name</div>
+                          </div>
+                        </div>
+                        <div class="drop"><span class="k-plat">Instagram</span></div>
+                        <div class="drop"><span class="k-due bad">Overdue 2d</span></div>
+                        <div class="k-age">9d ago</div>
+                        <div class="k-rowactions">
+                          <button class="k-btn primary sm">Generate</button>
+                          <button class="k-btn ghost sm">Dismiss</button>
                         </div>
                       </div>
-                      <div class="drop"><span class="k-plat">Instagram</span></div>
-                      <div class="drop"><span class="k-due bad">Overdue 2d</span></div>
-                      <div class="k-age">9d ago</div>
-                      <div class="k-rowactions">
-                        <button class="k-btn primary sm">Generate</button>
-                        <button class="k-btn ghost sm">Dismiss</button>
-                      </div>
-                    </div>
-                  </td></tr>
+                    </td>
+                  </tr>
 
-                  <tr class="k-row" data-state="generated" data-group="b"><td>
-                    <div class="k-grid k-rowinner">
-                      <input type="checkbox" class="k-check rowcheck" data-group="b"
-                             aria-label="Select: Why we switched to local suppliers">
-                      <div class="k-textcell">
-                        <span class="k-unread spacer"></span>
-                        <div class="k-textmain">
-                          <div class="k-ideatext">Why we switched to local suppliers</div>
+                  <tr class="k-row" data-state="generated" data-group="b">
+                    <td>
+                      <div class="k-grid k-rowinner">
+                        <input
+                          type="checkbox"
+                          class="k-check rowcheck"
+                          data-group="b"
+                          aria-label="Select: Why we switched to local suppliers"
+                        />
+                        <div class="k-textcell">
+                          <span class="k-unread spacer"></span>
+                          <div class="k-textmain">
+                            <div class="k-ideatext">Why we switched to local suppliers</div>
+                          </div>
+                        </div>
+                        <div class="drop"><span class="k-plat">Facebook</span></div>
+                        <div class="drop"></div>
+                        <div class="k-age">12d ago</div>
+                        <div class="k-rowactions">
+                          <button class="k-link">View post &rarr;</button>
                         </div>
                       </div>
-                      <div class="drop"><span class="k-plat">Facebook</span></div>
-                      <div class="drop"></div>
-                      <div class="k-age">12d ago</div>
-                      <div class="k-rowactions">
-                        <button class="k-link">View post &rarr;</button>
-                      </div>
-                    </div>
-                  </td></tr>
+                    </td>
+                  </tr>
 
                   <!-- ── group ── -->
-                  <tr data-group="c"><td colspan="6">
-                    <div class="k-grouphead">
-                      <input type="checkbox" class="k-check groupcheck" data-group="c"
-                             aria-label="Select all ideas from Northbeam Studio">
-                      <div class="k-groupname">
-                        <span class="k-groupdot" style="background:#57625a"></span>
-                        Northbeam Studio
+                  <tr data-group="c">
+                    <td colspan="6">
+                      <div class="k-grouphead">
+                        <input
+                          type="checkbox"
+                          class="k-check groupcheck"
+                          data-group="c"
+                          aria-label="Select all ideas from Northbeam Studio"
+                        />
+                        <div class="k-groupname">
+                          <span class="k-groupdot" style="background: #57625a"></span>
+                          Northbeam Studio
+                        </div>
+                        <span class="k-groupcount">1 idea</span>
                       </div>
-                      <span class="k-groupcount">1 idea</span>
-                    </div>
-                  </td></tr>
+                    </td>
+                  </tr>
 
-                  <tr class="k-row" data-state="dismissed" data-group="c"><td>
-                    <div class="k-grid k-rowinner">
-                      <input type="checkbox" class="k-check rowcheck" data-group="c"
-                             aria-label="Select: Repost the client testimonial video">
-                      <div class="k-textcell">
-                        <span class="k-unread spacer"></span>
-                        <div class="k-textmain">
-                          <div class="k-ideatext">Repost the client testimonial video from the spring campaign</div>
+                  <tr class="k-row" data-state="dismissed" data-group="c">
+                    <td>
+                      <div class="k-grid k-rowinner">
+                        <input
+                          type="checkbox"
+                          class="k-check rowcheck"
+                          data-group="c"
+                          aria-label="Select: Repost the client testimonial video"
+                        />
+                        <div class="k-textcell">
+                          <span class="k-unread spacer"></span>
+                          <div class="k-textmain">
+                            <div class="k-ideatext">
+                              Repost the client testimonial video from the spring campaign
+                            </div>
+                          </div>
+                        </div>
+                        <div class="drop"></div>
+                        <div class="drop"></div>
+                        <div class="k-age">3w ago</div>
+                        <div class="k-rowactions">
+                          <button class="k-btn ghost sm">Restore</button>
                         </div>
                       </div>
-                      <div class="drop"></div>
-                      <div class="drop"></div>
-                      <div class="k-age">3w ago</div>
-                      <div class="k-rowactions">
-                        <button class="k-btn ghost sm">Restore</button>
-                      </div>
-                    </div>
-                  </td></tr>
+                    </td>
+                  </tr>
                 </tbody>
               </table>
             </div>
@@ -937,7 +1429,7 @@
       Selecting anything replaces the meta line with the bulk bar.
     </p>
 
-    <div class="framewrap" style="margin-top:8px">
+    <div class="framewrap" style="margin-top: 8px">
       <div class="kontuur short">
         <aside class="k-rail">
           <div class="k-mark">Kontuur</div>
@@ -951,7 +1443,9 @@
         </aside>
         <div class="k-main">
           <div class="k-head">
-            <div class="k-crumb"><div>Workspace <b>/ Client ideas</b></div></div>
+            <div class="k-crumb">
+              <div>Workspace <b>/ Client ideas</b></div>
+            </div>
             <div class="k-titlerow">
               <div>
                 <h1 class="k-title">Client ideas</h1>
@@ -959,10 +1453,18 @@
               </div>
             </div>
             <div class="k-tabs" role="tablist">
-              <button class="k-tab" role="tab" aria-selected="true">Inbox <span class="n">0</span></button>
-              <button class="k-tab" role="tab" aria-selected="false">Generated <span class="n">6</span></button>
-              <button class="k-tab" role="tab" aria-selected="false">Dismissed <span class="n">2</span></button>
-              <button class="k-tab" role="tab" aria-selected="false">All <span class="n">8</span></button>
+              <button class="k-tab" role="tab" aria-selected="true">
+                Inbox <span class="n">0</span>
+              </button>
+              <button class="k-tab" role="tab" aria-selected="false">
+                Generated <span class="n">6</span>
+              </button>
+              <button class="k-tab" role="tab" aria-selected="false">
+                Dismissed <span class="n">2</span>
+              </button>
+              <button class="k-tab" role="tab" aria-selected="false">
+                All <span class="n">8</span>
+              </button>
             </div>
           </div>
           <div class="k-body">
@@ -973,7 +1475,7 @@
                 <div class="k-emptybody">
                   Every idea your clients sent has been generated or dismissed.
                 </div>
-                <button class="k-btn sm" style="margin-top:4px">View all ideas</button>
+                <button class="k-btn sm" style="margin-top: 4px">View all ideas</button>
               </div>
             </div>
           </div>
@@ -985,7 +1487,7 @@
       &ldquo;Send a client their idea link&rdquo; with a copy button; a cleared inbox gets this.
     </p>
 
-    <div class="framewrap k-modalframe" style="margin-top:8px">
+    <div class="framewrap k-modalframe" style="margin-top: 8px">
       <div class="kontuur short">
         <aside class="k-rail">
           <div class="k-mark">Kontuur</div>
@@ -993,13 +1495,17 @@
             <div class="k-navlabel">Workspace</div>
             <nav class="k-nav">
               <div class="k-navitem">Review <span class="k-count">7</span></div>
-              <div class="k-navitem" aria-current="page">Client ideas <span class="k-count">4</span></div>
+              <div class="k-navitem" aria-current="page">
+                Client ideas <span class="k-count">4</span>
+              </div>
             </nav>
           </div>
         </aside>
         <div class="k-main">
           <div class="k-head">
-            <div class="k-crumb"><div>Workspace <b>/ Client ideas</b></div></div>
+            <div class="k-crumb">
+              <div>Workspace <b>/ Client ideas</b></div>
+            </div>
             <div class="k-titlerow">
               <div>
                 <h1 class="k-title">Client ideas <span class="k-titlecount">4</span></h1>
@@ -1007,8 +1513,12 @@
               </div>
             </div>
             <div class="k-tabs" role="tablist">
-              <button class="k-tab" role="tab" aria-selected="true">Inbox <span class="n">4</span></button>
-              <button class="k-tab" role="tab" aria-selected="false">Generated <span class="n">1</span></button>
+              <button class="k-tab" role="tab" aria-selected="true">
+                Inbox <span class="n">4</span>
+              </button>
+              <button class="k-tab" role="tab" aria-selected="false">
+                Generated <span class="n">1</span>
+              </button>
             </div>
           </div>
           <div class="k-body"></div>
@@ -1023,16 +1533,16 @@
         </div>
         <div class="k-dlgbody">
           <div class="k-dlgsub">
-            <span class="k-groupdot" style="background:#2e9e68"></span>
+            <span class="k-groupdot" style="background: #2e9e68"></span>
             About Social Media
             <span class="dotsep">&middot;</span>
             <span>Submitted 2d ago</span>
           </div>
 
           <div class="k-quote">
-            Can we cover the new EU packaging rules before they take effect? A lot of our
-            customers have been asking about it and we&rsquo;d like to be the ones who explain
-            it properly rather than react later.
+            Can we cover the new EU packaging rules before they take effect? A lot of our customers
+            have been asking about it and we&rsquo;d like to be the ones who explain it properly
+            rather than react later.
           </div>
 
           <div class="k-notes-full">
@@ -1071,19 +1581,18 @@
     </div>
 
     <div class="stack g12">
-
       <div class="call">
         <h3>Grouping by client replaces the per-row client column</h3>
         <p>
           When the scope is all clients, rows group under a client header. When one client is
           selected there is no grouping <em>and</em> no client column, because the page header
-          already says whose ideas these are. That reclaims ~150px of row width for the idea
-          text — the only column anyone actually reads — and it dissolves the two-dots problem:
-          the unread dot becomes the only dot on the row.
+          already says whose ideas these are. That reclaims ~150px of row width for the idea text —
+          the only column anyone actually reads — and it dissolves the two-dots problem: the unread
+          dot becomes the only dot on the row.
         </p>
         <div class="rec">
-          The client hue moves to <code>hashIndex</code> per DESIGN.md, so a client keeps its
-          colour when the roster changes.
+          The client hue moves to <code>hashIndex</code> per DESIGN.md, so a client keeps its colour
+          when the roster changes.
         </div>
       </div>
 
@@ -1102,21 +1611,21 @@
         <h3>Target date is the one semantic chip</h3>
         <p>
           <code>Due 12 Aug</code> neutral, <code>Due tomorrow</code> in Pending, and
-          <code>Overdue 2d</code> in Danger — compared against a <code>loadedAt</code> pinned by
-          the server, not the browser clock. It mirrors <code>/review</code>&rsquo;s
-          <code>AgeChip</code> in behaviour, but an idea&rsquo;s deadline and a draft&rsquo;s
-          review age are different facts with different thresholds, so it is a sibling
-          component rather than a shared one.
+          <code>Overdue 2d</code> in Danger — compared against a <code>loadedAt</code> pinned by the
+          server, not the browser clock. It mirrors <code>/review</code>&rsquo;s
+          <code>AgeChip</code> in behaviour, but an idea&rsquo;s deadline and a draft&rsquo;s review
+          age are different facts with different thresholds, so it is a sibling component rather
+          than a shared one.
         </p>
       </div>
 
       <div class="call">
         <h3>A real table, because the columns mean something</h3>
         <p>
-          <code>&lt;th scope="col"&gt;</code> association survives, the grid template is shared
-          by the header row and every body row so they cannot drift, and below 1180px Platform
-          and Target drop rather than squeeze — the same decision
-          <code>ROSTER_GRID</code> already makes on <code>/clients</code>.
+          <code>&lt;th scope="col"&gt;</code> association survives, the grid template is shared by
+          the header row and every body row so they cannot drift, and below 1180px Platform and
+          Target drop rather than squeeze — the same decision <code>ROSTER_GRID</code> already makes
+          on <code>/clients</code>.
         </p>
       </div>
 
@@ -1124,14 +1633,13 @@
         <h3>Everything else is borrowed, not invented</h3>
         <p>
           <code>Card</code>, <code>StatusPill</code>, <code>Button</code>, <code>TabRail</code>,
-          <code>SelectControl</code> and <code>EmptyState</code> all exist and all carry the
-          hover / active / <code>focus-visible</code> states this page currently lacks entirely.
+          <code>SelectControl</code> and <code>EmptyState</code> all exist and all carry the hover /
+          active / <code>focus-visible</code> states this page currently lacks entirely.
           <code>DiscardToast</code> moves to <code>components/ui/</code> on this, its second
-          consumer, with <code>/review</code>&rsquo;s reason chips behind an optional prop.
-          The five bespoke class constants and both dead <code>style</code> objects are deleted.
+          consumer, with <code>/review</code>&rsquo;s reason chips behind an optional prop. The five
+          bespoke class constants and both dead <code>style</code> objects are deleted.
         </p>
       </div>
-
     </div>
   </section>
 
@@ -1143,49 +1651,51 @@
     </div>
 
     <div class="stack g12">
-
       <div class="call">
         <h3>1 &mdash; Does &ldquo;Inbox&rdquo; read better than &ldquo;New&rdquo;?</h3>
         <p>
           I have used <b>Inbox &middot; Generated &middot; Dismissed &middot; All</b>. Each is
-          exactly one status, which is what makes the counts trustworthy. But &ldquo;Inbox&rdquo;
-          is a metaphor and the other three are literal — <b>New</b> would be consistent, if
-          blander, and matches the sidebar badge&rsquo;s wording.
+          exactly one status, which is what makes the counts trustworthy. But &ldquo;Inbox&rdquo; is
+          a metaphor and the other three are literal — <b>New</b> would be consistent, if blander,
+          and matches the sidebar badge&rsquo;s wording.
         </p>
-        <div class="rec">Recommendation: keep <b>Inbox</b>. It is the tab people live in, and it names the job.</div>
+        <div class="rec">
+          Recommendation: keep <b>Inbox</b>. It is the tab people live in, and it names the job.
+        </div>
       </div>
 
       <div class="call">
         <h3>2 &mdash; Should bulk selection offer anything besides Dismiss?</h3>
         <p>
           Bulk <b>Dismiss</b> is clearly useful — clearing a stale inbox is the reason to have
-          checkboxes. Bulk <b>Generate</b> is technically possible now that an idea is just a
-          locked brief and the wizard accepts several. But it would fire one run per idea with
-          no chance to set the count or add briefs, which is the opposite of what the generate
-          flow is for.
+          checkboxes. Bulk <b>Generate</b> is technically possible now that an idea is just a locked
+          brief and the wizard accepts several. But it would fire one run per idea with no chance to
+          set the count or add briefs, which is the opposite of what the generate flow is for.
         </p>
-        <div class="rec">Recommendation: Dismiss only. Generate stays a per-idea, deliberate act.</div>
+        <div class="rec">
+          Recommendation: Dismiss only. Generate stays a per-idea, deliberate act.
+        </div>
       </div>
 
       <div class="call">
         <h3>3 &mdash; <s>Should the row open anything?</s> &nbsp;Settled: yes, read-only</h3>
         <p>
-          The row opens a detail dialog. It earns its place on <em>viewing</em> alone: the idea
-          text truncates to one line, and the notes, platform and target date are invisible
-          without it &mdash; today they are invisible everywhere, including on the wizard&rsquo;s
-          committed brief row, which renders the title and nothing else.
+          The row opens a detail dialog. It earns its place on <em>viewing</em> alone: the idea text
+          truncates to one line, and the notes, platform and target date are invisible without it
+          &mdash; today they are invisible everywhere, including on the wizard&rsquo;s committed
+          brief row, which renders the title and nothing else.
         </p>
         <p>
           <b>It does not edit the client&rsquo;s submission.</b> The pipeline already refines a
           sloppy idea: the route sends idea text <em>and</em> notes into stage C as a REQUESTED
           POST, which returns a 5&ndash;10 word proper-grammar <code>suggested_theme</code> and a
-          matched source. A persisted edit would be redundant for polish, and it would overwrite
-          the only record of what the client actually asked for.
+          matched source. A persisted edit would be redundant for polish, and it would overwrite the
+          only record of what the client actually asked for.
         </p>
         <div class="rec">
           What refinement cannot fix is an <em>ambiguous</em> idea &mdash; the model will
-          confidently pick <em>a</em> source for &ldquo;the packaging thing&rdquo;. That
-          correction belongs in the wizard, scoped to one run. See §05.
+          confidently pick <em>a</em> source for &ldquo;the packaging thing&rdquo;. That correction
+          belongs in the wizard, scoped to one run. See §05.
         </div>
       </div>
 
@@ -1193,17 +1703,15 @@
         <h3>4 &mdash; Do dismissed ideas expire?</h3>
         <p>
           Nothing ever removes a row. The <b>Dismissed</b> tab grows forever, and
-          <code>fetchIdeasForAgency</code> currently loads every idea an agency has ever
-          received on every page load. Pagination is already recorded as debt
-          (<code>TECH-DEBT §7.8</code>), but auto-archiving after, say, 90 days is a product
-          decision rather than a technical one.
+          <code>fetchIdeasForAgency</code> currently loads every idea an agency has ever received on
+          every page load. Pagination is already recorded as debt (<code>TECH-DEBT §7.8</code>), but
+          auto-archiving after, say, 90 days is a product decision rather than a technical one.
         </p>
         <div class="rec">
           Recommendation: no expiry now, paginate instead. Deleting a client&rsquo;s request on
           their behalf needs a better reason than list length.
         </div>
       </div>
-
     </div>
   </section>
 
@@ -1216,41 +1724,41 @@
 
     <ul class="plain">
       <li>
-        <b>Predicates first.</b> Every spelling of <code>'new'</code> and <code>'used'</code>
-        moves into <code>idea-filters.ts</code>, so the tab label, the tab count, the list filter
-        and <code>fetchIdeaCounts</code> read one definition. Nothing visual changes; the numbers
-        stop disagreeing.
+        <b>Predicates first.</b> Every spelling of <code>'new'</code> and <code>'used'</code> moves
+        into <code>idea-filters.ts</code>, so the tab label, the tab count, the list filter and
+        <code>fetchIdeaCounts</code> read one definition. Nothing visual changes; the numbers stop
+        disagreeing.
       </li>
       <li>
-        <b>URL-driven and server-filtered.</b> Tabs carry an <code>href</code>, filtering moves
-        into the Server Component. <code>parseParam</code> is extracted from
+        <b>URL-driven and server-filtered.</b> Tabs carry an <code>href</code>, filtering moves into
+        the Server Component. <code>parseParam</code> is extracted from
         <code>clients/page.tsx</code> on this, its second consumer; <code>buildHref</code> stays
         per-route because different params and defaults are two facts, not one.
       </li>
       <li>
-        <b>The row component replaces <code>idea-card.tsx</code>,</b> which is deleted in the
-        same commit rather than left beside it. The detail dialog is the existing
+        <b>The row component replaces <code>idea-card.tsx</code>,</b> which is deleted in the same
+        commit rather than left beside it. The detail dialog is the existing
         <code>Modal</code> &mdash; Radix, seven consumers already &mdash; and reads only.
       </li>
       <li>
         <b>The wizard&rsquo;s committed brief becomes editable,</b> which is where a correction
         belongs: scoped to one run, leaving the client&rsquo;s submission intact. Today
         <code>brief-list.tsx</code> only gives fields to the <em>draft</em> being added; once
-        committed, a brief is frozen text. The same edit affordance fixes the locked idea row,
-        which currently cannot be corrected or removed. This is the one change outside
-        <code>/ideas</code>, and it is what makes &ldquo;view it, then fix it&rdquo; a complete
-        path rather than half of one.
+        committed, a brief is frozen text. The same edit affordance fixes the locked idea row, which
+        currently cannot be corrected or removed. This is the one change outside
+        <code>/ideas</code>, and it is what makes &ldquo;view it, then fix it&rdquo; a complete path
+        rather than half of one.
       </li>
       <li>
         <b>Dismiss gets the <code>/review</code> treatment:</b> optimistic removal, undo toast,
-        commit on auto-close, restore on error, commit-pending on unmount. The server action
-        already exists and already rolls back.
+        commit on auto-close, restore on error, commit-pending on unmount. The server action already
+        exists and already rolls back.
       </li>
       <li>
         <b>The sticky-header fix lands with it</b> — the same four-line structural change on
         <code>/ideas</code>, <code>/review</code>, <code>/settings</code> and
-        <code>/analytics</code>, since fixing it on one surface and not the other three would
-        leave the app inconsistent mid-scroll.
+        <code>/analytics</code>, since fixing it on one surface and not the other three would leave
+        the app inconsistent mid-scroll.
       </li>
     </ul>
   </section>
@@ -1267,91 +1775,103 @@
           <b>The <code>generating</code> status.</b> Nothing writes it any more, but rows written
           before the generate routes merged are stuck in it with no sweeper. It is still in the
           <code>IdeaStatus</code> union and in <code>20260817</code>&rsquo;s CHECK. Retiring it
-          means migrating those rows to <code>new</code> — parked at your request, and the tab
-          above simply has no row state for it.
+          means migrating those rows to <code>new</code> — parked at your request, and the tab above
+          simply has no row state for it.
         </li>
         <li>
           <b>Search is drawn but not specified.</b> Client-side substring match over idea text is
-          the cheap version; matching notes as well, or going to the server, is a bigger call
-          that pagination will force anyway.
+          the cheap version; matching notes as well, or going to the server, is a bigger call that
+          pagination will force anyway.
         </li>
       </ul>
     </div>
   </section>
-
 </div>
 
 <script>
   // Tabs filter the rows, and group headers hide when their group empties — the two
   // ways the current page can disagree with itself.
-  const rows = () => Array.from(document.querySelectorAll('#rows tr.k-row'));
-  const groupHeads = () => Array.from(document.querySelectorAll('#rows tr[data-group] > td > .k-grouphead'));
+  const rows = () => Array.from(document.querySelectorAll('#rows tr.k-row'))
+  const groupHeads = () =>
+    Array.from(document.querySelectorAll('#rows tr[data-group] > td > .k-grouphead'))
 
   function applyTab(tab) {
-    rows().forEach(r => {
-      const show = tab === 'all' || r.dataset.state === tab;
-      r.classList.toggle('hidden', !show);
+    rows().forEach((r) => {
+      const show = tab === 'all' || r.dataset.state === tab
+      r.classList.toggle('hidden', !show)
       if (!show) {
-        const cb = r.querySelector('.rowcheck');
-        if (cb) cb.checked = false;
+        const cb = r.querySelector('.rowcheck')
+        if (cb) cb.checked = false
       }
-    });
-    groupHeads().forEach(h => {
-      const g = h.querySelector('.groupcheck').dataset.group;
-      const visible = rows().filter(r => r.dataset.group === g && !r.classList.contains('hidden'));
-      h.parentElement.parentElement.style.display = visible.length ? '' : 'none';
-    });
-    syncSelection();
+    })
+    groupHeads().forEach((h) => {
+      const g = h.querySelector('.groupcheck').dataset.group
+      const visible = rows().filter((r) => r.dataset.group === g && !r.classList.contains('hidden'))
+      h.parentElement.parentElement.style.display = visible.length ? '' : 'none'
+    })
+    syncSelection()
   }
 
-  document.querySelectorAll('[data-tab]').forEach(btn => {
+  document.querySelectorAll('[data-tab]').forEach((btn) => {
     btn.addEventListener('click', () => {
-      document.querySelectorAll('[data-tab]').forEach(b =>
-        b.setAttribute('aria-selected', String(b === btn)));
-      applyTab(btn.dataset.tab);
-    });
-  });
+      document
+        .querySelectorAll('[data-tab]')
+        .forEach((b) => b.setAttribute('aria-selected', String(b === btn)))
+      applyTab(btn.dataset.tab)
+    })
+  })
 
   // Selection: row checkboxes drive the group header's indeterminate state, and any
   // selection swaps the meta line for the bulk bar.
-  const META_DEFAULT = document.getElementById('metaline').innerHTML;
+  const META_DEFAULT = document.getElementById('metaline').innerHTML
 
   function syncSelection() {
-    document.querySelectorAll('.groupcheck').forEach(gc => {
-      const g = gc.dataset.group;
-      const kids = rows().filter(r => r.dataset.group === g && !r.classList.contains('hidden'))
-                         .map(r => r.querySelector('.rowcheck'));
-      const on = kids.filter(c => c.checked).length;
-      gc.checked = kids.length > 0 && on === kids.length;
-      gc.indeterminate = on > 0 && on < kids.length;
-    });
+    document.querySelectorAll('.groupcheck').forEach((gc) => {
+      const g = gc.dataset.group
+      const kids = rows()
+        .filter((r) => r.dataset.group === g && !r.classList.contains('hidden'))
+        .map((r) => r.querySelector('.rowcheck'))
+      const on = kids.filter((c) => c.checked).length
+      gc.checked = kids.length > 0 && on === kids.length
+      gc.indeterminate = on > 0 && on < kids.length
+    })
 
-    rows().forEach(r => r.classList.toggle('sel', r.querySelector('.rowcheck').checked));
+    rows().forEach((r) => r.classList.toggle('sel', r.querySelector('.rowcheck').checked))
 
-    const n = rows().filter(r => !r.classList.contains('hidden') && r.querySelector('.rowcheck').checked).length;
-    const meta = document.getElementById('metaline');
-    if (n === 0) { meta.innerHTML = META_DEFAULT; return; }
+    const n = rows().filter(
+      (r) => !r.classList.contains('hidden') && r.querySelector('.rowcheck').checked
+    ).length
+    const meta = document.getElementById('metaline')
+    if (n === 0) {
+      meta.innerHTML = META_DEFAULT
+      return
+    }
     meta.innerHTML =
       '<div class="k-selbar">' +
-        '<span class="k-selcount">' + n + ' selected</span>' +
-        '<button class="k-btn sm">Dismiss ' + n + '</button>' +
-        '<button class="k-btn ghost sm" id="clearsel">Clear selection</button>' +
-      '</div>';
+      '<span class="k-selcount">' +
+      n +
+      ' selected</span>' +
+      '<button class="k-btn sm">Dismiss ' +
+      n +
+      '</button>' +
+      '<button class="k-btn ghost sm" id="clearsel">Clear selection</button>' +
+      '</div>'
     document.getElementById('clearsel').addEventListener('click', () => {
-      document.querySelectorAll('.rowcheck').forEach(c => c.checked = false);
-      syncSelection();
-    });
+      document.querySelectorAll('.rowcheck').forEach((c) => (c.checked = false))
+      syncSelection()
+    })
   }
 
-  document.querySelectorAll('.rowcheck').forEach(c => c.addEventListener('change', syncSelection));
-  document.querySelectorAll('.groupcheck').forEach(gc => {
+  document.querySelectorAll('.rowcheck').forEach((c) => c.addEventListener('change', syncSelection))
+  document.querySelectorAll('.groupcheck').forEach((gc) => {
     gc.addEventListener('change', () => {
-      const g = gc.dataset.group;
-      rows().filter(r => r.dataset.group === g && !r.classList.contains('hidden'))
-            .forEach(r => r.querySelector('.rowcheck').checked = gc.checked);
-      syncSelection();
-    });
-  });
+      const g = gc.dataset.group
+      rows()
+        .filter((r) => r.dataset.group === g && !r.classList.contains('hidden'))
+        .forEach((r) => (r.querySelector('.rowcheck').checked = gc.checked))
+      syncSelection()
+    })
+  })
 
-  applyTab('inbox');
+  applyTab('inbox')
 </script>

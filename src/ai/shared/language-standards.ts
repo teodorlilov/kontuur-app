@@ -36,13 +36,15 @@ export const LANGUAGE_STANDARDS: LanguageStandard[] = [
   },
   {
     type: 'grammar',
-    write: (l) => `Flawless ${l} grammar: conjugations, gender agreement, case endings, punctuation.`,
+    write: (l) =>
+      `Flawless ${l} grammar: conjugations, gender agreement, case endings, punctuation.`,
     check:
       'GRAMMAR — Wrong conjugations, gender agreement, case endings, punctuation, incorrect expressions',
   },
   {
     type: 'formality',
-    write: () => 'Hold the configured register from first line to CTA — never mix formal and informal address.',
+    write: () =>
+      'Hold the configured register from first line to CTA — never mix formal and informal address.',
     check: 'FORMALITY — Consistent formal or informal address, never mixed',
   },
   {

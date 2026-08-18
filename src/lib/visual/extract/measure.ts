@@ -45,11 +45,14 @@ export async function measurePage(page: Page): Promise<PageMeasurement> {
     const accents: string[] = []
     const isOpaque = (c: string) => c !== 'transparent' && !/,\s*0\)\s*$/.test(c)
 
-    for (const el of Array.from(document.querySelectorAll('body, header, main, section, div, footer, nav'))) {
+    for (const el of Array.from(
+      document.querySelectorAll('body, header, main, section, div, footer, nav')
+    )) {
       const s = getComputedStyle(el)
       const rect = el.getBoundingClientRect()
       const area = rect.width * rect.height
-      if (area > 10000 && isOpaque(s.backgroundColor)) backgrounds.push({ color: s.backgroundColor, area })
+      if (area > 10000 && isOpaque(s.backgroundColor))
+        backgrounds.push({ color: s.backgroundColor, area })
       if (s.borderTopWidth !== '0px' && isOpaque(s.borderTopColor)) borders.push(s.borderTopColor)
     }
     for (const el of Array.from(document.querySelectorAll('h1, h2, h3, p, li, a, body'))) {

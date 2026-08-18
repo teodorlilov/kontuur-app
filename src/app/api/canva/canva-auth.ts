@@ -12,10 +12,7 @@ interface CanvaTokenResponse {
  * If the token is expired or forceRefresh is true, refreshes it automatically.
  * Returns null if no Canva connection exists for the user.
  */
-export async function getCanvaToken(
-  userId: string,
-  forceRefresh = false
-): Promise<string | null> {
+export async function getCanvaToken(userId: string, forceRefresh = false): Promise<string | null> {
   const admin = createAdminSupabaseClient()
   const { data: conn } = await admin
     .from('social_connections')

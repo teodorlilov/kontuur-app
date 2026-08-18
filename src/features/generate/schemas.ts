@@ -64,9 +64,7 @@ const clientDataSchema = z.object({
   targetAudience: z.string(),
   avoidTopics: z.string(),
   socialGoals: z.string(),
-  contentPillars: z.array(
-    z.object({ id: z.string(), pillar: z.string(), weight: z.number() })
-  ),
+  contentPillars: z.array(z.object({ id: z.string(), pillar: z.string(), weight: z.number() })),
   isHealthNiche: z.boolean().nullable(),
   defaultCarouselSlides: z.number(),
   defaultPostType: z.string().nullable(),

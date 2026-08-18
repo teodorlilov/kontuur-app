@@ -25,15 +25,16 @@ export function BatchScheduleModal({
   timeZone,
   onComplete,
 }: BatchScheduleModalProps) {
-  const { assignments, setDate, setTime, scheduleAll, resetAssignments, loading } = useBatchSchedule(
-    posts,
-    () => {
-      onComplete()
-      onClose()
-    },
-    timeZone,
-    initialAssignments
-  )
+  const { assignments, setDate, setTime, scheduleAll, resetAssignments, loading } =
+    useBatchSchedule(
+      posts,
+      () => {
+        onComplete()
+        onClose()
+      },
+      timeZone,
+      initialAssignments
+    )
 
   // Fresh seed per opening — adjusted during render (the documented pattern).
   const [prevOpen, setPrevOpen] = useState(open)

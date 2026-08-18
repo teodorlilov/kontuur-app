@@ -134,14 +134,22 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
 
   if (!current || current.storage_path !== baseImagePath) {
     return NextResponse.json(
-      { error: 'The image changed since the editor was opened. Reopen to edit the latest version.' },
+      {
+        error: 'The image changed since the editor was opened. Reopen to edit the latest version.',
+      },
       { status: 409 }
     )
   }
 
   try {
     const buffer = Buffer.from(await file.arrayBuffer())
-    const { publicUrl, storagePath } = await uploadPostImage(buffer, file.name, file.type, post.client_id, postId)
+    const { publicUrl, storagePath } = await uploadPostImage(
+      buffer,
+      file.name,
+      file.type,
+      post.client_id,
+      postId
+    )
     const stored: CanvasDoc = { ...doc, flattenedStoragePath: storagePath }
 
     await cleanUpStaleBackground(admin, postId, position, doc, current.storage_path, post.client_id)

@@ -13,13 +13,7 @@ function item(url: string, score: number): TrendSearchResult {
 
 describe('dedupeIntoGroups', () => {
   it('keeps items in their own query group', () => {
-    const groups = dedupeIntoGroups(
-      [
-        [item('a', 0.9), item('b', 0.8)],
-        [item('c', 0.7)],
-      ],
-      0.3
-    )
+    const groups = dedupeIntoGroups([[item('a', 0.9), item('b', 0.8)], [item('c', 0.7)]], 0.3)
 
     expect(groups.map((g) => g.map((i) => i.url))).toEqual([['a', 'b'], ['c']])
   })
@@ -28,10 +22,7 @@ describe('dedupeIntoGroups', () => {
     // Losing provenance here would let one prolific query crowd the others —
     // including a brief's focus query — out of the round-robin cap.
     const groups = dedupeIntoGroups(
-      [
-        [item('shared', 0.5)],
-        [item('shared', 0.9), item('own', 0.6)],
-      ],
+      [[item('shared', 0.5)], [item('shared', 0.9), item('own', 0.6)]],
       0.3
     )
 

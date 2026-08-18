@@ -39,7 +39,9 @@ describe('ideaBriefSchema', () => {
 
   it('bounds idea text and notes', () => {
     expect(ideaBriefSchema.safeParse({ ideaText: 'x'.repeat(2001) }).success).toBe(false)
-    expect(ideaBriefSchema.safeParse({ ...brief, extraNotes: 'x'.repeat(2001) }).success).toBe(false)
+    expect(ideaBriefSchema.safeParse({ ...brief, extraNotes: 'x'.repeat(2001) }).success).toBe(
+      false
+    )
   })
 })
 
@@ -47,9 +49,7 @@ describe('submitIdeasSchema', () => {
   it('requires at least one brief and caps the batch', () => {
     expect(submitIdeasSchema.safeParse({ token, ideas: [] }).success).toBe(false)
     expect(submitIdeasSchema.safeParse({ token, ideas: [brief] }).success).toBe(true)
-    expect(
-      submitIdeasSchema.safeParse({ token, ideas: Array(11).fill(brief) }).success
-    ).toBe(false)
+    expect(submitIdeasSchema.safeParse({ token, ideas: Array(11).fill(brief) }).success).toBe(false)
   })
 })
 

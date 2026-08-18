@@ -173,7 +173,8 @@ export const CLIENT_SOURCE_FULL_COLUMNS =
   'id, client_id, type, label, url, is_active, last_fetched_at, last_fetch_status, last_fetch_error, config, pillar_ids, file_path, extracted_text, created_at'
 
 // client_sources (research pipeline — active only, with extracted_text for file sources)
-export const CLIENT_SOURCE_RESEARCH_COLUMNS = 'id, type, label, url, config, pillar_ids, extracted_text'
+export const CLIENT_SOURCE_RESEARCH_COLUMNS =
+  'id, type, label, url, config, pillar_ids, extracted_text'
 
 // client_sources (UI summaries — the generate flow's run-plan preview; deliberately
 // excludes extracted_text and config, which are heavy and research-only)
@@ -241,7 +242,8 @@ export const NOTIFICATION_COLUMNS =
 
 /** The PostSummary projection: upcoming publishes for the clients roster and the
  *  dashboard's next-up card, and failed ones for its publish list. */
-export const UPCOMING_POST_COLUMNS = 'id, client_id, platform, scheduled_at, clients!inner(agency_id)'
+export const UPCOMING_POST_COLUMNS =
+  'id, client_id, platform, scheduled_at, clients!inner(agency_id)'
 
 /** One row of the dashboard's review-queue preview. */
 export const PENDING_PREVIEW_COLUMNS =

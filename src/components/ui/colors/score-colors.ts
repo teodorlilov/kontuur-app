@@ -71,4 +71,3 @@ const STATUS_DOT_COLORS: Record<string, string> = {
 export function statusDotColor(status?: string): string {
   return (status && STATUS_DOT_COLORS[status]) ?? 'bg-line2'
 }
-

@@ -169,7 +169,9 @@ describe('ResearchPromptBuilder', () => {
   it('throws when the response has no tool_use block', async () => {
     mockClaudeResponse('I could not find any trends.')
     const builder = createBuilder()
-    await expect(generateTopics(builder, { briefs: [], researchCount: 5 })).rejects.toThrow('No tool_use block')
+    await expect(generateTopics(builder, { briefs: [], researchCount: 5 })).rejects.toThrow(
+      'No tool_use block'
+    )
   })
 
   it('uses custom count in fallback prompt', async () => {

@@ -152,7 +152,9 @@ function SetupGroup({
     <section className={first ? 'mt-5' : 'mt-6 border-t border-line pt-5'}>
       <h2 className="mb-3 text-label font-semibold uppercase text-text2">
         {title}
-        {hint && <span className="ml-1 font-normal normal-case tracking-normal text-text3">{hint}</span>}
+        {hint && (
+          <span className="ml-1 font-normal normal-case tracking-normal text-text3">{hint}</span>
+        )}
       </h2>
       {children}
     </section>

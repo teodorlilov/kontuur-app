@@ -34,7 +34,7 @@ class GenerationPipeline {
   private readonly results: GenerationResult[] = []
   private revisionsUsed = 0
 
-  constructor(private readonly ctx: GenerationRunContext) { }
+  constructor(private readonly ctx: GenerationRunContext) {}
 
   async execute(): Promise<GenerationResult[]> {
     const allThemes = this.ctx.themes ?? []
@@ -93,9 +93,7 @@ class GenerationPipeline {
     if (structure && !structure.passes) notes.push(...structure.notes)
     const lang = validation.language
     if (lang.issues.length > 0 && !lang.corrected_text && !lang.corrected_slides) {
-      notes.push(
-        ...lang.issues.map((i) => `${i.type}: "${i.original_text}" → ${i.suggested_fix}`)
-      )
+      notes.push(...lang.issues.map((i) => `${i.type}: "${i.original_text}" → ${i.suggested_fix}`))
     }
     return notes
   }
@@ -146,7 +144,11 @@ class GenerationPipeline {
     }
 
     if (this.ctx.postType === 'carousel') {
-      return { ...base, slideCount: this.ctx.slideCount ?? DEFAULT_CAROUSEL_SLIDES, platform: this.platformFor(theme) }
+      return {
+        ...base,
+        slideCount: this.ctx.slideCount ?? DEFAULT_CAROUSEL_SLIDES,
+        platform: this.platformFor(theme),
+      }
     }
     return { ...base, platform: this.platformFor(theme), count: theme.count || 1 }
   }
@@ -369,11 +371,9 @@ class GenerationPipeline {
       )
     }
   }
-
 }
 
 /** Backwards-compatible entry point for API routes. */
 export async function runGenerationBatch(ctx: GenerationRunContext): Promise<GenerationResult[]> {
   return new GenerationPipeline(ctx).execute()
 }
- 

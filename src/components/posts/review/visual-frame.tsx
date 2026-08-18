@@ -58,7 +58,11 @@ export function VisualFrame({ visual, size, alt, pager, className }: VisualFrame
     return (
       <div className={cn(base, 'grid place-items-center bg-danger-bg text-danger')}>
         <span className="flex flex-col items-center gap-1.5 text-center">
-          <AlertCircle aria-hidden className={size === 'cover' ? 'size-5' : 'size-3.5'} strokeWidth={1.6} />
+          <AlertCircle
+            aria-hidden
+            className={size === 'cover' ? 'size-5' : 'size-3.5'}
+            strokeWidth={1.6}
+          />
           {size === 'cover' && <span className="text-micro font-medium">Visual failed</span>}
         </span>
       </div>

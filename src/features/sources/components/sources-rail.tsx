@@ -20,12 +20,7 @@ interface SourcesRailProps {
  * the same object, so fixing a gap here visibly clears it there. Deliberately
  * no Generate button: the lime commitment exists only on /generate.
  */
-export function SourcesRail({
-  clientId,
-  pillars,
-  sources,
-  postsPerWeek,
-}: SourcesRailProps) {
+export function SourcesRail({ clientId, pillars, sources, postsPerWeek }: SourcesRailProps) {
   const runSize = postsPerWeek > 0 ? postsPerWeek : DEFAULT_RUN_SIZE
   const activeSourceCount = sources.filter((s) => s.is_active).length
 
@@ -34,7 +29,13 @@ export function SourcesRail({
     targetPostCount: runSize,
     sources: sources
       .filter((s) => s.is_active)
-      .map((s) => ({ id: s.id, type: s.type, label: s.label, url: s.url, pillar_ids: s.pillar_ids })),
+      .map((s) => ({
+        id: s.id,
+        type: s.type,
+        label: s.label,
+        url: s.url,
+        pillar_ids: s.pillar_ids,
+      })),
     // The rail renders only the content mix — publishing is not previewed here,
     // so placeholder publish inputs keep computeRunPlan's signature untouched
     // for its generate consumers.

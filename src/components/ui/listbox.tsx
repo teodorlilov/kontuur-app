@@ -74,10 +74,11 @@ export function Listbox<T extends string>({
           // Land on the current choice, not the top of the list.
           onOpenAutoFocus={(event) => {
             event.preventDefault()
-            const current = listRef.current?.querySelector<HTMLButtonElement>(
-              '[aria-selected="true"]'
-            )
-            ;(current ?? listRef.current?.querySelector<HTMLButtonElement>('[role="option"]'))?.focus()
+            const current =
+              listRef.current?.querySelector<HTMLButtonElement>('[aria-selected="true"]')
+            ;(
+              current ?? listRef.current?.querySelector<HTMLButtonElement>('[role="option"]')
+            )?.focus()
           }}
           className={cn(
             'z-[210] max-h-[min(360px,var(--radix-popover-content-available-height))] overflow-y-auto overscroll-contain',

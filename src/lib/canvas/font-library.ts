@@ -40,7 +40,12 @@ const FONT_FAMILIES = {
   'Poiret One': { category: 'display', cyrillic: true, weights: [400], italic: false },
   'Ruslan Display': { category: 'display', cyrillic: true, weights: [400], italic: false },
   Unbounded: { category: 'display', cyrillic: true, weights: [400, 700], italic: false },
-  'Sofia Sans Condensed': { category: 'display', cyrillic: true, weights: [400, 700], italic: true },
+  'Sofia Sans Condensed': {
+    category: 'display',
+    cyrillic: true,
+    weights: [400, 700],
+    italic: true,
+  },
   Oswald: { category: 'display', cyrillic: true, weights: [400, 500, 700], italic: false },
   'Russo One': { category: 'display', cyrillic: true, weights: [400], italic: false },
   'Yeseva One': { category: 'display', cyrillic: true, weights: [400], italic: false },

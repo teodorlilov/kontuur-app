@@ -58,11 +58,7 @@ async function fetchCanvaProfile(
     data?.name ??
     data?.user?.display_name ??
     'Canva User'
-  const userId =
-    data?.team_user?.user_id ??
-    data?.user?.id ??
-    data?.id ??
-    'unknown'
+  const userId = data?.team_user?.user_id ?? data?.user?.id ?? data?.id ?? 'unknown'
   return { displayName, userId }
 }
 
@@ -130,9 +126,7 @@ export async function GET(request: NextRequest) {
 
     if (error) throw new Error(`Failed to save Canva connection: ${error.message}`)
 
-    return NextResponse.redirect(
-      `${process.env.NEXT_PUBLIC_APP_URL}/settings?canva_connected=1`
-    )
+    return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/settings?canva_connected=1`)
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
     console.error('Canva OAuth callback error:', message)

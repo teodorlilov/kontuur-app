@@ -18,8 +18,7 @@ export function toVisualSlots(
   const slots: DraftVisual[] = []
   for (let position = 0; position < totalSlots; position++) {
     const image = images.find((img) => img.position === position)
-    const inFlight =
-      generatingPositions.includes(position) || composingPositions.includes(position)
+    const inFlight = generatingPositions.includes(position) || composingPositions.includes(position)
     if (image) {
       slots.push({
         position,

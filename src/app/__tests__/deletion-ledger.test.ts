@@ -85,9 +85,7 @@ describe('deleted symbols stay unreferenced', () => {
 
   it("the idea lifecycle has three statuses — 'generating' is retired", () => {
     const apiTypes = readFileSync(path.resolve(SRC, 'types/api.ts'), 'utf8')
-    const unionLine = apiTypes
-      .split('\n')
-      .find((line) => line.includes('export type IdeaStatus'))
+    const unionLine = apiTypes.split('\n').find((line) => line.includes('export type IdeaStatus'))
 
     expect(unionLine).toBeDefined()
     expect(unionLine).not.toContain('generating')

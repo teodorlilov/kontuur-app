@@ -1,4 +1,10 @@
-import type { AudienceDemographics, FBDailyInsight, FBPost, FacebookMetrics, MediaTypeBreakdownItem } from '@/types/api'
+import type {
+  AudienceDemographics,
+  FBDailyInsight,
+  FBPost,
+  FacebookMetrics,
+  MediaTypeBreakdownItem,
+} from '@/types/api'
 import { META_GRAPH_BASE } from '@/lib/meta/constants'
 import {
   type AudienceApiData,
@@ -40,7 +46,13 @@ async function fetchFBDailyInsights(
 async function fetchSingleFBPostInsights(
   postId: string,
   token: string
-): Promise<{ reactions: number; comments: number; shares: number; reach: number; impressions: number }> {
+): Promise<{
+  reactions: number
+  comments: number
+  shares: number
+  reach: number
+  impressions: number
+}> {
   const zero = { reactions: 0, comments: 0, shares: 0, reach: 0, impressions: 0 }
   try {
     const res = await fetch(
@@ -81,7 +93,9 @@ async function fetchFBPosts(
     `${META_GRAPH_BASE}/${pageId}/posts?fields=id,message,created_time&since=${since}&until=${until}&limit=25&${token}`
   )
   const body = res.ok
-    ? ((await res.json()) as { data: Array<{ id: string; message?: string; created_time: string }> })
+    ? ((await res.json()) as {
+        data: Array<{ id: string; message?: string; created_time: string }>
+      })
     : { data: [] }
   return Promise.all(
     body.data.slice(0, 10).map(async (post) => {
@@ -127,7 +141,12 @@ async function fetchFBAudienceDemographics(
     )
     if (!res.ok) return null
     const { data } = (await res.json()) as { data: AudienceApiData }
-    return buildAudienceDemographics(data, 'page_fans_gender_age', 'page_fans_city', 'page_fans_country')
+    return buildAudienceDemographics(
+      data,
+      'page_fans_gender_age',
+      'page_fans_city',
+      'page_fans_country'
+    )
   } catch {
     return null
   }

@@ -44,9 +44,7 @@ export const QueueItem = memo(function QueueItem({
         // ternary because `hover:bg-sunken` and `bg-wash` are different variants and
         // both survived the merge: hovering the selected row turned it grey, so the one
         // row you were about to act on was the one row that stopped looking selected.
-        isActive
-          ? 'bg-wash ring-1 ring-inset ring-forest/[0.16]'
-          : 'hover:bg-sunken'
+        isActive ? 'bg-wash ring-1 ring-inset ring-forest/[0.16]' : 'hover:bg-sunken'
       )}
     >
       {isActive && <ActiveBar />}
@@ -85,9 +83,7 @@ export const QueueItem = memo(function QueueItem({
       <span className="flex items-center gap-1.5 text-micro text-text3">
         <span>{postTypeLabel(post.post_type, post.slides_json)}</span>
         <span aria-hidden="true">·</span>
-        <span className="tabular-nums">
-          {formatRelativeTime(parseTimestamp(post.created_at))}
-        </span>
+        <span className="tabular-nums">{formatRelativeTime(parseTimestamp(post.created_at))}</span>
       </span>
     </button>
   )

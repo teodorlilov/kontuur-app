@@ -17,10 +17,7 @@ function countWords(text: string): number {
  * failures ("73 words" on a 55-word caption). Code counts; the LLM only
  * judges the semantic rules.
  */
-export function checkCarouselStructure(
-  caption: string,
-  slides: SlideText[]
-): StructureResult {
+export function checkCarouselStructure(caption: string, slides: SlideText[]): StructureResult {
   const notes: string[] = []
 
   const captionWords = countWords(caption)

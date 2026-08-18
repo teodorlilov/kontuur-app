@@ -18,7 +18,11 @@ describe('toVisualSlots', () => {
   it('persisted images become done slots with their refs', () => {
     const slots = toVisualSlots([image(0), image(1)], [], [], 2)
     expect(slots).toHaveLength(2)
-    expect(slots[0]).toMatchObject({ position: 0, status: 'done', publicUrl: 'https://cdn/img-0.jpg' })
+    expect(slots[0]).toMatchObject({
+      position: 0,
+      status: 'done',
+      publicUrl: 'https://cdn/img-0.jpg',
+    })
   })
 
   it('a position with neither image nor job is omitted — the empty frame renders', () => {
@@ -42,6 +46,10 @@ describe('toVisualSlots', () => {
 
   it('a regenerating position that still has its old image keeps showing it', () => {
     const slots = toVisualSlots([image(2)], [2], [], 3)
-    expect(slots[0]).toMatchObject({ position: 2, status: 'generating', publicUrl: 'https://cdn/img-2.jpg' })
+    expect(slots[0]).toMatchObject({
+      position: 2,
+      status: 'generating',
+      publicUrl: 'https://cdn/img-2.jpg',
+    })
   })
 })

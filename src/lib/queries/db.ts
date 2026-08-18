@@ -332,9 +332,11 @@ export async function fetchUsedSourceUrls(
       .limit(limit),
     'fetchUsedSourceUrls'
   )
-  return (data as Array<{ source_url: string | null }> | null)
-    ?.map((r) => r.source_url)
-    .filter((u): u is string => u !== null) ?? []
+  return (
+    (data as Array<{ source_url: string | null }> | null)
+      ?.map((r) => r.source_url)
+      .filter((u): u is string => u !== null) ?? []
+  )
 }
 
 // ---------- source usage stats (outcome telemetry) ----------
@@ -465,9 +467,9 @@ export async function fetchEngineContext(
     console.error('[engine] style memo read failed:', memoResult.error)
   }
   // as: maybeSingle() over a projected column set, narrowed to what we read.
-  const styleMemo = parseMemoBullets(
-    (memoResult.data as { memo?: Json } | null)?.memo ?? null
-  ).map((b) => b.rule)
+  const styleMemo = parseMemoBullets((memoResult.data as { memo?: Json } | null)?.memo ?? null).map(
+    (b) => b.rule
+  )
 
   // as: explicit column projection — the generated row type covers the whole
   // table, not the three columns EXEMPLAR_COLUMNS selects.
@@ -484,7 +486,9 @@ export async function fetchEngineContext(
     if (caption.length < EXEMPLAR_MIN_CHARS || caption.length > EXEMPLAR_MAX_CHARS) continue
     if (row.post_type === 'carousel') {
       if (carousel.length >= EXEMPLAR_CAROUSEL_LIMIT) continue
-      const slides = Array.isArray(row.slides_json) ? (row.slides_json as Array<{ headline?: unknown }>) : []
+      const slides = Array.isArray(row.slides_json)
+        ? (row.slides_json as Array<{ headline?: unknown }>)
+        : []
       const coverHeadline = typeof slides[0]?.headline === 'string' ? slides[0].headline : ''
       carousel.push({ caption, coverHeadline })
     } else {

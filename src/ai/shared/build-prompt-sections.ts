@@ -2,17 +2,10 @@ import type { ClientData } from '@/lib/clients/fetch-client-data'
 import type { LanguageConfig } from '@/lib/clients/language-rules'
 import type { PostType } from '@/types/api'
 import { formatFormalityRules } from '@/ai/shared/formality-guidance'
-import {
-  formatAiTells,
-  formatWordCount,
-  formatHealthRules,
-} from '@/ai/shared/content-criteria'
+import { formatAiTells, formatWordCount, formatHealthRules } from '@/ai/shared/content-criteria'
 import { ISSUE_TYPE_DEFINITIONS } from '@/ai/validation/criteria'
 import { LANGUAGE_STANDARDS } from '@/ai/shared/language-standards'
-import {
-  sanitizePromptField,
-  PROMPT_FIELD_LIMITS,
-} from '@/ai/utils/sanitize'
+import { sanitizePromptField, PROMPT_FIELD_LIMITS } from '@/ai/utils/sanitize'
 
 /**
  * Lean client brief for generation prompts.

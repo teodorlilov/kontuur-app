@@ -125,9 +125,7 @@ export function ReviewView({
 
   // Averaged over scored posts only: an unjudged post has no number to contribute,
   // and `?? 0` would drag the run's average down with a score nobody assigned.
-  const scores = posts
-    .map((p) => p.scores.overall_score)
-    .filter((s): s is number => s !== null)
+  const scores = posts.map((p) => p.scores.overall_score).filter((s): s is number => s !== null)
   const averageQuality =
     scores.length > 0 ? scores.reduce((sum, s) => sum + s, 0) / scores.length : null
 
@@ -255,7 +253,9 @@ export function ReviewView({
               averageQuality === null
                 ? null
                 : `Average quality ${averageQuality.toFixed(1)}${
-                    scores.length < posts.length ? ` (${scores.length} of ${posts.length} scored)` : ''
+                    scores.length < posts.length
+                      ? ` (${scores.length} of ${posts.length} scored)`
+                      : ''
                   }`,
             ]
               .filter((part): part is string => part !== null)
@@ -346,9 +346,7 @@ export function ReviewView({
               onPrev={() => focusNeighbour(-1)}
               onNext={() => focusNeighbour(1)}
               onSlideIdx={setSlideIdx}
-              onCaptionChange={(caption) =>
-                setEdits(focused.post.id, { ...focusedEdits, caption })
-              }
+              onCaptionChange={(caption) => setEdits(focused.post.id, { ...focusedEdits, caption })}
               onSlidesChange={(slides: CarouselSlide[]) =>
                 setEdits(focused.post.id, { ...focusedEdits, slidesJson: slides })
               }

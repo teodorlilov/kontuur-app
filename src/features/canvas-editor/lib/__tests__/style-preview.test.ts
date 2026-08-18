@@ -3,7 +3,11 @@ import type { CanvasDoc, CanvasTextNode } from '@/types/canvas'
 import { applyStyleToDoc } from '@/lib/canvas/apply-style'
 import { takesStyle } from '../style-preview'
 
-function text(id: string, role: CanvasTextNode['role'], over: Partial<CanvasTextNode> = {}): CanvasTextNode {
+function text(
+  id: string,
+  role: CanvasTextNode['role'],
+  over: Partial<CanvasTextNode> = {}
+): CanvasTextNode {
   return {
     id,
     kind: 'text',
@@ -46,7 +50,10 @@ describe('takesStyle', () => {
     // `applyStyleToDoc` never touches a custom node, so such a slide would come back unchanged —
     // the panel disables the row rather than offering a tick that does nothing.
     expect(takesStyle(doc([text('a', 'custom'), text('b', 'custom')]))).toBe(false)
-    const styled = applyStyleToDoc(doc([text('a', 'custom')]), doc([text('h', 'headline', { x: 5 })]))
+    const styled = applyStyleToDoc(
+      doc([text('a', 'custom')]),
+      doc([text('h', 'headline', { x: 5 })])
+    )
     expect((styled.nodes[0] as CanvasTextNode).x).toBe(80)
   })
 })

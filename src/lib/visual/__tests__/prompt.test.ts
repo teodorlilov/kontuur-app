@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest'
-import { buildVisualPrompt, carouselSlideText, sanitizePromptText, singlePostText, slideTextBlock } from '../prompt'
+import {
+  buildVisualPrompt,
+  carouselSlideText,
+  sanitizePromptText,
+  singlePostText,
+  slideTextBlock,
+} from '../prompt'
 
 describe('sanitizePromptText', () => {
   it('strips URLs, hashtags, and mentions and collapses whitespace', () => {
@@ -10,7 +16,11 @@ describe('sanitizePromptText', () => {
 
 describe('carouselSlideText', () => {
   it('formats the slide position, role hint, headline, and body', () => {
-    const text = carouselSlideText({ headline: 'Layer 2: Connect GA4', body: 'GA4 shows where users go.' }, 3, 8)
+    const text = carouselSlideText(
+      { headline: 'Layer 2: Connect GA4', body: 'GA4 shows where users go.' },
+      3,
+      8
+    )
     expect(text).toBe(
       'Slide 4 of 8\n' +
         'This is a quiet middle slide: a restrained, minimal take on the style — ONE small supporting subject only, sparse elements, most of the canvas plain calm background; keep the top quarter and the lower half of the canvas calm and uncluttered, text will be overlaid there.\n' +
@@ -89,11 +99,18 @@ describe('slideTextBlock', () => {
 
   it('returns null for an out-of-range position', () => {
     expect(slideTextBlock({ postType: 'carousel', slides, caption: null, position: 5 })).toBeNull()
-    expect(slideTextBlock({ postType: 'single', slides: [], caption: 'Hi', position: 1 })).toBeNull()
+    expect(
+      slideTextBlock({ postType: 'single', slides: [], caption: 'Hi', position: 1 })
+    ).toBeNull()
   })
 
   it('derives single posts from the caption at position 0', () => {
-    const text = slideTextBlock({ postType: 'single', slides: [], caption: 'A tip about GA4', position: 0 })
+    const text = slideTextBlock({
+      postType: 'single',
+      slides: [],
+      caption: 'A tip about GA4',
+      position: 0,
+    })
     expect(text).toBe('Single image post\n\nA tip about GA4')
   })
 })

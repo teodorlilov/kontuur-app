@@ -2,8 +2,20 @@ import { describe, expect, it } from 'vitest'
 import type { FontEntry } from '../font-library'
 import { editorFontsHref } from '../google-fonts'
 
-const upright: FontEntry = { family: 'Oswald', category: 'display', cyrillic: true, weights: [400, 700], italic: false }
-const italic: FontEntry = { family: 'Lora', category: 'serif', cyrillic: true, weights: [700, 400], italic: true }
+const upright: FontEntry = {
+  family: 'Oswald',
+  category: 'display',
+  cyrillic: true,
+  weights: [400, 700],
+  italic: false,
+}
+const italic: FontEntry = {
+  family: 'Lora',
+  category: 'serif',
+  cyrillic: true,
+  weights: [700, 400],
+  italic: true,
+}
 
 describe('editorFontsHref', () => {
   it('returns null for an empty library', () => {

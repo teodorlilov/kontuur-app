@@ -14,7 +14,10 @@ async function resolveIdentity(clientId: string): Promise<VisualIdentity> {
   if (stored?.palette_description) return stored
 
   const base = stored ?? buildDefaultIdentity()
-  const healed: VisualIdentity = { ...base, palette_description: await describePalette(base.palette) }
+  const healed: VisualIdentity = {
+    ...base,
+    palette_description: await describePalette(base.palette),
+  }
   if (stored) {
     const { error } = await updateVisualIdentityBlob(clientId, healed)
     if (error) console.warn(`[generate-visual] could not persist palette description: ${error}`)

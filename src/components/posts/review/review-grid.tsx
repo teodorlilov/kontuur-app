@@ -97,7 +97,10 @@ function DraftCard({
             {Array.from({ length: slideCount }, (_, i) => (
               <i
                 key={i}
-                className={cn('h-[3px] w-3.5 rounded-full', i === 0 ? 'bg-surface' : 'bg-surface/45')}
+                className={cn(
+                  'h-[3px] w-3.5 rounded-full',
+                  i === 0 ? 'bg-surface' : 'bg-surface/45'
+                )}
               />
             ))}
           </span>
@@ -108,7 +111,9 @@ function DraftCard({
           {post.pillar && (
             <span
               className="inline-flex min-w-0 truncate rounded-chip px-2 py-0.5 text-micro font-medium"
-              style={pillarColor ? { background: pillarColor.bg, color: pillarColor.text } : undefined}
+              style={
+                pillarColor ? { background: pillarColor.bg, color: pillarColor.text } : undefined
+              }
             >
               {post.pillar}
             </span>
@@ -139,7 +144,10 @@ function DraftCard({
             // In-progress is healthy, not a warning — wash + the live dot, the
             // same vocabulary the generating step speaks.
             <StatusPill tone="ok">
-              <span aria-hidden className="live-dot mr-1.5 size-1.5 flex-none rounded-full bg-spring" />
+              <span
+                aria-hidden
+                className="live-dot mr-1.5 size-1.5 flex-none rounded-full bg-spring"
+              />
               {composing} composing
             </StatusPill>
           )}
@@ -148,7 +156,9 @@ function DraftCard({
         </div>
         <div className="mt-1 flex items-center gap-2 border-t border-line pt-3">
           <span className="min-w-0 flex-1 truncate text-micro text-text3">
-            {[sourceTypeLabel(post.source_type), toSourceHost(post.source_url)].filter(Boolean).join(' · ')}
+            {[sourceTypeLabel(post.source_type), toSourceHost(post.source_url)]
+              .filter(Boolean)
+              .join(' · ')}
           </span>
           <Button variant="ghost" size="sm" className="text-text2" onClick={onOpen}>
             Open

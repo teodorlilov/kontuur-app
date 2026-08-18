@@ -12,7 +12,14 @@ const pillars: WeightedPillar[] = [
 ]
 
 function source(overrides: Partial<ClientSourceSummary>): ClientSourceSummary {
-  return { id: 's1', type: 'rss', label: 'Feed', url: 'https://x.test', pillar_ids: [], ...overrides }
+  return {
+    id: 's1',
+    type: 'rss',
+    label: 'Feed',
+    url: 'https://x.test',
+    pillar_ids: [],
+    ...overrides,
+  }
 }
 
 function connection(overrides: Partial<MetaConnection>): MetaConnection {

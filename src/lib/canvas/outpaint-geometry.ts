@@ -55,11 +55,7 @@ export function paddedFrame(
 
   // One scale for both axes, clamped so neither the growth floor nor the pixel cap is breached.
   const wanted = Math.max(1, growth)
-  const capped = Math.min(
-    wanted,
-    MAX_PADDED_EDGE / aspectWidth,
-    MAX_PADDED_EDGE / aspectHeight
-  )
+  const capped = Math.min(wanted, MAX_PADDED_EDGE / aspectWidth, MAX_PADDED_EDGE / aspectHeight)
   const scale = Math.max(1, capped)
 
   const width = Math.min(MAX_PADDED_EDGE, ceilToGrid(aspectWidth * scale))

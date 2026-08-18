@@ -25,7 +25,10 @@ type ExtractIdentityInput = {
  * to the neutral default palette when a site can't be captured. Always resolves to a valid identity —
  * onboarding never blocks or errors.
  */
-export async function extractIdentity({ url, currentStyle }: ExtractIdentityInput): Promise<ExtractionResult> {
+export async function extractIdentity({
+  url,
+  currentStyle,
+}: ExtractIdentityInput): Promise<ExtractionResult> {
   const style = currentStyle ?? DEFAULT_BRAND_STYLE_ID
   const capture = await captureSite(url)
   if (!capture.ok || !capture.measured) {

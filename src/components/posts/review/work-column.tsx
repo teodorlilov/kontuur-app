@@ -193,7 +193,9 @@ export function WorkColumn({
         )}
 
         {/* ── The slide ── */}
-        <div className={cn('grid gap-5 px-4 pb-4', isCarousel && 'md:grid-cols-[200px_minmax(0,1fr)]')}>
+        <div
+          className={cn('grid gap-5 px-4 pb-4', isCarousel && 'md:grid-cols-[200px_minmax(0,1fr)]')}
+        >
           <div className={cn(!isCarousel && 'mx-auto w-full max-w-[280px]')}>
             <button
               type="button"
@@ -221,9 +223,16 @@ export function WorkColumn({
                     rows={2}
                     aria-label="Slide headline"
                     onChange={(e) =>
-                      onSlidesChange(updateSlideField(workingSlidesJson, slideIdx, 'headline', e.target.value))
+                      onSlidesChange(
+                        updateSlideField(workingSlidesJson, slideIdx, 'headline', e.target.value)
+                      )
                     }
-                    className={cn(CONTROL_SURFACE, CONTROL_FOCUS, CONTROL_TEXT, 'resize-none px-3 py-2 font-medium')}
+                    className={cn(
+                      CONTROL_SURFACE,
+                      CONTROL_FOCUS,
+                      CONTROL_TEXT,
+                      'resize-none px-3 py-2 font-medium'
+                    )}
                   />
                 </label>
                 {activeSlide.body !== '' && (
@@ -232,9 +241,16 @@ export function WorkColumn({
                     rows={3}
                     aria-label="Slide body"
                     onChange={(e) =>
-                      onSlidesChange(updateSlideField(workingSlidesJson, slideIdx, 'body', e.target.value))
+                      onSlidesChange(
+                        updateSlideField(workingSlidesJson, slideIdx, 'body', e.target.value)
+                      )
                     }
-                    className={cn(CONTROL_SURFACE, CONTROL_FOCUS, CONTROL_TEXT, 'resize-none px-3 py-2')}
+                    className={cn(
+                      CONTROL_SURFACE,
+                      CONTROL_FOCUS,
+                      CONTROL_TEXT,
+                      'resize-none px-3 py-2'
+                    )}
                   />
                 )}
               </div>
@@ -315,7 +331,12 @@ export function WorkColumn({
           rows={12}
           aria-label="Caption"
           onChange={(e) => onCaptionChange(e.target.value)}
-          className={cn(CONTROL_SURFACE, CONTROL_FOCUS, CONTROL_TEXT, 'resize-y px-4 py-3 leading-relaxed')}
+          className={cn(
+            CONTROL_SURFACE,
+            CONTROL_FOCUS,
+            CONTROL_TEXT,
+            'resize-y px-4 py-3 leading-relaxed'
+          )}
         />
       </div>
 
@@ -391,7 +412,9 @@ function SlotNote({
         tone === 'bad' ? 'bg-danger-bg' : 'bg-pending-bg'
       )}
     >
-      <span className={cn('mb-1 block font-semibold', tone === 'bad' ? 'text-danger' : 'text-pending')}>
+      <span
+        className={cn('mb-1 block font-semibold', tone === 'bad' ? 'text-danger' : 'text-pending')}
+      >
         {title}
       </span>
       {children}

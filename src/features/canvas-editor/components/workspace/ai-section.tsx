@@ -62,11 +62,7 @@ export function AiSection(props: AiSectionProps) {
           <div className="mt-3">
             {/* Two columns so a candidate is big enough to actually judge — the 72px filmstrip
                 tile is for a row of slides you already chose, not for choosing between images. */}
-            <div
-              role="group"
-              aria-label="Generated backgrounds"
-              className="grid grid-cols-2 gap-2"
-            >
+            <div role="group" aria-label="Generated backgrounds" className="grid grid-cols-2 gap-2">
               {candidates.map((candidate, index) => {
                 const inUse = candidate.storagePath === props.currentStoragePath
                 return (
@@ -172,10 +168,7 @@ function AiVerb({ icon, label, description, seconds, busy, onClick }: AiVerbProp
       type="button"
       disabled={busy}
       onClick={onClick}
-      className={cn(
-        EDITOR_BUTTON,
-        'h-auto flex-col items-start gap-0.5 px-2.5 py-2 text-left'
-      )}
+      className={cn(EDITOR_BUTTON, 'h-auto flex-col items-start gap-0.5 px-2.5 py-2 text-left')}
     >
       <span className="flex items-center gap-1.5 font-medium text-ink">
         {icon} {label}

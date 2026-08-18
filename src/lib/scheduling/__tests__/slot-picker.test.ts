@@ -125,7 +125,12 @@ describe('suggestWeekSlots', () => {
   it('returns every matching day × window in the week, ascending', () => {
     // Thursday 6 and Friday 7 August 2026.
     expect(
-      suggestWeekSlots({ platform: 'Instagram', bestTimes, weekStartISO: '2026-08-03', timeZone: TZ })
+      suggestWeekSlots({
+        platform: 'Instagram',
+        bestTimes,
+        weekStartISO: '2026-08-03',
+        timeZone: TZ,
+      })
     ).toEqual([
       new Date('2026-08-06T18:00:00').toISOString(),
       new Date('2026-08-07T18:00:00').toISOString(),
@@ -144,17 +149,36 @@ describe('suggestWeekSlots', () => {
   })
 
   it('degrades to nothing rather than guessing', () => {
-    expect(suggestWeekSlots({ platform: 'Instagram', bestTimes: null, weekStartISO: '2026-08-03', timeZone: TZ })).toEqual([])
-    expect(suggestWeekSlots({ platform: null, bestTimes, weekStartISO: '2026-08-03', timeZone: TZ })).toEqual([])
     expect(
-      suggestWeekSlots({ platform: 'LinkedIn', bestTimes, weekStartISO: '2026-08-03', timeZone: TZ })
+      suggestWeekSlots({
+        platform: 'Instagram',
+        bestTimes: null,
+        weekStartISO: '2026-08-03',
+        timeZone: TZ,
+      })
+    ).toEqual([])
+    expect(
+      suggestWeekSlots({ platform: null, bestTimes, weekStartISO: '2026-08-03', timeZone: TZ })
+    ).toEqual([])
+    expect(
+      suggestWeekSlots({
+        platform: 'LinkedIn',
+        bestTimes,
+        weekStartISO: '2026-08-03',
+        timeZone: TZ,
+      })
     ).toEqual([])
   })
 
   it('ignores an entry whose days or windows are empty', () => {
     const hollow: BestTimePlatform[] = [{ ...bestTimes[0]!, best_days: [] }]
     expect(
-      suggestWeekSlots({ platform: 'Instagram', bestTimes: hollow, weekStartISO: '2026-08-03', timeZone: TZ })
+      suggestWeekSlots({
+        platform: 'Instagram',
+        bestTimes: hollow,
+        weekStartISO: '2026-08-03',
+        timeZone: TZ,
+      })
     ).toEqual([])
   })
 })

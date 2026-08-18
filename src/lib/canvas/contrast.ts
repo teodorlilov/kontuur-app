@@ -99,7 +99,9 @@ export function bestFill(
 }
 
 /** A text node's unrotated box. Height is budgeted at one line — enough to sample the right band. */
-export function textBox(node: Pick<CanvasTextNode, 'x' | 'y' | 'width' | 'fontSize' | 'lineHeight'>) {
+export function textBox(
+  node: Pick<CanvasTextNode, 'x' | 'y' | 'width' | 'fontSize' | 'lineHeight'>
+) {
   return {
     x: node.x,
     y: node.y,

@@ -51,7 +51,7 @@ describe('applyTextEffect', () => {
     }
   })
 
-  it('leaves a lockup\'s tracking alone unless the user presses None', () => {
+  it("leaves a lockup's tracking alone unless the user presses None", () => {
     // Pressing Shadow says nothing about tracking. It used to wipe it, which also stopped the slide
     // reporting as wearing the lockup that set it.
     const tracked = text({ letterSpacing: 9 })
@@ -69,7 +69,12 @@ describe('applyTextEffect', () => {
   })
 
   it('"none" clears everything', () => {
-    const busy = text({ letterSpacing: 12, shadowColor: '#000000', stroke: '#ffffff', strokeWidth: 3 })
+    const busy = text({
+      letterSpacing: 12,
+      shadowColor: '#000000',
+      stroke: '#ffffff',
+      strokeWidth: 3,
+    })
     const cleared = { ...busy, ...applyTextEffect(busy, 'none') }
     for (const field of TEXT_EFFECT_FIELDS) expect(cleared[field]).toBeUndefined()
   })
@@ -115,7 +120,12 @@ describe('activeTextEffect', () => {
 
   it('is not knocked off its tile by an unrelated edit', () => {
     // A resize or a colour change must not un-highlight the active preset — those are not effects.
-    const node = { ...text(), ...applyTextEffect(text(), 'spaced'), width: 500, align: 'center' as const }
+    const node = {
+      ...text(),
+      ...applyTextEffect(text(), 'spaced'),
+      width: 500,
+      align: 'center' as const,
+    }
     expect(activeTextEffect(node)).toBe('spaced')
   })
 

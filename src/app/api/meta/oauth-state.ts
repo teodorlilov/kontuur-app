@@ -24,9 +24,9 @@ function sign(payload: string): Buffer {
 }
 
 export function encodeOAuthState(payload: OAuthStatePayload): string {
-  const body = Buffer.from(
-    JSON.stringify({ ...payload, exp: Date.now() + STATE_TTL_MS })
-  ).toString('base64url')
+  const body = Buffer.from(JSON.stringify({ ...payload, exp: Date.now() + STATE_TTL_MS })).toString(
+    'base64url'
+  )
   return `${body}.${sign(body).toString('base64url')}`
 }
 

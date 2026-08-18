@@ -39,7 +39,7 @@ describe('groupPostsByDate', () => {
   })
 
   it('skips unscheduled posts', () => {
-    expect(groupPostsByDate([post('a', '') ], 'Europe/Sofia').size).toBe(0)
+    expect(groupPostsByDate([post('a', '')], 'Europe/Sofia').size).toBe(0)
   })
 })
 
@@ -100,12 +100,18 @@ describe('countClientsBehind', () => {
   })
 
   it('does not count a client who has met their target', () => {
-    const posts = [placed('a', '2026-08-04T06:00:00+00:00'), placed('a', '2026-08-06T06:00:00+00:00')]
+    const posts = [
+      placed('a', '2026-08-04T06:00:00+00:00'),
+      placed('a', '2026-08-06T06:00:00+00:00'),
+    ]
     expect(countClientsBehind(posts, [{ id: 'a', posts_per_week: 2 }], week, TZ)).toBe(0)
   })
 
   it('counts posts, not days — two on one day both count toward the target', () => {
-    const posts = [placed('a', '2026-08-04T06:00:00+00:00'), placed('a', '2026-08-04T15:00:00+00:00')]
+    const posts = [
+      placed('a', '2026-08-04T06:00:00+00:00'),
+      placed('a', '2026-08-04T15:00:00+00:00'),
+    ]
     expect(countClientsBehind(posts, [{ id: 'a', posts_per_week: 2 }], week, TZ)).toBe(0)
   })
 
@@ -281,7 +287,10 @@ describe('describeCoverage', () => {
 
   it('resolves the hour in the agency zone, not the runtime', () => {
     // 21:30Z is 00:30 the next day in Sofia — the same instant the grid buckets forward.
-    const said = describeCoverage(week({ 1: { state: 'scheduled', at: '2026-08-04T21:30:00.000Z' } }), SOFIA)
+    const said = describeCoverage(
+      week({ 1: { state: 'scheduled', at: '2026-08-04T21:30:00.000Z' } }),
+      SOFIA
+    )
     expect(said).toBe('Tuesday 00:30 scheduled.')
   })
 
@@ -366,7 +375,12 @@ describe('buildWeekLanes', () => {
 
   it('orders posts and slots together by time', () => {
     const posts = [
-      { id: 'p', client_id: 'other', scheduled_at: '2026-08-06T05:00:00.000Z', status: 'scheduled' },
+      {
+        id: 'p',
+        client_id: 'other',
+        scheduled_at: '2026-08-06T05:00:00.000Z',
+        status: 'scheduled',
+      },
     ] as CalendarPost[]
     const lanes = buildWeekLanes({
       posts,

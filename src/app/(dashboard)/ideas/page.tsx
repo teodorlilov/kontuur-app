@@ -2,11 +2,7 @@ import { requireSessionUser } from '@/lib/auth/session'
 import { getCachedAgencyClients } from '@/lib/queries/cache'
 import { countIdeasByStatus, fetchIdeasForAgency } from '@/features/ideas/lib/ideas'
 import { IdeasView } from '@/features/ideas/components/ideas-view'
-import {
-  DEFAULT_IDEA_TAB,
-  IDEA_TABS,
-  statusesForTab,
-} from '@/features/ideas/lib/idea-filters'
+import { DEFAULT_IDEA_TAB, IDEA_TABS, statusesForTab } from '@/features/ideas/lib/idea-filters'
 import { parseParam } from '@/utils/parse-param'
 
 interface IdeasPageProps {

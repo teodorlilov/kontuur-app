@@ -57,8 +57,8 @@ export function SendToClientDialog({ post, onClose, onSent }: SendToClientDialog
       <div className="flex flex-col gap-4 p-7 pt-4">
         <p className="text-caption text-text2">
           The client gets a link — no login — that shows this post and asks for a verdict. It
-          expires after 48 hours; their answer arrives as a notification, and the post waits in
-          its own tab meanwhile.
+          expires after 48 hours; their answer arrives as a notification, and the post waits in its
+          own tab meanwhile.
         </p>
         <div className="flex flex-col gap-2">
           <Button

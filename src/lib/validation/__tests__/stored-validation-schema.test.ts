@@ -17,7 +17,11 @@ describe('parseStoredValidation — the retired checklist shape', () => {
       structure_followed: {
         passes: false,
         checks: [
-          { rule: 'Each slide covers a DISTINCT idea', note: 'Slides 1 and 2 repeat.', passes: false },
+          {
+            rule: 'Each slide covers a DISTINCT idea',
+            note: 'Slides 1 and 2 repeat.',
+            passes: false,
+          },
           { rule: 'Slide bodies are tight', note: 'Both acceptable.', passes: true },
           { rule: 'Headlines name a mechanism', note: 'Slide 1 is a topic label.', passes: false },
         ],

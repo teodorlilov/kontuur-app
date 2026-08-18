@@ -88,7 +88,10 @@ export async function POST(request: Request) {
     // A solo account with no client cannot generate anything, so a dropped
     // insert here is a failed signup, not a cosmetic gap.
     if (clientError || !clientData) {
-      console.error('[signup] solo client insert failed:', clientError?.message ?? 'no row returned')
+      console.error(
+        '[signup] solo client insert failed:',
+        clientError?.message ?? 'no row returned'
+      )
       return NextResponse.json({ error: 'Failed to create client' }, { status: 500 })
     }
 

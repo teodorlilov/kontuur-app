@@ -40,7 +40,7 @@ function toSearchQuery(niche: string): string {
 async function generateSearchQueries(
   niche: string,
   context: ClientSearchContext,
-  count: number,
+  count: number
 ): Promise<string[]> {
   const monthYear = new Date().toLocaleString('en-US', { month: 'long', year: 'numeric' })
 
@@ -121,7 +121,7 @@ async function runTavilyQueries(
   timeRangeOverride?: string,
   searchDepth: 'basic' | 'advanced' = 'basic',
   includeDomains?: string[],
-  excludeDomains?: string[],
+  excludeDomains?: string[]
 ): Promise<TrendSearchResult[][]> {
   const results = await Promise.allSettled(
     queries.map(async (query, i) => {
@@ -139,7 +139,7 @@ async function runTavilyQueries(
         url: r.url,
         score: r.score,
       }))
-    }),
+    })
   )
 
   const rawGroups = results.map((r) => (r.status === 'fulfilled' ? r.value : []))
@@ -186,7 +186,7 @@ export function dedupeIntoGroups(
 export async function searchTrends(
   niche: string,
   count: number,
-  clientContext?: ClientSearchContext,
+  clientContext?: ClientSearchContext
 ): Promise<TrendSearchResult[]> {
   const key = process.env.TAVILY_API_URL_KEY
   if (!key) return []
@@ -206,12 +206,28 @@ export async function searchTrends(
 
   try {
     // Pass 1: recent articles, strict relevance threshold
-    let groups = await runTavilyQueries(queries, perQueryMax, 0.3, undefined, 'basic', includeDomains, excludeDomains)
+    let groups = await runTavilyQueries(
+      queries,
+      perQueryMax,
+      0.3,
+      undefined,
+      'basic',
+      includeDomains,
+      excludeDomains
+    )
 
     // Pass 2: only if pass 1 yielded nothing — broader time range, lower threshold
     if (groups.every((g) => g.length === 0)) {
       const fallbackQuery = [`${toSearchQuery(niche)} ${new Date().getFullYear()}`]
-      groups = await runTavilyQueries(fallbackQuery, count + 2, 0.15, 'year', 'advanced', includeDomains, excludeDomains)
+      groups = await runTavilyQueries(
+        fallbackQuery,
+        count + 2,
+        0.15,
+        'year',
+        'advanced',
+        includeDomains,
+        excludeDomains
+      )
     }
 
     // Filter out URLs already used in previous posts, then cap fairly: shuffle

@@ -18,9 +18,9 @@ describe('generateBackgroundSchema', () => {
 
   it('treats an absent direction as "same copy, roll the dice again"', () => {
     expect(generateBackgroundSchema.parse({ postId: 'p1' }).direction).toBeUndefined()
-    expect(generateBackgroundSchema.parse({ postId: 'p1', direction: '  bolder  ' }).direction).toBe(
-      'bolder'
-    )
+    expect(
+      generateBackgroundSchema.parse({ postId: 'p1', direction: '  bolder  ' }).direction
+    ).toBe('bolder')
   })
 
   it('caps the direction so a pasted essay cannot reach the model', () => {

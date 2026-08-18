@@ -66,10 +66,7 @@ For each numbered item, judge ONE question: could a strong, specific social medi
 bestPillar: the single content pillar this item serves best, or null if none fits.
 Score every item. Be strict — the pipeline only keeps the strongest items.`
 
-function buildRankUserPrompt(
-  lines: string[],
-  opts: RankOptions
-): string {
+function buildRankUserPrompt(lines: string[], opts: RankOptions): string {
   const pillarsText = opts.contentPillars.map((p) => `- ${p.pillar}`).join('\n')
 
   const focusBlock =
@@ -100,9 +97,7 @@ function toItemLine(index: number, title: string, snippet: string): string {
  * heavily-discarded sources sink — bounded so history can never fully
  * override the relevance judgment.
  */
-export function computeSourceBoost(
-  stats: SourceUsageStats | undefined
-): number {
+export function computeSourceBoost(stats: SourceUsageStats | undefined): number {
   if (!stats) return 0
   const raw = Math.log2(stats.approvedCount + 1) - Math.log2(stats.discardedCount + 1)
   return Math.max(-RANK_BOOST_CLAMP, Math.min(RANK_BOOST_CLAMP, raw))

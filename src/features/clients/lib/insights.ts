@@ -40,10 +40,7 @@ export interface PillarRow {
  * block, and a second query here would serialise behind it. Returns null when there is nothing
  * true to say, which is what makes the panel show its empty state.
  */
-export function buildInsights(
-  scores: ScoreRow[],
-  pillarRows: PillarRow[]
-): ContentInsights | null {
+export function buildInsights(scores: ScoreRow[], pillarRows: PillarRow[]): ContentInsights | null {
   const avgScore =
     scores.length > 0
       ? Math.round((scores.reduce((sum, r) => sum + r.quality_score_avg, 0) / scores.length) * 10) /

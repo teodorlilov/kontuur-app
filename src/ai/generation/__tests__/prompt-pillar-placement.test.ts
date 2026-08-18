@@ -100,7 +100,9 @@ describe('voice exemplars', () => {
     return {
       ...makeClient(),
       exemplars: {
-        single: ['An approved caption mentioning our carousel of new arrivals — come see it in store.'],
+        single: [
+          'An approved caption mentioning our carousel of new arrivals — come see it in store.',
+        ],
         carousel: [{ caption: 'Approved carousel caption.', coverHeadline: 'Five tips' }],
       },
     } as ClientData

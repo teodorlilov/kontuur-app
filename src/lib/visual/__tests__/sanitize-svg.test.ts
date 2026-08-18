@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { removeSvgBackgroundRect, svgNaturalSize, svgRejectionReason } from '../sanitize-svg'
 
-const SAFE_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 100"><path d="M0 0h10" fill="#123456"/><use href="#a"/></svg>'
+const SAFE_SVG =
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 100"><path d="M0 0h10" fill="#123456"/><use href="#a"/></svg>'
 
 describe('svgRejectionReason', () => {
   it('accepts a plain vector with local fragment references', () => {
@@ -27,12 +28,16 @@ describe('svgRejectionReason', () => {
 
 describe('removeSvgBackgroundRect', () => {
   it('strips a full-canvas background rect', () => {
-    const svg = '<svg viewBox="0 0 512 512"><rect width="512" height="512" fill="#123"/><path d="M0 0h10"/></svg>'
-    expect(removeSvgBackgroundRect(svg)).toBe('<svg viewBox="0 0 512 512"><path d="M0 0h10"/></svg>')
+    const svg =
+      '<svg viewBox="0 0 512 512"><rect width="512" height="512" fill="#123"/><path d="M0 0h10"/></svg>'
+    expect(removeSvgBackgroundRect(svg)).toBe(
+      '<svg viewBox="0 0 512 512"><path d="M0 0h10"/></svg>'
+    )
   })
 
   it('strips a percentage-sized background rect', () => {
-    const svg = '<svg viewBox="0 0 512 512"><rect width="100%" height="100%" fill="#123"/><path d="M0 0h10"/></svg>'
+    const svg =
+      '<svg viewBox="0 0 512 512"><rect width="100%" height="100%" fill="#123"/><path d="M0 0h10"/></svg>'
     expect(removeSvgBackgroundRect(svg)).not.toContain('<rect')
   })
 
@@ -49,7 +54,10 @@ describe('removeSvgBackgroundRect', () => {
 
 describe('svgNaturalSize', () => {
   it('prefers explicit width/height attributes', () => {
-    expect(svgNaturalSize('<svg width="640" height="480" viewBox="0 0 10 10"></svg>')).toEqual({ width: 640, height: 480 })
+    expect(svgNaturalSize('<svg width="640" height="480" viewBox="0 0 10 10"></svg>')).toEqual({
+      width: 640,
+      height: 480,
+    })
   })
 
   it('falls back to the viewBox', () => {

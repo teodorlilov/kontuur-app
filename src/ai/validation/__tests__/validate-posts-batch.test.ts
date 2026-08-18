@@ -174,15 +174,15 @@ describe('validatePostsBatch', () => {
 
   it('keeps only failure notes when the model returns the full PASS/FAIL checklist', async () => {
     mockBatchCalls([
-        qualityItem(1, {
-          structure_passes: false,
-          structure_notes: [
-            'PASS: Slide 1 is headline-only',
-            'FAIL: Slide 2 headline is a topic label',
-            'CAUTION — Main caption is dense',
-          ],
-        }),
-      ])
+      qualityItem(1, {
+        structure_passes: false,
+        structure_notes: [
+          'PASS: Slide 1 is headline-only',
+          'FAIL: Slide 2 headline is a topic label',
+          'CAUTION — Main caption is dense',
+        ],
+      }),
+    ])
 
     const results = await validatePostsBatch({
       captions: ['a'],
@@ -198,19 +198,17 @@ describe('validatePostsBatch', () => {
   })
 
   it('treats auto-corrected language as clean and surfaces issues from quality', async () => {
-    mockBatchCalls(
-      [
-        qualityItem(1, {
-          overall_score: 5,
-          issues: [{ type: 'weak_hook', description: 'Opens with filler' }],
-          ai_tells: ['delve'],
-          language_issues: [
-            { type: 'calque', original_text: 'x', issue_description: 'y', suggested_fix: 'z' },
-          ],
-          corrected_text: 'fixed text',
-        }),
-      ],
-    )
+    mockBatchCalls([
+      qualityItem(1, {
+        overall_score: 5,
+        issues: [{ type: 'weak_hook', description: 'Opens with filler' }],
+        ai_tells: ['delve'],
+        language_issues: [
+          { type: 'calque', original_text: 'x', issue_description: 'y', suggested_fix: 'z' },
+        ],
+        corrected_text: 'fixed text',
+      }),
+    ])
 
     const results = await validatePostsBatch({
       captions: ['a'],

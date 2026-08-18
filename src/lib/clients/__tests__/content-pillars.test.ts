@@ -99,7 +99,8 @@ describe('computePillarCoverage', () => {
 
   it('a source with empty pillar_ids feeds every pillar', () => {
     const cov = computePillarCoverage(PILLARS, [src('file', 'brand.pdf', [])])
-    for (const p of PILLARS) expect(cov.get(p.id)).toEqual({ state: 'content', contentSourceLabels: ['brand.pdf'] })
+    for (const p of PILLARS)
+      expect(cov.get(p.id)).toEqual({ state: 'content', contentSourceLabels: ['brand.pdf'] })
   })
 
   it('a scoped source feeds only its pillars; the rest are none without tavily', () => {
@@ -110,7 +111,10 @@ describe('computePillarCoverage', () => {
   })
 
   it('a pillar fed only by an unlimited tavily source is web, never none', () => {
-    const cov = computePillarCoverage(PILLARS, [src('tavily', 'Web research', []), src('website', 'site', ['p1'])])
+    const cov = computePillarCoverage(PILLARS, [
+      src('tavily', 'Web research', []),
+      src('website', 'site', ['p1']),
+    ])
     expect(cov.get('p1')!.state).toBe('content')
     expect(cov.get('p2')).toEqual({ state: 'web', contentSourceLabels: [] })
   })

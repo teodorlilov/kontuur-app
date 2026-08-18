@@ -131,8 +131,7 @@ export function allocateByWeight(
     recentPillarCounts && recentTotal > 0
       ? pillars.map((p, i) => ({
           i,
-          key:
-            (p.weight / totalWeight) * recentTotal - (recentPillarCounts.get(p.pillar) ?? 0),
+          key: (p.weight / totalWeight) * recentTotal - (recentPillarCounts.get(p.pillar) ?? 0),
         }))
       : rawAllocs.map((a, i) => ({ i, key: a.exact - floored[i]! }))
 
@@ -220,7 +219,11 @@ export function computePillarCoverage(
   for (const pillar of pillars) {
     const labels = contentSources.filter((s) => feeds(s.ids, pillar.id)).map((s) => s.label)
     const state: PillarCoverageState =
-      labels.length > 0 ? 'content' : tavilyIds !== null && feeds(tavilyIds, pillar.id) ? 'web' : 'none'
+      labels.length > 0
+        ? 'content'
+        : tavilyIds !== null && feeds(tavilyIds, pillar.id)
+          ? 'web'
+          : 'none'
     coverage.set(pillar.id, { state, contentSourceLabels: labels })
   }
   return coverage

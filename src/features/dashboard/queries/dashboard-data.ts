@@ -9,11 +9,7 @@ import {
 } from './metrics'
 import { getCachedFailedPublishes, PUBLISH_PREVIEW_LIMIT } from './publishes'
 import { getCachedReviewQueue } from './review-queue'
-import type {
-  DashboardData,
-  FailedPublish,
-  UpcomingPublish,
-} from '@/features/dashboard/types'
+import type { DashboardData, FailedPublish, UpcomingPublish } from '@/features/dashboard/types'
 import type { PostSummary } from '@/types/post'
 
 interface ClientSummary {
@@ -76,23 +72,30 @@ export async function fetchDashboardData(
   // page where a query genuinely is not needed.
   if (clients.length === 0) return emptyDashboard(clientsAddedThisMonth)
 
-  const [scheduledThisWeek, connectedClientCount, pendingRows, upcoming, failed, briefing, queue, changeRequests] =
-    await Promise.all([
-      getCachedScheduledThisWeek(agencyId, weekStartISO, timeZone),
-      getCachedConnectedClientCount(agencyId),
-      getCachedPendingRows(agencyId),
-      // Shared with the clients roster, which reads the same cached entry.
-      getCachedUpcomingByClient(agencyId),
-      getCachedFailedPublishes(agencyId),
-      getCachedBriefing(agencyId),
-      getCachedReviewQueue(agencyId),
-      getCachedChangeRequests(agencyId),
-    ])
+  const [
+    scheduledThisWeek,
+    connectedClientCount,
+    pendingRows,
+    upcoming,
+    failed,
+    briefing,
+    queue,
+    changeRequests,
+  ] = await Promise.all([
+    getCachedScheduledThisWeek(agencyId, weekStartISO, timeZone),
+    getCachedConnectedClientCount(agencyId),
+    getCachedPendingRows(agencyId),
+    // Shared with the clients roster, which reads the same cached entry.
+    getCachedUpcomingByClient(agencyId),
+    getCachedFailedPublishes(agencyId),
+    getCachedBriefing(agencyId),
+    getCachedReviewQueue(agencyId),
+    getCachedChangeRequests(agencyId),
+  ])
 
   const { clientPendingMap, oldestPendingAt } = summarisePending(pendingRows)
 
-  const nameFor = (clientId: string | null) =>
-    (clientId && clientNames.get(clientId)) || 'Unknown'
+  const nameFor = (clientId: string | null) => (clientId && clientNames.get(clientId)) || 'Unknown'
 
   const toPublish = (row: PostSummary) => ({
     id: row.id,

@@ -74,7 +74,10 @@ export function FlowStepper({ step, onStepOneClick }: FlowStepperProps) {
             {n < 3 && (
               <span
                 aria-hidden
-                className={cn('h-px w-6 flex-none max-md:hidden', isDone ? 'bg-forest' : 'bg-line2')}
+                className={cn(
+                  'h-px w-6 flex-none max-md:hidden',
+                  isDone ? 'bg-forest' : 'bg-line2'
+                )}
               />
             )}
           </span>

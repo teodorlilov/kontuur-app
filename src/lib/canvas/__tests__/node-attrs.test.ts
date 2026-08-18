@@ -33,7 +33,9 @@ describe('textNodeAttrs', () => {
     expect(textNodeAttrs(makeLayer({ fontWeight: 700 })).fontStyle).toBe('bold')
     expect(textNodeAttrs(makeLayer({ fontWeight: 500 })).fontStyle).toBe('500')
     expect(textNodeAttrs(makeLayer({ italic: true })).fontStyle).toBe('italic')
-    expect(textNodeAttrs(makeLayer({ italic: true, fontWeight: 700 })).fontStyle).toBe('italic bold')
+    expect(textNodeAttrs(makeLayer({ italic: true, fontWeight: 700 })).fontStyle).toBe(
+      'italic bold'
+    )
     expect(textNodeAttrs(makeLayer({ italic: true, fontWeight: 500 })).fontStyle).toBe('italic 500')
   })
 
@@ -161,7 +163,9 @@ describe('nodeGroupAttrs — the transform target', () => {
 })
 
 describe('shapeChildAttrs', () => {
-  const shape = (overrides: Partial<CanvasShapeNode> & Pick<CanvasShapeNode, 'kind'>): CanvasShapeNode => ({
+  const shape = (
+    overrides: Partial<CanvasShapeNode> & Pick<CanvasShapeNode, 'kind'>
+  ): CanvasShapeNode => ({
     id: 's1',
     x: 100,
     y: 200,

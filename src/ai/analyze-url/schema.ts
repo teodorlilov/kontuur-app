@@ -21,9 +21,7 @@ export const urlAnalysisResponseSchema = z.object({
   detected_niche_confidence: z.enum(['high', 'medium', 'low']).catch('low'),
   detected_target_audience: z.array(z.string()).catch([]),
   detected_tone: z.string().catch(''),
-  detected_content_pillars: z
-    .array(z.object({ pillar: z.string(), weight: z.number() }))
-    .catch([]),
+  detected_content_pillars: z.array(z.object({ pillar: z.string(), weight: z.number() })).catch([]),
   detected_services_products: z.array(z.string()).catch([]),
   detected_language: z.string().catch(''),
   detected_language_formality: z.string().catch(''),

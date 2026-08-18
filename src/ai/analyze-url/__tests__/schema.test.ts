@@ -44,8 +44,10 @@ describe('urlAnalysisResponseSchema', () => {
   it('falls back to low confidence rather than an unusable value', () => {
     // The confidence tints a chip Amber. Guessing "high" from a value we do not recognise would
     // claim more than the read supports.
-    expect(urlAnalysisResponseSchema.parse({ detected_niche_confidence: 'Medium' })
-      .detected_niche_confidence).toBe('low')
+    expect(
+      urlAnalysisResponseSchema.parse({ detected_niche_confidence: 'Medium' })
+        .detected_niche_confidence
+    ).toBe('low')
   })
 
   it('still rejects a response that is not an object', () => {

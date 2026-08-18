@@ -115,7 +115,6 @@ export function InsightPanel({
             ))}
           </FlagGroup>
         )}
-
       </section>
 
       {/* ── Source ── */}
@@ -126,7 +125,9 @@ export function InsightPanel({
             <p className="mt-3 text-body font-medium text-ink">{post.source_title}</p>
           )}
           <p className="mt-1 truncate text-micro text-text3">
-            {[sourceTypeLabel(post.source_type), toSourceHost(post.source_url)].filter(Boolean).join(' · ')}
+            {[sourceTypeLabel(post.source_type), toSourceHost(post.source_url)]
+              .filter(Boolean)
+              .join(' · ')}
           </p>
 
           {sourceGrounding?.flagged_claims.map((claim, i) => (
@@ -137,7 +138,9 @@ export function InsightPanel({
               )}
               <p className="mt-2">
                 <StatusPill tone={claim.status === 'grounded' ? 'ok' : 'warn'}>
-                  {claim.status === 'grounded' ? 'Matched in source' : 'Partly in source — check it'}
+                  {claim.status === 'grounded'
+                    ? 'Matched in source'
+                    : 'Partly in source — check it'}
                 </StatusPill>
               </p>
             </div>
@@ -196,8 +199,7 @@ export function InsightPanel({
                     {issue.type.replaceAll('_', ' ')}
                   </span>
                   {/* The diff carries the whole story — struck history, not danger. */}
-                  <s className="text-text3">{issue.original_text}</s>{' '}
-                  <span aria-hidden>→</span>{' '}
+                  <s className="text-text3">{issue.original_text}</s> <span aria-hidden>→</span>{' '}
                   <span className="font-medium text-ink">{issue.suggested_fix}</span>
                 </div>
               ))}
@@ -245,7 +247,9 @@ function ScoreBar({ label, score }: { label: string; score: number | null }) {
         <span
           className={cn('block h-full origin-left rounded-full', weak ? 'bg-pending' : 'bg-forest')}
           // Width encodes the score — a genuinely computed value.
-          style={{ transform: `scaleX(${score === null ? 0 : Math.max(0, Math.min(score, 10)) / 10})` }}
+          style={{
+            transform: `scaleX(${score === null ? 0 : Math.max(0, Math.min(score, 10)) / 10})`,
+          }}
         />
       </span>
       <span
@@ -282,4 +286,3 @@ function Flag({ tone, children }: { tone: 'warn' | 'bad'; children: React.ReactN
     </p>
   )
 }
-

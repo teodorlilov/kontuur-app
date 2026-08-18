@@ -54,7 +54,8 @@ export function useGenerateVisuals(
       void (async () => {
         const release = await composeSemaphore.current.acquire()
         try {
-          const { composePersistedPosition } = await import('@/features/canvas-editor/lib/auto-compose')
+          const { composePersistedPosition } =
+            await import('@/features/canvas-editor/lib/auto-compose')
           const composed = await composePersistedPosition({
             postId,
             position,
@@ -100,7 +101,10 @@ export function useGenerateVisuals(
             // 409 = the image changed underneath — a newer flow owns that slot, skip silently.
             if (!(err instanceof StaleImageError)) {
               failures += 1
-              console.error(`[use-generate-visuals] compose pass at position ${image.position} failed:`, err)
+              console.error(
+                `[use-generate-visuals] compose pass at position ${image.position} failed:`,
+                err
+              )
             }
           } finally {
             release()
@@ -122,7 +126,8 @@ export function useGenerateVisuals(
         async (image) => {
           const slideCopy = slideCopyAt(source, image.position)
           if (!slideCopy) return null
-          const { recomposePersistedPosition } = await import('@/features/canvas-editor/lib/auto-compose')
+          const { recomposePersistedPosition } =
+            await import('@/features/canvas-editor/lib/auto-compose')
           return recomposePersistedPosition({
             postId,
             position: image.position,
@@ -134,7 +139,6 @@ export function useGenerateVisuals(
       ),
     [postId, runComposePass]
   )
-
 
   const generate = useCallback(
     async (positions: number[]) => {
@@ -159,7 +163,8 @@ export function useGenerateVisuals(
           }
         })
       )
-      if (failures > 0) toast.error(`${failures} visual${failures > 1 ? 's' : ''} failed to generate`)
+      if (failures > 0)
+        toast.error(`${failures} visual${failures > 1 ? 's' : ''} failed to generate`)
     },
     [postId, onImage, generatingPositions, composeTail]
   )

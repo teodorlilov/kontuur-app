@@ -10,12 +10,20 @@ import { runGenerationBatch } from '@/ai/generation/generation-orchestrator'
 import { toTheme } from '@/ai/generation/to-theme'
 import { draftColumns } from '@/lib/generation/draft-columns'
 import { performResearch } from '@/ai/research/research-orchestrator'
-import { finishGenerationRun, startGenerationRun, trackGenerationTheme } from '@/lib/generation/runs'
+import {
+  finishGenerationRun,
+  startGenerationRun,
+  trackGenerationTheme,
+} from '@/lib/generation/runs'
 import { generateBriefing } from '@/ai/intelligence/generate-briefing'
 import { generateSoloCoaching } from '@/ai/solo-coaching/generate-coaching'
 import { generateBestTime } from '@/ai/best-time/generate-best-time'
 import { getMondayISO } from '@/utils/date-helpers'
-import { BEST_TIME_REFRESH_DAYS, DEFAULT_CAROUSEL_SLIDES, STYLE_MEMO_REFRESH_DAYS } from '@/utils/constants'
+import {
+  BEST_TIME_REFRESH_DAYS,
+  DEFAULT_CAROUSEL_SLIDES,
+  STYLE_MEMO_REFRESH_DAYS,
+} from '@/utils/constants'
 import { distillStyleMemo } from '@/ai/learning/distill-style-memo'
 import { fetchScheduleContext, getScheduleDue } from './helpers'
 import type { PostType } from '@/types/api'
@@ -147,7 +155,12 @@ export async function GET(request: NextRequest) {
       // generated without one would be regenerated every remaining tick
       // today. Skip instead — the next tick retries the insert.
       const total = (schedule as { frequency_value: number }).frequency_value || 1
-      runId = await startGenerationRun(supabase, { clientId, platform, targetCount: total, kind: 'cron' })
+      runId = await startGenerationRun(supabase, {
+        clientId,
+        platform,
+        targetCount: total,
+        kind: 'cron',
+      })
       if (!runId) {
         results.errors.push({
           clientId,

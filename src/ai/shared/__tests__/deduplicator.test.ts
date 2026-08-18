@@ -19,9 +19,9 @@ describe('Deduplicator.findSimilar', () => {
       'English'
     )
 
-    expect(Deduplicator.findSimilar('Recovery tips after a workout for runners', cache, 0.15)).toEqual([
-      'Post-workout recovery tips for runners',
-    ])
+    expect(
+      Deduplicator.findSimilar('Recovery tips after a workout for runners', cache, 0.15)
+    ).toEqual(['Post-workout recovery tips for runners'])
   })
 
   it('returns nothing when the query is all stop words or too short to score', () => {
@@ -45,7 +45,9 @@ describe('Deduplicator.findSimilar', () => {
   it('honours the threshold', () => {
     const cache = Deduplicator.buildCache(['Post-workout recovery tips for runners'], 'English')
 
-    expect(Deduplicator.findSimilar('Post-workout recovery tips for runners', cache, 0.9)).toHaveLength(1)
+    expect(
+      Deduplicator.findSimilar('Post-workout recovery tips for runners', cache, 0.9)
+    ).toHaveLength(1)
     expect(Deduplicator.findSimilar('Choosing winter boots', cache, 0.9)).toHaveLength(0)
   })
 

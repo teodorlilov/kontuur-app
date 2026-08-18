@@ -76,10 +76,7 @@ describe('fetchWebsiteSource', () => {
   it('fetches the URL directly without proxying', async () => {
     mockFetch(ARTICLE_HTML)
     await fetchWebsiteSource('https://example.com/page')
-    expect(vi.mocked(fetch)).toHaveBeenCalledWith(
-      'https://example.com/page',
-      expect.any(Object)
-    )
+    expect(vi.mocked(fetch)).toHaveBeenCalledWith('https://example.com/page', expect.any(Object))
     // Must NOT route through r.jina.ai
     const calledUrl = vi.mocked(fetch).mock.calls[0]![0] as string
     expect(calledUrl).not.toContain('jina.ai')

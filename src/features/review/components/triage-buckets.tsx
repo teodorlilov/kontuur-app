@@ -135,7 +135,12 @@ export function TriageBuckets({
               </button>
               <AgeChip ageDays={ageDays} />
               <ScorePill score={post.quality_score_avg} />
-              <Button variant="ghost" size="sm" className="text-text2" onClick={() => onApprove(post.id)}>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-text2"
+                onClick={() => onApprove(post.id)}
+              >
                 Approve
               </Button>
             </div>
@@ -177,7 +182,9 @@ export function TriageBuckets({
                 Sent · expires in{' '}
                 {Math.max(
                   0,
-                  Math.ceil((new Date(post.approval.expiresAt).getTime() - now.getTime()) / 3_600_000)
+                  Math.ceil(
+                    (new Date(post.approval.expiresAt).getTime() - now.getTime()) / 3_600_000
+                  )
                 )}
                 h
               </StatusPill>
@@ -227,7 +234,11 @@ export function TriageBuckets({
                 {post.pillar && (
                   <span
                     className="inline-flex min-w-0 truncate rounded-chip px-2 py-0.5 font-medium"
-                    style={pillarColor ? { background: pillarColor.bg, color: pillarColor.text } : undefined}
+                    style={
+                      pillarColor
+                        ? { background: pillarColor.bg, color: pillarColor.text }
+                        : undefined
+                    }
                   >
                     {post.pillar}
                   </span>
@@ -253,7 +264,12 @@ export function TriageBuckets({
             <div className="flex flex-none flex-col items-end gap-2.5">
               <ScorePill score={post.quality_score_avg} />
               <div className="flex gap-1.5">
-                <Button variant="ghost" size="sm" className="text-text2" onClick={() => onOpen(post.id)}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-text2"
+                  onClick={() => onOpen(post.id)}
+                >
                   Open
                 </Button>
                 <Button variant="secondary" size="sm" onClick={() => onApprove(post.id)}>

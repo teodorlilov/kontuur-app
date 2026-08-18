@@ -92,10 +92,7 @@ describe('fetchPerformanceItems', () => {
   })
 
   it('drops caption-less posts', async () => {
-    mockFetchTopPerformingPosts.mockResolvedValue([
-      igPost('m1', null, 100),
-      igPost('m2', '  ', 90),
-    ])
+    mockFetchTopPerformingPosts.mockResolvedValue([igPost('m1', null, 100), igPost('m2', '  ', 90)])
 
     const items = await fetchPerformanceItems(makeSupabase(CONNECTION), 'client-1')
     expect(items).toEqual([])
