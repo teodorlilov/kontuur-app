@@ -85,17 +85,45 @@ migrations do not describe the live database.
   created out-of-band. That is the finding that survived: not "RLS is off" but **"the
   entire RLS configuration is undocumented and unreproducible."**
 
-#### The question that is now open
+#### 🔴 Query 2 found one, and it was live
 
-⚠️ **"SCOPED" means a policy exists, not that it is correct.** 17 tables carry exactly one
-policy each, which is the signature of a bulk enable-RLS pass rather than per-table
-design. A single `USING (true)` policy leaves a table exactly as exposed as no RLS at all
-while reporting as protected in any audit that counts policies instead of reading them —
-including the query above.
+**`post_approval_tokens_public_read` — `FOR SELECT TO public USING (true)`.**
 
-**Run query 2 in `supabase/queries/rls-audit.sql`.** Its `exposure` column flags
-`USING (true)` and predicates with no agency/user reference. Until that comes back, the
-severity of this document is unknown, not resolved.
+Confirmed by probe, not inferred: an anon-key request with **no JWT and no session**
+returned rows. The same request against `posts` returned zero, so this was one policy, not
+a systemic gap.
+
+`batch_id` in that table is not data — it is the **credential**. `sendApprovalBatch` mints
+it as `crypto.randomUUID()` so an approval link cannot be guessed, and this policy
+published the guess to anyone who has ever loaded the app. With one batch_id:
+
+- `GET /api/approval/<batch_id>` returns that client's unpublished posts — captions,
+  slides, schedule, images. That route is public by design; the token is its only lock.
+- `submitApproval(<batch_id>, …)` forges the client's decision, writes an arbitrary
+  `client_note`, and notifies the agency as though the client had responded.
+
+The table also carries `client_email`, so the same read harvests client addresses across
+every agency.
+
+**Fixed by `20260818_drop_approval_token_public_read.sql`** — a drop, not a rewrite,
+because the policy served nothing: every reader of this table uses either the service-role
+client (public approval flow) or the server client under
+`post_approval_tokens_agency_isolation` (agency surfaces). Almost certainly a leftover
+from a design where the approval page queried Supabase from the browser.
+
+⚠️ **Not applied until you run it.** The CLI does not track this project's migration
+history — paste it into the SQL editor, then re-run the probe in the migration's header.
+
+The other 17 policies all resolve the caller through `users.agency_id = auth.uid()` and
+are correct in shape. `language_rules_read_all` (`auth.uid() IS NOT NULL`) is a false
+positive: that table has no `agency_id` and holds per-language reference data.
+
+#### M21 — answered, and there is no bug
+
+`generation_runs` and `generation_themes` both carry `FOR ALL` policies scoped by agency,
+so the wizard's user-scoped inserts pass. Theme tracking has **not** been failing silently
+into `trackThemeSafe`; `doneCount` and the exclusion list are fine. TECH-DEBT §7.9 M21
+closes.
 
 The three verdicts and what each means:
 

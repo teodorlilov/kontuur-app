@@ -1,0 +1,38 @@
+-- Close an unauthenticated read of every approval token in the database.
+--
+-- CONFIRMED LIVE 2026-08-18 with a read-only probe: an anon-key request carrying no JWT
+-- returned rows from `post_approval_tokens`. The same request against `posts` returned
+-- zero, so this was one policy, not a systemic gap.
+--
+-- The policy:
+--     post_approval_tokens_public_read  FOR SELECT TO public USING (true)
+--
+-- `public` includes `anon`, and the anon key ships in every browser bundle by design, so
+-- this published the entire table to anyone who has ever loaded the app.
+--
+-- WHY THAT MATTERS MORE THAN A NORMAL TABLE LEAK. `batch_id` is not data, it is the
+-- CREDENTIAL. `sendApprovalBatch` mints it as `crypto.randomUUID()` precisely so an
+-- approval link is unguessable — and this policy published the guess. With one batch_id:
+--   * GET /api/approval/<batch_id> returns that client's unpublished posts — captions,
+--     slides, schedule, images. The route is public by design; the token is its only lock.
+--   * submitApproval(<batch_id>, 'approved' | 'changes_requested', notes) forges the
+--     client's decision, writes an arbitrary client_note, and notifies the agency as if
+--     the client had responded.
+-- The table also carries `client_email`, so the same read harvests client addresses across
+-- every agency.
+--
+-- WHY DROPPING IT IS SAFE, not a trade-off. Nothing reads this table with the anon or
+-- authenticated client. The public approval page calls our own /api/approval/[token]
+-- route, which uses the service-role client and bypasses RLS entirely; `submitApproval`
+-- does the same. Agency-side reads (calendar, review, change-requests) use the server
+-- client and are already covered by `post_approval_tokens_agency_isolation`. This policy
+-- served nothing — almost certainly a leftover from a design where the approval page
+-- queried Supabase from the browser.
+--
+-- Verify after applying, with the same probe that found it:
+--   curl -s -o /dev/null -w '%{http_code}\n' \
+--     "$NEXT_PUBLIC_SUPABASE_URL/rest/v1/post_approval_tokens?select=id&limit=1" \
+--     -H "apikey: $NEXT_PUBLIC_SUPABASE_ANON_KEY"
+--   -- must return an empty array (RLS denies), not a row.
+
+drop policy if exists "post_approval_tokens_public_read" on public.post_approval_tokens;
