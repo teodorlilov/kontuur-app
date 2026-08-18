@@ -12,6 +12,10 @@ Storage) · Tailwind v4.
 - Dev: `npm run dev`
 - Typecheck: `npm run typecheck`
 - Lint: `npm run lint` · Test: `npm test` (watch: `npm run test:watch`)
+- Tests run as two vitest projects. `--project node` is pure logic (~1,270 tests, ~2s);
+  `--project components` is jsdom + testing-library and matches `*.test.tsx`. The file
+  extension picks the environment — a test that renders needs `.tsx`, one that does not
+  should stay `.ts` and keep the fast project fast.
 - Format: `npm run format` · Dead code: `npm run deadcode` · Regenerate DB types:
   `npx supabase gen types typescript --local > src/types/database.ts`
 - `format:check` is **in** `check` as of 2026-08-18. It used to be excluded, and this
@@ -163,6 +167,25 @@ the suite:
 - `src/app/__tests__/type-ramp.test.ts` — the Closed Ramp Rule.
 - `src/app/api/cron/__tests__/cron-invariants.test.ts` — the scheduler never reads
   `client_ideas`, and `generation_themes` has exactly one writer.
+- `src/features/__tests__/action-validation.test.ts` — a server action that takes
+  arguments must parse them. CLAUDE.md names three boundaries; this is the second.
+- `src/app/__tests__/component-tests.test.ts` — a `'use client'` component that owns
+  state or an effect must be imported by some `*.test.tsx`. Backlog in
+  `untested-components.ts`.
+
+### Component tests
+A component with state or an effect gets a test **in the same change**, not later.
+Query by role and accessible name, not by class — a restyle must not break a test, and
+a change that removes a control's accessible name must.
+
+What these do and do not buy is measured, not assumed (TECH-DEBT §7.12): across the
+canvas-editor arc jsdom would have caught 3 of 8 real defects, and **the three worst
+were layout**, which jsdom cannot see at all. So: a green component suite is not
+evidence a surface looks right, and it never replaces the manual browser pass.
+
+Mock only leaves that reach the network or the canvas, and copy the real return shape
+when you do — a mock that drifts from its subject is a test passing against a component
+nobody ships.
 
 ## Do not
 - Rename things that are not broken.
