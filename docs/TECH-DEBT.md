@@ -839,45 +839,52 @@ specified; the reasoning must outlive the session that decided it.
 
 Added 2026-08-18. Full reasoning in `docs/TECH-DEBT-PLAN.md` Part B.
 
-### 8.1 The RLS configuration exists only in the dashboard — OPEN (severity unknown)
+### 8.1 RLS — RESOLVED 2026-08-18, and the original diagnosis was wrong twice
 
-**Measured 2026-08-18, and it is not what this entry first said.** The original wording —
-"RLS is off on most tables, a signed-in user can read any agency's rows via PostgREST" —
-was inferred from the migrations and is **wrong**. `supabase/queries/rls-audit.sql` query
-1 against prod:
+**What this entry claimed this morning:** "RLS is off on most tables; a signed-in user can
+read any agency's rows via PostgREST." **False.** RLS was already enabled on all 28 public
+tables. I inherited that premise from `docs/RLS-SECURITY-REVIEW.md`, which had reasoned it
+from the migrations — on a project where version control and the database had never been
+connected. Neither of us measured before writing it down.
 
-- **28 tables in `public`. RLS is enabled on all 28.** No table is unprotected. The
-  read-any-agency scenario does not exist in that shape.
-- **11 are LOCKED** — RLS on with zero policies, i.e. service-role only:
-  `brand_image_bank`, `brand_kit_extractions`, `brand_vector_bank`,
-  `brand_visual_identity`, `client_ideas`, `client_style_memos`, `discarded_drafts`,
-  `idea_form_tokens`, `image_generation_usage`, `post_canvas_docs`, `post_images`. This is
-  why 53 files route through `createAdminSupabaseClient` — the workaround was load-bearing,
-  not incidental.
-- **17 are SCOPED** — RLS on with ≥1 policy.
+**What measuring found instead** — the exposure was real but the opposite shape:
 
-**What survives, and it is still real: not one `CREATE POLICY` is in version control.**
-`grep -rin 'create policy'` over all 48 migrations returns nothing, and the live database
-has 18 policies. Every one was made by hand in the dashboard. The database cannot be
-rebuilt, the policies cannot be reviewed in a diff, and nothing stops the next dashboard
-click from changing an access rule silently. That is the finding: **undocumented and
-unreproducible**, rather than absent.
+    post_approval_tokens_public_read   FOR SELECT TO public USING (true)
 
-**Still open, and it decides the severity.** "SCOPED" means a policy exists, not that it
-scopes anything. 17 tables with exactly one policy each is the signature of a bulk
-enable-RLS pass, and a single `USING (true)` policy is exactly as exposed as no RLS while
-reporting as protected to any check that counts policies. Query 2 in the same file flags
-that shape; until it is run, this entry's severity is unknown rather than resolved.
+One policy, on the one table where it mattered most. `batch_id` there is not data, it is
+the credential: `sendApprovalBatch` mints it as `crypto.randomUUID()` so an approval link
+cannot be guessed, and this published the guess to anyone holding the anon key — which
+ships in every browser bundle by design. With one batch_id an anonymous caller could read
+a client's unpublished posts through `/api/approval/<batch_id>` and forge that client's
+approval through `submitApproval`. `client_email` sits in the same row.
 
-**Also corrected:** `client_ideas` and `idea_form_tokens` were described here and in the
-review doc as "RLS on, with policies, from the migration — correct". They have **zero**
-policies, and `20260424_create_client_ideas.sql` only ever ran `ENABLE ROW LEVEL
-SECURITY`. The public idea form works because it uses the admin client throughout, not
-because a policy permits it.
+Confirmed by probe, not inference: an anon-key request with no JWT returned rows, while the
+same request against `posts` returned zero.
 
-**The transferable mistake:** this entry inferred database state from version control, on
-a project where the two had never been connected — which is the same gap §8.2 describes.
-Do not diagnose a database from its migrations here until §8.2 is closed.
+**Fixed and applied to prod.** `20260818_drop_approval_token_public_read.sql` drops it — a
+drop rather than a rewrite because it served nothing; every reader of that table uses the
+service-role client or the agency-scoped policy. Verified after: the probe returns `[]`,
+and a sweep of all 28 tables with the anon key returns data from **none**.
+
+**The root cause, and the durable fix.** Not one `CREATE POLICY` had ever been in version
+control — 48 migrations, zero policies, against 18 in the live database. There was no diff
+the bad policy could have appeared in. `20260818_capture_rls_policy_baseline.sql` now
+records all 17 survivors exactly as production enforces them, and
+`src/app/__tests__/rls-policies.test.ts` fails any migration whose policy predicate is
+`true` or which never names the caller — verified by dropping the real vulnerable policy
+back in, which it catches by name.
+
+**The transferable mistake:** twice in one day this entry was wrong in opposite directions
+— first that RLS was absent, then implicitly that "has a policy" meant "is safe". Both
+times the fix was to measure. Do not diagnose this database from its migrations until §8.2
+is closed, and do not treat a policy count as a security property.
+
+**Still open, and it is a design decision rather than a defect.** 11 tables run RLS-on with
+zero policies (service-role only), reached through `createAdminSupabaseClient` after an
+ownership check in code — which is why 53 files import that client. `client_ideas` and
+`idea_form_tokens` are the sharpest case: the public idea form is unauthenticated, so
+there is no `auth.uid()` for a policy to key on. Making that posture deliberate rather than
+inherited is option B or C in the review doc.
 
 ### 8.2 The schema baseline is not in version control — OPEN
 

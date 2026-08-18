@@ -1,10 +1,16 @@
 # RLS Security Review (deferred task)
 
-**Status:** OPEN — **partially measured 2026-08-18, and the original diagnosis was wrong.**
-RLS is enabled on all 28 public tables; there are no unprotected tables. What is real is
-that all 18 policies were created out-of-band and **none exist in version control**.
-Whether those policies actually scope by agency is unanswered — see "The question that is
-now open".
+**Status: RESOLVED 2026-08-18** for the exposure; one design decision remains (see the
+end). Measured, fixed, applied to prod, and re-verified by probe.
+
+The original diagnosis was **wrong**: RLS was already enabled on all 28 public tables, so
+the "most tables have no RLS" premise this document was built on never held. The real
+exposure was the opposite shape — a single `USING (true)` policy on
+`post_approval_tokens`, publishing every approval token to anonymous callers. Dropped, and
+the other 17 policies are now in version control for the first time.
+
+**Verified after applying** (anon key, no JWT, all 28 tables):
+`post_approval_tokens` → `[]`, and **0 of 28 tables return data to an anonymous caller**.
 **Prompted by:** a `brand_visual_identity` failure (2026-07-20): onboarding's identity save failed
 silently and Settings save returned `new row violates row-level security policy for table
 "brand_visual_identity"`. Fixed *tactically* by routing that table's reads/writes through the admin
@@ -111,8 +117,8 @@ client (public approval flow) or the server client under
 `post_approval_tokens_agency_isolation` (agency surfaces). Almost certainly a leftover
 from a design where the approval page queried Supabase from the browser.
 
-⚠️ **Not applied until you run it.** The CLI does not track this project's migration
-history — paste it into the SQL editor, then re-run the probe in the migration's header.
+✅ **Applied to prod 2026-08-18 and verified.** The probe that found it now returns `[]`,
+and a sweep of all 28 tables with the anon key returns data from none of them.
 
 The other 17 policies all resolve the caller through `users.agency_id = auth.uid()` and
 are correct in shape. `language_rules_read_all` (`auth.uid() IS NOT NULL`) is a false
