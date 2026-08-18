@@ -22,7 +22,6 @@ export const STALE_REVIEW_DAYS = 7
 export const BEST_TIME_REFRESH_DAYS = 30
 /** How often the cron re-distills a client's style memo from review edits. */
 export const STYLE_MEMO_REFRESH_DAYS = 7
-export const TRIAL_DAYS = 14
 export const MAX_RSS_ITEMS = 40
 export const TAVILY_API_URL = 'https://api.tavily.com/search'
 /**

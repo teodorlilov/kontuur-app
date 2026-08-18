@@ -1,2 +1,4 @@
-// Re-exports sonner — all existing call sites (toast.success, toast.error, toast.info, toast.warning) continue to work
-export { toast, Toaster as ToastProvider } from 'sonner'
+// Re-exports sonner's `toast` — 40+ call sites use toast.success / .error / .info / .warning
+// through this one import path. The `Toaster as ToastProvider` alias that used to sit here
+// had no importers: app/layout.tsx mounts `Toaster` from sonner directly.
+export { toast } from 'sonner'

@@ -52,27 +52,6 @@ export function parseJsonResponse<T>(
   return sanitizeAndParseJson<T>(withPrefill, fallback, mode)
 }
 
-export function stripPlanningPrefix(text: string): string {
-  const primaryPattern = /^\[STRUCTURE:\s*[^\]]+(?:\||,)\s*OPENER:\s*[^\]]+\]\s*/i
-  const primaryMatch = text.match(primaryPattern)
-  if (primaryMatch) {
-    return text.slice(primaryMatch[0].length)
-  }
-
-  const lines = text.split('\n')
-  const firstLine = lines[0]?.trim() ?? ''
-  if (
-    firstLine.startsWith('[') &&
-    firstLine.endsWith(']') &&
-    firstLine.toUpperCase().includes('STRUCTURE') &&
-    firstLine.toUpperCase().includes('OPENER')
-  ) {
-    return lines.slice(1).join('\n').trim()
-  }
-
-  return text
-}
-
 export function sanitizeAndParseJson<T>(raw: string, fallback: T, mode?: 'object' | 'array'): T {
   const stripped = raw.replace(/```(?:json)?\s*/g, '').replace(/```\s*/g, '')
 

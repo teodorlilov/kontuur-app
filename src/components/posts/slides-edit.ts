@@ -1,4 +1,4 @@
-import { parseSlides } from '@/components/posts/parse-slides'
+import { parseSlides } from '@/lib/posts/parse-slides'
 import type { CarouselSlide } from '@/types/api'
 
 /**

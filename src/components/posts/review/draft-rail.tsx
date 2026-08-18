@@ -3,7 +3,7 @@
 import { useEffect, useRef } from 'react'
 import { Check } from 'lucide-react'
 import { cn } from '@/utils/cn'
-import { parseSlides } from '@/components/posts/parse-slides'
+import { parseSlides } from '@/lib/posts/parse-slides'
 import { VisualFrame } from './visual-frame'
 import type { DraftVisual } from '@/lib/visual/draft-visuals'
 import type { ReviewDraft } from './types'

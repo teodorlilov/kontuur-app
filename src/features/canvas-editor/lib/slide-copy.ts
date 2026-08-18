@@ -1,4 +1,4 @@
-import { parseSlides } from '@/components/posts/parse-slides'
+import { parseSlides } from '@/lib/posts/parse-slides'
 import type { SlideCopy } from '../types'
 
 /** The post fields the copy mapping needs — satisfied by persisted posts, drafts and local state. */

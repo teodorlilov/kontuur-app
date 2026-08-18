@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { StatusPill } from '@/components/ui/status-pill'
 import { getPillarColor } from '@/components/ui/colors/identity-colors'
-import { parseSlides } from '@/components/posts/parse-slides'
+import { parseSlides } from '@/lib/posts/parse-slides'
 import { VisualFrame } from '@/components/posts/review/visual-frame'
 import {
   AGE_WARN_DAYS,
@@ -13,6 +13,7 @@ import {
   type TriageBucket,
   type TriagedPost,
 } from '@/features/review/lib/triage'
+import { MS_PER_HOUR } from '@/utils/constants'
 import type { QueuePost } from '@/features/review/lib/queue-post'
 import type { DraftVisual } from '@/lib/visual/draft-visuals'
 
@@ -183,7 +184,7 @@ export function TriageBuckets({
                 {Math.max(
                   0,
                   Math.ceil(
-                    (new Date(post.approval.expiresAt).getTime() - now.getTime()) / 3_600_000
+                    (new Date(post.approval.expiresAt).getTime() - now.getTime()) / MS_PER_HOUR
                   )
                 )}
                 h

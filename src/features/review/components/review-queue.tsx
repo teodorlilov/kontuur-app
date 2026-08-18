@@ -16,7 +16,7 @@ import { CommitmentBar } from '@/components/posts/review/commitment-bar'
 import { ScheduleDialog } from '@/components/posts/review/schedule-dialog'
 import { useDraftEdits } from '@/components/posts/review/use-draft-edits'
 import { useReviewKeyboard } from '@/components/posts/review/use-review-keyboard'
-import { parseSlides } from '@/components/posts/parse-slides'
+import { parseSlides } from '@/lib/posts/parse-slides'
 import { updatePost, deletePost, persistRewrite, savePostCopy } from '@/lib/actions/post-actions'
 import { slideCopyAt } from '@/features/canvas-editor/lib/slide-copy'
 import { rewriteDraft } from '@/lib/rewrite-draft'
@@ -33,7 +33,7 @@ import { computeTriage, type TriageBucket, type TriagedPost } from '@/features/r
 import { toVisualSlots } from '@/features/review/lib/visual-slots'
 import { pickNextOpenSlot } from '@/lib/scheduling/slot-picker'
 import { getMondayISO, getWeekDayKeys, isoToDateTimeFields, toDateKey } from '@/utils/date-helpers'
-import { APPROVAL_TOKEN_EXPIRY_HOURS } from '@/utils/constants'
+import { APPROVAL_TOKEN_EXPIRY_HOURS, MS_PER_HOUR } from '@/utils/constants'
 import type { WeekScheduledPost } from '@/features/review/lib/week-schedule'
 import {
   DISCARD_REASONS,
@@ -569,7 +569,7 @@ export function ReviewQueue({
   })
 
   function handleSent(postId: string) {
-    const expiresAt = new Date(Date.now() + APPROVAL_TOKEN_EXPIRY_HOURS * 3_600_000).toISOString()
+    const expiresAt = new Date(Date.now() + APPROVAL_TOKEN_EXPIRY_HOURS * MS_PER_HOUR).toISOString()
     setPosts((prev) =>
       prev.map((p) => (p.id === postId ? { ...p, approval: { status: 'pending', expiresAt } } : p))
     )

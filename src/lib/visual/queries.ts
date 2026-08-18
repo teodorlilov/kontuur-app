@@ -1,7 +1,8 @@
 import 'server-only'
 
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { Database, Json } from '@/types/database'
+import type { Database } from '@/types/database'
+import { asJson } from '@/lib/queries/as-json'
 import type { ExtractionReport, SourceKind, VisualIdentity } from '@/types/visual'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import {
@@ -15,7 +16,6 @@ type Db = SupabaseClient<Database>
 
 // jsonb columns accept validated blobs; TS can't structurally prove our domain types are `Json`, so we
 // cast at the single write boundary (identity is zod-validated before this; report is app-produced).
-const asJson = (v: unknown): Json => v as Json
 
 /**
  * Fetch a client's stored visual identity, or null when absent/invalid. Uses the admin client because

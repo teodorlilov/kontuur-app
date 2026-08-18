@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
 import { generateBestTime } from '@/ai/best-time/generate-best-time'
 import { extractPlatformFromMix } from '@/lib/clients/fetch-client-data'
-import type { Json } from '@/types/database'
+import { asJson } from '@/lib/queries/as-json'
 import { aiRateLimitResponse } from '@/lib/auth/rate-limit'
 import { CLIENT_AI_CONTEXT_COLUMNS } from '@/lib/queries/select-columns'
 
@@ -68,7 +68,7 @@ export async function POST(request: Request) {
     await supabase
       .from('brand_profiles')
       .update({
-        best_time_json: bestTime as unknown as Json,
+        best_time_json: asJson(bestTime),
         best_time_updated_at: new Date().toISOString(),
       })
       .eq('client_id', body.client_id)

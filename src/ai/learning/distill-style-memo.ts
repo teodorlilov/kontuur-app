@@ -2,8 +2,9 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { callAnthropic, LIGHT_MODEL } from '@/utils/ai-client'
 import { extractToolInput } from '@/utils/ai'
 import { sanitizePromptField, PROMPT_FIELD_LIMITS } from '@/ai/utils/sanitize'
+import { asJson } from '@/lib/queries/as-json'
 import { parseMemoBullets, type StyleMemoBullet } from '@/lib/learning/style-memo'
-import type { Json, PostRow } from '@/types'
+import type { PostRow } from '@/types'
 
 export const STYLE_MEMO_MAX_BULLETS = 15
 const BULLET_EXPIRY_DAYS = 60
@@ -215,13 +216,13 @@ ${discardBlock ? `\nDISCARDED DRAFTS BY REASON:\n${discardBlock}` : ''}${notesBl
   const { error: writeError } = await admin.from('client_style_memos').upsert(
     {
       client_id: clientId,
-      memo: merged as unknown as Json,
-      report: {
+      memo: asJson(merged),
+      report: asJson({
         edited_posts: editedRows.length,
         discards: Object.fromEntries(discardCounts),
         client_notes: (noteRows ?? []).length,
         distilled_at: nowIso,
-      } as unknown as Json,
+      }),
       reviewed_through: nowIso,
       updated_at: nowIso,
     },

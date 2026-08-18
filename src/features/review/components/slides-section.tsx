@@ -1,7 +1,7 @@
 'use client'
 
 import { CarouselSlides } from '@/components/posts/carousel-slides'
-import { parseSlides } from '@/components/posts/parse-slides'
+import { parseSlides } from '@/lib/posts/parse-slides'
 import { PostImagePreview } from './post-image-preview'
 import type { PostImage } from '@/types/api'
 

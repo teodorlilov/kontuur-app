@@ -60,14 +60,3 @@ export function scoreBarColor(score: number): string {
 export function scoreTextColor(score: number): string {
   return TEXT_CLASS[scoreBand(score)]
 }
-
-/** Carousel slide status → dot color. */
-const STATUS_DOT_COLORS: Record<string, string> = {
-  pass: 'bg-spring',
-  warn: 'bg-pending',
-  fail: 'bg-danger',
-}
-
-export function statusDotColor(status?: string): string {
-  return (status && STATUS_DOT_COLORS[status]) ?? 'bg-line2'
-}

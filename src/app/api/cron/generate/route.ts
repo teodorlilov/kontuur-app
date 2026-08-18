@@ -22,13 +22,14 @@ import { getMondayISO } from '@/utils/date-helpers'
 import {
   BEST_TIME_REFRESH_DAYS,
   DEFAULT_CAROUSEL_SLIDES,
+  MS_PER_HOUR,
   STYLE_MEMO_REFRESH_DAYS,
 } from '@/utils/constants'
 import { distillStyleMemo } from '@/ai/learning/distill-style-memo'
 import { fetchScheduleContext, getScheduleDue } from './helpers'
 import type { PostType } from '@/types/api'
 import type { Theme } from '@/ai/generation/types'
-import type { Json } from '@/types/database'
+import { asJson } from '@/lib/queries/as-json'
 import { POSTING_SCHEDULE_DUE_COLUMNS } from '@/lib/queries/select-columns'
 
 export const maxDuration = 300
@@ -73,7 +74,7 @@ export async function GET(request: NextRequest) {
   // retries the due-since check exists for. 'running' stays in so an
   // in-flight invocation is not doubled. 26h covers the widest case — a
   // midnight slot checked at the end of its local day, plus grace.
-  const recentCutoff = new Date(Date.now() - 26 * 3_600_000).toISOString()
+  const recentCutoff = new Date(Date.now() - 26 * MS_PER_HOUR).toISOString()
   const { data: recentRuns, error: recentRunsError } = await supabase
     .from('generation_runs')
     .select('client_id, created_at')
@@ -277,7 +278,7 @@ export async function GET(request: NextRequest) {
           const { error: bestTimeError } = await supabase
             .from('brand_profiles')
             .update({
-              best_time_json: bestTime as unknown as Json,
+              best_time_json: asJson(bestTime),
               best_time_updated_at: new Date().toISOString(),
             })
             .eq('client_id', clientId)
@@ -338,7 +339,7 @@ export async function GET(request: NextRequest) {
           .insert({
             agency_id: agencyId,
             platform_updates: briefing.platform_updates,
-            trending_topics: briefing.niche_trends as unknown as Json,
+            trending_topics: asJson(briefing.niche_trends),
             weekly_tip: briefing.weekly_tip,
             action_nudge: briefing.action_nudge,
             sources: briefing.sources,
@@ -382,7 +383,7 @@ export async function GET(request: NextRequest) {
 
           const { error: coachingError } = await supabase
             .from('intelligence_briefings')
-            .update({ coaching_points: coaching.coaching_points as unknown as Json })
+            .update({ coaching_points: asJson(coaching.coaching_points) })
             .eq('id', (inserted as { id: string }).id)
           if (coachingError) {
             throw new Error(`coaching write failed: ${coachingError.message}`)

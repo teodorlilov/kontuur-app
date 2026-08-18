@@ -3,7 +3,7 @@
 import { useCallback, useRef, useState } from 'react'
 import { toast } from '@/components/ui/toast'
 import { createSemaphore } from '@/lib/concurrency'
-import { parseSlides } from '@/components/posts/parse-slides'
+import { parseSlides } from '@/lib/posts/parse-slides'
 import { MAX_CONCURRENT_VISUAL_REQUESTS } from '@/lib/visual/limits'
 import type { SeedIdentity } from '@/lib/canvas/seed-doc'
 import type { CanvasDoc } from '@/types/canvas'

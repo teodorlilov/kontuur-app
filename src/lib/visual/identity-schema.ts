@@ -32,11 +32,6 @@ const _backward: SchemaIdentity = null as unknown as VisualIdentity
 void _forward
 void _backward
 
-/** Parse unknown input into `VisualIdentity`, throwing a `ZodError` if it is invalid. */
-export function parseVisualIdentity(input: unknown): VisualIdentity {
-  return visualIdentitySchema.parse(input)
-}
-
 type VisualIdentityParse =
   | { success: true; identity: VisualIdentity }
   | { success: false; issues: string[] }

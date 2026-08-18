@@ -9,11 +9,3 @@ export function decodeUrl(url: string): string {
     return url
   }
 }
-
-/**
- * Decode all percent-encoded URLs found in a text string.
- * Useful for rendering captions that contain inline URLs.
- */
-export function decodeUrlsInText(text: string): string {
-  return text.replace(/https?:\/\/\S+/g, (match) => decodeUrl(match))
-}

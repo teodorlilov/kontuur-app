@@ -5,7 +5,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { cn } from '@/utils/cn'
 import { toast } from '@/components/ui/toast'
 import { Button } from '@/components/ui/button'
-import { parseSlides } from '@/components/posts/parse-slides'
+import { parseSlides } from '@/lib/posts/parse-slides'
 import { ImageLightbox } from '@/components/ui/image-lightbox'
 import {
   CONTROL_SURFACE,

@@ -118,9 +118,3 @@ export function extractInitials(name: string): string {
 export function pluralise(count: number, noun: string): string {
   return `${count} ${noun}${count === 1 ? '' : 's'}`
 }
-
-/** Formats a number compactly: 1200 → "1.2K", 50 → "50". */
-export function formatCompactNumber(n: number): string {
-  if (n >= 1000) return `${(n / 1000).toFixed(1)}K`
-  return String(n)
-}

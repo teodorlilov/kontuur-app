@@ -1,4 +1,4 @@
-import { parseSlides } from '@/components/posts/parse-slides'
+import { parseSlides } from '@/lib/posts/parse-slides'
 import type { PostImage } from '@/types/api'
 import type { PostRow } from '@/types'
 

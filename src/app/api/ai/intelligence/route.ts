@@ -4,7 +4,7 @@ import { aiRateLimitResponse } from '@/lib/auth/rate-limit'
 import { generateBriefing } from '@/ai/intelligence/generate-briefing'
 import { getAgencyNiche } from '@/lib/clients/fetch-client-data'
 import { getMondayISO } from '@/utils/date-helpers'
-import type { Json } from '@/types/database'
+import { asJson } from '@/lib/queries/as-json'
 
 /** Generate this week's agency intelligence briefing on demand (the cron writes the scheduled one). */
 export async function POST() {
@@ -32,7 +32,7 @@ export async function POST() {
       .from('intelligence_briefings')
       .update({
         platform_updates: briefing.platform_updates,
-        trending_topics: briefing.niche_trends as unknown as Json,
+        trending_topics: asJson(briefing.niche_trends),
         weekly_tip: briefing.weekly_tip,
         action_nudge: briefing.action_nudge,
         sources: briefing.sources,
@@ -42,7 +42,7 @@ export async function POST() {
     await supabase.from('intelligence_briefings').insert({
       agency_id: agencyId,
       platform_updates: briefing.platform_updates,
-      trending_topics: briefing.niche_trends as unknown as Json,
+      trending_topics: asJson(briefing.niche_trends),
       weekly_tip: briefing.weekly_tip,
       action_nudge: briefing.action_nudge,
       sources: briefing.sources,

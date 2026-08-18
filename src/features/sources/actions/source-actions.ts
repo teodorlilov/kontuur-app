@@ -13,7 +13,7 @@ import { validateUpload, getFileExtension } from '@/lib/sources/validate-upload'
 import { WEB_RESEARCH_SOURCE_LABEL } from '@/utils/constants'
 import type { ClientSource } from '@/types/api'
 import type { TavilyConfig } from '@/types/sources'
-import type { Json } from '@/types/database'
+import { asJson } from '@/lib/queries/as-json'
 import type { ActionResult } from '@/lib/actions/types'
 
 interface CreateSourceInput {
@@ -84,7 +84,7 @@ export async function createSource(
       type: input.type,
       label: input.label.trim(),
       url: input.url.trim(),
-      config: sourceConfig as Json,
+      config: asJson(sourceConfig),
       last_fetched_at: new Date().toISOString(),
       last_fetch_status: fetchStatus,
       last_fetch_error: fetchError ?? null,
@@ -273,7 +273,7 @@ export async function upsertTavilySource(
   if (existing) {
     const { error } = await supabase
       .from('client_sources')
-      .update({ is_active: input.is_active, config: config as unknown as Json })
+      .update({ is_active: input.is_active, config: asJson(config) })
       .eq('id', existing.id)
 
     if (error) return { ok: false, error: error.message }
@@ -290,7 +290,7 @@ export async function upsertTavilySource(
       label: WEB_RESEARCH_SOURCE_LABEL,
       url: '',
       is_active: input.is_active,
-      config: config as unknown as Json,
+      config: asJson(config),
     })
     .select(CLIENT_SOURCE_COLUMNS)
     .single()
