@@ -1,0 +1,38 @@
+# Supabase CLI project config.
+#
+# Deliberately minimal. `supabase init` emits 414 lines, almost all of it commented
+# defaults for the local Docker stack — which this project has never run and does not
+# need. Everything omitted falls back to the same defaults, so the only lines here are
+# ones that carry a decision.
+#
+# What this file is FOR: it makes `npx supabase link` / `db dump` / `db pull` work at all.
+# Without it the CLI does not consider this directory a project, which is why
+# `supabase/migrations/` has sat here for 48 files with no CLI ever having seen them.
+#
+# The remote project ref is NOT here — it is a link-time argument
+# (`--project-ref oxkcaeqxzklvfrpsdbhd`, see docs/DB-GEN-TYPES.md) and is stored in
+# `supabase/.temp/`, which is gitignored.
+
+# Names the local project on this host. Not the remote ref — it only distinguishes
+# Docker containers if the local stack is ever started.
+project_id = "kontuur"
+
+[db]
+# ⚠️ UNVERIFIED — this is the CLI's default, not a measured value.
+#
+# It must equal the remote's major version, and nobody has checked. It does not affect
+# `link` or `db dump --linked` (both talk to the remote directly), but `db pull` and
+# `db diff` spin up a local shadow database at this version to compute a diff, and a
+# mismatch there produces a diff against the wrong Postgres.
+#
+# Confirm before the first `db pull`:
+#   select current_setting('server_version_num');   -- in the SQL editor
+# then set this to the major (e.g. 150000 → 15, 170000 → 17) and delete this warning.
+major_version = 17
+
+[api]
+# The schemas PostgREST exposes. Matters here for one reason worth stating plainly:
+# everything in `public` is reachable over the REST API by anyone holding the anon key
+# and a valid JWT, which every signed-in user has. That is why RLS on these tables is
+# the open question in docs/RLS-SECURITY-REVIEW.md — this line is the attack surface.
+schemas = ["public", "graphql_public"]

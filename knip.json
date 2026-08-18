@@ -11,5 +11,6 @@
   "project": ["src/**/*.{ts,tsx}"],
   "ignore": ["src/types/database.ts"],
   "ignoreExportsUsedInFile": true,
-  "ignoreDependencies": ["postcss", "tailwindcss"]
+  "ignoreDependencies": ["postcss", "tailwindcss"],
+  "ignoreBinaries": ["supabase"]
 }

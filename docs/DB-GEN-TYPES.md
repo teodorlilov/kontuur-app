@@ -19,9 +19,14 @@ export SUPABASE_ACCESS_TOKEN=…   # in your shell profile, not here
 ## Regenerate
 
 ```sh
-npx supabase link --project-ref oxkcaeqxzklvfrpsdbhd
-npx supabase gen types typescript --linked > src/types/database.ts
+npm run db:link     # npx supabase link --project-ref oxkcaeqxzklvfrpsdbhd
+npm run db:types    # npx supabase gen types typescript --linked > src/types/database.ts
 ```
+
+Both are npm scripts as of 2026-08-18, alongside `db:status`, `db:dump` and `db:rls` —
+see `docs/RLS-SECURITY-REVIEW.md`. There is deliberately no `db:push`: the CLI has never
+tracked this project's migration history, so a push would replay all 48 files against a
+database that already has them.
 
 Then check the diff: it should contain only the columns you changed. Anything
 else means the local schema and production have drifted apart.

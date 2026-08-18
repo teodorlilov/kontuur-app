@@ -16,8 +16,16 @@ Storage) · Tailwind v4.
   `--project components` is jsdom + testing-library and matches `*.test.tsx`. The file
   extension picks the environment — a test that renders needs `.tsx`, one that does not
   should stay `.ts` and keep the fast project fast.
-- Format: `npm run format` · Dead code: `npm run deadcode` · Regenerate DB types:
-  `npx supabase gen types typescript --local > src/types/database.ts`
+- Format: `npm run format` · Dead code: `npm run deadcode`
+- Database (all read-only except `db:types`, which rewrites the generated file):
+  `npm run db:link` once per machine, then `db:status` (local vs remote migration
+  history), `db:dump` (schema → gitignored file), `db:rls` (per-table RLS report),
+  `db:types` (regenerate `src/types/database.ts`).
+  This line used to say `gen types --local`, which could never have worked — there was no
+  `supabase/config.toml` in the repo at all, so the CLI did not treat this as a project.
+  `docs/DB-GEN-TYPES.md` had `--linked` and was right. There is deliberately **no
+  `db:push` script**: the migration history has never been tracked by the CLI, so a push
+  would try to replay all 48 files against a database that already has them.
 - `format:check` is **in** `check` as of 2026-08-18. It used to be excluded, and this
   file used to say "do not add it" — because prettier failed on 169 files and a
   permanently-red step is the §6.4 failure mode, not a gate. The repo is formatted now

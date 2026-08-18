@@ -14,6 +14,11 @@
     "deadcode": "knip",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
+    "db:link": "npx supabase link --project-ref oxkcaeqxzklvfrpsdbhd",
+    "db:status": "npx supabase migration list --linked",
+    "db:dump": "mkdir -p supabase/.temp && npx supabase db dump --linked --schema public -f supabase/.temp/prod-schema.sql && echo '→ supabase/.temp/prod-schema.sql (gitignored)'",
+    "db:rls": "npm run --silent db:dump && node scripts/rls-report.mjs",
+    "db:types": "npx supabase gen types typescript --linked > src/types/database.ts",
     "prepare": "husky"
   },
   "dependencies": {

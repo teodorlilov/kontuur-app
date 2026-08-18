@@ -6,6 +6,65 @@ silently and Settings save returned `new row violates row-level security policy 
 "brand_visual_identity"`. Fixed *tactically* by routing that table's reads/writes through the admin
 client (commit `00306a1`). This doc captures the *real*, project-wide issue for a dedicated task.
 
+> **2026-08-18.** This document sat OPEN for four weeks and `docs/TECH-DEBT.md` never
+> referenced it, which is why five audits passed over the largest item in the repo. It is
+> now TECH-DEBT §8.1, and the tooling below exists so the first step costs minutes rather
+> than a scheduling decision.
+
+---
+
+## Step 1 — measure (read-only, ~2 minutes)
+
+Everything here talks to the remote and writes nothing to it.
+
+```sh
+export SUPABASE_ACCESS_TOKEN=…    # https://supabase.com/dashboard/account/tokens
+npm run db:link                   # once per machine
+npm run db:rls                    # dumps the schema, prints the table below
+```
+
+`npm run db:rls` classifies every table in `public` into the three states this document
+describes, so the "verify in the dashboard as step 1" instruction further down is now a
+command. **Paste its output into the next section.**
+
+### Measured state — PASTE HERE
+
+```
+(run `npm run db:rls` and paste the table)
+```
+
+The three verdicts and what each means:
+
+| Verdict | Meaning | Action |
+|---|---|---|
+| **OPEN** | No RLS. Readable over PostgREST by any signed-in user, for **any agency** — the anon key is in every browser bundle by design. The app is not involved. | The finding. Option C below. |
+| **LOCKED** | RLS on, **zero policies** → service-role only. Reached the live database by a dashboard click, not a migration. | Make it deliberate: either a policy, or an explicit migration saying admin-only-by-design. |
+| **SCOPED** | RLS on with policies. | Confirm the policies say what you think. |
+
+### Also worth checking while you are connected
+
+```sh
+npm run db:status     # local migration files vs what the CLI thinks is applied
+```
+
+⚠️ **Expect this to show every local migration as un-applied**, because the CLI has never
+tracked this project — there was no `supabase/config.toml` until today. If so, do **not**
+run `supabase db push`: it would replay all 48 files against a database that already has
+them. Repair the history first (`npx supabase migration repair --status applied <version>`
+per file), and only then consider `db pull` for the baseline.
+
+Two more one-liners for open TECH-DEBT items, in the SQL editor:
+
+```sql
+-- §2.9: the bucket MIME allowlist. Wants BOTH image/svg+xml and image/webp.
+select id, allowed_mime_types from storage.buckets where id = 'post-images';
+
+-- §7.9 M21: if these are RLS-enabled with no policy, every wizard theme insert has been
+-- failing silently into trackThemeSafe — zeroing doneCount and emptying the exclusion list.
+select relname, relrowsecurity from pg_class
+where relname in ('generation_runs', 'generation_themes');
+```
+
 ---
 
 ## Root cause
@@ -85,9 +144,27 @@ Supabase Security Advisor warnings so they stop being silently "fixed" in the da
 - All callers verify agency ownership in code before the admin call, so bypassing RLS is safe.
 
 ## Suggested steps for the fix task
-1. Dashboard → **Advisor** + **Database → Tables**: record the true RLS on/off state of every public table.
+1. ~~Dashboard → Advisor + Database → Tables: record the true RLS state~~ — **superseded by
+   `npm run db:rls`** (Step 1 at the top). Paste its table into "Measured state".
 2. Decide the target posture (recommend C).
 3. Write one migration that sets each table's RLS + policies explicitly (idempotent).
 4. Where policies now allow the user/server client, drop the admin-client workarounds.
 5. Verify: an authenticated user of agency A cannot read agency B's rows via a raw REST call; the app's
    flows (onboarding save, settings, visuals) still work.
+
+### On step 5 — verify by attacking it, not by reading the policy
+
+The whole finding is that the app never exercises the hole, so app flows passing proves
+nothing about it. Reproduce the actual attack with a real user's JWT:
+
+```sh
+# Sign in as a user of agency A in the browser, copy the access token from the
+# `sb-<ref>-auth-token` cookie, then ask PostgREST directly:
+curl -s "$NEXT_PUBLIC_SUPABASE_URL/rest/v1/posts?select=id,client_id&limit=5" \
+  -H "apikey: $NEXT_PUBLIC_SUPABASE_ANON_KEY" \
+  -H "Authorization: Bearer <that-users-access-token>"
+```
+
+**Before the fix** this returns rows — including other agencies'. **After**, it must return
+`[]` for anything outside that user's agency. Run it before and after; a policy that reads
+correctly and returns rows anyway is the only outcome that matters.
