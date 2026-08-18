@@ -171,6 +171,10 @@ export const ScheduleCard = memo(function ScheduleCard({
     setDraftCaption(post?.caption ?? '')
     setDraftSlides(Array.isArray(post?.slides_json) ? (post.slides_json as CarouselSlide[]) : [])
     setPublishError(null)
+    // In the review deck this card stays mounted while `post` advances, so a
+    // spinner left true by the previous post would render every following post
+    // mid-publish forever.
+    setPublishing(false)
   }, [
     post?.id,
     post?.platform,
@@ -270,20 +274,28 @@ export const ScheduleCard = memo(function ScheduleCard({
   async function handlePublishNow() {
     setPublishing(true)
     setPublishError(null)
-    const res = await fetch(`/api/posts/${currentPost.id}/publish`, { method: 'POST' })
-    const data = await res.json()
-    if (res.status === 202) {
-      // Container still processing at Meta — the cron completes it; the post is
-      // not published yet, so the card must not flip it.
-      toast.info(
-        data.message ?? 'Instagram is still processing — publishing completes automatically'
-      )
-      onClose()
-    } else if (res.ok) {
-      onPublished?.(currentPost.id)
-      onClose()
-    } else {
-      setPublishError(data.error ?? 'Publish failed')
+    try {
+      const res = await fetch(`/api/posts/${currentPost.id}/publish`, { method: 'POST' })
+      const data = await res.json()
+      if (res.status === 202) {
+        // Container still processing at Meta — the cron completes it; the post
+        // is not published yet, so the card must not flip it.
+        toast.info(
+          data.message ?? 'Instagram is still processing — publishing completes automatically'
+        )
+        onClose()
+      } else if (res.ok) {
+        onPublished?.(currentPost.id)
+        onClose()
+      } else {
+        setPublishError(data.error ?? 'Publish failed')
+      }
+    } catch {
+      // A thrown fetch (network drop) must not strand the spinner.
+      setPublishError('Publish failed — check your connection and try again')
+    } finally {
+      // Always reset: onClose() does not unmount this card in the review deck,
+      // so a spinner left true here would carry to the next post.
       setPublishing(false)
     }
   }
