@@ -2,50 +2,19 @@ import { NextResponse } from 'next/server'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
 import { verifyPostOwnership } from '@/lib/auth/helpers'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
-import { isTokenExpired } from '@/lib/meta/token-expiry'
-import { publishSingleImage, publishCarousel } from '@/features/publishing/lib/publish-to-instagram'
-import type { PostForPublish, InstagramConnection } from '@/features/publishing/lib/types'
-import type { SupabaseClient } from '@supabase/supabase-js'
+import {
+  PUBLISHABLE_POST_COLUMNS,
+  publishOnePost,
+  type PublishablePost,
+} from '@/features/publishing/lib/publish-post'
+import type { InstagramConnection } from '@/features/publishing/lib/types'
 import { SOCIAL_CONNECTION_AUTH_COLUMNS } from '@/lib/queries/select-columns'
 
-type PostWithImages = PostForPublish & { status: string; scheduled_at: string | null }
-
-/** Fetch the post with joined images from the database. */
-async function fetchPostForPublish(
-  admin: SupabaseClient,
-  postId: string
-): Promise<PostWithImages | null> {
-  const { data, error } = await admin
-    .from('posts')
-    .select(
-      'id, caption, post_type, status, scheduled_at, publish_attempts, client_id, post_images(public_url, position)'
-    )
-    .eq('id', postId)
-    .maybeSingle()
-  if (error) throw new Error(`post lookup failed: ${error.message}`)
-  // Supabase cannot infer the joined post_images shape; cast to our known query projection
-  return data as unknown as PostWithImages | null
-}
-
-/** Fetch the Instagram connection for a client. */
-async function fetchConnection(
-  admin: SupabaseClient,
-  clientId: string
-): Promise<InstagramConnection | null> {
-  // maybeSingle: "no connection" is an expected state the caller reports as a
-  // 400, not a query failure.
-  const { data, error } = await admin
-    .from('social_connections')
-    .select(SOCIAL_CONNECTION_AUTH_COLUMNS)
-    .eq('client_id', clientId)
-    .eq('platform', 'instagram')
-    .maybeSingle()
-  if (error) throw new Error(`connection lookup failed: ${error.message}`)
-  // Supabase select returns the exact fields we project; narrow to InstagramConnection
-  return data as InstagramConnection | null
-}
-
-/** Publish a post to Instagram immediately. */
+/**
+ * Publish a post to Instagram immediately. Thin over publishOnePost — the cron
+ * scheduler runs the same implementation, so the claim, the platform guard and
+ * the retry ladder cannot diverge between the two entry points.
+ */
 export async function POST(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id: postId } = await params
   const auth = await resolveAuth()
@@ -57,73 +26,60 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
   const admin = createAdminSupabaseClient()
 
   try {
-    const post = await fetchPostForPublish(admin, postId)
+    const { data, error } = await admin
+      .from('posts')
+      .select(PUBLISHABLE_POST_COLUMNS)
+      .eq('id', postId)
+      .maybeSingle()
+    if (error) throw new Error(`post lookup failed: ${error.message}`)
+    // Supabase cannot infer the joined post_images shape; cast to our known query projection
+    const post = data as unknown as PublishablePost | null
     if (!post) return NextResponse.json({ error: 'Post not found' }, { status: 404 })
     if (post.status === 'published')
       return NextResponse.json({ error: 'Already published' }, { status: 400 })
-    if (post.post_images.length === 0)
-      return NextResponse.json({ error: 'Post has no images' }, { status: 400 })
 
-    const conn = await fetchConnection(admin, post.client_id)
-    if (!conn)
-      return NextResponse.json({ error: 'No Instagram account connected' }, { status: 400 })
-    if (isTokenExpired(conn.token_expires_at)) {
-      return NextResponse.json({ error: 'Instagram token expired' }, { status: 400 })
-    }
+    const { data: connData, error: connError } = await admin
+      .from('social_connections')
+      .select(SOCIAL_CONNECTION_AUTH_COLUMNS)
+      .eq('client_id', post.client_id)
+      .eq('platform', 'instagram')
+      .maybeSingle()
+    if (connError) throw new Error(`connection lookup failed: ${connError.message}`)
+    // Supabase select returns the exact fields we project; narrow to InstagramConnection
+    const connection = connData as InstagramConnection | null
 
-    // Conditional claim — skips if the cron scheduler (or another request) is mid-publish
-    const { data: claimed, error: claimError } = await admin
-      .from('posts')
-      .update({ status: 'publishing', publish_attempts: post.publish_attempts + 1 })
-      .eq('id', postId)
-      .neq('status', 'publishing')
-      .select('id')
-    // A DB error is not a lost race — reporting it as one would tell the user to
-    // wait for a publish that is not running.
-    if (claimError) throw new Error(`claim failed: ${claimError.message}`)
-    if (!claimed || claimed.length === 0) {
-      return NextResponse.json({ error: 'Post is already being published' }, { status: 409 })
-    }
+    const outcome = await publishOnePost(admin, post, connection)
 
-    const imageUrls = post.post_images
-      .sort((a, b) => a.position - b.position)
-      .map((img) => img.public_url)
-    const caption = post.caption ?? ''
-    const result =
-      imageUrls.length === 1
-        ? await publishSingleImage(conn.account_id, conn.access_token, imageUrls[0]!, caption)
-        : await publishCarousel(conn.account_id, conn.access_token, imageUrls, caption)
-
-    if (result.success) {
-      const now = new Date().toISOString()
-      const { error: writeError } = await admin
-        .from('posts')
-        .update({
-          status: 'published',
-          ig_media_id: result.mediaId ?? null,
-          published_at: now,
-          publish_error: null,
-          ...(post.scheduled_at ? {} : { scheduled_at: now }),
-        })
-        .eq('id', postId)
-      // The media is live, so this is not a failed publish — but the row still
-      // reads 'publishing', which the cron reclaim would republish.
-      if (writeError) {
-        console.error(
-          `[publish] UNRECONCILED post ${postId} is live on Instagram as media ${result.mediaId ?? 'unknown'} but its status write failed: ${writeError.message}`
-        )
+    switch (outcome.kind) {
+      case 'published': {
+        if (outcome.writeError) console.error(`[publish] ${outcome.writeError}`)
+        // A manual publish of a never-scheduled post records when it went live.
+        if (!post.scheduled_at) {
+          await admin
+            .from('posts')
+            .update({ scheduled_at: new Date().toISOString() })
+            .eq('id', postId)
+        }
+        return NextResponse.json({ ok: true, mediaId: outcome.mediaId })
       }
-      return NextResponse.json({ ok: true, mediaId: result.mediaId ?? null })
+      case 'pending':
+        // The container is still processing at Meta; the 5-minute cron resumes
+        // it — same container, no duplicate.
+        return NextResponse.json(
+          {
+            ok: true,
+            pending: true,
+            message:
+              'Instagram is still processing — publishing completes automatically within minutes',
+          },
+          { status: 202 }
+        )
+      case 'not_claimed':
+        return NextResponse.json({ error: 'Post is already being published' }, { status: 409 })
+      case 'failed':
+        if (outcome.writeError) console.error(`[publish] ${outcome.writeError}`)
+        return NextResponse.json({ error: outcome.error }, { status: 500 })
     }
-
-    const { error: failWriteError } = await admin
-      .from('posts')
-      .update({ status: 'failed', publish_error: result.error })
-      .eq('id', postId)
-    if (failWriteError) {
-      console.error(`[publish] post ${postId} failure write was lost: ${failWriteError.message}`)
-    }
-    return NextResponse.json({ error: result.error }, { status: 500 })
   } catch (err) {
     console.error('Publish error:', err)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

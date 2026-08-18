@@ -1,22 +1,11 @@
-import type { PostRow } from '@/types'
-
-/** Image reference shape as projected from the post_images DB join. */
-export interface PostImageRef {
-  public_url: string
-  position: number
-}
-
-/** Base post shape used by the publishing pipeline (route + scheduler). */
-export type PostForPublish = Pick<
-  PostRow,
-  'id' | 'caption' | 'post_type' | 'publish_attempts' | 'client_id'
-> & {
-  post_images: PostImageRef[]
-}
-
-/** Instagram connection credentials from the social_connections table. */
+/**
+ * Instagram connection credentials from the social_connections table.
+ * access_token is null after the token refresher retires a dead token — the
+ * publish preflight reports that as "needs reconnecting" rather than calling
+ * Meta with nothing.
+ */
 export interface InstagramConnection {
   account_id: string
-  access_token: string
+  access_token: string | null
   token_expires_at: string | null
 }

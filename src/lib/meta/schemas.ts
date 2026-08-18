@@ -70,10 +70,39 @@ export const fbBusinessPagesResponseSchema = z.looseObject({
 export const igRefreshResponseSchema = z.looseObject({
   access_token: z.string().optional(),
   expires_in: z.number().optional(),
-  error: z.looseObject({ message: z.string().optional() }).optional(),
+  error: z.looseObject({ message: z.string().optional(), code: z.number().optional() }).optional(),
 })
 
 export type IGShortLivedToken = { access_token: string; user_id: string }
 export type IGLongLivedToken = z.infer<typeof igLongLivedTokenSchema>
 export type FBTokenResponse = z.infer<typeof fbTokenResponseSchema>
 export type FBPage = z.infer<typeof fbPageSchema>
+
+// ── Content publishing shapes ──────────────────────────────────────────────
+
+/** POST /{ig-user-id}/media and /{ig-user-id}/media_publish both return an id. */
+export const igContainerResponseSchema = z.looseObject({
+  id: z.string().min(1),
+})
+
+export const igContainerStatusSchema = z.looseObject({
+  status_code: z.enum(['EXPIRED', 'ERROR', 'FINISHED', 'IN_PROGRESS', 'PUBLISHED']).optional(),
+  status: z.string().optional(),
+})
+
+/** GET /{ig-user-id}/content_publishing_limit — quota over the trailing 24h. */
+export const igPublishingLimitSchema = z.looseObject({
+  data: z
+    .array(
+      z.looseObject({
+        quota_usage: z.number(),
+        config: z.looseObject({ quota_total: z.number().optional() }).optional(),
+      })
+    )
+    .optional(),
+})
+
+/** GET /{ig-user-id}/media — the lean projection reconciliation reads. */
+export const igRecentMediaSchema = z.looseObject({
+  data: z.array(z.looseObject({ id: z.string(), timestamp: z.string().optional() })).optional(),
+})

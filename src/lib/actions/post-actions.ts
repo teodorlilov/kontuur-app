@@ -2,6 +2,7 @@
 
 import 'server-only'
 import { revalidateTag } from 'next/cache'
+import { validateInstagramCaption } from '@/features/publishing/lib/validate-caption'
 import { z } from 'zod'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { resolveActionAuth, verifyPostOwnership, verifyPostsOwnership } from '@/lib/auth/helpers'
@@ -224,6 +225,22 @@ export async function batchSchedulePosts(
 
   const allIds = items.map((i) => i.postId)
   const verifiedIds = await verifyPostsOwnership(supabase, allIds, agencyId)
+
+  // Caption limits are checked at schedule time so the problem surfaces in the
+  // calendar, not as a burned publish attempt days later. Instagram-bound posts
+  // only — and today every schedulable post is Instagram-bound.
+  const { data: captionRows } = await supabase
+    .from('posts')
+    .select('id, caption')
+    .in('id', [...verifiedIds])
+  const captionBlocked = new Map<string, string>()
+  for (const row of captionRows ?? []) {
+    const problem = validateInstagramCaption(row.caption ?? '')
+    if (problem) captionBlocked.set(row.id, problem)
+  }
+  if (captionBlocked.size > 0) {
+    return { ok: false, error: [...captionBlocked.values()][0]! }
+  }
 
   const byTime = new Map<string, string[]>()
   for (const item of items) {

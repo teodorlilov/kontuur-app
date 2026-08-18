@@ -3,7 +3,12 @@ import { revalidateTag } from 'next/cache'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
 import { verifyClientOwnership } from '@/lib/auth/helpers'
-import { META_GRAPH_BASE as GRAPH_BASE, IG_GRAPH_BASE } from '@/lib/meta/constants'
+import {
+  META_GRAPH_BASE as GRAPH_BASE,
+  IG_GRAPH_BASE,
+  IG_OAUTH_TOKEN_URL,
+  IG_TOKEN_EXCHANGE_URL,
+} from '@/lib/meta/constants'
 import {
   igShortLivedTokenSchema,
   igShortLivedWrappedSchema,
@@ -32,7 +37,7 @@ async function exchangeInstagramCode(
   body.set('redirect_uri', redirectUri)
   body.set('code', code)
 
-  const res = await fetch('https://api.instagram.com/oauth/access_token', {
+  const res = await fetch(IG_OAUTH_TOKEN_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: body.toString(),
@@ -78,7 +83,7 @@ async function exchangeInstagramForLongLived(shortLivedToken: string): Promise<I
   // "Unsupported request" for tokens minted off grants the app is not yet
   // entitled to serve (e.g. other businesses' accounts before Meta Access
   // Verification) — that is an entitlement problem, not a request-shape one.
-  const res = await fetch(`https://graph.instagram.com/access_token?${params.toString()}`)
+  const res = await fetch(`${IG_TOKEN_EXCHANGE_URL}?${params.toString()}`)
   if (!res.ok) {
     const err = await res.text()
     // Token length/prefix only — never the token itself

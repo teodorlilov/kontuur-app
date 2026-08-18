@@ -94,15 +94,15 @@ describe('the publish queue can always be re-entered', () => {
    * the scheduler no matter what its status says. A row can therefore sit on the
    * calendar reading "Scheduled" and never be picked up again.
    *
-   * Three files may touch it, and each has a different job:
+   * Two files may touch it, and each has a different job:
    *
-   * - `scheduler.ts` **increments** it when claiming a post.
-   * - `posts/[id]/publish/route.ts` **increments** it for a manual publish, so a
-   *   hand-fired attempt still counts against the same budget.
+   * - `publish-post.ts` **increments** it when claiming a post — the single
+   *   implementation both the cron scheduler and the manual publish route run,
+   *   so a hand-fired attempt counts against the same budget by construction.
    * - `post-recovery.ts` is the only thing that **resets** it, and it is the reason
    *   a failed post can be revived at all.
    *
-   * A fourth writer is the thing to catch. An incrementer added elsewhere would spend
+   * A third writer is the thing to catch. An incrementer added elsewhere would spend
    * the budget without the scheduler knowing; a second resetter would let a post loop
    * past MAX_ATTEMPTS forever, which is the runaway this ceiling exists to stop.
    */
@@ -124,11 +124,10 @@ describe('the publish queue can always be re-entered', () => {
       .sort()
   }
 
-  it('publish_attempts is written in exactly three places', () => {
+  it('publish_attempts is written in exactly two places', () => {
     expect(postsWriters(/publish_attempts:\s/)).toEqual([
-      path.join('app', 'api', 'posts', '[id]', 'publish', 'route.ts'),
       path.join('features', 'calendar', 'actions', 'post-recovery.ts'),
-      path.join('features', 'publishing', 'lib', 'scheduler.ts'),
+      path.join('features', 'publishing', 'lib', 'publish-post.ts'),
     ])
   })
 

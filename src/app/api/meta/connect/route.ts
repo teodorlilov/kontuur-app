@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
 import { verifyClientOwnership } from '@/lib/auth/helpers'
-import { META_GRAPH_VERSION } from '@/lib/meta/constants'
+import { META_GRAPH_VERSION, IG_AUTHORIZE_URL } from '@/lib/meta/constants'
 import { encodeOAuthState } from '../oauth-state'
 
 // Instagram Business Login — direct instagram.com OAuth (no Facebook Page required)
@@ -57,7 +57,7 @@ export async function GET(request: NextRequest) {
   let oauthUrl: URL
   if (platform === 'instagram') {
     // Instagram Business Login — redirects to instagram.com consent page
-    oauthUrl = new URL('https://www.instagram.com/oauth/authorize')
+    oauthUrl = new URL(IG_AUTHORIZE_URL)
     oauthUrl.searchParams.set('client_id', igAppId)
     oauthUrl.searchParams.set('redirect_uri', redirectUri)
     oauthUrl.searchParams.set('scope', INSTAGRAM_BUSINESS_SCOPES)

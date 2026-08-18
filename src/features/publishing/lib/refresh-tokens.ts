@@ -2,11 +2,11 @@ import 'server-only'
 
 import { REFRESH_WINDOW_DAYS } from '@/lib/meta/token-expiry'
 import { MS_PER_DAY } from '@/utils/constants'
+import { IG_TOKEN_REFRESH_URL } from '@/lib/meta/constants'
+import { classifyGraphError } from '@/lib/meta/graph-errors'
 import { igRefreshResponseSchema } from '@/lib/meta/schemas'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
-
-/** Suppress duplicate reconnect notifications for this long. */
-const NOTIFY_COOLDOWN_DAYS = 7
+import { insertClientNotificationOnce } from './notifications'
 
 interface ExpiringConnection {
   id: string
@@ -18,6 +18,8 @@ interface ExpiringConnection {
 interface RefreshTokensResult {
   refreshed: number
   failed: number
+  /** Connections whose token Meta rejected outright — retired, reconnect required. */
+  retired: number
   errors: string[]
 }
 
@@ -26,10 +28,14 @@ interface RefreshTokensResult {
  * IG tokens expire after ~60 days and must be refreshed via ig_refresh_token;
  * without this, every connection silently dies and scheduled posts start failing.
  * Facebook Page tokens (derived from a long-lived user token) do not expire.
+ *
+ * A token Meta declares invalid (code 190 family) is RETIRED — access_token
+ * nulled so the publish preflight reports "needs reconnecting" instead of
+ * hammering Meta with a dead credential on every subsequent run.
  */
 export async function refreshExpiringTokens(): Promise<RefreshTokensResult> {
   const admin = createAdminSupabaseClient()
-  const results: RefreshTokensResult = { refreshed: 0, failed: 0, errors: [] }
+  const results: RefreshTokensResult = { refreshed: 0, failed: 0, retired: 0, errors: [] }
 
   // FB Page tokens don't expire — clear the bogus 60-day expiries older
   // connect flows wrote, so the scheduler stops rejecting healthy connections.
@@ -48,7 +54,9 @@ export async function refreshExpiringTokens(): Promise<RefreshTokensResult> {
     .select('id, client_id, access_token, token_expires_at')
     .eq('platform', 'instagram')
     .not('access_token', 'is', null)
-    .lte('token_expires_at', cutoff)
+    // NULL expiry rows are included: an IG connection stored without an expiry
+    // would otherwise never be refreshed and die silently at day 60.
+    .or(`token_expires_at.is.null,token_expires_at.lte.${cutoff}`)
   // Without this the cron reports a clean run while every token drifts to expiry.
   if (listError) throw new Error(`expiring connection query failed: ${listError.message}`)
 
@@ -57,8 +65,10 @@ export async function refreshExpiringTokens(): Promise<RefreshTokensResult> {
     try {
       // Timed: the loop is serial, so one stalled Meta call would otherwise
       // eat the whole cron budget and starve every connection behind it.
+      // Token in the query string is this endpoint's documented contract —
+      // ig_refresh_token takes the token as its grant parameter.
       const res = await fetch(
-        `https://graph.instagram.com/refresh_access_token?grant_type=ig_refresh_token&access_token=${conn.access_token}`,
+        `${IG_TOKEN_REFRESH_URL}?grant_type=ig_refresh_token&access_token=${conn.access_token}`,
         { signal: AbortSignal.timeout(15_000) }
       )
       // Parsed, not asserted: a shape change at Meta's end would otherwise write
@@ -85,18 +95,45 @@ export async function refreshExpiringTokens(): Promise<RefreshTokensResult> {
         } else {
           results.refreshed++
         }
-      } else {
-        results.failed++
-        results.errors.push(body.error?.message ?? `HTTP ${res.status}`)
-        // Scoped catch: a failed notification is its own problem, and letting it
-        // reach the outer handler would count this connection as failed twice.
-        try {
-          await notifyReconnectNeeded(admin, conn.client_id)
-        } catch (notifyErr) {
+        continue
+      }
+
+      const failure = classifyGraphError({
+        httpStatus: res.status,
+        code: body.error?.code ?? null,
+        subcode: null,
+        type: null,
+        message: body.error?.message ?? `HTTP ${res.status}`,
+        fbtraceId: null,
+      })
+
+      if (failure === 'token_invalid' || failure === 'permission') {
+        // Retire the credential: keeping a dead token makes every publish and
+        // metrics call fail with the same 190 until someone reconnects.
+        const { error: retireError } = await admin
+          .from('social_connections')
+          .update({ access_token: null })
+          .eq('id', conn.id)
+        if (retireError) {
           results.errors.push(
-            notifyErr instanceof Error ? notifyErr.message : 'reconnect notification failed'
+            `token retire failed for connection ${conn.id}: ${retireError.message}`
           )
         }
+        results.retired++
+      } else {
+        // Transient / rate-limited: leave the token for tomorrow's run.
+        results.failed++
+      }
+      results.errors.push(body.error?.message ?? `HTTP ${res.status}`)
+
+      // Scoped catch: a failed notification is its own problem, and letting it
+      // reach the outer handler would count this connection as failed twice.
+      try {
+        await notifyReconnectNeeded(admin, conn.client_id)
+      } catch (notifyErr) {
+        results.errors.push(
+          notifyErr instanceof Error ? notifyErr.message : 'reconnect notification failed'
+        )
       }
     } catch (err) {
       results.failed++
@@ -114,30 +151,14 @@ async function notifyReconnectNeeded(
 ): Promise<void> {
   const { data: client, error: clientError } = await admin
     .from('clients')
-    .select('name, agency_id')
+    .select('name')
     .eq('id', clientId)
     .maybeSingle()
   if (clientError) throw new Error(`client lookup failed: ${clientError.message}`)
-  if (!client?.agency_id) return
-
-  const message = `Instagram connection for ${client.name} could not be refreshed — please reconnect the account`
-
-  const since = new Date(Date.now() - NOTIFY_COOLDOWN_DAYS * MS_PER_DAY).toISOString()
-  const { data: existing, error: existingError } = await admin
-    .from('notifications')
-    .select('id')
-    .eq('agency_id', client.agency_id)
-    .eq('message', message)
-    .gte('created_at', since)
-    .limit(1)
-  // Reading the cooldown as "none sent" would re-notify on every cron tick.
-  if (existingError) throw new Error(`notification cooldown check failed: ${existingError.message}`)
-  if (existing && existing.length > 0) return
-
-  const { error: insertError } = await admin.from('notifications').insert({
-    agency_id: client.agency_id,
-    client_id: clientId,
-    message,
-  })
-  if (insertError) throw new Error(`reconnect notification insert failed: ${insertError.message}`)
+  if (!client) return
+  await insertClientNotificationOnce(
+    admin,
+    clientId,
+    `Instagram connection for ${client.name} could not be refreshed — please reconnect the account`
+  )
 }

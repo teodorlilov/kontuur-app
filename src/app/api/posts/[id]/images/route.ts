@@ -9,6 +9,7 @@ import {
 } from '@/features/publishing/lib/storage'
 import { validateImageFile } from '@/features/publishing/lib/validate-image-file'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
+import { toJpeg } from '@/lib/visual/to-jpeg'
 import { POST_IMAGE_COLUMNS, POST_IMAGE_STORAGE_COLUMNS } from '@/lib/queries/select-columns'
 
 const deleteImageSchema = z.object({ imageId: z.uuid() })
@@ -30,11 +31,13 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const fileError = validateImageFile(file)
   if (fileError) return NextResponse.json({ error: fileError }, { status: 400 })
 
-  const buffer = Buffer.from(await file.arrayBuffer())
+  // The picker accepts PNG/WebP for convenience, but Instagram containers take
+  // JPEG only — convert at the boundary so a slide can never fail at publish.
+  const jpeg = await toJpeg(Buffer.from(await file.arrayBuffer()), file.type, file.name)
   const { publicUrl, storagePath } = await uploadPostImage(
-    buffer,
-    file.name,
-    file.type,
+    jpeg.buffer,
+    jpeg.fileName,
+    jpeg.contentType,
     post.client_id,
     postId
   )
@@ -49,9 +52,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       public_url: publicUrl,
       storage_path: storagePath,
       position,
-      file_name: file.name,
-      file_size: file.size,
-      content_type: file.type,
+      file_name: jpeg.fileName,
+      file_size: jpeg.buffer.byteLength,
+      content_type: jpeg.contentType,
     })
     .select(POST_IMAGE_COLUMNS)
     .single()

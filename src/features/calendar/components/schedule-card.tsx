@@ -272,7 +272,14 @@ export const ScheduleCard = memo(function ScheduleCard({
     setPublishError(null)
     const res = await fetch(`/api/posts/${currentPost.id}/publish`, { method: 'POST' })
     const data = await res.json()
-    if (res.ok) {
+    if (res.status === 202) {
+      // Container still processing at Meta — the cron completes it; the post is
+      // not published yet, so the card must not flip it.
+      toast.info(
+        data.message ?? 'Instagram is still processing — publishing completes automatically'
+      )
+      onClose()
+    } else if (res.ok) {
       onPublished?.(currentPost.id)
       onClose()
     } else {

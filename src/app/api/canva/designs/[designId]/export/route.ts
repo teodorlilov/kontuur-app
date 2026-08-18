@@ -1,3 +1,4 @@
+import { toJpeg } from '@/lib/visual/to-jpeg'
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
@@ -121,14 +122,20 @@ export async function POST(
     return NextResponse.json({ error: 'Failed to download exported image' }, { status: 502 })
   }
 
-  const imageBuffer = Buffer.from(await imageRes.arrayBuffer())
-  const fileName = `canva-${designId}.png`
+  // Canva exports PNG; Instagram containers accept JPEG only, so a PNG slide
+  // burned every publish attempt with an opaque media error. Convert here,
+  // at the boundary where the PNG enters the post pipeline.
+  const jpeg = await toJpeg(
+    Buffer.from(await imageRes.arrayBuffer()),
+    'image/png',
+    `canva-${designId}.png`
+  )
 
   // 4. Upload to Supabase Storage
   const { publicUrl, storagePath } = await uploadPostImage(
-    imageBuffer,
-    fileName,
-    'image/png',
+    jpeg.buffer,
+    jpeg.fileName,
+    jpeg.contentType,
     post.client_id,
     postId
   )
@@ -155,9 +162,9 @@ export async function POST(
       public_url: publicUrl,
       storage_path: storagePath,
       position,
-      file_name: fileName,
-      file_size: imageBuffer.byteLength,
-      content_type: 'image/png',
+      file_name: jpeg.fileName,
+      file_size: jpeg.buffer.byteLength,
+      content_type: jpeg.contentType,
     })
     .select(POST_IMAGE_COLUMNS)
     .single()

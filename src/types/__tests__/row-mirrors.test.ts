@@ -42,7 +42,7 @@ const EXEMPT: Record<string, string> = {
   // `z.infer<typeof updatePostSchema>` in lib/validation/post-update-schema.ts, which
   // this scanner does not see at all — a schema declares no field names in a shape it
   // could read. The reason the exemption gave still holds and is recorded there.
-  'features/publishing/lib/scheduler.ts:PublishStatusPatch':
+  'features/publishing/lib/publish-post.ts:PublishStatusPatch':
     'A partial update payload: every field is optional because each caller patches a different subset (markPublished sets four, markFailed three). The optionality means "may be omitted from this patch", not "may be null in the column".',
   'features/sources/actions/source-actions.ts:UpdateSourceInput':
     'A write contract, all fields optional so a caller can send only what changed. Same reason as UpdatePostInput.',
