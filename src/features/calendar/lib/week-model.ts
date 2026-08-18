@@ -7,7 +7,7 @@ import {
 import { WEEKDAY_LABELS } from '@/utils/constants'
 import type { CalendarPost } from '@/types/api'
 import type { PostStatus } from '@/lib/validation'
-import type { BestTimePlatform } from '@/types/api'
+import type { BestTimePlatform } from '@/lib/scheduling/schemas'
 import { suggestWeekSlots } from '@/lib/scheduling/slot-picker'
 
 /**

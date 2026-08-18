@@ -12,8 +12,9 @@ import {
   LABEL_CLASS,
 } from '@/components/ui/form/control-classes'
 import { formatScheduledAt, getNextDateForDay, toDateKey } from '@/utils/date-helpers'
+import { formatPublishSlot } from '@/features/dashboard/lib/metrics'
 import { WeekStrip } from './week-strip'
-import type { BestTimePlatform } from '@/types/api'
+import type { BestTimePlatform } from '@/lib/scheduling/schemas'
 
 type ScheduleChoice = 'next' | 'best' | 'pick' | 'none'
 
@@ -55,13 +56,6 @@ interface ScheduleDialogProps {
   onClose: () => void
 }
 
-function formatSlotLabel(iso: string): string {
-  const date = new Date(iso)
-  const day = date.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })
-  const time = date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
-  return `${day}, ${time}`
-}
-
 /**
  * Approve is also the moment the post gets (or declines) a slot, so the two
  * decisions share one dialog: the week's shape with a recommended open slot
@@ -85,7 +79,7 @@ export function ScheduleDialog({
     const day = entry?.best_days[0]
     const window = entry?.best_time_windows[0]
     if (!entry || !day || !window) return null
-    return { day, time: window.time, reason: entry.reasoning_summary }
+    return { day, time: window.time }
   }, [platform, bestTimeData])
 
   const [choice, setChoice] = useState<ScheduleChoice>('none')
@@ -143,7 +137,7 @@ export function ScheduleDialog({
           {nextOpenSlot && (
             <OptionCard
               checked={choice === 'next'}
-              title={`Next open slot — ${formatSlotLabel(nextOpenSlot)}`}
+              title={`Next open slot — ${formatPublishSlot(nextOpenSlot, timeZone).label}`}
               sub="Fills this client's week"
               onSelect={() => setChoice('next')}
             />

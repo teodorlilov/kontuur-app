@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { pickNextOpenSlot, suggestionPlatform, suggestWeekSlots } from '../slot-picker'
 import { formatScheduledAt } from '@/utils/date-helpers'
-import type { BestTimePlatform } from '@/types/api'
+import type { BestTimePlatform } from '@/lib/scheduling/schemas'
 
 /**
  * The agency zone, now that `SlotPickerInput` requires one.

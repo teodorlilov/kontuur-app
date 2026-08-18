@@ -7,7 +7,7 @@ import {
   shiftDateKey,
   toDateKey,
 } from '@/utils/date-helpers'
-import type { BestTimePlatform } from '@/types/api'
+import type { BestTimePlatform } from '@/lib/scheduling/schemas'
 
 /**
  * When a client *might* post.

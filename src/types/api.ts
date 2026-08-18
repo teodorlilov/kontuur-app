@@ -96,32 +96,6 @@ export interface PillarsResponse {
   pillars: Array<{ pillar: string }>
 }
 
-// ---- Best Time ----
-
-export interface BestTimeRequest {
-  clientId: string
-}
-
-export interface BestTimeWindow {
-  time: string
-  label: string
-  reason: string
-}
-
-export interface BestTimePlatform {
-  platform: string
-  best_days: string[]
-  best_time_windows: BestTimeWindow[]
-  avoid: string
-  confidence: 'research-backed' | 'ai-derived'
-  reasoning_summary: string
-}
-
-export interface BestTimeResponse {
-  platforms: BestTimePlatform[]
-  upgrade_note: string
-}
-
 // ---- Client Ideas ----
 
 // The single definition. It was restated as a zod enum in the ideas feature to

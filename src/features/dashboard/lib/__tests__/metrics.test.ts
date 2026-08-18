@@ -39,3 +39,16 @@ describe('formatPublishSlot', () => {
     expect(formatPublishSlot('2026-07-31T04:05:00Z', SOFIA, NOW).label).toBe('Fri 07:05')
   })
 })
+
+describe('the slot label the schedule dialog shows', () => {
+  it('reads in the agency zone, not the viewer\'s', () => {
+    // `ScheduleDialog` takes `timeZone` as a REQUIRED prop, with a comment explaining that resolving
+    // a slot in the browser's zone silently scheduled posts at the wrong instant — and then labelled
+    // that slot with a local `toLocaleTimeString`, no zone passed. So the dialog wrote 09:00 Sofia
+    // and told an operator in London it was 07:00. Both halves speak the agency's zone now.
+    // Late enough that the zone decides the DAY, not just the hour — which is the shape of the bug.
+    const iso = '2026-07-31T22:00:00Z'
+    expect(formatPublishSlot(iso, SOFIA, NOW).label).toBe('Sat 01:00')
+    expect(formatPublishSlot(iso, 'Europe/London', NOW).label).toBe('Fri 23:00')
+  })
+})

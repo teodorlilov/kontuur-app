@@ -1,6 +1,6 @@
 import { callAnthropic, LIGHT_MODEL } from '@/utils/ai-client'
 import { parseJsonResponse } from '@/utils/ai'
-import type { BestTimePlatform } from '@/types/api'
+import type { BestTimePlatform } from '@/lib/scheduling/schemas'
 import {
   sanitizePromptField,
   PROMPT_FIELD_LIMITS,
@@ -14,7 +14,7 @@ interface BestTimeInput {
   platforms: string
 }
 
-export interface BestTimeResult {
+interface BestTimeResult {
   platforms: BestTimePlatform[]
   upgrade_note: string
 }

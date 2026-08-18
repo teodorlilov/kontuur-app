@@ -42,3 +42,21 @@ describe('parseBestTimes', () => {
     expect(parseBestTimes([{ ...valid[0], best_days: [] }])).toHaveLength(1)
   })
 })
+
+describe('the parsed type is the stored type', () => {
+  it('carries a row whose whole optional tail is absent', () => {
+    // The defect this replaced: `types/api.ts` declared avoid/confidence/reasoning_summary and the
+    // windows' label/reason REQUIRED, the schema declared them optional, and `parseBestTimes` closed
+    // the gap with a bare `as`. A row like this one parses, and eight consumers were typed as if
+    // every one of those fields were certainly present.
+    const bare = [
+      { platform: 'Instagram', best_days: ['Thursday'], best_time_windows: [{ time: '18:00' }] },
+    ]
+    const parsed = parseBestTimes(bare)
+    expect(parsed).toHaveLength(1)
+    // Reading them is only legal now because the type admits they may be missing.
+    expect(parsed![0]!.reasoning_summary).toBeUndefined()
+    expect(parsed![0]!.avoid).toBeUndefined()
+    expect(parsed![0]!.best_time_windows[0]!.label).toBeUndefined()
+  })
+})

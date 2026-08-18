@@ -47,7 +47,8 @@ import {
 } from '@/features/review/lib/discard-reasons'
 import type { QueuePost } from '@/features/review/lib/queue-post'
 import type { ReviewDraft } from '@/components/posts/review/types'
-import type { CarouselSlide, BestTimePlatform, PostImage, SlopDetection } from '@/types/api'
+import type { CarouselSlide, PostImage, SlopDetection } from '@/types/api'
+import type { BestTimePlatform } from '@/lib/scheduling/schemas'
 import type { ValidationData } from '@/types/post'
 
 interface ReviewQueueProps {

@@ -6,7 +6,8 @@ import { requestApprovalEmail, requestApprovalLink } from '@/lib/approval/reques
 import { getMondayISO } from '@/utils/date-helpers'
 import { postsInWeek } from '@/features/calendar/lib/week-model'
 import { pluralise } from '@/utils/format'
-import type { BestTimePlatform, CalendarPost } from '@/types/api'
+import type { CalendarPost } from '@/types/api'
+import type { BestTimePlatform } from '@/lib/scheduling/schemas'
 
 export interface ClientEntry {
   id: string
