@@ -5,7 +5,7 @@
  * fails if a new component is added without a test AND fails if you cover one of these
  * without deleting its line, so the number here is always the real number.
  *
- * 83 of 87 on 2026-08-18, the day component testing started existing at all. That is the
+ * 81 of 87 on 2026-08-18, the day component testing started existing at all. That is the
  * honest starting point, not a target anyone should feel behind on: the four that are
  * covered were chosen because they carry the most risk per line — the shared controls
  * every surface renders, the two deliberately-suppressed `set-state-in-effect` effects,
@@ -47,10 +47,8 @@ export const UNTESTED_COMPONENTS: string[] = [
   'features/auth/components/auth-dialog-provider.tsx',
   'features/auth/components/reset-view.tsx',
   'features/auth/components/setup-password-form.tsx',
-  'features/auth/components/sign-in-view.tsx',
   'features/auth/components/sign-up-view.tsx',
   'features/calendar/components/approval-tools.tsx',
-  'features/calendar/components/calendar-view.tsx',
   'features/calendar/components/day-column.tsx',
   'features/calendar/components/queue-rail.tsx',
   'features/calendar/components/week-grid.tsx',
