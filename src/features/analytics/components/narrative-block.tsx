@@ -10,14 +10,11 @@ export function NarrativeBlock({
   narrative,
   archived,
   hasHistory,
-  regenerate,
 }: {
   narrative: string | null
   /** True when the wording came from an exported report rather than a fresh write. */
   archived: boolean
   hasHistory: boolean
-  /** The screen-only re-roll control; print never shows it. */
-  regenerate?: React.ReactNode
 }) {
   const text = hasHistory
     ? narrative
@@ -44,10 +41,7 @@ export function NarrativeBlock({
       >
         {quoted}
       </p>
-      <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-micro text-text3">
-        <span>{sourceLine}</span>
-        {hasHistory && regenerate}
-      </div>
+      <div className="mt-2 text-micro text-text3">{sourceLine}</div>
     </section>
   )
 }

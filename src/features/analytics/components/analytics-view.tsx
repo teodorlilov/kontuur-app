@@ -12,7 +12,6 @@ import { InteractionMultiples } from './interaction-multiples'
 import { NarrativeBlock } from './narrative-block'
 import { PostsTable } from './posts-table'
 import { ReachTrend } from './reach-trend'
-import { RegenerateNarrative } from './regenerate-narrative'
 import { ReportArchive, type ArchiveEntry } from './report-archive'
 import { SummaryStrip } from './summary-strip'
 import { SyncLine } from './sync-line'
@@ -94,12 +93,7 @@ export function AnalyticsView({
         </div>
       </header>
 
-      <NarrativeBlock
-        narrative={narrative}
-        archived={narrativeArchived}
-        hasHistory={hasHistory}
-        regenerate={<RegenerateNarrative clientId={clientId} period={data.period} />}
-      />
+      <NarrativeBlock narrative={narrative} archived={narrativeArchived} hasHistory={hasHistory} />
 
       <SummaryStrip data={data} />
 

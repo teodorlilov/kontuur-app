@@ -9,14 +9,13 @@ import type { Json } from '@/types'
 import { getCachedAgency } from '@/lib/queries/cache'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { SOCIAL_CONNECTION_AUTH_COLUMNS } from '@/lib/queries/select-columns'
-import { GraphApiError } from '@/lib/meta/graph-errors'
 import { isTokenExpired } from '@/lib/meta/token-expiry'
 import { toDateKey } from '@/utils/date-helpers'
 import { archiveReportInputSchema, type ArchiveReportInput } from '../schemas'
 import { periodFromBounds, type AnalyticsPeriod } from '../lib/period'
 import { getAnalyticsReport, IG_METRICS_TAG } from '../lib/report-data'
 import { refreshWindowMetrics } from '../lib/refresh-window'
-import { buildFallbackNarrative, composeFreshNarrative, getNarrative } from '../lib/narrative'
+import { buildFallbackNarrative, getNarrative } from '../lib/narrative'
 import type { AnalyticsReportData } from '../lib/build-report'
 
 interface ReportScope {
@@ -165,111 +164,6 @@ export async function fillPeriodData(
 
   revalidateTag(IG_METRICS_TAG, 'max')
   return { ok: true, data: { filled: true } }
-}
-
-export interface RegenerateOutcome {
-  /** False when Instagram could not be pulled — the rewrite used stored data. */
-  refreshed: boolean
-  /** Meta throttled mid-refresh; what landed stays, older days wait. */
-  rateLimited: boolean
-  /** A human sentence for the partial cases, null on a clean run. */
-  note: string | null
-}
-
-/**
- * Regenerates the report for the selected window: pulls the period's data
- * from Instagram again (both windows — day totals, breakdowns, reach and
- * follower series, the period's post metrics), busts the caches, and rewrites
- * the summary. A period that was already exported gets its archive row
- * rewritten too, so its stored wording and numbers move forward deliberately.
- * A dead or missing connection degrades to a stored-data rewrite with a note.
- */
-export async function regenerateReport(
-  input: ArchiveReportInput
-): Promise<ActionResult<RegenerateOutcome>> {
-  const resolved = await resolveReportScope(input)
-  if (!resolved.ok) return { ok: false, error: resolved.error }
-  const { scope } = resolved
-  const outcome: RegenerateOutcome = { refreshed: false, rateLimited: false, note: null }
-
-  // WHY as: the auth-scoped client is untyped here, so the projection does not infer.
-  const { data: connection } = (await scope.supabase
-    .from('social_connections')
-    .select(SOCIAL_CONNECTION_AUTH_COLUMNS)
-    .eq('client_id', scope.client.id)
-    .eq('platform', 'instagram')
-    .maybeSingle()) as {
-    data: {
-      account_id: string | null
-      access_token: string | null
-      token_expires_at: string | null
-    } | null
-  }
-
-  if (!connection?.account_id || !connection.access_token) {
-    outcome.note = 'Instagram is not connected — the report was rewritten from stored data.'
-  } else if (isTokenExpired(connection.token_expires_at)) {
-    outcome.note =
-      'The Instagram connection has expired — reconnect to refresh; rewritten from stored data.'
-  } else {
-    try {
-      const refresh = await refreshWindowMetrics(
-        createAdminSupabaseClient(),
-        {
-          clientId: scope.client.id,
-          accountId: connection.account_id,
-          accessToken: connection.access_token,
-        },
-        scope.period,
-        toDateKey(new Date(), scope.timezone)
-      )
-      outcome.refreshed = true
-      outcome.rateLimited = refresh.rateLimited
-    } catch (err) {
-      console.error('[analytics] window refresh failed', { clientId: scope.client.id, err })
-      outcome.note =
-        err instanceof GraphApiError &&
-        (err.failure === 'token_invalid' || err.failure === 'permission')
-          ? 'Instagram rejected the connection — reconnect the account; rewritten from stored data.'
-          : 'Instagram did not respond — the report was rewritten from stored data.'
-    }
-  }
-
-  // Everything below reads post-refresh state.
-  revalidateTag(IG_METRICS_TAG, 'max')
-  const report = await getAnalyticsReport(scope.client.id, scope.period, scope.timezone)
-  if (!report.hasHistory) {
-    return {
-      ok: false,
-      error: 'Nothing to write yet — connect Instagram or wait for tonight’s sync',
-    }
-  }
-
-  const { data: existing, error: lookupError } = await scope.supabase
-    .from('analytics_reports')
-    .select('id')
-    .eq('client_id', scope.client.id)
-    .eq('period_start', scope.period.start)
-    .eq('period_end', scope.period.end)
-    .maybeSingle()
-  if (lookupError) return { ok: false, error: lookupError.message }
-
-  if (existing) {
-    const narrative =
-      (await composeFreshNarrative(
-        scope.client.id,
-        scope.client.name,
-        scope.period,
-        scope.timezone
-      )) ?? buildFallbackNarrative(report)
-    if (narrative === null) {
-      return { ok: false, error: 'Nothing to write yet — no metrics in this period' }
-    }
-    const upserted = await upsertReportRow(scope, report, narrative)
-    if (!upserted.ok) return { ok: false, error: upserted.error }
-  }
-
-  return { ok: true, data: outcome }
 }
 
 /** Delete an analytics report by ID. */

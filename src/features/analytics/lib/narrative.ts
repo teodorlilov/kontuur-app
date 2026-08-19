@@ -99,11 +99,8 @@ export function buildFallbackNarrative(data: AnalyticsReportData): string | null
   return `${parts.join(' · ')}.`
 }
 
-/**
- * Writes a fresh summary from the current table data — no cache, no archive
- * lookup. The regenerate action uses this to rewrite an exported report.
- */
-export async function composeFreshNarrative(
+/** Writes a fresh summary from the current table data — no cache, no archive lookup. */
+async function composeFreshNarrative(
   clientId: string,
   clientName: string,
   period: AnalyticsPeriod,
