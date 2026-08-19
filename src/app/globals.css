@@ -213,6 +213,9 @@
   --metric-2: var(--spring);
   --metric-3: #7fa588;
   --metric-4: var(--forest-deep);
+  /* The comparison console's "previous period" stroke: metric-3's hue held to
+     3.4:1 on white so a 2px line stays legible where the 8px fill needs labels. */
+  --then-line: #6f957a;
 }
 
 /* Registered with Tailwind so components use utilities, not inline styles.
@@ -259,6 +262,8 @@
   --color-pending: var(--pending);
   --color-pending-bg: var(--pending-bg);
   --color-pending-lite: var(--pending-lite);
+  --color-metric-3: var(--metric-3);
+  --color-then-line: var(--then-line);
 
   --radius-chip: var(--radius-md);
   --radius-panel: var(--radius-lg);
@@ -722,11 +727,38 @@ input[type='number']::-webkit-outer-spin-button {
 
    .app-sidebar being hidden here is also why the lime active-nav plate never
    reaches paper: there is no print override to maintain. */
+/* ─── Analytics: the one authored motion moment ───
+   The now-line draws in over the already-visible then-line (the mock's footer
+   commitment). Paths set pathLength="1" so the dash math is unit. */
+@keyframes analytics-draw-in {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+.chart-draw-in {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 0;
+  animation: analytics-draw-in 900ms var(--ease-contour, cubic-bezier(0.22, 1, 0.36, 1)) 150ms
+    backwards;
+}
+@media (prefers-reduced-motion: reduce) {
+  .chart-draw-in {
+    animation: none;
+  }
+}
+
 @media print {
   html,
   body {
     height: auto !important;
     overflow: visible !important;
+  }
+
+  .chart-draw-in {
+    animation: none !important;
   }
 
   /* Flatten the shell, remove its chrome */

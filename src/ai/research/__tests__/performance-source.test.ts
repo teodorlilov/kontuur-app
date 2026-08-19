@@ -1,83 +1,76 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-
-const mockFetchTopPerformingPosts = vi.fn()
-vi.mock('@/lib/meta/instagram-metrics', () => ({
-  fetchTopPerformingPosts: (...args: unknown[]) => mockFetchTopPerformingPosts(...args),
-}))
-
+import { describe, it, expect } from 'vitest'
 import { fetchPerformanceItems } from '../performance-source'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
-beforeEach(() => {
-  vi.clearAllMocks()
-})
-
-function igPost(id: string, caption: string | null, likes: number) {
+function metricRow(
+  igMediaId: string,
+  caption: string | null,
+  likes: number,
+  postId: string | null = null
+) {
   return {
-    id,
-    caption,
-    timestamp: '2026-07-01T10:00:00Z',
+    ig_media_id: igMediaId,
+    post_id: postId,
     media_type: 'IMAGE',
+    media_product_type: 'FEED',
+    permalink: `https://instagram.com/p/${igMediaId}`,
+    thumbnail_url: null,
+    caption,
+    posted_at: '2026-08-01T10:00:00Z',
+    reach: 500,
+    views: 900,
     like_count: likes,
     comments_count: 3,
     saved: 5,
     shares: 1,
-    permalink: `https://instagram.com/p/${id}`,
+    total_interactions: likes + 9,
+    follows: 2,
+    profile_visits: 40,
   }
 }
 
-/** Minimal supabase stub: social_connections single row + posts pillar-join rows. */
+/** Minimal supabase stub: the ig_post_metrics read + the posts pillar join. */
 function makeSupabase(
-  connection: Record<string, unknown> | null,
-  publishedRows: Array<{ ig_media_id: string; pillar: string }> = []
+  metricRows: Array<Record<string, unknown>> | Error,
+  publishedRows: Array<{ id: string; pillar: string }> = []
 ): SupabaseClient {
   return {
     from: (table: string) => {
-      if (table === 'social_connections') {
+      if (table === 'ig_post_metrics') {
         return {
           select: () => ({
             eq: () => ({
-              eq: () => ({ maybeSingle: () => Promise.resolve({ data: connection }) }),
+              gte: () => ({
+                not: () => ({
+                  order: () => ({
+                    limit: () =>
+                      metricRows instanceof Error
+                        ? Promise.resolve({ data: null, error: { message: metricRows.message } })
+                        : Promise.resolve({ data: metricRows, error: null }),
+                  }),
+                }),
+              }),
             }),
           }),
         }
       }
       return {
-        select: () => ({
-          eq: () => ({ in: () => Promise.resolve({ data: publishedRows }) }),
-        }),
+        select: () => ({ in: () => Promise.resolve({ data: publishedRows }) }),
       }
     },
     // Test stub covers only the two query shapes fetchPerformanceItems uses
   } as unknown as SupabaseClient
 }
 
-const CONNECTION = {
-  account_id: 'ig-acct',
-  access_token: 'token',
-  token_expires_at: new Date(Date.now() + 86_400_000).toISOString(),
-}
-
 describe('fetchPerformanceItems', () => {
-  it('returns [] without a connected instagram account', async () => {
-    const items = await fetchPerformanceItems(makeSupabase(null), 'client-1')
-    expect(items).toEqual([])
-    expect(mockFetchTopPerformingPosts).not.toHaveBeenCalled()
-  })
-
-  it('returns [] when the token is expired', async () => {
-    const expired = { ...CONNECTION, token_expires_at: new Date(Date.now() - 1000).toISOString() }
-    const items = await fetchPerformanceItems(makeSupabase(expired), 'client-1')
-    expect(items).toEqual([])
-    expect(mockFetchTopPerformingPosts).not.toHaveBeenCalled()
-  })
-
-  it('maps top posts to performance items and joins pillars for published posts', async () => {
-    mockFetchTopPerformingPosts.mockResolvedValue([
-      igPost('m1', 'Our best recovery tips', 100),
-      igPost('m2', 'Organic post not from Postflow', 80),
-    ])
-    const supabase = makeSupabase(CONNECTION, [{ ig_media_id: 'm1', pillar: 'Educational' }])
+  it('maps stored rows to performance items and joins pillars for published posts', async () => {
+    const supabase = makeSupabase(
+      [
+        metricRow('m1', 'Our best recovery tips', 100, 'post-1'),
+        metricRow('m2', 'Organic post not from Postflow', 80),
+      ],
+      [{ id: 'post-1', pillar: 'Educational' }]
+    )
 
     const items = await fetchPerformanceItems(supabase, 'client-1')
 
@@ -91,17 +84,21 @@ describe('fetchPerformanceItems', () => {
     expect(items[1]!.pillar).toBeUndefined()
   })
 
-  it('drops caption-less posts', async () => {
-    mockFetchTopPerformingPosts.mockResolvedValue([igPost('m1', null, 100), igPost('m2', '  ', 90)])
-
-    const items = await fetchPerformanceItems(makeSupabase(CONNECTION), 'client-1')
+  it('drops caption-less rows', async () => {
+    const items = await fetchPerformanceItems(
+      makeSupabase([metricRow('m1', null, 100), metricRow('m2', '  ', 90)]),
+      'client-1'
+    )
     expect(items).toEqual([])
   })
 
-  it('returns [] when the meta fetch throws — never blocks a run', async () => {
-    mockFetchTopPerformingPosts.mockRejectedValue(new Error('meta down'))
+  it('returns [] when a client has no stored metrics yet', async () => {
+    const items = await fetchPerformanceItems(makeSupabase([]), 'client-1')
+    expect(items).toEqual([])
+  })
 
-    const items = await fetchPerformanceItems(makeSupabase(CONNECTION), 'client-1')
+  it('returns [] when the read fails — never blocks a run', async () => {
+    const items = await fetchPerformanceItems(makeSupabase(new Error('db down')), 'client-1')
     expect(items).toEqual([])
   })
 })

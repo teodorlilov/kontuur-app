@@ -8,7 +8,8 @@ export type BrandProfileRow = Tables<'brand_profiles'>
 export type PostingScheduleRow = Tables<'posting_schedules'>
 export type PostImageRow = Tables<'post_images'>
 export type PostRow = Tables<'posts'>
-export type AnalyticsReportRow = Tables<'analytics_reports'>
+export type IGAccountMetricsRow = Tables<'ig_account_metrics'>
+export type IGPostMetricsRow = Tables<'ig_post_metrics'>
 
 export type { LanguageIssueType, SlopDetection, SourceGroundingResult } from '@/ai/validation/types'
 

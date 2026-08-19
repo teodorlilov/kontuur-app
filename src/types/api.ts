@@ -7,7 +7,6 @@ import type { CalendarPostColumns } from '@/lib/queries/select-columns'
 type PostRow = Tables<'posts'>
 type NotificationRow = Tables<'notifications'>
 type SocialConnectionRow = Tables<'social_connections'>
-type AnalyticsReportRow = Tables<'analytics_reports'>
 
 // ---- Shared enums / unions ----
 
@@ -224,95 +223,6 @@ export type MetaConnection = Pick<
   /** Narrowed from the column's plain string: the table also holds 'canva' rows,
    *  which every consumer of this type filters out. */
   platform: 'instagram'
-}
-
-// ---- Analytics ----
-
-export interface AudienceDemographics {
-  /** Age-bucket distribution (13-17 … 65+). The API serves separate age and gender
-   *  splits — a joint gender×age distribution does not exist, so the old compound
-   *  `M.18-24` keys could only ever have been fabricated. */
-  ages: Record<string, number>
-  /** F / M / U distribution. */
-  genders: Record<string, number>
-  top_cities: Array<{ name: string; value: number }>
-  top_countries: Array<{ name: string; value: number }>
-}
-
-/** Per-day the API serves exactly two things: reach (time_series) and the
- *  new-follower delta. `follower_count` here is the cumulative curve the
- *  metrics builder derives from today's total minus later deltas. */
-export interface IGDailyInsight {
-  date: string
-  reach?: number
-  follower_count?: number
-}
-
-export interface IGPost {
-  id: string
-  caption: string | null
-  timestamp: string
-  media_type: string
-  like_count: number
-  comments_count: number
-  saved?: number
-  reach?: number
-  impressions?: number
-  permalink?: string
-  shares?: number
-  total_interactions?: number
-  thumbnail_url?: string | null
-}
-
-export interface MediaTypeBreakdownItem {
-  type: string
-  avg_engagement_rate: number
-  count: number
-}
-
-export interface InstagramMetrics {
-  platform: 'instagram'
-  account: {
-    followers_count: number
-    follows_count: number
-    media_count: number
-  }
-  summary: {
-    total_reach: number
-    total_impressions: number
-    total_profile_views: number
-    avg_engagement_rate: number
-    posts_published: number
-    new_followers: number
-    unfollowers: number
-    net_follower_change: number
-    organic_reach_pct: null
-    paid_reach_pct: null
-    reach_delta_pct: number | null
-    views_delta_pct: number | null
-    profile_views_delta_pct: number | null
-    net_followers_delta_pct: number | null
-    avg_save_rate: number
-    total_saved: number
-    total_shares: number
-    total_accounts_engaged: number
-    total_website_clicks: number
-    accounts_engaged_delta_pct: number | null
-    website_clicks_delta_pct: number | null
-  }
-  daily_insights: IGDailyInsight[]
-  posts: IGPost[]
-  audience: AudienceDemographics | null
-  media_type_breakdown: MediaTypeBreakdownItem[]
-}
-
-export type AnalyticsReport = Pick<
-  AnalyticsReportRow,
-  'id' | 'client_id' | 'platform' | 'period_start' | 'period_end' | 'ai_summary' | 'created_at'
-> & {
-  /** Narrowed from the column's `Json`: the report route writes this shape and every
-   *  reader charts it, so the assertion lives here rather than at each use. */
-  metrics_json: InstagramMetrics
 }
 
 // ---- API error ----

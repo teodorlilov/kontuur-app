@@ -24,11 +24,6 @@ const INLINE_SIZE_EXEMPT = [
   // fontSize is a Konva document-model field here (z.number().min(8).max(400)),
   // not a style. A codemod through these corrupts saved user documents.
   'lib/canvas/',
-  // Recharts spreads `tick` onto an SVG <text> as a presentation attribute, and
-  // SVG attributes do not resolve var() -- a token here renders at the UA default.
-  'features/analytics/lib/chart-config.ts',
-  'features/analytics/components/audience-section.tsx',
-  'features/analytics/components/post-day-breakdown.tsx',
   // sonner's own base rules beat utility classes; only an inline style wins.
   'app/layout.tsx',
   // The inline-edit overlay mirrors the Konva node's own fontSize onto a DOM

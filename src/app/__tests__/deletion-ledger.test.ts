@@ -79,6 +79,15 @@ describe('deleted symbols stay unreferenced', () => {
     'buildAudienceDemographics',
     'computeNetChangeFromSnapshots',
     'IG_METRIC_KEY_MAP',
+    // Chunk D (2026-08): the analytics read path moved to the stored tables.
+    // Live-fetch report metrics, the Graph fan-out performance source, and the
+    // recharts dependency all went with it.
+    'InstagramMetrics',
+    'fetchTopPerformingPosts',
+    'PERFORMANCE_INSIGHTS_CAP',
+    'MediaTypeBreakdownItem',
+    'IGDailyInsight',
+    'recharts',
   ]
 
   it('no source line mentions a ledgered symbol', () => {

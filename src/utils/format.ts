@@ -91,11 +91,6 @@ export function formatScheduleDate(date: Date, timeZone?: string): string {
   })
 }
 
-/** Formats a date as "28 Apr" — day + short month, for compact secondary labels. */
-export function formatDayMonth(date: Date, timeZone?: string): string {
-  return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone })
-}
-
 /** Extracts up to 2-letter initials from a name string, supporting non-Latin scripts. */
 export function extractInitials(name: string): string {
   const cleaned = name.replace(/[^\p{L}\s]/gu, '').trim()

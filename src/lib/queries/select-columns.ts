@@ -8,7 +8,7 @@
  * - If you add a column to a table, update the relevant constant here first.
  */
 
-import type { PostRow } from '@/types'
+import type { IGAccountMetricsRow, IGPostMetricsRow, PostRow } from '@/types'
 
 /**
  * `[a, b, c]` joined by `D`, as a literal type rather than plain `string`.
@@ -191,8 +191,9 @@ export const SOCIAL_CONNECTION_COLUMNS =
 
 /**
  * The credential read — the ONLY projection that pulls access_token, used by the
- * four callers that must actually talk to Meta (publish, analytics, the publish
- * scheduler, the performance source).
+ * two callers that must actually talk to Meta (the manual publish route and the
+ * publish scheduler). Analytics and the performance source read the stored
+ * ig_* tables now and never touch a token.
  *
  * Deliberately separate from SOCIAL_CONNECTION_COLUMNS, which omits the token so
  * display reads cannot leak one. Keep it that way: widening the display constant
@@ -202,6 +203,70 @@ export const SOCIAL_CONNECTION_AUTH_COLUMNS = 'account_id, access_token, token_e
 
 /** The metrics cron's roster read — AUTH_COLUMNS plus the client to file rows under. */
 export const SOCIAL_CONNECTION_SYNC_COLUMNS = 'client_id, account_id, access_token'
+
+// ig_account_metrics — the analytics document's daily rows: only what it renders.
+// Columns the sync captures but nothing displays yet (accounts_engaged,
+// profile_links_taps, follows_count, media_count, …) stay unselected on purpose.
+export const IG_ACCOUNT_METRIC_KEYS = [
+  'metric_date',
+  'followers_count',
+  'reach',
+  'views',
+  'total_interactions',
+  'likes',
+  'comments',
+  'saves',
+  'shares',
+  'replies',
+  'profile_views',
+  'follows',
+  'unfollows',
+  'reach_by_media_product_type',
+  'link_taps_by_button_type',
+  'fetched_at',
+] as const satisfies readonly (keyof IGAccountMetricsRow)[]
+
+export const IG_ACCOUNT_METRIC_COLUMNS = IG_ACCOUNT_METRIC_KEYS.join(', ') as Join<
+  typeof IG_ACCOUNT_METRIC_KEYS,
+  ', '
+>
+
+export type IGAccountMetricColumns = Pick<
+  IGAccountMetricsRow,
+  (typeof IG_ACCOUNT_METRIC_KEYS)[number]
+>
+
+// ig_post_metrics — the posts table + the research performance source.
+export const IG_POST_METRIC_KEYS = [
+  'ig_media_id',
+  'post_id',
+  'media_type',
+  'media_product_type',
+  'permalink',
+  'thumbnail_url',
+  'caption',
+  'posted_at',
+  'reach',
+  'views',
+  'like_count',
+  'comments_count',
+  'saved',
+  'shares',
+  'total_interactions',
+  'follows',
+  'profile_visits',
+] as const satisfies readonly (keyof IGPostMetricsRow)[]
+
+export const IG_POST_METRIC_COLUMNS = IG_POST_METRIC_KEYS.join(', ') as Join<
+  typeof IG_POST_METRIC_KEYS,
+  ', '
+>
+
+export type IGPostMetricColumns = Pick<IGPostMetricsRow, (typeof IG_POST_METRIC_KEYS)[number]>
+
+// ig_audience_snapshots
+export const IG_AUDIENCE_SNAPSHOT_COLUMNS =
+  'snapshot_date, follower_demographics, engaged_audience_demographics'
 
 // intelligence_briefings
 export const BRIEFING_COLUMNS =

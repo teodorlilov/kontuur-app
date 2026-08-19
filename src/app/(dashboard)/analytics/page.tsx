@@ -1,24 +1,128 @@
-import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { requireSessionUser } from '@/lib/auth/session'
-import { getCachedAgencyClients } from '@/lib/queries/cache'
+import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { getCachedAgency, getCachedAgencyClients } from '@/lib/queries/cache'
 import { fetchConnectionsByClient } from '@/lib/queries/db'
-import { AnalyticsView } from '@/features/analytics/components/analytics-view'
+import { PageHeader } from '@/components/layout/page-header/page-header'
+import { PAGE_SHELL } from '@/components/layout/page-header/shared'
+import { Card } from '@/components/ui/card'
+import { ActionLink } from '@/components/ui/action-link'
+import { cn } from '@/utils/cn'
+import { parseParam } from '@/utils/parse-param'
+import { AnalyticsView, ConnectPrompt } from '@/features/analytics/components/analytics-view'
+import { MastheadControls } from '@/features/analytics/components/masthead-controls'
+import type { ArchiveEntry } from '@/features/analytics/components/report-archive'
+import { buildFallbackNarrative } from '@/features/analytics/lib/narrative'
+import { getNarrative } from '@/features/analytics/lib/narrative'
+import { resolvePeriod } from '@/features/analytics/lib/period'
+import { getAnalyticsReport } from '@/features/analytics/lib/report-data'
 
-export default async function AnalyticsPage() {
-  const { agencyId } = await requireSessionUser()
+interface AnalyticsPageProps {
+  searchParams: Promise<Record<string, string | string[] | undefined>>
+}
+
+/**
+ * The comparison console. URL-driven like every other dashboard page:
+ * ?client= scopes, ?range= or ?from=/?to= pins the period — which is also
+ * what makes archive rows plain links and print reproducible.
+ */
+export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps) {
+  const [{ agencyId }, params] = await Promise.all([requireSessionUser(), searchParams])
+  const [cachedClients, agency] = await Promise.all([
+    getCachedAgencyClients(agencyId),
+    getCachedAgency(agencyId),
+  ])
+  const timezone = agency?.timezone ?? 'UTC'
+  const clients = cachedClients
+    .map((client) => ({ id: client.id, name: client.name }))
+    .sort((a, b) => a.name.localeCompare(b.name))
+
+  if (clients.length === 0) {
+    return (
+      <>
+        <PageHeader crumb={[{ label: 'Analytics' }]} title="Analytics" />
+        <div className={cn(PAGE_SHELL, 'pb-10 pt-5')}>
+          <Card className="mx-auto mt-10 max-w-lg px-8 py-10 text-center">
+            <h2 className="text-title text-ink">No clients yet</h2>
+            <p className="mx-auto mt-2 max-w-[44ch] text-caption text-text2">
+              Analytics reads from a client&rsquo;s connected Instagram account — add a client
+              first.
+            </p>
+            <div className="mt-5 flex justify-center">
+              <ActionLink href="/clients" variant="primary">
+                Go to clients
+              </ActionLink>
+            </div>
+          </Card>
+        </div>
+      </>
+    )
+  }
+
+  // Roster ids as the allowed values: validation and ownership in one move.
+  const clientId = parseParam(
+    params.client,
+    clients.map((client) => client.id),
+    clients[0]!.id
+  )
+  const client = clients.find((entry) => entry.id === clientId)!
+  const period = resolvePeriod(params, timezone)
+
   const supabase = await createServerSupabaseClient()
+  const [data, connections, archiveResult] = await Promise.all([
+    getAnalyticsReport(clientId, period, timezone),
+    fetchConnectionsByClient(supabase, clientId),
+    supabase
+      .from('analytics_reports')
+      .select('id, period_start, period_end, created_at')
+      .eq('client_id', clientId)
+      .order('created_at', { ascending: false })
+      .limit(12),
+  ])
+  if (archiveResult.error) {
+    console.error('[analytics] archive list failed', archiveResult.error)
+  }
+  // WHY as: the server client is untyped for this projection, so it does not infer.
+  const archive = (archiveResult.data ?? []) as ArchiveEntry[]
+  const hasConnection = connections.length > 0
+  const handle = connections[0]?.account_name?.replace(/^@/, '') ?? null
 
-  // Cache hit — layout already populated this for the current request
-  const cachedClients = await getCachedAgencyClients(agencyId)
-  // Analytics sorts by name for the dropdown — sort in-memory (no extra query)
-  const clients = [...cachedClients].sort((a, b) => a.name.localeCompare(b.name))
+  const narrative = data.hasHistory
+    ? ((await getNarrative(clientId, client.name, period, timezone, data.lastSyncAt)) ??
+      buildFallbackNarrative(data))
+    : null
 
-  const firstClientId = clients[0]?.id ?? null
-
-  const initialConnections = firstClientId
-    ? await fetchConnectionsByClient(supabase, firstClientId)
-    : []
-
-  // The view renders the page header itself: the report tabs are its state.
-  return <AnalyticsView clients={clients} initialConnections={initialConnections} />
+  return (
+    <>
+      <div className="print-hide">
+        <PageHeader
+          crumb={[{ label: 'Analytics' }]}
+          title="Analytics"
+          actions={
+            <MastheadControls
+              clientId={clientId}
+              clients={clients}
+              period={period}
+              hasHistory={data.hasHistory}
+            />
+          }
+        />
+      </div>
+      <div className={cn(PAGE_SHELL, 'pb-12 pt-5')}>
+        {!hasConnection && !data.hasHistory ? (
+          <ConnectPrompt clientId={clientId} clientName={client.name} />
+        ) : (
+          <AnalyticsView
+            data={data}
+            narrative={narrative}
+            clientId={clientId}
+            clientName={client.name}
+            handle={handle}
+            hasConnection={hasConnection}
+            timezone={timezone}
+            archive={archive}
+          />
+        )}
+      </div>
+    </>
+  )
 }

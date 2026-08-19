@@ -1,134 +1,101 @@
-'use client'
+import type { AudienceReport, AudienceShare } from '../lib/build-report'
 
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
-import {
-  CHART_COLORS,
-  CHART_AXIS_PROPS,
-  CHART_TOOLTIP_STYLE,
-} from '@/features/analytics/lib/chart-config'
-import type { InstagramMetrics } from '@/types/api'
+const COLUMN_MAX_PX = 144
 
-interface AudienceSectionProps {
-  metrics: InstagramMetrics
-}
+/**
+ * Who follows against who actually engaged: paired columns by age band with
+ * last period's follower share as a sage tick, then cities and gender as
+ * labeled tracks with was-values. Followers wear Deep Pine, the engaged
+ * audience Living Green — two series within ONE period, never "then".
+ */
+export function AudienceSection({ audience }: { audience: AudienceReport }) {
+  const maxPct = Math.max(
+    1,
+    ...audience.ages.flatMap((band) => [band.followerPct, band.engagedPct ?? 0])
+  )
+  const px = (pct: number): number => (pct / maxPct) * COLUMN_MAX_PX
 
-export function AudienceSection({ metrics }: AudienceSectionProps) {
-  const audience = metrics.audience
-  // The ?. on ages/genders is not dead: reports stored before the 2026-08 shape
-  // change carry `gender_age` compound keys instead — render nothing for those
-  // rather than crash on the asserted metrics_json type.
-  if (!audience?.ages || !audience.genders) return null
-
-  const genderTotals = audience.genders
-  const ageTotals = audience.ages
-
-  const totalGender = Object.values(genderTotals).reduce((s, v) => s + v, 0) || 1
-  const genderItems = [
-    { label: 'Male', value: genderTotals['M'] ?? 0, color: 'var(--forest)' },
-    { label: 'Female', value: genderTotals['F'] ?? 0, color: 'var(--forest-deep)' },
-    { label: 'Other', value: genderTotals['U'] ?? 0, color: 'var(--line2)' },
-  ].filter((g) => g.value > 0)
-
-  // Sort age buckets chronologically
-  const ageOrder = ['13-17', '18-24', '25-34', '35-44', '45-54', '55-64', '65+']
-  const ageData = ageOrder
-    .filter((bucket) => ageTotals[bucket] != null)
-    .map((bucket) => ({ age: bucket, value: ageTotals[bucket] ?? 0 }))
+  const agesSpoken = audience.ages
+    .map((band) => {
+      const parts = [`${Math.round(band.followerPct)} percent following`]
+      if (band.prevFollowerPct !== null) parts.push(`was ${Math.round(band.prevFollowerPct)}`)
+      if (band.engagedPct !== null) parts.push(`${Math.round(band.engagedPct)} percent engaging`)
+      return `${band.band}: ${parts.join(', ')}`
+    })
+    .join('. ')
 
   return (
-    <div className="bg-surface rounded-xl border border-line p-5 space-y-6">
-      <p className="text-body font-medium text-text2">Audience</p>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Gender breakdown */}
-        <div>
-          <p className="text-label font-semibold uppercase text-text3 mb-3">Gender</p>
-          <div className="space-y-2">
-            {genderItems.map((g) => {
-              const pct = Math.round((g.value / totalGender) * 100)
-              return (
-                <div key={g.label}>
-                  <div className="flex justify-between text-caption text-text2 mb-0.5">
-                    <span>{g.label}</span>
-                    <span>{pct}%</span>
-                  </div>
-                  <div className="h-2 bg-sunken rounded-full overflow-hidden">
-                    <div
-                      className="h-full rounded-full"
-                      style={{ width: `${pct}%`, backgroundColor: g.color }}
+    <div className="mt-4 grid gap-8 lg:grid-cols-[1.4fr_1fr]">
+      <div>
+        <div
+          role="img"
+          aria-label={`Paired columns by age band, follower share against engaged share, with last period's follower share as a tick. ${agesSpoken}.`}
+          className="grid h-36 items-end gap-3.5"
+          style={{ gridTemplateColumns: `repeat(${audience.ages.length}, 1fr)` }}
+        >
+          {audience.ages.map((band) => (
+            <div key={band.band} className="grid h-full grid-rows-[1fr_auto] gap-2">
+              <div className="flex h-full items-end justify-center gap-1">
+                <span className="relative flex h-full items-end">
+                  <i
+                    className="block w-4 rounded-t bg-forest"
+                    // Computed heights/positions — shares of the tallest band.
+                    style={{ height: `${px(band.followerPct).toFixed(0)}px` }}
+                  />
+                  {band.prevFollowerPct !== null && (
+                    <b
+                      className="absolute -left-0.5 h-0.5 w-5 rounded-full bg-then-line"
+                      style={{ bottom: `${px(band.prevFollowerPct).toFixed(0)}px` }}
                     />
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-
-        {/* Age distribution */}
-        <div>
-          <p className="text-label font-semibold uppercase text-text3 mb-3">Age</p>
-          {ageData.length > 0 ? (
-            <ResponsiveContainer width="100%" height={140}>
-              <BarChart data={ageData} margin={{ top: 0, right: 0, left: -28, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke={CHART_COLORS.grid} />
-                <XAxis
-                  dataKey="age"
-                  tick={{ ...CHART_AXIS_PROPS.tick, fontSize: 9 }}
-                  tickLine={false}
-                  axisLine={false}
-                />
-                <YAxis
-                  tick={{ ...CHART_AXIS_PROPS.tick, fontSize: 9 }}
-                  tickLine={false}
-                  axisLine={false}
-                  tickFormatter={(v: number) =>
-                    v >= 1000 ? `${(v / 1000).toFixed(0)}k` : String(v)
-                  }
-                />
-                <Tooltip
-                  contentStyle={CHART_TOOLTIP_STYLE.contentStyle}
-                  cursor={{ fill: 'rgba(15,21,18,0.04)' }}
-                />
-                <Bar dataKey="value" fill="var(--forest)" radius={[3, 3, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          ) : (
-            <p className="text-caption text-text3">No age data available</p>
-          )}
-        </div>
-
-        {/* Top locations */}
-        <div>
-          <p className="text-label font-semibold uppercase text-text3 mb-3">Top locations</p>
-          <div className="grid grid-cols-2 gap-4">
-            {audience.top_countries.length > 0 && (
-              <div>
-                <p className="text-caption text-text3 mb-1">Countries</p>
-                <div className="space-y-1">
-                  {audience.top_countries.map((c) => (
-                    <div key={c.name} className="flex justify-between text-caption">
-                      <span className="text-text2 truncate mr-2">{c.name}</span>
-                      <span className="text-text3 shrink-0">{c.value.toLocaleString()}</span>
-                    </div>
-                  ))}
-                </div>
+                  )}
+                </span>
+                {band.engagedPct !== null && (
+                  <i
+                    className="block w-4 rounded-t bg-spring"
+                    style={{ height: `${px(band.engagedPct).toFixed(0)}px` }}
+                  />
+                )}
               </div>
-            )}
-            {audience.top_cities.length > 0 && (
-              <div>
-                <p className="text-caption text-text3 mb-1">Cities</p>
-                <div className="space-y-1">
-                  {audience.top_cities.map((c) => (
-                    <div key={c.name} className="flex justify-between text-caption">
-                      <span className="text-text2 truncate mr-2">{c.name}</span>
-                      <span className="text-text3 shrink-0">{c.value.toLocaleString()}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
+              <div className="text-center text-micro tabular-nums text-text3">{band.band}</div>
+            </div>
+          ))}
         </div>
+      </div>
+      <div>
+        <PlaceList label="Top cities" shares={audience.cities} />
+        <div className="mt-5">
+          <PlaceList label="Gender" shares={audience.genders} />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function PlaceList({ label, shares }: { label: string; shares: AudienceShare[] }) {
+  if (shares.length === 0) return null
+  const maxPct = Math.max(1, ...shares.map((share) => share.pct))
+  return (
+    <div>
+      <div className="text-label text-text3">{label}</div>
+      <div className="mt-2.5 grid gap-2">
+        {shares.map((share) => (
+          <div key={share.label} className="flex items-center gap-2.5 text-caption">
+            <span className="w-20 flex-none truncate text-ink">{share.label}</span>
+            <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-sunken">
+              <i
+                className="block h-full rounded-full bg-forest"
+                // Scaled so the largest share nearly fills its track.
+                style={{ width: `${((share.pct / maxPct) * 88).toFixed(0)}%` }}
+              />
+            </span>
+            <span className="w-9 flex-none text-right text-micro tabular-nums text-text2">
+              {Math.round(share.pct)}%
+            </span>
+            <span className="w-14 flex-none text-right text-micro tabular-nums text-text3">
+              {share.prevPct === null ? '' : `was ${Math.round(share.prevPct)}%`}
+            </span>
+          </div>
+        ))}
       </div>
     </div>
   )
