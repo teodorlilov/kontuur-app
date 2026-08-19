@@ -1,8 +1,10 @@
 import 'server-only'
 
 import { unstable_cache } from 'next/cache'
+import { headers } from 'next/headers'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
+import { AUTH_USER_ID_HEADER } from '@/lib/auth/headers'
 import { USER_AUTH_COLUMNS } from '@/lib/queries/select-columns'
 
 export type SupabaseServerClient = Awaited<ReturnType<typeof createServerSupabaseClient>>
@@ -34,24 +36,27 @@ const _fetchAgencyId = unstable_cache(
 /**
  * Authenticate the current user and resolve their agency_id.
  * Throws AuthError on failure so routes can catch and return the appropriate HTTP status.
+ *
+ * getClaims, not getUser: API routes are excluded from the middleware matcher, so they must
+ * verify the JWT themselves — but the project signs with ES256, so verification is local
+ * against the cached JWKS instead of a round trip to the auth server. Legacy HS256 tokens
+ * fall back to getUser() inside getClaims().
  */
 export async function requireAuth(
   supabase: SupabaseServerClient
 ): Promise<{ userId: string; agencyId: string }> {
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser()
-  if (authError || !user) {
+  const { data: verified, error: authError } = await supabase.auth.getClaims()
+  const userId = verified?.claims.sub
+  if (authError || !userId) {
     throw new AuthError('Unauthorized', 401)
   }
 
-  const agencyId = await _fetchAgencyId(user.id)
+  const agencyId = await _fetchAgencyId(userId)
   if (!agencyId) {
     throw new AuthError('User not found', 404)
   }
 
-  return { userId: user.id, agencyId }
+  return { userId, agencyId }
 }
 
 export async function getUserRecord(
@@ -157,21 +162,29 @@ export async function fetchClientWithOwnership(
  * Resolve authentication for a Server Action.
  * Returns the auth context on success, or an error string on failure.
  * Mirrors resolveAuth() but returns ActionResult-shaped output instead of NextResponse.
+ *
+ * Reads the identity middleware already verified rather than verifying again: actions POST to
+ * page URLs, which the middleware matcher covers, and it strips any client-supplied value from
+ * this header before stamping its own — so an absent header means no valid session, and the
+ * action fails closed. API routes cannot take this path; they are excluded from the matcher
+ * and go through requireAuth above.
  */
 export async function resolveActionAuth(): Promise<
   | { ok: true; supabase: SupabaseServerClient; agencyId: string; userId: string }
   | { ok: false; error: string }
 > {
-  const supabase = await createServerSupabaseClient()
-  try {
-    const { agencyId, userId } = await requireAuth(supabase)
-    return { ok: true, supabase, agencyId, userId }
-  } catch (err) {
-    if (err instanceof AuthError) {
-      return { ok: false, error: err.message }
-    }
-    return { ok: false, error: 'Authentication failed' }
+  const userId = (await headers()).get(AUTH_USER_ID_HEADER)
+  if (!userId) {
+    return { ok: false, error: 'Unauthorized' }
   }
+
+  const agencyId = await _fetchAgencyId(userId)
+  if (!agencyId) {
+    return { ok: false, error: 'User not found' }
+  }
+
+  const supabase = await createServerSupabaseClient()
+  return { ok: true, supabase, agencyId, userId }
 }
 
 export async function verifyAdminRole(
