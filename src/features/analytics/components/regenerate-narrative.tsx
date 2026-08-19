@@ -7,9 +7,9 @@ import { regenerateReport } from '../actions/report-actions'
 import type { AnalyticsPeriod } from '../lib/period'
 
 /**
- * The on-demand re-roll: rewrites the period's summary from the current
- * numbers instead of waiting for tonight's sync — and moves an exported
- * report's wording forward if this exact period has one.
+ * The full on-demand regeneration: pulls the selected period's data from
+ * Instagram again (both windows), rewrites the summary, and moves an exported
+ * report's stored numbers and wording forward if this exact period has one.
  */
 export function RegenerateNarrative({
   clientId,
@@ -25,6 +25,7 @@ export function RegenerateNarrative({
     <button
       type="button"
       disabled={pending}
+      title="Pull this period's data from Instagram again and rewrite the summary"
       onClick={() =>
         startTransition(async () => {
           const result = await regenerateReport({
@@ -37,12 +38,21 @@ export function RegenerateNarrative({
             toast.error(result.error)
             return
           }
+          if (result.data.note) {
+            toast.warning(result.data.note)
+          } else if (result.data.rateLimited) {
+            toast.warning(
+              'Instagram rate-limited the refresh — it filled what it allowed; regenerate again later for older days.'
+            )
+          } else {
+            toast.success('Report refreshed from Instagram')
+          }
           router.refresh()
         })
       }
       className="print-hide text-micro font-medium text-forest transition-colors hover:underline disabled:opacity-60"
     >
-      {pending ? 'Rewriting…' : 'Regenerate'}
+      {pending ? 'Refreshing from Instagram…' : 'Regenerate'}
     </button>
   )
 }

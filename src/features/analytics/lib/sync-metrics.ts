@@ -236,14 +236,18 @@ async function backfillAccountHistory(
   if (error) throw new Error(`ig_account_metrics backfill failed: ${error.message}`)
 }
 
-/** Refreshes lifetime insights for the last 30 days of media and links them to Postflow posts. */
-async function syncPostMetrics(
+/**
+ * Refreshes lifetime insights for media since `sinceIso` (the nightly default
+ * is 30 days; the analytics window refresh passes the selected period's start)
+ * and links them to Postflow posts.
+ */
+export async function syncPostMetrics(
   admin: SupabaseClient,
   clientId: string,
   accountId: string,
-  accessToken: string
+  accessToken: string,
+  sinceIso: string = new Date(Date.now() - MEDIA_LOOKBACK_DAYS * MS_PER_DAY).toISOString()
 ): Promise<void> {
-  const sinceIso = new Date(Date.now() - MEDIA_LOOKBACK_DAYS * MS_PER_DAY).toISOString()
   const media = await fetchMediaSince(accountId, accessToken, sinceIso)
   if (media.length === 0) return
 

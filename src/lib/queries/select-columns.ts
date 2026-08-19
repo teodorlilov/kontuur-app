@@ -191,9 +191,10 @@ export const SOCIAL_CONNECTION_COLUMNS =
 
 /**
  * The credential read — the ONLY projection that pulls access_token, used by the
- * two callers that must actually talk to Meta (the manual publish route and the
- * publish scheduler). Analytics and the performance source read the stored
- * ig_* tables now and never touch a token.
+ * three callers that must actually talk to Meta (the manual publish route, the
+ * publish scheduler, and the analytics regenerate action's window refresh).
+ * Day-to-day analytics reads and the performance source stay on the stored
+ * ig_* tables and never touch a token.
  *
  * Deliberately separate from SOCIAL_CONNECTION_COLUMNS, which omits the token so
  * display reads cannot leak one. Keep it that way: widening the display constant

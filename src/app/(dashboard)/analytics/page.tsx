@@ -16,6 +16,10 @@ import { getNarrative } from '@/features/analytics/lib/narrative'
 import { resolvePeriod } from '@/features/analytics/lib/period'
 import { getAnalyticsReport } from '@/features/analytics/lib/report-data'
 
+// The regenerate action runs under this segment: a full window refresh is
+// up to ~200 bounded Graph calls plus one model call, well past the default.
+export const maxDuration = 90
+
 interface AnalyticsPageProps {
   searchParams: Promise<Record<string, string | string[] | undefined>>
 }
