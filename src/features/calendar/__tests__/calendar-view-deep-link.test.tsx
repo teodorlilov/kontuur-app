@@ -1,6 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import { CalendarView } from '../components/calendar-view'
+import { getMondayISO } from '@/utils/date-helpers'
 import type { CalendarPost } from '@/types/api'
 
 /**
@@ -70,8 +71,18 @@ function post(id: string): CalendarPost {
 
 const CLIENTS = [{ id: 'client-1', name: 'Acme Clinic', contact_email: 'a@b.test' }]
 
+// The anchor the page would compute for a plain /calendar visit — the current
+// week in the mocked shell timezone, so the recenter effect stays quiet.
+const ANCHOR = getMondayISO(new Date(), 'Europe/Sofia')
+
 function renderCalendar() {
-  return render(<CalendarView initialPosts={[post('p1'), post('p2')]} clients={CLIENTS as never} />)
+  return render(
+    <CalendarView
+      initialPosts={[post('p1'), post('p2')]}
+      clients={CLIENTS as never}
+      anchorWeekISO={ANCHOR}
+    />
+  )
 }
 
 beforeEach(() => {
@@ -108,7 +119,13 @@ describe('CalendarView ?editPost deep link', () => {
     // parent re-render hands the effect. The `editParamProcessed` ref is the only thing
     // stopping this from re-firing.
     params = new URLSearchParams('editPost=p1')
-    rerender(<CalendarView initialPosts={[post('p1'), post('p2')]} clients={CLIENTS as never} />)
+    rerender(
+      <CalendarView
+        initialPosts={[post('p1'), post('p2')]}
+        clients={CLIENTS as never}
+        anchorWeekISO={ANCHOR}
+      />
+    )
 
     await waitFor(() => expect(replace).toHaveBeenCalledTimes(1))
   })

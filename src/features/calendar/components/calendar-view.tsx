@@ -12,9 +12,12 @@ import { SelectControl } from '@/components/layout/page-header/select-control'
 import { useShell } from '@/components/layout/shell-context'
 import { cn } from '@/utils/cn'
 import { deletePost } from '@/lib/actions/post-actions'
-import { getMondayISO, toDateKey } from '@/utils/date-helpers'
+import { getMondayISO, shiftDateKey, toDateKey } from '@/utils/date-helpers'
+import { DAYS_PER_WEEK } from '@/utils/constants'
 import { formatScheduleDate } from '@/utils/format'
 import { useCalendarRange } from '@/features/calendar/hooks/use-calendar-range'
+import { getCalendarWindow } from '@/features/calendar/lib/calendar-window'
+import { getDaysInMonth } from '@/features/calendar/lib/calendar-range'
 import { ApprovalAction } from './approval-tools'
 import { WeekGrid } from './week-grid'
 import { ClientsView } from './clients-view'
@@ -29,6 +32,8 @@ import type { CalendarPost } from '@/types/api'
 interface CalendarViewProps {
   initialPosts: CalendarPost[]
   clients: ClientEntry[]
+  /** Monday the server centred the loaded window on — the recenter check must match the query. */
+  anchorWeekISO: string
 }
 
 /** Month navigation, inline with the title it moves. */
@@ -55,7 +60,7 @@ function RangeStepBtn({
   )
 }
 
-export function CalendarView({ initialPosts, clients }: CalendarViewProps) {
+export function CalendarView({ initialPosts, clients, anchorWeekISO }: CalendarViewProps) {
   const { timezone } = useShell()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -108,8 +113,8 @@ export function CalendarView({ initialPosts, clients }: CalendarViewProps) {
    * the calendar is least able to afford being wrong about.
    *
    * Only on focus, not after every mutation: those already patch state optimistically,
-   * and this page's query is still unbounded (P7), so firing it on every click would
-   * refetch every post in five statuses to confirm something already on screen.
+   * so firing the page query on every click would refetch the loaded window to
+   * confirm something already on screen.
    */
   useEffect(() => {
     function refresh() {
@@ -118,6 +123,33 @@ export function CalendarView({ initialPosts, clients }: CalendarViewProps) {
     window.addEventListener('focus', refresh)
     return () => window.removeEventListener('focus', refresh)
   }, [router])
+
+  /**
+   * Recenter the loaded window when navigation walks off its edge: push the
+   * week being viewed as the anchor, the server re-renders the query around
+   * it, and the adoption effect below swaps the posts in place. Range state is
+   * client-owned, so the user's position never jumps — only the data follows.
+   */
+  const loadedWindow = useMemo(
+    () => getCalendarWindow(anchorWeekISO, timezone),
+    [anchorWeekISO, timezone]
+  )
+  useEffect(() => {
+    let visibleStart: string
+    let visibleEnd: string
+    if (mode === 'month') {
+      // The month grid pads to whole weeks, so its edges are what must be loaded.
+      const days = getDaysInMonth(year, month)
+      visibleStart = toDateKey(days[0]!)
+      visibleEnd = toDateKey(days[days.length - 1]!)
+    } else {
+      // Clients mode always shows the current week, matching the lanes below.
+      visibleStart = mode === 'week' ? weekStart : getMondayISO(new Date(), timezone)
+      visibleEnd = shiftDateKey(visibleStart, DAYS_PER_WEEK - 1)
+    }
+    if (visibleStart >= loadedWindow.startKey && visibleEnd <= loadedWindow.endKey) return
+    router.push(`/calendar?week=${visibleStart}`, { scroll: false })
+  }, [mode, year, month, weekStart, loadedWindow, timezone, router])
 
   /**
    * Adopt server data when a refresh lands, keeping whatever the user is working on.

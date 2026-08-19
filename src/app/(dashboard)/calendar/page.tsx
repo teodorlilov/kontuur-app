@@ -1,6 +1,8 @@
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { requireSessionUser } from '@/lib/auth/session'
-import { getCachedAgencyClients } from '@/lib/queries/cache'
+import { getCachedAgency, getCachedAgencyClients } from '@/lib/queries/cache'
+import { getMondayISO } from '@/utils/date-helpers'
+import { getCalendarWindow, mondayOfKey } from '@/features/calendar/lib/calendar-window'
 import { CALENDAR_POST_COLUMNS, type CalendarPostColumns } from '@/lib/queries/select-columns'
 import type { PostStatus } from '@/lib/validation'
 import type { Tables } from '@/types/database'
@@ -9,14 +11,30 @@ import { parseBestTimes } from '@/lib/scheduling/schemas'
 import { CalendarView } from '@/features/calendar/components/calendar-view'
 import type { CalendarPost } from '@/types/api'
 
-export default async function CalendarPage() {
-  const { agencyId } = await requireSessionUser()
+interface CalendarPageProps {
+  searchParams: Promise<Record<string, string | string[] | undefined>>
+}
+
+export default async function CalendarPage({ searchParams }: CalendarPageProps) {
+  const [{ agencyId }, params] = await Promise.all([requireSessionUser(), searchParams])
   const supabase = await createServerSupabaseClient()
 
-  // Cache hit — layout already populated this for the current request. Measured at 1ms,
-  // so the claim is not aspirational.
-  const cachedClients = await getCachedAgencyClients(agencyId)
+  const [cachedClients, agency] = await Promise.all([
+    getCachedAgencyClients(agencyId),
+    getCachedAgency(agencyId),
+  ])
   const clientIds = cachedClients.map((c) => c.id)
+  const timezone = agency?.timezone ?? 'UTC'
+
+  // The loaded window centres on ?week= when the view recentred there, else on
+  // today. Any date-key is accepted and snapped to its Monday — the view sends
+  // whatever day it walked to, and the server owns turning that into a week.
+  const weekParam = params.week
+  const anchorWeek =
+    typeof weekParam === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(weekParam)
+      ? mondayOfKey(weekParam)
+      : getMondayISO(new Date(), timezone)
+  const window = getCalendarWindow(anchorWeek, timezone)
 
   type ClientRow = {
     id: string
@@ -46,6 +64,15 @@ export default async function CalendarPage() {
             'published',
             'failed',
           ] satisfies readonly PostStatus[])
+          // A post is in the window by when it goes out or when it went out.
+          // Dateless rows (approved but unslotted, on-demand publishes that
+          // failed before stamping) always ride along — they are the tray the
+          // calendar exists to drain, and a date filter would hide them.
+          .or(
+            `and(scheduled_at.gte.${window.from},scheduled_at.lt.${window.to}),` +
+              `and(published_at.gte.${window.from},published_at.lt.${window.to}),` +
+              `and(scheduled_at.is.null,published_at.is.null)`
+          )
           .order('created_at', { ascending: false })
       : Promise.resolve({ data: [] as unknown[] }),
   ])
@@ -122,5 +149,5 @@ export default async function CalendarPage() {
 
   // The view renders the page header itself: the month is the title, and the
   // month lives in its state.
-  return <CalendarView initialPosts={posts} clients={clients} />
+  return <CalendarView initialPosts={posts} clients={clients} anchorWeekISO={anchorWeek} />
 }
