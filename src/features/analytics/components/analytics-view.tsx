@@ -72,12 +72,25 @@ export function AnalyticsView({
         </div>
         {/* The sticky page header carries the screen title; print has no header. */}
         <h2 className="mt-2 hidden text-headline text-ink print:block">Analytics</h2>
-        <p className="mt-2 text-body text-text2">
-          <strong className="font-medium text-ink">
-            {formatPeriodRange(data.period.start, data.period.end)}
-          </strong>{' '}
-          <span className="text-text3">against</span>{' '}
-          {formatShortRange(data.period.prevStart, data.period.prevEnd)}
+        {/* The masthead IS the color key: every legend below echoes these two. */}
+        <p className="mt-2.5 flex flex-wrap items-center gap-x-5 gap-y-1 text-body">
+          <span className="flex items-center gap-2">
+            <i aria-hidden="true" className="h-0.5 w-3.5 flex-none rounded-full bg-forest" />
+            <span className="text-text2">
+              <strong className="font-medium text-ink">This period</strong> ·{' '}
+              {formatPeriodRange(data.period.start, data.period.end)}
+            </span>
+          </span>
+          <span className="flex items-center gap-2">
+            <i aria-hidden="true" className="h-0.5 w-3.5 flex-none rounded-full bg-metric-3" />
+            <span className="text-text2">
+              Previous · {formatShortRange(data.period.prevStart, data.period.prevEnd)}
+            </span>
+          </span>
+        </p>
+        <p className="mt-1 text-caption text-text3">
+          Every number below compares the two — {data.period.days} days against the{' '}
+          {data.period.days} before them.
         </p>
       </div>
     </header>
