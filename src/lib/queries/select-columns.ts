@@ -220,6 +220,7 @@ export const IG_ACCOUNT_METRIC_KEYS = [
   'shares',
   'replies',
   'profile_views',
+  'website_clicks',
   'follows',
   'unfollows',
   'reach_by_media_product_type',

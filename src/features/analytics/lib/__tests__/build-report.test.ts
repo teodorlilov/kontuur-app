@@ -32,6 +32,7 @@ function accountRow(overrides: Partial<IGAccountMetricColumns>): IGAccountMetric
     shares: null,
     replies: null,
     profile_views: null,
+    website_clicks: null,
     follows: null,
     unfollows: null,
     reach_by_media_product_type: null,
@@ -277,5 +278,39 @@ describe('buildAnalyticsReport', () => {
       },
     })
     expect(report.audience).toBeNull()
+  })
+})
+
+describe('tap buttons', () => {
+  it('merges bio website clicks into the funnel when the breakdown lacks them', () => {
+    const report = build({
+      accountRows: [
+        accountRow({
+          metric_date: '2026-08-15',
+          website_clicks: 12,
+          link_taps_by_button_type: { CALL: 3 },
+        }),
+        accountRow({ metric_date: '2026-08-12', website_clicks: 8 }),
+      ],
+    })
+    expect(report.tapButtons).toEqual([
+      { key: 'website_clicks', label: 'Website link', now: 12, then: 8 },
+      // The previous window never carried a taps map — null, not zero.
+      { key: 'CALL', label: 'Call', now: 3, then: null },
+    ])
+  })
+
+  it('does not double-count when the breakdown already carries a website key', () => {
+    const report = build({
+      accountRows: [
+        accountRow({
+          metric_date: '2026-08-15',
+          website_clicks: 12,
+          link_taps_by_button_type: { WEBSITE: 12 },
+        }),
+      ],
+    })
+    expect(report.tapButtons).toHaveLength(1)
+    expect(report.tapButtons[0]!.key).toBe('WEBSITE')
   })
 })

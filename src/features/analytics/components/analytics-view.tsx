@@ -275,16 +275,26 @@ export function AnalyticsView({
         <AnalyticsSection
           title="What the profile converted"
           sub={
-            hasHistory && data.profileViews.now !== null
+            hasHistory && data.tapButtons.length > 0 && data.profileViews.now !== null
               ? `${formatCount(data.profileViews.now)} profile views became these taps. The sage bar is last period.`
-              : 'Where profile visits turn into taps, once counted.'
+              : 'Taps on the profile’s link and contact buttons — the closest thing Instagram counts to a conversion.'
           }
           ariaLabel="Profile actions"
         >
           {!hasHistory ? (
             <EmptyFill className="mt-3.5">Tap detail appears after the first sync</EmptyFill>
           ) : data.tapButtons.length === 0 ? (
-            <p className="mt-4 text-caption text-text3">No link taps recorded this period.</p>
+            // A measured zero, not an absence — a sunken well, never the hatch.
+            <div className="mt-3.5 grid min-h-28 place-items-center rounded-panel bg-sunken p-5 text-center">
+              <div>
+                <div className="text-metric tabular-nums text-text2">0</div>
+                <p className="mx-auto mt-1 max-w-[38ch] text-caption text-text3">
+                  {data.profileViews.now !== null && data.profileViews.now > 0
+                    ? `${formatCount(data.profileViews.now)} profile views this period, but none tapped the website link or a contact button.`
+                    : 'No taps on the website link or contact buttons this period.'}
+                </p>
+              </div>
+            </div>
           ) : (
             <ComparisonRows
               ariaLabel={`Bar chart of link taps by button. ${data.tapButtons
@@ -319,8 +329,9 @@ export function AnalyticsView({
             </EmptyFill>
           ) : data.audience === null ? (
             <p className="mt-4 text-caption text-text3">
-              Instagram shares audience demographics once an account passes about 100 followers —
-              snapshots begin then.
+              {data.hasAudienceSnapshot
+                ? 'Instagram shares audience demographics once an account passes about 100 followers — snapshots begin then.'
+                : 'No audience snapshot covers this window — demographics are captured weekly from the first sync onward, so older periods may predate them.'}
             </p>
           ) : (
             <AudienceSection audience={data.audience} />

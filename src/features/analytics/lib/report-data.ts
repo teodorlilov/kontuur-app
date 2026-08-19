@@ -70,7 +70,11 @@ const _fetchAnalyticsReport = unstable_cache(
         .from('ig_audience_snapshots')
         .select(IG_AUDIENCE_SNAPSHOT_COLUMNS)
         .eq('client_id', clientId)
-        .lte('snapshot_date', end)
+        // A snapshot dated D is taken the morning after and describes the
+        // audience through D−1 — so a window ending E may use a snapshot
+        // dated E+1. Without the +1, today's snapshot never matches any
+        // window (they all end yesterday) and the section sits empty.
+        .lte('snapshot_date', shiftDateKey(end, 1))
         .order('snapshot_date', { ascending: false })
         .limit(12),
       admin
@@ -93,12 +97,17 @@ const _fetchAnalyticsReport = unstable_cache(
       fetched_at: string
     }>
 
+    const currentSnapshot = snapshots[0] ?? null
     return buildAnalyticsReport({
       period,
       accountRows,
       postRows,
-      currentSnapshot: snapshots[0] ?? null,
-      previousSnapshot: snapshots.find((row) => row.snapshot_date <= prevEnd) ?? null,
+      currentSnapshot,
+      // Strictly older than the current one, or the "was" ticks fake a flat period.
+      previousSnapshot:
+        snapshots.find(
+          (row) => row !== currentSnapshot && row.snapshot_date <= shiftDateKey(prevEnd, 1)
+        ) ?? null,
       hasHistory: latest.length > 0,
       lastSyncAt: latest[0]?.fetched_at ?? null,
     })

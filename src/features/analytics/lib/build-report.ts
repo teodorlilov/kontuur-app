@@ -139,6 +139,8 @@ export interface AnalyticsReportData {
   profileViews: ComparisonValue
   tapButtons: ComparisonRow[]
   audience: AudienceReport | null
+  /** A snapshot exists for this window — audience null then means "under the floor". */
+  hasAudienceSnapshot: boolean
   posts: ReportPostRow[]
   medianReach: number | null
 }
@@ -453,6 +455,24 @@ export function buildAnalyticsReport(input: BuildReportInput): AnalyticsReportDa
     ),
     humanizeDimension
   )
+  // The bio website link reports as the separate legacy website_clicks metric —
+  // the contact_button_type breakdown covers only contact buttons, so an
+  // account with a bio link would otherwise show an empty funnel while its
+  // website taps sit uncounted in another column.
+  const websiteNow = sumOrNull(dailyValues(current, (row) => row.website_clicks))
+  const websiteThen = sumOrNull(dailyValues(previous, (row) => row.website_clicks))
+  if (
+    !tapButtons.some((row) => /website/i.test(row.key)) &&
+    ((websiteNow ?? 0) > 0 || (websiteThen ?? 0) > 0)
+  ) {
+    tapButtons.push({
+      key: 'website_clicks',
+      label: 'Website link',
+      now: websiteNow,
+      then: websiteThen,
+    })
+    tapButtons.sort((a, b) => (b.now ?? 0) - (a.now ?? 0))
+  }
 
   return {
     period,
@@ -475,6 +495,7 @@ export function buildAnalyticsReport(input: BuildReportInput): AnalyticsReportDa
     },
     tapButtons,
     audience: buildAudience(input.currentSnapshot, input.previousSnapshot),
+    hasAudienceSnapshot: input.currentSnapshot !== null,
     posts,
     medianReach,
   }
