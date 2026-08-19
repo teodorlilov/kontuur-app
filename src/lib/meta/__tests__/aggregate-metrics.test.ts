@@ -1,14 +1,15 @@
 import { describe, it, expect } from 'vitest'
 import type { IGPost } from '@/types/api'
+import type { IGDayTotals, IGDemographics } from '../insights'
 import {
-  deltaPct,
-  buildAudienceDemographics,
-  pivotIGInsights,
-  sumIGDailyInsights,
-  computeNetChangeFromSnapshots,
-  computeIGPostAggregates,
-  computeIGMediaTypeBreakdown,
+  type IGPeriodStats,
+  buildAudienceFromDemographics,
+  buildDailyInsights,
   buildIGSummary,
+  computeIGMediaTypeBreakdown,
+  computeIGPostAggregates,
+  deltaPct,
+  deriveCumulativeFollowerSeries,
 } from '../aggregate-metrics'
 
 function makeIGPost(overrides: Partial<IGPost> = {}): IGPost {
@@ -19,6 +20,31 @@ function makeIGPost(overrides: Partial<IGPost> = {}): IGPost {
     media_type: 'IMAGE',
     like_count: 0,
     comments_count: 0,
+    ...overrides,
+  }
+}
+
+const nullTotals: IGDayTotals = {
+  views: null,
+  accounts_engaged: null,
+  total_interactions: null,
+  likes: null,
+  comments: null,
+  saves: null,
+  shares: null,
+  replies: null,
+  reposts: null,
+  profile_views: null,
+  website_clicks: null,
+}
+
+function makeStats(overrides: Partial<IGPeriodStats> = {}): IGPeriodStats {
+  return {
+    reach: null,
+    totals: nullTotals,
+    follows: null,
+    unfollows: null,
+    followerDeltaSum: null,
     ...overrides,
   }
 }
@@ -36,111 +62,95 @@ describe('deltaPct', () => {
   })
 })
 
-describe('buildAudienceDemographics', () => {
-  const data = [
-    { name: 'audience_gender_age', values: [{ value: { 'F.25-34': 120, 'M.25-34': 80 } }] },
-    {
-      name: 'audience_city',
-      values: [{ value: { Sofia: 50, Plovdiv: 30, Varna: 20, Burgas: 10, Ruse: 5, Vidin: 1 } }],
+describe('buildAudienceFromDemographics', () => {
+  const demographics: IGDemographics = {
+    age: { '25-34': 120, '18-24': 80 },
+    gender: { F: 110, M: 85, U: 5 },
+    city: {
+      'Sofia, Sofia City Province': 50,
+      'Plovdiv, Plovdiv Province': 30,
+      'Varna, Varna Province': 20,
+      'Burgas, Burgas Province': 10,
+      'Ruse, Ruse Province': 5,
+      'Vidin, Vidin Province': 1,
     },
-    { name: 'audience_country', values: [{ value: { BG: 180, DE: 20 } }] },
-  ]
+    country: { BG: 180, DE: 20 },
+  }
 
-  it('builds gender/age plus top-5 cities and countries sorted by value', () => {
-    const result = buildAudienceDemographics(
-      data,
-      'audience_gender_age',
-      'audience_city',
-      'audience_country'
-    )
-    expect(result).not.toBeNull()
-    expect(result!.gender_age).toEqual({ 'F.25-34': 120, 'M.25-34': 80 })
-    expect(result!.top_cities).toHaveLength(5)
-    expect(result!.top_cities[0]).toEqual({ name: 'Sofia', value: 50 })
-    expect(result!.top_countries).toEqual([
+  it('keeps the separate age and gender maps and takes top-5 locations by value', () => {
+    const audience = buildAudienceFromDemographics(demographics)
+    expect(audience).not.toBeNull()
+    expect(audience!.ages).toEqual({ '25-34': 120, '18-24': 80 })
+    expect(audience!.genders).toEqual({ F: 110, M: 85, U: 5 })
+    expect(audience!.top_cities).toHaveLength(5)
+    expect(audience!.top_cities[0]).toEqual({ name: 'Sofia, Sofia City Province', value: 50 })
+    expect(audience!.top_countries).toEqual([
       { name: 'BG', value: 180 },
       { name: 'DE', value: 20 },
     ])
   })
 
-  it('returns null when gender/age data is missing', () => {
-    const result = buildAudienceDemographics(
-      data,
-      'missing_metric',
-      'audience_city',
-      'audience_country'
+  it('passes null through (account under the demographics floor)', () => {
+    expect(buildAudienceFromDemographics(null)).toBeNull()
+  })
+})
+
+describe('deriveCumulativeFollowerSeries', () => {
+  it('anchors the last day at the current total and walks back through the deltas', () => {
+    const series = deriveCumulativeFollowerSeries(
+      [
+        { date: '2026-08-15', delta: 0 },
+        { date: '2026-08-16', delta: 5 },
+        { date: '2026-08-17', delta: 0 },
+      ],
+      829
     )
-    expect(result).toBeNull()
+    // End of the 16th includes its +5; the 15th sits before it.
+    expect(series).toEqual([
+      { date: '2026-08-15', followers: 824 },
+      { date: '2026-08-16', followers: 829 },
+      { date: '2026-08-17', followers: 829 },
+    ])
+  })
+
+  it('sorts unordered deltas before deriving', () => {
+    const series = deriveCumulativeFollowerSeries(
+      [
+        { date: '2026-08-17', delta: 2 },
+        { date: '2026-08-16', delta: 3 },
+      ],
+      100
+    )
+    expect(series).toEqual([
+      { date: '2026-08-16', followers: 98 },
+      { date: '2026-08-17', followers: 100 },
+    ])
+  })
+
+  it('returns an empty curve for an empty delta series', () => {
+    expect(deriveCumulativeFollowerSeries([], 500)).toEqual([])
   })
 })
 
-describe('pivotIGInsights', () => {
-  it('pivots per-metric arrays into per-day records sorted by date', () => {
-    const result = pivotIGInsights([
-      {
-        name: 'reach',
-        values: [
-          { value: 20, end_time: '2026-07-02T07:00:00+0000' },
-          { value: 10, end_time: '2026-07-01T07:00:00+0000' },
-        ],
-      },
-      { name: 'profile_views', values: [{ value: 5, end_time: '2026-07-01T07:00:00+0000' }] },
-    ])
-    expect(result).toEqual([
-      { date: '2026-07-01', reach: 10, profile_views: 5 },
-      { date: '2026-07-02', reach: 20 },
+describe('buildDailyInsights', () => {
+  it('merges reach and follower points by date, sorted ascending', () => {
+    const rows = buildDailyInsights(
+      [
+        { date: '2026-08-16', reach: 20 },
+        { date: '2026-08-15', reach: 10 },
+      ],
+      [{ date: '2026-08-16', followers: 829 }]
+    )
+    expect(rows).toEqual([
+      { date: '2026-08-15', reach: 10 },
+      { date: '2026-08-16', reach: 20, follower_count: 829 },
     ])
   })
 
-  it("maps the API's 'views' metric to 'impressions'", () => {
-    const result = pivotIGInsights([
-      { name: 'views', values: [{ value: 42, end_time: '2026-07-01T07:00:00+0000' }] },
-    ])
-    expect(result[0]).toEqual({ date: '2026-07-01', impressions: 42 })
-  })
-
-  it('splits follows_and_unfollows into follows and unfollows fields', () => {
-    const result = pivotIGInsights([
-      {
-        name: 'follows_and_unfollows',
-        values: [{ value: { follow: 7, unfollow: 2 }, end_time: '2026-07-01T07:00:00+0000' }],
-      },
-    ])
-    expect(result[0]).toEqual({ date: '2026-07-01', follows: 7, unfollows: 2 })
-  })
-})
-
-describe('sumIGDailyInsights', () => {
-  it('sums each metric across days, treating missing values as zero', () => {
-    const sums = sumIGDailyInsights([
-      { date: '2026-07-01', reach: 10, impressions: 100, follows: 2 },
-      { date: '2026-07-02', reach: 20, profile_views: 5, unfollows: 1 },
-    ])
-    expect(sums).toEqual({
-      totalReach: 30,
-      totalImpressions: 100,
-      totalProfileViews: 5,
-      totalAccountsEngaged: 0,
-      totalWebsiteClicks: 0,
-      totalFollows: 2,
-      totalUnfollows: 1,
-    })
-  })
-})
-
-describe('computeNetChangeFromSnapshots', () => {
-  it('derives net change from first and last positive follower_count', () => {
-    const net = computeNetChangeFromSnapshots([
-      { date: '2026-07-01', follower_count: 100 },
-      { date: '2026-07-02', follower_count: 0 },
-      { date: '2026-07-03', follower_count: 108 },
-    ])
-    expect(net).toBe(8)
-  })
-
-  it('returns 0 with fewer than two usable snapshots', () => {
-    expect(computeNetChangeFromSnapshots([{ date: '2026-07-01', follower_count: 100 }])).toBe(0)
-    expect(computeNetChangeFromSnapshots([])).toBe(0)
+  it('keeps a follower-only day (reach silent-empty is absence, not zero)', () => {
+    const rows = buildDailyInsights([], [{ date: '2026-08-15', followers: 800 }])
+    expect(rows).toEqual([{ date: '2026-08-15', follower_count: 800 }])
+    expect(rows[0]!.reach).toBeUndefined()
   })
 })
 
@@ -186,45 +196,44 @@ describe('computeIGMediaTypeBreakdown', () => {
 })
 
 describe('buildIGSummary', () => {
-  const emptyDeltas = {
-    reach: 0,
-    impressions: 0,
-    profileViews: 0,
-    newFollowers: 0,
-    unfollowers: 0,
-    accountsEngaged: 0,
-    websiteClicks: 0,
-  }
+  const emptyAgg = computeIGPostAggregates([], 1)
 
-  it('uses follows/unfollows for net change when the API provided them', () => {
-    const sums = sumIGDailyInsights([{ date: '2026-07-01', follows: 10, unfollows: 3 }])
-    const summary = buildIGSummary(sums, computeIGPostAggregates([], 1), 0, emptyDeltas, [])
+  it('uses the follow_type split when the API provided it', () => {
+    const summary = buildIGSummary(
+      makeStats({ follows: 10, unfollows: 3 }),
+      makeStats(),
+      emptyAgg,
+      0
+    )
+    expect(summary.new_followers).toBe(10)
+    expect(summary.unfollowers).toBe(3)
     expect(summary.net_follower_change).toBe(7)
   })
 
-  it('falls back to follower_count snapshots when follows are unavailable', () => {
-    const daily = [
-      { date: '2026-07-01', follower_count: 100 },
-      { date: '2026-07-02', follower_count: 112 },
-    ]
-    const sums = sumIGDailyInsights(daily)
-    const summary = buildIGSummary(sums, computeIGPostAggregates([], 1), 0, emptyDeltas, daily)
+  it('falls back to the delta-series sum when the split is gated', () => {
+    const summary = buildIGSummary(makeStats({ followerDeltaSum: 12 }), makeStats(), emptyAgg, 0)
+    expect(summary.new_followers).toBe(12)
     expect(summary.net_follower_change).toBe(12)
   })
 
-  it('computes deltas against the previous period', () => {
-    const sums = sumIGDailyInsights([{ date: '2026-07-01', reach: 150, website_clicks: 20 }])
+  it('computes deltas against the previous period and reports absent baselines as null', () => {
     const summary = buildIGSummary(
-      sums,
-      computeIGPostAggregates([], 1),
-      3,
-      { ...emptyDeltas, reach: 100, websiteClicks: 40 },
-      []
+      makeStats({ reach: 150, totals: { ...nullTotals, website_clicks: 20 } }),
+      makeStats({ reach: 100, totals: { ...nullTotals, website_clicks: 40 } }),
+      emptyAgg,
+      3
     )
     expect(summary.reach_delta_pct).toBe(50)
     expect(summary.website_clicks_delta_pct).toBe(-50)
     // No baseline for the other deltas
     expect(summary.views_delta_pct).toBeNull()
     expect(summary.posts_published).toBe(3)
+  })
+
+  it('collapses nulls to 0 only at this display edge', () => {
+    const summary = buildIGSummary(makeStats(), makeStats(), emptyAgg, 0)
+    expect(summary.total_reach).toBe(0)
+    expect(summary.total_impressions).toBe(0)
+    expect(summary.total_accounts_engaged).toBe(0)
   })
 })

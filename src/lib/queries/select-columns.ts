@@ -200,6 +200,9 @@ export const SOCIAL_CONNECTION_COLUMNS =
  */
 export const SOCIAL_CONNECTION_AUTH_COLUMNS = 'account_id, access_token, token_expires_at'
 
+/** The metrics cron's roster read — AUTH_COLUMNS plus the client to file rows under. */
+export const SOCIAL_CONNECTION_SYNC_COLUMNS = 'client_id, account_id, access_token'
+
 // intelligence_briefings
 export const BRIEFING_COLUMNS =
   'briefing_text, action_nudge, weekly_tip, platform_updates, week_start, coaching_points'

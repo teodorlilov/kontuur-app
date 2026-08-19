@@ -14,18 +14,13 @@ interface AudienceSectionProps {
 
 export function AudienceSection({ metrics }: AudienceSectionProps) {
   const audience = metrics.audience
-  if (!audience) return null
+  // The ?. on ages/genders is not dead: reports stored before the 2026-08 shape
+  // change carry `gender_age` compound keys instead — render nothing for those
+  // rather than crash on the asserted metrics_json type.
+  if (!audience?.ages || !audience.genders) return null
 
-  // Aggregate gender totals from gender_age keys like "M.18-24", "F.25-34"
-  const genderTotals: Record<string, number> = { M: 0, F: 0, U: 0 }
-  const ageTotals: Record<string, number> = {}
-  for (const [key, val] of Object.entries(audience.gender_age)) {
-    const parts = key.split('.')
-    const gender = parts[0] ?? 'U'
-    const age = parts[1] ?? 'Unknown'
-    genderTotals[gender] = (genderTotals[gender] ?? 0) + val
-    ageTotals[age] = (ageTotals[age] ?? 0) + val
-  }
+  const genderTotals = audience.genders
+  const ageTotals = audience.ages
 
   const totalGender = Object.values(genderTotals).reduce((s, v) => s + v, 0) || 1
   const genderItems = [

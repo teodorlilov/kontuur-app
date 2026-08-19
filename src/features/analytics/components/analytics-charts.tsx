@@ -3,7 +3,6 @@
 import {
   AreaChart,
   Area,
-  Line,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -16,7 +15,6 @@ import {
   CHART_COLORS,
   CHART_AXIS_PROPS,
   CHART_TOOLTIP_STYLE,
-  LINE_PROPS,
 } from '@/features/analytics/lib/chart-config'
 
 interface AnalyticsChartsProps {
@@ -24,10 +22,11 @@ interface AnalyticsChartsProps {
 }
 
 export function AnalyticsCharts({ metrics }: AnalyticsChartsProps) {
+  // Views has no per-day series in the API (total_value only) — the chart is
+  // honest daily reach, and views lives in the summary cards instead.
   const dailyData = metrics.daily_insights.map((d) => ({
     date: d.date.slice(5),
     reach: d.reach ?? 0,
-    views: d.impressions ?? 0,
   }))
 
   if (dailyData.length === 0) {
@@ -45,22 +44,13 @@ export function AnalyticsCharts({ metrics }: AnalyticsChartsProps) {
     <div className="bg-surface border border-line rounded-lg px-6 py-5">
       <div className="flex items-center justify-between mb-4">
         <p className="text-title font-medium text-ink">Daily reach over time</p>
-        <div className="flex items-center gap-3.5">
-          <span
-            className="text-micro flex items-center gap-[5px]"
-            style={{ color: CHART_COLORS.label }}
-          >
-            <span className="w-2 h-2 rounded-full" style={{ background: CHART_COLORS.reach }} />
-            Reach
-          </span>
-          <span
-            className="text-micro flex items-center gap-[5px]"
-            style={{ color: CHART_COLORS.label }}
-          >
-            <span className="w-2 h-2 rounded-full bg-forest/35" />
-            Views
-          </span>
-        </div>
+        <span
+          className="text-micro flex items-center gap-[5px]"
+          style={{ color: CHART_COLORS.label }}
+        >
+          <span className="w-2 h-2 rounded-full" style={{ background: CHART_COLORS.reach }} />
+          Reach
+        </span>
       </div>
       <ResponsiveContainer width="100%" height={200}>
         <AreaChart data={dailyData} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
@@ -82,7 +72,6 @@ export function AnalyticsCharts({ metrics }: AnalyticsChartsProps) {
               typeof value === 'number' ? value.toLocaleString() : String(value)
             }
           />
-          <Line dataKey="views" stroke="rgba(22,68,48,0.35)" {...LINE_PROPS} />
           <Area
             dataKey="reach"
             stroke={CHART_COLORS.reach}

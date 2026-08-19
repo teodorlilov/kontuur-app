@@ -39,9 +39,3 @@ export const CHART_TOOLTIP_STYLE = {
     fontSize: 12,
   },
 }
-
-export const LINE_PROPS = {
-  strokeWidth: 2,
-  dot: false as const,
-  activeDot: { r: 4, strokeWidth: 0 },
-}

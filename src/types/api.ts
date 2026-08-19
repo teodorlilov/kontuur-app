@@ -229,21 +229,23 @@ export type MetaConnection = Pick<
 // ---- Analytics ----
 
 export interface AudienceDemographics {
-  gender_age: Record<string, number>
+  /** Age-bucket distribution (13-17 … 65+). The API serves separate age and gender
+   *  splits — a joint gender×age distribution does not exist, so the old compound
+   *  `M.18-24` keys could only ever have been fabricated. */
+  ages: Record<string, number>
+  /** F / M / U distribution. */
+  genders: Record<string, number>
   top_cities: Array<{ name: string; value: number }>
   top_countries: Array<{ name: string; value: number }>
 }
 
+/** Per-day the API serves exactly two things: reach (time_series) and the
+ *  new-follower delta. `follower_count` here is the cumulative curve the
+ *  metrics builder derives from today's total minus later deltas. */
 export interface IGDailyInsight {
   date: string
   reach?: number
-  impressions?: number
-  profile_views?: number
   follower_count?: number
-  accounts_engaged?: number
-  website_clicks?: number
-  follows?: number
-  unfollows?: number
 }
 
 export interface IGPost {

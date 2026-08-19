@@ -78,3 +78,85 @@ export const igPublishingLimitSchema = z.looseObject({
 export const igRecentMediaSchema = z.looseObject({
   data: z.array(z.looseObject({ id: z.string(), timestamp: z.string().optional() })).optional(),
 })
+
+// ── Insights shapes ────────────────────────────────────────────────────────
+//
+// One envelope tolerates every shape the live probe recorded
+// (memory: project_meta_probe_results): time_series entries carry values[]
+// (end_time account-level, absent on media insights), total_value entries may
+// carry value, breakdowns, both — or, when a breakdown is present, neither
+// `value` nor `breakdowns[].results`. The silent-empty failure mode is
+// `{"data":[]}` with HTTP 200, which parses fine here and MUST map to null
+// downstream, never 0.
+
+export const igInsightEntrySchema = z.looseObject({
+  name: z.string(),
+  values: z
+    .array(
+      z.looseObject({
+        // `unknown`, not number: online_followers returns `{}` values even on a
+        // real account. The extraction helpers keep only numbers.
+        value: z.unknown().optional(),
+        end_time: z.string().optional(),
+      })
+    )
+    .optional(),
+  total_value: z
+    .looseObject({
+      value: z.number().optional(),
+      breakdowns: z
+        .array(
+          z.looseObject({
+            dimension_keys: z.array(z.string()).optional(),
+            // Absent entirely when the breakdown has no data.
+            results: z
+              .array(
+                z.looseObject({
+                  dimension_values: z.array(z.string()),
+                  value: z.number(),
+                })
+              )
+              .optional(),
+          })
+        )
+        .optional(),
+    })
+    .optional(),
+})
+
+/** GET /{id}/insights for accounts and media alike. */
+export const igInsightsEnvelopeSchema = z.looseObject({
+  data: z.array(igInsightEntrySchema),
+})
+
+export type IGInsightEntry = z.infer<typeof igInsightEntrySchema>
+
+/** GET /{ig-user-id}?fields=followers_count,follows_count,media_count */
+export const igAccountFieldsSchema = z.looseObject({
+  followers_count: z.number(),
+  follows_count: z.number(),
+  media_count: z.number(),
+})
+
+/** One /media item. thumbnail_url is video-only; media_product_type speaks FEED/REELS. */
+export const igMediaItemSchema = z.looseObject({
+  id: z.string(),
+  caption: z.string().optional(),
+  media_type: z.string().optional(),
+  media_product_type: z.string().optional(),
+  timestamp: z.string().optional(),
+  like_count: z.number().optional(),
+  comments_count: z.number().optional(),
+  permalink: z.string().optional(),
+  thumbnail_url: z.string().optional(),
+  media_url: z.string().optional(),
+})
+
+/** A /media page; paging.next works as-is once the Bearer header is re-attached. */
+export const igMediaListSchema = z.looseObject({
+  data: z.array(igMediaItemSchema).optional(),
+  paging: z.looseObject({ next: z.string().optional() }).optional(),
+})
+
+export type IGMediaItem = z.infer<typeof igMediaItemSchema>
+export type IGMediaListPage = z.infer<typeof igMediaListSchema>

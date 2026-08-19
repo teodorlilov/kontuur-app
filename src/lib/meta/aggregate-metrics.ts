@@ -5,105 +5,88 @@ import type {
   InstagramMetrics,
   MediaTypeBreakdownItem,
 } from '@/types/api'
+import type { IGDayTotals, IGDemographics } from './insights'
 
-export type AudienceApiData = Array<{
-  name: string
-  values: Array<{ value: Record<string, number> }>
-}>
+/**
+ * Pure assembly for the Instagram report — everything here is deterministic
+ * over values the fetch layer (insights.ts) already extracted. The old pivot
+ * helpers died with the rewrite: the API serves range totals and two daily
+ * series, not the per-day metric grid they pretended to reshape.
+ */
 
-type IGInsightValue = number | { follow?: number; unfollow?: number }
-
-export type IGInsightData = Array<{
-  name: string
-  values: Array<{ value: IGInsightValue; end_time: string }>
-}>
-
-export interface IGPrevPeriodDeltas {
-  reach: number
-  impressions: number
-  profileViews: number
-  newFollowers: number
-  unfollowers: number
-  accountsEngaged: number
-  websiteClicks: number
+/** What one period's account-level fetches boil down to; null means the API served nothing. */
+export interface IGPeriodStats {
+  /** Sum of the daily reach series, or null when the series was empty. */
+  reach: number | null
+  totals: IGDayTotals
+  follows: number | null
+  unfollows: number | null
+  /** Sum of the daily new-follower deltas, or null when the series was empty. */
+  followerDeltaSum: number | null
 }
-
-// IG Business Login API uses 'views' where we store 'impressions'
-const IG_METRIC_KEY_MAP: Record<string, string> = { views: 'impressions' }
 
 /** Computes a rounded percentage delta between two period totals, or null when there is no baseline. */
 export function deltaPct(curr: number, prev: number): number | null {
   return prev > 0 ? Math.round(((curr - prev) / prev) * 100) : null
 }
 
-/** Builds gender/age + top-city/country demographics from raw insight API data. */
-export function buildAudienceDemographics(
-  data: AudienceApiData,
-  genderAgeMetric: string,
-  cityMetric: string,
-  countryMetric: string
+/** Maps a demographics fetch onto the report's audience shape (top-5 cities/countries). */
+export function buildAudienceFromDemographics(
+  demographics: IGDemographics | null
 ): AudienceDemographics | null {
-  const genderAge = data.find((d) => d.name === genderAgeMetric)?.values[0]?.value ?? {}
-  const cityRaw = data.find((d) => d.name === cityMetric)?.values[0]?.value ?? {}
-  const countryRaw = data.find((d) => d.name === countryMetric)?.values[0]?.value ?? {}
-  if (Object.keys(genderAge).length === 0) return null
+  if (!demographics) return null
+  const topFive = (map: Record<string, number>) =>
+    Object.entries(map)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([name, value]) => ({ name, value }))
   return {
-    gender_age: genderAge,
-    top_cities: Object.entries(cityRaw)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 5)
-      .map(([name, value]) => ({ name, value })),
-    top_countries: Object.entries(countryRaw)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 5)
-      .map(([name, value]) => ({ name, value })),
+    ages: demographics.age,
+    genders: demographics.gender,
+    top_cities: topFive(demographics.city),
+    top_countries: topFive(demographics.country),
   }
 }
 
-/** Pivots raw IG insight API data into daily insight records. */
-export function pivotIGInsights(data: IGInsightData): IGDailyInsight[] {
-  const dailyMap: Record<string, Record<string, unknown>> = {}
-  for (const metric of data) {
-    for (const entry of metric.values) {
-      const date = entry.end_time.split('T')[0]!
-      if (!dailyMap[date]) dailyMap[date] = { date }
-      // follows_and_unfollows returns {follow, unfollow} — split into separate fields
-      if (metric.name === 'follows_and_unfollows') {
-        if (entry.value != null && typeof entry.value === 'object') {
-          const obj = entry.value as Record<string, number>
-          dailyMap[date]!.follows = obj.follow ?? obj.follows ?? 0
-          dailyMap[date]!.unfollows = obj.unfollow ?? obj.unfollows ?? 0
-        }
-      } else {
-        const key = IG_METRIC_KEY_MAP[metric.name] ?? metric.name
-        dailyMap[date]![key] = entry.value
-      }
+/**
+ * Derives the cumulative follower curve by walking BACK from today's total:
+ * the API serves only the per-day new-follower delta and the current
+ * followers_count, so each step back subtracts that day's delta. Approximate by
+ * construction — changes after the last bucket and the unfollow side are
+ * invisible to the delta series — but it is the only curve the API can honestly
+ * support, and the trend shape is what the chart is for.
+ */
+export function deriveCumulativeFollowerSeries(
+  deltas: Array<{ date: string; delta: number }>,
+  currentFollowers: number
+): Array<{ date: string; followers: number }> {
+  const sorted = [...deltas].sort((a, b) => a.date.localeCompare(b.date))
+  const series: Array<{ date: string; followers: number }> = new Array(sorted.length)
+  let running = currentFollowers
+  for (let i = sorted.length - 1; i >= 0; i--) {
+    series[i] = { date: sorted[i]!.date, followers: running }
+    running -= sorted[i]!.delta
+  }
+  return series
+}
+
+/** Merges the reach series and the cumulative follower series into per-day insight rows. */
+export function buildDailyInsights(
+  reachSeries: Array<{ date: string; reach: number }>,
+  followerSeries: Array<{ date: string; followers: number }>
+): IGDailyInsight[] {
+  const byDate = new Map<string, IGDailyInsight>()
+  const rowFor = (date: string): IGDailyInsight => {
+    let row = byDate.get(date)
+    if (!row) {
+      row = { date }
+      byDate.set(date, row)
     }
+    return row
   }
-  // Dynamic keys from API — assert to our typed interface
-  return Object.values(dailyMap)
-    .map((d) => d as unknown as IGDailyInsight)
-    .sort((a, b) => a.date.localeCompare(b.date))
-}
-
-/** Sums daily IG insight values into period totals. */
-export function sumIGDailyInsights(dailyInsights: IGDailyInsight[]) {
-  return {
-    totalReach: dailyInsights.reduce((s, d) => s + (d.reach ?? 0), 0),
-    totalImpressions: dailyInsights.reduce((s, d) => s + (d.impressions ?? 0), 0),
-    totalProfileViews: dailyInsights.reduce((s, d) => s + (d.profile_views ?? 0), 0),
-    totalAccountsEngaged: dailyInsights.reduce((s, d) => s + (d.accounts_engaged ?? 0), 0),
-    totalWebsiteClicks: dailyInsights.reduce((s, d) => s + (d.website_clicks ?? 0), 0),
-    totalFollows: dailyInsights.reduce((s, d) => s + (d.follows ?? 0), 0),
-    totalUnfollows: dailyInsights.reduce((s, d) => s + (d.unfollows ?? 0), 0),
-  }
-}
-
-/** Fallback: derives net follower change from first/last follower_count daily snapshots. */
-export function computeNetChangeFromSnapshots(dailyInsights: IGDailyInsight[]): number {
-  const withCount = dailyInsights.filter((d) => d.follower_count != null && d.follower_count > 0)
-  if (withCount.length < 2) return 0
-  return withCount[withCount.length - 1]!.follower_count! - withCount[0]!.follower_count!
+  for (const point of reachSeries) rowFor(point.date).reach = point.reach
+  for (const point of followerSeries) rowFor(point.date).follower_count = point.followers
+  return [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date))
 }
 
 /** Computes post-level aggregate metrics. */
@@ -140,39 +123,55 @@ export function computeIGMediaTypeBreakdown(
     .sort((a, b) => b.avg_engagement_rate - a.avg_engagement_rate)
 }
 
-/** Assembles the IG summary from computed values and previous-period deltas. */
+/**
+ * Assembles the report summary from this period's stats, the previous period's
+ * (for deltas), and the post aggregates. Nulls collapse to 0 HERE, at the edge
+ * of a summary the UI renders as plain numbers — the persistence layer keeps
+ * the null-vs-0 distinction instead.
+ */
 export function buildIGSummary(
-  sums: ReturnType<typeof sumIGDailyInsights>,
+  current: IGPeriodStats,
+  previous: IGPeriodStats,
   postAgg: ReturnType<typeof computeIGPostAggregates>,
-  postsCount: number,
-  deltas: IGPrevPeriodDeltas,
-  dailyInsights: IGDailyInsight[]
+  postsCount: number
 ): InstagramMetrics['summary'] {
-  const followsAvailable = sums.totalFollows > 0 || sums.totalUnfollows > 0
-  const netFollowerChange = followsAvailable
-    ? sums.totalFollows - sums.totalUnfollows
-    : computeNetChangeFromSnapshots(dailyInsights)
+  // The follows_and_unfollows split and the delta series are both ≥100-follower
+  // gated; when the split is absent the delta sum is the same "new followers"
+  // fact from the other endpoint (probe: FOLLOWER 5 vs delta sum 5).
+  const newFollowers = current.follows ?? current.followerDeltaSum ?? 0
+  const unfollowers = current.unfollows ?? 0
+  const prevNewFollowers = previous.follows ?? previous.followerDeltaSum ?? 0
+  const prevNet = prevNewFollowers - (previous.unfollows ?? 0)
   return {
-    total_reach: sums.totalReach,
-    total_impressions: sums.totalImpressions,
-    total_profile_views: sums.totalProfileViews,
+    total_reach: current.reach ?? 0,
+    total_impressions: current.totals.views ?? 0,
+    total_profile_views: current.totals.profile_views ?? 0,
     avg_engagement_rate: postAgg.avgEngagementRate,
     posts_published: postsCount,
-    new_followers: sums.totalFollows,
-    unfollowers: sums.totalUnfollows,
-    net_follower_change: netFollowerChange,
+    new_followers: newFollowers,
+    unfollowers,
+    net_follower_change: newFollowers - unfollowers,
     organic_reach_pct: null,
     paid_reach_pct: null,
-    reach_delta_pct: deltaPct(sums.totalReach, deltas.reach),
-    views_delta_pct: deltaPct(sums.totalImpressions, deltas.impressions),
-    profile_views_delta_pct: deltaPct(sums.totalProfileViews, deltas.profileViews),
-    net_followers_delta_pct: deltaPct(netFollowerChange, deltas.newFollowers - deltas.unfollowers),
+    reach_delta_pct: deltaPct(current.reach ?? 0, previous.reach ?? 0),
+    views_delta_pct: deltaPct(current.totals.views ?? 0, previous.totals.views ?? 0),
+    profile_views_delta_pct: deltaPct(
+      current.totals.profile_views ?? 0,
+      previous.totals.profile_views ?? 0
+    ),
+    net_followers_delta_pct: deltaPct(newFollowers - unfollowers, prevNet),
     avg_save_rate: postAgg.avgSaveRate,
     total_saved: postAgg.totalSaved,
     total_shares: postAgg.totalShares,
-    total_accounts_engaged: sums.totalAccountsEngaged,
-    total_website_clicks: sums.totalWebsiteClicks,
-    accounts_engaged_delta_pct: deltaPct(sums.totalAccountsEngaged, deltas.accountsEngaged),
-    website_clicks_delta_pct: deltaPct(sums.totalWebsiteClicks, deltas.websiteClicks),
+    total_accounts_engaged: current.totals.accounts_engaged ?? 0,
+    total_website_clicks: current.totals.website_clicks ?? 0,
+    accounts_engaged_delta_pct: deltaPct(
+      current.totals.accounts_engaged ?? 0,
+      previous.totals.accounts_engaged ?? 0
+    ),
+    website_clicks_delta_pct: deltaPct(
+      current.totals.website_clicks ?? 0,
+      previous.totals.website_clicks ?? 0
+    ),
   }
 }

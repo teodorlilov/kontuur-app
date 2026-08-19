@@ -71,6 +71,14 @@ describe('deleted symbols stay unreferenced', () => {
     'fbPagesResponseSchema',
     'FACEBOOK_PAGE_SCOPES',
     'capitalizePlatform',
+    // Analytics repair (2026-08): the per-day pivot fiction. The API serves range
+    // totals plus two daily series — these reshaped a grid that never existed and
+    // mapped silent-empty responses to zeros.
+    'pivotIGInsights',
+    'sumIGDailyInsights',
+    'buildAudienceDemographics',
+    'computeNetChangeFromSnapshots',
+    'IG_METRIC_KEY_MAP',
   ]
 
   it('no source line mentions a ledgered symbol', () => {
