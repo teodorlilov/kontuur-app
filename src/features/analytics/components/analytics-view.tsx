@@ -11,6 +11,7 @@ import { InteractionMultiples } from './interaction-multiples'
 import { NarrativeBlock } from './narrative-block'
 import { PostsTable } from './posts-table'
 import { ReachTrend } from './reach-trend'
+import { RegenerateNarrative } from './regenerate-narrative'
 import { ReportArchive, type ArchiveEntry } from './report-archive'
 import { SummaryStrip } from './summary-strip'
 import { SyncLine } from './sync-line'
@@ -18,6 +19,8 @@ import { SyncLine } from './sync-line'
 interface AnalyticsViewProps {
   data: AnalyticsReportData
   narrative: string | null
+  /** True when the narrative is an exported report's stored wording. */
+  narrativeArchived: boolean
   clientId: string
   clientName: string
   /** The connected IG handle, when one exists. */
@@ -43,6 +46,7 @@ function signed(value: number): string {
 export function AnalyticsView({
   data,
   narrative,
+  narrativeArchived,
   clientId,
   clientName,
   handle,
@@ -74,7 +78,12 @@ export function AnalyticsView({
         </div>
       </header>
 
-      <NarrativeBlock narrative={narrative} hasHistory={hasHistory} />
+      <NarrativeBlock
+        narrative={narrative}
+        archived={narrativeArchived}
+        hasHistory={hasHistory}
+        regenerate={<RegenerateNarrative clientId={clientId} period={data.period} />}
+      />
 
       <SummaryStrip data={data} />
 

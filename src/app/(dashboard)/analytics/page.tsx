@@ -86,10 +86,10 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
   const hasConnection = connections.length > 0
   const handle = connections[0]?.account_name?.replace(/^@/, '') ?? null
 
-  const narrative = data.hasHistory
-    ? ((await getNarrative(clientId, client.name, period, timezone, data.lastSyncAt)) ??
-      buildFallbackNarrative(data))
+  const narrativeResult = data.hasHistory
+    ? await getNarrative(clientId, client.name, period, timezone, data.lastSyncAt)
     : null
+  const narrative = narrativeResult?.text ?? (data.hasHistory ? buildFallbackNarrative(data) : null)
 
   return (
     <>
@@ -114,6 +114,7 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
           <AnalyticsView
             data={data}
             narrative={narrative}
+            narrativeArchived={narrativeResult?.archived ?? false}
             clientId={clientId}
             clientName={client.name}
             handle={handle}

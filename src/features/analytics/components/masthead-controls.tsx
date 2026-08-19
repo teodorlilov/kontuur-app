@@ -34,6 +34,12 @@ export function MastheadControls({ clientId, clients, period, hasHistory }: Mast
   const [customFrom, setCustomFrom] = useState(period.start)
   const [customTo, setCustomTo] = useState(period.end)
   const [exporting, startExport] = useTransition()
+  // Server navigation takes a beat; without this the range buttons read as dead.
+  const [navigating, startNavigate] = useTransition()
+
+  function navigate(href: string): void {
+    startNavigate(() => router.push(href))
+  }
 
   function handleExport(): void {
     startExport(async () => {
@@ -59,7 +65,7 @@ export function MastheadControls({ clientId, clients, period, hasHistory }: Mast
           label="Client"
           value={clientId}
           options={clients.map((client) => ({ value: client.id, label: client.name }))}
-          onChange={(id) => router.push(analyticsClientHref(id, period))}
+          onChange={(id) => navigate(analyticsClientHref(id, period))}
         />
       )}
 
@@ -67,14 +73,19 @@ export function MastheadControls({ clientId, clients, period, hasHistory }: Mast
         <div
           role="group"
           aria-label="Reporting period"
-          className="flex items-center gap-0.5 rounded-panel border border-line2 bg-surface p-0.5"
+          aria-busy={navigating}
+          className={cn(
+            'flex items-center gap-0.5 rounded-panel border border-line2 bg-surface p-0.5',
+            'transition-opacity',
+            navigating && 'pointer-events-none opacity-60'
+          )}
         >
           {RANGE_PRESETS.map((preset) => (
             <button
               key={preset}
               type="button"
               aria-pressed={period.preset === preset}
-              onClick={() => router.push(analyticsRangeHref(clientId, preset))}
+              onClick={() => navigate(analyticsRangeHref(clientId, preset))}
               className={cn(RANGE_BUTTON, period.preset === preset && RANGE_ACTIVE)}
             >
               {PRESET_LABELS[preset]}
@@ -101,7 +112,7 @@ export function MastheadControls({ clientId, clients, period, hasHistory }: Mast
                 return
               }
               setCustomOpen(false)
-              router.push(analyticsWindowHref(clientId, customFrom, customTo))
+              navigate(analyticsWindowHref(clientId, customFrom, customTo))
             }}
           >
             <label className="grid gap-1 text-micro font-medium text-text2">

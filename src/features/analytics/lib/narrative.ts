@@ -9,12 +9,20 @@ import { getAnalyticsReport, IG_METRICS_TAG } from './report-data'
 
 /**
  * The narrative block: four-to-five sentences written from this period's
- * numbers, regenerated after each nightly sync (the sync stamp is part of the
- * cache key), and never regenerated for an archived period — a report that was
- * exported stays worded exactly as it was written.
+ * numbers. Live views (the range presets, or a hand-picked window) regenerate
+ * after each nightly sync — the sync stamp is part of the cache key — and can
+ * be re-rolled on demand via the regenerate action, which busts this cache.
+ * Only a window opened through an archive link shows the stored wording: an
+ * exported report keeps its words until it is deliberately rewritten.
  */
 
 const CAPTION_FACT_CHARS = 120
+
+export interface NarrativeResult {
+  text: string
+  /** True when the words came from an exported report, not a fresh generation. */
+  archived: boolean
+}
 
 /**
  * The bounded aggregate the model sees. The old report path stringified the
@@ -91,6 +99,30 @@ export function buildFallbackNarrative(data: AnalyticsReportData): string | null
   return `${parts.join(' · ')}.`
 }
 
+/**
+ * Writes a fresh summary from the current table data — no cache, no archive
+ * lookup. The regenerate action uses this to rewrite an exported report.
+ */
+export async function composeFreshNarrative(
+  clientId: string,
+  clientName: string,
+  period: AnalyticsPeriod,
+  timezone: string
+): Promise<string | null> {
+  const report = await getAnalyticsReport(clientId, period, timezone)
+  if (!report.hasHistory || (report.reach.now === null && report.views.now === null)) {
+    return null
+  }
+  const summary = await generateAnalyticsSummary({
+    clientName,
+    platform: 'Instagram',
+    startDate: period.start,
+    endDate: period.end,
+    metricsJson: buildNarrativeFacts(report),
+  })
+  return summary || null
+}
+
 const _fetchNarrative = unstable_cache(
   async (
     clientId: string,
@@ -105,47 +137,39 @@ const _fetchNarrative = unstable_cache(
     // Part of the cache key on purpose: a new nightly sync writes a new stamp,
     // which is what "regenerates after each sync" means mechanically.
     syncStamp: string
-  ): Promise<string | null> => {
+  ): Promise<NarrativeResult | null> => {
     void syncStamp
-    const admin = createAdminSupabaseClient()
+    const period: AnalyticsPeriod = { preset, start, end, prevStart, prevEnd, days }
 
-    // An exported period keeps its words: the archive row wins over regeneration.
-    const { data: archived, error } = await admin
-      .from('analytics_reports')
-      .select('ai_summary')
-      .eq('client_id', clientId)
-      .eq('period_start', start)
-      .eq('period_end', end)
-      .maybeSingle()
-    if (error) throw new Error(`archived summary lookup failed: ${error.message}`)
-    // WHY as: the shared admin client is untyped, so the projection does not infer.
-    const archivedSummary = (archived as { ai_summary: string } | null)?.ai_summary
-    if (archivedSummary) return archivedSummary
-
-    const report = await getAnalyticsReport(
-      clientId,
-      { preset, start, end, prevStart, prevEnd, days },
-      timezone
-    )
-    if (!report.hasHistory || (report.reach.now === null && report.views.now === null)) {
-      return null
+    // Only an archive-linked window (from/to in the URL) reuses stored wording.
+    // Preset views are live and must never be pinned by an earlier export —
+    // that pin is exactly the "can't generate a new report" trap.
+    if (preset === 'custom') {
+      const admin = createAdminSupabaseClient()
+      const { data: archived, error } = await admin
+        .from('analytics_reports')
+        .select('ai_summary')
+        .eq('client_id', clientId)
+        .eq('period_start', start)
+        .eq('period_end', end)
+        .maybeSingle()
+      if (error) throw new Error(`archived summary lookup failed: ${error.message}`)
+      // WHY as: the shared admin client is untyped, so the projection does not infer.
+      const archivedSummary = (archived as { ai_summary: string } | null)?.ai_summary
+      if (archivedSummary) return { text: archivedSummary, archived: true }
     }
-    const summary = await generateAnalyticsSummary({
-      clientName,
-      platform: 'Instagram',
-      startDate: start,
-      endDate: end,
-      metricsJson: buildNarrativeFacts(report),
-    })
-    return summary || null
+
+    const text = await composeFreshNarrative(clientId, clientName, period, timezone)
+    return text === null ? null : { text, archived: false }
   },
   ['analytics-narrative'],
   { revalidate: 86_400, tags: [IG_METRICS_TAG] }
 )
 
 /**
- * The narrative for one client and period, cached until the next nightly sync.
- * Failure is contained here — a narrative is worth having, never worth a 500.
+ * The narrative for one client and period, cached until the next nightly sync
+ * or an explicit regenerate. Failure is contained here — a narrative is worth
+ * having, never worth a 500.
  */
 export async function getNarrative(
   clientId: string,
@@ -153,7 +177,7 @@ export async function getNarrative(
   period: AnalyticsPeriod,
   timezone: string,
   lastSyncAt: string | null
-): Promise<string | null> {
+): Promise<NarrativeResult | null> {
   try {
     return await _fetchNarrative(
       clientId,
