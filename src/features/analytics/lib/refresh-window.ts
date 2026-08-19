@@ -3,15 +3,8 @@ import 'server-only'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { createSemaphore } from '@/lib/concurrency'
 import { GraphApiError } from '@/lib/meta/graph-errors'
-import {
-  fetchDailyReachSeries,
-  fetchDayTotals,
-  fetchFollowerDeltaSeries,
-  fetchFollowsBreakdown,
-  fetchLinkTaps,
-  fetchReachByProductType,
-} from '@/lib/meta/insights'
-import { syncPostMetrics, type IGAccountMetricsWriteRow } from './sync-metrics'
+import { fetchDailyReachSeries, fetchFollowerDeltaSeries } from '@/lib/meta/insights'
+import { captureDayTotals, syncPostMetrics, type IGAccountMetricsWriteRow } from './sync-metrics'
 import { shiftDateKey } from '@/utils/date-helpers'
 import type { AnalyticsPeriod } from './period'
 
@@ -35,7 +28,6 @@ const REFILL_DAYS_CAP = 62
 /** Insights time ranges cap at 30 days per request — series calls are chunked. */
 const SERIES_CHUNK_DAYS = 30
 const REFILL_CONCURRENCY = 3
-const SECONDS_PER_DAY = 86_400
 /**
  * Recent days re-ask even when already marked: Meta consolidates fresh
  * numbers for a day or two after capture, and an explicit refresh should
@@ -133,11 +125,6 @@ function seriesChunks(start: string, end: string): Array<{ sinceTs: number; unti
   return chunks
 }
 
-function dayBounds(dateKey: string): { sinceTs: number; untilTs: number } {
-  const sinceTs = Math.floor(Date.parse(dateKey) / 1000)
-  return { sinceTs, untilTs: sinceTs + SECONDS_PER_DAY }
-}
-
 async function upsertColumnBatch(
   admin: SupabaseClient,
   rows: IGAccountMetricsWriteRow[]
@@ -207,39 +194,9 @@ export async function refreshWindowMetrics(
         const release = await semaphore.acquire()
         try {
           if (rateLimited) return
-          const bounds = dayBounds(dateKey)
-          // Everything the nightly sync captures per day, so every section the
-          // period filter drives refills — not just the headline totals.
-          // (interactions_by_media_product_type is skipped: nothing renders it.)
-          const [totals, followsSplit, linkTaps, reachByType] = await Promise.all([
-            fetchDayTotals(accountId, accessToken, bounds.sinceTs, bounds.untilTs),
-            fetchFollowsBreakdown(accountId, accessToken, bounds.sinceTs, bounds.untilTs),
-            fetchLinkTaps(accountId, accessToken, bounds.sinceTs, bounds.untilTs),
-            fetchReachByProductType(accountId, accessToken, bounds.sinceTs, bounds.untilTs),
-          ])
-          totalsRows.push({
-            client_id: clientId,
-            metric_date: dateKey,
-            views: totals.views,
-            total_interactions: totals.total_interactions,
-            likes: totals.likes,
-            comments: totals.comments,
-            saves: totals.saves,
-            shares: totals.shares,
-            replies: totals.replies,
-            reposts: totals.reposts,
-            profile_views: totals.profile_views,
-            website_clicks: totals.website_clicks,
-            accounts_engaged: totals.accounts_engaged,
-            follows: followsSplit.follows,
-            unfollows: followsSplit.unfollows,
-            profile_links_taps: linkTaps.total,
-            link_taps_by_button_type: linkTaps.byButton,
-            reach_by_media_product_type: reachByType,
-            fetched_at: new Date().toISOString(),
-            // Asked, whatever came back — never re-spend budget on this day.
-            totals_synced_at: new Date().toISOString(),
-          })
+          // The same full-day capture the nightly sync writes, so every
+          // section the period filter drives refills — not just headline totals.
+          totalsRows.push(await captureDayTotals(clientId, accountId, accessToken, dateKey))
         } catch (err) {
           if (err instanceof GraphApiError && err.failure === 'rate_limited') rateLimited = true
           else throw err

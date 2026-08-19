@@ -8,6 +8,7 @@ import { Card } from '@/components/ui/card'
 import { ActionLink } from '@/components/ui/action-link'
 import { cn } from '@/utils/cn'
 import { parseParam } from '@/utils/parse-param'
+import { AnalyticsNavProvider, PendingVeil } from '@/features/analytics/components/analytics-nav'
 import { AnalyticsView, ConnectPrompt } from '@/features/analytics/components/analytics-view'
 import { MastheadControls } from '@/features/analytics/components/masthead-controls'
 import type { ArchiveEntry } from '@/features/analytics/components/report-archive'
@@ -101,7 +102,7 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
   const narrative = narrativeResult?.text ?? (data.hasHistory ? buildFallbackNarrative(data) : null)
 
   return (
-    <>
+    <AnalyticsNavProvider>
       <div className="print-hide">
         <PageHeader
           crumb={[{ label: 'Analytics' }]}
@@ -120,20 +121,22 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
         {!hasConnection && !data.hasHistory ? (
           <ConnectPrompt clientId={clientId} clientName={client.name} />
         ) : (
-          <AnalyticsView
-            data={data}
-            narrative={narrative}
-            narrativeArchived={narrativeResult?.archived ?? false}
-            unfilledDays={unfilledDays}
-            clientId={clientId}
-            clientName={client.name}
-            handle={handle}
-            hasConnection={hasConnection}
-            timezone={timezone}
-            archive={archive}
-          />
+          <PendingVeil>
+            <AnalyticsView
+              data={data}
+              narrative={narrative}
+              narrativeArchived={narrativeResult?.archived ?? false}
+              unfilledDays={unfilledDays}
+              clientId={clientId}
+              clientName={client.name}
+              handle={handle}
+              hasConnection={hasConnection}
+              timezone={timezone}
+              archive={archive}
+            />
+          </PendingVeil>
         )}
       </div>
-    </>
+    </AnalyticsNavProvider>
   )
 }

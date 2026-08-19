@@ -7,6 +7,7 @@ import { cn } from '@/utils/cn'
 import { Button } from '@/components/ui/button'
 import { SelectControl } from '@/components/layout/page-header/select-control'
 import { archiveReport } from '../actions/report-actions'
+import { useAnalyticsNav } from './analytics-nav'
 import { analyticsClientHref, analyticsRangeHref, analyticsWindowHref } from '../lib/analytics-href'
 import { RANGE_PRESETS, type AnalyticsPeriod, type RangePreset } from '../lib/period'
 
@@ -34,12 +35,9 @@ export function MastheadControls({ clientId, clients, period, hasHistory }: Mast
   const [customFrom, setCustomFrom] = useState(period.start)
   const [customTo, setCustomTo] = useState(period.end)
   const [exporting, startExport] = useTransition()
-  // Server navigation takes a beat; without this the range buttons read as dead.
-  const [navigating, startNavigate] = useTransition()
-
-  function navigate(href: string): void {
-    startNavigate(() => router.push(href))
-  }
+  // Shared with the document's veil: while this transition runs, the old
+  // period's data is dimmed instead of posing as the newly selected one.
+  const { pending: navigating, navigate } = useAnalyticsNav()
 
   function handleExport(): void {
     startExport(async () => {

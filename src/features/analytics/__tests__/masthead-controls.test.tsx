@@ -2,6 +2,7 @@ import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MastheadControls } from '../components/masthead-controls'
+import { AnalyticsNavProvider } from '../components/analytics-nav'
 import type { AnalyticsPeriod } from '../lib/period'
 
 /**
@@ -43,7 +44,9 @@ const CLIENTS = [
 
 function renderControls(over: Partial<Parameters<typeof MastheadControls>[0]> = {}) {
   return render(
-    <MastheadControls clientId="c1" clients={CLIENTS} period={PERIOD} hasHistory {...over} />
+    <AnalyticsNavProvider>
+      <MastheadControls clientId="c1" clients={CLIENTS} period={PERIOD} hasHistory {...over} />
+    </AnalyticsNavProvider>
   )
 }
 

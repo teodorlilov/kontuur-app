@@ -32,6 +32,13 @@ const DEMOGRAPHICS_REFRESH_DAYS = 7
 const BACKFILL_DAYS = 30
 const MEDIA_LOOKBACK_DAYS = 30
 const SECONDS_PER_DAY = 86_400
+/**
+ * Meta keeps consolidating a day's numbers after it ends (late-counted views,
+ * spam removal). Each night the sync re-captures this many finished days, so
+ * every stored day converges to Instagram's own value during the week it
+ * matters — the cure for "our July 28th disagrees with the IG app".
+ */
+const CONSOLIDATION_DAYS = 7
 
 type IGAccountMetricsInsert = Database['public']['Tables']['ig_account_metrics']['Insert']
 type IGPostMetricsInsert = Database['public']['Tables']['ig_post_metrics']['Insert']
@@ -127,8 +134,74 @@ async function syncClientMetrics(admin: SupabaseClient, connection: IGConnection
   const hadHistory = await hasAccountHistory(admin, clientId)
   await syncAccountDay(admin, clientId, accountId, accessToken)
   if (!hadHistory) await backfillAccountHistory(admin, clientId, accountId, accessToken)
+  if (hadHistory) await recaptureConsolidatingDays(admin, clientId, accountId, accessToken)
   await syncPostMetrics(admin, clientId, accountId, accessToken)
   await syncDemographicsWeekly(admin, clientId, accountId, accessToken)
+}
+
+/**
+ * One finished day's full capture — the five calls the probe verified: the
+ * totals pair plus the three rendered breakdowns. Shared by the nightly sync
+ * (yesterday + the consolidation window) and the analytics window refill.
+ */
+export async function captureDayTotals(
+  clientId: string,
+  accountId: string,
+  accessToken: string,
+  dateKey: string
+): Promise<IGAccountMetricsWriteRow> {
+  const sinceTs = Math.floor(Date.parse(dateKey) / 1000)
+  const untilTs = sinceTs + SECONDS_PER_DAY
+  const [totals, followsSplit, linkTaps, reachByType] = await Promise.all([
+    fetchDayTotals(accountId, accessToken, sinceTs, untilTs),
+    fetchFollowsBreakdown(accountId, accessToken, sinceTs, untilTs),
+    fetchLinkTaps(accountId, accessToken, sinceTs, untilTs),
+    fetchReachByProductType(accountId, accessToken, sinceTs, untilTs),
+  ])
+  return {
+    client_id: clientId,
+    metric_date: dateKey,
+    views: totals.views,
+    accounts_engaged: totals.accounts_engaged,
+    total_interactions: totals.total_interactions,
+    likes: totals.likes,
+    comments: totals.comments,
+    saves: totals.saves,
+    shares: totals.shares,
+    replies: totals.replies,
+    reposts: totals.reposts,
+    profile_views: totals.profile_views,
+    website_clicks: totals.website_clicks,
+    follows: followsSplit.follows,
+    unfollows: followsSplit.unfollows,
+    profile_links_taps: linkTaps.total,
+    link_taps_by_button_type: linkTaps.byButton,
+    reach_by_media_product_type: reachByType,
+    fetched_at: new Date().toISOString(),
+    // Asked, whatever came back — the refill never re-spends on this day.
+    totals_synced_at: new Date().toISOString(),
+  }
+}
+
+/** Re-captures days 2..N back so stored values track Meta's consolidation. */
+async function recaptureConsolidatingDays(
+  admin: SupabaseClient,
+  clientId: string,
+  accountId: string,
+  accessToken: string
+): Promise<void> {
+  const { date: yesterday } = yesterdayUtcWindow()
+  const rows: IGAccountMetricsWriteRow[] = []
+  for (let daysBack = 1; daysBack < CONSOLIDATION_DAYS; daysBack++) {
+    const dateKey = new Date(Date.parse(yesterday) - daysBack * SECONDS_PER_DAY * 1000)
+      .toISOString()
+      .slice(0, 10)
+    rows.push(await captureDayTotals(clientId, accountId, accessToken, dateKey))
+  }
+  const { error } = await admin
+    .from('ig_account_metrics')
+    .upsert(rows, { onConflict: 'client_id,metric_date' })
+  if (error) throw new Error(`consolidation recapture upsert failed: ${error.message}`)
 }
 
 async function hasAccountHistory(admin: SupabaseClient, clientId: string): Promise<boolean> {

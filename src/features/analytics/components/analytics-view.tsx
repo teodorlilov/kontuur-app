@@ -8,6 +8,7 @@ import { AudienceSection } from './audience-section'
 import { AutoFill } from './auto-fill'
 import { ComparisonRows } from './comparison-rows'
 import { EmptyFill } from './empty-fill'
+import { FillingDocument } from './filling-document'
 import { InteractionMultiples } from './interaction-multiples'
 import { NarrativeBlock } from './narrative-block'
 import { PostsTable } from './posts-table'
@@ -61,37 +62,48 @@ export function AnalyticsView({
   const flowKnown = followers.gained.now !== null || followers.lost.now !== null
   const filling = hasConnection && unfilledDays > 0
 
+  const masthead = (
+    <header className="flex flex-wrap items-end justify-between gap-6 pb-5">
+      <div>
+        <div className="flex items-center gap-2.5">
+          <Avatar name={clientName} size="sm" />
+          <span className="text-title text-ink">{clientName}</span>
+          {handle && <span className="text-micro text-text3">Instagram · @{handle}</span>}
+        </div>
+        {/* The sticky page header carries the screen title; print has no header. */}
+        <h2 className="mt-2 hidden text-headline text-ink print:block">Analytics</h2>
+        <p className="mt-2 text-body text-text2">
+          <strong className="font-medium text-ink">
+            {formatPeriodRange(data.period.start, data.period.end)}
+          </strong>{' '}
+          <span className="text-text3">against</span>{' '}
+          {formatShortRange(data.period.prevStart, data.period.prevEnd)}
+        </p>
+      </div>
+    </header>
+  )
+
+  // Nothing partial: while this window still pulls from Instagram, the page
+  // holds the report's silhouette instead of numbers that are about to change.
+  if (filling) {
+    return (
+      <div id="analytics-print-area">
+        <AutoFill clientId={clientId} period={data.period} unfilledDays={unfilledDays} />
+        {masthead}
+        <FillingDocument unfilledDays={unfilledDays} />
+        <SyncLine
+          lastSyncAt={data.lastSyncAt}
+          hasHistory={hasHistory}
+          hasConnection={hasConnection}
+          timezone={timezone}
+        />
+      </div>
+    )
+  }
+
   return (
     <div id="analytics-print-area">
-      {filling && <AutoFill clientId={clientId} period={data.period} unfilledDays={unfilledDays} />}
-      <header className="flex flex-wrap items-end justify-between gap-6 pb-5">
-        <div>
-          <div className="flex items-center gap-2.5">
-            <Avatar name={clientName} size="sm" />
-            <span className="text-title text-ink">{clientName}</span>
-            {handle && <span className="text-micro text-text3">Instagram · @{handle}</span>}
-          </div>
-          {/* The sticky page header carries the screen title; print has no header. */}
-          <h2 className="mt-2 hidden text-headline text-ink print:block">Analytics</h2>
-          <p className="mt-2 text-body text-text2">
-            <strong className="font-medium text-ink">
-              {formatPeriodRange(data.period.start, data.period.end)}
-            </strong>{' '}
-            <span className="text-text3">against</span>{' '}
-            {formatShortRange(data.period.prevStart, data.period.prevEnd)}
-          </p>
-          {filling && (
-            <p className="print-hide mt-1.5 flex items-center gap-2 text-micro text-text2">
-              <span
-                aria-hidden="true"
-                className="live-dot size-1.5 flex-none rounded-full bg-spring"
-              />
-              Pulling this period from Instagram — {unfilledDays} day
-              {unfilledDays === 1 ? '' : 's'} still filling in…
-            </p>
-          )}
-        </div>
-      </header>
+      {masthead}
 
       <NarrativeBlock narrative={narrative} archived={narrativeArchived} hasHistory={hasHistory} />
 
