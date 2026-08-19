@@ -44,6 +44,8 @@ const EXEMPT: Record<string, string> = {
   // could read. The reason the exemption gave still holds and is recorded there.
   'features/publishing/lib/publish-post.ts:PublishStatusPatch':
     'A partial update payload: every field is optional because each caller patches a different subset (markPublished sets four, markFailed three). The optionality means "may be omitted from this patch", not "may be null in the column".',
+  'lib/meta/insights.ts:IGDayTotals':
+    'The Graph API\'s day-totals response shape, not a table projection — ig_account_metrics was MODELED ON this API return, so the overlap runs the other way. Its nullability means "Meta served nothing for this range" (the probe\'s silent-empty contract), which the column types cannot express.',
   'features/sources/actions/source-actions.ts:UpdateSourceInput':
     'A write contract, all fields optional so a caller can send only what changed. Same reason as UpdatePostInput.',
   'features/generate/hooks/use-draft-visuals.ts:DraftPostInput':

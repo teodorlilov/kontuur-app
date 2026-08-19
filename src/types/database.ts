@@ -94,7 +94,6 @@ export type Database = {
           period_end: string
           period_start: string
           platform: string
-          report_type: string | null
         }
         Insert: {
           ai_summary: string
@@ -105,7 +104,6 @@ export type Database = {
           period_end: string
           period_start: string
           platform: string
-          report_type?: string | null
         }
         Update: {
           ai_summary?: string
@@ -116,7 +114,6 @@ export type Database = {
           period_end?: string
           period_start?: string
           platform?: string
-          report_type?: string | null
         }
         Relationships: [
           {
@@ -772,6 +769,214 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ig_account_metrics: {
+        Row: {
+          accounts_engaged: number | null
+          client_id: string
+          comments: number | null
+          fetched_at: string
+          followers_count: number | null
+          follows: number | null
+          follows_count: number | null
+          id: string
+          interactions_by_media_product_type: Json | null
+          likes: number | null
+          link_taps_by_button_type: Json | null
+          media_count: number | null
+          metric_date: string
+          profile_links_taps: number | null
+          profile_views: number | null
+          reach: number | null
+          reach_by_media_product_type: Json | null
+          replies: number | null
+          reposts: number | null
+          saves: number | null
+          shares: number | null
+          total_interactions: number | null
+          unfollows: number | null
+          views: number | null
+          website_clicks: number | null
+        }
+        Insert: {
+          accounts_engaged?: number | null
+          client_id: string
+          comments?: number | null
+          fetched_at?: string
+          followers_count?: number | null
+          follows?: number | null
+          follows_count?: number | null
+          id?: string
+          interactions_by_media_product_type?: Json | null
+          likes?: number | null
+          link_taps_by_button_type?: Json | null
+          media_count?: number | null
+          metric_date: string
+          profile_links_taps?: number | null
+          profile_views?: number | null
+          reach?: number | null
+          reach_by_media_product_type?: Json | null
+          replies?: number | null
+          reposts?: number | null
+          saves?: number | null
+          shares?: number | null
+          total_interactions?: number | null
+          unfollows?: number | null
+          views?: number | null
+          website_clicks?: number | null
+        }
+        Update: {
+          accounts_engaged?: number | null
+          client_id?: string
+          comments?: number | null
+          fetched_at?: string
+          followers_count?: number | null
+          follows?: number | null
+          follows_count?: number | null
+          id?: string
+          interactions_by_media_product_type?: Json | null
+          likes?: number | null
+          link_taps_by_button_type?: Json | null
+          media_count?: number | null
+          metric_date?: string
+          profile_links_taps?: number | null
+          profile_views?: number | null
+          reach?: number | null
+          reach_by_media_product_type?: Json | null
+          replies?: number | null
+          reposts?: number | null
+          saves?: number | null
+          shares?: number | null
+          total_interactions?: number | null
+          unfollows?: number | null
+          views?: number | null
+          website_clicks?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ig_account_metrics_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ig_audience_snapshots: {
+        Row: {
+          client_id: string
+          engaged_audience_demographics: Json | null
+          follower_demographics: Json | null
+          id: string
+          snapshot_date: string
+        }
+        Insert: {
+          client_id: string
+          engaged_audience_demographics?: Json | null
+          follower_demographics?: Json | null
+          id?: string
+          snapshot_date: string
+        }
+        Update: {
+          client_id?: string
+          engaged_audience_demographics?: Json | null
+          follower_demographics?: Json | null
+          id?: string
+          snapshot_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ig_audience_snapshots_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ig_post_metrics: {
+        Row: {
+          caption: string | null
+          client_id: string
+          comments_count: number | null
+          follows: number | null
+          id: string
+          ig_media_id: string
+          last_synced_at: string
+          like_count: number | null
+          media_product_type: string | null
+          media_type: string | null
+          permalink: string | null
+          post_id: string | null
+          posted_at: string | null
+          profile_visits: number | null
+          reach: number | null
+          saved: number | null
+          shares: number | null
+          thumbnail_url: string | null
+          total_interactions: number | null
+          views: number | null
+        }
+        Insert: {
+          caption?: string | null
+          client_id: string
+          comments_count?: number | null
+          follows?: number | null
+          id?: string
+          ig_media_id: string
+          last_synced_at?: string
+          like_count?: number | null
+          media_product_type?: string | null
+          media_type?: string | null
+          permalink?: string | null
+          post_id?: string | null
+          posted_at?: string | null
+          profile_visits?: number | null
+          reach?: number | null
+          saved?: number | null
+          shares?: number | null
+          thumbnail_url?: string | null
+          total_interactions?: number | null
+          views?: number | null
+        }
+        Update: {
+          caption?: string | null
+          client_id?: string
+          comments_count?: number | null
+          follows?: number | null
+          id?: string
+          ig_media_id?: string
+          last_synced_at?: string
+          like_count?: number | null
+          media_product_type?: string | null
+          media_type?: string | null
+          permalink?: string | null
+          post_id?: string | null
+          posted_at?: string | null
+          profile_visits?: number | null
+          reach?: number | null
+          saved?: number | null
+          shares?: number | null
+          thumbnail_url?: string | null
+          total_interactions?: number | null
+          views?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ig_post_metrics_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ig_post_metrics_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "posts"
             referencedColumns: ["id"]
           },
         ]

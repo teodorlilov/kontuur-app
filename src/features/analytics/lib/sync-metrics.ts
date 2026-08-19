@@ -1,6 +1,7 @@
 import 'server-only'
 
 import type { SupabaseClient } from '@supabase/supabase-js'
+import type { Database } from '@/types/database'
 import { GraphApiError } from '@/lib/meta/graph-errors'
 import {
   fetchAccountFields,
@@ -32,63 +33,8 @@ const BACKFILL_DAYS = 30
 const MEDIA_LOOKBACK_DAYS = 30
 const SECONDS_PER_DAY = 86_400
 
-/*
- * WHY hand-held row shapes + untyped SupabaseClient below: the 20260822 tables
- * are not in src/types/database.ts yet — the generated file comes from the
- * linked LIVE database (docs/DB-GEN-TYPES.md) and the migration has not reached
- * prod. Same established pattern as fetchClientPostStats. Once the migration is
- * applied and types are regenerated, derive these from the generated rows and
- * drop the casts in this file.
- */
-
-interface IGAccountMetricsInsert {
-  client_id: string
-  metric_date: string
-  followers_count?: number | null
-  follows_count?: number | null
-  media_count?: number | null
-  reach?: number | null
-  views?: number | null
-  accounts_engaged?: number | null
-  total_interactions?: number | null
-  likes?: number | null
-  comments?: number | null
-  saves?: number | null
-  shares?: number | null
-  replies?: number | null
-  reposts?: number | null
-  profile_views?: number | null
-  website_clicks?: number | null
-  follows?: number | null
-  unfollows?: number | null
-  profile_links_taps?: number | null
-  reach_by_media_product_type?: Record<string, number> | null
-  interactions_by_media_product_type?: Record<string, number> | null
-  link_taps_by_button_type?: Record<string, number> | null
-  fetched_at?: string
-}
-
-interface IGPostMetricsInsert {
-  client_id: string
-  post_id: string | null
-  ig_media_id: string
-  media_type: string | null
-  media_product_type: string | null
-  permalink: string | null
-  thumbnail_url: string | null
-  caption: string | null
-  posted_at: string | null
-  reach: number | null
-  views: number | null
-  like_count: number | null
-  comments_count: number | null
-  saved: number | null
-  shares: number | null
-  total_interactions: number | null
-  follows: number | null
-  profile_visits: number | null
-  last_synced_at: string
-}
+type IGAccountMetricsInsert = Database['public']['Tables']['ig_account_metrics']['Insert']
+type IGPostMetricsInsert = Database['public']['Tables']['ig_post_metrics']['Insert']
 
 interface IGConnection {
   client_id: string
@@ -124,7 +70,7 @@ export async function syncAllClientMetrics(
     .not('access_token', 'is', null)
     .not('account_id', 'is', null)
   if (error) throw new Error(`connection roster query failed: ${error.message}`)
-  // WHY as: explicit column projection over the untyped admin handle (see header).
+  // WHY as: the shared SupabaseClient param is untyped, so the projection does not infer.
   const connections = (data ?? []) as IGConnection[]
 
   for (const [index, connection] of connections.entries()) {
@@ -357,7 +303,7 @@ async function fetchPostIdsByMediaId(
     .eq('client_id', clientId)
     .in('ig_media_id', mediaIds)
   if (error) throw new Error(`posts join query failed: ${error.message}`)
-  // WHY as: explicit column projection over the untyped admin handle (see header).
+  // WHY as: the shared SupabaseClient param is untyped, so the projection does not infer.
   const rows = (data ?? []) as Array<{ id: string; ig_media_id: string | null }>
   return new Map(
     rows.flatMap((row) => (row.ig_media_id ? [[row.ig_media_id, row.id] as const] : []))
@@ -416,7 +362,7 @@ async function notifyMetricsBlocked(admin: SupabaseClient, clientId: string): Pr
     .maybeSingle()
   if (error) throw new Error(`client lookup failed: ${error.message}`)
   if (!client) return
-  // WHY as: explicit column projection over the untyped admin handle (see header).
+  // WHY as: the shared SupabaseClient param is untyped, so the projection does not infer.
   const { name } = client as { name: string }
   await insertClientNotificationOnce(
     admin,
