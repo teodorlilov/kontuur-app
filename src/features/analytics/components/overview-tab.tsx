@@ -1,7 +1,7 @@
 'use client'
 
 import dynamic from 'next/dynamic'
-import type { AnalyticsMetrics } from '@/types/api'
+import type { InstagramMetrics } from '@/types/api'
 import { AiSummaryStrip } from './ai-summary-strip'
 import { MetricCards } from './metric-cards'
 import { MediaTypeBreakdown } from './media-type-breakdown'
@@ -11,7 +11,7 @@ import { TopPostsTable } from './top-posts-table'
 const AnalyticsCharts = dynamic(() => import('./charts').then((m) => m.AnalyticsCharts))
 
 interface OverviewTabProps {
-  metrics: AnalyticsMetrics
+  metrics: InstagramMetrics
   aiSummary: string
   onViewAllPosts: () => void
 }

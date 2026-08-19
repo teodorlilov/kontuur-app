@@ -4,7 +4,6 @@ import {
   deltaPct,
   buildAudienceDemographics,
   pivotIGInsights,
-  pivotFBInsights,
   sumIGDailyInsights,
   computeNetChangeFromSnapshots,
   computeIGPostAggregates,
@@ -108,17 +107,6 @@ describe('pivotIGInsights', () => {
       },
     ])
     expect(result[0]).toEqual({ date: '2026-07-01', follows: 7, unfollows: 2 })
-  })
-})
-
-describe('pivotFBInsights', () => {
-  it('renames page metrics to internal keys and drops unknown metrics', () => {
-    const result = pivotFBInsights([
-      { name: 'page_impressions', values: [{ value: 100, end_time: '2026-07-01T07:00:00+0000' }] },
-      { name: 'page_fan_adds', values: [{ value: 3, end_time: '2026-07-01T07:00:00+0000' }] },
-      { name: 'unknown_metric', values: [{ value: 9, end_time: '2026-07-01T07:00:00+0000' }] },
-    ])
-    expect(result).toEqual([{ date: '2026-07-01', impressions: 100, fan_adds: 3 }])
   })
 })
 

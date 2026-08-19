@@ -1,15 +1,13 @@
 import Image from 'next/image'
-import type { AnalyticsMetrics, IGPost } from '@/types/api'
+import type { InstagramMetrics } from '@/types/api'
 import { typeColorStyle, formatType } from '../utils/media-type'
 
 interface PostGridProps {
-  metrics: AnalyticsMetrics
+  metrics: InstagramMetrics
 }
 
 export function PostGrid({ metrics }: PostGridProps) {
-  if (metrics.platform !== 'instagram') return null
-
-  const posts = metrics.posts as IGPost[]
+  const posts = metrics.posts
   if (posts.length === 0) return null
 
   return (

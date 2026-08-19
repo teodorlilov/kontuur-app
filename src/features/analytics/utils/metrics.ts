@@ -1,26 +1,17 @@
-import { capitalize } from '@/utils/format'
-import type { AnalyticsMetrics, InstagramMetrics, FacebookMetrics } from '@/types/api'
+import type { InstagramMetrics } from '@/types/api'
 
-/** Capitalizes the first letter of a platform name (e.g. "instagram" → "Instagram"). */
-export function capitalizePlatform(platform: string): string {
-  return capitalize(platform)
-}
-
-/** Returns the follower/fan count from the account object regardless of platform. */
-export function getFollowerCount(metrics: AnalyticsMetrics): number {
-  // Discriminated union doesn't narrow via property access alone
-  return metrics.platform === 'instagram'
-    ? (metrics as InstagramMetrics).account.followers_count
-    : (metrics as FacebookMetrics).account.fan_count
+/** Returns the follower count from the account object. */
+export function getFollowerCount(metrics: InstagramMetrics): number {
+  return metrics.account.followers_count
 }
 
 /** Returns the net follower change for the period. */
-export function getNetFollowerChange(metrics: AnalyticsMetrics): number {
+export function getNetFollowerChange(metrics: InstagramMetrics): number {
   return metrics.summary.new_followers - metrics.summary.unfollowers
 }
 
 /** Calculates follower growth rate as a percentage, or null when starting count is zero. */
-export function calcFollowerGrowthRate(metrics: AnalyticsMetrics): number | null {
+export function calcFollowerGrowthRate(metrics: InstagramMetrics): number | null {
   const total = getFollowerCount(metrics)
   const netChange = getNetFollowerChange(metrics)
   const starting = total - netChange

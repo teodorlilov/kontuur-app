@@ -11,7 +11,7 @@ import {
   ResponsiveContainer,
   ReferenceDot,
 } from 'recharts'
-import type { AnalyticsMetrics } from '@/types/api'
+import type { InstagramMetrics } from '@/types/api'
 import {
   CHART_COLORS,
   CHART_AXIS_PROPS,
@@ -20,7 +20,7 @@ import {
 } from '@/features/analytics/lib/chart-config'
 
 interface AnalyticsChartsProps {
-  metrics: AnalyticsMetrics
+  metrics: InstagramMetrics
 }
 
 export function AnalyticsCharts({ metrics }: AnalyticsChartsProps) {

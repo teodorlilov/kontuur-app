@@ -27,7 +27,6 @@ interface RefreshTokensResult {
  * Keeps Instagram long-lived tokens alive.
  * IG tokens expire after ~60 days and must be refreshed via ig_refresh_token;
  * without this, every connection silently dies and scheduled posts start failing.
- * Facebook Page tokens (derived from a long-lived user token) do not expire.
  *
  * A token Meta declares invalid (code 190 family) is RETIRED — access_token
  * nulled so the publish preflight reports "needs reconnecting" instead of
@@ -36,17 +35,6 @@ interface RefreshTokensResult {
 export async function refreshExpiringTokens(): Promise<RefreshTokensResult> {
   const admin = createAdminSupabaseClient()
   const results: RefreshTokensResult = { refreshed: 0, failed: 0, retired: 0, errors: [] }
-
-  // FB Page tokens don't expire — clear the bogus 60-day expiries older
-  // connect flows wrote, so the scheduler stops rejecting healthy connections.
-  const { error: fbCleanupError } = await admin
-    .from('social_connections')
-    .update({ token_expires_at: null })
-    .eq('platform', 'facebook')
-    .not('token_expires_at', 'is', null)
-  if (fbCleanupError) {
-    results.errors.push(`facebook expiry cleanup failed: ${fbCleanupError.message}`)
-  }
 
   const cutoff = new Date(Date.now() + REFRESH_WINDOW_DAYS * MS_PER_DAY).toISOString()
   const { data, error: listError } = await admin

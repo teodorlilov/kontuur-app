@@ -1,5 +1,4 @@
-export const META_GRAPH_VERSION = 'v25.0'
-export const META_GRAPH_BASE = `https://graph.facebook.com/${META_GRAPH_VERSION}`
+const META_GRAPH_VERSION = 'v25.0'
 export const IG_GRAPH_BASE = `https://graph.instagram.com/${META_GRAPH_VERSION}`
 
 // Instagram Business Login endpoints. The authorize/token pair is unversioned

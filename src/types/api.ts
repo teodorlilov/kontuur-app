@@ -32,7 +32,7 @@ export interface PostImage {
  * `platform` follows the empty-string convention `targetDate` set: the editor ships
  * every field, `''` until chosen. Empty inherits the run's platform; a value
  * overrides it for that one post — so an idea asked for on Instagram can ride along
- * with researched posts written for Facebook in a single run. The wire schema
+ * with researched posts written for LinkedIn in a single run. The wire schema
  * (`priorityPostSchema`) narrows the value to `PLATFORMS`.
  */
 export interface PriorityPost {
@@ -223,7 +223,7 @@ export type MetaConnection = Pick<
 > & {
   /** Narrowed from the column's plain string: the table also holds 'canva' rows,
    *  which every consumer of this type filters out. */
-  platform: 'instagram' | 'facebook'
+  platform: 'instagram'
 }
 
 // ---- Analytics ----
@@ -304,68 +304,13 @@ export interface InstagramMetrics {
   media_type_breakdown: MediaTypeBreakdownItem[]
 }
 
-export interface FBDailyInsight {
-  date: string
-  impressions?: number
-  reach?: number
-  engaged_users?: number
-  page_views?: number
-  fan_adds?: number
-  fan_removes?: number
-  organic_reach?: number
-  paid_reach?: number
-}
-
-export interface FBPost {
-  id: string
-  message: string | null
-  created_time: string
-  reactions: number
-  comments: number
-  shares: number
-  reach?: number
-  impressions?: number
-}
-
-export interface FacebookMetrics {
-  platform: 'facebook'
-  account: {
-    fan_count: number
-    followers_count: number
-  }
-  summary: {
-    total_reach: number
-    total_impressions: number
-    total_engaged_users: number
-    avg_engagement_rate: number
-    posts_published: number
-    new_followers: number
-    unfollowers: number
-    organic_reach_pct: number | null
-    paid_reach_pct: number | null
-    reach_delta_pct: number | null
-    views_delta_pct: number | null
-    profile_views_delta_pct: number | null
-    followers_delta_pct: number | null
-    avg_save_rate: number
-    total_saved: number
-    total_shares: number
-  }
-  daily_insights: FBDailyInsight[]
-  posts: FBPost[]
-  audience: AudienceDemographics | null
-  media_type_breakdown: MediaTypeBreakdownItem[]
-}
-
-export type AnalyticsMetrics = InstagramMetrics | FacebookMetrics
-
 export type AnalyticsReport = Pick<
   AnalyticsReportRow,
   'id' | 'client_id' | 'platform' | 'period_start' | 'period_end' | 'ai_summary' | 'created_at'
 > & {
   /** Narrowed from the column's `Json`: the report route writes this shape and every
    *  reader charts it, so the assertion lives here rather than at each use. */
-  metrics_json: AnalyticsMetrics
+  metrics_json: InstagramMetrics
 }
 
 // ---- API error ----

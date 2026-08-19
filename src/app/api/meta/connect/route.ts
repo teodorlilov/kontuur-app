@@ -1,36 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
 import { verifyClientOwnership } from '@/lib/auth/helpers'
-import { META_GRAPH_VERSION, IG_AUTHORIZE_URL } from '@/lib/meta/constants'
+import { IG_AUTHORIZE_URL } from '@/lib/meta/constants'
 import { encodeOAuthState } from '../oauth-state'
 
-// Instagram Business Login — direct instagram.com OAuth (no Facebook Page required)
+// Instagram Business Login — direct instagram.com OAuth
 const INSTAGRAM_BUSINESS_SCOPES = [
   'instagram_business_basic',
   'instagram_business_manage_insights',
   'instagram_business_content_publish',
 ].join(',')
 
-// Facebook Pages OAuth
-// Note: business_management is included but requires Meta app review for production.
-// In development mode it only works for app admins/testers.
-const FACEBOOK_PAGE_SCOPES = [
-  'pages_read_engagement',
-  'pages_show_list',
-  'pages_manage_metadata',
-  'read_insights',
-  'business_management',
-].join(',')
-
-/** Start the Meta OAuth flow — redirects to Facebook/Instagram with a signed state. */
+/** Start the Instagram OAuth flow — redirects to instagram.com with a signed state. */
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const clientId = searchParams.get('client_id')
   const platform = searchParams.get('platform')
 
-  if (!clientId || !platform || !['instagram', 'facebook'].includes(platform)) {
+  // Instagram is the only platform Kontuur connects — reject anything else outright.
+  if (!clientId || platform !== 'instagram') {
     return NextResponse.json(
-      { error: 'client_id and platform (instagram|facebook) are required' },
+      { error: 'client_id and platform=instagram are required' },
       { status: 400 }
     )
   }
@@ -42,36 +32,23 @@ export async function GET(request: NextRequest) {
   const owned = await verifyClientOwnership(auth.supabase, clientId, agencyId)
   if (!owned) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  const fbAppId = process.env.META_APP_ID
   const igAppId = process.env.META_INSTAGRAM_APP_ID
   const redirectUri = process.env.META_REDIRECT_URI
-  if (!fbAppId || !igAppId || !redirectUri || !process.env.META_APP_SECRET) {
+  // META_APP_SECRET signs the OAuth state, so it is required even though the
+  // Instagram app has its own secret for the token exchange.
+  if (!igAppId || !redirectUri || !process.env.META_APP_SECRET) {
     return NextResponse.json({ error: 'Meta app not configured' }, { status: 500 })
   }
 
-  const state = encodeOAuthState({
-    clientId,
-    platform: platform as 'instagram' | 'facebook',
-  })
+  const state = encodeOAuthState({ clientId, platform: 'instagram' })
 
-  let oauthUrl: URL
-  if (platform === 'instagram') {
-    // Instagram Business Login — redirects to instagram.com consent page
-    oauthUrl = new URL(IG_AUTHORIZE_URL)
-    oauthUrl.searchParams.set('client_id', igAppId)
-    oauthUrl.searchParams.set('redirect_uri', redirectUri)
-    oauthUrl.searchParams.set('scope', INSTAGRAM_BUSINESS_SCOPES)
-    oauthUrl.searchParams.set('state', state)
-    oauthUrl.searchParams.set('response_type', 'code')
-  } else {
-    // Facebook Pages OAuth
-    oauthUrl = new URL(`https://www.facebook.com/${META_GRAPH_VERSION}/dialog/oauth`)
-    oauthUrl.searchParams.set('client_id', fbAppId)
-    oauthUrl.searchParams.set('redirect_uri', redirectUri)
-    oauthUrl.searchParams.set('scope', FACEBOOK_PAGE_SCOPES)
-    oauthUrl.searchParams.set('state', state)
-    oauthUrl.searchParams.set('response_type', 'code')
-  }
+  // Instagram Business Login — redirects to instagram.com consent page
+  const oauthUrl = new URL(IG_AUTHORIZE_URL)
+  oauthUrl.searchParams.set('client_id', igAppId)
+  oauthUrl.searchParams.set('redirect_uri', redirectUri)
+  oauthUrl.searchParams.set('scope', INSTAGRAM_BUSINESS_SCOPES)
+  oauthUrl.searchParams.set('state', state)
+  oauthUrl.searchParams.set('response_type', 'code')
 
   return NextResponse.redirect(oauthUrl.toString())
 }

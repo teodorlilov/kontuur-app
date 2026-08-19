@@ -1,7 +1,7 @@
 'use client'
 
 import dynamic from 'next/dynamic'
-import type { AnalyticsMetrics, IGPost, FBPost } from '@/types/api'
+import type { InstagramMetrics } from '@/types/api'
 import { MetricCard } from '@/components/ui/metric-card'
 import { AiSummaryStrip } from './ai-summary-strip'
 import { TopPostsTable } from './top-posts-table'
@@ -11,7 +11,7 @@ import { PostGrid } from './post-grid'
 const PostDayBreakdown = dynamic(() => import('./charts').then((m) => m.PostDayBreakdown))
 
 interface PostsTabProps {
-  metrics: AnalyticsMetrics
+  metrics: InstagramMetrics
   aiSummary: string
 }
 
@@ -71,22 +71,12 @@ export function PostsTab({ metrics, aiSummary }: PostsTabProps) {
   )
 }
 
-function computePostMetrics(metrics: AnalyticsMetrics): {
+function computePostMetrics(metrics: InstagramMetrics): {
   totalLikes: number
   avgReachPerPost: number
 } {
-  const igPosts = metrics.platform === 'instagram' ? (metrics.posts as IGPost[]) : []
-  const fbPosts = metrics.platform === 'facebook' ? (metrics.posts as FBPost[]) : []
-
-  const totalLikes =
-    metrics.platform === 'instagram'
-      ? igPosts.reduce((s, p) => s + p.like_count, 0)
-      : fbPosts.reduce((s, p) => s + p.reactions, 0)
-
-  const totalReach =
-    metrics.platform === 'instagram'
-      ? igPosts.reduce((s, p) => s + (p.reach ?? 0), 0)
-      : fbPosts.reduce((s, p) => s + (p.reach ?? 0), 0)
+  const totalLikes = metrics.posts.reduce((s, p) => s + p.like_count, 0)
+  const totalReach = metrics.posts.reduce((s, p) => s + (p.reach ?? 0), 0)
 
   const avgReachPerPost =
     metrics.summary.posts_published > 0

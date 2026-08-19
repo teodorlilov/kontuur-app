@@ -1,15 +1,14 @@
-import type { AnalyticsMetrics } from '@/types/api'
+import type { InstagramMetrics } from '@/types/api'
 import { formatType } from '../utils/media-type'
 
 interface MediaTypeBreakdownProps {
-  metrics: AnalyticsMetrics
+  metrics: InstagramMetrics
 }
 
 const TYPE_COLORS: Record<string, string> = {
   CAROUSEL_ALBUM: 'var(--spring-text)',
   VIDEO: 'var(--forest)',
   IMAGE: 'var(--spring-text)',
-  Post: 'var(--spring-text)',
 }
 
 export function MediaTypeBreakdown({ metrics }: MediaTypeBreakdownProps) {

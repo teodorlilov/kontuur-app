@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
 import { verifyClientOwnership } from '@/lib/auth/helpers'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
-import { IG_GRAPH_BASE, META_GRAPH_BASE } from '@/lib/meta/constants'
+import { IG_GRAPH_BASE } from '@/lib/meta/constants'
 
 /**
  * Resolves the live profile picture for a connected social account and
@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
   const admin = createAdminSupabaseClient()
   const { data: connection } = await admin
     .from('social_connections')
-    .select('client_id, platform, account_id, access_token')
+    .select('client_id, platform, access_token')
     .eq('id', connectionId)
     .single()
 
@@ -40,11 +40,7 @@ export async function GET(request: NextRequest) {
   if (!owned) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
   try {
-    const imageUrl = await resolvePictureUrl(
-      connection.platform,
-      connection.account_id,
-      connection.access_token
-    )
+    const imageUrl = await resolvePictureUrl(connection.platform, connection.access_token)
     if (!imageUrl) return NextResponse.json({ error: 'No picture' }, { status: 404 })
 
     const res = NextResponse.redirect(imageUrl, 302)
@@ -57,29 +53,19 @@ export async function GET(request: NextRequest) {
   }
 }
 
-/** Fetch the current profile-picture URL from the platform's Graph API. */
+/** Fetch the current profile-picture URL from the Instagram Graph API. */
 async function resolvePictureUrl(
   platform: string | null,
-  accountId: string | null,
   accessToken: string
 ): Promise<string | null> {
-  if (platform === 'instagram') {
-    const res = await fetch(
-      `${IG_GRAPH_BASE}/me?fields=profile_picture_url&access_token=${accessToken}`
-    )
-    if (!res.ok) return null
-    const body = (await res.json()) as { profile_picture_url?: string }
-    return body.profile_picture_url ?? null
-  }
+  // Instagram is the only platform with pictures to resolve — 'canva' rows
+  // share the table and fall through to null.
+  if (platform !== 'instagram') return null
 
-  if (platform === 'facebook' && accountId) {
-    const res = await fetch(
-      `${META_GRAPH_BASE}/${accountId}/picture?type=large&redirect=false&access_token=${accessToken}`
-    )
-    if (!res.ok) return null
-    const body = (await res.json()) as { data?: { url?: string } }
-    return body.data?.url ?? null
-  }
-
-  return null
+  const res = await fetch(
+    `${IG_GRAPH_BASE}/me?fields=profile_picture_url&access_token=${accessToken}`
+  )
+  if (!res.ok) return null
+  const body = (await res.json()) as { profile_picture_url?: string }
+  return body.profile_picture_url ?? null
 }

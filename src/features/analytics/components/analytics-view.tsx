@@ -17,8 +17,7 @@ import { EmptyStateAnalytics } from './empty-state-analytics'
 import { OverviewTab } from './overview-tab'
 import { PostsTab } from './posts-tab'
 import { AudienceTab } from './audience-tab'
-import { capitalizePlatform } from '../utils/metrics'
-import type { AnalyticsReport, AnalyticsMetrics, MetaConnection } from '@/types/api'
+import type { AnalyticsReport, MetaConnection } from '@/types/api'
 
 interface AnalyticsViewProps {
   clients: Array<{ id: string; name: string }>
@@ -38,29 +37,21 @@ function getDateRange(preset: Preset): { start: string; end: string } {
   }
 }
 
+/** Whether the client has an Instagram row — 'canva' rows share the table and don't count. */
+function hasInstagramConnection(connections: MetaConnection[]): boolean {
+  return connections.some((c) => c.platform === 'instagram')
+}
+
 /** Top-level analytics page. Owns the header: the report tabs are its state. */
 export function AnalyticsView({ clients, initialConnections }: AnalyticsViewProps) {
   const router = useRouter()
   const [selectedClientId, setSelectedClientId] = useState(clients[0]?.id ?? '')
-  // Platform type is only 'instagram' | 'facebook' in practice but the DB
-  // column is a plain string, so we assert after reading from the connection.
-  const [platform, setPlatform] = useState<'instagram' | 'facebook'>(
-    (initialConnections[0]?.platform as 'instagram' | 'facebook') ?? 'instagram'
-  )
   const [preset, setPreset] = useState<Preset>('30d')
   const [activeTab, setActiveTab] = useState<Tab>('overview')
 
   const [connections, setConnections] = useState<MetaConnection[]>(initialConnections)
   const [generating, setGenerating] = useState(false)
   const [report, setReport] = useState<AnalyticsReport | null>(null)
-
-  // Tracks the (clientId, platform) pair that ReportHistory should fetch for.
-  // Updated atomically after connections resolve so ReportHistory never fires
-  // with a mismatched pair.
-  const [historyClientId, setHistoryClientId] = useState(clients[0]?.id ?? '')
-  const [historyPlatform, setHistoryPlatform] = useState<'instagram' | 'facebook'>(
-    (initialConnections[0]?.platform as 'instagram' | 'facebook') ?? 'instagram'
-  )
 
   // Skip initial mount — connections for the first client are passed as props
   // from the server component, so no client-side fetch is needed on load.
@@ -76,25 +67,12 @@ export function AnalyticsView({ clients, initialConnections }: AnalyticsViewProp
     fetch(`/api/meta/connections?client_id=${selectedClientId}`)
       .then((r) => r.json())
       .then((data: { connections?: MetaConnection[] }) => {
-        const conns = data.connections ?? []
-        setConnections(conns)
-        const firstConn = conns[0]
-        if (firstConn) {
-          const resolvedPlatform = firstConn.platform as 'instagram' | 'facebook'
-          setPlatform(resolvedPlatform)
-          setHistoryClientId(selectedClientId)
-          setHistoryPlatform(resolvedPlatform)
-        } else {
-          setHistoryClientId(selectedClientId)
-        }
+        setConnections(data.connections ?? [])
       })
       .catch(() => setConnections([]))
   }, [selectedClientId])
 
-  const connectedPlatforms = useMemo(
-    () => new Set(connections.map((c) => c.platform)),
-    [connections]
-  )
+  const connected = hasInstagramConnection(connections)
   const currentClientName = useMemo(
     () => clients.find((c) => c.id === selectedClientId)?.name ?? '',
     [clients, selectedClientId]
@@ -112,7 +90,7 @@ export function AnalyticsView({ clients, initialConnections }: AnalyticsViewProp
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           client_id: selectedClientId,
-          platform,
+          platform: 'instagram',
           period_start: start,
           period_end: end,
         }),
@@ -125,13 +103,10 @@ export function AnalyticsView({ clients, initialConnections }: AnalyticsViewProp
     } finally {
       setGenerating(false)
     }
-  }, [selectedClientId, platform, preset])
+  }, [selectedClientId, preset])
 
   const handleLoadReport = useCallback((loaded: AnalyticsReport) => {
     setReport(loaded)
-    // DB stores platform as a plain string — assert to the known union
-    setPlatform(loaded.platform as 'instagram' | 'facebook')
-    setHistoryPlatform(loaded.platform as 'instagram' | 'facebook')
     setActiveTab('overview')
   }, [])
 
@@ -143,13 +118,7 @@ export function AnalyticsView({ clients, initialConnections }: AnalyticsViewProp
     )
   }
 
-  // metrics_json is stored as JSONB — the API guarantees the shape matches
-  // AnalyticsMetrics but TypeScript sees it as Json, so we assert.
-  const metrics = report?.metrics_json as AnalyticsMetrics | undefined
-
-  const platformOptions = (['instagram', 'facebook'] as const)
-    .filter((p) => connectedPlatforms.has(p))
-    .map((p) => ({ value: p, label: capitalizePlatform(p) }))
+  const metrics = report?.metrics_json
 
   const reportTabs: Array<TabItem<Tab>> = [
     { id: 'overview', label: 'Overview' },
@@ -178,8 +147,8 @@ export function AnalyticsView({ clients, initialConnections }: AnalyticsViewProp
           <HeaderMeta
             parts={[
               currentClientName || null,
-              connectedPlatforms.size > 0 ? capitalizePlatform(platform) : null,
-              connectedPlatforms.size === 0 && <MetaWarn>No account connected</MetaWarn>,
+              connected ? 'Instagram' : null,
+              !connected && <MetaWarn>No account connected</MetaWarn>,
             ]}
           />
         }
@@ -191,17 +160,6 @@ export function AnalyticsView({ clients, initialConnections }: AnalyticsViewProp
                 value={selectedClientId}
                 options={clients.map((c) => ({ value: c.id, label: c.name }))}
                 onChange={setSelectedClientId}
-              />
-            )}
-            {platformOptions.length > 1 && (
-              <SelectControl
-                label="Platform"
-                value={platform}
-                options={platformOptions}
-                onChange={(p) => {
-                  setPlatform(p)
-                  setHistoryPlatform(p)
-                }}
               />
             )}
             <Segmented
@@ -223,9 +181,7 @@ export function AnalyticsView({ clients, initialConnections }: AnalyticsViewProp
               size="sm"
               onClick={handleGenerateReport}
               loading={generating}
-              disabled={
-                generating || connectedPlatforms.size === 0 || !connectedPlatforms.has(platform)
-              }
+              disabled={generating || !connected}
             >
               {report ? 'Regenerate' : 'Generate report'}
             </Button>
@@ -245,7 +201,7 @@ export function AnalyticsView({ clients, initialConnections }: AnalyticsViewProp
       />
 
       <div className={cn(PAGE_SHELL, 'space-y-6 pb-8 pt-6')}>
-        {connectedPlatforms.size === 0 && !generating && (
+        {!connected && !generating && (
           <EmptyStateAnalytics
             variant="no-accounts"
             clientName={currentClientName}
@@ -253,25 +209,22 @@ export function AnalyticsView({ clients, initialConnections }: AnalyticsViewProp
           />
         )}
 
-        {connectedPlatforms.size > 0 && !generating && !report && (
+        {connected && !generating && !report && (
           <EmptyStateAnalytics
             variant="ready"
             clientName={currentClientName}
-            platform={platform}
             range={preset}
             onGenerate={handleGenerateReport}
           />
         )}
 
-        {generating && (
-          <AnalyticsLoading platform={platform} clientName={currentClientName} range={preset} />
-        )}
+        {generating && <AnalyticsLoading clientName={currentClientName} range={preset} />}
 
         {!generating && report && metrics && (
           <div id="analytics-print-area" className="space-y-6">
             <div className="hidden print:block mb-6">
               <h1 className="text-headline font-semibold text-ink">
-                {currentClientName} — {capitalizePlatform(report.platform)} Report
+                {currentClientName} — Instagram Report
               </h1>
               <p className="text-body text-text3 mt-1">
                 Period: {report.period_start} to {report.period_end}
@@ -290,13 +243,9 @@ export function AnalyticsView({ clients, initialConnections }: AnalyticsViewProp
           </div>
         )}
 
-        {historyClientId && (
+        {selectedClientId && (
           <div className="print-hide">
-            <ReportHistory
-              clientId={historyClientId}
-              platform={historyPlatform}
-              onLoad={handleLoadReport}
-            />
+            <ReportHistory clientId={selectedClientId} onLoad={handleLoadReport} />
           </div>
         )}
       </div>

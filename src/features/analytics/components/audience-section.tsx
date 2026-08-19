@@ -6,10 +6,10 @@ import {
   CHART_AXIS_PROPS,
   CHART_TOOLTIP_STYLE,
 } from '@/features/analytics/lib/chart-config'
-import type { AnalyticsMetrics } from '@/types/api'
+import type { InstagramMetrics } from '@/types/api'
 
 interface AudienceSectionProps {
-  metrics: AnalyticsMetrics
+  metrics: InstagramMetrics
 }
 
 export function AudienceSection({ metrics }: AudienceSectionProps) {

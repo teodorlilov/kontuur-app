@@ -40,7 +40,7 @@ export const USER_SETTABLE_POST_STATUSES = [
  * *post* vocabulary (five selectable names in display case) — posts.platform uses that
  * one. The two describe different tables and must not be derived from each other.
  */
-export const POST_PLATFORMS = ['instagram', 'facebook'] as const
+export const POST_PLATFORMS = ['instagram'] as const
 
 /** Discard-reason values — must mirror the discarded_drafts.reason check constraint (migration 20260805). */
 export const DISCARD_REASONS = [

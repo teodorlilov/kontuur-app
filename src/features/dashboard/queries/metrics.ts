@@ -45,8 +45,8 @@ export const getCachedScheduledThisWeek = cache(fetchScheduledCount)
 /**
  * How many of the agency's clients have at least one social account linked.
  *
- * Counted over distinct client ids rather than rows, because a client with both Instagram and
- * Facebook connected is still one connected client.
+ * Counted over distinct client ids rather than rows, because a client with more than one
+ * connection row (Instagram plus Canva) is still one connected client.
  */
 const fetchConnectedCount = unstable_cache(
   async (agencyId: string): Promise<number> => {

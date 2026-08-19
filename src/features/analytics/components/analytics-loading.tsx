@@ -4,37 +4,30 @@ import { useState, useEffect } from 'react'
 import { BarChart3, Check } from 'lucide-react'
 import { Spinner } from '@/components/ui/spinner'
 import { cn } from '@/utils/cn'
-import { capitalizePlatform } from '../utils/metrics'
 
 interface AnalyticsLoadingProps {
-  platform: string
   clientName: string
   range: string
 }
 
 const STAGE_DURATIONS = [2000, 4000, 5000, 8000]
 
-function buildStageLabels(platform: string): string[] {
-  const name = capitalizePlatform(platform)
-  return [
-    `Connected to ${name} API`,
-    'Fetching post metrics',
-    'Fetching audience data',
-    'Generating AI summary',
-  ]
-}
+const STAGE_LABELS = [
+  'Connected to Instagram API',
+  'Fetching post metrics',
+  'Fetching audience data',
+  'Generating AI summary',
+]
 
 /** 4-stage cosmetic loading view for report generation. */
-/** 4-stage cosmetic loading view for report generation. */
-export function AnalyticsLoading({ platform, clientName, range }: AnalyticsLoadingProps) {
+export function AnalyticsLoading({ clientName, range }: AnalyticsLoadingProps) {
   const [stage, setStage] = useState(0)
-  const labels = buildStageLabels(platform)
 
   useEffect(() => {
-    if (stage >= labels.length - 1) return
+    if (stage >= STAGE_LABELS.length - 1) return
     const timer = setTimeout(() => setStage((s) => s + 1), STAGE_DURATIONS[stage])
     return () => clearTimeout(timer)
-  }, [stage, labels.length])
+  }, [stage])
 
   return (
     <div className="flex-1 flex flex-col items-center justify-center p-10 bg-surface rounded-lg border border-line">
@@ -44,11 +37,11 @@ export function AnalyticsLoading({ platform, clientName, range }: AnalyticsLoadi
         Building your report
       </h2>
       <p className="text-body text-text2 text-center mb-7">
-        {clientName} · {capitalizePlatform(platform)} · Last {range}
+        {clientName} · Instagram · Last {range}
       </p>
 
       <div className="w-full max-w-[320px] flex flex-col gap-1.5 mb-6">
-        {labels.map((label, i) => (
+        {STAGE_LABELS.map((label, i) => (
           <StageRow key={i} isDone={i < stage} isActive={i === stage} label={label} />
         ))}
       </div>

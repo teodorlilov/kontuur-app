@@ -10,7 +10,7 @@ import { Check } from 'lucide-react'
 const BENEFITS = [
   "Posts written and designed in each client's own brand identity",
   'Clients approve with one tap — a link, no logins',
-  'Publishes itself to Instagram & Facebook, on schedule',
+  'Publishes itself to Instagram, on schedule',
   'Analytics with an AI summary and client-ready reports',
 ] as const
 

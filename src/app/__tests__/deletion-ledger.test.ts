@@ -45,6 +45,7 @@ describe('deleted files stay deleted', () => {
     'src/features/sources/lib/ensure-web-research-source.ts',
     'src/features/ideas/components/idea-card.tsx',
     'src/features/ideas/lib/cache.ts',
+    'src/lib/meta/facebook-metrics.ts',
   ])('%s does not exist', (relPath) => {
     expect(existsSync(path.resolve(SRC, '..', relPath))).toBe(false)
   })
@@ -63,6 +64,13 @@ describe('deleted symbols stay unreferenced', () => {
     'fetchTopPostsByClient',
     'ensureWebResearchSource',
     'sanitizePromptArray',
+    // Instagram-only (2026-08): the Facebook flow and its types
+    'fetchFacebookMetrics',
+    'FacebookMetrics',
+    'pivotFBInsights',
+    'fbPagesResponseSchema',
+    'FACEBOOK_PAGE_SCOPES',
+    'capitalizePlatform',
   ]
 
   it('no source line mentions a ledgered symbol', () => {

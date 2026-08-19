@@ -192,9 +192,8 @@ export function ClientSettingsForm(props: ClientSettingsFormProps) {
     if (!connected && !error) return
 
     if (connected) {
-      toast.success(
-        `${connected === 'instagram' ? 'Instagram' : 'Facebook'} account connected successfully`
-      )
+      // The callback only ever redirects with meta_connected=instagram.
+      toast.success('Instagram account connected successfully')
     } else {
       // The callback puts the real reason in meta_error_detail — a generic message makes OAuth
       // failures undebuggable.

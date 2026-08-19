@@ -1,10 +1,9 @@
 /**
  * One definition of what "expired" and "expiring" mean for a stored OAuth token.
  *
- * A NULL expiry means "never expires", NOT "expired". Facebook Page tokens are
- * deliberately nulled by refreshExpiringTokens() — Page tokens derived from a
- * long-lived user token do not expire — so reading NULL as expired would mark
- * every healthy Facebook connection as broken.
+ * A NULL expiry means "never expires", NOT "expired". Some connections are
+ * stored without an expiry (older connect flows wrote none), and reading NULL
+ * as expired would mark every such healthy connection as broken.
  *
  * This is the only definition — the publish cron, the research pipeline, the API
  * routes and the connected-accounts tab all import it. Anything that needs to

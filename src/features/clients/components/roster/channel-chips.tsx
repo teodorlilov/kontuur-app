@@ -3,18 +3,16 @@ import { cn } from '@/utils/cn'
 
 /**
  * Two-letter marks rather than brand glyphs: the column is 116px and the states
- * matter more than the logos. Only Instagram and Facebook appear, because those
- * are the only platforms the publish pipeline supports — a chip for anything
- * else would promise a connection the product cannot make.
+ * matter more than the logos. Only Instagram appears, because it is the only
+ * platform the publish pipeline supports — a chip for anything else would
+ * promise a connection the product cannot make.
  */
 const PLATFORM_LABELS: Record<RosterChannel['platform'], string> = {
   instagram: 'IG',
-  facebook: 'FB',
 }
 
 const PLATFORM_NAMES: Record<RosterChannel['platform'], string> = {
   instagram: 'Instagram',
-  facebook: 'Facebook',
 }
 
 const STATE_CLASSES: Record<RosterChannel['state'], string> = {

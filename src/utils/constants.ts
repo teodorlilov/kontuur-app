@@ -46,7 +46,7 @@ export const CLIENT_FILES_BUCKET = 'client-files'
 export const PLATFORMS = ['Instagram', 'Facebook', 'LinkedIn', 'X / Twitter', 'TikTok'] as const
 
 /** The subset of PLATFORMS that can actually publish today. The rest of the list is roadmap. */
-export const LIVE_PLATFORMS = new Set<string>(['Instagram', 'Facebook'])
+export const LIVE_PLATFORMS = new Set<string>(['Instagram'])
 
 export interface PlatformAccount {
   id: string
@@ -60,8 +60,8 @@ export interface PlatformAccount {
  * The accounts a client can connect, in the order both surfaces list them — the settings
  * Connected accounts tab and the onboarding platform row.
  *
- * These labels are the *account* vocabulary ("Facebook Page"), not the PLATFORMS vocabulary
- * ("Facebook"). The two lists describe different things and must not be derived from each other.
+ * These labels are the *account* vocabulary, not the PLATFORMS vocabulary. The two lists
+ * describe different things and must not be derived from each other.
  */
 export const PLATFORM_ACCOUNTS: readonly PlatformAccount[] = [
   {
@@ -69,13 +69,6 @@ export const PLATFORM_ACCOUNTS: readonly PlatformAccount[] = [
     label: 'Instagram',
     initials: 'IG',
     note: 'Business or Creator account required',
-    supported: true,
-  },
-  {
-    id: 'facebook',
-    label: 'Facebook Page',
-    initials: 'FB',
-    note: 'Needed for Instagram publishing',
     supported: true,
   },
   { id: 'linkedin', label: 'LinkedIn', initials: 'LI', note: 'Company pages', supported: false },

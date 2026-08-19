@@ -4,15 +4,13 @@ import { resolveAuth } from '@/lib/auth/resolve-auth'
 import { verifyClientOwnership, fetchClientWithOwnership } from '@/lib/auth/helpers'
 import { generateAnalyticsSummary } from '@/ai/analytics/generate-summary'
 import { fetchInstagramMetrics } from '@/lib/meta/instagram-metrics'
-import { fetchFacebookMetrics } from '@/lib/meta/facebook-metrics'
 import { isTokenExpired } from '@/lib/meta/token-expiry'
-import type { InstagramMetrics, FacebookMetrics } from '@/types/api'
 import { SOCIAL_CONNECTION_AUTH_COLUMNS } from '@/lib/queries/select-columns'
 
-/** platform selects which Meta API is called, so it is an enum rather than a free string. */
+/** platform is a literal, not a free string: Instagram is the only platform reports cover. */
 const reportRequestSchema = z.object({
   client_id: z.string().min(1),
-  platform: z.enum(['instagram', 'facebook']),
+  platform: z.literal('instagram'),
   period_start: z.string().min(1),
   period_end: z.string().min(1),
 })
@@ -28,7 +26,7 @@ export async function POST(request: NextRequest) {
     body = reportRequestSchema.parse(await request.json())
   } catch {
     return NextResponse.json(
-      { error: 'client_id, platform (instagram|facebook), period_start, period_end are required' },
+      { error: 'client_id, platform=instagram, period_start, period_end are required' },
       { status: 400 }
     )
   }
@@ -68,23 +66,12 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    let metrics: InstagramMetrics | FacebookMetrics
-
-    if (platform === 'instagram') {
-      metrics = await fetchInstagramMetrics(
-        connection.account_id!,
-        connection.access_token!,
-        period_start,
-        period_end
-      )
-    } else {
-      metrics = await fetchFacebookMetrics(
-        connection.account_id!,
-        connection.access_token!,
-        period_start,
-        period_end
-      )
-    }
+    const metrics = await fetchInstagramMetrics(
+      connection.account_id!,
+      connection.access_token!,
+      period_start,
+      period_end
+    )
 
     const aiSummary = await generateAnalyticsSummary({
       clientName,
@@ -127,7 +114,6 @@ export async function POST(request: NextRequest) {
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const clientId = searchParams.get('client_id')
-  const platform = searchParams.get('platform')
 
   if (!clientId) {
     return NextResponse.json({ error: 'client_id is required' }, { status: 400 })
@@ -140,17 +126,12 @@ export async function GET(request: NextRequest) {
   const owned = await verifyClientOwnership(supabase, clientId, agencyId)
   if (!owned) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  let query = supabase
+  const { data: reports, error } = await supabase
     .from('analytics_reports')
-    .select('id, platform, period_start, period_end, ai_summary, created_at')
+    // No platform column: every stored report is Instagram, so the list has no use for it.
+    .select('id, period_start, period_end, ai_summary, created_at')
     .eq('client_id', clientId)
     .order('created_at', { ascending: false })
-
-  if (platform) {
-    query = query.eq('platform', platform)
-  }
-
-  const { data: reports, error } = await query
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 

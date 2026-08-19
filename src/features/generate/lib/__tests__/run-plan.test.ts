@@ -126,8 +126,10 @@ describe('computeRunPlan', () => {
     it('connection for another platform does not count', () => {
       const plan = computeRunPlan({
         ...base,
-        platform: 'Facebook',
-        connections: [connection({ platform: 'instagram' })],
+        // WHY the assertion: Canva rows share social_connections and reach this
+        // list at runtime; the type narrows to 'instagram' but the check must
+        // still refuse to treat a Canva row as a publishing connection.
+        connections: [connection({ platform: 'canva' as MetaConnection['platform'] })],
       })
       expect(plan.publishState).toEqual({ kind: 'not_connected' })
     })

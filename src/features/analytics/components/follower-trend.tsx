@@ -10,7 +10,7 @@ import {
   ResponsiveContainer,
   ReferenceDot,
 } from 'recharts'
-import type { AnalyticsMetrics, IGDailyInsight } from '@/types/api'
+import type { InstagramMetrics } from '@/types/api'
 import {
   CHART_COLORS,
   CHART_AXIS_PROPS,
@@ -18,28 +18,20 @@ import {
 } from '@/features/analytics/lib/chart-config'
 
 interface FollowerTrendProps {
-  metrics: AnalyticsMetrics
+  metrics: InstagramMetrics
 }
 
-/** Follower count over time area chart (Instagram only). */
+/** Follower count over time area chart. */
 export function FollowerTrend({ metrics }: FollowerTrendProps) {
-  const isIG = metrics.platform === 'instagram'
-
-  const followerSeries = isIG
-    ? (metrics.daily_insights as IGDailyInsight[])
-        .filter((d) => d.follower_count != null)
-        .map((d) => ({ date: d.date.slice(5), followers: d.follower_count }))
-    : []
+  const followerSeries = metrics.daily_insights
+    .filter((d) => d.follower_count != null)
+    .map((d) => ({ date: d.date.slice(5), followers: d.follower_count }))
 
   if (followerSeries.length < 2) {
     return (
       <div className="bg-surface border border-line rounded-lg px-6 py-5">
         <p className="text-title font-medium text-ink mb-4">Follower count over time</p>
-        <p className="text-body text-text3 text-center py-8">
-          {isIG
-            ? 'Not enough follower data available'
-            : 'Follower trend is only available for Instagram'}
-        </p>
+        <p className="text-body text-text3 text-center py-8">Not enough follower data available</p>
       </div>
     )
   }

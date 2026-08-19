@@ -24,13 +24,13 @@ function connection(over: Partial<RosterConnectionRow> = {}): RosterConnectionRo
   return { platform: 'instagram', account_name: 'acct', token_expires_at: offset(90), ...over }
 }
 
-/** Healthy by default: both channels live, one queued post, nothing awaiting approval. */
+/** Healthy by default: Instagram live, one queued post, nothing awaiting approval. */
 function client(over: Partial<RosterClientRow> = {}): RosterClientRow {
   return {
     id: 'c1',
     name: 'Haelan',
     niche: 'Healthcare',
-    social_connections: [connection(), connection({ platform: 'facebook' })],
+    social_connections: [connection()],
     ...over,
   }
 }
@@ -94,7 +94,7 @@ describe('computeRosterEntry — every status is reachable', () => {
   })
 
   it('connection_expiring when a token lapses inside the window', () => {
-    const rows = [connection({ token_expires_at: offset(6) }), connection({ platform: 'facebook' })]
+    const rows = [connection({ token_expires_at: offset(6) })]
     const result = entry({ social_connections: rows })
     expect(result.status).toBe('connection_expiring')
     expect(result.expiresInDays).toBe(6)
@@ -114,27 +114,27 @@ describe('computeRosterEntry — every status is reachable', () => {
 })
 
 describe('computeRosterEntry — null expiry', () => {
-  it('keeps a Facebook connection with a null expiry connected', () => {
-    // refreshExpiringTokens() nulls FB Page expiries on purpose. Reading null as
-    // expired would turn every healthy Facebook client red.
-    const rows = [connection(), connection({ platform: 'facebook', token_expires_at: null })]
+  it('keeps a connection with a null expiry connected', () => {
+    // NULL means "never expires" — older connect flows stored no expiry, and
+    // reading null as expired would turn every such healthy client red.
+    const rows = [connection({ token_expires_at: null })]
     const result = entry({ social_connections: rows })
     expect(result.status).toBe('on_schedule')
-    expect(result.channels.find((c) => c.platform === 'facebook')?.state).toBe('connected')
+    expect(result.channels.find((c) => c.platform === 'instagram')?.state).toBe('connected')
   })
 })
 
 describe('computeRosterEntry — channels', () => {
   it('renders one chip per supported platform even when absent', () => {
-    const result = entry({ social_connections: [connection()] })
-    expect(result.channels.map((c) => c.platform)).toEqual(['instagram', 'facebook'])
-    expect(result.channels.find((c) => c.platform === 'facebook')?.state).toBe('missing')
+    const result = entry({ social_connections: [] })
+    expect(result.channels.map((c) => c.platform)).toEqual(['instagram'])
+    expect(result.channels.find((c) => c.platform === 'instagram')?.state).toBe('missing')
   })
 
   it('never renders Canva as a social channel', () => {
     const rows = [connection(), connection({ platform: 'canva' })]
     const result = entry({ social_connections: rows })
-    expect(result.channels).toHaveLength(2)
+    expect(result.channels).toHaveLength(1)
     expect(result.channels.some((c) => (c.platform as string) === 'canva')).toBe(false)
   })
 

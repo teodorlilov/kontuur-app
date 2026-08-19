@@ -16,8 +16,8 @@ function offset(days: number): string {
 
 describe('isTokenExpired', () => {
   it('treats a null expiry as NOT expired', () => {
-    // Facebook Page tokens are deliberately nulled by refreshExpiringTokens().
-    // Inverting this marks every healthy Facebook connection as broken.
+    // NULL means "never expires": older connect flows stored no expiry, and
+    // inverting this marks every such healthy connection as broken.
     expect(isTokenExpired(null, NOW)).toBe(false)
   })
 

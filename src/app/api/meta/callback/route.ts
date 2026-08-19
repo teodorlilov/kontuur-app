@@ -3,24 +3,14 @@ import { revalidateTag } from 'next/cache'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
 import { verifyClientOwnership } from '@/lib/auth/helpers'
-import {
-  META_GRAPH_BASE as GRAPH_BASE,
-  IG_GRAPH_BASE,
-  IG_OAUTH_TOKEN_URL,
-  IG_TOKEN_EXCHANGE_URL,
-} from '@/lib/meta/constants'
+import { IG_GRAPH_BASE, IG_OAUTH_TOKEN_URL, IG_TOKEN_EXCHANGE_URL } from '@/lib/meta/constants'
 import {
   igShortLivedTokenSchema,
   igShortLivedWrappedSchema,
   igLongLivedTokenSchema,
-  fbTokenResponseSchema,
   igUserSchema,
-  fbPagesResponseSchema,
-  fbBusinessPagesResponseSchema,
   type IGShortLivedToken,
   type IGLongLivedToken,
-  type FBTokenResponse,
-  type FBPage,
 } from '@/lib/meta/schemas'
 import { decodeOAuthState } from '../oauth-state'
 
@@ -98,39 +88,7 @@ async function exchangeInstagramForLongLived(shortLivedToken: string): Promise<I
   return result.data
 }
 
-// ---- Facebook token exchange ----
-
-async function exchangeFacebookCode(code: string, redirectUri: string): Promise<FBTokenResponse> {
-  const url = new URL(`${GRAPH_BASE}/oauth/access_token`)
-  url.searchParams.set('client_id', process.env.META_APP_ID!)
-  url.searchParams.set('client_secret', process.env.META_APP_SECRET!)
-  url.searchParams.set('redirect_uri', redirectUri)
-  url.searchParams.set('code', code)
-
-  const res = await fetch(url.toString())
-  if (!res.ok) {
-    const err = await res.text()
-    throw new Error(`Facebook token exchange failed: ${err}`)
-  }
-  return fbTokenResponseSchema.parse(await res.json())
-}
-
-async function exchangeFacebookForLongLived(shortLivedToken: string): Promise<FBTokenResponse> {
-  const url = new URL(`${GRAPH_BASE}/oauth/access_token`)
-  url.searchParams.set('grant_type', 'fb_exchange_token')
-  url.searchParams.set('client_id', process.env.META_APP_ID!)
-  url.searchParams.set('client_secret', process.env.META_APP_SECRET!)
-  url.searchParams.set('fb_exchange_token', shortLivedToken)
-
-  const res = await fetch(url.toString())
-  if (!res.ok) {
-    const err = await res.text()
-    throw new Error(`Facebook long-lived token exchange failed: ${err}`)
-  }
-  return fbTokenResponseSchema.parse(await res.json())
-}
-
-// ---- Platform connection savers ----
+// ---- Connection saver ----
 
 async function connectInstagram(
   longLivedToken: string,
@@ -164,58 +122,9 @@ async function connectInstagram(
   if (error) throw new Error(`Failed to save Instagram connection: ${error.message}`)
 }
 
-async function connectFacebook(
-  longLivedToken: string,
-  clientId: string,
-  admin: ReturnType<typeof createAdminSupabaseClient>
-): Promise<void> {
-  // Try personal admin pages first
-  const pagesRes = await fetch(
-    `${GRAPH_BASE}/me/accounts?fields=id,name,access_token&limit=100&access_token=${longLivedToken}`
-  )
-  const pagesBody = fbPagesResponseSchema.parse(await pagesRes.json())
-  if (!pagesRes.ok || pagesBody.error) {
-    throw new Error(
-      `Failed to fetch Facebook pages: ${pagesBody.error?.message ?? pagesRes.status}`
-    )
-  }
-
-  let page: FBPage | undefined = pagesBody.data?.[0]
-
-  // Fallback: try Business Portfolio pages (requires business_management permission)
-  if (!page) {
-    const bmRes = await fetch(
-      `${GRAPH_BASE}/me/businesses?fields=owned_pages{id,name,access_token}&limit=10&access_token=${longLivedToken}`
-    )
-    const bmBody = fbBusinessPagesResponseSchema.parse(await bmRes.json())
-    page = bmBody.data?.[0]?.owned_pages?.data?.[0]
-  }
-
-  if (!page) {
-    throw new Error(
-      'No Facebook Pages found. Please connect a Facebook Page managed directly by your account.'
-    )
-  }
-
-  const { error } = await admin.from('social_connections').upsert(
-    {
-      client_id: clientId,
-      platform: 'facebook',
-      account_id: page.id,
-      account_name: page.name,
-      access_token: page.access_token,
-      // Page tokens derived from a long-lived user token do not expire
-      token_expires_at: null,
-    },
-    { onConflict: 'client_id,platform' }
-  )
-
-  if (error) throw new Error(`Failed to save Facebook connection: ${error.message}`)
-}
-
 // ---- Route handler ----
 
-/** Meta OAuth return leg: exchange the code for a long-lived token and store the connection. */
+/** Instagram OAuth return leg: exchange the code for a long-lived token and store the connection. */
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const code = searchParams.get('code')
@@ -242,7 +151,7 @@ export async function GET(request: NextRequest) {
       `${process.env.NEXT_PUBLIC_APP_URL}/clients?meta_error=invalid_state`
     )
   }
-  const { clientId, platform } = decoded
+  const { clientId } = decoded
 
   // The callback runs in the user's browser session — require login and
   // verify the client belongs to their agency before saving any connection
@@ -264,25 +173,16 @@ export async function GET(request: NextRequest) {
   const admin = createAdminSupabaseClient()
 
   try {
-    if (platform === 'instagram') {
-      // Instagram Business Login flow
-      const shortLived = await exchangeInstagramCode(code, redirectUri)
-      const longLived = await exchangeInstagramForLongLived(shortLived.access_token)
-      await connectInstagram(
-        longLived.access_token,
-        shortLived.user_id,
-        longLived.expires_in,
-        clientId,
-        admin
-      )
-    } else if (platform === 'facebook') {
-      // Facebook Pages flow
-      const shortLived = await exchangeFacebookCode(code, redirectUri)
-      const longLived = await exchangeFacebookForLongLived(shortLived.access_token)
-      await connectFacebook(longLived.access_token, clientId, admin)
-    } else {
-      return NextResponse.redirect(errorRedirect)
-    }
+    // Instagram Business Login flow — the only platform the connect route issues state for
+    const shortLived = await exchangeInstagramCode(code, redirectUri)
+    const longLived = await exchangeInstagramForLongLived(shortLived.access_token)
+    await connectInstagram(
+      longLived.access_token,
+      shortLived.user_id,
+      longLived.expires_in,
+      clientId,
+      admin
+    )
 
     // Connecting was the one side of this that never invalidated — disconnect
     // has always called it (connection-actions.ts). Without this the Clients
@@ -290,11 +190,11 @@ export async function GET(request: NextRequest) {
     revalidateTag('agency-clients', 'max')
 
     return NextResponse.redirect(
-      `${process.env.NEXT_PUBLIC_APP_URL}/clients/${clientId}/edit?meta_connected=${platform}`
+      `${process.env.NEXT_PUBLIC_APP_URL}/clients/${clientId}/edit?meta_connected=instagram`
     )
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
-    console.error('Meta OAuth callback error:', message)
+    console.error('Instagram OAuth callback error:', message)
     return NextResponse.redirect(
       `${errorRedirect}&meta_error_detail=${encodeURIComponent(message)}`
     )

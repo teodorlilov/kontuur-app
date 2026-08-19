@@ -53,21 +53,22 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Missing signed_request' }, { status: 400 })
   }
 
-  // Try the Facebook app secret first, fall back to Instagram app secret
-  const appSecret = process.env.META_APP_SECRET ?? process.env.META_INSTAGRAM_APP_SECRET ?? ''
-  const parsed = verifySignedRequest(signedRequest, appSecret)
-
+  // Meta signs with whichever app's secret issued the request — accept either.
+  // (The old two-step version dropped the alternate parse into a throwaway
+  // object and then crashed reading user_id off the null primary.)
+  const secrets = [process.env.META_APP_SECRET, process.env.META_INSTAGRAM_APP_SECRET].filter(
+    (secret): secret is string => !!secret
+  )
+  let parsed: { user_id: string } | null = null
+  for (const secret of secrets) {
+    parsed = verifySignedRequest(signedRequest, secret)
+    if (parsed?.user_id) break
+  }
   if (!parsed?.user_id) {
-    // Try the other secret if the first failed
-    const altSecret = process.env.META_INSTAGRAM_APP_SECRET ?? ''
-    const altParsed = altSecret ? verifySignedRequest(signedRequest, altSecret) : null
-    if (!altParsed?.user_id) {
-      return NextResponse.json({ error: 'Invalid signature' }, { status: 403 })
-    }
-    Object.assign(parsed ?? {}, altParsed)
+    return NextResponse.json({ error: 'Invalid signature' }, { status: 403 })
   }
 
-  const userId = (parsed as { user_id: string }).user_id
+  const userId = parsed.user_id
   const confirmationCode = `${userId}-${Date.now()}`
 
   const admin = createAdminSupabaseClient()

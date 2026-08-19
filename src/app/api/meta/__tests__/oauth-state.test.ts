@@ -22,7 +22,7 @@ describe('oauth-state', () => {
   })
 
   it('rejects a tampered signature', () => {
-    const state = encodeOAuthState({ clientId: 'client-123', platform: 'facebook' })
+    const state = encodeOAuthState({ clientId: 'client-123', platform: 'instagram' })
     const [body] = state.split('.')
     expect(decodeOAuthState(`${body}.AAAA`)).toBeNull()
   })
@@ -52,7 +52,9 @@ describe('oauth-state', () => {
     expect(decodeOAuthState(`${staleBody}.${sig}`)).toBeNull()
   })
 
-  it('rejects an unknown platform even when signed', () => {
+  it('rejects a non-Instagram platform even when signed', () => {
+    // Also covers a replayed state from any retired platform flow: anything
+    // that is not exactly 'instagram' must fail, not fall through to the IG flow.
     const body = Buffer.from(
       JSON.stringify({ clientId: 'client-123', platform: 'tiktok', exp: Date.now() + 60_000 })
     ).toString('base64url')

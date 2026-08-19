@@ -1,6 +1,5 @@
 import type {
   AudienceDemographics,
-  FBDailyInsight,
   IGDailyInsight,
   IGPost,
   InstagramMetrics,
@@ -84,40 +83,6 @@ export function pivotIGInsights(data: IGInsightData): IGDailyInsight[] {
   // Dynamic keys from API — assert to our typed interface
   return Object.values(dailyMap)
     .map((d) => d as unknown as IGDailyInsight)
-    .sort((a, b) => a.date.localeCompare(b.date))
-}
-
-export type FBInsightData = Array<{
-  name: string
-  values: Array<{ value: number; end_time: string }>
-}>
-
-const FB_INSIGHT_KEY_MAP: Record<string, string> = {
-  page_impressions: 'impressions',
-  page_reach: 'reach',
-  page_engaged_users: 'engaged_users',
-  page_views_total: 'page_views',
-  page_fan_adds: 'fan_adds',
-  page_fan_removes: 'fan_removes',
-  page_organic_reach: 'organic_reach',
-  page_paid_reach: 'paid_reach',
-}
-
-/** Pivots raw FB page insight API data into daily insight records. */
-export function pivotFBInsights(data: FBInsightData): FBDailyInsight[] {
-  const dailyMap: Record<string, Record<string, unknown>> = {}
-  for (const metric of data) {
-    const key = FB_INSIGHT_KEY_MAP[metric.name]
-    if (!key) continue
-    for (const entry of metric.values) {
-      const date = entry.end_time.split('T')[0]!
-      if (!dailyMap[date]) dailyMap[date] = { date }
-      dailyMap[date]![key] = entry.value
-    }
-  }
-  // Dynamic keys from API — assert to our typed interface
-  return Object.values(dailyMap)
-    .map((d) => d as unknown as FBDailyInsight)
     .sort((a, b) => a.date.localeCompare(b.date))
 }
 

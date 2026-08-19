@@ -1,11 +1,11 @@
 'use client'
 
-import type { AnalyticsMetrics, InstagramMetrics, FacebookMetrics } from '@/types/api'
+import type { InstagramMetrics } from '@/types/api'
 import { MetricCard } from '@/components/ui/metric-card'
 import { calcFollowerGrowthRate } from '../utils/metrics'
 
 interface MetricCardsProps {
-  metrics: AnalyticsMetrics
+  metrics: InstagramMetrics
 }
 
 type CardDef = {
@@ -26,8 +26,8 @@ function formatSignedNumber(n: number): string {
   return n >= 0 ? `+${n.toLocaleString()}` : `−${Math.abs(n).toLocaleString()}`
 }
 
-/** Builds metric cards for Instagram. */
-function buildIGCards(metrics: InstagramMetrics): CardDef[] {
+/** Builds the overview metric cards from the report summary. */
+function buildCards(metrics: InstagramMetrics): CardDef[] {
   const { summary } = metrics
   const followerGrowthRate = calcFollowerGrowthRate(metrics)
 
@@ -78,69 +78,10 @@ function buildIGCards(metrics: InstagramMetrics): CardDef[] {
   ]
 }
 
-/** Builds metric cards for Facebook. */
-function buildFBCards(metrics: FacebookMetrics): CardDef[] {
-  const { summary } = metrics
-  const followerGrowthRate = calcFollowerGrowthRate(metrics)
-  const frequency =
-    summary.total_reach > 0 && summary.total_impressions > 0
-      ? Math.round((summary.total_impressions / summary.total_reach) * 10) / 10
-      : null
-
-  const cards: CardDef[] = [
-    {
-      label: 'Reach',
-      value: summary.total_reach.toLocaleString(),
-      accentColor: 'var(--metric-1)',
-      ...formatDelta(summary.reach_delta_pct),
-    },
-    {
-      label: 'Views',
-      value: summary.total_impressions.toLocaleString(),
-      accentColor: 'var(--metric-2)',
-      ...formatDelta(summary.views_delta_pct),
-    },
-    {
-      label: 'Engaged users',
-      value: summary.total_engaged_users.toLocaleString(),
-      accentColor: 'var(--metric-3)',
-    },
-    {
-      label: 'New followers',
-      value: `+${summary.new_followers.toLocaleString()}`,
-      accentColor: 'var(--metric-3)',
-      ...formatDelta(summary.followers_delta_pct),
-    },
-    {
-      label: 'Follower growth rate',
-      value: followerGrowthRate !== null ? `+${followerGrowthRate}%` : '—',
-      accentColor: 'var(--metric-4)',
-    },
-    {
-      label: 'Frequency',
-      value: frequency !== null ? `${frequency}x` : '—',
-      accentColor: 'var(--metric-1)',
-    },
-  ]
-  if (summary.organic_reach_pct != null) {
-    cards.push({
-      label: 'Organic reach',
-      value: `${summary.organic_reach_pct}%`,
-      accentColor: 'var(--metric-3)',
-    })
-  }
-  return cards
-}
-
 export function MetricCards({ metrics }: MetricCardsProps) {
-  const cards =
-    metrics.platform === 'instagram'
-      ? buildIGCards(metrics as InstagramMetrics)
-      : buildFBCards(metrics as FacebookMetrics)
-
   return (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-      {cards.map((card) => (
+      {buildCards(metrics).map((card) => (
         <MetricCard key={card.label} {...card} />
       ))}
     </div>

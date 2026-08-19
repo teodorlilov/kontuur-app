@@ -34,36 +34,10 @@ export const igLongLivedTokenSchema = z.looseObject({
   expires_in: z.number(),
 })
 
-export const fbTokenResponseSchema = z.looseObject({
-  access_token: z.string().min(1),
-  token_type: z.string().optional(),
-  expires_in: z.number().optional(),
-})
-
 export const igUserSchema = z.looseObject({
   id: z.string(),
   username: z.string().optional(),
   name: z.string().optional(),
-})
-
-export const fbPageSchema = z.looseObject({
-  id: z.string(),
-  name: z.string(),
-  access_token: z.string(),
-})
-
-/** Meta returns `{ error: { message } }` with a 200 on some failures, so both arms are optional. */
-export const fbPagesResponseSchema = z.looseObject({
-  data: z.array(fbPageSchema).optional(),
-  error: z.looseObject({ message: z.string() }).optional(),
-})
-
-export const fbBusinessPagesResponseSchema = z.looseObject({
-  data: z
-    .array(
-      z.looseObject({ owned_pages: z.looseObject({ data: z.array(fbPageSchema) }).optional() })
-    )
-    .optional(),
 })
 
 /** ig_refresh_token response; `error` arrives instead of a token when the refresh is rejected. */
@@ -75,8 +49,6 @@ export const igRefreshResponseSchema = z.looseObject({
 
 export type IGShortLivedToken = { access_token: string; user_id: string }
 export type IGLongLivedToken = z.infer<typeof igLongLivedTokenSchema>
-export type FBTokenResponse = z.infer<typeof fbTokenResponseSchema>
-export type FBPage = z.infer<typeof fbPageSchema>
 
 // ── Content publishing shapes ──────────────────────────────────────────────
 

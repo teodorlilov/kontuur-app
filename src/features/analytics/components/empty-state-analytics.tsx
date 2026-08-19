@@ -2,14 +2,11 @@
 
 import { AlertTriangle, BarChart3 } from 'lucide-react'
 import { cn } from '@/utils/cn'
-import { capitalizePlatform } from '../utils/metrics'
 
 interface EmptyStateAnalyticsProps {
   variant: 'no-accounts' | 'ready'
   clientName: string
-  platform?: string
   range?: string
-  followerCount?: number
   onConnect?: () => void
   onGenerate?: () => void
 }
@@ -18,9 +15,7 @@ interface EmptyStateAnalyticsProps {
 export function EmptyStateAnalytics({
   variant,
   clientName,
-  platform,
   range,
-  followerCount,
   onConnect,
   onGenerate,
 }: EmptyStateAnalyticsProps) {
@@ -44,8 +39,8 @@ export function EmptyStateAnalytics({
           than text-body's 1.6 because it wraps to several centred lines. */}
       <p className="text-body text-text2 leading-[1.65] text-center max-w-[380px] mb-[26px]">
         {isTerra
-          ? `${platform ? capitalizePlatform(platform) : 'Platform'} is connected for ${clientName}. Choose a time range and generate a performance report for the last ${range ?? '30 days'}.`
-          : `Connect an Instagram or Facebook account for ${clientName} to start generating analytics reports.`}
+          ? `Instagram is connected for ${clientName}. Choose a time range and generate a performance report for the last ${range ?? '30 days'}.`
+          : `Connect an Instagram account for ${clientName} to start generating analytics reports.`}
       </p>
 
       {isTerra ? (
@@ -62,14 +57,8 @@ export function EmptyStateAnalytics({
           onClick={onConnect}
           className="text-body px-6 py-2.5 bg-forest-deep text-ink-inv rounded-[9px] font-medium cursor-pointer"
         >
-          Connect Instagram or Facebook →
+          Connect Instagram →
         </button>
-      )}
-
-      {isTerra && platform && followerCount != null && (
-        <p className="text-caption text-text2 mt-3.5">
-          {clientName} · {capitalizePlatform(platform)} · {followerCount.toLocaleString()} followers
-        </p>
       )}
     </div>
   )

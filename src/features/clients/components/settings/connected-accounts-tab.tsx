@@ -18,7 +18,7 @@ interface ConnectedAccountsTabProps {
   connections: MetaConnection[]
 }
 
-/** Where posts publish: Instagram and Facebook OAuth links. */
+/** Where posts publish: the Instagram OAuth link, plus roadmap platforms. */
 export function ConnectedAccountsTab({ clientId, connections }: ConnectedAccountsTabProps) {
   const router = useRouter()
   const [disconnecting, setDisconnecting] = useState<string | null>(null)

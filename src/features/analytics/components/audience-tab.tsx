@@ -1,12 +1,7 @@
 'use client'
 
 import dynamic from 'next/dynamic'
-import type {
-  AnalyticsMetrics,
-  InstagramMetrics,
-  FacebookMetrics,
-  IGDailyInsight,
-} from '@/types/api'
+import type { InstagramMetrics } from '@/types/api'
 import { MetricCard } from '@/components/ui/metric-card'
 import { getFollowerCount, getNetFollowerChange, calcFollowerGrowthRate } from '../utils/metrics'
 import { AudienceSummary } from './audience-summary'
@@ -17,13 +12,7 @@ const FollowerTrend = dynamic(() => import('./charts').then((m) => m.FollowerTre
 const AudienceSection = dynamic(() => import('./charts').then((m) => m.AudienceSection))
 
 interface AudienceTabProps {
-  metrics: AnalyticsMetrics
-}
-
-function getDeltaPct(metrics: AnalyticsMetrics): number | null {
-  return metrics.platform === 'instagram'
-    ? (metrics as InstagramMetrics).summary.net_followers_delta_pct
-    : (metrics as FacebookMetrics).summary.followers_delta_pct
+  metrics: InstagramMetrics
 }
 
 /** Audience tab — follower summary, trend chart, growth metrics, demographics. */
@@ -43,7 +32,7 @@ export function AudienceTab({ metrics }: AudienceTabProps) {
         newCount={summary.new_followers}
         unfollows={summary.unfollowers}
         netGrowth={netChange}
-        followersDeltaPct={getDeltaPct(metrics)}
+        followersDeltaPct={metrics.summary.net_followers_delta_pct}
       />
       <FollowerTrend metrics={metrics} />
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
@@ -74,10 +63,8 @@ export function AudienceTab({ metrics }: AudienceTabProps) {
   )
 }
 
-function findPeakAcquisitionDay(metrics: AnalyticsMetrics): { count: number; label: string } {
-  // Only Instagram daily insights include follower_count
-  if (metrics.platform !== 'instagram') return { count: 0, label: '' }
-  const insights = metrics.daily_insights as IGDailyInsight[]
+function findPeakAcquisitionDay(metrics: InstagramMetrics): { count: number; label: string } {
+  const insights = metrics.daily_insights
   let maxDelta = 0
   let peakDate = ''
   for (let i = 1; i < insights.length; i++) {

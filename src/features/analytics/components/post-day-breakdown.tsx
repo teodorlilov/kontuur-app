@@ -16,39 +16,26 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts'
-import type { AnalyticsMetrics, IGPost, FBPost } from '@/types/api'
+import type { InstagramMetrics } from '@/types/api'
 
 interface PostDayBreakdownProps {
-  metrics: AnalyticsMetrics
+  metrics: InstagramMetrics
 }
 
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
 export function PostDayBreakdown({ metrics }: PostDayBreakdownProps) {
   const { chartData, maxER, hasSufficientDays } = useMemo(() => {
-    const followers =
-      metrics.platform === 'instagram'
-        ? metrics.account.followers_count || 1
-        : metrics.account.fan_count || 1
+    const followers = metrics.account.followers_count || 1
 
     const dayMap: Record<number, { totalER: number; count: number }> = {}
 
-    if (metrics.platform === 'instagram') {
-      for (const post of metrics.posts as IGPost[]) {
-        const day = new Date(post.timestamp).getDay()
-        const er = ((post.like_count + post.comments_count) / followers) * 100
-        if (!dayMap[day]) dayMap[day] = { totalER: 0, count: 0 }
-        dayMap[day]!.totalER += er
-        dayMap[day]!.count++
-      }
-    } else {
-      for (const post of metrics.posts as FBPost[]) {
-        const day = new Date(post.created_time).getDay()
-        const er = ((post.reactions + post.comments + post.shares) / followers) * 100
-        if (!dayMap[day]) dayMap[day] = { totalER: 0, count: 0 }
-        dayMap[day]!.totalER += er
-        dayMap[day]!.count++
-      }
+    for (const post of metrics.posts) {
+      const day = new Date(post.timestamp).getDay()
+      const er = ((post.like_count + post.comments_count) / followers) * 100
+      if (!dayMap[day]) dayMap[day] = { totalER: 0, count: 0 }
+      dayMap[day]!.totalER += er
+      dayMap[day]!.count++
     }
 
     const data = DAY_NAMES.map((name, idx) => ({

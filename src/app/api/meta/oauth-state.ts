@@ -8,9 +8,11 @@ import { createHmac, timingSafeEqual } from 'crypto'
 
 const STATE_TTL_MS = 15 * 60 * 1000
 
+// `platform` stays in the payload for shape stability, but Instagram is the only
+// platform the connect route issues state for.
 interface OAuthStatePayload {
   clientId: string
-  platform: 'instagram' | 'facebook'
+  platform: 'instagram'
 }
 
 function stateSecret(): string {
@@ -51,7 +53,7 @@ export function decodeOAuthState(state: string): OAuthStatePayload | null {
       exp?: number
     }
     if (!decoded.clientId || !decoded.exp || Date.now() > decoded.exp) return null
-    if (decoded.platform !== 'instagram' && decoded.platform !== 'facebook') return null
+    if (decoded.platform !== 'instagram') return null
     return { clientId: decoded.clientId, platform: decoded.platform }
   } catch {
     return null

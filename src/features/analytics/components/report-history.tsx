@@ -3,33 +3,30 @@
 import type { AnalyticsReportRow } from '@/types'
 import { useState, useEffect } from 'react'
 import { deleteReport } from '@/features/analytics/actions/report-actions'
-import { capitalizePlatform } from '../utils/metrics'
 import type { AnalyticsReport } from '@/types/api'
 import { createModuleCache } from '@/utils/module-cache'
 
 type ReportHistoryEntry = Pick<
   AnalyticsReportRow,
-  'id' | 'platform' | 'period_start' | 'period_end' | 'ai_summary' | 'created_at'
+  'id' | 'period_start' | 'period_end' | 'ai_summary' | 'created_at'
 >
 
 interface ReportHistoryProps {
   clientId: string
-  platform: string
   onLoad: (report: AnalyticsReport) => void
 }
 
 // Module-level cache — survives remounts when navigating away and back to analytics tab
 const historyCache = createModuleCache<ReportHistoryEntry[]>(60_000)
 
-export function ReportHistory({ clientId, platform, onLoad }: ReportHistoryProps) {
+export function ReportHistory({ clientId, onLoad }: ReportHistoryProps) {
   const [reports, setReports] = useState<ReportHistoryEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [loadingId, setLoadingId] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
 
   useEffect(() => {
-    const key = `${clientId}:${platform}`
-    const cached = historyCache.get(key)
+    const cached = historyCache.get(clientId)
     if (cached) {
       setReports(cached)
       setLoading(false)
@@ -37,16 +34,16 @@ export function ReportHistory({ clientId, platform, onLoad }: ReportHistoryProps
     }
 
     setLoading(true)
-    fetch(`/api/analytics/report?client_id=${clientId}&platform=${platform}`)
+    fetch(`/api/analytics/report?client_id=${clientId}`)
       .then((r) => r.json())
       .then((data: { reports?: ReportHistoryEntry[] }) => {
         const result = data.reports ?? []
-        historyCache.set(key, result)
+        historyCache.set(clientId, result)
         setReports(result)
       })
       .catch(() => setReports([]))
       .finally(() => setLoading(false))
-  }, [clientId, platform])
+  }, [clientId])
 
   async function handleDelete(reportId: string) {
     setDeletingId(reportId)
@@ -54,7 +51,7 @@ export function ReportHistory({ clientId, platform, onLoad }: ReportHistoryProps
       await deleteReport(reportId)
       setReports((prev) => {
         const updated = prev.filter((r) => r.id !== reportId)
-        historyCache.patch(`${clientId}:${platform}`, updated)
+        historyCache.patch(clientId, updated)
         return updated
       })
     } catch {
@@ -91,8 +88,9 @@ export function ReportHistory({ clientId, platform, onLoad }: ReportHistoryProps
             className="flex items-center justify-between py-2 border-b border-line last:border-0"
           >
             <div>
+              {/* Instagram is hardcoded: the migration removed every non-Instagram report row. */}
               <p className="text-body text-ink">
-                {capitalizePlatform(r.platform)} · {r.period_start} to {r.period_end}
+                Instagram · {r.period_start} to {r.period_end}
               </p>
               {r.ai_summary && (
                 <p className="text-caption text-text3 line-clamp-1 mt-0.5">{r.ai_summary}</p>
