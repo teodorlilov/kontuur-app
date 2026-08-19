@@ -3,11 +3,13 @@ import { hasCyrillic } from '@/lib/canvas/font-library'
 import { splitLeadSentence } from '../lib/format'
 
 /**
- * The report speaks first — but only its opening sentence wears the serif
- * voice (the Rationed Serif Rule: an editorial address, not body text).
- * Whatever follows reads as quiet supporting prose, so a long stored summary
- * renders as a deck plus a note instead of a page of italic book type.
- * Bulgarian text falls back to the sans face (the Latin-Only Serif Rule).
+ * The report speaks from the Pine Deep capsule — the system's dark ground for
+ * moments of address (the dashboard stat card, the generate rail). The lead
+ * sentence carries the serif voice at headline scale; whatever follows sits
+ * beside it as quiet supporting prose, so the block composes as a full-width
+ * plate instead of a narrow column of italic book type. Bulgarian text falls
+ * back to the sans face (the Latin-Only Serif Rule). Print flattens the
+ * capsule to a bordered white panel.
  */
 export function NarrativeBlock({
   narrative,
@@ -38,17 +40,37 @@ export function NarrativeBlock({
   }
 
   return (
-    <section aria-label="Summary" className="max-w-[74ch] border-t border-ink/[0.05] py-5">
-      <p
-        className={cn(
-          'text-display text-ink',
-          hasCyrillic(lead) ? 'font-sans not-italic' : 'font-display italic'
+    <section
+      aria-label="Summary"
+      className="my-5 rounded-card bg-forest-deep px-7 py-7 md:px-10 md:py-9 print:border print:border-line print:bg-white print:px-0 print:py-4"
+    >
+      <div className={cn('grid gap-5', rest && 'md:grid-cols-2 md:items-start md:gap-12')}>
+        <p
+          className={cn(
+            'text-headline text-ink-inv print:text-ink',
+            hasCyrillic(lead) ? 'font-sans not-italic' : 'font-display font-normal italic',
+            !rest && 'max-w-[46ch]'
+          )}
+        >
+          “{lead}”
+        </p>
+        {rest && (
+          // The serif voice carries the whole summary (user call — the split
+          // to sans read as a different text). Scale drops to Display so the
+          // lead still leads.
+          // WHY alpha ink: the Legible Tint Rule bans alpha inks on light
+          // tints; on Pine Deep, ink-inv at 85% still measures ~10:1.
+          <p
+            className={cn(
+              'text-display text-ink-inv/85 print:text-text2',
+              hasCyrillic(rest) ? 'font-sans not-italic' : 'font-display font-normal italic'
+            )}
+          >
+            {rest}
+          </p>
         )}
-      >
-        “{lead}”
-      </p>
-      {rest && <p className="mt-2.5 max-w-[68ch] text-body text-text2">{rest}</p>}
-      <div className="mt-2 text-micro text-text3">{sourceLine}</div>
+      </div>
+      <div className="mt-6 text-micro text-sage print:text-text3">{sourceLine}</div>
     </section>
   )
 }

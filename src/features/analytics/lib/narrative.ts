@@ -159,7 +159,9 @@ const _fetchNarrative = unstable_cache(
     const text = await composeFreshNarrative(clientId, clientName, period, timezone)
     return text === null ? null : { text, archived: false }
   },
-  ['analytics-narrative'],
+  // v2: the pull-quote prompt — a new key prefix orphans the long v1 texts so
+  // every client regenerates in the short voice on first view after deploy.
+  ['analytics-narrative-v2'],
   { revalidate: 86_400, tags: [IG_METRICS_TAG] }
 )
 
