@@ -1,4 +1,5 @@
 import { cn } from '@/utils/cn'
+import { Card } from '@/components/ui/card'
 import type { AnalyticsReportData } from '../lib/build-report'
 import { formatCount } from '../lib/format'
 import { DeltaChip } from './delta-chip'
@@ -104,44 +105,48 @@ function cellSpecs(data: AnalyticsReportData): CellSpec[] {
 export function SummaryStrip({ data }: { data: AnalyticsReportData }) {
   const cells = cellSpecs(data)
   return (
-    <section aria-label="Headline metrics">
-      <h3 className="sr-only">Headline metrics, this period against the previous period</h3>
-      <div className="grid grid-cols-2 border-y border-ink/[0.05] md:grid-cols-5">
-        {cells.map((cell, index) => (
-          <div
-            key={cell.label}
-            className={cn(
-              'min-w-0 py-4 pr-5',
-              index % 2 === 1 && 'border-l border-ink/[0.05] pl-5',
-              index >= 2 && 'border-t border-ink/[0.05] md:border-t-0',
-              index > 0 && 'md:border-l md:border-ink/[0.05] md:pl-5'
-            )}
-          >
-            <div className="text-label text-text3">{cell.label}</div>
-            {data.hasHistory ? (
-              <>
-                <div className="mt-2 flex flex-wrap items-baseline gap-2">
-                  <span className="text-metric text-ink">{cell.value ?? '—'}</span>
-                  <DeltaChip value={cell.delta} unit={cell.deltaUnit} />
-                </div>
-                <div className="mt-1 text-micro tabular-nums text-text3">
-                  {cell.value === null ? 'not captured for this period' : cell.thenLine}
-                </div>
-                <Sparkline values={cell.series} />
-                <span className="sr-only">{cell.spoken}</span>
-              </>
-            ) : (
-              <>
-                <div className="mt-2 flex items-baseline gap-2">
-                  <span className="text-metric text-text3">—</span>
-                </div>
-                <div className="mt-1 text-micro text-text3">counts from tonight</div>
-                <div className="slot-open mt-2.5 h-7 rounded-chip" aria-hidden="true" />
-              </>
-            )}
-          </div>
-        ))}
-      </div>
-    </section>
+    // One clearing, not five floating columns: the strip is a Card like every
+    // other section, and the hairlines divide cells INSIDE its surface.
+    <Card className="px-6 py-1.5">
+      <section aria-label="Headline metrics">
+        <h3 className="sr-only">Headline metrics, this period against the previous period</h3>
+        <div className="grid grid-cols-2 md:grid-cols-5">
+          {cells.map((cell, index) => (
+            <div
+              key={cell.label}
+              className={cn(
+                'min-w-0 py-4 pr-5',
+                index % 2 === 1 && 'border-l border-ink/[0.05] pl-5',
+                index >= 2 && 'border-t border-ink/[0.05] md:border-t-0',
+                index > 0 && 'md:border-l md:border-ink/[0.05] md:pl-5'
+              )}
+            >
+              <div className="text-label text-text3">{cell.label}</div>
+              {data.hasHistory ? (
+                <>
+                  <div className="mt-2 flex flex-wrap items-baseline gap-2">
+                    <span className="text-metric text-ink">{cell.value ?? '—'}</span>
+                    <DeltaChip value={cell.delta} unit={cell.deltaUnit} />
+                  </div>
+                  <div className="mt-1 text-micro tabular-nums text-text3">
+                    {cell.value === null ? 'not captured for this period' : cell.thenLine}
+                  </div>
+                  <Sparkline values={cell.series} />
+                  <span className="sr-only">{cell.spoken}</span>
+                </>
+              ) : (
+                <>
+                  <div className="mt-2 flex items-baseline gap-2">
+                    <span className="text-metric text-text3">—</span>
+                  </div>
+                  <div className="mt-1 text-micro text-text3">counts from tonight</div>
+                  <div className="slot-open mt-2.5 h-7 rounded-chip" aria-hidden="true" />
+                </>
+              )}
+            </div>
+          ))}
+        </div>
+      </section>
+    </Card>
   )
 }
