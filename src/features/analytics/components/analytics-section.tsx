@@ -40,6 +40,8 @@ const SWATCH_CLASS = {
   'now-block': 'h-3 w-2 rounded-sm bg-forest',
   'dot-now': 'size-2 rounded-full bg-forest',
   'dot-second': 'size-2 rounded-full bg-spring',
+  /** The last-period marker line drawn across the audience columns. */
+  tick: 'h-0.5 w-3.5 rounded-full bg-then-line',
 } as const
 
 export type LegendSwatch = keyof typeof SWATCH_CLASS

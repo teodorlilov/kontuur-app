@@ -155,8 +155,8 @@ export function AnalyticsView({
           legend={
             <ChartLegend
               items={[
-                { swatch: 'now', label: 'Now' },
-                { swatch: 'then', label: 'Then' },
+                { swatch: 'now', label: 'This period' },
+                { swatch: 'then', label: 'Previous' },
               ]}
             />
           }
@@ -219,8 +219,8 @@ export function AnalyticsView({
           legend={
             <ChartLegend
               items={[
-                { swatch: 'now', label: 'Now' },
-                { swatch: 'then', label: 'Then' },
+                { swatch: 'now', label: 'This period' },
+                { swatch: 'then', label: 'Previous' },
               ]}
             />
           }
@@ -255,8 +255,8 @@ export function AnalyticsView({
           legend={
             <ChartLegend
               items={[
-                { swatch: 'then-block', label: 'Then' },
-                { swatch: 'now-block', label: 'Now' },
+                { swatch: 'then-block', label: 'Previous' },
+                { swatch: 'now-block', label: 'This period' },
               ]}
             />
           }
@@ -276,10 +276,20 @@ export function AnalyticsView({
           title="What the profile converted"
           sub={
             hasHistory && data.tapButtons.length > 0 && data.profileViews.now !== null
-              ? `${formatCount(data.profileViews.now)} profile views became these taps. The sage bar is last period.`
+              ? `${formatCount(data.profileViews.now)} profile views became these taps.`
               : 'Taps on the profile’s link and contact buttons — the closest thing Instagram counts to a conversion.'
           }
           ariaLabel="Profile actions"
+          legend={
+            hasHistory && data.tapButtons.length > 0 ? (
+              <ChartLegend
+                items={[
+                  { swatch: 'now', label: 'This period' },
+                  { swatch: 'then', label: 'Previous' },
+                ]}
+              />
+            ) : undefined
+          }
         >
           {!hasHistory ? (
             <EmptyFill className="mt-3.5">Tap detail appears after the first sync</EmptyFill>
@@ -312,13 +322,17 @@ export function AnalyticsView({
 
         <AnalyticsSection
           title="Who follows, who engages"
-          sub="Followers against the people who actually engaged. The sage tick marks last period's follower share."
+          sub="How your followers compare with the people who actually engaged this period."
           ariaLabel="Audience"
           legend={
             <ChartLegend
               items={[
                 { swatch: 'dot-now', label: 'Followers' },
                 { swatch: 'dot-second', label: 'Engaged' },
+                // The tick only draws when an older snapshot exists to compare against.
+                ...(data.audience?.ages.some((band) => band.prevFollowerPct !== null)
+                  ? ([{ swatch: 'tick', label: 'Previous share' }] as const)
+                  : []),
               ]}
             />
           }
