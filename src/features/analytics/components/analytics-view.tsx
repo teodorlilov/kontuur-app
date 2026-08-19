@@ -5,6 +5,7 @@ import type { AnalyticsReportData } from '../lib/build-report'
 import { formatCount, formatDayMonth, formatPeriodRange, formatShortRange } from '../lib/format'
 import { AnalyticsSection, ChartLegend } from './analytics-section'
 import { AudienceSection } from './audience-section'
+import { AutoFill } from './auto-fill'
 import { ComparisonRows } from './comparison-rows'
 import { EmptyFill } from './empty-fill'
 import { InteractionMultiples } from './interaction-multiples'
@@ -21,6 +22,8 @@ interface AnalyticsViewProps {
   narrative: string | null
   /** True when the narrative is an exported report's stored wording. */
   narrativeArchived: boolean
+  /** Days of this window never asked of Meta — triggers the automatic fill. */
+  unfilledDays: number
   clientId: string
   clientName: string
   /** The connected IG handle, when one exists. */
@@ -47,6 +50,7 @@ export function AnalyticsView({
   data,
   narrative,
   narrativeArchived,
+  unfilledDays,
   clientId,
   clientName,
   handle,
@@ -56,9 +60,11 @@ export function AnalyticsView({
 }: AnalyticsViewProps) {
   const { hasHistory, followers } = data
   const flowKnown = followers.gained.now !== null || followers.lost.now !== null
+  const filling = hasConnection && unfilledDays > 0
 
   return (
     <div id="analytics-print-area">
+      {filling && <AutoFill clientId={clientId} period={data.period} unfilledDays={unfilledDays} />}
       <header className="flex flex-wrap items-end justify-between gap-6 pb-5">
         <div>
           <div className="flex items-center gap-2.5">
@@ -75,6 +81,16 @@ export function AnalyticsView({
             <span className="text-text3">against</span>{' '}
             {formatShortRange(data.period.prevStart, data.period.prevEnd)}
           </p>
+          {filling && (
+            <p className="print-hide mt-1.5 flex items-center gap-2 text-micro text-text2">
+              <span
+                aria-hidden="true"
+                className="live-dot size-1.5 flex-none rounded-full bg-spring"
+              />
+              Pulling this period from Instagram — {unfilledDays} day
+              {unfilledDays === 1 ? '' : 's'} still filling in…
+            </p>
+          )}
         </div>
       </header>
 

@@ -109,6 +109,64 @@ export async function archiveReport(input: ArchiveReportInput): Promise<ActionRe
   return upsertReportRow(scope, report, narrative)
 }
 
+/**
+ * The automatic period fill: when the console lands on a window with days
+ * never asked of Meta, the page mounts a client leaf that calls this once
+ * (and again per run while the unfilled count keeps dropping). Same pull as
+ * Regenerate, but silent, and it never rewrites archived reports or
+ * narratives — it only completes the stored data and busts the caches.
+ * Repeat calls are cheap by construction: marked days are never re-asked.
+ */
+export async function fillPeriodData(
+  input: ArchiveReportInput
+): Promise<ActionResult<{ filled: boolean }>> {
+  const resolved = await resolveReportScope(input)
+  if (!resolved.ok) return { ok: false, error: resolved.error }
+  const { scope } = resolved
+  const admin = createAdminSupabaseClient()
+
+  // WHY as: the auth-scoped client is untyped here, so the projection does not infer.
+  const { data: connection } = (await scope.supabase
+    .from('social_connections')
+    .select(SOCIAL_CONNECTION_AUTH_COLUMNS)
+    .eq('client_id', scope.client.id)
+    .eq('platform', 'instagram')
+    .maybeSingle()) as {
+    data: {
+      account_id: string | null
+      access_token: string | null
+      token_expires_at: string | null
+    } | null
+  }
+  if (
+    !connection?.account_id ||
+    !connection.access_token ||
+    isTokenExpired(connection.token_expires_at)
+  ) {
+    return { ok: true, data: { filled: false } }
+  }
+
+  try {
+    await refreshWindowMetrics(
+      admin,
+      {
+        clientId: scope.client.id,
+        accountId: connection.account_id,
+        accessToken: connection.access_token,
+      },
+      scope.period,
+      toDateKey(new Date(), scope.timezone)
+    )
+  } catch (err) {
+    // Best-effort by design: the page already rendered from stored data.
+    console.error('[analytics] automatic period fill failed', { clientId: scope.client.id, err })
+    return { ok: true, data: { filled: false } }
+  }
+
+  revalidateTag(IG_METRICS_TAG, 'max')
+  return { ok: true, data: { filled: true } }
+}
+
 export interface RegenerateOutcome {
   /** False when Instagram could not be pulled — the rewrite used stored data. */
   refreshed: boolean

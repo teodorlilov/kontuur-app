@@ -12,21 +12,24 @@ const PERIOD: AnalyticsPeriod = {
   days: 4,
 }
 
+const ASKED = '2026-08-19T03:30:00Z'
+
 describe('selectRefillDays', () => {
-  it('targets missing and totals-less days across BOTH windows, newest first', () => {
+  it('targets never-asked days across BOTH windows, newest first', () => {
     const targets = selectRefillDays(
       [
-        // Captured with totals — must not re-spend budget on it.
-        { metric_date: '2026-08-18', views: 1898 },
-        // Captured but totals-less (reach-only backfill) — refillable.
-        { metric_date: '2026-08-16', views: null },
-        // A zero is data, not absence — must be skipped.
-        { metric_date: '2026-08-13', views: 0 },
+        // Asked (nightly sync) — inside the consolidation tail, so re-asked.
+        { metric_date: '2026-08-18', totals_synced_at: ASKED },
+        // Asked, outside the tail — never re-spent on, even if Meta had nothing.
+        { metric_date: '2026-08-13', totals_synced_at: ASKED },
+        // Backfill row: present but totals never asked — refillable.
+        { metric_date: '2026-08-16', totals_synced_at: null },
       ],
       PERIOD,
       '2026-08-19'
     )
     expect(targets).toEqual([
+      '2026-08-18', // tail re-ask (within 3 days of today)
       '2026-08-17',
       '2026-08-16',
       '2026-08-15',
@@ -34,6 +37,7 @@ describe('selectRefillDays', () => {
       '2026-08-12',
       '2026-08-11',
     ])
+    expect(targets).not.toContain('2026-08-13')
   })
 
   it('never targets today or later — the day is still accruing', () => {

@@ -14,7 +14,9 @@ import type { ArchiveEntry } from '@/features/analytics/components/report-archiv
 import { buildFallbackNarrative } from '@/features/analytics/lib/narrative'
 import { getNarrative } from '@/features/analytics/lib/narrative'
 import { resolvePeriod } from '@/features/analytics/lib/period'
+import { countUnfilledDays } from '@/features/analytics/lib/refresh-window'
 import { getAnalyticsReport } from '@/features/analytics/lib/report-data'
+import { toDateKey } from '@/utils/date-helpers'
 
 // The regenerate action runs under this segment: a full window refresh is
 // up to ~200 bounded Graph calls plus one model call, well past the default.
@@ -72,7 +74,7 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
   const period = resolvePeriod(params, timezone)
 
   const supabase = await createServerSupabaseClient()
-  const [data, connections, archiveResult] = await Promise.all([
+  const [data, connections, archiveResult, unfilledDays] = await Promise.all([
     getAnalyticsReport(clientId, period, timezone),
     fetchConnectionsByClient(supabase, clientId),
     supabase
@@ -81,6 +83,9 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
       .eq('client_id', clientId)
       .order('created_at', { ascending: false })
       .limit(12),
+    // Uncached on purpose: this is the auto-fill trigger AND its terminator —
+    // a stale count would either re-pull forever or never pull at all.
+    countUnfilledDays(supabase, clientId, period, toDateKey(new Date(), timezone)),
   ])
   if (archiveResult.error) {
     console.error('[analytics] archive list failed', archiveResult.error)
@@ -119,6 +124,7 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
             data={data}
             narrative={narrative}
             narrativeArchived={narrativeResult?.archived ?? false}
+            unfilledDays={unfilledDays}
             clientId={clientId}
             clientName={client.name}
             handle={handle}

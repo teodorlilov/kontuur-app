@@ -36,6 +36,15 @@ const SECONDS_PER_DAY = 86_400
 type IGAccountMetricsInsert = Database['public']['Tables']['ig_account_metrics']['Insert']
 type IGPostMetricsInsert = Database['public']['Tables']['ig_post_metrics']['Insert']
 
+/**
+ * Insert shape plus the totals_synced_at marker from migration 20260824.
+ * WHY extension: the generated types predate the migration — regenerate
+ * database.ts after it applies and fold this back into the Insert type.
+ */
+export type IGAccountMetricsWriteRow = IGAccountMetricsInsert & {
+  totals_synced_at?: string | null
+}
+
 interface IGConnection {
   client_id: string
   account_id: string
@@ -162,7 +171,7 @@ async function syncAccountDay(
       fetchInteractionsByProductType(accountId, accessToken, window.sinceTs, window.untilTs),
     ])
 
-  const row: IGAccountMetricsInsert = {
+  const row: IGAccountMetricsWriteRow = {
     client_id: clientId,
     metric_date: window.date,
     followers_count: account.followers_count,
@@ -188,6 +197,8 @@ async function syncAccountDay(
     interactions_by_media_product_type: interactionsByType,
     link_taps_by_button_type: linkTaps.byButton,
     fetched_at: new Date().toISOString(),
+    // The day's totals were asked, whatever came back — the refill marker.
+    totals_synced_at: new Date().toISOString(),
   }
   const { error } = await admin
     .from('ig_account_metrics')
