@@ -1,10 +1,13 @@
 import { cn } from '@/utils/cn'
 import { hasCyrillic } from '@/lib/canvas/font-library'
+import { splitLeadSentence } from '../lib/format'
 
 /**
- * The report speaks first, in the serif voice — the one editorial moment on
- * the page. Bulgarian summaries fall back to the sans face (the Latin-Only
- * Serif Rule: Instrument Serif ships no Cyrillic).
+ * The report speaks first — but only its opening sentence wears the serif
+ * voice (the Rationed Serif Rule: an editorial address, not body text).
+ * Whatever follows reads as quiet supporting prose, so a long stored summary
+ * renders as a deck plus a note instead of a page of italic book type.
+ * Bulgarian text falls back to the sans face (the Latin-Only Serif Rule).
  */
 export function NarrativeBlock({
   narrative,
@@ -16,11 +19,14 @@ export function NarrativeBlock({
   archived: boolean
   hasHistory: boolean
 }) {
-  const text = hasHistory
-    ? narrative
-    : '“Your first report writes itself tonight. From tomorrow, every number on this page reads against the month before it.”'
-  if (!text) return null
-  const quoted = hasHistory ? `“${text}”` : text
+  if (hasHistory && !narrative) return null
+
+  const { lead, rest } = hasHistory
+    ? splitLeadSentence(narrative!)
+    : {
+        lead: 'Your first report writes itself tonight. From tomorrow, every number on this page reads against the month before it.',
+        rest: '',
+      }
 
   let sourceLine: string
   if (!hasHistory) {
@@ -36,11 +42,12 @@ export function NarrativeBlock({
       <p
         className={cn(
           'text-display text-ink',
-          hasCyrillic(quoted) ? 'font-sans not-italic' : 'font-display italic'
+          hasCyrillic(lead) ? 'font-sans not-italic' : 'font-display italic'
         )}
       >
-        {quoted}
+        “{lead}”
       </p>
+      {rest && <p className="mt-2.5 max-w-[68ch] text-body text-text2">{rest}</p>}
       <div className="mt-2 text-micro text-text3">{sourceLine}</div>
     </section>
   )

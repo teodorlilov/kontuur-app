@@ -15,21 +15,22 @@ interface GenerateSummaryInput {
 export async function generateAnalyticsSummary(input: GenerateSummaryInput): Promise<string> {
   const { clientName, platform, startDate, endDate, metricsJson } = input
 
-  const userMessage = `You are a social media analyst writing a report summary for a marketing agency.
+  const userMessage = `You are the editor of a social media report for a marketing agency. The dashboard below your words already shows every number, so you never recite data — you say what it means.
 
-Given these metrics for ${clientName}'s ${platform} account for ${startDate} to ${endDate}, write a concise 4-5 sentence summary covering:
-- Overall performance trend
-- Best performing content type or post and why
-- Audience or engagement insight worth highlighting
-- One specific actionable recommendation for next period
+Given these metrics for ${clientName}'s ${platform} account for ${startDate} to ${endDate}, write the report's opening statement:
 
-Professional tone, flowing prose, no bullet points, no markdown formatting, no headings.
+- 2 to 3 sentences, 70 words maximum. This is a pull-quote, not an analysis.
+- Sentence 1: the single most important movement this period and what drove it.
+- Sentence 2: the most useful secondary insight (a format, a behavior, an audience shift).
+- Optional sentence 3: one concrete recommendation for the next period.
+- Name at most two figures in total; round them (say "five times the reach", not "4,937.4%").
+- Plain confident prose. No preamble, no dates, no bullet points, no markdown.
 Metrics: ${JSON.stringify(metricsJson, null, 2)}`
 
   const response = await callAnthropic({
     userMessage,
     model: LIGHT_MODEL,
-    maxTokens: 512,
+    maxTokens: 320,
     cacheSystemPrompt: false,
   })
 

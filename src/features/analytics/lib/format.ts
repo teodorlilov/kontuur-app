@@ -40,6 +40,20 @@ export function formatShortRange(start: string, end: string): string {
   return `${DAY_MONTH.format(keyToDate(start))} – ${DAY_MONTH.format(keyToDate(end))}`
 }
 
+/**
+ * Splits prose into its opening sentence and the rest — the narrative block
+ * speaks only the lead in the serif voice. Sentence ends are periods followed
+ * by whitespace and a capital/quote, so decimals ("0.3 percent") stay intact.
+ */
+export function splitLeadSentence(text: string): { lead: string; rest: string } {
+  const match = /(?<=[.!?][”"']?)\s+(?=[A-Z“"'])/.exec(text)
+  if (!match || match.index === undefined) return { lead: text, rest: '' }
+  return {
+    lead: text.slice(0, match.index).trim(),
+    rest: text.slice(match.index).trim(),
+  }
+}
+
 /** A real instant ("last sync") in the agency's clock: "18 Aug, 03:30". */
 export function formatSyncInstant(iso: string, timezone: string): string {
   return new Intl.DateTimeFormat('en-GB', {
