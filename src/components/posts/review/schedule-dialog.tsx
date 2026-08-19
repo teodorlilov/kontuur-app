@@ -33,7 +33,8 @@ interface ScheduleDialogProps {
   open: boolean
   platform: string | null
   bestTimeData: BestTimePlatform[] | null
-  approving: boolean
+  /** Blocks confirm while a blocking approve runs. The queue omits it — its approve is optimistic. */
+  approving?: boolean
   /** The client's week — surfaces the strip and the "next open slot" default (queue only for now). */
   weekContext?: ScheduleWeekContext
   /**
@@ -66,7 +67,7 @@ export function ScheduleDialog({
   open,
   platform,
   bestTimeData,
-  approving,
+  approving = false,
   weekContext,
   requestedDate,
   timeZone,

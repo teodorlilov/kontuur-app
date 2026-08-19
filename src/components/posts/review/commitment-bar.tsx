@@ -8,7 +8,8 @@ interface CommitmentBarProps {
   liveCount: number
   failedVisuals: number
   composingVisuals: number
-  approving: boolean
+  /** Blocks the approve buttons while a blocking approve runs. The queue omits it — its approve is optimistic. */
+  approving?: boolean
   /** Surface-specific quiet actions before Skip (the queue adds Send to client). */
   leadingActions?: React.ReactNode
   onSkip: () => void
@@ -28,7 +29,7 @@ export function CommitmentBar({
   liveCount,
   failedVisuals,
   composingVisuals,
-  approving,
+  approving = false,
   leadingActions,
   onSkip,
   onDiscard,

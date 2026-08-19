@@ -86,7 +86,6 @@ export function ReviewQueue({
   const [slideIdx, setSlideIdx] = useState(0)
   const { editsFor, setEdits } = useDraftEdits()
   const [scheduleTarget, setScheduleTarget] = useState<string | null>(null)
-  const [approving, setApproving] = useState(false)
   const [rewriting, setRewriting] = useState(false)
   const [approvedCount, setApprovedCount] = useState(0)
   const [batch, setBatch] = useState<{
@@ -133,6 +132,23 @@ export function ReviewQueue({
       for (const commit of pending.values()) commit()
       pending.clear()
     }
+  }, [])
+
+  // Approve writes still in flight. Closing the tab before one lands would
+  // strand the post as pending_review while the reviewer saw it approved, so
+  // the browser asks first. Soft navigation is safe — the fetch outlives it.
+  const pendingApprovalsRef = useRef(0)
+  useEffect(() => {
+    const warn = (event: BeforeUnloadEvent) => {
+      if (pendingApprovalsRef.current > 0) event.preventDefault()
+    }
+    window.addEventListener('beforeunload', warn)
+    return () => window.removeEventListener('beforeunload', warn)
+  }, [])
+
+  /** Put a post back unless it is already in the list — undo and every failure rollback share it. */
+  const reinstatePost = useCallback((post: QueuePost) => {
+    setPosts((prev) => (prev.some((p) => p.id === post.id) ? prev : [...prev, post]))
   }, [])
 
   // Validation arrives pre-adapted from the server; only late slop results overlay it.
@@ -359,41 +375,55 @@ export function ReviewQueue({
   }
 
   // ── Approve ──
-  async function executeApprove(postId: string, scheduledAt: string | null): Promise<boolean> {
+  /**
+   * Optimistic, the same trust-then-verify shape as discard below: the card
+   * leaves and the slot is claimed before the write returns, and a failed or
+   * thrown write reinstates the post, frees the slot and corrects the count.
+   * The generate flow's approve stays blocking on purpose — it creates the
+   * post and needs the server's id back before its owner can proceed.
+   */
+  function executeApprove(postId: string, scheduledAt: string | null): boolean {
     const target = triaged.find((t) => t.post.id === postId)
     if (!target) return false
     const edits = editsFor(toDraft(target))
     autosave.cancel()
-    const result = await updatePost(postId, {
+
+    const post = target.post
+    const slot = scheduledAt ? { client_id: post.client_id, scheduled_at: scheduledAt } : null
+    setPosts((prev) => prev.filter((p) => p.id !== postId))
+    setApprovedCount((c) => c + 1)
+    if (slot) setSessionScheduled((prev) => [...prev, slot])
+
+    const rollback = () => {
+      reinstatePost(post)
+      setApprovedCount((c) => c - 1)
+      if (slot) setSessionScheduled((prev) => prev.filter((s) => s !== slot))
+      toast.error('Approve failed — the post is back in the queue')
+    }
+
+    pendingApprovalsRef.current += 1
+    updatePost(postId, {
       caption: edits.caption,
       slides_json: edits.slidesJson,
       status: scheduledAt ? 'scheduled' : 'approved',
       scheduled_at: scheduledAt,
     })
-    if (!result.ok) {
-      toast.error('Failed to approve post')
-      return false
-    }
-    setPosts((prev) => prev.filter((p) => p.id !== postId))
-    setApprovedCount((c) => c + 1)
-    if (scheduledAt) {
-      setSessionScheduled((prev) => [
-        ...prev,
-        { client_id: target.post.client_id, scheduled_at: scheduledAt },
-      ])
-    }
+      .then((result) => {
+        if (!result.ok) rollback()
+      })
+      .catch(rollback)
+      .finally(() => {
+        pendingApprovalsRef.current -= 1
+      })
     return true
   }
 
-  async function handleScheduleConfirm(scheduledAt: string | null) {
+  function handleScheduleConfirm(scheduledAt: string | null) {
     if (!scheduleTarget) return
-    setApproving(true)
-    const ok = await executeApprove(scheduleTarget, scheduledAt)
-    setApproving(false)
-    if (ok) {
+    if (executeApprove(scheduleTarget, scheduledAt)) {
       toast.success(scheduledAt ? 'Approved · scheduled' : 'Post approved')
-      setScheduleTarget(null)
     }
+    setScheduleTarget(null)
   }
 
   function openBatch(items: QueuePost[]) {
@@ -450,7 +480,7 @@ export function ReviewQueue({
       void deletePost(postId, reason ? { reason } : undefined).then((result) => {
         if (!result.ok) {
           toast.error('Failed to delete post')
-          setPosts((prev) => (prev.some((p) => p.id === postId) ? prev : [...prev, post]))
+          reinstatePost(post)
         }
       })
     }
@@ -458,7 +488,7 @@ export function ReviewQueue({
       if (settled) return
       settled = true
       pendingDiscardsRef.current.delete(postId)
-      setPosts((prev) => (prev.some((p) => p.id === postId) ? prev : [...prev, post]))
+      reinstatePost(post)
     }
     pendingDiscardsRef.current.set(postId, commit)
 
@@ -786,7 +816,6 @@ export function ReviewQueue({
                 liveCount={bucketItems.length}
                 failedVisuals={visualTallies.failed}
                 composingVisuals={visualTallies.composing}
-                approving={approving}
                 leadingActions={
                   <Button
                     variant="ghost"
@@ -813,10 +842,9 @@ export function ReviewQueue({
         bestTimeData={
           scheduleTargetPost ? (bestTimeMap[scheduleTargetPost.client_id] ?? null) : null
         }
-        approving={approving}
         weekContext={scheduleWeekContext}
         timeZone={timezone}
-        onConfirm={(scheduledAt) => void handleScheduleConfirm(scheduledAt)}
+        onConfirm={handleScheduleConfirm}
         onClose={() => setScheduleTarget(null)}
       />
 
