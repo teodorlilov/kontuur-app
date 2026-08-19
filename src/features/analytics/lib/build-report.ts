@@ -182,6 +182,37 @@ function parseBreakdownMap(raw: unknown): Record<string, number> | null {
   return parsed.success ? parsed.data : null
 }
 
+/**
+ * Instagram never serves historical follower TOTALS — only the nightly sync
+ * captures one per night, so a fresh account has a single point and no curve.
+ * But every day's gains and losses are stored, and one known total anchors
+ * the rest: walk outward from each captured count applying the daily net
+ * change. Days whose gains are unknown stay null — the line breaks honestly.
+ */
+export function deriveFollowerCurve(
+  counts: Array<number | null>,
+  gains: Array<number | null>,
+  losses: Array<number | null>
+): Array<number | null> {
+  const curve = [...counts]
+  for (let i = curve.length - 1; i > 0; i--) {
+    if (curve[i] !== null && curve[i - 1] === null && gains[i] !== null && gains[i] !== undefined) {
+      curve[i - 1] = curve[i]! - (gains[i]! - (losses[i] ?? 0))
+    }
+  }
+  for (let i = 0; i < curve.length - 1; i++) {
+    if (
+      curve[i] !== null &&
+      curve[i + 1] === null &&
+      gains[i + 1] !== null &&
+      gains[i + 1] !== undefined
+    ) {
+      curve[i + 1] = curve[i]! + (gains[i + 1]! - (losses[i + 1] ?? 0))
+    }
+  }
+  return curve
+}
+
 /** Sums per-day breakdown maps into one map; null when no day had one. */
 function sumBreakdownMaps(
   maps: Array<Record<string, number> | null>
@@ -388,6 +419,11 @@ export function buildAnalyticsReport(input: BuildReportInput): AnalyticsReportDa
   }
   const followerCounts = dailyValues(current, (row) => row.followers_count)
   const followersTotal = [...followerCounts].reverse().find((value) => value !== null) ?? null
+  const followerCurve = deriveFollowerCurve(
+    followerCounts,
+    dailyValues(current, (row) => row.follows),
+    dailyValues(current, (row) => row.unfollows)
+  )
 
   // Engagement rate: period interactions over period reach, in percent.
   const rateOf = (i: number | null, r: number | null): number | null =>
@@ -482,7 +518,7 @@ export function buildAnalyticsReport(input: BuildReportInput): AnalyticsReportDa
     views,
     reach,
     interactions,
-    followers: { gained, lost, net, total: followersTotal, series: followerCounts },
+    followers: { gained, lost, net, total: followersTotal, series: followerCurve },
     engagementRate,
     reachByDay,
     bestDay,

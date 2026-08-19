@@ -314,3 +314,31 @@ describe('tap buttons', () => {
     expect(report.tapButtons[0]!.key).toBe('WEBSITE')
   })
 })
+
+describe('deriveFollowerCurve', () => {
+  it('walks backwards from the one captured total using daily net change', () => {
+    const report = build({
+      accountRows: [
+        accountRow({ metric_date: '2026-08-15', follows: 4, unfollows: 1 }),
+        accountRow({ metric_date: '2026-08-16', follows: 2, unfollows: 0 }),
+        accountRow({ metric_date: '2026-08-17', follows: 0, unfollows: 2 }),
+        // The only night the sync captured the running total.
+        accountRow({ metric_date: '2026-08-18', follows: 5, unfollows: 0, followers_count: 832 }),
+      ],
+    })
+    // Each point is the total at that day's END: 832 ← −5 → 827 ← +(−2) → 829 ← −2 → 827.
+    expect(report.followers.series).toEqual([827, 829, 827, 832])
+    expect(report.followers.total).toBe(832)
+  })
+
+  it('breaks the line where gains are unknown instead of inventing history', () => {
+    const report = build({
+      accountRows: [
+        // Aug 16 has no gains data — the curve must not reach past it.
+        accountRow({ metric_date: '2026-08-17', follows: 3, unfollows: 0 }),
+        accountRow({ metric_date: '2026-08-18', follows: 1, unfollows: 0, followers_count: 100 }),
+      ],
+    })
+    expect(report.followers.series).toEqual([null, null, 96, 99, 100].slice(1))
+  })
+})
