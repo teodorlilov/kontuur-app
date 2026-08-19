@@ -4,6 +4,7 @@ import { memo, useState, useEffect, useCallback } from 'react'
 import { X, ChevronLeft, ChevronRight, Copy, Mail } from 'lucide-react'
 import { cn } from '@/utils/cn'
 import { toast } from '@/components/ui/toast'
+import { watchPublishOutcome } from '@/features/publishing/lib/watch-publish'
 import { getPillarColor } from '@/components/ui/colors/identity-colors'
 import { formatRelativeTime, parseTimestamp } from '@/utils/format'
 import { formatScheduledAt, isoToDateTimeFields, toDateKey } from '@/utils/date-helpers'
@@ -144,8 +145,6 @@ export const ScheduleCard = memo(function ScheduleCard({
   // Reset / pre-fill when post changes.
   // Left as an effect deliberately: it seeds seven independent fields from one prop, and the
   // render-time adjustment pattern would mean seven paired comparisons for no behavioural gain.
-  /* eslint-disable react-hooks/set-state-in-effect -- see above: seven independent
-     fields seeded from one prop, deliberately not a render-time adjustment. */
   useEffect(() => {
     if (slotPrefill) {
       // Opened from a suggested slot: the slot decides when, not whatever the post
@@ -184,7 +183,6 @@ export const ScheduleCard = memo(function ScheduleCard({
     timeZone,
     slotPrefill,
   ])
-  /* eslint-enable react-hooks/set-state-in-effect */
 
   // Delegate merging to the calendar state hook (functional updates) — computing the merged array
   // here from a captured `post` snapshot loses images when concurrent generations complete.
@@ -278,11 +276,23 @@ export const ScheduleCard = memo(function ScheduleCard({
       const res = await fetch(`/api/posts/${currentPost.id}/publish`, { method: 'POST' })
       const data = await res.json()
       if (res.status === 202) {
-        // Container still processing at Meta — the cron completes it; the post
-        // is not published yet, so the card must not flip it.
-        toast.info(
-          data.message ?? 'Instagram is still processing — publishing completes automatically'
-        )
+        // Deferred publish: the container exists and the server finishes out of
+        // band. Close now, and let the watcher report the real outcome — even
+        // after this dialog is gone.
+        const postId = currentPost.id
+        toast.info('Publishing to Instagram…')
+        watchPublishOutcome(postId, {
+          onPublished: () => {
+            toast.success('Published to Instagram')
+            onPublished?.(postId)
+          },
+          onFailed: (reason) => {
+            toast.error(`Instagram publish failed: ${reason}`, { duration: 12_000 })
+          },
+          onStillProcessing: () => {
+            toast.info('Instagram is still processing — publishing completes automatically')
+          },
+        })
         onClose()
       } else if (res.ok) {
         onPublished?.(currentPost.id)

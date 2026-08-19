@@ -33,6 +33,14 @@ const STALE_CLAIM_MS = 30 * 60 * 1000
  */
 const RETRY_SPACING_MS = 30 * 60 * 1000
 /**
+ * How long a fresh claim keeps its container to itself. A manual publish defers
+ * its polling past the response (route budget ~40s); once this grace has passed
+ * the deferred worker is provably gone and the cron may resume the container —
+ * resume never re-creates, so the worst case is a quick status check, not a
+ * duplicate.
+ */
+const RESUME_GRACE_MS = 90 * 1000
+/**
  * Per-run batch cap and time budget. The budget mirrors the generate cron's:
  * the route allows 300s, the loop stops starting new posts at 240s so an
  * in-flight publish can finish inside the allowance. Leftovers roll to the
@@ -78,6 +86,7 @@ export async function publishDuePosts(): Promise<PublishSchedulerResult> {
   if (sweepError) throw new Error(`missed-window sweep failed: ${sweepError.message}`)
 
   const retrySpacingCutoff = new Date(now.getTime() - RETRY_SPACING_MS).toISOString()
+  const resumeGraceCutoff = new Date(now.getTime() - RESUME_GRACE_MS).toISOString()
 
   // Due posts (never attempted, or last attempt long enough ago), plus
   // 'publishing' posts whose claim is stale enough that their run must have
@@ -91,6 +100,10 @@ export async function publishDuePosts(): Promise<PublishSchedulerResult> {
     .or(
       [
         `and(status.eq.scheduled,or(publish_claimed_at.is.null,publish_claimed_at.lt.${retrySpacingCutoff}))`,
+        // A parked container (deferred manual publish whose worker died, or a
+        // phase-A timeout) resumes fast — polling an existing container is
+        // duplicate-safe and charges no attempt.
+        `and(status.eq.publishing,ig_creation_id.not.is.null,publish_claimed_at.lt.${resumeGraceCutoff})`,
         `and(status.eq.publishing,publish_claimed_at.lt.${staleClaimCutoff})`,
         // Rows claimed before publish_claimed_at existed — slot-based staleness, one-time fallback.
         `and(status.eq.publishing,publish_claimed_at.is.null,scheduled_at.lt.${staleClaimCutoff})`,

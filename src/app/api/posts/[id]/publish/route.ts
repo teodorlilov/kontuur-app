@@ -1,10 +1,11 @@
-import { NextResponse } from 'next/server'
+import { NextResponse, after } from 'next/server'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
 import { verifyPostOwnership } from '@/lib/auth/helpers'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import {
   PUBLISHABLE_POST_COLUMNS,
   publishOnePost,
+  resumePendingPublish,
   type PublishablePost,
 } from '@/features/publishing/lib/publish-post'
 import type { InstagramConnection } from '@/features/publishing/lib/types'
@@ -14,7 +15,15 @@ import { SOCIAL_CONNECTION_AUTH_COLUMNS } from '@/lib/queries/select-columns'
  * Publish a post to Instagram immediately. Thin over publishOnePost — the cron
  * scheduler runs the same implementation, so the claim, the platform guard and
  * the retry ladder cannot diverge between the two entry points.
+ *
+ * Deferred by design: the response goes out as soon as the container exists and
+ * its id is persisted (~1–2s), and polling + media_publish continue after the
+ * response via after(). The client watches the post's status for the outcome;
+ * the cron's resume arm is the backstop if this invocation dies.
  */
+
+// The after() continuation polls for up to ~40s past the response.
+export const maxDuration = 60
 export async function POST(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id: postId } = await params
   const auth = await resolveAuth()
@@ -48,30 +57,25 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
     // Supabase select returns the exact fields we project; narrow to InstagramConnection
     const connection = connData as InstagramConnection | null
 
-    const outcome = await publishOnePost(admin, post, connection)
+    const outcome = await publishOnePost(admin, post, connection, { skipPoll: true })
+
+    // A never-scheduled post gets its slot stamped as soon as the publish is
+    // underway — the cron's backstop window only sees rows with a scheduled_at.
+    if (!post.scheduled_at && (outcome.kind === 'published' || outcome.kind === 'pending')) {
+      await admin.from('posts').update({ scheduled_at: new Date().toISOString() }).eq('id', postId)
+    }
 
     switch (outcome.kind) {
       case 'published': {
         if (outcome.writeError) console.error(`[publish] ${outcome.writeError}`)
-        // A manual publish of a never-scheduled post records when it went live.
-        if (!post.scheduled_at) {
-          await admin
-            .from('posts')
-            .update({ scheduled_at: new Date().toISOString() })
-            .eq('id', postId)
-        }
         return NextResponse.json({ ok: true, mediaId: outcome.mediaId })
       }
       case 'pending':
-        // The container is still processing at Meta; the 5-minute cron resumes
-        // it — same container, no duplicate.
+        // Finish out of band: this invocation keeps polling after the response
+        // and completes the publish; the client watches the post's status.
+        after(() => resumePendingPublish(admin, postId, 40_000))
         return NextResponse.json(
-          {
-            ok: true,
-            pending: true,
-            message:
-              'Instagram is still processing — publishing completes automatically within minutes',
-          },
+          { ok: true, pending: true, message: 'Publishing to Instagram…' },
           { status: 202 }
         )
       case 'not_claimed':

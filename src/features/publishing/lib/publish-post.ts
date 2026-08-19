@@ -32,7 +32,12 @@ export const MAX_ATTEMPTS = 3
 
 /** Phase-A poll budget. Containers usually finish in seconds; slower ones roll to the next tick. */
 const CONTAINER_POLL_BUDGET_MS = 18_000
-const CONTAINER_POLL_INTERVAL_MS = 3_000
+/**
+ * Single images usually finish within a second or two — polling fast at the
+ * start is what lets a manual publish confirm quickly; the tail backs off so a
+ * slow carousel doesn't hammer the status endpoint.
+ */
+const POLL_SCHEDULE_MS = [1_000, 1_000, 2_000, 3_000]
 /** Carousel children are created concurrently, but politely. */
 const CHILD_CONTAINER_CONCURRENCY = 3
 
@@ -96,11 +101,36 @@ async function patchPost(
 }
 
 /**
- * Atomically claim a post (compare-and-swap on status + attempt count), stamping
- * publish_claimed_at so overlapping runs and the stale-claim reclaim can tell a
- * live claim from a dead one.
+ * Atomically claim a post (compare-and-swap), stamping publish_claimed_at so
+ * overlapping runs and the stale-claim reclaim can tell a live claim from a
+ * dead one.
+ *
+ * Two modes with different accounting: a FRESH claim (no container yet) charges
+ * an attempt, because it is one. A RESUME claim (ig_creation_id present) only
+ * re-stamps the claim — polling an existing container is not a new attempt, and
+ * charging it would let a slow container burn the whole budget and fail-final a
+ * post whose media was still processing normally.
  */
-async function claimPost(admin: SupabaseClient, post: PublishablePost): Promise<boolean> {
+async function claimPost(
+  admin: SupabaseClient,
+  post: PublishablePost
+): Promise<{ claimed: boolean; attempts: number }> {
+  if (post.ig_creation_id) {
+    let query = admin
+      .from('posts')
+      .update({ status: 'publishing', publish_claimed_at: new Date().toISOString() })
+      .eq('id', post.id)
+      .eq('status', post.status)
+      .eq('ig_creation_id', post.ig_creation_id)
+    query =
+      post.publish_claimed_at === null
+        ? query.is('publish_claimed_at', null)
+        : query.eq('publish_claimed_at', post.publish_claimed_at)
+    const { data, error } = await query.select('id')
+    if (error) throw new Error(`resume claim failed for post ${post.id}: ${error.message}`)
+    return { claimed: !!data && data.length > 0, attempts: post.publish_attempts }
+  }
+
   const { data, error } = await admin
     .from('posts')
     .update({
@@ -115,7 +145,7 @@ async function claimPost(admin: SupabaseClient, post: PublishablePost): Promise<
   // A DB error is not a lost race: treating it as one would silently skip the
   // post every tick. Propagate so the run reports it.
   if (error) throw new Error(`claim failed for post ${post.id}: ${error.message}`)
-  return !!data && data.length > 0
+  return { claimed: !!data && data.length > 0, attempts: post.publish_attempts + 1 }
 }
 
 async function markPublished(
@@ -138,9 +168,9 @@ async function markFailed(
   admin: SupabaseClient,
   post: PublishablePost,
   message: string,
-  options: { final: boolean; clearCreationId?: boolean }
+  options: { final: boolean; attempts: number; clearCreationId?: boolean }
 ): Promise<{ final: boolean; writeError: string | null }> {
-  const attempts = post.publish_attempts + 1
+  const attempts = options.attempts
   const final = options.final || attempts >= MAX_ATTEMPTS
   const writeError = await patchPost(admin, post.id, {
     status: final ? 'failed' : 'scheduled',
@@ -184,17 +214,19 @@ function graphFailureToDecision(err: GraphApiError): { message: string; final: b
   }
 }
 
-/** Poll a container within this run's budget. Times out as IN_PROGRESS, never as failure. */
+/** Poll a container within the given budget. Times out as IN_PROGRESS, never as failure. */
 async function pollContainer(
   creationId: string,
-  accessToken: string
+  accessToken: string,
+  budgetMs: number
 ): Promise<'FINISHED' | 'IN_PROGRESS' | 'ERROR' | 'EXPIRED' | 'PUBLISHED'> {
-  const deadline = Date.now() + CONTAINER_POLL_BUDGET_MS
-  for (;;) {
+  const deadline = Date.now() + budgetMs
+  for (let poll = 0; ; poll++) {
     const status = await getContainerStatus(creationId, accessToken)
     if (status !== 'IN_PROGRESS') return status
-    if (Date.now() + CONTAINER_POLL_INTERVAL_MS > deadline) return 'IN_PROGRESS'
-    await new Promise((r) => setTimeout(r, CONTAINER_POLL_INTERVAL_MS))
+    const interval = POLL_SCHEDULE_MS[Math.min(poll, POLL_SCHEDULE_MS.length - 1)]!
+    if (Date.now() + interval > deadline) return 'IN_PROGRESS'
+    await new Promise((r) => setTimeout(r, interval))
   }
 }
 
@@ -222,9 +254,10 @@ async function resumeContainer(
   post: PublishablePost,
   accountId: string,
   accessToken: string,
-  creationId: string
+  creationId: string,
+  options: { pollBudgetMs: number; attempts: number }
 ): Promise<PublishOutcome> {
-  const status = await pollContainer(creationId, accessToken)
+  const status = await pollContainer(creationId, accessToken, options.pollBudgetMs)
 
   if (status === 'IN_PROGRESS') return { kind: 'pending', creationId }
 
@@ -243,6 +276,7 @@ async function resumeContainer(
   // ERROR / EXPIRED: this container is dead — clear it so the retry starts clean.
   const { final, writeError } = await markFailed(admin, post, `Instagram container ${status}`, {
     final: false,
+    attempts: options.attempts,
     clearCreationId: true,
   })
   return {
@@ -339,7 +373,8 @@ function preflightBlocker(
 export async function publishOnePost(
   admin: SupabaseClient,
   post: PublishablePost,
-  connection: InstagramConnection | null
+  connection: InstagramConnection | null,
+  options: { skipPoll?: boolean } = {}
 ): Promise<PublishOutcome> {
   // Case-insensitive: rows canonically store 'Instagram' (20260809), older
   // writes stored lowercase. Runs before the claim — wrong-platform posts must
@@ -349,7 +384,7 @@ export async function publishOnePost(
       admin,
       post,
       `Publishing to ${post.platform} is not supported yet`,
-      { final: true }
+      { final: true, attempts: post.publish_attempts + 1 }
     )
     return {
       kind: 'failed',
@@ -359,7 +394,8 @@ export async function publishOnePost(
     }
   }
 
-  if (!(await claimPost(admin, post))) return { kind: 'not_claimed' }
+  const claim = await claimPost(admin, post)
+  if (!claim.claimed) return { kind: 'not_claimed' }
 
   const caption = post.caption ?? ''
   const blocker = preflightBlocker(post, connection, caption)
@@ -368,6 +404,7 @@ export async function publishOnePost(
     const message = blocker?.message ?? 'Unknown error'
     const { final, writeError } = await markFailed(admin, post, message, {
       final: blocker?.final ?? false,
+      attempts: claim.attempts,
     })
     return { kind: 'failed', error: message, final, writeError: writeError ?? undefined }
   }
@@ -379,7 +416,8 @@ export async function publishOnePost(
         post,
         connection.account_id,
         accessToken,
-        post.ig_creation_id
+        post.ig_creation_id,
+        { pollBudgetMs: CONTAINER_POLL_BUDGET_MS, attempts: claim.attempts }
       )
     }
 
@@ -395,6 +433,9 @@ export async function publishOnePost(
       imageUrls,
       caption
     )
+    // Deferred mode: the container exists and its id is persisted, which is all
+    // the caller needs before responding — polling continues out of band.
+    if (options.skipPoll) return { kind: 'pending', creationId }
     // Reuse phase B for the fresh container: same poll, same publish, same
     // terminal handling — the only difference is who created the container.
     return await resumeContainer(
@@ -402,19 +443,79 @@ export async function publishOnePost(
       { ...post, ig_creation_id: creationId },
       connection.account_id,
       accessToken,
-      creationId
+      creationId,
+      { pollBudgetMs: CONTAINER_POLL_BUDGET_MS, attempts: claim.attempts }
     )
   } catch (err) {
     if (err instanceof GraphApiError) {
       const decision = graphFailureToDecision(err)
       const { final, writeError } = await markFailed(admin, post, decision.message, {
         final: decision.final,
+        attempts: claim.attempts,
         clearCreationId: decision.final,
       })
       return { kind: 'failed', error: decision.message, final, writeError: writeError ?? undefined }
     }
     const message = err instanceof Error ? err.message : 'Unknown publish error'
-    const { final, writeError } = await markFailed(admin, post, message, { final: false })
+    const { final, writeError } = await markFailed(admin, post, message, {
+      final: false,
+      attempts: claim.attempts,
+    })
     return { kind: 'failed', error: message, final, writeError: writeError ?? undefined }
+  }
+}
+
+/**
+ * Finish a deferred publish after the response has gone out. The caller's
+ * request already holds the claim it took seconds ago, so this does NOT
+ * re-claim — the scheduler's resume arm waits out a grace period before it may
+ * touch the row, which is what keeps the two from polling the same container.
+ */
+export async function resumePendingPublish(
+  admin: SupabaseClient,
+  postId: string,
+  pollBudgetMs: number
+): Promise<void> {
+  const { data } = await admin
+    .from('posts')
+    .select(PUBLISHABLE_POST_COLUMNS)
+    .eq('id', postId)
+    .maybeSingle()
+  // Supabase cannot infer the joined post_images shape; cast to our known query projection
+  const post = data as unknown as PublishablePost | null
+  if (!post || post.status !== 'publishing' || !post.ig_creation_id) return
+
+  const { data: connData } = await admin
+    .from('social_connections')
+    .select('account_id, access_token, token_expires_at')
+    .eq('client_id', post.client_id)
+    .eq('platform', 'instagram')
+    .maybeSingle()
+  // Supabase select returns the exact fields we project; narrow to InstagramConnection
+  const connection = connData as InstagramConnection | null
+  if (!connection?.access_token) return
+
+  try {
+    await resumeContainer(
+      admin,
+      post,
+      connection.account_id,
+      connection.access_token,
+      post.ig_creation_id,
+      { pollBudgetMs, attempts: post.publish_attempts }
+    )
+  } catch (err) {
+    if (err instanceof GraphApiError) {
+      const decision = graphFailureToDecision(err)
+      await markFailed(admin, post, decision.message, {
+        final: decision.final,
+        attempts: post.publish_attempts,
+        clearCreationId: decision.final,
+      })
+      return
+    }
+    // Anything else: leave the row in 'publishing' — the scheduler's resume arm
+    // picks it up after the grace period.
+    console.error(`[publish] deferred finish for post ${postId} failed:`, err)
   }
 }
