@@ -14,7 +14,7 @@ function formatPer100(value: number): string {
  * The conversion path as descending stages: every bar is a share of the top
  * stage, so the drop-off from reached to followed is the picture itself.
  * A measured zero keeps its sunken track; a never-captured stage renders as
- * absence. Rates carry their denominator in words ("per 100 profile views")
+ * absence. Rates carry their denominator in words ("per 100 profile visits")
  * because the stages count different things — never percentages of people.
  */
 export function FunnelSection({ stages }: { stages: FunnelStage[] }) {

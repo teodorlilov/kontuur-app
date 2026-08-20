@@ -914,7 +914,9 @@ export function buildAnalyticsReport(input: BuildReportInput): AnalyticsReportDa
   const funnel: FunnelStage[] = [
     {
       key: 'reached',
-      label: 'Reached',
+      // Instagram's own wording throughout these labels, so a manager can
+      // hold this panel beside the app's Insights screen and match them up.
+      label: 'Accounts reached',
       unit: 'accounts',
       now: reach.now,
       then: reach.then,
@@ -923,12 +925,12 @@ export function buildAnalyticsReport(input: BuildReportInput): AnalyticsReportDa
     },
     {
       key: 'profile_views',
-      label: 'Profile views',
+      label: 'Profile visits',
       unit: 'visits',
       now: profileViewsNow,
       then: profileViewsThen,
       per100: per100(profileViewsNow, reach.now),
-      rateBasis: 'per 100 reached',
+      rateBasis: 'per 100 accounts reached',
     },
     {
       key: 'taps',
@@ -937,7 +939,7 @@ export function buildAnalyticsReport(input: BuildReportInput): AnalyticsReportDa
       now: tapsTotalNow,
       then: tapsTotalThen,
       per100: per100(tapsTotalNow, profileViewsNow),
-      rateBasis: 'per 100 profile views',
+      rateBasis: 'per 100 profile visits',
     },
     {
       key: 'follows',
@@ -946,7 +948,7 @@ export function buildAnalyticsReport(input: BuildReportInput): AnalyticsReportDa
       now: gained.now,
       then: gained.then,
       per100: per100(gained.now, profileViewsNow),
-      rateBasis: 'per 100 profile views',
+      rateBasis: 'per 100 profile visits',
     },
   ]
 

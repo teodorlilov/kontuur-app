@@ -298,12 +298,17 @@ describe('buildAnalyticsReport', () => {
     })
     const [reached, views, taps, follows] = report.funnel
     expect(reached).toMatchObject({ now: 1000, then: 500, per100: null })
-    expect(views).toMatchObject({ now: 40, then: 20, per100: 4, rateBasis: 'per 100 reached' })
+    expect(views).toMatchObject({
+      now: 40,
+      then: 20,
+      per100: 4,
+      rateBasis: 'per 100 accounts reached',
+    })
     // Link taps and the separate website_clicks column sum into one stage.
-    expect(taps).toMatchObject({ now: 5, then: 1, rateBasis: 'per 100 profile views' })
+    expect(taps).toMatchObject({ now: 5, then: 1, rateBasis: 'per 100 profile visits' })
     expect(taps!.per100).toBeCloseTo(12.5)
     // Follows rate against profile views, NEVER per tap — most follows skip links.
-    expect(follows).toMatchObject({ now: 9, then: 4, rateBasis: 'per 100 profile views' })
+    expect(follows).toMatchObject({ now: 9, then: 4, rateBasis: 'per 100 profile visits' })
     expect(follows!.per100).toBeCloseTo(22.5)
   })
 

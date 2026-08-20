@@ -175,7 +175,7 @@ export function AnalyticsView({
       <div className="mt-7">
         <AnalyticsSection
           title="From seen to followed"
-          sub="Each stage beside the one above it — reach counts people, the later stages count actions, so rates read per 100, never as shares of people."
+          sub="How many saw you, how many came to your profile, and what they did there. The last three count actions rather than people — the same visitor can come back, or tap twice — so they read as a rate per 100, not a percentage."
           ariaLabel="Conversion path"
         >
           {hasHistory ? (
@@ -308,7 +308,7 @@ export function AnalyticsView({
           title="What the profile converted"
           sub={
             hasHistory && data.tapButtons.length > 0 && data.profileViews.now !== null
-              ? `${formatCount(data.profileViews.now)} profile views became these taps.`
+              ? `${formatCount(data.profileViews.now)} profile visits became these taps.`
               : 'Taps on the profile’s link and contact buttons — the closest thing Instagram counts to a conversion.'
           }
           ariaLabel="Profile actions"
@@ -332,7 +332,7 @@ export function AnalyticsView({
                 <div className="text-metric tabular-nums text-text2">0</div>
                 <p className="mx-auto mt-1 max-w-[38ch] text-caption text-text3">
                   {data.profileViews.now !== null && data.profileViews.now > 0
-                    ? `${formatCount(data.profileViews.now)} profile views this period, but none tapped the website link or a contact button.`
+                    ? `${formatCount(data.profileViews.now)} profile visits this period, but none tapped the website link or a contact button.`
                     : 'No taps on the website link or contact buttons this period.'}
                 </p>
               </div>
