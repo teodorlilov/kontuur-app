@@ -7,6 +7,7 @@ import { formatCount, formatDayMonth, formatPeriodRange, formatShortRange } from
 import { firstLine } from '../lib/post-display'
 import { AnalyticsSection, ChartLegend } from './analytics-section'
 import { AudienceSection } from './audience-section'
+import { AudienceCapture } from './audience-capture'
 import { AutoFill } from './auto-fill'
 import { ComparisonRows } from './comparison-rows'
 import { EmptyFill } from './empty-fill'
@@ -365,11 +366,20 @@ export function AnalyticsView({
               Audience snapshots begin with the first weekly sync
             </EmptyFill>
           ) : data.audience === null ? (
-            <p className="mt-4 text-caption text-text3">
-              {data.hasAudienceSnapshot
-                ? 'Instagram shares audience demographics once an account passes about 100 followers — snapshots begin then.'
-                : 'No audience snapshot exists yet — the first weekly capture runs with the nightly sync.'}
-            </p>
+            data.hasAudienceSnapshot ? (
+              <p className="mt-4 text-caption text-text3">
+                Instagram shares audience demographics once an account passes about 100 followers —
+                snapshots begin then.
+              </p>
+            ) : hasConnection ? (
+              // No snapshot stored and an account to ask: fetch one now rather
+              // than making the reader wait for the nightly sync.
+              <AudienceCapture clientId={clientId} period={data.period} />
+            ) : (
+              <p className="mt-4 text-caption text-text3">
+                No audience snapshot exists yet — connect Instagram to capture one.
+              </p>
+            )
           ) : (
             <>
               {/* A snapshot dated past end+1 is the fallback picture — say so. */}

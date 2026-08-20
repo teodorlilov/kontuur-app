@@ -8,7 +8,12 @@ import {
   fetchFollowerDeltaSeries,
   fetchOnlineFollowers,
 } from '@/lib/meta/insights'
-import { captureDayTotals, syncPostMetrics, type IGAccountMetricsInsert } from './sync-metrics'
+import {
+  captureDayTotals,
+  syncDemographicsWeekly,
+  syncPostMetrics,
+  type IGAccountMetricsInsert,
+} from './sync-metrics'
 import { shiftDateKey } from '@/utils/date-helpers'
 import type { AnalyticsPeriod } from './period'
 
@@ -254,6 +259,21 @@ export async function refreshWindowMetrics(
     } catch (err) {
       if (err instanceof GraphApiError && err.failure === 'rate_limited') rateLimited = true
       else throw err
+    }
+  }
+
+  // "Who follows, who engages" is the one section no day row can produce: it
+  // needs a demographics snapshot, and until now ONLY the nightly cron wrote
+  // one — so every filter could refill the whole document and still leave the
+  // audience panel saying no snapshot exists. The call is cadence-gated inside
+  // (a snapshot within the week makes it a single cheap lookup) and
+  // best-effort: eight breakdown calls must never cost the refill its totals.
+  if (!rateLimited) {
+    try {
+      await syncDemographicsWeekly(admin, clientId, accountId, accessToken)
+    } catch (err) {
+      if (err instanceof GraphApiError && err.failure === 'rate_limited') rateLimited = true
+      else console.error('[analytics] demographics refill failed:', err)
     }
   }
 

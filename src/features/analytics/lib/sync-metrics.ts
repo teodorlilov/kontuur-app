@@ -458,8 +458,13 @@ async function fetchPostIdsByMediaId(
   )
 }
 
-/** At most one demographics snapshot per week — eight breakdown calls are not free. */
-async function syncDemographicsWeekly(
+/**
+ * At most one demographics snapshot per week — eight breakdown calls are not
+ * free. Shared with the on-demand refill: the audience section is the one
+ * panel a period filter cannot compute from day rows, so the refill asks for
+ * a snapshot too rather than leaving the section empty until tonight.
+ */
+export async function syncDemographicsWeekly(
   admin: SupabaseClient,
   clientId: string,
   accountId: string,

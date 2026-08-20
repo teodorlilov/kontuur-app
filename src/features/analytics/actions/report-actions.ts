@@ -15,6 +15,7 @@ import { archiveReportInputSchema, type ArchiveReportInput } from '../schemas'
 import { periodFromBounds, type AnalyticsPeriod } from '../lib/period'
 import { getAnalyticsReport, IG_METRICS_TAG } from '../lib/report-data'
 import { refreshWindowMetrics } from '../lib/refresh-window'
+import { syncDemographicsWeekly } from '../lib/sync-metrics'
 import { buildFallbackNarrative, getNarrative } from '../lib/narrative'
 import type { AnalyticsReportData } from '../lib/build-report'
 
@@ -180,6 +181,62 @@ export async function fillPeriodData(
 
   revalidateTag(IG_METRICS_TAG, 'max')
   return { ok: true, data: { filled: true } }
+}
+
+/**
+ * Captures the audience snapshot on demand — the one section a period filter
+ * cannot refill from day rows. The window refresh only asks for days, and its
+ * auto-fill stops running once every day is marked, so an account whose
+ * nightly sync has not yet written a snapshot would otherwise sit on "no
+ * snapshot exists" forever. Cadence-gated inside (one a week per account), so
+ * a repeat call costs a single lookup.
+ */
+export async function ensureAudienceSnapshot(
+  input: ArchiveReportInput
+): Promise<ActionResult<{ captured: boolean }>> {
+  const resolved = await resolveReportScope(input)
+  if (!resolved.ok) return { ok: false, error: resolved.error }
+  const { scope } = resolved
+
+  // WHY as: the auth-scoped client is untyped here, so the projection does not infer.
+  const { data: connection } = (await scope.supabase
+    .from('social_connections')
+    .select(SOCIAL_CONNECTION_AUTH_COLUMNS)
+    .eq('client_id', scope.client.id)
+    .eq('platform', 'instagram')
+    .maybeSingle()) as {
+    data: {
+      account_id: string | null
+      access_token: string | null
+      token_expires_at: string | null
+    } | null
+  }
+  if (
+    !connection?.account_id ||
+    !connection.access_token ||
+    isTokenExpired(connection.token_expires_at)
+  ) {
+    return { ok: true, data: { captured: false } }
+  }
+
+  try {
+    await syncDemographicsWeekly(
+      createAdminSupabaseClient(),
+      scope.client.id,
+      connection.account_id,
+      connection.access_token
+    )
+  } catch (err) {
+    // Best-effort by design: the page already rendered from stored data.
+    console.error('[analytics] audience snapshot capture failed', {
+      clientId: scope.client.id,
+      err,
+    })
+    return { ok: true, data: { captured: false } }
+  }
+
+  revalidateTag(IG_METRICS_TAG, 'max')
+  return { ok: true, data: { captured: true } }
 }
 
 /** Delete an analytics report by ID. */
