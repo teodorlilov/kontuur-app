@@ -80,6 +80,18 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
   // client is connected to right now.
   const connections = await fetchConnectionsByClient(supabase, clientId)
   const accountId = connections[0]?.account_id ?? null
+  // The nightly sync's own verdict (migration 20260828), read separately so a
+  // pre-migration deploy degrades to the old quieter line instead of failing
+  // the page. Without it the closing line reads max(fetched_at) — which the
+  // refill also stamps — and calls a half-failing sync current.
+  const syncHealth = await supabase
+    .from('social_connections')
+    .select('last_sync_error')
+    .eq('client_id', clientId)
+    .eq('platform', 'instagram')
+    .maybeSingle()
+  const syncError =
+    (syncHealth.data as { last_sync_error: string | null } | null)?.last_sync_error ?? null
   const [data, archiveResult, unfilledDays] = await Promise.all([
     getAnalyticsReport(clientId, period, timezone),
     accountId
@@ -141,6 +153,7 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
               handle={handle}
               hasConnection={hasConnection}
               timezone={timezone}
+              syncError={syncError}
               archive={archive}
             />
           </PendingVeil>

@@ -92,12 +92,15 @@ export async function syncAllClientMetrics(
     try {
       await syncClientMetrics(admin, connection)
       outcome.synced++
+      await recordSyncHealth(admin, connection.client_id, null)
     } catch (err) {
       outcome.failed++
-      outcome.errors.push({
-        clientId: connection.client_id,
-        error: err instanceof Error ? err.message : 'unknown error',
-      })
+      const message = err instanceof Error ? err.message : 'unknown error'
+      outcome.errors.push({ clientId: connection.client_id, error: message })
+      // The verdict outlives the run: without it the page reads a fresh
+      // max(fetched_at) — which the on-demand refill also writes — and tells
+      // the reader everything is current while a phase has been failing.
+      await recordSyncHealth(admin, connection.client_id, message)
       if (err instanceof GraphApiError) {
         if (err.failure === 'token_invalid' || err.failure === 'permission') {
           try {
@@ -111,15 +114,49 @@ export async function syncAllClientMetrics(
           continue
         }
         // One rate-limit answer poisons every remaining call in this run.
+        // Self-healing by tomorrow, so it earns a stored verdict but no alert.
         if (err.failure === 'rate_limited') {
           outcome.skipped += connections.length - index - 1
           break
         }
       }
-      // transient / permanent / non-Graph: on to the next client.
+      // transient / permanent / non-Graph: tell the agency, then move on. A
+      // sync that keeps half-failing is invisible otherwise — the page still
+      // renders, just with sections quietly frozen.
+      try {
+        await notifySyncIncomplete(admin, connection.client_id)
+      } catch (notifyErr) {
+        outcome.errors.push({
+          clientId: connection.client_id,
+          error: `notify failed: ${notifyErr instanceof Error ? notifyErr.message : 'unknown'}`,
+        })
+      }
     }
   }
   return outcome
+}
+
+/**
+ * Stores what this run concluded about one connection (migration 20260828).
+ * Best-effort by design and in both directions: a health write must never
+ * turn a good sync bad, and until the migration lands everywhere the missing
+ * columns simply mean the page keeps its old, quieter behaviour.
+ */
+async function recordSyncHealth(
+  admin: SupabaseClient,
+  clientId: string,
+  error: string | null
+): Promise<void> {
+  try {
+    const { error: writeError } = await admin
+      .from('social_connections')
+      .update({ last_sync_at: new Date().toISOString(), last_sync_error: error })
+      .eq('client_id', clientId)
+      .eq('platform', 'instagram')
+    if (writeError) throw new Error(writeError.message)
+  } catch (err) {
+    console.error(`[metrics] sync-health write failed for client ${clientId}:`, err)
+  }
 }
 
 /**
@@ -578,6 +615,29 @@ export async function syncDemographicsWeekly(
 }
 
 /** Tell the agency the metrics sync is blocked on a dead or underscoped connection. */
+/**
+ * The half-failure alert. Deliberately phrase-stable rather than naming the
+ * failing phase: the message IS the dedup key, so a wording that changes with
+ * the error would re-notify every night. The phase detail lives in
+ * last_sync_error, which the analytics document reads.
+ */
+async function notifySyncIncomplete(admin: SupabaseClient, clientId: string): Promise<void> {
+  const { data: client, error } = await admin
+    .from('clients')
+    .select('name')
+    .eq('id', clientId)
+    .maybeSingle()
+  if (error) throw new Error(`client lookup failed: ${error.message}`)
+  if (!client) return
+  // WHY as: the shared SupabaseClient param is untyped, so the projection does not infer.
+  const { name } = client as { name: string }
+  await insertClientNotificationOnce(
+    admin,
+    clientId,
+    `Analytics for ${name} did not finish syncing — some sections are out of date`
+  )
+}
+
 async function notifyMetricsBlocked(admin: SupabaseClient, clientId: string): Promise<void> {
   const { data: client, error } = await admin
     .from('clients')

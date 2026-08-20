@@ -35,6 +35,8 @@ interface AnalyticsViewProps {
   handle: string | null
   hasConnection: boolean
   timezone: string
+  /** The last nightly run's verdict — null after a clean one. */
+  syncError?: string | null
   archive: ArchiveEntry[]
 }
 
@@ -53,6 +55,7 @@ export function AnalyticsView({
   handle,
   hasConnection,
   timezone,
+  syncError = null,
   archive,
 }: AnalyticsViewProps) {
   const { hasHistory, followers } = data
@@ -114,6 +117,7 @@ export function AnalyticsView({
           hasHistory={hasHistory}
           hasConnection={hasConnection}
           timezone={timezone}
+          syncError={syncError}
         />
       </div>
     )
@@ -454,6 +458,7 @@ export function AnalyticsView({
         hasHistory={hasHistory}
         hasConnection={hasConnection}
         timezone={timezone}
+        syncError={syncError}
       />
     </div>
   )
