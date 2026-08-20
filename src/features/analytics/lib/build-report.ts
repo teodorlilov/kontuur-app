@@ -368,6 +368,12 @@ const FORMAT_LABELS: Record<string, string> = {
  */
 export const UNITEMISED_FORMATS = new Set(['STORY', 'AD'])
 
+/**
+ * How much of a format's reach the rate-bearing days must cover before the
+ * rate may stand for the period beside it.
+ */
+const PAIRED_COVERAGE_FLOOR = 0.5
+
 function comparisonRows(
   nowMap: Record<string, number> | null,
   thenMap: Record<string, number> | null,
@@ -838,20 +844,26 @@ export function buildAnalyticsReport(input: BuildReportInput): AnalyticsReportDa
     if (key) postCountByFormat.set(key, (postCountByFormat.get(key) ?? 0) + 1)
   }
 
-  const interactionsByTypeNow = sumBreakdownMaps(
-    dailyValues(current, (row) => parseBreakdownMap(row.interactions_by_media_product_type))
-  )
   // A rate is only honest when both halves were measured on the SAME days.
-  // captureDayTotals used to omit the interactions breakdown, so a window
-  // could hold reach for thirty days and interactions for one — and the
-  // section divided the two anyway. Counting the days each map covers is the
-  // guard: unequal coverage means no rate, whatever the numbers would say.
-  const daysWith = (pick: (row: IGAccountMetricColumns) => unknown): number =>
-    dailyValues(current, pick).filter((value) => value !== null).length
-  const formatRatesComparable =
-    daysWith((row) => parseBreakdownMap(row.interactions_by_media_product_type)) ===
-      daysWith((row) => parseBreakdownMap(row.reach_by_media_product_type)) &&
-    daysWith((row) => parseBreakdownMap(row.interactions_by_media_product_type)) > 0
+  // Reach accumulates from every captured day while the interactions
+  // breakdown can lag a few (a day backfilled before it was captured, a
+  // failed sync phase); dividing across that gap once turned a real 0.45% ad
+  // rate into "under 0.1%". So the rate is computed from the PAIRED days
+  // alone, which keeps numerator and denominator on the same footing, and the
+  // solidity floor now guards the denominator the rate actually used rather
+  // than the window total beside it.
+  const pairedDays = current.byDay.filter(
+    (row): row is IGAccountMetricColumns =>
+      row !== null &&
+      parseBreakdownMap(row.interactions_by_media_product_type) !== null &&
+      parseBreakdownMap(row.reach_by_media_product_type) !== null
+  )
+  const pairedReachByType = sumBreakdownMaps(
+    pairedDays.map((row) => parseBreakdownMap(row.reach_by_media_product_type))
+  )
+  const interactionsByTypeNow = sumBreakdownMaps(
+    pairedDays.map((row) => parseBreakdownMap(row.interactions_by_media_product_type))
+  )
   const formats = comparisonRows(
     sumBreakdownMaps(
       dailyValues(current, (row) => parseBreakdownMap(row.reach_by_media_product_type))
@@ -870,13 +882,18 @@ export function buildAnalyticsReport(input: BuildReportInput): AnalyticsReportDa
     // A rate per format only when the denominator is solid — one off a few
     // hundred reached accounts is arithmetic, not evidence.
     const formatInteractions = interactionsByTypeNow?.[row.key]
+    const rateBase = pairedReachByType?.[row.key] ?? null
     if (
-      formatRatesComparable &&
       formatInteractions !== undefined &&
+      rateBase !== null &&
+      rateBase >= RATE_BASE_FLOOR &&
+      // …and those days have to speak for the period on show. Half the
+      // window's reach is the line: below it the paired days are a corner of
+      // the period, not a sample of it.
       row.now !== null &&
-      row.now >= RATE_BASE_FLOOR
+      rateBase >= row.now * PAIRED_COVERAGE_FLOOR
     ) {
-      const pct = (formatInteractions / row.now) * 100
+      const pct = (formatInteractions / rateBase) * 100
       // A real 0.05% rounded to "0.0%" reads as a measured zero, which it is
       // not — and as a broken number, which it looks like. Only an actual
       // zero may say none.

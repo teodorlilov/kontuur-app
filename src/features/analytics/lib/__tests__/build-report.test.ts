@@ -354,17 +354,37 @@ describe('buildAnalyticsReport', () => {
     expect(report.formats.find((row) => row.key === 'AD')!.meta).toBe('0.5% engagement rate')
   })
 
-  it('refuses a rate whose halves were measured on different days', () => {
+  it('rates a format on the days that measured both halves, not the window total', () => {
     const report = build({
       accountRows: [
-        // Both maps present: this day could be rated on its own.
+        accountRow({
+          metric_date: '2026-08-15',
+          reach_by_media_product_type: { AD: 4000 },
+          interactions_by_media_product_type: { AD: 20 },
+        }),
+        // Reach captured, interactions not yet — the lag that used to be
+        // divided straight through.
+        accountRow({ metric_date: '2026-08-16', reach_by_media_product_type: { AD: 2000 } }),
+      ],
+    })
+    const ad = report.formats.find((row) => row.key === 'AD')!
+    // Reach still totals the whole window…
+    expect(ad.now).toBe(6000)
+    // …while the rate divides 20 by the 4,000 measured beside it (0.5%),
+    // never by 6,000 (0.3%), which no day ever observed.
+    expect(ad.meta).toBe('0.5% engagement rate')
+  })
+
+  it('withholds the rate when the paired days are a corner of the period', () => {
+    const report = build({
+      accountRows: [
         accountRow({
           metric_date: '2026-08-15',
           reach_by_media_product_type: { AD: 5000 },
           interactions_by_media_product_type: { AD: 25 },
         }),
-        // Reach only — exactly the live shape that produced "under 0.1%":
-        // one day of interactions divided by a whole window of reach.
+        // The live shape that produced "under 0.1%": one rated day against a
+        // window five times its size.
         accountRow({ metric_date: '2026-08-16', reach_by_media_product_type: { AD: 27000 } }),
       ],
     })
