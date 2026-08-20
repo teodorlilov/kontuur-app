@@ -2,11 +2,11 @@ import type { AudienceReport, AudienceShare } from '../lib/build-report'
 
 /**
  * The plot's height in pixels — the tallest column fills it exactly. It must
- * match the `h-36` well below: when the two disagreed (the whole chart, labels
+ * match the `h-48` well below: when the two disagreed (the whole chart, labels
  * included, was one h-36 box) the tallest column consumed every pixel and the
  * band labels overflowed onto the caption beneath them.
  */
-const COLUMN_MAX_PX = 144
+const COLUMN_MAX_PX = 192
 
 /**
  * Who follows against who actually engaged: paired columns by age band with
@@ -35,8 +35,11 @@ export function AudienceSection({ audience }: { audience: AudienceReport }) {
     (band) => band.engagedIndex !== null && (band.engagedIndex >= 1.25 || band.engagedIndex <= 0.75)
   )
 
+  // items-center: the columns-and-caption block is shorter than the three
+  // lists beside it, so top-aligned it hung from the top of the card with the
+  // whole lower half empty.
   return (
-    <div className="mt-4 grid gap-8 lg:grid-cols-[1.4fr_1fr]">
+    <div className="mt-4 grid items-center gap-8 lg:grid-cols-[1.4fr_1fr]">
       <div>
         <div
           role="img"
@@ -48,23 +51,23 @@ export function AudienceSection({ audience }: { audience: AudienceReport }) {
             <div key={band.band} className="grid gap-2">
               {/* The plot well: a fixed height the columns rise in, with the
                   labels stacked BELOW it rather than sharing its box. */}
-              <div className="flex h-36 items-end justify-center gap-1">
+              <div className="flex h-48 items-end justify-center gap-1.5">
                 <span className="relative flex h-full items-end">
                   <i
-                    className="block w-4 rounded-t bg-forest"
+                    className="block w-5 rounded-t bg-forest"
                     // Computed heights/positions — shares of the tallest band.
                     style={{ height: `${px(band.followerPct).toFixed(0)}px` }}
                   />
                   {band.prevFollowerPct !== null && (
                     <b
-                      className="absolute -left-0.5 h-0.5 w-5 rounded-full bg-then-line"
+                      className="absolute -left-0.5 h-0.5 w-6 rounded-full bg-then-line"
                       style={{ bottom: `${px(band.prevFollowerPct).toFixed(0)}px` }}
                     />
                   )}
                 </span>
                 {band.engagedPct !== null && (
                   <i
-                    className="block w-4 rounded-t bg-spring"
+                    className="block w-5 rounded-t bg-spring"
                     style={{ height: `${px(band.engagedPct).toFixed(0)}px` }}
                   />
                 )}
@@ -118,7 +121,8 @@ function PlaceList({ label, shares }: { label: string; shares: AudienceShare[] }
       <div className="mt-2.5 grid gap-2">
         {shares.map((share) => (
           <div key={share.label} className="flex items-center gap-2.5 text-caption">
-            <span className="w-20 flex-none truncate text-ink">{share.label}</span>
+            {/* Wide enough for "United Kingdom" — at w-20 it truncated. */}
+            <span className="w-28 flex-none truncate text-ink">{share.label}</span>
             <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-sunken">
               <i
                 className="block h-full rounded-full bg-forest"
