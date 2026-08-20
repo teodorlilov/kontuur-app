@@ -71,8 +71,10 @@ describe('FollowerFlow', () => {
     expect(screen.getByText('was 12 last period')).toBeInTheDocument()
     // Net prints signed on both sides of the comparison.
     expect(screen.getByText('was −6 last period')).toBeInTheDocument()
-    // Attribution keeps honest grammar even at one.
-    expect(screen.getByText(/1 follow attributed to posts by Instagram/)).toBeInTheDocument()
+    // Attribution names who is doing the crediting, in the reader's terms.
+    expect(
+      screen.getByText(/Instagram credits 1 of these follows to your posts/)
+    ).toBeInTheDocument()
   })
 
   it('pins publish days and raises the day card with the posts on hover', () => {

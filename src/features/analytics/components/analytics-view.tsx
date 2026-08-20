@@ -134,7 +134,7 @@ export function AnalyticsView({
       <div className="mt-7">
         <AnalyticsSection
           title="Reach, day by day"
-          sub="Each day sits above the day it is compared with — both dates are on the axis, and each window's posts are pinned on their own row."
+          sub="How many accounts saw you each day, against the same run of days a period earlier. Both dates sit under every column, and each window's posts are pinned on their own row."
           ariaLabel="Reach, day by day"
           legend={
             <ChartLegend
@@ -216,7 +216,7 @@ export function AnalyticsView({
 
         <AnalyticsSection
           title="What each format earned"
-          sub="Reach by format, against last period."
+          sub="Which kinds of post reached the most people, against last period."
           ariaLabel="Reach by format"
           legend={
             <ChartLegend
@@ -274,7 +274,7 @@ export function AnalyticsView({
       <div className="mt-7 grid items-start gap-7 md:grid-cols-2">
         <AnalyticsSection
           title="What people did"
-          sub="Every interaction beside last period — all five on one scale."
+          sub="Every kind of interaction your posts earned, against last period."
           ariaLabel="Interactions"
           legend={
             <ChartLegend
@@ -305,11 +305,11 @@ export function AnalyticsView({
         </AnalyticsSection>
 
         <AnalyticsSection
-          title="What the profile converted"
+          title="What visitors tapped"
           sub={
             hasHistory && data.tapButtons.length > 0 && data.profileViews.now !== null
               ? `${formatCount(data.profileViews.now)} profile visits became these taps.`
-              : 'Taps on the profile’s link and contact buttons — the closest thing Instagram counts to a conversion.'
+              : 'Taps on your bio link and contact buttons — the nearest thing Instagram counts as someone acting on your profile.'
           }
           ariaLabel="Profile actions"
           legend={
@@ -415,7 +415,7 @@ export function AnalyticsView({
       <div className="mt-7">
         <AnalyticsSection
           title="When to post"
-          sub="When your followers are online, and what each publish window actually earned — observed, never guessed."
+          sub="The hours your followers are actually online, and what your posts earned in each part of the day."
           ariaLabel="When to post"
         >
           {hasHistory ? (

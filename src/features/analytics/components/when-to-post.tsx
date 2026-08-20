@@ -206,7 +206,8 @@ export function WhenToPost({
                     <span className="text-text3">no posts</span>
                   ) : bucket.postCount < MIN_BUCKET_POSTS || bucket.vsMedian === null ? (
                     <span className="text-text3">
-                      {bucket.postCount} post{bucket.postCount === 1 ? '' : 's'} — too few to read
+                      only {bucket.postCount} post{bucket.postCount === 1 ? '' : 's'} — too few to
+                      judge
                     </span>
                   ) : (
                     <>
@@ -223,8 +224,8 @@ export function WhenToPost({
               </div>
             ))}
             <p className="mt-1 max-w-[44ch] text-micro text-text3">
-              Medians of this period&rsquo;s posts by the hour they went out — a pattern so far, not
-              a promise; content quality moves these more than timing does.
+              The median reach of the posts you published in each window. Treat it as a hint rather
+              than a rule — what you post moves these numbers more than when you post it.
             </p>
           </div>
         )}

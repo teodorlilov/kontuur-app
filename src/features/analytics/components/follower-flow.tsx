@@ -67,10 +67,10 @@ export function FollowerFlow({ followers }: { followers: FollowerSummary }) {
 
   const metaParts = [
     followers.fromPosts !== null && followers.fromPosts > 0
-      ? `${formatCount(followers.fromPosts)} follow${followers.fromPosts === 1 ? '' : 's'} attributed to posts by Instagram`
+      ? `Instagram credits ${formatCount(followers.fromPosts)} of these follows to your posts`
       : null,
     followers.churnPct !== null
-      ? `${followers.churnPct < 10 ? followers.churnPct.toFixed(1) : Math.round(followers.churnPct)}% of starting followers left`
+      ? `${followers.churnPct < 10 ? followers.churnPct.toFixed(1) : Math.round(followers.churnPct)}% of the followers you started with left`
       : null,
   ].filter((part): part is string => part !== null)
 
