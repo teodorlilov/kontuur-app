@@ -54,6 +54,20 @@ const _fetchAnalyticsReport = unstable_cache(
     const postedFrom = zonedTimeToInstant(start, '00:00', timezone).toISOString()
     const postedTo = zonedTimeToInstant(shiftDateKey(end, 1), '00:00', timezone).toISOString()
 
+    // INVARIANT: this report never shows another account's posts. The posts
+    // ledger records the client, not the target account, and a client can be
+    // reconnected — so the union below claims ONLY rows stamped (at publish,
+    // migration 20260825) with the account id this client is connected to
+    // right now. Unstamped rows are unknowable and never pinned.
+    const { data: connRow } = await admin
+      .from('social_connections')
+      .select('account_id')
+      .eq('client_id', clientId)
+      .ilike('platform', 'instagram')
+      .limit(1)
+      .maybeSingle()
+    const accountId = (connRow as { account_id: string | null } | null)?.account_id ?? null
+
     const [accountRes, postRes, publishedRes, snapshotRes, latestRes] = await Promise.all([
       admin
         .from('ig_account_metrics')
@@ -68,17 +82,20 @@ const _fetchAnalyticsReport = unstable_cache(
         .eq('client_id', clientId)
         .gte('posted_at', postedFrom)
         .lt('posted_at', postedTo),
-      // Kontuur's own ledger: pins posts the sync cannot see — deleted from
+      // Kontuur's own ledger: pins posts the sync cannot see — removed from
       // Instagram after publishing, or published since the last sync ran.
       // posts.platform is canonical display case; compare case-insensitively.
-      admin
-        .from('posts')
-        .select(PUBLISHED_POST_PIN_COLUMNS)
-        .eq('client_id', clientId)
-        .eq('status', 'published')
-        .ilike('platform', 'instagram')
-        .gte('published_at', postedFrom)
-        .lt('published_at', postedTo),
+      accountId
+        ? admin
+            .from('posts')
+            .select(PUBLISHED_POST_PIN_COLUMNS)
+            .eq('client_id', clientId)
+            .eq('status', 'published')
+            .ilike('platform', 'instagram')
+            .eq('ig_account_id', accountId)
+            .gte('published_at', postedFrom)
+            .lt('published_at', postedTo)
+        : Promise.resolve({ data: [], error: null }),
       admin
         .from('ig_audience_snapshots')
         .select(IG_AUDIENCE_SNAPSHOT_COLUMNS)
@@ -97,14 +114,22 @@ const _fetchAnalyticsReport = unstable_cache(
         .order('metric_date', { ascending: false })
         .limit(1),
     ])
-    for (const res of [accountRes, postRes, publishedRes, snapshotRes, latestRes]) {
+    for (const res of [accountRes, postRes, snapshotRes, latestRes]) {
       if (res.error) throw new Error(`analytics report read failed: ${res.error.message}`)
+    }
+    // The pin union is an overlay, not core data: until migration 20260825
+    // reaches this database its column is missing — degrade to no ledger pins
+    // rather than failing the whole report. Any other error still throws.
+    if (publishedRes.error && !publishedRes.error.message.includes('ig_account_id')) {
+      throw new Error(`analytics report read failed: ${publishedRes.error.message}`)
     }
 
     // WHY as: this shared admin client is untyped, so projections do not infer.
     const accountRows = (accountRes.data ?? []) as unknown as IGAccountMetricColumns[]
     const postRows = (postRes.data ?? []) as unknown as IGPostMetricColumns[]
-    const publishedPosts = (publishedRes.data ?? []) as unknown as PublishedPostPinColumns[]
+    const publishedPosts = (publishedRes.error
+      ? []
+      : (publishedRes.data ?? [])) as unknown as PublishedPostPinColumns[]
     const snapshots = (snapshotRes.data ?? []) as unknown as SnapshotRow[]
     const latest = (latestRes.data ?? []) as unknown as Array<{
       metric_date: string
@@ -127,7 +152,8 @@ const _fetchAnalyticsReport = unstable_cache(
       lastSyncAt: latest[0]?.fetched_at ?? null,
     })
   },
-  ['analytics-report'],
+  // v2: cache bust — v1 entries may hold another account's ledger pins.
+  ['analytics-report-v2'],
   { revalidate: 3600, tags: [IG_METRICS_TAG] }
 )
 

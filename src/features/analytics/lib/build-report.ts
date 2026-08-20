@@ -449,7 +449,12 @@ export interface BuildReportInput {
   accountRows: IGAccountMetricColumns[]
   /** Posts published inside the current period, as the sync captured them. */
   postRows: IGPostMetricColumns[]
-  /** Kontuur's own published ledger for the same window — fills what the sync cannot see. */
+  /**
+   * Kontuur's own published ledger for the same window — fills what the sync
+   * cannot see. The read layer has already scoped these to the client's
+   * CURRENTLY connected account (posts.ig_account_id stamp); rows published
+   * to any other account never reach this builder.
+   */
   publishedPosts: PublishedPostPinColumns[]
   currentSnapshot: AudienceSnapshotInput | null
   previousSnapshot: AudienceSnapshotInput | null

@@ -79,6 +79,7 @@ interface PublishStatusPatch {
   status?: string
   ig_media_id?: string | null
   ig_creation_id?: string | null
+  ig_account_id?: string | null
   published_at?: string
   publish_error?: string | null
   publish_attempts?: number
@@ -151,15 +152,28 @@ async function claimPost(
 async function markPublished(
   admin: SupabaseClient,
   postId: string,
-  mediaId: string | null
+  mediaId: string | null,
+  accountId: string
 ): Promise<string | null> {
-  const error = await patchPost(admin, postId, {
+  const patch: PublishStatusPatch = {
     status: 'published',
     ig_media_id: mediaId,
     ig_creation_id: null,
+    // The target account, recorded at the only moment it is knowable — the
+    // analytics union pins only posts stamped with the current connection.
+    ig_account_id: accountId,
     published_at: new Date().toISOString(),
     publish_error: null,
-  })
+  }
+  let error = await patchPost(admin, postId, patch)
+  // Until migration 20260825 reaches the database the stamp column may not
+  // exist. The stamp is an overlay; it must never cost the status write —
+  // a lost write here is exactly what turns a stale claim into a duplicate.
+  if (error !== null && error.includes('ig_account_id')) {
+    const withoutStamp = { ...patch }
+    delete withoutStamp.ig_account_id
+    error = await patchPost(admin, postId, withoutStamp)
+  }
   if (error === null) return null
   return `post ${postId} published as media ${mediaId ?? 'unknown'} but the status write was lost: ${error}`
 }
@@ -263,13 +277,13 @@ async function resumeContainer(
 
   if (status === 'FINISHED') {
     const mediaId = await publishContainer(accountId, creationId, accessToken)
-    const writeError = await markPublished(admin, post.id, mediaId)
+    const writeError = await markPublished(admin, post.id, mediaId, accountId)
     return { kind: 'published', mediaId, writeError: writeError ?? undefined }
   }
 
   if (status === 'PUBLISHED') {
     const mediaId = await reconcilePublishedContainer(post, accountId, accessToken)
-    const writeError = await markPublished(admin, post.id, mediaId)
+    const writeError = await markPublished(admin, post.id, mediaId, accountId)
     return { kind: 'published', mediaId, writeError: writeError ?? undefined }
   }
 
