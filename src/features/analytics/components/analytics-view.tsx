@@ -134,15 +134,18 @@ export function AnalyticsView({
       <div className="mt-7">
         <AnalyticsSection
           title="Reach, day by day"
-          sub="Each day against the same day of the previous period — pins mark the days a post went out."
+          sub="Each day sits above the day it is compared with — both dates are on the axis, and each window's posts are pinned on their own row."
           ariaLabel="Reach, day by day"
           legend={
             <ChartLegend
               items={[
                 { swatch: 'now', label: 'This period' },
-                { swatch: 'then', label: 'Previous' },
+                { swatch: 'then-dashed', label: 'Previous' },
                 ...(data.reachByDay.some((day) => day.posts.length > 0)
-                  ? ([{ swatch: 'pin', label: 'Post published' }] as const)
+                  ? ([{ swatch: 'pin', label: 'Posted' }] as const)
+                  : []),
+                ...(data.reachByDay.some((day) => day.thenPosts.length > 0)
+                  ? ([{ swatch: 'pin-then', label: 'Posted (previous)' }] as const)
                   : []),
               ]}
             />

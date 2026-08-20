@@ -8,7 +8,9 @@ const W = 1120
 const PAD_X = 12
 
 function day(date: string, overrides: Partial<ReachDay> = {}): ReachDay {
-  return { date, now: 100, then: 80, views: 150, posts: [], ...overrides }
+  // thenDate is the aligned previous-period day — 7 days back in this fixture.
+  const thenDate = `2026-08-${String(Number(date.slice(8)) - 7).padStart(2, '0')}`
+  return { date, now: 100, then: 80, thenDate, views: 150, posts: [], thenPosts: [], ...overrides }
 }
 
 /** 8 days; day index 2 (13 Aug) carries four publications. */
@@ -100,6 +102,59 @@ describe('ReachTrend', () => {
     // Only three posts are named; the fourth defers to the table.
     expect(screen.queryByText('Fourth post')).not.toBeInTheDocument()
     expect(screen.getByText('+1 more in the posts table below')).toBeInTheDocument()
+  })
+
+  it('files each window under its own date, so the comparison cannot be misread', () => {
+    const days = [...DAYS]
+    days[2] = day('2026-08-13', {
+      now: 1840,
+      then: 4068,
+      views: 1898,
+      thenPosts: [
+        {
+          igMediaId: 'prev',
+          caption: 'Last week’s winner',
+          mediaType: 'IMAGE',
+          reach: 900,
+          follows: 1,
+          missing: null,
+        },
+      ],
+    })
+    const { container } = render(<ReachTrend days={days} bestDay={null} />)
+    // The axis names the comparison window's dates before anyone hovers.
+    expect(screen.getAllByText('6 Aug').length).toBeGreaterThan(0)
+    hoverDay(container, 2)
+
+    // The previous value is filed under 6 Aug — the day it actually came from.
+    expect(screen.getAllByText('6 Aug').length).toBeGreaterThan(1)
+    expect(screen.getByText('· previous period')).toBeInTheDocument()
+    expect(screen.getByText('4,068')).toBeInTheDocument()
+    expect(screen.getByText('Published that day')).toBeInTheDocument()
+    expect(screen.getByText('Last week’s winner')).toBeInTheDocument()
+  })
+
+  it('pins the previous window’s posts on their own row', () => {
+    const days = DAYS.map((entry) =>
+      entry.date === '2026-08-15'
+        ? {
+            ...entry,
+            thenPosts: [
+              {
+                igMediaId: 'p',
+                caption: 'Earlier',
+                mediaType: 'IMAGE',
+                reach: 10,
+                follows: 0,
+                missing: null,
+              },
+            ],
+          }
+        : entry
+    )
+    const { container } = render(<ReachTrend days={days} bestDay={null} />)
+    // One pin for this period's posts, one for the previous period's.
+    expect(container.querySelectorAll('circle')).toHaveLength(2)
   })
 
   it('clears the day card when the pointer leaves', () => {

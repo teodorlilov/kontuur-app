@@ -110,10 +110,18 @@ export interface ReachDay {
   date: string
   now: number | null
   then: number | null
+  /**
+   * The previous-period day this column's `then` value actually came from.
+   * The two windows share one axis, so without naming it the reader reads
+   * "13 Aug · previous 3,948" and assumes both numbers describe 13 Aug.
+   */
+  thenDate: string
   /** That day's views — the tooltip pairs the two ways a day was seen. */
   views: number | null
   /** Posts published that day, strongest reach first. */
   posts: TrendPost[]
+  /** Posts published on the previous-period day — what moved THAT line. */
+  thenPosts: TrendPost[]
 }
 
 export interface AudienceOnline {
@@ -709,8 +717,16 @@ export function buildAnalyticsReport(input: BuildReportInput): AnalyticsReportDa
 
   // Publications keyed by calendar day (the UTC slice of posted_at — the same
   // convention the best-day caption uses); buildPosts already ordered them
-  // strongest-reach first, so each day's list keeps that order.
-  const { posts, medianReach } = buildPosts(input.postRows, input.publishedPosts, input.lastSyncAt)
+  // strongest-reach first, so each day's list keeps that order. Only the
+  // CURRENT window feeds the table and the medians; the previous window's
+  // rows exist solely to explain the shape of the comparison line.
+  const currentPostRows = input.postRows.filter((row) => {
+    const date = (row.posted_at ?? '').slice(0, 10)
+    // A row without a timestamp has no day to belong to, so it can never be a
+    // comparison-window pin — but the table still lists it, as it always has.
+    return date === '' || date >= period.start
+  })
+  const { posts, medianReach } = buildPosts(currentPostRows, input.publishedPosts, input.lastSyncAt)
   const postsByDate = new Map<string, TrendPost[]>()
   for (const post of posts) {
     const date = post.postedAt?.slice(0, 10)
@@ -727,13 +743,40 @@ export function buildAnalyticsReport(input: BuildReportInput): AnalyticsReportDa
     postsByDate.set(date, list)
   }
 
-  const reachByDay: ReachDay[] = currentKeys.map((date, index) => ({
-    date,
-    now: reach.series[index]!,
-    then: previous.byDay[index] ? previous.byDay[index].reach : null,
-    views: views.series[index]!,
-    posts: postsByDate.get(date) ?? [],
-  }))
+  // The previous window's publications, from synced metrics only — the app
+  // ledger's pins are scoped to the current window, so a previous-period post
+  // Instagram never returned simply has no pin rather than a guessed one.
+  const previousPostsByDate = new Map<string, TrendPost[]>()
+  for (const row of input.postRows) {
+    const date = (row.posted_at ?? '').slice(0, 10)
+    if (!date || date > period.prevEnd) continue
+    const list = previousPostsByDate.get(date) ?? []
+    list.push({
+      igMediaId: row.ig_media_id,
+      caption: row.caption,
+      mediaType: row.media_type,
+      reach: row.reach,
+      follows: row.follows,
+      missing: null,
+    })
+    previousPostsByDate.set(date, list)
+  }
+  for (const list of previousPostsByDate.values()) {
+    list.sort((a, b) => (b.reach ?? -1) - (a.reach ?? -1))
+  }
+
+  const reachByDay: ReachDay[] = currentKeys.map((date, index) => {
+    const thenDate = previousKeys[index] ?? date
+    return {
+      date,
+      now: reach.series[index]!,
+      then: previous.byDay[index] ? previous.byDay[index].reach : null,
+      thenDate,
+      views: views.series[index]!,
+      posts: postsByDate.get(date) ?? [],
+      thenPosts: previousPostsByDate.get(thenDate) ?? [],
+    }
+  })
 
   const flowByDay: FollowerFlowDay[] = currentKeys.map((date, index) => ({
     date,

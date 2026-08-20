@@ -143,19 +143,25 @@ describe('buildAnalyticsReport', () => {
     expect(report.reach.series).toEqual([150, null, null, 250])
     expect(report.views.now).toBe(400)
     // Day-by-day pairs align by index: day 1 of now against day 1 of then.
+    // thenDate carries the previous-period day each column is measured
+    // against — the axis and the day card both name it.
     expect(report.reachByDay[0]).toEqual({
       date: '2026-08-15',
       now: 150,
       then: 100,
+      thenDate: '2026-08-11',
       views: 300,
       posts: [],
+      thenPosts: [],
     })
     expect(report.reachByDay[3]).toEqual({
       date: '2026-08-18',
       now: 250,
       then: 100,
+      thenDate: '2026-08-14',
       views: null,
       posts: [],
+      thenPosts: [],
     })
   })
 
@@ -185,6 +191,28 @@ describe('buildAnalyticsReport', () => {
     expect(report.reachByDay[0]!.posts).toEqual([])
     expect(report.reachByDay.flatMap((d) => d.posts).some((p) => p.igMediaId === 'c')).toBe(false)
     expect(report.posts).toHaveLength(3)
+  })
+
+  it('files the comparison window’s posts on the comparison line, never in the table', () => {
+    const report = build({
+      postRows: [
+        postRow({ ig_media_id: 'now', posted_at: '2026-08-16T09:00:00Z', reach: 200 }),
+        // 11 Aug is the previous-period day that 15 Aug is measured against.
+        postRow({
+          ig_media_id: 'then',
+          posted_at: '2026-08-11T09:00:00Z',
+          reach: 900,
+          caption: 'Last week',
+        }),
+      ],
+    })
+    // The table and the medians stay current-window only.
+    expect(report.posts.map((post) => post.igMediaId)).toEqual(['now'])
+    // …but the trend can now explain the dashed line's shape.
+    expect(report.reachByDay[0]!.thenDate).toBe('2026-08-11')
+    expect(report.reachByDay[0]!.thenPosts.map((post) => post.caption)).toEqual(['Last week'])
+    expect(report.reachByDay[1]!.posts.map((post) => post.igMediaId)).toEqual(['now'])
+    expect(report.reachByDay[1]!.thenPosts).toEqual([])
   })
 
   it("pins Kontuur's own published posts the sync cannot see, marked honestly", () => {

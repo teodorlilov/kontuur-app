@@ -9,8 +9,14 @@ import { DayCard, DayCardPosts, DayCardRow } from './day-card'
 import { ScrollToRecent } from './scroll-to-recent'
 
 const W = 1120
-const H = 264
-const PAD = { top: 16, right: 12, bottom: 30, left: 12 }
+const H = 296
+/**
+ * bottom carries four rows under the plot: this period's pins, the previous
+ * period's pins, then a date label for each window.
+ */
+const PAD = { top: 16, right: 12, bottom: 62, left: 12 }
+/** How far under the baseline the comparison window's pins sit. */
+const THEN_PIN_DROP = 16
 
 /**
  * The hero comparison: daily reach as two 2px lines — this period in Deep Pine
@@ -72,12 +78,17 @@ export function ReachTrend({ days, bestDay }: { days: ReachDay[]; bestDay: BestD
 
   const hoveredDay = hover === null ? null : (days[hover] ?? null)
   const publishDays = days.filter((day) => day.posts.length > 0).length
+  const thenPublishDays = days.filter((day) => day.thenPosts.length > 0).length
 
-  const spoken = `Line chart. Daily reach for this period against the previous one.${
+  const spoken = `Line chart. Daily reach for this period as a solid line against the previous period as a dashed one, each column labelled with both windows' dates.${
     bestDay ? ` Peaks at ${formatCount(bestDay.reach)} on ${formatDayMonth(bestDay.date)}.` : ''
   }${
     publishDays > 0
-      ? ` ${publishDays} publish day${publishDays === 1 ? ' is' : 's are'} pinned on the baseline — the posts table below lists every post.`
+      ? ` ${publishDays} publish day${publishDays === 1 ? ' is' : 's are'} pinned under the baseline — the posts table below lists every post.`
+      : ''
+  }${
+    thenPublishDays > 0
+      ? ` The previous period published on ${thenPublishDays} day${thenPublishDays === 1 ? '' : 's'}, pinned on the row beneath.`
       : ''
   } Days without data are shown as gaps.`
 
@@ -118,26 +129,44 @@ export function ReachTrend({ days, bestDay }: { days: ReachDay[]; bestDay: BestD
                 </g>
               )
             })}
-            {tickIndexes.map((index, position) => (
-              <text
-                key={index}
-                x={x(index)}
-                y={H - 8}
-                textAnchor={
-                  position === 0 ? 'start' : position === tickIndexes.length - 1 ? 'end' : 'middle'
-                }
-                fill={CHART_COLORS.label}
-                className="text-micro"
-              >
-                {days[index] ? formatDayMonth(days[index].date) : ''}
-              </text>
-            ))}
+            {/* Both dates under every tick. One axis carries two windows, so
+                naming only the current one left the reader to assume the
+                dashed line described the same day it sits above. */}
+            {tickIndexes.map((index, position) => {
+              const anchor =
+                position === 0 ? 'start' : position === tickIndexes.length - 1 ? 'end' : 'middle'
+              return (
+                <g key={index}>
+                  <text
+                    x={x(index)}
+                    y={H - 24}
+                    textAnchor={anchor}
+                    fill={CHART_COLORS.label}
+                    className="text-micro"
+                  >
+                    {days[index] ? formatDayMonth(days[index].date) : ''}
+                  </text>
+                  <text
+                    x={x(index)}
+                    y={H - 8}
+                    textAnchor={anchor}
+                    fill={CHART_COLORS.thenLine}
+                    className="text-micro"
+                  >
+                    {days[index] ? formatDayMonth(days[index].thenDate) : ''}
+                  </text>
+                </g>
+              )
+            })}
             {washPath && <path d={washPath} fill={CHART_COLORS.now} opacity={0.06} />}
+            {/* Dashed, not merely paler: the two windows must be tellable
+                apart without relying on two greens alone. */}
             <path
               d={segmentsToPath(thenSegments)}
               fill="none"
               stroke={CHART_COLORS.thenLine}
               strokeWidth={2}
+              strokeDasharray="6 4"
               strokeLinejoin="round"
               strokeLinecap="round"
               vectorEffect="non-scaling-stroke"
@@ -195,45 +224,74 @@ export function ReachTrend({ days, bestDay }: { days: ReachDay[]; bestDay: BestD
                 </text>
               </g>
             )}
-            {days.map((day, index) =>
-              day.posts.length > 0 ? (
-                <circle
-                  key={day.date}
-                  cx={x(index)}
-                  cy={baseline}
-                  r={4}
-                  fill={hover === index ? CHART_COLORS.now : '#fff'}
-                  stroke={CHART_COLORS.now}
-                  strokeWidth={2}
-                />
-              ) : null
-            )}
+            {days.map((day, index) => (
+              <g key={day.date}>
+                {day.posts.length > 0 && (
+                  <circle
+                    cx={x(index)}
+                    cy={baseline}
+                    r={4}
+                    fill={hover === index ? CHART_COLORS.now : '#fff'}
+                    stroke={CHART_COLORS.now}
+                    strokeWidth={2}
+                  />
+                )}
+                {/* The comparison window's publications, on its own row: they
+                    explain the dashed line the way the row above explains the
+                    solid one. Their x is the ALIGNED day, and the day card
+                    names the real date so the two are never confused. */}
+                {day.thenPosts.length > 0 && (
+                  <circle
+                    cx={x(index)}
+                    cy={baseline + THEN_PIN_DROP}
+                    r={3}
+                    fill={hover === index ? CHART_COLORS.thenLine : '#fff'}
+                    stroke={CHART_COLORS.thenLine}
+                    strokeWidth={2}
+                  />
+                )}
+              </g>
+            ))}
           </svg>
           {hover !== null && hoveredDay && <TrendTooltip day={hoveredDay} frac={x(hover) / W} />}
-        </div>
-        <div
-          className="mt-1.5 flex justify-between text-micro tabular-nums text-text3"
-          aria-hidden="true"
-        >
-          <span>{formatDayMonth(days[0]!.date)}</span>
-          <span>{formatDayMonth(days[days.length - 1]!.date)}</span>
         </div>
       </div>
     </ScrollToRecent>
   )
 }
 
-/** The reach day beside the crosshair: the pair, views, and the publications. */
+/**
+ * The day card beside the crosshair — one block per window, each under its
+ * OWN date. The two windows share an x-axis that can only be labelled once,
+ * so a card reading "13 Aug · Previous 3,948" invited exactly the wrong
+ * conclusion: that 3,948 also described 13 Aug. It came from 6 Aug.
+ */
 function TrendTooltip({ day, frac }: { day: ReachDay; frac: number }) {
   return (
     <DayCard frac={frac}>
-      <div className="text-micro font-semibold text-ink">{formatDayMonth(day.date)}</div>
+      <div className="flex items-center gap-1.5">
+        <i aria-hidden="true" className="h-0.5 w-3.5 flex-none rounded-full bg-forest" />
+        <span className="text-micro font-semibold text-ink">{formatDayMonth(day.date)}</span>
+      </div>
       <dl className="mt-1.5 space-y-1">
-        <DayCardRow swatch="bg-forest" label="Reach" value={day.now} />
-        <DayCardRow swatch="bg-metric-3" label="Previous" value={day.then} />
+        <DayCardRow label="Reached" value={day.now} />
         {day.views !== null && <DayCardRow label="Views" value={day.views} />}
       </dl>
-      <DayCardPosts posts={day.posts} />
+      <DayCardPosts posts={day.posts} divided={false} />
+
+      <div className="mt-2.5 border-t border-ink/[0.05] pt-2">
+        <div className="flex items-center gap-1.5">
+          <i aria-hidden="true" className="h-0.5 w-3.5 flex-none rounded-full bg-metric-3" />
+          <span className="text-micro font-semibold text-text2">
+            {formatDayMonth(day.thenDate)}
+            <span className="font-normal text-text3"> · previous period</span>
+          </span>
+        </div>
+        <dl className="mt-1.5 space-y-1">
+          <DayCardRow label="Reached" value={day.then} />
+        </dl>
+        <DayCardPosts posts={day.thenPosts} label="Published that day" divided={false} />
+      </div>
     </DayCard>
   )
 }

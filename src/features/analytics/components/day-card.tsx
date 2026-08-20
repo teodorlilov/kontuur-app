@@ -56,12 +56,20 @@ export function DayCardRow({
 }
 
 /** The "Published this day" block — identical wording on every timeline. */
-export function DayCardPosts({ posts }: { posts: TrendPost[] }) {
+export function DayCardPosts({
+  posts,
+  label = 'Published this day',
+  divided = true,
+}: {
+  posts: TrendPost[]
+  label?: string
+  divided?: boolean
+}) {
   if (posts.length === 0) return null
   const extra = posts.length - DAY_CARD_POSTS
   return (
-    <div className="mt-2.5 border-t border-ink/[0.05] pt-2">
-      <div className="text-micro font-medium text-text3">Published this day</div>
+    <div className={divided ? 'mt-2.5 border-t border-ink/[0.05] pt-2' : 'mt-2'}>
+      <div className="text-micro font-medium text-text3">{label}</div>
       <ul className="mt-1.5 space-y-1.5">
         {posts.slice(0, DAY_CARD_POSTS).map((post) => (
           <DayCardPost key={post.igMediaId} post={post} />

@@ -71,6 +71,10 @@ const _fetchAnalyticsReport = unstable_cache(
     // Post timestamps are instants; the period is agency-calendar days.
     const postedFrom = zonedTimeToInstant(start, '00:00', timezone).toISOString()
     const postedTo = zonedTimeToInstant(shiftDateKey(end, 1), '00:00', timezone).toISOString()
+    // Reaches back over the comparison window too: the trend chart draws both
+    // lines, so it must be able to say which posts moved the previous one.
+    // The builder splits them — only current-window rows reach the table.
+    const postedFromPrev = zonedTimeToInstant(prevStart, '00:00', timezone).toISOString()
 
     // INVARIANT: this report never shows another account's data. Every store
     // it reads — metrics, posts ledger, snapshots — records the client, but a
@@ -91,7 +95,7 @@ const _fetchAnalyticsReport = unstable_cache(
         .select(IG_POST_METRIC_COLUMNS)
         .eq('client_id', clientId)
         .eq('ig_account_id', accountId)
-        .gte('posted_at', postedFrom)
+        .gte('posted_at', postedFromPrev)
         .lt('posted_at', postedTo),
       // Kontuur's own ledger: pins posts the sync cannot see — removed from
       // Instagram after publishing, or published since the last sync ran.

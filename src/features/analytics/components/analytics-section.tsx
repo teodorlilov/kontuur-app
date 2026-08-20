@@ -42,6 +42,11 @@ const SWATCH_CLASS = {
   tick: 'h-0.5 w-3.5 rounded-full bg-then-line',
   /** A publish day pinned on the reach baseline. */
   pin: 'size-2.5 rounded-full border-2 border-forest bg-surface',
+  /** The comparison window's publish day, on the row beneath. */
+  'pin-then': 'size-2 rounded-full border-2 border-then-line bg-surface',
+  /** The comparison line: dashed, so the pair never rests on hue alone. */
+  'then-dashed':
+    'h-0.5 w-3.5 bg-[linear-gradient(to_right,var(--then-line)_0_60%,transparent_60%_100%)] bg-[length:6px_2px] bg-repeat-x',
 } as const
 
 export type LegendSwatch = keyof typeof SWATCH_CLASS
