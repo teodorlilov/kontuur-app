@@ -122,37 +122,103 @@ export async function syncAllClientMetrics(
   return outcome
 }
 
+/**
+ * Conditions that make every remaining phase pointless: a dead token, a
+ * missing permission, or a rate limit answers the same way for all of them.
+ * Anything narrower belongs to its own phase.
+ */
+function isAccountWideFailure(err: unknown): boolean {
+  return (
+    err instanceof GraphApiError &&
+    (err.failure === 'token_invalid' ||
+      err.failure === 'permission' ||
+      err.failure === 'rate_limited')
+  )
+}
+
+export interface SyncPhase {
+  name: string
+  run: () => Promise<void>
+}
+
+/**
+ * Runs each phase even when an earlier one failed, and returns what broke.
+ * Account-wide failures propagate immediately — retrying four more phases
+ * against a dead token only burns calls. Callers decide what a partial run
+ * means; this never decides for them by swallowing.
+ */
+export async function runSyncPhases(phases: SyncPhase[]): Promise<string[]> {
+  const failures: string[] = []
+  for (const { name, run } of phases) {
+    try {
+      await run()
+    } catch (err) {
+      if (isAccountWideFailure(err)) throw err
+      failures.push(`${name}: ${err instanceof Error ? err.message : 'unknown error'}`)
+    }
+  }
+  return failures
+}
+
+/**
+ * One client's nightly capture, phase by phase — each isolated.
+ *
+ * These used to run as a single chain, so ONE flaky call anywhere upstream
+ * cost every later phase its writes. That is how an account with a firing
+ * cron and a valid token still showed an empty audience section for days:
+ * demographics run last, and the run never got there. Now a narrow failure is
+ * recorded and the next phase still runs; only account-wide conditions abort.
+ * The aggregate throw at the end keeps the failure VISIBLE in the cron's
+ * per-client errors — silence is what let this hide.
+ */
 async function syncClientMetrics(admin: SupabaseClient, connection: IGConnection): Promise<void> {
   const { client_id: clientId, account_id: accountId, access_token: accessToken } = connection
   // Read the history flag BEFORE writing yesterday's row, or it is never zero.
   // Scoped to THIS account: after a reconnect the new account has no history
   // and must get its own backfill, whatever the old account left behind.
   const hadHistory = await hasAccountHistory(admin, clientId, accountId)
-  await syncAccountDay(admin, clientId, accountId, accessToken)
-  if (!hadHistory) await backfillAccountHistory(admin, clientId, accountId, accessToken)
-  if (hadHistory) await recaptureConsolidatingDays(admin, clientId, accountId, accessToken)
-  await syncPostMetrics(admin, clientId, accountId, accessToken)
-  await syncDemographicsWeekly(admin, clientId, accountId, accessToken)
-  // Best-effort by design: the when-to-post panel and the observed best-time
-  // slot are enhancements — a failure here never costs the core capture.
-  try {
-    await syncOnlineFollowers(admin, clientId, accountId, accessToken)
-    // Observed data outranks the model-invented best_time_json: whenever
-    // enough hourly history exists, the scheduler's stored pattern becomes a
-    // nightly-refreshed derivation of it.
-    const observed = await deriveObservedBestTime(admin, clientId)
-    if (observed) {
-      const { error } = await admin
-        .from('brand_profiles')
-        .update({
-          best_time_json: asJson(observed),
-          best_time_updated_at: new Date().toISOString(),
-        })
-        .eq('client_id', clientId)
-      if (error) throw new Error(`observed best-time write failed: ${error.message}`)
-    }
-  } catch (err) {
-    console.error(`[metrics] online-hours enhancement failed for client ${clientId}:`, err)
+
+  const phases: SyncPhase[] = [
+    { name: 'day totals', run: () => syncAccountDay(admin, clientId, accountId, accessToken) },
+    {
+      name: hadHistory ? 'consolidation recapture' : 'history backfill',
+      run: () =>
+        hadHistory
+          ? recaptureConsolidatingDays(admin, clientId, accountId, accessToken)
+          : backfillAccountHistory(admin, clientId, accountId, accessToken),
+    },
+    { name: 'post metrics', run: () => syncPostMetrics(admin, clientId, accountId, accessToken) },
+    {
+      name: 'demographics',
+      run: () => syncDemographicsWeekly(admin, clientId, accountId, accessToken),
+    },
+    {
+      name: 'online hours',
+      run: async () => {
+        await syncOnlineFollowers(admin, clientId, accountId, accessToken)
+        // Observed data outranks the model-invented best_time_json: whenever
+        // enough hourly history exists, the scheduler's stored pattern becomes
+        // a nightly-refreshed derivation of it.
+        const observed = await deriveObservedBestTime(admin, clientId)
+        if (observed) {
+          const { error } = await admin
+            .from('brand_profiles')
+            .update({
+              best_time_json: asJson(observed),
+              best_time_updated_at: new Date().toISOString(),
+            })
+            .eq('client_id', clientId)
+          if (error) throw new Error(`observed best-time write failed: ${error.message}`)
+        }
+      },
+    },
+  ]
+
+  const failures = await runSyncPhases(phases)
+  if (failures.length > 0) {
+    throw new Error(
+      `partial sync (${failures.length} of ${phases.length} phases) — ${failures.join(' | ')}`
+    )
   }
 }
 
