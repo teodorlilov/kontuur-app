@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { GraphApiError } from '@/lib/meta/graph-errors'
-import { runSyncPhases, type SyncPhase } from '../sync-metrics'
+import { consolidationWindow, runSyncPhases, type SyncPhase } from '../sync-metrics'
 
 function phase(name: string, run: () => Promise<void>): SyncPhase {
   return { name, run }
@@ -54,5 +54,36 @@ describe('runSyncPhases', () => {
 
   it('reports nothing when every phase lands', async () => {
     expect(await runSyncPhases([phase('day totals', () => Promise.resolve())])).toEqual([])
+  })
+})
+
+describe('consolidationWindow', () => {
+  it('re-asks days 2..7 back, newest first, and never yesterday', () => {
+    // Yesterday belongs to syncAccountDay, which wrote it in full minutes ago;
+    // re-asking it here would spend six extra calls to overwrite fresh values.
+    const { dayKeys, oldest } = consolidationWindow('2026-08-19')
+    expect(dayKeys).toEqual([
+      '2026-08-18',
+      '2026-08-17',
+      '2026-08-16',
+      '2026-08-15',
+      '2026-08-14',
+      '2026-08-13',
+    ])
+    expect(dayKeys).not.toContain('2026-08-19')
+    // The reach series is asked across the same span, so its lower bound has to
+    // reach the oldest day the totals pass touched — not one short of it.
+    expect(oldest).toBe('2026-08-13')
+  })
+
+  it('crosses a month boundary by calendar, not by arithmetic on the day number', () => {
+    expect(consolidationWindow('2026-03-02').dayKeys).toEqual([
+      '2026-03-01',
+      '2026-02-28',
+      '2026-02-27',
+      '2026-02-26',
+      '2026-02-25',
+      '2026-02-24',
+    ])
   })
 })

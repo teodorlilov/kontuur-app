@@ -22,6 +22,7 @@ import { insertClientNotificationOnce } from '@/features/publishing/lib/notifica
 import { asJson } from '@/lib/queries/as-json'
 import { SOCIAL_CONNECTION_SYNC_COLUMNS } from '@/lib/queries/select-columns'
 import { MS_PER_DAY } from '@/utils/constants'
+import { shiftDateKey } from '@/utils/date-helpers'
 import { deriveObservedBestTime } from './derive-best-time'
 
 /**
@@ -341,7 +342,32 @@ export async function captureDayTotals(
   }
 }
 
-/** Re-captures days 2..N back so stored values track Meta's consolidation. */
+/**
+ * The days a nightly run re-asks, newest first, plus the oldest of them.
+ * Yesterday is NOT among them — syncAccountDay has just written it in full —
+ * so the window is days 2..CONSOLIDATION_DAYS back.
+ */
+export function consolidationWindow(yesterday: string): { dayKeys: string[]; oldest: string } {
+  const dayKeys = Array.from({ length: CONSOLIDATION_DAYS - 1 }, (_, index) =>
+    shiftDateKey(yesterday, -(index + 1))
+  )
+  return { dayKeys, oldest: dayKeys[dayKeys.length - 1] ?? yesterday }
+}
+
+/**
+ * Re-captures days 2..N back so stored values track Meta's consolidation.
+ *
+ * Reach rides along in its OWN batch rather than inside captureDayTotals. It is
+ * a series metric — one call covers the whole window, where the totals cost one
+ * call per day — and it must never be written as an explicit NULL for a day the
+ * series skipped, which a shared row shape would force. Leaving it out entirely
+ * was the older bug: the headline number of the whole document, and the one the
+ * "our 28 July disagrees with the app" complaint was about, was the only metric
+ * the consolidation window never revisited.
+ *
+ * followers_count deliberately stays out: it is a reading of the account taken
+ * now, so there is no past value to re-ask for.
+ */
 async function recaptureConsolidatingDays(
   admin: SupabaseClient,
   clientId: string,
@@ -349,17 +375,36 @@ async function recaptureConsolidatingDays(
   accessToken: string
 ): Promise<void> {
   const { date: yesterday } = yesterdayUtcWindow()
+  const { dayKeys, oldest } = consolidationWindow(yesterday)
   const rows: IGAccountMetricsInsert[] = []
-  for (let daysBack = 1; daysBack < CONSOLIDATION_DAYS; daysBack++) {
-    const dateKey = new Date(Date.parse(yesterday) - daysBack * SECONDS_PER_DAY * 1000)
-      .toISOString()
-      .slice(0, 10)
+  for (const dateKey of dayKeys) {
     rows.push(await captureDayTotals(clientId, accountId, accessToken, dateKey))
   }
   const { error } = await admin
     .from('ig_account_metrics')
     .upsert(rows, { onConflict: 'client_id,ig_account_id,metric_date' })
   if (error) throw new Error(`consolidation recapture upsert failed: ${error.message}`)
+
+  // Yesterday is excluded: syncAccountDay wrote its reach minutes ago.
+  const reachSeries = await fetchDailyReachSeries(
+    accountId,
+    accessToken,
+    Math.floor(Date.parse(oldest) / 1000),
+    Math.floor(Date.parse(yesterday) / 1000)
+  )
+  const reachRows: IGAccountMetricsInsert[] = reachSeries.map((day) => ({
+    client_id: clientId,
+    ig_account_id: accountId,
+    metric_date: day.date,
+    reach: day.reach,
+  }))
+  if (reachRows.length === 0) return
+  const { error: reachError } = await admin
+    .from('ig_account_metrics')
+    .upsert(reachRows, { onConflict: 'client_id,ig_account_id,metric_date' })
+  if (reachError) {
+    throw new Error(`consolidation reach upsert failed: ${reachError.message}`)
+  }
 }
 
 async function hasAccountHistory(
