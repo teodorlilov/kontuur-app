@@ -2,6 +2,7 @@ import { cn } from '@/utils/cn'
 import type { ReportPostRow } from '../lib/build-report'
 import { formatCount, formatDayMonth } from '../lib/format'
 import { firstLine, TYPE_META } from '../lib/post-display'
+import { PostThumb } from './post-thumb'
 
 /** ≥1.5× median earns the ratio tag; ≤0.6× is named below median. */
 const TOP_RATIO = 1.5
@@ -70,19 +71,25 @@ export function PostsTable({
                     )}
                   >
                     <div className="flex min-w-0 items-center gap-3">
-                      <span
-                        aria-hidden="true"
-                        className={cn(
-                          'grid size-8 flex-none place-items-center rounded-panel text-label tracking-normal text-forest',
-                          type.tone === 'marker' ? 'bg-marker' : 'bg-sage'
-                        )}
-                      >
-                        {type.letter}
-                      </span>
+                      <PostThumb thumbnailUrl={post.thumbnailUrl} mediaType={post.mediaType} />
                       <span className="min-w-0">
-                        <span className="block max-w-[30ch] truncate text-caption text-ink">
-                          {firstLine(post.caption)}
-                        </span>
+                        {/* A post removed from Instagram keeps its caption but
+                            loses its destination — a link to a 404 helps nobody. */}
+                        {post.permalink && post.missing !== 'removed' ? (
+                          <a
+                            href={post.permalink}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="block max-w-[30ch] truncate text-caption text-ink underline decoration-line underline-offset-2 transition-colors hover:decoration-forest focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-forest/40"
+                          >
+                            {firstLine(post.caption)}
+                            <span className="sr-only"> — open on Instagram</span>
+                          </a>
+                        ) : (
+                          <span className="block max-w-[30ch] truncate text-caption text-ink">
+                            {firstLine(post.caption)}
+                          </span>
+                        )}
                         <span className="block text-micro text-text3">
                           {post.postedAt ? `${formatDayMonth(post.postedAt.slice(0, 10))} · ` : ''}
                           {type.label}
