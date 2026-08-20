@@ -88,8 +88,9 @@ export function AudienceSection({ audience }: { audience: AudienceReport }) {
           ))}
         </div>
         {anyIndexTag && (
-          <p className="mt-2.5 text-micro text-text3">
-            ×N marks bands engaging above or below their share of followers.
+          <p className="mt-2.5 max-w-[52ch] text-micro text-text3">
+            1.5× means a band produced half again the engagement its size predicts; 0.7× means it
+            engages below its share. Bands under 5% of followers stay untagged.
           </p>
         )}
       </div>

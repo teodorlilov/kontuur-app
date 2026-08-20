@@ -356,7 +356,11 @@ export function AnalyticsView({
       <div className="mt-7">
         <AnalyticsSection
           title="Who follows, who engages"
-          sub="How your followers compare with the people who actually engaged this period."
+          // The windows are Instagram's, not ours: follower demographics come
+          // back on `this_month` and engaged demographics on `last_90_days`
+          // (insights.ts DEMOGRAPHIC_TIMEFRAME). Saying "this period" claimed a
+          // responsiveness to the filter that this panel has never had.
+          sub="Your follower mix this month against who engaged over the last 90 days — Instagram fixes both windows, so this panel alone does not follow the period filter."
           ariaLabel="Audience"
           legend={
             <ChartLegend
