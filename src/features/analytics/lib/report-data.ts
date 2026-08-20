@@ -45,7 +45,6 @@ function emptyReport(period: AnalyticsPeriod, timezone: string): AnalyticsReport
     publishedPosts: [],
     currentSnapshot: null,
     previousSnapshot: null,
-    onlineByDay: [],
     timezone,
     hasHistory: false,
     lastSyncAt: null,
@@ -126,19 +125,6 @@ const _fetchAnalyticsReport = unstable_cache(
         .order('metric_date', { ascending: false })
         .limit(1),
     ])
-    // Separate on purpose (and best-effort): the hourly-online column lands
-    // with migration 20260827 — until it exists everywhere, the when-to-post
-    // panel degrades to its collecting state instead of failing the report.
-    const onlineRes = await admin
-      .from('ig_account_metrics')
-      .select('metric_date, online_followers_by_hour')
-      .eq('client_id', clientId)
-      .eq('ig_account_id', accountId)
-      .gte('metric_date', start)
-      .lte('metric_date', end)
-    if (onlineRes.error) {
-      console.error('[analytics] online-hours read unavailable:', onlineRes.error.message)
-    }
     for (const res of [accountRes, postRes, publishedRes, snapshotRes, latestRes]) {
       if (res.error) throw new Error(`analytics report read failed: ${res.error.message}`)
     }
@@ -170,17 +156,11 @@ const _fetchAnalyticsReport = unstable_cache(
     }>
 
     const currentSnapshot = snapshots[0] ?? null
-    // WHY as: same untyped-admin projection as above.
-    const onlineByDay = (onlineRes.error ? [] : (onlineRes.data ?? [])) as unknown as Array<{
-      metric_date: string
-      online_followers_by_hour: unknown
-    }>
     return buildAnalyticsReport({
       period,
       accountRows,
       postRows,
       publishedPosts,
-      onlineByDay,
       timezone,
       currentSnapshot,
       // Strictly older than the current one, or the "was" ticks fake a flat period.

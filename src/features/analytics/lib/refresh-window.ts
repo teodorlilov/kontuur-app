@@ -8,12 +8,7 @@ import {
   fetchFollowerDeltaSeries,
   fetchOnlineFollowers,
 } from '@/lib/meta/insights'
-import {
-  captureDayTotals,
-  syncPostMetrics,
-  type IGAccountMetricsInsert,
-  type IGAccountMetricsOnlineWrite,
-} from './sync-metrics'
+import { captureDayTotals, syncPostMetrics, type IGAccountMetricsInsert } from './sync-metrics'
 import { shiftDateKey } from '@/utils/date-helpers'
 import type { AnalyticsPeriod } from './period'
 
@@ -175,7 +170,7 @@ export async function refreshWindowMetrics(
   // The series the API still serves for the past — chunked, both windows.
   const reachRows: IGAccountMetricsInsert[] = []
   const followRows: IGAccountMetricsInsert[] = []
-  const onlineRows: IGAccountMetricsOnlineWrite[] = []
+  const onlineRows: IGAccountMetricsInsert[] = []
   try {
     for (const chunk of seriesChunks(period.prevStart, spanEnd)) {
       const [reach, deltas, online] = await Promise.all([
@@ -220,8 +215,8 @@ export async function refreshWindowMetrics(
   }
   await upsertColumnBatch(admin, reachRows)
   await upsertColumnBatch(admin, followRows)
-  // Best-effort until migration 20260827 is everywhere: the online-hours
-  // panel is an enhancement and must never cost the refill its day totals.
+  // Best-effort on purpose: the online-hours panel is an enhancement and
+  // must never cost the refill its day totals.
   try {
     await upsertColumnBatch(admin, onlineRows)
   } catch (err) {

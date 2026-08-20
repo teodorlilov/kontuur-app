@@ -43,6 +43,7 @@ function accountRow(overrides: Partial<IGAccountMetricColumns>): IGAccountMetric
     reach_by_media_product_type: null,
     interactions_by_media_product_type: null,
     link_taps_by_button_type: null,
+    online_followers_by_hour: null,
     fetched_at: '2026-08-19T03:30:00Z',
     ...overrides,
   }
@@ -90,7 +91,6 @@ function build(input: Partial<BuildReportInput>): ReturnType<typeof buildAnalyti
     publishedPosts: [],
     currentSnapshot: null,
     previousSnapshot: null,
-    onlineByDay: [],
     timezone: 'UTC',
     hasHistory: true,
     lastSyncAt: '2026-08-19T03:30:00Z',
@@ -353,16 +353,16 @@ describe('buildAnalyticsReport', () => {
   it('converts Pacific-anchored online hours into the agency clock, gated on sample size', () => {
     // 2026-08-15 is a Saturday. Hour 14 in America/Los_Angeles (PDT, UTC-7)
     // is 21:00 UTC the same day.
-    const day = (date: string) => ({
-      metric_date: date,
-      online_followers_by_hour: { '14': 100 },
-    })
+    // The maps ride the ordinary account rows — the whole fetched span
+    // (previous window included) counts as evidence.
+    const day = (date: string) =>
+      accountRow({ metric_date: date, online_followers_by_hour: { '14': 100 } })
     const fiveDays = ['2026-08-11', '2026-08-12', '2026-08-13', '2026-08-14', '2026-08-15'].map(day)
 
-    const gated = build({ onlineByDay: fiveDays.slice(0, 4) })
+    const gated = build({ accountRows: fiveDays.slice(0, 4) })
     expect(gated.audienceOnline).toBeNull()
 
-    const report = build({ onlineByDay: fiveDays })
+    const report = build({ accountRows: fiveDays })
     const online = report.audienceOnline!
     expect(online.sampleDays).toBe(5)
     // Saturday (index 5) at 21:00 UTC carries the 15 Aug sample.

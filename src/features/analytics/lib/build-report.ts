@@ -649,8 +649,6 @@ export interface BuildReportInput {
   publishedPosts: PublishedPostPinColumns[]
   currentSnapshot: AudienceSnapshotInput | null
   previousSnapshot: AudienceSnapshotInput | null
-  /** Per-day hourly follower-online maps for the current window (may be empty). */
-  onlineByDay: Array<{ metric_date: string; online_followers_by_hour: unknown }>
   /** The agency's clock — publish hours and online hours both render in it. */
   timezone: string
   hasHistory: boolean
@@ -956,7 +954,10 @@ export function buildAnalyticsReport(input: BuildReportInput): AnalyticsReportDa
     hasAudienceSnapshot: input.currentSnapshot !== null,
     posts,
     medianReach,
-    audienceOnline: buildAudienceOnline(input.onlineByDay, input.timezone),
+    // The full fetched span (prevStart..end), not just the current window:
+    // "when are followers online" is a habit, not a comparison, so every
+    // sampled day strengthens it — and the panel prints the honest count.
+    audienceOnline: buildAudienceOnline(input.accountRows, input.timezone),
     publishWindows: buildPublishWindows(posts, medianReach, input.timezone),
   }
 }

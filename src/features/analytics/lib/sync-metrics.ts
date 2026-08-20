@@ -46,15 +46,6 @@ const CONSOLIDATION_DAYS = 7
 export type IGAccountMetricsInsert = Database['public']['Tables']['ig_account_metrics']['Insert']
 type IGPostMetricsInsert = Database['public']['Tables']['ig_post_metrics']['Insert']
 
-/**
- * Insert plus the 20260827 online-hours column. WHY extension: the generated
- * types predate the migration — regenerate database.ts after it applies and
- * fold this back into the Insert type.
- */
-export type IGAccountMetricsOnlineWrite = IGAccountMetricsInsert & {
-  online_followers_by_hour?: Record<string, number>
-}
-
 interface IGConnection {
   client_id: string
   account_id: string
@@ -181,7 +172,7 @@ async function syncOnlineFollowers(
   const sinceTs = untilTs - ONLINE_FOLLOWERS_LOOKBACK_DAYS * SECONDS_PER_DAY
   const days = await fetchOnlineFollowers(accountId, accessToken, sinceTs, untilTs)
   if (days.length === 0) return
-  const rows: IGAccountMetricsOnlineWrite[] = days.map((day) => ({
+  const rows: IGAccountMetricsInsert[] = days.map((day) => ({
     client_id: clientId,
     ig_account_id: accountId,
     metric_date: day.date,

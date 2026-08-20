@@ -792,6 +792,7 @@ export type Database = {
           link_taps_by_button_type: Json | null
           media_count: number | null
           metric_date: string
+          online_followers_by_hour: Json | null
           profile_links_taps: number | null
           profile_views: number | null
           reach: number | null
@@ -821,6 +822,7 @@ export type Database = {
           link_taps_by_button_type?: Json | null
           media_count?: number | null
           metric_date: string
+          online_followers_by_hour?: Json | null
           profile_links_taps?: number | null
           profile_views?: number | null
           reach?: number | null
@@ -850,6 +852,7 @@ export type Database = {
           link_taps_by_button_type?: Json | null
           media_count?: number | null
           metric_date?: string
+          online_followers_by_hour?: Json | null
           profile_links_taps?: number | null
           profile_views?: number | null
           reach?: number | null

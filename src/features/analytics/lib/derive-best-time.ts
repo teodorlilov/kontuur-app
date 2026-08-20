@@ -104,8 +104,8 @@ export async function deriveObservedBestTime(
     .eq('ig_account_id', accountId)
     .gte('metric_date', since)
     .not('online_followers_by_hour', 'is', null)
-  // Column still in flight (migration 20260827) or nothing stored: no observed
-  // value — the caller falls back, it never fabricates on our behalf.
+  // Read failed or nothing stored: no observed value — the caller falls
+  // back, it never fabricates on our behalf.
   if (error) return null
   const online = buildAudienceOnline(
     (data ?? []) as Array<{ metric_date: string; online_followers_by_hour: unknown }>,
