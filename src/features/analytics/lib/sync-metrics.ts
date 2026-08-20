@@ -19,8 +19,10 @@ import {
   type IGDemographics,
 } from '@/lib/meta/insights'
 import { insertClientNotificationOnce } from '@/features/publishing/lib/notifications'
+import { asJson } from '@/lib/queries/as-json'
 import { SOCIAL_CONNECTION_SYNC_COLUMNS } from '@/lib/queries/select-columns'
 import { MS_PER_DAY } from '@/utils/constants'
+import { deriveObservedBestTime } from './derive-best-time'
 
 /**
  * The nightly Instagram metrics capture. One rule governs every write: NULL
@@ -140,12 +142,26 @@ async function syncClientMetrics(admin: SupabaseClient, connection: IGConnection
   if (hadHistory) await recaptureConsolidatingDays(admin, clientId, accountId, accessToken)
   await syncPostMetrics(admin, clientId, accountId, accessToken)
   await syncDemographicsWeekly(admin, clientId, accountId, accessToken)
-  // Best-effort by design: the when-to-post panel is an enhancement, and a
-  // failure here must never cost the night's core capture.
+  // Best-effort by design: the when-to-post panel and the observed best-time
+  // slot are enhancements — a failure here never costs the core capture.
   try {
     await syncOnlineFollowers(admin, clientId, accountId, accessToken)
+    // Observed data outranks the model-invented best_time_json: whenever
+    // enough hourly history exists, the scheduler's stored pattern becomes a
+    // nightly-refreshed derivation of it.
+    const observed = await deriveObservedBestTime(admin, clientId)
+    if (observed) {
+      const { error } = await admin
+        .from('brand_profiles')
+        .update({
+          best_time_json: asJson(observed),
+          best_time_updated_at: new Date().toISOString(),
+        })
+        .eq('client_id', clientId)
+      if (error) throw new Error(`observed best-time write failed: ${error.message}`)
+    }
   } catch (err) {
-    console.error(`[metrics] online_followers capture failed for client ${clientId}:`, err)
+    console.error(`[metrics] online-hours enhancement failed for client ${clientId}:`, err)
   }
 }
 

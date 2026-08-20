@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
+import { deriveObservedBestTime } from '@/features/analytics/lib/derive-best-time'
 import { generateBestTime } from '@/ai/best-time/generate-best-time'
 import { extractPlatformFromMix } from '@/lib/clients/fetch-client-data'
 import { asJson } from '@/lib/queries/as-json'
@@ -51,6 +52,22 @@ export async function POST(request: Request) {
   const platformsStr = profile?.weekly_mix_json
     ? extractPlatformFromMix(profile.weekly_mix_json as Record<string, unknown>)
     : 'Instagram'
+
+  // Observed data outranks the model: with a connected account and enough
+  // hourly follower-online history, best times are derived from measurement.
+  // The model below remains only the no-data fallback, and its output stays
+  // labeled ai-derived.
+  const observed = await deriveObservedBestTime(supabase, body.client_id)
+  if (observed) {
+    await supabase
+      .from('brand_profiles')
+      .update({
+        best_time_json: asJson(observed),
+        best_time_updated_at: new Date().toISOString(),
+      })
+      .eq('client_id', body.client_id)
+    return NextResponse.json({ best_time: observed })
+  }
 
   try {
     const bestTime = await generateBestTime({
