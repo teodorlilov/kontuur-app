@@ -155,7 +155,7 @@ async function markPublished(
   mediaId: string | null,
   accountId: string
 ): Promise<string | null> {
-  const patch: PublishStatusPatch = {
+  const error = await patchPost(admin, postId, {
     status: 'published',
     ig_media_id: mediaId,
     ig_creation_id: null,
@@ -164,16 +164,7 @@ async function markPublished(
     ig_account_id: accountId,
     published_at: new Date().toISOString(),
     publish_error: null,
-  }
-  let error = await patchPost(admin, postId, patch)
-  // Until migration 20260825 reaches the database the stamp column may not
-  // exist. The stamp is an overlay; it must never cost the status write —
-  // a lost write here is exactly what turns a stale claim into a duplicate.
-  if (error !== null && error.includes('ig_account_id')) {
-    const withoutStamp = { ...patch }
-    delete withoutStamp.ig_account_id
-    error = await patchPost(admin, postId, withoutStamp)
-  }
+  })
   if (error === null) return null
   return `post ${postId} published as media ${mediaId ?? 'unknown'} but the status write was lost: ${error}`
 }

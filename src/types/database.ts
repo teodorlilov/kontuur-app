@@ -90,6 +90,7 @@ export type Database = {
           client_id: string
           created_at: string
           id: string
+          ig_account_id: string | null
           metrics_json: Json | null
           period_end: string
           period_start: string
@@ -100,6 +101,7 @@ export type Database = {
           client_id: string
           created_at?: string
           id?: string
+          ig_account_id?: string | null
           metrics_json?: Json | null
           period_end: string
           period_start: string
@@ -110,6 +112,7 @@ export type Database = {
           client_id?: string
           created_at?: string
           id?: string
+          ig_account_id?: string | null
           metrics_json?: Json | null
           period_end?: string
           period_start?: string
@@ -783,6 +786,7 @@ export type Database = {
           follows: number | null
           follows_count: number | null
           id: string
+          ig_account_id: string
           interactions_by_media_product_type: Json | null
           likes: number | null
           link_taps_by_button_type: Json | null
@@ -797,6 +801,7 @@ export type Database = {
           saves: number | null
           shares: number | null
           total_interactions: number | null
+          totals_synced_at: string | null
           unfollows: number | null
           views: number | null
           website_clicks: number | null
@@ -810,6 +815,7 @@ export type Database = {
           follows?: number | null
           follows_count?: number | null
           id?: string
+          ig_account_id: string
           interactions_by_media_product_type?: Json | null
           likes?: number | null
           link_taps_by_button_type?: Json | null
@@ -824,6 +830,7 @@ export type Database = {
           saves?: number | null
           shares?: number | null
           total_interactions?: number | null
+          totals_synced_at?: string | null
           unfollows?: number | null
           views?: number | null
           website_clicks?: number | null
@@ -837,6 +844,7 @@ export type Database = {
           follows?: number | null
           follows_count?: number | null
           id?: string
+          ig_account_id?: string
           interactions_by_media_product_type?: Json | null
           likes?: number | null
           link_taps_by_button_type?: Json | null
@@ -851,6 +859,7 @@ export type Database = {
           saves?: number | null
           shares?: number | null
           total_interactions?: number | null
+          totals_synced_at?: string | null
           unfollows?: number | null
           views?: number | null
           website_clicks?: number | null
@@ -871,6 +880,7 @@ export type Database = {
           engaged_audience_demographics: Json | null
           follower_demographics: Json | null
           id: string
+          ig_account_id: string
           snapshot_date: string
         }
         Insert: {
@@ -878,6 +888,7 @@ export type Database = {
           engaged_audience_demographics?: Json | null
           follower_demographics?: Json | null
           id?: string
+          ig_account_id: string
           snapshot_date: string
         }
         Update: {
@@ -885,6 +896,7 @@ export type Database = {
           engaged_audience_demographics?: Json | null
           follower_demographics?: Json | null
           id?: string
+          ig_account_id?: string
           snapshot_date?: string
         }
         Relationships: [
@@ -904,6 +916,7 @@ export type Database = {
           comments_count: number | null
           follows: number | null
           id: string
+          ig_account_id: string
           ig_media_id: string
           last_synced_at: string
           like_count: number | null
@@ -926,6 +939,7 @@ export type Database = {
           comments_count?: number | null
           follows?: number | null
           id?: string
+          ig_account_id: string
           ig_media_id: string
           last_synced_at?: string
           like_count?: number | null
@@ -948,6 +962,7 @@ export type Database = {
           comments_count?: number | null
           follows?: number | null
           id?: string
+          ig_account_id?: string
           ig_media_id?: string
           last_synced_at?: string
           like_count?: number | null
@@ -1367,6 +1382,7 @@ export type Database = {
           generated_caption: string | null
           generated_slides_json: Json | null
           id: string
+          ig_account_id: string | null
           ig_creation_id: string | null
           ig_media_id: string | null
           image_url: string | null
@@ -1405,6 +1421,7 @@ export type Database = {
           generated_caption?: string | null
           generated_slides_json?: Json | null
           id?: string
+          ig_account_id?: string | null
           ig_creation_id?: string | null
           ig_media_id?: string | null
           image_url?: string | null
@@ -1443,6 +1460,7 @@ export type Database = {
           generated_caption?: string | null
           generated_slides_json?: Json | null
           id?: string
+          ig_account_id?: string | null
           ig_creation_id?: string | null
           ig_media_id?: string | null
           image_url?: string | null

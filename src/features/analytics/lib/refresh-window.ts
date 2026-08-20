@@ -4,7 +4,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { createSemaphore } from '@/lib/concurrency'
 import { GraphApiError } from '@/lib/meta/graph-errors'
 import { fetchDailyReachSeries, fetchFollowerDeltaSeries } from '@/lib/meta/insights'
-import { captureDayTotals, syncPostMetrics, type IGAccountMetricsWriteRow } from './sync-metrics'
+import { captureDayTotals, syncPostMetrics, type IGAccountMetricsInsert } from './sync-metrics'
 import { shiftDateKey } from '@/utils/date-helpers'
 import type { AnalyticsPeriod } from './period'
 
@@ -81,15 +81,7 @@ export async function countUnfilledDays(
   period: AnalyticsPeriod,
   todayKey: string
 ): Promise<number> {
-  let rows: MarkerRow[]
-  try {
-    rows = await readMarkerRows(db, clientId, accountId, period)
-  } catch (err) {
-    // Until migration 20260826 reaches the database the stamp column is
-    // missing. No auto-fill until then is the safe direction — never a 500.
-    if (err instanceof Error && err.message.includes('ig_account_id')) return 0
-    throw err
-  }
+  const rows = await readMarkerRows(db, clientId, accountId, period)
   const tailStart = shiftDateKey(todayKey, -REFRESH_TAIL_DAYS)
   // The tail's re-asks are consolidation, not absence — they don't count.
   const markerByDate = new Map(rows.map((row) => [row.metric_date, row.totals_synced_at]))
@@ -140,7 +132,7 @@ function seriesChunks(start: string, end: string): Array<{ sinceTs: number; unti
 
 async function upsertColumnBatch(
   admin: SupabaseClient,
-  rows: IGAccountMetricsWriteRow[]
+  rows: IGAccountMetricsInsert[]
 ): Promise<void> {
   if (rows.length === 0) return
   const { error } = await admin
@@ -172,8 +164,8 @@ export async function refreshWindowMetrics(
   let refilledDays = 0
 
   // The two series the API still serves for the past — chunked, both windows.
-  const reachRows: IGAccountMetricsWriteRow[] = []
-  const followRows: IGAccountMetricsWriteRow[] = []
+  const reachRows: IGAccountMetricsInsert[] = []
+  const followRows: IGAccountMetricsInsert[] = []
   try {
     for (const chunk of seriesChunks(period.prevStart, spanEnd)) {
       const [reach, deltas] = await Promise.all([
@@ -211,7 +203,7 @@ export async function refreshWindowMetrics(
   // Day totals, newest first, under the call budget.
   if (!rateLimited && targets.length > 0) {
     const semaphore = createSemaphore(REFILL_CONCURRENCY)
-    const totalsRows: IGAccountMetricsWriteRow[] = []
+    const totalsRows: IGAccountMetricsInsert[] = []
     await Promise.all(
       targets.map(async (dateKey) => {
         const release = await semaphore.acquire()

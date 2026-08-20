@@ -40,22 +40,8 @@ const SECONDS_PER_DAY = 86_400
  */
 const CONSOLIDATION_DAYS = 7
 
-type IGAccountMetricsInsert = Database['public']['Tables']['ig_account_metrics']['Insert']
+export type IGAccountMetricsInsert = Database['public']['Tables']['ig_account_metrics']['Insert']
 type IGPostMetricsInsert = Database['public']['Tables']['ig_post_metrics']['Insert']
-
-/**
- * Insert shape plus the totals_synced_at marker (migration 20260824) and the
- * account stamp (20260826). WHY extension: the generated types predate the
- * migrations — regenerate database.ts after they apply and fold these back
- * into the Insert type.
- */
-export type IGAccountMetricsWriteRow = IGAccountMetricsInsert & {
-  totals_synced_at?: string | null
-  ig_account_id?: string
-}
-
-/** Same transitional shape for post rows: the 20260826 account stamp. */
-type IGPostMetricsWriteRow = IGPostMetricsInsert & { ig_account_id?: string }
 
 interface IGConnection {
   client_id: string
@@ -156,7 +142,7 @@ export async function captureDayTotals(
   accountId: string,
   accessToken: string,
   dateKey: string
-): Promise<IGAccountMetricsWriteRow> {
+): Promise<IGAccountMetricsInsert> {
   const sinceTs = Math.floor(Date.parse(dateKey) / 1000)
   const untilTs = sinceTs + SECONDS_PER_DAY
   const [totals, followsSplit, linkTaps, reachByType] = await Promise.all([
@@ -199,7 +185,7 @@ async function recaptureConsolidatingDays(
   accessToken: string
 ): Promise<void> {
   const { date: yesterday } = yesterdayUtcWindow()
-  const rows: IGAccountMetricsWriteRow[] = []
+  const rows: IGAccountMetricsInsert[] = []
   for (let daysBack = 1; daysBack < CONSOLIDATION_DAYS; daysBack++) {
     const dateKey = new Date(Date.parse(yesterday) - daysBack * SECONDS_PER_DAY * 1000)
       .toISOString()
@@ -257,7 +243,7 @@ async function syncAccountDay(
       fetchInteractionsByProductType(accountId, accessToken, window.sinceTs, window.untilTs),
     ])
 
-  const row: IGAccountMetricsWriteRow = {
+  const row: IGAccountMetricsInsert = {
     client_id: clientId,
     ig_account_id: accountId,
     metric_date: window.date,
@@ -314,8 +300,8 @@ async function backfillAccountHistory(
   ])
 
   // Uniform keys per row — PostgREST rejects ragged bulk inserts.
-  const byDate = new Map<string, IGAccountMetricsWriteRow>()
-  const rowFor = (date: string): IGAccountMetricsWriteRow => {
+  const byDate = new Map<string, IGAccountMetricsInsert>()
+  const rowFor = (date: string): IGAccountMetricsInsert => {
     let row = byDate.get(date)
     if (!row) {
       row = {
@@ -369,7 +355,7 @@ export async function syncPostMetrics(
   ])
 
   const now = new Date().toISOString()
-  const rows: IGPostMetricsWriteRow[] = media.map((item, index) => {
+  const rows: IGPostMetricsInsert[] = media.map((item, index) => {
     const insights = insightsList[index]!
     return {
       client_id: clientId,

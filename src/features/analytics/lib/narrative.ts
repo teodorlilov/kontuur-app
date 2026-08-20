@@ -162,11 +162,7 @@ const _fetchNarrative = unstable_cache(
           .eq('period_start', start)
           .eq('period_end', end)
           .maybeSingle()
-        // Missing stamp column (migration 20260826 not applied yet) skips the
-        // archive lookup rather than losing the narrative entirely.
-        if (error && !error.message.includes('ig_account_id')) {
-          throw new Error(`archived summary lookup failed: ${error.message}`)
-        }
+        if (error) throw new Error(`archived summary lookup failed: ${error.message}`)
         // WHY as: the shared admin client is untyped, so the projection does not infer.
         const archivedSummary = (archived as { ai_summary: string } | null)?.ai_summary
         if (archivedSummary) return { text: archivedSummary, archived: true }

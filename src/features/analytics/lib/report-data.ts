@@ -124,17 +124,7 @@ const _fetchAnalyticsReport = unstable_cache(
         .order('metric_date', { ascending: false })
         .limit(1),
     ])
-    const results = [accountRes, postRes, publishedRes, snapshotRes, latestRes]
-    // Until migrations 20260825/20260826 reach the database the stamp columns
-    // are missing. Showing nothing is the safe direction — never a 500, and
-    // never unscoped rows that might belong to another account.
-    if (results.some((res) => res.error?.message.includes('ig_account_id'))) {
-      console.error(
-        '[analytics] account-stamp columns missing — apply migrations 20260825+20260826'
-      )
-      return emptyReport(period)
-    }
-    for (const res of results) {
+    for (const res of [accountRes, postRes, publishedRes, snapshotRes, latestRes]) {
       if (res.error) throw new Error(`analytics report read failed: ${res.error.message}`)
     }
 
