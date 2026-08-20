@@ -1,21 +1,11 @@
 import { cn } from '@/utils/cn'
 import type { ReportPostRow } from '../lib/build-report'
 import { formatCount, formatDayMonth } from '../lib/format'
+import { firstLine, TYPE_META } from '../lib/post-display'
 
 /** ≥1.5× median earns the ratio tag; ≤0.6× is named below median. */
 const TOP_RATIO = 1.5
 const LOW_RATIO = 0.6
-
-const TYPE_META: Record<string, { letter: string; label: string; tone: 'sage' | 'marker' }> = {
-  CAROUSEL_ALBUM: { letter: 'C', label: 'carousel', tone: 'sage' },
-  VIDEO: { letter: 'R', label: 'reel', tone: 'marker' },
-  IMAGE: { letter: 'S', label: 'single', tone: 'sage' },
-}
-
-function firstLine(caption: string | null): string {
-  if (!caption) return 'Untitled post'
-  return caption.split('\n')[0]!.trim() || 'Untitled post'
-}
 
 /**
  * Every post published this period, ranked by reach. `follows` is the column

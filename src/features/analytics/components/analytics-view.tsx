@@ -3,6 +3,7 @@ import { ActionLink } from '@/components/ui/action-link'
 import { Card } from '@/components/ui/card'
 import type { AnalyticsReportData } from '../lib/build-report'
 import { formatCount, formatDayMonth, formatPeriodRange, formatShortRange } from '../lib/format'
+import { firstLine } from '../lib/post-display'
 import { AnalyticsSection, ChartLegend } from './analytics-section'
 import { AudienceSection } from './audience-section'
 import { AutoFill } from './auto-fill'
@@ -31,10 +32,6 @@ interface AnalyticsViewProps {
   hasConnection: boolean
   timezone: string
   archive: ArchiveEntry[]
-}
-
-function firstLine(caption: string): string {
-  return caption.split('\n')[0]!.trim()
 }
 
 function signed(value: number): string {
@@ -125,13 +122,16 @@ export function AnalyticsView({
       <div className="mt-7">
         <AnalyticsSection
           title="Reach, day by day"
-          sub="Each day against the same day of the previous period."
+          sub="Each day against the same day of the previous period — pins mark the days a post went out."
           ariaLabel="Reach, day by day"
           legend={
             <ChartLegend
               items={[
                 { swatch: 'now', label: 'This period' },
                 { swatch: 'then', label: 'Previous' },
+                ...(data.reachByDay.some((day) => day.posts.length > 0)
+                  ? ([{ swatch: 'pin', label: 'Post published' }] as const)
+                  : []),
               ]}
             />
           }

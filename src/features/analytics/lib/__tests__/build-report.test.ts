@@ -123,8 +123,48 @@ describe('buildAnalyticsReport', () => {
     expect(report.reach.series).toEqual([150, null, null, 250])
     expect(report.views.now).toBe(400)
     // Day-by-day pairs align by index: day 1 of now against day 1 of then.
-    expect(report.reachByDay[0]).toEqual({ date: '2026-08-15', now: 150, then: 100 })
-    expect(report.reachByDay[3]).toEqual({ date: '2026-08-18', now: 250, then: 100 })
+    expect(report.reachByDay[0]).toEqual({
+      date: '2026-08-15',
+      now: 150,
+      then: 100,
+      views: 300,
+      posts: [],
+    })
+    expect(report.reachByDay[3]).toEqual({
+      date: '2026-08-18',
+      now: 250,
+      then: 100,
+      views: null,
+      posts: [],
+    })
+  })
+
+  it('pins each publication onto its calendar day, strongest reach first', () => {
+    const report = build({
+      postRows: [
+        postRow({
+          ig_media_id: 'a',
+          posted_at: '2026-08-16T09:00:00Z',
+          reach: 200,
+          caption: 'Small',
+        }),
+        postRow({
+          ig_media_id: 'b',
+          posted_at: '2026-08-16T18:00:00Z',
+          reach: 900,
+          follows: 3,
+          caption: 'Big',
+        }),
+        // No timestamp means no day to pin to — the table still lists it.
+        postRow({ ig_media_id: 'c', posted_at: null, reach: 500 }),
+      ],
+    })
+    const day = report.reachByDay[1]!
+    expect(day.posts.map((post) => post.igMediaId)).toEqual(['b', 'a'])
+    expect(day.posts[0]).toMatchObject({ caption: 'Big', reach: 900, follows: 3 })
+    expect(report.reachByDay[0]!.posts).toEqual([])
+    expect(report.reachByDay.flatMap((d) => d.posts).some((p) => p.igMediaId === 'c')).toBe(false)
+    expect(report.posts).toHaveLength(3)
   })
 
   it('keeps the all-null period distinct from a zero period', () => {

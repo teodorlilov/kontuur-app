@@ -69,10 +69,23 @@ export interface ComparisonRow {
   then: number | null
 }
 
+/** The slice of a post the trend tooltip names — enough to answer "what caused this". */
+export interface TrendPost {
+  igMediaId: string
+  caption: string | null
+  mediaType: string | null
+  reach: number | null
+  follows: number | null
+}
+
 export interface ReachDay {
   date: string
   now: number | null
   then: number | null
+  /** That day's views — the tooltip pairs the two ways a day was seen. */
+  views: number | null
+  /** Posts published that day, strongest reach first. */
+  posts: TrendPost[]
 }
 
 export interface BestDay {
@@ -437,10 +450,31 @@ export function buildAnalyticsReport(input: BuildReportInput): AnalyticsReportDa
     series: current.byDay.map((row) => (row ? rateOf(row.total_interactions, row.reach) : null)),
   }
 
+  // Publications keyed by calendar day (the UTC slice of posted_at — the same
+  // convention the best-day caption uses); buildPosts already ordered them
+  // strongest-reach first, so each day's list keeps that order.
+  const { posts, medianReach } = buildPosts(input.postRows)
+  const postsByDate = new Map<string, TrendPost[]>()
+  for (const post of posts) {
+    const date = post.postedAt?.slice(0, 10)
+    if (!date) continue
+    const list = postsByDate.get(date) ?? []
+    list.push({
+      igMediaId: post.igMediaId,
+      caption: post.caption,
+      mediaType: post.mediaType,
+      reach: post.reach,
+      follows: post.follows,
+    })
+    postsByDate.set(date, list)
+  }
+
   const reachByDay: ReachDay[] = currentKeys.map((date, index) => ({
     date,
     now: reach.series[index]!,
     then: previous.byDay[index] ? previous.byDay[index].reach : null,
+    views: views.series[index]!,
+    posts: postsByDate.get(date) ?? [],
   }))
 
   let bestDay: BestDay | null = null
@@ -449,7 +483,6 @@ export function buildAnalyticsReport(input: BuildReportInput): AnalyticsReportDa
       bestDay = { date: day.date, reach: day.now, caption: null }
     }
   }
-  const { posts, medianReach } = buildPosts(input.postRows)
   if (bestDay) {
     const bestDate = bestDay.date
     const dayPost = posts.find((post) => post.postedAt?.slice(0, 10) === bestDate)

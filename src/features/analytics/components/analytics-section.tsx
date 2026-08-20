@@ -42,6 +42,8 @@ const SWATCH_CLASS = {
   'dot-second': 'size-2 rounded-full bg-spring',
   /** The last-period marker line drawn across the audience columns. */
   tick: 'h-0.5 w-3.5 rounded-full bg-then-line',
+  /** A publish day pinned on the reach baseline. */
+  pin: 'size-2.5 rounded-full border-2 border-forest bg-surface',
 } as const
 
 export type LegendSwatch = keyof typeof SWATCH_CLASS
