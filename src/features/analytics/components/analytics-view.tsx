@@ -35,6 +35,12 @@ interface AnalyticsViewProps {
   handle: string | null
   hasConnection: boolean
   timezone: string
+  /**
+   * When the numbers were last true. The page prefers the cron's own stamp and
+   * falls back to the report's max(fetched_at), which the on-demand refill also
+   * writes — so this is not `data.lastSyncAt`.
+   */
+  lastSyncAt: string | null
   /** The last nightly run's verdict — null after a clean one. */
   syncError?: string | null
   archive: ArchiveEntry[]
@@ -55,6 +61,7 @@ export function AnalyticsView({
   handle,
   hasConnection,
   timezone,
+  lastSyncAt,
   syncError = null,
   archive,
 }: AnalyticsViewProps) {
@@ -113,7 +120,7 @@ export function AnalyticsView({
         {masthead}
         <FillingDocument unfilledDays={unfilledDays} />
         <SyncLine
-          lastSyncAt={data.lastSyncAt}
+          lastSyncAt={lastSyncAt}
           hasHistory={hasHistory}
           hasConnection={hasConnection}
           timezone={timezone}
@@ -478,7 +485,7 @@ export function AnalyticsView({
       </div>
 
       <SyncLine
-        lastSyncAt={data.lastSyncAt}
+        lastSyncAt={lastSyncAt}
         hasHistory={hasHistory}
         hasConnection={hasConnection}
         timezone={timezone}

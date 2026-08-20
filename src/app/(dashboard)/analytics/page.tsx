@@ -86,12 +86,16 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
   // refill also stamps — and calls a half-failing sync current.
   const syncHealth = await supabase
     .from('social_connections')
-    .select('last_sync_error')
+    .select('last_sync_at, last_sync_error')
     .eq('client_id', clientId)
     .eq('platform', 'instagram')
     .maybeSingle()
-  const syncError =
-    (syncHealth.data as { last_sync_error: string | null } | null)?.last_sync_error ?? null
+  // WHY as: the server client is untyped for this projection, so it does not infer.
+  const health = syncHealth.data as {
+    last_sync_at: string | null
+    last_sync_error: string | null
+  } | null
+  const syncError = health?.last_sync_error ?? null
   const [data, archiveResult, unfilledDays] = await Promise.all([
     getAnalyticsReport(clientId, period, timezone),
     accountId
@@ -153,6 +157,11 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
               handle={handle}
               hasConnection={hasConnection}
               timezone={timezone}
+              // The CRON's own stamp when 20260828 has landed, falling back to
+              // the report's max(fetched_at). Only the fallback is shared with
+              // the on-demand refill, which is what let a sync that had not run
+              // for nights read as freshly landed.
+              lastSyncAt={health?.last_sync_at ?? data.lastSyncAt}
               syncError={syncError}
               archive={archive}
             />
