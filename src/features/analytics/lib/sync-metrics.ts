@@ -44,13 +44,18 @@ type IGAccountMetricsInsert = Database['public']['Tables']['ig_account_metrics']
 type IGPostMetricsInsert = Database['public']['Tables']['ig_post_metrics']['Insert']
 
 /**
- * Insert shape plus the totals_synced_at marker from migration 20260824.
- * WHY extension: the generated types predate the migration — regenerate
- * database.ts after it applies and fold this back into the Insert type.
+ * Insert shape plus the totals_synced_at marker (migration 20260824) and the
+ * account stamp (20260826). WHY extension: the generated types predate the
+ * migrations — regenerate database.ts after they apply and fold these back
+ * into the Insert type.
  */
 export type IGAccountMetricsWriteRow = IGAccountMetricsInsert & {
   totals_synced_at?: string | null
+  ig_account_id?: string
 }
+
+/** Same transitional shape for post rows: the 20260826 account stamp. */
+type IGPostMetricsWriteRow = IGPostMetricsInsert & { ig_account_id?: string }
 
 interface IGConnection {
   client_id: string
@@ -131,7 +136,9 @@ export async function syncAllClientMetrics(
 async function syncClientMetrics(admin: SupabaseClient, connection: IGConnection): Promise<void> {
   const { client_id: clientId, account_id: accountId, access_token: accessToken } = connection
   // Read the history flag BEFORE writing yesterday's row, or it is never zero.
-  const hadHistory = await hasAccountHistory(admin, clientId)
+  // Scoped to THIS account: after a reconnect the new account has no history
+  // and must get its own backfill, whatever the old account left behind.
+  const hadHistory = await hasAccountHistory(admin, clientId, accountId)
   await syncAccountDay(admin, clientId, accountId, accessToken)
   if (!hadHistory) await backfillAccountHistory(admin, clientId, accountId, accessToken)
   if (hadHistory) await recaptureConsolidatingDays(admin, clientId, accountId, accessToken)
@@ -160,6 +167,7 @@ export async function captureDayTotals(
   ])
   return {
     client_id: clientId,
+    ig_account_id: accountId,
     metric_date: dateKey,
     views: totals.views,
     accounts_engaged: totals.accounts_engaged,
@@ -200,15 +208,20 @@ async function recaptureConsolidatingDays(
   }
   const { error } = await admin
     .from('ig_account_metrics')
-    .upsert(rows, { onConflict: 'client_id,metric_date' })
+    .upsert(rows, { onConflict: 'client_id,ig_account_id,metric_date' })
   if (error) throw new Error(`consolidation recapture upsert failed: ${error.message}`)
 }
 
-async function hasAccountHistory(admin: SupabaseClient, clientId: string): Promise<boolean> {
+async function hasAccountHistory(
+  admin: SupabaseClient,
+  clientId: string,
+  accountId: string
+): Promise<boolean> {
   const { data, error } = await admin
     .from('ig_account_metrics')
     .select('id')
     .eq('client_id', clientId)
+    .eq('ig_account_id', accountId)
     .limit(1)
   if (error) throw new Error(`ig_account_metrics lookup failed: ${error.message}`)
   return (data ?? []).length > 0
@@ -246,6 +259,7 @@ async function syncAccountDay(
 
   const row: IGAccountMetricsWriteRow = {
     client_id: clientId,
+    ig_account_id: accountId,
     metric_date: window.date,
     followers_count: account.followers_count,
     follows_count: account.follows_count,
@@ -275,7 +289,7 @@ async function syncAccountDay(
   }
   const { error } = await admin
     .from('ig_account_metrics')
-    .upsert(row, { onConflict: 'client_id,metric_date' })
+    .upsert(row, { onConflict: 'client_id,ig_account_id,metric_date' })
   if (error) throw new Error(`ig_account_metrics upsert failed: ${error.message}`)
 }
 
@@ -300,11 +314,17 @@ async function backfillAccountHistory(
   ])
 
   // Uniform keys per row — PostgREST rejects ragged bulk inserts.
-  const byDate = new Map<string, IGAccountMetricsInsert>()
-  const rowFor = (date: string): IGAccountMetricsInsert => {
+  const byDate = new Map<string, IGAccountMetricsWriteRow>()
+  const rowFor = (date: string): IGAccountMetricsWriteRow => {
     let row = byDate.get(date)
     if (!row) {
-      row = { client_id: clientId, metric_date: date, reach: null, follows: null }
+      row = {
+        client_id: clientId,
+        ig_account_id: accountId,
+        metric_date: date,
+        reach: null,
+        follows: null,
+      }
       byDate.set(date, row)
     }
     return row
@@ -314,9 +334,10 @@ async function backfillAccountHistory(
   byDate.delete(window.date)
   if (byDate.size === 0) return
 
-  const { error } = await admin
-    .from('ig_account_metrics')
-    .upsert([...byDate.values()], { onConflict: 'client_id,metric_date', ignoreDuplicates: true })
+  const { error } = await admin.from('ig_account_metrics').upsert([...byDate.values()], {
+    onConflict: 'client_id,ig_account_id,metric_date',
+    ignoreDuplicates: true,
+  })
   if (error) throw new Error(`ig_account_metrics backfill failed: ${error.message}`)
 }
 
@@ -348,10 +369,11 @@ export async function syncPostMetrics(
   ])
 
   const now = new Date().toISOString()
-  const rows: IGPostMetricsInsert[] = media.map((item, index) => {
+  const rows: IGPostMetricsWriteRow[] = media.map((item, index) => {
     const insights = insightsList[index]!
     return {
       client_id: clientId,
+      ig_account_id: accountId,
       post_id: postIdByMediaId.get(item.id) ?? null,
       ig_media_id: item.id,
       media_type: item.media_type ?? null,
@@ -376,7 +398,7 @@ export async function syncPostMetrics(
 
   const { error } = await admin
     .from('ig_post_metrics')
-    .upsert(rows, { onConflict: 'client_id,ig_media_id' })
+    .upsert(rows, { onConflict: 'client_id,ig_account_id,ig_media_id' })
   if (error) throw new Error(`ig_post_metrics upsert failed: ${error.message}`)
 }
 
@@ -412,6 +434,9 @@ async function syncDemographicsWeekly(
     .from('ig_audience_snapshots')
     .select('id')
     .eq('client_id', clientId)
+    // Account-scoped: a freshly connected account earns its own first snapshot
+    // regardless of what the previous account's cadence left behind.
+    .eq('ig_account_id', accountId)
     .gte('snapshot_date', cutoff)
     .limit(1)
   if (error) throw new Error(`ig_audience_snapshots lookup failed: ${error.message}`)
@@ -426,18 +451,20 @@ async function syncDemographicsWeekly(
   // and spaces the eight-call probe to weekly for under-floor accounts.
   const row: {
     client_id: string
+    ig_account_id: string
     snapshot_date: string
     follower_demographics: IGDemographics | null
     engaged_audience_demographics: IGDemographics | null
   } = {
     client_id: clientId,
+    ig_account_id: accountId,
     snapshot_date: new Date().toISOString().slice(0, 10),
     follower_demographics: follower,
     engaged_audience_demographics: engaged,
   }
   const { error: upsertError } = await admin
     .from('ig_audience_snapshots')
-    .upsert(row, { onConflict: 'client_id,snapshot_date' })
+    .upsert(row, { onConflict: 'client_id,ig_account_id,snapshot_date' })
   if (upsertError) throw new Error(`ig_audience_snapshots upsert failed: ${upsertError.message}`)
 }
 

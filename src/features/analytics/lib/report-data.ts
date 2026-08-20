@@ -36,9 +36,26 @@ interface SnapshotRow {
   engaged_audience_demographics: unknown
 }
 
+/** The nothing-attributable report: day-one shape, no history claimed. */
+function emptyReport(period: AnalyticsPeriod): AnalyticsReportData {
+  return buildAnalyticsReport({
+    period,
+    accountRows: [],
+    postRows: [],
+    publishedPosts: [],
+    currentSnapshot: null,
+    previousSnapshot: null,
+    hasHistory: false,
+    lastSyncAt: null,
+  })
+}
+
 const _fetchAnalyticsReport = unstable_cache(
   async (
     clientId: string,
+    // Part of the cache key on purpose: a reconnect changes the account id
+    // and must never serve the previous account's cached report.
+    accountId: string,
     preset: AnalyticsPeriod['preset'],
     start: string,
     end: string,
@@ -54,25 +71,17 @@ const _fetchAnalyticsReport = unstable_cache(
     const postedFrom = zonedTimeToInstant(start, '00:00', timezone).toISOString()
     const postedTo = zonedTimeToInstant(shiftDateKey(end, 1), '00:00', timezone).toISOString()
 
-    // INVARIANT: this report never shows another account's posts. The posts
-    // ledger records the client, not the target account, and a client can be
-    // reconnected — so the union below claims ONLY rows stamped (at publish,
-    // migration 20260825) with the account id this client is connected to
-    // right now. Unstamped rows are unknowable and never pinned.
-    const { data: connRow } = await admin
-      .from('social_connections')
-      .select('account_id')
-      .eq('client_id', clientId)
-      .ilike('platform', 'instagram')
-      .limit(1)
-      .maybeSingle()
-    const accountId = (connRow as { account_id: string | null } | null)?.account_id ?? null
-
+    // INVARIANT: this report never shows another account's data. Every store
+    // it reads — metrics, posts ledger, snapshots — records the client, but a
+    // client can be reconnected to a different Instagram account. So every
+    // query below claims ONLY rows stamped (migrations 20260825/20260826)
+    // with the account id this client is connected to right now.
     const [accountRes, postRes, publishedRes, snapshotRes, latestRes] = await Promise.all([
       admin
         .from('ig_account_metrics')
         .select(IG_ACCOUNT_METRIC_COLUMNS)
         .eq('client_id', clientId)
+        .eq('ig_account_id', accountId)
         .gte('metric_date', prevStart)
         .lte('metric_date', end)
         .order('metric_date'),
@@ -80,26 +89,26 @@ const _fetchAnalyticsReport = unstable_cache(
         .from('ig_post_metrics')
         .select(IG_POST_METRIC_COLUMNS)
         .eq('client_id', clientId)
+        .eq('ig_account_id', accountId)
         .gte('posted_at', postedFrom)
         .lt('posted_at', postedTo),
       // Kontuur's own ledger: pins posts the sync cannot see — removed from
       // Instagram after publishing, or published since the last sync ran.
       // posts.platform is canonical display case; compare case-insensitively.
-      accountId
-        ? admin
-            .from('posts')
-            .select(PUBLISHED_POST_PIN_COLUMNS)
-            .eq('client_id', clientId)
-            .eq('status', 'published')
-            .ilike('platform', 'instagram')
-            .eq('ig_account_id', accountId)
-            .gte('published_at', postedFrom)
-            .lt('published_at', postedTo)
-        : Promise.resolve({ data: [], error: null }),
+      admin
+        .from('posts')
+        .select(PUBLISHED_POST_PIN_COLUMNS)
+        .eq('client_id', clientId)
+        .eq('status', 'published')
+        .ilike('platform', 'instagram')
+        .eq('ig_account_id', accountId)
+        .gte('published_at', postedFrom)
+        .lt('published_at', postedTo),
       admin
         .from('ig_audience_snapshots')
         .select(IG_AUDIENCE_SNAPSHOT_COLUMNS)
         .eq('client_id', clientId)
+        .eq('ig_account_id', accountId)
         // A snapshot dated D is taken the morning after and describes the
         // audience through D−1 — so a window ending E may use a snapshot
         // dated E+1. Without the +1, today's snapshot never matches any
@@ -111,25 +120,28 @@ const _fetchAnalyticsReport = unstable_cache(
         .from('ig_account_metrics')
         .select('metric_date, fetched_at')
         .eq('client_id', clientId)
+        .eq('ig_account_id', accountId)
         .order('metric_date', { ascending: false })
         .limit(1),
     ])
-    for (const res of [accountRes, postRes, snapshotRes, latestRes]) {
-      if (res.error) throw new Error(`analytics report read failed: ${res.error.message}`)
+    const results = [accountRes, postRes, publishedRes, snapshotRes, latestRes]
+    // Until migrations 20260825/20260826 reach the database the stamp columns
+    // are missing. Showing nothing is the safe direction — never a 500, and
+    // never unscoped rows that might belong to another account.
+    if (results.some((res) => res.error?.message.includes('ig_account_id'))) {
+      console.error(
+        '[analytics] account-stamp columns missing — apply migrations 20260825+20260826'
+      )
+      return emptyReport(period)
     }
-    // The pin union is an overlay, not core data: until migration 20260825
-    // reaches this database its column is missing — degrade to no ledger pins
-    // rather than failing the whole report. Any other error still throws.
-    if (publishedRes.error && !publishedRes.error.message.includes('ig_account_id')) {
-      throw new Error(`analytics report read failed: ${publishedRes.error.message}`)
+    for (const res of results) {
+      if (res.error) throw new Error(`analytics report read failed: ${res.error.message}`)
     }
 
     // WHY as: this shared admin client is untyped, so projections do not infer.
     const accountRows = (accountRes.data ?? []) as unknown as IGAccountMetricColumns[]
     const postRows = (postRes.data ?? []) as unknown as IGPostMetricColumns[]
-    const publishedPosts = (publishedRes.error
-      ? []
-      : (publishedRes.data ?? [])) as unknown as PublishedPostPinColumns[]
+    const publishedPosts = (publishedRes.data ?? []) as unknown as PublishedPostPinColumns[]
     const snapshots = (snapshotRes.data ?? []) as unknown as SnapshotRow[]
     const latest = (latestRes.data ?? []) as unknown as Array<{
       metric_date: string
@@ -152,16 +164,37 @@ const _fetchAnalyticsReport = unstable_cache(
       lastSyncAt: latest[0]?.fetched_at ?? null,
     })
   },
-  // v2: cache bust — v1 entries may hold another account's ledger pins.
-  ['analytics-report-v2'],
+  // v3: account-scoped reads + the account id in the key args.
+  ['analytics-report-v3'],
   { revalidate: 3600, tags: [IG_METRICS_TAG] }
 )
 
-/** Fetches (or serves from cache) the report for one client and period. */
+/**
+ * Fetches (or serves from cache) the report for one client and period. The
+ * connection lookup stays OUTSIDE the cache so the account id is always
+ * current — a client with no Instagram connection has nothing attributable
+ * to show and gets the day-one report.
+ */
 export const getAnalyticsReport = cache(
-  (clientId: string, period: AnalyticsPeriod, timezone: string): Promise<AnalyticsReportData> =>
-    _fetchAnalyticsReport(
+  async (
+    clientId: string,
+    period: AnalyticsPeriod,
+    timezone: string
+  ): Promise<AnalyticsReportData> => {
+    const admin = createAdminSupabaseClient()
+    const { data: connRow } = await admin
+      .from('social_connections')
+      .select('account_id')
+      .eq('client_id', clientId)
+      .ilike('platform', 'instagram')
+      .limit(1)
+      .maybeSingle()
+    const accountId = (connRow as { account_id: string | null } | null)?.account_id ?? null
+    if (!accountId) return emptyReport(period)
+
+    return _fetchAnalyticsReport(
       clientId,
+      accountId,
       period.preset,
       period.start,
       period.end,
@@ -170,4 +203,5 @@ export const getAnalyticsReport = cache(
       period.days,
       timezone
     )
+  }
 )

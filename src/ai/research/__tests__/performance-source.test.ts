@@ -29,24 +29,42 @@ function metricRow(
   }
 }
 
-/** Minimal supabase stub: the ig_post_metrics read + the posts pillar join. */
+/** Minimal supabase stub: the connection scope, the ig_post_metrics read, the posts pillar join. */
 function makeSupabase(
   metricRows: Array<Record<string, unknown>> | Error,
-  publishedRows: Array<{ id: string; pillar: string }> = []
+  publishedRows: Array<{ id: string; pillar: string }> = [],
+  accountId: string | null = 'acct-1'
 ): SupabaseClient {
   return {
     from: (table: string) => {
+      if (table === 'social_connections') {
+        return {
+          select: () => ({
+            eq: () => ({
+              eq: () => ({
+                maybeSingle: () =>
+                  Promise.resolve({
+                    data: accountId === null ? null : { account_id: accountId },
+                    error: null,
+                  }),
+              }),
+            }),
+          }),
+        }
+      }
       if (table === 'ig_post_metrics') {
         return {
           select: () => ({
             eq: () => ({
-              gte: () => ({
-                not: () => ({
-                  order: () => ({
-                    limit: () =>
-                      metricRows instanceof Error
-                        ? Promise.resolve({ data: null, error: { message: metricRows.message } })
-                        : Promise.resolve({ data: metricRows, error: null }),
+              eq: () => ({
+                gte: () => ({
+                  not: () => ({
+                    order: () => ({
+                      limit: () =>
+                        metricRows instanceof Error
+                          ? Promise.resolve({ data: null, error: { message: metricRows.message } })
+                          : Promise.resolve({ data: metricRows, error: null }),
+                    }),
                   }),
                 }),
               }),
@@ -58,7 +76,7 @@ function makeSupabase(
         select: () => ({ in: () => Promise.resolve({ data: publishedRows }) }),
       }
     },
-    // Test stub covers only the two query shapes fetchPerformanceItems uses
+    // Test stub covers only the three query shapes fetchPerformanceItems uses
   } as unknown as SupabaseClient
 }
 
@@ -99,6 +117,14 @@ describe('fetchPerformanceItems', () => {
 
   it('returns [] when the read fails — never blocks a run', async () => {
     const items = await fetchPerformanceItems(makeSupabase(new Error('db down')), 'client-1')
+    expect(items).toEqual([])
+  })
+
+  it('returns [] when the client has no Instagram connection — nothing is attributable', async () => {
+    const items = await fetchPerformanceItems(
+      makeSupabase([metricRow('m1', 'Would leak without the account scope', 100)], [], null),
+      'client-1'
+    )
     expect(items).toEqual([])
   })
 })

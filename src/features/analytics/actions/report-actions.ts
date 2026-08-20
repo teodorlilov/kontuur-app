@@ -59,12 +59,14 @@ async function resolveReportScope(
 
 async function upsertReportRow(
   scope: ReportScope,
+  accountId: string,
   report: AnalyticsReportData,
   narrative: string
 ): Promise<ActionResult> {
   const { error } = await scope.supabase.from('analytics_reports').upsert(
     {
       client_id: scope.client.id,
+      ig_account_id: accountId,
       platform: 'instagram',
       period_start: scope.period.start,
       period_end: scope.period.end,
@@ -73,7 +75,7 @@ async function upsertReportRow(
       metrics_json: JSON.parse(JSON.stringify(report)) as Json,
       ai_summary: narrative,
     },
-    { onConflict: 'client_id,platform,period_start,period_end' }
+    { onConflict: 'client_id,ig_account_id,platform,period_start,period_end' }
   )
   if (error) return { ok: false, error: error.message }
   return { ok: true, data: undefined }
@@ -88,6 +90,20 @@ export async function archiveReport(input: ArchiveReportInput): Promise<ActionRe
   const resolved = await resolveReportScope(input)
   if (!resolved.ok) return { ok: false, error: resolved.error }
   const { scope } = resolved
+
+  // The archive row is stamped with the account it describes — the account
+  // scoping invariant applies to exported reports like every other read.
+  // WHY as: the auth-scoped client is untyped here, so the projection does not infer.
+  const { data: connRow } = (await scope.supabase
+    .from('social_connections')
+    .select('account_id')
+    .eq('client_id', scope.client.id)
+    .eq('platform', 'instagram')
+    .maybeSingle()) as { data: { account_id: string | null } | null }
+  const accountId = connRow?.account_id ?? null
+  if (!accountId) {
+    return { ok: false, error: 'Connect Instagram before exporting a report' }
+  }
 
   const report = await getAnalyticsReport(scope.client.id, scope.period, scope.timezone)
   if (!report.hasHistory) {
@@ -105,7 +121,7 @@ export async function archiveReport(input: ArchiveReportInput): Promise<ActionRe
     )?.text ??
     buildFallbackNarrative(report) ??
     ''
-  return upsertReportRow(scope, report, narrative)
+  return upsertReportRow(scope, accountId, report, narrative)
 }
 
 /**

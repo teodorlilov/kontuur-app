@@ -77,10 +77,19 @@ export function selectRefillDays(
 export async function countUnfilledDays(
   db: SupabaseClient,
   clientId: string,
+  accountId: string,
   period: AnalyticsPeriod,
   todayKey: string
 ): Promise<number> {
-  const rows = await readMarkerRows(db, clientId, period)
+  let rows: MarkerRow[]
+  try {
+    rows = await readMarkerRows(db, clientId, accountId, period)
+  } catch (err) {
+    // Until migration 20260826 reaches the database the stamp column is
+    // missing. No auto-fill until then is the safe direction — never a 500.
+    if (err instanceof Error && err.message.includes('ig_account_id')) return 0
+    throw err
+  }
   const tailStart = shiftDateKey(todayKey, -REFRESH_TAIL_DAYS)
   // The tail's re-asks are consolidation, not absence — they don't count.
   const markerByDate = new Map(rows.map((row) => [row.metric_date, row.totals_synced_at]))
@@ -96,12 +105,16 @@ export async function countUnfilledDays(
 async function readMarkerRows(
   admin: SupabaseClient,
   clientId: string,
+  accountId: string,
   period: AnalyticsPeriod
 ): Promise<MarkerRow[]> {
   const { data, error } = await admin
     .from('ig_account_metrics')
     .select('metric_date, totals_synced_at')
     .eq('client_id', clientId)
+    // Only THIS account's markers: the old account's asked-days must not
+    // suppress the refill a freshly connected account needs.
+    .eq('ig_account_id', accountId)
     .gte('metric_date', period.prevStart)
     .lte('metric_date', period.end)
   if (error) throw new Error(`window refresh read failed: ${error.message}`)
@@ -132,7 +145,7 @@ async function upsertColumnBatch(
   if (rows.length === 0) return
   const { error } = await admin
     .from('ig_account_metrics')
-    .upsert(rows, { onConflict: 'client_id,metric_date' })
+    .upsert(rows, { onConflict: 'client_id,ig_account_id,metric_date' })
   if (error) throw new Error(`window refresh upsert failed: ${error.message}`)
 }
 
@@ -152,7 +165,7 @@ export async function refreshWindowMetrics(
   const { clientId, accountId, accessToken } = connection
   const spanEnd = period.end < todayKey ? period.end : shiftDateKey(todayKey, -1)
 
-  const existing = await readMarkerRows(admin, clientId, period)
+  const existing = await readMarkerRows(admin, clientId, accountId, period)
   const targets = selectRefillDays(existing, period, todayKey)
 
   let rateLimited = false
@@ -169,12 +182,22 @@ export async function refreshWindowMetrics(
       ])
       for (const day of reach) {
         if (day.date <= spanEnd) {
-          reachRows.push({ client_id: clientId, metric_date: day.date, reach: day.reach })
+          reachRows.push({
+            client_id: clientId,
+            ig_account_id: accountId,
+            metric_date: day.date,
+            reach: day.reach,
+          })
         }
       }
       for (const day of deltas) {
         if (day.date <= spanEnd) {
-          followRows.push({ client_id: clientId, metric_date: day.date, follows: day.delta })
+          followRows.push({
+            client_id: clientId,
+            ig_account_id: accountId,
+            metric_date: day.date,
+            follows: day.delta,
+          })
         }
       }
     }

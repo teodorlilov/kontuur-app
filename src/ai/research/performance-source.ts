@@ -25,6 +25,19 @@ export async function fetchPerformanceItems(
   clientId: string
 ): Promise<PerformanceItem[]> {
   try {
+    // Account-scoped like every metrics read: after a reconnect the pipeline
+    // must not learn from the previous account's posts. No connection means
+    // no performance source. (The catch below keeps the []-on-failure rule.)
+    const { data: connRow, error: connError } = await supabase
+      .from('social_connections')
+      .select('account_id')
+      .eq('client_id', clientId)
+      .eq('platform', 'instagram')
+      .maybeSingle()
+    if (connError) throw new Error(`connection read failed: ${connError.message}`)
+    const accountId = (connRow as { account_id: string | null } | null)?.account_id
+    if (!accountId) return []
+
     const since = new Date(
       Date.now() - PERFORMANCE_LOOKBACK_DAYS * 24 * 60 * 60 * 1000
     ).toISOString()
@@ -32,6 +45,7 @@ export async function fetchPerformanceItems(
       .from('ig_post_metrics')
       .select(IG_POST_METRIC_COLUMNS)
       .eq('client_id', clientId)
+      .eq('ig_account_id', accountId)
       .gte('posted_at', since)
       .not('caption', 'is', null)
       .order('total_interactions', { ascending: false, nullsFirst: false })

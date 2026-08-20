@@ -143,17 +143,34 @@ const _fetchNarrative = unstable_cache(
     // that pin is exactly the "can't generate a new report" trap.
     if (preset === 'custom') {
       const admin = createAdminSupabaseClient()
-      const { data: archived, error } = await admin
-        .from('analytics_reports')
-        .select('ai_summary')
+      // Account-scoped like every analytics read: a report exported for a
+      // previously connected account must never resurface its wording here.
+      const { data: connRow } = await admin
+        .from('social_connections')
+        .select('account_id')
         .eq('client_id', clientId)
-        .eq('period_start', start)
-        .eq('period_end', end)
+        .ilike('platform', 'instagram')
+        .limit(1)
         .maybeSingle()
-      if (error) throw new Error(`archived summary lookup failed: ${error.message}`)
-      // WHY as: the shared admin client is untyped, so the projection does not infer.
-      const archivedSummary = (archived as { ai_summary: string } | null)?.ai_summary
-      if (archivedSummary) return { text: archivedSummary, archived: true }
+      const accountId = (connRow as { account_id: string | null } | null)?.account_id ?? null
+      if (accountId) {
+        const { data: archived, error } = await admin
+          .from('analytics_reports')
+          .select('ai_summary')
+          .eq('client_id', clientId)
+          .eq('ig_account_id', accountId)
+          .eq('period_start', start)
+          .eq('period_end', end)
+          .maybeSingle()
+        // Missing stamp column (migration 20260826 not applied yet) skips the
+        // archive lookup rather than losing the narrative entirely.
+        if (error && !error.message.includes('ig_account_id')) {
+          throw new Error(`archived summary lookup failed: ${error.message}`)
+        }
+        // WHY as: the shared admin client is untyped, so the projection does not infer.
+        const archivedSummary = (archived as { ai_summary: string } | null)?.ai_summary
+        if (archivedSummary) return { text: archivedSummary, archived: true }
+      }
     }
 
     const text = await composeFreshNarrative(clientId, clientName, period, timezone)

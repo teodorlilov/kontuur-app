@@ -75,18 +75,27 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
   const period = resolvePeriod(params, timezone)
 
   const supabase = await createServerSupabaseClient()
-  const [data, connections, archiveResult, unfilledDays] = await Promise.all([
+  // The connection comes first: its account id scopes every read below —
+  // archive rows and fill markers may only ever belong to the account this
+  // client is connected to right now.
+  const connections = await fetchConnectionsByClient(supabase, clientId)
+  const accountId = connections[0]?.account_id ?? null
+  const [data, archiveResult, unfilledDays] = await Promise.all([
     getAnalyticsReport(clientId, period, timezone),
-    fetchConnectionsByClient(supabase, clientId),
-    supabase
-      .from('analytics_reports')
-      .select('id, period_start, period_end, created_at')
-      .eq('client_id', clientId)
-      .order('created_at', { ascending: false })
-      .limit(12),
+    accountId
+      ? supabase
+          .from('analytics_reports')
+          .select('id, period_start, period_end, created_at')
+          .eq('client_id', clientId)
+          .eq('ig_account_id', accountId)
+          .order('created_at', { ascending: false })
+          .limit(12)
+      : Promise.resolve({ data: [], error: null }),
     // Uncached on purpose: this is the auto-fill trigger AND its terminator —
     // a stale count would either re-pull forever or never pull at all.
-    countUnfilledDays(supabase, clientId, period, toDateKey(new Date(), timezone)),
+    accountId
+      ? countUnfilledDays(supabase, clientId, accountId, period, toDateKey(new Date(), timezone))
+      : Promise.resolve(0),
   ])
   if (archiveResult.error) {
     console.error('[analytics] archive list failed', archiveResult.error)
