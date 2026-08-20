@@ -288,9 +288,16 @@ async function syncOnlineFollowers(
 }
 
 /**
- * One finished day's full capture — the five calls the probe verified: the
- * totals pair plus the three rendered breakdowns. Shared by the nightly sync
- * (yesterday + the consolidation window) and the analytics window refill.
+ * One finished day's full capture — the totals pair plus the four rendered
+ * breakdowns. Shared by the nightly sync (yesterday + the consolidation
+ * window) and the analytics window refill.
+ *
+ * interactions_by_media_product_type belongs here beside its denominator.
+ * When only syncAccountDay fetched it, one day in thirty-five carried it
+ * while every day carried reach_by_media_product_type — so the formats
+ * section divided a single day's interactions by a whole window's reach and
+ * called the result an engagement rate. A breakdown and the reach it is
+ * rated against must be captured by the same call, or the ratio is fiction.
  */
 export async function captureDayTotals(
   clientId: string,
@@ -300,11 +307,12 @@ export async function captureDayTotals(
 ): Promise<IGAccountMetricsInsert> {
   const sinceTs = Math.floor(Date.parse(dateKey) / 1000)
   const untilTs = sinceTs + SECONDS_PER_DAY
-  const [totals, followsSplit, linkTaps, reachByType] = await Promise.all([
+  const [totals, followsSplit, linkTaps, reachByType, interactionsByType] = await Promise.all([
     fetchDayTotals(accountId, accessToken, sinceTs, untilTs),
     fetchFollowsBreakdown(accountId, accessToken, sinceTs, untilTs),
     fetchLinkTaps(accountId, accessToken, sinceTs, untilTs),
     fetchReachByProductType(accountId, accessToken, sinceTs, untilTs),
+    fetchInteractionsByProductType(accountId, accessToken, sinceTs, untilTs),
   ])
   return {
     client_id: clientId,
@@ -326,6 +334,7 @@ export async function captureDayTotals(
     profile_links_taps: linkTaps.total,
     link_taps_by_button_type: linkTaps.byButton,
     reach_by_media_product_type: reachByType,
+    interactions_by_media_product_type: interactionsByType,
     fetched_at: new Date().toISOString(),
     // Asked, whatever came back — the refill never re-spends on this day.
     totals_synced_at: new Date().toISOString(),

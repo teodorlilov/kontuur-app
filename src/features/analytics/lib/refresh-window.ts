@@ -27,7 +27,7 @@ import type { AnalyticsPeriod } from './period'
  */
 
 /**
- * A refilled day costs five Graph calls (totals pair + three breakdowns).
+ * A refilled day costs six Graph calls (totals pair + four breakdowns).
  * 62 days covers the DEFAULT 30-day view's two windows in one run; deeper
  * windows chain runs (the auto-fill re-fires while the unfilled count keeps
  * dropping). Marked days are always skipped, so a run only ever spends budget

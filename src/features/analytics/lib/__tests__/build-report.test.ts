@@ -354,6 +354,25 @@ describe('buildAnalyticsReport', () => {
     expect(report.formats.find((row) => row.key === 'AD')!.meta).toBe('0.5% engagement rate')
   })
 
+  it('refuses a rate whose halves were measured on different days', () => {
+    const report = build({
+      accountRows: [
+        // Both maps present: this day could be rated on its own.
+        accountRow({
+          metric_date: '2026-08-15',
+          reach_by_media_product_type: { AD: 5000 },
+          interactions_by_media_product_type: { AD: 25 },
+        }),
+        // Reach only — exactly the live shape that produced "under 0.1%":
+        // one day of interactions divided by a whole window of reach.
+        accountRow({ metric_date: '2026-08-16', reach_by_media_product_type: { AD: 27000 } }),
+      ],
+    })
+    // The reach still totals and still renders; only the fiction is withheld.
+    expect(report.formats.find((row) => row.key === 'AD')!.now).toBe(32000)
+    expect(report.formats.find((row) => row.key === 'AD')!.meta).toBeUndefined()
+  })
+
   it('never rounds a real engagement rate down to a measured zero', () => {
     const report = build({
       accountRows: [

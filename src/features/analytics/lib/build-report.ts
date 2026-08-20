@@ -841,6 +841,17 @@ export function buildAnalyticsReport(input: BuildReportInput): AnalyticsReportDa
   const interactionsByTypeNow = sumBreakdownMaps(
     dailyValues(current, (row) => parseBreakdownMap(row.interactions_by_media_product_type))
   )
+  // A rate is only honest when both halves were measured on the SAME days.
+  // captureDayTotals used to omit the interactions breakdown, so a window
+  // could hold reach for thirty days and interactions for one — and the
+  // section divided the two anyway. Counting the days each map covers is the
+  // guard: unequal coverage means no rate, whatever the numbers would say.
+  const daysWith = (pick: (row: IGAccountMetricColumns) => unknown): number =>
+    dailyValues(current, pick).filter((value) => value !== null).length
+  const formatRatesComparable =
+    daysWith((row) => parseBreakdownMap(row.interactions_by_media_product_type)) ===
+      daysWith((row) => parseBreakdownMap(row.reach_by_media_product_type)) &&
+    daysWith((row) => parseBreakdownMap(row.interactions_by_media_product_type)) > 0
   const formats = comparisonRows(
     sumBreakdownMaps(
       dailyValues(current, (row) => parseBreakdownMap(row.reach_by_media_product_type))
@@ -859,7 +870,12 @@ export function buildAnalyticsReport(input: BuildReportInput): AnalyticsReportDa
     // A rate per format only when the denominator is solid — one off a few
     // hundred reached accounts is arithmetic, not evidence.
     const formatInteractions = interactionsByTypeNow?.[row.key]
-    if (formatInteractions !== undefined && row.now !== null && row.now >= RATE_BASE_FLOOR) {
+    if (
+      formatRatesComparable &&
+      formatInteractions !== undefined &&
+      row.now !== null &&
+      row.now >= RATE_BASE_FLOOR
+    ) {
       const pct = (formatInteractions / row.now) * 100
       // A real 0.05% rounded to "0.0%" reads as a measured zero, which it is
       // not — and as a broken number, which it looks like. Only an actual
