@@ -837,11 +837,29 @@ export function buildAnalyticsReport(input: BuildReportInput): AnalyticsReportDa
           ? 'POST'
           : null
   const postCountByFormat = new Map<string, number>()
+  /**
+   * Our own rate for the formats Instagram itemises: every post's own
+   * interactions over its own reach, summed per format. Doing the arithmetic
+   * ourselves is what lets carousels have a rate at all — the account
+   * breakdown omits CAROUSEL_CONTAINER entirely — and it repairs feed posts,
+   * where that breakdown attributed 356 interactions to 279 reached accounts
+   * (127%, from counting the two on different bases). Where both sources
+   * exist they agree closely: reels read 6.7% here against Instagram's 7.8%,
+   * a little lower because summing per-post reach counts a person once per
+   * post that reached them, while the account figure counts them once.
+   */
+  const ownRateByFormat = new Map<string, { reach: number; interactions: number }>()
   for (const post of posts) {
     // Only media the sync verified — removed/pending rows carry no format truth.
     if (post.missing !== null) continue
     const key = formatOfMedia(post)
-    if (key) postCountByFormat.set(key, (postCountByFormat.get(key) ?? 0) + 1)
+    if (!key) continue
+    postCountByFormat.set(key, (postCountByFormat.get(key) ?? 0) + 1)
+    if (post.reach === null || post.interactions === null) continue
+    const tally = ownRateByFormat.get(key) ?? { reach: 0, interactions: 0 }
+    tally.reach += post.reach
+    tally.interactions += post.interactions
+    ownRateByFormat.set(key, tally)
   }
 
   // A rate is only honest when both halves were measured on the SAME days.
@@ -879,26 +897,46 @@ export function buildAnalyticsReport(input: BuildReportInput): AnalyticsReportDa
     const metaParts: string[] = []
     const count = postCountByFormat.get(row.key)
     if (count) metaParts.push(`${count} published`)
+
     // A rate per format only when the denominator is solid — one off a few
     // hundred reached accounts is arithmetic, not evidence.
-    const formatInteractions = interactionsByTypeNow?.[row.key]
-    const rateBase = pairedReachByType?.[row.key] ?? null
-    if (
-      formatInteractions !== undefined &&
-      rateBase !== null &&
-      rateBase >= RATE_BASE_FLOOR &&
-      // …and those days have to speak for the period on show. Half the
-      // window's reach is the line: below it the paired days are a corner of
-      // the period, not a sample of it.
-      row.now !== null &&
-      rateBase >= row.now * PAIRED_COVERAGE_FLOOR
-    ) {
-      const pct = (formatInteractions / rateBase) * 100
+    let interactions: number | null = null
+    let base: number | null = null
+    const own = ownRateByFormat.get(row.key)
+    if (own) {
+      // We hold the posts, so we do the sum ourselves. A format we can itemise
+      // NEVER falls back to the account breakdown, even when our own sample is
+      // too thin to print: the breakdown's answer for those formats has
+      // already proved untrustworthy.
+      if (own.reach >= RATE_BASE_FLOOR) {
+        interactions = own.interactions
+        base = own.reach
+      }
+    } else {
+      // Stories and ads have no media rows, so Instagram's own breakdown is
+      // the only source — read from paired days, and only when those days
+      // speak for the period on show. Half the window's reach is the line:
+      // below it they are a corner of the period, not a sample of it.
+      const fromBreakdown = interactionsByTypeNow?.[row.key]
+      const breakdownBase = pairedReachByType?.[row.key] ?? null
+      if (
+        fromBreakdown !== undefined &&
+        breakdownBase !== null &&
+        breakdownBase >= RATE_BASE_FLOOR &&
+        row.now !== null &&
+        breakdownBase >= row.now * PAIRED_COVERAGE_FLOOR
+      ) {
+        interactions = fromBreakdown
+        base = breakdownBase
+      }
+    }
+    if (interactions !== null && base !== null) {
+      const pct = (interactions / base) * 100
       // A real 0.05% rounded to "0.0%" reads as a measured zero, which it is
       // not — and as a broken number, which it looks like. Only an actual
       // zero may say none.
       metaParts.push(
-        formatInteractions === 0
+        interactions === 0
           ? 'no interactions'
           : pct < 0.1
             ? 'under 0.1% engagement rate'

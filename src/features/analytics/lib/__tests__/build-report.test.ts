@@ -354,6 +354,46 @@ describe('buildAnalyticsReport', () => {
     expect(report.formats.find((row) => row.key === 'AD')!.meta).toBe('0.5% engagement rate')
   })
 
+  it('does its own arithmetic for the formats Instagram itemises', () => {
+    const report = build({
+      accountRows: [
+        accountRow({
+          metric_date: '2026-08-15',
+          // Instagram omits CAROUSEL_CONTAINER here, and its POST figures
+          // divide to an impossible 127% — the live shapes this replaces.
+          reach_by_media_product_type: { POST: 279, CAROUSEL_CONTAINER: 1842 },
+          interactions_by_media_product_type: { POST: 356 },
+        }),
+      ],
+      postRows: [
+        postRow({
+          ig_media_id: 'c1',
+          posted_at: '2026-08-15T09:00:00Z',
+          media_product_type: 'FEED',
+          media_type: 'CAROUSEL_ALBUM',
+          reach: 1000,
+          total_interactions: 130,
+        }),
+        postRow({
+          ig_media_id: 'c2',
+          posted_at: '2026-08-16T09:00:00Z',
+          media_product_type: 'FEED',
+          media_type: 'CAROUSEL_ALBUM',
+          reach: 600,
+          total_interactions: 90,
+        }),
+      ],
+    })
+    // 220 interactions over 1,600 reached = 13.8%, all our own arithmetic —
+    // a rate the account breakdown cannot produce for this format at all.
+    expect(report.formats.find((row) => row.key === 'CAROUSEL_CONTAINER')!.meta).toBe(
+      '2 published · 13.8% engagement rate'
+    )
+    // POST has media rows too, so the impossible 127% is never reached for:
+    // our own sample is too thin to print, and that is the honest answer.
+    expect(report.formats.find((row) => row.key === 'POST')!.meta).toBeUndefined()
+  })
+
   it('rates a format on the days that measured both halves, not the window total', () => {
     const report = build({
       accountRows: [
