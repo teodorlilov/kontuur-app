@@ -1,7 +1,7 @@
 import { Avatar } from '@/components/ui/avatar'
 import { ActionLink } from '@/components/ui/action-link'
 import { Card } from '@/components/ui/card'
-import type { AnalyticsReportData } from '../lib/build-report'
+import { UNITEMISED_FORMATS, type AnalyticsReportData } from '../lib/build-report'
 import { shiftDateKey } from '@/utils/date-helpers'
 import { formatCount, formatDayMonth, formatPeriodRange, formatShortRange } from '../lib/format'
 import { firstLine } from '../lib/post-display'
@@ -216,7 +216,15 @@ export function AnalyticsView({
 
         <AnalyticsSection
           title="What each format earned"
-          sub="Which kinds of post reached the most people, against last period."
+          sub={
+            <>
+              Which kinds of post reached the most people, against last period. Under each name: how
+              many you published, and their engagement rate where enough people were reached to
+              judge one.
+              {data.formats.some((row) => UNITEMISED_FORMATS.has(row.key)) &&
+                ' Instagram reports stories and ads as a group, so those two carry no count.'}
+            </>
+          }
           ariaLabel="Reach by format"
           legend={
             <ChartLegend

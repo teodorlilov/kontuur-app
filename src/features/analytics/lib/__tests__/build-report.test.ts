@@ -343,15 +343,15 @@ describe('buildAnalyticsReport', () => {
         }),
       ],
     })
-    expect(report.formats.find((row) => row.key === 'POST')!.meta).toBe('1 published · 6.0% ER')
+    expect(report.formats.find((row) => row.key === 'POST')!.meta).toBe(
+      '1 published · 6.0% engagement rate'
+    )
     // Reach 400 sits under the 1,000 floor: the count shows, the rate stays unprinted.
     expect(report.formats.find((row) => row.key === 'REEL')!.meta).toBe('1 published')
     expect(report.formats.find((row) => row.key === 'CAROUSEL_CONTAINER')!.meta).toBe('1 published')
-    // Ads are never in /media, so they say why there is no count rather than
-    // leaving a gap beside neighbours that all carry one.
-    expect(report.formats.find((row) => row.key === 'AD')!.meta).toBe(
-      'not listed post by post · 0.5% ER'
-    )
+    // Ads are never in /media; the SECTION explains that, so the row carries
+    // only facts about the account — never an apology for our data source.
+    expect(report.formats.find((row) => row.key === 'AD')!.meta).toBe('0.5% engagement rate')
   })
 
   it('never rounds a real engagement rate down to a measured zero', () => {
@@ -366,13 +366,9 @@ describe('buildAnalyticsReport', () => {
         }),
       ],
     })
-    expect(report.formats.find((row) => row.key === 'AD')!.meta).toBe(
-      'not listed post by post · <0.1% ER'
-    )
+    expect(report.formats.find((row) => row.key === 'AD')!.meta).toBe('under 0.1% engagement rate')
     // A measured zero is allowed to say so, in words rather than as "0.0%".
-    expect(report.formats.find((row) => row.key === 'STORY')!.meta).toBe(
-      'not listed post by post · no interactions'
-    )
+    expect(report.formats.find((row) => row.key === 'STORY')!.meta).toBe('no interactions')
   })
 
   it('sorts interaction kinds by size and carries their share of interactions', () => {

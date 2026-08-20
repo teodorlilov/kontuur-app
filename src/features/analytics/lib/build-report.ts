@@ -362,10 +362,11 @@ const FORMAT_LABELS: Record<string, string> = {
 /**
  * Formats the /media endpoint never returns, so no per-post count can exist
  * for them however complete the sync is — their reach arrives only as an
- * account-level breakdown. Saying so beats a blank space next to neighbours
- * that all carry "N published", which reads as a sync that missed something.
+ * account-level breakdown. The SECTION says this once, in its own words; a
+ * per-row note repeated the apology on every affected row and told the reader
+ * about our data source rather than about their account.
  */
-const UNITEMISED_FORMATS = new Set(['STORY', 'AD'])
+export const UNITEMISED_FORMATS = new Set(['STORY', 'AD'])
 
 function comparisonRows(
   nowMap: Record<string, number> | null,
@@ -849,27 +850,26 @@ export function buildAnalyticsReport(input: BuildReportInput): AnalyticsReportDa
     ),
     (key) => FORMAT_LABELS[key] ?? humanizeDimension(key)
   ).map((row) => {
+    // Every fragment here answers one question the section header asks, and
+    // names its own unit — "8 published · 0.4% engagement rate" reads without
+    // a key. Abbreviations and apologies both failed that test.
     const metaParts: string[] = []
     const count = postCountByFormat.get(row.key)
-    if (count) {
-      metaParts.push(`${count} published`)
-    } else if (UNITEMISED_FORMATS.has(row.key)) {
-      metaParts.push('not listed post by post')
-    }
-    // ER per format only when the denominator is solid — a rate off a few
+    if (count) metaParts.push(`${count} published`)
+    // A rate per format only when the denominator is solid — one off a few
     // hundred reached accounts is arithmetic, not evidence.
     const formatInteractions = interactionsByTypeNow?.[row.key]
     if (formatInteractions !== undefined && row.now !== null && row.now >= RATE_BASE_FLOOR) {
       const pct = (formatInteractions / row.now) * 100
-      // A real 0.05% rounded to "0.0% ER" reads as a measured zero, which it
-      // is not — and as a broken number, which it looks like. Only an actual
+      // A real 0.05% rounded to "0.0%" reads as a measured zero, which it is
+      // not — and as a broken number, which it looks like. Only an actual
       // zero may say none.
       metaParts.push(
         formatInteractions === 0
           ? 'no interactions'
           : pct < 0.1
-            ? '<0.1% ER'
-            : `${pct.toFixed(1)}% ER`
+            ? 'under 0.1% engagement rate'
+            : `${pct.toFixed(1)}% engagement rate`
       )
     }
     return metaParts.length > 0 ? { ...row, meta: metaParts.join(' · ') } : row
