@@ -140,6 +140,11 @@ export interface AudienceBand {
   followerPct: number
   engagedPct: number | null
   prevFollowerPct: number | null
+  /**
+   * Engaged share ÷ follower share — how far a band over- or under-engages
+   * its own size. Null when the follower base is under 5% (ratio of slivers).
+   */
+  engagedIndex: number | null
 }
 
 export interface AudienceShare {
@@ -153,6 +158,7 @@ export interface AudienceReport {
   ages: AudienceBand[]
   genders: AudienceShare[]
   cities: AudienceShare[]
+  countries: AudienceShare[]
 }
 
 export interface ReportPostRow {
@@ -360,12 +366,17 @@ function buildAudience(
 
   const ages: AudienceBand[] = Object.keys(follower.data.age)
     .sort()
-    .map((band) => ({
-      band,
-      followerPct: followerAgePct(band) ?? 0,
-      engagedPct: engagedAgePct ? engagedAgePct(band) : null,
-      prevFollowerPct: prevAgePct ? prevAgePct(band) : null,
-    }))
+    .map((band) => {
+      const followerPct = followerAgePct(band) ?? 0
+      const engagedPct = engagedAgePct ? engagedAgePct(band) : null
+      return {
+        band,
+        followerPct,
+        engagedPct,
+        prevFollowerPct: prevAgePct ? prevAgePct(band) : null,
+        engagedIndex: engagedPct !== null && followerPct >= 5 ? engagedPct / followerPct : null,
+      }
+    })
 
   const GENDER_LABELS: Record<string, string> = { F: 'Women', M: 'Men', U: 'Unspecified' }
   const genderPct = pctOf(follower.data.gender)
@@ -391,7 +402,21 @@ function buildAudience(
       prevPct: prevCityPct ? prevCityPct(name) : null,
     }))
 
-  return { snapshotDate: current.snapshot_date, ages, genders, cities }
+  // Countries arrive as ISO codes ("BG") — spell them out; unknown keys pass through.
+  const regionNames = new Intl.DisplayNames(['en'], { type: 'region' })
+  const countryPct = pctOf(follower.data.country)
+  const prevCountryPct = prev?.success ? pctOf(prev.data.country) : null
+  const countries: AudienceShare[] = Object.entries(follower.data.country)
+    .filter(([, count]) => count > 0)
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, 3)
+    .map(([code]) => ({
+      label: (/^[A-Z]{2}$/.test(code) ? regionNames.of(code) : null) ?? code,
+      pct: countryPct(code) ?? 0,
+      prevPct: prevCountryPct ? prevCountryPct(code) : null,
+    }))
+
+  return { snapshotDate: current.snapshot_date, ages, genders, cities, countries }
 }
 
 /** Kontuur's post_type vocabulary mapped onto Instagram's media_type chips. */

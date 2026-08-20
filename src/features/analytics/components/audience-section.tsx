@@ -20,9 +20,14 @@ export function AudienceSection({ audience }: { audience: AudienceReport }) {
       const parts = [`${Math.round(band.followerPct)} percent following`]
       if (band.prevFollowerPct !== null) parts.push(`was ${Math.round(band.prevFollowerPct)}`)
       if (band.engagedPct !== null) parts.push(`${Math.round(band.engagedPct)} percent engaging`)
+      if (band.engagedIndex !== null && (band.engagedIndex >= 1.25 || band.engagedIndex <= 0.75))
+        parts.push(`engaging at ${band.engagedIndex.toFixed(1)} times its share`)
       return `${band.band}: ${parts.join(', ')}`
     })
     .join('. ')
+  const anyIndexTag = audience.ages.some(
+    (band) => band.engagedIndex !== null && (band.engagedIndex >= 1.25 || band.engagedIndex <= 0.75)
+  )
 
   return (
     <div className="mt-4 grid gap-8 lg:grid-cols-[1.4fr_1fr]">
@@ -56,13 +61,37 @@ export function AudienceSection({ audience }: { audience: AudienceReport }) {
                   />
                 )}
               </div>
-              <div className="text-center text-micro tabular-nums text-text3">{band.band}</div>
+              <div className="text-center text-micro tabular-nums text-text3">
+                {band.band}
+                {band.engagedIndex !== null &&
+                  (band.engagedIndex >= 1.25 || band.engagedIndex <= 0.75) && (
+                    <span
+                      className={
+                        band.engagedIndex >= 1.25
+                          ? 'block font-medium text-forest'
+                          : 'block text-text3'
+                      }
+                    >
+                      {band.engagedIndex.toFixed(1)}×
+                    </span>
+                  )}
+              </div>
             </div>
           ))}
         </div>
+        {anyIndexTag && (
+          <p className="mt-2.5 text-micro text-text3">
+            ×N marks bands engaging above or below their share of followers.
+          </p>
+        )}
       </div>
       <div>
         <PlaceList label="Top cities" shares={audience.cities} />
+        {audience.countries.length > 0 && (
+          <div className="mt-5">
+            <PlaceList label="Top countries" shares={audience.countries} />
+          </div>
+        )}
         <div className="mt-5">
           <PlaceList label="Gender" shares={audience.genders} />
         </div>

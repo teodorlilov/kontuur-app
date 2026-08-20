@@ -132,7 +132,23 @@ const _fetchAnalyticsReport = unstable_cache(
     const accountRows = (accountRes.data ?? []) as unknown as IGAccountMetricColumns[]
     const postRows = (postRes.data ?? []) as unknown as IGPostMetricColumns[]
     const publishedPosts = (publishedRes.data ?? []) as unknown as PublishedPostPinColumns[]
-    const snapshots = (snapshotRes.data ?? []) as unknown as SnapshotRow[]
+    let snapshots = (snapshotRes.data ?? []) as unknown as SnapshotRow[]
+    // No snapshot covers this window (weekly capture may postdate an older
+    // period): fall back to the account's LATEST snapshot. The view labels it
+    // with its date — audiences drift slowly, and a dated picture beats none.
+    if (snapshots.length === 0) {
+      const fallback = await admin
+        .from('ig_audience_snapshots')
+        .select(IG_AUDIENCE_SNAPSHOT_COLUMNS)
+        .eq('client_id', clientId)
+        .eq('ig_account_id', accountId)
+        .order('snapshot_date', { ascending: false })
+        .limit(1)
+      if (fallback.error) {
+        throw new Error(`analytics report read failed: ${fallback.error.message}`)
+      }
+      snapshots = (fallback.data ?? []) as unknown as SnapshotRow[]
+    }
     const latest = (latestRes.data ?? []) as unknown as Array<{
       metric_date: string
       fetched_at: string

@@ -480,12 +480,16 @@ describe('buildAnalyticsReport', () => {
       followerPct: 20,
       engagedPct: 44,
       prevFollowerPct: 10,
+      // 44% of engagement from 20% of followers: engaging at 2.2× its share.
+      engagedIndex: 2.2,
     })
     // Localized "City, Province" strings keep only the city, top 3 by share.
     expect(audience.cities.map((city) => city.label)).toEqual(['Varna', 'Sofia', 'Plovdiv'])
     expect(audience.cities[0]!.pct).toBeCloseTo(50)
     expect(audience.cities[0]!.prevPct).toBeCloseTo(60)
     expect(audience.genders[0]).toMatchObject({ label: 'Women', pct: 61 })
+    // ISO country codes spell out as names.
+    expect(audience.countries).toEqual([{ label: 'Bulgaria', pct: 100, prevPct: 100 }])
   })
 
   it('returns no audience when the snapshot is under the API floor (null jsonb)', () => {

@@ -2,6 +2,7 @@ import { Avatar } from '@/components/ui/avatar'
 import { ActionLink } from '@/components/ui/action-link'
 import { Card } from '@/components/ui/card'
 import type { AnalyticsReportData } from '../lib/build-report'
+import { shiftDateKey } from '@/utils/date-helpers'
 import { formatCount, formatDayMonth, formatPeriodRange, formatShortRange } from '../lib/format'
 import { firstLine } from '../lib/post-display'
 import { AnalyticsSection, ChartLegend } from './analytics-section'
@@ -372,10 +373,19 @@ export function AnalyticsView({
             <p className="mt-4 text-caption text-text3">
               {data.hasAudienceSnapshot
                 ? 'Instagram shares audience demographics once an account passes about 100 followers — snapshots begin then.'
-                : 'No audience snapshot covers this window — demographics are captured weekly from the first sync onward, so older periods may predate them.'}
+                : 'No audience snapshot exists yet — the first weekly capture runs with the nightly sync.'}
             </p>
           ) : (
-            <AudienceSection audience={data.audience} />
+            <>
+              {/* A snapshot dated past end+1 is the fallback picture — say so. */}
+              {data.audience.snapshotDate > shiftDateKey(data.period.end, 1) && (
+                <p className="mt-2 text-micro text-text3">
+                  Audience as of {formatDayMonth(data.audience.snapshotDate)} — the earliest
+                  snapshot postdates this window.
+                </p>
+              )}
+              <AudienceSection audience={data.audience} />
+            </>
           )}
         </AnalyticsSection>
       </div>
