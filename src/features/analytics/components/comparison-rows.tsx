@@ -33,7 +33,6 @@ export function ComparisonRows({ rows, ariaLabel, unit = 'Reached' }: Comparison
   return (
     <div role="img" aria-label={ariaLabel} className="mt-3 grid gap-3.5">
       {rows.map((row, index) => {
-        const hasCard = row.details !== undefined && row.details.length > 0
         return (
           <div
             key={row.key}
@@ -78,7 +77,10 @@ export function ComparisonRows({ rows, ariaLabel, unit = 'Reached' }: Comparison
                 </span>
               </div>
             </div>
-            {hasCard && hover === row.key && (
+            {/* Every row earns a card: its reach and change are worth naming
+                even when no count or rate exists to add — Stories carry
+                neither, and used to hover into nothing at all. */}
+            {hover === row.key && (
               <RowCard row={row} unit={unit} above={index === rows.length - 1 && rows.length > 1} />
             )}
           </div>

@@ -176,8 +176,15 @@ const _fetchAnalyticsReport = unstable_cache(
       lastSyncAt: latest[0]?.fetched_at ?? null,
     })
   },
-  // v3: account-scoped reads + the account id in the key args.
-  ['analytics-report-v3'],
+  // The key carries a version because the cached VALUE is a whole report
+  // object: when its shape grows, entries written by the previous deploy are
+  // still served and silently lack the new fields. That is what happened to
+  // v3 — reports cached before `details` existed rendered rows with no hover
+  // card, and only the windows a reader happened to revisit came back right.
+  // Bump this on every shape change; a stale report costs more than a rebuild.
+  //
+  // v4: reachByDay.thenDate/thenPosts + ComparisonRow.details.
+  ['analytics-report-v4'],
   { revalidate: 3600, tags: [IG_METRICS_TAG] }
 )
 

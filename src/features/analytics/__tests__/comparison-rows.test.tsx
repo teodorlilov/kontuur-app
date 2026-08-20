@@ -62,6 +62,15 @@ describe('ComparisonRows', () => {
     expect(screen.queryByText('Posts published')).not.toBeInTheDocument()
   })
 
+  it('cards a row that carries no count and no rate — Stories, in short windows', () => {
+    const bare: ComparisonRow[] = [{ key: 'STORY', label: 'Stories', now: 972, then: 400 }]
+    const { container } = render(<ComparisonRows rows={bare} ariaLabel="Reach by format" />)
+    fireEvent.pointerEnter(container.querySelector('.relative')!)
+    // No extras to add, but the reach and the change still deserve naming.
+    expect(screen.getByText('Reached this period')).toBeInTheDocument()
+    expect(screen.getByText('+572')).toBeInTheDocument()
+  })
+
   it('leaves the compact line for print, which cannot be hovered', () => {
     render(<ComparisonRows rows={ROWS} ariaLabel="Reach by format" />)
     const printed = screen.getByText('8 published · 13.7% engagement rate')
