@@ -39,7 +39,9 @@ function accountRow(overrides: Partial<IGAccountMetricColumns>): IGAccountMetric
     website_clicks: null,
     follows: null,
     unfollows: null,
+    profile_links_taps: null,
     reach_by_media_product_type: null,
+    interactions_by_media_product_type: null,
     link_taps_by_button_type: null,
     fetched_at: '2026-08-19T03:30:00Z',
     ...overrides,
@@ -216,6 +218,37 @@ describe('buildAnalyticsReport', () => {
     expect(report.reachByDay[0]!.posts.map((p) => p.igMediaId)).toEqual(['m-live'])
     expect(report.reachByDay[1]!.posts.map((p) => p.caption)).toEqual(['Deleted later'])
     expect(report.reachByDay[3]!.posts[0]!.missing).toBe('pending')
+  })
+
+  it('builds the conversion funnel with rates on honest denominators', () => {
+    const report = build({
+      accountRows: [
+        accountRow({
+          metric_date: '2026-08-15',
+          reach: 1000,
+          profile_views: 40,
+          profile_links_taps: 3,
+          website_clicks: 2,
+          follows: 9,
+        }),
+        accountRow({
+          metric_date: '2026-08-12',
+          reach: 500,
+          profile_views: 20,
+          profile_links_taps: 1,
+          follows: 4,
+        }),
+      ],
+    })
+    const [reached, views, taps, follows] = report.funnel
+    expect(reached).toMatchObject({ now: 1000, then: 500, per100: null })
+    expect(views).toMatchObject({ now: 40, then: 20, per100: 4, rateBasis: 'per 100 reached' })
+    // Link taps and the separate website_clicks column sum into one stage.
+    expect(taps).toMatchObject({ now: 5, then: 1, rateBasis: 'per 100 profile views' })
+    expect(taps!.per100).toBeCloseTo(12.5)
+    // Follows rate against profile views, NEVER per tap — most follows skip links.
+    expect(follows).toMatchObject({ now: 9, then: 4, rateBasis: 'per 100 profile views' })
+    expect(follows!.per100).toBeCloseTo(22.5)
   })
 
   it('sorts interaction kinds by size and carries their share of interactions', () => {

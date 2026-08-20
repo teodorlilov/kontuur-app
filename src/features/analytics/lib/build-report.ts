@@ -100,6 +100,19 @@ export interface ReachDay {
   posts: TrendPost[]
 }
 
+export interface FunnelStage {
+  key: 'reached' | 'profile_views' | 'taps' | 'follows'
+  label: string
+  /** What one unit of this stage is — reach counts people, later stages count actions. */
+  unit: string
+  now: number | null
+  then: number | null
+  /** This period, per 100 of this stage's stated basis; null when unknowable. */
+  per100: number | null
+  /** The denominator the rate is honest against, e.g. "per 100 profile views". */
+  rateBasis: string | null
+}
+
 export interface BestDay {
   date: string
   reach: number
@@ -160,6 +173,8 @@ export interface AnalyticsReportData {
   engagementRate: EngagementRateCell
   reachByDay: ReachDay[]
   bestDay: BestDay | null
+  /** The conversion path: reached → profile views → taps → new follows. */
+  funnel: FunnelStage[]
   formats: ComparisonRow[]
   interactionKinds: ComparisonRow[]
   profileViews: ComparisonValue
@@ -614,6 +629,56 @@ export function buildAnalyticsReport(input: BuildReportInput): AnalyticsReportDa
   // website taps sit uncounted in another column.
   const websiteNow = sumOrNull(dailyValues(current, (row) => row.website_clicks))
   const websiteThen = sumOrNull(dailyValues(previous, (row) => row.website_clicks))
+
+  // The conversion path. Taps and follows are BOTH downstream of a profile
+  // view, not of each other (most follows never touch a link), so both rates
+  // read against profile views — never "follows per tap", which would exceed
+  // 100 and mislead. Rates are ratios of events, not shares of people.
+  const linkTapsNow = sumOrNull(dailyValues(current, (row) => row.profile_links_taps))
+  const linkTapsThen = sumOrNull(dailyValues(previous, (row) => row.profile_links_taps))
+  const tapsTotalNow = sumOrNull([linkTapsNow, websiteNow])
+  const tapsTotalThen = sumOrNull([linkTapsThen, websiteThen])
+  const per100 = (stage: number | null, basis: number | null): number | null =>
+    stage !== null && basis !== null && basis > 0 ? (stage / basis) * 100 : null
+  const funnel: FunnelStage[] = [
+    {
+      key: 'reached',
+      label: 'Reached',
+      unit: 'accounts',
+      now: reach.now,
+      then: reach.then,
+      per100: null,
+      rateBasis: null,
+    },
+    {
+      key: 'profile_views',
+      label: 'Profile views',
+      unit: 'visits',
+      now: profileViewsNow,
+      then: profileViewsThen,
+      per100: per100(profileViewsNow, reach.now),
+      rateBasis: 'per 100 reached',
+    },
+    {
+      key: 'taps',
+      label: 'Link & contact taps',
+      unit: 'taps',
+      now: tapsTotalNow,
+      then: tapsTotalThen,
+      per100: per100(tapsTotalNow, profileViewsNow),
+      rateBasis: 'per 100 profile views',
+    },
+    {
+      key: 'follows',
+      label: 'New follows',
+      unit: 'follows',
+      now: gained.now,
+      then: gained.then,
+      per100: per100(gained.now, profileViewsNow),
+      rateBasis: 'per 100 profile views',
+    },
+  ]
+
   if (
     !tapButtons.some((row) => /website/i.test(row.key)) &&
     ((websiteNow ?? 0) > 0 || (websiteThen ?? 0) > 0)
@@ -639,6 +704,7 @@ export function buildAnalyticsReport(input: BuildReportInput): AnalyticsReportDa
     engagementRate,
     reachByDay,
     bestDay,
+    funnel,
     formats,
     interactionKinds,
     profileViews: {

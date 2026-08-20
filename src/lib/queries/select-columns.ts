@@ -223,7 +223,9 @@ export const IG_ACCOUNT_METRIC_KEYS = [
   'website_clicks',
   'follows',
   'unfollows',
+  'profile_links_taps',
   'reach_by_media_product_type',
+  'interactions_by_media_product_type',
   'link_taps_by_button_type',
   'fetched_at',
 ] as const satisfies readonly (keyof IGAccountMetricsRow)[]

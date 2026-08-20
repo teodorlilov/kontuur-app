@@ -10,6 +10,7 @@ import { AutoFill } from './auto-fill'
 import { ComparisonRows } from './comparison-rows'
 import { EmptyFill } from './empty-fill'
 import { FillingDocument } from './filling-document'
+import { FunnelSection } from './funnel-section'
 import { NarrativeBlock } from './narrative-block'
 import { PostsTable } from './posts-table'
 import { ReachTrend } from './reach-trend'
@@ -151,6 +152,22 @@ export function AnalyticsView({
           ) : (
             <EmptyFill className="mt-3.5 min-h-60">
               Day one builds tonight — reach appears here after the 03:30 sync
+            </EmptyFill>
+          )}
+        </AnalyticsSection>
+      </div>
+
+      <div className="mt-7">
+        <AnalyticsSection
+          title="From seen to followed"
+          sub="Each stage beside the one above it — reach counts people, the later stages count actions, so rates read per 100, never as shares of people."
+          ariaLabel="Conversion path"
+        >
+          {hasHistory ? (
+            <FunnelSection stages={data.funnel} />
+          ) : (
+            <EmptyFill className="mt-3.5 min-h-36">
+              The conversion path appears after the first sync
             </EmptyFill>
           )}
         </AnalyticsSection>
