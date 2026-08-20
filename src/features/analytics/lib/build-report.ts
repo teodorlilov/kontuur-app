@@ -359,6 +359,14 @@ const FORMAT_LABELS: Record<string, string> = {
   AD: 'Ads · paid',
 }
 
+/**
+ * Formats the /media endpoint never returns, so no per-post count can exist
+ * for them however complete the sync is — their reach arrives only as an
+ * account-level breakdown. Saying so beats a blank space next to neighbours
+ * that all carry "N published", which reads as a sync that missed something.
+ */
+const UNITEMISED_FORMATS = new Set(['STORY', 'AD'])
+
 function comparisonRows(
   nowMap: Record<string, number> | null,
   thenMap: Record<string, number> | null,
@@ -843,12 +851,26 @@ export function buildAnalyticsReport(input: BuildReportInput): AnalyticsReportDa
   ).map((row) => {
     const metaParts: string[] = []
     const count = postCountByFormat.get(row.key)
-    if (count) metaParts.push(`${count} published`)
+    if (count) {
+      metaParts.push(`${count} published`)
+    } else if (UNITEMISED_FORMATS.has(row.key)) {
+      metaParts.push('not listed post by post')
+    }
     // ER per format only when the denominator is solid — a rate off a few
     // hundred reached accounts is arithmetic, not evidence.
     const formatInteractions = interactionsByTypeNow?.[row.key]
     if (formatInteractions !== undefined && row.now !== null && row.now >= RATE_BASE_FLOOR) {
-      metaParts.push(`${((formatInteractions / row.now) * 100).toFixed(1)}% ER`)
+      const pct = (formatInteractions / row.now) * 100
+      // A real 0.05% rounded to "0.0% ER" reads as a measured zero, which it
+      // is not — and as a broken number, which it looks like. Only an actual
+      // zero may say none.
+      metaParts.push(
+        formatInteractions === 0
+          ? 'no interactions'
+          : pct < 0.1
+            ? '<0.1% ER'
+            : `${pct.toFixed(1)}% ER`
+      )
     }
     return metaParts.length > 0 ? { ...row, meta: metaParts.join(' · ') } : row
   })

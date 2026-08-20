@@ -347,8 +347,32 @@ describe('buildAnalyticsReport', () => {
     // Reach 400 sits under the 1,000 floor: the count shows, the rate stays unprinted.
     expect(report.formats.find((row) => row.key === 'REEL')!.meta).toBe('1 published')
     expect(report.formats.find((row) => row.key === 'CAROUSEL_CONTAINER')!.meta).toBe('1 published')
-    // Ads have no media rows — rate only.
-    expect(report.formats.find((row) => row.key === 'AD')!.meta).toBe('0.5% ER')
+    // Ads are never in /media, so they say why there is no count rather than
+    // leaving a gap beside neighbours that all carry one.
+    expect(report.formats.find((row) => row.key === 'AD')!.meta).toBe(
+      'not listed post by post · 0.5% ER'
+    )
+  })
+
+  it('never rounds a real engagement rate down to a measured zero', () => {
+    const report = build({
+      accountRows: [
+        accountRow({
+          metric_date: '2026-08-15',
+          reach_by_media_product_type: { AD: 32340, STORY: 4000 },
+          // 15 / 32,340 is 0.046% — toFixed(1) would print "0.0% ER" and read
+          // as "the ads earned nothing", which is a different claim.
+          interactions_by_media_product_type: { AD: 15, STORY: 0 },
+        }),
+      ],
+    })
+    expect(report.formats.find((row) => row.key === 'AD')!.meta).toBe(
+      'not listed post by post · <0.1% ER'
+    )
+    // A measured zero is allowed to say so, in words rather than as "0.0%".
+    expect(report.formats.find((row) => row.key === 'STORY')!.meta).toBe(
+      'not listed post by post · no interactions'
+    )
   })
 
   it('sorts interaction kinds by size and carries their share of interactions', () => {
