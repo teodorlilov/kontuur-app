@@ -574,12 +574,28 @@ export function buildAnalyticsReport(input: BuildReportInput): AnalyticsReportDa
     ['shares', 'Shares'],
     ['replies', 'Replies'],
   ] as const
-  const interactionKinds: ComparisonRow[] = INTERACTION_LABELS.map(([key, label]) => ({
-    key,
-    label,
-    now: sumOrNull(dailyValues(current, (row) => row[key])),
-    then: sumOrNull(dailyValues(previous, (row) => row[key])),
-  }))
+  // Each kind's share of the period's interactions — the mix is the story
+  // (saves and shares are high-intent), not just the counts.
+  const shareOfInteractions = (part: number | null): string | undefined => {
+    if (part === null || part <= 0 || interactions.now === null || interactions.now <= 0) {
+      return undefined
+    }
+    const pct = (part / interactions.now) * 100
+    return pct < 1 ? '<1% of interactions' : `${Math.round(pct)}% of interactions`
+  }
+  // Sorted by size: these render as shared-scale rows, largest first. A
+  // measured zero keeps its row — 0 comments is data, not absence.
+  const interactionKinds: ComparisonRow[] = INTERACTION_LABELS.map(([key, label]) => {
+    const now = sumOrNull(dailyValues(current, (row) => row[key]))
+    const meta = shareOfInteractions(now)
+    return {
+      key,
+      label,
+      now,
+      then: sumOrNull(dailyValues(previous, (row) => row[key])),
+      ...(meta ? { meta } : {}),
+    }
+  }).sort((a, b) => (b.now ?? -1) - (a.now ?? -1))
 
   const profileViewsNow = sumOrNull(dailyValues(current, (row) => row.profile_views))
   const profileViewsThen = sumOrNull(dailyValues(previous, (row) => row.profile_views))

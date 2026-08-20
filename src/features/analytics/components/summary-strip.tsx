@@ -1,6 +1,7 @@
 import { cn } from '@/utils/cn'
 import { Card } from '@/components/ui/card'
 import type { AnalyticsReportData } from '../lib/build-report'
+import { countDeltaVerdict, rateDeltaVerdict, type DeltaVerdict } from '../lib/delta-verdict'
 import { formatCount } from '../lib/format'
 import { DeltaChip } from './delta-chip'
 import { Sparkline } from './sparkline'
@@ -8,8 +9,8 @@ import { Sparkline } from './sparkline'
 interface CellSpec {
   label: string
   value: string | null
-  delta: number | null
-  deltaUnit: 'pct' | 'pt'
+  verdict: DeltaVerdict
+  unit: 'count' | 'pt'
   thenLine: string
   series: Array<number | null>
   /** The sr-only sentence that speaks for the aria-hidden sparkline. */
@@ -22,14 +23,13 @@ function cellSpecs(data: AnalyticsReportData): CellSpec[] {
     cell: {
       now: number | null
       then: number | null
-      deltaPct: number | null
       series: Array<number | null>
     }
   ): CellSpec => ({
     label,
     value: cell.now === null ? null : formatCount(cell.now),
-    delta: cell.deltaPct,
-    deltaUnit: 'pct',
+    verdict: countDeltaVerdict(cell.now, cell.then),
+    unit: 'count',
     thenLine:
       cell.then === null ? 'no previous period yet' : `${formatCount(cell.then)} last period`,
     series: cell.series,
@@ -58,12 +58,8 @@ function cellSpecs(data: AnalyticsReportData): CellSpec[] {
     {
       label: 'Net followers',
       value: net === null ? null : `${net >= 0 ? '+' : '−'}${formatCount(Math.abs(net))}`,
-      // A percent of a tiny or negative base misleads; only a real positive base compares.
-      delta:
-        net !== null && followers.net.then !== null && followers.net.then > 0
-          ? ((net - followers.net.then) / followers.net.then) * 100
-          : null,
-      deltaUnit: 'pct',
+      verdict: countDeltaVerdict(net, followers.net.then),
+      unit: 'count',
       thenLine: netParts.length > 0 ? netParts.join(' · ') : 'no follower data yet',
       series: followers.series,
       spoken:
@@ -78,8 +74,10 @@ function cellSpecs(data: AnalyticsReportData): CellSpec[] {
     {
       label: 'Engagement rate',
       value: engagementRate.now === null ? null : `${engagementRate.now.toFixed(1)}%`,
-      delta: engagementRate.deltaPt,
-      deltaUnit: 'pt',
+      // The rate's floor sits on its denominator: points only color when both
+      // windows measured real reach (the ▼12.6pt-off-644-reach case).
+      verdict: rateDeltaVerdict(engagementRate.deltaPt, data.reach.now, data.reach.then),
+      unit: 'pt',
       thenLine:
         engagementRate.then === null
           ? 'no previous period yet'
@@ -126,7 +124,7 @@ export function SummaryStrip({ data }: { data: AnalyticsReportData }) {
                 <>
                   <div className="mt-2 flex flex-wrap items-baseline gap-2">
                     <span className="text-metric text-ink">{cell.value ?? '—'}</span>
-                    <DeltaChip value={cell.delta} unit={cell.deltaUnit} />
+                    <DeltaChip verdict={cell.verdict} unit={cell.unit} />
                   </div>
                   <div className="mt-1 text-micro tabular-nums text-text3">
                     {cell.value === null ? 'not captured for this period' : cell.thenLine}

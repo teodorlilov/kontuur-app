@@ -10,7 +10,6 @@ import { AutoFill } from './auto-fill'
 import { ComparisonRows } from './comparison-rows'
 import { EmptyFill } from './empty-fill'
 import { FillingDocument } from './filling-document'
-import { InteractionMultiples } from './interaction-multiples'
 import { NarrativeBlock } from './narrative-block'
 import { PostsTable } from './posts-table'
 import { ReachTrend } from './reach-trend'
@@ -263,19 +262,29 @@ export function AnalyticsView({
       <div className="mt-7">
         <AnalyticsSection
           title="What people did"
-          sub="Each interaction, this period beside the last."
+          sub="Every interaction beside last period — all five on one scale."
           ariaLabel="Interactions"
           legend={
             <ChartLegend
               items={[
-                { swatch: 'then-block', label: 'Previous' },
-                { swatch: 'now-block', label: 'This period' },
+                { swatch: 'now', label: 'This period' },
+                { swatch: 'then', label: 'Previous' },
               ]}
             />
           }
         >
           {hasHistory ? (
-            <InteractionMultiples kinds={data.interactionKinds} />
+            <ComparisonRows
+              ariaLabel={`Bar chart. ${data.interactionKinds
+                .map(
+                  (row) =>
+                    `${row.label} ${row.now === null ? 'unknown' : formatCount(row.now)} this period versus ${
+                      row.then === null ? 'unknown' : formatCount(row.then)
+                    } last period`
+                )
+                .join('. ')}.`}
+              rows={data.interactionKinds}
+            />
           ) : (
             <EmptyFill className="mt-3.5">
               Interaction detail appears after the first sync

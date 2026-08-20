@@ -1,39 +1,58 @@
 import { cn } from '@/utils/cn'
+import type { DeltaVerdict } from '../lib/delta-verdict'
+import { formatCount } from '../lib/format'
 
 interface DeltaChipProps {
-  /** Signed change; null renders nothing — no comparison exists yet. */
-  value: number | null
-  /** 'pct' renders "15.1%", 'pt' renders "0.4 pt" (percentage points). */
-  unit?: 'pct' | 'pt'
+  verdict: DeltaVerdict
+  /** 'count' prints absolutes as whole counts; 'pt' as percentage points. */
+  unit?: 'count' | 'pt'
   className?: string
 }
 
-/**
- * The one delta treatment: colored by desirability, not direction — forest on
- * Wash going up, Clay going down, quiet when nothing moved. Living Green Text
- * is deliberately not used here (4.1:1 on Wash, under the chip's own bar).
- */
-export function DeltaChip({ value, unit = 'pct', className }: DeltaChipProps) {
-  if (value === null) return null
-  const flat = Math.abs(value) < 0.05
-  const up = value > 0
+function signedAbs(diff: number, unit: 'count' | 'pt'): string {
   const magnitude =
-    unit === 'pct' ? `${Math.abs(value).toFixed(1)}%` : `${Math.abs(value).toFixed(1)} pt`
+    unit === 'pt' ? `${Math.abs(diff).toFixed(1)} pt` : formatCount(Math.abs(Math.round(diff)))
+  return `${diff > 0 ? '+' : '−'}${magnitude}`
+}
+
+/**
+ * The one delta treatment, verdict-driven (see delta-verdict): colored by
+ * desirability only when the change clears the noise band — forest on Wash
+ * going up, Clay going down — with the percentage printed only on a solid
+ * base. Inside the band it states the absolute quietly in gray, so a +2 off
+ * a base of 1 can never out-shout a real move. Living Green Text is
+ * deliberately not used here (4.1:1 on Wash, under the chip's own bar).
+ */
+export function DeltaChip({ verdict, unit = 'count', className }: DeltaChipProps) {
+  if (verdict.kind === 'none') return null
+
+  if (verdict.kind === 'quiet') {
+    const flat = Math.abs(verdict.diff) < 0.05
+    return (
+      <span
+        className={cn(
+          'whitespace-nowrap rounded-full bg-sunken px-2 py-0.5 text-micro font-semibold tabular-nums text-text2',
+          className
+        )}
+      >
+        {flat ? '—' : signedAbs(verdict.diff, unit)}{' '}
+        <span className="sr-only">{flat ? 'unchanged' : 'within normal variation'}</span>
+      </span>
+    )
+  }
+
+  const up = verdict.diff > 0
+  const magnitude =
+    verdict.pct !== null ? `${Math.abs(verdict.pct).toFixed(1)}%` : signedAbs(verdict.diff, unit)
   return (
     <span
       className={cn(
         'whitespace-nowrap rounded-full px-2 py-0.5 text-micro font-semibold tabular-nums',
-        flat ? 'bg-sunken text-text2' : up ? 'bg-wash text-forest' : 'bg-danger-bg text-danger',
+        up ? 'bg-wash text-forest' : 'bg-danger-bg text-danger',
         className
       )}
     >
-      {flat ? (
-        <>
-          — <span className="sr-only">unchanged</span>
-        </>
-      ) : (
-        `${up ? '▲' : '▼'} ${magnitude}`
-      )}
+      {up ? '▲' : '▼'} {magnitude}
     </span>
   )
 }

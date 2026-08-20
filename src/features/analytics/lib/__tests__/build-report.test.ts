@@ -218,6 +218,38 @@ describe('buildAnalyticsReport', () => {
     expect(report.reachByDay[3]!.posts[0]!.missing).toBe('pending')
   })
 
+  it('sorts interaction kinds by size and carries their share of interactions', () => {
+    const report = build({
+      accountRows: [
+        accountRow({
+          metric_date: '2026-08-15',
+          total_interactions: 400,
+          likes: 300,
+          comments: 0,
+          saves: 52,
+          shares: 40,
+          replies: 8,
+        }),
+      ],
+    })
+    expect(report.interactionKinds.map((row) => row.key)).toEqual([
+      'likes',
+      'saves',
+      'shares',
+      'replies',
+      'comments',
+    ])
+    expect(report.interactionKinds[0]).toMatchObject({
+      label: 'Likes',
+      now: 300,
+      meta: '75% of interactions',
+    })
+    // A measured zero keeps its row — and carries no share line.
+    const comments = report.interactionKinds.find((row) => row.key === 'comments')!
+    expect(comments).toMatchObject({ now: 0, then: null })
+    expect(comments.meta).toBeUndefined()
+  })
+
   it('keeps the all-null period distinct from a zero period', () => {
     const report = build({
       accountRows: [accountRow({ metric_date: '2026-08-15', views: 0 })],

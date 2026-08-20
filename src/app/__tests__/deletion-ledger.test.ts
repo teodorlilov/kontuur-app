@@ -88,6 +88,10 @@ describe('deleted symbols stay unreferenced', () => {
     'MediaTypeBreakdownItem',
     'IGDailyInsight',
     'recharts',
+    // Comparison legibility (2026-08): the per-cell-scaled interaction bars —
+    // heights that only encoded the within-pair ratio and lied across cells.
+    // The section renders through ComparisonRows on one shared scale now.
+    'InteractionMultiples',
   ]
 
   it('no source line mentions a ledgered symbol', () => {

@@ -36,8 +36,6 @@ export function AnalyticsSection({
 const SWATCH_CLASS = {
   now: 'h-0.5 w-3.5 rounded-full bg-forest',
   then: 'h-0.5 w-3.5 rounded-full bg-metric-3',
-  'then-block': 'size-2 rounded-sm bg-metric-3',
-  'now-block': 'h-3 w-2 rounded-sm bg-forest',
   'dot-now': 'size-2 rounded-full bg-forest',
   'dot-second': 'size-2 rounded-full bg-spring',
   /** The last-period marker line drawn across the audience columns. */
