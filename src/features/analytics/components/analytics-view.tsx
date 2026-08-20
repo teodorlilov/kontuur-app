@@ -186,18 +186,12 @@ export function AnalyticsView({
             The follows/unfollows split is the story the stored data can tell. */}
         <AnalyticsSection
           title="Who followed, who left"
-          sub="Gains and losses day by day — pins mark the days a post went out."
+          sub="Gains and losses day by day — hover a day for the posts behind it."
           ariaLabel="Follower flow"
           legend={
-            <ChartLegend
-              items={[
-                { swatch: 'bar-gain', label: 'Gained' },
-                { swatch: 'bar-loss', label: 'Lost' },
-                ...(followers.byDay.some((day) => day.postCount > 0)
-                  ? ([{ swatch: 'pin', label: 'Post published' }] as const)
-                  : []),
-              ]}
-            />
+            followers.byDay.some((day) => day.posts.length > 0) ? (
+              <ChartLegend items={[{ swatch: 'pin', label: 'Post published' }]} />
+            ) : undefined
           }
         >
           {!hasHistory ? (

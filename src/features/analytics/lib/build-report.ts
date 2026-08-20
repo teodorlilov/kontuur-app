@@ -53,8 +53,8 @@ export interface FollowerFlowDay {
   date: string
   gained: number | null
   lost: number | null
-  /** Posts published that day — the flow timeline pins them like the reach chart. */
-  postCount: number
+  /** Posts published that day — the flow timeline pins and names them like the reach chart. */
+  posts: TrendPost[]
 }
 
 export interface FollowerSummary {
@@ -741,7 +741,7 @@ export function buildAnalyticsReport(input: BuildReportInput): AnalyticsReportDa
     date,
     gained: gainedSeries[index]!,
     lost: lostSeries[index]!,
-    postCount: postsByDate.get(date)?.length ?? 0,
+    posts: postsByDate.get(date) ?? [],
   }))
   // Per-media follows, straight from Instagram's own attribution — a separate
   // basis from the account-level gained total, stated as its own fact.

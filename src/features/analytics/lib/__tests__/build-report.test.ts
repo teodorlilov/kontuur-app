@@ -239,7 +239,9 @@ describe('buildAnalyticsReport', () => {
       ],
     })
     expect(report.followers.byDay.map((d) => d.gained)).toEqual([5, 12, null, null])
-    expect(report.followers.byDay.map((d) => d.postCount)).toEqual([0, 2, 0, 0])
+    expect(report.followers.byDay.map((d) => d.posts.length)).toEqual([0, 2, 0, 0])
+    // The flow day names its posts, strongest reach first — the hover card reads them.
+    expect(report.followers.byDay[1]!.posts.map((p) => p.igMediaId)).toEqual(['a', 'b'])
     // Instagram's own per-media attribution; the null-follows post doesn't poison it.
     expect(report.followers.fromPosts).toBe(4)
     // Start = first anchored total (830) minus that day's net (+3) → 827; lost 2 of 827.

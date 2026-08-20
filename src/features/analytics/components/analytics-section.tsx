@@ -42,9 +42,6 @@ const SWATCH_CLASS = {
   tick: 'h-0.5 w-3.5 rounded-full bg-then-line',
   /** A publish day pinned on the reach baseline. */
   pin: 'size-2.5 rounded-full border-2 border-forest bg-surface',
-  /** The flow timeline's diverging pair: gains up in pine, losses down in Clay. */
-  'bar-gain': 'h-3 w-2 rounded-sm bg-forest',
-  'bar-loss': 'h-3 w-2 rounded-sm bg-danger',
 } as const
 
 export type LegendSwatch = keyof typeof SWATCH_CLASS
