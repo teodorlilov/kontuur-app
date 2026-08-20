@@ -11,8 +11,12 @@
 const NOISE_K = 2
 /** Below this base one event moves the percentage ≥10 points — too grainy to print. */
 const PCT_BASE_FLOOR = 10
-/** A rate colors only when both windows measured at least this much of its denominator. */
-const RATE_BASE_FLOOR = 1000
+/**
+ * A rate colors (or prints at all, for per-format ER) only when its
+ * denominator measured at least this much — rates off tiny reach are
+ * arithmetic, not evidence.
+ */
+export const RATE_BASE_FLOOR = 1000
 
 export type DeltaVerdict =
   /** No comparison exists — one side was never captured. */

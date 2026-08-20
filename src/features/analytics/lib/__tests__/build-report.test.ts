@@ -275,6 +275,45 @@ describe('buildAnalyticsReport', () => {
     expect(follows!.per100).toBeCloseTo(22.5)
   })
 
+  it('enriches formats with published counts and ER only on a solid base', () => {
+    const report = build({
+      accountRows: [
+        accountRow({
+          metric_date: '2026-08-15',
+          reach_by_media_product_type: { POST: 1500, REEL: 400, CAROUSEL_CONTAINER: 800, AD: 5000 },
+          interactions_by_media_product_type: { POST: 90, REEL: 30, AD: 25 },
+        }),
+      ],
+      postRows: [
+        postRow({
+          ig_media_id: 'a',
+          posted_at: '2026-08-15T10:00:00Z',
+          media_product_type: 'FEED',
+          media_type: 'IMAGE',
+        }),
+        postRow({
+          ig_media_id: 'b',
+          posted_at: '2026-08-16T10:00:00Z',
+          // Carousel bridges from media_type, not media_product_type.
+          media_product_type: 'FEED',
+          media_type: 'CAROUSEL_ALBUM',
+        }),
+        postRow({
+          ig_media_id: 'c',
+          posted_at: '2026-08-16T11:00:00Z',
+          media_product_type: 'REELS',
+          media_type: 'VIDEO',
+        }),
+      ],
+    })
+    expect(report.formats.find((row) => row.key === 'POST')!.meta).toBe('1 published · 6.0% ER')
+    // Reach 400 sits under the 1,000 floor: the count shows, the rate stays unprinted.
+    expect(report.formats.find((row) => row.key === 'REEL')!.meta).toBe('1 published')
+    expect(report.formats.find((row) => row.key === 'CAROUSEL_CONTAINER')!.meta).toBe('1 published')
+    // Ads have no media rows — rate only.
+    expect(report.formats.find((row) => row.key === 'AD')!.meta).toBe('0.5% ER')
+  })
+
   it('sorts interaction kinds by size and carries their share of interactions', () => {
     const report = build({
       accountRows: [

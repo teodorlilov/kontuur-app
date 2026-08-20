@@ -55,6 +55,14 @@ export function AnalyticsView({
   const { hasHistory, followers } = data
   const flowKnown = followers.gained.now !== null || followers.lost.now !== null
   const filling = hasConnection && unfilledDays > 0
+  // Paid vs organic, from the format-attributed reach — stated side by side,
+  // never summed to the period total (accounts can appear in several formats).
+  const adReach = data.formats.find((row) => row.key === 'AD')?.now ?? null
+  const organicReach = data.formats.some((row) => row.key !== 'AD')
+    ? data.formats
+        .filter((row) => row.key !== 'AD')
+        .reduce<number | null>((sum, row) => (row.now === null ? sum : (sum ?? 0) + row.now), null)
+    : null
 
   const masthead = (
     <header className="flex flex-wrap items-end justify-between gap-6 pb-5">
@@ -222,17 +230,36 @@ export function AnalyticsView({
               No format breakdown captured for this period yet.
             </p>
           ) : (
-            <ComparisonRows
-              ariaLabel={`Bar chart. ${data.formats
-                .map(
-                  (row) =>
-                    `${row.label} reached ${row.now === null ? 'unknown' : formatCount(row.now)} accounts this period versus ${
-                      row.then === null ? 'unknown' : formatCount(row.then)
-                    } last period`
-                )
-                .join('. ')}.`}
-              rows={data.formats}
-            />
+            <>
+              <ComparisonRows
+                ariaLabel={`Bar chart. ${data.formats
+                  .map(
+                    (row) =>
+                      `${row.label} reached ${row.now === null ? 'unknown' : formatCount(row.now)} accounts this period versus ${
+                        row.then === null ? 'unknown' : formatCount(row.then)
+                      } last period`
+                  )
+                  .join('. ')}.`}
+                rows={data.formats}
+              />
+              {adReach !== null && adReach > 0 && (
+                <p className="mt-3.5 text-caption text-text2">
+                  Paid placement reached{' '}
+                  <span className="tabular-nums">{formatCount(adReach)}</span>
+                  {organicReach !== null && (
+                    <>
+                      {' '}
+                      · organic formats{' '}
+                      <span className="tabular-nums">{formatCount(organicReach)}</span> combined
+                    </>
+                  )}
+                  <span className="text-text3">
+                    {' '}
+                    — the same account can appear in more than one format.
+                  </span>
+                </p>
+              )}
+            </>
           )}
         </AnalyticsSection>
       </div>

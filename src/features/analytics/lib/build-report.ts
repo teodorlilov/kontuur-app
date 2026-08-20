@@ -4,6 +4,7 @@ import type {
   IGPostMetricColumns,
   PublishedPostPinColumns,
 } from '@/lib/queries/select-columns'
+import { RATE_BASE_FLOOR } from './delta-verdict'
 import { periodDayKeys, type AnalyticsPeriod } from './period'
 
 /**
@@ -603,6 +604,28 @@ export function buildAnalyticsReport(input: BuildReportInput): AnalyticsReportDa
     bestDay.caption = dayPost?.caption ?? null
   }
 
+  // The one deliberate bridge between /media's vocabulary (FEED/REELS +
+  // media_type) and the insights breakdown's (POST/REEL/CAROUSEL_CONTAINER).
+  // Mapped key by key, never joined wholesale; STORY and AD have no media rows.
+  const formatOfMedia = (post: ReportPostRow): string | null =>
+    post.mediaType === 'CAROUSEL_ALBUM'
+      ? 'CAROUSEL_CONTAINER'
+      : post.mediaProductType === 'REELS'
+        ? 'REEL'
+        : post.mediaProductType === 'FEED'
+          ? 'POST'
+          : null
+  const postCountByFormat = new Map<string, number>()
+  for (const post of posts) {
+    // Only media the sync verified — removed/pending rows carry no format truth.
+    if (post.missing !== null) continue
+    const key = formatOfMedia(post)
+    if (key) postCountByFormat.set(key, (postCountByFormat.get(key) ?? 0) + 1)
+  }
+
+  const interactionsByTypeNow = sumBreakdownMaps(
+    dailyValues(current, (row) => parseBreakdownMap(row.interactions_by_media_product_type))
+  )
   const formats = comparisonRows(
     sumBreakdownMaps(
       dailyValues(current, (row) => parseBreakdownMap(row.reach_by_media_product_type))
@@ -611,7 +634,18 @@ export function buildAnalyticsReport(input: BuildReportInput): AnalyticsReportDa
       dailyValues(previous, (row) => parseBreakdownMap(row.reach_by_media_product_type))
     ),
     (key) => FORMAT_LABELS[key] ?? humanizeDimension(key)
-  )
+  ).map((row) => {
+    const metaParts: string[] = []
+    const count = postCountByFormat.get(row.key)
+    if (count) metaParts.push(`${count} published`)
+    // ER per format only when the denominator is solid — a rate off a few
+    // hundred reached accounts is arithmetic, not evidence.
+    const formatInteractions = interactionsByTypeNow?.[row.key]
+    if (formatInteractions !== undefined && row.now !== null && row.now >= RATE_BASE_FLOOR) {
+      metaParts.push(`${((formatInteractions / row.now) * 100).toFixed(1)}% ER`)
+    }
+    return metaParts.length > 0 ? { ...row, meta: metaParts.join(' · ') } : row
+  })
 
   const INTERACTION_LABELS = [
     ['likes', 'Likes'],
