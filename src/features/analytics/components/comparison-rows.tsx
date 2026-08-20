@@ -61,6 +61,7 @@ export function ComparisonRows({ rows, ariaLabel, unit = 'Reached' }: Comparison
                     style={{ width: `${((row.now / max) * BAR_SPAN_PCT).toFixed(1)}%` }}
                   />
                 )}
+                {row.now === 0 && <ZeroTick />}
                 <span className="ml-2 whitespace-nowrap text-micro font-medium tabular-nums text-ink">
                   {row.now === null ? '—' : formatCount(row.now)}
                 </span>
@@ -72,6 +73,7 @@ export function ComparisonRows({ rows, ariaLabel, unit = 'Reached' }: Comparison
                     style={{ width: `${((row.then / max) * BAR_SPAN_PCT).toFixed(1)}%` }}
                   />
                 )}
+                {row.then === 0 && <ZeroTick />}
                 <span className="ml-2 whitespace-nowrap text-micro tabular-nums text-text3">
                   {row.then === null ? '—' : formatCount(row.then)}
                 </span>
@@ -88,6 +90,18 @@ export function ComparisonRows({ rows, ariaLabel, unit = 'Reached' }: Comparison
       })}
     </div>
   )
+}
+
+/**
+ * The anchor a measured zero gets instead of a bar. A zero with nothing
+ * beside it leaves its number floating at the track's origin, reading as a
+ * rendering fault rather than as the value it is. Drawing a real bar would be
+ * worse: it would be indistinguishable from the minimum width a genuinely
+ * small number carries. So the tick is muted and stays at the origin — an
+ * anchor, never a length.
+ */
+function ZeroTick() {
+  return <i aria-hidden="true" className="block h-full w-[3px] rounded-r bg-line" />
 }
 
 /** The row's own numbers, each under a name. Decorative — the bars speak. */

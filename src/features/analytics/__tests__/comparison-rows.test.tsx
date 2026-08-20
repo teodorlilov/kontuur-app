@@ -62,6 +62,22 @@ describe('ComparisonRows', () => {
     expect(screen.queryByText('Posts published')).not.toBeInTheDocument()
   })
 
+  it('anchors a measured zero without drawing it a bar', () => {
+    const zeroed: ComparisonRow[] = [
+      { key: 'AD', label: 'Ads · paid', now: 62091, then: 0 },
+      { key: 'POST', label: 'Posts', now: 347, then: null },
+    ]
+    const { container } = render(<ComparisonRows rows={zeroed} ariaLabel="Reach by format" />)
+    // The zero gets a muted tick so its number is not left floating…
+    const ticks = container.querySelectorAll('i.bg-line')
+    expect(ticks).toHaveLength(1)
+    // …and never a series-coloured bar, which would be indistinguishable from
+    // the minimum width a genuinely small value carries.
+    expect(container.querySelectorAll('i.bg-metric-3')).toHaveLength(0)
+    // A null is absence, not zero: it earns no tick at all.
+    expect(screen.getByText('—')).toBeInTheDocument()
+  })
+
   it('cards a row that carries no count and no rate — Stories, in short windows', () => {
     const bare: ComparisonRow[] = [{ key: 'STORY', label: 'Stories', now: 972, then: 400 }]
     const { container } = render(<ComparisonRows rows={bare} ariaLabel="Reach by format" />)
