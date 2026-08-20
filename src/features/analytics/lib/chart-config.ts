@@ -19,6 +19,8 @@ export const CHART_COLORS = {
   thenLine: '#6f957a',
   /** The now-instant: peak dots, sparkline end-marks. */
   instant: '#2e9e68',
+  /** Losses on the flow timeline — Clay, the chips' desirability-down color. */
+  loss: '#b04a38',
   grid: '#e7ece7',
   /** Axis labels — 5.15:1 on Surface (the AA fix, do not lighten). */
   label: '#667068',

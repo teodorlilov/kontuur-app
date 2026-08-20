@@ -6,6 +6,8 @@ interface DeltaChipProps {
   verdict: DeltaVerdict
   /** 'count' prints absolutes as whole counts; 'pt' as percentage points. */
   unit?: 'count' | 'pt'
+  /** For metrics where up is bad (losses): flips the coloring, never the arrow. */
+  invert?: boolean
   className?: string
 }
 
@@ -23,7 +25,7 @@ function signedAbs(diff: number, unit: 'count' | 'pt'): string {
  * a base of 1 can never out-shout a real move. Living Green Text is
  * deliberately not used here (4.1:1 on Wash, under the chip's own bar).
  */
-export function DeltaChip({ verdict, unit = 'count', className }: DeltaChipProps) {
+export function DeltaChip({ verdict, unit = 'count', invert = false, className }: DeltaChipProps) {
   if (verdict.kind === 'none') return null
 
   if (verdict.kind === 'quiet') {
@@ -42,13 +44,14 @@ export function DeltaChip({ verdict, unit = 'count', className }: DeltaChipProps
   }
 
   const up = verdict.diff > 0
+  const desirable = invert ? !up : up
   const magnitude =
     verdict.pct !== null ? `${Math.abs(verdict.pct).toFixed(1)}%` : signedAbs(verdict.diff, unit)
   return (
     <span
       className={cn(
         'whitespace-nowrap rounded-full px-2 py-0.5 text-micro font-semibold tabular-nums',
-        up ? 'bg-wash text-forest' : 'bg-danger-bg text-danger',
+        desirable ? 'bg-wash text-forest' : 'bg-danger-bg text-danger',
         className
       )}
     >

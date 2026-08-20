@@ -10,6 +10,7 @@ import { AutoFill } from './auto-fill'
 import { ComparisonRows } from './comparison-rows'
 import { EmptyFill } from './empty-fill'
 import { FillingDocument } from './filling-document'
+import { FollowerFlow } from './follower-flow'
 import { FunnelSection } from './funnel-section'
 import { NarrativeBlock } from './narrative-block'
 import { PostsTable } from './posts-table'
@@ -32,10 +33,6 @@ interface AnalyticsViewProps {
   hasConnection: boolean
   timezone: string
   archive: ArchiveEntry[]
-}
-
-function signed(value: number): string {
-  return `${value >= 0 ? '+' : '−'}${formatCount(Math.abs(value))}`
 }
 
 /**
@@ -179,13 +176,16 @@ export function AnalyticsView({
             The follows/unfollows split is the story the stored data can tell. */}
         <AnalyticsSection
           title="Who followed, who left"
-          sub="Follows gained and lost, against last period."
+          sub="Gains and losses day by day — pins mark the days a post went out."
           ariaLabel="Follower flow"
           legend={
             <ChartLegend
               items={[
-                { swatch: 'now', label: 'This period' },
-                { swatch: 'then', label: 'Previous' },
+                { swatch: 'bar-gain', label: 'Gained' },
+                { swatch: 'bar-loss', label: 'Lost' },
+                ...(followers.byDay.some((day) => day.postCount > 0)
+                  ? ([{ swatch: 'pin', label: 'Post published' }] as const)
+                  : []),
               ]}
             />
           }
@@ -198,46 +198,7 @@ export function AnalyticsView({
               followers.
             </p>
           ) : (
-            <>
-              <ComparisonRows
-                ariaLabel={`Bar chart. Followers gained ${
-                  followers.gained.now === null ? 'unknown' : formatCount(followers.gained.now)
-                } this period versus ${
-                  followers.gained.then === null ? 'unknown' : formatCount(followers.gained.then)
-                } last period. Lost ${
-                  followers.lost.now === null ? 'unknown' : formatCount(followers.lost.now)
-                } versus ${
-                  followers.lost.then === null ? 'unknown' : formatCount(followers.lost.then)
-                }.`}
-                rows={[
-                  {
-                    key: 'gained',
-                    label: 'Gained',
-                    now: followers.gained.now,
-                    then: followers.gained.then,
-                  },
-                  {
-                    key: 'lost',
-                    label: 'Lost',
-                    now: followers.lost.now,
-                    then: followers.lost.then,
-                  },
-                ]}
-              />
-              {followers.net.now !== null && (
-                <p className="mt-3.5 text-caption text-text2">
-                  Net <span className="tabular-nums">{signed(followers.net.now)}</span> this period
-                  {followers.net.then !== null && (
-                    <>
-                      {' '}
-                      · <span className="tabular-nums">{signed(followers.net.then)}</span> last
-                      period
-                    </>
-                  )}
-                  .
-                </p>
-              )}
-            </>
+            <FollowerFlow followers={followers} />
           )}
         </AnalyticsSection>
 

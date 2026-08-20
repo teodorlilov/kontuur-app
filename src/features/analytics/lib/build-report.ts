@@ -47,6 +47,14 @@ export interface StripCell extends ComparisonValue {
   series: Array<number | null>
 }
 
+export interface FollowerFlowDay {
+  date: string
+  gained: number | null
+  lost: number | null
+  /** Posts published that day — the flow timeline pins them like the reach chart. */
+  postCount: number
+}
+
 export interface FollowerSummary {
   gained: ComparisonValue
   lost: ComparisonValue
@@ -55,6 +63,12 @@ export interface FollowerSummary {
   total: number | null
   /** followers_count by day for the sparkline. */
   series: Array<number | null>
+  /** Day-by-day gains and losses — the flow timeline. */
+  byDay: FollowerFlowDay[]
+  /** Follows Instagram itself attributes to this period's posts (per-media metric). */
+  fromPosts: number | null
+  /** Losses as a share of the followers the period started with. */
+  churnPct: number | null
 }
 
 export interface EngagementRateCell {
@@ -496,6 +510,7 @@ export function buildAnalyticsReport(input: BuildReportInput): AnalyticsReportDa
   const interactions = stripCell(current, previous, (row) => row.total_interactions)
 
   const gainedSeries = dailyValues(current, (row) => row.follows)
+  const lostSeries = dailyValues(current, (row) => row.unfollows)
   const gained: ComparisonValue = {
     now: sumOrNull(gainedSeries),
     then: sumOrNull(dailyValues(previous, (row) => row.follows)),
@@ -503,7 +518,7 @@ export function buildAnalyticsReport(input: BuildReportInput): AnalyticsReportDa
   }
   gained.deltaPct = deltaPct(gained.now, gained.then)
   const lost: ComparisonValue = {
-    now: sumOrNull(dailyValues(current, (row) => row.unfollows)),
+    now: sumOrNull(lostSeries),
     then: sumOrNull(dailyValues(previous, (row) => row.unfollows)),
     deltaPct: null,
   }
@@ -514,11 +529,7 @@ export function buildAnalyticsReport(input: BuildReportInput): AnalyticsReportDa
   }
   const followerCounts = dailyValues(current, (row) => row.followers_count)
   const followersTotal = [...followerCounts].reverse().find((value) => value !== null) ?? null
-  const followerCurve = deriveFollowerCurve(
-    followerCounts,
-    dailyValues(current, (row) => row.follows),
-    dailyValues(current, (row) => row.unfollows)
-  )
+  const followerCurve = deriveFollowerCurve(followerCounts, gainedSeries, lostSeries)
 
   // Engagement rate: period interactions over period reach, in percent.
   const rateOf = (i: number | null, r: number | null): number | null =>
@@ -559,6 +570,26 @@ export function buildAnalyticsReport(input: BuildReportInput): AnalyticsReportDa
     views: views.series[index]!,
     posts: postsByDate.get(date) ?? [],
   }))
+
+  const flowByDay: FollowerFlowDay[] = currentKeys.map((date, index) => ({
+    date,
+    gained: gainedSeries[index]!,
+    lost: lostSeries[index]!,
+    postCount: postsByDate.get(date)?.length ?? 0,
+  }))
+  // Per-media follows, straight from Instagram's own attribution — a separate
+  // basis from the account-level gained total, stated as its own fact.
+  const followsFromPosts = sumOrNull(posts.map((post) => post.follows))
+  // Followers at the period's start: the first anchored end-of-day total
+  // minus that day's own net change. Null when the curve never anchors.
+  const startTotal =
+    followerCurve[0] !== null && followerCurve[0] !== undefined
+      ? followerCurve[0] - (gainedSeries[0] ?? 0) + (lostSeries[0] ?? 0)
+      : null
+  const churnPct =
+    lost.now !== null && startTotal !== null && startTotal > 0
+      ? (lost.now / startTotal) * 100
+      : null
 
   let bestDay: BestDay | null = null
   for (const day of reachByDay) {
@@ -700,7 +731,16 @@ export function buildAnalyticsReport(input: BuildReportInput): AnalyticsReportDa
     views,
     reach,
     interactions,
-    followers: { gained, lost, net, total: followersTotal, series: followerCurve },
+    followers: {
+      gained,
+      lost,
+      net,
+      total: followersTotal,
+      series: followerCurve,
+      byDay: flowByDay,
+      fromPosts: followsFromPosts,
+      churnPct,
+    },
     engagementRate,
     reachByDay,
     bestDay,

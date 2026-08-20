@@ -220,6 +220,30 @@ describe('buildAnalyticsReport', () => {
     expect(report.reachByDay[3]!.posts[0]!.missing).toBe('pending')
   })
 
+  it('builds the follower flow timeline with pins, attribution and churn', () => {
+    const report = build({
+      accountRows: [
+        accountRow({
+          metric_date: '2026-08-15',
+          follows: 5,
+          unfollows: 2,
+          followers_count: 830,
+        }),
+        accountRow({ metric_date: '2026-08-16', follows: 12, unfollows: 0 }),
+      ],
+      postRows: [
+        postRow({ ig_media_id: 'a', posted_at: '2026-08-16T09:00:00Z', reach: 200, follows: 4 }),
+        postRow({ ig_media_id: 'b', posted_at: '2026-08-16T18:00:00Z', reach: 100, follows: null }),
+      ],
+    })
+    expect(report.followers.byDay.map((d) => d.gained)).toEqual([5, 12, null, null])
+    expect(report.followers.byDay.map((d) => d.postCount)).toEqual([0, 2, 0, 0])
+    // Instagram's own per-media attribution; the null-follows post doesn't poison it.
+    expect(report.followers.fromPosts).toBe(4)
+    // Start = first anchored total (830) minus that day's net (+3) → 827; lost 2 of 827.
+    expect(report.followers.churnPct).toBeCloseTo((2 / 827) * 100)
+  })
+
   it('builds the conversion funnel with rates on honest denominators', () => {
     const report = build({
       accountRows: [
