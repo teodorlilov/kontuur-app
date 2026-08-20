@@ -1,5 +1,9 @@
 import { z } from 'zod'
-import type { IGAccountMetricColumns, IGPostMetricColumns } from '@/lib/queries/select-columns'
+import type {
+  IGAccountMetricColumns,
+  IGPostMetricColumns,
+  PublishedPostPinColumns,
+} from '@/lib/queries/select-columns'
 import { periodDayKeys, type AnalyticsPeriod } from './period'
 
 /**
@@ -69,6 +73,13 @@ export interface ComparisonRow {
   then: number | null
 }
 
+/**
+ * Why a post row has no metrics: 'pending' = the nightly sync has not run
+ * since it published; 'removed' = a completed sync no longer found it on
+ * Instagram (deleted after publish). Null = the metrics are real.
+ */
+export type PostMissing = 'pending' | 'removed' | null
+
 /** The slice of a post the trend tooltip names — enough to answer "what caused this". */
 export interface TrendPost {
   igMediaId: string
@@ -76,6 +87,7 @@ export interface TrendPost {
   mediaType: string | null
   reach: number | null
   follows: number | null
+  missing: PostMissing
 }
 
 export interface ReachDay {
@@ -132,6 +144,7 @@ export interface ReportPostRow {
   profileVisits: number | null
   /** reach ÷ median reach, when both are known. */
   medianRatio: number | null
+  missing: PostMissing
 }
 
 export interface AnalyticsReportData {
@@ -351,35 +364,82 @@ function buildAudience(
   return { snapshotDate: current.snapshot_date, ages, genders, cities }
 }
 
-function buildPosts(postRows: IGPostMetricColumns[]): {
+/** Kontuur's post_type vocabulary mapped onto Instagram's media_type chips. */
+const APP_MEDIA_TYPE: Record<string, string> = { carousel: 'CAROUSEL_ALBUM' }
+
+/** posts.published_at is a naive UTC timestamp — anchor it before parsing. */
+function instantMs(iso: string): number {
+  return new Date(/[zZ]|[+-]\d{2}:?\d{2}$/.test(iso) ? iso : `${iso}Z`).getTime()
+}
+
+/** A sync this much newer than a publish had every chance to see the media. */
+const SYNC_GRACE_MS = 60 * 60 * 1000
+
+function buildPosts(
+  postRows: IGPostMetricColumns[],
+  publishedPosts: PublishedPostPinColumns[],
+  lastSyncAt: string | null
+): {
   posts: ReportPostRow[]
   medianReach: number | null
 } {
   const medianReach = median(
     postRows.map((row) => row.reach).filter((reach): reach is number => reach !== null)
   )
-  const posts = postRows
-    .map((row) => ({
-      igMediaId: row.ig_media_id,
-      postId: row.post_id,
-      caption: row.caption,
-      postedAt: row.posted_at,
-      mediaType: row.media_type,
-      mediaProductType: row.media_product_type,
-      permalink: row.permalink,
-      thumbnailUrl: row.thumbnail_url,
-      reach: row.reach,
-      views: row.views,
-      interactions: row.total_interactions,
-      saved: row.saved,
-      follows: row.follows,
-      profileVisits: row.profile_visits,
-      medianRatio:
-        row.reach !== null && medianReach !== null && medianReach > 0
-          ? row.reach / medianReach
-          : null,
-    }))
-    .sort((a, b) => (b.reach ?? -1) - (a.reach ?? -1))
+  const posts: ReportPostRow[] = postRows.map((row) => ({
+    igMediaId: row.ig_media_id,
+    postId: row.post_id,
+    caption: row.caption,
+    postedAt: row.posted_at,
+    mediaType: row.media_type,
+    mediaProductType: row.media_product_type,
+    permalink: row.permalink,
+    thumbnailUrl: row.thumbnail_url,
+    reach: row.reach,
+    views: row.views,
+    interactions: row.total_interactions,
+    saved: row.saved,
+    follows: row.follows,
+    profileVisits: row.profile_visits,
+    medianRatio:
+      row.reach !== null && medianReach !== null && medianReach > 0
+        ? row.reach / medianReach
+        : null,
+    missing: null as PostMissing,
+  }))
+
+  // Kontuur's own ledger fills what the sync cannot see: posts Instagram no
+  // longer reports (deleted after publish) or has not synced yet. A post the
+  // metrics table already covers defers to that richer row.
+  const knownMedia = new Set(postRows.map((row) => row.ig_media_id))
+  const knownPostIds = new Set(postRows.map((row) => row.post_id))
+  for (const post of publishedPosts) {
+    if (!post.published_at) continue
+    if (post.ig_media_id && knownMedia.has(post.ig_media_id)) continue
+    if (knownPostIds.has(post.id)) continue
+    const syncSawIt =
+      lastSyncAt !== null && instantMs(lastSyncAt) - instantMs(post.published_at) > SYNC_GRACE_MS
+    posts.push({
+      igMediaId: post.ig_media_id ?? `post-${post.id}`,
+      postId: post.id,
+      caption: post.caption,
+      postedAt: post.published_at,
+      mediaType: APP_MEDIA_TYPE[post.post_type ?? ''] ?? 'IMAGE',
+      mediaProductType: null,
+      permalink: null,
+      thumbnailUrl: null,
+      reach: null,
+      views: null,
+      interactions: null,
+      saved: null,
+      follows: null,
+      profileVisits: null,
+      medianRatio: null,
+      missing: syncSawIt ? 'removed' : 'pending',
+    })
+  }
+
+  posts.sort((a, b) => (b.reach ?? -1) - (a.reach ?? -1))
   return { posts, medianReach }
 }
 
@@ -387,8 +447,10 @@ export interface BuildReportInput {
   period: AnalyticsPeriod
   /** Rows spanning prevStart..end — the builder splits them. */
   accountRows: IGAccountMetricColumns[]
-  /** Posts published inside the current period. */
+  /** Posts published inside the current period, as the sync captured them. */
   postRows: IGPostMetricColumns[]
+  /** Kontuur's own published ledger for the same window — fills what the sync cannot see. */
+  publishedPosts: PublishedPostPinColumns[]
   currentSnapshot: AudienceSnapshotInput | null
   previousSnapshot: AudienceSnapshotInput | null
   hasHistory: boolean
@@ -453,7 +515,7 @@ export function buildAnalyticsReport(input: BuildReportInput): AnalyticsReportDa
   // Publications keyed by calendar day (the UTC slice of posted_at — the same
   // convention the best-day caption uses); buildPosts already ordered them
   // strongest-reach first, so each day's list keeps that order.
-  const { posts, medianReach } = buildPosts(input.postRows)
+  const { posts, medianReach } = buildPosts(input.postRows, input.publishedPosts, input.lastSyncAt)
   const postsByDate = new Map<string, TrendPost[]>()
   for (const post of posts) {
     const date = post.postedAt?.slice(0, 10)
@@ -465,6 +527,7 @@ export function buildAnalyticsReport(input: BuildReportInput): AnalyticsReportDa
       mediaType: post.mediaType,
       reach: post.reach,
       follows: post.follows,
+      missing: post.missing,
     })
     postsByDate.set(date, list)
   }

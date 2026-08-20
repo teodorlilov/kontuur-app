@@ -305,7 +305,11 @@ function TooltipPost({ post }: { post: TrendPost }) {
       <span className="min-w-0">
         <span className="block truncate text-micro text-ink">{firstLine(post.caption)}</span>
         <span className="block text-micro tabular-nums text-text3">
-          {post.reach === null ? 'metrics arriving tonight' : `${formatCount(post.reach)} reached`}
+          {post.reach === null
+            ? post.missing === 'removed'
+              ? 'no longer on Instagram'
+              : 'metrics after the next sync'
+            : `${formatCount(post.reach)} reached`}
           {post.follows !== null && post.follows > 0
             ? ` · +${formatCount(post.follows)} follows`
             : ''}

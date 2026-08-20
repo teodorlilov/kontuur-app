@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import type { IGAccountMetricColumns, IGPostMetricColumns } from '@/lib/queries/select-columns'
+import type {
+  IGAccountMetricColumns,
+  IGPostMetricColumns,
+  PublishedPostPinColumns,
+} from '@/lib/queries/select-columns'
 import {
   buildAnalyticsReport,
   deltaPct,
@@ -65,11 +69,23 @@ function postRow(overrides: Partial<IGPostMetricColumns>): IGPostMetricColumns {
   }
 }
 
+function publishedPost(overrides: Partial<PublishedPostPinColumns>): PublishedPostPinColumns {
+  return {
+    id: 'p1',
+    ig_media_id: null,
+    caption: null,
+    published_at: null,
+    post_type: 'single',
+    ...overrides,
+  }
+}
+
 function build(input: Partial<BuildReportInput>): ReturnType<typeof buildAnalyticsReport> {
   return buildAnalyticsReport({
     period: PERIOD,
     accountRows: [],
     postRows: [],
+    publishedPosts: [],
     currentSnapshot: null,
     previousSnapshot: null,
     hasHistory: true,
@@ -165,6 +181,41 @@ describe('buildAnalyticsReport', () => {
     expect(report.reachByDay[0]!.posts).toEqual([])
     expect(report.reachByDay.flatMap((d) => d.posts).some((p) => p.igMediaId === 'c')).toBe(false)
     expect(report.posts).toHaveLength(3)
+  })
+
+  it("pins Kontuur's own published posts the sync cannot see, marked honestly", () => {
+    const report = build({
+      postRows: [
+        postRow({ ig_media_id: 'm-live', posted_at: '2026-08-15T10:00:00+00:00', reach: 300 }),
+      ],
+      publishedPosts: [
+        // Published well before the last sync yet absent from metrics: removed.
+        publishedPost({
+          id: 'gone',
+          ig_media_id: '404',
+          caption: 'Deleted later',
+          // Naive UTC timestamp, exactly as posts.published_at stores it.
+          published_at: '2026-08-16T18:57:17.192',
+          post_type: 'carousel',
+        }),
+        // Published after the last sync: metrics simply pending.
+        publishedPost({ id: 'fresh', caption: 'Fresh', published_at: '2026-08-18T09:00:00' }),
+        // Already synced under the same media id: the metrics row wins.
+        publishedPost({ id: 'dup', ig_media_id: 'm-live', published_at: '2026-08-15T10:00:00' }),
+      ],
+      lastSyncAt: '2026-08-18T03:30:00Z',
+    })
+    expect(report.posts).toHaveLength(3)
+    const gone = report.posts.find((post) => post.igMediaId === '404')!
+    expect(gone.missing).toBe('removed')
+    expect(gone.mediaType).toBe('CAROUSEL_ALBUM')
+    const fresh = report.posts.find((post) => post.postId === 'fresh')!
+    expect(fresh.missing).toBe('pending')
+    expect(fresh.igMediaId).toBe('post-fresh')
+    // Each lands on its calendar day beside the synced pins.
+    expect(report.reachByDay[0]!.posts.map((p) => p.igMediaId)).toEqual(['m-live'])
+    expect(report.reachByDay[1]!.posts.map((p) => p.caption)).toEqual(['Deleted later'])
+    expect(report.reachByDay[3]!.posts[0]!.missing).toBe('pending')
   })
 
   it('keeps the all-null period distinct from a zero period', () => {

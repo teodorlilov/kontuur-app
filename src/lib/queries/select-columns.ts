@@ -266,6 +266,26 @@ export const IG_POST_METRIC_COLUMNS = IG_POST_METRIC_KEYS.join(', ') as Join<
 
 export type IGPostMetricColumns = Pick<IGPostMetricsRow, (typeof IG_POST_METRIC_KEYS)[number]>
 
+/**
+ * posts, as the analytics union reads it: Kontuur's own published ledger fills
+ * the trend's publish pins when Instagram no longer reports a post (deleted
+ * after publish) or the nightly sync has not seen it yet.
+ */
+const PUBLISHED_POST_PIN_KEYS = [
+  'id',
+  'ig_media_id',
+  'caption',
+  'published_at',
+  'post_type',
+] as const satisfies readonly (keyof PostRow)[]
+
+export const PUBLISHED_POST_PIN_COLUMNS = PUBLISHED_POST_PIN_KEYS.join(', ') as Join<
+  typeof PUBLISHED_POST_PIN_KEYS,
+  ', '
+>
+
+export type PublishedPostPinColumns = Pick<PostRow, (typeof PUBLISHED_POST_PIN_KEYS)[number]>
+
 // ig_audience_snapshots
 export const IG_AUDIENCE_SNAPSHOT_COLUMNS =
   'snapshot_date, follower_demographics, engaged_audience_demographics'

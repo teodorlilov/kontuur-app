@@ -25,10 +25,33 @@ const DAYS: ReachDay[] = [
         mediaType: 'CAROUSEL_ALBUM',
         reach: 900,
         follows: 3,
+        missing: null,
       },
-      { igMediaId: 'mid', caption: 'Second post', mediaType: 'IMAGE', reach: 200, follows: 0 },
-      { igMediaId: 'low', caption: 'Third post', mediaType: 'VIDEO', reach: 90, follows: null },
-      { igMediaId: 'tail', caption: 'Fourth post', mediaType: 'IMAGE', reach: 10, follows: 0 },
+      {
+        igMediaId: 'mid',
+        caption: 'Second post',
+        mediaType: 'IMAGE',
+        reach: 200,
+        follows: 0,
+        missing: null,
+      },
+      // Published through Kontuur, later deleted from Instagram.
+      {
+        igMediaId: 'low',
+        caption: 'Third post',
+        mediaType: 'VIDEO',
+        reach: null,
+        follows: null,
+        missing: 'removed',
+      },
+      {
+        igMediaId: 'tail',
+        caption: 'Fourth post',
+        mediaType: 'IMAGE',
+        reach: 10,
+        follows: 0,
+        missing: null,
+      },
     ],
   }),
   day('2026-08-14'),
@@ -72,6 +95,8 @@ describe('ReachTrend', () => {
     expect(screen.getByText('Published this day')).toBeInTheDocument()
     expect(screen.getByText('Launch day')).toBeInTheDocument()
     expect(screen.getByText('900 reached · +3 follows')).toBeInTheDocument()
+    // A post deleted from Instagram after publishing says so instead of a number.
+    expect(screen.getByText('no longer on Instagram')).toBeInTheDocument()
     // Only three posts are named; the fourth defers to the table.
     expect(screen.queryByText('Fourth post')).not.toBeInTheDocument()
     expect(screen.getByText('+1 more in the posts table below')).toBeInTheDocument()

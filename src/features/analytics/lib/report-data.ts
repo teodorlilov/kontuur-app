@@ -7,8 +7,10 @@ import {
   IG_ACCOUNT_METRIC_COLUMNS,
   IG_AUDIENCE_SNAPSHOT_COLUMNS,
   IG_POST_METRIC_COLUMNS,
+  PUBLISHED_POST_PIN_COLUMNS,
   type IGAccountMetricColumns,
   type IGPostMetricColumns,
+  type PublishedPostPinColumns,
 } from '@/lib/queries/select-columns'
 import { shiftDateKey, zonedTimeToInstant } from '@/utils/date-helpers'
 import { buildAnalyticsReport, type AnalyticsReportData } from './build-report'
@@ -52,7 +54,7 @@ const _fetchAnalyticsReport = unstable_cache(
     const postedFrom = zonedTimeToInstant(start, '00:00', timezone).toISOString()
     const postedTo = zonedTimeToInstant(shiftDateKey(end, 1), '00:00', timezone).toISOString()
 
-    const [accountRes, postRes, snapshotRes, latestRes] = await Promise.all([
+    const [accountRes, postRes, publishedRes, snapshotRes, latestRes] = await Promise.all([
       admin
         .from('ig_account_metrics')
         .select(IG_ACCOUNT_METRIC_COLUMNS)
@@ -66,6 +68,17 @@ const _fetchAnalyticsReport = unstable_cache(
         .eq('client_id', clientId)
         .gte('posted_at', postedFrom)
         .lt('posted_at', postedTo),
+      // Kontuur's own ledger: pins posts the sync cannot see — deleted from
+      // Instagram after publishing, or published since the last sync ran.
+      // posts.platform is canonical display case; compare case-insensitively.
+      admin
+        .from('posts')
+        .select(PUBLISHED_POST_PIN_COLUMNS)
+        .eq('client_id', clientId)
+        .eq('status', 'published')
+        .ilike('platform', 'instagram')
+        .gte('published_at', postedFrom)
+        .lt('published_at', postedTo),
       admin
         .from('ig_audience_snapshots')
         .select(IG_AUDIENCE_SNAPSHOT_COLUMNS)
@@ -84,13 +97,14 @@ const _fetchAnalyticsReport = unstable_cache(
         .order('metric_date', { ascending: false })
         .limit(1),
     ])
-    for (const res of [accountRes, postRes, snapshotRes, latestRes]) {
+    for (const res of [accountRes, postRes, publishedRes, snapshotRes, latestRes]) {
       if (res.error) throw new Error(`analytics report read failed: ${res.error.message}`)
     }
 
     // WHY as: this shared admin client is untyped, so projections do not infer.
     const accountRows = (accountRes.data ?? []) as unknown as IGAccountMetricColumns[]
     const postRows = (postRes.data ?? []) as unknown as IGPostMetricColumns[]
+    const publishedPosts = (publishedRes.data ?? []) as unknown as PublishedPostPinColumns[]
     const snapshots = (snapshotRes.data ?? []) as unknown as SnapshotRow[]
     const latest = (latestRes.data ?? []) as unknown as Array<{
       metric_date: string
@@ -102,6 +116,7 @@ const _fetchAnalyticsReport = unstable_cache(
       period,
       accountRows,
       postRows,
+      publishedPosts,
       currentSnapshot,
       // Strictly older than the current one, or the "was" ticks fake a flat period.
       previousSnapshot:
