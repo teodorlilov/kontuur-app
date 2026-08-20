@@ -1,12 +1,47 @@
+'use client'
+
+import { useState } from 'react'
+import { cn } from '@/utils/cn'
 import type { AudienceOnline, PublishWindowBucket } from '../lib/build-report'
 import { formatCount } from '../lib/format'
 
 const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+const WEEKDAYS_FULL = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 /** A publish bucket may only editorialize from this many posts. */
 const MIN_BUCKET_POSTS = 3
+/** Below this the hour is treated as unmeasured, not as an empty hour. */
+const NO_DATA = 0
 
 function hourLabel(hour: number): string {
   return `${String(hour).padStart(2, '0')}:00`
+}
+
+/**
+ * Shading by RANK within the account's own week, not by share of the busiest
+ * hour.
+ *
+ * A real account's hourly curve is a deep trough and a broad plateau: on the
+ * probed account sixteen of twenty-four hours sat within 30% of each other
+ * (median 261, peak 338), so `value / max` painted every one of them between
+ * 0.78 and 1.0 opacity — a solid block with no readable pattern. Rank spends
+ * the whole ramp on the variation that actually exists. The legend prints the
+ * two endpoint counts so a flat week reads as flat (a narrow range), never as
+ * manufactured drama.
+ */
+function rankShade(cells: number[]): (value: number) => number {
+  const measured = cells.filter((value) => value > NO_DATA).sort((a, b) => a - b)
+  if (measured.length < 2) return () => 0.5
+  return (value) => {
+    const first = measured.indexOf(value)
+    const last = measured.lastIndexOf(value)
+    if (first === -1) return 0
+    return (first + last) / 2 / (measured.length - 1)
+  }
+}
+
+interface HoverCell {
+  weekday: number
+  hour: number
 }
 
 /**
@@ -23,14 +58,25 @@ export function WhenToPost({
   online: AudienceOnline | null
   windows: PublishWindowBucket[]
 }) {
-  const gridMax = online ? Math.max(1, ...online.grid.flat()) : 1
+  const [hover, setHover] = useState<HoverCell | null>(null)
   const totalBucketed = windows.reduce((sum, bucket) => sum + bucket.postCount, 0)
 
+  const cells = online ? online.grid.flat() : []
+  const measured = cells.filter((value) => value > NO_DATA)
+  const shadeOf = rankShade(cells)
+  const quietest = measured.length > 0 ? Math.min(...measured) : 0
+  const busiest = measured.length > 0 ? Math.max(...measured) : 0
+  const average =
+    measured.length > 0 ? measured.reduce((sum, value) => sum + value, 0) / measured.length : 0
+
   const spoken = online
-    ? `Heat grid of followers online by weekday and hour, your local time, averaged over ${online.sampleDays} days. Busiest: ${online.peaks
+    ? `Heat grid of followers online by weekday and hour, your local time, averaged over ${online.sampleDays} days. From about ${formatCount(quietest)} at the quietest hour to about ${formatCount(busiest)} at the busiest. Busiest: ${online.peaks
         .map((peak) => `${WEEKDAYS[peak.weekday]} ${hourLabel(peak.hour)}`)
         .join(', ')}.`
     : 'Followers-online data is still collecting.'
+
+  const peakKeys = new Set(online?.peaks.map((peak) => `${peak.weekday}:${peak.hour}`) ?? [])
+  const reading = hover ? (online?.grid[hover.weekday]?.[hover.hour] ?? null) : null
 
   return (
     <div className="mt-4 grid gap-7 lg:grid-cols-[1.5fr_1fr]">
@@ -43,24 +89,71 @@ export function WhenToPost({
           </p>
         ) : (
           <figure role="img" aria-label={spoken} className="mt-3">
-            <div aria-hidden="true" className="grid gap-[3px]">
+            {/* The readout replaces a floating tooltip on purpose: it never
+                covers the cells it describes, and it works on touch. */}
+            <div aria-hidden="true" className="flex min-h-5 items-baseline gap-2 text-caption">
+              {hover && reading !== null ? (
+                <>
+                  <span className="font-medium text-ink">
+                    {WEEKDAYS_FULL[hover.weekday]} {hourLabel(hover.hour)}
+                  </span>
+                  <span className="text-text2">
+                    {reading > NO_DATA
+                      ? `~${formatCount(Math.round(reading))} followers online`
+                      : 'not measured'}
+                  </span>
+                  {reading > NO_DATA && average > 0 && (
+                    <span className="text-text3">{comparedToAverage(reading, average)}</span>
+                  )}
+                </>
+              ) : (
+                <>
+                  <span className="text-text3">Busiest</span>
+                  <span className="font-medium text-ink">
+                    {online.peaks
+                      .map((peak) => `${WEEKDAYS[peak.weekday]} ${hourLabel(peak.hour)}`)
+                      .join(' · ')}
+                  </span>
+                </>
+              )}
+            </div>
+            <div
+              aria-hidden="true"
+              className="mt-2 grid gap-[3px]"
+              onPointerLeave={() => setHover(null)}
+            >
               {online.grid.map((row, weekday) => (
                 <div key={WEEKDAYS[weekday]} className="flex items-center gap-2">
                   <span className="w-8 flex-none text-micro text-text3">{WEEKDAYS[weekday]}</span>
                   <div className="flex flex-1 gap-[2px]">
-                    {row.map((avg, hour) => (
-                      <i
-                        key={hour}
-                        title={`${WEEKDAYS[weekday]} ${hourLabel(hour)} — ~${formatCount(Math.round(avg))} followers online`}
-                        className="h-3.5 flex-1 rounded-[2px] bg-forest"
-                        // Computed intensity — each cell's share of the busiest one.
-                        style={{ opacity: avg > 0 ? 0.07 + 0.93 * (avg / gridMax) : 0.04 }}
-                      />
-                    ))}
+                    {row.map((avg, hour) => {
+                      const isPeak = peakKeys.has(`${weekday}:${hour}`)
+                      const isHover = hover?.weekday === weekday && hover.hour === hour
+                      return (
+                        <span
+                          key={hour}
+                          onPointerEnter={() => setHover({ weekday, hour })}
+                          onPointerDown={() => setHover({ weekday, hour })}
+                          className={cn(
+                            'relative block h-5 flex-1 rounded-[3px]',
+                            isHover && 'ring-2 ring-ink/40'
+                          )}
+                        >
+                          <i
+                            className="block h-full w-full rounded-[3px] bg-forest"
+                            // Computed intensity — this cell's rank in the week.
+                            style={{ opacity: avg > NO_DATA ? 0.08 + 0.92 * shadeOf(avg) : 0.04 }}
+                          />
+                          {isPeak && (
+                            <i className="absolute inset-0 rounded-[3px] ring-2 ring-inset ring-spring" />
+                          )}
+                        </span>
+                      )
+                    })}
                   </div>
                 </div>
               ))}
-              <div className="flex items-center gap-2" aria-hidden="true">
+              <div className="flex items-center gap-2">
                 <span className="w-8 flex-none" />
                 <div className="flex flex-1 justify-between text-micro tabular-nums text-text3">
                   <span>00</span>
@@ -71,16 +164,27 @@ export function WhenToPost({
                 </div>
               </div>
             </div>
-            <figcaption className="mt-2.5 text-caption text-text2">
-              Busiest:{' '}
-              <span className="font-medium text-ink">
-                {online.peaks
-                  .map((peak) => `${WEEKDAYS[peak.weekday]} ${hourLabel(peak.hour)}`)
-                  .join(' · ')}
+            <figcaption className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">
+              {/* The scale key: shading is relative to this account's own week,
+                  so both ends carry their real count. */}
+              <span aria-hidden="true" className="flex items-center gap-1.5">
+                <span className="text-micro tabular-nums text-text3">~{formatCount(quietest)}</span>
+                <span className="flex gap-[2px]">
+                  {[0, 0.25, 0.5, 0.75, 1].map((step) => (
+                    <i
+                      key={step}
+                      className="block h-2.5 w-4 rounded-[2px] bg-forest"
+                      style={{ opacity: 0.08 + 0.92 * step }}
+                    />
+                  ))}
+                </span>
+                <span className="text-micro tabular-nums text-text3">
+                  ~{formatCount(busiest)} online
+                </span>
               </span>
-              <span className="text-text3">
-                {' '}
-                — your local time, averaged over {online.sampleDays} days.
+              <span className="text-micro text-text3">
+                Your local time, averaged over {online.sampleDays} days · the ring marks the three
+                busiest hours.
               </span>
             </figcaption>
           </figure>
@@ -127,4 +231,11 @@ export function WhenToPost({
       </div>
     </div>
   )
+}
+
+/** "18% above your weekly average" — the comparison the shading encodes. */
+function comparedToAverage(value: number, average: number): string {
+  const pct = Math.round(((value - average) / average) * 100)
+  if (Math.abs(pct) < 3) return '· about your weekly average'
+  return `· ${Math.abs(pct)}% ${pct > 0 ? 'above' : 'below'} your weekly average`
 }
