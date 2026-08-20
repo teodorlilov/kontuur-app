@@ -90,6 +90,8 @@ function build(input: Partial<BuildReportInput>): ReturnType<typeof buildAnalyti
     publishedPosts: [],
     currentSnapshot: null,
     previousSnapshot: null,
+    onlineByDay: [],
+    timezone: 'UTC',
     hasHistory: true,
     lastSyncAt: '2026-08-19T03:30:00Z',
     ...input,
@@ -344,6 +346,48 @@ describe('buildAnalyticsReport', () => {
     const comments = report.interactionKinds.find((row) => row.key === 'comments')!
     expect(comments).toMatchObject({ now: 0, then: null })
     expect(comments.meta).toBeUndefined()
+  })
+
+  it('converts Pacific-anchored online hours into the agency clock, gated on sample size', () => {
+    // 2026-08-15 is a Saturday. Hour 14 in America/Los_Angeles (PDT, UTC-7)
+    // is 21:00 UTC the same day.
+    const day = (date: string) => ({
+      metric_date: date,
+      online_followers_by_hour: { '14': 100 },
+    })
+    const fiveDays = ['2026-08-11', '2026-08-12', '2026-08-13', '2026-08-14', '2026-08-15'].map(day)
+
+    const gated = build({ onlineByDay: fiveDays.slice(0, 4) })
+    expect(gated.audienceOnline).toBeNull()
+
+    const report = build({ onlineByDay: fiveDays })
+    const online = report.audienceOnline!
+    expect(online.sampleDays).toBe(5)
+    // Saturday (index 5) at 21:00 UTC carries the 15 Aug sample.
+    expect(online.grid[5]![21]).toBe(100)
+    expect(online.grid[5]![14]).toBe(0)
+    expect(online.peaks[0]).toMatchObject({ hour: 21, avg: 100 })
+  })
+
+  it('buckets publish windows by agency-local hour with medians, skipping unsynced posts', () => {
+    const report = build({
+      postRows: [
+        postRow({ ig_media_id: 'a', posted_at: '2026-08-15T07:00:00+00:00', reach: 100 }),
+        postRow({ ig_media_id: 'b', posted_at: '2026-08-16T08:30:00+00:00', reach: 300 }),
+        postRow({ ig_media_id: 'c', posted_at: '2026-08-17T09:00:00+00:00', reach: 200 }),
+        postRow({ ig_media_id: 'd', posted_at: '2026-08-17T18:00:00+00:00', reach: 900 }),
+        // Reach unknown: contributes nothing to any bucket.
+        postRow({ ig_media_id: 'e', posted_at: '2026-08-18T07:30:00+00:00', reach: null }),
+      ],
+    })
+    const morning = report.publishWindows.find((bucket) => bucket.key === 'morning')!
+    expect(morning.postCount).toBe(3)
+    expect(morning.medianReach).toBe(200)
+    // Overall median across a,b,c,d = 250 → morning at 0.8×.
+    expect(morning.vsMedian).toBeCloseTo(200 / 250)
+    const evening = report.publishWindows.find((bucket) => bucket.key === 'evening')!
+    expect(evening.postCount).toBe(1)
+    expect(report.publishWindows.find((bucket) => bucket.key === 'night')!.postCount).toBe(0)
   })
 
   it('keeps the all-null period distinct from a zero period', () => {

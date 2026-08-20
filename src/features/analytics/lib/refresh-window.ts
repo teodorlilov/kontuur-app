@@ -3,8 +3,17 @@ import 'server-only'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { createSemaphore } from '@/lib/concurrency'
 import { GraphApiError } from '@/lib/meta/graph-errors'
-import { fetchDailyReachSeries, fetchFollowerDeltaSeries } from '@/lib/meta/insights'
-import { captureDayTotals, syncPostMetrics, type IGAccountMetricsInsert } from './sync-metrics'
+import {
+  fetchDailyReachSeries,
+  fetchFollowerDeltaSeries,
+  fetchOnlineFollowers,
+} from '@/lib/meta/insights'
+import {
+  captureDayTotals,
+  syncPostMetrics,
+  type IGAccountMetricsInsert,
+  type IGAccountMetricsOnlineWrite,
+} from './sync-metrics'
 import { shiftDateKey } from '@/utils/date-helpers'
 import type { AnalyticsPeriod } from './period'
 
@@ -163,15 +172,27 @@ export async function refreshWindowMetrics(
   let rateLimited = false
   let refilledDays = 0
 
-  // The two series the API still serves for the past — chunked, both windows.
+  // The series the API still serves for the past — chunked, both windows.
   const reachRows: IGAccountMetricsInsert[] = []
   const followRows: IGAccountMetricsInsert[] = []
+  const onlineRows: IGAccountMetricsOnlineWrite[] = []
   try {
     for (const chunk of seriesChunks(period.prevStart, spanEnd)) {
-      const [reach, deltas] = await Promise.all([
+      const [reach, deltas, online] = await Promise.all([
         fetchDailyReachSeries(accountId, accessToken, chunk.sinceTs, chunk.untilTs),
         fetchFollowerDeltaSeries(accountId, accessToken, chunk.sinceTs, chunk.untilTs),
+        fetchOnlineFollowers(accountId, accessToken, chunk.sinceTs, chunk.untilTs),
       ])
+      for (const day of online) {
+        if (day.date <= spanEnd) {
+          onlineRows.push({
+            client_id: clientId,
+            ig_account_id: accountId,
+            metric_date: day.date,
+            online_followers_by_hour: day.byHour,
+          })
+        }
+      }
       for (const day of reach) {
         if (day.date <= spanEnd) {
           reachRows.push({
@@ -199,6 +220,13 @@ export async function refreshWindowMetrics(
   }
   await upsertColumnBatch(admin, reachRows)
   await upsertColumnBatch(admin, followRows)
+  // Best-effort until migration 20260827 is everywhere: the online-hours
+  // panel is an enhancement and must never cost the refill its day totals.
+  try {
+    await upsertColumnBatch(admin, onlineRows)
+  } catch (err) {
+    console.error('[analytics] online_followers refill write failed:', err)
+  }
 
   // Day totals, newest first, under the call budget.
   if (!rateLimited && targets.length > 0) {

@@ -11,6 +11,7 @@ import {
   type IGMediaItem,
   type IGMediaListPage,
 } from './schemas'
+import { toDateKey } from '@/utils/date-helpers'
 import { breakdownMapOf, dailySeriesOf, lifetimeValueOf, totalValueOf } from './insight-values'
 
 /**
@@ -54,6 +55,42 @@ export async function fetchDailyReachSeries(
     ...rangeParams(sinceTs, untilTs),
   })
   return dailySeriesOf(body.data, 'reach').map(({ date, value }) => ({ date, reach: value }))
+}
+
+/**
+ * Hourly follower-online maps, one per day (probe 2026-08-20: alive in v25,
+ * but ONLY with explicit since/until — the default window serves empty {}
+ * values, and the freshest day or two stay empty until Meta consolidates).
+ * Empty maps are skipped: they are the API's silence, never data.
+ */
+export async function fetchOnlineFollowers(
+  accountId: string,
+  accessToken: string,
+  sinceTs: number,
+  untilTs: number
+): Promise<Array<{ date: string; byHour: Record<string, number> }>> {
+  const body = await graphGet(igInsightsEnvelopeSchema, insightsUrl(accountId), accessToken, {
+    metric: 'online_followers',
+    period: 'lifetime',
+    ...rangeParams(sinceTs, untilTs),
+  })
+  const entry = body.data.find((item) => item.name === 'online_followers')
+  const out: Array<{ date: string; byHour: Record<string, number> }> = []
+  for (const value of entry?.values ?? []) {
+    if (!value.end_time || typeof value.value !== 'object' || value.value === null) continue
+    const byHour: Record<string, number> = {}
+    for (const [hour, count] of Object.entries(value.value as Record<string, unknown>)) {
+      if (typeof count === 'number' && /^\d{1,2}$/.test(hour)) byHour[hour] = count
+    }
+    if (Object.keys(byHour).length === 0) continue
+    // A bucket ending at end_time (07:00Z = midnight Pacific) covered the
+    // Pacific day before it — one second back lands inside that day.
+    out.push({
+      date: toDateKey(new Date(Date.parse(value.end_time) - 1000), 'America/Los_Angeles'),
+      byHour,
+    })
+  }
+  return out
 }
 
 /** The nine metrics the probe verified in ONE total_value call. */

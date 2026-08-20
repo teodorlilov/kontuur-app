@@ -4,6 +4,7 @@ import type {
   IGPostMetricColumns,
   PublishedPostPinColumns,
 } from '@/lib/queries/select-columns'
+import { zonedTimeToInstant } from '@/utils/date-helpers'
 import { RATE_BASE_FLOOR } from './delta-verdict'
 import { periodDayKeys, type AnalyticsPeriod } from './period'
 
@@ -115,6 +116,24 @@ export interface ReachDay {
   posts: TrendPost[]
 }
 
+export interface AudienceOnline {
+  /** Mean followers online per agency-local [weekday 0 = Monday][hour 0–23]. */
+  grid: number[][]
+  /** Days whose hourly map the API actually served — the evidence base. */
+  sampleDays: number
+  /** The three busiest cells, strongest first. */
+  peaks: Array<{ weekday: number; hour: number; avg: number }>
+}
+
+export interface PublishWindowBucket {
+  key: string
+  label: string
+  postCount: number
+  medianReach: number | null
+  /** Bucket median ÷ the period's overall median reach. */
+  vsMedian: number | null
+}
+
 export interface FunnelStage {
   key: 'reached' | 'profile_views' | 'taps' | 'follows'
   label: string
@@ -205,6 +224,9 @@ export interface AnalyticsReportData {
   hasAudienceSnapshot: boolean
   posts: ReportPostRow[]
   medianReach: number | null
+  /** Null until ~a week of hourly maps exists — a thin sample must not speak. */
+  audienceOnline: AudienceOnline | null
+  publishWindows: PublishWindowBucket[]
 }
 
 // ── Small pure helpers ──
@@ -498,6 +520,120 @@ function buildPosts(
   return { posts, medianReach }
 }
 
+/** The hourly picture may only speak after this many sampled days. */
+const MIN_ONLINE_DAYS = 5
+const WEEKDAY_INDEX: Record<string, number> = {
+  Mon: 0,
+  Tue: 1,
+  Wed: 2,
+  Thu: 3,
+  Fri: 4,
+  Sat: 5,
+  Sun: 6,
+}
+
+/**
+ * Aggregates the per-day hourly follower-online maps into an agency-local
+ * weekday × hour grid of means. Meta anchors both the day buckets and the
+ * hour keys to America/Los_Angeles (probe 2026-08-20: the trough lands on the
+ * audience's local night only under that reading), so each (day, hour) is
+ * turned into a real instant there and re-read in the agency's clock.
+ */
+export function buildAudienceOnline(
+  onlineByDay: Array<{ metric_date: string; online_followers_by_hour: unknown }>,
+  timezone: string
+): AudienceOnline | null {
+  const sums = Array.from({ length: 7 }, () => new Array<number>(24).fill(0))
+  const counts = Array.from({ length: 7 }, () => new Array<number>(24).fill(0))
+  const zoned = new Intl.DateTimeFormat('en-US', {
+    timeZone: timezone,
+    weekday: 'short',
+    hour: 'numeric',
+    hourCycle: 'h23',
+  })
+  let sampleDays = 0
+  for (const row of onlineByDay) {
+    const map = parseBreakdownMap(row.online_followers_by_hour)
+    if (!map || Object.keys(map).length === 0) continue
+    sampleDays++
+    for (const [hourKey, value] of Object.entries(map)) {
+      const hour = Number(hourKey)
+      if (!Number.isInteger(hour) || hour < 0 || hour > 23) continue
+      const instant = zonedTimeToInstant(
+        row.metric_date,
+        `${String(hour).padStart(2, '0')}:00`,
+        'America/Los_Angeles'
+      )
+      const parts = zoned.formatToParts(instant)
+      const weekday = WEEKDAY_INDEX[parts.find((part) => part.type === 'weekday')?.value ?? '']
+      const localHour = Number(parts.find((part) => part.type === 'hour')?.value)
+      if (weekday === undefined || !Number.isInteger(localHour) || localHour > 23) continue
+      sums[weekday]![localHour]! += value
+      counts[weekday]![localHour]! += 1
+    }
+  }
+  if (sampleDays < MIN_ONLINE_DAYS) return null
+  const grid = sums.map((row, weekday) =>
+    row.map((sum, hour) => (counts[weekday]![hour]! > 0 ? sum / counts[weekday]![hour]! : 0))
+  )
+  const peaks = grid
+    .flatMap((row, weekday) => row.map((avg, hour) => ({ weekday, hour, avg })))
+    .filter((cell) => cell.avg > 0)
+    .sort((a, b) => b.avg - a.avg)
+    .slice(0, 3)
+  return { grid, sampleDays, peaks }
+}
+
+const DAYPARTS = [
+  { key: 'morning', label: 'Morning · 06–11', match: (h: number) => h >= 6 && h < 11 },
+  { key: 'midday', label: 'Midday · 11–17', match: (h: number) => h >= 11 && h < 17 },
+  { key: 'evening', label: 'Evening · 17–22', match: (h: number) => h >= 17 && h < 22 },
+  { key: 'night', label: 'Night · 22–06', match: (h: number) => h >= 22 || h < 6 },
+] as const
+
+/**
+ * What each publish window earned: this period's synced posts bucketed by the
+ * agency-local hour they went out, medians per bucket against the period's
+ * overall median (medians, never means — one viral post must not crown its
+ * hour forever). The view refuses to editorialize buckets under 3 posts.
+ */
+function buildPublishWindows(
+  posts: ReportPostRow[],
+  medianReach: number | null,
+  timezone: string
+): PublishWindowBucket[] {
+  const hourFmt = new Intl.DateTimeFormat('en-US', {
+    timeZone: timezone,
+    hour: 'numeric',
+    hourCycle: 'h23',
+  })
+  const reachesByPart = new Map<string, number[]>()
+  for (const post of posts) {
+    if (post.missing !== null || !post.postedAt || post.reach === null) continue
+    const hour = Number(hourFmt.format(new Date(post.postedAt)))
+    if (!Number.isInteger(hour)) continue
+    const part = DAYPARTS.find((candidate) => candidate.match(hour))
+    if (!part) continue
+    const list = reachesByPart.get(part.key) ?? []
+    list.push(post.reach)
+    reachesByPart.set(part.key, list)
+  }
+  return DAYPARTS.map((part) => {
+    const reaches = reachesByPart.get(part.key) ?? []
+    const bucketMedian = median(reaches)
+    return {
+      key: part.key,
+      label: part.label,
+      postCount: reaches.length,
+      medianReach: bucketMedian,
+      vsMedian:
+        bucketMedian !== null && medianReach !== null && medianReach > 0
+          ? bucketMedian / medianReach
+          : null,
+    }
+  })
+}
+
 export interface BuildReportInput {
   period: AnalyticsPeriod
   /** Rows spanning prevStart..end — the builder splits them. */
@@ -513,6 +649,10 @@ export interface BuildReportInput {
   publishedPosts: PublishedPostPinColumns[]
   currentSnapshot: AudienceSnapshotInput | null
   previousSnapshot: AudienceSnapshotInput | null
+  /** Per-day hourly follower-online maps for the current window (may be empty). */
+  onlineByDay: Array<{ metric_date: string; online_followers_by_hour: unknown }>
+  /** The agency's clock — publish hours and online hours both render in it. */
+  timezone: string
   hasHistory: boolean
   lastSyncAt: string | null
 }
@@ -816,5 +956,7 @@ export function buildAnalyticsReport(input: BuildReportInput): AnalyticsReportDa
     hasAudienceSnapshot: input.currentSnapshot !== null,
     posts,
     medianReach,
+    audienceOnline: buildAudienceOnline(input.onlineByDay, input.timezone),
+    publishWindows: buildPublishWindows(posts, medianReach, input.timezone),
   }
 }

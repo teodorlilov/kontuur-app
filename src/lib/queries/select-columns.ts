@@ -229,6 +229,9 @@ export const IG_ACCOUNT_METRIC_KEYS = [
   'link_taps_by_button_type',
   'fetched_at',
 ] as const satisfies readonly (keyof IGAccountMetricsRow)[]
+// online_followers_by_hour (migration 20260827) is deliberately NOT in this
+// list: its reader queries it separately and degrades to none, so the report
+// never breaks while the migration is in flight.
 
 export const IG_ACCOUNT_METRIC_COLUMNS = IG_ACCOUNT_METRIC_KEYS.join(', ') as Join<
   typeof IG_ACCOUNT_METRIC_KEYS,

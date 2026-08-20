@@ -14,6 +14,7 @@ import {
   fetchLinkTaps,
   fetchManyMediaInsights,
   fetchMediaSince,
+  fetchOnlineFollowers,
   fetchReachByProductType,
   type IGDemographics,
 } from '@/lib/meta/insights'
@@ -42,6 +43,15 @@ const CONSOLIDATION_DAYS = 7
 
 export type IGAccountMetricsInsert = Database['public']['Tables']['ig_account_metrics']['Insert']
 type IGPostMetricsInsert = Database['public']['Tables']['ig_post_metrics']['Insert']
+
+/**
+ * Insert plus the 20260827 online-hours column. WHY extension: the generated
+ * types predate the migration — regenerate database.ts after it applies and
+ * fold this back into the Insert type.
+ */
+export type IGAccountMetricsOnlineWrite = IGAccountMetricsInsert & {
+  online_followers_by_hour?: Record<string, number>
+}
 
 interface IGConnection {
   client_id: string
@@ -130,6 +140,41 @@ async function syncClientMetrics(admin: SupabaseClient, connection: IGConnection
   if (hadHistory) await recaptureConsolidatingDays(admin, clientId, accountId, accessToken)
   await syncPostMetrics(admin, clientId, accountId, accessToken)
   await syncDemographicsWeekly(admin, clientId, accountId, accessToken)
+  // Best-effort by design: the when-to-post panel is an enhancement, and a
+  // failure here must never cost the night's core capture.
+  try {
+    await syncOnlineFollowers(admin, clientId, accountId, accessToken)
+  } catch (err) {
+    console.error(`[metrics] online_followers capture failed for client ${clientId}:`, err)
+  }
+}
+
+/**
+ * Meta serves empty maps for the freshest day or two, so each night re-asks a
+ * short trailing window and keeps whatever has consolidated since.
+ */
+const ONLINE_FOLLOWERS_LOOKBACK_DAYS = 4
+
+async function syncOnlineFollowers(
+  admin: SupabaseClient,
+  clientId: string,
+  accountId: string,
+  accessToken: string
+): Promise<void> {
+  const untilTs = Math.floor(Date.now() / 1000)
+  const sinceTs = untilTs - ONLINE_FOLLOWERS_LOOKBACK_DAYS * SECONDS_PER_DAY
+  const days = await fetchOnlineFollowers(accountId, accessToken, sinceTs, untilTs)
+  if (days.length === 0) return
+  const rows: IGAccountMetricsOnlineWrite[] = days.map((day) => ({
+    client_id: clientId,
+    ig_account_id: accountId,
+    metric_date: day.date,
+    online_followers_by_hour: day.byHour,
+  }))
+  const { error } = await admin
+    .from('ig_account_metrics')
+    .upsert(rows, { onConflict: 'client_id,ig_account_id,metric_date' })
+  if (error) throw new Error(`online_followers upsert failed: ${error.message}`)
 }
 
 /**

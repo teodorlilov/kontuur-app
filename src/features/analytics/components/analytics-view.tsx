@@ -19,6 +19,7 @@ import { ReachTrend } from './reach-trend'
 import { ReportArchive, type ArchiveEntry } from './report-archive'
 import { SummaryStrip } from './summary-strip'
 import { SyncLine } from './sync-line'
+import { WhenToPost } from './when-to-post'
 
 interface AnalyticsViewProps {
   data: AnalyticsReportData
@@ -386,6 +387,22 @@ export function AnalyticsView({
               )}
               <AudienceSection audience={data.audience} />
             </>
+          )}
+        </AnalyticsSection>
+      </div>
+
+      <div className="mt-7">
+        <AnalyticsSection
+          title="When to post"
+          sub="When your followers are online, and what each publish window actually earned — observed, never guessed."
+          ariaLabel="When to post"
+        >
+          {hasHistory ? (
+            <WhenToPost online={data.audienceOnline} windows={data.publishWindows} />
+          ) : (
+            <EmptyFill className="mt-3.5 min-h-28">
+              Posting-time signals appear after the first syncs
+            </EmptyFill>
           )}
         </AnalyticsSection>
       </div>
