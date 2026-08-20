@@ -6,6 +6,7 @@ import type {
 } from '@/lib/queries/select-columns'
 import { zonedTimeToInstant } from '@/utils/date-helpers'
 import { RATE_BASE_FLOOR } from './delta-verdict'
+import { formatCount } from './format'
 import { periodDayKeys, type AnalyticsPeriod } from './period'
 
 /**
@@ -84,7 +85,10 @@ export interface EngagementRateCell {
 export interface ComparisonRow {
   key: string
   label: string
+  /** The compact one-liner — kept for print, which cannot be hovered. */
   meta?: string
+  /** The same facts, each under its own name, for the hover card. */
+  details?: Array<{ label: string; value: string }>
   now: number | null
   then: number | null
 }
@@ -895,8 +899,12 @@ export function buildAnalyticsReport(input: BuildReportInput): AnalyticsReportDa
     // names its own unit — "8 published · 0.4% engagement rate" reads without
     // a key. Abbreviations and apologies both failed that test.
     const metaParts: string[] = []
+    const details: Array<{ label: string; value: string }> = []
     const count = postCountByFormat.get(row.key)
-    if (count) metaParts.push(`${count} published`)
+    if (count) {
+      metaParts.push(`${count} published`)
+      details.push({ label: 'Posts published', value: String(count) })
+    }
 
     // A rate per format only when the denominator is solid — one off a few
     // hundred reached accounts is arithmetic, not evidence.
@@ -935,15 +943,12 @@ export function buildAnalyticsReport(input: BuildReportInput): AnalyticsReportDa
       // A real 0.05% rounded to "0.0%" reads as a measured zero, which it is
       // not — and as a broken number, which it looks like. Only an actual
       // zero may say none.
-      metaParts.push(
-        interactions === 0
-          ? 'no interactions'
-          : pct < 0.1
-            ? 'under 0.1% engagement rate'
-            : `${pct.toFixed(1)}% engagement rate`
-      )
+      const rate = interactions === 0 ? 'none' : pct < 0.1 ? 'under 0.1%' : `${pct.toFixed(1)}%`
+      metaParts.push(interactions === 0 ? 'no interactions' : `${rate} engagement rate`)
+      details.push({ label: 'Interactions', value: formatCount(interactions) })
+      details.push({ label: 'Engagement rate', value: rate })
     }
-    return metaParts.length > 0 ? { ...row, meta: metaParts.join(' · ') } : row
+    return metaParts.length > 0 ? { ...row, meta: metaParts.join(' · '), details } : row
   })
 
   const INTERACTION_LABELS = [
@@ -972,7 +977,7 @@ export function buildAnalyticsReport(input: BuildReportInput): AnalyticsReportDa
       label,
       now,
       then: sumOrNull(dailyValues(previous, (row) => row[key])),
-      ...(meta ? { meta } : {}),
+      ...(meta ? { meta, details: [{ label: 'Share of interactions', value: meta }] } : {}),
     }
   }).sort((a, b) => (b.now ?? -1) - (a.now ?? -1))
 

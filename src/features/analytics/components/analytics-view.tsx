@@ -253,6 +253,7 @@ export function AnalyticsView({
                   )
                   .join('. ')}.`}
                 rows={data.formats}
+                unit="Reached"
               />
               {adReach !== null && adReach > 0 && (
                 <p className="mt-3.5 text-caption text-text2">
@@ -304,6 +305,7 @@ export function AnalyticsView({
                 )
                 .join('. ')}.`}
               rows={data.interactionKinds}
+              unit="Count"
             />
           ) : (
             <EmptyFill className="mt-3.5">
@@ -356,6 +358,7 @@ export function AnalyticsView({
                 )
                 .join('. ')}.`}
               rows={data.tapButtons}
+              unit="Taps"
             />
           )}
         </AnalyticsSection>
