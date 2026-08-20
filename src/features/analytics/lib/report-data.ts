@@ -184,7 +184,9 @@ const _fetchAnalyticsReport = unstable_cache(
   // Bump this on every shape change; a stale report costs more than a rebuild.
   //
   // v4: reachByDay.thenDate/thenPosts + ComparisonRow.details.
-  ['analytics-report-v4'],
+  // v5: ReportPostRow.postedDayKey — posts are bucketed in the agency's clock
+  // now, so a v4 entry both lacks the field and pins posts on the wrong day.
+  ['analytics-report-v5'],
   { revalidate: 3600, tags: [IG_METRICS_TAG] }
 )
 

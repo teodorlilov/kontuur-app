@@ -91,7 +91,7 @@ export function PostsTable({
                           </span>
                         )}
                         <span className="block text-micro text-text3">
-                          {post.postedAt ? `${formatDayMonth(post.postedAt.slice(0, 10))} · ` : ''}
+                          {post.postedDayKey ? `${formatDayMonth(post.postedDayKey)} · ` : ''}
                           {type.label}
                           {post.missing === 'removed' && ' · no longer on Instagram'}
                           {post.missing === 'pending' && ' · metrics after the next sync'}

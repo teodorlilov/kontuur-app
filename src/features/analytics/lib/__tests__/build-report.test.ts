@@ -250,6 +250,53 @@ describe('buildAnalyticsReport', () => {
     expect(report.reachByDay[3]!.posts[0]!.missing).toBe('pending')
   })
 
+  it('buckets posts by the agency calendar day, not the UTC one', () => {
+    // Sofia is UTC+3, so 22:30Z on the 14th is 01:30 on the 15th locally — the
+    // window's opening day. Reading the UTC prefix dropped this row out of the
+    // current window entirely, whereupon the ledger arm re-added it as a pin
+    // marked "removed": a live post reported as deleted from Instagram.
+    const report = build({
+      timezone: 'Europe/Sofia',
+      postRows: [
+        postRow({
+          ig_media_id: 'early',
+          caption: 'Just after local midnight',
+          posted_at: '2026-08-14T22:30:00+00:00',
+          reach: 300,
+        }),
+      ],
+      publishedPosts: [
+        publishedPost({
+          id: 'early-ledger',
+          ig_media_id: 'early',
+          published_at: '2026-08-14T22:30:00',
+        }),
+      ],
+      lastSyncAt: '2026-08-18T03:30:00Z',
+    })
+
+    // One row, the synced one — the ledger defers to it instead of duplicating.
+    expect(report.posts).toHaveLength(1)
+    expect(report.posts[0]!.missing).toBeNull()
+    expect(report.posts[0]!.postedDayKey).toBe('2026-08-15')
+    // And it pins on the window's first column, not off the left edge.
+    expect(report.reachByDay[0]!.posts.map((post) => post.igMediaId)).toEqual(['early'])
+    expect(report.reachByDay[0]!.thenPosts).toEqual([])
+  })
+
+  it('keeps a late-evening post on its own local day', () => {
+    // 21:00Z on the 16th is already 00:00 on the 17th in Sofia.
+    const report = build({
+      timezone: 'Europe/Sofia',
+      postRows: [
+        postRow({ ig_media_id: 'late', posted_at: '2026-08-16T21:00:00+00:00', reach: 120 }),
+      ],
+    })
+    expect(report.posts[0]!.postedDayKey).toBe('2026-08-17')
+    expect(report.reachByDay[1]!.posts).toEqual([])
+    expect(report.reachByDay[2]!.posts.map((post) => post.igMediaId)).toEqual(['late'])
+  })
+
   it('builds the follower flow timeline with pins, attribution and churn', () => {
     const report = build({
       accountRows: [

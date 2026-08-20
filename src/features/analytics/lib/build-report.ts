@@ -4,7 +4,7 @@ import type {
   IGPostMetricColumns,
   PublishedPostPinColumns,
 } from '@/lib/queries/select-columns'
-import { zonedTimeToInstant } from '@/utils/date-helpers'
+import { toDateKey, zonedTimeToInstant } from '@/utils/date-helpers'
 import { RATE_BASE_FLOOR } from './delta-verdict'
 import { formatCount } from './format'
 import { periodDayKeys, type AnalyticsPeriod } from './period'
@@ -197,6 +197,11 @@ export interface ReportPostRow {
   postId: string | null
   caption: string | null
   postedAt: string | null
+  /**
+   * The agency-calendar day this post belongs to — the same clock the period's
+   * day keys are resolved in. Null when the row carries no timestamp.
+   */
+  postedDayKey: string | null
   mediaType: string | null
   mediaProductType: string | null
   permalink: string | null
@@ -476,13 +481,28 @@ function instantMs(iso: string): number {
   return new Date(/[zZ]|[+-]\d{2}:?\d{2}$/.test(iso) ? iso : `${iso}Z`).getTime()
 }
 
+/**
+ * The agency-calendar day a timestamp falls on. The period's day keys are
+ * resolved in the agency's clock, so reading the UTC prefix off an instant put
+ * every post published in the first hours of local morning one column early —
+ * and, on the window's opening day, pushed it out of the window altogether, so
+ * a live post arrived through the ledger arm instead and was labelled "no
+ * longer on Instagram".
+ */
+function dayKeyOf(iso: string | null, timezone: string): string | null {
+  if (!iso) return null
+  const ms = instantMs(iso)
+  return Number.isNaN(ms) ? null : toDateKey(new Date(ms), timezone)
+}
+
 /** A sync this much newer than a publish had every chance to see the media. */
 const SYNC_GRACE_MS = 60 * 60 * 1000
 
 function buildPosts(
   postRows: IGPostMetricColumns[],
   publishedPosts: PublishedPostPinColumns[],
-  lastSyncAt: string | null
+  lastSyncAt: string | null,
+  timezone: string
 ): {
   posts: ReportPostRow[]
   medianReach: number | null
@@ -495,6 +515,7 @@ function buildPosts(
     postId: row.post_id,
     caption: row.caption,
     postedAt: row.posted_at,
+    postedDayKey: dayKeyOf(row.posted_at, timezone),
     mediaType: row.media_type,
     mediaProductType: row.media_product_type,
     permalink: row.permalink,
@@ -528,6 +549,7 @@ function buildPosts(
       postId: post.id,
       caption: post.caption,
       postedAt: post.published_at,
+      postedDayKey: dayKeyOf(post.published_at, timezone),
       mediaType: APP_MEDIA_TYPE[post.post_type ?? ''] ?? 'IMAGE',
       mediaProductType: null,
       permalink: null,
@@ -637,7 +659,9 @@ function buildPublishWindows(
   const reachesByPart = new Map<string, number[]>()
   for (const post of posts) {
     if (post.missing !== null || !post.postedAt || post.reach === null) continue
-    const hour = Number(hourFmt.format(new Date(post.postedAt)))
+    // Anchored, not `new Date(iso)`: a naive timestamp would otherwise parse in
+    // the runtime's zone rather than UTC, which is a different hour entirely.
+    const hour = Number(hourFmt.format(new Date(instantMs(post.postedAt))))
     if (!Number.isInteger(hour)) continue
     const part = DAYPARTS.find((candidate) => candidate.match(hour))
     if (!part) continue
@@ -740,15 +764,20 @@ export function buildAnalyticsReport(input: BuildReportInput): AnalyticsReportDa
   // CURRENT window feeds the table and the medians; the previous window's
   // rows exist solely to explain the shape of the comparison line.
   const currentPostRows = input.postRows.filter((row) => {
-    const date = (row.posted_at ?? '').slice(0, 10)
+    const date = dayKeyOf(row.posted_at, input.timezone)
     // A row without a timestamp has no day to belong to, so it can never be a
     // comparison-window pin — but the table still lists it, as it always has.
-    return date === '' || date >= period.start
+    return date === null || date >= period.start
   })
-  const { posts, medianReach } = buildPosts(currentPostRows, input.publishedPosts, input.lastSyncAt)
+  const { posts, medianReach } = buildPosts(
+    currentPostRows,
+    input.publishedPosts,
+    input.lastSyncAt,
+    input.timezone
+  )
   const postsByDate = new Map<string, TrendPost[]>()
   for (const post of posts) {
-    const date = post.postedAt?.slice(0, 10)
+    const date = post.postedDayKey
     if (!date) continue
     const list = postsByDate.get(date) ?? []
     list.push({
@@ -767,7 +796,7 @@ export function buildAnalyticsReport(input: BuildReportInput): AnalyticsReportDa
   // Instagram never returned simply has no pin rather than a guessed one.
   const previousPostsByDate = new Map<string, TrendPost[]>()
   for (const row of input.postRows) {
-    const date = (row.posted_at ?? '').slice(0, 10)
+    const date = dayKeyOf(row.posted_at, input.timezone)
     if (!date || date > period.prevEnd) continue
     const list = previousPostsByDate.get(date) ?? []
     list.push({
@@ -825,7 +854,7 @@ export function buildAnalyticsReport(input: BuildReportInput): AnalyticsReportDa
   }
   if (bestDay) {
     const bestDate = bestDay.date
-    const dayPost = posts.find((post) => post.postedAt?.slice(0, 10) === bestDate)
+    const dayPost = posts.find((post) => post.postedDayKey === bestDate)
     bestDay.caption = dayPost?.caption ?? null
   }
 
