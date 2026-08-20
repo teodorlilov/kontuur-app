@@ -1,5 +1,11 @@
 import type { AudienceReport, AudienceShare } from '../lib/build-report'
 
+/**
+ * The plot's height in pixels — the tallest column fills it exactly. It must
+ * match the `h-36` well below: when the two disagreed (the whole chart, labels
+ * included, was one h-36 box) the tallest column consumed every pixel and the
+ * band labels overflowed onto the caption beneath them.
+ */
 const COLUMN_MAX_PX = 144
 
 /**
@@ -35,12 +41,14 @@ export function AudienceSection({ audience }: { audience: AudienceReport }) {
         <div
           role="img"
           aria-label={`Paired columns by age band, follower share against engaged share, with last period's follower share as a tick. ${agesSpoken}.`}
-          className="grid h-36 items-end gap-3.5"
-          style={{ gridTemplateColumns: `repeat(${audience.ages.length}, 1fr)` }}
+          className="grid gap-3"
+          style={{ gridTemplateColumns: `repeat(${audience.ages.length}, minmax(0, 1fr))` }}
         >
           {audience.ages.map((band) => (
-            <div key={band.band} className="grid h-full grid-rows-[1fr_auto] gap-2">
-              <div className="flex h-full items-end justify-center gap-1">
+            <div key={band.band} className="grid gap-2">
+              {/* The plot well: a fixed height the columns rise in, with the
+                  labels stacked BELOW it rather than sharing its box. */}
+              <div className="flex h-36 items-end justify-center gap-1">
                 <span className="relative flex h-full items-end">
                   <i
                     className="block w-4 rounded-t bg-forest"

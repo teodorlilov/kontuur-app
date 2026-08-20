@@ -185,7 +185,7 @@ export function AnalyticsView({
         </AnalyticsSection>
       </div>
 
-      <div className="mt-7 grid gap-7 md:grid-cols-2">
+      <div className="mt-7 grid items-start gap-7 md:grid-cols-2">
         {/* The mock drew views by follower type here; the live probe proved the
             API has no such breakdown (breakdown=follower_type does not exist).
             The follows/unfollows split is the story the stored data can tell. */}
@@ -265,7 +265,10 @@ export function AnalyticsView({
         </AnalyticsSection>
       </div>
 
-      <div className="mt-7">
+      {/* Two bar-row lists of the same family, side by side. items-start on
+          purpose: a three-row card must not stretch to a six-row neighbour's
+          height — the empty half reads as missing data. */}
+      <div className="mt-7 grid items-start gap-7 md:grid-cols-2">
         <AnalyticsSection
           title="What people did"
           sub="Every interaction beside last period — all five on one scale."
@@ -297,9 +300,7 @@ export function AnalyticsView({
             </EmptyFill>
           )}
         </AnalyticsSection>
-      </div>
 
-      <div className="mt-7 grid gap-7 md:grid-cols-2">
         <AnalyticsSection
           title="What the profile converted"
           sub={
@@ -347,7 +348,12 @@ export function AnalyticsView({
             />
           )}
         </AnalyticsSection>
+      </div>
 
+      {/* Full width on purpose: the age columns and the places/gender lists sit
+          side by side inside this card, which needs the whole measure to keep
+          seven band labels legible. */}
+      <div className="mt-7">
         <AnalyticsSection
           title="Who follows, who engages"
           sub="How your followers compare with the people who actually engaged this period."
