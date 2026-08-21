@@ -39,8 +39,11 @@ export default async function DataDeletionPage({ searchParams }: PageProps) {
             <>
               <h1 className={proseH1}>Deletion Request Received</h1>
               <p className={proseLead}>
-                Your data deletion request has been processed. All data associated with your
-                Facebook or Instagram account has been removed from Kontuur&apos;s servers.
+                Your data deletion request has been processed. Your access tokens, account details
+                and every analytics figure synced from your Facebook or Instagram account have been
+                removed from Kontuur&apos;s servers. Posts written inside Kontuur are kept with the
+                agency account that created them — request full account deletion to remove those
+                too.
               </p>
               <div className={proseDivider} />
               <p className={proseP}>
