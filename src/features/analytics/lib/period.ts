@@ -19,7 +19,7 @@ export const DEFAULT_RANGE: RangePreset = '30d'
 
 const PRESET_DAYS: Record<RangePreset, number> = { '7d': 7, '30d': 30, '90d': 90 }
 /** A custom range longer than a year is a typo, not a report. */
-const CUSTOM_MAX_DAYS = 366
+export const CUSTOM_MAX_DAYS = 366
 const DATE_KEY_PATTERN = /^\d{4}-\d{2}-\d{2}$/
 
 export interface AnalyticsPeriod {
@@ -34,7 +34,7 @@ export interface AnalyticsPeriod {
 }
 
 /** Inclusive day count between two date keys. */
-function dayCount(start: string, end: string): number {
+export function dayCount(start: string, end: string): number {
   return Math.round((Date.parse(end) - Date.parse(start)) / MS_PER_DAY) + 1
 }
 
