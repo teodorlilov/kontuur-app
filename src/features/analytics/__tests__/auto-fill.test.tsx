@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
-import { render, waitFor } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import { AutoFill } from '../components/auto-fill'
 import type { AnalyticsPeriod } from '../lib/period'
 
@@ -49,10 +49,38 @@ describe('AutoFill', () => {
   })
 
   it('does not refresh when nothing was filled — no render loop', async () => {
-    fillPeriodData.mockResolvedValue({ ok: true, data: { filled: false } })
+    fillPeriodData.mockResolvedValue({ ok: true, data: { filled: false, stalled: false } })
     render(<AutoFill clientId="c1" period={PERIOD} unfilledDays={12} />)
 
     await waitFor(() => expect(fillPeriodData).toHaveBeenCalledTimes(1))
     expect(refresh).not.toHaveBeenCalled()
+  })
+
+  it('says a throttled run has stopped rather than leaving the skeleton silent', async () => {
+    // The outcome used to be discarded, so this state was indistinguishable
+    // from a run that filled sixty days — and the chain simply stopped.
+    fillPeriodData.mockResolvedValue({
+      ok: true,
+      data: { filled: false, stalled: true, rateLimited: true },
+    })
+    render(<AutoFill clientId="c1" period={PERIOD} unfilledDays={12} />)
+
+    expect(await screen.findByRole('status')).toHaveTextContent(/rate-limiting this account/)
+    expect(refresh).not.toHaveBeenCalled()
+  })
+
+  it('names a non-throttled stall in its own words', async () => {
+    fillPeriodData.mockResolvedValue({ ok: true, data: { filled: false, stalled: true } })
+    render(<AutoFill clientId="c1" period={PERIOD} unfilledDays={12} />)
+
+    expect(await screen.findByRole('status')).toHaveTextContent(/could not be completed/)
+  })
+
+  it('stays silent while a run is still making progress', async () => {
+    fillPeriodData.mockResolvedValue({ ok: true, data: { filled: true, stalled: false } })
+    render(<AutoFill clientId="c1" period={PERIOD} unfilledDays={12} />)
+
+    await waitFor(() => expect(refresh).toHaveBeenCalledTimes(1))
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
   })
 })

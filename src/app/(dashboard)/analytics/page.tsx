@@ -140,6 +140,7 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
               narrative={narrative}
               narrativeArchived={narrativeResult?.archived ?? false}
               unfilledDays={unfilledDays}
+              showPartial={params.partial === '1'}
               clientId={clientId}
               clientName={client.name}
               handle={handle}

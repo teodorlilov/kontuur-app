@@ -29,6 +29,8 @@ interface AnalyticsViewProps {
   narrativeArchived: boolean
   /** Days of this window never asked of Meta — triggers the automatic fill. */
   unfilledDays: number
+  /** ?partial=1 — the reader asked to see the stored days without waiting. */
+  showPartial?: boolean
   clientId: string
   clientName: string
   /** The connected IG handle, when one exists. */
@@ -56,6 +58,7 @@ export function AnalyticsView({
   narrative,
   narrativeArchived,
   unfilledDays,
+  showPartial = false,
   clientId,
   clientName,
   handle,
@@ -67,7 +70,7 @@ export function AnalyticsView({
 }: AnalyticsViewProps) {
   const { hasHistory, followers } = data
   const flowKnown = followers.gained.now !== null || followers.lost.now !== null
-  const filling = hasConnection && unfilledDays > 0
+  const filling = hasConnection && unfilledDays > 0 && !showPartial
   // Paid vs organic, from the format-attributed reach — stated side by side,
   // never summed to the period total (accounts can appear in several formats).
   const adReach = data.formats.find((row) => row.key === 'AD')?.now ?? null
@@ -118,7 +121,7 @@ export function AnalyticsView({
       <div id="analytics-print-area">
         <AutoFill clientId={clientId} period={data.period} unfilledDays={unfilledDays} />
         {masthead}
-        <FillingDocument unfilledDays={unfilledDays} />
+        <FillingDocument unfilledDays={unfilledDays} clientId={clientId} period={data.period} />
         <SyncLine
           lastSyncAt={lastSyncAt}
           hasHistory={hasHistory}

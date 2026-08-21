@@ -122,6 +122,15 @@ export async function archiveReport(input: ArchiveReportInput): Promise<ActionRe
   return upsertReportRow(scope, accountId, report, narrative)
 }
 
+/** What one fill run achieved — enough for the caller to know whether to wait. */
+export interface FillOutcome {
+  /** Days were written; the page is worth re-rendering. */
+  filled: boolean
+  /** Nothing landed and re-running will not help right now. */
+  stalled: boolean
+  rateLimited?: boolean
+}
+
 /**
  * The automatic period fill: when the console lands on a window with days
  * never asked of Meta, the page mounts a client leaf that calls this once
@@ -132,7 +141,7 @@ export async function archiveReport(input: ArchiveReportInput): Promise<ActionRe
  */
 export async function fillPeriodData(
   input: ArchiveReportInput
-): Promise<ActionResult<{ filled: boolean }>> {
+): Promise<ActionResult<FillOutcome>> {
   const resolved = await resolveReportScope(input)
   if (!resolved.ok) return { ok: false, error: resolved.error }
   const { scope } = resolved
@@ -150,11 +159,12 @@ export async function fillPeriodData(
     !connection.access_token ||
     isTokenExpired(connection.token_expires_at)
   ) {
-    return { ok: true, data: { filled: false } }
+    return { ok: true, data: { filled: false, stalled: true } }
   }
 
+  let outcome
   try {
-    await refreshWindowMetrics(
+    outcome = await refreshWindowMetrics(
       admin,
       {
         clientId: scope.client.id,
@@ -167,11 +177,21 @@ export async function fillPeriodData(
   } catch (err) {
     // Best-effort by design: the page already rendered from stored data.
     console.error('[analytics] automatic period fill failed', { clientId: scope.client.id, err })
-    return { ok: true, data: { filled: false } }
+    return { ok: true, data: { filled: false, stalled: true } }
   }
 
   revalidateTag(IG_METRICS_TAG, 'max')
-  return { ok: true, data: { filled: true } }
+  // The outcome used to be discarded, so a throttled run that wrote nothing was
+  // indistinguishable from one that filled sixty days — and the caller kept
+  // waiting on a chain that could no longer advance.
+  return {
+    ok: true,
+    data: {
+      filled: outcome.refilledDays > 0,
+      stalled: outcome.refilledDays === 0 && (outcome.rateLimited || outcome.failedDays > 0),
+      rateLimited: outcome.rateLimited,
+    },
+  }
 }
 
 /**

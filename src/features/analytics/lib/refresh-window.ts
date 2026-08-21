@@ -55,6 +55,8 @@ export interface RefreshOutcome {
   refilledDays: number
   /** Meta throttled mid-run — what landed stays, the rest waits. */
   rateLimited: boolean
+  /** Days whose capture failed for some other reason. */
+  failedDays: number
 }
 
 /**
@@ -171,6 +173,7 @@ export async function refreshWindowMetrics(
 
   let rateLimited = false
   let refilledDays = 0
+  let failedDays = 0
 
   // The series the API still serves for the past — chunked, both windows.
   const reachRows: IGAccountMetricsInsert[] = []
@@ -241,8 +244,15 @@ export async function refreshWindowMetrics(
           // section the period filter drives refills — not just headline totals.
           totalsRows.push(await captureDayTotals(clientId, accountId, accessToken, dateKey))
         } catch (err) {
-          if (err instanceof GraphApiError && err.failure === 'rate_limited') rateLimited = true
-          else throw err
+          if (err instanceof GraphApiError && err.failure === 'rate_limited') {
+            rateLimited = true
+            return
+          }
+          // Counted, not thrown. Rejecting here took the whole Promise.all with
+          // it, so the upsert below never ran and up to 61 days that HAD been
+          // fetched were discarded because the sixty-second failed.
+          failedDays++
+          console.error(`[analytics] day capture failed for ${dateKey}:`, err)
         } finally {
           release()
         }
@@ -277,5 +287,5 @@ export async function refreshWindowMetrics(
     }
   }
 
-  return { refilledDays, rateLimited }
+  return { refilledDays, rateLimited, failedDays }
 }
