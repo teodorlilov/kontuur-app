@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
+import { MIN_VISIBLE_PCT } from '../lib/bar-scale'
 import type { ComparisonRow } from '../lib/build-report'
 import { ComparisonRows } from '../components/comparison-rows'
 
@@ -33,11 +34,17 @@ const ROWS: ComparisonRow[] = [
 describe('ComparisonRows', () => {
   it('keeps a real value visible however small its share of the scale', () => {
     const { container } = render(<ComparisonRows rows={ROWS} ariaLabel="Reach by format" />)
-    // 3 against a 32,340 maximum computes to 0.008% of the track. Every bar
-    // for a nonzero value must still carry a minimum width.
+    // 3 against a 32,340 maximum computes to 0.008% of the track. Asserted on
+    // the rendered width rather than on a `min-w-` class: the floor moved from
+    // CSS to bar-scale, and a test that pins HOW it is applied breaks on a
+    // restyle that keeps the behaviour intact.
     const bars = Array.from(container.querySelectorAll<HTMLElement>('i[style*="width"]'))
     expect(bars).toHaveLength(4)
-    expect(bars.every((bar) => bar.className.includes('min-w-'))).toBe(true)
+    const widths = bars.map((bar) => Number.parseFloat(bar.style.width))
+    expect(widths.every((width) => width >= MIN_VISIBLE_PCT)).toBe(true)
+    // Floored, not inflated: the smallest bar stays visibly the smallest.
+    expect(Math.min(...widths)).toBe(MIN_VISIBLE_PCT)
+    expect(Math.max(...widths)).toBeGreaterThan(MIN_VISIBLE_PCT * 10)
   })
 
   it('raises a labeled card naming the reach, the posts and the rate', () => {

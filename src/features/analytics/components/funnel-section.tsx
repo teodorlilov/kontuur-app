@@ -1,10 +1,11 @@
+import { barWidthPct } from '../lib/bar-scale'
 import type { FunnelStage } from '../lib/build-report'
 import { countDeltaVerdict } from '../lib/delta-verdict'
 import { formatCount } from '../lib/format'
 import { DeltaChip } from './delta-chip'
 
-/** Bars stop short so the widest stage never crowds the rate caption. */
-const BAR_SPAN_PCT = 78
+/** Bars stop here so the widest stage never crowds the rate caption beside it. */
+const BAR_SPAN_BEFORE_CAPTION = 78
 
 function formatPer100(value: number): string {
   return value >= 10 ? String(Math.round(value)) : value.toFixed(1)
@@ -23,8 +24,8 @@ export function FunnelSection({ stages }: { stages: FunnelStage[] }) {
     <div className="mt-4 grid gap-5">
       {stages.map((stage) => {
         const width =
-          top !== null && top > 0 && stage.now !== null && stage.now > 0
-            ? Math.max((stage.now / top) * BAR_SPAN_PCT, 1.2)
+          top !== null && stage.now !== null
+            ? barWidthPct(stage.now, top, BAR_SPAN_BEFORE_CAPTION)
             : 0
         return (
           <div key={stage.key} className="grid gap-1.5">

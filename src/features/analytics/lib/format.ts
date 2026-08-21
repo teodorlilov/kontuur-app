@@ -25,6 +25,18 @@ export function formatCount(value: number): string {
   return value.toLocaleString('en-US')
 }
 
+/**
+ * A share as a whole percent, never rounding a real value down to "0%".
+ *
+ * Rounding is right for the numbers this document shows — nobody needs 23.4% of
+ * followers — but `Math.round` turns every share under half a percent into a
+ * measured zero, which is a different claim entirely. The one exception carries
+ * the house form the interaction mix already speaks.
+ */
+export function formatSharePct(pct: number): string {
+  return pct > 0 && pct < 1 ? '<1%' : `${Math.round(pct)}%`
+}
+
 /** "2026-08-09" → "9 Aug". */
 export function formatDayMonth(dateKey: string): string {
   return DAY_MONTH.format(keyToDate(dateKey))

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { splitLeadSentence } from '../format'
+import { formatSharePct, splitLeadSentence } from '../format'
 
 describe('splitLeadSentence', () => {
   it('separates the opening sentence from the rest', () => {
@@ -20,5 +20,22 @@ describe('splitLeadSentence', () => {
   it('returns single-sentence prose whole', () => {
     const text = 'Reach grew five-fold, driven by paid placement.'
     expect(splitLeadSentence(text)).toEqual({ lead: text, rest: '' })
+  })
+})
+
+describe('formatSharePct', () => {
+  it('rounds to whole percent — nobody needs 23.4% of followers', () => {
+    expect(formatSharePct(23.4)).toBe('23%')
+    expect(formatSharePct(62)).toBe('62%')
+  })
+
+  it('never rounds a real share down to a measured zero', () => {
+    // The third-place country the audience list used to print as "0%".
+    expect(formatSharePct(0.4)).toBe('<1%')
+    expect(formatSharePct(0.04)).toBe('<1%')
+  })
+
+  it('keeps a true zero as zero', () => {
+    expect(formatSharePct(0)).toBe('0%')
   })
 })

@@ -8,7 +8,7 @@ import { toDateKey, zonedTimeToInstant } from '@/utils/date-helpers'
 import { parseTimestamp } from '@/utils/format'
 import { WEEKDAY_LABELS_SHORT } from '@/utils/constants'
 import { RATE_BASE_FLOOR } from './delta-verdict'
-import { formatCount } from './format'
+import { formatCount, formatSharePct } from './format'
 import { periodDayKeys, type AnalyticsPeriod } from './period'
 
 /**
@@ -993,8 +993,7 @@ export function buildAnalyticsReport(input: BuildReportInput): AnalyticsReportDa
     if (part === null || part <= 0 || interactions.now === null || interactions.now <= 0) {
       return undefined
     }
-    const pct = (part / interactions.now) * 100
-    return pct < 1 ? '<1% of interactions' : `${Math.round(pct)}% of interactions`
+    return `${formatSharePct((part / interactions.now) * 100)} of interactions`
   }
   // Sorted by size: these render as shared-scale rows, largest first. A
   // measured zero keeps its row — 0 comments is data, not absence.

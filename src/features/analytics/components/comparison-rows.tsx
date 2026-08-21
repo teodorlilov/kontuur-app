@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { barWidthPct } from '../lib/bar-scale'
 import type { ComparisonRow } from '../lib/build-report'
 import { formatCount } from '../lib/format'
 
@@ -12,8 +13,8 @@ interface ComparisonRowsProps {
   unit?: string
 }
 
-/** Bars stop at 82% so the printed value always has room at the row's end. */
-const BAR_SPAN_PCT = 82
+/** Bars stop here so the value, printed inline after them, has room at the row's end. */
+const BAR_SPAN_BEFORE_VALUE = 82
 
 /**
  * The one paired-bar chart: a labeled row, this period's bar over last
@@ -53,12 +54,13 @@ export function ComparisonRows({ rows, ariaLabel, unit = 'Reached' }: Comparison
               <div className="flex h-4 items-center">
                 {row.now !== null && row.now > 0 && (
                   <i
-                    // min-w keeps a real value visible: 3 against a 32,340
-                    // maximum computes to 0.008% of the track, which is a bar
-                    // the reader never sees beside a number they do.
-                    className="block h-full min-w-[3px] rounded-r bg-forest"
-                    // Computed width — the one truly dynamic style.
-                    style={{ width: `${((row.now / max) * BAR_SPAN_PCT).toFixed(1)}%` }}
+                    className="block h-full rounded-r bg-forest"
+                    // Computed width — the one truly dynamic style. Floored by
+                    // barWidthPct: 3 against a 32,340 maximum is 0.008% of the
+                    // track, a bar the reader never sees beside a number they do.
+                    style={{
+                      width: `${barWidthPct(row.now, max, BAR_SPAN_BEFORE_VALUE).toFixed(1)}%`,
+                    }}
                   />
                 )}
                 {row.now === 0 && <ZeroTick />}
@@ -69,8 +71,10 @@ export function ComparisonRows({ rows, ariaLabel, unit = 'Reached' }: Comparison
               <div className="flex h-2 items-center">
                 {row.then !== null && row.then > 0 && (
                   <i
-                    className="block h-full min-w-[3px] rounded-r bg-metric-3"
-                    style={{ width: `${((row.then / max) * BAR_SPAN_PCT).toFixed(1)}%` }}
+                    className="block h-full rounded-r bg-metric-3"
+                    style={{
+                      width: `${barWidthPct(row.then, max, BAR_SPAN_BEFORE_VALUE).toFixed(1)}%`,
+                    }}
                   />
                 )}
                 {row.then === 0 && <ZeroTick />}

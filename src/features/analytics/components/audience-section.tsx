@@ -1,4 +1,6 @@
+import { barWidthPct } from '../lib/bar-scale'
 import type { AudienceReport, AudienceShare } from '../lib/build-report'
+import { formatSharePct } from '../lib/format'
 
 /**
  * The plot's height in pixels — the tallest column fills it exactly. It must
@@ -7,6 +9,9 @@ import type { AudienceReport, AudienceShare } from '../lib/build-report'
  * band labels overflowed onto the caption beneath them.
  */
 const COLUMN_MAX_PX = 192
+
+/** The place-list bars label in their own column, so they clear nothing. */
+const BAR_SPAN_FULL_TRACK = 88
 
 /**
  * Who follows against who actually engaged: paired columns by age band with
@@ -126,15 +131,18 @@ function PlaceList({ label, shares }: { label: string; shares: AudienceShare[] }
             <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-sunken">
               <i
                 className="block h-full rounded-full bg-forest"
-                // Scaled so the largest share nearly fills its track.
-                style={{ width: `${((share.pct / maxPct) * 88).toFixed(0)}%` }}
+                // Computed width — the label sits in its own column, so this bar
+                // reserves nothing and the largest share nearly fills the track.
+                style={{
+                  width: `${barWidthPct(share.pct, maxPct, BAR_SPAN_FULL_TRACK).toFixed(1)}%`,
+                }}
               />
             </span>
             <span className="w-9 flex-none text-right text-micro tabular-nums text-text2">
-              {Math.round(share.pct)}%
+              {formatSharePct(share.pct)}
             </span>
             <span className="w-14 flex-none text-right text-micro tabular-nums text-text3">
-              {share.prevPct === null ? '' : `was ${Math.round(share.prevPct)}%`}
+              {share.prevPct === null ? '' : `was ${formatSharePct(share.prevPct)}`}
             </span>
           </div>
         ))}
