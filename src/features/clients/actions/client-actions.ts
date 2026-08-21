@@ -11,6 +11,7 @@ import {
 import { parseActionId } from '@/lib/actions/parse-input'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { removeStoragePrefix } from '@/features/publishing/lib/storage'
+import { IG_METRICS_TAG } from '@/features/analytics/lib/report-data'
 import { parsePillars } from '@/lib/clients/content-pillars'
 import { removeDeletedPillarIds } from '@/lib/clients/sync-source-pillars'
 import { upsertVisualIdentity } from '@/lib/visual/queries'
@@ -260,6 +261,11 @@ export async function deleteClient(clientId: string): Promise<ActionResult> {
 
   revalidateTag('agency-clients', 'max')
   revalidateTag('client-post-stats', 'max')
+  // The cascade took the analytics rows with the client, but the report and its
+  // narrative are cached for an hour and a day respectively — built from rows
+  // that no longer exist, and naming a client that no longer exists. Every other
+  // writer of those tables busts this tag; this was the one that did not.
+  revalidateTag(IG_METRICS_TAG, 'max')
   revalidatePath('/generate')
   revalidatePath('/clients')
   return { ok: true, data: undefined }
