@@ -781,7 +781,6 @@ export type Database = {
           accounts_engaged: number | null
           client_id: string
           comments: number | null
-          fetched_at: string
           followers_count: number | null
           follows: number | null
           follows_count: number | null
@@ -811,7 +810,6 @@ export type Database = {
           accounts_engaged?: number | null
           client_id: string
           comments?: number | null
-          fetched_at?: string
           followers_count?: number | null
           follows?: number | null
           follows_count?: number | null
@@ -841,7 +839,6 @@ export type Database = {
           accounts_engaged?: number | null
           client_id?: string
           comments?: number | null
-          fetched_at?: string
           followers_count?: number | null
           follows?: number | null
           follows_count?: number | null
@@ -1514,6 +1511,8 @@ export type Database = {
           client_id: string | null
           created_at: string
           id: string
+          last_sync_at: string | null
+          last_sync_error: string | null
           platform: string
           refresh_token: string | null
           token_expires_at: string | null
@@ -1526,6 +1525,8 @@ export type Database = {
           client_id?: string | null
           created_at?: string
           id?: string
+          last_sync_at?: string | null
+          last_sync_error?: string | null
           platform: string
           refresh_token?: string | null
           token_expires_at?: string | null
@@ -1538,6 +1539,8 @@ export type Database = {
           client_id?: string | null
           created_at?: string
           id?: string
+          last_sync_at?: string | null
+          last_sync_error?: string | null
           platform?: string
           refresh_token?: string | null
           token_expires_at?: string | null

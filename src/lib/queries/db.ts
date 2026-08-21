@@ -198,16 +198,12 @@ export async function fetchIgConnectionState(
       .maybeSingle(),
     'fetchIgConnectionState'
   )
-  // as: the projection is known here but Supabase types the result from the table.
-  const row = data as {
-    account_id: string | null
-    last_sync_at: string | null
-    last_sync_error: string | null
-  } | null
+  // No cast: a literal select string over columns the generated types know does
+  // infer. The `as` this file warns about is for projections built from arrays.
   return {
-    accountId: row?.account_id ?? null,
-    lastSyncAt: row?.last_sync_at ?? null,
-    lastSyncError: row?.last_sync_error ?? null,
+    accountId: data?.account_id ?? null,
+    lastSyncAt: data?.last_sync_at ?? null,
+    lastSyncError: data?.last_sync_error ?? null,
   }
 }
 
