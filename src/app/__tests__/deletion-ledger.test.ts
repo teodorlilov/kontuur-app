@@ -42,6 +42,11 @@ describe('deleted files stay deleted', () => {
     'src/ai/research/search-for-idea.ts',
     'src/app/api/ai/generate-from-idea',
     'src/app/api/ideas/route.ts',
+    // The DELETE twin of disconnectConnection (connection-actions.ts): same
+    // ownership select, same cast, same delete, minus its revalidateTag — and
+    // zero callers. Kept the connection-delete sites at two instead of three,
+    // so "should disconnect purge analytics too?" has one place to be decided.
+    'src/app/api/meta/connections/[connectionId]/route.ts',
     'src/features/sources/lib/ensure-web-research-source.ts',
     'src/features/ideas/components/idea-card.tsx',
     'src/features/ideas/lib/cache.ts',

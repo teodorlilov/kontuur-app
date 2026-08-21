@@ -101,8 +101,9 @@ export function DeleteClientDialog({
       )}
 
       <p className="mt-3">
-        Every draft, image and generated visual goes too, including the files in storage. This
-        cannot be undone.
+        Every draft, image and generated visual goes too, including the files in storage — along
+        with the Instagram history synced for this client and any saved reports. Instagram cannot
+        return past days once an account is disconnected. This cannot be undone.
       </p>
 
       <label className="mt-5 block">

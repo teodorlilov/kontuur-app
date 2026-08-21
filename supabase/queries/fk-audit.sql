@@ -77,6 +77,15 @@ begin
   for spec in
     select * from (values
       ('analytics_reports',    'client_id', 'clients'),
+      -- Created after this file, by 20260822, with `on delete cascade` inline —
+      -- so they never needed the repair 20260820 performed. Listed anyway: this
+      -- query is what proves the Danger zone's promise against PRODUCTION, and
+      -- migrations here have never been CLI-tracked, so "the DDL says cascade"
+      -- and "prod cascades" are different claims. Skipped with a notice if
+      -- 20260822 has not landed.
+      ('ig_account_metrics',   'client_id', 'clients'),
+      ('ig_post_metrics',      'client_id', 'clients'),
+      ('ig_audience_snapshots','client_id', 'clients'),
       ('brand_image_bank',     'client_id', 'clients'),
       ('brand_profiles',       'client_id', 'clients'),
       ('brand_vector_bank',    'client_id', 'clients'),

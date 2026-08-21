@@ -202,7 +202,8 @@ export function ClientDangerRail({ onDelete }: { onDelete: () => void }) {
   return (
     <RailBox title="Danger zone">
       <RailText>
-        Deleting this client removes every post, source, connected account and stored image.
+        Deleting this client removes every post, source, connected account and stored image, along
+        with its whole Instagram history and saved reports.
       </RailText>
       <Button variant="danger" size="sm" className="mt-3 w-full" onClick={onDelete}>
         Delete client
