@@ -87,6 +87,12 @@ const _fetchAnalyticsReport = unstable_cache(
     // client can be reconnected to a different Instagram account. So every
     // query below claims ONLY rows stamped (migrations 20260825/20260826)
     // with the account id this client is connected to right now.
+    //
+    // The rows this hides no longer outlive the switch: the OAuth callback
+    // purges the superseded account's metrics, snapshots and stamped reports
+    // (purge-account-metrics.ts). Unreachable rows were never a history, and
+    // nothing could delete them. Published posts DO survive — they are the
+    // agency's own ledger, so the pin below still filters rather than assumes.
     const [accountRes, postRes, publishedRes, snapshotRes, latestRes] = await Promise.all([
       admin
         .from('ig_account_metrics')

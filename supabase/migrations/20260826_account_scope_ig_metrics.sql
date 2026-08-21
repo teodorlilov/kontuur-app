@@ -9,6 +9,14 @@
 -- The invariant: analytics may only ever show rows stamped with the account
 -- the client is connected to RIGHT NOW. A reconnect starts a new history
 -- beside the old one (account-aware uniqueness) instead of overwriting it.
+--
+-- SUPERSEDED 2026-08-21, for the half of that sentence this file got wrong.
+-- "Beside the old one" described rows no read could reach and no code could
+-- delete — an accumulation, not a history. The OAuth callback now purges the
+-- superseded account's rows on a switch (src/features/analytics/lib/
+-- purge-account-metrics.ts). The account-aware uniqueness below stays: it is
+-- what keeps a switch from colliding with the outgoing account's keys, and it
+-- is still what the invariant's first sentence rests on.
 
 alter table ig_account_metrics add column if not exists ig_account_id text;
 alter table ig_post_metrics add column if not exists ig_account_id text;
