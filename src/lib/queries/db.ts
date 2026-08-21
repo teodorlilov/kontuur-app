@@ -164,6 +164,34 @@ export async function fetchConnectionsByClient(
   return (data ?? []) as MetaConnection[]
 }
 
+/**
+ * The Instagram account this client is connected to RIGHT NOW — the scoping key
+ * every analytics read claims its rows by.
+ *
+ * Four call sites had each grown a copy of this query and disagreed three ways:
+ * `.eq` vs `.ilike` on a column thirteen other sites prove is lowercase, and
+ * `.maybeSingle()` without `.limit(1)`, which THROWS on a duplicate row instead
+ * of picking one. Two of the four also dropped the error, so a database outage
+ * read as "no Instagram connected".
+ */
+export async function fetchCurrentIgAccountId(
+  supabase: SupabaseClient,
+  clientId: string
+): Promise<string | null> {
+  const data = unwrap(
+    await supabase
+      .from('social_connections')
+      .select('account_id')
+      .eq('client_id', clientId)
+      .eq('platform', 'instagram')
+      .limit(1)
+      .maybeSingle(),
+    'fetchCurrentIgAccountId'
+  )
+  // as: the projection is known here but Supabase types the result from the table.
+  return (data as { account_id: string | null } | null)?.account_id ?? null
+}
+
 // ---------- language_rules ----------
 
 type LanguageRulesRow = {

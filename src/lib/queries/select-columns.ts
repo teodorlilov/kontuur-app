@@ -8,7 +8,7 @@
  * - If you add a column to a table, update the relevant constant here first.
  */
 
-import type { IGAccountMetricsRow, IGPostMetricsRow, PostRow } from '@/types'
+import type { IGAccountMetricsRow, IGPostMetricsRow, PostRow, SocialConnectionRow } from '@/types'
 
 /**
  * `[a, b, c]` joined by `D`, as a literal type rather than plain `string`.
@@ -201,6 +201,16 @@ export const SOCIAL_CONNECTION_COLUMNS =
  * to cover this would put a live token on every connections list.
  */
 export const SOCIAL_CONNECTION_AUTH_COLUMNS = 'account_id, access_token, token_expires_at'
+
+/**
+ * The AUTH_COLUMNS projection, as a type. Two callers hand-wrote this shape
+ * inline because the constant shipped without one — the same reason every
+ * metrics constant below carries a `Pick<…>` beside it.
+ */
+export type SocialConnectionAuthColumns = Pick<
+  SocialConnectionRow,
+  'account_id' | 'access_token' | 'token_expires_at'
+>
 
 /** The metrics cron's roster read — AUTH_COLUMNS plus the client to file rows under. */
 export const SOCIAL_CONNECTION_SYNC_COLUMNS = 'client_id, account_id, access_token'

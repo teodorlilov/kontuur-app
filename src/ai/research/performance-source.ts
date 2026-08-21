@@ -1,6 +1,8 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { PerformanceItem } from './types'
 import { IG_POST_METRIC_COLUMNS, type IGPostMetricColumns } from '@/lib/queries/select-columns'
+import { fetchCurrentIgAccountId } from '@/lib/queries/db'
+import { MS_PER_DAY } from '@/utils/constants'
 
 const PERFORMANCE_LOOKBACK_DAYS = 60
 const PERFORMANCE_TOP_N = 5
@@ -28,19 +30,10 @@ export async function fetchPerformanceItems(
     // Account-scoped like every metrics read: after a reconnect the pipeline
     // must not learn from the previous account's posts. No connection means
     // no performance source. (The catch below keeps the []-on-failure rule.)
-    const { data: connRow, error: connError } = await supabase
-      .from('social_connections')
-      .select('account_id')
-      .eq('client_id', clientId)
-      .eq('platform', 'instagram')
-      .maybeSingle()
-    if (connError) throw new Error(`connection read failed: ${connError.message}`)
-    const accountId = (connRow as { account_id: string | null } | null)?.account_id
+    const accountId = await fetchCurrentIgAccountId(supabase, clientId)
     if (!accountId) return []
 
-    const since = new Date(
-      Date.now() - PERFORMANCE_LOOKBACK_DAYS * 24 * 60 * 60 * 1000
-    ).toISOString()
+    const since = new Date(Date.now() - PERFORMANCE_LOOKBACK_DAYS * MS_PER_DAY).toISOString()
     const { data, error } = await supabase
       .from('ig_post_metrics')
       .select(IG_POST_METRIC_COLUMNS)

@@ -3,6 +3,7 @@ import { callAnthropic, LIGHT_MODEL } from '@/utils/ai-client'
 import { extractToolInput } from '@/utils/ai'
 import { sanitizePromptField, PROMPT_FIELD_LIMITS } from '@/ai/utils/sanitize'
 import { asJson } from '@/lib/queries/as-json'
+import { MS_PER_DAY } from '@/utils/constants'
 import { parseMemoBullets, type StyleMemoBullet } from '@/lib/learning/style-memo'
 import type { PostRow } from '@/types'
 
@@ -64,7 +65,7 @@ export function mergeMemo(
     merged.push({ rule, evidence_count: 1, last_seen: nowIso })
   }
 
-  const cutoff = new Date(nowIso).getTime() - BULLET_EXPIRY_DAYS * 86_400_000
+  const cutoff = new Date(nowIso).getTime() - BULLET_EXPIRY_DAYS * MS_PER_DAY
   return merged
     .filter((b) => new Date(b.last_seen).getTime() >= cutoff)
     .sort((a, b) => b.evidence_count - a.evidence_count)
@@ -131,7 +132,7 @@ export async function distillStyleMemo(
   if (
     opts.skipIfFresherThanDays &&
     memoRow?.updated_at &&
-    Date.now() - new Date(memoRow.updated_at).getTime() < opts.skipIfFresherThanDays * 86_400_000
+    Date.now() - new Date(memoRow.updated_at).getTime() < opts.skipIfFresherThanDays * MS_PER_DAY
   ) {
     return { updated: false, bulletCount: existingForSkip.length }
   }

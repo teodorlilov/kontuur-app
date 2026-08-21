@@ -22,6 +22,7 @@ import { getMondayISO } from '@/utils/date-helpers'
 import {
   BEST_TIME_REFRESH_DAYS,
   DEFAULT_CAROUSEL_SLIDES,
+  MS_PER_DAY,
   MS_PER_HOUR,
   STYLE_MEMO_REFRESH_DAYS,
 } from '@/utils/constants'
@@ -267,7 +268,7 @@ export async function GET(request: NextRequest) {
         const updatedAt = brandProfile?.best_time_updated_at
         const isStale =
           !updatedAt ||
-          Date.now() - new Date(updatedAt).getTime() > BEST_TIME_REFRESH_DAYS * 86_400_000
+          Date.now() - new Date(updatedAt).getTime() > BEST_TIME_REFRESH_DAYS * MS_PER_DAY
         if (isStale) {
           const bestTime = await generateBestTime({
             niche: clientRow.niche ?? 'General',

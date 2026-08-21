@@ -6,7 +6,7 @@ import { IG_TOKEN_REFRESH_URL } from '@/lib/meta/constants'
 import { classifyGraphError } from '@/lib/meta/graph-errors'
 import { igRefreshResponseSchema } from '@/lib/meta/schemas'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
-import { insertClientNotificationOnce } from './notifications'
+import { notifyAboutClient } from './notifications'
 
 interface ExpiringConnection {
   id: string
@@ -133,20 +133,14 @@ export async function refreshExpiringTokens(): Promise<RefreshTokensResult> {
 }
 
 /** Tell the agency a connection needs manual reconnection, at most once per cooldown. */
-async function notifyReconnectNeeded(
+function notifyReconnectNeeded(
   admin: ReturnType<typeof createAdminSupabaseClient>,
   clientId: string
 ): Promise<void> {
-  const { data: client, error: clientError } = await admin
-    .from('clients')
-    .select('name')
-    .eq('id', clientId)
-    .maybeSingle()
-  if (clientError) throw new Error(`client lookup failed: ${clientError.message}`)
-  if (!client) return
-  await insertClientNotificationOnce(
+  return notifyAboutClient(
     admin,
     clientId,
-    `Instagram connection for ${client.name} could not be refreshed — please reconnect the account`
+    (name) =>
+      `Instagram connection for ${name} could not be refreshed — please reconnect the account`
   )
 }

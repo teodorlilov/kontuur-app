@@ -2,8 +2,10 @@ import 'server-only'
 
 import { unstable_cache } from 'next/cache'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
+import { fetchCurrentIgAccountId } from '@/lib/queries/db'
 import { generateAnalyticsSummary } from '@/ai/analytics/generate-summary'
 import type { AnalyticsReportData } from './build-report'
+import { formatCount } from './format'
 import type { AnalyticsPeriod } from './period'
 import { getAnalyticsReport, IG_METRICS_TAG } from './report-data'
 
@@ -89,12 +91,12 @@ export function buildFallbackNarrative(data: AnalyticsReportData): string | null
       data.reach.deltaPct === null
         ? ''
         : ` (${data.reach.deltaPct >= 0 ? 'up' : 'down'} ${Math.abs(data.reach.deltaPct).toFixed(0)}% on the period before)`
-    parts.push(`Reach was ${data.reach.now.toLocaleString('en-US')}${delta}`)
+    parts.push(`Reach was ${formatCount(data.reach.now)}${delta}`)
   }
-  if (data.views.now !== null) parts.push(`views ${data.views.now.toLocaleString('en-US')}`)
+  if (data.views.now !== null) parts.push(`views ${formatCount(data.views.now)}`)
   if (data.followers.net.now !== null) {
     const net = data.followers.net.now
-    parts.push(`${net >= 0 ? '+' : ''}${net.toLocaleString('en-US')} followers net`)
+    parts.push(`${net >= 0 ? '+' : ''}${formatCount(net)} followers net`)
   }
   return `${parts.join(' · ')}.`
 }
@@ -145,14 +147,7 @@ const _fetchNarrative = unstable_cache(
       const admin = createAdminSupabaseClient()
       // Account-scoped like every analytics read: a report exported for a
       // previously connected account must never resurface its wording here.
-      const { data: connRow } = await admin
-        .from('social_connections')
-        .select('account_id')
-        .eq('client_id', clientId)
-        .ilike('platform', 'instagram')
-        .limit(1)
-        .maybeSingle()
-      const accountId = (connRow as { account_id: string | null } | null)?.account_id ?? null
+      const accountId = await fetchCurrentIgAccountId(admin, clientId)
       if (accountId) {
         const { data: archived, error } = await admin
           .from('analytics_reports')

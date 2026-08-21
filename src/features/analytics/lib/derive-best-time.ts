@@ -2,7 +2,8 @@ import 'server-only'
 
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { BestTimePlatform } from '@/lib/scheduling/schemas'
-import { MS_PER_DAY } from '@/utils/constants'
+import { fetchCurrentIgAccountId } from '@/lib/queries/db'
+import { MS_PER_DAY, WEEKDAY_LABELS } from '@/utils/constants'
 import { buildAudienceOnline, type AudienceOnline } from './build-report'
 
 /**
@@ -18,15 +19,6 @@ import { buildAudienceOnline, type AudienceOnline } from './build-report'
  */
 
 const OBSERVED_LOOKBACK_DAYS = 28
-const FULL_DAYS = [
-  'Monday',
-  'Tuesday',
-  'Wednesday',
-  'Thursday',
-  'Friday',
-  'Saturday',
-  'Sunday',
-] as const
 
 export interface ObservedBestTime {
   platforms: BestTimePlatform[]
@@ -40,7 +32,7 @@ export function bestTimeFromOnline(online: AudienceOnline): ObservedBestTime {
     .filter((day) => day.score > 0)
     .sort((a, b) => b.score - a.score)
     .slice(0, 3)
-    .map((day) => FULL_DAYS[day.weekday]!)
+    .map((day) => WEEKDAY_LABELS[day.weekday]!)
   const windows = Array.from({ length: 24 }, (_, hour) => ({
     hour,
     mean: online.grid.reduce((sum, row) => sum + row[hour]!, 0) / 7,
@@ -72,13 +64,7 @@ export async function deriveObservedBestTime(
   db: SupabaseClient,
   clientId: string
 ): Promise<ObservedBestTime | null> {
-  const { data: conn } = await db
-    .from('social_connections')
-    .select('account_id')
-    .eq('client_id', clientId)
-    .eq('platform', 'instagram')
-    .maybeSingle()
-  const accountId = (conn as { account_id: string | null } | null)?.account_id
+  const accountId = await fetchCurrentIgAccountId(db, clientId)
   if (!accountId) return null
 
   const { data: clientRow } = await db

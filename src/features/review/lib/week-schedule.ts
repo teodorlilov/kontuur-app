@@ -1,4 +1,5 @@
 import { getWeekRange } from '@/utils/date-helpers'
+import { DAYS_PER_WEEK, MS_PER_DAY } from '@/utils/constants'
 import type { PostStatus } from '@/lib/validation'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
@@ -22,7 +23,7 @@ export async function fetchWeekSchedule(
   const { from, to } = getWeekRange(weekStartISO)
   // Second week appended arithmetically; a DST hour at the boundary cannot
   // matter for day-granular occupancy.
-  const toEnd = new Date(new Date(to).getTime() + 7 * 86_400_000).toISOString()
+  const toEnd = new Date(new Date(to).getTime() + DAYS_PER_WEEK * MS_PER_DAY).toISOString()
 
   const { data, error } = await supabase
     .from('posts')

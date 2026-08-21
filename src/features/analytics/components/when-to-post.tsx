@@ -2,11 +2,12 @@
 
 import { useState } from 'react'
 import { cn } from '@/utils/cn'
+// The grid is Monday-first, which is what these two lists are; date-helpers'
+// Sunday-first table is for Date.getDay() indexing and must not be swapped in.
+import { WEEKDAY_LABELS, WEEKDAY_LABELS_SHORT } from '@/utils/constants'
 import type { AudienceOnline, PublishWindowBucket } from '../lib/build-report'
 import { formatCount } from '../lib/format'
 
-const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-const WEEKDAYS_FULL = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 /** A publish bucket may only editorialize from this many posts. */
 const MIN_BUCKET_POSTS = 3
 /** Below this the hour is treated as unmeasured, not as an empty hour. */
@@ -71,7 +72,7 @@ export function WhenToPost({
 
   const spoken = online
     ? `Heat grid of followers online by weekday and hour, your local time, averaged over ${online.sampleDays} days. From about ${formatCount(quietest)} at the quietest hour to about ${formatCount(busiest)} at the busiest. Busiest: ${online.peaks
-        .map((peak) => `${WEEKDAYS[peak.weekday]} ${hourLabel(peak.hour)}`)
+        .map((peak) => `${WEEKDAY_LABELS_SHORT[peak.weekday]} ${hourLabel(peak.hour)}`)
         .join(', ')}.`
     : 'Followers-online data is still collecting.'
 
@@ -95,7 +96,7 @@ export function WhenToPost({
               {hover && reading !== null ? (
                 <>
                   <span className="font-medium text-ink">
-                    {WEEKDAYS_FULL[hover.weekday]} {hourLabel(hover.hour)}
+                    {WEEKDAY_LABELS[hover.weekday]} {hourLabel(hover.hour)}
                   </span>
                   <span className="text-text2">
                     {reading > NO_DATA
@@ -111,7 +112,9 @@ export function WhenToPost({
                   <span className="text-text3">Busiest</span>
                   <span className="font-medium text-ink">
                     {online.peaks
-                      .map((peak) => `${WEEKDAYS[peak.weekday]} ${hourLabel(peak.hour)}`)
+                      .map(
+                        (peak) => `${WEEKDAY_LABELS_SHORT[peak.weekday]} ${hourLabel(peak.hour)}`
+                      )
                       .join(' · ')}
                   </span>
                 </>
@@ -123,8 +126,10 @@ export function WhenToPost({
               onPointerLeave={() => setHover(null)}
             >
               {online.grid.map((row, weekday) => (
-                <div key={WEEKDAYS[weekday]} className="flex items-center gap-2">
-                  <span className="w-8 flex-none text-micro text-text3">{WEEKDAYS[weekday]}</span>
+                <div key={WEEKDAY_LABELS_SHORT[weekday]} className="flex items-center gap-2">
+                  <span className="w-8 flex-none text-micro text-text3">
+                    {WEEKDAY_LABELS_SHORT[weekday]}
+                  </span>
                   <div className="flex flex-1 gap-[2px]">
                     {row.map((avg, hour) => {
                       const isPeak = peakKeys.has(`${weekday}:${hour}`)

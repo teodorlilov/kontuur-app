@@ -8,7 +8,11 @@ import type { ActionResult } from '@/lib/actions/types'
 import type { Json } from '@/types'
 import { getCachedAgency } from '@/lib/queries/cache'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
-import { SOCIAL_CONNECTION_AUTH_COLUMNS } from '@/lib/queries/select-columns'
+import {
+  SOCIAL_CONNECTION_AUTH_COLUMNS,
+  type SocialConnectionAuthColumns,
+} from '@/lib/queries/select-columns'
+import { fetchCurrentIgAccountId } from '@/lib/queries/db'
 import { isTokenExpired } from '@/lib/meta/token-expiry'
 import { toDateKey } from '@/utils/date-helpers'
 import { archiveReportInputSchema, type ArchiveReportInput } from '../schemas'
@@ -94,14 +98,7 @@ export async function archiveReport(input: ArchiveReportInput): Promise<ActionRe
 
   // The archive row is stamped with the account it describes — the account
   // scoping invariant applies to exported reports like every other read.
-  // WHY as: the auth-scoped client is untyped here, so the projection does not infer.
-  const { data: connRow } = (await scope.supabase
-    .from('social_connections')
-    .select('account_id')
-    .eq('client_id', scope.client.id)
-    .eq('platform', 'instagram')
-    .maybeSingle()) as { data: { account_id: string | null } | null }
-  const accountId = connRow?.account_id ?? null
+  const accountId = await fetchCurrentIgAccountId(scope.supabase, scope.client.id)
   if (!accountId) {
     return { ok: false, error: 'Connect Instagram before exporting a report' }
   }
@@ -147,13 +144,7 @@ export async function fillPeriodData(
     .select(SOCIAL_CONNECTION_AUTH_COLUMNS)
     .eq('client_id', scope.client.id)
     .eq('platform', 'instagram')
-    .maybeSingle()) as {
-    data: {
-      account_id: string | null
-      access_token: string | null
-      token_expires_at: string | null
-    } | null
-  }
+    .maybeSingle()) as { data: SocialConnectionAuthColumns | null }
   if (
     !connection?.account_id ||
     !connection.access_token ||
@@ -204,13 +195,7 @@ export async function ensureAudienceSnapshot(
     .select(SOCIAL_CONNECTION_AUTH_COLUMNS)
     .eq('client_id', scope.client.id)
     .eq('platform', 'instagram')
-    .maybeSingle()) as {
-    data: {
-      account_id: string | null
-      access_token: string | null
-      token_expires_at: string | null
-    } | null
-  }
+    .maybeSingle()) as { data: SocialConnectionAuthColumns | null }
   if (
     !connection?.account_id ||
     !connection.access_token ||

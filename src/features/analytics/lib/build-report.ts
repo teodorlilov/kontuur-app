@@ -5,6 +5,8 @@ import type {
   PublishedPostPinColumns,
 } from '@/lib/queries/select-columns'
 import { toDateKey, zonedTimeToInstant } from '@/utils/date-helpers'
+import { parseTimestamp } from '@/utils/format'
+import { WEEKDAY_LABELS_SHORT } from '@/utils/constants'
 import { RATE_BASE_FLOOR } from './delta-verdict'
 import { formatCount } from './format'
 import { periodDayKeys, type AnalyticsPeriod } from './period'
@@ -476,11 +478,6 @@ function buildAudience(
 /** Kontuur's post_type vocabulary mapped onto Instagram's media_type chips. */
 const APP_MEDIA_TYPE: Record<string, string> = { carousel: 'CAROUSEL_ALBUM' }
 
-/** posts.published_at is a naive UTC timestamp — anchor it before parsing. */
-function instantMs(iso: string): number {
-  return new Date(/[zZ]|[+-]\d{2}:?\d{2}$/.test(iso) ? iso : `${iso}Z`).getTime()
-}
-
 /**
  * The agency-calendar day a timestamp falls on. The period's day keys are
  * resolved in the agency's clock, so reading the UTC prefix off an instant put
@@ -491,8 +488,10 @@ function instantMs(iso: string): number {
  */
 function dayKeyOf(iso: string | null, timezone: string): string | null {
   if (!iso) return null
-  const ms = instantMs(iso)
-  return Number.isNaN(ms) ? null : toDateKey(new Date(ms), timezone)
+  // parseTimestamp, not `new Date(iso)`: posts.published_at is a naive UTC
+  // timestamp, which JS would otherwise read in the runtime's zone.
+  const date = parseTimestamp(iso)
+  return Number.isNaN(date.getTime()) ? null : toDateKey(date, timezone)
 }
 
 /** A sync this much newer than a publish had every chance to see the media. */
@@ -543,7 +542,9 @@ function buildPosts(
     if (post.ig_media_id && knownMedia.has(post.ig_media_id)) continue
     if (knownPostIds.has(post.id)) continue
     const syncSawIt =
-      lastSyncAt !== null && instantMs(lastSyncAt) - instantMs(post.published_at) > SYNC_GRACE_MS
+      lastSyncAt !== null &&
+      parseTimestamp(lastSyncAt).getTime() - parseTimestamp(post.published_at).getTime() >
+        SYNC_GRACE_MS
     posts.push({
       igMediaId: post.ig_media_id ?? `post-${post.id}`,
       postId: post.id,
@@ -571,15 +572,14 @@ function buildPosts(
 
 /** The hourly picture may only speak after this many sampled days. */
 const MIN_ONLINE_DAYS = 5
-const WEEKDAY_INDEX: Record<string, number> = {
-  Mon: 0,
-  Tue: 1,
-  Wed: 2,
-  Thu: 3,
-  Fri: 4,
-  Sat: 5,
-  Sun: 6,
-}
+/**
+ * `weekday: 'short'` output → the grid's Monday-first row index. Derived from
+ * the shared list rather than restated: a private copy is free to disagree with
+ * the labels when-to-post renders the same rows under.
+ */
+const WEEKDAY_INDEX: Record<string, number> = Object.fromEntries(
+  WEEKDAY_LABELS_SHORT.map((label, index) => [label, index])
+)
 
 /**
  * Aggregates the per-day hourly follower-online maps into an agency-local
@@ -661,7 +661,7 @@ function buildPublishWindows(
     if (post.missing !== null || !post.postedAt || post.reach === null) continue
     // Anchored, not `new Date(iso)`: a naive timestamp would otherwise parse in
     // the runtime's zone rather than UTC, which is a different hour entirely.
-    const hour = Number(hourFmt.format(new Date(instantMs(post.postedAt))))
+    const hour = Number(hourFmt.format(parseTimestamp(post.postedAt)))
     if (!Number.isInteger(hour)) continue
     const part = DAYPARTS.find((candidate) => candidate.match(hour))
     if (!part) continue

@@ -13,9 +13,10 @@ import {
 import type { InstagramConnection } from './types'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { SOCIAL_CONNECTION_AUTH_COLUMNS } from '@/lib/queries/select-columns'
+import { MS_PER_DAY } from '@/utils/constants'
 
 /** How far back a due post is still worth publishing. Older posts are marked failed so they surface. */
-const PUBLISH_WINDOW_MS = 24 * 60 * 60 * 1000
+const PUBLISH_WINDOW_MS = MS_PER_DAY
 /**
  * A claim this old belongs to a killed run — safe to reclaim. Measured from
  * publish_claimed_at, never from the slot: a run lives at most 300s

@@ -18,10 +18,10 @@ import {
   fetchReachByProductType,
   type IGDemographics,
 } from '@/lib/meta/insights'
-import { insertClientNotificationOnce } from '@/features/publishing/lib/notifications'
+import { notifyAboutClient } from '@/features/publishing/lib/notifications'
 import { asJson } from '@/lib/queries/as-json'
 import { SOCIAL_CONNECTION_SYNC_COLUMNS } from '@/lib/queries/select-columns'
-import { MS_PER_DAY } from '@/utils/constants'
+import { MS_PER_DAY, SECONDS_PER_DAY } from '@/utils/constants'
 import { shiftDateKey } from '@/utils/date-helpers'
 import { deriveObservedBestTime } from './derive-best-time'
 
@@ -35,7 +35,6 @@ import { deriveObservedBestTime } from './derive-best-time'
 const DEMOGRAPHICS_REFRESH_DAYS = 7
 const BACKFILL_DAYS = 30
 const MEDIA_LOOKBACK_DAYS = 30
-const SECONDS_PER_DAY = 86_400
 /**
  * Meta keeps consolidating a day's numbers after it ends (late-counted views,
  * spam removal). Each night the sync re-captures this many finished days, so
@@ -668,43 +667,25 @@ export async function syncDemographicsWeekly(
   if (upsertError) throw new Error(`ig_audience_snapshots upsert failed: ${upsertError.message}`)
 }
 
-/** Tell the agency the metrics sync is blocked on a dead or underscoped connection. */
 /**
  * The half-failure alert. Deliberately phrase-stable rather than naming the
  * failing phase: the message IS the dedup key, so a wording that changes with
  * the error would re-notify every night. The phase detail lives in
  * last_sync_error, which the analytics document reads.
  */
-async function notifySyncIncomplete(admin: SupabaseClient, clientId: string): Promise<void> {
-  const { data: client, error } = await admin
-    .from('clients')
-    .select('name')
-    .eq('id', clientId)
-    .maybeSingle()
-  if (error) throw new Error(`client lookup failed: ${error.message}`)
-  if (!client) return
-  // WHY as: the shared SupabaseClient param is untyped, so the projection does not infer.
-  const { name } = client as { name: string }
-  await insertClientNotificationOnce(
+function notifySyncIncomplete(admin: SupabaseClient, clientId: string): Promise<void> {
+  return notifyAboutClient(
     admin,
     clientId,
-    `Analytics for ${name} did not finish syncing — some sections are out of date`
+    (name) => `Analytics for ${name} did not finish syncing — some sections are out of date`
   )
 }
 
-async function notifyMetricsBlocked(admin: SupabaseClient, clientId: string): Promise<void> {
-  const { data: client, error } = await admin
-    .from('clients')
-    .select('name')
-    .eq('id', clientId)
-    .maybeSingle()
-  if (error) throw new Error(`client lookup failed: ${error.message}`)
-  if (!client) return
-  // WHY as: the shared SupabaseClient param is untyped, so the projection does not infer.
-  const { name } = client as { name: string }
-  await insertClientNotificationOnce(
+/** Tell the agency the metrics sync is blocked on a dead or underscoped connection. */
+function notifyMetricsBlocked(admin: SupabaseClient, clientId: string): Promise<void> {
+  return notifyAboutClient(
     admin,
     clientId,
-    `Instagram metrics for ${name} could not be synced — please reconnect the account`
+    (name) => `Instagram metrics for ${name} could not be synced — please reconnect the account`
   )
 }

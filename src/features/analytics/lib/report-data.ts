@@ -3,6 +3,7 @@ import 'server-only'
 import { cache } from 'react'
 import { unstable_cache } from 'next/cache'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
+import { fetchCurrentIgAccountId } from '@/lib/queries/db'
 import {
   IG_ACCOUNT_METRIC_COLUMNS,
   IG_AUDIENCE_SNAPSHOT_COLUMNS,
@@ -202,15 +203,7 @@ export const getAnalyticsReport = cache(
     period: AnalyticsPeriod,
     timezone: string
   ): Promise<AnalyticsReportData> => {
-    const admin = createAdminSupabaseClient()
-    const { data: connRow } = await admin
-      .from('social_connections')
-      .select('account_id')
-      .eq('client_id', clientId)
-      .ilike('platform', 'instagram')
-      .limit(1)
-      .maybeSingle()
-    const accountId = (connRow as { account_id: string | null } | null)?.account_id ?? null
+    const accountId = await fetchCurrentIgAccountId(createAdminSupabaseClient(), clientId)
     if (!accountId) return emptyReport(period, timezone)
 
     return _fetchAnalyticsReport(
