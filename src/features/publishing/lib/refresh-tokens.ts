@@ -3,7 +3,7 @@ import 'server-only'
 import { REFRESH_WINDOW_DAYS } from '@/lib/meta/token-expiry'
 import { MS_PER_DAY } from '@/utils/constants'
 import { IG_TOKEN_REFRESH_URL } from '@/lib/meta/constants'
-import { classifyGraphError } from '@/lib/meta/graph-errors'
+import { classifyGraphError, type GraphFailure } from '@/lib/meta/graph-errors'
 import { igRefreshResponseSchema } from '@/lib/meta/schemas'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { notifyAboutClient } from './notifications'
@@ -21,6 +21,19 @@ interface RefreshTokensResult {
   /** Connections whose token Meta rejected outright — retired, reconnect required. */
   retired: number
   errors: string[]
+}
+
+/**
+ * Does this refresh failure mean the credential is dead?
+ *
+ * The whole branch hangs off this, and both halves matter. A dead token must be
+ * retired and the agency told, because nothing resolves it but a reconnect. A
+ * transient or rate-limited answer must do NEITHER: the token is fine, tomorrow
+ * fixes it, and telling someone to reconnect a working account is a false alarm
+ * they cannot act on.
+ */
+export function isTokenRetirable(failure: GraphFailure): boolean {
+  return failure === 'token_invalid' || failure === 'permission'
 }
 
 /**
@@ -95,7 +108,7 @@ export async function refreshExpiringTokens(): Promise<RefreshTokensResult> {
         fbtraceId: null,
       })
 
-      if (failure === 'token_invalid' || failure === 'permission') {
+      if (isTokenRetirable(failure)) {
         // Retire the credential: keeping a dead token makes every publish and
         // metrics call fail with the same 190 until someone reconnects.
         const { error: retireError } = await admin
@@ -108,20 +121,27 @@ export async function refreshExpiringTokens(): Promise<RefreshTokensResult> {
           )
         }
         results.retired++
-      } else {
-        // Transient / rate-limited: leave the token for tomorrow's run.
-        results.failed++
-      }
-      results.errors.push(body.error?.message ?? `HTTP ${res.status}`)
+        results.errors.push(body.error?.message ?? `HTTP ${res.status}`)
 
-      // Scoped catch: a failed notification is its own problem, and letting it
-      // reach the outer handler would count this connection as failed twice.
-      try {
-        await notifyReconnectNeeded(admin, conn.client_id)
-      } catch (notifyErr) {
-        results.errors.push(
-          notifyErr instanceof Error ? notifyErr.message : 'reconnect notification failed'
-        )
+        // Only a retired credential earns the alert. It used to fire here for
+        // every failure, so a Meta 500 or a rate limit told the agency their
+        // connection was broken and asked them to reconnect a token that was
+        // fine and would refresh on its own tomorrow.
+        //
+        // Scoped catch: a failed notification is its own problem, and letting
+        // it reach the outer handler would count this connection twice.
+        try {
+          await notifyReconnectNeeded(admin, conn.client_id)
+        } catch (notifyErr) {
+          results.errors.push(
+            notifyErr instanceof Error ? notifyErr.message : 'reconnect notification failed'
+          )
+        }
+      } else {
+        // Transient / rate-limited: leave the token for tomorrow's run, and say
+        // nothing — there is nothing for anyone to do about it.
+        results.failed++
+        results.errors.push(body.error?.message ?? `HTTP ${res.status}`)
       }
     } catch (err) {
       results.failed++
