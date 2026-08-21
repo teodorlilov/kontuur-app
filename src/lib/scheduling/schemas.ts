@@ -49,6 +49,22 @@ const bestTimePlatformSchema = z.object({
 export type BestTimePlatform = z.infer<typeof bestTimePlatformSchema>
 
 /**
+ * The column holds `{ platforms: [...], upgrade_note }` — both writers have always
+ * wrapped it, and every reader has always passed the whole column. This accepted only
+ * the bare array, so `z.array(...).safeParse({ platforms })` failed on an object that
+ * is not an array, and EVERY client's suggestions resolved to null. The calendar's
+ * designed response to unusable data is to draw nothing, so the feature was simply
+ * off, everywhere, silently, and looked exactly like a client with no data.
+ *
+ * A bare array still parses: the tests below were written against that shape, and
+ * accepting both is what makes the fix independent of which writer produced a row.
+ */
+const storedBestTimesSchema = z.union([
+  z.array(bestTimePlatformSchema),
+  z.object({ platforms: z.array(bestTimePlatformSchema) }),
+])
+
+/**
  * Parse a stored `best_time_json` blob into usable entries.
  *
  * Returns `null` for anything unusable rather than throwing: the calendar's answer to
@@ -56,10 +72,11 @@ export type BestTimePlatform = z.infer<typeof bestTimePlatformSchema>
  * quiet outcome instead of taking the grid down.
  */
 export function parseBestTimes(value: unknown): BestTimePlatform[] | null {
-  const result = z.array(bestTimePlatformSchema).safeParse(value)
-  if (!result.success || result.data.length === 0) return null
+  const result = storedBestTimesSchema.safeParse(value)
+  if (!result.success) return null
   // Returned as parsed. This used to be `as BestTimePlatform[]`, which was not a narrowing but a
   // widening — the parsed rows and the hand-written interface were different shapes, and the cast
   // was the only thing making them agree.
-  return result.data
+  const entries = Array.isArray(result.data) ? result.data : result.data.platforms
+  return entries.length === 0 ? null : entries
 }

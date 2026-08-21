@@ -1,3 +1,4 @@
+import { parseBestTimes } from '../schemas'
 import { describe, it, expect } from 'vitest'
 import { pickNextOpenSlot, suggestionPlatform, suggestWeekSlots } from '../slot-picker'
 import { formatScheduledAt } from '@/utils/date-helpers'
@@ -223,5 +224,55 @@ describe('suggestionPlatform', () => {
       timeZone: TZ,
     })
     expect(slots).toEqual([formatScheduledAt('2026-08-06', '18:00', TZ)])
+  })
+})
+
+/**
+ * End to end from the column to the grid, on the blob brand_profiles actually
+ * holds. This is the pairing that was broken: the parse returned null for every
+ * stored row, so the picker had nothing to work from and the calendar drew no
+ * suggestions for anyone.
+ */
+describe('from the stored column to the week grid', () => {
+  const STORED = {
+    platforms: [
+      {
+        platform: 'Instagram',
+        best_days: ['Tuesday', 'Wednesday', 'Thursday'],
+        best_time_windows: [{ time: '16:00' }, { time: '17:00' }, { time: '22:00' }],
+        confidence: 'observed',
+        reasoning_summary: "Derived from Instagram's hourly follower-online counts.",
+      },
+    ],
+    upgrade_note: 'Refreshed nightly from observed follower activity.',
+  }
+
+  it('yields a slot per best day per window', () => {
+    const slots = suggestWeekSlots({
+      platform: 'Instagram',
+      bestTimes: parseBestTimes(STORED),
+      weekStartISO: '2026-08-17',
+      timeZone: 'Europe/Sofia',
+    })
+    // Three days, three windows. It was 0 while the wrapper failed to parse.
+    expect(slots).toHaveLength(9)
+    expect(slots[0]).toContain('2026-08-18')
+    expect(new Set(slots.map((iso) => iso.slice(0, 10)))).toEqual(
+      new Set(['2026-08-18', '2026-08-19', '2026-08-20'])
+    )
+  })
+
+  it('draws nothing for a row whose windows are ranges — unchanged, and deliberate', () => {
+    const ranged = {
+      platforms: [{ ...STORED.platforms[0]!, best_time_windows: [{ time: '19:00-21:00' }] }],
+    }
+    expect(
+      suggestWeekSlots({
+        platform: 'Instagram',
+        bestTimes: parseBestTimes(ranged),
+        weekStartISO: '2026-08-17',
+        timeZone: 'Europe/Sofia',
+      })
+    ).toEqual([])
   })
 })

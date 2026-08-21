@@ -57,4 +57,34 @@ describe('the parsed type is the stored type', () => {
     expect(parsed![0]!.avoid).toBeUndefined()
     expect(parsed![0]!.best_time_windows[0]!.label).toBeUndefined()
   })
+
+  /**
+   * The shape the column ACTUALLY holds. Every writer wraps the array in
+   * `{ platforms, upgrade_note }` and every reader passes the whole column, but
+   * this only accepted a bare array — so every client's suggestions parsed to
+   * null and the calendar drew no slots at all. The suite stayed green because
+   * it only ever fed the function the inner array, which no call site has.
+   */
+  it('accepts the wrapper the column actually stores', () => {
+    const stored = { platforms: valid, upgrade_note: 'Refreshed nightly.' }
+    expect(parseBestTimes(stored)).toHaveLength(1)
+    expect(parseBestTimes(stored)![0]!.best_time_windows[0]!.time).toBe('18:00')
+  })
+
+  it('still accepts a bare array, so neither writer depends on the other', () => {
+    expect(parseBestTimes(valid)).toHaveLength(1)
+  })
+
+  it('rejects a wrapper whose entries are malformed, not just a malformed wrapper', () => {
+    // The model writes time RANGES ("19:00-21:00"), which fail HH:MM. Those rows
+    // stay dark on purpose until they regenerate — absent data becomes absence.
+    const ranged = {
+      platforms: [{ ...valid[0], best_time_windows: [{ time: '19:00-21:00' }] }],
+    }
+    expect(parseBestTimes(ranged)).toBeNull()
+  })
+
+  it('treats an empty platforms array as nothing stored', () => {
+    expect(parseBestTimes({ platforms: [] })).toBeNull()
+  })
 })
