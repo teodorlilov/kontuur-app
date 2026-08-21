@@ -12,7 +12,7 @@ import {
   SOCIAL_CONNECTION_AUTH_COLUMNS,
   type SocialConnectionAuthColumns,
 } from '@/lib/queries/select-columns'
-import { fetchCurrentIgAccountId } from '@/lib/queries/db'
+import { fetchIgConnectionState } from '@/lib/queries/db'
 import { isTokenExpired } from '@/lib/meta/token-expiry'
 import { toDateKey } from '@/utils/date-helpers'
 import { archiveReportInputSchema, type ArchiveReportInput } from '../schemas'
@@ -98,7 +98,7 @@ export async function archiveReport(input: ArchiveReportInput): Promise<ActionRe
 
   // The archive row is stamped with the account it describes — the account
   // scoping invariant applies to exported reports like every other read.
-  const accountId = await fetchCurrentIgAccountId(scope.supabase, scope.client.id)
+  const { accountId } = await fetchIgConnectionState(scope.supabase, scope.client.id)
   if (!accountId) {
     return { ok: false, error: 'Connect Instagram before exporting a report' }
   }

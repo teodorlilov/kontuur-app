@@ -44,7 +44,6 @@ function accountRow(overrides: Partial<IGAccountMetricColumns>): IGAccountMetric
     interactions_by_media_product_type: null,
     link_taps_by_button_type: null,
     online_followers_by_hour: null,
-    fetched_at: '2026-08-19T03:30:00Z',
     ...overrides,
   }
 }

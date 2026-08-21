@@ -36,9 +36,9 @@ interface AnalyticsViewProps {
   hasConnection: boolean
   timezone: string
   /**
-   * When the numbers were last true. The page prefers the cron's own stamp and
-   * falls back to the report's max(fetched_at), which the on-demand refill also
-   * writes — so this is not `data.lastSyncAt`.
+   * The last sync ATTEMPT, from the cron's own stamp — clean or not, since this
+   * line's copy says which. Deliberately not `data.lastSyncAt`, which only a
+   * clean run may date because it decides whether a post reads "removed".
    */
   lastSyncAt: string | null
   /** The last nightly run's verdict — null after a clean one. */

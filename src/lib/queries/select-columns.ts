@@ -238,7 +238,6 @@ export const IG_ACCOUNT_METRIC_KEYS = [
   'interactions_by_media_product_type',
   'link_taps_by_button_type',
   'online_followers_by_hour',
-  'fetched_at',
 ] as const satisfies readonly (keyof IGAccountMetricsRow)[]
 
 export const IG_ACCOUNT_METRIC_COLUMNS = IG_ACCOUNT_METRIC_KEYS.join(', ') as Join<

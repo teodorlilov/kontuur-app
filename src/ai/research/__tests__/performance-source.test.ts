@@ -39,7 +39,7 @@ function makeSupabase(
     from: (table: string) => {
       if (table === 'social_connections') {
         return {
-          // Shape mirrors fetchCurrentIgAccountId: .limit(1) before .maybeSingle(),
+          // Shape mirrors fetchIgConnectionState: .limit(1) before .maybeSingle(),
           // so a duplicate connection row picks one instead of throwing.
           select: () => ({
             eq: () => ({

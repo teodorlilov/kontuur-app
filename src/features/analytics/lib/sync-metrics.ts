@@ -97,9 +97,9 @@ export async function syncAllClientMetrics(
       outcome.failed++
       const message = err instanceof Error ? err.message : 'unknown error'
       outcome.errors.push({ clientId: connection.client_id, error: message })
-      // The verdict outlives the run: without it the page reads a fresh
-      // max(fetched_at) — which the on-demand refill also writes — and tells
-      // the reader everything is current while a phase has been failing.
+      // The verdict outlives the run. The page dated itself from the day
+      // rows before this existed — a stamp the on-demand refill also wrote —
+      // and so called a sync current while a phase had been failing nightly.
       await recordSyncHealth(admin, connection.client_id, message)
       if (err instanceof GraphApiError) {
         if (err.failure === 'token_invalid' || err.failure === 'permission') {
@@ -335,7 +335,6 @@ export async function captureDayTotals(
     link_taps_by_button_type: linkTaps.byButton,
     reach_by_media_product_type: reachByType,
     interactions_by_media_product_type: interactionsByType,
-    fetched_at: new Date().toISOString(),
     // Asked, whatever came back — the refill never re-spends on this day.
     totals_synced_at: new Date().toISOString(),
   }
@@ -477,7 +476,6 @@ async function syncAccountDay(
     reach_by_media_product_type: reachByType,
     interactions_by_media_product_type: interactionsByType,
     link_taps_by_button_type: linkTaps.byButton,
-    fetched_at: new Date().toISOString(),
     // The day's totals were asked, whatever came back — the refill marker.
     totals_synced_at: new Date().toISOString(),
   }

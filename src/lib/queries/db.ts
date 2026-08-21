@@ -164,32 +164,51 @@ export async function fetchConnectionsByClient(
   return (data ?? []) as MetaConnection[]
 }
 
+/** One client's Instagram connection, as everything downstream of it needs it. */
+export interface IgConnectionState {
+  accountId: string | null
+  /** End of the last metrics sync ATTEMPT (migration 20260828), clean or not. */
+  lastSyncAt: string | null
+  /** Null after a run that completed every phase; the failing phases otherwise. */
+  lastSyncError: string | null
+}
+
 /**
- * The Instagram account this client is connected to RIGHT NOW — the scoping key
- * every analytics read claims its rows by.
+ * The Instagram connection this client is on RIGHT NOW — the account id every
+ * analytics read scopes its rows by, plus the cron's verdict on the last run.
  *
- * Four call sites had each grown a copy of this query and disagreed three ways:
+ * Six call sites had each grown a copy of this query and disagreed three ways:
  * `.eq` vs `.ilike` on a column thirteen other sites prove is lowercase, and
  * `.maybeSingle()` without `.limit(1)`, which THROWS on a duplicate row instead
- * of picking one. Two of the four also dropped the error, so a database outage
- * read as "no Instagram connected".
+ * of picking one. Two also dropped the error, so an outage read as "no Instagram
+ * connected". Callers that want only the account id destructure only that — one
+ * row either way, and one shape to keep true.
  */
-export async function fetchCurrentIgAccountId(
+export async function fetchIgConnectionState(
   supabase: SupabaseClient,
   clientId: string
-): Promise<string | null> {
+): Promise<IgConnectionState> {
   const data = unwrap(
     await supabase
       .from('social_connections')
-      .select('account_id')
+      .select('account_id, last_sync_at, last_sync_error')
       .eq('client_id', clientId)
       .eq('platform', 'instagram')
       .limit(1)
       .maybeSingle(),
-    'fetchCurrentIgAccountId'
+    'fetchIgConnectionState'
   )
   // as: the projection is known here but Supabase types the result from the table.
-  return (data as { account_id: string | null } | null)?.account_id ?? null
+  const row = data as {
+    account_id: string | null
+    last_sync_at: string | null
+    last_sync_error: string | null
+  } | null
+  return {
+    accountId: row?.account_id ?? null,
+    lastSyncAt: row?.last_sync_at ?? null,
+    lastSyncError: row?.last_sync_error ?? null,
+  }
 }
 
 // ---------- language_rules ----------

@@ -5,9 +5,10 @@ import { SyncLine } from '../components/sync-line'
 const NOW = new Date().toISOString()
 
 describe('SyncLine', () => {
-  it('says the run did not finish and names the phases — even when fetched_at looks fresh', () => {
+  it('says the run did not finish and names the phases — even when the stamp looks fresh', () => {
     // The exact shape syncClientMetrics throws. lastSyncAt is current because
-    // the on-demand refill stamps fetched_at too: the freshness alone lied.
+    // recordSyncHealth stamps every ATTEMPT: the freshness alone never said
+    // whether the run finished.
     render(
       <SyncLine
         lastSyncAt={NOW}
@@ -42,8 +43,8 @@ describe('SyncLine', () => {
 
   it('calls a clean-but-old run stale', () => {
     // Reachable only now that the page feeds social_connections.last_sync_at.
-    // While this read max(fetched_at), any on-demand refill re-stamped it and
-    // a cron that had not fired for a week still reported "Synced nightly".
+    // While this was dated from the day rows, any on-demand refill re-stamped
+    // it and a cron that had not fired for a week still said "Synced nightly".
     const threeNightsAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString()
     render(
       <SyncLine

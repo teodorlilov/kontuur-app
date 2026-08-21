@@ -1,7 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { PerformanceItem } from './types'
 import { IG_POST_METRIC_COLUMNS, type IGPostMetricColumns } from '@/lib/queries/select-columns'
-import { fetchCurrentIgAccountId } from '@/lib/queries/db'
+import { fetchIgConnectionState } from '@/lib/queries/db'
 import { MS_PER_DAY } from '@/utils/constants'
 
 const PERFORMANCE_LOOKBACK_DAYS = 60
@@ -30,7 +30,7 @@ export async function fetchPerformanceItems(
     // Account-scoped like every metrics read: after a reconnect the pipeline
     // must not learn from the previous account's posts. No connection means
     // no performance source. (The catch below keeps the []-on-failure rule.)
-    const accountId = await fetchCurrentIgAccountId(supabase, clientId)
+    const { accountId } = await fetchIgConnectionState(supabase, clientId)
     if (!accountId) return []
 
     const since = new Date(Date.now() - PERFORMANCE_LOOKBACK_DAYS * MS_PER_DAY).toISOString()

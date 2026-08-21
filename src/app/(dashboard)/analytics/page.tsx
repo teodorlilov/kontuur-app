@@ -1,7 +1,7 @@
 import { requireSessionUser } from '@/lib/auth/session'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { getCachedAgency, getCachedAgencyClients } from '@/lib/queries/cache'
-import { fetchConnectionsByClient } from '@/lib/queries/db'
+import { fetchConnectionsByClient, fetchIgConnectionState } from '@/lib/queries/db'
 import { PageHeader } from '@/components/layout/page-header/page-header'
 import { PAGE_SHELL } from '@/components/layout/page-header/shared'
 import { Card } from '@/components/ui/card'
@@ -80,22 +80,10 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
   // client is connected to right now.
   const connections = await fetchConnectionsByClient(supabase, clientId)
   const accountId = connections[0]?.account_id ?? null
-  // The nightly sync's own verdict (migration 20260828), read separately so a
-  // pre-migration deploy degrades to the old quieter line instead of failing
-  // the page. Without it the closing line reads max(fetched_at) — which the
-  // refill also stamps — and calls a half-failing sync current.
-  const syncHealth = await supabase
-    .from('social_connections')
-    .select('last_sync_at, last_sync_error')
-    .eq('client_id', clientId)
-    .eq('platform', 'instagram')
-    .maybeSingle()
-  // WHY as: the server client is untyped for this projection, so it does not infer.
-  const health = syncHealth.data as {
-    last_sync_at: string | null
-    last_sync_error: string | null
-  } | null
-  const syncError = health?.last_sync_error ?? null
+  // The nightly sync's own verdict (migration 20260828). The closing line used
+  // to read max(fetched_at), which the on-demand refill also stamped, so a sync
+  // that had been failing for nights still reported itself as freshly landed.
+  const { lastSyncAt, lastSyncError } = await fetchIgConnectionState(supabase, clientId)
   const [data, archiveResult, unfilledDays] = await Promise.all([
     getAnalyticsReport(clientId, period, timezone),
     accountId
@@ -157,12 +145,11 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
               handle={handle}
               hasConnection={hasConnection}
               timezone={timezone}
-              // The CRON's own stamp when 20260828 has landed, falling back to
-              // the report's max(fetched_at). Only the fallback is shared with
-              // the on-demand refill, which is what let a sync that had not run
-              // for nights read as freshly landed.
-              lastSyncAt={health?.last_sync_at ?? data.lastSyncAt}
-              syncError={syncError}
+              // The last ATTEMPT, clean or not — the line's own copy says which.
+              // Distinct from data.lastSyncAt, which only a clean run may date
+              // because it decides whether a post reads "removed" or "pending".
+              lastSyncAt={lastSyncAt}
+              syncError={lastSyncError}
               archive={archive}
             />
           </PendingVeil>

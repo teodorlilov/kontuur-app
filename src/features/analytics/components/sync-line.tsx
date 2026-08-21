@@ -25,8 +25,9 @@ function failedPhases(syncError: string): string | null {
  * while the nightly sync is landing; Amber once it has missed two nights —
  * the stale state the mock names in its footer — or when the last run came
  * back incomplete. That last case is the one this line used to get wrong: it
- * reads max(fetched_at), which the on-demand refill also stamps, so a sync
- * failing every night still looked freshly landed.
+ * dated itself from the day rows, a stamp the on-demand refill also wrote, so
+ * a sync failing every night still looked freshly landed. It reads the cron's
+ * own verdict now, which is why the stale branch is reachable at all.
  */
 export function SyncLine({
   lastSyncAt,

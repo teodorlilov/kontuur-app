@@ -3,7 +3,7 @@ import 'server-only'
 import { cache } from 'react'
 import { unstable_cache } from 'next/cache'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
-import { fetchCurrentIgAccountId } from '@/lib/queries/db'
+import { fetchIgConnectionState } from '@/lib/queries/db'
 import {
   IG_ACCOUNT_METRIC_COLUMNS,
   IG_AUDIENCE_SNAPSHOT_COLUMNS,
@@ -64,7 +64,12 @@ const _fetchAnalyticsReport = unstable_cache(
     prevStart: string,
     prevEnd: string,
     days: number,
-    timezone: string
+    timezone: string,
+    // Passed in, not derived here: this used to be max(fetched_at) over the day
+    // rows, which the on-demand refill also stamped. It now comes from the
+    // cron's own verdict, and being an argument makes it part of the cache key —
+    // a fresh sync yields a fresh report rather than waiting on the tag.
+    lastSyncAt: string | null
   ): Promise<AnalyticsReportData> => {
     const admin = createAdminSupabaseClient()
     const period: AnalyticsPeriod = { preset, start, end, prevStart, prevEnd, days }
@@ -122,12 +127,12 @@ const _fetchAnalyticsReport = unstable_cache(
         .lte('snapshot_date', shiftDateKey(end, 1))
         .order('snapshot_date', { ascending: false })
         .limit(12),
+      // Existence only — "has any day ever been captured for this account".
       admin
         .from('ig_account_metrics')
-        .select('metric_date, fetched_at')
+        .select('metric_date')
         .eq('client_id', clientId)
         .eq('ig_account_id', accountId)
-        .order('metric_date', { ascending: false })
         .limit(1),
     ])
     for (const res of [accountRes, postRes, publishedRes, snapshotRes, latestRes]) {
@@ -155,10 +160,7 @@ const _fetchAnalyticsReport = unstable_cache(
       }
       snapshots = (fallback.data ?? []) as unknown as SnapshotRow[]
     }
-    const latest = (latestRes.data ?? []) as unknown as Array<{
-      metric_date: string
-      fetched_at: string
-    }>
+    const hasHistory = ((latestRes.data ?? []) as unknown[]).length > 0
 
     const currentSnapshot = snapshots[0] ?? null
     return buildAnalyticsReport({
@@ -173,8 +175,8 @@ const _fetchAnalyticsReport = unstable_cache(
         snapshots.find(
           (row) => row !== currentSnapshot && row.snapshot_date <= shiftDateKey(prevEnd, 1)
         ) ?? null,
-      hasHistory: latest.length > 0,
-      lastSyncAt: latest[0]?.fetched_at ?? null,
+      hasHistory,
+      lastSyncAt,
     })
   },
   // The key carries a version because the cached VALUE is a whole report
@@ -187,7 +189,9 @@ const _fetchAnalyticsReport = unstable_cache(
   // v4: reachByDay.thenDate/thenPosts + ComparisonRow.details.
   // v5: ReportPostRow.postedDayKey — posts are bucketed in the agency's clock
   // now, so a v4 entry both lacks the field and pins posts on the wrong day.
-  ['analytics-report-v5'],
+  // v6: lastSyncAt is the last CLEAN cron run rather than max(fetched_at), which
+  // is what decides whether a post reads "removed" or "pending".
+  ['analytics-report-v6'],
   { revalidate: 3600, tags: [IG_METRICS_TAG] }
 )
 
@@ -203,7 +207,10 @@ export const getAnalyticsReport = cache(
     period: AnalyticsPeriod,
     timezone: string
   ): Promise<AnalyticsReportData> => {
-    const accountId = await fetchCurrentIgAccountId(createAdminSupabaseClient(), clientId)
+    const { accountId, lastSyncAt, lastSyncError } = await fetchIgConnectionState(
+      createAdminSupabaseClient(),
+      clientId
+    )
     if (!accountId) return emptyReport(period, timezone)
 
     return _fetchAnalyticsReport(
@@ -215,7 +222,13 @@ export const getAnalyticsReport = cache(
       period.prevStart,
       period.prevEnd,
       period.days,
-      timezone
+      timezone,
+      // Only a run that finished every phase may date this. It gates the
+      // "no longer on Instagram" verdict, and the two mistakes are not equal:
+      // a false "pending" says come back tomorrow, a false "removed" tells the
+      // reader a live post was deleted. A half-failed sync proves nothing about
+      // what Instagram still holds, so it dates nothing.
+      lastSyncError === null ? lastSyncAt : null
     )
   }
 )

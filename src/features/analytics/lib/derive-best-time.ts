@@ -2,7 +2,7 @@ import 'server-only'
 
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { BestTimePlatform } from '@/lib/scheduling/schemas'
-import { fetchCurrentIgAccountId } from '@/lib/queries/db'
+import { fetchIgConnectionState } from '@/lib/queries/db'
 import { MS_PER_DAY, WEEKDAY_LABELS } from '@/utils/constants'
 import { buildAudienceOnline, type AudienceOnline } from './build-report'
 
@@ -64,7 +64,7 @@ export async function deriveObservedBestTime(
   db: SupabaseClient,
   clientId: string
 ): Promise<ObservedBestTime | null> {
-  const accountId = await fetchCurrentIgAccountId(db, clientId)
+  const { accountId } = await fetchIgConnectionState(db, clientId)
   if (!accountId) return null
 
   const { data: clientRow } = await db

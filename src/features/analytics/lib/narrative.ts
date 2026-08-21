@@ -2,7 +2,7 @@ import 'server-only'
 
 import { unstable_cache } from 'next/cache'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
-import { fetchCurrentIgAccountId } from '@/lib/queries/db'
+import { fetchIgConnectionState } from '@/lib/queries/db'
 import { generateAnalyticsSummary } from '@/ai/analytics/generate-summary'
 import type { AnalyticsReportData } from './build-report'
 import { formatCount } from './format'
@@ -147,7 +147,7 @@ const _fetchNarrative = unstable_cache(
       const admin = createAdminSupabaseClient()
       // Account-scoped like every analytics read: a report exported for a
       // previously connected account must never resurface its wording here.
-      const accountId = await fetchCurrentIgAccountId(admin, clientId)
+      const { accountId } = await fetchIgConnectionState(admin, clientId)
       if (accountId) {
         const { data: archived, error } = await admin
           .from('analytics_reports')
