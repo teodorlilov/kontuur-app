@@ -2,7 +2,15 @@ import { describe, it, expect } from 'vitest'
 import { pickVisualBacklog, totalVisualSlots, type BacklogPost } from '../visual-backlog'
 import type { PostImage } from '@/types/api'
 
-const options = { qualityFloor: 5, maxAttempts: 3, maxImagesPerRun: 12 }
+const HOUR_MS = 3_600_000
+const options = {
+  qualityFloor: 5,
+  maxAttempts: 3,
+  maxImagesPerRun: 12,
+  retrySpacingMs: 6 * HOUR_MS,
+}
+/** Pinned so a spacing assertion measures the gap, not the wall clock. */
+const NOW = new Date('2026-08-03T12:00:00Z')
 
 function post(overrides: Partial<BacklogPost> = {}): BacklogPost {
   return {
@@ -12,9 +20,15 @@ function post(overrides: Partial<BacklogPost> = {}): BacklogPost {
     slides_json: null,
     quality_score_avg: 8,
     visuals_attempts: 0,
+    visuals_attempted_at: null,
     created_at: '2026-08-01T09:00:00Z',
     ...overrides,
   }
+}
+
+/** An attempt `hoursAgo` before NOW, as the column stores it. */
+function attemptedHoursAgo(hoursAgo: number): string {
+  return new Date(NOW.getTime() - hoursAgo * HOUR_MS).toISOString()
 }
 
 function image(position: number): PostImage {
@@ -65,6 +79,24 @@ describe('pickVisualBacklog', () => {
 
   it('skips posts that already burned their attempts', () => {
     expect(pickVisualBacklog([post({ visuals_attempts: 3 })], new Map(), options)).toEqual([])
+  })
+
+  it('holds a post back until the retry gap has passed', () => {
+    // The whole point of the gap: under an hourly cron, three attempts an hour apart are
+    // three samples of one outage, and the post is then excluded from auto-visuals forever.
+    const justTried = post({ visuals_attempts: 1, visuals_attempted_at: attemptedHoursAgo(1) })
+    expect(pickVisualBacklog([justTried], new Map(), options, NOW)).toEqual([])
+  })
+
+  it('retries once the gap has passed', () => {
+    const cooledOff = post({ visuals_attempts: 1, visuals_attempted_at: attemptedHoursAgo(7) })
+    expect(pickVisualBacklog([cooledOff], new Map(), options, NOW)).toHaveLength(1)
+  })
+
+  it('a never-attempted post has no gap to wait out', () => {
+    expect(
+      pickVisualBacklog([post({ visuals_attempted_at: null })], new Map(), options, NOW)
+    ).toHaveLength(1)
   })
 
   it('fully covered posts are not jobs', () => {

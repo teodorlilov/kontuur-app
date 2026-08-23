@@ -663,6 +663,7 @@ export type Database = {
           id: string
           kind: string
           platform: string | null
+          slot_key: string | null
           status: string
           target_count: number | null
         }
@@ -673,6 +674,7 @@ export type Database = {
           id?: string
           kind?: string
           platform?: string | null
+          slot_key?: string | null
           status?: string
           target_count?: number | null
         }
@@ -683,6 +685,7 @@ export type Database = {
           id?: string
           kind?: string
           platform?: string | null
+          slot_key?: string | null
           status?: string
           target_count?: number | null
         }
@@ -1405,6 +1408,7 @@ export type Database = {
           status: string
           topic_summary: string | null
           validation_json: Json | null
+          visuals_attempted_at: string | null
           visuals_attempts: number
           was_rewritten: boolean
         }
@@ -1444,6 +1448,7 @@ export type Database = {
           status?: string
           topic_summary?: string | null
           validation_json?: Json | null
+          visuals_attempted_at?: string | null
           visuals_attempts?: number
           was_rewritten?: boolean
         }
@@ -1483,6 +1488,7 @@ export type Database = {
           status?: string
           topic_summary?: string | null
           validation_json?: Json | null
+          visuals_attempted_at?: string | null
           visuals_attempts?: number
           was_rewritten?: boolean
         }

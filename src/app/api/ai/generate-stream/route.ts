@@ -80,7 +80,8 @@ export async function POST(request: Request) {
   const client = { ...body.preloadedClientData, exemplars, styleMemo }
 
   const targetCount = body.targetPostCount + (body.priorityPosts?.length ?? 0)
-  const runId = await startGenerationRun(supabase, {
+  // No slot key: a run a human asked for is never deduped against a schedule.
+  const { runId } = await startGenerationRun(supabase, {
     clientId: body.clientId,
     platform: body.platform,
     targetCount,

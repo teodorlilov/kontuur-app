@@ -9,7 +9,13 @@ export function totalVisualSlots(post: { post_type: string; slides_json: unknown
 
 export type BacklogPost = Pick<
   PostRow,
-  'id' | 'client_id' | 'post_type' | 'quality_score_avg' | 'visuals_attempts' | 'created_at'
+  | 'id'
+  | 'client_id'
+  | 'post_type'
+  | 'quality_score_avg'
+  | 'visuals_attempts'
+  | 'visuals_attempted_at'
+  | 'created_at'
 > & {
   slides_json: unknown
 }
@@ -26,14 +32,26 @@ interface VisualJob {
  * (likely-discards get no art spend) and a per-post attempt cap so a post
  * whose generations keep failing cannot eat every run. The image budget is a
  * hard per-run ceiling; the cron's time budget cuts on top of it.
+ *
+ * `retrySpacingMs` is what makes the attempt cap mean "this post cannot be
+ * painted" rather than "the provider was down for three ticks": without a gap
+ * between attempts, an outage shorter than a morning exhausts the whole backlog's
+ * budget and excludes those posts from auto-visuals permanently.
  */
 export function pickVisualBacklog(
   posts: BacklogPost[],
   imagesByPost: Map<string, PostImage[]>,
-  options: { qualityFloor: number; maxAttempts: number; maxImagesPerRun: number }
+  options: {
+    qualityFloor: number
+    maxAttempts: number
+    maxImagesPerRun: number
+    retrySpacingMs: number
+  },
+  now: Date = new Date()
 ): VisualJob[] {
   const jobs: VisualJob[] = []
   let budget = options.maxImagesPerRun
+  const retryCutoff = now.getTime() - options.retrySpacingMs
 
   const ordered = [...posts].sort(
     (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
@@ -45,6 +63,12 @@ export function pickVisualBacklog(
     // terrible".
     if (post.quality_score_avg !== null && post.quality_score_avg < options.qualityFloor) continue
     if (post.visuals_attempts >= options.maxAttempts) continue
+    // A never-attempted post has no gap to wait out. An unparseable stamp yields NaN,
+    // and NaN > x is false, so it reads as "long enough ago" — the safe direction here,
+    // since the attempt cap still bounds it.
+    if (post.visuals_attempted_at !== null) {
+      if (new Date(post.visuals_attempted_at).getTime() > retryCutoff) continue
+    }
 
     const covered = new Set((imagesByPost.get(post.id) ?? []).map((image) => image.position))
     const positions: number[] = []

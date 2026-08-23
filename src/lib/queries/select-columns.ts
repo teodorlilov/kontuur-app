@@ -323,7 +323,7 @@ export const POST_CANVAS_DOC_COLUMNS = 'id, post_id, position, doc, created_at, 
 
 /** The fields the visuals cron needs to pick its backlog. */
 export const VISUAL_BACKLOG_POST_COLUMNS =
-  'id, client_id, post_type, slides_json, quality_score_avg, visuals_attempts, created_at'
+  'id, client_id, post_type, slides_json, quality_score_avg, visuals_attempts, visuals_attempted_at, created_at'
 
 // post_images
 export const POST_IMAGE_COLUMNS =

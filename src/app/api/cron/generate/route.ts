@@ -53,6 +53,8 @@ export async function GET(request: NextRequest) {
     posts_created: 0,
     errors: [] as Array<{ clientId: string; error: string }>,
     skipped_for_time: [] as string[],
+    /** Clients whose slot another invocation of this tick claimed first — see startGenerationRun. */
+    slot_already_claimed: [] as string[],
   }
   const processedAgencyIds = new Set<string>()
 
@@ -105,9 +107,11 @@ export async function GET(request: NextRequest) {
   // A run shortly before the slot counts as the slot's batch, absorbing a cron
   // run finished moments ahead of the tick. Runs a human asked for no longer
   // reach this map at all — the query above filters to kind='cron' — so a
-  // morning idea post can no longer cancel the day's scheduled batch. Two
-  // invocations racing the same tick are still NOT covered (no unique
-  // constraint on generation_runs — pre-existing, see docs/TECH-DEBT.md).
+  // morning idea post can no longer cancel the day's scheduled batch.
+  //
+  // This snapshot is the cheap pre-filter, not the guarantee: it decides without
+  // doing any work, but two invocations racing the same tick both pass it. The
+  // slot claim in `startGenerationRun` is what actually settles that race.
   const GENERATION_GRACE_MS = 900_000
 
   // Fewest remaining retry ticks first: a 23:00 slot has no next-hour tick
@@ -122,11 +126,11 @@ export async function GET(request: NextRequest) {
       if (!due) return []
       if ((lastRunAt.get(clientRow.id) ?? 0) >= scheduledAt.getTime() - GENERATION_GRACE_MS)
         return []
-      return [{ schedule, clientRow, localHour }]
+      return [{ schedule, clientRow, localHour, scheduledAt }]
     })
     .sort((a, b) => b.localHour - a.localHour)
 
-  for (const { schedule, clientRow } of dueClients) {
+  for (const { schedule, clientRow, scheduledAt } of dueClients) {
     // Declared outside the try so the catch can mark an interrupted run failed.
     let runId: string | null = null
     try {
@@ -156,20 +160,32 @@ export async function GET(request: NextRequest) {
       // Under hourly ticks the run row IS the slot's dedup key: a batch
       // generated without one would be regenerated every remaining tick
       // today. Skip instead — the next tick retries the insert.
+      //
+      // Claimed before any model call, so a lost race costs two DB reads rather
+      // than a duplicate batch.
       const total = (schedule as { frequency_value: number }).frequency_value || 1
-      runId = await startGenerationRun(supabase, {
+      const claim = await startGenerationRun(supabase, {
         clientId,
         platform,
         targetCount: total,
         kind: 'cron',
+        slotKey: scheduledAt,
       })
-      if (!runId) {
-        results.errors.push({
-          clientId,
-          error: 'could not open a generation run — deferred to next tick',
-        })
+      if (claim.runId === null) {
+        // A slot another invocation already holds is not this run's work and not an
+        // error — recording it as one would make every at-least-once redelivery look
+        // like a failure.
+        if (claim.slotTaken) {
+          results.slot_already_claimed.push(clientId)
+        } else {
+          results.errors.push({
+            clientId,
+            error: 'could not open a generation run — deferred to next tick',
+          })
+        }
         continue
       }
+      runId = claim.runId
 
       const researchStartedAt = Date.now()
       const researchTopics = await performResearch({

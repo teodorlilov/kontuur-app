@@ -26,11 +26,38 @@ interface ActiveRunRow {
  */
 type GenerationRunKind = 'cron' | 'manual'
 
-/** Records the start of a generation batch. Returns the run id, or null if tracking failed. */
+/** Postgres unique_violation — the slot index rejected a second claim on the same slot. */
+const UNIQUE_VIOLATION = '23505'
+
+/**
+ * The outcome of claiming a generation run.
+ *
+ * `slotTaken` separates the two ways a claim comes back empty, because they want
+ * opposite handling: a lost race means another invocation is generating this exact
+ * batch right now and there is nothing to report, while a failed insert means
+ * tracking broke and the batch is deferred.
+ */
+export type GenerationRunClaim = { runId: string } | { runId: null; slotTaken: boolean }
+
+/**
+ * Claims a generation batch, returning the run id.
+ *
+ * `slotKey` is the scheduled instant a cron batch belongs to. Passing it makes the
+ * insert the dedup: `generation_runs_one_batch_per_slot` lets exactly one invocation
+ * of a tick through, which a snapshot read of recent runs can never do on its own
+ * (Vercel cron is at-least-once, so two invocations read "nothing ran" together).
+ * Manual runs pass none and are never deduped.
+ */
 export async function startGenerationRun(
   supabase: SupabaseClient,
-  input: { clientId: string; platform: string; targetCount: number; kind: GenerationRunKind }
-): Promise<string | null> {
+  input: {
+    clientId: string
+    platform: string
+    targetCount: number
+    kind: GenerationRunKind
+    slotKey?: Date
+  }
+): Promise<GenerationRunClaim> {
   const { data, error } = await supabase
     .from('generation_runs')
     .insert({
@@ -39,18 +66,26 @@ export async function startGenerationRun(
       target_count: input.targetCount,
       kind: input.kind,
       status: 'running',
+      // Explicitly null for a manual run rather than absent: NULLs do not conflict in a
+      // unique index, which is what keeps the slot constraint off every wizard run.
+      slot_key: input.slotKey?.toISOString() ?? null,
     })
     .select('id')
     .single()
 
-  // Generation itself still proceeds without a run row, so this is logged
-  // rather than thrown — but losing the reason would make it undiagnosable.
   if (error) {
+    // A lost race is the constraint doing its job, not a fault: the invocation that
+    // won is generating this batch, and saying so at error level would train whoever
+    // reads these logs to ignore them.
+    if (error.code === UNIQUE_VIOLATION) return { runId: null, slotTaken: true }
+    // Generation itself still proceeds without a run row, so this is logged
+    // rather than thrown — but losing the reason would make it undiagnosable.
     console.error(`[generation] could not open a run for client ${input.clientId}:`, error.message)
-    return null
+    return { runId: null, slotTaken: false }
   }
 
-  return (data as { id: string } | null)?.id ?? null
+  const runId = (data as { id: string } | null)?.id
+  return runId ? { runId } : { runId: null, slotTaken: false }
 }
 
 /** Marks a run terminal so the shell stops reporting it as in flight. */
