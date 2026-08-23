@@ -50,6 +50,17 @@ export function formatRelativeTime(date: Date, relativeTo: Date = new Date()): s
   return formatDate(date)
 }
 
+/**
+ * Text reduced to what two values have to share to count as the same one: case and run-length of
+ * whitespace are not a difference. The key behind the idea-submission dedup and the brand re-read's
+ * "this field already agrees" check, which each spelled the same four calls inline.
+ *
+ * For comparison only — never store or display the result.
+ */
+export function normalizeForCompare(value: string): string {
+  return value.trim().toLowerCase().replace(/\s+/g, ' ')
+}
+
 export function truncateText(text: string, maxLength: number): string {
   if (text.length <= maxLength) return text
   return text.slice(0, maxLength).trimEnd() + '…'

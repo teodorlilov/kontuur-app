@@ -11,7 +11,7 @@ import {
   fetchConnectionsByClient,
   fetchPostingScheduleByClient,
 } from '@/lib/queries/db'
-import { parsePillars, resolveEffectivePillarIds } from '@/lib/clients/content-pillars'
+import { parsePillars, summariseSourceScoping } from '@/lib/clients/content-pillars'
 import {
   fetchIdeaCounts,
   fetchIdeasForAgency,
@@ -91,6 +91,10 @@ export default async function EditClientPage({ params }: { params: Promise<{ id:
   ])
 
   const insights = buildInsights(recentPostsRes.data ?? [], pillarPostsRes.data ?? [])
+  const sourceScoping = summariseSourceScoping(
+    sourceSummaries,
+    parsePillars(profile?.content_pillars ?? null)
+  )
 
   // The form renders the page header itself: the tab rail and the panel below
   // read the same activeTab state.
@@ -115,19 +119,11 @@ export default async function EditClientPage({ params }: { params: Promise<{ id:
       ideaUsedCount={ideaCounts.usedCount}
       ideaTotalCount={ideaCounts.totalCount}
       recentIdeas={recentIdeas}
-      // Content sources only: the tavily row grants web coverage, not material,
-      // and the pillar editor's notice promises material. Resolved against the
-      // live pillars so a source scoped entirely to deleted ones counts as
-      // feeds-all here too — the raw ids would have this notice disagreeing with
-      // every other coverage surface during the deleted-pillar window.
-      unrestrictedSourceCount={
-        sourceSummaries.filter(
-          (s) =>
-            s.type !== 'tavily' &&
-            resolveEffectivePillarIds(s.pillar_ids, parsePillars(profile?.content_pillars ?? null))
-              .length === 0
-        ).length
-      }
+      unrestrictedSourceCount={sourceScoping.unrestrictedCount}
+      // The scoped sources' own pillar ids: the brand re-read has to say how many of them a
+      // replaced pillar set would release back to feeding everything, and only the browser knows
+      // which pillars are being proposed.
+      restrictedSourcePillarIds={sourceScoping.restrictedPillarIds}
     />
   )
 }

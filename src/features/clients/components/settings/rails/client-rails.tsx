@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { RailBox, RailStat, RailText } from '@/components/ui/form'
 import { checkPaletteContrast } from '@/lib/visual/contrast'
 import { formatRelativeTime, parseTimestamp } from '@/utils/format'
+import { toHostLabel } from '@/utils/url'
 import type { Palette } from '@/types/visual'
 
 /**
@@ -60,19 +61,62 @@ export function ClientStatusRail({
   )
 }
 
-export function BrandProfileRail({ pillarCount }: { pillarCount: number }) {
+interface BrandProfileRailProps {
+  pillarCount: number
+  /** The URL as stored. Null means nothing to read, and the button says why. */
+  savedWebsite: string | null
+  /** True while the website field holds an unsaved edit — the read would still use the stored one. */
+  websiteEdited: boolean
+  onReread: () => void
+  rereading: boolean
+}
+
+export function BrandProfileRail({
+  pillarCount,
+  savedWebsite,
+  websiteEdited,
+  onReread,
+  rereading,
+}: BrandProfileRailProps) {
   return (
-    <RailBox title="What this affects">
-      <RailText>
-        Tone and audience are injected into every prompt.{' '}
-        {pillarCount > 0
-          ? `The ${pillarCount} pillar${pillarCount === 1 ? '' : 's'} below decide the mix of a batch.`
-          : 'Without pillars, a batch is not divided by topic.'}
-      </RailText>
-      <RailText>
-        Changes apply to the next run — drafts already in review keep the old profile.
-      </RailText>
-    </RailBox>
+    <>
+      <RailBox title="What this affects">
+        <RailText>
+          Tone and audience are injected into every prompt.{' '}
+          {pillarCount > 0
+            ? `The ${pillarCount} pillar${pillarCount === 1 ? '' : 's'} below decide the mix of a batch.`
+            : 'Without pillars, a batch is not divided by topic.'}
+        </RailText>
+        <RailText>
+          Changes apply to the next run — drafts already in review keep the old profile.
+        </RailText>
+      </RailBox>
+
+      <RailBox title="Source">
+        <RailText>
+          {savedWebsite
+            ? 'Read the site again and compare what it suggests against this profile. A client set up before the reader improved is usually carrying its services menu as pillars.'
+            : 'Add a website on the Basic info panel to draft this profile from the client’s own site.'}
+        </RailText>
+        {/* Named rather than implied: the read uses the stored address, so an unsaved edit to the
+            website field would otherwise silently produce a profile from the previous site. */}
+        {savedWebsite && websiteEdited && (
+          <RailText>
+            Reads {toHostLabel(savedWebsite)} — the edited address applies once you save.
+          </RailText>
+        )}
+        <Button
+          variant="secondary"
+          size="sm"
+          className="mt-3 w-full"
+          onClick={onReread}
+          loading={rereading}
+          disabled={!savedWebsite}
+        >
+          Re-read website
+        </Button>
+      </RailBox>
+    </>
   )
 }
 

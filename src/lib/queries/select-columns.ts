@@ -125,6 +125,9 @@ export const CLIENT_LIST_COLUMNS = 'id, name, niche, posts_per_week, language, c
  */
 export const CLIENT_AI_CONTEXT_COLUMNS = 'id, name, niche, language'
 
+/** All a re-read needs: the site to read, and the id proving the row was found. */
+export const CLIENT_WEBSITE_COLUMNS = 'id, website_url'
+
 /**
  * Clients roster. The social_connections embed is a REVERSE relationship
  * (social_connections holds client_id), so PostgREST returns an ARRAY here —

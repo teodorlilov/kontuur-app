@@ -175,6 +175,37 @@ export function resolveEffectivePillarIds(pillarIds: unknown, pillars: WeightedP
   return effective.length === 0 ? [] : effective
 }
 
+/** The two facts about a client's sources that any pillar edit has to be judged against. */
+export interface SourceScoping {
+  /** Content sources with no topic limit — they feed every pillar, including ones added later. */
+  unrestrictedCount: number
+  /** The effective pillar ids of each content source that IS scoped, one entry per source. */
+  restrictedPillarIds: string[][]
+}
+
+/**
+ * Splits a client's content sources into the ones that feed everything and the ones that do not.
+ *
+ * The tavily row is excluded for the reason `computePillarCoverage` excludes it from 'content':
+ * a web search grants coverage, not material, and both notices built on this promise material.
+ * Resolved against the live pillars, so a source scoped entirely to already-deleted pillars counts
+ * as unrestricted here too — the raw ids would put these notices at odds with every other coverage
+ * surface during the deleted-pillar window.
+ */
+export function summariseSourceScoping(
+  sources: readonly CoverageSource[],
+  pillars: WeightedPillar[]
+): SourceScoping {
+  const scoped = sources
+    .filter((source) => source.type !== 'tavily')
+    .map((source) => resolveEffectivePillarIds(source.pillar_ids, pillars))
+
+  return {
+    unrestrictedCount: scoped.filter((ids) => ids.length === 0).length,
+    restrictedPillarIds: scoped.filter((ids) => ids.length > 0),
+  }
+}
+
 /**
  * How a pillar can be served, in descending confidence: deterministic source
  * material ('content'), a web search that may or may not land ('web'), or

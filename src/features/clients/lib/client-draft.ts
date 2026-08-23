@@ -50,6 +50,17 @@ export interface ClientDrafts {
   identity: VisualIdentity
 }
 
+/**
+ * The language pair as every surface states it: the language, then the register it is written in.
+ *
+ * One function because the two are never shown apart — the settings header and the re-read's
+ * comparison row would otherwise drift in separator or order while describing the same two fields.
+ * Empty when there is no language, so a caller renders nothing rather than a bare separator.
+ */
+export function describeLanguage(language: string, formality: string): string {
+  return language ? `${language} · ${formality}` : ''
+}
+
 /** Which draft groups differ from the values the form loaded with. */
 export interface DirtyGroups {
   client: boolean

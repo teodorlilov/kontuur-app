@@ -5,6 +5,7 @@ import {
   serializePillars,
   resolveEffectivePillarIds,
   computePillarCoverage,
+  summariseSourceScoping,
 } from '../content-pillars'
 
 describe('ensurePillarIds', () => {
@@ -91,6 +92,31 @@ describe('resolveEffectivePillarIds', () => {
     // sync-source-pillars rewrites the column to [] once the last assigned
     // pillar dies; a stale set must behave like the [] it is about to become.
     expect(resolveEffectivePillarIds(['ghost-a', 'ghost-b'], PILLARS)).toEqual([])
+  })
+})
+
+describe('summariseSourceScoping', () => {
+  const src = (type: string, pillar_ids: unknown) => ({ type, label: type, pillar_ids })
+
+  it('splits the content sources by whether they are scoped at all', () => {
+    const result = summariseSourceScoping(
+      [src('rss', []), src('website', ['p1']), src('file', ['p1', 'p2'])],
+      PILLARS
+    )
+    expect(result.unrestrictedCount).toBe(1)
+    expect(result.restrictedPillarIds).toEqual([['p1'], ['p1', 'p2']])
+  })
+
+  it('excludes the tavily row from both sides — search grants coverage, not material', () => {
+    const result = summariseSourceScoping([src('tavily', []), src('tavily', ['p1'])], PILLARS)
+    expect(result).toEqual({ unrestrictedCount: 0, restrictedPillarIds: [] })
+  })
+
+  it('counts a source scoped only to deleted pillars as unrestricted', () => {
+    // It is about to become [] on save, and every other coverage surface already reads it that way.
+    const result = summariseSourceScoping([src('rss', ['ghost'])], PILLARS)
+    expect(result.unrestrictedCount).toBe(1)
+    expect(result.restrictedPillarIds).toEqual([])
   })
 })
 

@@ -2,9 +2,7 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
 import { aiRateLimitResponse } from '@/lib/auth/rate-limit'
-import { fetchSiteProfile } from '@/lib/sources/fetch-site-profile'
-import { fetchInstagramProfile } from '@/lib/sources/fetch-instagram'
-import { analyzeUrl } from '@/utils/ai'
+import { analyzeBrand } from '@/lib/sources/analyze-brand'
 
 // A sitemap lookup, up to seven page fetches (8s timeout each, in two parallel waves) and a model
 // call. The single-page version this replaced fitted comfortably in the default; this does not.
@@ -41,55 +39,17 @@ export async function POST(request: Request) {
     )
   }
 
-  // Fetch content in parallel
-  const fetches: Promise<{ source: string; markdown: string; error?: string }>[] = []
-
-  if (body.websiteUrl?.trim()) {
-    fetches.push(
-      // The site, not the page: a homepage is usually a hero and a nav bar, and the profile drawn
-      // from one is what the client's pillars and search queries are built on for good.
-      fetchSiteProfile(body.websiteUrl.trim()).then((r) => ({
-        source: 'website',
-        markdown: r.content,
-        error: r.error,
-      }))
-    )
-  }
-
-  if (body.instagramHandle?.trim()) {
-    const handle = body.instagramHandle.trim().replace(/^@/, '')
-    fetches.push(
-      fetchInstagramProfile(handle).then((r) => ({
-        source: 'instagram',
-        markdown: r.markdown,
-        error: r.error,
-      }))
-    )
-  }
-
-  const results = await Promise.allSettled(fetches)
-  let websiteContent = ''
-  let instagramContent = ''
-
-  for (const result of results) {
-    if (result.status !== 'fulfilled') continue
-    if (result.value.source === 'website' && result.value.markdown) {
-      websiteContent = result.value.markdown
-    }
-    if (result.value.source === 'instagram' && result.value.markdown) {
-      instagramContent = result.value.markdown
-    }
-  }
-
-  if (!websiteContent && !instagramContent) {
-    return NextResponse.json(
-      { error: 'Could not fetch content from the provided URLs' },
-      { status: 422 }
-    )
-  }
-
   try {
-    const analysis = await analyzeUrl({ websiteContent, instagramContent })
+    const analysis = await analyzeBrand({
+      websiteUrl: body.websiteUrl,
+      instagramHandle: body.instagramHandle,
+    })
+    if (!analysis) {
+      return NextResponse.json(
+        { error: 'Could not fetch content from the provided URLs' },
+        { status: 422 }
+      )
+    }
     return NextResponse.json(analysis)
   } catch (err) {
     console.error('[analyze-url] analysis failed:', err)

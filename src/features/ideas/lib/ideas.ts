@@ -6,7 +6,7 @@ import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { unwrap } from '@/lib/queries/unwrap'
 import { CLIENT_IDEA_COLUMNS } from '@/lib/queries/select-columns'
 import { countForTab } from '@/features/ideas/lib/idea-filters'
-import { formatClientName } from '@/utils/format'
+import { formatClientName, normalizeForCompare } from '@/utils/format'
 import type { IdeaBrief } from '@/features/ideas/schemas'
 
 // ── Token helpers (admin client — public routes, no auth) ────
@@ -185,7 +185,7 @@ export async function submitIdeas(
 
   const seen = new Set<string>()
   const distinct = ideas.filter((idea) => {
-    const key = idea.ideaText.trim().toLowerCase().replace(/\s+/g, ' ')
+    const key = normalizeForCompare(idea.ideaText)
     if (seen.has(key)) return false
     seen.add(key)
     return true

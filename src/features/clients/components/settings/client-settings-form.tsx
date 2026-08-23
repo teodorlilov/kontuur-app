@@ -6,12 +6,17 @@ import { updateClient } from '@/features/clients/actions/client-actions'
 import {
   buildDrafts,
   buildUpdatePayload,
+  describeLanguage,
   type BrandDraft,
   type ClientDraft,
   type ClientDrafts,
   type DirtyGroups,
   type ScheduleDraft,
 } from '@/features/clients/lib/client-draft'
+import {
+  buildBrandSuggestions,
+  type BrandSuggestion,
+} from '@/features/clients/lib/brand-suggestion'
 import { SETTINGS_TABS, type SettingsTab } from '@/features/clients/lib/settings-tabs'
 import { FormPanel, SaveBar } from '@/components/ui/form'
 import { toast } from '@/components/ui/toast'
@@ -25,7 +30,7 @@ import { clearQueryParams } from '@/utils/url'
 import { StatusPill } from '@/components/ui/status-pill'
 import { cn } from '@/utils/cn'
 import type { ContentInsights } from '@/features/clients/lib/insights'
-import type { ClientIdea, MetaConnection } from '@/types/api'
+import type { ClientIdea, MetaConnection, UrlAnalysisResponse } from '@/types/api'
 import type { ClientRow, BrandProfileRow, PostingScheduleRow } from '@/types'
 import type { VisualIdentity } from '@/types/visual'
 import { BasicInfoTab } from './basic-info-tab'
@@ -36,6 +41,7 @@ import { ConnectedAccountsTab } from './connected-accounts-tab'
 import { ContentInsightsTab } from './content-insights-tab'
 import { IdeaFormTab } from '@/features/ideas/components/idea-form-tab'
 import { DeleteClientDialog } from './delete-client-dialog'
+import { ReanalyzeBrandDialog } from './reanalyze-brand-dialog'
 import {
   AccountsRail,
   BrandProfileRail,
@@ -94,6 +100,8 @@ interface ClientSettingsFormProps {
   sourceCount: number
   /** Active content sources with no topic limit — they feed every pillar, including new ones. */
   unrestrictedSourceCount: number
+  /** Effective pillar ids of each content source that IS scoped, one entry per source. */
+  restrictedSourcePillarIds: string[][]
   /** What the engine has learned from this client's review edits; null until it has. */
   styleMemo: { bullets: Array<{ rule: string; evidence_count: number }>; updatedAt: string } | null
   client: Omit<ClientRow, 'agency_id'>
@@ -142,6 +150,8 @@ export function ClientSettingsForm(props: ClientSettingsFormProps) {
   const [activeTab, selectTab] = useTabParam<SettingsTab>(SETTINGS_TABS, 'basic')
   const [saving, setSaving] = useState(false)
   const [reanalyzing, setReanalyzing] = useState(false)
+  const [rereadingBrand, setRereadingBrand] = useState(false)
+  const [brandAnalysis, setBrandAnalysis] = useState<UrlAnalysisResponse | null>(null)
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false)
 
   // The values the form loaded with. Everything dirty is measured against this, and Discard
@@ -165,6 +175,17 @@ export function ClientSettingsForm(props: ClientSettingsFormProps) {
     [drafts]
   )
   const isDirty = dirty.client || dirty.brand || dirty.schedule || dirty.identity
+
+  // Derived from the read, not frozen at the moment it landed: the website read takes the best part
+  // of a minute and the form stays editable throughout, so a suggestion list built at fetch time
+  // would compare against — and overwrite — values the user has since changed.
+  const brandSuggestions = useMemo(
+    () =>
+      brandAnalysis
+        ? buildBrandSuggestions(brandAnalysis, drafts, props.restrictedSourcePillarIds)
+        : [],
+    [brandAnalysis, drafts, props.restrictedSourcePillarIds]
+  )
 
   const patchClient = useCallback(
     (patch: Partial<ClientDraft>) =>
@@ -222,6 +243,40 @@ export function ClientSettingsForm(props: ClientSettingsFormProps) {
     } finally {
       setReanalyzing(false)
     }
+  }
+
+  /**
+   * Re-reads the website and offers what it found. Nothing is written here or by the route: the
+   * accepted rows land in the open drafts, so the save bar reports them and Discard undoes them.
+   */
+  async function handleRereadBrand() {
+    setRereadingBrand(true)
+    try {
+      const res = await fetch(`/api/clients/${clientId}/brand-profile/reanalyze`, {
+        method: 'POST',
+      })
+      if (!res.ok) throw new Error('brand re-read failed')
+      const analysis = (await res.json()) as UrlAnalysisResponse
+      if (buildBrandSuggestions(analysis, drafts, props.restrictedSourcePillarIds).length === 0) {
+        toast.success('The site still matches this profile — nothing to change.')
+        return
+      }
+      setBrandAnalysis(analysis)
+    } catch {
+      toast.error('Could not read the website. Please try again.')
+    } finally {
+      setRereadingBrand(false)
+    }
+  }
+
+  function applyBrandSuggestions(accepted: BrandSuggestion[]) {
+    setDrafts((d) => ({
+      ...d,
+      client: accepted.reduce((client, s) => ({ ...client, ...s.patch.client }), d.client),
+      brand: accepted.reduce((brand, s) => ({ ...brand, ...s.patch.brand }), d.brand),
+    }))
+    setBrandAnalysis(null)
+    toast.success('Loaded into the form — review, then save.')
   }
 
   function handleDiscard() {
@@ -299,7 +354,7 @@ export function ClientSettingsForm(props: ClientSettingsFormProps) {
           <HeaderMeta
             parts={[
               drafts.client.niche || null,
-              `${drafts.client.language} · ${drafts.brand.languageFormality}`,
+              describeLanguage(drafts.client.language, drafts.brand.languageFormality),
               pendingCount > 0 && <MetaFlag>{pendingCount} pending review</MetaFlag>,
               publishedCount > 0 && `${publishedCount} published`,
             ]}
@@ -331,6 +386,13 @@ export function ClientSettingsForm(props: ClientSettingsFormProps) {
           {renderPanel()}
         </FormPanel>
       </div>
+
+      <ReanalyzeBrandDialog
+        open={brandSuggestions.length > 0}
+        onClose={() => setBrandAnalysis(null)}
+        suggestions={brandSuggestions}
+        onApply={applyBrandSuggestions}
+      />
 
       <DeleteClientDialog
         open={isConfirmingDelete}
@@ -420,7 +482,17 @@ export function ClientSettingsForm(props: ClientSettingsFormProps) {
           </>
         )
       case 'brand':
-        return <BrandProfileRail pillarCount={drafts.brand.contentPillars.length} />
+        return (
+          <BrandProfileRail
+            pillarCount={drafts.brand.contentPillars.length}
+            // The stored URL, not the draft: the route reads what is saved, so enabling this on a
+            // freshly typed address would read the old site and label the result with the new one.
+            savedWebsite={client.website_url}
+            websiteEdited={(client.website_url ?? '') !== drafts.client.websiteUrl}
+            onReread={handleRereadBrand}
+            rereading={rereadingBrand}
+          />
+        )
       case 'visual':
         return (
           <VisualIdentityRail

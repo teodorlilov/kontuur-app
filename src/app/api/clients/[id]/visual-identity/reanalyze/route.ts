@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
+import { resolveClientWebsite } from '@/lib/clients/resolve-client-website'
 import { extractIdentity } from '@/lib/visual/extract-identity'
 import { fetchVisualIdentity, upsertVisualIdentity } from '@/lib/visual/queries'
 
@@ -13,20 +14,12 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
   if (!auth.ok) return auth.response
   const { supabase, agencyId } = auth
 
-  const { data: client } = await supabase
-    .from('clients')
-    .select('id, website_url')
-    .eq('id', id)
-    .eq('agency_id', agencyId)
-    .single()
-  if (!client) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-  if (!client.website_url) {
-    return NextResponse.json({ error: 'No website on file for this client' }, { status: 400 })
-  }
+  const site = await resolveClientWebsite(supabase, id, agencyId)
+  if (!site.ok) return site.response
 
   // Re-analysis refreshes measured colours but must not reset the user's chosen brand style.
   const stored = await fetchVisualIdentity(id)
-  const result = await extractIdentity({ url: client.website_url, currentStyle: stored?.style })
+  const result = await extractIdentity({ url: site.websiteUrl, currentStyle: stored?.style })
 
   const source = result.report.source === 'website' ? 'website' : 'default'
   const { error } = await upsertVisualIdentity(id, result.identity, source, result.report)
