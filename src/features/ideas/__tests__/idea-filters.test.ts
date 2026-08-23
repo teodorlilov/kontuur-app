@@ -2,8 +2,10 @@ import { describe, it, expect } from 'vitest'
 import {
   AWAITING_DECISION,
   IDEA_TABS,
+  MAX_IDEA_PAGES,
   applyPendingStatuses,
   countForTab,
+  pagesShown,
   statusesForTab,
 } from '../lib/idea-filters'
 import type { ClientIdea, IdeaStatus } from '@/types/api'
@@ -94,5 +96,32 @@ describe('applyPendingStatuses', () => {
     const result = applyPendingStatuses(list, pending, 'all')
     expect(result.map((i) => i.id)).toEqual(['a', 'b', 'c'])
     expect(result[1]?.status).toBe('dismissed')
+  })
+})
+
+/**
+ * `?pages=` decides how large a read the server makes, so every rejection has to fall to
+ * the first page. The inbox used to select the agency's entire idea history — an
+ * unvalidated depth param would be a way to ask for that back.
+ */
+describe('pagesShown', () => {
+  it('defaults to one page when the param is absent', () => {
+    expect(pagesShown(undefined)).toBe(1)
+  })
+
+  it('reads a valid depth', () => {
+    expect(pagesShown('3')).toBe(3)
+  })
+
+  it('clamps to the ceiling rather than honouring a huge request', () => {
+    expect(pagesShown('9999')).toBe(MAX_IDEA_PAGES)
+  })
+
+  it('falls to the first page on junk, repeats, and out-of-range values', () => {
+    // `?pages=a&pages=b` reaches a page as an array, and `parseInt('2x')` is 2 — both
+    // are inputs a `Number(...)` check would have waved through differently.
+    for (const raw of ['0', '-4', 'nine', '', ['2', '3']]) {
+      expect(pagesShown(raw)).toBe(1)
+    }
   })
 })

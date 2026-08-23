@@ -1,4 +1,5 @@
-import type { PostData, ValidationData } from '@/types/post'
+import type { PostData } from '@/types/post'
+import type { ValidationData } from '@/types/api'
 
 interface RewriteDraftInput {
   post: PostData

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { computeTriage, postAgeDays } from '../triage'
 import type { QueuePost } from '../queue-post'
-import type { ValidationData } from '@/types/post'
+import type { ValidationData } from '@/types/api'
 import type { PostImage } from '@/types/api'
 
 const now = new Date('2026-08-04T12:00:00Z')

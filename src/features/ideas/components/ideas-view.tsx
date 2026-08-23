@@ -17,11 +17,12 @@ import { IdeaDetailDialog } from './idea-detail-dialog'
 import { IdeaRow } from './idea-row'
 import { IDEA_GRID, IDEA_GRID_DROP } from './grid'
 import { dismissIdeas, markIdeasRead, restoreIdeas } from '@/features/ideas/actions/idea-actions'
-import { MARK_READ_MAX } from '@/features/ideas/schemas'
 import {
   DEFAULT_IDEA_TAB,
   IDEA_TABS,
   IDEA_TAB_LABELS,
+  IDEAS_PAGE_SIZE,
+  MAX_IDEA_PAGES,
   applyPendingStatuses,
   countForTab,
   statusesForTab,
@@ -42,15 +43,26 @@ interface IdeasViewProps {
   tab: IdeaTab
   clientId?: string
   clients: Array<{ id: string; name: string }>
+  /** Pages of `IDEAS_PAGE_SIZE` currently loaded — 1 unless "Show older" was pressed. */
+  pages: number
+  /** Whether the server has rows beyond the loaded pages, so the control can say so. */
+  hasOlder: boolean
   /** Pinned server-side so every relative time on the page ages from one instant. */
   loadedAt: string
 }
 
-/** Only non-default state reaches the URL, so /ideas stays the canonical view. */
-function buildHref(tab: IdeaTab, clientId: string): string {
+/**
+ * Only non-default state reaches the URL, so /ideas stays the canonical view.
+ *
+ * `pages` is deliberately not carried by the tab and client links: changing what the list
+ * shows resets how deep it goes, because "10 pages of Inbox" says nothing about how much
+ * of Dismissed anyone wanted to see.
+ */
+function buildHref(tab: IdeaTab, clientId: string, pages = 1): string {
   const params = new URLSearchParams()
   if (tab !== DEFAULT_IDEA_TAB) params.set('tab', tab)
   if (clientId !== ALL_CLIENTS) params.set('client', clientId)
+  if (pages > 1) params.set('pages', String(pages))
   const query = params.toString()
   return query ? `/ideas?${query}` : '/ideas'
 }
@@ -69,6 +81,8 @@ export function IdeasView({
   tab,
   clientId,
   clients,
+  pages,
+  hasOlder,
   loadedAt,
 }: IdeasViewProps) {
   const router = useRouter()
@@ -119,8 +133,8 @@ export function IdeasView({
     if (unreadIds.length === 0) return
 
     const chunks: string[][] = []
-    for (let i = 0; i < unreadIds.length; i += MARK_READ_MAX) {
-      chunks.push(unreadIds.slice(i, i + MARK_READ_MAX))
+    for (let i = 0; i < unreadIds.length; i += IDEAS_PAGE_SIZE) {
+      chunks.push(unreadIds.slice(i, i + IDEAS_PAGE_SIZE))
     }
     void Promise.all(
       chunks.map(async (chunk) => ({ chunk, result: await markIdeasRead(chunk) }))
@@ -397,6 +411,29 @@ export function IdeasView({
             </table>
           )}
         </Card>
+
+        {/* Says what is loaded rather than only offering more: the list used to be every
+            idea the agency had ever received, so a bounded one has to be honest that it is
+            bounded. At the ceiling the answer is a narrower filter, not another page. */}
+        {hasOlder && (
+          <div className="mt-4 flex items-center justify-center gap-3">
+            <span className="text-caption text-text3">Showing the {ideas.length} most recent.</span>
+            {pages < MAX_IDEA_PAGES ? (
+              <ActionLink
+                href={buildHref(tab, scope, pages + 1)}
+                variant="secondary"
+                size="sm"
+                scroll={false}
+              >
+                Show older
+              </ActionLink>
+            ) : (
+              <span className="text-caption text-text3">
+                Filter by client to reach older ideas.
+              </span>
+            )}
+          </div>
+        )}
       </div>
 
       <IdeaDetailDialog

@@ -11,7 +11,8 @@ import {
   REWRITE_SCORE_THRESHOLD,
   AUTHENTICITY_URGENT_THRESHOLD,
 } from '@/lib/content-rules/constants'
-import type { PostData, ValidationData } from '@/types/post'
+import type { PostData } from '@/types/post'
+import type { ValidationData } from '@/types/api'
 
 interface InsightPanelProps {
   post: PostData

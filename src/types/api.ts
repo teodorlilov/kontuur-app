@@ -3,6 +3,16 @@
 import type { Tables } from './database'
 import type { SlideText } from './slide'
 import type { CalendarPostColumns } from '@/lib/queries/select-columns'
+// Imported rather than only re-exported at the foot of the file: `ValidationData` below is
+// built from these, and a bare `export … from` re-export does not bring a name into scope here.
+import type {
+  LanguageIssueType,
+  LanguageValidationResult as LanguageResult,
+  SlopDetection,
+  SourceGroundingResult,
+  ValidationCriteria,
+  ValidationScores,
+} from '@/ai/validation/types'
 
 type PostRow = Tables<'posts'>
 type NotificationRow = Tables<'notifications'>
@@ -130,7 +140,15 @@ export type CalendarPost = Omit<CalendarPostColumns, 'slides_json' | 'validation
   client_name: string
   /** Parsed on the way in, unlike the raw column. */
   slides_json: CarouselSlide[] | null
-  validation_json: unknown
+  /**
+   * Adapted server-side by `toValidationData`, exactly as /review does it — the raw
+   * `validation_json` blob no longer crosses the wire at all.
+   *
+   * The card used to call `parseStoredValidation` in the browser, which put the ~280 KB zod
+   * chunk in the calendar's client bundle for one panel. Null means the stored blob predates
+   * every readable shape; the quality panel is omitted, which is what it already did.
+   */
+  validation: ValidationData | null
   images: PostImage[]
   approval_status: string | null
   approval_client_note: string | null
@@ -143,6 +161,21 @@ export type CalendarPost = Omit<CalendarPostColumns, 'slides_json' | 'validation
    * every surface, and the answer decides whether the agency waits or re-sends.
    */
   approval_expires_at: string | null
+}
+
+/**
+ * A post's validation evidence in the shape every review surface renders.
+ *
+ * Lives here rather than in `types/post.ts` because all five of its members already reach
+ * consumers through this file: post.ts imports from api.ts, so declaring it there and
+ * referencing it from `CalendarPost` above would have made the two files circular.
+ */
+export interface ValidationData {
+  language: LanguageResult
+  slop: SlopDetection
+  sourceGrounding?: SourceGroundingResult
+  criteria: ValidationCriteria
+  scores: ValidationScores
 }
 
 // ---- Dashboard Change Requests ----
@@ -227,15 +260,16 @@ export type MetaConnection = Pick<
 
 // ---- API error ----
 
-// Re-export validation types so consumers import from '@/types/api'
+// Re-export validation types so consumers import from '@/types/api'. Names come from the
+// import at the top of this file, so the source module is named once.
 export type {
   LanguageIssueType,
-  LanguageValidationResult as LanguageResult,
+  LanguageResult,
   SlopDetection,
   SourceGroundingResult,
   ValidationCriteria,
   ValidationScores,
-} from '@/ai/validation/types'
+}
 
 export type { SlideText } from './slide'
 

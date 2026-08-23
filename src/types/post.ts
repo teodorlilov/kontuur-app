@@ -1,10 +1,3 @@
-import type {
-  LanguageResult,
-  SlopDetection,
-  SourceGroundingResult,
-  ValidationCriteria,
-  ValidationScores,
-} from '@/types/api'
 import type { PostRow } from '@/types'
 
 /**
@@ -14,14 +7,6 @@ import type { PostRow } from '@/types'
  * that changes nullability fails the build instead of drifting silently.
  */
 export type PostSummary = Pick<PostRow, 'id' | 'client_id' | 'platform' | 'scheduled_at'>
-
-export interface ValidationData {
-  language: LanguageResult
-  slop: SlopDetection
-  sourceGrounding?: SourceGroundingResult
-  criteria: ValidationCriteria
-  scores: ValidationScores
-}
 
 /**
  * A post as the wizard and review surfaces carry it.

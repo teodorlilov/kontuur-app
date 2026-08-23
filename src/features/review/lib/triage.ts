@@ -4,7 +4,7 @@ import {
 } from '@/lib/content-rules/constants'
 import { totalVisualSlots } from '@/lib/visual/visual-backlog'
 import { STALE_REVIEW_DAYS, MS_PER_DAY } from '@/utils/constants'
-import type { ValidationData } from '@/types/post'
+import type { ValidationData } from '@/types/api'
 import type { QueuePost } from './queue-post'
 
 export type TriageReason =

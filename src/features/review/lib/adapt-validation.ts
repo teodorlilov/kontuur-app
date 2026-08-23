@@ -1,6 +1,6 @@
 import { parseStoredValidation } from '@/lib/validation/stored-validation-schema'
 import { deriveSlopFromValidation } from '@/features/review/lib/derive-slop'
-import type { ValidationData } from '@/types/post'
+import type { ValidationData } from '@/types/api'
 
 /**
  * Projects stored `posts.validation_json` into the full ValidationData the

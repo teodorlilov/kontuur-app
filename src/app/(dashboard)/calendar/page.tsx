@@ -8,6 +8,7 @@ import type { PostStatus } from '@/lib/validation'
 import type { Tables } from '@/types/database'
 import { fetchImagesByPost } from '@/features/publishing/lib/fetch-post-images'
 import { parseBestTimes } from '@/lib/scheduling/schemas'
+import { toValidationData } from '@/features/review/lib/adapt-validation'
 import { CalendarView } from '@/features/calendar/components/calendar-view'
 import type { CalendarPost } from '@/types/api'
 
@@ -133,11 +134,19 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
 
   const posts: CalendarPost[] = typedPostRows.map((p) => {
     const token = latestToken(p.post_approval_tokens)
-    const { post_approval_tokens: _tokens, ...rest } = p
+    // `validation_json` is destructured out, not just omitted from the type. TypeScript does
+    // not excess-property-check a spread, so dropping it from `CalendarPost` alone left the
+    // raw blob riding along in `rest` on every post — typed as absent, shipped anyway, read
+    // by nothing. The type change removed the zod chunk; only this removes the payload.
+    const { post_approval_tokens: _tokens, validation_json: rawValidation, ...rest } = p
     return {
       ...rest,
       slides_json: p.slides_json as CalendarPost['slides_json'],
-      validation_json: p.validation_json as CalendarPost['validation_json'],
+      // Adapted here, server-side, through the same function /review uses — so the card
+      // renders identical evidence and zod stays out of the calendar's client bundle.
+      // Null (unreadable legacy blob) stays null: the quality panel is omitted, which is
+      // exactly what the card already did when its own parse returned null.
+      validation: toValidationData(rawValidation),
       client_name: clientNameMap.get(p.client_id) ?? 'Unknown',
       images: imagesByPost.get(p.id) ?? [],
       approval_status: token?.status ?? null,

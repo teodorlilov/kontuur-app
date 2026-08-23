@@ -1,5 +1,5 @@
 import type { PostImage } from '@/types/api'
-import type { ValidationData } from '@/types/post'
+import type { ValidationData } from '@/types/api'
 import type { PostColumns } from '@/lib/queries/select-columns'
 
 /** A client sign-off request attached to a queue post (post_approval_tokens). */

@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { PLATFORMS } from '@/utils/constants'
+import { IDEAS_PAGE_SIZE } from '@/features/ideas/lib/idea-filters'
 
 /**
  * Caps on what the public form can send.
@@ -14,16 +15,6 @@ import { PLATFORMS } from '@/utils/constants'
 export const IDEA_TEXT_MAX = 2000
 export const EXTRA_NOTES_MAX = 2000
 export const MAX_IDEAS_PER_SUBMISSION = 10
-
-/**
- * Ids one mark-as-read may carry.
- *
- * Loose because the inbox still loads every idea an agency has ever received, so the
- * client legitimately sends as many ids as it rendered; paginating that read is what
- * would let this tighten to a page (docs/TECH-DEBT.md §7). Exported so the view
- * chunks to the same number instead of silently no-opping past it.
- */
-export const MARK_READ_MAX = 500
 
 /**
  * Every id crossing this boundary is a database uuid. Declared once and named per
@@ -65,10 +56,10 @@ export const ensureIdeaTokenSchema = uuid
  * Bounded by the same cap as mark-as-read, for the same reason — the client sends what
  * it rendered, and a bulk dismiss can carry a whole page of selected rows.
  */
-export const ideaIdsSchema = z.array(uuid).min(1).max(MARK_READ_MAX)
+export const ideaIdsSchema = z.array(uuid).min(1).max(IDEAS_PAGE_SIZE)
 
 /** Server-action arg: the ideas a rendered page has just shown the agency. */
-export const markIdeasReadSchema = z.array(uuid).min(1).max(MARK_READ_MAX)
+export const markIdeasReadSchema = z.array(uuid).min(1).max(IDEAS_PAGE_SIZE)
 
 /** Server-action arg: the approved post that fulfils an idea. */
 export const linkGeneratedPostSchema = z.object({ ideaId: uuid, postId: uuid })

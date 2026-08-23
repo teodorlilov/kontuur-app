@@ -52,6 +52,50 @@ export function statusesForTab(tab: IdeaTab): readonly IdeaStatus[] | null {
   return TAB_STATUSES[tab]
 }
 
+/**
+ * One page of the inbox — and, because they are the same thing, the cap on the ids one
+ * server action may carry.
+ *
+ * The list used to be unbounded: `/ideas` selected the agency's entire idea history,
+ * including everything already generated or dismissed, and shipped it to the browser to be
+ * filtered in memory. Both the payload and the action caps were sized by that read rather
+ * than by a page, which is why the caps were a loose 500.
+ *
+ * There is deliberately no second `MARK_READ_MAX` name aliasing this: the client sends what
+ * it rendered, it renders in pages, so a bulk dismiss and a mark-as-read are both bounded by
+ * the page. The view chunks to this size, so loading more pages still sends whole-page
+ * requests rather than one oversize call the schema would reject.
+ *
+ * Lives here rather than beside the schemas that cap on it, because `schemas.ts` imports
+ * zod: the view needs this number, and importing it from there put the ~280 KB zod chunk in
+ * the /ideas client bundle to read one integer. This module is types-only, so it costs
+ * nothing to reach from a client component. `schemas.ts` imports it back.
+ */
+export const IDEAS_PAGE_SIZE = 100
+
+/**
+ * Ceiling on how deep "Show older" goes.
+ *
+ * Not a technical limit — past a thousand rows the useful answer is a client filter or a
+ * tab, and an uncapped `?pages=` is a way to ask the server for the unbounded read this
+ * page was built to stop making.
+ */
+export const MAX_IDEA_PAGES = 10
+
+/**
+ * How many pages of the inbox to load, from the URL.
+ *
+ * `parseParam` cannot do this one — it narrows against a closed set of strings, and this is
+ * a bounded number. Anything absent, repeated, non-numeric, or out of range reads as the
+ * first page, which is the only safe direction: the fallback must never be "load more".
+ */
+export function pagesShown(raw: string | string[] | undefined): number {
+  if (typeof raw !== 'string') return 1
+  const parsed = Number.parseInt(raw, 10)
+  if (!Number.isInteger(parsed) || parsed < 1) return 1
+  return Math.min(parsed, MAX_IDEA_PAGES)
+}
+
 /** How many of a per-status tally belong to a tab. */
 export function countForTab(tab: IdeaTab, byStatus: Readonly<Record<string, number>>): number {
   const statuses = TAB_STATUSES[tab]

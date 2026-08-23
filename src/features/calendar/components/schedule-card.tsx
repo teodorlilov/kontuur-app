@@ -22,11 +22,7 @@ import { useCanvaStatus } from '@/features/publishing/hooks/use-canva-status'
 import { useGenerateVisuals } from '@/features/publishing/hooks/use-generate-visuals'
 import { missingImagePositions } from '@/features/publishing/lib/image-list'
 import { extractAllFlaggedSlides } from '@/utils/extract-flagged-slides'
-import {
-  parseStoredValidation,
-  type StoredValidation,
-} from '@/lib/validation/stored-validation-schema'
-import type { CalendarPost, CarouselSlide, PostImage } from '@/types/api'
+import type { CalendarPost, CarouselSlide, PostImage, ValidationData } from '@/types/api'
 
 interface ContentUpdates {
   caption?: string
@@ -248,7 +244,7 @@ export const ScheduleCard = memo(function ScheduleCard({
   const canGenerateVisuals = !isPublished && currentPost.status !== 'publishing'
   const pillarColor = currentPost.pillar ? getPillarColor(currentPost.pillar) : null
   const score = currentPost.quality_score_avg
-  const validation = parseStoredValidation(currentPost.validation_json)
+  const validation = currentPost.validation
 
   function handleSchedule() {
     if (!date) return
@@ -878,7 +874,7 @@ function QualitySidebar({
   currentPost,
 }: {
   score: number | null
-  validation: StoredValidation | null
+  validation: ValidationData | null
   currentPost: CalendarPost
 }) {
   return (
