@@ -52,10 +52,21 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'This email is already a team member' }, { status: 409 })
   }
 
+  // Read for the email, which can only print what it is given: the invite template
+  // says "<agency> has added you to their workspace", and metadata carried an id.
+  // Supabase renders that template at invite time, so a name missing here is a
+  // `<no value>` in someone's inbox rather than a stale record.
+  const { data: agency } = await admin
+    .from('agencies')
+    .select('name')
+    .eq('id', agencyId)
+    .maybeSingle()
+
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
-  // createUserRecord reads `role` out of this metadata when the invite is accepted.
+  // createUserRecord reads `role` out of this metadata when the invite is accepted;
+  // `agency_name` is read by the invite email as {{ .Data.agency_name }}.
   const { error: inviteError } = await admin.auth.admin.inviteUserByEmail(email, {
-    data: { invited_agency_id: agencyId, role },
+    data: { invited_agency_id: agencyId, role, agency_name: agency?.name ?? 'Your team' },
     redirectTo: `${appUrl}/auth/callback`,
   })
 

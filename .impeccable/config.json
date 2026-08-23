@@ -2,7 +2,9 @@
   "detector": {
     "ignoreRules": [],
     "ignoreFiles": [
-      "docs/redesign-mocks/kontuur-analytics.html"
+      "docs/redesign-mocks/kontuur-analytics.html",
+      "docs/redesign-mocks/emails.html",
+      "docs/redesign-mocks/logo.html"
     ],
     "ignoreValues": [
       {

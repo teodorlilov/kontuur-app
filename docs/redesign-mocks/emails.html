@@ -1,0 +1,974 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Kontuur — Email templates (Evergreen on White)</title>
+    <style>
+      :root {
+        --paper: #fbfcfa;
+        --surface: #ffffff;
+        --ink: #0f1512;
+        --text2: #57625a;
+        --text3: #667068;
+        --line: #e7ece7;
+        --forest: #164430;
+        --forest-deep: #0c2e20;
+        --spring: #2e9e68;
+        --wash: #eef4ef;
+        --lime: #cfea45;
+      }
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      body {
+        font-family:
+          'Geist',
+          -apple-system,
+          'Helvetica Neue',
+          sans-serif;
+        background: var(--paper);
+        color: var(--ink);
+        font-size: 15px;
+        line-height: 1.6;
+        -webkit-font-smoothing: antialiased;
+      }
+      .wrap {
+        max-width: 1180px;
+        margin: 0 auto;
+        padding: 48px 32px 96px;
+      }
+      .page-head {
+        border-bottom: 1px solid var(--line);
+        padding-bottom: 28px;
+        margin-bottom: 40px;
+      }
+      .wordmark {
+        font-family: 'Instrument Serif', Georgia, serif;
+        font-style: italic;
+        font-size: 22px;
+        letter-spacing: 0.01em;
+      }
+      .wordmark .dot {
+        color: var(--spring);
+      }
+      .page-title {
+        font-size: 34px;
+        font-weight: 600;
+        letter-spacing: -0.03em;
+        line-height: 1.1;
+        margin: 20px 0 10px;
+      }
+      .page-title em {
+        font-family: 'Instrument Serif', Georgia, serif;
+        font-style: italic;
+        font-weight: 400;
+        color: var(--forest);
+      }
+      .page-sub {
+        color: var(--text2);
+        max-width: 64ch;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(560px, 1fr));
+        gap: 40px;
+      }
+      @media (max-width: 640px) {
+        .grid {
+          grid-template-columns: 1fr;
+        }
+        .wrap {
+          padding: 32px 16px 64px;
+        }
+      }
+      .spec {
+        margin-bottom: 14px;
+      }
+      .spec-label {
+        font-size: 11px;
+        font-weight: 500;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--text3);
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .spec-label::before {
+        content: '';
+        width: 14px;
+        height: 2px;
+        background: var(--spring);
+        border-radius: 1px;
+      }
+      .spec-note {
+        font-size: 13px;
+        color: var(--text2);
+        margin-top: 6px;
+      }
+      .spec-note code {
+        font-family: ui-monospace, 'SF Mono', monospace;
+        font-size: 12px;
+        background: var(--wash);
+        color: var(--forest);
+        padding: 1px 5px;
+        border-radius: 4px;
+      }
+      .stage {
+        background: #eef0ed;
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 28px 20px;
+      }
+      .notes {
+        margin-top: 64px;
+        border-top: 1px solid var(--line);
+        padding-top: 32px;
+      }
+      .notes h2 {
+        font-size: 22px;
+        font-weight: 600;
+        letter-spacing: -0.02em;
+        margin-bottom: 16px;
+      }
+      .notes h3 {
+        font-size: 15px;
+        font-weight: 600;
+        margin: 24px 0 6px;
+      }
+      .notes p,
+      .notes li {
+        color: var(--text2);
+        max-width: 78ch;
+      }
+      .notes ul {
+        padding-left: 20px;
+      }
+      .notes li {
+        margin-bottom: 6px;
+      }
+      .notes code {
+        font-family: ui-monospace, 'SF Mono', monospace;
+        font-size: 12.5px;
+        background: var(--wash);
+        color: var(--forest);
+        padding: 1px 5px;
+        border-radius: 4px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <header class="page-head">
+        <span class="wordmark">kontuur<span class="dot">.</span></span>
+        <h1 class="page-title">The four emails, <em>rebuilt</em></h1>
+        <p class="page-sub">
+          Every message Kontuur sends, in the Evergreen on White direction. One shared shell —
+          Pine&nbsp;Deep plate, white card on near-white paper, sans headline with a serif-italic
+          accent, Deep&nbsp;Pine button — carrying four different jobs. Shown at the real 560px send
+          width.
+        </p>
+      </header>
+
+      <div class="grid">
+        <!-- ══════════════════ 1 · APPROVAL ══════════════════ -->
+        <section>
+          <div class="spec">
+            <span class="spec-label">01 · Approval</span>
+            <p class="spec-note">
+              Sent from the app via Resend. The one that already works — restyled, and given the
+              missing "what do I do here" sentence.
+            </p>
+          </div>
+          <div class="stage">
+            <!-- EMAIL START -->
+            <table
+              role="presentation"
+              width="100%"
+              cellpadding="0"
+              cellspacing="0"
+              border="0"
+              style="background: #fbfcfa"
+            >
+              <tr>
+                <td align="center">
+                  <table
+                    role="presentation"
+                    width="560"
+                    cellpadding="0"
+                    cellspacing="0"
+                    border="0"
+                    style="max-width: 560px; width: 100%"
+                  >
+                    <tr>
+                      <td
+                        style="
+                          background: #0c2e20;
+                          padding: 24px 36px;
+                          border-radius: 14px 14px 0 0;
+                        "
+                      >
+                        <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                          <tr>
+                            <td
+                              style="
+                                font-family: Georgia, 'Times New Roman', serif;
+                                font-style: italic;
+                                font-size: 22px;
+                                color: #ffffff;
+                                letter-spacing: 0.01em;
+                              "
+                            >
+                              kontuur<span style="color: #cfea45">.</span>
+                            </td>
+                            <td
+                              align="right"
+                              style="
+                                font-family:
+                                  -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif;
+                                font-size: 11px;
+                                font-weight: 500;
+                                letter-spacing: 0.14em;
+                                text-transform: uppercase;
+                                color: #7fd6a8;
+                              "
+                            >
+                              For review
+                            </td>
+                          </tr>
+                        </table>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td
+                        style="
+                          background: #ffffff;
+                          border: 1px solid #e7ece7;
+                          border-top: none;
+                          border-radius: 0 0 14px 14px;
+                          padding: 36px;
+                          font-family: -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif;
+                        "
+                      >
+                        <h1
+                          style="
+                            margin: 0 0 18px;
+                            font-size: 28px;
+                            font-weight: 600;
+                            line-height: 1.15;
+                            letter-spacing: -0.02em;
+                            color: #0f1512;
+                          "
+                        >
+                          Your week is
+                          <span
+                            style="
+                              font-family: Georgia, 'Times New Roman', serif;
+                              font-style: italic;
+                              font-weight: 400;
+                              color: #164430;
+                              letter-spacing: -0.01em;
+                            "
+                            >ready</span
+                          >
+                        </h1>
+                        <p
+                          style="
+                            margin: 0 0 14px;
+                            font-size: 15px;
+                            line-height: 1.6;
+                            color: #0f1512;
+                          "
+                        >
+                          <strong style="font-weight: 600">3 posts</strong> for
+                          <strong style="font-weight: 600">Aurora Studio</strong> are waiting for
+                          your approval.
+                        </p>
+                        <p
+                          style="
+                            margin: 0 0 28px;
+                            font-size: 15px;
+                            line-height: 1.6;
+                            color: #57625a;
+                          "
+                        >
+                          Read them through, approve the ones that work, and leave a note on
+                          anything you'd like changed. Nothing is published until you say so.
+                        </p>
+                        <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                          <tr>
+                            <td style="border-radius: 8px; background: #164430">
+                              <a
+                                href="#"
+                                style="
+                                  display: inline-block;
+                                  padding: 14px 24px;
+                                  font-family:
+                                    -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif;
+                                  font-size: 14px;
+                                  font-weight: 500;
+                                  line-height: 1;
+                                  color: #ffffff;
+                                  text-decoration: none;
+                                  border-radius: 8px;
+                                "
+                                >Review &amp; approve</a
+                              >
+                            </td>
+                          </tr>
+                        </table>
+                        <p
+                          style="
+                            margin: 28px 0 0;
+                            padding-top: 20px;
+                            border-top: 1px solid #e7ece7;
+                            font-size: 12px;
+                            line-height: 1.6;
+                            color: #667068;
+                          "
+                        >
+                          This link expires in 48 hours. If the button doesn't work, paste this into
+                          your browser:<br />
+                          <span style="color: #164430; word-break: break-all"
+                            >https://kontuur.app/approve/8f2c14a9</span
+                          >
+                        </p>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td
+                        align="center"
+                        style="
+                          padding: 22px 36px 0;
+                          font-family: -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif;
+                          font-size: 12px;
+                          line-height: 1.6;
+                          color: #667068;
+                        "
+                      >
+                        Sent by Kontuur on behalf of your agency.<br />
+                        Questions? Just reply — this address is monitored.
+                      </td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+            </table>
+            <!-- EMAIL END -->
+          </div>
+        </section>
+
+        <!-- ══════════════════ 2 · CONFIRM SIGNUP ══════════════════ -->
+        <section>
+          <div class="spec">
+            <span class="spec-label">02 · Confirm signup</span>
+            <p class="spec-note">Supabase template. Uses <code>{{ .ConfirmationURL }}</code>.</p>
+          </div>
+          <div class="stage">
+            <table
+              role="presentation"
+              width="100%"
+              cellpadding="0"
+              cellspacing="0"
+              border="0"
+              style="background: #fbfcfa"
+            >
+              <tr>
+                <td align="center">
+                  <table
+                    role="presentation"
+                    width="560"
+                    cellpadding="0"
+                    cellspacing="0"
+                    border="0"
+                    style="max-width: 560px; width: 100%"
+                  >
+                    <tr>
+                      <td
+                        style="
+                          background: #0c2e20;
+                          padding: 24px 36px;
+                          border-radius: 14px 14px 0 0;
+                        "
+                      >
+                        <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                          <tr>
+                            <td
+                              style="
+                                font-family: Georgia, 'Times New Roman', serif;
+                                font-style: italic;
+                                font-size: 22px;
+                                color: #ffffff;
+                                letter-spacing: 0.01em;
+                              "
+                            >
+                              kontuur<span style="color: #cfea45">.</span>
+                            </td>
+                            <td
+                              align="right"
+                              style="
+                                font-family:
+                                  -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif;
+                                font-size: 11px;
+                                font-weight: 500;
+                                letter-spacing: 0.14em;
+                                text-transform: uppercase;
+                                color: #7fd6a8;
+                              "
+                            >
+                              Welcome
+                            </td>
+                          </tr>
+                        </table>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td
+                        style="
+                          background: #ffffff;
+                          border: 1px solid #e7ece7;
+                          border-top: none;
+                          border-radius: 0 0 14px 14px;
+                          padding: 36px;
+                          font-family: -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif;
+                        "
+                      >
+                        <h1
+                          style="
+                            margin: 0 0 18px;
+                            font-size: 28px;
+                            font-weight: 600;
+                            line-height: 1.15;
+                            letter-spacing: -0.02em;
+                            color: #0f1512;
+                          "
+                        >
+                          Confirm your
+                          <span
+                            style="
+                              font-family: Georgia, 'Times New Roman', serif;
+                              font-style: italic;
+                              font-weight: 400;
+                              color: #164430;
+                              letter-spacing: -0.01em;
+                            "
+                            >email</span
+                          >
+                        </h1>
+                        <p
+                          style="
+                            margin: 0 0 14px;
+                            font-size: 15px;
+                            line-height: 1.6;
+                            color: #0f1512;
+                          "
+                        >
+                          You're one step from your Kontuur account.
+                        </p>
+                        <p
+                          style="
+                            margin: 0 0 28px;
+                            font-size: 15px;
+                            line-height: 1.6;
+                            color: #57625a;
+                          "
+                        >
+                          Confirm this address and we'll take you straight to adding your first
+                          client — the site, the sources, and the first week of content.
+                        </p>
+                        <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                          <tr>
+                            <td style="border-radius: 8px; background: #164430">
+                              <a
+                                href="#"
+                                style="
+                                  display: inline-block;
+                                  padding: 14px 24px;
+                                  font-family:
+                                    -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif;
+                                  font-size: 14px;
+                                  font-weight: 500;
+                                  line-height: 1;
+                                  color: #ffffff;
+                                  text-decoration: none;
+                                  border-radius: 8px;
+                                "
+                                >Confirm email address</a
+                              >
+                            </td>
+                          </tr>
+                        </table>
+                        <p
+                          style="
+                            margin: 28px 0 0;
+                            padding-top: 20px;
+                            border-top: 1px solid #e7ece7;
+                            font-size: 12px;
+                            line-height: 1.6;
+                            color: #667068;
+                          "
+                        >
+                          If you didn't sign up for Kontuur, ignore this email — no account will be
+                          created. If the button doesn't work, paste this into your browser:<br />
+                          <span style="color: #164430; word-break: break-all"
+                            >https://kontuur.app/auth/callback?code=…</span
+                          >
+                        </p>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td
+                        align="center"
+                        style="
+                          padding: 22px 36px 0;
+                          font-family: -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif;
+                          font-size: 12px;
+                          line-height: 1.6;
+                          color: #667068;
+                        "
+                      >
+                        Kontuur — social intelligence for agencies.
+                      </td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+            </table>
+          </div>
+        </section>
+
+        <!-- ══════════════════ 3 · RESET PASSWORD ══════════════════ -->
+        <section>
+          <div class="spec">
+            <span class="spec-label">03 · Reset password</span>
+            <p class="spec-note">
+              Supabase template. The one in your screenshot. Uses
+              <code>{{ .ConfirmationURL }}</code> and <code>{{ .Email }}</code>.
+            </p>
+          </div>
+          <div class="stage">
+            <table
+              role="presentation"
+              width="100%"
+              cellpadding="0"
+              cellspacing="0"
+              border="0"
+              style="background: #fbfcfa"
+            >
+              <tr>
+                <td align="center">
+                  <table
+                    role="presentation"
+                    width="560"
+                    cellpadding="0"
+                    cellspacing="0"
+                    border="0"
+                    style="max-width: 560px; width: 100%"
+                  >
+                    <tr>
+                      <td
+                        style="
+                          background: #0c2e20;
+                          padding: 24px 36px;
+                          border-radius: 14px 14px 0 0;
+                        "
+                      >
+                        <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                          <tr>
+                            <td
+                              style="
+                                font-family: Georgia, 'Times New Roman', serif;
+                                font-style: italic;
+                                font-size: 22px;
+                                color: #ffffff;
+                                letter-spacing: 0.01em;
+                              "
+                            >
+                              kontuur<span style="color: #cfea45">.</span>
+                            </td>
+                            <td
+                              align="right"
+                              style="
+                                font-family:
+                                  -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif;
+                                font-size: 11px;
+                                font-weight: 500;
+                                letter-spacing: 0.14em;
+                                text-transform: uppercase;
+                                color: #7fd6a8;
+                              "
+                            >
+                              Account
+                            </td>
+                          </tr>
+                        </table>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td
+                        style="
+                          background: #ffffff;
+                          border: 1px solid #e7ece7;
+                          border-top: none;
+                          border-radius: 0 0 14px 14px;
+                          padding: 36px;
+                          font-family: -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif;
+                        "
+                      >
+                        <h1
+                          style="
+                            margin: 0 0 18px;
+                            font-size: 28px;
+                            font-weight: 600;
+                            line-height: 1.15;
+                            letter-spacing: -0.02em;
+                            color: #0f1512;
+                          "
+                        >
+                          Set a
+                          <span
+                            style="
+                              font-family: Georgia, 'Times New Roman', serif;
+                              font-style: italic;
+                              font-weight: 400;
+                              color: #164430;
+                              letter-spacing: -0.01em;
+                            "
+                            >new password</span
+                          >
+                        </h1>
+                        <p
+                          style="
+                            margin: 0 0 14px;
+                            font-size: 15px;
+                            line-height: 1.6;
+                            color: #0f1512;
+                          "
+                        >
+                          Someone asked to reset the password for
+                          <strong style="font-weight: 600">hello@aurorastudio.com</strong>.
+                        </p>
+                        <p
+                          style="
+                            margin: 0 0 28px;
+                            font-size: 15px;
+                            line-height: 1.6;
+                            color: #57625a;
+                          "
+                        >
+                          If that was you, choose a new one below. You'll be signed in straight
+                          afterwards.
+                        </p>
+                        <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                          <tr>
+                            <td style="border-radius: 8px; background: #164430">
+                              <a
+                                href="#"
+                                style="
+                                  display: inline-block;
+                                  padding: 14px 24px;
+                                  font-family:
+                                    -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif;
+                                  font-size: 14px;
+                                  font-weight: 500;
+                                  line-height: 1;
+                                  color: #ffffff;
+                                  text-decoration: none;
+                                  border-radius: 8px;
+                                "
+                                >Choose a new password</a
+                              >
+                            </td>
+                          </tr>
+                        </table>
+                        <p
+                          style="
+                            margin: 28px 0 0;
+                            padding-top: 20px;
+                            border-top: 1px solid #e7ece7;
+                            font-size: 12px;
+                            line-height: 1.6;
+                            color: #667068;
+                          "
+                        >
+                          This link works once and expires in one hour. If you didn't ask for it,
+                          ignore this email — your password stays exactly as it is. If the button
+                          doesn't work, paste this into your browser:<br />
+                          <span style="color: #164430; word-break: break-all"
+                            >https://kontuur.app/auth/callback?type=recovery&amp;code=…</span
+                          >
+                        </p>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td
+                        align="center"
+                        style="
+                          padding: 22px 36px 0;
+                          font-family: -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif;
+                          font-size: 12px;
+                          line-height: 1.6;
+                          color: #667068;
+                        "
+                      >
+                        Kontuur — social intelligence for agencies.
+                      </td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+            </table>
+          </div>
+        </section>
+
+        <!-- ══════════════════ 4 · TEAM INVITE ══════════════════ -->
+        <section>
+          <div class="spec">
+            <span class="spec-label">04 · Team invite</span>
+            <p class="spec-note">
+              Supabase template. Naming the agency needs one line added to the invite route — see
+              the note below.
+            </p>
+          </div>
+          <div class="stage">
+            <table
+              role="presentation"
+              width="100%"
+              cellpadding="0"
+              cellspacing="0"
+              border="0"
+              style="background: #fbfcfa"
+            >
+              <tr>
+                <td align="center">
+                  <table
+                    role="presentation"
+                    width="560"
+                    cellpadding="0"
+                    cellspacing="0"
+                    border="0"
+                    style="max-width: 560px; width: 100%"
+                  >
+                    <tr>
+                      <td
+                        style="
+                          background: #0c2e20;
+                          padding: 24px 36px;
+                          border-radius: 14px 14px 0 0;
+                        "
+                      >
+                        <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                          <tr>
+                            <td
+                              style="
+                                font-family: Georgia, 'Times New Roman', serif;
+                                font-style: italic;
+                                font-size: 22px;
+                                color: #ffffff;
+                                letter-spacing: 0.01em;
+                              "
+                            >
+                              kontuur<span style="color: #cfea45">.</span>
+                            </td>
+                            <td
+                              align="right"
+                              style="
+                                font-family:
+                                  -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif;
+                                font-size: 11px;
+                                font-weight: 500;
+                                letter-spacing: 0.14em;
+                                text-transform: uppercase;
+                                color: #7fd6a8;
+                              "
+                            >
+                              Invitation
+                            </td>
+                          </tr>
+                        </table>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td
+                        style="
+                          background: #ffffff;
+                          border: 1px solid #e7ece7;
+                          border-top: none;
+                          border-radius: 0 0 14px 14px;
+                          padding: 36px;
+                          font-family: -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif;
+                        "
+                      >
+                        <h1
+                          style="
+                            margin: 0 0 18px;
+                            font-size: 28px;
+                            font-weight: 600;
+                            line-height: 1.15;
+                            letter-spacing: -0.02em;
+                            color: #0f1512;
+                          "
+                        >
+                          You've been
+                          <span
+                            style="
+                              font-family: Georgia, 'Times New Roman', serif;
+                              font-style: italic;
+                              font-weight: 400;
+                              color: #164430;
+                              letter-spacing: -0.01em;
+                            "
+                            >invited</span
+                          >
+                        </h1>
+                        <p
+                          style="
+                            margin: 0 0 14px;
+                            font-size: 15px;
+                            line-height: 1.6;
+                            color: #0f1512;
+                          "
+                        >
+                          <strong style="font-weight: 600">Aurora Studio</strong> has added you to
+                          their workspace on Kontuur.
+                        </p>
+                        <p
+                          style="
+                            margin: 0 0 28px;
+                            font-size: 15px;
+                            line-height: 1.6;
+                            color: #57625a;
+                          "
+                        >
+                          It's where their social content gets planned, written and scheduled.
+                          Accept below to pick a password and get in — it takes about a minute.
+                        </p>
+                        <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                          <tr>
+                            <td style="border-radius: 8px; background: #164430">
+                              <a
+                                href="#"
+                                style="
+                                  display: inline-block;
+                                  padding: 14px 24px;
+                                  font-family:
+                                    -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif;
+                                  font-size: 14px;
+                                  font-weight: 500;
+                                  line-height: 1;
+                                  color: #ffffff;
+                                  text-decoration: none;
+                                  border-radius: 8px;
+                                "
+                                >Accept invitation</a
+                              >
+                            </td>
+                          </tr>
+                        </table>
+                        <p
+                          style="
+                            margin: 28px 0 0;
+                            padding-top: 20px;
+                            border-top: 1px solid #e7ece7;
+                            font-size: 12px;
+                            line-height: 1.6;
+                            color: #667068;
+                          "
+                        >
+                          If you weren't expecting this, you can safely ignore it. If the button
+                          doesn't work, paste this into your browser:<br />
+                          <span style="color: #164430; word-break: break-all"
+                            >https://kontuur.app/auth/callback?code=…</span
+                          >
+                        </p>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td
+                        align="center"
+                        style="
+                          padding: 22px 36px 0;
+                          font-family: -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif;
+                          font-size: 12px;
+                          line-height: 1.6;
+                          color: #667068;
+                        "
+                      >
+                        Kontuur — social intelligence for agencies.
+                      </td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+            </table>
+          </div>
+        </section>
+      </div>
+
+      <div class="notes">
+        <h2>Decisions behind this, and what it costs</h2>
+
+        <h3>Why the fonts are not Geist and Instrument Serif</h3>
+        <p>
+          Gmail, Outlook and most webmail strip custom web fonts out of email entirely, and
+          embedding them inflates the message past Gmail's 102KB clipping limit. So the send uses
+          Georgia italic where the design calls for Instrument Serif, and the system sans stack
+          where it calls for Geist. Georgia is the closest widely-installed match to Instrument
+          Serif's high-contrast italic, and it carries the same gesture. Apple Mail users will see
+          it identically to what's mocked above; nobody sees a broken fallback.
+        </p>
+
+        <h3>What could not come across from direction-01</h3>
+        <ul>
+          <li>
+            The drifting aurora behind the hero — email clients don't run animation or blur filters.
+            The Pine&nbsp;Deep plate carries the brand weight instead.
+          </li>
+          <li>The reveal-on-scroll motion. Nothing moves in an inbox.</li>
+          <li>
+            The contour field on paper. It would be a background image, which Outlook drops and
+            which costs the size budget. The near-white paper ground is kept.
+          </li>
+        </ul>
+
+        <h3>Where the lime sits</h3>
+        <p>
+          One mark only: the full stop after the wordmark, on Pine&nbsp;Deep. That respects the
+          Fill-Only Lime Rule — lime is unreadable at 1.35:1 on a light ground, and legitimate on
+          Pine&nbsp;Deep where the relationship inverts. The uppercase label opposite it uses
+          Living&nbsp;Green&nbsp;Lite, which is the dark-surface green.
+        </p>
+
+        <h3>The invite email needs one code change to say this much</h3>
+        <p>
+          The invite currently passes <code>{ invited_agency_id, role }</code> to Supabase — an id,
+          not a name — so a template has nothing to print. Naming the agency means also passing
+          <code>agency_name</code>, then reading <code>{{ .Data.agency_name }}</code> in the
+          template. Without it, the copy falls back to "You've been invited to a workspace on
+          Kontuur", which is noticeably thinner.
+        </p>
+
+        <h3>What changes in the codebase</h3>
+        <ul>
+          <li>
+            The shell above becomes one function. The four bodies are the only thing that differs,
+            so the plate, card, button and footer are written once and the approval email is
+            rewritten to use it.
+          </li>
+          <li>
+            The three Supabase templates are the same markup with
+            <code>{{ .ConfirmationURL }}</code> in place of the button link, stored as files under
+            <code>supabase/templates/</code> so they live in git rather than only in the dashboard.
+          </li>
+          <li>
+            Supabase's SMTP settings point at Resend, which is what stops "Supabase Auth" being the
+            sender.
+          </li>
+        </ul>
+      </div>
+    </div>
+  </body>
+</html>
