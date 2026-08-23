@@ -48,9 +48,14 @@ jobs:
       # client, "server code reached the browser" is precisely the class of mistake worth
       # a build to catch — and `npm run check` passing was never evidence the app builds.
       # Env vars are placeholders: the build only needs them present, not valid.
+      # ANTHROPIC_API_KEY is here because `src/utils/ai-client.ts` throws at module scope
+      # when it is missing, and collecting page data imports the AI routes — so its absence
+      # fails the build outright rather than any request. A key that is present and invalid
+      # is enough; nothing here calls the API.
       - run: npm run build
         env:
           NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
           NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder-anon-key
           NEXT_PUBLIC_APP_URL: https://placeholder.test
           SUPABASE_SERVICE_ROLE_KEY: placeholder-service-role-key
+          ANTHROPIC_API_KEY: placeholder-anthropic-key
