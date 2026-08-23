@@ -7,6 +7,15 @@ import type { EnrichedNotification } from '@/types/api'
 
 interface NotificationItemProps {
   notification: EnrichedNotification
+  /**
+   * Resolved by the panel, not looked up here.
+   *
+   * This row briefly read `useShell()` itself, which subscribed every notification in the
+   * list to the WHOLE shell context — so each one re-rendered on unrelated changes like
+   * `pendingCount`, which moves on every queue action. The panel above already holds the
+   * context; a prop keeps this a pure function of what it is given.
+   */
+  clientName: string
   onMarkRead: (id: string) => void
   onNavigate: () => void
 }
@@ -34,24 +43,10 @@ function bodyForNotification(n: EnrichedNotification): string {
   return n.message ?? ''
 }
 
-/** Extract client name from a notification. */
-function clientNameFor(n: EnrichedNotification): string {
-  // The client name lives only inside the message, in two shapes depending on who
-  // wrote it: "<Client> approved…" from the approval flow, "…ready to review for
-  // <Client>" from the generate cron. Parsing it back out is fragile — the row
-  // carries client_id and the name should be resolved from that (TECH-DEBT §7.7).
-  if (n.message) {
-    const leading = n.message.match(/^(.+?)\s+(approved|requested)/)
-    if (leading) return leading[1]!
-    const trailing = n.message.match(/\bfor\s+(.+)$/)
-    if (trailing) return trailing[1]!
-  }
-  return 'Client'
-}
-
 /** Single notification row in the panel. */
 export function NotificationItem({
   notification: n,
+  clientName,
   onMarkRead,
   onNavigate,
 }: NotificationItemProps) {
@@ -59,7 +54,6 @@ export function NotificationItem({
   // neutral marker rather than falling through to the change-request styling.
   const isApproval =
     n.type === 'client_approved_all' || (!n.type && n.message?.includes('approved'))
-  const clientName = clientNameFor(n)
   const title = titleForNotification(n)
   const body = bodyForNotification(n)
   const feedbackPreview = n.feedback_text

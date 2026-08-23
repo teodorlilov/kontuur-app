@@ -43,7 +43,9 @@ function NotificationPanel({
   onMarkRead: (id: string) => void
   onNavigate: () => void
 }) {
-  const { timezone } = useShell()
+  // One context read for the panel, resolving names for every row it renders — rather than
+  // each row subscribing to the shell itself. `timezone` was already coming from here.
+  const { timezone, clientName } = useShell()
   const today = notifications.filter((n) => isToday(parseTimestamp(n.created_at), timezone))
   const earlier = notifications.filter((n) => !isToday(parseTimestamp(n.created_at), timezone))
 
@@ -61,6 +63,7 @@ function NotificationPanel({
               <NotificationItem
                 key={n.id}
                 notification={n}
+                clientName={clientName(n.client_id)}
                 onMarkRead={onMarkRead}
                 onNavigate={onNavigate}
               />
@@ -70,6 +73,7 @@ function NotificationPanel({
               <NotificationItem
                 key={n.id}
                 notification={n}
+                clientName={clientName(n.client_id)}
                 onMarkRead={onMarkRead}
                 onNavigate={onNavigate}
               />

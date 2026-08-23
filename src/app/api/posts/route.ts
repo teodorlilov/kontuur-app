@@ -119,9 +119,13 @@ const createPostSchema = z.object({
   images: z
     .array(
       z.object({
-        position: z.number(),
-        publicUrl: z.string(),
-        storagePath: z.string(),
+        // Constrained here rather than re-checked below. `z.number()` admits -1.5, which is
+        // why both attach helpers had grown their own `Number.isInteger(...) && ... >= 0`
+        // pair — a hand-rolled check standing in for validation, the exact shape TECH-DEBT
+        // §7.4 documents at the route layer. The schema is the boundary; say it once here.
+        position: z.number().int().nonnegative(),
+        publicUrl: z.string().min(1),
+        storagePath: z.string().min(1),
         canvasDoc: z.unknown().optional(),
       })
     )
@@ -130,23 +134,32 @@ const createPostSchema = z.object({
 
 type CreatePostBody = z.infer<typeof createPostSchema>
 
+/**
+ * What the caller is told when the post saved but something hung off it did not.
+ *
+ * Both attachments below are deliberately best-effort — the post is already committed and
+ * losing it to a failed side-write would be worse. But "approved" with the visuals silently
+ * missing is a lie the user only discovers in the calendar, so each returns whether it
+ * delivered and the route reports the shortfall.
+ */
+const ATTACH_WARNINGS = {
+  images: 'Post approved, but its visuals could not be attached — regenerate them in the calendar.',
+  canvasDocs:
+    'Post approved, but its editable canvas could not be saved — the editor will reseed on first open.',
+} as const
+
 /** Attach wizard-draft visuals to a freshly created post. Only paths under the client's drafts prefix
- *  are accepted so a caller can't claim foreign storage objects. Failure logs but never fails the post. */
+ *  are accepted so a caller can't claim foreign storage objects. Returns false when the post kept none
+ *  of the visuals it was sent — logged, never fatal. */
 async function attachDraftImages(
   postId: string,
   clientId: string,
   images: CreatePostBody['images']
-): Promise<void> {
+): Promise<boolean> {
   const prefix = draftVisualPrefix(clientId)
+  // Shape and range are the schema's job; the only thing left to decide here is ownership.
   const rows = (images ?? [])
-    .filter(
-      (img) =>
-        Number.isInteger(img?.position) &&
-        img.position >= 0 &&
-        typeof img.publicUrl === 'string' &&
-        typeof img.storagePath === 'string' &&
-        img.storagePath.startsWith(prefix)
-    )
+    .filter((img) => img.storagePath.startsWith(prefix))
     .map((img) => ({
       post_id: postId,
       position: img.position,
@@ -154,11 +167,15 @@ async function attachDraftImages(
       storage_path: img.storagePath,
       content_type: 'image/jpeg',
     }))
-  if (rows.length === 0) return
+  if (rows.length === 0) return true
 
   const admin = createAdminSupabaseClient()
   const { error } = await admin.from('post_images').insert(rows)
-  if (error) console.error('[posts] failed to attach draft visuals:', error.message)
+  if (error) {
+    console.error('[posts] failed to attach draft visuals:', error.message)
+    return false
+  }
+  return true
 }
 
 /** Move a draft doc's stored files (clean background + placed assets) into the post's folder.
@@ -187,17 +204,16 @@ async function relocateDraftDoc(
 
 /** Attach the drafts' canvas docs to a freshly created post. The clean background files move out of
  *  `drafts/` into the post's folder (a future drafts cleanup must not orphan re-edit state); a failed
- *  move keeps the drafts path, which still serves. Failure logs but never fails the post. */
+ *  move keeps the drafts path, which still serves. Returns false when the insert dropped docs the
+ *  caller sent — logged, never fatal. */
 async function attachDraftCanvasDocs(
   postId: string,
   clientId: string,
   images: CreatePostBody['images']
-): Promise<void> {
+): Promise<boolean> {
   const prefix = draftVisualPrefix(clientId)
-  const candidates = (images ?? []).filter(
-    (img) => img?.canvasDoc !== undefined && Number.isInteger(img?.position) && img.position >= 0
-  )
-  if (candidates.length === 0) return
+  const candidates = (images ?? []).filter((img) => img.canvasDoc !== undefined)
+  if (candidates.length === 0) return true
 
   const rows = await Promise.all(
     candidates.map(async (img) => {
@@ -209,9 +225,21 @@ async function attachDraftCanvasDocs(
   )
 
   const inserts = rows.filter((row) => row !== null)
-  if (inserts.length === 0) return
+  // A doc dropped by the parse/prefix guard above is a rejected doc, not a failed write —
+  // it is reported the same way, because from the user's side the canvas is missing either way.
+  const rejected = candidates.length - inserts.length
+  if (rejected > 0) {
+    console.warn(`[posts] ${rejected} draft canvas doc(s) rejected for post ${postId}`)
+  }
+  // `candidates` is non-empty by the guard above, so every candidate was rejected.
+  if (inserts.length === 0) return false
+
   const { error } = await insertCanvasDocs(createAdminSupabaseClient(), inserts)
-  if (error) console.error('[posts] failed to attach draft canvas docs:', error)
+  if (error) {
+    console.error('[posts] failed to attach draft canvas docs:', error)
+    return false
+  }
+  return rejected === 0
 }
 
 /** Create a post from an approved wizard draft, attaching its draft visuals and canvas docs. */
@@ -312,8 +340,17 @@ export async function POST(request: Request) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  await attachDraftImages(post.id, body.client_id, body.images)
-  await attachDraftCanvasDocs(post.id, body.client_id, body.images)
+  // Concurrent, not sequential: the two touch different tables and — verified — different
+  // storage objects. `images[].storagePath` is the FLATTENED composite `saveDraftCanvas`
+  // uploads to its own path, while the doc's `background` keeps the clean original, so the
+  // relocation below cannot move a file the image rows point at.
+  const [imagesAttached, docsAttached] = await Promise.all([
+    attachDraftImages(post.id, body.client_id, body.images),
+    attachDraftCanvasDocs(post.id, body.client_id, body.images),
+  ])
+  const warnings: string[] = []
+  if (!imagesAttached) warnings.push(ATTACH_WARNINGS.images)
+  if (!docsAttached) warnings.push(ATTACH_WARNINGS.canvasDocs)
 
   // Record in post history to avoid duplicate themes in future generations.
   // Logged rather than failed: the post itself is already saved, and history
@@ -328,5 +365,7 @@ export async function POST(request: Request) {
     }
   }
 
-  return NextResponse.json({ post })
+  // The post saved either way — `warnings` says what did not come with it, so approve can
+  // stop reporting an unqualified success over a post whose visuals never landed.
+  return NextResponse.json(warnings.length > 0 ? { post, warnings } : { post })
 }

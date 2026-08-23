@@ -18,15 +18,27 @@ interface ApproveDraftInput {
 }
 
 /**
+ * The outcome of an approve.
+ *
+ * `warnings` is the route's partial-success channel: the post committed, but a side-write
+ * that hangs off it (visuals, canvas docs) did not. It used to be logged server-side only,
+ * so the user was told "approved" and found the images missing days later in the calendar.
+ */
+export interface ApproveDraftResult {
+  /** The SAVED row's id, or null when nothing was approved. */
+  postId: string | null
+  warnings: string[]
+}
+
+/**
  * The one approve call for a wizard draft: POST /api/posts with the full draft
  * payload. `status` derives from `scheduledAt` — the server stores it verbatim
  * and the calendar reads it. Every approve path (single, approve-all) goes
  * through here so the body cannot drift between them.
  *
- * Returns the SAVED row's id (null = not approved). The draft's own id never
- * reaches the database — the insert generates a fresh one — so anything that
- * references the post afterwards (the idea link) must use this id; using the
- * draft id is a foreign-key violation.
+ * The draft's own id never reaches the database — the insert generates a fresh one — so
+ * anything that references the post afterwards (the idea link) must use the returned
+ * `postId`; using the draft id is a foreign-key violation.
  */
 export async function approveDraft({
   post,
@@ -34,7 +46,7 @@ export async function approveDraft({
   slidesJson,
   scheduledAt,
   images,
-}: ApproveDraftInput): Promise<string | null> {
+}: ApproveDraftInput): Promise<ApproveDraftResult> {
   try {
     const res = await fetch('/api/posts', {
       method: 'POST',
@@ -52,10 +64,10 @@ export async function approveDraft({
         ...(images.length > 0 ? { images } : {}),
       }),
     })
-    if (!res.ok) return null
-    const data = (await res.json()) as { post?: { id?: string } }
-    return data.post?.id ?? null
+    if (!res.ok) return { postId: null, warnings: [] }
+    const data = (await res.json()) as { post?: { id?: string }; warnings?: string[] }
+    return { postId: data.post?.id ?? null, warnings: data.warnings ?? [] }
   } catch {
-    return null
+    return { postId: null, warnings: [] }
   }
 }

@@ -25,7 +25,8 @@ import {
 import type { PillarAllocation } from '@/features/generate/lib/run-plan'
 import type { SkippedPillar } from '@/ai/research/types'
 import type { CarouselSlide } from '@/types/api'
-import type { PostData, ValidationData } from '@/types/post'
+import type { PostData } from '@/types/post'
+import type { ValidationData } from '@/types/api'
 
 type ReviewLayout = 'all' | 'focus'
 
@@ -151,33 +152,56 @@ export function ReviewView({
     if (next) focusDraft(next.post.id)
   }
 
-  /** The one approve execution: POST with edits, then the owner's bookkeeping. */
-  async function executeApprove(postId: string, scheduledAt: string | null): Promise<boolean> {
+  /**
+   * The one approve execution: POST with edits, then the owner's bookkeeping.
+   *
+   * Partial-success warnings are RETURNED rather than raised here, because the same call
+   * serves one post and a bulk run: toasting inside would stack twelve identical
+   * "visuals could not be attached" messages on an approve-all where every post hit the
+   * same failure. The caller decides how many are worth showing.
+   */
+  async function executeApprove(
+    postId: string,
+    scheduledAt: string | null
+  ): Promise<{ ok: boolean; warnings: string[] }> {
     const item = posts.find((p) => p.post.id === postId)
-    if (!item) return false
+    if (!item) return { ok: false, warnings: [] }
     const edits = editsFor(item)
-    const savedPostId = await approveDraft({
+    const { postId: savedPostId, warnings } = await approveDraft({
       post: item.post,
       caption: edits.caption,
       slidesJson: edits.slidesJson,
       scheduledAt,
       images: completedDraftImages(visualsByDraft[postId]),
     })
-    if (savedPostId) {
-      onApproved(postId, savedPostId)
-    } else {
+    if (!savedPostId) {
       toast.error('Failed to approve post')
+      return { ok: false, warnings: [] }
     }
-    return savedPostId !== null
+    onApproved(postId, savedPostId)
+    return { ok: true, warnings }
+  }
+
+  /**
+   * One toast per distinct shortfall, however many posts hit it.
+   *
+   * Held longer than a success toast: this is the only moment the user can learn a post
+   * saved without the visuals they were looking at.
+   */
+  function reportWarnings(warnings: string[], postCount: number) {
+    for (const warning of new Set(warnings)) {
+      toast.error(postCount > 1 ? `${warning} (${postCount} posts)` : warning, { duration: 12_000 })
+    }
   }
 
   async function handleScheduleConfirm(scheduledAt: string | null) {
     if (!scheduleTarget) return
     setApproving(true)
-    const ok = await executeApprove(scheduleTarget, scheduledAt)
+    const { ok, warnings } = await executeApprove(scheduleTarget, scheduledAt)
     setApproving(false)
     if (ok) {
       toast.success(scheduledAt ? 'Approved · scheduled' : 'Post approved')
+      reportWarnings(warnings, 1)
       setScheduleTarget(null)
     }
   }
@@ -186,11 +210,20 @@ export function ReviewView({
     const remaining = [...liveDrafts]
     setApproving(true)
     let approved = 0
+    const warnings: string[] = []
+    let warnedPosts = 0
     for (const item of remaining) {
-      if (await executeApprove(item.post.id, null)) approved++
+      const outcome = await executeApprove(item.post.id, null)
+      if (!outcome.ok) continue
+      approved++
+      if (outcome.warnings.length > 0) {
+        warnings.push(...outcome.warnings)
+        warnedPosts++
+      }
     }
     setApproving(false)
     if (approved > 0) toast.success(`${approved} post${approved === 1 ? '' : 's'} approved`)
+    reportWarnings(warnings, warnedPosts)
   }
 
   function handleRewritten(postId: string, updatedPost: PostData, validation: ValidationData) {

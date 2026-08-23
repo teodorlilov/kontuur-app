@@ -12,6 +12,7 @@ import {
 import dynamic from 'next/dynamic'
 import { createBrowserSupabaseClient } from '@/lib/supabase/client'
 import { toast } from '@/components/ui/toast'
+import { formatClientName } from '@/utils/format'
 import { NOTIFICATION_COLUMNS } from '@/lib/queries/select-columns'
 import type { EnrichedNotification } from '@/types/api'
 
@@ -45,6 +46,14 @@ interface ShellValue {
    */
   timezone: string
   openPalette: () => void
+  /**
+   * A client's display name from its id, over the roster the sidebar already loads.
+   *
+   * Exists so nothing has to recover a name from prose. Falls back through
+   * `formatClientName`, so a notification about a client since removed from the roster
+   * still renders the same placeholder every other surface uses.
+   */
+  clientName: (clientId: string | null) => string
   notifications: NotificationsValue
   /**
    * Live pending-review count for the sidebar badge. The server-rendered
@@ -238,6 +247,12 @@ export function ShellProvider({
   const openPalette = useCallback(() => setPaletteOpen(true), [])
   usePaletteHotkey(openPalette)
 
+  const namesById = useMemo(() => new Map(clients.map((c) => [c.id, c.name])), [clients])
+  const clientName = useCallback(
+    (clientId: string | null) => formatClientName(clientId ? namesById.get(clientId) : null),
+    [namesById]
+  )
+
   const value = useMemo<ShellValue>(
     () => ({
       agencyName,
@@ -245,11 +260,21 @@ export function ShellProvider({
       todayLabel,
       timezone,
       openPalette,
+      clientName,
       notifications,
       pendingCount,
       setPendingCount,
     }),
-    [agencyName, userInitials, todayLabel, timezone, openPalette, notifications, pendingCount]
+    [
+      agencyName,
+      userInitials,
+      todayLabel,
+      timezone,
+      openPalette,
+      clientName,
+      notifications,
+      pendingCount,
+    ]
   )
 
   return (
