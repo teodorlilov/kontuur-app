@@ -1,8 +1,29 @@
 <svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
-  <!-- Pine Deep ground with the New Growth k. Lime on Pine Deep is 10.87:1, so
-       the mark reads at 16px. It was navy/cream/terracotta — the retired palette. -->
-  <rect width="64" height="64" rx="14" fill="#0c2e20"/>
-  <rect x="16" y="12" width="7" height="40" rx="2" fill="#cfea45"/>
-  <polygon points="23,12 42,12 42,18 27,31" fill="#cfea45"/>
-  <polygon points="27,33 42,46 42,52 23,52" fill="#cfea45"/>
+  <!--
+    The compact lockup: the wordmark cropped to its initial, ink on New Growth.
+    Replaces a geometric lime `k` built from a rect and two polygons, which
+    resembled nothing else in the app.
+
+    The swipe becomes a full plate here, and that is deliberate. In
+    components/layout/wordmark.tsx the lime is a tilted stroke that the
+    ascender breaks out of; a favicon has to be an opaque tile, so a letter
+    overflowing the lime would lose its ascender against a dark browser tab.
+    Filling the tile keeps Forest Ink on New Growth at 13.65:1 at 16px, which
+    is the size that decides whether a favicon works.
+
+    The letterform is set rather than drawn: Instrument Serif is loaded through
+    next/font/google, so there is no local file to trace outlines from. Systems
+    without it fall back to Georgia and then to a generic serif — all three are
+    high-contrast serif italics, so the mark degrades in weight, not in shape.
+  -->
+  <rect width="64" height="64" rx="14" fill="#cfea45"/>
+  <text
+    x="32"
+    y="45"
+    text-anchor="middle"
+    font-family="'Instrument Serif', Georgia, 'Times New Roman', serif"
+    font-style="italic"
+    font-size="46"
+    fill="#0f1512"
+  >k</text>
 </svg>

@@ -41,7 +41,9 @@ export function Nav() {
       )}
     >
       <div className="mkt-pad mx-auto flex w-full max-w-[1280px] items-center justify-between py-4">
-        <Wordmark href="/" />
+        {/* Top of the closed ramp. The hero opposite it runs to 104px, so the
+            22px default read as a caption beside its own headline. */}
+        <Wordmark href="/" className="text-prompt" />
 
         <div className="flex items-center gap-7">
           {LINKS.map((link) => (

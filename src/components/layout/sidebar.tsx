@@ -64,7 +64,11 @@ function LogoMark({ collapsed }: { collapsed: boolean }) {
     <Wordmark
       href="/dashboard"
       markOnly={collapsed}
-      className={cn('px-2.5 pb-4 pt-0.5', collapsed && 'px-0')}
+      // `text-prompt` (36px) is the top of the closed ramp, and centred across
+      // the full rail rather than tucked into the left padding: the lockup is
+      // the only thing in this band, so aligning it to the nav labels below made
+      // it read as another list item.
+      className={cn('w-full justify-center text-prompt', 'px-2.5 pb-5 pt-1', collapsed && 'px-0')}
     />
   )
 }

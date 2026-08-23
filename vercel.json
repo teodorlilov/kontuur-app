@@ -21,11 +21,5 @@
       "path": "/api/cron/metrics",
       "schedule": "30 3 * * *"
     }
-  ],
-  "headers": [
-    {
-      "source": "/favicon.ico",
-      "headers": [{ "key": "Cache-Control", "value": "public, max-age=86400" }]
-    }
   ]
 }

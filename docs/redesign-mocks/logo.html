@@ -1,0 +1,468 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Kontuur — wordmark</title>
+    <style>
+      :root {
+        --paper: #fbfcfa;
+        --surface: #ffffff;
+        --ink: #0f1512;
+        --text2: #57625a;
+        --text3: #667068;
+        --line: #e7ece7;
+        --forest: #164430;
+        --forest-deep: #0c2e20;
+        --spring: #2e9e68;
+        --spring-lite: #7fd6a8;
+        --wash: #eef4ef;
+        --lime: #cfea45;
+      }
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      body {
+        font-family:
+          'Geist',
+          -apple-system,
+          'Helvetica Neue',
+          sans-serif;
+        background: var(--paper);
+        color: var(--ink);
+        font-size: 15px;
+        line-height: 1.6;
+        -webkit-font-smoothing: antialiased;
+      }
+      .wrap {
+        max-width: 1000px;
+        margin: 0 auto;
+        padding: 48px 32px 96px;
+      }
+      .wm {
+        font-family: 'Instrument Serif', Georgia, serif;
+        font-style: italic;
+        letter-spacing: 0.01em;
+        line-height: 1;
+        display: inline-block;
+      }
+      /* The marker swipe: lime as a FILL carrying ink, which is the only way it
+         may appear on a light ground. Same treatment as the text decoration pack. */
+      .mk {
+        position: relative;
+        display: inline-block;
+      }
+      .mk::before {
+        content: '';
+        position: absolute;
+        left: -7%;
+        right: -7%;
+        bottom: 6%;
+        height: 54%;
+        background: var(--lime);
+        border-radius: 3px;
+        transform: rotate(-1.2deg);
+      }
+      .mk > .fg {
+        position: relative;
+      }
+      /* The full stop as a lime tile rather than lime ink. */
+      .dot-tile {
+        background: var(--lime);
+        color: var(--ink);
+        border-radius: 3px;
+        padding: 0 0.12em;
+      }
+      .page-head {
+        border-bottom: 1px solid var(--line);
+        padding-bottom: 28px;
+        margin-bottom: 44px;
+      }
+      h1 {
+        font-size: 34px;
+        font-weight: 600;
+        letter-spacing: -0.03em;
+        line-height: 1.1;
+        margin-bottom: 10px;
+      }
+      h1 em {
+        font-family: 'Instrument Serif', Georgia, serif;
+        font-style: italic;
+        font-weight: 400;
+        color: var(--forest);
+      }
+      .sub {
+        color: var(--text2);
+        max-width: 68ch;
+      }
+      section {
+        border-top: 1px solid var(--line);
+        padding: 36px 0;
+      }
+      .sec-name {
+        font-size: 20px;
+        font-weight: 600;
+        letter-spacing: -0.02em;
+        margin: 10px 0 6px;
+      }
+      .sec-desc {
+        color: var(--text2);
+        max-width: 74ch;
+        margin-bottom: 28px;
+      }
+      .ladder {
+        display: flex;
+        flex-direction: column;
+        gap: 26px;
+        align-items: flex-start;
+      }
+      .cap {
+        font-size: 12px;
+        color: var(--text3);
+      }
+      .grounds {
+        display: flex;
+        gap: 20px;
+        flex-wrap: wrap;
+      }
+      .ground {
+        border-radius: 14px;
+        padding: 26px 32px;
+        display: flex;
+        align-items: center;
+        min-height: 92px;
+      }
+      .g-paper {
+        background: var(--paper);
+        border: 1px solid var(--line);
+      }
+      .g-surface {
+        background: var(--surface);
+        border: 1px solid var(--line);
+      }
+      .g-pine {
+        background: var(--forest-deep);
+        color: #fff;
+      }
+      .compact {
+        display: flex;
+        gap: 28px;
+        flex-wrap: wrap;
+        align-items: flex-end;
+      }
+      .chip {
+        text-align: center;
+      }
+      .chip .cap {
+        display: block;
+        margin-top: 10px;
+        text-transform: none;
+        letter-spacing: 0;
+      }
+      .plate {
+        display: grid;
+        place-items: center;
+        border-radius: 10px;
+      }
+      .rail {
+        width: 68px;
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 16px 0;
+        display: grid;
+        place-items: center;
+        gap: 14px;
+      }
+      .rail-dot {
+        width: 22px;
+        height: 4px;
+        background: var(--line);
+        border-radius: 2px;
+      }
+      .notes {
+        border-top: 1px solid var(--line);
+        padding-top: 32px;
+      }
+      .notes h2 {
+        font-size: 22px;
+        font-weight: 600;
+        letter-spacing: -0.02em;
+        margin-bottom: 14px;
+      }
+      .notes h3 {
+        font-size: 15px;
+        font-weight: 600;
+        margin: 22px 0 6px;
+      }
+      .notes p,
+      .notes li {
+        color: var(--text2);
+        max-width: 78ch;
+      }
+      .notes ul {
+        padding-left: 20px;
+      }
+      .notes li {
+        margin-bottom: 6px;
+      }
+      code {
+        font-family: ui-monospace, 'SF Mono', monospace;
+        font-size: 12.5px;
+        background: var(--wash);
+        color: var(--forest);
+        padding: 1px 5px;
+        border-radius: 4px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <header class="page-head">
+        <h1>The wordmark, <em>alone</em></h1>
+        <p class="sub">
+          No mark beside the name. The name set in the brand serif is the logo — the way
+          direction-01 already has it, and the way the email header already reads. Below: the lockup
+          at the sizes it actually appears, then the two places that cannot fit a word and need an
+          answer.
+        </p>
+      </header>
+
+      <!-- ══════════════ The lockup ══════════════ -->
+      <section>
+        <h2 class="sec-name">One word, one full stop</h2>
+        <p class="sec-desc">
+          Instrument Serif italic, lowercase, with the full stop carrying the colour: Deep Pine on
+          light grounds, lime on Pine Deep. That inversion is not decoration — Living Green as a
+          word on paper measures 3.38:1 and fails, and lime on paper is 1.35:1 and fails harder. The
+          dot is the only place colour appears, so it is the only place the rule has to hold.
+        </p>
+        <div class="ladder">
+          <div>
+            <span class="wm" style="font-size: 64px"
+              >kontuur<span style="color: var(--forest)">.</span></span
+            >
+            <div class="cap" style="margin-top: 12px">64px · marketing hero</div>
+          </div>
+          <div>
+            <span class="wm" style="font-size: 34px"
+              >kontuur<span style="color: var(--forest)">.</span></span
+            >
+            <div class="cap" style="margin-top: 12px">34px · landing nav</div>
+          </div>
+          <div>
+            <span class="wm" style="font-size: 22px"
+              >kontuur<span style="color: var(--forest)">.</span></span
+            >
+            <div class="cap" style="margin-top: 12px">22px · email header, onboarding</div>
+          </div>
+          <div>
+            <span class="wm" style="font-size: 18px"
+              >kontuur<span style="color: var(--forest)">.</span></span
+            >
+            <div class="cap" style="margin-top: 12px">18px · sidebar</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ══════════════ Grounds ══════════════ -->
+      <section>
+        <h2 class="sec-name">Every surface it lands on</h2>
+        <p class="sec-desc">
+          Three grounds exist in the app: near-white paper, white surface, and the Pine Deep rail.
+          The wordmark inverts to white on the third, and the dot flips to lime.
+        </p>
+        <div class="grounds">
+          <div class="ground g-paper">
+            <span class="wm" style="font-size: 28px"
+              >kontuur<span style="color: var(--forest)">.</span></span
+            >
+          </div>
+          <div class="ground g-surface">
+            <span class="wm" style="font-size: 28px"
+              >kontuur<span style="color: var(--forest)">.</span></span
+            >
+          </div>
+          <div class="ground g-pine">
+            <span class="wm" style="font-size: 28px"
+              >kontuur<span style="color: var(--lime)">.</span></span
+            >
+          </div>
+        </div>
+      </section>
+
+      <!-- ══════════════ Compact ══════════════ -->
+      <section>
+        <h2 class="sec-name">Unplated, and where the lime goes</h2>
+        <p class="sec-desc">
+          You asked for the unplated mark with lime as an accent, and that runs into the one rule
+          the palette is strictest about: lime measures 1.35:1 on paper, so a lime full stop on
+          white is very nearly invisible — DESIGN.md forbids lime as "a line, a dot, or a word on a
+          light surface" by name. What it does allow is lime as a <em>fill carrying ink</em>, which
+          is the marker treatment already in the app. Both readings are below, plus the literal lime
+          dot so you can see the problem rather than take my word for it.
+        </p>
+
+        <div class="compact">
+          <div class="chip">
+            <span class="wm mk" style="font-size: 64px; color: var(--ink)"
+              ><span class="fg">kontuur<span style="color: var(--forest)">.</span></span></span
+            >
+            <span class="cap">A · Marker behind the word</span>
+          </div>
+        </div>
+        <div class="compact" style="margin-top: 26px">
+          <div class="chip">
+            <span class="wm" style="font-size: 64px; color: var(--ink)"
+              >kontuur<span class="dot-tile">.</span></span
+            >
+            <span class="cap">B · The dot as a lime tile</span>
+          </div>
+          <div class="chip">
+            <span class="wm" style="font-size: 64px; color: var(--ink)"
+              >kontuur<span style="color: var(--lime)">.</span></span
+            >
+            <span class="cap">C · Lime dot, as asked — 1.35:1</span>
+          </div>
+        </div>
+
+        <p class="sec-desc" style="margin-top: 40px">
+          The same three cropped to the compact mark, for the rail and the tab:
+        </p>
+
+        <div class="compact">
+          <div class="chip">
+            <span class="wm mk" style="font-size: 44px; color: var(--ink)"
+              ><span class="fg">k<span style="color: var(--forest)">.</span></span></span
+            >
+            <span class="cap">A · 44px</span>
+          </div>
+          <div class="chip">
+            <span class="wm" style="font-size: 44px; color: var(--ink)"
+              >k<span class="dot-tile">.</span></span
+            >
+            <span class="cap">B · 44px</span>
+          </div>
+          <div class="chip">
+            <span class="wm" style="font-size: 44px; color: var(--ink)"
+              >k<span style="color: var(--lime)">.</span></span
+            >
+            <span class="cap">C · 44px</span>
+          </div>
+        </div>
+
+        <p class="sec-desc" style="margin-top: 34px">
+          At favicon size, which is where an unplated mark is genuinely at risk — there is no plate
+          to separate it from whatever the browser puts behind it:
+        </p>
+        <div class="compact">
+          <div class="chip">
+            <span class="wm mk" style="font-size: 22px; color: var(--ink)"
+              ><span class="fg">k</span></span
+            >
+            <span class="cap">A · 22px</span>
+          </div>
+          <div class="chip">
+            <span class="wm mk" style="font-size: 16px; color: var(--ink)"
+              ><span class="fg">k</span></span
+            >
+            <span class="cap">A · 16px</span>
+          </div>
+          <div class="chip">
+            <span class="wm" style="font-size: 22px; color: var(--ink)"
+              >k<span class="dot-tile">.</span></span
+            >
+            <span class="cap">B · 22px</span>
+          </div>
+          <div class="chip">
+            <span class="wm" style="font-size: 16px; color: var(--ink)"
+              >k<span class="dot-tile">.</span></span
+            >
+            <span class="cap">B · 16px</span>
+          </div>
+        </div>
+
+        <p class="sec-desc" style="margin-top: 34px">In the collapsed rail:</p>
+        <div class="compact">
+          <div class="rail">
+            <span class="wm mk" style="font-size: 24px; color: var(--ink)"
+              ><span class="fg">k</span></span
+            >
+            <div class="rail-dot"></div>
+            <div class="rail-dot"></div>
+            <div class="rail-dot"></div>
+          </div>
+          <div class="rail">
+            <span class="wm" style="font-size: 24px; color: var(--ink)"
+              >k<span class="dot-tile">.</span></span
+            >
+            <div class="rail-dot"></div>
+            <div class="rail-dot"></div>
+            <div class="rail-dot"></div>
+          </div>
+        </div>
+      </section>
+
+      <div class="notes">
+        <h2>What this changes, and the one thing to decide</h2>
+
+        <h3>Decide: where the lime goes</h3>
+        <p>
+          I would take <strong>B — the dot as a lime tile</strong>. It is the closest honest reading
+          of what you asked for: the full stop <em>is</em> the lime, it just carries ink instead of
+          being ink. It survives at 16px, it needs no plate, and it keeps the one-mark restraint of
+          the wordmark. <strong>A</strong> is the bolder answer and the more distinctive one at
+          large sizes, but a marker swipe behind a single letter starts to read as a highlight
+          rather than a logo once it is small.
+        </p>
+        <p style="margin-top: 10px">
+          <strong>C is shown to be rejected.</strong> Look at it on this near-white ground: the full
+          stop all but disappears. That is the 1.35:1 the palette warns about, and it gets worse on
+          pure white, which is where most of the app's cards sit.
+        </p>
+        <p style="margin-top: 10px">
+          One consequence of going unplated either way: on the Pine Deep rail the mark inverts to
+          white with a plain lime dot, because on dark the relationship flips and lime becomes
+          legible ink at 10.87:1. So the lockup has two forms rather than one. That is a small
+          ongoing cost the plated versions did not have.
+        </p>
+
+        <h3>There are three different marks in the codebase today</h3>
+        <ul>
+          <li>
+            <code>wordmark.tsx</code> — a lime plate carrying a sans <em>k</em>, beside the name.
+          </li>
+          <li>
+            <code>src/app/icon.svg</code> — a geometric lime <em>k</em> on Pine Deep, built from
+            rectangles and polygons. Nothing else in the app looks like it.
+          </li>
+          <li><code>public/favicon.ico</code> — whatever was there before either of those.</li>
+        </ul>
+        <p>
+          All three should become the one compact form, and the old ones deleted rather than left
+          alongside.
+        </p>
+
+        <h3>The code change is small</h3>
+        <p>
+          <code>wordmark.tsx</code> is already the single source — sidebar, auth panel, generate
+          chrome, onboarding, marketing nav and footer all read from it. The plate span comes out,
+          <code>markOnly</code> starts rendering the compact <em>k</em> instead of the plate, and
+          <code>icon.svg</code> is redrawn to match. Six call sites, no changes needed at any of
+          them.
+        </p>
+
+        <h3>One honest caveat about the serif</h3>
+        <p>
+          A logo that is pure type depends entirely on the typeface being right. Instrument Serif is
+          a free Google font, so the wordmark is not ownable the way a drawn mark would be — a
+          competitor could set their name identically. That is a real trade for the simplicity you
+          asked for, and worth knowing rather than discovering later. Drawing custom letterforms
+          from it later is the usual fix, and it does not block anything now.
+        </p>
+      </div>
+    </div>
+  </body>
+</html>

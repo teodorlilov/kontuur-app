@@ -23,12 +23,6 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       {
-        // Cache favicon for 24h in dev — prevents revalidation on every navigation.
-        // vercel.json handles the equivalent for Vercel CDN in production.
-        source: '/favicon.ico',
-        headers: [{ key: 'Cache-Control', value: 'public, max-age=86400' }],
-      },
-      {
         source: '/(.*)',
         headers: [
           { key: 'X-Frame-Options', value: 'DENY' },
