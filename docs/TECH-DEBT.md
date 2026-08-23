@@ -12,7 +12,23 @@ had stopped being read end to end, so §7.4 published a backlog one entry too lo
 count 2.6× under. Each is corrected in place.
 
 **The largest item in the repo is not in this file at all.** `docs/RLS-SECURITY-REVIEW.md` has
-been OPEN since 2026-07-22 and nothing here ever pointed at it — see §8.
+been OPEN since 2026-07-22 and nothing here ever pointed at it — see §8. **Both halves of §8
+are now closed** (2026-08-24): the schema baseline is in version control, and all 31 tables
+carry an agency-scoped policy, verified by anon-key probe. That review doc should be re-read
+against reality or retired; it is the source of the twice-wrong diagnosis §8.1 records.
+
+**Fix pass 2026-08-24.** Everything closable without production access was closed: §2.4, §5.2,
+§5.8, §5.9, §7.7, §7.8, §8.7 (to report-only) and a new §8.8 this file had never recorded. §9 is
+rewritten around what remains. Its two migrations were applied the same day, columns and
+indexes both verified against production, and every cast they needed is deleted — see §9.
+
+**Audit of the finished files, same day.** The fix pass was then re-read whole rather than as a
+diff, which found ten things the diff review had not — including that §5.2's payload was never
+actually removed, that `POST /api/posts` was re-checking by hand what its own zod schema should
+have guaranteed (§7.4's anti-pattern, at a boundary this pass had just touched), and an
+eleventh that predates all of it: **§2.2's drafts-cleanup caveat is incomplete in a way that
+would delete live artwork.** All fixed or recorded. The lesson is the method — reviewing the
+diff shows what changed, reviewing the file shows what it now says.
 
 ---
 
@@ -69,6 +85,14 @@ keeping. It survived four months because it was nobody's task, not because it wa
 - **Phase-4 caveat:** approve MOVES each canvas doc's clean background out of `drafts/` into the
   post's folder, but a failed move keeps the drafts path (log-only). Any future drafts-cleanup job
   must skip paths referenced by `post_canvas_docs.doc->background->>storagePath`.
+- **The caveat above is incomplete, and a cleanup job written to it would delete live artwork
+  (found 2026-08-24).** It names only the canvas docs. But `attachDraftImages` inserts
+  `post_images.storage_path` **verbatim**, and nothing moves the flattened composite out of
+  `drafts/` — so every wizard-approved post has live, currently-displayed image rows pointing
+  *inside the drafts prefix*. A job that treats "under `drafts/`" as "abandoned" and skips only
+  the doc backgrounds would delete the visuals of every approved post. Any such job must skip
+  `post_images.storage_path` too — which, given the paths are indistinguishable by shape, means
+  the skip set has to be built from the tables, never from the prefix.
 
 ### 2.3 No cross-surface live sync for generated images
 
@@ -76,13 +100,18 @@ keeping. It survived four months because it was nobody's task, not because it wa
   rows exist server-side and appear on next load.
 - **Action:** accepted — no realtime plumbing planned.
 
-### 2.4 Approve attaches images best-effort
+### 2.4 Approve attaches images best-effort — RESOLVED 2026-08-24
 
-- **What:** in `POST /api/posts`, a failed `post_images` batch insert only logs — the post is created,
-  the user sees "approved", images silently missing (regenerate later in calendar). Same posture for
-  `post_canvas_docs` (`attachDraftCanvasDocs`): a failed doc insert leaves a composed image without
-  re-edit state — the editor gracefully reseeds on next open.
-- **Fix option:** surface a partial-success warning in the response + toast.
+The writes are still best-effort, and deliberately so: the post is already committed, and losing
+it to a failed side-write would be worse. What changed is that the shortfall is no longer only in
+a server log. `attachDraftImages` and `attachDraftCanvasDocs` each return whether they delivered,
+`POST /api/posts` answers `{ post, warnings? }`, `approveDraft` returns
+`{ postId, warnings }`, and the generate review view raises each warning as a 12s error toast
+beside the success one.
+
+`attachDraftCanvasDocs` also reports docs its own parse/prefix guard *rejected*, not just failed
+inserts — from the user's side a canvas that never arrived is the same event either way, and that
+branch previously returned silently.
 
 ### 2.5 Persisted-post copy edits don't auto-recompose baked text — RESOLVED 2026-07-24
 
@@ -285,13 +314,39 @@ and the trigger that should reopen it. (The fixed items landed in `98e0ef0` + `0
 - **Reopen when:** agencies routinely hold hundreds of pending posts (transfer per cache miss
   grows linearly).
 
-### 5.2 Calendar bundles zod client-side
+### 5.2 Calendar bundles zod client-side — RESOLVED 2026-08-24
 
-- **Where:** `schedule-card.tsx` calls `parseStoredValidation` in the browser — the ~280 KB raw
-  zod chunk that was removed from `/review` still ships on `/calendar` (measured 807 KB
-  route-specific client JS).
-- **Fix:** the same pattern as `0b8c72c` — adapt validation server-side in the calendar page and
-  ship `ValidationData`. Deferred as out of the review-tab's scope, not because it's hard.
+Fixed exactly as this entry prescribed: the calendar page adapts through `toValidationData` — the
+same function `/review` already used, not a second adapter — and `CalendarPost.validation_json`
+became `validation: ValidationData | null`. `parseStoredValidation` is gone from
+`schedule-card.tsx`.
+
+**The payload half needed a second pass, and the first attempt's claim here was false.** Dropping
+the field from the type removed the zod chunk but *not* the bytes: the page builds each post with
+`const { post_approval_tokens: _tokens, ...rest } = p`, and **TypeScript does not
+excess-property-check a spread**, so `validation_json` kept riding along in `rest` — typed as
+absent, shipped on every post, read by nothing. Found by an audit of the finished files rather
+than of the diff. It is now destructured out explicitly. **A field removed from a type is not a
+field removed from the wire** whenever a spread is involved.
+
+**Measured, before and after, by rebuilding at both revisions** and reading which routes name the
+280 KB zod chunk in their `page_client-reference-manifest.js` (the eager list — the lazy
+`react-loadable-manifest` is not the same thing and reading it instead would have shown a false
+pass):
+
+    before: /generate · /ideas/[token] · /ideas · /calendar
+    after:  /generate · /ideas/[token]
+
+**`/ideas` was the same defect and this entry never noticed it.** `ideas-view.tsx` imported one
+integer (`MARK_READ_MAX`) from `features/ideas/schemas.ts`, and that file imports zod — so the
+whole chunk shipped to read a number. The constant moved to `idea-filters.ts`, which is
+types-only; `schemas.ts` imports it back. The lesson generalises past both: **a client component
+importing anything at all from a schemas file pulls zod with it**, so the cheap check is the
+import graph, not the call site.
+
+The two survivors are correct. `/generate` and the public `/ideas/[token]` form both validate in
+the browser on purpose — the form enforces `ideaBriefSchema`'s caps as you type rather than
+letting a client discover them as a rejection.
 
 ### 5.3 Supabase browser client on every dashboard route
 
@@ -335,24 +390,38 @@ exact composite, in that order. The entry was written without checking the migra
   happens once, in `draftColumns`, the single place a draft becomes a write. Two asserted columns
   instead of fourteen unchecked ones.
 
-### 5.8 generation_runs has no unique-per-slot constraint
+### 5.8 generation_runs has no unique-per-slot constraint — RESOLVED 2026-08-24
 
-- **Where:** `startGenerationRun` (`src/lib/generation/runs.ts`) is a plain insert; the generate
-  cron's dedup guard (`src/app/api/cron/generate/route.ts`) reads a snapshot of recent runs at
-  invocation start.
-- **What:** two invocations racing the same tick (Vercel cron is at-least-once) can both pass the
-  guard and double-generate a batch. Pre-existing before the 2026-08 day+hour slot work; hourly
-  ticks widen exposure slightly but sequential re-fires are covered.
-- **Fix shape:** a partial unique index (client_id + slot bucket) or advisory lock; insert-first
-  then check would also close it.
+Closed the way this entry's first option said: `20260830_generation_run_slot_claim.sql` adds
+`generation_runs.slot_key` and a partial unique index on `(client_id, slot_key)`.
+`startGenerationRun` now takes the slot instant and returns
+`{ runId } | { runId: null, slotTaken }`, and the cron passes `getScheduleDue`'s `scheduledAt` —
+both racers of a tick compute the same key, so one insert wins and the loser skips into
+`results.slot_already_claimed` rather than into `errors`.
 
-### 5.9 Visuals attempt cap has no retry spacing
+**The index is partial on three predicates and every one is load-bearing.** `kind = 'cron'` keeps
+a run a human asked for from cancelling a scheduled batch; `slot_key is not null` keeps manual
+runs from colliding with each other (and NULLs do not conflict in a unique index anyway, which is
+why manual runs pass an explicit null); `status <> 'failed'` is what preserves the same-day retry
+this file's dedup query already allowed — updating a row to `'failed'` removes it from a partial
+index, freeing the slot.
 
-- **Where:** `/api/cron/visuals` — `MAX_VISUAL_ATTEMPTS = 3`, counted per started post.
-- **What:** under hourly cadence a ≥3h image-provider outage can exhaust all attempts for the
-  backlog before the provider recovers, permanently excluding those posts from auto-visuals
-  (manual generation in the queue still works).
-- **Fix shape:** a `visuals_attempted_at` column + minimum spacing between attempts.
+**The snapshot guard stayed**, deliberately. It is the cheap pre-filter that decides without doing
+any work; the claim is the guarantee. Only one of them can be either.
+
+The claim happens before any model call, so a lost race costs two DB reads.
+
+### 5.9 Visuals attempt cap has no retry spacing — RESOLVED 2026-08-24
+
+`20260831_posts_visuals_attempted_at.sql` adds the column this entry named.
+`pickVisualBacklog` takes `retrySpacingMs` beside `maxAttempts`, the cron sets it to 6h and
+mirrors the filter in SQL (a second `.or(...)`, ANDed with the quality one), and `countAttempt`
+stamps the column alongside the counter.
+
+Six hours, so three attempts span half a day: exhausting the cap now means the post cannot be
+painted, which is the only thing the cap should ever have meant. A never-attempted post has no gap
+to wait out — stated explicitly on both sides, since `NULL >= x` is unknown in SQL and would
+otherwise have excluded every post that had never been tried.
 
 ### 5.10 Stored platform values are mixed-case — RESOLVED 2026-08-09, direction reversed
 
@@ -374,12 +443,11 @@ exact composite, in that order. The entry was written without checking the migra
 Full findings in `docs/claude-md-audit-2026-08-05.md`. Waves 1 (correctness) and 2 (error
 handling + zod boundaries) are applied; what follows is what was deliberately NOT done.
 
-### 6.1 New migration must reach prod before deploy
+### 6.1 New migration must reach prod before deploy — RESOLVED 2026-08-24
 
-- **`20260808_unique_tavily_source_per_client.sql`** — collapses duplicate web-research rows and
-  adds a partial unique index. The app degrades gracefully without it (the 23505 read-back path in
-  `ensureWebResearchSource` simply never triggers), so deploy order is not fatal — but the race it
-  closes stays open until it lands. Joins 20260805/20260806/20260807 in the pending set (§5.7).
+**`20260808_unique_tavily_source_per_client.sql` is applied.** Confirmed by finding
+`client_sources_one_tavily_per_client` in the production schema dump, not by the CLI — see §9 on
+why `migration list` cannot answer this and never could. The race it closes is closed.
 
 ### 6.2 `api/meta/callback` still implements token exchange in the route file
 
@@ -666,35 +734,31 @@ would have invented an abstraction, not removed one.
 - **Why not now:** wiring a detector into the gate mid-refactor would fail the build on debt this
   work has not reached yet. Sequence it after the pipeline waves land.
 
-### 7.7 Notification client names are regex-parsed back out of the message
+### 7.7 Notification client names are regex-parsed back out of the message — RESOLVED 2026-08-24
 
-`notification-item.tsx` recovers the client name by matching the message text — two
-patterns now, because the approval flow writes "<Client> approved…" and the generate cron
-writes "…ready to review for <Client>". The row carries `client_id`; the name should be
-resolved from it instead.
+Both regexes are deleted. `ShellProvider` already received the agency's roster for the sidebar,
+so it now exposes `clientName(clientId)` on the shell context — backed by a memoised Map and
+falling through the existing `formatClientName`, so a notification about a since-removed client
+renders the same placeholder every other surface uses. `NotificationItem` reads it.
 
-Why it matters beyond tidiness: the same file's `titleForNotification` had no default
-branch, so the cron's untyped notification fell through to "requested changes" and *every*
-generation notice rendered as a change request from a client named "Client". The type is
-fixed (`posts_ready`, added 2026-08-10); the name parsing is not.
+The fix shape this entry proposed was right, and the reason it mattered is worth keeping: the
+name came from prose, so a client whose name contained "approved", "requested" or "for" parsed
+wrong, and any third writer with a third phrasing rendered as "Client". The id was on the row the
+whole time.
 
-**Fix shape:** pass the resolved name in from the shell, which already loads the agency's
-clients for the sidebar, or join it in the notifications query. Then delete both regexes.
+### 7.8 `/ideas` reads every idea an agency has ever received — RESOLVED 2026-08-24
 
-### 7.8 `/ideas` reads every idea an agency has ever received
+The page now reads `?pages=` (default 1) and asks for `pages * IDEAS_PAGE_SIZE + 1` rows — the
+extra row is the probe that says whether anything older exists, without a second count query. The
+view renders "Showing the N most recent" with a "Show older" link, and at `MAX_IDEA_PAGES` says to
+filter by client instead. `pagesShown` rejects junk, repeats and out-of-range values down to page
+one, because the fallback on a param that sizes a server read must never be "load more".
 
-`fetchIdeasForAgency` takes an optional `limit` and the inbox page passes none, so the
-route selects the agency's entire idea history — including everything already generated
-or dismissed — and ships it to the client to be filtered in memory.
-
-Two things are sized by that read rather than by a page: the payload, and
-`MARK_READ_MAX` in `features/ideas/schemas.ts`, which bounds the ids one mark-as-read may
-carry. The cap is loose (500) precisely because the client legitimately sends as many ids
-as it rendered; it can tighten to a page once there is a page.
-
-**Fix shape:** server-side filtering with a bounded page (the `/clients` roster is the
-pattern — URL params read in the Server Component), then narrow `MARK_READ_MAX` to that
-bound in the same change.
+**`MARK_READ_MAX` is gone rather than narrowed**, which is the part this entry got slightly wrong
+by proposing to keep it. It would have been `= IDEAS_PAGE_SIZE`, and knip correctly flagged two
+exported names for one value as a duplicate export. The client sends what it rendered and it
+renders in pages, so the page size *is* the cap: `ideaIdsSchema` and `markIdeasReadSchema` bound
+on it directly, 500 → 100.
 
 ### 7.9 Deferrals from the Client Ideas audit — 2026-08-06
 
@@ -839,7 +903,7 @@ specified; the reasoning must outlive the session that decided it.
 
 Added 2026-08-18. Full reasoning in `docs/TECH-DEBT-PLAN.md` Part B.
 
-### 8.1 RLS — RESOLVED 2026-08-18, and the original diagnosis was wrong twice
+### 8.1 RLS — FULLY RESOLVED 2026-08-24, and the original diagnosis was wrong twice
 
 **What this entry claimed this morning:** "RLS is off on most tables; a signed-in user can
 read any agency's rows via PostgREST." **False.** RLS was already enabled on all 28 public
@@ -879,26 +943,92 @@ back in, which it catches by name.
 times the fix was to measure. Do not diagnose this database from its migrations until §8.2
 is closed, and do not treat a policy count as a security property.
 
-**Still open, and it is a design decision rather than a defect.** 11 tables run RLS-on with
-zero policies (service-role only), reached through `createAdminSupabaseClient` after an
-ownership check in code — which is why 53 files import that client. `client_ideas` and
-`idea_form_tokens` are the sharpest case: the public idea form is unauthenticated, so
-there is no `auth.uid()` for a policy to key on. Making that posture deliberate rather than
-inherited is option B or C in the review doc.
+**The last open half — CLOSED 2026-08-24.** 11 tables ran RLS-on with zero policies
+(service-role only), reached through `createAdminSupabaseClient` after an ownership check in
+code — which is why 59 files import that client. `20260832_close_the_policyless_tables.sql`
+gives all 11 an agency-scoped policy, transcribed from the baseline's patterns rather than
+invented. **Applied to prod and verified twice:** `pg_policies` returns 31 rows, one per table
+in the schema, and an anon-key probe with no JWT against all 11 returns `[]` from every one.
 
-### 8.2 The schema baseline is not in version control — OPEN
+**It is additive and could not have broken the unauthenticated paths.** `service_role` has
+BYPASSRLS, so every admin-client read still works byte for byte — the public approval page
+reading `post_images`, the public idea form writing `client_ideas`. What changed is that a
+route forgetting its agency filter is no longer the only thing between two agencies.
 
-48 migrations; **four** contain `create table`. Nothing creates `agencies`, `clients`, `posts`,
-`users`, `notifications`, `post_images`, `generation_runs`, `social_connections`,
-`brand_profiles` or `posting_schedules`.
+**This entry's own framing of `client_ideas`/`idea_form_tokens` as "the sharpest case" was
+wrong**, and worth recording because it is a tempting mistake: the public form being
+unauthenticated is an argument for keeping service-role on the PUBLIC path, not against a
+policy for the authenticated one. The dashboard reads both as a signed-in user. They are
+included.
 
-So: the database cannot be rebuilt from the repo, `supabase gen types --local` against a fresh
-DB produces nothing, and the posture in §8.1 cannot be reviewed *or* fixed from code. This was
-§7.9 M16 — one bullet in an appendix, under "needs a production query". It is the foundation
-the whole security wave stands on.
+**A side effect worth knowing:** `post_images` had no policy, so a *user-scoped* read of it
+returned nothing — that is the cause of the empty calendar images in session 9 and a standing
+reason to reach for the admin client. Those reads now work. The admin-client workaround stays
+valid; it is simply no longer the only thing that does.
 
-**Fix:** `supabase db dump --schema public` from prod, committed as
-`supabase/migrations/00000000_baseline.sql`, guarded to be a no-op against an existing database.
+**Guarded, and the guard was wrong first.** `rls-policies.test.ts` now cross-checks every table
+in the schema baseline against the policy set — impossible before §8.2, when the migrations
+described 12 of 31 tables. Building it exposed that the existing name regex used `[^"\s]+`,
+which stops at the first space: the two policies named
+`"Users can manage their agency's client sources"` were recorded as named `Users` and their
+`on` clause never parsed, so they reported as checked while nothing checked them. Same shape as
+§7.4's detector defect — wrong in the safe-looking direction. Fixed, and the coverage assertion
+was verified by deleting a policy and confirming it names the table.
+
+### 8.2 The schema baseline is not in version control — RESOLVED 2026-08-24
+
+**`supabase/migrations/00000000_baseline.sql` is committed** — 204 statements generated from
+production: 31 tables, 95 constraints, 39 indexes, 6 functions, 1 trigger and 31
+`enable row level security` flags. Every one is guarded (`if not exists`, or a `do $baseline$`
+existence check for the 96 constraints and triggers), so replaying it is a no-op.
+
+**Was:** 63 migrations, **eight** containing `create table`, covering 12 of the 31 tables.
+Nothing created `agencies`, `clients`, `posts`, `users`, `notifications`, `posting_schedules`,
+`social_connections`, `brand_profiles`, `generation_runs` or `post_approval_tokens`. This was
+§7.9 M16 — one bullet in an appendix, under "needs a production query" — and it was the
+foundation the whole security wave stood on.
+
+**How, and why it took six days it did not need to take.** The entry prescribed
+`supabase db dump --schema public`, so the item silently inherited *that command's*
+prerequisites — a Docker daemon, then a live CLI token — and got filed under "waiting on
+production access". Neither was a prerequisite of the question. The schema is in the catalog,
+the catalog is queryable from the dashboard, and `supabase/queries/rls-audit.sql` had already
+demonstrated exactly that pattern in this same directory for the harder §8.1.
+`supabase/queries/schema-baseline.sql` is the generator; re-run it rather than hand-editing the
+output.
+
+**Verified rather than assumed:** the emitted DDL carries `slot_key`, `visuals_attempted_at`,
+and `generation_runs_one_batch_per_slot` **with all three of its WHERE predicates intact** —
+the partial-index case a naive emitter flattens, which would have produced a baseline that
+rebuilds a database where §5.8's race is silently open.
+
+**What this does NOT buy: `supabase db push` is still unsafe**, and that is now measured rather
+than inferred — see §9. Recording the schema and being able to replay the history are two
+separate problems; this closes the first.
+
+**Fix, and it no longer needs the tooling this entry assumed.** The prescription was
+`supabase db dump --schema public`, which runs pg_dump inside a Docker container — so the entry
+sat blocked behind a daemon, then behind a CLI access token, for six days. Neither is a real
+prerequisite: the schema is in the catalog and the catalog is queryable from the dashboard, which
+is how §8.1 was answered.
+
+`supabase/queries/schema-baseline.sql` emits the whole thing — tables with columns and defaults,
+primary keys, uniques, checks, foreign keys, non-constraint indexes (partial predicates verbatim,
+which matters for `20260830`'s slot claim), functions, triggers and the RLS enable flags — as one
+ordered `ddl` column. Paste, copy the column, save as
+`supabase/migrations/00000000_baseline.sql`. Every statement is guarded (`if not exists`, or a
+`do $$` existence check for constraints and triggers), so replaying it against the live database
+is the no-op this entry asked for.
+
+**One thing a `db dump` would not have told you either:** committing the baseline does not make
+`supabase db push` safe. The 63 existing migrations were never tracked by the CLI, so after the
+baseline they would all replay against a database that already has their changes. A rebuilt
+database needs the baseline applied and the prior versions marked history via
+`supabase migration repair --status applied`. Recording the schema and being able to replay the
+history are two separate problems; the query closes the first.
+
+**Status:** executed against production 2026-08-24, clean on the first run. Its output is
+`supabase/migrations/00000000_baseline.sql`.
 
 ### 8.3 Prompt injection via fetched source text — RESOLVED 2026-08-18
 
@@ -962,28 +1092,99 @@ keeps its own counts, so the real ceiling is `max × warm instances`.
 budget needs shared state (Postgres or Upstash) and is a deliberate change, not a constant edit.
 Do not add a limit here and describe it as a budget.
 
-### 8.7 Security headers — partially closed
+### 8.7 Security headers — CSP now shipping report-only, 2026-08-24
 
-`Strict-Transport-Security` and `Permissions-Policy` added. **CSP is still open** and wants its
-own `report-only` rollout given Next's inline bootstrap and the Konva work — it is the
-defence-in-depth layer for §8.3, so it belongs after it, not instead of it.
+`Strict-Transport-Security` and `Permissions-Policy` were added 2026-08-18.
+`Content-Security-Policy-Report-Only` is now in `next.config.ts`, exactly the rollout this entry
+asked for and no further: Next inlines its bootstrap, the canvas editor fetches Google Fonts
+stylesheets at runtime and draws through `blob:`, so an enforcing policy has several ways to break
+a surface nothing in this repo can see.
+
+`img-src` is derived from `REMOTE_IMAGE_HOSTS` — the same array `images.remotePatterns` is built
+from, mapping next/image's `**.` wildcard onto CSP's `*.` — so the two lists cannot drift into
+disagreeing about which hosts are allowed.
+
+**Still open: enforcement.** That means reading the reports, then removing `'unsafe-inline'` from
+`script-src`, which needs nonces, which needs middleware rewriting every response. A deliberate
+change, not a constant edit — and the same caution §8.6 records about calling a guard a budget.
+
+### 8.8 `/api/extract/status` read across agencies — RESOLVED 2026-08-24
+
+Not in this file before; found 2026-08-24 while re-verifying §8.1's "reached through
+`createAdminSupabaseClient` after an ownership check in code" claim against the routes that
+actually do it. This one did not.
+
+`GET /api/extract/status` called `resolveAuth()` — so it required a signed-in user — and then read
+`brand_kit_extractions` through the service-role client filtered on `onboarding_session_id`
+alone. Being authenticated was the entire check, so any signed-in user holding a session id could
+read another agency's extracted palette, logo and confidence report. `/api/extract/start` stamps
+`agency_id` on the row, so the scope was there to filter on the whole time.
+
+**Severity is bounded by the id, not by the code:** the session id is `crypto.randomUUID()`
+minted in the browser, so it is not guessable and there is no evidence of exposure. That is luck
+holding a door shut, not a control.
+
+`fetchExtraction` now takes `agencyId` as a **required** parameter rather than an optional one —
+the point being that the next caller cannot omit it the way this one did.
+
+**The generalisable part:** every other admin-client route checked has its guard
+(`verifyPostOwnership`, `verifyClientOwnership`). This one was missed because the ownership check
+in that family is a *convention*, not something a test can see — §8.4's lesson at a different
+layer. The 11 policy-less tables in §8.1 all depend on it.
 
 ---
 
-## 9. What the 2026-08-18 pass deliberately did NOT do
+## 9. What is still open
 
-Sequenced, not forgotten. Ordered by what they are waiting on.
+Rewritten 2026-08-24 after a fix pass closed §2.4, §5.2, §5.8, §5.9, §7.7, §7.8, §8.7 (to
+report-only) and §8.8. Sequenced, not forgotten. Ordered by what they are waiting on.
 
-**Waiting on production access — start here.**
-- §8.2 prod schema dump → unblocks §8.1, the largest item in the repo.
-- §8.1 record each table's true RLS state, then one idempotent migration.
-- §7.9 **M21**: are `generation_runs`/`generation_themes` RLS-enabled with no user policy? If
-  yes, every wizard theme insert has been failing silently into `trackThemeSafe`, zeroing
-  `doneCount` and emptying the theme exclusion list. One query settles it.
-- **Migration reconciliation.** `20260808`, `20260814`–`20260819` are tracked as "pending prod"
-  across four entries here and three memory notes. Confirm what is applied **once**, then
-  regenerate `database.ts`. Nothing in the repo can answer this.
+**Settled against production 2026-08-24 — do not re-open.**
+- **§8.2 is closed** — `00000000_baseline.sql` is committed. See the entry.
+- **Migration reconciliation is closed, and the question was malformed.** Four entries here and
+  three memory notes tracked `20260808` and `20260814`–`20260819` as "pending prod".
+  `supabase migration list --linked` cannot answer that and never could: **every one of the 64
+  migrations reports an empty `remote` column**, because the remote history table has never had
+  a single row written to it. "Pending" was never a state this project could observe.
+  Answered instead by checking each migration's *artifacts* against the freshly dumped schema —
+  `client_sources_one_tavily_per_client`, `generation_runs.kind`,
+  `generation_runs_cron_dedup_idx`, `idea_form_tokens_one_per_client` and `client_style_memos`
+  are all present, and `pg_policy` holds 20 policies with zero rows named
+  `post_approval_tokens_public_read`. **Everything is applied. Nothing was ever pending.**
+- **The transferable part, twice over.** §8.2 sat blocked because the entry named a *command*
+  (`supabase db dump`) and the item inherited that command's prerequisites instead of the
+  question's. This one sat open because it named a *tool's notion of state* ("pending prod")
+  that the tool was never wired up to track. **When an entry names a command or a status, check
+  that it is measuring the thing you actually want to know.**
+- **`supabase db push` remains unsafe, now measured.** With an empty remote history, a push
+  would replay all 64 files against a database that already has every one of them. A rebuilt
+  database needs the baseline applied and the prior versions marked history via
+  `supabase migration repair --status applied`. This is why the repo has deliberately never had
+  a `db:push` script — keep it that way.
+
+**Waiting on production access — nothing in the repo can answer these.**
 - §2.9 bucket MIME allowlist (`image/svg+xml` **and** `image/webp`), per environment.
+
+**Verified against production 2026-08-24 — closed, do not re-open.**
+- **`20260830` / `20260831` fully landed.** Columns confirmed by regenerating `database.ts`,
+  and both indexes confirmed by `pg_indexes` — `generation_runs_one_batch_per_slot` and
+  `posts_visuals_backlog` are present. Every cast either migration needed is deleted and
+  `visuals_attempted_at` derives from `PostRow` in `BacklogPost`'s `Pick`.
+  **The two checks are not interchangeable and both were needed.** `gen types` describes
+  columns, not indexes, so a regenerated `database.ts` would have looked identical had only the
+  `alter table` half of `20260830` run — and in that world the unique index is absent, the 23505
+  branch never fires, §5.8 is not fixed, and `npm run check` is still green. A constraint is
+  verified by querying the catalogue, never by the types.
+
+**Answered without production access — do not re-open.**
+- §7.9 **M21** asked whether `generation_runs`/`generation_themes` are RLS-enabled with no user
+  policy, silently failing every wizard theme insert. **They are not.**
+  `20260818_capture_rls_policy_baseline.sql:63` and `:113` record `FOR ALL` agency-isolation
+  policies on both, and Postgres reuses a `FOR ALL` policy's `USING` as its `WITH CHECK` when the
+  latter is omitted — so the inserts pass. This was listed under "needs a production query" for
+  six days after the query that answered it had been committed.
+- **"Five features have no tests at all"** (below) was stale: `analytics` has 21 test files now,
+  `auth`, `settings` and `visual-identity` one each. Only `marketing` is genuinely at zero.
 
 **Waiting on a decision.**
 - §1.2 / §1.3 the post-images domain and the shared review surface. `components/posts/review/`
@@ -999,22 +1200,23 @@ Sequenced, not forgotten. Ordered by what they are waiting on.
   contradicts 109 times is not a rule — narrow it ("multi-column reads use a constant") or drop it.
 
 **Sequenced behind other work.**
-- §5.8 `generation_runs` unique-per-slot · §5.9 visuals retry spacing · §2.4 partial-success on
-  approve · §7.7 notification names from `client_id` · §7.8 `/ideas` pagination · M18 composite
-  FK · M12 theme tracking on unpersisted drafts.
+- M18 composite FK · M12 theme tracking on unpersisted drafts.
 - §2.2 / §2.7 / §2.8 are one storage-orphan job. **Do not start with it** — lowest value by this
   file's own repeated assessment ("storage pennies") and highest risk to get wrong, because a
   cleanup that mis-computes the skip set deletes live artwork.
-- §5.2 calendar zod (the only §5 perf item with a measured number and no unmet precondition) ·
-  §5.3 · §5.5 · §5.1.
+- §5.3 shared-shell supabase client · §5.5 unbounded review payload · §5.1 layout badge count.
+  §5.2 is closed; these three have no measured number and no trigger met.
+- §8.7 CSP **enforcement** — the report-only policy ships, reading its reports is the next step.
 - §7.12 Playwright. The analysis stands and should not be revisited: jsdom would have caught 3
   of 8 real editor defects and **the three worst were all layout**, which jsdom cannot see.
-- Five features have no tests at all: `analytics`, `auth`, `marketing`, `settings`,
-  `visual-identity`. `auth` and `settings` are where a bug is a security bug.
+- **`marketing` has no tests at all**, and `auth`, `settings` and `visual-identity` have one file
+  each. `auth` and `settings` are where a bug is a security bug. (Re-measured 2026-08-24 — the
+  version of this line naming five features was two arcs out of date.)
 
-**Still owed, by five separate entries: the browser matrix.** §6.3b, the generate redesign, the
-review-tab redesign, the sources redesign and the pipeline refactor each end with the same
-sentence. Everything is verified by `tsc`, `next build` and 1,274 tests; **none of it has been
-looked at in a browser.** Per §7.12 the manual pass has empirically caught every layout defect
-in the editor arc, including two that a clean typecheck, a clean lint, 1,100+ tests and twelve
-review agents all missed.
+**Still owed, by six separate entries now: the browser matrix.** §6.3b, the generate redesign, the
+review-tab redesign, the sources redesign, the pipeline refactor — and the 2026-08-24 fix pass,
+which changed two rendered surfaces: the ideas inbox gained a "Show older" footer, and the
+notification row now resolves its client name from the roster. Everything is verified by `tsc`,
+`next build` and 1,590 tests; **none of it has been looked at in a browser.** Per §7.12 the
+manual pass has empirically caught every layout defect in the editor arc, including two that a
+clean typecheck, a clean lint, 1,100+ tests and twelve review agents all missed.
