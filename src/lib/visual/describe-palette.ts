@@ -60,6 +60,12 @@ export async function describePalette(palette: Palette): Promise<string> {
     const message = await callAnthropic({
       model: LIGHT_MODEL,
       maxTokens: 300,
+      // Naming a hex has one right answer, and this call races itself: the visuals cron runs two
+      // lanes, so two slides of one carousel can both find the description missing and both write
+      // one. At default sampling they disagree — "warm sand" on slide 1, "muted gold" on slide 2,
+      // last write wins — and the same carousel goes to gpt-image-2 in two different vocabularies.
+      // At 0 the lanes converge on identical text, so the race stops mattering.
+      temperature: 0,
       systemPrompt:
         'You name brand colours for image-generation prompts. For each hex colour, return a short, precise human-readable colour name (e.g. "medium periwinkle blue", "warm off-white"). Also return one sentence capturing the overall palette character (temperature, mood, harmony).',
       userMessage: hexLines,

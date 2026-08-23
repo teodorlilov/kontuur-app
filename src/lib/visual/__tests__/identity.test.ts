@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
+import type { Palette, VisualIdentity } from '@/types/visual'
 import { safeParseVisualIdentity } from '../identity-schema'
-import { buildDefaultIdentity, DEFAULT_PALETTE } from '../identity'
+import { buildDefaultIdentity, DEFAULT_PALETTE, withPalette } from '../identity'
 import { DEFAULT_BRAND_STYLE_ID } from '../brand-styles'
 
 describe('safeParseVisualIdentity', () => {
@@ -53,5 +54,41 @@ describe('buildDefaultIdentity', () => {
       palette: DEFAULT_PALETTE,
       style: DEFAULT_BRAND_STYLE_ID,
     })
+  })
+})
+
+describe('withPalette', () => {
+  const TAN: Palette = {
+    surface: '#FFFFFF',
+    ink: '#000000',
+    accent: '#CCAE7B',
+    'accent-deep': '#C6BEBE',
+    line: '#000000',
+  }
+
+  /** A measured blue identity, description and all — the shape the extractor writes. */
+  const blue: VisualIdentity = {
+    palette: DEFAULT_PALETTE,
+    style: 'clinical-luxury',
+    palette_description: 'Primary accent: periwinkle blue\nDeep accent: deep cobalt blue',
+  }
+
+  it('drops the description written for the colours being replaced', () => {
+    expect(withPalette(blue, TAN)).not.toHaveProperty('palette_description')
+  })
+
+  it('applies the new palette and keeps the chosen style', () => {
+    expect(withPalette(blue, TAN)).toEqual({ palette: TAN, style: 'clinical-luxury' })
+  })
+
+  it('is a plain swap when no description was stored yet', () => {
+    expect(withPalette(buildDefaultIdentity(), TAN)).toEqual({
+      palette: TAN,
+      style: DEFAULT_BRAND_STYLE_ID,
+    })
+  })
+
+  it('returns a blob the write gate accepts', () => {
+    expect(safeParseVisualIdentity(withPalette(blue, TAN)).success).toBe(true)
   })
 })

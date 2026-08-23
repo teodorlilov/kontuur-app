@@ -30,6 +30,19 @@ describe('describePalette', () => {
     )
   })
 
+  it('samples at zero so two concurrent generations name the same hex the same way', async () => {
+    mockClaudeToolResponse({
+      surface: 'white',
+      ink: 'near-black',
+      accent: 'warm sand',
+      accent_deep: 'soft warm gray',
+      line: 'light gray',
+      character: 'Warm, quiet, editorial.',
+    })
+    await describePalette(DEFAULT_PALETTE)
+    expect(vi.mocked(callAnthropic).mock.calls[0]?.[0]).toMatchObject({ temperature: 0 })
+  })
+
   it('falls back to labelled hex lines when the Haiku call fails', async () => {
     vi.mocked(callAnthropic).mockRejectedValue(new Error('api down'))
     const block = await describePalette(DEFAULT_PALETTE)

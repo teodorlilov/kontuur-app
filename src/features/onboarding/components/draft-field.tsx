@@ -3,6 +3,7 @@
 import { Chip, ChipGroup } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
+import { withPalette } from '@/lib/visual/identity'
 import { StyleOptions } from '@/features/visual-identity/components/style-options'
 import type { DraftRowSpec } from '@/features/onboarding/lib/draft-rows'
 import type { DraftProfile } from '@/features/onboarding/types'
@@ -59,7 +60,7 @@ export function DraftFieldEdit({ spec, draft, onChange, paletteStatus }: DraftFi
         <PaletteEdit
           palette={draft.identity.palette}
           status={paletteStatus}
-          onChange={(palette) => onChange({ identity: { ...draft.identity, palette } })}
+          onChange={(palette) => onChange({ identity: withPalette(draft.identity, palette) })}
         />
       )
     case 'schedule':

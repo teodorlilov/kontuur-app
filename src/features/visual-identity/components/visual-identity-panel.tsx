@@ -8,6 +8,7 @@ import {
   type BrandStyle,
   type BrandStyleId,
 } from '@/lib/visual/brand-styles'
+import { withPalette } from '@/lib/visual/identity'
 import { Button } from '@/components/ui/button'
 import { ImageLightbox } from '@/components/ui/image-lightbox'
 import { LABEL_CLASS } from '@/components/ui/form/control-classes'
@@ -37,8 +38,7 @@ export function VisualIdentityPanel({
 }: VisualIdentityPanelProps) {
   const [previewStyle, setPreviewStyle] = useState<BrandStyle | null>(null)
 
-  // Rebuilt without palette_description: it described the old colours; generation self-heals a fresh one.
-  const setPalette = (palette: Palette) => onChange({ palette, style: identity.style })
+  const setPalette = (palette: Palette) => onChange(withPalette(identity, palette))
   const setStyle = (style: BrandStyleId) => onChange({ ...identity, style })
 
   const hint = status ? EXTRACTION_HINT[status] : undefined
