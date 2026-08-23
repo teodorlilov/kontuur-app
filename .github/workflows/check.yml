@@ -17,26 +17,25 @@ jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
-          # 22 LTS: Next 16 requires >=20, and this stays close to what Vercel
-          # builds with. Bump both together if the deploy runtime moves.
-          node-version: 22
+          # 24 LTS: Next 16 requires >=20, and this is what Vercel builds with.
+          # Bump both together if the deploy runtime moves.
+          node-version: 24
           cache: npm
-
-      # Node 22 ships npm 10, but the lockfile is written by npm 11 on dev machines,
-      # and the two disagree about optional wasm binaries. `@oxc-resolver/binding-wasm32-wasi`
-      # pins `@emnapi/core`/`@emnapi/runtime` at exactly 1.11.2 while the root hoists 1.11.3;
-      # npm 11 treats that as satisfied and writes no nested entry, npm 10 demands one and
-      # fails `ci` with "Missing: @emnapi/core@1.11.2 from lock file". Neither lockfile is
-      # wrong — they just have to be read by the version that wrote them. Pin npm here rather
-      # than bumping Node, so the build stays on the runtime Vercel deploys with.
-      - run: npm install -g npm@11
 
       # ci, not install: builds from the lockfile exactly, so a run cannot pass on
       # a dependency tree that no one has committed.
+      #
+      # If this ever fails with "Missing: @emnapi/core@<x> from lock file", the lock
+      # was written by an npm too old to record it. `@oxc-resolver/binding-wasm32-wasi`
+      # pins @emnapi/core and @emnapi/runtime to exact versions the root does not hoist,
+      # so they need their own nested entries; npm 11.6 and earlier judge the pin already
+      # satisfied and omit them, while npm 10 and npm 11.17+ both demand them and refuse
+      # to install. Fix it by upgrading the npm that writes the lock, never by loosening
+      # this step — the local npm is the one out of date, not CI.
       - run: npm ci
 
       # typecheck && lint && test. Deliberately NOT `npm test` — vitest is
