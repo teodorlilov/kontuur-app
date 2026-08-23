@@ -38,9 +38,24 @@ const EXEMPT: Record<string, string> = {
     'Shared reference data with no agency_id: per-LANGUAGE writing rules (native CTA phrases, formality defaults, banned anglicisms) that are identical for every agency. Still gated on auth.uid() IS NOT NULL and SELECT-only, so it is readable by any signed-in user and writable by none.',
 }
 
+/**
+ * Tables that are deliberately left with no policy at all, i.e. service-role only.
+ *
+ * Empty, and that is the point. Eleven tables sat here until 2026-08-24 — every read of them
+ * went through `createAdminSupabaseClient`, which bypasses RLS, so cross-agency safety was a
+ * hand-written predicate repeated across 59 files. `GET /api/extract/status` is what happens
+ * when one of them is missed: it read `brand_kit_extractions` on session id alone, and nothing
+ * could catch it because the only guard was a convention.
+ *
+ * Adding an entry here means accepting that posture for that table. Say why, and say what
+ * checks ownership instead.
+ */
+const POLICYLESS: Record<string, string> = {}
+
 interface Policy {
   file: string
   name: string
+  table: string
   body: string
 }
 
@@ -52,11 +67,39 @@ function policies(): Policy[] {
     // Comments may quote a bad policy to explain it — the baseline migration's header
     // quotes the exact one that caused this. Strip them before matching.
     const code = sql.replace(/^\s*--.*$/gm, '')
-    for (const match of code.matchAll(/create\s+policy\s+"?([^"\s]+)"?[\s\S]*?;/gi)) {
-      found.push({ file, name: match[1] ?? '(unnamed)', body: match[0] })
+    // A quoted name may contain spaces — two of the live policies are spelled
+    // "Users can manage their agency's client sources". The previous pattern used
+    // `[^"\s]+` for the name, which stopped at the first space, recorded those two as
+    // being named `Users`, and never reached their `on` clause. It reported them as
+    // checked while checking nothing, which is the §7.4 failure exactly: a detector
+    // wrong in the safe-looking direction.
+    for (const match of code.matchAll(
+      /create\s+policy\s+(?:"([^"]+)"|(\S+))\s+on\s+(?:public\.)?"?([a-z_]+)"?[\s\S]*?;/gi
+    )) {
+      found.push({
+        file,
+        name: match[1] ?? match[2] ?? '(unnamed)',
+        table: match[3] ?? '',
+        body: match[0],
+      })
     }
   }
   return found
+}
+
+/**
+ * Every table in the database, read from the schema baseline.
+ *
+ * This is what §8.2 bought beyond "the database can be rebuilt": until `00000000_baseline.sql`
+ * existed, the migrations described 12 of 31 tables, so a test could not enumerate what it was
+ * supposed to be checking. Coverage was unmeasurable, which is the same reason the bad policy
+ * survived — nothing could see the whole surface at once.
+ */
+function tables(): string[] {
+  const baseline = readFileSync(path.join(MIGRATIONS, '00000000_baseline.sql'), 'utf8')
+  return [...baseline.matchAll(/^create table if not exists public\.([a-z_]+)/gim)].map(
+    (m) => m[1] ?? ''
+  )
 }
 
 describe('RLS policies in migrations', () => {
@@ -97,5 +140,47 @@ describe('RLS policies in migrations', () => {
   it('has no stale EXEMPT entry', () => {
     const declared = new Set(all.map((p) => p.name))
     expect(Object.keys(EXEMPT).filter((name) => !declared.has(name))).toEqual([])
+  })
+})
+
+describe('RLS policy coverage', () => {
+  const all = policies()
+  const declared = tables()
+  const covered = new Set(all.map((p) => p.table))
+
+  it('reads the schema baseline', () => {
+    // Every assertion below is vacuous if this parses nothing, and it would parse nothing if
+    // the baseline were ever regenerated into a different shape.
+    expect(declared.length).toBeGreaterThan(25)
+  })
+
+  it('every table has a policy', () => {
+    const bare = declared.filter((t) => !covered.has(t) && !(t in POLICYLESS))
+
+    // A table with no policy is not "locked down" — it is delegated to code. That is a
+    // defensible choice, but it has to be a choice someone made in a diff, not a state a
+    // table drifts into by being created in the dashboard.
+    expect(bare).toEqual([])
+  })
+
+  it('every accepted exception explains itself', () => {
+    for (const [table, why] of Object.entries(POLICYLESS)) {
+      expect(why.length, `${table} needs a real reason`).toBeGreaterThan(40)
+    }
+  })
+
+  it('has no stale POLICYLESS entry', () => {
+    // Same shrink-only shape as the §7.3/§7.4 backlogs: giving a table a policy and leaving
+    // its exemption behind would let the list overstate the debt as easily as understate it.
+    expect(Object.keys(POLICYLESS).filter((t) => covered.has(t))).toEqual([])
+  })
+
+  it('names a real table in every policy', () => {
+    const known = new Set(declared)
+    const orphans = all.filter((p) => !known.has(p.table)).map((p) => `${p.file}: ${p.name}`)
+
+    // Catches the parser silently failing and the policy on a table that no longer exists —
+    // both of which would otherwise read as coverage.
+    expect(orphans).toEqual([])
   })
 })

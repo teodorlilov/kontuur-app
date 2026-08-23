@@ -86,15 +86,24 @@ type ExtractionSession = {
   report: ExtractionReport | null
 }
 
-/** Fetch an onboarding extraction session's status + result, or null when absent. */
+/**
+ * Fetch an onboarding extraction session's status + result, or null when absent.
+ *
+ * `agencyId` is required, not optional. `brand_kit_extractions` runs RLS-on with no
+ * policies, so every read of it goes through the service-role client and the scope has to
+ * be in the predicate — the session id alone is a bearer token nobody issued. Making the
+ * argument mandatory is what stops the next caller from omitting it the way this one did.
+ */
 export async function fetchExtraction(
   supabase: Db,
-  sessionId: string
+  sessionId: string,
+  agencyId: string
 ): Promise<ExtractionSession | null> {
   const { data, error } = await supabase
     .from('brand_kit_extractions')
     .select(BRAND_KIT_EXTRACTION_COLUMNS)
     .eq('onboarding_session_id', sessionId)
+    .eq('agency_id', agencyId)
     .maybeSingle()
   if (error || !data) return null
   const parsed = data.identity ? safeParseVisualIdentity(data.identity) : null
