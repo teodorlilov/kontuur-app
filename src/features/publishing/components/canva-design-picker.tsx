@@ -203,6 +203,12 @@ function DesignCard({
         {isImporting ? (
           <Loader2 className="h-5 w-5 animate-spin text-forest" />
         ) : design.thumbnailUrl ? (
+          // Deliberately a plain <img>. Canva serves these thumbnails from a signed,
+          // expiring URL on a host it rotates, so `next/image` would need a wildcard
+          // remotePatterns entry and would then proxy and cache URLs built to expire.
+          // It is a picker tile behind a dialog, never the LCP element, so the
+          // optimisation this rule is protecting does not apply.
+          // eslint-disable-next-line @next/next/no-img-element
           <img
             className="h-full w-full object-cover"
             src={design.thumbnailUrl}
