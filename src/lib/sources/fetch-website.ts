@@ -6,6 +6,32 @@ import { readLimitedText } from './read-limited-text'
 const FETCH_TIMEOUT = 8000
 const MAX_HTML_BYTES = 500_000
 const MIN_CONTENT_LENGTH = 200
+/** Per-page character budget. Applied AFTER whitespace is collapsed, so it caps content, not layout. */
+const MAX_CONTENT_CHARS = 8000
+
+/**
+ * Collapse a Readability dump's layout whitespace, keeping paragraph breaks.
+ *
+ * Readability preserves the source's indentation, so a template built from nested tables or a
+ * page-builder yields runs of tabs on their own lines: measured on one real client homepage, 72%
+ * of the extracted text was whitespace — 1,117 characters carrying 316 characters of content, at
+ * full token price. It also eats the character budget, so a substantive page gets truncated
+ * mid-sentence while a third of its allowance held indentation (5,599 → 6,888 characters of real
+ * content under the same cap on that site's services page).
+ *
+ * `[^\S\n]` is "whitespace except newline": tabs, spaces, CR and non-breaking spaces collapse,
+ * line structure survives. Paragraph breaks are kept at one blank line because they are the only
+ * signal of where a section ends once the markup is gone.
+ */
+function collapseLayoutWhitespace(text: string): string {
+  return text
+    .replace(/[^\S\n]+/g, ' ')
+    .split('\n')
+    .map((line) => line.trim())
+    .join('\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+}
 
 const FETCH_HEADERS = {
   'User-Agent': USER_AGENT_BROWSER,
@@ -17,7 +43,8 @@ const FETCH_HEADERS = {
  * Fetches clean article text from a website by fetching HTML directly
  * and running Mozilla Readability to extract the main content.
  *
- * Returns plain text (no markdown, no images, no nav) capped at 8000 chars.
+ * Returns plain text (no markdown, no images, no nav), whitespace-collapsed and capped at
+ * `MAX_CONTENT_CHARS`.
  */
 export async function fetchWebsiteSource(
   url: string
@@ -38,10 +65,9 @@ export async function fetchWebsiteSource(
       return { markdown: '', error: 'No readable content found' }
     }
 
-    const text = article.textContent
-      .trim()
-      .replace(/\n{3,}/g, '\n\n')
-      .slice(0, 8000)
+    // Collapsed before the cap, so the budget is spent on content rather than indentation — and so
+    // MIN_CONTENT_LENGTH measures a page's substance instead of how deeply its template nests.
+    const text = collapseLayoutWhitespace(article.textContent).slice(0, MAX_CONTENT_CHARS)
     if (text.length < MIN_CONTENT_LENGTH) return { markdown: '', error: 'Content too short' }
 
     return { markdown: text }
@@ -51,9 +77,33 @@ export async function fetchWebsiteSource(
   }
 }
 
+export interface PageExcerpt {
+  url: string
+  markdown: string
+}
+
 interface WebsiteFetchResult {
-  excerpts: Array<{ url: string; markdown: string }>
+  excerpts: PageExcerpt[]
   error?: string
+}
+
+/**
+ * Fetch several pages at once, dropping the ones that came back empty or unreadable.
+ *
+ * Shared by the research pipeline's subpage sampling and the onboarding site profile — both need
+ * "fetch these, keep what worked", and two copies of a settled-promise narrowing is exactly the
+ * kind of duplication that drifts. `fetchWebsiteSource` already reports a too-short page as an
+ * error, so `error` alone decides: re-checking the length here restated the same rule in a second
+ * place, where it could disagree.
+ */
+export async function fetchPages(urls: string[]): Promise<PageExcerpt[]> {
+  const results = await Promise.allSettled(
+    urls.map(async (pageUrl): Promise<PageExcerpt | null> => {
+      const { markdown, error } = await fetchWebsiteSource(pageUrl)
+      return error || !markdown ? null : { url: pageUrl, markdown }
+    })
+  )
+  return results.flatMap((r) => (r.status === 'fulfilled' && r.value ? [r.value] : []))
 }
 
 /**
@@ -70,25 +120,7 @@ export async function fetchWebsiteWithSubpages(
 
   if (selectedPages && selectedPages.length > 0) {
     const { pickRandom } = await import('./crawl-subpages')
-    const maxCount = maxPages ?? 3
-    const selected = pickRandom(selectedPages, maxCount)
-
-    const results = await Promise.allSettled(
-      selected.map(async (pageUrl) => {
-        const { markdown, error } = await fetchWebsiteSource(pageUrl)
-        if (error || markdown.length < MIN_CONTENT_LENGTH) return null
-        return { url: pageUrl, markdown }
-      })
-    )
-
-    const excerpts = results
-      .filter(
-        (r): r is PromiseFulfilledResult<{ url: string; markdown: string } | null> =>
-          r.status === 'fulfilled'
-      )
-      .map((r) => r.value)
-      .filter((r): r is { url: string; markdown: string } => r !== null)
-
+    const excerpts = await fetchPages(pickRandom(selectedPages, maxPages ?? 3))
     if (excerpts.length > 0) {
       return { excerpts }
     }

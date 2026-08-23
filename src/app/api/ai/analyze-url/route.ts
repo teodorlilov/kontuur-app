@@ -2,9 +2,13 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
 import { aiRateLimitResponse } from '@/lib/auth/rate-limit'
-import { fetchWebsiteSource } from '@/lib/sources/fetch-website'
+import { fetchSiteProfile } from '@/lib/sources/fetch-site-profile'
 import { fetchInstagramProfile } from '@/lib/sources/fetch-instagram'
 import { analyzeUrl } from '@/utils/ai'
+
+// A sitemap lookup, up to seven page fetches (8s timeout each, in two parallel waves) and a model
+// call. The single-page version this replaced fitted comfortably in the default; this does not.
+export const maxDuration = 60
 
 /** Both fields optional here; the "at least one" rule is checked below so the two cases give distinct errors. */
 const analyzeUrlSchema = z.object({
@@ -42,9 +46,11 @@ export async function POST(request: Request) {
 
   if (body.websiteUrl?.trim()) {
     fetches.push(
-      fetchWebsiteSource(body.websiteUrl.trim()).then((r) => ({
+      // The site, not the page: a homepage is usually a hero and a nav bar, and the profile drawn
+      // from one is what the client's pillars and search queries are built on for good.
+      fetchSiteProfile(body.websiteUrl.trim()).then((r) => ({
         source: 'website',
-        markdown: r.markdown,
+        markdown: r.content,
         error: r.error,
       }))
     )
