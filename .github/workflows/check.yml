@@ -26,6 +26,15 @@ jobs:
           node-version: 22
           cache: npm
 
+      # Node 22 ships npm 10, but the lockfile is written by npm 11 on dev machines,
+      # and the two disagree about optional wasm binaries. `@oxc-resolver/binding-wasm32-wasi`
+      # pins `@emnapi/core`/`@emnapi/runtime` at exactly 1.11.2 while the root hoists 1.11.3;
+      # npm 11 treats that as satisfied and writes no nested entry, npm 10 demands one and
+      # fails `ci` with "Missing: @emnapi/core@1.11.2 from lock file". Neither lockfile is
+      # wrong — they just have to be read by the version that wrote them. Pin npm here rather
+      # than bumping Node, so the build stays on the runtime Vercel deploys with.
+      - run: npm install -g npm@11
+
       # ci, not install: builds from the lockfile exactly, so a run cannot pass on
       # a dependency tree that no one has committed.
       - run: npm ci
