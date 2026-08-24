@@ -30,8 +30,6 @@ const KEY_SKIP_RATIO = 0.92
 interface Trimmed {
   blob: Blob
   bbox: SourceRect
-  /** Pixels that survived, so a caller can ask how much of what it asked for actually came back. */
-  opaquePixels: number
 }
 
 // Scan a canvas for its opaque bounding box and export the cropped PNG.
@@ -44,10 +42,8 @@ async function trimCanvas(source: HTMLCanvasElement): Promise<Trimmed | null> {
   let minY = Infinity
   let maxX = -Infinity
   let maxY = -Infinity
-  let opaquePixels = 0
   for (let i = 3; i < data.length; i += 4) {
     if (data[i]! > ALPHA_THRESHOLD) {
-      opaquePixels += 1
       const pixel = (i - 3) / 4
       const x = pixel % width
       const y = (pixel - x) / width
@@ -79,7 +75,7 @@ async function trimCanvas(source: HTMLCanvasElement): Promise<Trimmed | null> {
     bbox.width,
     bbox.height
   )
-  return { blob: await canvasToBlob(trimmed, 'image/png'), bbox, opaquePixels }
+  return { blob: await canvasToBlob(trimmed, 'image/png'), bbox }
 }
 
 /**
@@ -98,20 +94,6 @@ interface PointBounds {
   minY: number
   maxX: number
   maxY: number
-}
-
-/**
- * The area a closed polygon encloses, by the shoelace formula. Absolute, so winding direction does
- * not matter — a loop drawn clockwise encloses just as much as one drawn anticlockwise.
- */
-function polygonArea(points: number[]): number {
-  let sum = 0
-  const count = Math.floor(points.length / 2)
-  for (let i = 0; i < count; i++) {
-    const j = (i + 1) % count
-    sum += points[i * 2]! * points[j * 2 + 1]! - points[j * 2]! * points[i * 2 + 1]!
-  }
-  return Math.abs(sum) / 2
 }
 
 // Bounding box of a flat x,y point list; null for an empty list.
@@ -247,7 +229,7 @@ interface LoopGeometry {
   scale: number
 }
 
-// Span guard + smoothing + crop mapping — shared by the geometric and AI-detect lasso paths.
+// Span guard + smoothing + crop mapping: a drawn loop turned into source-pixel geometry.
 function analyzeLoop(
   loopPoints: number[],
   src: { width: number; height: number },
@@ -266,11 +248,10 @@ function analyzeLoop(
   return { srcPoints, bounds: loopSourceBounds(srcPoints, src), scale: space.scale }
 }
 
-// The loop polygon as a feathered alpha shape, drawable at an offset (crop-local or full-source).
+// The loop polygon as a feathered alpha shape, in full-source coordinates.
 function loopShapeCanvas(
   size: { width: number; height: number },
   srcPoints: number[],
-  offset: { x: number; y: number },
   blurPx: number
 ): HTMLCanvasElement {
   const [shape, ctx] = createDrawingCanvas(size)
@@ -278,8 +259,8 @@ function loopShapeCanvas(
   ctx.fillStyle = 'black'
   ctx.beginPath()
   for (let i = 0; i + 1 < srcPoints.length; i += 2) {
-    if (i === 0) ctx.moveTo(srcPoints[i]! + offset.x, srcPoints[i + 1]! + offset.y)
-    else ctx.lineTo(srcPoints[i]! + offset.x, srcPoints[i + 1]! + offset.y)
+    if (i === 0) ctx.moveTo(srcPoints[i]!, srcPoints[i + 1]!)
+    else ctx.lineTo(srcPoints[i]!, srcPoints[i + 1]!)
   }
   ctx.closePath()
   ctx.fill()
@@ -303,12 +284,7 @@ export async function cutoutFromLasso(
   const loop = analyzeLoop(loopPoints, src, canvas, transform)
   if (!loop) return null
 
-  const shape = loopShapeCanvas(
-    src,
-    loop.srcPoints,
-    { x: 0, y: 0 },
-    LASSO_FEATHER_CANVAS_PX * loop.scale
-  )
+  const shape = loopShapeCanvas(src, loop.srcPoints, LASSO_FEATHER_CANVAS_PX * loop.scale)
   const [cut, cutCtx] = createDrawingCanvas(src)
   cutCtx.drawImage(background, 0, 0, src.width, src.height)
   const boundaryColors = sampleBoundaryColors(cutCtx, loop.srcPoints, src)
@@ -317,92 +293,6 @@ export async function cutoutFromLasso(
   cutCtx.globalCompositeOperation = 'source-over'
   keyOutBackground(cutCtx, loop.bounds, boundaryColors)
   return trimCanvas(cut)
-}
-
-/** Padding (source px) around the loop's crop so the matting model sees a little context. */
-const REGION_CROP_PADDING = 16
-
-/**
- * How much of what the loop enclosed the matte has to keep for the detection to count.
- *
- * The snap is allowed to TIGHTEN a loop — that is the whole point of it — but not to decide the user
- * meant something else. The model is handed the loop's bounding box plus a little context, and it
- * answers with "the main subject" of that crop, which on a collage is the photograph every time: a
- * loop drawn around flat display type came back as the hand overlapping it, because a hand is a
- * subject and a letterform is not.
- *
- * 0.35 is deliberately generous — a genuinely thin subject inside a loose loop still passes — and
- * failing it is not an error: the caller falls back to the outline that was actually drawn and says
- * so. Measured against the loop's real enclosed area, not its bounding box, so an L-shaped or
- * diagonal loop is not judged against a rectangle it never claimed.
- */
-const MIN_DETECT_COVERAGE = 0.35
-
-/**
- * AI-detect lasso: crop the loop's region, let the (injected) matting provider cut the object
- * out of that crop — a tight crop makes "the subject" unambiguous — then intersect the matte
- * with the drawn loop and trim. The provider does the network work so this module stays pure
- * canvas. Null = stray loop or the matte found nothing (caller falls back to the geometric cut).
- */
-export async function cutoutFromLassoDetect(
-  background: HTMLImageElement,
-  loopPoints: number[],
-  src: { width: number; height: number },
-  canvas: { w: number; h: number },
-  transform: CanvasBackgroundTransform | undefined,
-  matteProvider: (regionBlob: Blob) => Promise<HTMLImageElement>
-): Promise<Trimmed | null> {
-  const loop = analyzeLoop(loopPoints, src, canvas, transform)
-  if (!loop) return null
-
-  const cropX = Math.max(0, loop.bounds.x - REGION_CROP_PADDING)
-  const cropY = Math.max(0, loop.bounds.y - REGION_CROP_PADDING)
-  const crop: SourceRect = {
-    x: cropX,
-    y: cropY,
-    width: Math.min(src.width, loop.bounds.x + loop.bounds.width + REGION_CROP_PADDING) - cropX,
-    height: Math.min(src.height, loop.bounds.y + loop.bounds.height + REGION_CROP_PADDING) - cropY,
-  }
-  if (crop.width < 8 || crop.height < 8) return null
-
-  const [region, regionCtx] = createDrawingCanvas(crop)
-  regionCtx.drawImage(
-    background,
-    crop.x,
-    crop.y,
-    crop.width,
-    crop.height,
-    0,
-    0,
-    crop.width,
-    crop.height
-  )
-  const matte = await matteProvider(await canvasToBlob(region, 'image/png'))
-
-  const [cut, cutCtx] = createDrawingCanvas(crop)
-  cutCtx.drawImage(matte, 0, 0, crop.width, crop.height)
-  cutCtx.globalCompositeOperation = 'destination-in'
-  cutCtx.drawImage(
-    loopShapeCanvas(
-      crop,
-      loop.srcPoints,
-      { x: -crop.x, y: -crop.y },
-      LASSO_FEATHER_CANVAS_PX * loop.scale
-    ),
-    0,
-    0
-  )
-  const trimmed = await trimCanvas(cut)
-  if (!trimmed) return null
-  // Did the matte keep what was enclosed, or swap it for something else inside the same box?
-  const enclosed = polygonArea(loop.srcPoints)
-  if (enclosed > 0 && trimmed.opaquePixels / enclosed < MIN_DETECT_COVERAGE) return null
-  // The trim bbox is crop-local — shift it back into full-source coordinates for placement.
-  return {
-    blob: trimmed.blob,
-    bbox: { ...trimmed.bbox, x: trimmed.bbox.x + crop.x, y: trimmed.bbox.y + crop.y },
-    opaquePixels: trimmed.opaquePixels,
-  }
 }
 
 /**

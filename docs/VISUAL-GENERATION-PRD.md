@@ -541,10 +541,19 @@ everything here changes what gets baked into it.
   inverse crop (`sourceRectToCanvas`) — visible handles even for large subjects.
 - **Lasso cut**: smoothed loop (jitter decimation + one Chaikin pass) → cut with a feathered
   loop mask → boundary-colour keying (the loop boundary is background by definition; bails out
-  when keying would erase >92% — the loop WAS the object). **"Detect object in the loop"**
-  (default ON): the loop's padded crop region goes through the same BiRefNet, the matte is
-  intersected with the loop, trimmed and placed; any failure falls back to the pure geometric
-  cut. No new AI models anywhere — BiRefNet + gpt-image-2 only (user decision).
+  when keying would erase >92% — the loop WAS the object). Pure geometry on the client: no
+  model, no upload but the result's, ~4s. No new AI models anywhere — BiRefNet + gpt-image-2
+  only (user decision).
+- **"Snap to the object inside the loop" was BUILT AND REMOVED** (2026-08-24). It ran the
+  loop's padded crop through the same BiRefNet and intersected the matte with the loop. It
+  reliably cut the wrong thing on a collage: the matte answers with the most subject-like thing
+  in the crop, so a loop drawn around a pink disc came back as the woman standing beside it, and
+  clipping to the loop afterwards only kept the sliver of her that fell inside. Two fixes were
+  tried — a coverage guard (reject a matte keeping <35% of the enclosed area) and painting the
+  outside of the loop into a flat plate before the model saw it — then the feature was cut
+  instead, because "cut out the subject" already asks the model that question properly and a
+  drawn outline is a *precise* gesture that should not be re-interpreted. Ticked ON by default
+  was what made it hurt.
 - Per-element repair: **eraser brush** (destination-out strokes mapped through the element's
   rotation into bitmap pixels — geometry unchanged, holes not re-trims) and **"Remove
   background"** (border-colour keying; an SVG that needed rasterized keying becomes a bitmap).
@@ -807,8 +816,9 @@ To keep the design tool approachable for non-technical users, the editing canvas
 User Flow Specification: "Isolate Object" (DIS Model Integration)
 ⚠️ SUPERSEDED as-built (2026-07-25): dev testing killed click-to-target — users couldn't control
 WHAT got cut and the duplicate-on-top confused move/delete intent. Shipped instead: one-click
-"Cut out subject" (whole-frame BiRefNet) + lasso with optional AI-detect for targeted cuts, no
-hover edge-detection, no confetti. Kept below for the original UX reasoning only.
+"Cut out subject" (whole-frame BiRefNet) + a purely geometric lasso for targeted cuts, no
+hover edge-detection, no confetti. (The lasso briefly had an AI-detect option; removed
+2026-08-24 — see §2 above.) Kept below for the original UX reasoning only.
 This module defines the user experience, interaction states, and feedback loops for the Dichotomous Image Segmentation (DIS) tool within the editing workspace. The goal is to make a complex backend machine-learning process feel instantaneous, predictable, and foolproof for non-technical users.
 
 

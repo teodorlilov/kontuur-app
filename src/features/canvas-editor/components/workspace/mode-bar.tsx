@@ -12,7 +12,6 @@ interface ModeBarState {
   brushSize: number
   hasStrokes: boolean
   inpaintPrompt: string
-  lassoDetect: boolean
   inpainting: boolean
   erasing: boolean
   repairing: boolean
@@ -28,7 +27,6 @@ interface ModeBarState {
   jobs: EditorJobs
   onBrushSizeChange: (size: number) => void
   onPromptChange: (prompt: string) => void
-  onDetectChange: (detect: boolean) => void
   onClearStrokes: () => void
   onApplyInpaint: () => void
   onRemoveObject: () => void
@@ -128,19 +126,13 @@ export function ModeBar(state: ModeBarState) {
         </>
       )}
 
-      {state.mode === 'lasso' && (
-        <>
-          <label className="inline-flex cursor-pointer items-center gap-2 font-sans text-caption text-ink">
-            <input
-              type="checkbox"
-              checked={state.lassoDetect}
-              onChange={(event) => state.onDetectChange(event.target.checked)}
-              className="size-3.5 accent-forest"
-            />
-            Snap to the object inside the loop
-          </label>
-          {state.lassoCutting && <BusyHint label="Cutting out" job={state.jobs.find('lasso')} />}
-        </>
+      {/* The lasso has no controls of its own either: the loop IS the instruction, and it cuts what
+          it was drawn around. It kept a "snap to the object inside the loop" toggle for a while,
+          which handed the loop to the matting model as a hint — but the model answers with the most
+          subject-like thing it can find, so on a collage a loop drawn around a shape came back as
+          the person beside it. "Cut out the subject" already asks that question properly. */}
+      {state.mode === 'lasso' && state.lassoCutting && (
+        <BusyHint label="Cutting out" job={state.jobs.find('lasso')} />
       )}
 
       {/* Reposition has no controls of its own — the gesture IS the tool, and the ModeHint over

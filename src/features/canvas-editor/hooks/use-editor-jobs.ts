@@ -26,8 +26,9 @@ type EditorJobKind =
  * measured 52 while the op beside it said 60. A number the user reads from two surfaces has to come
  * from one place, or the surfaces argue.
  *
- * `erase` is the outlier at 3: it is the only one with no model behind it, just a canvas pass and an
- * upload. An 8 here made the bar crawl through work that was already finished.
+ * `erase` and `lasso` are the outliers at 3 and 4: they are the two with no model behind them, just a
+ * canvas pass and an upload. An 8 on erase made the bar crawl through work that was already
+ * finished. The lasso was 12 while it had a matting call in it, and dropped when that came out.
  */
 export const TYPICAL_SECONDS: Record<EditorJobKind, number> = {
   generate: 52,
@@ -35,7 +36,7 @@ export const TYPICAL_SECONDS: Record<EditorJobKind, number> = {
   repair: 45,
   isolate: 20,
   cutout: 20,
-  lasso: 12,
+  lasso: 4,
   expand: 60,
   vector: 10,
   erase: 3,

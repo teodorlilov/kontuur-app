@@ -145,7 +145,7 @@ function CanvasEditorOverlay(props: CanvasEditorProps) {
   // editor is working on, and each op reports into it for its whole life.
   const jobs = useEditorJobs()
   const modeState = useEditorMode(selection.clear)
-  const { mode, strokes, brushSize, inpaintPrompt, lassoDetect } = modeState
+  const { mode, strokes, brushSize, inpaintPrompt } = modeState
   // Read from the live prop, not from the load: the surface's copy edits ride in while the editor
   // is open, and a generate request should use what the user can currently see.
   const slideCopy =
@@ -697,14 +697,12 @@ function CanvasEditorOverlay(props: CanvasEditorProps) {
                 brushSize={brushSize}
                 hasStrokes={strokes.length > 0}
                 inpaintPrompt={inpaintPrompt}
-                lassoDetect={lassoDetect}
                 inpainting={aiOps.inpainting}
                 erasing={aiOps.erasing}
                 repairing={aiOps.repairing}
                 lassoCutting={aiOps.lassoCutting}
                 onBrushSizeChange={modeState.setBrushSize}
                 onPromptChange={modeState.setInpaintPrompt}
-                onDetectChange={modeState.setLassoDetect}
                 onClearStrokes={modeState.clearStrokes}
                 onApplyInpaint={() => {
                   void aiOps.applyInpaint()

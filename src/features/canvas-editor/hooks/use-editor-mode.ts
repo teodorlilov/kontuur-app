@@ -11,10 +11,8 @@ export interface EditorModeState {
   strokes: BrushStroke[]
   brushSize: number
   inpaintPrompt: string
-  lassoDetect: boolean
   setBrushSize: (size: number) => void
   setInpaintPrompt: (prompt: string) => void
-  setLassoDetect: (detect: boolean) => void
   /** Enter a tool, or leave it when it is already the active one. */
   switchMode: (next: Exclude<EditorMode, 'edit'>) => void
   /** Return to plain editing, dropping any strokes in progress. */
@@ -42,7 +40,6 @@ export function useEditorMode(clearSelection: () => void): EditorModeState {
   const [strokes, setStrokes] = useState<BrushStroke[]>([])
   const [brushSize, setBrushSize] = useState(DEFAULT_BRUSH_SIZE)
   const [inpaintPrompt, setInpaintPrompt] = useState('')
-  const [lassoDetect, setLassoDetect] = useState(true)
 
   const switchMode = useCallback(
     (next: Exclude<EditorMode, 'edit'>) => {
@@ -63,10 +60,8 @@ export function useEditorMode(clearSelection: () => void): EditorModeState {
     strokes,
     brushSize,
     inpaintPrompt,
-    lassoDetect,
     setBrushSize,
     setInpaintPrompt,
-    setLassoDetect,
     switchMode,
     exitMode,
     addStroke: useCallback((stroke: BrushStroke) => setStrokes((all) => [...all, stroke]), []),

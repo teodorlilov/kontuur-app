@@ -23,7 +23,6 @@ import {
 import { buildPaddedBackground } from '../lib/outpaint'
 import {
   cutoutFromLasso,
-  cutoutFromLassoDetect,
   eraseStrokesFromElement,
   removeElementBackground,
   trimTransparentEdges,
@@ -134,7 +133,7 @@ export function useEditorAiOps({
    */
   const cuttingOutRef = useRef(false)
 
-  const { strokes, inpaintPrompt, lassoDetect, clearStrokes, exitMode } = modeState
+  const { strokes, inpaintPrompt, clearStrokes, exitMode } = modeState
 
   // The slide the user is on RIGHT NOW, as opposed to the one an op closed over when it started.
   //
@@ -274,37 +273,20 @@ export function useEditorAiOps({
         typicalSeconds: TYPICAL_SECONDS.lasso,
       })
       try {
-        // AI-detect: matte the loop's cropped region with the existing BiRefNet, clipped by the
-        // loop. Any failure (or an empty matte) falls back to the pure geometric cut.
-        let cut = lassoDetect
-          ? await cutoutFromLassoDetect(
-              backgroundImage,
-              loopPoints,
-              src,
-              canvas,
-              backgroundTransform,
-              async (regionBlob) => {
-                const regionRef = await uploadElementAsset(
-                  target,
-                  new File([regionBlob], 'lasso-region.png', { type: 'image/png' })
-                )
-                const matteRef = await isolateSubjectAsset(target, regionRef.storagePath)
-                return loadCrossOriginImage(matteRef.publicUrl)
-              }
-            ).catch(() => null)
-          : null
-        // Say so when the AI pass did not land: identical gestures otherwise produce visibly
-        // different quality with nothing to explain why.
-        const detectFailed = lassoDetect && !cut
-        cut ??= await cutoutFromLasso(backgroundImage, loopPoints, src, canvas, backgroundTransform)
+        // Geometry only, on this machine: the loop is clipped out of the background and colours
+        // matching its own edge are keyed away. No model, so no second-guessing what was drawn —
+        // "Cut out the subject" is where the model gets to choose an object.
+        const cut = await cutoutFromLasso(
+          backgroundImage,
+          loopPoints,
+          src,
+          canvas,
+          backgroundTransform
+        )
         if (!cut) {
           toast.error('Draw a bigger loop around the object')
           return
         }
-        // Covers both ways the snap can miss: no matte at all, and a matte that kept too little of
-        // the loop to be what was enclosed. Either way the outline the user drew is the answer.
-        if (detectFailed)
-          toast.info('Snapping did not find the object — cut along the outline you drew instead')
         const ref = await uploadElementAsset(
           target,
           new File([cut.blob], 'lasso-cutout.png', { type: 'image/png' })
@@ -332,7 +314,6 @@ export function useEditorAiOps({
       docState,
       backgroundImage,
       jobs,
-      lassoDetect,
       target,
       activePosition,
       canAddNode,
