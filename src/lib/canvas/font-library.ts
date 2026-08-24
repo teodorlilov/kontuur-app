@@ -9,6 +9,16 @@
  * ceremony: css2 answers 200 and SILENTLY DROPS a weight or an italic axis it cannot serve, so a
  * wrong flag produces browser-synthesized fake-bold or a smeared oblique — which then bakes into
  * the exported JPEG — with no error anywhere.
+ *
+ * Last audited 2026-08-24, against `css2?family=F:wght@W` and `:ital,wght@1,W` for every family and
+ * every weight in the 500–900 range: 30 families were listing fewer weights than Google serves, so
+ * the heaviest type the editor could set was a 700 on a face that had a 900 sitting unused. The
+ * ones that stop where they stop are genuine ceilings — Oswald really does end at 700.
+ *
+ * Widening these costs nothing in bytes. The families that gained weights are variable fonts, where
+ * Google serves ONE binary per subset covering the whole axis, so `ensureFontsReady` resolves the
+ * extra weights against a face it was already downloading. A family served as separate static
+ * files gains nothing here because its list was already complete.
  */
 
 export type FontCategory = 'display' | 'serif' | 'sans' | 'script'
@@ -29,24 +39,34 @@ const FONT_FAMILIES = {
   'Sofia Sans Extra Condensed': {
     category: 'display',
     cyrillic: true,
-    weights: [400, 700, 900],
+    weights: [400, 500, 600, 700, 800, 900],
     italic: true,
   },
   Oi: { category: 'display', cyrillic: true, weights: [400], italic: false },
   'Stalinist One': { category: 'display', cyrillic: true, weights: [400], italic: false },
-  'Alumni Sans': { category: 'display', cyrillic: true, weights: [400, 700, 900], italic: true },
+  'Alumni Sans': {
+    category: 'display',
+    cyrillic: true,
+    weights: [400, 500, 600, 700, 800, 900],
+    italic: true,
+  },
   Forum: { category: 'display', cyrillic: true, weights: [400], italic: false },
   'Orelega One': { category: 'display', cyrillic: true, weights: [400], italic: false },
   'Poiret One': { category: 'display', cyrillic: true, weights: [400], italic: false },
   'Ruslan Display': { category: 'display', cyrillic: true, weights: [400], italic: false },
-  Unbounded: { category: 'display', cyrillic: true, weights: [400, 700], italic: false },
+  Unbounded: {
+    category: 'display',
+    cyrillic: true,
+    weights: [400, 500, 600, 700, 800, 900],
+    italic: false,
+  },
   'Sofia Sans Condensed': {
     category: 'display',
     cyrillic: true,
-    weights: [400, 700],
+    weights: [400, 500, 600, 700, 800, 900],
     italic: true,
   },
-  Oswald: { category: 'display', cyrillic: true, weights: [400, 500, 700], italic: false },
+  Oswald: { category: 'display', cyrillic: true, weights: [400, 500, 600, 700], italic: false },
   'Russo One': { category: 'display', cyrillic: true, weights: [400], italic: false },
   'Yeseva One': { category: 'display', cyrillic: true, weights: [400], italic: false },
   'Kelly Slab': { category: 'display', cyrillic: true, weights: [400], italic: false },
@@ -65,49 +85,144 @@ const FONT_FAMILIES = {
   'Big Shoulders Display': {
     category: 'display',
     cyrillic: false,
-    weights: [400, 700, 900],
+    weights: [400, 500, 600, 700, 800, 900],
     italic: false,
   },
   'Lilita One': { category: 'display', cyrillic: false, weights: [400], italic: false },
   Monoton: { category: 'display', cyrillic: false, weights: [400], italic: false },
-  Orbitron: { category: 'display', cyrillic: false, weights: [400, 700, 900], italic: false },
+  Orbitron: {
+    category: 'display',
+    cyrillic: false,
+    weights: [400, 500, 600, 700, 800, 900],
+    italic: false,
+  },
   'Titan One': { category: 'display', cyrillic: false, weights: [400], italic: false },
   // serif
   // The variable superfamily, not just `Playfair Display`: it carries an optical-size axis and a
   // real 900, which is what a didone needs to read as display rather than as a large book face.
-  Playfair: { category: 'serif', cyrillic: true, weights: [400, 700, 900], italic: true },
-  'Playfair Display': { category: 'serif', cyrillic: true, weights: [400, 500, 700], italic: true },
+  Playfair: {
+    category: 'serif',
+    cyrillic: true,
+    weights: [400, 500, 600, 700, 800, 900],
+    italic: true,
+  },
+  'Playfair Display': {
+    category: 'serif',
+    cyrillic: true,
+    weights: [400, 500, 600, 700, 800, 900],
+    italic: true,
+  },
   Prata: { category: 'serif', cyrillic: true, weights: [400], italic: false },
-  'Cormorant Garamond': { category: 'serif', cyrillic: true, weights: [400, 700], italic: true },
-  Lora: { category: 'serif', cyrillic: true, weights: [400, 700], italic: true },
+  'Cormorant Garamond': {
+    category: 'serif',
+    cyrillic: true,
+    weights: [400, 500, 600, 700],
+    italic: true,
+  },
+  Lora: { category: 'serif', cyrillic: true, weights: [400, 500, 600, 700], italic: true },
   // The library's only slab: Google serves it 100–900 with a true italic at every weight, but the
   // menu lists two — each listed weight is a face `ensureFontsReady` preloads.
-  Bitter: { category: 'serif', cyrillic: true, weights: [400, 700], italic: true },
-  Merriweather: { category: 'serif', cyrillic: true, weights: [400, 700], italic: true },
-  'Bodoni Moda': { category: 'serif', cyrillic: false, weights: [400, 700, 900], italic: true },
+  Bitter: {
+    category: 'serif',
+    cyrillic: true,
+    weights: [400, 500, 600, 700, 800, 900],
+    italic: true,
+  },
+  Merriweather: {
+    category: 'serif',
+    cyrillic: true,
+    weights: [400, 500, 600, 700, 800, 900],
+    italic: true,
+  },
+  'Bodoni Moda': {
+    category: 'serif',
+    cyrillic: false,
+    weights: [400, 500, 600, 700, 800, 900],
+    italic: true,
+  },
   'DM Serif Display': { category: 'serif', cyrillic: false, weights: [400], italic: true },
-  Cinzel: { category: 'serif', cyrillic: false, weights: [400, 700, 900], italic: false },
+  Cinzel: {
+    category: 'serif',
+    cyrillic: false,
+    weights: [400, 500, 600, 700, 800, 900],
+    italic: false,
+  },
   // sans
   // Sofia Sans puts BULGARIAN letterforms in the default Cyrillic positions — it was made with
   // Sofia Municipality — rather than hiding them behind a `locl` feature. For a product whose copy
   // is largely Bulgarian that is the correct default, not a nicety.
-  'Sofia Sans': { category: 'sans', cyrillic: true, weights: [400, 700, 900], italic: true },
-  Manrope: { category: 'sans', cyrillic: true, weights: [400, 700], italic: false },
-  Commissioner: { category: 'sans', cyrillic: true, weights: [400, 700], italic: false },
-  'Source Sans 3': { category: 'sans', cyrillic: true, weights: [400, 700], italic: true },
-  'Golos Text': { category: 'sans', cyrillic: true, weights: [400, 700], italic: false },
-  Montserrat: { category: 'sans', cyrillic: true, weights: [400, 700], italic: true },
-  Inter: { category: 'sans', cyrillic: true, weights: [400, 700], italic: true },
-  Raleway: { category: 'sans', cyrillic: true, weights: [400, 700], italic: true },
-  'Nunito Sans': { category: 'sans', cyrillic: true, weights: [400, 700], italic: true },
-  'IBM Plex Sans': { category: 'sans', cyrillic: true, weights: [400, 700], italic: true },
+  'Sofia Sans': {
+    category: 'sans',
+    cyrillic: true,
+    weights: [400, 500, 600, 700, 800, 900],
+    italic: true,
+  },
+  Manrope: { category: 'sans', cyrillic: true, weights: [400, 500, 600, 700, 800], italic: false },
+  Commissioner: {
+    category: 'sans',
+    cyrillic: true,
+    weights: [400, 500, 600, 700, 800, 900],
+    italic: false,
+  },
+  'Source Sans 3': {
+    category: 'sans',
+    cyrillic: true,
+    weights: [400, 500, 600, 700, 800, 900],
+    italic: true,
+  },
+  'Golos Text': {
+    category: 'sans',
+    cyrillic: true,
+    weights: [400, 500, 600, 700, 800, 900],
+    italic: false,
+  },
+  Montserrat: {
+    category: 'sans',
+    cyrillic: true,
+    weights: [400, 500, 600, 700, 800, 900],
+    italic: true,
+  },
+  Inter: {
+    category: 'sans',
+    cyrillic: true,
+    weights: [400, 500, 600, 700, 800, 900],
+    italic: true,
+  },
+  Raleway: {
+    category: 'sans',
+    cyrillic: true,
+    weights: [400, 500, 600, 700, 800, 900],
+    italic: true,
+  },
+  'Nunito Sans': {
+    category: 'sans',
+    cyrillic: true,
+    weights: [400, 500, 600, 700, 800, 900],
+    italic: true,
+  },
+  'IBM Plex Sans': {
+    category: 'sans',
+    cyrillic: true,
+    weights: [400, 500, 600, 700],
+    italic: true,
+  },
   // The Cyrillic answer to Poppins — a geometric sans Bulgarian copy can actually use.
-  Jost: { category: 'sans', cyrillic: true, weights: [400, 700], italic: true },
-  Poppins: { category: 'sans', cyrillic: false, weights: [400, 700], italic: true },
-  'Space Grotesk': { category: 'sans', cyrillic: false, weights: [400, 700], italic: false },
-  Fredoka: { category: 'sans', cyrillic: false, weights: [400, 700], italic: false },
+  Jost: { category: 'sans', cyrillic: true, weights: [400, 500, 600, 700, 800, 900], italic: true },
+  Poppins: {
+    category: 'sans',
+    cyrillic: false,
+    weights: [400, 500, 600, 700, 800, 900],
+    italic: true,
+  },
+  'Space Grotesk': {
+    category: 'sans',
+    cyrillic: false,
+    weights: [400, 500, 600, 700],
+    italic: false,
+  },
+  Fredoka: { category: 'sans', cyrillic: false, weights: [400, 500, 600, 700], italic: false },
   // script
-  Caveat: { category: 'script', cyrillic: true, weights: [400, 700], italic: false },
+  Caveat: { category: 'script', cyrillic: true, weights: [400, 500, 600, 700], italic: false },
   'Marck Script': { category: 'script', cyrillic: true, weights: [400], italic: false },
   'Permanent Marker': { category: 'script', cyrillic: false, weights: [400], italic: false },
 } as const satisfies Record<string, FontFaceSpec>

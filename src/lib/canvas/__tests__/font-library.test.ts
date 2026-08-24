@@ -49,7 +49,7 @@ describe('editorFontsHref', () => {
   it('builds a css2 href with per-family weights', () => {
     const href = editorFontsHref(FONT_LIBRARY.filter((entry) => entry.family === 'Oswald'))
     expect(href).toBe(
-      'https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;700&display=swap'
+      'https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&display=swap'
     )
   })
 
