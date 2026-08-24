@@ -42,4 +42,34 @@ describe('canvasPointToElementLocal', () => {
     expect(below.x).toBeCloseTo(400, 6)
     expect(below.y).toBeCloseTo(0, 6)
   })
+
+  /**
+   * A mirrored picture is DRAWN through a negative scale, so what the user sees on its left is on
+   * the bitmap's right. Without undoing that, every brush tool lands its stroke on the wrong side of
+   * the picture — the eraser rubbed a hole opposite the one that was painted.
+   */
+  it('undoes a horizontal mirror, so a stroke lands where it was painted', () => {
+    const element = { x: 100, y: 200, width: 400, height: 200, flipX: true }
+    // A quarter across the element on screen is three quarters across the bitmap.
+    const point = canvasPointToElementLocal({ x: 200, y: 200 }, element, natural)
+    expect(point.x).toBeCloseTo(600, 6)
+    expect(point.y).toBeCloseTo(0, 6)
+  })
+
+  it('undoes a vertical mirror on its own axis, leaving x alone', () => {
+    const element = { x: 100, y: 200, width: 400, height: 200, flipY: true }
+    const point = canvasPointToElementLocal({ x: 200, y: 250 }, element, natural)
+    expect(point.x).toBeCloseTo(200, 6)
+    expect(point.y).toBeCloseTo(300, 6)
+  })
+
+  it('leaves an unmirrored element exactly as it was', () => {
+    const element = { x: 100, y: 200, width: 400, height: 200 }
+    const plain = canvasPointToElementLocal({ x: 200, y: 250 }, element, natural)
+    expect(plain).toEqual(
+      canvasPointToElementLocal({ x: 200, y: 250 }, { ...element, flipX: undefined }, natural)
+    )
+    expect(plain.x).toBeCloseTo(200, 6)
+    expect(plain.y).toBeCloseTo(100, 6)
+  })
 })

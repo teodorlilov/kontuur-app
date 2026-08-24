@@ -10,12 +10,12 @@ import {
   RotateCw,
 } from 'lucide-react'
 import { cn } from '@/utils/cn'
-import { clamp } from '@/lib/canvas/clamp'
 import { getFontEntry } from '@/lib/canvas/font-library'
 import { CANVAS_FONT_WEIGHTS } from '@/types/canvas'
 import type { CanvasFontWeight, CanvasTextNode } from '@/types/canvas'
 import type { Palette } from '@/types/visual'
 import { EDITOR_CONTROL, EDITOR_ICON_BUTTON, EDITOR_PRESSED, TOOLBAR_DIVIDER } from './chrome'
+import { NumberField } from '../number-field'
 import { FontListbox } from './font-listbox'
 import { TextEffectsPopover } from './text-effects-popover'
 import { ColorPopover } from './toolbar-controls'
@@ -154,38 +154,6 @@ export function TextToolbar({ node, palette, onChange }: TextToolbarProps) {
         onChange={(rotation) => onChange({ rotation })}
       />
     </>
-  )
-}
-
-interface NumberFieldProps {
-  label: string
-  value: number
-  min: number
-  max: number
-  step?: number
-  icon?: React.ReactNode
-  onChange: (value: number) => void
-}
-
-/** A compact numeric control. The label is the tooltip — the toolbar has no room for a caption. */
-function NumberField({ label, value, min, max, step, icon, onChange }: NumberFieldProps) {
-  return (
-    <label title={label} className="inline-flex items-center gap-1 text-text3">
-      {icon}
-      <span className="sr-only">{label}</span>
-      <input
-        type="number"
-        min={min}
-        max={max}
-        step={step}
-        value={value}
-        onChange={(event) => {
-          const next = Number(event.target.value)
-          if (!Number.isNaN(next)) onChange(clamp(next, min, max))
-        }}
-        className={cn(EDITOR_CONTROL, 'w-[62px] tabular-nums')}
-      />
-    </label>
   )
 }
 

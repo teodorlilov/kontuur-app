@@ -10,7 +10,7 @@ const DEFAULT_ASSET_WIDTH = 420
  */
 export function canvasPointToElementLocal(
   point: { x: number; y: number },
-  element: Pick<CanvasImageNode, 'x' | 'y' | 'width' | 'height' | 'rotation'>,
+  element: Pick<CanvasImageNode, 'x' | 'y' | 'width' | 'height' | 'rotation' | 'flipX' | 'flipY'>,
   natural: { width: number; height: number }
 ): { x: number; y: number } {
   const radians = ((element.rotation ?? 0) * Math.PI) / 180
@@ -21,9 +21,15 @@ export function canvasPointToElementLocal(
   // Inverse rotation: transpose of the rotation matrix.
   const localX = cos * dx + sin * dy
   const localY = -sin * dx + cos * dy
+  const x = localX * (natural.width / element.width)
+  const y = localY * (natural.height / element.height)
+  // The mirror, undone. `imageBitmapAttrs` draws a flipped node through a negative scale about its
+  // far edge, so a point that looks like it is over the subject's left hand is, in the bitmap's own
+  // pixels, over its right. Without this a brush stroke lands mirrored across the element — the
+  // eraser rubbed a hole in the opposite side of whatever was painted.
   return {
-    x: localX * (natural.width / element.width),
-    y: localY * (natural.height / element.height),
+    x: element.flipX ? natural.width - x : x,
+    y: element.flipY ? natural.height - y : y,
   }
 }
 
