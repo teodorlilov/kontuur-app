@@ -2,10 +2,10 @@ import { CANVAS_PAPER } from '@/lib/canvas/constants'
 import type { BackdropGrid } from '@/lib/canvas/contrast'
 import { isImageNode, isShapeNode, visibleNodes } from '@/lib/canvas/doc-nodes'
 import {
+  backdropNodeAttrs,
   backgroundNodeAttrs,
   imageBitmapAttrs,
   nodeGroupAttrs,
-  scrimNodeAttrs,
   shapeChildAttrs,
 } from '@/lib/canvas/node-attrs'
 import type { Rgb } from '@/lib/visual/extract/color'
@@ -86,11 +86,11 @@ function drawNode(
 
 /**
  * Measure what is actually behind the text: the slide as it composes — cover-cropped, panned,
- * zoomed, dimmed by the doc's own scrim, and covered by whatever the doc itself draws — reduced to a
- * coarse colour grid.
+ * zoomed, covered by the doc's own backdrop fill, and by whatever the doc itself draws — reduced to
+ * a coarse colour grid.
  *
- * Composed rather than raw, because the scrim is precisely what makes text readable over a busy
- * picture. Sampling the bare image would report a slide as hopeless that the scrim has already
+ * Composed rather than raw, because a backdrop is precisely what makes text readable over a busy
+ * picture. Sampling the bare image would report a slide as hopeless that the backdrop has already
  * rescued, and repaint type that was fine.
  *
  * The doc's own nodes are drawn for the same reason, and it is not a refinement. The `field` lockup
@@ -148,15 +148,15 @@ export function buildBackdropGrid(doc: CanvasDoc, image: HTMLImageElement): Back
     return null
   }
 
-  const scrim = scrimNodeAttrs(doc.scrim, doc.canvas)
-  if (scrim) {
-    context.globalAlpha = scrim.opacity
-    context.fillStyle = scrim.fill
+  const backdrop = backdropNodeAttrs(doc.backdrop, doc.canvas)
+  if (backdrop) {
+    context.globalAlpha = backdrop.opacity
+    context.fillStyle = backdrop.fill
     context.fillRect(
-      (scrim.x / doc.canvas.w) * cols,
-      (scrim.y / doc.canvas.h) * rows,
-      (scrim.width / doc.canvas.w) * cols,
-      (scrim.height / doc.canvas.h) * rows
+      (backdrop.x / doc.canvas.w) * cols,
+      (backdrop.y / doc.canvas.h) * rows,
+      (backdrop.width / doc.canvas.w) * cols,
+      (backdrop.height / doc.canvas.h) * rows
     )
     context.globalAlpha = 1
   }

@@ -17,11 +17,11 @@ import {
 } from '@/lib/canvas/doc-nodes'
 import { rebindDocToImage } from '@/lib/canvas/resolve-doc'
 import type {
+  CanvasBackdrop,
   CanvasBackgroundRef,
   CanvasBackgroundTransform,
   CanvasDoc,
   CanvasNode,
-  CanvasScrim,
 } from '@/types/canvas'
 import type { CommitOptions } from '../lib/doc-history'
 
@@ -48,7 +48,7 @@ interface DocActions {
   placeNodes: (placements: Array<{ id: string; x: number; y: number }>) => void
   /** Copy nodes just above their originals; returns the new ids so the caller can select them. */
   duplicateNodes: (ids: string[]) => string[]
-  setScrim: (patch: Partial<CanvasScrim>, options?: CommitOptions) => void
+  setBackdrop: (patch: Partial<CanvasBackdrop>, options?: CommitOptions) => void
   setBackgroundTransform: (
     transform: CanvasBackgroundTransform | undefined,
     options?: CommitOptions
@@ -65,7 +65,7 @@ export interface EditorDocState extends DocActions {
 }
 
 /**
- * Every node and scrim mutation the editor offers, expressed against a supplied `transformDoc`.
+ * Every node and backdrop mutation the editor offers, expressed against a supplied `transformDoc`.
  *
  * It takes the history operations rather than owning them because the editor holds one history PER
  * SLIDE: the same action set has to drive whichever slide is active, and an owned `useState` here
@@ -83,9 +83,12 @@ export function useDocActions(doc: CanvasDoc | null, transformDoc: TransformDoc)
     [transformDoc]
   )
 
-  const setScrim = useCallback(
-    (patch: Partial<CanvasScrim>, options?: CommitOptions) =>
-      transformDoc((current) => ({ ...current, scrim: { ...current.scrim, ...patch } }), options),
+  const setBackdrop = useCallback(
+    (patch: Partial<CanvasBackdrop>, options?: CommitOptions) =>
+      transformDoc(
+        (current) => ({ ...current, backdrop: { ...current.backdrop, ...patch } }),
+        options
+      ),
     [transformDoc]
   )
 
@@ -197,7 +200,7 @@ export function useDocActions(doc: CanvasDoc | null, transformDoc: TransformDoc)
     nudgeNodes,
     placeNodes,
     duplicateNodes,
-    setScrim,
+    setBackdrop,
     setBackgroundTransform,
     setBackground,
   }

@@ -7,7 +7,7 @@ import {
   imageBitmapAttrs,
   nodeGroupAttrs,
   shapeChildAttrs,
-  scrimNodeAttrs,
+  backdropNodeAttrs,
   textGroupAttrs,
   textNodeAttrs,
 } from '@/lib/canvas/node-attrs'
@@ -70,8 +70,8 @@ export async function exportDocToJpegBlob(
         ...backgroundNodeAttrs(naturalSize(backgroundImage), doc.canvas, doc.backgroundTransform),
       })
     )
-    const scrim = scrimNodeAttrs(doc.scrim, doc.canvas)
-    if (scrim) layer.add(new Konva.Rect(scrim))
+    const backdrop = backdropNodeAttrs(doc.backdrop, doc.canvas)
+    if (backdrop) layer.add(new Konva.Rect(backdrop))
     // One pass in doc order — the list IS the z-order, so the exporter and the stage agree by
     // construction rather than by both remembering to draw the bands in the same sequence.
     for (const node of drawn) {

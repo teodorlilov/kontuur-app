@@ -1,15 +1,12 @@
 import type {
+  CanvasBackdrop,
   CanvasBackgroundTransform,
   CanvasImageNode,
-  CanvasScrim,
   CanvasShapeNode,
   CanvasTextAlign,
   CanvasTextNode,
 } from '@/types/canvas'
 import { coverCrop, type CropAttrs } from './cover-crop'
-
-/** The lower share of the canvas the 'bottom' scrim band covers. */
-const BOTTOM_BAND_RATIO = 0.5
 
 interface TextGroupAttrs {
   x: number
@@ -191,7 +188,7 @@ export function shapeChildAttrs(node: CanvasShapeNode): ShapeChildAttrs {
   }
 }
 
-interface ScrimNodeAttrs {
+interface BackdropNodeAttrs {
   x: number
   y: number
   width: number
@@ -200,20 +197,19 @@ interface ScrimNodeAttrs {
   opacity: number
 }
 
-/** Konva attrs for the scrim rect; null when the scrim is disabled. */
-export function scrimNodeAttrs(
-  scrim: CanvasScrim,
+/** Konva attrs for the backdrop rect; null when the backdrop is off. */
+export function backdropNodeAttrs(
+  backdrop: CanvasBackdrop,
   canvas: { w: number; h: number }
-): ScrimNodeAttrs | null {
-  if (!scrim.enabled) return null
-  const bandHeight = scrim.mode === 'full' ? canvas.h : canvas.h * BOTTOM_BAND_RATIO
+): BackdropNodeAttrs | null {
+  if (!backdrop.enabled) return null
   return {
     x: 0,
-    y: canvas.h - bandHeight,
+    y: 0,
     width: canvas.w,
-    height: bandHeight,
-    fill: scrim.color,
-    opacity: scrim.opacity,
+    height: canvas.h,
+    fill: backdrop.color,
+    opacity: backdrop.opacity,
   }
 }
 

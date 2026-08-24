@@ -3,6 +3,7 @@ import { formatZodIssues } from '@/lib/validation/format-issues'
 import type { CanvasDoc } from '@/types/canvas'
 import { CANVAS_DOC_VERSION, MAX_BACKGROUND_ZOOM, MAX_NODES } from './constants'
 import { canvasDocSchemaV1, upgradeCanvasDoc } from './doc-v1'
+import { withBackdrop } from './legacy-scrim'
 
 const HEX = /^#[0-9a-fA-F]{6}$/
 const hex = z.string().regex(HEX, 'must be a #rrggbb hex colour')
@@ -84,11 +85,10 @@ const shapeNodeSchema = z.object({
   role: z.literal('mark').optional(),
 })
 
-const scrimSchema = z.object({
+const backdropSchema = z.object({
   enabled: z.boolean(),
   color: hex,
   opacity: z.number().min(0).max(1),
-  mode: z.enum(['full', 'bottom']),
 })
 
 const backgroundSchema = z.object({
@@ -115,7 +115,7 @@ const canvasDocSchema = z.object({
   background: backgroundSchema,
   backgroundTransform: backgroundTransformSchema.optional(),
   flattenedStoragePath: z.string().min(1).nullable(),
-  scrim: scrimSchema,
+  backdrop: backdropSchema,
   nodes: z
     .array(z.discriminatedUnion('kind', [textNodeSchema, imageNodeSchema, shapeNodeSchema]))
     .max(MAX_NODES),
@@ -141,6 +141,10 @@ type CanvasDocParse = { success: true; doc: CanvasDoc } | { success: false; issu
  *
  * Dispatching on the stored version rather than trying each schema in turn is what makes the issue
  * list useful: a broken v1 row reports against v1's rules, not v2's.
+ *
+ * v2 rows get one repair on the way in — `scrim` becomes `backdrop` — because that rename did not
+ * change what the field means or how it is drawn, only what it is called and that it no longer
+ * covers half the canvas. A version bump for it would leave every reader carrying a third shape.
  */
 export function safeParseCanvasDoc(input: unknown): CanvasDocParse {
   if (storedVersion(input) === 1) {
@@ -148,7 +152,7 @@ export function safeParseCanvasDoc(input: unknown): CanvasDocParse {
     if (legacy.success) return { success: true, doc: upgradeCanvasDoc(legacy.data) }
     return { success: false, issues: formatZodIssues(legacy.error) }
   }
-  const result = canvasDocSchema.safeParse(input)
+  const result = canvasDocSchema.safeParse(withBackdrop(input))
   if (result.success) return { success: true, doc: result.data }
   return { success: false, issues: formatZodIssues(result.error) }
 }

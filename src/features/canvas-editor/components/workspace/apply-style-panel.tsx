@@ -142,11 +142,11 @@ export function ApplyStylePanel(props: ApplyStylePanelProps) {
     <Modal open={open} onClose={props.onClose} title="Apply this slide’s style" maxWidth={640}>
       <div className="flex flex-col gap-4">
         <p className="m-0 text-caption text-text2">
-          Slide {sourcePosition + 1}’s type and scrim are carried onto the slides you tick —
+          Slide {sourcePosition + 1}’s type and backdrop are carried onto the slides you tick —
           position, width, font, size, weight, colour, alignment, line spacing and any tilt, plus
-          caps, italics, any marker highlight, any shadow, outline or tracking, and the scrim over
-          the picture. <b className="font-medium text-ink">Each slide keeps its own words</b>, and
-          nothing is written until you press Save.
+          caps, italics, any marker highlight, any shadow, outline or tracking, and the colour
+          behind the picture. <b className="font-medium text-ink">Each slide keeps its own words</b>
+          , and nothing is written until you press Save.
         </p>
 
         {!anyEligible ? (

@@ -3,7 +3,14 @@ import type { PostImage } from '@/types/api'
 import type { SlideText } from '@/types/slide'
 
 /** The editor's exclusive interaction modes; 'edit' is normal layer editing. */
-export type EditorMode = 'edit' | 'reposition' | 'inpaint' | 'lasso' | 'erase'
+/**
+ * `inpaint` and `repair` are the same gesture on different targets: paint a zone, say what belongs
+ * there. One edits the slide's picture, the other the selected cut-out. They are separate modes
+ * rather than one mode with a target flag, because the target decides whether entering the tool may
+ * clear the selection — and a flag that changes that is exactly the kind of thing a later reader
+ * reads past.
+ */
+export type EditorMode = 'edit' | 'reposition' | 'inpaint' | 'repair' | 'lasso' | 'erase'
 
 /** One committed brush stroke in canvas space (flat x,y pairs, Konva Line convention). */
 export interface BrushStroke {

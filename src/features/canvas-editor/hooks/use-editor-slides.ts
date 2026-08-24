@@ -27,7 +27,7 @@ type LoadState =
   | { status: 'ready'; identity: SeedIdentity; resolved: Map<number, ResolvedSlide> }
 
 /** What one finished save reports back: what it exported, what to hold, and the file it produced. */
-export interface SavedSlide {
+interface SavedSlide {
   position: number
   /** The doc the export was made from — the save only lands if the slide still holds exactly it. */
   exported: CanvasDoc

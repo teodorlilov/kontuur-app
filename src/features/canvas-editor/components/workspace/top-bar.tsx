@@ -35,6 +35,13 @@ interface TopBarProps {
   /** Opens the apply-style panel. Absent on a single-slide post, which has nothing to apply to. */
   onApplyStyle?: () => void
   onShowShortcuts: () => void
+  /**
+   * What the editor is working on, rendered by the overlay that owns the job list.
+   *
+   * Passed in rather than read here: the header's job is to lay out what it is given, and reaching
+   * into the registry from a presentational bar would give the same list two owners.
+   */
+  jobs?: React.ReactNode
 }
 
 /**
@@ -80,7 +87,7 @@ export function TopBar(props: TopBarProps) {
       {props.lowContrast.length > 0 && (
         <span
           className="inline-flex items-center gap-1.5 text-micro text-text2"
-          title={`Hard to read against the picture: ${props.lowContrast.join(' · ')}. Try a stronger contrast scrim, a different colour, or moving the layer.`}
+          title={`Hard to read against the picture: ${props.lowContrast.join(' · ')}. Try a backdrop behind it, a different colour, or moving the layer.`}
         >
           <Contrast size={13} aria-hidden />
           {props.lowContrast.length === 1
@@ -90,6 +97,10 @@ export function TopBar(props: TopBarProps) {
       )}
 
       <span className="flex-1" />
+
+      {/* Before the icon row, so a running job sits beside the words it belongs with rather than
+          among the controls — and it takes no space at all when nothing is running. */}
+      {props.jobs}
 
       <button
         type="button"
@@ -130,7 +141,7 @@ export function TopBar(props: TopBarProps) {
           size="sm"
           disabled={!props.canApplyStyle}
           onClick={props.onApplyStyle}
-          title="Carry this slide's type and scrim onto the other slides (each keeps its own words)"
+          title="Carry this slide's type and backdrop onto the other slides (each keeps its own words)"
         >
           Apply style…
         </Button>

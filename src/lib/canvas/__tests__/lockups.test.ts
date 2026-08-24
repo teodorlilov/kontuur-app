@@ -72,7 +72,7 @@ function doc(nodes: CanvasDoc['nodes']): CanvasDoc {
     canvas: { w: CANVAS_WIDTH, h: CANVAS_HEIGHT },
     background: { publicUrl: 'https://example.test/a.jpg', storagePath: 'a.jpg' },
     flattenedStoragePath: null,
-    scrim: { enabled: true, color: '#FFFFFF', opacity: 0.35, mode: 'bottom' },
+    backdrop: { enabled: true, color: '#FFFFFF', opacity: 0.35 },
     nodes,
   }
 }
@@ -376,7 +376,7 @@ describe('applyLockup', () => {
     expect(twice).toEqual(once)
   })
 
-  it('leaves custom text, pictures, user shapes and the scrim exactly as they were', () => {
+  it('leaves custom text, pictures, user shapes and the backdrop exactly as they were', () => {
     const custom = textNode('custom', 'My own note')
     const before = doc([
       textNode('headline', 'Headline'),
@@ -396,7 +396,7 @@ describe('applyLockup', () => {
     expect(after.nodes.find((n) => n.id === custom.id)).toEqual(custom)
     expect(after.nodes.find((n) => n.id === 'img-1')).toEqual(before.nodes[2])
     expect(after.nodes.find((n) => n.id === 'rect-1')).toEqual(before.nodes[3])
-    expect(after.scrim).toEqual(before.scrim)
+    expect(after.backdrop).toEqual(before.backdrop)
   })
 
   it('handles a slide that seeds no body node', () => {

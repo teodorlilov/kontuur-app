@@ -24,12 +24,13 @@ import {
 import { coverCrop } from '@/lib/canvas/cover-crop'
 import {
   grabbableIds,
+  isImageNode,
   isLocked,
   isShapeNode,
   isTextNode,
   visibleNodes,
 } from '@/lib/canvas/doc-nodes'
-import { backgroundNodeAttrs, scrimNodeAttrs } from '@/lib/canvas/node-attrs'
+import { backdropNodeAttrs, backgroundNodeAttrs } from '@/lib/canvas/node-attrs'
 import {
   DEFAULT_BACKGROUND_TRANSFORM,
   panBackground,
@@ -141,7 +142,7 @@ function transformerConfigFor(
   }
 }
 
-/** The live canvas: background (cover-cropped) → scrim → the node list in order → Transformer. */
+/** The live canvas: background (cover-cropped) → backdrop → the node list in order → Transformer. */
 export function EditorStage({
   doc,
   backgroundImage,
@@ -284,7 +285,7 @@ export function EditorStage({
     }
   }, [])
 
-  const scrim = scrimNodeAttrs(doc.scrim, doc.canvas)
+  const backdrop = backdropNodeAttrs(doc.backdrop, doc.canvas)
   const src = naturalSize(backgroundImage)
   const primary = doc.nodes.find((node) => node.id === selection.primaryId)
   // Exhaustive on purpose: a kind that falls through here silently takes the TEXT transformer —
@@ -510,10 +511,10 @@ export function EditorStage({
             While Space is held the whole composition stops listening, so the drag pans the view
             instead of grabbing whichever node happens to be under the cursor. */}
         <Group
-          opacity={mode === 'edit' || mode === 'erase' ? 1 : 0.35}
+          opacity={mode === 'edit' || mode === 'erase' || mode === 'repair' ? 1 : 0.35}
           listening={mode === 'edit' && !viewport.panning}
         >
-          {scrim && <Rect listening={false} {...scrim} />}
+          {backdrop && <Rect listening={false} {...backdrop} />}
           {/* One pass in doc order — the list IS the z-order, so a picture can sit between two
               text layers. v1 could only put the whole asset band above or below the whole text.
               Hidden nodes are dropped from the tree rather than rendered with visible={false}: an
@@ -587,13 +588,36 @@ export function EditorStage({
             onCommit={onBackgroundTransform}
           />
         )}
-        {(mode === 'inpaint' || mode === 'erase') && (
+        {/* What the eraser will actually cut into, outlined.
+            The brush paints across the whole slide, but a stroke only ever removes pixels from the
+            SELECTED picture — and the Transformer detaches in every mode, so until now erase mode
+            showed no sign of which picture that was. Painting over a cut-out sitting on the image it
+            came from then looked like the tool doing nothing, twice over: no frame to say what the
+            target was, and an identical copy behind the hole. */}
+        {(mode === 'erase' || mode === 'repair') && primary && isImageNode(primary) && (
+          <Rect
+            x={primary.x}
+            y={primary.y}
+            width={primary.width}
+            height={primary.height}
+            rotation={primary.rotation ?? 0}
+            stroke={CHROME_SPRING}
+            // Hairline and dashed at any zoom — a frame, not a border on the artwork. The node's own
+            // opacity is deliberately NOT applied: a faint picture still needs a legible outline.
+            strokeWidth={1 / scale}
+            dash={[6 / scale, 4 / scale]}
+            listening={false}
+          />
+        )}
+        {(mode === 'inpaint' || mode === 'erase' || mode === 'repair') && (
           <BrushSurface
             canvas={doc.canvas}
             interactive={!viewport.panning}
             brushSize={brushSize}
             strokes={strokes}
-            strokeColor={mode === 'inpaint' ? INPAINT_STROKE_COLOR : ERASE_STROKE_COLOR}
+            // Repair paints an area for the MODEL to fill, exactly as inpaint does, so it wears the
+            // same colour; only the eraser's strokes mean "remove".
+            strokeColor={mode === 'erase' ? ERASE_STROKE_COLOR : INPAINT_STROKE_COLOR}
             onStrokeEnd={onStrokeEnd}
           />
         )}

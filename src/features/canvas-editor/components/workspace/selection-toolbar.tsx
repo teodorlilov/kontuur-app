@@ -14,13 +14,14 @@ import {
   SprayCan,
   Squircle,
   Trash2,
+  Wand2,
 } from 'lucide-react'
 import { cn } from '@/utils/cn'
 import { isImageNode, isShapeNode, isTextNode } from '@/lib/canvas/doc-nodes'
 import type {
+  CanvasBackdrop,
   CanvasDoc,
   CanvasImageNode,
-  CanvasScrim,
   CanvasShapeNode,
   CanvasTextNode,
 } from '@/types/canvas'
@@ -31,7 +32,7 @@ import { EDITOR_BUTTON, EDITOR_ICON_BUTTON, EDITOR_PRESSED, TOOLBAR_DIVIDER } fr
 const DEFAULT_STROKE_WIDTH = 4
 import { TextToolbar } from './text-toolbar'
 import { NODE_KIND_META } from './node-kinds'
-import { ColorPopover, SliderPopover } from './toolbar-controls'
+import { BackdropPopover, ColorPopover, SliderPopover } from './toolbar-controls'
 
 interface SelectionToolbarProps {
   doc: CanvasDoc
@@ -48,8 +49,9 @@ interface SelectionToolbarProps {
   onSetNodeAsBackground: () => void
   onRemoveNodeBackground: () => void
   onEraseSelected: () => void
+  onRepairSelected: () => void
   onToggleReposition: () => void
-  onScrimChange: (patch: Partial<CanvasScrim>) => void
+  onBackdropChange: (patch: Partial<CanvasBackdrop>) => void
 }
 
 /**
@@ -139,30 +141,48 @@ function AssetToolbar({ node, ...props }: SelectionToolbarProps & { node: Canvas
 
       <span className={TOOLBAR_DIVIDER} aria-hidden />
 
+      {/* Every label here names what it acts on, because three buttons in a row saying "background"
+          meant three different things: this one cuts the SELECTED PICTURE out of what is behind it,
+          the third makes that picture the SLIDE's background, and the slide's own colour layer is
+          Backdrop on the other bar. The old "Remove background" read as "remove the slide's
+          background" — which is the Backdrop's job, not this button's. */}
       <button
         type="button"
         className={EDITOR_BUTTON}
         disabled={props.busy.removingBackground}
-        title="Drop a flat background colour out of this picture"
+        title="Keep the subject of this picture and drop what is behind it — instant on a flat colour, otherwise AI does it"
         onClick={props.onRemoveNodeBackground}
       >
-        <SprayCan size={14} aria-hidden /> Remove background
+        <SprayCan size={14} aria-hidden /> Cut out subject
       </button>
+      {/* The ellipsis is doing real work: this one opens a brush, and nothing changes until you
+          have painted over the picture and pressed Apply. Without it the label promised an action
+          and delivered a toolbar. */}
       <button
         type="button"
         className={EDITOR_BUTTON}
-        title="Rub parts of this picture away by hand"
+        title="Paint over the parts of this picture you want rubbed away, then press Apply"
         onClick={props.onEraseSelected}
       >
-        <Eraser size={14} aria-hidden /> Erase
+        <Eraser size={14} aria-hidden /> Rub out parts&hellip;
+      </button>
+      {/* The rail's "Repair or replace a zone" for a placed picture instead of the slide's own —
+          same brush, same prompt, same model, aimed at whatever is selected. */}
+      <button
+        type="button"
+        className={EDITOR_BUTTON}
+        title="Paint over part of this picture and describe what belongs there instead"
+        onClick={props.onRepairSelected}
+      >
+        <Wand2 size={14} aria-hidden /> Repair a zone&hellip;
       </button>
       <button
         type="button"
         className={EDITOR_BUTTON}
-        title="Make this the slide's background image"
+        title="Make this picture the slide's background image"
         onClick={props.onSetNodeAsBackground}
       >
-        <ImageDown size={14} aria-hidden /> Set as background
+        <ImageDown size={14} aria-hidden /> Use as slide background
       </button>
 
       <span className="flex-1" />
@@ -249,7 +269,6 @@ function ShapeToolbar({ node, ...props }: SelectionToolbarProps & { node: Canvas
 }
 
 function CanvasToolbar(props: SelectionToolbarProps) {
-  const { scrim } = props.doc
   return (
     <>
       {/* Only the instant slide controls live here. Everything that calls a model — repair, cut
@@ -267,47 +286,13 @@ function CanvasToolbar(props: SelectionToolbarProps) {
 
       <span className={TOOLBAR_DIVIDER} aria-hidden />
 
-      <button
-        type="button"
-        aria-pressed={scrim.enabled}
-        title="Darken the image behind the text so it stays readable"
-        onClick={() => props.onScrimChange({ enabled: !scrim.enabled })}
-        className={cn(EDITOR_BUTTON, scrim.enabled && EDITOR_PRESSED)}
-      >
-        Contrast scrim
-      </button>
-      {scrim.enabled && (
-        <>
-          <select
-            aria-label="Scrim coverage"
-            title="Scrim coverage"
-            value={scrim.mode}
-            onChange={(event) =>
-              props.onScrimChange({ mode: event.target.value as CanvasScrim['mode'] })
-            }
-            className={cn(EDITOR_BUTTON, 'cursor-pointer')}
-          >
-            <option value="bottom">Bottom band</option>
-            <option value="full">Full canvas</option>
-          </select>
-          <ColorPopover
-            label="Scrim colour"
-            palette={props.palette}
-            value={scrim.color}
-            onChange={(color) => props.onScrimChange({ color })}
-          />
-          <SliderPopover
-            label="Scrim strength"
-            icon={<Move3d size={15} aria-hidden />}
-            readout={`${Math.round(scrim.opacity * 100)}%`}
-            min={0}
-            max={1}
-            step={0.05}
-            value={scrim.opacity}
-            onChange={(opacity) => props.onScrimChange({ opacity })}
-          />
-        </>
-      )}
+      {/* One colour behind everything the slide draws: solid, it replaces the picture and a cut-out
+          subject stands on flat brand colour; dialled back, it calms a busy photograph under text. */}
+      <BackdropPopover
+        palette={props.palette}
+        backdrop={props.doc.backdrop}
+        onChange={props.onBackdropChange}
+      />
     </>
   )
 }

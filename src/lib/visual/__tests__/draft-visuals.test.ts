@@ -12,7 +12,7 @@ const doc = {
   canvas: { w: 1080, h: 1350 },
   background: { publicUrl: 'https://x.test/clean.jpg', storagePath: 'c1/drafts/d1/clean.jpg' },
   flattenedStoragePath: 'c1/drafts/d1/flat.jpg',
-  scrim: { enabled: true, color: '#FFFFFF', opacity: 0.35, mode: 'bottom' },
+  backdrop: { enabled: true, color: '#FFFFFF', opacity: 0.35 },
   nodes: [],
 } satisfies CanvasDoc
 

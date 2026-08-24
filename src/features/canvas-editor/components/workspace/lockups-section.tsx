@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { focusableItems, rovingFocus } from '@/components/ui/roving-focus'
 import { CANVAS_HEIGHT, CANVAS_WIDTH } from '@/lib/canvas/constants'
 import { fillCandidates, readableFill, textBox, type BackdropGrid } from '@/lib/canvas/contrast'
-import { scrimNodeAttrs, shapeChildAttrs } from '@/lib/canvas/node-attrs'
+import { backdropNodeAttrs, shapeChildAttrs } from '@/lib/canvas/node-attrs'
 import { buildBackdropGrid } from '../../lib/backdrop-grid'
 import { decodedImage } from '../../lib/load-image'
 import { clampAtWordBoundary } from '@/lib/visual/prompt'
@@ -25,7 +25,7 @@ import {
   type LockupMember,
   type LockupPack,
 } from '@/lib/canvas/lockups'
-import type { CanvasDoc, CanvasScrim, CanvasTextNode } from '@/types/canvas'
+import type { CanvasBackdrop, CanvasDoc, CanvasTextNode } from '@/types/canvas'
 import { cn } from '@/utils/cn'
 import { ensureFontsReady, injectLibraryStylesheet } from '../../lib/fonts'
 import { EDITOR_LABEL, FOCUS_RING } from './chrome'
@@ -88,7 +88,7 @@ export function LockupsSection({
    * `decodedImage` is a synchronous cache read; before the art decodes there is simply no repaint
    * to predict and the tiles draw the doc's colours, which is what they would have done anyway.
    */
-  const backdrop = useMemo(() => {
+  const backdropGrid = useMemo(() => {
     const image = decodedImage(doc.background.publicUrl)
     return image ? buildBackdropGrid(doc, image) : null
   }, [doc])
@@ -182,8 +182,8 @@ export function LockupsSection({
                   headline={headline}
                   body={body}
                   background={doc.background.publicUrl}
-                  scrim={doc.scrim}
-                  backdrop={backdrop}
+                  backdrop={doc.backdrop}
+                  grid={backdropGrid}
                   candidates={candidates}
                 />
               </span>
@@ -298,9 +298,9 @@ interface TilePreviewProps {
   body: string
   /** The slide's own clean art, so a tile reads as a miniature of THIS slide. */
   background: string
-  scrim: CanvasScrim
+  backdrop: CanvasBackdrop
   /** Null until the art decodes — the tile then draws the doc's colours unchanged. */
-  backdrop: BackdropGrid | null
+  grid: BackdropGrid | null
   candidates: readonly string[]
 }
 
@@ -317,8 +317,8 @@ function TilePreview({
   headline,
   body,
   background,
-  scrim,
   backdrop,
+  grid,
   candidates,
 }: TilePreviewProps) {
   const patch = lockup.copy(ctx)
@@ -338,7 +338,7 @@ function TilePreview({
     rest: fit(raw.rest, PREVIEW_HEADLINE_CHARS, capacity.headline),
   }
   const bodyText = fit(body, PREVIEW_BODY_CHARS, capacity.body)
-  const scrimBox = scrimNodeAttrs(scrim, { w: CANVAS_WIDTH, h: CANVAS_HEIGHT })
+  const backdropBox = backdropNodeAttrs(backdrop, { w: CANVAS_WIDTH, h: CANVAS_HEIGHT })
   return (
     <span
       aria-hidden
@@ -353,18 +353,18 @@ function TilePreview({
         backgroundImage: background ? `url(${JSON.stringify(background)})` : undefined,
       }}
     >
-      {/* The doc's own scrim, from the shared resolver the stage and the exporter both read — so a
-          tile dims its picture by exactly as much as the slide does, rather than by a guess. */}
-      {scrimBox && (
+      {/* The doc's own backdrop, from the shared resolver the stage and the exporter both read — so
+          a tile covers its picture by exactly as much as the slide does, rather than by a guess. */}
+      {backdropBox && (
         <span
           className="absolute block"
           style={{
-            left: `${(scrimBox.x / CANVAS_WIDTH) * 100}%`,
-            top: `${(scrimBox.y / CANVAS_HEIGHT) * 100}%`,
-            width: `${(scrimBox.width / CANVAS_WIDTH) * 100}%`,
-            height: `${(scrimBox.height / CANVAS_HEIGHT) * 100}%`,
-            background: scrimBox.fill,
-            opacity: scrimBox.opacity,
+            left: `${(backdropBox.x / CANVAS_WIDTH) * 100}%`,
+            top: `${(backdropBox.y / CANVAS_HEIGHT) * 100}%`,
+            width: `${(backdropBox.width / CANVAS_WIDTH) * 100}%`,
+            height: `${(backdropBox.height / CANVAS_HEIGHT) * 100}%`,
+            background: backdropBox.fill,
+            opacity: backdropBox.opacity,
           }}
         />
       )}
@@ -373,18 +373,13 @@ function TilePreview({
         <TileMember key={index} member={member} />
       ))}
       {patch.hero && split.hero && (
-        <TileText node={patch.hero} text={split.hero} backdrop={backdrop} candidates={candidates} />
+        <TileText node={patch.hero} text={split.hero} grid={grid} candidates={candidates} />
       )}
       {split.rest && (
-        <TileText
-          node={patch.headline}
-          text={split.rest}
-          backdrop={backdrop}
-          candidates={candidates}
-        />
+        <TileText node={patch.headline} text={split.rest} grid={grid} candidates={candidates} />
       )}
       {bodyText && (
-        <TileText node={patch.body} text={bodyText} backdrop={backdrop} candidates={candidates} />
+        <TileText node={patch.body} text={bodyText} grid={grid} candidates={candidates} />
       )}
     </span>
   )
@@ -417,7 +412,7 @@ function TileMember({ member }: { member: LockupMember }) {
 function TileText({
   node,
   text,
-  backdrop,
+  grid,
   candidates,
 }: {
   node: Pick<
@@ -436,7 +431,7 @@ function TileText({
     | 'letterSpacing'
   >
   text: string
-  backdrop?: BackdropGrid | null
+  grid?: BackdropGrid | null
   candidates?: readonly string[]
 }) {
   // Named rather than inlined: these are canvas-document sizes scaled to the tile, and the value
@@ -445,9 +440,7 @@ function TileText({
   // The colour the APPLY would land on, resolved through the same helper the doc transform uses —
   // so the tile shows the result rather than the starting point.
   const fill =
-    backdrop && candidates
-      ? readableFill(backdrop, textBox(node), node.fill, candidates)
-      : node.fill
+    grid && candidates ? readableFill(grid, textBox(node), node.fill, candidates) : node.fill
   const letterSpacing = node.letterSpacing
     ? `calc(${node.letterSpacing / CANVAS_WIDTH} * 100cqi)`
     : undefined

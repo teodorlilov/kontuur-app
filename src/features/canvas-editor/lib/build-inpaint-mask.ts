@@ -1,7 +1,14 @@
-import type { CanvasBackgroundTransform } from '@/types/canvas'
+import type { CanvasBackgroundTransform, CanvasImageNode } from '@/types/canvas'
 import type { PaddedFrame } from '@/lib/canvas/outpaint-geometry'
 import type { BrushStroke } from '../types'
-import { canvasToBlob, createDrawingCanvas, sourceSpaceFor, traceStrokes } from './source-space'
+import {
+  canvasToBlob,
+  createDrawingCanvas,
+  elementScale,
+  sourceSpaceFor,
+  traceStrokes,
+  traceStrokesInElement,
+} from './source-space'
 
 /** Feather width (canvas px, scaled to source) so composited fills blend, not paste. */
 const FEATHER_CANVAS_PX = 6
@@ -46,6 +53,27 @@ export function strokeRegion(
       traceStrokes(ctx, strokes, space)
     },
     featherPx: FEATHER_CANVAS_PX * space.scale,
+  }
+}
+
+/**
+ * The region under a set of brush strokes, in ONE ELEMENT's own pixels.
+ *
+ * The element sibling of `strokeRegion`: same strokes, same brush, a different space. It exists so
+ * the repair tool can hand the model a mask over a placed picture — a cut-out subject, say — instead
+ * of over the slide's background.
+ */
+export function elementStrokeRegion(
+  strokes: BrushStroke[],
+  element: Pick<CanvasImageNode, 'x' | 'y' | 'width' | 'height' | 'rotation' | 'flipX' | 'flipY'>,
+  natural: { width: number; height: number }
+): EditRegion {
+  return {
+    paint: (ctx) => {
+      ctx.strokeStyle = 'black'
+      traceStrokesInElement(ctx, strokes, element, natural)
+    },
+    featherPx: FEATHER_CANVAS_PX * elementScale(element, natural),
   }
 }
 
@@ -109,7 +137,13 @@ export async function compositeEditedRegion(
   original: CanvasImageSource,
   edited: CanvasImageSource,
   size: { width: number; height: number },
-  region: EditRegion
+  region: EditRegion,
+  /**
+   * jpeg by default — a background is opaque by definition and a photograph is half the size for it.
+   * A placed picture MUST pass png: a cut-out is mostly transparent, and jpeg has no alpha, so
+   * repairing one region of it would flatten every transparent pixel outside that region to black.
+   */
+  output: { type: string; quality?: number } = { type: 'image/jpeg', quality: 0.92 }
 ): Promise<Blob> {
   const [overlay, overlayCtx] = createDrawingCanvas(size)
   overlayCtx.filter = `blur(${region.featherPx}px)`
@@ -121,5 +155,5 @@ export async function compositeEditedRegion(
   const [result, resultCtx] = createDrawingCanvas(size)
   resultCtx.drawImage(original, 0, 0, size.width, size.height)
   resultCtx.drawImage(overlay, 0, 0)
-  return canvasToBlob(result, 'image/jpeg', 0.92)
+  return canvasToBlob(result, output.type, output.quality)
 }

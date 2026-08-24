@@ -14,7 +14,7 @@ function v1Doc(): CanvasDocV1 {
     background: { publicUrl: 'https://x.test/clean.jpg', storagePath: 'c1/p1/clean.jpg' },
     backgroundTransform: { zoom: 1.4, offsetX: 0.3, offsetY: 0.6 },
     flattenedStoragePath: 'c1/p1/flat.jpg',
-    scrim: { enabled: true, color: '#FFFFFF', opacity: 0.35, mode: 'bottom' },
+    scrim: { enabled: true, color: '#FFFFFF', opacity: 0.35, mode: 'full' },
     elements: [
       {
         id: 'logo',
@@ -103,7 +103,16 @@ describe('upgradeCanvasDoc', () => {
     expect(upgraded.background).toEqual(v1Doc().background)
     expect(upgraded.backgroundTransform).toEqual({ zoom: 1.4, offsetX: 0.3, offsetY: 0.6 })
     expect(upgraded.flattenedStoragePath).toBe('c1/p1/flat.jpg')
-    expect(upgraded.scrim).toEqual(v1Doc().scrim)
+    expect(upgraded.backdrop).toEqual({ enabled: true, color: '#FFFFFF', opacity: 0.35 })
+  })
+
+  it('turns a half-canvas scrim off rather than doubling what it covered', () => {
+    const banded = { ...v1Doc(), scrim: { ...v1Doc().scrim, mode: 'bottom' as const } }
+    expect(upgradeCanvasDoc(banded).backdrop).toEqual({
+      enabled: false,
+      color: '#FFFFFF',
+      opacity: 0.35,
+    })
   })
 
   it('leaves no v1 keys behind', () => {

@@ -41,7 +41,7 @@ function validDoc(): CanvasDoc {
     canvas: { w: CANVAS_WIDTH, h: CANVAS_HEIGHT },
     background: { publicUrl: 'https://x.test/clean.jpg', storagePath: 'c1/p1/clean.jpg' },
     flattenedStoragePath: null,
-    scrim: { enabled: true, color: '#FFFFFF', opacity: 0.35, mode: 'bottom' },
+    backdrop: { enabled: true, color: '#FFFFFF', opacity: 0.35 },
     nodes: [textNode()],
   }
 }
@@ -216,6 +216,44 @@ describe('canvasDocSchema', () => {
   it('is the write gate: parseCanvasDoc refuses a v1 doc outright', () => {
     // Writers must never persist v1 again; only readers upgrade.
     expect(() => parseCanvasDoc({ ...validDoc(), version: 1 })).toThrow()
+  })
+})
+
+/**
+ * Every v2 row written before the rename holds `scrim`. Without this repair each one fails the
+ * schema on its missing `backdrop`, and the editor treats "no doc" as "reseed" — every saved layout
+ * in the app quietly replaced by a fresh one.
+ */
+describe('a stored scrim, read as a backdrop', () => {
+  function storedWithScrim(mode: 'full' | 'bottom') {
+    // Through unknown: a stored row from before the rename has no `backdrop` at all, which is
+    // precisely the shape the type says cannot exist.
+    const doc = validDoc() as unknown as Record<string, unknown>
+    delete doc.backdrop
+    return { ...doc, scrim: { enabled: true, color: '#FFFFFF', opacity: 0.35, mode } }
+  }
+
+  it('carries a full-canvas scrim across unchanged, under the new name', () => {
+    const parsed = safeParseCanvasDoc(storedWithScrim('full'))
+    expect(parsed.success && parsed.doc.backdrop).toEqual({
+      enabled: true,
+      color: '#FFFFFF',
+      opacity: 0.35,
+    })
+  })
+
+  it('turns a half-canvas scrim off rather than covering twice what it covered', () => {
+    const parsed = safeParseCanvasDoc(storedWithScrim('bottom'))
+    expect(parsed.success && parsed.doc.backdrop.enabled).toBe(false)
+  })
+
+  it('leaves the old key behind rather than persisting it', () => {
+    const parsed = safeParseCanvasDoc(storedWithScrim('full'))
+    expect(parsed.success && parsed.doc).not.toHaveProperty('scrim')
+  })
+
+  it('is a READ repair only: the write gate still refuses a doc that carries the old key', () => {
+    expect(() => parseCanvasDoc(storedWithScrim('full'))).toThrow()
   })
 })
 

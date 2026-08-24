@@ -50,7 +50,7 @@ function doc(nodes: CanvasDoc['nodes']): CanvasDoc {
     canvas: { w: CANVAS_WIDTH, h: CANVAS_HEIGHT },
     background: { publicUrl: 'https://example.test/a.jpg', storagePath: 'a.jpg' },
     flattenedStoragePath: null,
-    scrim: { enabled: true, color: SURFACE, opacity: 0.35, mode: 'bottom' },
+    backdrop: { enabled: true, color: SURFACE, opacity: 0.35 },
     nodes,
   }
 }
@@ -133,7 +133,7 @@ describe('recolourForBackdrop', () => {
 
   it('leaves the fill alone when no candidate clears the floor', () => {
     // #555 defeats near-black ink at 3:1 (2.59). Painting the node the least-bad colour anyway
-    // would hide the fact that the real fix is the scrim, the crop, or moving the text — so the
+    // would hide the fact that the real fix is the backdrop, the crop, or moving the text — so the
     // fill is kept and the layer is reported instead.
     const mid = { r: 85, g: 85, b: 85 }
     const before = doc([textNode({ fill: INK })])

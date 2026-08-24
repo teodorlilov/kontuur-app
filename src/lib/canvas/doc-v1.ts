@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import type { CanvasDoc, CanvasImageNode, CanvasNode, CanvasTextNode } from '@/types/canvas'
 import { MAX_BACKGROUND_ZOOM } from './constants'
+import { backdropFromScrim, legacyScrimSchema } from './legacy-scrim'
 
 /**
  * Everything about the retired v1 doc shape, in one file so it can be deleted whole once no v1 rows
@@ -61,12 +62,7 @@ export const canvasDocSchemaV1 = z.object({
     })
     .optional(),
   flattenedStoragePath: z.string().min(1).nullable(),
-  scrim: z.object({
-    enabled: z.boolean(),
-    color: hex,
-    opacity: z.number().min(0).max(1),
-    mode: z.enum(['full', 'bottom']),
-  }),
+  scrim: legacyScrimSchema,
   elements: z.array(elementSchemaV1).max(20).optional(),
   layers: z.array(textLayerSchemaV1).max(20),
 })
@@ -115,7 +111,7 @@ export function upgradeCanvasDoc(doc: CanvasDocV1): CanvasDoc {
       ? {}
       : { backgroundTransform: doc.backgroundTransform }),
     flattenedStoragePath: doc.flattenedStoragePath,
-    scrim: doc.scrim,
+    backdrop: backdropFromScrim(doc.scrim),
     nodes,
   }
 }

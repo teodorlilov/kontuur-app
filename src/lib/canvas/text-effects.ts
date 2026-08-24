@@ -5,7 +5,7 @@ import type { CanvasTextNode } from '@/types/canvas'
  * Every field any preset may write. See `TEXT_EFFECT_EXCLUSIVE_FIELDS` for the ones this layer owns
  * outright and therefore clears on every press — the two differ by exactly `letterSpacing`.
  */
-export type TextEffectField =
+type TextEffectField =
   | 'letterSpacing'
   | 'shadowColor'
   | 'shadowOpacity'
@@ -53,7 +53,7 @@ function haloFor(fill: string): string {
   return rgb && relativeLuminance(rgb) < 0.5 ? '#FFFFFF' : '#000000'
 }
 
-export interface TextEffectPreset {
+interface TextEffectPreset {
   id: TextEffectId
   label: string
   /** One line for the tile's title attribute — what it does, not what it is called. */

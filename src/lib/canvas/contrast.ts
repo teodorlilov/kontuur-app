@@ -152,7 +152,7 @@ export function readableFill(
  * Only nodes that FAIL the floor are touched: a slide the art already suits keeps the exact colours
  * the lockup and the brand chose. When no candidate clears the floor the node keeps its fill and is
  * reported by `lowContrastLabels` instead — silently painting it a colour that is merely the least
- * bad would hide the fact that the real fix is the scrim or the picture.
+ * bad would hide the fact that the real fix is a backdrop or a different picture.
  */
 export function recolourForBackdrop(
   doc: CanvasDoc,
@@ -176,7 +176,7 @@ export function recolourForBackdrop(
  * to fix rather than saying something is wrong somewhere.
  *
  * Reported AFTER a repaint has had its chance, so anything listed here genuinely has no colour in
- * the palette that works: the answer is a stronger scrim, a different crop, or moving the text.
+ * the palette that works: the answer is a backdrop, a different crop, or moving the text.
  */
 export function lowContrastLabels(doc: CanvasDoc, grid: BackdropGrid): string[] {
   return doc.nodes

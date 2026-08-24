@@ -21,7 +21,7 @@ function vers(t: number): number {
 }
 
 /** A glyph's baseline centre after bending, and the angle it stands at (RADIANS). */
-export interface ArcPoint {
+interface ArcPoint {
   x: number
   y: number
   /** Tangent angle in radians — the raw canvas `rotate` unit, not Konva's node degrees. */

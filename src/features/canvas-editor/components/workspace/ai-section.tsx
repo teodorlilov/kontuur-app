@@ -4,12 +4,10 @@ import { Lasso, Maximize2, Scissors, Sparkles, Wand2 } from 'lucide-react'
 import { cn } from '@/utils/cn'
 import { VisualFrame } from '@/components/posts/review/visual-frame'
 import type { AssetRef } from '../../lib/asset-client'
+import { TYPICAL_SECONDS, type EditorJobs } from '../../hooks/use-editor-jobs'
 import { BusyHint } from '../busy-hint'
 import { EDITOR_BUTTON, EDITOR_LABEL } from './chrome'
 import { PromptRow } from './prompt-row'
-
-/** How long a gpt-image-2 background typically takes — the same figure the wizard quotes. */
-const TYPICAL_SECONDS = 52
 
 interface AiSectionProps {
   candidates: AssetRef[]
@@ -18,6 +16,8 @@ interface AiSectionProps {
   /** True while the slide has copy to regenerate from; changes what an empty prompt means. */
   hasSlideCopy: boolean
   busy: { generating: boolean; isolating: boolean; expanding: boolean }
+  /** The wait registry — the flags above say whether, this says how long it has been. */
+  jobs: EditorJobs
   onGenerate: (direction?: string) => void
   onCancelGenerate: () => void
   onPick: (ref: AssetRef) => void
@@ -97,9 +97,16 @@ export function AiSection(props: AiSectionProps) {
 
             {busy.generating ? (
               <div className="mt-2 flex items-center justify-between gap-2">
-                <BusyHint label="Painting" typicalSeconds={TYPICAL_SECONDS} />
-                <button type="button" className={EDITOR_BUTTON} onClick={props.onCancelGenerate}>
-                  Cancel
+                <BusyHint label="Painting" job={props.jobs.find('generate')} />
+                {/* The same word the tray uses. Neither control can recall the work — the request
+                    is already with the provider — and two names for one act read as two acts. */}
+                <button
+                  type="button"
+                  className={EDITOR_BUTTON}
+                  title="Throw this result away when it arrives"
+                  onClick={props.onCancelGenerate}
+                >
+                  Discard result
                 </button>
               </div>
             ) : (
@@ -118,14 +125,14 @@ export function AiSection(props: AiSectionProps) {
             icon={<Wand2 size={14} aria-hidden />}
             label="Repair or replace a zone"
             description="Paint over part of the picture and describe what belongs there instead."
-            seconds={45}
+            seconds={TYPICAL_SECONDS.inpaint}
             onClick={props.onEnterInpaint}
           />
           <AiVerb
             icon={<Scissors size={14} aria-hidden />}
             label="Cut out the subject"
             description="Lift the main subject out as its own movable picture."
-            seconds={20}
+            seconds={TYPICAL_SECONDS.isolate}
             busy={busy.isolating}
             onClick={props.onIsolateSubject}
           />
@@ -133,20 +140,24 @@ export function AiSection(props: AiSectionProps) {
             icon={<Lasso size={14} aria-hidden />}
             label="Lasso something out"
             description="Draw a loop around any object to cut just that out."
-            seconds={12}
+            seconds={TYPICAL_SECONDS.lasso}
             onClick={props.onEnterLasso}
           />
           <AiVerb
             icon={<Maximize2 size={14} aria-hidden />}
             label="Expand the picture"
             description="Generate more picture around all four edges, so you have room to reposition."
-            seconds={60}
+            seconds={TYPICAL_SECONDS.expand}
             busy={busy.expanding}
             onClick={props.onExpand}
           />
         </div>
-        {busy.isolating && <BusyHint label="Finding the subject" typicalSeconds={20} />}
-        {busy.expanding && <BusyHint label="Painting the new edges" typicalSeconds={60} />}
+        {busy.isolating && (
+          <BusyHint label="Finding the subject" job={props.jobs.find('isolate')} />
+        )}
+        {busy.expanding && (
+          <BusyHint label="Painting the new edges" job={props.jobs.find('expand')} />
+        )}
       </section>
     </div>
   )

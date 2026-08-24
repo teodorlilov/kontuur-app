@@ -13,7 +13,7 @@ function doc(): CanvasDoc {
     background: CLEAN,
     backgroundTransform: { zoom: 2, offsetX: 0.25, offsetY: 0.75 },
     flattenedStoragePath: BAKED.storagePath,
-    scrim: { enabled: false, color: '#000000', opacity: 0.4, mode: 'bottom' },
+    backdrop: { enabled: false, color: '#000000', opacity: 0.4 },
     nodes: [],
   }
 }
@@ -29,7 +29,7 @@ describe('rebindDocToImage', () => {
     const before = doc()
     const rebound = rebindDocToImage(before, FRESH)
     expect(rebound.nodes).toBe(before.nodes)
-    expect(rebound.scrim).toBe(before.scrim)
+    expect(rebound.backdrop).toBe(before.backdrop)
     expect(rebound.flattenedStoragePath).toBe(before.flattenedStoragePath)
   })
 })

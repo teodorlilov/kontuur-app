@@ -74,7 +74,7 @@ export type LockupId =
  * not built, so the count today is zero rather than one. Do not read this comment as describing
  * behaviour that exists.
  */
-export type LockupField =
+type LockupField =
   | 'x'
   | 'y'
   | 'width'
@@ -126,7 +126,7 @@ export interface LockupContext {
 }
 
 /** The patch each copy role receives. A role the slide does not have is simply not applied. */
-export interface LockupCopy {
+interface LockupCopy {
   headline: Pick<CanvasTextNode, LockupField>
   body: Pick<CanvasTextNode, LockupField>
   /**
@@ -1403,7 +1403,7 @@ export function lockupNodeDelta(doc: CanvasDoc, id: LockupId, ctx: LockupContext
 /**
  * Lay a slide's copy out in the given lockup, replacing whatever lockup was there before.
  *
- * Text the user added themselves (`custom`), pictures, their own shapes and the scrim are the
+ * Text the user added themselves (`custom`), pictures, their own shapes and the backdrop are the
  * slide's own content and are left exactly as they are — the same boundary `applyStyleToDoc` draws.
  *
  * The one place this DOES touch words is the hero split, and it is a round trip rather than an edit:

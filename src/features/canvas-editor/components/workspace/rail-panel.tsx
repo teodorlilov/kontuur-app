@@ -10,10 +10,13 @@ import { AssetsSection } from '../assets-section'
 import { BackgroundControls } from '../background-controls'
 import { EDITOR_BUTTON, EDITOR_LABEL } from './chrome'
 import { LayersSection } from './layers-section'
+import type { EditorJobs } from '../../hooks/use-editor-jobs'
 import type { RailSection } from './rail'
 
 interface RailPanelProps {
   section: RailSection
+  /** Passed straight through to the sections that show a wait; the panel itself reads nothing. */
+  jobs: EditorJobs
   doc: CanvasDoc
   selectedIds: string[]
   busy: {
@@ -88,6 +91,7 @@ export function RailPanel(props: RailPanelProps) {
       <AssetsSection
         uploading={props.busy.uploadingAsset}
         generatingSvg={props.busy.generatingSvg}
+        jobs={props.jobs}
         onUpload={props.onUploadAsset}
         onAddShape={props.onAddShape}
         onGenerateSvg={props.onGenerateSvg}
@@ -113,6 +117,7 @@ export function RailPanel(props: RailPanelProps) {
   if (props.section === 'ai') {
     return (
       <AiSection
+        jobs={props.jobs}
         candidates={props.candidates}
         currentStoragePath={props.doc.background.storagePath}
         hasSlideCopy={props.hasSlideCopy}

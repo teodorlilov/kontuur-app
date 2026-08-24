@@ -27,7 +27,7 @@ function makeDoc(nodes: CanvasNode[], overrides?: Partial<CanvasDoc>): CanvasDoc
     canvas: { w: CANVAS_WIDTH, h: CANVAS_HEIGHT },
     background: { publicUrl: 'https://cdn/x.jpg', storagePath: 'client/post/x.jpg' },
     flattenedStoragePath: null,
-    scrim: { enabled: true, color: '#ffffff', opacity: 0.35, mode: 'bottom' },
+    backdrop: { enabled: true, color: '#ffffff', opacity: 0.35 },
     nodes,
     ...overrides,
   }
@@ -66,11 +66,11 @@ const styledSource = makeDoc(
       fontWeight: 400,
     }),
   ],
-  { scrim: { enabled: false, color: '#000000', opacity: 0.6, mode: 'full' } }
+  { backdrop: { enabled: false, color: '#000000', opacity: 0.6 } }
 )
 
 describe('applyStyleToDoc', () => {
-  it('copies role-matched layer style and the scrim, keeping the target text', () => {
+  it('copies role-matched layer style and the backdrop, keeping the target text', () => {
     const target = makeDoc([
       makeText({ id: 't-h', role: 'headline', text: 'TARGET HEAD' }),
       makeText({
@@ -104,7 +104,7 @@ describe('applyStyleToDoc', () => {
       fontFamily: 'Commissioner',
       y: 1100,
     })
-    expect(result.scrim).toEqual({ enabled: false, color: '#000000', opacity: 0.6, mode: 'full' })
+    expect(result.backdrop).toEqual({ enabled: false, color: '#000000', opacity: 0.6 })
   })
 
   it('leaves the target background, flattenedStoragePath and textOverridden untouched', () => {

@@ -32,7 +32,7 @@ function doc(nodes: CanvasDoc['nodes']): CanvasDoc {
     canvas: { w: 1080, h: 1350 },
     background: { publicUrl: 'https://x.test/a.jpg', storagePath: 'c1/p1/a.jpg' },
     flattenedStoragePath: null,
-    scrim: { enabled: false, color: '#000000', opacity: 0.4, mode: 'bottom' },
+    backdrop: { enabled: false, color: '#000000', opacity: 0.4 },
     nodes,
   }
 }

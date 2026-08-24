@@ -110,8 +110,14 @@ export async function generateBackgroundAsset(input: {
   return parseAssetResponse(res, 'Background generation failed')
 }
 
-/** Inpaint the masked region of the clean background; returns the new clean image ref. */
-export async function inpaintBackgroundAsset(input: {
+/**
+ * Repaint the masked region of any stored image the client owns — the slide's background or a
+ * picture placed on it — and return the model's raw output as a stored ref.
+ *
+ * Raw, not final: gpt-image edits regenerate the WHOLE frame, so every caller composites the result
+ * back into the original through the same region it masked. See `compositeEditedRegion`.
+ */
+export async function inpaintAsset(input: {
   target: EditorTarget
   storagePath: string
   prompt: string

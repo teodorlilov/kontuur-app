@@ -169,14 +169,20 @@ export interface CanvasShapeNode extends CanvasNodeBase {
 
 export type CanvasNode = CanvasTextNode | CanvasImageNode | CanvasShapeNode
 
-export type CanvasScrimMode = 'full' | 'bottom'
-
-/** The contrast band drawn between the background and the nodes. */
-export interface CanvasScrim {
+/**
+ * A flat colour covering the whole canvas, drawn between the background picture and the nodes.
+ *
+ * At full strength it REPLACES the picture, and everything the slide still shows has to be a node
+ * above it — a cut-out subject on solid brand colour. Dialled back it reads as a wash that calms a
+ * busy photograph behind text, which is all it used to do (as "contrast scrim", over either the
+ * whole canvas or its lower half). The half-canvas band is gone: its hard horizontal edge cut
+ * across the middle of the picture with nothing in the composition to justify it.
+ */
+export interface CanvasBackdrop {
   enabled: boolean
   color: string
+  /** 1 = solid, hiding the picture entirely. */
   opacity: number
-  mode: CanvasScrimMode
 }
 
 /** Storage reference to the CLEAN (text-free) image the doc composes over. */
@@ -203,7 +209,7 @@ export interface CanvasDoc {
   backgroundTransform?: CanvasBackgroundTransform
   /** The artifact the last save produced — lets the editor detect its own baked output on reopen. */
   flattenedStoragePath: string | null
-  scrim: CanvasScrim
+  backdrop: CanvasBackdrop
   /**
    * Render order, bottom first. One list for every kind, so a picture can sit above one text layer
    * and below another — in v1 typography was pinned above the asset band by construction.

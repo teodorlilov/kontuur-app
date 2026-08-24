@@ -6,6 +6,7 @@ import { Sparkles, Upload } from 'lucide-react'
 import { Spinner } from '@/components/ui/spinner'
 import { BusyHint } from './busy-hint'
 import type { CanvasShapeKind } from '@/types/canvas'
+import type { EditorJobs } from '../hooks/use-editor-jobs'
 import { EDITOR_BUTTON, EDITOR_LABEL } from './workspace/chrome'
 import { NODE_KIND_META } from './workspace/node-kinds'
 import { PromptRow } from './workspace/prompt-row'
@@ -16,6 +17,8 @@ const SHAPE_TILES: CanvasShapeKind[] = ['rect', 'ellipse', 'line']
 interface AssetsSectionProps {
   uploading: boolean
   generatingSvg: boolean
+  /** The wait registry — the flag above says whether, this says how long it has been. */
+  jobs: EditorJobs
   onUpload: (file: File) => void
   onAddShape: (kind: CanvasShapeKind) => void
   onGenerateSvg: (prompt: string) => void
@@ -29,6 +32,7 @@ interface AssetsSectionProps {
 export function AssetsSection({
   uploading,
   generatingSvg,
+  jobs,
   onUpload,
   onAddShape,
   onGenerateSvg,
@@ -92,7 +96,7 @@ export function AssetsSection({
           onSubmit={onGenerateSvg}
         />
       </div>
-      {generatingSvg && <BusyHint label="Drawing the vector" typicalSeconds={10} />}
+      {generatingSvg && <BusyHint label="Drawing the vector" job={jobs.find('vector')} />}
     </div>
   )
 }

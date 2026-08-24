@@ -13,10 +13,16 @@ interface ColorSwatchesProps {
   palette: Palette
   value: string
   onChange: (hex: string) => void
+  /**
+   * A control that belongs in the swatch row but is not a colour — an "off" chip, say. Passed in
+   * rather than built here because only some colours can be absent, and a row that always offered
+   * "none" would be lying about the ones that cannot.
+   */
+  leading?: React.ReactNode
 }
 
 /** One-click brand-palette swatches, a free colour input, a hex field and the screen eyedropper. */
-export function ColorSwatches({ label, palette, value, onChange }: ColorSwatchesProps) {
+export function ColorSwatches({ label, palette, value, onChange, leading }: ColorSwatchesProps) {
   const roles = Object.entries(palette) as Array<[string, string]>
   // While typing, the field holds a half-finished hex of its own; null hands it back to whatever
   // the colour actually is, so swatch clicks and the picker show up here without any syncing.
@@ -32,6 +38,7 @@ export function ColorSwatches({ label, palette, value, onChange }: ColorSwatches
     <div>
       <div className={EDITOR_LABEL}>{label}</div>
       <div className="flex flex-wrap items-center gap-1.5">
+        {leading}
         {roles.map(([role, hex]) => (
           <button
             key={role}

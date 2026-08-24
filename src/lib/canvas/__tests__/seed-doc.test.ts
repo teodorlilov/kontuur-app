@@ -34,7 +34,8 @@ describe('seedCanvasDoc', () => {
     expect(headline!.uppercase).toBe(true)
     expect(body!.fontFamily).toBe('Source Sans 3')
     expect(body!.text).toBe('Слънцето уврежда кожата целогодишно.')
-    expect(doc.scrim).toEqual({ enabled: true, color: '#FFFFFF', opacity: 0.35, mode: 'bottom' })
+    // Off, and solid when it is switched on: a seeded slide shows the picture it was generated with.
+    expect(doc.backdrop).toEqual({ enabled: false, color: '#FFFFFF', opacity: 1 })
     expect(doc.background).toEqual(background)
     expect(doc.flattenedStoragePath).toBeNull()
   })

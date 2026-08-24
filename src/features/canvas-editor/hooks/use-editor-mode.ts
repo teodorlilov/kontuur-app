@@ -24,9 +24,18 @@ export interface EditorModeState {
 }
 
 /**
+ * The tools that work ON the selected picture, and so must not clear the selection when they open.
+ *
+ * Both paint onto one placed picture — the eraser cuts the strokes out of it, repair hands them to
+ * the model as an editable zone. A cleared selection would leave either with no target and an Apply
+ * that cannot do anything.
+ */
+const KEEPS_SELECTION = new Set<EditorMode>(['erase', 'repair'])
+
+/**
  * Which tool is active and everything that tool is holding. Modes are exclusive: entering one
- * drops the strokes of the last and clears the selection — except the eraser, which works ON the
- * selection and so keeps it.
+ * drops the strokes of the last and clears the selection — except the tools above, which work ON
+ * the selection and so keep it.
  */
 export function useEditorMode(clearSelection: () => void): EditorModeState {
   const [mode, setMode] = useState<EditorMode>('edit')
@@ -37,7 +46,7 @@ export function useEditorMode(clearSelection: () => void): EditorModeState {
 
   const switchMode = useCallback(
     (next: Exclude<EditorMode, 'edit'>) => {
-      if (next !== 'erase') clearSelection()
+      if (!KEEPS_SELECTION.has(next)) clearSelection()
       setStrokes([])
       setMode((current) => (current === next ? 'edit' : next))
     },

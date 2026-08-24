@@ -43,8 +43,13 @@ interface SeedInput {
 
 /**
  * Build the first canvas doc for a slide: copy placed in the brand style's font pairing over the
- * clean background, contrast scrim on. Empty copy seeds no node — callers can skip composing a
- * doc with no text.
+ * clean background, no backdrop. Empty copy seeds no node — callers can skip composing a doc with
+ * no text.
+ *
+ * The backdrop starts OFF and solid: a slide opens showing the picture that was generated for it,
+ * and the first colour picked covers that picture outright rather than half-veiling it. Readability
+ * over a busy photograph is `recolourForBackdrop`'s job — it repaints the type against a
+ * measurement of the art, which is a better answer than washing every slide by default.
  */
 export function seedCanvasDoc(input: SeedInput): CanvasDoc {
   const { identity, background, slide, caption } = input
@@ -94,7 +99,7 @@ export function seedCanvasDoc(input: SeedInput): CanvasDoc {
     canvas: { w: CANVAS_WIDTH, h: CANVAS_HEIGHT },
     background,
     flattenedStoragePath: null,
-    scrim: { enabled: true, color: identity.palette.surface, opacity: 0.35, mode: 'bottom' },
+    backdrop: { enabled: false, color: identity.palette.surface, opacity: 1 },
     nodes,
   }
 }

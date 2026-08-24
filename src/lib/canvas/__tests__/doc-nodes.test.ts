@@ -54,7 +54,7 @@ function doc(overrides: Partial<CanvasDoc> = {}): CanvasDoc {
     canvas: { w: 1080, h: 1350 },
     background: { publicUrl: 'https://example.test/bg.jpg', storagePath: 'client/post/bg.jpg' },
     flattenedStoragePath: null,
-    scrim: { enabled: false, color: '#000000', opacity: 0.4, mode: 'bottom' },
+    backdrop: { enabled: false, color: '#000000', opacity: 0.4 },
     nodes: [asset('e1'), text('t1'), asset('e2'), text('t2')],
     ...overrides,
   }

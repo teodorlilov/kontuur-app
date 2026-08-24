@@ -225,8 +225,7 @@ export function EditorFrame({ previews }: { previews: LockupPreview[] }) {
         <div className="flex min-w-0 flex-1 flex-col">
           <div className="hidden items-center gap-1.5 overflow-hidden border-b border-line px-3 py-2 sm:flex">
             <Chip>Reposition</Chip>
-            <Chip>Contrast scrim</Chip>
-            <Chip>Bottom band</Chip>
+            <Chip>Backdrop</Chip>
           </div>
 
           <div className="relative grid flex-1 place-items-center bg-sunken p-4">

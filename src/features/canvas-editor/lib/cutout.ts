@@ -1,5 +1,4 @@
 import type { CanvasBackgroundTransform, CanvasImageNode } from '@/types/canvas'
-import { canvasPointToElementLocal } from '@/lib/canvas/elements'
 import type { SourceRect } from '@/lib/canvas/reposition'
 import type { BrushStroke } from '../types'
 import { naturalSize } from './load-image'
@@ -8,6 +7,7 @@ import {
   createDrawingCanvas,
   mapPointsToSource,
   sourceSpaceFor,
+  traceStrokesInElement,
 } from './source-space'
 
 /** Alpha above this counts as "object" when scanning for the trim box (0–255). */
@@ -30,6 +30,8 @@ const KEY_SKIP_RATIO = 0.92
 interface Trimmed {
   blob: Blob
   bbox: SourceRect
+  /** Pixels that survived, so a caller can ask how much of what it asked for actually came back. */
+  opaquePixels: number
 }
 
 // Scan a canvas for its opaque bounding box and export the cropped PNG.
@@ -42,8 +44,10 @@ async function trimCanvas(source: HTMLCanvasElement): Promise<Trimmed | null> {
   let minY = Infinity
   let maxX = -Infinity
   let maxY = -Infinity
+  let opaquePixels = 0
   for (let i = 3; i < data.length; i += 4) {
     if (data[i]! > ALPHA_THRESHOLD) {
+      opaquePixels += 1
       const pixel = (i - 3) / 4
       const x = pixel % width
       const y = (pixel - x) / width
@@ -75,7 +79,7 @@ async function trimCanvas(source: HTMLCanvasElement): Promise<Trimmed | null> {
     bbox.width,
     bbox.height
   )
-  return { blob: await canvasToBlob(trimmed, 'image/png'), bbox }
+  return { blob: await canvasToBlob(trimmed, 'image/png'), bbox, opaquePixels }
 }
 
 /**
@@ -94,6 +98,20 @@ interface PointBounds {
   minY: number
   maxX: number
   maxY: number
+}
+
+/**
+ * The area a closed polygon encloses, by the shoelace formula. Absolute, so winding direction does
+ * not matter — a loop drawn clockwise encloses just as much as one drawn anticlockwise.
+ */
+function polygonArea(points: number[]): number {
+  let sum = 0
+  const count = Math.floor(points.length / 2)
+  for (let i = 0; i < count; i++) {
+    const j = (i + 1) % count
+    sum += points[i * 2]! * points[j * 2 + 1]! - points[j * 2]! * points[i * 2 + 1]!
+  }
+  return Math.abs(sum) / 2
 }
 
 // Bounding box of a flat x,y point list; null for an empty list.
@@ -142,17 +160,35 @@ function smoothLoop(points: number[]): number[] {
   return out
 }
 
-// The loop boundary IS background by definition — sample its colours (deduped) for the key.
+/**
+ * The loop boundary IS background by definition — sample its colours (deduped) for the key.
+ *
+ * Both options exist for the element keying below, and BOTH are deliberately off for the lasso:
+ *
+ * `step` — a lasso loop is hundreds of points along one outline, where consecutive points are
+ * neighbours and thinning costs nothing. A border walk is eight points chosen to differ, and
+ * thinning it threw six of them away.
+ *
+ * `skipTransparent` — a canvas reads a transparent pixel back as (0,0,0,0), so counting one as a
+ * colour tells the key that the background is pure black, and the key then deletes every dark pixel
+ * of the SUBJECT. That is fatal for an element whose whole border is transparent. The lasso samples
+ * a background that is normally opaque, and on the rare one that is not, dropping the sample shifts
+ * how much `KEY_SKIP_RATIO` erases — so the lasso keeps the behaviour it was tuned against rather
+ * than inheriting a fix aimed at a different caller.
+ */
 function sampleBoundaryColors(
   ctx: CanvasRenderingContext2D,
   srcPoints: number[],
-  src: { width: number; height: number }
+  src: { width: number; height: number },
+  options: { step?: number; skipTransparent?: boolean } = {}
 ): number[][] {
+  const step = options.step ?? BOUNDARY_SAMPLE_STEP
   const samples: number[][] = []
-  for (let i = 0; i + 1 < srcPoints.length; i += 2 * BOUNDARY_SAMPLE_STEP) {
+  for (let i = 0; i + 1 < srcPoints.length; i += 2 * step) {
     const x = Math.min(src.width - 1, Math.max(0, Math.round(srcPoints[i]!)))
     const y = Math.min(src.height - 1, Math.max(0, Math.round(srcPoints[i + 1]!)))
-    const [r, g, b] = ctx.getImageData(x, y, 1, 1).data
+    const [r, g, b, a] = ctx.getImageData(x, y, 1, 1).data
+    if (options.skipTransparent && a! <= ALPHA_THRESHOLD) continue
     const isNew = samples.every(
       (sample) => Math.hypot(sample[0]! - r!, sample[1]! - g!, sample[2]! - b!) > KEY_TOLERANCE / 2
     )
@@ -287,6 +323,22 @@ export async function cutoutFromLasso(
 const REGION_CROP_PADDING = 16
 
 /**
+ * How much of what the loop enclosed the matte has to keep for the detection to count.
+ *
+ * The snap is allowed to TIGHTEN a loop — that is the whole point of it — but not to decide the user
+ * meant something else. The model is handed the loop's bounding box plus a little context, and it
+ * answers with "the main subject" of that crop, which on a collage is the photograph every time: a
+ * loop drawn around flat display type came back as the hand overlapping it, because a hand is a
+ * subject and a letterform is not.
+ *
+ * 0.35 is deliberately generous — a genuinely thin subject inside a loose loop still passes — and
+ * failing it is not an error: the caller falls back to the outline that was actually drawn and says
+ * so. Measured against the loop's real enclosed area, not its bounding box, so an L-shaped or
+ * diagonal loop is not judged against a rectangle it never claimed.
+ */
+const MIN_DETECT_COVERAGE = 0.35
+
+/**
  * AI-detect lasso: crop the loop's region, let the (injected) matting provider cut the object
  * out of that crop — a tight crop makes "the subject" unambiguous — then intersect the matte
  * with the drawn loop and trim. The provider does the network work so this module stays pure
@@ -342,27 +394,56 @@ export async function cutoutFromLassoDetect(
   )
   const trimmed = await trimCanvas(cut)
   if (!trimmed) return null
+  // Did the matte keep what was enclosed, or swap it for something else inside the same box?
+  const enclosed = polygonArea(loop.srcPoints)
+  if (enclosed > 0 && trimmed.opaquePixels / enclosed < MIN_DETECT_COVERAGE) return null
   // The trim bbox is crop-local — shift it back into full-source coordinates for placement.
   return {
     blob: trimmed.blob,
     bbox: { ...trimmed.bbox, x: trimmed.bbox.x + crop.x, y: trimmed.bbox.y + crop.y },
+    opaquePixels: trimmed.opaquePixels,
   }
 }
 
 /**
+ * What keying an element's background could find.
+ *
+ * Three outcomes rather than a blob-or-null, because the two failures need different answers and
+ * the caller cannot tell them apart from a null: a picture with nothing behind it is FINISHED, and
+ * saying "no flat background detected" about it is both true and useless. One with a busy
+ * photographic background has a background all right — just not one this method can key.
+ */
+type ElementKeying =
+  | { status: 'keyed'; blob: Blob }
+  | { status: 'already-cutout' }
+  | { status: 'not-flat' }
+
+/**
  * Key out an element's flat background: its BORDER pixels are background by definition, so
  * colours matching them go transparent across the bitmap (same principle as the lasso cleanup).
- * Geometry stays unchanged. Null when nothing was detected/removed — no-op for the caller.
+ * Geometry stays unchanged.
+ *
+ * This only ever works on a picture sitting on ONE uniform colour — a generated SVG on its plate,
+ * a logo on white. It is a colour match, not object detection, and it says so through its result.
  */
-export async function removeElementBackground(bitmap: HTMLImageElement): Promise<Blob | null> {
+export async function removeElementBackground(bitmap: HTMLImageElement): Promise<ElementKeying> {
   const natural = naturalSize(bitmap)
   const [canvas, ctx] = createDrawingCanvas(natural)
   ctx.drawImage(bitmap, 0, 0)
   const w = natural.width - 1
   const h = natural.height - 1
-  // Corners + edge midpoints — a border walk in point-list form so the loop sampler applies.
+  // Corners + edge midpoints, every one of them sampled: these eight points were CHOSEN to differ,
+  // unlike a lasso outline where consecutive points are neighbours and thinning costs nothing. The
+  // shared step used to drop six of the eight, so a picture whose two sampled corners happened to
+  // hold artwork reported no background while four flat edges sat there unread.
   const borderPoints = [0, 0, w / 2, 0, w, 0, w, h / 2, w, h, w / 2, h, 0, h, 0, h / 2]
-  const samples = sampleBoundaryColors(ctx, borderPoints, natural)
+  const samples = sampleBoundaryColors(ctx, borderPoints, natural, {
+    step: 1,
+    skipTransparent: true,
+  })
+  // Every border point transparent: there is no background left to key, and going ahead would key
+  // against nothing at all.
+  if (samples.length === 0) return { status: 'already-cutout' }
   const before = ctx
     .getImageData(0, 0, natural.width, natural.height)
     .data.filter((_, i) => i % 4 === 3)
@@ -376,8 +457,8 @@ export async function removeElementBackground(bitmap: HTMLImageElement): Promise
       break
     }
   }
-  if (!changed) return null
-  return canvasToBlob(canvas, 'image/png')
+  if (!changed) return { status: 'not-flat' }
+  return { status: 'keyed', blob: await canvasToBlob(canvas, 'image/png') }
 }
 
 /**
@@ -392,24 +473,9 @@ export async function eraseStrokesFromElement(
   const natural = naturalSize(bitmap)
   const [canvas, ctx] = createDrawingCanvas(natural)
   ctx.drawImage(bitmap, 0, 0)
+  // Everything painted is subtracted from what is already there — holes, not paint.
   ctx.globalCompositeOperation = 'destination-out'
-  ctx.lineCap = 'round'
-  ctx.lineJoin = 'round'
   ctx.strokeStyle = 'black'
-  const widthScale = natural.width / element.width
-  for (const stroke of strokes) {
-    ctx.lineWidth = stroke.size * widthScale
-    ctx.beginPath()
-    for (let i = 0; i + 1 < stroke.points.length; i += 2) {
-      const point = canvasPointToElementLocal(
-        { x: stroke.points[i]!, y: stroke.points[i + 1]! },
-        element,
-        natural
-      )
-      if (i === 0) ctx.moveTo(point.x, point.y)
-      else ctx.lineTo(point.x, point.y)
-    }
-    ctx.stroke()
-  }
+  traceStrokesInElement(ctx, strokes, element, natural)
   return canvasToBlob(canvas, 'image/png')
 }

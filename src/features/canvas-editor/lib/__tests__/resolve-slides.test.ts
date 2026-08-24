@@ -17,7 +17,7 @@ function storedDoc(): CanvasDoc {
     background: CLEAN,
     backgroundTransform: { zoom: 2, offsetX: 0.25, offsetY: 0.75 },
     flattenedStoragePath: BAKED.storagePath,
-    scrim: { enabled: false, color: '#000000', opacity: 0.4, mode: 'bottom' },
+    backdrop: { enabled: false, color: '#000000', opacity: 0.4 },
     nodes: [],
   }
 }

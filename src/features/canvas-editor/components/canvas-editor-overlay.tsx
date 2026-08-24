@@ -29,9 +29,9 @@ import { createShapeNode } from '@/lib/canvas/elements'
 import { createTextNode } from '@/lib/canvas/seed-doc'
 import { getBrandStyle } from '@/lib/visual/brand-styles'
 import type {
+  CanvasBackdrop,
   CanvasDoc,
   CanvasImageNode,
-  CanvasScrim,
   CanvasShapeKind,
   CanvasShapeNode,
   CanvasTextNode,
@@ -46,6 +46,7 @@ import { useEditorAiOps } from '../hooks/use-editor-ai-ops'
 import { useEditorAssetOps } from '../hooks/use-editor-asset-ops'
 import { useEditorSlides } from '../hooks/use-editor-slides'
 import { useEditorFonts } from '../hooks/use-editor-fonts'
+import { useEditorJobs } from '../hooks/use-editor-jobs'
 import { useEditorMode } from '../hooks/use-editor-mode'
 import { useEditorSave } from '../hooks/use-editor-save'
 import { useEditorSelection } from '../hooks/use-editor-selection'
@@ -58,6 +59,7 @@ import type { CanvasEditorProps } from '../types'
 import { EditorStage } from './editor-stage'
 import { ViewportControls } from './viewport-controls'
 import { ApplyStylePanel } from './workspace/apply-style-panel'
+import { JobsTray } from './workspace/jobs-tray'
 import { ModeBar } from './workspace/mode-bar'
 import { Rail, useRailSection } from './workspace/rail'
 import { RailPanel } from './workspace/rail-panel'
@@ -139,6 +141,9 @@ function CanvasEditorOverlay(props: CanvasEditorProps) {
    */
   const [lockupApplied, setLockupApplied] = useState<AppliedSet | null>(null)
   const [styleApplied, setStyleApplied] = useState<AppliedSet | null>(null)
+  // Every wait in one list, above the ops that create them: the top bar reads it to show what the
+  // editor is working on, and each op reports into it for its whole life.
+  const jobs = useEditorJobs()
   const modeState = useEditorMode(selection.clear)
   const { mode, strokes, brushSize, inpaintPrompt, lassoDetect } = modeState
   // Read from the live prop, not from the load: the surface's copy edits ride in while the editor
@@ -280,6 +285,8 @@ function CanvasEditorOverlay(props: CanvasEditorProps) {
   const assetOps = useEditorAssetOps(target, slidesState, selection)
   const aiOps = useEditorAiOps({
     target,
+    jobs,
+    goToSlide,
     activePosition: slidesState.activePosition,
     slideCopy,
     docState: slidesState,
@@ -481,8 +488,9 @@ function CanvasEditorOverlay(props: CanvasEditorProps) {
     [slidesState]
   )
 
-  const panelScrimChange = useCallback(
-    (patch: Partial<CanvasScrim>) => slidesState.setScrim(patch, panelCommit('scrim', patch)),
+  const panelBackdropChange = useCallback(
+    (patch: Partial<CanvasBackdrop>) =>
+      slidesState.setBackdrop(patch, panelCommit('backdrop', patch)),
     [slidesState]
   )
 
@@ -564,6 +572,7 @@ function CanvasEditorOverlay(props: CanvasEditorProps) {
         }}
         // One slide has nothing to apply its style to — the same gate the slide strip uses.
         onApplyStyle={slidesState.positions.length > 1 ? () => setApplyingStyle(true) : undefined}
+        jobs={<JobsTray jobs={jobs.jobs} discard={jobs.discard} />}
       />
       <div className="flex min-h-0 flex-1">
         <Rail
@@ -578,6 +587,7 @@ function CanvasEditorOverlay(props: CanvasEditorProps) {
           {ready && identity && lockupCtx && railSection && (
             <RailPanel
               section={railSection}
+              jobs={jobs}
               doc={slidesState.doc!}
               lockupContext={lockupCtx}
               onApplyLockup={(id) => {
@@ -676,18 +686,21 @@ function CanvasEditorOverlay(props: CanvasEditorProps) {
                   void aiOps.removeSelectedNodeBackground()
                 }}
                 onEraseSelected={() => modeState.switchMode('erase')}
+                onRepairSelected={() => modeState.switchMode('repair')}
                 onToggleReposition={() => modeState.switchMode('reposition')}
-                onScrimChange={panelScrimChange}
+                onBackdropChange={panelBackdropChange}
               />
             ) : (
               <ModeBar
                 mode={mode}
+                jobs={jobs}
                 brushSize={brushSize}
                 hasStrokes={strokes.length > 0}
                 inpaintPrompt={inpaintPrompt}
                 lassoDetect={lassoDetect}
                 inpainting={aiOps.inpainting}
                 erasing={aiOps.erasing}
+                repairing={aiOps.repairing}
                 lassoCutting={aiOps.lassoCutting}
                 onBrushSizeChange={modeState.setBrushSize}
                 onPromptChange={modeState.setInpaintPrompt}
@@ -701,6 +714,9 @@ function CanvasEditorOverlay(props: CanvasEditorProps) {
                 }}
                 onApplyErase={() => {
                   void aiOps.applyErase()
+                }}
+                onApplyRepair={() => {
+                  void aiOps.repairSelectedNode()
                 }}
                 onDone={modeState.exitMode}
               />
@@ -857,7 +873,13 @@ const MODE_HINTS: Record<Exclude<EditorMode, 'edit'>, string> = {
   reposition: 'Drag to reposition · scroll to zoom the image',
   inpaint: 'Paint over what should change, then Apply',
   lasso: 'Draw a loop around the object to cut it out',
-  erase: 'Paint to rub parts of the selected element away',
+  // Names the limit, not just the gesture. The brush covers the whole slide but only cuts into the
+  // outlined picture, and a stroke that crosses onto the artwork behind it leaves that untouched —
+  // which reads as the tool half-working unless it was said up front.
+  erase: 'Rubs out only the outlined picture — the rest of the slide is untouched',
+  // Same limit as the eraser, and one more: the model fills the whole painted zone, so a stroke
+  // hanging off the picture's edge comes back as invented pixels rather than transparency.
+  repair: 'Paint inside the outlined picture, say what belongs there, then Apply',
 }
 
 /** A multi-slide apply, with what its targets held beforehand so the set can be put back. */

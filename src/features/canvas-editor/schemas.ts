@@ -52,7 +52,7 @@ const slideCopySchema = z.union([
  * get its canonical 404, not a 400 from here that says something subtly different about
  * an id the resolver would have rejected anyway.
  */
-export const assetTargetSchema = z.object({
+const assetTargetSchema = z.object({
   clientId: z.string().optional(),
   draftId: z.string().optional(),
   postId: z.string().optional(),

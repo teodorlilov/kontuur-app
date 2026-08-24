@@ -4,7 +4,7 @@ import { arcPointAt } from '@/lib/canvas/text-arc'
 import { textNodeAttrs } from '@/lib/canvas/node-attrs'
 import type { CanvasTextNode } from '@/types/canvas'
 
-export type CharRenderer = (props: CharRenderProps) => void
+type CharRenderer = (props: CharRenderProps) => void
 
 // Its own detached Text, NOT the one `measure-fit.ts` shares. That one is reconfigured per node
 // from `textNodeAttrs`, and per-character measuring here would race a wrap measurement there.

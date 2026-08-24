@@ -38,7 +38,7 @@ function styledNode(target: CanvasTextNode, source: CanvasTextNode): CanvasTextN
 }
 
 /**
- * Carry one slide's look onto another doc ("apply to all slides"): the scrim plus each
+ * Carry one slide's look onto another doc ("apply to all slides"): the backdrop plus each
  * headline/body node's style, matched by role. Text, `textOverridden` and `custom` nodes are
  * never touched; roles missing on either side are left alone (no node is ever created), and placed
  * assets are a slide's own content, so they are left exactly as they are.
@@ -55,5 +55,5 @@ export function applyStyleToDoc(target: CanvasDoc, source: CanvasDoc): CanvasDoc
     const match = sourceText.find((candidate) => candidate.role === node.role)
     return match ? styledNode(node, match) : node
   })
-  return { ...target, scrim: { ...source.scrim }, nodes }
+  return { ...target, backdrop: { ...source.backdrop }, nodes }
 }
