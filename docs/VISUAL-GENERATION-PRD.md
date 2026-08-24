@@ -172,7 +172,7 @@ same count-aware rules.
 ## Phase 4 — Konva Canvas Text-Overlay Editor + Auto-Compose — SHIPPED 2026-07-23 (commit `30a3ba4`)
 
 **Core idea:** the editable source of truth per slide is a small **canvas doc** (`post_canvas_docs`,
-one row per `(post_id, position)`): text layers + a contrast scrim over the CLEAN (text-free) AI
+one row per `(post_id, position)`): text layers + a backdrop colour over the CLEAN (text-free) AI
 image. The flattened 1080×1350 jpeg in `post_images` stays the publish artifact — publishing needed
 zero changes again. Every visual now ships **with copy baked in automatically** ("auto-compose");
 the editor is for refinement, not a mandatory step.
@@ -219,7 +219,14 @@ CanvasDoc {
                                          // cover-crop window; zoom 1–3, offsets = fractions of
                                          // the crop slack (0.5 = centered); absent = cover fit
   flattenedStoragePath: string | null    // the artifact the last save produced
-  scrim: { enabled, color, opacity, mode: 'full' | 'bottom' }
+  backdrop: { enabled, color, opacity }   // renamed from `scrim` 2026-08-24; the half-canvas
+                                         // 'bottom' mode is gone (its hard horizontal edge cut
+                                         // across the picture). Always the whole canvas: solid it
+                                         // REPLACES the image (a cut-out on flat brand colour),
+                                         // dialled back it is the old contrast wash. Rows written
+                                         // before the rename are mapped on READ by
+                                         // `lib/canvas/legacy-scrim.ts` — a stored 'bottom' scrim
+                                         // comes back OFF rather than covering twice what it did.
   layers: CanvasTextLayer[]              // capped at 20
 }
 CanvasTextLayer {
@@ -266,7 +273,11 @@ reopen would show every text twice. So the doc tracks TWO storage references (se
   URL/#tag/@mention stripper, reused) → first non-empty line → first sentence
   (`/^(.*?[.!?…])(?:\s|$)/`) → `clampAtWordBoundary` at 90 chars. Captions are generated
   hook-first, so sentence one IS the designed hook.
-- Scrim defaults on: `mode 'bottom'`, `color palette.surface`, opacity 0.35. Empty copy seeds no
+- Backdrop defaults OFF, `color palette.surface`, opacity 1 (2026-08-24 — a slide opens showing
+  the picture generated for it, and the first colour picked covers that picture outright).
+  Readability is `recolourForBackdrop`'s job; `composeDoc` switches a 0.35 wash on and re-measures
+  only when the repaint alone cannot rescue the type, because nobody is watching that path. Empty
+  copy seeds no
   layer (a zero-layer doc is never composed). `applyCopyToDoc` refreshes role layers from rewritten
   copy unless `textOverridden`; `createTextLayer` backs the editor's "Add text".
 - **Autofit** (`features/canvas-editor/lib/measure-fit.ts`, §6.2 shipped): one detached
@@ -339,7 +350,8 @@ Pencil action on every filled image slot — wizard drafts, /review, calendar (g
 **UX:** full-screen overlay on `var(--color-sunken)` with the canvas framed (border + shadow on
 surface); stage scaled to fit the viewport (vw − 300px panel − padding × vh − top bar); right
 properties panel (font/size/weight/color(5 palette roles + custom)/align/line-height, layer list
-with add/delete, scrim controls); top bar with slide label, overflow badge, undo/redo, Cancel,
+with add/delete, backdrop control); top bar with slide label, overflow badge, undo/redo, a tray
+naming whatever the editor is waiting on (2026-08-24), Cancel,
 Save. "Preparing canvas…" until background image AND fonts resolve — never a flash of system-font
 text. Dirty-guard on Escape/backdrop/Cancel. Desktop-only: <768px renders a needs-larger-screen
 notice. Undo/redo = doc-snapshot stack capped at 50 (`lib/doc-history.ts`), Cmd/Ctrl+Z /
@@ -358,13 +370,13 @@ the panel), and nothing is written until Save. The source slide is never in its 
 `applyStyleToDoc` matches the FIRST node of a role, so applying a doc to itself would snap a
 duplicated headline onto the original's geometry (pinned by a test). Transfers position, width,
 font, size, weight, colour, alignment, line spacing, rotation, caps, italics, marker highlight and
-the scrim; each slide keeps its own words, and a slide with only user-added text is offered
+the backdrop; each slide keeps its own words, and a slide with only user-added text is offered
 disabled. The whole server-side orchestration this replaces — `applyStyleToPostSibling`,
 `applyStyleToDraftSibling`, `useGenerateVisuals.applyStyle`, `applyStyleAcrossDraft` and the
 `onApplyToAll` prop — is deleted.
 
 **Background reposition + text rotation (2026-07-24):** the background is no longer fixed. A
-"Background" panel section enters **Reposition mode** — text/scrim dim to 35% and lock, dragging
+"Background" panel section enters **Reposition mode** — text/backdrop dim to 35% and lock, dragging
 pans the art (pinned-drag Konva trick: the gesture surface never moves, only the crop window),
 the wheel zooms toward the pointer, a panel slider zooms about the canvas center (1–3×), Reset
 returns to the centered cover fit. Previews mutate the background node's crop attrs directly;
@@ -472,7 +484,7 @@ Instagram.
 ❌ **Background filters — BUILT AND REJECTED 2026-07-26** (Stage E of the Phase-5 plan; the last
 §4/§5 item). Brightness/contrast/saturation/blur sliders were fully implemented (rAF-coalesced
 Konva cache pipeline) and killed in dev testing: any meaningful tone change ruins the generated
-brand art — too bright/too dark, details erased — and legibility is already the scrim's + the
+brand art — too bright/too dark, details erased — and legibility is already the backdrop's + the
 slide-role prompt hints' job. The product stays opinionated: no raw photo knobs. Revisit ONLY as
 curated one-click treatments or a blur-only "soften behind cutouts" control if a real need
 appears. (The stage's dedup by-products stayed: shared `lib/canvas/clamp.ts` and the
@@ -499,7 +511,8 @@ everything here changes what gets baked into it.
 
 - `CanvasElement { id, kind: 'image' | 'svg', src { publicUrl, storagePath }, x, y, width,
   height, rotation?, opacity?, aboveText? }`; `doc.elements` (max 20) — additive-optional, no
-  migration. Render order: **background → scrim → elements → text → aboveText elements**.
+  migration. Render order: **background → scrim → elements → text → aboveText elements** (the
+  scrim layer is now the backdrop; v2 replaced the two bands with one ordered `nodes` list).
 - **Deviation from §4.3's "typography locked on top":** per-element **"In front of text"**
   opt-in (the subject-overlaps-headline swipe-bait effect) — typography is protected by
   default, promotable per element. The spec's separate "Branding & Extras" layer folded into
