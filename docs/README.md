@@ -14,7 +14,6 @@ is, how it's architected, and every feature in the codebase.
 | [TECH-DEBT.md](./TECH-DEBT.md)                                   | Every deferred issue, with why it was deferred and the intended fix                                                             |
 | [DB-GEN-TYPES.md](./DB-GEN-TYPES.md)                             | Regenerating `src/types/database.ts` after a migration                                                                          |
 | [RLS-SECURITY-REVIEW.md](./RLS-SECURITY-REVIEW.md)               | Row Level Security review of the Supabase tables                                                                                |
-| [CODING_SKILLS.md](./CODING_SKILLS.md)                           | LLM coding-behaviour guidelines                                                                                                 |
 | [VISUAL-GENERATION-PRD.md](./VISUAL-GENERATION-PRD.md)           | Design rationale for the shipped visual-generation subsystem                                                                    |
 | [claude-md-audit-2026-08-05.md](./claude-md-audit-2026-08-05.md) | Point-in-time CLAUDE.md compliance audit; deferrals live in TECH-DEBT §6                                                        |
 

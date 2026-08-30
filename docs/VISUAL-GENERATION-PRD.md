@@ -118,13 +118,21 @@ Use the palette as the visual color foundation. Don't add text, just illustratio
 ### 2. Brand Styles — scalable registry, user-selected per client (replaces §3 presets)
 `src/lib/visual/brand-styles.ts`: `BrandStyle = { id, name, description, prompt, previewSrc }`.
 **Adding a style = one registry entry + one preview jpg** (`public/brand-styles/<id>.jpg`).
-Two launch styles (prompts deliberately **stripped of all colour words** — the client palette is the
-only colour source):
+**Replacing** a preview needs a new filename (`<id>-v2.jpg`): browsers and the image CDN key on the
+path, and `next/image` answers 400 to a `?v=` query on a local src, so in-place edits serve stale.
+Styles (prompts deliberately **stripped of all colour words** — the client palette is the
+only colour source; a test guards both the plain colour vocabulary and the saturated-hue one):
 - **`graphic-editorial` (default):** contemporary editorial graphic design — modernist campaign,
   experimental magazine art direction, condensed sans + editorial serif contrast, asymmetric modular
   grid, analog collage/photocopy/halftone texture, editorial annotations, premium studio aesthetic.
 - **`clinical-luxury`:** premium beauty-editorial — high-end close-up photography, minimalist
   Swiss layouts, generous negative space, refined editorial metadata; sensual, clinical, aspirational.
+- **`hyperreal-poster`:** campaign key visual — one flat saturated single-hue ground, one isolated
+  hyperreal hero subject with a surreal conceptual twist, hard rim light, extreme figure-to-ground
+  separation, no texture and no props; the named empty margins match the calm zones `slideRoleHint`
+  reserves. Pairing is `Sofia Sans Condensed` / `Inter`, uppercase headlines — the reference's own
+  Archivo Black serves weight 400 only, and both `seedCanvasDoc` and the `stack` lockup set headlines
+  at 700.
 
 Selection stored as `identity.style` (zod enum + default → pre-Phase-3 `{ palette }` rows parse with no
 migration). Preview images are user-curated references in `docs/desing-system-preview/`, copied to
@@ -133,6 +141,45 @@ migration). Preview images are user-curated references in `docs/desing-system-pr
 **Style picker UI (client details → Visual identity tab):** a "Brand style" card grid — portrait
 preview, name, one-liner, selected ring, zoom-to-lightbox. Scales with the registry; onboarding
 silently applies the default.
+
+### 2b. Variation — why two posts don't look the same (2026-08-24)
+
+Before this, a client's every cover shared one palette, one style paragraph and one constant cover
+hint, so the copy was the only thing that moved and a profile grid read as one repeated image.
+`src/lib/visual/variation.ts` is the single source of the decisions; `hashIndex` does the keying.
+
+| Axis | Keyed on | Rerolls? |
+|---|---|---|
+| Colour scheme (ground + accent) | `posts.visual_ground` / `visual_accent`, chosen once and read back | **No** — a reroll must not desync a carousel |
+| Framing + treatment | post + position + the image being replaced | Yes |
+| Type lockup | post + position + image id | Yes |
+
+- **The colour pair comes from a tonal ladder** (`color-scheme.ts`) derived live from the brand
+  palette — `paper / tint / light / primary / secondary / shade / ink`. Nothing is stored and nothing
+  is user-configurable, so editing the palette reconfigures every future post by itself. This
+  replaced a stored `identity.campaign_colors` list, which was deleted: it duplicated the palette
+  back to the user under a second name, and rotating *hue* turned out to be a weak lever (ΔE ~10 at
+  24°, ~24 at 60°) where rotating *tone* is a strong one (ΔE ~47).
+- **Each style names its own rungs.** Only Hyperreal Poster swings the full ladder — its premise IS
+  one flat saturated colour behind one hero. Clinical Luxury and Graphic Editorial are capped at
+  `paper` / `tint`; a `light` ground put a salmon field behind a whole feed and left the collage,
+  halftone and grain nothing to read against.
+- **`colorDirective` is a sentence the style writes**, not a value, so the same pair is paper-and-ink
+  to an editorial, a flat backdrop to a poster, and a tint in the lighting to a beauty shot. All
+  three end by handing the photograph back: *"keeps its own natural colour"*. Each used to close on
+  an absolute — "No third colour" — which the model correctly read as covering the whole frame and
+  answered with a duotone.
+- **Art direction says how to SHOOT, never what to picture.** `framings` × `treatments`, ~36
+  combinations per style. This axis was originally a list of subject archetypes and it overrode the
+  copy: landing as the last concrete sentence in the prompt, "build the picture around a crowd seen
+  from above" beat a slide about the document that stops a property sale. The subject belongs to the
+  post; only the treatment rotates.
+- **Reroll nonce** = the id of the image being replaced. First render is reproducible; every
+  regenerate differs. `visuals_attempts` is deliberately NOT used — it is the cron's retry budget.
+- **Lockups** are now chosen at seed time (`dressInLockup`), filtered through the catalogue's own
+  `lockupBlock` gate. Previously the sixteen compositions were reachable only from the editor.
+- `slideRole` is the ONE classifier both the role hint and `artDirectionFor` branch on, so a slide
+  cannot be told to be minimal and to fill the frame in the same prompt.
 
 ### 3. fal adapter
 `src/lib/visual/fal.ts` (`@fal-ai/client`, already a dep): `fal-ai/gpt-image-2`, 1024×1024, quality
@@ -145,13 +192,21 @@ downloaded bytes) and are **rate-limited** (`VISUALS_RATE_LIMIT`, 60 per 10 min 
 throughput at concurrency 6, stops runaway spend):
 - **`POST /api/posts/[id]/visuals` `{ position }`** (`maxDuration = 120`) — persisted posts (review +
   calendar): auth + ownership → derive the TEXT block from the actual `slides_json`/caption →
-  generate → `uploadPostImage` → replace-at-position → insert `post_images` → return `{ image }` in
-  the upload route's shape. **Replace happens only after a successful generation + upload**, so a
-  failure never loses the current image.
+  generate → `uploadPostImage` → **upsert** `post_images` on `(post_id, position)` → delete the
+  replaced file → return `{ image }` in the upload route's shape. A failure never loses the current
+  image: the upsert is one statement against `uq_post_images_post_position`, so a write that fails
+  leaves the existing row and its file untouched. (This was delete-then-insert, which broke that
+  promise in the gap between the two — an insert failure left the post with no image at all.)
 - **`POST /api/ai/generate-visual`** — wizard drafts (no `posts` row yet): client-ownership check →
-  generate → upload under `{clientId}/drafts/{draftId}/` → return `{ position, publicUrl,
-  storagePath }`. `DELETE` on the same route removes a discarded draft's files (paths must live under
-  the client's drafts prefix).
+  resolve the colour scheme → generate → upload under `{clientId}/drafts/{draftId}/` → return
+  `{ publicUrl, storagePath, scheme }`. The **scheme rides back** so approve can carry it onto the
+  post; without it the post picks a fresh pair on its first regenerate and recolours one slide away
+  from its siblings. Takes `runBase` + `runIndex` on a first generation (the batch spread) or
+  `scheme` on a regenerate (the known answer). `DELETE` on the same route removes a discarded
+  draft's files (paths must live under the client's drafts prefix).
+- **`POST /api/ai/generate-background`** — the editor's "new picture". Same pipeline, same colour
+  scheme and art direction as every other path: a post's pair is read from its row, a draft's rides
+  in on the request. Deliberately NOT written to `post_images` — the user has not picked it yet.
 - **`POST /api/posts`** accepts `images[]` and inserts the `post_images` rows atomically with post
   creation (attach-on-approve; only draft-prefix paths of that client are accepted).
 
