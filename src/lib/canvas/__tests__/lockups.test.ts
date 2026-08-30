@@ -3,7 +3,7 @@ import { BRAND_STYLES } from '@/lib/visual/brand-styles'
 import type { CanvasDoc, CanvasTextNode } from '@/types/canvas'
 import type { Palette } from '@/types/visual'
 import { CANVAS_HEIGHT, CANVAS_WIDTH } from '../constants'
-import { isLockupOwned, isTextNode } from '../doc-nodes'
+import { isLockupOwned, isShapeNode, isTextNode } from '../doc-nodes'
 import { getFontEntry } from '../font-library'
 import {
   LOCKUPS,
@@ -43,7 +43,10 @@ const palette: Palette = {
 const CONTEXTS: LockupContext[] = Object.values(BRAND_STYLES).map((style) => ({
   palette,
   fonts: style.fonts,
-  slide: { position: 2, total: 7 },
+  slide: { position: 2 },
+  // Named, because that is the ordinary case in production — every path that builds a context now
+  // carries the client's name, and `quote` sets a byline with it.
+  brandName: 'Everest Imoti',
 }))
 
 const ctx = CONTEXTS[0]!
@@ -287,10 +290,20 @@ describe('font claims', () => {
         .map((m, i) => [lockup.id, `member${i}`, m] as const),
     ])
 
-  it('only pins families the library actually carries', () => {
-    for (const lockup of LOCKUPS) {
-      for (const family of lockup.pinned) {
-        expect(getFontEntry(family), `${lockup.id} pins ${family}`).not.toBeNull()
+  /**
+   * The rule that replaced pinned faces: a lockup may only set the two families the CLIENT chose.
+   *
+   * Sixteen lockups each pinning their own pairing meant a four-slide carousel came back in four
+   * typefaces — the hash picked a different layout per slide and each layout brought its own face.
+   * A brand's type is the last thing that should be chosen by a hash.
+   */
+  it('never sets a family the brand pairing did not supply', () => {
+    for (const context of CONTEXTS) {
+      for (const [id, role, node] of everyTextBox(context)) {
+        expect(
+          [context.fonts.display, context.fonts.body],
+          `${id}.${role} sets ${node.fontFamily}, which is neither brand face`
+        ).toContain(node.fontFamily)
       }
     }
   })
@@ -320,19 +333,16 @@ describe('font claims', () => {
     }
   })
 
-  it('derives Cyrillic support from the pinned families rather than declaring it', () => {
-    const byId = Object.fromEntries(LOCKUPS.map((l) => [l.id, l]))
-    expect(supportsCyrillic(byId.stack!)).toBe(true)
-    expect(supportsCyrillic(byId.tight!)).toBe(true)
-    expect(supportsCyrillic(byId.editorial!)).toBe(true)
-    expect(supportsCyrillic(byId.anchor!)).toBe(true)
-    expect(supportsCyrillic(byId.edge!)).toBe(false)
+  // Script support is a property of the PAIRING now, not of the layout — so it is one answer for
+  // every lockup, and the font picker is where the Cyrillic tier gets enforced.
+  it('reads Cyrillic support off the brand pairing', () => {
+    expect(supportsCyrillic({ display: 'Sofia Sans Extra Condensed', body: 'Inter' })).toBe(true)
+    expect(supportsCyrillic({ display: 'Archivo Black', body: 'Inter' })).toBe(false)
   })
 
-  it('reports every pinned family once, for preloading', () => {
-    const families = lockupFamilies()
-    expect(new Set(families).size).toBe(families.length)
-    expect(families).toContain('Yeseva One')
+  it('reports the pairing once, for preloading', () => {
+    expect(lockupFamilies({ display: 'Oswald', body: 'Inter' })).toEqual(['Oswald', 'Inter'])
+    expect(lockupFamilies({ display: 'Inter', body: 'Inter' })).toEqual(['Inter'])
   })
 })
 
@@ -412,11 +422,63 @@ describe('applyLockup', () => {
   })
 
   it('numbers an index from the slide it is applied to', () => {
-    const after = applyLockup(copyDoc(), 'index', { ...ctx, slide: { position: 4, total: 9 } }, [
-      'k',
-    ])
+    const after = applyLockup(copyDoc(), 'index', { ...ctx, slide: { position: 4 } }, ['k'])
     const kicker = after.nodes.find((n) => isTextNode(n) && n.role === 'kicker') as CanvasTextNode
     expect(kicker.text).toBe('05')
+  })
+})
+
+/**
+ * The byline is the CLIENT, and it is all-or-nothing with its own rule.
+ *
+ * `quote` shipped the literal string `NAME` into generated posts for as long as it existed — a
+ * placeholder nothing had been wired to replace. The rule above it is there to underline the
+ * attribution, so it has no business outliving one.
+ */
+describe('the quote byline', () => {
+  const bylineOf = (context: LockupContext) => {
+    const ids = ['a', 'b', 'c']
+    const after = applyLockup(copyDoc(), 'quote', context, ids)
+    const node = after.nodes.find((n) => isTextNode(n) && n.role === 'tagline')
+    return node ? (node as CanvasTextNode).text : null
+  }
+  const rules = (context: LockupContext) =>
+    applyLockup(copyDoc(), 'quote', context, ['a', 'b', 'c']).nodes.filter(isShapeNode).length
+
+  it('signs the quote with the client, never a placeholder', () => {
+    expect(bylineOf(ctx)).toBe('Everest Imoti')
+    for (const context of CONTEXTS) expect(bylineOf(context)).not.toBe('NAME')
+  })
+
+  it('sets no byline and no rule when there is no client name', () => {
+    const anonymous = { ...ctx, brandName: undefined }
+    expect(bylineOf(anonymous)).toBeNull()
+    expect(rules(anonymous)).toBe(0)
+    expect(lockupMemberCount('quote', anonymous)).toBe(1)
+  })
+
+  /**
+   * One live client is registered as sixty characters of legal name, which at 28px uppercase across
+   * a 700px slot is about twice what fits. Declining is the catalogue's standing answer to copy that
+   * will not fit — and a byline cut to "ФИЗИОМЕД - МЕДИЦИНСКИ ЦЕНТЪ" is worse in someone's feed than
+   * a pull quote with no byline at all.
+   */
+  it('declines a name too long to set on one line, rather than truncating it', () => {
+    const long = {
+      ...ctx,
+      brandName: 'Физиомед - Медицински център за Физиотерапия и Рехабилитация',
+    }
+    expect(bylineOf(long)).toBeNull()
+    expect(rules(long)).toBe(0)
+  })
+
+  it('keeps the member count honest so ids are minted for what is actually created', () => {
+    for (const context of [ctx, { ...ctx, brandName: undefined }]) {
+      const created = applyLockup(copyDoc(), 'quote', context, ['a', 'b', 'c']).nodes.filter((n) =>
+        isLockupOwned(n)
+      ).length
+      expect(lockupMemberCount('quote', context)).toBe(created)
+    }
   })
 })
 
@@ -552,7 +614,6 @@ describe('the hero split', () => {
     const bulgarian = 'Ехография на щитовидната жлеза в Haelan'
     for (const id of HERO_LOCKUPS) {
       const lockup = LOCKUPS.find((l) => l.id === id)!
-      expect(supportsCyrillic(lockup), `${id} must take Cyrillic`).toBe(true)
       expect(fitsCopy(lockup, ctx, bulgarian, ''), `${id} must fit ${bulgarian}`).toBe(true)
     }
   })
@@ -827,25 +888,40 @@ describe('lockupBlock', () => {
   const cyrillic = { headline: 'Пет начина', body: 'Кратък ред' }
   const latin = { headline: 'Five ways', body: 'Short line' }
 
-  it('refuses a Latin-only lockup for Cyrillic copy, and allows it for Latin copy', () => {
-    const latinOnly = LOCKUPS.filter((lockup) => !supportsCyrillic(lockup))
-    expect(latinOnly.length, 'catalogue has Latin-only lockups to test').toBeGreaterThan(0)
-    for (const lockup of latinOnly) {
-      expect(lockupBlock(lockup, ctx, cyrillic).wrongScript, lockup.id).toBe(true)
-      expect(lockupBlock(lockup, ctx, latin).wrongScript, lockup.id).toBe(false)
+  // The gate moved from the lockup to the PAIRING: a Latin-only pairing blocks every lockup for
+  // Cyrillic copy, and a Cyrillic-safe one blocks none. It is one answer now, not sixteen.
+  it('refuses a Latin-only PAIRING for Cyrillic copy, and allows it for Latin copy', () => {
+    const latinOnly = {
+      ...ctx,
+      fonts: { display: 'Archivo Black' as const, body: 'Inter' as const },
+    }
+    for (const lockup of LOCKUPS) {
+      expect(lockupBlock(lockup, latinOnly, cyrillic).wrongScript, lockup.id).toBe(true)
+      expect(lockupBlock(lockup, latinOnly, latin).wrongScript, lockup.id).toBe(false)
+      expect(lockupBlock(lockup, ctx, cyrillic).wrongScript, `${lockup.id} on a safe pairing`).toBe(
+        false
+      )
     }
   })
 
   it('reads the words on the slide, not the client language', () => {
-    // A Bulgarian client running an English campaign line is entitled to the Latin-only faces.
-    const latinOnly = LOCKUPS.find((lockup) => !supportsCyrillic(lockup))!
-    expect(lockupBlock(latinOnly, ctx, { headline: 'Growth', body: '' }).wrongScript).toBe(false)
+    // A Bulgarian client running an English campaign line is entitled to a Latin-only pairing.
+    const latinOnly = {
+      ...ctx,
+      fonts: { display: 'Archivo Black' as const, body: 'Inter' as const },
+    }
+    expect(lockupBlock(LOCKUPS[0]!, latinOnly, { headline: 'Growth', body: '' }).wrongScript).toBe(
+      false
+    )
   })
 
   it('reports both reasons independently, since a slide can fail on both', () => {
-    const latinOnly = LOCKUPS.find((lockup) => !supportsCyrillic(lockup))!
+    const latinOnly = {
+      ...ctx,
+      fonts: { display: 'Archivo Black' as const, body: 'Inter' as const },
+    }
     const flood = { headline: 'Пет'.repeat(200), body: 'Ред'.repeat(200) }
-    const block = lockupBlock(latinOnly, ctx, flood)
+    const block = lockupBlock(LOCKUPS[0]!, latinOnly, flood)
     expect(block).toEqual({ wrongScript: true, tooMuchCopy: true })
   })
 })
@@ -901,13 +977,29 @@ describe('catalogue variety', () => {
     expect(massive, 'accent never fills more than a quarter of any layout').toBe(true)
   })
 
-  it('never ships two layouts wearing the same pair of faces', () => {
+  /**
+   * This asserted distinct FACES per layout until the catalogue stopped pinning them.
+   *
+   * It cannot mean that any more — every lockup now sets the client's pairing, so all sixteen wear
+   * the same two faces by design. That is the trade: a carousel used to come back in four typefaces
+   * because the hash picked a different layout per slide. What still has to differ is the GEOMETRY,
+   * which is the whole remaining variety budget and therefore worth guarding harder than before.
+   */
+  it('never ships two layouts with the same geometry', () => {
     for (const context of CONTEXTS) {
-      const pairs = layouts.map((l) => {
+      const shapes = layouts.map((l) => {
         const { headline, body } = l.copy(context)
-        return `${headline.fontFamily}|${body.fontFamily}`
+        return [
+          headline.x,
+          headline.y,
+          headline.fontSize,
+          headline.align,
+          headline.uppercase ?? false,
+          body.y,
+          body.fontSize,
+        ].join('|')
       })
-      expect(new Set(pairs).size, `duplicate face pairs: ${pairs.join(', ')}`).toBe(pairs.length)
+      expect(new Set(shapes).size, `duplicate geometry: ${shapes.join(', ')}`).toBe(shapes.length)
     }
   })
 

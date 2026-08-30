@@ -5,8 +5,7 @@ import { Pipette } from 'lucide-react'
 import { cn } from '@/utils/cn'
 import type { Palette } from '@/types/visual'
 import { EDITOR_LABEL } from './workspace/chrome'
-
-const HEX = /^#[0-9a-fA-F]{6}$/
+import { HEX_COLOR } from '@/lib/validation'
 
 interface ColorSwatchesProps {
   label: string
@@ -31,7 +30,7 @@ export function ColorSwatches({ label, palette, value, onChange, leading }: Colo
   const editDraft = (next: string) => {
     const candidate = next.startsWith('#') ? next : `#${next}`
     setDraft(candidate)
-    if (HEX.test(candidate)) onChange(candidate.toLowerCase())
+    if (HEX_COLOR.test(candidate)) onChange(candidate.toLowerCase())
   }
 
   return (
@@ -59,7 +58,7 @@ export function ColorSwatches({ label, palette, value, onChange, leading }: Colo
         ))}
         <input
           type="color"
-          value={HEX.test(value) ? value : '#000000'}
+          value={HEX_COLOR.test(value) ? value : '#000000'}
           onChange={(event) => onChange(event.target.value)}
           title="Custom colour"
           aria-label="Custom colour"

@@ -121,7 +121,12 @@ export function useEditorSlides(
         setLoad({
           status: 'ready',
           identity,
-          resolved: resolveSlideDocs(slides, storedDoc, identity),
+          resolved: resolveSlideDocs(
+            slides,
+            storedDoc,
+            identity,
+            target.kind === 'post' ? target.postId : target.draftId
+          ),
         })
       })
       .catch((err: unknown) => {

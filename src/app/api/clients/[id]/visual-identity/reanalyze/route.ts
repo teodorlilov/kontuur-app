@@ -19,7 +19,10 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
 
   // Re-analysis refreshes measured colours but must not reset the user's chosen brand style.
   const stored = await fetchVisualIdentity(id)
-  const result = await extractIdentity({ url: site.websiteUrl, currentStyle: stored?.style })
+  const result = await extractIdentity({
+    url: site.websiteUrl,
+    ...(stored?.style ? { currentStyle: stored.style } : {}),
+  })
 
   const source = result.report.source === 'website' ? 'website' : 'default'
   const { error } = await upsertVisualIdentity(id, result.identity, source, result.report)

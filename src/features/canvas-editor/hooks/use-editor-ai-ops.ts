@@ -94,6 +94,8 @@ interface AiOpsInput {
   goToSlide: (position: number) => void
   /** Which slide the user is on — a generated candidate belongs to the slide that asked for it. */
   activePosition: number
+  /** How many slides the post has, so a generation asks for this slide's REAL role. */
+  slideTotal: number
   /** The copy the editor is showing — travels with a generate request; the server has no row to read. */
   slideCopy: SlideCopy | null
   docState: EditorDocState
@@ -112,6 +114,7 @@ export function useEditorAiOps({
   jobs,
   goToSlide,
   activePosition,
+  slideTotal,
   slideCopy,
   docState,
   selection,
@@ -132,6 +135,16 @@ export function useEditorAiOps({
    * the click and the job, which every other op has closed by registering immediately.
    */
   const cuttingOutRef = useRef(false)
+  /**
+   * How many pictures this slide has been asked for — the thing that makes each press differ.
+   *
+   * A ref, and incremented where it is READ, for the same reason the wizard's run ordinal is: a
+   * count derived from state cannot answer at the moment it is needed. It also has to advance on a
+   * DISCARDED result, which `candidatesBySlide.length` would not — asking for another picture and
+   * throwing it away is still asking, and the next press should not hand back the framing you
+   * already rejected.
+   */
+  const pressesBySlide = useRef(new Map<number, number>())
 
   const { strokes, inpaintPrompt, clearStrokes, exitMode } = modeState
 
@@ -661,6 +674,37 @@ export function useEditorAiOps({
     }
   }, [docState, backgroundImage, jobs, activePosition, target, announceDone])
 
+  /**
+   * What makes this press compose unlike the last one.
+   *
+   * `nonce` is the only thing separating two generations of the same slide: `artDirectionFor` hashes
+   * it to choose a framing and a treatment, so an unchanged nonce means an unchanged brief and the
+   * only difference left is the model's own noise.
+   *
+   * It used to be the slide's current background path — which reads as "the picture being replaced"
+   * and is wrong here, because nothing is replaced until the user PICKS one. A generation lands in
+   * the candidate strip and leaves `doc.background` alone, so pressing Generate three times to
+   * compare options sent one nonce three times and returned three variations of a single brief. The
+   * strip exists to choose between images; it was offering the same image three ways.
+   *
+   * The press count is what actually moves per press. The background path stays in front of it so
+   * that picking a candidate also shifts the sequence — otherwise the run of framings would repeat
+   * itself after every swap.
+   *
+   * Known residue: the count lives with the editor, so closing and reopening without picking
+   * anything starts the sequence again and the first press repeats its earlier framing. Recovering
+   * it would mean re-listing the slide's candidate files on open, which is a round trip to fix a
+   * repeat the user has to work to reach.
+   */
+  const backgroundNonce = useCallback(
+    (position: number): string => {
+      const press = pressesBySlide.current.get(position) ?? 0
+      pressesBySlide.current.set(position, press + 1)
+      return `${docState.doc?.background.storagePath ?? ''}:${press}`
+    },
+    [docState.doc]
+  )
+
   const generateBackground = useCallback(
     async (direction?: string) => {
       if (!docState.doc || jobs.running('generate')) return
@@ -682,6 +726,9 @@ export function useEditorAiOps({
         const ref = await generateBackgroundAsset({
           target,
           slideCopy,
+          position,
+          total: slideTotal,
+          nonce: backgroundNonce(position),
           ...(direction?.trim() ? { direction: direction.trim() } : {}),
           signal: controller.signal,
         })
@@ -704,7 +751,16 @@ export function useEditorAiOps({
         job.finish()
       }
     },
-    [docState.doc, jobs, activePosition, target, slideCopy, announceDone]
+    [
+      docState.doc,
+      jobs,
+      activePosition,
+      slideTotal,
+      target,
+      slideCopy,
+      backgroundNonce,
+      announceDone,
+    ]
   )
 
   const cancelBackground = useCallback(() => backgroundAbortRef.current?.abort(), [])

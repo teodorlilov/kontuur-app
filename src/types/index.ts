@@ -30,8 +30,6 @@ export type {
   Palette,
   SourceKind,
   VisualIdentity,
-  Confidence,
-  ExtractionField,
   ExtractionReport,
   ExtractionResult,
 } from './visual'

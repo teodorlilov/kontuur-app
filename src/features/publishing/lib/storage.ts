@@ -2,8 +2,9 @@ import 'server-only'
 
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
-import { POST_IMAGE_STORAGE_COLUMNS } from '@/lib/queries/select-columns'
+import { POST_IMAGE_COLUMNS, POST_IMAGE_STORAGE_COLUMNS } from '@/lib/queries/select-columns'
 import { POST_IMAGES_BUCKET } from '@/utils/constants'
+import type { PostImageRow } from '@/types/index'
 
 const BUCKET = POST_IMAGES_BUCKET
 
@@ -105,27 +106,87 @@ export async function deletePostImage(storagePath: string): Promise<void> {
   }
 }
 
-/** Remove any existing image at a post position (storage file + row) so a new one can take its place.
- *  `preserveStoragePath` keeps that one file alive (the row still goes) — the canvas editor's clean
- *  background must survive its own row being replaced by the flattened export. */
-export async function replaceExistingImage(
-  admin: SupabaseClient,
-  postId: string,
-  position: number,
+/** The row a position already holds — only the field that decides which file to clean up. */
+export interface ExistingPostImage {
+  storage_path: string
+}
+
+/** The image a position is about to hold, as every writer of one describes it. */
+export interface PostImageWrite {
+  postId: string
+  position: number
+  publicUrl: string
+  storagePath: string
+  fileName: string
+  fileSize: number
+  contentType: string
+  /**
+   * A file to keep alive even though the row pointing at it is being replaced — the canvas
+   * editor's clean background must survive its own row becoming the flattened export.
+   */
   preserveStoragePath?: string
-): Promise<void> {
-  const { data: existing } = await admin
+}
+
+/**
+ * Put an image at `(post_id, position)`. The ONE way that happens.
+ *
+ * There were four, and three of them could lose a post's picture. Each deleted the existing row and
+ * its storage object, then inserted — so an insert that failed left the position with no image at
+ * all and the old file already gone. Deleting second was not an option for them either, because
+ * `uq_post_images_post_position` rejects the second row while the first is still there.
+ *
+ * An upsert against that same unique index is one statement, so a failure leaves the existing row
+ * exactly as it was, and the old file is only unlinked once the row already points somewhere else.
+ *
+ * `known` is the row when the caller has read it already — the canvas save route reads it for its
+ * stale-edit check and the generator reads it for the reroll nonce, and re-reading here would be a
+ * second identical query on paths that run once per generated slide. Pass `null` to say "I looked
+ * and there was nothing"; omit it to have this read.
+ */
+export async function putPostImage(
+  admin: SupabaseClient,
+  write: PostImageWrite,
+  known?: ExistingPostImage | null
+): Promise<PostImageRow> {
+  const existing =
+    known !== undefined
+      ? known
+      : ((
+          await admin
+            .from('post_images')
+            .select(POST_IMAGE_STORAGE_COLUMNS)
+            .eq('post_id', write.postId)
+            .eq('position', write.position)
+            .maybeSingle()
+        ).data as ExistingPostImage | null)
+
+  const { data, error } = await admin
     .from('post_images')
-    .select(POST_IMAGE_STORAGE_COLUMNS)
-    .eq('post_id', postId)
-    .eq('position', position)
+    .upsert(
+      {
+        post_id: write.postId,
+        public_url: write.publicUrl,
+        storage_path: write.storagePath,
+        position: write.position,
+        file_name: write.fileName,
+        file_size: write.fileSize,
+        content_type: write.contentType,
+      },
+      { onConflict: 'post_id,position' }
+    )
+    .select(POST_IMAGE_COLUMNS)
     .single()
-  if (existing) {
-    if (existing.storage_path !== preserveStoragePath) {
-      await deletePostImage(existing.storage_path)
-    }
-    await admin.from('post_images').delete().eq('id', existing.id)
+  if (error) throw new Error(`post_images upsert failed: ${error.message}`)
+
+  // Only now is the old file unreferenced. Best-effort: a leaked object costs storage, while
+  // failing here would throw away an image the post is already pointing at.
+  const stale = existing?.storage_path
+  if (stale && stale !== write.storagePath && stale !== write.preserveStoragePath) {
+    await deletePostImage(stale).catch((err: unknown) => {
+      console.warn(`[storage] could not delete replaced image ${stale}:`, err)
+    })
   }
+  return data as PostImageRow
 }
 
 /** Move a storage object into a post's folder (drafts → post relocation on approve).

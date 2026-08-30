@@ -95,14 +95,12 @@ export function LockupsSection({
   const candidates = useMemo(() => fillCandidates(ctx.palette), [ctx.palette])
   const active = activeLockup(doc, ctx)
 
-  // Pinned faces are not in the doc yet, so the editor's own font pass has never asked for them.
-  // Scoped to the pack ON SCREEN, and re-run when the tab changes: the Text rail is what the editor
-  // opens on, so preloading all sixteen lockups' faces spent that fetch on every editor open,
-  // whether or not the user ever looked at a lockup.
+  // The brand pairing is what every tile is now drawn in, so there is one pair to preload rather
+  // than the sixteen sets of pinned faces this used to fetch per pack.
   useEffect(() => {
     injectLibraryStylesheet()
-    void ensureFontsReady(lockupFamilies(pack))
-  }, [pack])
+    void ensureFontsReady(lockupFamilies(ctx.fonts))
+  }, [ctx.fonts])
 
   if (!headline && !body) {
     return (
@@ -191,7 +189,7 @@ export function LockupsSection({
                 <span className={cn('text-micro', blocked ? 'text-text2' : 'text-ink')}>
                   {lockup.label}
                 </span>
-                {!supportsCyrillic(lockup) && (
+                {!supportsCyrillic(ctx.fonts) && (
                   <span
                     title="Latin alphabet only"
                     // leading-4 overrides the role: a 1-line badge inside a 20px row needs its box to be

@@ -52,7 +52,6 @@ export const POST_COLUMN_KEYS = [
   'platform',
   'post_type',
   'slides_json',
-  'image_url',
   'validation_json',
   'status',
   'priority',
@@ -141,8 +140,10 @@ export const BRAND_PROFILE_COLUMNS =
   'id, tone, target_audience, social_goals, content_pillars, avoid_topics, default_post_type, default_carousel_slides, weekly_mix_json, language_formality, secondary_language, is_health_niche, best_time_json, best_time_updated_at, source_strategy, language_notes'
 
 // brand_visual_identity
-export const BRAND_VISUAL_IDENTITY_COLUMNS =
-  'id, client_id, identity, source_kind, report, created_at, updated_at'
+// Just the blob: `fetchVisualIdentity` reads `data.identity` and nothing else. `source_kind` and
+// `report` are written by the extractor and never read back — they are forensics living in the
+// table, not fields this query has a use for.
+export const BRAND_VISUAL_IDENTITY_COLUMNS = 'identity'
 
 // brand_kit_extractions
 export const BRAND_KIT_EXTRACTION_COLUMNS =

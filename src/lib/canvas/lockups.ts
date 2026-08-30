@@ -20,7 +20,7 @@
 
 import { CANVAS_HEIGHT, CANVAS_WIDTH, TEXT_BOTTOM_MARGIN } from './constants'
 import { isLockupOwned, isTextNode } from './doc-nodes'
-import { getFontEntry, hasCyrillic, type FontFamilyName } from './font-library'
+import { getFontEntry, hasCyrillic, nearestWeight, type FontFamilyName } from './font-library'
 import type { BrandStyleFonts } from '@/lib/visual/brand-styles'
 import type {
   CanvasDoc,
@@ -121,8 +121,26 @@ const IDENTITY_FIELDS: readonly LockupField[] = LOCKUP_FIELDS.filter((field) => 
 export interface LockupContext {
   palette: Palette
   fonts: BrandStyleFonts
-  /** Which slide this is, so an index or a counter can say so instead of guessing. */
-  slide: { position: number; total: number }
+  /**
+   * Which slide this is, so an index can say so instead of guessing. Read by `indexToken`, which
+   * the `index` and `tip` lockups number themselves with.
+   *
+   * `total` used to sit beside it, written by every caller and read by none — kept for a "3 / 7"
+   * counter lockup that was never built. It was not free: the two callers derive their counts from
+   * different places (the generator from the post row, the compose pass from the surface's possibly
+   * unsaved copy), so it was a field that could disagree with itself and had nothing to show for
+   * it. A counter lockup can add it back, and can then decide which count it wants.
+   */
+  slide: { position: number }
+  /**
+   * The client's name, for the one member that attributes rather than labels.
+   *
+   * Optional because every path that builds a context can reach it but not every one has bothered to
+   * yet, and a lockup catalogue that throws when a caller is thin is worse than one that prints a
+   * quote without a byline. `quote` was shipping the literal placeholder `NAME` into client feeds
+   * until this existed.
+   */
+  brandName?: string
 }
 
 /** The patch each copy role receives. A role the slide does not have is simply not applied. */
@@ -223,7 +241,7 @@ export function setHeadline(doc: CanvasDoc, text: string): CanvasDoc {
  * `textOverridden` is stamped per node, but a split headline is one sentence in two boxes — so a
  * user who retypes the poster word has overridden the headline, whichever box they touched.
  */
-function headlineOverridden(doc: CanvasDoc): boolean {
+export function headlineOverridden(doc: CanvasDoc): boolean {
   return doc.nodes.some(
     (node) =>
       isTextNode(node) && (node.role === 'hero' || node.role === 'headline') && node.textOverridden
@@ -244,14 +262,6 @@ export interface Lockup {
   pack: LockupPack
   label: string
   description: string
-  /**
-   * Families this lockup pins regardless of the brand style.
-   *
-   * Library names, never strings: an off-library family is never requested in the stylesheet, never
-   * awaited, and handed to Konva raw — so the slide renders AND EXPORTS in the OS default face with
-   * no error anywhere.
-   */
-  pinned: readonly FontFamilyName[]
   copy: (ctx: LockupContext) => LockupCopy
   /** Extra nodes, bottom-first. Empty for a pure layout. */
   members: (ctx: LockupContext) => LockupMember[]
@@ -346,6 +356,14 @@ const UPPERCASE_ADVANCE = 0.59
  * slot that really holds about 70, and let an overflowing headline straight through the gate the
  * whole function exists to be.
  */
+function charsPerLine(
+  node: Pick<CanvasTextNode, 'width' | 'fontSize' | 'uppercase' | 'letterSpacing'>
+): number {
+  const glyph = node.fontSize * (node.uppercase ? UPPERCASE_ADVANCE : AVERAGE_ADVANCE)
+  const advance = Math.max(1, glyph + (node.letterSpacing ?? 0))
+  return node.width / advance
+}
+
 function slotCapacity(
   node: Pick<
     CanvasTextNode,
@@ -353,9 +371,7 @@ function slotCapacity(
   >,
   floor: number
 ): number {
-  const glyph = node.fontSize * (node.uppercase ? UPPERCASE_ADVANCE : AVERAGE_ADVANCE)
-  const advance = Math.max(1, glyph + (node.letterSpacing ?? 0))
-  return Math.floor((node.width / advance) * slotLines(node, floor))
+  return Math.floor(charsPerLine(node) * slotLines(node, floor))
 }
 
 /**
@@ -450,7 +466,7 @@ export function lockupBlock(
   return {
     // Keyed on the words actually on the slide, not on the client's language: a Bulgarian client
     // running an English campaign line is entitled to the Latin-only faces.
-    wrongScript: hasCyrillic(`${copy.headline} ${copy.body}`) && !supportsCyrillic(lockup),
+    wrongScript: hasCyrillic(`${copy.headline} ${copy.body}`) && !supportsCyrillic(ctx.fonts),
     tooMuchCopy: !fitsCopy(lockup, ctx, copy.headline, copy.body),
   }
 }
@@ -492,7 +508,34 @@ interface TextMemberInput {
  * lowercase does not want any, and a preset library that lets the two drift apart produces exactly
  * the spacing mistakes it was built to prevent.
  */
-function textMember(input: TextMemberInput): LockupMember {
+/**
+ * A member that prints only if its text fits its own slot on one line, else nothing at all.
+ *
+ * For the one piece of member text this catalogue does not author: a client's name, which arrives
+ * from their record and can be anything. One live client's is sixty characters of registered legal
+ * name — "Физиомед - Медицински център за Физиотерапия и Рехабилитация" — which at 28px uppercase
+ * across a 700px slot is roughly twice what fits.
+ *
+ * Declining is the catalogue's standing answer to copy that does not fit: `fitsCopy` greys a tile
+ * out rather than letting a headline run off the canvas. A brand name is the worst possible thing to
+ * truncate — a byline reading "ФИЗИОМЕД - МЕДИЦИНСКИ ЦЕНТЪ" is worse in a client's feed than a pull
+ * quote with no byline, which is a perfectly ordinary way to set one.
+ *
+ * Measured through `charsPerLine` on the BUILT member, because tracking is decided by `textMember`
+ * and a second estimate here would drift from the thing it claims to measure. `charsPerLine` rather
+ * than `slotCapacity` because the question is genuinely one line, and asking `slotCapacity` for a
+ * floor exactly one line down is a knife-edge its `Math.floor` can fall off: `1064 + 28 × 1.42`
+ * subtracted back to `39.999…`, which floors to zero lines and silently drops every byline.
+ */
+function fittedMember(input: TextMemberInput): LockupMember[] {
+  const member = textMember(input)
+  return input.text.length <= Math.floor(charsPerLine(member)) ? [member] : []
+}
+
+// Returns the TEXT node rather than the `LockupMember` union it is assignable to: it only ever
+// builds one, and widening it here meant a caller that wanted to measure the result had to narrow a
+// union that was never in doubt.
+function textMember(input: TextMemberInput): Omit<CanvasTextNode, 'id'> {
   return {
     kind: 'text',
     role: input.role,
@@ -502,7 +545,7 @@ function textMember(input: TextMemberInput): LockupMember {
     width: input.width,
     fontFamily: input.fontFamily,
     fontSize: input.fontSize,
-    fontWeight: input.fontWeight ?? 700,
+    fontWeight: nearestWeight(input.fontFamily, input.fontWeight ?? 700) as CanvasFontWeight,
     fill: input.fill,
     align: input.align ?? 'left',
     lineHeight: input.lineHeight ?? leadingFor(input.fontSize),
@@ -605,7 +648,9 @@ function copyNode(input: {
     width: input.width,
     fontFamily: input.fontFamily,
     fontSize: input.fontSize,
-    fontWeight: input.fontWeight,
+    // Clamped to what the family serves — a lockup names the weight it wants, but it no longer
+    // chooses the face, so the face has the final say.
+    fontWeight: nearestWeight(input.fontFamily, input.fontWeight) as CanvasFontWeight,
     fill: input.fill,
     align: input.align,
     lineHeight: input.lineHeight ?? leadingFor(input.fontSize),
@@ -629,13 +674,12 @@ export const LOCKUPS: readonly Lockup[] = [
     description: 'One oversized statement filling the slide — the carousel hook',
     // Archivo Black reads black AT 400. The doc caps weight at 700, so impact has to come from
     // choosing a family whose regular is heavy, not from asking for a weight nobody serves.
-    pinned: ['Archivo Black'],
     copy: ({ palette, fonts }) => ({
       headline: copyNode({
         x: M,
         y: 150,
         width: COL,
-        fontFamily: 'Archivo Black',
+        fontFamily: fonts.display,
         fontSize: 104,
         fontWeight: 400,
         fill: palette.ink,
@@ -660,13 +704,12 @@ export const LOCKUPS: readonly Lockup[] = [
     pack: 'essentials',
     label: 'Editorial',
     description: 'Kicker, rule, headline and deck — the explainer workhorse',
-    pinned: ['Playfair Display', 'Raleway'],
-    copy: ({ palette }) => ({
+    copy: ({ palette, fonts }) => ({
       headline: copyNode({
         x: M,
         y: 264,
         width: COL,
-        fontFamily: 'Playfair Display',
+        fontFamily: fonts.display,
         fontSize: 82,
         fontWeight: 700,
         fill: palette.ink,
@@ -676,21 +719,21 @@ export const LOCKUPS: readonly Lockup[] = [
         x: M,
         y: 980,
         width: 800,
-        fontFamily: 'Raleway',
+        fontFamily: fonts.body,
         fontSize: 32,
         fontWeight: 400,
         fill: palette.ink,
         align: 'left',
       }),
     }),
-    members: ({ palette }) => [
+    members: ({ palette, fonts }) => [
       textMember({
         role: 'kicker',
         text: 'FEATURE',
         x: M,
         y: 150,
         width: COL,
-        fontFamily: 'Raleway',
+        fontFamily: fonts.body,
         fontSize: 24,
         fill: palette.accent,
         uppercase: true,
@@ -703,13 +746,12 @@ export const LOCKUPS: readonly Lockup[] = [
     pack: 'essentials',
     label: 'Index',
     description: 'A numbered item — the highest-volume carousel slide there is',
-    pinned: ['Oswald', 'Nunito Sans'],
-    copy: ({ palette }) => ({
+    copy: ({ palette, fonts }) => ({
       headline: copyNode({
         x: M,
         y: 372,
         width: COL,
-        fontFamily: 'Oswald',
+        fontFamily: fonts.display,
         fontSize: 62,
         fontWeight: 700,
         fill: palette.ink,
@@ -719,14 +761,14 @@ export const LOCKUPS: readonly Lockup[] = [
         x: M,
         y: 1000,
         width: 800,
-        fontFamily: 'Nunito Sans',
+        fontFamily: fonts.body,
         fontSize: 30,
         fontWeight: 400,
         fill: palette.ink,
         align: 'left',
       }),
     }),
-    members: ({ palette, slide }) => [
+    members: ({ palette, slide, fonts }) => [
       textMember({
         role: 'kicker',
         // The slide's own position. An index numeral is CONTENT, unlike a progress counter, which
@@ -735,7 +777,7 @@ export const LOCKUPS: readonly Lockup[] = [
         x: M,
         y: 200,
         width: 320,
-        fontFamily: 'Oswald',
+        fontFamily: fonts.display,
         fontSize: 128,
         fill: palette.accent,
       }),
@@ -746,68 +788,79 @@ export const LOCKUPS: readonly Lockup[] = [
     pack: 'essentials',
     label: 'Quote',
     description: 'Oversized quotation mark, the words, then the attribution',
-    pinned: ['Merriweather', 'Lora'],
-    copy: ({ palette }) => ({
+    copy: ({ palette, fonts }) => ({
       headline: copyNode({
         x: M,
         y: 400,
         width: COL,
-        fontFamily: 'Merriweather',
+        fontFamily: fonts.display,
         fontSize: 58,
         fontWeight: 400,
         fill: palette.ink,
         align: 'left',
-        italic: italicIfHosted('Merriweather'),
+        italic: italicIfHosted(fonts.display),
       }),
       body: copyNode({
         x: M,
         y: 1120,
         width: 700,
-        fontFamily: 'Lora',
+        fontFamily: fonts.body,
         fontSize: 26,
         fontWeight: 400,
         fill: palette.ink,
         align: 'left',
       }),
     }),
-    members: ({ palette }) => [
-      textMember({
-        role: 'kicker',
-        text: '“',
-        x: M,
-        y: 190,
-        width: 300,
-        fontFamily: 'Merriweather',
-        fontSize: 180,
-        fill: palette.accent,
-      }),
-      ruleMember({ x: M, y: 1040, width: 64, stroke: palette.ink }),
-      textMember({
-        role: 'tagline',
-        text: 'NAME',
-        x: M,
-        y: 1064,
-        width: 700,
-        fontFamily: 'Lora',
-        fontSize: 28,
-        fill: palette.ink,
-        uppercase: true,
-      }),
-    ],
+    // The byline is the CLIENT, and it is all-or-nothing with its own rule.
+    //
+    // This shipped the literal string `NAME` into generated posts — a placeholder that only ever
+    // looked like a placeholder because nothing had been wired to replace it. The rule above it
+    // exists to underline the attribution, so when there is no name to print, or the name is too
+    // long to set on one line, the rule goes with it rather than hanging under the quote
+    // underlining nothing.
+    members: ({ palette, brandName, fonts }) => {
+      const byline = brandName
+        ? fittedMember({
+            role: 'tagline',
+            text: brandName,
+            x: M,
+            y: 1064,
+            width: 700,
+            fontFamily: fonts.body,
+            fontSize: 28,
+            fill: palette.ink,
+            uppercase: true,
+          })
+        : []
+      return [
+        textMember({
+          role: 'kicker',
+          text: '“',
+          x: M,
+          y: 190,
+          width: 300,
+          fontFamily: fonts.display,
+          fontSize: 180,
+          fill: palette.accent,
+        }),
+        ...(byline.length > 0
+          ? [ruleMember({ x: M, y: 1040, width: 64, stroke: palette.ink }), ...byline]
+          : []),
+      ]
+    },
   },
   {
     id: 'stat',
     pack: 'essentials',
     label: 'Stat',
     description: 'One number doing all the work, with its source underneath',
-    pinned: ['IBM Plex Sans'],
-    copy: ({ palette }) => ({
+    copy: ({ palette, fonts }) => ({
       // The headline IS the number here — the copy the slide already carries becomes the figure.
       headline: copyNode({
         x: M,
         y: 300,
         width: COL,
-        fontFamily: 'IBM Plex Sans',
+        fontFamily: fonts.display,
         fontSize: 260,
         fontWeight: 700,
         fill: palette.accent,
@@ -817,14 +870,14 @@ export const LOCKUPS: readonly Lockup[] = [
         x: M,
         y: 880,
         width: 780,
-        fontFamily: 'IBM Plex Sans',
+        fontFamily: fonts.body,
         fontSize: 34,
         fontWeight: 400,
         fill: palette.ink,
         align: 'left',
       }),
     }),
-    members: ({ palette }) => [
+    members: ({ palette, fonts }) => [
       ruleMember({ x: M, y: 1140, width: 120, stroke: palette.ink }),
       textMember({
         role: 'tagline',
@@ -832,7 +885,7 @@ export const LOCKUPS: readonly Lockup[] = [
         x: M,
         y: 1164,
         width: 780,
-        fontFamily: 'IBM Plex Sans',
+        fontFamily: fonts.body,
         fontSize: 22,
         fill: palette.ink,
         uppercase: true,
@@ -844,13 +897,12 @@ export const LOCKUPS: readonly Lockup[] = [
     pack: 'essentials',
     label: 'Badge',
     description: 'A pill label over the offer, with a call to action at the foot',
-    pinned: ['Bebas Neue', 'Source Sans 3'],
-    copy: ({ palette }) => ({
+    copy: ({ palette, fonts }) => ({
       headline: copyNode({
         x: M,
         y: 262,
         width: COL,
-        fontFamily: 'Bebas Neue',
+        fontFamily: fonts.display,
         fontSize: 128,
         fontWeight: 400,
         fill: palette.ink,
@@ -861,21 +913,21 @@ export const LOCKUPS: readonly Lockup[] = [
         x: M,
         y: 940,
         width: 780,
-        fontFamily: 'Source Sans 3',
+        fontFamily: fonts.body,
         fontSize: 32,
         fontWeight: 400,
         fill: palette.ink,
         align: 'left',
       }),
     }),
-    members: ({ palette }) => [
+    members: ({ palette, fonts }) => [
       textMember({
         role: 'kicker',
         text: 'NEW',
         x: M,
         y: 168,
         width: 400,
-        fontFamily: 'Source Sans 3',
+        fontFamily: fonts.body,
         fontSize: 26,
         fill: palette.accent,
         uppercase: true,
@@ -886,7 +938,7 @@ export const LOCKUPS: readonly Lockup[] = [
         x: M,
         y: 1180,
         width: 600,
-        fontFamily: 'Source Sans 3',
+        fontFamily: fonts.body,
         fontSize: 28,
         fill: palette.accent,
         uppercase: true,
@@ -899,13 +951,12 @@ export const LOCKUPS: readonly Lockup[] = [
     pack: 'essentials',
     label: 'Announce',
     description: 'Symmetric event card — the only centred layout in the pack, by design',
-    pinned: ['Prata', 'Manrope'],
-    copy: ({ palette }) => ({
+    copy: ({ palette, fonts }) => ({
       headline: copyNode({
         x: 140,
         y: 420,
         width: 800,
-        fontFamily: 'Prata',
+        fontFamily: fonts.display,
         fontSize: 68,
         fontWeight: 400,
         fill: palette.ink,
@@ -915,14 +966,14 @@ export const LOCKUPS: readonly Lockup[] = [
         x: 200,
         y: 1030,
         width: 680,
-        fontFamily: 'Manrope',
+        fontFamily: fonts.body,
         fontSize: 28,
         fontWeight: 400,
         fill: palette.ink,
         align: 'center',
       }),
     }),
-    members: ({ palette }) => [
+    members: ({ palette, fonts }) => [
       ruleMember({ x: 480, y: 280, width: 120, stroke: palette.accent }),
       textMember({
         role: 'kicker',
@@ -930,7 +981,7 @@ export const LOCKUPS: readonly Lockup[] = [
         x: 140,
         y: 320,
         width: 800,
-        fontFamily: 'Manrope',
+        fontFamily: fonts.body,
         fontSize: 24,
         fill: palette.accent,
         align: 'center',
@@ -944,13 +995,12 @@ export const LOCKUPS: readonly Lockup[] = [
     pack: 'essentials',
     label: 'Tip',
     description: 'A numbered tip over a single plain sentence — the quiet hook',
-    pinned: ['Inter'],
-    copy: ({ palette }) => ({
+    copy: ({ palette, fonts }) => ({
       headline: copyNode({
         x: M,
         y: 330,
         width: COL,
-        fontFamily: 'Inter',
+        fontFamily: fonts.display,
         fontSize: 62,
         fontWeight: 700,
         fill: palette.ink,
@@ -960,21 +1010,21 @@ export const LOCKUPS: readonly Lockup[] = [
         x: M,
         y: 1060,
         width: 760,
-        fontFamily: 'Inter',
+        fontFamily: fonts.body,
         fontSize: 30,
         fontWeight: 400,
         fill: palette.ink,
         align: 'left',
       }),
     }),
-    members: ({ palette, slide }) => [
+    members: ({ palette, slide, fonts }) => [
       textMember({
         role: 'kicker',
         text: `TIP ${indexToken(slide)}`,
         x: M,
         y: 220,
         width: 400,
-        fontFamily: 'Inter',
+        fontFamily: fonts.body,
         fontSize: 24,
         fill: palette.accent,
         uppercase: true,
@@ -989,8 +1039,7 @@ export const LOCKUPS: readonly Lockup[] = [
     description: 'First word at poster scale, the rest set small against it',
     // Sofia Sans Extra Condensed at 900 is the tallest, blackest thing the library can draw, and it
     // sets Bulgarian in the default positions — so this reads as designed in either language.
-    pinned: ['Sofia Sans Extra Condensed', 'Inter'],
-    copy: ({ palette }) => ({
+    copy: ({ palette, fonts }) => ({
       // 168px, not the 300 this started at. Two reasons, both load-bearing:
       // - At 300 the slot held FIVE characters, so on Bulgarian copy the tile was permanently
       //   greyed out — "Ехография" is nine. At 168 it holds eleven, which covers the long Cyrillic
@@ -1003,7 +1052,7 @@ export const LOCKUPS: readonly Lockup[] = [
         x: M,
         y: 210,
         width: COL,
-        fontFamily: 'Sofia Sans Extra Condensed',
+        fontFamily: fonts.display,
         fontSize: 168,
         fontWeight: 900,
         fill: palette.ink,
@@ -1014,7 +1063,7 @@ export const LOCKUPS: readonly Lockup[] = [
         x: M,
         y: 500,
         width: 700,
-        fontFamily: 'Inter',
+        fontFamily: fonts.body,
         fontSize: 34,
         fontWeight: 400,
         fill: palette.ink,
@@ -1024,7 +1073,7 @@ export const LOCKUPS: readonly Lockup[] = [
         x: M,
         y: 1120,
         width: 700,
-        fontFamily: 'Inter',
+        fontFamily: fonts.body,
         fontSize: 26,
         fontWeight: 400,
         fill: palette.ink,
@@ -1041,15 +1090,14 @@ export const LOCKUPS: readonly Lockup[] = [
     // Playfair rather than Bodoni Moda: both are high-contrast didones at 900, but Playfair carries
     // Cyrillic and Bodoni does not. Pinning a Latin-only face here made the ONE lockup that could
     // take a long Bulgarian first word unavailable to Bulgarian copy.
-    pinned: ['Playfair', 'Sofia Sans'],
-    copy: ({ palette }) => ({
+    copy: ({ palette, fonts }) => ({
       // Same size band (1.2x), two very different voices — the serif-over-script device, expressed
       // as two nodes rather than as rich text nothing in the render path could measure.
       hero: copyNode({
         x: M,
         y: 300,
         width: COL,
-        fontFamily: 'Playfair',
+        fontFamily: fonts.display,
         fontSize: 156,
         fontWeight: 900,
         fill: palette.ink,
@@ -1059,7 +1107,7 @@ export const LOCKUPS: readonly Lockup[] = [
         x: M,
         y: 590,
         width: COL,
-        fontFamily: 'Sofia Sans',
+        fontFamily: fonts.body,
         fontSize: 130,
         fontWeight: 400,
         fill: palette.accent,
@@ -1070,7 +1118,7 @@ export const LOCKUPS: readonly Lockup[] = [
         x: M,
         y: 1080,
         width: 720,
-        fontFamily: 'Sofia Sans',
+        fontFamily: fonts.body,
         fontSize: 28,
         fontWeight: 400,
         fill: palette.ink,
@@ -1091,7 +1139,6 @@ export const LOCKUPS: readonly Lockup[] = [
     pack: 'layouts',
     label: 'Stack',
     description: 'Big headline up top, supporting line held down at the base',
-    pinned: [],
     copy: ({ palette, fonts }) => ({
       headline: copyNode({
         x: M,
@@ -1124,13 +1171,12 @@ export const LOCKUPS: readonly Lockup[] = [
     description: 'Both lines set low, the note pushed out to the opposite margin',
     // Its own condensed face rather than the brand display, because `stack` already resolves to
     // that pairing — two layouts wearing the same two faces on the same axis are one layout.
-    pinned: ['Sofia Sans Extra Condensed'],
     copy: ({ palette, fonts }) => ({
       headline: copyNode({
         x: M,
         y: 780,
         width: COL,
-        fontFamily: 'Sofia Sans Extra Condensed',
+        fontFamily: fonts.display,
         fontSize: 132,
         fontWeight: 900,
         fill: palette.ink,
@@ -1159,15 +1205,14 @@ export const LOCKUPS: readonly Lockup[] = [
     // The one lockup where the client's colour is the GROUND rather than a garnish. Everywhere else
     // accent lands on a 24px label or a 2px rule, so it amounts to about one percent of the canvas
     // and every slide reads as ink-on-photograph regardless of the brand.
-    pinned: ['Archivo Black'],
-    copy: ({ palette }) => ({
+    copy: ({ palette, fonts }) => ({
       // Support ABOVE the headline: the block makes it a masthead rather than a caption, and it is
       // one of the few ways to break the top-third/bottom-quarter skeleton the catalogue was stuck in.
       body: copyNode({
         x: M,
         y: 190,
         width: 700,
-        fontFamily: 'Archivo Black',
+        fontFamily: fonts.body,
         fontSize: 28,
         fontWeight: 400,
         fill: palette.surface,
@@ -1178,7 +1223,7 @@ export const LOCKUPS: readonly Lockup[] = [
         x: M,
         y: 300,
         width: COL,
-        fontFamily: 'Archivo Black',
+        fontFamily: fonts.display,
         fontSize: 100,
         fontWeight: 400,
         fill: palette.surface,
@@ -1197,7 +1242,6 @@ export const LOCKUPS: readonly Lockup[] = [
     description: 'Headline hung on the right edge, the note answering it from the top-left',
     // The right margin. Thirty of the catalogue's thirty-six boxes used to start at x=96, so no
     // amount of size variation stopped the set reading as one layout.
-    pinned: ['Playfair'],
     copy: ({ palette, fonts }) => ({
       body: copyNode({
         x: M,
@@ -1213,7 +1257,7 @@ export const LOCKUPS: readonly Lockup[] = [
         x: RIGHT - 792,
         y: 620,
         width: 792,
-        fontFamily: 'Playfair',
+        fontFamily: fonts.display,
         fontSize: 88,
         fontWeight: 900,
         fill: palette.ink,
@@ -1232,13 +1276,12 @@ export const LOCKUPS: readonly Lockup[] = [
     // The median gap between headline and body across the old catalogue was 569px — 42% of the
     // canvas parked empty in the middle. Here the pair reads as one object and the emptiness is a
     // margin instead, which is what the reference designs actually do.
-    pinned: ['Yeseva One'],
     copy: ({ palette, fonts }) => ({
       headline: copyNode({
         x: M,
         y: 700,
         width: 820,
-        fontFamily: 'Yeseva One',
+        fontFamily: fonts.display,
         fontSize: 104,
         fontWeight: 400,
         fill: palette.ink,
@@ -1266,13 +1309,12 @@ export const LOCKUPS: readonly Lockup[] = [
     description: 'Condensed capitals running off the left edge — cropped on purpose',
     // A deliberate bleed. The old catalogue could not express one: a test asserted every box sat
     // fully inside the canvas, so type could never be cropped and the frame always read as a border.
-    pinned: ['Bebas Neue'],
     copy: ({ palette, fonts }) => ({
       headline: copyNode({
         x: -60,
         y: 230,
         width: 1020,
-        fontFamily: 'Bebas Neue',
+        fontFamily: fonts.display,
         fontSize: 190,
         fontWeight: 400,
         fill: palette.ink,
@@ -1300,34 +1342,26 @@ export function getLockup(id: LockupId): Lockup | null {
 }
 
 /**
- * Whether this lockup can render Cyrillic copy.
+ * Whether a brand pairing can render Cyrillic copy.
  *
- * DERIVED from the pinned families rather than declared, so it cannot drift from the font library.
- * The brand pairing is not consulted: both pairings are Cyrillic-safe by construction (guard test),
- * so a lockup that pins nothing inherits that safety.
+ * A property of the FONTS, not of the layout. Every lockup used to pin its own families, so script
+ * support was per lockup and a Bulgarian client silently lost five of the sixteen. Now that a lockup
+ * sets whatever the client chose, every layout answers the same — which is the honest answer, and it
+ * is why the font picker gates its Cyrillic tier instead.
  *
  * A real gate, not a hint. Konva writes `fontFamily` into `ctx.font` with no fallback list, so
  * Latin-only type meeting Cyrillic words produces a per-glyph OS substitution — a mixed-face line at
  * one size — and because the substitute is whatever the viewing machine has, the same doc exports
  * differently from a Mac than from a Windows box. Nothing downstream objects.
  */
-export function supportsCyrillic(lockup: Lockup): boolean {
-  return lockup.pinned.every((family) => getFontEntry(family)?.cyrillic === true)
+export function supportsCyrillic(fonts: BrandStyleFonts): boolean {
+  return [fonts.display, fonts.body].every((family) => getFontEntry(family)?.cyrillic === true)
 }
 
-/**
- * The families a pack pins — what the picker preloads so its tiles are not drawn in a fallback.
- *
- * Per pack, not per catalogue. The Text rail is the section the editor opens on, so preloading the
- * whole catalogue meant every editor open fetched the pinned faces of sixteen lockups before the
- * user had shown any interest in lockups at all. A pack is what is on screen; the other one loads
- * when its tab is pressed, which is the first moment its faces can be seen.
- *
- * Omitting the pack still answers for the whole catalogue — the font-claims test checks all of them.
- */
-export function lockupFamilies(pack?: LockupPack): FontFamilyName[] {
-  const shown = pack ? LOCKUPS.filter((lockup) => lockup.pack === pack) : LOCKUPS
-  return [...new Set(shown.flatMap((lockup) => lockup.pinned))]
+/** The families a slide will actually be drawn in — what the editor preloads so tiles are not
+ *  rendered in a fallback face. Two, now that the brand pairing is the only source. */
+export function lockupFamilies(fonts: BrandStyleFonts): FontFamilyName[] {
+  return [...new Set([fonts.display, fonts.body])]
 }
 
 /**

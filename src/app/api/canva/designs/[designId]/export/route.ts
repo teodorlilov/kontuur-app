@@ -2,12 +2,11 @@ import { toJpeg } from '@/lib/visual/to-jpeg'
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
-import { verifyPostOwnership } from '@/lib/auth/helpers'
+import { fetchOwnedPost } from '@/lib/auth/helpers'
 import { canvaFetch, CanvaAuthError } from '../../../canva-auth'
 import { CANVA_API_BASE } from '../../../canva-constants'
-import { uploadPostImage, deletePostImage } from '@/features/publishing/lib/storage'
+import { uploadPostImage, putPostImage } from '@/features/publishing/lib/storage'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
-import { POST_IMAGE_COLUMNS, POST_IMAGE_STORAGE_COLUMNS } from '@/lib/queries/select-columns'
 import { MAX_CAROUSEL_SLIDES } from '@/utils/constants'
 
 /**
@@ -55,7 +54,7 @@ export async function POST(
   const auth = await resolveAuth()
   if (!auth.ok) return auth.response
 
-  const post = await verifyPostOwnership(auth.supabase, postId, auth.agencyId)
+  const post = await fetchOwnedPost(auth.supabase, postId, auth.agencyId)
   if (!post) return NextResponse.json({ error: 'Post not found' }, { status: 404 })
 
   // 1. Start export job
@@ -140,35 +139,23 @@ export async function POST(
     postId
   )
 
-  // 5. Replace existing image at position (if any) and create DB record
+  // 5. Replace whatever the position holds — through the one writer, which upserts rather than
+  //    deleting first, so a failure here cannot leave the slide with no image at all.
   const admin = createAdminSupabaseClient()
-
-  const { data: existing } = await admin
-    .from('post_images')
-    .select(POST_IMAGE_STORAGE_COLUMNS)
-    .eq('post_id', postId)
-    .eq('position', position)
-    .single()
-
-  if (existing) {
-    await deletePostImage(existing.storage_path)
-    await admin.from('post_images').delete().eq('id', existing.id)
-  }
-
-  const { data: image, error } = await admin
-    .from('post_images')
-    .insert({
-      post_id: postId,
-      public_url: publicUrl,
-      storage_path: storagePath,
+  try {
+    const image = await putPostImage(admin, {
+      postId,
       position,
-      file_name: jpeg.fileName,
-      file_size: jpeg.buffer.byteLength,
-      content_type: jpeg.contentType,
+      publicUrl,
+      storagePath,
+      fileName: jpeg.fileName,
+      fileSize: jpeg.buffer.byteLength,
+      contentType: jpeg.contentType,
     })
-    .select(POST_IMAGE_COLUMNS)
-    .single()
-
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ image })
+    return NextResponse.json({ image })
+  } catch (err) {
+    console.error('[canva/export] could not save the exported image:', err)
+    const message = err instanceof Error ? err.message : 'Could not save the exported image'
+    return NextResponse.json({ error: message }, { status: 500 })
+  }
 }

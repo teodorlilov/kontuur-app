@@ -4,7 +4,7 @@ import { AlertTriangle, ChevronDown } from 'lucide-react'
 import { Listbox, type ListboxOption } from '@/components/ui/listbox'
 import { cn } from '@/utils/cn'
 import {
-  availableFonts,
+  fontOptions,
   getFontEntry,
   hasCyrillic,
   type FontCategory,
@@ -32,7 +32,9 @@ interface FontListboxProps {
  */
 export function FontListbox({ value, text, onChange }: FontListboxProps) {
   const cyrillic = hasCyrillic(text)
-  const fonts = availableFonts(cyrillic)
+  // No `keep`: an off-tier family the doc already uses is listed separately below, under "In this
+  // design", rather than folded in among the ones that can actually set this layer's words.
+  const fonts = fontOptions({ requiresCyrillic: cyrillic })
   const known = getFontEntry(value)
   const listed = fonts.some((entry) => entry.family === value)
   const unsupported = cyrillic && known !== null && !known.cyrillic

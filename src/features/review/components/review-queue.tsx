@@ -18,7 +18,7 @@ import { useDraftEdits } from '@/components/posts/review/use-draft-edits'
 import { useReviewKeyboard } from '@/components/posts/review/use-review-keyboard'
 import { parseSlides } from '@/lib/posts/parse-slides'
 import { updatePost, deletePost, persistRewrite, savePostCopy } from '@/lib/actions/post-actions'
-import { slideCopyAt } from '@/features/canvas-editor/lib/slide-copy'
+import { slideCopyAt, slideTotal } from '@/features/canvas-editor/lib/slide-copy'
 import { rewriteDraft } from '@/lib/rewrite-draft'
 import { countVisualsByStatus, type DraftVisual } from '@/lib/visual/draft-visuals'
 import { upsertImageAtPosition } from '@/features/publishing/lib/image-list'
@@ -280,14 +280,21 @@ export function ReviewQueue({
       caption: target.caption,
     }
     void (async () => {
-      const { composePersistedPosition } = await import('@/features/canvas-editor/lib/auto-compose')
+      const { composePersistedPosition, loadPostCanvas } =
+        await import('@/features/canvas-editor/lib/auto-compose')
+      // One read before the loop. Each iteration used to fetch the same identity again.
+      const canvas = await loadPostCanvas(target.id)
+      if (!canvas) return
       for (const image of pending) {
         try {
           const result = await composePersistedPosition({
             postId: target.id,
             position: image.position,
+            total: slideTotal(source),
             image,
             slideCopy: slideCopyAt(source, image.position),
+            identity: canvas.identity,
+            doc: canvas.docs.get(image.position) ?? null,
           })
           if (result) {
             setPosts((prev) =>

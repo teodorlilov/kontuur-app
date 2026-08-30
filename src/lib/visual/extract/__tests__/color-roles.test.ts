@@ -39,6 +39,79 @@ describe('deriveColorRoles', () => {
     expect(saturation(parseHex(roles.line)!)).toBeLessThanOrEqual(0.25)
   })
 
+  /**
+   * `accent-deep` was `darken(accent, 0.35)` unconditionally, so no client ever had two brand
+   * colours — only one and its own shadow, sharing a hue by construction. Anything downstream
+   * deriving variety from "primary vs secondary" was therefore working with a single colour.
+   */
+  it('takes a real second brand colour when the site has one', () => {
+    const roles = deriveColorRoles({
+      backgrounds: [{ hex: '#FFFFFF', weight: 100 }],
+      texts: [{ hex: '#111111', weight: 50 }],
+      accents: [
+        { hex: '#2563EB', weight: 400 }, // blue, 217°
+        { hex: '#E8590C', weight: 260 }, // orange, 25° — a genuinely different colour
+      ],
+    })
+    expect(roles.accent).toBe('#2563EB')
+    expect(roles['accent-deep']).toBe('#E8590C')
+  })
+
+  it('falls back to a shade of the accent when the site only has one colour', () => {
+    const roles = deriveColorRoles({
+      backgrounds: [{ hex: '#FFFFFF', weight: 100 }],
+      texts: [{ hex: '#111111', weight: 50 }],
+      accents: [{ hex: '#A886CD', weight: 300 }],
+    })
+    expect(roles.accent).toBe('#A886CD')
+    expect(roles['accent-deep']).toBe('#6D5785') // darken(#A886CD, 0.35)
+  })
+
+  // Two hues close together are one colour in two moods; a shade says that more honestly.
+  it('does not promote a near neighbour of the accent to a second colour', () => {
+    const roles = deriveColorRoles({
+      backgrounds: [{ hex: '#FFFFFF', weight: 100 }],
+      texts: [{ hex: '#111111', weight: 50 }],
+      accents: [
+        { hex: '#2563EB', weight: 400 }, // 217°
+        { hex: '#256BEB', weight: 380 }, // ~215°, the same blue
+      ],
+    })
+    expect(roles['accent-deep']).toBe('#184099') // darken(#2563EB), not the neighbour
+  })
+
+  /**
+   * A muted brand used to empty the chromatic pool and be handed a hardcoded #2563EB it had never
+   * used — which the palette editor then presented to the client as their own colour.
+   */
+  it('keeps a muted brand’s own colour instead of inventing a blue', () => {
+    const roles = deriveColorRoles({
+      backgrounds: [{ hex: '#FFFFFF', weight: 100 }],
+      texts: [{ hex: '#111111', weight: 50 }],
+      accents: [{ hex: '#8A9A8B', weight: 200 }], // sage, saturation well under the threshold
+    })
+    expect(roles.accent).toBe('#8A9A8B')
+    expect(roles.accent).not.toBe('#2563EB')
+  })
+
+  it('still invents a default only when there is nothing at all to measure', () => {
+    const roles = deriveColorRoles({ backgrounds: [], texts: [] })
+    expect(roles.accent).toBe('#2563EB')
+  })
+
+  // Twelve footer links used to outvote one hero button twelve to one; weight is area now.
+  it('lets one large call-to-action outweigh many small links', () => {
+    const roles = deriveColorRoles({
+      backgrounds: [{ hex: '#FFFFFF', weight: 100 }],
+      texts: [{ hex: '#111111', weight: 50 }],
+      accents: [
+        { hex: '#C81E5B', weight: 24000 }, // one hero button
+        { hex: '#3B82F6', weight: 60 }, // a dozen tiny links
+      ],
+    })
+    expect(roles.accent).toBe('#C81E5B')
+  })
+
   it('guarantees legible ink against surface (WCAG AA)', () => {
     const roles = deriveColorRoles({
       backgrounds: [{ hex: '#FFFFFF', weight: 100 }],

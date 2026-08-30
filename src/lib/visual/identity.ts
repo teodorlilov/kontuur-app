@@ -16,17 +16,18 @@ export function buildDefaultIdentity(): VisualIdentity {
 }
 
 /**
- * Swap a client's brand colours, dropping `palette_description` along with the colours it described.
+ * Swap a client's brand colours, dropping the cached description written for the old ones.
  *
- * That description is a cached English rendering of the *old* hexes — and it, not the palette, is
- * what image prompts read under COLOR PALETTE. Carrying it across a colour change makes generation
- * follow the palette the user just rejected; dropping it lets `generateVisual` write a matching one
- * on the next run.
+ * Those descriptions are cached renderings of the *old* hexes — and they, not the raw colours, are
+ * what image prompts read. Carrying one across a colour change makes generation follow the palette
+ * the user just rejected; dropping it lets `generateVisual` write a matching one on the next run.
  *
  * Every palette editor goes through here so the rule cannot be half-applied. It used to be a comment
  * inside the settings panel, which meant the onboarding sheet's own `{ ...identity, palette }` was
  * free to keep the stale description — and it shipped a client whose palette was tan three blue
- * carousels. Written as spread-then-drop rather than rebuilt field by field, so a field added to
+ * carousels.
+ *
+ * Written as spread-then-drop rather than rebuilt field by field, so a field added to
  * `VisualIdentity` later survives a colour edit instead of vanishing silently.
  */
 export function withPalette(identity: VisualIdentity, palette: Palette): VisualIdentity {

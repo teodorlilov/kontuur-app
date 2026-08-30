@@ -17,3 +17,19 @@ export function slideCopyAt(post: SlideCopySource, position: number): SlideCopy 
   const slide = parseSlides(post.slides_json)[position]
   return slide ? { kind: 'slide', headline: slide.headline, body: slide.body } : null
 }
+
+/**
+ * How many slides the post has to EDIT — what tells a slide whether it is the last one.
+ *
+ * Derived from the same two fields `slideCopyAt` reads, so the count and the copy can never
+ * disagree about how long the carousel is. A single post is a carousel of one.
+ *
+ * The floor at 1 is the whole difference between this and `totalVisualSlots`
+ * (lib/visual/visual-backlog.ts), which is otherwise the same expression. An empty carousel still
+ * has one slide to open in the editor, and zero pictures to generate — so this floors and that one
+ * must not. Two questions that share a shape; merging them behind a flag would hide which is being
+ * asked at each of the nine call sites.
+ */
+export function slideTotal(post: SlideCopySource): number {
+  return post.post_type === 'carousel' ? Math.max(parseSlides(post.slides_json).length, 1) : 1
+}

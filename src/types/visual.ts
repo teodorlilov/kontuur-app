@@ -6,7 +6,7 @@
  * stay co-located in their modules — this file holds only the shared/persisted domain shapes.
  */
 
-import type { BrandStyleId } from '@/lib/visual/brand-styles'
+import type { BrandFontChoice, BrandStyleId } from '@/lib/visual/brand-styles'
 
 /** The five colour roles a kit is reduced to. `surface`/`ink` carry legible text; `accent` is the brand pop. */
 export type ColorRole = 'surface' | 'ink' | 'accent' | 'accent-deep' | 'line'
@@ -23,19 +23,26 @@ export type VisualIdentity = {
   palette: Palette
   style: BrandStyleId
   palette_description?: string
+  /** The client's own type pairing, overriding their style's. Absent = the style decides. */
+  fonts?: BrandFontChoice
 }
 
-/** How a given extracted field was arrived at, surfaced as a confidence badge in Review. */
-export type Confidence = 'measured' | 'inferred' | 'guessed'
-
-export type ExtractionField = 'colors' | 'accent'
-
-/** Per-field confidence map plus any soft-fallback reason. */
+/**
+ * How an identity was arrived at, plus why it fell back.
+ *
+ * Carried a `Partial<Record<ExtractionField, Confidence>>` map until 2026-08-24. Nothing ever read
+ * it: the only writer set every field to `'measured'`, the `'inferred'`/`'guessed'` arms were never
+ * produced, and the "confidence badge in Review" it was documented as feeding was never built. The
+ * comment on `deriveColorRoles` promising a Claude vision pass that would badge the accent
+ * `inferred` is what kept it looking load-bearing.
+ *
+ * `fallback.reason` has no reader either and stays on purpose — it is written to the `report` jsonb,
+ * where it is the only record of WHY a client ended up on the neutral default palette.
+ */
 export type ExtractionReport = {
   source: 'website' | 'fallback'
-  confidence: Partial<Record<ExtractionField, Confidence>>
   fallback?: { reason: string }
 }
 
-/** What the extractor yields: a validated identity + its confidence report. */
+/** What the extractor yields: a validated identity + how it was arrived at. */
 export type ExtractionResult = { identity: VisualIdentity; report: ExtractionReport }

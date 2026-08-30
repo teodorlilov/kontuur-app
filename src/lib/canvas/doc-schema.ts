@@ -4,9 +4,9 @@ import type { CanvasDoc } from '@/types/canvas'
 import { CANVAS_DOC_VERSION, MAX_BACKGROUND_ZOOM, MAX_NODES } from './constants'
 import { canvasDocSchemaV1, upgradeCanvasDoc } from './doc-v1'
 import { withBackdrop } from './legacy-scrim'
+import { HEX_COLOR } from '@/lib/validation'
 
-const HEX = /^#[0-9a-fA-F]{6}$/
-const hex = z.string().regex(HEX, 'must be a #rrggbb hex colour')
+const hex = z.string().regex(HEX_COLOR, 'must be a #rrggbb hex colour')
 
 const nodeBase = {
   id: z.string().min(1),

@@ -1,5 +1,5 @@
 import { safeParseCanvasDoc } from '@/lib/canvas/doc-schema'
-import { safeParseVisualIdentity } from '@/lib/visual/identity-schema'
+import { parseSeedIdentity } from '@/lib/visual/identity-schema'
 import type { CanvasDoc } from '@/types/canvas'
 import type { SeedIdentity } from '@/lib/canvas/seed-doc'
 
@@ -19,39 +19,15 @@ function parseDoc(value: unknown): CanvasDoc | null {
   return parsed.success ? parsed.doc : null
 }
 
-/** The seed identity, or null when the body carries nothing usable — callers treat that as a miss. */
-function parseIdentity(value: unknown): SeedIdentity | null {
-  if (value === null || value === undefined) return null
-  const parsed = safeParseVisualIdentity(value)
-  return parsed.success ? { palette: parsed.identity.palette, style: parsed.identity.style } : null
-}
-
-interface CanvasState {
-  /** False when the request itself failed; `error` then carries the reason. */
-  ok: boolean
-  doc: CanvasDoc | null
-  identity: SeedIdentity | null
-  error?: string
-}
-
 /**
- * Read one post position's stored canvas doc and the brand identity to seed from.
+ * The seed identity, or null when the body carries nothing usable — callers treat that as a miss.
  *
- * Callers disagree on what a miss means — the editor throws so the user sees it,
- * auto-compose returns null so a background pass skips the slide — so this reports
- * the outcome rather than deciding it.
+ * Through `seedIdentitySchema`, NOT the stored-blob schema. This used to rebuild `{ palette, style }`
+ * out of `safeParseVisualIdentity`, which validates `brand_visual_identity.identity` — a shape that
+ * has no client name in it and never will. So when the seed identity grew one, this function
+ * silently dropped it and the `quote` lockup lost its byline on every persisted post.
  */
-export async function fetchCanvasState(postId: string, position: number): Promise<CanvasState> {
-  const res = await fetch(`/api/posts/${postId}/canvas?position=${position}`)
-  const body: unknown = await res.json().catch(() => ({}))
-  const fields = body as { doc?: unknown; identity?: unknown; error?: unknown }
-  return {
-    ok: res.ok,
-    doc: parseDoc(fields.doc),
-    identity: parseIdentity(fields.identity),
-    error: typeof fields.error === 'string' ? fields.error : undefined,
-  }
-}
+const parseIdentity = parseSeedIdentity
 
 /** One stored doc, by the slide it belongs to. Slides without a doc are simply absent. */
 interface PositionedDoc {

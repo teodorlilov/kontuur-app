@@ -5,12 +5,19 @@ import { toast } from '@/components/ui/toast'
 import { createSemaphore } from '@/lib/concurrency'
 import { parseSlides } from '@/lib/posts/parse-slides'
 import { MAX_CONCURRENT_VISUAL_REQUESTS } from '@/lib/visual/limits'
+import type { ColorScheme } from '@/lib/visual/color-scheme'
 import type { SeedIdentity } from '@/lib/canvas/seed-doc'
 import type { CanvasDoc } from '@/types/canvas'
 import { fetchClientIdentity } from '@/features/canvas-editor/lib/identity-client'
-import { slideCopyAt } from '@/features/canvas-editor/lib/slide-copy'
+import { slideCopyAt, slideTotal } from '@/features/canvas-editor/lib/slide-copy'
 import type { DraftVisualResult } from '@/features/canvas-editor/types'
-import { draftStoragePaths, type DraftVisual } from '@/lib/visual/draft-visuals'
+import {
+  draftScheme,
+  draftStoragePaths,
+  schemeOf,
+  type DraftVisual,
+} from '@/lib/visual/draft-visuals'
+import { totalVisualSlots } from '@/lib/visual/visual-backlog'
 
 /** The draft fields visual generation needs — satisfied by both `PostData` and `DraftPost`. */
 export interface DraftPostInput {
@@ -33,14 +40,50 @@ export function useDraftVisuals() {
   const controllers = useRef(new Map<string, AbortController>())
   const failureToasted = useRef(new Set<string>())
   const identityCache = useRef(new Map<string, Promise<SeedIdentity>>())
+  /**
+   * How many drafts this run has already enqueued — the server's colour-scheme offset.
+   *
+   * A ref rather than the length of `visualsByDraft`, because that count is only readable from
+   * inside a state updater, and an updater does not run at the point it is called: React defers it
+   * to the next render, so a value assigned in there and read on the following line is still the
+   * one it started at. This ordinal was doing exactly that and was 0 for every draft in the run,
+   * which left three concurrent drafts hashing independently and colliding on a colour about half
+   * the time — the failure the offset exists to prevent. A ref increments where it is read.
+   */
+  const draftsEnqueued = useRef(0)
+  /**
+   * The base every draft in this run counts its offset from — the id of the first draft to arrive.
+   *
+   * One value for the run is what makes consecutive offsets spread; per-draft bases made the offset
+   * statistically worthless. The FIRST DRAFT'S ID rather than a minted uuid, because it satisfies
+   * both halves at once: constant for the run, and different from the next run's, with nothing
+   * random anywhere near the pipeline.
+   */
+  const runBase = useRef<string | null>(null)
   // Compose serially — one offscreen canvas at a time keeps memory flat.
   const composeSemaphore = useRef(createSemaphore(1))
 
+  /**
+   * Replace one slide's entry — carrying the draft's colour pair forward when the incoming entry
+   * has none.
+   *
+   * The pair is a fact about the DRAFT, not about the file being swapped in, and almost every writer
+   * here rebuilds an entry from something that does not carry it: a `DraftVisualResult` from a
+   * compose pass has no `scheme` field at all, and the editor's save handler builds a literal from
+   * the file it just wrote. Each of those silently dropped it, so a draft that was rewritten or
+   * edited before approval reached `POST /api/posts` with no `visual_ground`, and the post then
+   * picked a fresh pair on its first regenerate — recolouring one slide away from its siblings.
+   *
+   * Merging here rather than at each writer because there is no writer that should ever clear it:
+   * once a draft has colours it keeps them until it is discarded.
+   */
   const setVisual = useCallback((draftId: string, visual: DraftVisual) => {
     setVisualsByDraft((current) => {
       if (!(draftId in current)) return current
-      const rest = (current[draftId] ?? []).filter((v) => v.position !== visual.position)
-      return { ...current, [draftId]: [...rest, visual].sort((a, b) => a.position - b.position) }
+      const slides = current[draftId] ?? []
+      const carried = visual.scheme ? visual : { ...visual, ...schemeOf(slides) }
+      const rest = slides.filter((v) => v.position !== carried.position)
+      return { ...current, [draftId]: [...rest, carried].sort((a, b) => a.position - b.position) }
     })
   }, [])
 
@@ -100,6 +143,7 @@ export function useDraftVisuals() {
             clientId: post.client_id,
             draftId: post.id,
             position,
+            total: slideTotal(post),
             identity,
             slideCopy,
             clean,
@@ -123,7 +167,13 @@ export function useDraftVisuals() {
       post: DraftPostInput,
       position: number,
       signal: AbortSignal,
-      previousDoc?: CanvasDoc
+      previousDoc?: CanvasDoc,
+      previousStoragePath?: string,
+      /** Where this draft sits in its run — both halves together, because one without the other
+       *  does not spread anything. Absent on a regenerate, which sends `knownScheme` instead. */
+      run?: { index: number; base: string },
+      /** The pair this draft is already wearing, sent on a regenerate so the route does not redraw it. */
+      knownScheme?: ColorScheme
     ) => {
       const release = await semaphore.current.acquire()
       try {
@@ -141,6 +191,9 @@ export function useDraftVisuals() {
             postType: post.post_type,
             slides: parseSlides(post.slides_json),
             caption: post.caption,
+            ...(previousStoragePath ? { previousStoragePath } : {}),
+            ...(run ? { runIndex: run.index, runBase: run.base } : {}),
+            ...(knownScheme ? { scheme: knownScheme } : {}),
           }),
         })
         const data = await res.json()
@@ -149,11 +202,20 @@ export function useDraftVisuals() {
           publicUrl: data.publicUrl as string,
           storagePath: data.storagePath as string,
         }
+        // The scheme rides along so approve can hand it to the post — every slide of this draft
+        // reports the same pair, and the post has to inherit it or its first regenerate recolours.
+        const scheme = (data.scheme as { ground: string; accent: string } | null) ?? undefined
+        const groundField = scheme ? { scheme } : {}
         // Clean refs on the still-generating entry: an approve mid-compose attaches the clean image.
-        setVisual(post.id, { position, status: 'generating', ...clean })
+        setVisual(post.id, { position, status: 'generating', ...clean, ...groundField })
         const composed = await composeVisual(post, position, clean, signal, previousDoc)
         if (signal.aborted) return
-        setVisual(post.id, composed ?? { position, status: 'done', ...clean })
+        setVisual(
+          post.id,
+          composed
+            ? { ...composed, ...groundField }
+            : { position, status: 'done', ...clean, ...groundField }
+        )
       } catch (err) {
         if (signal.aborted) return
         console.error(`[draft-visuals] draft ${post.id} position ${position} failed:`, err)
@@ -181,15 +243,25 @@ export function useDraftVisuals() {
   /** Queue every slide of a freshly streamed draft (single posts queue position 0). */
   const enqueuePost = useCallback(
     (post: DraftPostInput) => {
-      const total = post.post_type === 'carousel' ? parseSlides(post.slides_json).length : 1
+      // `totalVisualSlots`, not `slideTotal`: the guard below is the reason. An empty carousel has
+      // nothing to generate, and the floored count would queue a slot with no copy behind it.
+      const total = totalVisualSlots(post)
       if (total === 0) return
       const positions = Array.from({ length: total }, (_, i) => i)
+      // This draft's ordinal in the run. The server spreads a batch across colour schemes with it —
+      // drafts generate concurrently against one snapshot of history, so independent hashes collide
+      // where consecutive offsets cannot. Read before the state update, because the update is the
+      // thing that cannot report it in time.
+      const runIndex = draftsEnqueued.current++
+      runBase.current ??= post.id
+      const base = runBase.current
       setVisualsByDraft((current) => ({
         ...current,
         [post.id]: positions.map((position) => ({ position, status: 'generating' as const })),
       }))
       const { signal } = draftController(post.id)
-      for (const position of positions) void runJob(post, position, signal)
+      for (const position of positions)
+        void runJob(post, position, signal, undefined, undefined, { index: runIndex, base })
     },
     [draftController, runJob]
   )
@@ -205,11 +277,23 @@ export function useDraftVisuals() {
    */
   const regenerate = useCallback(
     (post: DraftPostInput, position: number) => {
-      const previousDoc = (visualsByDraft[post.id] ?? []).find(
-        (v) => v.position === position
-      )?.canvasDoc
+      const slides = visualsByDraft[post.id]
+      const previous = (slides ?? []).find((v) => v.position === position)
+      // Any sibling's pair answers — every slide of a draft wears the same one — so a slide that
+      // failed before it reported a scheme still rerolls into its carousel's colours, not out of them.
+      const scheme = draftScheme(slides)
       setVisual(post.id, { position, status: 'generating' })
-      void runJob(post, position, draftController(post.id).signal, previousDoc)
+      // The outgoing image's path is the reroll nonce: without it the route recomposes the identical
+      // slide, and pressing regenerate on a layout you dislike returns that layout forever.
+      void runJob(
+        post,
+        position,
+        draftController(post.id).signal,
+        previous?.canvasDoc,
+        previous?.storagePath,
+        undefined,
+        scheme
+      )
     },
     [draftController, runJob, setVisual, visualsByDraft]
   )
@@ -379,6 +463,8 @@ export function useDraftVisuals() {
     for (const controller of controllers.current.values()) controller.abort()
     controllers.current.clear()
     failureToasted.current.clear()
+    draftsEnqueued.current = 0
+    runBase.current = null
     setVisualsByDraft({})
   }, [])
 

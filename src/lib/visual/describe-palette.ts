@@ -29,7 +29,7 @@ const OUTPUT_SCHEMA = {
   required: ['surface', 'ink', 'accent', 'accent_deep', 'line', 'character'],
 }
 
-type PaletteDescription = {
+type ColorNaming = {
   surface: string
   ink: string
   accent: string
@@ -53,9 +53,13 @@ function fallbackDescription(palette: Palette): string {
  * Turn a hex palette into the human-readable COLOR PALETTE block injected into image prompts
  * (e.g. "Dominant background: white … Palette character: cool, clean, modern"). Never throws:
  * falls back to raw `label: hex` lines if the Haiku call fails.
+ *
+ * It once also named a stored list of campaign grounds and cached the answers index-aligned beside
+ * them. Colours are derived per post now, so there is no list to name and nothing to keep in sync —
+ * `nameColor` does it locally and for free.
  */
 export async function describePalette(palette: Palette): Promise<string> {
-  const hexLines = ROLE_ORDER.map((role) => `${ROLE_LABELS[role]}: ${palette[role]}`).join('\n')
+  const paletteLines = ROLE_ORDER.map((role) => `${ROLE_LABELS[role]}: ${palette[role]}`)
   try {
     const message = await callAnthropic({
       model: LIGHT_MODEL,
@@ -68,10 +72,10 @@ export async function describePalette(palette: Palette): Promise<string> {
       temperature: 0,
       systemPrompt:
         'You name brand colours for image-generation prompts. For each hex colour, return a short, precise human-readable colour name (e.g. "medium periwinkle blue", "warm off-white"). Also return one sentence capturing the overall palette character (temperature, mood, harmony).',
-      userMessage: hexLines,
+      userMessage: paletteLines.join('\n'),
       outputSchema: OUTPUT_SCHEMA,
     })
-    const parsed = extractToolInput<PaletteDescription>(message, OUTPUT_SCHEMA)
+    const parsed = extractToolInput<ColorNaming>(message, OUTPUT_SCHEMA)
     return assembleBlock(
       {
         surface: parsed.surface,

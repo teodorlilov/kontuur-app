@@ -43,7 +43,7 @@ export async function POST(request: Request) {
       status: 'fallback',
       agencyId,
       identity: buildDefaultIdentity(),
-      report: { source: 'fallback', confidence: {}, fallback: { reason: 'no website provided' } },
+      report: { source: 'fallback', fallback: { reason: 'no website provided' } },
     })
     return NextResponse.json({ status: 'fallback' }, { status: 202 })
   }
@@ -71,7 +71,7 @@ export async function POST(request: Request) {
         status: 'fallback',
         agencyId,
         identity: buildDefaultIdentity(),
-        report: { source: 'fallback', confidence: {}, fallback: { reason: 'extraction error' } },
+        report: { source: 'fallback', fallback: { reason: 'extraction error' } },
       }).catch(() => undefined)
     }
   })

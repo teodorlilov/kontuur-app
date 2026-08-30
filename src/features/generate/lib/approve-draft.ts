@@ -15,6 +15,8 @@ interface ApproveDraftInput {
   /** ISO timestamp schedules the post; null/undefined approves unscheduled. */
   scheduledAt?: string | null
   images: DraftImagePayload[]
+  /** The colour pair the draft's visuals were generated on, carried onto the post row. */
+  visualScheme?: { ground: string; accent: string }
 }
 
 /**
@@ -46,6 +48,7 @@ export async function approveDraft({
   slidesJson,
   scheduledAt,
   images,
+  visualScheme,
 }: ApproveDraftInput): Promise<ApproveDraftResult> {
   try {
     const res = await fetch('/api/posts', {
@@ -62,6 +65,12 @@ export async function approveDraft({
         was_rewritten: post.was_rewritten,
         rewrite_count: post.rewrite_count,
         ...(images.length > 0 ? { images } : {}),
+        // The draft's art was generated on these colours, so the post has to own them: a post that
+        // arrived with images but no scheme would pick a fresh one on its first regenerate and
+        // recolour that slide alone.
+        ...(visualScheme
+          ? { visual_ground: visualScheme.ground, visual_accent: visualScheme.accent }
+          : {}),
       }),
     })
     if (!res.ok) return { postId: null, warnings: [] }

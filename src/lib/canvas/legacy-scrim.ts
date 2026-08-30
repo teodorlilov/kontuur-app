@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import type { CanvasBackdrop } from '@/types/canvas'
+import { HEX_COLOR } from '@/lib/validation'
 
 /**
  * The "contrast scrim" as stored rows still hold it, and what it becomes now that it is the
@@ -10,11 +11,9 @@ import type { CanvasBackdrop } from '@/types/canvas'
  * modules whose zod schemas are built at import time.
  */
 
-const HEX = /^#[0-9a-fA-F]{6}$/
-
 export const legacyScrimSchema = z.object({
   enabled: z.boolean(),
-  color: z.string().regex(HEX, 'must be a #rrggbb hex colour'),
+  color: z.string().regex(HEX_COLOR, 'must be a #rrggbb hex colour'),
   opacity: z.number().min(0).max(1),
   /** 'bottom' covered the lower half of the canvas; 'full' the whole of it. */
   mode: z.enum(['full', 'bottom']),

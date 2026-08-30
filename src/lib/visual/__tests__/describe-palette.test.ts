@@ -19,8 +19,8 @@ describe('describePalette', () => {
       line: 'light gray',
       character: 'Cool, clean, modern, predominantly monochromatic blue.',
     })
-    const block = await describePalette(DEFAULT_PALETTE)
-    expect(block).toBe(
+    const description = await describePalette(DEFAULT_PALETTE)
+    expect(description).toBe(
       'Dominant background: white\n' +
         'Ink: near-black\n' +
         'Primary accent: medium periwinkle blue\n' +
@@ -45,9 +45,9 @@ describe('describePalette', () => {
 
   it('falls back to labelled hex lines when the Haiku call fails', async () => {
     vi.mocked(callAnthropic).mockRejectedValue(new Error('api down'))
-    const block = await describePalette(DEFAULT_PALETTE)
-    expect(block).toContain('Dominant background: #FFFFFF')
-    expect(block).toContain('Primary accent: #2563EB')
-    expect(block).not.toContain('Palette character')
+    const description = await describePalette(DEFAULT_PALETTE)
+    expect(description).toContain('Dominant background: #FFFFFF')
+    expect(description).toContain('Primary accent: #2563EB')
+    expect(description).not.toContain('Palette character')
   })
 })

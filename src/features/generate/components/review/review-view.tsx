@@ -19,6 +19,7 @@ import { approveDraft } from '@/features/generate/lib/approve-draft'
 import { rewriteDraft } from '@/lib/rewrite-draft'
 import {
   completedDraftImages,
+  draftScheme,
   countVisualsByStatus,
   type DraftVisual,
 } from '@/lib/visual/draft-visuals'
@@ -173,6 +174,9 @@ export function ReviewView({
       slidesJson: edits.slidesJson,
       scheduledAt,
       images: completedDraftImages(visualsByDraft[postId]),
+      ...(draftScheme(visualsByDraft[postId])
+        ? { visualScheme: draftScheme(visualsByDraft[postId]) }
+        : {}),
     })
     if (!savedPostId) {
       toast.error('Failed to approve post')

@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { MAX_CAROUSEL_SLIDES, MIN_CAROUSEL_SLIDES, PLATFORMS } from '@/utils/constants'
+import { colorSchemeSchema } from '@/lib/visual/identity-schema'
 import type { PriorityPost } from '@/types/api'
 
 /** Input for logging an explicitly discarded wizard draft. */
@@ -133,6 +134,27 @@ export const generateDraftVisualSchema = z.object({
   postType: z.string().min(1),
   slides: z.array(z.object({ headline: z.string(), body: z.string() })).default([]),
   caption: z.string().nullable().default(null),
+  /** The storage path of the visual being replaced — present only on a regenerate, and what makes
+   *  each successive press produce a different composition instead of the same one. */
+  previousStoragePath: z.string().min(1).optional(),
+  /** This draft's position in its generation run, so a batch spreads across schemes rather than
+   *  three concurrent requests hashing onto the same one. Only sent on the FIRST generation — a
+   *  regenerate sends `scheme` instead, because by then the answer is known and need not be redrawn. */
+  runIndex: z.number().int().min(0).optional(),
+  /** One value shared by every draft in this run — what `runIndex` counts from. Consecutive offsets
+   *  only spread when they share a base; from per-draft bases they are just noise. Sent with
+   *  `runIndex` and meaningless without it. */
+  runBase: z.string().min(1).optional(),
+  /**
+   * The colour pair this draft's other slides already wear.
+   *
+   * Sent on a regenerate, and it is what stops one slide drifting away from its siblings. Without
+   * it the route re-picks from the ladder at offset 0, while the first generation picked at the
+   * draft's run offset — so rerolling slide 2 of the second or third draft in a run recoloured that
+   * slide alone. Exactly the desync `posts.visual_ground` prevents for persisted posts; drafts have
+   * no row to read, so the surface hands back what it was given.
+   */
+  scheme: colorSchemeSchema.optional(),
 })
 
 /** Discard cleanup: delete a draft's stored visuals. Paths are re-checked against the client's

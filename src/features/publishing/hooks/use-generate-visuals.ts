@@ -6,10 +6,35 @@ import { mapImageRow } from '@/features/publishing/lib/map-image-row'
 import { createSemaphore } from '@/lib/concurrency'
 import { MAX_CONCURRENT_VISUAL_REQUESTS } from '@/lib/visual/limits'
 import { StaleImageError } from '@/features/canvas-editor/lib/save-canvas'
-import { slideCopyAt, type SlideCopySource } from '@/features/canvas-editor/lib/slide-copy'
-import type { SlideCopy } from '@/features/canvas-editor/types'
+import {
+  slideCopyAt,
+  slideTotal,
+  type SlideCopySource,
+} from '@/features/canvas-editor/lib/slide-copy'
 import type { PostImage } from '@/types/api'
 import type { PostImageRow } from '@/types/index'
+
+/**
+ * Start a compose pass: load the compose module and the post's canvas, once, together.
+ *
+ * The dynamic import is not decoration — `auto-compose` reaches Konva, which is 1.8 MB, and the
+ * review queue and calendar are dashboard pages that must not carry it for users who never bake
+ * text onto a picture. Loading the module and the canvas in one place is what keeps every position
+ * in a pass sharing both, instead of each importing and each fetching.
+ */
+function startComposePass(postId: string) {
+  return import('@/features/canvas-editor/lib/auto-compose').then(
+    async ({ composePersistedPosition, recomposePersistedPosition, loadPostCanvas }) => ({
+      // Destructured, not returned as a namespace: reached through `mod.x` these look unused to
+      // knip, and `npm run deadcode` reported a live function as dead.
+      composePersistedPosition,
+      recomposePersistedPosition,
+      canvas: await loadPostCanvas(postId),
+    })
+  )
+}
+
+type ComposePass = ReturnType<typeof startComposePass>
 
 async function requestVisual(postId: string, position: number): Promise<PostImage> {
   const res = await fetch(`/api/posts/${postId}/visuals`, {
@@ -32,7 +57,13 @@ async function requestVisual(postId: string, position: number): Promise<PostImag
 export function useGenerateVisuals(
   postId: string,
   onImage: (image: PostImage) => void,
-  getSlideCopy?: (position: number) => SlideCopy | null
+  /**
+   * The post's working copy. Taken whole rather than as a `(position) => copy` closure because the
+   * compose now needs the slide COUNT as well as the copy — a closure can only answer one of those,
+   * and deriving them from the same two fields keeps them from disagreeing about the carousel's
+   * length.
+   */
+  copySource?: SlideCopySource | null
 ) {
   const [generatingPositions, setGeneratingPositions] = useState<number[]>([])
   const [composingPositions, setComposingPositions] = useState<number[]>([])
@@ -47,20 +78,31 @@ export function useGenerateVisuals(
     setComposingPositions([])
   }, [postId])
 
+  /**
+   * Compose one slide against a canvas the whole run shares.
+   *
+   * `pass` arrives as a PROMISE, not a value: the composes are staggered — each fires as its own
+   * image lands, tens of seconds apart — so awaiting the read at the top of `generate` would stall
+   * the first image behind it. Every position awaits the same promise, so it happens once and
+   * blocks nobody.
+   */
   const composeTail = useCallback(
-    (position: number, image: PostImage) => {
-      if (!getSlideCopy) return
+    (position: number, image: PostImage, pass: ComposePass) => {
+      if (!copySource) return
       setComposingPositions((current) => [...current, position])
       void (async () => {
         const release = await composeSemaphore.current.acquire()
         try {
-          const { composePersistedPosition } =
-            await import('@/features/canvas-editor/lib/auto-compose')
+          const { composePersistedPosition, canvas } = await pass
+          if (!canvas) return
           const composed = await composePersistedPosition({
             postId,
             position,
+            total: slideTotal(copySource),
             image,
-            slideCopy: getSlideCopy(position),
+            slideCopy: slideCopyAt(copySource, position),
+            identity: canvas.identity,
+            doc: canvas.docs.get(position) ?? null,
           })
           if (composed) onImage(composed)
         } catch (err) {
@@ -71,7 +113,7 @@ export function useGenerateVisuals(
         }
       })()
     },
-    [postId, onImage, getSlideCopy]
+    [postId, onImage, copySource]
   )
 
   // The post-hoc compose pass — re-baking every position after a copy edit: serial, slot feedback
@@ -120,23 +162,28 @@ export function useGenerateVisuals(
   // Copy changed on a persisted post: re-bake every position that has a doc (TECH-DEBT 2.5).
   // Fresh copy comes in explicitly — surface state, never the possibly-stale getSlideCopy.
   const recompose = useCallback(
-    (source: SlideCopySource, images: PostImage[]) =>
-      runComposePass(
+    (source: SlideCopySource, images: PostImage[]) => {
+      // One module load and one read for the whole pass — see `startComposePass`.
+      const pass = startComposePass(postId)
+      return runComposePass(
         images,
         async (image) => {
           const slideCopy = slideCopyAt(source, image.position)
           if (!slideCopy) return null
-          const { recomposePersistedPosition } =
-            await import('@/features/canvas-editor/lib/auto-compose')
+          const { recomposePersistedPosition, canvas } = await pass
+          if (!canvas) return null
           return recomposePersistedPosition({
             postId,
             position: image.position,
             baseImagePath: image.storagePath,
             slideCopy,
+            identity: canvas.identity,
+            doc: canvas.docs.get(image.position) ?? null,
           })
         },
         'Text on the visuals may be outdated — open a slide in the editor to refresh it.'
-      ),
+      )
+    },
     [postId, runComposePass]
   )
 
@@ -146,6 +193,10 @@ export function useGenerateVisuals(
       if (fresh.length === 0) return
       setGeneratingPositions((current) => [...current, ...fresh])
 
+      // Started here, not awaited here: it runs alongside the image generations, and each compose
+      // awaits it as its own image lands. One read for the run instead of one per slide.
+      const pass = startComposePass(postId)
+
       let failures = 0
       await Promise.all(
         fresh.map(async (position) => {
@@ -153,7 +204,7 @@ export function useGenerateVisuals(
           try {
             const image = await requestVisual(postId, position)
             onImage(image)
-            composeTail(position, image)
+            composeTail(position, image, pass)
           } catch (err) {
             failures += 1
             console.error(`[use-generate-visuals] position ${position} failed:`, err)

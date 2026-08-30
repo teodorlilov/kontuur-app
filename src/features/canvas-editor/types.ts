@@ -1,6 +1,7 @@
 import type { CanvasDoc } from '@/types/canvas'
 import type { PostImage } from '@/types/api'
 import type { SlideText } from '@/types/slide'
+import type { ColorScheme } from '@/lib/visual/color-scheme'
 
 /** The editor's exclusive interaction modes; 'edit' is normal layer editing. */
 /**
@@ -26,7 +27,12 @@ export interface BrushStroke {
  */
 export type EditorTarget =
   | { kind: 'post'; postId: string }
-  | { kind: 'draft'; clientId: string; draftId: string }
+  /**
+   * A draft carries its colour pair, because nothing on the server can look it up — a draft has no
+   * row until approve. A post does not need to: the route reads its stored pair, which is the
+   * authoritative copy and cannot be stale the way a prop can.
+   */
+  | { kind: 'draft'; clientId: string; draftId: string; scheme?: ColorScheme }
 
 /** The copy that seeds a first-time doc: a carousel slide's fields, or a single post's caption. */
 export type SlideCopy =

@@ -18,7 +18,7 @@ import { slideCopyAt } from '@/features/canvas-editor/lib/slide-copy'
 import type { EditorSlide, EditorTarget } from '@/features/canvas-editor/types'
 import { VisualFrame } from './visual-frame'
 import { updateSlideField } from '@/components/posts/slides-edit'
-import type { DraftVisual } from '@/lib/visual/draft-visuals'
+import { schemeOf, type DraftVisual } from '@/lib/visual/draft-visuals'
 import type { CarouselSlide, PostImage } from '@/types/api'
 import type { PostData } from '@/types/post'
 
@@ -352,7 +352,17 @@ export function WorkColumn({
         <CanvasEditor
           // The editor's save path follows the target kind: draft targets fire
           // onSavedDraft, post targets fire onSaved — passing both is inert.
-          target={editorTarget ?? { kind: 'draft', clientId: post.client_id, draftId: post.id }}
+          // A draft carries its colour pair to the editor, because the server has no row to read it
+          // from — without it, a picture generated in the editor comes back with no ground or accent
+          // instruction while the slides beside it wear the pair.
+          target={
+            editorTarget ?? {
+              kind: 'draft',
+              clientId: post.client_id,
+              draftId: post.id,
+              ...schemeOf(visuals),
+            }
+          }
           slides={editorSlides}
           initialPosition={editingPosition}
           onSaved={onSavedImage}

@@ -15,7 +15,6 @@ import type {
  */
 export abstract class ResearchSource {
   readonly id: string
-  readonly sourceType: string
   readonly label: string
   readonly url: string
   readonly config: Record<string, unknown>
@@ -24,7 +23,6 @@ export abstract class ResearchSource {
 
   constructor(row: ClientSourceRow) {
     this.id = row.id
-    this.sourceType = row.type
     this.label = row.label
     this.url = row.url
     this.config = row.config

@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { colorSchemeSchema } from '@/lib/visual/identity-schema'
 
 /**
  * Zod schemas for the canvas editor's own route boundaries.
@@ -66,6 +67,25 @@ const assetTargetSchema = z.object({
 export const generateBackgroundSchema = assetTargetSchema.extend({
   slideCopy: slideCopySchema.nullable().optional(),
   direction: z.string().trim().max(MAX_DIRECTION_CHARS).optional(),
+  /**
+   * Which slide of how many. Sent because the server cannot know it — and because it was faked
+   * before: the route hardcoded `(1, 3)`, which `slideRole` classifies as QUIET, so every picture
+   * generated from the editor was briefed as "a restrained, minimal take, ONE small supporting
+   * subject" while the comment above the call claimed it was asking for a richly detailed one.
+   */
+  position: z.number().int().min(0).optional(),
+  total: z.number().int().min(1).optional(),
+  /** A draft's colour pair. A post's is read from its row instead — see `EditorTarget`. */
+  scheme: colorSchemeSchema.optional(),
+  /**
+   * What separates one press of Generate from the next.
+   *
+   * The server hashes it to pick a framing and a treatment, so two requests carrying the same value
+   * get the same brief. The editor sends its slide's background plus a press counter; it used to
+   * send the background alone, which does not change until a candidate is PICKED — so generating
+   * three options to compare produced three takes on one brief.
+   */
+  nonce: z.string().trim().max(1024).optional(),
 })
 
 export type GenerateBackgroundBody = z.infer<typeof generateBackgroundSchema>

@@ -1,8 +1,18 @@
 import type { CanvasBackgroundRef, CanvasDoc, CanvasTextNode, CanvasTextRole } from '@/types/canvas'
 import { isTextNode } from './doc-nodes'
-import { splitHero } from './lockups'
+import {
+  applyLockup,
+  headlineOverridden,
+  lockupBlock,
+  lockupMemberIds,
+  slideCopy,
+  splitHero,
+  LOCKUPS,
+  type LockupContext,
+} from './lockups'
+import { variantIndex, type VariationKey } from '@/lib/visual/variation'
 import type { Palette } from '@/types/visual'
-import { getBrandStyle } from '@/lib/visual/brand-styles'
+import { fontsFor, type BrandFontChoice } from '@/lib/visual/brand-styles'
 import { clampAtWordBoundary, sanitizePromptText } from '@/lib/visual/prompt'
 import { CANVAS_DOC_VERSION, CANVAS_HEIGHT, CANVAS_WIDTH } from './constants'
 import type { SlideText } from '@/types/slide'
@@ -30,6 +40,10 @@ export function captionHook(caption: string | null | undefined): string {
 export interface SeedIdentity {
   palette: Palette
   style?: string
+  /** The client's name, for the `quote` lockup's byline. Absent → that lockup sets no attribution. */
+  clientName?: string
+  /** The client's own type pairing, overriding the style's. Absent = the style decides. */
+  fonts?: BrandFontChoice
 }
 
 interface SeedInput {
@@ -39,6 +53,11 @@ interface SeedInput {
   slide?: SlideText
   /** Single-post caption; its hook becomes the one seeded headline. */
   caption?: string | null
+  /**
+   * Which slide of which post this is. Present → the type gets a designed layout chosen from the
+   * lockup catalogue; absent → the plain fixed geometry below.
+   */
+  variation?: VariationKey
 }
 
 /**
@@ -52,8 +71,9 @@ interface SeedInput {
  * measurement of the art, which is a better answer than washing every slide by default.
  */
 export function seedCanvasDoc(input: SeedInput): CanvasDoc {
-  const { identity, background, slide, caption } = input
-  const style = getBrandStyle(identity.style)
+  const { identity, background, slide, caption, variation } = input
+  // The client's pairing where they have one, else their style's.
+  const fonts = fontsFor(identity)
   const headlineText = slide ? sanitizePromptText(slide.headline) : captionHook(caption)
   const bodyText = slide ? sanitizePromptText(slide.body) : ''
   const nodes: CanvasTextNode[] = []
@@ -64,11 +84,11 @@ export function seedCanvasDoc(input: SeedInput): CanvasDoc {
       kind: 'text',
       role: 'headline',
       text: headlineText,
-      ...(style.fonts.headlineUppercase ? { uppercase: true } : {}),
+      ...(fonts.headlineUppercase ? { uppercase: true } : {}),
       x: TEXT_X,
       y: HEADLINE_Y,
       width: TEXT_WIDTH,
-      fontFamily: style.fonts.display,
+      fontFamily: fonts.display,
       fontSize: HEADLINE_SIZE,
       fontWeight: 700,
       fill: identity.palette.ink,
@@ -85,7 +105,7 @@ export function seedCanvasDoc(input: SeedInput): CanvasDoc {
       x: TEXT_X,
       y: BODY_Y,
       width: TEXT_WIDTH,
-      fontFamily: style.fonts.body,
+      fontFamily: fonts.body,
       fontSize: BODY_SIZE,
       fontWeight: 400,
       fill: identity.palette.ink,
@@ -94,7 +114,7 @@ export function seedCanvasDoc(input: SeedInput): CanvasDoc {
     })
   }
 
-  return {
+  const doc: CanvasDoc = {
     version: CANVAS_DOC_VERSION,
     canvas: { w: CANVAS_WIDTH, h: CANVAS_HEIGHT },
     background,
@@ -102,6 +122,45 @@ export function seedCanvasDoc(input: SeedInput): CanvasDoc {
     backdrop: { enabled: false, color: identity.palette.surface, opacity: 1 },
     nodes,
   }
+  if (!variation || nodes.length === 0) return doc
+
+  return dressInLockup(
+    doc,
+    {
+      palette: identity.palette,
+      fonts,
+      slide: { position: variation.position },
+      ...(identity.clientName ? { brandName: identity.clientName } : {}),
+    },
+    variation
+  )
+}
+
+/**
+ * Lay the seeded copy out in a designed lockup instead of the flat geometry above.
+ *
+ * The catalogue has always held sixteen compositions and, until now, was reachable only by opening
+ * the editor and clicking — so every slide the app generated on its own wore the same margins, the
+ * same sizes and the same two faces. Most posts are published without the editor ever being opened,
+ * which made "sixteen layouts" true of the product and false of its output.
+ *
+ * Candidates are filtered through `lockupBlock`, the catalogue's own answer to "can this lockup hold
+ * this copy" — it covers both the Cyrillic script gate and the per-slot capacity, and asking either
+ * question again here is how the picker and apply-to-all once came to disagree. If nothing fits, the
+ * flat geometry stands: it has no capacity limit, which is exactly what makes it the right fallback.
+ */
+function dressInLockup(doc: CanvasDoc, ctx: LockupContext, variation: VariationKey): CanvasDoc {
+  const copy = slideCopy(doc)
+  const candidates = LOCKUPS.filter((lockup) => {
+    const blocked = lockupBlock(lockup, ctx, copy)
+    return !blocked.wrongScript && !blocked.tooMuchCopy
+  })
+  if (candidates.length === 0) return doc
+
+  const chosen = candidates[variantIndex(variation, candidates.length, 'lockup')]
+  if (!chosen) return doc
+  const ids = lockupMemberIds(doc, chosen.id, ctx, () => crypto.randomUUID())
+  return applyLockup(doc, chosen.id, ctx, ids)
 }
 
 /**
@@ -127,10 +186,10 @@ export function applyCopyToDoc(
    * from different sentences, and the recompose bakes and publishes it without a word of warning.
    */
   const heroSplit = doc.nodes.some((node) => isTextNode(node) && node.role === 'hero')
-  const keepHeadline = doc.nodes.some(
-    (node) =>
-      isTextNode(node) && (node.role === 'hero' || node.role === 'headline') && node.textOverridden
-  )
+  // The catalogue's own predicate, not a second copy of it. Both halves of a hero split answer
+  // together — which is the whole point of the paragraph above — and two independently maintained
+  // versions of "together" is exactly how they would come to disagree.
+  const keepHeadline = headlineOverridden(doc)
   const split = heroSplit ? splitHero(headline) : { hero: '', rest: headline }
   const nodes = doc.nodes.map((node) => {
     if (!isTextNode(node)) return node
@@ -146,9 +205,9 @@ export function applyCopyToDoc(
   return { ...doc, nodes }
 }
 
-/** A fresh text node for the editor's "Add text" button, in the style's body font. */
+/** A fresh text node for the editor's "Add text" button, in the identity's body font. */
 export function createTextNode(role: CanvasTextRole, identity: SeedIdentity): CanvasTextNode {
-  const style = getBrandStyle(identity.style)
+  const fonts = fontsFor(identity)
   return {
     id: crypto.randomUUID(),
     kind: 'text',
@@ -157,7 +216,7 @@ export function createTextNode(role: CanvasTextRole, identity: SeedIdentity): Ca
     x: TEXT_X,
     y: CANVAS_HEIGHT / 2,
     width: TEXT_WIDTH,
-    fontFamily: style.fonts.body,
+    fontFamily: fonts.body,
     fontSize: BODY_SIZE,
     fontWeight: 400,
     fill: identity.palette.ink,

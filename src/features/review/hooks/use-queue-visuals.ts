@@ -4,8 +4,7 @@ import { useCallback } from 'react'
 import { toast } from '@/components/ui/toast'
 import { mapImageRow } from '@/features/publishing/lib/map-image-row'
 import { useGenerateVisuals } from '@/features/publishing/hooks/use-generate-visuals'
-import { slideCopyAt, type SlideCopySource } from '@/features/canvas-editor/lib/slide-copy'
-import type { SlideCopy } from '@/features/canvas-editor/types'
+import type { SlideCopySource } from '@/features/canvas-editor/lib/slide-copy'
 import type { PostImage } from '@/types/api'
 import type { PostImageRow } from '@/types/index'
 
@@ -22,15 +21,10 @@ interface UseQueueVisualsOptions {
  * shared recompose pass.
  */
 export function useQueueVisuals({ postId, copySource, onImage }: UseQueueVisualsOptions) {
-  const getSlideCopy = useCallback(
-    (position: number): SlideCopy | null => (copySource ? slideCopyAt(copySource, position) : null),
-    [copySource]
-  )
-
   const { generatingPositions, composingPositions, generate, recompose } = useGenerateVisuals(
     postId,
     onImage,
-    getSlideCopy
+    copySource
   )
 
   const replaceImage = useCallback(

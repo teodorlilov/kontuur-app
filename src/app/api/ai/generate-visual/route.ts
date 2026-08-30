@@ -8,7 +8,9 @@ import {
   draftVisualPrefix,
 } from '@/features/publishing/lib/storage'
 import { slideTextBlock } from '@/lib/visual/prompt'
-import { generateVisual } from '@/lib/visual/generate-visual'
+import { fetchIdentityForGeneration, generateVisual } from '@/lib/visual/generate-visual'
+import { resolveScheme } from '@/lib/visual/post-color'
+import { totalVisualSlots } from '@/lib/visual/visual-backlog'
 import { deleteDraftVisualsSchema, generateDraftVisualSchema } from '@/features/generate/schemas'
 
 // One gpt-image-2 generation (~52s) + download + storage upload per request.
@@ -45,14 +47,49 @@ export async function POST(request: Request) {
   }
 
   try {
-    const visual = await generateVisual({ clientId: body.clientId, textBlock })
+    // ONE read of the client's kit for the whole generation — the scheme and the prompt both need it.
+    const identity = await fetchIdentityForGeneration(body.clientId)
+
+    // How this draft gets its colours, in three cases:
+    //
+    //  - FIRST generation of a batch — `runBase` places the run, `runIndex` walks along it. The base
+    //    must be shared by the whole batch: passing the per-draft id instead left the offset doing
+    //    nothing measurable (34.1% of three-draft runs repeated a scheme, against 34.0% with no
+    //    offset at all), because shifting one independent hash by a constant leaves it independent.
+    //  - REGENERATE — the surface sends the pair back and it short-circuits the pick, the draft-side
+    //    equivalent of reading `posts.visual_ground`. Re-deriving would land on offset 0 while the
+    //    first generation used the run offset, recolouring one slide away from its own siblings.
+    //  - A LONE retry after a failure — no batch to spread against, so the draft id places it.
+    //
+    // The answer rides back on the response so approve can carry it onto the post.
+    const scheme = await resolveScheme({
+      clientId: body.clientId,
+      identity,
+      base: body.runBase ?? body.draftId,
+      ...(body.scheme ? { stored: body.scheme } : {}),
+      offset: body.runIndex ?? 0,
+    })
+
+    const visual = await generateVisual({
+      identity,
+      textBlock,
+      scheme,
+      variation: {
+        subject: body.draftId,
+        position: body.position,
+        // The same count the persisted path and the cron use. `parseSlides` filters an array as
+        // happily as it parses a blob, so an already-parsed `slides` goes straight in.
+        total: totalVisualSlots({ post_type: body.postType, slides_json: body.slides }),
+        nonce: body.previousStoragePath ?? '',
+      },
+    })
     const { publicUrl, storagePath } = await uploadDraftVisual(
       visual.buffer,
       body.clientId,
       body.draftId,
       body.position
     )
-    return NextResponse.json({ publicUrl, storagePath })
+    return NextResponse.json({ publicUrl, storagePath, scheme })
   } catch (err) {
     console.error('[generate-visual] draft generation failed:', err)
     const message = err instanceof Error ? err.message : 'Visual generation failed'

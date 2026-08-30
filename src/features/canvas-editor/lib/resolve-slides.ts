@@ -49,17 +49,23 @@ export interface ResolvedSlide {
 export function resolveSlideDocs(
   slides: EditorSlide[],
   storedDoc: (slide: EditorSlide) => CanvasDoc | null,
-  identity: SeedIdentity
+  identity: SeedIdentity,
+  /** The post or draft these slides belong to — what keys the lockup a reseeded slide gets. */
+  subject: string
 ): Map<number, ResolvedSlide> {
   return new Map(
-    slides.map((slide) => [slide.position, resolveSlide(slide, storedDoc(slide), identity)])
+    slides.map((slide) => [
+      slide.position,
+      resolveSlide(slide, storedDoc(slide), identity, { subject, total: slides.length }),
+    ])
   )
 }
 
 function resolveSlide(
   slide: EditorSlide,
   stored: CanvasDoc | null,
-  identity: SeedIdentity
+  identity: SeedIdentity,
+  run: { subject: string; total: number }
 ): ResolvedSlide {
   if (stored) {
     const doc = resolveDocForImage(stored, slide.image)
@@ -74,6 +80,19 @@ function resolveSlide(
       identity,
       background: { ...slide.image },
       ...copyFields(slide.slideCopy),
+      // WITH a variation, so a slide reseeded in the editor is dressed in a lockup like one seeded
+      // anywhere else. Without it this path fell through to the flat fixed geometry, so opening a
+      // doc-less slide showed a plainer layout than auto-compose had already produced for its
+      // siblings — and saving persisted that difference.
+      //
+      // Keyed on the slide's own image, so the layout is stable for as long as the picture is: the
+      // editor reseeds on every open, and a key that moved would redress the slide each time.
+      variation: {
+        subject: run.subject,
+        position: slide.position,
+        total: run.total,
+        nonce: slide.image.storagePath,
+      },
     }),
   }
 }

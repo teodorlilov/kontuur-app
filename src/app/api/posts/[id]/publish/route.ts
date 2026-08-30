@@ -1,6 +1,6 @@
 import { NextResponse, after } from 'next/server'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
-import { verifyPostOwnership } from '@/lib/auth/helpers'
+import { fetchOwnedPost } from '@/lib/auth/helpers'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import {
   PUBLISHABLE_POST_COLUMNS,
@@ -29,7 +29,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
   const auth = await resolveAuth()
   if (!auth.ok) return auth.response
 
-  const ownership = await verifyPostOwnership(auth.supabase, postId, auth.agencyId)
+  const ownership = await fetchOwnedPost(auth.supabase, postId, auth.agencyId)
   if (!ownership) return NextResponse.json({ error: 'Post not found' }, { status: 404 })
 
   const admin = createAdminSupabaseClient()

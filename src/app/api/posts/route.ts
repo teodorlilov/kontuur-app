@@ -9,6 +9,7 @@ import { insertCanvasDocs } from '@/lib/canvas/doc-store'
 import { POST_COLUMNS } from '@/lib/queries/select-columns'
 import { draftColumns } from '@/lib/generation/draft-columns'
 import { isValidPostPlatform } from '@/lib/validation'
+import { colorSchemeSchema } from '@/lib/visual/identity-schema'
 import type { CanvasDoc } from '@/types/canvas'
 
 /** List the agency's posts, filterable by status, client and scheduled window. */
@@ -109,6 +110,10 @@ const createPostSchema = z.object({
   source_excerpt: z.string().nullable().optional(),
   client_source_id: z.string().nullable().optional(),
   pillar: z.string().nullable().optional(),
+  /** The colour pair the wizard generated this draft's art on. Carried over so the post owns the
+   *  colours its images already wear, rather than picking a fresh pair on the first regenerate. */
+  visual_ground: colorSchemeSchema.shape.ground.optional(),
+  visual_accent: colorSchemeSchema.shape.accent.optional(),
   /** The AI's own text as generated, sent by the wizard so the pre-insert human
    *  edit stays diffable — draftColumns coalesces these ahead of the (already
    *  edited) caption/slides. */
@@ -330,6 +335,8 @@ export async function POST(request: Request) {
     priority: body.priority ?? false,
     was_rewritten: body.was_rewritten ?? false,
     rewrite_count: body.rewrite_count ?? 0,
+    visual_ground: body.visual_ground ?? null,
+    visual_accent: body.visual_accent ?? null,
   }
 
   const { data: post, error } = await supabase

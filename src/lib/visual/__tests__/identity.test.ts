@@ -82,7 +82,8 @@ describe('withPalette', () => {
   })
 
   it('is a plain swap when no description was stored yet', () => {
-    expect(withPalette(buildDefaultIdentity(), TAN)).toEqual({
+    const bare: VisualIdentity = { palette: DEFAULT_PALETTE, style: DEFAULT_BRAND_STYLE_ID }
+    expect(withPalette(bare, TAN)).toEqual({
       palette: TAN,
       style: DEFAULT_BRAND_STYLE_ID,
     })

@@ -1373,22 +1373,17 @@ export type Database = {
       }
       posts: {
         Row: {
-          brand_kit_version: number | null
           caption: string | null
           client_id: string
           client_source_id: string | null
           created_at: string
-          design_json: Json | null
-          design_overrides: Json | null
           edited_at: string | null
-          format: string
           generated_caption: string | null
           generated_slides_json: Json | null
           id: string
           ig_account_id: string | null
           ig_creation_id: string | null
           ig_media_id: string | null
-          image_url: string | null
           pillar: string | null
           platform: string
           post_type: string
@@ -1408,27 +1403,24 @@ export type Database = {
           status: string
           topic_summary: string | null
           validation_json: Json | null
+          visual_accent: string | null
+          visual_ground: string | null
           visuals_attempted_at: string | null
           visuals_attempts: number
           was_rewritten: boolean
         }
         Insert: {
-          brand_kit_version?: number | null
           caption?: string | null
           client_id: string
           client_source_id?: string | null
           created_at?: string
-          design_json?: Json | null
-          design_overrides?: Json | null
           edited_at?: string | null
-          format?: string
           generated_caption?: string | null
           generated_slides_json?: Json | null
           id?: string
           ig_account_id?: string | null
           ig_creation_id?: string | null
           ig_media_id?: string | null
-          image_url?: string | null
           pillar?: string | null
           platform: string
           post_type?: string
@@ -1448,27 +1440,24 @@ export type Database = {
           status?: string
           topic_summary?: string | null
           validation_json?: Json | null
+          visual_accent?: string | null
+          visual_ground?: string | null
           visuals_attempted_at?: string | null
           visuals_attempts?: number
           was_rewritten?: boolean
         }
         Update: {
-          brand_kit_version?: number | null
           caption?: string | null
           client_id?: string
           client_source_id?: string | null
           created_at?: string
-          design_json?: Json | null
-          design_overrides?: Json | null
           edited_at?: string | null
-          format?: string
           generated_caption?: string | null
           generated_slides_json?: Json | null
           id?: string
           ig_account_id?: string | null
           ig_creation_id?: string | null
           ig_media_id?: string | null
-          image_url?: string | null
           pillar?: string | null
           platform?: string
           post_type?: string
@@ -1488,6 +1477,8 @@ export type Database = {
           status?: string
           topic_summary?: string | null
           validation_json?: Json | null
+          visual_accent?: string | null
+          visual_ground?: string | null
           visuals_attempted_at?: string | null
           visuals_attempts?: number
           was_rewritten?: boolean

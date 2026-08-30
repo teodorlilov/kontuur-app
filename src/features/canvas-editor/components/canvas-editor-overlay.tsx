@@ -27,7 +27,7 @@ import { isImageNode, isTextNode, textNodes } from '@/lib/canvas/doc-nodes'
 import { DEFAULT_BACKGROUND_TRANSFORM, zoomBackgroundTo } from '@/lib/canvas/reposition'
 import { createShapeNode } from '@/lib/canvas/elements'
 import { createTextNode } from '@/lib/canvas/seed-doc'
-import { getBrandStyle } from '@/lib/visual/brand-styles'
+import { fontsFor } from '@/lib/visual/brand-styles'
 import type {
   CanvasBackdrop,
   CanvasDoc,
@@ -154,7 +154,7 @@ function CanvasEditorOverlay(props: CanvasEditorProps) {
   const { identity } = slidesState
   const families = useMemo(() => {
     if (!identity) return []
-    const style = getBrandStyle(identity.style)
+    const fonts = fontsFor(identity)
     // Every slide's families, not just the active one: any slide can be exported by a Save, and a
     // family that is not loaded bakes as a system face.
     const docFamilies = [...slidesState.docsByPosition.values()].flatMap((doc) =>
@@ -163,7 +163,7 @@ function CanvasEditorOverlay(props: CanvasEditorProps) {
     // Sorted, because `useEditorFonts` keys readiness on the joined list: in node order, merely
     // restacking two text layers reorders it, which reads as a new set and flips fontsReady
     // false for a frame — unmounting the stage over a z-order change.
-    return [...new Set([...docFamilies, style.fonts.display, style.fonts.body])].sort()
+    return [...new Set([...docFamilies, fonts.display, fonts.body])].sort()
   }, [identity, slidesState.docsByPosition])
 
   // The client's colours plus their brand pairing — everything a lockup needs to resolve itself.
@@ -173,14 +173,12 @@ function CanvasEditorOverlay(props: CanvasEditorProps) {
       identity
         ? {
             palette: identity.palette,
-            fonts: getBrandStyle(identity.style).fonts,
-            slide: {
-              position: slidesState.activePosition,
-              total: slidesState.positions.length,
-            },
+            fonts: fontsFor(identity),
+            slide: { position: slidesState.activePosition },
+            ...(identity.clientName ? { brandName: identity.clientName } : {}),
           }
         : null,
-    [identity, slidesState.activePosition, slidesState.positions.length]
+    [identity, slidesState.activePosition]
   )
 
   const fontsReady = useEditorFonts(families)
@@ -288,6 +286,7 @@ function CanvasEditorOverlay(props: CanvasEditorProps) {
     jobs,
     goToSlide,
     activePosition: slidesState.activePosition,
+    slideTotal: slidesState.positions.length,
     slideCopy,
     docState: slidesState,
     selection,
@@ -352,7 +351,6 @@ function CanvasEditorOverlay(props: CanvasEditorProps) {
   const applyLockupEverywhere = useCallback(
     (id: LockupId) => {
       if (!lockupCtx) return
-      const total = slidesState.positions.length
       const lockup = getLockup(id)
       if (!lockup) return
 
@@ -370,7 +368,7 @@ function CanvasEditorOverlay(props: CanvasEditorProps) {
       for (const position of slidesState.positions) {
         const doc = slidesState.docsByPosition.get(position)
         if (!doc) continue
-        const slideCtx = { ...lockupCtx, slide: { position, total } }
+        const slideCtx = { ...lockupCtx, slide: { position } }
         const block = lockupBlock(lockup, slideCtx, logicalCopy(doc))
         const room = doc.nodes.length + lockupNodeDelta(doc, id, slideCtx) <= MAX_NODES
         const reason: SkipReason | null = block.wrongScript
@@ -391,7 +389,7 @@ function CanvasEditorOverlay(props: CanvasEditorProps) {
       const idsByPosition = new Map(
         targets.map((position) => {
           const doc = slidesState.docsByPosition.get(position)
-          const slideCtx = { ...lockupCtx, slide: { position, total } }
+          const slideCtx = { ...lockupCtx, slide: { position } }
           return [
             position,
             doc ? lockupMemberIds(doc, id, slideCtx, () => crypto.randomUUID()) : [],
@@ -402,7 +400,7 @@ function CanvasEditorOverlay(props: CanvasEditorProps) {
         const next = applyLockup(
           doc,
           id,
-          { ...lockupCtx, slide: { position, total } },
+          { ...lockupCtx, slide: { position } },
           idsByPosition.get(position) ?? []
         )
         // Each slide is resolved against ITS OWN art. `decodedImage` is a synchronous cache read,

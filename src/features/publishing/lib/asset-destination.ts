@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { verifyPostOwnership, type SupabaseServerClient } from '@/lib/auth/helpers'
+import { fetchOwnedPost, type SupabaseServerClient } from '@/lib/auth/helpers'
 import { fetchClientById } from '@/lib/queries/db'
 import { uploadDraftAsset, uploadPostImage, type UploadResult } from './storage'
 
@@ -37,6 +37,22 @@ type AssetDestination =
       ok: true
       /** The owning client — source-path guards check against this, never a caller-supplied id. */
       clientId: string
+      /**
+       * The VERIFIED post this asset belongs to, or null for a draft target.
+       *
+       * Non-null means ownership passed for exactly this id, so it is the one safe to write colours
+       * onto — a route reaching for the caller-supplied `postId` instead would be trusting a field
+       * this resolver exists to check.
+       */
+      postId: string | null
+      /**
+       * The colour pair a POST target already wears, from the row the ownership check read.
+       *
+       * Null for a draft target, which has no row — that caller sends its pair on the request
+       * instead. Carried here so the generate route does not query the same post a second time for
+       * two columns the check has already fetched.
+       */
+      storedScheme: { ground: string | null; accent: string | null } | null
       upload: (file: Buffer, contentType: string, fileName: string) => Promise<UploadResult>
     }
   | { ok: false; status: 400 | 404; error: string }
@@ -52,12 +68,14 @@ export async function resolveAssetDestination(
   target: AssetTarget
 ): Promise<AssetDestination> {
   if (target.postId) {
-    const post = await verifyPostOwnership(supabase, target.postId, agencyId)
+    const post = await fetchOwnedPost(supabase, target.postId, agencyId)
     if (!post) return { ok: false, status: 404, error: 'Post not found' }
     const { postId } = target
     return {
       ok: true,
       clientId: post.client_id,
+      postId,
+      storedScheme: { ground: post.visual_ground, accent: post.visual_accent },
       upload: (file, contentType, fileName) =>
         uploadPostImage(file, fileName, contentType, post.client_id, postId),
     }
@@ -69,6 +87,9 @@ export async function resolveAssetDestination(
     return {
       ok: true,
       clientId,
+      postId: null,
+      // A draft has no row to read a pair from; the caller sends one when it has it.
+      storedScheme: null,
       upload: (file, contentType, fileName) =>
         uploadDraftAsset(file, contentType, clientId, draftId, fileName),
     }

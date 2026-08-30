@@ -1,16 +1,12 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
-import { verifyPostOwnership } from '@/lib/auth/helpers'
-import {
-  uploadPostImage,
-  deletePostImage,
-  replaceExistingImage,
-} from '@/features/publishing/lib/storage'
+import { fetchOwnedPost } from '@/lib/auth/helpers'
+import { uploadPostImage, deletePostImage, putPostImage } from '@/features/publishing/lib/storage'
 import { validateImageFile } from '@/features/publishing/lib/validate-image-file'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { toJpeg } from '@/lib/visual/to-jpeg'
-import { POST_IMAGE_COLUMNS, POST_IMAGE_STORAGE_COLUMNS } from '@/lib/queries/select-columns'
+import { POST_IMAGE_STORAGE_COLUMNS } from '@/lib/queries/select-columns'
 
 const deleteImageSchema = z.object({ imageId: z.uuid() })
 
@@ -20,7 +16,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const auth = await resolveAuth()
   if (!auth.ok) return auth.response
 
-  const post = await verifyPostOwnership(auth.supabase, postId, auth.agencyId)
+  const post = await fetchOwnedPost(auth.supabase, postId, auth.agencyId)
   if (!post) return NextResponse.json({ error: 'Post not found' }, { status: 404 })
 
   const formData = await request.formData()
@@ -43,24 +39,22 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   )
 
   const admin = createAdminSupabaseClient()
-  await replaceExistingImage(admin, postId, position)
-
-  const { data: image, error } = await admin
-    .from('post_images')
-    .insert({
-      post_id: postId,
-      public_url: publicUrl,
-      storage_path: storagePath,
+  try {
+    const image = await putPostImage(admin, {
+      postId,
       position,
-      file_name: jpeg.fileName,
-      file_size: jpeg.buffer.byteLength,
-      content_type: jpeg.contentType,
+      publicUrl,
+      storagePath,
+      fileName: jpeg.fileName,
+      fileSize: jpeg.buffer.byteLength,
+      contentType: jpeg.contentType,
     })
-    .select(POST_IMAGE_COLUMNS)
-    .single()
-
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ image })
+    return NextResponse.json({ image })
+  } catch (err) {
+    console.error('[images] upload failed:', err)
+    const message = err instanceof Error ? err.message : 'Could not save the image'
+    return NextResponse.json({ error: message }, { status: 500 })
+  }
 }
 
 /** Delete a post image by its ID. */
@@ -69,7 +63,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
   const auth = await resolveAuth()
   if (!auth.ok) return auth.response
 
-  const post = await verifyPostOwnership(auth.supabase, postId, auth.agencyId)
+  const post = await fetchOwnedPost(auth.supabase, postId, auth.agencyId)
   if (!post) return NextResponse.json({ error: 'Post not found' }, { status: 404 })
 
   const parsed = deleteImageSchema.safeParse(await request.json().catch(() => null))

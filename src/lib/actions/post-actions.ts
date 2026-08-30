@@ -5,7 +5,7 @@ import { revalidateTag } from 'next/cache'
 import { validateInstagramCaption } from '@/features/publishing/lib/validate-caption'
 import { z } from 'zod'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
-import { resolveActionAuth, verifyPostOwnership, verifyPostsOwnership } from '@/lib/auth/helpers'
+import { resolveActionAuth, fetchOwnedPost, verifyPostsOwnership } from '@/lib/auth/helpers'
 import { parseStoredValidation } from '@/lib/validation/stored-validation-schema'
 import { parsePostUpdate, type UpdatePostInput } from '@/lib/validation/post-update-schema'
 import { DISCARD_REASONS } from '@/lib/validation'
@@ -37,7 +37,7 @@ export async function updatePost(postId: string, fields: UpdatePostInput): Promi
   if (!auth.ok) return { ok: false, error: auth.error }
   const { supabase, agencyId } = auth
 
-  const post = await verifyPostOwnership(supabase, postId, agencyId)
+  const post = await fetchOwnedPost(supabase, postId, agencyId)
   if (!post) return { ok: false, error: 'Post not found' }
 
   const { error } = await supabase.from('posts').update(parsed.updates).eq('id', postId)
@@ -53,7 +53,7 @@ export async function resolveChangeRequest(postId: string): Promise<ActionResult
   if (!auth.ok) return { ok: false, error: auth.error }
   const { supabase, agencyId } = auth
 
-  const post = await verifyPostOwnership(supabase, postId, agencyId)
+  const post = await fetchOwnedPost(supabase, postId, agencyId)
   if (!post) return { ok: false, error: 'Post not found' }
 
   const { error } = await supabase
@@ -87,7 +87,7 @@ export async function savePostCopy(
   if (!auth.ok) return { ok: false, error: auth.error }
   const { supabase, agencyId } = auth
 
-  const post = await verifyPostOwnership(supabase, postId, agencyId)
+  const post = await fetchOwnedPost(supabase, postId, agencyId)
   if (!post) return { ok: false, error: 'Post not found' }
 
   const updates: Record<string, unknown> = {
@@ -125,7 +125,7 @@ export async function persistRewrite(
   if (!auth.ok) return { ok: false, error: auth.error }
   const { supabase, agencyId } = auth
 
-  const post = await verifyPostOwnership(supabase, postId, agencyId)
+  const post = await fetchOwnedPost(supabase, postId, agencyId)
   if (!post) return { ok: false, error: 'Post not found' }
 
   // A failed read here is not "no rewrites yet": treating it as 0 silently
@@ -172,7 +172,7 @@ export async function deletePost(
   if (!auth.ok) return { ok: false, error: auth.error }
   const { supabase, agencyId } = auth
 
-  const post = await verifyPostOwnership(supabase, postId, agencyId)
+  const post = await fetchOwnedPost(supabase, postId, agencyId)
   if (!post) return { ok: false, error: 'Post not found' }
 
   // Outcome telemetry: best-effort — a failed log must never block the delete.

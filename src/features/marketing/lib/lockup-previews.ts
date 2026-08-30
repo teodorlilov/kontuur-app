@@ -106,7 +106,7 @@ export function layoutsPackPreviews(): LockupPreview[] {
     // The default pairing, resolved the way every caller does — a lockup that leans on the style's
     // fonts rather than pinning its own then shows what a real client would get.
     fonts: getBrandStyle(undefined).fonts,
-    slide: { position: 2, total: 6 },
+    slide: { position: 2 },
   }
 
   return LOCKUPS.filter((lockup) => lockup.pack === 'layouts').map((lockup) => {

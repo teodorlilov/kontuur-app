@@ -1,16 +1,20 @@
 import 'server-only'
 
 import { cache } from 'react'
-import { unstable_cache } from 'next/cache'
 import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
-import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { AUTH_USER_ID_HEADER, AUTH_USER_NAME_HEADER } from '@/lib/auth/headers'
-import { getUserRecord } from '@/lib/auth/helpers'
+import { getCachedUserRecord } from '@/lib/auth/helpers'
 
-/** Cache tag for a user's agency and role. Bust it whenever either changes. */
-export const USER_RECORD_TAG = 'user-record'
+/**
+ * Re-exported from `helpers`, which owns this row.
+ *
+ * Both used to be defined here, and API routes cached the same row a SECOND time under a tag nothing
+ * ever revalidated — so removing a team member invalidated the page path and left every route
+ * resolving them to the agency they had just left. One definition, one tag, both paths.
+ */
+export { getCachedUserRecord, USER_RECORD_TAG } from '@/lib/auth/helpers'
 
 /**
  * Returns the authenticated user's id, or null.
@@ -47,27 +51,6 @@ export const getAuthUser = cache(async () => {
   } = await supabase.auth.getUser()
   return user ?? null
 })
-
-/**
- * Returns the user's DB record (agency_id, role).
- *
- * Two layers, matching lib/queries/cache.ts: `unstable_cache` persists it across requests so a
- * near-immutable row is not re-queried on every navigation, and React `cache()` dedupes the layout
- * and page within one render. The admin client is required inside `unstable_cache` — a
- * request-scoped client cannot be captured by a cross-request cache.
- *
- * Call `revalidateTag(USER_RECORD_TAG)` after anything that changes a user's agency or role.
- *
- * Caching a miss is safe because `createUserRecord` is idempotent: the layout's fallback re-runs
- * while the null is cached, finds the existing row and writes nothing.
- */
-const fetchUserRecord = unstable_cache(
-  async (userId: string) => getUserRecord(createAdminSupabaseClient(), userId),
-  ['user-record'],
-  { revalidate: 300, tags: [USER_RECORD_TAG] }
-)
-
-export const getCachedUserRecord = cache(fetchUserRecord)
 
 /**
  * Validates the current session and returns the auth context.

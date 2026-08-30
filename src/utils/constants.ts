@@ -140,16 +140,21 @@ export const WEEKDAY_OPTIONS: ReadonlyArray<{ value: string; label: string }> = 
   (label) => ({ value: label.toLowerCase(), label })
 )
 
-/** Languages a client's content can be written in. The one list — every language picker reads it. */
+/**
+ * Languages a client's content can be written in. The one list — every language picker reads it.
+ *
+ * Two, because these are the two the product actually supports end to end. `language_rules` holds
+ * rows for English and Bulgarian only, so any other language was offered in the picker and then had
+ * no writing standards behind it. The font library is the same story: it records Cyrillic coverage
+ * per family and nothing about Greek, so a Greek client could be offered faces that cannot set their
+ * copy. Offering a language the pipeline cannot serve is worse than not offering it.
+ *
+ * Removing one is safe for clients already on it: every picker wraps this in `ensureOption`, which
+ * prepends a stored value the list no longer contains rather than silently switching them.
+ */
 export const CONTENT_LANGUAGE_OPTIONS = [
   { value: 'Bulgarian', label: 'Bulgarian' },
   { value: 'English', label: 'English' },
-  { value: 'French', label: 'French' },
-  { value: 'German', label: 'German' },
-  { value: 'Greek', label: 'Greek' },
-  { value: 'Italian', label: 'Italian' },
-  { value: 'Portuguese', label: 'Portuguese' },
-  { value: 'Spanish', label: 'Spanish' },
 ] as const
 
 export const LANGUAGE_FORMALITY_OPTIONS = [

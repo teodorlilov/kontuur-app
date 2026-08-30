@@ -3,6 +3,7 @@ import type { CanvasDoc } from '@/types/canvas'
 import {
   completedDraftImages,
   countVisualsByStatus,
+  draftScheme,
   draftStoragePaths,
   type DraftVisual,
 } from '../draft-visuals'
@@ -67,6 +68,33 @@ describe('countVisualsByStatus', () => {
   it('handles undefined and empty', () => {
     expect(countVisualsByStatus(undefined)).toEqual({ failed: 0, composing: 0, done: 0 })
     expect(countVisualsByStatus([])).toEqual({ failed: 0, composing: 0, done: 0 })
+  })
+})
+
+/**
+ * A carousel wears ONE colour pair, so the answer must survive whichever slide is asked about.
+ *
+ * Both readers depend on that. Approve carries the pair onto the post; a regenerate sends it back so
+ * the route short-circuits its pick. Without the second, a reroll re-derived the pair at run offset
+ * 0 while the first generation used the draft's own offset — recolouring one slide of a carousel and
+ * leaving it disagreeing with its siblings.
+ */
+describe('draftScheme', () => {
+  const scheme = { ground: '#F8E2DD', accent: '#90311E' }
+
+  it('answers from any slide that has one', () => {
+    expect(
+      draftScheme([
+        { position: 0, status: 'generating' },
+        { ...visuals[1]!, scheme },
+      ])
+    ).toEqual(scheme)
+  })
+
+  it('is undefined before anything has generated, so the post picks its own', () => {
+    expect(draftScheme(visuals)).toBeUndefined()
+    expect(draftScheme(undefined)).toBeUndefined()
+    expect(draftScheme([])).toBeUndefined()
   })
 })
 

@@ -9,7 +9,7 @@ import { deriveColorRoles } from './extract/color-roles'
 function fallbackResult(reason: string, style: BrandStyleId): ExtractionResult {
   return {
     identity: { ...buildDefaultIdentity(), style },
-    report: { source: 'fallback', confidence: {}, fallback: { reason } },
+    report: { source: 'fallback', fallback: { reason } },
   }
 }
 
@@ -41,9 +41,6 @@ export async function extractIdentity({
     style,
     palette_description: await describePalette(palette),
   }
-  const report: ExtractionResult['report'] = {
-    source: 'website',
-    confidence: { colors: 'measured', accent: 'measured' },
-  }
+  const report: ExtractionResult['report'] = { source: 'website' }
   return { identity, report }
 }

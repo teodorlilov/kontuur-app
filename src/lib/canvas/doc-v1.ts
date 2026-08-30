@@ -2,6 +2,7 @@ import { z } from 'zod'
 import type { CanvasDoc, CanvasImageNode, CanvasNode, CanvasTextNode } from '@/types/canvas'
 import { MAX_BACKGROUND_ZOOM } from './constants'
 import { backdropFromScrim, legacyScrimSchema } from './legacy-scrim'
+import { HEX_COLOR } from '@/lib/validation'
 
 /**
  * Everything about the retired v1 doc shape, in one file so it can be deleted whole once no v1 rows
@@ -12,8 +13,7 @@ import { backdropFromScrim, legacyScrimSchema } from './legacy-scrim'
  * next save persists v2. See TECH-DEBT for the retirement condition.
  */
 
-const HEX = /^#[0-9a-fA-F]{6}$/
-const hex = z.string().regex(HEX, 'must be a #rrggbb hex colour')
+const hex = z.string().regex(HEX_COLOR, 'must be a #rrggbb hex colour')
 
 const textLayerSchemaV1 = z.object({
   id: z.string().min(1),

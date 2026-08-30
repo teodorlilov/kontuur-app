@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
 import { visualsRateLimitResponse } from '@/lib/auth/rate-limit'
-import { verifyPostOwnership } from '@/lib/auth/helpers'
+import { fetchOwnedPost } from '@/lib/auth/helpers'
 import { generatePostVisual } from '@/lib/visual/generate-post-visual'
 
 // One gpt-image-2 generation (~52s) + download + storage upload per request.
@@ -22,7 +22,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const limited = visualsRateLimitResponse(auth.userId)
   if (limited) return limited
 
-  const post = await verifyPostOwnership(auth.supabase, postId, auth.agencyId)
+  const post = await fetchOwnedPost(auth.supabase, postId, auth.agencyId)
   if (!post) return NextResponse.json({ error: 'Post not found' }, { status: 404 })
 
   let position: number

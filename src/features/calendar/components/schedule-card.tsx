@@ -1,6 +1,6 @@
 'use client'
 
-import { memo, useState, useEffect, useCallback } from 'react'
+import { memo, useState, useEffect, useCallback, useMemo } from 'react'
 import { X, ChevronLeft, ChevronRight, Copy, Mail } from 'lucide-react'
 import { cn } from '@/utils/cn'
 import { toast } from '@/components/ui/toast'
@@ -198,17 +198,14 @@ export const ScheduleCard = memo(function ScheduleCard({
     [post, onImageDeleted]
   )
 
-  const getSlideCopy = useCallback(
-    (position: number) =>
+  const copySource = useMemo(
+    () =>
       post
-        ? slideCopyAt(
-            {
-              post_type: post.post_type,
-              slides_json: post.slides_json,
-              caption: post.caption ?? null,
-            },
-            position
-          )
+        ? {
+            post_type: post.post_type,
+            slides_json: post.slides_json,
+            caption: post.caption ?? null,
+          }
         : null,
     [post]
   )
@@ -216,7 +213,7 @@ export const ScheduleCard = memo(function ScheduleCard({
   const { generatingPositions, composingPositions, generate, recompose } = useGenerateVisuals(
     post?.id ?? '',
     handleImageUploaded,
-    getSlideCopy
+    copySource
   )
   const [editingPosition, setEditingPosition] = useState<number | null>(null)
 
@@ -356,7 +353,7 @@ export const ScheduleCard = memo(function ScheduleCard({
     .map((image) => ({
       position: image.position,
       image: { publicUrl: image.publicUrl, storagePath: image.storagePath },
-      slideCopy: getSlideCopy(image.position),
+      slideCopy: copySource ? slideCopyAt(copySource, image.position) : null,
     }))
     .sort((a, b) => a.position - b.position)
   const canEditPosition =

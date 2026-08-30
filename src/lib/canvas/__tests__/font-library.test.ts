@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { BRAND_STYLES } from '@/lib/visual/brand-styles'
-import { availableFonts, FONT_LIBRARY, getFontEntry, hasCyrillic } from '../font-library'
+import { fontOptions, FONT_LIBRARY, getFontEntry, hasCyrillic } from '../font-library'
 import { editorFontsHref } from '../google-fonts'
 
 describe('FONT_LIBRARY', () => {
@@ -32,16 +32,47 @@ describe('hasCyrillic', () => {
   })
 })
 
-describe('availableFonts', () => {
+describe('fontOptions', () => {
+  const families = (input: Parameters<typeof fontOptions>[0]) =>
+    fontOptions(input).map((entry) => entry.family)
+
   it('hides Latin-only families when Cyrillic is required', () => {
-    const families = availableFonts(true).map((entry) => entry.family)
-    expect(families).not.toContain('Bebas Neue')
-    expect(families).not.toContain('Poppins')
-    expect(families).toContain('Oswald')
+    const offered = families({ requiresCyrillic: true })
+    expect(offered).not.toContain('Bebas Neue')
+    expect(offered).not.toContain('Poppins')
+    expect(offered).toContain('Oswald')
   })
 
   it('offers the full library for Latin-only text', () => {
-    expect(availableFonts(false)).toHaveLength(FONT_LIBRARY.length)
+    expect(fontOptions({ requiresCyrillic: false })).toHaveLength(FONT_LIBRARY.length)
+  })
+
+  it('narrows to the tiers a slot accepts', () => {
+    const offered = families({ requiresCyrillic: false, categories: ['sans', 'serif'] })
+    // Body copy is read at 26–44px, where a display face is the difference between a caption and a
+    // decoration — and a script is an accent, which no lockup role lands one in.
+    expect(offered).not.toContain('Bebas Neue')
+    expect(offered).not.toContain('Caveat')
+    expect(offered).toContain('Inter')
+  })
+
+  it('keeps a stored choice offered even when the filters exclude it', () => {
+    // A `<select>` whose value matches no option shows the first one instead — so dropping the
+    // stored family makes the control claim a face the posts are not set in, silently.
+    const offered = families({ requiresCyrillic: true, keep: 'Poppins' })
+    expect(offered).toContain('Poppins')
+    expect(offered).not.toContain('Bebas Neue')
+  })
+
+  it('does not let keep smuggle a family past the category filter', () => {
+    // `keep` answers the script question only. A body slot must not be handed a display face
+    // because it happens to be what is stored — that is a different repair.
+    const offered = families({
+      requiresCyrillic: true,
+      categories: ['sans'],
+      keep: 'Abril Fatface',
+    })
+    expect(offered).not.toContain('Abril Fatface')
   })
 })
 

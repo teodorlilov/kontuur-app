@@ -1,82 +1,53 @@
 import { NextResponse } from 'next/server'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
-import { verifyPostOwnership } from '@/lib/auth/helpers'
+import { fetchOwnedPost } from '@/lib/auth/helpers'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
-import { POST_CANVAS_DOC_COLUMNS, POST_IMAGE_COLUMNS } from '@/lib/queries/select-columns'
+import { POST_CANVAS_DOC_COLUMNS } from '@/lib/queries/select-columns'
 import { parseCanvasDoc, safeParseCanvasDoc } from '@/lib/canvas/doc-schema'
 import { upsertCanvasDoc } from '@/lib/canvas/doc-store'
 import type { CanvasDoc } from '@/types/canvas'
 import { fetchVisualIdentityOrDefault } from '@/lib/visual/queries'
-import {
-  deletePostImage,
-  replaceExistingImage,
-  uploadPostImage,
-} from '@/features/publishing/lib/storage'
+import { toSeedIdentity } from '@/lib/visual/identity-schema'
+import { deletePostImage, putPostImage, uploadPostImage } from '@/features/publishing/lib/storage'
 import { validateImageFile } from '@/features/publishing/lib/validate-image-file'
 
 /**
- * The canvas docs + identity a caller needs in one round trip.
+ * Every stored canvas doc for a post, plus the identity to seed the slides that have none — in ONE
+ * round trip, for every reader.
  *
- * `?position=N` answers for that one slide (`{doc, identity}`) — what the auto-compose passes want,
- * since they work a slide at a time. Omitting it answers for the whole post (`{docs, identity}`),
- * which is what the editor opens with: it carousels between slides, so a second request per slide
- * would be a waterfall the user waits through.
+ * There used to be a `?position=N` form answering for a single slide, because the compose passes
+ * work one slide at a time. That was the wrong thing to give them: a five-slide carousel meant five
+ * requests, each repeating this ownership join and this identity read to return the same answer.
+ * They now read once per pass and index by position in memory, so the per-slide form has no caller
+ * and is gone rather than kept "in case".
  */
-export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id: postId } = await params
   const auth = await resolveAuth()
   if (!auth.ok) return auth.response
 
-  const post = await verifyPostOwnership(auth.supabase, postId, auth.agencyId)
+  const post = await fetchOwnedPost(auth.supabase, postId, auth.agencyId)
   if (!post) return NextResponse.json({ error: 'Post not found' }, { status: 404 })
 
   const admin = createAdminSupabaseClient()
   // Started together, awaited together. The identity and the docs are independent reads, and the
   // editor cannot open until both land — so serialising them charged the user one round trip for
   // nothing on the one request the whole editor waits on.
-  const identityPromise = fetchVisualIdentityOrDefault(post.client_id)
-  const positionParam = new URL(request.url).searchParams.get('position')
-
-  if (positionParam === null) {
-    const [identity, { data: rows }] = await Promise.all([
-      identityPromise,
-      admin
-        .from('post_canvas_docs')
-        .select(POST_CANVAS_DOC_COLUMNS)
-        .eq('post_id', postId)
-        .order('position'),
-    ])
-    const identityBody = { palette: identity.palette, style: identity.style }
-    // A malformed/legacy row drops out of the list rather than failing the request — the editor
-    // reseeds that slide, exactly as it does for a slide that never had a doc.
-    const docs = (rows ?? []).flatMap((row) => {
-      const parsed = safeParseCanvasDoc(row.doc)
-      return parsed.success ? [{ position: row.position, doc: parsed.doc }] : []
-    })
-    return NextResponse.json({ docs, identity: identityBody })
-  }
-
-  const position = Number(positionParam)
-  if (!Number.isInteger(position) || position < 0) {
-    return NextResponse.json({ error: 'Invalid position' }, { status: 400 })
-  }
-
-  const [identity, { data: row }] = await Promise.all([
-    identityPromise,
+  const [identity, { data: rows }] = await Promise.all([
+    fetchVisualIdentityOrDefault(post.client_id),
     admin
       .from('post_canvas_docs')
       .select(POST_CANVAS_DOC_COLUMNS)
       .eq('post_id', postId)
-      .eq('position', position)
-      .single(),
+      .order('position'),
   ])
-
-  // A malformed/legacy doc reads as "no doc" — the editor reseeds instead of erroring.
-  const parsed = row ? safeParseCanvasDoc(row.doc) : null
-  return NextResponse.json({
-    doc: parsed?.success ? parsed.doc : null,
-    identity: { palette: identity.palette, style: identity.style },
+  // A malformed/legacy row drops out of the list rather than failing the request — the reader
+  // reseeds that slide, exactly as it does for a slide that never had a doc.
+  const docs = (rows ?? []).flatMap((row) => {
+    const parsed = safeParseCanvasDoc(row.doc)
+    return parsed.success ? [{ position: row.position, doc: parsed.doc }] : []
   })
+  return NextResponse.json({ docs, identity: toSeedIdentity(identity, post.client_name) })
 }
 
 interface PutFields {
@@ -117,7 +88,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
   const auth = await resolveAuth()
   if (!auth.ok) return auth.response
 
-  const post = await verifyPostOwnership(auth.supabase, postId, auth.agencyId)
+  const post = await fetchOwnedPost(auth.supabase, postId, auth.agencyId)
   if (!post) return NextResponse.json({ error: 'Post not found' }, { status: 404 })
 
   const fields = parsePutFields(await request.formData())
@@ -125,6 +96,9 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
   const { file, position, doc, baseImagePath } = fields
 
   const admin = createAdminSupabaseClient()
+  // Read once and passed to `putPostImage` below, which needs exactly this row to know which file
+  // it orphans — reading it again there was two identical queries per save, and every auto-compose
+  // triggers a save.
   const { data: current } = await admin
     .from('post_images')
     .select('storage_path')
@@ -157,23 +131,22 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
     const { error: docError } = await upsertCanvasDoc(admin, { postId, position, doc: stored })
     if (docError) return NextResponse.json({ error: docError }, { status: 500 })
 
-    // The clean background survives its own row being replaced by the flattened export.
-    await replaceExistingImage(admin, postId, position, doc.background.storagePath)
-
-    const { data: image, error } = await admin
-      .from('post_images')
-      .insert({
-        post_id: postId,
-        public_url: publicUrl,
-        storage_path: storagePath,
+    // `preserveStoragePath`: the clean background survives its own row being replaced by the
+    // flattened export — the doc still points at it, and the next save re-flattens over it.
+    const image = await putPostImage(
+      admin,
+      {
+        postId,
         position,
-        file_name: file.name,
-        file_size: file.size,
-        content_type: file.type,
-      })
-      .select(POST_IMAGE_COLUMNS)
-      .single()
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+        publicUrl,
+        storagePath,
+        fileName: file.name,
+        fileSize: file.size,
+        contentType: file.type,
+        preserveStoragePath: doc.background.storagePath,
+      },
+      current
+    )
 
     return NextResponse.json({ image })
   } catch (err) {

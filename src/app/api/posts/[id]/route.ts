@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
-import { verifyPostOwnership } from '@/lib/auth/helpers'
+import { fetchOwnedPost } from '@/lib/auth/helpers'
 import { parsePostUpdate } from '@/lib/validation/post-update-schema'
 import { POST_COLUMNS } from '@/lib/queries/select-columns'
 
@@ -41,7 +41,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
   if (!auth.ok) return auth.response
   const { supabase, agencyId } = auth
 
-  const post = await verifyPostOwnership(supabase, id, agencyId)
+  const post = await fetchOwnedPost(supabase, id, agencyId)
   if (!post) return NextResponse.json({ error: 'Post not found' }, { status: 404 })
 
   let body: unknown
@@ -77,7 +77,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
   if (!auth.ok) return auth.response
   const { supabase, agencyId } = auth
 
-  const post = await verifyPostOwnership(supabase, id, agencyId)
+  const post = await fetchOwnedPost(supabase, id, agencyId)
   if (!post) return NextResponse.json({ error: 'Post not found' }, { status: 404 })
 
   // A swallowed error here told the caller { success: true } about a row that was

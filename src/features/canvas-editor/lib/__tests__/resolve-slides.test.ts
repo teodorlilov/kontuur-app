@@ -31,14 +31,17 @@ function slide(position: number, image = CLEAN, doc?: CanvasDoc | null): EditorS
   }
 }
 
+/** The post the slides belong to — keys the lockup a reseeded slide is dressed in. */
+const SUBJECT = 'post-1'
+
 describe('resolveSlideDocs', () => {
   it('keys every slide by its own position, not by its order in the list', () => {
-    const resolved = resolveSlideDocs([slide(3), slide(0)], () => null, IDENTITY)
+    const resolved = resolveSlideDocs([slide(3), slide(0)], () => null, IDENTITY, SUBJECT)
     expect([...resolved.keys()].sort()).toEqual([0, 3])
   })
 
   it('seeds a slide that has no stored doc, from that slide’s own copy', () => {
-    const resolved = resolveSlideDocs([slide(0), slide(1)], () => null, IDENTITY)
+    const resolved = resolveSlideDocs([slide(0), slide(1)], () => null, IDENTITY, SUBJECT)
     expect(resolved.get(0)?.seeded).toBe(true)
     // Each slide seeds from ITS copy — a shared source would put slide 0's words on every slide.
     expect(textNodes(resolved.get(0)!.doc).map((node) => node.text)).toContain('Headline 0')
@@ -46,14 +49,19 @@ describe('resolveSlideDocs', () => {
   })
 
   it('keeps a stored doc rendering over its own clean background when the image is our bake', () => {
-    const resolved = resolveSlideDocs([slide(0, { ...BAKED })], () => storedDoc(), IDENTITY)
+    const resolved = resolveSlideDocs(
+      [slide(0, { ...BAKED })],
+      () => storedDoc(),
+      IDENTITY,
+      SUBJECT
+    )
     expect(resolved.get(0)?.seeded).toBe(false)
     expect(resolved.get(0)?.doc.background).toEqual(CLEAN)
     expect(resolved.get(0)?.doc.backgroundTransform).toBeDefined()
   })
 
   it('rebinds a stored doc when the image changed underneath it', () => {
-    const resolved = resolveSlideDocs([slide(0, FRESH)], () => storedDoc(), IDENTITY)
+    const resolved = resolveSlideDocs([slide(0, FRESH)], () => storedDoc(), IDENTITY, SUBJECT)
     expect(resolved.get(0)?.doc.background).toEqual(FRESH)
     // The crop was measured against the picture that is gone, so it cannot survive the rebind.
     expect(resolved.get(0)?.doc.backgroundTransform).toBeUndefined()
@@ -61,12 +69,22 @@ describe('resolveSlideDocs', () => {
 
   it('reads a draft slide’s doc from the slide itself, a post slide’s from the lookup', () => {
     const inMemory = storedDoc()
-    const draft = resolveSlideDocs([slide(0, BAKED, inMemory)], (s) => s.doc ?? null, IDENTITY)
+    const draft = resolveSlideDocs(
+      [slide(0, BAKED, inMemory)],
+      (s) => s.doc ?? null,
+      IDENTITY,
+      SUBJECT
+    )
     expect(draft.get(0)?.seeded).toBe(false)
 
     // The same slide with no doc of its own falls back to seeding — the two targets differ only
     // in where the stored doc comes from.
-    const missing = resolveSlideDocs([slide(0, BAKED, null)], (s) => s.doc ?? null, IDENTITY)
+    const missing = resolveSlideDocs(
+      [slide(0, BAKED, null)],
+      (s) => s.doc ?? null,
+      IDENTITY,
+      SUBJECT
+    )
     expect(missing.get(0)?.seeded).toBe(true)
   })
 })

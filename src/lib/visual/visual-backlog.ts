@@ -2,7 +2,15 @@ import { parseSlides } from '@/lib/posts/parse-slides'
 import type { PostImage } from '@/types/api'
 import type { PostRow } from '@/types'
 
-/** Every slot a post is supposed to fill — carousels one per slide, singles one. */
+/**
+ * Every slot a post is supposed to FILL — carousels one per slide, singles one.
+ *
+ * Deliberately NOT `slideTotal` (features/canvas-editor/lib/slide-copy.ts), which floors at 1. The
+ * two look like the same function and are not: a carousel with no slides has one slide to EDIT — the
+ * editor must always have something to open — and zero visuals to GENERATE, because there is no copy
+ * to make a picture from. Flooring here would give the cron a slot it can never fill and a post that
+ * never finishes. Kept apart on purpose; see the note on `slideTotal`.
+ */
 export function totalVisualSlots(post: { post_type: string; slides_json: unknown }): number {
   return post.post_type === 'carousel' ? parseSlides(post.slides_json).length : 1
 }

@@ -42,6 +42,12 @@ const FONT_FAMILIES = {
     weights: [400, 500, 600, 700, 800, 900],
     italic: true,
   },
+  // The wide fat grotesque the Graphic Editorial reference is set in, and the only Cyrillic one.
+  // Measured against Archivo Black (the Latin-only face that look actually comes from): 104% of its
+  // cap-relative width and 99% of its stem weight — wider and equally black, with Cyrillic. Weight
+  // 400 is the whole family; it is black by design, so `nearestWeight` clamps a lockup's 700/900
+  // request down to it and the face still reads as heavy as the request intended.
+  'Dela Gothic One': { category: 'display', cyrillic: true, weights: [400], italic: false },
   Oi: { category: 'display', cyrillic: true, weights: [400], italic: false },
   'Stalinist One': { category: 'display', cyrillic: true, weights: [400], italic: false },
   'Alumni Sans': {
@@ -157,6 +163,12 @@ const FONT_FAMILIES = {
     weights: [400, 500, 600, 700, 800, 900],
     italic: true,
   },
+  'Fira Sans': {
+    category: 'sans',
+    cyrillic: true,
+    weights: [400, 500, 600, 700, 800, 900],
+    italic: true,
+  },
   Manrope: { category: 'sans', cyrillic: true, weights: [400, 500, 600, 700, 800], italic: false },
   Commissioner: {
     category: 'sans',
@@ -229,6 +241,9 @@ const FONT_FAMILIES = {
 
 export type FontFamilyName = keyof typeof FONT_FAMILIES
 
+/** The family names as a runtime tuple, so a zod boundary can constrain to the library. */
+export const FONT_FAMILY_NAMES = Object.keys(FONT_FAMILIES) as [FontFamilyName, ...FontFamilyName[]]
+
 export interface FontEntry extends FontFaceSpec {
   family: FontFamilyName
 }
@@ -244,13 +259,70 @@ export function hasCyrillic(text: string): boolean {
   return CYRILLIC_PATTERN.test(text)
 }
 
-/** The families the picker may offer — Latin-only entries are excluded when Cyrillic is required. */
-export function availableFonts(requiresCyrillic: boolean): readonly FontEntry[] {
-  if (!requiresCyrillic) return FONT_LIBRARY
-  return FONT_LIBRARY.filter((entry) => entry.cyrillic)
+/**
+ * Whether a client writing in this language needs a Cyrillic face.
+ *
+ * The product offers two content languages — Bulgarian and English — and only Bulgarian is written
+ * in Cyrillic, so this is the whole question today.
+ *
+ * It will not stay that way. Adding a language means asking what script it needs, and the library
+ * answers only for Cyrillic: it records `cyrillic` per family and nothing about Greek, so Greek
+ * would need all 56 families audited against the live css2 endpoint for a `greek` subset, the way
+ * the Cyrillic flags were established. A Latin-script addition needs nothing — Google serves
+ * `latin-ext` for effectively every family here, so accented characters are already covered.
+ */
+export function languageNeedsCyrillic(language: string | undefined): boolean {
+  return language === 'Bulgarian'
+}
+
+/**
+ * The families a picker may offer.
+ *
+ * ONE definition because two pickers ask, and they were answering separately: the editor's layer
+ * dropdown narrowed to the Cyrillic tier through `availableFonts`, and the brand-type picker
+ * rewrote the same filter inline because it also wanted a category tier. Two copies of "which faces
+ * can set this script" is two chances for one of them to start offering a face that renders the
+ * client's copy in whatever the viewer's OS substitutes.
+ *
+ * `keep` is not a nicety. A `<select>` whose value matches no option silently displays the first
+ * one instead, so filtering out a stored choice makes the control claim a face the posts are not
+ * using, and fire no change to correct it. The stored family stays offered and the caller marks it.
+ *
+ * Order is the caller's: the brand picker lists alphabetically, the editor groups by category.
+ */
+export function fontOptions(input: {
+  /** True when the text in hand — or the client's language — needs Cyrillic letters. */
+  requiresCyrillic: boolean
+  /** Narrow to these tiers; omit for the whole library. */
+  categories?: readonly FontCategory[]
+  /** A family to offer whatever the filters say, because it is already selected. */
+  keep?: string
+}): FontEntry[] {
+  const { requiresCyrillic, categories, keep } = input
+  return FONT_LIBRARY.filter(
+    (entry) =>
+      (!categories || categories.includes(entry.category)) &&
+      (!requiresCyrillic || entry.cyrillic || entry.family === keep)
+  )
 }
 
 /** Library entry for a doc's (free-string) family, or null when the doc references an unknown font. */
 export function getFontEntry(family: string): FontEntry | null {
   return FONT_LIBRARY.find((entry) => entry.family === family) ?? null
+}
+
+/**
+ * The heaviest weight `family` actually serves at or below `desired`, falling back to its lightest.
+ *
+ * Needed because lockups no longer pin their own faces: a layout asking for 900 was safe when it
+ * also chose the family, and is not now that the family is the client's. Oswald stops at 700, so
+ * `headliner` requesting 900 would have Google silently serve 700 and the browser synthesize the
+ * difference — fake bold, baked into the exported JPEG, with no error anywhere. See the note at the
+ * top of this file: css2 answers 200 and drops what it cannot serve.
+ */
+export function nearestWeight(family: string, desired: number): number {
+  const weights = getFontEntry(family)?.weights
+  if (!weights || weights.length === 0) return desired
+  const under = weights.filter((w) => w <= desired)
+  return under.length > 0 ? Math.max(...under) : Math.min(...weights)
 }

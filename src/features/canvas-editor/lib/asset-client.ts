@@ -94,6 +94,11 @@ export async function generateSvgAsset(
 export async function generateBackgroundAsset(input: {
   target: EditorTarget
   slideCopy: SlideCopy | null
+  /** Where this slide sits, so the model gets its real role rather than a hardcoded guess. */
+  position: number
+  total: number
+  /** What makes this press compose differently from the last — see `backgroundNonce`. */
+  nonce?: string
   direction?: string
   signal?: AbortSignal
 }): Promise<AssetRef> {
@@ -103,6 +108,13 @@ export async function generateBackgroundAsset(input: {
     body: JSON.stringify({
       ...targetIds(input.target),
       slideCopy: input.slideCopy,
+      position: input.position,
+      total: input.total,
+      // A draft's colour pair travels with the request; a post's is read from its row server-side.
+      ...(input.target.kind === 'draft' && input.target.scheme
+        ? { scheme: input.target.scheme }
+        : {}),
+      ...(input.nonce ? { nonce: input.nonce } : {}),
       ...(input.direction ? { direction: input.direction } : {}),
     }),
     signal: input.signal,

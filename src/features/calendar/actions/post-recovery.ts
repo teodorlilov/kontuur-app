@@ -3,7 +3,7 @@
 import 'server-only'
 import { revalidateTag } from 'next/cache'
 import { z } from 'zod'
-import { resolveActionAuth, verifyPostOwnership } from '@/lib/auth/helpers'
+import { resolveActionAuth, fetchOwnedPost } from '@/lib/auth/helpers'
 import type { ActionResult } from '@/lib/actions/types'
 
 const rearmSchema = z.object({
@@ -41,7 +41,7 @@ export async function rearmFailedPost(
   if (!auth.ok) return { ok: false, error: auth.error }
   const { supabase, agencyId } = auth
 
-  const post = await verifyPostOwnership(supabase, postId, agencyId)
+  const post = await fetchOwnedPost(supabase, postId, agencyId)
   if (!post) return { ok: false, error: 'Post not found' }
 
   const { data, error } = await supabase

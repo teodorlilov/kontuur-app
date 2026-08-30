@@ -88,3 +88,13 @@ export function validateEmail(email: string): string | null {
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) return 'Enter a valid email'
   return null
 }
+
+/**
+ * `#rrggbb` — the only colour form this app stores or accepts over the wire.
+ *
+ * One definition because it was written out five times: two canvas doc schemas, the legacy scrim
+ * reader, the editor's swatch input and the visual identity schema. Five copies of a pattern is five
+ * chances for one of them to quietly start accepting `#abc` or rejecting uppercase, on a value that
+ * crosses between a jsonb column, a zod boundary and a Konva fill.
+ */
+export const HEX_COLOR = /^#[0-9a-fA-F]{6}$/

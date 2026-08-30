@@ -436,7 +436,13 @@ export function ClientSettingsForm(props: ClientSettingsFormProps) {
           />
         )
       case 'visual':
-        return <VisualIdentityTab identity={drafts.identity} onChange={setIdentity} />
+        return (
+          <VisualIdentityTab
+            identity={drafts.identity}
+            onChange={setIdentity}
+            language={drafts.client.language}
+          />
+        )
       case 'schedule':
         return (
           <ScheduleTab
