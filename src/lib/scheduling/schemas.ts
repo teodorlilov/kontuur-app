@@ -80,3 +80,21 @@ export function parseBestTimes(value: unknown): BestTimePlatform[] | null {
   const entries = Array.isArray(result.data) ? result.data : result.data.platforms
   return entries.length === 0 ? null : entries
 }
+
+/** The value `deriveObservedBestTime` stamps on every entry it builds off the follower-online grid. */
+export const OBSERVED_CONFIDENCE = 'observed'
+
+/**
+ * Whether a stored blob was measured from Meta rather than imagined by a model.
+ *
+ * Two things write this column and they are not equal in authority: `deriveObservedBestTime` reads
+ * a real weekday x hour grid of when a client's followers are online, while `generateBestTime` asks
+ * Haiku to guess from four profile fields. `sync-metrics` already states the precedence — "observed
+ * data outranks the model-invented best_time_json" — but stating it is all it did, because the only
+ * other writer had no way to ask the question. This is that question, in one place, so the rule is
+ * enforced rather than described.
+ */
+export function isObservedBestTime(value: unknown): boolean {
+  const entries = parseBestTimes(value)
+  return entries !== null && entries.some((entry) => entry.confidence === OBSERVED_CONFIDENCE)
+}

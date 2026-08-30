@@ -7,10 +7,15 @@ import { LaneItem } from './lane-item'
 /**
  * A time this client's stored pattern suggests, that nothing fills.
  *
- * **It says "Suggested", never "best time".** The times come from
- * `brand_profiles.best_time_json`, which is a Claude Haiku response to four profile
- * fields — not Meta data, not engagement history, not evidence about when this audience
- * is online. Claiming otherwise would be asserting proof that does not exist. The
+ * **It says "Suggested", never "best time"** — and that holds whichever kind of data is behind it.
+ * `brand_profiles.best_time_json` is a Claude Haiku guess off four profile fields for a client with
+ * no Instagram connected, and a nightly reading of their real follower-online grid for one that has.
+ * This comment used to assert the first case as though it were the only one, which stopped being
+ * true when the analytics online-hours phase shipped.
+ *
+ * The label stays deliberately weak because one word has to cover both, and only the weak claim is
+ * honest in both directions: "best time" over a model guess asserts proof that does not exist, while
+ * "suggested" over measured data merely undersells it. The
  * honest half of the deficit lives elsewhere: the *count* a client is measured against
  * is `posts_per_week`, which an agency set by hand.
  *

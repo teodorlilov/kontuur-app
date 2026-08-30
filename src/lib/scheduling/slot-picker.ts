@@ -12,12 +12,23 @@ import type { BestTimePlatform } from '@/lib/scheduling/schemas'
 /**
  * When a client *might* post.
  *
- * The source is `brand_profiles.best_time_json`, which is **not** Meta data: it is a
- * Claude Haiku response to four profile fields (niche, audience, language, platforms),
- * regenerated on a 30-day timer from those same four fields. Nothing here is evidence
- * about when this audience is actually online, and no caller may present it as such —
- * hence `suggest*` rather than `best*` in the name below. When real Meta timing data
- * lands, only the source of these times changes; the shape does not.
+ * The source is `brand_profiles.best_time_json`, and it is now ONE OF TWO THINGS.
+ *
+ * This docblock used to say the column was "**not** Meta data" and that "nothing here is evidence
+ * about when this audience is actually online". That has been false since the analytics online-hours
+ * phase shipped: for a client with a connected Instagram account and enough history,
+ * `deriveObservedBestTime` overwrites the column nightly with days and windows read straight off the
+ * observed weekday x hour follower-online grid, stamped `confidence: 'observed'`. It said "when real
+ * Meta timing data lands, only the source changes" — it landed, and the sentence above it did not.
+ * Ask `isObservedBestTime` which kind a given row is rather than assuming.
+ *
+ * Without that connection it is still what it always was: a Claude Haiku response to four profile
+ * fields, refreshed on a 30-day timer.
+ *
+ * `suggest*` rather than `best*` in the names below STAYS, and now for a better reason. One vocabulary
+ * has to cover both cases, and the weaker claim is the only one true of both — calling a model's guess
+ * "best time" asserts proof that does not exist, while calling measured data "suggested" merely
+ * understates it.
  *
  * The count a client is measured against (`posts_per_week`) is a different matter: an
  * agency set it by hand, and it is the honest half of every deficit claim.

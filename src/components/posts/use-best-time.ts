@@ -1,11 +1,25 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import type { BestTimePlatform } from '@/lib/scheduling/schemas'
+import { parseBestTimes, type BestTimePlatform } from '@/lib/scheduling/schemas'
 
 // Module-level promise cache — concurrent calls for the same clientId share one in-flight request
 const cache = new Map<string, Promise<BestTimePlatform[] | null>>()
 
+/**
+ * Through `parseBestTimes`, which is the one reader of this column.
+ *
+ * This used to do `Array.isArray(btj) ? btj : null`, and the column is not an array: both writers
+ * store `{ platforms: [...], upgrade_note }`. So it returned null for every client on every call,
+ * and the "Best time" option in the wizard's schedule dialog could never appear.
+ *
+ * That exact bug was found and fixed for the calendar and review readers — `parseBestTimes` exists
+ * because of it and its docblock describes this failure in detail. This reader was left on the old
+ * shape, so the fix covered three call sites out of four and the fourth stayed silently broken.
+ *
+ * `unknown` rather than a typed field: what arrives is a raw jsonb column, and calling it
+ * `BestTimePlatform[]` was the assertion that made the bad check look sound.
+ */
 function fetchBestTime(clientId: string): Promise<BestTimePlatform[] | null> {
   if (!cache.has(clientId)) {
     cache.set(
@@ -13,11 +27,8 @@ function fetchBestTime(clientId: string): Promise<BestTimePlatform[] | null> {
       fetch(`/api/clients/${clientId}`)
         .then(async (res) => {
           if (!res.ok) return null
-          const data = (await res.json()) as {
-            brand_profile?: { best_time_json?: BestTimePlatform[] | null }
-          }
-          const btj = data.brand_profile?.best_time_json
-          return Array.isArray(btj) ? btj : null
+          const data = (await res.json()) as { brand_profile?: { best_time_json?: unknown } }
+          return parseBestTimes(data.brand_profile?.best_time_json)
         })
         .catch(() => null)
     )

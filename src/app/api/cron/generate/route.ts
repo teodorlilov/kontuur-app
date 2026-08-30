@@ -18,6 +18,7 @@ import {
 import { generateBriefing } from '@/ai/intelligence/generate-briefing'
 import { generateSoloCoaching } from '@/ai/solo-coaching/generate-coaching'
 import { generateBestTime } from '@/ai/best-time/generate-best-time'
+import { isObservedBestTime } from '@/lib/scheduling/schemas'
 import { getMondayISO } from '@/utils/date-helpers'
 import {
   BEST_TIME_REFRESH_DAYS,
@@ -285,7 +286,19 @@ export async function GET(request: NextRequest) {
         const isStale =
           !updatedAt ||
           Date.now() - new Date(updatedAt).getTime() > BEST_TIME_REFRESH_DAYS * MS_PER_DAY
-        if (isStale) {
+        /**
+         * A model guess must never replace measured data, however old the measurement is.
+         *
+         * The staleness timer alone was doing that job by accident: the metrics cron restamps
+         * `best_time_updated_at` nightly, so a connected client normally never looks stale here. But
+         * that is a coincidence of two schedules, not a rule — let a client's Meta sync lapse for a
+         * month (an expired token, a removed connection, a failing phase) and this branch quietly
+         * overwrites a real weekday x hour reading of when their followers are online with four
+         * profile fields handed to Haiku. Nothing downstream could tell the difference afterwards.
+         *
+         * Refreshing a stale GUESS is still right, which is why this narrows rather than removes.
+         */
+        if (isStale && !isObservedBestTime(brandProfile?.best_time_json)) {
           const bestTime = await generateBestTime({
             niche: clientRow.niche ?? 'General',
             targetAudience: client.targetAudience,

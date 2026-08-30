@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { parseBestTimes } from '../schemas'
+import { isObservedBestTime, OBSERVED_CONFIDENCE, parseBestTimes } from '../schemas'
 
 const valid = [
   {
@@ -86,5 +86,68 @@ describe('the parsed type is the stored type', () => {
 
   it('treats an empty platforms array as nothing stored', () => {
     expect(parseBestTimes({ platforms: [] })).toBeNull()
+  })
+})
+
+/**
+ * Which kind of data a stored row holds.
+ *
+ * The two writers of this column are not equal in authority — one reads a real weekday x hour grid
+ * of when a client's followers are online, the other asks a model to imagine posting times from four
+ * profile fields — and until this existed, the rule was written in a comment and enforced nowhere.
+ * The generate cron could not ask the question, so its 30-day refresh timer could replace measured
+ * data with a guess whenever a client's Meta sync had lapsed.
+ */
+describe('isObservedBestTime', () => {
+  const observed = {
+    platforms: [
+      {
+        platform: 'Instagram',
+        best_days: ['Tuesday'],
+        best_time_windows: [{ time: '18:00' }],
+        confidence: OBSERVED_CONFIDENCE,
+      },
+    ],
+    upgrade_note: '',
+  }
+  const guessed = {
+    platforms: [
+      {
+        platform: 'Instagram',
+        best_days: ['Tuesday'],
+        best_time_windows: [{ time: '18:00' }],
+        confidence: 'high',
+      },
+    ],
+    upgrade_note: '',
+  }
+
+  it('recognises a row derived from the follower-online grid', () => {
+    expect(isObservedBestTime(observed)).toBe(true)
+  })
+
+  it('does not mistake a confident model guess for measurement', () => {
+    // The model has returned 'high' and 'very-sure' for its own invention. Confidence the model
+    // asserts about itself is not evidence, and only one exact value means measured.
+    expect(isObservedBestTime(guessed)).toBe(false)
+  })
+
+  it('treats a row with no confidence at all as a guess', () => {
+    const bare = { platforms: [{ ...guessed.platforms[0], confidence: undefined }] }
+    expect(isObservedBestTime(bare)).toBe(false)
+  })
+
+  it('says no to anything unusable rather than throwing', () => {
+    // A cron decides whether to spend an LLM call on this answer; it must not be a crash site.
+    expect(isObservedBestTime(null)).toBe(false)
+    expect(isObservedBestTime({ platforms: [] })).toBe(false)
+    expect(isObservedBestTime('nonsense')).toBe(false)
+  })
+
+  it('reads the wrapper the writers actually store, not a bare array', () => {
+    // The whole reason parseBestTimes exists. Asking this question with an Array.isArray check
+    // would answer false for every real row, which is how the wizard's Best time option died.
+    expect(Array.isArray(observed)).toBe(false)
+    expect(isObservedBestTime(observed)).toBe(true)
   })
 })
