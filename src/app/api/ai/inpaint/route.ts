@@ -6,8 +6,8 @@ import {
   assetTargetFromForm,
   foreignStoragePathResponse,
   resolveAssetDestination,
-} from '@/features/publishing/lib/asset-destination'
-import { publicPostImageUrl } from '@/features/publishing/lib/storage'
+} from '@/features/assets/lib/asset-destination'
+import { publicPostImageUrl } from '@/features/assets/lib/storage'
 
 export const maxDuration = 120
 

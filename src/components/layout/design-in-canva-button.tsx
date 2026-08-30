@@ -3,7 +3,7 @@
 import { ExternalLink } from 'lucide-react'
 import { cn } from '@/utils/cn'
 import { SIDEBAR_ROW, SIDEBAR_ROW_IDLE } from '@/components/layout/nav-items'
-import { useCanvaStatus } from '@/features/publishing/hooks/use-canva-status'
+import { useCanvaStatus } from '@/features/assets/hooks/use-canva-status'
 
 /**
  * "Design in Canva" — a sidebar row, not a page control.

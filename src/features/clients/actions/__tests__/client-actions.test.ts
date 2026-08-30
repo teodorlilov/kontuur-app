@@ -44,7 +44,7 @@ vi.mock('@/lib/auth/helpers', () => ({
 vi.mock('@/lib/supabase/admin', () => ({
   createAdminSupabaseClient: mocks.createAdminSupabaseClient,
 }))
-vi.mock('@/features/publishing/lib/storage', () => ({
+vi.mock('@/features/assets/lib/storage', () => ({
   removeStoragePrefix: mocks.removeStoragePrefix,
 }))
 // unstable_cache is required, not incidental: the module imports IG_METRICS_TAG

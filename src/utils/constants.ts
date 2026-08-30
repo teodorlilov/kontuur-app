@@ -39,8 +39,13 @@ export const USER_AGENT_BOT = 'PostflowBot/1.0'
  * prefix, which is what lets deleteClient sweep a whole client by prefix rather than by
  * enumerating rows.
  *
- * Here rather than in publishing/lib/storage.ts because that file is `server-only` and the
- * sources feature needs the second name too — three inline copies of it existed before.
+ * Here rather than in assets/lib/storage.ts because that file is `server-only` and the sources
+ * feature needs the second name too — three inline copies of it existed before.
+ *
+ * This comment used to name `publishing/lib/storage.ts`, and the file it pointed at was itself
+ * misfiled: the storage layer had nothing to do with Meta publishing and now lives under
+ * features/assets. Two facts had to be re-derived to move one file, which is the tax this
+ * reorganisation is paying off.
  */
 export const POST_IMAGES_BUCKET = 'post-images'
 export const CLIENT_FILES_BUCKET = 'client-files'

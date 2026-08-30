@@ -5,8 +5,8 @@ import {
   deleteDraftVisuals,
   draftVisualPrefix,
   uploadDraftVisual,
-} from '@/features/publishing/lib/storage'
-import { validateImageFile } from '@/features/publishing/lib/validate-image-file'
+} from '@/features/assets/lib/storage'
+import { validateImageFile } from '@/features/assets/lib/validate-image-file'
 
 /**
  * Upload a browser-composed draft visual (auto-compose or editor save for an in-memory wizard

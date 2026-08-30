@@ -5,7 +5,7 @@ import {
   uploadPostImage,
   putPostImage,
   type ExistingPostImage,
-} from '@/features/publishing/lib/storage'
+} from '@/features/assets/lib/storage'
 import { parseSlides } from '@/lib/posts/parse-slides'
 import { slideTextBlock } from '@/lib/visual/prompt'
 import { fetchIdentityForGeneration, generateVisual } from '@/lib/visual/generate-visual'

@@ -4,7 +4,7 @@ import { visualsRateLimitResponse } from '@/lib/auth/rate-limit'
 import { fetchIdentityForGeneration, generateVisual } from '@/lib/visual/generate-visual'
 import { resolveScheme } from '@/lib/visual/post-color'
 import { carouselSlideText, sanitizePromptText, singlePostText } from '@/lib/visual/prompt'
-import { resolveAssetDestination } from '@/features/publishing/lib/asset-destination'
+import { resolveAssetDestination } from '@/features/assets/lib/asset-destination'
 import { generateBackgroundSchema } from '@/features/canvas-editor/schemas'
 import type { GenerateBackgroundBody } from '@/features/canvas-editor/schemas'
 

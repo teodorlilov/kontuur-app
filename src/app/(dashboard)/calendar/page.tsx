@@ -6,7 +6,7 @@ import { getCalendarWindow, mondayOfKey } from '@/features/calendar/lib/calendar
 import { CALENDAR_POST_COLUMNS, type CalendarPostColumns } from '@/lib/queries/select-columns'
 import type { PostStatus } from '@/lib/validation'
 import type { Tables } from '@/types/database'
-import { fetchImagesByPost } from '@/features/publishing/lib/fetch-post-images'
+import { fetchImagesByPost } from '@/features/assets/lib/fetch-post-images'
 import { parseBestTimes } from '@/lib/scheduling/schemas'
 import { toValidationData } from '@/features/review/lib/adapt-validation'
 import { CalendarView } from '@/features/calendar/components/calendar-view'

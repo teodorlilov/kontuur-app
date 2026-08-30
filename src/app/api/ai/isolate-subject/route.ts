@@ -5,8 +5,8 @@ import { downloadFalFile, removeImageBackground } from '@/lib/visual/fal'
 import {
   foreignStoragePathResponse,
   resolveAssetDestination,
-} from '@/features/publishing/lib/asset-destination'
-import { publicPostImageUrl } from '@/features/publishing/lib/storage'
+} from '@/features/assets/lib/asset-destination'
+import { publicPostImageUrl } from '@/features/assets/lib/storage'
 import { isolateSubjectSchema } from '@/features/canvas-editor/schemas'
 
 export const maxDuration = 60

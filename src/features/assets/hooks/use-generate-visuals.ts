@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { toast } from '@/components/ui/toast'
-import { mapImageRow } from '@/features/publishing/lib/map-image-row'
+import { mapImageRow } from '@/features/assets/lib/map-image-row'
 import { createSemaphore } from '@/lib/concurrency'
 import { MAX_CONCURRENT_VISUAL_REQUESTS } from '@/lib/visual/limits'
 import { StaleImageError } from '@/features/canvas-editor/lib/save-canvas'

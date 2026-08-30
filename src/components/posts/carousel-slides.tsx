@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { cn } from '@/utils/cn'
 import { toast } from '@/components/ui/toast'
-import { ImageSlot } from '@/features/publishing/components/image-slot'
+import { ImageSlot } from '@/features/assets/components/image-slot'
 import type { CarouselSlide } from '@/types/api'
 import type { PostVisualsProps } from './visuals-props'
 

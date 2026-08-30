@@ -5,7 +5,7 @@ import { resolveAuth } from '@/lib/auth/resolve-auth'
 import { fetchOwnedPost } from '@/lib/auth/helpers'
 import { canvaFetch, CanvaAuthError } from '../../../canva-auth'
 import { CANVA_API_BASE } from '../../../canva-constants'
-import { uploadPostImage, putPostImage } from '@/features/publishing/lib/storage'
+import { uploadPostImage, putPostImage } from '@/features/assets/lib/storage'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { MAX_CAROUSEL_SLIDES } from '@/utils/constants'
 

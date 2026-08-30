@@ -3,8 +3,8 @@ import { resolveAuth } from '@/lib/auth/resolve-auth'
 import {
   assetTargetFromForm,
   resolveAssetDestination,
-} from '@/features/publishing/lib/asset-destination'
-import { validateImageFile } from '@/features/publishing/lib/validate-image-file'
+} from '@/features/assets/lib/asset-destination'
+import { validateImageFile } from '@/features/assets/lib/validate-image-file'
 
 /**
  * Upload a user-provided canvas-element asset (logo/graphic) for a persisted post or an

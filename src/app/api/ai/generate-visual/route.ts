@@ -6,7 +6,7 @@ import {
   uploadDraftVisual,
   deleteDraftVisuals,
   draftVisualPrefix,
-} from '@/features/publishing/lib/storage'
+} from '@/features/assets/lib/storage'
 import { slideTextBlock } from '@/lib/visual/prompt'
 import { fetchIdentityForGeneration, generateVisual } from '@/lib/visual/generate-visual'
 import { resolveScheme } from '@/lib/visual/post-color'

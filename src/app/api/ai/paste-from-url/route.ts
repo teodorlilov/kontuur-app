@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
 import { visualsRateLimitResponse } from '@/lib/auth/rate-limit'
-import { resolveAssetDestination } from '@/features/publishing/lib/asset-destination'
-import { fetchRemoteImage } from '@/features/publishing/lib/fetch-remote-image'
+import { resolveAssetDestination } from '@/features/assets/lib/asset-destination'
+import { fetchRemoteImage } from '@/features/assets/lib/fetch-remote-image'
 import { pasteFromUrlSchema } from '@/features/canvas-editor/schemas'
 
 export const maxDuration = 30

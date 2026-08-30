@@ -10,7 +10,7 @@ import {
 } from '@/lib/auth/helpers'
 import { parseActionId } from '@/lib/actions/parse-input'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
-import { removeStoragePrefix } from '@/features/publishing/lib/storage'
+import { removeStoragePrefix } from '@/features/assets/lib/storage'
 import { IG_METRICS_TAG } from '@/features/analytics/lib/report-data'
 import { parsePillars } from '@/lib/clients/content-pillars'
 import { removeDeletedPillarIds } from '@/lib/clients/sync-source-pillars'

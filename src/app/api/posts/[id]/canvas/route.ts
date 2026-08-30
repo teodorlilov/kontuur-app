@@ -8,8 +8,8 @@ import { upsertCanvasDoc } from '@/lib/canvas/doc-store'
 import type { CanvasDoc } from '@/types/canvas'
 import { fetchVisualIdentityOrDefault } from '@/lib/visual/queries'
 import { toSeedIdentity } from '@/lib/visual/identity-schema'
-import { deletePostImage, putPostImage, uploadPostImage } from '@/features/publishing/lib/storage'
-import { validateImageFile } from '@/features/publishing/lib/validate-image-file'
+import { deletePostImage, putPostImage, uploadPostImage } from '@/features/assets/lib/storage'
+import { validateImageFile } from '@/features/assets/lib/validate-image-file'
 
 /**
  * Every stored canvas doc for a post, plus the identity to seed the slides that have none — in ONE

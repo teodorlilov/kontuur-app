@@ -21,7 +21,7 @@ import { updatePost, deletePost, persistRewrite, savePostCopy } from '@/lib/acti
 import { slideCopyAt, slideTotal } from '@/features/canvas-editor/lib/slide-copy'
 import { rewriteDraft } from '@/lib/rewrite-draft'
 import { countVisualsByStatus, type DraftVisual } from '@/lib/visual/draft-visuals'
-import { upsertImageAtPosition } from '@/features/publishing/lib/image-list'
+import { upsertImageAtPosition } from '@/features/assets/lib/image-list'
 import { TriageBuckets } from './triage-buckets'
 import { DiscardToast, DISCARD_TOAST_MS } from '@/components/ui/discard-toast'
 import { QueueInsightSections } from './queue-insight-sections'

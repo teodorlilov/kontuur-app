@@ -5,7 +5,7 @@ import { colorSchemeSchema } from '@/lib/visual/identity-schema'
  * Zod schemas for the canvas editor's own route boundaries.
  *
  * The asset-target union is deliberately NOT re-described here: `resolveAssetDestination`
- * (features/publishing/lib/asset-destination.ts) owns that decision — it verifies ownership and
+ * (features/assets/lib/asset-destination.ts) owns that decision — it verifies ownership and
  * returns the uploader bound to the right storage family, and it emits the canonical 400 when
  * neither id set is present. A second validator here would be a second place for that rule to drift.
  */

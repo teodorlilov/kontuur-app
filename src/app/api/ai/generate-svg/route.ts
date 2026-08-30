@@ -9,7 +9,7 @@ import {
   svgNaturalSize,
   svgRejectionReason,
 } from '@/lib/visual/sanitize-svg'
-import { resolveAssetDestination } from '@/features/publishing/lib/asset-destination'
+import { resolveAssetDestination } from '@/features/assets/lib/asset-destination'
 import { generateSvgSchema, MAX_SVG_PROMPT_CHARS } from '@/features/canvas-editor/schemas'
 
 export const maxDuration = 60

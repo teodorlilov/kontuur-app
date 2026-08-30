@@ -2,8 +2,8 @@
 
 import { useCallback } from 'react'
 import { toast } from '@/components/ui/toast'
-import { mapImageRow } from '@/features/publishing/lib/map-image-row'
-import { useGenerateVisuals } from '@/features/publishing/hooks/use-generate-visuals'
+import { mapImageRow } from '@/features/assets/lib/map-image-row'
+import { useGenerateVisuals } from '@/features/assets/hooks/use-generate-visuals'
 import type { SlideCopySource } from '@/features/canvas-editor/lib/slide-copy'
 import type { PostImage } from '@/types/api'
 import type { PostImageRow } from '@/types/index'
