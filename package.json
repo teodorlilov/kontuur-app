@@ -19,7 +19,8 @@
     "db:dump": "mkdir -p supabase/.temp && npx supabase db dump --linked --schema public -f supabase/.temp/prod-schema.sql && echo '→ supabase/.temp/prod-schema.sql (gitignored)'",
     "db:rls": "npm run --silent db:dump && node scripts/rls-report.mjs",
     "db:types": "npx supabase gen types typescript --linked > src/types/database.ts",
-    "prepare": "husky"
+    "prepare": "husky",
+    "arch": "node scripts/module-ownership.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.80.0",
