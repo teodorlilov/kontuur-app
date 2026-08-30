@@ -7,7 +7,8 @@ import { composeDoc } from './compose'
 import { saveDraftCanvas, savePostCanvas } from './save-canvas'
 import { fetchCanvasDocs } from './canvas-state-client'
 import { copyFields } from './resolve-slides'
-import type { DraftVisualResult, SlideCopy } from '../types'
+import type { DraftVisualResult } from '../types'
+import type { SlideCopy } from '@/lib/posts/slide-copy'
 import type { VariationKey } from '@/lib/visual/variation'
 
 // The wording of a node, or null for anything that has none — only text can change under a rewrite.

@@ -1,4 +1,5 @@
-import type { EditorTarget, SlideCopy } from '../types'
+import type { EditorTarget } from '../types'
+import type { SlideCopy } from '@/lib/posts/slide-copy'
 
 export interface AssetRef {
   publicUrl: string

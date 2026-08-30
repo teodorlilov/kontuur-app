@@ -7,7 +7,7 @@ import { getMondayISO } from '@/utils/date-helpers'
 import { postsInWeek } from '@/features/calendar/lib/week-model'
 import { pluralise } from '@/utils/format'
 import type { CalendarPost } from '@/types/api'
-import type { BestTimePlatform } from '@/lib/scheduling/schemas'
+import type { BestTimePlatform } from '@/lib/suggested-times/schemas'
 
 export interface ClientEntry {
   id: string

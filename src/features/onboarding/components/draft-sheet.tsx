@@ -12,7 +12,7 @@ import {
 } from '@/features/onboarding/lib/draft-rows'
 import { paletteProvenance } from '@/features/onboarding/lib/build-draft'
 import type { DraftFieldId, DraftProfile, FieldProvenance } from '@/features/onboarding/types'
-import type { ExtractionStatus } from '@/features/visual-identity/hooks/use-extraction-status'
+import type { ExtractionStatus } from '@/features/onboarding/hooks/use-extraction-status'
 import { DraftFieldEdit, DraftFieldRead } from './draft-field'
 import { DraftRow } from './draft-row'
 

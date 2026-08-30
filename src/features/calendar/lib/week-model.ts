@@ -2,8 +2,8 @@ import { getWeekDayKeys, getWeekRange, isoToDateTimeFields, toDateKey } from '@/
 import { WEEKDAY_LABELS } from '@/utils/constants'
 import type { CalendarPost } from '@/types/api'
 import type { PostStatus } from '@/lib/validation'
-import type { BestTimePlatform } from '@/lib/scheduling/schemas'
-import { suggestWeekSlots } from '@/lib/scheduling/slot-picker'
+import type { BestTimePlatform } from '@/lib/suggested-times/schemas'
+import { suggestWeekSlots } from '@/lib/suggested-times/slot-picker'
 
 /**
  * What the grid draws, derived from what the page loaded.

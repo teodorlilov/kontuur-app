@@ -2,7 +2,7 @@ import 'server-only'
 
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { POST_IMAGE_COLUMNS } from '@/lib/queries/select-columns'
-import { mapImageRow } from './map-image-row'
+import { mapImageRow } from '@/lib/posts/map-image-row'
 import type { PostImage } from '@/types/api'
 import type { PostImageRow } from '@/types/index'
 

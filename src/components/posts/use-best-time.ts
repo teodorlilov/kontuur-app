@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { parseBestTimes, type BestTimePlatform } from '@/lib/scheduling/schemas'
+import { parseBestTimes, type BestTimePlatform } from '@/lib/suggested-times/schemas'
 
 // Module-level promise cache — concurrent calls for the same clientId share one in-flight request
 const cache = new Map<string, Promise<BestTimePlatform[] | null>>()

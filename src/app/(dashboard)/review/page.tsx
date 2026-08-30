@@ -12,7 +12,7 @@ import { fetchWeekSchedule, type WeekScheduledPost } from '@/features/review/lib
 import { getMondayISO } from '@/utils/date-helpers'
 import { ReviewQueue } from '@/features/review/components/review-queue'
 import type { QueueApproval, QueuePost } from '@/features/review/lib/queue-post'
-import { parseBestTimes, type BestTimePlatform } from '@/lib/scheduling/schemas'
+import { parseBestTimes, type BestTimePlatform } from '@/lib/suggested-times/schemas'
 
 export default async function ReviewPage() {
   const { agencyId } = await requireSessionUser()

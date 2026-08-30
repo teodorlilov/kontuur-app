@@ -1,6 +1,6 @@
 import { callAnthropic, LIGHT_MODEL } from '@/utils/ai-client'
 import { parseJsonResponse } from '@/utils/ai'
-import type { BestTimePlatform } from '@/lib/scheduling/schemas'
+import type { BestTimePlatform } from '@/lib/suggested-times/schemas'
 import {
   sanitizePromptField,
   PROMPT_FIELD_LIMITS,

@@ -7,7 +7,7 @@ import { CALENDAR_POST_COLUMNS, type CalendarPostColumns } from '@/lib/queries/s
 import type { PostStatus } from '@/lib/validation'
 import type { Tables } from '@/types/database'
 import { fetchImagesByPost } from '@/features/assets/lib/fetch-post-images'
-import { parseBestTimes } from '@/lib/scheduling/schemas'
+import { parseBestTimes } from '@/lib/suggested-times/schemas'
 import { toValidationData } from '@/features/review/lib/adapt-validation'
 import { CalendarView } from '@/features/calendar/components/calendar-view'
 import type { CalendarPost } from '@/types/api'

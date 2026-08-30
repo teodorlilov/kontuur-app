@@ -7,7 +7,7 @@ import {
   shiftDateKey,
   toDateKey,
 } from '@/utils/date-helpers'
-import type { BestTimePlatform } from '@/lib/scheduling/schemas'
+import type { BestTimePlatform } from '@/lib/suggested-times/schemas'
 
 /**
  * When a client *might* post.
@@ -32,6 +32,11 @@ import type { BestTimePlatform } from '@/lib/scheduling/schemas'
  *
  * The count a client is measured against (`posts_per_week`) is a different matter: an
  * agency set it by hand, and it is the honest half of every deficit claim.
+ *
+ * The folder is `suggested-times` and was `scheduling`, which contained no scheduling: nothing here
+ * reads `scheduled_at` or knows the publish queue exists. What acts on a schedule is
+ * `publishDuePosts` in features/publishing/lib/scheduler.ts. The suggest/best distinction this
+ * module argues for in its own names was the one thing its directory did not apply.
  */
 
 export interface SlotPickerInput {

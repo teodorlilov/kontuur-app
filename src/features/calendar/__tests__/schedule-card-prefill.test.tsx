@@ -19,13 +19,13 @@ import type { CalendarPost } from '@/types/api'
  * Mocked here: only the leaves that reach the network or the canvas. The effect under
  * test is the component's own.
  */
-vi.mock('@/features/assets/hooks/use-canva-status', () => ({
+vi.mock('@/hooks/use-canva-status', () => ({
   useCanvaStatus: () => false,
 }))
 // The real return shape, not an invented one. A mock that drifts from its subject is a
 // test that passes against a component nobody ships — this one returned `generating: {}`
 // at first and blew up inside `missingImagePositions`, which wants an array.
-vi.mock('@/features/assets/hooks/use-generate-visuals', () => ({
+vi.mock('@/components/posts/use-generate-visuals', () => ({
   useGenerateVisuals: () => ({
     generatingPositions: [] as number[],
     composingPositions: [] as number[],
@@ -33,7 +33,7 @@ vi.mock('@/features/assets/hooks/use-generate-visuals', () => ({
     recompose: vi.fn(),
   }),
 }))
-vi.mock('@/features/assets/components/image-slot', () => ({
+vi.mock('@/components/posts/image-slot', () => ({
   ImageSlot: () => <div data-testid="image-slot" />,
 }))
 vi.mock('@/features/canvas-editor/components/canvas-editor', () => ({

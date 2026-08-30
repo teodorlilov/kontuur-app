@@ -1,7 +1,7 @@
 import 'server-only'
 
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { BestTimePlatform } from '@/lib/scheduling/schemas'
+import type { BestTimePlatform } from '@/lib/suggested-times/schemas'
 import { fetchIgConnectionState } from '@/lib/queries/db'
 import { MS_PER_DAY, WEEKDAY_LABELS } from '@/utils/constants'
 import { buildAudienceOnline, type AudienceOnline } from './build-report'

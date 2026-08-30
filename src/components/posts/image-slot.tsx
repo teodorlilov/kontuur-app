@@ -3,7 +3,7 @@
 import { useState, useRef } from 'react'
 import Image from 'next/image'
 import { X, Upload, Check, Download, Sparkles, Pencil } from 'lucide-react'
-import { mapImageRow } from '@/features/assets/lib/map-image-row'
+import { mapImageRow } from '@/lib/posts/map-image-row'
 import { downloadImageFile } from '@/lib/download-image'
 import { validateImageFile } from '@/features/assets/lib/validate-image-file'
 import { ImageLightbox } from '@/components/ui/image-lightbox'

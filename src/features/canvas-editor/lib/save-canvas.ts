@@ -1,4 +1,4 @@
-import { mapImageRow } from '@/features/assets/lib/map-image-row'
+import { mapImageRow } from '@/lib/posts/map-image-row'
 import { parseAssetResponse } from './asset-client'
 import type { CanvasDoc } from '@/types/canvas'
 import type { PostImage } from '@/types/api'

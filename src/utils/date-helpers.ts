@@ -16,7 +16,7 @@ const MONDAY_FIRST_WEEKDAYS: readonly string[] = WEEKDAY_LABELS
  * `new Date(year, month, d)`, local midnight standing for "the 6th", and reading those
  * back in an agency zone would shift them to the 5th or the 7th.
  *
- * **Writers** — `formatScheduledAt`, and `SlotPickerInput` in `lib/scheduling` — require
+ * **Writers** — `formatScheduledAt`, and `SlotPickerInput` in `lib/suggested-times` — require
  * one. They turn a wall clock into a stored instant, and a runtime fallback there is not
  * a no-op: it writes the operator's zone into a column the whole app reads in the
  * agency's. Three call sites lived on that fallback for exactly as long as it was

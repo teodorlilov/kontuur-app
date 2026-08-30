@@ -4,7 +4,7 @@ import { PaletteSwatches } from '@/features/visual-identity/components/palette-s
 import {
   EXTRACTION_HINT,
   type ExtractionStatus,
-} from '@/features/visual-identity/hooks/use-extraction-status'
+} from '@/features/onboarding/hooks/use-extraction-status'
 import type { Palette } from '@/types/visual'
 
 const ROLE_ORDER: (keyof Palette)[] = ['surface', 'ink', 'accent', 'accent-deep', 'line']

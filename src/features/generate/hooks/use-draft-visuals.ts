@@ -9,7 +9,7 @@ import type { ColorScheme } from '@/lib/visual/color-scheme'
 import type { SeedIdentity } from '@/lib/canvas/seed-doc'
 import type { CanvasDoc } from '@/types/canvas'
 import { fetchClientIdentity } from '@/features/canvas-editor/lib/identity-client'
-import { slideCopyAt, slideTotal } from '@/features/canvas-editor/lib/slide-copy'
+import { slideCopyAt, slideTotal } from '@/lib/posts/slide-copy'
 import type { DraftVisualResult } from '@/features/canvas-editor/types'
 import {
   draftScheme,

@@ -14,7 +14,7 @@ import {
   LABEL_CLASS,
 } from '@/components/ui/form/control-classes'
 import { CanvasEditor } from '@/features/canvas-editor/components/canvas-editor'
-import { slideCopyAt } from '@/features/canvas-editor/lib/slide-copy'
+import { slideCopyAt } from '@/lib/posts/slide-copy'
 import type { EditorSlide, EditorTarget } from '@/features/canvas-editor/types'
 import { VisualFrame } from './visual-frame'
 import { updateSlideField } from '@/components/posts/slides-edit'

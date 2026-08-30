@@ -1,7 +1,8 @@
 import type { CanvasDoc } from '@/types/canvas'
 import { resolveDocForImage } from '@/lib/canvas/resolve-doc'
 import { seedCanvasDoc, type SeedIdentity } from '@/lib/canvas/seed-doc'
-import type { EditorSlide, SlideCopy } from '../types'
+import type { EditorSlide } from '../types'
+import type { SlideCopy } from '@/lib/posts/slide-copy'
 import type { SlideText } from '@/types/slide'
 
 /**

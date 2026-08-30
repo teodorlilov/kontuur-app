@@ -2,15 +2,11 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { toast } from '@/components/ui/toast'
-import { mapImageRow } from '@/features/assets/lib/map-image-row'
+import { mapImageRow } from '@/lib/posts/map-image-row'
 import { createSemaphore } from '@/lib/concurrency'
 import { MAX_CONCURRENT_VISUAL_REQUESTS } from '@/lib/visual/limits'
 import { StaleImageError } from '@/features/canvas-editor/lib/save-canvas'
-import {
-  slideCopyAt,
-  slideTotal,
-  type SlideCopySource,
-} from '@/features/canvas-editor/lib/slide-copy'
+import { slideCopyAt, slideTotal, type SlideCopySource } from '@/lib/posts/slide-copy'
 import type { PostImage } from '@/types/api'
 import type { PostImageRow } from '@/types/index'
 

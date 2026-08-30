@@ -14,7 +14,7 @@ import {
 import { formatScheduledAt, getNextDateForDay, toDateKey } from '@/utils/date-helpers'
 import { formatPublishSlot } from '@/features/dashboard/lib/metrics'
 import { WeekStrip } from './week-strip'
-import type { BestTimePlatform } from '@/lib/scheduling/schemas'
+import type { BestTimePlatform } from '@/lib/suggested-times/schemas'
 
 type ScheduleChoice = 'next' | 'best' | 'pick' | 'none'
 

@@ -7,7 +7,7 @@ import type {
   DraftResult,
   FieldProvenance,
 } from '@/features/onboarding/types'
-import type { ExtractionStatus } from '@/features/visual-identity/hooks/use-extraction-status'
+import type { ExtractionStatus } from '@/features/onboarding/hooks/use-extraction-status'
 
 /**
  * The cadence a client starts on when nothing suggests otherwise.

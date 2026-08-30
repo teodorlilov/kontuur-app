@@ -1,6 +1,6 @@
 import type { CanvasDoc } from '@/types/canvas'
 import type { PostImage } from '@/types/api'
-import type { SlideText } from '@/types/slide'
+import type { SlideCopy } from '@/lib/posts/slide-copy'
 import type { ColorScheme } from '@/lib/visual/color-scheme'
 
 /** The editor's exclusive interaction modes; 'edit' is normal layer editing. */
@@ -33,11 +33,6 @@ export type EditorTarget =
    * authoritative copy and cannot be stale the way a prop can.
    */
   | { kind: 'draft'; clientId: string; draftId: string; scheme?: ColorScheme }
-
-/** The copy that seeds a first-time doc: a carousel slide's fields, or a single post's caption. */
-export type SlideCopy =
-  | ({ kind: 'slide' } & SlideText)
-  | { kind: 'caption'; caption: string | null }
 
 export interface DraftVisualResult {
   position: number

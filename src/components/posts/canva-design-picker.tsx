@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { Search, Loader2, Image as ImageIcon } from 'lucide-react'
 import { cn } from '@/utils/cn'
 import { Modal } from '@/components/ui/modal'
-import { mapImageRow } from '@/features/assets/lib/map-image-row'
+import { mapImageRow } from '@/lib/posts/map-image-row'
 import type { PostImage } from '@/types/api'
 
 interface CanvaDesign {

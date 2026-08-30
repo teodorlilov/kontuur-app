@@ -1,5 +1,17 @@
-import { parseSlides } from '@/lib/posts/parse-slides'
-import type { SlideCopy } from '../types'
+import { parseSlides } from './parse-slides'
+import type { SlideText } from '@/types/slide'
+
+/**
+ * The copy one slide carries: a carousel slide's fields, or a single post's caption.
+ *
+ * Declared here, beside the function that produces it, rather than in the canvas editor's types.
+ * It was there because the editor was the first thing to need it — and then five surfaces outside
+ * the editor started passing it around, none of which open a canvas. A type whose only home is a
+ * feature nobody in the chain uses is how `lib/` ends up importing `features/`.
+ */
+export type SlideCopy =
+  | ({ kind: 'slide' } & SlideText)
+  | { kind: 'caption'; caption: string | null }
 
 /** The post fields the copy mapping needs — satisfied by persisted posts, drafts and local state. */
 export interface SlideCopySource {

@@ -18,7 +18,7 @@ import {
 import { generateBriefing } from '@/ai/intelligence/generate-briefing'
 import { generateSoloCoaching } from '@/ai/solo-coaching/generate-coaching'
 import { generateBestTime } from '@/ai/best-time/generate-best-time'
-import { isObservedBestTime } from '@/lib/scheduling/schemas'
+import { isObservedBestTime } from '@/lib/suggested-times/schemas'
 import { getMondayISO } from '@/utils/date-helpers'
 import {
   BEST_TIME_REFRESH_DAYS,
