@@ -100,6 +100,73 @@ to `components/` only on the second consumer. Never the other way around.
   silently filed as a text *colour* by tailwind-merge and deletes whatever colour
   precedes it. `src/app/__tests__/type-ramp.test.ts` fails if the two drift.
 
+## How to work (non-negotiable)
+
+The four below come from [Karpathy's observations on LLM coding
+pitfalls](https://x.com/karpathy/status/2015883857489522876). They lived in
+`docs/CODING_SKILLS.md`, which nothing ever loaded — so they were in the repo and
+not in the room. They are here now because this file is the one that is always
+read. This is the single source of truth for how code gets written; there is no
+second document and no skill that supersedes it.
+
+They bias toward caution over speed. For trivial tasks, use judgment.
+
+### 1. Think before coding
+Don't assume. Don't hide confusion. Surface tradeoffs.
+- State assumptions explicitly. If uncertain, ask.
+- Multiple readings? Present them — don't pick silently.
+- Simpler approach available? Say so. Push back when warranted.
+- Unclear? **Stop.** Name what's confusing. Ask. Do not keep writing code with an
+  open question outstanding — that is how a 60-file unreviewable change happens.
+
+### 2. Simplicity first
+Minimum code that solves the problem. Nothing speculative.
+- No features beyond what was asked.
+- No abstractions for single-use code. A wrapper that hides one line is noise.
+- No "flexibility" or "configurability" nobody requested.
+- No error handling for impossible scenarios. A guard against a risk that cannot
+  occur is a comment pretending to be code.
+- 200 lines that could be 50 → rewrite it.
+
+Ask: "would a senior engineer call this overcomplicated?" If yes, simplify.
+
+### 3. Surgical changes — and migrate, never extend
+Touch only what you must. Every changed line traces to the request.
+- Don't "improve" adjacent code, comments or formatting.
+- Don't refactor what isn't broken. Match existing style.
+- Notice unrelated dead code → **mention it, don't delete it.**
+- Remove only the orphans YOUR change created.
+
+**Before changing anything that already has callers**: grep every caller and list
+them, file:line, with a per-caller decision. "It still compiles" is not that
+decision. Adding a capability — a parameter, a branch, a second response shape, a
+new mode — migrate every caller in the same change, or leave a comment at the old
+path saying why it survives.
+
+Two ways to do one thing is the same defect as two copies of one function. This
+rule exists because a `?position=N` route form was added beside a whole-post one
+and its caller was never moved: five requests per carousel, for a year.
+
+### 4. Goal-driven execution — `npm run check` is not a success criterion
+Define what "done" means **before** starting, then verify it.
+
+`check` proves the code compiles, lints, formats, has no orphaned exports, and
+that the existing tests still pass. It **cannot** see:
+- a duplicated query or an extra round trip
+- whether a compose, upload or canvas flow still works (nothing covers those)
+- whether a prompt change improved the image (only a rendered sheet shows that)
+- whether a migration is safe against production data
+
+When a change touches something `check` cannot see, the criterion is a **new
+test** or an **observed run**. Say which before making the change, and produce it
+before calling the change done. A green check on an untested path is not evidence.
+
+For multi-step work, state the plan as steps with their checks:
+```
+1. [step] → verify: [check]
+2. [step] → verify: [check]
+```
+
 ## Code quality (non-negotiable)
 
 ### No duplication
