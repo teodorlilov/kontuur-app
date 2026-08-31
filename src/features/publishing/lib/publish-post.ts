@@ -13,7 +13,7 @@ import {
 } from '@/lib/meta/publishing'
 import { isTokenExpired } from '@/lib/meta/token-expiry'
 import { altTextFromCaption, validateInstagramCaption } from './validate-caption'
-import { insertClientNotificationOnce } from './notifications'
+import { notify } from './notifications'
 import type { InstagramConnection } from './types'
 
 /**
@@ -186,11 +186,10 @@ async function markFailed(
   if (final) {
     // The durable record is publish_error on the row; the notification is how a
     // failure reaches someone who is not looking at the calendar.
-    await insertClientNotificationOnce(
-      admin,
-      post.client_id,
-      `A scheduled Instagram post could not be published: ${message}`
-    ).catch((err) => {
+    await notify(admin, {
+      clientId: post.client_id,
+      message: `A scheduled Instagram post could not be published: ${message}`,
+    }).catch((err) => {
       console.error(`[publish] failure notification for post ${post.id} not sent:`, err)
     })
   }

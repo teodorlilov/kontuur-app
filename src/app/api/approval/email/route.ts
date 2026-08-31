@@ -6,6 +6,7 @@ import { getCachedAgency } from '@/lib/queries/cache'
 import { approvalRequestSchema } from '@/lib/approval/schema'
 import { pluralise } from '@/utils/format'
 import { sendApprovalEmail } from '@/lib/email/resend'
+import { notify, NOTIFY_EVERY_TIME } from '@/features/publishing/lib/notifications'
 
 /** Create an approval batch and email the client the link. */
 export async function POST(request: Request) {
@@ -85,13 +86,14 @@ export async function POST(request: Request) {
   // Logged, not failed: the email really is out by this point — the send above now
   // reads its result rather than discarding it — so reporting an error here would
   // invite a resend that mails the client a second time.
-  const { error: notifyError } = await supabase.from('notifications').insert({
-    agency_id: agencyId,
+  // client_id was missing here: the row named the client inside its sentence and could not be
+  // linked back to one. Sending is a discrete act, so it notifies every time.
+  await notify(supabase, {
+    agencyId,
+    clientId,
     message: `Approval email sent to ${client.contact_email} for ${client.name} — ${pluralise(result.postCount, 'post')}`,
+    cooldownDays: NOTIFY_EVERY_TIME,
   })
-  if (notifyError) {
-    console.error('[approval] sent-notification insert failed:', notifyError.message)
-  }
 
   return NextResponse.json({ success: true, postCount: result.postCount })
 }

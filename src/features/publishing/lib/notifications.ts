@@ -1,86 +1,114 @@
 import 'server-only'
 
 import type { SupabaseClient } from '@supabase/supabase-js'
+import type { NotificationType } from '@/types/api'
 import { MS_PER_DAY } from '@/utils/constants'
+
+/**
+ * The one writer of `notifications`.
+ *
+ * There were five. This module held two of them behind a shared cooldown; the other three inserted
+ * straight into the table — the approval-response notifier, and the two approval routes, which
+ * built the same agency_id-only row and the same sentence a few files apart. Between them they set
+ * no `type`, which `types/api.ts` declares as a closed set and the notification bell keys its
+ * feedback badge off, and no `client_id`, while naming the client inside the message string. Those
+ * rows cannot be linked back to a client at all.
+ *
+ * `message` is the dedup key, so a caller whose wording varies with an error re-notifies on every
+ * tick. Keep the sentence phrase-stable for a given condition.
+ */
 
 /** Suppress duplicate notifications with the same message for this long. */
 const NOTIFY_COOLDOWN_DAYS = 7
 
-/** The cooldown check and the insert — the half that never needed the client's name. */
-async function insertOnce(
-  admin: SupabaseClient,
-  agencyId: string,
-  clientId: string,
-  message: string,
-  cooldownDays: number
-): Promise<void> {
-  const since = new Date(Date.now() - cooldownDays * MS_PER_DAY).toISOString()
-  const { data: existing, error: existingError } = await admin
-    .from('notifications')
-    .select('id')
-    .eq('agency_id', agencyId)
-    .eq('message', message)
-    .gte('created_at', since)
-    .limit(1)
-  // Reading the cooldown as "none sent" would re-notify on every cron tick.
-  if (existingError) throw new Error(`notification cooldown check failed: ${existingError.message}`)
-  if (existing && existing.length > 0) return
+/**
+ * A discrete event the user just caused, as opposed to a condition that persists.
+ *
+ * Sending an approval email twice in a week is two events and deserves two notifications; a token
+ * that has been expiring for a week is one condition and deserves one. The cooldown is the right
+ * default for the second and actively wrong for the first, which is why it is a number a caller
+ * states rather than a behaviour baked into the insert.
+ */
+export const NOTIFY_EVERY_TIME = 0
 
-  const { error: insertError } = await admin.from('notifications').insert({
-    agency_id: agencyId,
-    client_id: clientId,
-    message,
-  })
-  if (insertError) throw new Error(`notification insert failed: ${insertError.message}`)
+export interface NotifyInput {
+  /** Given directly, or resolved from `clientId`. One of the two is required. */
+  agencyId?: string
+  /** Stored on the row AND used to resolve the agency. Without it a notification cannot be
+   *  attributed to a client, however clearly the message names one. */
+  clientId?: string
+  /** A sentence, or one built from the client's name — the name costs no extra query. */
+  message: string | ((clientName: string) => string)
+  /** The closed vocabulary the bell reads. Absent on rows written before this was one function. */
+  type?: NotificationType
+  /** Nullable rather than optional: the approval notifier holds `string | null` for a
+   *  batch-wide response that names no single post. */
+  postId?: string | null
+  feedbackText?: string | null
+  reviewToken?: string
+  /** Days to suppress an identical message. `NOTIFY_EVERY_TIME` for user-caused events. */
+  cooldownDays?: number
 }
 
 /**
- * Insert an agency notification about a client, at most once per cooldown for
- * the same message. For a message that needs the client's NAME, use
- * `notifyAboutClient` — it reads both columns in one query instead of two.
+ * Insert an agency notification, at most once per cooldown for the same message.
+ *
+ * Never throws on a failed insert — every caller reaches this after the thing it is reporting has
+ * already happened, so failing here would report a completed action as broken. A cooldown-check
+ * failure is different and does throw: reading it as "none sent" would re-notify on every tick,
+ * which is the outcome the cooldown exists to prevent.
  */
-export async function insertClientNotificationOnce(
-  admin: SupabaseClient,
-  clientId: string,
-  message: string,
-  cooldownDays: number = NOTIFY_COOLDOWN_DAYS
-): Promise<void> {
-  const { data: client, error: clientError } = await admin
-    .from('clients')
-    .select('agency_id')
-    .eq('id', clientId)
-    .maybeSingle()
-  if (clientError) throw new Error(`client lookup failed: ${clientError.message}`)
-  const agencyId = (client as { agency_id: string | null } | null)?.agency_id
+export async function notify(admin: SupabaseClient, input: NotifyInput): Promise<void> {
+  const { agencyId, clientName } = await resolveTarget(admin, input)
   if (!agencyId) return
-  await insertOnce(admin, agencyId, clientId, message, cooldownDays)
+
+  const message =
+    typeof input.message === 'function' ? input.message(clientName ?? '') : input.message
+  const cooldownDays = input.cooldownDays ?? NOTIFY_COOLDOWN_DAYS
+
+  if (cooldownDays > 0) {
+    const since = new Date(Date.now() - cooldownDays * MS_PER_DAY).toISOString()
+    const { data: existing, error } = await admin
+      .from('notifications')
+      .select('id')
+      .eq('agency_id', agencyId)
+      .eq('message', message)
+      .gte('created_at', since)
+      .limit(1)
+    if (error) throw new Error(`notification cooldown check failed: ${error.message}`)
+    if (existing && existing.length > 0) return
+  }
+
+  const { error } = await admin.from('notifications').insert({
+    agency_id: agencyId,
+    client_id: input.clientId ?? null,
+    message,
+    type: input.type ?? null,
+    post_id: input.postId ?? null,
+    feedback_text: input.feedbackText ?? null,
+    review_token: input.reviewToken ?? null,
+  })
+  if (error) console.error('[notify] insert failed:', error.message)
 }
 
 /**
- * The same thing for a message that names the client.
+ * The agency to notify, and the client's name if a message wants it — in ONE query.
  *
- * Three callers — the token refresher and both metrics alerts — had each written
- * the same function: look up `clients.name`, throw on error, return if absent,
- * then call the helper above, which went and read the SAME row again for its
- * agency_id. One query now serves both halves, and the only thing a caller
- * still supplies is its sentence.
- *
- * `buildMessage` must be phrase-stable for a given condition: the message text
- * IS the dedup key, so wording that varies with the error re-notifies nightly.
+ * Three callers each used to look up `clients.name`, then hand off to a helper that read the SAME
+ * row again for its `agency_id`.
  */
-export async function notifyAboutClient(
+async function resolveTarget(
   admin: SupabaseClient,
-  clientId: string,
-  buildMessage: (clientName: string) => string,
-  cooldownDays: number = NOTIFY_COOLDOWN_DAYS
-): Promise<void> {
-  const { data: client, error } = await admin
+  input: NotifyInput
+): Promise<{ agencyId: string | null; clientName: string | null }> {
+  if (!input.clientId) return { agencyId: input.agencyId ?? null, clientName: null }
+
+  const { data, error } = await admin
     .from('clients')
     .select('agency_id, name')
-    .eq('id', clientId)
+    .eq('id', input.clientId)
     .maybeSingle()
   if (error) throw new Error(`client lookup failed: ${error.message}`)
-  const row = client as { agency_id: string | null; name: string } | null
-  if (!row?.agency_id) return
-  await insertOnce(admin, row.agency_id, clientId, buildMessage(row.name), cooldownDays)
+  const row = data as { agency_id: string | null; name: string } | null
+  return { agencyId: input.agencyId ?? row?.agency_id ?? null, clientName: row?.name ?? null }
 }

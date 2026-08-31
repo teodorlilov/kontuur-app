@@ -6,7 +6,7 @@ import { IG_TOKEN_REFRESH_URL } from '@/lib/meta/constants'
 import { classifyGraphError, type GraphFailure } from '@/lib/meta/graph-errors'
 import { igRefreshResponseSchema } from '@/lib/meta/schemas'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
-import { notifyAboutClient } from './notifications'
+import { notify } from './notifications'
 
 interface ExpiringConnection {
   id: string
@@ -157,10 +157,9 @@ function notifyReconnectNeeded(
   admin: ReturnType<typeof createAdminSupabaseClient>,
   clientId: string
 ): Promise<void> {
-  return notifyAboutClient(
-    admin,
+  return notify(admin, {
     clientId,
-    (name) =>
-      `Instagram connection for ${name} could not be refreshed — please reconnect the account`
-  )
+    message: (name) =>
+      `Instagram connection for ${name} could not be refreshed — please reconnect the account`,
+  })
 }

@@ -25,6 +25,7 @@ import type { PostType } from '@/types/api'
 import type { Theme } from '@/ai/generation/types'
 import { asJson } from '@/lib/queries/as-json'
 import { POSTING_SCHEDULE_DUE_COLUMNS } from '@/lib/queries/select-columns'
+import { notify, NOTIFY_EVERY_TIME } from '@/features/publishing/lib/notifications'
 
 export const maxDuration = 300
 
@@ -266,13 +267,15 @@ export async function GET(request: NextRequest) {
       if (runId) await finishGenerationRun(supabase, runId, 'complete')
 
       try {
-        const { error: notifyError } = await supabase.from('notifications').insert({
-          agency_id: agencyId,
+        // Every finished run is worth announcing, and the count varies anyway — the message is
+        // the dedup key, so two runs of the same size would collide under a cooldown.
+        await notify(supabase, {
+          agencyId,
+          clientId,
           type: 'posts_ready',
-          client_id: clientId,
           message: `${generationResults.length} post${generationResults.length === 1 ? '' : 's'} ready to review for ${clientRow.name}`,
+          cooldownDays: NOTIFY_EVERY_TIME,
         })
-        if (notifyError) throw new Error(`notification insert failed: ${notifyError.message}`)
 
         // Learn from the review queue on an isolated footing: a distiller failure must never
         // relabel the saved batch. The distiller

@@ -17,7 +17,7 @@ import {
   fetchReachByProductType,
   type IGDemographics,
 } from '@/lib/meta/insights'
-import { notifyAboutClient } from '@/features/publishing/lib/notifications'
+import { notify } from '@/features/publishing/lib/notifications'
 import { SOCIAL_CONNECTION_SYNC_COLUMNS } from '@/lib/queries/select-columns'
 import { MS_PER_DAY, SECONDS_PER_DAY } from '@/utils/constants'
 import { shiftDateKey } from '@/utils/date-helpers'
@@ -647,18 +647,18 @@ export async function syncDemographicsWeekly(
  * last_sync_error, which the analytics document reads.
  */
 function notifySyncIncomplete(admin: SupabaseClient, clientId: string): Promise<void> {
-  return notifyAboutClient(
-    admin,
+  return notify(admin, {
     clientId,
-    (name) => `Analytics for ${name} did not finish syncing — some sections are out of date`
-  )
+    message: (name) =>
+      `Analytics for ${name} did not finish syncing — some sections are out of date`,
+  })
 }
 
 /** Tell the agency the metrics sync is blocked on a dead or underscoped connection. */
 function notifyMetricsBlocked(admin: SupabaseClient, clientId: string): Promise<void> {
-  return notifyAboutClient(
-    admin,
+  return notify(admin, {
     clientId,
-    (name) => `Instagram metrics for ${name} could not be synced — please reconnect the account`
-  )
+    message: (name) =>
+      `Instagram metrics for ${name} could not be synced — please reconnect the account`,
+  })
 }

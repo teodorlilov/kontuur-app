@@ -6,6 +6,7 @@ import { createApprovalBatch } from '@/features/approval-portal/lib/approval-bat
 import { getCachedAgency } from '@/lib/queries/cache'
 import { approvalRequestSchema } from '@/lib/approval/schema'
 import { pluralise } from '@/utils/format'
+import { notify, NOTIFY_EVERY_TIME } from '@/features/publishing/lib/notifications'
 
 /** Create an approval batch and return its link for the agency to share manually. */
 export async function POST(request: Request) {
@@ -54,13 +55,12 @@ export async function POST(request: Request) {
 
   // Logged, not failed: the batch and its link already exist, so failing the
   // request would hide a working approval URL from the caller.
-  const { error: notifyError } = await supabase.from('notifications').insert({
-    agency_id: agencyId,
+  await notify(supabase, {
+    agencyId,
+    clientId,
     message: `Approval link generated for ${client.name} — ${pluralise(result.postCount, 'post')}`,
+    cooldownDays: NOTIFY_EVERY_TIME,
   })
-  if (notifyError) {
-    console.error('[approval] link-notification insert failed:', notifyError.message)
-  }
 
   // Responding to an approval already invalidated this tag, but *sending* one
   // never did — so the Clients roster would keep reporting nothing awaiting
