@@ -16,10 +16,15 @@ export interface ClientEntry {
   /** The agency's weekly target for this client. 0 means no cadence has been set. */
   posts_per_week: number
   /**
-   * Times this client might post, suggested from `best_time_json` — a model guess off
-   * four profile fields, not Meta data. Null when there is nothing usable stored.
+   * Hours this client's Instagram followers were observed online, averaged over 28 days.
+   *
+   * Null means not measured — no connected account, or too few days collected. It never means
+   * "we guessed"; the writer that invented these was deleted, because nothing downstream could
+   * tell an invention from a measurement.
    */
   best_times: BestTimePlatform[] | null
+  /** Which of the two reasons a null `best_times` is, so a surface can say which. */
+  instagram_connected: boolean
 }
 
 interface UseApprovalArgs {

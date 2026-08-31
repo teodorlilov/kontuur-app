@@ -44,12 +44,23 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
     // Forward FK, so PostgREST returns an object rather than an array — the same
     // embed /review already uses. best_time_json is validated before use, never cast.
     brand_profiles: { best_time_json: unknown } | null
+    /**
+     * Reverse FK, so an array — a client may hold rows for several platforms.
+     *
+     * Read only to explain an ABSENT best time. Posting times are measured from Instagram
+     * follower-online counts or they do not exist, and "no account connected" and "connected,
+     * still collecting" are different things to tell a user. Embedded on the query that was
+     * already fetching these clients rather than added as a per-client lookup.
+     */
+    social_connections: Array<{ platform: string; account_id: string | null }> | null
   }
 
   const [{ data: clientRows }, { data: postRows }] = await Promise.all([
     supabase
       .from('clients')
-      .select('id, name, contact_email, brand_profiles(best_time_json)')
+      .select(
+        'id, name, contact_email, brand_profiles(best_time_json), social_connections(platform, account_id)'
+      )
       .eq('agency_id', agencyId),
     clientIds.length > 0
       ? supabase
@@ -92,6 +103,11 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
     // Parsed here, server-side: a malformed row becomes "no suggestion" rather than a
     // throw inside a grid render, and zod stays out of the calendar's bundle.
     best_times: parseBestTimes(c.brand_profiles?.best_time_json),
+    // An account_id is what the metrics sync actually needs; a connection row without one
+    // cannot produce follower-online data, so it does not count as connected here.
+    instagram_connected: (c.social_connections ?? []).some(
+      (conn) => conn.platform === 'instagram' && conn.account_id
+    ),
   }))
 
   // Derived, not restated. Adding `expires_at` pushed this to five fields and

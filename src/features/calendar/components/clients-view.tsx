@@ -103,7 +103,14 @@ export const ClientsView = memo(function ClientsView({
       </div>
 
       {rows.map(({ client, coverage }) => (
-        <ClientWeekRow key={client.id} name={client.name} coverage={coverage} timeZone={timeZone} />
+        <ClientWeekRow
+          key={client.id}
+          name={client.name}
+          coverage={coverage}
+          timeZone={timeZone}
+          hasMeasuredTimes={(client.best_times?.length ?? 0) > 0}
+          instagramConnected={client.instagram_connected}
+        />
       ))}
     </div>
   )
@@ -144,10 +151,14 @@ function ClientWeekRow({
   name,
   coverage,
   timeZone,
+  hasMeasuredTimes,
+  instagramConnected,
 }: {
   name: string
   coverage: ClientWeek
   timeZone: string
+  hasMeasuredTimes: boolean
+  instagramConnected: boolean
 }) {
   const tone = toneFor(coverage.verdict)
   const hasTarget = coverage.target > 0
@@ -172,13 +183,26 @@ function ClientWeekRow({
         <Avatar name={name} />
         <span className="min-w-0">
           <span className="block truncate text-body font-medium text-ink">{name}</span>
-          {/* The cadence, and only the half a human set. `posts_per_week` is agency-set
-              and can be stated flatly; the days and the hour come from a model's guess,
-              so they appear as suggested times inside the hatched cells rather than as a
-              pattern claimed here. */}
+          {/* The cadence, and only the half a human set. `posts_per_week` is agency-set and can
+              be stated flatly; the days and hours are measured from Instagram and appear as
+              suggested slots in the hatched cells rather than as a pattern claimed here. */}
           <span className="block text-micro tabular-nums text-text3">
             {hasTarget ? `${coverage.target}× a week` : 'No cadence set'}
           </span>
+          {/* Why this client's row has no suggested slots in it.
+           *
+           * Said here rather than left to inference. The hatched cells simply do not appear
+           * without measured times, and an empty week reads as "nothing suggested for them"
+           * — a statement about the client — when it is a statement about what we have
+           * measured. Which of the two reasons it is matters: one is a setup step the agency
+           * can take now, the other is a wait. */}
+          {!hasMeasuredTimes && (
+            <span className="block truncate text-micro text-text3">
+              {instagramConnected
+                ? 'Collecting follower activity — no posting times yet'
+                : 'Connect Instagram to see when their followers are online'}
+            </span>
+          )}
         </span>
       </div>
 
