@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { ORDERED_STAGE_LABELS, STAGE_LABELS } from '../stages'
-import { GENERATION_STAGES, stageIndex } from '../stream-events'
+import { GENERATION_STAGES, stageIndex } from '@/features/generate/lib/stream-events'
 
 /**
  * The rail used to infer its stage by substring-matching the phase prose, and got it

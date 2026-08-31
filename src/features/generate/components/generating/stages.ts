@@ -1,4 +1,4 @@
-import { GENERATION_STAGES, type GenerationStage } from './stream-events'
+import { GENERATION_STAGES, type GenerationStage } from '@/features/generate/lib/stream-events'
 
 /**
  * What the progress rail calls each stage.

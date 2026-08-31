@@ -15,7 +15,7 @@ import { ScheduleDialog } from '@/components/posts/review/schedule-dialog'
 import { useDraftEdits } from '@/components/posts/review/use-draft-edits'
 import { useReviewKeyboard } from '@/components/posts/review/use-review-keyboard'
 import type { ReviewDraft } from '@/components/posts/review/types'
-import { approveDraft } from '@/features/generate/lib/approve-draft'
+import { approveDraft } from '@/features/generate/components/review/approve-draft'
 import { rewriteDraft } from '@/lib/rewrite-draft'
 import {
   completedDraftImages,
