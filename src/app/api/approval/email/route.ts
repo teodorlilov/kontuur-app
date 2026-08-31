@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
 import { verifyClientOwnership } from '@/lib/auth/helpers'
-import { createApprovalBatch } from '@/features/review/lib/approval-batch'
+import { createApprovalBatch } from '@/features/approval-portal/lib/approval-batch'
 import { getCachedAgency } from '@/lib/queries/cache'
 import { approvalRequestSchema } from '@/lib/approval/schema'
 import { pluralise } from '@/utils/format'

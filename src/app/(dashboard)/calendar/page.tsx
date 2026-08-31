@@ -116,7 +116,7 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
    * Sorted rather than taking `[0]`: PostgREST does not promise embed order, and a post
    * re-sent for approval has several. Two other readers get this wrong today —
    * `features/dashboard/queries/change-requests.ts` and
-   * `features/review/actions/approval-actions.ts` both index `[0]` unordered, and the
+   * `features/approval-portal/actions/approval-actions.ts` both index `[0]` unordered, and the
    * first does not even select `created_at` to sort by. Promote this when one of them
    * adopts it; it has one consumer until then.
    */

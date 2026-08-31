@@ -3,8 +3,8 @@
 import 'server-only'
 import { revalidateTag } from 'next/cache'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
-import { createApprovalNotification } from '@/features/review/lib/create-approval-notification'
-import { submitApprovalSchema, type ApprovalStatus } from '@/features/review/schemas'
+import { createApprovalNotification } from '@/features/approval-portal/lib/create-approval-notification'
+import { submitApprovalSchema, type ApprovalStatus } from '@/features/approval-portal/schemas'
 import { formatZodIssues } from '@/lib/validation/format-issues'
 import type { ActionResult } from '@/lib/actions/types'
 
