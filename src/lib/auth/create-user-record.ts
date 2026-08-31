@@ -1,5 +1,19 @@
+import { z } from 'zod'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
+
+/**
+ * What signup metadata must say before any of it reaches a column.
+ *
+ * `mode` decides whether the account gets a solo client and lands in `agencies.mode`, so an
+ * unrecognised value has to be refused rather than stored. This schema lived in the signup route,
+ * which meant the OTHER path into this function — the auth callback, reading the same two values
+ * out of `user_metadata` through an `as` cast — stored whatever was there.
+ */
+const accountMetadataSchema = z.object({
+  businessName: z.string().trim().min(1),
+  mode: z.enum(['agency', 'solo']).default('agency'),
+})
 
 type AdminClient = SupabaseClient<Database>
 
@@ -64,9 +78,20 @@ export async function createUserRecord(
     return { agencyId: meta.invited_agency_id, isInvited: true }
   }
 
-  // New signup — create agency
-  const businessName = meta.businessName ?? 'My Business'
-  const mode = meta.mode ?? 'agency'
+  // New signup — create agency.
+  //
+  // Validated, not defaulted. This read `meta.businessName ?? 'My Business'`, so a signup whose
+  // metadata was missing or malformed silently created an agency called "My Business" — while the
+  // signup route, which the same browser call also hits, refused an empty name outright. Two
+  // answers to one question, decided by whichever path ran first.
+  const parsed = accountMetadataSchema.safeParse(meta)
+  if (!parsed.success) throw new Error('signup metadata is missing a business name or mode')
+  const { businessName, mode } = parsed.data
+
+  // `users.email` is a lookup key — forgot-password finds accounts by it — so an empty one is an
+  // account nobody can recover. The signup route wrote `user.email ?? ''` here; failing the signup
+  // is the better outcome, and the caller reports it.
+  if (!user.email) throw new Error('cannot create a user record without an email')
 
   const { data: agencyData, error: agencyError } = await admin
     .from('agencies')

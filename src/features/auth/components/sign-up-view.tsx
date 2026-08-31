@@ -121,11 +121,10 @@ export function SignUpView() {
       return
     }
 
-    const response = await fetch('/api/auth/signup', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ businessName, mode }),
-    })
+    // No body: the route provisions from `user_metadata`, which the signUp above already carries.
+    // It used to take businessName and mode here too, so the same two values arrived by two routes
+    // and whichever landed first decided the account.
+    const response = await fetch('/api/auth/signup', { method: 'POST' })
 
     if (!response.ok) {
       const body = (await response.json()) as { error?: string }
