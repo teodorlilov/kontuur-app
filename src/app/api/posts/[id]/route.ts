@@ -1,10 +1,19 @@
 import { NextResponse } from 'next/server'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
-import { fetchOwnedPost } from '@/lib/auth/helpers'
-import { parsePostUpdate } from '@/lib/validation/post-update-schema'
 import { POST_COLUMNS } from '@/lib/queries/select-columns'
 
-/** Fetch one post. */
+/**
+ * Fetch one post.
+ *
+ * The only handler here. This file also carried a PUT and a DELETE, and both were duplicate
+ * implementations of writes that already had a home: PUT restated `updatePostSchema` over the same
+ * columns `updatePost` writes, and DELETE removed the row without the `discarded_drafts` telemetry
+ * `deletePost` records. Neither had a caller anywhere in src — the only PUT/DELETE fetches in the
+ * app target `/canvas`, `/images`, `/settings/account` and `/ai/generate-visual`.
+ *
+ * They were live authenticated endpoints, so "unused" was not the same as harmless: the DELETE
+ * would have silently corrupted source-quality telemetry the moment anything called it.
+ */
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const auth = await resolveAuth()
@@ -32,61 +41,4 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   // Strip the joined clients field before returning
   const { clients: _clients, ...post } = typed
   return NextResponse.json({ post })
-}
-
-/** Update one post's fields. */
-export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params
-  const auth = await resolveAuth()
-  if (!auth.ok) return auth.response
-  const { supabase, agencyId } = auth
-
-  const post = await fetchOwnedPost(supabase, id, agencyId)
-  if (!post) return NextResponse.json({ error: 'Post not found' }, { status: 404 })
-
-  let body: unknown
-  try {
-    body = await request.json()
-  } catch {
-    return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
-  }
-
-  // The same whitelist the server action enforces, from the same schema. This route
-  // used to restate all eleven fields, which is how it came to validate
-  // `quality_score_avg` while the action did not — and how both came to write
-  // `scheduled_at` unchecked.
-  const parsed = parsePostUpdate(body)
-  if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: 400 })
-
-  const { data: updated, error } = await supabase
-    .from('posts')
-    .update(parsed.updates)
-    .eq('id', id)
-    .select(POST_COLUMNS)
-    .single()
-
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-
-  return NextResponse.json({ post: updated })
-}
-
-/** Delete one post. */
-export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params
-  const auth = await resolveAuth()
-  if (!auth.ok) return auth.response
-  const { supabase, agencyId } = auth
-
-  const post = await fetchOwnedPost(supabase, id, agencyId)
-  if (!post) return NextResponse.json({ error: 'Post not found' }, { status: 404 })
-
-  // A swallowed error here told the caller { success: true } about a row that was
-  // still in the table — the optimistic UI removed it until the next hard load.
-  const { error } = await supabase.from('posts').delete().eq('id', id)
-  if (error) {
-    console.error('[posts] delete failed:', error.message)
-    return NextResponse.json({ error: error.message }, { status: 500 })
-  }
-
-  return NextResponse.json({ success: true })
 }
