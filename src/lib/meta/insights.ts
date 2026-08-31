@@ -152,6 +152,14 @@ export async function fetchDayTotals(
  * The probe supports it — the same week's follower_count delta series summed to
  * 5, exactly the FOLLOWER value (NON_FOLLOWER read 3). ≥100-follower gated
  * (silent-empty below), so absence maps to null.
+ *
+ * THE ONLY source of `ig_account_metrics.follows`. There was a second — a
+ * `follower_count` day series — and the column was written from whichever path
+ * last touched the day, with one refill writing the same day twice and the later
+ * upsert silently winning. That series is deleted rather than kept beside this
+ * one: it carried no `unfollows`, so a day it filled left the follower-flow
+ * panel taking its two halves from different runs. Follows and unfollows now
+ * arrive together or not at all.
  */
 export async function fetchFollowsBreakdown(
   accountId: string,
@@ -232,27 +240,6 @@ export function fetchInteractionsByProductType(
   untilTs: number
 ): Promise<Record<string, number> | null> {
   return fetchProductTypeBreakdown(accountId, accessToken, 'total_interactions', sinceTs, untilTs)
-}
-
-/**
- * follower_count per day — the DAILY NEW-FOLLOWERS DELTA, not a cumulative total
- * (probe-verified). ≥100-follower gated, so an empty array means unavailable.
- */
-export async function fetchFollowerDeltaSeries(
-  accountId: string,
-  accessToken: string,
-  sinceTs: number,
-  untilTs: number
-): Promise<Array<{ date: string; delta: number }>> {
-  const body = await graphGet(igInsightsEnvelopeSchema, insightsUrl(accountId), accessToken, {
-    metric: 'follower_count',
-    period: 'day',
-    ...rangeParams(sinceTs, untilTs),
-  })
-  return dailySeriesOf(body.data, 'follower_count').map(({ date, value }) => ({
-    date,
-    delta: value,
-  }))
 }
 
 export type IGDemographicKind = 'follower_demographics' | 'engaged_audience_demographics'

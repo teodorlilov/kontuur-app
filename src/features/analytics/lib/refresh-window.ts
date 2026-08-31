@@ -4,7 +4,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { createSemaphore } from '@/lib/concurrency'
 import { GraphApiError } from '@/lib/meta/graph-errors'
 import { captureOnlineFollowers, refreshObservedBestTime } from './online-followers'
-import { fetchDailyReachSeries, fetchFollowerDeltaSeries } from '@/lib/meta/insights'
+import { fetchDailyReachSeries } from '@/lib/meta/insights'
 import {
   captureDayTotals,
   syncDemographicsWeekly,
@@ -174,12 +174,10 @@ export async function refreshWindowMetrics(
 
   // The series the API still serves for the past — chunked, both windows.
   const reachRows: IGAccountMetricsInsert[] = []
-  const followRows: IGAccountMetricsInsert[] = []
   try {
     for (const chunk of seriesChunks(period.prevStart, spanEnd)) {
-      const [reach, deltas] = await Promise.all([
+      const [reach] = await Promise.all([
         fetchDailyReachSeries(accountId, accessToken, chunk.sinceTs, chunk.untilTs),
-        fetchFollowerDeltaSeries(accountId, accessToken, chunk.sinceTs, chunk.untilTs),
         // Through the shared capture, which stores as it goes. This branch used to fetch and map
         // the same column itself, in parallel with the nightly sync doing the same over a different
         // window — two writers of one column, and only the other one derived anything from it.
@@ -199,23 +197,12 @@ export async function refreshWindowMetrics(
           })
         }
       }
-      for (const day of deltas) {
-        if (day.date <= spanEnd) {
-          followRows.push({
-            client_id: clientId,
-            ig_account_id: accountId,
-            metric_date: day.date,
-            follows: day.delta,
-          })
-        }
-      }
     }
   } catch (err) {
     if (err instanceof GraphApiError && err.failure === 'rate_limited') rateLimited = true
     else throw err
   }
   await upsertColumnBatch(admin, reachRows)
-  await upsertColumnBatch(admin, followRows)
   // The hours this refill just stored may be exactly what was blocking this client's posting
   // times — before, they were written here and derived only by the nightly cron, so refreshing
   // analytics filled the gap and left the answer stale until the morning.

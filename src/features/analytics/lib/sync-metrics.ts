@@ -8,7 +8,6 @@ import {
   fetchDailyReachSeries,
   fetchDayTotals,
   fetchDemographics,
-  fetchFollowerDeltaSeries,
   fetchFollowsBreakdown,
   fetchInteractionsByProductType,
   fetchLinkTaps,
@@ -475,10 +474,7 @@ async function backfillAccountHistory(
 ): Promise<void> {
   const window = yesterdayUtcWindow()
   const sinceTs = window.untilTs - BACKFILL_DAYS * SECONDS_PER_DAY
-  const [reachSeries, deltaSeries] = await Promise.all([
-    fetchDailyReachSeries(accountId, accessToken, sinceTs, window.untilTs),
-    fetchFollowerDeltaSeries(accountId, accessToken, sinceTs, window.untilTs),
-  ])
+  const reachSeries = await fetchDailyReachSeries(accountId, accessToken, sinceTs, window.untilTs)
 
   // Uniform keys per row — PostgREST rejects ragged bulk inserts.
   const byDate = new Map<string, IGAccountMetricsInsert>()
@@ -490,14 +486,12 @@ async function backfillAccountHistory(
         ig_account_id: accountId,
         metric_date: date,
         reach: null,
-        follows: null,
       }
       byDate.set(date, row)
     }
     return row
   }
   for (const day of reachSeries) rowFor(day.date).reach = day.reach
-  for (const day of deltaSeries) rowFor(day.date).follows = day.delta
   byDate.delete(window.date)
   if (byDate.size === 0) return
 
