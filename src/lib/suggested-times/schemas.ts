@@ -3,17 +3,15 @@ import { z } from 'zod'
 /**
  * The shape of `brand_profiles.best_time_json`, validated where it is read.
  *
- * It needs validating because of where it comes from: `generateBestTime` casts a Claude
- * Haiku response with `parseJsonResponse<BestTimeResult>` — an unchecked assertion over
- * model output — and stores it as `Json`. Nothing between the model and the grid has
- * ever checked it, and three readers each hand-rolled
- * `Array.isArray(x) ? (x as BestTimePlatform[]) : null`, which proves the array is an
- * array and nothing else. A malformed entry reaching `suggestWeekSlots` would throw
- * inside a render.
+ * Still validated even though the only writer is now our own `deriveObservedBestTime`
+ * rather than a model. The column is `jsonb`, so it holds whatever any past writer left
+ * there — including rows a deleted Haiku path wrote, which are still in production and
+ * still parse. Validation is what stops one of those reaching `suggestWeekSlots` and
+ * throwing inside a render.
  *
- * Deliberately lenient about extra keys and about `confidence`: the model has returned
- * values outside its own enum before, and a slot suggestion does not depend on it. The
- * fields the picker actually reads are the ones held to a type.
+ * Deliberately lenient about extra keys and about `confidence`: the retired model writer
+ * returned values outside its own enum, those rows survive, and a slot suggestion never
+ * depended on the field. The fields the picker actually reads are the ones held to a type.
  */
 const bestTimeWindowSchema = z.object({
   time: z.string().regex(/^\d{2}:\d{2}$/, 'HH:MM'),
@@ -79,22 +77,4 @@ export function parseBestTimes(value: unknown): BestTimePlatform[] | null {
   // was the only thing making them agree.
   const entries = Array.isArray(result.data) ? result.data : result.data.platforms
   return entries.length === 0 ? null : entries
-}
-
-/** The value `deriveObservedBestTime` stamps on every entry it builds off the follower-online grid. */
-export const OBSERVED_CONFIDENCE = 'observed'
-
-/**
- * Whether a stored blob was measured from Meta rather than imagined by a model.
- *
- * Two things write this column and they are not equal in authority: `deriveObservedBestTime` reads
- * a real weekday x hour grid of when a client's followers are online, while `generateBestTime` asks
- * Haiku to guess from four profile fields. `sync-metrics` already states the precedence — "observed
- * data outranks the model-invented best_time_json" — but stating it is all it did, because the only
- * other writer had no way to ask the question. This is that question, in one place, so the rule is
- * enforced rather than described.
- */
-export function isObservedBestTime(value: unknown): boolean {
-  const entries = parseBestTimes(value)
-  return entries !== null && entries.some((entry) => entry.confidence === OBSERVED_CONFIDENCE)
 }

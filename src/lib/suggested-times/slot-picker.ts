@@ -12,23 +12,23 @@ import type { BestTimePlatform } from '@/lib/suggested-times/schemas'
 /**
  * When a client *might* post.
  *
- * The source is `brand_profiles.best_time_json`, and it is now ONE OF TWO THINGS.
+ * The source is `brand_profiles.best_time_json`, and it is MEASURED — the only thing that writes it
+ * is `deriveObservedBestTime`, reading Instagram's hourly follower-online counts off the last 28
+ * days and averaging them into a weekday x hour grid.
  *
- * This docblock used to say the column was "**not** Meta data" and that "nothing here is evidence
- * about when this audience is actually online". That has been false since the analytics online-hours
- * phase shipped: for a client with a connected Instagram account and enough history,
- * `deriveObservedBestTime` overwrites the column nightly with days and windows read straight off the
- * observed weekday x hour follower-online grid, stamped `confidence: 'observed'`. It said "when real
- * Meta timing data lands, only the source changes" — it landed, and the sentence above it did not.
- * Ask `isObservedBestTime` which kind a given row is rather than assuming.
+ * There used to be a second writer: a Haiku call that imagined posting times from four profile
+ * fields for clients with no connected account. It was deleted, not narrowed. Both writers produced
+ * the same shape into the same column and `suggestWeekSlots` returns bare timestamps, so nothing
+ * downstream could tell a measurement from an invention — which made every suggestion as
+ * trustworthy as the least trustworthy way it could have been produced. An empty calendar that says
+ * why is honest; a full one built from a guess is not.
  *
- * Without that connection it is still what it always was: a Claude Haiku response to four profile
- * fields, refreshed on a 30-day timer.
+ * So an absent value now means exactly one thing: no measurement yet, because no account is
+ * connected or too few days have been collected. Surfaces say that rather than drawing nothing.
  *
- * `suggest*` rather than `best*` in the names below STAYS, and now for a better reason. One vocabulary
- * has to cover both cases, and the weaker claim is the only one true of both — calling a model's guess
- * "best time" asserts proof that does not exist, while calling measured data "suggested" merely
- * understates it.
+ * `suggest*` rather than `best*` in the names below stays. These are hours the audience was
+ * observed to be ONLINE, which is evidence about attention, not about outcomes — the reach a
+ * publish window actually earned is a different measurement (`buildPublishWindows`).
  *
  * The count a client is measured against (`posts_per_week`) is a different matter: an
  * agency set it by hand, and it is the honest half of every deficit claim.

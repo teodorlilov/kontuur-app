@@ -143,13 +143,30 @@ export function ScheduleDialog({
               onSelect={() => setChoice('next')}
             />
           )}
-          {best && (
+          {best ? (
             <OptionCard
               checked={choice === 'best'}
               title={`Best time — ${best.day} ${best.time}`}
-              sub="From this client’s own engagement history"
+              // What the number actually is. This said "engagement history", which was wrong twice
+              // over: it was never engagement, and until the guessed path was deleted it was often
+              // not history either — a model's idea of when this audience might be about.
+              sub="When this client’s followers are actually online, from Instagram"
               onSelect={() => setChoice('best')}
             />
+          ) : (
+            /**
+             * Absent data says so, rather than one fewer option appearing.
+             *
+             * There used to be something here for every client, because a model invented posting
+             * times for anyone without a connected account and the dialog could not tell those from
+             * measurements. With the guess deleted this option is honest but conditional — and a
+             * silently missing row reads as "this client has no best time", which is a claim about
+             * the client rather than about what we know.
+             */
+            <p className="rounded-sm border border-dashed border-line2 px-3 py-2.5 text-micro text-text2">
+              No best time yet — it needs a connected Instagram account and a few days of follower
+              activity. Nothing is guessed here, so until then there is nothing to suggest.
+            </p>
           )}
           <OptionCard
             checked={choice === 'pick'}

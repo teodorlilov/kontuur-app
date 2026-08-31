@@ -250,13 +250,6 @@ export default function NewClientPage() {
       return
     }
 
-    // Best-time generation is a nicety; a failure must not block the flow.
-    void fetch('/api/ai/best-time', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ client_id: result.data }),
-    }).catch(() => null)
-
     // The analysed path prefetched at read time; the blank form had no niche to prefetch from
     // until now. Without this the stepper's feed step reads an unstarted prefetch as one still
     // running and shows a skeleton that never resolves.

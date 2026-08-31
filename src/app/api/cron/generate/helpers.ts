@@ -15,14 +15,7 @@ type ClientContext = Pick<ClientRow, 'id' | 'agency_id' | 'name' | 'niche' | 'la
 
 type BrandProfileContext = Pick<
   BrandProfileRow,
-  | 'client_id'
-  | 'weekly_mix_json'
-  | 'default_post_type'
-  | 'default_carousel_slides'
-  | 'best_time_updated_at'
-  // Read so the refresh below can look at what it is about to replace. Without it the cron knew
-  // only how OLD the stored value was, never whether it was a model guess or measured Meta data.
-  | 'best_time_json'
+  'client_id' | 'weekly_mix_json' | 'default_post_type' | 'default_carousel_slides'
 >
 
 interface ScheduleContext {
@@ -42,9 +35,7 @@ export async function fetchScheduleContext(
     supabase.from('clients').select('id, agency_id, name, niche, language').in('id', clientIds),
     supabase
       .from('brand_profiles')
-      .select(
-        'client_id, weekly_mix_json, default_post_type, default_carousel_slides, best_time_updated_at, best_time_json'
-      )
+      .select('client_id, weekly_mix_json, default_post_type, default_carousel_slides')
       .in('client_id', clientIds),
   ])
 

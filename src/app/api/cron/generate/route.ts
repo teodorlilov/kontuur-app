@@ -17,16 +17,8 @@ import {
 } from '@/lib/generation/runs'
 import { generateBriefing } from '@/ai/intelligence/generate-briefing'
 import { generateSoloCoaching } from '@/ai/solo-coaching/generate-coaching'
-import { generateBestTime } from '@/ai/best-time/generate-best-time'
-import { isObservedBestTime } from '@/lib/suggested-times/schemas'
 import { getMondayISO } from '@/utils/date-helpers'
-import {
-  BEST_TIME_REFRESH_DAYS,
-  DEFAULT_CAROUSEL_SLIDES,
-  MS_PER_DAY,
-  MS_PER_HOUR,
-  STYLE_MEMO_REFRESH_DAYS,
-} from '@/utils/constants'
+import { DEFAULT_CAROUSEL_SLIDES, MS_PER_HOUR, STYLE_MEMO_REFRESH_DAYS } from '@/utils/constants'
 import { distillStyleMemo } from '@/ai/learning/distill-style-memo'
 import { fetchScheduleContext, getScheduleDue } from './helpers'
 import type { PostType } from '@/types/api'
@@ -282,43 +274,8 @@ export async function GET(request: NextRequest) {
         })
         if (notifyError) throw new Error(`notification insert failed: ${notifyError.message}`)
 
-        const updatedAt = brandProfile?.best_time_updated_at
-        const isStale =
-          !updatedAt ||
-          Date.now() - new Date(updatedAt).getTime() > BEST_TIME_REFRESH_DAYS * MS_PER_DAY
-        /**
-         * A model guess must never replace measured data, however old the measurement is.
-         *
-         * The staleness timer alone was doing that job by accident: the metrics cron restamps
-         * `best_time_updated_at` nightly, so a connected client normally never looks stale here. But
-         * that is a coincidence of two schedules, not a rule — let a client's Meta sync lapse for a
-         * month (an expired token, a removed connection, a failing phase) and this branch quietly
-         * overwrites a real weekday x hour reading of when their followers are online with four
-         * profile fields handed to Haiku. Nothing downstream could tell the difference afterwards.
-         *
-         * Refreshing a stale GUESS is still right, which is why this narrows rather than removes.
-         */
-        if (isStale && !isObservedBestTime(brandProfile?.best_time_json)) {
-          const bestTime = await generateBestTime({
-            niche: clientRow.niche ?? 'General',
-            targetAudience: client.targetAudience,
-            language: client.language,
-            platforms: platform,
-          })
-          const { error: bestTimeError } = await supabase
-            .from('brand_profiles')
-            .update({
-              best_time_json: asJson(bestTime),
-              best_time_updated_at: new Date().toISOString(),
-            })
-            .eq('client_id', clientId)
-          // Unwritten best_time_updated_at leaves the profile permanently stale,
-          // so every later tick pays for a fresh LLM best-time call.
-          if (bestTimeError) throw new Error(`best time write failed: ${bestTimeError.message}`)
-        }
-
-        // Learn from the review queue on the same isolated footing as best-time:
-        // a distiller failure must never relabel the saved batch. The distiller
+        // Learn from the review queue on an isolated footing: a distiller failure must never
+        // relabel the saved batch. The distiller
         // itself skips when the memo is fresh or there are too few new edits,
         // and only advances its cursor after a successful write.
         await distillStyleMemo(supabase, clientId, {

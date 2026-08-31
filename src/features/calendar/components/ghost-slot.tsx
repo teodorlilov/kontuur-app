@@ -7,17 +7,14 @@ import { LaneItem } from './lane-item'
 /**
  * A time this client's stored pattern suggests, that nothing fills.
  *
- * **It says "Suggested", never "best time"** — and that holds whichever kind of data is behind it.
- * `brand_profiles.best_time_json` is a Claude Haiku guess off four profile fields for a client with
- * no Instagram connected, and a nightly reading of their real follower-online grid for one that has.
- * This comment used to assert the first case as though it were the only one, which stopped being
- * true when the analytics online-hours phase shipped.
+ * Every slot behind this is MEASURED: hours Instagram reported this client's followers were online,
+ * averaged over the last 28 days. A ghost slot is never drawn from a guess, because the guess was
+ * deleted — a model used to invent these for clients with no connected account, and the calendar
+ * could not tell the two apart.
  *
- * The label stays deliberately weak because one word has to cover both, and only the weak claim is
- * honest in both directions: "best time" over a model guess asserts proof that does not exist, while
- * "suggested" over measured data merely undersells it. The
- * honest half of the deficit lives elsewhere: the *count* a client is measured against
- * is `posts_per_week`, which an agency set by hand.
+ * It still says "Suggested" rather than "best time". Followers being online is evidence about
+ * ATTENTION, not about outcome: what a publish window actually earned is a separate measurement.
+ * The count a client is measured against is separate again — `posts_per_week`, set by an agency.
  *
  * A slot in the past keeps its place in Amber rather than disappearing. It is a record
  * that the week went unmet — deleting it would make the calendar look tidier than the
