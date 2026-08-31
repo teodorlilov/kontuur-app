@@ -413,45 +413,25 @@ async function syncAccountDay(
   accessToken: string
 ): Promise<void> {
   const window = yesterdayUtcWindow()
-  const [account, reachSeries, totals, followsSplit, linkTaps, reachByType, interactionsByType] =
-    await Promise.all([
-      fetchAccountFields(accountId, accessToken),
-      fetchDailyReachSeries(accountId, accessToken, window.sinceTs, window.untilTs),
-      fetchDayTotals(accountId, accessToken, window.sinceTs, window.untilTs),
-      fetchFollowsBreakdown(accountId, accessToken, window.sinceTs, window.untilTs),
-      fetchLinkTaps(accountId, accessToken, window.sinceTs, window.untilTs),
-      fetchReachByProductType(accountId, accessToken, window.sinceTs, window.untilTs),
-      fetchInteractionsByProductType(accountId, accessToken, window.sinceTs, window.untilTs),
-    ])
+  const [account, reachSeries, dayTotals] = await Promise.all([
+    fetchAccountFields(accountId, accessToken),
+    fetchDailyReachSeries(accountId, accessToken, window.sinceTs, window.untilTs),
+    // The same capture the consolidation recapture and the analytics refill use. Eighteen columns
+    // were written here from a second literal that duplicated it field for field — identical
+    // values, two places to change, and `follows`/`unfollows` among them.
+    captureDayTotals(clientId, accountId, accessToken, window.date),
+  ])
 
   const row: IGAccountMetricsInsert = {
-    client_id: clientId,
-    ig_account_id: accountId,
-    metric_date: window.date,
+    ...dayTotals,
+    // The three the nightly run alone can see: an account snapshot is a NOW reading, not a day's
+    // history, so no per-day capture can produce it.
     followers_count: account.followers_count,
     follows_count: account.follows_count,
     media_count: account.media_count,
-    // An empty series is the API's silent-empty — null, never 0.
+    // Summed from the series rather than taken per day. An empty series is the API's silent-empty —
+    // null, never 0.
     reach: reachSeries.length > 0 ? reachSeries.reduce((sum, day) => sum + day.reach, 0) : null,
-    views: totals.views,
-    accounts_engaged: totals.accounts_engaged,
-    total_interactions: totals.total_interactions,
-    likes: totals.likes,
-    comments: totals.comments,
-    saves: totals.saves,
-    shares: totals.shares,
-    replies: totals.replies,
-    reposts: totals.reposts,
-    profile_views: totals.profile_views,
-    website_clicks: totals.website_clicks,
-    follows: followsSplit.follows,
-    unfollows: followsSplit.unfollows,
-    profile_links_taps: linkTaps.total,
-    reach_by_media_product_type: reachByType,
-    interactions_by_media_product_type: interactionsByType,
-    link_taps_by_button_type: linkTaps.byButton,
-    // The day's totals were asked, whatever came back — the refill marker.
-    totals_synced_at: new Date().toISOString(),
   }
   const { error } = await admin
     .from('ig_account_metrics')
