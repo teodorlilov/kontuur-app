@@ -45,22 +45,21 @@ export async function createSource(
     return { ok: false, error: 'type must be rss or website' }
   }
 
-  if (!(await validateSourceUrl(input.url))) {
-    return { ok: false, error: 'Invalid URL — must be a public http/https URL' }
-  }
+  const createUrl = await resolveSourceUrl(input.url)
+  if (!createUrl) return { ok: false, error: INVALID_URL }
 
   // Test the URL before saving
   let fetchStatus = 'ok'
   let fetchError: string | undefined
 
   if (input.type === 'rss') {
-    const valid = await isValidRssUrl(input.url)
+    const valid = await isValidRssUrl(createUrl)
     if (!valid) {
       fetchStatus = 'error'
       fetchError = 'URL did not return a valid RSS or Atom feed'
     }
   } else {
-    const result = await fetchWebsiteSource(input.url)
+    const result = await fetchWebsiteSource(createUrl)
     if (result.error) {
       fetchStatus = 'error'
       fetchError = result.error
@@ -83,7 +82,7 @@ export async function createSource(
       client_id: clientId,
       type: input.type,
       label: input.label.trim(),
-      url: input.url.trim(),
+      url: createUrl,
       config: asJson(sourceConfig),
       last_fetched_at: new Date().toISOString(),
       last_fetch_status: fetchStatus,
@@ -187,6 +186,23 @@ interface UpdateSourceInput {
   pillar_ids?: string[]
 }
 
+/** The one refusal both paths give, so an edit and an add reject the same address the same way. */
+const INVALID_URL = 'Invalid URL — must be a public http/https URL'
+
+/**
+ * The trimmed URL if the server may fetch it, else null.
+ *
+ * Every write of `client_sources.url` goes through here. It existed only inside `createSource`,
+ * which meant the SSRF check was a property of ONE ENTRY POINT rather than of the column — and the
+ * other entry point wrote a bare `.trim()` straight in. The research pipeline does not know which
+ * path produced the row it is fetching.
+ */
+async function resolveSourceUrl(raw: string): Promise<string | null> {
+  const url = raw.trim()
+  if (!url) return null
+  return (await validateSourceUrl(url)) ? url : null
+}
+
 /** Update a source's fields. */
 export async function updateSource(
   sourceId: string,
@@ -202,7 +218,14 @@ export async function updateSource(
   const fields: Record<string, unknown> = {}
   if (updates.is_active !== undefined) fields.is_active = updates.is_active
   if (updates.label !== undefined && updates.label.trim()) fields.label = updates.label.trim()
-  if (updates.url !== undefined && updates.url.trim()) fields.url = updates.url.trim()
+  // Through the same gate `createSource` uses. This branch was `updates.url.trim()` and nothing
+  // else, so the SSRF guard was bypassable by EDITING a source instead of adding one: the research
+  // pipeline fetches whatever this column holds, and only the create path checked it.
+  if (updates.url !== undefined && updates.url.trim()) {
+    const url = await resolveSourceUrl(updates.url)
+    if (!url) return { ok: false, error: INVALID_URL }
+    fields.url = url
+  }
   if (updates.config !== undefined) fields.config = updates.config
   if (updates.pillar_ids !== undefined) fields.pillar_ids = updates.pillar_ids
 

@@ -40,7 +40,7 @@ const ACTION_WITH_ARGS = /export\s+async\s+function\s+\w+\s*\(\s*[^)]*\w+\s*:/
  */
 const EXEMPT: Record<string, string> = {
   'sources/actions/source-actions.ts':
-    'Validates through purpose-built checkers rather than zod: validateSourceUrl (SSRF + scheme + host), isValidRssUrl (feed reachability) and validateUpload (MIME + size + extension). Each proves something about the value that a shape schema cannot, and all three run before any write.',
+    'Validates through purpose-built checkers rather than zod: validateSourceUrl (SSRF + scheme + host), isValidRssUrl (feed reachability) and validateUpload (MIME + size + extension). Each proves something about the value that a shape schema cannot. That the URL check reaches EVERY write is asserted by sources/__tests__/source-url-guard.test.ts rather than by this sentence — it was stated here while updateSource still bypassed it.',
 }
 
 function actionFiles(): string[] {
