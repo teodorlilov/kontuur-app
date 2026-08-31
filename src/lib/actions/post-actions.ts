@@ -3,8 +3,8 @@
 import 'server-only'
 import { revalidateTag } from 'next/cache'
 import { validateInstagramCaption } from '@/features/publishing/lib/validate-caption'
+import { recordDiscardedDraft } from '@/lib/queries/discarded-drafts'
 import { z } from 'zod'
-import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { resolveActionAuth, fetchOwnedPost, verifyPostsOwnership } from '@/lib/auth/helpers'
 import { parseStoredValidation } from '@/lib/validation/stored-validation-schema'
 import {
@@ -187,21 +187,16 @@ export async function deletePost(
       .eq('id', postId)
       .single()
     if (row?.client_id && row.status === 'pending_review') {
-      const admin = createAdminSupabaseClient()
-      const discardRow = {
-        client_id: row.client_id,
-        client_source_id: row.client_source_id ?? null,
+      await recordDiscardedDraft({
+        clientId: row.client_id,
+        clientSourceId: row.client_source_id ?? null,
         pillar: row.pillar ?? null,
-        source_url: row.source_url ?? null,
-        source_type: row.source_type ?? null,
+        sourceUrl: row.source_url ?? null,
+        sourceType: row.source_type ?? null,
         platform: row.platform ?? null,
-        discarded_from: 'review',
+        discardedFrom: 'review',
         reason: parsedOptions.data?.reason ?? null,
-      }
-      const { error: discardError } = await admin.from('discarded_drafts').insert(discardRow)
-      if (discardError) {
-        console.error('[posts] failed to log review discard:', discardError.message)
-      }
+      })
     }
   } catch (err) {
     console.error('[posts] failed to log review discard:', err)

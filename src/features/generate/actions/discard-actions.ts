@@ -1,8 +1,8 @@
 'use server'
 
 import 'server-only'
-import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { resolveActionAuth, verifyClientOwnership } from '@/lib/auth/helpers'
+import { recordDiscardedDraft } from '@/lib/queries/discarded-drafts'
 import { discardedDraftSchema, type DiscardedDraftInput } from '@/features/generate/schemas'
 import type { ActionResult } from '@/lib/actions/types'
 
@@ -22,20 +22,18 @@ export async function logDiscardedDraft(input: DiscardedDraftInput): Promise<Act
   const owned = await verifyClientOwnership(supabase, parsed.data.clientId, agencyId)
   if (!owned) return { ok: false, error: 'Not found' }
 
-  const admin = createAdminSupabaseClient()
-  const { error } = await admin.from('discarded_drafts').insert({
-    client_id: parsed.data.clientId,
-    client_source_id: parsed.data.clientSourceId,
+  // The row itself is built and written in one place — `deletePost` records the same eight columns
+  // for a discard from the review queue, and the two assembled them separately.
+  const written = await recordDiscardedDraft({
+    clientId: parsed.data.clientId,
+    clientSourceId: parsed.data.clientSourceId,
     pillar: parsed.data.pillar,
-    source_url: parsed.data.sourceUrl,
-    source_type: parsed.data.sourceType,
+    sourceUrl: parsed.data.sourceUrl,
+    sourceType: parsed.data.sourceType,
     platform: parsed.data.platform,
-    discarded_from: 'wizard',
+    discardedFrom: 'wizard',
+    // No reason: the wizard never asks for one, and `distill-style-memo` reads only rows that
+    // carry one. Sending a placeholder would put wizard discards in that pool.
   })
-
-  if (error) {
-    console.error('[generate] failed to log discarded draft:', error.message)
-    return { ok: false, error: 'Failed to log discard' }
-  }
-  return { ok: true, data: undefined }
+  return written ? { ok: true, data: undefined } : { ok: false, error: 'Failed to log discard' }
 }
