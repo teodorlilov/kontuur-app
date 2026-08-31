@@ -4,6 +4,7 @@ import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
 import { verifyClientOwnership } from '@/lib/auth/helpers'
 import { fetchIgConnectionState } from '@/lib/queries/db'
+import { captureAndDeriveBestTime } from '@/features/analytics/lib/online-followers'
 import { IG_METRICS_TAG } from '@/features/analytics/lib/report-data'
 import { purgeAccountAnalytics } from '@/features/analytics/lib/purge-account-metrics'
 import { IG_GRAPH_BASE, IG_OAUTH_TOKEN_URL, IG_TOKEN_EXCHANGE_URL } from '@/lib/meta/constants'
@@ -249,6 +250,28 @@ export async function GET(request: NextRequest) {
     if (previousAccountId && previousAccountId !== accountId) {
       await purgeSupersededAccount(admin, clientId, previousAccountId)
     }
+
+    /**
+     * Posting times, now, rather than after three nights of cron.
+     *
+     * Meta serves this history on request, so an established account can answer "when are your
+     * followers online" the moment it is linked. Nothing asked: the nightly sync collected four
+     * days at a time and the derivation waited for a threshold, so connecting an account with two
+     * years of history produced an empty calendar for the better part of a week.
+     *
+     * Awaited rather than fired and forgotten — a serverless function stops at its response, so a
+     * detached promise here is a coin flip. Never throws: this is one Graph call and a derivation
+     * on the tail of a connect that has already committed, and a user seeing "Failed to connect"
+     * for an account that is connected and working would be a far worse outcome than waiting a
+     * night for their times.
+     */
+    await captureAndDeriveBestTime(admin, {
+      clientId,
+      accountId,
+      accessToken: longLived.access_token,
+    }).catch((bestTimeErr: unknown) => {
+      console.error('[meta/callback] initial best-time capture failed:', bestTimeErr)
+    })
 
     return NextResponse.redirect(
       `${process.env.NEXT_PUBLIC_APP_URL}/clients/${clientId}/edit?meta_connected=instagram`
