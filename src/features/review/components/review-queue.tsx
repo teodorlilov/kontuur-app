@@ -43,13 +43,13 @@ import {
 import type { QueuePost } from '@/features/review/lib/queue-post'
 import type { ReviewDraft } from '@/components/draft-editing/types'
 import type { CarouselSlide, PostImage, SlopDetection } from '@/types/api'
-import type { BestTimePlatform } from '@/lib/suggested-times/schemas'
+import type { MeasuredBestTimes } from '@/lib/suggested-times/schemas'
 import type { ValidationData } from '@/types/api'
 
 interface ReviewQueueProps {
   initialPosts: QueuePost[]
   clients: Array<{ id: string; name: string }>
-  bestTimeMap: Record<string, BestTimePlatform[] | null>
+  bestTimeMap: Record<string, MeasuredBestTimes | null>
   /** Slots the clients hold this week and next — the slot picker's occupancy. */
   weekSchedule: WeekScheduledPost[]
   postsPerWeekByClient: Record<string, number>
@@ -373,7 +373,7 @@ export function ReviewQueue({
   function nextSlotFor(post: QueuePost, occupied: string[]): string | null {
     return pickNextOpenSlot({
       platform: post.platform,
-      bestTimes: bestTimeMap[post.client_id] ?? null,
+      bestTimes: bestTimeMap[post.client_id]?.platforms ?? null,
       postsPerWeek: postsPerWeekByClient[post.client_id] ?? 0,
       occupiedSlots: occupied,
       now: new Date(),
@@ -632,7 +632,7 @@ export function ReviewQueue({
       target: postsPerWeekByClient[scheduleTargetPost.client_id] ?? 0,
       nextOpenSlot: pickNextOpenSlot({
         platform: scheduleTargetPost.platform,
-        bestTimes: bestTimeMap[scheduleTargetPost.client_id] ?? null,
+        bestTimes: bestTimeMap[scheduleTargetPost.client_id]?.platforms ?? null,
         postsPerWeek: postsPerWeekByClient[scheduleTargetPost.client_id] ?? 0,
         occupiedSlots: occupied,
         now: new Date(),
@@ -846,9 +846,7 @@ export function ReviewQueue({
       <ScheduleDialog
         open={scheduleTarget !== null}
         platform={scheduleTargetPost?.platform ?? null}
-        bestTimeData={
-          scheduleTargetPost ? (bestTimeMap[scheduleTargetPost.client_id] ?? null) : null
-        }
+        bestTime={scheduleTargetPost ? (bestTimeMap[scheduleTargetPost.client_id] ?? null) : null}
         weekContext={scheduleWeekContext}
         timeZone={timezone}
         onConfirm={handleScheduleConfirm}

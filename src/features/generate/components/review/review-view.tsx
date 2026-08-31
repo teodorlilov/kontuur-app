@@ -426,7 +426,7 @@ export function ReviewView({
         platform={
           posts.find((p) => p.post.id === scheduleTarget)?.post.platform ?? runContext.platform
         }
-        bestTimeData={bestTimeData}
+        bestTime={bestTimeData}
         approving={approving}
         requestedDate={posts.find((p) => p.post.id === scheduleTarget)?.post.target_date ?? null}
         timeZone={timeZone}

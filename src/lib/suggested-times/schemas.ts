@@ -47,6 +47,19 @@ const bestTimePlatformSchema = z.object({
 export type BestTimePlatform = z.infer<typeof bestTimePlatformSchema>
 
 /**
+ * Measured posting times together with WHEN they were measured.
+ *
+ * One value rather than two props, because the two come from one row and are meaningless apart: a
+ * date belonging to a different client's times is worse than no date, and two parallel props are
+ * how that happens. `measuredAt` is null for rows written before the stamp existed — surfaces omit
+ * the age rather than inventing one.
+ */
+export interface MeasuredBestTimes {
+  platforms: BestTimePlatform[]
+  measuredAt: string | null
+}
+
+/**
  * The column holds `{ platforms: [...], upgrade_note }` — both writers have always
  * wrapped it, and every reader has always passed the whole column. This accepted only
  * the bare array, so `z.array(...).safeParse({ platforms })` failed on an object that

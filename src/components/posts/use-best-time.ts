@@ -1,10 +1,10 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { parseBestTimes, type BestTimePlatform } from '@/lib/suggested-times/schemas'
+import { parseBestTimes, type MeasuredBestTimes } from '@/lib/suggested-times/schemas'
 
 // Module-level promise cache — concurrent calls for the same clientId share one in-flight request
-const cache = new Map<string, Promise<BestTimePlatform[] | null>>()
+const cache = new Map<string, Promise<MeasuredBestTimes | null>>()
 
 /**
  * Through `parseBestTimes`, which is the one reader of this column.
@@ -20,15 +20,22 @@ const cache = new Map<string, Promise<BestTimePlatform[] | null>>()
  * `unknown` rather than a typed field: what arrives is a raw jsonb column, and calling it
  * `BestTimePlatform[]` was the assertion that made the bad check look sound.
  */
-function fetchBestTime(clientId: string): Promise<BestTimePlatform[] | null> {
+function fetchBestTime(clientId: string): Promise<MeasuredBestTimes | null> {
   if (!cache.has(clientId)) {
     cache.set(
       clientId,
       fetch(`/api/clients/${clientId}`)
         .then(async (res) => {
           if (!res.ok) return null
-          const data = (await res.json()) as { brand_profile?: { best_time_json?: unknown } }
-          return parseBestTimes(data.brand_profile?.best_time_json)
+          const data = (await res.json()) as {
+            brand_profile?: { best_time_json?: unknown; best_time_updated_at?: string | null }
+          }
+          // Paired here, at the one place both halves arrive, so no caller downstream can
+          // combine one client's times with another's date.
+          const platforms = parseBestTimes(data.brand_profile?.best_time_json)
+          return platforms
+            ? { platforms, measuredAt: data.brand_profile?.best_time_updated_at ?? null }
+            : null
         })
         .catch(() => null)
     )
@@ -41,7 +48,7 @@ function fetchBestTime(clientId: string): Promise<BestTimePlatform[] | null> {
  * Module-level promise cache ensures all instances for the same clientId share one request.
  */
 export function useBestTime(clientId: string) {
-  const [bestTimeData, setBestTimeData] = useState<BestTimePlatform[] | null>(null)
+  const [bestTimeData, setBestTimeData] = useState<MeasuredBestTimes | null>(null)
   // Seeded from the argument rather than set to true inside the effect: a fetch is pending from
   // the first render onward, so starting at false only to flip it in the effect renders one frame
   // that claims otherwise and forces an immediate second pass.

@@ -35,7 +35,6 @@ export const UNTESTED_COMPONENTS: string[] = [
   'components/posts/carousel-slides.tsx',
   'components/draft-editing/draft-rail.tsx',
   'components/draft-editing/insight-panel.tsx',
-  'components/draft-editing/schedule-dialog.tsx',
   'components/draft-editing/work-column.tsx',
   'components/providers/auth-provider.tsx',
   'components/scheduling/batch-schedule-modal.tsx',

@@ -37,6 +37,11 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
     connections,
     // The exact key use-best-time.ts already reads — it never existed in this
     // response before, so bestTimeData was always null.
-    brand_profile: { best_time_json: brandProfile?.best_time_json ?? null },
+    // The stamp travels with the times. `useBestTime` pairs them into one value, so the schedule
+    // dialog cannot show one client's hours under another's date.
+    brand_profile: {
+      best_time_json: brandProfile?.best_time_json ?? null,
+      best_time_updated_at: brandProfile?.best_time_updated_at ?? null,
+    },
   })
 }

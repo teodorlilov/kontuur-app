@@ -37,6 +37,7 @@ function client(over: Partial<ClientEntry>): ClientEntry {
     posts_per_week: 3,
     best_times: null,
     instagram_connected: false,
+    best_time_updated_at: null,
     ...over,
   }
 }
@@ -61,7 +62,7 @@ describe('ClientsView — clients with no measured posting times', () => {
 
   it('tells a connected client the data is still being collected', () => {
     renderWith(client({ instagram_connected: true }))
-    expect(screen.getByText(/collecting follower activity/i)).toBeInTheDocument()
+    expect(screen.getByText(/best time ready after 14 days/i)).toBeInTheDocument()
     // Not the setup prompt: their account IS connected, and telling them to connect it is
     // both wrong and the kind of wrong that makes a product feel broken.
     expect(screen.queryByText(/connect instagram/i)).not.toBeInTheDocument()
@@ -69,7 +70,7 @@ describe('ClientsView — clients with no measured posting times', () => {
 
   it('says nothing at all once times are measured', () => {
     renderWith(client({ instagram_connected: true, best_times: MEASURED }))
-    expect(screen.queryByText(/collecting follower activity/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/best time ready after 14 days/i)).not.toBeInTheDocument()
     expect(screen.queryByText(/connect instagram/i)).not.toBeInTheDocument()
   })
 
@@ -77,6 +78,40 @@ describe('ClientsView — clients with no measured posting times', () => {
     // parseBestTimes returns null for an empty list, but the prop is typed to allow one and a
     // future writer could hand it over. Zero windows produce zero slots either way.
     renderWith(client({ instagram_connected: true, best_times: [] }))
-    expect(screen.getByText(/collecting follower activity/i)).toBeInTheDocument()
+    expect(screen.getByText(/best time ready after 14 days/i)).toBeInTheDocument()
+  })
+})
+
+/**
+ * How old the measurement is.
+ *
+ * `best_time_json` has no expiry. A client whose Instagram sync broke in June keeps showing June's
+ * hours, and their suggested slots look exactly as current as a client synced last night — the
+ * staleness is invisible precisely where someone would act on it. The date is the only thing that
+ * separates the two, which is why the column stopped being write-only.
+ */
+describe('ClientsView — how old the measurement is', () => {
+  it('dates the measurement when times exist', () => {
+    renderWith(
+      client({
+        instagram_connected: true,
+        best_times: MEASURED,
+        best_time_updated_at: '2026-08-14T02:10:00.000Z',
+      })
+    )
+    expect(screen.getByText(/last updated 14 aug 2026/i)).toBeInTheDocument()
+  })
+
+  it('says nothing about a date when there are no times to date', () => {
+    // A stamp without times would describe a measurement that produced nothing.
+    renderWith(client({ instagram_connected: true, best_time_updated_at: '2026-08-14T02:10:00Z' }))
+    expect(screen.queryByText(/last updated/i)).not.toBeInTheDocument()
+    expect(screen.getByText(/best time ready after 14 days/i)).toBeInTheDocument()
+  })
+
+  it('omits the line rather than inventing one when the stamp is missing', () => {
+    // Rows written before the column was populated: times, no date. Better silent than "Invalid Date".
+    renderWith(client({ instagram_connected: true, best_times: MEASURED }))
+    expect(screen.queryByText(/last updated/i)).not.toBeInTheDocument()
   })
 })

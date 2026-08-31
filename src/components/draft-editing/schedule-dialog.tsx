@@ -3,6 +3,8 @@
 import { useMemo, useState } from 'react'
 import { Check } from 'lucide-react'
 import { cn } from '@/utils/cn'
+import { formatDate } from '@/utils/format'
+import { MIN_BEST_TIME_DAYS } from '@/utils/constants'
 import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
 import {
@@ -14,7 +16,7 @@ import {
 import { formatScheduledAt, getNextDateForDay, toDateKey } from '@/utils/date-helpers'
 import { formatPublishSlot } from '@/features/dashboard/lib/metrics'
 import { WeekStrip } from './week-strip'
-import type { BestTimePlatform } from '@/lib/suggested-times/schemas'
+import type { MeasuredBestTimes } from '@/lib/suggested-times/schemas'
 
 type ScheduleChoice = 'next' | 'best' | 'pick' | 'none'
 
@@ -32,7 +34,8 @@ interface ScheduleWeekContext {
 interface ScheduleDialogProps {
   open: boolean
   platform: string | null
-  bestTimeData: BestTimePlatform[] | null
+  /** The client's measured times and when they were measured — one value, never two props. */
+  bestTime: MeasuredBestTimes | null
   /** Blocks confirm while a blocking approve runs. The queue omits it — its approve is optimistic. */
   approving?: boolean
   /** The client's week — surfaces the strip and the "next open slot" default (queue only for now). */
@@ -66,7 +69,7 @@ interface ScheduleDialogProps {
 export function ScheduleDialog({
   open,
   platform,
-  bestTimeData,
+  bestTime,
   approving = false,
   weekContext,
   requestedDate,
@@ -75,13 +78,15 @@ export function ScheduleDialog({
   onClose,
 }: ScheduleDialogProps) {
   const best = useMemo(() => {
-    if (!platform || !bestTimeData) return null
-    const entry = bestTimeData.find((b) => b.platform.toLowerCase() === platform.toLowerCase())
+    if (!platform || !bestTime) return null
+    const entry = bestTime.platforms.find(
+      (b) => b.platform.toLowerCase() === platform.toLowerCase()
+    )
     const day = entry?.best_days[0]
     const window = entry?.best_time_windows[0]
     if (!entry || !day || !window) return null
-    return { day, time: window.time }
-  }, [platform, bestTimeData])
+    return { day, time: window.time, measuredAt: bestTime.measuredAt }
+  }, [platform, bestTime])
 
   const [choice, setChoice] = useState<ScheduleChoice>('none')
   const [pickedDate, setPickedDate] = useState('')
@@ -147,10 +152,25 @@ export function ScheduleDialog({
             <OptionCard
               checked={choice === 'best'}
               title={`Best time — ${best.day} ${best.time}`}
-              // What the number actually is. This said "engagement history", which was wrong twice
-              // over: it was never engagement, and until the guessed path was deleted it was often
-              // not history either — a model's idea of when this audience might be about.
-              sub="When this client’s followers are actually online, from Instagram"
+              /**
+               * How old this is, in the plainest words available.
+               *
+               * The line has been wrong twice. It said "from this client's own engagement history"
+               * when the value was often a model's guess and never engagement. It then said
+               * "Followers online, from Instagram", which described our data pipeline rather than
+               * anything a reader needs.
+               *
+               * Freshness leads because it is the part that changes what someone does — this is the
+               * moment they publish against these hours, and a reading from June looks identical to
+               * one from last night without a date. The source follows it: at the point of acting
+               * on a recommendation, knowing it came from real Instagram data rather than from us
+               * is worth four words.
+               */
+              sub={
+                best.measuredAt
+                  ? `Last updated ${formatDate(new Date(best.measuredAt))} · from Instagram`
+                  : 'Based on your Instagram activity'
+              }
               onSelect={() => setChoice('best')}
             />
           ) : (
@@ -164,8 +184,8 @@ export function ScheduleDialog({
              * the client rather than about what we know.
              */
             <p className="rounded-sm border border-dashed border-line2 px-3 py-2.5 text-micro text-text2">
-              No best time yet — it needs a connected Instagram account and a few days of follower
-              activity. Nothing is guessed here, so until then there is nothing to suggest.
+              No best time yet. Connect Instagram and we&rsquo;ll work it out from{' '}
+              {MIN_BEST_TIME_DAYS} days of real activity — we never guess.
             </p>
           )}
           <OptionCard

@@ -43,7 +43,7 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
     contact_email: string | null
     // Forward FK, so PostgREST returns an object rather than an array — the same
     // embed /review already uses. best_time_json is validated before use, never cast.
-    brand_profiles: { best_time_json: unknown } | null
+    brand_profiles: { best_time_json: unknown; best_time_updated_at: string | null } | null
     /**
      * Reverse FK, so an array — a client may hold rows for several platforms.
      *
@@ -59,7 +59,7 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
     supabase
       .from('clients')
       .select(
-        'id, name, contact_email, brand_profiles(best_time_json), social_connections(platform, account_id)'
+        'id, name, contact_email, brand_profiles(best_time_json, best_time_updated_at), social_connections(platform, account_id)'
       )
       .eq('agency_id', agencyId),
     clientIds.length > 0
@@ -103,6 +103,10 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
     // Parsed here, server-side: a malformed row becomes "no suggestion" rather than a
     // throw inside a grid render, and zod stays out of the calendar's bundle.
     best_times: parseBestTimes(c.brand_profiles?.best_time_json),
+    // When those times were last derived. Surfaced because nothing else can tell a live
+    // measurement from a fossil: the column has no expiry, so a client whose Meta sync broke in
+    // June keeps showing June's hours as though they were yesterday's.
+    best_time_updated_at: c.brand_profiles?.best_time_updated_at ?? null,
     // An account_id is what the metrics sync actually needs; a connection row without one
     // cannot produce follower-online data, so it does not count as connected here.
     instagram_connected: (c.social_connections ?? []).some(

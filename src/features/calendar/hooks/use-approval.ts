@@ -25,6 +25,8 @@ export interface ClientEntry {
   best_times: BestTimePlatform[] | null
   /** Which of the two reasons a null `best_times` is, so a surface can say which. */
   instagram_connected: boolean
+  /** When `best_times` was last derived, so a surface can show its age. Null when never. */
+  best_time_updated_at: string | null
 }
 
 interface UseApprovalArgs {

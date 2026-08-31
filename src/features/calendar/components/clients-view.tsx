@@ -2,6 +2,8 @@
 
 import { memo, useMemo } from 'react'
 import { cn } from '@/utils/cn'
+import { MIN_BEST_TIME_DAYS } from '@/utils/constants'
+import { formatDate } from '@/utils/format'
 import { Avatar } from '@/components/ui/avatar'
 import { PILL_TONES, type PillTone } from '@/components/ui/status-pill'
 import { getWeekDayKeys, toDateKey } from '@/utils/date-helpers'
@@ -110,6 +112,7 @@ export const ClientsView = memo(function ClientsView({
           timeZone={timeZone}
           hasMeasuredTimes={(client.best_times?.length ?? 0) > 0}
           instagramConnected={client.instagram_connected}
+          measuredAt={client.best_time_updated_at}
         />
       ))}
     </div>
@@ -153,12 +156,14 @@ function ClientWeekRow({
   timeZone,
   hasMeasuredTimes,
   instagramConnected,
+  measuredAt,
 }: {
   name: string
   coverage: ClientWeek
   timeZone: string
   hasMeasuredTimes: boolean
   instagramConnected: boolean
+  measuredAt: string | null
 }) {
   const tone = toneFor(coverage.verdict)
   const hasTarget = coverage.target > 0
@@ -199,8 +204,21 @@ function ClientWeekRow({
           {!hasMeasuredTimes && (
             <span className="block truncate text-micro text-text3">
               {instagramConnected
-                ? 'Collecting follower activity — no posting times yet'
-                : 'Connect Instagram to see when their followers are online'}
+                ? `Best time ready after ${MIN_BEST_TIME_DAYS} days of activity`
+                : 'Connect Instagram to get their best time to post'}
+            </span>
+          )}
+          {/* How old the measurement is.
+           *
+           * The column has no expiry: a client whose Instagram sync broke in June keeps showing
+           * June's hours, and the suggested slots go on looking exactly as current as a client
+           * synced last night. A date is the only thing that separates them. Absolute rather than
+           * "3d ago" — this is server-rendered, and `formatRelativeTime` says in its own docblock
+           * that a relative string needs a pinned instant or it disagrees with itself across
+           * hydration. A date also reads faster for a value that only ever moves once a night. */}
+          {hasMeasuredTimes && measuredAt && (
+            <span className="block truncate text-micro text-text3">
+              Last updated {formatDate(new Date(measuredAt))}
             </span>
           )}
         </span>
