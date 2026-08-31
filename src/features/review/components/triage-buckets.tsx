@@ -6,7 +6,7 @@ import { Card } from '@/components/ui/card'
 import { StatusPill } from '@/components/ui/status-pill'
 import { getPillarColor } from '@/components/ui/colors/identity-colors'
 import { parseSlides } from '@/lib/posts/parse-slides'
-import { VisualFrame } from '@/components/posts/review/visual-frame'
+import { VisualFrame } from '@/components/draft-editing/visual-frame'
 import {
   AGE_WARN_DAYS,
   TRIAGE_REASON_LABELS,

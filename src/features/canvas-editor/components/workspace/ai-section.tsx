@@ -2,7 +2,7 @@
 
 import { Lasso, Maximize2, Scissors, Sparkles, Wand2 } from 'lucide-react'
 import { cn } from '@/utils/cn'
-import { VisualFrame } from '@/components/posts/review/visual-frame'
+import { VisualFrame } from '@/components/draft-editing/visual-frame'
 import type { AssetRef } from '../../lib/asset-client'
 import { TYPICAL_SECONDS, type EditorJobs } from '../../hooks/use-editor-jobs'
 import { BusyHint } from '../busy-hint'

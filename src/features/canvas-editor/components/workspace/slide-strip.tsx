@@ -2,7 +2,7 @@
 
 import { useRef } from 'react'
 import { cn } from '@/utils/cn'
-import { VisualFrame } from '@/components/posts/review/visual-frame'
+import { VisualFrame } from '@/components/draft-editing/visual-frame'
 import { focusableItems, rovingFocus } from '@/components/ui/roving-focus'
 
 interface SlideStripProps {

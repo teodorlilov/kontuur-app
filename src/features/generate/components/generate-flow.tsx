@@ -28,7 +28,7 @@ import type { PriorityPost, PostType, ClientIdea, MetaConnection } from '@/types
 import type { SkippedPillar } from '@/ai/research/types'
 import type { PostData } from '@/types/post'
 import type { ValidationData } from '@/types/api'
-import type { ReviewDraft } from '@/components/posts/review/types'
+import type { ReviewDraft } from '@/components/draft-editing/types'
 import type { FlowStep } from './flow-stepper'
 
 type Client = Pick<ClientRow, 'id' | 'name' | 'niche' | 'language' | 'posts_per_week'>

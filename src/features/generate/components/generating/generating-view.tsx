@@ -8,7 +8,7 @@ import { getPillarColor } from '@/components/ui/colors/identity-colors'
 import { parseSlides } from '@/lib/posts/parse-slides'
 import { ORDERED_STAGE_LABELS } from '@/features/generate/components/generating/stages'
 import { REWRITE_SCORE_THRESHOLD } from '@/lib/content-rules/constants'
-import type { ReviewDraft } from '@/components/posts/review/types'
+import type { ReviewDraft } from '@/components/draft-editing/types'
 import type { PostType } from '@/types/api'
 
 interface GeneratingViewProps {

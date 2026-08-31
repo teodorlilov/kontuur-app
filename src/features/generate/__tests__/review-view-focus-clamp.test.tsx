@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ReviewView } from '../components/review/review-view'
-import type { ReviewDraft } from '@/components/posts/review/types'
+import type { ReviewDraft } from '@/components/draft-editing/types'
 
 /**
  * The focus-clamp effect, pinned.
@@ -24,25 +24,25 @@ import type { ReviewDraft } from '@/components/posts/review/types'
 vi.mock('@/components/posts/use-best-time', () => ({
   useBestTime: () => ({ bestTimeData: null }),
 }))
-vi.mock('@/components/posts/review/review-grid', () => ({
+vi.mock('@/components/draft-editing/review-grid', () => ({
   ReviewGrid: () => <div data-testid="review-grid" />,
 }))
-vi.mock('@/components/posts/review/draft-rail', () => ({
+vi.mock('@/components/draft-editing/draft-rail', () => ({
   DraftRail: () => <div data-testid="draft-rail" />,
 }))
-vi.mock('@/components/posts/review/insight-panel', () => ({
+vi.mock('@/components/draft-editing/insight-panel', () => ({
   InsightPanel: () => <div data-testid="insight-panel" />,
 }))
-vi.mock('@/components/posts/review/commitment-bar', () => ({
+vi.mock('@/components/draft-editing/commitment-bar', () => ({
   CommitmentBar: () => <div data-testid="commitment-bar" />,
 }))
-vi.mock('@/components/posts/review/schedule-dialog', () => ({
+vi.mock('@/components/draft-editing/schedule-dialog', () => ({
   ScheduleDialog: () => null,
 }))
 // The one child that reports something: which post is focused right now. Its prop is
 // `post` (the PostData itself), not the whole draft — taken from WorkColumnProps rather
 // than guessed, which is the difference between a mock and a fiction.
-vi.mock('@/components/posts/review/work-column', () => ({
+vi.mock('@/components/draft-editing/work-column', () => ({
   WorkColumn: ({ post }: { post: { id: string; caption: string } }) => (
     <div data-testid="work-column" data-draft-id={post.id}>
       {post.caption}
