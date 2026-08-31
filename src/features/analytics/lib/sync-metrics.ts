@@ -14,16 +14,14 @@ import {
   fetchLinkTaps,
   fetchManyMediaInsights,
   fetchMediaSince,
-  fetchOnlineFollowers,
   fetchReachByProductType,
   type IGDemographics,
 } from '@/lib/meta/insights'
 import { notifyAboutClient } from '@/features/publishing/lib/notifications'
-import { asJson } from '@/lib/queries/as-json'
 import { SOCIAL_CONNECTION_SYNC_COLUMNS } from '@/lib/queries/select-columns'
 import { MS_PER_DAY, SECONDS_PER_DAY } from '@/utils/constants'
 import { shiftDateKey } from '@/utils/date-helpers'
-import { deriveObservedBestTime } from './derive-best-time'
+import { captureAndDeriveBestTime, ONLINE_FOLLOWERS_BACKFILL_DAYS } from './online-followers'
 
 /**
  * The nightly Instagram metrics capture. One rule governs every write: NULL
@@ -231,22 +229,21 @@ async function syncClientMetrics(admin: SupabaseClient, connection: IGConnection
     },
     {
       name: 'online hours',
+      /**
+       * An account with no history asks for the whole window at once, not four days.
+       *
+       * Nothing used to backfill this column, so a new client gained one day per night and waited
+       * about three weeks for a usable grid — while `refreshWindowMetrics` was already proving Meta
+       * serves ninety days on request. An established account reaches the threshold on its first
+       * night now. An account that already has history keeps the short trailing window, which is all
+       * the consolidation lag needs.
+       */
       run: async () => {
-        await syncOnlineFollowers(admin, clientId, accountId, accessToken)
-        // Observed data outranks the model-invented best_time_json: whenever
-        // enough hourly history exists, the scheduler's stored pattern becomes
-        // a nightly-refreshed derivation of it.
-        const observed = await deriveObservedBestTime(admin, clientId)
-        if (observed) {
-          const { error } = await admin
-            .from('brand_profiles')
-            .update({
-              best_time_json: asJson(observed),
-              best_time_updated_at: new Date().toISOString(),
-            })
-            .eq('client_id', clientId)
-          if (error) throw new Error(`observed best-time write failed: ${error.message}`)
-        }
+        await captureAndDeriveBestTime(
+          admin,
+          { clientId, accountId, accessToken },
+          hadHistory ? ONLINE_FOLLOWERS_LOOKBACK_DAYS : ONLINE_FOLLOWERS_BACKFILL_DAYS
+        )
       },
     },
   ]
@@ -264,28 +261,6 @@ async function syncClientMetrics(admin: SupabaseClient, connection: IGConnection
  * short trailing window and keeps whatever has consolidated since.
  */
 const ONLINE_FOLLOWERS_LOOKBACK_DAYS = 4
-
-async function syncOnlineFollowers(
-  admin: SupabaseClient,
-  clientId: string,
-  accountId: string,
-  accessToken: string
-): Promise<void> {
-  const untilTs = Math.floor(Date.now() / 1000)
-  const sinceTs = untilTs - ONLINE_FOLLOWERS_LOOKBACK_DAYS * SECONDS_PER_DAY
-  const days = await fetchOnlineFollowers(accountId, accessToken, sinceTs, untilTs)
-  if (days.length === 0) return
-  const rows: IGAccountMetricsInsert[] = days.map((day) => ({
-    client_id: clientId,
-    ig_account_id: accountId,
-    metric_date: day.date,
-    online_followers_by_hour: day.byHour,
-  }))
-  const { error } = await admin
-    .from('ig_account_metrics')
-    .upsert(rows, { onConflict: 'client_id,ig_account_id,metric_date' })
-  if (error) throw new Error(`online_followers upsert failed: ${error.message}`)
-}
 
 /**
  * One finished day's full capture — the totals pair plus the four rendered

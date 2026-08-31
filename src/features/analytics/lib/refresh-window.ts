@@ -3,11 +3,8 @@ import 'server-only'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { createSemaphore } from '@/lib/concurrency'
 import { GraphApiError } from '@/lib/meta/graph-errors'
-import {
-  fetchDailyReachSeries,
-  fetchFollowerDeltaSeries,
-  fetchOnlineFollowers,
-} from '@/lib/meta/insights'
+import { captureOnlineFollowers, refreshObservedBestTime } from './online-followers'
+import { fetchDailyReachSeries, fetchFollowerDeltaSeries } from '@/lib/meta/insights'
 import {
   captureDayTotals,
   syncDemographicsWeekly,
@@ -178,24 +175,20 @@ export async function refreshWindowMetrics(
   // The series the API still serves for the past — chunked, both windows.
   const reachRows: IGAccountMetricsInsert[] = []
   const followRows: IGAccountMetricsInsert[] = []
-  const onlineRows: IGAccountMetricsInsert[] = []
   try {
     for (const chunk of seriesChunks(period.prevStart, spanEnd)) {
-      const [reach, deltas, online] = await Promise.all([
+      const [reach, deltas] = await Promise.all([
         fetchDailyReachSeries(accountId, accessToken, chunk.sinceTs, chunk.untilTs),
         fetchFollowerDeltaSeries(accountId, accessToken, chunk.sinceTs, chunk.untilTs),
-        fetchOnlineFollowers(accountId, accessToken, chunk.sinceTs, chunk.untilTs),
+        // Through the shared capture, which stores as it goes. This branch used to fetch and map
+        // the same column itself, in parallel with the nightly sync doing the same over a different
+        // window — two writers of one column, and only the other one derived anything from it.
+        captureOnlineFollowers(
+          admin,
+          { clientId, accountId, accessToken },
+          { sinceTs: chunk.sinceTs, untilTs: chunk.untilTs, throughDate: spanEnd }
+        ),
       ])
-      for (const day of online) {
-        if (day.date <= spanEnd) {
-          onlineRows.push({
-            client_id: clientId,
-            ig_account_id: accountId,
-            metric_date: day.date,
-            online_followers_by_hour: day.byHour,
-          })
-        }
-      }
       for (const day of reach) {
         if (day.date <= spanEnd) {
           reachRows.push({
@@ -223,12 +216,16 @@ export async function refreshWindowMetrics(
   }
   await upsertColumnBatch(admin, reachRows)
   await upsertColumnBatch(admin, followRows)
-  // Best-effort on purpose: the online-hours panel is an enhancement and
+  // The hours this refill just stored may be exactly what was blocking this client's posting
+  // times — before, they were written here and derived only by the nightly cron, so refreshing
+  // analytics filled the gap and left the answer stale until the morning.
+  //
+  // Best-effort on purpose, like the capture it follows: posting times are an enhancement and
   // must never cost the refill its day totals.
   try {
-    await upsertColumnBatch(admin, onlineRows)
+    await refreshObservedBestTime(admin, clientId)
   } catch (err) {
-    console.error('[analytics] online_followers refill write failed:', err)
+    console.error('[analytics] best-time refresh after refill failed:', err)
   }
 
   // Day totals, newest first, under the call budget.

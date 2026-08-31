@@ -3,7 +3,7 @@ import 'server-only'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { BestTimePlatform } from '@/lib/suggested-times/schemas'
 import { fetchIgConnectionState } from '@/lib/queries/db'
-import { MS_PER_DAY, WEEKDAY_LABELS } from '@/utils/constants'
+import { MIN_BEST_TIME_DAYS, MS_PER_DAY, WEEKDAY_LABELS } from '@/utils/constants'
 import { buildAudienceOnline, type AudienceOnline } from './build-report'
 
 /**
@@ -18,6 +18,11 @@ import { buildAudienceOnline, type AudienceOnline } from './build-report'
  * rather than fabricate.
  */
 
+/**
+ * How much history the recommendation reads. Twenty-eight days, deliberately not ninety: an
+ * audience's habits move as it grows, and a quarter-long average smears a changing pattern into a
+ * flat one. Four weeks is enough to see every weekday four times and recent enough to still be true.
+ */
 const OBSERVED_LOOKBACK_DAYS = 28
 
 export interface ObservedBestTime {
@@ -98,5 +103,8 @@ export async function deriveObservedBestTime(
     timezone
   )
   if (!online || online.peaks.length === 0) return null
+  // Enough history to call it a pattern. Below this the grid is a handful of single observations —
+  // one busy Tuesday reads exactly like a habit, and the caller would publish against it.
+  if (online.sampleDays < MIN_BEST_TIME_DAYS) return null
   return bestTimeFromOnline(online)
 }
