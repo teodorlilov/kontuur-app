@@ -10,7 +10,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "vitest run",
-    "check": "npm run typecheck && npm run lint && npm run format:check && npm run deadcode && npm run arch -- --check && npm test",
+    "check": "npm run typecheck && npm run lint && npm run format:check && npm run deadcode && npm run arch -- --check && npm run writers -- --check && npm test",
     "deadcode": "knip",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
@@ -20,7 +20,8 @@
     "db:rls": "npm run --silent db:dump && node scripts/rls-report.mjs",
     "db:types": "npx supabase gen types typescript --linked > src/types/database.ts",
     "prepare": "husky",
-    "arch": "node scripts/module-ownership.mjs"
+    "arch": "node scripts/module-ownership.mjs",
+    "writers": "node scripts/table-writers.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.80.0",

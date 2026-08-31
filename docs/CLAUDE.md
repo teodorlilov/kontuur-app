@@ -7,8 +7,8 @@ Storage) · Tailwind v4.
 
 ## Commands
 - **Before pushing: `npm run check`** — typecheck + lint + format:check + deadcode +
-  test, the same command `.husky/pre-push` and CI run. Everything below is for narrowing
-  down a failure.
+  arch + writers + test, the same command `.husky/pre-push` and CI run. Everything below
+  is for narrowing down a failure.
 - Dev: `npm run dev`
 - Typecheck: `npm run typecheck`
 - Lint: `npm run lint` · Test: `npm test` (watch: `npm run test:watch`)
@@ -184,6 +184,23 @@ or a feature's `lib/`), do all three. A name grep alone does NOT satisfy this ru
 - Same logic in two places → extract before adding a third.
 - Superseding something? Delete the original in the same change.
 - Found duplication outside the current scope? Note it, don't fix it.
+
+### Database writes — one operation, one function
+A column must not be written from two places that mean the same thing. Before writing
+`.insert`/`.update`/`.upsert`/`.delete` against a table, run `npm run writers` and read
+who already writes it: `scripts/table-writers.json` names every writer with a reason.
+
+- Reuse the existing writer. Needing a different cache tag, a different client, or one
+  extra field is a reason to pass an option — not to fork the write.
+- A genuinely new operation adds a line to that JSON with a reason, and `npm run check`
+  fails until it does. That line is the review: a second writer is a decision somebody
+  makes on purpose, not something that appears.
+- No hand-written row objects beside a writer that already builds one. Two files spelling
+  out the same insert is how the columns drift apart.
+
+The check is keyed on `.from('table')`, never on column names — most real writers pass a
+pre-built variable, and a column-name grep finds none of them. Read the docblock in
+`scripts/table-writers.mjs` for the four things it cannot see; none of them are covered.
 
 ### Functions
 - One responsibility per function. If describing it needs "and", split it.

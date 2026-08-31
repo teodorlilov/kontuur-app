@@ -1,0 +1,114 @@
+{
+  "agencies": {
+    "src/lib/auth/create-user-record.ts": "The agency is created with the account. Provisioning is idempotent and lives only here — the signup route and the auth callback both delegate, after a period where both provisioned and raced.",
+    "src/app/api/settings/account/route.ts": "The agency name and timezone as edited in settings."
+  },
+  "analytics_reports": {
+    "src/features/analytics/actions/report-actions.ts": "Saved-report CRUD behind the analytics screen.",
+    "src/features/analytics/lib/purge-account-metrics.ts": "Deletes a client's reports as part of the Meta data-deletion cascade. Not a second way to delete one report — it takes no report id."
+  },
+  "brand_kit_extractions": {
+    "src/lib/visual/queries.ts": "The only store for a brand-extraction run."
+  },
+  "brand_profiles": {
+    "src/features/clients/actions/client-actions.ts": "createClient seeds the profile; updateBrandProfile is the client screen's editor.",
+    "src/features/analytics/lib/online-followers.ts": "refreshObservedBestTime — the only writer of best_time_json and best_time_updated_at, and it only ever writes measured Instagram data. The guessed path was deleted 2026-08-31.",
+    "src/app/(dashboard)/clients/[id]/sources/page.tsx": "A lazy backfill of pillar ids on first open, for clients that predate them. Writes content_pillars only. The comment beside it records why the web-research row is deliberately NOT created here: a page render must not decide whether the pipeline searches the web.",
+    "src/features/clients/lib/provision-client.ts": "provisionClient — the ONE way a client and its mandatory children are created. The onboarding form and solo signup both build them here; before 2026-08-31 solo signup built them by hand and shipped without a visual identity, without a web-research row, and without a rollback."
+  },
+  "brand_visual_identity": {
+    "src/lib/visual/queries.ts": "The only store for a client's visual identity — a whole-row upsert at extraction and a blob patch for edits."
+  },
+  "client_ideas": {
+    "src/features/ideas/lib/ideas.ts": "The whole client-ideas lifecycle (submit, status, link to post, mark read) in one file."
+  },
+  "client_sources": {
+    "src/features/sources/actions/source-actions.ts": "The source manager's CRUD. createSource and updateSource both resolve the URL through resolveSourceUrl — they did not, and updateSource was a live SSRF hole until 2026-08-31.",
+    "src/ai/research/sources/research-source.ts": "reportStatus stamps last_fetched_at / last_fetch_status / last_fetch_error after a fetch. Fetch health, written by the fetcher; it never touches a source's configuration.",
+    "src/lib/clients/sync-source-pillars.ts": "removeDeletedPillarIds writes ONE column, pillar_ids, as a cascade of a pillar deletion — reachable only through updateBrandProfile, never from the sources screen. updateSource writes the same column when the user scopes a source, which is a different operation. (An earlier note here said 'config' and called this open audit business; both were wrong.)",
+    "src/features/clients/lib/provision-client.ts": "provisionClient — the ONE way a client and its mandatory children are created. The onboarding form and solo signup both build them here; before 2026-08-31 solo signup built them by hand and shipped without a visual identity, without a web-research row, and without a rollback."
+  },
+  "client_style_memos": {
+    "src/ai/learning/distill-style-memo.ts": "The memo's only writer, next to the distiller that produces it."
+  },
+  "clients": {
+    "src/features/clients/actions/client-actions.ts": "create, update and delete from the clients screen.",
+    "src/features/clients/lib/provision-client.ts": "provisionClient — the ONE way a client and its mandatory children are created. The onboarding form and solo signup both build them here; before 2026-08-31 solo signup built them by hand and shipped without a visual identity, without a web-research row, and without a rollback."
+  },
+  "discarded_drafts": {
+    "src/lib/queries/discarded-drafts.ts": "One insert for both discard sources (wizard, review). reason stays optional — distill-style-memo filters on it being non-null."
+  },
+  "generation_runs": {
+    "src/lib/generation/runs.ts": "start and finish, paired in one file so a run cannot be opened without a way to close it."
+  },
+  "generation_themes": {
+    "src/lib/generation/runs.ts": "Themes belong to a run and are tracked beside it."
+  },
+  "idea_form_tokens": {
+    "src/features/ideas/lib/ideas.ts": "getOrCreateToken — the idea form's link, minted beside the ideas it collects."
+  },
+  "ig_account_metrics": {
+    "src/features/analytics/lib/account-metrics-store.ts": "upsertAccountMetricDays — the only writer. There were six inline upserts across sync-metrics, refresh-window and online-followers, each restating the onConflict target. Callers write PARTIAL rows on purpose (reach in one pass, day totals in another, online-follower hours in a third) so no pass nulls a column another owns; that is why this is a thin shared upsert and not a whole-row writer.",
+    "src/features/analytics/lib/purge-account-metrics.ts": "[hand-listed] purgeAccountAnalytics deletes this table through a `scoped(table)` helper, so `.from(table)` never names it and the scan cannot find it. Meta's data-deletion callback and an account switch; deleteClient deliberately leans on the `clients` cascade instead."
+  },
+  "ig_audience_snapshots": {
+    "src/features/analytics/lib/sync-metrics.ts": "syncDemographicsWeekly, beside the sync that fetches it.",
+    "src/features/analytics/lib/purge-account-metrics.ts": "[hand-listed] purgeAccountAnalytics deletes this table through a `scoped(table)` helper, so `.from(table)` never names it and the scan cannot find it. Meta's data-deletion callback and an account switch; deleteClient deliberately leans on the `clients` cascade instead."
+  },
+  "ig_post_metrics": {
+    "src/features/analytics/lib/sync-metrics.ts": "syncPostMetrics, beside the sync that fetches it.",
+    "src/features/analytics/lib/purge-account-metrics.ts": "[hand-listed] purgeAccountAnalytics deletes this table through a `scoped(table)` helper, so `.from(table)` never names it and the scan cannot find it. Meta's data-deletion callback and an account switch; deleteClient deliberately leans on the `clients` cascade instead."
+  },
+  "intelligence_briefings": {
+    "src/features/dashboard/lib/write-briefing.ts": "writeWeeklyBriefing — the only composer of a briefing.",
+    "src/app/api/cron/generate/route.ts": "Patches coaching_points onto a briefing writeWeeklyBriefing has just returned, for solo agencies only. A second call into the briefing writer would need it to accept a field it cannot compute; this stays a patch by id."
+  },
+  "notifications": {
+    "src/components/layout/shell-context.tsx": "The browser toggling is_read for the signed-in user, optimistically. Read state only — it can never create a notification, and it is RLS-scoped rather than admin.",
+    "src/lib/notifications/notify.ts": "notify() — the only insert. There were five, four bypassing the dedup. Cooldown is a per-caller decision (NOTIFY_EVERY_TIME), not blanket: two approval emails in a week are two events."
+  },
+  "post_approval_tokens": {
+    "src/features/approval-portal/lib/approval-batch.ts": "createApprovalBatch mints the week's tokens, clearing any superseded batch first.",
+    "src/features/approval-portal/actions/approval-actions.ts": "submitApproval records the client's decision on the token they arrived with.",
+    "src/lib/actions/post-actions.ts": "resolveChangeRequest closes a change request from the agency side."
+  },
+  "post_canvas_docs": {
+    "src/lib/canvas/doc-store.ts": "upsertCanvasDoc for an edit, insertCanvasDocs when a post is created with docs already made."
+  },
+  "post_history": {
+    "src/lib/queries/post-history.ts": "recordPostTopics — the cron batch and the approve route both record topics, and were writing the identical row from two files until 2026-08-31."
+  },
+  "post_images": {
+    "src/features/assets/lib/storage.ts": "putPostImage / putPostImages — the only way an image lands at a position. There were four, three of which deleted the row and its file before inserting, so a failed insert lost the picture.",
+    "src/app/api/posts/[id]/images/route.ts": "DELETE removes a slide the user deleted. A removal, not a write of an image — it has no row to put."
+  },
+  "posting_schedules": {
+    "src/features/clients/actions/client-actions.ts": "createClient seeds it; updateSchedule is the schedule editor.",
+    "src/features/clients/lib/provision-client.ts": "provisionClient — the ONE way a client and its mandatory children are created. The onboarding form and solo signup both build them here; before 2026-08-31 solo signup built them by hand and shipped without a visual identity, without a web-research row, and without a rollback."
+  },
+  "posts": {
+    "src/lib/actions/post-actions.ts": "The agency's edits: updatePost (nine validated columns), savePostCopy (caption and slides, partial — the calendar saves a caption with no slides), persistRewrite, schedulePosts, deletePost.",
+    "src/app/api/posts/route.ts": "POST creates a post from an approved wizard draft, through draftColumns.",
+    "src/app/api/cron/generate/route.ts": "The nightly batch inserts generated drafts, through the same draftColumns.",
+    "src/features/publishing/lib/publish-post.ts": "claimPost takes a post for publishing and markPublished/markFailed record the outcome. Three operations in one file BY DESIGN — they are the states of one lifecycle, and the registry cannot see a fourth added here.",
+    "src/app/api/posts/[id]/publish/route.ts": "Publish-now sets the post publishing before handing off, so the manual path takes the same claim the cron does.",
+    "src/features/calendar/actions/post-recovery.ts": "rearmFailedPost — the user putting a failed post back in the queue. The only place attempts are reset.",
+    "src/app/api/cron/visuals/route.ts": "The visuals lane's own attempt counter and status, which is separate from the publish counter on purpose.",
+    "src/lib/visual/post-color.ts": "claimScheme — a compare-and-swap on visual_ground/visual_accent so two lanes generating one carousel cannot split its colours."
+  },
+  "social_connections": {
+    "src/app/api/meta/callback/route.ts": "connectInstagram stores the connection the OAuth flow just produced.",
+    "src/features/publishing/lib/refresh-tokens.ts": "Two of the five Meta-side credential operations: rotate an expiring token without the user, and retire one Meta has declared dead (access_token = null) so publish reports 'needs reconnecting' instead of hammering Graph. Both update by id and neither touches account identity.",
+    "src/features/clients/actions/connection-actions.ts": "The user disconnecting Instagram.",
+    "src/features/analytics/lib/sync-metrics.ts": "recordSyncHealth stamps last_sync_at / last_sync_error, and is their only writer. It never touches a token. It updates by (client_id, platform), which is exactly one row: social_connections_client_id_platform_key makes that pair UNIQUE — the same index the meta callback's onConflict relies on.",
+    "src/app/api/meta/data-deletion/route.ts": "Meta's data-deletion callback erases the connection. Required by the platform and deliberately unconditional.",
+    "src/app/api/canva/callback/route.ts": "Stores the Canva connection from its OAuth flow.",
+    "src/app/api/canva/canva-auth.ts": "Refreshes the Canva token. Separate provider, separate lifetime, separate refresh endpoint.",
+    "src/features/settings/actions/canva-actions.ts": "The user disconnecting Canva. Uses the service-role client BY NECESSITY: the only policy on this table is keyed on client_id, and a Canva row is owned by a user so its client_id is NULL — a user-scoped delete would match nothing and report success. Ownership is proven in TypeScript instead; see the comment at the call site.",
+    "src/features/settings/actions/team-actions.ts": "removeTeamMember takes the departing member's personal integrations with them. Distinct from disconnectCanvaConnection (that is the owner choosing to unlink); this is the workspace removing someone. Added 2026-08-31 because social_connections.user_id is NO ACTION, so removing a member who held a Canva connection raised 23503 and surfaced as a message the admin could not act on."
+  },
+  "users": {
+    "src/lib/auth/create-user-record.ts": "The user row is created with the account, with the email guard — that column is a lookup key and a blank one is an account nobody can recover.",
+    "src/features/settings/actions/team-actions.ts": "removeTeamMember."
+  }
+}
