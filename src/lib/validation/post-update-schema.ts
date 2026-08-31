@@ -2,14 +2,19 @@ import { z } from 'zod'
 import { isUserSettablePostStatus, isValidPostPlatform } from '@/lib/validation'
 
 /**
- * What a user may write to a post — the one whitelist.
+ * What a user may write to a post's WORKFLOW state — status, slot, platform, provenance, judgement.
  *
- * It was two. `updatePost` (the server action) and `PUT /api/posts/[id]` each restated
- * the same eleven fields line-for-line as `if (x !== undefined) updates.x = x`, and the
- * two had already drifted: the route validated `quality_score_avg` as number-or-null and
- * the action did not, while the action's `UpdatePostInput` typed it as `number` only.
- * **Neither validated `scheduled_at`** — the column the whole calendar reads — so any
- * string at all could be written to it and would then fail to parse in five places.
+ * It was two schemas, then it was one covering too much. `updatePost` and a since-deleted
+ * `PUT /api/posts/[id]` each restated the same eleven fields as `if (x !== undefined)`, and had
+ * already drifted: the route validated `quality_score_avg` as number-or-null and the action did
+ * not. Neither validated `scheduled_at` — the column the whole calendar reads — so any string at
+ * all could be written to it and would then fail to parse in five places.
+ *
+ * `caption` and `slides_json` have since left this list. They are a post's COPY, they had three
+ * writers between them, and one editing session in the review queue used two of the three. They
+ * now live in `postCopySchema` below, written only by `savePostCopy`. The split is the point: a
+ * caller changing a post's place in the workflow and a caller saving what someone typed are
+ * different operations, and were only ever one schema because one function happened to do both.
  *
  * A schema rather than a second interface, because this is a *write contract* and the
  * things it must say ("a settable status", "an instant, or null to unschedule") are
@@ -23,8 +28,6 @@ import { isUserSettablePostStatus, isValidPostPlatform } from '@/lib/validation'
 export const updatePostSchema = z
   .object({
     status: z.string().refine(isUserSettablePostStatus),
-    caption: z.string(),
-    slides_json: z.unknown(),
     /**
      * An instant, or `null` to unschedule. `offset: true` because the app writes
      * `toISOString()` (a `Z`) everywhere today, and an offset form is the same instant
@@ -51,6 +54,32 @@ export const updatePostSchema = z
  * admitting nulls the update path never intended.
  */
 export type UpdatePostInput = z.infer<typeof updatePostSchema>
+
+/**
+ * The two columns that carry a post's COPY, split out so one function owns them.
+ *
+ * They were in the whitelist above, and three actions wrote them: `updatePost` through this schema,
+ * `savePostCopy` through a hand-written duplicate of these exact two fields, and a PUT route that
+ * restated the whole thing again. The review queue used two of the three in a single editing
+ * session — savePostCopy on every autosave flush, updatePost on approve.
+ *
+ * Kept in this file rather than beside the action so both halves of the write contract stay in one
+ * place; the action imports it. Whoever adds a column here still only has one place to look.
+ */
+export const postCopySchema = z
+  .object({
+    caption: z.string(),
+    slides_json: z.unknown(),
+  })
+  /**
+   * Partial, because the calendar's caption box saves on blur with no slides in hand
+   * (schedule-card.tsx:545) while the review queue's autosave sends both. A required shape here
+   * would force those callers to invent a value for the half they are not editing, and the obvious
+   * invention — an empty string — silently blanks a caption when only the slides changed.
+   */
+  .partial()
+
+export type PostCopyInput = z.infer<typeof postCopySchema>
 
 type PostUpdateParse = { ok: true; updates: Record<string, unknown> } | { ok: false; error: string }
 

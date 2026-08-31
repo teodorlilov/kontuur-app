@@ -1,26 +1,24 @@
 import { describe, expect, it } from 'vitest'
-import { parsePostUpdate, updatePostSchema } from '../post-update-schema'
+import { parsePostUpdate, postCopySchema, updatePostSchema } from '../post-update-schema'
 
 /**
- * The write contract for `posts`, shared by the server action and `PUT /api/posts/[id]`.
+ * The write contract for `posts`, owned by the `updatePost` server action.
  *
  * Worth testing at all because it replaced two hand-written whitelists that had already
  * drifted from each other — and because `scheduled_at`, the column the entire calendar
  * reads, was previously written with no validation on either path.
  */
 describe('updatePostSchema', () => {
-  it('is exactly the eleven writable columns', () => {
+  it('is exactly the nine writable columns, with copy excluded', () => {
     // Not decoration. Adding a field here is a decision about what a user may write to
     // a post; this makes it a deliberate edit rather than a line that slips in with a
     // feature. It is also what stops the two consumers diverging again — there is only
     // one list now, so this asserts the list itself.
     expect(Object.keys(updatePostSchema.shape).sort()).toEqual([
-      'caption',
       'platform',
       'quality_score_avg',
       'rewrite_count',
       'scheduled_at',
-      'slides_json',
       'source_title',
       'source_url',
       'status',
@@ -28,26 +26,58 @@ describe('updatePostSchema', () => {
       'was_rewritten',
     ])
   })
+
+  it('does not accept a post\u2019s copy — savePostCopy owns those two columns', () => {
+    // caption and slides_json were here, and three actions wrote them: updatePost through this
+    // schema, savePostCopy through a hand-written duplicate of the same two fields, and a PUT
+    // route restating the whole contract. The review queue used two of the three in ONE editing
+    // session — savePostCopy on every autosave flush, updatePost on approve — so the same columns
+    // were written under two schemas depending on whether the user was typing or finishing.
+    const keys = Object.keys(updatePostSchema.shape)
+    expect(keys).not.toContain('caption')
+    expect(keys).not.toContain('slides_json')
+    // And a caller that tries anyway is dropped rather than silently written.
+    expect(parsePostUpdate({ caption: 'hello', status: 'approved' })).toEqual({
+      ok: true,
+      updates: { status: 'approved' },
+    })
+  })
+})
+
+describe('postCopySchema', () => {
+  it('accepts an edit to one column without the other', () => {
+    // The calendar's caption box saves on blur with no slides in hand (schedule-card.tsx:545).
+    // A required shape would force it to invent a value for the half it is not editing, and the
+    // obvious invention — an empty string — blanks a caption when only the slides changed.
+    expect(postCopySchema.safeParse({ caption: 'just the words' }).success).toBe(true)
+    expect(postCopySchema.safeParse({ slides_json: [{ headline: 'a', body: 'b' }] }).success).toBe(
+      true
+    )
+  })
+
+  it('still refuses a caption that is not a string', () => {
+    expect(postCopySchema.safeParse({ caption: 42 }).success).toBe(false)
+  })
 })
 
 describe('parsePostUpdate', () => {
   it('writes only the keys it was given', () => {
-    const result = parsePostUpdate({ caption: 'hello' })
-    expect(result).toEqual({ ok: true, updates: { caption: 'hello' } })
+    const result = parsePostUpdate({ source_title: 'hello' })
+    expect(result).toEqual({ ok: true, updates: { source_title: 'hello' } })
   })
 
   it('drops keys that are not writable rather than rejecting the write', () => {
     // Matches what both call sites did: an unknown key was simply never copied into
     // the payload. Rejecting instead would break any caller sending an extra field.
-    const result = parsePostUpdate({ caption: 'hello', agency_id: 'someone-elses' })
-    expect(result).toEqual({ ok: true, updates: { caption: 'hello' } })
+    const result = parsePostUpdate({ source_title: 'hello', agency_id: 'someone-elses' })
+    expect(result).toEqual({ ok: true, updates: { source_title: 'hello' } })
   })
 
   it('skips an explicit undefined instead of writing null', () => {
     // Callers spread conditionals into these objects — `...(platform ? { platform } : {})`
     // — so `undefined` must mean "not touching this column", never "clear it".
-    const result = parsePostUpdate({ caption: 'hello', platform: undefined })
-    expect(result).toEqual({ ok: true, updates: { caption: 'hello' } })
+    const result = parsePostUpdate({ source_title: 'hello', platform: undefined })
+    expect(result).toEqual({ ok: true, updates: { source_title: 'hello' } })
   })
 
   describe('scheduled_at', () => {

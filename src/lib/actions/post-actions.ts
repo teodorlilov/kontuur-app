@@ -7,16 +7,16 @@ import { z } from 'zod'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { resolveActionAuth, fetchOwnedPost, verifyPostsOwnership } from '@/lib/auth/helpers'
 import { parseStoredValidation } from '@/lib/validation/stored-validation-schema'
-import { parsePostUpdate, type UpdatePostInput } from '@/lib/validation/post-update-schema'
+import {
+  parsePostUpdate,
+  postCopySchema,
+  type PostCopyInput,
+  type UpdatePostInput,
+} from '@/lib/validation/post-update-schema'
 import { DISCARD_REASONS } from '@/lib/validation'
 import type { ActionResult } from './types'
 
 const deletePostOptionsSchema = z.object({ reason: z.enum(DISCARD_REASONS).optional() }).optional()
-
-const savePostCopySchema = z.object({
-  caption: z.string(),
-  slides_json: z.unknown(),
-})
 
 const persistRewriteSchema = z.object({
   caption: z.string(),
@@ -76,11 +76,8 @@ export async function resolveChangeRequest(postId: string): Promise<ActionResult
  * layout-wide cache per typing pause forced a full route-tree re-render each
  * time. Status transitions keep going through updatePost, which revalidates.
  */
-export async function savePostCopy(
-  postId: string,
-  edits: { caption: string; slides_json: unknown }
-): Promise<ActionResult> {
-  const parsed = savePostCopySchema.safeParse(edits)
+export async function savePostCopy(postId: string, edits: PostCopyInput): Promise<ActionResult> {
+  const parsed = postCopySchema.safeParse(edits)
   if (!parsed.success) return { ok: false, error: 'Invalid edits' }
 
   const auth = await resolveActionAuth()
@@ -90,10 +87,12 @@ export async function savePostCopy(
   const post = await fetchOwnedPost(supabase, postId, agencyId)
   if (!post) return { ok: false, error: 'Post not found' }
 
-  const updates: Record<string, unknown> = {
-    caption: parsed.data.caption,
-    slides_json: parsed.data.slides_json,
-  }
+  // Only the keys the caller actually sent. Writing an absent one would blank it.
+  const updates: Record<string, unknown> = {}
+  if (parsed.data.caption !== undefined) updates.caption = parsed.data.caption
+  if ('slides_json' in edits) updates.slides_json = parsed.data.slides_json
+  if (Object.keys(updates).length === 0) return { ok: false, error: 'No edits to save' }
+
   const { error } = await supabase.from('posts').update(updates).eq('id', postId)
   if (error) return { ok: false, error: error.message }
 

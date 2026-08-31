@@ -409,12 +409,26 @@ export function ReviewQueue({
     }
 
     pendingApprovalsRef.current += 1
-    updatePost(postId, {
-      caption: edits.caption,
-      slides_json: edits.slidesJson,
-      status: scheduledAt ? 'scheduled' : 'approved',
-      scheduled_at: scheduledAt,
-    })
+    /**
+     * The copy and the workflow move are two writes, through the two functions that own them.
+     *
+     * This used to be one `updatePost` carrying caption and slides_json alongside status and
+     * scheduled_at — so one editing session wrote the same two columns through savePostCopy on
+     * every autosave flush and through updatePost here, under two different schemas.
+     *
+     * Copy first: if the status write fails the rollback restores the queue, and the user's
+     * typing has still been saved. The reverse order could approve a post carrying stale text.
+     * savePostCopy deliberately skips the client-post-stats revalidation, and does not need to —
+     * updatePost busts that tag on the very next line, which is the write that changes a count.
+     */
+    savePostCopy(postId, { caption: edits.caption, slides_json: edits.slidesJson })
+      .then((copy) => {
+        if (!copy.ok) return copy
+        return updatePost(postId, {
+          status: scheduledAt ? 'scheduled' : 'approved',
+          scheduled_at: scheduledAt,
+        })
+      })
       .then((result) => {
         if (!result.ok) rollback()
       })

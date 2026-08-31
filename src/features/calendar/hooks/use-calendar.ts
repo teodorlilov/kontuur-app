@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { toast } from '@/components/ui/toast'
-import { updatePost, resolveChangeRequest } from '@/lib/actions/post-actions'
+import { savePostCopy, updatePost, resolveChangeRequest } from '@/lib/actions/post-actions'
 import { rearmFailedPost } from '@/features/calendar/actions/post-recovery'
 import { reconcilePosts } from '@/features/calendar/lib/reconcile-posts'
 import { moveScheduledToDay, shiftScheduledByDays } from '@/features/calendar/lib/move-post'
@@ -196,7 +196,10 @@ export function useCalendar(initialPosts: CalendarPost[], timeZone: string) {
     ): Promise<boolean> =>
       runPostMutation({
         postId,
-        run: () => updatePost(postId, contentUpdates),
+        // Copy goes through the function that owns those two columns. This called updatePost,
+        // which no longer accepts them. Passed through as-is: the caption box saves on blur with
+        // no slides in hand, and savePostCopy writes only the keys it is given.
+        run: () => savePostCopy(postId, contentUpdates),
         patch: (p) => ({
           ...p,
           ...(contentUpdates.caption !== undefined && { caption: contentUpdates.caption }),
