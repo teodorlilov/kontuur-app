@@ -169,9 +169,21 @@ async function markPublished(
   return `post ${postId} published as media ${mediaId ?? 'unknown'} but the status write was lost: ${error}`
 }
 
-async function markFailed(
+/**
+ * A post could not be published — the ONE way `status: 'failed'` and its two companions are
+ * written, whatever went wrong.
+ *
+ * The scheduler's missed-window sweep used to write the same three columns itself, in a bulk
+ * update. Same meaning, different behaviour: it skipped `patchPost`, so a lost write left a post
+ * reading `scheduled` forever with nothing reporting it, and it never notified — a post that failed
+ * an attempt reached the agency, a post that missed its window did not.
+ *
+ * Takes only the two fields it reads rather than a whole `PublishablePost`: the sweep has a light
+ * row, and a narrower contract is what let it call this at all.
+ */
+export async function markFailed(
   admin: SupabaseClient,
-  post: PublishablePost,
+  post: { id: string; client_id: string },
   message: string,
   options: { final: boolean; attempts: number; clearCreationId?: boolean }
 ): Promise<{ final: boolean; writeError: string | null }> {

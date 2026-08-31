@@ -5,12 +5,14 @@ import type { PostStatus } from '@/lib/validation'
 import { GraphApiError } from '@/lib/meta/graph-errors'
 import { fetchRemainingQuota } from '@/lib/meta/publishing'
 import {
+  markFailed,
   MAX_ATTEMPTS,
   PUBLISHABLE_POST_COLUMNS,
   publishOnePost,
   type PublishablePost,
 } from './publish-post'
 import type { InstagramConnection } from './types'
+import type { PostRow } from '@/types'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { SOCIAL_CONNECTION_AUTH_COLUMNS } from '@/lib/queries/select-columns'
 import { MS_PER_DAY } from '@/utils/constants'
@@ -77,14 +79,42 @@ export async function publishDuePosts(): Promise<PublishSchedulerResult> {
   const windowStart = new Date(now.getTime() - PUBLISH_WINDOW_MS).toISOString()
   const staleClaimCutoff = new Date(now.getTime() - STALE_CLAIM_MS).toISOString()
 
-  // Surface posts that missed the window entirely (cron outage, repeated timeouts)
-  // instead of leaving them stranded in 'scheduled' forever.
-  const { error: sweepError } = await admin
+  /**
+   * Posts that missed the window entirely (cron outage, repeated timeouts), failed one at a time
+   * through the same function every other failure goes through.
+   *
+   * This was a bulk `.update({status:'failed', publish_error:'Missed publish window'})` — the same
+   * three columns markFailed writes, with none of what it does: no retried write, so a lost update
+   * left the post stranded in 'scheduled' with nothing reporting it, and no notification, so the
+   * agency learned about it by looking at the calendar.
+   *
+   * `final: true` is deliberate and preserves today's outcome. The due query below requires
+   * `scheduled_at >= windowStart` and these rows are older than that, so returning one to
+   * 'scheduled' could never republish it — it would be swept again next tick, burning an attempt
+   * each time until the cap. The window has passed; the attempt did not fail.
+   *
+   * Sequential because the sweep normally finds nothing: it only has volume after an outage, and
+   * the notification's cooldown collapses that to one message per client anyway.
+   */
+  const { data: stranded, error: sweepError } = await admin
     .from('posts')
-    .update({ status: 'failed', publish_error: 'Missed publish window' })
+    .select('id, client_id, publish_attempts')
     .in('status', ['scheduled', 'publishing'] satisfies readonly PostStatus[])
     .lt('scheduled_at', windowStart)
   if (sweepError) throw new Error(`missed-window sweep failed: ${sweepError.message}`)
+
+  // Derived, not restated. Spelling the attempt column out in a local type reads as a WRITE to
+  // cron-invariants.test.ts, which separates writers from mentions by looking for the column name
+  // followed by a colon beside a `.from('posts')` — so a hand-written annotation here would have
+  // registered as the third writer of a column whose whole point is that it has exactly two.
+  const missed = (stranded ?? []) as Array<Pick<PostRow, 'id' | 'client_id' | 'publish_attempts'>>
+  for (const post of missed) {
+    const { writeError } = await markFailed(admin, post, 'Missed publish window', {
+      final: true,
+      attempts: post.publish_attempts,
+    })
+    if (writeError) console.error(`[publish] ${writeError}`)
+  }
 
   const retrySpacingCutoff = new Date(now.getTime() - RETRY_SPACING_MS).toISOString()
   const resumeGraceCutoff = new Date(now.getTime() - RESUME_GRACE_MS).toISOString()
