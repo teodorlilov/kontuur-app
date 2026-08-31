@@ -98,7 +98,12 @@ const createPostSchema = z.object({
   validation_json: z.unknown().optional(),
   status: z.enum(['pending_review', 'scheduled', 'approved']).optional(),
   /** nullable: approving without a slot sends an explicit null, not an omitted key. */
-  scheduled_at: z.string().nullable().optional(),
+  /**
+   * The same instant check the edit path uses. This was `z.string()`, so one column had two
+   * definitions of valid: an edit refused a bare `2026-08-14` (a wall-clock date with no zone)
+   * and a create accepted it.
+   */
+  scheduled_at: z.iso.datetime({ offset: true }).nullable().optional(),
   priority: z.boolean().optional(),
   quality_score_avg: z.number().nullable().optional(),
   topic_summary: z.string().nullable().optional(),

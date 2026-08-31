@@ -17,7 +17,7 @@ import { ScheduleDialog } from '@/components/draft-editing/schedule-dialog'
 import { useDraftEdits } from '@/components/draft-editing/use-draft-edits'
 import { useReviewKeyboard } from '@/components/draft-editing/use-review-keyboard'
 import { parseSlides } from '@/lib/posts/parse-slides'
-import { updatePost, deletePost, persistRewrite, savePostCopy } from '@/lib/actions/post-actions'
+import { deletePost, persistRewrite, savePostCopy, schedulePost } from '@/lib/actions/post-actions'
 import { slideCopyAt, slideTotal } from '@/lib/posts/slide-copy'
 import { rewriteDraft } from '@/lib/rewrite-draft'
 import { countVisualsByStatus, type DraftVisual } from '@/lib/visual/draft-visuals'
@@ -424,10 +424,9 @@ export function ReviewQueue({
     savePostCopy(postId, { caption: edits.caption, slides_json: edits.slidesJson })
       .then((copy) => {
         if (!copy.ok) return copy
-        return updatePost(postId, {
-          status: scheduledAt ? 'scheduled' : 'approved',
-          scheduled_at: scheduledAt,
-        })
+        // Through the one scheduler, so approving a single post and scheduling a selection from
+        // the batch bar on this same screen validate the instant identically.
+        return schedulePost(postId, scheduledAt)
       })
       .then((result) => {
         if (!result.ok) rollback()

@@ -214,10 +214,50 @@ export async function deletePost(
   return { ok: true, data: undefined }
 }
 
-/** Schedule multiple posts in a single action call. */
-export async function batchSchedulePosts(
-  items: Array<{ postId: string; scheduledAt: string }>
+/**
+ * One post to a slot, or off the schedule with `null`.
+ *
+ * The single-item form of `schedulePosts`, existing only so the callers that move one post do not
+ * each unwrap a batch count they have no use for. It adds no logic — every check is the batch's.
+ */
+export async function schedulePost(
+  postId: string,
+  scheduledAt: string | null
+): Promise<ActionResult> {
+  const result = await schedulePosts([{ postId, scheduledAt }])
+  return result.ok ? { ok: true, data: undefined } : result
+}
+
+/**
+ * Put posts in the schedule — the ONE way `scheduled_at` and its paired `status` are written.
+ *
+ * This was `batchSchedulePosts`, and it wrote both columns raw: a server action's argument list is
+ * a public boundary, and it accepted any string as `scheduledAt` and put it straight in. That is
+ * precisely the bug `post-update-schema` was written to close — its own comment calls scheduled_at
+ * "the column the whole calendar reads" and records that it used to be written unchecked — and
+ * this was the one writer that bypassed it. Both paths were reachable from the SAME screen: the
+ * review queue schedules one post on approve and a selection through the batch bar.
+ *
+ * Every item now goes through the same `z.iso.datetime({offset:true})` and the same settable-status
+ * check the single-post path uses. A bare `2026-08-14` — a wall-clock date with no zone — is
+ * refused here as it always was there.
+ *
+ * The ownership check and the Instagram caption check stay: they are this function's own, and the
+ * single-post caller gains both by coming through here.
+ */
+export async function schedulePosts(
+  items: Array<{ postId: string; scheduledAt: string | null }>
 ): Promise<ActionResult<{ succeeded: number; total: number }>> {
+  // Validated before auth, matching the other writers here: a malformed payload is the caller's
+  // own bug and says nothing about the post, so there is nothing to leak by answering it first.
+  for (const item of items) {
+    const parsed = parsePostUpdate({
+      scheduled_at: item.scheduledAt,
+      status: item.scheduledAt ? 'scheduled' : 'approved',
+    })
+    if (!parsed.ok) return { ok: false, error: parsed.error }
+  }
+
   const auth = await resolveActionAuth()
   if (!auth.ok) return { ok: false, error: auth.error }
   const { supabase, agencyId } = auth
@@ -241,7 +281,9 @@ export async function batchSchedulePosts(
     return { ok: false, error: [...captionBlocked.values()][0]! }
   }
 
-  const byTime = new Map<string, string[]>()
+  // Grouped by instant so one update covers every post sharing a slot. `null` groups too — it is
+  // the unschedule case, which the single-post caller uses and which used to be impossible here.
+  const byTime = new Map<string | null, string[]>()
   for (const item of items) {
     if (!verifiedIds.has(item.postId)) continue
     const group = byTime.get(item.scheduledAt) ?? []
@@ -254,7 +296,7 @@ export async function batchSchedulePosts(
   for (const [scheduledAt, ids] of byTime) {
     const { error } = await supabase
       .from('posts')
-      .update({ status: 'scheduled', scheduled_at: scheduledAt })
+      .update({ status: scheduledAt ? 'scheduled' : 'approved', scheduled_at: scheduledAt })
       .in('id', ids)
     if (error) failures.push(error.message)
     else succeeded += ids.length

@@ -2,7 +2,14 @@
 
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { toast } from '@/components/ui/toast'
-import { savePostCopy, updatePost, resolveChangeRequest } from '@/lib/actions/post-actions'
+import {
+  resolveChangeRequest,
+  savePostCopy,
+  // Aliased: this hook exports its own `schedulePost`, which is the optimistic UI wrapper around
+  // the action of the same name. Same operation, two layers.
+  schedulePost as persistSchedule,
+  updatePost,
+} from '@/lib/actions/post-actions'
 import { rearmFailedPost } from '@/features/calendar/actions/post-recovery'
 import { reconcilePosts } from '@/features/calendar/lib/reconcile-posts'
 import { moveScheduledToDay, shiftScheduledByDays } from '@/features/calendar/lib/move-post'
@@ -142,16 +149,21 @@ export function useCalendar(initialPosts: CalendarPost[], timeZone: string) {
     ) => {
       await runPostMutation({
         postId,
-        run: () =>
-          updatePost(postId, {
-            status: 'scheduled',
-            scheduled_at: scheduledAt,
-            ...(platform ? { platform } : {}),
-            ...(contentUpdates?.caption !== undefined ? { caption: contentUpdates.caption } : {}),
-            ...(contentUpdates?.slides_json !== undefined
-              ? { slides_json: contentUpdates.slides_json }
-              : {}),
-          }),
+        // Three writes because this is three operations wearing one button: save what was typed,
+        // put the post in a slot, and (rarely) change its platform. Each goes to the function that
+        // owns those columns. They ran as one `updatePost` before, which is how caption and
+        // scheduled_at came to share a schema.
+        run: async () => {
+          if (contentUpdates?.caption !== undefined || contentUpdates?.slides_json !== undefined) {
+            const copy = await savePostCopy(postId, contentUpdates)
+            if (!copy.ok) return copy
+          }
+          if (platform) {
+            const moved = await updatePost(postId, { platform })
+            if (!moved.ok) return moved
+          }
+          return persistSchedule(postId, scheduledAt)
+        },
         patch: (p) => ({
           ...p,
           status: 'scheduled',
@@ -173,7 +185,8 @@ export function useCalendar(initialPosts: CalendarPost[], timeZone: string) {
     async (postId: string) => {
       await runPostMutation({
         postId,
-        run: () => updatePost(postId, { status: 'approved', scheduled_at: null }),
+        // Unscheduling is scheduling to nowhere — same writer, which derives 'approved' itself.
+        run: () => persistSchedule(postId, null),
         patch: (p) => ({
           ...p,
           status: 'approved',
@@ -287,7 +300,7 @@ export function useCalendar(initialPosts: CalendarPost[], timeZone: string) {
 
       const ok = await runPostMutation({
         postId,
-        run: () => updatePost(postId, { scheduled_at: to }),
+        run: () => persistSchedule(postId, to),
         patch: (p) => ({ ...p, scheduled_at: to }),
         failureMessage: 'Could not move this post',
       })
@@ -328,7 +341,7 @@ export function useCalendar(initialPosts: CalendarPost[], timeZone: string) {
     async (postId: string, instant: string): Promise<boolean> =>
       runPostMutation({
         postId,
-        run: () => updatePost(postId, { scheduled_at: instant }),
+        run: () => persistSchedule(postId, instant),
         patch: (p) => ({ ...p, scheduled_at: instant }),
         failureMessage: 'Could not put this post back',
       }),

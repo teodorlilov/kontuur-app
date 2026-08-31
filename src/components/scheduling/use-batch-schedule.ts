@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { toast } from '@/components/ui/toast'
-import { batchSchedulePosts } from '@/lib/actions/post-actions'
+import { schedulePosts } from '@/lib/actions/post-actions'
 import { formatScheduledAt } from '@/utils/date-helpers'
 
 /** The post fields the batch-schedule modal renders and the hook writes. */
@@ -71,7 +71,7 @@ export function useBatchSchedule(
         return { postId: p.id, scheduledAt: formatScheduledAt(a.date, a.time, timeZone) }
       })
 
-      const result = await batchSchedulePosts(items)
+      const result = await schedulePosts(items)
 
       if (result.ok) {
         toast.success(`Scheduled ${result.data.succeeded} of ${result.data.total} posts`)
