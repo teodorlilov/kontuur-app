@@ -17,7 +17,10 @@ import {
   type IGDemographics,
 } from '@/lib/meta/insights'
 import { notify } from '@/features/publishing/lib/notifications'
-import { SOCIAL_CONNECTION_SYNC_COLUMNS } from '@/lib/queries/select-columns'
+import {
+  SOCIAL_CONNECTION_SYNC_COLUMNS,
+  type SocialConnectionSyncColumns,
+} from '@/lib/queries/select-columns'
 import { MS_PER_DAY, SECONDS_PER_DAY } from '@/utils/constants'
 import { shiftDateKey } from '@/utils/date-helpers'
 import { captureAndDeriveBestTime, ONLINE_FOLLOWERS_BACKFILL_DAYS } from './online-followers'
@@ -43,8 +46,16 @@ const CONSOLIDATION_DAYS = 7
 export type IGAccountMetricsInsert = Database['public']['Tables']['ig_account_metrics']['Insert']
 type IGPostMetricsInsert = Database['public']['Tables']['ig_post_metrics']['Insert']
 
-interface IGConnection {
-  client_id: string
+/**
+ * Derived, with the narrowing the QUERY guarantees stated explicitly.
+ *
+ * The hand-written version declared all three non-null over nullable columns, applied by a cast so
+ * nothing checked. Two of them are true at runtime — the roster query filters `access_token` and
+ * `account_id` — and saying so here, beside the filter that makes it true, is the difference
+ * between a guarantee and a hope. `client_id` is NOT filtered, so it stays nullable and the null
+ * handling becomes the compiler's business.
+ */
+type IGConnection = SocialConnectionSyncColumns & {
   account_id: string
   access_token: string
 }
@@ -86,25 +97,39 @@ export async function syncAllClientMetrics(
       outcome.skipped += connections.length - index
       break
     }
+    /**
+     * A connection with no client cannot be synced OR reported.
+     *
+     * `client_id` is nullable and the roster query does not filter it — the hand-written row type
+     * simply declared it `string`, so this value reached `.eq('client_id', …)` keys and the notify
+     * calls below unchecked. Skipped and counted rather than dropped silently: a row like this is a
+     * data problem worth seeing in the run's totals.
+     */
+    const { client_id: clientId } = connection
+    if (!clientId) {
+      outcome.failed++
+      outcome.errors.push({ clientId: connection.account_id, error: 'connection has no client_id' })
+      continue
+    }
     try {
-      await syncClientMetrics(admin, connection)
+      await syncClientMetrics(admin, { ...connection, client_id: clientId })
       outcome.synced++
-      await recordSyncHealth(admin, connection.client_id, null)
+      await recordSyncHealth(admin, clientId, null)
     } catch (err) {
       outcome.failed++
       const message = err instanceof Error ? err.message : 'unknown error'
-      outcome.errors.push({ clientId: connection.client_id, error: message })
+      outcome.errors.push({ clientId: clientId, error: message })
       // The verdict outlives the run. The page dated itself from the day
       // rows before this existed — a stamp the on-demand refill also wrote —
       // and so called a sync current while a phase had been failing nightly.
-      await recordSyncHealth(admin, connection.client_id, message)
+      await recordSyncHealth(admin, clientId, message)
       if (err instanceof GraphApiError) {
         if (err.failure === 'token_invalid' || err.failure === 'permission') {
           try {
-            await notifyMetricsBlocked(admin, connection.client_id)
+            await notifyMetricsBlocked(admin, clientId)
           } catch (notifyErr) {
             outcome.errors.push({
-              clientId: connection.client_id,
+              clientId: clientId,
               error: `notify failed: ${notifyErr instanceof Error ? notifyErr.message : 'unknown'}`,
             })
           }
@@ -121,10 +146,10 @@ export async function syncAllClientMetrics(
       // sync that keeps half-failing is invisible otherwise — the page still
       // renders, just with sections quietly frozen.
       try {
-        await notifySyncIncomplete(admin, connection.client_id)
+        await notifySyncIncomplete(admin, clientId)
       } catch (notifyErr) {
         outcome.errors.push({
-          clientId: connection.client_id,
+          clientId: clientId,
           error: `notify failed: ${notifyErr instanceof Error ? notifyErr.message : 'unknown'}`,
         })
       }
@@ -205,7 +230,12 @@ export async function runSyncPhases(phases: SyncPhase[]): Promise<string[]> {
  * The aggregate throw at the end keeps the failure VISIBLE in the cron's
  * per-client errors — silence is what let this hide.
  */
-async function syncClientMetrics(admin: SupabaseClient, connection: IGConnection): Promise<void> {
+async function syncClientMetrics(
+  admin: SupabaseClient,
+  // The caller has already skipped connections with no client, so the guarantee travels in the
+  // type rather than being re-tested here.
+  connection: IGConnection & { client_id: string }
+): Promise<void> {
   const { client_id: clientId, account_id: accountId, access_token: accessToken } = connection
   // Read the history flag BEFORE writing yesterday's row, or it is never zero.
   // Scoped to THIS account: after a reconnect the new account has no history

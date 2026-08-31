@@ -26,8 +26,23 @@ const DATABASE_TS = path.join(SRC, 'types/database.ts')
  * How many of a declaration's fields must be columns of one table before it counts as
  * a mirror. Below this, overlap is coincidence — plenty of unrelated types have an
  * `id` and a `name`.
+ *
+ * Three, not five. The 2026-08-31 column audit found real mirrors sitting under the old floor and
+ * therefore invisible: WeekScheduledPost (2 fields, narrowing a nullable `scheduled_at` on the
+ * strength of a query filter), TokenRow (3), PublishableImage (3, and the thing publish reads to
+ * refuse a carousel). A small projection drifts exactly like a large one.
  */
-const MIN_FIELDS = 5
+const MIN_FIELDS = 3
+
+/**
+ * How many fields may NOT be columns before a declaration stops counting as a mirror.
+ *
+ * One. The rule used to be "every field is a column", and a single extra field disabled the check
+ * outright — which is how `ReviewQueueRow` got away with `caption: string` over a nullable column
+ * for as long as it carried an `imageUrl` beside it. A projection plus one joined or computed
+ * field is the common shape, not an exception: derive the projection and intersect the extra.
+ */
+const MAX_NON_COLUMN_FIELDS = 1
 
 /**
  * Declarations that share a table's field names but are not projections of it.
@@ -78,7 +93,33 @@ const EXEMPT: Record<string, string> = {
  * To clear one: derive it, then delete its line. The staleness check below fails if
  * you derive it and forget. Rationale per entry: docs/TECH-DEBT.md §7.3.
  */
-const KNOWN_MIRRORS: string[] = ['types/api.ts:AgencyInfo']
+const KNOWN_MIRRORS: string[] = [
+  'types/api.ts:AgencyInfo',
+  // ── Surfaced 2026-08-31 by lowering MIN_FIELDS to 3, allowing one non-column field, and making
+  // the derivation check per-field. Every one of these existed before; the guard simply could not
+  // see them. They are listed rather than fixed in the same pass so the tightening lands green and
+  // each is NAMED — the five with real nullability lies (ReviewQueueRow, IGConnection,
+  // ExpiringConnection, InstagramConnection, and the SnapshotRow/AudienceSnapshotInput pair) were
+  // derived instead, because a type that contradicts its column is a bug, not debt.
+  'ai/intelligence/generate-briefing.ts:BriefingResult',
+  'components/scheduling/use-batch-schedule.ts:BatchPost',
+  'features/analytics/components/report-archive.tsx:ArchiveEntry',
+  'features/clients/lib/insights.ts:PillarRow',
+  'features/clients/lib/roster.ts:RosterClientRow',
+  'features/clients/lib/roster.ts:RosterConnectionRow',
+  'features/dashboard/queries/dashboard-data.ts:ClientSummary',
+  'features/generate/components/setup/client-picker.tsx:PickerClient',
+  'features/publishing/lib/publish-post.ts:PublishableImage',
+  'lib/auth/helpers.ts:OwnedPost',
+  'lib/clients/content-pillars.ts:CoverageSource',
+  'lib/clients/fetch-client-data.ts:ClientIdentity',
+  'lib/posts/slide-copy.ts:SlideCopySource',
+  'lib/queries/cache.ts:CoverageRow',
+  'lib/queries/db.ts:LanguageRulesRow',
+  'lib/visual/queries.ts:ExtractionPatch',
+  'lib/visual/queries.ts:ExtractionSession',
+  'types/api.ts:TeamMember',
+]
 
 function sourceFiles(): string[] {
   const out: string[] = []
@@ -181,19 +222,38 @@ function declarations(files: string[]): Declaration[] {
   return found
 }
 
-/** Whether a declaration already derives from the generated types. */
-function isDerived(decl: Declaration): boolean {
-  return /\b(Pick|Omit)\s*<\s*\w*Row\b|Tables<'/.test(decl.body)
+/**
+ * Whether a FIELD is already covered by a derivation, rather than hand-written.
+ *
+ * Per field, not per declaration. The old version tested the whole body, so one `Pick<PostRow, …>`
+ * anywhere inside laundered every hand-written member beside it — which is how ChangeRequestRow's
+ * embedded token slipped through while declaring a nullable column non-null.
+ *
+ * A field is covered when it appears inside a Pick/Omit/Tables expression somewhere in the body;
+ * a field spelled out as its own `name: type` line is not.
+ */
+function derivedFields(decl: Declaration): Set<string> {
+  const covered = new Set<string>()
+  for (const expr of decl.body.match(/\b(?:Pick|Omit)\s*<[^>]*>|Tables<'[^']+'>/g) ?? []) {
+    for (const quoted of expr.match(/'([a-zA-Z_]+)'/g) ?? []) covered.add(quoted.slice(1, -1))
+    // `Tables<'posts'>` and `Omit<PostRow, 'x'>` cover everything they do not name.
+    if (/^Tables</.test(expr) || /^Omit/.test(expr)) return new Set(decl.fields)
+  }
+  return covered
 }
 
-/** Declarations whose fields are all columns of a single table. */
+/** Declarations that are a projection of one table, give or take a joined field. */
 function mirrors(decls: Declaration[], tables: Map<string, Set<string>>) {
   const out: Array<{ decl: Declaration; table: string }> = []
   for (const decl of decls) {
-    if (decl.fields.length < MIN_FIELDS) continue
-    if (isDerived(decl)) continue
+    const covered = derivedFields(decl)
+    const handWritten = decl.fields.filter((f) => !covered.has(f))
+    if (handWritten.length < MIN_FIELDS) continue
+
     for (const [table, columns] of tables) {
-      if (decl.fields.every((f) => columns.has(f))) {
+      const strangers = handWritten.filter((f) => !columns.has(f))
+      const asColumns = handWritten.length - strangers.length
+      if (asColumns >= MIN_FIELDS && strangers.length <= MAX_NON_COLUMN_FIELDS) {
         out.push({ decl, table })
         break
       }

@@ -14,7 +14,8 @@ export interface DashboardBriefing {
 
 export interface PendingPostPreview {
   id: string
-  caption: string
+  /** Nullable, like the column. The row type claimed otherwise and the preview line trusted it. */
+  caption: string | null
   platform: string
   pillar: string
   createdAt: string

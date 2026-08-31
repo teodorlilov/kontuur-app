@@ -151,7 +151,9 @@ function PendingRow({
   // Spread, not slice(0,1): an emoji or any astral character is two code units,
   // and slicing one of them yields a broken glyph.
   const initial = [...post.clientName.trim()][0]?.toUpperCase() ?? '?'
-  const preview = toPreviewLine(post.caption) || 'Untitled draft'
+  // `|| 'Untitled draft'` covered an EMPTY caption; a null one reached toPreviewLine, which calls
+  // .replace on it unguarded. The row type used to claim this could not be null.
+  const preview = (post.caption && toPreviewLine(post.caption)) || 'Untitled draft'
 
   return (
     <article

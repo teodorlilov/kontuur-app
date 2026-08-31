@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import type { IGAudienceSnapshotColumns } from '@/lib/queries/select-columns'
 import type {
   IGAccountMetricColumns,
   IGPostMetricColumns,
@@ -32,11 +33,15 @@ const demographicsSchema = z.object({
   country: breakdownMapSchema,
 })
 
-export interface AudienceSnapshotInput {
-  snapshot_date: string
-  follower_demographics: unknown
-  engaged_audience_demographics: unknown
-}
+/**
+ * Derived, and the only declaration of this shape.
+ *
+ * `report-data.ts` held a structurally identical `SnapshotRow` and cast rows into it before handing
+ * them here — one projection, written by hand twice, in two files, with both jsonb columns widened
+ * to `unknown`. The narrowing that matters happens at `demographicsSchema` below, which is where it
+ * always did.
+ */
+export type AudienceSnapshotInput = IGAudienceSnapshotColumns
 
 // ── Output shape ──
 

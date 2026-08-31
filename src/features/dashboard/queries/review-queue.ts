@@ -3,22 +3,19 @@ import 'server-only'
 import { cache } from 'react'
 import { unstable_cache } from 'next/cache'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
-import { PENDING_PREVIEW_COLUMNS } from '@/lib/queries/select-columns'
+import { PENDING_PREVIEW_COLUMNS, type PendingPreviewColumns } from '@/lib/queries/select-columns'
 import { fetchImagesByPost } from '@/features/assets/lib/fetch-post-images'
 
 /** The dashboard queue scrolls, so it holds more than a glance's worth. */
 const PENDING_PREVIEW_LIMIT = 12
 
 /** A queued draft with its thumbnail already resolved, before the client name is attached. */
-interface ReviewQueueRow {
-  id: string
-  caption: string
-  platform: string
-  pillar: string | null
-  created_at: string
-  client_id: string
-  imageUrl: string | null
-}
+/**
+ * Derived, not restated. The hand-written version declared `caption: string` over a nullable
+ * column — and it escaped `row-mirrors.test.ts` because ONE of its fields (`imageUrl`) is not a
+ * posts column, and that guard requires every field to be one before it looks.
+ */
+type ReviewQueueRow = PendingPreviewColumns & { imageUrl: string | null }
 
 /**
  * The newest drafts awaiting review, each with its first image.

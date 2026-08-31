@@ -8,7 +8,13 @@
  * - If you add a column to a table, update the relevant constant here first.
  */
 
-import type { IGAccountMetricsRow, IGPostMetricsRow, PostRow, SocialConnectionRow } from '@/types'
+import type {
+  IGAccountMetricsRow,
+  IGAudienceSnapshotsRow,
+  IGPostMetricsRow,
+  PostRow,
+  SocialConnectionRow,
+} from '@/types'
 
 /**
  * `[a, b, c]` joined by `D`, as a literal type rather than plain `string`.
@@ -217,7 +223,29 @@ export type SocialConnectionAuthColumns = Pick<
 >
 
 /** The metrics cron's roster read — AUTH_COLUMNS plus the client to file rows under. */
-export const SOCIAL_CONNECTION_SYNC_COLUMNS = 'client_id, account_id, access_token'
+const SOCIAL_CONNECTION_SYNC_KEYS = [
+  'client_id',
+  'account_id',
+  'access_token',
+] as const satisfies readonly (keyof SocialConnectionRow)[]
+
+export const SOCIAL_CONNECTION_SYNC_COLUMNS = SOCIAL_CONNECTION_SYNC_KEYS.join(', ') as Join<
+  typeof SOCIAL_CONNECTION_SYNC_KEYS,
+  ', '
+>
+
+/**
+ * The companion this constant shipped without.
+ *
+ * Two hand-written copies existed — sync-metrics' IGConnection and refresh-tokens'
+ * ExpiringConnection — and both declared `client_id` and `access_token` non-null over nullable
+ * columns, applied by casts so nothing checked. The access_token half is true at runtime (the
+ * queries filter it), which is why callers narrow it explicitly; `client_id` was never filtered.
+ */
+export type SocialConnectionSyncColumns = Pick<
+  SocialConnectionRow,
+  (typeof SOCIAL_CONNECTION_SYNC_KEYS)[number]
+>
 
 // ig_account_metrics — the analytics document's daily rows: only what it renders.
 // Columns the sync captures but nothing displays yet (accounts_engaged,
@@ -303,8 +331,28 @@ export const PUBLISHED_POST_PIN_COLUMNS = PUBLISHED_POST_PIN_KEYS.join(', ') as 
 export type PublishedPostPinColumns = Pick<PostRow, (typeof PUBLISHED_POST_PIN_KEYS)[number]>
 
 // ig_audience_snapshots
-export const IG_AUDIENCE_SNAPSHOT_COLUMNS =
-  'snapshot_date, follower_demographics, engaged_audience_demographics'
+const IG_AUDIENCE_SNAPSHOT_KEYS = [
+  'snapshot_date',
+  'follower_demographics',
+  'engaged_audience_demographics',
+] as const satisfies readonly (keyof IGAudienceSnapshotsRow)[]
+
+export const IG_AUDIENCE_SNAPSHOT_COLUMNS = IG_AUDIENCE_SNAPSHOT_KEYS.join(', ') as Join<
+  typeof IG_AUDIENCE_SNAPSHOT_KEYS,
+  ', '
+>
+
+/**
+ * The companion this constant shipped without — the only metrics constant that had none, while
+ * IG_ACCOUNT_METRIC and IG_POST_METRIC both did and their readers import them.
+ *
+ * Its absence produced two structurally identical hand-written declarations, `SnapshotRow` and
+ * `AudienceSnapshotInput`, in files that pass rows from one to the other through a double cast.
+ */
+export type IGAudienceSnapshotColumns = Pick<
+  IGAudienceSnapshotsRow,
+  (typeof IG_AUDIENCE_SNAPSHOT_KEYS)[number]
+>
 
 // intelligence_briefings
 export const BRIEFING_COLUMNS =
@@ -352,8 +400,26 @@ export const UPCOMING_POST_COLUMNS =
   'id, client_id, platform, scheduled_at, clients!inner(agency_id)'
 
 /** One row of the dashboard's review-queue preview. */
+const PENDING_PREVIEW_KEYS = [
+  'id',
+  'caption',
+  'platform',
+  'pillar',
+  'created_at',
+  'client_id',
+] as const satisfies readonly (keyof PostRow)[]
+
 export const PENDING_PREVIEW_COLUMNS =
-  'id, caption, platform, pillar, created_at, client_id, clients!inner(agency_id)'
+  `${PENDING_PREVIEW_KEYS.join(', ')}, clients!inner(agency_id)` as `${Join<typeof PENDING_PREVIEW_KEYS, ', '>}, clients!inner(agency_id)`
+
+/**
+ * The companion this constant shipped without.
+ *
+ * `ReviewQueueRow` restated these six by hand and got `caption` wrong — `string` over a nullable
+ * column — which then propagated into `PendingPostPreview` and reached `toPreviewLine`, whose body
+ * calls `caption.replace` with no guard. Nothing filters null captions out of the query.
+ */
+export type PendingPreviewColumns = Pick<PostRow, (typeof PENDING_PREVIEW_KEYS)[number]>
 
 /** A post whose client asked for changes, with the token carrying the note. */
 export const CHANGE_REQUEST_COLUMNS =

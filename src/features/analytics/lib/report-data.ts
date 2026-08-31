@@ -7,6 +7,7 @@ import { fetchIgConnectionState } from '@/lib/queries/db'
 import {
   IG_ACCOUNT_METRIC_COLUMNS,
   IG_AUDIENCE_SNAPSHOT_COLUMNS,
+  type IGAudienceSnapshotColumns,
   IG_POST_METRIC_COLUMNS,
   PUBLISHED_POST_PIN_COLUMNS,
   type IGAccountMetricColumns,
@@ -30,12 +31,6 @@ import type { AnalyticsPeriod } from './period'
 
 /** Revalidated by /api/cron/metrics after each nightly sync. */
 export const IG_METRICS_TAG = 'ig-metrics'
-
-interface SnapshotRow {
-  snapshot_date: string
-  follower_demographics: unknown
-  engaged_audience_demographics: unknown
-}
 
 /** The nothing-attributable report: day-one shape, no history claimed. */
 function emptyReport(period: AnalyticsPeriod, timezone: string): AnalyticsReportData {
@@ -149,7 +144,7 @@ const _fetchAnalyticsReport = unstable_cache(
     const accountRows = (accountRes.data ?? []) as unknown as IGAccountMetricColumns[]
     const postRows = (postRes.data ?? []) as unknown as IGPostMetricColumns[]
     const publishedPosts = (publishedRes.data ?? []) as unknown as PublishedPostPinColumns[]
-    let snapshots = (snapshotRes.data ?? []) as unknown as SnapshotRow[]
+    let snapshots = (snapshotRes.data ?? []) as unknown as IGAudienceSnapshotColumns[]
     // No snapshot covers this window (weekly capture may postdate an older
     // period): fall back to the account's LATEST snapshot. The view labels it
     // with its date — audiences drift slowly, and a dated picture beats none.
@@ -164,7 +159,7 @@ const _fetchAnalyticsReport = unstable_cache(
       if (fallback.error) {
         throw new Error(`analytics report read failed: ${fallback.error.message}`)
       }
-      snapshots = (fallback.data ?? []) as unknown as SnapshotRow[]
+      snapshots = (fallback.data ?? []) as unknown as IGAudienceSnapshotColumns[]
     }
     const hasHistory = ((latestRes.data ?? []) as unknown[]).length > 0
 

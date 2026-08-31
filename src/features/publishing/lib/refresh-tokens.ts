@@ -7,13 +7,18 @@ import { classifyGraphError, type GraphFailure } from '@/lib/meta/graph-errors'
 import { igRefreshResponseSchema } from '@/lib/meta/schemas'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { notify } from './notifications'
+import type { SocialConnectionRow } from '@/types'
 
-interface ExpiringConnection {
-  id: string
-  client_id: string
-  access_token: string
-  token_expires_at: string | null
-}
+/**
+ * Derived, with the narrowing the query guarantees stated beside it.
+ *
+ * The hand-written version declared `client_id` and `access_token` non-null over nullable columns,
+ * behind a cast. The token filter makes access_token true; client_id was never filtered.
+ */
+type ExpiringConnection = Pick<
+  SocialConnectionRow,
+  'id' | 'client_id' | 'access_token' | 'token_expires_at'
+> & { access_token: string }
 
 interface RefreshTokensResult {
   refreshed: number
@@ -130,8 +135,10 @@ export async function refreshExpiringTokens(): Promise<RefreshTokensResult> {
         //
         // Scoped catch: a failed notification is its own problem, and letting
         // it reach the outer handler would count this connection twice.
+        // A connection with no client has nobody to tell — the column is nullable and this query
+        // does not filter it, which the hand-written row type used to hide.
         try {
-          await notifyReconnectNeeded(admin, conn.client_id)
+          if (conn.client_id) await notifyReconnectNeeded(admin, conn.client_id)
         } catch (notifyErr) {
           results.errors.push(
             notifyErr instanceof Error ? notifyErr.message : 'reconnect notification failed'
