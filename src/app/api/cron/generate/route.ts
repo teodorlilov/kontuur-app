@@ -15,9 +15,8 @@ import {
   startGenerationRun,
   trackGenerationTheme,
 } from '@/lib/generation/runs'
-import { generateBriefing } from '@/ai/intelligence/generate-briefing'
 import { generateSoloCoaching } from '@/ai/solo-coaching/generate-coaching'
-import { getMondayISO } from '@/utils/date-helpers'
+import { writeWeeklyBriefing } from '@/features/dashboard/lib/write-briefing'
 import { DEFAULT_CAROUSEL_SLIDES, MS_PER_HOUR, STYLE_MEMO_REFRESH_DAYS } from '@/utils/constants'
 import { distillStyleMemo } from '@/ai/learning/distill-style-memo'
 import { fetchScheduleContext, getScheduleDue } from './helpers'
@@ -306,41 +305,15 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  // One briefing per agency per week.
-  const weekStart = getMondayISO()
+  // One briefing per agency per week. The week boundary is the writer's to know.
   for (const agencyId of processedAgencyIds) {
     try {
-      // This read is the once-per-week guard; an unread failure regenerates a
-      // briefing the agency already has, at LLM cost.
-      const { data: existing, error: existingError } = await supabase
-        .from('intelligence_briefings')
-        .select('id')
-        .eq('agency_id', agencyId)
-        .gte('week_start', weekStart)
-        .maybeSingle()
-      if (existingError) throw new Error(`briefing lookup failed: ${existingError.message}`)
+      // The once-per-week guard lives in the writer: without `refresh` it returns the existing
+      // row untouched, so an agency that already has a briefing costs no LLM call.
+      const written = await writeWeeklyBriefing(supabase, agencyId)
+      if (!written) throw new Error('briefing write failed')
 
-      if (!existing) {
-        const agencyNiche = await getAgencyNiche(supabase, agencyId)
-        const briefing = await generateBriefing({ agencyNiche })
-
-        const { data: inserted, error: insertError } = await supabase
-          .from('intelligence_briefings')
-          .insert({
-            agency_id: agencyId,
-            platform_updates: briefing.platform_updates,
-            trending_topics: asJson(briefing.niche_trends),
-            weekly_tip: briefing.weekly_tip,
-            action_nudge: briefing.action_nudge,
-            sources: briefing.sources,
-            week_start: weekStart,
-          })
-          .select('id')
-          .single()
-        if (insertError || !inserted) {
-          throw new Error(`briefing insert failed: ${insertError?.message ?? 'no row returned'}`)
-        }
-
+      if (written.written) {
         // Solo coaching card — only for solo-mode agencies
         const { data: rawAgency, error: agencyError } = await supabase
           .from('agencies')
@@ -366,15 +339,18 @@ export async function GET(request: NextRequest) {
 
           const pendingCount = await countPendingPostsByClients(supabase, agencyClientIds)
 
+          // Its own lookup. This used to borrow `agencyNiche` from the briefing block above, with
+          // a comment saying so — a coupling that broke the moment that block moved into
+          // writeWeeklyBriefing. One query, and only for a solo agency that just got a briefing.
           const coaching = await generateSoloCoaching({
-            niche: agencyNiche ?? 'general',
+            niche: (await getAgencyNiche(supabase, agencyId)) ?? 'general',
             pendingCount,
           })
 
           const { error: coachingError } = await supabase
             .from('intelligence_briefings')
             .update({ coaching_points: asJson(coaching.coaching_points) })
-            .eq('id', (inserted as { id: string }).id)
+            .eq('id', written.id)
           if (coachingError) {
             throw new Error(`coaching write failed: ${coachingError.message}`)
           }
