@@ -2,6 +2,7 @@ import { daysUntilExpiry, isTokenExpired, isTokenExpiring } from '@/lib/meta/tok
 import { POST_PLATFORMS } from '@/lib/validation'
 import { extractInitials } from '@/utils/format'
 import type { PostSummary } from '@/types/post'
+import type { ClientRow, SocialConnectionRow } from '@/types'
 
 /**
  * Pure derivation for the Clients roster. No Supabase, no React — every input is
@@ -51,16 +52,14 @@ export type RosterFilter = 'attention' | 'approval' | 'connection' | 'empty' | '
 // Defined here and imported *by* the query layer, so the derivation owns its
 // contract instead of inheriting whatever shape PostgREST happened to return.
 
-export interface RosterConnectionRow {
-  platform: string | null
-  account_name: string | null
-  token_expires_at: string | null
-}
+/** Derived: the hand-written version declared `platform` and `account_name` nullable over
+ *  NOT NULL columns, so every reader carried a guard for a state the schema forbids. */
+export type RosterConnectionRow = Pick<
+  SocialConnectionRow,
+  'platform' | 'account_name' | 'token_expires_at'
+>
 
-export interface RosterClientRow {
-  id: string
-  name: string
-  niche: string | null
+export type RosterClientRow = Pick<ClientRow, 'id' | 'name' | 'niche'> & {
   /** PostgREST returns an ARRAY here — social_connections is isOneToOne: false. */
   social_connections: RosterConnectionRow[] | null
 }
@@ -148,14 +147,30 @@ function buildChannels(rows: RosterConnectionRow[], now: Date): RosterChannel[] 
   })
 }
 
+/**
+ * Can this client publish to anything right now? The one definition of "connected".
+ *
+ * The dashboard's own count answered this with "does a social_connections row exist for the
+ * agency" — no platform filter, no expiry check. So a client whose Instagram token had lapsed sat
+ * at the top of the roster's "Needs attention" reading "No account connected", while the dashboard
+ * counted it as connected and, because the next-up card derives `unconnected` by subtraction,
+ * dropped it out of the "Connect accounts" prompt entirely — steering the agency toward generating
+ * more content for a client that cannot publish.
+ *
+ * Nothing sweeps a lapsed row, so that state is permanent until someone reconnects.
+ */
+export function hasLiveChannel(rows: RosterConnectionRow[], now: Date): boolean {
+  return buildChannels(rows, now).some((channel) => channel.state !== 'missing')
+}
+
 /** The single status a row displays, highest precedence wins. */
 function resolveStatus(
   channels: RosterChannel[],
   approvalCount: number,
   queuedCount: number
 ): ClientStatus {
-  const hasLiveChannel = channels.some((c) => c.state !== 'missing')
-  if (!hasLiveChannel) return 'connection_missing'
+  // Same rule as `hasLiveChannel`, off channels the caller already built.
+  if (!channels.some((c) => c.state !== 'missing')) return 'connection_missing'
   if (approvalCount > 0) return 'awaiting_approval'
   if (channels.some((c) => c.state === 'expiring')) return 'connection_expiring'
   if (queuedCount === 0) return 'queue_empty'

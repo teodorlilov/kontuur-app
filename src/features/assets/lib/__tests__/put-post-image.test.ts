@@ -5,7 +5,7 @@ vi.mock('@/lib/supabase/admin', () => ({
   createAdminSupabaseClient: () => ({ storage: { from: () => ({ remove }) } }),
 }))
 
-import { putPostImage } from '../storage'
+import { putPostImage, putPostImages } from '../storage'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 /**
@@ -29,13 +29,11 @@ const WRITE = {
 
 /** A Supabase double: the row a position holds, and whether the upsert succeeds. */
 function fakeAdmin(existing: { storage_path: string } | null, upsertFails = false) {
-  const upsert = vi.fn(() => ({
-    select: () => ({
-      single: async () =>
-        upsertFails
-          ? { data: null, error: { message: 'unique violation' } }
-          : { data: { id: 'row-1', ...WRITE }, error: null },
-    }),
+  const upsert = vi.fn((rows: Array<Record<string, unknown>>) => ({
+    select: async () =>
+      upsertFails
+        ? { data: null, error: { message: 'unique violation' } }
+        : { data: rows.map((row, i) => ({ id: `row-${i}`, ...row })), error: null },
   }))
   const select = vi.fn(() => ({
     eq: () => ({ eq: () => ({ maybeSingle: async () => ({ data: existing }) }) }),
@@ -106,5 +104,52 @@ describe('putPostImage', () => {
 
     expect(select).not.toHaveBeenCalled()
     expect(remove).not.toHaveBeenCalled()
+  })
+})
+
+describe('putPostImages', () => {
+  it('writes a whole carousel in one statement', async () => {
+    const { client, upsert } = fakeAdmin(null)
+
+    const rows = await putPostImages(client, [
+      { ...WRITE, position: 0 },
+      { ...WRITE, position: 1 },
+      { ...WRITE, position: 2 },
+    ])
+
+    // Approving a wizard draft attaches every slide at once. One round trip, not one per slide.
+    expect(upsert).toHaveBeenCalledTimes(1)
+    expect(rows).toHaveLength(3)
+  })
+
+  it('spells out the columns it has no value for', async () => {
+    const { client, upsert } = fakeAdmin(null)
+
+    await putPostImages(client, [
+      { postId: 'p', position: 0, publicUrl: 'https://cdn/a.jpg', storagePath: 'c/p/a.jpg' },
+    ])
+
+    // PostgREST rejects a batch whose objects have differing keys, so every key is present on
+    // every row. It also keeps PostImageWrite honest: an omitted field CLEARS the column.
+    expect(upsert.mock.calls[0]?.[0]).toEqual([
+      expect.objectContaining({ file_name: null, file_size: null, content_type: null }),
+    ])
+  })
+
+  it('does not touch storage — cleanup belongs to the single-row path', async () => {
+    const { client } = fakeAdmin({ storage_path: 'client-1/post-1/1-old.jpg' })
+
+    await putPostImages(client, [WRITE])
+
+    // The batch is for positions known to be empty. If it silently deleted whatever a position
+    // held, the caller that has read nothing would be unlinking files it never looked at.
+    expect(remove).not.toHaveBeenCalled()
+  })
+
+  it('never issues a statement for an empty carousel', async () => {
+    const { client, upsert } = fakeAdmin(null)
+
+    expect(await putPostImages(client, [])).toEqual([])
+    expect(upsert).not.toHaveBeenCalled()
   })
 })

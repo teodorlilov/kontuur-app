@@ -9,11 +9,14 @@
  */
 
 import type {
+  ClientRow,
+  ClientSourceRow,
   IGAccountMetricsRow,
   IGAudienceSnapshotsRow,
   IGPostMetricsRow,
   PostRow,
   SocialConnectionRow,
+  UserRow,
 } from '@/types'
 
 /**
@@ -128,7 +131,21 @@ export const CLIENT_LIST_COLUMNS = 'id, name, niche, posts_per_week, language, c
  * CLIENT_LIST_COLUMNS on purpose — a prompt has no use for posts_per_week or
  * created_at, and both readers pair this with an `agency_id` ownership filter.
  */
-export const CLIENT_AI_CONTEXT_COLUMNS = 'id, name, niche, language'
+const CLIENT_AI_CONTEXT_KEYS = [
+  'id',
+  'name',
+  'niche',
+  'language',
+] as const satisfies readonly (keyof ClientRow)[]
+
+export const CLIENT_AI_CONTEXT_COLUMNS = CLIENT_AI_CONTEXT_KEYS.join(', ') as Join<
+  typeof CLIENT_AI_CONTEXT_KEYS,
+  ', '
+>
+
+/** The companion this constant shipped without — `fetchClientData` cast the result to a
+ *  hand-written `ClientIdentity` that restated all four. */
+export type ClientAIContextColumns = Pick<ClientRow, (typeof CLIENT_AI_CONTEXT_KEYS)[number]>
 
 /** All a re-read needs: the site to read, and the id proving the row was found. */
 export const CLIENT_WEBSITE_COLUMNS = 'id, website_url'
@@ -190,8 +207,41 @@ export const CLIENT_SOURCE_RESEARCH_COLUMNS =
 // excludes extracted_text and config, which are heavy and research-only)
 export const CLIENT_SOURCE_SUMMARY_COLUMNS = 'id, type, label, url, pillar_ids'
 
+// client_sources — just enough to rewrite a source's pillar scoping
+const CLIENT_SOURCE_PILLARS_KEYS = [
+  'id',
+  'pillar_ids',
+] as const satisfies readonly (keyof ClientSourceRow)[]
+
+export const CLIENT_SOURCE_PILLARS_COLUMNS = CLIENT_SOURCE_PILLARS_KEYS.join(', ') as Join<
+  typeof CLIENT_SOURCE_PILLARS_KEYS,
+  ', '
+>
+
+/** `pillar_ids` is `Json`, not `string[]` — the hand-written mirror claimed otherwise. */
+export type ClientSourcePillarsColumns = Pick<
+  ClientSourceRow,
+  (typeof CLIENT_SOURCE_PILLARS_KEYS)[number]
+>
+
 // users
-export const USER_COLUMNS = 'id, email, role, created_at'
+const USER_KEYS = [
+  'id',
+  'email',
+  'role',
+  'created_at',
+] as const satisfies readonly (keyof UserRow)[]
+
+export const USER_COLUMNS = USER_KEYS.join(', ') as Join<typeof USER_KEYS, ', '>
+
+/**
+ * The companion this constant shipped without.
+ *
+ * `TeamMember` restated these four by hand and got `created_at` wrong — `string` over a nullable
+ * column — and `fetchTeamMembersByAgency` applied it with a cast, so nothing ever checked. The
+ * member list renders it through `new Date(...)`, which turns a null into 1 January 1970.
+ */
+export type UserColumns = Pick<UserRow, (typeof USER_KEYS)[number]>
 
 export const USER_AUTH_COLUMNS = 'agency_id, role'
 

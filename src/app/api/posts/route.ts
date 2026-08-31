@@ -2,15 +2,21 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { resolveAuth } from '@/lib/auth/resolve-auth'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
-import { draftVisualPrefix, movePostImageObject } from '@/features/assets/lib/storage'
+import {
+  draftVisualPrefix,
+  movePostImageObject,
+  putPostImages,
+} from '@/features/assets/lib/storage'
 import { isImageNode } from '@/lib/canvas/doc-nodes'
 import { safeParseCanvasDoc } from '@/lib/canvas/doc-schema'
 import { insertCanvasDocs } from '@/lib/canvas/doc-store'
 import { POST_COLUMNS } from '@/lib/queries/select-columns'
+import { recordPostTopics } from '@/lib/queries/post-history'
 import { draftColumns } from '@/lib/generation/draft-columns'
 import { isValidPostPlatform } from '@/lib/validation'
 import { colorSchemeSchema } from '@/lib/visual/identity-schema'
 import type { CanvasDoc } from '@/types/canvas'
+import { statusForSlot } from '@/lib/posts/status-for-slot'
 
 /** List the agency's posts, filterable by status, client and scheduled window. */
 export async function GET(request: Request) {
@@ -168,24 +174,24 @@ async function attachDraftImages(
 ): Promise<boolean> {
   const prefix = draftVisualPrefix(clientId)
   // Shape and range are the schema's job; the only thing left to decide here is ownership.
-  const rows = (images ?? [])
+  const writes = (images ?? [])
     .filter((img) => img.storagePath.startsWith(prefix))
     .map((img) => ({
-      post_id: postId,
+      postId,
       position: img.position,
-      public_url: img.publicUrl,
-      storage_path: img.storagePath,
-      content_type: 'image/jpeg',
+      publicUrl: img.publicUrl,
+      storagePath: img.storagePath,
+      contentType: 'image/jpeg',
     }))
-  if (rows.length === 0) return true
+  if (writes.length === 0) return true
 
-  const admin = createAdminSupabaseClient()
-  const { error } = await admin.from('post_images').insert(rows)
-  if (error) {
-    console.error('[posts] failed to attach draft visuals:', error.message)
+  try {
+    await putPostImages(createAdminSupabaseClient(), writes)
+    return true
+  } catch (err) {
+    console.error('[posts] failed to attach draft visuals:', err)
     return false
   }
-  return true
 }
 
 /** Move a draft doc's stored files (clean background + placed assets) into the post's folder.
@@ -330,12 +336,9 @@ export async function POST(request: Request) {
       generated_slides_json: body.generated_slides_json,
     }),
     client_source_id: clientSourceId,
-    status:
-      body.status === 'pending_review'
-        ? 'pending_review'
-        : body.status === 'scheduled'
-          ? 'scheduled'
-          : 'approved',
+    // pending_review is the wizard saving a draft it has NOT approved; everything else takes the
+    // status from its slot, like every other writer.
+    status: body.status === 'pending_review' ? 'pending_review' : statusForSlot(body.scheduled_at),
     scheduled_at: body.scheduled_at ?? null,
     priority: body.priority ?? false,
     was_rewritten: body.was_rewritten ?? false,
@@ -365,16 +368,8 @@ export async function POST(request: Request) {
   if (!docsAttached) warnings.push(ATTACH_WARNINGS.canvasDocs)
 
   // Record in post history to avoid duplicate themes in future generations.
-  // Logged rather than failed: the post itself is already saved, and history
-  // only feeds topic de-duplication on later runs.
   if (body.topic_summary) {
-    const { error: historyError } = await supabase.from('post_history').insert({
-      client_id: body.client_id,
-      topic_summary: body.topic_summary,
-    })
-    if (historyError) {
-      console.error('[posts] post history insert failed:', historyError.message)
-    }
+    await recordPostTopics(supabase, body.client_id, [body.topic_summary])
   }
 
   // The post saved either way — `warnings` says what did not come with it, so approve can

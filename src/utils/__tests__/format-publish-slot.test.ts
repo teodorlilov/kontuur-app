@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatPublishSlot } from '../metrics'
+import { formatPublishSlot } from '../date-helpers'
 
 /** 2026-07-30 is a Thursday. */
 const NOW = new Date('2026-07-30T12:00:00Z')

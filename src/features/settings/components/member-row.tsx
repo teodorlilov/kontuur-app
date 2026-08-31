@@ -20,9 +20,13 @@ export function MemberRow({ member, isCurrentUser, canRemove, onRemove }: Member
 
       <div className="min-w-0 flex-1">
         <b className="block truncate text-body font-semibold text-ink">{member.email}</b>
-        <span className="text-caption text-text3">
-          Joined {formatLongDate(new Date(member.created_at))}
-        </span>
+        {/* No join date, no claim about one. `new Date(null)` is the epoch, so the unguarded
+            version told anyone whose row predates the column's default that they joined in 1970. */}
+        {member.created_at && (
+          <span className="text-caption text-text3">
+            Joined {formatLongDate(new Date(member.created_at))}
+          </span>
+        )}
       </div>
 
       <StatusPill tone={member.role === 'admin' ? 'ok' : 'mark'}>

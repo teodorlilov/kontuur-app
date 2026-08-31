@@ -2,11 +2,10 @@
 
 import { useCallback } from 'react'
 import { toast } from '@/components/ui/toast'
-import { mapImageRow } from '@/lib/posts/map-image-row'
 import { useGenerateVisuals } from '@/components/posts/use-generate-visuals'
 import type { SlideCopySource } from '@/lib/posts/slide-copy'
 import type { PostImage } from '@/types/api'
-import type { PostImageRow } from '@/types/index'
+import { uploadSlideImage } from '@/lib/posts/upload-slide-image'
 
 interface UseQueueVisualsOptions {
   postId: string
@@ -21,22 +20,13 @@ interface UseQueueVisualsOptions {
  * shared recompose pass.
  */
 export function useQueueVisuals({ postId, copySource, onImage }: UseQueueVisualsOptions) {
-  const { generatingPositions, composingPositions, generate, recompose } = useGenerateVisuals(
-    postId,
-    onImage,
-    copySource
-  )
+  const { generatingPositions, composingPositions, generate, recompose, composeMissing } =
+    useGenerateVisuals(postId, onImage, copySource)
 
   const replaceImage = useCallback(
     async (position: number, file: File): Promise<boolean> => {
       try {
-        const formData = new FormData()
-        formData.set('file', file)
-        formData.set('position', String(position))
-        const res = await fetch(`/api/posts/${postId}/images`, { method: 'POST', body: formData })
-        const data = await res.json()
-        if (!res.ok) throw new Error(data.error ?? 'Upload failed')
-        onImage(mapImageRow(data.image as PostImageRow))
+        onImage(await uploadSlideImage(postId, position, file))
         return true
       } catch (err) {
         console.error(`[review] replace image at position ${position} failed:`, err)
@@ -47,5 +37,12 @@ export function useQueueVisuals({ postId, copySource, onImage }: UseQueueVisuals
     [postId, onImage]
   )
 
-  return { generatingPositions, composingPositions, generate, recompose, replaceImage }
+  return {
+    generatingPositions,
+    composingPositions,
+    generate,
+    recompose,
+    composeMissing,
+    replaceImage,
+  }
 }

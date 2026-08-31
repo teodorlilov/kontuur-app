@@ -15,7 +15,9 @@ interface SourceRowProps {
   statusBadge: React.ReactNode
   onToggle: () => void
   onEdit: (updates: { label?: string; url?: string; config?: Record<string, unknown> }) => void
-  onDelete: () => void
+  /** Omitted for web research: deleting that row turns the capability off permanently, because the
+   *  section it lives in only renders when the row exists. */
+  onDelete?: () => void
   onScanPages?: (url: string, sourceId: string) => void
   pillars?: WeightedPillar[]
   onPillarIdsChange?: (pillarIds: string[]) => void
@@ -214,13 +216,15 @@ export function SourceRow({
           </div>
         )}
       </div>
-      <button
-        onClick={onDelete}
-        className="text-text3 hover:text-danger transition-colors px-1 py-1 shrink-0"
-        title="Remove source"
-      >
-        ✕
-      </button>
+      {onDelete && (
+        <button
+          onClick={onDelete}
+          className="text-text3 hover:text-danger transition-colors px-1 py-1 shrink-0"
+          title="Remove source"
+        >
+          ✕
+        </button>
+      )}
     </div>
   )
 }

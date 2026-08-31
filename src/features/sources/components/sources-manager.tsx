@@ -57,6 +57,7 @@ export function SourcesManager({
     handleAddFromSuggestion,
     handleEditSource,
     handleToggleActive,
+    handleToggleWebResearch,
     handleDelete,
   } = useSources({
     clientId,
@@ -294,13 +295,10 @@ export function SourcesManager({
                   void handleEditSource(tavilySource.id, { pillar_ids: ids }, { quiet: true })
                 }}
                 onToggle={() => {
-                  void handleToggleActive(tavilySource)
+                  void handleToggleWebResearch(tavilySource)
                 }}
                 onEdit={(updates) => {
                   void handleEditSource(tavilySource.id, updates)
-                }}
-                onDelete={() => {
-                  void handleDelete(tavilySource)
                 }}
               />
             </section>

@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
+import { provisionClient } from '@/features/clients/lib/provision-client'
 
 /**
  * What signup metadata must say before any of it reaches a column.
@@ -114,23 +115,10 @@ export async function createUserRecord(
   if (userError) throw new Error(`user insert failed: ${userError.message}`)
 
   if (mode === 'solo') {
-    const { data: clientData, error: clientError } = await admin
-      .from('clients')
-      .insert({ agency_id: agencyId, name: businessName })
-      .select('id')
-      .single()
-
-    if (clientError || !clientData) {
-      throw new Error(`solo client insert failed: ${clientError?.message ?? 'no row returned'}`)
-    }
-
-    const clientId = (clientData as { id: string }).id
-    const [{ error: profileError }, { error: scheduleError }] = await Promise.all([
-      admin.from('brand_profiles').insert({ client_id: clientId }),
-      admin.from('posting_schedules').insert({ client_id: clientId }),
-    ])
-    if (profileError) throw new Error(`brand profile insert failed: ${profileError.message}`)
-    if (scheduleError) throw new Error(`posting schedule insert failed: ${scheduleError.message}`)
+    // The same provisioner the onboarding form uses. This path used to build the client by hand
+    // and had drifted three ways from it: no visual identity, no web-research row, no rollback.
+    const provisioned = await provisionClient(admin, { agencyId, name: businessName })
+    if (!provisioned.ok) throw new Error(`solo client provisioning failed: ${provisioned.error}`)
   }
 
   return { agencyId, isInvited: false }

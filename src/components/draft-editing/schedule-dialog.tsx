@@ -13,8 +13,12 @@ import {
   CONTROL_TEXT,
   LABEL_CLASS,
 } from '@/components/ui/form/control-classes'
-import { formatScheduledAt, getNextDateForDay, toDateKey } from '@/utils/date-helpers'
-import { formatPublishSlot } from '@/features/dashboard/lib/metrics'
+import {
+  formatPublishSlot,
+  formatScheduledAt,
+  getNextDateForDay,
+  toDateKey,
+} from '@/utils/date-helpers'
 import { WeekStrip } from './week-strip'
 import type { MeasuredBestTimes } from '@/lib/suggested-times/schemas'
 

@@ -1,5 +1,5 @@
 import type { ClientRosterEntry } from '@/features/clients/lib/roster'
-import { formatPublishSlot } from '@/features/dashboard/lib/metrics'
+import { formatPublishSlot } from '@/utils/date-helpers'
 import { formatRelativeTime } from '@/utils/format'
 import { cn } from '@/utils/cn'
 

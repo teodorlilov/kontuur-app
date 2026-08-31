@@ -1,7 +1,7 @@
 import 'server-only'
 
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { PostRow } from '@/types'
+import type { PostImageRow, PostRow } from '@/types'
 import { createSemaphore } from '@/lib/concurrency'
 import { GraphApiError } from '@/lib/meta/graph-errors'
 import {
@@ -13,7 +13,7 @@ import {
 } from '@/lib/meta/publishing'
 import { isTokenExpired } from '@/lib/meta/token-expiry'
 import { altTextFromCaption, validateInstagramCaption } from './validate-caption'
-import { notify } from './notifications'
+import { notify } from '@/lib/notifications/notify'
 import type { InstagramConnection } from './types'
 
 /**
@@ -41,11 +41,7 @@ const POLL_SCHEDULE_MS = [1_000, 1_000, 2_000, 3_000]
 /** Carousel children are created concurrently, but politely. */
 const CHILD_CONTAINER_CONCURRENCY = 3
 
-interface PublishableImage {
-  public_url: string
-  position: number
-  content_type: string | null
-}
+type PublishableImage = Pick<PostImageRow, 'public_url' | 'position' | 'content_type'>
 
 /** The projection both entry points read. Kept in one string so they cannot drift. */
 export const PUBLISHABLE_POST_COLUMNS =

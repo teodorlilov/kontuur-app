@@ -10,12 +10,11 @@ import {
 } from '@/lib/auth/helpers'
 import { parseActionId } from '@/lib/actions/parse-input'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
-import { removeStoragePrefix } from '@/features/assets/lib/storage'
+import { removeStoragePrefix } from '@/lib/storage/remove-prefix'
 import { IG_METRICS_TAG } from '@/features/analytics/lib/report-data'
 import { parsePillars } from '@/lib/clients/content-pillars'
 import { removeDeletedPillarIds } from '@/lib/clients/sync-source-pillars'
 import { upsertVisualIdentity } from '@/lib/visual/queries'
-import { buildDefaultIdentity } from '@/lib/visual/identity'
 import {
   createClientSchema,
   formatIssues,
@@ -25,12 +24,8 @@ import {
   type ScheduleInput,
   type UpdateClientInput,
 } from '@/features/clients/schemas'
-import {
-  CLIENT_FILES_BUCKET,
-  POST_IMAGES_BUCKET,
-  WEB_RESEARCH_SOURCE_LABEL,
-} from '@/utils/constants'
-import type { SourceKind } from '@/types/visual'
+import { provisionClient } from '@/features/clients/lib/provision-client'
+import { CLIENT_FILES_BUCKET, POST_IMAGES_BUCKET } from '@/utils/constants'
 import type { ActionResult } from '@/lib/actions/types'
 
 /**
@@ -54,108 +49,23 @@ export async function createClient(input: CreateClientInput): Promise<ActionResu
   }
   const data = parsed.data
 
-  const { data: created, error: clientError } = await supabase
-    .from('clients')
-    .insert({
-      agency_id: agencyId,
-      name: data.name,
-      niche: data.niche,
-      posts_per_week: data.posts_per_week,
-      language: data.language,
-      website_url: data.website_url,
-      contact_email: data.contact_email ?? null,
-    })
-    .select('id')
-    .single()
-
-  if (clientError || !created) {
-    console.error('[clients:create] client insert failed:', clientError)
-    return { ok: false, error: 'Failed to create client' }
-  }
-
-  const clientId = created.id
-  const bp = data.brand_profile
-  const ps = data.posting_schedule
-
-  const [{ error: profileError }, { error: scheduleError }, { error: webResearchError }] =
-    await Promise.all([
-      supabase.from('brand_profiles').insert({
-        client_id: clientId,
-        tone: bp?.tone,
-        target_audience: bp?.target_audience,
-        social_goals: bp?.social_goals,
-        content_pillars: bp?.content_pillars,
-        avoid_topics: bp?.avoid_topics,
-        default_post_type: bp?.default_post_type,
-        default_carousel_slides: bp?.default_carousel_slides,
-        weekly_mix_json: bp?.weekly_mix_json,
-        language_formality: bp?.language_formality,
-        secondary_language: bp?.secondary_language,
-        is_health_niche: bp?.is_health_niche,
-        language_notes: bp?.language_notes,
-      }),
-      supabase.from('posting_schedules').insert({
-        client_id: clientId,
-        is_active: ps?.is_active,
-        frequency_type: ps?.frequency_type,
-        frequency_value: ps?.frequency_value,
-        auto_generate_day: ps?.auto_generate_day,
-        auto_generate_time: ps?.auto_generate_time,
-      }),
-      // Web research is a per-client capability, not a source someone adds, so it has
-      // no "add" button and needs a creation moment of its own. It used to be written
-      // lazily during the sources page render, which made "has a human opened that
-      // page?" an input to the generation pipeline — `shouldSearchWeb` is `!!tavilyRow`.
-      // Created here so absence is impossible and the toggle always has a row to bind
-      // to; `is_active: true` because web research is the useful default. Only the
-      // toggle changes it afterwards.
-      supabase.from('client_sources').insert({
-        client_id: clientId,
-        type: 'tavily',
-        label: WEB_RESEARCH_SOURCE_LABEL,
-        url: '',
-        is_active: true,
-      }),
-    ])
-
-  if (profileError || scheduleError || webResearchError) {
-    console.error(
-      '[clients:create] child insert failed:',
-      profileError ?? scheduleError ?? webResearchError
-    )
-    // Roll the client back rather than leave a half-built row behind: the user's retry would
-    // otherwise add a second client with the same name. This deletes the client row alone and
-    // lets the cascade take whichever children did land — which is only true as of 20260820.
-    // Before it, every child FK was NO ACTION, so this rollback raised 23503 in exactly the
-    // case it exists for: one insert already succeeded.
-    const { error: rollbackError } = await supabase.from('clients').delete().eq('id', clientId)
-    if (rollbackError) {
-      console.error(
-        '[clients:create] rollback failed, client is orphaned:',
-        clientId,
-        rollbackError
-      )
-    }
-    return {
-      ok: false,
-      error: profileError
-        ? 'Failed to create brand profile'
-        : scheduleError
-          ? 'Failed to create posting schedule'
-          : 'Failed to create client sources',
-    }
-  }
-
-  // Non-fatal: a visuals hiccup must not lose a client the user just filled in by hand.
-  const identity = data.visual_identity ?? buildDefaultIdentity()
-  const identitySource: SourceKind = data.visual_identity
-    ? (data.visual_identity_source ?? 'manual')
-    : 'default'
-  const { error: identityError } = await upsertVisualIdentity(clientId, identity, identitySource)
-  if (identityError) console.error('[clients:create] visual identity insert failed:', identityError)
+  const result = await provisionClient(supabase, {
+    agencyId,
+    name: data.name,
+    niche: data.niche,
+    postsPerWeek: data.posts_per_week,
+    language: data.language,
+    websiteUrl: data.website_url,
+    contactEmail: data.contact_email,
+    brandProfile: data.brand_profile,
+    postingSchedule: data.posting_schedule,
+    identity: data.visual_identity,
+    identitySource: data.visual_identity_source,
+  })
+  if (!result.ok) return { ok: false, error: result.error }
 
   revalidateTag('agency-clients', 'max')
-  return { ok: true, data: clientId }
+  return { ok: true, data: result.clientId }
 }
 
 /** Update a client's core fields, brand profile, posting schedule and visual identity. */

@@ -63,6 +63,28 @@ export async function removeTeamMember(userId: string): Promise<ActionResult> {
     }
   }
 
+  /**
+   * Their personal integrations go with them, and this must happen BEFORE the user row.
+   *
+   * `social_connections.user_id` is NO ACTION, so a member holding a Canva connection made the
+   * delete below raise 23503 — surfacing as "Could not remove the member", which the admin cannot
+   * act on: a Canva connection is per-user, and only that person can disconnect their own.
+   *
+   * Scoped by `user_id`, which is set only on per-user rows. A client's Instagram connection keys
+   * on `client_id` and belongs to the workspace, not to whoever happened to link it.
+   */
+  const { error: connectionError } = await admin
+    .from('social_connections')
+    .delete()
+    .eq('user_id', userId)
+  if (connectionError) {
+    console.error(
+      `[team:remove] failed to remove connections for ${userId}:`,
+      connectionError.message
+    )
+    return { ok: false, error: 'Could not remove the member' }
+  }
+
   const { error: rowError } = await admin.from('users').delete().eq('id', userId)
   if (rowError) {
     console.error(`[team:remove] failed to delete user row ${userId}:`, rowError.message)

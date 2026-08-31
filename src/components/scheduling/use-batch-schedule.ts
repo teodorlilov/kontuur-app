@@ -4,13 +4,12 @@ import { useState } from 'react'
 import { toast } from '@/components/ui/toast'
 import { schedulePosts } from '@/lib/actions/post-actions'
 import { formatScheduledAt } from '@/utils/date-helpers'
+import type { PostRow } from '@/types'
 
 /** The post fields the batch-schedule modal renders and the hook writes. */
-export interface BatchPost {
-  id: string
+export type BatchPost = Pick<PostRow, 'id' | 'caption' | 'platform'> & {
+  /** clients.name through the join — not a posts column. */
   client_name: string
-  caption: string | null
-  platform: string | null
 }
 
 interface Assignment {

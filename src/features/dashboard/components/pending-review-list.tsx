@@ -5,7 +5,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { Check, CircleCheck } from 'lucide-react'
 import { toast } from '@/components/ui/toast'
-import { updatePost } from '@/lib/actions/post-actions'
+import { schedulePost, updatePost } from '@/lib/actions/post-actions'
 import { formatRelativeTime, parseTimestamp, toPreviewLine } from '@/utils/format'
 import { hasCyrillic } from '@/lib/canvas/font-library'
 import { cn } from '@/utils/cn'
@@ -48,11 +48,20 @@ export function PendingReviewList({ posts, totalPending }: PendingReviewListProp
    * Approving queues the post for the publish cron under the client's name, so
    * it is the most consequential click on the dashboard. It stays one click —
    * but it is now reversible, and the toast holds the exit.
+   *
+   * Through `schedulePost(id, null)`, the same writer the review queue's approve uses, rather than
+   * `updatePost({status:'approved'})`. One verb had two implementations and only one of them ran
+   * `validateInstagramCaption`, so approving here admitted an over-length caption that surfaced
+   * days later as a burned publish attempt. `null` is the slot: approved, not yet scheduled.
+   *
+   * This is safe only because `schedulePost` now reports a write that did not happen. It used to
+   * return `ok` regardless, which for an optimistic caller means the row leaves the list and the
+   * Undo below writes `pending_review` over a post that was never approved.
    */
   function handleApprove(post: PendingPostPreview) {
     setApprovingId(post.id)
     startTransition(async () => {
-      const result = await updatePost(post.id, { status: 'approved' })
+      const result = await schedulePost(post.id, null)
       if (!result.ok) {
         setApprovingId(null)
         toast.error(result.error)
@@ -69,6 +78,8 @@ export function PendingReviewList({ posts, totalPending }: PendingReviewListProp
     })
   }
 
+  // Stays on `updatePost`: undo is not an approve, and `statusForSlot` has no way to express
+  // `pending_review` — a post going back to the queue has no slot to derive from.
   function handleUndo(post: PendingPostPreview) {
     startTransition(async () => {
       const result = await updatePost(post.id, { status: 'pending_review' })

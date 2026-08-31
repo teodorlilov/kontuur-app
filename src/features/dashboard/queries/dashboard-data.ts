@@ -11,12 +11,9 @@ import { getCachedFailedPublishes, PUBLISH_PREVIEW_LIMIT } from './publishes'
 import { getCachedReviewQueue } from './review-queue'
 import type { DashboardData, FailedPublish, UpcomingPublish } from '@/features/dashboard/types'
 import type { PostSummary } from '@/types/post'
+import type { ClientRow } from '@/types'
 
-interface ClientSummary {
-  id: string
-  name: string
-  created_at: string | null
-}
+type ClientSummary = Pick<ClientRow, 'id' | 'name' | 'created_at'>
 
 /**
  * What the dashboard shows for an agency with no clients yet.

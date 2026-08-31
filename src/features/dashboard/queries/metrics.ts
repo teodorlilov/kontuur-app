@@ -5,6 +5,7 @@ import { unstable_cache } from 'next/cache'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { SCHEDULED_STATUSES, type PendingRow } from '@/lib/queries/cache'
 import { getWeekRange } from '@/utils/date-helpers'
+import { hasLiveChannel, type RosterConnectionRow } from '@/features/clients/lib/roster'
 
 /**
  * How many posts are due to go out this week.
@@ -53,7 +54,7 @@ const fetchConnectedCount = unstable_cache(
     const supabase = createAdminSupabaseClient()
     const { data, error } = await supabase
       .from('social_connections')
-      .select('client_id, clients!inner(agency_id)')
+      .select('client_id, platform, account_name, token_expires_at, clients!inner(agency_id)')
       .eq('clients.agency_id', agencyId)
 
     if (error) {
@@ -61,8 +62,18 @@ const fetchConnectedCount = unstable_cache(
       return 0
     }
 
-    const rows = (data ?? []) as Array<{ client_id: string | null }>
-    return new Set(rows.map((row) => row.client_id).filter(Boolean)).size
+    // Grouped per client, then judged by the roster's rule rather than a second one. This counted
+    // rows whose token had lapsed — see `hasLiveChannel`.
+    const byClient = new Map<string, RosterConnectionRow[]>()
+    for (const row of (data ?? []) as Array<RosterConnectionRow & { client_id: string | null }>) {
+      if (!row.client_id) continue
+      byClient.set(row.client_id, [...(byClient.get(row.client_id) ?? []), row])
+    }
+
+    const now = new Date()
+    let connected = 0
+    for (const rows of byClient.values()) if (hasLiveChannel(rows, now)) connected += 1
+    return connected
   },
   ['dashboard-connected-count'],
   { revalidate: 60, tags: ['agency-clients'] }

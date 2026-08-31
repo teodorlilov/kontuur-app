@@ -36,24 +36,32 @@ export const updatePostSchema = z
      */
     scheduled_at: z.iso.datetime({ offset: true }).nullable(),
     platform: z.string().refine(isValidPostPlatform),
-    was_rewritten: z.boolean(),
-    rewrite_count: z.number().int().nonnegative(),
-    source_url: z.string(),
-    source_title: z.string(),
-    /** `null` is a real value — "nobody judged this" — and must not become 0. */
-    quality_score_avg: z.number().nullable(),
-    validation_json: z.unknown(),
   })
   .partial()
 
 /**
  * The write contract as a type, replacing the hand-written `UpdatePostInput`.
  *
- * Still not derived from `PostRow`, and for the reason its `row-mirrors` exemption gave
- * before it: deriving would turn `source_url?: string` into `string | null` and start
- * admitting nulls the update path never intended.
+ * Not derived from `PostRow`: deriving would widen these to the columns' own nullability
+ * and start admitting nulls the update path never intended.
+ *
+ * It held six more fields until 2026-08-31 — `was_rewritten`, `rewrite_count`,
+ * `quality_score_avg`, `validation_json`, `source_url`, `source_title` — with NO caller
+ * sending any of them. They are owned by the create path and by `persistRewrite`, so what
+ * the schema was really doing was holding a door open for a second writer of columns that
+ * already have one. Whitelisting a column here is granting a way to write it.
  */
 export type UpdatePostInput = z.infer<typeof updatePostSchema>
+
+/**
+ * What `updatePost` in particular may change.
+ *
+ * `scheduled_at` stays in the schema above because `schedulePosts` validates through it — the
+ * instant rule and the status gate are stated once, for both. But `schedulePosts` OWNS that
+ * column, so `updatePost` must not be able to reach it, and a type is what says that at the
+ * call site rather than in a comment.
+ */
+export type PostFieldUpdate = Pick<UpdatePostInput, 'status' | 'platform'>
 
 /**
  * The two columns that carry a post's COPY, split out so one function owns them.

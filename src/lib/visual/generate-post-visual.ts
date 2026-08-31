@@ -64,6 +64,8 @@ export async function generatePostVisual(input: {
   const replacing = await existingImageAt(admin, postId, position)
 
   const visual = await generateVisual({
+    // The cron reaches this with a client and no agency, so the client is what it can attribute to.
+    spender: { clientId },
     identity,
     textBlock,
     scheme,

@@ -5,6 +5,7 @@ import { unstable_cache } from 'next/cache'
 import { headers } from 'next/headers'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
+import type { PostRow } from '@/types'
 import { AUTH_USER_ID_HEADER } from '@/lib/auth/headers'
 import { USER_AUTH_COLUMNS } from '@/lib/queries/select-columns'
 
@@ -84,13 +85,7 @@ export async function verifyClientOwnership(
   clientId: string,
   agencyId: string
 ): Promise<boolean> {
-  const { data } = await supabase
-    .from('clients')
-    .select('id')
-    .eq('id', clientId)
-    .eq('agency_id', agencyId)
-    .single()
-  return !!data
+  return (await fetchClientWithOwnership(supabase, clientId, agencyId)) !== null
 }
 
 /**
@@ -102,12 +97,9 @@ export async function verifyClientOwnership(
  * already fetches, so they cost nothing here and save a query each at the two call sites that want
  * them — but they are a projection, and a projection deserves a name.
  */
-export interface OwnedPost {
-  id: string
-  client_id: string
+export type OwnedPost = Pick<PostRow, 'id' | 'client_id' | 'visual_ground' | 'visual_accent'> & {
+  /** clients.name through the ownership join — not a posts column. */
   client_name: string
-  visual_ground: string | null
-  visual_accent: string | null
 }
 
 /**
@@ -155,18 +147,20 @@ export async function fetchOwnedPost(
 /**
  * Verify a source belongs to the user's agency via its client.
  */
-export async function verifySourceOwnership(
+export async function fetchOwnedSource(
   supabase: SupabaseServerClient,
   sourceId: string,
   agencyId: string
-): Promise<boolean> {
+): Promise<{ id: string; client_id: string; type: string; file_path: string | null } | null> {
   const { data } = await supabase
     .from('client_sources')
-    .select('id, client_id, clients!inner(agency_id)')
+    .select('id, client_id, type, file_path, clients!inner(agency_id)')
     .eq('id', sourceId)
     .eq('clients.agency_id', agencyId)
-    .single()
-  return !!data
+    .maybeSingle()
+  // as: explicit projection over an inner-join filter — the generated types infer the table, not
+  // the select. The join column is a filter only and is deliberately not returned.
+  return data as { id: string; client_id: string; type: string; file_path: string | null } | null
 }
 
 /**
@@ -199,12 +193,25 @@ export async function fetchClientWithOwnership(
   clientId: string,
   agencyId: string
 ): Promise<{ id: string; name: string } | null> {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('clients')
     .select('id, name')
     .eq('id', clientId)
     .eq('agency_id', agencyId)
-    .single()
+    .maybeSingle()
+
+  // maybeSingle, and the error is READ. With `.single()` an absent row is itself an error
+  // (PGRST116), so the two states were indistinguishable and both were discarded — every caller
+  // answered "not yours" when the database was simply unreachable, and said nothing in the log.
+  // The sharpest case is the Meta callback, which runs this check after the user has completed
+  // Instagram consent: a transient read failure tells them they lack permission for their own
+  // client, and the single-use code is already spent.
+  //
+  // Still fails closed. What changes is that the failure is now visible.
+  if (error) {
+    console.error(`[auth] client ownership check failed for ${clientId}:`, error.message)
+    return null
+  }
   return data as { id: string; name: string } | null
 }
 

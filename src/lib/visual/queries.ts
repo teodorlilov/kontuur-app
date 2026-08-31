@@ -3,6 +3,7 @@ import 'server-only'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
 import { asJson } from '@/lib/queries/as-json'
+import type { BrandKitExtractionRow } from '@/types'
 import type { ExtractionReport, SourceKind, VisualIdentity } from '@/types/visual'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import {
@@ -80,8 +81,8 @@ export async function updateVisualIdentityBlob(
   return error ? { error: error.message } : {}
 }
 
-type ExtractionSession = {
-  status: string
+type ExtractionSession = Pick<BrandKitExtractionRow, 'status'> & {
+  /** Both are `Json` columns, narrowed to the shapes this app writes into them. */
   identity: VisualIdentity | null
   report: ExtractionReport | null
 }

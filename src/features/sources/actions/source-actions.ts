@@ -4,13 +4,14 @@ import 'server-only'
 import { randomUUID } from 'crypto'
 import { revalidateTag } from 'next/cache'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
-import { resolveActionAuth, verifyClientOwnership, verifySourceOwnership } from '@/lib/auth/helpers'
+import { fetchOwnedSource, resolveActionAuth, verifyClientOwnership } from '@/lib/auth/helpers'
 import { CLIENT_SOURCE_COLUMNS, CLIENT_SOURCE_FULL_COLUMNS } from '@/lib/queries/select-columns'
 import { validateSourceUrl } from '@/lib/sources/validate-url'
 import { isValidRssUrl } from '@/lib/sources/fetch-rss'
 import { fetchWebsiteSource } from '@/lib/sources/fetch-website'
 import { validateUpload, getFileExtension } from '@/lib/sources/validate-upload'
-import { CLIENT_FILES_BUCKET, WEB_RESEARCH_SOURCE_LABEL } from '@/utils/constants'
+import { CLIENT_FILES_BUCKET } from '@/utils/constants'
+import { webResearchSourceRow } from '@/lib/sources/web-research-source'
 import type { ClientSource } from '@/types/api'
 import type { TavilyConfig } from '@/types/sources'
 import { asJson } from '@/lib/queries/as-json'
@@ -212,8 +213,19 @@ export async function updateSource(
   if (!auth.ok) return { ok: false, error: auth.error }
   const { supabase, agencyId } = auth
 
-  const owned = await verifySourceOwnership(supabase, sourceId, agencyId)
+  const owned = await fetchOwnedSource(supabase, sourceId, agencyId)
   if (!owned) return { ok: false, error: 'Not found' }
+
+  // The tavily row is reachable here because the sources page renders it with the generic
+  // SourceRow. `is_active` and `config` on that row belong to setWebResearch, which filters config
+  // to the keys the search reads — this path wrote whatever object it was handed. `pillar_ids` and
+  // `label` are the same idea for every source and still pass through.
+  if (
+    owned.type === 'tavily' &&
+    (updates.is_active !== undefined || updates.config !== undefined)
+  ) {
+    return { ok: false, error: 'Web research is configured through its own controls' }
+  }
 
   const fields: Record<string, unknown> = {}
   if (updates.is_active !== undefined) fields.is_active = updates.is_active
@@ -246,17 +258,17 @@ export async function deleteSource(sourceId: string): Promise<ActionResult> {
   if (!auth.ok) return { ok: false, error: auth.error }
   const { supabase, agencyId } = auth
 
-  const owned = await verifySourceOwnership(supabase, sourceId, agencyId)
-  if (!owned) return { ok: false, error: 'Not found' }
+  const source = await fetchOwnedSource(supabase, sourceId, agencyId)
+  if (!source) return { ok: false, error: 'Not found' }
 
-  const { data: sourceRow } = await supabase
-    .from('client_sources')
-    .select('type, file_path')
-    .eq('id', sourceId)
-    .single()
+  // Deleting this row is not "remove a source" — it is "turn web research off permanently". The
+  // sources page only renders the Web research section `if (tavilySource)`, so the row's own
+  // toggle disappears with it and nothing in the UI can bring it back.
+  if (source.type === 'tavily') {
+    return { ok: false, error: 'Web research cannot be removed — switch it off instead' }
+  }
 
-  const source = sourceRow as { type: string; file_path: string | null } | null
-  if (source?.type === 'file' && source.file_path) {
+  if (source.type === 'file' && source.file_path) {
     const admin = createAdminSupabaseClient()
     await admin.storage.from(CLIENT_FILES_BUCKET).remove([source.file_path])
   }
@@ -268,8 +280,21 @@ export async function deleteSource(sourceId: string): Promise<ActionResult> {
   return { ok: true, data: undefined }
 }
 
-/** Upsert a Tavily web search source for a client. */
-export async function upsertTavilySource(
+/**
+ * Turn web research on or off for a client, and set its site filters. The ONE writer of the
+ * tavily row's `is_active` and `config`.
+ *
+ * There were two. This one filters `config` down to the two keys the search actually reads;
+ * `updateSource` — which the sources page reaches the same row through, because it renders the
+ * tavily row with the generic `SourceRow` — wrote whatever object it was handed, verbatim. Two
+ * shapes for one column, decided by which screen you were on. `updateSource` now refuses the
+ * fields this owns.
+ *
+ * It can also recreate the row. Absence is supposed to be impossible (migration 20260814,
+ * `provisionClient`), but `shouldSearchWeb` is `!!tavilyRow`, so a client that somehow lost it has
+ * web research off with no way back — this is the way back.
+ */
+export async function setWebResearch(
   clientId: string,
   input: { is_active: boolean; config?: TavilyConfig }
 ): Promise<ActionResult<{ id: string }>> {
@@ -280,6 +305,7 @@ export async function upsertTavilySource(
   const owned = await verifyClientOwnership(supabase, clientId, agencyId)
   if (!owned) return { ok: false, error: 'Not found' }
 
+  // Only the keys the web search reads. An unfiltered config is how the two writers diverged.
   const config: TavilyConfig = {}
   if (input.config?.include_domains?.length) {
     config.include_domains = input.config.include_domains
@@ -293,30 +319,23 @@ export async function upsertTavilySource(
     .select('id')
     .eq('client_id', clientId)
     .eq('type', 'tavily')
-    .single()
+    .maybeSingle()
 
   if (existing) {
     const { error } = await supabase
       .from('client_sources')
       .update({ is_active: input.is_active, config: asJson(config) })
-      .eq('id', existing.id)
+      .eq('id', (existing as { id: string }).id)
 
     if (error) return { ok: false, error: error.message }
 
     revalidateTag('agency-clients', 'max')
-    return { ok: true, data: { id: existing.id } }
+    return { ok: true, data: { id: (existing as { id: string }).id } }
   }
 
   const { data: inserted, error: insertError } = await supabase
     .from('client_sources')
-    .insert({
-      client_id: clientId,
-      type: 'tavily',
-      label: WEB_RESEARCH_SOURCE_LABEL,
-      url: '',
-      is_active: input.is_active,
-      config: asJson(config),
-    })
+    .insert(webResearchSourceRow(clientId, { isActive: input.is_active, config: asJson(config) }))
     .select(CLIENT_SOURCE_COLUMNS)
     .single()
 

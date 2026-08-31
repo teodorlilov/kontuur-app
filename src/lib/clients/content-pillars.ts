@@ -1,3 +1,5 @@
+import type { ClientSourceRow } from '@/types'
+
 export interface WeightedPillar {
   id: string
   pillar: string
@@ -220,9 +222,9 @@ interface PillarCoverage {
 }
 
 /** The three fields coverage needs — structural, so every source row shape qualifies. */
-interface CoverageSource {
-  type: string
-  label: string
+interface CoverageSource extends Pick<ClientSourceRow, 'type' | 'label'> {
+  /** Wider than the `Json` column ON PURPOSE — every reader goes through `getSourcePillarIds`,
+   *  which takes `unknown`, and callers pass shapes that never came from PostgREST. */
   pillar_ids: unknown
 }
 

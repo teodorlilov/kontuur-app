@@ -128,41 +128,6 @@ export type Database = {
           },
         ]
       }
-      brand_image_bank: {
-        Row: {
-          client_id: string
-          created_at: string
-          id: string
-          prompt_hash: string
-          public_url: string
-          storage_path: string
-        }
-        Insert: {
-          client_id: string
-          created_at?: string
-          id?: string
-          prompt_hash: string
-          public_url: string
-          storage_path: string
-        }
-        Update: {
-          client_id?: string
-          created_at?: string
-          id?: string
-          prompt_hash?: string
-          public_url?: string
-          storage_path?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "brand_image_bank_client_id_fkey"
-            columns: ["client_id"]
-            isOneToOne: false
-            referencedRelation: "clients"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       brand_kit_extractions: {
         Row: {
           agency_id: string | null
@@ -267,41 +232,6 @@ export type Database = {
             foreignKeyName: "brand_profiles_client_id_fkey"
             columns: ["client_id"]
             isOneToOne: true
-            referencedRelation: "clients"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      brand_vector_bank: {
-        Row: {
-          client_id: string
-          created_at: string
-          id: string
-          label: string | null
-          prompt_hash: string
-          svg: string
-        }
-        Insert: {
-          client_id: string
-          created_at?: string
-          id?: string
-          label?: string | null
-          prompt_hash: string
-          svg: string
-        }
-        Update: {
-          client_id?: string
-          created_at?: string
-          id?: string
-          label?: string | null
-          prompt_hash?: string
-          svg?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "brand_vector_bank_client_id_fkey"
-            columns: ["client_id"]
-            isOneToOne: false
             referencedRelation: "clients"
             referencedColumns: ["id"]
           },
@@ -1622,10 +1552,6 @@ export type Database = {
       refund_image_credits: {
         Args: { p_agency_id: string; p_cost: number; p_month: string }
         Returns: undefined
-      }
-      swap_rendered_post_images: {
-        Args: { p_post_id: string; p_rows: Json }
-        Returns: string[]
       }
     }
     Enums: {

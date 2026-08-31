@@ -9,21 +9,15 @@ import { parsePostUpdate, postCopySchema, updatePostSchema } from '../post-updat
  * reads, was previously written with no validation on either path.
  */
 describe('updatePostSchema', () => {
-  it('is exactly the nine writable columns, with copy excluded', () => {
-    // Not decoration. Adding a field here is a decision about what a user may write to
-    // a post; this makes it a deliberate edit rather than a line that slips in with a
-    // feature. It is also what stops the two consumers diverging again — there is only
-    // one list now, so this asserts the list itself.
+  it('is exactly the three columns its callers send', () => {
+    // Not decoration. Whitelisting a column here GRANTS a way to write it, so adding one is a
+    // decision about who owns that column — a deliberate edit, not a line that slips in with a
+    // feature. Six fields sat here with no caller at all until 2026-08-31, on columns the create
+    // path and persistRewrite already owned: a second writer that had not been written yet.
     expect(Object.keys(updatePostSchema.shape).sort()).toEqual([
       'platform',
-      'quality_score_avg',
-      'rewrite_count',
       'scheduled_at',
-      'source_title',
-      'source_url',
       'status',
-      'validation_json',
-      'was_rewritten',
     ])
   })
 
@@ -62,22 +56,22 @@ describe('postCopySchema', () => {
 
 describe('parsePostUpdate', () => {
   it('writes only the keys it was given', () => {
-    const result = parsePostUpdate({ source_title: 'hello' })
-    expect(result).toEqual({ ok: true, updates: { source_title: 'hello' } })
+    const result = parsePostUpdate({ platform: 'Instagram' })
+    expect(result).toEqual({ ok: true, updates: { platform: 'Instagram' } })
   })
 
   it('drops keys that are not writable rather than rejecting the write', () => {
     // Matches what both call sites did: an unknown key was simply never copied into
     // the payload. Rejecting instead would break any caller sending an extra field.
-    const result = parsePostUpdate({ source_title: 'hello', agency_id: 'someone-elses' })
-    expect(result).toEqual({ ok: true, updates: { source_title: 'hello' } })
+    const result = parsePostUpdate({ platform: 'Instagram', agency_id: 'someone-elses' })
+    expect(result).toEqual({ ok: true, updates: { platform: 'Instagram' } })
   })
 
   it('skips an explicit undefined instead of writing null', () => {
     // Callers spread conditionals into these objects — `...(platform ? { platform } : {})`
     // — so `undefined` must mean "not touching this column", never "clear it".
-    const result = parsePostUpdate({ source_title: 'hello', platform: undefined })
-    expect(result).toEqual({ ok: true, updates: { source_title: 'hello' } })
+    const result = parsePostUpdate({ status: 'approved', platform: undefined })
+    expect(result).toEqual({ ok: true, updates: { status: 'approved' } })
   })
 
   describe('scheduled_at', () => {
@@ -139,15 +133,12 @@ describe('parsePostUpdate', () => {
   })
 
   describe('quality_score_avg', () => {
-    it('keeps null — "nobody judged this" is a value, not a zero', () => {
-      expect(parsePostUpdate({ quality_score_avg: null })).toEqual({
-        ok: true,
-        updates: { quality_score_avg: null },
-      })
-    })
-
-    it('rejects a string', () => {
-      expect(parsePostUpdate({ quality_score_avg: '8' }).ok).toBe(false)
+    it('is not writable here at all — persistRewrite owns it', () => {
+      // It WAS writable here, with no caller sending it. The "null means nobody judged this"
+      // rule that used to be asserted on this line still holds; it is persistRewriteSchema's
+      // rule now (post-actions.ts), because that is the one thing that writes the column.
+      expect(parsePostUpdate({ quality_score_avg: null })).toEqual({ ok: true, updates: {} })
+      expect(parsePostUpdate({ quality_score_avg: 8 })).toEqual({ ok: true, updates: {} })
     })
   })
 

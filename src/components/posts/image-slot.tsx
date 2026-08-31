@@ -3,12 +3,11 @@
 import { useState, useRef } from 'react'
 import Image from 'next/image'
 import { X, Upload, Check, Download, Sparkles, Pencil } from 'lucide-react'
-import { mapImageRow } from '@/lib/posts/map-image-row'
 import { downloadImageFile } from '@/lib/download-image'
-import { validateImageFile } from '@/features/assets/lib/validate-image-file'
 import { ImageLightbox } from '@/components/ui/image-lightbox'
 import { CanvaDesignPicker } from './canva-design-picker'
 import type { PostImage } from '@/types/api'
+import { uploadSlideImage } from '@/lib/posts/upload-slide-image'
 
 interface ImageSlotProps {
   postId: string
@@ -128,30 +127,15 @@ export function ImageSlot({
   )
 
   async function handleFile(file: File) {
-    const fileError = validateImageFile(file)
-    if (fileError) {
-      setError(fileError)
-      return
-    }
-
     setUploading(true)
     setError(null)
-
-    const form = new FormData()
-    form.append('file', file)
-    form.append('position', String(position))
-
-    const res = await fetch(`/api/posts/${postId}/images`, { method: 'POST', body: form })
-    const data = await res.json()
-
-    setUploading(false)
-
-    if (!res.ok) {
-      setError(data.error ?? 'Upload failed')
-      return
+    try {
+      onUploaded(await uploadSlideImage(postId, position, file))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Upload failed')
+    } finally {
+      setUploading(false)
     }
-
-    onUploaded(mapImageRow(data.image))
   }
 
   function handleDrop(e: React.DragEvent) {

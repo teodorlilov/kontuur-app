@@ -33,7 +33,7 @@ import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { parseMemoBullets } from '@/lib/learning/style-memo'
 import { unwrap } from '@/lib/queries/unwrap'
 import type { AgencyInfo, TeamMember, MetaConnection } from '@/types/api'
-import type { ClientRow, BrandProfileRow, PostingScheduleRow, Json } from '@/types'
+import type { ClientRow, BrandProfileRow, PostingScheduleRow, LanguageRuleRow, Json } from '@/types'
 
 type SupabaseClient = Awaited<ReturnType<typeof createServerSupabaseClient>>
 
@@ -127,19 +127,32 @@ export async function fetchAgencyById(
 
 // ---------- users ----------
 
-/** Fetches all team members for the given agency, ordered by created_at ascending. */
-export async function fetchTeamMembersByAgency(
-  supabase: SupabaseClient,
-  agencyId: string
-): Promise<TeamMember[]> {
+/**
+ * Every member of the given agency, oldest first. The one reader of "who is on this team".
+ *
+ * ADMIN CLIENT, DELIBERATELY. `users_self_access` is `id = auth.uid()`, so a user-scoped read of
+ * this table can only ever return ONE row — the caller's own. This took the user-scoped client, so
+ * the settings Team tab listed exactly one person in every multi-person agency and the header read
+ * "1 member" forever; because `MemberRow` gates Remove on `!isCurrentUser`, `removeTeamMember` could
+ * not be reached from the UI at all. One tab away, the Integrations panel read the same table
+ * through the admin client and listed everyone — the same page rendering a 1-person and an N-person
+ * workspace at once.
+ *
+ * Takes `agencyId` rather than a client, unlike the rest of this file, because the caller does not
+ * get to choose the scope: the ownership check is the caller's `agencyId` itself.
+ */
+export async function fetchTeamMembersByAgency(agencyId: string): Promise<TeamMember[]> {
   const data = unwrap(
-    await supabase
+    await createAdminSupabaseClient()
       .from('users')
       .select(USER_COLUMNS)
       .eq('agency_id', agencyId)
       .order('created_at', { ascending: true }),
     'fetchTeamMembersByAgency'
   )
+  // as: the shared SupabaseClient param is untyped, so USER_COLUMNS does not infer. Safe now that
+  // TeamMember is Pick<UserRow, …> — it used to declare created_at non-null over a nullable column,
+  // and this cast was the only thing standing between that and the render.
   return (data ?? []) as TeamMember[]
 }
 
@@ -209,11 +222,10 @@ export async function fetchIgConnectionState(
 
 // ---------- language_rules ----------
 
-type LanguageRulesRow = {
-  native_cta_phrases: Json | null
-  formality_rules: Json | null
-  language_instructions: string | null
-}
+type LanguageRulesRow = Pick<
+  LanguageRuleRow,
+  'native_cta_phrases' | 'formality_rules' | 'language_instructions'
+>
 
 /**
  * Fetches language rules for a given language name (e.g. "English", "Bulgarian").

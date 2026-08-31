@@ -9,6 +9,7 @@ import {
   CLIENT_ROSTER_COLUMNS,
   UPCOMING_POST_COLUMNS,
 } from '@/lib/queries/select-columns'
+import type { PostRow } from '@/types'
 import { fetchLanguageRulesByLanguage } from '@/lib/queries/db'
 import { getWeekDayKeys, getWeekRange, toDateKey } from '@/utils/date-helpers'
 import { DAYS_PER_WEEK } from '@/utils/constants'
@@ -172,12 +173,7 @@ export const SCHEDULED_STATUSES = [
 
 const SCHEDULED_STATUS_SET = new Set<string>(SCHEDULED_STATUSES)
 
-interface CoverageRow {
-  client_id: string
-  status: string
-  scheduled_at: string | null
-  published_at: string | null
-}
+type CoverageRow = Pick<PostRow, 'client_id' | 'status' | 'scheduled_at' | 'published_at'>
 
 /**
  * Returns each client's week as seven day states, Monday first.

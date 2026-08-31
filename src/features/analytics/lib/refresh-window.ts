@@ -5,14 +5,14 @@ import { createSemaphore } from '@/lib/concurrency'
 import { GraphApiError } from '@/lib/meta/graph-errors'
 import { captureOnlineFollowers, refreshObservedBestTime } from './online-followers'
 import { fetchDailyReachSeries } from '@/lib/meta/insights'
-import {
-  captureDayTotals,
-  syncDemographicsWeekly,
-  syncPostMetrics,
-  type IGAccountMetricsInsert,
-} from './sync-metrics'
+import { captureDayTotals, syncDemographicsWeekly, syncPostMetrics } from './sync-metrics'
 import { shiftDateKey } from '@/utils/date-helpers'
 import type { AnalyticsPeriod } from './period'
+import {
+  toReachRows,
+  upsertAccountMetricDays,
+  type IGAccountMetricsInsert,
+} from './account-metrics-store'
 
 /**
  * The on-demand refill behind "Regenerate": pulls the SELECTED window from
@@ -138,17 +138,6 @@ function seriesChunks(start: string, end: string): Array<{ sinceTs: number; unti
   return chunks
 }
 
-async function upsertColumnBatch(
-  admin: SupabaseClient,
-  rows: IGAccountMetricsInsert[]
-): Promise<void> {
-  if (rows.length === 0) return
-  const { error } = await admin
-    .from('ig_account_metrics')
-    .upsert(rows, { onConflict: 'client_id,ig_account_id,metric_date' })
-  if (error) throw new Error(`window refresh upsert failed: ${error.message}`)
-}
-
 /**
  * Refreshes both windows of the period from the Graph API: the two cheap
  * series (reach, follower deltas) across the whole span, day totals for the
@@ -187,22 +176,13 @@ export async function refreshWindowMetrics(
           { sinceTs: chunk.sinceTs, untilTs: chunk.untilTs, throughDate: spanEnd }
         ),
       ])
-      for (const day of reach) {
-        if (day.date <= spanEnd) {
-          reachRows.push({
-            client_id: clientId,
-            ig_account_id: accountId,
-            metric_date: day.date,
-            reach: day.reach,
-          })
-        }
-      }
+      reachRows.push(...toReachRows(clientId, accountId, reach, spanEnd))
     }
   } catch (err) {
     if (err instanceof GraphApiError && err.failure === 'rate_limited') rateLimited = true
     else throw err
   }
-  await upsertColumnBatch(admin, reachRows)
+  await upsertAccountMetricDays(admin, reachRows, 'window refresh reach')
   // The hours this refill just stored may be exactly what was blocking this client's posting
   // times — before, they were written here and derived only by the nightly cron, so refreshing
   // analytics filled the gap and left the answer stale until the morning.
@@ -242,7 +222,7 @@ export async function refreshWindowMetrics(
         }
       })
     )
-    await upsertColumnBatch(admin, totalsRows)
+    await upsertAccountMetricDays(admin, totalsRows, 'window refresh totals')
     refilledDays = totalsRows.length
   }
 

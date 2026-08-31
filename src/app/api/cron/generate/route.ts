@@ -24,7 +24,8 @@ import type { PostType } from '@/types/api'
 import type { Theme } from '@/ai/generation/types'
 import { asJson } from '@/lib/queries/as-json'
 import { POSTING_SCHEDULE_DUE_COLUMNS } from '@/lib/queries/select-columns'
-import { notify, NOTIFY_EVERY_TIME } from '@/features/publishing/lib/notifications'
+import { recordPostTopics } from '@/lib/queries/post-history'
+import { notify, NOTIFY_EVERY_TIME } from '@/lib/notifications/notify'
 
 export const maxDuration = 300
 
@@ -228,21 +229,13 @@ export async function GET(request: NextRequest) {
         }
 
         if (savedPosts && savedPosts.length > 0) {
-          const { error: historyError } = await supabase.from('post_history').insert(
-            generationResults.map(({ post }) => ({
-              client_id: clientId,
-              topic_summary: post.topic_summary,
-            }))
+          // Swallows its own failure by design — the batch is already saved and the run must not
+          // be relabelled 'failed' past this point. See recordPostTopics.
+          await recordPostTopics(
+            supabase,
+            clientId,
+            generationResults.map(({ post }) => post.topic_summary)
           )
-          // Logged, not thrown: the batch is already saved, and the run must not
-          // be relabelled 'failed' past this point. History only feeds topic
-          // de-duplication, so the cost of losing it is a repeated topic later.
-          if (historyError) {
-            console.error(
-              `[cron] post history insert failed for client ${clientId}:`,
-              historyError.message
-            )
-          }
           results.posts_created += savedPosts.length
         }
       }

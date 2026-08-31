@@ -11,10 +11,13 @@ import {
   parsePostUpdate,
   postCopySchema,
   type PostCopyInput,
-  type UpdatePostInput,
+  type PostFieldUpdate,
 } from '@/lib/validation/post-update-schema'
 import { DISCARD_REASONS } from '@/lib/validation'
 import type { ActionResult } from './types'
+import { statusForSlot } from '@/lib/posts/status-for-slot'
+import { removeStoragePrefix } from '@/lib/storage/remove-prefix'
+import { POST_IMAGES_BUCKET } from '@/utils/constants'
 
 const deletePostOptionsSchema = z.object({ reason: z.enum(DISCARD_REASONS).optional() }).optional()
 
@@ -26,7 +29,7 @@ const persistRewriteSchema = z.object({
 })
 
 /** Update a post's fields. */
-export async function updatePost(postId: string, fields: UpdatePostInput): Promise<ActionResult> {
+export async function updatePost(postId: string, fields: PostFieldUpdate): Promise<ActionResult> {
   // Parsed before auth, matching `savePostCopy` below: a malformed payload is the
   // caller's own bug and says nothing about the post, so there is nothing to leak by
   // answering it first.
@@ -205,6 +208,16 @@ export async function deletePost(
   const { error } = await supabase.from('posts').delete().eq('id', postId)
   if (error) return { ok: false, error: error.message }
 
+  // The rows are gone by cascade — post_images, post_canvas_docs, post_approval_tokens — but the
+  // FILES they pointed at were not. They sat under `{clientId}/{postId}/` until the whole client
+  // was deleted, which for a client nobody deletes is forever. `deleteClient` has swept its two
+  // prefixes since it was written; this path never had one.
+  //
+  // After the rows, never before: sweeping first would strip a live post's images if the delete
+  // then failed. Best-effort by contract — the post is gone either way.
+  const swept = await removeStoragePrefix(POST_IMAGES_BUCKET, `${post.client_id}/${postId}`)
+  if (swept > 0) console.warn(`[posts] deleted ${postId}: swept ${swept} stored file(s)`)
+
   revalidateTag('client-post-stats', 'max')
   return { ok: true, data: undefined }
 }
@@ -220,7 +233,14 @@ export async function schedulePost(
   scheduledAt: string | null
 ): Promise<ActionResult> {
   const result = await schedulePosts([{ postId, scheduledAt }])
-  return result.ok ? { ok: true, data: undefined } : result
+  if (!result.ok) return result
+  // A batch reports `ok` with a count, because "three of four landed" is a real outcome it has to
+  // be able to say. One post has no such middle: it either moved or it did not, and returning
+  // `ok` regardless is what made this unsafe for an optimistic caller — the dashboard's approve
+  // removes the row and offers an Undo that would then write over a post never approved.
+  return result.data.succeeded === 1
+    ? { ok: true, data: undefined }
+    : { ok: false, error: 'Could not update that post' }
 }
 
 /**
@@ -248,7 +268,7 @@ export async function schedulePosts(
   for (const item of items) {
     const parsed = parsePostUpdate({
       scheduled_at: item.scheduledAt,
-      status: item.scheduledAt ? 'scheduled' : 'approved',
+      status: statusForSlot(item.scheduledAt),
     })
     if (!parsed.ok) return { ok: false, error: parsed.error }
   }
@@ -291,7 +311,7 @@ export async function schedulePosts(
   for (const [scheduledAt, ids] of byTime) {
     const { error } = await supabase
       .from('posts')
-      .update({ status: scheduledAt ? 'scheduled' : 'approved', scheduled_at: scheduledAt })
+      .update({ status: statusForSlot(scheduledAt), scheduled_at: scheduledAt })
       .in('id', ids)
     if (error) failures.push(error.message)
     else succeeded += ids.length
@@ -302,6 +322,12 @@ export async function schedulePosts(
   // ownership check or a database failure, so the reason travels with it.
   if (failures.length > 0) {
     console.error('[posts] batch schedule partially failed:', failures.join('; '))
+  }
+  // Nothing landing is a failure, not a partial success. `verifyPostsOwnership` drops unowned ids
+  // silently and a failed UPDATE only reaches `failures`, so a wholly unsuccessful run used to
+  // return `ok: true` with `succeeded: 0` — indistinguishable, to a caller, from having worked.
+  if (succeeded === 0 && items.length > 0) {
+    return { ok: false, error: failures[0] ?? 'Could not update those posts' }
   }
   return { ok: true, data: { succeeded, total: items.length } }
 }

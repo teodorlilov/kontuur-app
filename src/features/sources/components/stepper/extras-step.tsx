@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { toast } from '@/components/ui/toast'
-import { uploadSource, upsertTavilySource } from '@/features/sources/actions/source-actions'
+import { uploadSource, setWebResearch } from '@/features/sources/actions/source-actions'
 import type { TavilyConfig } from '@/types/sources'
 
 interface ExtrasStepProps {
@@ -159,7 +159,7 @@ export function ExtrasStep({
       if (includes.length > 0) config.include_domains = includes
       if (excludes.length > 0) config.exclude_domains = excludes
 
-      const result = await upsertTavilySource(clientId, { is_active: isEnabled, config })
+      const result = await setWebResearch(clientId, { is_active: isEnabled, config })
       if (!result.ok) {
         toast.error(result.error)
         return

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { collectPrefixObjects } from '../storage'
+import { collectPrefixObjects } from '../remove-prefix'
 
 /**
  * The walk behind deleteClient's storage sweep.

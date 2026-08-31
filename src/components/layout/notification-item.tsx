@@ -1,6 +1,6 @@
 'use client'
 
-import { Check, MessageCircle } from 'lucide-react'
+import { Check, MessageCircle, Send } from 'lucide-react'
 import { formatRelativeTime, parseTimestamp } from '@/utils/format'
 import { cn } from '@/utils/cn'
 import type { EnrichedNotification } from '@/types/api'
@@ -25,6 +25,7 @@ function titleForNotification(n: EnrichedNotification): string {
   if (n.type === 'posts_ready') return 'has drafts ready to review'
   if (n.type === 'client_approved_all') return 'approved all posts'
   if (n.type === 'client_feedback') return 'requested changes'
+  if (n.type === 'approval_sent') return 'has posts awaiting approval'
   // Legacy rows without type — derive from message
   if (n.message?.includes('approved')) return 'approved all posts'
   return 'requested changes'
@@ -38,7 +39,7 @@ function bodyForNotification(n: EnrichedNotification): string {
   if (n.type === 'client_feedback' && !n.feedback_text) {
     return n.message ?? 'Changes requested on weekly calendar'
   }
-  if (n.type === 'posts_ready') return n.message ?? ''
+  if (n.type === 'posts_ready' || n.type === 'approval_sent') return n.message ?? ''
   // Legacy rows
   return n.message ?? ''
 }
@@ -54,6 +55,9 @@ export function NotificationItem({
   // neutral marker rather than falling through to the change-request styling.
   const isApproval =
     n.type === 'client_approved_all' || (!n.type && n.message?.includes('approved'))
+  // Sending an approval is neither the client answering yes nor no. It gets its own marker rather
+  // than borrowing the change-request one, which is what it did while it had no type at all.
+  const isSent = n.type === 'approval_sent'
   const title = titleForNotification(n)
   const body = bodyForNotification(n)
   const feedbackPreview = n.feedback_text
@@ -77,10 +81,16 @@ export function NotificationItem({
         <div
           className={cn(
             'mt-px grid size-8 shrink-0 place-items-center rounded-full',
-            isApproval ? 'bg-wash text-forest' : 'bg-marker text-forest-deep'
+            isApproval || isSent ? 'bg-wash text-forest' : 'bg-marker text-forest-deep'
           )}
         >
-          {isApproval ? <Check size={14} /> : <MessageCircle size={14} />}
+          {isSent ? (
+            <Send size={14} />
+          ) : isApproval ? (
+            <Check size={14} />
+          ) : (
+            <MessageCircle size={14} />
+          )}
         </div>
 
         <div className="min-w-0 flex-1">

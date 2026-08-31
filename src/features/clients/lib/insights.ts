@@ -1,3 +1,5 @@
+import type { PostRow } from '@/types'
+
 export interface PillarRate {
   pillar: string
   /** Approved share of this pillar's sampled posts, 0-100. */
@@ -27,11 +29,11 @@ export interface ScoreRow {
   quality_score_avg: number
 }
 
-export interface PillarRow {
-  pillar: string
-  status: string
-  rewrite_count: number
-}
+/**
+ * `pillar` is narrowed on the strength of the query, not in spite of the column: both producers
+ * filter `.not('pillar', 'is', null)`, and `buildInsights` uses it as a Map key.
+ */
+export type PillarRow = Pick<PostRow, 'status' | 'rewrite_count'> & { pillar: string }
 
 /**
  * Derives the Content insights panel from two samples of a client's posts.

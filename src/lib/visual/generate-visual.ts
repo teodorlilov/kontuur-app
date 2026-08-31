@@ -8,6 +8,7 @@ import { artDirectionFor, type VariationKey } from './variation'
 import { nameColor } from './color-name'
 import type { ColorScheme } from './color-scheme'
 import { downloadFalFile, generateSlideImage } from './fal'
+import { recordImageSpend, type ImageSpender } from '@/lib/visual/image-spend'
 
 type GeneratedVisual = { buffer: Buffer; contentType: 'image/jpeg' }
 
@@ -60,6 +61,13 @@ export async function generateVisual(input: {
   variation?: VariationKey
   /** The post's colour scheme. Choosing and persisting it belongs to the caller. */
   scheme?: ColorScheme | null
+  /**
+   * Who this image is billed to. Required, and deliberately so: this is the one place every
+   * gpt-image-2 generation passes through, so making it optional would let a new caller spend
+   * without attribution — which is exactly the state the whole `image_generation_usage` table sat
+   * in until 2026-08-31.
+   */
+  spender: ImageSpender
 }): Promise<GeneratedVisual> {
   const { identity } = input
   const style = getBrandStyle(identity.style)
@@ -86,5 +94,9 @@ export async function generateVisual(input: {
   })
 
   const imageUrl = await generateSlideImage(prompt)
-  return { buffer: await downloadFalFile(imageUrl), contentType: 'image/jpeg' }
+  const buffer = await downloadFalFile(imageUrl)
+  // After the image exists, so a generation that failed is not counted as spend. Awaited but
+  // never fatal — see recordImageSpend.
+  await recordImageSpend(input.spender)
+  return { buffer, contentType: 'image/jpeg' }
 }

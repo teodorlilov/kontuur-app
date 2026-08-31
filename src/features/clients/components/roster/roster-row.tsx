@@ -3,7 +3,7 @@ import type { ClientRosterEntry } from '@/features/clients/lib/roster'
 import { ChannelChips } from '@/features/clients/components/roster/channel-chips'
 import { RowStatus } from '@/features/clients/components/roster/row-status'
 import { ROSTER_GRID } from '@/features/clients/components/roster/grid'
-import { formatPublishSlot } from '@/features/dashboard/lib/metrics'
+import { formatPublishSlot } from '@/utils/date-helpers'
 import { cn } from '@/utils/cn'
 
 interface RosterRowProps {

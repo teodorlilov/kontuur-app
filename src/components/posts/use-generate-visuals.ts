@@ -183,6 +183,43 @@ export function useGenerateVisuals(
     [postId, runComposePass]
   )
 
+  /**
+   * Bake copy onto AI art that arrived clean — the cron's images, on first open.
+   *
+   * The review queue had its own copy of this: its own dynamic import, its own `loadPostCanvas`,
+   * its own serial loop. Serial WITHIN itself, but sharing no semaphore with this hook — so a
+   * compose-on-open and a regenerate-compose could run two offscreen Konva canvases against the
+   * same post, which is the thing `composeSemaphore` exists to prevent. It also showed no slot
+   * feedback while it worked, and logged a 409 as an error rather than reading it as "a newer flow
+   * owns that slot".
+   *
+   * Caller decides WHICH images qualify — the queue only paints over `visual-*` files with no doc,
+   * because a user-uploaded creative is finished work.
+   */
+  const composeMissing = useCallback(
+    (source: SlideCopySource, images: PostImage[]) => {
+      const pass = startComposePass(postId)
+      return runComposePass(
+        images,
+        async (image) => {
+          const { composePersistedPosition, canvas } = await pass
+          if (!canvas) return null
+          return composePersistedPosition({
+            postId,
+            position: image.position,
+            total: slideTotal(source),
+            image,
+            slideCopy: slideCopyAt(source, image.position),
+            identity: canvas.identity,
+            doc: canvas.docs.get(image.position) ?? null,
+          })
+        },
+        'Text could not be added to some visuals — open a slide in the editor to refresh it.'
+      )
+    },
+    [postId, runComposePass]
+  )
+
   const generate = useCallback(
     async (positions: number[]) => {
       const fresh = positions.filter((p) => !generatingPositions.includes(p))
@@ -216,5 +253,5 @@ export function useGenerateVisuals(
     [postId, onImage, generatingPositions, composeTail]
   )
 
-  return { generatingPositions, composingPositions, generate, recompose }
+  return { generatingPositions, composingPositions, generate, recompose, composeMissing }
 }

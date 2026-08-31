@@ -1,4 +1,4 @@
-import { DAYS_PER_WEEK, WEEKDAY_LABELS } from '@/utils/constants'
+import { DAYS_PER_WEEK, MS_PER_DAY, WEEKDAY_LABELS } from '@/utils/constants'
 
 /**
  * Weekday names in the order the app renders a week.
@@ -278,4 +278,47 @@ export function getNextDateForDay(dayName: string, timeZone: string): string {
   const todayIdx = (getWeekdayIndex(new Date(), timeZone) + 1) % DAYS_PER_WEEK
   const diff = (targetIdx - todayIdx + DAYS_PER_WEEK) % DAYS_PER_WEEK || DAYS_PER_WEEK
   return shiftDateKey(toDateKey(new Date(), timeZone), diff)
+}
+
+/** Beyond this, a bare weekday stops being unambiguous and needs a date. */
+const WEEKDAY_HORIZON_DAYS = 6
+
+/**
+ * A publish slot as the agency reads it: 24h time in the agency's zone, the
+ * weekday only when it is not today, and a date once "Mon" could mean either of
+ * two Mondays. Formatted on the server so the label never depends on the
+ * viewer's clock.
+ *
+ * Lives here rather than in `features/dashboard`, where it was written: three of its four
+ * callers are outside that feature and one is in `components/`, a shared layer reaching down
+ * into a feature. Nothing in it is about the dashboard — it is a zoned read of a stored
+ * instant, which is what this module is for.
+ */
+export function formatPublishSlot(
+  iso: string,
+  timeZone: string,
+  now: Date = new Date()
+): { label: string; isToday: boolean } {
+  const date = new Date(iso)
+  const time = new Intl.DateTimeFormat('en-GB', {
+    timeZone,
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).format(date)
+
+  if (toDateKey(date, timeZone) === toDateKey(now, timeZone)) {
+    return { label: `Today ${time}`, isToday: true }
+  }
+
+  const daysOut = (date.getTime() - now.getTime()) / MS_PER_DAY
+  const parts: Intl.DateTimeFormatOptions =
+    daysOut > WEEKDAY_HORIZON_DAYS
+      ? { timeZone, day: 'numeric', month: 'short' }
+      : { timeZone, weekday: 'short' }
+
+  return {
+    label: `${new Intl.DateTimeFormat('en-GB', parts).format(date)} ${time}`,
+    isToday: false,
+  }
 }

@@ -1,13 +1,11 @@
 import 'server-only'
 
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { Database } from '@/types/database'
 import { fetchOnlineFollowers } from '@/lib/meta/insights'
 import { asJson } from '@/lib/queries/as-json'
 import { SECONDS_PER_DAY } from '@/utils/constants'
 import { deriveObservedBestTime } from './derive-best-time'
-
-type IGAccountMetricsInsert = Database['public']['Tables']['ig_account_metrics']['Insert']
+import { upsertAccountMetricDays, type IGAccountMetricsInsert } from './account-metrics-store'
 
 /**
  * Hourly follower-online data: the one way it is fetched, stored, and turned into posting times.
@@ -63,10 +61,7 @@ export async function captureOnlineFollowers(
     }))
   if (rows.length === 0) return 0
 
-  const { error } = await admin
-    .from('ig_account_metrics')
-    .upsert(rows, { onConflict: 'client_id,ig_account_id,metric_date' })
-  if (error) throw new Error(`online_followers upsert failed: ${error.message}`)
+  await upsertAccountMetricDays(admin, rows, 'online followers')
   return rows.length
 }
 

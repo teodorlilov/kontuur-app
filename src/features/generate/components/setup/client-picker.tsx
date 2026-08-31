@@ -4,13 +4,9 @@ import { ChevronDown } from 'lucide-react'
 import { cn } from '@/utils/cn'
 import { Avatar } from '@/components/ui/avatar'
 import { Listbox } from '@/components/ui/listbox'
+import type { ClientRow } from '@/types'
 
-export interface PickerClient {
-  id: string
-  name: string
-  niche: string | null
-  posts_per_week: number
-}
+export type PickerClient = Pick<ClientRow, 'id' | 'name' | 'niche' | 'posts_per_week'>
 
 interface ClientPickerProps {
   clients: PickerClient[]

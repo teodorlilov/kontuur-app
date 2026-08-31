@@ -1,5 +1,6 @@
 import { parseSlides } from './parse-slides'
 import type { SlideText } from '@/types/slide'
+import type { PostRow } from '@/types'
 
 /**
  * The copy one slide carries: a carousel slide's fields, or a single post's caption.
@@ -14,10 +15,10 @@ export type SlideCopy =
   | { kind: 'caption'; caption: string | null }
 
 /** The post fields the copy mapping needs — satisfied by persisted posts, drafts and local state. */
-export interface SlideCopySource {
-  post_type: string
+export type SlideCopySource = Pick<PostRow, 'post_type' | 'caption'> & {
+  /** Wider than the `Json | null` column ON PURPOSE: wizard drafts and local editor state satisfy
+   *  this too, and neither has been through PostgREST. */
   slides_json: unknown
-  caption: string | null
 }
 
 /**

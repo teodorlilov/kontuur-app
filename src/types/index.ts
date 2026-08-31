@@ -12,6 +12,11 @@ export type IGAccountMetricsRow = Tables<'ig_account_metrics'>
 export type IGPostMetricsRow = Tables<'ig_post_metrics'>
 export type IGAudienceSnapshotsRow = Tables<'ig_audience_snapshots'>
 export type SocialConnectionRow = Tables<'social_connections'>
+export type UserRow = Tables<'users'>
+export type ClientSourceRow = Tables<'client_sources'>
+export type AnalyticsReportRow = Tables<'analytics_reports'>
+export type LanguageRuleRow = Tables<'language_rules'>
+export type BrandKitExtractionRow = Tables<'brand_kit_extractions'>
 
 export type { LanguageIssueType, SlopDetection, SourceGroundingResult } from '@/ai/validation/types'
 

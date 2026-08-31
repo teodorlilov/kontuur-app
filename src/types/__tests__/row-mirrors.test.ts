@@ -77,6 +77,11 @@ const EXEMPT: Record<string, string> = {
     'Same narrowing as ClientSource — pillar_ids is `Json` in the column and string[] here.',
   'features/dashboard/types.ts:DashboardBriefing':
     'coaching_points is `Json | null` in the column and string[] | null here. (platform_updates genuinely is string[] | null in the column — only the one field is narrowed.)',
+
+  'ai/intelligence/generate-briefing.ts:BriefingResult':
+    "Name overlap, not a projection: this is the parsed JSON body of an Anthropic response, and no query returns it. The columns were modeled on the model's output, so the resemblance runs the other way — deriving it would make a prompt contract depend on a table, and would force `?? []` guards at the write for a state the parser cannot produce.",
+  'lib/visual/queries.ts:ExtractionPatch':
+    'A write contract, not a row: every field but `status` is optional so a status-only "pending" write never references identity/report, and `status` is narrowed to its four literals. Same reason as PublishStatusPatch and UpdateSourceInput.',
 }
 
 /**
@@ -94,31 +99,10 @@ const EXEMPT: Record<string, string> = {
  * you derive it and forget. Rationale per entry: docs/TECH-DEBT.md §7.3.
  */
 const KNOWN_MIRRORS: string[] = [
+  // Everything the 2026-08-31 tightening surfaced has since been derived, so this list holds only
+  // AgencyInfo. Keep it as a list rather than deleting it: the guard's value is that a NEW mirror
+  // has to be named here on purpose, and an empty array says that more clearly than no array.
   'types/api.ts:AgencyInfo',
-  // ── Surfaced 2026-08-31 by lowering MIN_FIELDS to 3, allowing one non-column field, and making
-  // the derivation check per-field. Every one of these existed before; the guard simply could not
-  // see them. They are listed rather than fixed in the same pass so the tightening lands green and
-  // each is NAMED — the five with real nullability lies (ReviewQueueRow, IGConnection,
-  // ExpiringConnection, InstagramConnection, and the SnapshotRow/AudienceSnapshotInput pair) were
-  // derived instead, because a type that contradicts its column is a bug, not debt.
-  'ai/intelligence/generate-briefing.ts:BriefingResult',
-  'components/scheduling/use-batch-schedule.ts:BatchPost',
-  'features/analytics/components/report-archive.tsx:ArchiveEntry',
-  'features/clients/lib/insights.ts:PillarRow',
-  'features/clients/lib/roster.ts:RosterClientRow',
-  'features/clients/lib/roster.ts:RosterConnectionRow',
-  'features/dashboard/queries/dashboard-data.ts:ClientSummary',
-  'features/generate/components/setup/client-picker.tsx:PickerClient',
-  'features/publishing/lib/publish-post.ts:PublishableImage',
-  'lib/auth/helpers.ts:OwnedPost',
-  'lib/clients/content-pillars.ts:CoverageSource',
-  'lib/clients/fetch-client-data.ts:ClientIdentity',
-  'lib/posts/slide-copy.ts:SlideCopySource',
-  'lib/queries/cache.ts:CoverageRow',
-  'lib/queries/db.ts:LanguageRulesRow',
-  'lib/visual/queries.ts:ExtractionPatch',
-  'lib/visual/queries.ts:ExtractionSession',
-  'types/api.ts:TeamMember',
 ]
 
 function sourceFiles(): string[] {

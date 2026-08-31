@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { AlertTriangle, Send } from 'lucide-react'
 import { cn } from '@/utils/cn'
 import { StatCard } from '@/features/dashboard/components/stat-card'
-import { formatPublishSlot } from '@/features/dashboard/lib/metrics'
+import { formatPublishSlot } from '@/utils/date-helpers'
 import type { FailedPublish, UpcomingPublish } from '@/features/dashboard/types'
 
 interface NextUpCardProps {

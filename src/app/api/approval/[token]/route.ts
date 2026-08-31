@@ -8,7 +8,8 @@ export async function GET(_request: Request, { params }: { params: Promise<{ tok
   const { token } = await params
   const supabase = createAdminSupabaseClient()
 
-  // Fetch all token rows for this batch (client_email stores the batch ID)
+  // Fetch all token rows for this batch. (This said client_email stores the batch id — it does
+  // not; batch_id does. client_email records who the link was mailed to and nothing reads it.)
   const { data: tokenRows, error } = await supabase
     .from('post_approval_tokens')
     .select('id, post_id, status, client_note, expires_at')

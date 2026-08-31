@@ -7,6 +7,7 @@ import {
   uploadSource,
   updateSource,
   deleteSource,
+  setWebResearch,
 } from '@/features/sources/actions/source-actions'
 import type { ActionResult } from '@/lib/actions/types'
 import type { ClientSource, SourceSuggestion } from '@/types/api'
@@ -194,6 +195,25 @@ export function useSources({
     )
   }
 
+  /** Web research's toggle goes through its own writer — `updateSource` refuses `is_active` on
+   *  that row, because the two used to write `config` in different shapes. */
+  async function handleToggleWebResearch(source: ClientSource) {
+    const previous = sources
+    setSources((prev) =>
+      prev.map((s) => (s.id === source.id ? { ...s, is_active: !s.is_active } : s))
+    )
+    await withRollback(
+      previous,
+      setSources,
+      // The returned id is not needed here; withRollback only reads ok/error.
+      async () => {
+        const r = await setWebResearch(source.client_id, { is_active: !source.is_active })
+        return r.ok ? { ok: true, data: undefined } : r
+      },
+      'Failed to update web research'
+    )
+  }
+
   async function handleDelete(source: ClientSource) {
     const previous = sources
     setSources((prev) => prev.filter((s) => s.id !== source.id))
@@ -220,6 +240,7 @@ export function useSources({
     handleAddFromSuggestion,
     handleEditSource,
     handleToggleActive,
+    handleToggleWebResearch,
     handleDelete,
   }
 }

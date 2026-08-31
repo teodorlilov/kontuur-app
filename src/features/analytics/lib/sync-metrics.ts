@@ -16,7 +16,7 @@ import {
   fetchReachByProductType,
   type IGDemographics,
 } from '@/lib/meta/insights'
-import { notify } from '@/features/publishing/lib/notifications'
+import { notify } from '@/lib/notifications/notify'
 import {
   SOCIAL_CONNECTION_SYNC_COLUMNS,
   type SocialConnectionSyncColumns,
@@ -24,6 +24,11 @@ import {
 import { MS_PER_DAY, SECONDS_PER_DAY } from '@/utils/constants'
 import { shiftDateKey } from '@/utils/date-helpers'
 import { captureAndDeriveBestTime, ONLINE_FOLLOWERS_BACKFILL_DAYS } from './online-followers'
+import {
+  toReachRows,
+  upsertAccountMetricDays,
+  type IGAccountMetricsInsert,
+} from './account-metrics-store'
 
 /**
  * The nightly Instagram metrics capture. One rule governs every write: NULL
@@ -43,7 +48,6 @@ const MEDIA_LOOKBACK_DAYS = 30
  */
 const CONSOLIDATION_DAYS = 7
 
-export type IGAccountMetricsInsert = Database['public']['Tables']['ig_account_metrics']['Insert']
 type IGPostMetricsInsert = Database['public']['Tables']['ig_post_metrics']['Insert']
 
 /**
@@ -382,10 +386,7 @@ async function recaptureConsolidatingDays(
   for (const dateKey of dayKeys) {
     rows.push(await captureDayTotals(clientId, accountId, accessToken, dateKey))
   }
-  const { error } = await admin
-    .from('ig_account_metrics')
-    .upsert(rows, { onConflict: 'client_id,ig_account_id,metric_date' })
-  if (error) throw new Error(`consolidation recapture upsert failed: ${error.message}`)
+  await upsertAccountMetricDays(admin, rows, 'consolidation recapture')
 
   // Yesterday is excluded: syncAccountDay wrote its reach minutes ago.
   const reachSeries = await fetchDailyReachSeries(
@@ -394,19 +395,11 @@ async function recaptureConsolidatingDays(
     Math.floor(Date.parse(oldest) / 1000),
     Math.floor(Date.parse(yesterday) / 1000)
   )
-  const reachRows: IGAccountMetricsInsert[] = reachSeries.map((day) => ({
-    client_id: clientId,
-    ig_account_id: accountId,
-    metric_date: day.date,
-    reach: day.reach,
-  }))
-  if (reachRows.length === 0) return
-  const { error: reachError } = await admin
-    .from('ig_account_metrics')
-    .upsert(reachRows, { onConflict: 'client_id,ig_account_id,metric_date' })
-  if (reachError) {
-    throw new Error(`consolidation reach upsert failed: ${reachError.message}`)
-  }
+  await upsertAccountMetricDays(
+    admin,
+    toReachRows(clientId, accountId, reachSeries),
+    'consolidation reach'
+  )
 }
 
 async function hasAccountHistory(
@@ -463,10 +456,7 @@ async function syncAccountDay(
     // null, never 0.
     reach: reachSeries.length > 0 ? reachSeries.reduce((sum, day) => sum + day.reach, 0) : null,
   }
-  const { error } = await admin
-    .from('ig_account_metrics')
-    .upsert(row, { onConflict: 'client_id,ig_account_id,metric_date' })
-  if (error) throw new Error(`ig_account_metrics upsert failed: ${error.message}`)
+  await upsertAccountMetricDays(admin, [row], 'day totals')
 }
 
 /**
@@ -505,11 +495,8 @@ async function backfillAccountHistory(
   byDate.delete(window.date)
   if (byDate.size === 0) return
 
-  const { error } = await admin.from('ig_account_metrics').upsert([...byDate.values()], {
-    onConflict: 'client_id,ig_account_id,metric_date',
-    ignoreDuplicates: true,
-  })
-  if (error) throw new Error(`ig_account_metrics backfill failed: ${error.message}`)
+  // ignoreDuplicates: a first sync must not overwrite a day another pass already captured in full.
+  await upsertAccountMetricDays(admin, [...byDate.values()], 'backfill', { ignoreDuplicates: true })
 }
 
 /**

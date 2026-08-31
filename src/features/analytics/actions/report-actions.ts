@@ -2,7 +2,7 @@
 
 import { revalidateTag } from 'next/cache'
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { resolveActionAuth } from '@/lib/auth/helpers'
+import { fetchClientWithOwnership, resolveActionAuth } from '@/lib/auth/helpers'
 import { parseActionId } from '@/lib/actions/parse-input'
 import type { ActionResult } from '@/lib/actions/types'
 import type { Json } from '@/types'
@@ -42,13 +42,10 @@ async function resolveReportScope(
   const { supabase, agencyId } = auth
 
   const { clientId, preset, start, end } = parsed.data
-  // WHY as: the auth-scoped client is untyped here, so the projection does not infer.
-  const { data: client } = (await supabase
-    .from('clients')
-    .select('id, name, agency_id')
-    .eq('id', clientId)
-    .maybeSingle()) as { data: { id: string; name: string; agency_id: string } | null }
-  if (!client || client.agency_id !== agencyId) return { ok: false, error: 'Not found' }
+  // Through the shared helper. This read the row WITHOUT an agency_id predicate and compared it
+  // in TypeScript afterwards — the tenancy rule enforced outside the query, in one place, by hand.
+  const client = await fetchClientWithOwnership(supabase, clientId, agencyId)
+  if (!client) return { ok: false, error: 'Not found' }
 
   const agency = await getCachedAgency(agencyId)
   return {

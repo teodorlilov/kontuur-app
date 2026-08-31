@@ -1,5 +1,6 @@
 import 'server-only'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
+import { fetchTeamMembersByAgency } from '@/lib/queries/db'
 
 export interface CanvaTeamMember {
   id: string
@@ -15,19 +16,18 @@ export interface CanvaTeamMember {
  * Every member of the agency with their personal Canva connection state.
  *
  * Canva connections are per-user, not per-agency, so the Integrations tab has to show who on the
- * team has linked an account. Reads through the admin client because a member's row is not
- * visible to another member under RLS.
+ * team has linked an account.
+ *
+ * The member list comes from `fetchTeamMembersByAgency` rather than a second read of `users`. This
+ * file had its own copy, correctly on the admin client — and its docblock was the only place the
+ * RLS constraint was written down, which is why the sibling read on the same page kept the
+ * user-scoped client and showed a one-person team.
  */
 export async function fetchCanvaTeamStatus(agencyId: string): Promise<CanvaTeamMember[]> {
+  const users = await fetchTeamMembersByAgency(agencyId)
+  if (users.length === 0) return []
+
   const admin = createAdminSupabaseClient()
-
-  const { data: users } = await admin
-    .from('users')
-    .select('id, email, role')
-    .eq('agency_id', agencyId)
-    .order('created_at', { ascending: true })
-
-  if (!users?.length) return []
 
   const { data: connections } = await admin
     .from('social_connections')

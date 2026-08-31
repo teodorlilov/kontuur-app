@@ -1,5 +1,6 @@
 import { draftColumns } from '@/lib/generation/draft-columns'
 import type { PostData } from '@/types/post'
+import { statusForSlot } from '@/lib/posts/status-for-slot'
 
 interface DraftImagePayload {
   position: number
@@ -59,7 +60,7 @@ export async function approveDraft({
         // The reviewer's edits win over what was generated.
         ...(caption !== undefined ? { caption } : {}),
         ...(slidesJson !== undefined ? { slides_json: slidesJson } : {}),
-        status: scheduledAt ? 'scheduled' : 'approved',
+        status: statusForSlot(scheduledAt),
         scheduled_at: scheduledAt ?? null,
         priority: post.priority,
         was_rewritten: post.was_rewritten,

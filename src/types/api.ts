@@ -2,7 +2,7 @@
 // this file — going through it would make the two circular.
 import type { Tables } from './database'
 import type { SlideText } from './slide'
-import type { CalendarPostColumns } from '@/lib/queries/select-columns'
+import type { CalendarPostColumns, UserColumns } from '@/lib/queries/select-columns'
 // Imported rather than only re-exported at the foot of the file: `ValidationData` below is
 // built from these, and a bare `export … from` re-export does not bring a name into scope here.
 import type {
@@ -207,7 +207,18 @@ export interface ActiveRun {
 
 // ---- Notifications ----
 
-export type NotificationType = 'client_approved_all' | 'client_feedback' | 'posts_ready'
+/**
+ * The bell keys its title, body and icon off this closed set, and falls back to reading the
+ * MESSAGE when a row has no type. `approval_sent` was missing: sending an approval wrote a
+ * type-less row whose message says "Approval link generated…", which contains no "approved", so
+ * the fallback's else branch labelled it "requested changes" — the bell told the agency their
+ * client had rejected a batch they had just sent out.
+ */
+export type NotificationType =
+  | 'client_approved_all'
+  | 'client_feedback'
+  | 'posts_ready'
+  | 'approval_sent'
 
 export type EnrichedNotification = Pick<
   NotificationRow,
@@ -227,12 +238,11 @@ export type EnrichedNotification = Pick<
 
 // ---- Settings / Team ----
 
-export interface TeamMember {
-  id: string
-  email: string
-  role: string
-  created_at: string
-}
+/**
+ * Derived, not restated. The hand-written version typed `created_at` as `string` over a nullable
+ * column and was applied by a cast, so the member list rendered a null as 1 January 1970.
+ */
+export type TeamMember = UserColumns
 
 export interface AgencyInfo {
   id: string

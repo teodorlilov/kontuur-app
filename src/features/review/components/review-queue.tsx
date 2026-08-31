@@ -18,7 +18,6 @@ import { useDraftEdits } from '@/components/draft-editing/use-draft-edits'
 import { useReviewKeyboard } from '@/components/draft-editing/use-review-keyboard'
 import { parseSlides } from '@/lib/posts/parse-slides'
 import { deletePost, persistRewrite, savePostCopy, schedulePost } from '@/lib/actions/post-actions'
-import { slideCopyAt, slideTotal } from '@/lib/posts/slide-copy'
 import { rewriteDraft } from '@/lib/rewrite-draft'
 import { countVisualsByStatus, type DraftVisual } from '@/lib/visual/draft-visuals'
 import { upsertImageAtPosition } from '@/lib/posts/image-list'
@@ -117,6 +116,14 @@ export function ReviewQueue({
   // Written by the effect below the visuals hook; read only inside async callbacks.
   const focusedPostIdRef = useRef('')
   const recomposeRef = useRef<
+    (
+      source: { post_type: string; slides_json: unknown; caption: string | null },
+      images: PostImage[]
+    ) => void
+  >(() => {})
+  // Same reason as recomposeRef: the compose-on-open effect keys on the focused post, and reading
+  // the hook's callback through a ref keeps it out of the dependency list.
+  const composeMissingRef = useRef<
     (
       source: { post_type: string; slides_json: unknown; caption: string | null },
       images: PostImage[]
@@ -243,10 +250,12 @@ export function ReviewQueue({
 
   const visuals = useQueueVisuals({ postId: focusedPostId, copySource, onImage: mergeImage })
   const visualsRecompose = visuals.recompose
+  const visualsComposeMissing = visuals.composeMissing
   useEffect(() => {
     focusedPostIdRef.current = focusedPostId
     recomposeRef.current = visualsRecompose
-  }, [focusedPostId, visualsRecompose])
+    composeMissingRef.current = visualsComposeMissing
+  }, [focusedPostId, visualsRecompose, visualsComposeMissing])
 
   const visualsByPost = useMemo(() => {
     const map: Record<string, DraftVisual[]> = {}
@@ -262,9 +271,13 @@ export function ReviewQueue({
     return map
   }, [triaged, focusedPostId, visuals.generatingPositions, visuals.composingPositions])
 
-  // Cron art arrives clean — bake the copy onto it on first open, once per
-  // post per session. Only AI-generated files (visual-*.jpg) without a canvas
-  // doc qualify: a user-uploaded creative is finished work, never painted over.
+  // Cron art arrives clean — bake the copy onto it on first open, once per post per session.
+  // Only AI-generated files (visual-*.jpg) without a canvas doc qualify: a user-uploaded creative
+  // is finished work, never painted over.
+  //
+  // Through the hook's own pass, which is what serialises it against a regenerate-compose. This
+  // used to be a second implementation here — its own import, its own canvas read, its own loop —
+  // sharing no semaphore with the hook, so both could drive an offscreen Konva canvas at once.
   useEffect(() => {
     const target = focused?.post
     if (!target || composeRequestedRef.current.has(target.id)) return
@@ -274,43 +287,10 @@ export function ReviewQueue({
     )
     if (pending.length === 0) return
     composeRequestedRef.current.add(target.id)
-    const source = {
-      post_type: target.post_type,
-      slides_json: target.slides_json,
-      caption: target.caption,
-    }
-    void (async () => {
-      const { composePersistedPosition, loadPostCanvas } =
-        await import('@/features/canvas-editor/lib/auto-compose')
-      // One read before the loop. Each iteration used to fetch the same identity again.
-      const canvas = await loadPostCanvas(target.id)
-      if (!canvas) return
-      for (const image of pending) {
-        try {
-          const result = await composePersistedPosition({
-            postId: target.id,
-            position: image.position,
-            total: slideTotal(source),
-            image,
-            slideCopy: slideCopyAt(source, image.position),
-            identity: canvas.identity,
-            doc: canvas.docs.get(image.position) ?? null,
-          })
-          if (result) {
-            setPosts((prev) =>
-              prev.map((p) =>
-                p.id === target.id ? { ...p, images: upsertImageAtPosition(p.images, result) } : p
-              )
-            )
-          }
-        } catch (err) {
-          console.error(
-            `[review] compose-on-open for post ${target.id} position ${image.position} failed:`,
-            err
-          )
-        }
-      }
-    })()
+    composeMissingRef.current(
+      { post_type: target.post_type, slides_json: target.slides_json, caption: target.caption },
+      pending
+    )
   }, [focused])
 
   // Legacy rows without a stored human score get one detect-slop pass on focus.

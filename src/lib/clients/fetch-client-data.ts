@@ -6,7 +6,10 @@ import { toCarouselSwipeCues, toFormalityRulesData } from '@/lib/clients/languag
 import type { LanguageConfig } from '@/lib/clients/language-rules'
 import { parsePillars, type WeightedPillar } from '@/lib/clients/content-pillars'
 import { MAX_POST_HISTORY_COUNT, DEFAULT_CAROUSEL_SLIDES } from '@/utils/constants'
-import { CLIENT_AI_CONTEXT_COLUMNS } from '@/lib/queries/select-columns'
+import {
+  CLIENT_AI_CONTEXT_COLUMNS,
+  type ClientAIContextColumns,
+} from '@/lib/queries/select-columns'
 
 export interface ClientData {
   // from clients table
@@ -41,12 +44,7 @@ export interface ClientData {
 }
 
 /** The client identity buildClientData assembles from. */
-interface ClientIdentity {
-  id: string
-  name: string
-  niche: string | null
-  language: string
-}
+type ClientIdentity = ClientAIContextColumns
 
 /**
  * Assembles the generation context for a client whose agency scope the caller has already

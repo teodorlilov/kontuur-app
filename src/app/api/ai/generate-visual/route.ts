@@ -71,6 +71,7 @@ export async function POST(request: Request) {
     })
 
     const visual = await generateVisual({
+      spender: { agencyId: auth.agencyId },
       identity,
       textBlock,
       scheme,

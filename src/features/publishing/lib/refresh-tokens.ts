@@ -6,7 +6,7 @@ import { IG_TOKEN_REFRESH_URL } from '@/lib/meta/constants'
 import { classifyGraphError, type GraphFailure } from '@/lib/meta/graph-errors'
 import { igRefreshResponseSchema } from '@/lib/meta/schemas'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
-import { notify } from './notifications'
+import { notify } from '@/lib/notifications/notify'
 import type { SocialConnectionRow } from '@/types'
 
 /**

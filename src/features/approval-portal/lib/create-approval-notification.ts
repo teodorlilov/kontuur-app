@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
-import { notify, NOTIFY_EVERY_TIME } from '@/features/publishing/lib/notifications'
+import { notify, NOTIFY_EVERY_TIME } from '@/lib/notifications/notify'
 
 interface ApprovalNotificationData {
   agencyId: string
