@@ -55,25 +55,40 @@ vi.mock('../components/schedule-card', () => ({
     ),
 }))
 
+// The anchor the page would compute for a plain /calendar visit — the current
+// week in the mocked shell timezone, so the recenter effect stays quiet.
+const ANCHOR = getMondayISO(new Date(), 'Europe/Sofia')
+
+/**
+ * Scheduled INSIDE the rendered week, derived from the anchor rather than written out.
+ *
+ * It was the literal '2026-09-01T06:00:00.000Z' against an anchor computed from the real clock, so
+ * whether these posts appeared in the grid at all depended on what day it was when you ran the
+ * suite. For most of the window they fell outside the week and were never drawn; the tests passed
+ * on the mocked schedule-card alone and nobody noticed the grid was empty. The moment the real date
+ * caught up with the literal, the posts rendered for the first time and took the whole file down.
+ */
+const SCHEDULED_AT = `${ANCHOR}T06:00:00.000Z`
+
 function post(id: string): CalendarPost {
   return {
     id,
     client_id: 'client-1',
+    // Required by CalendarPost and read by post-card, which hands it to getClientTone. Its absence
+    // is what actually threw: `hashIndex(undefined)` inside the tone lookup, from a fixture the
+    // cast below was quietly excusing.
+    client_name: 'Acme Clinic',
     caption: `Caption ${id}`,
     platform: 'Instagram',
     post_type: 'single',
     status: 'scheduled',
-    scheduled_at: '2026-09-01T06:00:00.000Z',
+    scheduled_at: SCHEDULED_AT,
     slides_json: null,
     // Only the fields these surfaces read; the cast documents the gap.
   } as CalendarPost
 }
 
 const CLIENTS = [{ id: 'client-1', name: 'Acme Clinic', contact_email: 'a@b.test' }]
-
-// The anchor the page would compute for a plain /calendar visit — the current
-// week in the mocked shell timezone, so the recenter effect stays quiet.
-const ANCHOR = getMondayISO(new Date(), 'Europe/Sofia')
 
 function renderCalendar() {
   return render(
