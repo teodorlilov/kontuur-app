@@ -30,6 +30,7 @@ import {
   upsertAccountMetricDays,
   type IGAccountMetricsInsert,
 } from './account-metrics-store'
+import { upsertPostMetricRows, type IGPostMetricsInsert } from './post-metrics-store'
 
 /**
  * The nightly Instagram metrics capture. One rule governs every write: NULL
@@ -48,8 +49,6 @@ const MEDIA_LOOKBACK_DAYS = 30
  * matters — the cure for "our July 28th disagrees with the IG app".
  */
 const CONSOLIDATION_DAYS = 7
-
-type IGPostMetricsInsert = Database['public']['Tables']['ig_post_metrics']['Insert']
 
 /**
  * Derived, with the narrowing the QUERY guarantees stated explicitly.
@@ -555,10 +554,7 @@ export async function syncPostMetrics(
     }
   })
 
-  const { error } = await admin
-    .from('ig_post_metrics')
-    .upsert(rows, { onConflict: 'client_id,ig_account_id,ig_media_id' })
-  if (error) throw new Error(`ig_post_metrics upsert failed: ${error.message}`)
+  await upsertPostMetricRows(admin, rows, 'post insights')
 }
 
 /**

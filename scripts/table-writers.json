@@ -61,7 +61,7 @@
     "src/features/analytics/lib/purge-account-metrics.ts": "[hand-listed] purgeAccountAnalytics deletes this table through a `scoped(table)` helper, so `.from(table)` never names it and the scan cannot find it. This table is the one it touches that holds data about people who are neither the agency nor its client, which makes this line the part of Meta's data-deletion callback that erases third parties."
   },
   "ig_post_metrics": {
-    "src/features/analytics/lib/sync-metrics.ts": "syncPostMetrics, beside the sync that fetches it.",
+    "src/features/analytics/lib/post-metrics-store.ts": "upsertPostMetricRows — the only writer, for the same reason account-metrics-store is: two jobs now write this table and nothing else would keep their conflict target in step. Callers write PARTIAL rows on purpose — the nightly sync writes identity AND measurements, the half-hourly comments sync writes identity only (caption, permalink, thumbnail, post_id) because the queue renders the post a comment sits under and cannot wait until 03:30 for it. The comments sync must never write the measurement columns: a zero there is indistinguishable from a measured zero on the analytics page.",
     "src/features/analytics/lib/purge-account-metrics.ts": "[hand-listed] purgeAccountAnalytics deletes this table through a `scoped(table)` helper, so `.from(table)` never names it and the scan cannot find it. Meta's data-deletion callback and an account switch; deleteClient deliberately leans on the `clients` cascade instead."
   },
   "intelligence_briefings": {

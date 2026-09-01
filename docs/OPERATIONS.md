@@ -84,6 +84,7 @@ true.
 | Record measured best posting times | `refreshObservedBestTime` | [features/analytics/lib/online-followers.ts](../src/features/analytics/lib/online-followers.ts) |
 | Sync a client's Instagram metrics | `syncAllClientMetrics` | [features/analytics/lib/sync-metrics.ts](../src/features/analytics/lib/sync-metrics.ts) |
 | Write a day of account metrics | `upsertAccountMetricDays` | [features/analytics/lib/account-metrics-store.ts](../src/features/analytics/lib/account-metrics-store.ts) |
+| Write a media's row | `upsertPostMetricRows` | [features/analytics/lib/post-metrics-store.ts](../src/features/analytics/lib/post-metrics-store.ts) |
 
 ### Comments
 

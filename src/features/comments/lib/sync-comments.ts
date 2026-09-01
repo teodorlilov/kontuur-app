@@ -8,6 +8,7 @@ import { fetchMediaSince } from '@/lib/meta/insights'
 import type { IgComment } from '@/lib/meta/schemas'
 import { createSemaphore } from '@/lib/concurrency'
 import { fetchPostIdsByMediaId } from '@/lib/queries/posts-by-media-id'
+import { upsertPostMetricRows } from '@/features/analytics/lib/post-metrics-store'
 import {
   SOCIAL_CONNECTION_SYNC_COLUMNS,
   type SocialConnectionSyncColumns,
@@ -184,13 +185,53 @@ export async function syncClientComments(
    * source of truth to keep in step.
    */
   const stale = commented.filter((item) => (item.comments_count ?? 0) !== storedCounts.get(item.id))
-  if (stale.length === 0) return { unchanged: commented.length, fetched: 0 }
 
   const postIdByMediaId = await fetchPostIdsByMediaId(
     admin,
     clientId,
-    stale.map((item) => item.id)
+    commented.map((item) => item.id)
   )
+
+  /**
+   * Record what each commented media IS, not just what was said under it.
+   *
+   * The queue renders the post a comment sits under, and it reads that from
+   * `ig_post_metrics` — which only the NIGHTLY analytics sync wrote. So a post
+   * commented on this morning appeared as an untitled grey box until 03:30 the next
+   * day, and a post never published from Kontuur showed as nothing at all forever,
+   * which is most of them: on a live account, 18 of 20 media had no Kontuur post.
+   *
+   * These fields cost nothing to record. `MEDIA_FIELDS` already returns them on the
+   * same call this uses for the count comparison, and the alternative — a second
+   * table holding caption/permalink/thumbnail per media — would have been the same
+   * fact stored twice, in two jobs, drifting.
+   *
+   * Identity columns ONLY. Reach, views and the rest belong to the nightly job; a
+   * zero written here would be indistinguishable from a measured zero on the
+   * analytics page.
+   *
+   * Ahead of the early return below, because a post whose comments have not changed
+   * still needs its caption the first time we see it.
+   */
+  await upsertPostMetricRows(
+    admin,
+    commented.map((item) => ({
+      client_id: clientId,
+      ig_account_id: accountId,
+      ig_media_id: item.id,
+      post_id: postIdByMediaId.get(item.id) ?? null,
+      caption: item.caption ?? null,
+      permalink: item.permalink ?? null,
+      // thumbnail_url is video-only on /media; the image itself fills in elsewhere.
+      thumbnail_url: item.thumbnail_url ?? item.media_url ?? null,
+      media_type: item.media_type ?? null,
+      media_product_type: item.media_product_type ?? null,
+      posted_at: item.timestamp ?? null,
+    })),
+    'comment media identity'
+  )
+
+  if (stale.length === 0) return { unchanged: commented.length, fetched: 0 }
 
   const semaphore = createSemaphore(COMMENT_FETCH_CONCURRENCY)
   const perMedia = await Promise.all(

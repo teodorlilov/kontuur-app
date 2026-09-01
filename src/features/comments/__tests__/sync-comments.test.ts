@@ -24,6 +24,11 @@ vi.mock('@/lib/queries/posts-by-media-id', () => ({
   fetchPostIdsByMediaId: async () => new Map([['media-1', 'post-1']]),
 }))
 
+const upsertPostMetricRows = vi.fn()
+vi.mock('@/features/analytics/lib/post-metrics-store', () => ({
+  upsertPostMetricRows: (...a: unknown[]) => upsertPostMetricRows(...a),
+}))
+
 const { syncClientComments } = await import('../lib/sync-comments')
 const { GraphApiError } = await import('@/lib/meta/graph-errors')
 
@@ -73,6 +78,60 @@ const CONNECTION = { clientId: 'client-1', accountId: 'acct-1', accessToken: 'to
 beforeEach(() => {
   fetchMediaSince.mockReset()
   fetchMediaComments.mockReset()
+  upsertPostMetricRows.mockReset()
+})
+
+describe('media identity', () => {
+  it('records what a commented post IS, even when its comments have not changed', async () => {
+    // The queue renders the post a comment sits under, and read that only from what
+    // the NIGHTLY sync wrote. So a post commented on this morning showed as an
+    // untitled grey box until 03:30, and a post never published from Kontuur showed
+    // as nothing at all — which on a live account was 18 of 20 media.
+    fetchMediaSince.mockResolvedValue([
+      {
+        id: 'media-1',
+        comments_count: 2,
+        caption: 'A link in your LinkedIn post body',
+        permalink: 'https://instagram.com/p/abc',
+        thumbnail_url: 'https://cdn/thumb.jpg',
+        timestamp: '2026-08-19T10:00:00Z',
+      },
+    ])
+    const { client } = fakeAdmin({ 'media-1': ['c1', 'c2'] })
+
+    await syncClientComments(client, CONNECTION)
+
+    // Unchanged, so no comment call — but the identity is recorded anyway.
+    expect(fetchMediaComments).not.toHaveBeenCalled()
+    const [, rows] = upsertPostMetricRows.mock.calls[0] as [unknown, Array<Record<string, unknown>>]
+    expect(rows[0]).toMatchObject({
+      ig_media_id: 'media-1',
+      post_id: 'post-1',
+      caption: 'A link in your LinkedIn post body',
+      permalink: 'https://instagram.com/p/abc',
+      thumbnail_url: 'https://cdn/thumb.jpg',
+    })
+  })
+
+  it('never writes the measurement columns', async () => {
+    fetchMediaSince.mockResolvedValue([{ id: 'media-1', comments_count: 1, caption: 'x' }])
+    fetchMediaComments.mockResolvedValue({
+      comments: [{ id: 'c1' }],
+      withheld: false,
+      nextCursor: null,
+    })
+    const { client } = fakeAdmin()
+
+    await syncClientComments(client, CONNECTION)
+
+    // Reach, views and the rest belong to the nightly job. A zero written here is
+    // indistinguishable from a measured zero on the analytics page — and this sync
+    // has measured nothing.
+    const [, rows] = upsertPostMetricRows.mock.calls[0] as [unknown, Array<Record<string, unknown>>]
+    for (const column of ['reach', 'views', 'comments_count', 'like_count', 'total_interactions']) {
+      expect(rows[0]).not.toHaveProperty(column)
+    }
+  })
 })
 
 describe('syncClientComments', () => {
